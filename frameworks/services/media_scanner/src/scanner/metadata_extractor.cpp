@@ -423,7 +423,6 @@ int32_t MetadataExtractor::ExtractImageMetadata(std::unique_ptr<Metadata> &data)
     if (err == 0) {
         data->SetFileWidth(imageInfo.size.width);
         data->SetFileHeight(imageInfo.size.height);
-        data->SetFileMediaType(imageInfo.encodedFormat);
     } else {
         MEDIA_ERR_LOG("Failed to get image info, err = %{public}d", err);
     }

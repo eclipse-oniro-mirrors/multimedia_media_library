@@ -552,7 +552,7 @@ int32_t MediaScannerObj::BuildData(const struct stat &statInfo)
 
     // extension and type
     string extension = ScannerUtils::GetFileExtension(path_);
-    string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension);
+    string mimeType = MimeTypeUtils::GetMimeTypeFromContent(path_);
     data_->SetFileExtension(extension);
     data_->SetFileMimeType(mimeType);
     data_->SetFileMediaType(MimeTypeUtils::GetMediaTypeFromMimeType(mimeType));
