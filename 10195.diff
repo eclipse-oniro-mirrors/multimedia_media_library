@@ -1,0 +1,178 @@
+diff --git a/frameworks/ani/ets/@ohos.file.photoAccessHelper.ets b/frameworks/ani/ets/@ohos.file.photoAccessHelper.ets
+index 658524a8ee0ded30e1e284e8945abf7bb3d245a0..42a3b18775b926253a8cb9bf0935418b61b51640 100644
+--- a/frameworks/ani/ets/@ohos.file.photoAccessHelper.ets
++++ b/frameworks/ani/ets/@ohos.file.photoAccessHelper.ets
+@@ -47,14 +47,14 @@ class MediaLibraryAniError extends BusinessError {
+ 
+ export namespace photoAccessHelper {
+   loadLibraryWithPermissionCheck("photo_access_helper_ani", "@ohos.file.photoAccessHelper");
+-  native function getPhotoAccessHelperInner(context: Context): PhotoAccessHelper;
+-  native function getPhotoAccessHelperWithUserIdInner(context: Context, userId: int): PhotoAccessHelper;
++  native function getPhotoAccessHelperInner(context: Context): PhotoAccessHelper | null;
++  native function getPhotoAccessHelperWithUserIdInner(context: Context, userId: int): PhotoAccessHelper | null;
+ 
+-  export function getPhotoAccessHelper(context: Context): PhotoAccessHelper {
++  export function getPhotoAccessHelper(context: Context): PhotoAccessHelper | null {
+     return getPhotoAccessHelperInner(context);
+   }
+ 
+-  export function getPhotoAccessHelper(context: Context, userId: int): PhotoAccessHelper {
++  export function getPhotoAccessHelper(context: Context, userId: int): PhotoAccessHelper | null {
+     return getPhotoAccessHelperWithUserIdInner(context, userId);
+   }
+ 
+@@ -209,11 +209,11 @@ export namespace photoAccessHelper {
+   }
+ 
+   export interface MediaAssetDataHandler<T> {
+-    onDataPrepared(data: T, map?: Map<string, string>): void;
++    onDataPrepared(data: T | undefined, map?: Map<string, string>): void;
+   }
+ 
+   export interface QuickImageDataHandler<T> {
+-    onDataPrepared(data: T, imageSource: image.ImageSource, map: Map<string, string>): void;
++    onDataPrepared(data: T | undefined, imageSource: image.ImageSource, map: Map<string, string>): void;
+   }
+ 
+   export interface PhotoProxy {}
+@@ -645,8 +645,8 @@ export namespace photoAccessHelper {
+     commitEditedAsset(editData: string, uri: string): Promise<void>;
+     revertToOriginal(callback: AsyncCallback<void>): void;
+     revertToOriginal(): Promise<void>;
+-    requestPhoto(callback: AsyncCallback<image.PixelMap>): string;
+-    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string;
++    requestPhoto(callback: AsyncCallback<image.PixelMap>): string | null;
++    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string | null;
+     cancelPhotoRequest(requestId: string): void;
+     getKeyFrameThumbnail(beginFrameTimeMs: long, type: ThumbnailType): Promise<image.PixelMap>;
+     isEdited(callback: AsyncCallback<boolean | undefined>): void;
+@@ -1307,11 +1307,11 @@ export namespace photoAccessHelper {
+       });
+     }
+ 
+-    requestPhoto(callback: AsyncCallback<image.PixelMap>): string {
++    requestPhoto(callback: AsyncCallback<image.PixelMap>): string | null {
+       return this.requestPhotoSync(callback);
+     }
+ 
+-    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string {
++    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string | null {
+       return this.requestPhotoSync(callback, options);
+     }
+ 
+@@ -1522,7 +1522,7 @@ export namespace photoAccessHelper {
+     native requestSourceSync(): int;
+     native commitEditedAssetSync(editData: string, uri: string): void;
+     native revertToOriginalSync(): void;
+-    native requestPhotoSync(callback: AsyncCallback<image.PixelMap>, options?: RequestPhotoOptions): string;
++    native requestPhotoSync(callback: AsyncCallback<image.PixelMap>, options?: RequestPhotoOptions): string | null;
+     native cancelPhotoRequest(requestId: string): void;
+     native getKeyFrameThumbnailSync(beginFrameTimeMs: long, type: ThumbnailType): image.PixelMap;
+     native isEditedSync(): boolean;
+@@ -3845,17 +3845,17 @@ export namespace photoAccessHelper {
+       this.nativeConstructor(asset);
+     }
+ 
+-    native static createImageAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest;
++    native static createImageAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest | null;
+ 
+-    native static createVideoAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest;
++    native static createVideoAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest | null;
+ 
+     static createAssetRequest(context: Context, displayName: string,
+-      options?: PhotoCreateOptions): MediaAssetChangeRequest {
++      options?: PhotoCreateOptions): MediaAssetChangeRequest | null{
+       return MediaAssetChangeRequest.createAssetRequestByPhotoCreateOptions(context, displayName, options);
+     }
+ 
+     static createAssetRequest(context: Context, photoType: PhotoType, extension: string,
+-      options?: CreateOptions): MediaAssetChangeRequest {
++      options?: CreateOptions): MediaAssetChangeRequest | null{
+       return MediaAssetChangeRequest.createAssetRequestByCreateOptions(context, photoType, extension, options);
+     }
+ 
+@@ -3880,6 +3880,27 @@ export namespace photoAccessHelper {
+       });
+     }
+ 
++    static deleteAssetsToTrashWithUris(context: Context, assets: Array<string>): Promise<void> {
++      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
++        let cb = (): MediaLibraryAniError | undefined => {
++          try {
++            MediaAssetChangeRequest.deleteAssetsSync(context, assets);
++            return undefined;
++          } catch(e) {
++            return e as MediaLibraryAniError;
++          }
++        };
++        taskpool.execute(cb).then((ret: Any): void => {
++          if (isNullish(ret)) {
++            resolve(undefined);
++          } else {
++            let err = ret as MediaLibraryAniError;
++            reject(businessError(err.code.toInt(), err.message));
++          }
++        });
++      });
++    }
++    
+     getWriteCacheHandler(): Promise<int> {
+       return new Promise<int>((resolve: (v: int) => void, reject: RejectString) : void => {
+         let cb = (): int | MediaLibraryAniError => {
+@@ -3906,7 +3927,7 @@ export namespace photoAccessHelper {
+       });
+     }
+ 
+-    native getAsset(): PhotoAsset;
++    native getAsset(): PhotoAsset | null;
+ 
+     native setFavorite(favoriteState: boolean): void;
+     native setHidden(hiddenState: boolean): void;
+@@ -3990,9 +4011,9 @@ export namespace photoAccessHelper {
+ 
+     private native nativeConstructor(asset: PhotoAsset): void;
+     private native static createAssetRequestByPhotoCreateOptions(context: Context, displayName: string,
+-      options?: PhotoCreateOptions): MediaAssetChangeRequest;
++      options?: PhotoCreateOptions): MediaAssetChangeRequest | null;
+     private native static createAssetRequestByCreateOptions(context: Context, photoType: PhotoType, extension: string,
+-      options?: CreateOptions): MediaAssetChangeRequest;
++      options?: CreateOptions): MediaAssetChangeRequest | null;
+     private native static deleteAssetsSync(context: Context, assets: Array<AssetType> | Array<string>): void;
+     private native static deleteLocalAssetsPermanentlySync(context: Context, assets: Array<PhotoAsset>): void;
+     private native static deleteLocalAssetsPermanentlyWithUriSync(context: Context, assetUris: Array<string>): void;
+@@ -4028,7 +4049,7 @@ export namespace photoAccessHelper {
+       this.nativeConstructor(album);
+     }
+ 
+-    native static createAlbumRequest(context: Context, name: string): MediaAlbumChangeRequest;
++    native static createAlbumRequest(context: Context, name: string): MediaAlbumChangeRequest | null;
+ 
+     static deleteAlbums(context: Context, albums: Array<Album>): Promise<void> {
+       return new Promise<void>((resolve: (v: undefined) => void, reject: RejectString) : void => {
+@@ -4078,7 +4099,7 @@ export namespace photoAccessHelper {
+       });
+     }
+ 
+-    native getAlbum(): Album;
++    native getAlbum(): Album | null;
+ 
+     native setCoverUri(coverUri: string): void;
+ 
+@@ -4692,7 +4713,7 @@ export namespace photoAccessHelper {
+       }
+     }
+ 
+-    native static getCloudEnhancementInstance(context: Context): CloudEnhancement;
++    native static getCloudEnhancementInstance(context: Context): CloudEnhancement | null;
+ 
+     submitCloudEnhancementTasks(photoAssets: Array<PhotoAsset>, hasCloudWatermark: boolean): Promise<void> {
+       return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+@@ -4953,7 +4974,7 @@ export namespace photoAccessHelper {
+         this.nativeHandle = nativePointer;
+       }
+     }
+-    native static getCloudMediaAssetManagerInstance(context: Context): CloudMediaAssetManager;
++    native static getCloudMediaAssetManagerInstance(context: Context): CloudMediaAssetManager | null;
+ 
+     startDownloadCloudMedia(downloadType: CloudMediaDownloadType): Promise<void> {
+       return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {

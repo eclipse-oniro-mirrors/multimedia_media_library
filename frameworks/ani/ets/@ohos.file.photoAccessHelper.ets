@@ -47,14 +47,14 @@ class MediaLibraryAniError extends BusinessError {
 
 export namespace photoAccessHelper {
   loadLibraryWithPermissionCheck("photo_access_helper_ani", "@ohos.file.photoAccessHelper");
-  native function getPhotoAccessHelperInner(context: Context): PhotoAccessHelper;
-  native function getPhotoAccessHelperWithUserIdInner(context: Context, userId: int): PhotoAccessHelper;
+  native function getPhotoAccessHelperInner(context: Context): PhotoAccessHelper | null;
+  native function getPhotoAccessHelperWithUserIdInner(context: Context, userId: int): PhotoAccessHelper | null;
 
-  export function getPhotoAccessHelper(context: Context): PhotoAccessHelper {
+  export function getPhotoAccessHelper(context: Context): PhotoAccessHelper | null {
     return getPhotoAccessHelperInner(context);
   }
 
-  export function getPhotoAccessHelper(context: Context, userId: int): PhotoAccessHelper {
+  export function getPhotoAccessHelper(context: Context, userId: int): PhotoAccessHelper | null {
     return getPhotoAccessHelperWithUserIdInner(context, userId);
   }
 
@@ -177,11 +177,11 @@ export namespace photoAccessHelper {
   }
 
   export interface MediaAssetDataHandler<T> {
-    onDataPrepared(data: T, map?: Map<string, string>): void;
+    onDataPrepared(data: T | undefined, map?: Map<string, string>): void;
   }
 
   export interface QuickImageDataHandler<T> {
-    onDataPrepared(data: T, imageSource: image.ImageSource, map: Map<string, string>): void;
+    onDataPrepared(data: T | undefined, imageSource: image.ImageSource, map: Map<string, string>): void;
   }
 
   export interface PhotoProxy {}
@@ -453,8 +453,8 @@ export namespace photoAccessHelper {
     commitEditedAsset(editData: string, uri: string): Promise<void>;
     revertToOriginal(callback: AsyncCallback<void>): void;
     revertToOriginal(): Promise<void>;
-    requestPhoto(callback: AsyncCallback<image.PixelMap>): string;
-    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string;
+    requestPhoto(callback: AsyncCallback<image.PixelMap>): string | null;
+    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string | null;
     cancelPhotoRequest(requestId: string): void;
     getKeyFrameThumbnail(beginFrameTimeMs: long, type: ThumbnailType): Promise<image.PixelMap>;
     isEdited(callback: AsyncCallback<boolean | undefined>): void;
@@ -1089,11 +1089,11 @@ export namespace photoAccessHelper {
       });
     }
 
-    requestPhoto(callback: AsyncCallback<image.PixelMap>): string {
+    requestPhoto(callback: AsyncCallback<image.PixelMap>): string | null {
       return this.requestPhotoSync(callback);
     }
 
-    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string {
+    requestPhoto(options: RequestPhotoOptions, callback: AsyncCallback<image.PixelMap>): string | null {
       return this.requestPhotoSync(callback, options);
     }
 
@@ -1303,7 +1303,7 @@ export namespace photoAccessHelper {
     native requestSourceSync(): int;
     native commitEditedAssetSync(editData: string, uri: string): void;
     native revertToOriginalSync(): void;
-    native requestPhotoSync(callback: AsyncCallback<image.PixelMap>, options?: RequestPhotoOptions): string;
+    native requestPhotoSync(callback: AsyncCallback<image.PixelMap>, options?: RequestPhotoOptions): string | null;
     native cancelPhotoRequest(requestId: string): void;
     native getKeyFrameThumbnailSync(beginFrameTimeMs: long, type: ThumbnailType): image.PixelMap;
     native isEditedSync(): boolean;
@@ -3447,17 +3447,17 @@ export namespace photoAccessHelper {
       this.nativeConstructor(asset);
     }
 
-    native static createImageAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest;
+    native static createImageAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest | null;
 
-    native static createVideoAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest;
+    native static createVideoAssetRequest(context: Context, fileUri: string): MediaAssetChangeRequest | null;
 
     static createAssetRequest(context: Context, displayName: string,
-      options?: PhotoCreateOptions): MediaAssetChangeRequest {
+      options?: PhotoCreateOptions): MediaAssetChangeRequest | null{
       return MediaAssetChangeRequest.createAssetRequestByPhotoCreateOptions(context, displayName, options);
     }
 
     static createAssetRequest(context: Context, photoType: PhotoType, extension: string,
-      options?: CreateOptions): MediaAssetChangeRequest {
+      options?: CreateOptions): MediaAssetChangeRequest | null{
       return MediaAssetChangeRequest.createAssetRequestByCreateOptions(context, photoType, extension, options);
     }
 
@@ -3482,6 +3482,27 @@ export namespace photoAccessHelper {
       });
     }
 
+    static deleteAssetsToTrashWithUris(context: Context, assets: Array<string>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            MediaAssetChangeRequest.deleteAssetsSync(context, assets);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code.toInt(), err.message));
+          }
+        });
+      });
+    }
+    
     getWriteCacheHandler(): Promise<int> {
       return new Promise<int>((resolve: (v: int) => void, reject: RejectString) : void => {
         let cb = (): int | MediaLibraryAniError => {
@@ -3508,7 +3529,7 @@ export namespace photoAccessHelper {
       });
     }
 
-    native getAsset(): PhotoAsset;
+    native getAsset(): PhotoAsset | null;
 
     native setFavorite(favoriteState: boolean): void;
     native setHidden(hiddenState: boolean): void;
@@ -3570,9 +3591,9 @@ export namespace photoAccessHelper {
 
     private native nativeConstructor(asset: PhotoAsset): void;
     private native static createAssetRequestByPhotoCreateOptions(context: Context, displayName: string,
-      options?: PhotoCreateOptions): MediaAssetChangeRequest;
+      options?: PhotoCreateOptions): MediaAssetChangeRequest | null;
     private native static createAssetRequestByCreateOptions(context: Context, photoType: PhotoType, extension: string,
-      options?: CreateOptions): MediaAssetChangeRequest;
+      options?: CreateOptions): MediaAssetChangeRequest | null;
     private native static deleteAssetsSync(context: Context, assets: Array<AssetType> | Array<string>): void;
     private native static deleteLocalAssetsPermanentlySync(context: Context, assets: Array<PhotoAsset>): void;
   }
@@ -3607,7 +3628,7 @@ export namespace photoAccessHelper {
       this.nativeConstructor(album);
     }
 
-    native static createAlbumRequest(context: Context, name: string): MediaAlbumChangeRequest;
+    native static createAlbumRequest(context: Context, name: string): MediaAlbumChangeRequest | null;
 
     static deleteAlbums(context: Context, albums: Array<Album>): Promise<void> {
       return new Promise<void>((resolve: (v: undefined) => void, reject: RejectString) : void => {
@@ -3657,7 +3678,7 @@ export namespace photoAccessHelper {
       });
     }
 
-    native getAlbum(): Album;
+    native getAlbum(): Album | null;
 
     native setCoverUri(coverUri: string): void;
 
@@ -3819,7 +3840,8 @@ export namespace photoAccessHelper {
     requestContent(imageFileUri: string, videoFileUri: string): Promise<void>;
     requestContent(resourceType: ResourceType, fileUri: string): Promise<void>;
     requestContent(resourceType: ResourceType): Promise<ArrayBuffer>;
-    getUri(): string;
+    getUri(): string | null;
+    isVideoReady(): Promise<boolean>;
   }
 
   export interface FileAssetInfo {
@@ -3981,7 +4003,33 @@ export namespace photoAccessHelper {
       });
     }
 
-    native getUri(): string;
+    isVideoReady(): Promise<boolean> {
+       return new Promise<boolean>((resolve: (v: boolean) => void, reject: RejectString) => {
+         let cb = (): boolean | MediaLibraryAniError => {
+           let result: boolean | MediaLibraryAniError;
+           try {
+             result = this.isVideoReadyInner();
+           } catch(e) {
+             result = e as MediaLibraryAniError;
+           }
+           return result;
+         };
+         taskpool.execute(cb).then((ret: Any): void => {
+           if (ret instanceof MediaLibraryAniError) {
+             let err = ret as MediaLibraryAniError;
+             reject(businessError<string>(err.code as int, err.message));
+           } else {
+             if (isNullish(ret)) {
+               reject(businessError<string>(-1, "Operation failed"));
+             } else {
+               resolve(ret as boolean);
+             }
+          }
+        });
+      });
+    }
+
+    native getUri(): string | null;
     native requestContentByImageFileAndVideoFile(imageFileUri: string, videoFileUri: string): void;
     native requestContentByResourceTypeAndFile(resourceType: ResourceType, fileUri: string): void;
     native requestContentByResourceType(resourceType: ResourceType): ArrayBuffer;
@@ -4241,7 +4289,7 @@ export namespace photoAccessHelper {
       }
     }
 
-    native static getCloudEnhancementInstance(context: Context): CloudEnhancement;
+    native static getCloudEnhancementInstance(context: Context): CloudEnhancement | null;
 
     submitCloudEnhancementTasks(photoAssets: Array<PhotoAsset>, hasCloudWatermark: boolean): Promise<void> {
       return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
@@ -4502,7 +4550,7 @@ export namespace photoAccessHelper {
         this.nativeHandle = nativePointer;
       }
     }
-    native static getCloudMediaAssetManagerInstance(context: Context): CloudMediaAssetManager;
+    native static getCloudMediaAssetManagerInstance(context: Context): CloudMediaAssetManager | null;
 
     startDownloadCloudMedia(downloadType: CloudMediaDownloadType): Promise<void> {
       return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
