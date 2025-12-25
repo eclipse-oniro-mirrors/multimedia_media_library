@@ -272,8 +272,6 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::ProcessAndSaveHighQuali
             static_cast<int32_t>(MultiStagesCaptureResultErrCode::SAVE_IMAGE_FAIL), mediaType);
         return;
     }
-    MultiStagesPhotoCaptureManager::GetInstance().DealHighQualityPicture(
-        imageId, std::move(picture), isEdited, isTakeEffect);
     bool isTrashed = fileAsset->GetIsTrash() > 0;
     int32_t modifyType = isEdited ? static_cast<int32_t>(FirstStageModifyType::EDITED) :
         (isTrashed ? static_cast<int32_t>(FirstStageModifyType::TRASHED) :
