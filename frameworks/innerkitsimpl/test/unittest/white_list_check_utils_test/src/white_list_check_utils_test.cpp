@@ -210,21 +210,19 @@ HWTEST_F(WhiteListCheckUtilsTest, CheckWhiteList_test_002, TestSize.Level1)
         {{"appIdentifier", "1234567891234567891"}, {"allowedApiVersion", 25}},
         {{"appIdentifier", "1234567891234567891"}, {"allowedApiVersion", 0}}
     };
-    auto createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "invalidVersion",
-        testApplications);
+    auto createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "", testApplications);
     EXPECT_EQ(createlocalJsonRet, true);
-    auto createDueJsonRet = CreateTestWhiteListJson(DUE_INSTALL_DIR_TEST, "invalidVersion", testApplications);
+    auto createDueJsonRet = CreateTestWhiteListJson(DUE_INSTALL_DIR_TEST, "", testApplications);
     EXPECT_EQ(createDueJsonRet, true);
     auto ret = PermissionWhitelistUtils::InitWhiteList();
-    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(ret, E_FAIL);
     createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "1.0", testApplications);
     EXPECT_EQ(createlocalJsonRet, true);
     ret = PermissionWhitelistUtils::InitWhiteList();
     EXPECT_EQ(ret, E_OK);
     createDueJsonRet = CreateTestWhiteListJson(DUE_INSTALL_DIR_TEST, "1.2", testApplications);
     EXPECT_EQ(createDueJsonRet, true);
-    createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "invalidVersion",
-        testApplications);
+    createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "", testApplications);
     EXPECT_EQ(createlocalJsonRet, true);
     ret = PermissionWhitelistUtils::InitWhiteList();
     EXPECT_EQ(ret, E_OK);
