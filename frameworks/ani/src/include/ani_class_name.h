@@ -42,6 +42,7 @@ static const std::string PAH_ANI_CLASS_ANALYSIS_ALBUM = PAH_CLASS_SPACE + "Analy
 static const std::string PAH_ANI_CLASS_PHOTO_ASSET = PAH_CLASS_SPACE + "PhotoAsset";
 static const std::string PAH_ANI_CLASS_PHOTO_ASSET_HANDLE = PAH_CLASS_SPACE + "PhotoAssetHandle";
 static const std::string PAH_ANI_CLASS_PHOTO_ACCESS_HELPER_HANDLE = PAH_CLASS_SPACE + "PhotoAccessHelperHandle";
+static const std::string PAH_ANI_CLASS_PHOTO_VIEW_PICKER = PAH_CLASS_SPACE + "PhotoViewPicker";
 static const std::string PAH_ANI_CLASS_PHOTO_PROXY_HANDLE = PAH_CLASS_SPACE + "PhotoProxyHandle";
 static const std::string PAH_ANI_CLASS_SIZE = PAH_CLASS_SPACE + "SizeImpl";
 static const std::string PAH_ANI_CLASS_MOVING_PHOTO_HANDLE = PAH_CLASS_SPACE + "MovingPhotoHandle";

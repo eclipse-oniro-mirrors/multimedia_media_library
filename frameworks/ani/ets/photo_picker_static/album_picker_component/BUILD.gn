@@ -1,0 +1,54 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/config/components/ets_frontend/ets2abc_config.gni")
+import("//build/ohos.gni")
+
+generate_static_abc("album_picker_component_ets_abc") {
+  base_url = "./"
+  files = [ "./@ohos.file.AlbumPickerComponent.ets" ]
+  ui_enable = "True"
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/album_picker_component_ets_abc.abc"
+  dst_file = target_out_dir + "/album_picker_component_ets_abc/modules_static.abc"
+  out_puts = [ target_out_dir + "/album_picker_component_ets_abc/modules_static.abc" ]
+  paths_keys = [
+    "arkui.component.securityUIExtensionComponent",
+  ]
+  paths_values = [
+    "$ohos_ets_inner_path/arkui/component/securityUIExtensionComponent",
+  ]
+  external_dependencies = [ "ace_engine:copy_arkui_ets" ]
+}
+
+ohos_copy("copy_album_picker_component_ets_abc") {
+  sources = [
+    target_out_dir + "/album_picker_component_ets_abc/modules_static.abc"
+  ]
+  outputs = [
+    target_out_dir + "/album_picker_component_ets_abc.abc"
+  ]
+  deps = [ ":album_picker_component_ets_abc" ]
+}
+
+ohos_prebuilt_etc("album_picker_component_ets_abc_etc") {
+  source = "$target_out_dir/album_picker_component_ets_abc.abc"
+  module_install_dir = "framework"
+  subsystem_name = "multimedia"
+  part_name = "media_library"
+  deps = [ ":copy_album_picker_component_ets_abc" ]
+}
+
+group("album_picker_component") {
+  deps = [ ":album_picker_component_ets_abc_etc" ]
+}

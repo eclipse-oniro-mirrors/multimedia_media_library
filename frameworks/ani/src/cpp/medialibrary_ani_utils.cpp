@@ -698,6 +698,17 @@ ani_status MediaLibraryAniUtils::GetAniValueArray(ani_env *env, ani_object arg, 
 }
 
 ani_status MediaLibraryAniUtils::GetProperty(ani_env *env, ani_object arg, const std::string &propName,
+    uint64_t &propValue)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    ani_long aniLong = 0;
+    CHECK_STATUS_RET(env->Object_GetPropertyByName_Long(arg, propName.c_str(), &aniLong),
+        "Object_GetPropertyByName_Long failed.");
+    propValue = static_cast<uint64_t>(aniLong);
+    return ANI_OK;
+}
+
+ani_status MediaLibraryAniUtils::GetProperty(ani_env *env, ani_object arg, const std::string &propName,
     uint32_t &propValue)
 {
     CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
