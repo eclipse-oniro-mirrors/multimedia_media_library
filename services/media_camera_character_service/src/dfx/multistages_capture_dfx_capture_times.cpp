@@ -54,6 +54,7 @@ void MultiStagesCaptureDfxCaptureTimes::AddCaptureTimes(CaptureMessageType type)
             break;
         case CaptureMessageType::CAPTURE_VIDEO_TIMES_SUCCESS:
             captureVideoSuccessTimes +=1;
+            break;
         default:
             break;
     }
@@ -94,7 +95,7 @@ void MultiStagesCaptureDfxCaptureTimes::Report()
         {KEY_CAPTURE_IMAGE_TIMES_SUCCESS, captureImageSuccessTimes},
         {KEY_CAPTURE_VIDEO_TIMES, captureVideoTimes},
         {KEY_CAPTURE_VIDEO_TIMES_SUCCESS, captureVideoSuccessTimes}
-    }
+    };
     PostEventUtils::GetInstance().PostStatProcess(StatType::MSC_CAPTURE_TIMES, map);
     Clear();
     lastReportTime_ = MediaFileUtils::UTCTimeMilliSeconds();
