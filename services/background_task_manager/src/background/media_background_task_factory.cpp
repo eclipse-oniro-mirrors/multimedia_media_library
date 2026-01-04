@@ -15,8 +15,9 @@
 #define MLOG_TAG "Media_Background"
 
 #include "media_background_task_factory.h"
-
+#ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "media_cloud_sync_backgroud_task.h"
+#endif
 #include "media_file_manager_temp_file_aging_task.h"
 #include "media_video_mode_task.h"
 #include "media_deleted_file_task.h"
@@ -27,7 +28,9 @@ namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
 {
     this->tasks_ = {
+        #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
         std::make_shared<MediaCloudSyncBackgroundTask>(),
+        #endif
         std::make_shared<MediaFileManagerTempFileAgingTask>(),
         std::make_shared<MediaVideoModeTask>(),
         std::make_shared<MediaDeletedFileTask>(),

@@ -42,7 +42,6 @@
 #include "preferences_helper.h"
 #include "cloud_sync_utils.h"
 #include "power_efficiency_manager.h"
-#include "cloud_media_photos_dao.h"
 #include "result_set_reader.h"
 #include "photos_po_writer.h"
 

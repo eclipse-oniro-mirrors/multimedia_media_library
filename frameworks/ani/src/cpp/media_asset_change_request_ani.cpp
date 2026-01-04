@@ -70,14 +70,6 @@ const std::array mediaAssetChangeMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::AddResourceByArrayBuffer)},
     ani_native_function {"addResource", addResourceByPhotoProxySignature.c_str(),
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::AddResourceByPhotoProxy)},
-    ani_native_function {"createAssetRequestByPhotoCreateOptions", nullptr,
-        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateAssetRequestByPhotoCreateOptions)},
-    ani_native_function {"createAssetRequestByCreateOptions", nullptr,
-        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateAssetRequestByCreateOptions)},
-    ani_native_function {"createImageAssetRequest", nullptr,
-        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateImageAssetRequest)},
-    ani_native_function {"createVideoAssetRequest", nullptr,
-        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateVideoAssetRequest)},
     ani_native_function {"getAsset", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::GetAsset)},
     ani_native_function {"setFavorite", nullptr,
@@ -86,8 +78,6 @@ const std::array mediaAssetChangeMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetHidden)},
     ani_native_function {"setUserComment", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetUserComment)},
-    ani_native_function {"deleteAssetsSync", nullptr,
-        reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteAssets)},
     ani_native_function {"setEffectMode", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetEffectMode)},
     ani_native_function {"setEditData", nullptr,
@@ -112,8 +102,24 @@ const std::array mediaAssetChangeMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetVideoEnhancementAttr)},
     ani_native_function {"getWriteCacheHandlerInner", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::GetWriteCacheHandler)},
+
+};
+
+std::array staticMethods = {
+    ani_native_function {"createAssetRequestByPhotoCreateOptions", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateAssetRequestByPhotoCreateOptions)},
+    ani_native_function {"createAssetRequestByCreateOptions", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateAssetRequestByCreateOptions)},
+    ani_native_function {"createImageAssetRequest", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateImageAssetRequest)},
+    ani_native_function {"createVideoAssetRequest", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::CreateVideoAssetRequest)},
+    ani_native_function {"deleteAssetsSync", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteAssets)},
     ani_native_function {"deleteLocalAssetsPermanentlySync", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteLocalAssetsPermanently)},
+    ani_native_function {"deleteLocalAssetsPermanentlyWithUriSync", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteLocalAssetsPermanentlyWithUri)},
 };
 } // namespace
 std::atomic<uint32_t> MediaAssetChangeRequestAni::cacheFileId_ = 0;
@@ -242,6 +248,12 @@ ani_status MediaAssetChangeRequestAni::Init(ani_env *env)
     status = env->Class_BindNativeMethods(cls, mediaAssetChangeMethods.data(), mediaAssetChangeMethods.size());
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        return status;
+    }
+
+    status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to bind static native methods to: %{public}s", className);
         return status;
     }
     return ANI_OK;
@@ -2783,6 +2795,18 @@ ani_object MediaAssetChangeRequestAni::DeleteLocalAssetsPermanently(ani_env *env
     auto asyncContext = make_unique<MediaAssetChangeRequestAniContext>();
     CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteLocalAssetsPermanently(env, context, assets, asyncContext) != nullptr,
         "Failed to parse args");
+    DeleteLocalAssetsPermanentlydExecute(env, asyncContext);
+    DeleteLocalAssetsPermanentlyComplete(env, asyncContext);
+    return ReturnAniUndefined(env);
+}
+
+ani_object MediaAssetChangeRequestAni::DeleteLocalAssetsPermanentlyWithUri(ani_env *env,
+    [[maybe_unused]] ani_class clazz, ani_object context, ani_object assetUris)
+{
+    ANI_DEBUG_LOG("enter deleteLocalAssetsPermanentlyWithUri.");
+    auto asyncContext = make_unique<MediaAssetChangeRequestAniContext>();
+    CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteLocalAssetsPermanently(
+        env, context, assetUris, asyncContext, true) != nullptr, "Failed to parse args");
     DeleteLocalAssetsPermanentlydExecute(env, asyncContext);
     DeleteLocalAssetsPermanentlyComplete(env, asyncContext);
     return ReturnAniUndefined(env);

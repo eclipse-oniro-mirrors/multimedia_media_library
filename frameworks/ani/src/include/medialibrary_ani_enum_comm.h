@@ -312,6 +312,10 @@ const std::set<std::string> TIME_COLUMN = {
     MEDIA_DATA_DB_DATE_TRASHED,
 };
 
+const std::vector<std::pair<std::string, std::string>> SUPPORTED_IMAGE_FORMAT_ENUM_PROPERTIES = {
+    std::make_pair("AVFILE_FORMAT_JPG", "jpg"),
+};
+
 } // namespace Media
 } // namespace OHOS
 #endif // FRAMEWORKS_ANI_SRC_INCLUDE_MEDIALIBRARY_ANI_ENUM_COMM_H

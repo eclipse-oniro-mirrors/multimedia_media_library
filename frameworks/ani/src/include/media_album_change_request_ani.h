@@ -108,6 +108,7 @@ public:
     static ani_status SetCoverUri(ani_env *env, ani_object object, ani_string coverUri);
     static ani_status SetIsMe(ani_env *env, ani_object object);
     static ani_status Dismiss(ani_env *env, ani_object object);
+    static ani_status ResetCoverUri(ani_env *env, ani_object object);
     static ani_status DeleteAlbums(ani_env *env, ani_class clazz, ani_object context, ani_object arrayAlbum);
     static ani_status DeleteAlbumsWithUri(ani_env *env, ani_class clazz, ani_object context, ani_object arrayAlbum);
     static ani_status DeleteAssets(ani_env *env, ani_object object, ani_object arrayPhotoAsset);

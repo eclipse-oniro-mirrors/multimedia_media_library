@@ -63,6 +63,7 @@ void CloneRestoreGroupPhoto::Restore(const std::unordered_map<int32_t, PhotoInfo
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to delete group photo album info in new db");
     ret = RestoreGroupPhotoAlbumInfo();
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to restore group photo album info");
+    BackupDatabaseUtils::UpdateFaceGroupTagsUnion(mediaLibraryRdb_);
     ret = RestoreMaps();
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to update analysis photo map status");
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();

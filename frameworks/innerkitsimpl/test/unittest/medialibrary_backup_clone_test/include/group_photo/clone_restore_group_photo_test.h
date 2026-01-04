@@ -36,6 +36,7 @@ public:
     void InitWithoutData(CloneGroupPhotoSource &cloneGroupPhotoSource, const string &path,
         const vector<string> &tableList);
     void VerifyGroupPhotoAlbumWithoutData(const std::shared_ptr<NativeRdb::RdbStore>& db);
+    void VerifyGroupPhotoAlbumWithMerging(const std::shared_ptr<NativeRdb::RdbStore>& db);
 };
 } // Media
 } // OHOS

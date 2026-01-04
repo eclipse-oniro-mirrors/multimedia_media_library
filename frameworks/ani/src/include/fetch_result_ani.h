@@ -56,6 +56,9 @@ public:
 
     static ani_object CreateFetchFileResult(ani_env *env, std::unique_ptr<FetchResult<FileAsset>> fileResult);
     static ani_object CreateFetchFileResult(ani_env *env, std::unique_ptr<FetchResult<PhotoAlbum>> fileResult);
+    static ani_object CreateFetchFileResult(ani_env *env, std::unique_ptr<FetchResult<AlbumOrder>> fileResult);
+    static ani_object CreateFetchFileResult(ani_env *env,
+        std::unique_ptr<FetchResult<PhotoAssetCustomRecord>> fileResult);
     std::shared_ptr<FetchResult<FileAsset>> GetFetchFileResultObject();
     std::shared_ptr<FetchResult<AlbumAsset>> GetFetchAlbumResultObject();
     std::shared_ptr<FetchResult<PhotoAlbum>> GetFetchPhotoAlbumResultObject();
@@ -90,8 +93,11 @@ private:
     static inline thread_local std::unique_ptr<FetchResult<FileAsset>> sFetchFileResult_ = nullptr;
     static inline thread_local std::unique_ptr<FetchResult<AlbumAsset>> sFetchAlbumResult_ = nullptr;
     static inline thread_local std::unique_ptr<FetchResult<PhotoAlbum>> sFetchPhotoAlbumResult_ = nullptr;
+    static inline thread_local std::unique_ptr<FetchResult<AlbumOrder>> sFetchAlbumOrderResult_ = nullptr;
     static inline thread_local std::unique_ptr<FetchResult<SmartAlbumAsset>> sFetchSmartAlbumResult_ = nullptr;
     static inline thread_local FetchResType sFetchResType_ = FetchResType::TYPE_FILE;
+    static inline thread_local std::unique_ptr<FetchResult<PhotoAssetCustomRecord>>
+        sFetchPhotoAssetCustomRecordResult_ = nullptr;
 };
 
 class FetchFileResultAniContext : public AniError {

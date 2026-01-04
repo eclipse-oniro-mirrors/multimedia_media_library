@@ -2308,35 +2308,6 @@ void BaseRestore::RestoreRelease()
 {
 }
 
-void BaseRestore::UpdateHdrMode(std::vector<FileInfo> &fileInfos)
-{
-    for (auto &fileInfo : fileInfos) {
-        // load ImageSource to get HDR mode
-        uint32_t err = E_OK;
-        SourceOptions opts;
-        std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(fileInfo.cloudPath, opts, err);
-        if (imageSource == nullptr || err != E_OK) {
-            MEDIA_ERR_LOG("CreateImageSource failed: %{public}d", err);
-            continue;
-        }
-        HdrMode hdrMode = HdrMode::DEFAULT;
-        if (imageSource->IsHdrImage()) {
-            hdrMode = MediaImageFrameWorkUtils::ConvertImageHdrTypeToHdrMode(imageSource->CheckHdrType());
-            CHECK_AND_PRINT_LOG(hdrMode != HdrMode::DEFAULT, "unknown HDR type");
-            std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
-                make_unique<NativeRdb::AbsRdbPredicates>(PhotoColumn::PHOTOS_TABLE);
-            predicates->EqualTo(MediaColumn::MEDIA_ID, fileInfo.fileIdNew);
-            int32_t changeRows = 0;
-            NativeRdb::ValuesBucket values;
-            values.PutInt(PhotoColumn::PHOTO_HDR_MODE, static_cast<int32_t>(hdrMode));
-            values.PutInt(PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE, static_cast<int32_t>(DynamicRangeType::HDR));
-            values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-            int32_t ret = BackupDatabaseUtils::Update(mediaLibraryRdb_, changeRows, values, predicates);
-            CHECK_AND_PRINT_LOG(changeRows >= 0 && ret == E_OK, "failed to update columns");
-        }
-    }
-}
-
 void BaseRestore::RestoreSearchIndex()
 {
     int64_t doIndexStartTime = MediaFileUtils::UTCTimeMilliSeconds();

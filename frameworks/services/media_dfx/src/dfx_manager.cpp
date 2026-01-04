@@ -16,8 +16,9 @@
 
 #include <sstream>
 #include "dfx_manager.h"
-
+#ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "cloud_media_context.h"
+#endif
 #include "dfx_cloud_manager.h"
 #include "dfx_utils.h"
 #include "media_file_utils.h"
@@ -1228,14 +1229,18 @@ void DfxManager::HandleSyncEnd(const int32_t stopReason)
             break;
         }
     }
+    #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
     DfxReporter::ReportSyncStat(taskId_, syncInfo_, stat, syncInfo,
         CloudSync::CloudMediaContext::GetInstance().GetCloudType());
+    #endif
 }
 
 void DfxManager::HandleReportSyncFault(const std::string& position, const SyncFaultEvent& event)
 {
+    #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
     DfxReporter::ReportSyncFault(taskId_, position, event,
         CloudSync::CloudMediaContext::GetInstance().GetCloudType());
+    #endif
 }
 
 void DfxManager::HandleAccurateRefreshTimeOut(const AccurateRefreshDfxDataPoint& reportData)

@@ -17,7 +17,6 @@
 
 #include "batch_download_resources_task_dao.h"
 
-#include "cloud_media_common_dao.h"
 #include "cloud_media_asset_types.h"
 
 #include "photo_map_column.h"
@@ -34,13 +33,16 @@
 #include "unordered_set"
 #include "medialibrary_errno.h"
 #include "rdb_predicates.h"
+#include "cloud_media_common.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
 
 namespace OHOS {
 namespace Media {
+#ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 using namespace OHOS::Media::CloudSync;
+#endif
 
 int32_t BatchDownloadResourcesTaskDao::AddOtherBurstIdsToFileIds(std::vector<std::string> &fileIds)
 {
@@ -55,8 +57,8 @@ int32_t BatchDownloadResourcesTaskDao::AddOtherBurstIdsToFileIds(std::vector<std
         " = 1 AND p1." + PhotoColumn::PHOTO_SUBTYPE + " = " + to_string(static_cast<int32_t>(PhotoSubType::BURST)) +
         " AND p1." + PhotoColumn::PHOTO_BURST_KEY + " IS NOT NULL AND p1." + PhotoColumn::MEDIA_ID +
         " != p2." + PhotoColumn::MEDIA_ID;
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
-    std::string sql = CloudMediaDaoUtils::FillParams(sqlBefore, {inClause});
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    std::string sql = CloudMediaCommon::FillParams(sqlBefore, {inClause});
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "Failed to query batch selected files!");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -155,7 +157,7 @@ int32_t BatchDownloadResourcesTaskDao::QueryPauseDownloadingStatusResources(std:
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "QueryPauseDownloading Failed to get rdbStore.");
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_ERR, "QueryPauseDownloading No uris");
     // 处于待下载（0）、待下载暂停的（2或者5）、下载失败的（3），下载成功的（4），删除任务列表返回
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     string sql = "SELECT " + DownloadResourcesColumn::MEDIA_ID + " FROM " + DownloadResourcesColumn::TABLE
         + " WHERE " + DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = "
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING)) + " AND "
@@ -183,12 +185,12 @@ int32_t BatchDownloadResourcesTaskDao::UpdatePauseDownloadResourcesInfo(const st
     CHECK_AND_RETURN_RET_INFO_LOG(!fileIds.empty(), NativeRdb::E_OK, "UpdatePauseDownload empty");
     // update download_resources_task_records set download_status = 2
     // where file_id in() AND download_status != 4 AND download_status != 3 AND download_status != 2;
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND " +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS+ " != ? AND " +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS+ " != ? AND " +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS+ " != ?";
-    std::string whereClause = CloudMediaDaoUtils::FillParams(whereClauseBefore, {inClause});
+    std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
 
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
@@ -236,10 +238,10 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusFailedToWaiting(const std::ve
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "FailedToWaiting Failed to get rdbStore.");
     // set download_status = waiting where file_id in (1,2,3) AND download_status = fail
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND " +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS+ " = ?";
-    std::string whereClause = CloudMediaDaoUtils::FillParams(whereClauseBefore, {inClause});
+    std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING));
@@ -260,12 +262,12 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusPauseToWaiting(const std::vec
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "PauseToWaiting Failed to get rdbStore.");
      // set download_status = waiting where file_id in (1,2,3) AND
      // (download_status = 2 or download_status = 5) AND percent = -1
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND (" +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ? OR " +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ?) AND " +
         DownloadResourcesColumn::MEDIA_PERCENT + " = -1";
-    std::string whereClause = CloudMediaDaoUtils::FillParams(whereClauseBefore, {inClause});
+    std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING));
@@ -286,13 +288,13 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusPauseToDownloading(const std:
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "PauseToDownloading Failed to get rdbStore.");
     // set download_status = downloading where file_id in (1,2,3) AND ((download_status = 2 AND percent != -1)
     // or (download_status = 5 AND percent = -1))
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND ((" +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ? AND " +
         DownloadResourcesColumn::MEDIA_PERCENT + " != -1) OR (" +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ? AND " +
         DownloadResourcesColumn::MEDIA_PERCENT + " != -1))";
-    std::string whereClause = CloudMediaDaoUtils::FillParams(whereClauseBefore, {inClause});
+    std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING));
@@ -405,7 +407,7 @@ int32_t BatchDownloadResourcesTaskDao::QueryCancelDownloadingStatusResources(std
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "QueryCancelDownloading Failed to get rdbStore.");
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_ERR, "QueryCancelDownloading No uris");
     // 处于待下载（0）、待下载暂停的（2或者5）、下载失败的（3），下载成功的（4），删除任务列表返回
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     string sql = "SELECT " + DownloadResourcesColumn::MEDIA_ID + " FROM " + DownloadResourcesColumn::TABLE
         + " WHERE (" + DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = "
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
@@ -473,9 +475,9 @@ int32_t BatchDownloadResourcesTaskDao::UpdateExistedTasksStatus(
         "FilterExistedDownloadResources Failed to get rdbStore.");
     CHECK_AND_RETURN_RET_INFO_LOG(!fileIds.empty(), E_ERR, "UpdateExistedTasksStatus Empty Ids");
     // update download_resources_task_records set download_status = 2 where file_id IN ('1' ,'2');
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0})";
-    std::string whereClause = CloudMediaDaoUtils::FillParams(whereClauseBefore, {inClause});
+    std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     MEDIA_INFO_LOG("UpdateExistedTasksStatus query whereClause: %{public}s", whereClause.c_str());
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, status);

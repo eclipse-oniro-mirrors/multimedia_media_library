@@ -21,6 +21,7 @@
 
 #include "userfile_manager_types.h"
 #include "media_asset_data_handler_ani.h"
+#include "medialibrary_type_const.h"
 
 namespace OHOS {
 namespace Media {
@@ -38,6 +39,11 @@ public:
     static ani_status ToAniEnum(ani_env *env, NotifyType value, ani_enum_item &aniEnumItem);
     static ani_status ToAniEnum(ani_env *env, MovingPhotoEffectMode value, ani_enum_item &aniEnumItem);
     static ani_status ToAniEnum(ani_env *env, CloudEnhancementTaskStage value, ani_enum_item &aniEnumItem);
+    static ani_status ToAniEnum(ani_env *env, CoverUriSource value, ani_enum_item &aniEnumItem);
+    static ani_status ToAniEnum(ani_env *env, NotifyChangeType value, ani_enum_item &aniEnumItem);
+    static ani_status ToAniEnum(ani_env *env, PhotoType value, ani_enum_item &aniEnumItem);
+    static ani_status ToAniEnum(ani_env *env, ThumbnailVisibility value, ani_enum_item &aniEnumItem);
+    static ani_status ToAniEnum(ani_env *env, StrongAssociationType value, ani_enum_item &aniEnumItem);
 };
 } // namespace Media
 } // namespace OHOS

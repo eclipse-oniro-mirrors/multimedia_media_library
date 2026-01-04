@@ -201,6 +201,8 @@ enum class VideoMode : int32_t {
 
 enum class PhotoThumbStatusType : int32_t {
     DOWNLOADED = 0,
+    ONLY_THM_DOWNLOADED = 1,
+    ONLY_LCD_DOWNLOADED = 2,
     NOT_DOWNLOADED = 3
 };
 
@@ -288,6 +290,25 @@ enum OrderStyleType : int32_t {
     MIX = 0,
     SPLIT = 1
 };
+
+enum NotifyChangeType: int32_t {
+    NOTIFY_CHANGE_INVALID = -1,
+    NOTIFY_CHANGE_ADD = 0,
+    NOTIFY_CHANGE_UPDATE,
+    NOTIFY_CHANGE_REMOVE,
+    NOTIFY_CHANGE_YUV_READY,
+};
+
+enum PhotoType: int32_t {
+    PHOTOTYPE_IMAGE = 1,
+    PHOTOTYPE_VIDEO = 2,
+};
+
+enum ThumbnailVisibility: int32_t {
+    INVISIBLE = 0,
+    VISIBLE = 1
+};
+
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H

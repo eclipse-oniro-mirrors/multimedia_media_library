@@ -29,6 +29,10 @@
 #include "medialibrary_ani_utils.h"
 #include "smart_album_asset.h"
 #include "userfile_manager_types.h"
+#include "medialibrary_notify_ani_utils.h"
+#include "media_change_info.h"
+#include "medialibrary_notify_callback_wrapper_ani.h"
+#include "medialibrary_notify_new_observer_ani.h"
 
 namespace OHOS {
 namespace Media {
@@ -117,6 +121,7 @@ public:
     sptr<AAFwk::IDataAbilityObserver> remoteFileDataObserver_ = nullptr;
     sptr<AAFwk::IDataAbilityObserver> albumDataObserver_ = nullptr;
     std::vector<std::shared_ptr<MediaOnNotifyObserver>> observers_;
+    std::vector<std::shared_ptr<MediaOnNotifyNewObserverAni>> newObservers_;
 private:
     ani_env *env_ = nullptr;
     ani_vm *vm_ = nullptr;
@@ -261,6 +266,25 @@ public:
         ani_object onCallback);
     static void SinglePhotoChangeOffCallback(ani_env *env, ani_object object, ani_object photoAsset,
         ani_object offCallback);
+    static ani_object PhotoAccessGetPhotoAlbumsWithoutSubtype(ani_env *env, ani_object object,
+        ani_object fetchOptions);
+    static ani_object PhotoAccessGetPhotoAlbumOrder(ani_env *env, ani_object object,
+        ani_int orderStyle, ani_object fetchOptions);
+    static void PhotoAccessSetPhotoAlbumOrder(ani_env *env, ani_object object,
+        ani_int orderStyle, ani_object albumOrders);
+    static void PhotoAccessOnPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnHiddenPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnTrashedPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void PhotoAccessOnTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+
+    static void PhotoAccessOffPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffHiddenPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffTrashedPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void PhotoAccessOffTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
 
 private:
     int32_t GetListenerType(const std::string &str) const;
@@ -269,6 +293,19 @@ private:
     void UnregisterChange(ani_env *env, const std::string &type, ChangeListenerAni &listObj);
     void UnRegisterNotifyChange(ani_env *env, const std::string &uri, ani_ref ref, ChangeListenerAni &listObj);
     static bool CheckRef(ani_env *env, ani_ref ref, ChangeListenerAni &listObj, bool isOff, const std::string &uri);
+    static int32_t AddClientObserver(ani_env *env, ani_ref &ref,
+        std::map<Notification::NotifyUriType, std::vector<std::shared_ptr<ClientObserverAni>>> &ClientObserverAnis,
+        const Notification::NotifyUriType uriType);
+    static int32_t RegisterObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
+        const Notification::NotifyUriType uriType);
+    static int32_t RemoveClientObserver(ani_env *env, ani_ref ref,
+        map<Notification::NotifyUriType, vector<shared_ptr<ClientObserverAni>>> &ClientObserverAnis,
+        const Notification::NotifyUriType uriType);
+    static int32_t UnregisterObserverExecute(ani_env *env,
+        const Notification::NotifyUriType uriType, ani_ref ref, ChangeListenerAni &listObj);
+    static void unregisterAssetExecute(ani_env *env, ani_object object, ani_fn_object callbackOff, std::string type);
+    static void registerAssetExecute(ani_env *env, ani_object object, ani_fn_object callbackOff, std::string type);
+
     ani_env *env_;
     int32_t userId_ = -1;
     static std::mutex sOnOffMutex_;
@@ -306,6 +343,7 @@ struct MediaLibraryAsyncContext : public AniError {
     std::unique_ptr<FetchResult<AlbumAsset>> fetchAlbumResult;
     std::unique_ptr<FetchResult<PhotoAlbum>> fetchPhotoAlbumResult;
     std::unique_ptr<FetchResult<SmartAlbumAsset>> fetchSmartAlbumResult;
+    std::unique_ptr<FetchResult<AlbumOrder>> fetchAlbumOrderResult;
     std::unique_ptr<FileAsset> fileAsset;
     std::unique_ptr<PhotoAlbum> photoAlbumData;
     std::unique_ptr<SmartAlbumAsset> smartAlbumData;
@@ -314,6 +352,7 @@ struct MediaLibraryAsyncContext : public AniError {
     unsigned int dirType = 0;
     int32_t privateAlbumType = DEFAULT_PRIVATEALBUMTYPE;
     int32_t retVal;
+    int32_t orderStyle;
     std::string directoryRelativePath;
     std::vector<std::unique_ptr<AlbumAsset>> albumNativeArray;
     std::vector<std::unique_ptr<SmartAlbumAsset>> smartAlbumNativeArray;

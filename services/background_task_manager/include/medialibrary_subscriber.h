@@ -36,6 +36,8 @@ namespace Media {
 enum class StatusEventType {
     CHARGING,
     DISCHARGING,
+    POWER_CONNECTED,
+    POWER_DISCONNECTED,
     SCREEN_OFF,
     SCREEN_ON,
     BATTERY_CHANGED,
@@ -143,6 +145,7 @@ private:
     void RevertPendingByPackage(const std::string &bundleName);
     int64_t GetNowTime();
     void Init();
+    bool GetPowerConnected();
     void UpdateBackgroundOperationStatus(const AAFwk::Want &want, const StatusEventType statusEventType);
     void UpdateCloudMediaAssetDownloadStatus(const AAFwk::Want &want, const StatusEventType statusEventType);
     void UpdateCurrentStatus();

@@ -19,20 +19,7 @@ group("media_library_fuzztest") {
     "medialibraryappstateobserver_fuzzer:MediaLibraryAppstateObserverFuzzTest",
     "medialibraryappuripermissionoperations_fuzzer:MediaLibraryAppUriPermissionOperationsFuzzTest",
     "medialibraryappurisensitiveoperations_fuzzer:MediaLibraryAppUriSensitiveOperationsFuzzTest",
-    "medialibrarycloudmediaalbumdao_fuzzer:MediaLibraryCloudMediaAlbumDaoFuzzTest",
     "medialibrarycloudmediaassetmanager_fuzzer:MediaLibraryCloudMediaAssetManagerFuzzTest",
-    "medialibrarycloudmediacontroller_fuzzer:MediaLibraryCloudMediaControllerFuzzTest",
-    "medialibrarycloudmediadataclient_fuzzer:MediaLibraryCloudMediaDataClientFuzzTest",
-    "medialibrarycloudmediadatahandler_fuzzer:MediaLibraryCloudMediaDataHandlerFuzzTest",
-    "medialibrarycloudmediajsonhelper_fuzzer:MediaLibraryCloudMediaJsonHelperFuzzTest",
-    "medialibrarycloudmediamdkrecord_fuzzer:MediaLibraryCloudMediaMdkRecordFuzzTest",
-    "medialibrarycloudmediamdkrecordalbumdata_fuzzer:MediaLibraryCloudMediaMdkRecordAlbumDataFuzzTest",
-    "medialibrarycloudmediamdkrecordphotosdata_fuzzer:MediaLibraryCloudMediaMdkRecordPhotosdataFuzzTest",
-    "medialibrarycloudmediaphotohandler_fuzzer:MediaLibraryCloudMediaPhotoHandlerFuzzTest",
-    "medialibrarycloudmediaphotosdao_fuzzer:MediaLibraryCloudMediaPhotosDaoFuzzTest",
-    "medialibrarycloudmediaprocessor_fuzzer:MediaLibraryCloudMediaProcessorFuzzTest",
-    "medialibrarycloudmediaservice_fuzzer:MediaLibraryCloudMediaServiceFuzzTest",
-    "medialibrarycloudmediasyncdataconvert_fuzzer:MediaLibraryCloudMediaSyncDataConvertFuzzTest",
     "medialibrarycloudmediavo_fuzzer:MediaLibraryCloudMediaVoFuzzTest",
     "medialibraryclouduploadchecker_fuzzer:MediaLibraryCloudUploadCheckerFuzzTest",
     "medialibrarycommon_fuzzer:MediaLibraryCommonFuzzTest",
@@ -91,12 +78,34 @@ group("media_library_fuzztest") {
     "medialibrary_mapcode_fuzzer:MediaLibraryMapCodeFuzzTest",
   ]
 
+  deps_cloud_sync_fuzztest = [
+    "medialibrarycloudmediacontroller_fuzzer:MediaLibraryCloudMediaControllerFuzzTest",
+    "medialibrarycloudmediaalbumdao_fuzzer:MediaLibraryCloudMediaAlbumDaoFuzzTest",
+    "medialibrarycloudmediaphotosdao_fuzzer:MediaLibraryCloudMediaPhotosDaoFuzzTest",
+    "medialibrarycloudmediaservice_fuzzer:MediaLibraryCloudMediaServiceFuzzTest",
+    "medialibrarycloudmediajsonhelper_fuzzer:MediaLibraryCloudMediaJsonHelperFuzzTest",
+    "medialibrarycloudmediamdkrecord_fuzzer:MediaLibraryCloudMediaMdkRecordFuzzTest",
+    "medialibrarycloudmediadataclient_fuzzer:MediaLibraryCloudMediaDataClientFuzzTest",
+    "medialibrarycloudmediadatahandler_fuzzer:MediaLibraryCloudMediaDataHandlerFuzzTest",
+    "medialibrarycloudmediamdkrecordalbumdata_fuzzer:MediaLibraryCloudMediaMdkRecordAlbumDataFuzzTest",
+    "medialibrarycloudmediamdkrecordphotosdata_fuzzer:MediaLibraryCloudMediaMdkRecordPhotosdataFuzzTest",
+    "medialibrarycloudmediaphotohandler_fuzzer:MediaLibraryCloudMediaPhotoHandlerFuzzTest",
+    "medialibrarycloudmediaprocessor_fuzzer:MediaLibraryCloudMediaProcessorFuzzTest",
+    "medialibrarycloudmediasyncdataconvert_fuzzer:MediaLibraryCloudMediaSyncDataConvertFuzzTest",
+  ]
+
   if (media_library_feature_cloud_enhancement) {
     deps += [ "medialibraryenhancement_fuzzer:MediaLibraryEnhancementFuzzTest" ]
   }
 
   if (media_library_feature_cloud_download) {
     deps += [ "medialibrarybatchdownloadresourcestaskdao_fuzzer:MediaLibraryBatchDownloadResourcesTaskDaoFuzzTest" ]
+  }
+
+  if (media_library_cloud_sync_enable) {
+    deps += deps_cloud_sync_fuzztest
+  } else {
+    deps_cloud_sync_fuzztest = []
   }
 
   if (defined(global_parts_info.hdf_drivers_interface_usb) &&

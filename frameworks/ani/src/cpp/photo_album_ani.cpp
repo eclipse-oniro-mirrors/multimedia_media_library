@@ -54,6 +54,7 @@ struct PhotoAlbumAttributes {
     int32_t count;
     std::string coverUri;
     std::string lPath;
+    CoverUriSource coverUriSource;
 };
 
 struct TrashAlbumExecuteOpt {
@@ -95,14 +96,23 @@ ani_status PhotoAlbumAni::PhotoAccessInit(ani_env *env)
         ani_native_function {"getdateAdded", nullptr, reinterpret_cast<void *>(GetdateAdded)},
         ani_native_function {"getdateModified", nullptr, reinterpret_cast<void *>(GetdateModified)},
         ani_native_function {"getChangeTime", nullptr, reinterpret_cast<void *>(GetChangeTime)},
-        ani_native_function {"transferToDynamicAlbum", nullptr, reinterpret_cast<void *>(TransferToDynamicAlbum)},
-        ani_native_function {"transferToStaticAlbum", nullptr, reinterpret_cast<void *>(TransferToStaticAlbum)}
     };
 
     if (ANI_OK != env->Class_BindNativeMethods(cls, methods.data(), methods.size())) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", PAH_ANI_CLASS_PHOTO_ALBUM_HANDLE.c_str());
         return ANI_ERROR;
     }
+
+    std::array staticMethods = {
+        ani_native_function {"transferToDynamicAlbum", nullptr, reinterpret_cast<void *>(TransferToDynamicAlbum)},
+        ani_native_function {"transferToStaticAlbum", nullptr, reinterpret_cast<void *>(TransferToStaticAlbum)}
+    };
+
+    if (ANI_OK != env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size())) {
+        ANI_ERR_LOG("Failed to bind native methods to: %{public}s", PAH_ANI_CLASS_PHOTO_ALBUM_HANDLE.c_str());
+        return ANI_ERROR;
+    }
+
     return ANI_OK;
 }
 
@@ -170,6 +180,8 @@ ani_status PhotoAlbumAni::InitAniPhotoAlbumOperator(ani_env *env, AniPhotoAlbumO
             &(photoAlbumOperator.setCoverUri)), "No <set>coverUri");
         CHECK_STATUS_RET(env->Class_FindMethod(photoAlbumOperator.cls, "<set>lpath", nullptr,
             &(photoAlbumOperator.setLPath)), "No <set>lPath");
+        CHECK_STATUS_RET(env->Class_FindMethod(photoAlbumOperator.cls, "<set>coverUriSource", nullptr,
+            &(photoAlbumOperator.setCoverUriSource)), "No <set>coverUriSource");
     }
     return ANI_OK;
 }
@@ -220,6 +232,7 @@ static ani_status GetPhotoAlbumAttributes(ani_env *env, unique_ptr<PhotoAlbumAni
     attrs.count = photoAlbum->GetCount();
     attrs.coverUri = photoAlbum->GetCoverUri();
     attrs.lPath = photoAlbum->GetLPath();
+    attrs.coverUriSource = static_cast<OHOS::Media::CoverUriSource>(photoAlbum->GetCoverUriSource());
     return ANI_OK;
 }
 
@@ -259,6 +272,12 @@ static ani_status BindAniAttributes(ani_env *env, const AniPhotoAlbumOperator &o
         ani_string lPath {};
         CHECK_STATUS_RET(MediaLibraryAniUtils::ToAniString(env, attrs.lPath, lPath), "ToAniString lPath fail");
         CHECK_STATUS_RET(env->Object_CallMethod_Void(object, opt.setLPath, lPath), "<set>lPath fail");
+
+        ani_enum_item coverUriSource = 0;
+        CHECK_STATUS_RET(MediaLibraryEnumAni::ToAniEnum(env, attrs.coverUriSource, coverUriSource),
+            "Get coverUriSource index fail");
+        CHECK_STATUS_RET(env->Object_CallMethod_Void(object, opt.setCoverUriSource, coverUriSource),
+            "<set>coverUriSource fail");
     }
     return ANI_OK;
 }

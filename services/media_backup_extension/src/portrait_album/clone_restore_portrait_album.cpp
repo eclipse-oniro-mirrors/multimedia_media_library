@@ -163,7 +163,6 @@ void CloneRestorePortrait::Restore()
     RestoreFromGalleryPortraitAlbum();
     RestorePortraitClusteringInfo();
     RestoreImageFaceInfo();
-    BackupDatabaseUtils::UpdateFaceGroupTagsUnion(mediaLibraryRdb_);
     BackupDatabaseUtils::UpdateFaceAnalysisTblStatus(mediaLibraryRdb_);
     int32_t ret = RestoreMaps();
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to update analysis photo map status");

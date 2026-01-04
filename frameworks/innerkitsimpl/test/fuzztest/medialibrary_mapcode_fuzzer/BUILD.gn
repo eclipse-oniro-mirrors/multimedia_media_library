@@ -21,7 +21,7 @@ ohos_fuzztest("MediaLibraryMapCodeFuzzTest") {
   include_dirs = [
     "./include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_multistages_capture/include/dfx",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/include/dfx",
     "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
 
     "${MEDIALIB_CLOUD_SYNC_PATH}/include",

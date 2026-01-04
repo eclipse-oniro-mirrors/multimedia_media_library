@@ -33,6 +33,7 @@
 #include "medialibrary_tracer.h"
 #include "medialibrary_type_const.h"
 #include "photo_album_ani.h"
+#include "photo_asset_custom_record_manager_ani.h"
 #include "photo_map_column.h"
 #include "tokenid_kit.h"
 #include "userfile_client.h"
@@ -2591,6 +2592,9 @@ template ani_status MediaLibraryAniUtils::GetFetchOption<unique_ptr<MediaLibrary
 
 template ani_status MediaLibraryAniUtils::GetFetchOption<unique_ptr<PhotoAlbumAniContext>>(ani_env *env,
     ani_object fetchOptions, FetchOptionType fetchOptType, unique_ptr<PhotoAlbumAniContext> &context);
+
+template ani_status MediaLibraryAniUtils::GetFetchOption<unique_ptr<CustomRecordAsyncAniContext>>(ani_env *env,
+    ani_object fetchOptions, FetchOptionType fetchOptType, unique_ptr<CustomRecordAsyncAniContext> &context);
 
 template ani_status MediaLibraryAniUtils::GetPredicate<unique_ptr<PhotoAlbumAniContext>>(ani_env *env,
     const ani_object fetchOptions, const std::string &propName, unique_ptr<PhotoAlbumAniContext> &context,

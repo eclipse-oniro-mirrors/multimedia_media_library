@@ -56,14 +56,22 @@ ani_status FetchFileResultAni::PhotoAccessHelperInit(ani_env *env)
         ani_native_function {"getObjectByPositionSync", nullptr, reinterpret_cast<void *>(GetPositionObject)},
         ani_native_function {"getCount", nullptr, reinterpret_cast<void *>(GetCount)},
         ani_native_function {"close", nullptr, reinterpret_cast<void *>(Close)},
+    };
+    status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        return status;
+    }
+
+    std::array staticMethods = {
         ani_native_function {"transferToDynamicFetchResult", nullptr,
             reinterpret_cast<void *>(TransferToDynamicFetchResult)},
         ani_native_function {"transferToStaticFetchResult", nullptr,
             reinterpret_cast<void *>(TransferToStaticFetchResult)},
     };
-    status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
+    status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
     if (status != ANI_OK) {
-        ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        ANI_ERR_LOG("Failed to bind static native methods to: %{public}s", className);
         return status;
     }
 
@@ -400,6 +408,76 @@ ani_object FetchFileResultAni::CreateFetchFileResult(ani_env *env, std::unique_p
             break;
     }
     sFetchPhotoAlbumResult_ = nullptr;
+    return result;
+}
+
+ani_object FetchFileResultAni::CreateFetchFileResult(ani_env *env, std::unique_ptr<FetchResult<AlbumOrder>> fileResult)
+{
+    if (env == nullptr || fileResult == nullptr) {
+        ANI_ERR_LOG("fetchResult PhotoAlbum is nullptr");
+        return nullptr;
+    }
+
+    sFetchResType_ = fileResult->GetFetchResType();
+    sFetchAlbumOrderResult_ = move(fileResult);
+    CHECK_COND_RET(sFetchAlbumOrderResult_ != nullptr, nullptr, "sFetchAlbumOrderResult_ is nullptr");
+    ani_object result = nullptr;
+    ani_class cls {};
+    ANI_INFO_LOG("get AlbumOrder result type: %{public}d", sFetchAlbumOrderResult_->GetResultNapiType());
+    switch (sFetchAlbumOrderResult_->GetResultNapiType()) {
+        case ResultNapiType::TYPE_USERFILE_MGR: {
+            CHECK_COND_RET(MediaLibraryAniUtils::FindClass(env, UFM_ANI_CLASS_FETCH_RESULT_HANDLE, &cls) == ANI_OK,
+                nullptr, "Can't find class");
+            result = FetchFileResultAniConstructor(env, cls);
+            break;
+        }
+        case ResultNapiType::TYPE_PHOTOACCESS_HELPER: {
+            CHECK_COND_RET(MediaLibraryAniUtils::FindClass(env, PAH_ANI_CLASS_FETCH_RESULT_HANDLE, &cls) == ANI_OK,
+                nullptr, "Can't find class");
+            result = FetchFileResultAniConstructor(env, cls);
+            break;
+        }
+        default:
+            result = FetchFileResultAniConstructor(env, cls);
+            break;
+    }
+    sFetchAlbumOrderResult_ = nullptr;
+    return result;
+}
+
+ani_object FetchFileResultAni::CreateFetchFileResult(ani_env *env,
+    std::unique_ptr<FetchResult<PhotoAssetCustomRecord>> fileResult)
+{
+    if (env == nullptr || fileResult == nullptr) {
+        ANI_ERR_LOG("fetchResult PhotoAssetCustomRecord is nullptr");
+        return nullptr;
+    }
+
+    sFetchResType_ = fileResult->GetFetchResType();
+    sFetchPhotoAssetCustomRecordResult_ = move(fileResult);
+    CHECK_COND_RET(sFetchPhotoAssetCustomRecordResult_ != nullptr, nullptr,
+        "sFetchPhotoAssetCustomRecordResult_ is nullptr");
+    ani_object result = nullptr;
+    ani_class cls {};
+    ANI_INFO_LOG("get PhotoAlbum result type: %{public}d", sFetchPhotoAssetCustomRecordResult_->GetResultNapiType());
+    switch (sFetchPhotoAssetCustomRecordResult_->GetResultNapiType()) {
+        case ResultNapiType::TYPE_USERFILE_MGR: {
+            CHECK_COND_RET(MediaLibraryAniUtils::FindClass(env, UFM_ANI_CLASS_FETCH_RESULT_HANDLE, &cls) == ANI_OK,
+                nullptr, "Can't find class");
+            result = FetchFileResultAniConstructor(env, cls);
+            break;
+        }
+        case ResultNapiType::TYPE_PHOTOACCESS_HELPER: {
+            CHECK_COND_RET(MediaLibraryAniUtils::FindClass(env, PAH_ANI_CLASS_FETCH_RESULT_HANDLE, &cls) == ANI_OK,
+                nullptr, "Can't find class");
+            result = FetchFileResultAniConstructor(env, cls);
+            break;
+        }
+        default:
+            result = FetchFileResultAniConstructor(env, cls);
+            break;
+    }
+    sFetchPhotoAssetCustomRecordResult_ = nullptr;
     return result;
 }
 

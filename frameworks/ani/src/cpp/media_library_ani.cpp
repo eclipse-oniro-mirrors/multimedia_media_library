@@ -74,6 +74,7 @@
 #include "get_analysis_process_vo.h"
 #include "get_photo_album_object_vo.h"
 #include "set_photo_album_order_vo.h"
+#include "medialibrary_notify_callback_wrapper_ani.h"
 
 namespace OHOS {
 namespace Media {
@@ -123,9 +124,6 @@ const std::map<std::string, std::string> PHOTO_CREATE_OPTIONS_PARAM = {
 const std::map<std::string, std::string> CREATE_OPTIONS_PARAM = {
     { TITLE, MediaColumn::MEDIA_TITLE }
 };
-const std::map<int32_t, std::string> FOREGROUND_ANALYSIS_ASSETS_MAP = {
-    { ANALYSIS_SEARCH_INDEX, PAH_QUERY_ANA_FOREGROUND }
-};
 const std::string EXTENSION = "fileNameExtension";
 const std::string PHOTO_TYPE = "photoType";
 const std::string PHOTO_SUB_TYPE = "subtype";
@@ -133,6 +131,16 @@ const std::string CONFIRM_BOX_BUNDLE_NAME = "bundleName";
 const std::string CONFIRM_BOX_APP_NAME = "appName";
 const std::string CONFIRM_BOX_APP_ID = "appId";
 const std::string TOKEN_ID = "tokenId";
+
+const std::string ALBUM_ID_FOR_GET = "albumId";
+const std::string ALBUM_ORDER_FOR_GET = "albumOrder";
+const std::string ORDER_SECTION_FOR_GET = "orderSection";
+const std::string ORDER_TYPE_FOR_GET = "orderType";
+const std::string ORDER_STATUS_FOR_GET = "orderStatus";
+const int32_t ALBUM_ORDER_INDEX = 0;
+const int32_t ORDER_SECTION_INDEX = 1;
+const int32_t ORDER_TYPE_INDEX = 2;
+const int32_t ORDER_STATUS_INDEX = 3;
 
 namespace {
 const std::array photoAccessHelperMethos = {
@@ -210,6 +218,36 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::SinglePhotoChangeOnCallback)},
     ani_native_function {"offSinglePhotoChangeInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::SinglePhotoChangeOffCallback)},
+    ani_native_function {"onPhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnPhotoChange)},
+    ani_native_function {"offPhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffPhotoChange)},
+    ani_native_function {"onHiddenPhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnHiddenPhotoChange)},
+    ani_native_function {"offHiddenPhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffHiddenPhotoChange)},
+    ani_native_function {"onTrashedPhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnTrashedPhotoChange)},
+    ani_native_function {"offTrashedPhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffTrashedPhotoChange)},
+    ani_native_function {"onPhotoAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnPhotoAlbumChange)},
+    ani_native_function {"offPhotoAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffPhotoAlbumChange)},
+    ani_native_function {"onHiddenAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnHiddenAlbumChange)},
+    ani_native_function {"offHiddenAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffHiddenAlbumChange)},
+    ani_native_function {"onTrashedAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnTrashedAlbumChange)},
+    ani_native_function {"offTrashedAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffTrashedAlbumChange)},
+    ani_native_function {"getPhotoAlbumsInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessGetPhotoAlbumsWithoutSubtype)},
+    ani_native_function {"getPhotoAlbumsOrderInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessGetPhotoAlbumOrder)},
+    ani_native_function {"setPhotoAlbumsOrderInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessSetPhotoAlbumOrder)},
 };
 } // namespace
 
@@ -2389,6 +2427,332 @@ void MediaLibraryAni::SinglePhotoChangeOffCallback(ani_env *env, ani_object obje
     tracer.Start("SinglePhotoChangeOffCallback");
     ANI_INFO_LOG("SinglePhotoChangeOffCallback Start");
     ANI_INFO_LOG("SinglePhotoChangeOffCallback End");
+}
+
+static void GetPhotoAlbumsWithoutSubtypeExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("GetPhotoAlbumsWithoutSubtypeExecute");
+
+    GetPhotoAlbumObjectReqBody reqBody;
+    GetPhotoAlbumObjectRespBody respBody;
+    shared_ptr<DataShareResultSet> resultSet;
+    reqBody.predicates = context->predicates;
+    reqBody.columns = context->fetchColumn;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_PHOTO_ALBUMS);
+    int32_t errCode = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    resultSet = respBody.resultSet;
+    if (resultSet == nullptr) {
+        ANI_ERR_LOG("resultSet == nullptr, errCode is %{public}d", errCode);
+        if (errCode == E_PERMISSION_DENIED || errCode == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(errCode);
+        } else {
+            context->SaveError(E_INNER_FAIL);
+        }
+        return;
+    }
+    context->fetchPhotoAlbumResult = make_unique<FetchResult<PhotoAlbum>>(move(resultSet));
+    context->fetchPhotoAlbumResult->SetResultNapiType(context->resultNapiType);
+    context->fetchPhotoAlbumResult->SetUserId(context->userId);
+}
+
+static ani_object GetPhotoAlbumsWithoutSubtypeComplete(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("GetPhotoAlbumsWithoutSubtypeComplete");
+    ani_object fetchRes {};
+    ani_object errorObj {};
+    if (context->error != ERR_DEFAULT || context->fetchPhotoAlbumResult == nullptr) {
+        ANI_ERR_LOG("No fetch file result found!");
+        context->HandleError(env, errorObj);
+    } else {
+        fetchRes = FetchFileResultAni::CreateFetchFileResult(env, move(context->fetchPhotoAlbumResult));
+        if (fetchRes == nullptr) {
+            MediaLibraryAniUtils::CreateAniErrorObject(env, errorObj, ERR_MEM_ALLOCATION,
+                "Failed to create ani object for FetchFileResult");
+        }
+    }
+    tracer.Finish();
+    context.reset();
+    return fetchRes;
+}
+
+static ani_status ParseArgsGetPhotoAlbumsWithoutSubtype(ani_env *env, ani_object fetchOptions,
+    std::unique_ptr<MediaLibraryAsyncContext>& context)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    ani_boolean isUndefined;
+    env->Reference_IsUndefined(fetchOptions, &isUndefined);
+    if (!isUndefined) {
+        CHECK_COND_WITH_RET_MESSAGE(env, GetAlbumFetchOption(env, context, fetchOptions) == ANI_OK,
+            ANI_INVALID_ARGS, "GetAlbumFetchOption error");
+    } else {
+        ANI_INFO_LOG("fetchOptions is undefined. There is no need to parse fetchOptions.");
+    }
+    RestrictAlbumSubtypeOptions(context->predicates);
+    return ANI_OK;
+}
+
+ani_object MediaLibraryAni::PhotoAccessGetPhotoAlbumsWithoutSubtype(ani_env *env, ani_object object,
+    ani_object fetchOptions)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessGetPhotoAlbumsWithoutSubtype");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsGetPhotoAlbumsWithoutSubtype(env, fetchOptions, asyncContext) == ANI_OK,
+        nullptr, "Failed to parse get albums options");
+    SetUserIdFromObjectInfo(asyncContext);
+    GetPhotoAlbumsWithoutSubtypeExecute(env, asyncContext);
+    return GetPhotoAlbumsWithoutSubtypeComplete(env, asyncContext);
+}
+
+static void GetPhotoAlbumsOrderExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("GetPhotoAlbumsOrderExecute");
+
+    GetPhotoAlbumObjectReqBody reqBody;
+    GetPhotoAlbumObjectRespBody respBody;
+    shared_ptr<DataShareResultSet> resultSet;
+    reqBody.predicates = context->predicates;
+    reqBody.columns = context->fetchColumn;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_PHOTO_ALBUM_ORDER);
+
+    int32_t errCode = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    resultSet = respBody.resultSet;
+    if (resultSet == nullptr) {
+        ANI_ERR_LOG("resultSet == nullptr, errCode is %{public}d", errCode);
+        if (errCode == E_PERMISSION_DENIED || errCode == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(errCode);
+        } else {
+            context->SaveError(E_INNER_FAIL);
+        }
+        return;
+    }
+
+    context->fetchAlbumOrderResult = make_unique<FetchResult<AlbumOrder>>(move(resultSet));
+}
+
+static ani_object GetPhotoAlbumsOrderComplete(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("GetPhotoAlbumsOrderComplete");
+    ani_object fetchRes {};
+    ani_object errorObj {};
+    if (context->error != ERR_DEFAULT  || context->fetchAlbumOrderResult == nullptr) {
+        ANI_ERR_LOG("No fetch file result found!");
+        context->HandleError(env, errorObj);
+    } else {
+        fetchRes = FetchFileResultAni::CreateFetchFileResult(env, move(context->fetchAlbumOrderResult));
+        if (fetchRes == nullptr) {
+            MediaLibraryAniUtils::CreateAniErrorObject(env, errorObj, ERR_MEM_ALLOCATION,
+                "Failed to create ani object for FetchFileResult");
+        }
+    }
+    tracer.Finish();
+    context.reset();
+    return fetchRes;
+}
+
+static ani_status ParseArgsGetPhotoAlbumsOrder(ani_env *env, ani_int orderStyle, ani_object fetchOptions,
+    std::unique_ptr<MediaLibraryAsyncContext>& context)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    ani_boolean isUndefined;
+    env->Reference_IsUndefined(fetchOptions, &isUndefined);
+    if (!isUndefined) {
+        CHECK_COND_WITH_RET_MESSAGE(env, GetAlbumFetchOption(env, context, fetchOptions) == ANI_OK,
+            ANI_INVALID_ARGS, "GetAlbumFetchOption error");
+    } else {
+        ANI_INFO_LOG("fetchOptions is undefined. There is no need to parse fetchOptions.");
+    }
+    // Parse orderStyle
+    context->orderStyle = 0;
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetInt32(env, orderStyle, context->orderStyle) == ANI_OK,
+        ANI_INVALID_ARGS, "Failed to get orderStyle");
+    RestrictAlbumSubtypeOptions(context->predicates);
+    return ANI_OK;
+}
+
+ani_object MediaLibraryAni::PhotoAccessGetPhotoAlbumOrder(ani_env *env, ani_object object,
+    ani_int orderStyle, ani_object fetchOptions)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessGetPhotoAlbumOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsGetPhotoAlbumsOrder(env, orderStyle, fetchOptions,
+        asyncContext) == ANI_OK, nullptr, "Failed to parse get albums order");
+    SetUserIdFromObjectInfo(asyncContext);
+    GetPhotoAlbumsOrderExecute(env, asyncContext);
+    return GetPhotoAlbumsOrderComplete(env, asyncContext);
+}
+
+static ani_status ParseAlbumOrder(ani_env *env, ani_object albumOrder, ani_int orderStyle,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    int32_t  orderStyleInt = 0;
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetInt32(env, orderStyle, orderStyleInt) == ANI_OK,
+        ANI_INVALID_ARGS, "Failed to get orderStyle");
+    OHOS::DataShare::DataShareValuesBucket valuesBucket;
+    ani_object albumIdAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, albumOrder, ALBUM_ID_FOR_GET, albumIdAni),
+        "Failed to get %{public}s", ALBUM_ID_FOR_GET.c_str());
+    int32_t albumId = 0;
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, albumIdAni, albumId),
+        "Failed to call GetInt32 for %{public}s", ALBUM_ID_FOR_GET.c_str());
+    valuesBucket.Put(PhotoAlbumColumns::ALBUM_ID, albumId);
+
+    if (orderStyleInt == ALBUM_ORDER_INDEX) {
+        ani_object albumOrderAni {};
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, albumOrder, ALBUM_ORDER_FOR_GET, albumOrderAni),
+            "Failed to get %{public}s", ALBUM_ORDER_FOR_GET.c_str());
+        int32_t albumOrder = 0;
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, albumOrderAni, albumOrder),
+            "Failed to call GetInt32 for %{public}s", ALBUM_ORDER_FOR_GET.c_str());
+        valuesBucket.Put(PhotoAlbumColumns::STYLE2_ALBUMS_ORDER, albumOrder);
+    } else if (orderStyleInt == ORDER_SECTION_INDEX) {
+        ani_object orderSectionAni {};
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, albumOrder, ORDER_SECTION_FOR_GET, orderSectionAni),
+            "Failed to get %{public}s", ORDER_SECTION_FOR_GET.c_str());
+        int32_t orderSection = 0;
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, orderSectionAni, orderSection),
+            "Failed to call GetInt32 for %{public}s", ORDER_SECTION_FOR_GET.c_str());
+        valuesBucket.Put(PhotoAlbumColumns::STYLE2_ORDER_SECTION, orderSection);
+    } else if (orderStyleInt == ORDER_TYPE_INDEX) {
+        ani_object orderTypeAni {};
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, albumOrder, ORDER_TYPE_FOR_GET, orderTypeAni),
+            "Failed to get %{public}s", ORDER_TYPE_FOR_GET.c_str());
+        int32_t orderType = 0;
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, orderTypeAni, orderType),
+            "Failed to call GetInt32 for %{public}s", ORDER_TYPE_FOR_GET.c_str());
+        valuesBucket.Put(PhotoAlbumColumns::STYLE2_ORDER_TYPE, orderType);
+    } else if (orderStyleInt == ORDER_STATUS_INDEX) {
+        ani_object orderStatusAni {};
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, albumOrder, ORDER_STATUS_FOR_GET, orderStatusAni),
+            "Failed to get %{public}s", ORDER_STATUS_FOR_GET.c_str());
+        int32_t orderStatus = 0;
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, orderStatusAni, orderStatus),
+            "Failed to call GetInt32 for %{public}s", ORDER_STATUS_FOR_GET.c_str());
+        valuesBucket.Put(PhotoAlbumColumns::STYLE2_ORDER_STATUS, orderStatus);
+    }
+    context->valuesBucketArray.push_back(move(valuesBucket));
+    return ANI_OK;
+}
+
+static void TransValueBucketToReqBody(const std::vector<OHOS::DataShare::DataShareValuesBucket> &valuesBucketArray,
+    const int32_t &orderStyle, SetPhotoAlbumOrderReqBody &reqBody)
+{
+    reqBody.albumOrderColumn = PhotoAlbumColumns::ALBUM_ORDER_COLUMNS[orderStyle];
+    reqBody.orderSectionColumn = PhotoAlbumColumns::ALBUM_ORDER_SECTION_COLUMNS[orderStyle];
+    reqBody.orderTypeColumn = PhotoAlbumColumns::ALBUM_ORDER_TYPE_COLUMNS[orderStyle];
+    reqBody.orderStatusColumn = PhotoAlbumColumns::ALBUM_ORDER_STATUS_COLUMNS[orderStyle];
+
+    bool isValid = false;
+    for (const auto& valueBucket : valuesBucketArray) {
+        reqBody.albumIds.emplace_back(valueBucket.Get(PhotoAlbumColumns::ALBUM_ID, isValid));
+        reqBody.albumOrders.emplace_back(valueBucket.Get(reqBody.albumOrderColumn, isValid));
+        reqBody.orderSection.emplace_back(valueBucket.Get(reqBody.orderSectionColumn, isValid));
+        reqBody.orderType.emplace_back(valueBucket.Get(reqBody.orderTypeColumn, isValid));
+        reqBody.orderStatus.emplace_back(valueBucket.Get(reqBody.orderStatusColumn, isValid));
+    }
+}
+
+static void SetPhotoAlbumOrderExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("SetPhotoAlbumOrderExecute");
+
+    SetPhotoAlbumOrderReqBody reqBody;
+    TransValueBucketToReqBody(context->valuesBucketArray, context->orderStyle, reqBody);
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_PHOTO_ALBUM_ORDER);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    if (ret < 0) {
+        context->SaveError(ret);
+        ANI_ERR_LOG("set photo album order failed, err: %{public}d", ret);
+    }
+}
+
+static void SetAlbumOrderCompleteCallback(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    if (context == nullptr) {
+        return;
+    }
+    ani_object errorObj {};
+    if (context->error != ERR_DEFAULT) {
+        context->HandleError(env, errorObj);
+    }
+    context.reset();
+}
+
+static ani_status ParseArgsSetPhotoAlbumsOrder(ani_env *env, ani_int orderStyle, ani_object albumOrders,
+    std::unique_ptr<MediaLibraryAsyncContext>& context)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    ani_boolean isUndefined;
+    env->Reference_IsUndefined(albumOrders, &isUndefined);
+    if (isUndefined) {
+        context->isFullAnalysis = true;
+        return ANI_OK;
+    }
+
+    // parse albumOrders
+    std::vector<ani_object> aniValues;
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetObjectArray(env, albumOrders, aniValues),
+        "GetObjectArray fail");
+    if (aniValues.empty()) {
+        ANI_INFO_LOG("albumOrders is empty");
+        return ANI_OK;
+    }
+
+    for (const auto &aniValue : aniValues) {
+        CHECK_STATUS_RET(ParseAlbumOrder(env, aniValue, orderStyle, context),
+            "Parse album order array failed");
+    }
+    return ANI_OK;
+}
+
+void MediaLibraryAni::PhotoAccessSetPhotoAlbumOrder(ani_env *env, ani_object object,
+    ani_int orderStyle, ani_object albumOrders)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessSetPhotoAlbumOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_IF_EQUAL(asyncContext != nullptr, "asyncContext is nullptr");
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_IF_EQUAL(ParseArgsSetPhotoAlbumsOrder(env, orderStyle, albumOrders,
+        asyncContext) == ANI_OK, "Failed to parse set albums order");
+    SetUserIdFromObjectInfo(asyncContext);
+    SetPhotoAlbumOrderExecute(env, asyncContext);
+    SetAlbumOrderCompleteCallback(env, asyncContext);
 }
 
 static ani_status ParseArgsGetHiddenAlbums(ani_env *env, ani_enum_item albumModeAni,
@@ -4699,6 +5063,9 @@ static ani_status ParseArgsStartAssetAnalysis(ani_env *env, ani_enum_item type, 
     CHECK_COND_WITH_RET_MESSAGE(env, result == ANI_OK, ANI_INVALID_ARGS, "EnumGetValueInt32 failed");
     CHECK_COND_WITH_RET_MESSAGE(env, asyncContext->analysisType > AnalysisType::ANALYSIS_INVALID, ANI_INVALID_ARGS,
         "analysisType invalid:" + std::to_string(asyncContext->analysisType));
+    const std::map<int32_t, std::string> FOREGROUND_ANALYSIS_ASSETS_MAP = {
+        { ANALYSIS_SEARCH_INDEX, PAH_QUERY_ANA_FOREGROUND }
+    };
     auto it = FOREGROUND_ANALYSIS_ASSETS_MAP.find(asyncContext->analysisType);
     CHECK_COND_WITH_RET_MESSAGE(env, it != FOREGROUND_ANALYSIS_ASSETS_MAP.end(), ANI_INVALID_ARGS,
         "analysisType is not supported:" + std::to_string(asyncContext->analysisType));
@@ -4943,6 +5310,342 @@ ani_object MediaLibraryAni::PhotoAccessHelperAgentCreateAssetsWithAlbum(ani_env 
     }
     PhotoAccessAgentCreateAssetsExecute(env, context);
     return CreateAssetComplete(env, context);
+}
+
+
+int32_t MediaLibraryAni::AddClientObserver(ani_env *env, ani_ref &ref,
+    std::map<Notification::NotifyUriType, std::vector<std::shared_ptr<ClientObserverAni>>> &clientObservers,
+    const Notification::NotifyUriType uriType)
+{
+    CHECK_COND_RET(env != nullptr, JS_E_PARAM_INVALID, "env is nullptr");
+    CHECK_COND_RET(ref != nullptr, JS_E_PARAM_INVALID, "offCallback reference is nullptr");
+    auto iter = clientObservers.find(uriType);
+    if (iter == clientObservers.end()) {
+        shared_ptr<ClientObserverAni> clientObserver = make_shared<ClientObserverAni>(uriType, ref);
+        clientObservers[uriType].push_back(clientObserver);
+        return E_OK;
+    }
+    auto observers = iter->second;
+    ani_boolean isSame = ANI_FALSE;
+    for (auto &observer : observers) {
+        ani_ref onCallback = observer->ref_;
+        env->Reference_StrictEquals(ref, onCallback, &isSame);
+        if (isSame == ANI_TRUE) {
+            ANI_INFO_LOG("clientObserver hasRegister");
+            return JS_E_PARAM_INVALID;
+        }
+    }
+    if (!isSame) {
+        shared_ptr<ClientObserverAni> clientObserver = make_shared<ClientObserverAni>(uriType, ref);
+        clientObservers[uriType].push_back(clientObserver);
+    }
+    return E_OK;
+}
+
+int32_t MediaLibraryAni::RegisterObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
+    const Notification::NotifyUriType uriType)
+{
+    // 根据uri获取对应的 注册uri
+    Notification::NotifyUriType registerUriType = Notification::NotifyUriType::INVALID;
+    std::string registerUri = "";
+    if (MediaLibraryNotifyAniUtils::GetNotifyTypeAndUri(uriType, registerUriType, registerUri) != E_OK) {
+        return JS_E_PARAM_INVALID;
+    }
+
+    for (auto it = listObj.newObservers_.begin(); it != listObj.newObservers_.end(); it++) {
+        Notification::NotifyUriType observerUri = (*it)->uriType_;
+        if (observerUri == registerUriType) {
+            //判断是否已有callback，没有则加入，有则返回false
+            auto& clientObservers = (*it)->ClientObserverAnis_;
+            return AddClientObserver(env, ref, clientObservers, uriType);
+        }
+    }
+    // list 中没有，新建一个，并且服务端注册
+    shared_ptr<MediaOnNotifyNewObserverAni> observer =
+        make_shared<MediaOnNotifyNewObserverAni>(registerUriType, registerUri, env);
+    Uri notifyUri(registerUri);
+    int32_t ret = UserFileClient::RegisterObserverExtProvider(notifyUri,
+        static_cast<shared_ptr<DataShare::DataShareObserver>>(observer), false);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("failed to register observer, ret: %{public}d, uri: %{public}s", ret, registerUri.c_str());
+        return ret;
+    }
+
+    shared_ptr<ClientObserverAni> clientObserver = make_shared<ClientObserverAni>(uriType, ref);
+    observer->ClientObserverAnis_[uriType].push_back(clientObserver);
+    listObj.newObservers_.push_back(observer);
+    ANI_INFO_LOG("success to register observer, ret: %{public}d, uri: %{public}s", ret, registerUri.c_str());
+    return ret;
+}
+
+void MediaLibraryAni::registerAssetExecute(ani_env *env, ani_object object, ani_fn_object callbackOn, std::string type)
+{
+    CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
+    MediaLibraryAni *obj = Unwrap(env, object);
+    if (obj == nullptr) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return;
+    }
+
+    Notification::NotifyUriType uriType = Notification::NotifyUriType::INVALID;
+    if (MediaLibraryNotifyAniUtils::GetRegisterNotifyType(type, uriType) != E_OK) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "The scenario parameter verification fails.");
+        return;
+    }
+
+    ani_ref cbOnRef {};
+    env->GlobalReference_Create(static_cast<ani_ref>(callbackOn), &cbOnRef);
+    int32_t ret = RegisterObserverExecute(env, cbOnRef, *obj->listObj_, uriType);
+    if (ret == E_OK) {
+        ANI_INFO_LOG("PhotoAccessRegisterCallback success");
+    } else {
+        env->GlobalReference_Delete(cbOnRef);
+        cbOnRef = nullptr;
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return;
+    }
+}
+
+void MediaLibraryAni::PhotoAccessOnPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnPhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnPhotoChange");
+
+    registerAssetExecute(env, object, callbackOn, "photoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOnHiddenPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnHiddenPhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnHiddenPhotoChange");
+
+    registerAssetExecute(env, object, callbackOn, "hiddenPhotoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOnTrashedPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnTrashedPhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnTrashedPhotoChange");
+
+    registerAssetExecute(env, object, callbackOn, "trashedPhotoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOnPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnPhotoAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnPhotoAlbumChange");
+
+    registerAssetExecute(env, object, callbackOn, "photoAlbumChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOnHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnHiddenAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnHiddenAlbumChange");
+
+    registerAssetExecute(env, object, callbackOn, "hiddenAlbumChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOnTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnTrashedAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnTrashedAlbumChange");
+
+    registerAssetExecute(env, object, callbackOn, "trashedAlbumChange");
+    tracer.Finish();
+    return;
+}
+
+
+int32_t MediaLibraryAni::RemoveClientObserver(ani_env *env, ani_ref ref,
+    map<Notification::NotifyUriType, vector<shared_ptr<ClientObserverAni>>> &ClientObservers,
+    const Notification::NotifyUriType uriType)
+{
+    CHECK_COND_RET(env != nullptr, JS_E_PARAM_INVALID, "env is nullptr");
+    if (ClientObservers.find(uriType) == ClientObservers.end()) {
+        ANI_ERR_LOG("invalid register uriType");
+        return JS_E_PARAM_INVALID;
+    }
+    if (ref == nullptr) {
+        ANI_ERR_LOG("remove all client observers of uriType");
+        ClientObservers.erase(uriType);
+        return E_OK;
+    }
+
+    ani_boolean hasRegister = false;
+    for (auto iter = ClientObservers[uriType].begin(); iter != ClientObservers[uriType].end(); iter++) {
+        ani_ref onCallback = iter->get()->ref_;
+        env->Reference_StrictEquals(ref, onCallback, &hasRegister);
+        if (hasRegister != ANI_TRUE) {
+            continue;
+        }
+
+        ClientObservers[uriType].erase(iter);
+        if (ClientObservers[uriType].empty()) {
+            ClientObservers.erase(uriType);
+        }
+        return E_OK;
+    }
+    ANI_ERR_LOG("failed to find observer");
+    return JS_E_PARAM_INVALID;
+}
+
+int32_t MediaLibraryAni::UnregisterObserverExecute(ani_env *env,
+    const Notification::NotifyUriType uriType, ani_ref ref, ChangeListenerAni &listObj)
+{
+    if (listObj.newObservers_.size() == 0) {
+        ANI_ERR_LOG("listObj.newObservers_ size 0");
+        return JS_E_PARAM_INVALID;
+    }
+
+    // 根据uri获取对应的 注册uri
+    Notification::NotifyUriType registerUriType = Notification::NotifyUriType::INVALID;
+    std::string registerUri = "";
+    if (MediaLibraryNotifyAniUtils::GetNotifyTypeAndUri(uriType, registerUriType, registerUri) != E_OK) {
+        return JS_E_PARAM_INVALID;
+    }
+
+    // 如果注册uri对应的newObserver不存在，无需解注册
+    // 如果注册uri对应的newObserver存在
+    // 参数：对应的newObserver的ClientObserver中是否存在对应callback，存在，删除并且看看是否删除为空的对应的newObserver
+    int32_t ret = JS_E_PARAM_INVALID;
+    for (auto it = listObj.newObservers_.begin(); it != listObj.newObservers_.end(); it++) {
+        Notification::NotifyUriType observerUri = (*it)->uriType_;
+        if (observerUri != registerUriType) {
+            continue;
+        }
+        auto& ClientObservers = (*it)->ClientObserverAnis_;
+
+        ret = RemoveClientObserver(env, ref, ClientObservers, uriType);
+        if (ret == E_OK && ClientObservers.empty()) {
+            ret = UserFileClient::UnregisterObserverExtProvider(Uri(registerUri),
+                static_cast<shared_ptr<DataShare::DataShareObserver>>(*it));
+            if (ret != E_OK) {
+                ANI_ERR_LOG("failed to unregister observer, ret: %{public}d, uri: %{public}s",
+                    ret, registerUri.c_str());
+                return ret;
+            }
+            std::vector<shared_ptr<MediaOnNotifyNewObserverAni>>::iterator tmp = it;
+            listObj.newObservers_.erase(tmp);
+            ANI_INFO_LOG("success to unregister observer, ret: %{public}d, uri: %{public}s", ret, registerUri.c_str());
+        }
+        return ret;
+    }
+    return ret;
+}
+
+void MediaLibraryAni::unregisterAssetExecute(ani_env *env, ani_object object,
+    ani_fn_object callbackOff, std::string type)
+{
+    CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
+
+    MediaLibraryAni *obj = Unwrap(env, object);
+    if (obj == nullptr) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return;
+    }
+
+    ani_ref ref = static_cast<ani_ref>(callbackOff);
+    ani_boolean isCallbackUndefined;
+    env->Reference_IsUndefined(ref, &isCallbackUndefined);
+    Notification::NotifyUriType uriType;
+    if (MediaLibraryNotifyAniUtils::GetRegisterNotifyType(type, uriType) != E_OK) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+        return;
+    }
+    ani_ref cbOffRef = nullptr;
+    if (!isCallbackUndefined) {
+        env->GlobalReference_Create(static_cast<ani_ref>(callbackOff), &cbOffRef);
+    }
+    int32_t ret = UnregisterObserverExecute(env, uriType, cbOffRef, *obj->listObj_);
+    if (ret != E_OK) {
+        AniError::ThrowError(env, MediaLibraryNotifyAniUtils::ConvertToJsError(ret));
+    }
+    if (cbOffRef != nullptr) {
+        env->GlobalReference_Delete(cbOffRef);
+    }
+}
+
+void MediaLibraryAni::PhotoAccessOffPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffPhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffPhotoChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "photoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOffHiddenPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffHiddenPhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffHiddenPhotoChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "hiddenPhotoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOffTrashedPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffTrashedPhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffTrashedPhotoChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "trashedPhotoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOffPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffPhotoAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffPhotoAlbumChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "photoAlbumChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOffHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffHiddenAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffHiddenAlbumChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "hiddenAlbumChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOffTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffTrashedAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffTrashedAlbumChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "trashedAlbumChange");
+    tracer.Finish();
+    return;
 }
 
 } // namespace Media

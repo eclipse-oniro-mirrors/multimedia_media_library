@@ -69,6 +69,11 @@ ohos_shared_library("media_library_cloud_sync") {
 
   sources += source_ipc_client
 
+  if (!media_library_cloud_sync_enable) {
+    sources = []
+    include_dirs = []
+  }
+
   public_configs = [ ":media_library_cloud_sync_config" ]
 
   deps = [

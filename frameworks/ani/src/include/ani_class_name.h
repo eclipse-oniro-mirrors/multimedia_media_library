@@ -34,6 +34,8 @@ static const std::string PAH_ANI_CLASS_CLOUD_MEDIA_ASSET_MANAGER =
 static const std::string PAH_ANI_CLASS_CLOUD_MEDIA_ASSET_STATUS_HANDLE =
     PAH_CLASS_SPACE + "CloudMediaAssetStatusHandle";
 static const std::string PAH_ANI_CLASS_FETCH_RESULT_HANDLE = PAH_CLASS_SPACE + "FetchResultHandle";
+static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CUSTOM_RECORD_MANAGER =
+    PAH_CLASS_SPACE + "PhotoAssetCustomRecordManager";
 static const std::string PAH_ANI_CLASS_PHOTO_ALBUM_HANDLE = PAH_CLASS_SPACE + "AlbumHandle";
 static const std::string PAH_ANI_CLASS_HIGHLIGHT_ALBUM = PAH_CLASS_SPACE + "HighlightAlbum";
 static const std::string PAH_ANI_CLASS_ANALYSIS_ALBUM = PAH_CLASS_SPACE + "AnalysisAlbum";
@@ -69,6 +71,10 @@ static const std::string PAH_ANI_CLASS_ENUM_CLOUD_ENHANCEMENT_TASK_STAGE =
     PAH_CLASS_SPACE + "CloudEnhancementTaskStage";
 static const std::string PAH_ANI_CLASS_ENUM_RESOURCE_TYPE = PAH_CLASS_SPACE + "ResourceType";
 static const std::string PAH_ANI_CLASS_ENUM_IMAGEFILE_TYPE = PAH_CLASS_SPACE + "ImageFileType";
+static const std::string PAH_ANI_CLASS_ENUM_COVERURI_SOURCE = PAH_CLASS_SPACE + "CoverUriSource";
+static const std::string PAH_ANI_CLASS_ENUM_NOTIFYCHANGE_TYPE = PAH_CLASS_SPACE + "NotifyChangeType";
+static const std::string PAH_ANI_CLASS_ENUM_STRONG_ASSOCIATION_TYPE = PAH_CLASS_SPACE + "StrongAssociationType";
+static const std::string PAH_ANI_CLASS_ENUM_THUMBNAIL_VISIBILITY_TYPE = PAH_CLASS_SPACE + "ThumbnailVisibility";
 
 // ETS Class in userFileManager
 static const std::string UFM_ANI_CLASS_USER_FILE_MANAGER_HANDLE = UFM_CLASS_SPACE + "UserFileManagerHandle";
@@ -76,6 +82,14 @@ static const std::string UFM_ANI_CLASS_FETCH_RESULT_HANDLE = UFM_CLASS_SPACE + "
 static const std::string UFM_ANI_CLASS_FILE_ASSET = UFM_CLASS_SPACE + "FileAsset";
 static const std::string UFM_ANI_CLASS_FILE_ASSET_HANDLE = UFM_CLASS_SPACE + "FileAssetHandle";
 static const std::string UFM_ANI_CLASS_PHOTO_ALBUM_HANDLE = UFM_CLASS_SPACE + "AlbumHandle";
+
+static const std::string PAH_ANI_CLASS_ALBUM_CHANGE_INFOS_HANDLE = PAH_CLASS_SPACE + "AlbumChangeInfosHandle";
+static const std::string PAH_ANI_CLASS_ALBUM_CHANGE_DATA_HANDLE = PAH_CLASS_SPACE + "AlbumChangeDataHandle";
+static const std::string PAH_ANI_CLASS_ALBUM_CHANGE_INFO_HANDLE = PAH_CLASS_SPACE + "AlbumChangeInfoHandle";
+static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFOS_HANDLE =
+    PAH_CLASS_SPACE + "PhotoAssetChangeInfosHandle";
+static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_DATA_HANDLE = PAH_CLASS_SPACE + "PhotoAssetChangeDataHandle";
+static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFO_HANDLE = PAH_CLASS_SPACE + "PhotoAssetChangeInfoHandle";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_ANI_SRC_INCLUDE_ANI_CLASSNAME_H

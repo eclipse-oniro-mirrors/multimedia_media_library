@@ -75,6 +75,7 @@ private:
     static ani_object RequestContentByResourceType(ani_env *env, ani_object object,
         ani_enum_item resourceTypeAni);
     static ani_string GetUri(ani_env *env, ani_object object);
+    static ani_boolean IsVideoReady(ani_env *env, ani_object object);
 
     std::string photoUri_;
     SourceMode sourceMode_ = SourceMode::EDITED_MODE;
@@ -106,6 +107,7 @@ struct MovingPhotoAsyncContext : public AniError {
     void* arrayBufferData = nullptr;
     size_t arrayBufferLength = 0;
     int32_t position = 0;
+    bool isVideoReady = false;
     // for transcode
     ani_ref progressHandlerRef = nullptr;
     ani_vm *etsVm = nullptr;

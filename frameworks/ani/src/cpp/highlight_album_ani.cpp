@@ -50,18 +50,23 @@ static const std::string MAP_ALBUM = "map_album";
 static const std::string MAP_ASSET = "map_asset";
 static const std::string ORDER_POSITION = "order_position";
 }
-static const map<int32_t, struct HighlightAlbumInfo> HIGHLIGHT_ALBUM_INFO_MAP = {
-    { COVER_INFO, { PAH_QUERY_HIGHLIGHT_COVER, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
-        AI_ALBUM_ID, SUB_TITLE, CLUSTER_TYPE, CLUSTER_SUB_TYPE,
-        CLUSTER_CONDITION, MIN_DATE_ADDED, MAX_DATE_ADDED, GENERATE_TIME, HIGHLIGHT_VERSION,
-        REMARKS, HIGHLIGHT_STATUS, RATIO, BACKGROUND, FOREGROUND, WORDART, IS_COVERED, COLOR,
-        RADIUS, SATURATION, BRIGHTNESS, BACKGROUND_COLOR_TYPE, SHADOW_LEVEL, TITLE_SCALE_X,
-        TITLE_SCALE_Y, TITLE_RECT_WIDTH, TITLE_RECT_HEIGHT, BACKGROUND_SCALE_X, BACKGROUND_SCALE_Y,
-        BACKGROUND_RECT_WIDTH, BACKGROUND_RECT_HEIGHT, LAYOUT_INDEX, COVER_ALGO_VERSION, COVER_KEY,
-        HIGHLIGHT_IS_MUTED, HIGHLIGHT_IS_FAVORITE, HIGHLIGHT_THEME } } },
-    { PLAY_INFO, { PAH_QUERY_HIGHLIGHT_PLAY, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
-        MUSIC, FILTER, HIGHLIGHT_PLAY_INFO, IS_CHOSEN, PLAY_INFO_VERSION, PLAY_INFO_ID } } },
-};
+const map<int32_t, struct HighlightAlbumInfo> GetHighlightAlbumInfoMap()
+{
+    static const map<int32_t, struct HighlightAlbumInfo> HIGHLIGHT_ALBUM_INFO_MAP = {
+        { COVER_INFO, { PAH_QUERY_HIGHLIGHT_COVER, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+            AI_ALBUM_ID, SUB_TITLE, CLUSTER_TYPE, CLUSTER_SUB_TYPE,
+            CLUSTER_CONDITION, MIN_DATE_ADDED, MAX_DATE_ADDED, GENERATE_TIME, HIGHLIGHT_VERSION,
+            REMARKS, HIGHLIGHT_STATUS, RATIO, BACKGROUND, FOREGROUND, WORDART, IS_COVERED, COLOR,
+            RADIUS, SATURATION, BRIGHTNESS, BACKGROUND_COLOR_TYPE, SHADOW_LEVEL, TITLE_SCALE_X,
+            TITLE_SCALE_Y, TITLE_RECT_WIDTH, TITLE_RECT_HEIGHT, BACKGROUND_SCALE_X, BACKGROUND_SCALE_Y,
+            BACKGROUND_RECT_WIDTH, BACKGROUND_RECT_HEIGHT, LAYOUT_INDEX, COVER_ALGO_VERSION, COVER_KEY,
+            HIGHLIGHT_IS_MUTED, HIGHLIGHT_IS_FAVORITE, HIGHLIGHT_THEME } } },
+        { PLAY_INFO, { PAH_QUERY_HIGHLIGHT_PLAY, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+            MUSIC, FILTER, HIGHLIGHT_PLAY_INFO, IS_CHOSEN, PLAY_INFO_VERSION, PLAY_INFO_ID } } },
+    };
+    return HIGHLIGHT_ALBUM_INFO_MAP;
+}
+
 
 static const map<int32_t, std::string> HIGHLIGHT_USER_ACTION_MAP = {
     { INSERTED_PIC_COUNT, HIGHLIGHT_INSERT_PIC_COUNT },
@@ -189,8 +194,9 @@ static void GetHighlightAlbumInfoExecute(ani_env *env, unique_ptr<HighlightAlbum
     string uriStr;
     std::vector<std::string> fetchColumn;
     DataShare::DataSharePredicates predicates;
-    if (HIGHLIGHT_ALBUM_INFO_MAP.find(context->highlightAlbumInfoType) != HIGHLIGHT_ALBUM_INFO_MAP.end()) {
-        fetchColumn = HIGHLIGHT_ALBUM_INFO_MAP.at(context->highlightAlbumInfoType).fetchColumn;
+    auto infoMap = GetHighlightAlbumInfoMap();
+    if (infoMap.find(context->highlightAlbumInfoType) != infoMap.end()) {
+        fetchColumn = infoMap.at(context->highlightAlbumInfoType).fetchColumn;
     } else {
         ANI_ERR_LOG("Invalid highlightAlbumInfoType");
         return;

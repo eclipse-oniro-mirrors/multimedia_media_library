@@ -24,10 +24,11 @@
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 #include "result_set_utils.h"
-#include "cloud_media_dao_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_asset_operations.h"
+#include "cloud_media_define.h"
+#include "cloud_media_common.h"
 
 namespace OHOS::Media::Background {
 
@@ -136,7 +137,7 @@ void MediaDeletedFileTask::HandleDeletedFile()
         std::string table = keys[TABLE_INDEX];
         std::vector<std::string> paths = { values[PATH_INDEX] };
         std::vector<std::string> dateTakens = { values[DATE_TAKEN_INDEX] };
-        std::vector<int32_t> subTypes = { CloudSync::CloudMediaDaoUtils::ToInt32(values[SUBTYPE_INDEX]) };
+        std::vector<int32_t> subTypes = { CloudMediaCommon::ToInt32(values[SUBTYPE_INDEX]) };
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         MediaLibraryAssetOperations::DealWithBatchDownloadingFilesById(ids);
 #endif

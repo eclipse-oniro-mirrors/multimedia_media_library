@@ -42,6 +42,7 @@ struct AniPhotoAlbumOperator {
     ani_method setCount {};
     ani_method setCoverUri {};
     ani_method setLPath {};
+    ani_method setCoverUriSource {};
 };
 
 class PhotoAlbumAni {

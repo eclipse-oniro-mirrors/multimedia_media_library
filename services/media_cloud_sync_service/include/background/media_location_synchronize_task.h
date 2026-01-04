@@ -29,16 +29,25 @@ public:
     virtual ~MediaLocationSynchronizeTask() = default;
 
 private:
-    void HandleRepairLocation(const int32_t &lastRecord);
-    void RepairPhotoLocation(int32_t &repairRecord, bool &terminate, std::vector<PhotosPo> &photosPoVec);
-    int32_t GetRepairLocationData(const int32_t &lastRecord, std::vector<PhotosPo> &photosPoVec);
+    static void HandleRepairLocation(const int32_t lastRecord);
+    int32_t GetNeedRepairCount(const int32_t repairRecord);
 
 public:
     bool Accept() override;
     void Execute() override;
 
 private:
-    std::mutex repairLocationMutex_;
+    static std::mutex repairLocationMutex_;
+    const std::string COLUMN_NAME_COUNT = "count";
+    const std::string SQL_GET_REPAIR_LOCATION_COUNT = "\
+        SELECE COUNT(1) AS count \
+        FROM Photos \
+        WHERE (latitude = 0 OR latitue IS NULL) AND \
+            (longitude = 0 OR longitude IS NULL) AND \
+            sync_status = 0 AND \
+            clean_flag = 0 AND \
+            time_pending = 0 AND \
+            is_temp = 0;";
 };
 }  // namespace OHOS::Media::Background
 #endif  // OHOS_MEDIA_BACKGROUND_MEDIA_LOCATION_SYNCHRONIZE_TASK_H

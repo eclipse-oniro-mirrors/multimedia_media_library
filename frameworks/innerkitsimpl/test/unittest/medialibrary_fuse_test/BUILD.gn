@@ -34,12 +34,12 @@ ohos_unittest("medialibrary_fuse_test") {
   ]
 
   sources = [
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_hdc_operations.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_high_daemon.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_low_daemon.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_hdc_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_high_daemon.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_low_daemon.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_tmp_compatible_dup_vo.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_manager.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_node.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_node.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_fuse_hdc_operations_test.cpp",
     "./src/mock_medialibrary_fuse_test.cpp",

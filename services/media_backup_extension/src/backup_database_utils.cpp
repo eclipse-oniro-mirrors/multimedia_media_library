@@ -913,21 +913,29 @@ void BackupDatabaseUtils::UpdateFaceGroupTagsUnion(std::shared_ptr<NativeRdb::Rd
     }
     MEDIA_INFO_LOG("get all TagId  %{public}zu", allTagIds.size());
     for (const auto& pair : tagPairs) {
-        if (pair.second.has_value()) {
-            std::vector<std::string> groupTags = BackupDatabaseUtils::SplitString(pair.second.value(), '|');
-            MEDIA_INFO_LOG("TagId: %{public}s, old GroupTags is: %{public}s",
-                           pair.first.value_or(std::string("-1")).c_str(), pair.second.value().c_str());
+        CHECK_AND_CONTINUE(pair.second.has_value());
+        MEDIA_INFO_LOG("TagId: %{public}s, old GroupTags is: %{public}s",
+            pair.first.value_or(std::string("-1")).c_str(), pair.second.value().c_str());
+        std::vector<std::string> newGroupTagsBlock = {};
+        std::vector<std::string> groupTagsBlock = BackupDatabaseUtils::SplitString(pair.second.value(), ',');
+        for (const auto& block : groupTagsBlock) {
+            std::vector<std::string> groupTags = BackupDatabaseUtils::SplitString(block, '|');
             groupTags.erase(std::remove_if(groupTags.begin(), groupTags.end(),
                 [&allTagIds](const std::string& tagId) {
                 return std::find(allTagIds.begin(), allTagIds.end(), tagId) == allTagIds.end();
                 }),
                 groupTags.end());
 
-            std::string newGroupTag = BackupDatabaseUtils::JoinValues<std::string>(groupTags, "|");
-            if (newGroupTag != pair.second.value()) {
-                updatedPairs.emplace_back(pair.first, newGroupTag);
-                MEDIA_INFO_LOG("TagId: %{public}s  GroupTags updated", pair.first.value().c_str());
-            }
+            std::string newGroupTagBlock = BackupDatabaseUtils::JoinValues<std::string>(groupTags, "|");
+            newGroupTagsBlock.push_back(newGroupTagBlock);
+        }
+        std::string newGroupTag = BackupDatabaseUtils::JoinValues<std::string>(newGroupTagsBlock, ",");
+        if (!pair.second.value().empty() && pair.second.value().back() == ',') {
+            newGroupTag = newGroupTag + ',';
+        }
+        if (newGroupTag != pair.second.value()) {
+            updatedPairs.emplace_back(pair.first, newGroupTag);
+            MEDIA_INFO_LOG("TagId: %{public}s  GroupTags updated", pair.first.value().c_str());
         }
     }
 

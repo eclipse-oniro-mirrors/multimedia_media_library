@@ -47,6 +47,7 @@
 namespace OHOS::Media {
 static const int32_t VALUE_IS_ME = 1;
 static const int32_t VALUE_IS_REMOVED = 1;
+static const int32_t MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR = 23800301;
 
 ani_status MediaAlbumChangeRequestAni::Init(ani_env *env)
 {
@@ -78,6 +79,7 @@ ani_status MediaAlbumChangeRequestAni::Init(ani_env *env)
         ani_native_function {"deleteAssetsWithUri", nullptr, reinterpret_cast<void *>(DeleteAssetsWithUri)},
         ani_native_function {"setIsMe", nullptr, reinterpret_cast<void *>(SetIsMe)},
         ani_native_function {"dismiss", nullptr, reinterpret_cast<void *>(Dismiss)},
+        ani_native_function {"resetCoverUri", nullptr, reinterpret_cast<void *>(ResetCoverUri)},
     };
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
     if (status != ANI_OK) {
@@ -734,6 +736,38 @@ ani_status MediaAlbumChangeRequestAni::Dismiss(ani_env *env, ani_object object)
         PhotoAlbum::IsSmartGroupPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
         ANI_INVALID_ARGS, "Only group photo can be dismissed");
     asyncContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::DISMISS);
+    return ANI_OK;
+}
+
+ani_status MediaAlbumChangeRequestAni::ResetCoverUri(ani_env *env, ani_object object)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    auto asyncContext = make_unique<MediaAlbumChangeRequestContext>();
+    CHECK_COND_RET(asyncContext != nullptr, ANI_ERROR, "asyncContext is null");
+    asyncContext->objectInfo = Unwrap(env, object);
+    if (asyncContext->objectInfo == nullptr) {
+        AniError::ThrowError(env, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "objectInfo is nullptr");
+        return ANI_ERROR;
+    }
+    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    if (photoAlbum == nullptr) {
+        AniError::ThrowError(env, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "photoAlbum is null");
+        return ANI_ERROR;
+    }
+    auto subtype = static_cast<int32_t>(photoAlbum->GetPhotoAlbumSubType());
+    if (photoAlbum->GetHiddenOnly() ||
+        !(PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()) ||
+        PhotoAlbum::IsSystemAlbum(photoAlbum->GetPhotoAlbumType()) ||
+        PhotoAlbum::IsSourceAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()))) {
+        AniError::ThrowError(env, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR,
+            "can't reset album cover of album subtype:" + to_string(subtype));
+        return ANI_ERROR;
+    }
+    photoAlbum->SetCoverUriSource(static_cast<int32_t>(CoverUriSource::DEFAULT_COVER));
+    asyncContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::RESET_COVER_URI);
     return ANI_OK;
 }
 

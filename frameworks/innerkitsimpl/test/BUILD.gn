@@ -26,7 +26,6 @@ group("test") {
     "unittest/media_event_test:unittest",
     "unittest/media_library_asset_helper_capi_test:unittest",
     "unittest/media_library_asset_manager_test:unittest",
-    "unittest/media_library_cloud_sync_test:unittest",
     "unittest/media_library_manager_test:unittest",
     "unittest/media_library_share_test:unittest",
     "unittest/media_notification_test:unittest",
@@ -41,9 +40,7 @@ group("test") {
     "unittest/medialibrary_app_uri_sensitive_operations_test:unittest",
     "unittest/medialibrary_astc_phase_test:unittest",
     "unittest/medialibrary_audio_operations_test:unittest",
-    "unittest/medialibrary_client_report_test:unittest",
     "unittest/medialibrary_cloud_asset_download_test:unittest",
-    "unittest/medialibrary_cloud_asset_batch_download_test:unittest",
     "unittest/medialibrary_common_utils_test:unittest",
     "unittest/medialibrary_cover_position_parser_test:unittest",
     "unittest/medialibrary_custom_restore_test:unittest",
@@ -58,7 +55,6 @@ group("test") {
     "unittest/medialibrary_mimetype_test:unittest",
     "unittest/medialibrary_multistages_capture_test:unittest",
     "unittest/medialibrary_object_test:unittest",
-    "unittest/medialibrary_photo_enhance_test:unittest",
     "unittest/medialibrary_photo_operations_test:unittest",
     "unittest/medialibrary_queryperf_test:unittest",
     "unittest/medialibrary_rdb_callback_test:unittest",
@@ -86,8 +82,6 @@ group("test") {
     "unittest/photo_day_month_year_operation_test:unittest",
     "unittest/medialibrary_aspect_ratio_operation_test:unittest",
     "unittest/portrait_album_update_test:PortraitAlbumUpdateTest",
-    "unittest/media_library_cloud_sync_service_test:unittest",
-    "unittest/media_library_cloud_sync_client_test:unittest",
     "unittest/medialibrary_analysis_progress_test:unittest",
     "unittest/white_list_check_utils_test:unittest",
     "unittest/media_refresh:unittest",
@@ -96,6 +90,21 @@ group("test") {
     "unittest/media_common_utils_test:unittest",
     "unittest/media_permission_helper_test:unittest",
   ]
+
+  deps_cloud_sync_unittest = [
+    "unittest/media_library_cloud_sync_test:unittest",
+    "unittest/media_library_cloud_sync_service_test:unittest",
+    "unittest/media_library_cloud_sync_client_test:unittest",
+    "unittest/medialibrary_photo_enhance_test:unittest",
+    "unittest/medialibrary_cloud_asset_batch_download_test:unittest",
+    "unittest/medialibrary_client_report_test:unittest",
+  ]
+
+  if (media_library_cloud_sync_enable) {
+    deps += deps_cloud_sync_unittest
+  } else {
+    deps_cloud_sync_unittest = []
+  }
 
   if (media_library_feature_cloud_download) {
     deps += [

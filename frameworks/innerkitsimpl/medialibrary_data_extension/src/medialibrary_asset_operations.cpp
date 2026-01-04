@@ -57,7 +57,6 @@
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 #include "background_cloud_batch_selected_file_processor.h"
 #endif
-#include "cloud_media_dao_utils.h"
 #include "scanner_map_code_utils.h"
 #include "photo_map_code_operation.h"
 #include "media_file_manager_temp_file_aging_task.h"
@@ -65,10 +64,10 @@
 #include "file_utils.h"
 #include "medialibrary_transcode_data_aging_operation.h"
 #include "lake_file_utils.h"
+#include "cloud_media_common.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
-using namespace OHOS::Media::CloudSync;
 
 namespace OHOS {
 namespace Media {
@@ -3479,6 +3478,7 @@ static int32_t DeleteLocalPhotoPermanently(shared_ptr<FileAsset> &fileAsset,
 
 int32_t MediaLibraryAssetOperations::AddOtherBurstIdsToFileIds(std::vector<std::string> &fileIds)
 {
+    #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_ERR, "AddOtherBurstIdsToFileIds No uris");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "QueryDownloadResources Failed to get rdbStore.");
@@ -3490,8 +3490,8 @@ int32_t MediaLibraryAssetOperations::AddOtherBurstIdsToFileIds(std::vector<std::
         " = 1 AND p1." + PhotoColumn::PHOTO_SUBTYPE + " = " + to_string(static_cast<int32_t>(PhotoSubType::BURST)) +
         " AND p1." + PhotoColumn::PHOTO_BURST_KEY + " IS NOT NULL AND p1." + PhotoColumn::MEDIA_ID +
         " != p2." + PhotoColumn::MEDIA_ID;
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
-    std::string sql = CloudMediaDaoUtils::FillParams(sqlBefore, {inClause});
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    std::string sql = CloudMediaCommon::FillParams(sqlBefore, {inClause});
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "Failed to query batch selected files!");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -3501,6 +3501,7 @@ int32_t MediaLibraryAssetOperations::AddOtherBurstIdsToFileIds(std::vector<std::
         fileIds.emplace_back(std::to_string(relatedFileId));
     }
     resultSet->Close();
+    #endif
     return NativeRdb::E_OK;
 }
 

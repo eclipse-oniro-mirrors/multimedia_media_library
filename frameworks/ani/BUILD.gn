@@ -32,6 +32,7 @@ config("taihe_config") {
 config("ani_config") {
   include_dirs = [
     "src/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_SERVICES_PATH}/media_async_worker/include",
@@ -43,6 +44,7 @@ config("ani_config") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
+    "${MEDIALIB_BUSINESS_PATH}/media_notification/include/utils",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
@@ -85,9 +87,12 @@ ohos_shared_library("medialibrary_ani_utils") {
     "src/cpp/media_library_comm_ani.cpp",
     "src/cpp/media_library_enum_ani.cpp",
     "src/cpp/medialibrary_ani_utils.cpp",
+    "src/cpp/medialibrary_notify_ani_utils.cpp",
+    "src/cpp/medialibrary_notify_new_observer_ani.cpp",
     "src/cpp/moving_photo_ani.cpp",
     "src/cpp/moving_photo_call_transcoder.cpp",
     "src/cpp/photo_album_ani.cpp",
+    "src/cpp/photo_asset_custom_record_manager_ani.cpp",
     "src/cpp/photo_proxy_ani.cpp",
     "src/cpp/picture_handle_client.cpp",
     "src/cpp/thumbnail_manager_ani.cpp",
