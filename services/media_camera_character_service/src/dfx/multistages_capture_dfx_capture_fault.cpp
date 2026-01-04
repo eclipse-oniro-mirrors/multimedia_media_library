@@ -34,7 +34,7 @@ void MultiStagesCaptureDfxCaptureFault::Report(const std::string &photoId, const
         return;
     }
     VariantMap map = {{KEY_PHOTO_ID, photoId}, {KEY_MEDIA_SUBTYPE, mediaType},
-        {KEY_FAULT_TYPE, static_cast<int>(faultType)}, {KEY_FAULT_REASON, faultReason}}
+        {KEY_FAULT_TYPE, static_cast<int>(faultType)}, {KEY_FAULT_REASON, faultReason}};
     PostEventUtils::GetInstance().PostStatProcess(StatType::MSC_CAPTURE_FAULT_STAT, map);
 }
 }
