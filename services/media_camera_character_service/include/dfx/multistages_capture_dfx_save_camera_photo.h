@@ -48,16 +48,16 @@ enum class AddSaveTimeStat : int32_t {
 
 class MultiStagesCaptureDfxSaveCameraPhoto {
 public:
-    EXPORT static MultiStagesCaptureDfxCaptureTimes &GetInstance();
+    EXPORT static MultiStagesCaptureDfxSaveCameraPhoto &GetInstance();
     EXPORT void AddAssetTime(const std::string &photoId, AddAssetTimeStat stat);
     EXPORT void AddCaptureTime(const std::string &photoId, AddCaptureTimeStat stat);
     EXPORT void AddSaveTime(const std::string &photoId, AddSaveTimeStat stat);
     EXPORT void RemoveTime(const std::string &photoId);
     EXPORT void Report(const std::string &photoId, const int32_t isDecoding, const int32_t mediaSubtype);
 private:
-    MultiStagesCaptureDfxCaptureTimes();
-    ~MultiStagesCaptureDfxCaptureTimes();
-    GetResultString(const std::string &photoId,
+    MultiStagesCaptureDfxSaveCameraPhoto();
+    ~MultiStagesCaptureDfxSaveCameraPhoto();
+    void GetResultString(const std::string &photoId,
         std::string &createAssetTime, std::string &photoCaptureTime, std::string &saveCameraTime);
     std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>>> times_;
     std::mutex addTimeMutex_;
