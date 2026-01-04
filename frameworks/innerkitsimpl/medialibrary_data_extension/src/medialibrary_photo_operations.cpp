@@ -67,6 +67,9 @@
 #include "multistages_capture_notify_info.h"
 #include "medialibrary_notify_new.h"
 #include "multistages_capture_notify.h"
+#include "multistages_capture_dfx_capture_fault.h"
+#include "multistages_capture_dfx_capture_times.h"
+#include "multistages_capture_dfx_save_camera_photo.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -847,12 +850,45 @@ static void SetAssetDisplayName(const string &displayName, FileAsset &fileAsset,
     isContains = true;
 }
 
-int32_t MediaLibraryPhotoOperations::CreateV10(MediaLibraryCommand &cmd)
+int32_t MediaLibraryPhotoOperations::HandleTrans(FileAsset &fileAsset, const string &extention,
+    MediaLibraryCommand &cmd, bool isContains, int32_t &outRow)
+{
+    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+    int32_t outRow = -1;
+    int32_t errCode;
+    std::function<int(void)> func = [&]()->int {
+        errCode = isContains ? SetAssetPathInCreate(fileAsset, trans) : SetAssetPath(fileAsset, extention, trans);
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to Set Path, Name=%{private}s", displayName.c_str());
+        outRow = InsertAssetInDb(trans, cmd, fileAsset);
+        AuditLog auditLog = { true, "USER BEHAVIOR", "ADD", "io", 1, "running", "ok" };
+        HiAudit::GetInstance().Write(auditLog);
+        CHECK_AND_RETURN_RET_LOG(outRow > 0, E_HAS_DB_ERROR, "insert file in db failed, error = %{public}d", outRow);
+        fileAsset.SetId(outRow);
+        SolvePhotoAlbumInCreate(cmd, fileAsset);
+        return errCode;
+    };
+    errCode = trans->RetryTrans(func);
+    return errCode;
+}
+
+void MediaLibraryPhotoOperations::SetFileAssetFromCmd(FileAsset &fileAsset, MediaLibraryCommand &cmd,
+    int32_t mediaType, int32_t fileResourceType)
+{
+    fileAsset.SetFileResourceType(fileResourceType);
+    fileAsset.SetMediaType(static_cast<MediaType>(mediaType));
+    SetPhotoSubTypeFromCmd(cmd, fileAsset);
+    SetCameraShotKeyFromCmd(cmd, fileAsset);
+    SetCallingPackageName(cmd, fileAsset);
+}
+
+int32_t MediaLibraryPhotoOperations::HandleCreateV10(MediaLibraryCommand &cmd)
 {
     FileAsset fileAsset;
     ValuesBucket &values = cmd.GetValueBucket();
     string displayName;
     string extention;
+    string photoId;
+    GetStringFromValuesBucket(values, PhotoColumn::PHOTO_ID, photoId);
     bool isContains = false;
     bool isNeedGrant = false;
     if (GetStringFromValuesBucket(values, PhotoColumn::MEDIA_NAME, displayName)) {
@@ -872,28 +908,13 @@ int32_t MediaLibraryPhotoOperations::CreateV10(MediaLibraryCommand &cmd)
     CHECK_AND_RETURN_RET(GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_TYPE, mediaType), E_HAS_DB_ERROR);
     int32_t fileResourceType = 0;
     GetInt32FromValuesBucket(values, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, fileResourceType);
-    fileAsset.SetFileResourceType(fileResourceType);
-    fileAsset.SetMediaType(static_cast<MediaType>(mediaType));
-    SetPhotoSubTypeFromCmd(cmd, fileAsset);
-    SetCameraShotKeyFromCmd(cmd, fileAsset);
-    SetCallingPackageName(cmd, fileAsset);
-    // Check rootdir and extention
-    int32_t errCode = CheckWithType(isContains, displayName, extention, mediaType);
+    SetFileAssetFromCmd(fileAsset, cmd, mediaType, fileResourceType);
+    int32_t errCode = CheckWithType(isContains, displayName, extention, mediaType);    // Check rootdir and extention
     CHECK_AND_RETURN_RET(errCode == E_OK, errCode);
-    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddAssetTime(photoId, AddAssetTimeStat::SET_FILE_ASSET);
     int32_t outRow = -1;
-    std::function<int(void)> func = [&]()->int {
-        errCode = isContains ? SetAssetPathInCreate(fileAsset, trans) : SetAssetPath(fileAsset, extention, trans);
-        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to Set Path, Name=%{private}s", displayName.c_str());
-        outRow = InsertAssetInDb(trans, cmd, fileAsset);
-        AuditLog auditLog = { true, "USER BEHAVIOR", "ADD", "io", 1, "running", "ok" };
-        HiAudit::GetInstance().Write(auditLog);
-        CHECK_AND_RETURN_RET_LOG(outRow > 0, E_HAS_DB_ERROR, "insert file in db failed, error = %{public}d", outRow);
-        fileAsset.SetId(outRow);
-        SolvePhotoAlbumInCreate(cmd, fileAsset);
-        return errCode;
-    };
-    errCode = trans->RetryTrans(func);
+    errCode = HandleTrans(fileAsset, extention, cmd, isContains, outRow);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddAssetTime(photoId, AddAssetTimeStat::UPDATE_DB);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "CreateV10: trans retry fail!, ret:%{public}d", errCode);
     string fileUri = CreateExtUriForV10Asset(fileAsset);
     if (isNeedGrant) {
@@ -903,7 +924,27 @@ int32_t MediaLibraryPhotoOperations::CreateV10(MediaLibraryCommand &cmd)
     }
     cmd.SetResult(fileUri);
     MediaLibraryObjectUtils::TryUpdateAnalysisProp(ANALYSIS_HAS_DATA);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddAssetTime(photoId, AddAssetTimeStat::END);
+    if (mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
+        MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CAPTURE_VIDEO_TIMES);
+    }
     return outRow;
+}
+
+int32_t MediaLibraryPhotoOperations::CreateV10(MediaLibraryCommand &cmd)
+{
+    ValuesBucket &values = cmd.GetValueBucket();
+    string photoId;
+    GetStringFromValuesBucket(values, PhotoColumn::PHOTO_ID, photoId);
+    MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CREATE_ASSET);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddAssetTime(photoId, AddAssetTimeStat::START);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(photoId, AddCaptureTimeStat::START);
+    int32_t ret = HandleCreateV10(cmd);
+    if (ret < 0) {
+        MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CREATE_ASSET_DB_ERROR);
+        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().RemoveTime(photoId);
+    }
+    return ret;
 }
 
 int32_t MediaLibraryPhotoOperations::DeletePhoto(const shared_ptr<FileAsset> &fileAsset, MediaLibraryApi api,
@@ -1606,9 +1647,31 @@ void MediaLibraryPhotoOperations::HandleContainsAddResource(const std::string &f
     MultistagesCaptureNotify::NotifyLowQualityMemoryCount();
 }
 
-void MediaLibraryPhotoOperations::HandleScanFile(const std::string &path, int32_t burstCoverLevel,
-    std::shared_ptr<Media::Picture> &resultPicture, const std::string &fileId)
+bool MediaLibraryPhotoOperations::CheckAndReport(bool cond, const int32_t &fileId,
+    CaptureFaultType faultType, const string &reason)
 {
+    if (!cond) {
+        vector<string> columns = {PhotoColumn::PHOTO_ID,};
+        shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(
+            PhotoColumn::MEDIA_ID, to_string(fileId), OperationObject::FILESYSTEM_PHOTO, columns);
+        MultiStagesCaptureDfxCaptureFault::Report(fileAsset->GetPhotoId(),
+            fileAsset->GetPhotoSubType(), faultType, reason);
+    }
+    return cond;
+}
+
+bool MediaLibraryPhotoOperations::HandleScanFile(std::shared_ptr<Media::Picture> &resultPicture,
+    const std::string &fileId)
+{
+    MediaLibraryTracer tracer;
+    fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, fileId,
+        OperationObject::FILESYSTEM_PHOTO, PHOTO_COLUMN_VECTOR);
+    CHECK_AND_RETURN_RET_LOG(CheckAndReport(fileAsset != nullptr, std::stoi(fileId),
+        CaptureFaultType::ASSET_FILE_CHECK_ERROR, "MultistagesCapture, get fileAsset fail"),
+        false, "MultistagesCapture, get fileAsset fail");
+    std::string path = fileAsset->GetPath();
+    int32_t burstCoverLevel = fileAsset->GetBurstCoverLevel();
+    tracer.Start("MediaLibraryPhotoOperations::Scan");
     if (!path.empty()) {
         MEDIA_INFO_LOG("MultistagesCapture, scan file start, fileId: %{public}s", fileId.c_str());
         if (burstCoverLevel == static_cast<int32_t>(BurstCoverLevelType::COVER)) {
@@ -1619,19 +1682,20 @@ void MediaLibraryPhotoOperations::HandleScanFile(const std::string &path, int32_
                 path, false, true, true, stoi(fileId));
         }
     }
+    tracer.Finish();
+    return true;
 }
 
-int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
+int32_t MediaLibraryPhotoOperations::HandleSaveCameraPhoto(MediaLibraryCommand &cmd)
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryPhotoOperations::SaveCameraPhoto");
     string fileId = cmd.GetQuerySetParam(PhotoColumn::MEDIA_ID);
     bool cond = fileId.empty() && !MediaLibraryDataManagerUtils::IsNumber(fileId);
-    CHECK_AND_RETURN_RET_LOG(!cond, 0, "MultistagesCapture, get fileId fail");
-
+    CHECK_AND_RETURN_RET_LOG(CheckAndReport(!cond, std::stoi(fileId), CaptureFaultType::ASSET_FILE_CHECK_ERROR,
+        "MultistagesCapture, get fileId fail"), 0, "MultistagesCapture, get fileId fail");
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture, start save fileId: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, fileId.c_str());
-
     std::string containsAddResource = cmd.GetQuerySetParam(CONTAIN_ADD_RESOURCE);
     if (!containsAddResource.empty()) {
         HandleContainsAddResource(fileId, containsAddResource);
@@ -1643,7 +1707,8 @@ int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
     PhotoExtInfo photoExtInfo = {"", MIME_TYPE_JPEG, "", "", nullptr};
     int32_t ret = UpdateIsTempAndDirty(cmd, fileId, fileType, getPicRet, photoExtInfo);
     tracer.Finish();
-    CHECK_AND_RETURN_RET_LOG(ret >= 0, 0, "UpdateIsTempAndDirty failed, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(CheckAndReport(ret >= 0, std::stoi(fileId), CaptureFaultType::UPDATE_DB_TIMEOUT,
+        "UpdateIsTempAndDirty failed"), 0, "UpdateIsTempAndDirty failed, ret: %{public}d", ret);
     if (photoExtInfo.oldFilePath != "") {
         UpdateEditDataPath(photoExtInfo.oldFilePath, photoExtInfo.extension);
     }
@@ -1659,19 +1724,29 @@ int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
             fileId.c_str(), ret);
         return ret;
     }
-
     string needScanStr = cmd.GetQuerySetParam(MEDIA_OPERN_KEYWORD);
-    shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, fileId,
-        OperationObject::FILESYSTEM_PHOTO, PHOTO_COLUMN_VECTOR);
-    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, 0, "MultistagesCapture, get fileAsset fail");
-    std::string path = fileAsset->GetPath();
-    int32_t burstCoverLevel = fileAsset->GetBurstCoverLevel();
-    tracer.Start("MediaLibraryPhotoOperations::Scan");
-    HandleScanFile(path, burstCoverLevel, resultPicture, fileId);
-    tracer.Finish();
+    CHECK_AND_RETURN_RET(HandleScanFile(resultPicture, fileId), 0);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "MultistagesCapture Success, fileId: %{public}s, ret: %{public}d, needScanStr: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, fileId.c_str(), ret, needScanStr.c_str());
+    return ret;
+}
+
+int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
+{
+    MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::SAVE_ASSET);
+    string photoId = cmd.GetQuerySetParam(PhotoColumn::PHOTO_ID);
+    int32_t subType = std::stoi(cmd.GetQuerySetParam(PhotoColumn::PHOTO_SUBTYPE));
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::START);
+    int32_t ret = HandleSaveCameraPhoto(cmd);
+    if (ret <= 0) {
+        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().RemoveTime(photoId);
+    } else {
+        MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(
+            CaptureMessageType::CAPTURE_IMAGE_TIMES_SUCCESS);
+        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::END);
+        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().Report(photoId, false, subType);
+    }
     return ret;
 }
 
@@ -3787,28 +3862,51 @@ int32_t MediaLibraryPhotoOperations::ForceSavePicture(MediaLibraryCommand& cmd)
     return E_OK;
 }
 
-int32_t UpdateQualityAndDirty(const int32_t &fileId)
+void UpdateQualityAndDirty(const int32_t &fileId, bool isHighQualityPicture)
 {
-    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
-    ValuesBucket values;
-    values.Put(PhotoColumn::PHOTO_QUALITY, static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
-    values.Put(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_NEW));
-    int32_t updatedRows = MediaLibraryRdbStore::UpdateWithDateTime(values, predicates);
-    return updatedRows;
+    if (isHighQualityPicture) {
+        RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+        predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
+        ValuesBucket values;
+        values.Put(PhotoColumn::PHOTO_QUALITY, static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
+        values.Put(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_NEW));
+        int32_t updatedRows = MediaLibraryRdbStore::UpdateWithDateTime(values, predicates);
+        CHECK_AND_PRINT_LOG(updatedRows >= 0, "update photo quality fail.");
+        MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE);
+    }
+}
+
+int32_t MediaLibraryPhotoOperations::CheckSavePicture(const int32_t getPicRet, PhotoExtInfo &photoExtInfo,
+    shared_ptr<FileAsset> &fileAsset, string &assetPath, const int32_t &fileId)
+{
+    CHECK_AND_RETURN_RET_LOG(CheckAndReport(getPicRet == E_OK && photoExtInfo.picture != nullptr,
+        fileId, CaptureFaultType::ASSET_FILE_CHECK_ERROR, "Failed get picture"),
+        E_FILE_EXIST, "Failed get picture");
+    fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, to_string(fileId),
+        OperationObject::FILESYSTEM_PHOTO, EDITED_COLUMN_VECTOR);
+    CHECK_AND_RETURN_RET_LOG(CheckAndReport(fileAsset != nullptr,
+        fileId, CaptureFaultType::ASSET_FILE_CHECK_ERROR, "fileAsset is nullptr"),
+        E_INVALID_VALUES, "fileAsset is nullptr");
+    assetPath = fileAsset->GetFilePath();
+    CHECK_AND_RETURN_RET_LOG(CheckAndReport(!assetPath.empty()
+        fileId, CaptureFaultType::ASSET_FILE_CHECK_ERROR, "Failed to get asset path"),
+        E_INVALID_VALUES, "Failed to get asset path");
+    return E_OK;
 }
 
 int32_t MediaLibraryPhotoOperations::SavePicture(const int32_t &fileType, const int32_t &fileId,
     const int32_t getPicRet, PhotoExtInfo &photoExtInfo, std::shared_ptr<Media::Picture> &resultPicture)
 {
+    std::string photoId;
+    GetPhotoIdByFileId(fileId, photoId);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::SAVE_PICTURE);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} savePicture fileType is: %{public}d, fileId is: %{public}d",
         MLOG_TAG, __FUNCTION__, __LINE__, fileType, fileId);
-    CHECK_AND_RETURN_RET_LOG(getPicRet == E_OK && photoExtInfo.picture != nullptr, E_FILE_EXIST, "Failed get picture");
-    auto fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, to_string(fileId),
-                                        OperationObject::FILESYSTEM_PHOTO, EDITED_COLUMN_VECTOR);
-    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
-    string assetPath = fileAsset->GetFilePath();
-    CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_INVALID_VALUES, "Failed to get asset path");
+    shared_ptr<FileAsset> fileAsset;
+    string assetPath;
+    int32_t ret = CheckSavePicture(getPicRet, photoExtInfo, fileAsset, assetPath, fileId);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::GET_FILE_ASSET);
     string editData = "";
     string editDataCameraPath = GetEditDataCameraPath(assetPath);
     bool existEditData = (ReadEditdataFromFile(editDataCameraPath, editData) == E_OK);
@@ -3818,20 +3916,19 @@ int32_t MediaLibraryPhotoOperations::SavePicture(const int32_t &fileType, const 
     } else {
         FileUtils::DealPicture(photoExtInfo.format, assetPath, photoExtInfo.picture, photoExtInfo.isHighQualityPicture);
     }
-    std::string photoId;
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::DEAL_PICTURE);
     std::shared_ptr<Media::Picture> picture;
     bool isHighQualityPicture = false;
     if (existEditData && GetPicture(fileId, picture, false, photoId, isHighQualityPicture) == E_OK &&
         GetTakeEffect(picture, photoId) == E_OK) {
         int32_t ret = MediaChangeEffect::TakeEffectForPicture(picture, editData);
+        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::TAKE_EFFECT);
         FileUtils::DealPicture(photoExtInfo.format, assetPath, picture, isHighQualityPicture);
+        MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::SAVE_EFFECT);
     }
     isHighQualityPicture = (picture == nullptr) ? photoExtInfo.isHighQualityPicture : isHighQualityPicture;
-    if (isHighQualityPicture) {
-        int32_t updatedRows = UpdateQualityAndDirty(fileId);
-        CHECK_AND_PRINT_LOG(updatedRows >= 0, "update photo quality fail.");
-        MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE);
-    }
+    UpdateQualityAndDirty(fileId, isHighQualityPicture);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::UPDATE_DB);
     resultPicture = (picture == nullptr) ? photoExtInfo.picture : picture;
     photoId = (picture == nullptr) ? photoExtInfo.photoId : photoId;
     auto pictureManagerThread = PictureManagerThread::GetInstance();

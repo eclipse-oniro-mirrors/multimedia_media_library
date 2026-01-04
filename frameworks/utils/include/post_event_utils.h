@@ -72,6 +72,22 @@ const std::string KEY_AUTO_COUNT = "AUTO_COUNT";
 const std::string KEY_PHOTO_ID = "PHOTO_ID";
 const std::string KEY_TOTAL_TIME_COST = "TOTAL_TIME_COST";
 
+const std::string KEY_IS_DECODING = "IS_DECODING";
+const std::string KEY_MEDIA_SUBTYPE = "MEDIA_SUBTYPE";
+const std::string KEY_CREATE_ASSET_TIME = "CREATE_ASSET_TIME";
+const std::string KEY_PHOTO_CAPTURE_TIME = "PHOTO_CAPTURE_TIME";
+const std::string KEY_SAVE_CAMERA_TIME = "SAVE_CAMERA_TIME";
+
+const std::string KEY_FAULT_TYPE = "FAULT_TYPE";
+const std::string KEY_FAULT_REASON = "FAULT_REASON";
+
+const std::string KEY_CREATE_ASSET = "CREATE_ASSET";
+const std::string KEY_CREATE_ASSET_DB_ERROR = "CREATE_ASSET_DB_ERROR";
+const std::string KEY_SAVE_ASSET = "SAVE_ASSET";
+const std::string KEY_CAPTURE_IMAGE_TIMES_SUCCESS = "CAPTURE_IMAGE_TIMES_SUCCESS";
+const std::string KEY_CAPTURE_VIDEO_TIMES = "CAPTURE_VIDEO_TIMES";
+const std::string KEY_CAPTURE_VIDEO_TIMES_SUCCESS = "CAPTURE_VIDEO_TIMES_SUCCESS";
+
 const std::string KEY_RESULT = "RESULT";
 const std::string KEY_MEDIA_TYPE = "MEDIA_TYPE";
 
@@ -139,6 +155,9 @@ enum StatType {
     MSC_TOTAL_TIME_COST_STAT,
     MSC_RESULT_STAT,
     CLOUD_ENHANCEMENT_GET_COUNT_STAT,
+    MSC_SAVE_CAMERA_PHOTO_STAT,
+    MSC_CAPTURE_FAULT_STAT,
+    MSC_CAPTURE_TIMES,
 };
 using VariantMap = std::map<std::string, std::variant<int32_t, int64_t, std::string>>;
 
@@ -167,6 +186,10 @@ private:
     COMPILE_HIDDEN void PostMscResultStat(const VariantMap &stat);
     COMPILE_HIDDEN void PostCloudEnhanceStat(const VariantMap &stat);
     COMPILE_HIDDEN void PostDatabaseCorruption(const VariantMap &errMap);
+    COMPILE_HIDDEN void PostSaveCameraPhotoStat(const VariantMap &stat);
+    COMPILE_HIDDEN void PostCaptureFaultStat(const VariantMap &stat);
+    COMPILE_HIDDEN void PostCaptureTimesStat(const VariantMap &stat);
+
 
     COMPILE_HIDDEN int GetIntValue(const std::string &key, const VariantMap &map);
     COMPILE_HIDDEN int64_t GetInt64Value(const std::string &key, const VariantMap &map);

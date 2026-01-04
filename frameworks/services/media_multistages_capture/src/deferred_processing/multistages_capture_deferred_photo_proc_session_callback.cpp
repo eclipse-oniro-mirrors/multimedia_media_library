@@ -34,6 +34,7 @@
 #include "multistages_capture_notify.h"
 #include "multistages_capture_dfx_result.h"
 #include "multistages_capture_dfx_total_time.h"
+#include "multistages_capture_dfx_save_camera_photo.h"
 #include "multistages_capture_notify_info.h"
 #include "multistages_capture_request_task_manager.h"
 #include "multistages_moving_photo_capture_manager.h"
@@ -426,6 +427,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::UpdateHighQualityPictur
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityImage(const std::string &imageId,
     std::shared_ptr<PictureIntf> pictureIntf)
 {
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(imageId, AddCaptureTimeStat::END);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture photoid: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, imageId.c_str());
     std::shared_ptr<Media::Picture> picture = GetPictureFromPictureIntf(pictureIntf);
