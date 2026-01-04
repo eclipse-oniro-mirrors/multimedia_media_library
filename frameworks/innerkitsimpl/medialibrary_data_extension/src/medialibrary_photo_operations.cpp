@@ -1652,7 +1652,7 @@ bool MediaLibraryPhotoOperations::CheckAndReport(bool cond, const int32_t &fileI
     CaptureFaultType faultType, const string &reason)
 {
     if (!cond) {
-        vector<string> columns = {PhotoColumn::PHOTO_ID,};
+        vector<string> columns = {PhotoColumn::PHOTO_ID,PhotoColumn::PHOTO_SUBTYPE};
         shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(
             PhotoColumn::MEDIA_ID, to_string(fileId), OperationObject::FILESYSTEM_PHOTO, columns);
         MultiStagesCaptureDfxCaptureFault::Report(fileAsset->GetPhotoId(),

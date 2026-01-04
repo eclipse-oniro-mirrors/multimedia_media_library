@@ -335,7 +335,7 @@ void PostEventUtils::PostCaptureTimesStat(const VariantMap &stat)
         MEDIA_LIBRARY,
         "MEDIALIB_MSC_CAPTURE_TIMES",
         HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        KEY_CREATE_ASSET, createAssetTime,
+        KEY_CREATE_ASSET, createAssetTimes,
         KEY_CREATE_ASSET_DB_ERROR, createAssetDbErrorTimes,
         KEY_SAVE_ASSET, saveAssetTimes,
         KEY_CAPTURE_IMAGE_TIMES_SUCCESS, captureImageSuccessTimes,

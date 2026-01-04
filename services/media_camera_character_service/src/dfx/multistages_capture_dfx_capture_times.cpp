@@ -84,9 +84,6 @@ void MultiStagesCaptureDfxCaptureTimes::Clear()
     captureVideoSuccessTimes = 0;
 }
 
-
-
-
 void MultiStagesCaptureDfxCaptureTimes::Report()
 {
     MEDIA_INFO_LOG("Report MultiStagesCaptureDfxCaptureTimes");

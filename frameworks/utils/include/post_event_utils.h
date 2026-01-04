@@ -190,7 +190,6 @@ private:
     COMPILE_HIDDEN void PostCaptureFaultStat(const VariantMap &stat);
     COMPILE_HIDDEN void PostCaptureTimesStat(const VariantMap &stat);
 
-
     COMPILE_HIDDEN int GetIntValue(const std::string &key, const VariantMap &map);
     COMPILE_HIDDEN int64_t GetInt64Value(const std::string &key, const VariantMap &map);
     COMPILE_HIDDEN std::string GetStringValue(const std::string &key, const VariantMap &map);

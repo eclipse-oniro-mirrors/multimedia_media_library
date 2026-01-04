@@ -57,6 +57,8 @@ public:
 private:
     MultiStagesCaptureDfxCaptureTimes();
     ~MultiStagesCaptureDfxCaptureTimes();
+    GetResultString(const std::string &photoId,
+        std::string &createAssetTime, std::string &photoCaptureTime, std::string &saveCameraTime);
     std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>>> times_;
     std::mutex addTimeMutex_;
     const std::unordered_map<int32_t, std::string> AddAssetTimeStatMap = {
