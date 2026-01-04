@@ -32,12 +32,12 @@ MultiStagesCaptureDfxSaveCameraPhoto& MultiStagesCaptureDfxSaveCameraPhoto::GetI
 }
 
 void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photoId, AddAssetTimeStat stat)
-{   
+{
     std::lock_guard<std::mutex> lock(addTimeMutex_);
-    if (stat != AddAssetTimeStat::START && 
-        (times_.empty() || times_.find(photoId) == times_.end() || 
-        times_[photoId].find(KEY_CREATE_ASSET_TIME) == times_[photoId].end() || 
-        times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) == 
+    if (stat != AddAssetTimeStat::START &&
+        (times_.empty() || times_.find(photoId) == times_.end() ||
+        times_[photoId].find(KEY_CREATE_ASSET_TIME) == times_[photoId].end() ||
+        times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) ==
         times_[photoId][KEY_CREATE_ASSET_TIME].end())) {
         return;
     }
@@ -66,10 +66,10 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photo
 void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &photoId, AddCaptureTimeStat stat)
 {
     std::lock_guard<std::mutex> lock(addTimeMutex_);
-    if (stat != AddCaptureTimeStat::START && 
-        (times_.empty() || times_.find(photoId) == times_.end() || 
-        times_[photoId].find(KEY_PHOTO_CAPTURE_TIME) == times_[photoId].end() || 
-        times_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::START)) == 
+    if (stat != AddCaptureTimeStat::START &&
+        (times_.empty() || times_.find(photoId) == times_.end() ||
+        times_[photoId].find(KEY_PHOTO_CAPTURE_TIME) == times_[photoId].end() ||
+        times_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::START)) ==
         times_[photoId][KEY_PHOTO_CAPTURE_TIME].end())) {
         return;
     }
@@ -97,10 +97,10 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &pho
 void MultiStagesCaptureDfxSaveCameraPhoto::AddSaveTime(const std::string &photoId, AddSaveTimeStat stat)
 {
     std::lock_guard<std::mutex> lock(addTimeMutex_);
-    if (stat != AddSaveTimeStat::START && 
-        (times_.empty() || times_.find(photoId) == times_.end() || 
-        times_[photoId].find(KEY_SAVE_CAMERA_TIME) == times_[photoId].end() || 
-        times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) == 
+    if (stat != AddSaveTimeStat::START &&
+        (times_.empty() || times_.find(photoId) == times_.end() ||
+        times_[photoId].find(KEY_SAVE_CAMERA_TIME) == times_[photoId].end() ||
+        times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) ==
         times_[photoId][KEY_SAVE_CAMERA_TIME].end())) {
         return;
     }

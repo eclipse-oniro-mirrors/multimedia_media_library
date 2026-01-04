@@ -31,6 +31,9 @@
 #include "rdb_predicates.h"
 #include "medialibrary_rdbstore.h"
 #include "camera_character_types.h"
+#include "multistages_capture_dfx_capture_fault.h"
+#include "multistages_capture_dfx_capture_times.h"
+#include "multistages_capture_dfx_save_camera_photo.h"
 
 namespace OHOS {
 namespace Media {

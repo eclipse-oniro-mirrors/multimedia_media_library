@@ -66,9 +66,6 @@
 #include "multistages_capture_notify_info.h"
 #include "medialibrary_notify_new.h"
 #include "multistages_capture_notify.h"
-#include "multistages_capture_dfx_capture_fault.h"
-#include "multistages_capture_dfx_capture_times.h"
-#include "multistages_capture_dfx_save_camera_photo.h"
 #include "cloud_media_define.h"
 #include "cloud_media_common.h"
 
@@ -1652,7 +1649,7 @@ bool MediaLibraryPhotoOperations::CheckAndReport(bool cond, const int32_t &fileI
     CaptureFaultType faultType, const string &reason)
 {
     if (!cond) {
-        vector<string> columns = {PhotoColumn::PHOTO_ID,PhotoColumn::PHOTO_SUBTYPE};
+        vector<string> columns = {PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_SUBTYPE};
         shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(
             PhotoColumn::MEDIA_ID, to_string(fileId), OperationObject::FILESYSTEM_PHOTO, columns);
         MultiStagesCaptureDfxCaptureFault::Report(fileAsset->GetPhotoId(),

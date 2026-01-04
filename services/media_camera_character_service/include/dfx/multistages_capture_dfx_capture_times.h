@@ -51,7 +51,6 @@ private:
     int64_t lastReportTime_ {MediaFileUtils::UTCTimeMilliSeconds()};
     std::mutex captureTimeMutex_;
     volatile bool isReporting_ {false};
-    
 };
 }
 }
