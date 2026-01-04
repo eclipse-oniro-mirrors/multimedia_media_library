@@ -1186,6 +1186,7 @@ int32_t MediaAlbumsService::CreateAnalysisAlbum(CreateAnalysisAlbumDto &dto, Cre
 {
     std::string albumName = dto.albumName;
     auto rowId = MediaLibraryAlbumOperations::CreatePortraitAlbum(albumName);
+    CHECK_AND_RETURN_RET_LOG(rowId > 0, E_INNER_FAIL, "Failed to createportraitalbum");
     respBody.albumId = rowId;
     return E_OK;
 }

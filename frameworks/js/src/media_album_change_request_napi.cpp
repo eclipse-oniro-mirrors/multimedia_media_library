@@ -2275,17 +2275,6 @@ static bool CreateAnalysisAlbumExecute(MediaAlbumChangeRequestAsyncContext& cont
         return false;
     }
 
-    if (respBody.albumId == -1) {
-        context.SaveError(-EEXIST);
-        NAPI_ERR_LOG("Album exists");
-        return false;
-    }
-
-    if (respBody.albumId < 0) {
-        context.SaveError(ret);
-        NAPI_ERR_LOG("Failed to create album, ret: %{public}d", ret);
-        return false;
-    }
     photoAlbum->SetAlbumId(respBody.albumId);
     photoAlbum->SetAlbumUri(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX + to_string(respBody.albumId));
 

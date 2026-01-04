@@ -649,32 +649,33 @@ int32_t MediaLibraryAlbumOperations::CreatePortraitAlbum(const string &albumName
 
     // Build insert sql
     string insertsql;
+    string valuesql;
     vector<ValueObject> bindArgs;
-    insertsql.append("INSERT").append(" OR ROLLBACK").append(" INTO ").append("AnalysisAlbum").append(" ");
+    insertsql.append("INSERT").append(" INTO ").append("AnalysisAlbum").append(" ");
 
-    MediaLibraryRdbStore::BuildValuesSql(albumValues, bindArgs, insertsql);
-
-    RdbPredicates wherePredicates("AnalysisAlbum");
-    wherePredicates.EqualTo(ALBUM_NAME, albumName);
-    wherePredicates.EqualTo(ALBUM_TYPE, to_string(PhotoAlbumType::SMART));
-    wherePredicates.EqualTo(ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::PORTRAIT));
-    insertsql.append(" WHERE NOT EXISTS (");
-
-    MediaLibraryRdbStore::BuildQuerySql(wherePredicates, { ALBUM_ID }, bindArgs, insertsql);
-    insertsql.append(")");
+    map<string, ValueObject> valuesMap;
+    albumValues.GetAll(valuesMap);
+    insertsql.append("(");
+    for (auto iter = valuesMap.begin(); iter != valuesMap.end(); iter++) {
+        insertsql.append(((iter == valuesMap.begin()) ? "" : ", "));
+        insertsql.append(iter->first);
+        bindArgs.push_back(iter->second);
+        valuesql.append(((iter == valuesMap.begin()) ? "?" : ", ?"));
+    }
+    insertsql.append(") VALUES (").append(valuesql).append(")");
     MEDIA_DEBUG_LOG("CreatePortraitAlbum InsertSql: %{private}s", insertsql.c_str());
 
-    int64_t lastInsertRowId = 0;
-    AlbumAccurateRefresh albumRefresh(AccurateRefresh::CREATE_PHOTO_TABLE_BUSSINESS_NAME);
-    albumRefresh.Init();
-    lastInsertRowId = albumRefresh.ExecuteForLastInsertedRowId(insertsql, bindArgs, RdbOperation::RDB_OPERATION_ADD);
-    CHECK_AND_RETURN_RET_LOG(lastInsertRowId >= 0, lastInsertRowId, "insert fail and rollback");
-    MEDIA_INFO_LOG("Create photo album success, id: %{public}" PRId64, lastInsertRowId);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "CreatePortraitAlbum failed. rdbStore is null");
+    int32_t rowId = rdbStore->ExecuteForLastInsertedRowId(insertsql, bindArgs);
+    CHECK_AND_RETURN_RET_LOG(rowId > 0, rowId, "insert fail");
+    MEDIA_INFO_LOG("Create photo album success, id: %{public}d, albumName: %{public}s",
+        rowId, DfxUtils::GetSafeAlbumNameWhenChinese(albumName).c_str());
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
     watch->Notify(MediaFileUtils::GetUriByExtrConditions(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX,
-        std::to_string(lastInsertRowId)), NotifyType::NOTIFY_ADD);
-    return lastInsertRowId;
+        std::to_string(rowId)), NotifyType::NOTIFY_ADD);
+    return rowId;
 }
 
 int CreatePhotoAlbum(MediaLibraryCommand &cmd)
