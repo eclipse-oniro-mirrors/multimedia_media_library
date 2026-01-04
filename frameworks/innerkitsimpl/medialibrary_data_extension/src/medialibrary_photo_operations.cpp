@@ -852,8 +852,9 @@ int32_t MediaLibraryPhotoOperations::HandleTrans(FileAsset &fileAsset, const str
     MediaLibraryCommand &cmd, bool isContains, int32_t &outRow)
 {
     std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
-    int32_t outRow = -1;
+    outRow = -1;
     int32_t errCode;
+    string displayName = fileAsset.GetDisplayName();
     std::function<int(void)> func = [&]()->int {
         errCode = isContains ? SetAssetPathInCreate(fileAsset, trans) : SetAssetPath(fileAsset, extention, trans);
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to Set Path, Name=%{private}s", displayName.c_str());
@@ -1662,7 +1663,7 @@ bool MediaLibraryPhotoOperations::HandleScanFile(std::shared_ptr<Media::Picture>
     const std::string &fileId)
 {
     MediaLibraryTracer tracer;
-    fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, fileId,
+    auto fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, fileId,
         OperationObject::FILESYSTEM_PHOTO, PHOTO_COLUMN_VECTOR);
     CHECK_AND_RETURN_RET_LOG(CheckAndReport(fileAsset != nullptr, std::stoi(fileId),
         CaptureFaultType::ASSET_FILE_CHECK_ERROR, "MultistagesCapture, get fileAsset fail"),
@@ -3860,7 +3861,7 @@ int32_t MediaLibraryPhotoOperations::ForceSavePicture(MediaLibraryCommand& cmd)
     return E_OK;
 }
 
-void UpdateQualityAndDirty(const int32_t &fileId, bool isHighQualityPicture)
+void UpdateQualityAndDirty(const int32_t &fileId, bool isHighQualityPicture, shared_ptr<FileAsset> &fileAsset)
 {
     if (isHighQualityPicture) {
         RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
@@ -3886,7 +3887,7 @@ int32_t MediaLibraryPhotoOperations::CheckSavePicture(const int32_t getPicRet, P
         fileId, CaptureFaultType::ASSET_FILE_CHECK_ERROR, "fileAsset is nullptr"),
         E_INVALID_VALUES, "fileAsset is nullptr");
     assetPath = fileAsset->GetFilePath();
-    CHECK_AND_RETURN_RET_LOG(CheckAndReport(!assetPath.empty()
+    CHECK_AND_RETURN_RET_LOG(CheckAndReport(!assetPath.empty(),
         fileId, CaptureFaultType::ASSET_FILE_CHECK_ERROR, "Failed to get asset path"),
         E_INVALID_VALUES, "Failed to get asset path");
     return E_OK;
@@ -3925,7 +3926,7 @@ int32_t MediaLibraryPhotoOperations::SavePicture(const int32_t &fileType, const 
         MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::SAVE_EFFECT);
     }
     isHighQualityPicture = (picture == nullptr) ? photoExtInfo.isHighQualityPicture : isHighQualityPicture;
-    UpdateQualityAndDirty(fileId, isHighQualityPicture);
+    UpdateQualityAndDirty(fileId, isHighQualityPicture, fileAsset);
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::UPDATE_DB);
     resultPicture = (picture == nullptr) ? photoExtInfo.picture : picture;
     photoId = (picture == nullptr) ? photoExtInfo.photoId : photoId;

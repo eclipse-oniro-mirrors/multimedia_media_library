@@ -16,9 +16,9 @@
 #define MLOG_TAG "MultiStagesCaptureDfxCameraPhoto"
 
 #include "multistages_capture_dfx_save_camera_photo.h"
-
 #include "media_log.h"
 #include "post_event_utils.h"
+#include "media_file_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -57,7 +57,7 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photo
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
         };
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times =  {
-            {KEY_CREATE_ASSET_TIME, stat}
+            {KEY_CREATE_ASSET_TIME, stats}
         };
         times_.emplace(photoId, times);
     }
@@ -88,7 +88,7 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &pho
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
         };
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times = {
-            {KEY_PHOTO_CAPTURE_TIME, stat}
+            {KEY_PHOTO_CAPTURE_TIME, stats}
         };
         times_.emplace(photoId, times);
     }
@@ -119,7 +119,7 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddSaveTime(const std::string &photoI
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
         };
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times = {
-            {KEY_SAVE_CAMERA_TIME, stat}
+            {KEY_SAVE_CAMERA_TIME, stats}
         };
         times_.emplace(photoId, times);
     }
@@ -144,14 +144,15 @@ if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) !=
         times_[photoId][KEY_CREATE_ASSET_TIME].end()) {
         auto stats = times_[photoId][KEY_CREATE_ASSET_TIME];
-        createAssetTime = createAssetTime + "total : " + to_string(stats[static_cast<int32_t>(AddAssetTimeStat::END)]
+        createAssetTime = createAssetTime + "total : " +
+            std::to_string(stats[static_cast<int32_t>(AddAssetTimeStat::END)]
             - stats[static_cast<int32_t>(AddAssetTimeStat::START)]) + ",";
         for (int32_t i = static_cast<int32_t>(AddAssetTimeStat::START) + 1;
             i < static_cast<int32_t>(AddAssetTimeStat::END); ++i) {
             if (stats.find(i) != stats.end()) {
                 auto it = AddAssetTimeStatMap.find(i);
                 createAssetTime = createAssetTime + it->second + " : "
-                    + to_string(stats[i] - stats[static_cast<int32_t>(AddAssetTimeStat::START)]) + ",";
+                    + std::to_string(stats[i] - stats[static_cast<int32_t>(AddAssetTimeStat::START)]) + ",";
             }
         }
     }
@@ -163,7 +164,7 @@ if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_PHOTO_CAPTURE_TIME].end()) {
         auto stats = times_[photoId][KEY_PHOTO_CAPTURE_TIME];
         photoCaptureTime = photoCaptureTime + "total : " +
-            to_string(stats[static_cast<int32_t>(AddCaptureTimeStat::END)]
+            std::to_string(stats[static_cast<int32_t>(AddCaptureTimeStat::END)]
             - stats[static_cast<int32_t>(AddCaptureTimeStat::START)]) + ",";
     }
 
@@ -173,14 +174,15 @@ if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) !=
         times_[photoId][KEY_SAVE_CAMERA_TIME].end()) {
         auto stats = times_[photoId][KEY_SAVE_CAMERA_TIME];
-        saveCameraTime = saveCameraTime + "total : " + to_string(stats[static_cast<int32_t>(AddSaveTimeStat::END)]
+        saveCameraTime = saveCameraTime + "total : " +
+            std::to_string(stats[static_cast<int32_t>(AddSaveTimeStat::END)]
             - stats[static_cast<int32_t>(AddSaveTimeStat::START)]) + ",";
         for (int32_t i = static_cast<int32_t>(AddSaveTimeStat::START) + 1;
             i < static_cast<int32_t>(AddSaveTimeStat::END); ++i) {
             if (stats.find(i) != stats.end()) {
                 auto it = AddSaveTimeStatMap.find(i);
                 saveCameraTime = saveCameraTime + it->second + " : "
-                    + to_string(stats[i] - stats[static_cast<int32_t>(AddSaveTimeStat::START)]) + ",";
+                    + std::to_string(stats[i] - stats[static_cast<int32_t>(AddSaveTimeStat::START)]) + ",";
             }
         }
     }

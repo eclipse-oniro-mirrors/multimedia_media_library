@@ -222,7 +222,7 @@ private:
     static int32_t EnableYuvAndNotify(const std::shared_ptr<FileAsset> &fileAsset,
         std::shared_ptr<Media::Picture> &picture, bool isEdited, bool isTakeEffect,
         const std::string imageId, const int32_t fileId);
-    static void HandleScanFile(std::shared_ptr<Media::Picture> &resultPicture,
+    static bool HandleScanFile(std::shared_ptr<Media::Picture> &resultPicture,
         const std::string &fileId);
     static void HandleContainsAddResource(const std::string &fileId, const std::string containsAddResource);
 
