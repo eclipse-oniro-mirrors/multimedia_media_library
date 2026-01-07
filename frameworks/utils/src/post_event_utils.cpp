@@ -308,7 +308,7 @@ void PostEventUtils::PostCaptureFaultStat(const VariantMap &stat)
 {
     string photoId = GetStringValue(KEY_PHOTO_ID, stat);
     int mediaSubtype = GetIntValue(KEY_MEDIA_SUBTYPE, stat);
-    string faultType = GetStringValue(KEY_FAULT_TYPE, stat);
+    int faultType = GetIntValue(KEY_FAULT_TYPE, stat);
     string faultReason = GetStringValue(KEY_FAULT_REASON, stat);
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
