@@ -30,23 +30,35 @@ ohos_unittest("media_notification_register_manager_test") {
     "./include",
     "../get_self_permissions/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include",
   ]
  
   sources = [
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "src/media_notification_register_manager_test.cpp",
     "src/media_notify_asset_manager_observer_test.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/register_manager/media_observer_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/register_manager/notify_register_permission.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/register_manager/observer_callback_recipient.cpp",
     "${MEDIALIB_JS_PATH}/src/medialibrary_notify_asset_manager_observer.cpp",
+    "${MEDIALIB_JS_PATH}/src/medialibrary_notify_utils.cpp",
   ]
+  media_permission_source = [
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/abs_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/db_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/grant_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/media_tool_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/pemission_common.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/read_write_permission_handler.cpp",
+  ]
+
+  sources += media_permission_source
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
-    "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
   ]
  
   external_deps = [
@@ -65,6 +77,8 @@ ohos_unittest("media_notification_register_manager_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "ipc:ipc_napi",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
   ]
  
   defines = []
@@ -79,6 +93,8 @@ ohos_unittest("media_notification_register_manager_test") {
  
   cflags = [
     "-fno-access-control",  # Ignore Private Member Access Control
+    "-Dprivate=public",
+    "-Dprotected=public",
   ]
  
   cflags_cc = cflags

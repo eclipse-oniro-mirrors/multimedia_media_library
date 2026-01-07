@@ -41,7 +41,7 @@ public:
     EXPORT static std::string GetEditDataSourceTempPath(const std::string &photoPath, int32_t userId = -1);
     EXPORT static bool IsEditDataSourceBackExists(const std::string &photoPath, int32_t userId = -1);
     EXPORT static bool HasEditData(int64_t editTime);
-    EXPORT static bool HasSource(bool hasEditDataCamera, int64_t editTime, int32_t effectMode);
+    EXPORT static bool HasSource(bool hasEditDataCamera, int64_t editTime, int32_t effectMode, int32_t subtype = 0);
 
     EXPORT static int32_t GetMetaPathFromOrignalPath(const std::string &srcPath, std::string &metaPath);
     EXPORT static std::string GetMetaDataRealPath(const std::string &photoPath, int32_t userId = -1);

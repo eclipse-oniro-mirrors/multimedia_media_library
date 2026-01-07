@@ -1,0 +1,116 @@
+# Copyright (C) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+ 
+import("//build/config/components/memory_utils/purgeable_mem_config.gni")
+import("//build/ohos.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+ 
+config("analysis_data_kits_config") {
+  include_dirs = [
+    "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+  ]
+}
+ 
+ohos_shared_library("analysis_data_kits") {
+  install_enable = true
+ 
+  sources = [
+    "./analysis_data_manager.cpp",
+    "./vo/get_asset_analysis_data_vo.cpp",
+    "./vo/get_index_construct_progress_vo.cpp",
+    "./vo/start_asset_analysis_vo.cpp",
+    "./vo/change_request_set_order_position_vo.cpp",
+    "./vo/get_order_position_vo.cpp",
+    "./vo/change_request_set_relationship_vo.cpp",
+    "./vo/get_relationship_vo.cpp",
+    "./vo/get_face_id_vo.cpp",
+    "./vo/get_analysis_process_vo.cpp",
+    "${MEDIALIB_COMMON_PATH}/utils/src/media_time_utils.cpp",
+  ]
+ 
+  include_dirs = [
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo",
+  ]
+ 
+  user_ipc_client_include_dirs = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
+  ]
+ 
+  user_ipc_client_source = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_inner_ipc_client.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/media_itypes_utils.cpp",
+  ]
+ 
+  include_dirs += user_ipc_client_include_dirs
+  sources += user_ipc_client_source
+ 
+  public_configs = [ ":analysis_data_kits_config" ]
+ 
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+  ]
+ 
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libprivacy_sdk",
+    "access_token:libtokenid_sdk",
+    "app_file_service:fileuri_native",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "samgr:samgr_proxy",
+    "ipc:ipc_core",
+  ]
+ 
+  ldflags = [ "-Wl,--gc-sections" ]
+ 
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
+ 
+  cflags_cc = [ "-Os" ]
+ 
+  if (!media_library_link_opt) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+      ubsan = true
+      boundary_sanitize = true
+      stack_protector_ret = true
+    }
+  }
+ 
+  defines = []
+  defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+ 
+  part_name = "media_library"
+  subsystem_name = "multimedia"
+}

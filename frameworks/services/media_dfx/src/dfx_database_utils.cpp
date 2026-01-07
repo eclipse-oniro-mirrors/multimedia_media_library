@@ -829,5 +829,43 @@ int32_t DfxDatabaseUtils::QueryAncoPhotosFormatAndCount(AncoCountFormatInfo &rep
     return E_OK;
 }
 
+std::vector<std::string> DfxDatabaseUtils::QueryAlbumNamesByUploadStatus(const int32_t uploadStatus)
+{
+    std::vector<std::string> albumNames;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, albumNames, "rdbStore is nullptr");
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.BeginWrap();
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::USER));
+    predicates.Or();
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::SOURCE));
+    predicates.EndWrap();
+    predicates.EqualTo(PhotoAlbumColumns::UPLOAD_STATUS, uploadStatus);
+    std::vector<std::string> columns = { PhotoAlbumColumns::ALBUM_NAME };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, albumNames, "query album failed. resultSet is null");
+
+    int32_t count = 0;
+    constexpr int32_t maxCount = 50;
+    std::string albumNameStr = "";
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        std::string albumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
+        CHECK_AND_CONTINUE_ERR_LOG(!albumName.empty(), "albumName is empty");
+        albumNameStr += DfxUtils::GetSafeAlbumNameWhenChinese(albumName) + ";";
+        count++;
+        if (count == maxCount) {
+            albumNames.emplace_back(std::move(albumNameStr));
+            albumNameStr.clear();
+            count = 0;
+        }
+        MEDIA_DEBUG_LOG("albumName: %{public}s, uploadStatus: %{public}d", albumName.c_str(), uploadStatus);
+    }
+    resultSet->Close();
+
+    if (!albumNameStr.empty()) {
+        albumNames.emplace_back(std::move(albumNameStr));
+    }
+    return albumNames;
+}
 } // namespace Media
 } // namespace OHOS

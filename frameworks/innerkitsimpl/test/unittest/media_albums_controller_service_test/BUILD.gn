@@ -35,7 +35,8 @@ ohos_unittest("media_albums_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/dto",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/dao",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
     "../medialibrary_unittest_utils/include",
     "./include",
     "../get_self_permissions/include",
@@ -51,6 +52,12 @@ ohos_unittest("media_albums_controller_service_test") {
   include_dirs += include_media_ipc
 
   sources = [
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_analysis_process_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_face_id_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_relationship_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_relationship_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_order_position_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_order_position_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_add_assets_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_commit_modify_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_get_assets_vo.cpp",
@@ -71,18 +78,13 @@ ohos_unittest("media_albums_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_cover_uri_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_display_level_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_is_me_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_order_position_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_relationship_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_relationship_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_highlight_attribute_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/create_album_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_albums_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_highlight_albums_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_albums_by_ids_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_analysis_process_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_face_id_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_albumid_by_lpath_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_highlight_album_info_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_order_position_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_photo_album_object_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_photo_index_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/query_albums_vo.cpp",
@@ -93,7 +95,7 @@ ohos_unittest("media_albums_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_vo.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_album_operations.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
     "${MEDIALIB_UTILS_PATH}/src/media_itypes_utils.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_albums_lpath_by_ids_vo.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
@@ -111,6 +113,7 @@ ohos_unittest("media_albums_controller_service_test") {
     "./src/delete_albums_test.cpp",
     "./src/delete_highlight_albums_test.cpp",
     "./src/get_albums_by_ids_test.cpp",
+    "./src/get_albumid_by_lapath_or_bundlename_test.cpp",
     "./src/get_data_analysis_process_test.cpp",
     "./src/get_face_id_test.cpp",
     "./src/get_highlight_album_info_test.cpp",
@@ -130,6 +133,7 @@ ohos_unittest("media_albums_controller_service_test") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [

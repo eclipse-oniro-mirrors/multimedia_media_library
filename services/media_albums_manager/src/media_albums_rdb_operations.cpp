@@ -105,18 +105,6 @@ int32_t MediaAlbumsRdbOperations::SetHighlightUserActionData(const SetHighlightU
     return static_cast<int32_t>(updateRows);
 }
 
-int32_t MediaAlbumsRdbOperations::GetFaceId(int32_t albumId, string& groupTag)
-{
-    NativeRdb::RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
-    predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(albumId));
-    vector<string> columns = { GROUP_TAG };
-    auto resultSet = MediaLibraryRdbStore::StepQueryWithoutCheck(predicates, columns);
-    bool cond = (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK);
-    CHECK_AND_RETURN_RET_LOG(!cond, E_HAS_DB_ERROR, "Failed to query group tag!");
-    groupTag = GetStringVal(GROUP_TAG, resultSet);
-    return E_OK;
-}
-
 shared_ptr<NativeRdb::ResultSet> MediaAlbumsRdbOperations::MoveAssetsGetAlbumInfo(
     const ChangeRequestMoveAssetsDto &moveAssetsDto)
 {

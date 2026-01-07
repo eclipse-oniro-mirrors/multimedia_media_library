@@ -35,9 +35,6 @@ public:
         const sptr<NetManagerStandard::NetAllCapabilities> &netAllCap) override;
     int32_t NetLost(sptr<NetManagerStandard::NetHandle> &netHandle) override;
 
-    bool IsWifiConnected();
-    bool IsCellularNetConnected();
-
 private:
     void SetNetConnStatus(const NetConnStatus status);
 

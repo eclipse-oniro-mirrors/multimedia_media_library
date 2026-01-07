@@ -21,7 +21,6 @@
 #include <sstream>
 
 #include "i_media_parcelable.h"
-#include "cloud_media_download_dao.h"
 #include "cloud_media_define.h"
 #include "cloud_lake_info.h"
 

@@ -20,8 +20,8 @@ config("ffi_config") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/include/callback",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/include",
     "${MEDIALIB_SERVICES_PATH}/media_async_worker/include",
     "${MEDIALIB_UTILS_PATH}/include",
@@ -29,7 +29,8 @@ config("ffi_config") {
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
     "include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
   ]
 
   if (media_library_feature_mtp) {
@@ -53,7 +54,7 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
 
   include_dirs = [
     "include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   version_script = "libcj_photoaccesshelper_ffi.map"

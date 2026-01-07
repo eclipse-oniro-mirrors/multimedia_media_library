@@ -20,10 +20,10 @@ ohos_fuzztest("MediaLibraryEnhancementFuzzTest") {
 
   include_dirs = [
     "./include",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include/dfx",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include/utils",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include/enhancement_service",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/dfx",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/utils",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/enhancement_service",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
   ]

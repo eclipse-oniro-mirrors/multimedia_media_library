@@ -63,7 +63,6 @@ void GlobalScanner::Run(const std::string &path, bool isFirstScanner)
     }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Get rdb store failed. rdbStorePtr is null");
-    MediaLibraryRdbUtils::UpdateAllAlbums(rdbStore);
 
     MEDIA_INFO_LOG("global scan end, isFirstScanner: %{public}d", isFirstScanner);
 }

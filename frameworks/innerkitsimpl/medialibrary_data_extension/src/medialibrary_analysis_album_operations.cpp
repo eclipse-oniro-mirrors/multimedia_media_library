@@ -822,7 +822,24 @@ int32_t MediaLibraryAnalysisAlbumOperations::SetAnalysisAlbumOrderPosition(Media
 
     int ret = rdbStore->ExecuteSql(sqlStr, args);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "Update orderPositions failed, error id: %{public}d", ret);
-    return ret;
+
+    ValueObject albumIdValue;
+    int32_t albumId = -1;
+    if (valueBucket.GetObject(ALBUM_ID, albumIdValue)) {
+        albumIdValue.GetInt(albumId);
+    }
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, ret, "Get album_id failed, album_id: %{public}d", albumId);
+    std::stringstream updateUserOperationSql;
+    const int userOperationSetted = 1;
+    updateUserOperationSql << "UPDATE AnalysisAlbum SET user_operation = " << userOperationSetted
+                           << " WHERE album_id = " << albumId;
+    int updateUserOperationRet = rdbStore->ExecuteSql(updateUserOperationSql.str());
+    CHECK_AND_RETURN_RET_LOG(updateUserOperationRet == NativeRdb::E_OK,
+        updateUserOperationRet,
+        "Update user_operation failed, ret: %{public}d",
+        updateUserOperationRet);
+
+    return updateUserOperationRet;
 }
 
 int32_t MediaLibraryAnalysisAlbumOperations::SetHighlightAttribute(const int32_t &albumId,

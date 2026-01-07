@@ -58,8 +58,8 @@ private:
     static int32_t GetFdFromSandBoxUri(const std::string &sandBoxUri);
 
     static OH_ImageSourceNative* CreateImageSource(const std::string requestId, const std::string requestUri);
-    static void GetPictureNativeObject(const std::string requestId, const std::string requestUri,
-        OH_PictureNative* pictureNative, OH_ImageSourceNative* imageSourceNative, bool &isPicture);
+    static void GetPictureNativeObject(const std::string requestId, const std::string fileUri,
+        OH_PictureNative** pictureNative, OH_ImageSourceNative** imageSourceNative, bool &isPicture);
 
 private:
     static MediaLibraryManager* mediaLibraryManager_;

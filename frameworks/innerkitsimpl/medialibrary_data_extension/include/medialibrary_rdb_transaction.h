@@ -78,7 +78,8 @@ public:
     EXPORT int32_t Delete(MediaLibraryCommand &cmd, int32_t &deletedRows);
 
     EXPORT std::pair<int32_t, NativeRdb::Results> BatchInsert(const std::string &table,
-        const std::vector<NativeRdb::ValuesBucket> &values, const std::string &returningField);
+        const std::vector<NativeRdb::ValuesBucket> &values, const std::string &returningField,
+        NativeRdb::ConflictResolution resolution = NativeRdb::ConflictResolution::ON_CONFLICT_NONE);
     EXPORT std::pair<int32_t, NativeRdb::Results> Update(const NativeRdb::ValuesBucket &values,
         const NativeRdb::AbsRdbPredicates &predicates, const std::string &returningField);
     EXPORT std::pair<int32_t, NativeRdb::Results> Delete(const NativeRdb::AbsRdbPredicates &predicates,

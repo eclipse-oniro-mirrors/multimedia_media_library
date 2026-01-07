@@ -20,14 +20,23 @@
 #include "cloud_media_define.h"
 
 namespace OHOS::Media {
+enum class EnableUploadStatus {
+    DEFAULT = -1,
+    OFF = 0,
+    ON,
+};
+
 class EXPORT PhotoAlbumUploadStatusOperation {
 public:
     static int32_t GetAlbumUploadStatus();
     static int32_t GetAlbumUploadStatusWithLpath(const std::string lpath);
     static bool IsAllAlbumUploadOnInDb();
+    static bool IsSupportUploadStatus();
+    static int32_t JudgeUploadAlbumEnable();
 
 private:
     static std::string ToLower(const std::string &str);
+    static int32_t EnableUploadAlbumInDb();
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_PHOTO_ALBUM_UPLOAD_STATUS_OPERATION_H

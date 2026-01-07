@@ -19,12 +19,14 @@ ohos_fuzztest("MediaLibraryFileParseInterface2FuzzTest") {
   fuzz_config_file = "."
 
   include_dirs = [
+    "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_SERVICES_PATH}/media_mtp/include",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/common_data",
     "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include",
   ]
 
   sources = [

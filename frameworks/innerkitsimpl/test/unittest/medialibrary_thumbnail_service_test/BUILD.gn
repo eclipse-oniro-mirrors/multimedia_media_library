@@ -34,6 +34,7 @@ ohos_unittest("medialibrary_thumbnail_service_test") {
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_ithumbnail_helper_test.cpp",
+    "./src/medialibrary_thumb_service_test.cpp",
     "./src/medialibrary_thumbnail_file_utils_test.cpp",
     "./src/medialibrary_thumbnail_generation_post_process_test.cpp",
     "./src/medialibrary_thumbnail_image_framework_test.cpp",

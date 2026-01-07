@@ -20,7 +20,6 @@
 #include <vector>
 #include <sstream>
 #include "cloud_media_define.h"
-#include "cloud_media_download_dao.h"
 #include "cloud_lake_info.h"
 
 namespace OHOS::Media::CloudSync {
@@ -41,6 +40,7 @@ public:
     bool needScanShootingMode;
     bool needScanSubtype{false};
     AdditionFileInfo lakeInfo;
+    bool needScanHdrMode{false};
 
 public:  // basic functions
     std::string ToString() const;

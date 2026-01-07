@@ -295,8 +295,6 @@ ani_status CloudEnhancementAni::Init(ani_env *env)
     }
 
     std::array methods = {
-        ani_native_function {"getCloudEnhancementInstance", nullptr,
-            reinterpret_cast<void *>(CloudEnhancementAni::Constructor)},
         ani_native_function {"submitCloudEnhancementTasksSync", nullptr,
             reinterpret_cast<void *>(CloudEnhancementAni::SubmitCloudEnhancementTasks)},
         ani_native_function {"prioritizeCloudEnhancementTaskSync", nullptr,
@@ -312,12 +310,22 @@ ani_status CloudEnhancementAni::Init(ani_env *env)
         ani_native_function {"getCloudEnhancementPairSync", nullptr,
             reinterpret_cast<void *>(CloudEnhancementAni::GetCloudEnhancementPair)},
     };
-
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
         return status;
     }
+
+    std::array staticMethods = {
+        ani_native_function {"getCloudEnhancementInstance", nullptr,
+            reinterpret_cast<void *>(CloudEnhancementAni::Constructor)},
+    };
+    status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to bind static native methods to: %{public}s", className);
+        return status;
+    }
+
     return ANI_OK;
 }
 

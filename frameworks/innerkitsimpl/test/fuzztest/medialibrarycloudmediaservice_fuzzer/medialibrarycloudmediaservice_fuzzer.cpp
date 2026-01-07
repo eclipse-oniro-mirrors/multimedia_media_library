@@ -258,10 +258,10 @@ static void CloudMediaAlbumServiceFuzzer()
         MEDIA_ERR_LOG("cloudMediaAlbumService is nuulptr");
         return;
     }
-    vector<string> cloudIds = { "default-album-2" };
-    cloudMediaAlbumService->GetCheckRecords(cloudIds);
     int32_t limitSize = LIMIT_SIZE;
-    cloudMediaAlbumService->GetAlbumCreatedRecords(limitSize);
+    bool isCloudSpaceFull = true;
+    std::vector<PhotoAlbumPo> photoAlbumList;
+    cloudMediaAlbumService->GetCreatedRecords(limitSize, isCloudSpaceFull, photoAlbumList);
     cloudMediaAlbumService->GetAlbumMetaModifiedRecords(limitSize);
     cloudMediaAlbumService->GetAlbumFileModifiedRecords(limitSize);
     cloudMediaAlbumService->GetAlbumDeletedRecords(limitSize);

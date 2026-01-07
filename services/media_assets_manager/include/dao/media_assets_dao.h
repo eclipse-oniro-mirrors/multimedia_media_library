@@ -56,6 +56,7 @@ public:
         const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t UpdatePositionToBothAndFileSourceTypeToLake(
         const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t FindAssetsByBurstKey(const std::string &burstKey, std::vector<PhotosPo> &photoInfoList);
 
 private:
     int32_t FindSamePhotoInTargetAlbum(

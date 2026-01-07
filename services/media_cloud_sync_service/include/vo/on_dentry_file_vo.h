@@ -39,6 +39,7 @@ public:  // functions of Parcelable.
 public:
     int32_t AddOnDentryFileRecord(const OnFetchPhotosVo &record);
     std::vector<OnFetchPhotosVo> GetOnDentryFileRecord();
+    bool SplitBy20K(std::vector<OnDentryFileReqBody> &reqBodyList) const;
 
 public:  // basic functions
     std::string ToString() const;
@@ -55,6 +56,7 @@ public:
 
 public:  // basic functions
     std::string ToString() const;
+    void MergeRespBody(const OnDentryFileRespBody &respBody);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_ON_DENTRY_FILE_INSERT_VO_H

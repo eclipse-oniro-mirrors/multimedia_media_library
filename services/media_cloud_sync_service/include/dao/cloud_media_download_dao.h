@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "on_download_asset_data_dto.h"
 #include "asset_accurate_refresh.h"
 #include "cloud_media_scan_service.h"
 #include "rdb_store.h"
@@ -40,22 +41,24 @@ public:
     int32_t UpdateDownloadThmAndLcd(const std::vector<std::string> &cloudIds);
     int32_t GetFileIdFromCloudId(const std::vector<std::string> &cloudIds, std::vector<std::string> &fileIds);
     int32_t QueryDownloadAssetByCloudIds(const std::vector<std::string> &cloudIds, std::vector<PhotosPo> &result);
-    int32_t UpdateDownloadAsset(const bool fixFileType, const std::string &path,
+    int32_t UpdateDownloadAsset(const OnDownloadAssetData &assetData,
         const CloudMediaScanService::ScanResult& scanResult);
     int32_t UpdateDownloadAssetExifRotateFix(
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh,
         const int32_t fileId, const int32_t exifRotate, const DirtyTypes dirtyType, bool needRegenerateThumbnail);
     int32_t UpdateTransCodeInfo(const std::string &path);
-    int32_t UpdateDownloadLakeAsset(const bool fixFileType, const std::string &path,
-        AdditionFileInfo &lakeInfo, const CloudMediaScanService::ScanResult& scanResult);
+    int32_t UpdateDownloadLakeAsset(const OnDownloadAssetData &assetData,
+        const CloudMediaScanService::ScanResult& scanResult);
     int32_t QueryDownloadLakeAssetByCloudIds(
         const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos, std::vector<PhotosPo> &result);
 
 private:
     NativeRdb::AbsRdbPredicates GetDownloadThmsConditions(const int32_t type);
     int32_t GetFileIdFromUri(const std::string &uri, int32_t &fileUniqueId);
-    void FillScanedSubtypeInfo(NativeRdb::ValuesBucket &values,
-        const CloudMediaScanService::ScanResult &scanResult);
+    void FillHdrModeInfo(NativeRdb::ValuesBucket &values, const CloudMediaScanService::ScanResult &scanResult,
+        bool isNeedUpdate);
+    void FillScanedSubtypeInfo(NativeRdb::ValuesBucket &values, const CloudMediaScanService::ScanResult &scanResult,
+        bool isNeedUpdate);
 
 private:
     const std::vector<std::string> DOWNLOAD_THUMBNAIL_COLUMNS = {
@@ -83,6 +86,7 @@ private:
         PhotoColumn::PHOTO_ORIENTATION,
         PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
         PhotoColumn::PHOTO_STORAGE_PATH,
+        PhotoColumn::PHOTO_SUBTYPE,
         MediaColumn::MEDIA_HIDDEN,
         MediaColumn::MEDIA_DATE_TRASHED,
     };

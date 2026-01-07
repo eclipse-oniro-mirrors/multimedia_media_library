@@ -28,6 +28,8 @@
 #include "cloud_media_data_client_handler_processor.h"
 #include "report_failure_vo.h"
 #include "cloud_media_define.h"
+#include "on_dentry_file_vo.h"
+#include "on_fetch_records_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaPhotoHandler : public ICloudMediaDataHandler {
@@ -70,6 +72,8 @@ public:
 private:
     int32_t ReportFailure(const ReportFailureReqBody &reqBody);
     void DeleteTempLivePhotoFile(std::string &livePhotoCachePath);
+    int32_t OnFetchRecordsInner(const OnFetchRecordsReqBody &reqBody, OnFetchRecordsRespBody &respBody);
+    int32_t OnDentryFileInsertInner(const OnDentryFileReqBody &reqBody, OnDentryFileRespBody &respBody);
 private:
     CloudMediaDataClientHandlerProcessor processor_;
     std::string traceId_;

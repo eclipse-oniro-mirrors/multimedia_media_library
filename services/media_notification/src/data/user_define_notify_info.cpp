@@ -24,6 +24,8 @@
 namespace OHOS {
 namespace Media {
 namespace Notification {
+// This notification is only for interaction between client and server of media library,
+// without applicability of permission verification.
 const std::map<NotifyForUserDefineType, std::shared_ptr<UserDefineNotifyBase>> USER_DEFINE_NOTIFY_BODY_MAP = {
     { NotifyForUserDefineType::MULTISTAGES_CAPTURE, std::make_shared<MultistagesCaptureNotifyServerInfo>() },
     { NotifyForUserDefineType::LOW_QUALITY_MEMORY, std::make_shared<LowQualityMemoryNumNotifyInfo>() },

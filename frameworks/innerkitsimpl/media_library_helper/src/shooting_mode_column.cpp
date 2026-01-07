@@ -32,6 +32,43 @@ namespace OHOS::Media {
 using namespace std;
 using namespace NativeRdb;
 
+const std::vector<std::pair<ShootingModeValue, ShootingModeAlbumType>>
+    ShootingModeAlbum::SHOOTING_MODE_TO_ALBUM_TYPE = {
+    { ShootingModeValue::PORTRAIT_SHOOTING_MODE,       ShootingModeAlbumType::PORTRAIT },
+    { ShootingModeValue::WIDE_APERTURE_SHOOTING_MODE,  ShootingModeAlbumType::WIDE_APERTURE },
+    { ShootingModeValue::NIGHT_SHOT_SHOOTING_MODE,     ShootingModeAlbumType::NIGHT_SHOT },
+    { ShootingModeValue::PRO_PHOTO_SHOOTING_MODE,      ShootingModeAlbumType::PRO_PHOTO },
+    { ShootingModeValue::SLOW_MOTION_SHOOTING_MODE,    ShootingModeAlbumType::SLOW_MOTION },
+    { ShootingModeValue::LIGHT_PAINTING_SHOOTING_MODE, ShootingModeAlbumType::LIGHT_PAINTING },
+    { ShootingModeValue::HIGH_PIXEL_SHOOTING_MODE,     ShootingModeAlbumType::HIGH_PIXEL },
+    { ShootingModeValue::SUPER_MACRO_SHOOTING_MODE,    ShootingModeAlbumType::SUPER_MACRO },
+    { ShootingModeValue::PANORAMA_SHOOTING_MODE,       ShootingModeAlbumType::PANORAMA_MODE },
+    { ShootingModeValue::TIME_LAPSE,                   ShootingModeAlbumType::TIME_LAPSE },
+    { ShootingModeValue::QUICK_CAPTURE_ALBUM,          ShootingModeAlbumType::QUICK_CAPTURE_ALBUM }
+};
+
+const std::unordered_set<std::string> ShootingModeAlbum::VALID_TAGS = {
+    PORTRAIT_ALBUM_TAG,
+    WIDE_APERTURE_ALBUM_TAG,
+    NIGHT_SHOT_ALBUM_TAG,
+    REAR_CAMERA_NIGHT_SHOT_TAG,
+    MOVING_PICTURE_ALBUM_TAG,
+    PRO_PHOTO_ALBUM_TAG,
+    TAIL_LIGHT_ALBUM_TAG,
+    LIGHT_GRAFFITI_TAG,
+    SILKY_WATER_TAG,
+    STAR_TRACK_TAG,
+    HIGH_PIXEL_ALBUM_TAG,
+    AI_HIGH_PIXEL_TAG,
+    SUPER_MACRO_ALBUM_TAG,
+    SLOW_MOTION_ALBUM_TAG,
+    SUPER_SLOW_MOTION_ALBUM_TAG,
+    CAMERA_CUSTOM_SM_PANORAMA,
+    CAMERA_CUSTOM_SM_PHOTO_STITCHING,
+    TIME_LAPSE_TAG,
+    QUICK_CAPTURE_TAG
+};
+
 template <class T>
 void ShootingModeAlbum::GetMovingPhotoAlbumPredicates(T& predicates, const bool hiddenState)
 {
@@ -94,15 +131,8 @@ void ShootingModeAlbum::GetGeneralShootingModeAlbumPredicates(const ShootingMode
     PhotoQueryFilter::Config config {};
     config.hiddenConfig = hiddenState ? PhotoQueryFilter::ConfigType::INCLUDE : PhotoQueryFilter::ConfigType::EXCLUDE;
     PhotoQueryFilter::ModifyPredicate(config, predicates);
-    if (type == ShootingModeAlbumType::TIME_LAPSE) {
-        predicates.EqualTo(PhotoColumn::PHOTO_SHOOTING_MODE, TIME_LAPSE_SHOOTING_MODE);
-        return;
-    }
-    if (type == ShootingModeAlbumType::QUICK_CAPTURE_ALBUM) {
-        predicates.EqualTo(PhotoColumn::PHOTO_SHOOTING_MODE, QUICK_CAPTURE_SHOOTING_MODE);
-        return;
-    }
-    predicates.EqualTo(PhotoColumn::PHOTO_SHOOTING_MODE, to_string(static_cast<int32_t>(type)));
+    std::string shootingModeValue = LookUpShootingModeValues(std::to_string(static_cast<int32_t>(type)));
+    predicates.EqualTo(PhotoColumn::PHOTO_SHOOTING_MODE, shootingModeValue);
 }
 
 template <class T>
@@ -204,22 +234,12 @@ vector<ShootingModeAlbumType> ShootingModeAlbum::GetShootingModeAlbumOfAsset(int
     if (frontCamera == "1") { // "1" means photo is taken using front camera
         result.push_back(ShootingModeAlbumType::FRONT_CAMERA_ALBUM);
     }
-    if (shootingMode == TIME_LAPSE_SHOOTING_MODE) {
-        result.push_back(ShootingModeAlbumType::TIME_LAPSE);
-    }
-    if (shootingMode == QUICK_CAPTURE_SHOOTING_MODE) {
-        result.push_back(ShootingModeAlbumType::QUICK_CAPTURE_ALBUM);
-    }
-    if (!shootingMode.empty()) {
-        ShootingModeAlbumType type;
-        if (AlbumNameToShootingModeAlbumType(shootingMode, type) &&
-            type != ShootingModeAlbumType::MOVING_PICTURE &&
-            type != ShootingModeAlbumType::BURST_MODE_ALBUM &&
-            type != ShootingModeAlbumType::FRONT_CAMERA_ALBUM &&
-            type != ShootingModeAlbumType::RAW_IMAGE_ALBUM &&
-            type != ShootingModeAlbumType::MP4_3DGS_ALBUM) {
-            result.push_back(type);
-        }
+
+    auto shootingModeAlbumType =
+        LookUpShootingModeAlbumType(static_cast<ShootingModeValue>(std::atoi(shootingMode.c_str())));
+    if (!shootingModeAlbumType.empty()) {
+        ShootingModeAlbumType type = static_cast<ShootingModeAlbumType>(std::atoi(shootingModeAlbumType.c_str()));
+        result.push_back(type);
     }
     return result;
 }
@@ -227,34 +247,51 @@ vector<ShootingModeAlbumType> ShootingModeAlbum::GetShootingModeAlbumOfAsset(int
 string ShootingModeAlbum::MapShootingModeTagToShootingMode(const string& tag)
 {
     static const std::unordered_map<std::string, std::string> SHOOTING_MODE_CAST_MAP = {
-        {PORTRAIT_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::PORTRAIT))},
-        {WIDE_APERTURE_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::WIDE_APERTURE))},
-        {NIGHT_SHOT_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::NIGHT_SHOT))},
-        {REAR_CAMERA_NIGHT_SHOT_TAG, to_string(static_cast<int>(ShootingModeAlbumType::NIGHT_SHOT))},
-        {MOVING_PICTURE_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::MOVING_PICTURE))},
-        {PRO_PHOTO_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::PRO_PHOTO))},
-        {TAIL_LIGHT_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::LIGHT_PAINTING))},
-        {LIGHT_GRAFFITI_TAG, to_string(static_cast<int>(ShootingModeAlbumType::LIGHT_PAINTING))},
-        {SILKY_WATER_TAG, to_string(static_cast<int>(ShootingModeAlbumType::LIGHT_PAINTING))},
-        {STAR_TRACK_TAG, to_string(static_cast<int>(ShootingModeAlbumType::LIGHT_PAINTING))},
-        {AI_HIGH_PIXEL_TAG, to_string(static_cast<int>(ShootingModeAlbumType::HIGH_PIXEL))},
-        {HIGH_PIXEL_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::HIGH_PIXEL))},
-        {SUPER_MACRO_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::SUPER_MACRO))},
-        {SLOW_MOTION_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::SLOW_MOTION))},
-        {SUPER_SLOW_MOTION_ALBUM_TAG, to_string(static_cast<int>(ShootingModeAlbumType::SLOW_MOTION))},
-        {CAMERA_CUSTOM_SM_PANORAMA, to_string(static_cast<int>(ShootingModeAlbumType::PANORAMA_MODE))},
-        {CAMERA_CUSTOM_SM_PHOTO_STITCHING, to_string(static_cast<int>(ShootingModeAlbumType::PANORAMA_MODE))},
+        {PORTRAIT_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::PORTRAIT_SHOOTING_MODE))},
+        {WIDE_APERTURE_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::WIDE_APERTURE_SHOOTING_MODE))},
+        {NIGHT_SHOT_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::NIGHT_SHOT_SHOOTING_MODE))},
+        {REAR_CAMERA_NIGHT_SHOT_TAG, to_string(static_cast<int>(ShootingModeValue::NIGHT_SHOT_SHOOTING_MODE))},
+        {MOVING_PICTURE_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::MOVING_PICTURE_SHOOTING_MODE))},
+        {PRO_PHOTO_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::PRO_PHOTO_SHOOTING_MODE))},
+        {TAIL_LIGHT_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::LIGHT_PAINTING_SHOOTING_MODE))},
+        {LIGHT_GRAFFITI_TAG, to_string(static_cast<int>(ShootingModeValue::LIGHT_PAINTING_SHOOTING_MODE))},
+        {SILKY_WATER_TAG, to_string(static_cast<int>(ShootingModeValue::LIGHT_PAINTING_SHOOTING_MODE))},
+        {STAR_TRACK_TAG, to_string(static_cast<int>(ShootingModeValue::LIGHT_PAINTING_SHOOTING_MODE))},
+        {AI_HIGH_PIXEL_TAG, to_string(static_cast<int>(ShootingModeValue::HIGH_PIXEL_SHOOTING_MODE))},
+        {HIGH_PIXEL_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::HIGH_PIXEL_SHOOTING_MODE))},
+        {SUPER_MACRO_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::SUPER_MACRO_SHOOTING_MODE))},
+        {SLOW_MOTION_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::SLOW_MOTION_SHOOTING_MODE))},
+        {SUPER_SLOW_MOTION_ALBUM_TAG, to_string(static_cast<int>(ShootingModeValue::SLOW_MOTION_SHOOTING_MODE))},
+        {CAMERA_CUSTOM_SM_PANORAMA, to_string(static_cast<int>(ShootingModeValue::PANORAMA_SHOOTING_MODE))},
+        {CAMERA_CUSTOM_SM_PHOTO_STITCHING, to_string(static_cast<int>(ShootingModeValue::PANORAMA_SHOOTING_MODE))},
+        {TIME_LAPSE_TAG, to_string(static_cast<int>(ShootingModeValue::TIME_LAPSE))},
+        {QUICK_CAPTURE_TAG, to_string(static_cast<int>(ShootingModeValue::QUICK_CAPTURE_ALBUM))},
     };
 
     auto it = SHOOTING_MODE_CAST_MAP.find(tag);
     if (it != SHOOTING_MODE_CAST_MAP.end()) {
         return it->second;
     }
-    if (tag == TIME_LAPSE_TAG) {
-        return TIME_LAPSE_SHOOTING_MODE;
+    return "";
+}
+
+string ShootingModeAlbum::LookUpShootingModeAlbumType(const ShootingModeValue value)
+{
+    for (const auto& pair : SHOOTING_MODE_TO_ALBUM_TYPE) {
+        if (pair.first == value) {
+            return std::to_string(static_cast<int32_t>(pair.second));
+        }
     }
-    if (tag == QUICK_CAPTURE_TAG) {
-        return QUICK_CAPTURE_SHOOTING_MODE;
+    return "";
+}
+
+string ShootingModeAlbum::LookUpShootingModeValues(const std::string albumType)
+{
+    ShootingModeAlbumType type = static_cast<ShootingModeAlbumType>(std::atoi(albumType.c_str()));
+    for (const auto& pair : SHOOTING_MODE_TO_ALBUM_TYPE) {
+        if (pair.second == type) {
+            return std::to_string(static_cast<int32_t>(pair.first));
+        }
     }
     return "";
 }

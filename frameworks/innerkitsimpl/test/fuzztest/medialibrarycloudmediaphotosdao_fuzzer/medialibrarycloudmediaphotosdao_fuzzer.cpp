@@ -449,19 +449,6 @@ static void UpdateLocalAlbumMapFuzzer()
     cloudMediaPhotosDao->UpdateLocalAlbumMap(cloudId);
 }
 
-static void DeleteSameNamePhotoFuzzer()
-{
-    if (cloudMediaPhotosDao == nullptr) {
-        MEDIA_ERR_LOG("cloudMediaPhotosDao is nullptr");
-        return;
-    }
-    PhotosDto photo;
-    photo.fileId = provider->ConsumeIntegral<uint32_t>() & 0xf;
-    std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
-    InsertPhotoAsset(cloudId);
-    cloudMediaPhotosDao->DeleteSameNamePhoto(photo);
-}
-
 static void GetSameNamePhotoCountFuzzer()
 {
     if (cloudMediaPhotosDao == nullptr) {
@@ -692,7 +679,6 @@ static void MediaLibraryCloudMediaPhotosDaoFuzzer()
     GetDeletedRecordsAssetFuzzer();
     GetPhotoLocalInfoFuzzer();
     UpdateLocalAlbumMapFuzzer();
-    DeleteSameNamePhotoFuzzer();
     GetSameNamePhotoCountFuzzer();
 
     UpdatePhotoCreatedRecordFuzzer();

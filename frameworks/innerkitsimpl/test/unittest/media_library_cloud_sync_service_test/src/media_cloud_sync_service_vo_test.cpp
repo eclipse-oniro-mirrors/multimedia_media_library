@@ -25,7 +25,6 @@
 #include "cloud_mdkrecord_photo_album_vo.h"
 #include "failed_size_resp_vo.h"
 #include "get_aging_file_vo.h"
-#include "get_check_records_album_vo.h"
 #include "get_check_records_vo.h"
 #include "get_cloud_thm_stat_vo.h"
 #include "get_dirty_type_stat_vo.h"
@@ -102,10 +101,6 @@ void FillContainersPart2(std::vector<std::shared_ptr<IPC::IMediaParcelable>> &co
     containers.emplace_back(std::make_shared<GetAgingFileReqBody>());
 
     containers.emplace_back(std::make_shared<GetAgingFileRespBody>());
-    containers.emplace_back(std::make_shared<GetCheckRecordAlbumData>());
-    containers.emplace_back(std::make_shared<GetCheckRecordsAlbumReqBody>());
-    containers.emplace_back(std::make_shared<CheckDataAlbum>());
-    containers.emplace_back(std::make_shared<GetCheckRecordsAlbumRespBody>());
 
     containers.emplace_back(std::make_shared<GetCheckRecordsReqBody>());
     containers.emplace_back(std::make_shared<GetCheckRecordsRespBodyCheckData>());
@@ -542,64 +537,12 @@ HWTEST_F(CloudMediaSyncServiceVoTest, GetAgingFileReqBody_Test, TestSize.Level1)
     fileBody->ToString();
 }
 
-HWTEST_F(CloudMediaSyncServiceVoTest, GetCheckRecordAlbumData_Test, TestSize.Level1)
+HWTEST_F(CloudMediaSyncServiceVoTest, CloudMdkRecordPhotosRespBody_TruncateDataBy200K_Test, TestSize.Level1)
 {
-    MessageParcel parcel;
-    auto albumData = std::make_shared<GetCheckRecordAlbumData>();
-    ASSERT_TRUE(albumData);
-    albumData->Marshalling(parcel);
-    albumData->Unmarshalling(parcel);
-    string result = albumData->ToString();
-    EXPECT_FALSE(result.empty());
-
-    auto reqBody = std::make_shared<GetCheckRecordsAlbumReqBody>();
-    ASSERT_TRUE(reqBody);
-    result = reqBody->ToString();
-    EXPECT_EQ(result, "{\"cloudIds\": []}");
-
-    string cloudId = "001";
-    reqBody->AddCheckAlbumsRecords(cloudId);
-    cloudId = "002";
-    reqBody->AddCheckAlbumsRecords(cloudId);
-    result = reqBody->ToString();
-    EXPECT_EQ(result, "{\"cloudIds\": [001, 002]}");
-    reqBody->Marshalling(parcel);
-    reqBody->Unmarshalling(parcel);
-}
-
-HWTEST_F(CloudMediaSyncServiceVoTest, GetCheckRecordsAlbumResp_Test, TestSize.Level1)
-{
-    std::unordered_map<std::string, CheckDataAlbum> checkDataAlbumList;
-    auto respBody = std::make_shared<GetCheckRecordsAlbumRespBody>();
-    MessageParcel parcel;
-    CheckDataAlbum album;
-    album.cloudId = "cloud123";
-    album.size = 1024;
-    album.data = "/path/to/file";
-    album.displayName = "file";
-    album.mediaType = 1;
-    album.cloudVersion = 1;
-    album.position = 0;
-    album.dateModified = 1625097600;
-    album.dirty = 0;
-    checkDataAlbumList["file1"] = album;
-    checkDataAlbumList["file2"] = album;
-    bool result = album.Marshalling(parcel);
-    EXPECT_TRUE(result);
-    respBody->checkDataAlbumList = checkDataAlbumList;
-    respBody->Marshalling(parcel);
-    respBody->Unmarshalling(parcel);
-    respBody->ToString();
-}
-
-HWTEST_F(CloudMediaSyncServiceVoTest, CheckDataAlbum_Test, TestSize.Level1)
-{
-    MessageParcel parcel;
-    auto dataAlbum = std::make_shared<CheckDataAlbum>();
-    ASSERT_TRUE(dataAlbum);
-    dataAlbum->Marshalling(parcel);
-    dataAlbum->Unmarshalling(parcel);
-    string result = dataAlbum->ToString();
-    EXPECT_FALSE(result.empty());
+    CloudMdkRecordPhotosVo photosVo;
+    std::vector<CloudMdkRecordPhotosVo> uploadRecords = {photosVo};
+    CloudMdkRecordPhotosRespBody respBody{uploadRecords};
+    EXPECT_TRUE(respBody.TruncateDataBy200K());
+    EXPECT_EQ(1, respBody.GetDataSize());
 }
 }

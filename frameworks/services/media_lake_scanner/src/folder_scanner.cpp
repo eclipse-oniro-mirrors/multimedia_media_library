@@ -187,7 +187,10 @@ int32_t FolderScanner::HandleNeedInsertedAssets(FileParser &fileParser,
     InnerFileInfo fileInfos = fileParser.GetFileInfo();
     NativeRdb::ValuesBucket value = fileParser.TransFileInfoToBucket(albumInfos_.albumId, albumInfos_.bundleName,
         albumInfos_.albumName);
- 
+    if (value.IsEmpty()) {
+        MEDIA_ERR_LOG("Fail to insert AssetBucket");
+        return ERR_FAIL;
+    }
     notifyAlbumIds_.insert(to_string(albumInfos_.albumId));
     insertFileBuckets_.emplace_back(value);
     inodes_.push_back(fileInfos.inode);

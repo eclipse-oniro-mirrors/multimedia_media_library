@@ -25,12 +25,14 @@
 #include "datashare_result_set.h"
 #include "media_albums_controller_service.h"
 #include "rdb_utils.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
  
 #include "media_column.h"
 #include "vision_db_sqls.h"
 #include "story_db_sqls.h"
+#include "media_file_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_unistore_manager.h"
@@ -158,7 +160,7 @@ HWTEST_F(GetDataAnalysisProcessTest, GetLabelAnalysisProgress_Test_001, TestSize
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetAnalysisProcess(data, reply);
     IPC::MediaRespVo<QueryResultRespBody> resp;
     bool isValid = resp.Unmarshalling(reply);
@@ -201,7 +203,7 @@ HWTEST_F(GetDataAnalysisProcessTest, GetFaceAnalysisProgress_TEST_002, TestSize.
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetAnalysisProcess(data, reply);
     IPC::MediaRespVo<QueryResultRespBody> resp;
     bool isValid = resp.Unmarshalling(reply);
@@ -261,7 +263,7 @@ HWTEST_F(GetDataAnalysisProcessTest, GetHighlightAnalysisProgressTest_TEST_002, 
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetAnalysisProcess(data, reply);
     IPC::MediaRespVo<QueryResultRespBody> resp;
     bool isValid = resp.Unmarshalling(reply);

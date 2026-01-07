@@ -127,11 +127,12 @@ bool PhotoFileUtils::HasEditData(int64_t editTime)
     return editTime > 0;
 }
 
-bool PhotoFileUtils::HasSource(bool hasEditDataCamera, int64_t editTime, int32_t effectMode)
+bool PhotoFileUtils::HasSource(bool hasEditDataCamera, int64_t editTime, int32_t effectMode, int32_t subtype)
 {
     return hasEditDataCamera || editTime > 0 ||
-           (effectMode > static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT) &&
-               effectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY));
+            (subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) ||
+            (effectMode > static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT) &&
+                effectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY));
 }
 
 std::string PhotoFileUtils::GetAbsoluteLakeDir(int32_t userId)

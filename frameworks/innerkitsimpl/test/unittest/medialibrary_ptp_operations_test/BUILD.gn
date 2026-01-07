@@ -33,7 +33,6 @@ ohos_unittest("medialibrary_ptp_operations_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
     "${MEDIALIB_SERVICES_PATH}/media_file_extension/include",
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
     "${MEDIALIB_SERVICES_PATH}/media_permission/include",
@@ -41,6 +40,7 @@ ohos_unittest("medialibrary_ptp_operations_test") {
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
     "${MEDIALIB_NATIVE_PATH}/c_api/common",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   sources = [

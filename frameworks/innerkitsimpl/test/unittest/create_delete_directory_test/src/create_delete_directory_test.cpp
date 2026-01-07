@@ -22,7 +22,6 @@
 #include <string>
 
 #include "iservice_registry.h"
-#include "media_library_manager.h"
 #include "media_log.h"
 #include "media_volume.h"
 #include "medialibrary_data_manager.h"

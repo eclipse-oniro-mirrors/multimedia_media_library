@@ -30,6 +30,7 @@
 #undef protected
 
 #include "create_asset_vo.h"
+#include "media_file_utils.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"

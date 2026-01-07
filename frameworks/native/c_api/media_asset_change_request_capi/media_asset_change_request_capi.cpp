@@ -36,6 +36,7 @@ MediaLibrary_ErrorCode OH_MediaAssetChangeRequest_GetWriteCacheHandler(OH_MediaA
 MediaLibrary_ErrorCode OH_MediaAssetChangeRequest_SaveCameraPhoto(OH_MediaAssetChangeRequest* changeRequest,
     MediaLibrary_ImageFileType imageFileType)
 {
+    MEDIA_INFO_LOG("OH_MediaAssetChangeRequest_SaveCameraPhoto begin.");
     CHECK_AND_RETURN_RET_LOG(changeRequest != nullptr, MEDIA_LIBRARY_PARAMETER_ERROR, "changeRequest is nullptr!");
     CHECK_AND_RETURN_RET_LOG(changeRequest->request_ != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED,
         "request_ is nullptr!");
@@ -75,6 +76,7 @@ OH_MediaAssetChangeRequest* OH_MediaAssetChangeRequest_Create(OH_MediaAsset* med
 MediaLibrary_ErrorCode  OH_MediaAssetChangeRequest_AddResourceWithUri(OH_MediaAssetChangeRequest* changeRequest,
     MediaLibrary_ResourceType resourceType, char* fileUri)
 {
+    MEDIA_INFO_LOG("OH_MediaAssetChangeRequest_AddResourceWithUri begin.");
     CHECK_AND_RETURN_RET_LOG(changeRequest != nullptr, MEDIA_LIBRARY_PARAMETER_ERROR, "changeRequest is nullptr!");
     CHECK_AND_RETURN_RET_LOG(changeRequest->request_ != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED,
         "request_ is nullptr!");

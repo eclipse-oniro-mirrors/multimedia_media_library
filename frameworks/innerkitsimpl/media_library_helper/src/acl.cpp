@@ -472,5 +472,40 @@ Acl::~Acl()
         buf = nullptr;
     }
 }
+
+std::string GetTagStr(const ACL_TAG tag)
+{
+    CHECK_AND_RETURN_RET_LOG(ACL_TAG_STR.count(tag) != 0,
+        "", "Tag:%{public}u is invalid", static_cast<uint16_t>(tag));
+    std::string tagStr(ACL_TAG_STR.at(tag));
+    return tagStr;
+}
+
+std::string Acl::ParseEntriesToString()
+{
+    std::string result;
+    for (const auto &e: entries) {
+        std::string tagStr = GetTagStr(e.tag);
+        result += "tag: " + tagStr +
+            ", perm: " + std::to_string(static_cast<uint16_t>(e.perm)) +
+            ", id: " + std::to_string(e.id) + " ";
+    }
+    return result;
+}
+
+std::string Acl::ParseAclToString(const std::string &path, const char* aclAttrName)
+{
+    ssize_t len = getxattr(path.c_str(), aclAttrName, nullptr, 0);
+    CHECK_AND_RETURN_RET_WARN_LOG(len > 0, "", "Get xattr failed");
+
+    std::vector<char> buf(len);
+    ssize_t res = getxattr(path.c_str(), aclAttrName, buf.data(), len);
+    CHECK_AND_RETURN_RET_LOG(res == len, "", "Get buffer failed");
+
+    Acl acl;
+    int32_t err = acl.DeSerialize(buf.data(), len);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, "", "DeSerialize failed, err:%{public}d", err);
+    return acl.ParseEntriesToString();
+}
 } // MEDIA
 } // OHOS

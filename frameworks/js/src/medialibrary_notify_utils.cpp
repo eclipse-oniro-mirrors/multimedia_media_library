@@ -58,6 +58,22 @@ const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyUtils
     { Notification::NotifyUriType::USER_DEFINE_NOTIFY_URI, RegisterNotifyType::USER_CLIENT_CHANGE },
 };
 
+const std::map<std::string, Notification::NotifyUriType> MediaLibraryNotifyUtils::REGISTER_SINGLE_NOTIFY_TYPE_MAP = {
+    { RegisterNotifyType::SINGLE_PHOTO_CHANGE, Notification::NotifyUriType::SINGLE_PHOTO_URI },
+    { RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI },
+};
+
+const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
+    MediaLibraryNotifyUtils::REGISTER_SINGLE_TYPE_MAP = {
+    { Notification::NotifyUriType::SINGLE_PHOTO_URI, Notification::NotifyUriType::SINGLE_PHOTO_URI },
+    { Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI },
+};
+
+const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyUtils::REGISTER_SINGLE_URI_MAP = {
+    { Notification::NotifyUriType::SINGLE_PHOTO_URI, RegisterNotifyType::SINGLE_PHOTO_CHANGE },
+    { Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE },
+};
+
 const std::map<std::string, Notification::NotifyUriType> MediaLibraryNotifyUtils::REGISTER_NOTIFY_TYPE_MAP = {
     { RegisterNotifyType::PHOTO_CHANGE, Notification::NotifyUriType::PHOTO_URI },
     { RegisterNotifyType::HIDDEN_PHOTO_CHANGE, Notification::NotifyUriType::HIDDEN_PHOTO_URI },
@@ -65,8 +81,6 @@ const std::map<std::string, Notification::NotifyUriType> MediaLibraryNotifyUtils
     { RegisterNotifyType::PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::PHOTO_ALBUM_URI },
     { RegisterNotifyType::HIDDEN_ALBUM_CHANGE, Notification::NotifyUriType::HIDDEN_ALBUM_URI },
     { RegisterNotifyType::TRASHED_ALBUM_CHANGE, Notification::NotifyUriType::TRASH_ALBUM_URI },
-    { RegisterNotifyType::SINGLE_PHOTO_CHANGE, Notification::NotifyUriType::SINGLE_PHOTO_URI },
-    { RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI },
 };
 
 const std::map<Notification::NotifyUriType, Notification::NotifyUriType> MediaLibraryNotifyUtils::REGISTER_TYPE_MAP = {
@@ -76,8 +90,6 @@ const std::map<Notification::NotifyUriType, Notification::NotifyUriType> MediaLi
     { Notification::NotifyUriType::PHOTO_ALBUM_URI, Notification::NotifyUriType::PHOTO_ALBUM_URI },
     { Notification::NotifyUriType::HIDDEN_ALBUM_URI, Notification::NotifyUriType::HIDDEN_ALBUM_URI },
     { Notification::NotifyUriType::TRASH_ALBUM_URI, Notification::NotifyUriType::TRASH_ALBUM_URI },
-    { Notification::NotifyUriType::SINGLE_PHOTO_URI, Notification::NotifyUriType::SINGLE_PHOTO_URI },
-    { Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI },
 };
 
 const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyUtils::REGISTER_URI_MAP = {
@@ -87,8 +99,6 @@ const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyUtils
     { Notification::NotifyUriType::PHOTO_ALBUM_URI, RegisterNotifyType::PHOTO_ALBUM_CHANGE },
     { Notification::NotifyUriType::HIDDEN_ALBUM_URI, RegisterNotifyType::HIDDEN_ALBUM_CHANGE },
     { Notification::NotifyUriType::TRASH_ALBUM_URI, RegisterNotifyType::TRASHED_ALBUM_CHANGE },
-    { Notification::NotifyUriType::SINGLE_PHOTO_URI, RegisterNotifyType::SINGLE_PHOTO_CHANGE },
-    { Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE },
 };
 
 const std::map<Notification::AccurateNotifyType, NotifyChangeType> MediaLibraryNotifyUtils::NOTIFY_CHANGE_TYPE_MAP = {
@@ -173,6 +183,32 @@ int32_t MediaLibraryNotifyUtils::GetNotifyChangeType(const Notification::Accurat
         return E_ERR;
     }
     return static_cast<int32_t>(NOTIFY_CHANGE_TYPE_MAP.at(notifyType));
+}
+
+int32_t MediaLibraryNotifyUtils::GetSingleRegisterNotifyType(const string &type, Notification::NotifyUriType &uriType)
+{
+    if (REGISTER_SINGLE_NOTIFY_TYPE_MAP.find(type) == REGISTER_SINGLE_NOTIFY_TYPE_MAP.end()) {
+        NAPI_ERR_LOG("registerNotifyType is invalid");
+        return E_ERR;
+    }
+    uriType = REGISTER_SINGLE_NOTIFY_TYPE_MAP.at(type);
+    return E_OK;
+}
+
+int32_t MediaLibraryNotifyUtils::GetSingleNotifyTypeAndUri(const Notification::NotifyUriType type,
+    Notification::NotifyUriType &uriType, string &uri)
+{
+    if (REGISTER_SINGLE_TYPE_MAP.find(type) == REGISTER_SINGLE_TYPE_MAP.end()) {
+        NAPI_ERR_LOG("type is invalid");
+        return E_ERR;
+    }
+    uriType = REGISTER_SINGLE_TYPE_MAP.at(type);
+    if (REGISTER_SINGLE_URI_MAP.find(uriType) == REGISTER_SINGLE_URI_MAP.end()) {
+        NAPI_ERR_LOG("uriType is invalid");
+        return E_ERR;
+    }
+    uri = REGISTER_SINGLE_URI_MAP.at(uriType);
+    return E_OK;
 }
 
 napi_status MediaLibraryNotifyUtils::SetValueInt32(const napi_env& env, const char* name, const int32_t intValue,
@@ -467,6 +503,10 @@ napi_value MediaLibraryNotifyUtils::BuildAlbumChangeInfo(napi_env env,
     SetValueBool(env, "isHiddenCoverChanged", albumChangeInfo.isHiddenCoverChange_, result);
     SetValueInt32(env, "orderSection", albumChangeInfo.orderSection_, result);
     SetValueInt32(env, "albumOrder", albumChangeInfo.albumsOrder_, result);
+    if (!(albumChangeInfo.albumSubType_ >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
+        albumChangeInfo.albumSubType_ <= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_END))) {
+        SetValueBool(env, "hidden", static_cast<bool>(albumChangeInfo.hidden_), result);
+    }
 
     napi_status status = napi_ok;
     napi_value coverInfoValue = BuildPhotoAssetChangeInfo(env, albumChangeInfo.coverInfo_);
@@ -793,9 +833,9 @@ napi_value MediaLibraryNotifyUtils::BuildSinglePhotoAssetChangeInfos(napi_env en
         NAPI_ERR_LOG("Failed to build assetResults");
         return nullptr;
     }
-    status = napi_set_named_property(env, result, "AssetChangeDatas", assetResults);
+    status = napi_set_named_property(env, result, "assetChangeDatas", assetResults);
     if (status != napi_ok) {
-        NAPI_ERR_LOG("set array named property error: AssetChangeDatas");
+        NAPI_ERR_LOG("set array named property error: assetChangeDatas");
         return nullptr;
     }
     status = MediaLibraryNotifyUtils::SetValueBool(env, "isForRecheck", changeInfos->isForRecheck, result);
@@ -879,7 +919,7 @@ napi_value MediaLibraryNotifyUtils::BuildSinglePhotoAssetRecheckChangeInfos(napi
         NAPI_ERR_LOG("set array named property error: type");
         return nullptr;
     }
-    status = SetValueNull(env, "AssetChangeData", result);
+    status = SetValueNull(env, "assetChangeData", result);
     if (status != napi_ok) {
         NAPI_ERR_LOG("set array named property error: assetChangeData");
         return nullptr;

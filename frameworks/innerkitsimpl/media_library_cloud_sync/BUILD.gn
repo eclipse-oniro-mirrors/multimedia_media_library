@@ -69,12 +69,18 @@ ohos_shared_library("media_library_cloud_sync") {
 
   sources += source_ipc_client
 
+  if (!media_library_cloud_sync_enable) {
+    sources = []
+    include_dirs = []
+  }
+
   public_configs = [ ":media_library_cloud_sync_config" ]
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_NATIVE_PATH}/media_library_asset_manager:media_library_asset_manager",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [

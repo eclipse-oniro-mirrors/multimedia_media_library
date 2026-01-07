@@ -17,7 +17,7 @@
 #define INTERFACES_INNERKITS_SHOOTING_MODE_COLUMN_H
 
 #include <string>
-
+#include <unordered_set>
 #include "rdb_predicates.h"
 #include "userfile_manager_types.h"
 
@@ -48,11 +48,9 @@ const std::string SUPER_SLOW_MOTION_ALBUM_TAG = "TypeSSlowMotion";
 const std::string CAMERA_CUSTOM_SM_PANORAMA = "8";
 const std::string CAMERA_CUSTOM_SM_PHOTO_STITCHING = "77";
 const std::string TIME_LAPSE_TAG = "TypeTimeLapse";
-const std::string TIME_LAPSE_SHOOTING_MODE = "11";
 const std::string QUICK_CAPTURE_TAG = "62";
-const std::string QUICK_CAPTURE_SHOOTING_MODE = "12";
 
-/* ShootingMode value in medialibrary */
+/* ShootingModeAlbumName in medialibrary */
 enum class ShootingModeAlbumType : int32_t {
     START = 1,
     PORTRAIT = 1,
@@ -69,6 +67,24 @@ enum class ShootingModeAlbumType : int32_t {
     FRONT_CAMERA_ALBUM,
     RAW_IMAGE_ALBUM,
     MP4_3DGS_ALBUM,
+    TIME_LAPSE,
+    QUICK_CAPTURE_ALBUM,
+    END = QUICK_CAPTURE_ALBUM
+};
+
+/* ShootingMode value in medialibrary */
+enum class ShootingModeValue : int32_t {
+    START = 1,
+    PORTRAIT_SHOOTING_MODE = 1,
+    WIDE_APERTURE_SHOOTING_MODE,
+    NIGHT_SHOT_SHOOTING_MODE,
+    MOVING_PICTURE_SHOOTING_MODE,
+    PRO_PHOTO_SHOOTING_MODE,
+    SLOW_MOTION_SHOOTING_MODE,
+    LIGHT_PAINTING_SHOOTING_MODE,
+    HIGH_PIXEL_SHOOTING_MODE,
+    SUPER_MACRO_SHOOTING_MODE,
+    PANORAMA_SHOOTING_MODE,
     TIME_LAPSE,
     QUICK_CAPTURE_ALBUM,
     END = QUICK_CAPTURE_ALBUM
@@ -110,6 +126,12 @@ public:
     EXPORT static std::vector<ShootingModeAlbumType> GetShootingModeAlbumOfAsset(int32_t photoSubType,
         const std::string& mimetype, int32_t movingPhotoEffectMode, const std::string& frontCamera,
         const std::string& shootingMode);
+
+    EXPORT static std::string LookUpShootingModeAlbumType(const ShootingModeValue value);
+    EXPORT static std::string LookUpShootingModeValues(const std::string albumType);
+
+    static const std::vector<std::pair<ShootingModeValue, ShootingModeAlbumType>> SHOOTING_MODE_TO_ALBUM_TYPE;
+    static const std::unordered_set<std::string> VALID_TAGS;
 };
 } // namespace Media
 } // namespace OHOS

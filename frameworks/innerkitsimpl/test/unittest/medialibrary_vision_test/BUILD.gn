@@ -29,8 +29,8 @@ ohos_unittest("medialibrary_vision_unittest") {
 
   sources = [
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_command.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_vision_operations.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dao/medialibrary_vision_operations.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_vision_test.cpp",

@@ -344,7 +344,6 @@ static void ThumbnailGenerateHelperTestPart1()
     Media::ThumbnailGenerateHelper::RepairExifRotateBackground(opts);
     RdbPredicates predicates(PHOTOS_TABLE);
     Media::ThumbnailGenerateHelper::CreateLcdBackground(opts);
-    Media::ThumbnailGenerateHelper::CreateAstcBatchOnDemand(opts, predicates, provider->ConsumeIntegral<int32_t>());
     Media::ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(opts);
     int32_t outLcdCount;
     Media::ThumbnailGenerateHelper::GetLcdCount(opts, outLcdCount);

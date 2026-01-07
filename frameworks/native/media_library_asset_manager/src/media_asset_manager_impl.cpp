@@ -23,8 +23,11 @@
 #include <sys/stat.h>
 #include <uuid.h>
 
+#include "access_token.h"
+#include "accesstoken_kit.h"
 #include "directory_ex.h"
 #include "file_uri.h"
+#include "ipc_skeleton.h"
 #include "iservice_registry.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
@@ -37,6 +40,7 @@
 #include "moving_photo.h"
 #include "image_source_native.h"
 #include "userfile_client.h"
+#include "permission_utils.h"
 #include "picture_handle_client.h"
 #include "picture_native.h"
 #include "picture_native_impl.h"
@@ -46,6 +50,7 @@
 #include "user_inner_ipc_client.h"
 #include "query_photo_vo.h"
 
+using namespace OHOS::Security::AccessToken;
 namespace OHOS {
 namespace Media {
 namespace {
@@ -242,6 +247,11 @@ static AssetHandler* InsertDataHandler(NativeNotifyMode notifyMode,
             asyncContext->onRequestMovingPhotoDataPreparedHandler, asyncContext->returnDataType,
             asyncContext->requestUri, asyncContext->destUri, asyncContext->requestOptions.sourceMode);
         mediaAssetDataHandler->SetPhotoQuality(static_cast<int32_t>(asyncContext->photoQuality));
+    } else if (asyncContext->returnDataType == ReturnDataType::TYPE_PICTURE) {
+        mediaAssetDataHandler = make_shared<CapiMediaAssetDataHandler>(
+            asyncContext->onRequestQuickImageDataPreparedHandler, asyncContext->returnDataType,
+            asyncContext->requestUri, asyncContext->destUri, asyncContext->requestOptions.sourceMode);
+        mediaAssetDataHandler->SetPhotoQuality(static_cast<int32_t>(asyncContext->photoQuality));
     } else {
         mediaAssetDataHandler = make_shared<CapiMediaAssetDataHandler>(
         asyncContext->onDataPreparedHandler, asyncContext->returnDataType, asyncContext->requestUri,
@@ -376,7 +386,7 @@ bool MediaAssetManagerImpl::NotifyImageDataPrepared(AssetHandler *assetHandler)
             OH_PictureNative* pictureNative = nullptr;
             OH_ImageSourceNative* imageSourceNative = nullptr;
             GetPictureNativeObject(
-                assetHandler->requestId, dataHandler->GetRequestUri(), pictureNative, imageSourceNative, isPicture);
+                assetHandler->requestId, dataHandler->GetRequestUri(), &pictureNative, &imageSourceNative, isPicture);
             
             MediaLibrary_ErrorCode status;
             if (isPicture) {
@@ -385,7 +395,7 @@ bool MediaAssetManagerImpl::NotifyImageDataPrepared(AssetHandler *assetHandler)
                 status = imageSourceNative != nullptr ? MEDIA_LIBRARY_OK : MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
             }
             dataHandler->onRequestQuickImageDataPreparedHandler_(status, requestId, quality,
-                MEDIA_LIBRARY_COMPRESSED, pictureNative, imageSourceNative);
+                MEDIA_LIBRARY_COMPRESSED, imageSourceNative, pictureNative);
         }
     } else {
         MEDIA_ERR_LOG("Return mode type invalid %{public}d", dataHandler->GetReturnDataType());
@@ -683,7 +693,7 @@ OH_ImageSourceNative* MediaAssetManagerImpl::CreateImageSource(const std::string
 }
 
 void MediaAssetManagerImpl::GetPictureNativeObject(const std::string requestId, const std::string fileUri,
-    OH_PictureNative* pictureNative, OH_ImageSourceNative* imageSourceNative, bool &isPicture)
+    OH_PictureNative** pictureNative, OH_ImageSourceNative** imageSourceNative, bool &isPicture)
 {
     MEDIA_INFO_LOG("GetPictureNativeObject");
     std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
@@ -694,14 +704,14 @@ void MediaAssetManagerImpl::GetPictureNativeObject(const std::string requestId, 
     if (picture == nullptr) {
         MEDIA_INFO_LOG("picture is null");
         isPicture = false;
-        imageSourceNative = CreateImageSource(requestId, fileUri);
+        *imageSourceNative = CreateImageSource(requestId, fileUri);
         return;
     }
 
     MEDIA_INFO_LOG("picture is not null.");
-    pictureNative = new OH_PictureNative(picture);
-    if (pictureNative == nullptr) {
-        MEDIA_ERR_LOG("pictureNative is null.");
+    *pictureNative = new OH_PictureNative(picture);
+    if (*pictureNative == nullptr) {
+        MEDIA_ERR_LOG("Failed to create OH_PictureNative.");
         return;
     }
 }
@@ -916,6 +926,13 @@ int32_t MediaAssetManagerImpl::GetFdFromSandBoxUri(const std::string &sandBoxUri
     return MediaFileUtils::OpenFile(absDestPath, MEDIA_FILEMODE_WRITETRUNCATE);
 }
 
+static bool HasReadPermission()
+{
+    AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
+    int result = AccessTokenKit::VerifyAccessToken(tokenCaller, PERM_READ_IMAGEVIDEO);
+    return result == PermissionState::PERMISSION_GRANTED;
+}
+
 MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAsset* mediaAsset,
     NativeRequestOptions requestOptions, MediaLibrary_RequestId* requestId,
     OH_MediaLibrary_OnQuickImageDataPrepared callback)
@@ -923,6 +940,7 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAs
     MEDIA_INFO_LOG("MediaAssetManagerImpl::NativeQuickRequestImage Called");
     CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr && mediaAsset->mediaAsset_ != nullptr,
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "mediaAsset or mediaAsset_ is null");
+    CHECK_AND_RETURN_RET_LOG(HasReadPermission(), MEDIA_LIBRARY_PERMISSION_DENIED, "permission denied.");
     std::shared_ptr<FileAsset> fileAsset_ = mediaAsset->mediaAsset_->GetFileAssetInstance();
     MediaLibraryTracer tracer;
     tracer.Start("NativeQuickRequestImage");
@@ -947,13 +965,13 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAs
         MEDIA_ERR_LOG("Request image uri lens out of limit requestUri lens: %{public}zu",
             asyncContext->requestUri.length());
         strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
-        return MEDIA_LIBRARY_PARAMETER_ERROR;
+        return MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED;
     }
 
     if (MediaFileUtils::GetMediaType(asyncContext->displayName) != MEDIA_TYPE_IMAGE) {
         MEDIA_ERR_LOG("Request image file type invalid");
         strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
-        return MEDIA_LIBRARY_PARAMETER_ERROR;
+        return MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED;
     }
 
     bool isSuccess = false;

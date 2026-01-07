@@ -331,13 +331,29 @@ long long FolderParser::GetTimestampMs()
     ).count();
 }
 
+void BuildAlbumTypeByLPath(const std::string &lPath, NativeRdb::ValuesBucket& value)
+{
+    int32_t albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
+    int32_t albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC);
+
+    std::string target = "/Pictures/Users/";
+    std::transform(target.begin(), target.end(), target.begin(), ::tolower);
+    std::string lPathLower = lPath;
+    std::transform(lPathLower.begin(), lPathLower.end(), lPathLower.begin(), ::tolower);
+    if (lPathLower.find(target) == 0) {
+        albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+    }
+    value.PutInt(PhotoAlbumColumns::ALBUM_TYPE, albumType);
+    value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, albumSubType);
+}
+
 int32_t FolderParser::InsertAlbum(LakeAlbumInfo &lakeAlbumInfo)
 {
     MEDIA_INFO_LOG("FolderParser: begin insert PhotoAlbum.");
     CHECK_AND_RETURN_RET_LOG(GetMediaLibraryRdb() != nullptr, E_ERR, "InsertAlbum: rdb is null.");
     NativeRdb::ValuesBucket value;
-    value.PutInt(PhotoAlbumColumns::ALBUM_TYPE, static_cast<int32_t>(PhotoAlbumType::SOURCE));
-    value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
+    BuildAlbumTypeByLPath(lakeAlbumInfo.lpath, value);
     auto currentTime = this->GetTimestampMs();
     value.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, static_cast<int64_t>(currentTime));
     value.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, static_cast<int64_t>(currentTime));

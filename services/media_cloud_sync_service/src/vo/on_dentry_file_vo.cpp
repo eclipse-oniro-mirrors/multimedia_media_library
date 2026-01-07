@@ -20,6 +20,8 @@
 #include <sstream>
 
 #include "media_itypes_utils.h"
+#include "media_log.h"
+#include "message_parcel.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnDentryFileReqBody::Unmarshalling(MessageParcel &parcel)
@@ -83,5 +85,46 @@ std::string OnDentryFileRespBody::ToString() const
     ss << "]"
        << "}";
     return ss.str();
+}
+
+bool OnDentryFileReqBody::SplitBy20K(std::vector<OnDentryFileReqBody> &reqBodyList) const
+{
+    CHECK_AND_RETURN_RET(!this->records.empty(), false);
+    const size_t parcelGap = 4800;
+    const size_t parcelCapacity = 204800 - parcelGap;
+    size_t parcelSize = 0;
+    size_t currIndex = 0;
+    while (currIndex < this->records.size()) {
+        MessageParcel data;
+        size_t index = 0;
+        OnDentryFileReqBody reqBody;
+        std::vector<OnFetchPhotosVo> &childList = reqBody.records;
+        for (index = currIndex; index < this->records.size(); index++) {
+            this->records[index].Marshalling(data);
+            parcelSize = data.GetDataSize();
+            CHECK_AND_BREAK_INFO_LOG(parcelSize <= parcelCapacity,
+                "exceed capacity, split it. parcelSize: %{public}zu, parcelCapacity: %{public}zu",
+                parcelSize,
+                parcelCapacity);
+            childList.emplace_back(this->records[index]);
+        }
+        CHECK_AND_BREAK_ERR_LOG(!childList.empty(),
+            "dead loop detected, "
+            "currIndex: %{public}zu, index: %{public}zu",
+            currIndex,
+            index);
+        currIndex = index;
+        reqBodyList.emplace_back(reqBody);
+    }
+    MEDIA_INFO_LOG("SplitBy20K completed, totalSize: %{public}zu, splited size: %{public}zu",
+        this->records.size(),
+        reqBodyList.size());
+    return true;
+}
+ 
+void OnDentryFileRespBody::MergeRespBody(const OnDentryFileRespBody &respBody)
+{
+    this->failedRecords.insert(this->failedRecords.end(), respBody.failedRecords.begin(), respBody.failedRecords.end());
+    return;
 }
 }  // namespace OHOS::Media::CloudSync

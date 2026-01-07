@@ -21,15 +21,15 @@ ohos_fuzztest("MediaLibraryUtilFuzzTest") {
   include_dirs = [
     "./include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_multistages_capture/include/dfx",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/dfx",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
   ]
 
   sources = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/photo_file_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/cloud_sync_utils/cloud_sync_utils.cpp",
     "${MEDIALIB_UTILS_PATH}/src/cpu_utils.cpp",
     "src/medialibrary_util_fuzzer.cpp",

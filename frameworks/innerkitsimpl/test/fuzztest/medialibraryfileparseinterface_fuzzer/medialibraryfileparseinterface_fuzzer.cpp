@@ -28,7 +28,6 @@
 #include "moving_photo_file_utils.h"
 #include "metadata_extractor.h"
 #include "media_privacy_manager.h"
-#include "mtp_media_library.h"
 #undef private
 #undef protected
 

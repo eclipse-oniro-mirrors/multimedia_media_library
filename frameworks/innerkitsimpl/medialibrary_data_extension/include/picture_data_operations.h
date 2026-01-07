@@ -116,7 +116,6 @@ public:
     EXPORT explicit PictureDataOperations();
     ~PictureDataOperations();
     EXPORT void CleanDateForPeriodical();
-    void CleanPictureMapData(std::map<std::string, sptr<PicturePair>>& pictureMap, PictureType pictureType);
     EXPORT void InsertPictureData(const std::string& imageId, sptr<PicturePair>& picturePair, PictureType pictureType);
     std::shared_ptr<Media::Picture> GetDataWithImageId(const std::string& imageId,
         bool &isHighQualityPicture, bool &isTakeEffect, bool isCleanImmediately = true);
@@ -129,6 +128,8 @@ public:
     static void SavePictureExecutor(AsyncTaskData *data);
     int32_t AddSavePictureTask(sptr<PicturePair>& picturePair);
     int32_t GetPendingTaskSize();
+    int32_t GetLowPendingTaskSize();
+
 private:
     bool SavePicture(const std::string& imageId, std::map<std::string, sptr<PicturePair>>& pictureMap,
         bool isLowQualityPicture);
@@ -136,6 +137,7 @@ private:
         std::list<std::string>& pictureImageIdList);
     std::shared_ptr<Media::Picture> GetDataWithImageIdAndPictureType(const std::string& imageId,
         PictureType pictureType, bool &isTakeEffect, bool isCleanImmediately = true);
+    void CleanPictureMapData(std::map<std::string, sptr<PicturePair>>& pictureMap, PictureType pictureType);
 
     const int MAX_PICTURE_CAPBILITY = 3;
     int max_capibilty = MAX_PICTURE_CAPBILITY;

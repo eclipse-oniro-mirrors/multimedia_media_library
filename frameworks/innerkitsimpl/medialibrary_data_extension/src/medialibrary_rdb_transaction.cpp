@@ -443,7 +443,8 @@ int32_t TransactionOperations::Delete(MediaLibraryCommand &cmd, int32_t &deleted
 }
 
 pair<int32_t, NativeRdb::Results> TransactionOperations::BatchInsert(
-    const string &table, const vector<ValuesBucket> &values, const string &returningField)
+    const string &table, const vector<ValuesBucket> &values, const string &returningField,
+    NativeRdb::ConflictResolution resolution)
 {
     if (transaction_ == nullptr) {
         MEDIA_ERR_LOG("transaction_ is null");
@@ -454,7 +455,8 @@ pair<int32_t, NativeRdb::Results> TransactionOperations::BatchInsert(
         refRows.Put(value);
     }
 
-    pair<int32_t, NativeRdb::Results> result = transaction_->BatchInsert(table, refRows, { returningField });
+    pair<int32_t, NativeRdb::Results> result = transaction_->BatchInsert(table, refRows, { returningField },
+        resolution);
     SetIsOperate(result);
     return result;
 }

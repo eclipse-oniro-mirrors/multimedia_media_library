@@ -253,11 +253,6 @@ int32_t MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(std:
 {
     CHECK_AND_RETURN_RET_INFO_LOG(IPCSkeleton::GetCallingUid() != SHARE_UID, E_INNER_FAIL, "share support heif");
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INNER_FAIL, "fileAsset is nullptr");
-
-    if (MediaFileUtils::GetExtensionFromPath(fileAsset->GetDisplayName()) != "heif" &&
-        MediaFileUtils::GetExtensionFromPath(fileAsset->GetDisplayName()) != "heic") {
-        MEDIA_INFO_LOG("Display name is not heif, fileAsset uri: %{public}s", fileAsset->GetUri().c_str());
-    }
     CHECK_AND_RETURN_RET_LOG(!isHeif, E_INNER_FAIL, "Is support heif uri:%{public}s", fileAsset->GetUri().c_str());
     CHECK_AND_RETURN_RET_LOG(mode == MEDIA_FILEMODE_READONLY, E_INNER_FAIL,
         "mode is not read only, fileAsset uri: %{public}s", fileAsset->GetUri().c_str());

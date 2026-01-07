@@ -24,7 +24,6 @@
 #include "media_itypes_utils.h"
 #include "cloud_media_sync_const.h"
 #include "cloud_error_detail_vo.h"
-#include "photos_dto.h"
 #include "cloud_media_define.h"
 
 namespace OHOS::Media::CloudSync {

@@ -32,7 +32,6 @@
 #include "on_mdirty_records_album_vo.h"
 #include "mdk_record_album_data.h"
 #include "cloud_album_data_convert.h"
-#include "get_check_records_album_vo.h"
 #include "failed_size_resp_vo.h"
 #include "media_operate_result_vo.h"
 
@@ -161,9 +160,9 @@ int32_t CloudMediaAlbumHandler::GetCheckRecords(
 
 int32_t CloudMediaAlbumHandler::GetCreatedRecords(std::vector<MDKRecord> &records, int32_t size)
 {
-    MEDIA_INFO_LOG("enter CloudMediaAlbumHandler::GetCreatedRecords");
     CloudMdkRecordPhotoAlbumReqBody reqBody;
     reqBody.size = size;
+    reqBody.isCloudSpaceFull = this->IsCloudSpaceFull();
     CloudMdkRecordPhotoAlbumRespBody respBody;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
@@ -190,12 +189,15 @@ int32_t CloudMediaAlbumHandler::GetCreatedRecords(std::vector<MDKRecord> &record
         }
         dkRecord = nullptr;
     }
+    MEDIA_INFO_LOG("GetCreatedRecords completed, "
+        "query-size: %{public}d, result-size: %{public}zu",
+        size,
+        records.size());
     return E_OK;
 }
 
 int32_t CloudMediaAlbumHandler::GetMetaModifiedRecords(std::vector<MDKRecord> &records, int32_t size, int32_t dirtyType)
 {
-    MEDIA_INFO_LOG("enter CloudMediaAlbumHandler::GetMetaModifiedRecords");
     CloudMdkRecordPhotoAlbumReqBody reqBody;
     reqBody.size = size;
     CloudMdkRecordPhotoAlbumRespBody respBody;
@@ -208,7 +210,6 @@ int32_t CloudMediaAlbumHandler::GetMetaModifiedRecords(std::vector<MDKRecord> &r
         return E_ERR;
     }
     std::vector<CloudMdkRecordPhotoAlbumVo> createdRecord = respBody.GetPhotoAlbumRecords();
-    MEDIA_INFO_LOG("Enter CloudMediaAlbumHandler::GetMetaModifiedRecords size: %{public}zu", createdRecord.size());
     CloudAlbumDataConvert dataConvertor{CloudAlbumOperationType::PHOTO_ALBUM_METADATA_MODIF};
     for (auto it = createdRecord.begin(); it != createdRecord.end(); ++it) {
         std::shared_ptr<MDKRecord> dkRecord = dataConvertor.ConvertToMdkRecord(*it);
@@ -217,6 +218,10 @@ int32_t CloudMediaAlbumHandler::GetMetaModifiedRecords(std::vector<MDKRecord> &r
             dkRecord = nullptr;
         }
     }
+    MEDIA_INFO_LOG("GetMetaModifiedRecords completed, "
+        "query-size: %{public}d, result-size: %{public}zu",
+        size,
+        records.size());
     return E_OK;
 }
 // album does not handle this operation <GetFileModifiedRecords>.
@@ -227,7 +232,6 @@ int32_t CloudMediaAlbumHandler::GetFileModifiedRecords(std::vector<MDKRecord> &r
 
 int32_t CloudMediaAlbumHandler::GetDeletedRecords(std::vector<MDKRecord> &records, int32_t size)
 {
-    MEDIA_INFO_LOG("enter CloudMediaAlbumHandler::GetDeletedRecords %{public}d", size);
     CloudMdkRecordPhotoAlbumReqBody reqBody;
     reqBody.size = size;
     CloudMdkRecordPhotoAlbumRespBody respBody;
@@ -248,6 +252,10 @@ int32_t CloudMediaAlbumHandler::GetDeletedRecords(std::vector<MDKRecord> &record
             dkRecord = nullptr;
         }
     }
+    MEDIA_INFO_LOG("GetDeletedRecords completed, "
+        "query-size: %{public}d, result-size: %{public}zu",
+        size,
+        records.size());
     return E_OK;
 }
 // album does not handle this operation <GetRetryRecords>.

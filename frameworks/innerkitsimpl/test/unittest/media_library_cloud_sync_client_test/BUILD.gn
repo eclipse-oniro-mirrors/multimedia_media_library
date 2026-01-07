@@ -86,10 +86,6 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "relational_store:rdb_data_share_adapter",
   ]
 
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
-
   sanitize = {
     cfi = true
     cfi_cross_dso = true

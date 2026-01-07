@@ -20,6 +20,8 @@
 
 namespace OHOS {
 namespace Media::AccurateRefresh {
+const int32_t accurateDebugLevelHigh = 3;
+const int32_t accurateDebugLevelMid = 2;
 
 __attribute__ ((visibility ("default"))) extern int32_t accurateDebugLevel;
 #define IS_ACCURATE_DEBUG (AccurateRefresh::accurateDebugLevel >= 3)

@@ -25,6 +25,7 @@
 #include "media_log.h"
 #include "medialibrary_subscriber.h"
 #include "uri.h"
+#include "medialibrary_related_system_state_manager.h"
 
 using namespace std;
 using Uri = OHOS::Uri;
@@ -36,7 +37,8 @@ void CloudMediaAssetObserver::OnChange(const ChangeInfo &changeInfo)
 {
     bool cond = (operation_ == nullptr || operation_->GetTaskStatus() == CloudMediaAssetTaskStatus::IDLE);
     CHECK_AND_RETURN(!cond);
-    CHECK_AND_RETURN_INFO_LOG(!CommonEventUtils::IsWifiConnected(), "wifi is connection.");
+    CHECK_AND_RETURN_INFO_LOG(!MedialibraryRelatedSystemStateManager::GetInstance()->IsWifiConnectedAtRealTime(),
+        "wifi not connection.");
 
     std::list<Uri> uris = changeInfo.uris_;
     for (auto &uri : uris) {
@@ -45,9 +47,9 @@ void CloudMediaAssetObserver::OnChange(const ChangeInfo &changeInfo)
 
         bool isUnlimitedTrafficStatusOn = CloudSyncUtils::IsUnlimitedTrafficStatusOn();
         if (operation_->GetTaskStatus() == CloudMediaAssetTaskStatus::DOWNLOADING) {
-            operation_->isUnlimitedTrafficStatusOn_ = isUnlimitedTrafficStatusOn;
             CHECK_AND_RETURN(!isUnlimitedTrafficStatusOn);
-            CloudMediaTaskPauseCause pauseCause = CommonEventUtils::IsCellularNetConnected() ?
+            CloudMediaTaskPauseCause pauseCause =
+                MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime() ?
                 CloudMediaTaskPauseCause::WIFI_UNAVAILABLE : CloudMediaTaskPauseCause::NETWORK_FLOW_LIMIT;
             operation_->PauseDownloadTask(pauseCause);
             MEDIA_INFO_LOG("Cloud media asset download paused, pauseCause: %{public}d.",
@@ -56,7 +58,8 @@ void CloudMediaAssetObserver::OnChange(const ChangeInfo &changeInfo)
         }
 
         if (operation_->GetTaskStatus() == CloudMediaAssetTaskStatus::PAUSED &&
-            CommonEventUtils::IsCellularNetConnected() && isUnlimitedTrafficStatusOn) {
+            MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime() &&
+            isUnlimitedTrafficStatusOn) {
             operation_->PassiveStatusRecoverTask(CloudMediaTaskRecoverCause::NETWORK_NORMAL);
             MEDIA_INFO_LOG("Cloud media asset download recovered, recoverCause: %{public}d.",
                 static_cast<int32_t>(CloudMediaTaskRecoverCause::NETWORK_NORMAL));

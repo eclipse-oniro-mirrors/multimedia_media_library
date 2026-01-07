@@ -45,7 +45,6 @@ public:
     EXPORT int32_t DismissAssets(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t MergeAlbum(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t PlaceBefore(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t SetOrderPosition(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumCommitModify(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumAddAssets(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumRemoveAssets(MessageParcel &data, MessageParcel &reply);
@@ -55,21 +54,18 @@ public:
     EXPORT int32_t QueryAlbums(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t QueryHiddenAlbums(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetAlbumsByIds(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t GetOrderPosition(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t GetFaceId(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetPhotoIndex(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t GetAnalysisProcess(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetHighlightAlbumInfo(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetPhotoAlbumObject(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t UpdatePhotoAlbumOrder(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t QueryAlbumsLpaths(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetAlbumsLpathByIds(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t SetRelationship(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t GetRelationship(MessageParcel &data, MessageParcel &reply);
     int32_t ChangeRequestSetHighlightAttribute(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetClonedAlbumUris(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ChangeRequestSetUploadStatus(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetAlbumIdByLpathOrBundleName(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SmartMoveAssets(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CreateAnalysisAlbum(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAlbumsControllerService() = default;

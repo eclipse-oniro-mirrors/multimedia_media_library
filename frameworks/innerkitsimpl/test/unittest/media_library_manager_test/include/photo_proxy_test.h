@@ -19,7 +19,9 @@
 #include <ctime>
 #include <iostream>
 
+#define private public
 #include "media_photo_asset_proxy.h"
+#undef private
 
 namespace OHOS {
 namespace Media {
@@ -163,13 +165,13 @@ public:
 
     /**
      * @brief Get the Burst Key object
-     * @return std::string 36 characters like xxxxxxxx-xxxx-xxxx-xxxxxxxx-xxxx
+     * @return std::string 36 characters, like xxxxxxxx-xxxx-xxxx-xxxxxxxx-xxxx
      */
     std::string GetBurstKey() override
     {
         return this->burstKey_;
     }
- 
+
     /**
      * @brief judge the photo is the cover photo or not
      *
@@ -180,16 +182,22 @@ public:
     {
         return this->isCoverPhoto_;
     }
- 
+
     void SetIsCoverPhoto(bool isCoverPhoto)
     {
         this->isCoverPhoto_ = isCoverPhoto;
     }
- 
+
     void SetBurstKey(std::string burstKey)
     {
         this->burstKey_ = burstKey;
     }
+
+    void SetVideoEnhancementType(int32_t videoEnhancementType)
+    {
+        videoEnhancementType_ = videoEnhancementType;
+    }
+
 private:
     void *fileDataAddr_ = nullptr;
     int32_t fileSize_ = 0;
@@ -200,6 +208,7 @@ private:
     DeferredProcType deferredProcType_ = DeferredProcType::OFFLINE;
     std::string burstKey_;
     bool isCoverPhoto_;
+    int32_t videoEnhancementType_;
 };
 } // Media
 } // OHOS

@@ -26,6 +26,7 @@ if (media_library_feature_mtp) {
     include_dirs = [
       "./include",
       "../get_self_permissions/include",
+      "${MEDIALIB_COMMON_PATH}/utils/include",
       "${MEDIALIB_MTP_PATH}/include",
       "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
       "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",

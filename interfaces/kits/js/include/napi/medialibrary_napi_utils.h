@@ -219,6 +219,7 @@ const int32_t ARGS_FOUR = 4;
 const int32_t ARGS_FIVE = 5;
 const int32_t ARGS_SIX = 6;
 const int32_t ARGS_SEVEN = 7;
+const int32_t ARGS_EIGHT  = 8;
 const int32_t ARG_BUF_SIZE = 384; // 256 for display name and 128 for relative path
 constexpr uint32_t NAPI_INIT_REF_COUNT = 1;
 
@@ -413,6 +414,10 @@ public:
         const size_t minArgs, const size_t maxArgs);
 
     template <class AsyncContext>
+    static napi_status ParseArgsTwoCallback(napi_env env, napi_callback_info info, AsyncContext &asyncContext,
+        const size_t minArgs, const size_t maxArgs);
+
+    template <class AsyncContext>
     static napi_status AsyncContextGetArgs(napi_env env, napi_callback_info info, AsyncContext &asyncContext,
         const size_t minArgs, const size_t maxArgs);
 
@@ -519,6 +524,7 @@ public:
         const bool hiddenOnly);
     EXPORT static bool IsFeaturedSinglePortraitAlbum(std::string albumName, DataShare::DataSharePredicates &predicates);
     EXPORT static bool IsSystemApp();
+    static bool IsBetaVersion();
     static bool IsNumber(const std::string &str);
     static std::string GetStringFetchProperty(napi_env env, napi_value arg, bool &err, bool &present,
         const std::string &propertyName);
@@ -543,8 +549,8 @@ public:
     static napi_value GetNapiValueArray(napi_env env, napi_value arg, std::vector<napi_value> &values);
     static napi_value GetUriArrayFromAssets(
         napi_env env, std::vector<napi_value> &napiValues, std::vector<std::string> &values);
-    static std::string GetUriFromNapiAssets(napi_env env, const napi_value &napiAsset);
-    static std::string GetUriFromNapiPhotoAlbum(napi_env env, const napi_value &napiPhotoAlbum);
+    static std::string GetSingleIdFromNapiAssets(napi_env env, const napi_value &napiAsset);
+    static std::string GetSingleIdFromNapiPhotoAlbum(napi_env env, const napi_value &napiPhotoAlbum);
     static napi_value GetIdArrayFromAssets(
         napi_env env, std::vector<napi_value> &napiValues, std::vector<std::string> &values);
     static napi_value GetStringArray(

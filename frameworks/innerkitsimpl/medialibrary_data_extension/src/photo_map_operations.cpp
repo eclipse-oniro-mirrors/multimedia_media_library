@@ -53,6 +53,7 @@ using namespace OHOS::NativeRdb;
 using namespace OHOS::DataShare;
 
 constexpr int32_t ALBUM_IS_REMOVED = 1;
+constexpr int32_t USER_OPERATION_MODIFYED = 1;
 unordered_map<string, string> dateTypeSecondsMap = {
     {MEDIA_DATA_DB_DATE_ADDED_TO_SECOND, "CAST(P.date_added / 1000 AS BIGINT) AS date_added_s"},
     {MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND, "CAST(P.date_trashed / 1000 AS BIGINT) AS date_trashed_s"},
@@ -181,6 +182,10 @@ int32_t PhotoMapOperations::AddHighlightPhotoAssets(const vector<DataShareValues
     for (auto value : values) {
         bool isValidValue = false;
         std::string assetUri = value.Get(PhotoMap::ASSET_ID, isValidValue);
+        if (MediaLibraryDataManagerUtils::IsNumber(MediaFileUri::GetPhotoId(assetUri))) {
+            MEDIA_INFO_LOG("invalid photo id: %{public}s", MediaFileUri::GetPhotoId(assetUri).c_str());
+            continue;
+        }
         uris.push_back(assetUri);
         int32_t photoId = std::stoi(MediaFileUri::GetPhotoId(assetUri));
         DataShare::DataShareValuesBucket pair;
@@ -243,6 +248,210 @@ int32_t PhotoMapOperations::AddAnaLysisPhotoAssets(const vector<DataShareValuesB
     }
     MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, albumIdList);
     return changedRows;
+}
+
+int32_t handleSqlParam(string &sqlParam, const vector<string> &assetsArray)
+{
+    CHECK_AND_RETURN_RET_LOG(!assetsArray.empty(), E_ERR, "assetsArray is empty ! ");
+    for (size_t i = 0; i < assetsArray.size(); i++) {
+        sqlParam += assetsArray[i];
+        if (i < assetsArray.size() - 1) {
+            sqlParam +=",";
+        }
+    }
+    return E_OK;
+}
+
+static int32_t ClassfiyAssets(const vector<string> &assetsArray, MergedAlbumInfo &mergedAlbumInfo)
+{
+    string allSourceAlbumIdsParam = "";
+    string allTargetAlbumIdsParam = "";
+    string allAssetParam = "";
+    CHECK_AND_RETURN_RET_LOG(handleSqlParam(allSourceAlbumIdsParam, mergedAlbumInfo.sourceAlbumIds),
+        E_ERR, "handleSqlParam allSourceAlbumIdsParam fail ! ");
+    CHECK_AND_RETURN_RET_LOG(handleSqlParam(allTargetAlbumIdsParam, mergedAlbumInfo.targetAlbumIds),
+        E_ERR, "handleSqlParam allTargetAlbumIdsParam fail ! ");
+    CHECK_AND_RETURN_RET_LOG(handleSqlParam(allAssetParam, assetsArray),
+        E_ERR, "handleSqlParam allAssetParam fail ! ");
+
+    const std::string queryPortraitAlbumIds = "SELECT " + MAP_ASSET +
+        " FROM ( SELECT " + MAP_ASSET + " FROM " + ANALYSIS_PHOTO_MAP_TABLE + " WHERE " + MAP_ALBUM +
+        " IN(" + allSourceAlbumIdsParam + ") AND " + MAP_ASSET + " IN( " + allAssetParam + " ) " +
+        " INTERSECT " +
+        " SELECT " + MAP_ASSET + " FROM " + ANALYSIS_PHOTO_MAP_TABLE + " WHERE " + MAP_ALBUM +
+        " IN(" + allTargetAlbumIdsParam + ") AND " + MAP_ASSET + " IN( " + allAssetParam + " )) ";
+    auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "uniStore is nullptr! ");
+    auto resultSet = uniStore->QuerySql(queryPortraitAlbumIds);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr! ");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        mergedAlbumInfo.commonAssets.push_back(GetStringVal(MAP_ASSET, resultSet));
+    }
+    resultSet->Close();
+    for (const auto &item : assetsArray) {
+        if (find(mergedAlbumInfo.commonAssets.begin(),
+        mergedAlbumInfo.commonAssets.end(), item) == mergedAlbumInfo.commonAssets.end()) {
+            mergedAlbumInfo.unCommonAssets.push_back(item);
+        }
+    }
+    return E_OK;
+}
+
+static int32_t QueryTagID(vector<string> albumIds, vector<string> &tagId,
+    const string &targetAlbumeId, bool isTargetAlbumId)
+{
+    MEDIA_INFO_LOG("QueryTagID begin ");
+    string sql;
+    if (isTargetAlbumId) {
+        sql = "SELECT " + TAG_ID + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " +
+        ALBUM_ID + " = " + targetAlbumeId;
+    } else {
+        string albumIdParams;
+        handleSqlParam(albumIdParams, albumIds);
+        sql = "SELECT " + TAG_ID + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " +
+        ALBUM_ID + " IN(" + albumIdParams + ")";
+    }
+
+    auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "uniStore is nullptr!");
+    auto resultSet = uniStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr!");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        tagId.push_back(GetStringVal(TAG_ID, resultSet));
+    }
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(!tagId.empty(), E_ERR, "QueryTagID fail. tagId is empty ! ");
+    return E_OK;
+}
+
+static int32_t HandleImageFaceMoveAsset(const string &albumId, const string &targetAlbumId,
+    const vector<string> &assetIds, MergedAlbumInfo &mergedAlbumInfo)
+{
+    MEDIA_INFO_LOG("HandleImageFaceMoveAsset start");
+    vector<string> targetTagId;
+    vector<string> tagId;
+    QueryTagID(mergedAlbumInfo.targetAlbumIds, targetTagId, targetAlbumId, true);
+    QueryTagID(mergedAlbumInfo.sourceAlbumIds, tagId, albumId, false);
+
+    NativeRdb::RdbPredicates rdbPredicate { VISION_IMAGE_FACE_TABLE };
+    rdbPredicate.In(TAG_ID, tagId);
+    rdbPredicate.And()->In(MediaColumn::MEDIA_ID, assetIds);
+    ValuesBucket values;
+    CHECK_AND_RETURN_RET_LOG(!targetTagId.empty(), E_ERR, "targetTagId is empty ! ");
+    values.PutString(TAG_ID, targetTagId[0]);
+    int32_t changedRows = -1;
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "HandleImageFace Failed to get rdbStore.");
+    rdbStore->Update(changedRows, values, rdbPredicate);
+    return changedRows;
+}
+
+static int32_t HandleAnalysisEditOperationMoveAsset(MergedAlbumInfo &mergedAlbumInfo)
+{
+    ValuesBucket value;
+    int32_t changedRows = -1;
+
+    NativeRdb::RdbPredicates rdbPredicate { ANALYSIS_ALBUM_TABLE };
+    vector<string> updateAlbumIds = mergedAlbumInfo.sourceAlbumIds;
+    for (auto idItem : mergedAlbumInfo.targetAlbumIds) {
+        updateAlbumIds.emplace_back(idItem);
+    }
+    rdbPredicate.In(ALBUM_ID, updateAlbumIds);
+    value.PutInt(EDIT_OPERATION, USER_OPERATION_MODIFYED);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    int32_t ret = rdbStore->Update(changedRows, value, rdbPredicate);
+    CHECK_AND_RETURN_RET_LOG(changedRows > 0, E_ERR, "EditOperationMoveAsset fail.row %{public}d ", changedRows);
+    return changedRows;
+}
+
+static int32_t HandleCommonAsset(MergedAlbumInfo &mergedAlbumInfo)
+{
+    MEDIA_INFO_LOG("HandleCommonAsset start");
+    vector<std::string> updateMapAlbumIds;
+    int32_t deleteRow = -1;
+    NativeRdb::RdbPredicates rdbPredicate { ANALYSIS_PHOTO_MAP_TABLE };
+    rdbPredicate.In(MAP_ALBUM, mergedAlbumInfo.sourceAlbumIds);
+    rdbPredicate.And()->In(MAP_ASSET, mergedAlbumInfo.commonAssets);
+    deleteRow = MediaLibraryRdbStore::Delete(rdbPredicate);
+    return deleteRow;
+}
+
+static int32_t HandleUnCommonAsset(const string &targetAlbumId, MergedAlbumInfo &mergedAlbumInfo)
+{
+    MEDIA_INFO_LOG("HandleCommonAsset start");
+    ValuesBucket value;
+    int32_t changedRows = -1;
+    NativeRdb::RdbPredicates rdbPredicate { ANALYSIS_PHOTO_MAP_TABLE };
+    rdbPredicate.In(MAP_ALBUM, mergedAlbumInfo.sourceAlbumIds);
+    rdbPredicate.And()->In(MAP_ASSET, mergedAlbumInfo.unCommonAssets);
+    value.PutString(MAP_ALBUM, targetAlbumId);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    int32_t ret = rdbStore->Update(changedRows, value, rdbPredicate);
+    return changedRows;
+}
+
+static int32_t HandleAlbumMapMoveAsset(const string &targetAlbumId,
+    const vector<string> &assetIds, MergedAlbumInfo &mergedAlbumInfo)
+{
+    if (!mergedAlbumInfo.commonAssets.empty()) {
+        int32_t changedRows = HandleCommonAsset(mergedAlbumInfo);
+        CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleCommonAsset Fail ");
+    }
+    int32_t changedRows = HandleUnCommonAsset(targetAlbumId, mergedAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleUnCommonAsset Fail ");
+    return changedRows;
+}
+
+int32_t DoSmartMoveAssets(const string &albumId, const string targetAlbumId,
+    const vector<string> &assetIds, MergedAlbumInfo &mergedAlbumInfo)
+{
+    MEDIA_INFO_LOG("DoSmartMoveAssets start ");
+    int32_t changedImageFaceRows = HandleImageFaceMoveAsset(albumId, targetAlbumId, assetIds, mergedAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(changedImageFaceRows >= 0, E_ERR, "HandleImageFaceMoveAsset Fail ");
+
+    int32_t changedAlbumMapRows = HandleAlbumMapMoveAsset(targetAlbumId, assetIds, mergedAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(changedAlbumMapRows >= 0, E_ERR, "HandleAlbumMapMoveAsset Fail ");
+
+    int32_t changedAnalysisAlbumRows = HandleAnalysisEditOperationMoveAsset(mergedAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(changedAnalysisAlbumRows >= 0, E_ERR, "HandleAnalysisEditOperationMoveAsset Fail ");
+
+    vector<string> updateMapAlbumIds = mergedAlbumInfo.sourceAlbumIds;
+    for (auto idItem : mergedAlbumInfo.targetAlbumIds) {
+        updateMapAlbumIds.emplace_back(idItem);
+    }
+    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(
+        MediaLibraryUnistoreManager::GetInstance().GetRdbStore(), updateMapAlbumIds);
+    return E_OK;
+}
+
+int32_t PhotoMapOperations::SmartMoveAssets(const string &albumId,
+    const string &targetAlbumId, const vector<std::string> &assetsArray)
+{
+    MEDIA_INFO_LOG("SmartMoveAssets start ");
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(albumId), E_ERR, "albumId is invail");
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(targetAlbumId), E_ERR, "targetAlbumId is invail");
+    MergedAlbumInfo mergedAlbumInfo;
+    GetPortraitAlbumIds(albumId, mergedAlbumInfo.sourceAlbumIds);
+    GetPortraitAlbumIds(targetAlbumId, mergedAlbumInfo.targetAlbumIds);
+    ClassfiyAssets(assetsArray, mergedAlbumInfo);
+
+    int32_t ret = DoSmartMoveAssets(albumId, targetAlbumId, assetsArray, mergedAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "SmartMoveAssets Fail ");
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
+    for (size_t i = 0; i < assetsArray.size(); i++) {
+        std::string UpdateUri = PhotoColumn::PHOTO_URI_PREFIX + assetsArray[i];
+        watch->Notify(MediaFileUtils::Encode(UpdateUri),
+            NotifyType::NOTIFY_ALBUM_DISMISS_ASSET, std::stoi(albumId));
+    }
+    for (size_t i = 0; i < mergedAlbumInfo.unCommonAssets.size(); i++) {
+        std::string UpdateUri = PhotoColumn::PHOTO_URI_PREFIX + mergedAlbumInfo.unCommonAssets[i];
+        watch->Notify(MediaFileUtils::Encode(UpdateUri),
+            NotifyType::NOTIFY_ALBUM_ADD_ASSET, std::stoi(targetAlbumId));
+    }
+    return ret;
 }
 
 static void GetDismissAssetsPredicates(NativeRdb::RdbPredicates &rdbPredicate, vector<string> &updateAlbumIds,

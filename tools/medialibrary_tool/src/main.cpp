@@ -55,7 +55,6 @@ int main(int argc, char *argv[])
     }
 
     MEDIA_INFO_LOG("mediatool main start: %{public}s", BuildCommandLine(args).c_str());
-
     return ControlMain::Main(args);
 }
 

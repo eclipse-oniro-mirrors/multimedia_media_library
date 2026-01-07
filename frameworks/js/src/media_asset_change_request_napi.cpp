@@ -26,6 +26,7 @@
 #include "image_packer.h"
 #include "ipc_skeleton.h"
 #include "media_asset_edit_data_napi.h"
+#include "media_file_utils.h"
 #include "medialibrary_tracer.h"
 #include "permission_utils.h"
 #include "photo_proxy_napi.h"
@@ -41,6 +42,7 @@
 #include "add_image_vo.h"
 #include "save_camera_photo_vo.h"
 #include "qos.h"
+#include "media_change_request_utils.h"
 
 using namespace std;
 using namespace OHOS::Security::AccessToken;
@@ -130,6 +132,7 @@ napi_value MediaAssetChangeRequestNapi::Init(napi_env env, napi_value exports)
         .ref = &constructor_,
         .constructor = Constructor,
         .props = {
+            DECLARE_NAPI_PROPERTY("comment", MediaChangeRequestUtils::CreateComment(env)),
             DECLARE_NAPI_STATIC_FUNCTION("deleteLocalAssetsPermanentlyWithUri", JSDeleteLocalAssetsPermanentlyWithUri),
             DECLARE_NAPI_STATIC_FUNCTION("createAssetRequest", JSCreateAssetRequest),
             DECLARE_NAPI_STATIC_FUNCTION("createImageAssetRequest", JSCreateImageAssetRequest),
@@ -296,6 +299,12 @@ bool MediaAssetChangeRequestNapi::IsMovingPhoto() const
         (fileAsset_->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
         (fileAsset_->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::DEFAULT) &&
         fileAsset_->GetMovingPhotoEffectMode() == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)));
+}
+
+bool MediaAssetChangeRequestNapi::IsCinematicVideo() const
+{
+    return fileAsset_ != nullptr &&
+        fileAsset_->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO);
 }
 
 bool MediaAssetChangeRequestNapi::CheckMovingPhotoResource(ResourceType resourceType) const
@@ -1420,7 +1429,8 @@ napi_value MediaAssetChangeRequestNapi::JSSetCameraShotKey(napi_env env, napi_ca
 
 napi_value MediaAssetChangeRequestNapi::JSSaveCameraPhoto(napi_env env, napi_callback_info info)
 {
-    NAPI_INFO_LOG("Begin MediaAssetChangeRequestNapi::JSSaveCameraPhoto");
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} Begin MediaAssetChangeRequestNapi::JSSaveCameraPhoto",
+        MLOG_TAG, __FUNCTION__, __LINE__);
     constexpr size_t minArgs = ARGS_ZERO;
     constexpr size_t maxArgs = ARGS_ONE;
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
@@ -2385,6 +2395,25 @@ static bool HasAddResource(MediaAssetChangeRequestAsyncContext& context, Resourc
         context.addResourceTypes.end();
 }
 
+static bool CancelProcessCinematicVideo(MediaAssetChangeRequestAsyncContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    CHECK_COND_RET(fileAsset != nullptr, false, "fileAsset is nullptr");
+    int32_t fileId = fileAsset->GetId();
+
+    string uriStr = PAH_CANCEL_PROCESS_VIDEO;
+    MediaFileUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
+    Uri uri(uriStr);
+    DataShare::DataSharePredicates predicates;
+    int errCode = 0;
+    vector<string> columns { to_string(fileId) };
+    UserFileClient::Query(uri, predicates, columns, errCode);
+    NAPI_INFO_LOG("CancelProcessCinematicVideo, fileId: %{public}d", fileId);
+    return true;
+}
+
 static bool AddResourceExecute(MediaAssetChangeRequestAsyncContext& context)
 {
     MediaLibraryTracer tracer;
@@ -2396,6 +2425,10 @@ static bool AddResourceExecute(MediaAssetChangeRequestAsyncContext& context)
 
     auto changeRequest = context.objectInfo;
     CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    if (changeRequest->IsCinematicVideo()) {
+        CancelProcessCinematicVideo(context);
+    }
+
     if (changeRequest->IsMovingPhoto() && HasAddResource(context, ResourceType::VIDEO_RESOURCE) &&
         !AddMovingPhotoVideoExecute(context)) {
         NAPI_ERR_LOG("Faild to write cache file for video of moving photo");
@@ -2752,6 +2785,7 @@ static bool SetVideoEnhancementAttr(MediaAssetChangeRequestAsyncContext &context
 {
     MediaLibraryTracer tracer;
     tracer.Start("setVideoEnhancementAttr");
+    MEDIA_INFO_LOG("Enter SetVideoEnhancementAttr");
 
     auto changeRequest = context.objectInfo;
     CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");

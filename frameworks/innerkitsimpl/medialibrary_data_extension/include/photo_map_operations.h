@@ -23,6 +23,13 @@
 #include "medialibrary_command.h"
 #include "result_set.h"
 
+struct MergedAlbumInfo {
+    std::vector<std::string> sourceAlbumIds;
+    std::vector<std::string> targetAlbumIds;
+    std::vector<std::string> commonAssets;
+    std::vector<std::string> unCommonAssets;
+};
+
 namespace OHOS::Media {
 class PhotoMapOperations {
 public:
@@ -32,6 +39,8 @@ public:
         const std::vector<std::string> &columns);
     static int32_t AddAnaLysisPhotoAssets(const std::vector<DataShare::DataShareValuesBucket> &values);
     static int32_t DismissAssets(NativeRdb::RdbPredicates &predicates);
+    static int32_t SmartMoveAssets(const std::string &strAlbumId, const std::string &targetAlbumId,
+        const std::vector<std::string> &assetsArray);
     static int32_t AddHighlightPhotoAssets(const std::vector<DataShare::DataShareValuesBucket> &values);
 };
 } // namespace OHOS::Media

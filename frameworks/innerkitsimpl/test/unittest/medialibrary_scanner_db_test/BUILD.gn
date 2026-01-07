@@ -33,10 +33,6 @@ ohos_unittest("medialibrary_scanner_db_test") {
     "./src/medialibrary_media_scanner_test.cpp",
     "./src/medialibrary_metadata_extractor_test.cpp",
     "./src/medialibrary_scanner_db_test.cpp",
-    "./src/medialibrary_scanner_mapcode_db_test.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/src/scanner/scanner_map_code_utils.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_operation.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",

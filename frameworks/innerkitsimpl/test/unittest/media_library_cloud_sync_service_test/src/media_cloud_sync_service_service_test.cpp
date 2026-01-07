@@ -71,19 +71,25 @@ void CloudMediaSyncServiceTest::SetUp() {}
 
 void CloudMediaSyncServiceTest::TearDown() {}
 
-HWTEST_F(CloudMediaSyncServiceTest, AlbumService_GetCheckRecords_Test_001, TestSize.Level1)
-{
-    CloudMediaAlbumService service;
-    std::vector<std::string> cloudIds = {"id1"};
-    std::vector<PhotoAlbumPo> albumsPoList = service.GetCheckRecords(cloudIds);
-    EXPECT_EQ(albumsPoList.size(), 0);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, AlbumService_GetAlbumCreatedRecords_Test_001, TestSize.Level1)
+HWTEST_F(CloudMediaSyncServiceTest, AlbumService_GetCreatedRecords_Test_001, TestSize.Level1)
 {
     CloudMediaAlbumService service;
     int32_t size = 0;
-    std::vector<PhotoAlbumPo> photoAlbumList = service.GetAlbumCreatedRecords(size);
+    int32_t ret = 0;
+    std::vector<PhotoAlbumPo> photoAlbumList;
+    bool isCloudSpaceFull = true;
+    ret = service.GetCreatedRecords(size, isCloudSpaceFull, photoAlbumList);
+    EXPECT_EQ(photoAlbumList.size(), 0);
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, AlbumService_GetCreatedRecords_Test_002, TestSize.Level1)
+{
+    CloudMediaAlbumService service;
+    int32_t size = 0;
+    int32_t ret = 0;
+    std::vector<PhotoAlbumPo> photoAlbumList;
+    bool isCloudSpaceFull = false;
+    ret = service.GetCreatedRecords(size, isCloudSpaceFull, photoAlbumList);
     EXPECT_EQ(photoAlbumList.size(), 0);
 }
 
@@ -1995,6 +2001,48 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaScanService_ClearLocalData_Test_00
     dto.attributesMovingPhotoEffectMode = 0;
     dto.attributesOriginalSubtype = 0;
     int32_t ret = service.ClearLocalData(dto, fdirtyData);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_HandleLPathRecords_Test_001, TestSize.Level1)
+{
+    CloudMediaAlbumService service;
+    PhotoAlbumDto record;
+    ChangeType changeType;
+    OnFetchRecordsAlbumRespBody resp;
+    record.isDelete = true;
+    int32_t ret = service.HandleLPathRecords(record, changeType, resp);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullInsert_Test_001, TestSize.Level1)
+{
+    CloudMediaAlbumService service;
+    PhotoAlbumDto record;
+    ChangeType changeType;
+    OnFetchRecordsAlbumRespBody resp;
+    record.isDelete = true;
+    int32_t ret = service.PullInsert(record, changeType, resp);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullUpdate_Test_001, TestSize.Level1)
+{
+    CloudMediaAlbumService service;
+    PhotoAlbumDto record;
+    ChangeType changeType;
+    OnFetchRecordsAlbumRespBody resp;
+    int32_t ret = service.PullUpdate(record, changeType, resp);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullDelete_Test_001, TestSize.Level1)
+{
+    CloudMediaAlbumService service;
+    PhotoAlbumDto record;
+    ChangeType changeType;
+    OnFetchRecordsAlbumRespBody resp;
+    int32_t ret = service.PullDelete(record, changeType, resp);
     EXPECT_EQ(ret, E_OK);
 }
 }

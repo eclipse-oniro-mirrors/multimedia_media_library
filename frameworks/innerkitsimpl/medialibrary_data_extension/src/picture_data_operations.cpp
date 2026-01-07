@@ -22,7 +22,6 @@
 #include "media_log.h"
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_unistore_manager.h"
-#include "multistages_capture_notify.h"
 #include "parameter.h"
 #include "parameters.h"
 #include "result_set_utils.h"
@@ -31,7 +30,6 @@
 using namespace std;
 namespace OHOS {
 namespace Media {
-using namespace Notification;
 int32_t PictureDataOperations::taskSize = 0;
 const int32_t SAVE_PICTURE_TIMEOUT_SEC = 20;
 
@@ -67,7 +65,6 @@ void PictureDataOperations::CleanPictureMapData(std::map<std::string, sptr<Pictu
     MEDIA_INFO_LOG("enter CleanPictureMapData, pictureMap size: %{public}d, pictureType: %{public}d",
         static_cast<int32_t>(pictureMap.size()), static_cast<int32_t>(pictureType));
 
-    int32_t lowQualityMemoryCount = static_cast<int32_t>(pictureMap.size());
     auto iter = pictureMap.begin();
     while (iter != pictureMap.end()) {
         time_t now = time(nullptr);
@@ -88,10 +85,6 @@ void PictureDataOperations::CleanPictureMapData(std::map<std::string, sptr<Pictu
         } else {
             iter++;
         }
-    }
-    if (pictureType == PictureType::LOW_QUALITY_PICTURE &&
-        lowQualityMemoryCount != static_cast<int32_t>(pictureMap.size())) {
-        MultistagesCaptureNotify::NotifyLowQualityMemoryCount(static_cast<int32_t>(pictureMap.size()));
     }
     MEDIA_INFO_LOG("end CleanPictureMapData, pictureMap size: %{public}d, pictureType: %{public}d",
         static_cast<int32_t>(pictureMap.size()), static_cast<int32_t>(pictureType));
@@ -132,7 +125,6 @@ void PictureDataOperations::InsertPictureData(const std::string& imageId, sptr<P
                 lowQualityPictureMap_.erase(iter);
             }
             lowQualityPictureMap_[imageId] = picturePair;
-            MultistagesCaptureNotify::NotifyLowQualityMemoryCount(static_cast<int32_t>(lowQualityPictureMap_.size()));
             }
             break;
         case HIGH_QUALITY_PICTURE:
@@ -160,7 +152,6 @@ void PictureDataOperations::CleanHighQualityPictureDataInternal(const std::strin
     auto iterPicture = lowQualityPictureMap_.find(imageId);
     if (iterPicture != lowQualityPictureMap_.end() && (iterPicture->second)->isCleanImmediately_) {
         lowQualityPictureMap_.erase(iterPicture);
-        MultistagesCaptureNotify::NotifyLowQualityMemoryCount(static_cast<int32_t>(lowQualityPictureMap_.size()));
     }
     // 存储高质量图
     iterPicture = highQualityPictureMap_.find(imageId);
@@ -374,9 +365,19 @@ int32_t PictureDataOperations::AddSavePictureTask(sptr<PicturePair>& picturePair
 int32_t PictureDataOperations::GetPendingTaskSize()
 {
     lock_guard<mutex> lock(pictureMapMutex_);
-    MEDIA_ERR_LOG("GetPendingTaskSize, lowQualityPictureMap: %{public}d, highQualityPictureMap: %{public}d",
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
+        "GetPendingTaskSize, lowQualityPictureMap: %{public}d, highQualityPictureMap: %{public}d",
+        MLOG_TAG, __FUNCTION__, __LINE__,
         static_cast<int32_t>(lowQualityPictureMap_.size()), static_cast<int32_t>(highQualityPictureMap_.size()));
     return lowQualityPictureMap_.size() + highQualityPictureMap_.size();
+}
+
+int32_t PictureDataOperations::GetLowPendingTaskSize()
+{
+    lock_guard<mutex> lock(pictureMapMutex_);
+    MEDIA_ERR_LOG("GetLowPendingTaskSize, lowQualityPictureMap: %{public}d.",
+        static_cast<int32_t>(lowQualityPictureMap_.size()));
+    return lowQualityPictureMap_.size();
 }
 
 void PictureDataOperations::DeleteDataWithImageId(const std::string& imageId, PictureType pictureType)
@@ -393,7 +394,6 @@ void PictureDataOperations::DeleteDataWithImageId(const std::string& imageId, Pi
                 (iter->second)->picture_ = nullptr;
                 lowQualityPictureMap_.erase(iter);
             }
-            MultistagesCaptureNotify::NotifyLowQualityMemoryCount(static_cast<int32_t>(lowQualityPictureMap_.size()));
             break;
         case HIGH_QUALITY_PICTURE:
             iter = highQualityPictureMap_.find(imageId);

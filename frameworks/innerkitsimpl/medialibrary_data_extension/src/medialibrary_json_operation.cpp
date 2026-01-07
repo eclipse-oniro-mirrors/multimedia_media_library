@@ -62,7 +62,8 @@ int32_t MediaJsonOperation::MapToJsonFile(
         "Failed to convert json file: %{public}s", DfxUtils::GetSafePath(outputPath).c_str());
     map_file << jsonData.dump(JSON_INDENT_WIDTH);
     map_file.close();
-    MEDIA_INFO_LOG("Convert map to json successfully");
+    MEDIA_INFO_LOG("Convert map to json successfully, outputPath: %{public}s",
+        DfxUtils::GetSafePath(outputPath).c_str());
     return E_OK;
 }
 

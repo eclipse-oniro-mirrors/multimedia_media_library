@@ -798,7 +798,7 @@ HWTEST_F(MediaLibraryCloudEnhancementGetPairTest, dfx_total_time_033, TestSize.L
     EXPECT_EQ(CloudEnhancementGetCount::GetInstance().GetStartTimes().empty(), false);
     // sleep for 1234 millseconds
     this_thread::sleep_for(chrono::milliseconds(1234));
-    CloudEnhancementGetCount::GetInstance().Report(type, photoId, 0);
+    CloudEnhancementGetCount::GetInstance().Report(type, photoId, 0, 0);
     EXPECT_EQ(CloudEnhancementGetCount::GetInstance().GetStartTimes().empty(), true);
     MEDIA_INFO_LOG("dfx_total_time_033 End");
 }

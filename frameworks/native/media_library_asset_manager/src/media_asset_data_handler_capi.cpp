@@ -52,6 +52,16 @@ CapiMediaAssetDataHandler::CapiMediaAssetDataHandler(OH_MediaLibrary_OnMovingPho
     sourceMode_ = sourceMode;
 }
 
+CapiMediaAssetDataHandler::CapiMediaAssetDataHandler(OH_MediaLibrary_OnQuickImageDataPrepared photoDataHandler,
+    ReturnDataType dataType, const std::string &uri, const std::string &destUri, NativeSourceMode sourceMode)
+{
+    onRequestQuickImageDataPreparedHandler_ = photoDataHandler;
+    dataType_ = dataType;
+    requestUri_ = uri;
+    destUri_ = destUri;
+    sourceMode_ = sourceMode;
+}
+
 int32_t CapiMediaAssetDataHandler::GetPhotoQuality()
 {
     return photoQuality_;

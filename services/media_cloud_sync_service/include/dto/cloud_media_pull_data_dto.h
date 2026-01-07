@@ -92,6 +92,10 @@ public:
     int32_t attributesFileSourceType{0};          /* file_source_type */
     std::string attributesStoragePath;            /* storage_path */
     
+    // Safe Album: critical type for children's watch
+    int32_t attributesCriticalType{0};            /* critical_type */
+    int32_t attributesIsCritical{0};              /* is_critical */
+
     // "properties"
     bool hasProperties{false};
     std::string propertiesSourceFileName;

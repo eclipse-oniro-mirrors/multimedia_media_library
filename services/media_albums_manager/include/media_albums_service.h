@@ -30,12 +30,9 @@
 #include "album_photo_query_vo.h"
 #include "album_get_assets_dto.h"
 #include "album_get_selected_assets_dto.h"
-#include "get_order_position_dto.h"
-#include "get_order_position_vo.h"
 #include "get_photo_index_vo.h"
 #include "get_relationship_vo.h"
 #include "query_result_vo.h"
-#include "get_analysis_process_vo.h"
 #include "get_highlight_album_info_vo.h"
 #include "query_albums_dto.h"
 #include "set_photo_album_order_dto.h"
@@ -47,7 +44,6 @@
 #include "change_request_dismiss_assets_dto.h"
 #include "change_request_merge_album_dto.h"
 #include "change_request_place_before_dto.h"
-#include "change_request_set_order_position_dto.h"
 #include "change_request_set_highlight_attribute_dto.h"
 #include "get_albums_by_ids_dto.h"
 #include "get_photo_album_object_dto.h"
@@ -59,6 +55,7 @@
 #include "media_assets_recover_service.h"
 #include "get_albumid_by_lpath_dto.h"
 #include "get_albumid_by_lpath_vo.h"
+#include "create_analysis_album_dto.h"
 
 namespace OHOS::Media {
 class MediaAlbumsService {
@@ -86,11 +83,7 @@ public:
     int32_t QueryHiddenAlbums(QueryAlbumsDto &dto);
     int32_t QueryAlbumsLpath(QueryAlbumsDto &dto);
     int32_t QueryAlbumsLpaths(QueryAlbumsDto &dto);
-    int32_t GetOrderPosition(const GetOrderPositionDto& getOrderPositionDto, GetOrderPositionRespBody& resp);
-    int32_t GetFaceId(int32_t albumId, std::string& groupTag);
     int32_t GetPhotoIndex(GetPhotoIndexReqBody &reqBody, QueryResultRespBody &respBody);
-    int32_t GetMediaAnalysisServiceProcess(GetAnalysisProcessReqBody &reqBody, QueryResultRespBody &respBody);
-    int32_t GetAnalysisProcess(GetAnalysisProcessReqBody &reqBody, QueryResultRespBody &respBody);
     int32_t GetHighlightAlbumInfo(GetHighlightAlbumReqBody &reqBody, QueryResultRespBody &respBody);
     int32_t UpdatePhotoAlbumOrder(const SetPhotoAlbumOrderDto& setPhotoAlbumOrderDto);
     int32_t MoveAssets(ChangeRequestMoveAssetsDto &moveAssetsDto);
@@ -101,15 +94,14 @@ public:
     int32_t DismissAssets(ChangeRequestDismissAssetsDto &dismissAssetsDto);
     int32_t MergeAlbum(ChangeRequestMergeAlbumDto &mergeAlbumDto);
     int32_t PlaceBefore(ChangeRequestPlaceBeforeDto &placeBeforeDto);
-    int32_t SetOrderPosition(ChangeRequestSetOrderPositionDto &setOrderPositionDto);
     int32_t GetAlbumsByIds(GetAlbumsByIdsDto &getAlbumsByIdsDto, GetAlbumsByIdsRespBody &respBody);
     int32_t GetPhotoAlbumObject(GetPhotoAlbumObjectDto &getPhotoAlbumObjectDto, GetPhotoAlbumObjectRespBody &respBody);
     int32_t ChangeRequestSetUploadStatus(const ChangeRequestSetUploadStatusDto &setUploadStatusDto);
-    int32_t SetPortraitRelationship(const int32_t albumId, const std::string& relationship, const int32_t isMe);
-    int32_t GetPortraitRelationship(const int32_t albumId, GetRelationshipRespBody& respBody);
     int32_t ChangeRequestSetHighlightAttribute(ChangeRequestSetHighlightAttributeDto &dto);
     std::shared_ptr<DataShare::DataShareResultSet> GetClonedAlbumUris(GetClonedAlbumUrisDto &dto);
     int32_t GetAlbumIdByLpathOrBundleName(GetAlbumIdByLpathDto &dto, GetAlbumIdByLpathRespBody &respBody);
+    int32_t SmartMoveAssets(ChangeRequestMoveAssetsDto &moveAssetsDto);
+    int32_t CreateAnalysisAlbum(CreateAnalysisAlbumDto &dto, CreateAnalysisAlbumRespBody &respBody);
 
 private:
     int32_t SetPortraitAlbumName(const ChangeRequestSetAlbumNameDto& dto);

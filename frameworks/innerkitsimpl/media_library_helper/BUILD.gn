@@ -20,8 +20,10 @@ group("media_library_packages") {
 
 config("media_library_config") {
   visibility = [ ":*" ]
-  include_dirs =
-      [ "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include" ]
+  include_dirs = [
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_permission_helper/include",
+  ]
 }
 
 ohos_shared_library("media_library") {
@@ -30,14 +32,10 @@ ohos_shared_library("media_library") {
   include_dirs = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
-    "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_assets_manager/include/vo",
-    "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
-    "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/common_data",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/include/utils",
-    "${MEDIALIB_INNERIMPL_PATH}/notification/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_FACARD_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
   ]
 
   user_ipc_client_include_dirs = [
@@ -49,6 +47,7 @@ ohos_shared_library("media_library") {
   include_dirs += user_ipc_client_include_dirs
 
   sources = [
+    "${MEDIALIB_FACARD_PATH}/src/media_facard_photos_column.cpp",
     "src/acl.cpp",
     "src/album_asset.cpp",
     "src/album_order.cpp",
@@ -67,12 +66,10 @@ ohos_shared_library("media_library") {
     "src/media_change_effect.cpp",
     "src/media_column.cpp",
     "src/media_config_info_column.cpp",
-    "src/media_facard_photos_column.cpp",
     "src/media_file_uri.cpp",
     "src/media_file_utils.cpp",
     "src/media_image_framework_utils.cpp",
     "src/media_old_photos_column.cpp",
-    "src/media_photo_asset_proxy.cpp",
     "src/media_player_framework_utils.cpp",
     "src/media_volume.cpp",
     "src/medialibrary_album_helper.cpp",
@@ -95,10 +92,6 @@ ohos_shared_library("media_library") {
     "src/smart_album_asset.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/album_change_info.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/photo_asset_change_info.cpp",
-    "${MEDIALIB_INNERIMPL_PATH}/notification/src/medialibrary_notify_user_define_observer.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_assets_manager/src/vo/add_image_vo.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/data/user_define_notify_info.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/utils/media_notification_utils.cpp",
   ]
 
   user_ipc_client_source = [
@@ -118,6 +111,8 @@ ohos_shared_library("media_library") {
   ]
 
   cflags_cc = [ "-Os" ]
+
+  deps = [ "${MEDIALIB_COMMON_PATH}:media_library_common" ]
 
   external_deps = [
     "ability_base:zuri",

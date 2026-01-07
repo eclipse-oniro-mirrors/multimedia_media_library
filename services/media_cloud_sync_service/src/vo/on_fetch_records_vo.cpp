@@ -22,6 +22,7 @@
 #include "media_itypes_utils.h"
 #include "cloud_media_sync_const.h"
 #include "media_log.h"
+#include "message_parcel.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnFetchRecordsReqBody::Unmarshalling(MessageParcel &parcel)
@@ -99,5 +100,51 @@ std::string OnFetchRecordsRespBody::ToString() const
     }
     ss << "]}";
     return ss.str();
+}
+
+bool OnFetchRecordsReqBody::SplitBy20K(std::vector<OnFetchRecordsReqBody> &reqBodyList) const
+{
+    CHECK_AND_RETURN_RET(!this->onFetchPhotos.empty(), false);
+    const size_t parcelGap = 4800;
+    const size_t parcelCapacity = 204800 - parcelGap;
+    size_t parcelSize = 0;
+    size_t currIndex = 0;
+    while (currIndex < this->onFetchPhotos.size()) {
+        MessageParcel data;
+        size_t index = 0;
+        OnFetchRecordsReqBody reqBody;
+        std::vector<OnFetchPhotosVo> &childList = reqBody.onFetchPhotos;
+        for (index = currIndex; index < this->onFetchPhotos.size(); index++) {
+            this->onFetchPhotos[index].Marshalling(data);
+            parcelSize = data.GetDataSize();
+            CHECK_AND_BREAK_INFO_LOG(parcelSize <= parcelCapacity,
+                "exceed capacity, split it. parcelSize: %{public}zu, parcelCapacity: %{public}zu",
+                parcelSize,
+                parcelCapacity);
+            childList.emplace_back(this->onFetchPhotos[index]);
+        }
+        CHECK_AND_BREAK_ERR_LOG(!childList.empty(),
+            "dead loop detected, "
+            "currIndex: %{public}zu, index: %{public}zu",
+            currIndex,
+            index);
+        currIndex = index;
+        reqBodyList.emplace_back(reqBody);
+    }
+    MEDIA_INFO_LOG("SplitBy20K completed, totalSize: %{public}zu, splited size: %{public}zu",
+        this->onFetchPhotos.size(),
+        reqBodyList.size());
+    return true;
+}
+ 
+void OnFetchRecordsRespBody::MergeRespBody(const OnFetchRecordsRespBody &respBody)
+{
+    this->failedRecords.insert(this->failedRecords.end(), respBody.failedRecords.begin(), respBody.failedRecords.end());
+    this->newDatas.insert(this->newDatas.end(), respBody.newDatas.begin(), respBody.newDatas.end());
+    this->fdirtyDatas.insert(this->fdirtyDatas.end(), respBody.fdirtyDatas.begin(), respBody.fdirtyDatas.end());
+    for (size_t index = 0; index < this->stats.size() && index < respBody.stats.size(); index++) {
+        this->stats[index] += respBody.stats[index];
+    }
+    return;
 }
 }  // namespace OHOS::Media::CloudSync

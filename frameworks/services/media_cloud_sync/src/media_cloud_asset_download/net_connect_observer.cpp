@@ -27,16 +27,6 @@ using namespace OHOS::NetManagerStandard;
 
 namespace OHOS {
 namespace Media {
-bool NetConnectObserver::IsWifiConnected()
-{
-    return netStatus_ == NetConnStatus::WIFI_CONNECTED;
-}
-
-bool NetConnectObserver::IsCellularNetConnected()
-{
-    return netStatus_ == NetConnStatus::CELLULAR_CONNECTED;
-}
-
 void NetConnectObserver::SetNetConnStatus(const NetConnStatus status)
 {
     netStatus_ = status;

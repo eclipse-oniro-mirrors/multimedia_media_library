@@ -129,6 +129,24 @@ bool UpdateHeifChecklist(const std::string &filePath, const std::vector<json> &n
     return true;
 }
 
+bool CreateTestWhiteListJson(const std::string &filePath, const std::string &version,
+    const std::vector<json> &applications)
+{
+    std::string dirPath = filePath.substr(0, filePath.find_last_of('/'));
+    std::filesystem::create_directories(dirPath);
+    json whiteListJson;
+    whiteListJson["version"] = version;
+    whiteListJson["applications"] = applications;
+    std::ofstream outputFile(filePath);
+    CHECK_AND_RETURN_RET_LOG(outputFile.is_open(), false,
+        "Failed to create JSON file: %{public}s", filePath.c_str());
+    const int jsonIndent = 4;
+    outputFile << whiteListJson.dump(jsonIndent);
+    outputFile.close();
+    MEDIA_INFO_LOG("Created test JSON file: %{public}s", filePath.c_str());
+    return true;
+}
+
 HWTEST_F(WhiteListCheckUtilsTest, InitWhiteList_test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("start tdd InitWhiteList_test_001");
@@ -182,6 +200,45 @@ HWTEST_F(WhiteListCheckUtilsTest, CheckWhiteList_test_001, TestSize.Level1)
     auto ret = PermissionWhitelistUtils::CheckWhiteList();
     EXPECT_EQ(ret, E_SUCCESS);
     MEDIA_INFO_LOG("end tdd CheckWhiteList_test_001");
+}
+
+HWTEST_F(WhiteListCheckUtilsTest, CheckWhiteList_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("start tdd CheckWhiteList_test_002");
+    std::vector<json> testApplications = {
+        {{"appIdentifier", "1234567891234567891"}, {"allowedApiVersion", 0}},
+        {{"appIdentifier", "1234567891234567891"}, {"allowedApiVersion", 25}},
+        {{"appIdentifier", "1234567891234567891"}, {"allowedApiVersion", 0}}
+    };
+    auto createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "invalidVersion",
+        testApplications);
+    EXPECT_EQ(createlocalJsonRet, true);
+    auto createDueJsonRet = CreateTestWhiteListJson(DUE_INSTALL_DIR_TEST, "invalidVersion", testApplications);
+    EXPECT_EQ(createDueJsonRet, true);
+    auto ret = PermissionWhitelistUtils::InitWhiteList();
+    EXPECT_EQ(ret, E_OK);
+    createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "1.0", testApplications);
+    EXPECT_EQ(createlocalJsonRet, true);
+    ret = PermissionWhitelistUtils::InitWhiteList();
+    EXPECT_EQ(ret, E_OK);
+    createDueJsonRet = CreateTestWhiteListJson(DUE_INSTALL_DIR_TEST, "1.2", testApplications);
+    EXPECT_EQ(createDueJsonRet, true);
+    createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "invalidVersion",
+        testApplications);
+    EXPECT_EQ(createlocalJsonRet, true);
+    ret = PermissionWhitelistUtils::InitWhiteList();
+    EXPECT_EQ(ret, E_OK);
+    createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "1.0", testApplications);
+    EXPECT_EQ(createlocalJsonRet, true);
+    ret = PermissionWhitelistUtils::InitWhiteList();
+    EXPECT_EQ(ret, E_OK);
+    createlocalJsonRet = CreateTestWhiteListJson(MEDIA_KIT_WHITE_LIST_JSON_LOCAL_PATH_TEST, "1.2", testApplications);
+    EXPECT_EQ(createlocalJsonRet, true);
+    createDueJsonRet = CreateTestWhiteListJson(DUE_INSTALL_DIR_TEST, "1.0", testApplications);
+    EXPECT_EQ(createDueJsonRet, true);
+    ret = PermissionWhitelistUtils::InitWhiteList();
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("end tdd CheckWhiteList_test_002");
 }
 }
 }

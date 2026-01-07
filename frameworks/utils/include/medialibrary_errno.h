@@ -85,6 +85,7 @@ constexpr int32_t E_BACK_UP_DB_FAIL      =  MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 4
 constexpr int32_t E_BETA_VERSION_FAIL    =  MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 42);
 constexpr int32_t E_THREAD_HAS_STOPPED =    MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 50);
 constexpr int32_t E_INIT_FAIL =             MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 51);
+constexpr int32_t E_DOUBLE_CHECK =          MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 52);
 constexpr int32_t E_COMMON_END =            MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 1799);
 
 // medialibary directory and file type control { 2000, 2099 }
@@ -108,11 +109,6 @@ constexpr int32_t E_RECYCLE_DIR_FAIL =     MEDIA_LIBRARY_ERR(E_TRASH_OFFSET, 2);
 constexpr int32_t E_CREATE_TRASHDIR_FAIL = MEDIA_LIBRARY_ERR(E_TRASH_OFFSET, 3);
 constexpr int32_t E_MAKE_HASHNAME_FAIL =   MEDIA_LIBRARY_ERR(E_TRASH_OFFSET, 4);
 constexpr int32_t E_GET_EXTENSION_FAIL =   MEDIA_LIBRARY_ERR(E_TRASH_OFFSET, 5);
-
-
-// medialibary distributed { 2200, 2299 }
-constexpr int32_t E_DISTRIBUTED_OFFSET = 2200;
-constexpr int32_t E_DEVICE_OPER_ERR = MEDIA_LIBRARY_ERR(E_DISTRIBUTED_OFFSET, 0);
 
 // medialibary thumbanail { 2300, 2399 }
 constexpr int32_t E_THUMBNAIL_OFFSET = 2300;

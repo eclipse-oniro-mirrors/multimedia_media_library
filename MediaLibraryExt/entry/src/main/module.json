@@ -282,6 +282,17 @@
           ],
           "when": "always"
         }
+      },
+      {
+        "name": "ohos.permission.MANAGE_MEDIA_SHARED_RESOURCE",
+        "reason": "$string:permission_manage_media_shared_resource",
+        "usedScene":{
+          "abilities":[
+            "MainAbility",
+            "DataShareExtAbility"
+          ],
+          "when": "always"
+        }
       }
     ],
     "proxyDatas": [

@@ -24,6 +24,7 @@
 #include "delete_highlight_albums_vo.h"
 #include "asset_change_vo.h"
 #include "restore_vo.h"
+#include "cancel_request_vo.h"
 
 namespace OHOS {
 namespace Media {
@@ -66,6 +67,7 @@ public:
     static int32_t CheckWhereClause(const std::string &whereClause);
     static bool CheckPhotoUri(const std::string &uri);
     static int32_t CheckRestore(const RestoreReqBody &reqBody);
+    static int32_t CheckCancelRequest(const CancelRequestReqBody &reqBody);
 };
 }  // namespace Media
 }  // namespace OHOS

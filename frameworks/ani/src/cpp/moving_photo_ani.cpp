@@ -88,15 +88,24 @@ ani_status MovingPhotoAni::Init(ani_env *env)
         ani_native_function {"requestContentByResourceType", nullptr,
             reinterpret_cast<void *>(MovingPhotoAni::RequestContentByResourceType)},
         ani_native_function {"getUri", nullptr, reinterpret_cast<void *>(MovingPhotoAni::GetUri)},
-        ani_native_function {"transferToDynamicMovingPhoto", nullptr,
-            reinterpret_cast<void *>(TransferToDynamicMovingPhoto)},
-        ani_native_function {"transferToStaticMovingPhoto", nullptr,
-            reinterpret_cast<void *>(TransferToStaticMovingPhoto)},
+        ani_native_function {"isVideoReadyInner", nullptr, reinterpret_cast<void *>(MovingPhotoAni::IsVideoReady)},
     };
 
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        return status;
+    }
+
+    std::array staticMethods = {
+        ani_native_function {"transferToDynamicMovingPhoto", nullptr,
+            reinterpret_cast<void *>(TransferToDynamicMovingPhoto)},
+        ani_native_function {"transferToStaticMovingPhoto", nullptr,
+            reinterpret_cast<void *>(TransferToStaticMovingPhoto)},
+    };
+    status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to bind static native methods to: %{public}s", className);
         return status;
     }
     return ANI_OK;
@@ -1088,5 +1097,91 @@ ani_object MovingPhotoAni::TransferToStaticMovingPhoto(ani_env *env, [[maybe_unu
     return MovingPhotoAni::NewMovingPhotoAni(env, uri, static_cast<SourceMode>(sourceMode), movingPhotoParamAni);
 }
 
+static void IsSandBoxMovingPhotoVideoReady(unique_ptr<MovingPhotoAsyncContext> &context, string &videoUri)
+{
+    AppFileService::ModuleFileUri::FileUri fileUri(videoUri);
+    std::string videoPath = fileUri.GetRealPath();
+    size_t fileSize = 0;
+    context->isVideoReady = MediaFileUtils::GetFileSize(videoPath, fileSize) && (fileSize > 0);
+    ANI_DEBUG_LOG("videoUri:%{public}s, video size:%zu", videoUri.c_str(), fileSize);
+}
+
+static void IsMovingPhotoVideoReady(unique_ptr<MovingPhotoAsyncContext> &context)
+{
+    DataShare::DataSharePredicates predicates;
+    string queryId = MediaFileUtils::GetIdFromUri(context->movingPhotoUri);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, queryId);
+    vector<string> columns;
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
+         + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
+    int errCode = 0;
+    shared_ptr<DataShare::DataShareResultSet> resultSet = UserFileClient::Query(uri, predicates, columns, errCode);
+    if (errCode == E_PERMISSION_DENIED) {
+        context->error = OHOS_PERMISSION_DENIED_CODE;
+        return;
+    }
+    if ((resultSet == nullptr) || (resultSet->GoToFirstRow() != NativeRdb::E_OK)) {
+        ANI_ERR_LOG("Query movingphoto fail");
+        context->error = JS_E_INNER_FAIL;
+        return;
+    }
+    int32_t ready;
+    if (resultSet->GetInt(0, ready) != NativeRdb::E_OK) {
+        ANI_ERR_LOG("can not get movingphoto video ready");
+        context->error = JS_E_INNER_FAIL;
+        return;
+    }
+    ANI_INFO_LOG("movingphoto video ready:%d", ready);
+    context->isVideoReady = (ready != 0);
+}
+
+static void IsVideoReadyExecute(ani_env *env, unique_ptr<MovingPhotoAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    if (MediaFileUtils::IsMediaLibraryUri(context->movingPhotoUri)) {
+        IsMovingPhotoVideoReady(context);
+        return;
+    }
+
+    std::vector<std::string> uris;
+    if (MediaFileUtils::SplitMovingPhotoUri(context->movingPhotoUri, uris)) {
+        IsSandBoxMovingPhotoVideoReady(context, uris[MOVING_PHOTO_VIDEO_POS]);
+        return;
+    }
+
+    ANI_ERR_LOG("Failed to check uri of moving photo:%{public}s", context->movingPhotoUri.c_str());
+    context->error = JS_E_INNER_FAIL;
+}
+
+static void IsVideoReadyComplete(ani_env *env, unique_ptr<MovingPhotoAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    ani_object errorObj {};
+    if (context->error != ERR_DEFAULT) {
+        context->HandleError(env, errorObj);
+    }
+    context.reset();
+}
+
+ani_boolean MovingPhotoAni::IsVideoReady(ani_env *env, ani_object object)
+{
+    ANI_DEBUG_LOG("IsVideoReady start");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return false;
+    }
+    unique_ptr<MovingPhotoAsyncContext> asyncContext = make_unique<MovingPhotoAsyncContext>();
+    MovingPhotoAni* nativeObject = Unwrap(env, object);
+    if (nativeObject == nullptr) {
+        ANI_ERR_LOG("nativeObject is nullptr");
+        return false;
+    }
+    asyncContext->movingPhotoUri = nativeObject->GetUriInner();
+    IsVideoReadyExecute(env, asyncContext);
+    ani_boolean aniIsVideoReady = asyncContext->isVideoReady;
+    IsVideoReadyComplete(env, asyncContext);
+    return aniIsVideoReady;
+}
 } // namespace Media
 } // namespace OHOS

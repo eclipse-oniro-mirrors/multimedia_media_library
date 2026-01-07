@@ -153,18 +153,18 @@ MediaLibrary_ErrorCode OH_MediaAssetManager_Release(OH_MediaAssetManager* manage
     return MEDIA_LIBRARY_OK;
 }
 
-MediaLibrary_ErrorCode OH_MediaAssetManager_RequestQuickImage(OH_MediaAssetManager* manager, OH_MediaAsset* mediaAsset,
+MediaLibrary_ErrorCode OH_MediaAssetManager_QuickRequestImage(OH_MediaAssetManager* manager, OH_MediaAsset* mediaAsset,
     MediaLibrary_RequestOptions requestOptions, MediaLibrary_RequestId* requestId,
     OH_MediaLibrary_OnQuickImageDataPrepared callback)
 {
-    CHECK_AND_RETURN_RET_LOG(manager != nullptr, MEDIA_LIBRARY_PARAMETER_ERROR, "input manager is nullptr!");
+    CHECK_AND_RETURN_RET_LOG(manager != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "input manager is nullptr!");
     struct MediaAssetMangerObject *managerObj = reinterpret_cast<MediaAssetMangerObject *>(manager);
     CHECK_AND_RETURN_RET_LOG(managerObj != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "managerObj is null");
     CHECK_AND_RETURN_RET_LOG(managerObj->manager_ != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED,
         "manager_ is null");
-    CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr, MEDIA_LIBRARY_PARAMETER_ERROR, "mediaAsset is nullptr!");
-    CHECK_AND_RETURN_RET_LOG(requestId != nullptr, MEDIA_LIBRARY_PARAMETER_ERROR, "requestId is nullptr!");
-    CHECK_AND_RETURN_RET_LOG(callback != nullptr, MEDIA_LIBRARY_PARAMETER_ERROR, "callback is nullptr!");
+    CHECK_AND_RETURN_RET_LOG(mediaAsset != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "mediaAsset is nullptr!");
+    CHECK_AND_RETURN_RET_LOG(requestId != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "requestId is nullptr!");
+    CHECK_AND_RETURN_RET_LOG(callback != nullptr, MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED, "callback is nullptr!");
 
     NativeRequestOptions nativeRequestOptions;
     OH_MediaAssetManager_Convert(requestOptions, nativeRequestOptions);

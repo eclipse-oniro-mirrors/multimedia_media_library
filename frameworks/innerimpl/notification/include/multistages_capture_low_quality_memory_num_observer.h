@@ -27,18 +27,18 @@ class LowQualityMemoryNumObserver : public MediaOnNotifyUserDefineObserverBodyBa
 public:
     LowQualityMemoryNumObserver() {}
     virtual ~LowQualityMemoryNumObserver() = default;
- 
-    void OnChange(const NewJsOnChangeCallbackWrapper &callbackWrapper) override;
+
+    void OnChange(const UserDefineCallbackWrapper &callbackWrapper) override;
     std::string ToString() const override
     {
         return "";
     }
- 
+
 private:
     std::shared_ptr<LowQualityMemoryNumNotifyInfo> ConvertWrapperToNotifyInfo(
-        const NewJsOnChangeCallbackWrapper &callbackWrapper);
+        const UserDefineCallbackWrapper &callbackWrapper);
 };
- 
+
 } // Media
 } // OHOS
 #endif // MEDIALIBRARY_NOTIFY_MULTISTAGES_CAPTURE_LOW_QUALITY_MEMORY_NUM_OBSERVER_H

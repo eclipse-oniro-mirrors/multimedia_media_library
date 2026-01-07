@@ -267,8 +267,10 @@ static void CloudMediaAssetDeleteFuzzer()
     fileIds.clear();
     vector<string> paths;
     vector<string> dateTakens;
+    std::vector<int32_t> subTypes;
     fileId = InsertAsset();
-    instance.ReadyDataForDelete(fileIds, paths, dateTakens);
+    std::vector<int64_t> lcdVisitTimes;
+    instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
     instance.DeleteAllCloudMediaAssetsAsync();
     instance.DeleteEmptyCloudAlbums();
     instance.ForceRetainDownloadCloudMedia();

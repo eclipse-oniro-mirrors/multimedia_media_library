@@ -18,6 +18,7 @@
 #include "dfx_manager.h"
 #include "dfx_reporter.h"
 #include "map_operation_flag.h"
+#include "medialibrary_album_operations.h"
 #include "medialibrary_formmap_operations.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_tracer.h"
@@ -169,6 +170,7 @@ static unordered_map<string, ResultSetDataType> albumColumnTypeMap = {
     {PhotoAlbumColumns::COVER_URI_SOURCE, ResultSetDataType::TYPE_INT32},
     {PhotoAlbumColumns::COVER_CLOUD_ID, ResultSetDataType::TYPE_STRING},
     {PhotoAlbumColumns::UPLOAD_STATUS, ResultSetDataType::TYPE_INT32},
+    {PhotoAlbumColumns::ALBUM_HIDDEN, ResultSetDataType::TYPE_INT32},
 };
 
 std::mutex MediaLibraryAlbumFusionUtils::cloudAlbumAndDataMutex_;
@@ -536,6 +538,34 @@ static void ParsingAndFillValue(NativeRdb::ValuesBucket &values, const string &c
         }
         default:
             MEDIA_ERR_LOG("No such column type");
+    }
+}
+
+static void ParsingAndFillValueForAllAlbumColumns(NativeRdb::ValuesBucket &values, const string &columnName,
+    const ColumnSchema &columnSchema, shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    bool isNull = false;
+    int columnIndex = -1;
+    resultSet->GetColumnIndex(columnName, columnIndex);
+    resultSet->IsColumnNull(columnIndex, isNull);
+    if (isNull) {
+        values.PutNull(columnName);
+    } else if (columnSchema.columnType == "INTEGER" || columnSchema.columnType == "INT") {
+        int32_t intColumnValue;
+        GetIntValueFromResultSet(resultSet, columnName, intColumnValue);
+        values.PutInt(columnName, intColumnValue);
+    } else if (columnSchema.columnType == "BIGINT") {
+        int64_t longColumnValue;
+        GetLongValueFromResultSet(resultSet, columnName, longColumnValue);
+        values.PutLong(columnName, longColumnValue);
+    } else if (columnSchema.columnType == "DOUBLE") {
+        double doubleColumnValue;
+        GetDoubleValueFromResultSet(resultSet, columnName, doubleColumnValue);
+        values.PutDouble(columnName, doubleColumnValue);
+    } else {
+        std::string stringValue = "";
+        GetStringValueFromResultSet(resultSet, columnName, stringValue);
+        values.PutString(columnName, stringValue);
     }
 }
 
@@ -1470,10 +1500,10 @@ void MediaLibraryAlbumFusionUtils::BuildAlbumInsertValuesSetName(
     const std::shared_ptr<MediaLibraryRdbStore>& upgradeStore, NativeRdb::ValuesBucket &values,
     shared_ptr<NativeRdb::ResultSet> &resultSet, const string &newAlbumName)
 {
-    for (auto it = albumColumnTypeMap.begin(); it != albumColumnTypeMap.end(); ++it) {
-        string columnName = it->first;
-        ResultSetDataType columnType = it->second;
-        ParsingAndFillValue(values, columnName, columnType, resultSet);
+    const unordered_map<string, ColumnSchema>& photoAlbumSchema =
+        MediaLibraryAlbumOperations::GetPhotoAlbumTableSchema();
+    for (auto it = photoAlbumSchema.begin(); it != photoAlbumSchema.end(); ++it) {
+        ParsingAndFillValueForAllAlbumColumns(values, it->first, it->second, resultSet);
     }
 
     std::string lPath = "";
@@ -1490,13 +1520,14 @@ void MediaLibraryAlbumFusionUtils::BuildAlbumInsertValuesSetName(
         lPath = "/Pictures/Users/" + newAlbumName;
     }
 
+    values.Delete(PhotoAlbumColumns::ALBUM_PRIORITY);
     values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
+    values.Delete(PhotoAlbumColumns::ALBUM_LPATH);
     values.PutString(PhotoAlbumColumns::ALBUM_LPATH, lPath);
     values.Delete(PhotoAlbumColumns::ALBUM_NAME);
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, newAlbumName);
-    int64_t albumDataAdded = 0;
-    GetLongValueFromResultSet(resultSet, PhotoAlbumColumns::ALBUM_DATE_ADDED, albumDataAdded);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, albumDataAdded);
+    values.Delete(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+    values.Delete(PhotoAlbumColumns::ALBUM_DIRTY);
 }
 
 static int32_t CopyAlbumMetaData(const std::shared_ptr<MediaLibraryRdbStore> upgradeStore,
@@ -1583,9 +1614,9 @@ static int32_t UpdateAlbumPhotoOwnerAlbumId(MediaLibraryAlbumFusionUtils::Execut
 static bool IsDeleteOtherAlbum(MediaLibraryAlbumFusionUtils::ExecuteObject& executeObject,
     int32_t oldAlbumId)
 {
-    CHECK_AND_RETURN_RET_LOG(executeObject.trans != nullptr, E_HAS_DB_ERROR, "transactionOprn is null");
+    CHECK_AND_RETURN_RET_LOG(executeObject.rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
     const std::string querySql = "SELECT lpath from PhotoAlbum WHERE album_id = " + std::to_string(oldAlbumId);
-    auto resultSet = executeObject.trans->QueryByStep(querySql);
+    auto resultSet = executeObject.rdbStore->QueryByStep(querySql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Is delete other album, find album resultSet null");
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("IsDeleteOtherAlbum first row empty");
@@ -2169,6 +2200,9 @@ static int32_t CheckTmpCompatibleDup(const std::shared_ptr<NativeRdb::ResultSet>
         MEDIA_INFO_LOG("compatible duplicate file is exists");
         return UpdateTranscodeTime(fileId);
     }
+    std::string mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
+    CHECK_AND_RETURN_RET_LOG(mimeType == "image/heic" || mimeType == "image/heif", E_PARAM_CONVERT_FORMAT,
+        "mimeType is invalid, mimeType: %{public}s", mimeType.c_str());
     int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
     CHECK_AND_RETURN_RET_LOG(position != static_cast<int32_t>(PhotoPositionType::CLOUD), E_PARAM_CONVERT_FORMAT,
         "pure cloud asset is invalid, position: %{public}d", position);
@@ -2202,7 +2236,7 @@ int32_t MediaLibraryAlbumFusionUtils::CreateTmpCompatibleDup(int32_t fileId, con
     }
 
     const std::string querySql = R"(SELECT exist_compatible_duplicate, position, is_temp, time_pending, hidden,
-        date_trashed, date_deleted FROM Photos WHERE file_id = ?)";
+        date_trashed, date_deleted, mime_type FROM Photos WHERE file_id = ?)";
     std::vector<NativeRdb::ValueObject> params = { fileId };
     shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(querySql, params);
     dupExist = 0;

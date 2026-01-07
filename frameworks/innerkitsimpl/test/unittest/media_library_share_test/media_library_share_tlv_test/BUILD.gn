@@ -15,7 +15,7 @@ import("//build/test.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
 
 ohos_unittest("media_library_share_tlv_test") {
-  module_out_path = "media_library/media_library-asset"
+  module_out_path = "media_library/media_library_asset"
   include_dirs = [
     "./include",
     "../../get_self_permissions/include",

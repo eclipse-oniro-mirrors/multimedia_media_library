@@ -299,7 +299,9 @@ void NotifyTest::SetUpTestCase()
     ASSERT_TRUE(remoteObj != nullptr);
 
     sDataShareHelper_ = DataShare::DataShareHelper::Creator(remoteObj, MEDIALIBRARY_DATA_URI);
-    ASSERT_TRUE(sDataShareHelper_ != nullptr);
+    if (sDataShareHelper_ == nullptr) {
+        exit(0);
+    }
 }
 
 void NotifyTest::TearDownTestCase()

@@ -28,7 +28,6 @@
 #include "rdb_store.h"
 #include "media_column.h"
 #include "download_resources_column.h"
-#include "cloud_media_dao_utils.h"
 
 namespace OHOS {
 namespace Media {

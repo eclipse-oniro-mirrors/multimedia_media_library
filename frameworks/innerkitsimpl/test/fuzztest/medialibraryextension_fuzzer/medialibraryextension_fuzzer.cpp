@@ -227,44 +227,6 @@ static int InitExtention(MediaDataShareExtAbility &extension)
         sceneCode);
 }
 
-class ArkJsRuntime : public AbilityRuntime::JsRuntime {
-public:
-    ArkJsRuntime() {};
-
-    ~ArkJsRuntime() {};
-
-    void StartDebugMode(const DebugOption debugOption) {};
-    void FinishPreload() {};
-    bool LoadRepairPatch(const string& patchFile, const string& baseFile)
-    {
-        return true;
-    };
-    bool NotifyHotReloadPage()
-    {
-        return true;
-    };
-    bool UnLoadRepairPatch(const string& patchFile)
-    {
-        return true;
-    };
-    bool RunScript(const string& path, const string& hapPath, bool useCommonChunk = false)
-    {
-        return true;
-    };
-};
-#ifdef FILEEXT
-static inline void CreateFileFuzzer(MediaFileExtAbility &extension)
-{
-    Uri fuzzUri = FuzzUri();
-    extension.CreateFile(FuzzUri(), provider->ConsumeBytesAsString(NUM_BYTES), fuzzUri);
-}
-
-static inline MediaFileExtAbility FileExtInit()
-{
-    const std::unique_ptr<ArkJsRuntime> runtime;
-    return {(*runtime)};
-}
-#endif
 static inline MediaDataShareExtAbility Init()
 {
     const std::unique_ptr<AbilityRuntime::Runtime> runtime;
@@ -303,10 +265,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::NotifyChangeFuzzer(extension);
     OHOS::NormalizeUriFuzzer(extension);
     OHOS::DenormalizeUriFuzzer(extension);
-#ifdef FILEEXT
-    auto fileExtension = OHOS::FileExtInit();
-    OHOS::CreateFileFuzzer(fileExtension);
-#endif
     int sleepTime = 100;
     std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
     OHOS::ClearKvStore();

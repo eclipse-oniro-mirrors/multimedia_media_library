@@ -89,7 +89,7 @@ ani_status MediaAssetManagerAni::Init(ani_env *env)
         ani_native_function {"loadMovingPhotoInner", nullptr, reinterpret_cast<void *>(LoadMovingPhoto)},
     };
 
-    status = env->Class_BindNativeMethods(cls, staticMethods.data(), staticMethods.size());
+    status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to bind native staticMethods to: %{public}s", className);
         return status;

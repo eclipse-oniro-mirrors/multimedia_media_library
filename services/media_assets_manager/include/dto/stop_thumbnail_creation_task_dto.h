@@ -23,6 +23,7 @@ namespace OHOS::Media {
 class StopThumbnailCreationTaskDto {
 public:
     int32_t requestId;
+    pid_t pid;
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_ASSETS_MANAGER_STOP_THUMBNAIL_CREATION_TASK_DTO_H

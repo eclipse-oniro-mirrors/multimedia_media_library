@@ -22,11 +22,17 @@
 #include "photo_album_column.h"
 #include "result_set_utils.h"
 #include "settings_data_manager.h"
+#include "parameters.h"
+#include "preferences.h"
+#include "preferences_helper.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
 
 namespace OHOS::Media {
+static const std::string ABILITY_ENABLE_XML = "/data/storage/el2/base/preferences/ability_enable.xml";
+const std::string HISTORY_UPLOAD_ALBUM_ENABLE = "history_upload_album_enable";
+const std::string PHOTO_UPLOAD_ALBUM_ENABLE = "const.photo.upload.album.enable";
 const static std::string SQL_QUERY_ALBUM_ALL_UPLOAD_STATUS = "\
     SELECT \
         CASE \
@@ -78,5 +84,43 @@ bool PhotoAlbumUploadStatusOperation::IsAllAlbumUploadOnInDb()
     int32_t uploadStatus = GetInt32Val(PhotoAlbumColumns::UPLOAD_STATUS, resultSet);
     resultSet->Close();
     return uploadStatus == 1;
+}
+
+bool PhotoAlbumUploadStatusOperation::IsSupportUploadStatus()
+{
+    // 读不到时默认图库支持指定相册上云版本
+    bool isSupport = system::GetBoolParameter(PHOTO_UPLOAD_ALBUM_ENABLE, true);
+    MEDIA_INFO_LOG("IsSupportUploadStatus: %{public}d", isSupport);
+    return isSupport;
+}
+
+int32_t PhotoAlbumUploadStatusOperation::JudgeUploadAlbumEnable()
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(ABILITY_ENABLE_XML, errCode);
+    CHECK_AND_RETURN_RET_LOG(prefs, E_ERR, "Get preferences error: %{public}d", errCode);
+    int32_t historyEnable = prefs->GetInt(HISTORY_UPLOAD_ALBUM_ENABLE, -1);
+    MEDIA_INFO_LOG("historyUploadAlbumEnable: %{public}d", historyEnable);
+    if (historyEnable == static_cast<int32_t>(EnableUploadStatus::DEFAULT) && !IsSupportUploadStatus()) {
+        prefs->PutInt(HISTORY_UPLOAD_ALBUM_ENABLE, static_cast<int32_t>(EnableUploadStatus::OFF));
+        prefs->FlushSync();
+    }
+    if (historyEnable == static_cast<int32_t>(EnableUploadStatus::OFF) && IsSupportUploadStatus()) {
+        prefs->PutInt(HISTORY_UPLOAD_ALBUM_ENABLE, static_cast<int32_t>(EnableUploadStatus::ON));
+        prefs->FlushSync();
+        EnableUploadAlbumInDb();
+    }
+    return E_OK;
+}
+
+int32_t PhotoAlbumUploadStatusOperation::EnableUploadAlbumInDb()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Failed to get rdbStore");
+    std::string uploadSql = "UPDATE PhotoAlbum SET upload_status = 1 WHERE album_type IN (0, 2048)";
+    int32_t ret = rdbStore->ExecuteSql(uploadSql);
+    MEDIA_INFO_LOG("EnableUploadAlbumInDb, ret: %{public}d", ret);
+    return ret;
 }
 }  // namespace OHOS::Media

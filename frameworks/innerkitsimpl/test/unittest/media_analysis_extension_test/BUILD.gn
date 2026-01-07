@@ -24,13 +24,13 @@ ohos_unittest("media_analysis_extension_test") {
   module_out_path = "media_library/medialibrary-album"
   include_dirs = [
     "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/include",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
     "../get_self_permissions/include",
     "./include",
   ]
 
   sources = [
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_analysis_callback_stub_test.cpp",
   ]

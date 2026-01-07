@@ -1,0 +1,91 @@
+# Copyright (C) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+group("unittest") {
+  testonly = true
+
+  deps = [ ":media_permission_helper_test" ]
+}
+
+ohos_unittest("media_permission_helper_test") {
+  module_out_path = "media_library/media_library_asset"
+
+  include_dirs = [
+    "./include",
+    "../medialibrary_unittest_utils/include",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+    "${MEDIALIB_SERVICES_PATH}/media_library/include",
+    "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_permission_helper/include",
+    "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/common_data",
+    "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
+    "${MEDIALIB_INNERIMPL_PATH}/notification/include",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
+  ]
+
+  cflags = [ "-fno-access-control" ]
+
+  sources = [
+    "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
+    "./src/media_permission_helper_test.cpp",
+  ]
+
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library_packages",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_extend_manager",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
+    "${MEDIALIB_INNERKITS_PATH}/media_permission_helper:media_permission_helper",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_js",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken_shared",
+    "access_token:libtokensetproc_shared",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_core",
+    "relational_store:native_appdatafwk",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  if (!media_library_link_opt) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+  }
+
+  resource_config_file =
+      "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
+}

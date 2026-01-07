@@ -22,6 +22,7 @@
 
 namespace OHOS::Media {
 namespace Notification {
+#define EXPORT __attribute__ ((visibility ("default")))
 /**
  * 数据库表鉴权处理器
  */
@@ -32,6 +33,7 @@ public:
 
     int32_t ExecuteCheckPermission(const NotifyUriType &registerUriType);
     bool isSystemApp();
+    EXPORT int32_t SinglePermissionCheck(const NotifyUriType &registerUriType, const std::string& singleId);
 
 private:
     int32_t BasicPermissionCheck();

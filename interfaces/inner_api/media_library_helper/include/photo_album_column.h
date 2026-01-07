@@ -53,6 +53,7 @@ public:
     static const std::string COVER_URI_SOURCE EXPORT;
     static const std::string COVER_CLOUD_ID EXPORT;
     static const std::string UPLOAD_STATUS EXPORT;
+    static const std::string ALBUM_HIDDEN EXPORT;
 
     // For api9 compatibility
     static const std::string ALBUM_RELATIVE_PATH EXPORT;
@@ -83,6 +84,8 @@ public:
     static const std::string STYLE2_ORDER_SECTION EXPORT;
     static const std::string STYLE2_ORDER_TYPE EXPORT;
     static const std::string STYLE2_ORDER_STATUS EXPORT;
+    // for incremental query
+    static const std::string CHANGE_TIME EXPORT;
 
     static const std::vector<std::string> ALBUM_ORDER_COLUMNS EXPORT;
     static const std::vector<std::string> ALBUM_ORDER_SECTION_COLUMNS EXPORT;

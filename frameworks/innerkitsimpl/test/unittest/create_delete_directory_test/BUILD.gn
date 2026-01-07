@@ -32,10 +32,6 @@ ohos_unittest("create_delete_directory_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/common_data",
-    "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
-    "${MEDIALIB_INNERIMPL_PATH}/notification/include",
-    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
   ]
 
   sources = [

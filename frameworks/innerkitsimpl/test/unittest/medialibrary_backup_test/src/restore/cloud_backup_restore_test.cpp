@@ -26,6 +26,7 @@
 #include "database_utils.h"
 #include "gallery_db_upgrade.h"
 #include "gallery_source.h"
+#include "media_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"

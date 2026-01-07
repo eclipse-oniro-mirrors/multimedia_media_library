@@ -26,16 +26,16 @@ ohos_unittest("moving_photo_test") {
   include_dirs = [
     "./include",
     "../get_self_permissions/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
     "${MEDIALIB_INTERFACES_PATH}/kits/c",
     "${MEDIALIB_INTERFACES_PATH}/kits/native/include",
-    "${MEDIALIB_ROOT_PATH}/frameworks/services/media_thumbnail/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/inner_api/media_library_helper/include",
     "${MEDIALIB_NATIVE_PATH}/c_api/common",
     "${MEDIALIB_ROOT_PATH}/frameworks/innerkitsimpl/media_library_helper/include",
@@ -43,6 +43,7 @@ ohos_unittest("moving_photo_test") {
     "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   sources = [

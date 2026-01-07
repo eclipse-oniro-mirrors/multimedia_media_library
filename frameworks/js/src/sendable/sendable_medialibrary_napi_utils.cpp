@@ -30,6 +30,7 @@
 #include "vision_pose_column.h"
 #include "vision_image_face_column.h"
 #include "data_secondary_directory_uri.h"
+#include "js_interface_helper.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -231,6 +232,54 @@ static void HandleSpecialPredicateProcessUri(AsyncContext &context, const FetchO
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
 }
 
+static void MultiParamLpathToLowerCase(const vector<DataShare::MutliValue::Type>& originMultiParams,
+    vector<DataShare::MutliValue::Type>& newMultiParams)
+{
+    for (const auto& multiParam : originMultiParams) {
+        vector<string> stringVec = std::get_if<vector<string>>(&multiParam) ?
+            std::get<vector<string>>(multiParam) : vector<string>();
+        if (stringVec.empty()) {
+            newMultiParams.push_back(multiParam);
+            continue;
+        }
+        for (auto& str : stringVec) {
+            std::transform(str.begin(), str.end(), str.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+        }
+        newMultiParams.push_back(stringVec);
+    }
+}
+
+static void MakeLpathParamsCaseInsensitive(vector<OperationItem>& operations,
+    const OperationItem& item)
+{
+    vector<DataShare::SingleValue::Type> newSingleParams {};
+    vector<DataShare::MutliValue::Type> newMultiParams {};
+    string lowerField = "lower(" + PhotoAlbumColumns::ALBUM_LPATH + ")";
+    newSingleParams.push_back(lowerField);
+    for (size_t i = 1; i < item.singleParams.size(); i++) { // start with 1 to skip field param
+        string value = static_cast<string>(item.GetSingle(i));
+        if (!value.empty()) {
+            std::transform(value.begin(), value.end(), value.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+            newSingleParams.push_back(value);
+        } else {
+            newSingleParams.push_back(item.singleParams[i]);
+        }
+    }
+    if (!item.multiParams.empty()) {
+        MultiParamLpathToLowerCase(item.multiParams, newMultiParams);
+    }
+    operations.push_back(
+        { item.operation, newSingleParams, newMultiParams });
+}
+
+static void PrintPredicateSafe(const shared_ptr<DataShareAbsPredicates>& predicate)
+{
+    string predicatesStr = JsInterfaceHelper::PredicateToStringSafe(predicate);
+    NAPI_INFO_LOG("Handle predicate: %{public}s", predicatesStr.c_str());
+}
+
 template <class AsyncContext>
 bool SendableMediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context,
     shared_ptr<DataShareAbsPredicates> &predicate, const FetchOptionType &fetchOptType,
@@ -238,6 +287,7 @@ bool SendableMediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context
 {
     constexpr int32_t FIELD_IDX = 0;
     constexpr int32_t VALUE_IDX = 1;
+    PrintPredicateSafe(predicate);
     auto &items = predicate->GetOperationList();
     bool hasUri = false;
     for (auto &item : items) {
@@ -272,6 +322,11 @@ bool SendableMediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context
             continue;
         }
         if (LOCATION_PARAM_MAP.find(static_cast<string>(item.GetSingle(FIELD_IDX))) != LOCATION_PARAM_MAP.end()) {
+            continue;
+        }
+        if (item.operation != DataShare::ORDER_BY_ASC && item.operation != DataShare::ORDER_BY_DESC &&
+            static_cast<string>(item.GetSingle(FIELD_IDX)) == PhotoAlbumColumns::ALBUM_LPATH) {
+            MakeLpathParamsCaseInsensitive(operations, item);
             continue;
         }
         operations.push_back(item);

@@ -21,7 +21,6 @@
 #include "media_volume.h"
 #include "pixel_map.h"
 #include "unique_fd.h"
-#include "media_photo_asset_proxy.h"
 #include "media_library_extend_manager.h"
 
 namespace OHOS {
@@ -221,16 +220,6 @@ public:
      */
     EXPORT int64_t GetMovingPhotoDateModified(const string &uri);
 
-    /**
-     * @brief Create PhotoAssetProxy
-     *
-     * @param cameraShotType a parameter for input, indicates camera shot type
-     * @param callingUid a parameter for input, indicates calling uid
-     * @param userId a parameter for input, indicates user id
-     * @return if obtain success, return PhotoAssetProxy; Otherwise return nullptr
-     */
-    EXPORT std::shared_ptr<PhotoAssetProxy> CreatePhotoAssetProxy(
-        const PhotoAssetProxyCallerInfo &callerInfo, CameraShotType cameraShotType);
     EXPORT static std::string GetSandboxPath(const std::string &path, const Size &size, bool isAstc);
     EXPORT static void GetUriIdPrefix(std::string &fileUri);
     EXPORT static bool IfSizeEqualsRatio(const Size &imageSize, const Size &targetSize);

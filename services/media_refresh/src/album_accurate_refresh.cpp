@@ -200,10 +200,10 @@ int32_t AlbumAccurateRefresh::NotifyForReCheck()
     return ACCURATE_REFRESH_RET_OK;
 }
 
-bool AlbumAccurateRefresh::IsCoverContentChange(string &fileId)
+bool AlbumAccurateRefresh::IsCoverContentChange(const string &fileId)
 {
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidInteger(fileId), false, "invalid input param");
-    CHECK_AND_RETURN_RET_LOG(stoi(fileId) > 0, false, "fileId is invalid");
+    CHECK_AND_RETURN_RET_LOG(atoi(fileId.c_str()) > 0, false, "fileId is invalid");
     MEDIA_INFO_LOG("IsCoverContentChange in, fileId: %{public}s", fileId.c_str());
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -238,10 +238,10 @@ bool AlbumAccurateRefresh::IsCoverContentChange(string &fileId)
     return false;
 }
 
-void AlbumAccurateRefresh::NotifyAlbumsCoverChange(string &fileId, vector<int32_t> &albumIds)
+void AlbumAccurateRefresh::NotifyAlbumsCoverChange(const string &fileId, vector<int32_t> &albumIds)
 {
     CHECK_AND_RETURN_LOG(MediaFileUtils::IsValidInteger(fileId), "invalid input param");
-    CHECK_AND_RETURN_LOG(stoi(fileId) > 0, "fileId is invalid");
+    CHECK_AND_RETURN_LOG(atoi(fileId.c_str()) > 0, "fileId is invalid");
     CHECK_AND_RETURN_LOG(!albumIds.empty(), "no album cover has changed");
     Init(albumIds);
     UpdateModifiedDatasInner(albumIds, RDB_OPERATION_UPDATE);

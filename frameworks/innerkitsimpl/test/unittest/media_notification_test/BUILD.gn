@@ -110,10 +110,6 @@ ohos_unittest("media_notification_test") {
     "relational_store:native_rdb",
   ]
 
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
-
   defines = []
   defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
   defines += [ "MEDIA_REFRESH_TEST" ]

@@ -25,6 +25,7 @@ class StartThumbnailCreationTaskReqBody : public IPC::IMediaParcelable {
 public:
     DataShare::DataSharePredicates predicates;
     int32_t requestId;
+    pid_t pid;
 
 public:  // functions of Parcelable.
     bool Unmarshalling(MessageParcel &parcel) override;

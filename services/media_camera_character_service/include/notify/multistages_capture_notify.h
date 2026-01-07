@@ -19,11 +19,17 @@
 #include <memory>
 #include <string>
 
+#include "camera_character_types.h"
+#include "file_asset.h"
+
 namespace OHOS {
 namespace Media::Notification {
 class MultistagesCaptureNotify {
+#define EXPORT __attribute__ ((visibility ("default")))
 public:
-    static int32_t NotifyLowQualityMemoryCount(int32_t count);
+    EXPORT static int32_t NotifyOnProcess(
+        const std::shared_ptr<FileAsset> &fileAsset, const MultistagesCaptureNotifyType &notifyType);
+    static int32_t NotifyLowQualityMemoryCount();
 };
 } // namespace Media::Notification
 } // namespace OHOS

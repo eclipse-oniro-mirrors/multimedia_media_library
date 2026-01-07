@@ -44,7 +44,6 @@
 #include "exif_utils.h"
 #include "file_utils.h"
 #include "mock_deferred_photo_proc_adapter.h"
-#include "multistages_capture_dao.h"
 #include "multistages_capture_deferred_photo_proc_session_callback.h"
 #include "multistages_capture_dfx_first_visit.h"
 #include "multistages_capture_dfx_result.h"
@@ -827,8 +826,12 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, ProcessAndSaveHighQualityImage
     std::shared_ptr<CameraStandard::PictureIntf> picture = std::make_shared<CameraStandard::PictureAdapter>();
     picture->Create(surfaceBuffer);
 
-    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, true);
-    callback->OnProcessImageDone(to_string(fileId), picture, false);
+    DpsMetadata metadata;
+    constexpr const char* CLOUD_FLAG = "cloudImageEnhanceFlag";
+    metadata.Set(CLOUD_FLAG, true);
+    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, metadata);
+    metadata.Set(CLOUD_FLAG, false);
+    callback->OnProcessImageDone(to_string(fileId), picture, metadata);
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
     ValuesBucket values;
@@ -837,7 +840,7 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, ProcessAndSaveHighQualityImage
     cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, fileId);
     EXPECT_GT(MediaLibraryPhotoOperations::Update(cmd), E_OK);
 
-    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, false);
+    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, metadata);
     callback->GetCommandByImageId(PHOTO_ID_FOR_TEST, cmd);
     callback->GetCommandByImageId("2011/11/11", cmd);
 
@@ -1077,76 +1080,6 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, BeginSynchronize_test_001, Tes
     DeferredPhotoProcessingAdapter adapter;
     EXPECT_NE(adapter.deferredPhotoProcSession_, nullptr);
     adapter.BeginSynchronize();
-}
-
-/**
- * @tc.name: NotifyOnProcess_test01
- * @tc.desc: OnProcess通知，resultSet不能为空
- */
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, NotifyOnProcess_test01, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("enter NotifyOnProcess_test01");
-    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
-        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    ASSERT_NE(callback, nullptr);
- 
-    shared_ptr<FileAsset> fileAsset = nullptr;
-    int32_t ret = callback->NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE);
-    ASSERT_EQ(ret, E_ERR);
-    MEDIA_INFO_LOG("end NotifyOnProcess_test01");
-}
- 
-/**
- * @tc.name: NotifyOnProcess_test02
- * @tc.desc: OnProcess通知，ObserverType不能是未定义状态
- */
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, NotifyOnProcess_test02, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("enter NotifyOnProcess_test02");
-    auto fileId = PrepareForFirstVisit();
-    EXPECT_GT(fileId, 0);
- 
-    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
-        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    ASSERT_NE(callback, nullptr);
-    const std::vector<std::string> columns { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH,
-    PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::MEDIA_NAME, MediaColumn::MEDIA_MIME_TYPE,
-    PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_ORIENTATION,
-    PhotoColumn::MEDIA_TYPE, MediaColumn::MEDIA_DATE_TRASHED };
- 
-    std::shared_ptr<FileAsset> fileAsset = MultiStagesCaptureDao().QueryDataByPhotoId(PHOTO_ID_FOR_TEST, columns);
-    ASSERT_NE(fileAsset, nullptr);
- 
-    int32_t ret = callback->NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::UNDEFINED);
-    ASSERT_EQ(ret, E_ERR);
-    MEDIA_INFO_LOG("end NotifyOnProcess_test02");
-}
- 
-/**
- * @tc.name: NotifyOnProcess_test03
- * @tc.desc: OnProcess通知
- */
-HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, NotifyOnProcess_test03, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("enter NotifyOnProcess_test03");
-    auto fileId = PrepareForFirstVisit();
-    EXPECT_GT(fileId, 0);
- 
-    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
-        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
-    ASSERT_NE(callback, nullptr);
- 
-    const std::vector<std::string> columns { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH,
-    PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::MEDIA_NAME, MediaColumn::MEDIA_MIME_TYPE,
-    PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_ORIENTATION,
-    PhotoColumn::MEDIA_TYPE, MediaColumn::MEDIA_DATE_TRASHED };
- 
-    std::shared_ptr<FileAsset> fileAsset = MultiStagesCaptureDao().QueryDataByPhotoId(PHOTO_ID_FOR_TEST, columns);
-    ASSERT_NE(fileAsset, nullptr);
- 
-    int32_t ret = callback->NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_IMAGE_DONE);
-    ASSERT_EQ(ret, E_OK);
-    MEDIA_INFO_LOG("end NotifyOnProcess_test03");
 }
 }
 }

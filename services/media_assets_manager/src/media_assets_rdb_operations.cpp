@@ -20,14 +20,17 @@
 #include "map_operation_flag.h"
 #include "form_map.h"
 #include "medialibrary_formmap_operations.h"
+#ifdef MEDIALIBRARY_FACARD_SUPPORT
 #include "media_facard_photos_column.h"
 #include "medialibrary_facard_operations.h"
+#endif
 #include "medialibrary_photo_operations.h"
 #include "vision_column.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_tracer.h"
 #include "photo_album_column.h"
+#include "rdb_utils.h"
 #include "result_set_utils.h"
 #include "dfx_manager.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
@@ -41,6 +44,7 @@
 #include "medialibrary_urisensitive_operations.h"
 #include "medialibrary_uripermission_operations.h"
 #include "medialibrary_transcode_data_aging_operation.h"
+#include "medialibrary_data_manager_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -111,11 +115,16 @@ int32_t MediaAssetsRdbOperations::RemoveFormInfo(const string& formId)
 
 int32_t MediaAssetsRdbOperations::RemoveGalleryFormInfo(const string& formId)
 {
+#ifdef MEDIALIBRARY_FACARD_SUPPORT
     lock_guard<mutex> lock(facardMutex_);
     NativeRdb::RdbPredicates rdbPredicate(TabFaCardPhotosColumn::FACARD_PHOTOS_TABLE);
     rdbPredicate.EqualTo(TabFaCardPhotosColumn::FACARD_PHOTOS_FORM_ID, formId);
     MediaLibraryFaCardOperations::UnregisterObserver(formId);
     return MediaLibraryRdbStore::Delete(rdbPredicate);
+#else
+    MEDIA_ERR_LOG("unsupported operation, formId: %{public}s", formId.c_str());
+    return E_FAIL;
+#endif
 }
 
 int32_t MediaAssetsRdbOperations::SaveFormInfo(const string& formId, const string& uri)
@@ -130,8 +139,10 @@ int32_t MediaAssetsRdbOperations::SaveFormInfo(const string& formId, const strin
         MediaFileUri mediaUri(uri);
         CHECK_AND_RETURN_RET_LOG(QueryFileIdIfExists(mediaUri.GetFileId()),
             E_GET_PRAMS_FAIL, "the fileId is not exist");
-        vector<int64_t> formIds = { std::stoll(formId) };
-        MediaLibraryFormMapOperations::PublishedChange(uri, formIds, true);
+        if (MediaLibraryDataManagerUtils::IsNumber(formId)) {
+            vector<int64_t> formIds = { std::stoll(formId) };
+            MediaLibraryFormMapOperations::PublishedChange(uri, formIds, true);
+        }
     }
     if (QueryFormIdIfExists(formId)) {
         lock_guard<mutex> lock(facardMutex_);
@@ -152,6 +163,7 @@ int32_t MediaAssetsRdbOperations::SaveFormInfo(const string& formId, const strin
 int32_t MediaAssetsRdbOperations::SaveGalleryFormInfo(const vector<string>& formIds,
     const vector<string>& fileUris)
 {
+#ifdef MEDIALIBRARY_FACARD_SUPPORT
     lock_guard<mutex> lock(facardMutex_);
     vector<ValuesBucket> values;
     for (size_t i = 0; i < formIds.size(); i++) {
@@ -171,6 +183,10 @@ int32_t MediaAssetsRdbOperations::SaveGalleryFormInfo(const vector<string>& form
         MediaLibraryFaCardOperations::RegisterObserver(formIds[i], fileUris[i]);
     }
     return static_cast<int32_t>(outRowId);
+#else
+    MEDIA_ERR_LOG("unsupported operation, formIds size: %{public}zu", formIds.size());
+    return E_FAIL;
+#endif
 }
 
 int32_t MediaAssetsRdbOperations::CommitEditInsert(const string& editData, int32_t fileId)
@@ -523,16 +539,17 @@ int32_t MediaAssetsRdbOperations::CancelPhotoUriPermission(NativeRdb::RdbPredica
     return MediaLibraryAppUriPermissionOperations::DeleteOperation(rdbPredicate);
 }
 
-int32_t MediaAssetsRdbOperations::StartThumbnailCreationTask(NativeRdb::RdbPredicates &rdbPredicate, int32_t requestId)
+int32_t MediaAssetsRdbOperations::StartThumbnailCreationTask(NativeRdb::RdbPredicates &rdbPredicate, int32_t requestId,
+    pid_t pid)
 {
     MEDIA_INFO_LOG("MediaAssetsRdbOperations::StartThumbnailCreationTask requestId:%{public}d", requestId);
-    return ThumbnailService::GetInstance()->CreateAstcBatchOnDemand(rdbPredicate, requestId);
+    return ThumbnailService::GetInstance()->CreateAstcBatchOnDemand(rdbPredicate, requestId, pid);
 }
 
-int32_t MediaAssetsRdbOperations::StopThumbnailCreationTask(int32_t requestId)
+int32_t MediaAssetsRdbOperations::StopThumbnailCreationTask(int32_t requestId, pid_t pid)
 {
     MEDIA_INFO_LOG("MediaAssetsRdbOperations::StopThumbnailCreationTask requestId:%{public}d", requestId);
-    ThumbnailService::GetInstance()->CancelAstcBatchTask(requestId);
+    ThumbnailService::GetInstance()->CancelAstcBatchTask(requestId, pid);
     return E_OK;
 }
 

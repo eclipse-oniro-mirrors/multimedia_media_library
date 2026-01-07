@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -142,7 +143,7 @@ static int32_t SetRelationship(int32_t albumId, int32_t albumType, int32_t album
     }
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->SetRelationship(data, reply);
 
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
@@ -185,7 +186,7 @@ HWTEST_F(SetRelationshipTest, SetRelationshipTest_Test_002, TestSize.Level0)
     MEDIA_INFO_LOG("Start SetRelationshipTest_Test_002");
     MessageParcel data;
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->SetRelationship(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;

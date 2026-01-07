@@ -13,6 +13,9 @@
 
 MEDIALIB_ROOT_PATH = "//foundation/multimedia/media_library"
 
+MEDIALIB_COMMON_PATH = "${MEDIALIB_ROOT_PATH}/common"
+
+MEDIALIB_CLIENT_PATH = "${MEDIALIB_ROOT_PATH}/frameworks/client"
 MEDIALIB_INNERKITS_PATH = "${MEDIALIB_ROOT_PATH}/frameworks/innerkitsimpl"
 MEDIALIB_INNERIMPL_PATH = "${MEDIALIB_ROOT_PATH}/frameworks/innerimpl"
 MEDIALIB_INTERFACES_PATH = "${MEDIALIB_ROOT_PATH}/interfaces"
@@ -21,15 +24,15 @@ MEDIALIB_NATIVE_PATH = "${MEDIALIB_ROOT_PATH}/frameworks/native"
 MEDIALIB_UTILS_PATH = "${MEDIALIB_ROOT_PATH}/frameworks/utils"
 MEDIALIB_TEST_PATH = "${MEDIALIB_ROOT_PATH}/frameworks/innerkitsimpl/test"
 
+MEDIALIB_ROOT_SERVICES_PATH = "${MEDIALIB_ROOT_PATH}/services"
 MEDIALIB_SERVICES_PATH = "${MEDIALIB_ROOT_PATH}/frameworks/services"
 MEDIALIB_NEW_SERVICES_PATH = "${MEDIALIB_ROOT_PATH}/services"
 MEDIALIB_CLOUD_SYNC_PATH = "${MEDIALIB_SERVICES_PATH}/media_cloud_sync"
-MEDIALIB_MTP_PATH = "${MEDIALIB_SERVICES_PATH}/media_mtp"
+MEDIALIB_MTP_PATH = "${MEDIALIB_ROOT_SERVICES_PATH}/media_mtp"
 MEDIALIB_CAMERA_FRAMEWORK_PATH = "${MEDIALIB_ROOT_PATH}/../camera_framework"
 MEDIALIB_GLOBAL_PATH = "//base/global"
 MEDIALIB_THIRD_PARTY_PATH = "//third_party"
 
-MEDIALIB_ROOT_SERVICES_PATH = "${MEDIALIB_ROOT_PATH}/services"
 MEDIALIB_CLOUD_SYNC_SERVICE_PATH = "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_sync_service"
 
 MEDIALIB_IMAGE_FRAMEWORK_PATH = "${MEDIALIB_ROOT_PATH}/../image_framework"
@@ -43,6 +46,8 @@ MEDIALIB_BUSINESS_PATH = "${MEDIALIB_ROOT_PATH}/services"
 MEDIALIB_CLOUD_SYNC_CLIENT = "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync"
 MEDIALIB_ACCURATE_REFRESH_PATH = "${MEDIALIB_ROOT_PATH}/services/media_refresh"
 MEDIALIB_NOTIFICATION_MERGING_PATH = "${MEDIALIB_ROOT_PATH}/services/media_notification"
+MEDIALIB_THUMBNAIL_PATH = "${MEDIALIB_ROOT_PATH}/services/media_thumbnail"
+MEDIALIB_FACARD_PATH = "${MEDIALIB_ROOT_PATH}/services/media_facard"
 
 declare_args() {
   media_library_link_opt = false
@@ -56,24 +61,15 @@ declare_args() {
   media_library_feature_back_up = true
   media_library_feature_cloud_enhancement = true
   media_library_feature_device_manager = false
-  media_library_feature_user_file_service = false
-  media_library_feature_device_security_level = false
   media_library_feature_hicollie_enable = false
+  media_library_feature_cloud_download = true
+  media_library_cloud_sync_enable = true
+  media_library_facard_enable = true
 }
 
 if (defined(global_parts_info) &&
     defined(global_parts_info.distributedhardware_device_manager)) {
   media_library_feature_device_manager = true
-}
-
-if (defined(global_parts_info) &&
-    defined(global_parts_info.filemanagement_user_file_service)) {
-  media_library_feature_user_file_service = true
-}
-
-if (defined(global_parts_info) &&
-    defined(global_parts_info.security_device_security_level)) {
-    media_library_feature_device_security_level = true
 }
 
 if (defined(global_parts_info) &&

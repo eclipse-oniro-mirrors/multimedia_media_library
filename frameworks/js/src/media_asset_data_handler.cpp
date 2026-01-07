@@ -108,6 +108,16 @@ void NapiMediaAssetDataHandler::SetProgressHandlerRef(napi_ref &progressHandlerR
     progressHandlerRef_ = progressHandlerRef;
 }
 
+bool NapiMediaAssetDataHandler::GetCinematicResult()
+{
+    return cinematicResult_;
+}
+
+void NapiMediaAssetDataHandler::SetCinematicResult(bool cinematicResult)
+{
+    cinematicResult_ = cinematicResult;
+}
+
 void NapiMediaAssetDataHandler::JsOnDataPrepared(napi_env env, napi_value arg, napi_value extraInfo)
 {
     std::unique_lock<std::mutex> dataHandlerLock(dataHandlerRefMutex_);

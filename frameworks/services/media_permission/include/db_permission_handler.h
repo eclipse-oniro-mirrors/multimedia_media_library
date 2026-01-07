@@ -17,7 +17,7 @@
 #define DB_PERMISSION_HANDLER_H
 
 #include "abs_permission_handler.h"
-
+// LCOV_EXCL_START
 namespace OHOS::Media {
 /**
  * 数据库表鉴权处理器
@@ -35,3 +35,4 @@ private:
 
 } // namespace OHOS::Media
 #endif
+// LCOV_EXCL_STOP

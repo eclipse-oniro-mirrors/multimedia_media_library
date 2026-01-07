@@ -26,11 +26,16 @@
 namespace OHOS::Media::Common {
 using namespace OHOS::Media::ORM;
 class EXPORT MediaAssetsDeleteService {
+public: // constructors
+    MediaAssetsDeleteService() = default;
+    explicit MediaAssetsDeleteService(bool isCloudPullData) : isCloudPullData_(isCloudPullData)
+    {}
+
 public:
     int32_t DeleteLocalAssets(const std::vector<std::string> &fileIds);
     int32_t DeleteCloudAssets(const std::vector<std::string> &fileIds);
-    int32_t CopyAndMoveCloudAssetToTrash(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh,
-        const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfo);
+    int32_t DeleteCloudAssetSingle(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
 
 private:
     int32_t BatchCopyAndMoveLocalAssetToTrash(
@@ -88,6 +93,18 @@ private:
         const std::unordered_map<std::string, std::string> &valueBucketMap, std::stringstream &ss);
     int32_t SetNull4MissColumn(NativeRdb::ValuesBucket &valuesBucket,
         const std::unordered_map<std::string, std::string> &valueBucketMap, std::stringstream &ss);
+    int32_t CopyAndMoveCloudAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t DeleteLocalAssetSingle(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t DeleteLocalBurstAssets(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t FindBurstAssetsAndResetBurstKey(
+        const std::string &originalBurstKey, std::optional<PhotosPo> &coverAsset, std::vector<PhotosPo> &burstAssets);
+    int32_t CheckAndFindBurstAssets(
+        const PhotosPo &photoInfo, std::optional<PhotosPo> &coverAssetOp, std::vector<PhotosPo> &burstAssets);
+    int32_t DeleteCloudBurstAssets(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
 
 private:
     MediaAssetsDao mediaAssetsDao_;
@@ -96,6 +113,7 @@ private:
         const PhotosPo &, std::optional<PhotosPo> &, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &);
     using SetValHandle = int32_t (MediaAssetsDeleteService::*)(
         NativeRdb::ValuesBucket &, const std::unordered_map<std::string, std::string> &, std::stringstream &);
+    const bool isCloudPullData_ = false;
 };
 }  // namespace OHOS::Media::Common
 #endif  // OHOS_MEDIA_MEDIA_ASSETS_DELETE_SERVICE_H

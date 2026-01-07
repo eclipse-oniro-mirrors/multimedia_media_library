@@ -47,7 +47,8 @@ const map<std::string, ResultSetDataType> AlbumChangeInfo::albumInfoCloumnTypes_
     { PhotoAlbumColumns::ALBUMS_ORDER, TYPE_INT32 },
     { PhotoAlbumColumns::ORDER_SECTION, TYPE_INT32},
     { PhotoAlbumColumns::ALBUM_CLOUD_ID, TYPE_STRING },
-    { PhotoAlbumColumns::ALBUM_IS_LOCAL, TYPE_INT32 }
+    { PhotoAlbumColumns::ALBUM_IS_LOCAL, TYPE_INT32 },
+    { PhotoAlbumColumns::ALBUM_HIDDEN, TYPE_INT32 }
 };
 
 const vector<std::string> AlbumChangeInfo::albumInfoColumns_ = []() {
@@ -110,10 +111,18 @@ vector<AlbumChangeInfo> AlbumChangeInfo::GetInfoFromResult(
             resultSet, GetDataType(PhotoAlbumColumns::ALBUM_CLOUD_ID)));
         albumChangeInfo.isLocal_ = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_IS_LOCAL,
             resultSet, GetDataType(PhotoAlbumColumns::ALBUM_IS_LOCAL)));
+        SetPhotoAlbumHidden(albumChangeInfo, resultSet);
         albumChangeInfos.push_back(albumChangeInfo);
     }
 
     return albumChangeInfos;
+}
+
+void AlbumChangeInfo::SetPhotoAlbumHidden(AlbumChangeInfo &albumChangeInfo,
+    const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    albumChangeInfo.hidden_ = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_HIDDEN,
+        resultSet, GetDataType(PhotoAlbumColumns::ALBUM_HIDDEN)));
 }
 
 string AlbumChangeInfo::ToString(bool isDetail) const
@@ -129,7 +138,7 @@ string AlbumChangeInfo::ToString(bool isDetail) const
         ss << ", coverDateTime_: " << coverDateTime_ << ", hiddenCoverDateTime_: " << hiddenCoverDateTime_;
         ss << ", dirty_: " << dirty_ << ", coverUriSource_: " << coverUriSource_;
         ss << ", albumsOrder_: " << albumsOrder_ << ", orderSection_: " << orderSection_ << ", lpath_: " << lpath_;
-        ss << ", isLocal_: " << isLocal_ << ", cloudId_: " << cloudId_;
+        ss << ", isLocal_: " << isLocal_ << ", cloudId_: " << cloudId_ << ", hidden_: " << hidden_;
         if (isCoverChange_) {
             ss << ", cover info: " << coverInfo_.ToString().c_str();
         }
@@ -167,12 +176,14 @@ ValuesBucket AlbumChangeInfo::GetUpdateValues(const AlbumChangeInfo &oldAlbumInf
     if (count_ != oldAlbumInfo.count_ && count_ != INVALID_INT32_VALUE) {
         values.PutInt(PhotoAlbumColumns::ALBUM_COUNT, count_);
         ss << "count_: " << oldAlbumInfo.count_ << " -> " << count_ << ", ";
+        GetUpdatePhotoAlbumHidden(oldAlbumInfo, values, ss);
     }
     if (hiddenCount_ != oldAlbumInfo.hiddenCount_ && hiddenCount_ != INVALID_INT32_VALUE) {
         values.PutInt(PhotoAlbumColumns::HIDDEN_COUNT, hiddenCount_);
         ss << "hiddenCount_: " << oldAlbumInfo.hiddenCount_ << " -> " << hiddenCount_ << ", ";
         values.PutInt(PhotoAlbumColumns::CONTAINS_HIDDEN, hiddenCount_ != 0);
         ss << "contains_hidden: true, ";
+        GetUpdatePhotoAlbumHidden(oldAlbumInfo, values, ss);
     }
     if (coverUri_ != oldAlbumInfo.coverUri_ && coverUri_ != EMPTY_STR) {
         values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, coverUri_);
@@ -200,6 +211,16 @@ ValuesBucket AlbumChangeInfo::GetUpdateValues(const AlbumChangeInfo &oldAlbumInf
     return values;
 }
 
+void AlbumChangeInfo::GetUpdatePhotoAlbumHidden(const AlbumChangeInfo &oldAlbumInfo, ValuesBucket &values,
+    stringstream &ss)
+{
+    if (!(oldAlbumInfo.albumSubType_ >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
+        oldAlbumInfo.albumSubType_ <= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_END))) {
+        values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, count_ < 1);
+        ss << "hidden_: " << oldAlbumInfo.hidden_ << " -> " << hidden_ << ", ";
+    }
+}
+
 bool AlbumChangeInfo::Marshalling(Parcel &parcel) const
 {
     return Marshalling(parcel, false);
@@ -221,6 +242,7 @@ bool AlbumChangeInfo::Marshalling(Parcel &parcel, bool isSystem) const
     ret = ret && parcel.WriteInt32(count_);
     ret = ret && parcel.WriteString(coverUri_);
     ret = ret && parcel.WriteBool(isSystem);
+    ret = ret && parcel.WriteInt32(hidden_);
     if (isSystem) {
         ret = ret && parcel.WriteInt32(hiddenCount_);
         ret = ret && parcel.WriteString(hiddenCoverUri_);
@@ -256,6 +278,7 @@ bool AlbumChangeInfo::ReadFromParcel(Parcel &parcel)
     ret = ret && parcel.ReadInt32(count_);
     ret = ret && parcel.ReadString(coverUri_);
     ret = ret && parcel.ReadBool(isSystem_);
+    ret = ret && parcel.ReadInt32(hidden_);
     if (isSystem_) {
         ret = ret && parcel.ReadInt32(hiddenCount_);
         ret = ret && parcel.ReadString(hiddenCoverUri_);
@@ -316,6 +339,7 @@ string AlbumChangeInfo::GetAlbumDiff(const AlbumChangeInfo &album, const AlbumCh
     GET_ALBUM_DIFF(coverUriSource_);
     GET_ALBUM_DIFF(albumsOrder_);
     GET_ALBUM_DIFF(orderSection_);
+    GET_ALBUM_DIFF(hidden_);
 
     if (album.coverUri_ != compare.coverUri_) {
         ss << "coverUri_: " << MediaFileUtils::DesensitizeUri(album.coverUri_) << " -> ";
@@ -374,6 +398,8 @@ bool AlbumChangeData::IsAlbumInfoChange()
         infoBeforeChange_.orderSection_, infoAfterChange_.orderSection_);
     MEDIA_DEBUG_LOG("dirtyOld: %{public}d, dirtyNew: %{public}d",
         infoBeforeChange_.dirty_, infoAfterChange_.dirty_);
+    MEDIA_DEBUG_LOG("hiddenOld: %{public}d, hiddenNew: %{public}d",
+        infoBeforeChange_.hidden_, infoAfterChange_.hidden_);
     return (infoAfterChange_.isCoverChange_)||
         (infoBeforeChange_.imageCount_ != infoAfterChange_.imageCount_) ||
         (infoBeforeChange_.videoCount_ != infoAfterChange_.videoCount_) ||
@@ -383,7 +409,8 @@ bool AlbumChangeData::IsAlbumInfoChange()
         (infoBeforeChange_.albumsOrder_ != infoAfterChange_.albumsOrder_) ||
         (infoBeforeChange_.albumSubType_ != infoAfterChange_.albumSubType_) ||
         (infoBeforeChange_.albumType_ != infoAfterChange_.albumType_) ||
-        (infoBeforeChange_.orderSection_ != infoAfterChange_.orderSection_);
+        (infoBeforeChange_.orderSection_ != infoAfterChange_.orderSection_) ||
+        (infoBeforeChange_.hidden_ != infoAfterChange_.hidden_);
 }
  
 bool AlbumChangeData::IsAlbumHiddenInfoChange()

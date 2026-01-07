@@ -93,6 +93,7 @@ class HiAudit : public NoCopyable {
 public:
     EXPORT static HiAudit& GetInstance();
     EXPORT void Write(const AuditLog& auditLog);
+    void WriteForCloudDownload(const std::string& bundleName, const int32_t& downloadType, const std::string& status);
 
 private:
     HiAudit();

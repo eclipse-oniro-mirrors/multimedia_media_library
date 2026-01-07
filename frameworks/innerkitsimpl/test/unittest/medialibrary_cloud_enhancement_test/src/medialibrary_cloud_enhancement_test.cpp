@@ -867,7 +867,7 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, enhancement_callback_save_cloud_enhan
 {
     MEDIA_INFO_LOG("enhancement_callback_save_cloud_enhancement_photo_002 Start");
     string sourceDisplayName;
-    CloudEnhancementThreadTask task("", 0, nullptr, 0, true);
+    CloudEnhancementThreadTask task("", 0, nullptr, 0, true, nullptr, 0);
     auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     int32_t sourceFileId = -1;
     uint32_t size = static_cast<uint32_t>(sizeof(BUFFER));
@@ -1002,7 +1002,7 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, enhancement_callback_on_service_recon
 HWTEST_F(MediaLibraryCloudEnhancementTest, enhancement_callback_deal_with_successed_task_007, TestSize.Level1)
 {
     MEDIA_INFO_LOG("enhancement_callback_deal_with_successed_task_007 Start");
-    CloudEnhancementThreadTask task("", 0, nullptr, 0, true);
+    CloudEnhancementThreadTask task("", 0, nullptr, 0, true, nullptr, 0);
     EnhancementServiceCallback::DealWithSuccessedTask(task);
     string taskId = "202408302001001";
     int32_t fileId = PrepareHighQualityPhoto(taskId, TESTING_DISPLAYNAME);

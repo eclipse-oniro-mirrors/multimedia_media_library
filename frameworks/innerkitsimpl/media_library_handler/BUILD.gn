@@ -29,8 +29,8 @@ ohos_shared_library("media_library_handler") {
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   public_configs = [ ":media_library_handler_config" ]

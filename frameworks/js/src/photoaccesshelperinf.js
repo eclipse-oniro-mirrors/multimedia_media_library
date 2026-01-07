@@ -38,6 +38,12 @@ const ERROR_MSG_USER_DENY = 'user deny';
 const ERROR_MSG_PARAMERTER_INVALID = 'input parmaeter invalid';
 const ERROR_MSG_INNER_FAIL = 'System inner fail';
 const ERROR_MSG_OHOS_INNER_FAIL = 'Internal system error';
+const ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE = 
+'Invalid call context. Possible causes:' +
+'  1. The API is called outside the photo browsing scenario.' +
+'  2. The API is called when isMovingPhotoBadgeShown is already set to true.'
+
+const ILLEGAL_SCENARIO_CALL_ERROR_CODE = 23800202;
 
 const SECONDS_OF_ONE_DAY = 24 * 60 * 60;
 const DELAY_MILLSECONDS = 33;
@@ -272,9 +278,9 @@ function checkIsPhotoCreationConfigValid(config) {
   return true;
 }
 
-function checkConfirmBoxParams(srcFileUris, photoCreationConfigs) {
+function checkConfirmBoxParams(srcFileUris, photoCreationConfigs, isImageFullyDisplayed) {
   // check param number
-  if (arguments.length > ARGS_TWO) {
+  if (arguments.length < ARGS_TWO || arguments.length > ARGS_THREE) {
     return false;
   }
 
@@ -300,6 +306,13 @@ function checkConfirmBoxParams(srcFileUris, photoCreationConfigs) {
   // check whether photoCreationConfigs element is valid
   for (let photoCreateConfig of photoCreationConfigs) {
     if (!checkIsPhotoCreationConfigValid(photoCreateConfig)) {
+      return false;
+    }
+  }
+
+  if (isImageFullyDisplayed !== undefined) {
+    if (typeof isImageFullyDisplayed !== 'boolean') {
+      console.error('photoAccessHelper isImageFullyDisplayed must be boolean if provided.');
       return false;
     }
   }
@@ -336,7 +349,7 @@ function showAssetsCreationDialogResult(result, reject, resolve) {
   resolve(result.data);
 }
 
-async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfigs) {
+async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfigs, isImageFullyDisplayed = false) {
   let bundleInfo = getBundleInfo();
   if (bundleInfo === undefined) {
     return new Promise((resolve, reject) => {
@@ -369,11 +382,20 @@ async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfig
       photoAccessHelper.showAssetsCreationDialog(getContext(this), srcFileUris, photoCreationConfigs, bundleName,
         appName, appId, result => {
           showAssetsCreationDialogResult(result, reject, resolve);
-      });
+      }, isImageFullyDisplayed);
     });
   } catch (error) {
     return errorResult(new BusinessError(error.message, error.code), null);
   }
+}
+
+function showSingleAssetCreationDialogEx(srcFileUri, photoCreationConfigs, isImageFullyDisplayed) {
+  const displayFlag = isImageFullyDisplayed !== undefined ? isImageFullyDisplayed : false;
+  return showAssetsCreationDialog([srcFileUri], [photoCreationConfigs], displayFlag);
+}
+
+function showAssetsCreationDialogEx(srcFileUri, photoCreationConfigs) {
+  return showAssetsCreationDialog(srcFileUri, photoCreationConfigs, false);
 }
 
 function showAssetsCreationDialog(...params) {
@@ -431,6 +453,58 @@ async function requestPhotoUrisReadPermission(srcFileUris) {
     });
   } catch (error) {
     console.error('requestPhotoUrisReadPermission catch error.');
+    return errorResult(new BusinessError(ERROR_MSG_INNER_FAIL, error.code), null);
+  }
+}
+
+async function requestPhotoUrisReadPermissionEx(srcFileUris) {
+  console.info('requestPhotoUrisReadPermissionEx enter');
+ 
+  //check whether srcFileUris is valid
+  if (srcFileUris === undefined || srcFileUris.length < MIN_CONFIRM_NUMBER) {
+    console.error('photoAccessHelper invalid, array size invalid.');
+    return false;
+  }
+  for (let srcFileUri of srcFileUris) {
+    if (!checkIsUriValid(srcFileUri, true)) {
+      console.error('photoAccesshelper invalid uri : ${srcFileUri}.');
+      return false;
+    }
+  }
+ 
+  let context = gContext;
+  if (context === undefined) {
+    console.info('photoAccessHelper gContet undefined');
+    context = getContext(this);
+  }
+ 
+  let bundleInfo = getBundleInfo();
+  if (bundleInfo === undefined) {
+    return new Promise((resolve, reject) => {
+      reject(new BusinessError(ERROR_MSG_PARAMERTER_INVALID, ERR_CODE_OHOS_PARAMERTER_INVALID));
+    });
+  }
+  let labelId = bundleInfo.appInfo.labelId;
+  console.info('photoAccessHelper labelId is ' + labelId + '.');
+  let appName = '';
+ 
+  try {
+    let moduleName = '';
+    for (let hapInfo of bundleInfo.hapModulesInfo) {
+      if (labelId === hapInfo.labelId) {
+        moduleName = hapInfo.name;
+      }
+    }
+    console.info('photoAccessHelper moduleName is ' + moduleName + '.');
+    appName = await gContext.createModuleContext(moduleName).resourceManager.getStringValue(labelId);
+    console.info('photoAccessHelper appName is ' + appName + '.');
+    return new Promise((resolve, reject) => {
+      photoAccessHelper.requestPhotoUrisReadPermissionEx(context, srcFileUris, appName, result => {
+        showAssetsCreationDialogResult(result, reject, resolve);
+      });
+    });
+  } catch (error) {
+    console.error('requestPhotoUrisReadPermissionEx catch error.');
     return errorResult(new BusinessError(ERROR_MSG_INNER_FAIL, error.code), null);
   }
 }
@@ -687,10 +761,12 @@ function getPhotoAccessHelper(context, userId = -1) {
     console.log('photoAccessHelper getPhotoAccessHelper inner add createDeleteRequest and showAssetsCreationDialog');
     helper.constructor.prototype.createDeleteRequest = createDeleteRequest;
     helper.constructor.prototype.showAssetsCreationDialog = showAssetsCreationDialog;
-    helper.constructor.prototype.showAssetsCreationDialogEx = showAssetsCreationDialog;
+    helper.constructor.prototype.showAssetsCreationDialogEx = showAssetsCreationDialogEx;
+    helper.constructor.prototype.showSingleAssetCreationDialogEx = showSingleAssetCreationDialogEx;
     helper.constructor.prototype.createAssetWithShortTermPermission = createAssetWithShortTermPermission;
     helper.constructor.prototype.createAssetWithShortTermPermissionEx = createAssetWithShortTermPermission;
     helper.constructor.prototype.requestPhotoUrisReadPermission = requestPhotoUrisReadPermission;
+    helper.constructor.prototype.requestPhotoUrisReadPermissionEx = requestPhotoUrisReadPermissionEx;
     helper.constructor.prototype.getPhotoPickerComponentDefaultAlbumName = getPhotoPickerComponentDefaultAlbumName;
     helper.constructor.prototype.getRecentPhotoInfo = getRecentPhotoInfo;
   }
@@ -729,10 +805,12 @@ function getPhotoAccessHelperAsync(context, asyncCallback) {
             ' and showAssetsCreationDialog');
           helper.createDeleteRequest = createDeleteRequest;
           helper.showAssetsCreationDialog = showAssetsCreationDialog;
-          helper.showAssetsCreationDialogEx = showAssetsCreationDialog;
+          helper.showAssetsCreationDialogEx = showAssetsCreationDialogEx;
+          helper.showSingleAssetCreationDialogEx = showSingleAssetCreationDialogEx;
           helper.createAssetWithShortTermPermission = createAssetWithShortTermPermission;
           helper.createAssetWithShortTermPermissionEx = createAssetWithShortTermPermission;
           helper.requestPhotoUrisReadPermission = requestPhotoUrisReadPermission;
+          helper.requestPhotoUrisReadPermissionEx = requestPhotoUrisReadPermissionEx;
           helper.getPhotoPickerComponentDefaultAlbumName = getPhotoPickerComponentDefaultAlbumName;
           helper.getRecentPhotoInfo = getRecentPhotoInfo;
         }
@@ -753,10 +831,12 @@ function getPhotoAccessHelperAsync(context, asyncCallback) {
             ' and showAssetsCreationDialog');
           helper.createDeleteRequest = createDeleteRequest;
           helper.showAssetsCreationDialog = showAssetsCreationDialog;
-          helper.showAssetsCreationDialogEx = showAssetsCreationDialog;
+          helper.showAssetsCreationDialogEx = showAssetsCreationDialogEx;
+          helper.showSingleAssetCreationDialogEx = showSingleAssetCreationDialogEx;
           helper.createAssetWithShortTermPermission = createAssetWithShortTermPermission;
           helper.createAssetWithShortTermPermissionEx = createAssetWithShortTermPermission;
           helper.requestPhotoUrisReadPermission = requestPhotoUrisReadPermission;
+          helper.requestPhotoUrisReadPermissionEx = requestPhotoUrisReadPermissionEx;
           helper.getPhotoPickerComponentDefaultAlbumName = getPhotoPickerComponentDefaultAlbumName;
           helper.getRecentPhotoInfo = getRecentPhotoInfo;
         }
@@ -799,7 +879,19 @@ const RecommendationType = {
   DRIVING_LICENSE: 9,
 
   // Indicates that featured single portrait photos can be recommended
-  FEATURED_SINGLE_PORTRAIT: 10
+  FEATURED_SINGLE_PORTRAIT: 10,
+
+  // Indicates that cat photos can be recommended
+  CAT: 13,
+
+  // Indicates that dog photos can be recommended
+  DOG: 14,
+
+  // Indicates that architecture photos can be recommended
+  ARCHITECTURE: 15,
+
+  // Indicates that landscape photos can be recommended
+  LANDSCAPE: 16
 };
 
 const PhotoViewMIMETypes = {
@@ -842,16 +934,77 @@ const OperationType = {
   OR : 8,
   IN : 9,
   NOT_IN : 10,
-  BEGIN_WARP : 11,
+  BEGIN_WRAP : 11,
   END_WRAP : 12,
   BETWEEN : 13,
   NOT_BETWEEN : 14
 }
 
+const PickerFilterPhotoKeys = {
+  
+  URI: 'uri',
+  
+  PHOTO_TYPE: 'media_type',
+  
+  DISPLAY_NAME: 'display_name',
+  
+  SIZE: 'size',
+  
+  DURATION: 'duration',
+  
+  WIDTH: 'width',
+  
+  HEIGHT: 'height',
+  
+  ORIENTATION: 'orientation',
+  
+  FAVORITE: 'is_favorite',
+  
+  TITLE: 'title',
+  
+  POSITION: 'position',
+  
+  PHOTO_SUBTYPE: 'subtype',
+  
+  DYNAMIC_RANGE_TYPE: 'dynamic_range_type',
+  
+  COVER_POSITION: 'cover_position',
+  
+  BURST_KEY: 'burst_key',
+  
+  LCD_SIZE: 'lcd_size',
+  
+  THM_SIZE: 'thm_size',
+  
+  DETAIL_TIME: 'detail_time',
+  
+  OWNER_ALBUM_ID: 'owner_album_id',
+  
+  MEDIA_SUFFIX: 'media_suffix',
+  
+  ASPECT_RATIO: 'aspect_ratio',
+}
+
+const PhotoSource = {
+  ALL: 0,
+  CAMERA: 1,
+  SCREENSHOT: 2
+};
+
 const SingleSelectionMode = {
   BROWSER_MODE: 0,
   SELECT_MODE: 1,
   BROWSER_AND_SELECT_MODE: 2,
+};
+
+const SceneType = {
+  GRID_TO_PHOTO_BROWSER: 0,
+  PHOTO_BROWSER_SWIPE: 1
+};
+
+const PlayMode = {
+  DEFAULT: 0,
+  AUTO_PLAY: 1,
 };
 
 const ErrCode = {
@@ -894,6 +1047,16 @@ const PHOTO_VIEW_MIME_TYPE_MAP = new Map([
   [PhotoViewMIMETypes.MP4_VIDEO_TYPE, 'MP4_VIDEO_TYPE'],
   [PhotoViewMIMETypes.MOV_VIDEO_TYPE, 'MOV_VIDEO_TYPE'],
 ]);
+
+const GridPinchModeType = {
+  FULL_FUNCTION_GRID: 0,
+}
+ 	 
+const GridLevel = {
+  SPACIOUS: 0,
+  STANDARD: 1,
+  COMPACT: 2,
+}
 
 function checkArguments(args) {
   let checkArgumentsResult = undefined;
@@ -950,6 +1113,7 @@ function parsePhotoPickerSelectOption(args) {
     config.parameters.isOriginalSupported = option.isOriginalSupported;
     config.parameters.contextRecoveryInfo = option.contextRecoveryInfo;
     config.parameters.subWindowName = option.subWindowName;
+    config.parameters.globalMovingPhotoState = option.globalMovingPhotoState;
     config.parameters.themeColor = option.themeColor;
     config.parameters.completeButtonText = option.completeButtonText;
     config.parameters.userId = option.userId;
@@ -962,9 +1126,24 @@ function parsePhotoPickerSelectOption(args) {
     config.parameters.isMovingPhotoBadgeShown = option.isMovingPhotoBadgeShown;
     config.parameters.assetFilter = option.assetFilter;
     config.parameters.isDestroyedWithNavigation = option.isDestroyedWithNavigation;
+    config.parameters.isReturnToPhotoBrowserEnable = option.isReturnToPhotoBrowserEnable;
+    config.parameters.autoPlayScenes = parseAutoPlayScenes(option.autoPlayScenes);
+    config.parameters.gridPinchMode = option.gridPinchMode;
   }
 
   return config;
+}
+
+function parseAutoPlayScenes(autoPlayScenes) {
+  if (!autoPlayScenes) {
+    return undefined;
+  }
+
+  if (autoPlayScenes.length > 2) {
+    return autoPlayScenes.slice(0, 2);
+  }
+
+  return autoPlayScenes;
 }
 
 function parseMimeTypeFilter(filter) {
@@ -985,6 +1164,40 @@ function parseMimeTypeFilter(filter) {
   return o;
 }
 
+function checkAssetFilterInvalid(assetFilter) {
+  // 获取所有有效的值
+  const validOperationTypes = Object.values(OperationType);
+  const validPhotoKeys = Object.values(PickerFilterPhotoKeys);
+
+  //遍历数组中的每个OperationItem
+  for (const item of assetFilter) {
+    //检查operationType是否有值且在枚举中
+    if (!item.operationType || !validOperationTypes.includes(item.operationType)) {
+      console.log('[picker] Invalid operationType');
+      return true;
+    }
+
+    //如果field有值，检查是否在枚举中
+    if (item.field !== undefined && item.field !== null) {
+      if (!validPhotoKeys.includes(item.field)) {
+        console.log('[picker] Invalid photokeys');
+        return true;
+      }
+      // uri仅支持EQUAL_TO操作
+      if (item.field === PickerFilterPhotoKeys.URI && item.operationType !== OperationType.EQUAL_TO) {
+        console.log('[picker] Invalid uri operation');
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function checkGlobalMovingPhotoStateInvalid(globalMovingPhotoState) {
+  return globalMovingPhotoState === MovingPhotoBadgeStateType.MOVING_PHOTO_ENABLED ||
+   globalMovingPhotoState === MovingPhotoBadgeStateType.MOVING_PHOTO_DISABLED;
+}
+
 function getPhotoPickerSelectResult(args) {
   let selectResult = {
     error: undefined,
@@ -996,9 +1209,10 @@ function getPhotoPickerSelectResult(args) {
     let isOrigin = args.isOrigin;
     let contextRecoveryInfo = args.contextRecoveryInfo;
     let movingPhotoBadgeStates = args.movingPhotoBadgeStates;
-    selectResult.data = new PhotoSelectResult(uris, isOrigin, contextRecoveryInfo, movingPhotoBadgeStates);
+    let gridLevel = args.gridLevel;
+    selectResult.data = new PhotoSelectResult(uris, isOrigin, contextRecoveryInfo, movingPhotoBadgeStates, gridLevel);
   } else if (args.resultCode === -1) {
-    selectResult.data = new PhotoSelectResult([], undefined, undefined, undefined);
+    selectResult.data = new PhotoSelectResult([], undefined, undefined, undefined, undefined);
   } else {
     selectResult.error = getErr(ErrCode.RESULT_ERROR);
   }
@@ -1023,7 +1237,26 @@ async function photoPickerSelect(...args) {
     }
   }
 
+  let assetFilter = config.parameters.assetFilter;
+  if (assetFilter) {
+    let isAssetFilterInvalid = checkAssetFilterInvalid(assetFilter);
+    if (isAssetFilterInvalid) {
+      console.error('[picker] config: assetFilter has value but invalid');
+      throw new BusinessError(ERROR_MSG_PARAMERTER_INVALID, ERR_CODE_OHOS_PARAMERTER_INVALID);
+    }
+  }
+
   let context = undefined;
+
+  let globalMovingPhotoState = config.parameters.globalMovingPhotoState;
+  if (globalMovingPhotoState) {
+    let isGlobalMovingPhotoStateInvalid = checkGlobalMovingPhotoStateInvalid(globalMovingPhotoState);
+    if (isGlobalMovingPhotoStateInvalid) {
+      console.error('[picker] config: globalMovingPhotoState has value but invalid');
+      throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+    }
+  }
+  
   try {
     context = getContext(this);
   } catch (getContextError) {
@@ -1072,6 +1305,11 @@ async function checkInteractAcrossLocalAccounts() {
   }
 }
 
+function GridPinchMode() {
+  this.gridPinchModeType = undefined;
+  this.defaultGridLevel = GridLevel.STANDARD;
+}
+
 function MimeTypeFilter() {
   this.mimeTypeArray = [];
 }
@@ -1104,6 +1342,7 @@ function BaseSelectOptions() {
   this.isPreviewForSingleSelectionSupported = true;
   this.singleSelectionMode = SingleSelectionMode.BROWSER_MODE;
   this.isMovingPhotoBadgeShown = false;
+  this.autoPlayScenes = [];
 }
 
 function PhotoSelectOptions() {
@@ -1116,13 +1355,15 @@ function PhotoSelectOptions() {
   this.completeButtonText = CompleteButtonText.TEXT_DONE;
   this.userId = -1;
   this.isDestroyedWithNavigation = false;
+  this.isReturnToPhotoBrowserEnable = false;
 }
 
-function PhotoSelectResult(uris, isOriginalPhoto, contextRecoveryInfo, movingPhotoBadgeStates) {
+function PhotoSelectResult(uris, isOriginalPhoto, contextRecoveryInfo, movingPhotoBadgeStates, gridLevel) {
   this.photoUris = uris;
   this.isOriginalPhoto = isOriginalPhoto;
   this.contextRecoveryInfo = contextRecoveryInfo;
   this.movingPhotoBadgeStates = movingPhotoBadgeStates;
+  this.gridLevel = gridLevel;
 }
 
 function PhotoViewPicker() {
@@ -1130,6 +1371,11 @@ function PhotoViewPicker() {
 }
 
 function RecommendationOptions() {
+}
+
+function autoPlayScene() {
+  this.sceneType = -1;
+  this.playMode = -1;
 }
 
 function encrypt(data) {
@@ -1189,6 +1435,7 @@ export default {
   ThumbnailType: photoAccessHelper.ThumbnailType,
   PhotoCreationConfig: photoAccessHelper.PhotoCreationConfig,
   PhotoKeys: photoAccessHelper.PhotoKeys,
+  PhotoSource: PhotoSource,
   AlbumKeys: photoAccessHelper.AlbumKeys,
   AlbumType: photoAccessHelper.AlbumType,
   AlbumSubtype: photoAccessHelper.AlbumSubtype,
@@ -1237,6 +1484,7 @@ export default {
   MovingPhotoEffectMode: photoAccessHelper.MovingPhotoEffectMode,
   CompleteButtonText: CompleteButtonText,
   ImageFileType: photoAccessHelper.ImageFileType,
+  CriticalType: photoAccessHelper.CriticalType,
   CloudEnhancement: photoAccessHelper.CloudEnhancement,
   CloudEnhancementTaskStage: photoAccessHelper.CloudEnhancementTaskStage,
   CloudEnhancementState: photoAccessHelper.CloudEnhancementState,
@@ -1262,4 +1510,11 @@ export default {
   CloudAssetDownloadCode: photoAccessHelper.CloudAssetDownloadCode,
   MovingPhotoBadgeStateType: MovingPhotoBadgeStateType,
   VideoMode: photoAccessHelper.VideoMode,
+  AutoPlayScene: autoPlayScene,
+  SceneType: SceneType,
+  DynamicRangeType: photoAccessHelper.DynamicRangeType,
+  PlayMode: PlayMode,
+  GridPinchModeType: GridPinchModeType,
+  GridLevel: GridLevel,
+  GridPinchMode: GridPinchMode
 };

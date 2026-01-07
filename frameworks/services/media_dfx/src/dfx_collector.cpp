@@ -127,5 +127,69 @@ AdaptationToMovingPhotoInfo DfxCollector::GetAdaptationToMovingPhotoInfo()
     adaptationToMovingPhotoInfo_.adaptedAppPackages.clear();
     return infoCopy;
 }
+
+void DfxCollector::CollectCinematicVideoAccessTimes(bool isByUri, bool isHighQualityRequest)
+{
+    lock_guard<mutex> lock(cinematicVideoStaticLock_);
+    if (isByUri) {
+        if (isHighQualityRequest) {
+            cinematicVideoInfo_.uriAccessTimesHigh++;
+        } else {
+            cinematicVideoInfo_.uriAccessTimesLow++;
+        }
+    } else {
+        if (isHighQualityRequest) {
+            cinematicVideoInfo_.accessTimesHigh++;
+        } else {
+            cinematicVideoInfo_.accessTimesLow++;
+        }
+    }
+    MEDIA_INFO_LOG("CollectCinematicVideoAccessTimes: accessTimesHigh = %{public}d, accessTimesLow = %{public}d",
+        cinematicVideoInfo_.accessTimesHigh, cinematicVideoInfo_.accessTimesLow);
+}
+
+void DfxCollector::CollectCinematicVideoAddStartTime(const CinematicWaitType waitType, const string videoId)
+{
+    lock_guard<mutex> lock(cinematicVideoStaticLock_);
+    if (waitType == CinematicWaitType::CANCEL_CINEMATIC) {
+        cinematicVideoInfo_.cancelWaitTimeMap[videoId].startTime =
+            static_cast<uint64_t>(MediaFileUtils::UTCTimeMilliSeconds());
+    } else {
+        cinematicVideoInfo_.processWaitTimeMap[videoId].startTime =
+            static_cast<uint64_t>(MediaFileUtils::UTCTimeMilliSeconds());
+    }
+}
+
+void DfxCollector::CollectCinematicVideoAddEndTime(const CinematicWaitType waitType, const string videoId)
+{
+    lock_guard<mutex> lock(cinematicVideoStaticLock_);
+    if (waitType == CinematicWaitType::CANCEL_CINEMATIC) {
+        cinematicVideoInfo_.cancelWaitTimeMap[videoId].endTime =
+            static_cast<uint64_t>(MediaFileUtils::UTCTimeMilliSeconds());
+    } else {
+        cinematicVideoInfo_.processWaitTimeMap[videoId].endTime =
+            static_cast<uint64_t>(MediaFileUtils::UTCTimeMilliSeconds());
+    }
+}
+
+void DfxCollector::CollectCinematicVideoMultistageResult(bool multistageResult)
+{
+    lock_guard<mutex> lock(cinematicVideoStaticLock_);
+    if (multistageResult) {
+        cinematicVideoInfo_.multistageSuccessTimes++;
+    } else {
+        cinematicVideoInfo_.multistageFailedTimes++;
+    }
+    MEDIA_INFO_LOG("CollectCinematicVideoMultistageResult: SuccessTimes = %{public}d, FailedTimes = %{public}d",
+        cinematicVideoInfo_.multistageSuccessTimes, cinematicVideoInfo_.multistageFailedTimes);
+}
+
+CinematicVideoInfo DfxCollector::GetCinematicVideoInfo()
+{
+    lock_guard<mutex> lock(cinematicVideoStaticLock_);
+    CinematicVideoInfo infoCopy = cinematicVideoInfo_;
+    cinematicVideoInfo_ = {};
+    return infoCopy;
+}
 } // namespace Media
 } // namespace OHOS

@@ -58,6 +58,13 @@ enum class SouthDeviceType : int32_t {
     SOUTH_DEVICE_HDC = 2
 };
 
+enum CriticalType : int32_t {
+    UNKNOWN_CRITICAL_TYPE = 0,
+    NOT_CRITICAL_TYPE = 1,
+    SUSPECTED_CRITICAL_TYPE = 2,
+    CRITICAL_TYPE = 3,
+};
+
 class MediaColumn {
 public:
     // Asset Base Parameter
@@ -173,6 +180,10 @@ public:
     static const std::string PHOTO_FILE_INODE EXPORT;
     static const std::string PHOTO_STORAGE_PATH EXPORT;
     static const std::string PHOTO_ASPECT_RATIO EXPORT;
+    static const std::string PHOTO_IS_CRITICAL EXPORT;
+    static const std::string PHOTO_CRITICAL_TYPE EXPORT;
+    static const std::string PHOTO_CHANGE_TIME EXPORT;
+    static const std::string PHOTO_EDIT_DATA_EXIST EXPORT;
 
     // Photo-only default fetch columns
     static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;
@@ -226,6 +237,7 @@ public:
     // cloud enhancement
     static const std::string PHOTO_CE_AVAILABLE EXPORT;
     static const std::string PHOTO_CE_STATUS_CODE EXPORT;
+    static const std::string PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE EXPORT;
     static const std::string PHOTO_STRONG_ASSOCIATION EXPORT;
     static const std::string PHOTO_ASSOCIATE_FILE_ID EXPORT;
     static const std::string PHOTO_HAS_CLOUD_WATERMARK EXPORT;
@@ -236,6 +248,7 @@ public:
     // table name
     static const std::string PHOTOS_TABLE EXPORT;
     static const std::string HIGHLIGHT_TABLE EXPORT;
+
     static const std::string TAB_OLD_PHOTOS_TABLE EXPORT;
     static const std::string TAB_ASSET_AND_ALBUM_OPERATION_TABLE EXPORT;
 
@@ -359,6 +372,7 @@ public:
     static const std::string AUDIO_ALBUM EXPORT;
     static const std::string AUDIO_ARTIST EXPORT;
     static const std::string AUDIO_FILE_SOURCE_TYPE EXPORT;
+    static const std::string AUDIO_IS_TEMP EXPORT;
 
     // table name
     static const std::string AUDIOS_TABLE EXPORT;

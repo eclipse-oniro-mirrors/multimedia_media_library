@@ -41,7 +41,6 @@
 #ifdef HAS_POWER_MANAGER_PART
 #include "power_mgr_client.h"
 #endif
-#include "media_album_order_back.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -242,57 +241,6 @@ static void ConstructAlbumNotifyUris(SyncNotifyInfo &info, int32_t albumId)
     info.extraUris.push_back(Uri(extraUri));
 }
 
-static int32_t UpdateAlbumOrderInfo()
-{
-    MEDIA_INFO_LOG("UpdateAlbumOrderInfo");
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "UpdateAlbumOrderInfo failed. rdbStore is null.");
-
-    AbsRdbPredicates predicates(ALBUM_ORDER_BACK_TABLE);
-    std::vector<std::string> columns = {"lpath", "albums_order", "order_type", "order_section",
-                                        "style2_albums_order",  "style2_order_type",  "style2_order_section"};
-    auto resultSet = rdbStore->Query(predicates, columns);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Query failed");
-    int32_t rowCount = 0;
-    int32_t errCode = resultSet->GetRowCount(rowCount);
-    if (errCode != NativeRdb::E_OK || rowCount == 0) {
-        MEDIA_INFO_LOG("No records in the table. Nothing to Update.");
-        resultSet->Close();
-        return E_OK;
-    }
-
-    int32_t failCount = 0;
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        std::string lpath = get<std::string>(ResultSetUtils::GetValFromColumn("lpath", resultSet, TYPE_STRING));
-        int32_t albumOrder = get<int32_t>(ResultSetUtils::GetValFromColumn("albums_order", resultSet, TYPE_INT32));
-        int32_t orderType = get<int32_t>(ResultSetUtils::GetValFromColumn("order_type", resultSet, TYPE_INT32));
-        int32_t orderSection = get<int32_t>(ResultSetUtils::GetValFromColumn("order_section", resultSet, TYPE_INT32));
-        int32_t albumOrder2 = get<int32_t>(ResultSetUtils::GetValFromColumn("style2_albums_order", resultSet, TYPE_INT32));
-        int32_t orderType2 = get<int32_t>(ResultSetUtils::GetValFromColumn("style2_order_type", resultSet, TYPE_INT32));
-        int32_t orderSection2 = get<int32_t>(ResultSetUtils::GetValFromColumn("style2_order_section", resultSet, TYPE_INT32));
-
-        AbsRdbPredicates lpathPredicates(PhotoAlbumColumns::TABLE);
-        lpathPredicates.EqualTo(PhotoAlbumColumns::ALBUM_LPATH, lpath);
-
-        NativeRdb::ValuesBucket values;
-        values.PutInt(PhotoAlbumColumns::ALBUMS_ORDER, albumOrder);
-        values.PutInt(PhotoAlbumColumns::ORDER_TYPE, orderType);
-        values.PutInt(PhotoAlbumColumns::ORDER_SECTION, orderSection);
-        values.PutInt(PhotoAlbumColumns::STYLE2_ALBUMS_ORDER, albumOrder2);
-        values.PutInt(PhotoAlbumColumns::STYLE2_ORDER_TYPE, orderType2);
-        values.PutInt(PhotoAlbumColumns::STYLE2_ORDER_SECTION, orderSection2);
-
-        int32_t changedRows = 0;
-        int32_t ret = rdbStore->Update(changedRows, values, lpathPredicates);
-        if (ret != E_OK) {
-            failCount++;
-            break;
-        }
-    }
-    resultSet->Close();
-    return (failCount == 0) ? E_SUCCESS : E_ERR;
-}
-
 static int32_t RefreshAlbumInfoAndUris(
     const shared_ptr<MediaLibraryRdbStore> rdbStore, int32_t albumId, PhotoAlbumSubType subtype, SyncNotifyInfo &info)
 {
@@ -304,8 +252,6 @@ static int32_t RefreshAlbumInfoAndUris(
     ret = rdbStore->ExecuteSql(sql);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR, "Failed to execute sql:%{private}s", sql.c_str());
     MEDIA_DEBUG_LOG("Execute sql %{private}s success", sql.c_str());
-    ret = UpdateAlbumOrderInfo();
-    CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateAlbumOrderInfo failed. ret %{public}d.", ret);
     ConstructAlbumNotifyUris(info, albumId);
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     VariantMap map;
@@ -509,7 +455,6 @@ static void HandleAnalysisAlbums(const shared_ptr<MediaLibraryRdbStore> rdbStore
 
 static void HandleAllRefreshAlbums(const shared_ptr<MediaLibraryRdbStore> rdbStore, SyncNotifyInfo &info)
 {
-    MEDIA_INFO_LOG("HandleAllRefreshAlbums");
     info.forceRefreshType = ForceRefreshType::NONE;
 
     HandleAllPhotoAlbums(rdbStore, info);
@@ -520,7 +465,6 @@ static void HandleAllRefreshAlbums(const shared_ptr<MediaLibraryRdbStore> rdbSto
 void AlbumsRefreshManager::RefreshPhotoAlbumsBySyncNotifyInfo(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     SyncNotifyInfo &info)
 {
-    MEDIA_INFO_LOG("RefreshPhotoAlbumsBySyncNotifyInfo");
     uint32_t countThreshold = GetRefreshCountThreshold(info.notifyType);
     int32_t timeThreshold = GetRefreshTimeThreshold();
 

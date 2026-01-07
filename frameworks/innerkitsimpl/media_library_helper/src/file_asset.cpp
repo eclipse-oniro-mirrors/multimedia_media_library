@@ -794,6 +794,16 @@ void FileAsset::SetExistCompatibleDuplicate(int32_t existCompatibleDuplicate)
     member_[PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE] = existCompatibleDuplicate;
 }
 
+void FileAsset::SetChangeTime(const int64_t changeTime)
+{
+    member_[PhotoColumn::PHOTO_CHANGE_TIME] = changeTime;
+}
+
+int64_t FileAsset::GetChangeTime() const
+{
+    return GetInt64Member(PhotoColumn::PHOTO_CHANGE_TIME);
+}
+
 void FileAsset::SetResultTypeMap(const string &colName, ResultSetDataType type)
 {
     lock_guard<mutex> lock(resultTypeMapMutex_);
@@ -857,6 +867,26 @@ void FileAsset::SetExifRotate(int32_t exifRotate)
 int32_t FileAsset::GetExifRotate() const
 {
     return GetInt32Member(PhotoColumn::PHOTO_EXIF_ROTATE);
+}
+
+void FileAsset::SetCritical(int32_t isCritical)
+{
+    member_[PhotoColumn::PHOTO_IS_CRITICAL] = isCritical;
+}
+
+int32_t FileAsset::GetCritical() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_IS_CRITICAL);
+}
+
+void FileAsset::SetCriticalType(int32_t IsCriticalType)
+{
+    member_[PhotoColumn::PHOTO_CRITICAL_TYPE] = IsCriticalType;
+}
+
+int32_t FileAsset::GetCriticalType() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_CRITICAL_TYPE);
 }
 }  // namespace Media
 }  // namespace OHOS

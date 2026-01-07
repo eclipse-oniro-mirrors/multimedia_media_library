@@ -22,11 +22,12 @@ ohos_fuzztest("MediaLibraryPhotoDayMonthYearOperationFuzzTest") {
     "./include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/operation",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include/operation",
   ]
 
   sources = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_day_month_year_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/operation/photo_day_month_year_operation.cpp",
     "./medialibraryphotodaymonthyearoperation_fuzzer.cpp",
     "./mock_medialibrary_subscriber.cpp",
   ]
@@ -71,6 +72,5 @@ ohos_fuzztest("MediaLibraryPhotoDayMonthYearOperationFuzzTest") {
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
-    "user_file_service:file_access_extension_ability_kit",
   ]
 }

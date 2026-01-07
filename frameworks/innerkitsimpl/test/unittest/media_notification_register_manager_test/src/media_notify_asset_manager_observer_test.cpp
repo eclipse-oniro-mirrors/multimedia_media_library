@@ -23,7 +23,8 @@
 #include "parcel.h"
 #include "media_change_info.h"
 #include "medialibrary_errno.h"
- 
+#include "medialibrary_notify_utils.h"
+
 namespace OHOS {
 namespace Media {
 using namespace std;

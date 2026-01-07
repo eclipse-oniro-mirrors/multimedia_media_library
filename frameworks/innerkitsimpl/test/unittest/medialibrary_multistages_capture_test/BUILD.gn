@@ -33,6 +33,7 @@ ohos_unittest("medialibrary_multistages_capture_test") {
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_multistages_photo_capture_test.cpp",
     "./src/medialibrary_multistages_video_capture_test.cpp",
+    "./src/multistages_capture_notify_test.cpp",
   ]
 
   deps = [

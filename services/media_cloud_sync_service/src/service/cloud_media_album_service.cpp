@@ -34,7 +34,6 @@
 #include "medialibrary_data_manager_utils.h"
 #include "media_file_utils.h"
 
-using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
 namespace OHOS::Media::CloudSync {
 const std::unordered_map<std::string, std::vector<std::string>> screensMap = {
     {"/Pictures/Screenshots", {"截图", "com.huawei.hmos.screenshot"}},
@@ -98,62 +97,6 @@ int32_t CloudMediaAlbumService::OnFetchRecords(
         return ret;
     }
     return OnFetchLPathRecords(lpathRecords, resp);
-}
-
-int32_t CloudMediaAlbumService::HandleLPathRecords(PhotoAlbumDto &record,
-    const std::map<std::string, int> &lpathRowIdMap, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
-    ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp)
-{
-    MEDIA_INFO_LOG("HandleLPathRecords enter");
-    std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> albumRefresh =
-        std::make_shared<AccurateRefresh::AlbumAccurateRefresh>();
-    CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL,
-        "Delete Cloud Album Failed to get albumRefresh.");
-    int ret = E_OK;
-    if ((lpathRowIdMap.find(record.lPath) == lpathRowIdMap.end()) && !record.isDelete) {
-        changeType = ChangeType::INSERT;
-        ret = this->albumDao_.InsertCloudByLPath(record, albumRefresh);
-        MEDIA_INFO_LOG("HandleLPathRecords insert %{public}s, %{public}d", record.cloudId.c_str(), ret);
-        if (ret != E_OK) {
-            MEDIA_ERR_LOG("HandleLPathRecords InsertCloudByLPath error");
-            resp.failedRecords.emplace_back(record.cloudId);
-            this->albumDao_.InsertAlbumInsertFailedRecord(record.lPath);
-        }
-        resp.stats[StatsIndex::NEW_RECORDS_COUNT]++;
-    } else if (lpathRowIdMap.find(record.lPath) != lpathRowIdMap.end()) {
-        ret = resultSet->GoToRow(lpathRowIdMap.at(record.lPath));
-        int32_t dirty = GetLocalMatchDirty(*resultSet);
-        if (dirty == static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) ||
-            dirty == static_cast<int32_t>(Media::DirtyType::TYPE_DELETED)) {
-            MEDIA_INFO_LOG("HandleLPathRecords lpath is dirty skip %{public}s", record.cloudId.c_str());
-            return E_OK;
-        } else if (record.isDelete) {
-            /* delete */
-            ret = this->albumDao_.DeleteCloudAlbum(PhotoAlbumColumns::ALBUM_LPATH, record.lPath, albumRefresh);
-            MEDIA_INFO_LOG("HandleLPathRecords lpath delete %{public}s, %{public}d", record.cloudId.c_str(), ret);
-            if (ret != E_OK) {
-                resp.failedRecords.emplace_back(record.cloudId);
-            }
-            resp.stats[StatsIndex::DELETE_RECORDS_COUNT]++;
-        } else {
-            /* update */
-            changeType = ChangeType::UPDATE;
-            ret = this->albumDao_.UpdateCloudAlbum(record, PhotoAlbumColumns::ALBUM_LPATH, record.lPath, albumRefresh);
-            MEDIA_INFO_LOG("HandleLPathRecords lpath update %{public}s, %{public}d", record.cloudId.c_str(), ret);
-            if (ret != E_OK) {
-                resp.failedRecords.emplace_back(record.cloudId);
-            }
-            resp.stats[StatsIndex::META_MODIFY_RECORDS_COUNT]++;
-        }
-    } else {
-        MEDIA_ERR_LOG("album sync lpath recordId %s has multiple file in db!", record.cloudId.c_str());
-    }
-    if (ret == E_OK && changeType != ChangeType::INVAILD) {
-        int32_t notifyRet = albumRefresh->Notify();
-        CHECK_AND_RETURN_RET_LOG(notifyRet == AccurateRefresh::ACCURATE_REFRESH_RET_OK, E_ERR,
-            "fail to notify, ret = %{public}d", notifyRet);
-    }
-    return ret;
 }
 
 int32_t CloudMediaAlbumService::HandleFetchOldRecordNew(
@@ -282,18 +225,11 @@ int32_t CloudMediaAlbumService::OnFetchLPathRecords(
 {
     MEDIA_INFO_LOG("OnFetchLPathRecords enter %{public}zu", records.size());
     int32_t ret = E_OK;
-    auto lpaths = std::vector<std::string>();
-    for (auto &record : records) {
-        auto lpath = record.lPath;
-        lpaths.emplace_back(lpath);
-        MEDIA_DEBUG_LOG("OnFetchLPathRecords Record: %{public}s", record.ToString().c_str());
-    }
-    auto [resultSet, lpathRowIdMap] = this->albumDao_.QueryLocalAlbum(PhotoAlbumColumns::ALBUM_LPATH, lpaths);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "resultset is null");
     for (auto &record : records) {
         std::string lpath = record.lPath;
         ChangeType changeType = ChangeType::INVAILD;
-        ret = HandleLPathRecords(record, lpathRowIdMap, resultSet, changeType, resp);
+        this->albumDao_.GetPhotoAlbum(record.lPath, record.localAlbumInfo);
+        ret = this->HandleLPathRecords(record, changeType, resp);
         /* check ret */
         if (ret != E_OK) {
             MEDIA_INFO_LOG("OnFetchLPathRecords recordId %{public}s error %{public}d", record.cloudId.c_str(), ret);
@@ -325,23 +261,24 @@ int32_t CloudMediaAlbumService::OnDeleteAlbums(std::vector<std::string> &failedA
     return this->albumDao_.OnDeleteAlbums(failedAlbumIds);
 }
 
-std::vector<PhotoAlbumPo> CloudMediaAlbumService::GetCheckRecords(const std::vector<std::string> &cloudIds)
+int32_t CloudMediaAlbumService::GetCreatedRecords(
+    int32_t size, const bool isCloudSpaceFull, std::vector<PhotoAlbumPo> &albumInfoList)
 {
-    MEDIA_INFO_LOG("CloudMediaAlbumService::GetCheckRecords enter %{public}zu", cloudIds.size());
-    std::vector<PhotoAlbumPo> albumsPoList;
-
-    auto [resultSet, recordIdRowIdMap] = this->albumDao_.QueryLocalAlbum(PhotoAlbumColumns::ALBUM_LPATH, cloudIds);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, albumsPoList, "GetCheckRecords fail to QueryLocalAlbum dkRecordIds");
-    return albumsPoList;
-}
-
-std::vector<PhotoAlbumPo> CloudMediaAlbumService::GetAlbumCreatedRecords(int32_t size)
-{
-    MEDIA_INFO_LOG("CloudMediaAlbumService::GetAlbumCreatedRecords enter");
+    MEDIA_INFO_LOG("CloudMediaAlbumService::GetCreatedRecords enter");
+    int32_t tempSize = size;
     std::vector<PhotoAlbumPo> photoAlbumList;
-    int32_t ret = this->albumDao_.GetCreatedAlbum(size, photoAlbumList);
-    CHECK_AND_PRINT_LOG(ret == E_OK, "failed to get createdAlbum record");
-    return photoAlbumList;
+    int32_t ret = this->albumDao_.GetCreatedRecords(tempSize, photoAlbumList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "failed to get createdAlbum record");
+    ret = this->GetCreatedRecordsWithCondition(size, isCloudSpaceFull, photoAlbumList, albumInfoList);
+    MEDIA_INFO_LOG("GetCreatedRecords completed, "
+                   "ret: %{public}d, size: %{public}d, isCloudSpaceFull: %{public}d, "
+                   "db-size: %{public}zu, result-size: %{public}zu",
+        ret,
+        size,
+        isCloudSpaceFull,
+        photoAlbumList.size(),
+        albumInfoList.size());
+    return E_OK;
 }
 
 std::vector<PhotoAlbumPo> CloudMediaAlbumService::GetAlbumMetaModifiedRecords(int32_t size)
@@ -707,5 +644,136 @@ bool CloudMediaAlbumService::GetCoverUriFromCoverCloudId(string &coverCloudId, s
     }
     resultSet->Close();
     return coverUri != "";
+}
+
+int32_t CloudMediaAlbumService::HandleLPathRecords(
+    PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp)
+{
+    int32_t ret = E_OK;
+    const bool insertFlag = !record.localAlbumInfo.has_value() && !record.isDelete;
+    const bool updateFlag = record.localAlbumInfo.has_value() && !record.isDelete;
+    const bool deleteFlag = record.localAlbumInfo.has_value() && record.isDelete;
+    CHECK_AND_EXECUTE(!insertFlag, ret = this->PullInsert(record, changeType, resp));
+    CHECK_AND_EXECUTE(!updateFlag, ret = this->PullUpdate(record, changeType, resp));
+    CHECK_AND_EXECUTE(!deleteFlag, ret = this->PullDelete(record, changeType, resp));
+    return ret;
+}
+
+int32_t CloudMediaAlbumService::PullInsert(
+    const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp)
+{
+    std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> albumRefresh =
+        std::make_shared<AccurateRefresh::AlbumAccurateRefresh>();
+    CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL, "failed to get albumRefresh.");
+    // Check
+    const bool insertFlag = !record.localAlbumInfo.has_value() && !record.isDelete;
+    CHECK_AND_RETURN_RET_LOG(insertFlag, E_INVAL_ARG, "invalid data");
+    // Process
+    changeType = ChangeType::INSERT;
+    int32_t ret = this->albumDao_.InsertCloudByLPath(record, albumRefresh);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG(
+            "InsertCloudByLPath failed, ret: %{public}d, albumInfo: %{public}s", ret, record.ToString().c_str());
+        resp.failedRecords.emplace_back(record.cloudId);
+        this->albumDao_.InsertAlbumInsertFailedRecord(record.lPath);
+        return ret;
+    }
+    resp.stats[StatsIndex::NEW_RECORDS_COUNT]++;
+    // Notify
+    ret = albumRefresh->Notify();
+    CHECK_AND_RETURN_RET_LOG(
+        ret == E_OK, ret, "fail to notify, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
+    MEDIA_INFO_LOG("PullInsert completed, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
+    return E_OK;
+}
+
+int32_t CloudMediaAlbumService::PullUpdate(
+    const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp)
+{
+    std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> albumRefresh =
+        std::make_shared<AccurateRefresh::AlbumAccurateRefresh>();
+    CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL, "failed to get albumRefresh.");
+    // Check
+    const bool updateFlag = record.localAlbumInfo.has_value() && !record.isDelete;
+    CHECK_AND_RETURN_RET_LOG(updateFlag, E_INVAL_ARG, "invalid data");
+    int32_t dirty = record.localAlbumInfo.value().dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
+    bool isValid = dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
+                   dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED);
+    CHECK_AND_RETURN_RET_WARN_LOG(isValid, E_OK, "lpath is dirty, skip. cloudId: %{public}s", record.cloudId.c_str());
+    // Process
+    changeType = ChangeType::UPDATE;
+    int32_t ret = this->albumDao_.UpdateCloudAlbum(record, PhotoAlbumColumns::ALBUM_LPATH, record.lPath, albumRefresh);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG(
+            "UpdateCloudAlbum failed, ret: %{public}d, albumInfo: %{public}s", ret, record.ToString().c_str());
+        resp.failedRecords.emplace_back(record.cloudId);
+        return ret;
+    }
+    resp.stats[StatsIndex::META_MODIFY_RECORDS_COUNT]++;
+    // Notify
+    ret = albumRefresh->Notify();
+    CHECK_AND_RETURN_RET_LOG(
+        ret == E_OK, ret, "fail to notify, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
+    MEDIA_INFO_LOG("PullUpdate completed, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
+    return E_OK;
+}
+
+int32_t CloudMediaAlbumService::PullDelete(
+    const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp)
+{
+    std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> albumRefresh =
+        std::make_shared<AccurateRefresh::AlbumAccurateRefresh>();
+    CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL, "failed to get albumRefresh.");
+    // Check
+    const bool deleteFlag = record.localAlbumInfo.has_value() && record.isDelete;
+    CHECK_AND_RETURN_RET_LOG(deleteFlag, E_INVAL_ARG, "invalid data");
+    int32_t dirty = record.localAlbumInfo.value().dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
+    bool isValid = dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
+                   dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED);
+    CHECK_AND_RETURN_RET_WARN_LOG(isValid, E_OK, "lpath is dirty, skip. cloudId: %{public}s", record.cloudId.c_str());
+    // Process
+    changeType = ChangeType::DELETE;
+    int32_t ret = this->albumDao_.DeleteCloudAlbum(PhotoAlbumColumns::ALBUM_LPATH, record.lPath, albumRefresh);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG(
+            "DeleteCloudAlbum failed, ret: %{public}d, albumInfo: %{public}s", ret, record.ToString().c_str());
+        resp.failedRecords.emplace_back(record.cloudId);
+        return ret;
+    }
+    resp.stats[StatsIndex::DELETE_RECORDS_COUNT]++;
+    // Notify
+    ret = albumRefresh->Notify();
+    CHECK_AND_RETURN_RET_LOG(
+        ret == E_OK, ret, "fail to notify, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
+    MEDIA_INFO_LOG("PullDelete completed, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
+    return E_OK;
+}
+
+bool CloudMediaAlbumService::IsSpaceFullAndSkipCreatedAlbum(const int32_t albumId, const bool isCloudSpaceFull)
+{
+    CHECK_AND_RETURN_RET(isCloudSpaceFull, false);
+    int32_t cloudAssetCount = 0;
+    int32_t ret = this->albumDao_.GetAlbumCloudAssetCount(albumId, cloudAssetCount);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, false, "GetAlbumCloudAssetCount fail, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(cloudAssetCount == 0, false, "cloudAssetCount: %{public}d", cloudAssetCount);
+    return true;
+}
+
+int32_t CloudMediaAlbumService::GetCreatedRecordsWithCondition(const int32_t size, const bool isCloudSpaceFull,
+    const std::vector<PhotoAlbumPo> &albumInfoList, std::vector<PhotoAlbumPo> &resultList)
+{
+    int32_t albumId = 0;
+    bool isSkip = false;
+    for (const auto &albumInfo : albumInfoList) {
+        albumId = albumInfo.albumId.value_or(0);
+        isSkip = this->IsSpaceFullAndSkipCreatedAlbum(albumId, isCloudSpaceFull);
+        CHECK_AND_CONTINUE_INFO_LOG(!isSkip,
+            "isSkipFullAndSkipCreatedAlbum, albumId: %{public}d, cloudId: %{public}s",
+            albumId,
+            albumInfo.cloudId.value_or("").c_str());
+        resultList.emplace_back(albumInfo);
+        CHECK_AND_BREAK(resultList.size() < size);
+    }
+    return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

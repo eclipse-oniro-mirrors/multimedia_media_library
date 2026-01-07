@@ -32,6 +32,12 @@ ohos_fuzztest("MediaLibraryMediaAlbumsControllerServiceFuzzTest") {
   ]
 
   sources = [
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_analysis_process_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_face_id_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_relationship_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_relationship_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_order_position_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_order_position_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_add_assets_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_commit_modify_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_get_assets_vo.cpp",
@@ -50,15 +56,11 @@ ohos_fuzztest("MediaLibraryMediaAlbumsControllerServiceFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_cover_uri_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_display_level_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_is_me_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_order_position_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/create_album_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_albums_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_highlight_albums_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_albums_by_ids_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_analysis_process_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_face_id_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_highlight_album_info_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_order_position_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_photo_index_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/query_albums_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/set_highlight_user_action_data_vo.cpp",

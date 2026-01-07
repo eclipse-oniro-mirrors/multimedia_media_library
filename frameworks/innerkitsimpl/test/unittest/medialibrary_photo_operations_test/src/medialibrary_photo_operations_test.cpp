@@ -4026,6 +4026,38 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_date_modified_001, T
     MEDIA_INFO_LOG("end tdd photo_oprn_update_date_modified_001");
 }
 
+HWTEST_F(MediaLibraryPhotoOperationsTest, cinematic_video_oprn_open_api10_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start tdd cinematic_video_oprn_create_api10_test_001");
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, MediaLibraryApi::API_10);
+    ValuesBucket values;
+    values.PutString(ASSET_EXTENTION, "mp4");
+    values.PutString(PhotoColumn::MEDIA_TITLE, "cinematic_video");
+    values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_VIDEO);
+    values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int>(PhotoSubType::CINEMATIC_VIDEO));
+    cmd.SetValueBucket(values);
+    cmd.SetBundleName("values");
+    MediaLibraryPhotoOperations::Create(cmd);
+    int32_t fileId = QueryPhotoIdByDisplayName("cinematic_video.mp4");
+    ASSERT_GE(fileId, 0);
+    MediaFileUri fileUri(MediaType::MEDIA_TYPE_VIDEO, to_string(fileId), "", MEDIA_API_VERSION_V10);
+    string fileUriStr = fileUri.ToString();
+    string videoUriStr = fileUriStr;
+    MediaFileUtils::UriAppendKeyValue(videoUriStr, MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CREATE_CINEMATIC_VIDEO);
+    Uri videoUri(videoUriStr);
+    MediaLibraryCommand videoCmd(videoUri, Media::OperationType::OPEN);
+    videoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
+    int32_t videoFd = MediaLibraryDataManager::GetInstance()->OpenFile(videoCmd, "rw");
+    ASSERT_GE(videoFd, 0);
+    ASSERT_NE(write(videoFd, FILE_TEST_MP4, sizeof(FILE_TEST_MP4)), -1);
+    MediaLibraryCommand closeCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
+    ValuesBucket closeValues;
+    closeValues.PutString(MEDIA_DATA_DB_URI, fileUriStr);
+    closeCmd.SetValueBucket(closeValues);
+    MediaLibraryPhotoOperations::Close(closeCmd);
+    MEDIA_INFO_LOG("end tdd cinematic_video_oprn_create_api10_test_001");
+}
+
 HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_query_moving_photo_video_ready_001, TestSize.Level2)
 {
     //create moving photo with video

@@ -48,23 +48,20 @@
 #include "start_asset_change_scan_dto.h"
 #include "start_thumbnail_creation_task_vo.h"
 #include "stop_thumbnail_creation_task_vo.h"
-#include "get_asset_analysis_data_vo.h"
-#include "get_asset_analysis_data_dto.h"
 #include "is_edited_vo.h"
 #include "request_edit_data_vo.h"
 #include "get_edit_data_vo.h"
-#include "start_asset_analysis_vo.h"
 #include "get_cloudmedia_asset_status_vo.h"
 #include "request_content_vo.h"
 #include "get_cloud_enhancement_pair_vo.h"
 #include "query_cloud_enhancement_task_state_vo.h"
 #include "query_cloud_enhancement_task_state_dto.h"
 #include "adapted_vo.h"
+#include "log_cinematic_access_vo.h"
 #include "get_photo_index_vo.h"
 #include "query_photo_vo.h"
 #include "get_highlight_album_info_vo.h"
 #include "get_analysis_process_vo.h"
-#include "get_index_construct_progress_vo.h"
 #include "medialibrary_rdb_utils.h"
 #include "permission_common.h"
 #include "convert_format_vo.h"
@@ -88,10 +85,10 @@
 #include "is_edited_dto.h"
 #include "request_edit_data_dto.h"
 #include "get_edit_data_dto.h"
-#include "start_asset_analysis_dto.h"
 #include "get_cloud_enhancement_pair_dto.h"
 #include "permission_utils.h"
 #include "media_app_uri_permission_column.h"
+#include "cancel_request_vo.h"
 #include "start_batch_download_cloud_resources_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
@@ -106,6 +103,7 @@
 #include "notify_asset_sended_vo.h"
 #include "open_asset_compress_vo.h"
 #include "open_asset_compress_dto.h"
+#include "get_compress_asset_size_vo.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -245,10 +243,6 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::GetDuplicateAssetsToDelete
     },
     {
-        static_cast<uint32_t>(MediaLibraryBusinessCode::GET_INDEX_CONSTRUCT_PROGRESS),
-        &MediaAssetsControllerService::GetIndexConstructProgress
-    },
-    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_PUBLIC_CREATE_ASSET),
         &MediaAssetsControllerService::PublicCreateAsset
     },
@@ -335,10 +329,6 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_URIS_BY_OLD_URIS),
         &MediaAssetsControllerService::GetUrisByOldUrisInner
-    },
-    {
-        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_ASSET_ANALYSIS_DATA),
-        &MediaAssetsControllerService::GetAssetAnalysisData
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_ASSET),
@@ -449,10 +439,6 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesCount
     },
     {
-        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_START_ASSET_ANALYSIS),
-        &MediaAssetsControllerService::StartAssetAnalysis
-    },
-    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_REQUEST_CONTENT),
         &MediaAssetsControllerService::RequestContent
     },
@@ -479,6 +465,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_MOVING_PHOTO),
         &MediaAssetsControllerService::LogMovingPhoto
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_CINEMATIC_VIDEO),
+        &MediaAssetsControllerService::LogCinematicvideo
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CONVERT_FORMAT),
@@ -531,6 +521,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL),
         &MediaAssetsControllerService::StopRestore
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_CANCEL_PROCESS),
+        &MediaAssetsControllerService::CancelRequest
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::HEIF_TRANSCODING_CHECK),
@@ -587,6 +581,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSET_COMPRESS_VERSION),
         &MediaAssetsControllerService::GetAssetCompressVersion
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_COMPRESS_ASSET_SIZE),
+        &MediaAssetsControllerService::GetCompressAssetSize
     },
 };
 
@@ -1244,6 +1242,24 @@ int32_t MediaAssetsControllerService::SetCompositeDisplayMode(MessageParcel &dat
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
+static void BuildDoubleCheckPredicates(DataShare::DataSharePredicates &predicates,
+    std::vector<std::string> &columns, int64_t tokenId, bool ownerCheck)
+{
+    string clause = AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::FILE_ID +
+            " = " + PhotoColumn::PHOTOS_TABLE + "." + AppUriPermissionColumn::FILE_ID;
+    predicates.InnerJoin(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE)->On({clause});
+    if (ownerCheck) {
+        predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
+            AppUriPermissionColumn::PERMISSION_TYPE, AppUriPermissionColumn::PERMISSION_PERSIST_READ_WRITE);
+    } else {
+        predicates.In(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
+            AppUriPermissionColumn::PERMISSION_TYPE, AppUriPermissionColumn::PERMISSION_TYPES_READ_STR);
+    }
+    predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
+        AppUriPermissionColumn::TARGET_TOKENID, tokenId);
+    MediaLibraryRdbUtils::CleanAmbiguousColumn(columns, predicates, PhotoColumn::PHOTOS_TABLE);
+}
+
 int32_t MediaAssetsControllerService::GetAssets(
     MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context)
 {
@@ -1266,17 +1282,18 @@ int32_t MediaAssetsControllerService::GetAssets(
             MEDIA_ERR_LOG("Get tokenId fail");
             return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
         }
-        string caluse = AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::FILE_ID +
-                " = " + PhotoColumn::PHOTOS_TABLE + "." + AppUriPermissionColumn::FILE_ID;
-        dto.predicates.InnerJoin(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE)->On({caluse});
-        dto.predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
-            AppUriPermissionColumn::PERMISSION_TYPE, AppUriPermissionColumn::PERMISSION_PERSIST_READ_WRITE);
-        dto.predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
-            AppUriPermissionColumn::TARGET_TOKENID, tokenId);
-        MediaLibraryRdbUtils::CleanAmbiguousColumn(dto.columns, dto.predicates, PhotoColumn::PHOTOS_TABLE);
+        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, true);
+    } else if (context.GetByPassCode() == E_DOUBLE_CHECK) {
+        int64_t tokenId = static_cast<int64_t>(PermissionUtils::GetTokenId());
+        if (tokenId == 0) {
+            MEDIA_ERR_LOG("Get tokenId fail");
+            return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
+        }
+        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, false);
     }
 
     auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto);
+    MEDIA_DEBUG_LOG("GetAssets finish");
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);
@@ -1309,14 +1326,14 @@ int32_t MediaAssetsControllerService::GetBurstAssets(
             MEDIA_ERR_LOG("Get tokenId fail");
             return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
         }
-        string caluse = AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::FILE_ID +
-                " = " + PhotoColumn::PHOTOS_TABLE + "." + AppUriPermissionColumn::FILE_ID;
-        dto.predicates.InnerJoin(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE)->On({caluse});
-        dto.predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
-            AppUriPermissionColumn::PERMISSION_TYPE, AppUriPermissionColumn::PERMISSION_PERSIST_READ_WRITE);
-        dto.predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
-            AppUriPermissionColumn::TARGET_TOKENID, tokenId);
-        MediaLibraryRdbUtils::CleanAmbiguousColumn(dto.columns, dto.predicates, PhotoColumn::PHOTOS_TABLE);
+        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, true);
+    } else if (context.GetByPassCode() == E_DOUBLE_CHECK) {
+        int64_t tokenId = static_cast<int64_t>(PermissionUtils::GetTokenId());
+        if (tokenId == 0) {
+            MEDIA_ERR_LOG("Get tokenId fail");
+            return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
+        }
+        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, false);
     }
     dto.predicates.OrderByAsc(MediaColumn::MEDIA_NAME);
     auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto);
@@ -1384,23 +1401,6 @@ int32_t MediaAssetsControllerService::GetDuplicateAssetsToDelete(MessageParcel &
     }
     GetAssetsRespBody respBody;
     respBody.resultSet = resultSet;
-    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
-}
-
-int32_t MediaAssetsControllerService::GetIndexConstructProgress(MessageParcel &data, MessageParcel &reply)
-{
-    MEDIA_INFO_LOG("enter");
-    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::GET_INDEX_CONSTRUCT_PROGRESS);
-    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
-    DfxTimer dfxTimer(operationCode, timeout, true);
-    std::string indexProgress;
-    auto ret = MediaAssetsService::GetInstance().GetIndexConstructProgress(indexProgress);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("get index construct progress failed, ret: %{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-    GetIndexConstructProgressRespBody respBody;
-    respBody.indexProgress = indexProgress;
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
@@ -1664,34 +1664,6 @@ int32_t MediaAssetsControllerService::AddAssetVisitCount(MessageParcel &data, Me
 
     ret = MediaAssetsService::GetInstance().AddAssetVisitCount(reqBody.fileId, reqBody.visitType);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-}
-
-int32_t MediaAssetsControllerService::GetAssetAnalysisData(MessageParcel &data, MessageParcel &reply)
-{
-    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_ASSET_ANALYSIS_DATA);
-    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
-    DfxTimer dfxTimer(operationCode, timeout, true);
-    GetAssetAnalysisDataReqBody reqBody;
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("GetAssetAnalysisData Read Request Error");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    GetAssetAnalysisDataDto dto;
-    dto.fileId = reqBody.fileId;
-    dto.language = reqBody.language;
-    dto.analysisType = reqBody.analysisType;
-    dto.analysisTotal = reqBody.analysisTotal;
-    ret = MediaAssetsService::GetInstance().GetAssetAnalysisData(dto);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("GetAssetAnalysisData failed, ret:%{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    GetAssetAnalysisDataRespBody respBody;
-    respBody.resultSet = std::move(dto.resultSet);
-    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
 int32_t MediaAssetsControllerService::CloneAsset(MessageParcel &data, MessageParcel &reply)
@@ -2011,7 +1983,7 @@ int32_t MediaAssetsControllerService::RetainCloudMediaAsset(MessageParcel &data,
     RetainCloudMediaAssetReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("StartDownloadCloudMedia Read Request Error");
+        MEDIA_ERR_LOG("RetainCloudMediaAsset Read Request Error");
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
@@ -2181,6 +2153,7 @@ int32_t MediaAssetsControllerService::StartThumbnailCreationTask(MessageParcel &
     StartThumbnailCreationTaskDto startCreationTaskDto;
     startCreationTaskDto.predicates = reqBody.predicates;
     startCreationTaskDto.requestId = reqBody.requestId;
+    startCreationTaskDto.pid = reqBody.pid;
     ret = MediaAssetsService::GetInstance().StartThumbnailCreationTask(startCreationTaskDto);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
@@ -2200,6 +2173,7 @@ int32_t MediaAssetsControllerService::StopThumbnailCreationTask(MessageParcel &d
     }
     StopThumbnailCreationTaskDto stopCreationTaskDto;
     stopCreationTaskDto.requestId = reqBody.requestId;
+    stopCreationTaskDto.pid = reqBody.pid;
     ret = MediaAssetsService::GetInstance().StopThumbnailCreationTask(stopCreationTaskDto);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
@@ -2284,6 +2258,7 @@ int32_t MediaAssetsControllerService::GetCloudMediaAssetStatus(MessageParcel &da
 
 int32_t MediaAssetsControllerService::StartBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("enter MediaAssetsControllerService StartBatchDownloadCloudResources");
     StartBatchDownloadCloudResourcesReqBody reqBody;
     StartBatchDownloadCloudResourcesRespBody respBody;
@@ -2294,10 +2269,14 @@ int32_t MediaAssetsControllerService::StartBatchDownloadCloudResources(MessagePa
     }
     ret = MediaAssetsService::GetInstance().StartBatchDownloadCloudResources(reqBody, respBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsControllerService::ResumeBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("enter MediaAssetsControllerService ResumeBatchDownloadCloudResources");
     ResumeBatchDownloadCloudResourcesReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -2307,10 +2286,14 @@ int32_t MediaAssetsControllerService::ResumeBatchDownloadCloudResources(MessageP
     }
     ret = MediaAssetsService::GetInstance().ResumeBatchDownloadCloudResources(reqBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsControllerService::PauseBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("enter MediaAssetsControllerService PauseBatchDownloadCloudResources");
     PauseBatchDownloadCloudResourcesReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -2320,10 +2303,14 @@ int32_t MediaAssetsControllerService::PauseBatchDownloadCloudResources(MessagePa
     }
     ret = MediaAssetsService::GetInstance().PauseBatchDownloadCloudResources(reqBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsControllerService::CancelBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("enter MediaAssetsControllerService CancelBatchDownloadCloudResources");
     CancelBatchDownloadCloudResourcesReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -2333,11 +2320,15 @@ int32_t MediaAssetsControllerService::CancelBatchDownloadCloudResources(MessageP
     }
     ret = MediaAssetsService::GetInstance().CancelBatchDownloadCloudResources(reqBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesStatus(MessageParcel &data,
     MessageParcel &reply)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("enter MediaAssetsControllerService GetCloudMediaBatchDownloadResourcesStatus");
     GetBatchDownloadCloudResourcesStatusReqBody reqBody;
     GetBatchDownloadCloudResourcesStatusRespBody respBody;
@@ -2350,11 +2341,15 @@ int32_t MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesStatus(
     MEDIA_INFO_LOG("MediaAssetsControllerService GetCloudMediaBatchDownloadResourcesStatus"
         "size: %{public}zu", respBody.downloadResourcesStatus.size());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesCount(MessageParcel &data,
     MessageParcel &reply)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("enter MediaAssetsControllerService GetCloudMediaBatchDownloadResourcesCount");
     GetBatchDownloadCloudResourcesCountReqBody reqBody;
     GetBatchDownloadCloudResourcesCountRespBody respBody;
@@ -2367,26 +2362,9 @@ int32_t MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesCount(M
     MEDIA_INFO_LOG("MediaAssetsControllerService GetCloudMediaBatchDownloadResourcesCount count: %{public}d",
         respBody.count);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
-}
-
-int32_t MediaAssetsControllerService::StartAssetAnalysis(MessageParcel &data, MessageParcel &reply)
-{
-    MEDIA_INFO_LOG("enter StartAssetAnalysis");
-    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_START_ASSET_ANALYSIS);
-    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
-    DfxTimer dfxTimer(operationCode, timeout, true);
-    StartAssetAnalysisReqBody reqBody;
-    StartAssetAnalysisRespBody respBody;
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("StartAssetAnalysis Read Request Error");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-    StartAssetAnalysisDto dto;
-    dto.uri = reqBody.uri;
-    dto.predicates = reqBody.predicates;
-    ret = MediaAssetsService::GetInstance().StartAssetAnalysis(dto, respBody);
-    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsControllerService::RequestContent(MessageParcel &data, MessageParcel &reply)
@@ -2501,6 +2479,21 @@ int32_t MediaAssetsControllerService::LogMovingPhoto(MessageParcel &data, Messag
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     ret = MediaAssetsService::GetInstance().LogMovingPhoto(reqBody);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::LogCinematicvideo(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_CINEMATIC_VIDEO);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    CinematicVideoAccessReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("LogCinematicVideo Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = MediaAssetsService::GetInstance().LogCinematicVideo(reqBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
@@ -2687,6 +2680,26 @@ int32_t MediaAssetsControllerService::StopRestore(MessageParcel &data, MessagePa
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
+int32_t MediaAssetsControllerService::CancelRequest(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter CancelRequest");
+    CancelRequestReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CancelRequest Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = ParameterUtils::CheckCancelRequest(reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("params is invalid");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = MediaAssetsService::GetInstance().CancelRequest(reqBody.photoId, reqBody.mediaType);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "CancelRequest failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
 int32_t MediaAssetsControllerService::HeifTranscodingCheck(MessageParcel &data, MessageParcel &reply)
 {
     MEDIA_INFO_LOG("enter HeifTranscodingCheck");
@@ -2747,7 +2760,6 @@ int32_t MediaAssetsControllerService::ReleaseDebugDatabase(MessageParcel &data, 
 
 int32_t MediaAssetsControllerService::DeleteLocalAssetsWithUri(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter DeleteLocalAssetsWithUri");
     DeletePhotosCompletedReqBody reqBody;
  
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -2766,7 +2778,6 @@ int32_t MediaAssetsControllerService::DeleteLocalAssetsWithUri(MessageParcel &da
  
 int32_t MediaAssetsControllerService::DeleteCloudAssetsWithUri(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter DeleteCloudAssetsWithUri");
     DeletePhotosCompletedReqBody reqBody;
  
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
@@ -2827,6 +2838,25 @@ int32_t MediaAssetsControllerService::GetAssetCompressVersion(MessageParcel &dat
     int32_t ret = MediaAssetsService::GetInstance().GetAssetCompressVersion(respBody.version);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("MediaAssetsControllerService::GetAssetCompressVersion fail, ret: %{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAssetsControllerService::GetCompressAssetSize(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("MediaAssetsControllerService::GetCompressAssetSize start");
+    GetCompressAssetSizeReqBody reqBody;
+    GetCompressAssetSizeRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetCompressAssetSize Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaAssetsService::GetInstance().GetCompressAssetSize(reqBody.uris, respBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("MediaAssetsControllerService::GetCompressAssetSize fail, ret: %{public}d", ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);

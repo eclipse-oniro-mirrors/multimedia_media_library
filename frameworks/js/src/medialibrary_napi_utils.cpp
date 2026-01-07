@@ -46,6 +46,8 @@
 #include "vision_video_label_column.h"
 #include "vision_label_column.h"
 #include "photo_album_napi.h"
+#include "parameters.h"
+#include "js_interface_helper.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -55,6 +57,7 @@ namespace Media {
 static const string EMPTY_STRING = "";
 static const string MULTI_USER_URI_FLAG = "user=";
 static const string OLD_INVALID_ORC_TEXT_MSG = "{\"blockSize\":0,\"blocks\":[],\"linesH\":[],\"value\":\"\"}";
+static const std::string CONST_LOGSYSTEM_VERSIONTYPE = "const.logsystem.versiontype";
 static const std::unordered_map<int32_t, std::string> NEED_COMPATIBLE_COLUMN_MAP = {
     {ANALYSIS_LABEL, FEATURE},
     {ANALYSIS_FACE, FEATURES},
@@ -357,11 +360,18 @@ static bool HandleSpecialDateTypePredicate(const OperationItem &item,
 {
     constexpr int32_t FIELD_IDX = 0;
     constexpr int32_t VALUE_IDX = 1;
+    constexpr int32_t BETWEENENDVALUE_IDX = 2;
     vector<string> dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
         MEDIA_DATA_DB_DATE_TAKEN};
     string dateType = item.GetSingle(FIELD_IDX);
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
-    if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
+    if (it != dateTypes.end() && item.singleParams.size() == BETWEENENDVALUE_IDX + 1 &&
+        (item.operation == DataShare::BETWEEN || item.operation == DataShare::NOTBETWEEN)) {
+        dateType += "_s";
+        operations.push_back({ item.operation, { dateType, item.GetSingle(VALUE_IDX).value,
+            item.GetSingle(BETWEENENDVALUE_IDX).value} });
+        return true;
+    } else if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
         item.operation != DataShare::ORDER_BY_DESC) {
         dateType += "_s";
         operations.push_back({ item.operation, { dateType, static_cast<double>(item.GetSingle(VALUE_IDX)) } });
@@ -393,12 +403,61 @@ static void HandleSpecialPredicateProcessUri(AsyncContext &context, const FetchO
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
 }
 
+static void MultiParamLpathToLowerCase(const vector<DataShare::MutliValue::Type>& originMultiParams,
+    vector<DataShare::MutliValue::Type>& newMultiParams)
+{
+    for (const auto& multiParam : originMultiParams) {
+        vector<string> stringVec = std::get_if<vector<string>>(&multiParam) ?
+            std::get<vector<string>>(multiParam) : vector<string>();
+        if (stringVec.empty()) {
+            newMultiParams.push_back(multiParam);
+            continue;
+        }
+        for (auto& str : stringVec) {
+            std::transform(str.begin(), str.end(), str.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+        }
+        newMultiParams.push_back(stringVec);
+    }
+}
+
+static void MakeLpathParamsCaseInsensitive(vector<OperationItem>& operations,
+    const OperationItem& item)
+{
+    vector<DataShare::SingleValue::Type> newSingleParams {};
+    vector<DataShare::MutliValue::Type> newMultiParams {};
+    string lowerField = "lower(" + PhotoAlbumColumns::ALBUM_LPATH + ")";
+    newSingleParams.push_back(lowerField);
+    for (size_t i = 1; i < item.singleParams.size(); i++) { // start with 1 to skip field param
+        string value = static_cast<string>(item.GetSingle(i));
+        if (!value.empty()) {
+            std::transform(value.begin(), value.end(), value.begin(),
+                [](unsigned char c) { return std::tolower(c); });
+            newSingleParams.push_back(value);
+        } else {
+            newSingleParams.push_back(item.singleParams[i]);
+        }
+    }
+    if (!item.multiParams.empty()) {
+        MultiParamLpathToLowerCase(item.multiParams, newMultiParams);
+    }
+    operations.push_back(
+        { item.operation, newSingleParams, newMultiParams });
+}
+
+static void PrintPredicateSafe(const shared_ptr<DataShareAbsPredicates>& predicate)
+{
+    string predicatesStr = JsInterfaceHelper::PredicateToStringSafe(predicate);
+    NAPI_INFO_LOG("Handle predicate: %{public}s", predicatesStr.c_str());
+}
+
 template <class AsyncContext>
 bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared_ptr<DataShareAbsPredicates> &predicate,
     const FetchOptionType &fetchOptType, vector<OperationItem> operations)
 {
     constexpr int32_t FIELD_IDX = 0;
     constexpr int32_t VALUE_IDX = 1;
+    PrintPredicateSafe(predicate);
     auto &items = predicate->GetOperationList();
     bool hasUri = false;
     for (auto &item : items) {
@@ -433,6 +492,11 @@ bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared
             continue;
         }
         if (LOCATION_PARAM_MAP.find(static_cast<string>(item.GetSingle(FIELD_IDX))) != LOCATION_PARAM_MAP.end()) {
+            continue;
+        }
+        if (item.operation != DataShare::ORDER_BY_ASC && item.operation != DataShare::ORDER_BY_DESC &&
+            static_cast<string>(item.GetSingle(FIELD_IDX)) == PhotoAlbumColumns::ALBUM_LPATH) {
+            MakeLpathParamsCaseInsensitive(operations, item);
             continue;
         }
         operations.push_back(item);
@@ -606,6 +670,39 @@ napi_status MediaLibraryNapiUtils::AsyncContextSetObjectInfo(napi_env env, napi_
         "Failed to unwrap thisVar");
     CHECK_COND_RET(asyncContext->objectInfo != nullptr, napi_invalid_arg, "Failed to get object info");
     CHECK_STATUS_RET(GetParamCallback(env, asyncContext), "Failed to get callback param!");
+    return napi_ok;
+}
+
+template <class AsyncContext>
+napi_status MediaLibraryNapiUtils::ParseArgsTwoCallback(napi_env env, napi_callback_info info,
+    AsyncContext &asyncContext, const size_t minArgs, const size_t maxArgs)
+{
+    napi_value thisVar = nullptr;
+    asyncContext->argc = maxArgs;
+    CHECK_STATUS_RET(napi_get_cb_info(env, info, &asyncContext->argc, &(asyncContext->argv[ARGS_ZERO]), &thisVar,
+        nullptr), "Failed to get cb info");
+    CHECK_COND_RET(((asyncContext->argc >= minArgs) && (asyncContext->argc <= maxArgs)), napi_invalid_arg,
+        "Number of args is invalid");
+    if (minArgs > 0) {
+        CHECK_COND_RET(asyncContext->argv[ARGS_ZERO] != nullptr, napi_invalid_arg, "Argument list is empty");
+    }
+    CHECK_STATUS_RET(napi_unwrap(env, thisVar, reinterpret_cast<void **>(&asyncContext->objectInfo)),
+        "Failed to unwrap thisVar");
+    CHECK_COND_RET(asyncContext->objectInfo != nullptr, napi_invalid_arg, "Failed to get object info");
+    if (asyncContext->argc <= ARGS_TWO) {
+        CHECK_STATUS_RET(GetParamCallback(env, asyncContext), "Failed to get callback param!");
+    } else {
+        bool isCallback = false;
+        CHECK_STATUS_RET(HasCallback(env, asyncContext->argc, asyncContext->argv, isCallback),
+            "Failed to check callback");
+        if (isCallback) {
+            int callbackIndex = asyncContext->argc - 2;
+            CHECK_STATUS_RET(GetParamFunction(env, asyncContext->argv[callbackIndex],
+                asyncContext->callbackRef), "Failed to get callback");
+            CHECK_STATUS_RET(GetParamFunction(env, asyncContext->argv[asyncContext->argc - 1],
+                asyncContext->responseRef), "Failed to get callback");
+        }
+    }
     return napi_ok;
 }
 
@@ -1929,6 +2026,12 @@ bool MediaLibraryNapiUtils::IsNumber(const std::string &str)
     return true;
 }
 
+bool MediaLibraryNapiUtils::IsBetaVersion()
+{
+    std::string versionType = system::GetParameter(CONST_LOGSYSTEM_VERSIONTYPE, "unknown");
+    return versionType == "beta";
+}
+
 NapiScopeHandler::NapiScopeHandler(napi_env env): env_(env)
 {
     napi_status status = napi_open_handle_scope(env_, &scope_);
@@ -2520,6 +2623,10 @@ template napi_status MediaLibraryNapiUtils::AsyncContextSetObjectInfo<unique_ptr
 
 template napi_status MediaLibraryNapiUtils::AsyncContextSetObjectInfo<unique_ptr<SmartAlbumNapiAsyncContext>>(
     napi_env env, napi_callback_info info, unique_ptr<SmartAlbumNapiAsyncContext> &asyncContext, const size_t minArgs,
+    const size_t maxArgs);
+
+template napi_status MediaLibraryNapiUtils::ParseArgsTwoCallback<unique_ptr<MediaLibraryAsyncContext>>(
+    napi_env env, napi_callback_info info, unique_ptr<MediaLibraryAsyncContext> &context, const size_t minArgs,
     const size_t maxArgs);
 
 template napi_status MediaLibraryNapiUtils::AsyncContextGetArgs<unique_ptr<ResultSetAsyncContext>>(

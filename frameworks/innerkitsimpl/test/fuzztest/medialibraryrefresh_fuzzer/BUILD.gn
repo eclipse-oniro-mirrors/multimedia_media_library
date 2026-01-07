@@ -105,10 +105,6 @@ ohos_fuzztest("MediaLibraryRefreshFuzzTest") {
     "ipc:ipc_napi",
   ]
 
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
-
   defines = []
   defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
   defines += [ "MEDIA_REFRESH_TEST" ]

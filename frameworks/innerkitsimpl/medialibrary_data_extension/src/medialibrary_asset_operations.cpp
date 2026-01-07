@@ -54,19 +54,18 @@
 #include "medialibrary_restore.h"
 #include "cloud_sync_helper.h"
 #include "refresh_business_name.h"
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 #include "background_cloud_batch_selected_file_processor.h"
-#include "cloud_media_dao_utils.h"
-#include "scanner_map_code_utils.h"
-#include "photo_map_code_operation.h"
+#endif
 #include "media_file_manager_temp_file_aging_task.h"
 #include "preferences_helper.h"
 #include "file_utils.h"
 #include "medialibrary_transcode_data_aging_operation.h"
 #include "lake_file_utils.h"
+#include "cloud_media_common.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
-using namespace OHOS::Media::CloudSync;
 
 namespace OHOS {
 namespace Media {
@@ -192,6 +191,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::PHOTO_STORAGE_PATH, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_IS_RECTIFICATION_COVER, MEMBER_TYPE_INT32 },
+    { PhotoColumn::PHOTO_CHANGE_TIME, MEMBER_TYPE_INT64 },
 };
 
 const std::unordered_map<std::string, int>& GetFileAssetMemberMap()
@@ -970,8 +970,10 @@ static void HandleCallingPackage(MediaLibraryCommand &cmd, const FileAsset &file
 
 static void HandleBurstPhoto(MediaLibraryCommand &cmd, ValuesBucket &outValues, const std::string displayName)
 {
+#ifdef MEDIA_NATIVE_SA_APP_TEST
     CHECK_AND_RETURN_LOG(PermissionUtils::IsNativeSAApp(),
         "do not have permission to set burst_key or burst_cover_level");
+#endif
 
     string burstKey;
     ValueObject value;
@@ -1041,10 +1043,12 @@ static void UpdateEnhanceParam(MediaLibraryCommand &cmd, ValuesBucket &outValues
 
 static void HandlePhotoInfo(MediaLibraryCommand &cmd, ValuesBucket &outValues, const FileAsset &fileAsset)
 {
+#ifdef MEDIA_NATIVE_SA_APP_TEST
     if (!PermissionUtils::IsNativeSAApp()) {
         MEDIA_DEBUG_LOG("do not have permission to set is_temp");
         return;
     }
+#endif
 
     ValueObject value;
     bool isTemp = 0;
@@ -1198,7 +1202,8 @@ int32_t MediaLibraryAssetOperations::InsertAssetInDb(std::shared_ptr<Transaction
         MEDIA_ERR_LOG("Insert into db failed, ret = %{public}d", ret);
         return E_HAS_DB_ERROR;
     }
-    MEDIA_ERR_LOG("insert success, rowId = %{public}d", (int)outRowId);
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} insert success, rowId = %{public}d",
+        MLOG_TAG, __FUNCTION__, __LINE__, (int)outRowId);
     auto fileId = outRowId;
     ValuesBucket valuesBucket = GetOwnerPermissionBucket(cmd, fileId, callingUid);
     int64_t tmpOutRowId = -1;
@@ -1208,7 +1213,8 @@ int32_t MediaLibraryAssetOperations::InsertAssetInDb(std::shared_ptr<Transaction
         MEDIA_ERR_LOG("Insert into db failed, errCode = %{public}d", errCode);
         return E_HAS_DB_ERROR;
     }
-    MEDIA_ERR_LOG("insert uripermission success, rowId = %{public}d", (int)tmpOutRowId);
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} insert uripermission success, rowId = %{public}d",
+        MLOG_TAG, __FUNCTION__, __LINE__, (int)tmpOutRowId);
     return static_cast<int32_t>(outRowId);
 }
 
@@ -1640,6 +1646,18 @@ static int32_t SolveMovingPhotoVideoCreation(const string &imagePath, const stri
     return E_OK;
 }
 
+static int32_t SolveMoviePhotoVideoCreation(const string &videoPath, const string &mode)
+{
+    CHECK_AND_RETURN_RET(mode != MEDIA_FILEMODE_READONLY, E_OK);
+    CHECK_AND_RETURN_RET_INFO_LOG(!MediaFileUtils::IsFileExists(videoPath), E_OK,
+        "videoPath is Exists, videoPath %{private}s", videoPath.c_str());
+
+    int32_t errCode = MediaFileUtils::CreateAsset(videoPath);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
+        "Create movie video asset failed, path=%{private}s", videoPath.c_str());
+    return E_OK;
+}
+
 static bool IsNotMusicFile(const std::string &path)
 {
     return (path.find(ANALYSIS_FILE_PATH) == string::npos);
@@ -1650,27 +1668,23 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryAssetOperations::OpenAsset");
-
-    if (fileAsset == nullptr) {
-        return E_INVALID_VALUES;
-    }
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
 
     string lowerMode = mode;
     transform(lowerMode.begin(), lowerMode.end(), lowerMode.begin(), ::tolower);
-    if (!MediaFileUtils::CheckMode(lowerMode)) {
-        return E_INVALID_MODE;
-    }
+    CHECK_AND_RETURN_RET(MediaFileUtils::CheckMode(lowerMode), E_INVALID_MODE);
 
     string path;
     if (api == MediaLibraryApi::API_10) {
         int32_t errCode = SolvePendingStatus(fileAsset, mode);
-        if (errCode != E_OK) {
-            MEDIA_ERR_LOG("Solve pending status failed, errCode=%{public}d", errCode);
-            return errCode;
-        }
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
+            "Solve pending status failed, errCode=%{public}d", errCode);
         path = fileAsset->GetPath();
         MEDIA_DEBUG_LOG("##### file path is %{private}s", path.c_str());
         SolveMovingPhotoVideoCreation(path, mode, isMovingPhotoVideo);
+        if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+            SolveMoviePhotoVideoCreation(path, mode);
+        }
     } else {
         // If below API10, TIME_PENDING is 0 after asset created, so if file is not exist, create an empty one
         if (!MediaFileUtils::IsFileExists(fileAsset->GetPath())) {
@@ -1683,14 +1697,12 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
     }
 
     string fileId = MediaFileUtils::GetIdFromUri(fileAsset->GetUri());
-    MEDIA_DEBUG_LOG("Asset Operation:OpenAsset, type is %{public}d", type);
+
     int32_t fd = OpenFileWithPrivacy(path, lowerMode, fileId, type);
-    if (fd < 0) {
-        MEDIA_ERR_LOG(
-            "open file, userId: %{public}d, uri: %{public}s, path: %{private}s, fd %{public}d, errno %{public}d",
-            fileAsset->GetUserId(), fileAsset->GetUri().c_str(), fileAsset->GetPath().c_str(), fd, errno);
-        return E_HAS_FS_ERROR;
-    }
+    CHECK_AND_RETURN_RET_LOG(fd >= 0, E_HAS_FS_ERROR,
+        "open file, userId: %{public}d, uri: %{public}s, path: %{public}s, fd %{public}d, errno %{public}d",
+        fileAsset->GetUserId(), fileAsset->GetUri().c_str(), fileAsset->GetPath().c_str(), fd, errno);
+
     tracer.Start("AddWatchList");
     if (mode.find(MEDIA_FILEMODE_WRITEONLY) != string::npos && !isMovingPhotoVideo && IsNotMusicFile(path)) {
         auto watch = MediaLibraryInotify::GetInstance();
@@ -1893,23 +1905,14 @@ string MediaLibraryAssetOperations::GetAssetCacheDir()
     return MEDIA_CACHE_DIR + cacheOwner;
 }
 
-string MediaLibraryAssetOperations::GetAssetCompressCachePath(const string &path)
+string MediaLibraryAssetOperations::GetAssetCompressCachePath(const string &id)
 {
-    string fileName = MediaFileUtils::GetFileName(path);
-    CHECK_AND_RETURN_RET(!fileName.empty(), "");
-    string cacheDir = GetAssetCacheDir() + "/compressCache/";
-    string titleName = MediaFileUtils::GetTitleFromDisplayName(fileName);
-    int64_t timestamp = MediaFileUtils::UTCTimeMilliSeconds();
-    return cacheDir + titleName + "_" + std::to_string(timestamp) + ".tlv";
+    return GetAssetCacheDir() + "/compressCache/" + id + ".tlv";
 }
 
-string MediaLibraryAssetOperations::GetAssetCompressJsonPath(const string &path)
+string MediaLibraryAssetOperations::GetAssetCompressJsonPath(const string &id)
 {
-    string parentPath = GetEditDataDirPath(path);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/editdata.json";
+    return GetAssetCacheDir() + "/compressCache/" + id + "_editdata.json";
 }
 
 static void UpdateAlbumsAndSendNotifyInTrash(AsyncTaskData *data)
@@ -2156,16 +2159,6 @@ int32_t MediaLibraryAssetOperations::SetPendingFalse(const shared_ptr<FileAsset>
         return E_INVALID_VALUES;
     }
     return E_OK;
-}
-
-void MediaLibraryAssetOperations::IsCoverContentChange(string &fileId)
-{
-    CHECK_AND_RETURN_LOG(MediaFileUtils::IsValidInteger(fileId), "invalid input param");
-    CHECK_AND_RETURN_LOG(stoi(fileId) > 0, "fileId is invalid");
-    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
-    if (albumRefresh.IsCoverContentChange(fileId)) {
-        MEDIA_INFO_LOG("Album Cover Content has Changed, fileId: %{public}s", fileId.c_str());
-    }
 }
 
 int32_t MediaLibraryAssetOperations::SetPendingStatus(MediaLibraryCommand &cmd)
@@ -2732,9 +2725,11 @@ static void DeleteFiles(AsyncTaskData *data)
     }
     auto *taskData = static_cast<DeleteFilesData *>(data);
 
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     // 检查点 批量下载 本地删除 停止并清理 通知应用 notify type 3
     MEDIA_INFO_LOG("BatchSelectFileDownload DeleteFiles DealWithBatchDownloadingFilesById");
     MediaLibraryAssetOperations::DealWithBatchDownloadingFilesById(taskData->ids_);
+#endif
     MediaLibraryAssetOperations::TaskDataFileProcess(taskData->ids_, taskData->paths_, taskData->table_,
         taskData->dateTakens_, taskData->subTypes_);
 }
@@ -3107,12 +3102,6 @@ static int32_t DeleteDbByIds(const string &table, vector<string> &ids, const boo
     return deletedRows;
 }
 
-static inline int32_t DeleteMapCodeByIds(vector<string> &ids, const bool compatible)
-{
-    MEDIA_INFO_LOG("DeleteMapCodeByIds ids size %{public}zu", ids.size());
-    return PhotoMapCodeOperation::RemovePhotosMapCodes(ids);
-}
-
 static void GetAlbumNamesById(DeletedFilesParams &filesParams)
 {
     MediaLibraryTracer tracer;
@@ -3204,9 +3193,6 @@ int32_t MediaLibraryAssetOperations::DeleteFromDisk(AbsRdbPredicates &predicates
     CHECK_AND_RETURN_RET_LOG(deletedRows > 0, deletedRows,
         "Failed to delete files in db, deletedRows: %{public}d, ids size: %{public}zu",
         deletedRows, fileParams.ids.size());
-
-    int32_t mapCodeRet = DeleteMapCodeByIds(fileParams.ids, compatible);
-    MEDIA_DEBUG_LOG("DeleteMapCodeByIds mapCodeRet %{public}d", mapCodeRet);
 
     MEDIA_INFO_LOG("Delete files in db, deletedRows: %{public}d", deletedRows);
     assetRefresh->RefreshAlbum();
@@ -3485,6 +3471,7 @@ static int32_t DeleteLocalPhotoPermanently(shared_ptr<FileAsset> &fileAsset,
 
 int32_t MediaLibraryAssetOperations::AddOtherBurstIdsToFileIds(std::vector<std::string> &fileIds)
 {
+    #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_ERR, "AddOtherBurstIdsToFileIds No uris");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "QueryDownloadResources Failed to get rdbStore.");
@@ -3496,8 +3483,8 @@ int32_t MediaLibraryAssetOperations::AddOtherBurstIdsToFileIds(std::vector<std::
         " = 1 AND p1." + PhotoColumn::PHOTO_SUBTYPE + " = " + to_string(static_cast<int32_t>(PhotoSubType::BURST)) +
         " AND p1." + PhotoColumn::PHOTO_BURST_KEY + " IS NOT NULL AND p1." + PhotoColumn::MEDIA_ID +
         " != p2." + PhotoColumn::MEDIA_ID;
-    std::string inClause = CloudMediaDaoUtils::ToStringWithComma(fileIds);
-    std::string sql = CloudMediaDaoUtils::FillParams(sqlBefore, {inClause});
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    std::string sql = CloudMediaCommon::FillParams(sqlBefore, {inClause});
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "Failed to query batch selected files!");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -3507,10 +3494,11 @@ int32_t MediaLibraryAssetOperations::AddOtherBurstIdsToFileIds(std::vector<std::
         fileIds.emplace_back(std::to_string(relatedFileId));
     }
     resultSet->Close();
+    #endif
     return NativeRdb::E_OK;
 }
 
-
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 int32_t MediaLibraryAssetOperations::DealWithBatchDownloadingFilesById(std::vector<std::string> &fileIds)
 {
     MEDIA_INFO_LOG("BatchSelectFileDownload DealWithBatchDownloadingFilesById ids In"); // 自动取消
@@ -3534,6 +3522,7 @@ int32_t MediaLibraryAssetOperations::DealWithBatchDownloadingFiles(vector<shared
     }
     return DealWithBatchDownloadingFilesById(needStopDownloadFileIds);
 }
+#endif
 
 static void GetAnalysisAlbumIdsOfAssets(const vector<shared_ptr<FileAsset>> fileAssetVector, set<string>& albumIds)
 {
@@ -3586,9 +3575,11 @@ int32_t MediaLibraryAssetOperations::DeletePermanently(AbsRdbPredicates &predica
         DeleteLocalPhotoPermanently(fileAssetPtr, subFileAssetVector, assetRefresh);
         changedAlbumIds.insert(fileAssetPtr->GetOwnerAlbumId());
     }
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("BatchSelectFileDownload DeletePermanently DealWithBatchDownloadingFiles");
     // 检查点 批量下载 本地删除 停止并清理 通知应用 notify type 3
     DealWithBatchDownloadingFiles(fileAssetVector);
+#endif
     //delete both local and cloud image
     DeleteLocalAndCloudPhotos(subFileAssetVector);
     vector<string> albumIds(analysisAlbumIds.begin(), analysisAlbumIds.end());

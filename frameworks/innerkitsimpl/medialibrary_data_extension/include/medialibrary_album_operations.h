@@ -121,6 +121,10 @@ public:
         const std::string &fileId, int64_t coverDateTime, AccurateRefresh::AlbumAccurateRefresh& albumRefresh);
     static int32_t UpdatePhotoAlbumOrder(const vector<NativeRdb::ValuesBucket> &valuesBuckets,
         const vector<NativeRdb::RdbPredicates> &predicatesArray);
+    static int32_t CreatePortraitAlbum(const string &albumName);
+
+    // Get column informations of PhotoAlbum table except primary key column
+    static const std::unordered_map<std::string, ColumnSchema>& GetPhotoAlbumTableSchema();
 };
 } // namespace Media
 } // namespace OHOS

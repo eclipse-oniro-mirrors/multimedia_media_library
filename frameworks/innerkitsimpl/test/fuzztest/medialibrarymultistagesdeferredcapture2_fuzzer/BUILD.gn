@@ -25,7 +25,7 @@ ohos_fuzztest("MediaLibraryMultistagesDeferredCapture2FuzzTest") {
   ]
 
   sources = [
-    "${MEDIALIB_SERVICES_PATH}/media_multistages_capture/src/deferred_processing/deferred_video_proc_adapter.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/deferred_processing/deferred_video_proc_adapter.cpp",
     "./medialibrary_multistages_deferred_capture2_fuzzer.cpp"
   ]
 

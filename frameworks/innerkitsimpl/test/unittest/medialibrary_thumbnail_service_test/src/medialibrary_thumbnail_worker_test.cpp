@@ -95,26 +95,5 @@ HWTEST_F(MediaLibraryThumbnailWorkerTest, ThumbnailWorker_ReleaseTaskQueue_test_
     status = backgroundWorkerPtr_->ReleaseTaskQueue(ThumbnailTaskPriority::LOW);
     EXPECT_EQ(status, E_OK);
 }
-
-/**
- * @tc.number    : ThumbnailWorker_IgnoreTaskByRequestId_test_001
- * @tc.name      : ignore task test
- * @tc.desc      : ignore task from thread pool by requestId
- */
-HWTEST_F(MediaLibraryThumbnailWorkerTest, ThumbnailWorker_IgnoreTaskByRequestId_test_001, TestSize.Level1)
-{
-    ASSERT_NE(foregroundWorkerPtr_, nullptr);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId = 1;
-    std::shared_ptr<ThumbnailTaskData> taskData = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    std::shared_ptr<ThumbnailGenerateTask> task = std::make_shared<ThumbnailGenerateTask>(ThumbnailTestTask, taskData);
-    int32_t status = foregroundWorkerPtr_->AddTask(task, ThumbnailTaskPriority::HIGH);
-    EXPECT_EQ(status, E_OK);
-    foregroundWorkerPtr_->IgnoreTaskByRequestId(requestId);
-    status = foregroundWorkerPtr_->AddTask(task, ThumbnailTaskPriority::LOW);
-    EXPECT_EQ(status, E_OK);
-    foregroundWorkerPtr_->IgnoreTaskByRequestId(requestId);
-}
 } // namespace Media
 } // namespace OHOS

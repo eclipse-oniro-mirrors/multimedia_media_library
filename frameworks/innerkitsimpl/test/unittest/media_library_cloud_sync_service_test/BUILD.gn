@@ -84,10 +84,6 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "relational_store:rdb_data_share_adapter",
   ]
 
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
-
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -143,10 +139,6 @@ ohos_unittest("media_library_cloud_sync_service_dao_test") {
     "relational_store:rdb_data_share_adapter",
   ]
 
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
-
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -198,10 +190,6 @@ ohos_unittest("media_library_cloud_sync_service_dto_test") {
     "dfs_service:cloudsync_kit_inner",
     "relational_store:rdb_data_share_adapter",
   ]
-
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
 
   sanitize = {
     cfi = true
@@ -258,10 +246,6 @@ ohos_unittest("media_library_cloud_sync_service_controller_service_test") {
     "relational_store:rdb_data_share_adapter",
   ]
 
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
-
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -314,10 +298,6 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
     "relational_store:rdb_data_share_adapter",
   ]
 
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
-
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -335,31 +315,21 @@ ohos_unittest("media_library_cloud_sync_service_service_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/vo",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/includ/utils/",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/media_cloud_asset_download/cloud_media_retain_smart_data.h",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/media_cloud_asset_download/cloud_media_sync_mutex.h",
   ]
 
   sources = [
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dao/cloud_media_common_dao.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dao/cloud_media_photos_dao.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/cloud_file_data_dto.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/photo_album_dto.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/photos_dto.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_media_file_utils.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_media_dao_utils.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_media_sync_utils.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_sync_convert.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/media_gallery_sync_notify.cpp",
+    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dao/cloud_media_asset_retain_compare_dao.cpp",
+    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/photos_field_iterator.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_retain_smart_data.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_sync_mutex.cpp",
 
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "src/media_cloud_sync_service_service_test.cpp",
     "src/media_cloud_sync_test_utils.cpp",
 
-    "${MEDIALIB_UTILS_PATH}/src/cpu_utils.cpp",
-    "src/media_cloud_sync_service_service_mapcode_test.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dao/cloud_map_code_dao.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_owner_album_id_operation.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/service/cloud_media_photos_service.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/service/cloud_lake_file_handler.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
@@ -397,10 +367,6 @@ ohos_unittest("media_library_cloud_sync_service_service_test") {
     "relational_store:rdb_data_share_adapter",
     "e2fsprogs:libext2_uuid",
   ]
-
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
 
   sanitize = {
     cfi = true
@@ -455,10 +421,6 @@ ohos_unittest("media_library_cloud_sync_service_service_ext_test") {
     "dfs_service:cloudsync_kit_inner",
     "relational_store:rdb_data_share_adapter",
   ]
-
-  if (media_library_feature_device_manager) {
-     external_deps += ["device_manager:devicemanagersdk"]
-  }
 
   sanitize = {
     cfi = true

@@ -24,7 +24,7 @@ namespace OHOS {
 namespace Media {
 const std::string OPRN_DELETE_LOCAL_ASSETS_PERMANENTLY = "delete_local_photos_permanently";
 const std::string URI_DELETE_PHOTOS_COMPLETED = MEDIALIBRARY_DATA_URI + "/"
-        + PHOTO_ALBUM_OPRN + "/" + OPRN_DELETE_LOCAL_ASSETS_PERMANENTLY;
+        + "photo_album_v10_operation/" + OPRN_DELETE_LOCAL_ASSETS_PERMANENTLY;
 } // namespace Media
 } // namespace OHOS
 

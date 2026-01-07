@@ -123,8 +123,8 @@ void SetTables()
 {
     // 创建Photos/PhotoAlbum表
     vector<string> createTableSqlList = {
-        CREATE_PHOTO_ALBUM_TABLE,
-        CREATE_PHOTO_TABLE,
+        PhotoAlbumColumns::CREATE_TABLE,
+        PhotoColumn::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         if (g_rdbStore == nullptr) {

@@ -21,7 +21,7 @@ ohos_fuzztest("MediaLibraryThumbnailFuzzTest") {
   include_dirs = [
     "./include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   sources = [ "src/medialibrary_thumbnail_fuzzer.cpp" ]

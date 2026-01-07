@@ -120,6 +120,8 @@ public:
     EXPORT static void UpdateIndexDateAdded(const std::shared_ptr<MediaLibraryRdbStore> store, int32_t version);
     EXPORT static void AddVideoFaceTagIdIndex(const std::shared_ptr<MediaLibraryRdbStore> store, int32_t version);
     EXPORT static void AddPetTagIdIndex(const std::shared_ptr<MediaLibraryRdbStore> store, int32_t version);
+    EXPORT static void DropPhotoStatusForSearchIndex(
+        const std::shared_ptr<MediaLibraryRdbStore> store, int32_t version);
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryEditDataExists(
         const NativeRdb::AbsRdbPredicates &predicates);
     EXPORT static int32_t InsertInternal(int64_t &outRowId, const std::string &table, NativeRdb::ValuesBucket &row);
@@ -171,9 +173,6 @@ public:
     EXPORT static int32_t UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::string &photoId, const std::string &photoPath);
 
-    EXPORT static bool AddPhotoMapTable(NativeRdb::RdbStore &store);
-    EXPORT static bool AddPhotoMapTableIndex(const std::shared_ptr<MediaLibraryRdbStore> store);
-    EXPORT static bool AddPhotoMapTableData(const std::shared_ptr<MediaLibraryRdbStore> store);
 private:
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
     EXPORT static const std::string CloudSyncTriggerFunc(const std::vector<std::string> &args);

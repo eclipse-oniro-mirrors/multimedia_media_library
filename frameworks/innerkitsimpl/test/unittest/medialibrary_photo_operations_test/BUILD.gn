@@ -26,6 +26,7 @@ ohos_unittest("medialibrary_photo_operations_test") {
     "./include/operation",
     "./include/photo_album_operation",
     "../medialibrary_unittest_utils/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/operation",
@@ -34,33 +35,36 @@ ohos_unittest("medialibrary_photo_operations_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/common_data",
     "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include/operation",
   ]
 
   sources = [
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_album_operations.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/display_name_info.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/height_width_correct_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/operation/height_width_correct_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_album_copy_meta_data_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_asset_copy_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_burst_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_displayname_operation.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_mimetype_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/operation/photo_mimetype_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_owner_album_id_operation.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/video_3dgs_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/operation/shooting_mode_album_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/photo_album_operation/photo_album_lpath_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/photo_album_operation/photo_album_merge_operation.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/photo_album_operation/photo_album_upload_status_operation.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/settings_data_manager.cpp",
     "../../../media_library_manager/src/media_library_tab_old_photos_client.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_library_tab_old_photos_client_test.cpp",
     "./src/medialibrary_album_fusion_utils_test.cpp",
-    "./src/medialibrary_facard_operations_test.cpp",
     "./src/medialibrary_formmap_operations_test.cpp",
     "./src/medialibrary_photo_edit_test.cpp",
     "./src/medialibrary_photo_operations_test.cpp",
@@ -72,11 +76,19 @@ ohos_unittest("medialibrary_photo_operations_test") {
     "./src/operation/photo_displayname_operation_test.cpp",
     "./src/operation/photo_mimetype_operation_test.cpp",
     "./src/operation/photo_owner_album_id_operation_test.cpp",
-    "./src/operation/video_3dgs_operation_test.cpp",
+    "./src/operation/shooting_mode_operation_test.cpp",
     "./src/operation/video_composition_callback_imp_test.cpp",
     "./src/photo_album_operation/photo_album_lpath_operation_test.cpp",
     "./src/photo_album_operation/photo_album_merge_operation_test.cpp",
+    "./src/photo_album_operation/photo_album_upload_status_operation_test.cpp",
   ]
+
+  if (media_library_facard_enable) {
+    media_facard_test_source = [
+      "./src/medialibrary_facard_operations_test.cpp",
+    ]
+    sources += media_facard_test_source
+  }
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
@@ -92,6 +104,9 @@ ohos_unittest("medialibrary_photo_operations_test") {
     "ability_runtime:app_context",
     "ability_runtime:dataobs_manager",
     "ability_runtime:runtime",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
     "app_file_service:fileuri_native",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",

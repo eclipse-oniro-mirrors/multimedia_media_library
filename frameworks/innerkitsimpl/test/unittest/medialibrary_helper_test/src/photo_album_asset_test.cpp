@@ -67,8 +67,15 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoAlbum_SetGet_Test_001, TestSize.Level1
     photoAlbum.SetRelativePath(TEST_RELATIVE_PATH);
     EXPECT_EQ(photoAlbum.GetRelativePath(), TEST_RELATIVE_PATH);
 
+    const int64_t CHANGE_TIME = 1;
+    photoAlbum.SetChangeTime(CHANGE_TIME);
+    EXPECT_EQ(photoAlbum.GetChangeTime(), CHANGE_TIME);
+
     photoAlbum.SetResultNapiType(ResultNapiType::TYPE_USERFILE_MGR);
     EXPECT_EQ(photoAlbum.GetResultNapiType(), ResultNapiType::TYPE_USERFILE_MGR);
+
+    photoAlbum.SetHidden(TEST_ALBUM_ID);
+    EXPECT_EQ(photoAlbum.GetHidden(), TEST_ALBUM_ID);
 }
 } // namespace Media
 } // namespace OHOS

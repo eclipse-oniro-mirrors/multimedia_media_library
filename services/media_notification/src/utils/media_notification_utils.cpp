@@ -232,23 +232,4 @@ int32_t NotificationUtils::SendUserDefineNotification(const sptr<AAFwk::IDataAbi
     dataObserver->OnChangeExt(*changeInfo);
     return E_OK;
 }
- 
-std::shared_ptr<UserDefineNotifyInfo> NotificationUtils::UnmarshalUserDefineNotify(Parcel &parcel)
-{
-    UserDefineNotifyInfo* info = new (std::nothrow)UserDefineNotifyInfo();
-    if (info == nullptr) {
-        return nullptr;
-    }
-    if (!info->ReadHeadFromParcel(parcel)) {
-        delete info;
-        info = nullptr;
-        return nullptr;
-    }
-    if (!info->ReadBodyFromParcel(parcel)) {
-        delete info;
-        info = nullptr;
-        return nullptr;
-    }
-    return std::shared_ptr<UserDefineNotifyInfo>(info);
-}
 } // OHOS::Media

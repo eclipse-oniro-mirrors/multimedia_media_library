@@ -40,6 +40,7 @@ public:  // functions of Parcelable.
 public:
     int32_t AddOnFetchPhotoData(const OnFetchPhotosVo &data);
     std::vector<OnFetchPhotosVo> GetOnFetchPhotoData();
+    bool SplitBy20K(std::vector<OnFetchRecordsReqBody> &reqBodyList) const;
 
 public:  // basic functions
     std::string ToString() const;
@@ -59,6 +60,7 @@ public:  // functions of Parcelable.
 
 public:  // basic functions
     std::string ToString() const;
+    void MergeRespBody(const OnFetchRecordsRespBody &respBody);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_ON_FETCH_RECORDS_VO_H

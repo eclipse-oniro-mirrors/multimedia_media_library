@@ -62,7 +62,7 @@ static std::vector<std::string> testTables = {
     ANALYSIS_ALBUM_TABLE,
     ANALYSIS_PHOTO_MAP_TABLE,
 };
-const int32_t EXPECTED_GROUP_ALBUM_COUNT = 2;
+const int32_t EXPECTED_GROUP_ALBUM_COUNT = 1;
 
 static void InsertPhotoInNewDb(std::shared_ptr<NativeRdb::RdbStore> rdbPtr)
 {
@@ -83,6 +83,13 @@ static void InsertAnalysisAlbumInNewDb(std::shared_ptr<NativeRdb::RdbStore> rdbP
         "VALUES (4096, 4103, 'test_group_photo_album_001', 'a|c,', 'test_cover_uri', 1)");
 }
 
+static void InsertAnalysisAlbumWithMerging(std::shared_ptr<NativeRdb::RdbStore> rdbPtr)
+{
+    rdbPtr->ExecuteSql("INSERT INTO AnalysisAlbum ("
+        "album_type, album_subtype, album_name, tag_id, group_tag, cover_uri, is_cover_satisfied) "
+        "VALUES (4096, 4103, 'test_group_photo_album_001', 'a|c,d', 'a|c,d', 'test_cover_uri', 1)");
+}
+
 static void InsertAnalysisPhotoMapInNewDb(std::shared_ptr<NativeRdb::RdbStore> rdbPtr)
 {
     rdbPtr->ExecuteSql(INSERT_ANALYSIS_PHOTO_MAP + VALUES_BEGIN + "1, 1, 1" + VALUES_END);
@@ -94,6 +101,14 @@ static void PreProcessInNewDb(std::shared_ptr<Media::MediaLibraryRdbStore> media
     std::shared_ptr<NativeRdb::RdbStore> rdbPtr = mediaRdbPtr->GetRaw();
     InsertPhotoInNewDb(rdbPtr);
     InsertAnalysisAlbumInNewDb(rdbPtr);
+    InsertAnalysisPhotoMapInNewDb(rdbPtr);
+}
+
+static void CreateDataWithMerging(std::shared_ptr<Media::MediaLibraryRdbStore> mediaRdbPtr)
+{
+    std::shared_ptr<NativeRdb::RdbStore> rdbPtr = mediaRdbPtr->GetRaw();
+    InsertPhotoInNewDb(rdbPtr);
+    InsertAnalysisAlbumWithMerging(rdbPtr);
     InsertAnalysisPhotoMapInNewDb(rdbPtr);
 }
 
@@ -136,18 +151,18 @@ void CloneRestoreGroupPhotoTest::VerifyGroupAlbumRestore(const std::shared_ptr<N
 
     (void)resultSet->GetColumnIndex("tag_id", index);
     resultSet->GetString(index, columnValue);
-    EXPECT_EQ(columnValue, "a|b,");
+    EXPECT_EQ(columnValue, "a|c,");
 
     (void)resultSet->GetColumnIndex("cover_uri", index);
     resultSet->GetString(index, columnValue);
-    EXPECT_EQ(columnValue, "file://media/Photo/1/coverUri/test.jpg");
+    EXPECT_EQ(columnValue, "test_cover_uri");
 
     (void)resultSet->GetColumnIndex("is_cover_satisfied", index);
     int isCoverSatisfied;
     resultSet->GetInt(index, isCoverSatisfied);
     EXPECT_EQ(isCoverSatisfied, 1);
 
-    EXPECT_TRUE(resultSet->GoToNextRow() == NativeRdb::E_OK);
+    EXPECT_FALSE(resultSet->GoToNextRow() == NativeRdb::E_OK);
 }
 
 void CloneRestoreGroupPhotoTest::VerifyGroupPhotoAlbumWithoutData(const std::shared_ptr<NativeRdb::RdbStore>& db)
@@ -175,6 +190,46 @@ void CloneRestoreGroupPhotoTest::VerifyGroupPhotoAlbumWithoutData(const std::sha
     (void)resultSet->GetColumnIndex("tag_id", index);
     resultSet->GetString(index, columnValue);
     EXPECT_EQ(columnValue, "a|c,");
+
+    (void)resultSet->GetColumnIndex("cover_uri", index);
+    resultSet->GetString(index, columnValue);
+    EXPECT_EQ(columnValue, "test_cover_uri");
+
+    (void)resultSet->GetColumnIndex("is_cover_satisfied", index);
+    int isCoverSatisfied;
+    resultSet->GetInt(index, isCoverSatisfied);
+    EXPECT_EQ(isCoverSatisfied, 1);
+}
+
+void CloneRestoreGroupPhotoTest::VerifyGroupPhotoAlbumWithMerging(const std::shared_ptr<NativeRdb::RdbStore>& db)
+{
+    std::string querySql = "SELECT * FROM " + ANALYSIS_ALBUM_TABLE +
+        " WHERE album_type = " + std::to_string(SMART) +
+        " AND album_subtype = " + std::to_string(GROUP_PHOTO);
+
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = db->QuerySql(querySql);
+    ASSERT_NE(resultSet, nullptr);
+
+    int32_t count = 0;
+    int32_t errCode = resultSet->GetRowCount(count);
+    EXPECT_EQ(errCode, E_OK);
+    EXPECT_EQ(count, 1);
+    EXPECT_TRUE(resultSet->GoToFirstRow() == NativeRdb::E_OK);
+
+    int index;
+    std::string columnValue;
+
+    (void)resultSet->GetColumnIndex("album_name", index);
+    resultSet->GetString(index, columnValue);
+    EXPECT_EQ(columnValue, "test_group_photo_album_001");
+
+    (void)resultSet->GetColumnIndex("tag_id", index);
+    resultSet->GetString(index, columnValue);
+    EXPECT_EQ(columnValue, "a|c,d");
+
+    (void)resultSet->GetColumnIndex("group_tag", index);
+    resultSet->GetString(index, columnValue);
+    EXPECT_EQ(columnValue, "a|c,d");
 
     (void)resultSet->GetColumnIndex("cover_uri", index);
     resultSet->GetString(index, columnValue);
@@ -244,6 +299,23 @@ HWTEST_F(CloneRestoreGroupPhotoTest, medialibrary_backup_clone_restore_group_pho
     restoreService->photoInfoMap_ = PHOTO_INFO_MAP_NO_DATA;
     restoreService->RestoreGroupPhoto();
     VerifyGroupPhotoAlbumWithoutData(restoreService->mediaLibraryRdb_);
+}
+
+HWTEST_F(CloneRestoreGroupPhotoTest, medialibrary_backup_clone_restore_group_photo_album_merge_test_001,
+    TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_group_photo_album_merge_test_001");
+    EXPECT_NE(g_rdbStore, nullptr);
+    EXPECT_NE(cloneSource.cloneStorePtr_, nullptr);
+    ClearGroupPhotoData(cloneSource.cloneStorePtr_);
+    std::shared_ptr<NativeRdb::RdbStore> rdbPtr = g_rdbStore->GetRaw();
+    ClearGroupPhotoData(rdbPtr);
+    CreateDataWithMerging(g_rdbStore);
+    restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
+    restoreService->mediaLibraryRdb_ = g_rdbStore->GetRaw();
+    restoreService->photoInfoMap_ = PHOTO_INFO_MAP_NO_DATA;
+    restoreService->RestoreGroupPhoto();
+    VerifyGroupPhotoAlbumWithMerging(restoreService->mediaLibraryRdb_);
 }
 }
 }

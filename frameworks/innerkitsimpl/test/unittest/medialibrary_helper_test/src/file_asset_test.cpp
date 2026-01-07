@@ -249,6 +249,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, FileAsset_SetGet_Test_006, TestSize.Level1)
     const int32_t TEST_EXIST_COMPATIBLE_DUPLICATE = 1;
     fileAsset.SetExistCompatibleDuplicate(TEST_EXIST_COMPATIBLE_DUPLICATE);
     EXPECT_EQ(fileAsset.GetExistCompatibleDuplicate(), TEST_EXIST_COMPATIBLE_DUPLICATE);
+
+    const int64_t CHANGE_TIME = 1;
+    fileAsset.SetChangeTime(CHANGE_TIME);
+    EXPECT_EQ(fileAsset.GetChangeTime(), CHANGE_TIME);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, FileAsset_SetGet_Test_007, TestSize.Level1)

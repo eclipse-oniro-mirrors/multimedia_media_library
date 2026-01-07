@@ -982,15 +982,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_008, T
     EXPECT_NE(res, E_OK);
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_009, TestSize.Level1)
-{
-    ThumbRdbOpt opts;
-    NativeRdb::RdbPredicates predicate{PhotoColumn::PHOTOS_TABLE};
-    int32_t requestId = 1;
-    auto res = ThumbnailGenerateHelper::CreateAstcBatchOnDemand(opts, predicate, requestId);
-    EXPECT_EQ(res, E_ERR);
-}
-
 HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_010, TestSize.Level1)
 {
     ThumbRdbOpt opts;
@@ -1480,7 +1471,8 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_AddThumbnai
     thumbData.id = "0";
     thumbData.dateModified = "data_modified";
     int32_t requestId = 1;
-    IThumbnailHelper::AddThumbnailGenBatchTask(executor, opts, thumbData, requestId);
+    pid_t pid = 1;
+    IThumbnailHelper::AddThumbnailGenBatchTask(executor, opts, thumbData, requestId, pid);
     std::shared_ptr<ThumbnailGenerateWorker> thumbnailWorker =
         ThumbnailGenerateWorkerManager::GetInstance().GetThumbnailWorker(ThumbnailTaskType::FOREGROUND);
     EXPECT_NE(thumbnailWorker, nullptr);

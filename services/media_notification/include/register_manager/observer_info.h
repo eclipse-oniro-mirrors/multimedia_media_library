@@ -27,7 +27,8 @@ class ObserverInfo {
 public:
     sptr<AAFwk::IDataAbilityObserver> observer;
     bool isSystem;
-    std::unordered_set<std::string> observerUris;
+    std::unordered_set<std::string> singleIds;
+    uint32_t callingTokenId;
 };
 
 }

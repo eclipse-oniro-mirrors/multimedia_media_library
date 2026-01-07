@@ -109,7 +109,7 @@ static void MultistagesCaptureManagerTest()
     rdbPredicate.EqualTo(Media::PhotoColumn::PHOTO_ID, photoId);
     Media::MultiStagesCaptureManager::RemovePhotos(rdbPredicate, true);
     Media::MultiStagesCaptureManager::RestorePhotos(rdbPredicate);
-    Media::MultiStagesCaptureManager::QuerySubType(photoId);
+    Media::MultiStagesVideoCaptureManager::QuerySubType(photoId);
 }
 
 static void MultistagesMovingPhotoCaptureManagerTest()
@@ -143,7 +143,8 @@ static void MultistagesVideoCaptureManagerTest()
     Media::MultiStagesVideoCaptureManager &instance =
         Media::MultiStagesVideoCaptureManager::GetInstance();
     int32_t fileId = InsertAsset(videoId);
-    instance.AddVideo(videoId, std::to_string(fileId), filePath);
+    Media::VideoInfo videoInfo = {fileId, Media::VideoCount::SINGLE, filePath, "", ""};
+    instance.AddVideo(videoId, std::to_string(fileId), videoInfo);
 }
 
 static inline void ClearKvStore()

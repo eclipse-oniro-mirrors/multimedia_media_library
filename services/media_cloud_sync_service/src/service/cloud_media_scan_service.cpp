@@ -73,7 +73,7 @@ int32_t CloudMediaScanService::FillMetadata(std::unique_ptr<Metadata>& data)
     if (data->GetFileMediaType() == MEDIA_TYPE_IMAGE) {
         err = MetadataExtractor::ExtractImageMetadata(data);
     } else {
-        err = MetadataExtractor::ExtractAVMetadata(data, Scene::AV_META_SCENE_CLONE);
+        err = MetadataExtractor::ExtractAVMetadata(data);
     }
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "failed to extension data");
     return E_OK;
@@ -106,6 +106,12 @@ int32_t CloudMediaScanService::ScanDownloadedFile(const string& path, CloudMedia
     result.shootingMode = data->GetShootingMode();
     result.shootingModeTag = data->GetShootingModeTag();
     result.frontCamera = data->GetFrontCamera();
+    result.hdrMode = data->GetHdrMode();
+    result.dateTaken = data->GetDateTaken();
+    result.detailTime = data->GetDetailTime();
+    result.dateYear = data->GetDateYear();
+    result.dateMonth = data->GetDateMonth();
+    result.dateDay = data->GetDateDay();
     result.subType = data->GetPhotoSubType();
     result.scanSuccess = true;
     MEDIA_INFO_LOG("ScanDownloadedFile, result: %{public}s", result.ToString().c_str());

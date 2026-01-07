@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -106,7 +107,7 @@ static int32_t GetFaceId(int32_t albumId, int32_t albumSubType, string &groupTag
     }
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetFaceId(data, reply);
 
     IPC::MediaRespVo<GetFaceIdRespBody> respVo;

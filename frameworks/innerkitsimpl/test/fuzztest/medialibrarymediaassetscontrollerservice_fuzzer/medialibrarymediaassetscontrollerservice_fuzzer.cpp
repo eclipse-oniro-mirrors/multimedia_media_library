@@ -20,6 +20,7 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #define private public
 #include "media_assets_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #include "user_define_ipc.h"
 #include "form_info_vo.h"
@@ -87,6 +88,7 @@ static const string EDIT_DATA_VALUE = "{\"imageEffect\":{\"filters\":[{\"name\":
 
 FuzzedDataProvider* FDP;
 shared_ptr<MediaAssetsControllerService> mediaAssetsControllerService = nullptr;
+shared_ptr<AnalysisData::MediaAnalysisDataControllerService> analysisDataControllerService = nullptr;
 
 static inline std::vector<std::string> FuzzVector()
 {
@@ -492,7 +494,7 @@ static void GetAssetAnalysisDataFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAssetsControllerService->GetAssetAnalysisData(data, reply);
+    analysisDataControllerService->GetAssetAnalysisData(data, reply);
 }
 
 static void CloneAssetFuzzer()
@@ -613,7 +615,7 @@ static void StartAssetAnalysisFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAssetsControllerService->StartAssetAnalysis(data, reply);
+    analysisDataControllerService->StartAssetAnalysis(data, reply);
 }
 
 static void GrantPhotoUriPermissionFuzzer()
@@ -996,7 +998,7 @@ static void MediaAssetsControllerServiceSecondFuzzer()
     
     MessageParcel dataParcel;
     MessageParcel reply;
-    mediaAssetsControllerService->GetIndexConstructProgress(dataParcel, reply);
+    analysisDataControllerService->GetIndexConstructProgress(dataParcel, reply);
     mediaAssetsControllerService->PauseDownloadCloudMedia(dataParcel, reply);
     mediaAssetsControllerService->CancelDownloadCloudMedia(dataParcel, reply);
 }
@@ -1005,6 +1007,8 @@ static void Init()
 {
     shared_ptr<MediaAssetsControllerService> mediaAssetsControllerService =
         make_shared<MediaAssetsControllerService>();
+    OHOS::analysisDataControllerService =
+        make_shared<Media::AnalysisData::MediaAnalysisDataControllerService>();
 }
 } // namespace OHOS
 

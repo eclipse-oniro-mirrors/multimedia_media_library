@@ -442,7 +442,7 @@ static void CloudEnhancementGetCountTest()
     cloudEnhancementGetCount.GetStartTimes();
     string photoId = provider->ConsumeBytesAsString(NUM_BYTES);
     cloudEnhancementGetCount.AddStartTime(photoId);
-    cloudEnhancementGetCount.Report(provider->ConsumeBytesAsString(NUM_BYTES), photoId, 0);
+    cloudEnhancementGetCount.Report(provider->ConsumeBytesAsString(NUM_BYTES), photoId, 0, 0);
     cloudEnhancementGetCount.RemoveStartTime(photoId);
     cloudEnhancementGetCount.RemoveStartTime(photoId);
 }
@@ -489,7 +489,7 @@ static void EnhancementServiceCallbackTest()
     int32_t statusCode = provider->ConsumeIntegral<int32_t>();
     uint32_t bytes = provider->ConsumeIntegralInRange<uint32_t>(0, bufferSize);
     Media::CloudEnhancementThreadTask task(provider->ConsumeBytesAsString(NUM_BYTES),
-        statusCode, buffer, bytes, provider->ConsumeBool());
+        statusCode, buffer, bytes, provider->ConsumeBool(), nullptr, 0);
     vector<string> columns;
     Media::MediaLibraryCommand cmd(Media::OperationObject::FILESYSTEM_PHOTO,
         Media::OperationType::QUERY, Media::MediaLibraryApi::API_10);

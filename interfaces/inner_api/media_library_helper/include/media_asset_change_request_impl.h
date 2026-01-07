@@ -93,6 +93,7 @@ private:
     uint32_t movingPhotoVideoBufferSize_;
     uint32_t dataBufferSize_;
     AddResourceMode addResourceMode_;
+    MediaLibrary_ImageFileType imageFileType_ = MediaLibrary_ImageFileType::MEDIA_LIBRARY_IMAGE_JPEG;
 };
 
 }

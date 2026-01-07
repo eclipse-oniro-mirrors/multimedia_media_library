@@ -46,6 +46,7 @@ const std::string PERM_SHORT_TERM_WRITE_IMAGEVIDEO = "ohos.permission.SHORT_TERM
 const std::string PERM_INTERACT_ACROSS_LOCAL_ACCOUNTS = "ohos.permission.INTERACT_ACROSS_LOCAL_ACCOUNTS";
 const std::string CONST_LOGSYSTEM_VERSIONTYPE = "const.logsystem.versiontype";
 const std::string PERM_ACCESS_MEDIALIB_THUMB_DB = "ohos.permission.ACCESS_MEDIALIB_THUMB_DB";
+const std::string PERM_MANAGE_CRITICAL_PHOTOS = "ohos.permission.MANAGE_CRITICAL_PHOTOS";
 const std::string E_POLICY = "E";
 constexpr int SHORT_TERM_PERMISSION_DURATION_300S = 300;
 

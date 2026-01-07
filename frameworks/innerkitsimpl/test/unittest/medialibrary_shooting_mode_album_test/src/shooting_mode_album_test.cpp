@@ -405,4 +405,19 @@ HWTEST_F(ShootingModeAlbumTest, MapShootingModeTagToShootingMode_Test_001, TestS
     shootingMode = ShootingModeAlbum::MapShootingModeTagToShootingMode("-1");
     EXPECT_EQ(shootingMode, "");
 }
+
+HWTEST_F(ShootingModeAlbumTest, LookUpShootingMode_Test_001, TestSize.Level1)
+{
+    ShootingModeValue value = static_cast<ShootingModeValue>(0);
+    EXPECT_EQ(ShootingModeAlbum::LookUpShootingModeAlbumType(value), "");
+    value = ShootingModeValue::PORTRAIT_SHOOTING_MODE;
+    EXPECT_EQ(ShootingModeAlbum::LookUpShootingModeAlbumType(value),
+        std::to_string(static_cast<int32_t>(ShootingModeAlbumType::PORTRAIT)));
+
+    std::string albumType = "0";
+    EXPECT_EQ(ShootingModeAlbum::LookUpShootingModeValues(albumType), "");
+    albumType = "1";
+    EXPECT_EQ(ShootingModeAlbum::LookUpShootingModeValues(albumType),
+        std::to_string(static_cast<int32_t>(ShootingModeValue::PORTRAIT_SHOOTING_MODE)));
+}
 } // namespace OHOS::Media

@@ -157,12 +157,10 @@ HWTEST_F(CloudMediaSyncServiceTestExt, AlbumService_HandleLPathRecords_Test_001,
     CloudMediaAlbumService service;
     PhotoAlbumDto record;
     record.isDelete = false;
-    std::map<std::string, int> lpathRowIdMap;
-    std::shared_ptr<NativeRdb::ResultSet> resultSet = nullptr;
     ChangeInfo::ChangeType changeType = ChangeInfo::ChangeType::INVAILD;
     OnFetchRecordsAlbumRespBody resp;
 
-    int32_t ret = service.HandleLPathRecords(record, lpathRowIdMap, resultSet, changeType, resp);
+    int32_t ret = service.HandleLPathRecords(record, changeType, resp);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(changeType, ChangeInfo::ChangeType::INSERT);
     EXPECT_EQ(resp.stats[StatsIndex::NEW_RECORDS_COUNT], 1);
@@ -173,12 +171,10 @@ HWTEST_F(CloudMediaSyncServiceTestExt, AlbumService_HandleLPathRecords_Test_002,
     CloudMediaAlbumService service;
     PhotoAlbumDto record;
     record.isDelete = true;
-    std::map<std::string, int> lpathRowIdMap;
-    std::shared_ptr<NativeRdb::ResultSet> resultSet = nullptr;
     ChangeInfo::ChangeType changeType = ChangeInfo::ChangeType::INVAILD;
     OnFetchRecordsAlbumRespBody resp;
 
-    int32_t ret = service.HandleLPathRecords(record, lpathRowIdMap, resultSet, changeType, resp);
+    int32_t ret = service.HandleLPathRecords(record, changeType, resp);
     EXPECT_EQ(ret, E_OK);
 }
 

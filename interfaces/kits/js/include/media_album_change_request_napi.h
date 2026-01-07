@@ -50,6 +50,8 @@ enum class AlbumChangeOperation {
     RESET_COVER_URI,
     SET_HIGHLIGHT_ATTRIBUTE,
     SET_UPLOAD_STATUS,
+    SMART_MOVE_ASSETS,
+    CREATE_ANALYSIS_ALBUM,
 };
 
 enum class ParameterType {
@@ -138,6 +140,7 @@ private:
     EXPORT static napi_value JSSetHighlightAttribute(napi_env env, napi_callback_info info);
     EXPORT static bool CheckDismissAssetVaild(std::vector<std::string> &dismissAssets,
         std::vector<std::string> &newAssetArray);
+    EXPORT static napi_value JSCreateAnalysisAlbumRequest(napi_env env, napi_callback_info info);
 
     bool CheckPortraitMergeAlbum();
     bool CheckChangeOperations(napi_env env);
@@ -176,6 +179,7 @@ struct MediaAlbumChangeRequestAsyncContext : public NapiError {
     std::vector<std::string> deleteIds;
     std::vector<int32_t> photoAlbumTypes;
     std::vector<int32_t> photoAlbumSubtypes;
+    int32_t photoAlbumSubType = -1;
     bool allowUpload = false;
 };
 } // namespace Media

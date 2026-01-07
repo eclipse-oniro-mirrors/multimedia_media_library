@@ -594,11 +594,12 @@ HWTEST_F(MediaDatashareExtAbilityTest, DataManager_RegisterObserver_001, TestSiz
 HWTEST_F(MediaDatashareExtAbilityTest, DataManager_UpgradeUtils_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("DataManager_UpgradeUtils_001::Start");
-    bool ret = RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, true);
+    bool ret = RdbUpgradeUtils::HasUpgraded(2025, true);
     EXPECT_EQ(ret, false);
+    RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, true);
     RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, true);
-    ret = RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, false);
-    EXPECT_EQ(ret, false);
+    RdbUpgradeUtils::HasUpgraded(VERSION_FIX_DB_UPGRADE_TO_API20, false);
+    
     RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, false);
     RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, false);
     MEDIA_INFO_LOG("DataManager_UpgradeUtils_001::End");

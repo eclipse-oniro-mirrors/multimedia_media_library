@@ -370,6 +370,14 @@ void MediaLibraryCommand::SetApiFromQuerySetMap()
     }
 }
 
+int32_t MediaLibraryCommand::GetVideoType()
+{
+    if (querySetMap_.find(VIDEO_TYPE_KEYWORD) != querySetMap_.end()) {
+        return std::stoul(querySetMap_[VIDEO_TYPE_KEYWORD]);
+    }
+    return 0;
+}
+
 void MediaLibraryCommand::ParseOprnObjectFromFileUri()
 {
     if (oprnObject_ != OperationObject::UNKNOWN_OBJECT) {

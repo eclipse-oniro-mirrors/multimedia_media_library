@@ -183,7 +183,7 @@ bool CloudMediaPhotoControllerProcessor::GetPropertiesInfo(const PhotosPo &recor
     photosVo.deviceName = record.deviceName.value_or("");
     photosVo.latitude = record.latitude.value_or(0);
     photosVo.longitude = record.longitude.value_or(0);
-    photosVo.userComment = record.userComment.value_or("");
+    this->HandleUserComment(record, photosVo);
     return true;
 }
 
@@ -265,6 +265,9 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.attributesStrongAssociation = photosVo.strongAssociation;
     data.attributesFileSourceType = photosVo.fileSourceType;
     data.attributesStoragePath = photosVo.storagePath;
+    // Safe Album: critical type for children's watch
+    data.attributesCriticalType = photosVo.criticalType;
+    data.attributesIsCritical = photosVo.isCritical;
     return true;
 }
 
@@ -405,4 +408,17 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesHashMap(
     data.stringfields = photosVo.stringfields;
     return true;
 }
+
+bool CloudMediaPhotoControllerProcessor::HandleUserComment(const PhotosPo &record, CloudMdkRecordPhotosVo &photosVo)
+{
+    // Note. no need to transfer userComment which exceed 1024 byte, avoid IPC exceed 200KB
+    CHECK_AND_RETURN_RET_WARN_LOG(record.userComment.value_or("").size() <= USER_COMMENT_LIMIT_SIZE,
+        true,
+        "userComment size %{public}zu exceed %{public}d, skip it",
+        record.userComment.value_or("").size(),
+        USER_COMMENT_LIMIT_SIZE);
+    photosVo.userComment = record.userComment.value_or("");
+    return true;
+}
+
 }  // namespace OHOS::Media::CloudSync

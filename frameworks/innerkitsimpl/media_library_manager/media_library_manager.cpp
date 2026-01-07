@@ -1073,17 +1073,6 @@ int64_t MediaLibraryManager::GetMovingPhotoDateModified(const string &uri)
     return GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, queryResultSet);
 }
 
-shared_ptr<PhotoAssetProxy> MediaLibraryManager::CreatePhotoAssetProxy(
-    const PhotoAssetProxyCallerInfo &callerInfo, CameraShotType cameraShotType)
-{
-    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    MEDIA_ERR_LOG("dataShareHelper is ready, ret = %{public}d.", dataShareHelper != nullptr);
-    shared_ptr<PhotoAssetProxy> photoAssetProxy = make_shared<PhotoAssetProxy>(
-        dataShareHelper, callerInfo, cameraShotType);
-    return photoAssetProxy;
-}
-
 std::unordered_map<std::string, std::string> MediaLibraryManager::GetUrisByOldUris(std::vector<std::string> uris)
 {
     MEDIA_INFO_LOG("Start request uris by old uris, size: %{public}zu", uris.size());

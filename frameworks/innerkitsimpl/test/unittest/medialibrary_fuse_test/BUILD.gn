@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Huawei Device Co., Ltd.
+# Copyright (C) 2024-2025 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -28,20 +28,23 @@ ohos_unittest("medialibrary_fuse_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_SERVICES_PATH}/media_lake_load/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   sources = [
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_daemon.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_hdc_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_hdc_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_high_daemon.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_low_daemon.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_tmp_compatible_dup_vo.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_fuse/src/media_fuse_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_node.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_fuse_hdc_operations_test.cpp",
     "./src/mock_medialibrary_fuse_test.cpp",
     "./src/medialibrary_fuse_test.cpp",
+    "./src/media_fuse_node_test.cpp",
   ]
 
   deps = [

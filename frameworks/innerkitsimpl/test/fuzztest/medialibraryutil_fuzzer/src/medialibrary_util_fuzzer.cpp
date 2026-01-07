@@ -311,6 +311,7 @@ static void ActiveAnalysisTest()
     (void)Media::MediaAnalysisHelper::ParseGeoInfo(fileIds, true);
 }
 
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 static void CloudDownloadTest()
 {
     Media::BackgroundCloudFileProcessor::StartTimer();
@@ -318,6 +319,7 @@ static void CloudDownloadTest()
     std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
     Media::BackgroundCloudFileProcessor::StopTimer();
 }
+#endif
 
 static void CpuUtilsTest()
 {
@@ -399,7 +401,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::MultistageAdapterTest();
     OHOS::MultistageTest();
     OHOS::ActiveAnalysisTest();
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     OHOS::CloudDownloadTest();
+#endif
     OHOS::CpuUtilsTest();
     OHOS::CommonUtilsTest();
     OHOS::CloudSyncUtilsTest();

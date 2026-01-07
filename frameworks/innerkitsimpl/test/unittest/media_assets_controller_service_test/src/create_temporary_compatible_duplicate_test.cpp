@@ -20,6 +20,7 @@
 #include "create_tmp_compatible_dup_vo.h"
 #include "create_tmp_compatible_dup_dto.h"
 #include "media_assets_controller_service.h"
+#include "media_file_utils.h"
 #include "message_parcel.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_data_manager.h"
@@ -66,8 +67,8 @@ static void CreatePhotoTable()
 static void InsertAsset()
 {
     std::string insertSql = R"S(INSERT INTO Photos(data, size, title, display_name, media_type, position, is_temp,
-        time_pending, hidden, date_trashed) VALUES ('/storage/cloud/files/Photo/666/test.heic', 7879, 'test',
-        'test.heic', 1, 0, 0, 0, 0, 0))S";
+        time_pending, hidden, mime_type, date_trashed) VALUES ('/storage/cloud/files/Photo/666/test.heic', 7879,
+        'test', 'test.heic', 1, 0, 0, 0, 0, 'image/heic', 0))S";
     int32_t ret = g_rdbStore->ExecuteSql(insertSql);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Execute sql %{public}s failed", insertSql.c_str());

@@ -55,7 +55,8 @@ public:
     int32_t BatchInsert(MediaLibraryCommand &cmd, int64_t& changedRows,
         std::vector<NativeRdb::ValuesBucket>& values);
     int32_t BatchInsert(int64_t &changedRows, const std::string &table,
-        std::vector<NativeRdb::ValuesBucket> &values, int &rdbError);
+        std::vector<NativeRdb::ValuesBucket> &values, int &rdbError,
+        NativeRdb::ConflictResolution resolution = NativeRdb::ConflictResolution::ON_CONFLICT_NONE);
 
     int32_t Update(MediaLibraryCommand &cmd, int32_t &changedRows);
     int32_t Update(int32_t &changedRows, const std::string &table, const NativeRdb::ValuesBucket &value,

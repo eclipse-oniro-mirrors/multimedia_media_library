@@ -12,15 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #ifndef MEDIALIBRARY_NOTIFY_MULTISTAGES_OBSERVER_H
 #define MEDIALIBRARY_NOTIFY_MULTISTAGES_OBSERVER_H
- 
+
 #include <vector>
-#include "napi/native_api.h"
 #include "parcel.h"
-#include "uv.h"
- 
+
 #include "camera_character_types.h"
 #include "data_ability_helper.h"
 #include "data_ability_observer_stub.h"
@@ -29,7 +27,7 @@
 #include "medialibrary_notify_callback_wrapper.h"
 #include "medialibrary_notify_user_define_observer.h"
 #include "multistages_capture_notify_info.h"
- 
+
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -40,8 +38,8 @@ public:
     MultistagesCaptureOnProcessObserver(const std::string &uri, const ObserverType &observerType)
         : uri_(uri), observerType_(observerType) {}
     virtual ~MultistagesCaptureOnProcessObserver() = default;
- 
-    void OnChange(const NewJsOnChangeCallbackWrapper &callbackWrapper) override;
+
+    void OnChange(const UserDefineCallbackWrapper &callbackWrapper) override;
     std::string ToString() const override
     {
         std::stringstream ss;
@@ -51,17 +49,17 @@ public:
             << "}";
         return ss.str();
     }
- 
+
 private:
     std::shared_ptr<MultistagesCaptureNotifyServerInfo> ConvertWrapperToNotifyInfo(
-        const NewJsOnChangeCallbackWrapper &callbackWrapper);
+        const UserDefineCallbackWrapper &callbackWrapper);
     bool MatchNotifyToObserver(const MultistagesCaptureNotifyType &notifyType, const ObserverType &observerType);
- 
+
 public:
     std::string uri_;
     ObserverType observerType_{ObserverType::UNDEFINED};
 };
- 
+
 } // Media
 } // OHOS
 #endif // MEDIALIBRARY_NOTIFY_MULTISTAGES_OBSERVER_H

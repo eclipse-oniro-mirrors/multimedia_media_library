@@ -423,7 +423,7 @@ HWTEST_F(MediaPermissionCheckTest, MediaPermissionCheckTest_017, TestSize.Level0
     uint32_t businessCode = 3;
     PermissionHeaderReq data;
     EXPECT_EQ(PreparePermissionParam(businessCode, -1, false, headerMap, data), E_SUCCESS);
-    EXPECT_EQ(PermissionCheck::VerifyPermissions(businessCode, data), E_SUCCESS);
+    EXPECT_EQ(PermissionCheck::VerifyPermissions(businessCode, data), E_DOUBLE_CHECK);
     MEDIA_INFO_LOG("MediaPermissionCheckTest_017 end");
 }
 
@@ -446,6 +446,27 @@ HWTEST_F(MediaPermissionCheckTest, MediaPermissionCheckTest_019, TestSize.Level0
     std::unordered_map<std::string, std::string> headerMap;
     EXPECT_EQ(PreparePermissionParam(businessCode, -1, false, headerMap, data), E_SUCCESS);
     EXPECT_EQ(PermissionCheck::VerifyPermissions(businessCode, data), E_SUCCESS);
+}
+
+HWTEST_F(MediaPermissionCheckTest, MediaPermissionCheckTest_020, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("MediaPermissionCheckTest_020 begin");
+    uint32_t businessCode = 3;
+    PermissionHeaderReq data;
+
+    uint32_t tokenId = PermissionUtils::GetTokenId();
+    int32_t permission_type = 4;
+    int32_t file_id = 1;
+    int32_t uri_type = 1;
+    InsertUriPermissionRecord(tokenId, file_id, uri_type, permission_type);
+    std::unordered_map<std::string, std::string> headerMap = {
+        {PermissionHeaderReq::FILE_ID_KEY, to_string(file_id)},
+        {PermissionHeaderReq::URI_TYPE_KEY, to_string(uri_type)},
+    };
+    data = PermissionHeaderReq();
+    EXPECT_EQ(PreparePermissionParam(businessCode, -1, false, headerMap, data), E_SUCCESS);
+    EXPECT_EQ(PermissionCheck::VerifyPermissions(businessCode, data), E_DOUBLE_CHECK);
+    MEDIA_INFO_LOG("MediaPermissionCheckTest_020 end");
 }
 
 HWTEST_F(MediaPermissionCheckTest, MediaPermissionCheckTest_OPENFILE, TestSize.Level0)

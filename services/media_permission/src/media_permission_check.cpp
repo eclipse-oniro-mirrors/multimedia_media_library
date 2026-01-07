@@ -91,14 +91,14 @@ int32_t PermissionCheck::VerifyOpenFilePermissions(uint32_t businessCode, const 
         }
     }
     auto ret = permissionCheck->CheckPermission(businessCode, data);
-    if (ret != E_SUCCESS) {
+    if (ret != E_SUCCESS && ret != E_DOUBLE_CHECK) {
         MEDIA_ERR_LOG("Permission Denied! err = %{public}d", ret);
         CollectPermissionInfo(command, mode, false,
             PermissionUsedTypeValue::SECURITY_COMPONENT_TYPE);
         return E_PERMISSION_DENIED;
     }
     MEDIA_INFO_LOG("VerifyPermissions API code=%{public}d success", businessCode);
-    return E_SUCCESS;
+    return ret;
 }
 
 bool PermissionCheck::GetNeedPermissionCheck() const
@@ -171,7 +171,7 @@ int32_t PermissionCheck::VerifyPermissions(uint32_t businessCode, const Permissi
         return E_SUCCESS;
     }
     auto ret = permissionCheck->CheckPermission(businessCode, data);
-    if (ret != E_SUCCESS) {
+    if (ret != E_SUCCESS && ret != E_DOUBLE_CHECK) {
         MEDIA_DEBUG_LOG("checkPermission API code=%{public}d fail, err=%{public}d", businessCode, ret);
         // if bypass success, return E_PERMISSION_DB_BYPASS
         CHECK_AND_RETURN_RET(!data.getIsDBBypass(), DbPermissionCheck::CheckDBPermissionBypass(businessCode, data));

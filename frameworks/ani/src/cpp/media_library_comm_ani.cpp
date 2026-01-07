@@ -20,8 +20,8 @@
 #include <ani.h>
 #include "file_asset_ani.h"
 #include "media_file_utils.h"
-#include "media_photo_asset_proxy.h"
 #include "medialibrary_ani_utils.h"
+#include "photo_proxy.h"
 
 namespace OHOS {
 namespace Media {

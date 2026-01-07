@@ -332,6 +332,10 @@ public:
     static ani_status GetPhotoAlbumAniArray(ani_env *env, ani_object arg, std::vector<PhotoAlbumAni*> &array);
     static ani_status ToPhotoAlbumAniArray(ani_env *env, std::vector<unique_ptr<PhotoAlbum>> &array,
         ani_object &aniArray);
+    static ani_status ToAlbumOrderAniArray(ani_env *env, std::vector<unique_ptr<AlbumOrder>> &array,
+        ani_object &aniArray);
+    static ani_status ToPhotoAssetCustomRecordAniArray(ani_env *env,
+        std::vector<unique_ptr<PhotoAssetCustomRecord>> &array, ani_object &aniArray);
 
     static ani_status GetArrayBuffer(ani_env *env, ani_arraybuffer arg, void *&buffer, size_t &size);
 

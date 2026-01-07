@@ -24,6 +24,7 @@
 
 #include "create_asset_vo.h"
 #include "user_define_ipc_client.h"
+#include "media_file_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_unistore_manager.h"

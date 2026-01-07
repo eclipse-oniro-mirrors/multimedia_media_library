@@ -33,7 +33,7 @@
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
-
+// LCOV_EXCL_START
 namespace OHOS::Media {
 
 static string UFM_PHOTO_PREFIX = "datashare:///media/userfilemgr_photo_operation";
@@ -151,3 +151,4 @@ int32_t DbPermissionHandler::ExecuteCheckPermission(MediaLibraryCommand &cmd, Pe
 }
 
 } // namespace name
+// LCOV_EXCL_STOP

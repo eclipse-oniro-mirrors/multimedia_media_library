@@ -35,7 +35,6 @@
 #include "on_fetch_photos_vo.h"
 #include "photo_album_column.h"
 #include "photos_po.h"
-#include "photo_album_dto.h"
 #include "userfile_manager_types.h"
 
 namespace OHOS::Media::CloudSync {

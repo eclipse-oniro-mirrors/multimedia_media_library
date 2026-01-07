@@ -22,6 +22,7 @@
 
 #include "media_albums_controller_service.h"
 
+#include "media_file_utils.h"
 #include "vision_db_sqls.h"
 #include "query_albums_vo.h"
 #include "user_define_ipc_client.h"

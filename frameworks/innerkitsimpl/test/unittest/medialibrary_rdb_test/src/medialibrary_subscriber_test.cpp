@@ -37,6 +37,10 @@ static const std::string DATA_CLONE_DESCRIPTION_JSON =
     PhotoColumn::FILES_LOCAL_DIR + ".backup/restore/dataclone_description.json";
 const static std::string CLONE_FOLDER_PATH = PhotoColumn::FILES_LOCAL_DIR + ".backup/clone";
 const static std::string RESTORE_FOLDER_PATH = PhotoColumn::FILES_LOCAL_DIR + ".backup/restore";
+const string CLOUD_UPDATE_EVENT = "usual.event.DUE_HAP_CFG_UPDATED";
+const string CLOUD_EVENT_INFO_TYPE = "type";
+const string CLOUD_EVENT_INFO_TYPE_VALUE = "medialibrary_kit_whitelist";
+const string CLOUD_EVENT_INFO_TYPE_INVALID_VALUE = "invalidType";
 HWTEST_F(MediaLibraryRdbTest, medialib_Subscribe_test_001, TestSize.Level1)
 {
     bool ret = MedialibrarySubscriber::Subscribe();
@@ -227,6 +231,31 @@ HWTEST_F(MediaLibraryRdbTest, medialib_OnReceiveEvent_test_009, TestSize.Level1)
     eventData.SetWant(want);
     medialibrarySubscriberPtr->OnReceiveEvent(eventData);
     EXPECT_EQ(MedialibrarySubscriber::isWifiConnected_, true);
+}
+
+HWTEST_F(MediaLibraryRdbTest, medialib_OnReceiveEvent_test_0010, TestSize.Level1)
+{
+    MedialibrarySubscriber medialibrarySubscriber;
+    EventFwk::CommonEventData eventData;
+    string action = CLOUD_UPDATE_EVENT;
+    AAFwk::Want want = eventData.GetWant();
+    want.SetAction(action);
+    want.SetParam(CLOUD_EVENT_INFO_TYPE, CLOUD_EVENT_INFO_TYPE_VALUE);
+    eventData.SetWant(want);
+    medialibrarySubscriber.OnReceiveEvent(eventData);
+    EXPECT_EQ(want.GetAction(), CLOUD_UPDATE_EVENT);
+    action = "invalidAction";
+    want.SetAction(action);
+    eventData.SetWant(want);
+    medialibrarySubscriber.OnReceiveEvent(eventData);
+    EXPECT_EQ(want.GetAction(), "invalidAction");
+    action = CLOUD_UPDATE_EVENT;
+    want.SetAction(action);
+    want.SetParam(CLOUD_EVENT_INFO_TYPE, CLOUD_EVENT_INFO_TYPE_INVALID_VALUE);
+    eventData.SetWant(want);
+    medialibrarySubscriber.OnReceiveEvent(eventData);
+    EXPECT_EQ(want.GetAction(), CLOUD_UPDATE_EVENT);
+    medialibrarySubscriber.AbortCommonEvent();
 }
 
 HWTEST_F(MediaLibraryRdbTest, medialib_GetNowTime_test_001, TestSize.Level1)

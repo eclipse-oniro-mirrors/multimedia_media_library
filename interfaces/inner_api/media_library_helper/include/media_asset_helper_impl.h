@@ -16,9 +16,11 @@
 #ifndef INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_ASSET_HELPER_IMPL_H
 #define INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_ASSET_HELPER_IMPL_H
 
+#include "datashare_helper.h"
+#include "file_asset.h"
 #include "nocopyable.h"
 #include "media_asset_helper.h"
-#include "media_photo_asset_proxy.h"
+#include "photo_proxy.h"
 
 namespace OHOS {
 namespace Media {

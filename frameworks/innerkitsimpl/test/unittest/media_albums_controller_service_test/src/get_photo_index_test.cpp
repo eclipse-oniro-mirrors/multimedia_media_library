@@ -39,6 +39,7 @@
 #include "result_set_utils.h"
 #include "get_photo_index_vo.h"
 #include "query_result_vo.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media {
 using namespace std;

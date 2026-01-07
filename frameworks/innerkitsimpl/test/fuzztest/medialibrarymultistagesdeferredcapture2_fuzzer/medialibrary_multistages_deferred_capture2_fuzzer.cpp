@@ -192,7 +192,10 @@ static void MultistagesCaptureDeferredPhotoProcSessionCallbackTest()
     uint8_t *addr = new uint8_t();
     long bytes = provider->ConsumeIntegral<long>();
     uint32_t cloudImageEnhanceFlag = provider->ConsumeIntegral<uint32_t>();
-    callback->OnProcessImageDone(photoId, picture, cloudImageEnhanceFlag);
+    DpsMetadata metadata;
+    constexpr const char* cloudFlag = "cloudImageEnhanceFlag";
+    metadata.Set(cloudFlag, cloudImageEnhanceFlag);
+    callback->OnProcessImageDone(photoId, picture, metadata);
     callback->OnProcessImageDone(photoId, addr, bytes, cloudImageEnhanceFlag);
 
     photoId = "/test" + SPLIT_PATH + provider->ConsumeBytesAsString(NUM_BYTES);

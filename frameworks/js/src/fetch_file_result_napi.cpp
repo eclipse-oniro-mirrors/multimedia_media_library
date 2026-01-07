@@ -15,6 +15,7 @@
 #define MLOG_TAG "FetchResultNapi"
 
 #include "fetch_file_result_napi.h"
+#include <set>
 
 #include "album_napi.h"
 #include "medialibrary_client_errno.h"
@@ -23,6 +24,7 @@
 #include "media_file_utils.h"
 #include "album_order_napi.h"
 #include "photo_album_napi.h"
+#include "media_log.h"
 
 using OHOS::HiviewDFX::HiLog;
 using OHOS::HiviewDFX::HiLogLabel;
@@ -33,6 +35,8 @@ namespace Media {
 thread_local napi_ref FetchFileResultNapi::sConstructor_ = nullptr;
 thread_local napi_ref FetchFileResultNapi::userFileMgrConstructor_ = nullptr;
 thread_local napi_ref FetchFileResultNapi::photoAccessHelperConstructor_ = nullptr;
+
+const uint32_t MAX_SIZE = 500;
 
 FetchFileResultNapi::FetchFileResultNapi()
     : env_(nullptr) {}
@@ -418,6 +422,9 @@ napi_value FetchFileResultNapi::PhotoAccessHelperInit(napi_env env, napi_value e
             DECLARE_NAPI_FUNCTION("getObjectByPosition", JSGetPositionObject),
             DECLARE_NAPI_FUNCTION("getAllObjects", JSGetAllObject),
             DECLARE_NAPI_FUNCTION("getRangeObjects", JSGetRangeObjects),
+            DECLARE_NAPI_FUNCTION("contains", JSContains),
+            DECLARE_NAPI_FUNCTION("getObjectsByIndexSet", JSGetObjectsByIndexSet),
+            DECLARE_NAPI_FUNCTION("getIndex", JSGetIndex),
             DECLARE_NAPI_FUNCTION("close", JSClose)
         }
     };
@@ -1103,10 +1110,6 @@ napi_value FetchFileResultNapi::JSGetRangeObjects(napi_env env, napi_callback_in
     NAPI_ASSERT(env, argc <= ARGS_THREE, "requires 3 parameter maximum");
     napi_get_undefined(env, &result);
     unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
-    if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-        return nullptr;
-    }
     status = napi_unwrap(env, thisVar, reinterpret_cast<void **>(&asyncContext->objectInfo));
     if (status == napi_ok && CheckIfFFRNapiNotEmpty(asyncContext->objectInfo)) {
         if (argc == ARGS_THREE) {
@@ -1134,6 +1137,335 @@ napi_value FetchFileResultNapi::JSGetRangeObjects(napi_env env, napi_callback_in
     } else {
         NAPI_ERR_LOG("JSGetRangeObjects obj == nullptr, status: %{public}d", status);
         NAPI_ASSERT(env, false, "JSGetRangeObjects obj == nullptr");
+    }
+    return result;
+}
+
+static void GetContainsCompleteCallback(napi_env env, napi_status status, FetchFileResultAsyncContext* context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetContainsCompleteCallback");
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_FAIL);
+
+    if (context->error == ERR_DEFAULT) {
+        CHECK_ARGS_RET_VOID(env,
+            napi_get_boolean(env, context->fetchResultIndexId != -1, &jsContext->data), JS_E_INNER_FAIL);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
+static void GetIndexCompleteCallback(napi_env env, napi_status status, FetchFileResultAsyncContext* context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetIndexCompleteCallback");
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_FAIL);
+
+    if (context->error == ERR_DEFAULT) {
+        CHECK_ARGS_RET_VOID(env,
+            napi_create_int32(env, context->fetchResultIndexId, &jsContext->data), JS_E_INNER_FAIL);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
+static napi_status CheckArgValuePre(napi_env env, void* data, const napi_value arg)
+{
+    auto* context = static_cast<FetchFileResultAsyncContext*>(data);
+    if (context == nullptr) {
+        NAPI_ERR_LOG("context is nullptr.");
+        return napi_invalid_arg;
+    }
+    if (context->objectInfo == nullptr) {
+        NAPI_ERR_LOG("context->objectInfo is nullptr.");
+        return napi_invalid_arg;
+    }
+    switch (context->objectInfo->GetFetchResType()) {
+        case FetchResType::TYPE_FILE:
+            CHECK_STATUS_RET(napi_unwrap(env, arg, reinterpret_cast<void**>(&context->fileAssetParameter)),
+                "Failed to unwrap arg.");
+            CHECK_COND_RET(context->fileAssetParameter != nullptr, napi_invalid_arg,
+                "Failed to get FileAssetNapi object");
+            context->indexObjectId = context->fileAssetParameter->GetFileId();
+            break;
+        case FetchResType::TYPE_ALBUM:
+            CHECK_STATUS_RET(napi_unwrap(env, arg, reinterpret_cast<void**>(&context->albumAssetParameter)),
+                "Failed to unwrap arg.");
+            CHECK_COND_RET(context->albumAssetParameter != nullptr, napi_invalid_arg,
+                "Failed to get AlbumAssetNapi object");
+            context->indexObjectId = context->albumAssetParameter->GetAlbumId();
+            break;
+        case FetchResType::TYPE_PHOTOALBUM:
+            CHECK_STATUS_RET(napi_unwrap(env, arg, reinterpret_cast<void**>(&context->photoAlbumParameter)),
+                "Failed to unwrap arg.");
+            CHECK_COND_RET(context->photoAlbumParameter != nullptr, napi_invalid_arg,
+                "Failed to get PhotoAlbumNapi object");
+            context->indexObjectId = context->photoAlbumParameter->GetAlbumId();
+            context->albumType = static_cast<int32_t>(context->photoAlbumParameter->GetPhotoAlbumType());
+            context->albumSubType = static_cast<int32_t>(context->photoAlbumParameter->GetPhotoAlbumSubType());
+            break;
+        default:
+            NAPI_INFO_LOG("need more check.");
+            return napi_invalid_arg;
+    }
+    return napi_ok;
+}
+
+static napi_status CheckArgValue(napi_env env, void* data, const napi_value arg)
+{
+    if (CheckArgValuePre(env, data, arg) == napi_ok) {
+        return napi_ok;
+    }
+    auto* context = static_cast<FetchFileResultAsyncContext*>(data);
+    if (context == nullptr) {
+        NAPI_ERR_LOG("context is nullptr.");
+        return napi_invalid_arg;
+    }
+    if (context->objectInfo == nullptr) {
+        NAPI_ERR_LOG("context->objectInfo is nullptr.");
+        return napi_invalid_arg;
+    }
+    switch (context->objectInfo->GetFetchResType()) {
+        case FetchResType::TYPE_SMARTALBUM:
+            CHECK_STATUS_RET(napi_unwrap(env, arg, reinterpret_cast<void**>(&context->smartAlbumAssetParameter)),
+                "Failed to unwrap arg.");
+            CHECK_COND_RET(context->smartAlbumAssetParameter != nullptr, napi_invalid_arg,
+                "Failed to get SmartAlbumNapi object");
+            context->indexObjectId = context->smartAlbumAssetParameter->GetSmartAlbumId();
+            break;
+        case FetchResType::TYPE_CUSTOMRECORD:
+            CHECK_STATUS_RET(napi_unwrap(env, arg, reinterpret_cast<void**>(&context->customRecordAssetParameter)),
+                "Failed to unwrap arg.");
+            CHECK_COND_RET(context->customRecordAssetParameter != nullptr, napi_invalid_arg,
+                "Failed to get CustomRecordNapi object");
+            context->indexObjectId = context->customRecordAssetParameter->GetFileId();
+            break;
+        case FetchResType::TYPE_ALBUMORDER:
+            CHECK_STATUS_RET(napi_unwrap(env, arg, reinterpret_cast<void**>(&context->albumOrderParameter)),
+                "Failed to unwrap arg.");
+            CHECK_COND_RET(context->albumOrderParameter != nullptr, napi_invalid_arg,
+                "Failed to get AlbumOrderNapi object");
+            context->indexObjectId = context->albumOrderParameter->GetAlbumId();
+            break;
+        default:
+            NAPI_ERR_LOG("unsupported FetchResType");
+            return napi_invalid_arg;
+    }
+    return napi_ok;
+}
+
+static napi_status ProcessIndexSet(napi_env env, void* data, const napi_value arg)
+{
+    auto* context = static_cast<FetchFileResultAsyncContext*>(data);
+    if (context == nullptr) {
+        NAPI_ERR_LOG("context is nullptr.");
+        return napi_invalid_arg;
+    }
+    if (context->objectInfo == nullptr) {
+        NAPI_ERR_LOG("context->objectInfo is nullptr.");
+        return napi_invalid_arg;
+    }
+    napi_valuetype valueType;
+    napi_typeof(env, arg, &valueType);
+    if (valueType == napi_undefined || valueType == napi_null) {
+        NAPI_ERR_LOG("JSGetObjectsByIndexSet indexSet is null or undefined");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "indexSet is null or undefined");
+        return napi_invalid_arg;
+    }
+    napi_status status = MediaLibraryNapiUtils::GetInt32Array(env, arg, context->indexSet);
+    if (status != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "indexSet is not int.");
+        return napi_invalid_arg;
+    }
+    if (context->indexSet.empty()) {
+        NAPI_ERR_LOG("JSGetObjectsByIndexSet indexSet is empty!");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "indexSet is empty");
+        return napi_invalid_arg;
+    }
+    if (context->indexSet.size() > MAX_SIZE) {
+        NAPI_ERR_LOG("JSGetObjectsByIndexSet indexSet.size exceeds MAX_SIZE");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "indexSet.size exceeds MAX_SIZE");
+        return napi_invalid_arg;
+    }
+    std::set<int32_t> tempIndexSet(context->indexSet.begin(), context->indexSet.end());
+    int32_t minIndex = *tempIndexSet.begin();
+    int32_t maxIndex = *tempIndexSet.rbegin();
+    int32_t total_count = 0;
+    GetCountFromObject(context->objectInfo, total_count);
+    if (minIndex < 0 || maxIndex >= total_count) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Index exceeds range of objects");
+        return napi_invalid_arg;
+    }
+    return napi_ok;
+}
+
+napi_value FetchFileResultNapi::JSContains(napi_env env, napi_callback_info info)
+{
+    napi_status status;
+    napi_value result = nullptr;
+    size_t argc = ARGS_ONE;
+    napi_value argv[ARGS_ONE] = { 0 };
+    napi_value thisVar = nullptr;
+    napi_valuetype valueType;
+    MediaLibraryTracer tracer;
+    tracer.Start("JSContains");
+
+    CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_E_INNER_FAIL);
+    NAPI_ASSERT(env, argc == ARGS_ONE, "Number of args is invalid");
+    CHECK_ARGS(env, napi_typeof(env, argv[PARAM0], &valueType), JS_E_INNER_FAIL);
+    NAPI_ASSERT(env, valueType == napi_object || valueType == napi_undefined || valueType == napi_null,
+        "Invalid argument type");
+    napi_get_undefined(env, &result);
+    unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
+    status = napi_unwrap(env, thisVar, reinterpret_cast<void **>(&asyncContext->objectInfo));
+    if (status == napi_ok && CheckIfFFRNapiNotEmpty(asyncContext->objectInfo)) {
+        if (valueType == napi_object) {
+            status = CheckArgValue(env, asyncContext.get(), argv[PARAM0]);
+            NAPI_ASSERT(env, status == napi_ok, "CheckArgValue failed");
+        }
+        NAPI_CREATE_PROMISE(env, asyncContext->callbackRef, asyncContext->deferred, result);
+        napi_value resource = nullptr;
+        NAPI_CREATE_RESOURCE_NAME(env, resource, "JSContains", asyncContext);
+        asyncContext->objectPtr = asyncContext->objectInfo->propertyPtr;
+        CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, result, "propertyPtr is nullptr");
+
+        status = napi_create_async_work(
+            env, nullptr, resource, [](napi_env env, void *data) {
+                auto context = static_cast<FetchFileResultAsyncContext*>(data);
+                context->fetchResultIndexId = context->GetObjectIndexById();
+            },
+            reinterpret_cast<napi_async_complete_callback>(GetContainsCompleteCallback),
+            static_cast<void *>(asyncContext.get()), &asyncContext->work);
+        if (status != napi_ok) {
+            napi_get_undefined(env, &result);
+        } else {
+            napi_queue_async_work_with_qos(env, asyncContext->work, napi_qos_user_initiated);
+            asyncContext.release();
+        }
+    } else {
+        NAPI_ERR_LOG("JSContains obj == nullptr, status: %{public}d", status);
+        NAPI_ASSERT(env, false, "JSContains obj == nullptr");
+    }
+    return result;
+}
+
+napi_value FetchFileResultNapi::JSGetObjectsByIndexSet(napi_env env, napi_callback_info info)
+{
+    napi_status status;
+    napi_value result = nullptr;
+    size_t argc = ARGS_ONE;
+    napi_value argv[ARGS_ONE] = { 0 };
+    napi_value thisVar = nullptr;
+    MediaLibraryTracer tracer;
+    tracer.Start("JSGetObjectsByIndexSet");
+
+    CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_E_INNER_FAIL);
+    NAPI_ASSERT(env, argc == ARGS_ONE, "Number of args is invalid");
+    bool isArray = false;
+    CHECK_ARGS(env, napi_is_array(env, argv[PARAM0], &isArray), JS_E_PARAM_INVALID);
+    napi_get_undefined(env, &result);
+    unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
+    status = napi_unwrap(env, thisVar, reinterpret_cast<void **>(&asyncContext->objectInfo));
+    if (status == napi_ok && CheckIfFFRNapiNotEmpty(asyncContext->objectInfo)) {
+        status = ProcessIndexSet(env, asyncContext.get(), argv[PARAM0]);
+        NAPI_ASSERT(env, status == napi_ok, "ProcessIndexSet failed");
+        NAPI_CREATE_PROMISE(env, asyncContext->callbackRef, asyncContext->deferred, result);
+        napi_value resource = nullptr;
+        NAPI_CREATE_RESOURCE_NAME(env, resource, "JSGetObjectsByIndexSet", asyncContext);
+        asyncContext->objectPtr = asyncContext->objectInfo->propertyPtr;
+        CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, result, "propertyPtr is nullptr");
+
+        status = napi_create_async_work(
+            env, nullptr, resource, [](napi_env env, void *data) {
+                auto context = static_cast<FetchFileResultAsyncContext *>(data);
+                context->GetObjectsByIndexSet();
+            },
+            reinterpret_cast<napi_async_complete_callback>(GetAllObjectCompleteCallback),
+            static_cast<void *>(asyncContext.get()),
+            &asyncContext->work);
+        if (status != napi_ok) {
+            napi_get_undefined(env, &result);
+        } else {
+            napi_queue_async_work_with_qos(env, asyncContext->work, napi_qos_user_initiated);
+            asyncContext.release();
+        }
+    } else {
+        NAPI_ERR_LOG("JSGetObjectsByIndexSet obj == nullptr, status: %{public}d", status);
+        NAPI_ASSERT(env, false, "JSGetObjectsByIndexSet obj == nullptr");
+    }
+    return result;
+}
+
+napi_value FetchFileResultNapi::JSGetIndex(napi_env env, napi_callback_info info)
+{
+    napi_status status;
+    napi_value result = nullptr;
+    size_t argc = ARGS_ONE;
+    napi_value argv[ARGS_ONE] = { 0 };
+    napi_value thisVar = nullptr;
+    napi_valuetype valueType;
+    MediaLibraryTracer tracer;
+    tracer.Start("JSGetIndex");
+
+    CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_E_INNER_FAIL);
+    NAPI_ASSERT(env, argc == ARGS_ONE, "Number of args is invalid");
+    CHECK_ARGS(env, napi_typeof(env, argv[PARAM0], &valueType), JS_E_INNER_FAIL);
+    NAPI_ASSERT(env, valueType == napi_object || valueType == napi_undefined || valueType == napi_null,
+        "Invalid argument type");
+    napi_get_undefined(env, &result);
+    unique_ptr<FetchFileResultAsyncContext> asyncContext = make_unique<FetchFileResultAsyncContext>();
+    status = napi_unwrap(env, thisVar, reinterpret_cast<void **>(&asyncContext->objectInfo));
+    if (status == napi_ok && CheckIfFFRNapiNotEmpty(asyncContext->objectInfo)) {
+        if (valueType == napi_object) {
+            status = CheckArgValue(env, asyncContext.get(), argv[PARAM0]);
+            NAPI_ASSERT(env, status == napi_ok, "CheckArgValue failed");
+        }
+        NAPI_CREATE_PROMISE(env, asyncContext->callbackRef, asyncContext->deferred, result);
+        napi_value resource = nullptr;
+        NAPI_CREATE_RESOURCE_NAME(env, resource, "JSGetIndex", asyncContext);
+        asyncContext->objectPtr = asyncContext->objectInfo->propertyPtr;
+        CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, result, "propertyPtr is nullptr");
+
+        status = napi_create_async_work(
+            env, nullptr, resource, [](napi_env env, void *data) {
+                auto context = static_cast<FetchFileResultAsyncContext*>(data);
+                context->fetchResultIndexId = context->GetObjectIndexById();
+            },
+            reinterpret_cast<napi_async_complete_callback>(GetIndexCompleteCallback),
+            static_cast<void *>(asyncContext.get()), &asyncContext->work);
+        if (status != napi_ok) {
+            napi_get_undefined(env, &result);
+        } else {
+            napi_queue_async_work_with_qos(env, asyncContext->work, napi_qos_user_initiated);
+            asyncContext.release();
+        }
+    } else {
+        NAPI_ERR_LOG("JSGetIndex obj == nullptr, status: %{public}d", status);
+        NAPI_ASSERT(env, false, "JSGetIndex obj == nullptr");
     }
     return result;
 }
@@ -1462,6 +1794,137 @@ void FetchFileResultAsyncContext::GetObjectsInRange()
             NAPI_ERR_LOG("unsupported FetchResType");
             break;
     }
+}
+
+void FetchFileResultAsyncContext::GetPhotosInIndexSet()
+{
+    CHECK_NULL_PTR_RETURN_VOID(objectPtr, "objectPtr is nullptr");
+    if (indexSet.empty()) {
+        return;
+    }
+    switch (objectPtr->fetchResType_) {
+        case FetchResType::TYPE_ALBUM: {
+            CHECK_NULL_PTR_RETURN_VOID(objectPtr->fetchAlbumResult_, "fetchAlbumResult_ is nullptr");
+            auto fetchResult = objectPtr->fetchAlbumResult_;
+            for (size_t i = 0; i < indexSet.size(); i++) {
+                auto album = fetchResult->GetObjectAtPosition(indexSet[i]);
+                CHECK_AND_CONTINUE(album != nullptr);
+                fileAlbumArray.push_back(move(album));
+            }
+            break;
+        }
+        case FetchResType::TYPE_PHOTOALBUM: {
+            CHECK_NULL_PTR_RETURN_VOID(objectPtr->fetchPhotoAlbumResult_, "fetchPhotoAlbumResult_ is nullptr");
+            auto fetchResult = objectPtr->fetchPhotoAlbumResult_;
+            for (size_t i = 0; i < indexSet.size(); i++) {
+                auto photoAlbum = fetchResult->GetObjectAtPosition(indexSet[i]);
+                CHECK_AND_CONTINUE(photoAlbum != nullptr);
+                photoAlbum->SetUserId(fetchResult->GetUserId());
+                filePhotoAlbumArray.push_back(move(photoAlbum));
+            }
+            break;
+        }
+        case FetchResType::TYPE_SMARTALBUM: {
+            CHECK_NULL_PTR_RETURN_VOID(objectPtr->fetchSmartAlbumResult_, "fetchSmartAlbumResult_ is nullptr");
+            auto fetchResult = objectPtr->fetchSmartAlbumResult_;
+            for (size_t i = 0; i < indexSet.size(); i++) {
+                auto smartAlbum = fetchResult->GetObjectAtPosition(indexSet[i]);
+                CHECK_AND_CONTINUE(smartAlbum != nullptr);
+                fileSmartAlbumArray.push_back(move(smartAlbum));
+            }
+            break;
+        }
+        default:
+            NAPI_INFO_LOG("need more check.");
+            break;
+    }
+}
+
+void FetchFileResultAsyncContext::GetObjectsByIndexSet()
+{
+    CHECK_NULL_PTR_RETURN_VOID(objectPtr, "objectPtr is nullptr");
+    if (indexSet.empty()) {
+        return;
+    }
+    FetchFileResultAsyncContext::GetPhotosInIndexSet();
+    switch (objectPtr->fetchResType_) {
+        case FetchResType::TYPE_FILE: {
+            CHECK_NULL_PTR_RETURN_VOID(objectPtr->fetchFileResult_, "fetchFileResult_ is nullptr");
+            auto fetchResult = objectPtr->fetchFileResult_;
+            for (size_t i = 0; i < indexSet.size(); i++) {
+                auto file = fetchResult->GetObjectAtPosition(indexSet[i]);
+                CHECK_AND_CONTINUE(file != nullptr);
+                file->SetUserId(fetchResult->GetUserId());
+                fileAssetArray.push_back(move(file));
+            }
+            break;
+        }
+        case FetchResType::TYPE_CUSTOMRECORD: {
+            CHECK_NULL_PTR_RETURN_VOID(objectPtr->fetchCustomRecordResult_, "fetchCustomRecordResult_ is nullptr");
+            auto fetchResult = objectPtr->fetchCustomRecordResult_;
+            for (size_t i = 0; i < indexSet.size(); i++) {
+                auto customRecord = fetchResult->GetObjectAtPosition(indexSet[i]);
+                CHECK_AND_CONTINUE(customRecord != nullptr);
+                customRecordArray.push_back(move(customRecord));
+            }
+            break;
+        }
+        case FetchResType::TYPE_ALBUMORDER: {
+            CHECK_NULL_PTR_RETURN_VOID(objectPtr->fetchAlbumOrderResult_, "fetchAlbumOrderResult_ is nullptr");
+            auto fetchResult = objectPtr->fetchAlbumOrderResult_;
+            for (size_t i = 0; i < indexSet.size(); i++) {
+                auto albumOrder = fetchResult->GetObjectAtPosition(indexSet[i]);
+                CHECK_AND_CONTINUE(albumOrder != nullptr);
+                fileAlbumOrderArray.push_back(move(albumOrder));
+            }
+            break;
+        }
+        default:
+            NAPI_ERR_LOG("unsupported FetchResType");
+            break;
+    }
+}
+
+int32_t FetchFileResultAsyncContext::GetObjectIndexById()
+{
+    int32_t index = -1;
+    CHECK_COND_RET(objectPtr != nullptr, index, "objectPtr is nullptr");
+    switch (objectPtr->fetchResType_) {
+        case FetchResType::TYPE_FILE: {
+            CHECK_COND_RET(objectPtr->fetchFileResult_, index, "fetchFileResult_ is nullptr");
+            index = objectPtr->fetchFileResult_->GetObjectIndexById(indexObjectId);
+            break;
+        }
+        case FetchResType::TYPE_ALBUM: {
+            CHECK_COND_RET(objectPtr->fetchAlbumResult_, index, "fetchAlbumResult_ is nullptr");
+            index = objectPtr->fetchAlbumResult_->GetObjectIndexById(indexObjectId);
+            break;
+        }
+        case FetchResType::TYPE_PHOTOALBUM: {
+            CHECK_COND_RET(objectPtr->fetchPhotoAlbumResult_, index, "fetchPhotoAlbumResult_ is nullptr");
+            index = objectPtr->fetchPhotoAlbumResult_->GetAlbumIndex(indexObjectId, albumType, albumSubType);
+            break;
+        }
+        case FetchResType::TYPE_SMARTALBUM: {
+            CHECK_COND_RET(objectPtr->fetchSmartAlbumResult_, index, "fetchSmartAlbumResult_ is nullptr");
+            index = objectPtr->fetchSmartAlbumResult_->GetObjectIndexById(indexObjectId);
+            break;
+        }
+        case FetchResType::TYPE_CUSTOMRECORD: {
+            CHECK_COND_RET(objectPtr->fetchCustomRecordResult_, index, "fetchCustomRecordResult_ is nullptr");
+            index = objectPtr->fetchCustomRecordResult_->GetObjectIndexById(indexObjectId);
+            break;
+        }
+        case FetchResType::TYPE_ALBUMORDER: {
+            CHECK_COND_RET(objectPtr->fetchAlbumOrderResult_, index, "fetchAlbumOrderResult_ is nullptr");
+            index = objectPtr->fetchAlbumOrderResult_->GetObjectIndexById(indexObjectId);
+            break;
+        }
+        default:
+            NAPI_ERR_LOG("unsupported FetchResType");
+            break;
+    }
+    return index;
 }
 
 bool FetchFileResultNapi::CheckIfPropertyPtrNull()

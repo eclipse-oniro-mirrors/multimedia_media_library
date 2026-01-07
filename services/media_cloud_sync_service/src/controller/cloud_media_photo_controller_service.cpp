@@ -128,7 +128,6 @@ int32_t CloudMediaPhotoControllerService::GetCreatedRecords(MessageParcel &data,
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     int32_t size = reqBody.size;
-    MEDIA_INFO_LOG("enter CloudMediaPhotoControllerService::GetCreatedRecords %{public}d", size);
     if (size <= 0 || size > LIMIT_SIZE) {
         MEDIA_ERR_LOG("GetCreatedRecords param error, size: %{public}d", size);
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_MEDIA_CLOUD_ARGS_INVAILD);
@@ -144,7 +143,8 @@ int32_t CloudMediaPhotoControllerService::GetCreatedRecords(MessageParcel &data,
         createdRecordsList.emplace_back(this->processor_.ConvertRecordPoToVo(createdRecord));
     }
     CloudMdkRecordPhotosRespBody respBody{createdRecordsList};
-    MEDIA_INFO_LOG("exit CloudMediaPhotoControllerService::GetCreatedRecords %{public}zu", createdRecordsList.size());
+    respBody.TruncateDataBy200K();
+    MEDIA_INFO_LOG("GetCreatedRecords completed, dataSize: %{public}zu", respBody.GetDataSize());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
@@ -177,16 +177,14 @@ int32_t CloudMediaPhotoControllerService::GetMetaModifiedRecords(MessageParcel &
     for (const auto &metaModifiedRecord : metaModifiedRecordsPoList) {
         metaModifiedRecordsList.emplace_back(this->processor_.ConvertRecordPoToVo(metaModifiedRecord));
     }
-    MEDIA_INFO_LOG("end CloudMediaPhotoControllerService::GetMetaModifiedRecords Query:%{public}zu,Result:%{public}zu",
-        metaModifiedRecordsList.size(),
-        metaModifiedRecordsPoList.size());
     CloudMdkRecordPhotosRespBody respBody{metaModifiedRecordsList};
+    respBody.TruncateDataBy200K();
+    MEDIA_INFO_LOG("GetMetaModifiedRecords completed, dataSize: %{public}zu", respBody.GetDataSize());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
 int32_t CloudMediaPhotoControllerService::GetFileModifiedRecords(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter GetFileModifiedRecords");
     CloudMdkRecordPhotosReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -194,7 +192,6 @@ int32_t CloudMediaPhotoControllerService::GetFileModifiedRecords(MessageParcel &
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     int32_t size = reqBody.size;
-    MEDIA_INFO_LOG("enter CloudMediaPhotoControllerService::GetFileModifiedRecords %{public}d", size);
     if (size <= 0 || size > LIMIT_SIZE) {
         MEDIA_ERR_LOG("GetFileModifiedRecords param error, size: %{public}d", size);
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_MEDIA_CLOUD_ARGS_INVAILD);
@@ -207,10 +204,11 @@ int32_t CloudMediaPhotoControllerService::GetFileModifiedRecords(MessageParcel &
     }
     std::vector<CloudMdkRecordPhotosVo> fileModifiedRecordsList;
     for (const auto &fileModifiedRecord : fileModifiedRecordsPoList) {
-        MEDIA_DEBUG_LOG("GetFileModifiedRecords PO: %{public}s", fileModifiedRecord.ToString().c_str());
         fileModifiedRecordsList.emplace_back(this->processor_.ConvertRecordPoToVo(fileModifiedRecord));
     }
     CloudMdkRecordPhotosRespBody respBody{fileModifiedRecordsList};
+    respBody.TruncateDataBy200K();
+    MEDIA_INFO_LOG("GetFileModifiedRecords completed, dataSize: %{public}zu", respBody.GetDataSize());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
@@ -232,8 +230,9 @@ int32_t CloudMediaPhotoControllerService::GetDeletedRecords(MessageParcel &data,
     for (const auto &deletedRecord : deletedRecordsPoList) {
         deletedRecordsList.emplace_back(this->processor_.ConvertRecordPoToVo(deletedRecord));
     }
-    MEDIA_INFO_LOG("exit CloudMediaPhotoControllerService::GetDeletedRecords %{public}zu", deletedRecordsList.size());
     CloudMdkRecordPhotosRespBody respBody{deletedRecordsList};
+    respBody.TruncateDataBy200K();
+    MEDIA_INFO_LOG("GetDeletedRecords completed, dataSize: %{public}zu", respBody.GetDataSize());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
@@ -259,10 +258,9 @@ int32_t CloudMediaPhotoControllerService::GetCopyRecords(MessageParcel &data, Me
     for (const auto &copyRecord : copyRecordsPoList) {
         copyRecordsList.emplace_back(this->processor_.ConvertRecordPoToVo(copyRecord));
     }
-    MEDIA_INFO_LOG("CloudMediaPhotoControllerService::GetCopyRecords Size: %{public}zu, %{public}zu",
-        copyRecordsPoList.size(),
-        copyRecordsList.size());
     CloudMdkRecordPhotosRespBody respBody{copyRecordsList};
+    respBody.TruncateDataBy200K();
+    MEDIA_INFO_LOG("GetCopyRecords completed, dataSize: %{public}zu", respBody.GetDataSize());
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 

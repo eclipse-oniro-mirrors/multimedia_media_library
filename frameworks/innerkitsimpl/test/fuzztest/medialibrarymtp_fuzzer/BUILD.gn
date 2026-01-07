@@ -22,8 +22,8 @@ ohos_fuzztest("MediaLibraryMtpFuzzTest") {
   include_dirs = [
     "./",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_mtp/include",
-    "${MEDIALIB_SERVICES_PATH}/media_mtp/include/payload_data",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_mtp/include",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_mtp/include/payload_data",
   ]
 
   cflags = [ "-fno-access-control" ]

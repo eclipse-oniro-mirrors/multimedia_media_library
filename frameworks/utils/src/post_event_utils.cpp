@@ -339,6 +339,7 @@ void PostEventUtils::PostCloudEnhanceStat(const VariantMap &stat)
     std::string completeType = GetStringValue(KEY_CLOUD_ENHANCEMENT_COMPLETE_TYPE, stat);
     int64_t totalTimeCost = GetInt64Value(KEY_TOTAL_TIME_COST, stat);
     int32_t finishType = GetIntValue(KEY_CLOUD_ENHANCEMENT_FINISH_TYPE, stat);
+    int32_t fileType = GetIntValue(KEY_CLOUD_ENHANCEMENT_FILE_TYPE, stat);
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_CLOUDENHANCEMENT_STAT",
@@ -346,7 +347,8 @@ void PostEventUtils::PostCloudEnhanceStat(const VariantMap &stat)
         KEY_PHOTO_ID, photoId,
         KEY_TOTAL_TIME_COST, totalTimeCost,
         KEY_CLOUD_ENHANCEMENT_COMPLETE_TYPE, completeType,
-        KEY_CLOUD_ENHANCEMENT_FINISH_TYPE, finishType);
+        KEY_CLOUD_ENHANCEMENT_FINISH_TYPE, finishType,
+        KEY_CLOUD_ENHANCEMENT_FILE_TYPE, fileType);
     if (ret != 0) {
         MEDIA_ERR_LOG("PostCloudEnhanceStat:%{public}d", ret);
     }

@@ -72,14 +72,14 @@ private:
         WHERE PhotoAlbum.album_id IS NOT NULL AND \
             COALESCE(PhotoAlbum.lpath, '') <> '' AND \
             COALESCE(source_path, '') = '' AND \
-            (hidden <> 0 || date_trashed <> 0) \
+            (Photos.hidden <> 0 || date_trashed <> 0) \
         LIMIT ?, ? ;";
     const std::string SOURCE_PATH_PREFIX = "/storage/emulated/0";
     const std::string SQL_PHOTO_SOURCE_PATH_FIX_UPDATE = "\
         UPDATE Photos \
         SET source_path = ? \
         WHERE COALESCE(source_path, '') = '' AND \
-            (hidden <> 0 || date_trashed <> 0) AND \
+            (Photos.hidden <> 0 || date_trashed <> 0) AND \
             file_id = ? ;";
 };
 }  // namespace OHOS::Media

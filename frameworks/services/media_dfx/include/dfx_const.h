@@ -18,6 +18,7 @@
 
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
 
 #include "userfile_manager_types.h"
 
@@ -115,6 +116,7 @@ const std::string THUMBNAIL_ERROR_XML = "/data/storage/el2/base/preferences/thum
 const std::string COMMON_BEHAVIOR_XML = "/data/storage/el2/base/preferences/common_behavior.xml";
 const std::string DELETE_BEHAVIOR_XML = "/data/storage/el2/base/preferences/delete_behavior.xml";
 const std::string ADAPTATION_TO_MOVING_PHOTO_XML = "/data/storage/el2/base/preferences/adaptation_to_moving_photo.xml";
+const std::string DFX_CINEMATIC_VIDEO_XML = "/data/storage/el2/base/preferences/dfx_cinematic_video.xml";
 const std::string ALIB_HEIF_DUPLICATE_XML = "/data/storage/el2/base/preferences/alib_heif_duplicate.xml";
 const std::string DFX_COMMON_XML = "/data/storage/el2/base/preferences/dfx_common.xml";
 const std::string LAST_REPORT_TIME = "last_report_time";
@@ -128,6 +130,15 @@ const std::string MOVING_PHOTO_KEY_UNADAPTED_NUM = "unadapted_app_num";
 const std::string MOVING_PHOTO_KEY_UNADAPTED_PACKAGE = "unadapted_app_package";
 const std::string MOVING_PHOTO_KEY_ADAPTED_NUM = "adapted_app_num";
 const std::string MOVING_PHOTO_KEY_ADAPTED_PACKAGE = "adapted_app_package";
+const std::string CINEMATIC_VIDEO_KEY_LOW_QUALITY_ACCESS_TIMES = "low_quality_access_times";
+const std::string CINEMATIC_VIDEO_KEY_HIGH_QUALITY_ACCESS_TIMES = "high_quality_access_times";
+const std::string CINEMATIC_VIDEO_KEY_LOW_QUALITY_URI_ACCESS_TIMES = "low_quality_uri_access_times";
+const std::string CINEMATIC_VIDEO_KEY_HIGH_QUALITY_URI_ACCESS_TIMES = "high_quality_uri_access_times";
+const std::string CINEMATIC_VIDEO_KEY_CANCEL_NUM = "cancel_num";
+const std::string CINEMATIC_VIDEO_KEY_CANCEL_WAIT_AVG_TIME = "cancel_wait_avg_time";
+const std::string CINEMATIC_VIDEO_PROCESS_AVG_TIME = "process_avg_time";
+const std::string CINEMATIC_VIDEO_KEY_MULTISTAGE_SUCCESS_TIMES = "multistage_success_times";
+const std::string CINEMATIC_VIDEO_KEY_MULTISTAGE_FAILED_TIMES = "multistage_failed_times";
 const std::string CLOUD_SYNC_START_TIME = "cloud_sync_start_time";
 const std::string CLOUDSYNC_STATUS_KEY = "persist.kernel.cloudsync.status";
 const std::string IS_REPORTED = "is_reported";
@@ -189,6 +200,35 @@ struct PhotoRecordInfo {
 struct AdaptationToMovingPhotoInfo {
     std::unordered_set<std::string> unadaptedAppPackages;
     std::unordered_set<std::string> adaptedAppPackages;
+};
+
+enum class CinematicWaitType : int32_t {
+    CANCEL_CINEMATIC = 0,
+    PROCESS_CINEMATIC,
+};
+
+struct TimeRange {
+    uint64_t startTime {0};
+    uint64_t endTime {0};
+};
+
+struct CinematicVideoInfo {
+    int32_t accessTimesLow;
+    int32_t accessTimesHigh;
+    int32_t uriAccessTimesLow;
+    int32_t uriAccessTimesHigh;
+    int32_t multistageSuccessTimes;
+    int32_t multistageFailedTimes;
+    std::unordered_map<std::string, TimeRange> cancelWaitTimeMap;
+    std::unordered_map<std::string, TimeRange> processWaitTimeMap;
+
+    CinematicVideoInfo()
+        : accessTimesLow(0),
+          accessTimesHigh(0),
+          uriAccessTimesLow(0),
+          uriAccessTimesHigh(0),
+          multistageSuccessTimes(0),
+          multistageFailedTimes(0) {}
 };
 
 const std::unordered_map<int32_t, std::string> ALBUM_MAP = {

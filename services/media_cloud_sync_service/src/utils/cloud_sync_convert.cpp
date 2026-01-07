@@ -137,6 +137,9 @@ int32_t CloudSyncConvert::CompensateAttBurstKey(const CloudMediaPullDataDto &dat
 {
     std::string burstKey = data.attributesBurstKey;
     CHECK_AND_RETURN_RET(!burstKey.empty(), E_CLOUDSYNC_INVAL_ARG);
+    const bool hasLocalAsset = data.localPhotosPoOp.has_value();
+    const std::string localBurstKey = hasLocalAsset ? data.localPhotosPoOp.value().burstKey.value_or("") : "";
+    CHECK_AND_RETURN_RET(localBurstKey.empty(), E_OK); // No update for burst_key
     values.PutString(PhotoColumn::PHOTO_BURST_KEY, burstKey);
     return E_OK;
 }
@@ -285,6 +288,34 @@ int32_t CloudSyncConvert::CompensateAttStrongAssociation(
     values.PutInt(PhotoColumn::PHOTO_STRONG_ASSOCIATION, strongAssociation);
     return E_OK;
 }
+
+// Safe Album: critical type for children's watch
+// According to doc: "If only one party has risk control information, that party prevails."
+// critical_type = 0 (UNKNOWN) means no information, so don't overwrite local value
+int32_t CloudSyncConvert::CompensateAttCriticalType(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t criticalType = data.attributesCriticalType;
+    // Only put value if cloud has actual risk control information (analyzed)
+    // UNKNOWN(0) means not analyzed, so don't overwrite local value
+    if (criticalType >= 1) {
+        values.PutInt(PhotoColumn::PHOTO_CRITICAL_TYPE, criticalType);
+    }
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttIsCritical(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t isCritical = data.attributesIsCritical;
+    int32_t criticalType = data.attributesCriticalType;
+    // Only put value if cloud has actual risk control information
+    if (criticalType >= 1) {
+        values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, isCritical);
+    }
+    return E_OK;
+}
+
 
 int32_t CloudSyncConvert::CompensatePropTitle(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
@@ -599,6 +630,9 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttStrongAssociation(data, values);
     // attributes HashMap
     CompensateAttributesHashMap(data, values);
+    // Safe Album: critical type for children's watch
+    CompensateAttCriticalType(data, values);
+    CompensateAttIsCritical(data, values);
     return E_OK;
 }
 

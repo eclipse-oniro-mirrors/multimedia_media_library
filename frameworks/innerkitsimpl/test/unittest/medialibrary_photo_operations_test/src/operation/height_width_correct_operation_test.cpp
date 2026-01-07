@@ -97,7 +97,12 @@ HWTEST_F(HeightWidthCorrectOperationTest, Height_Width_Correct_Operation_Test_00
     photoInfoFirst.fileId = 3;
     photoInfos.push_back(photoInfoFirst);
     HeightWidthCorrectOperation::HandlePhotoInfos(photoInfos, curFileId, failedIds, count);
-    EXPECT_EQ(curFileId, photoInfoFirst.fileId);
+
+    CheckPhotoInfo photoInfo;
+    photoInfo.height = -1;
+    photoInfo.position = static_cast<int32_t>(PhotoPositionType::CLOUD);
+    bool ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);
+    EXPECT_FALSE(ret);
 }
 
 HWTEST_F(HeightWidthCorrectOperationTest, Height_Width_Correct_Operation_Test_005, TestSize.Level1)
@@ -129,27 +134,27 @@ HWTEST_F(HeightWidthCorrectOperationTest, Height_Width_Correct_Operation_Test_00
     photoInfo.width = TEST_NUMBER_ONE;
     photoInfo.lcdSize = "";
     bool ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);
-    EXPECT_TRUE(ret);
+    EXPECT_FALSE(ret);
 
     photoInfo.lcdSize = ":123";
     ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);
-    EXPECT_TRUE(ret);
+    EXPECT_FALSE(ret);
 
     photoInfo.lcdSize = "123";
     ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);
-    EXPECT_TRUE(ret);
+    EXPECT_FALSE(ret);
 
     photoInfo.lcdSize = "123:";
     ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);
-    EXPECT_TRUE(ret);
+    EXPECT_FALSE(ret);
 
     photoInfo.lcdSize = "12r3:234";
     ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);
-    EXPECT_TRUE(ret);
+    EXPECT_FALSE(ret);
 
     photoInfo.lcdSize = "123:23r4";
     ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);
-    EXPECT_TRUE(ret);
+    EXPECT_FALSE(ret);
 
     photoInfo.lcdSize = "123:234";
     ret = HeightWidthCorrectOperation::UpdatePhotoHeightWidth(photoInfo);

@@ -56,7 +56,7 @@ void OpenAssetCompressReqBody::Convert2Dto(OpenAssetCompressDto &dto)
 bool OpenAssetCompressRespBody::Unmarshalling(MessageParcel &parcel)
 {
     this->fileDescriptor = parcel.ReadFileDescriptor();
-    CHECK_AND_PRINT_LOG(this->fileDescriptor >= 0, "Unmarshalling fd is invalid");
+    CHECK_AND_RETURN_RET_LOG(this->fileDescriptor >= 0, false, "Unmarshalling fd is invalid");
     return true;
 }
 

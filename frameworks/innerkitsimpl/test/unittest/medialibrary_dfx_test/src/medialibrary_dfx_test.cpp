@@ -31,11 +31,14 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_inotify.h"
 #include "medialibrary_rdbstore.h"
+#include "medialibrary_unistore_manager.h"
+#include "medialibrary_unittest_utils.h"
 #include "media_file_utils.h"
 #include "photo_album_column.h"
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "parameters.h"
+#include "userfile_manager_types.h"
 
 using namespace std;
 using namespace OHOS;
@@ -45,17 +48,56 @@ namespace OHOS {
 namespace Media {
 
 static constexpr char MEDIA_LIBRARY[] = "MEDIALIBRARY";
+static constexpr int32_t SLEEP_THREE_SECONDS = 3;
+static std::shared_ptr<MediaLibraryRdbStore> g_rdbStore;
+
+static int32_t ClearTable(const string &table)
+{
+    NativeRdb::RdbPredicates predicates(table);
+    int32_t rows = 0;
+    int32_t err = g_rdbStore->Delete(rows, predicates);
+    MEDIA_INFO_LOG("clear table: %{public}s, rows: %{public}d, err: %{public}d", table.c_str(), rows, err);
+    EXPECT_EQ(err, E_OK);
+    return E_OK;
+}
+
+static int32_t InsertPhotoAlbum(const string &albumName, const int32_t albumType, const int32_t uploadStatus)
+{
+    EXPECT_NE((g_rdbStore == nullptr), true);
+
+    int64_t albumId = -1;
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, albumType);
+    values.PutString(PhotoAlbumColumns::ALBUM_NAME, albumName);
+    values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, uploadStatus);
+    int32_t ret = g_rdbStore->Insert(albumId, PhotoAlbumColumns::TABLE, values);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("InsertPhotoAlbum albumId is %{public}s", to_string(albumId).c_str());
+    return E_OK;
+}
 
 void MediaLibraryDfxTest::SetUpTestCase(void)
 {
+    MEDIA_INFO_LOG("SetUpTestCase");
+    MediaLibraryUnitTestUtils::Init();
+    g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    EXPECT_NE((g_rdbStore == nullptr), true);
     DfxManager::GetInstance();
 }
-void MediaLibraryDfxTest::TearDownTestCase(void) {}
+
+void MediaLibraryDfxTest::TearDownTestCase(void)
+{
+    MEDIA_INFO_LOG("TearDownTestCase");
+    ClearTable(PhotoAlbumColumns::TABLE);
+    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_THREE_SECONDS));
+}
 
 // SetUp:Execute before each test case
 void MediaLibraryDfxTest::SetUp()
 {
+    MEDIA_INFO_LOG("SetUp");
     DfxManager::GetInstance()->isInitSuccess_ = true;
+    ClearTable(PhotoAlbumColumns::TABLE);
 }
 
 void MediaLibraryDfxTest::TearDown(void) {}
@@ -785,6 +827,153 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_QueryFromPhotos_test_001, TestSize.Le
     EXPECT_EQ(result, E_SUCCESS);
 }
 
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_ReportCinematicInfo_test_001, TestSize.Level0)
+{
+    DfxReporter dfxReporter;
+    dfxReporter.ReportCinematicVideo();
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "CINEMATIC_VIDEO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "DATE", "00000",
+        "LOW_QUALITY_ACCESS_TIMES", 1,
+        "HIGH_QUALITY_ACCESS_TIMES", 1,
+        "LOW_QUALITY_ACCESS_URI_TIMES", 1,
+        "HIGH_QUALITY_ACCESS_URI_TIMES", 1,
+        "CANCEL_NUM", 1,
+        "CANCEL_WAIT_AVG_TIME", 1,
+        "PROCESS_AVG_TIME", 1,
+        "MULTISTAGE_SUCCESS_TIMES", 1,
+        "MULTISTAGE_FAILED_TIMES", 1);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_cinematic_caul_waittime_test_001, TestSize.Level0)
+{
+    DfxAnalyzer dfxAnalyzer;
+    CinematicVideoInfo mockVideoInfo;
+
+    mockVideoInfo.accessTimesLow = 1;
+    mockVideoInfo.accessTimesHigh = 2;
+    mockVideoInfo.uriAccessTimesLow = 3;
+    mockVideoInfo.uriAccessTimesHigh = 4;
+    mockVideoInfo.multistageSuccessTimes = 5;
+    mockVideoInfo.multistageFailedTimes = 0;
+    mockVideoInfo.cancelWaitTimeMap["videoidcancel1"] = {100, 250};  // startTime=100, endTime=250
+    mockVideoInfo.cancelWaitTimeMap["videoidcancel2"] = {300, 500};
+    mockVideoInfo.processWaitTimeMap["videoidprocess1"] = {100, 200};
+
+    int32_t oldNum = 0;
+    int32_t oldWaitAvgTime = 0;
+
+    int32_t avgWaitTime = dfxAnalyzer.CalculateAvgWaitTime(CinematicWaitType::CANCEL_CINEMATIC,
+        mockVideoInfo, oldNum, oldWaitAvgTime);
+    EXPECT_EQ(avgWaitTime, 175);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_cinematic_caul_waittime_test_002, TestSize.Level0)
+{
+    DfxAnalyzer dfxAnalyzer;
+    CinematicVideoInfo mockVideoInfo;
+
+    mockVideoInfo.accessTimesLow = 1;
+    mockVideoInfo.accessTimesHigh = 2;
+    mockVideoInfo.uriAccessTimesLow = 3;
+    mockVideoInfo.uriAccessTimesHigh = 4;
+    mockVideoInfo.multistageSuccessTimes = 5;
+    mockVideoInfo.multistageFailedTimes = 0;
+    mockVideoInfo.cancelWaitTimeMap["videoidcancel1"] = {1000, 2000};  // startTime=1000, endTime=2000
+    mockVideoInfo.processWaitTimeMap["videoidprocess1"] = {500, 700};
+    mockVideoInfo.processWaitTimeMap["videoidprocess2"] = {9000, 8000};
+
+    int32_t oldNum = 8;
+    int32_t oldWaitAvgTime = 225; // 1800
+
+    int32_t avgWaitTime = dfxAnalyzer.CalculateAvgWaitTime(CinematicWaitType::PROCESS_CINEMATIC,
+        mockVideoInfo, oldNum, oldWaitAvgTime);
+    EXPECT_EQ(avgWaitTime, 196);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_001, TestSize.Level0)
+{
+    DfxCollector dfxCollector;
+    dfxCollector.CollectCinematicVideoAccessTimes(true, true);   // ByUri, HighQaulity
+    dfxCollector.CollectCinematicVideoAccessTimes(false, true);  // notByUri, HighQaulity
+    dfxCollector.CollectCinematicVideoAccessTimes(true, false);  // ByUri, LowQaulity
+    dfxCollector.CollectCinematicVideoAccessTimes(false, false); // notByUri, LowQaulity
+
+    CinematicVideoInfo mockVideoInfo = dfxCollector.GetCinematicVideoInfo();
+
+    EXPECT_EQ(mockVideoInfo.accessTimesLow, 1);
+    EXPECT_EQ(mockVideoInfo.accessTimesHigh, 1);
+    EXPECT_EQ(mockVideoInfo.uriAccessTimesLow, 1);
+    EXPECT_EQ(mockVideoInfo.uriAccessTimesHigh, 1);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_002, TestSize.Level0)
+{
+    DfxCollector dfxCollector;
+    dfxCollector.CollectCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel4");
+    dfxCollector.CollectCinematicVideoAddStartTime(CinematicWaitType::PROCESS_CINEMATIC, "videoidprocess4");
+
+    CinematicVideoInfo mockVideoInfo = dfxCollector.GetCinematicVideoInfo();
+
+    EXPECT_EQ(mockVideoInfo.cancelWaitTimeMap.count("videoidcancel4"), 1);
+    EXPECT_EQ(mockVideoInfo.processWaitTimeMap.count("videoidprocess4"), 1);
+    EXPECT_NE(mockVideoInfo.cancelWaitTimeMap["videoidcancel4"].startTime, 0);
+    EXPECT_NE(mockVideoInfo.processWaitTimeMap["videoidprocess4"].startTime, 0);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_003, TestSize.Level0)
+{
+    DfxCollector dfxCollector;
+    dfxCollector.CollectCinematicVideoAddEndTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel5");
+    dfxCollector.CollectCinematicVideoAddEndTime(CinematicWaitType::PROCESS_CINEMATIC, "videoidprocess5");
+
+    CinematicVideoInfo mockVideoInfo = dfxCollector.GetCinematicVideoInfo();
+
+    EXPECT_EQ(mockVideoInfo.cancelWaitTimeMap.count("videoidcancel5"), 1);
+    EXPECT_EQ(mockVideoInfo.processWaitTimeMap.count("videoidprocess5"), 1);
+    EXPECT_EQ(mockVideoInfo.cancelWaitTimeMap["videoidcancel5"].startTime, 0);
+    EXPECT_EQ(mockVideoInfo.processWaitTimeMap["videoidprocess5"].startTime, 0);
+    EXPECT_EQ(mockVideoInfo.cancelWaitTimeMap.count("videoidprocess5"), 0);
+    EXPECT_EQ(mockVideoInfo.processWaitTimeMap.count("videoidcancel5"), 0);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_004, TestSize.Level0)
+{
+    DfxCollector dfxCollector;
+    dfxCollector.CollectCinematicVideoMultistageResult(true);  // success
+    dfxCollector.CollectCinematicVideoMultistageResult(false); // failed
+    dfxCollector.CollectCinematicVideoMultistageResult(false);
+
+    CinematicVideoInfo mockVideoInfo = dfxCollector.GetCinematicVideoInfo();
+
+    EXPECT_EQ(mockVideoInfo.multistageSuccessTimes, 1);
+    EXPECT_EQ(mockVideoInfo.multistageFailedTimes, 2);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_005, TestSize.Level0)
+{
+    auto dfxManager = DfxManager::GetInstance();
+    ASSERT_NE(dfxManager, nullptr);
+    dfxManager->isInitSuccess_ = false;
+    dfxManager->HandleCinematicVideoAccessTimes(true, true);
+    dfxManager->HandleCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
+    dfxManager->HandleCinematicVideoAddEndTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
+    dfxManager->HandleCinematicVideoMultistageResult(true);
+}
+
+HWTEST_F(MediaLibraryDfxTest, medialib_dfx_collection_cinematic_videoinfo_test_006, TestSize.Level0)
+{
+    auto dfxManager = DfxManager::GetInstance();
+    dfxManager->HandleCinematicVideoAccessTimes(true, true);
+    dfxManager->HandleCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
+    dfxManager->HandleCinematicVideoAddEndTime(CinematicWaitType::CANCEL_CINEMATIC, "videoidcancel1");
+    dfxManager->HandleCinematicVideoMultistageResult(true);
+    EXPECT_EQ(dfxManager->isInitSuccess_, true);
+}
+
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_QueryAlbumInfoBySubtype_test_001, TestSize.Level0)
 {
     int32_t albumSubtype = 1;
@@ -1026,5 +1215,26 @@ HWTEST_F(MediaLibraryDfxTest, AncoDfxManager_test_003, TestSize.Level0)
     EXPECT_EQ(0, E_OK);
 }
 
+HWTEST_F(MediaLibraryDfxTest, QueryAlbumNames_dfx_test_001, TestSize.Level0)
+{
+    InsertPhotoAlbum("album1", PhotoAlbumType::SOURCE, 0);
+    InsertPhotoAlbum("album2", PhotoAlbumType::SOURCE, 1);
+    InsertPhotoAlbum("album3", PhotoAlbumType::USER, 0);
+    InsertPhotoAlbum("album4", PhotoAlbumType::USER, 1);
+    std::vector<std::string> supportedAlbumNames = DfxDatabaseUtils::QueryAlbumNamesByUploadStatus(1);
+    EXPECT_EQ(supportedAlbumNames.size(), 1);
+    std::vector<std::string> notSupportedAlbumNames = DfxDatabaseUtils::QueryAlbumNamesByUploadStatus(0);
+    EXPECT_EQ(notSupportedAlbumNames.size(), 1);
+}
+
+HWTEST_F(MediaLibraryDfxTest, QueryAlbumNames_dfx_test_002, TestSize.Level0)
+{
+    int32_t maxAlbumCount = 55;
+    for (int32_t i = 0; i < maxAlbumCount; i++) {
+        InsertPhotoAlbum("album" + to_string(i), PhotoAlbumType::SOURCE, 1);
+    }
+    std::vector<std::string> supportedAlbumNames = DfxDatabaseUtils::QueryAlbumNamesByUploadStatus(1);
+    EXPECT_EQ(supportedAlbumNames.size(), 2);
+}
 } // namespace Media
 } // namespace OHOS

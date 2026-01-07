@@ -24,6 +24,7 @@ class StartThumbnailCreationTaskDto {
 public:
     DataShare::DataSharePredicates predicates;
     int32_t requestId;
+    pid_t pid;
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_ASSETS_MANAGER_START_THUMBNAIL_CREATION_TASK_DTO_H

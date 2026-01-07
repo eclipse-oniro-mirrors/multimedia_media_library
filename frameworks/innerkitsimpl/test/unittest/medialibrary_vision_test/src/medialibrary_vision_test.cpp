@@ -1512,6 +1512,7 @@ HWTEST_F(MediaLibraryVisionTest, Vision_InsertPetFace_Test_001, TestSize.Level1)
     EXPECT_GT(retVal, 0);
     MEDIA_INFO_LOG("Vision_InsertImageFace_Test_001::retVal = %{public}d. End", retVal);
     DataShare::DataShareValuesBucket valuesBucket1;
+    valuesBucket1.Put(ID, retVal);
     valuesBucket1.Put(FILE_ID, 1);
     valuesBucket1.Put(PET_ID, 1);
     valuesBucket1.Put(PET_FEATURE_VERSION, "1.01");

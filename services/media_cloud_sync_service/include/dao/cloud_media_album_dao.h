@@ -50,19 +50,17 @@ public:
 
 public:
     int32_t HandleLPathAndAlbumType(PhotoAlbumDto &record);
-    int32_t InsertCloudByLPath(PhotoAlbumDto &record,
+    int32_t InsertCloudByLPath(const PhotoAlbumDto &record,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
     int32_t DeleteCloudAlbum(const std::string &field, const std::string &value,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
-    int32_t UpdateCloudAlbum(PhotoAlbumDto &record, const std::string &field, const std::string &value,
+    int32_t UpdateCloudAlbum(const PhotoAlbumDto &record, const std::string &field, const std::string &value,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
     std::tuple<std::shared_ptr<NativeRdb::ResultSet>, int> QueryLocalMatchAlbum(std::string &cloudId);
     int32_t InsertCloudByCloudId(PhotoAlbumDto &record,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
-    std::tuple<std::shared_ptr<NativeRdb::ResultSet>, std::map<std::string, int>> QueryLocalAlbum(
-        const std::string &key, const std::vector<std::string> &argrs);
     int32_t OnDeleteAlbums(std::vector<std::string> &failedAlbumIds);
-    int32_t GetCreatedAlbum(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList);
+    int32_t GetCreatedRecords(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList);
     int32_t GetMetaModifiedAlbum(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList);
     int32_t GetDeletedRecordsAlbum(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList);
     int32_t HandleNotExistAlbumRecord(const PhotoAlbumDto &album);
@@ -81,27 +79,32 @@ public:
     void RemoveAlbumCreateFailedRecord(const std::string &cloudId);
     void RemoveAlbumModifyFailedRecord(const std::string &cloudId);
     int32_t ClearAlbumFailedRecords();
-    bool IsCoverIdExist(std::string &cloudId);
-    bool IsNeedPullCoverByDateModified(std::string &lPath, std::string &coverCloudId);
-    bool GetCoverUriFromCoverCloudId(std::string &coverCloudId, std::string &coverUri);
+    bool IsCoverIdExist(const std::string &cloudId);
+    bool IsNeedPullCoverByDateModified(const std::string &lPath, const std::string &coverCloudId);
+    bool GetCoverUriFromCoverCloudId(const std::string &coverCloudId, std::string &coverUri);
     bool ReplaceCoverUriCondition(const std::string &coverUri, const std::string &lPath);
     int32_t ReportAbnormalLocalRecords();
+    int32_t UpdateAlbumOrderInfo(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    int32_t GetPhotoAlbum(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfoOp);
+    int32_t GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count);
+
 private:
-    int32_t InsertAlbums(PhotoAlbumDto &record,
+    int32_t InsertAlbums(const PhotoAlbumDto &record,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
-    int32_t SetSourceValues(PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    int32_t SetSourceValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
     int32_t MergeAlbumOnConflict(PhotoAlbumDto& record,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
     bool IsConflict(PhotoAlbumDto& record);
     int32_t QueryConflict(PhotoAlbumDto& record, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
-    int32_t ConflictWithPhysicalAlbum(PhotoAlbumDto& record,
+    int32_t ConflictWithPhysicalAlbum(const PhotoAlbumDto& record,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
     std::unordered_map<std::string, MediaAlbumPluginRowData> QueryWhiteList();
-    int32_t QuerySameNameAlbum(PhotoAlbumDto& record, int32_t &albumId, std::string &newAlbumName);
+    int32_t QuerySameNameAlbum(
+        const PhotoAlbumDto &record, int32_t &albumId, std::string &newAlbumName, int32_t &albumType);
     std::unordered_map<std::string, std::string> GetLocalAlbumMap();
     int32_t UpdateCloudAlbumSynced(const std::string &field, const std::string &value,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
-    int32_t UpdateCloudAlbumInner(PhotoAlbumDto &record, const std::string &field, const std::string &value,
+    int32_t UpdateCloudAlbumInner(const PhotoAlbumDto &record, const std::string &field, const std::string &value,
         std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle);
     void RelateToAlbumPluginInfo(PhotoAlbumPo &record,
         std::unordered_map<std::string, MediaAlbumPluginRowData> &writeListMap);
@@ -142,7 +145,7 @@ private:
                 dirty = 1 AND \
                 album_type IN (0, 2048) AND \
                 count != 0 AND \
-                upload_status = 1 \
+                (1 = {2} OR upload_status = 1) \
         ) \
         SELECT \
             album_id, \

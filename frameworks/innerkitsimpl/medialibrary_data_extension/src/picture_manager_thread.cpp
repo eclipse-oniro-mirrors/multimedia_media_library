@@ -144,7 +144,7 @@ void PictureManagerThread::InsertPictureData(const std::string& imageId, sptr<Pi
 void PictureManagerThread::DeleteDataWithImageId(const std::string& imageId, PictureType pictureType)
 {
     CHECK_AND_RETURN_LOG(pictureDataOperations_ != nullptr,
-        "InsertPictureData failed, pictureDataOperations_ is null");
+        "DeleteDataWithImageId failed, pictureDataOperations_ is null");
     pictureDataOperations_->DeleteDataWithImageId(imageId, pictureType);
 }
 
@@ -222,6 +222,13 @@ void PictureManagerThread::FinishAccessingPicture(const std::string& imageId)
         pictureDataOperations_->FinishAccessingPicture(imageId, pictureType);
     }
     MEDIA_INFO_LOG("FinishAccessingPicture end: %{public}s", imageId.c_str());
+}
+
+int32_t PictureManagerThread::GetLowPendingTaskSize()
+{
+    CHECK_AND_RETURN_RET_LOG(pictureDataOperations_ != nullptr, 0,
+        "GetLowPendingTaskSize failed, pictureDataOperations_ is null");
+    return pictureDataOperations_->GetLowPendingTaskSize();
 }
 } // namespace Media
 } // namespace OHOS

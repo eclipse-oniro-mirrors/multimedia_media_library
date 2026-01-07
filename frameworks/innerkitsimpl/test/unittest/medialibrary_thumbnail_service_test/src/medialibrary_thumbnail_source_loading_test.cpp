@@ -39,12 +39,25 @@
 #include <unordered_map>
 
 using namespace testing::ext;
+using namespace std;
 
 namespace OHOS {
 namespace Media {
 
 static const std::string LOCAL_MEDIA_PATH = "/storage/media/local/files/";
+static const string HDR_PICTURE_PATH = "/storage/media/local/files/Photo/1/HDR_picture.jpg";
 static constexpr int32_t TEST_PIXELMAP_WIDTH_AND_HEIGHT = 100;
+
+static unique_ptr<ImageSource> CreateTestImageSource()
+{
+    string path = HDR_PICTURE_PATH;
+    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    uint32_t err;
+    SourceOptions opts;
+    unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(path, opts, err);
+    CHECK_AND_PRINT_LOG(err == E_OK, "ImageSource::CreateImageSource err: %{public}d", err);
+    return imageSource;
+}
 
 static std::shared_ptr<PixelMap> CreateTestPixelMap(PixelFormat format, bool useDMA,
     int32_t width = TEST_PIXELMAP_WIDTH_AND_HEIGHT, int32_t height = TEST_PIXELMAP_WIDTH_AND_HEIGHT)
@@ -699,6 +712,124 @@ HWTEST_F(MediaLibraryThumbnailSourceLoadingTest,
     bool res = CloudOriginSource::IsSizeLargeEnough(data, minSize);
 
     EXPECT_EQ(res, true);
+}
+
+HWTEST_F(MediaLibraryThumbnailSourceLoadingTest, LoadHdrSourceTest_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("LoadHdrSourceTest_001: Test with valid dual HDR source and valid size");
+    
+    ThumbnailData data;
+    Size targetSize = {800, 600};
+    auto imageSource = CreateTestImageSource();
+    ASSERT_NE(imageSource, nullptr);
+    
+    SourceLoader loader(targetSize, data);
+    bool ret = loader.LoadHdrSource(imageSource, targetSize);
+    
+    EXPECT_TRUE(ret);
+    
+    MEDIA_INFO_LOG("LoadHdrSourceTest_001 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailSourceLoadingTest, LoadHdrSourceTest_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("LoadHdrSourceTest_002: Test with valid dual HDR source and valid size");
+    
+    ThumbnailData data;
+    Size targetSize = {800, 600};
+    auto imageSource = CreateTestImageSource();
+    ASSERT_NE(imageSource, nullptr);
+    
+    SourceLoader loader(targetSize, data);
+    bool ret = loader.LoadHdrSource(imageSource, targetSize);
+    
+    EXPECT_TRUE(ret);
+    
+    MEDIA_INFO_LOG("LoadHdrSourceTest_002 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailSourceLoadingTest, LoadHdrSourceTest_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("LoadHdrSourceTest_003: Test with null image source");
+    
+    ThumbnailData data;
+    Size targetSize = {800, 600};
+    unique_ptr<ImageSource> imageSource = nullptr;
+    
+    SourceLoader loader(targetSize, data);
+    
+    bool ret = loader.LoadHdrSource(imageSource, targetSize);
+    EXPECT_FALSE(ret);
+    
+    MEDIA_INFO_LOG("LoadHdrSourceTest_003 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailSourceLoadingTest, LoadHdrSourceTest_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("LoadHdrSourceTest_004: Test with invalid target size (zero width)");
+    
+    ThumbnailData data;
+    Size targetSize = {0, 600};
+    auto imageSource = CreateTestImageSource();
+    ASSERT_NE(imageSource, nullptr);
+    
+    SourceLoader loader(targetSize, data);
+    
+    bool ret = loader.LoadHdrSource(imageSource, targetSize);
+    EXPECT_FALSE(ret);
+    
+    MEDIA_INFO_LOG("LoadHdrSourceTest_004 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailSourceLoadingTest, LoadHdrSourceTest_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("LoadHdrSourceTest_005: Test with invalid target size (negative height)");
+    
+    ThumbnailData data;
+    Size targetSize = {800, -100};
+    auto imageSource = CreateTestImageSource();
+    ASSERT_NE(imageSource, nullptr);
+    
+    SourceLoader loader(targetSize, data);
+    
+    bool ret = loader.LoadHdrSource(imageSource, targetSize);
+    EXPECT_FALSE(ret);
+    
+    MEDIA_INFO_LOG("LoadHdrSourceTest_005 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailSourceLoadingTest, LoadHdrSourceTest_006, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("LoadHdrSourceTest_006: Test with both dimensions invalid");
+    
+    ThumbnailData data;
+    Size targetSize = {0, 0};
+    auto imageSource = CreateTestImageSource();
+    ASSERT_NE(imageSource, nullptr);
+    
+    SourceLoader loader(targetSize, data);
+    
+    bool ret = loader.LoadHdrSource(imageSource, targetSize);
+    EXPECT_FALSE(ret);
+    
+    MEDIA_INFO_LOG("LoadHdrSourceTest_006 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailSourceLoadingTest, LoadHdrSourceTest_007, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("LoadHdrSourceTest_007: Test with minimal valid size");
+    
+    ThumbnailData data;
+    Size targetSize = {1, 1};
+    auto imageSource = CreateTestImageSource();
+    ASSERT_NE(imageSource, nullptr);
+    
+    SourceLoader loader(targetSize, data);
+    
+    bool ret = loader.LoadHdrSource(imageSource, targetSize);
+    EXPECT_TRUE(ret);
+    
+    MEDIA_INFO_LOG("LoadHdrSourceTest_007 end");
 }
 
 } // namespace Media

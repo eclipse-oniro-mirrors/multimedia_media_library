@@ -52,10 +52,12 @@ public:
     double GetLongitude() const;
     const std::string& GetAlbumName() const;
     const std::string& GetLPath() const;
+    int64_t GetChangeTime() const;
     PhotoAlbumType GetPhotoAlbumType() const;
     PhotoAlbumSubType GetPhotoAlbumSubType() const;
     std::shared_ptr<PhotoAlbum> GetPhotoAlbumInstance() const;
     int32_t GetUploadStatus() const;
+    int32_t GetHidden() const;
 
     void SetHiddenOnly(const bool hiddenOnly);
     bool GetHiddenOnly() const;
@@ -79,6 +81,7 @@ private:
     EXPORT static napi_value JSGetLongitude(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetAlbumLPath(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetUploadStatus(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetChangeTime(napi_env env, napi_callback_info info);
 
     EXPORT static napi_value JSSetAlbumName(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetCoverUri(napi_env env, napi_callback_info info);
@@ -111,6 +114,7 @@ private:
     EXPORT static napi_value PhotoAccessHelperDeletePhotos(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperGetFaceId(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetFusionAssetsInfo(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSPhotoAccessGetPhotoAlbumtHidden(napi_env env, napi_callback_info info);
 
     napi_env env_;
     std::shared_ptr<PhotoAlbum> photoAlbumPtr;

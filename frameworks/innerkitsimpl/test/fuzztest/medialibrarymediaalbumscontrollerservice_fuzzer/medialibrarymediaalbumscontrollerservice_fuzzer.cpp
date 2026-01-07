@@ -20,6 +20,7 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #define private public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #include "user_define_ipc.h"
 #include "delete_highlight_albums_vo.h"
@@ -68,6 +69,7 @@ static std::vector<std::string> ALBUM_FETCH_COLUMNS = {
 
 FuzzedDataProvider* FDP;
 shared_ptr<MediaAlbumsControllerService> mediaAlbumsControllerService = nullptr;
+shared_ptr<AnalysisData::MediaAnalysisDataControllerService> analysisDataControllerService = nullptr;
 
 static void DeleteHighlightAlbumsFuzzer()
 {
@@ -315,7 +317,7 @@ static void SetOrderPositionFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAlbumsControllerService->SetOrderPosition(data, reply);
+    analysisDataControllerService->SetOrderPosition(data, reply);
 }
 
 static void AlbumCommitModifyFuzzer()
@@ -421,7 +423,7 @@ static void GetOrderPositionFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAlbumsControllerService->GetOrderPosition(data, reply);
+    analysisDataControllerService->GetOrderPosition(data, reply);
 }
 
 static void GetFaceIdFuzzer()
@@ -432,7 +434,7 @@ static void GetFaceIdFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAlbumsControllerService->GetFaceId(data, reply);
+    analysisDataControllerService->GetFaceId(data, reply);
 }
 
 static void GetPhotoIndexFuzzer()
@@ -456,7 +458,7 @@ static void GetAnalysisProcessFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAlbumsControllerService->GetAnalysisProcess(data, reply);
+    analysisDataControllerService->GetAnalysisProcess(data, reply);
 }
 
 static void GetHighlightAlbumInfoFuzzer()
@@ -522,6 +524,8 @@ static void Init()
 {
     shared_ptr<MediaAlbumsControllerService> mediaAlbumsControllerService =
         make_shared<MediaAlbumsControllerService>();
+    OHOS::analysisDataControllerService =
+        make_shared<AnalysisData::MediaAnalysisDataControllerService>();
 }
 } // namespace OHOS
 

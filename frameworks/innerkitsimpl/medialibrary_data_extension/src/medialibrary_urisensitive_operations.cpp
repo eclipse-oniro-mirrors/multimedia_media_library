@@ -21,6 +21,7 @@
 #include "media_app_uri_sensitive_column.h"
 #include "result_set_utils.h"
 #include "medialibrary_appstate_observer.h"
+#include "medialibrary_data_manager_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -164,7 +165,7 @@ static int32_t GetFileId(const DataShareValuesBucket &values, bool &isValid)
 {
     int32_t ret = E_ERR;
     string fileIdStr = static_cast<string>(values.Get(AppUriSensitiveColumn::FILE_ID, isValid));
-    if (CanConvertToInt32(fileIdStr)) {
+    if (CanConvertToInt32(fileIdStr) && MediaLibraryDataManagerUtils::IsNumber(fileIdStr)) {
         ret = static_cast<int32_t>(std::stoi(fileIdStr));
     }
     return ret;

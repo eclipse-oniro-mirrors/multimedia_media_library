@@ -68,6 +68,7 @@ public:
     EXPORT void SetDataSharePred(const DataShare::DataSharePredicates &pred);
     EXPORT const DataShare::DataSharePredicates &GetDataSharePred() const;
     EXPORT const std::string &GetResult();
+    EXPORT int32_t GetVideoType();
 
     EXPORT void SetApiParam(const std::string &key, const std::string &param);
     EXPORT void SetOprnObject(OperationObject object);

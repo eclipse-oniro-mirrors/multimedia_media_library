@@ -43,46 +43,24 @@
 #include "cloud_media_sync_const.h"
 #include "cloud_media_operation_code.h"
 #include "cloud_media_dfx_service.h"
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 #include "background_cloud_batch_selected_file_processor.h"
+#endif
 #include "lake_file_utils.h"
 #include "album_plugin_config.h"
+#include "cloud_media_retain_smart_data.h"
+#include "cloud_media_context.h"
+#include "cloud_media_asset_retain_compare_dao.h"
+#include "medialibrary_unistore_manager.h"
+#include "photos_field_iterator.h"
+#include "medialibrary_rdb_utils.h"
+#include "cloud_media_asset_manager.h"
+#include "medialibrary_meta_recovery.h"
+#include "thumbnail_service.h"
+#include "parameters.h"
 
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
 namespace OHOS::Media::CloudSync {
-int32_t CloudMediaPhotosService::MapUpdate(const CloudMediaPullDataDto &pullData)
-{
-    MEDIA_INFO_LOG("CloudMediaPhotosService::MapUpdate");
-    return mapCodeDao_.UpdateDataToMapCode(pullData);
-}
-
-int32_t CloudMediaPhotosService::MapDelete(const CloudMediaPullDataDto &pullData)
-{
-    MEDIA_INFO_LOG("CloudMediaPhotosService::MapDelete");
-    return mapCodeDao_.DeleteMapCodesByPullData(pullData);
-}
-
-int32_t CloudMediaPhotosService::MapInsert(const std::vector<CloudMediaPullDataDto> &pullDatas,
-    std::vector<std::string> &failedRecords)
-{
-    std::vector<CloudMediaPullDataDto> allPullDatas(pullDatas);
-    MEDIA_INFO_LOG("CloudMediaPhotosService::MapInsert pullDatas size %{public}zu, allPullDatas size %{public}zu \
-        failedRecords size %{public}zu", pullDatas.size(), allPullDatas.size(), failedRecords.size());
-    for (auto mergeData = allPullDatas.begin(); mergeData != allPullDatas.end();) {
-        std::string id = mergeData->cloudId;
-        auto it = std::find(failedRecords.begin(), failedRecords.end(), id);
-        if (it == failedRecords.end()) {
-            MEDIA_INFO_LOG("MapInsert GetLocalKey Data failed");
-            mergeData++;
-        } else {
-            mergeData = allPullDatas.erase(mergeData);  // 把合一数据剔除，剩下的就是纯新增数据
-        }
-    }
-    MEDIA_INFO_LOG("CloudMediaPhotosService::MapInsert allPullDatas size %{public}zu \
-        to InsertDatasToMapCode", allPullDatas.size());
-    int32_t ret = mapCodeDao_.InsertDatasToMapCode(allPullDatas);
-    return ret;
-}
-
 int32_t CloudMediaPhotosService::PullDelete(const CloudMediaPullDataDto &data, std::set<std::string> &refreshAlbums,
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
@@ -258,7 +236,6 @@ int32_t CloudMediaPhotosService::PullUpdate(CloudMediaPullDataDto &pullData, std
         this->ClearLocalData(pullData, fdirtyData);
     } else {
         // 处理元数据变更
-        MEDIA_INFO_LOG("change here");
         CloudLakeFileHandler::HandleMetaChanged(pullData.localFileId);
     }
     return E_OK;
@@ -421,6 +398,14 @@ int32_t CloudMediaPhotosService::PullInsert(
     int32_t ret;
     std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
     PullRecordsConflictProc(allPullDatas, refreshAlbums, stats, failedRecords, photoRefresh);
+
+    assetCompareDao_.SetRdbStore(MediaLibraryUnistoreManager::GetInstance().GetRdbStore());
+
+    if (IsNeedRecoverSmartData()) {
+        MEDIA_INFO_LOG("HDC Home Storage Switching detected, using duplicate detection logic");
+        return ProcessHdcHomeStorageSwitching(allPullDatas, failedRecords, refreshAlbums, stats, photoRefresh);
+    }
+
     for (auto insertData : allPullDatas) {
         MEDIA_DEBUG_LOG("PullInsert insert of record %{public}s", insertData.cloudId.c_str());
         ExtractEditDataCamera(insertData);
@@ -432,6 +417,7 @@ int32_t CloudMediaPhotosService::PullInsert(
             continue;
         }
     }
+
     MEDIA_INFO_LOG("PullInsert insert %{public}zu, update %{public}d, delete %{public}d, map %{public}zu",
         insertFiles.size(),
         stats[StatsIndex::META_MODIFY_RECORDS_COUNT],
@@ -548,12 +534,6 @@ int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDat
     return E_OK;
 }
 
-void CloudMediaPhotosService::HandleRecordStepTwo(std::set<std::string> &refreshAlbums)
-{
-    this->photosDao_.UpdateAlbumInternal(refreshAlbums);
-    MediaGallerySyncNotify::GetInstance().FinalNotify();
-}
-
 int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cloudIds,
     std::map<std::string, CloudMediaPullDataDto> &cloudIdRelativeMap, std::vector<PhotosDto> &newData,
     std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats, std::vector<std::string> &failedRecords)
@@ -589,7 +569,6 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
                 // 需要更新
                 ret = PullUpdate(pullData, refreshAlbums, fdirtyData, stats, photoRefresh);
                 changeType = ChangeType::UPDATE;
-                MapUpdate(pullData);
             }
         }
         if (ret == E_STOP) {
@@ -611,7 +590,8 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
     ret = CreateEntry(insertPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
     photoRefresh->RefreshAlbumNoDateModified();
     photoRefresh->Notify();
-    HandleRecordStepTwo(refreshAlbums);
+    this->photosDao_.UpdateAlbumInternal(refreshAlbums);
+    MediaGallerySyncNotify::GetInstance().FinalNotify();
     return ret;
 }
 
@@ -716,20 +696,18 @@ int32_t CloudMediaPhotosService::HandleCloudDeleteRecord(
         cloudDeleteFileIds.emplace_back(std::to_string(pullData.localFileId));
     }
     CHECK_AND_RETURN_RET_INFO_LOG(!cloudDeleteFileIds.empty(), E_OK, "CloudDeleteFileIds List Empty.");
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     MEDIA_INFO_LOG("BatchSelectFileDownload HandleCloudDeleteRecord size: %{public}zu", cloudDeleteFileIds.size());
     // 检查点 批量下载 云删除 通知应用 notify type 3
     BackgroundCloudBatchSelectedFileProcessor::TriggerCancelBatchDownloadProcessor(cloudDeleteFileIds, true);
+#endif
     return E_OK;
 }
 
 int32_t CloudMediaPhotosService::OnDentryFileInsert(
     const std::vector<CloudMediaPullDataDto> &pullDatas, std::vector<std::string> &failedRecords)
 {
-    int32_t ret = PullInsert(pullDatas, failedRecords);
-    int32_t retMap = MapInsert(pullDatas, failedRecords);
-    MEDIA_INFO_LOG("CloudMediaPhotosService::OnDentryFileInsert. ret %{public}d pullDatas size \
-        %{public}zu MapInsert retMap %{public}d", ret, pullDatas.size(), retMap);
-    return ret;
+    return PullInsert(pullDatas, failedRecords);
 }
 
 int32_t CloudMediaPhotosService::GetRetryRecords(std::vector<std::string> &cloudIds)
@@ -1229,6 +1207,14 @@ int32_t CloudMediaPhotosService::HandleSameNameUploadFail(
 
 int32_t CloudMediaPhotosService::OnStartSync()
 {
+    auto cloudType = CloudMediaContext::GetInstance().GetCloudType();
+    needRecoverSmartData_ = false;
+    if (cloudType == static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_CLOUD)) {
+        if (IsNeedRecoverSmartData()) {
+            needRecoverSmartData_ = true;
+        }
+    }
+
     CloudMediaDfxService::SyncStart("", 1);
     MediaGallerySyncNotify::GetInstance().NotifyProgressBegin();
     return this->photosDao_.ClearPhotoFailedRecords();
@@ -1243,7 +1229,23 @@ int32_t CloudMediaPhotosService::OnCompleteSync()
 
 int32_t CloudMediaPhotosService::OnCompletePull(const MediaOperateResult &optRet)
 {
+    const std::string CLOUDSYNC_SWITCH_STATUS_KEY = "persist.kernel.cloudsync.switch_status";
+    auto cloudSyncStatus = system::GetIntParameter(CLOUDSYNC_SWITCH_STATUS_KEY, 0);
+
     CHECK_AND_RETURN_RET_LOG(optRet.errorCode == 0, E_OK, "photo OnCompletePull errCode:%{public}d", optRet.errorCode);
+
+    if ((cloudSyncStatus == 0) && needRecoverSmartData_ &&
+        GetSmartDataUpdateState() > static_cast<int64_t>(UpdateSmartDataState::IDLE)) {
+        int32_t ret = DoUpdateSmartDataAlbum();
+        CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to schedule DoUpdateSmartDataAlbum task");
+        auto watch = MediaLibraryNotify::GetInstance();
+        if (watch == nullptr) {
+            MEDIA_ERR_LOG("Can not get MediaLibraryNotify Instance");
+            return E_FAIL;
+        }
+        watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
+        SetSmartDataUpdateState(UpdateSmartDataState::IDLE);
+    }
     return this->photosDao_.UpdatePhotoVisible();
 }
 
@@ -1414,5 +1416,179 @@ bool CloudMediaPhotosService::IsIgnoreMatch(
         isIgnoreMatchOfCloudRecycle,
         isIgnoreMatchOfLocalRecycle);
     return isIgnoreMatch;
+}
+
+int32_t CloudMediaPhotosService::ProcessHdcHomeStorageSwitching(
+    const std::vector<CloudMediaPullDataDto> &pullDatas,
+    std::vector<std::string> &failedRecords,
+    std::set<std::string> &refreshAlbums,
+    std::vector<int32_t> &stats,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    MEDIA_INFO_LOG("ProcessHdcHomeStorageSwitching: processing %zu photos", pullDatas.size());
+
+    auto maxFileId = assetCompareDao_.GetMaxFileIdBeforeCompare();
+    std::vector<NativeRdb::ValuesBucket> insertFiles;
+    std::vector<NativeRdb::ValuesBucket> updateFiles;
+    std::vector<int32_t> cloudFileIdlist;
+    std::vector<DuplicatePhotoInfo> cloudFileInfoList;
+    std::map<std::string, int> recordAnalysisAlbumMaps;
+    std::map<std::string, std::set<int>> recordAlbumMaps;
+
+    for (const auto &insertData : pullDatas) {
+        ProcessSinglePhotoRecord(insertData, maxFileId, insertFiles, updateFiles, cloudFileIdlist,
+            cloudFileInfoList, refreshAlbums, recordAnalysisAlbumMaps, recordAlbumMaps, failedRecords);
+    }
+
+    CleanDuplicatePhotosAssets(cloudFileInfoList);
+    MEDIA_INFO_LOG("insert %zu, update %zu, map %zu", insertFiles.size(), updateFiles.size(), recordAlbumMaps.size());
+
+    int32_t ret = ApplyBatchDatabaseChanges(insertFiles, updateFiles, cloudFileIdlist,
+        recordAnalysisAlbumMaps, recordAlbumMaps, photoRefresh);
+    if (ret != E_OK) {
+        return ret;
+    }
+
+    FinalizeAndNotifyChanges(refreshAlbums, insertFiles, updateFiles, photoRefresh);
+    return E_OK;
+}
+
+void CloudMediaPhotosService::ProcessSinglePhotoRecord(const CloudMediaPullDataDto &data, int64_t maxFileId,
+    std::vector<NativeRdb::ValuesBucket> &inserts, std::vector<NativeRdb::ValuesBucket> &updates,
+    std::vector<int32_t> &cloudFileIds, std::vector<DuplicatePhotoInfo> &duplicateInfos,
+    std::set<std::string> &refreshAlbums, std::map<std::string, int> &analysisAlbumMaps,
+    std::map<std::string, std::set<int>> &recordAlbumMaps, std::vector<std::string> &failedRecords)
+{
+    MEDIA_DEBUG_LOG("Processing record %s", data.cloudId.c_str());
+    ExtractEditDataCamera(data);
+
+    DuplicatePhotoInfo duplicateInfo = assetCompareDao_.FindDuplicatePhoto(data, maxFileId);
+    if (duplicateInfo.isValid) {
+        if (duplicateInfo.cleanFlag == 1) {
+            MEDIA_INFO_LOG("Found duplicate photo with clean_flag=1, fileId: %d", duplicateInfo.fileId);
+            if (ProcessDuplicatePhoto(data, duplicateInfo, refreshAlbums, updates) != E_OK) {
+                MEDIA_ERR_LOG("ProcessDuplicatePhoto failed for %s", data.cloudId.c_str());
+                failedRecords.emplace_back(data.cloudId);
+            }
+            cloudFileIds.push_back(duplicateInfo.fileId);
+            duplicateInfos.push_back(duplicateInfo);
+        } else if (duplicateInfo.cleanFlag == 0) {
+            return ;
+        }
+    } else {
+        if (photosDao_.GetInsertParams(data, analysisAlbumMaps, recordAlbumMaps, refreshAlbums, inserts) != E_OK) {
+            MEDIA_ERR_LOG("GetInsertParams failed for %s", data.cloudId.c_str());
+            failedRecords.emplace_back(data.cloudId);
+        }
+    }
+}
+
+int32_t CloudMediaPhotosService::ApplyBatchDatabaseChanges(
+    std::vector<NativeRdb::ValuesBucket> &inserts, std::vector<NativeRdb::ValuesBucket> &updates,
+    const std::vector<int32_t> &cloudFileIds, std::map<std::string, int> &analysisAlbumMaps,
+    std::map<std::string, std::set<int>> &recordAlbumMaps,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    int32_t ret = E_OK;
+    if (!updates.empty()) {
+        ret = photosDao_.BatchUpdateFile(analysisAlbumMaps, recordAlbumMaps, updates, photoRefresh, cloudFileIds);
+        if (ret != E_OK) {
+            MEDIA_ERR_LOG("BatchUpdateFile failed %d", ret);
+            return ret;
+        }
+    }
+
+    if (!inserts.empty()) {
+        ret = this->photosDao_.BatchInsertFile(analysisAlbumMaps, recordAlbumMaps, inserts, photoRefresh);
+        if (ret != E_OK) {
+            MEDIA_ERR_LOG("BatchInsertFile failed %d", ret);
+            return ret;
+        }
+    }
+    return ret;
+}
+
+void CloudMediaPhotosService::FinalizeAndNotifyChanges(std::set<std::string> &refreshAlbums,
+    const std::vector<NativeRdb::ValuesBucket> &inserts, const std::vector<NativeRdb::ValuesBucket> &updates,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    photoRefresh->RefreshAlbumNoDateModified();
+    photoRefresh->Notify();
+    this->photosDao_.UpdateAlbumInternal(refreshAlbums);
+
+    if (!inserts.empty()) {
+        NotifyPhotoInserted(inserts);
+    }
+    if (!updates.empty()) {
+        NotifyPhotoInserted(updates); // Assuming updates should also trigger insertion notifications
+    }
+
+    this->photosDao_.UpdateMediaAnalysisHdcData();
+    return ;
+}
+
+int32_t CloudMediaPhotosService::CleanDuplicatePhotosAssets(const std::vector<DuplicatePhotoInfo> &cloudFileInfolist)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "CleanDuplicatePhotosAssets failed. rdbStore is null");
+
+    std::vector<std::string> fileIds;
+    std::vector<std::string> paths;
+    std::vector<std::string> dateTakens;
+
+    for (const auto &info : cloudFileInfolist) {
+        if (info.real_lcd_visit_time != REAL_LCD_VISIT_TIME_INVALID) {
+            continue;
+        }
+        std::string fileIdStr = std::to_string(info.fileId);
+        fileIds.push_back(fileIdStr);
+        paths.push_back(info.data);
+        dateTakens.push_back("");
+
+        // Delete edit data, metadata, and clean gallery dentry file for each path
+        CHECK_AND_PRINT_LOG(CloudMediaAssetManager::DeleteEditdata(info.data) == OHOS::Media::E_OK, "Delete edit err.");
+#ifdef META_RECOVERY_SUPPORT
+        CHECK_AND_PRINT_LOG(MediaLibraryMetaRecovery::DeleteMetaDataByPath(info.data) == E_OK,
+            "DeleteMetaDataByPath error.");
+#endif
+        CloudSyncManager::GetInstance().CleanGalleryDentryFile(info.data);
+    }
+    // Delete thumbnails and ASTC files
+    MEDIA_INFO_LOG("Deleting thumbnail files.");
+    CHECK_AND_PRINT_LOG(ThumbnailService::GetInstance()->BatchDeleteThumbnailDirAndAstc(PhotoColumn::PHOTOS_TABLE,
+        fileIds, paths, dateTakens), "BatchDeleteThumbnailDirAndAstc error.");
+    return E_OK;
+}
+
+int32_t CloudMediaPhotosService::ProcessDuplicatePhoto(const CloudMediaPullDataDto &pullData,
+    const DuplicatePhotoInfo &duplicateInfo, std::set<std::string> &refreshAlbums,
+    std::vector<NativeRdb::ValuesBucket> &updateFiles)
+{
+    MEDIA_INFO_LOG("ProcessDuplicatePhoto: replacing fileId %{public}d with cloudId %{public}s",
+        duplicateInfo.fileId, pullData.cloudId.c_str());
+
+    std::map<std::string, int> recordAnalysisAlbumMaps;
+    std::map<std::string, std::set<int>> recordAlbumMaps;
+    std::vector<NativeRdb::ValuesBucket> tempInsertFiles;
+    int32_t ret = this->photosDao_.GetInsertParams(
+        pullData, recordAnalysisAlbumMaps, recordAlbumMaps, refreshAlbums, tempInsertFiles);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetInsertParams failed for duplicate photo %{public}d", ret);
+        return ret;
+    }
+
+    if (tempInsertFiles.empty()) {
+        MEDIA_ERR_LOG("No insert files generated for duplicate photo");
+        return E_INVAL_ARG;
+    }
+
+    for (auto &values : tempInsertFiles) {
+        values.PutInt(PhotoColumn::MEDIA_ID, duplicateInfo.fileId);
+        PhotosFieldIterator::ResetLocalFields(values);
+        updateFiles.push_back(values);
+        MEDIA_INFO_LOG("Added duplicate photo for update: fileId %{public}d", duplicateInfo.fileId);
+    }
+
+    return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

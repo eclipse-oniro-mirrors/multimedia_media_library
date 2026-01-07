@@ -108,6 +108,7 @@ const std::string PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID = "original_asset_c
 const std::string PhotoColumn::PHOTO_SOURCE_PATH = "source_path";
 const std::string PhotoColumn::PHOTO_CE_AVAILABLE = "ce_available";
 const std::string PhotoColumn::PHOTO_CE_STATUS_CODE = "ce_status_code";
+const std::string PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE = "moving_photo_enhancement_type";
 const std::string PhotoColumn::PHOTO_STRONG_ASSOCIATION = "strong_association";
 const std::string PhotoColumn::PHOTO_ASSOCIATE_FILE_ID = "associate_file_id";
 const std::string PhotoColumn::PHOTO_HAS_CLOUD_WATERMARK = "has_cloud_watermark";
@@ -123,13 +124,17 @@ const std::string PhotoColumn::PHOTO_VISIT_COUNT = "visit_count";
 const std::string PhotoColumn::PHOTO_LCD_VISIT_COUNT = "lcd_visit_count";
 const std::string PhotoColumn::PHOTO_FILE_SOURCE_TYPE = "file_source_type";
 const std::string PhotoColumn::PHOTO_VIDEO_MODE = "video_mode";
+const std::string PhotoColumn::PHOTO_IS_CRITICAL =  "is_critical";
+const std::string PhotoColumn::PHOTO_CRITICAL_TYPE =  "critical_type";
 const std::string PhotoColumn::PHOTO_IS_RECENT_SHOW = "is_recent_show";
 const std::string PhotoColumn::PHOTO_HAS_APPLINK = "has_applink";
 const std::string PhotoColumn::PHOTO_APPLINK = "applink";
+const std::string PhotoColumn::PHOTO_CHANGE_TIME = "change_time";
 const std::string PhotoColumn::PHOTO_TRANSCODE_TIME = "transcode_time";
 const std::string PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE = "trans_code_file_size";
 const std::string PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE = "exist_compatible_duplicate";
 const std::string PhotoColumn::PHOTO_ASPECT_RATIO = "aspect_ratio";
+const std::string PhotoColumn::PHOTO_EDIT_DATA_EXIST = "edit_data_exist";
 
 const std::string PhotoColumn::PHOTO_FILE_INODE = "inode";
 const std::string PhotoColumn::PHOTO_STORAGE_PATH = "storage_path";
@@ -316,7 +321,11 @@ const std::string PhotoColumn::CREATE_PHOTO_TABLE = "CREATE TABLE IF NOT EXISTS 
     PHOTO_FILE_SOURCE_TYPE + " INT NOT NULL DEFAULT 0, " +
     PHOTO_HDR_MODE + " INT NOT NULL DEFAULT 0, " +
     PHOTO_VIDEO_MODE + " INT NOT NULL DEFAULT -1, " +
-    PHOTO_ASPECT_RATIO + " DOUBLE NOT NULL DEFAULT -2 " +
+    PHOTO_ASPECT_RATIO + " DOUBLE NOT NULL DEFAULT -2, " +
+    PHOTO_CHANGE_TIME + " BIGINT NOT NULL DEFAULT 0, " +
+    PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE + " INT NOT NULL DEFAULT 0, " +
+    PHOTO_IS_CRITICAL + " INT NOT NULL DEFAULT 0," +
+    PHOTO_CRITICAL_TYPE + " INT NOT NULL DEFAULT 0" +
     ") ";
 
 const std::string PhotoColumn::CREATE_CLOUD_ID_INDEX = BaseColumn::CreateIndex() +
@@ -674,6 +683,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
     PhotoColumn::PHOTO_HDR_MODE,
     PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_ASPECT_RATIO,
+    PhotoColumn::PHOTO_CHANGE_TIME, PhotoColumn::PHOTO_IS_CRITICAL, PhotoColumn::PHOTO_CRITICAL_TYPE,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)
@@ -689,40 +699,14 @@ std::string PhotoColumn::CheckUploadPhotoColumns()
 {
     // Since date_modified has been checked in mdirty and fdirty, omit it here.
     const std::vector<std::string> uploadPhotoColumns = {
-        MEDIA_FILE_PATH, MEDIA_SIZE, MEDIA_NAME,
-        MEDIA_TYPE,
-        MEDIA_MIME_TYPE,
-        MEDIA_OWNER_PACKAGE,
-        MEDIA_OWNER_APPID,
-        MEDIA_DEVICE_NAME,
-        MEDIA_DATE_ADDED,
-        MEDIA_DATE_TAKEN,
-        MEDIA_DURATION,
-        MEDIA_IS_FAV,
-        MEDIA_DATE_TRASHED,
-        MEDIA_DATE_DELETED,
-        MEDIA_HIDDEN,
-        PHOTO_META_DATE_MODIFIED,
-        PHOTO_ORIENTATION,
-        PHOTO_LATITUDE,
-        PHOTO_LONGITUDE,
-        PHOTO_HEIGHT,
-        PHOTO_WIDTH,
-        PHOTO_SUBTYPE,
-        PHOTO_USER_COMMENT,
-        PHOTO_DATE_YEAR,
-        PHOTO_DATE_MONTH,
-        PHOTO_DATE_DAY,
-        PHOTO_DETAIL_TIME,
-        PHOTO_SHOOTING_MODE,
-        PHOTO_SHOOTING_MODE_TAG,
-        PHOTO_OWNER_ALBUM_ID,
-        PHOTO_SOURCE_PATH,
-        MOVING_PHOTO_EFFECT_MODE,
-        PHOTO_COVER_POSITION,
-        PHOTO_ORIGINAL_SUBTYPE,
-        PHOTO_IS_RECTIFICATION_COVER,
-        PHOTO_STRONG_ASSOCIATION,
+        MEDIA_FILE_PATH, MEDIA_SIZE, MEDIA_NAME, MEDIA_TYPE, MEDIA_MIME_TYPE, MEDIA_OWNER_PACKAGE,
+        MEDIA_OWNER_APPID, MEDIA_DEVICE_NAME, MEDIA_DATE_ADDED, MEDIA_DATE_TAKEN, MEDIA_DURATION,
+        MEDIA_IS_FAV, MEDIA_DATE_TRASHED, MEDIA_DATE_DELETED, MEDIA_HIDDEN, PHOTO_META_DATE_MODIFIED,
+        PHOTO_ORIENTATION, PHOTO_LATITUDE, PHOTO_LONGITUDE, PHOTO_HEIGHT, PHOTO_WIDTH, PHOTO_SUBTYPE,
+        PHOTO_USER_COMMENT, PHOTO_DATE_YEAR, PHOTO_DATE_MONTH, PHOTO_DATE_DAY, PHOTO_DETAIL_TIME,
+        PHOTO_SHOOTING_MODE, PHOTO_SHOOTING_MODE_TAG, MOVING_PHOTO_EFFECT_MODE, PHOTO_COVER_POSITION,
+        PHOTO_ORIGINAL_SUBTYPE, PHOTO_OWNER_ALBUM_ID, PHOTO_SOURCE_PATH, PHOTO_IS_RECTIFICATION_COVER,
+        PHOTO_STRONG_ASSOCIATION, PHOTO_HDR_MODE,
     };
 
     std::string result = "(";
@@ -766,6 +750,7 @@ std::string PhotoColumn::CheckMetaRecoveryPhotoColumns()
 const std::string AudioColumn::AUDIO_ALBUM = "audio_album";
 const std::string AudioColumn::AUDIO_ARTIST = "artist";
 const std::string AudioColumn::AUDIO_FILE_SOURCE_TYPE = "file_source_type";
+const std::string AudioColumn::AUDIO_IS_TEMP = "is_temp";
 
 const std::string AudioColumn::AUDIOS_TABLE = "Audios";
 
@@ -788,6 +773,7 @@ const std::string AudioColumn::CREATE_AUDIO_TABLE = "CREATE TABLE IF NOT EXISTS 
     MEDIA_DEVICE_NAME + " TEXT, " +
     AUDIO_ARTIST + " TEXT, " +
     AUDIO_FILE_SOURCE_TYPE + " INT NOT NULL DEFAULT 0, " +
+    AUDIO_IS_TEMP + " INT DEFAULT 0," +
     MEDIA_DATE_ADDED + " BIGINT, " +
     MEDIA_DATE_MODIFIED + " BIGINT, " +
     MEDIA_DATE_TAKEN + " BIGINT DEFAULT 0, " +
@@ -809,7 +795,7 @@ const std::string AudioColumn::QUERY_MEDIA_VOLUME = "SELECT sum(" + MediaColumn:
     MediaColumn::MEDIA_TYPE;
 
 const std::set<std::string> AudioColumn::AUDIO_COLUMNS = {
-    AudioColumn::AUDIO_ALBUM, AudioColumn::AUDIO_ARTIST, AudioColumn::AUDIO_FILE_SOURCE_TYPE
+    AudioColumn::AUDIO_ALBUM, AudioColumn::AUDIO_ARTIST, AudioColumn::AUDIO_FILE_SOURCE_TYPE, AudioColumn::AUDIO_IS_TEMP
 };
 
 bool AudioColumn::IsAudioColumn(const std::string &columnName)

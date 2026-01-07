@@ -36,6 +36,11 @@ struct DeleteBehaviorData {
     std::map<std::string, std::string> ownerAlbumIds;
 };
 
+enum class MultiStagesCaptureVideoStatus {
+    HIGH_QUALITY = 0,
+    LOW_QUALITY,
+};
+
 class DeleteBehaviorTask : public DfxData {
 public:
     DeleteBehaviorTask(std::string id, int32_t type, int32_t size, std::vector<std::string> &uris,
@@ -95,7 +100,12 @@ public:
     EXPORT void HandleTranscodeFailed(const TranscodeErrorType type);
     EXPORT void HandleTranscodeCostTime(const int32_t costTime);
     void HandleAccurateRefreshTimeOut(const AccurateRefreshDfxDataPoint& reportData);
+    void HandleCinematicVideoAccessTimes(bool isByUri, bool isHighQualityRequest, const std::string &fileId = "");
+    void HandleCinematicVideoAddStartTime(const CinematicWaitType waitType, const std::string &videoId);
+    void HandleCinematicVideoAddEndTime(const CinematicWaitType waitType, const std::string &videoId);
+    void HandleCinematicVideoMultistageResult(bool multistageResult);
     void HandleUpgradeFault(const UpgradeExceptionInfo& reportData);
+    int32_t HandleThmInodeCleanInfo(const ThmInodeCleanInfo &info);
 
 private:
     void Init();
