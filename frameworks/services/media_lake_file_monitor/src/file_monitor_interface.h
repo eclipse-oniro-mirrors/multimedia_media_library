@@ -217,6 +217,8 @@ struct FileMsgModel {
     int64_t changeDate {0};
     int64_t createDate {0};
     int32_t openSource {0};
+    int64_t closeDate {0};
+    std::string currentAppName;
 };
 
 // 来源： 扫盘/监听
