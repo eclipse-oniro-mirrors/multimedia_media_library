@@ -1352,6 +1352,8 @@ static int32_t GetTrashPredicates(DataSharePredicates &predicates)
     predicates.GreaterThan(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+    predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, to_string(0));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(0));
     predicates.EndWrap();
     return E_SUCCESS;
 }
