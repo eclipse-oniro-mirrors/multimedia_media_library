@@ -961,16 +961,19 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAs
             "sDataShareHelper_ is null");
     }
 
+    errno_t strncpyResult = E_OK;
     if (asyncContext->requestUri.length() > MAX_URI_SIZE) {
         MEDIA_ERR_LOG("Request image uri lens out of limit requestUri lens: %{public}zu",
             asyncContext->requestUri.length());
-        strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
+        strncpyResult = strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
+        CHECK_AND_RETURN_RET_LOG(strncpyResult == E_OK, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "strncpy failed");
         return MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED;
     }
 
     if (MediaFileUtils::GetMediaType(asyncContext->displayName) != MEDIA_TYPE_IMAGE) {
         MEDIA_ERR_LOG("Request image file type invalid");
-        strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
+        strncpyResult = strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
+        CHECK_AND_RETURN_RET_LOG(strncpyResult == E_OK, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "strncpy failed");
         return MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED;
     }
 
@@ -978,10 +981,13 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeQuickRequestImage(OH_MediaAs
     asyncContext->requestId = GenerateRequestId();
     isSuccess = OnHandleRequestImage(asyncContext);
     if (isSuccess) {
-        strncpy_s(requestId->requestId, UUID_STR_LENGTH, (asyncContext->requestId.c_str()), UUID_STR_LENGTH);
+        strncpyResult = strncpy_s(requestId->requestId,
+            UUID_STR_LENGTH, (asyncContext->requestId.c_str()), UUID_STR_LENGTH);
+        CHECK_AND_RETURN_RET_LOG(strncpyResult == E_OK, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "strncpy failed");
         return MEDIA_LIBRARY_OK;
     } else {
-        strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
+        strncpyResult = strncpy_s(requestId->requestId, UUID_STR_LENGTH, (ERROR_REQUEST_ID.c_str()), UUID_STR_LENGTH);
+        CHECK_AND_RETURN_RET_LOG(strncpyResult == E_OK, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "strncpy failed");
         return MEDIA_LIBRARY_OPERATION_NOT_SUPPORTED;
     }
 }
