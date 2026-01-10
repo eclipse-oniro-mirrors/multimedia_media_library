@@ -33,6 +33,7 @@ public:
         std::string lPath;
         int32_t priority = 1;
         int32_t uploadStatus = 0;
+        int32_t isLocal = 0;
     };
 
     /**
@@ -58,14 +59,16 @@ public:
                 bundleName = %{public}s, \
                 lPath = %{public}s, \
                 priority = %{public}d, \
-                uploadStatus = %{public}d",
+                uploadStatus = %{public}d, \
+                isLocal = %{public}d",
                 info.albumId.c_str(),
                 info.relativeBucketId.c_str(),
                 info.albumName.c_str(),
                 info.bundleName.c_str(),
                 info.lPath.c_str(),
                 info.priority,
-                info.uploadStatus);
+                info.uploadStatus,
+                info.isLocal);
         }
     }
 
@@ -80,7 +83,8 @@ public:
                 lPath = %{public}s, \
                 bundleName = %{public}s, \
                 priority = %{public}d, \
-                uploadStatus = %{public}d",
+                uploadStatus = %{public}d, \
+                isLocal = %{public}d",
                 info.albumId,
                 info.albumName.c_str(),
                 info.albumType,
@@ -88,7 +92,8 @@ public:
                 info.lPath.c_str(),
                 info.bundleName.c_str(),
                 info.priority,
-                info.uploadStatus);
+                info.uploadStatus,
+                info.isLocal);
         }
     }
 
@@ -125,7 +130,7 @@ private:
         const std::vector<PhotoAlbumDao::PhotoAlbumRowData> &photoAlbums,
         const std::vector<GalleryAlbumRowData> &galleryAlbums);
     int32_t UpdateAlbums(const std::vector<PhotoAlbumDao::PhotoAlbumRowData> &albumInfos);
-    GalleryAlbumRowData BuildAlbumInfoOfGalleryRecorders(const int32_t uploadStatus);
+    GalleryAlbumRowData BuildAlbumInfoOfGalleryRecorders(const int32_t uploadStatus, const int32_t isLocal);
     int32_t ReadResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, GalleryAlbumRowData &albumInfo);
 
 private:
@@ -144,6 +149,7 @@ private:
     const std::string GALLERY_PRIORITY = "priority";
     const std::string GALLERY_UPLOAD_STATUS = "uploadStatus";
     const std::string GALLERY_HDC_UPLOAD_STATUS = "hdcUploadStatus";
+    const std::string GALLERY_DIRTY = "dirty";
 
     const std::string SQL_GALLERY_ALBUM_SELECT = "\
         SELECT \
@@ -162,7 +168,8 @@ private:
             COALESCE(album_plugin.bundle_name, '') AS bundleName, \
             COALESCE(priority, 1) AS priority, \
             COALESCE(uploadStatus, 0) AS uploadStatus, \
-            COALESCE(hdcUploadStatus, 0) AS hdcUploadStatus \
+            COALESCE(hdcUploadStatus, 0) AS hdcUploadStatus, \
+            dirty \
         FROM gallery_album \
         LEFT JOIN garbage_album \
             ON gallery_album.lPath = garbage_album.nick_dir \

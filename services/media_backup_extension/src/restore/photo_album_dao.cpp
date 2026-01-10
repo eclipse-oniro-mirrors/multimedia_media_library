@@ -33,6 +33,8 @@ PhotoAlbumDao::PhotoAlbumRowData::PhotoAlbumRowData()
     albumType = -1;
     albumSubType = -1;
     priority = 1;
+    uploadStatus = 0;
+    isLocal = 0;
 }
 
 bool PhotoAlbumDao::PhotoAlbumRowData::IsValidSourceAlbum()
@@ -123,6 +125,7 @@ std::vector<PhotoAlbumDao::PhotoAlbumRowData> PhotoAlbumDao::GetPhotoAlbums()
             albumRowData.lPath = GetStringVal(this->FIELD_NAME_LPATH, resultSet);
             albumRowData.priority = GetInt32Val(this->FIELD_NAME_PRIORITY, resultSet);
             albumRowData.uploadStatus = GetInt32Val(this->FIELD_UPLOAD_STATUS, resultSet);
+            albumRowData.isLocal = GetInt32Val(this->FIELD_IS_LOCAL, resultSet);
             result.emplace_back(albumRowData);
         }
         // Check if there are more rows to fetch.
@@ -168,6 +171,7 @@ PhotoAlbumDao::PhotoAlbumRowData PhotoAlbumDao::GetPhotoAlbum(const std::string 
     albumRowData.lPath = GetStringVal(this->FIELD_NAME_LPATH, resultSet);
     albumRowData.priority = GetInt32Val(this->FIELD_NAME_PRIORITY, resultSet);
     albumRowData.uploadStatus = GetInt32Val(this->FIELD_UPLOAD_STATUS, resultSet);
+    albumRowData.isLocal = GetInt32Val(this->FIELD_IS_LOCAL, resultSet);
     resultSet->Close();
     // cache the PhotoAlbum info by lPath
     this->photoAlbumCache_.Insert(StringUtils::ToLower(lPath), albumRowData);
@@ -221,6 +225,7 @@ PhotoAlbumDao::PhotoAlbumRowData PhotoAlbumDao::GetOrCreatePhotoAlbum(const Phot
         album.lPath,
         album.priority,
         album.uploadStatus,
+        album.isLocal,
     };
     CHECK_AND_RETURN_RET_LOG(this->mediaLibraryRdb_ != nullptr, album, "Media_Restore: mediaLibraryRdb_ is null.");
     auto err = BackupDatabaseUtils::ExecuteSQL(this->mediaLibraryRdb_, this->SQL_PHOTO_ALBUM_INSERT, bindArgs);
@@ -290,6 +295,7 @@ int32_t PhotoAlbumDao::RestoreAlbums(std::vector<PhotoAlbumDao::PhotoAlbumRowDat
             data.lPath,
             data.priority,
             data.uploadStatus,
+            data.isLocal,
         };
         err = BackupDatabaseUtils::ExecuteSQL(this->mediaLibraryRdb_, this->SQL_PHOTO_ALBUM_INSERT, bindArgs);
         CHECK_AND_CONTINUE_ERR_LOG(err == NativeRdb::E_OK,

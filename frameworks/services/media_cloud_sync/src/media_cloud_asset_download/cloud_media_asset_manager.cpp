@@ -69,7 +69,6 @@ static const int32_t SLEEP_FOR_DELETE = 600;
 static const int32_t BATCH_NOTIFY_CLOUD_FILE = 2000;
 static const std::string DELETE_DISPLAY_NAME = "cloud_media_asset_deleted";
 static const int32_t ALBUM_FROM_CLOUD = 2;
-static const int32_t ALBUM_IS_CLOUD = 2;
 static const int32_t ZERO_ASSET_OF_ALBUM = 0;
 static const int32_t MAX_BATCH_DOWNLOAD_TASK_SIZE = 500;
 const std::string START_QUERY_ZERO = "0";

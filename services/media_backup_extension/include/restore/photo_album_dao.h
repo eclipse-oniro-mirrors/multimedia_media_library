@@ -36,6 +36,7 @@ public:
         std::string bundleName;
         int32_t priority;
         int32_t uploadStatus;
+        int32_t isLocal;
         PhotoAlbumRowData();
         bool IsValidSourceAlbum();
     };
@@ -90,6 +91,7 @@ private:
     const std::string FIELD_NAME_LPATH = "lpath";
     const std::string FIELD_NAME_PRIORITY = "priority";
     const std::string FIELD_UPLOAD_STATUS = "upload_status";
+    const std::string FIELD_IS_LOCAL = "is_local";
     const std::string SQL_PHOTO_ALBUM_SELECT = "\
         SELECT album_id, \
             album_type, \
@@ -100,7 +102,8 @@ private:
             cloud_id, \
             relative_path, \
             priority, \
-            upload_status \
+            upload_status, \
+            is_local \
         FROM PhotoAlbum \
         WHERE album_type != 1024 \
         ORDER BY album_id \
@@ -115,7 +118,8 @@ private:
             cloud_id, \
             relative_path, \
             priority, \
-            upload_status \
+            upload_status, \
+            is_local \
         FROM PhotoAlbum \
         WHERE LOWER(lpath) = LOWER(?) \
         ORDER BY album_id DESC \
@@ -141,7 +145,8 @@ private:
             priority, \
             date_modified, \
             date_added, \
-            upload_status \
+            upload_status, \
+            is_local \
         ) \
         SELECT \
             INPUT.album_type, \
@@ -165,7 +170,11 @@ private:
             END AS priority, \
             strftime('%s000', 'now') AS date_modified, \
             strftime('%s000', 'now') AS date_added, \
-            INPUT.upload_status \
+            INPUT.upload_status, \
+            CASE \
+                WHEN INPUT.is_local = 0 THEN NULL \
+                ELSE INPUT.is_local \
+            END AS is_local \
         FROM \
         ( \
             SELECT \
@@ -175,7 +184,8 @@ private:
                 ? AS bundle_name, \
                 ? AS lpath, \
                 ? AS priority, \
-                ? AS upload_status \
+                ? AS upload_status, \
+                ? AS is_local \
         ) AS INPUT \
         LEFT JOIN album_plugin \
             ON LOWER(INPUT.lpath)=LOWER(album_plugin.lpath) \
