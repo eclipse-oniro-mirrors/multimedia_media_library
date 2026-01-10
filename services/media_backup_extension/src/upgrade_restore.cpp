@@ -400,6 +400,15 @@ void UpgradeRestore::RestoreHighlightAlbums()
 
 void UpgradeRestore::RestorePhotoInner()
 {
+    // check if galleryDb exists
+    if (access(galleryDbPath_.c_str(), F_OK) != 0) {
+        MEDIA_INFO_LOG("Gallery database does not exist at path: %{public}s", galleryDbPath_.c_str());
+        ErrorInfo errorInfo(RestoreError::GALLERY_DATABASE_NOT_EXIST, 0, "", "Gallery database does not exist.");
+        UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
+        maxId_ = 0;
+        return;
+    }
+
     std::string dbIntegrityCheck = CheckGalleryDbIntegrity();
     if (dbIntegrityCheck == DB_INTEGRITY_CHECK) {
         MEDIA_INFO_LOG("the isAccountValid is %{public}d, sync switch open is %{public}d", isAccountValid_,
@@ -479,11 +488,6 @@ void UpgradeRestore::RestorePhoto()
         .SetSceneCode(sceneCode_)
         .SetTaskId(taskId_)
         .ReportRestoreMode(restoreMode, BaseRestore::GetNotFoundNumber());
-    if (restoreMode == RESTORE_MODE_PROC_ALL_DATA || restoreMode == RESTORE_MODE_PROC_TWIN_DATA) {
-        (void)NativeRdb::RdbHelper::DeleteRdbStore(galleryDbPath_);
-    } else {
-        MEDIA_INFO_LOG("restore mode no need to del gallery db");
-    }
     ProcessBurstPhotos();
     StopParameterForRestore();
     StopParameterForClone();
@@ -812,6 +816,12 @@ void UpgradeRestore::HandleRestData(void)
     this->DeleteEmptyAlbums();
     int64_t endDeleteEmptyAlbum = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("TimeCost: DeleteEmptyAlbum cost: %{public}" PRId64, endDeleteEmptyAlbum - startDeleteEmptyAlbum);
+
+    if (restoreMode_ == RESTORE_MODE_PROC_ALL_DATA || restoreMode_ == RESTORE_MODE_PROC_TWIN_DATA) {
+        (void)NativeRdb::RdbHelper::DeleteRdbStore(galleryDbPath_);
+    } else {
+        MEDIA_INFO_LOG("restore mode no need to del gallery db");
+    }
 }
 
 std::vector<FileInfo> UpgradeRestore::QueryFileInfos(int32_t minId)

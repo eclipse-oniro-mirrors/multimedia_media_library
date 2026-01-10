@@ -92,6 +92,19 @@ UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportError(const ErrorInfo 
     return *this;
 }
 
+UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportErrorInAudit(const ErrorInfo &info)
+{
+    std::string errorCode = std::to_string(info.error);
+    std::string errorInfo = BackupLogUtils::ErrorInfoToString(info);
+    MediaRestoreResultInfo resultInfo = UpgradeRestoreGalleryMediaTask()
+                                            .SetSceneCode(this->sceneCode_)
+                                            .SetTaskId(this->taskId_)
+                                            .Load("ErrorInfo", errorCode, errorInfo);
+    MEDIA_ERR_LOG("[Error] %{public}s: %{public}s", errorCode.c_str(), errorInfo.c_str());
+    PostErrorInfoAuditLog(info);
+    return *this;
+}
+
 UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportProgress(const std::string &status,
     const std::string &progressInfo)
 {

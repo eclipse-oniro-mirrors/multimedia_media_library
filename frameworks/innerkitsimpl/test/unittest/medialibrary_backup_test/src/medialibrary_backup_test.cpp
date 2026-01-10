@@ -474,9 +474,9 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_duplicate_data_002, TestSi
     MEDIA_INFO_LOG("medialib_backup_test_duplicate_data_002 end");
 }
 
-HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_restore_mode_not_del_db, TestSize.Level2)
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_handle_rest_data_not_del_db, TestSize.Level2)
 {
-    MEDIA_INFO_LOG("medialib_backup_test_restore_mode_not_del_db start");
+    MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_not_del_db start");
     const string galleryDbPath = TEST_BACKUP_PATH + "/" + GALLERY_APP_NAME + "/ce/databases/gallery.db";
     const string externalDbPath = TEST_BACKUP_PATH + "/" + MEDIA_APP_NAME + "/ce/databases/external.db";
     bool isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
@@ -485,18 +485,17 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_restore_mode_not_del_db, T
     EXPECT_EQ(isExternalDbExist, true);
 
     restoreService->restoreMode_ = RESTORE_MODE_PROC_MAIN_DATA;
-    restoreService->RestoreAudio();
-    restoreService->RestorePhoto();
+    restoreService->HandleRestData();
     isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
     isExternalDbExist = MediaFileUtils::IsFileExists(externalDbPath);
     EXPECT_EQ(isGalleryDbExist, true);
     EXPECT_EQ(isExternalDbExist, true);
-    MEDIA_INFO_LOG("medialib_backup_test_restore_mode_not_del_db end");
+    MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_not_del_db end");
 }
 
-HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_restore_mode_del_db, TestSize.Level2)
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_handle_rest_data_del_db, TestSize.Level2)
 {
-    MEDIA_INFO_LOG("medialib_backup_test_restore_mode_del_db start");
+    MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_del_db start");
     const string galleryDbPath = TEST_BACKUP_PATH + "/" + GALLERY_APP_NAME + "/ce/databases/gallery.db";
     const string externalDbPath = TEST_BACKUP_PATH + "/" + MEDIA_APP_NAME + "/ce/databases/external.db";
     bool isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
@@ -505,13 +504,12 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_restore_mode_del_db, TestS
     EXPECT_EQ(isExternalDbExist, true);
 
     restoreService->restoreMode_ = RESTORE_MODE_PROC_ALL_DATA;
-    restoreService->RestoreAudio();
-    restoreService->RestorePhoto();
+    restoreService->HandleRestData();
     isGalleryDbExist = MediaFileUtils::IsFileExists(galleryDbPath);
     isExternalDbExist = MediaFileUtils::IsFileExists(externalDbPath);
     EXPECT_EQ(isGalleryDbExist, false);
     EXPECT_EQ(isExternalDbExist, false);
-    MEDIA_INFO_LOG("medialib_backup_test_restore_mode_del_db end");
+    MEDIA_INFO_LOG("medialib_backup_test_handle_rest_data_del_db end");
 }
 
 HWTEST_F(MediaLibraryBackupTest, medialib_backup_test_modify_file, TestSize.Level2)
