@@ -1524,5 +1524,6 @@ export default {
   PlayMode: PlayMode,
   GridPinchModeType: GridPinchModeType,
   GridLevel: GridLevel,
-  GridPinchMode: GridPinchMode
+  GridPinchMode: GridPinchMode,
+  CloudAssetNetworkPolicyType: photoAccessHelper.CloudAssetNetworkPolicyType
 };
