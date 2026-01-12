@@ -30,11 +30,13 @@
 #include "get_cloudmedia_asset_status_vo.h"
 #include "user_define_ipc_client.h"
 #include "start_batch_download_cloud_resources_vo.h"
+#include "set_network_policy_batch_download_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
 #include "cancel_batch_download_cloud_resources_vo.h"
 #include "get_batch_download_cloud_resources_status_vo.h"
 #include "get_batch_download_cloud_resources_count_vo.h"
+#include "get_batch_download_cloud_resources_size_vo.h"
 #include "cloud_media_download_resources_status_napi.h"
 #include "medialibrary_napi_utils.h"
 #include "js_proxy.h"
@@ -53,6 +55,7 @@ static const string CLOUD_MEDIA_ASSET_MANAGER_CLASS = "CloudMediaAssetManager";
 thread_local napi_ref CloudMediaAssetManagerNapi::constructor_ = nullptr;
 thread_local napi_ref CloudMediaAssetManagerNapi::sdownloadCloudAssetCodeeEnumRef_ = nullptr;
 thread_local napi_ref CloudMediaAssetManagerNapi::sdownloadAssetsNotifyTypeEnumRef_ = nullptr;
+thread_local napi_ref CloudMediaAssetManagerNapi::sdownloadAssetsNetworkPolicyTypeEnumRef_ = nullptr;
 
 thread_local unique_ptr<AssetManagerChangeListenerNapi> g_listAssetListenerObj = nullptr;
 const size_t TYPE_SIZE = 6;
@@ -78,11 +81,14 @@ napi_value CloudMediaAssetManagerNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_FUNCTION("retainCloudMediaAsset", JSRetainCloudMediaAsset),
             DECLARE_NAPI_FUNCTION("getCloudMediaAssetStatus", JSGetCloudMediaAssetStatus),
             DECLARE_NAPI_FUNCTION("startDownloadSpecificCloudMedia", JSStartBatchDownloadCloudResources),
+            DECLARE_NAPI_FUNCTION("setDownloadSpecificCloudMediaNetworkPolicy", JSSetNetWorkPolicyForBatchDownload),
             DECLARE_NAPI_FUNCTION("pauseDownloadSpecificCloudMedia", JSPauseDownloadCloudResources),
             DECLARE_NAPI_FUNCTION("resumeDownloadSpecificCloudMedia", JSResumeBatchDownloadCloudResources),
             DECLARE_NAPI_FUNCTION("cancelDownloadSpecificCloudMedia", JSCancelDownloadCloudResources),
             DECLARE_NAPI_FUNCTION("queryDownloadSpecificCloudMediaDetails", JSGetBatchDownloadCloudResourcesStatus),
             DECLARE_NAPI_FUNCTION("queryDownloadSpecificCloudMediaTaskCount", JSGetBatchDownloadSpecificTaskCount),
+            DECLARE_NAPI_FUNCTION("queryDownloadSpecificCloudMediaTaskCountAndSize",
+                JSGetBatchDownloadSpecificTaskCountAndSize),
             DECLARE_NAPI_FUNCTION("onDownloadProgressChange", JsBatchDownloadRegisterCallback),
             DECLARE_NAPI_FUNCTION("offDownloadProgressChange", JsBatchDownloadUnRegisterCallback),
         } };
@@ -91,6 +97,7 @@ napi_value CloudMediaAssetManagerNapi::Init(napi_env env, napi_value exports)
     const vector<napi_property_descriptor> staticProps = {
         DECLARE_NAPI_PROPERTY("CloudAssetDownloadCode", CreateDownloadCloudAssetCodeEnum(env)),
         DECLARE_NAPI_PROPERTY("CloudAssetDownloadNotifyType", CreateDownloadAssetsNotifyTypeEnum(env)),
+        DECLARE_NAPI_PROPERTY("CloudAssetNetworkPolicyType", CreateDownloadAssetsNetworkPolicyTypeEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
@@ -574,6 +581,7 @@ static void StartBatchDownloadCloudResourcesExecute(napi_env env, void *data)
     StartBatchDownloadCloudResourcesRespBody respBody;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::START_BATCH_DOWNLOAD_CLOUD_RESOURCES);
     reqBody.uris = context->startBatchDownloadUris;
+    reqBody.taskSeq = context->taskSeq;
     NAPI_INFO_LOG("Before StartBatchDownloadCloudResources IPC::UserDefineIPCClient().Call");
     int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
     NAPI_INFO_LOG("After StartBatchDownloadCloudResources IPC::UserDefineIPCClient().Call %{public}d", ret);
@@ -646,7 +654,8 @@ static napi_status ParseArgsStartBatchDownloadCloudResources(napi_env env, napi_
 {
     /* Parse the first argument */
     constexpr size_t minArgs = ARGS_ONE;
-    CHECK_STATUS_RET(MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, minArgs, minArgs),
+    constexpr size_t maxArgs = ARGS_TWO;
+    CHECK_STATUS_RET(MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, minArgs, maxArgs),
         "Failed to get args");
     vector<string> uris;
     CHECK_STATUS_RET(MediaLibraryNapiUtils::GetStringArray(env, context->argv[ARGS_ZERO], uris), "Failed to get uris");
@@ -670,6 +679,9 @@ static napi_status ParseArgsStartBatchDownloadCloudResources(napi_env env, napi_
         return napi_invalid_arg;
     }
     context->startBatchDownloadUris = uris;
+    int32_t taskSeq = 0; // option
+    MediaLibraryNapiUtils::GetInt32(env, context->argv[ARGS_ONE], taskSeq);
+    context->taskSeq = taskSeq;
     return napi_ok;
 }
 
@@ -688,6 +700,109 @@ napi_value CloudMediaAssetManagerNapi::JSStartBatchDownloadCloudResources(napi_e
     tracer.Finish();
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSStartBatchDownloadCloudResources",
         StartBatchDownloadCloudResourcesExecute, StartBatchDownloadCloudResourcesCallback);
+#else
+    NapiError::ThrowError(env, MediaLibraryNotifyUtils::ConvertToJsError(JS_E_INNER_FAIL));
+    return nullptr;
+#endif
+}
+
+// ------set network option----
+static void SetNetWorkPolicyForBatchDownloadExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("SetNetWorkPolicyForBatchDownloadExecute");
+    NAPI_INFO_LOG("Enter SetNetWorkPolicyForBatchDownloadExecute");
+    auto* context = static_cast<CloudMediaAssetAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    SetNetworkPolicyForBatchDownloadReqBody reqBody;
+    SetNetworkPolicyForBatchDownloadRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_NETWORK_POLICY_FOR_BATCH_DOWNLOAD);
+    reqBody.uris = context->setNetPolicyBatchDownloadUris;
+    reqBody.networkPolicy = context->networkPolicy;
+    NAPI_INFO_LOG("Before SetNetWorkPolicyForBatchDownload IPC::UserDefineIPCClient().Call");
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    NAPI_INFO_LOG("After SetNetWorkPolicyForBatchDownload IPC::UserDefineIPCClient().Call %{public}d", ret);
+    if (ret < 0) {
+        context->SaveError(E_INNER_FAIL);
+        NAPI_ERR_LOG("SetNetWorkPolicy download cloud media failed, err: %{public}d", ret);
+    }
+    tracer.Finish();
+}
+
+static void SetNetWorkPolicyForBatchDownloadCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("SetNetWorkPolicyForBatchDownloadCallback");
+    NAPI_INFO_LOG("Enter SetNetWorkPolicyForBatchDownloadCallback");
+    auto* context = static_cast<CloudMediaAssetAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+    NAPI_INFO_LOG("After IPC SetNetWorkPolicyForBatchDownloadCallback %{public}d", context->error);
+    if (context->error == ERR_DEFAULT) {
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error);
+    }
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(
+            env, context->deferred, context->callbackRef, context->work, *jsContext);
+    }
+    delete context;
+}
+
+static napi_status ParseArgsSetNetWorkPolicyForBatchDownload(napi_env env, napi_callback_info info,
+    unique_ptr<CloudMediaAssetAsyncContext> &context)
+{
+    /* Parse the first argument */
+    constexpr size_t minArgs = ARGS_TWO;
+    CHECK_STATUS_RET(MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, minArgs, minArgs),
+        "Failed to get args");
+    vector<string> uris;
+    MediaLibraryNapiUtils::GetStringArray(env, context->argv[ARGS_ZERO], uris); // 接受null
+    if (uris.size() > BATCH_DOWNLOAD_LIMIT) { // not allow add more than 500 a batch
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to start batch download, more than 500 piece!");
+        return napi_invalid_arg;
+    }
+    for (const auto &uri : uris) {
+        if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check uri format, not a photo uri!");
+            return napi_invalid_arg;
+        }
+        string fileId = MediaFileUtils::GetIdFromUri(uri);
+        if (fileId.empty() || !all_of(fileId.begin(), fileId.end(), ::isdigit)) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check uri format, not valid photo uri!");
+            return napi_invalid_arg;
+        }
+    }
+    context->setNetPolicyBatchDownloadUris = uris;
+    int32_t networkPolicy = 0;
+    if (MediaLibraryNapiUtils::GetInt32(env, context->argv[ARGS_ONE], networkPolicy) != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get networkPolicy argument!");
+        return napi_invalid_arg;
+    }
+    context->networkPolicy = networkPolicy;
+    return napi_ok;
+}
+
+napi_value CloudMediaAssetManagerNapi::JSSetNetWorkPolicyForBatchDownload(napi_env env, napi_callback_info info)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    if (!CheckNapiCallerPermission(env)) {
+        return nullptr;
+    }
+    MediaLibraryTracer tracer;
+    tracer.Start("JSSetNetWorkPolicyForBatchDownload");
+    NAPI_INFO_LOG("Enter JSSetNetWorkPolicyForBatchDownload");
+    unique_ptr<CloudMediaAssetAsyncContext> asyncContext = make_unique<CloudMediaAssetAsyncContext>();
+    CHECK_COND_WITH_ERR_MESSAGE(env, ParseArgsSetNetWorkPolicyForBatchDownload(env, info, asyncContext) == napi_ok,
+        JS_E_PARAM_INVALID, "Failed to parse js args");
+    tracer.Finish();
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSSetNetWorkPolicyForBatchDownload",
+        SetNetWorkPolicyForBatchDownloadExecute, SetNetWorkPolicyForBatchDownloadCallback);
 #else
     NapiError::ThrowError(env, MediaLibraryNotifyUtils::ConvertToJsError(JS_E_INNER_FAIL));
     return nullptr;
@@ -1190,6 +1305,120 @@ napi_value CloudMediaAssetManagerNapi::JSGetBatchDownloadSpecificTaskCount(napi_
     return nullptr;
 #endif
 }
+
+//--------get cound and size
+static void GetBatchDownloadSpecificTaskCountAndSizeExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetBatchDownloadSpecificTaskSizeExecute");
+    NAPI_INFO_LOG("Enter GetBatchDownloadSpecificTaskSizeExecute");
+    auto* context = static_cast<CloudMediaAssetAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    GetBatchDownloadCloudResourcesSizeReqBody reqBody;
+    GetBatchDownloadCloudResourcesSizeRespBody respBody;
+    uint32_t businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_GET_CLOUDMEDIA_BATCH_RESOURCES_SIZE);
+    reqBody.predicates = context->getSizeBatchDownloadPredicates;
+    NAPI_INFO_LOG("Before GetBatchDownloadCloudResources IPC::UserDefineIPCClient().Call");
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    NAPI_INFO_LOG("After GetBatchDownloadCloudResources IPC::UserDefineIPCClient().Call %{public}d", ret);
+    if (ret < 0) {
+        context->SaveError(E_INNER_FAIL);
+        NAPI_ERR_LOG("Get download cloud media status failed, err: %{public}d", ret);
+        return;
+    }
+    context->allBatchDownloadSize = respBody.size;
+    context->allBatchDownloadTotalCount = respBody.count;
+    NAPI_INFO_LOG("After IPC GetBatchDownloadSpecificTaskSizeExecute size %{public}" PRId64, respBody.size);
+    tracer.Finish();
+}
+
+static void GetBatchDownloadSpecificTaskCountAndSizeCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetBatchDownloadSpecificTaskCountAndSizeCallback");
+    NAPI_INFO_LOG("Enter GetBatchDownloadSpecificTaskCountAndSizeCallback");
+    auto* context = static_cast<CloudMediaAssetAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+    NAPI_INFO_LOG("After IPC GetBatchDownloadSpecificTaskCountAndSizeCallback %{public}d", context->error);
+    if (context->error == ERR_DEFAULT) {
+        CHECK_ARGS_RET_VOID(env, napi_create_array_with_length(env, 2, &jsContext->data), // 2 fixed length
+            JS_INNER_FAIL);
+        napi_value countRet = nullptr;
+        CHECK_ARGS_RET_VOID(env, napi_create_int64(env, context->allBatchDownloadTotalCount, &countRet),
+            JS_INNER_FAIL);
+        CHECK_ARGS_RET_VOID(env, napi_set_element(env, jsContext->data, 0, countRet), JS_INNER_FAIL); // 0 pos
+        napi_value sizeRet = nullptr;
+        CHECK_ARGS_RET_VOID(env, napi_create_int64(env, context->allBatchDownloadSize, &sizeRet),
+            JS_INNER_FAIL);
+        CHECK_ARGS_RET_VOID(env, napi_set_element(env, jsContext->data, 1, sizeRet), JS_INNER_FAIL); // 1 pos
+        jsContext->status = true;
+    } else {
+        CHECK_ARGS_RET_VOID(env, napi_create_int64(env, -1, &jsContext->data), JS_INNER_FAIL);
+        context->HandleError(env, jsContext->error);
+    }
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(
+            env, context->deferred, context->callbackRef, context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_status ParseBatchDownloadSizePredicates(napi_env env, const napi_value arg,
+    unique_ptr<CloudMediaAssetAsyncContext> &context)
+{
+    JSProxy::JSProxy<DataShare::DataShareAbsPredicates> *jsProxy = nullptr;
+    napi_unwrap(env, arg, reinterpret_cast<void **>(&jsProxy));
+    if (jsProxy == nullptr) {
+        NAPI_ERR_LOG("jsProxy is invalid");
+        return napi_invalid_arg;
+    }
+    shared_ptr<DataShare::DataShareAbsPredicates> predicate = jsProxy->GetInstance();
+    vector<DataShare::OperationItem> operations;
+    auto &items = predicate->GetOperationList();
+    for (auto &item : items) {
+        operations.push_back(item);
+    }
+    context->getSizeBatchDownloadPredicates = DataShare::DataSharePredicates(move(operations));
+    return napi_ok;
+}
+
+static napi_status ParseArgsGetBatchDownloadSpecificTaskSize(napi_env env, napi_callback_info info,
+    unique_ptr<CloudMediaAssetAsyncContext> &context)
+{
+    /* Parse the first argument */
+    constexpr size_t minArgs = ARGS_ONE;
+    CHECK_STATUS_RET(MediaLibraryNapiUtils::AsyncContextGetArgs(env, info, context, minArgs, minArgs),
+        "Failed to get args");
+    CHECK_STATUS_RET(ParseBatchDownloadSizePredicates(env, context->argv[ARGS_ZERO], context), "Failed to get args");
+    return napi_ok;
+}
+
+napi_value CloudMediaAssetManagerNapi::JSGetBatchDownloadSpecificTaskCountAndSize(napi_env env, napi_callback_info info)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    if (!CheckNapiCallerPermission(env)) {
+        return nullptr;
+    }
+    MediaLibraryTracer tracer;
+    tracer.Start("JSGetBatchDownloadSpecificTaskCountAndSize");
+    NAPI_INFO_LOG("Enter JSGetBatchDownloadSpecificTaskCountAndSize");
+    unique_ptr<CloudMediaAssetAsyncContext> asyncContext = make_unique<CloudMediaAssetAsyncContext>();
+    CHECK_COND_WITH_ERR_MESSAGE(env, ParseArgsGetBatchDownloadSpecificTaskSize(env, info, asyncContext) == napi_ok,
+        JS_E_PARAM_INVALID, "Failed to parse js args");
+    tracer.Finish();
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetBatchDownloadSpecificTaskCountAndSize",
+        GetBatchDownloadSpecificTaskCountAndSizeExecute, GetBatchDownloadSpecificTaskCountAndSizeCallback);
+#else
+    NapiError::ThrowError(env, MediaLibraryNotifyUtils::ConvertToJsError(JS_E_INNER_FAIL));
+    return nullptr;
+#endif
+}
 // ----------
 napi_value CloudMediaAssetManagerNapi::JsBatchDownloadRegisterCallback(napi_env env, napi_callback_info info)
 {
@@ -1477,5 +1706,10 @@ napi_value CloudMediaAssetManagerNapi::CreateDownloadCloudAssetCodeEnum(napi_env
 napi_value CloudMediaAssetManagerNapi::CreateDownloadAssetsNotifyTypeEnum(napi_env env)
 {
     return CreateNumberEnumProperty(env, downloadAssetsNotifyTypeEnum, sdownloadAssetsNotifyTypeEnumRef_);
+}
+
+napi_value CloudMediaAssetManagerNapi::CreateDownloadAssetsNetworkPolicyTypeEnum(napi_env env)
+{
+    return CreateNumberEnumProperty(env, downloadAssetsNetworkPolicyTypeEnum, sdownloadAssetsNetworkPolicyTypeEnumRef_);
 }
 } // namespace OHOS::Media
