@@ -1541,6 +1541,18 @@ int32_t MediaAssetsService::StartBatchDownloadCloudResources(StartBatchDownloadC
     return 0;
 #endif
 }
+ 
+int32_t MediaAssetsService::SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
+    int32_t ret = instance.SetNetworkPolicyForBatchDownload(reqBody);
+    MEDIA_INFO_LOG("MediaAssetsService SetNetworkPolicyForBatchDownload END ret: %{public}d", ret);
+    return ret;
+#else
+    return 0;
+#endif
+}
 
 int32_t MediaAssetsService::ResumeBatchDownloadCloudResources(ResumeBatchDownloadCloudResourcesReqBody &reqBody)
 {
@@ -1599,6 +1611,20 @@ int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesCount(
     int32_t ret = instance.GetCloudMediaBatchDownloadResourcesCount(reqBody, respBody);
     MEDIA_INFO_LOG("MediaAssetsService GetCloudMediaBatchDownloadResourcesCount ret: %{public}d resp size: %{public}d",
         ret, respBody.count);
+    return ret;
+#else
+    return 0;
+#endif
+}
+
+int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesSize(
+    GetBatchDownloadCloudResourcesSizeReqBody &reqBody, GetBatchDownloadCloudResourcesSizeRespBody &respBody)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
+    int32_t ret = instance.GetCloudMediaBatchDownloadResourcesSize(reqBody, respBody);
+    MEDIA_INFO_LOG("MediaAssetsService GetCloudMediaBatchDownloadResourcesSize ret: %{public}d resp size: %{public}"
+        PRId64,  ret, respBody.size);
     return ret;
 #else
     return 0;
