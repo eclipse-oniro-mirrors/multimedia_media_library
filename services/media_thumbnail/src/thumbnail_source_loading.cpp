@@ -444,10 +444,7 @@ bool SourceLoader::CreateImagePixelMap(const std::string &sourcePath)
 
 bool SourceLoader::CreateSourcePixelMap()
 {
-    if (GetSourcePath == nullptr) {
-        MEDIA_ERR_LOG("GetSourcePath is nullptr.");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(GetSourcePath != nullptr, false, "GetSourcePath is nullptr");
 
     std::string sourcePath = GetSourcePath(data_, error_);
     if (sourcePath.empty()) {

@@ -82,10 +82,7 @@ static bool GetDefaultWindowSize(Size &size)
 {
     auto &displayMgr = OHOS::Rosen::DisplayManager::GetInstance();
     auto display = displayMgr.GetDefaultDisplay();
-    if (display == nullptr) {
-        MEDIA_ERR_LOG("Get display window size failed");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(display != nullptr, false, "Get display window size failed");
     size.width = display->GetWidth();
     size.height = display->GetHeight();
     if (size.width <= 0) {
@@ -198,9 +195,7 @@ int ThumbnailService::GetKeyFrameThumbFd(const string &path, const string &table
     };
 
     int fd = ThumbnailGenerateHelper::GetKeyFrameThumbnailPixelMap(opts, beginStamp, type);
-    if (fd < 0) {
-        MEDIA_ERR_LOG("GetKeyFrameThumbnailPixelMap failed : %{public}d", fd);
-    }
+    CHECK_AND_PRINT_LOG(fd >= 0, "GetKeyFrameThumbnailPixelMap failed : %{public}d", fd);
     return fd;
 }
 
@@ -397,10 +392,7 @@ void ThumbnailService::InterruptBgworker()
 {
     std::shared_ptr<ThumbnailGenerateWorker> thumbnailWorker =
         ThumbnailGenerateWorkerManager::GetInstance().GetThumbnailWorker(ThumbnailTaskType::BACKGROUND);
-    if (thumbnailWorker == nullptr) {
-        MEDIA_ERR_LOG("thumbnailWorker is null");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(thumbnailWorker != nullptr, "thumbnailWorker is null");
     thumbnailWorker->ReleaseTaskQueue(ThumbnailTaskPriority::LOW);
 }
 
@@ -489,9 +481,7 @@ int32_t ThumbnailService::TriggerHighlightThumbnail(std::string &id, std::string
         .table = PhotoColumn::HIGHLIGHT_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::TriggerHighlightThumbnail(opts, id, tracks, trigger, genType);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("TriggerHighlightThumbnail failed : %{public}d", err);
-    }
+    CHECK_AND_PRINT_LOG(err == E_OK, "TriggerHighlightThumbnail failed : %{public}d", err);
     return err;
 }
 
@@ -665,10 +655,7 @@ int32_t ThumbnailService::CreateAstcCloudDownload(const string &id, bool isCloud
     };
 
     int err = ThumbnailGenerateHelper::CreateAstcCloudDownload(opts, isCloudInsertTaskPriorityHigh);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("CreateAstcCloudDownload failed : %{public}d", err);
-        return err;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "CreateAstcCloudDownload failed : %{public}d", err);
     return err;
 }
 
@@ -680,10 +667,7 @@ bool ThumbnailService::CreateAstcMthAndYear(const std::string &id)
         .fileId = id,
     };
     int err = ThumbnailGenerateHelper::CreateAstcMthAndYear(opts);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("CreateAstcMthAndYear failed, err: %{public}d", err);
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, false, "CreateAstcMthAndYear failed, err: %{public}d", err);
     return true;
 }
 
@@ -695,10 +679,7 @@ bool ThumbnailService::RegenerateThumbnailFromCloud(const string &id)
         .fileId = id,
     };
     int err = ThumbnailGenerateHelper::RegenerateThumbnailFromCloud(opts);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("RegenerateThumbnailFromCloud failed, err: %{public}d", err);
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, false, "RegenerateThumbnailFromCloud failed, err: %{public}d", err);
     return true;
 }
 
@@ -757,9 +738,7 @@ static void UpdateThumbnailReadyToFailed(ThumbRdbOpt &opts, std::string id)
     int changedRows;
     values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, THUMBNAIL_READY_FAILED);
     int32_t err = opts.store->Update(changedRows, opts.table, values, MEDIA_DATA_DB_ID + " = ?", vector<string> { id });
-    if (err != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("RdbStore Update failed! %{public}d", err);
-    }
+    CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "RdbStore Update failed! %{public}d", err);
 }
 
 static bool IsAstcChangeOldKeyToNewKeySuccess(std::shared_ptr<MediaLibraryKvStore> &monthKvStore,
@@ -793,10 +772,7 @@ static bool IsAstcChangeOldKeyToNewKeySuccess(std::shared_ptr<MediaLibraryKvStor
 
 void ThumbnailService::AstcChangeKeyFromDateAddedToDateTaken()
 {
-    if (rdbStorePtr_ == nullptr) {
-        MEDIA_ERR_LOG("RdbStorePtr is null");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(rdbStorePtr_ != nullptr, "RdbStorePtr is null");
     vector<ThumbnailData> infos;
     if (!ThumbnailUtils::QueryOldKeyAstcInfos(rdbStorePtr_, PhotoColumn::PHOTOS_TABLE, infos)) {
         return;
@@ -812,16 +788,10 @@ void ThumbnailService::AstcChangeKeyFromDateAddedToDateTaken()
 
     auto monthKvStore = MediaLibraryKvStoreManager::GetInstance()
         .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::MONTH_ASTC);
-    if (monthKvStore == nullptr) {
-        MEDIA_ERR_LOG("Init month kvStore failed");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(monthKvStore != nullptr, "Init month kvStore failed");
     auto yearKvStore = MediaLibraryKvStoreManager::GetInstance()
         .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::YEAR_ASTC);
-    if (yearKvStore == nullptr) {
-        MEDIA_ERR_LOG("Init year kvStore failed");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(yearKvStore == nullptr, "Init year kvStore failed");
     for (size_t i = 0; i < infos.size(); i++) {
         std::string oldKey;
         std::string newKey;
@@ -865,9 +835,7 @@ void ThumbnailService::CheckLcdSizeAndUpdateStatus()
         .table = PhotoColumn::PHOTOS_TABLE
     };
     int32_t err = ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(opts);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("CheckLcdSizeAndUpdateStatus failed: %{public}d", err);
-    }
+    CHECK_AND_PRINT_LOG(err == E_OK, "CheckLcdSizeAndUpdateStatus failed: %{public}d", err);
 }
 
 int32_t ThumbnailService::RepairExifRotateBackground()

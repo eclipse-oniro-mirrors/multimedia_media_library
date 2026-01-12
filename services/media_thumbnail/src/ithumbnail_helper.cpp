@@ -49,10 +49,7 @@ void IThumbnailHelper::CloudSyncOnGenerationComplete(std::shared_ptr<ThumbnailTa
 
 void IThumbnailHelper::CreateLcdAndThumbnail(std::shared_ptr<ThumbnailTaskData> &data)
 {
-    if (data == nullptr) {
-        MEDIA_ERR_LOG("CreateLcdAndThumbnail failed, data is null");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(data != nullptr, "CreateLcdAndThumbnail failed, data is null");
     DoCreateLcdAndThumbnail(data->opts_, data->thumbnailData_);
     int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
     CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
@@ -62,10 +59,7 @@ void IThumbnailHelper::CreateLcdAndThumbnail(std::shared_ptr<ThumbnailTaskData> 
 
 void IThumbnailHelper::CreateLcd(std::shared_ptr<ThumbnailTaskData> &data)
 {
-    if (data == nullptr) {
-        MEDIA_ERR_LOG("CreateLcd failed, data is null");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(data != nullptr, "CreateLcd failed, data is null");
     DoCreateLcd(data->opts_, data->thumbnailData_);
     int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
     CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
@@ -73,10 +67,7 @@ void IThumbnailHelper::CreateLcd(std::shared_ptr<ThumbnailTaskData> &data)
 
 void IThumbnailHelper::CreateThumbnail(std::shared_ptr<ThumbnailTaskData> &data)
 {
-    if (data == nullptr) {
-        MEDIA_ERR_LOG("CreateThumbnail failed, data is null");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(data != nullptr, "CreateThumbnail failed, data is null");
     DoCreateThumbnail(data->opts_, data->thumbnailData_);
     int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
     CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
@@ -99,10 +90,7 @@ void IThumbnailHelper::CreateAstc(std::shared_ptr<ThumbnailTaskData> &data)
 
 void IThumbnailHelper::CreateAstcEx(std::shared_ptr<ThumbnailTaskData> &data)
 {
-    if (data == nullptr) {
-        MEDIA_ERR_LOG("CreateAstcEx failed, data is null");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(data != nullptr, "CreateAstcEx failed, data is null");
     DoCreateAstcEx(data->opts_, data->thumbnailData_);
     int32_t err = ThumbnailGenerationPostProcess::PostProcess(data->thumbnailData_, data->opts_);
     CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
@@ -111,10 +99,7 @@ void IThumbnailHelper::CreateAstcEx(std::shared_ptr<ThumbnailTaskData> &data)
 
 void IThumbnailHelper::DeleteMonthAndYearAstc(std::shared_ptr<ThumbnailTaskData> &data)
 {
-    if (data == nullptr) {
-        MEDIA_ERR_LOG("DeleteMonthAndYearAstc failed, data is null");
-        return;
-    }
+    CHECK_AND_RETURN_LOG(data != nullptr, "CreateAstcEx failed, data is null");
     MEDIA_INFO_LOG("Start DeleteMonthAndYearAstc, id: %{public}s, dateKey:%{public}s",
         data->thumbnailData_.id.c_str(), data->thumbnailData_.dateTaken.c_str());
     if (!ThumbnailFileUtils::DeleteMonthAndYearAstc(data->thumbnailData_)) {
@@ -1089,10 +1074,8 @@ bool IThumbnailHelper::DoRotateThumbnail(ThumbRdbOpt &opts, ThumbnailData &data)
 
 static bool ScaleLcdToThumbnail(ThumbnailData &data)
 {
-    if (data.source.IsEmptySource()) {
-        MEDIA_ERR_LOG("data source is empty when scaling from lcd to thumb");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(!data.source.IsEmptySource(), false,
+ 	    "data source is empty when scaling from lcd to thumb");
 
     data.loaderOpts.decodeInThumbSize = true;
     if (data.source.HasPictureSource()) {
@@ -1400,15 +1383,9 @@ bool IThumbnailHelper::IsPureCloudImage(ThumbRdbOpt &opts)
         return false;
     }
     auto resultSet = opts.store->QueryByStep(rdbPredicates, columns);
-    if (resultSet == nullptr) {
-        MEDIA_ERR_LOG("IsPureCloudImage result set is null");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "IsPureCloudImage result set is null");
     auto ret = resultSet->GoToFirstRow();
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("IsPureCloudImage go to first row failed");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, false, "IsPureCloudImage go to first row failed");
     int photoPosition = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
 
     // if current image is a pure cloud image, it's photo position column in database will be 2
