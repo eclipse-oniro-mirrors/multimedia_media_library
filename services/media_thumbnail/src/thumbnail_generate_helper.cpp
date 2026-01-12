@@ -766,7 +766,7 @@ int32_t ThumbnailGenerateHelper::GetKeyFrameThumbnailPixelMap(ThumbRdbOpt &opts,
 
     string absFilePath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(fileName, absFilePath), E_ERR,
- 	    "file is not real path, file path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
+        "file is not real path, file path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
 
     auto fd = open(absFilePath.c_str(), O_RDONLY);
     if (fd < 0) {
