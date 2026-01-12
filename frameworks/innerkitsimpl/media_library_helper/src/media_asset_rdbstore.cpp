@@ -113,6 +113,7 @@ MediaAssetRdbStore::MediaAssetRdbStore()
 
 int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
 {
+    std::unique_lock<std::mutex> lock(mutex_);
     auto context = AbilityRuntime::Context::GetApplicationContext();
     CHECK_AND_RETURN_RET_LOG(context != nullptr, NativeRdb::E_ERROR, "fail to acquire application Context");
     uid_t uid = getuid() / BASE_USER_RANGE;
