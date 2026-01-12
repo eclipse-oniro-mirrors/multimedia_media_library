@@ -41,8 +41,7 @@ namespace Media {
 const std::string API_VERSION_STR = "api_version";
 const std::string MEDIA_FILEMODE_READONLY = "r";
 const int32_t MAX_VALUE = 100000000;
-const int32_t MAX_RESERVE_SIZE = 200000000;
-const int32_t MAX_HANDLE_SIZE = 8 + 4 * (100000000 + 100000000);
+const int32_t MAX_HANDLE_SIZE = 4 * (100000000 + 100000000);
 std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32_t &fileId)
 {
     MEDIA_DEBUG_LOG("PictureHandlerClient::RequestPicture fileId: %{public}d", fileId);
@@ -354,7 +353,7 @@ bool PictureHandlerClient::ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuf
     MEDIA_DEBUG_LOG("PictureHandlerClient::ReadBufferHandle reserveInts: %{public}d", reserveInts);
 
     size_t handleSize = sizeof(BufferHandle) + (sizeof(int32_t) * (reserveFds + reserveInts));
-    if (handleSize < 0 || handleSize > MAX_HANDLE_SIZE) {
+    if (handleSize < sizeof(BufferHandle) || handleSize > MAX_HANDLE_SIZE) {
         return false;
     }
     BufferHandle *handle = static_cast<BufferHandle *>(malloc(handleSize));
@@ -395,7 +394,9 @@ bool PictureHandlerClient::ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuf
 
     if (reserveIntsRet) {
         for (uint32_t j = 0; j < handle->reserveInts; j++) {
-            if (reserveFds + j < 0 || reserveFds + j > static_cast<uint32_t>(MAX_RESERVE_SIZE)) {
+            uint32_t maxElements = (handleSize - sizeof(BufferHandle)) / sizeof(int32_t);
+            if (reserveFds + j >= maxElements) {
+                free(handle);
                 return false;
             }
             handle->reserve[reserveFds + j] = data.ReadInt32();
