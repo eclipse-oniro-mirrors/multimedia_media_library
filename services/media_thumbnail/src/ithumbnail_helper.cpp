@@ -99,8 +99,7 @@ void IThumbnailHelper::CreateAstcEx(std::shared_ptr<ThumbnailTaskData> &data)
 
 void IThumbnailHelper::DeleteMonthAndYearAstc(std::shared_ptr<ThumbnailTaskData> &data)
 {
-    CHECK_AND_RETURN_RET_LOG(!data.source.IsEmptySource(), false,
- 	    "data source is empty when scaling from lcd to thumb");
+    CHECK_AND_RETURN_LOG(data != nullptr, "DeleteMonthAndYearAstc failed, data is null");
     MEDIA_INFO_LOG("Start DeleteMonthAndYearAstc, id: %{public}s, dateKey:%{public}s",
         data->thumbnailData_.id.c_str(), data->thumbnailData_.dateTaken.c_str());
     if (!ThumbnailFileUtils::DeleteMonthAndYearAstc(data->thumbnailData_)) {
