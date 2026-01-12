@@ -714,8 +714,8 @@ int32_t ThumbnailGenerateHelper::GetThumbnailPixelMap(ThumbnailData& data, Thumb
         IThumbnailHelper::DoRotateThumbnailEx(opts, data, fd, thumbType);
         fileName = GetThumbnailPath(data.path,
             thumbType == ThumbnailType::LCD ? THUMBNAIL_LCD_SUFFIX : THUMBNAIL_THUMB_SUFFIX);
-        CHECK_AND_RETURN_RET_LOG(PathToRealPath(fileName, absFilePath), E_ERR,
-            "file is not real path, file path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
+        CHECK_AND_RETURN_RET_LOG(PathToRealPath(fileName, absFilePath),
+            E_ERR, "file is not real path, file path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
         fd = open(absFilePath.c_str(), O_RDONLY);
         if (fd < 0) {
             MEDIA_ERR_LOG("Rotate thumb failed, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
