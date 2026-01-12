@@ -355,8 +355,8 @@ bool PictureHandlerClient::ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuf
 
     size_t handleSize = sizeof(BufferHandle) + (sizeof(int32_t) * (reserveFds + reserveInts));
     if (handleSize < 0 || handleSize > MAX_HANDLE_SIZE) {
- 	    return false;
- 	}
+        return false;
+    }
     BufferHandle *handle = static_cast<BufferHandle *>(malloc(handleSize));
     if (handle == nullptr) {
         MEDIA_ERR_LOG("PictureHandlerClient::ReadBufferHandle malloc BufferHandle failed");
