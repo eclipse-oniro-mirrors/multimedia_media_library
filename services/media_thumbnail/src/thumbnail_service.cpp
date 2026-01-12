@@ -791,7 +791,7 @@ void ThumbnailService::AstcChangeKeyFromDateAddedToDateTaken()
     CHECK_AND_RETURN_LOG(monthKvStore != nullptr, "Init month kvStore failed");
     auto yearKvStore = MediaLibraryKvStoreManager::GetInstance()
         .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::YEAR_ASTC);
-    CHECK_AND_RETURN_LOG(yearKvStore == nullptr, "Init year kvStore failed");
+    CHECK_AND_RETURN_LOG(yearKvStore != nullptr, "Init year kvStore failed");
     for (size_t i = 0; i < infos.size(); i++) {
         std::string oldKey;
         std::string newKey;
