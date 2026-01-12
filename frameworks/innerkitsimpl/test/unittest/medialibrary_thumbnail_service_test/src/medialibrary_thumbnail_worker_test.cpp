@@ -24,6 +24,8 @@ namespace OHOS {
 namespace Media {
 std::shared_ptr<ThumbnailGenerateWorker> foregroundWorkerPtr_ = nullptr;
 std::shared_ptr<ThumbnailGenerateWorker> backgroundWorkerPtr_ = nullptr;
+std::shared_ptr<ThumbnailGenerateWorker> asyncUpdateWorkerPtr_ = nullptr;
+std::shared_ptr<ThumbnailGenerateWorker> thumbReadyWorkerPtr_ = nullptr;
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 
 void MediaLibraryThumbnailWorkerTest::SetUpTestCase(void)
@@ -40,6 +42,18 @@ void MediaLibraryThumbnailWorkerTest::SetUpTestCase(void)
     if (errCode != E_OK) {
         backgroundWorkerPtr_ = nullptr;
     }
+
+    asyncUpdateWorkerPtr_ = std::make_shared<ThumbnailGenerateWorker>();
+    errCode = asyncUpdateWorkerPtr_->Init(ThumbnailTaskType::ASYNC_UPDATE_RDB);
+    if (errCode != E_OK) {
+        asyncUpdateWorkerPtr_ = nullptr;
+    }
+
+    thumbReadyWorkerPtr_ = std::make_shared<ThumbnailGenerateWorker>();
+    errCode = thumbReadyWorkerPtr_->Init(ThumbnailTaskType::THUMB_READY);
+    if (errCode != E_OK) {
+        thumbReadyWorkerPtr_ = nullptr;
+    }
 }
 
 void MediaLibraryThumbnailWorkerTest::TearDownTestCase(void)
@@ -51,6 +65,14 @@ void MediaLibraryThumbnailWorkerTest::TearDownTestCase(void)
     if (backgroundWorkerPtr_ != nullptr) {
         backgroundWorkerPtr_->ReleaseTaskQueue(ThumbnailTaskPriority::HIGH);
         backgroundWorkerPtr_->ReleaseTaskQueue(ThumbnailTaskPriority::LOW);
+    }
+    if (asyncUpdateWorkerPtr_ != nullptr) {
+        asyncUpdateWorkerPtr_->ReleaseTaskQueue(ThumbnailTaskPriority::HIGH);
+        asyncUpdateWorkerPtr_->ReleaseTaskQueue(ThumbnailTaskPriority::LOW);
+    }
+    if (thumbReadyWorkerPtr_ != nullptr) {
+        thumbReadyWorkerPtr_->ReleaseTaskQueue(ThumbnailTaskPriority::HIGH);
+        thumbReadyWorkerPtr_->ReleaseTaskQueue(ThumbnailTaskPriority::LOW);
     }
     std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
 }
@@ -79,6 +101,32 @@ HWTEST_F(MediaLibraryThumbnailWorkerTest, ThumbnailWorker_AddThumbnailGenerateTa
     int32_t status = foregroundWorkerPtr_->AddTask(task, ThumbnailTaskPriority::HIGH);
     EXPECT_EQ(status, E_OK);
     status = foregroundWorkerPtr_->AddTask(task, ThumbnailTaskPriority::LOW);
+    EXPECT_EQ(status, E_OK);
+}
+
+HWTEST_F(MediaLibraryThumbnailWorkerTest, ThumbnailWorker_AddThumbnailGenerateTask_test_002, TestSize.Level1)
+{
+    ASSERT_NE(thumbReadyWorkerPtr_, nullptr);
+    ThumbRdbOpt opts;
+    ThumbnailData thumbData;
+    std::shared_ptr<ThumbnailTaskData> taskData = std::make_shared<ThumbnailTaskData>(opts, thumbData);
+    std::shared_ptr<ThumbnailGenerateTask> task = std::make_shared<ThumbnailGenerateTask>(ThumbnailTestTask, taskData);
+    int32_t status = thumbReadyWorkerPtr_->AddTask(task, ThumbnailTaskPriority::HIGH);
+    EXPECT_EQ(status, E_OK);
+    status = thumbReadyWorkerPtr_->AddTask(task, ThumbnailTaskPriority::LOW);
+    EXPECT_EQ(status, E_OK);
+}
+
+HWTEST_F(MediaLibraryThumbnailWorkerTest, ThumbnailWorker_AddThumbnailGenerateTask_test_003, TestSize.Level1)
+{
+    ASSERT_NE(asyncUpdateWorkerPtr_, nullptr);
+    ThumbRdbOpt opts;
+    ThumbnailData thumbData;
+    std::shared_ptr<ThumbnailTaskData> taskData = std::make_shared<ThumbnailTaskData>(opts, thumbData);
+    std::shared_ptr<ThumbnailGenerateTask> task = std::make_shared<ThumbnailGenerateTask>(ThumbnailTestTask, taskData);
+    int32_t status = asyncUpdateWorkerPtr_->AddTask(task, ThumbnailTaskPriority::HIGH);
+    EXPECT_EQ(status, E_OK);
+    status = asyncUpdateWorkerPtr_->AddTask(task, ThumbnailTaskPriority::LOW);
     EXPECT_EQ(status, E_OK);
 }
 

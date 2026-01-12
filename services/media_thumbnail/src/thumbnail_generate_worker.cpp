@@ -42,6 +42,7 @@ constexpr size_t CLOSE_THUMBNAIL_WORKER_TIME_INTERVAL = 270000;
 const std::string THREAD_NAME_FOREGROUND = "ThumbForeground";
 const std::string THREAD_NAME_BACKGROUND = "ThumbBackground";
 const std::string THREAD_NAME_ASYNC_UPDATE_RDB = "ThumbAsyncUpdateRdb";
+const std::string THREAD_NAME_THUMBNAIL_READY = "ThumbReady";
 
 void ThumbnailGeneratorWrapper::BeforeExecute()
 {
@@ -99,6 +100,22 @@ ThumbnailGenerateWorker::~ThumbnailGenerateWorker()
     }
 }
 
+void ThumbnailGenerateWorker::InitThread(int32_t threadNum, std::string threadName, CpuAffinityType cpuAffinityType,
+    CpuAffinityType cpuAffinityTypeLowPriority)
+{
+    isThreadRunning_ = true;
+    for (auto i = 0; i < threadNum; i++) {
+        std::shared_ptr<ThumbnailGenerateThreadStatus> threadStatus =
+            std::make_shared<ThumbnailGenerateThreadStatus>(i);
+        threadStatus->cpuAffinityType = cpuAffinityType;
+        threadStatus->cpuAffinityTypeLowPriority = cpuAffinityTypeLowPriority;
+        std::thread thread([this, threadStatus] { this->StartWorker(threadStatus); });
+        pthread_setname_np(thread.native_handle(), threadName.c_str());
+        threads_.emplace_back(std::move(thread));
+        threadsStatus_.emplace_back(threadStatus);
+    }
+}
+
 int32_t ThumbnailGenerateWorker::Init(const ThumbnailTaskType &taskType)
 {
     std::unique_lock<std::mutex> lock(taskMutex_);
@@ -130,22 +147,17 @@ int32_t ThumbnailGenerateWorker::Init(const ThumbnailTaskType &taskType)
             cpuAffinityType = CpuAffinityType::CPU_IDX_9;
             cpuAffinityTypeLowPriority = CpuAffinityType::CPU_IDX_9;
             break;
+        case ThumbnailTaskType::THUMB_READY:
+            threadNum = THREAD_NUM_ASYNC_UPDATE_RDB;
+            threadName = THREAD_NAME_THUMBNAIL_READY;
+            cpuAffinityType = CpuAffinityType::CPU_IDX_DEFAULT;
+            cpuAffinityTypeLowPriority = CpuAffinityType::CPU_IDX_DEFAULT;
+            break;
         default:
             MEDIA_ERR_LOG("invalid task type");
             return E_ERR;
     }
-
-    isThreadRunning_ = true;
-    for (auto i = 0; i < threadNum; i++) {
-        std::shared_ptr<ThumbnailGenerateThreadStatus> threadStatus =
-            std::make_shared<ThumbnailGenerateThreadStatus>(i);
-        threadStatus->cpuAffinityType = cpuAffinityType;
-        threadStatus->cpuAffinityTypeLowPriority = cpuAffinityTypeLowPriority;
-        std::thread thread([this, threadStatus] { this->StartWorker(threadStatus); });
-        pthread_setname_np(thread.native_handle(), threadName.c_str());
-        threads_.emplace_back(std::move(thread));
-        threadsStatus_.emplace_back(threadStatus);
-    }
+    InitThread(threadNum, threadName, cpuAffinityType, cpuAffinityTypeLowPriority);
     lock.unlock();
     RegisterWorkerTimer();
     return E_OK;
@@ -196,6 +208,8 @@ bool ThumbnailGenerateWorker::WaitForTask(std::shared_ptr<ThumbnailGenerateThrea
                    !lowPriorityTaskQueue_.Empty();
         });
         if (!ret) {
+            CHECK_AND_PRINT_INFO_LOG(taskType_ != ThumbnailTaskType::THUMB_READY,
+                "After 5 minutes, all threads are cleared");
             MEDIA_INFO_LOG("Wait for task timeout");
             return false;
         }

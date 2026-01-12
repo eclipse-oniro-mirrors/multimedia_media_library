@@ -268,78 +268,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_CancelAstcBatchTask_test_001
     serverTest->ReleaseService();
 }
 
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_001, TestSize.Level1)
-{
-    std::shared_ptr<ThumbnailTaskData> data;
-    IThumbnailHelper::CreateLcdAndThumbnail(data);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    IThumbnailHelper::CreateLcdAndThumbnail(dataValue);
-    EXPECT_EQ(requestId, dataValue->requestId_);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_002, TestSize.Level1)
-{
-    std::shared_ptr<ThumbnailTaskData> data;
-    IThumbnailHelper::CreateLcd(data);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    IThumbnailHelper::CreateLcdAndThumbnail(dataValue);
-    EXPECT_EQ(requestId, dataValue->requestId_);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_003, TestSize.Level1)
-{
-    std::shared_ptr<ThumbnailTaskData> data;
-    IThumbnailHelper::CreateThumbnail(data);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    IThumbnailHelper::CreateLcdAndThumbnail(dataValue);
-    EXPECT_EQ(requestId, dataValue->requestId_);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_004, TestSize.Level1)
-{
-    std::shared_ptr<ThumbnailTaskData> data;
-    IThumbnailHelper::CreateAstc(data);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    IThumbnailHelper::CreateLcdAndThumbnail(dataValue);
-    EXPECT_EQ(requestId, dataValue->requestId_);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_005, TestSize.Level1)
-{
-    std::shared_ptr<ThumbnailTaskData> data;
-    IThumbnailHelper::CreateAstcEx(data);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    IThumbnailHelper::CreateLcdAndThumbnail(dataValue);
-    EXPECT_EQ(requestId, dataValue->requestId_);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_006, TestSize.Level1)
-{
-    std::shared_ptr<ThumbnailTaskData> data;
-    IThumbnailHelper::DeleteMonthAndYearAstc(data);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    IThumbnailHelper::CreateLcdAndThumbnail(dataValue);
-    EXPECT_EQ(requestId, dataValue->requestId_);
-}
-
 HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_007, TestSize.Level1)
 {
     ThumbRdbOpt opts;
@@ -607,18 +535,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_035, T
     opts.table = "b";
     auto res = IThumbnailHelper::IsPureCloudImage(opts);
     EXPECT_EQ(res, false);
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_test_036, TestSize.Level1)
-{
-    std::shared_ptr<ThumbnailTaskData> data;
-    IThumbnailHelper::UpdateAstcDateTaken(data);
-    ThumbRdbOpt opts;
-    ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
-    IThumbnailHelper::CreateLcdAndThumbnail(dataValue);
-    EXPECT_EQ(requestId, dataValue->requestId_);
 }
 
 HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_utils_test_005, TestSize.Level1)
@@ -1454,32 +1370,6 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_TrySavePict
     EXPECT_EQ(ret, false);
 }
 
-void executeFunction(std::shared_ptr<ThumbnailTaskData> &data)
-{
-    if (data != nullptr) {
-        MEDIA_INFO_LOG("Executing task with ID: %{public}s, requestId: %d",
-                       data->thumbnailData_.id.c_str(), data->requestId_);
-    }
-}
-
-HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_helper_AddThumbnailGenBatchTask_test, TestSize.Level0)
-{
-    ThumbnailGenerateExecute executor = executeFunction;
-    ThumbRdbOpt opts;
-    opts.store = storePtr;
-    opts.networkId = "GetUdidByNetworkId";
-    opts.udid = "GetUdidByNetworkId";
-    ThumbnailData thumbData;
-    thumbData.id = "0";
-    thumbData.dateModified = "data_modified";
-    int32_t requestId = 1;
-    pid_t pid = 1;
-    IThumbnailHelper::AddThumbnailGenBatchTask(executor, opts, thumbData, requestId, pid);
-    std::shared_ptr<ThumbnailGenerateWorker> thumbnailWorker =
-        ThumbnailGenerateWorkerManager::GetInstance().GetThumbnailWorker(ThumbnailTaskType::FOREGROUND);
-    EXPECT_NE(thumbnailWorker, nullptr);
-}
-
 HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_restore_manager_test_001, TestSize.Level0)
 {
     auto& thumbnailRestoreManager = ThumbnailRestoreManager::GetInstance();
@@ -1572,8 +1462,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_restore_manager_test_007, T
     std::shared_ptr<ThumbnailTaskData> data;
     ThumbRdbOpt opts;
     ThumbnailData thumbData;
-    int32_t requestId;
-    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId);
+    std::shared_ptr<ThumbnailTaskData> dataValue = std::make_shared<ThumbnailTaskData>(opts, thumbData);
     ThumbnailRestoreManager::RestoreAstcDualFrameTask(data);
 
     ThumbnailRestoreManager::RestoreAstcDualFrameTask(dataValue);

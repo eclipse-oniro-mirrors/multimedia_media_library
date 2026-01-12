@@ -159,44 +159,6 @@ void IThumbnailHelper::AddThumbnailGenerateTask(ThumbnailGenerateExecute executo
     thumbnailWorker->AddTask(task, priority);
 }
 
-void IThumbnailHelper::AddThumbnailGenBatchTask(ThumbnailGenerateExecute executor,
-    ThumbRdbOpt &opts, ThumbnailData &thumbData, int32_t requestId, pid_t pid)
-{
-    thumbData.taskCreatedInfo = "created time " + MediaFileUtils::StrCreateTimeByMilliseconds(
-        PhotoColumn::PHOTO_DETAIL_TIME_FORMAT, MediaFileUtils::UTCTimeMilliSeconds());
-    std::shared_ptr<ThumbnailGenerateWorker> thumbnailWorker =
-        ThumbnailGenerateWorkerManager::GetInstance().GetThumbnailWorker(ThumbnailTaskType::FOREGROUND);
-    CHECK_AND_RETURN_LOG(thumbnailWorker != nullptr, "thumbnailWorker is null");
-
-    std::shared_ptr<ThumbnailTaskData> taskData = std::make_shared<ThumbnailTaskData>(opts, thumbData, requestId, pid);
-    std::shared_ptr<ThumbnailGenerateTask> task = std::make_shared<ThumbnailGenerateTask>(executor, taskData);
-    thumbnailWorker->AddTask(task, ThumbnailTaskPriority::LOW);
-}
-
-void IThumbnailHelper::AddThumbnailNotifyTask(ThumbnailGenerateExecute executor, int32_t requestId, pid_t pid)
-{
-    std::shared_ptr<ThumbnailGenerateWorker> thumbnailWorker =
-        ThumbnailGenerateWorkerManager::GetInstance().GetThumbnailWorker(ThumbnailTaskType::FOREGROUND);
-    CHECK_AND_RETURN_LOG(thumbnailWorker != nullptr, "thumbnailWorker is null");
-
-    std::shared_ptr<ThumbnailTaskData> taskData = std::make_shared<ThumbnailTaskData>(requestId, pid);
-    std::shared_ptr<ThumbnailGenerateTask> task = std::make_shared<ThumbnailGenerateTask>(executor, taskData);
-    thumbnailWorker->AddTask(task, ThumbnailTaskPriority::LOW);
-}
-
-void IThumbnailHelper::ThumbGenBatchTaskFinishNotify(std::shared_ptr<ThumbnailTaskData> &data)
-{
-    CHECK_AND_RETURN_LOG(data != nullptr, "ThumbGenBatchTaskFinishNotify failed, data is null");
-    pid_t pid = data->pid_;
-    int32_t requestId = data->requestId_;
-    auto watch = MediaLibraryNotify::GetInstance();
-    CHECK_AND_RETURN_LOG(watch != nullptr, "watch is null");
-    MEDIA_INFO_LOG("Cancel Thumb Batch Task requestId is: %{public}d", requestId);
-    std::string notifyUri = PhotoColumn::PHOTO_URI_PREFIX + std::to_string(requestId) + "," +
-        std::to_string(pid);
-    watch->Notify(notifyUri, NotifyType::NOTIFY_THUMB_UPDATE);
-}
-
 ThumbnailWait::ThumbnailWait(bool release) : needRelease_(release)
 {}
 

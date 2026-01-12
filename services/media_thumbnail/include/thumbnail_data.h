@@ -209,6 +209,7 @@ public:
     EXPORT std::string frame;
     EXPORT std::string timeStamp;
     EXPORT int32_t position;
+    EXPORT int32_t thumbnailStatus {0};
     EXPORT Size lcdDesiredSize;
     EXPORT Size thumbDesiredSize;
     EXPORT GenerateStats stats;
@@ -220,7 +221,6 @@ public:
     EXPORT SourceState lastLoadSource {SourceState::BEGIN};
     EXPORT std::string taskCreatedInfo = "sync task";
     EXPORT GenThumbScene genThumbScene {GenThumbScene::UNDEFINED_SCENE};
-    EXPORT int32_t thumbnailStatus {0};
 };
 
 struct ThumbnailDataBatch {

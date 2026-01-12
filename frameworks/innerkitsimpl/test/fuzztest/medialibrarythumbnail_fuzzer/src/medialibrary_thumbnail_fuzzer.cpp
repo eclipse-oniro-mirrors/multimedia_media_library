@@ -398,7 +398,7 @@ static void ThumbnailGenerateWorkerTest()
     Media::ThumbRdbOpt opts = FuzzThumbRdbOpt(false);
     Media::ThumbnailData thumbnailData = FuzzThumbnailData();
     std::shared_ptr<Media::ThumbnailTaskData> taskData =
-        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData, provider->ConsumeIntegral<int32_t>());
+        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData);
     std::shared_ptr<Media::ThumbnailGenerateTask> task =
         std::make_shared<Media::ThumbnailGenerateTask>(Media::IThumbnailHelper::CreateLcdAndThumbnail, taskData);
 
@@ -442,7 +442,7 @@ static void ThumbnailRestoreManagerTest()
     Media::ThumbRdbOpt opts = FuzzThumbRdbOpt(true);
     Media::ThumbnailData thumbnailData = FuzzThumbnailData();
     std::shared_ptr<Media::ThumbnailTaskData> taskData =
-        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData, provider->ConsumeIntegral<int32_t>());
+        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData);
     Media::ThumbnailRestoreManager::RestoreAstcDualFrameTask(taskData);
     restoreManager.RestoreAstcDualFrame(opts, provider->ConsumeIntegral<int32_t>());
     restoreManager.Reset();

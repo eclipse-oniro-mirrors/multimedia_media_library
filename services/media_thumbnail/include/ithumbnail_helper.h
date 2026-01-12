@@ -102,16 +102,12 @@ public:
     EXPORT static void CreateThumbnail(std::shared_ptr<ThumbnailTaskData> &data);
     EXPORT static void CreateAstc(std::shared_ptr<ThumbnailTaskData> &data);
     EXPORT static void CreateAstcEx(std::shared_ptr<ThumbnailTaskData> &data);
-    EXPORT static void ThumbGenBatchTaskFinishNotify(std::shared_ptr<ThumbnailTaskData> &data);
     EXPORT static void CloudSyncOnGenerationComplete(std::shared_ptr<ThumbnailTaskData> &data);
     EXPORT static void AddThumbnailGenerateTask(ThumbnailGenerateExecute executor,
         const ThumbnailTaskType &taskType, const ThumbnailTaskPriority &priority);
     EXPORT static void AddThumbnailGenerateTask(ThumbnailGenerateExecute executor, ThumbRdbOpt &opts,
         ThumbnailData &thumbData, const ThumbnailTaskType &taskType, const ThumbnailTaskPriority &priority,
         std::shared_ptr<ExecuteParamBuilder> param = nullptr);
-    EXPORT static void AddThumbnailGenBatchTask(ThumbnailGenerateExecute executor,
-        ThumbRdbOpt &opts, ThumbnailData &thumbData, int32_t requestId = 0, pid_t pid = 0);
-    EXPORT static void AddThumbnailNotifyTask(ThumbnailGenerateExecute executor, int32_t requestId = 0, pid_t pid = 0);
     EXPORT static std::unique_ptr<PixelMap> GetPixelMap(const std::vector<uint8_t> &image, Size &size);
     EXPORT static bool DoCreateLcd(ThumbRdbOpt &opts, ThumbnailData &data);
     EXPORT static bool DoCreateThumbnail(ThumbRdbOpt &opts, ThumbnailData &data);

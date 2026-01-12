@@ -16,13 +16,15 @@
 #ifndef FRAMEWORKS_SERVICES_THUMBNAIL_SERVICE_INCLUDE_THUMBNAIL_READY_MANAGER_H_
 #define FRAMEWORKS_SERVICES_THUMBNAIL_SERVICE_INCLUDE_THUMBNAIL_READY_MANAGER_H_
 
+#include <memory>
 #include <vector>
 #include <string>
-#include <memory>
-#include "cloud_sync_manager.h"
-#include "cloud_media_sync_const.h"
-#include "media_file_utils.h"
+
 #include "safe_map.h"
+
+#include "cloud_media_sync_const.h"
+#include "cloud_sync_manager.h"
+#include "media_file_utils.h"
 #include "thumbnail_data.h"
 #include "thumbnail_generate_worker.h"
 
@@ -41,29 +43,6 @@ private:
     pid_t pid_;
 };
 
-class ReadyThreadPool {
-public:
-    ReadyThreadPool(int32_t threadNum = 1);
-    ~ReadyThreadPool();
-    void SubmitReadyTask(int32_t requestId, pid_t pid, std::function<void()> func);
-    void SubmitHighPriorityReadyTask(int32_t requestId, pid_t pid, std::function<void()> func);
-    bool IsTaskMapEmpty();
-    void Reinitialize();
-private:
-struct ReadyTask {
-    pid_t pid;
-    int32_t requestId;
-    std::function<void()> func;
-};
-    void ReadyThreadWorker();
-    std::vector<std::thread> workers_;
-    std::queue<ReadyTask> taskQueue_;
-    std::queue<ReadyTask> highTaskQueue_;
-    std::mutex queueMutex_;
-    std::condition_variable readyCv_;
-    std::atomic<bool> stop_{false};
-};
-
 class ThumbnailReadyManager {
 public:
 struct AstcBatchTaskInfo {
@@ -78,9 +57,11 @@ struct AstcBatchTaskInfo {
     ThumbRdbOpt opts;
     bool isTemperatureHighForReady{false};
     std::shared_ptr<NativeRdb::RdbPredicates> rdbPredicatePtr;
-    bool isCanceled = false;
-    uint32_t timerId = 0;
+    std::atomic<bool> isCancel{false};
     bool isDownloadEnd{false};
+    std::atomic<int> pendingTasks{0};
+    std::condition_variable cv;
+    std::mutex cvMutex;
 };
 
 public:
@@ -94,15 +75,19 @@ public:
     EXPORT std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> GetAstcBatchTaskInfo(const pid_t pid);
     EXPORT void CreateAstcAfterDownloadThumbOnDemand(const std::string &path,
         std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> taskInfo);
+    EXPORT void RecordNotFoundThumbnail(const std::string &path,
+        std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> thumbReadyTaskData);
     EXPORT void SetDownloadEnd(pid_t pid);
-    EXPORT void ExecuteCreateThumbnailTask(std::shared_ptr<ThumbnailTaskData> &data);
-    EXPORT void SetCloudFinish(const pid_t pid);
-    EXPORT void CreateAstcBatchOnDemandTaskFinish(const pid_t pid);
+    EXPORT void ExecuteCreateThumbnailTask(std::shared_ptr<ThumbnailTaskData> &data, int32_t requestId, pid_t pid);
+    EXPORT void CreateAstcBatchOnDemandTaskFinish(std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo>&
+        thumbReadyTaskData);
     EXPORT bool IsNeedExecuteTask(int32_t requestId, pid_t pid);
-    EXPORT std::shared_ptr<ReadyThreadPool> GetThreadPool();
+    EXPORT bool IsNeedExecuteTask(int32_t requestId, pid_t pid,
+        std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo>& taskInfo);
+    EXPORT void ThumbGenBatchTaskFinishNotify(int32_t requestId, pid_t pid);
 
 private:
-    ThumbnailReadyManager();
+    ThumbnailReadyManager() = default;
     ~ThumbnailReadyManager();
 
     void AddQueryNoAstcRulesOnlyLocal(NativeRdb::RdbPredicates &rdbPredicate);
@@ -111,20 +96,20 @@ private:
     void HandleDownloadBatch(int32_t requestId, pid_t pid);
     void ProcessAstcBatchTask(ThumbRdbOpt opts, NativeRdb::RdbPredicates predicate,
         const int32_t requestId, const pid_t pid);
-    void DownloadTimeOut(pid_t pid);
-    void RegisterDownloadTimer(pid_t pid);
-    void UnRegisterDownloadTimer(pid_t pid);
-    void CancelTask(int32_t requestId, pid_t pid);
+    void DownloadTimeOut(int32_t requestId, pid_t pid);
+    void RegisterDownloadTimer(int32_t requestId, pid_t pid);
+    void UnRegisterDownloadTimer();
+    void InsertHighTemperatureTask(NativeRdb::RdbPredicates &rdbPredicate,
+    int32_t requestId, pid_t pid);
 
-    std::shared_ptr<ReadyThreadPool> threadPool_;
     SafeMap<pid_t, std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo>> temperatureStatusMap_;
     int32_t currentTemperatureLevel_ = 0;
     std::mutex processMutex_;
     SafeMap<pid_t, std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo>> processRequestMap_;
     std::atomic<int32_t> timeoutCount_{0};
-    std::atomic<bool> isLocalAllFinished{false};
     std::mutex timerMutex_;
     Utils::Timer timer_{"closeDownload"};
+    uint32_t timerId = 0;
     int64_t lastTimeoutTime_ = MediaFileUtils::UTCTimeMilliSeconds();
     std::mutex downloadIdMutex_;
 };

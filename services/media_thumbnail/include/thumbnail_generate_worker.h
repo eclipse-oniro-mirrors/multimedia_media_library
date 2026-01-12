@@ -35,6 +35,7 @@ enum class ThumbnailTaskType {
     FOREGROUND,
     BACKGROUND,
     ASYNC_UPDATE_RDB,
+    THUMB_READY,
 };
 
 enum class ThumbnailTaskPriority {
@@ -47,19 +48,12 @@ class ThumbnailTaskData {
 public:
     ThumbnailTaskData() = default;
 
-    ThumbnailTaskData(int32_t requestId, pid_t pid = 0) : requestId_(requestId), pid_(pid) {}
-
     ThumbnailTaskData(ThumbRdbOpt &opts, ThumbnailData &data) : opts_(opts), thumbnailData_(data) {}
-
-    ThumbnailTaskData(ThumbRdbOpt &opts, ThumbnailData &data,
-        int32_t requestId, pid_t pid = 0) : opts_(opts), thumbnailData_(data), requestId_(requestId), pid_(pid) {}
 
     ~ThumbnailTaskData() = default;
 
     ThumbRdbOpt opts_;
     ThumbnailData thumbnailData_;
-    int32_t requestId_ = 0;
-    pid_t pid_ = 0;
 };
 
 using ThumbnailGenerateExecute = std::function<void(std::shared_ptr<ThumbnailTaskData> &)>;
@@ -126,6 +120,8 @@ private:
     void TryClearWorkerThreads();
     void RegisterWorkerTimer();
     bool IsAllThreadWaiting();
+    void InitThread(int32_t threadNum, std::string threadName, CpuAffinityType cpuAffinityType,
+        CpuAffinityType cpuAffinityTypeLowPriority);
 
     ThumbnailTaskType taskType_;
 

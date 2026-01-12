@@ -13,22 +13,26 @@
  * limitations under the License.
  */
 
-#include <thread>
-
 #include "thumbnail_ready_manager.h"
 
-#include "datashare_helper.h"
+#include <thread>
+
 #include "datashare_abs_result_set.h"
+#include "datashare_helper.h"
+
 #include "dfx_utils.h"
 #include "ithumbnail_helper.h"
 #include "media_log.h"
 #include "media_file_uri.h"
-#include "medialibrary_unistore_manager.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_notify.h"
+#include "medialibrary_tracer.h"
+#include "medialibrary_unistore_manager.h"
 #include "thumbnail_const.h"
 #include "thumbnail_file_utils.h"
 #include "thumbnail_generate_worker.h"
 #include "thumbnail_generate_worker_manager.h"
+#include "thumbnail_generation_post_process.h"
 #include "thumbnail_rdb_utils.h"
 #include "thumbnail_source_loading.h"
 #include "thumbnail_utils.h"
@@ -38,142 +42,38 @@ using namespace OHOS::FileManagement::CloudSync;
 using namespace OHOS::NativeRdb;
 namespace OHOS {
 namespace Media {
-// LCOV_EXCL_START
 const int TIME_MILLI_SECONDS = 5000;
 constexpr int32_t THUMB_BATCH_WAIT_TIME = 15 * 1000;
 constexpr int32_t RETRY_DOWNLOAD_THUMB_LIMIT = 3;
 constexpr int64_t THUMB_TEN_MINUTES_WAIT_TIME = 10 * 60 * 1000;
-constexpr int32_t THUMB_THREAD_WAIT_TIME = 5 * 60 * 1000;
+constexpr int32_t THUMB_INVALID_VALUE = -1;
+constexpr int32_t THUMB_PROCESS_WAIT_TIME = 30;
 const int THREADNUM = 1;
 
 void ThumbnailCloudDownloadCallback::OnDownloadProcess(const DownloadProgressObj &progress)
 {
-    MEDIA_INFO_LOG("OnDownloadProcess, pid is %{public}d, requestId is %{public}d", pid_, requestId_);
     auto thumbReadyTaskData = ThumbnailReadyManager::GetInstance().GetAstcBatchTaskInfo(pid_);
     CHECK_AND_RETURN_LOG(thumbReadyTaskData != nullptr, "GetAstcBatchTaskInfo failed");
-    MEDIA_INFO_LOG("OnDownloadProcess, thumbReadyTaskData downloadId is %{public}" PRId64
-        ", progress downloadId is %{public}" PRId64,
-        thumbReadyTaskData->downloadId, progress.downloadId);
     CHECK_AND_RETURN_LOG(thumbReadyTaskData->downloadId == progress.downloadId, "downloadId is not equal");
     if (progress.state == DownloadProgressObj::Status::COMPLETED) {
         ThumbnailReadyManager::GetInstance().CreateAstcAfterDownloadThumbOnDemand(progress.path, thumbReadyTaskData);
     } else if (progress.state == DownloadProgressObj::Status::FAILED) {
         MEDIA_ERR_LOG("download thumbnail file failed, file path is %{public}s", progress.path.c_str());
+        if (progress.downloadErrorType == DownloadProgressObj::DownloadErrorType::CONTENT_NOT_FOUND) {
+            ThumbnailReadyManager::GetInstance().RecordNotFoundThumbnail(progress.path, thumbReadyTaskData);
+        }
     }
     if (progress.batchState == DownloadProgressObj::Status::COMPLETED ||
         progress.batchState == DownloadProgressObj::Status::STOPPED ||
         progress.batchState == DownloadProgressObj::Status::FAILED) {
+        MEDIA_INFO_LOG("download thumbnail file, progress.batchState is %{public}d", progress.batchState);
         ThumbnailReadyManager::GetInstance().SetDownloadEnd(pid_);
-        ThumbnailReadyManager::GetInstance().SetCloudFinish(pid_);
-        ThumbnailReadyManager::GetInstance().CreateAstcBatchOnDemandTaskFinish(pid_);
-    }
-    MEDIA_INFO_LOG("OnDownloadProcess end");
-}
-
-ReadyThreadPool::ReadyThreadPool(int32_t threadNum) : stop_(false)
-{
-    for (auto i = 0; i < threadNum; ++i) {
-        workers_.emplace_back(&ReadyThreadPool::ReadyThreadWorker, this);
-    }
-}
-
-ReadyThreadPool::~ReadyThreadPool()
-{
-    stop_.store(true);
-    readyCv_.notify_all();
-    for (auto& worker : workers_) {
-        CHECK_AND_EXECUTE(!worker.joinable(), worker.join());
-    }
-}
-
-void ReadyThreadPool::ReadyThreadWorker()
-{
-    while (!stop_.load()) {
-        ReadyThreadPool::ReadyTask task;
-        bool hasTask = false;
-        {
-            std::unique_lock<std::mutex> lock(queueMutex_);
-            readyCv_.wait_for(lock, std::chrono::milliseconds(THUMB_THREAD_WAIT_TIME),
-                [this]() { return stop_.load() || !taskQueue_.empty() || !highTaskQueue_.empty(); });
-            if (!stop_ && taskQueue_.empty() && highTaskQueue_.empty()) {
-                stop_.store(true);
-                MEDIA_INFO_LOG("After 5 minutes, all threads are cleared");
-                break;
-            }
-
-            if (stop_.load() && taskQueue_.empty() && highTaskQueue_.empty()) {
-                break;
-            }
-
-            if (!highTaskQueue_.empty()) {
-                task = std::move(highTaskQueue_.front());
-                highTaskQueue_.pop();
-                hasTask = true;
-            } else if (!taskQueue_.empty()) {
-                task = std::move(taskQueue_.front());
-                taskQueue_.pop();
-                hasTask = true;
-            }
-        }
-        if (hasTask) {
-            task.func();
+        std::lock_guard<std::mutex> cvLock(thumbReadyTaskData->cvMutex);
+        thumbReadyTaskData->pendingTasks--;
+        if (thumbReadyTaskData->pendingTasks <= 0) {
+            thumbReadyTaskData->cv.notify_all();
         }
     }
-}
-
-void ReadyThreadPool::Reinitialize()
-{
-    if (!stop_.load()) {
-        return;
-    }
-    readyCv_.notify_all();
-    for (auto& worker : workers_) {
-        CHECK_AND_EXECUTE(!worker.joinable(), worker.join());
-    }
-    workers_.clear();
-    stop_.store(false);
-    for (auto i = 0; i < THREADNUM; ++i) {
-        workers_.emplace_back(&ReadyThreadPool::ReadyThreadWorker, this);
-    }
-}
-
-void ReadyThreadPool::SubmitReadyTask(int32_t requestId, pid_t pid, std::function<void()> func)
-{
-    ReadyThreadPool::ReadyTask task{pid, requestId, func};
-    {
-        std::lock_guard<std::mutex> lock(queueMutex_);
-        if (stop_.load()) {
-            Reinitialize();
-        }
-        taskQueue_.push(std::move(task));
-    }
-    readyCv_.notify_all();
-    MEDIA_INFO_LOG("Task submitted - PID: %d, RequestId: %d", pid, requestId);
-}
-
-void ReadyThreadPool::SubmitHighPriorityReadyTask(int32_t requestId, pid_t pid, std::function<void()> func)
-{
-    ReadyThreadPool::ReadyTask task{pid, requestId, func};
-    {
-        std::lock_guard<std::mutex> lock(queueMutex_);
-        if (stop_.load()) {
-            Reinitialize();
-        }
-        highTaskQueue_.push(std::move(task));
-    }
-    readyCv_.notify_all();
-    MEDIA_INFO_LOG("High priority task submitted - PID: %d, RequestId: %d", pid, requestId);
-}
-
-bool ReadyThreadPool::IsTaskMapEmpty()
-{
-    return taskQueue_.empty() && highTaskQueue_.empty();
-}
-
-ThumbnailReadyManager::ThumbnailReadyManager()
-{
-    threadPool_ = std::make_shared<ReadyThreadPool>();
-    currentTemperatureLevel_ = 0;
 }
 
 ThumbnailReadyManager::~ThumbnailReadyManager()
@@ -190,19 +90,6 @@ ThumbnailReadyManager& ThumbnailReadyManager::GetInstance()
 int32_t ThumbnailReadyManager::GetCurrentTemperatureLevel()
 {
     return currentTemperatureLevel_;
-}
-
-void ThumbnailReadyManager::SetCloudFinish(const pid_t pid)
-{
-    auto taskInfo = GetAstcBatchTaskInfo(pid);
-    if (taskInfo != nullptr) {
-        taskInfo->isCloudTaskFinish = true;
-    }
-}
-
-std::shared_ptr<ReadyThreadPool> ThumbnailReadyManager::GetThreadPool()
-{
-    return threadPool_;
 }
 
 std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> ThumbnailReadyManager::GetAstcBatchTaskInfo(const pid_t pid)
@@ -231,24 +118,45 @@ bool ThumbnailReadyManager::IsNeedExecuteTask(int32_t requestId, pid_t pid)
     return true;
 }
 
-void ThumbnailReadyManager::ExecuteCreateThumbnailTask(std::shared_ptr<ThumbnailTaskData> &taskData)
+bool ThumbnailReadyManager::IsNeedExecuteTask(int32_t requestId, pid_t pid,
+    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> &taskInfo)
 {
-    MEDIA_INFO_LOG("ExecuteCreateThumbnailTask start!!!");
-    CHECK_AND_RETURN_LOG(taskData != nullptr, "data is null");
-    CHECK_AND_RETURN(IsNeedExecuteTask(taskData->requestId_, taskData->pid_));
+    CHECK_AND_RETURN_RET_LOG(processRequestMap_.Find(pid, taskInfo), false,
+        "pid:%{public}d not found", pid);
+    CHECK_AND_RETURN_RET_LOG(taskInfo != nullptr, false, "pid:%{public}d taskInfo is null", pid);
+    CHECK_AND_RETURN_RET_LOG(taskInfo->requestId == requestId, false,
+        "pid:%{public}d requestId:%{public}d not match", pid, requestId);
+    return true;
+}
 
-    if (taskData->thumbnailData_.loaderOpts.loadingStates == SourceLoader::LOCAL_SOURCE_LOADING_STATES) {
+void ThumbnailReadyManager::ExecuteCreateThumbnailTask(std::shared_ptr<ThumbnailTaskData> &taskData,
+    int32_t requestId, pid_t pid)
+{
+    CHECK_AND_RETURN_LOG(taskData != nullptr, "data is null");
+    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> taskInfo;
+    CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid, taskInfo));
+    CHECK_AND_RETURN_WARN_LOG(!taskInfo->isCancel, "download thumbnail is canceled");
+    taskData->thumbnailData_.genThumbScene = GenThumbScene::NEED_MORE_THUMB_READY;
+    if (taskData->thumbnailData_.isLocalFile) {
+        ThumbnailUtils::RecordStartGenerateStats(taskData->thumbnailData_.stats, GenerateScene::FOREGROUND,
+            LoadSourceType::LOCAL_PHOTO);
+        taskData->thumbnailData_.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
         IThumbnailHelper::CreateThumbnail(taskData);
-        return;
-    }
-    taskData->thumbnailData_.needGenerateExThumbnail = false;
-    taskData->thumbnailData_.loaderOpts.loadingStates = ThumbnailUtils::IsExCloudThumbnail(taskData->thumbnailData_) ?
-        SourceLoader::CLOUD_LCD_SOURCE_LOADING_STATES : SourceLoader::CLOUD_SOURCE_LOADING_STATES;
-    taskData->thumbnailData_.genThumbScene = GenThumbScene::CLOUD_DOWNLOAD_THUMB;
-    if (ThumbnailUtils::IsExCloudThumbnail(taskData->thumbnailData_)) {
-        IThumbnailHelper::CreateAstcEx(taskData);
     } else {
-        IThumbnailHelper::CreateAstc(taskData);
+        taskData->thumbnailData_.needGenerateExThumbnail = false;
+        taskData->thumbnailData_.loaderOpts.loadingStates =
+            ThumbnailUtils::IsExCloudThumbnail(taskData->thumbnailData_) ?
+            SourceLoader::CLOUD_LCD_SOURCE_LOADING_STATES : SourceLoader::CLOUD_SOURCE_LOADING_STATES;
+        if (ThumbnailUtils::IsExCloudThumbnail(taskData->thumbnailData_)) {
+            IThumbnailHelper::CreateAstcEx(taskData);
+        } else {
+            IThumbnailHelper::CreateAstc(taskData);
+        }
+    }
+    std::lock_guard<std::mutex> cvLock(taskInfo->cvMutex);
+    taskInfo->pendingTasks--;
+    if (taskInfo->pendingTasks <= 0) {
+        taskInfo->cv.notify_all();
     }
 }
 
@@ -262,7 +170,11 @@ void ThumbnailReadyManager::AddQueryNoAstcRulesOnlyLocal(NativeRdb::RdbPredicate
     rdbPredicate.BeginWrap();
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_POSITION, "2");
     rdbPredicate.And();
+    rdbPredicate.BeginWrap();
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_THUMB_STATUS, "0");
+    rdbPredicate.Or();
+    rdbPredicate.EqualTo(PhotoColumn::PHOTO_THUMB_STATUS, "2");
+    rdbPredicate.EndWrap();
     rdbPredicate.EndWrap();
     rdbPredicate.EndWrap();
 }
@@ -271,7 +183,8 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
     std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> taskInfo,
     NativeRdb::RdbPredicates rdbPredicate, int &err)
 {
-    MEDIA_INFO_LOG("QueryNoAstcInfosOnDemand start!");
+    MediaLibraryTracer tracer;
+    tracer.Start("QueryNoAstcInfosOnDemand");
     vector<string> column = {
         MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_HEIGHT, MEDIA_DATA_DB_WIDTH,
         MEDIA_DATA_DB_POSITION, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_NAME,
@@ -280,11 +193,17 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
     };
 
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "0");
-    if (!ThumbnailUtils::IsMobileNetworkEnabled() ||
-        (timeoutCount_ > RETRY_DOWNLOAD_THUMB_LIMIT && ! isLocalAllFinished)) {
-        CHECK_AND_PRINT_LOG(timeoutCount_ <= RETRY_DOWNLOAD_THUMB_LIMIT,
+    if (!ThumbnailUtils::IsMobileNetworkEnabled() || timeoutCount_ >= RETRY_DOWNLOAD_THUMB_LIMIT) {
+        CHECK_AND_PRINT_LOG(timeoutCount_ < RETRY_DOWNLOAD_THUMB_LIMIT,
             "timeoutCount_:%{public}d is over three, just query local", timeoutCount_.load());
-        AddQueryNoAstcRulesOnlyLocal(rdbPredicate);
+        auto currentMilliSecond = MediaFileUtils::UTCTimeMilliSeconds();
+        if (currentMilliSecond - lastTimeoutTime_ > THUMB_TEN_MINUTES_WAIT_TIME) {
+            MEDIA_INFO_LOG("Download thumbnail timeout 10 minutes, reset timeout count.");
+            timeoutCount_.store(0);
+            lastTimeoutTime_ = currentMilliSecond;
+        } else {
+            AddQueryNoAstcRulesOnlyLocal(rdbPredicate);
+        }
     }
     rdbPredicate.EqualTo(MEDIA_DATA_DB_TIME_PENDING, "0");
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, "0");
@@ -299,7 +218,8 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
     taskInfo->cloudPaths.clear();
     for (auto &info : infos) {
         if (info.isLocalFile || (info.position == static_cast<int32_t>(PhotoPositionType::CLOUD) &&
-            info.thumbnailStatus == 0)) {
+            (info.thumbnailStatus == static_cast<int32_t>(PhotoThumbStatusType::DOWNLOADED) ||
+            info.thumbnailStatus == static_cast<int32_t>(PhotoThumbStatusType::ONLY_LCD_DOWNLOADED)))) {
             taskInfo->localInfos.emplace_back(info);
         } else {
             std::string uri = "";
@@ -308,14 +228,15 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
             taskInfo->downloadThumbMap[uri] = info;
         }
     }
-    MEDIA_INFO_LOG("QueryNoAstcInfosOnDemand end!");
     return true;
 }
 
 void ThumbnailReadyManager::CreateAstcAfterDownloadThumbOnDemand(const std::string &path,
     std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> thumbReadyTaskData)
 {
-    MEDIA_INFO_LOG("CreateAstcAfterDownloadThumbOnDemand start!");
+    MediaLibraryTracer tracer;
+    tracer.Start("CreateAstcAfterDownloadThumbOnDemand");
+    CHECK_AND_RETURN_LOG(thumbReadyTaskData != nullptr, "taskInfo is null");
     CHECK_AND_RETURN_LOG(thumbReadyTaskData->downloadThumbMap.find(path) != thumbReadyTaskData->downloadThumbMap.end(),
         "downloaded thumbnail path not found");
     auto data = thumbReadyTaskData->downloadThumbMap[path];
@@ -332,28 +253,43 @@ void ThumbnailReadyManager::CreateAstcAfterDownloadThumbOnDemand(const std::stri
         vector<string> { data.id });
         CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "RdbStore lcd size failed! %{public}d", err);
     }
+    thumbReadyTaskData->pendingTasks++;
+    auto executor = [this, requestId = thumbReadyTaskData->requestId,
+        pid = thumbReadyTaskData->pid](std::shared_ptr<ThumbnailTaskData> &taskData) {
+            this->ExecuteCreateThumbnailTask(taskData, requestId, pid);
+    };
+    IThumbnailHelper::AddThumbnailGenerateTask(executor, opts, data,
+        ThumbnailTaskType::FOREGROUND, ThumbnailTaskPriority::LOW);
+}
 
-    IThumbnailHelper::AddThumbnailGenBatchTask(std::bind(&ThumbnailReadyManager::ExecuteCreateThumbnailTask,
-        this, std::placeholders::_1), opts,
-        data, thumbReadyTaskData->requestId, thumbReadyTaskData->pid);
-    MEDIA_INFO_LOG("CreateAstcAfterDownloadThumbOnDemand end!");
+void ThumbnailReadyManager::RecordNotFoundThumbnail(const std::string &path,
+    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> thumbReadyTaskData)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("RecordNotFoundThumbnail");
+    CHECK_AND_RETURN_LOG(thumbReadyTaskData != nullptr, "thumbReadyTaskData is null");
+    CHECK_AND_RETURN_LOG(thumbReadyTaskData->downloadThumbMap.find(path) != thumbReadyTaskData->downloadThumbMap.end(),
+        "downloaded thumbnail path not found");
+    auto data = thumbReadyTaskData->downloadThumbMap[path];
+    ThumbRdbOpt& opts = thumbReadyTaskData->opts;
+    IThumbnailHelper::CacheThumbnailState(opts, data, false);
+    int32_t err = ThumbnailGenerationPostProcess::PostProcess(data, opts);
+    CHECK_AND_PRINT_LOG(err == E_OK, "PostProcess failed, err %{public}d", err);
 }
 
 void ThumbnailReadyManager::HandleDownloadBatch(int32_t requestId, pid_t pid)
 {
-    MEDIA_INFO_LOG("HandleDownloadBatch start!");
-    CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid));
-
+    MediaLibraryTracer tracer;
+    tracer.Start("HandleDownloadBatch");
     std::lock_guard<std::mutex> lock(downloadIdMutex_);
-    auto thumbReadyTaskData = GetAstcBatchTaskInfo(pid);
-    CHECK_AND_RETURN_LOG(thumbReadyTaskData != nullptr, "thumbReadyTaskData is null");
-    if (!thumbReadyTaskData->cloudPaths.empty()) {
-        auto downloadCallback = std::make_shared<ThumbnailCloudDownloadCallback>(requestId, pid);
-        int32_t ret = CloudSyncManager::GetInstance().StartFileCache(thumbReadyTaskData->cloudPaths,
-            thumbReadyTaskData->downloadId, FieldKey::FIELDKEY_LCD, downloadCallback, TIME_MILLI_SECONDS);
-        if (ret == CloudSync::E_OK) {
-            RegisterDownloadTimer(pid);
-        }
+    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> thumbReadyTaskData;
+    CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid, thumbReadyTaskData));
+    auto downloadCallback = std::make_shared<ThumbnailCloudDownloadCallback>(requestId, pid);
+    int32_t ret = CloudSyncManager::GetInstance().StartFileCache(thumbReadyTaskData->cloudPaths,
+        thumbReadyTaskData->downloadId, FieldKey::FIELDKEY_LCD, downloadCallback, TIME_MILLI_SECONDS);
+    if (ret == CloudSync::E_OK) {
+        RegisterDownloadTimer(requestId, pid);
+    } else {
         if (ret == CloudSync::E_TIMEOUT) {
             timeoutCount_++;
             MEDIA_INFO_LOG("Download thumbnail timeout, count:%{public}d", timeoutCount_.load());
@@ -362,63 +298,93 @@ void ThumbnailReadyManager::HandleDownloadBatch(int32_t requestId, pid_t pid)
             if (currentMilliSecond - lastTimeoutTime_ > THUMB_TEN_MINUTES_WAIT_TIME) {
                 MEDIA_INFO_LOG("Download thumbnail timeout 10 minutes, reset timeout count.");
                 timeoutCount_.store(0);
-                isLocalAllFinished.store(false);
             }
             lastTimeoutTime_ = currentMilliSecond;
         }
+        std::lock_guard<std::mutex> cvLock(thumbReadyTaskData->cvMutex);
+        thumbReadyTaskData->pendingTasks--;
+        if (thumbReadyTaskData->pendingTasks.load() <= 0) {
+            thumbReadyTaskData->cv.notify_all();
+        }
     }
-    MEDIA_INFO_LOG("HandleDownloadBatch end!");
 }
 
-void ThumbnailReadyManager::CreateAstcBatchOnDemandTaskFinish(const pid_t pid)
+void ThumbnailReadyManager::CreateAstcBatchOnDemandTaskFinish(std::shared_ptr<ThumbnailReadyManager::
+    AstcBatchTaskInfo>& thumbReadyTaskData)
 {
-    MEDIA_INFO_LOG("CreateAstcBatchOnDemandTaskFinish start!");
-    auto thumbReadyTaskData = GetAstcBatchTaskInfo(pid);
+    UnRegisterDownloadTimer();
     CHECK_AND_RETURN_LOG(thumbReadyTaskData != nullptr, "GetAstcBatchTaskInfo failed");
-    if (!thumbReadyTaskData->isLocalTaskFinish || !thumbReadyTaskData->isCloudTaskFinish) {
-        return;
-    }
+    int32_t requestId = thumbReadyTaskData->requestId;
+    pid_t pid = thumbReadyTaskData->pid;
     MEDIA_INFO_LOG("CreateAstcBatchOnDemand cloud and local task all finish, pid: %{public}d, requestId: %{public}d",
-        pid, thumbReadyTaskData->requestId);
-    IThumbnailHelper::AddThumbnailNotifyTask(IThumbnailHelper::ThumbGenBatchTaskFinishNotify,
-        thumbReadyTaskData->requestId, pid);
+        pid, requestId);
+    if (thumbReadyTaskData->isCancel.load()) {
+        MEDIA_INFO_LOG("Need cancel task, StopFileCache in");
+        std::lock_guard<std::mutex> lock(downloadIdMutex_);
+        CHECK_AND_RETURN_LOG(thumbReadyTaskData->downloadId != -1, "downloadId is invalid");
+        int res = CloudSyncManager::GetInstance().StopFileCache(thumbReadyTaskData->downloadId, true);
+        thumbReadyTaskData->downloadId = THUMB_INVALID_VALUE;
+    }
+    CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid));
+    ThumbGenBatchTaskFinishNotify(requestId, pid);
+}
+
+void ThumbnailReadyManager::ThumbGenBatchTaskFinishNotify(int32_t requestId, pid_t pid)
+{
+    {
+        std::lock_guard<std::mutex> lock(processMutex_);
+        processRequestMap_.Erase(pid);
+    }
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_LOG(watch != nullptr, "watch is null");
+    std::string notifyUri = PhotoColumn::PHOTO_URI_PREFIX + std::to_string(requestId) + "," +
+        std::to_string(pid);
+    MEDIA_INFO_LOG("ThumbGenBatchTaskFinishNotify notifyUri is : %{public}s", notifyUri.c_str());
+    watch->Notify(notifyUri, NotifyType::NOTIFY_THUMB_UPDATE);
 }
 
 void ThumbnailReadyManager::ProcessAstcBatchTask(ThumbRdbOpt opts, NativeRdb::RdbPredicates predicate,
     const int32_t requestId, const pid_t pid)
 {
     MEDIA_INFO_LOG("ProcessAstcBatchTask start!");
-    CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid));
-    auto latestInfo = GetAstcBatchTaskInfo(pid);
+    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> latestInfo;
+    CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid, latestInfo));
     CHECK_AND_RETURN_LOG(latestInfo != nullptr, "GetAstcBatchTaskInfo failed");
     int32_t taskErr = 0;
-    latestInfo->pid = pid;
     latestInfo->opts = opts;
 
     CHECK_AND_RETURN_LOG(QueryNoAstcInfosOnDemand(opts, latestInfo, predicate, taskErr),
         "Failed to QueryNoAstcInfos %{public}d", taskErr);
-    if (latestInfo->localInfos.empty() && latestInfo->cloudPaths.empty()) {
-        MEDIA_INFO_LOG("No need create Astc.");
-        return;
-    }
-    if (latestInfo->localInfos.empty()) isLocalAllFinished = true;
+
     latestInfo->isLocalTaskFinish = latestInfo->localInfos.empty();
     latestInfo->isCloudTaskFinish = latestInfo->cloudPaths.empty();
+    latestInfo->pendingTasks.store(0);
     for (auto& info : latestInfo->localInfos) {
-        info.genThumbScene = GenThumbScene::NEED_MORE_THUMB_READY;
         opts.row = info.id;
-        ThumbnailUtils::RecordStartGenerateStats(info.stats, GenerateScene::FOREGROUND, LoadSourceType::LOCAL_PHOTO);
-        info.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
-        IThumbnailHelper::AddThumbnailGenBatchTask(std::bind(&ThumbnailReadyManager::ExecuteCreateThumbnailTask,
-            this, std::placeholders::_1), opts, info, requestId, pid);
+        latestInfo->pendingTasks++;
+        auto executor = [this, requestId = requestId,
+            pid = pid](std::shared_ptr<ThumbnailTaskData> &taskData) {
+            this->ExecuteCreateThumbnailTask(taskData, requestId, pid);
+        };
+        IThumbnailHelper::AddThumbnailGenerateTask(executor, opts, info,
+            ThumbnailTaskType::FOREGROUND, ThumbnailTaskPriority::LOW);
     }
     latestInfo->isLocalTaskFinish = true;
     if (!latestInfo->cloudPaths.empty()) {
+        latestInfo->pendingTasks++;
         HandleDownloadBatch(requestId, pid);
     }
-    CreateAstcBatchOnDemandTaskFinish(pid);
+    {
+        std::unique_lock<std::mutex> cvLock(latestInfo->cvMutex);
+        bool waitResult = false;
+        do {
+            waitResult = latestInfo->cv.wait_for(cvLock, std::chrono::seconds(THUMB_PROCESS_WAIT_TIME),
+                [latestInfo] { return latestInfo->pendingTasks == 0 || latestInfo->isCancel; });
+            CHECK_AND_WARN_LOG(waitResult, "ProcessAstcBatchTask wait timeout 30s!");
+        } while (!waitResult);
+    }
+    CreateAstcBatchOnDemandTaskFinish(latestInfo);
     MEDIA_INFO_LOG("ProcessAstcBatchTask end!");
-    return;
 }
 
 int32_t ThumbnailReadyManager::CreateAstcBatchOnDemand(
@@ -432,41 +398,37 @@ int32_t ThumbnailReadyManager::CreateAstcBatchOnDemand(
     CHECK_AND_RETURN_RET_LOG(QueryNoAstcInfosOnDemand(opts, taskInfo, predicate, err),
         err, "Failed to QueryNoAstcInfos %{public}d", err);
     if (taskInfo->localInfos.empty() && taskInfo->cloudPaths.empty()) {
-        timeoutCount_.store(0);
-        isLocalAllFinished.store(false);
-        MEDIA_INFO_LOG("No need create Astc.");
-        return E_THUMBNAIL_ASTC_ALL_EXIST;
+        if (timeoutCount_ >= RETRY_DOWNLOAD_THUMB_LIMIT) {
+            timeoutCount_.store(0);
+        } else {
+            timeoutCount_.store(0);
+            MEDIA_INFO_LOG("No need create Astc.");
+            return E_THUMBNAIL_ASTC_ALL_EXIST;
+        }
     }
     MEDIA_INFO_LOG("CreateAstcBatchOnDemand pid:%{public}d, requestId:%{public}d,"
         "localInfos size:%{public}zu, cloudPaths size:%{public}zu", pid, requestId,
         taskInfo->localInfos.size(), taskInfo->cloudPaths.size());
-    CHECK_AND_RETURN_RET_LOG(ThumbnailReadyManager::GetInstance().threadPool_ != nullptr,
-        E_ERR, "ThreadPool is not init");
-    ThumbnailReadyManager::GetInstance().threadPool_->SubmitReadyTask(requestId, pid,
-        [this, opts, predicate, requestId, pid] {
-        ProcessAstcBatchTask(opts, predicate, requestId, pid);
-    });
+
+    auto executor = [this, opts = opts, predicate = predicate, requestId = requestId,
+        pid = pid](std::shared_ptr<ThumbnailTaskData> &taskData) {
+        this->ProcessAstcBatchTask(opts, predicate, requestId, pid);
+    };
+    ThumbnailData data;
+    IThumbnailHelper::AddThumbnailGenerateTask(executor, opts, data,
+        ThumbnailTaskType::THUMB_READY, ThumbnailTaskPriority::LOW);
     MEDIA_INFO_LOG("CreateAstcBatchOnDemand end!");
     return E_OK;
 }
 
-void ThumbnailReadyManager::DownloadTimeOut(pid_t pid)
+void ThumbnailReadyManager::DownloadTimeOut(int32_t requestId, pid_t pid)
 {
-    MEDIA_INFO_LOG("DownloadTimeOut pid:%{public}d", pid);
-    auto timerInfo = GetAstcBatchTaskInfo(pid);
-    CHECK_AND_RETURN_LOG(timerInfo != nullptr, "GetAstcBatchTaskInfo failed");
+    MediaLibraryTracer tracer;
+    tracer.Start("DownloadTimeOut");
+    MEDIA_INFO_LOG("DownloadTimeOut pid:%{public}d, requestId:%{public}d", pid, requestId);
+    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> timerInfo;
+    CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid, timerInfo));
     if (!timerInfo->isDownloadEnd) {
-        auto thumbReadyTaskData = GetAstcBatchTaskInfo(pid);
-        CHECK_AND_RETURN_LOG(ThumbnailReadyManager::GetInstance().threadPool_ != nullptr, "ThreadPool is not init");
-        ThumbnailReadyManager::GetInstance().threadPool_->SubmitHighPriorityReadyTask(thumbReadyTaskData->requestId,
-            pid, [this, pid] {
-            MEDIA_INFO_LOG("DownloadTimeOut 15s, StopFileCache in");
-            std::lock_guard<std::mutex> lock(downloadIdMutex_);
-            auto thumbReadyTaskData = GetAstcBatchTaskInfo(pid);
-            CHECK_AND_RETURN(thumbReadyTaskData != nullptr);
-            CHECK_AND_RETURN(thumbReadyTaskData->downloadId != -1);
-            int res = CloudSyncManager::GetInstance().StopFileCache(thumbReadyTaskData->downloadId, true);
-        });
         timeoutCount_++;
         MEDIA_INFO_LOG("Download thumbnail timeout, count:%{public}d", timeoutCount_.load());
         auto currentMilliSecond = MediaFileUtils::UTCTimeMilliSeconds();
@@ -474,60 +436,64 @@ void ThumbnailReadyManager::DownloadTimeOut(pid_t pid)
         if (currentMilliSecond - lastTimeoutTime_ > THUMB_TEN_MINUTES_WAIT_TIME) {
             MEDIA_INFO_LOG("Download thumbnail timeout 10 minutes, reset timeout count.");
             timeoutCount_.store(0);
-            isLocalAllFinished.store(false);
         }
         lastTimeoutTime_ = currentMilliSecond;
+        std::lock_guard<std::mutex> cvLock(timerInfo->cvMutex);
+        timerInfo->isCancel.store(true);
+        timerInfo->cv.notify_all();
     } else {
         MEDIA_INFO_LOG("Download thumbnail timeout 15s, but download is end, reset timeout count");
         timeoutCount_.store(0);
-        isLocalAllFinished.store(false);
     }
-    std::lock_guard<std::mutex> lock(timerMutex_);
-    timer_.Unregister(timerInfo->timerId);
-    timerInfo->timerId = 0;
 }
 
-void ThumbnailReadyManager::RegisterDownloadTimer(pid_t pid)
+void ThumbnailReadyManager::RegisterDownloadTimer(int32_t requestId, pid_t pid)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("RegisterDownloadTimer");
     auto timerInfo = GetAstcBatchTaskInfo(pid);
     CHECK_AND_RETURN_LOG(timerInfo != nullptr, "GetAstcBatchTaskInfo failed");
-    Utils::Timer::TimerCallback timerCallback = [this, pid]() {
-        this->DownloadTimeOut(pid);
+    Utils::Timer::TimerCallback timerCallback = [this, requestId, pid]() {
+        this->DownloadTimeOut(requestId, pid);
     };
     std::lock_guard<std::mutex> lock(timerMutex_);
-    timerInfo->timerId = timer_.Register(timerCallback, THUMB_BATCH_WAIT_TIME, true);
-    MEDIA_INFO_LOG("15s download timer Restart, timeId:%{public}u", timerInfo->timerId);
-}
-
-void ThumbnailReadyManager::UnRegisterDownloadTimer(pid_t pid)
-{
-    auto timerInfo = GetAstcBatchTaskInfo(pid);
-    CHECK_AND_RETURN_LOG(timerInfo != nullptr, "GetAstcBatchTaskInfo failed");
-    std::lock_guard<std::mutex> lock(timerMutex_);
-    timer_.Unregister(timerInfo->timerId);
-    timerInfo->timerId = 0;
-}
-
-void ThumbnailReadyManager::CancelTask(int32_t requestId, pid_t pid)
-{
-    MEDIA_INFO_LOG("CancelTask pid:%{public}d, requestId:%{public}d", pid, requestId);
-    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> taskInfo;
-    CHECK_AND_RETURN(processRequestMap_.Find(pid, taskInfo));
-    CHECK_AND_RETURN(taskInfo != nullptr);
-    if (taskInfo->requestId == requestId) {
-        processRequestMap_.Erase(pid);
+    if (timerId > 0) {
+        timer_.Unregister(timerId);
     }
-    CHECK_AND_RETURN(ThumbnailReadyManager::GetInstance().threadPool_ != nullptr);
-    ThumbnailReadyManager::GetInstance().threadPool_->SubmitHighPriorityReadyTask(requestId,
-        pid, [this, pid] {
-        MEDIA_INFO_LOG("Need cancel task, StopFileCache in");
-        UnRegisterDownloadTimer(pid);
-        std::lock_guard<std::mutex> lock(downloadIdMutex_);
-        auto thumbReadyTaskData = GetAstcBatchTaskInfo(pid);
-        CHECK_AND_RETURN(thumbReadyTaskData != nullptr);
-        CHECK_AND_RETURN_LOG(thumbReadyTaskData->downloadId != -1, "downloadId is invalid");
-        int res = CloudSyncManager::GetInstance().StopFileCache(thumbReadyTaskData->downloadId, true);
-    });
+    timer_.Setup();
+    timerId = timer_.Register(timerCallback, THUMB_BATCH_WAIT_TIME, true);
+    timerInfo->isCancel.store(false);
+    MEDIA_INFO_LOG("15s download timer Restart, timeId:%{public}u", timerId);
+}
+
+void ThumbnailReadyManager::UnRegisterDownloadTimer()
+{
+    std::lock_guard<std::mutex> lock(timerMutex_);
+    if (timerId <= 0) {
+        return;
+    }
+    timer_.Unregister(timerId);
+    timer_.Shutdown(false);
+    timerId = 0;
+}
+
+void ThumbnailReadyManager::InsertHighTemperatureTask(NativeRdb::RdbPredicates &rdbPredicate,
+    int32_t requestId, pid_t pid)
+{
+    auto temperatureStatus = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
+    if (temperatureStatusMap_.Find(pid, temperatureStatus)) {
+        if (temperatureStatus != nullptr) {
+            int32_t oldRequestId = temperatureStatus->requestId;
+            CHECK_AND_RETURN(oldRequestId < requestId);
+        }
+        temperatureStatusMap_.Erase(pid);
+    }
+    temperatureStatus = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
+    temperatureStatus->requestId = requestId;
+    temperatureStatus->pid = pid;
+    temperatureStatus->rdbPredicatePtr = make_shared<NativeRdb::RdbPredicates>(rdbPredicate);
+    temperatureStatus->isTemperatureHighForReady = true;
+    temperatureStatusMap_.Insert(pid, temperatureStatus);
 }
 
 int32_t ThumbnailReadyManager::CreateAstcBatchOnDemand(NativeRdb::RdbPredicates &rdbPredicate,
@@ -536,32 +502,29 @@ int32_t ThumbnailReadyManager::CreateAstcBatchOnDemand(NativeRdb::RdbPredicates 
     std::lock_guard<std::mutex> lock(processMutex_);
     CHECK_AND_RETURN_RET_LOG(requestId > 0, E_INVALID_VALUES,
         "create astc batch failed, invalid request id:%{public}d", requestId);
-
-    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> taskInfo;
-    if (!processRequestMap_.Find(pid, taskInfo)) {
-        taskInfo = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
-        taskInfo->requestId = requestId;
-        MEDIA_INFO_LOG("create astc batch task, pid:%{public}d, requestId:%{public}d", pid, requestId);
-        processRequestMap_.Insert(pid, taskInfo);
-    } else {
-        CHECK_AND_RETURN_RET(taskInfo != nullptr, E_INVALID_VALUES);
-        int32_t oldRequestId = taskInfo->requestId;
-        CHECK_AND_RETURN_RET(oldRequestId < requestId, E_INVALID_VALUES);
-        taskInfo->requestId = requestId;
-        MEDIA_INFO_LOG("update astc batch task, pid:%{public}d, oldRequestId:%{public}d, requestId:%{public}d",
-            pid, oldRequestId, requestId);
-        CancelTask(oldRequestId, pid);
-    }
-
     if (GetCurrentTemperatureLevel() >= READY_TEMPERATURE_LEVEL) {
-        auto temperatureStatus = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
-        temperatureStatus->requestId = requestId;
-        temperatureStatus->rdbPredicatePtr = make_shared<NativeRdb::RdbPredicates>(rdbPredicate);
-        temperatureStatus->isTemperatureHighForReady = true;
-        temperatureStatusMap_.Insert(pid, temperatureStatus);
+        InsertHighTemperatureTask(rdbPredicate, requestId, pid);
         MEDIA_INFO_LOG("temperature is too high, the operation is suspended");
         return E_OK;
     }
+
+    std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> taskInfo;
+    if (processRequestMap_.Find(pid, taskInfo)) {
+        if (taskInfo != nullptr) {
+            int32_t oldRequestId = taskInfo->requestId;
+            MEDIA_INFO_LOG("create astc batch task, pid:%{public}d, oldRequestId:%{public}d", pid, oldRequestId);
+            CHECK_AND_RETURN_RET(oldRequestId < requestId, E_INVALID_VALUES);
+            std::lock_guard<std::mutex> cvLock(taskInfo->cvMutex);
+            taskInfo->isCancel.store(true);
+            taskInfo->cv.notify_all();
+        }
+    }
+    processRequestMap_.Erase(pid);
+    taskInfo = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
+    taskInfo->requestId = requestId;
+    taskInfo->pid = pid;
+    MEDIA_INFO_LOG("create astc batch task, pid:%{public}d, requestId:%{public}d", pid, requestId);
+    processRequestMap_.Insert(pid, taskInfo);
 
     ThumbRdbOpt opts = {
         .store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore(),
@@ -575,31 +538,39 @@ void ThumbnailReadyManager::CancelAstcBatchTask(int32_t requestId, pid_t pid)
     MEDIA_INFO_LOG("CancelAstcBatchTask pid:%{public}d, requestId:%{public}d", pid, requestId);
     std::lock_guard<std::mutex> lock(processMutex_);
     CHECK_AND_RETURN_LOG(requestId > 0, "cancel astc batch failed, invalid request id:%{public}d", requestId);
+
+    auto temperatureStatus = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
+    if (temperatureStatusMap_.Find(pid, temperatureStatus)) {
+        if (temperatureStatus->requestId == requestId) {
+            temperatureStatusMap_.Erase(pid);
+        }
+    }
     auto taskInfo = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
     CHECK_AND_RETURN_LOG(processRequestMap_.Find(pid, taskInfo), "cancel astc batch failed, no task found");
     CHECK_AND_RETURN_LOG(taskInfo != nullptr, "cancel astc batch failed, task info is null");
     CHECK_AND_RETURN(taskInfo->requestId == requestId);
-
-    auto temperatureStatus = make_shared<ThumbnailReadyManager::AstcBatchTaskInfo>();
-    if (temperatureStatusMap_.Find(pid, temperatureStatus)) {
-        temperatureStatusMap_.Erase(pid);
+    {
+        std::lock_guard<std::mutex> cvLock(taskInfo->cvMutex);
+        taskInfo->isCancel.store(true);
+        taskInfo->cv.notify_all();
     }
-    CancelTask(requestId, pid);
+    processRequestMap_.Erase(pid);
     MEDIA_INFO_LOG("CancelAstcBatchTask end");
 }
 
 void ThumbnailReadyManager::NotifyTempStatusForReady(const int32_t &currentTemperatureLevel)
 {
-    static std::mutex notifyTempStatusForReadyLock;
-    std::lock_guard<std::mutex> lock(notifyTempStatusForReadyLock);
     currentTemperatureLevel_ = currentTemperatureLevel;
     CHECK_AND_RETURN(currentTemperatureLevel_ < READY_TEMPERATURE_LEVEL);
     temperatureStatusMap_.Iterate([this](const pid_t pid,
         std::shared_ptr<ThumbnailReadyManager::AstcBatchTaskInfo> temperatureStatus) {
-        if (temperatureStatus->isTemperatureHighForReady && temperatureStatus->requestId > 0 &&
-            temperatureStatus->rdbPredicatePtr != nullptr) {
-            this->CreateAstcBatchOnDemand(*temperatureStatus->rdbPredicatePtr, temperatureStatus->requestId,
-                temperatureStatus->isTemperatureHighForReady);
+        if (temperatureStatus != nullptr && temperatureStatus->isTemperatureHighForReady &&
+            temperatureStatus->requestId > 0) {
+            auto predicate = temperatureStatus->rdbPredicatePtr;
+            if (predicate != nullptr) {
+                this->CreateAstcBatchOnDemand(*predicate.get(), temperatureStatus->requestId,
+                    temperatureStatus->pid);
+            }
         }
     });
     temperatureStatusMap_.Clear();
