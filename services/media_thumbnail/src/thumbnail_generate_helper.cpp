@@ -290,7 +290,7 @@ int32_t ThumbnailGenerateHelper::CreateAstcMthAndYear(ThumbRdbOpt &opts)
     int err = 0;
     ThumbnailUtils::QueryThumbnailDataFromFileId(opts, opts.fileId, data, err);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err,
- 	    "CreateAstcMthAndYear query data from fileId failed, id: %{public}s", opts.fileId.c_str());
+        "CreateAstcMthAndYear query data from fileId failed, id: %{public}s", opts.fileId.c_str());
 
     data.loaderOpts.loadingStates = data.isLocalFile ?
         SourceLoader::LOCAL_THUMB_SOURCE_LOADING_STATES : SourceLoader::CLOUD_SOURCE_LOADING_STATES;
@@ -436,7 +436,7 @@ int32_t ThumbnailGenerateHelper::GetLcdCount(ThumbRdbOpt &opts, int &outLcdCount
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryLcdCount(opts, outLcdCount, err), err,
- 	    "Failed to QueryLcdCount %{private}d", err);
+        "Failed to QueryLcdCount %{private}d", err);
     return E_OK;
 }
 
@@ -444,7 +444,7 @@ int32_t ThumbnailGenerateHelper::GetNoLcdData(ThumbRdbOpt &opts, vector<Thumbnai
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNoLcdInfos(opts, outDatas, err), err,
- 	    "Failed to QueryNoLcdInfos %{private}d", err);
+        "Failed to QueryNoLcdInfos %{private}d", err);
     return E_OK;
 }
 
@@ -452,7 +452,7 @@ int32_t ThumbnailGenerateHelper::GetLocalNoLcdData(ThumbRdbOpt &opts, vector<Thu
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryLocalNoLcdInfos(opts, outDatas, err), err,
- 	    "Failed to QueryLocalNoLcdInfos %{private}d", err);
+        "Failed to QueryLocalNoLcdInfos %{private}d", err);
     return E_OK;
 }
 
@@ -460,7 +460,7 @@ int32_t ThumbnailGenerateHelper::GetNoThumbnailData(ThumbRdbOpt &opts, vector<Th
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNoThumbnailInfos(opts, outDatas, err), err,
- 	    "Failed to QueryNoThumbnailInfos %{private}d", err);
+        "Failed to QueryNoThumbnailInfos %{private}d", err);
     return E_OK;
 }
 
@@ -468,7 +468,7 @@ int32_t ThumbnailGenerateHelper::GetNoAstcData(ThumbRdbOpt &opts, vector<Thumbna
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNoAstcInfos(opts, outDatas, err), err,
- 	    "Failed to QueryNoAstcInfos %{public}d", err);
+        "Failed to QueryNoAstcInfos %{public}d", err);
     return E_OK;
 }
 
@@ -476,7 +476,7 @@ int32_t ThumbnailGenerateHelper::GetNoHighlightData(ThumbRdbOpt &opts, vector<Th
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNoHighlightInfos(opts, outDatas, err), err,
- 	    "Failed to QueryNoHighlightInfos %{public}d", err);
+        "Failed to QueryNoHighlightInfos %{public}d", err);
     return E_OK;
 }
 
@@ -484,7 +484,7 @@ int32_t ThumbnailGenerateHelper::GetNewThumbnailCount(ThumbRdbOpt &opts, const i
 {
     int32_t err = E_ERR;
     CHECK_AND_RETURN_RET_LOG(ThumbnailUtils::QueryNewThumbnailCount(opts, time, count, err), err,
- 	    "Failed to QueryNoThumbnailInfos %{private}d", err);
+        "Failed to QueryNoThumbnailInfos %{private}d", err);
     return E_OK;
 }
 
@@ -762,7 +762,7 @@ int32_t ThumbnailGenerateHelper::GetKeyFrameThumbnailPixelMap(ThumbRdbOpt &opts,
     string fileName;
     int err = GetAvailableKeyFrameFile(opts, thumbnailData, type, fileName);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "GetAvailableKeyFrameFile failed, path: %{public}s",
- 	    DfxUtils::GetSafePath(thumbnailData.path).c_str());
+        DfxUtils::GetSafePath(thumbnailData.path).c_str());
 
     string absFilePath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(fileName, absFilePath), E_ERR,

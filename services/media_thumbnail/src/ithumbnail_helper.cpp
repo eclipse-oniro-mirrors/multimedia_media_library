@@ -1075,7 +1075,7 @@ bool IThumbnailHelper::DoRotateThumbnail(ThumbRdbOpt &opts, ThumbnailData &data)
 static bool ScaleLcdToThumbnail(ThumbnailData &data)
 {
     CHECK_AND_RETURN_RET_LOG(!data.source.IsEmptySource(), false,
- 	    "data source is empty when scaling from lcd to thumb");
+        "data source is empty when scaling from lcd to thumb");
 
     data.loaderOpts.decodeInThumbSize = true;
     if (data.source.HasPictureSource()) {
