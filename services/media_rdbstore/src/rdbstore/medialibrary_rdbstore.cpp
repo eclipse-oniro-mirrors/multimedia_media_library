@@ -5819,6 +5819,12 @@ static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
         AddTableAnalysisDedupSelection(store, VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION, true);
     }
+
+    if (oldVersion < VERSION_ADD_NETWORK_SELECTED_IN_DRTR &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_NETWORK_SELECTED_IN_DRTR, true)) {
+        AddNetSelectedDownloadColumns(store, VERSION_ADD_NETWORK_SELECTED_IN_DRTR);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_NETWORK_SELECTED_IN_DRTR, true);
+    }
 }
 
 static void UpgradeExtensionPart13(RdbStore &store, int32_t oldVersion)
