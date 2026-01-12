@@ -29,6 +29,7 @@
 #include "rdb_store_config.h"
 #include "rdb_types.h"
 #include "rdb_utils.h"
+#include <mutex>
 
 namespace OHOS {
 namespace Media {
@@ -57,6 +58,7 @@ private:
     EXPORT static const std::string PhotoAlbumNotifyFunc(const std::vector<std::string>& args);
     bool IsQueryGroupPhotoAlbumAssets(const std::string& albumId);
     std::shared_ptr<NativeRdb::RdbStore> rdbStore_ {nullptr};
+    std::mutex mutex_;
 };
 
 class COMPILE_HIDDEN MediaLibraryDataCallBack : public NativeRdb::RdbOpenCallback {
