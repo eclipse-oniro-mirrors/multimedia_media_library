@@ -396,8 +396,8 @@ bool PictureHandlerClient::ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuf
     if (reserveIntsRet) {
         for (uint32_t j = 0; j < handle->reserveInts; j++) {
             if (reserveFds + j < 0 || reserveFds + j > static_cast<uint32_t>(MAX_RESERVE_SIZE)) {
- 	            return false;
- 	        }
+                return false;
+            }
             handle->reserve[reserveFds + j] = data.ReadInt32();
         }
     }
