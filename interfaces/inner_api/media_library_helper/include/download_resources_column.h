@@ -40,7 +40,8 @@ public:
     static const std::string MEDIA_AUTO_PAUSE_REASON EXPORT;
     static const std::string MEDIA_COVER_LEVEL EXPORT;
     static const std::string TABLE EXPORT;
-
+    static const std::string MEDIA_TASK_SEQ EXPORT;
+    static const std::string MEDIA_NETWORK_POLICY EXPORT;
     static const std::string CREATE_TABLE EXPORT;
 
     // index in DownloadResources
