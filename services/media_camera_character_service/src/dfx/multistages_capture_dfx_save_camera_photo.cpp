@@ -34,6 +34,8 @@ MultiStagesCaptureDfxSaveCameraPhoto& MultiStagesCaptureDfxSaveCameraPhoto::GetI
 void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photoId, AddAssetTimeStat stat)
 {
     std::lock_guard<std::mutex> lock(addTimeMutex_);
+    MEDIA_INFO_LOG("AddAssetTime photoId : %{public}s, stat %{public}d",
+        photoId.c_str(), static_cast<int32_t>(stat));
     if (stat != AddAssetTimeStat::START &&
         (times_.empty() || times_.find(photoId) == times_.end() ||
         times_[photoId].find(KEY_CREATE_ASSET_TIME) == times_[photoId].end() ||
@@ -66,6 +68,8 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photo
 void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &photoId, AddCaptureTimeStat stat)
 {
     std::lock_guard<std::mutex> lock(addTimeMutex_);
+    MEDIA_INFO_LOG("AddCaptureTime photoId : %{public}s, stat %{public}d",
+        photoId.c_str(), static_cast<int32_t>(stat));
     if (stat != AddCaptureTimeStat::START &&
         (times_.empty() || times_.find(photoId) == times_.end() ||
         times_[photoId].find(KEY_PHOTO_CAPTURE_TIME) == times_[photoId].end() ||
@@ -97,6 +101,8 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &pho
 void MultiStagesCaptureDfxSaveCameraPhoto::AddSaveTime(const std::string &photoId, AddSaveTimeStat stat)
 {
     std::lock_guard<std::mutex> lock(addTimeMutex_);
+    MEDIA_INFO_LOG("AddSaveTime photoId : %{public}s, stat %{public}d",
+        photoId.c_str(), static_cast<int32_t>(stat));
     if (stat != AddSaveTimeStat::START &&
         (times_.empty() || times_.find(photoId) == times_.end() ||
         times_[photoId].find(KEY_SAVE_CAMERA_TIME) == times_[photoId].end() ||
