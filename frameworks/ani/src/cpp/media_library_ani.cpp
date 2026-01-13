@@ -326,6 +326,8 @@ void ChangeListenerAni::HandleMessageData(UvChangeMsg *msg, ChangeListenerAni::J
         if (extraIds.size() != 0) {
             wrapper->extraSharedAssets_ = GetSharedResultSetFromIds(extraIds, true);
         }
+    } else {
+        free(msg->data_);
     }
 }
 

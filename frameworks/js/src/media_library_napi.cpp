@@ -3081,6 +3081,8 @@ void ChangeListenerNapi::GetResultSetFromMsg(UvChangeMsg *msg, JsOnChangeCallbac
         if (extraIds.size() != 0) {
             wrapper->extraSharedAssets_ = GetSharedResultSetFromIds(extraIds, true);
         }
+    } else {
+        free(msg->data_);
     }
 }
 
@@ -3145,7 +3147,6 @@ void ChangeListenerNapi::QueryRdbAndNotifyChange(UvChangeMsg *msg)
     ret = napi_send_event(env_, task, napi_eprio_immediate, "MLB_MediaLib_off");
     if (ret != 0) {
         NAPI_ERR_LOG("Failed to execute napi_send_event, ret: %{public}d", ret);
-        free(msg->data_);
         delete msg;
         delete wrapper;
     }
