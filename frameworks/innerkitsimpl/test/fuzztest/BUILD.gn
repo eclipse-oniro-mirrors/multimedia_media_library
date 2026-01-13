@@ -91,6 +91,7 @@ group("media_library_fuzztest") {
     "medialibrarycloudmediamapcodedao_fuzzer:MediaLibraryCloudMediaMapCodeDaoFuzzTest",
     "medialibrarycloudmapcodechecker_fuzzer:MediaLibraryCloudMapCodeCheckerFuzzTest",
     "medialibrary_mapcode_fuzzer:MediaLibraryMapCodeFuzzTest",
+    "medialibrarybackupextension_fuzzer:MediaLibraryBackupExtensionFuzzTest",
   ]
 
   if (defined(global_parts_info.hdf_drivers_interface_usb) &&

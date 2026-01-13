@@ -1,0 +1,160 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
+  module_out_path = "media_library/media_library"
+  fuzz_config_file = "."
+
+  include_dirs = [
+    "./include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/config",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/event_handler",
+
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/restore",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/report",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/geo_knowledge",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/geo_dictionary",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/highlight",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/log",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/classify",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/ocr",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/analysis_data",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/analysis_album",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/portrait_album",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/include/group_photo_album",
+
+  ]
+
+  sources = [
+    "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
+    "./medialibrarybackupextension_fuzzer.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/backup_restore_service.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photos_dao.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/geo_knowledge_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/report/upgrade_restore_task_report.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/highlight/highlight_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/log/backup_hi_audit.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/log/backup_hi_audit_helper.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/classify/classify_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/ocr/ocr_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/analysis_data/clone_restore_analysis_data.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/analysis_album/search_index_clone.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/upgrade_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/clone_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/others_clone_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/base_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/cloud_backup_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/portrait_album/clone_restore_portrait_album.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/group_photo_album/clone_restore_group_photo.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/analysis_data/clone_restore_analysis_total.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/geo_dictionary/clone_restore_geo_dictionary.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/clone_restore_geo.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/backup_database_helper.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/backup_database_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/report/upgrade_restore_gallery_media_task.cpp",
+
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/log/backup_log_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/log/backup_zip_util.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/backup_file_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/gallery_db_upgrade.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/report/database_report.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photo_album_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photo_album_dao.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photos_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/burst_key_generator.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/gallery_media_dao.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/portrait_album/portrait_album_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/media_library_db_upgrade.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photos_clone.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photo_album_clone.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/highlight/clone_restore_highlight.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/highlight/clone_restore_cv_analysis.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/dao_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/classify/clone_restore_classify.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/asset_map_clone.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/analysis_album/beauty_score_clone.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/analysis_album/video_face_clone.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/tab_old_albums_clone.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photos_backup.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/photos_data_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/backup_dfx_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/tab_old_photos_restore.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/portrait_album/clone_restore_portrait_base.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/event_handler/album_plugin_table_event_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/db_upgrade_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/report/gallery_media_count_statistic.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/report/external_files_count_statistic.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/report/photos_count_statistic.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_backup_extension/src/restore/backup_adapters.cpp",
+
+  ]
+  
+  source_ipc_client = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp" ]
+  sources += source_ipc_client
+  
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync:media_library_cloud_sync",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:napi_base_context",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:app_context",
+    "ability_runtime:app_manager",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "data_share:datashare_provider",
+    "dfs_service:cloudsync_kit_inner",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "image_framework:image_native",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
+    "jsoncpp:jsoncpp",
+    "kv_store:distributeddata_inner",
+    "napi:ace_napi",
+    "player_framework:media_client",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+    "access_token:libtokenid_sdk",
+    "dfs_service:cloudfile_kit",
+    "ffrt:libffrt",
+    "i18n:intl_util",
+    "hisysevent:libhisysevent",
+    "os_account:libaccountkits",  # ohos_account
+    "os_account:os_account_innerkits",  # os_account
+    "libxml2:libxml2",
+    "e2fsprogs:libext2_uuid",
+    "samgr:samgr_proxy",
+  ]
+}
