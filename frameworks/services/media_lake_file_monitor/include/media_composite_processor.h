@@ -22,12 +22,15 @@
 #include "media_log.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_rdb_utils.h"
+#include "media_lake_monitor_rdb_utils.h"
+#include "medialibrary_unistore_manager.h"
 
 namespace OHOS::Media {
 class MediaCompositeProcessor : public IProcessor {
 public:
-    explicit MediaCompositeProcessor(std::vector<std::unique_ptr<IProcessor>> processors)
-        : processors_(std::move(processors)) {}
+    explicit MediaCompositeProcessor(std::vector<std::unique_ptr<IProcessor>> processors,
+        bool needPostProcess = false)
+        : processors_(std::move(processors)), needPostProcess_(needPostProcess) {}
 
     void Process(const MediaLakeNotifyInfo &notifyInfo) override
     {
@@ -41,6 +44,11 @@ public:
         for (size_t i = 0; i < processors_.size(); ++i) {
             processors_[i]->Process(notifyInfos[i]);
         }
+
+        if (needPostProcess_) {
+            auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+            MediaLakeMonitorRdbUtils::UpdateAlbumInfo(rdbStore);
+        }
     }
 
     bool IsComposite() const override
@@ -50,6 +58,7 @@ public:
 
 private:
     std::vector<std::unique_ptr<IProcessor>> processors_;
+    bool needPostProcess_ = false;
 };
 }
 

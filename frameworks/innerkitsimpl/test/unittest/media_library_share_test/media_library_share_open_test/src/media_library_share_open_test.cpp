@@ -302,9 +302,7 @@ void MediaLibraryShareOpenTest::InitPhotoAsset(std::string &dataFileUri, bool is
     int32_t dataFileId = 0;
     
     std::string uriReal = mediaLibraryManager->CreateAsset(effectFileName);
-    if (uriReal.empty()) {
-        MEDIA_ERR_LOG("InitPhotoAsset CreateAsset failed for %{public}s", effectFileName.c_str());
-    }
+    MEDIA_INFO_LOG("InitPhotoAsset uriReal: %{public}s", uriReal.c_str());
     if (isEdited) {
         dataFileId = MediaLibraryShareOpenTest::CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, effectFileName, true);
     } else {
@@ -341,7 +339,7 @@ void MediaLibraryShareOpenTest::CopyToDestPath(int32_t srcFd, const std::string 
         ret = MediaFileUtils::CreateDirectory(destDir);
         if (ret != E_OK) {
             std::filesystem::create_directories(destDir);
-            MEDIA_INFO_LOG("destDir is exsist? : %{public}d", MediaFileUtils::IsDirExists(destDir));
+            MEDIA_INFO_LOG("destDir is exist? : %{public}d", MediaFileUtils::IsDirExists(destDir));
         }
     }
     if (MediaFileUtils::IsFileExists(destPath)) {
@@ -357,10 +355,7 @@ void MediaLibraryShareOpenTest::CopyToDestPath(int32_t srcFd, const std::string 
 
 HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_001, TestSize.Level0)
 {
-    if (!MediaLibraryShareOpenTest::IsValid()) {
-        MEDIA_ERR_LOG("media_library_share_test_001 MediaLibraryShareOpenTest is not valid");
-        return;
-    }
+    ASSERT_TRUE(MediaLibraryShareOpenTest::IsValid());
     std::string dataPath = "/data/local/tmp/assets_share_resources/assets_share/CreateImageLcdTest_001.jpg";
     bool isFileExist = MediaFileUtils::IsFileExists(dataPath);
     MEDIA_INFO_LOG("media_library_share_test_001 file exist: %{public}d", isFileExist);
@@ -430,7 +425,7 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_003, TestSize.Level
 HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_004, TestSize.Level0)
 {
     MEDIA_INFO_LOG("media_library_share_test_004 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
 
     string tlvPathAccept = TLV_FILE_CACHE_FILE;
     if (!MediaFileUtils::IsFileExists(tlvPathAccept)) {
@@ -446,6 +441,31 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_004, TestSize.Level
     auto ret = operatorObj.HandleTlvRestore(timeInfoMap, restoreTaskInfo, filePathVector, isFirst, uniqueNumber);
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("media_library_share_test_004 End");
+}
+
+HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("media_library_share_test_005 Start");
+    std::string uri = "";
+    MediaLibraryShareOpenTest::InitPhotoAsset(uri);
+    const vector<string> uris = {uri};
+    int64_t totalSize = 0;
+    int32_t ret = E_OK;
+
+    string id = MediaFileUtils::GetIdFromUri(uri);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (rdbStore != nullptr) {
+        NativeRdb::AbsRdbPredicates predicates(PhotoExtColumn::PHOTOS_EXT_TABLE);
+        predicates.EqualTo(PhotoExtColumn::PHOTO_ID, id);
+        std::vector<std::string> columns = { PhotoExtColumn::EDITDATA_SIZE };
+        auto resultSet = rdbStore->Query(predicates, columns);
+        if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+            ret = MediaLibraryPhotoOperations::GetCompressAssetSize(uris, totalSize);
+        }
+    }
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("GetCompressAssetSize totalSize: %{public}" PRId64, totalSize);
+    MEDIA_INFO_LOG("media_library_share_test_005 End");
 }
 } // namespace Media
 } // namespace OHOS

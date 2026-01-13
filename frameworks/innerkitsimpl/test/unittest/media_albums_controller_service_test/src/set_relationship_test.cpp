@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -35,6 +36,7 @@
 #include "result_set_utils.h"
 #include "media_file_uri.h"
 #include "vision_photo_map_column.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -48,7 +50,7 @@ using namespace IPC;
     static string g_albumName = "test01";
 
     static std::vector<std::string> createTableSqlLists = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
         CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     };
@@ -142,7 +144,7 @@ static int32_t SetRelationship(int32_t albumId, int32_t albumType, int32_t album
     }
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->SetRelationship(data, reply);
 
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
@@ -185,7 +187,7 @@ HWTEST_F(SetRelationshipTest, SetRelationshipTest_Test_002, TestSize.Level0)
     MEDIA_INFO_LOG("Start SetRelationshipTest_Test_002");
     MessageParcel data;
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->SetRelationship(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;

@@ -17,15 +17,13 @@
 #define MEDIALIBRARY_NOTIFY_USER_DEFINE_OBSERVER_H
 
 #include <vector>
-#include "napi/native_api.h"
 #include "parcel.h"
-#include "uv.h"
 
 #include "data_ability_helper.h"
 #include "data_ability_observer_stub.h"
 #include "datashare_helper.h"
-#include "media_change_info.h"
 #include "medialibrary_notify_callback_wrapper.h"
+#include "user_define_notify_info.h"
 
 namespace OHOS {
 namespace Media {
@@ -34,7 +32,7 @@ namespace Media {
 class MediaOnNotifyUserDefineObserverBodyBase {
 public:
     MediaOnNotifyUserDefineObserverBodyBase() {}
-    ~MediaOnNotifyUserDefineObserverBodyBase() {}
+    virtual ~MediaOnNotifyUserDefineObserverBodyBase() = default;
 
     virtual void OnChange(const UserDefineCallbackWrapper &callbackWrapper) = 0;
     virtual std::string ToString() const = 0;
@@ -52,6 +50,9 @@ public:
 
     Notification::NotifyUriType uriType_;
     std::shared_ptr<MediaOnNotifyUserDefineObserverBodyBase> observerBody_;
+
+private:
+    std::shared_ptr<Notification::UserDefineNotifyInfo> UnmarshalUserDefineNotify(Parcel &parcel);
 };
 
 } // Media

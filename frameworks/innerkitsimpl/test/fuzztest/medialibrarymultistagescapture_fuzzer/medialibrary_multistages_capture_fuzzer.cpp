@@ -31,6 +31,7 @@
 #include "multistages_video_capture_manager.h"
 #include "multistages_capture_request_task_manager.h"
 #include "medialibrary_kvstore_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -65,7 +66,7 @@ static int32_t InsertAsset(string photoId)
 
 void SetTables()
 {
-    vector<string> createTableSqlList = { Media::PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { Media::PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "g_rdbStore is null.");
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
@@ -109,7 +110,7 @@ static void MultistagesCaptureManagerTest()
     rdbPredicate.EqualTo(Media::PhotoColumn::PHOTO_ID, photoId);
     Media::MultiStagesCaptureManager::RemovePhotos(rdbPredicate, true);
     Media::MultiStagesCaptureManager::RestorePhotos(rdbPredicate);
-    Media::MultiStagesCaptureManager::QuerySubType(photoId);
+    Media::MultiStagesVideoCaptureManager::QuerySubType(photoId);
 }
 
 static void MultistagesMovingPhotoCaptureManagerTest()
@@ -143,7 +144,8 @@ static void MultistagesVideoCaptureManagerTest()
     Media::MultiStagesVideoCaptureManager &instance =
         Media::MultiStagesVideoCaptureManager::GetInstance();
     int32_t fileId = InsertAsset(videoId);
-    instance.AddVideo(videoId, std::to_string(fileId), filePath);
+    Media::VideoInfo videoInfo = {fileId, Media::VideoCount::SINGLE, filePath, "", ""};
+    instance.AddVideo(videoId, std::to_string(fileId), videoInfo);
 }
 
 static inline void ClearKvStore()

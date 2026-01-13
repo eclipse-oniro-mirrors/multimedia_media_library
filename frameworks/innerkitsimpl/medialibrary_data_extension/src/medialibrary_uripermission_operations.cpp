@@ -37,6 +37,7 @@
 #include "userfilemgr_uri.h"
 #include "media_file_uri.h"
 #include "data_secondary_directory_uri.h"
+#include "media_audio_column.h"
 
 namespace OHOS {
 namespace Media {

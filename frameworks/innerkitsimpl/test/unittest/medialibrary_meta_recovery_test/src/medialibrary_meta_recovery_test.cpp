@@ -39,6 +39,7 @@
 #define private public
 #include "medialibrary_meta_recovery.h"
 #undef private
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -59,7 +60,7 @@ static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 
 static std::vector<std::string> createTableSqlLists = {
     PhotoAlbumColumns::CREATE_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_MEDIA_TABLE,
 };
 

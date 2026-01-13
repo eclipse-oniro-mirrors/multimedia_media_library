@@ -34,6 +34,7 @@
 #include "photo_file_utils.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
+#include "media_upgrade.h"
 
 using namespace testing;
 using namespace std;
@@ -69,7 +70,7 @@ void PhotoCustomRestoreOperationTest::ClearTables()
 void PhotoCustomRestoreOperationTest::SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

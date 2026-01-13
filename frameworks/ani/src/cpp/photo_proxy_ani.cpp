@@ -54,9 +54,9 @@ ani_status PhotoProxyAni::Init(ani_env *env)
             reinterpret_cast<void *>(PhotoProxyAni::PhotoProxyAniConstructor)},
     };
 
-    status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
+    status = env->Class_BindStaticNativeMethods(cls, methods.data(), methods.size());
     if (status != ANI_OK) {
-        ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        ANI_ERR_LOG("Failed to bind static native methods to: %{public}s", className);
         return status;
     }
     return ANI_OK;

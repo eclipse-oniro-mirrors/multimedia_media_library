@@ -19,6 +19,7 @@
 
 #include "media_log.h"
 #include "photos_po.h"
+#include "photo_album_upload_status_operation.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
@@ -48,7 +49,8 @@ bool CloudMediaPhotosDeleteService::IsClearCloudInfoOnly(CloudMediaPullDataDto &
     return pullData.basicIsDelete &&                      // delete from cloud.
            localPhotosPo.dateTrashed.value_or(0) == 0 &&  // not in trash.
            localPhotosPo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD) &&
-           this->FindAlbumUploadStatus(pullData) == false;
+           this->FindAlbumUploadStatus(pullData) == false &&
+           PhotoAlbumUploadStatusOperation::IsSupportUploadStatus();
 }
 
 int32_t CloudMediaPhotosDeleteService::FindPhotoAlbum(CloudMediaPullDataDto &pullData)
@@ -86,7 +88,8 @@ bool CloudMediaPhotosDeleteService::IsMoveOnlyCloudAssetIntoTrash(CloudMediaPull
     return !pullData.basicIsDelete &&
            localPhotosPo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD) &&
            pullData.basicRecycledTime > 0 && localPhotosPo.dateTrashed.value_or(0) == 0 &&
-           this->FindAlbumUploadStatus(pullData) == false;
+           this->FindAlbumUploadStatus(pullData) == false &&
+           PhotoAlbumUploadStatusOperation::IsSupportUploadStatus();
 }
 
 bool CloudMediaPhotosDeleteService::IsMoveOutFromTrash(CloudMediaPullDataDto &pullData)
@@ -104,10 +107,10 @@ int32_t CloudMediaPhotosDeleteService::CopyAndMoveCloudAssetToTrash(
     PhotosPo localPhotosPo = pullData.localPhotosPoOp.value();
     std::optional<PhotosPo> targetPhotoInfoOp;
     int32_t ret =
-        this->mediaAssetsDeleteService_.CopyAndMoveCloudAssetToTrash(photoRefresh, localPhotosPo, targetPhotoInfoOp);
+        this->mediaAssetsDeleteService_.DeleteCloudAssetSingle(localPhotosPo, targetPhotoInfoOp, photoRefresh);
     bool isValid = ret == E_OK && targetPhotoInfoOp.has_value();
     CHECK_AND_EXECUTE(!isValid, pullData.localPhotosPoOp = targetPhotoInfoOp);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CopyAndMoveCloudAssetToTrash failed, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "DeleteCloudAssetSingle failed, ret: %{public}d", ret);
     return E_OK;
 }
 

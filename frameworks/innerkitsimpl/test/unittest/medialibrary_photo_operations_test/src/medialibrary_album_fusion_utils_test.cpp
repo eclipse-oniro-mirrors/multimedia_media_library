@@ -58,6 +58,7 @@
 #include "medialibrary_album_fusion_utils.h"
 #undef private
 #undef protected
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -145,7 +146,7 @@ static void CleanTestTables()
 static void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         FormMap::CREATE_FORM_MAP_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

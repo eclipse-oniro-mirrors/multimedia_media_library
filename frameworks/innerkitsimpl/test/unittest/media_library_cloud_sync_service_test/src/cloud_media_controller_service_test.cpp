@@ -290,54 +290,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetDeletedRecords_Test
     EXPECT_EQ(ret, E_OK);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetCheckRecords_Test_001, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CHECK_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetCheckRecords_Test_002, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(-1);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CHECK_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetCheckRecords_Test_003, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(1);
-    data.WriteString("test1");
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CHECK_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnCreateRecords_Test_001, TestSize.Level1)
 {
     std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
@@ -1144,7 +1096,7 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaDownloadControllerService_On
     service->OnRemoteRequest(code, data, reply, context);
 
     int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
+    EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
 }
 
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaDownloadControllerService_OnDownloadThms_Test_002, TestSize.Level1)
@@ -1161,7 +1113,7 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaDownloadControllerService_On
     service->OnRemoteRequest(code, data, reply, context);
 
     int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
+    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
 }
 
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaDownloadControllerService_OnDownloadThms_Test_003, TestSize.Level1)
@@ -2094,7 +2046,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_Test, TestSize.Level1)
         CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS,
         CloudMediaAlbumOperationCode::CMD_GET_META_MODIFIED_RECORDS,
         CloudMediaAlbumOperationCode::CMD_GET_DELETED_RECORDS,
-        CloudMediaAlbumOperationCode::CMD_GET_CHECK_RECORDS,
         CloudMediaAlbumOperationCode::CMD_ON_CREATE_RECORDS,
         CloudMediaAlbumOperationCode::CMD_ON_MDIRTY_RECORDS,
         CloudMediaAlbumOperationCode::CMD_ON_FDIRTY_RECORDS,

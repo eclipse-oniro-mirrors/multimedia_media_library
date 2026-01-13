@@ -28,6 +28,7 @@
 #include "medialibrary_unittest_utils.h"
 #undef private
 #undef protected
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS;

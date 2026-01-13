@@ -35,8 +35,6 @@ std::string OnDownloadAssetData::ToString() const
        << "\"errorMsg\": \"" << errorMsg << ","
        << "\"fileUri\": " << fileUri << ","
        << "\"needParseCover\": " << needParseCover << ","
-       << "\"mediaType\": " << mediaType << ","
-       << "\"exifRotate\": " << exifRotate << ","
        << "\"needScanSubtype\": " << needScanSubtype << ","
        << "\"needScanShootingMode\": " << needScanShootingMode;
     ss << "\"}";

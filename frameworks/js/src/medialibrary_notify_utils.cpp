@@ -494,7 +494,6 @@ napi_value MediaLibraryNotifyUtils::BuildAlbumChangeInfo(napi_env env,
     SetValueInt64(env, "videoCount", albumChangeInfo.videoCount_, result);
     SetValueInt64(env, "count", albumChangeInfo.count_, result);
     SetValueString(env, "coverUri", albumChangeInfo.coverUri_, result);
-    SetValueBool(env, "hidden", static_cast<bool>(albumChangeInfo.hidden_), result);
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         return result;
     }
@@ -504,6 +503,10 @@ napi_value MediaLibraryNotifyUtils::BuildAlbumChangeInfo(napi_env env,
     SetValueBool(env, "isHiddenCoverChanged", albumChangeInfo.isHiddenCoverChange_, result);
     SetValueInt32(env, "orderSection", albumChangeInfo.orderSection_, result);
     SetValueInt32(env, "albumOrder", albumChangeInfo.albumsOrder_, result);
+    if (!(albumChangeInfo.albumSubType_ >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
+        albumChangeInfo.albumSubType_ <= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_END))) {
+        SetValueBool(env, "hidden", static_cast<bool>(albumChangeInfo.hidden_), result);
+    }
 
     napi_status status = napi_ok;
     napi_value coverInfoValue = BuildPhotoAssetChangeInfo(env, albumChangeInfo.coverInfo_);
@@ -811,7 +814,7 @@ napi_value MediaLibraryNotifyUtils::BuildSinglePhotoAssetChangeInfos(napi_env en
 {
     NAPI_INFO_LOG("MediaLibraryNotifyUtils::BuildSinglePhotoAssetChangeInfos");
     MediaLibraryTracer tracer;
-    tracer.Start("BuildPhotoAssetChangeInfos");
+    tracer.Start("BuildSinglePhotoAssetChangeInfos");
     if (changeInfo == nullptr) {
         NAPI_ERR_LOG("Invalid changeInfo");
         return nullptr;
@@ -916,9 +919,9 @@ napi_value MediaLibraryNotifyUtils::BuildSinglePhotoAssetRecheckChangeInfos(napi
         NAPI_ERR_LOG("set array named property error: type");
         return nullptr;
     }
-    status = SetValueNull(env, "AssetChangeData", result);
+    status = SetValueNull(env, "assetChangeDatas", result);
     if (status != napi_ok) {
-        NAPI_ERR_LOG("set array named property error: assetChangeData");
+        NAPI_ERR_LOG("set array named property error: assetChangeDatas");
         return nullptr;
     }
     status = MediaLibraryNotifyUtils::SetValueBool(env, "isForRecheck", true, result);

@@ -29,6 +29,8 @@ bool StartThumbnailCreationTaskReqBody::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET(status, status);
     status = parcel.ReadInt32(this->requestId);
     CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadInt32(this->pid);
+    CHECK_AND_RETURN_RET(status, status);
     return true;
 }
 
@@ -37,6 +39,8 @@ bool StartThumbnailCreationTaskReqBody::Marshalling(MessageParcel &parcel) const
     bool status = DataSharePredicates::Marshal(this->predicates, parcel);
     CHECK_AND_RETURN_RET(status, status);
     status = parcel.WriteInt32(this->requestId);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteInt32(this->pid);
     CHECK_AND_RETURN_RET(status, status);
     return true;
 }

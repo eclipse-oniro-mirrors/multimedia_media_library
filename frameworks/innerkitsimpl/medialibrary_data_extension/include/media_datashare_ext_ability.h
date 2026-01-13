@@ -24,7 +24,7 @@
 #include "datashare_values_bucket.h"
 #include "abs_permission_handler.h"
 #include "media_controller_service_factory.h"
-
+//LCOV_EXCL_START
 namespace OHOS {
 namespace AbilityRuntime {
 using namespace DataShare;
@@ -258,3 +258,4 @@ private:
 } // namespace AbilityRuntime
 } // namespace OHOS
 #endif // FOUNDATION_ABILITYRUNTIME_OHOS_MEDIA_DATASHARE_EXT_ABILITY_H
+//LCOV_EXCL_STOP

@@ -56,8 +56,8 @@ public:
     int32_t GrantPhotoUrisPermission(
         MediaLibraryCommand &cmd, const std::vector<DataShare::DataShareValuesBucket> &values);
     int32_t CancelPhotoUriPermission(NativeRdb::RdbPredicates &rdbPredicate);
-    int32_t StartThumbnailCreationTask(NativeRdb::RdbPredicates &rdbPredicate, int32_t requestId);
-    int32_t StopThumbnailCreationTask(int32_t requestId);
+    int32_t StartThumbnailCreationTask(NativeRdb::RdbPredicates &rdbPredicate, int32_t requestId, pid_t pid);
+    int32_t StopThumbnailCreationTask(int32_t requestId, pid_t pid);
     int32_t CancelPhotoUrisPermissionInner(MediaLibraryCommand &cmd,
         const DataShare::DataSharePredicates &values);
     int32_t CheckPhotoUriPermissionInner(MediaLibraryCommand &cmd, const DataShare::DataSharePredicates &predicates,

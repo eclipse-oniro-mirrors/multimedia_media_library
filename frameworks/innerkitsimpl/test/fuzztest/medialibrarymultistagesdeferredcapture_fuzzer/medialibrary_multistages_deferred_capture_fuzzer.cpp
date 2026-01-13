@@ -34,6 +34,7 @@
 #include "deferred_video_proc_adapter.h"
 #undef private
 #undef protected
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -45,7 +46,7 @@ std::shared_ptr<Media::MediaLibraryRdbStore> g_rdbStore;
 
 void SetTables()
 {
-    vector<string> createTableSqlList = { Media::PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { Media::PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "g_rdbStore is null.");
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

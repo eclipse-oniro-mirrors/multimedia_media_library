@@ -46,7 +46,7 @@ private:
 private:
     CloudMediaPhotosDao photosDao_;
     Common::MediaAssetsDao mediaAssetsDao_;
-    Common::MediaAssetsDeleteService mediaAssetsDeleteService_;
+    Common::MediaAssetsDeleteService mediaAssetsDeleteService_ = Common::MediaAssetsDeleteService(true);
     Common::MediaAssetsRecoverService mediaAssetsRecoverService_;
 };
 }  // namespace OHOS::Media::CloudSync

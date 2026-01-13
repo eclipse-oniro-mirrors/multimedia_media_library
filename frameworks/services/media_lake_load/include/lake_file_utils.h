@@ -55,6 +55,11 @@ public:
     // Create file path in lake.
     static int32_t BuildLakeFilePath(const std::string &displayName, const int32_t mediaType, std::string &targetPath);
 
+    // 多用户场景
+    static int32_t GetCurrentAccountId();
+    static std::string GetCurrentInLakeLogicPrefix();
+    static bool IsDefaultAccount();
+
 private:
     static bool HasExtension(const std::string &file);
     static std::string GarbleFileWithExtension(const std::string &file);

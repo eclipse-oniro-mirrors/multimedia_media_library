@@ -121,6 +121,7 @@ napi_value PhotoAlbumNapi::PhotoAccessInit(napi_env env, napi_value exports)
             DECLARE_NAPI_GETTER("dateModified", JSGetDateModifiedSystem),
             DECLARE_NAPI_GETTER("dateAdded", JSGetDateAdded),
             DECLARE_NAPI_GETTER("coverUriSource", JSGetCoverUriSource),
+            DECLARE_NAPI_GETTER("changeTime", JSGetChangeTime),
             DECLARE_NAPI_GETTER("uploadStatus", JSGetUploadStatus),
             DECLARE_NAPI_GETTER("hidden", JSPhotoAccessGetPhotoAlbumtHidden),
             DECLARE_NAPI_FUNCTION("commitModify", PhotoAccessHelperCommitModify),
@@ -287,6 +288,11 @@ bool PhotoAlbumNapi::GetHiddenOnly() const
 void PhotoAlbumNapi::SetHiddenOnly(const bool hiddenOnly_)
 {
     return photoAlbumPtr->SetHiddenOnly(hiddenOnly_);
+}
+
+int64_t PhotoAlbumNapi::GetChangeTime() const
+{
+    return photoAlbumPtr->GetChangeTime();
 }
 
 int32_t PhotoAlbumNapi::GetUploadStatus() const
@@ -643,6 +649,16 @@ napi_value PhotoAlbumNapi::JSGetUploadStatus(napi_env env, napi_callback_info in
 
     napi_value jsResult = nullptr;
     CHECK_ARGS(env, napi_create_int32(env, obj->GetUploadStatus(), &jsResult), JS_INNER_FAIL);
+    return jsResult;
+}
+
+napi_value PhotoAlbumNapi::JSGetChangeTime(napi_env env, napi_callback_info info)
+{
+    PhotoAlbumNapi *obj = nullptr;
+    CHECK_NULLPTR_RET(UnwrapPhotoAlbumObject(env, info, &obj));
+
+    napi_value jsResult = nullptr;
+    CHECK_ARGS(env, napi_create_int64(env, obj->GetChangeTime(), &jsResult), JS_INNER_FAIL);
     return jsResult;
 }
 

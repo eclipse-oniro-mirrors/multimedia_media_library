@@ -23,6 +23,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_errno.h"
 #include "userfilemgr_uri.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;

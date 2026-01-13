@@ -39,6 +39,8 @@
 #include "result_set_utils.h"
 #include "get_photo_index_vo.h"
 #include "query_result_vo.h"
+#include "media_file_utils.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -49,7 +51,7 @@ static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static constexpr int32_t SLEEP_SECONDS = 1;
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
     CREATE_TAB_ANALYSIS_TOTAL,
     CREATE_USER_PHOTOGRAPHY_INFO_TABLE,

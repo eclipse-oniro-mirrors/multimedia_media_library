@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -133,7 +134,7 @@ HWTEST_F(DeleteHighlightAlbumsTest, DeleteHighlightAlbums_Test_001, TestSize.Lev
     reqBody.photoAlbumSubtypes = photoAlbumSubtypes;
     bool errConn = !reqBody.Marshalling(data);
     ASSERT_EQ(errConn, false);
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->DeleteHighlightAlbums(data, reply);
     MediaEmptyObjVo respVo;
     MediaRespVo<MediaEmptyObjVo> resp;
@@ -159,7 +160,7 @@ HWTEST_F(DeleteHighlightAlbumsTest, DeleteHighlightAlbums_Test_002, TestSize.Lev
     reqVo.SetBody(reqBody);
     bool errConn = !reqVo.Marshalling(data);
     ASSERT_EQ(errConn, false);
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->DeleteHighlightAlbums(data, reply);
     MediaEmptyObjVo respVo;
     MediaRespVo<MediaEmptyObjVo> resp;

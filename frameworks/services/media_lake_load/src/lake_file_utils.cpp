@@ -42,8 +42,10 @@ const size_t GARBLE_SIZE_DEFAULT = 3;
 const size_t GARBLE_SIZE_RATIO = 2;
 const std::string MEDIALIBRARY_ZERO_BUCKET_PATH = "/storage/cloud/files/Photo/0";
 constexpr int32_t CROSS_POLICY_ERR = 18;
+constexpr int32_t BASE_USER_RANGE = 200000;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
 static const int UUID_STR_LENGTH = 37;
+const int32_t OH_DEFAULT_USER_ID = 100;
 
 int32_t LakeFileUtils::GetFileMetadata(std::unique_ptr<Metadata> &data)
 {
@@ -478,5 +480,25 @@ int32_t LakeFileUtils::BuildLakeFilePath(
         uniqueId,
         targetPath.c_str());
     return ret;
+}
+
+int32_t LakeFileUtils::GetCurrentAccountId()
+{
+    int32_t uid = static_cast<int32_t>(getuid());
+    int32_t currentUserId = uid / BASE_USER_RANGE;
+    MEDIA_DEBUG_LOG("current uid is %{public}d, userId is %{public}d", uid, currentUserId);
+    return currentUserId;
+}
+
+std::string LakeFileUtils::GetCurrentInLakeLogicPrefix()
+{
+    std::string userId = std::to_string(GetCurrentAccountId());
+    return "/data/service/el2/" + userId + "/hmdfs/account/files/Docs/HO_DATA_EXT_MISC/";
+}
+
+bool LakeFileUtils::IsDefaultAccount()
+{
+    int32_t userId = GetCurrentAccountId();
+    return userId == OH_DEFAULT_USER_ID;
 }
 }

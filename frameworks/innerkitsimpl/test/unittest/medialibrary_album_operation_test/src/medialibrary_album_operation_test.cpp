@@ -31,6 +31,7 @@
 #include "vision_db_sqls_more.h"
 #include "album_operation_uri.h"
 #include "asset_accurate_refresh.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -85,7 +86,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
         CREATE_ANALYSIS_ALBUM_MAP,
     };

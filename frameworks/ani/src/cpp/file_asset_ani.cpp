@@ -71,6 +71,7 @@
 #include "interop_js/arkts_interop_js_api.h"
 #include "transfer_utils.h"
 #include "ani_transfer_lib_manager.h"
+#include "medialibrary_ani_enum_comm.h"
 namespace OHOS::Media {
 using AttachCreateFileAssetFn = napi_value (*)(napi_env, TransferUtils::TransferSharedPtr);
 using GetFileAssetInstanceFn = TransferUtils::TransferSharedPtr (*)(FileAssetNapi*);
@@ -96,6 +97,8 @@ const std::array fileAssetAniMethods = {
         reinterpret_cast<void *>(FileAssetAni::PhotoAccessHelperGetEditData)},
     ani_native_function {"cloneSync", nullptr,
         reinterpret_cast<void *>(FileAssetAni::PhotoAccessHelperCloneAsset)},
+    ani_native_function {"convertImageFormatInner", nullptr,
+        reinterpret_cast<void *>(FileAssetAni::PhotoAccessHelperConvertFormat)},
     ani_native_function {"requestSourceSync", nullptr,
         reinterpret_cast<void *>(FileAssetAni::PhotoAccessHelperRequestSource)},
     ani_native_function {"commitEditedAssetSync", nullptr,
@@ -122,6 +125,8 @@ const std::array fileAssetAniMethods = {
         reinterpret_cast<void *>(FileAssetAni::GetExif)},
     ani_native_function {"setPendingSync", nullptr,
         reinterpret_cast<void *>(FileAssetAni::PhotoAccessHelperSetPending)},
+};
+std::array staticMethods = {
     ani_native_function {"transferToDynamicPhotoAsset", nullptr,
         reinterpret_cast<void *>(FileAssetAni::TransferToDynamicPhotoAsset)},
     ani_native_function {"transferToStaticPhotoAsset", nullptr,
@@ -162,46 +167,48 @@ struct AnalysisSourceInfo {
     std::vector<std::string> fetchColumn;
 };
 
-static const map<int32_t, struct AnalysisSourceInfo> ANALYSIS_SOURCE_INFO_MAP = {
-    { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
-    { ANALYSIS_LABEL, { LABEL, PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
-        SALIENCY_SUB_PROB } } },
-    { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
-        SUB_CATEGORY, SUB_CONFIDENCE_PROB, SUB_LABEL, SUB_LABEL_PROB, SUB_LABEL_TYPE, TRACKS, VIDEO_PART_FEATURE,
-        FILTER_TAG} } },
-    { ANALYSIS_OCR, { OCR, PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
-    { ANALYSIS_FACE, { FACE, PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT,
-        LANDMARKS, PITCH, YAW, ROLL, PROB, TOTAL_FACES, FEATURES, FACE_OCCLUSION, BEAUTY_BOUNDER_X, BEAUTY_BOUNDER_Y,
-        BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, FACE_AESTHETICS_SCORE} } },
-    { ANALYSIS_OBJECT, { OBJECT, PAH_QUERY_ANA_OBJECT, { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
-        OBJECT_SCALE_WIDTH, OBJECT_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
-        RECOMMENDATION_RESOLUTION, RECOMMENDATION_SCALE_X, RECOMMENDATION_SCALE_Y, RECOMMENDATION_SCALE_WIDTH,
-        RECOMMENDATION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_SEGMENTATION, { SEGMENTATION, PAH_QUERY_ANA_SEGMENTATION, { SEGMENTATION_AREA, SEGMENTATION_NAME,
-        PROB } } },
-    { ANALYSIS_COMPOSITION, { COMPOSITION, PAH_QUERY_ANA_COMPOSITION, { COMPOSITION_ID, COMPOSITION_RESOLUTION,
-        CLOCK_STYLE, CLOCK_LOCATION_X, CLOCK_LOCATION_Y, CLOCK_COLOUR, COMPOSITION_SCALE_X, COMPOSITION_SCALE_Y,
-        COMPOSITION_SCALE_WIDTH, COMPOSITION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_SALIENCY, { SALIENCY, PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
-    { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE + "." + LATITUDE,
-        PhotoColumn::PHOTOS_TABLE + "." + LONGITUDE, LANGUAGE, COUNTRY, ADMIN_AREA, SUB_ADMIN_AREA, LOCALITY,
-        SUB_LOCALITY, THOROUGHFARE, SUB_THOROUGHFARE, FEATURE_NAME, CITY_NAME, ADDRESS_DESCRIPTION, LOCATION_TYPE,
-        AOI, POI, FIRST_AOI, FIRST_POI, LOCATION_VERSION, FIRST_AOI_CATEGORY, FIRST_POI_CATEGORY, FILE_ID} } },
-    { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, PAH_QUERY_ANA_FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
-        USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL, TAG_ORDER, IS_ME, COVER_URI,
-        COUNT, PORTRAIT_DATE_MODIFY, ALBUM_TYPE, IS_REMOVED } } },
-    { ANALYSIS_HEAD_POSITION, { HEAD, PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
-        HEAD_SCALE_WIDTH, HEAD_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_BONE_POSE, { POSE, PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
-        POSE_SCALE_WIDTH, POSE_SCALE_HEIGHT, PROB, POSE_TYPE, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_MULTI_CROP, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { MOVEMENT_CROP, MOVEMENT_VERSION } } },
-    { ANALYSIS_PET_FACE, { PET_STATUS, PAH_QUERY_ANA_PET, { PET_ID, PET_TAG_ID, PET_TOTAL_FACES, PET_LABEL,
-        FEATURES, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT, BEAUTY_BOUNDER_X, BEAUTY_BOUNDER_Y,
-        BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, DATE_MODIFIED } } },
-    { ANALYSIS_PET_TAG, { PET_TAG, PAH_QUERY_ANA_PET_TAG, { VISION_PET_TAG_TABLE + "." + TAG_ID, PET_LABEL,
-        CENTER_FEATURES, COUNT } } },
-};
+const map<int32_t, struct AnalysisSourceInfo>& GetAnalysisInfoMap()
+{
+    static const map<int32_t, struct AnalysisSourceInfo> ANALYSIS_SOURCE_INFO_MAP = {
+        { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
+        { ANALYSIS_LABEL, { LABEL, PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
+            SALIENCY_SUB_PROB } } },
+        { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
+            SUB_CATEGORY, SUB_CONFIDENCE_PROB, SUB_LABEL, SUB_LABEL_PROB, SUB_LABEL_TYPE, TRACKS, VIDEO_PART_FEATURE,
+            FILTER_TAG} } },
+        { ANALYSIS_OCR, { OCR, PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
+        { ANALYSIS_FACE, { FACE, PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT,
+            LANDMARKS, PITCH, YAW, ROLL, PROB, TOTAL_FACES, FEATURES, FACE_OCCLUSION, BEAUTY_BOUNDER_X,
+            BEAUTY_BOUNDER_Y, BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, FACE_AESTHETICS_SCORE} } },
+        { ANALYSIS_OBJECT, { OBJECT, PAH_QUERY_ANA_OBJECT, { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
+            OBJECT_SCALE_WIDTH, OBJECT_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
+        { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
+            RECOMMENDATION_RESOLUTION, RECOMMENDATION_SCALE_X, RECOMMENDATION_SCALE_Y, RECOMMENDATION_SCALE_WIDTH,
+            RECOMMENDATION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
+        { ANALYSIS_SEGMENTATION, { SEGMENTATION, PAH_QUERY_ANA_SEGMENTATION, { SEGMENTATION_AREA, SEGMENTATION_NAME,
+            PROB } } },
+        { ANALYSIS_COMPOSITION, { COMPOSITION, PAH_QUERY_ANA_COMPOSITION, { COMPOSITION_ID, COMPOSITION_RESOLUTION,
+            CLOCK_STYLE, CLOCK_LOCATION_X, CLOCK_LOCATION_Y, CLOCK_COLOUR, COMPOSITION_SCALE_X, COMPOSITION_SCALE_Y,
+            COMPOSITION_SCALE_WIDTH, COMPOSITION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
+        { ANALYSIS_SALIENCY, { SALIENCY, PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
+        { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE + "." +
+            LATITUDE, PhotoColumn::PHOTOS_TABLE + "." + LONGITUDE, LANGUAGE, COUNTRY,
+            ADMIN_AREA, SUB_ADMIN_AREA,
+            LOCALITY, SUB_LOCALITY, THOROUGHFARE, SUB_THOROUGHFARE, FEATURE_NAME, CITY_NAME, ADDRESS_DESCRIPTION,
+            LOCATION_TYPE,
+            AOI, POI, FIRST_AOI, FIRST_POI, LOCATION_VERSION, FIRST_AOI_CATEGORY, FIRST_POI_CATEGORY, FILE_ID} } },
+        { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, PAH_QUERY_ANA_FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
+            USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL,
+            TAG_ORDER, IS_ME, COVER_URI,
+            COUNT, PORTRAIT_DATE_MODIFY, ALBUM_TYPE, IS_REMOVED } } },
+        { ANALYSIS_HEAD_POSITION, { HEAD, PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
+            HEAD_SCALE_WIDTH, HEAD_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
+        { ANALYSIS_BONE_POSE, { POSE, PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
+            POSE_SCALE_WIDTH, POSE_SCALE_HEIGHT, PROB, POSE_TYPE, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
+        { ANALYSIS_MULTI_CROP, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { MOVEMENT_CROP, MOVEMENT_VERSION } } },
+    };
+    return ANALYSIS_SOURCE_INFO_MAP;
+}
 
 FileAssetAni::FileAssetAni(std::shared_ptr<FileAsset> fileAsset)
 {
@@ -248,6 +255,12 @@ ani_status FileAssetAni::PhotoAccessHelperInit(ani_env *env)
     status = env->Class_BindNativeMethods(cls, fileAssetAniMethods.data(), fileAssetAniMethods.size());
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        return status;
+    }
+
+    status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to bind static native methods to: %{public}s", className);
         return status;
     }
     return ANI_OK;
@@ -1293,11 +1306,12 @@ static void GetAnalysisDataExecute(ani_env *env, unique_ptr<FileAssetContext> &c
 {
     CHECK_NULL_PTR_RETURN_VOID(env, "env is null");
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
-    if (ANALYSIS_SOURCE_INFO_MAP.find(context->analysisType) == ANALYSIS_SOURCE_INFO_MAP.end()) {
+    auto analysisInfoMap = GetAnalysisInfoMap();
+    if (analysisInfoMap.find(context->analysisType) == analysisInfoMap.end()) {
         ANI_ERR_LOG("Invalid analysisType");
         return;
     }
-    auto &analysisInfo = ANALYSIS_SOURCE_INFO_MAP.at(context->analysisType);
+    auto &analysisInfo = analysisInfoMap.at(context->analysisType);
     const std::vector<std::string> &fetchColumn = analysisInfo.fetchColumn;
     std::shared_ptr<DataShare::DataShareResultSet> resultSet = CallQueryAnalysisData(context, analysisInfo, false);
     if (context->businessCode != 0) {
@@ -1520,7 +1534,12 @@ static void GetEditDataString(const char* editDataBuffer, string& result)
     if (editDataJson.contains(COMPATIBLE_FORMAT) && editDataJson.contains(FORMAT_VERSION) &&
         editDataJson.contains(EDIT_DATA) && editDataJson.contains(APP_ID)) {
         // edit data saved by media change request
-        result = editDataJson.at(EDIT_DATA);
+        if (editDataJson[EDIT_DATA].is_string()) {
+            result = editDataJson[EDIT_DATA].get<std::string>();
+        } else {
+            result = "";
+            ANI_WARN_LOG("EDIT_DATA is not a string type");
+        }
     } else {
         // edit data saved by commitEditedAsset
         result = editDataStr;
@@ -1752,6 +1771,127 @@ ani_object FileAssetAni::PhotoAccessHelperCloneAsset(ani_env * env, ani_object o
 
     CloneAssetHandlerCompleteCallback(env, context);
     return cloneAssetObj;
+}
+
+static bool CheckConvertFormatParams(const std::string &title, const std::string &extension)
+{
+    std::string displayName = title + "." + extension;
+    if (MediaFileUtils::CheckDisplayName(displayName, true) != E_OK) {
+        ANI_ERR_LOG("displayName: %{public}s is invalid", displayName.c_str());
+        return false;
+    }
+    bool supportedImageFormat = false;
+    for (auto formatProperty : SUPPORTED_IMAGE_FORMAT_ENUM_PROPERTIES) {
+        if (extension == formatProperty.second) {
+            supportedImageFormat = true;
+            break;
+        }
+    }
+    if (!supportedImageFormat) {
+        ANI_ERR_LOG("The format of transition is not supported.");
+        return false;
+    }
+    ANI_INFO_LOG("CheckConvertFormatParams end");
+    return true;
+}
+
+static bool CheckConvertFormatMimeType(ani_env *env, const int32_t fileId)
+{
+    ANI_INFO_LOG("CheckConvertFormatMimeType in");
+    MimeTypeReqBody mimeTypeReqBody;
+    mimeTypeReqBody.fileId = fileId;
+    MimeTypeRespBody mimeTypeRespBody;
+    mimeTypeRespBody.result = false;
+    IPC::UserDefineIPCClient mimeTypeClient;
+    int32_t ret = mimeTypeClient.Call(static_cast<uint32_t>(MediaLibraryBusinessCode::CONVERT_FORMAT_MIME_TYPE),
+        mimeTypeReqBody, mimeTypeRespBody);
+    if (ret < 0) {
+        ANI_ERR_LOG("Failed to CheckConvertFormatMimeType, ret: %{public}d", ret);
+        int32_t error = MediaLibraryAniUtils::TransErrorCode("CheckConvertFormatMimeType", ret);
+        AniError::ThrowError(env, error);
+        return false;
+    }
+    if (!mimeTypeRespBody.result) {
+        ANI_ERR_LOG("CheckConvertFormatMimeType result false");
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Input params is invalid");
+        return false;
+    }
+    ANI_INFO_LOG("CheckConvertFormatMimeType end");
+    return true;
+}
+
+static void PhotoAccessHelperConvertFormatExecute(ani_env *env, unique_ptr<FileAssetContext> &context)
+{
+    ANI_INFO_LOG("Begin ConvertFormatHandlerExecute.");
+    MediaLibraryTracer tracer;
+    tracer.Start("ConvertFormatHandlerExecute");
+    CHECK_NULL_PTR_RETURN_VOID(env, "env is null");
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "objectPtr is null");
+
+    auto fileAsset = context->objectPtr;
+    if (fileAsset == nullptr) {
+        ANI_ERR_LOG("fileAsset is null");
+        return;
+    }
+    ConvertFormatReqBody reqBody;
+    reqBody.fileId = fileAsset->GetId();
+    reqBody.title = context->title;
+    reqBody.extension = context->extension;
+    ConvertFormatRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CONVERT_FORMAT);
+    IPC::UserDefineIPCClient client;
+    // db permission
+    std::unordered_map<std::string, std::string> headerMap = {
+        { MediaColumn::MEDIA_ID, to_string(reqBody.fileId) },
+        { URI_TYPE, TYPE_PHOTOS },
+    };
+    client.SetHeader(headerMap);
+    int32_t newAssetId = client.Call(businessCode, reqBody);
+    if (newAssetId < 0) {
+        context->SaveError(newAssetId);
+        ANI_ERR_LOG("Failed to convert format, ret: %{public}d", newAssetId);
+        return;
+    }
+    context->assetId = newAssetId;
+    ANI_INFO_LOG("End ConvertFormatHandlerExecute.");
+}
+
+ani_object FileAssetAni::PhotoAccessHelperConvertFormat(ani_env *env, ani_object object, ani_string title,
+    ani_enum_item imageFormat)
+{
+    ANI_INFO_LOG("PhotoAccessHelperConvertFormat start");
+    ani_object ConvertAssetObj{};
+    auto fileAssetAni = Unwrap(env, object);
+    if (fileAssetAni == nullptr || fileAssetAni->fileAssetPtr == nullptr) {
+        ANI_ERR_LOG("fileAssetAni is nullptr");
+        return nullptr;
+    }
+    auto context = make_unique<FileAssetContext>();
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    string extension;
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryEnumAni::EnumGetValueString(env,
+        imageFormat, extension) == ANI_OK, nullptr, "Failed to get imageFormat");
+    string titleStr;
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetString(env, title, titleStr) == ANI_OK,
+        nullptr, "Failed to call GetString");
+    int32_t fileId = fileAssetAni->GetFileId();
+    ANI_INFO_LOG("ConvertFormat title: %{public}s, extension: %{public}s", titleStr.c_str(), extension.c_str());
+    if (!CheckConvertFormatParams(titleStr, extension)) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Input params is invalid");
+        return nullptr;
+    }
+    if (!CheckConvertFormatMimeType(env, fileId)) {
+        return nullptr;
+    }
+    context->title = titleStr;
+    context->extension = extension;
+    context->objectPtr = fileAssetAni->fileAssetPtr;
+    PhotoAccessHelperConvertFormatExecute(env, context);
+    ConvertAssetObj = CreateClonePhotoAsset(env, context);
+    CHECK_COND_RET(ConvertAssetObj != nullptr, nullptr, "ConvertAssetObj is nullptr");
+    CloneAssetHandlerCompleteCallback(env, context);
+    return ConvertAssetObj;
 }
 
 static void PhotoAccessHelperRequestSourceExecute(ani_env *env, unique_ptr<FileAssetContext> &context)

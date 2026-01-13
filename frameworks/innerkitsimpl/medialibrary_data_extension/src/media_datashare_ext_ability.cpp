@@ -63,6 +63,8 @@
 #include "medialibrary_tracer.h"
 #include "media_file_change_manager.h"
 #include "product_info.h"
+#include "photo_album_upload_status_operation.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -72,7 +74,7 @@ using namespace OHOS::Media;
 using namespace OHOS::DataShare;
 using namespace OHOS::Security::AccessToken;
 using namespace OHOS::Media::IPC;
-
+//LCOV_EXCL_START
 namespace OHOS {
 namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;
@@ -125,6 +127,7 @@ static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
     OperationObject::ANALYSIS_ALBUM_ASSET_MAP,
     OperationObject::CLOUD_MEDIA_ASSET_OPERATE,
     OperationObject::PAH_BACKUP_POSTPROCESS,
+    OperationObject::VISION_ANALYSIS,
 };
 
 MediaDataShareExtAbility* MediaDataShareExtAbility::Create(const unique_ptr<Runtime>& runtime)
@@ -278,6 +281,7 @@ void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)
     DfxReporter::ReportStartResult(DfxType::START_SUCCESS, 0, startTime);
     CloudMediaAssetManager::GetInstance().RestartForceRetainCloudAssets();
     dataManager->RestoreInvalidHDCCloudDataPos();
+    PhotoAlbumUploadStatusOperation::JudgeUploadAlbumEnable();
 }
 
 void MediaDataShareExtAbility::OnStop()
@@ -676,11 +680,7 @@ static bool AddOwnerCheck(MediaLibraryCommand &cmd, DataSharePredicates &tokenId
     vector<string> clauses = { onClause };
     tokenIdPredicates.InnerJoin(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE)->On(clauses);
     tokenIdPredicates.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, to_string(tokenid));
-    for (auto &str : columns) {
-        if (str.compare(AppUriPermissionColumn::FILE_ID) == 0) {
-            str = AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::FILE_ID;
-        }
-    }
+    MediaLibraryRdbUtils::CleanAmbiguousColumn(columns, tokenIdPredicates, PhotoColumn::PHOTOS_TABLE);
     return true;
 }
 
@@ -906,7 +906,7 @@ shared_ptr<DataShareResultSet> MediaDataShareExtAbility::Query(const Uri &uri,
             return nullptr;
         }
         auto& uriPermissionClient = AAFwk::UriPermissionManagerClient::GetInstance();
-        if (!AddOwnerCheck(cmd, appidPredicates)) {
+        if (!AddOwnerCheck(cmd, appidPredicates, columns)) {
             MEDIA_INFO_LOG("permission deny: {%{public}d, %{public}d, %{public}d}", type, object, err);
             businessError.SetCode(err);
             return nullptr;
@@ -1049,7 +1049,7 @@ int32_t MediaDataShareExtAbility::UserDefineFunc(MessageParcel &data, MessagePar
         PermissionHeaderReq permHeaderReq = PermissionHeaderReq::convertToPermissionHeaderReq(headerMap,
             userId, permissionPolicy, isDBBypass);
         int32_t errCode = PermissionCheck::VerifyPermissions(operationCode, permHeaderReq);
-        if (errCode != E_SUCCESS && errCode != E_PERMISSION_DB_BYPASS) {
+        if (errCode != E_SUCCESS && errCode != E_PERMISSION_DB_BYPASS && errCode != E_DOUBLE_CHECK) {
             ret = IPC::UserDefineIPC().WriteResponseBody(reply, errCode);
             break;
         }
@@ -1065,14 +1065,12 @@ int32_t MediaDataShareExtAbility::UserDefineFunc(MessageParcel &data, MessagePar
     }
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t costTime = endTime - startTime;
-    MEDIA_INFO_LOG("API excuted, userId: %{public}d, traceId: %{public}s, "
-                   "code: %{public}d, ret: %{public}d, costTime: %{public}ld",
-        userId,
-        traceId.c_str(),
-        static_cast<int32_t>(operationCode),
-        ret,
-        static_cast<long>(costTime));
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} API excuted, userId: %{public}d, traceId: %{public}s, "
+        "code: %{public}d, ret: %{public}d, costTime: %{public}ld",
+        MLOG_TAG, __FUNCTION__, __LINE__, userId, traceId.c_str(),
+        static_cast<int32_t>(operationCode), ret, static_cast<long>(costTime));
     return ret;
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
+//LCOV_EXCL_STOP

@@ -48,11 +48,8 @@ public:
     static int32_t GetAssetCompressVersion();
     static AssetCompressSpec GetAssetCompressSpec(int32_t version);
     static int32_t GetCompatibleCompressVersion(int32_t version);
-    static void ClearCache();
 private:
     static const std::unordered_map<VersionNumber, AssetCompressSpec> atomicSpecs_;
-    static std::mutex cacheSpecsMutex_;
-    static std::unordered_map<VersionNumber, AssetCompressSpec> cacheSpecs_;
 };
 
 } // namespace Media

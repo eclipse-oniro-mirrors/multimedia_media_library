@@ -18,7 +18,7 @@
 
 #include <ani.h>
 #include <string>
-
+//LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -34,3 +34,4 @@ public:
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_ANI_SRC_INCLUDE_MEDIA_LIBRARY_COMM_NAPI_H
+//LCOV_EXCL_STOP

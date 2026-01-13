@@ -25,14 +25,15 @@ ohos_unittest("background_cloud_file_processor_test") {
   include_dirs = [
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/include",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
     "../get_self_permissions/include",
     "./include",
   ]
 
   sources = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/background_cloud_file_download_callback.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/background_cloud_file_processor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background_cloud_file_download_callback.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background_cloud_file_processor.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_related_system_state_manager.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/background_cloud_file_processor_test.cpp",
     "./src/mock_cloud_sync_utils.cpp",
@@ -59,6 +60,7 @@ ohos_unittest("background_cloud_file_processor_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
+    "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",

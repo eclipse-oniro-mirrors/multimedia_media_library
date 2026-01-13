@@ -44,18 +44,20 @@ public:
 
     EXPORT std::unordered_map<NotifyUriType, std::vector<ObserverInfo>> GetObservers();
     EXPORT static std::shared_ptr<Media::Notification::MediaObserverManager> GetObserverManager();
-    EXPORT int32_t ProcessSingleObserverUris(const NotifyUriType& registerUri,
-    const sptr<AAFwk::IDataAbilityObserver>& dataObserver, const std::string& uri, const UriOperation& operation);
-    EXPORT int32_t AddSingleObserverUris(const NotifyUriType &registerUri,
-        const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &uri);
-    EXPORT int32_t RemoveSingleObserverUris(const NotifyUriType &registerUri,
-        const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string& uri);
-    EXPORT bool FindSingleObserverWithUri(const NotifyUriType &uri,
-        const sptr<AAFwk::IDataAbilityObserver> &dataObserver);
-    EXPORT bool FindSingleObserver(const NotifyUriType &uri, std::vector<ObserverInfo>& obsInfos);
-    EXPORT int32_t RemoveSingleObserverUris(ObserverInfo& singleObserverInfo, const std::string &uri);
-    EXPORT bool isUriDataPresentInSingleObserver(const std::unordered_set<std::string> &observedUris,
-        const std::string& uri);
+    EXPORT int32_t ProcessSingleObserverSingleIds(const NotifyUriType &registerUri,
+        const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId,
+        const UriOperation& operation);
+    EXPORT int32_t AddSingleObserverSingleIds(const NotifyUriType &registerUri,
+        const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId);
+    EXPORT int32_t RemoveSingleObserverSingleIds(const NotifyUriType &registerUri,
+    const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId);
+    EXPORT bool FindSingleObserverWithUri(const NotifyUriType &uri, const uint32_t callingTokenId);
+    EXPORT bool FindSingleObserver(const NotifyUriType &uri, std::vector<ObserverInfo> &obsInfos);
+    EXPORT int32_t RemoveSingleObserverSingleIds(ObserverInfo &singleObserverInfo, const std::string &singleId);
+    EXPORT bool IsSingleIdDataPresentInSingleObserver(const std::unordered_set<std::string> &observedUris,
+        const std::string &singleId);
+    EXPORT bool CheckSingleListenSize(const NotifyUriType &registerUri);
+    EXPORT bool CheckSingleProcessSize(const NotifyUriType &registerUri);
 private:
     int32_t RemoveObsDeathRecipient(const wptr<IRemoteObject> &object);
     void ExeForReconnect(const NotifyUriType &registerUri, const sptr<AAFwk::IDataAbilityObserver> &dataObserver);

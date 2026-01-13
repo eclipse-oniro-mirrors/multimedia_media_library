@@ -32,6 +32,7 @@
 #include "vision_db_sqls_more.h"
 #include "vision_db_sqls.h"
 #include "medialibrary_data_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -44,7 +45,7 @@ static constexpr int32_t SLEEP_SECONDS = 1;
 
 static std::vector<std::string> createTableSqlLists = {
     // PhotoAlbumColumns::CREATE_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     CREATE_ANALYSIS_ALBUM_MAP,
     CREATE_TAB_IMAGE_FACE,

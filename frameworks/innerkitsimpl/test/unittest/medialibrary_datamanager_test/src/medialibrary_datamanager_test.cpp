@@ -46,6 +46,7 @@
 #undef private
 #include "userfilemgr_uri.h"
 #include "data_secondary_directory_uri.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -59,7 +60,7 @@ static uint64_t g_shellToken = 0;
 static MediaLibraryMockHapToken* mockToken = nullptr;
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
     CREATE_TAB_IMAGE_FACE,
     CREATE_ANALYSIS_ALBUM_MAP,

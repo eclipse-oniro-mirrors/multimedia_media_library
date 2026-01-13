@@ -32,6 +32,7 @@
 #include "medialibrary_rdbstore.h"
 #undef private
 #include "transaction.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace OHOS;
@@ -74,7 +75,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

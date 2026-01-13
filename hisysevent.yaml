@@ -148,6 +148,7 @@ MEDIALIB_CLOUDENHANCEMENT_STAT:
   TOTAL_TIME_COST: { type: UINT64, desc: total time cost of cloud enhancement }
   COMPLETE_TYPE: { type: STRING, desc: types of cloudenhancement task completion }
   FINISH_TYPE: { type: INT32, desc: type of a finished cloud enhancement task }
+  FILE_TYPE: {type: INT32, desc: type of cloudenhancement Task Processing Object }
 
 MEDIALIB_BACKUP_MEDIA_STAT:
   __BASE: {type: STATISTIC, level: CRITICAL, desc: Report the under transferred media statistic info before Upgrade Restore task, preserve: true }

@@ -111,7 +111,6 @@ private:
     bool IsProperFgTemperature();
     EXPORT void InitStartDownloadTaskStatus(const bool &isForeground);
     void ResetParameter();
-    bool IsNetworkAvailable();
 
     EXPORT void SetTaskStatus(Status status);
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryDownloadFilesNeeded(const bool &isQueryInfo);
@@ -126,8 +125,6 @@ private:
     void MoveDownloadFileToCache(const DownloadProgressObj &progress, const bool tryDownload = false);
     void MoveDownloadFileToNotFound(const DownloadProgressObj &progress);
     int32_t RegisterNetObserver();
-    bool IsWifiConnected();
-    bool IsCellularNetConnected();
 
 public:
     static std::shared_ptr<CloudMediaAssetDownloadOperation> instance_;
@@ -135,7 +132,6 @@ public:
     // Confirmation of the notification
     bool isThumbnailUpdate_ = true;
     bool isBgDownloadPermission_ = false;
-    bool isUnlimitedTrafficStatusOn_ = false;
 
 private:
     std::reference_wrapper<CloudSyncManager> cloudSyncManager_ = CloudSyncManager::GetInstance();

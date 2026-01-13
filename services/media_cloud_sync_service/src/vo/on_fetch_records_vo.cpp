@@ -108,13 +108,13 @@ bool OnFetchRecordsReqBody::SplitBy20K(std::vector<OnFetchRecordsReqBody> &reqBo
     const size_t parcelGap = 4800;
     const size_t parcelCapacity = 204800 - parcelGap;
     size_t parcelSize = 0;
-    int32_t currIndex = 0;
-    while (currIndex < static_cast<int32_t>(this->onFetchPhotos.size())) {
+    size_t currIndex = 0;
+    while (currIndex < this->onFetchPhotos.size()) {
         MessageParcel data;
-        int32_t index = 0;
+        size_t index = 0;
         OnFetchRecordsReqBody reqBody;
         std::vector<OnFetchPhotosVo> &childList = reqBody.onFetchPhotos;
-        for (index = currIndex; index < static_cast<int32_t>(this->onFetchPhotos.size()); index++) {
+        for (index = currIndex; index < this->onFetchPhotos.size(); index++) {
             this->onFetchPhotos[index].Marshalling(data);
             parcelSize = data.GetDataSize();
             CHECK_AND_BREAK_INFO_LOG(parcelSize <= parcelCapacity,
@@ -125,7 +125,7 @@ bool OnFetchRecordsReqBody::SplitBy20K(std::vector<OnFetchRecordsReqBody> &reqBo
         }
         CHECK_AND_BREAK_ERR_LOG(!childList.empty(),
             "dead loop detected, "
-            "currIndex: %{public}d, index: %{public}d",
+            "currIndex: %{public}zu, index: %{public}zu",
             currIndex,
             index);
         currIndex = index;
@@ -142,7 +142,7 @@ void OnFetchRecordsRespBody::MergeRespBody(const OnFetchRecordsRespBody &respBod
     this->failedRecords.insert(this->failedRecords.end(), respBody.failedRecords.begin(), respBody.failedRecords.end());
     this->newDatas.insert(this->newDatas.end(), respBody.newDatas.begin(), respBody.newDatas.end());
     this->fdirtyDatas.insert(this->fdirtyDatas.end(), respBody.fdirtyDatas.begin(), respBody.fdirtyDatas.end());
-    for (auto index = 0; index < this->stats.size(); index++) {
+    for (size_t index = 0; index < this->stats.size() && index < respBody.stats.size(); index++) {
         this->stats[index] += respBody.stats[index];
     }
     return;

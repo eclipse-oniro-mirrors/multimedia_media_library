@@ -50,6 +50,7 @@
 #include "thumbnail_source_loading.h"
 #include "thumbnail_uri_utils.h"
 #undef private
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -344,7 +345,6 @@ static void ThumbnailGenerateHelperTestPart1()
     Media::ThumbnailGenerateHelper::RepairExifRotateBackground(opts);
     RdbPredicates predicates(PHOTOS_TABLE);
     Media::ThumbnailGenerateHelper::CreateLcdBackground(opts);
-    Media::ThumbnailGenerateHelper::CreateAstcBatchOnDemand(opts, predicates, provider->ConsumeIntegral<int32_t>());
     Media::ThumbnailGenerateHelper::CheckLcdSizeAndUpdateStatus(opts);
     int32_t outLcdCount;
     Media::ThumbnailGenerateHelper::GetLcdCount(opts, outLcdCount);
@@ -398,7 +398,7 @@ static void ThumbnailGenerateWorkerTest()
     Media::ThumbRdbOpt opts = FuzzThumbRdbOpt(false);
     Media::ThumbnailData thumbnailData = FuzzThumbnailData();
     std::shared_ptr<Media::ThumbnailTaskData> taskData =
-        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData, provider->ConsumeIntegral<int32_t>());
+        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData);
     std::shared_ptr<Media::ThumbnailGenerateTask> task =
         std::make_shared<Media::ThumbnailGenerateTask>(Media::IThumbnailHelper::CreateLcdAndThumbnail, taskData);
 
@@ -442,7 +442,7 @@ static void ThumbnailRestoreManagerTest()
     Media::ThumbRdbOpt opts = FuzzThumbRdbOpt(true);
     Media::ThumbnailData thumbnailData = FuzzThumbnailData();
     std::shared_ptr<Media::ThumbnailTaskData> taskData =
-        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData, provider->ConsumeIntegral<int32_t>());
+        std::make_shared<Media::ThumbnailTaskData>(opts, thumbnailData);
     Media::ThumbnailRestoreManager::RestoreAstcDualFrameTask(taskData);
     restoreManager.RestoreAstcDualFrame(opts, provider->ConsumeIntegral<int32_t>());
     restoreManager.Reset();
@@ -483,7 +483,7 @@ static void ThumbnailRdbUtilsTest()
 }
 void SetTables()
 {
-    vector<string> createTableSqlList = { Media::PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { Media::PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
         if (ret != NativeRdb::E_OK) {

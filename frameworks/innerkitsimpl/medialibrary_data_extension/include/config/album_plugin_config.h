@@ -263,7 +263,7 @@ const std::vector<AlbumPluginRowData> ALBUM_PLUGIN_DATA = {
     {"/DCIM/GenshinImpact", "原神", "原神", "com.mihoyo.yuanshen", "", ""},
     {"/DCIM/LOFTER", "LOFTER", "LOFTER", "com.lofter.android", "", ""},
     {"/DCIM/Leica FOTOS", "Leica FOTOS", "Leica FOTOS", "", "", ""},
-    {"/DCIM/MinecraftPE", "我的世界:移动版", "我的世界:移动版", "com.netease.mc.huawei", "", ""},
+    {"/DCIM/MinecraftPE", "我的世界：移动版", "MinecraftPE", "com.netease.mc.huawei", "", "MinecraftPE"},
     {"/DCIM/QuarkAI", "夸克", "夸克", "com.quark.browser", "", ""},
     {"/DCIM/UC视频", "UC浏览器极速版", "UC浏览器极速版", "com.ucmobile.lite", "", ""},
     {"/DCIM/Unicom", "中国联通", "中国联通", "", "", ""},

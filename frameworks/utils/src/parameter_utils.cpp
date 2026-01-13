@@ -400,5 +400,11 @@ int32_t ParameterUtils::CheckRestore(const RestoreReqBody &reqBody)
     CHECK_AND_RETURN_RET_LOG(!reqBody.appName.empty(), E_INVALID_VALUES, "appName is empty.");
     return E_OK;
 }
+
+int32_t ParameterUtils::CheckCancelRequest(const CancelRequestReqBody &reqBody)
+{
+    CHECK_AND_RETURN_RET_LOG(reqBody.photoId.size() <= MAX_PHOTO_ID_LEN, -EINVAL, "Invalid photoId");
+    return E_OK;
+}
 }  // namespace Media
 }  // namespace OHOS

@@ -44,6 +44,7 @@ ohos_fuzztest("MediaLibraryCloudMediaPhotoHandlerFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [

@@ -400,6 +400,31 @@ MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(const std::string &l
     return this->BuildAlbumInfoByLPath(lPath, albumType, albumSubType);
 }
 
+int32_t PhotoOwnerAlbumIdOperation::CheckAndUpdateAlbumName(std::string &albumName, const int32_t albumType)
+{
+    CHECK_AND_RETURN_RET(albumType == static_cast<int32_t>(PhotoAlbumType::SOURCE), E_OK);
+    CHECK_AND_RETURN_RET_LOG(this->rdbStore_ != nullptr, E_ERR, "Media_Operation: rdbStore_ is null.");
+    bool isUnique = false;
+    std::string val = albumName;
+    int32_t sequence = 1;
+    const int32_t MAX_ALBUM_NAME_SEQUENCE = 1000;
+    while (!isUnique && sequence < MAX_ALBUM_NAME_SEQUENCE) {
+        std::vector<NativeRdb::ValueObject> bindArgs = {val};
+        std::string sql = this->SQL_QUERY_ALBUM_NAME_UNIQUE;
+        auto resultSet = this->rdbStore_->QuerySql(sql, bindArgs);
+        if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            val = albumName + " " + std::to_string(sequence);
+            sequence++;
+            CHECK_AND_RETURN_RET_LOG(sequence < MAX_ALBUM_NAME_SEQUENCE, E_ERR, "sequence exceed the limit");
+        } else {
+            albumName = val;
+            isUnique = true;
+            MEDIA_INFO_LOG("albumName is %{private}s", albumName.c_str());
+        }
+    }
+    return E_OK;
+}
+
 /**
  * @brief Build MediaData from lPath.
  */
@@ -415,6 +440,8 @@ MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(
     size_t fileIndex = albumlPath.find_last_of(FILE_SEPARATOR);
     if (fileIndex != string::npos) {
         albumName = albumlPath.substr(fileIndex + 1);
+        int32_t ret = CheckAndUpdateAlbumName(albumName, albumType);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, albumInfo, "fail to update albumName");
     } else {
         albumlPath = "/Pictures/其它";
         albumTypeTmp = static_cast<int32_t>(PhotoAlbumType::SOURCE);

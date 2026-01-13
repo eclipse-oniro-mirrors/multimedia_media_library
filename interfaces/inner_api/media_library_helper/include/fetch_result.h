@@ -70,6 +70,8 @@ public:
     EXPORT std::unique_ptr<T> GetNextObject();
     EXPORT std::unique_ptr<T> GetLastObject();
     EXPORT std::unique_ptr<T> GetObject();
+    EXPORT int32_t GetObjectIndexById(int32_t assetId);
+    EXPORT int32_t GetAlbumIndex(int32_t assetId, int32_t photoAlbumType, int32_t photoAlbumSubType);
     EXPORT void SetUserId(int32_t userId);
     EXPORT int32_t GetUserId();
 

@@ -27,7 +27,7 @@ ohos_unittest("heif_transcoding_check_utils_test") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   sources = [

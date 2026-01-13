@@ -57,6 +57,8 @@ public:
         const std::string& storagePath, LakeMonitorQueryResultData &data);
     static bool QueryAlbumIdsByLPath(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
         const std::string &lPath, std::vector<int32_t> &albumIds);
+    static bool QueryAlbumByLPath(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+        const std::string &lPath, std::vector<int32_t> &albumIds, std::unordered_map<int32_t, int32_t> &albumCounts);
     static bool QueryDataListByAlbumIds(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::vector<int32_t> &albumIds, std::vector<LakeMonitorQueryResultData> &dataList);
     static bool DeleteAssetByStoragePath(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
@@ -68,8 +70,12 @@ public:
     static bool UpdateAlbumInfo(std::shared_ptr<MediaLibraryRdbStore> rdbStore, int32_t albumId = -1);
     static bool DeleteDirByLakePath(const std::string &path, std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
         int32_t *delNum = nullptr);
+    static bool DeleteLakeDirByLakePath(const std::string &path, std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
+    static bool DeleteLakeAlbums(std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
+        std::unordered_map<int32_t, int32_t> &albumCounts, std::vector<LakeMonitorQueryResultData> &dataList);
     static void DeleteRelatedResource(const std::string &photoPath, const std::string &fileId,
         const std::string &dateTaken);
+    static void NotifyAnalysisAlbum(const std::vector<std::string>& albumIds);
 
 private:
     template <typename T>

@@ -54,6 +54,7 @@ struct PhotoAlbumAttributes {
     int32_t count;
     std::string coverUri;
     std::string lPath;
+    CoverUriSource coverUriSource;
 };
 
 struct TrashAlbumExecuteOpt {
@@ -94,14 +95,24 @@ ani_status PhotoAlbumAni::PhotoAccessInit(ani_env *env)
             reinterpret_cast<void *>(PhotoAccessGetSharedPhotoAssets)},
         ani_native_function {"getdateAdded", nullptr, reinterpret_cast<void *>(GetdateAdded)},
         ani_native_function {"getdateModified", nullptr, reinterpret_cast<void *>(GetdateModified)},
-        ani_native_function {"transferToDynamicAlbum", nullptr, reinterpret_cast<void *>(TransferToDynamicAlbum)},
-        ani_native_function {"transferToStaticAlbum", nullptr, reinterpret_cast<void *>(TransferToStaticAlbum)}
+        ani_native_function {"getChangeTime", nullptr, reinterpret_cast<void *>(GetChangeTime)},
     };
 
     if (ANI_OK != env->Class_BindNativeMethods(cls, methods.data(), methods.size())) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", PAH_ANI_CLASS_PHOTO_ALBUM_HANDLE.c_str());
         return ANI_ERROR;
     }
+
+    std::array staticMethods = {
+        ani_native_function {"transferToDynamicAlbum", nullptr, reinterpret_cast<void *>(TransferToDynamicAlbum)},
+        ani_native_function {"transferToStaticAlbum", nullptr, reinterpret_cast<void *>(TransferToStaticAlbum)}
+    };
+
+    if (ANI_OK != env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size())) {
+        ANI_ERR_LOG("Failed to bind native methods to: %{public}s", PAH_ANI_CLASS_PHOTO_ALBUM_HANDLE.c_str());
+        return ANI_ERROR;
+    }
+
     return ANI_OK;
 }
 
@@ -169,6 +180,8 @@ ani_status PhotoAlbumAni::InitAniPhotoAlbumOperator(ani_env *env, AniPhotoAlbumO
             &(photoAlbumOperator.setCoverUri)), "No <set>coverUri");
         CHECK_STATUS_RET(env->Class_FindMethod(photoAlbumOperator.cls, "<set>lpath", nullptr,
             &(photoAlbumOperator.setLPath)), "No <set>lPath");
+        CHECK_STATUS_RET(env->Class_FindMethod(photoAlbumOperator.cls, "<set>coverUriSource", nullptr,
+            &(photoAlbumOperator.setCoverUriSource)), "No <set>coverUriSource");
     }
     return ANI_OK;
 }
@@ -219,6 +232,7 @@ static ani_status GetPhotoAlbumAttributes(ani_env *env, unique_ptr<PhotoAlbumAni
     attrs.count = photoAlbum->GetCount();
     attrs.coverUri = photoAlbum->GetCoverUri();
     attrs.lPath = photoAlbum->GetLPath();
+    attrs.coverUriSource = static_cast<OHOS::Media::CoverUriSource>(photoAlbum->GetCoverUriSource());
     return ANI_OK;
 }
 
@@ -258,6 +272,12 @@ static ani_status BindAniAttributes(ani_env *env, const AniPhotoAlbumOperator &o
         ani_string lPath {};
         CHECK_STATUS_RET(MediaLibraryAniUtils::ToAniString(env, attrs.lPath, lPath), "ToAniString lPath fail");
         CHECK_STATUS_RET(env->Object_CallMethod_Void(object, opt.setLPath, lPath), "<set>lPath fail");
+
+        ani_enum_item coverUriSource = 0;
+        CHECK_STATUS_RET(MediaLibraryEnumAni::ToAniEnum(env, attrs.coverUriSource, coverUriSource),
+            "Get coverUriSource index fail");
+        CHECK_STATUS_RET(env->Object_CallMethod_Void(object, opt.setCoverUriSource, coverUriSource),
+            "<set>coverUriSource fail");
     }
     return ANI_OK;
 }
@@ -583,7 +603,7 @@ static ani_status ParseArgsCommitModify(ani_env *env, ani_object object, unique_
     context->predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(photoAlbum->GetAlbumId()));
     context->valuesBucket.Put(PhotoAlbumColumns::ALBUM_NAME, photoAlbum->GetAlbumName());
     context->valuesBucket.Put(PhotoAlbumColumns::ALBUM_COVER_URI, photoAlbum->GetCoverUri());
-    context->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_COMMIT_MODIFY);
+    context->businessCode = static_cast<int32_t>(MediaLibraryBusinessCode::PAH_COMMIT_MODIFY);
     return ANI_OK;
 }
 
@@ -598,7 +618,7 @@ static void CommitModifyIPCExecute(unique_ptr<PhotoAlbumAniContext> &context)
     }
     auto photoAlbum = objectInfo->GetPhotoAlbumInstance();
     AlbumCommitModifyReqBody reqBody;
-    reqBody.businessCode = context->businessCode;
+    reqBody.businessCode = static_cast<uint32_t>(context->businessCode);
     if (reqBody.businessCode == static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_COMMIT_MODIFY)) {
         reqBody.albumName = photoAlbum->GetAlbumName();
         reqBody.albumType = photoAlbum->GetPhotoAlbumType();
@@ -680,7 +700,7 @@ static ani_status GetAssetsIdArray(ani_env *env, ani_object photoAssets, std::ve
 
     for (ani_int i = 0; i < length; i++) {
         ani_ref asset {};
-        CHECK_STATUS_RET(env->Object_CallMethodByName_Ref(photoAssets, "$_get", "i:C{std.core.Object}", &asset, i),
+        CHECK_STATUS_RET(env->Object_CallMethodByName_Ref(photoAssets, "$_get", "i:Y", &asset, i),
             "Call method $_get failed.");
 
         FileAssetAni *obj = FileAssetAni::Unwrap(env, static_cast<ani_object>(asset));
@@ -1201,7 +1221,7 @@ static ani_status ParseArgsSetCoverUri(ani_env *env, ani_object object, ani_stri
         AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return ANI_INVALID_ARGS;
     }
-    context->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_COVER_URI);
+    context->businessCode = static_cast<int32_t>(MediaLibraryBusinessCode::PAH_SET_COVER_URI);
     context->predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(photoAlbum->GetAlbumId()));
     context->valuesBucket.Put(PhotoAlbumColumns::ALBUM_COVER_URI, coverUri);
     return ANI_OK;
@@ -1365,6 +1385,17 @@ ani_long PhotoAlbumAni::GetdateModified(ani_env *env, ani_object object)
     }
     auto dateModified = photoAlbumAni->GetPhotoAlbumInstance()->GetDateModified();
     return static_cast<ani_long>(dateModified);
+}
+
+ani_long PhotoAlbumAni::GetChangeTime(ani_env *env, ani_object object)
+{
+    PhotoAlbumAni *photoAlbumAni = PhotoAlbumAni::UnwrapPhotoAlbumObject(env, object);
+    if (photoAlbumAni == nullptr || photoAlbumAni->GetPhotoAlbumInstance() == nullptr) {
+        ANI_ERR_LOG("photoAlbumAni or photoAlbum is nullptr");
+        return 0;
+    }
+    auto changeTime = photoAlbumAni->GetPhotoAlbumInstance()->GetChangeTime();
+    return static_cast<ani_long>(changeTime);
 }
 
 PhotoAlbumAni* GetNativePhotoAlbumAni(ani_env *env, ani_object object)

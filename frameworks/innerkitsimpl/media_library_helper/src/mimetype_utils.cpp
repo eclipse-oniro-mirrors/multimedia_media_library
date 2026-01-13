@@ -24,9 +24,10 @@
 #include "directory_ex.h"
 #include "image_source.h"
 #include "media_log.h"
+#include "media_map_const_utils.h"
+#include "media_path_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
-#include "media_file_utils.h"
 
 #define O_RDONLY 00
 
@@ -153,7 +154,7 @@ int32_t MimeTypeUtils::GetVideoMimetype(const string &filePath, string &mimeType
 string MimeTypeUtils::GetMimeTypeFromContent(const string &filePath)
 {
     CHECK_AND_RETURN_RET_LOG(filePath != "", "", "empty file path");
-    string extension = MediaFileUtils::GetExtensionFromPath(filePath);
+    string extension = MediaPathUtils::GetExtension(filePath);
     string mimeType = GetMimeTypeFromExtension(extension);
     string absFilePath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(filePath, absFilePath),
@@ -216,6 +217,15 @@ MediaType MimeTypeUtils::GetMediaTypeFromMimeType(const string &mimeType)
     } else {
         return MEDIA_TYPE_FILE;
     }
+}
+
+MediaType MimeTypeUtils::GetMediaType(const std::string &filePath)
+{
+    CHECK_AND_RETURN_RET_LOG(!filePath.empty(), MEDIA_TYPE_ALL, "empty file path.");
+
+    std::string extention = MediaPathUtils::GetExtension(filePath);
+    std::string mimeType = GetMimeTypeFromExtension(extention, MediaMapConstUtils::GetMimeTypeMap());
+    return GetMediaTypeFromMimeType(mimeType);
 }
 }
 }

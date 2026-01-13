@@ -18,6 +18,7 @@
 #include "dfx_manager.h"
 #include "dfx_reporter.h"
 #include "map_operation_flag.h"
+#include "medialibrary_album_operations.h"
 #include "medialibrary_formmap_operations.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_tracer.h"
@@ -537,6 +538,34 @@ static void ParsingAndFillValue(NativeRdb::ValuesBucket &values, const string &c
         }
         default:
             MEDIA_ERR_LOG("No such column type");
+    }
+}
+
+static void ParsingAndFillValueForAllAlbumColumns(NativeRdb::ValuesBucket &values, const string &columnName,
+    const ColumnSchema &columnSchema, shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    bool isNull = false;
+    int columnIndex = -1;
+    resultSet->GetColumnIndex(columnName, columnIndex);
+    resultSet->IsColumnNull(columnIndex, isNull);
+    if (isNull) {
+        values.PutNull(columnName);
+    } else if (columnSchema.columnType == "INTEGER" || columnSchema.columnType == "INT") {
+        int32_t intColumnValue;
+        GetIntValueFromResultSet(resultSet, columnName, intColumnValue);
+        values.PutInt(columnName, intColumnValue);
+    } else if (columnSchema.columnType == "BIGINT") {
+        int64_t longColumnValue;
+        GetLongValueFromResultSet(resultSet, columnName, longColumnValue);
+        values.PutLong(columnName, longColumnValue);
+    } else if (columnSchema.columnType == "DOUBLE") {
+        double doubleColumnValue;
+        GetDoubleValueFromResultSet(resultSet, columnName, doubleColumnValue);
+        values.PutDouble(columnName, doubleColumnValue);
+    } else {
+        std::string stringValue = "";
+        GetStringValueFromResultSet(resultSet, columnName, stringValue);
+        values.PutString(columnName, stringValue);
     }
 }
 
@@ -1471,10 +1500,10 @@ void MediaLibraryAlbumFusionUtils::BuildAlbumInsertValuesSetName(
     const std::shared_ptr<MediaLibraryRdbStore>& upgradeStore, NativeRdb::ValuesBucket &values,
     shared_ptr<NativeRdb::ResultSet> &resultSet, const string &newAlbumName)
 {
-    for (auto it = albumColumnTypeMap.begin(); it != albumColumnTypeMap.end(); ++it) {
-        string columnName = it->first;
-        ResultSetDataType columnType = it->second;
-        ParsingAndFillValue(values, columnName, columnType, resultSet);
+    const unordered_map<string, ColumnSchema>& photoAlbumSchema =
+        MediaLibraryAlbumOperations::GetPhotoAlbumTableSchema();
+    for (auto it = photoAlbumSchema.begin(); it != photoAlbumSchema.end(); ++it) {
+        ParsingAndFillValueForAllAlbumColumns(values, it->first, it->second, resultSet);
     }
 
     std::string lPath = "";
@@ -1491,13 +1520,14 @@ void MediaLibraryAlbumFusionUtils::BuildAlbumInsertValuesSetName(
         lPath = "/Pictures/Users/" + newAlbumName;
     }
 
+    values.Delete(PhotoAlbumColumns::ALBUM_PRIORITY);
     values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
+    values.Delete(PhotoAlbumColumns::ALBUM_LPATH);
     values.PutString(PhotoAlbumColumns::ALBUM_LPATH, lPath);
     values.Delete(PhotoAlbumColumns::ALBUM_NAME);
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, newAlbumName);
-    int64_t albumDataAdded = 0;
-    GetLongValueFromResultSet(resultSet, PhotoAlbumColumns::ALBUM_DATE_ADDED, albumDataAdded);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, albumDataAdded);
+    values.Delete(PhotoAlbumColumns::ALBUM_CLOUD_ID);
+    values.Delete(PhotoAlbumColumns::ALBUM_DIRTY);
 }
 
 static int32_t CopyAlbumMetaData(const std::shared_ptr<MediaLibraryRdbStore> upgradeStore,

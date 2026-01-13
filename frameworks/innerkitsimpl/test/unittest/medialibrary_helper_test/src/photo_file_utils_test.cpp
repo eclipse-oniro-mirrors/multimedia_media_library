@@ -275,6 +275,10 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_HasSource_001, TestSize.Leve
     EXPECT_EQ(PhotoFileUtils::HasSource(false, 1732767140111, 0), true);
     EXPECT_EQ(PhotoFileUtils::HasSource(true, 1732767140222, 0), true);
     EXPECT_EQ(PhotoFileUtils::HasSource(false, 1732767140333, 2), true);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 0), false);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 0, 5), true);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 10, 0), false);
+    EXPECT_EQ(PhotoFileUtils::HasSource(false, 0, 10, 5), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_IsThumbnailExists_001, TestSize.Level1)

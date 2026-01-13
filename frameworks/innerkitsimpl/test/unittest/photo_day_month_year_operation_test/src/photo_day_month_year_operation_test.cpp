@@ -29,6 +29,7 @@
 #include "photo_file_utils.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -283,7 +284,7 @@ int64_t UpdatePhotosDateDay()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

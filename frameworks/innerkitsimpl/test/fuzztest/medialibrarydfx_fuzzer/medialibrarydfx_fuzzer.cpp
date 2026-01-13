@@ -41,6 +41,7 @@
 #include "dfx_worker.h"
 #include "dfx_reporter.h"
 #undef private
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -224,7 +225,7 @@ static void DfxDeprecatedPermUsageFuzzer()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
         Media::PhotoAlbumColumns::CREATE_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

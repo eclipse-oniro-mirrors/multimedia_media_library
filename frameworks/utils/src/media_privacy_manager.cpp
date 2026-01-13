@@ -335,7 +335,8 @@ static int32_t SortRangesAndCheck(PrivacyRanges &ranges)
     return E_SUCCESS;
 }
 
-static int32_t CollectRanges(const string &path, const HideSensitiveType &sensitiveType, PrivacyRanges &ranges)
+static int32_t CollectRanges(const string &path, const HideSensitiveType &sensitiveType, PrivacyRanges &ranges,
+    bool checkResult)
 {
     if (sensitiveType == HideSensitiveType::NO_DESENSITIZE) {
         return E_SUCCESS;
@@ -363,9 +364,7 @@ static int32_t CollectRanges(const string &path, const HideSensitiveType &sensit
             err = imageSource->GetFilterArea(SHOOTING_PARAM_EXIF, areas);
             break;
         case HideSensitiveType::DEFAULT:
-            if (PermissionUtils::CheckCallerPermission(PERMISSION_NAME_MEDIA_LOCATION)) {
-                return E_SUCCESS;
-            }
+            CHECK_AND_RETURN_RET_LOG(!checkResult, E_SUCCESS, "Has MEDIA_LOCATION, no need hide sensitive.");
             err = imageSource->GetFilterArea(ALL_SENSITIVE_EXIF, areas);
             break;
         default:
@@ -421,13 +420,13 @@ int32_t MediaPrivacyManager::GetPrivacyRanges()
     int32_t err = -1;
     if (type_ != DEFAULT_TYPE) {
         MEDIA_DEBUG_LOG("force type");
-        err = CollectRanges(path_, (HideSensitiveType)type_, ranges_);
+        err = CollectRanges(path_, (HideSensitiveType)type_, ranges_, result);
     } else {
         //collect ranges by hideSensitiveType
         HideSensitiveType sensitiveType =
             static_cast<HideSensitiveType>(UriSensitiveOperations::QuerySensitiveType(tokenId_, fileId_));
         MEDIA_DEBUG_LOG("GetPrivacyRanges::sensitiveType: %{public}d", static_cast<int32_t>(sensitiveType));
-        err = CollectRanges(path_, sensitiveType, ranges_);
+        err = CollectRanges(path_, sensitiveType, ranges_, result);
     }
     if (err < 0) {
         return err;

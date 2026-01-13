@@ -77,6 +77,7 @@ void CloudMediaDownloadServiceProcessor::GetDownloadAssetData(
     downloadAssetData.storagePath = photosPo.storagePath.value_or("");
     downloadAssetData.hidden = photosPo.hidden.value_or(0);
     downloadAssetData.dateTrashed = photosPo.dateTrashed.value_or(0);
+    downloadAssetData.subtype = photosPo.subtype.value_or(0);
     return;
 }
 

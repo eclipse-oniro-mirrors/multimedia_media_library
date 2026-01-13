@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_assets_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -104,7 +105,7 @@ static int32_t GetIndexConstructProgress(string &progress)
 {
     MessageParcel data;
     MessageParcel reply;
-    auto service = make_shared<MediaAssetsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetIndexConstructProgress(data, reply);
 
     IPC::MediaRespVo<GetIndexConstructProgressRespBody> respVo;

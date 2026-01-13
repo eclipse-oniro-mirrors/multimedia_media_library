@@ -90,6 +90,7 @@ private:
     std::vector<std::string> GetScreenVideoFileIds();
     int32_t FixScreenVideoRelation();
     int32_t GetPhotoAlbumId(const std::string &lPath);
+    int32_t CheckAndUpdateAlbumName(std::string &albumName, const int32_t albumType);
 
 private:  // sqls
     const int32_t MEDIA_TYPE_VIDEO = 2;
@@ -220,6 +221,10 @@ private:  // sqls
             INNER JOIN SCREEN \
             ON owner_album_id = album_id \
         WHERE media_type = 2;";
+    const std::string SQL_QUERY_ALBUM_NAME_UNIQUE = "\
+        SELECT album_name \
+        FROM PhotoAlbum \
+        WHERE LOWER(album_name) = LOWER(?) AND dirty != 4;";
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_PHOTO_OWNER_ALBUM_ID_OPERATION_H

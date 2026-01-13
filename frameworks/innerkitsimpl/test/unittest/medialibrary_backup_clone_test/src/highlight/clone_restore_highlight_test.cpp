@@ -39,6 +39,7 @@
 #include "story_play_info_column.h"
 #undef protected
 #undef private
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace OHOS;
@@ -49,7 +50,7 @@ namespace OHOS {
 namespace Media {
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     CREATE_ANALYSIS_ALBUM_MAP,
     CREATE_HIGHLIGHT_ALBUM_TABLE,

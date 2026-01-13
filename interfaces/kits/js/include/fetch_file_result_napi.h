@@ -46,6 +46,11 @@ public:
 };
 
 class FetchFileResultAsyncContext;
+class PhotoAlbumNapi;
+class AlbumNapi;
+class SmartAlbumNapi;
+class PhotoAssetCustomRecordNapi;
+class AlbumOrderNapi;
 
 class FetchFileResultNapi {
 public:
@@ -96,6 +101,9 @@ private:
     EXPORT static napi_value JSGetPositionObject(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetAllObject(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetRangeObjects(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSContains(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetObjectsByIndexSet(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetIndex(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSClose(napi_env env, napi_callback_info info);
 
     napi_env env_;
@@ -124,6 +132,11 @@ public:
     int32_t position;
     int32_t offset;
     int32_t length;
+    int32_t albumType = -1;
+    int32_t albumSubType = -1;
+    int32_t indexObjectId = -1;
+    vector<int32_t> indexSet;
+    int32_t fetchResultIndexId = -1;
     std::unique_ptr<FileAsset> fileAsset;
     std::unique_ptr<AlbumAsset> albumAsset;
     std::unique_ptr<PhotoAlbum> photoAlbum;
@@ -136,13 +149,22 @@ public:
     std::vector<std::unique_ptr<SmartAlbumAsset>> fileSmartAlbumArray;
     std::vector<std::unique_ptr<PhotoAssetCustomRecord>> customRecordArray;
     std::vector<std::unique_ptr<AlbumOrder>> fileAlbumOrderArray;
+    FileAssetNapi* fileAssetParameter;
+    AlbumNapi* albumAssetParameter;
+    PhotoAlbumNapi* photoAlbumParameter;
+    SmartAlbumNapi* smartAlbumAssetParameter;
+    PhotoAssetCustomRecordNapi* customRecordAssetParameter;
+    AlbumOrderNapi* albumOrderParameter;
     void GetFirstAsset();
     void GetObjectAtPosition();
     void GetPhotosInRange();
+    void GetPhotosInIndexSet();
     void GetAllObjectFromFetchResult();
     void GetObjectsInRange();
+    void GetObjectsByIndexSet();
     void GetLastObject();
     void GetNextObject();
+    int32_t GetObjectIndexById();
 };
 } // namespace Media
 } // namespace OHOS

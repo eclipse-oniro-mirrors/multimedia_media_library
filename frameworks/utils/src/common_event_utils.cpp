@@ -20,8 +20,6 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "thermal_mgr_client.h"
-#include "wifi_device.h"
-#include "net_conn_client.h"
 
 using namespace std;
 
@@ -31,41 +29,6 @@ int32_t CommonEventUtils::GetThermalLevel()
 {
     auto& thermalMgrClient = PowerMgr::ThermalMgrClient::GetInstance();
     return static_cast<int32_t>(thermalMgrClient.GetThermalLevel());
-}
-
-bool CommonEventUtils::IsWifiConnected()
-{
-    auto wifiDevicePtr = Wifi::WifiDevice::GetInstance(WIFI_DEVICE_ABILITY_ID);
-    if (wifiDevicePtr == nullptr) {
-        MEDIA_ERR_LOG("wifiDevicePtr is null");
-        return false;
-    }
-    bool isWifiConnected = false;
-    int32_t ret = wifiDevicePtr->IsConnected(isWifiConnected);
-    if (ret != Wifi::WIFI_OPT_SUCCESS) {
-        MEDIA_ERR_LOG("Failed to get connected, ret: %{public}d", ret);
-        return false;
-    }
-    if (!isWifiConnected) {
-        MEDIA_WARN_LOG("Wifi is not connected, isWifiConnected: %{public}d", isWifiConnected);
-    }
-    return isWifiConnected;
-}
-
-bool CommonEventUtils::IsCellularNetConnected()
-{
-    NetManagerStandard::NetHandle handle;
-    int32_t ret = NetManagerStandard::NetConnClient::GetInstance().GetDefaultNet(handle);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, false, "GetDefaultNet failed, err:%{public}d", ret);
-    NetManagerStandard::NetAllCapabilities netAllCap;
-    ret = NetManagerStandard::NetConnClient::GetInstance().GetNetCapabilities(handle, netAllCap);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, false, "GetNetCapabilities failed, err:%{public}d", ret);
-    const std::set<NetManagerStandard::NetBearType>& types = netAllCap.bearerTypes_;
-    if (types.count(NetManagerStandard::BEARER_CELLULAR)) {
-        MEDIA_INFO_LOG("cellular net is connected");
-        return true;
-    }
-    return false;
 }
 } // namespace Media
 } // namespace OHOS

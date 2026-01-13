@@ -179,6 +179,7 @@ static const std::unordered_set<std::string> FILE_KEY_WHITE_LIST {
     PhotoColumn::PHOTO_LCD_VISIT_TIME,
     PhotoColumn::PHOTO_DETAIL_TIME,
     PhotoColumn::PHOTO_MEDIA_SUFFIX,
+    PhotoColumn::PHOTO_CLEAN_FLAG,
     TabOldPhotosColumn::MEDIA_OLD_ID,
     TabOldPhotosColumn::MEDIA_OLD_FILE_PATH,
     TabFaCardPhotosColumn::FACARD_PHOTOS_ASSET_URI,

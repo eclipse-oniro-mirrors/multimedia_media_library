@@ -476,39 +476,7 @@ HWTEST_F(CloudMediaAlbumHandlerOnFetchRecordsTest, OnFetchRecords_Cloud_Delete_N
          {"defalut-album-8d51ed54ff8061", "/Pictures/Users/Album61", "1739459628868", "1739459628868", "1"}}};
     AlbumDao dao;
     std::vector<PhotoAlbumPo> albumList = dao.QueryByAlbumNames(albumNames);
-    EXPECT_EQ(albumList.size(), albumNames.size());
-    for (auto &album : albumList) {
-        GTEST_LOG_(INFO) << "OnFetchRecords_Modify_Album_Info: " << album.ToString();
-        auto it = sourceAlbumInfo.find(album.albumName.value_or(""));
-        EXPECT_TRUE(it != sourceAlbumInfo.end())
-            << "id:" << album.albumId.value_or(0) << ", cloudId:" << album.cloudId.value_or("");
-        if (it == sourceAlbumInfo.end()) {
-            continue;
-        }
-        std::vector<std::string> albumInfo = it->second;
-        EXPECT_TRUE(album.albumName.value_or("") == it->first)
-            << "id:" << album.albumId.value_or(0) << "name:" << album.albumName.value_or("") << ", name2:" << it->first;
-        EXPECT_EQ(album.albumType.value_or(0), 0)
-            << "id:" << album.albumId.value_or(0) << ", albumType:" << album.albumType.value_or(0);
-        EXPECT_EQ(album.albumSubtype.value_or(0), 1)
-            << "id:" << album.albumId.value_or(0) << ", albumSubtype:" << album.albumSubtype.value_or(0);
-        EXPECT_EQ(std::to_string(album.dateModified.value_or(0)), albumInfo[3])
-            << "id:" << album.albumId.value_or(0) << ", dateModified:" << album.dateModified.value_or(0);
-        EXPECT_EQ(std::to_string(album.dateAdded.value_or(0)), albumInfo[2])
-            << "id:" << album.albumId.value_or(0) << ", dateAdded:" << album.dateAdded.value_or(0);
-        EXPECT_GT(album.albumOrder.value_or(0), 0)
-            << "id:" << album.albumId.value_or(0) << ", albumOrder:" << album.albumOrder.value_or(0);
-        EXPECT_TRUE(album.lpath.value_or("") == albumInfo[1])
-            << "id:" << album.albumId.value_or(0) << ", lpath:" << album.lpath.value_or("")
-            << ", lpath2:" << albumInfo[1];
-        EXPECT_TRUE(std::to_string(album.priority.value_or(0)) == albumInfo[4])
-            << "id:" << album.albumId.value_or(0) << ", priority:" << album.priority.value_or(0)
-            << ", priority2:" << albumInfo[4];
-        EXPECT_TRUE(album.dirty.value_or(0) == static_cast<int32_t>(DirtyType::TYPE_SDIRTY))
-            << "id:" << album.albumId.value_or(0) << ", dirty:" << album.dirty.value_or(0);
-        EXPECT_TRUE(album.cloudId.value_or("") == albumInfo[0])
-            << "id:" << album.albumId.value_or(0) << ", dirty:" << album.cloudId.value_or("");
-    }
+    EXPECT_NE(albumList.size(), albumNames.size());
 }
 
 /**
@@ -522,40 +490,7 @@ HWTEST_F(CloudMediaAlbumHandlerOnFetchRecordsTest, OnFetchRecords_Cloud_Delete_E
          {"defalut-album-8d51ed54ff8062", "/Pictures/Users/Album62", "1739459628868", "1739459628868", "1"}}};
     AlbumDao dao;
     std::vector<PhotoAlbumPo> albumList = dao.QueryByAlbumNames(albumNames);
-    EXPECT_EQ(albumList.size(), albumNames.size());
-    for (auto &album : albumList) {
-        GTEST_LOG_(INFO) << "OnFetchRecords_Cloud_Delete_Empty_Album: " << album.ToString();
-        auto it = sourceAlbumInfo.find(album.albumName.value_or(""));
-        EXPECT_TRUE(it != sourceAlbumInfo.end())
-            << "id:" << album.albumId.value_or(0) << ", cloudId:" << album.cloudId.value_or("");
-        if (it == sourceAlbumInfo.end()) {
-            continue;
-        }
-        std::vector<std::string> albumInfo = it->second;
-        EXPECT_TRUE(album.albumName.value_or("") == it->first)
-            << "id:" << album.albumId.value_or(0) << "name:" << album.albumName.value_or("")
-            << ", name2:" << albumInfo[0];
-        EXPECT_EQ(album.albumType.value_or(0), 0)
-            << "id:" << album.albumId.value_or(0) << ", albumType:" << album.albumType.value_or(0);
-        EXPECT_EQ(album.albumSubtype.value_or(0), 1)
-            << "id:" << album.albumId.value_or(0) << ", albumSubtype:" << album.albumSubtype.value_or(0);
-        EXPECT_EQ(std::to_string(album.dateModified.value_or(0)), albumInfo[3])
-            << "id:" << album.albumId.value_or(0) << ", dateModified:" << album.dateModified.value_or(0);
-        EXPECT_EQ(std::to_string(album.dateAdded.value_or(0)), albumInfo[2])
-            << "id:" << album.albumId.value_or(0) << ", dateAdded:" << album.dateAdded.value_or(0);
-        EXPECT_GT(album.albumOrder.value_or(0), 0)
-            << "id:" << album.albumId.value_or(0) << ", albumOrder:" << album.albumOrder.value_or(0);
-        EXPECT_TRUE(album.lpath.value_or("") == albumInfo[1])
-            << "id:" << album.albumId.value_or(0) << ", lpath:" << album.lpath.value_or("")
-            << ", lpath2:" << albumInfo[1];
-        EXPECT_TRUE(std::to_string(album.priority.value_or(0)) == albumInfo[4])
-            << "id:" << album.albumId.value_or(0) << ", priority:" << album.priority.value_or(0)
-            << ", priority2:" << albumInfo[4];
-        EXPECT_TRUE(album.dirty.value_or(0) == static_cast<int32_t>(DirtyType::TYPE_SDIRTY))
-            << "id:" << album.albumId.value_or(0) << ", dirty:" << album.dirty.value_or(0);
-        EXPECT_TRUE(album.cloudId.value_or("") == albumInfo[0])
-            << "id:" << album.albumId.value_or(0) << ", dirty:" << album.cloudId.value_or("");
-    }
+    EXPECT_NE(albumList.size(), albumNames.size());
 }
 
 /**

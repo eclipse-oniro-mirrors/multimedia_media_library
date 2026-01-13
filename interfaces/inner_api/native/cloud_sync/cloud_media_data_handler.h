@@ -52,8 +52,10 @@ public:  // getter & setter
     void SetUserId(const int32_t &userId) override;
     void SetTraceId(const std::string &traceId) override;
     std::string GetTraceId() const override;
+    //LCOV_EXCL_START
     void SetCloudSpaceFull(bool isCloudSpaceFull) override;
     bool IsCloudSpaceFull() override;
+    //LCOV_EXCL_STOP
 
 public:
     int32_t GetCheckRecords(const std::vector<std::string> &cloudIds,

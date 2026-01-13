@@ -27,6 +27,7 @@ namespace Media {
 namespace {
 static constexpr int32_t REQUEST_SUCCESS = 0;
 static const string REQUEST_PHOTO_URIS_DES_FILE_URIS = "desFileUris";
+static const string REQUEST_PHOTO_URIS_INVALID_URIS = "invalidUris";
 static const string RESULT_PARAM = "result";
 static const string DATA_PARAM = "data";
 }
@@ -80,6 +81,43 @@ void RequestPhotoUrisReadPermissionCallback::OnResult(int32_t resultCode, const 
     SendMessageBack(desFileUris);
 }
 
+void RequestPhotoUrisReadPermissionCallback::OnResultEx(int32_t resultCode, const OHOS::AAFwk::Want &want)
+{
+    NAPI_INFO_LOG("ResultCode is %{public}d.", resultCode);
+ 
+    std::vector<std::string> desFileUris;
+    std::vector<std::string> invalidUris;
+    if (resultCode == REQUEST_SUCCESS) {
+        this->resultCode_ = resultCode;
+ 
+        // check if the desFileUris exsit
+        if (!want.HasParameter(REQUEST_PHOTO_URIS_DES_FILE_URIS)) {
+            NAPI_ERR_LOG("Can't get string array from want.");
+            CHECK_ARGS_RET_VOID(this->env_, true, JS_INNER_FAIL);
+            return;
+        }
+         // get desFileUris from want
+        desFileUris = want.GetStringArrayParam(REQUEST_PHOTO_URIS_DES_FILE_URIS);
+ 
+        // check if the invalidUris exsit
+        if (want.HasParameter(REQUEST_PHOTO_URIS_INVALID_URIS)) {
+            // get invalidUris from want
+            invalidUris = want.GetStringArrayParam(REQUEST_PHOTO_URIS_INVALID_URIS);
+        }
+        for (std::string mem : desFileUris) {
+            NAPI_INFO_LOG("mem %{public}s", mem.c_str());
+        }
+        for (std::string mem : invalidUris) {
+            NAPI_INFO_LOG("mem %{public}s", mem.c_str());
+        }
+    } else {
+        NAPI_INFO_LOG("ResultCode is %{public}d.", resultCode);
+        this->resultCode_ = JS_INNER_FAIL;
+    }
+ 
+    SendMessageBackEx(desFileUris, invalidUris);
+}
+
 void RequestPhotoUrisReadPermissionCallback::OnError(int32_t code, const std::string &name,
     const std::string &message)
 {
@@ -89,6 +127,18 @@ void RequestPhotoUrisReadPermissionCallback::OnError(int32_t code, const std::st
     this->resultCode_ = JS_INNER_FAIL;
     std::vector<std::string> desFileUris;
     SendMessageBack(desFileUris);
+}
+
+void RequestPhotoUrisReadPermissionCallback::OnErrorEx(int32_t code, const std::string &name,
+    const std::string &message)
+{
+    NAPI_INFO_LOG("Code is %{public}d, name is %{public}s, message is %{public}s.", code, name.c_str(),
+        message.c_str());
+ 
+    this->resultCode_ = JS_INNER_FAIL;
+    std::vector<std::string> desFileUris;
+    std::vector<std::string> invalidUris;
+    SendMessageBackEx(desFileUris, invalidUris);
 }
 
 void RequestPhotoUrisReadPermissionCallback::OnReceive(const OHOS::AAFwk::WantParams &request)
@@ -165,6 +215,63 @@ void RequestPhotoUrisReadPermissionCallback::SendMessageBack(const std::vector<s
     napi_value callback = nullptr;
     CHECK_ARGS_RET_VOID(this->env_, napi_get_reference_value(this->env_, this->callbackRef, &callback), JS_INNER_FAIL);
 
+    napi_value returnVal;
+    CHECK_ARGS_RET_VOID(this->env_, napi_call_function(this->env_, undefined, callback, ARGS_ONE, results, &returnVal),
+        JS_INNER_FAIL);
+}
+
+void RequestPhotoUrisReadPermissionCallback::SendMessageBackEx(
+    const std::vector<std::string> &FileUris, const std::vector<std::string> &invalidUris)
+{
+    NAPI_INFO_LOG("SendMessageBack enter.");
+    CloseModalUIExtension();
+ 
+    napi_value undefined = nullptr;
+    CHECK_ARGS_RET_VOID(this->env_, napi_get_undefined(this->env_, &undefined), JS_INNER_FAIL);
+ 
+    napi_value results[ARGS_ONE] = {nullptr};
+    CHECK_ARGS_RET_VOID(this->env_, napi_create_object(this->env_, &results[PARAM0]), JS_INNER_FAIL);
+ 
+    // create int32_t value bind result code as first napi value
+    napi_value result = nullptr;
+    CHECK_ARGS_RET_VOID(this->env_, napi_create_int32(this->env_, this->resultCode_, &result),
+        JS_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(this->env_, napi_set_named_property(this->env_, results[PARAM0], RESULT_PARAM.c_str(), result),
+        JS_INNER_FAIL);
+ 
+    napi_value resultObject = nullptr;
+    CHECK_ARGS_RET_VOID(this->env_, napi_create_object(this->env_, &resultObject), JS_INNER_FAIL);
+ 
+    size_t len = FileUris.size();
+    if (len > 0) {
+        napi_value authorizedUrisValue = nullptr;
+        GenerateStringArrayValue(this->env_, FileUris, len, authorizedUrisValue);
+ 
+        CHECK_ARGS_RET_VOID(this->env_,
+                            napi_set_named_property(this->env_, resultObject, "authorizedUris", authorizedUrisValue),
+                            JS_INNER_FAIL);
+    } else {
+        NAPI_ERR_LOG("authorizedUris size is zero.");
+    }
+ 
+    size_t lenInvaildUris = invalidUris.size();
+    if (lenInvaildUris > 0) {
+        napi_value invalidUrisValue  = nullptr;
+        GenerateStringArrayValue(this->env_, invalidUris, lenInvaildUris, invalidUrisValue);
+ 
+        CHECK_ARGS_RET_VOID(this->env_,
+                            napi_set_named_property(this->env_, resultObject, "invalidUris", invalidUrisValue),
+                            JS_INNER_FAIL);
+    } else {
+        NAPI_ERR_LOG("invalidUris size is zero.");
+    }
+ 
+    CHECK_ARGS_RET_VOID(this->env_, napi_set_named_property(this->env_, results[PARAM0],
+        DATA_PARAM.c_str(), resultObject), JS_INNER_FAIL);
+ 
+    napi_value callback = nullptr;
+    CHECK_ARGS_RET_VOID(this->env_, napi_get_reference_value(this->env_, this->callbackRef, &callback), JS_INNER_FAIL);
+ 
     napi_value returnVal;
     CHECK_ARGS_RET_VOID(this->env_, napi_call_function(this->env_, undefined, callback, ARGS_ONE, results, &returnVal),
         JS_INNER_FAIL);

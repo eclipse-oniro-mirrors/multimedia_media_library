@@ -57,6 +57,7 @@ public:
     EXPORT void SavePictureWithImageId(const std::string& imageId);
     EXPORT int32_t AddSavePictureTask(sptr<PicturePair>& picturePair);
     EXPORT int32_t GetPendingTaskSize();
+    EXPORT int32_t GetLowPendingTaskSize();
     EXPORT void DeleteDataWithImageId(const std::string& imageId, PictureType pictureType);
 private:
     void Run();

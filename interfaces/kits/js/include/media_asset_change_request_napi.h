@@ -94,6 +94,7 @@ public:
     bool Contains(AssetChangeOperation changeOperation) const;
     bool ContainsResource(ResourceType resourceType) const;
     bool IsMovingPhoto() const;
+    bool IsCinematicVideo() const;
     bool CheckMovingPhotoResource(ResourceType resourceType) const;
     std::string GetFileRealPath() const;
     AddResourceMode GetAddResourceMode() const;

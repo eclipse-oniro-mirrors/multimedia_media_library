@@ -35,8 +35,6 @@ public:
     std::string errorMsg;
     std::string fileUri;
     bool needParseCover;
-    int32_t mediaType;
-    int32_t exifRotate;
     bool needScanShootingMode;
     bool needScanSubtype{false};
     AdditionFileInfo lakeInfo;

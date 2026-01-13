@@ -118,6 +118,7 @@ public:
     EXPORT static bool IsHighlightAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType);
     EXPORT static bool IsAnalysisAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType);
     EXPORT static bool CheckOrderStyleType(const OrderStyleType orderStyle);
+    EXPORT static bool IsUserPhotoAlbumByType(const PhotoAlbumType albumType);
 
     EXPORT void SetUserId(int32_t userId);
     EXPORT int32_t GetUserId();

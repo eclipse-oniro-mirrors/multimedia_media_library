@@ -30,6 +30,7 @@
 
 #define private public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #include "user_define_ipc.h"
 #include "delete_highlight_albums_vo.h"
@@ -94,6 +95,8 @@ static std::vector<std::string> ALBUM_FETCH_COLUMNS = {
 
 FuzzedDataProvider* provider;
 shared_ptr<MediaAlbumsControllerService> mediaAlbumsControllerService = make_shared<MediaAlbumsControllerService>();
+shared_ptr<AnalysisData::MediaAnalysisDataControllerService> analysisDataControllerService =
+    make_shared<AnalysisData::MediaAnalysisDataControllerService>();
 std::shared_ptr<Media::MediaLibraryRdbStore> g_rdbStore;
 
 int32_t g_photoAlbumTypeArray[] = {
@@ -180,7 +183,7 @@ static void SetRelationshipFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAlbumsControllerService->SetRelationship(data, reply);
+    analysisDataControllerService->SetRelationship(data, reply);
 }
 
 static void GetRelationshipFuzzer()
@@ -194,7 +197,7 @@ static void GetRelationshipFuzzer()
     MessageParcel data;
     MessageParcel reply;
     reqBody.Marshalling(data);
-    mediaAlbumsControllerService->GetRelationship(data, reply);
+    analysisDataControllerService->GetRelationship(data, reply);
 }
 
 static void GetClonedAlbumUrisFuzzer()

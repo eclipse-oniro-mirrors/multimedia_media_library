@@ -26,7 +26,7 @@ const std::string LIB_MEDIALIB_NAPI_SO = "libmedialibrary_nutils.z.so";
 
 class LibHandle {
 public:
-    explicit LibHandle(const std::string& lib_name) : lib_name_(lib_name)
+    explicit LibHandle(const std::string& lib_name) : lib_name_(lib_name), handle_(nullptr)
     {
         if (lib_name.empty() || lib_name.find("..") != std::string::npos) {
             ANI_ERR_LOG("%{public}s invalid lib_name: %{public}s", __func__, lib_name.c_str());

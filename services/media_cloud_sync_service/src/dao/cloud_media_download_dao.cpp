@@ -270,6 +270,7 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAsset(const OnDownloadAssetData &as
     }
     this->FillHdrModeInfo(values, scanResult, assetData.needScanHdrMode);
     this->FillScanedSubtypeInfo(values, scanResult, assetData.needScanSubtype);
+    this->FillScanedHeightWidth(values, scanResult);
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
     CHECK_AND_RETURN_RET_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK,
@@ -281,99 +282,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAsset(const OnDownloadAssetData &as
         NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
     photoRefresh->Notify();
     return ret;
-}
-
-static bool GetRealHeightAndWidthFromPath(const std::string path, int32_t &height, int32_t &width)
-{
-    std::unique_ptr<Metadata> data = make_unique<Metadata>();
-    data->SetFilePath(path);
-    data->SetFileName(MediaFileUtils::GetFileName(path));
-    data->SetFileMediaType(MEDIA_TYPE_IMAGE);
-    int32_t ret = MetadataExtractor::Extract(data);
-    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, false, "Failed to update height and width.");
-    width = data->GetFileWidth();
-    height = data->GetFileHeight();
-    return true;
-}
-
-static bool SwapHeightAndWidthIfNeed(std::string lcdSize, int32_t &height, int32_t &width, int32_t exifRotate)
-{
-    size_t pos = lcdSize.find(':');
-    if (pos == std::string::npos || pos == 0 || pos == lcdSize.size() - 1) {
-        return false;
-    }
-    std::string lcdWidth = lcdSize.substr(0, pos);
-    std::string lcdHeight = lcdSize.substr(pos + 1);
-    if (!IsNumericStr(lcdWidth) || !IsNumericStr(lcdHeight)) {
-        return false;
-    }
-    int32_t newHeight = std::stoi(lcdHeight);
-    int32_t newWidth = std::stoi(lcdWidth);
-    if (height == 0 || width == 0 || newHeight == 0 || newWidth == 0) {
-        return false;
-    }
-    if (exifRotate >= static_cast<int32_t>(ExifRotateType::LEFT_TOP) &&
-        exifRotate <= static_cast<int32_t>(ExifRotateType::LEFT_BOTTOM)) {
-            bool cond = (height / width > 1 && newWidth / newHeight > 1) ||
-                (height / width == 1 && newWidth / newHeight == 1) ||
-                (height / width < 1 && newWidth / newHeight < 1);
-            CHECK_AND_RETURN_RET(!cond, false);
-            int32_t temp = height;
-            height = width;
-            width = temp;
-        } else {
-            bool cond = (width / height > 1 && newWidth / newHeight > 1) ||
-                (width / height == 1 && newWidth / newHeight == 1) ||
-                (width / height < 1 && newWidth / newHeight < 1);
-            CHECK_AND_RETURN_RET(!cond, false);
-            int32_t temp = height;
-            height = width;
-            width = temp;
-        }
-    return true;
-}
-
-static bool UpdateHeightAndWidth(const int32_t fileId, const int32_t exifRotate)
-{
-    MEDIA_INFO_LOG("update current id is %{public}d", fileId);
-    std::vector<NativeRdb::ValueObject> bindArgs = { fileId };
-    std::string queryImageInfo = "SELECT data, height, width, lcd_size, subtype, original_subtype,"
-        "moving_photo_effect_mode FROM Photos WHERE file_id = ?;";
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "Failed to get rdbstore!");
-    auto resultSet = rdbStore->QuerySql(queryImageInfo, bindArgs);
-    bool cond = resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK;
-    CHECK_AND_RETURN_RET_LOG(cond, false, "resultSet is null or count is 0");
-    int32_t height = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_HEIGHT, resultSet, TYPE_INT32));
-    int32_t width = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_WIDTH, resultSet, TYPE_INT32));
-    std::string path =
-        get<std::string>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_FILE_PATH, resultSet, TYPE_STRING));
-    std::string lcdSize =
-        get<std::string>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_LCD_SIZE, resultSet, TYPE_STRING));
-    int32_t subtype =
-        get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_SUBTYPE, resultSet, TYPE_INT32));
-    int32_t originalSubtype =
-        get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet, TYPE_INT32));
-    int32_t movingPhotoEffectMode = get<int32_t>(
-        ResultSetUtils::GetValFromColumn(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet, TYPE_INT32));
-    if (height == -1 || width == -1 || height == 0 || width == 0) {
-        CHECK_AND_RETURN_RET_LOG(GetRealHeightAndWidthFromPath(path, height, width), false, "Failed to update.");
-    } else {
-        CHECK_AND_RETURN_RET(SwapHeightAndWidthIfNeed(lcdSize, height, width, exifRotate), false);
-    }
-    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
-    NativeRdb::ValuesBucket values;
-    values.PutInt(PhotoColumn::PHOTO_HEIGHT, height);
-    values.PutInt(PhotoColumn::PHOTO_WIDTH, width);
-    double aspectRatio =
-        MediaFileUtils::CalculateAspectRatio(height, width);
-    values.PutDouble(PhotoColumn::PHOTO_ASPECT_RATIO, aspectRatio);
-    int32_t updateCount = 0;
-    int32_t err = rdbStore->Update(updateCount, values, predicates);
-    CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, false,
-        "Update image height and width failed, file_id=%{public}d, err=%{public}d", fileId, err);
-    return true;
 }
 
 int32_t CloudMediaDownloadDao::UpdateDownloadAssetExifRotateFix(
@@ -392,10 +300,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAssetExifRotateFix(
     if (needRegenerateThumbnail) {
         ret = photoRefresh->ExecuteSql(this->SQL_FIX_EXIF_ROTATE_WITH_REGENERATE_THUMBNAIL,
             bindArgs, AccurateRefresh::RdbOperation::RDB_OPERATION_UPDATE);
-        bool cond = UpdateHeightAndWidth(fileId, exifRotate);
-        if (!cond) {
-            MEDIA_INFO_LOG("Update failed or no need update");
-        }
     } else {
         ret = photoRefresh->ExecuteSql(this->SQL_FIX_EXIF_ROTATE_WITHOUT_REGENERATE_THUMBNAIL,
             bindArgs, AccurateRefresh::RdbOperation::RDB_OPERATION_UPDATE);
@@ -433,8 +337,7 @@ void CloudMediaDownloadDao::FillHdrModeInfo(NativeRdb::ValuesBucket &values,
 {
     bool isValid = scanResult.scanSuccess;
     CHECK_AND_RETURN(isValid);
-    bool isNeedFill = isNeedUpdate && scanResult.hdrMode != static_cast<int32_t>(HdrMode::DEFAULT);
-    CHECK_AND_RETURN(isNeedFill);
+    CHECK_AND_RETURN(isNeedUpdate);
     values.PutInt(PhotoColumn::PHOTO_HDR_MODE, scanResult.hdrMode);
     values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
 }
@@ -475,6 +378,7 @@ int32_t CloudMediaDownloadDao::UpdateDownloadLakeAsset(const OnDownloadAssetData
         values.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, scanResult.frontCamera);
     }
     
+    this->FillScanedHeightWidth(values, scanResult);
     if (assetData.lakeInfo) {
         values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, assetData.lakeInfo.storagePath);
         values.PutString(MediaColumn::MEDIA_TITLE, assetData.lakeInfo.title);
@@ -492,5 +396,17 @@ int32_t CloudMediaDownloadDao::UpdateDownloadLakeAsset(const OnDownloadAssetData
         NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
     photoRefresh->Notify();
     return ret;
+}
+
+void CloudMediaDownloadDao::FillScanedHeightWidth(
+    NativeRdb::ValuesBucket &values, const CloudMediaScanService::ScanResult &scanResult)
+{
+    CHECK_AND_RETURN(scanResult.scanSuccess);
+    bool isValid = scanResult.height != -1 && scanResult.width != -1 && scanResult.height != 0 && scanResult.width != 0;
+    CHECK_AND_RETURN(isValid);
+    values.Put(PhotoColumn::PHOTO_HEIGHT, scanResult.height);
+    values.Put(PhotoColumn::PHOTO_WIDTH, scanResult.width);
+    double aspectRatio = MediaFileUtils::CalculateAspectRatio(scanResult.height, scanResult.width);
+    values.Put(PhotoColumn::PHOTO_ASPECT_RATIO, aspectRatio);
 }
 }  // namespace OHOS::Media::CloudSync

@@ -29,7 +29,7 @@ class MultistagesCaptureNotify {
 public:
     EXPORT static int32_t NotifyOnProcess(
         const std::shared_ptr<FileAsset> &fileAsset, const MultistagesCaptureNotifyType &notifyType);
-    static int32_t NotifyLowQualityMemoryCount(int32_t count);
+    static int32_t NotifyLowQualityMemoryCount();
 };
 } // namespace Media::Notification
 } // namespace OHOS

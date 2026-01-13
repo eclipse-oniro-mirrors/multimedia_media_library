@@ -21,13 +21,16 @@
 #include "medialibrary_client_errno.h"
 #include "medialibrary_errno.h"
 #include "media_log.h"
+#include "photo_album_napi.h"
 
 namespace OHOS {
 namespace Media {
 
-constexpr size_t maxSingleRegistrationLimit = 1000;
+const std::string URI_SEPARATOR = "file:media";
+constexpr size_t maxSingleAssetRegistrationLimit = 200;
+constexpr size_t maxSingleAlbumRegistrationLimit = 50;
 
-bool RegisterUnregisterHandlerFunctions::checkSingleRegisterCount(ChangeListenerNapi &listObj,
+bool RegisterUnregisterHandlerFunctions::CheckSingleRegisterCount(ChangeListenerNapi &listObj,
     const Notification::NotifyUriType uriType)
 {
     size_t Count = 0;
@@ -40,20 +43,15 @@ bool RegisterUnregisterHandlerFunctions::checkSingleRegisterCount(ChangeListener
         for (const auto& innerPair : innerMap) {
             size_t validCount = innerPair.second.size();
             Count += validCount;
-            if (Count >= maxSingleRegistrationLimit) {
+            if ((uriType == Notification::NotifyUriType::SINGLE_PHOTO_URI &&
+                Count >= maxSingleAssetRegistrationLimit) ||
+                (uriType == Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI &&
+                Count >= maxSingleAlbumRegistrationLimit)) {
                 return false;
             }
         }
     }
     return true;
-}
-
-std::string RegisterUnregisterHandlerFunctions::NapiGetUriFromAsset(const FileAssetNapi *obj)
-{
-    string displayName = obj->GetFileDisplayName();
-    string filePath = obj->GetFilePath();
-    return MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX, to_string(obj->GetFileId()),
-        MediaFileUtils::GetExtraUri(displayName, filePath));
 }
 
 void RegisterUnregisterHandlerFunctions::SyncUpdateNormalListener(ChangeListenerNapi &listObj,
@@ -108,19 +106,19 @@ napi_value RegisterUnregisterHandlerFunctions::CheckRegisterCallbackArgs(napi_en
     GET_JS_ARGS(env, info, context->argc, context->argv, thisVar);
 
     if (context->argc != ARGS_TWO) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "requires one or two parameters.");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "requires one or two parameters.");
         return nullptr;
     }
 
     if (thisVar == nullptr || context->argv[PARAM0] == nullptr || context->argv[PARAM1] == nullptr) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE);
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID);
         return nullptr;
     }
 
     napi_valuetype valueType = napi_undefined;
     if (napi_typeof(env, context->argv[PARAM0], &valueType) != napi_ok || valueType != napi_object ||
             napi_typeof(env, context->argv[PARAM1], &valueType) != napi_ok || valueType != napi_function) {
-            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE);
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID);
             return nullptr;
     }
     return thisVar;
@@ -134,7 +132,7 @@ napi_value RegisterUnregisterHandlerFunctions::CheckSingleUnregisterCallbackArgs
     GET_JS_ARGS(env, info, context->argc, context->argv, thisVar);
 
     if (context->argc < ARGS_ZERO || context->argc > ARGS_TWO) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "requires one or two parameters.");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "requires one or two parameters.");
         return nullptr;
     }
     return thisVar;
@@ -150,11 +148,11 @@ static bool GetSingleOuterMap(GlobalObserverMap* singleClientObservers,
 }
 
 static bool GetSingleInnerMap(ClientObserverListMap& innerMap,
-    const std::string& singleAssetOrAlbumUri, ClientObserverListMapIter& innerIter)
+    const std::string& singleId, ClientObserverListMapIter& innerIter)
 {
-    innerIter = innerMap.find(singleAssetOrAlbumUri);
+    innerIter = innerMap.find(singleId);
     CHECK_AND_RETURN_RET_LOG(innerIter != innerMap.end(), false, "uri not found in inner map: %{public}s",
-        singleAssetOrAlbumUri.c_str());
+        singleId.c_str());
     return true;
 }
 
@@ -182,7 +180,8 @@ static void CleanupSingleOuterMapIfEmpty(GlobalObserverMap* singleClientObserver
 static int32_t unregisterAllSingleAssets(UnregisterContext& singleContext)
 {
     for (const auto& pair : singleContext.outerIter->second) {
-        int32_t ret = UnregisterSingleObserver(singleContext.registerUri + pair.first, singleContext.observer);
+        int32_t ret = UnregisterSingleObserver(singleContext.registerUri + URI_SEPARATOR + pair.first,
+            singleContext.observer);
         CHECK_AND_RETURN_RET(ret == E_OK, ret);
     }
     std::lock_guard<std::mutex> lock(ChangeListenerNapi::trashMutex_);
@@ -194,11 +193,11 @@ static int32_t unregisterAssetAllListeners(UnregisterContext& singleContext)
 {
     auto& innerMap = singleContext.outerIter->second;
     ClientObserverListMapIter innerIter;
-    if (!GetSingleInnerMap(innerMap, singleContext.uriStr, innerIter)) {
-        return E_URI_NOT_EXIST;
+    if (!GetSingleInnerMap(innerMap, singleContext.singleId, innerIter)) {
+        return JS_E_PARAM_INVALID;
     }
 
-    int32_t ret = UnregisterSingleObserver(singleContext.registerUri + singleContext.uriStr,
+    int32_t ret = UnregisterSingleObserver(singleContext.registerUri + URI_SEPARATOR + singleContext.singleId,
         singleContext.observer);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
     {
@@ -213,19 +212,19 @@ static int32_t unregisterSingleAssetCallback(UnregisterContext& singleContext)
 {
     auto& innerMap = singleContext.outerIter->second;
     ClientObserverListMapIter innerIter;
-    if (!GetSingleInnerMap(innerMap, singleContext.uriStr, innerIter)) {
+    if (!GetSingleInnerMap(innerMap, singleContext.singleId, innerIter)) {
         return JS_E_PARAM_INVALID;
     }
     napi_value offCb;
     if (napi_get_reference_value(singleContext.env, singleContext.cbRef, &offCb) != napi_ok) {
         NAPI_ERR_LOG("Get reference failed");
-        return OHOS_INVALID_PARAM_CODE;
+        return E_PERMISSION_DENIED;
     }
     auto& cbList = innerIter->second;
     for (auto cbIt = cbList.begin(); cbIt != cbList.end(); ++cbIt) {
         napi_value onCb;
         if (napi_get_reference_value(singleContext.env, (*cbIt)->ref_, &onCb) != napi_ok) {
-            return OHOS_INVALID_PARAM_CODE;
+            return E_PERMISSION_DENIED;
         }
         bool equal;
         napi_strict_equals(singleContext.env, offCb, onCb, &equal);
@@ -237,7 +236,7 @@ static int32_t unregisterSingleAssetCallback(UnregisterContext& singleContext)
             cbList.erase(cbIt);
         }
         if (cbList.empty()) {
-            int32_t ret = UnregisterSingleObserver(singleContext.registerUri + singleContext.uriStr,
+            int32_t ret = UnregisterSingleObserver(singleContext.registerUri + URI_SEPARATOR + singleContext.singleId,
                 singleContext.observer);
             CHECK_AND_RETURN_RET(ret == E_OK, ret);
             {
@@ -321,7 +320,7 @@ static int32_t CheckIsObjectType(napi_env env, napi_value value,
     napi_valuetype valueType = napi_undefined;
     if (napi_typeof(env, value, &valueType) != napi_ok || valueType != napi_object) {
         NAPI_ERR_LOG("%s", errMsg.c_str());
-        return OHOS_INVALID_PARAM_CODE;
+        return JS_E_PARAM_INVALID;
     }
     return E_OK;
 }
@@ -332,7 +331,7 @@ static int32_t CheckIsFunctionType(napi_env env, napi_value value,
     napi_valuetype valueType = napi_null;
     if (napi_typeof(env, value, &valueType) != napi_ok || valueType != napi_function) {
         NAPI_ERR_LOG("get param type failed: %s", errMsg.c_str());
-        return OHOS_INVALID_PARAM_CODE;
+        return JS_E_PARAM_INVALID;
     }
     return E_OK;
 }
@@ -342,31 +341,68 @@ static int32_t CreateCallbackRef(napi_env env, napi_value cbValue, napi_ref& cbR
     const int32_t refCount = 1;
     if (napi_create_reference(env, cbValue, refCount, &cbRef) != napi_ok) {
         NAPI_ERR_LOG("create callback reference failed");
-        return OHOS_INVALID_PARAM_CODE;
+        return JS_E_PARAM_INVALID;
     }
     return E_OK;
 }
 
-static int32_t HandleSingleUriArgs(napi_env env, const MediaLibraryAsyncContext& context,
-    Notification::NotifyUriType uriType, std::string& singleAssetOrAlbumuri, napi_ref& cbOffRef)
+std::string GetUnRegisterSingleIdFromNapiAssets(napi_env env, const napi_value &napiAsset)
+{
+    FileAssetNapi *obj = nullptr;
+    CHECK_ARGS(env, napi_unwrap(env, napiAsset, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
+    if (obj == nullptr) {
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get asset napi object");
+        return "";
+    }
+    std::string fileId = to_string(obj->GetFileId());
+    if (obj->GetFileId() == 0) {
+        NAPI_ERR_LOG("Get invalid asset ID from asset object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Ordinary assets invalid");
+    } else {
+        NAPI_INFO_LOG("Successfully extracted assets URI: %{private}s", fileId.c_str());
+    }
+    return fileId;
+}
+
+std::string GetUnRegisterSingleIdFromNapiPhotoAlbum(napi_env env, const napi_value &napiPhotoAlbum)
+{
+    PhotoAlbumNapi *obj = nullptr;
+    CHECK_ARGS(env, napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
+
+    if (obj == nullptr) {
+        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get album napi object");
+        return "";
+    }
+    std::string albumId = to_string(obj->GetAlbumId());
+    if (obj->GetAlbumId() == 0) {
+        NAPI_ERR_LOG("Get invalid album Id from photo album object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Ordinary Album invalid");
+    } else {
+        NAPI_INFO_LOG("Successfully extracted album URI: %{private}s", albumId.c_str());
+    }
+    return albumId;
+}
+
+static int32_t HandleSingleIdArgs(napi_env env, const MediaLibraryAsyncContext& context,
+    Notification::NotifyUriType uriType, std::string& singleId, napi_ref& cbOffRef)
 {
     int32_t ret = E_OK;
     switch (context.argc) {
         case ARGS_ONE:
             ret = CheckIsObjectType(env, context.argv[PARAM0], "ARGS_ONE: First param is not object");
             CHECK_AND_RETURN_RET(ret == E_OK, ret);
-            singleAssetOrAlbumuri = (uriType == Notification::NotifyUriType::SINGLE_PHOTO_URI)
-                ? MediaLibraryNapiUtils::GetUriFromNapiAssets(env, context.argv[PARAM0])
-                : MediaLibraryNapiUtils::GetUriFromNapiPhotoAlbum(env, context.argv[PARAM0]);
+            singleId = (uriType == Notification::NotifyUriType::SINGLE_PHOTO_URI)
+                ? GetUnRegisterSingleIdFromNapiAssets(env, context.argv[PARAM0])
+                : GetUnRegisterSingleIdFromNapiPhotoAlbum(env, context.argv[PARAM0]);
             break;
         case ARGS_TWO:
             ret = CheckIsObjectType(env, context.argv[PARAM0], "ARGS_TWO: First param is not object");
             CHECK_AND_RETURN_RET(ret == E_OK, ret);
             ret = CheckIsFunctionType(env, context.argv[PARAM1], "ARGS_TWO: second param is not function");
             CHECK_AND_RETURN_RET(ret == E_OK, ret);
-            singleAssetOrAlbumuri = (uriType == Notification::NotifyUriType::SINGLE_PHOTO_URI)
-                ? MediaLibraryNapiUtils::GetUriFromNapiAssets(env, context.argv[PARAM0])
-                : MediaLibraryNapiUtils::GetUriFromNapiPhotoAlbum(env, context.argv[PARAM0]);
+            singleId = (uriType == Notification::NotifyUriType::SINGLE_PHOTO_URI)
+                ? GetUnRegisterSingleIdFromNapiAssets(env, context.argv[PARAM0])
+                : GetUnRegisterSingleIdFromNapiPhotoAlbum(env, context.argv[PARAM0]);
             ret = CreateCallbackRef(env, context.argv[PARAM1], cbOffRef);
             CHECK_AND_RETURN_RET(ret == E_OK, ret);
             break;
@@ -376,14 +412,14 @@ static int32_t HandleSingleUriArgs(napi_env env, const MediaLibraryAsyncContext&
     return E_OK;
 }
 
-int32_t RegisterUnregisterHandlerFunctions::HandleSingleUriScenario(UnregisterContext& singleContext,
+int32_t RegisterUnregisterHandlerFunctions::HandleSingleIdScenario(UnregisterContext& singleContext,
     const std::unique_ptr<MediaLibraryAsyncContext>& context)
 {
-    std::string singleAssetOrAlbumuri;
-    int32_t ret = HandleSingleUriArgs(singleContext.env, *context, singleContext.uriType,
-        singleAssetOrAlbumuri, singleContext.cbRef);
+    std::string singleId;
+    int32_t ret = HandleSingleIdArgs(singleContext.env, *context, singleContext.uriType,
+        singleId, singleContext.cbRef);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
-    singleContext.uriStr = singleAssetOrAlbumuri;
+    singleContext.singleId = singleId;
     singleContext.argCount = context->argc;
     return UnregisterSingleObserverExecute(singleContext);
 }

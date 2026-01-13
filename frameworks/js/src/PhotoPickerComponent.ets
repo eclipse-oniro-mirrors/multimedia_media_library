@@ -27,6 +27,27 @@ const PHOTO_VIEW_MIME_TYPE_MAP = new Map([
     ['image/movingPhoto', 'FILTER_MEDIA_TYPE_IMAGE_MOVING_PHOTO']
 ])
 
+const PARAMETERS_VALIDATE_FAILED_MESSAGE = 
+'Scene parameters validate failed, possible causes:' +
+'  1. An invalid enumeration value was passed. Only MOVING_PHOTO_ENABLE and' +
+'  MOVING_PHOTO_DISABLE are supported for configuration;';
+
+const ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE = 
+'Invalid call context. Possible causes:' +
+'  1. The API is called outside the photo browsing scenario.' +
+'  2. The API is called when isMovingPhotoBadgeShown is already set to true.'
+
+const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
+const ILLEGAL_SCENARIO_CALL_ERROR_CODE = 23800202;
+const PERMISSION_DENNIED = 401;
+
+class BusinessError extends Error {
+    constructor(msg, code) {
+        super(msg);
+        this.code = code || PERMISSION_DENNIED;
+    }
+}
+
 interface MimeTypeFilter {
   mimeTypeArray: string[],
   filterType: number
@@ -38,12 +59,15 @@ export struct PhotoPickerComponent {
   onSelect?: (uri: string) => void;
   onDeselect?: (uri: string) => void;
   onItemClicked?: (itemInfo: ItemInfo, clickType: ClickType) => boolean;
+  onItemClickedNotify?: (itemInfo: ItemInfo, clickType: ClickType) => void;
   onEnterPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
   onExitPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
   onPickerControllerReady?: () => void;
   onPhotoBrowserChanged?: (browserItemInfo: BaseItemInfo) => boolean;
   onSelectedItemsDeleted?: ItemsDeletedCallback;
   onExceedMaxSelected?: ExceedMaxSelectedCallback;
+  onPhotoBrowserChangeStart?: onPhotoBrowserChangeStartCallback;
+  onError?: onErrorCallback;
   onCurrentAlbumDeleted?: CurrentAlbumDeletedCallback;
   onVideoPlayStateChanged?: VideoPlayStateChangedCallback;
   onMovingPhotoBadgeStateChanged?: (uri: string, state: MovingPhotoBadgeStateType) => void;
@@ -54,12 +78,18 @@ export struct PhotoPickerComponent {
   preselectedInfos = undefined;
   onScrollStopAtStart: onScrollStopAtStartCallback;
   onScrollStopAtEnd: onScrollStopAtEndCallback;
+  onPinchGridSwitched = undefined;
   dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
   badgeConfigIsSending: boolean = false;
   @ObjectLink @Watch('onChanged') pickerController: PickerController;
   private proxy: UIExtensionProxy | undefined;
-  @State revokeIndex = 0;
+  pickerController.onEnterPhotoBrowser = () => {
+    return false;
+  }
 
+  pickerController.parseIsMovingPhotoBadgeShown = () => {
+  return false;
+  }
   private onChanged(): void {
     if (!this.proxy) {
       return;
@@ -73,6 +103,9 @@ export struct PhotoPickerComponent {
       console.info('PhotoPickerComponent onChanged: SET_ALBUM_URI');
     } else if (data?.has('SET_SELECTED_INFO')) {
       this.onChangeSelectedInfo(data)
+      console.info('PhotoPickerComponent onChanged: SET_SELECTED_INFO');
+    } else if (data?.has('SET_MOVINGPHOTO_STATE')) {
+      this.proxy.send({movingPhotoState: data?.get('SET_MOVINGPHOTO_STATE)});
       console.info('PhotoPickerComponent onChanged: SET_SELECTED_INFO');
     } else if (data?.has('SET_MAX_SELECT_COUNT')) {
       this.onSetMaxSelectCount(data);
@@ -111,6 +144,9 @@ export struct PhotoPickerComponent {
       this.onChangedBadgeConfigs(data);
     } else if(data?.has('UPDATE_CONFIG')){
       this.onUpdateConfig(data);
+    } else if (data?.has('SET_ITEM_CLICK_RESULT')) {
+      this.onChangeItemClickResult(data)
+      console.info('PhotoPickerComponent onChanged: SET_ITEM_CLICK_RESULT');
     } else {
       console.info('PhotoPickerComponent onChanged: other case');
     }
@@ -121,6 +157,14 @@ export struct PhotoPickerComponent {
       console.log(`preselectedInfos start send1 ${data.get('SET_SELECTED_INFO').slice(0, this.batchPreselectedInfos).length}`);
       this.proxy({ uriAndPickerIndexLists: null === data ? void 0 : data.get('SET_SELECTED_INFO').slice(0, this.batchPreselectedInfos),
             index: 0, preselectedInfosIsOver: this.preselectedInfos.length <= this.batchPreselectedInfos });
+  }
+
+  private onChangeItemClickResult(data) {
+    let itemClickResult = data?.get('SET_ITEM_CLICK_RESULT') as Array<ClickResult>;
+    if (itemClickResult && itemClickResult instanceof Array && itemClickResult.length > 0) {
+      this.proxy.send({ itemClickResult: itemClickResult});
+      console.info(`PhotoPickerComponent send itemClickResult ${itemClickResult.length}`);
+    }
   }
 
   private onUpdateConfig(data?: Map<string, Object>) {
@@ -195,12 +239,43 @@ export struct PhotoPickerComponent {
     console.info('PhotoPickerComponent onChanged SAVE_REPLACE_PHOTO_ASSETS');
   }
 
+  private checkAssetFilterIncalid(assetFilter: photoAccessHelper.OperationItem[]): boolean {
+    // 获取所有有效的值
+    const validOperationTypes = Object.values(photoAccessHelper.OperationType);
+    const validPhotoKeys = Object.values(photoAccessHelper.PhotoKeys);
+
+    //遍历数组中的每个OperationItem
+    for (const item of assetFilter) {
+        //检查operationType是否有值且在枚举中
+        if (!item.operationType || !validOperationTypes.includes(item?.operationType)) {
+            console.log('PhotoPickerComponent, Invalid operationType');
+            return true;
+        }
+
+        //如果field有值，检查是否在枚举中
+        if (item.field !== undefined || item.field !== null) {
+            if (!validPhotoKeys.includes(item.field)) {
+                console.log('PhotoPickerComponent, Invalid photokeys');
+                return true;
+            }
+            // uri仅支持EQUAL_TO操作
+            if (item.field === photoAccessHelper.PhotoKeys.URI &&
+              item.operationType !== photoAccessHelper.OperationType.EQUAL_TO) {
+                console.log('PhotoPickerComponent, Invalid uri operation');
+                return true;
+            }
+        }
+    }
+    return false;
+  }
+
   build() {
-    Row() {
+    if (!this.pickerOptions?.assetFilter ||
+      !this.checkAssetFilterIncalid(this.pickerOptions?.assetFilter ?? [])) {
+      Row() {
       Column() {
         SecurityUIExtensionComponent({
           parameters: {
-            errorRevokeIndex: this.revokeIndex,
             "ability.want.params.uiExtensionTargetType": "photoPicker",
             uri: "multipleselect",
             targetPage: "photoPage",
@@ -229,6 +304,7 @@ export struct PhotoPickerComponent {
             maxPhotoSelectNumber: this.pickerOptions?.maxPhotoSelectNumber as number,
             maxVideoSelectNumber: this.pickerOptions?.maxVideoSelectNumber as number,
             isOnItemClickedSet: this.onItemClicked ? true : false,
+            isOnItemClickedNotifySet: this.onItemClickedNotify ? true : false,
             isPreviewForSingleSelectionSupported: this.pickerOptions?.isPreviewForSingleSelectionSupported as boolean,
             singleSelectionMode: this.pickerOptions?.singleSelectionMode as number,
             isSlidingSelectionSupported: this.pickerOptions?.isSlidingSelectionSupported as boolean,
@@ -241,12 +317,17 @@ export struct PhotoPickerComponent {
             uiComponentColorMode: this.pickerOptions?.uiComponentColorMode as PickerColorMode,
             combinedMediaTypeFilter: this.pickerOptions?.combinedMediaTypeFilter as Array<string>,
             pickerIndex: this.pickerOptions?.pickerIndex as number,
-            isMovingPhotoBadgeShown: this.pickerOptions?.isMovingPhotoBadgeShown as boolean,
+            isMovingPhotoBadgeShown: this.parseIsMovingPhotoBadgeShown(this.pickerOptions?.isMovingPhotoBadgeShown as boolean),
             isSlidingSupported: this.pickerOptions?.isSlidingSupported as boolean,
             assetFilter: this.pickerOptions?.assetFilter,
             edgeEffect: this.pickerOptions?.edgeEffect,
             isOnScrollStopAtStartSet: !!this.onScrollStopAtStart,
             isOnScrollStopAtEndSet: !!this.onScrollStopAtEnd,
+            autoPlayScenes: this.parseAutoPlayScenes(this.pickerOptions?.autoPlayScenes as Array<photoAccessHelper.AutoPlayScene>),
+            appAlbumFilters: this.parseAppAlbumFilters(this.pickerOptions?.appAlbumFilters as Array<string>)，
+            grindPinchMode: this.pickerOptions?.grindPinchMode
+            gridPinchMode: this.pickerOptions?.gridPinchMode,
+            globalMovingPhotoState: this.pickerOptions?.globalMovingPhotoState,
           }
         },
         {
@@ -264,15 +345,12 @@ export struct PhotoPickerComponent {
           })
           .onError((error) => {
             console.info('PhotoPickerComponent onError: ' + JSON.stringify(error));
-            console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex);
-            if (error.code === 100014 && this.revokeIndex < 3) {
-              this.revokeIndex++;
-            }
           });
       }
       .width('100%')
     }
     .height('100%')
+    }
   }
 
   private handleOnReceive(wantParam: Record<string, Object>): void {
@@ -282,6 +360,8 @@ export struct PhotoPickerComponent {
       this.handleSelectOrDeselect(wantParam);
     } else if (dataType === 'itemClick') {
       this.handleItemClick(wantParam);
+    } else if (dataType === 'itemClickedNotify') {
+      this.handleItemClickedNotify(wantParam); 
     } else if (dataType === 'onPhotoBrowserStateChanged') {
       this.handleEnterOrExitPhotoBrowser(wantParam);
     } else if (dataType === 'remoteReady') {
@@ -309,15 +389,20 @@ export struct PhotoPickerComponent {
       this.handleCreateCallback(wantParam);
     } else if (dataType === 'saveCallback') {
       this.handleSaveCallback(wantParam);
-    } else if (dataType === 'onBackground') {
-      console.info('PhotoPickerComponent onReceive: onBackground');
-      this.revokeIndex = 0;
     } else if (dataType === 'onBadgeConfigSend') {
       this.handleBadgeConfigSend(wantParam)
       console.info('PhotoPickerComponent onReceive: onBadgeConfigSend');
     } else if (dataType === 'onMovingPhotoBadgeStateChange') {
       this.onMovingPhotoBadgeStateChangeSend(wantParam)
       console.info('PhotoPickerComponent onReceive: onMovingPhotoBadgeStateChangeSend');
+    } else if (dataType === 'onGridLevelChanged') {
+      if (this.onPinchGridSwitched) {
+        this.onPinchGridSwitched(e.gridLevel);
+      }
+    } else if (dataType === 'onPhotoBrowserChangeStart') {
+        this.onPhotoBrowserChangeStart(e);
+    } else if (dataType === 'onError') {
+        this.onError(e);
     } else {
       this.handleOtherOnReceive(wantParam);
       console.info('PhotoPickerComponent onReceive: other case');
@@ -395,35 +480,9 @@ export struct PhotoPickerComponent {
 
   private handleItemClick(wantParam: Record<string, Object>): void {
     if (this.onItemClicked) {
-      let clickType: ClickType = ClickType.SELECTED;
-      let type = wantParam['clickType'] as string;
-      if (type === 'select') {
-        clickType = ClickType.SELECTED;
-      } else if (type === 'deselect') {
-        clickType = ClickType.DESELECTED;
-      } else {
-        console.info('PhotoPickerComponent onReceive: other clickType');
-      }
-      let itemInfo: ItemInfo = new ItemInfo();
+      let clickType: ClickType = this.getClickType(wantParam);
+      let itemInfo: ItemInfo = this.getItemInfo(wantParam);
       let itemType: string = wantParam['itemType'] as string;
-      if (itemType === 'thumbnail') {
-        itemInfo.itemType = ItemType.THUMBNAIL;
-      } else if (itemType === 'camera') {
-        itemInfo.itemType = ItemType.CAMERA;
-      } else {
-        console.info('PhotoPickerComponent onReceive: other itemType');
-      }
-      itemInfo.uri = wantParam['uri'] as string;
-      itemInfo.mimeType = wantParam['mimeType'] as string;
-      itemInfo.width = wantParam['width'] as number;
-      itemInfo.height = wantParam['height'] as number;
-      itemInfo.size = wantParam['size'] as number;
-      itemInfo.duration = wantParam['duration'] as number;
-      itemInfo.photoSubType = wantParam['subtype'] as number;
-      itemInfo.dynamicRangeType = wantParam['dynamicRangeType'] as number;
-      itemInfo.orientation = wantParam['imageOrientation'] as number;
-      itemInfo.videoMode = wantParam['videoMode'] as number;
-      itemInfo.movingPhotoBadgeState = wantParam['movingPhotoBadgeState'] as number;
       let result: boolean = this.onItemClicked(itemInfo, clickType);
       console.info('PhotoPickerComponent onReceive: onItemClicked = ' + clickType);
       if (this.proxy) {
@@ -438,6 +497,52 @@ export struct PhotoPickerComponent {
         }
       }
     }
+  }
+
+  private handleItemClickedNotify(wantParam: Record<string, Object>): void {
+    if (this.onItemClickedNotify) {
+      let clickType: ClickType = this.getClickType(wantParam);
+      let itemInfo: ItemInfo = this.getItemInfo(wantParam);
+      this.onItemClickedNotify(itemInfo, clickType);
+      console.info('PhotoPickerComponent onReceive: onItemClickNotify = ' + clickType);
+    }
+  }
+
+  private getClickType(wantParam: Record<string, Object>): ClickType {
+    let clickType: ClickType = ClickType.SELECTED;
+    let type = wantParam['clickType'] as string;
+    if (type === 'select') {
+      clickType = ClickType.SELECTED;
+    } else if (type === 'deselect') {
+      clickType = ClickType.DESELECTED;
+    } else {
+      console.info('PhotoPickerComponent onReceive: other clickType');
+    }
+    return clickType;
+  }
+
+  private getItemInfo(wantParam: Record<string, Object>): ItemInfo {
+    let itemInfo: ItemInfo = new ItemInfo();
+    let itemType: string = wantParam['itemType'] as string;
+    if (itemType === 'thumbnail') {
+      itemInfo.itemType = ItemType.THUMBNAIL;
+    } else if (itemType === 'camera') {
+      itemInfo.itemType = ItemType.CAMERA;
+    } else {
+      console.info('PhotoPickerComponent onReceive: other itemType');
+    }
+    itemInfo.uri = wantParam['uri'] as string;
+    itemInfo.mimeType = wantParam['mimeType'] as string;
+    itemInfo.width = wantParam['width'] as number;
+    itemInfo.height = wantParam['height'] as number;
+    itemInfo.size = wantParam['size'] as number;
+    itemInfo.duration = wantParam['duration'] as number;
+    itemInfo.photoSubType = wantParam['subtype'] as number;
+    itemInfo.dynamicRangeType = wantParam['dynamicRangeType'] as number;
+    itemInfo.orientation = wantParam['imageOrientation'] as number;
+    itemInfo.movingPhotoBadgeState = wantParam['movingPhotoBadgeState'] as number;
+    itemInfo.videoMode = wantParam['videoMode'] as number;
+    return itemInfo;
   }
 
   private handleEnterOrExitPhotoBrowser(wantParam: Record<string, Object>): void {
@@ -455,17 +560,66 @@ export struct PhotoPickerComponent {
         this.onExitPhotoBrowser(photoBrowserInfo);
       }
     }
+    this.pickerController.isPhotoBrowserShowCallback = () => {
+      if (isEnter) {
+        return true;
+      } esle {
+        return false;
+      }
+    }
     console.info('PhotoPickerComponent onReceive: onPhotoBrowserStateChanged = ' + isEnter);
   }
 
   private handlePhotoBrowserChange(wantParam: Record<string, Object>): void {
     let browserItemInfo: BaseItemInfo = new BaseItemInfo();
     browserItemInfo.uri = wantParam['uri'] as string;
+    browserItemInfo.photoSubType = wantParam['photoSubType'] as photoAccessHelper.photoSubType;
+    browserItemInfo.mimeType = wantParam['mimeType'] as string;
     if (this.onPhotoBrowserChanged) {
       this.onPhotoBrowserChanged(browserItemInfo);
     }
     console.info('PhotoPickerComponent onReceive: onPhotoBrowserChanged = ' +
       this.pickerController.encrypt(browserItemInfo.uri));
+  }
+
+  handleOnPhotoBrowserChangeStart(e) {
+    let o = new BaseItemInfo();
+    o.uri = e.uri;
+    o.photoSubType = e.photoSubType;
+    o.movingPhotoBadgeState = e.movingPhotoBadgeState;
+    if (this.onPhotoBrowserChangeStart) {
+        this.onPhotoBrowserChangeStart(o);
+    }
+    console.info('PhotoPickerComponent onReceive: onPhotoBrowserChangeStart = ' 
+        + this.pickerController.encrypt(o.uri));
+  }
+
+  handleOnError(e) {
+    let pickerError = new PickerError();
+    pickerError.functionName = e.functionName;
+    pickerError.errorCode = e.errorCode;
+    pickerError.message = e.errorMessage;
+    console.info('PhotoPickerComponent onReceive: onError: ' 
+        + JSON.stringify(e));
+    if (this.onError) {
+        this.onError(pickerError);
+    }
+    console.info('PhotoPickerComponent onReceive: onError: pickerError ' 
+        + JSON.stringify(pickerError));
+  }
+
+  parseIsMovingPhotoBadgeShown(isMovingPhotoBadgeShown) {
+    console.log('PhotoPickerComponent, isMovingPhotoBadgeShownValid=' + isMovingPhotoBadgeShownValid
+        + ',isMovingPhotoBadgeShown=' + isMovingPhotoBadgeShown);
+    if (isMovingPhotoBadgeShown === undefined || void 0 === isMovingPhotoBadgeShown) {
+        return undefined;
+    }
+    if (isMovingPhotoBadgeShown === true) {
+        isMovingPhotoBadgeShownValid = true;
+    } else {
+        isMovingPhotoBadgeShownValid = false;
+    }
+    return isMovingPhotoBadgeShown;
   }
 
   private handleVideoPlayStateChange(wantParam: Record<string, Object>): void {
@@ -492,6 +646,30 @@ export struct PhotoPickerComponent {
       { 'name': '', 'code': wantParam['code'] as number, 'message': wantParam['error'] as string },
       wantParam['data'] as Array<string>);
     console.info('PhotoPickerComponent onReceive: handleSaveCallback');
+  }
+
+  private parseAutoPlayScenes(autoPlayScenes?: Array<photoAccessHelper.AutoPlayScene>): Array<photoAccessHelper.AutoPlayScene> | undefined {
+    if (!autoPlayScenes) {
+      return undefined;
+    }
+
+    if (autoPlayScenes.length > 2) {
+      return autoPlayScenes.slice(0, 2);
+    }
+
+    return autoPlayScenes;
+  }
+
+  private parseAppAlbumFilters(appAlbumFilters?: Array<string>): Array<string> | undefined {
+    if (!appAlbumFilters) {
+      return undefined;
+    }
+
+    if (appAlbumFilters.length > 3) {
+      return appAlbumFilters.slice(0, 3);
+    }
+
+    return appAlbumFilters;
   }
 
   parseMimeTypeFilter(filter?: photoAccessHelper.MimeTypeFilter): object | undefined {
@@ -718,6 +896,12 @@ export class PickerController {
             this.data = new Map([['SET_BADGE_CONFIGS', e], ['BADGE_CONFIGS_OPTION_TYPE', BadgeOptionType.ADD_DATA]]);
         }
         return;
+    } else if (type === DataType.SET_ITEM_CLICK_RESULT) {
+      let clickResults: Array<ClickResult> = data as Array<ClickResult>;
+      if (clickResults !== undefined) {
+        this.data = new Map([['SET_ITEM_CLICK_RESULT', clickResults]]);
+        console.info('PhotoPickerComponent SET_ITEM_CLICK_RESULT' + this.encrypt(JSON.stringify(e)));
+      }
     }
   }
 
@@ -734,6 +918,21 @@ export class PickerController {
     }
   }
 
+  async setMovingPhotoState(e) {
+      if (e !== MovingPhotoBadgeStateType.ADD_DATA && e !== MovingPhotoBadgeStateType.DELETE_DATA) {
+          throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
+      }
+      console.info('SET_MOVINGPHOTO_STATE, this.isPhotoBrowserShow : ' + JSON.stringify(isPhotoBrowserShow) +
+        ', this.isMovingPhotoBadgeShownValid=' + isMovingPhotoBadgeShownValid);
+      if (!isPhotoBrowserShow || isMovingPhotoBadgeShownValid) {
+          throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+      }
+      if (e !== undefined) {
+          this.data = new Map([['SET_MOVINGPHOTO_STATE', e]]);
+          console.info('PhotoPickerComponent SET_MOVINGPHOTO_STATE: ' + this.encrypt(JSON.stringify(e)));
+      }
+  }
+  
   setMaxSelected(maxSelected: MaxSelected) {
     if (maxSelected) {
       this.data = new Map([['SET_MAX_SELECT_COUNT', maxSelected]]);
@@ -939,7 +1138,15 @@ export class UpdatablePickerConfigs {
   checkboxTextColor?: string;
   backgroundColor?: string;
   photoBrowserBackgroundColorMode?: PickerColorMode,
-  uiComponentColorMode?: PickerColorMode
+  uiComponentColorMode?: PickerColorMode;
+  appAlbumFilters?: Array<string>;
+}
+
+export class GridPinchMode {
+  constructor() {
+    this.gridPinchModeType = undefined;
+    this.defaultGridLevel = GridLevel.STANDARD;
+  }
 }
 
 export class BaseItemInfo {
@@ -995,15 +1202,37 @@ export class BadgeConfig {
   badgeConfigType?: BadgeTypes,
   uris?: string[]
 } 
+
 class PreselectedInfo {
   uri:string;
   preselectablePickerIndex?: number = -1;
 }
 
+class ClickResult {
+  uri: string;
+  isSelected: boolean;
+}
+
+class LivePhotoMode {
+  isAutoPlay: boolean;
+  sceneType: SceneType;
+}
+
 export enum DataType {
   SET_SELECTED_URIS = 1,
   SET_ALBUM_URI = 2,
-  SET_SELECTED_INFO = 3
+  SET_SELECTED_INFO = 3,
+  SET_ITEM_CLICK_RESULT = 5
+}
+
+export enum GridPinchModeType {
+  FULL_FUNCTION_GRID = 0,
+}
+
+export enum GridLevel {
+  SPACIOUS = 0,
+  STANDARD = 1,
+  COMPACT = 2,
 }
 
 export enum ItemType {
@@ -1092,4 +1321,9 @@ export enum MovingPhotoBadgeStateType {
   NOT_MOVING_PHOTO	= 0,
   MOVING_PHOTO_ENABLED	= 1,
   MOVING_PHOTO_DISABLED	= 2
+}
+
+export enum SceneType {
+  GRID_TO_PHOTO_BROWSER = 0;
+  PHOTO_BROWSER_SWIPE = 1;
 }

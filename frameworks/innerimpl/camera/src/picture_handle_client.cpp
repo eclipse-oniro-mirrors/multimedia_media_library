@@ -25,11 +25,10 @@
 #include "exif_metadata.h"
 #include "image_type.h"
 #include "image_utils.h"
+#include "media_column.h"
+#include "media_uri_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
-#include "medialibrary_napi_utils.h"
-#include "media_column.h"
-#include "media_file_utils.h"
 #include "media_log.h"
 #include "pixel_yuv.h"
 #include "pixel_yuv_ext.h"
@@ -39,12 +38,14 @@
 
 namespace OHOS {
 namespace Media {
+const std::string API_VERSION_STR = "api_version";
+const std::string MEDIA_FILEMODE_READONLY = "r";
 const int32_t MAX_VALUE = 100000000;
 std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32_t &fileId)
 {
     MEDIA_DEBUG_LOG("PictureHandlerClient::RequestPicture fileId: %{public}d", fileId);
     std::string uri = PhotoColumn::PHOTO_REQUEST_PICTURE;
-    MediaFileUtils::UriAppendKeyValue(uri, MediaColumn::MEDIA_ID, std::to_string(fileId));
+    MediaUriUtils::AppendKeyValue(uri, MediaColumn::MEDIA_ID, std::to_string(fileId));
     Uri requestUri(uri);
     int32_t fd = UserFileClient::OpenFile(requestUri, MEDIA_FILEMODE_READONLY);
     if (fd < 0) {
@@ -67,7 +68,7 @@ std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(
         return nullptr;
     }
     std::string uri = PhotoColumn::PHOTO_REQUEST_PICTURE;
-    MediaFileUtils::UriAppendKeyValue(uri, MediaColumn::MEDIA_ID, std::to_string(fileId));
+    MediaUriUtils::AppendKeyValue(uri, MediaColumn::MEDIA_ID, std::to_string(fileId));
     Uri requestUri(uri);
     int32_t fd = dataShareHelper->OpenFile(requestUri, MEDIA_FILEMODE_READONLY);
     if (fd < 0) {
@@ -85,7 +86,7 @@ void PictureHandlerClient::FinishRequestPicture(const int32_t &fileId)
 {
     MEDIA_DEBUG_LOG("PictureHandlerClient::FinishRequestPicture fileId: %{public}d", fileId);
     std::string uri = PAH_FINISH_REQUEST_PICTURE;
-    MediaFileUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
+    MediaUriUtils::AppendKeyValue(uri, API_VERSION_STR, std::to_string(MEDIA_API_VERSION_V10));
     Uri finishRequestPictureUri(uri);
 
     DataShare::DataShareValuesBucket valuesBucket;
@@ -424,7 +425,7 @@ bool PictureHandlerClient::ReadMaintenanceData(MessageParcel &data, std::unique_
 int32_t PictureHandlerClient::RequestBufferHandlerFd(const int32_t &fd)
 {
     std::string uri = PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER;
-    MediaFileUtils::UriAppendKeyValue(uri, "fd", std::to_string(fd));
+    MediaUriUtils::AppendKeyValue(uri, "fd", std::to_string(fd));
     MEDIA_DEBUG_LOG("PictureHandlerClient::RequestBufferHandlerFd uri: %{public}s", uri.c_str());
     Uri requestUri(uri);
     return UserFileClient::OpenFile(requestUri, MEDIA_FILEMODE_READONLY);

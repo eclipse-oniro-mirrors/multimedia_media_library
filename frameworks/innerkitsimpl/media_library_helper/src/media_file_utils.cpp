@@ -37,6 +37,7 @@
 #include "ipc_skeleton.h"
 #include "media_file_uri.h"
 #include "media_log.h"
+#include "media_map_const_utils.h"
 #include "medialibrary_errno.h"
 #include "mimetype_utils.h"
 #include "medialibrary_tracer.h"
@@ -46,6 +47,7 @@
 #include "data_secondary_directory_uri.h"
 #include "image_source.h"
 #include "image_packer.h"
+#include "media_audio_column.h"
 
 using namespace std;
 
@@ -95,151 +97,6 @@ const int32_t ASPECT_RATIO_MAX = 1000;
 const double ASPECT_RATIO_MIN = 0.001;
 const double ASPECT_RATIO_PRECISION = 1000.0;
 
-static const std::unordered_map<std::string, std::vector<std::string>> MEDIA_MIME_TYPE_MAP = {
-    { "application/epub+zip", { "epub" } },
-    { "application/lrc", { "lrc"} },
-    { "application/pkix-cert", { "cer" } },
-    { "application/rss+xml", { "rss" } },
-    { "application/sdp", { "sdp" } },
-    { "application/smil+xml", { "smil" } },
-    { "application/ttml+xml", { "ttml", "dfxp" } },
-    { "application/vnd.ms-pki.stl", { "stl" } },
-    { "application/vnd.ms-powerpoint", { "pot", "ppt" } },
-    { "application/vnd.ms-wpl", { "wpl" } },
-    { "application/vnd.stardivision.writer", { "vor" } },
-    { "application/vnd.youtube.yt", { "yt" } },
-    { "application/x-font", { "pcf" } },
-    { "application/x-mobipocket-ebook", { "prc", "mobi" } },
-    { "application/x-pem-file", { "pem" } },
-    { "application/x-pkcs12", { "p12", "pfx" } },
-    { "application/x-subrip", { "srt" } },
-    { "application/x-webarchive", { "webarchive" } },
-    { "application/x-webarchive-xml", { "webarchivexml" } },
-    { "application/pgp-signature", { "pgp" } },
-    { "application/x-x509-ca-cert", { "crt", "der" } },
-    { "application/json", { "json" } },
-    { "application/javascript", { "js" } },
-    { "application/zip", { "zip" } },
-    { "application/rar", { "rar" } },
-    { "application/pdf", { "pdf" } },
-    { "application/msword", { "doc" } },
-    { "application/ms-excel", { "xls" } },
-    { "application/vnd.openxmlformats-officedocument.wordprocessingml.document", { "docx" } },
-    { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", { "xlsx" } },
-    { "application/vnd.openxmlformats-officedocument.presentationml.presentation", { "pptx" } },
-    { "audio/3gpp", { "3ga" } },
-    { "audio/ac3", { "ac3", "a52"} },
-    { "audio/amr", { "amr" } },
-    { "audio/imelody", { "imy" } },
-    { "audio/midi", { "rtttl", "xmf", "rtx" } },
-    { "audio/mobile-xmf", { "mxmf"} },
-    { "audio/mp4", { "m4a", "m4b", "m4p", "f4a", "f4b", "f4p" } },
-    { "audio/mpegurl", { "m3u" } },
-    { "audio/sp-midi", { "smf" } },
-    { "audio/x-matroska", { "mka" } },
-    { "audio/x-pn-realaudio", { "ra" } },
-    { "audio/x-mpeg", { "mp3" } },
-    { "audio/aac", { "aac", "adts", "adt" } },
-    { "audio/basic", { "snd" } },
-    { "audio/flac", { "flac" } },
-    { "audio/mpeg", { "mp3", "mp2", "mp1", "mpa", "m4r" } },
-    { "audio/wav", { "wav" } },
-    { "audio/ogg", { "ogg" } },
-    { "image/gif", { "gif"} },
-    { "image/heic", { "heic" } },
-    { "image/heic-sequence", { "heics", "heifs" } },
-    { "image/bmp", { "bmp", "bm" } },
-    { "image/heif", { "heif", "hif" } },
-    { "image/avif", { "avif" } },
-    { "image/ico", { "cur" } },
-    { "image/webp", { "webp"} },
-    { "image/x-adobe-dng", { "dng" } },
-    { "image/x-fuji-raf", { "raf" } },
-    { "image/x-icon", { "ico" } },
-    { "image/x-nikon-nrw", { "nrw" } },
-    { "image/x-panasonic-rw2", { "rw2" } },
-    { "image/x-pentax-pef", { "pef" } },
-    { "image/x-samsung-srw", { "srw" } },
-    { "image/x-sony-arw", { "arw" } },
-    { "image/jpeg", { "jpg", "jpeg", "jpe" } },
-    { "image/png", { "png" } },
-    { "image/svg+xml", { "svg", "svgz" } },
-    { "image/x-dcraw", { "raw" } },
-    { "image/ief", { "ief" } },
-    { "image/jp2", { "jp2", "jpg2" } },
-    { "image/ipm", { "ipm" } },
-    { "image/jpm", { "jpm" } },
-    { "image/ipx", { "jpx", "jpf" } },
-    { "image/pcx", { "pcx" } },
-    { "image/tiff", { "tiff", "tif" } },
-    { "image/vnd.divu", { "djvu", "djv" } },
-    { "image/vnd.wap.wbmp", { "wbmp" } },
-    { "image/x-canon-cr2", { "cr2" } },
-    { "image/x-canon-crw", { "crw" } },
-    { "image/x-cmu-raster", { "ras" } },
-    { "image/x-coreldraw", { "cdr" } },
-    { "image/x-coreldrawpattern", { "pat" } },
-    { "image/x-coreldrawtemplate", { "cdt" } },
-    { "image/x-corelphotopaint", { "cpt" } },
-    { "image/x-epson-erf", { "erf" } },
-    { "image/x-jg", { "art" } },
-    { "image/x-jng", { "jng" } },
-    { "image/x-nikon-nef", { "nef" } },
-    { "image/x-olvmpus-orf", { "orf" } },
-    { "image/x-photoshop", { "psd" } },
-    { "image/x-portable-anymap", { "pnm" } },
-    { "image/x-portable-bitmap", { "pbm" } },
-    { "image/x-portable-graymap", { "pgm" } },
-    { "image/x-portable-pixmap", { "ppm" } },
-    { "image/x-rgb", { "rgb" } },
-    { "image/x-xbitmap", { "xbm" } },
-    { "image/x-xpixmap", { "xpm" } },
-    { "image/x-xwindowdump", { "xwd" } },
-    { "video/3gpp2", { "3gpp2", "3gp2", "3g2" } },
-    { "video/3gpp", { "3gpp", "3gp" } },
-    { "video/mp4", { "m4v", "f4v", "mp4v", "mpeg4", "mp4" } },
-    { "video/mp2t", { "m2ts", "mts"} },
-    { "video/mp2ts", { "ts" } },
-    { "video/vnd.youtube.yt", { "yt" } },
-    { "video/x-webex", { "wrf" } },
-    { "video/mpeg", { "mpe", "mpeg", "mpeg2", "mpv2", "mp2v", "m2v", "m2t", "mpeg1", "mpv1", "mp1v", "m1v", "mpg" } },
-    { "video/quicktime", { "mov", "qt" } },
-    { "video/x-matroska", { "mkv", "mpv" } },
-    { "video/webm", { "webm" } },
-    { "video/H264", { "h264" } },
-    { "video/x-flv", { "flv" } },
-    { "video/avi", { "avi" } },
-    { "video/x-pn-realvideo", { "rmvb" } },
-    { "video/annodex", { "axv" } },
-    { "video/dl", { "dl" } },
-    { "video/dv", { "dif", "dv" } },
-    { "video/fli", { "fli" } },
-    { "video/gl", { "gl" } },
-    { "video/ogg", { "ogv" } },
-    { "video/vnd.mpegurl", { "mxu" } },
-    { "video/x-la-asf", { "lsf",  "lsx" } },
-    { "video/x-mng", { "mng" } },
-    { "video/x-ms-asf", { "asf", "asx" } },
-    { "video/x-ms-wm", { "wm" } },
-    { "video/x-ms-wmv", { "wmv" } },
-    { "video/x-ms-wmx", { "wmx" } },
-    { "video/x-ms-wvx", { "wvx" } },
-    { "video/x-sgi-movie", { "movie" } },
-    { "text/comma-separated-values", { "csv" } },
-    { "text/plain", { "diff", "po", "txt" } },
-    { "text/rtf", { "rtf" } },
-    { "text/text", { "phps", "m3u", "m3u8" } },
-    { "text/xml", { "xml" } },
-    { "text/x-vcard", { "vcf" } },
-    { "text/x-c++hdr", { "hpp", "h++", "hxx", "hh" } },
-    { "text/x-c++src", { "cpp", "c++", "cxx", "cc" } },
-    { "text/css", { "css" } },
-    { "text/html", { "html", "htm", "shtml"} },
-    { "text/markdown", { "md", "markdown" } },
-    { "text/x-java", { "java" } },
-    { "text/x-python", { "py" } }
-};
-
 static const std::unordered_map<std::string, std::vector<std::string>> MEDIA_EXTRA_MIME_TYPE_MAP = {
     { "audio/3gpp", { "3gpp" } },
     { "audio/midi", { "mid", "midi", "kar" } },
@@ -273,7 +130,7 @@ vector<string> MediaFileUtils::GetAllTypes(const int32_t extension)
     if (extension != MEDIA_TYPE_IMAGE && extension != MEDIA_TYPE_VIDEO) {
         return allTypesVec;
     }
-    for (auto &item : MEDIA_MIME_TYPE_MAP) {
+    for (auto &item : MediaMapConstUtils::GetMimeTypeMap()) {
         if (extension == MimeTypeUtils::GetMediaTypeFromMimeType(item.first)) {
             for (auto &ext : item.second) {
                 allTypesVec.push_back(ext);
@@ -779,7 +636,7 @@ static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::strin
         return false;
     }
 
-    std::string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MEDIA_MIME_TYPE_MAP);
+    std::string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
     if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd)) {
         MEDIA_ERR_LOG("EncodeAsset mimeType: %{public}s failed", mimeType.c_str());
         return false;
@@ -1516,7 +1373,7 @@ MediaType MediaFileUtils::GetMediaType(const string &filePath)
     }
 
     string extention = GetExtensionFromPath(filePath);
-    string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extention, MEDIA_MIME_TYPE_MAP);
+    string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extention, MediaMapConstUtils::GetMimeTypeMap());
     return MimeTypeUtils::GetMediaTypeFromMimeType(mimeType);
 }
 
@@ -2175,7 +2032,8 @@ string MediaFileUtils::GetTempOriMovingPhotoVideoPath(const string &imagePath)
 
 bool MediaFileUtils::CheckMovingPhotoExtension(const string &extension)
 {
-    return IsMovingPhotoMimeType(MimeTypeUtils::GetMimeTypeFromExtension(extension, MEDIA_MIME_TYPE_MAP));
+    return IsMovingPhotoMimeType(MimeTypeUtils::GetMimeTypeFromExtension(
+        extension, MediaMapConstUtils::GetMimeTypeMap()));
 }
 
 bool MediaFileUtils::IsMovingPhotoMimeType(const string &mimeType)
@@ -2187,7 +2045,7 @@ bool MediaFileUtils::IsMovingPhotoMimeType(const string &mimeType)
 bool MediaFileUtils::CheckMovingPhotoVideoExtension(const string &extension)
 {
     // video of moving photo must be video/mp4
-    return MimeTypeUtils::GetMimeTypeFromExtension(extension, MEDIA_MIME_TYPE_MAP) == "video/mp4";
+    return MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap()) == "video/mp4";
 }
 
 bool MediaFileUtils::CheckMovingPhotoImage(const string &path)
@@ -2267,7 +2125,7 @@ std::string MediaFileUtils::GetTableNameByDisplayName(const std::string &display
         extension = displayName.substr(currentPos + 1);
     }
 
-    auto myTypeName = MimeTypeUtils::GetMimeTypeFromExtension(extension, MEDIA_MIME_TYPE_MAP);
+    auto myTypeName = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
     MediaType type = MimeTypeUtils::GetMediaTypeFromMimeType(myTypeName);
     if (type == MEDIA_TYPE_AUDIO) {
         return AudioColumn::AUDIOS_TABLE;
@@ -2641,7 +2499,7 @@ std::string MediaFileUtils::GetMimeTypeFromDisplayName(const std::string &displa
         extension = displayName.substr(currentPos + 1);
     }
     CHECK_AND_RETURN_RET_LOG(!extension.empty(), mimeType, "extension is empty.");
-    mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MEDIA_MIME_TYPE_MAP);
+    mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
     return mimeType;
 }
 

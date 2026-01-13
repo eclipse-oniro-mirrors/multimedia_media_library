@@ -21,12 +21,13 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_data_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
 
 const unordered_map<string, string> TABLE_CREATE_MAP = {
-    { PhotoColumn::PHOTOS_TABLE, PhotoColumn::CREATE_PHOTO_TABLE },
+    { PhotoColumn::PHOTOS_TABLE, PhotoUpgrade::CREATE_PHOTO_TABLE },
     { ANALYSIS_ALBUM_TABLE, CREATE_ANALYSIS_ALBUM_FOR_ONCREATE },
     { ANALYSIS_PHOTO_MAP_TABLE, CREATE_ANALYSIS_ALBUM_MAP },
     { VISION_PET_TAG_TABLE, CREATE_TAB_ANALYSIS_PET_TAG },

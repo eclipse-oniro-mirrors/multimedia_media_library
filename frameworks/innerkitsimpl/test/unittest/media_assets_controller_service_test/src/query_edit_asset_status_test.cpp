@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_assets_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -256,7 +257,7 @@ HWTEST_F(QueryEditAssetStatusTest, StartAssetAnalysisTest_001, TestSize.Level0) 
     MessageParcel data;
     MessageParcel reply;
 
-    auto service = make_shared<MediaAssetsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->StartAssetAnalysis(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ASSERT_EQ(respVo.Unmarshalling(reply), true);
@@ -278,7 +279,7 @@ HWTEST_F(QueryEditAssetStatusTest, StartAssetAnalysisTest_002, TestSize.Level0) 
     auto ret = reqBody.Marshalling(data);
     EXPECT_EQ(ret, true);
 
-    auto service = make_shared<MediaAssetsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->StartAssetAnalysis(data, reply);
     IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
     ret = respVo.Unmarshalling(reply);

@@ -34,6 +34,7 @@
 #include "userfile_manager_types.h"
 #include "media_column.h"
 #include "download_resources_column.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -81,7 +82,7 @@ void CleanTestTables()
 void ResetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         // CREATE_MEDIA_TABLE,
         // PhotoAlbumColumns::CREATE_TABLE,
         DownloadResourcesColumn::CREATE_TABLE,
@@ -359,8 +360,6 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_GetStorageFreeRa
     BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadResourceCheck();
     BackgroundCloudBatchSelectedFileProcessor::TriggerAutoStopBatchDownloadResourceCheck();
     BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition();
-    BackgroundCloudBatchSelectedFileProcessor::IsCellularNetConnected();
-    BackgroundCloudBatchSelectedFileProcessor::IsNetValidated();
     BatchDownloadAutoPauseReasonType autoPauseReason;
     BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(autoPauseReason);
     InsertBatchDownloadTask(1, "file://media/Photo/1/1.jpg", "1.jpg",

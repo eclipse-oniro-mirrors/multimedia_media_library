@@ -132,4 +132,28 @@ HWTEST_F(MediaAssetsControllerTest, OnRemoteRequest_Test_002, TestSize.Level0)
 
     MEDIA_INFO_LOG("OnRemoteRequest_Test_002 end");
 }
+
+HWTEST_F(MediaAssetsControllerTest, OnRemoteRequest_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("OnRemoteRequest_Test_003 enter");
+
+    auto controller = make_shared<MediaAssetsControllerService>();
+    uint32_t start = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_BUSINESS_CODE_START);
+    uint32_t end = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_BUSINESS_CODE_END);
+    for (uint32_t code = start; code < end; ++code) {
+        MessageParcel data;
+        data.WriteInt32(INT32_MIN);
+        MessageParcel reply;
+        reply.WriteInt32(INT32_MIN);
+        MessageOption option;
+        IPC::IPCContext context(option, E_DOUBLE_CHECK);
+        controller->OnRemoteRequest(code, data, reply, context);
+        IPC::MediaRespVo<IPC::MediaEmptyObjVo> respVo;
+        ASSERT_EQ(respVo.Unmarshalling(reply), true);
+        MEDIA_INFO_LOG("OnRemoteRequest Unmarshalling ErrCode:%{public}d", respVo.GetErrCode());
+        ASSERT_LE(respVo.GetErrCode(), 0);
+    }
+
+    MEDIA_INFO_LOG("OnRemoteRequest_Test_003 end");
+}
 }  // namespace OHOS::Media

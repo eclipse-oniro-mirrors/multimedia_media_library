@@ -17,9 +17,7 @@
 #define MEDIALIBRARY_NOTIFY_MULTISTAGES_OBSERVER_H
 
 #include <vector>
-#include "napi/native_api.h"
 #include "parcel.h"
-#include "uv.h"
 
 #include "camera_character_types.h"
 #include "data_ability_helper.h"

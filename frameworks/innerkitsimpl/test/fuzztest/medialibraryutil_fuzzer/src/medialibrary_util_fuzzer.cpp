@@ -54,6 +54,7 @@
 #include "permission_utils.h"
 #include "photo_file_utils.h"
 #undef private
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -100,7 +101,7 @@ static int32_t InsertAsset(string photoId)
 
 void SetTables()
 {
-    vector<string> createTableSqlList = { Media::PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { Media::PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "g_rdbStore is null.");
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
@@ -311,6 +312,7 @@ static void ActiveAnalysisTest()
     (void)Media::MediaAnalysisHelper::ParseGeoInfo(fileIds, true);
 }
 
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 static void CloudDownloadTest()
 {
     Media::BackgroundCloudFileProcessor::StartTimer();
@@ -318,6 +320,7 @@ static void CloudDownloadTest()
     std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
     Media::BackgroundCloudFileProcessor::StopTimer();
 }
+#endif
 
 static void CpuUtilsTest()
 {
@@ -399,7 +402,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::MultistageAdapterTest();
     OHOS::MultistageTest();
     OHOS::ActiveAnalysisTest();
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     OHOS::CloudDownloadTest();
+#endif
     OHOS::CpuUtilsTest();
     OHOS::CommonUtilsTest();
     OHOS::CloudSyncUtilsTest();

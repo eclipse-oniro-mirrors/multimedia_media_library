@@ -31,6 +31,7 @@
 #include "result_set_utils.h"
 #include "parameter.h"
 #include "parameters.h"
+#include "media_audio_column.h"
 
 namespace OHOS {
 namespace Media {

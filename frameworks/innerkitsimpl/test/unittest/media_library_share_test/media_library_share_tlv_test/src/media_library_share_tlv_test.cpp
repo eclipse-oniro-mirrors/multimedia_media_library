@@ -25,6 +25,7 @@
 #include "tlv_util.h"
 #include <fstream>
 #include <fcntl.h>
+#include "file_ex.h"
 
 using namespace testing::ext;
 using namespace std;
@@ -63,12 +64,11 @@ HWTEST_F(MediaLibraryShareTlvTest, media_library_maptojson_test, TestSize.Level0
     };
     
     std::vector<std::string> columns = {"id", "name", "size", "duration", "width", "height", "format"};
-    std::string outputPath = "/data/test/media_info.json";
+    std::string outputPath = "/data/test/media_info_01.json";
     
     int32_t result = MediaJsonOperation::MapToJsonFile(testMap, columns, outputPath);
     EXPECT_EQ(result, E_OK);
     
-    // 验证生成的JSON文件内容
     std::ifstream inputFile(outputPath);
     ASSERT_TRUE(inputFile.is_open());
     
@@ -85,15 +85,47 @@ HWTEST_F(MediaLibraryShareTlvTest, media_library_maptojson_test, TestSize.Level0
     EXPECT_EQ(jsonData["format"], "mp4");
 }
 
+HWTEST_F(MediaLibraryShareTlvTest, media_library_jsontomap_test_01, TestSize.Level0) {
+    std::unordered_map<std::string, std::variant<int32_t, int64_t, std::string, double>> testMap = {
+        {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, 1001},
+        {PhotoColumn::PHOTO_STORAGE_PATH, "test_media_file"},
+        {PhotoColumn::PHOTO_HIDDEN_TIME, 1024000},
+        {PhotoColumn::PHOTO_LONGITUDE, 120.5},
+    };
+    std::vector<std::string> columns = {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_STORAGE_PATH,
+        PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::PHOTO_LONGITUDE};
+    std::string outputPath = "/data/test/media_info_02.json";
+    int32_t result = MediaJsonOperation::MapToJsonFile(testMap, columns, outputPath);
+    EXPECT_EQ(result, E_OK);
+    NativeRdb::ValuesBucket values = MediaJsonOperation::ReadJsonToValuesBucket(outputPath, columns);
+    EXPECT_TRUE(FileExists(outputPath));
+}
+
+HWTEST_F(MediaLibraryShareTlvTest, media_library_jsontomap_test_02, TestSize.Level0) {
+    std::unordered_map<std::string, std::variant<int32_t, int64_t, std::string, double>> testMap = {
+        {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, "test_media_file"},
+        {PhotoColumn::PHOTO_STORAGE_PATH, 789},
+        {PhotoColumn::PHOTO_HIDDEN_TIME, "test_media_file"},
+        {PhotoColumn::PHOTO_LONGITUDE, 1},
+    };
+    std::vector<std::string> columns = {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_STORAGE_PATH,
+        PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::PHOTO_LONGITUDE};
+    std::string outputPath = "/data/test/media_info_03.json";
+    int32_t result = MediaJsonOperation::MapToJsonFile(testMap, columns, outputPath);
+    EXPECT_EQ(result, E_OK);
+    NativeRdb::ValuesBucket values = MediaJsonOperation::ReadJsonToValuesBucket(outputPath, columns);
+    EXPECT_TRUE(FileExists(outputPath));
+}
+
 void GenerateTlvFile(std::string &tlvFilePath)
 {
-    tlvFilePath = "/data/local/tmp/assets_share_resources/assets_share/xsl/origin_file";
+    tlvFilePath = "/data/local/tmp/assets_share_resources/assets_share/test_share/origin_file";
     std::string editDataPath = "/data/local/tmp/assets_share_resources/assets_share/editdata";
     std::string editdataCameraPath = "/data/local/tmp/assets_share_resources/assets_share/editdata_camera";
     std::string srcFilePath = "/data/local/tmp/assets_share_resources/assets_share/CreateImageLcdTest_001.jpg";
     std::string sourceBackPath = "/data/local/tmp/assets_share_resources/assets_share/HasHdrHasRotate.jpg";
     std::string sourcePath = "/data/local/tmp/assets_share_resources/assets_share/HasHdrNoRotate.jpg";
-    std::string jsonPath = "/data/test/media_info.json";
+    std::string jsonPath = "/data/test/media_info_01.json";
     std::filesystem::remove_all(tlvFilePath);
     std::filesystem::create_directories(std::filesystem::path(tlvFilePath).parent_path());
     std::string realSrcFilePath;
@@ -134,9 +166,41 @@ void GenerateTlvFile(std::string &tlvFilePath)
     close(sourceFd);
 }
 
-HWTEST_F(MediaLibraryShareTlvTest, media_library_WriteFileToTlv_test, TestSize.Level0)
+void GenerateTlvFiles(std::string &tlvFilePath)
 {
-    std::string destDir = "/data/local/tmp/assets_share_resources/assets_share/xsl/extracted";
+    tlvFilePath = "/data/local/tmp/assets_share_resources/assets_share/test_share/origin_file_01";
+    std::string movingPhotoVideoSourceBackPath = "/data/local/tmp/assets_share_resources/assets_share/sourceBack";
+    std::string movingPhotoVideoSourcePath = "/data/local/tmp/assets_share_resources/assets_share/source";
+    std::filesystem::remove_all(tlvFilePath);
+    std::filesystem::create_directories(std::filesystem::path(tlvFilePath).parent_path());
+    TlvFile tlvFile = TlvUtil::CreateTlvFile(tlvFilePath);
+    ASSERT_GT(tlvFile, 0);
+    UniqueFd tlvFd(tlvFile);
+    auto movingPhotoVideoSourceBackFd = open(movingPhotoVideoSourceBackPath.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_GT(movingPhotoVideoSourceBackFd, 0) << "Failed to open movingPhotoVideoSourceBack";
+    const char* data1 = "{this is movingPhotoVideoSourceBack data}";
+    ssize_t writeRet = write(movingPhotoVideoSourceBackFd, data1, strlen(data1));
+    EXPECT_NE(writeRet, -1) << "Failed to write to movingPhotoVideoSourceBack";
+    lseek(movingPhotoVideoSourceBackFd, 0, SEEK_SET);
+    auto ret = TlvUtil::WriteMovingPhotoVideoSourceBackFileToTlv(tlvFile, movingPhotoVideoSourceBackFd);
+    EXPECT_EQ(ret, 0) << "Failed to write movingPhotoVideoSourceBack data to TLV";
+    close(movingPhotoVideoSourceBackFd);
+    auto movingPhotoVideoSourceFd = open(movingPhotoVideoSourcePath.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+    ASSERT_GT(movingPhotoVideoSourceFd, 0) << "Failed to open movingPhotoVideoSource";
+    const char* data2 = "{this is movingPhotoVideoSource data}";
+    writeRet = write(movingPhotoVideoSourceFd, data2, strlen(data2));
+    EXPECT_NE(writeRet, -1) << "Failed to write to movingPhotoVideoSource";
+    lseek(movingPhotoVideoSourceFd, 0, SEEK_SET);
+    ret = TlvUtil::WriteMovingPhotoVideoSourceFileToTlv(tlvFile, movingPhotoVideoSourceFd);
+    EXPECT_EQ(ret, 0) << "Failed to movingPhotoVideoSource data to TLV";
+    close(movingPhotoVideoSourceFd);
+    ret = TlvUtil::UpdateTlvHeadSize(tlvFile);
+    EXPECT_EQ(ret, 0) << "Failed to update TLV head size";
+}
+
+HWTEST_F(MediaLibraryShareTlvTest, media_library_WriteFileToTlv_test_001, TestSize.Level0)
+{
+    std::string destDir = "/data/local/tmp/assets_share_resources/assets_share/test_share/extracted";
     std::string editdataCameraPath = "/data/local/tmp/assets_share_resources/assets_share/editdata_camera";
     auto editdataCameraFd = open(editdataCameraPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
     ASSERT_GT(editdataCameraFd, 0) << "Failed to create editdata_camera file";
@@ -171,6 +235,41 @@ HWTEST_F(MediaLibraryShareTlvTest, media_library_WriteFileToTlv_test, TestSize.L
             EXPECT_GT(size, 0) << "Extracted file is empty: " << filePath;
         }
     }
+}
+
+HWTEST_F(MediaLibraryShareTlvTest, media_library_WriteFileToTlv_test_002, TestSize.Level0)
+{
+    std::string destDir = "/data/local/tmp/assets_share_resources/assets_share/test_share/extracted";
+    std::string tlvFilePath = "";
+    GenerateTlvFiles(tlvFilePath);
+    int32_t ret = TlvUtil::ValidateTlvFile(tlvFilePath);
+    EXPECT_EQ(ret, 0) << "TLV file validation failed";
+    ASSERT_TRUE(std::filesystem::exists(tlvFilePath)) << "TLV file does not exist";
+    ASSERT_GT(std::filesystem::file_size(tlvFilePath), 0) << "TLV file is empty";
+    std::filesystem::remove_all(destDir);
+    std::filesystem::create_directories(destDir);
+    std::unordered_map<TlvTag, std::string> extractedFiles;
+    ret = TlvUtil::ExtractTlv(tlvFilePath, destDir, extractedFiles);
+    EXPECT_EQ(ret, 0) << "Failed to extract TLV file";
+}
+
+HWTEST_F(MediaLibraryShareTlvTest, media_library_WriteFileToTlv_test_003, TestSize.Level0)
+{
+    std::string tlvFilePath = "/data/local/tmp/assets_share_resources/assets_share/test_share/origin_file_02";
+    TlvFile tlvFile = TlvUtil::CreateTlvFile(tlvFilePath);
+    ASSERT_GT(tlvFile, 0);
+    UniqueFd tlvFd(tlvFile);
+    TlvLength dataLength = 100;
+    auto ret = TlvUtil::SkipUnknownField(tlvFile, dataLength);
+    EXPECT_EQ(ret, 0);
+}
+
+HWTEST_F(MediaLibraryShareTlvTest, media_library_WriteFileToTlv_test_004, TestSize.Level0)
+{
+    int invalidFd = -1;
+    TlvLength dataLength = 100;
+    auto ret = TlvUtil::SkipUnknownField(invalidFd, dataLength);
+    EXPECT_EQ(ret, E_ERR);
 }
 } // namespace Media
 } // namespace OHOS

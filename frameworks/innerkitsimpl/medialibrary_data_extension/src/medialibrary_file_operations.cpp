@@ -35,6 +35,7 @@
 #include "native_album_asset.h"
 #include "rdb_utils.h"
 #include "userfilemgr_uri.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;

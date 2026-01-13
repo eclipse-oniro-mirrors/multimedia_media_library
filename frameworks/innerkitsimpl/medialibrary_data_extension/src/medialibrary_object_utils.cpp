@@ -42,6 +42,7 @@
 #include "userfilemgr_uri.h"
 #include "dfx_utils.h"
 #include "medialibrary_transcode_data_aging_operation.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;

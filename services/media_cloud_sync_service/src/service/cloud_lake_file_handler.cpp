@@ -53,15 +53,15 @@ typedef struct {
 static int32_t QueryLakeData(int32_t fileId, LakeData &data)
 {
     const vector<string> columns = {
-        PhotoColumn::MEDIA_ID,
-        PhotoColumn::MEDIA_FILE_PATH,
-        PhotoColumn::PHOTO_STORAGE_PATH,
-        PhotoColumn::MEDIA_NAME,
-        PhotoColumn::MEDIA_DATE_TRASHED,
-        PhotoColumn::MEDIA_HIDDEN,
-        PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
-        PhotoColumn::PHOTO_OWNER_ALBUM_ID,
-        PhotoAlbumColumns::ALBUM_LPATH,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_ID,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_FILE_PATH,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_STORAGE_PATH,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_NAME,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_DATE_TRASHED,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_HIDDEN,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_OWNER_ALBUM_ID,
+        PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_LPATH,
     };
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     vector<string> onClause = { PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_OWNER_ALBUM_ID + " = " +

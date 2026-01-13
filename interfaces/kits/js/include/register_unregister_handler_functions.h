@@ -32,7 +32,7 @@ struct UnregisterContext {
     napi_env env;
     napi_ref cbRef;
     Notification::NotifyUriType uriType;
-    std::string uriStr;
+    std::string singleId;
     std::shared_ptr<MediaOnNotifyNewObserver> observer;
     GlobalObserverMap* observersMap;
     ChangeListenerNapi& listObj;
@@ -41,17 +41,16 @@ struct UnregisterContext {
     std::string registerUri;
     GlobalObserverMap::iterator outerIter;
 
-    UnregisterContext(napi_env env, Notification::NotifyUriType uriType, const std::string& uriStr,
+    UnregisterContext(napi_env env, Notification::NotifyUriType uriType, const std::string& singleId,
                      ChangeListenerNapi& listObj)
-        : env(env), cbRef(nullptr), uriType(uriType), uriStr(uriStr), observer(nullptr),
+        : env(env), cbRef(nullptr), uriType(uriType), singleId(singleId), observer(nullptr),
         observersMap(nullptr), listObj(listObj), argCount(0),
         registerUriType(Notification::NotifyUriType::INVALID) {}
 };
 
 class RegisterUnregisterHandlerFunctions {
 public:
-    static bool checkSingleRegisterCount(ChangeListenerNapi &listObj, const Notification::NotifyUriType uriType);
-    static std::string NapiGetUriFromAsset(const FileAssetNapi *obj);
+    static bool CheckSingleRegisterCount(ChangeListenerNapi &listObj, const Notification::NotifyUriType uriType);
     static void SyncUpdateNormalListener(ChangeListenerNapi &listObj,
         Notification::NotifyUriType &registerUriType, shared_ptr<MediaOnNotifyNewObserver> &observer);
     static void SyncUpdateSingleListener(ChangeListenerNapi &listObj,
@@ -60,7 +59,7 @@ public:
         unique_ptr<MediaLibraryAsyncContext> &context);
     static napi_value CheckSingleUnregisterCallbackArgs(napi_env env, napi_callback_info info,
         unique_ptr<MediaLibraryAsyncContext> &context);
-    static int32_t HandleSingleUriScenario(UnregisterContext& singleContext,
+    static int32_t HandleSingleIdScenario(UnregisterContext& singleContext,
         const std::unique_ptr<MediaLibraryAsyncContext>& context);
 };
 } // namespace Media

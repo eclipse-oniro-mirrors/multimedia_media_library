@@ -33,6 +33,16 @@ public:
         int32_t subType;
         std::string filePath;
         int32_t hdrMode;
+        int64_t dateTaken{0};
+        std::string detailTime;
+        std::string dateYear;
+        std::string dateMonth;
+        std::string dateDay;
+        int32_t mediaType{0};
+        int32_t height{0};
+        int32_t width{0};
+        double aspectRatio{-2};
+        int32_t exifRotate{0};
 
     public:
         std::string ToString() const;

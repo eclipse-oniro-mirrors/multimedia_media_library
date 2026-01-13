@@ -33,6 +33,7 @@
 #include "photo_map_column.h"
 #include "medialibrary_kvstore_manager.h"
 #include "hi_audit.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -449,19 +450,6 @@ static void UpdateLocalAlbumMapFuzzer()
     cloudMediaPhotosDao->UpdateLocalAlbumMap(cloudId);
 }
 
-static void DeleteSameNamePhotoFuzzer()
-{
-    if (cloudMediaPhotosDao == nullptr) {
-        MEDIA_ERR_LOG("cloudMediaPhotosDao is nullptr");
-        return;
-    }
-    PhotosDto photo;
-    photo.fileId = provider->ConsumeIntegral<uint32_t>() & 0xf;
-    std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
-    InsertPhotoAsset(cloudId);
-    cloudMediaPhotosDao->DeleteSameNamePhoto(photo);
-}
-
 static void GetSameNamePhotoCountFuzzer()
 {
     if (cloudMediaPhotosDao == nullptr) {
@@ -692,7 +680,6 @@ static void MediaLibraryCloudMediaPhotosDaoFuzzer()
     GetDeletedRecordsAssetFuzzer();
     GetPhotoLocalInfoFuzzer();
     UpdateLocalAlbumMapFuzzer();
-    DeleteSameNamePhotoFuzzer();
     GetSameNamePhotoCountFuzzer();
 
     UpdatePhotoCreatedRecordFuzzer();
@@ -715,7 +702,7 @@ static void MediaLibraryCloudMediaPhotosDaoFuzzer()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
         PhotoMap::CREATE_TABLE,
     };

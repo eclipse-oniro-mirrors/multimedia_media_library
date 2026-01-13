@@ -1290,7 +1290,12 @@ static void JSRecoverAssetExecute(napi_env env, void *data)
     Uri recoverAssetUri(recoverUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(SMARTALBUMMAP_DB_ALBUM_ID, context->objectPtr->GetAlbumId());
-    valuesBucket.Put(SMARTALBUMMAP_DB_CHILD_ASSET_ID, stoi(MediaLibraryNapiUtils::GetFileIdFromUri(context->uri)));
+    string fileId = MediaLibraryNapiUtils::GetFileIdFromUri(context->uri);
+    if (!MediaFileUtils::IsValidInteger(fileId)) {
+        context->SaveError(E_FAIL);
+        return;
+    }
+    valuesBucket.Put(SMARTALBUMMAP_DB_CHILD_ASSET_ID, stoi(fileId));
     int retVal = UserFileClient::Insert(recoverAssetUri, valuesBucket);
     context->SaveError(retVal);
 }

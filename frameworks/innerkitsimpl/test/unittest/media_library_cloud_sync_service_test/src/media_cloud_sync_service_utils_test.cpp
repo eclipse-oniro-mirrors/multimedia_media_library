@@ -679,16 +679,4 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, CanUpdateExifRotateOnly_Test, TestSize.
     int32_t ret = CloudMediaSyncUtils::CanUpdateExifRotateOnly(mediaType, oldExifRotate, newExifRotate);
     EXPECT_EQ(ret, false);
 }
-
-HWTEST_F(CloudMediaSyncServiceUtilsTest, GetExifRotate_Test, TestSize.Level1)
-{
-    int32_t mediaType = static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE);
-    string path;
-    int32_t exifRotate = CloudMediaSyncUtils::GetExifRotate(mediaType, path);
-    EXPECT_EQ(exifRotate, 1);
-    mediaType = MediaType::MEDIA_TYPE_VIDEO;
-    exifRotate = CloudMediaSyncUtils::GetExifRotate(mediaType, path);
-    EXPECT_EQ(exifRotate, 1);
-}
-
 }

@@ -31,6 +31,7 @@
 #include "rdb_predicates.h"
 #include "result_set_utils.h"
 #include "medialibrary_unistore_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -47,7 +48,7 @@ const std::string URI_ORDER_ALBUM = MEDIALIBRARY_DATA_URI + "/" + PHOTO_ALBUM_OP
 constexpr int32_t WAIT_TIME = 3;
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
 };
 

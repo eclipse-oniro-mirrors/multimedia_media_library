@@ -21,6 +21,7 @@
 #include "medialibrary_common_utils.h"
 #include "medialibrary_db_const.h"
 #include "photo_album_column.h"
+#include "media_audio_column.h"
 
 using namespace std;
 

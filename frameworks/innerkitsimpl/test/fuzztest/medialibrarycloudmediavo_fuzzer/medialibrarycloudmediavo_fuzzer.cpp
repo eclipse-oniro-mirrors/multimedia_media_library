@@ -25,7 +25,6 @@
 #include "cloud_mdkrecord_photos_vo.h"
 #include "failed_size_resp_vo.h"
 #include "get_aging_file_vo.h"
-#include "get_check_records_album_vo.h"
 #include "get_check_records_vo.h"
 #include "get_cloud_thm_stat_vo.h"
 #include "get_dirty_type_stat_vo.h"
@@ -172,37 +171,6 @@ static void GetAgingFileVoFuzzer()
     getAgingFileRespBody->Unmarshalling(parcel);
     getAgingFileRespBody->Marshalling(parcel);
     getAgingFileRespBody->ToString();
-}
-
-static void GetCheckRecordsAlbumVoFuzzer()
-{
-    MessageParcel parcel;
-    shared_ptr<GetCheckRecordAlbumData> getCheckRecordAlbumData = make_shared<GetCheckRecordAlbumData>();
-    CHECK_AND_RETURN_LOG(getCheckRecordAlbumData != nullptr, "getCheckRecordAlbumData is nullptr");
-    getCheckRecordAlbumData->Marshalling(parcel);
-    getCheckRecordAlbumData->Unmarshalling(parcel);
-    getCheckRecordAlbumData->ToString();
-
-    string clouId = provider->ConsumeBytesAsString(LEN);
-    shared_ptr<GetCheckRecordsAlbumReqBody> getCheckRecordsAlbumReqBody = make_shared<GetCheckRecordsAlbumReqBody>();
-    CHECK_AND_RETURN_LOG(getCheckRecordsAlbumReqBody != nullptr, "getCheckRecordsAlbumReqBody is nullptr");
-    getCheckRecordsAlbumReqBody->AddCheckAlbumsRecords(clouId);
-    getCheckRecordsAlbumReqBody->Marshalling(parcel);
-    getCheckRecordsAlbumReqBody->Unmarshalling(parcel);
-    getCheckRecordsAlbumReqBody->ToString();
-
-    shared_ptr<CheckDataAlbum> checkDataAlbum = make_shared<CheckDataAlbum>();
-    CHECK_AND_RETURN_LOG(checkDataAlbum != nullptr, "checkDataAlbum is nullptr");
-    checkDataAlbum->Marshalling(parcel);
-    checkDataAlbum->Unmarshalling(parcel);
-    checkDataAlbum->ToString();
-
-    shared_ptr<GetCheckRecordsAlbumRespBody> getCheckRecordsAlbumRespBody =
-        make_shared<GetCheckRecordsAlbumRespBody>();
-    CHECK_AND_RETURN_LOG(getCheckRecordsAlbumRespBody != nullptr, "getCheckRecordsAlbumRespBody is nullptr");
-    getCheckRecordsAlbumRespBody->Marshalling(parcel);
-    getCheckRecordsAlbumRespBody->Unmarshalling(parcel);
-    getCheckRecordsAlbumRespBody->ToString();
 }
 
 static void GetCheckRecordsVoFuzzer()
@@ -743,7 +711,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::CloudMdkrecordPhotosVoFuzzer();
     OHOS::FailedSizeRespVoFuzzer();
     OHOS::GetAgingFileVoFuzzer();
-    OHOS::GetCheckRecordsAlbumVoFuzzer();
     OHOS::GetCheckRecordsVoFuzzer();
     OHOS::GetCloudThmStatVoFuzzer();
     OHOS::GetDirtyTypeStatVoFuzzer();

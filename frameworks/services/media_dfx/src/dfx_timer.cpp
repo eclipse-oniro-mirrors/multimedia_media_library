@@ -74,7 +74,6 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(CloudSync::CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS), 200},
     {static_cast<uint32_t>(CloudSync::CloudMediaAlbumOperationCode::CMD_GET_META_MODIFIED_RECORDS), 200},
     {static_cast<uint32_t>(CloudSync::CloudMediaAlbumOperationCode::CMD_GET_DELETED_RECORDS), 200},
-    {static_cast<uint32_t>(CloudSync::CloudMediaAlbumOperationCode::CMD_GET_CHECK_RECORDS), 200},
     {static_cast<uint32_t>(CloudSync::CloudMediaAlbumOperationCode::CMD_ON_CREATE_RECORDS), 200},
     {static_cast<uint32_t>(CloudSync::CloudMediaAlbumOperationCode::CMD_ON_MDIRTY_RECORDS), 200},
     {static_cast<uint32_t>(CloudSync::CloudMediaAlbumOperationCode::CMD_ON_FDIRTY_RECORDS), 200},
@@ -171,6 +170,7 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_START_ASSET_ANALYSIS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_REQUEST_CONTENT), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_MOVING_PHOTO), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_CINEMATIC_VIDEO), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_PHOTO_STATUS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::DELETE_HIGH_LIGHT_ALBUMS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ALBUM), 200},
@@ -221,6 +221,8 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_NOTIFY_ASSET_SENDED), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSET_COMPRESS_VERSION), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SMART_MOVE_ASSETS), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_COMPRESS_ASSET_SIZE), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_CREATE_ANALYSIS_ALBUM), 200},
 };
 
 int64_t DfxTimer::GetOperationCodeTimeout(uint32_t operationCode)

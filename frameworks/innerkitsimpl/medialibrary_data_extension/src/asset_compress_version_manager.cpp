@@ -41,7 +41,6 @@ const EditedDataColumn BASE_EDITED_DATA_COLUMNS = {
     PhotoColumn::PHOTO_IS_RECTIFICATION_COVER,
     PhotoColumn::SUPPORTED_WATERMARK_TYPE,
     PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
-    // supported_deferred_effect
 };
 
 const EditedDataFileList BASE_EDITED_DATA_FILES = {
@@ -50,8 +49,6 @@ const EditedDataFileList BASE_EDITED_DATA_FILES = {
 };
 } // namespace CompressVersion
 
-std::mutex AssetCompressVersionManager::cacheSpecsMutex_;
-std::unordered_map<VersionNumber, AssetCompressSpec> AssetCompressVersionManager::cacheSpecs_ = {};
 const std::unordered_map<VersionNumber, AssetCompressSpec> AssetCompressVersionManager::atomicSpecs_ = {
     {
         CompressVersion::BASE,
@@ -69,11 +66,6 @@ int32_t AssetCompressVersionManager::GetAssetCompressVersion()
 AssetCompressSpec AssetCompressVersionManager::GetAssetCompressSpec(int32_t version)
 {
     MEDIA_DEBUG_LOG("GetAssetCompressSpec version: %{public}d", version);
-    {
-        std::lock_guard<std::mutex> lock(cacheSpecsMutex_);
-        CHECK_AND_RETURN_RET_LOG(cacheSpecs_.find(version) == cacheSpecs_.end(), cacheSpecs_[version],
-            "GetAssetCompressSpec from cache, version: %{public}d", version);
-    }
     AssetCompressSpec combinedSpec = {};
     for (const auto& iter : atomicSpecs_) {
         VersionNumber atomicVersion = iter.first;
@@ -85,17 +77,7 @@ AssetCompressSpec AssetCompressVersionManager::GetAssetCompressSpec(int32_t vers
                 atomicSpec.editedDataFiles.begin(), atomicSpec.editedDataFiles.end());
         }
     }
-    {
-        std::lock_guard<std::mutex> lock(cacheSpecsMutex_);
-        cacheSpecs_[version] = combinedSpec;
-    }
     return combinedSpec;
-}
-
-void AssetCompressVersionManager::ClearCache()
-{
-    std::lock_guard<std::mutex> lock(cacheSpecsMutex_);
-    cacheSpecs_.clear();
 }
 
 int32_t AssetCompressVersionManager::GetCompatibleCompressVersion(int32_t version)
@@ -106,9 +88,9 @@ int32_t AssetCompressVersionManager::GetCompatibleCompressVersion(int32_t versio
             version, CompressVersion::CURRENT_COMPRESS_VERSION);
         return CompressVersion::CURRENT_COMPRESS_VERSION;
     }
-    int32_t compatibaleVersion = version & CompressVersion::CURRENT_COMPRESS_VERSION;
-    MEDIA_INFO_LOG("GetCompatibleCompressVersion compatibal version: %{public}d", compatibaleVersion);
-    return compatibaleVersion;
+    int32_t compatibleVersion = version & CompressVersion::CURRENT_COMPRESS_VERSION;
+    MEDIA_INFO_LOG("GetCompatibleCompressVersion compatible version: %{public}d", compatibleVersion);
+    return compatibleVersion;
 }
 } // namespace Media
 } // namespace OHOS

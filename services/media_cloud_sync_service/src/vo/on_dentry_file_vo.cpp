@@ -93,13 +93,13 @@ bool OnDentryFileReqBody::SplitBy20K(std::vector<OnDentryFileReqBody> &reqBodyLi
     const size_t parcelGap = 4800;
     const size_t parcelCapacity = 204800 - parcelGap;
     size_t parcelSize = 0;
-    int32_t currIndex = 0;
-    while (currIndex < static_cast<int32_t>(this->records.size())) {
+    size_t currIndex = 0;
+    while (currIndex < this->records.size()) {
         MessageParcel data;
-        int32_t index = 0;
+        size_t index = 0;
         OnDentryFileReqBody reqBody;
         std::vector<OnFetchPhotosVo> &childList = reqBody.records;
-        for (index = currIndex; index < static_cast<int32_t>(this->records.size()); index++) {
+        for (index = currIndex; index < this->records.size(); index++) {
             this->records[index].Marshalling(data);
             parcelSize = data.GetDataSize();
             CHECK_AND_BREAK_INFO_LOG(parcelSize <= parcelCapacity,
@@ -110,7 +110,7 @@ bool OnDentryFileReqBody::SplitBy20K(std::vector<OnDentryFileReqBody> &reqBodyLi
         }
         CHECK_AND_BREAK_ERR_LOG(!childList.empty(),
             "dead loop detected, "
-            "currIndex: %{public}d, index: %{public}d",
+            "currIndex: %{public}zu, index: %{public}zu",
             currIndex,
             index);
         currIndex = index;

@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -36,6 +37,7 @@
 #include "result_set_utils.h"
 #include "media_file_uri.h"
 #include "vision_db_sqls_more.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -56,7 +58,7 @@ static const string SQL_INSERT_PHOTO =
 static const string VALUES_END = ") ";
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
 };
@@ -106,7 +108,7 @@ static int32_t GetFaceId(int32_t albumId, int32_t albumSubType, string &groupTag
     }
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetFaceId(data, reply);
 
     IPC::MediaRespVo<GetFaceIdRespBody> respVo;

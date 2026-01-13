@@ -22,6 +22,7 @@
 #include "vision_album_column.h"
 #include "vision_column.h"
 #include "vision_photo_map_column.h"
+#include "media_upgrade.h"
  
 namespace OHOS {
 namespace Media {
@@ -53,20 +54,20 @@ const std::string COVER_URI_VALUE_UPDATE =
     PhotoColumn::PHOTOS_TABLE +
     " WHERE " +
     MediaColumn::MEDIA_PACKAGE_NAME + " = OLD." + MediaColumn::MEDIA_PACKAGE_NAME + " AND " +
-    PhotoColumn::PHOTOS_QUERY_FILTER + " ORDER BY " +
+    PhotoUpgrade::PHOTOS_QUERY_FILTER + " ORDER BY " +
     MediaColumn::MEDIA_DATE_MODIFIED + " DESC LIMIT 1 ) ) )";
 
 const std::string COUNT_VALUE_INSERT =
     " (SELECT COUNT(1) FROM " + PhotoColumn::PHOTOS_TABLE +
     " WHERE " +
     MediaColumn::MEDIA_PACKAGE_NAME + " = NEW." + MediaColumn::MEDIA_PACKAGE_NAME + " AND " +
-    PhotoColumn::PHOTOS_QUERY_FILTER + " )";
+    PhotoUpgrade::PHOTOS_QUERY_FILTER + " )";
 
 const std::string COUNT_VALUE_UPDATE =
     " (SELECT COUNT(1) FROM " + PhotoColumn::PHOTOS_TABLE +
     " WHERE " +
     MediaColumn::MEDIA_PACKAGE_NAME + " = OLD." + MediaColumn::MEDIA_PACKAGE_NAME + " AND " +
-    PhotoColumn::PHOTOS_QUERY_FILTER + " )";
+    PhotoUpgrade::PHOTOS_QUERY_FILTER + " )";
 
 const std::string INSERT_PHOTO_MAP =
     " INSERT INTO " + PhotoMap::TABLE +

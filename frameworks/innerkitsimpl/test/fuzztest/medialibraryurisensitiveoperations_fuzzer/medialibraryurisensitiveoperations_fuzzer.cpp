@@ -41,6 +41,7 @@
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
 #include "medialibrary_kvstore_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -184,7 +185,7 @@ static void UriSensitiveOperationsFuzzer()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
         Media::AppUriPermissionColumn::CREATE_APP_URI_PERMISSION_TABLE,
         Media::AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE,
     };

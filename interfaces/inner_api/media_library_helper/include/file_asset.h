@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <variant>
 #include <unordered_map>
@@ -277,10 +278,17 @@ public:
     EXPORT void SetExifRotate(int32_t exifRotate);
     EXPORT int32_t GetExifRotate() const;
 
+    // Safe Album: critical type for children's watch
+    EXPORT void SetCritical(int32_t IsCritical);
+    EXPORT int32_t GetCritical() const;
+    EXPORT void SetRiskStatus(int32_t photoRiskStatus);
+    EXPORT int32_t GetRiskStatus() const;
+
 private:
     int32_t userId_ = -1;
     std::string albumUri_;
     ResultNapiType resultNapiType_;
+    mutable std::shared_mutex memberMapMutex_;
     std::unordered_map<std::string, std::variant<int32_t, int64_t, std::string, double>> member_;
     std::mutex openStatusMapMutex_;
     std::shared_ptr<std::unordered_map<int32_t, int32_t>> openStatusMap_;

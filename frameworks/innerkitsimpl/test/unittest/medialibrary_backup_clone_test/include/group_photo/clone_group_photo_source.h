@@ -26,6 +26,7 @@
 #include "vision_column.h"
 #include "vision_photo_map_column.h"
 #include "photo_map_column.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -37,7 +38,7 @@ enum class InsertType {
 const std::string INSERT_ANALYSIS_PHOTO_MAP = "INSERT INTO " + ANALYSIS_PHOTO_MAP_TABLE + "(" + MAP_ALBUM + ", " +
     MAP_ASSET + ", " + ORDER_POSITION + ")";
 const unordered_map<string, string> TABLE_CREATE_MAP = {
-    { PhotoColumn::PHOTOS_TABLE, PhotoColumn::CREATE_PHOTO_TABLE },
+    { PhotoColumn::PHOTOS_TABLE, PhotoUpgrade::CREATE_PHOTO_TABLE },
     { ANALYSIS_ALBUM_TABLE, CREATE_ANALYSIS_ALBUM_FOR_ONCREATE },
     { ANALYSIS_PHOTO_MAP_TABLE, CREATE_ANALYSIS_ALBUM_MAP },
 };

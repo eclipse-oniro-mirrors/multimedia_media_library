@@ -120,7 +120,7 @@ private:
         SELECT file_id, size, date_modified, mime_type, media_type, inode, storage_path, file_source_type, \
         owner_album_id, owner_package, package_name, date_taken, data \
         FROM Photos \
-        WHERE storage_path = ? AND \
+        WHERE LOWER(storage_path) = LOWER(?) AND \
         (file_source_type = ? OR (file_source_type = ? AND position IN (?, ?) AND date_trashed = ? AND hidden = ?)) \
         LIMIT 1;";
 };

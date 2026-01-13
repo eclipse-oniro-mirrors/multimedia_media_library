@@ -38,6 +38,7 @@
 #include "parameter_utils.h"
 #include "form_info_vo.h"
 #include "form_map.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -112,7 +113,7 @@ static void SetAllTestTables()
 {
     vector<string> createTableSqlList = {
         FormMap::CREATE_FORM_MAP_TABLE,
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_FACARD_TABLE_SQL
     };
     for (auto &createTableSql : createTableSqlList) {

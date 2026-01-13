@@ -61,6 +61,10 @@ private:
     bool GetAlbumInfo(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data);
     bool GetAttributesHashMap(const PhotosPo &record, CloudMdkRecordPhotosVo &photosVo);
     bool GetAttributesHashMap(const OnFetchPhotosVo &photosVo, CloudMediaPullDataDto &data);
+    bool HandleUserComment(const PhotosPo &record, CloudMdkRecordPhotosVo &photosVo);
+
+private:
+    static constexpr int32_t USER_COMMENT_LIMIT_SIZE = 1024;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTO_CONTROLLER_PROCESSOR_H

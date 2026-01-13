@@ -364,6 +364,9 @@ void DfxReporter::ReportAdaptationToMovingPhoto()
     int32_t unadaptedAppNum = prefs->GetInt(MOVING_PHOTO_KEY_UNADAPTED_NUM);
     int32_t adaptedAppNum = prefs->GetInt(MOVING_PHOTO_KEY_ADAPTED_NUM);
 
+    prefs->Clear();
+    prefs->FlushSync();
+
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_MOVING_PHOTO_ADAPT",
@@ -373,6 +376,49 @@ void DfxReporter::ReportAdaptationToMovingPhoto()
         "UNADAPTED_APP_PACKAGE", unadaptedAppPackages,
         "ADAPTED_APP_NUM", adaptedAppNum,
         "ADAPTED_APP_PACKAGE", adaptedAppPackages);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("Report adaptation to moving photo error:%{public}d", ret);
+    }
+
+    prefs->Clear();
+    prefs->FlushSync();
+}
+
+void DfxReporter::ReportCinematicVideo()
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(DFX_CINEMATIC_VIDEO_XML, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
+
+    string date = DfxUtils::GetCurrentDate();
+    int32_t lowQualityAccessTimes = prefs->GetInt(CINEMATIC_VIDEO_KEY_LOW_QUALITY_ACCESS_TIMES);
+    int32_t highQualityAccessTimes = prefs->GetInt(CINEMATIC_VIDEO_KEY_HIGH_QUALITY_ACCESS_TIMES);
+    int32_t lowQualityUriAccessTimes = prefs->GetInt(CINEMATIC_VIDEO_KEY_LOW_QUALITY_URI_ACCESS_TIMES);
+    int32_t highQualityUriAccessTimes = prefs->GetInt(CINEMATIC_VIDEO_KEY_HIGH_QUALITY_URI_ACCESS_TIMES);
+    int32_t cancelNum = prefs->GetInt(CINEMATIC_VIDEO_KEY_CANCEL_NUM);
+    int32_t cancelWaitAvgTime = prefs->GetInt(CINEMATIC_VIDEO_KEY_CANCEL_WAIT_AVG_TIME);
+    int32_t processAvgTime = prefs->GetInt(CINEMATIC_VIDEO_PROCESS_AVG_TIME);
+    int32_t multistageSuccessTime = prefs->GetInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_SUCCESS_TIMES);
+    int32_t multistageFailedTime = prefs->GetInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_FAILED_TIMES);
+
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "CINEMATIC_VIDEO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "DATE", date,
+        "LOW_QUALITY_ACCESS_TIMES", lowQualityAccessTimes,
+        "HIGH_QUALITY_ACCESS_TIMES", highQualityAccessTimes,
+        "LOW_QUALITY_ACCESS_URI_TIMES", lowQualityUriAccessTimes,
+        "HIGH_QUALITY_ACCESS_URI_TIMES", highQualityUriAccessTimes,
+        "CANCEL_NUM", cancelNum,
+        "CANCEL_WAIT_AVG_TIME", cancelWaitAvgTime,
+        "PROCESS_AVG_TIME", processAvgTime,
+        "MULTISTAGE_SUCCESS_TIMES", multistageSuccessTime,
+        "MULTISTAGE_FAILED_TIMES", multistageFailedTime);
     if (ret != 0) {
         MEDIA_ERR_LOG("Report adaptation to moving photo error:%{public}d", ret);
     }
@@ -863,6 +909,18 @@ int32_t DfxReporter::ReportAncoCountFormatInfo(const AncoCountFormatInfo& report
     }
     return ret;
 }
- 
+
+int32_t DfxReporter::ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info)
+{
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_THM_INODE_CLEAN_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "RESULT", info.result,
+        "IS_CONFIG_XATTR", info.isConfigXattr,
+        "XATTR_INFO", info.xattrInfo);
+    CHECK_AND_RETURN_RET_LOG(ret == 0, ret, "ReportThmInodeCleanInfo error:%{public}d", ret);
+    return ret;
+}
 } // namespace Media
 } // namespace OHOS

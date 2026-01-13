@@ -43,6 +43,7 @@
 #include "query_cloud_enhancement_task_state_dto.h"
 #include "query_photo_vo.h"
 #include "adapted_vo.h"
+#include "log_cinematic_access_vo.h"
 #include "convert_format_dto.h"
 #include "create_tmp_compatible_dup_dto.h"
 #include "check_photo_uri_permission_inner_dto.h"
@@ -60,8 +61,6 @@
 #include "request_edit_data_vo.h"
 #include "get_edit_data_dto.h"
 #include "get_edit_data_vo.h"
-#include "start_asset_analysis_dto.h"
-#include "start_asset_analysis_vo.h"
 #include "start_asset_change_scan_dto.h"
 #include "get_cloud_enhancement_pair_dto.h"
 #include "get_cloud_enhancement_pair_vo.h"
@@ -77,6 +76,7 @@
 #include "get_batch_download_cloud_resources_count_vo.h"
 #include "acquire_debug_database_vo.h"
 #include "get_fussion_assets_vo.h"
+#include "get_compress_asset_size_vo.h"
 #include "open_asset_compress_vo.h"
 #include "open_asset_compress_dto.h"
 
@@ -115,7 +115,6 @@ public:
     std::shared_ptr<DataShare::DataShareResultSet> GetAssets(GetAssetsDto &dto);
     std::shared_ptr<DataShare::DataShareResultSet> GetAllDuplicateAssets(GetAssetsDto &dto);
     std::shared_ptr<DataShare::DataShareResultSet> GetDuplicateAssetsToDelete(GetAssetsDto &dto);
-    int32_t GetIndexConstructProgress(std::string &indexProgress);
     int32_t CreateAsset(CreateAssetDto &dto);
     int32_t CreateAssetForApp(CreateAssetDto &dto);
     int32_t CreateAssetForAppWithAlbum(CreateAssetDto &dto);
@@ -127,7 +126,6 @@ public:
     int32_t SetAssetsRecentShowStatus(const std::vector<int32_t> &fileIds, int32_t recentShowStatus);
     int32_t SetAssetsUserComment(const std::vector<int32_t> &fileIds, const std::string &userComment);
     int32_t AddAssetVisitCount(int32_t fileId, int32_t visitType);
-    int32_t GetAssetAnalysisData(GetAssetAnalysisDataDto &dto);
     int32_t CloneAsset(const CloneAssetDto& cloneAssetDto);
     int32_t RevertToOriginal(const RevertToOriginalDto& revertToOriginalDto);
     int32_t SubmitCloudEnhancementTasks(const CloudEnhancementDto& cloudEnhancementDto);
@@ -146,6 +144,7 @@ public:
     int32_t SyncCloudEnhancementTaskStatus();
     int32_t QueryPhotoStatus(const QueryPhotoReqBody &req, QueryPhotoRespBody &resp);
     int32_t LogMovingPhoto(const AdaptedReqBody &req);
+    int32_t LogCinematicVideo(const CinematicVideoAccessReqBody &req);
     std::shared_ptr<DataShare::DataShareResultSet> ConvertFormat(const ConvertFormatDto &convertFormatDto);
     bool CheckMimeType(const int32_t fileId);
     int32_t CreateTmpCompatibleDup(const CreateTmpCompatibleDupDto &createTmpCompatibleDupDto);
@@ -176,10 +175,10 @@ public:
         GetBatchDownloadCloudResourcesStatusRespBody &respBody);
     int32_t GetCloudMediaBatchDownloadResourcesCount(
         GetBatchDownloadCloudResourcesCountReqBody &reqBody, GetBatchDownloadCloudResourcesCountRespBody &respBody);
-    int32_t StartAssetAnalysis(const StartAssetAnalysisDto &dto, StartAssetAnalysisRespBody &respBody);
     int32_t GetCloudEnhancementPair(const GetCloudEnhancementPairDto &dto, GetCloudEnhancementPairRespBody &respBody);
     int32_t GetFilePathFromUri(const std::string &virtualId, GetFilePathFromUriRespBody &respBody);
     int32_t GetUriFromFilePath(const std::string &tempPath, GetUriFromFilePathRespBody &respBody);
+    int32_t CancelRequest(const std::string &photoId, const int32_t mediaType);
     int32_t CanSupportedCompatibleDuplicate(const std::string &bundleName, HeifTranscodingCheckRespBody &respBody);
     int32_t SetCompositeDisplayMode(const int32_t fileId, const int32_t compositeDisplayMode);
     int32_t AcquireDebugDatabase(const std::string &betaIssueId, const std::string &betaScenario,
@@ -190,6 +189,7 @@ public:
     int32_t OpenAssetCompress(const OpenAssetCompressDto &dto, OpenAssetCompressRespBody &respBody);
     int32_t NotifyAssetSended(const std::string &uri);
     int32_t GetAssetCompressVersion(int32_t &version);
+    int32_t GetCompressAssetSize(const std::vector<std::string> &uris, GetCompressAssetSizeRespBody &respBody);
 
 private:
     int32_t SubmitMetadataChanged(const int32_t fileId);

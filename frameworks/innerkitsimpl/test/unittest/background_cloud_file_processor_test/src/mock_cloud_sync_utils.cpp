@@ -29,5 +29,10 @@ bool CloudSyncUtils::IsCloudSyncSwitchOn()
 {
     return true;
 }
+ 
+bool CloudSyncUtils::IsUnlimitedTrafficStatusOn()
+{
+    return true;
+}
 } // namespace Media
 } // namespace OHOS

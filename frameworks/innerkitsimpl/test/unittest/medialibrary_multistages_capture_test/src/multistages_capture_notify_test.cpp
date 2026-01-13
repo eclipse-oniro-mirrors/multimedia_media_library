@@ -26,6 +26,7 @@
 #include "multistages_capture_dao.h"
 #include "multistages_capture_notify.h"
 #include "userfile_manager_types.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace OHOS;
@@ -41,7 +42,7 @@ static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 void SetTables()
 {
     std::vector<std::string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

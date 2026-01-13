@@ -723,6 +723,7 @@ int32_t FileParser::UpdateAssetInDatabase()
     CHECK_AND_RETURN_RET_LOG(errCode == NativeRdb::E_OK && changedRows > 0, E_DB_FAIL,
         "UpdateAssetInfo failed, ret: %{public}d, changeRows: %{public}d, fileInfo: %{public}s",
         errCode, changedRows, ToString().c_str());
+    assetRefresh.RefreshAlbum();
     assetRefresh.Notify();
     return E_OK;
 }

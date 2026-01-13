@@ -34,6 +34,7 @@
 #include "medialibrary_data_manager.h"
 #include "result_set_utils.h"
 #include "medialibrary_business_code.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -46,7 +47,7 @@ static constexpr int32_t SLEEP_SECONDS = 1;
 
 static std::vector<std::string> createTableSqlLists = {
     PhotoAlbumColumns::CREATE_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
 };
 
 static std::vector<std::string> testTables = {

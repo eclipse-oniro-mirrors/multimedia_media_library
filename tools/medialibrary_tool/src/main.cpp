@@ -21,6 +21,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <vector>
+#include <cstdlib>
 
 using namespace std;
 using namespace OHOS;
@@ -47,7 +48,10 @@ int main(int argc, char *argv[])
     int32_t id = getuid();
     if (id != ROOT_UID && id != SHELL_UID) {
         MEDIA_ERR_LOG("Invalid uid");
-        return 0;
+        //手动刷新
+        fflush(stdout);
+        fflush(stderr);
+        _exit(0);
     }
     std::vector<std::string> args;
     for (int i = 0; i < argc; i++) {
@@ -55,7 +59,11 @@ int main(int argc, char *argv[])
     }
 
     MEDIA_INFO_LOG("mediatool main start: %{public}s", BuildCommandLine(args).c_str());
+    int32_t ret = ControlMain::Main(args);
+    // 确保所有输出都被刷新
+    fflush(stdout);
+    fflush(stderr);
 
-    return ControlMain::Main(args);
+    _exit(ret);
 }
 

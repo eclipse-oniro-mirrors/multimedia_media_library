@@ -36,6 +36,7 @@
 #include "media_log.h"
 #undef protected
 #undef private
+#include "media_upgrade.h"
 
 using namespace OHOS::NativeRdb;
 using namespace testing::ext;
@@ -51,7 +52,7 @@ static shared_ptr<MediaLibraryRdbStore> newRdbStore = nullptr;
 static unique_ptr<CloneRestorePortrait> cloneRestorePortrait = nullptr;
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     CREATE_ANALYSIS_ALBUM_MAP,
     CREATE_TAB_FACE_TAG,

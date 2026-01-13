@@ -20,7 +20,7 @@
 #include <charconv>
 #include "file_asset_napi.h"
 #include "media_file_utils.h"
-#include "media_photo_asset_proxy.h"
+#include "photo_proxy.h"
 
 using namespace std;
 

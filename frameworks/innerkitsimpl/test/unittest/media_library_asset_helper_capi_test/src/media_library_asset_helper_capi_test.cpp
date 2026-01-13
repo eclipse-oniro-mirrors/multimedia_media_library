@@ -20,7 +20,7 @@
 #include "fetch_result.h"
 #include "file_asset.h"
 #include "file_uri.h"
-#include "get_self_permissions.h"
+#include "medialibrary_mock_tocken.h"
 #include "hilog/log.h"
 #include "userfilemgr_uri.h"
 #include "iservice_registry.h"
@@ -63,24 +63,29 @@ const int DEFAULT_ID = 1;
 const std::string ROOT_TEST_MEDIA_DIR =
     "/data/app/el2/100/base/com.ohos.medialibrary.medialibrarydata/haps/";
 MediaLibraryManager* mediaLibraryManager = MediaLibraryManager::GetMediaLibraryManager();
+static uint64_t g_shellToken = 0;
+static MediaLibraryMockHapToken* mockToken = nullptr;
 
 void MediaLibraryAssetHelperCapiTest::SetUpTestCase(void)
 {
+    g_shellToken = IPCSkeleton::GetSelfTokenID();
+    MediaLibraryMockTokenUtils::RestoreShellToken(g_shellToken);
+
     vector<string> perms;
     perms.push_back("ohos.permission.READ_IMAGEVIDEO");
     perms.push_back("ohos.permission.WRITE_IMAGEVIDEO");
     perms.push_back("ohos.permission.MEDIA_LOCATION");
+    perms.push_back("ohos.permission.GET_BUNDLE_INFO");
     perms.push_back("ohos.permission.GET_BUNDLE_INFO_PRIVILEGED");
-    uint64_t tokenId = 0;
-    PermissionUtilsUnitTest::SetAccessTokenPermission("MediaLibraryAssetHelperCapiTest", perms, tokenId);
-    ASSERT_TRUE(tokenId != 0);
+
+    mockToken = new MediaLibraryMockHapToken("com.ohos.medialibrary.medialibrarydata", perms);
+    for (auto &perm : perms) {
+        MediaLibraryMockTokenUtils::GrantPermissionByTest(IPCSkeleton::GetSelfTokenID(), perm, 0);
+    }
 
     MEDIA_INFO_LOG("MediaLibraryAssetHelperCapiTest::SetUpTestCase:: invoked");
     CreateDataHelper(STORAGE_MANAGER_MANAGER_ID);
-    if (sDataShareHelper_ == nullptr) {
-        exit(0);
-    }
-
+    ASSERT_NE(sDataShareHelper_, nullptr);
     // make sure board is empty
     ClearAllFile();
 
@@ -96,6 +101,15 @@ void MediaLibraryAssetHelperCapiTest::SetUpTestCase(void)
 void MediaLibraryAssetHelperCapiTest::TearDownTestCase(void)
 {
     MEDIA_ERR_LOG("TearDownTestCase start");
+    if (mockToken != nullptr) {
+        delete mockToken;
+        mockToken = nullptr;
+    }
+
+    MediaLibraryMockTokenUtils::ResetToken();
+    SetSelfTokenID(g_shellToken);
+    EXPECT_EQ(g_shellToken, IPCSkeleton::GetSelfTokenID());
+
     if (sDataShareHelper_ != nullptr) {
         sDataShareHelper_->Release();
     }
@@ -1010,11 +1024,6 @@ HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_test_031, TestSize.
  */
 HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_test_032, TestSize.Level1)
 {
-    vector<string> perms;
-    perms.push_back("ohos.permission.MEDIA_LOCATION");
-    uint64_t tokenId = 0;
-    PermissionUtilsUnitTest::SetAccessTokenPermission("MediaLibraryAssetHelperCapiTest", perms, tokenId);
-    ASSERT_TRUE(tokenId != 0);
     std::shared_ptr<FileAsset> fileAsset = std::make_shared<FileAsset>();
     fileAsset->SetId(DEFAULT_ID);
     fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::CAMERA));
@@ -1040,11 +1049,6 @@ HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_test_032, TestSize.
  */
 HWTEST_F(MediaLibraryAssetHelperCapiTest, media_library_capi_test_033, TestSize.Level1)
 {
-    vector<string> perms;
-    perms.push_back("ohos.permission.MEDIA_LOCATION");
-    uint64_t tokenId = 0;
-    PermissionUtilsUnitTest::SetAccessTokenPermission("MediaLibraryAssetHelperCapiTest", perms, tokenId);
-    ASSERT_TRUE(tokenId != 0);
     std::shared_ptr<FileAsset> fileAsset = std::make_shared<FileAsset>();
     fileAsset->SetId(DEFAULT_ID);
     fileAsset->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::CAMERA));

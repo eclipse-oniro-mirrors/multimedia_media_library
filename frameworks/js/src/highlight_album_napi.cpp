@@ -19,6 +19,7 @@
 #include "medialibrary_client_errno.h"
 #include "medialibrary_tracer.h"
 #include "media_album_change_request_napi.h"
+#include "media_file_utils.h"
 #include "result_set_utils.h"
 #include "story_album_column.h"
 #include "story_cover_info_column.h"
@@ -140,20 +141,25 @@ void HighlightAlbumNapi::Destructor(napi_env env, void* nativeObject, void* fina
     }
 }
 
-static const map<int32_t, struct HighlightAlbumInfo> HIGHLIGHT_ALBUM_INFO_MAP = {
-    { COVER_INFO, { PAH_QUERY_HIGHLIGHT_COVER, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
-        AI_ALBUM_ID, SUB_TITLE, CLUSTER_TYPE, CLUSTER_SUB_TYPE,
-        CLUSTER_CONDITION, MIN_DATE_ADDED, MAX_DATE_ADDED, GENERATE_TIME, HIGHLIGHT_VERSION,
-        REMARKS, HIGHLIGHT_STATUS, RATIO, BACKGROUND, FOREGROUND, WORDART, IS_COVERED, COLOR,
-        RADIUS, SATURATION, BRIGHTNESS, BACKGROUND_COLOR_TYPE, SHADOW_LEVEL, TITLE_SCALE_X,
-        TITLE_SCALE_Y, TITLE_RECT_WIDTH, TITLE_RECT_HEIGHT, BACKGROUND_SCALE_X, BACKGROUND_SCALE_Y,
-        BACKGROUND_RECT_WIDTH, BACKGROUND_RECT_HEIGHT, LAYOUT_INDEX, COVER_ALGO_VERSION, COVER_KEY, COVER_STATUS,
-        HIGHLIGHT_IS_MUTED, HIGHLIGHT_IS_FAVORITE, HIGHLIGHT_THEME, HIGHLIGHT_PIN_TIME, HIGHLIGHT_USE_SUBTITLE } } },
-    { PLAY_INFO, { PAH_QUERY_HIGHLIGHT_PLAY, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
-        MUSIC, FILTER, HIGHLIGHT_PLAY_INFO, IS_CHOSEN, PLAY_INFO_VERSION, PLAY_INFO_ID } } },
-    { ALBUM_INFO, { PAH_QUERY_HIGHLIGHT_ALBUM, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
-        HIGHLIGHT_STATUS, HIGHLIGHT_IS_VIEWED, HIGHLIGHT_NOTIFICATION_TIME } } },
-};
+const map<int32_t, struct HighlightAlbumInfo> GetHighlightAlbumInfoMap()
+{
+    static const map<int32_t, struct HighlightAlbumInfo> HIGHLIGHT_ALBUM_INFO_MAP = {
+        { COVER_INFO, { PAH_QUERY_HIGHLIGHT_COVER, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+            AI_ALBUM_ID, SUB_TITLE, CLUSTER_TYPE, CLUSTER_SUB_TYPE,
+            CLUSTER_CONDITION, MIN_DATE_ADDED, MAX_DATE_ADDED, GENERATE_TIME, HIGHLIGHT_VERSION,
+            REMARKS, HIGHLIGHT_STATUS, RATIO, BACKGROUND, FOREGROUND, WORDART, IS_COVERED, COLOR,
+            RADIUS, SATURATION, BRIGHTNESS, BACKGROUND_COLOR_TYPE, SHADOW_LEVEL, TITLE_SCALE_X,
+            TITLE_SCALE_Y, TITLE_RECT_WIDTH, TITLE_RECT_HEIGHT, BACKGROUND_SCALE_X, BACKGROUND_SCALE_Y,
+            BACKGROUND_RECT_WIDTH, BACKGROUND_RECT_HEIGHT, LAYOUT_INDEX, COVER_ALGO_VERSION, COVER_KEY, COVER_STATUS,
+            HIGHLIGHT_IS_MUTED, HIGHLIGHT_IS_FAVORITE, HIGHLIGHT_THEME,
+            HIGHLIGHT_PIN_TIME, HIGHLIGHT_USE_SUBTITLE } } },
+        { PLAY_INFO, { PAH_QUERY_HIGHLIGHT_PLAY, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+            MUSIC, FILTER, HIGHLIGHT_PLAY_INFO, IS_CHOSEN, PLAY_INFO_VERSION, PLAY_INFO_ID } } },
+        { ALBUM_INFO, { PAH_QUERY_HIGHLIGHT_ALBUM, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+            HIGHLIGHT_STATUS, HIGHLIGHT_IS_VIEWED, HIGHLIGHT_NOTIFICATION_TIME } } },
+    };
+    return HIGHLIGHT_ALBUM_INFO_MAP;
+}
 
 static const map<int32_t, std::string> HIGHLIGHT_USER_ACTION_MAP = {
     { INSERTED_PIC_COUNT, HIGHLIGHT_INSERT_PIC_COUNT },
@@ -176,8 +182,9 @@ static void JSGetHighlightAlbumInfoExecute(napi_env env, void *data)
     auto *context = static_cast<HighlightAlbumNapiAsyncContext*>(data);
     std::vector<std::string> fetchColumn;
     DataShare::DataSharePredicates predicates;
-    if (HIGHLIGHT_ALBUM_INFO_MAP.find(context->highlightAlbumInfoType) != HIGHLIGHT_ALBUM_INFO_MAP.end()) {
-        fetchColumn = HIGHLIGHT_ALBUM_INFO_MAP.at(context->highlightAlbumInfoType).fetchColumn;
+    auto infoMap = GetHighlightAlbumInfoMap();
+    if (infoMap.find(context->highlightAlbumInfoType) != infoMap.end()) {
+        fetchColumn = infoMap.at(context->highlightAlbumInfoType).fetchColumn;
     } else {
         NAPI_ERR_LOG("Invalid highlightAlbumInfoType");
         return;

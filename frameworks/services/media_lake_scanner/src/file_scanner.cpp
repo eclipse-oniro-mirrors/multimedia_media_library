@@ -135,6 +135,10 @@ void FileScanner::GetInsertAssetInfo(MediaLakeNotifyInfo &fileInfo, FileParser &
     auto albumInfo = folderParser->GetAlbumInfo();
     // 获取插入信息
     auto valueBucket = fileParser.TransFileInfoToBucket(albumInfo.albumId, albumInfo.bundleName, albumInfo.albumName);
+    if (valueBucket.IsEmpty()) {
+        MEDIA_ERR_LOG("Fail to insert AssetBucket");
+        return;
+    }
     insertFileInfos_.push_back(valueBucket);
     auto innerFileInfo = fileParser.GetFileInfo();
     inodes_.push_back(innerFileInfo.inode);
@@ -191,7 +195,8 @@ void FileScanner::RefreshInsertAssetInfo()
     int64_t insertNum = 0;
     int rdbError = 0;
     AccurateRefresh::AssetAccurateRefresh assetRefresh;
-    int32_t ret = assetRefresh.BatchInsert(insertNum, PhotoColumn::PHOTOS_TABLE, insertFileInfos_, rdbError);
+    int32_t ret = assetRefresh.BatchInsert(insertNum, PhotoColumn::PHOTOS_TABLE, insertFileInfos_, rdbError,
+        NativeRdb::ConflictResolution::ON_CONFLICT_REPLACE);
     CHECK_AND_RETURN_LOG(ret == E_OK, "Batch insert assets failed.");
     assetRefresh.Notify();
     auto watch = MediaLibraryNotify::GetInstance();

@@ -47,6 +47,7 @@
 #ifdef HAS_POWER_MANAGER_PART
 #include "power_mgr_client.h"
 #endif
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -163,7 +164,7 @@ static void RefreshNotifyInfoTest()
 
 void SetTables()
 {
-    vector<string> createTableSqlList = { Media::PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { Media::PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
         if (ret != NativeRdb::E_OK) {

@@ -36,7 +36,7 @@ ohos_unittest("medialibrary_video_mode_test") {
   ]
  
   sources = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/background/media_video_mode_task.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_video_mode_task.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_video_mode_operation.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "../get_self_permissions/src/get_self_permissions.cpp",

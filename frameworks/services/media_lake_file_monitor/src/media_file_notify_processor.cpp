@@ -25,6 +25,7 @@
 #include "media_scan_file_processor.h"
 #include "media_delete_dir_processor.h"
 #include "media_delete_file_processor.h"
+#include "media_delete_lake_dir_processor.h"
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -66,8 +67,8 @@ void MediaFileNotifyProcessor::RegisterAllProcessorsOnce()
 
         registry.Register(
             { FileNotifyObjectType::DIRECTORY, FileNotifyOperationType::MOD },
-            [] { return std::make_unique<MediaScanDirProcessor>(); },
-            [this] { return std::make_unique<MediaDeleteDirProcessor>(rdbStore_); }
+            [this] { return std::make_unique<MediaDeleteLakeDirProcessor>(rdbStore_); },
+            [] { return std::make_unique<MediaScanDirProcessor>(); }
         );
 
         registry.Register(
@@ -90,13 +91,6 @@ std::vector<MediaLakeNotifyInfo> SplitNotifyInfo(const MediaLakeNotifyInfo &noti
         "SplitNotifyInfo failed, beforePath: %{public}d, afterPath: %{public}d.",
         notifyInfo.beforePath.empty(), notifyInfo.afterPath.empty());
 
-    MediaLakeNotifyInfo updateInfo {
-        .beforePath = notifyInfo.beforePath,
-        .afterPath  = notifyInfo.afterPath,
-        .objType    = notifyInfo.objType,
-        .optType    = FileNotifyOperationType::MOD
-    };
-
     MediaLakeNotifyInfo delInfo {
         .beforePath = "",
         .afterPath  = notifyInfo.beforePath,
@@ -104,8 +98,15 @@ std::vector<MediaLakeNotifyInfo> SplitNotifyInfo(const MediaLakeNotifyInfo &noti
         .optType    = FileNotifyOperationType::DEL
     };
 
-    infos.push_back(std::move(updateInfo));
+    MediaLakeNotifyInfo updateInfo {
+        .beforePath = notifyInfo.beforePath,
+        .afterPath  = notifyInfo.afterPath,
+        .objType    = notifyInfo.objType,
+        .optType    = FileNotifyOperationType::MOD
+    };
+
     infos.push_back(std::move(delInfo));
+    infos.push_back(std::move(updateInfo));
     return infos;
 }
 

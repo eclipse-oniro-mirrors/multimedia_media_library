@@ -39,12 +39,15 @@
 #include "system_ability_definition.h"
 #include "userfilemgr_uri.h"
 #include "medialibrary_kvstore_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
 using namespace DataShare;
 using namespace Security::AccessToken;
 static const int32_t NUM_BYTES = 10;
+static const int32_t MIN_VIDEO_TYPE = 1;
+static const int32_t MAX_VIDEO_TYPE = 2;
 static const int32_t MAX_PHOTO_QUALITY_FUZZER_LISTS = 1;
 static const int32_t MAX_CAMERA_SHOT_TYPE_FUZZER_LISTS = 3;
 static const int32_t MAX_PHOTO_FORMAT_FUZZER_LISTS = 4;
@@ -72,6 +75,12 @@ static inline Media::PhotoQuality FuzzPhotoQuality()
 {
     uint8_t data = provider->ConsumeIntegralInRange<uint8_t>(0, MAX_PHOTO_QUALITY_FUZZER_LISTS);
     return Media::PhotoQuality_FUZZER_LISTS[data];
+}
+
+static inline Media::VideoType FuzzVideoType()
+{
+    uint8_t data = provider->ConsumeIntegralInRange<uint8_t>(MIN_VIDEO_TYPE, MAX_VIDEO_TYPE);
+    return static_cast<Media::VideoType>(data);
 }
 
 static inline Media::PhotoSubType FuzzPhotoSubType()
@@ -107,7 +116,7 @@ static shared_ptr<Media::PhotoAssetProxy> Init()
         .callingTokenId = provider->ConsumeIntegral<uint32_t>(),
     };
     shared_ptr<Media::PhotoAssetProxy> photoAssetProxy = make_shared<Media::PhotoAssetProxy>(
-        sDataShareHelper_, callerInfo, FuzzCameraShotType());
+        sDataShareHelper_, callerInfo, FuzzCameraShotType(), 1);
     return photoAssetProxy;
 }
 
@@ -138,9 +147,9 @@ static void MediaLibraryMediaPhotoAssetProxyTest()
     }
     sptr<Media::PhotoProxyFuzzTest> photoProxyFuzzTest = FuzzPhotoAssetProxy();
     photoAssetProxy->AddPhotoProxy((sptr<Media::PhotoProxy>&)photoProxyFuzzTest);
-    photoAssetProxy->GetVideoFd();
-    photoAssetProxy->NotifyVideoSaveFinished();
-    photoAssetProxy->GetFileAsset();
+    photoAssetProxy->GetVideoFd(FuzzVideoType());
+    photoAssetProxy->NotifyVideoSaveFinished(FuzzVideoType());
+    photoAssetProxy->UpdatePhotoProxy((sptr<Media::PhotoProxy>&)photoProxyFuzzTest);
 
     int32_t fileId = provider->ConsumeIntegral<int32_t>();
     int32_t subType = static_cast<int32_t>(FuzzPhotoSubType());
@@ -158,7 +167,7 @@ static void MediaLibraryMediaPhotoAssetProxyTest()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

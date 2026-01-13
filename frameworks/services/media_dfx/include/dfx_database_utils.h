@@ -49,6 +49,7 @@ public:
     EXPORT static void GetPhotoMimeType(std::string &photoMimeType);
     EXPORT static bool GetSizeAndResolutionInfo(QuerySizeAndResolution &queryInfo);
     EXPORT static int32_t QueryAncoPhotosFormatAndCount(AncoCountFormatInfo &reportData);
+    EXPORT static std::vector<std::string> QueryAlbumNamesByUploadStatus(const int32_t uploadStatus);
 
 private:
     static int32_t QueryInt(const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,

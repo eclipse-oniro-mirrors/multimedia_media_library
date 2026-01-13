@@ -104,6 +104,7 @@ struct DownloadAssetData {
     std::string storagePath;
     int32_t hidden;
     int64_t dateTrashed;
+    int32_t subtype;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_PHOTOS_DTO_H

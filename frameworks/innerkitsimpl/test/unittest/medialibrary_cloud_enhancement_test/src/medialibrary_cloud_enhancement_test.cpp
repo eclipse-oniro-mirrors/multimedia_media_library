@@ -58,6 +58,7 @@
 #include "media_enhance_bundle_c_api.h"
 #include "photo_file_utils.h"
 #endif
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -113,6 +114,8 @@ static const uint8_t BUFFER[] = {
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
+static constexpr int32_t BOTH = 2;
+static constexpr int32_t MOVING_PHOTO = 3;
 
 void CleanTestTables()
 {
@@ -134,7 +137,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
@@ -268,6 +271,17 @@ int32_t PrepareHighQualityPhoto(const string &photoId, const string &displayName
     EXPECT_GT(MediaLibraryPhotoOperations::Update(cmd), E_OK);
 
     return fileId;
+}
+
+int32_t UpdatePhotoType(int32_t fileId, int32_t photoSubtype, int32_t movingEnhanceType)
+{
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    ValuesBucket values;
+    values.Put(PhotoColumn::PHOTO_SUBTYPE, photoSubtype);
+    values.Put(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, movingEnhanceType);
+    cmd.SetValueBucket(values);
+    cmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    return MediaLibraryPhotoOperations::Update(cmd);
 }
 
 int32_t UpdateCEAvailable(int32_t fileId, int32_t ceAvailable, bool hasCloudWaterMark = false)
@@ -867,7 +881,7 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, enhancement_callback_save_cloud_enhan
 {
     MEDIA_INFO_LOG("enhancement_callback_save_cloud_enhancement_photo_002 Start");
     string sourceDisplayName;
-    CloudEnhancementThreadTask task("", 0, nullptr, 0, true);
+    CloudEnhancementThreadTask task("", 0, nullptr, 0, true, nullptr, 0);
     auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     int32_t sourceFileId = -1;
     uint32_t size = static_cast<uint32_t>(sizeof(BUFFER));
@@ -1002,7 +1016,7 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, enhancement_callback_on_service_recon
 HWTEST_F(MediaLibraryCloudEnhancementTest, enhancement_callback_deal_with_successed_task_007, TestSize.Level1)
 {
     MEDIA_INFO_LOG("enhancement_callback_deal_with_successed_task_007 Start");
-    CloudEnhancementThreadTask task("", 0, nullptr, 0, true);
+    CloudEnhancementThreadTask task("", 0, nullptr, 0, true, nullptr, 0);
     EnhancementServiceCallback::DealWithSuccessedTask(task);
     string taskId = "202408302001001";
     int32_t fileId = PrepareHighQualityPhoto(taskId, TESTING_DISPLAYNAME);
@@ -2033,6 +2047,177 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_cancel_all_auto_operat
     EXPECT_EQ(ret, E_OK);
  
     MEDIA_INFO_LOG("manager_handle_cancel_all_auto_operation_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudEnhancementTest, save_cloud_enhancement_moving_photo_video_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("save_cloud_enhancement_moving_photo_video_001 Start");
+    string sourceDisplayName;
+    CloudEnhancementThreadTask task1("", 0, nullptr, 0, true, nullptr, 0);
+    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
+    int32_t sourceFileId = -1;
+    string sourceFilePath;
+    int32_t sourceSubtype = 0;
+    shared_ptr<CloudEnhancementFileInfo> fileInfo = make_shared<CloudEnhancementFileInfo>(sourceFileId, sourceFilePath,
+        sourceDisplayName, sourceSubtype, 0);
+    string taskId = "202408302001001";
+    int32_t fileId = PrepareHighQualityPhoto(taskId, TESTING_DISPLAYNAME);
+    task1.taskId = taskId;
+    uint32_t size = static_cast<uint32_t>(sizeof(BUFFER));
+    uint8_t* buffer = new uint8_t[size];
+    for (uint32_t i = 0; i < size; i++) {
+        buffer[i] = BUFFER[i];
+    }
+    task1.addr = buffer;
+    task1.bytes = size;
+    task1.videoAddr = new uint8_t;
+    *task1.videoAddr = 1;
+    task1.videoBytes = 1;
+    int32_t ret = EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo(fileInfo, task1, assetRefresh);
+    EXPECT_EQ(ret, E_ERR);
+    MEDIA_INFO_LOG("save_cloud_enhancement_moving_photo_video_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudEnhancementTest, save_cloud_enhancement_moving_photo_video_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("save_cloud_enhancement_moving_photo_video_002 Start");
+    string sourceDisplayName = "sourceDisplayName";
+    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
+    int32_t sourceFileId = -1;
+    string sourceFilePath = "sourceDisplayPath";
+    int32_t sourceSubtype = 0;
+    shared_ptr<CloudEnhancementFileInfo> fileInfo = make_shared<CloudEnhancementFileInfo>(sourceFileId, sourceFilePath,
+        sourceDisplayName, sourceSubtype, 0);
+    uint8_t *videoAddr = new uint8_t;
+    *videoAddr = 1;
+    CloudEnhancementThreadTask task1("001", 0, nullptr, 0, true, videoAddr, 1);
+    string taskId = "202408302001001";
+    int32_t fileId = PrepareHighQualityPhoto(taskId, TESTING_DISPLAYNAME);
+    task1.taskId = taskId;
+    uint32_t size = static_cast<uint32_t>(sizeof(BUFFER));
+    uint8_t* buffer = new uint8_t[size];
+    for (uint32_t i = 0; i < size; i++) {
+        buffer[i] = BUFFER[i];
+    }
+    task1.addr = buffer;
+    task1.bytes = size;
+    task1.videoAddr = new uint8_t;
+    *task1.videoAddr = 1;
+    task1.videoBytes = 1;
+    int32_t ret = EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo(fileInfo, task1, assetRefresh);
+    EXPECT_EQ(ret, E_ERR);
+    MEDIA_INFO_LOG("save_cloud_enhancement_moving_photo_video_002 End");
+}
+
+HWTEST_F(MediaLibraryCloudEnhancementTest, update_cloud_enhancement_photo_info_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("update_cloud_enhancement_photo_info_001 Start");
+    std::string insertSql = R"S(INSERT INTO Photos(file_id, data, size, title, display_name, media_type, position,
+        is_temp, time_pending, hidden, date_trashed, transcode_time, trans_code_file_size, exist_compatible_duplicate,
+        moving_photo_enhancement_type)
+        VALUES (777, '/storage/cloud/files/Photo/666/heif.heic',  7879, 'heif', 'heif.heic', 1, 0, 0, 0, 0, 0,
+        1501838589870, 348113, 1, 2))S";
+    int32_t dbRet = g_rdbStore->ExecuteSql(insertSql);
+    EXPECT_EQ(dbRet, NativeRdb::E_OK);
+    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
+    int32_t ret = EnhancementServiceCallback::UpdateCloudEnhancementPhotoInfo(0, assetRefresh);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("update_cloud_enhancement_photo_info_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudEnhancementTest, update_cloud_enhancement_moving_photo_info_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("update_cloud_enhancement_photo_info_001 Start");
+    std::string insertSql = R"S(INSERT INTO Photos(file_id, data, size, title, display_name, media_type, position,
+        is_temp, time_pending, hidden, date_trashed, transcode_time, trans_code_file_size, exist_compatible_duplicate,
+        moving_photo_enhancement_type)
+        VALUES (778, '/storage/cloud/files/Photo/666/heif.heic',  7879, 'heif', 'heif.heic', 1, 0, 0, 0, 0, 0,
+        1501838589870, 348113, 1, 2))S";
+    int32_t dbRet = g_rdbStore->ExecuteSql(insertSql);
+    EXPECT_EQ(dbRet, NativeRdb::E_OK);
+    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
+    int32_t ret = EnhancementServiceCallback::UpdateCloudEnhancementMovingPhotoInfo(778, assetRefresh);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("update_cloud_enhancement_photo_info_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_add_operation_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("manager_handle_add_operation_006 Start");
+    vector<string> uris;
+    DataSharePredicates predicates;
+    string photoUri = "file://media/Photo/0/IMG_1722329102_000/" + TESTING_DISPLAYNAME;
+    uris.emplace_back(photoUri);
+
+    int32_t fileId2 = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
+    UpdateCEAvailable(fileId2, 1, true);
+    UpdatePhotoType(fileId2, MOVING_PHOTO, BOTH);
+    string photoUri2 = "file://media/Photo/" + to_string(fileId2) +
+        "/IMG_1722329102_001/" + TESTING_DISPLAYNAME;
+
+    uris.emplace_back(photoUri2);
+    predicates.In(MediaColumn::MEDIA_ID, uris);
+
+    EnhancementManager &instance = EnhancementManager::GetInstance();
+    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    Uri addTaskUri(uriStr);
+    MediaLibraryCommand cmd(addTaskUri);
+    cmd.SetDataSharePred(predicates);
+
+    auto result = instance.HandleAddOperation(cmd, true);
+    EXPECT_EQ(result, -1);
+    MEDIA_INFO_LOG("manager_handle_add_operation_006 End");
+}
+
+HWTEST_F(MediaLibraryCloudEnhancementTest, manager_query_fileType_by_fileId_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("manager_query_fileType_by_fileId_001 Start");
+    vector<string> uris;
+    DataSharePredicates predicates;
+
+    EnhancementManager &instance = EnhancementManager::GetInstance();
+    int32_t fileId = 1;
+    auto result = instance.QueryFileTypeByFileId(fileId);
+    EXPECT_EQ(result, -1);
+    MEDIA_INFO_LOG("manager_query_fileType_by_fileId_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudEnhancementTest, enhancement_callback_deal_with_successed_task_008, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enhancement_callback_deal_with_successed_task_008 Start");
+    CloudEnhancementThreadTask task("", 0, nullptr, 0, true, nullptr, 0);
+    string taskId = "202408302001001";
+    int32_t fileId = PrepareHighQualityPhoto(taskId, TESTING_DISPLAYNAME);
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    ValuesBucket values;
+    values.Put(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, 2);
+    cmd.SetValueBucket(values);
+    cmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    EXPECT_GT(MediaLibraryPhotoOperations::Update(cmd), E_OK);
+    task.taskId = taskId;
+    uint32_t size = static_cast<uint32_t>(sizeof(BUFFER));
+    uint8_t* buffer = new uint8_t[size];
+    for (uint32_t i = 0; i < size; i++) {
+        buffer[i] = BUFFER[i];
+    }
+    task.addr = buffer;
+    task.bytes = size;
+    task.videoAddr = new uint8_t;
+    *task.videoAddr = 1;
+    task.videoBytes = 1;
+    EnhancementServiceCallback::DealWithSuccessedTask(task);
+    vector<string> columns = { PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE };
+    MediaLibraryCommand cmd2(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
+    cmd2.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    ASSERT_NE(g_rdbStore, nullptr);
+    auto resultSet = g_rdbStore->Query(cmd2, columns);
+    ASSERT_NE(resultSet, nullptr);
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+    fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+    int32_t type = GetInt32Val(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, resultSet);
+    EXPECT_EQ(type, 2);
+    MEDIA_INFO_LOG("enhancement_callback_deal_with_successed_task_008 End");
 }
 #endif
 } // namespace Media

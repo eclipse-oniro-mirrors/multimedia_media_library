@@ -143,6 +143,40 @@ void DfxAnalyzer::FlushAdaptationToMovingPhoto(AdaptationToMovingPhotoInfo& newA
         allUnadaptedApps.size(), allAdaptedApps.size());
 }
 
+int32_t DfxAnalyzer::CalculateAvgWaitTime(CinematicWaitType waitType, const CinematicVideoInfo& cinematicVideoInfo,
+    const int32_t oldNum, const int32_t oldWaitAvgTime)
+{
+    std::unordered_map<std::string, TimeRange> waitTimeMap;
+    if (waitType == CinematicWaitType::CANCEL_CINEMATIC) {
+        waitTimeMap = cinematicVideoInfo.cancelWaitTimeMap;
+    } else {
+        waitTimeMap = cinematicVideoInfo.processWaitTimeMap;
+    }
+
+    uint64_t totalWaitTime = 0;
+    for (const auto& [videoId, TimeRange] : waitTimeMap) {
+        if (TimeRange.endTime >= TimeRange.startTime) {
+            totalWaitTime += (TimeRange.endTime - TimeRange.startTime);
+        }
+    }
+    totalWaitTime = static_cast<int64_t>(oldWaitAvgTime) * static_cast<int64_t>(oldNum) +
+        totalWaitTime;
+    int64_t AvgWaitTime = totalWaitTime /
+        static_cast<int64_t>(static_cast<int32_t>(waitTimeMap.size()) + oldNum);
+    return static_cast<int32_t>(AvgWaitTime);
+}
+
+static bool CheckDfxFile(const string& dfxFileName, shared_ptr<NativePreferences::Preferences> &prefs)
+{
+    int32_t errCode;
+    prefs = NativePreferences::PreferencesHelper::GetPreferences(dfxFileName, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return false;
+    }
+    return true;
+}
+
 void DfxAnalyzer::FlushTranscodeAccessTimes(const TranscodeAccessType type)
 {
     int32_t errCode;
@@ -215,6 +249,56 @@ void DfxAnalyzer::FlushTranscodeCostTime(const int32_t costTime)
     alreadyCostTime = alreadyCostTime + costTime;
     prefs->PutInt(TRANSCODE_AVG_TIME, alreadyCostTime);
     prefs->PutInt(TRANSCODE_TIMES, transcodeTime + 1);
+    prefs->FlushSync();
+}
+
+void DfxAnalyzer::FlushCinematicVideoInfo(CinematicVideoInfo& newCinematicVideoInfo)
+{
+    MEDIA_INFO_LOG("Refresh CinematicVideoInfo into file");
+    shared_ptr<NativePreferences::Preferences> prefs = nullptr;
+    CHECK_AND_RETURN(CheckDfxFile(DFX_CINEMATIC_VIDEO_XML, prefs));
+
+    int32_t oldCancelNum = prefs->GetInt(CINEMATIC_VIDEO_KEY_CANCEL_NUM);
+    int32_t oldCancelAvgTime = prefs->GetInt(CINEMATIC_VIDEO_KEY_CANCEL_WAIT_AVG_TIME);
+    int32_t newCancelNum = oldCancelNum + static_cast<int32_t>(newCinematicVideoInfo.cancelWaitTimeMap.size());
+    int32_t newCancelWaitAvgTime = 0;
+    if (newCancelNum != 0) {
+        newCancelWaitAvgTime = CalculateAvgWaitTime(CinematicWaitType::CANCEL_CINEMATIC,
+            newCinematicVideoInfo, oldCancelNum, oldCancelAvgTime);
+    }
+
+    int32_t oldProcessNum = prefs->GetInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_SUCCESS_TIMES);
+    int32_t oldProcessAvgTime = prefs->GetInt(CINEMATIC_VIDEO_PROCESS_AVG_TIME);
+    int32_t newProcessNum = oldProcessNum + static_cast<int32_t>(newCinematicVideoInfo.processWaitTimeMap.size());
+    int32_t newProcessWaitAvgTime = 0;
+    if (newProcessNum != 0) {
+        newProcessWaitAvgTime = CalculateAvgWaitTime(CinematicWaitType::PROCESS_CINEMATIC,
+            newCinematicVideoInfo, oldProcessNum, oldProcessAvgTime);
+    }
+
+    int32_t lowQualityAccessTimes =
+        prefs->GetInt(CINEMATIC_VIDEO_KEY_LOW_QUALITY_ACCESS_TIMES) + newCinematicVideoInfo.accessTimesLow;
+    int32_t highQualityAccessTimes =
+        prefs->GetInt(CINEMATIC_VIDEO_KEY_HIGH_QUALITY_ACCESS_TIMES) + newCinematicVideoInfo.accessTimesHigh;
+    int32_t lowQualityUriAccessTimes =
+        prefs->GetInt(CINEMATIC_VIDEO_KEY_LOW_QUALITY_URI_ACCESS_TIMES) + newCinematicVideoInfo.uriAccessTimesLow;
+    int32_t highQualityUriAccessTimes =
+        prefs->GetInt(CINEMATIC_VIDEO_KEY_HIGH_QUALITY_URI_ACCESS_TIMES) + newCinematicVideoInfo.uriAccessTimesHigh;
+    int32_t multistageSuccessTime = prefs->GetInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_SUCCESS_TIMES) +
+        newCinematicVideoInfo.multistageSuccessTimes;
+    int32_t multistageFailedTime = prefs->GetInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_FAILED_TIMES) +
+        newCinematicVideoInfo.multistageFailedTimes;
+
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_LOW_QUALITY_ACCESS_TIMES, lowQualityAccessTimes);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_HIGH_QUALITY_ACCESS_TIMES, highQualityAccessTimes);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_LOW_QUALITY_URI_ACCESS_TIMES, lowQualityUriAccessTimes);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_HIGH_QUALITY_URI_ACCESS_TIMES, highQualityUriAccessTimes);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_CANCEL_NUM, newCancelNum);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_CANCEL_WAIT_AVG_TIME, newCancelWaitAvgTime);
+    prefs->PutInt(CINEMATIC_VIDEO_PROCESS_AVG_TIME, newProcessWaitAvgTime);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_SUCCESS_TIMES, multistageSuccessTime);
+    prefs->PutInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_FAILED_TIMES, multistageFailedTime);
+
     prefs->FlushSync();
 }
 

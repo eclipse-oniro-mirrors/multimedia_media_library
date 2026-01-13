@@ -25,6 +25,7 @@
 #include "result_set_utils.h"
 #include "utils/constant_utils.h"
 #include "utils/db_const.h"
+#include "media_audio_column.h"
 
 namespace OHOS {
 namespace Media {

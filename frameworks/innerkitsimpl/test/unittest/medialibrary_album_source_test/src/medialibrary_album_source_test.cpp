@@ -46,6 +46,7 @@
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
 #include "vision_column.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -345,7 +346,7 @@ void MediaLibraryAlbumSourceTest::SetUp()
 {
     MEDIA_INFO_LOG("MediaLibraryAlbumSourceTest SetUp");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    rdbStore->ExecuteSql(PhotoColumn::INDEX_SCTHP_ADDTIME);
+    rdbStore->ExecuteSql(PhotoUpgrade::INDEX_SCTHP_ADDTIME);
 }
 
 void MediaLibraryAlbumSourceTest::TearDown()

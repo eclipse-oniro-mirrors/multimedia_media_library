@@ -40,7 +40,7 @@ std::unordered_map<std::string, Notification::NotifyUriType> NOTIFY_URI_MAP = {
     {"userDefineChange", Notification::NotifyUriType::USER_DEFINE_NOTIFY_URI},
 };
 
-const std::string URI_SEPARATOR = "file://media";
+const std::string URI_SEPARATOR = "file:media";
 
 std::shared_ptr<MediaDataShareExtAbility> MediaDataShareStubImpl::GetOwner()
 {
@@ -198,10 +198,10 @@ int MediaDataShareStubImpl::RegisterObserverExtProvider(const Uri &uri,
         return E_SUCCESS;
     }
     std::string singleUriType = uriType.substr(0, separatorPos);
-    std::string singleUri = uriType.substr(separatorPos);
+    std::string singleId = uriType.substr(separatorPos + URI_SEPARATOR.length());
     if (NOTIFY_URI_MAP.find(singleUriType) != NOTIFY_URI_MAP.end()) {
         Notification::NotifyUriType registerUriType = NOTIFY_URI_MAP.at(singleUriType);
-        auto ret = observerManager->AddSingleObserverUris(registerUriType, dataObserver, singleUri);
+        auto ret = observerManager->AddSingleObserverSingleIds(registerUriType, dataObserver, singleId);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "failed to add observerUris, error is %{public}d", ret);
         return E_SUCCESS;
     }
@@ -228,11 +228,11 @@ int MediaDataShareStubImpl::UnregisterObserverExtProvider(const Uri &uri,
         return E_SUCCESS;
     }
     std::string singleUriType = uriType.substr(0, separatorPos);
-    std::string singleUri = uriType.substr(separatorPos);
+    std::string singleId = uriType.substr(separatorPos + URI_SEPARATOR.length());
     if (NOTIFY_URI_MAP.find(singleUriType) != NOTIFY_URI_MAP.end()) {
         Notification::NotifyUriType registerUriType = NOTIFY_URI_MAP.at(singleUriType);
         if (!observerManager->FindObserver(registerUriType).empty()) {
-            int32_t ret = observerManager->RemoveSingleObserverUris(registerUriType, dataObserver, singleUri);
+            int32_t ret = observerManager->RemoveSingleObserverSingleIds(registerUriType, dataObserver, singleId);
             CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "failed to remove observerUris, error is %{public}d", ret);
             return E_SUCCESS;
         }

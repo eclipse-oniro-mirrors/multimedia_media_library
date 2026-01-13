@@ -33,7 +33,7 @@ function businessError<T = void>(c: int, d?: string): BusinessError<T> {
   return err;
 }
 
-function isNullish(d: NullishType): boolean {
+function isNullish(d: Any): boolean {
   return (d === null || d === undefined) ? true : false;
 }
 
@@ -171,6 +171,36 @@ export namespace photoAccessHelper {
     BRAND = 3,
   }
 
+  enum SupportedImageFormat {
+    AVFILE_FORMAT_JPG = 'jpg',
+  }
+
+  export enum FilterOperator {
+    EQUAL_TO = 0,
+    NOT_EQUAL_TO = 1,
+    MORE_THAN = 2,
+    LESS_THAN = 3,
+    MORE_THAN_OR_EQUAL_TO = 4,
+    LESS_THAN_OR_EQUAL_TO = 5,
+    BETWEEN = 6,
+  }
+
+  class MimeTypeFilter {
+    mimeTypeArray: Array<string>;
+  }
+
+  class FileSizeFilter {
+    filterOperator: FilterOperator;
+    fileSize: long;
+    extraFileSize?: long;
+  }
+
+  class VideoDurationFilter {
+      filterOperator: FilterOperator;
+      videoDuration: int;
+      extraVideoDuration?: int;
+  }
+
   export interface RequestOptions {
     deliveryMode: DeliveryMode;
     sourceMode?: SourceMode;
@@ -199,10 +229,163 @@ export namespace photoAccessHelper {
   }
 
   interface AlbumChangeInfos {
+    type: NotifyChangeType;
+    albumChangeDatas: Array<AlbumChangeData>| null;
+    isForRecheck: boolean;
+  }
+
+  class AlbumChangeInfosHandle implements AlbumChangeInfos {
+    constructor() {}
+    type: NotifyChangeType;
+    albumChangeDatas: Array<AlbumChangeData>| null = null;
+    isForRecheck: boolean;
+  }
+
+  interface AlbumChangeData {
+    albumBeforeChange: AlbumChangeInfo | null;
+    albumAfterChange: AlbumChangeInfo | null;
+    version: long;
+  }
+
+  class AlbumChangeDataHandle implements AlbumChangeData {
+    constructor() {}
+    albumBeforeChange: AlbumChangeInfo | null = null;
+    albumAfterChange: AlbumChangeInfo | null = null;
+    version: long = 0;
+  }
+
+  interface AlbumChangeInfo {
+    albumType: AlbumType;
+    albumSubtype: AlbumSubtype;
+    albumName: string;
+    albumUri: string;
+    imageCount: int;
+    videoCount: int;
+    count: int;
+    coverUri: string;
+    hiddenCount: int;
+    hiddenCoverUri: string;
+    isCoverChanged: boolean;
+    isHiddenCoverChanged: boolean;
+    coverInfo?: PhotoAssetChangeInfo;
+    hiddenCoverInfo?: PhotoAssetChangeInfo;
+  }
+
+  class AlbumChangeInfoHandle implements AlbumChangeInfo {
+    constructor() {}
+    albumType: AlbumType;
+    albumSubtype: AlbumSubtype;
+    albumName: string = "";
+    albumUri: string = "";
+    imageCount: int = 0;
+    videoCount: int = 0;
+    count: int = 0;
+    coverUri: string = "";
+    hiddenCount: int = 0;
+    hiddenCoverUri: string = "";
+    isCoverChanged: boolean;
+    isHiddenCoverChanged: boolean;
+    coverInfo?: PhotoAssetChangeInfo;
+    hiddenCoverInfo?: PhotoAssetChangeInfo;
   }
 
   interface PhotoAssetChangeInfos {
+    type: NotifyChangeType;
+    assetChangeDatas: Array<PhotoAssetChangeData> | null;
+    isForRecheck: boolean;
   }
+
+  class PhotoAssetChangeInfosHandle implements PhotoAssetChangeInfos {
+    constructor() {}
+    type: NotifyChangeType;
+    assetChangeDatas: Array<PhotoAssetChangeData> | null = null;
+    isForRecheck: boolean;
+  }
+
+  interface PhotoAssetChangeData {
+    assetBeforeChange: PhotoAssetChangeInfo | null;
+    assetAfterChange: PhotoAssetChangeInfo | null;
+    isContentChanged: boolean;
+    isDeleted: boolean;
+    thumbnailChangeStatus: ThumbnailChangeStatus;
+    version: long;
+  }
+
+  class PhotoAssetChangeDataHandle implements PhotoAssetChangeData {
+    constructor() {}
+    assetBeforeChange: PhotoAssetChangeInfo | null = null;
+    assetAfterChange: PhotoAssetChangeInfo | null = null;
+    isContentChanged: boolean;
+    isDeleted: boolean;
+    thumbnailChangeStatus: ThumbnailChangeStatus;
+    version: long = 0;
+  }
+
+  enum ThumbnailChangeStatus {
+    THUMBNAIL_NOT_EXISTS = 0,
+    THUMBNAIL_ADD = 1,
+    THUMBNAIL_UPDATE = 2,
+    THUMBNAIL_NOT_CHANGE = 3
+  }
+
+  enum StrongAssociationType {
+    NORMAL = 0,
+    CLOUD_ENHANCEMENT = 1
+  }
+
+  interface PhotoAssetChangeInfo {
+    uri: string;
+    mediaType: PhotoType;
+    albumUri: string;
+    fileId: int;
+    dateDay: string;
+    isFavorite: boolean;
+    isHidden: boolean;
+    strongAssociation: StrongAssociationType;
+    thumbnailVisible: ThumbnailVisibility;
+    dateTrashedMs: long;
+    dateAddedMs: long;
+    dateTakenMs: long;
+  }
+
+  export interface AlbumOrder {
+    albumId: int;
+    albumOrder: int;
+    orderSection: int;
+    orderType: int;
+    orderStatus: int;
+  }
+
+  export class AlbumOrderHandle implements AlbumOrder {
+    albumId: int;
+    albumOrder: int;
+    orderSection: int;
+    orderType: int;
+    orderStatus: int;
+    private nativeAlbumOrder: long = 0;
+
+    constructor(nativePtr: long) {
+      if (this.nativeAlbumOrder == 0) {
+          this.nativeAlbumOrder = nativePtr;
+          this.albumId = this.getAlbumId();
+          this.albumOrder = this.getAlbumOrder();
+          this.orderSection = this.getOrderSection();
+          this.orderType = this.getOrderType();
+          this.orderStatus = this.getOrderStatus();
+      }
+    }
+
+    native getAlbumId(): int;
+    native getAlbumOrder(): int;
+    native getOrderSection(): int;
+    native getOrderType(): int;
+    native getOrderStatus(): int;
+    native setAlbumId(): int;
+    native setAlbumOrder(): int;
+    native setOrderSection(): int;
+    native setOrderType(): int;
+    native setOrderStatus(): int;
+}
 
   export class MediaAssetManager {
     static onMediaAssetDataPrepared(data: MediaAssetDataType,
@@ -237,7 +420,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -264,7 +447,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -291,7 +474,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -318,7 +501,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -343,7 +526,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -372,7 +555,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -398,7 +581,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -455,6 +638,7 @@ export namespace photoAccessHelper {
     requestEditData(): Promise<string>;
     getEditData(): Promise<MediaAssetEditData>;
     clone(title: string): Promise<PhotoAsset>;
+    convertImageFormat(title: string, imageFormat: SupportedImageFormat): Promise<PhotoAsset>;
     requestSource(callback: AsyncCallback<int | undefined>): void;
     requestSource(): Promise<int>;
     commitEditedAsset(editData: string, uri: string, callback: AsyncCallback<void>): void;
@@ -521,7 +705,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -541,7 +725,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -562,7 +746,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -587,7 +771,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -611,7 +795,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -631,7 +815,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -652,7 +836,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -676,7 +860,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -701,7 +885,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -725,7 +909,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -745,7 +929,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -765,7 +949,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -785,7 +969,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -805,7 +989,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -825,7 +1009,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -847,7 +1031,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -873,7 +1057,7 @@ export namespace photoAccessHelper {
         return result;
       };
 
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -898,7 +1082,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -924,7 +1108,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -950,7 +1134,33 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as PhotoAsset);
+            }
+          }
+        });
+      });
+    }
+
+    convertImageFormat(title: string, imageFormat: SupportedImageFormat): Promise<PhotoAsset> {
+      return new Promise<PhotoAsset>((resolve: (v: PhotoAsset) => void, reject: RejectString) => {
+        let cb = (): PhotoAsset | MediaLibraryAniError => {
+          let result: PhotoAsset | MediaLibraryAniError;
+          try {
+            result = this.convertImageFormatInner(title, imageFormat);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -975,7 +1185,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1000,7 +1210,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1025,7 +1235,7 @@ export namespace photoAccessHelper {
         }
       };
 
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -1045,7 +1255,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -1066,7 +1276,7 @@ export namespace photoAccessHelper {
         }
       };
 
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -1086,7 +1296,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -1116,7 +1326,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1141,7 +1351,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1166,7 +1376,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1192,7 +1402,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1217,7 +1427,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1242,7 +1452,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1266,7 +1476,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -1286,7 +1496,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -1308,6 +1518,7 @@ export namespace photoAccessHelper {
     native requestEditDataSync(): string;
     native getEditDataSync(): MediaAssetEditData;
     native cloneSync(title: string): PhotoAsset;
+    native convertImageFormatInner(title: string, imageFormat: SupportedImageFormat): PhotoAsset;
     native requestSourceSync(): int;
     native commitEditedAssetSync(editData: string, uri: string): void;
     native revertToOriginalSync(): void;
@@ -1364,6 +1575,7 @@ export namespace photoAccessHelper {
     IS_RECENT_SHOW = 'is_recent_show',
     MEDIA_SUFFIX = 'media_suffix',
     SUM_SIZE = 'sum(size)',
+    CHANGE_TIME = 'change_time',
     VIDEO_MODE = 'video_mode',
     ASPECT_RATIO = 'aspect_ratio',
     EDIT_DATA_EXIST = 'edit_data_exist',
@@ -1375,6 +1587,8 @@ export namespace photoAccessHelper {
     ALBUM_LPATH = 'lpath',
     BUNDLE_NAME = 'bundle_name',
     DATE_MODIFIED = 'date_modified',
+    CHANGE_TIME = 'change_time',
+    COVER_URI_SOURCE = 'cover_uri_source',
   }
 
   export enum HiddenPhotosDisplayMode {
@@ -1390,6 +1604,7 @@ export namespace photoAccessHelper {
   export interface PhotoCreateOptions {
     subtype?: PhotoSubtype;
     cameraShotKey?: string;
+    userId?: int;
   }
 
   export interface PhotoCreationConfig {
@@ -1472,7 +1687,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1497,7 +1712,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1522,7 +1737,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1547,7 +1762,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1572,7 +1787,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1597,7 +1812,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1622,7 +1837,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1647,7 +1862,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1672,7 +1887,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1700,7 +1915,7 @@ export namespace photoAccessHelper {
           blockQueue.push(result);
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1761,6 +1976,11 @@ export namespace photoAccessHelper {
     REQUEST_QUALITY_THUMBNAIL
   }
 
+  enum CoverUriSource {
+    DEFAULT_COVER = 0,
+    MANUAL_COVER = 1
+  }
+
   export interface AbsAlbum {
     readonly albumType: AlbumType;
     readonly albumSubtype: AlbumSubtype;
@@ -1769,10 +1989,19 @@ export namespace photoAccessHelper {
     readonly count: int;
     readonly coverUri: string;
     readonly lpath?: string;
+    readonly changeTime?: long;
+    readonly coverUriSource?: CoverUriSource;
 
     getAssets(options: FetchOptions, callback: AsyncCallback<FetchResult<PhotoAsset> | undefined>): void;
     getAssets(options: FetchOptions): Promise<FetchResult<PhotoAsset>>;
     getSharedPhotoAssets(options: FetchOptions): Array<SharedPhotoAsset>;
+  }
+
+  enum NotifyChangeType {
+    NOTIFY_CHANGE_ADD = 0,
+    NOTIFY_CHANGE_UPDATE = 1,
+    NOTIFY_CHANGE_REMOVE = 2,
+    NOTIFY_CHANGE_YUV_READY = 3,
   }
 
   export interface Album extends AbsAlbum {
@@ -1808,6 +2037,8 @@ export namespace photoAccessHelper {
     readonly videoCount: int | undefined = undefined;
     readonly dateAdded: long | undefined = undefined;
     readonly dateModified: long | undefined = undefined;
+    readonly changeTime: long | undefined = undefined;
+    readonly coverUriSource: CoverUriSource | undefined = undefined;
     private nativePhotoAlbum: long = 0;
 
     constructor(nativePtr: long) {
@@ -1817,6 +2048,7 @@ export namespace photoAccessHelper {
         this.videoCount = this.getVideoCount();
         this.dateAdded = this.getdateAdded();
         this.dateModified = this.getdateModified();
+        this.changeTime = this.getChangeTime();
       }
     }
 
@@ -1852,7 +2084,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -1878,7 +2110,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -1902,7 +2134,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -1922,7 +2154,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -1942,7 +2174,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -1962,7 +2194,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -1982,7 +2214,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -2002,7 +2234,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -2022,7 +2254,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -2042,7 +2274,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -2062,7 +2294,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -2082,7 +2314,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -2102,7 +2334,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -2122,7 +2354,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -2144,7 +2376,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2173,6 +2405,7 @@ export namespace photoAccessHelper {
     native getSharedPhotoAssets(options: FetchOptions): Array<SharedPhotoAsset>;
     native getdateAdded(): long;
     native getdateModified(): long;
+    native getChangeTime(): long;
   }
 
   export interface PhotoAccessHelper {
@@ -2239,6 +2472,21 @@ export namespace photoAccessHelper {
     offSinglePhotoAlbumChange(album?: Album, callback?: Callback<AlbumChangeInfos>): void;
     onSinglePhotoChange(asset: PhotoAsset, callback: Callback<PhotoAssetChangeInfos>): void;
     offSinglePhotoChange(asset?: PhotoAsset, callback?: Callback<PhotoAssetChangeInfos>): void;
+    onPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;
+    offPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
+    onHiddenPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;
+    offHiddenPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
+    onTrashedPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;
+    offTrashedPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
+    onPhotoAlbumChange(callback: Callback<AlbumChangeInfos>): void;
+    offPhotoAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
+    onHiddenAlbumChange(callback: Callback<AlbumChangeInfos>): void;
+    offHiddenAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
+    onTrashedAlbumChange(callback: Callback<AlbumChangeInfos>): void;
+    offTrashedAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
+    getPhotoAlbums(options?: FetchOptions): Promise<FetchResult<Album>>;
+    getPhotoAlbumOrder(orderStyle: int, options?: FetchOptions): Promise<FetchResult<AlbumOrder>>;
+    setPhotoAlbumOrder(orderStyle: int, albumOrders: Array<AlbumOrder>): Promise<void>;
   }
 
   interface AppInfo {
@@ -2277,7 +2525,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -2297,7 +2545,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -2317,7 +2565,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -2339,7 +2587,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2362,7 +2610,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2387,7 +2635,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2417,7 +2665,7 @@ export namespace photoAccessHelper {
           return result;
         };
 
-        taskpool.execute(cb).then((buffer: NullishType): void => {
+        taskpool.execute(cb).then((buffer: Any): void => {
           if (buffer instanceof MediaLibraryAniError) {
             let err = buffer as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2445,7 +2693,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2470,7 +2718,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2495,7 +2743,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2521,7 +2769,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2547,7 +2795,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2572,7 +2820,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2596,7 +2844,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2621,7 +2869,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2647,7 +2895,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2671,7 +2919,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2697,7 +2945,7 @@ export namespace photoAccessHelper {
             }
             return result;
           };
-          taskpool.execute(cb).then((ret: NullishType): void => {
+          taskpool.execute(cb).then((ret: Any): void => {
             if (ret instanceof MediaLibraryAniError) {
               let err = ret as MediaLibraryAniError;
               reject(businessError<string>(err.code as int, err.message));
@@ -2723,7 +2971,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
         let err = ret as MediaLibraryAniError;
         callback(businessError(err.code as int, err.message), undefined);
@@ -2747,7 +2995,7 @@ export namespace photoAccessHelper {
         }
         return result;
       };
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (ret instanceof MediaLibraryAniError) {
           let err = ret as MediaLibraryAniError;
           callback(businessError(err.code as int, err.message), undefined);
@@ -2773,7 +3021,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2799,7 +3047,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2826,7 +3074,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2859,7 +3107,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2888,7 +3136,7 @@ export namespace photoAccessHelper {
           return result;
         };
 
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2921,7 +3169,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -2945,7 +3193,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -2964,7 +3212,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -2984,7 +3232,7 @@ export namespace photoAccessHelper {
           return e as MediaLibraryAniError;
         }
       }
-      taskpool.execute(cb).then((ret: NullishType): void => {
+      taskpool.execute(cb).then((ret: Any): void => {
         if (isNullish(ret)) {
           callback(businessError(0), undefined);
         } else {
@@ -3004,7 +3252,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -3025,7 +3273,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -3046,7 +3294,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -3067,7 +3315,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -3089,7 +3337,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3120,7 +3368,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3151,7 +3399,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3178,7 +3426,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3204,7 +3452,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3230,7 +3478,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3289,6 +3537,80 @@ export namespace photoAccessHelper {
       }
     }
 
+    getPhotoAlbums(options?: FetchOptions): Promise<FetchResult<Album>> {
+      return new Promise<FetchResult<Album>>((resolve: (v: FetchResult<Album>) => void, reject: RejectString) => {
+        let cb = (): FetchResult<Album> | MediaLibraryAniError => {
+          let result: FetchResult<Album> | MediaLibraryAniError;
+          try {
+            result = this.getPhotoAlbumsInner(options);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as FetchResult<Album>);
+            }
+          }
+        });
+      });
+    }
+
+    getPhotoAlbumOrder(orderStyle: int, options?: FetchOptions): Promise<FetchResult<AlbumOrder>> {
+      return new Promise<FetchResult<AlbumOrder>>((resolve: (v: FetchResult<AlbumOrder>) => void,
+        reject: RejectString) => {
+        let cb = (): FetchResult<AlbumOrder> | MediaLibraryAniError => {
+          let result: FetchResult<AlbumOrder> | MediaLibraryAniError;
+          try {
+            result = this.getPhotoAlbumsOrderInner(orderStyle, options);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as FetchResult<AlbumOrder>);
+            }
+          }
+        });
+      });
+    }
+
+    setPhotoAlbumOrder(orderStyle: int, albumOrders: Array<AlbumOrder>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.setPhotoAlbumsOrderInner(orderStyle, albumOrders);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
     native startThumbnailCreationTask(predicate: dataSharePredicates.DataSharePredicates,
       callback: AsyncCallback<void>): int;
     native startCreateThumbnailTask(predicate: dataSharePredicates.DataSharePredicates): int;
@@ -3332,6 +3654,21 @@ export namespace photoAccessHelper {
     native offSinglePhotoAlbumChangeInner(album?: Album, callback?: Callback<AlbumChangeInfos>): void;
     native onSinglePhotoChangeInner(asset: PhotoAsset, callback: Callback<PhotoAssetChangeInfos>): void;
     native offSinglePhotoChangeInner(asset?: PhotoAsset, callback?: Callback<PhotoAssetChangeInfos>): void;
+    native onPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;
+    native offPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
+    native onHiddenPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;
+    native offHiddenPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
+    native onTrashedPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;
+    native offTrashedPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
+    native onPhotoAlbumChange(callback: Callback<AlbumChangeInfos>): void;
+    native offPhotoAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
+    native onHiddenAlbumChange(callback: Callback<AlbumChangeInfos>): void;
+    native offHiddenAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
+    native onTrashedAlbumChange(callback: Callback<AlbumChangeInfos>): void;
+    native offTrashedAlbumChange(callback?: Callback<AlbumChangeInfos>): void;
+    native getPhotoAlbumsInner(options?: FetchOptions): FetchResult<Album>;
+    native getPhotoAlbumsOrderInner(orderStyle: int, options?: FetchOptions): FetchResult<AlbumOrder>;
+    native setPhotoAlbumsOrderInner(orderStyle: int, albumOrders: Array<AlbumOrder>): void;
   }
 
   export interface GalleryFormInfo {
@@ -3532,7 +3869,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -3554,7 +3891,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3602,6 +3939,7 @@ export namespace photoAccessHelper {
     native setVideoEnhancementAttr(videoEnhancementType: VideoEnhancementType, photoId: string): void;
 
     native setSupportedWatermarkType(watermarkType: WatermarkType): void;
+
     static deleteLocalAssetsPermanently(context: Context, assets: Array<PhotoAsset>): Promise<void> {
       return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
         let cb = (): MediaLibraryAniError | undefined => {
@@ -3612,7 +3950,28 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
+    static deleteLocalAssetsPermanentlyWithUri(context: Context, assetUris: Array<string>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            MediaAssetChangeRequest.deleteLocalAssetsPermanentlyWithUriSync(context, assetUris);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -3636,6 +3995,7 @@ export namespace photoAccessHelper {
       options?: CreateOptions): MediaAssetChangeRequest;
     private native static deleteAssetsSync(context: Context, assets: Array<AssetType> | Array<string>): void;
     private native static deleteLocalAssetsPermanentlySync(context: Context, assets: Array<PhotoAsset>): void;
+    private native static deleteLocalAssetsPermanentlyWithUriSync(context: Context, assetUris: Array<string>): void;
   }
 
   export class MediaAssetsChangeRequest implements MediaChangeRequest {
@@ -3679,7 +4039,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3703,7 +4063,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -3749,6 +4109,8 @@ export namespace photoAccessHelper {
     native placeBefore(album: Album): void;
 
     native dismiss(): void;
+
+    native resetCoverUri(): void;
 
     native removeAssets(assets: Array<PhotoAsset>): void;
 
@@ -3881,6 +4243,7 @@ export namespace photoAccessHelper {
     requestContent(resourceType: ResourceType, fileUri: string): Promise<void>;
     requestContent(resourceType: ResourceType): Promise<ArrayBuffer>;
     getUri(): string;
+    isVideoReady(): Promise<boolean>;
   }
 
   export interface FileAssetInfo {
@@ -3984,7 +4347,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4005,7 +4368,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4027,7 +4390,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4042,10 +4405,37 @@ export namespace photoAccessHelper {
       });
     }
 
+    isVideoReady(): Promise<boolean> {
+      return new Promise<boolean>((resolve: (v: boolean) => void, reject: RejectString) => {
+        let cb = (): boolean | MediaLibraryAniError => {
+          let result: boolean | MediaLibraryAniError;
+          try {
+            result = this.isVideoReadyInner();
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as boolean);
+            }
+          }
+        });
+      });
+    }
+
     native getUri(): string;
     native requestContentByImageFileAndVideoFile(imageFileUri: string, videoFileUri: string): void;
     native requestContentByResourceTypeAndFile(resourceType: ResourceType, fileUri: string): void;
     native requestContentByResourceType(resourceType: ResourceType): ArrayBuffer;
+    native isVideoReadyInner(): boolean;
   }
 
   export enum HighlightAlbumInfoType {
@@ -4092,7 +4482,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4118,7 +4508,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4143,7 +4533,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4164,7 +4554,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4186,7 +4576,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4230,7 +4620,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4314,7 +4704,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4336,7 +4726,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4357,7 +4747,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4378,7 +4768,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4399,7 +4789,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4422,7 +4812,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if(ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4447,7 +4837,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4469,7 +4859,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4575,7 +4965,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4596,7 +4986,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4617,7 +5007,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4638,7 +5028,7 @@ export namespace photoAccessHelper {
             return e as MediaLibraryAniError;
           }
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (isNullish(ret)) {
             resolve(undefined);
           } else {
@@ -4661,7 +5051,7 @@ export namespace photoAccessHelper {
           }
           return result;
         };
-        taskpool.execute(cb).then((ret: NullishType): void => {
+        taskpool.execute(cb).then((ret: Any): void => {
           if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
             reject(businessError<string>(err.code as int, err.message));
@@ -4681,5 +5071,196 @@ export namespace photoAccessHelper {
     private native cancelDownloadCloudMediaInner(): void;
     private native retainCloudMediaAssetInner(retainType: CloudMediaRetainType): void;
     private native getCloudMediaAssetStatusInner(): CloudMediaAssetStatus;
+  }
+
+  export interface PhotoAssetCustomRecord {
+    readonly fileId: int;
+    readonly shareCount: int;
+    readonly lcdJumpCount: int;
+  }
+
+  export class PhotoAssetCustomRecordHandle implements PhotoAssetCustomRecord {
+    readonly fileId: int;
+    readonly shareCount: int;
+    readonly lcdJumpCount: int;
+    private nativePhotoAssetCustomRecord: long = 0;
+
+    constructor(nativeHandle: long) {
+      if (this.nativePhotoAssetCustomRecord == 0) {
+          this.nativePhotoAssetCustomRecord = nativeHandle;
+          this.fileId = this.getFileId();
+          this.shareCount = this.getShareCount();
+          this.lcdJumpCount = this.getLcdJumpCount();
+      }
+    }
+
+    native getFileId(): int;
+    native getShareCount(): int;
+    native getLcdJumpCount(): int;
+  }
+
+  export class PhotoAssetCustomRecordManager {
+    private nativeHandle: long = 0;
+
+    constructor(nativePointer: long) {
+      if (this.nativeHandle == 0) {
+        this.nativeHandle = nativePointer;
+      }
+    }
+    native static getCustomRecordManagerInstance(context: Context): PhotoAssetCustomRecordManager | null;
+
+    createCustomRecords(customRecords: Array<PhotoAssetCustomRecord>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.createCustomRecordsInner(customRecords);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
+    addShareCount(ids: Array<int>): Promise<Array<int>> {
+      return new Promise<Array<int>>((resolve: (v: Array<int>) => void, reject: RejectString) => {
+        let cb = (): Array<int> | MediaLibraryAniError => {
+          let result: Array<int> | MediaLibraryAniError;
+          try {
+            result = this.addShareCountInner(ids);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as Array<int>);
+            }
+          }
+        });
+      });
+    }
+
+    addLcdJumpCount(ids: Array<int>): Promise<Array<int>> {
+      return new Promise<Array<int>>((resolve: (v: Array<int>) => void, reject: RejectString) => {
+        let cb = (): Array<int> | MediaLibraryAniError => {
+          let result: Array<int> | MediaLibraryAniError;
+          try {
+            result = this.addLcdJumpCountInner(ids);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as Array<int>);
+            }
+          }
+        });
+      });
+    }
+
+    removeCustomRecords(optionCheck: FetchOptions): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.removeCustomRecordsInner(optionCheck);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
+    setCustomRecords(customRecords: Array<PhotoAssetCustomRecord>): Promise<Array<int>> {
+      return new Promise<Array<int>>((resolve: (v: Array<int>) => void, reject: RejectString) => {
+        let cb = (): Array<int> | MediaLibraryAniError => {
+          let result: Array<int> | MediaLibraryAniError;
+          try {
+            result = this.setCustomRecordsInner(customRecords);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as Array<int>);
+            }
+          }
+        });
+      });
+    }
+
+    getCustomRecords(optionCheck: FetchOptions): Promise<FetchResult<PhotoAssetCustomRecord>> {
+      return new Promise<FetchResult<PhotoAssetCustomRecord>>((resolve: (v: FetchResult<PhotoAssetCustomRecord>) => void,
+        reject: RejectString) => {
+        let cb = (): FetchResult<PhotoAssetCustomRecord> | MediaLibraryAniError => {
+          let result: MediaLibraryAniError | FetchResult<PhotoAssetCustomRecord>;
+          try {
+            result =  this.getCustomRecordsInner(optionCheck);
+          } catch(e) {
+            result =  e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as FetchResult<PhotoAssetCustomRecord>);
+            }
+          }
+        });
+      });
+    }
+
+    private native createCustomRecordsInner(customRecords: Array<PhotoAssetCustomRecord>): void;
+    private native addShareCountInner(ids: Array<int>): Array<int>;
+    private native addLcdJumpCountInner(ids: Array<int>): Array<int>;
+    private native removeCustomRecordsInner(optionCheck: FetchOptions): void;
+    private native setCustomRecordsInner(customRecords: Array<PhotoAssetCustomRecord>): Array<int>;
+    private native getCustomRecordsInner(optionCheck: FetchOptions): FetchResult<PhotoAssetCustomRecord>;
   }
 }

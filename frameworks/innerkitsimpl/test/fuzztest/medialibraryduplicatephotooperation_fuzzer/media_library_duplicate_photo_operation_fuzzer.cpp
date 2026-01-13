@@ -45,6 +45,7 @@
 #include "rdb_utils.h"
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -134,7 +135,7 @@ static void DuplicatePhotoOperationTest()
 static void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
         Media::AppUriPermissionColumn::CREATE_APP_URI_PERMISSION_TABLE,
         Media::AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE,
     };

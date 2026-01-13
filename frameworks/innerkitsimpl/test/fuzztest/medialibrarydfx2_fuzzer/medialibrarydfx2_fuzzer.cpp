@@ -33,6 +33,7 @@
 #define private public
 #include "dfx_moving_photo.h"
 #undef private
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -136,7 +137,7 @@ static void DfxMovingPhotoFuzzer()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "g_rdbStore is null");

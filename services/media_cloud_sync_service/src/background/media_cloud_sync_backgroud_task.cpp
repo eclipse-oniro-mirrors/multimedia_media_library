@@ -22,6 +22,7 @@
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 #include "media_location_synchronize_task.h"
+#include "repair_future_date_task.h"
 
 namespace OHOS::Media::Background {
 // LCOV_EXCL_START
@@ -29,6 +30,7 @@ MediaCloudSyncBackgroundTask::MediaCloudSyncBackgroundTask()
 {
     this->tasks_ = {
         std::make_shared<MediaHiddenAndRecycleTask>(),
+        std::make_shared<RepairFutureDateTask>(),
         std::make_shared<MediaLocationSynchronizeTask>(),
     };
 }

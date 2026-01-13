@@ -28,6 +28,12 @@ public:
     static constexpr int32_t FILE_INFO_NEW_ID = 101;
     static constexpr int32_t PORTRAIT_SUBTYPE = 4102;
 
+    static constexpr int32_t COLUMN_INDEX_ZERO = 0;
+    static constexpr int32_t COLUMN_INDEX_ONE = 1;
+    static constexpr int32_t COLUMN_INDEX_TWO = 2;
+    static constexpr int32_t COLUMN_INDEX_THREE = 3;
+    static constexpr int32_t COLUMN_INDEX_FOUR = 4;
+
     static void SetUpTestCase(void);
     static void TearDownTestCase(void);
     void SetUp();
@@ -45,6 +51,13 @@ public:
         const std::unordered_map<int32_t, OHOS::Media::PhotoInfo>& photoInfoMap);
     static void VerifyAssetMapRestore(const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
         const std::unordered_map<int32_t, OHOS::Media::PhotoInfo>& photoInfoMap);
+    static void InsertTestAlbumData(const std::shared_ptr<NativeRdb::RdbStore>& rdbStore,
+        const std::string& tableName, int32_t albumId, int32_t albumType, int32_t albumSubtype);
+    static int32_t CountAlbumsInSourceTable(const std::shared_ptr<NativeRdb::RdbStore>& rdbStore,
+        const std::string& tableName);
+    static void VerifyTabOldAlbumsRecord(const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
+        int32_t expectedOldAlbumId, int32_t expectedNewAlbumId,
+        int32_t exptectedAlbumType, int32_t exptectedAlbumSubType);
 };
 } // namespace Media
 } // namespace OHOS

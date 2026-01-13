@@ -53,6 +53,17 @@ ohos_fuzztest("MediaLibraryNotificationFuzzTest") {
     "./medialibrarynotification_fuzzer.cpp",
   ]
 
+  media_permission_source = [
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/abs_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/db_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/grant_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/media_tool_permission_handler.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/pemission_common.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_permission/src/read_write_permission_handler.cpp",
+  ]
+
+  sources += media_permission_source
+
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",

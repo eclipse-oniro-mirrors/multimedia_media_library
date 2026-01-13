@@ -70,8 +70,9 @@ int32_t ReadCompositePermCheck::CheckPermission(uint32_t businessCode, const Per
     }
 
     for (const auto& check : readChecks_) {
-        if (check->CheckPermission(businessCode, data) == E_SUCCESS) {
-            return E_SUCCESS;
+        int32_t ret = check->CheckPermission(businessCode, data);
+        if (ret == E_SUCCESS || ret == E_DOUBLE_CHECK) {
+            return ret;
         }
     }
     return E_PERMISSION_DENIED;
@@ -91,7 +92,7 @@ int32_t DbReadPermCheck::CheckPermission(uint32_t businessCode, const Permission
     if (ret != E_SUCCESS) {
         return ret;
     }
-    return (AppUriPermissionColumn::PERMISSION_TYPES_ALL.count(permissionType)) ? E_SUCCESS : E_PERMISSION_DENIED;
+    return (AppUriPermissionColumn::PERMISSION_TYPES_ALL.count(permissionType)) ? E_DOUBLE_CHECK : E_PERMISSION_DENIED;
 }
 
 int32_t GrantReadPermCheck::CheckPermission(uint32_t businessCode, const PermissionHeaderReq &data)

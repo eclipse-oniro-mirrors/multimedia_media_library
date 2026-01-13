@@ -25,6 +25,7 @@
 #include "media_file_manager_temp_file_aging_task.h"
 #include "medialibrary_subscriber.h"
 #undef private
+#include "media_upgrade.h"
 
 using namespace testing::ext;
 
@@ -92,7 +93,7 @@ static void CleanTestTables()
 static void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE
+        PhotoUpgrade::CREATE_PHOTO_TABLE
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

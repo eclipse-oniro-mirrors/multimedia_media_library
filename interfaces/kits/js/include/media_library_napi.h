@@ -39,7 +39,7 @@
 #include "parcel.h"
 #include "media_change_info.h"
 #include "medialibrary_notify_new_observer.h"
-
+#include "report_event.h"
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -252,6 +252,8 @@ public:
     EXPORT MediaLibraryNapi();
     EXPORT ~MediaLibraryNapi();
     static std::mutex sUserFileClientMutex_;
+    static ReportEvent getPhotoAccessHelperEvent_;
+    static ReportEvent registerChangeEvent_;
 
 private:
     EXPORT static void MediaLibraryNapiDestructor(napi_env env, void *nativeObject, void *finalize_hint);
@@ -285,6 +287,7 @@ private:
     EXPORT static napi_value CreateDeliveryModeEnum(napi_env env);
     EXPORT static napi_value CreateSourceModeEnum(napi_env env);
     EXPORT static napi_value CreateCompatibleModeEnum(napi_env env);
+    EXPORT static napi_value CreatePhotoRiskStatusEnum(napi_env env);
 
     EXPORT static napi_value CreatePhotoKeysEnum(napi_env env);
     EXPORT static napi_value CreateHiddenPhotosDisplayModeEnum(napi_env env);
@@ -336,7 +339,9 @@ private:
     EXPORT static napi_value CreateAssetsForAppWithAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value ShowAssetsCreationDialog(napi_env env, napi_callback_info info);
     EXPORT static napi_value RequestPhotoUrisReadPermission(napi_env env, napi_callback_info info);
+    EXPORT static napi_value RequestPhotoUrisReadPermissionEx(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperCreatePhotoAsset(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessCreatePhotoAsset(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperAgentCreateAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperAgentCreateAssetsWithMode(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGrantPhotoUriPermission(napi_env env, napi_callback_info info);
@@ -467,6 +472,7 @@ private:
     static thread_local napi_ref sVirtualAlbumTypeEnumRef_;
     static thread_local napi_ref sFileKeyEnumRef_;
     static thread_local napi_ref sPrivateAlbumEnumRef_;
+    static thread_local napi_ref sRiskStatusEnumRef_;
 
     static thread_local napi_ref sUserFileMgrFileKeyEnumRef_;
     static thread_local napi_ref sAudioKeyEnumRef_;
@@ -512,6 +518,7 @@ private:
     static thread_local napi_ref sVideoModeRef_;
 
     static std::mutex sOnOffMutex_;
+    static std::mutex thumbnailMutex_;
 };
 
 struct PickerCallBack {
@@ -525,6 +532,7 @@ struct PickerCallBack {
     int32_t recommendationType;
     int32_t selectedRecommendationType;
     vector<int32_t> movingPhotoBadgeStates;
+    int32_t gridLevel;
 };
 
 constexpr int32_t DEFAULT_PRIVATEALBUMTYPE = 3;
@@ -532,6 +540,7 @@ struct MediaLibraryAsyncContext : public NapiError {
     napi_async_work work;
     napi_deferred deferred;
     napi_ref callbackRef;
+    napi_ref responseRef;
     bool status;
     bool isDelete;
     bool isCreateByComponent;
@@ -608,9 +617,16 @@ struct MediaLibraryAsyncContext : public NapiError {
     int32_t photoAlbumType;
     int32_t photoAlbumSubType;
     int32_t orderStyle = 0;
+    int32_t requestId;
     std::string bundleName;
     bool canSupportedCompatibleDuplicate = false;
     std::unordered_map<std::string, std::string> debugDatabaseMap;
+    int64_t startTime = 0;
+    std::string errCode = "0";
+    enum EventType {
+        PHOTO_ACCESS_HELPER,
+        REGISTER_CHANGE
+    } eventType;
 };
 
 struct MediaLibraryInitContext : public NapiError  {

@@ -36,6 +36,7 @@
 #include "medialibrary_type_const.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_kvstore_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -145,7 +146,7 @@ static inline MediaLibraryCommand FuzzMediaLibraryCmd()
 
 void SetTables()
 {
-    vector<string> createTableSqlList = { PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "g_rdbStore is null.");
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
@@ -269,7 +270,8 @@ static void CloudMediaAssetDeleteFuzzer()
     vector<string> dateTakens;
     std::vector<int32_t> subTypes;
     fileId = InsertAsset();
-    instance.ReadyDataForDelete(fileIds, paths, dateTakens, subTypes);
+    std::vector<int64_t> lcdVisitTimes;
+    instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
     instance.DeleteAllCloudMediaAssetsAsync();
     instance.DeleteEmptyCloudAlbums();
     instance.ForceRetainDownloadCloudMedia();

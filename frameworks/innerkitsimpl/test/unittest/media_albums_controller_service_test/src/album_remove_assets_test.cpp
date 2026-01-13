@@ -34,6 +34,7 @@
 #include "medialibrary_data_manager.h"
 #include "result_set_utils.h"
 #include "media_file_uri.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -50,7 +51,7 @@ static string g_title = "cam_pic";
 
 static std::vector<std::string> createTableSqlLists = {
     PhotoAlbumColumns::CREATE_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
 };
 
 static std::vector<std::string> testTables = {

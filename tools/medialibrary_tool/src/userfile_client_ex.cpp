@@ -38,6 +38,7 @@
 #include "userfile_client.h"
 #include "userfile_manager_types.h"
 #include "mediatool_uri.h"
+#include "media_audio_column.h"
 
 using namespace OHOS::DataShare;
 namespace OHOS {

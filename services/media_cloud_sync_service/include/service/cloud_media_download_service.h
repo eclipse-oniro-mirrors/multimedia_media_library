@@ -70,9 +70,12 @@ private:
     int32_t SliceAsset(const OnDownloadAssetData &assetData, const PhotosPo &photo);
     void HandlePhoto(const ORM::PhotosPo &photo, OnDownloadAssetData &assetData);
     void NotifyDownloadLcd(const std::vector<std::string> &cloudIds);
-    int32_t FixDownloadAssetExifRotate(const ORM::PhotosPo &photo, OnDownloadAssetData &assetData);
-    int32_t CheckRegenerateThumbnail(const ORM::PhotosPo &photo, OnDownloadAssetData &assetData);
+    int32_t FixDownloadAssetExifRotate(const ORM::PhotosPo &photo, const CloudMediaScanService::ScanResult &scanResult);
+    int32_t CheckRegenerateThumbnail(const ORM::PhotosPo &photo, const int32_t exifRotate);
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     void UpdateBatchDownloadTask(const ORM::PhotosPo &photo);
+#endif
+    void CalEditDataSizeInHandlePhoto(const ORM::PhotosPo &photo);
 
 private:
     const uint32_t TYPE_THM_MASK = 0x1;

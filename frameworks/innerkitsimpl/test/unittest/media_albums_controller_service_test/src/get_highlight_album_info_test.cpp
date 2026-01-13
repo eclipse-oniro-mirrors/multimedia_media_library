@@ -26,6 +26,7 @@
 #include "media_albums_controller_service.h"
 #include "media_assets_service.h"
 #include "rdb_utils.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
  
@@ -93,7 +94,7 @@ HWTEST_F(GetHightlightAlbumInfoTest, GetHightlightAlbumInfoTest_Test_001, TestSi
     MessageParcel reply;
     reqBody.Marshalling(data);
 
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetHighlightAlbumInfo(data, reply);
     IPC::MediaRespVo<QueryResultRespBody> resp;
     bool isValid = resp.Unmarshalling(reply);

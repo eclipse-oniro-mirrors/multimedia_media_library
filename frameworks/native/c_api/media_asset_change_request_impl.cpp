@@ -321,6 +321,7 @@ bool MediaAssetChangeRequestImpl::SubmitCacheExecute()
 
 bool MediaAssetChangeRequestImpl::AddResourceExecute()
 {
+    MEDIA_INFO_LOG("AddResourceExecute begin.");
     CHECK_AND_RETURN_RET_LOG(!IsMovingPhoto(), false, "not support edit moving photo with buffer or uri");
 
     if (!HasWritePermission()) {
@@ -339,6 +340,7 @@ bool MediaAssetChangeRequestImpl::AddResourceExecute()
 
 bool MediaAssetChangeRequestImpl::SaveCameraPhotoExecute()
 {
+    MEDIA_INFO_LOG("SaveCameraPhotoExecute begin.");
     bool containsAddResource = find(assetChangeOperations_.begin(), assetChangeOperations_.end(),
         AssetChangeOperation::ADD_RESOURCE) != assetChangeOperations_.end();
     std::string uriStr = PAH_SAVE_CAMERA_PHOTO;
@@ -365,6 +367,7 @@ bool MediaAssetChangeRequestImpl::SaveCameraPhotoExecute()
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileAsset->GetId()));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_SUBTYPE, to_string(fileAsset->GetPhotoSubType()));
     MediaFileUtils::UriAppendKeyValue(uriStr, IMAGE_FILE_TYPE, to_string(static_cast<int32_t>(imageFileType_)));
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONTAIN_ADD_RESOURCE, to_string(containsAddResource));
     Uri uri(uriStr);
     OHOS::DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::PHOTO_IS_TEMP, false);
@@ -386,6 +389,7 @@ bool MediaAssetChangeRequestImpl::DiscardCameraPhotoExecute()
 
     string uri = PAH_DISCARD_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
+    MediaFileUtils::UriAppendKeyValue(uri, PhotoColumn::MEDIA_ID, to_string(fileAsset->GetId()));
     Uri updateAssetUri(uri);
     int32_t changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
     CHECK_AND_RETURN_RET_LOG(changedRows >= 0, false,

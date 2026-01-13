@@ -34,8 +34,10 @@ public:
     virtual ~RequestPhotoUrisReadPermissionCallback();
     void OnRelease(int32_t releaseCode);
     void OnResult(int32_t resultCode, const OHOS::AAFwk::Want &want);
+    void OnResultEx(int32_t resultCode, const OHOS::AAFwk::Want &want);
     void OnReceive(const OHOS::AAFwk::WantParams &request);
     void OnError(int32_t code, const std::string &name, const std::string &message);
+    void OnErrorEx(int32_t code, const std::string &name, const std::string &message);
     void SetSessionId(int32_t sessionId);
     void SetFunc(napi_value func);
 
@@ -46,6 +48,7 @@ private:
     napi_ref callbackRef = nullptr;
     Ace::UIContent *uiContent = nullptr;
     void SendMessageBack(const std::vector<std::string> &desFileUris);
+    void SendMessageBackEx(const std::vector<std::string> &desFileUris, const std::vector<std::string> &invalidUris);
     void CloseModalUIExtension();
 };
 }

@@ -34,6 +34,7 @@
 #include "photo_file_utils.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -231,7 +232,7 @@ static void RepairDateTimeFuzzer()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
         Media::PhotoAlbumColumns::CREATE_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

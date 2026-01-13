@@ -53,6 +53,7 @@
 #include "vision_db_sqls_more.h"
 #include "medialibrary_db_const_sqls.h"
 #include "medialibrary_mock_tocken.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -105,7 +106,7 @@ static std::vector<std::string> createTableSqlLists = {
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     CREATE_TAB_VIDEO_FACE,
     CREATE_TAB_VIDEO_ANALYSIS_AESTHETICS,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_MEDIA_TABLE,
     CREATE_BUNDLE_PREMISSION_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
@@ -275,8 +276,8 @@ void MediaLibraryVisionTest::SetUpTestCase(void)
     MediaLibraryUnitTestUtils::Init();
     auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
     MediaLibraryUnitTestUtils::CreateTestTables(rdbStore, createTableSqlLists);
-    rdbStore->ExecuteSql(PhotoColumn::INDEX_SCTHP_ADDTIME);
-    rdbStore->ExecuteSql(PhotoColumn::CREATE_SCHPT_DAY_INDEX);
+    rdbStore->ExecuteSql(PhotoUpgrade::INDEX_SCTHP_ADDTIME);
+    rdbStore->ExecuteSql(PhotoUpgrade::CREATE_SCHPT_DAY_INDEX);
     // 获取shell的tokenId 并保存
     g_shellToken = IPCSkeleton::GetSelfTokenID();
     MediaLibraryMockTokenUtils::RestoreShellToken(g_shellToken);
@@ -334,8 +335,8 @@ void MediaLibraryVisionTest::SetUp(void)
     MediaLibraryUnitTestUtils::InitRootDirs();
     MediaLibraryUnitTestUtils::Init();
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    rdbStore->ExecuteSql(PhotoColumn::INDEX_SCTHP_ADDTIME);
-    rdbStore->ExecuteSql(PhotoColumn::CREATE_SCHPT_DAY_INDEX);
+    rdbStore->ExecuteSql(PhotoUpgrade::INDEX_SCTHP_ADDTIME);
+    rdbStore->ExecuteSql(PhotoUpgrade::CREATE_SCHPT_DAY_INDEX);
 }
 
 void MediaLibraryVisionTest::TearDown(void) {}
@@ -1512,6 +1513,7 @@ HWTEST_F(MediaLibraryVisionTest, Vision_InsertPetFace_Test_001, TestSize.Level1)
     EXPECT_GT(retVal, 0);
     MEDIA_INFO_LOG("Vision_InsertImageFace_Test_001::retVal = %{public}d. End", retVal);
     DataShare::DataShareValuesBucket valuesBucket1;
+    valuesBucket1.Put(ID, retVal);
     valuesBucket1.Put(FILE_ID, 1);
     valuesBucket1.Put(PET_ID, 1);
     valuesBucket1.Put(PET_FEATURE_VERSION, "1.01");

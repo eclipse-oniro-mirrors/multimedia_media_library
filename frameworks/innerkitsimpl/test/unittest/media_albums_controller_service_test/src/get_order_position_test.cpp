@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -36,6 +37,7 @@
 #include "vision_db_sqls.h"
 #include "vision_photo_map_column.h"
 #include "medialibrary_data_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -52,7 +54,7 @@ static string g_title = "cam_pic";
 
 static std::vector<std::string> createTableSqlLists = {
     PhotoAlbumColumns::CREATE_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_ANALYSIS_ALBUM,
     CREATE_ANALYSIS_ALBUM_MAP,
 };
@@ -173,7 +175,7 @@ static int32_t GetOrderPosition(int32_t albumId, int32_t albumType, int32_t albu
     }
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetOrderPosition(data, reply);
 
     IPC::MediaRespVo<GetOrderPositionRespBody> resp;
@@ -220,7 +222,7 @@ HWTEST_F(GetOrderPositionTest, GetOrderPositionTest_Test_002, TestSize.Level0)
     MEDIA_INFO_LOG("Start GetOrderPositionTest_Test_002");
     MessageParcel data;
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetOrderPosition(data, reply);
 
     IPC::MediaRespVo<GetOrderPositionRespBody> resp;

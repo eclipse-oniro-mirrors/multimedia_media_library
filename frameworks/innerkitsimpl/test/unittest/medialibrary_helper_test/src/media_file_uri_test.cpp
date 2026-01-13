@@ -22,6 +22,7 @@
 #include "userfile_manager_types.h"
 #include "medialibrary_errno.h"
 #include "uri.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace testing::ext;

@@ -213,6 +213,7 @@ int32_t FileAsset::GetHeight() const
 
 void FileAsset::SetHeight(int32_t height)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_HEIGHT] = height;
 }
 
@@ -223,6 +224,7 @@ double FileAsset::GetAspectRatio()
 
 void FileAsset::SetAspectRatio(double aspectRatio)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_ASPECT_RATIO] = aspectRatio;
 }
 
@@ -233,6 +235,7 @@ int32_t FileAsset::GetDuration() const
 
 void FileAsset::SetDuration(int32_t duration)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_DURATION] = duration;
 }
 
@@ -243,6 +246,7 @@ int32_t FileAsset::GetOrientation() const
 
 void FileAsset::SetOrientation(int32_t orientation)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_ORIENTATION] = orientation;
 }
 
@@ -253,6 +257,7 @@ int32_t FileAsset::GetAlbumId() const
 
 void FileAsset::SetAlbumId(int32_t albumId)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_BUCKET_ID] = albumId;
 }
 
@@ -263,6 +268,7 @@ int32_t FileAsset::GetOwnerAlbumId() const
 
 void FileAsset::SetOwnerAlbumId(int32_t ownerAlbumId)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = ownerAlbumId;
 }
 
@@ -273,6 +279,7 @@ const string &FileAsset::GetAlbumName() const
 
 void FileAsset::SetAlbumName(const string &albumName)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_BUCKET_NAME] = albumName;
 }
 
@@ -283,6 +290,7 @@ int32_t FileAsset::GetParent() const
 
 void FileAsset::SetParent(int32_t parent)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_PARENT_ID] = parent;
 }
 
@@ -303,6 +311,7 @@ int64_t FileAsset::GetDateTaken() const
 
 void FileAsset::SetDateTaken(int64_t dateTaken)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_DATE_TAKEN] = dateTaken;
 }
 
@@ -313,6 +322,7 @@ int64_t FileAsset::GetTimePending() const
 
 void FileAsset::SetTimePending(int64_t timePending)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_TIME_PENDING] = timePending;
 }
 
@@ -323,6 +333,7 @@ int32_t FileAsset::GetVisitCount() const
 
 void FileAsset::SetVisitCount(int32_t visitCount)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_VISIT_COUNT] = visitCount;
 }
 
@@ -333,6 +344,7 @@ int32_t FileAsset::GetLcdVisitCount() const
 
 void FileAsset::SetLcdVisitCount(int32_t lcdVisitCount)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_LCD_VISIT_COUNT] = lcdVisitCount;
 }
 
@@ -343,6 +355,7 @@ bool FileAsset::IsFavorite() const
 
 void FileAsset::SetFavorite(bool isFavorite)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_IS_FAV] = isFavorite;
 }
 
@@ -353,6 +366,7 @@ bool FileAsset::IsRecentShow() const
 
 void FileAsset::SetRecentShow(bool isRecentShow)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_IS_RECENT_SHOW] = isRecentShow;
 }
 
@@ -363,6 +377,7 @@ double FileAsset::GetLatitude()
 
 void FileAsset::SetLatitude(double latitude)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_LATITUDE] = latitude;
 }
 
@@ -373,14 +388,16 @@ double FileAsset::GetLongitude()
 
 void FileAsset::SetLongitude(double longitude)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_LONGITUDE] = longitude;
 }
 
 void FileAsset::SetPhotoId(const string &photoId)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_PHOTO_ID] = photoId;
 }
- 
+
 string FileAsset::GetPhotoId() const
 {
     return GetStrMember(MEDIA_DATA_DB_PHOTO_ID);
@@ -388,6 +405,7 @@ string FileAsset::GetPhotoId() const
 
 void FileAsset::SetPhotoIdAndQuality(const string &photoId, int photoQuality)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_PHOTO_ID] = photoId;
     member_[MEDIA_DATA_DB_PHOTO_QUALITY] = photoQuality;
 }
@@ -404,6 +422,7 @@ int64_t FileAsset::GetDateTrashed() const
 
 void FileAsset::SetDateTrashed(int64_t dateTrashed)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_DATE_TRASHED] = dateTrashed;
 }
 
@@ -414,6 +433,7 @@ const string &FileAsset::GetSelfId() const
 
 void FileAsset::SetSelfId(const string &selfId)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_SELF_ID] = selfId;
 }
 
@@ -427,6 +447,7 @@ int32_t FileAsset::GetIsTrash() const
 
 void FileAsset::SetIsTrash(int32_t isTrash)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_IS_TRASH] = isTrash;
 }
 
@@ -437,6 +458,7 @@ const string &FileAsset::GetRecyclePath() const
 
 void FileAsset::SetRecyclePath(const string &recyclePath)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_RECYCLE_PATH] = recyclePath;
 }
 
@@ -447,6 +469,7 @@ const string FileAsset::GetOwnerPackage() const
 
 void FileAsset::SetOwnerPackage(const string &ownerPackage)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_OWNER_PACKAGE] = ownerPackage;
 }
 
@@ -457,6 +480,7 @@ const string FileAsset::GetOwnerAppId() const
 
 void FileAsset::SetOwnerAppId(const string &ownerAppId)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_OWNER_APPID] = ownerAppId;
 }
 
@@ -472,6 +496,7 @@ const string FileAsset::GetPackageName() const
 
 void FileAsset::SetPackageName(const string &packageName)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MediaColumn::MEDIA_PACKAGE_NAME] = packageName;
 }
 
@@ -487,6 +512,7 @@ int32_t FileAsset::GetPhotoSubType() const
 
 void FileAsset::SetPhotoSubType(int32_t photoSubType)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_SUBTYPE] = photoSubType;
 }
 
@@ -502,6 +528,7 @@ const std::string &FileAsset::GetCameraShotKey() const
 
 void FileAsset::SetCameraShotKey(const std::string &cameraShotKey)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::CAMERA_SHOT_KEY] = cameraShotKey;
 }
 
@@ -522,6 +549,7 @@ const std::string &FileAsset::GetAllExif() const
 
 void FileAsset::SetAllExif(const string &allExif)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_ALL_EXIF] = allExif;
 }
 
@@ -532,6 +560,7 @@ const std::string &FileAsset::GetFrontCamera() const
 
 void FileAsset::SetFrontCamera(const string &frontCamera)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_FRONT_CAMERA] = frontCamera;
 }
 
@@ -542,6 +571,7 @@ const std::string &FileAsset::GetUserComment() const
 
 void FileAsset::SetUserComment(const string &userComment)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_USER_COMMENT] = userComment;
 }
 
@@ -552,6 +582,7 @@ const std::string &FileAsset::GetFilePath() const
 
 void FileAsset::SetFilePath(const std::string &filePath)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MediaColumn::MEDIA_FILE_PATH] = filePath;
 }
 
@@ -562,6 +593,7 @@ int64_t FileAsset::GetPhotoEditTime() const
 
 void FileAsset::SetPhotoEditTime(int64_t photoEditTime)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_EDIT_TIME] = photoEditTime;
 }
 
@@ -577,6 +609,7 @@ int32_t FileAsset::GetMovingPhotoEffectMode() const
 
 void FileAsset::SetMovingPhotoEffectMode(int32_t effectMode)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::MOVING_PHOTO_EFFECT_MODE] = effectMode;
 }
 
@@ -587,6 +620,7 @@ int64_t FileAsset::GetCoverPosition() const
 
 void FileAsset::SetCoverPosition(int64_t coverPosition)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_COVER_POSITION] = coverPosition;
 }
 
@@ -597,6 +631,7 @@ const std::string &FileAsset::GetBurstKey() const
 
 void FileAsset::SetBurstKey(const std::string &burstKey)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_BURST_KEY] = burstKey;
 }
 
@@ -607,6 +642,7 @@ int32_t FileAsset::GetBurstCoverLevel() const
 
 void FileAsset::SetBurstCoverLevel(int32_t burstCoverLevel)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = burstCoverLevel;
 }
 
@@ -617,6 +653,7 @@ int32_t FileAsset::GetCEAvailable() const
 
 void FileAsset::SetCEAvailable(int32_t ceAvailable)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_CE_AVAILABLE] = ceAvailable;
 }
 
@@ -627,6 +664,7 @@ const std::string &FileAsset::GetDetailTime() const
 
 void FileAsset::SetDetailTime(const string &detailTime)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_DETAIL_TIME] = detailTime;
 }
 
@@ -637,6 +675,7 @@ int32_t FileAsset::GetSupportedWatermarkType() const
 
 void FileAsset::SetSupportedWatermarkType(int32_t watermarkType)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::SUPPORTED_WATERMARK_TYPE] = watermarkType;
 }
 
@@ -647,6 +686,7 @@ int32_t FileAsset::GetHasAppLink() const
  
 void FileAsset::SetHasAppLink(int32_t hasAppLink)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_HAS_APPLINK] = hasAppLink;
 }
  
@@ -667,6 +707,7 @@ int32_t FileAsset::GetCompositeDisplayStatus() const
 
 void FileAsset::SetCompositeDisplayStatus(int32_t compositeDisplayStatus)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS] = compositeDisplayStatus;
 }
 
@@ -677,6 +718,7 @@ int32_t FileAsset::GetIsAuto() const
 
 void FileAsset::SetIsAuto(int32_t isAuto)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_IS_AUTO] = isAuto;
 }
 
@@ -697,6 +739,7 @@ int32_t FileAsset::GetFileSourceType() const
  
 void FileAsset::SetFileSourceType(int32_t fileSourceType)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = fileSourceType;
 }
  
@@ -707,6 +750,7 @@ std::string FileAsset::GetStoragePath() const
  
 void FileAsset::SetStoragePath(const std::string &storagePath)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_STORAGE_PATH] = storagePath;
 }
 
@@ -746,26 +790,31 @@ unordered_map<string, variant<int32_t, int64_t, string, double>> &FileAsset::Get
 
 variant<int32_t, int64_t, string, double> &FileAsset::GetMemberValue(const string &name)
 {
+    std::shared_lock<std::shared_mutex> sharedlock(memberMapMutex_);
     return member_[name];
 }
 
 const string &FileAsset::GetStrMember(const string &name) const
 {
+    std::shared_lock<std::shared_mutex> sharedlock(memberMapMutex_);
     return (member_.count(name) > 0) ? get<string>(member_.at(name)) : DEFAULT_STR;
 }
 
 int32_t FileAsset::GetInt32Member(const string &name) const
 {
+    std::shared_lock<std::shared_mutex> sharedlock(memberMapMutex_);
     return (member_.count(name) > 0) ? get<int32_t>(member_.at(name)) : DEFAULT_INT32;
 }
 
 int64_t FileAsset::GetInt64Member(const string &name) const
 {
+    std::shared_lock<std::shared_mutex> sharedlock(memberMapMutex_);
     return (member_.count(name) > 0) ? get<int64_t>(member_.at(name)) : DEFAULT_INT64;
 }
 
 double FileAsset::GetDoubleMember(const string &name) const
 {
+    std::shared_lock<std::shared_mutex> sharedlock(memberMapMutex_);
     return (member_.count(name) > 0) ? get<double>(member_.at(name)) : DEFAULT_DOUBLE;
 }
 
@@ -778,7 +827,7 @@ int32_t FileAsset::GetUserId()
 {
     return userId_;
 }
- 
+
 void FileAsset::SetUserId(int32_t userId)
 {
     userId_ = userId;
@@ -791,6 +840,7 @@ int32_t FileAsset::GetExistCompatibleDuplicate() const
 
 void FileAsset::SetExistCompatibleDuplicate(int32_t existCompatibleDuplicate)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE] = existCompatibleDuplicate;
 }
 
@@ -841,6 +891,7 @@ string FileAsset::GetAssetJson()
 
 void FileAsset::SetStageVideoTaskStatus(int32_t stageVideoTaskStatus)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::STAGE_VIDEO_TASK_STATUS] = stageVideoTaskStatus;
 }
 
@@ -851,6 +902,7 @@ int32_t FileAsset::GetStageVideoTaskStatus() const
 
 void FileAsset::SetPhotoIsTemp(int32_t isTemp)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_IS_TEMP] = isTemp;
 }
 
@@ -861,12 +913,35 @@ int32_t FileAsset::GetPhotoIsTemp() const
 
 void FileAsset::SetExifRotate(int32_t exifRotate)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_EXIF_ROTATE] = exifRotate;
 }
 
 int32_t FileAsset::GetExifRotate() const
 {
     return GetInt32Member(PhotoColumn::PHOTO_EXIF_ROTATE);
+}
+
+void FileAsset::SetCritical(int32_t isCritical)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_IS_CRITICAL] = isCritical;
+}
+
+int32_t FileAsset::GetCritical() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_IS_CRITICAL);
+}
+
+void FileAsset::SetRiskStatus(int32_t photoRiskStatus)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_RISK_STATUS] = photoRiskStatus;
+}
+
+int32_t FileAsset::GetRiskStatus() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_RISK_STATUS);
 }
 }  // namespace Media
 }  // namespace OHOS

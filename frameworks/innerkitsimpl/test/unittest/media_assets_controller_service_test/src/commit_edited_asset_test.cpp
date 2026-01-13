@@ -35,6 +35,7 @@
 #include "media_column.h"
 #include "result_set_utils.h"
 #include "medialibrary_errno.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -92,7 +93,7 @@ static void InsertAssetIntoPhotosTable()
 static void SetAllTestTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE
+        PhotoUpgrade::CREATE_PHOTO_TABLE
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

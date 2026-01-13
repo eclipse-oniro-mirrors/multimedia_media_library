@@ -24,7 +24,7 @@
 namespace OHOS {
 namespace Media {
 
-const int32_t MEDIA_RDB_VERSION = 396;
+const int32_t MEDIA_RDB_VERSION = 403;
 
 enum {
     VERSION_ADD_CLOUD = 2,
@@ -256,7 +256,6 @@ enum {
     VERSION_ADD_INDEX_FOR_CLOUD_AND_PITAYA = 364,
     VERSION_ADD_ANALYSIS_STATUS = 365,
     VERSION_ADD_TEMP_FILE_ASSETS_CREATE_ALBUM = 366,
-	VERSION_ADD_MAP_CODE_TABLE = 367,
     VERSION_ADD_AFFECTIVE_TABLE = 368,
     VERSION_ADD_3DGS_MODE = 369,
     VERSION_UPGRADE_IDX_SCHPT_HIDDEN_TIME = 370,
@@ -286,6 +285,13 @@ enum {
     VERSION_ADD_CHANGE_TIME = 394,
     VERSION_ADD_EDIT_OPERATION = 395,
     VERSION_UPDATE_MDIRTY_TRIGGER_FOR_HDR_MODE = 396,
+    VERSION_ADD_AUDIO_IS_TEMP = 397,
+    VERSION_ADD_ANALYSIS_UPDATE_SEARCH_TRIGGER = 398,
+    VERSION_DROP_PHOTO_STATUS_FOR_SEARCH_INDEX = 399,
+    VERSION_ADD_PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE = 400,
+    VERSION_ADD_CRITICAL_TYPE_COLUMN_ON_PHOTOS = 401,
+    VERSION_ADD_PHOTO_RISK_STATUS = 402,
+    VERSION_FIX_MINECRAFT_PE = 403,
 };
 enum {
     MEDIA_API_VERSION_DEFAULT = 8,
@@ -483,6 +489,9 @@ const std::string OPEN_PRIVATE_LIVE_PHOTO = "open_private_live_photo";
 const std::string OPEN_MOVING_PHOTO_VIDEO_CLOUD = "open_moving_photo_video_cloud";
 const std::string NOTIFY_VIDEO_SAVE_FINISHED = "notify_video_save_finished"; // movingPhoto video save finish
 
+// movie mode param
+const std::string CREATE_CINEMATIC_VIDEO = "create_cinematic_video";
+
 // db sandbox directory
 const std::string MEDIA_DB_DIR = "/data/medialibrary/database";
 
@@ -495,6 +504,7 @@ const std::string MEDIA_DB_FILE_SLAVE_WAL = "/data/storage/el2/database/rdb/medi
 // requestId for generating thumbnail in batches
 const std::string THUMBNAIL_BATCH_GENERATE_REQUEST_ID = "thumbnail_request_id";
 const std::string IMAGE_FILE_TYPE = "image_file_type";
+const std::string CONTAIN_ADD_RESOURCE = "contain_add_resource";
 
 const std::string RESTORE_REQUEST_ASTC_GENERATE_COUNT = "restore_request_astc_generate_count";
 const std::string BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG = "BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG";

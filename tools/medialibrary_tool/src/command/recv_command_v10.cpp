@@ -33,6 +33,7 @@
 #include "utils/mediatool_command_utils.h"
 #include "userfile_client.h"
 #include "userfile_client_ex.h"
+#include "media_audio_column.h"
 
 namespace OHOS {
 namespace Media {

@@ -18,6 +18,8 @@ ohos_static_library("medialibrary_common_utils") {
   include_dirs = [
     "./include/",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_FACARD_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
   ]
 
   sources = [ "src/medialibrary_common_utils.cpp" ]

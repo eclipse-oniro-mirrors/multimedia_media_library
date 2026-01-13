@@ -53,6 +53,7 @@
 #include "cloud_media_asset_uri.h"
 #include "data_secondary_directory_uri.h"
 #include "parameters.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -97,7 +98,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
     };
@@ -477,8 +478,9 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_0
     std::vector<std::string> fileIds;
     std::vector<std::string> paths;
     std::vector<std::string> dateTakens;
+    std::vector<int64_t> lcdVisitTimes;
     std::vector<int32_t> subTypes;
-    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, subTypes);
+    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
     EXPECT_EQ(ret, E_OK);
     ret = instance.ForceRetainDownloadCloudMedia(CloudMediaRetainType::RETAIN_FORCE);
     EXPECT_EQ(ret, E_OK);
@@ -589,9 +591,6 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_0
     ret = instance.UpdateBothLocalAndCloudAssets();
     EXPECT_EQ(ret, E_OK);
 
-    ret = instance.ClearDeletedMapData();
-    EXPECT_EQ(ret, E_OK);
-
     ret = instance.ClearDeletedDbData();
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("cloud_asset_download_manager_test_015 End");
@@ -648,10 +647,12 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_0
     std::vector<std::string> fileIds;
     std::vector<std::string> paths;
     std::vector<std::string> dateTakens;
+    std::vector<int64_t> lcdVisitTimes;
     std::vector<int32_t> subTypes;
-    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, subTypes);
+    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
     EXPECT_EQ(ret, E_OK);
-    ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::HDC_RETAIN_FORCE);
+    ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::NONE);
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("cloud_asset_download_manager_test_017 End");
 }

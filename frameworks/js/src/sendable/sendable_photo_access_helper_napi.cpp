@@ -28,6 +28,7 @@
 #include "story_album_column.h"
 #include "userfile_client.h"
 #include "album_operation_uri.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;

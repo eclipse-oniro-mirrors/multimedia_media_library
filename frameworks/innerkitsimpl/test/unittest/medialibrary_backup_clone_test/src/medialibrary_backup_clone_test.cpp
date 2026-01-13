@@ -41,6 +41,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_data_manager.h"
 #include "others_clone_restore.h"
+#include "tab_old_albums_clone.h"
 #include "photos_dao.h"
 #include "photos_data_handler.h"
 #include "burst_key_generator.h"
@@ -55,6 +56,9 @@
 #include <random>
 #include "parameters.h"
 #include "media_config_info_column.h"
+#include "values_bucket.h"
+#include "media_audio_column.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace OHOS;
@@ -95,7 +99,7 @@ const int32_t I_PHONE_DYNAMIC_VIDEO_TYPE = 13;
 const int32_t PAGE_SIZE = 200;
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
     PhotoMap::CREATE_TABLE,
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
@@ -111,6 +115,7 @@ static std::vector<std::string> createTableSqlLists = {
     CREATE_VIDEO_FACE_TBL,
     CREATE_AESTHETICS_SCORE_TBL,
     ConfigInfoColumn::CREATE_CONFIG_INFO_TABLE,
+    CREATE_TAB_ANALYSIS_VIDEO_TOTAL,
 };
 
 static std::vector<std::string> testTables = {
@@ -130,6 +135,8 @@ static std::vector<std::string> testTables = {
     ANALYSIS_VIDEO_FACE_TABLE,
     ANALYSIS_BEAUTY_SCORE_TABLE,
     ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME,
+    TAB_OLD_ALBUMS,
+    ANALYSIS_VIDEO_TOTAL_TABLE,
 };
 
 const vector<string> WHERE_CLAUSE_LIST_PHOTO = { WHERE_CLAUSE_SHOOTING_MODE, WHERE_CLAUSE_TRASHED,
@@ -185,6 +192,11 @@ static const std::string BACKUP_FLAG = "multimedia.medialibrary.backupFlag";
 static const int64_t DEFAULT_TIME_STAMP = 0;
 static const int RELEASE_SCENE_RESTORE = 2;
 static const int RELEASE_SCENE_BACKUP = 1;
+
+static void ModifyAlbumMapTbl(AlbumMapTbl& albumMapTbl, std::optional<int32_t> albumId,
+    std::optional<int32_t> albumType, std::optional<int32_t> albumSubtype, std::optional<int32_t> oldAlbumId,
+    std::optional<int32_t> cloneSequence);
+    
 
 void ExecuteSqls(shared_ptr<NativeRdb::RdbStore> store, const vector<string> &sqls)
 {
@@ -1361,7 +1373,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_HasSameFi
 
     shared_ptr<NativeRdb::RdbStore> store = NativeRdb::RdbHelper::GetRdbStore(config, 1, helper, errCode);
     ASSERT_NE(store, nullptr);
-    store->ExecuteSql(PhotoColumn::CREATE_PHOTO_TABLE);
+    store->ExecuteSql(PhotoUpgrade::CREATE_PHOTO_TABLE);
     store->ExecuteSql(string("INSERT INTO Photos (file_id, data, display_name, size, owner_album_id") +
         ") VALUES (1, 'test', 'test.jpg', 100, 0)");
 
@@ -3206,6 +3218,87 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_video_fa
     MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_video_face_test_001");
 }
 
+static void VerifyVideoTotalRestore(const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
+    int32_t expectFileId, int32_t expectFace, int32_t expectLabel, int32_t expectStatus)
+{
+    if (!destRdb) {
+        MEDIA_ERR_LOG("Destination RDB store is null for verification");
+        return;
+    }
+
+    std::string querySql = "SELECT * FROM " + VISION_VIDEO_TOTAL_TABLE + " WHERE file_id = "
+        + std::to_string(expectFileId);
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(destRdb, querySql);
+    ASSERT_NE(resultSet, nullptr) << "Failed to query destination DB for video face verification";
+
+    std::unordered_map<int32_t, std::vector<VideoFaceTbl>> destVideoFaces;
+    int32_t index = -1;
+    int32_t currentFileid = -1;
+    int32_t currentFace = -1;
+    int32_t currentLabel = -1;
+    int32_t currentStatus;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        resultSet->GetColumnIndex("file_id", index);
+        resultSet->GetInt(index, currentFileid);
+        resultSet->GetColumnIndex("face", index);
+        resultSet->GetInt(index, currentFace);
+        resultSet->GetColumnIndex("label", index);
+        resultSet->GetInt(index, currentLabel);
+        resultSet->GetColumnIndex("status", index);
+        resultSet->GetInt(index, currentStatus);
+    }
+    EXPECT_EQ(currentFileid, expectFileId);
+    EXPECT_EQ(currentFace, expectFace);
+    EXPECT_EQ(currentLabel, expectLabel);
+    EXPECT_EQ(currentStatus, expectStatus);
+
+    resultSet->Close();
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_video_face_test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_video_face_test_002");
+    CloneSource cloneSource;
+    vector<string> tableList = { ANALYSIS_VIDEO_FACE_TABLE, PhotoColumn::PHOTOS_TABLE, VISION_TOTAL_TABLE,
+        ANALYSIS_VIDEO_TOTAL_TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "Destination RDB store (g_rdbStore) is null");
+
+    std::unordered_map<int32_t, OHOS::Media::PhotoInfo> photoInfoMap;
+    int32_t sourceOldFileId = 101;
+    int32_t newFileId = 11;
+    photoInfoMap[sourceOldFileId] = { .fileIdNew = newFileId };
+
+    ExecuteSqls(cloneSource.cloneStorePtr_, {
+        "DROP TABLE IF EXISTS tab_analysis_video_total;",
+        CREATE_TAB_ANALYSIS_VIDEO_TOTAL,
+        "DROP TABLE IF EXISTS tab_analysis_video_face;",
+        CREATE_VIDEO_FACE_TBL,
+     });
+
+    ExecuteSqls(cloneSource.cloneStorePtr_, {
+        "INSERT OR REPLACE INTO Photos (file_id, media_type) VALUES (101,2);",
+        "INSERT OR REPLACE INTO tab_analysis_video_total (file_id, status, label, face) VALUES (101,1,2,3);",
+        "INSERT OR REPLACE INTO tab_analysis_video_face (file_id, face_id) VALUES (101, 3);",
+    });
+
+    MEDIA_INFO_LOG("Start executesql distance");
+
+    ExecuteSqls(g_rdbStore->GetRaw(), {
+        "INSERT OR REPLACE INTO tab_analysis_video_total (file_id, status, label, face) VALUES (10,1,2,3);",
+        "INSERT OR REPLACE INTO tab_analysis_video_total (file_id, status, label, face) VALUES (11,0,0,3);",
+    });
+
+    VideoFaceClone videoFaceClone(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), photoInfoMap);
+    bool cloneSuccess = videoFaceClone.CloneVideoFaceInfo();
+    ASSERT_TRUE(cloneSuccess) << "VideoFaceClone::CloneVideoFaceInfo failed";
+    VerifyVideoTotalRestore(g_rdbStore->GetRaw(), 10, 0, 2, 0);
+    VerifyVideoTotalRestore(g_rdbStore->GetRaw(), 11, 3, 0, 0);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_video_face_test_002");
+}
+
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_test_001, TestSize.Level2)
 {
     MEDIA_INFO_LOG("Start medialibrary_backup_clone_analysis_data_test_001");
@@ -3243,7 +3336,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_te
 
     cloneAnalysisData->cloneRestoreAnalysisTotal_.GetInfos(photoInfoMap);
     cloneAnalysisData->GetAnalysisDataInfo();
-    EXPECT_EQ(cloneAnalysisData->analysisDataInfos_.size(), 1);
+    EXPECT_EQ(cloneAnalysisData->analysisDataInfos_.size(), 0);
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
@@ -3271,7 +3364,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_te
     std::unordered_set<int32_t> existingFileIds = cloneAnalysisData->GetExistingFileIds();
     EXPECT_EQ(existingFileIds.size(), 0);
     cloneAnalysisData->RemoveDuplicateInfos(existingFileIds);
-    EXPECT_EQ(cloneAnalysisData->analysisDataInfos_.size(), 1);
+    EXPECT_EQ(cloneAnalysisData->analysisDataInfos_.size(), 0);
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
@@ -3677,6 +3770,702 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_asset_ma
     MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_asset_map_test_001");
 }
 
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_get_next_clone_sequence_test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_get_next_clone_sequence_test");
+    ClearData();
+
+    // Clear tab_old_albums table to ensure clean state
+    std::string clearSql = "DELETE FROM " + TAB_OLD_ALBUMS;
+    g_rdbStore->GetRaw()->ExecuteSql(clearSql);
+
+    CloneSource cloneSource;
+    vector<string> tableList = {PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+
+    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    TabOldAlbumsClone tabOldAlbumsClone(cloneSource.cloneStorePtr_, nullptr, tableAlbumIdMap);
+
+    auto result = tabOldAlbumsClone.GetNextCloneSequence();
+    constexpr int32_t INITIAL_CLONE_SEQUENCE = 1;
+
+    EXPECT_EQ(result, INITIAL_CLONE_SEQUENCE);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_get_next_clone_sequence_test");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_validate_AlbumMapTbl_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_validate_AlbumMapTbl_test_001");
+    ClearData();
+
+    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    TabOldAlbumsClone tabOldAlbumsClone(nullptr, nullptr, tableAlbumIdMap);
+
+    // Test case 1: All fields have values, should return true
+    AlbumMapTbl albumMapTbl;
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, 10, 100, 1);
+    EXPECT_TRUE(tabOldAlbumsClone.ValidateAlbumMapTbl(albumMapTbl)) << "All fields have values, should return true";
+
+    // Test case 2: oldAlbumId is missing, should return false
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, 10, std::nullopt, 1);
+    EXPECT_FALSE(tabOldAlbumsClone.ValidateAlbumMapTbl(albumMapTbl)) << "oldAlbumId is missing, should return false";
+    
+    // Test case 3: albumId is missing, should return false
+    ModifyAlbumMapTbl(albumMapTbl, std::nullopt, 1, 10, 100, 1);
+    EXPECT_FALSE(tabOldAlbumsClone.ValidateAlbumMapTbl(albumMapTbl)) << "albumId is missing, should return false";
+    
+    // Test case 4: albumType is missing, should return false
+    ModifyAlbumMapTbl(albumMapTbl, 1100, std::nullopt, 10, 100, 1);
+    EXPECT_FALSE(tabOldAlbumsClone.ValidateAlbumMapTbl(albumMapTbl)) << "albumtype is missing, should return false";
+
+    // Test case 5: albumSubtype is missing, should return false
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, std::nullopt, 100, 1);
+    EXPECT_FALSE(tabOldAlbumsClone.ValidateAlbumMapTbl(albumMapTbl)) << "albumSubtype is missing, should return false";
+
+    // Test case 6: cloneSequence is missing, should return false
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, 10, 100, std::nullopt);
+    EXPECT_FALSE(tabOldAlbumsClone.ValidateAlbumMapTbl(albumMapTbl)) << "cloneSequence is missing, should return false";
+
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_validate_AlbumMapTbl_test_001");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_create_values_bucket_test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_create_values_bucket_test");
+    ClearData();
+    
+    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    TabOldAlbumsClone tabOldAlbumsClone(nullptr, nullptr, tableAlbumIdMap);
+
+    // Test case 1: All fields have values
+    AlbumMapTbl albumMapTbl;
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, 10, 100, 1);
+
+    auto result = tabOldAlbumsClone.CreateValuesBucketFromAlbumMapTbl(albumMapTbl);
+    EXPECT_TRUE(result.HasColumn(OLD_ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_TYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_SUBTYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_CLONE_SEQUENCE_COL));
+
+    // Test case 2: oldAlbumId is missing
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, 10, std::nullopt, 1);
+    
+    result = tabOldAlbumsClone.CreateValuesBucketFromAlbumMapTbl(albumMapTbl);
+    EXPECT_FALSE(result.HasColumn(OLD_ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_TYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_SUBTYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_CLONE_SEQUENCE_COL));
+
+    // Test case 3: albumId is missing
+    ModifyAlbumMapTbl(albumMapTbl, std::nullopt, 1, 10, 100, 1);
+
+    result = tabOldAlbumsClone.CreateValuesBucketFromAlbumMapTbl(albumMapTbl);
+    EXPECT_TRUE(result.HasColumn(OLD_ALBUM_ID_COL));
+    EXPECT_FALSE(result.HasColumn(ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_TYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_SUBTYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_CLONE_SEQUENCE_COL));
+
+    // Test case 4: albumType is missing
+    ModifyAlbumMapTbl(albumMapTbl, 1100, std::nullopt, 10, 100, 1);
+
+    result = tabOldAlbumsClone.CreateValuesBucketFromAlbumMapTbl(albumMapTbl);
+    EXPECT_TRUE(result.HasColumn(OLD_ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_ID_COL));
+    EXPECT_FALSE(result.HasColumn(ALBUM_TYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_SUBTYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_CLONE_SEQUENCE_COL));
+
+    // Test case 5: albumSubtype is missing
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, std::nullopt, 100, 1);
+
+    result = tabOldAlbumsClone.CreateValuesBucketFromAlbumMapTbl(albumMapTbl);
+    EXPECT_TRUE(result.HasColumn(OLD_ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_TYPE_COL));
+    EXPECT_FALSE(result.HasColumn(ALBUM_SUBTYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_CLONE_SEQUENCE_COL));
+
+    // Test case 6: cloneSequence is missing
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, 10, 100, std::nullopt);
+
+    result = tabOldAlbumsClone.CreateValuesBucketFromAlbumMapTbl(albumMapTbl);
+    EXPECT_TRUE(result.HasColumn(OLD_ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_ID_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_TYPE_COL));
+    EXPECT_TRUE(result.HasColumn(ALBUM_SUBTYPE_COL));
+    EXPECT_FALSE(result.HasColumn(ALBUM_CLONE_SEQUENCE_COL));
+
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_create_values_bucket_test");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_insert_album_data_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_insert_album_data_test_001");
+    ClearData();
+
+    // Clear tab_old_albums table to ensure clean state
+    std::string clearSql = "DELETE FROM " + TAB_OLD_ALBUMS;
+    g_rdbStore->GetRaw()->ExecuteSql(clearSql);
+
+    CloneSource cloneSource;
+    vector<string> tableList = {PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+
+    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    TabOldAlbumsClone tabOldAlbumsClone(cloneSource.cloneStorePtr_, nullptr, tableAlbumIdMap);
+
+    std::vector<AlbumMapTbl> albumMaptbls;
+    int32_t result = tabOldAlbumsClone.InsertAlbumData(albumMaptbls);
+    EXPECT_EQ(result, E_INVALID_ARGUMENTS);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_insert_album_data_test_001");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_insert_album_data_test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_insert_album_data_test_003");
+    ClearData();
+
+    // Clear tab_old_albums table to ensure clean state
+    std::string clearSql = "DELETE FROM " + TAB_OLD_ALBUMS;
+    g_rdbStore->GetRaw()->ExecuteSql(clearSql);
+
+    CloneSource cloneSource;
+    vector<string> tableList = {PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+
+    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    TabOldAlbumsClone tabOldAlbumsClone(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), tableAlbumIdMap);
+
+    // Need missing fields because, return value should be false
+    AlbumMapTbl albumMapTbl;
+    // oldAlbumId is missing
+    ModifyAlbumMapTbl(albumMapTbl, 1100, 1, 10, std::nullopt, 1);
+
+    int32_t result = tabOldAlbumsClone.InsertAlbumData({albumMapTbl});
+    EXPECT_EQ(result, E_INVALID_ARGUMENTS);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_insert_album_data_test_003");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_query_albums_from_tbl_test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_query_albums_from_tbl_test");
+    ClearData();
+    
+    // Clear tab_old_albums table to ensure clean state
+    std::string clearSql = "DELETE FROM " + TAB_OLD_ALBUMS;
+    g_rdbStore->GetRaw()->ExecuteSql(clearSql);
+    
+    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    TabOldAlbumsClone tabOldAlbumsClone(nullptr, g_rdbStore->GetRaw(), tableAlbumIdMap);
+    
+    std::vector<AlbumMapTbl> expectedResult;
+
+    std::string emptySource;
+    const int32_t pageSize = 100;
+    int32_t offset = 0;
+
+    auto result = tabOldAlbumsClone.QueryAlbumsFromTable(emptySource, offset, pageSize);
+    EXPECT_EQ(result.empty(), expectedResult.empty());
+    
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_query_albums_from_tbl_test");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_get_new_albumId_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_get_new_albumId_test_001");
+    ClearData();
+    
+    // Clear tab_old_albums table to ensure clean state
+    std::string clearSql = "DELETE FROM " + TAB_OLD_ALBUMS;
+    g_rdbStore->GetRaw()->ExecuteSql(clearSql);
+
+    // Step 1: Create source database with known test data
+    CloneSource cloneSource;
+    vector<string> tableList = { PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+
+    // Step 2: Clear existing data from source tables to ensure clean test environment
+    std::string clearPhotoAlbum = "DELETE FROM " + PhotoAlbumColumns::TABLE;
+    std::string clearAnalysisAlbum = "DELETE FROM " + ANALYSIS_ALBUM_TABLE;
+
+    ASSERT_EQ(cloneSource.cloneStorePtr_->ExecuteSql(clearPhotoAlbum), NativeRdb::E_OK);
+    ASSERT_EQ(cloneSource.cloneStorePtr_->ExecuteSql(clearAnalysisAlbum), NativeRdb::E_OK);
+
+    // Step 3: Insert specific test album data into source tables
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 100, 1, 10);
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 101, 2, 20);
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 102, 3, 30);
+
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE, 200, 4, 40);
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE, 201, 5, 50);
+
+    // Step 4: Count source data BEFORE cloning - this is critical for validation!
+    int32_t photoAlbumCount = CountAlbumsInSourceTable(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE);
+    int32_t analysisAlbumCount = CountAlbumsInSourceTable(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE);
+
+    ASSERT_GE(photoAlbumCount, 0) << "Failed to count PhotoAlbum table records";
+    ASSERT_GE(analysisAlbumCount, 0) << "Failed to count AnalysisAlbum table records";
+
+    int32_t totalSourceCount = photoAlbumCount + analysisAlbumCount;
+
+    EXPECT_EQ(photoAlbumCount, 3) << "Expected 3 albums in PhotoAlbum table";
+    EXPECT_EQ(analysisAlbumCount, 2) << "Expected 2 albums in AnalysisAlbum table";
+    MEDIA_INFO_LOG("Source data counts: PhotoAlbum=%{public}d, AnalysisAlbum=%{public}d, Total=%{public}d",
+                photoAlbumCount, analysisAlbumCount, totalSourceCount);
+
+    // Step 5: Setup album ID mapping (old -> new)
+    std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    
+    //Map all PhotoAlbum test data
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][100] = 1100;
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][101] = 1101;
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][102] = 1102;
+    
+    //Map all AnalysisAlbum test data
+    tableAlbumIdMap[ANALYSIS_ALBUM_TABLE][200] = 2200;
+    tableAlbumIdMap[ANALYSIS_ALBUM_TABLE][201] = 2201;
+
+    // Step 6: Perform cloning operation
+    TabOldAlbumsClone tabOldAlbumsClone(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), tableAlbumIdMap);
+    vector<string> sourceTables = {PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+
+    int32_t oldAlbumId = 500; // 500 is not exist!
+
+    for (auto& sourceTable: sourceTables)
+    {
+        auto result = tabOldAlbumsClone.GetNewAlbumId(sourceTable, 500);
+        EXPECT_EQ(result, std::nullopt) << "Expected std::nullopt for non-existent oldAlbumId";
+    }
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_get_new_albumId_test_001");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_tab_old_albums_src_data_test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_tab_old_albums_src_data_test");
+    ClearData();
+    
+    // Clear tab_old_albums table to ensure clean state
+    std::string clearSql = "DELETE FROM " + TAB_OLD_ALBUMS;
+    g_rdbStore->GetRaw()->ExecuteSql(clearSql);
+    
+    // Step 1: Create source database with known test data
+    CloneSource cloneSource;
+    vector<string> tableList = { PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    
+    // Step 2: Clear existing data from source tables to ensure clean test environment
+    std::string clearPhotoAlbum = "DELETE FROM " + PhotoAlbumColumns::TABLE;
+    std::string clearAnalysisAlbum = "DELETE FROM " + ANALYSIS_ALBUM_TABLE;
+    
+    ASSERT_EQ(cloneSource.cloneStorePtr_->ExecuteSql(clearPhotoAlbum), NativeRdb::E_OK);
+    ASSERT_EQ(cloneSource.cloneStorePtr_->ExecuteSql(clearAnalysisAlbum), NativeRdb::E_OK);
+    
+    MEDIA_INFO_LOG("Cleared source tables for clean test environment");
+    
+    // Step 3: Insert specific test album data into source tables
+    // PhotoAlbum table test data
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 100, 1, 10);
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 101, 2, 20);
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 102, 3, 30);
+    
+    // AnalysisAlbum table test data
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE, 200, 4, 40);
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE, 201, 5, 50);
+    
+    // Step 4: Count source data BEFORE cloning - this is critical for validation!
+    int32_t photoAlbumCount = CountAlbumsInSourceTable(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE);
+    int32_t analysisAlbumCount = CountAlbumsInSourceTable(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE);
+    
+    ASSERT_GE(photoAlbumCount, 0) << "Failed to count PhotoAlbum table records";
+    ASSERT_GE(analysisAlbumCount, 0) << "Failed to count AnalysisAlbum table records";
+    
+    int32_t totalSourceCount = photoAlbumCount + analysisAlbumCount;
+    
+    EXPECT_EQ(photoAlbumCount, 3) << "Expected 3 albums in PhotoAlbum table";
+    EXPECT_EQ(analysisAlbumCount, 2) << "Expected 2 albums in AnalysisAlbum table";
+    MEDIA_INFO_LOG("Source data counts: PhotoAlbum=%{public}d, AnalysisAlbum=%{public}d, Total=%{public}d",
+        photoAlbumCount, analysisAlbumCount, totalSourceCount);
+        
+    // Step 5: Setup album ID mapping (old -> new)
+    std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    
+    //Map all PhotoAlbum test data
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][100] = 1100;
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][101] = 1101;
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][102] = 1102;
+    
+    //Map all AnalysisAlbum test data
+    tableAlbumIdMap[ANALYSIS_ALBUM_TABLE][200] = 2200;
+    tableAlbumIdMap[ANALYSIS_ALBUM_TABLE][201] = 2201;
+    
+    // Step 6: Perform cloning operation
+    TabOldAlbumsClone tabOldAlbumsClone(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), tableAlbumIdMap);
+    vector<string> sourceTables = {PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+
+    int32_t cloneResult = tabOldAlbumsClone.CloneAlbums(sourceTables);
+    ASSERT_EQ(cloneResult, E_OK) << "TabOldAlbumsClone::CloneAlbums failed";
+    
+    // Step 7: Verify count matches source data (CRITICAL TEST!)
+    int32_t clonedCount = GetCountByWhereClause(TAB_OLD_ALBUMS, g_rdbStore->GetRaw());
+    EXPECT_EQ(clonedCount, totalSourceCount);
+
+    // Step 7: Verify each record was cloned correctly with proper ID mapping and data perservation
+    VerifyTabOldAlbumsRecord(g_rdbStore->GetRaw(), 100, 1100, 1, 10);
+    VerifyTabOldAlbumsRecord(g_rdbStore->GetRaw(), 101, 1101, 2, 20);
+    VerifyTabOldAlbumsRecord(g_rdbStore->GetRaw(), 102, 1102, 3, 30);
+    VerifyTabOldAlbumsRecord(g_rdbStore->GetRaw(), 200, 2200, 4, 40);
+    VerifyTabOldAlbumsRecord(g_rdbStore->GetRaw(), 201, 2201, 5, 50);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_tab_old_albums_src_data_test");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_clone_sequence_logic_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_clone_sequence_logic_test_001");
+    ClearData();
+    
+    // Clear tab_old_albums table to ensure clean state
+    g_rdbStore->GetRaw()->ExecuteSql("DELETE FROM " + TAB_OLD_ALBUMS);
+
+    std::vector<std::string> insertSqlValues = {"(10, 1000, 1, 1, 1)", "(11, 1000, 1, 1, 1)",
+    "(12, 1000, 2, 1, 2)", "(13, 2000, 1, 1, 2)"};
+
+    for (auto& val: insertSqlValues) {
+        // Step 1: Insert existing records to test sequence logic
+        // First clone operation - all records have clone sequence = 1
+        // Second clone operation when clone_sequence is 2.
+        std::string insertSql = "INSERT INTO " + TAB_OLD_ALBUMS +
+        " (old_album_id, album_id, album_type, album_subtype, clone_sequence) VALUES " + val;
+        ASSERT_EQ(g_rdbStore->GetRaw()->ExecuteSql(insertSql), NativeRdb::E_OK);
+    }
+
+    TabOldAlbumsClone tabOldAlbumsClone(nullptr, g_rdbStore->GetRaw(), {});
+
+    //Test: Global max sequence is 2, should get 3 for any combination
+    EXPECT_EQ(tabOldAlbumsClone.GetNextCloneSequence(), 3);
+
+    // Step 3: Test actual cloning wit source data to verify end-to-end sequence logic
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, { PhotoAlbumColumns::TABLE });
+
+    // Clear source table for clean test environment
+    ASSERT_EQ(cloneSource.cloneStorePtr_->ExecuteSql("DELETE FROM " + PhotoAlbumColumns::TABLE), NativeRdb::E_OK);
+
+    // Insert test data that will map to existing album combinations
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 300, 1, 10);
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 301, 2, 20);
+
+    // Setup mapping to existing album combinations
+    std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][300] = 1000;
+    tableAlbumIdMap[PhotoAlbumColumns::TABLE][301] = 1000;
+
+    TabOldAlbumsClone tabOldAlbumsClone2(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), tableAlbumIdMap);
+    int32_t cloneResult = tabOldAlbumsClone2.CloneAlbums({PhotoAlbumColumns::TABLE});
+    ASSERT_EQ(cloneResult, E_OK) << "Clone operation failed";
+
+    // Step 4: Verify the clone sequences were set correctly - all should be 3
+    std::string querySql = "SELECT old_album_id, album_id, album_type, clone_sequence FROM " + TAB_OLD_ALBUMS +
+                            " WHERE old_album_id IN (300, 301) ORDER BY old_album_id";
+    auto resultSet = g_rdbStore->GetRaw()->QuerySql(querySql);
+    ASSERT_NE(resultSet, nullptr);
+
+    // Verify first record (old_id=300 -> new_id=1000, type=1, should have sequence=3)
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+
+    std::vector<int32_t> columns(4);
+    std::vector<int32_t> expectedValues = {300, 1000, 1, 3};
+    for (int i = 0; i < columns.size(); i++) {
+        resultSet->GetInt(i, columns[i]);
+        EXPECT_EQ(columns[i], expectedValues[i]);
+    }
+
+    // Verify second record (old_id=301 -> new_id=1000, type=2, should also have sequence=3)
+    ASSERT_EQ(resultSet->GoToNextRow(), NativeRdb::E_OK);
+
+    expectedValues = {301, 1000, 2, 3};
+    for (int i = 0; i < columns.size(); i++) {
+        resultSet->GetInt(i, columns[i]);
+        EXPECT_EQ(columns[i], expectedValues[i]);
+    }
+
+    resultSet->Close();
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_tab_old_albums_clone_sequence_logic_test_001");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_error_handling_test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_error_handling_test");
+    ClearData();
+    
+    // Clear tab_old_albums table to ensure clean state
+    std::string clearSql = "DELETE FROM " + TAB_OLD_ALBUMS;
+    g_rdbStore->GetRaw()->ExecuteSql(clearSql);
+    
+    // Test 1: Null RdbStore parameters
+    std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> emptyMap;
+    
+    TabOldAlbumsClone nullSourceClone(nullptr, g_rdbStore->GetRaw(), emptyMap);
+    int32_t result1 = nullSourceClone.CloneAlbums({PhotoAlbumColumns::TABLE});
+    EXPECT_EQ(result1, E_INVALID_ARGUMENTS);
+    
+    TabOldAlbumsClone nullDestClone(g_rdbStore->GetRaw(), nullptr, emptyMap);
+    int32_t result2 = nullDestClone.CloneAlbums({PhotoAlbumColumns::TABLE});
+    EXPECT_EQ(result2, E_INVALID_ARGUMENTS);
+    
+    // Test 2: Empty source tables vector
+    TabOldAlbumsClone validClone(g_rdbStore->GetRaw(), g_rdbStore->GetRaw(), emptyMap);
+    int32_t result3 = validClone.CloneAlbums({});
+    EXPECT_EQ(result3, E_INVALID_ARGUMENTS);
+    
+    // Test 3: Empty table names
+    int32_t result4 = validClone.CloneAlbums({""});
+    EXPECT_EQ(result4, E_INVALID_ARGUMENTS);
+    
+    // Test 4: Albums with no mapping found (should skip those albums)
+    CloneSource cloneSource;
+    vector<string> tableList = { PhotoAlbumColumns::TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    
+    // Clear source table for clean test environment
+    std::string clearPhotoAlbum = "DELETE FROM " + PhotoAlbumColumns::TABLE;
+    ASSERT_EQ(cloneSource.cloneStorePtr_->ExecuteSql(clearPhotoAlbum), NativeRdb::E_OK);
+
+    // Insert albums but don't provide mapping for them
+    InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, 999, 1, 10);
+
+    std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> partialMap;
+    // No mapping provided for album ID 999
+
+    TabOldAlbumsClone noMappingClone(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), partialMap);
+    int32_t result5 = noMappingClone.CloneAlbums({PhotoAlbumColumns::TABLE});
+    EXPECT_EQ(result5, NativeRdb::E_OK);
+    
+    // Verify no records were inserted since no mapping was provided
+    int32_t clonedCount = GetCountByWhereClause(TAB_OLD_ALBUMS, g_rdbStore->GetRaw());
+    EXPECT_EQ(clonedCount, 0);
+    
+    // Test 5: Empty source tables (should succeed with 0 records)
+    CloneSource emptySource;
+    vector<string> emptyTableList = { PhotoAlbumColumns::TABLE };
+    Init(emptySource, TEST_BACKUP_DB_PATH, emptyTableList);
+    
+    // Clear source table to ensure it's truly empty for this test
+    std::string clearEmptyPhotoAlbum = "DELETE FROM " + PhotoAlbumColumns::TABLE;
+    ASSERT_EQ(emptySource.cloneStorePtr_->ExecuteSql(clearEmptyPhotoAlbum), NativeRdb::E_OK);
+    // Don't insert any data - table is now guaranteed empty
+    
+    TabOldAlbumsClone emptySourceClone(emptySource.cloneStorePtr_, g_rdbStore->GetRaw(), partialMap);
+    int32_t result6 = emptySourceClone.CloneAlbums({PhotoAlbumColumns::TABLE});
+    EXPECT_EQ(result6, NativeRdb::E_OK) << "Should succeed with empty source table";
+    
+    int32_t clonedCount2 = GetCountByWhereClause(TAB_OLD_ALBUMS, g_rdbStore->GetRaw());
+    EXPECT_EQ(clonedCount2, 0);
+    
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    ClearCloneSource(emptySource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_error_handling_test");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_tab_old_albums_workflow_test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_tab_old_albums_complete_workflow_test");
+    ClearData();
+    g_rdbStore->GetRaw()->ExecuteSql("DELETE FROM " + TAB_OLD_ALBUMS);
+    
+    CloneSource cloneSource;
+    vector<string> tableList = { PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+
+    for (auto& table: tableList) {
+        ASSERT_EQ(cloneSource.cloneStorePtr_->ExecuteSql("DELETE FROM " + table), NativeRdb::E_OK);
+    }
+
+    for (int i = 0; i < 3; i++) {
+        InsertTestAlbumData(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE, (100 + i), (i + 1), (10 * (i + 1)));
+        InsertTestAlbumData(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE, (200 + i), (i + 4), (10 * (i + 4)));
+    }
+    
+    int32_t photoAlbumCount = CountAlbumsInSourceTable(cloneSource.cloneStorePtr_, PhotoAlbumColumns::TABLE);
+    int32_t analysisAlbumCount = CountAlbumsInSourceTable(cloneSource.cloneStorePtr_, ANALYSIS_ALBUM_TABLE);
+    
+    EXPECT_EQ(photoAlbumCount, 3);
+    EXPECT_EQ(analysisAlbumCount, 3);
+    EXPECT_EQ((photoAlbumCount + analysisAlbumCount), 6);
+
+    std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>> tableAlbumIdMap;
+    for (int i = 0; i < 3; i++) {
+        tableAlbumIdMap[PhotoAlbumColumns::TABLE][(100 + i)] = (1100 + i);
+        tableAlbumIdMap[ANALYSIS_ALBUM_TABLE][(200 + i)] = (2200 + i);
+    }
+    
+    TabOldAlbumsClone tabOldAlbumsClone(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), tableAlbumIdMap);
+    int32_t cloneResult = tabOldAlbumsClone.CloneAlbums({PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE});
+    ASSERT_EQ(cloneResult, E_OK);
+    EXPECT_EQ(GetCountByWhereClause(TAB_OLD_ALBUMS, g_rdbStore->GetRaw()), 6);
+
+    auto resultSet = g_rdbStore->GetRaw()->QuerySql("SELECT clone_sequence FROM " + TAB_OLD_ALBUMS +
+        " WHERE old_album_id IN (100, 101, 102, 200, 201, 202) LIMIT 1");
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+    int32_t expectedSequence;
+    resultSet->GetInt(0, expectedSequence);
+    resultSet->Close();
+    
+    resultSet = g_rdbStore->GetRaw()->QuerySql("SELECT COUNT(*) FROM " + TAB_OLD_ALBUMS +
+        " WHERE old_album_id IN (100, 101, 102, 200, 201, 202) AND clone_sequence = " +
+        std::to_string(expectedSequence));
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+    int32_t sequenceCount;
+    resultSet->GetInt(0, sequenceCount);
+    EXPECT_EQ(sequenceCount, 6);
+    resultSet->Close();
+    
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_restore_tab_old_albums_complete_workflow_test");
+}
+
+static void ModifyAlbumMapTbl(AlbumMapTbl& albumMapTbl, std::optional<int32_t> albumId,
+    std::optional<int32_t> albumType, std::optional<int32_t> albumSubtype,
+    std::optional<int32_t> oldAlbumId, std::optional<int32_t> cloneSequence)
+{
+    albumMapTbl.albumId = albumId;
+    albumMapTbl.albumType = albumType;
+    albumMapTbl.albumSubtype = albumSubtype;
+    albumMapTbl.oldAlbumId = oldAlbumId;
+    albumMapTbl.cloneSequence = cloneSequence;
+}
+
+void MediaLibraryBackupCloneTest::VerifyTabOldAlbumsRecord(const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
+    int32_t expectedOldAlbumId, int32_t expectedNewAlbumId, int32_t exptectedAlbumType, int32_t exptectedAlbumSubType)
+{
+    ASSERT_NE(destRdb, nullptr);
+    std::string querySql = "SELECT old_album_id, album_id, album_type, album_subtype, clone_sequence FROM " +
+                            TAB_OLD_ALBUMS + " WHERE old_album_id = ? AND album_id = ?";
+
+    std::vector<NativeRdb::ValueObject> bindArgs;
+    bindArgs.push_back(NativeRdb::ValueObject(expectedOldAlbumId));
+    bindArgs.push_back(NativeRdb::ValueObject(expectedNewAlbumId));
+
+    auto resultSet = destRdb->QuerySql(querySql, bindArgs);
+    ASSERT_NE(resultSet, nullptr);
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+
+    int32_t oldId;
+    int32_t newId;
+    int32_t albumType;
+    int32_t albumSubtype;
+    int32_t cloneSequence;
+
+    resultSet->GetInt(COLUMN_INDEX_ZERO, oldId);
+    resultSet->GetInt(COLUMN_INDEX_ONE, newId);
+    resultSet->GetInt(COLUMN_INDEX_TWO, albumType);
+    resultSet->GetInt(COLUMN_INDEX_THREE, albumSubtype);
+    resultSet->GetInt(COLUMN_INDEX_FOUR, cloneSequence);
+
+    EXPECT_EQ(oldId, expectedOldAlbumId) << "Old album ID mismatch";
+    EXPECT_EQ(newId, expectedNewAlbumId) << "New album ID mismatch";
+    EXPECT_EQ(albumType, exptectedAlbumType) << "Album type mismatch";
+    EXPECT_EQ(albumSubtype, exptectedAlbumSubType) << "Album subtype mismatch";
+    EXPECT_GE(cloneSequence, 1) << "Clone Sequence should be >= 1";
+
+    resultSet->Close();
+}
+
+int32_t MediaLibraryBackupCloneTest::CountAlbumsInSourceTable(const std::shared_ptr<NativeRdb::RdbStore>& rdbStore,
+    const std::string& tableName)
+{
+    if (rdbStore == nullptr) {
+        MEDIA_ERR_LOG("RdbStore is null");
+        return -1;
+    }
+
+    std::string querySql = "SELECT COUNT(*) FROM " + tableName;
+    auto resultSet = rdbStore->QuerySql(querySql);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("Failed to query count from %{public}s", tableName.c_str());
+        return -1;
+    }
+    
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Failed to navigate to first row count query on %{public}s", tableName.c_str());
+        resultSet->Close();
+        return -1;
+    }
+    
+    int32_t count = 0;
+    int32_t result = resultSet->GetInt(0, count);
+    resultSet->Close();
+
+    if (result != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Failed to get count value from result set for table %{public}s", tableName.c_str());
+        return -1;
+    }
+
+    MEDIA_INFO_LOG("Count in source table %{public}s: %{public}d", tableName.c_str(), count);
+    return count;
+}
+
+void MediaLibraryBackupCloneTest::InsertTestAlbumData(const std::shared_ptr<NativeRdb::RdbStore>& rdbStore,
+    const std::string& tableName, int32_t albumId, int32_t albumType, int32_t albumSubtype)
+{
+    ASSERT_NE(rdbStore, nullptr);
+
+    std::string insertSql;
+    std::vector<NativeRdb::ValueObject> bindArgs;
+
+    if (tableName == PhotoAlbumColumns::TABLE) {
+        insertSql = "INSERT INTO " + tableName +
+        " (album_id, album_type, album_subtype, album_name, count, date_modified, dirty)" +
+        " VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+        bindArgs.push_back(NativeRdb::ValueObject(albumId));
+        bindArgs.push_back(NativeRdb::ValueObject(albumType));
+        bindArgs.push_back(NativeRdb::ValueObject(albumSubtype));
+        bindArgs.push_back(NativeRdb::ValueObject("TestAlbum_ " + std::to_string(albumId)));
+        bindArgs.push_back(NativeRdb::ValueObject(0));
+        bindArgs.push_back(NativeRdb::ValueObject(0));
+        bindArgs.push_back(NativeRdb::ValueObject(1));
+    } else if (tableName == ANALYSIS_ALBUM_TABLE) {
+        insertSql = "INSERT INTO " + tableName +
+        " (album_id, album_type, album_subtype, album_name, count, date_modified)" +
+        " VALUES (?, ?, ?, ?, ?, ?)";
+
+        bindArgs.push_back(NativeRdb::ValueObject(albumId));
+        bindArgs.push_back(NativeRdb::ValueObject(albumType));
+        bindArgs.push_back(NativeRdb::ValueObject(albumSubtype));
+        bindArgs.push_back(NativeRdb::ValueObject("TestAlbum_ " + std::to_string(albumId)));
+        bindArgs.push_back(NativeRdb::ValueObject(0));
+        bindArgs.push_back(NativeRdb::ValueObject(0));
+    } else {
+        MEDIA_WARN_LOG("Unknown table %{public}s, using minimal column set", tableName.c_str());
+        insertSql = "INSERT INTO " + tableName + " (album_id, album_type, albumSubtype) VALUES (?, ?, ?)";
+        bindArgs.push_back(NativeRdb::ValueObject(albumId));
+        bindArgs.push_back(NativeRdb::ValueObject(albumType));
+        bindArgs.push_back(NativeRdb::ValueObject(albumSubtype));
+    }
+
+    int32_t result = rdbStore->ExecuteSql(insertSql, bindArgs);
+    ASSERT_EQ(result, NativeRdb::E_OK) << "Failed to insert test album data: albumId=" << albumId
+                                       << ", tableName=" << tableName << ", albumType=" << albumType
+                                       << ", albumSubtype=" << albumSubtype;
+
+    MEDIA_INFO_LOG("Inserted album data: table%{public}s, albumId=%{public}d, type=%{public}d, subtype=%{public}d",
+        tableName.c_str(), albumId, albumType, albumSubtype);
+}
+
 void MediaLibraryBackupCloneTest::VerifyAssetMapRestore(const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
     const std::unordered_map<int32_t, OHOS::Media::PhotoInfo>& photoInfoMap)
 {
@@ -3803,9 +4592,13 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_or
     CloneRestoreConfigInfo expectedConfigInfo;
 
     CloneSource cloneSource;
-    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME};
+    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME, PhotoColumn::PHOTOS_TABLE,
+        PhotoAlbumColumns::TABLE};
     Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
     restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
+
+    EXPECT_TRUE(UpdatePhotosSouthDeviceType(restoreService->mediaRdb_, SouthDeviceType::SOUTH_DEVICE_HDC));
+    EXPECT_TRUE(UpdatePhotosOwnerAlbumIdAndPosition(restoreService->mediaRdb_, "11"));
 
     CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
     EXPECT_TRUE(expectedConfigInfo == result);
@@ -3819,12 +4612,15 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_or
     CloneRestoreConfigInfo expectedConfigInfo;
 
     CloneSource cloneSource;
-    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME};
+    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME, PhotoColumn::PHOTOS_TABLE,
+        PhotoAlbumColumns::TABLE};
     Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
     restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
 
     EXPECT_TRUE(InsertIntoConfigInfo(restoreService->mediaRdb_, ConfigInfoSceneId::CLONE_RESTORE,
         CONFIG_INFO_INVALID_KEY, CONFIG_INFO_INVALID_VALUE));
+    EXPECT_TRUE(UpdatePhotosSouthDeviceType(restoreService->mediaRdb_, SouthDeviceType::SOUTH_DEVICE_HDC));
+    EXPECT_TRUE(UpdatePhotosOwnerAlbumIdAndPosition(restoreService->mediaRdb_, "11"));
 
     CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
     EXPECT_TRUE(expectedConfigInfo == result);
@@ -3838,12 +4634,15 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_or
     CloneRestoreConfigInfo expectedConfigInfo;
 
     CloneSource cloneSource;
-    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME};
+    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME, PhotoColumn::PHOTOS_TABLE,
+        PhotoAlbumColumns::TABLE};
     Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
     restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
 
     EXPECT_TRUE(InsertIntoConfigInfo(restoreService->mediaRdb_, ConfigInfoSceneId::CLONE_RESTORE,
         CONFIG_INFO_CLONE_PHOTO_SYNC_OPTION_KEY, CONFIG_INFO_INVALID_VALUE));
+    EXPECT_TRUE(UpdatePhotosSouthDeviceType(restoreService->mediaRdb_, SouthDeviceType::SOUTH_DEVICE_HDC));
+    EXPECT_TRUE(UpdatePhotosOwnerAlbumIdAndPosition(restoreService->mediaRdb_, "11"));
 
     CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
     EXPECT_TRUE(expectedConfigInfo == result);
@@ -3886,7 +4685,6 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_or
         CONFIG_INFO_CLONE_PHOTO_SYNC_OPTION_KEY, std::to_string(static_cast<int>(SwitchStatus::NONE))));
     EXPECT_TRUE(InsertIntoConfigInfo(restoreService->mediaRdb_, ConfigInfoSceneId::CLONE_RESTORE,
         CONFIG_INFO_CLONE_HDC_DEVICE_ID_KEY, DEFAULT_DEVICE_ID));
-
     
     CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
     EXPECT_TRUE(expectedConfigInfo == result);
@@ -3916,6 +4714,81 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_or
     EXPECT_TRUE(UpdatePhotosSouthDeviceType(restoreService->mediaRdb_, SouthDeviceType::SOUTH_DEVICE_HDC));
     EXPECT_TRUE(UpdatePhotosOwnerAlbumIdAndPosition(restoreService->mediaRdb_, "11"));
 
+    CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
+    EXPECT_TRUE(expectedConfigInfo == result);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_origin_db_test_009, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_get_clone_config_info_from_origin_db_test_009");
+    CloneRestoreConfigInfo expectedConfigInfo = {
+        .deviceId = EMPTY_STR,
+        .switchStatus = SwitchStatus::CLOUD,
+        .isValid = true
+    };
+
+    CloneSource cloneSource;
+    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME, PhotoColumn::PHOTOS_TABLE,
+        PhotoAlbumColumns::TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
+
+    EXPECT_TRUE(UpdatePhotosSouthDeviceType(restoreService->mediaRdb_, SouthDeviceType::SOUTH_DEVICE_CLOUD));
+    EXPECT_TRUE(UpdatePhotosOwnerAlbumIdAndPosition(restoreService->mediaRdb_, "11"));
+
+    CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
+    EXPECT_TRUE(expectedConfigInfo == result);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_origin_db_test_010, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_get_clone_config_info_from_origin_db_test_010");
+    CloneRestoreConfigInfo expectedConfigInfo = {
+        .deviceId = EMPTY_STR,
+        .switchStatus = SwitchStatus::CLOUD,
+        .isValid = true
+    };
+
+    CloneSource cloneSource;
+    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME, PhotoColumn::PHOTOS_TABLE,
+        PhotoAlbumColumns::TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
+
+    EXPECT_TRUE(InsertIntoConfigInfo(restoreService->mediaRdb_, ConfigInfoSceneId::CLONE_RESTORE,
+        CONFIG_INFO_INVALID_KEY, CONFIG_INFO_INVALID_VALUE));
+    EXPECT_TRUE(UpdatePhotosSouthDeviceType(restoreService->mediaRdb_, SouthDeviceType::SOUTH_DEVICE_CLOUD));
+    EXPECT_TRUE(UpdatePhotosOwnerAlbumIdAndPosition(restoreService->mediaRdb_, "11"));
+
+    CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
+    EXPECT_TRUE(expectedConfigInfo == result);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_get_clone_config_info_from_origin_db_test_011, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_get_clone_config_info_from_origin_db_test_011");
+    CloneRestoreConfigInfo expectedConfigInfo = {
+        .deviceId = EMPTY_STR,
+        .switchStatus = SwitchStatus::CLOUD,
+        .isValid = true
+    };
+
+    CloneSource cloneSource;
+    std::vector<std::string> tableList = {ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME, PhotoColumn::PHOTOS_TABLE,
+        PhotoAlbumColumns::TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    restoreService->mediaRdb_ = cloneSource.cloneStorePtr_;
+
+    EXPECT_TRUE(InsertIntoConfigInfo(restoreService->mediaRdb_, ConfigInfoSceneId::CLONE_RESTORE,
+        CONFIG_INFO_CLONE_PHOTO_SYNC_OPTION_KEY, CONFIG_INFO_INVALID_VALUE));
+    EXPECT_TRUE(UpdatePhotosSouthDeviceType(restoreService->mediaRdb_, SouthDeviceType::SOUTH_DEVICE_CLOUD));
+    EXPECT_TRUE(UpdatePhotosOwnerAlbumIdAndPosition(restoreService->mediaRdb_, "11"));
 
     CloneRestoreConfigInfo result = restoreService->GetCloneConfigInfoFromOriginDB();
     EXPECT_TRUE(expectedConfigInfo == result);
@@ -4468,6 +5341,46 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_add_id_card_album_test_001, T
     classifyRestore.AddIdCardAlbum(OcrAggregateType::BACK_CARD, file_id_test_set);
     auto result = classifyRestore.mediaLibraryRdb_->QuerySql(query_sql);
     EXPECT_FALSE(GetInt32Val("count", result) > 0);
+}
+
+void TestBuildDbPathByUserIdAndDbName(int32_t userId, const std::string &dbName, const std::string &expectedDbPath)
+{
+    OthersCloneRestore othersClone(OTHERS_PHONE_CLONE_RESTORE, "", "");
+    othersClone.userId_ = userId;
+    std::string dbPath = othersClone.BuildDbPath(dbName);
+    EXPECT_EQ(dbPath, expectedDbPath);
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_BuildDbPath_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_others_clone_BuildDbPath_001");
+    TestBuildDbPathByUserIdAndDbName(OthersCloneRestore::UserId::MAIN, "photo_MediaInfo.db",
+        "/storage/media/local/files/.backup/restore/storage/emulated/0/photo_MediaInfo.db");
+    MEDIA_INFO_LOG("End medialibrary_backup_others_clone_BuildDbPath_001");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_BuildDbPath_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_others_clone_BuildDbPath_002");
+    TestBuildDbPathByUserIdAndDbName(OthersCloneRestore::UserId::MAIN, "photo_sd_MediaInfo.db",
+        "/storage/media/local/files/.backup/restore/photo_sd_MediaInfo.db");
+    MEDIA_INFO_LOG("End medialibrary_backup_others_clone_BuildDbPath_002");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_BuildDbPath_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_others_clone_BuildDbPath_003");
+    TestBuildDbPathByUserIdAndDbName(OthersCloneRestore::UserId::PRIVATE, "video_sd_MediaInfo.db",
+        "/storage/media/local/files/.backup/restore/video_sd_MediaInfo.db");
+    MEDIA_INFO_LOG("End medialibrary_backup_others_clone_BuildDbPath_003");
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_BuildDbPath_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_others_clone_BuildDbPath_004");
+    TestBuildDbPathByUserIdAndDbName(OthersCloneRestore::UserId::PRIVATE, "video_MediaInfo.db",
+        "/storage/media/local/files/.backup/restore/storage/emulated/10/video_MediaInfo.db");
+    MEDIA_INFO_LOG("End medialibrary_backup_others_clone_BuildDbPath_004");
 }
 } // namespace Media
 } // namespace OHOS

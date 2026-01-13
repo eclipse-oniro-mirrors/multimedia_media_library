@@ -35,9 +35,6 @@ public:
     MediaAlbumsRdbOperations();
     ~MediaAlbumsRdbOperations() = default;
     
-    int32_t DeleteHighlightAlbums(const std::vector<std::string>& albumIds);
-    int32_t SetHighlightUserActionData(const SetHighlightUserActionDataDto& dto);
-    int32_t GetFaceId(int32_t albumId, std::string& groupTag);
     std::shared_ptr<NativeRdb::ResultSet> MoveAssetsGetAlbumInfo(const ChangeRequestMoveAssetsDto &moveAssetsDto);
     std::shared_ptr<NativeRdb::ResultSet> AddAssetsGetAlbumInfo(const ChangeRequestAddAssetsDto &addAssetsDto);
     std::shared_ptr<NativeRdb::ResultSet> RemoveAssetsGetAlbumInfo(const ChangeRequestRemoveAssetsDto &removeAssetsDto);

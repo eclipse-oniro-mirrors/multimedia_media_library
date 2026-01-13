@@ -20,6 +20,7 @@
 #include "create_tmp_compatible_dup_vo.h"
 #include "create_tmp_compatible_dup_dto.h"
 #include "media_assets_controller_service.h"
+#include "media_file_utils.h"
 #include "message_parcel.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_data_manager.h"
@@ -28,6 +29,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "result_set_utils.h"
 #include "medialibrary_transcode_data_aging_operation.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace testing::ext;
@@ -51,7 +53,7 @@ static void ClearPhotosTables()
 static void CreatePhotoTable()
 {
     std::vector<std::string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE
+        PhotoUpgrade::CREATE_PHOTO_TABLE
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

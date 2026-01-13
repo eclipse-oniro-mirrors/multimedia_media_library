@@ -22,8 +22,10 @@
 #include "cloud_media_sync_const.h"
 #include "cloud_error_detail_vo.h"
 #include "medialibrary_errno.h"
+#include "photo_album_po.h"
 
 namespace OHOS::Media::CloudSync {
+using namespace OHOS::Media::ORM;
 class EXPORT PhotoAlbumDto {
 public:
     int32_t albumId;
@@ -46,9 +48,10 @@ public:
     int32_t serverErrorCode;
     ErrorType errorType;
     std::vector<CloudErrorDetail> errorDetails;
+    std::optional<PhotoAlbumPo> localAlbumInfo;
 
 public:
-    std::string ToString();
+    std::string ToString() const;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_PHOTO_ALBUM_DTO_H

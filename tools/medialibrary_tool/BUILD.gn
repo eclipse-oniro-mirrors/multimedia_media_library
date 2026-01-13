@@ -26,11 +26,12 @@ ohos_executable("mediatool") {
     "./include",
     "${MEDIALIB_TEST_PATH}/unittest/get_self_permissions/include",
     "${MEDIALIB_ROOT_PATH}/frameworks/innerkitsimpl/media_library_helper/include",
-    "${MEDIALIB_ROOT_PATH}/frameworks/services/media_thumbnail/include",
     "${MEDIALIB_ROOT_PATH}/frameworks/utils/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/innerkits/native/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/inner_api/media_library_helper/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/kits/js/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
   ]
 
   sources += [

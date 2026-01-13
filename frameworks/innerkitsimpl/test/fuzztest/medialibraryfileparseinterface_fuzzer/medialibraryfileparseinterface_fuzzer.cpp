@@ -28,7 +28,6 @@
 #include "moving_photo_file_utils.h"
 #include "metadata_extractor.h"
 #include "media_privacy_manager.h"
-#include "mtp_media_library.h"
 #undef private
 #undef protected
 
@@ -54,6 +53,7 @@
 #include "medialibrary_photo_operations.h"
 #include "result_set_utils.h"
 #include "media_library_extend_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -245,7 +245,7 @@ static void MediaPrivacyManagerTest()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

@@ -20,9 +20,9 @@
 #include <ani.h>
 #include "file_asset_ani.h"
 #include "media_file_utils.h"
-#include "media_photo_asset_proxy.h"
 #include "medialibrary_ani_utils.h"
-
+#include "photo_proxy.h"
+//LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 MediaLibraryCommAni::MediaLibraryCommAni() {}
@@ -129,3 +129,4 @@ ani_object MediaLibraryCommAni::CreatePhotoAssetAni(ani_env *env, const std::str
 
 } // namespace Media
 } // namespace OHOS
+//LCOV_EXCL_STOP

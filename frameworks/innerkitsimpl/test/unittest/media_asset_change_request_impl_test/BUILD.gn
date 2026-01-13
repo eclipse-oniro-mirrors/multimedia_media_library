@@ -30,7 +30,6 @@ ohos_unittest("media_asset_change_request_impl_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
     "${MEDIALIB_SERVICES_PATH}/media_permission/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/c",
@@ -38,6 +37,7 @@ ohos_unittest("media_asset_change_request_impl_test") {
     "${MEDIALIB_NATIVE_PATH}/c_api/common",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   cflags = [ "-fno-access-control" ]

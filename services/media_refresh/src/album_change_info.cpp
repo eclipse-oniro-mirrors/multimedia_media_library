@@ -183,6 +183,7 @@ ValuesBucket AlbumChangeInfo::GetUpdateValues(const AlbumChangeInfo &oldAlbumInf
         ss << "hiddenCount_: " << oldAlbumInfo.hiddenCount_ << " -> " << hiddenCount_ << ", ";
         values.PutInt(PhotoAlbumColumns::CONTAINS_HIDDEN, hiddenCount_ != 0);
         ss << "contains_hidden: true, ";
+        GetUpdatePhotoAlbumHidden(oldAlbumInfo, values, ss);
     }
     if (coverUri_ != oldAlbumInfo.coverUri_ && coverUri_ != EMPTY_STR) {
         values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, coverUri_);
@@ -215,7 +216,7 @@ void AlbumChangeInfo::GetUpdatePhotoAlbumHidden(const AlbumChangeInfo &oldAlbumI
 {
     if (!(oldAlbumInfo.albumSubType_ >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
         oldAlbumInfo.albumSubType_ <= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_END))) {
-        values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, count_ == 0);
+        values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, count_ < 1);
         ss << "hidden_: " << oldAlbumInfo.hidden_ << " -> " << hidden_ << ", ";
     }
 }

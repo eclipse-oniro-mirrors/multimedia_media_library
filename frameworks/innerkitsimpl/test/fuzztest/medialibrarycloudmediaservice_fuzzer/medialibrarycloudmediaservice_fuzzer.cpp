@@ -37,6 +37,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "cloud_media_operation_code.h"
 #include "medialibrary_kvstore_manager.h"
+#include "media_upgrade.h"
 
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
 namespace OHOS {
@@ -258,10 +259,10 @@ static void CloudMediaAlbumServiceFuzzer()
         MEDIA_ERR_LOG("cloudMediaAlbumService is nuulptr");
         return;
     }
-    vector<string> cloudIds = { "default-album-2" };
-    cloudMediaAlbumService->GetCheckRecords(cloudIds);
     int32_t limitSize = LIMIT_SIZE;
-    cloudMediaAlbumService->GetAlbumCreatedRecords(limitSize);
+    bool isCloudSpaceFull = true;
+    std::vector<PhotoAlbumPo> photoAlbumList;
+    cloudMediaAlbumService->GetCreatedRecords(limitSize, isCloudSpaceFull, photoAlbumList);
     cloudMediaAlbumService->GetAlbumMetaModifiedRecords(limitSize);
     cloudMediaAlbumService->GetAlbumFileModifiedRecords(limitSize);
     cloudMediaAlbumService->GetAlbumDeletedRecords(limitSize);
@@ -544,7 +545,7 @@ static void CloudMediaServiceProcessorFuzzer()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

@@ -49,6 +49,7 @@
 #include "media_file_utils.h"
 #include "media_old_photos_column.h"
 #include "media_column.h"
+#include "media_audio_column.h"
 
 namespace OHOS::Media {
 using namespace std;

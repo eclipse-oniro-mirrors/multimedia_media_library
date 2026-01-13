@@ -54,6 +54,7 @@
 #include "medialibrary_data_manager.h"
 #include "media_facard_photos_column.h"
 #include "medialibrary_unittest_utils.h"
+#include "media_upgrade.h"
  
 using namespace testing::ext;
  
@@ -114,7 +115,7 @@ void SetFaCardTables()
             asset_uri   TEXT \
         );";
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         createFacardTableSql
     };
     for (auto &createTableSql : createTableSqlList) {

@@ -46,6 +46,8 @@
 #include "uri.h"
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
+#include "media_audio_column.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -126,11 +128,11 @@ void PrepareUniqueNumberTable()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         AudioColumn::CREATE_AUDIO_TABLE,
         CREATE_MEDIA_TABLE,
         CREATE_ASSET_UNIQUE_NUMBER_TABLE,
-        PhotoExtColumn::CREATE_PHOTO_EXT_TABLE,
+        PhotoExtUpgrade::CREATE_PHOTO_EXT_TABLE,
         PhotoAlbumColumns::CREATE_TABLE
     };
     for (auto &createTableSql : createTableSqlList) {

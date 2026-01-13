@@ -20,6 +20,7 @@
 #include <chrono>
 #include <thread>
 
+#include "media_file_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_data_manager.h"
@@ -321,7 +322,7 @@ void SetTables()
 {
     // 创建Album表
     vector<string> createTableSqlList = {
-        CREATE_PHOTO_ALBUM_TABLE
+        PhotoAlbumColumns::CREATE_TABLE
     };
     for (auto &createTableSql : createTableSqlList) {
         if (g_rdbStore == nullptr) {
@@ -2448,6 +2449,114 @@ HWTEST_F(AlbumAccurateRefreshTest, AlbumAccurateRefreshTest_Update_Exceed_066, T
     EXPECT_TRUE(changeRows == 1);
     // 总共999条
     EXPECT_TRUE(!albumRefreshUpdate.dataManager_.CheckIsExceed());
+}
+
+HWTEST_F(AlbumAccurateRefreshTest, AlbumAccurateRefreshTest_Update_cmd_067, TestSize.Level2)
+{
+    PrepareAlbumData();
+    Uri uri("");
+    MediaLibraryCommand cmd(uri);
+    cmd.SetTableName(PhotoAlbumColumns::TABLE);
+    auto predicates = cmd.GetAbsRdbPredicates();
+    predicates->SetWhereClause(PhotoAlbumColumns::ALBUM_SUBTYPE + " = ?");
+    predicates->SetWhereArgs({ to_string(PhotoAlbumSubType::FAVORITE) });
+    ValuesBucket value;
+    auto newCount = FAVORITE_ALBUM_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_COUNT, newCount);
+    auto imageCount = FAVORITE_ALBUM_IMAGE_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_IMAGE_COUNT, imageCount);
+    auto changeTime = MediaFileUtils::UTCTimeMilliSeconds();
+    value.PutInt(PhotoAlbumColumns::CHANGE_TIME, changeTime);
+    cmd.SetValueBucket(value);
+
+    AlbumAccurateRefresh albumRefreshUpdate;
+    int32_t changeRows = 0;
+    auto ret = albumRefreshUpdate.Update(cmd, changeRows);
+    ACCURATE_DEBUG("ret: %{public}d", ret);
+    EXPECT_TRUE(ret == ACCURATE_REFRESH_RET_OK);
+    EXPECT_TRUE(changeRows == 1);
+    // 数据库执行结果
+    AlbumChangeInfo favoriteAlbumInfo = GetAlbumInfo(PhotoAlbumSubType::FAVORITE);
+    AlbumChangeInfo updateAlbumInfo = FAVORITE_ALBUM_INFO;
+    updateAlbumInfo.count_ = newCount;
+    updateAlbumInfo.imageCount_ = imageCount;
+    EXPECT_TRUE(IsEqualAlbumInfo(favoriteAlbumInfo, updateAlbumInfo));
+    EXPECT_TRUE(GetAlbumCount(PhotoAlbumSubType::FAVORITE) == newCount);
+}
+
+HWTEST_F(AlbumAccurateRefreshTest, AlbumAccurateRefreshTest_Update_cmd_068, TestSize.Level2)
+{
+    PrepareAlbumData();
+    Uri uri("");
+    MediaLibraryCommand cmd(uri);
+    cmd.SetTableName(PhotoAlbumColumns::ALBUM_NAME);
+    auto predicates = cmd.GetAbsRdbPredicates();
+    predicates->SetWhereClause(PhotoAlbumColumns::ALBUM_SUBTYPE + " = ?");
+    predicates->SetWhereArgs({ to_string(PhotoAlbumSubType::FAVORITE) });
+    ValuesBucket value;
+    auto newCount = FAVORITE_ALBUM_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_COUNT, newCount);
+    auto imageCount = FAVORITE_ALBUM_IMAGE_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_IMAGE_COUNT, imageCount);
+    auto changeTime = MediaFileUtils::UTCTimeMilliSeconds();
+    value.PutInt(PhotoAlbumColumns::CHANGE_TIME, changeTime);
+    cmd.SetValueBucket(value);
+
+    AlbumAccurateRefresh albumRefreshUpdate;
+    int32_t changeRows = 0;
+    auto ret = albumRefreshUpdate.Update(cmd, changeRows);
+    ACCURATE_DEBUG("ret: %{public}d", ret);
+    EXPECT_TRUE(ret > 0);
+    EXPECT_TRUE(changeRows == 0);
+}
+
+HWTEST_F(AlbumAccurateRefreshTest, AlbumAccurateRefreshTest_Update_069, TestSize.Level2)
+{
+    PrepareHiddenData();
+    ValuesBucket value;
+    auto newCount = HIDDEN_ALBUM_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_COUNT, newCount);
+    auto imageCount = HIDDEN_ALBUM_IMAGE_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_IMAGE_COUNT, imageCount);
+    auto changeTime = MediaFileUtils::UTCTimeMilliSeconds();
+    value.PutInt(PhotoAlbumColumns::CHANGE_TIME, changeTime);
+    RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::HIDDEN));
+
+    AlbumAccurateRefresh albumRefreshUpdate("AlbumAccurateRefreshTest_Update_069");
+    int32_t changeRows = 0;
+    auto ret = albumRefreshUpdate.Update(changeRows, value, predicates);
+    ACCURATE_DEBUG("ret: %{public}d", ret);
+    EXPECT_TRUE(ret == ACCURATE_REFRESH_RET_OK);
+    EXPECT_TRUE(changeRows == 1);
+    // 数据库执行结果
+    AlbumChangeInfo hiddenAlbumInfo = GetAlbumInfo(PhotoAlbumSubType::HIDDEN);
+    AlbumChangeInfo updateAlbumInfo = HIDDEN_ALBUM_INFO;
+    updateAlbumInfo.count_ = newCount;
+    updateAlbumInfo.imageCount_ = imageCount;
+    EXPECT_TRUE(IsEqualAlbumInfo(hiddenAlbumInfo, updateAlbumInfo));
+    EXPECT_TRUE(GetAlbumCount(PhotoAlbumSubType::HIDDEN) == newCount);
+}
+
+HWTEST_F(AlbumAccurateRefreshTest, AlbumAccurateRefreshTest_Update_070, TestSize.Level2)
+{
+    PrepareHiddenData();
+    ValuesBucket value;
+    auto newCount = HIDDEN_ALBUM_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_COUNT, newCount);
+    auto imageCount = HIDDEN_ALBUM_IMAGE_COUNT - 1;
+    value.PutInt(PhotoAlbumColumns::ALBUM_IMAGE_COUNT, imageCount);
+    auto changeTime = MediaFileUtils::UTCTimeMilliSeconds();
+    value.PutInt(PhotoAlbumColumns::CHANGE_TIME, changeTime);
+    RdbPredicates predicates(PhotoAlbumColumns::ALBUM_NAME);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::HIDDEN));
+
+    AlbumAccurateRefresh albumRefreshUpdate("AlbumAccurateRefreshTest_Update_069");
+    int32_t changeRows = 0;
+    auto ret = albumRefreshUpdate.Update(changeRows, value, predicates);
+    ACCURATE_DEBUG("ret: %{public}d", ret);
+    EXPECT_TRUE(ret > 0);
+    EXPECT_TRUE(changeRows == 0);
 }
 } // namespace Media
 } // namespace OHOS

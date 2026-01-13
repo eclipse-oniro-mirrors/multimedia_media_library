@@ -16,8 +16,9 @@
 
 #include <sstream>
 #include "dfx_manager.h"
-
+#ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "cloud_media_context.h"
+#endif
 #include "dfx_cloud_manager.h"
 #include "dfx_utils.h"
 #include "media_file_utils.h"
@@ -403,6 +404,15 @@ static void HandleAlbumInfoBySubtype(std::shared_ptr<DfxReporter> &dfxReporter, 
     dfxReporter->ReportAlbumInfo(albumName.c_str(), albumInfo.imageCount, albumInfo.videoCount, albumInfo.isLocal);
 }
 
+static void HandleAlbumInfoByUploadStatus(std::shared_ptr<DfxReporter> &dfxReporter, const bool uploadStatus)
+{
+    vector<string> albumNames = DfxDatabaseUtils::QueryAlbumNamesByUploadStatus(static_cast<int32_t>(uploadStatus));
+    for (const auto& albumName : albumNames) {
+        MEDIA_INFO_LOG("albumNames: %{public}s, uploadStatus: %{public}d", albumName.c_str(), uploadStatus);
+        dfxReporter->ReportAlbumInfo(albumName.c_str(), 0, 0, uploadStatus);
+    }
+}
+
 static void HandleAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
 {
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::IMAGE));
@@ -410,6 +420,8 @@ static void HandleAlbumInfo(std::shared_ptr<DfxReporter> &dfxReporter)
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::FAVORITE));
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::HIDDEN));
     HandleAlbumInfoBySubtype(dfxReporter, static_cast<int32_t>(PhotoAlbumSubType::TRASH));
+    HandleAlbumInfoByUploadStatus(dfxReporter, false);
+    HandleAlbumInfoByUploadStatus(dfxReporter, true);
 }
 
 static void HandleDirtyCloudPhoto(std::shared_ptr<DfxReporter> &dfxReporter)
@@ -601,6 +613,8 @@ void DfxManager::HandleFiveMinuteTask()
     dfxAnalyzer_->FlushThumbnail(result);
     AdaptationToMovingPhotoInfo adaptationInfo = dfxCollector_->GetAdaptationToMovingPhotoInfo();
     dfxAnalyzer_->FlushAdaptationToMovingPhoto(adaptationInfo);
+    CinematicVideoInfo cinematicVideoInfo = dfxCollector_->GetCinematicVideoInfo();
+    dfxAnalyzer_->FlushCinematicVideoInfo(cinematicVideoInfo);
     CheckStatus();
 }
 
@@ -638,6 +652,7 @@ int64_t DfxManager::HandleOneDayReport()
     dfxReporter_->ReportAdaptationToMovingPhoto();
     dfxReporter_->ReportPhotoRecordInfo();
     dfxReporter_->ReportOperationRecordInfo();
+    dfxReporter_->ReportCinematicVideo();
     dfxReporter_->ReportAlibHeifDuplicate();
     return MediaFileUtils::UTCTimeSeconds();
 }
@@ -649,6 +664,80 @@ void DfxManager::HandleAdaptationToMovingPhoto(const string &appName, bool adapt
         return;
     }
     dfxCollector_->CollectAdaptationToMovingPhotoInfo(appName, adapted);
+}
+
+static bool QueryCinematicVideoStatus(const string &fileId, MultiStagesCaptureVideoStatus &photoStatus)
+{
+    NativeRdb::RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns { PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_QUALITY };
+    shared_ptr<NativeRdb::ResultSet> resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicates, columns);
+
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
+        MEDIA_ERR_LOG("query resultSet is nullptr");
+        return false;
+    }
+
+    int32_t columnIndexSubtype = -1;
+    resultSet->GetColumnIndex(PhotoColumn::PHOTO_SUBTYPE, columnIndexSubtype);
+    int32_t currentSubtype = 0;
+    resultSet->GetInt(columnIndexSubtype, currentSubtype);
+    if (currentSubtype != static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+        MEDIA_INFO_LOG("Current photo is not cinematic video");
+        return false;
+    }
+
+    int32_t columnIndexQuality = -1;
+    resultSet->GetColumnIndex(PhotoColumn::PHOTO_QUALITY, columnIndexQuality);
+    int32_t currentPhotoQuality = 0;
+    resultSet->GetInt(columnIndexQuality, currentPhotoQuality);
+    photoStatus = currentPhotoQuality ? MultiStagesCaptureVideoStatus::LOW_QUALITY :
+        MultiStagesCaptureVideoStatus::HIGH_QUALITY;
+    return true;
+}
+
+void DfxManager::HandleCinematicVideoAccessTimes(bool isByUri, bool isHighQualityRequest, const std::string &fileId)
+{
+    if (!isInitSuccess_) {
+        MEDIA_WARN_LOG("DfxManager not init");
+        return;
+    }
+
+    if (!fileId.empty()) {
+        MultiStagesCaptureVideoStatus photoStatus = MultiStagesCaptureVideoStatus::LOW_QUALITY;
+        CHECK_AND_RETURN_INFO_LOG(QueryCinematicVideoStatus(fileId, photoStatus),
+            "QueryCinematicVideoStatus failed");
+        isHighQualityRequest = photoStatus == MultiStagesCaptureVideoStatus::HIGH_QUALITY ?
+            true : false;
+    }
+    dfxCollector_->CollectCinematicVideoAccessTimes(isByUri, isHighQualityRequest);
+}
+
+void DfxManager::HandleCinematicVideoAddStartTime(const CinematicWaitType waitType, const string &videoId)
+{
+    if (!isInitSuccess_) {
+        MEDIA_WARN_LOG("DfxManager not init");
+        return;
+    }
+    dfxCollector_->CollectCinematicVideoAddStartTime(waitType, videoId);
+}
+
+void DfxManager::HandleCinematicVideoAddEndTime(const CinematicWaitType waitType, const string &videoId)
+{
+    if (!isInitSuccess_) {
+        MEDIA_WARN_LOG("DfxManager not init");
+        return;
+    }
+    dfxCollector_->CollectCinematicVideoAddEndTime(waitType, videoId);
+}
+
+void DfxManager::HandleCinematicVideoMultistageResult(bool multistageResult)
+{
+    if (!isInitSuccess_) {
+        MEDIA_WARN_LOG("DfxManager not init");
+        return;
+    }
+    dfxCollector_->CollectCinematicVideoMultistageResult(multistageResult);
 }
 
 static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
@@ -1140,14 +1229,18 @@ void DfxManager::HandleSyncEnd(const int32_t stopReason)
             break;
         }
     }
+    #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
     DfxReporter::ReportSyncStat(taskId_, syncInfo_, stat, syncInfo,
         CloudSync::CloudMediaContext::GetInstance().GetCloudType());
+    #endif
 }
 
 void DfxManager::HandleReportSyncFault(const std::string& position, const SyncFaultEvent& event)
 {
+    #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
     DfxReporter::ReportSyncFault(taskId_, position, event,
         CloudSync::CloudMediaContext::GetInstance().GetCloudType());
+    #endif
 }
 
 void DfxManager::HandleAccurateRefreshTimeOut(const AccurateRefreshDfxDataPoint& reportData)
@@ -1187,6 +1280,12 @@ void DfxManager::HandleTranscodeCostTime(const int32_t costTime)
 void DfxManager::HandleUpgradeFault(const UpgradeExceptionInfo& reportData)
 {
     dfxReporter_->ReportUpgradeFault(reportData);
+}
+
+int32_t DfxManager::HandleThmInodeCleanInfo(const ThmInodeCleanInfo &info)
+{
+    CHECK_AND_RETURN_RET_LOG(dfxReporter_ != nullptr, E_ERR, "DfxReporter is nullptr");
+    return dfxReporter_->ReportThmInodeCleanInfo(info);
 }
 } // namespace Media
 } // namespace OHOS

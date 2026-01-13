@@ -33,6 +33,11 @@ public:
     void FlushTranscodeAccessTimes(const TranscodeAccessType type);
     void FlushTranscodeFailed(const TranscodeErrorType type);
     void FlushTranscodeCostTime(const int32_t costTime);
+    void FlushCinematicVideoInfo(CinematicVideoInfo& newCinematicVideoInfo);
+
+private:
+    int32_t CalculateAvgWaitTime(CinematicWaitType waitType, const CinematicVideoInfo& cinematicVideoInfo,
+        const int32_t oldNum, const int32_t oldWaitAvgTime);
 };
 } // namespace Media
 } // namespace OHOS

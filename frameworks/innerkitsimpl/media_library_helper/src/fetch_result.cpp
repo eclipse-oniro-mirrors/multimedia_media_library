@@ -21,6 +21,7 @@
 #include "media_smart_album_column.h"
 #include "medialibrary_tracer.h"
 #include "photo_album_column.h"
+#include "result_set_utils.h"
 
 using namespace std;
 
@@ -113,6 +114,8 @@ static const ResultTypeMap &GetResultTypeMap()
         { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, TYPE_INT32 },
         { PhotoColumn::PHOTO_ASPECT_RATIO, TYPE_DOUBLE },
         { PhotoColumn::PHOTO_CHANGE_TIME, TYPE_INT64 },
+        { PhotoColumn::PHOTO_IS_CRITICAL, TYPE_INT32 },
+        { PhotoColumn::PHOTO_RISK_STATUS, TYPE_INT32 },
     };
     return RESULT_TYPE_MAP;
 }
@@ -322,6 +325,62 @@ bool FetchResult<T>::IsAtLastRow()
     bool retVal = false;
     resultset_->IsAtLastRow(retVal);
     return retVal;
+}
+
+template <class T>
+int32_t FetchResult<T>::GetObjectIndexById(int32_t assetId)
+{
+    CHECK_AND_RETURN_RET_LOG(resultset_ != nullptr, -1, "resultset_ is null");
+    int32_t count = 0;
+    CHECK_AND_RETURN_RET_LOG(resultset_->GetRowCount(count) == NativeRdb::E_OK, -1, "GetRowCount failed");
+    if constexpr (std::is_same<T, FileAsset>::value || std::is_same<T, PhotoAssetCustomRecord>::value) {
+        for (int32_t i = 0; i < count; i++) {
+            CHECK_AND_RETURN_RET_LOG(resultset_->GoToRow(i) == NativeRdb::E_OK, -1, "GoToRow failed");
+            int32_t fileId =
+                get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultset_, TYPE_INT32));
+            if (fileId == assetId) {
+                return i;
+            }
+        }
+    } else if constexpr (std::is_same<T, AlbumAsset>::value || std::is_same<T, SmartAlbumAsset>::value ||
+        std::is_same<T, AlbumOrder>::value) {
+            for (int32_t i = 0; i < count; i++) {
+                CHECK_AND_RETURN_RET_LOG(resultset_->GoToRow(i) == NativeRdb::E_OK, -1, "GoToRow failed");
+                int32_t albumId =
+                    get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_ID, resultset_, TYPE_INT32));
+                if (albumId == assetId) {
+                    return i;
+                }
+            }
+        } else {
+            MEDIA_ERR_LOG("unsupported FetchResType");
+        }
+    return -1;
+}
+
+template <class T>
+int32_t FetchResult<T>::GetAlbumIndex(int32_t assetId, int32_t photoAlbumType, int32_t photoAlbumSubType)
+{
+    CHECK_AND_RETURN_RET_LOG(resultset_ != nullptr, -1, "resultset_ is null");
+    int32_t count = 0;
+    CHECK_AND_RETURN_RET_LOG(resultset_->GetRowCount(count) == NativeRdb::E_OK, -1, "GetRowCount failed");
+    if constexpr (std::is_same<T, PhotoAlbum>::value) {
+        for (int32_t i = 0; i < count; i++) {
+            CHECK_AND_RETURN_RET_LOG(resultset_->GoToRow(i) == NativeRdb::E_OK, -1, "GoToRow failed");
+            int32_t albumId = get<int32_t>(
+                ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_ID, resultset_, TYPE_INT32));
+            int32_t albumType = get<int32_t>(
+                ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_TYPE, resultset_, TYPE_INT32));
+            int32_t albumSubType = get<int32_t>(
+                ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_SUBTYPE, resultset_, TYPE_INT32));
+            if (albumId == assetId && albumType == photoAlbumType && albumSubType == photoAlbumSubType) {
+                return i;
+            }
+        }
+    } else {
+            MEDIA_ERR_LOG("unsupported FetchResType");
+    }
+    return -1;
 }
 
 variant<int32_t, int64_t, string, double> ReturnDefaultOnError(string errMsg, ResultSetDataType dataType)
@@ -650,6 +709,8 @@ void FetchResult<T>::SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<Native
         
     photoAlbumData->SetLatitude(latitude);
     photoAlbumData->SetLongitude(longitude);
+    photoAlbumData->SetChangeTime(get<int64_t>(GetRowValFromColumn(
+        PhotoAlbumColumns::CHANGE_TIME, TYPE_INT64, resultSet)));
     photoAlbumData->SetUploadStatus(get<int32_t>(GetRowValFromColumn(
         PhotoAlbumColumns::UPLOAD_STATUS, TYPE_INT32, resultSet)));
     photoAlbumData->SetHidden(get<int32_t>(GetRowValFromColumn(

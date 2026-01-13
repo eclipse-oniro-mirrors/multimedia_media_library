@@ -40,6 +40,7 @@
 #include "values_bucket.h"
 #include "photo_custom_restore_operation.h"
 #include "media_library_custom_restore.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -70,7 +71,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

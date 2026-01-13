@@ -38,28 +38,15 @@ namespace OHOS::Media {
  */
 static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> mediaAlbumsPermissionPolicy = {
     // ALBUMS_BUSINESS_CODE_START begin
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::DELETE_HIGH_LIGHT_ALBUMS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ALBUM), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_PHOTO_ALBUMS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_COVER_URI), {{WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_ALBUM_NAME), {{WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_IS_ME), {{SYSTEMAPI_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_DISPLAY_LEVEL), {{SYSTEMAPI_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_DISMISS), {{SYSTEMAPI_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::SET_HIGH_LIGHT_USER_ACTION_DATA), {{WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::SET_SUBTITLE), {{WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ADD_ASSETS), {{WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_REMOVE_ASSETS), {{WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_MOVE_ASSETS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_RECOVER_ASSETS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_DELETE_ASSETS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_DISMISS_ASSETS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_MERGE_ALBUM), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_PLACE_BEFORE), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_ORDER_POSITION),
-        {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_RELATIONSHIP), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_RELATIONSHIP), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_COMMIT_MODIFY), { {WRITE_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_ASSETS), { {WRITE_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_REMOVE_ASSETS), { {WRITE_PERM} }},
@@ -69,11 +56,7 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_HIDDEN_ALBUMS),
         { {SYSTEMAPI_PERM, READ_PERM, PRIVATE_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_QUERY_GET_ALBUMS_BY_IDS), { {SYSTEMAPI_PERM, READ_PERM} }},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_ORDER_POSITION), { {SYSTEMAPI_PERM, READ_PERM} }},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_FACE_ID), { {SYSTEMAPI_PERM, READ_PERM} }},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_ANALYSIS_PROCESS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_PHOTO_INDEX), {{SYSTEMAPI_PERM, READ_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_HIGHLIGHT_ALBUM_INFO), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_ASSETS), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_SYS_GET_SELECTED_ASSETS), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_GET_ASSETS), {{READ_PERM}}},
@@ -96,6 +79,7 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
         {{SYSTEMAPI_PERM, WRITE_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_ALBUM_BY_LPATH), { }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_ALBUM_BY_BUNDLENAME), { {SYSTEMAPI_PERM, READ_PERM} }},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_CREATE_ANALYSIS_ALBUM), { {SYSTEMAPI_PERM, WRITE_PERM} }},
 };
 
 static std::unordered_set<uint32_t> mediaAlbumsPermissionDbBypass = {

@@ -30,6 +30,7 @@
 #include "user_define_ipc_client.h"
 #include "medialibrary_business_code.h"
 #include "modify_assets_vo.h"
+#include "media_change_request_utils.h"
 
 using namespace std;
 
@@ -47,6 +48,7 @@ napi_value MediaAssetsChangeRequestNapi::Init(napi_env env, napi_value exports)
         .ref = &constructor_,
         .constructor = Constructor,
         .props = {
+            DECLARE_NAPI_PROPERTY("comment", MediaChangeRequestUtils::CreateComment(env)),
             DECLARE_NAPI_FUNCTION("setFavorite", JSSetFavorite),
             DECLARE_NAPI_FUNCTION("setHidden", JSSetHidden),
             DECLARE_NAPI_FUNCTION("setUserComment", JSSetUserComment),

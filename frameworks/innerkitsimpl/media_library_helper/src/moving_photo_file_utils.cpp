@@ -358,6 +358,25 @@ uint32_t MovingPhotoFileUtils::GetFrameIndex(int64_t time, const int32_t fd)
     return index;
 }
 
+static bool IsValidLivePhotoCache(const string &movingPhotoImagepath, const string &cachePath, int32_t userId)
+{
+    if (!MediaFileUtils::IsFileExists(cachePath)) {
+        return false;
+    }
+    int64_t movingPhotoSize =
+        static_cast<int64_t>(MovingPhotoFileUtils::GetMovingPhotoSize(movingPhotoImagepath, userId));
+    size_t livePhotoSize = 0;
+    if (!MediaFileUtils::GetFileSize(cachePath, livePhotoSize) ||
+        static_cast<int64_t>(livePhotoSize) != movingPhotoSize) {
+        MEDIA_ERR_LOG("refresh live photo cache, size from %{public}ld to %{public}ld",
+            static_cast<long>(livePhotoSize), static_cast<long>(movingPhotoSize));
+        CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(cachePath),
+            "Failed to delete live photo cache, errno: %{public}d", errno);
+        return false;
+    }
+    return true;
+}
+
 // LCOV_EXCL_START
 int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const string& movingPhotoImagepath, int64_t coverPosition,
     std::string &livePhotoPath, int32_t userId)
@@ -369,7 +388,7 @@ int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const string& movingPhotoImagep
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir),
         E_HAS_FS_ERROR, "Cannot create dir %{private}s, errno %{public}d", cacheDir.c_str(), errno);
     string cachePath = GetLivePhotoCachePath(movingPhotoImagepath, userId);
-    if (MediaFileUtils::IsFileExists(cachePath)) {
+    if (IsValidLivePhotoCache(movingPhotoImagepath, cachePath, userId)) {
         livePhotoPath = cachePath;
         return E_OK;
     }

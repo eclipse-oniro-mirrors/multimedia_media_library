@@ -24,6 +24,7 @@
 #include "userfile_client.h"
 #include "media_file_uri.h"
 #include "data_secondary_directory_uri.h"
+#include "media_upgrade.h"
 
 using OHOS::HiviewDFX::HiLog;
 using OHOS::HiviewDFX::HiLogLabel;
@@ -668,19 +669,19 @@ static void UpdateCompatAlbumSelection(AlbumNapiAsyncContext *context)
     switch (subType) {
         case PhotoAlbumSubType::CAMERA: {
             static const string CAMERA_FILTER = PhotoColumn::PHOTO_SUBTYPE + "=" +
-                to_string(static_cast<int32_t>(PhotoSubType::CAMERA)) + " AND " + MediaColumn::ASSETS_QUERY_FILTER;
+                to_string(static_cast<int32_t>(PhotoSubType::CAMERA)) + " AND " + MediaUpgrade::ASSETS_QUERY_FILTER;
             filterClause = CAMERA_FILTER;
             break;
         }
         case PhotoAlbumSubType::SCREENSHOT: {
             static const string SCREENSHOT_FILTER = PhotoColumn::PHOTO_SUBTYPE + "=" +
-                to_string(static_cast<int32_t>(PhotoSubType::SCREENSHOT)) + " AND " + MediaColumn::ASSETS_QUERY_FILTER;
+                to_string(static_cast<int32_t>(PhotoSubType::SCREENSHOT)) + " AND " + MediaUpgrade::ASSETS_QUERY_FILTER;
             filterClause = SCREENSHOT_FILTER;
             break;
         }
         case PhotoAlbumSubType::FAVORITE: {
             static const string FAVORITE_FILTER = PhotoColumn::MEDIA_IS_FAV + " = 1" + " AND " +
-                MediaColumn::ASSETS_QUERY_FILTER;
+                MediaUpgrade::ASSETS_QUERY_FILTER;
             filterClause = FAVORITE_FILTER;
             break;
         }

@@ -20,6 +20,7 @@
 #include "medialibrary_object_utils.h"
 #include "thumbnail_const.h"
 #include "hi_audit.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;

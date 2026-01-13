@@ -33,6 +33,7 @@
 #include "thumbnail_file_utils.h"
 #include "thumbnail_source_loading.h"
 #include "vision_db_sqls.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace OHOS;
@@ -76,7 +77,7 @@ static void InitRdbStore()
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(g_rdbStore, nullptr);
 
-    ret = g_rdbStore->ExecuteSql(PhotoColumn::CREATE_PHOTO_TABLE);
+    ret = g_rdbStore->ExecuteSql(PhotoUpgrade::CREATE_PHOTO_TABLE);
     ASSERT_EQ(ret, NativeRdb::E_OK);
 
     NativeRdb::ValuesBucket values;

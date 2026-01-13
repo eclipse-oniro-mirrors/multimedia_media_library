@@ -28,6 +28,7 @@
 #include "result_set_utils.h"
 #include "location_db_sqls.h"
 #include "uri.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -41,7 +42,7 @@ static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static std::vector<std::string> createTableSqlLists = {
     CREATE_GEO_KNOWLEDGE_TABLE,
     CREATE_GEO_DICTIONARY_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
 };
 
 static std::vector<std::string> testTables = {

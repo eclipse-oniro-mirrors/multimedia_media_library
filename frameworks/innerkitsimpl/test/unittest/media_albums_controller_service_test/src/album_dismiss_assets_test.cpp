@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -37,6 +38,7 @@
 #include "vision_image_face_column.h"
 #include "vision_photo_map_column.h"
 #include "medialibrary_data_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -53,7 +55,7 @@ struct PortraitData {
 };
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
     CREATE_TAB_IMAGE_FACE,
     CREATE_ANALYSIS_ALBUM_MAP,
@@ -256,7 +258,7 @@ HWTEST_F(AlbumDismissAssetsTest, DismissAsstes_Test_001, TestSize.Level0)
     if (reqBody.Marshalling(data) != true) {
         MEDIA_ERR_LOG("reqBody.Marshalling failed");
     }
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->DismissAssets(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> resp;
@@ -290,7 +292,7 @@ HWTEST_F(AlbumDismissAssetsTest, DismissAsstes_Test_002, TestSize.Level0)
     std::to_string(poraitData[4].fileId)};
     ASSERT_TRUE(reqBody.Marshalling(data));
 
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->DismissAssets(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> resp;

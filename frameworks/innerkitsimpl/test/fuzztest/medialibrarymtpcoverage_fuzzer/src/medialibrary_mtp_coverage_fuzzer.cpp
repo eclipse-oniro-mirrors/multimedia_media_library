@@ -43,6 +43,7 @@
 #include "mtp_medialibrary_manager.h"
 #include "mtp_media_library.h"
 #undef private
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -419,7 +420,7 @@ static void DatabaseTableInitial()
     }
 
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
         Media::PhotoAlbumColumns::CREATE_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

@@ -73,10 +73,8 @@ void AssetChangeRequestTest::SetUpTestCase(void)
 {
     MediaLibraryUnitTestUtils::Init();
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    if (g_rdbStore == nullptr) {
-        MEDIA_ERR_LOG("Start MediaLibraryPhotoOperationsTest failed, can not get g_rdbStore");
-        exit(1);
-    }
+    ASSERT_NE(g_rdbStore, nullptr);
+    ASSERT_TRUE(MediaLibraryUnitTestUtils::CreateBasicTables(g_rdbStore));
     ClearTable(PhotoColumn::PHOTOS_TABLE);
     MEDIA_INFO_LOG("SetUpTestCase");
 }

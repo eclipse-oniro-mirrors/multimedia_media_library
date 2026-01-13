@@ -32,6 +32,8 @@
 #include "media_file_utils.h"
 #include "medialibrary_db_const_sqls.h"
 #include "medialibrary_data_manager.h"
+#include "media_audio_column.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -66,7 +68,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

@@ -48,14 +48,14 @@ const int32_t SEED_SIZE = 1024;
 const int32_t MAX_RANGE_LIMIT = 10;
 const int32_t MIN_RANGE_LIMIT = -1; // for fail conditions
 const std::string INTERNAL_PREFIX = "/storage/emulated";
-FuzzedDataProvider* provider;
-std::vector<std::string> Paths = {"", "test", "test/ee/ee"};
-std::vector<std::string> FileTitles = {"", "test", "test.mp3", "test.txt"};
-std::vector<std::string> Files = {
+FuzzedDataProvider* provider = nullptr;
+const std::vector<std::string> Paths = {"", "test", "test/ee/ee"};
+const std::vector<std::string> FileTitles = {"", "test", "test.mp3", "test.txt"};
+const std::vector<std::string> Files = {
     "", "test", "test.mp3", "/data/test/backup_test_livephoto.jpg",
     "test/ee/ee/test.txt", "test/test.txt"
 };
-std::vector<std::string> Extensions = {"", "mp3", "txt", "jpg"};
+const std::vector<std::string> Extensions = {"", "mp3", "txt", "jpg"};
 
 const string TEST_FILE_PATH_PHOTO = "test_file_path_photo";
 const string TEST_FILE_PATH_VIDEO = "test_file_path_video";
@@ -63,7 +63,10 @@ const string TEST_FILE_PATH_AUDIO = "test_file_path_audio";
 
 static inline int32_t DbInfoDbType()
 {
-        int32_t value = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
+    if (provider == nullptr) {
+        return DbType::DEFAULT;
+    }
+    int32_t value = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     if (value >= static_cast<int32_t>(DbType::DEFAULT) &&
         value <= static_cast<int32_t>(DbType::VIDEO_SD_CACHE)) {
         return static_cast<DbType>(value);
@@ -73,6 +76,9 @@ static inline int32_t DbInfoDbType()
 
 static inline int32_t SceneCodeType()
 {
+    if (provider == nullptr) {
+        return SceneCode::UPGRADE_RESTORE_ID;
+    }
     int32_t value = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     if (value >= static_cast<int32_t>(SceneCode::UPGRADE_RESTORE_ID) &&
         value <= static_cast<int32_t>(SceneCode::CLOUD_BACKUP_RESTORE_ID)) {
@@ -84,6 +90,9 @@ static inline int32_t SceneCodeType()
 
 static inline PrefixType GetPrefixType()
 {
+    if (provider == nullptr) {
+        return PrefixType::CLOUD;
+    }
     int32_t value = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     if (value >= static_cast<int32_t>(PrefixType::CLOUD) &&
         value <= static_cast<int32_t>(PrefixType::CLOUD_THUMB)) {
@@ -94,30 +103,60 @@ static inline PrefixType GetPrefixType()
 
 static inline string GetRandomPath()
 {
+    if (Paths.empty()) {
+        return "";
+    }
+    if (provider == nullptr) {
+        return Paths[0];
+    }
     size_t value = provider->ConsumeIntegralInRange<size_t>(0, Paths.size()-1);
     return Paths[value];
 }
 
 static inline string GetRandomFileTitle()
 {
+    if (FileTitles.empty()) {
+        return "";
+    }
+    if (provider == nullptr) {
+        return FileTitles[0];
+    }
     size_t value = provider->ConsumeIntegralInRange<size_t>(0, FileTitles.size()-1);
     return FileTitles[value];
 }
 
 static inline string GetRandomFiles()
 {
+    if (Files.empty()) {
+        return "";
+    }
+    if (provider == nullptr) {
+        return Files[0];
+    }
     size_t value = provider->ConsumeIntegralInRange<size_t>(0, Files.size()-1);
     return Files[value];
 }
 
 static inline string GetRandomExtensions()
 {
+    if (Extensions.empty()) {
+        return "";
+    }
+    if (provider == nullptr) {
+        return Extensions[0];
+    }
     size_t value = provider->ConsumeIntegralInRange<size_t>(0, Extensions.size()-1);
     return Extensions[value];
 }
 
 static inline string GetRandomStatType()
 {
+    if (STAT_TYPES.empty()) {
+        return "";
+    }
+    if (provider == nullptr) {
+        return STAT_TYPES[0];
+    }
     size_t value = provider->ConsumeIntegralInRange<size_t>(0, STAT_TYPES.size()-1);
     return STAT_TYPES[value];
 }
@@ -148,6 +187,9 @@ static void ConvertLowQualityPathFuzzer()
 
 static void ParseResolutionFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t width = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     int32_t height = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     string resolution = provider->ConsumeBytesAsString(NUM_BYTES);
@@ -156,6 +198,9 @@ static void ParseResolutionFuzzer()
 
 static void GarbleFilePathFuzzer() // it not necessary
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t sceneCode = SceneCodeType();
     string filePath = provider->ConsumeBytesAsString(NUM_BYTES);
     string cloneFilePath = provider->ConsumeBytesAsString(NUM_BYTES);
@@ -164,6 +209,9 @@ static void GarbleFilePathFuzzer() // it not necessary
 
 static void CreatePathFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t mediaType = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     string displayName = GetRandomFileTitle();
     string path = GetRandomPath();
@@ -172,12 +220,14 @@ static void CreatePathFuzzer()
 
 static void CreateAssetPathByIdFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t fileId = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     int32_t mediaType = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     string extension = GetRandomExtensions();
     string path = GetRandomPath();
-    int32_t fixedBucketNum = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
-    BackupFileUtils::CreateAssetPathById(fileId, mediaType, extension, path, fixedBucketNum);
+    BackupFileUtils::CreateAssetPathById(fileId, mediaType, extension, path);
 }
 
 static void PreparePathFuzzer()
@@ -186,15 +236,11 @@ static void PreparePathFuzzer()
     BackupFileUtils::PreparePath(path);
 }
 
-static void CreateBucketNumFuzzer() //CreateAssetBucket ,s covered here if bucketNum >= 0
-{
-    int32_t fileId = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
-    int32_t bucketNum = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
-    BackupFileUtils::CreateBucketNum(fileId, bucketNum);
-}
-
 static void CreateAssetRealNameFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t fileId = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     int32_t mediaType = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     string extension = GetRandomExtensions();
@@ -204,6 +250,9 @@ static void CreateAssetRealNameFuzzer()
 
 static void GetFullPathByPrefixTypeFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     PrefixType preType = GetPrefixType();
     string relativePath = provider->ConsumeBytesAsString(NUM_BYTES);
     BackupFileUtils::GetFullPathByPrefixType(preType, relativePath);
@@ -211,6 +260,9 @@ static void GetFullPathByPrefixTypeFuzzer()
 
 static void GetReplacedPathByPrefixTypeFuzzer() //CreateAssetBucket ,s covered here if bucketNum >= 0
 {
+    if (provider == nullptr) {
+        return;
+    }
     PrefixType srcPrefixType = GetPrefixType();
     PrefixType dstPrefixType = GetPrefixType();
     string path = provider->ConsumeBytesAsString(NUM_BYTES);
@@ -219,6 +271,9 @@ static void GetReplacedPathByPrefixTypeFuzzer() //CreateAssetBucket ,s covered h
 
 static void IsLowQualityImageFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     string filePath = GetRandomFiles();
     int32_t sceneCode = SceneCodeType();
     string relativePath = GetRandomPath();
@@ -228,6 +283,9 @@ static void IsLowQualityImageFuzzer()
 
 static void IsFileValidFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t sceneCode = SceneCodeType();
     string filePath = GetRandomFiles();
     string relativePath = GetRandomPath();
@@ -249,13 +307,23 @@ static void GetFileTitleFuzzer()
 
 static void GenerateThumbnailsAfterRestoreFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t restoreAstcCount = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     BackupFileUtils::GenerateThumbnailsAfterRestore(restoreAstcCount);
 }
 
 static void CreateDataShareHelperFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (saManager == nullptr) {
+        MEDIA_ERR_LOG("GetSystemAbilityManager get samgr failed.");
+        return;
+    }
     int32_t abId = provider->ConsumeIntegral<int32_t>();
     auto remoteObj = saManager->GetSystemAbility(abId); //MEDIA_LIBRARY_SERVICE_ID
     BackupFileUtils::CreateDataShareHelper(remoteObj);
@@ -263,6 +331,9 @@ static void CreateDataShareHelperFuzzer()
 
 static void GetPathPosByPrefixLevelFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     string filePath = GetRandomPath();
     int32_t sceneCode = SceneCodeType();
     int32_t prefixLevel = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
@@ -272,6 +343,9 @@ static void GetPathPosByPrefixLevelFuzzer()
 
 static void IsLivePhotoFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     FileInfo info;
     info.specialFileType = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     BackupFileUtils::IsLivePhoto(info);
@@ -295,6 +369,9 @@ static void GetLastSlashPosFromPathFuzzer()
 
 static void GetFileFolderFromPathFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     string filePath = GetRandomPath();
     bool shouldStartWithSlash = provider->ConsumeBool();
     BackupFileUtils::GetFileFolderFromPath(filePath, shouldStartWithSlash);
@@ -309,6 +386,9 @@ static void GetExtraPrefixForRealPathFuzzer()
 
 static void HandleRotateImageFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     string livePhotoPath = "/test/backup_test_livephoto.jpg";
     string targetPath = "/test/target";
     MediaFileUtils::CreateDirectory("/test/");
@@ -323,12 +403,6 @@ static void IsCloneCloudSyncSwitchOnFuzzer()
 {
     int32_t sceneCode = SceneCodeType();
     BackupFileUtils::IsCloneCloudSyncSwitchOn(sceneCode);
-}
-
-static void IsCloneCloudSpaceSyncSwitchOnFuzzer()
-{
-    int32_t sceneCode = SceneCodeType();
-    BackupFileUtils::IsCloneCloudSpaceSyncSwitchOn(sceneCode);
 }
 
 static void GetAccountValidFuzzer()
@@ -357,6 +431,9 @@ static void MoveFileFuzzer()
 
 static void ModifyFileFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     string filePath = GetRandomPath();
     int64_t modifiedTime = provider->ConsumeIntegralInRange<int64_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     BackupFileUtils::ModifyFile(filePath, modifiedTime);
@@ -371,6 +448,9 @@ static void GetUserIdFuzzer() // withInternalPrefix
 
 static void HasOrientationOrExifRotateFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     FileInfo info;
     info.orientation = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     info.exifRotate = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
@@ -384,6 +464,9 @@ static void RestoreInvalidHDCCloudDataPosFuzzer()
 
 static void HandleHdrImageFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     string sourceFile = "/test/backup_test_livephoto.jpg";
     string targetPath = "/test/target";
     MediaFileUtils::CreateDirectory("/test/");
@@ -398,6 +481,9 @@ static void HandleHdrImageFuzzer()
 
 static void HandleSdrImageFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     string sourceFile = "/test/backup_test_livephoto.jpg";
     string targetPath = "/test/target";
     MediaFileUtils::CreateDirectory("/test/");
@@ -412,6 +498,9 @@ static void HandleSdrImageFuzzer()
 
 static void FillMetadataFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     /*for success stat, create one of it*/
     string curPath = "/test/test.txt";
     MediaFileUtils::CreateDirectory("/test/");
@@ -429,6 +518,9 @@ static void FillMetadataFuzzer()
     fileInfo.dateModified = dateModified;
 
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    if (data == nullptr) {
+        return;
+    }
     data->SetFilePath(fileInfo.filePath);
     data->SetFileMediaType(fileInfo.fileType);
     data->SetFileDateModified(fileInfo.dateModified);
@@ -438,6 +530,9 @@ static void FillMetadataFuzzer()
 
 static void GetFileMetadataFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     /*for success stat, create one of it*/
     string curPath = "/test/test.txt";
     MediaFileUtils::CreateDirectory("/test/");
@@ -455,6 +550,9 @@ static void GetFileMetadataFuzzer()
     fileInfo.dateModified = dateModified;
 
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    if (data == nullptr) {
+        return;
+    }
     data->SetFilePath(fileInfo.filePath);
     data->SetFileMediaType(fileInfo.fileType);
     data->SetFileDateModified(fileInfo.dateModified);
@@ -494,7 +592,6 @@ static void MediaLibraryBackupFileUtilsFuzzer()
     GarbleFilePathFuzzer();
     CreatePathFuzzer();
     PreparePathFuzzer();
-    CreateBucketNumFuzzer();
     CreateAssetRealNameFuzzer();
     GetFullPathByPrefixTypeFuzzer();
     GetReplacedPathByPrefixTypeFuzzer();
@@ -512,7 +609,6 @@ static void MediaLibraryBackupFileUtilsFuzzer()
     GetExtraPrefixForRealPathFuzzer();
     HandleRotateImageFuzzer();
     IsCloneCloudSyncSwitchOnFuzzer();
-    IsCloneCloudSpaceSyncSwitchOnFuzzer();
     GetAccountValidFuzzer();
     IsMovingPhotoExistFuzzer();
     MoveFileFuzzer();
@@ -533,6 +629,9 @@ static void MediaLibraryBackupFileUtilsFuzzer()
 
 static void FileInfoToStringFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t fileIdOld = provider->ConsumeIntegral<int32_t>();
     int32_t localMediaId = provider->ConsumeIntegral<int32_t>();
     int32_t fileSize = provider->ConsumeIntegral<int32_t>();
@@ -559,6 +658,9 @@ static void FileInfoToStringFuzzer()
 
 static inline void ErrorInfoToStringFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t error = provider->ConsumeIntegral<int32_t>();
     int32_t count = provider->ConsumeIntegral<int32_t>();
     std::string status = provider->ConsumeBytesAsString(NUM_BYTES);
@@ -569,12 +671,18 @@ static inline void ErrorInfoToStringFuzzer()
 
 static inline void FormatFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     std::string infoString = provider->ConsumeBytesAsString(NUM_BYTES);
     BackupLogUtils::Format(infoString);
 }
 
 static inline void FileDbCheckInfoToStringFuzzer()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t dbType = DbInfoDbType();
     int32_t dbStatus = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);
     int32_t fileStatus = provider->ConsumeIntegralInRange<int32_t>(MIN_RANGE_LIMIT, MAX_RANGE_LIMIT);

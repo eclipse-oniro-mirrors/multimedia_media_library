@@ -32,6 +32,7 @@
 #include "uri.h"
 #include "vision_db_sqls_more.h"
 #include "rdb_utils.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -328,7 +329,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
         CREATE_ANALYSIS_ALBUM_MAP,
     };

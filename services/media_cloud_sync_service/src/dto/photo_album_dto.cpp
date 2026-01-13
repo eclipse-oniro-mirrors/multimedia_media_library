@@ -20,7 +20,7 @@
 #include <sstream>
 
 namespace OHOS::Media::CloudSync {
-std::string PhotoAlbumDto::ToString()
+std::string PhotoAlbumDto::ToString() const
 {
     std::stringstream ss;
     ss << "{"

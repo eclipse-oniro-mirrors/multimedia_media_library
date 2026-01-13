@@ -17,11 +17,12 @@
 #include "media_log.h"
 #include "vision_photo_map_column.h"
 #include "vision_db_sqls_more.h"
+#include "media_upgrade.h"
 namespace OHOS {
 namespace Media {
 
 const unordered_map<string, string> TABLE_CREATE_MAP = {
-    { PhotoColumn::PHOTOS_TABLE, PhotoColumn::CREATE_PHOTO_TABLE },
+    { PhotoColumn::PHOTOS_TABLE, PhotoUpgrade::CREATE_PHOTO_TABLE },
     { ANALYSIS_ALBUM_TABLE, CREATE_ANALYSIS_ALBUM_FOR_ONCREATE },
     { ANALYSIS_PHOTO_MAP_TABLE, CREATE_ANALYSIS_ALBUM_MAP },
     { VISION_FACE_TAG_TABLE, CREATE_TAB_FACE_TAG },

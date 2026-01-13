@@ -24,11 +24,19 @@ namespace OHOS::Media {
 using namespace std;
 bool StopThumbnailCreationTaskReqBody::Unmarshalling(MessageParcel &parcel)
 {
-    return parcel.ReadInt32(this->requestId);
+    bool status = parcel.ReadInt32(this->requestId);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadInt32(this->pid);
+    CHECK_AND_RETURN_RET(status, status);
+    return true;
 }
 
 bool StopThumbnailCreationTaskReqBody::Marshalling(MessageParcel &parcel) const
 {
-    return parcel.WriteInt32(this->requestId);
+    bool status = parcel.WriteInt32(this->requestId);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteInt32(this->pid);
+    CHECK_AND_RETURN_RET(status, status);
+    return true;
 }
 } // namespace OHOS::Media

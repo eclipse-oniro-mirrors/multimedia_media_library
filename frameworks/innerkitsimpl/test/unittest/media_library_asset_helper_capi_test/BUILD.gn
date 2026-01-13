@@ -23,9 +23,10 @@ group("unittest") {
 ohos_unittest("media_library_asset_helper_capi_test") {
   module_out_path = "media_library/media_library_asset"
   include_dirs = [
+    "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/include",
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
     "../get_self_permissions/include",
     "./include",
     "${MEDIALIB_INTERFACES_PATH}/kits/c",
@@ -39,7 +40,7 @@ ohos_unittest("media_library_asset_helper_capi_test") {
   ]
 
   sources = [
-    "../get_self_permissions/src/get_self_permissions.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "./src/media_library_asset_helper_capi_test.cpp",
   ]
 

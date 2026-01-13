@@ -412,4 +412,18 @@ int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(
     watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(photoInfo.fileId.value_or(0)), NotifyType::NOTIFY_UPDATE);
     return E_OK;
 }
+
+int32_t MediaAssetsDao::FindAssetsByBurstKey(const std::string &burstKey, std::vector<PhotosPo> &photoInfoList)
+{
+    CHECK_AND_RETURN_RET(!burstKey.empty(), E_INVAL_ARG);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(PhotoColumn::PHOTO_BURST_KEY, burstKey);
+    auto resultSet = rdbStore->Query(predicates, {});
+    int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photoInfoList);
+    MEDIA_INFO_LOG("FindAssetsByBurstKey, ret: %{public}d, burstKey: %{public}s, size: %{public}zu",
+        ret, burstKey.c_str(), photoInfoList.size());
+    return ret;
+}
 }  // namespace OHOS::Media::Common

@@ -30,12 +30,13 @@
 #include "story_play_info_column.h"
 #include "backup_const_column.h"
 #include "vision_album_column.h"
+#include "media_upgrade.h"
 using namespace std;
 
 namespace OHOS {
 namespace Media {
 const unordered_map<string, string> TABLE_CREATE_MAP = {
-    { PhotoColumn::PHOTOS_TABLE, PhotoColumn::CREATE_PHOTO_TABLE },
+    { PhotoColumn::PHOTOS_TABLE, PhotoUpgrade::CREATE_PHOTO_TABLE },
     { ANALYSIS_ALBUM_TABLE, CREATE_ANALYSIS_ALBUM_FOR_ONCREATE },
     { ANALYSIS_PHOTO_MAP_TABLE, CREATE_ANALYSIS_ALBUM_MAP },
     { HIGHLIGHT_ALBUM_TABLE, CREATE_HIGHLIGHT_ALBUM_TABLE },

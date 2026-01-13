@@ -24,6 +24,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "metadata_extractor.h"
 #include "result_set_utils.h"
+#include "media_upgrade.h"
  
 using namespace testing::ext;
  
@@ -51,7 +52,7 @@ static void CleanTestTables()
 static void SetTables()
 {
     std::vector<std::string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);

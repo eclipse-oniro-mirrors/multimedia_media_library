@@ -220,6 +220,9 @@ int32_t DeleteInLakeAssets(int32_t albumId, const std::unordered_set<int32_t>& f
     }
 
     auto fileIdStrs = GetQueryFileIdsStr(fileIds);
+    std::set<std::string> analysisAlbumIds;
+    MediaLibraryRdbUtils::QueryAnalysisAlbumIdOfAssets(fileIdStrs, analysisAlbumIds);
+    std::vector<std::string> albumIds(analysisAlbumIds.begin(), analysisAlbumIds.end());
 
     // 删除缩略图
     DeleteAssetInfoByFileId(albumId, fileIdStrs);
@@ -230,6 +233,7 @@ int32_t DeleteInLakeAssets(int32_t albumId, const std::unordered_set<int32_t>& f
     for (auto fileId : fileIds) {
         NotifyAssetChange(fileId);
     }
+    MediaLakeMonitorRdbUtils::NotifyAnalysisAlbum(albumIds);
     return E_OK;
 }
 

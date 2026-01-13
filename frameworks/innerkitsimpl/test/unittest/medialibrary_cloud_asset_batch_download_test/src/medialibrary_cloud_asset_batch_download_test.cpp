@@ -54,6 +54,7 @@
 #undef protected
 #undef private
 #include "rdb_predicates.h"
+#include "media_upgrade.h"
 
 
 using namespace std;
@@ -241,7 +242,7 @@ void CleanTestTables()
 void ResetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
         DownloadResourcesColumn::CREATE_TABLE,

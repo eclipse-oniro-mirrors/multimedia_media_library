@@ -183,9 +183,7 @@ int32_t CloudAlbumDataConvert::FillRecordId(
 void CloudAlbumDataConvert::HandleEmptyShow(std::shared_ptr<MDKRecord> record,
     std::map<std::string, MDKRecordField> &data, const CloudMdkRecordPhotoAlbumVo &albumData)
 {
-    bool isValid = type_ == PHOTO_ALBUM_CREATE;
-    isValid = isValid && this->IsCloudSpaceFull();
-    isValid = isValid || record->GetRecordId() == DEFAULT_HIDE_ALBUM_CLOUDID;
+    bool isValid = record->GetRecordId() == DEFAULT_HIDE_ALBUM_CLOUDID;
     CHECK_AND_RETURN(isValid);
     std::map<std::string, MDKRecordField> map = data["properties"];
     map["emptyShow"] = MDKRecordField("1");

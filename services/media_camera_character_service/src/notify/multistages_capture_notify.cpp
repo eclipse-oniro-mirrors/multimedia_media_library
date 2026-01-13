@@ -25,6 +25,7 @@
 #include "medialibrary_notify_new.h"
 #include "multistages_capture_notify_info.h"
 #include "notification_distribution.h"
+#include "picture_manager_thread.h"
 #include "user_define_notify_info.h"
 
 namespace OHOS {
@@ -41,7 +42,7 @@ int32_t MultistagesCaptureNotify::NotifyOnProcess(
     std::string filePath = fileAsset->GetFilePath();
     int32_t mediaType = fileAsset->GetMediaType();
     int32_t fileId = fileAsset->GetId();
- 
+
     std::string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath);
     auto notifyUri = MediaFileUtils::GetUriByExtrConditions(ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
         static_cast<MediaType>(mediaType), MEDIA_API_VERSION_V10) + "/", to_string(fileId), extrUri);
@@ -62,9 +63,16 @@ int32_t MultistagesCaptureNotify::NotifyOnProcess(
     return E_OK;
 }
 
-int32_t MultistagesCaptureNotify::NotifyLowQualityMemoryCount(int32_t count)
+int32_t MultistagesCaptureNotify::NotifyLowQualityMemoryCount()
 {
-    MEDIA_INFO_LOG("count: %{public}d.", count);
+    MEDIA_INFO_LOG("NotifyLowQualityMemoryCount begin.");
+    auto pictureManagerThread = PictureManagerThread::GetInstance();
+    if (pictureManagerThread == nullptr) {
+        MEDIA_ERR_LOG("pictureManagerThread is nullptr.");
+        return E_ERR;
+    }
+    int32_t count = pictureManagerThread->GetLowPendingTaskSize();
+
     auto notifyBody = std::make_shared<LowQualityMemoryNumNotifyInfo>();
     CHECK_AND_RETURN_RET_LOG(notifyBody != nullptr, E_ERR, "notifyBody is nullptr");
     notifyBody->count_ = count;

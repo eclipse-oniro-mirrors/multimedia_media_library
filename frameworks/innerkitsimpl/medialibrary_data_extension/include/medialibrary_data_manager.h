@@ -179,7 +179,6 @@ private:
     bool ReadSupportHmos();
     void SetIsLakeAssetScanned(bool isScanned);
     bool IsSupportHmos();
-    static void SaveCompressTempFile(const std::string &uri, const std::string &tempFilePath);
 
     std::shared_mutex mgrSharedMutex_;
     std::shared_ptr<OHOS::AbilityRuntime::Context> context_;
@@ -197,7 +196,6 @@ private:
     std::atomic_bool isAgingDup_ {false};
     std::string supportHmos_ {""};
     std::string scanStatus_ {""};
-    static std::unordered_map<std::string, std::string> compressAssetTempFiles_;
 };
 
 // Scanner callback objects

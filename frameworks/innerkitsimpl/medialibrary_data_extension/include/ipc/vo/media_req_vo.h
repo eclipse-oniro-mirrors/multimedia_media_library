@@ -22,8 +22,8 @@
 
 #include "i_media_parcelable.h"
 #include "media_log.h"
-#include "media_file_utils.h"
 #include "media_itypes_utils.h"
+#include "media_time_utils.h"
 
 namespace OHOS::Media::IPC {
 template <class T>
@@ -47,7 +47,7 @@ public:  // gettter and setter
     {
         this->traceId_ = traceId;
         if (traceId.empty()) {
-            this->traceId_ = "media_trace_" + std::to_string(MediaFileUtils::UTCTimeSeconds());
+            this->traceId_ = "media_trace_" + std::to_string(MediaTimeUtils::UTCTimeSeconds());
             MEDIA_INFO_LOG("traceId is empty, auto generate traceId: %{public}s", this->traceId_.c_str());
         }
         return;

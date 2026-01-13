@@ -26,6 +26,7 @@ enum class ReturnDataType {
     TYPE_MOVING_PHOTO,
     TYPE_TARGET_PATH,
     TYPE_PICTURE,
+    TYPE_READY,
 };
 
 enum class DeliveryMode {
@@ -42,6 +43,19 @@ enum class SourceMode {
 enum class NotifyMode : int32_t {
     FAST_NOTIFY = 0,
     WAIT_FOR_HIGH_QUALITY,
+};
+
+enum class ProgressMode : int32_t {
+    ONLY_FOR_CAMERA = 0,
+    ONLY_FOR_TRANSCODING,
+    CAMERA_AND_TRANSCODING,
+    UNDEFINED = 10,
+};
+
+enum class CameraProgressMode : int32_t {
+    IMMEDIATELY_MODE = 0,   // 立即返回
+    WAIT_FOR_POLLOT,
+    UNDEFINED = 10,
 };
 
 enum class CompatibleMode {
@@ -72,6 +86,8 @@ public:
     void SetRequestId(std::string requestId);
     napi_ref GetProgressHandlerRef();
     void SetProgressHandlerRef(napi_ref &progressHandlerRef);
+    bool GetCinematicResult();
+    void SetCinematicResult(bool cinematicResult);
     napi_threadsafe_function GetThreadsafeFunction()
     {
         return threadsafeFunction_;
@@ -94,6 +110,7 @@ private:
     napi_threadsafe_function threadsafeFunction_ = nullptr;
     std::string requestId_;
     static std::mutex dataHandlerRefMutex_;
+    bool cinematicResult_ = false; // for Cinematic Video
 };
 } // Media
 } // OHOS

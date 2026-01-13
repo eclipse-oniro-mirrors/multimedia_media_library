@@ -384,7 +384,8 @@ int32_t LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(
             UpdateLakeAssetInfo(refresh, innerLakeAsset.mediaId, tmpInnerLakePath, tmpDisplayName, tmpTitle);
         CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "update inner lake asset info error");
         ret = rename(originInnerLakePath.c_str(), innerLakeAsset.storagePath.c_str());
-        MEDIA_INFO_LOG("%{private}s, %{private}s", originInnerLakePath.c_str(), innerLakeAsset.storagePath.c_str());
+        MEDIA_INFO_LOG("%{public}s, %{public}s", LakeFileUtils::GarbleFilePath(originInnerLakePath).c_str(),
+            LakeFileUtils::GarbleFilePath(innerLakeAsset.storagePath).c_str());
         if (ret < 0) {
             UpdateLakeAssetInfo(refresh, innerLakeAsset.mediaId, orgInnerLakePath, orgDisplayName, orgTitle);
             MEDIA_ERR_LOG("Failed to move in rename file, ret: %{public}d, errno: %{public}d", ret, errno);

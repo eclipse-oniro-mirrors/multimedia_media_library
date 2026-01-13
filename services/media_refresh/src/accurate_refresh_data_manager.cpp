@@ -248,9 +248,13 @@ int32_t AccurateRefreshDataManager<ChangeInfo, ChangeData>::UpdateModifiedDatasF
         PostInsertAfterData(changeData, pendingInfo);
         if (modifiedDatas.size() <= logTimesLimit || !recordFirst) {
             ACCURATE_INFO("operation_: %{public}d isDelete: %{public}d", changeData.operation_, changeData.isDelete_);
-            ACCURATE_INFO("[update] info before: %{public}s", changeData.infoBeforeChange_.ToString(true).c_str());
-            ACCURATE_INFO("change: %{public}s",
-                changeData.infoBeforeChange_.GetDataDiff(changeData.infoAfterChange_).c_str());
+            if (AccurateRefresh::accurateDebugLevel >= AccurateRefresh::accurateDebugLevelMid) {
+                HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} ##: [update] info before: %{public}s",
+                    MLOG_TAG, __FUNCTION__, __LINE__, changeData.infoBeforeChange_.ToString(true).c_str());
+                HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} ##: change: %{public}s",
+                    MLOG_TAG, __FUNCTION__, __LINE__,
+                    changeData.infoBeforeChange_.GetDataDiff(changeData.infoAfterChange_).c_str());
+            }
             recordFirst = true;
             if (modifiedDatas.size() > logTimesLimit) {
                 ACCURATE_INFO("%{public}zu total update datas", modifiedDatas.size());

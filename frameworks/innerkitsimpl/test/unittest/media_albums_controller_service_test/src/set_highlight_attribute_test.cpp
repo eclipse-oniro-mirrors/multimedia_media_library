@@ -32,6 +32,7 @@
 #include "medialibrary_business_code.h"
 #include "story_album_column.h"
 #include "story_db_sqls.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -43,7 +44,7 @@ static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static constexpr int32_t SLEEP_SECONDS = 1;
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     PhotoAlbumColumns::CREATE_TABLE,
     CREATE_HIGHLIGHT_ALBUM_TABLE,
 };

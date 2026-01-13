@@ -156,6 +156,8 @@ void NotifyTaskWorker::WaitForTask()
 
 void NotifyTaskWorker::HandleNotifyTask()
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("HandleNotifyTask");
     std::vector<NotifyTaskInfo> notifyTaskInfos = GetCurrentNotifyMap();
     auto changeInfos = ClassifyNotifyInfo(notifyTaskInfos);
     if (changeInfos.empty()) {
@@ -219,6 +221,8 @@ std::vector<NotifyInfo> NotifyTaskWorker::MergeNotifyInfo(std::vector<MediaChang
 
 void NotifyTaskWorker::DistributeNotifyInfo(std::vector<NotifyInfo> notifyInfos)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("DistributeNotifyInfo");
     if (notifyInfos.empty()) {
         MEDIA_INFO_LOG("No notifications to distribute - returning empty list");
     }

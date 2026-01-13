@@ -28,7 +28,7 @@ ohos_fuzztest("MediaLibraryRestoreFuzzTest") {
 
   sources = [
     "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/event_handler/album_plugin_table_event_handler.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/event_handler/album_plugin_table_event_handler.cpp",
     "./medialibraryrestore_fuzzer.cpp",
   ]
 

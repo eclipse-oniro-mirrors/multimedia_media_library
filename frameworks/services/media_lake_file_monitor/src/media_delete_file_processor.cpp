@@ -32,19 +32,6 @@ inline void NotifyAssetChange(int fileId)
         NotifyType::NOTIFY_REMOVE);
 }
 
-inline void NotifyAnalysisAlbum(const std::vector<std::string>& albumIds)
-{
-    if (albumIds.size() <= 0) {
-        return;
-    }
-    auto watch = MediaLibraryNotify::GetInstance();
-    CHECK_AND_RETURN_LOG(watch != nullptr, "Can not get MediaLibraryNotify Instance");
-    for (const auto& albumId : albumIds) {
-        watch->Notify(MediaFileUtils::GetUriByExtrConditions(
-            PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, albumId), NotifyType::NOTIFY_UPDATE);
-    }
-}
-
 bool MediaDeleteFileProcessor::ProcessInner(const std::string& path)
 {
     // 1. 构造查询条件并查询 albumId 与 file_id; 根据 file_id 查询对应的 AnalysisAlbum id
@@ -66,9 +53,8 @@ bool MediaDeleteFileProcessor::ProcessInner(const std::string& path)
     // 4. 更新相册信息并发送相册更新通知
     assetRefresh->RefreshAlbum();
     std::vector<std::string> albumIds(analysisAlbumIds.begin(), analysisAlbumIds.end());
-    if (albumIds.size() > 0 && rdbStore_ != nullptr) {
-        MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore_, albumIds);
-        NotifyAnalysisAlbum(albumIds);
+    if (!albumIds.empty() && rdbStore_ != nullptr) {
+        MediaLakeMonitorRdbUtils::NotifyAnalysisAlbum(albumIds);
     }
 
     // 5. 发送资产更新通知

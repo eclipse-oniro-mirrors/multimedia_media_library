@@ -408,5 +408,10 @@ int32_t PhotoAlbum::GetHidden() const
 {
     return hidden_;
 }
+
+bool PhotoAlbum::IsUserPhotoAlbumByType(const PhotoAlbumType albumType)
+{
+    return albumType == PhotoAlbumType::USER;
+}
 }  // namespace Media
 }  // namespace OHOS

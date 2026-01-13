@@ -78,6 +78,7 @@ public:
         const std::vector<std::string>& tables);
     static bool CleanTestTables(const std::shared_ptr<MediaLibraryRdbStore>& rdbStore,
         const std::vector<std::string>& tables, bool dropTable = false);
+    static bool CreateBasicTables(const std::shared_ptr<MediaLibraryRdbStore>& rdbStore);
     static std::mutex Mutex_;
 private:
     static inline bool isValid_ = false;

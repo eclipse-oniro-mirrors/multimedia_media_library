@@ -58,6 +58,13 @@ enum class SouthDeviceType : int32_t {
     SOUTH_DEVICE_HDC = 2
 };
 
+enum PhotoRiskStatus : int32_t {
+    UNIDENTIFIED = 0,
+    APPROVED = 1,
+    SUSPICIOUS = 2,
+    REJECTED = 3,
+};
+
 class MediaColumn {
 public:
     // Asset Base Parameter
@@ -93,9 +100,6 @@ public:
     static const std::set<std::string> MEDIA_COLUMNS EXPORT;
     // Default fetch columns
     static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;
-
-    // Util consts
-    static const std::string ASSETS_QUERY_FILTER EXPORT;
 };
 
 class PhotoColumn : public MediaColumn {
@@ -173,6 +177,9 @@ public:
     static const std::string PHOTO_FILE_INODE EXPORT;
     static const std::string PHOTO_STORAGE_PATH EXPORT;
     static const std::string PHOTO_ASPECT_RATIO EXPORT;
+    static const std::string PHOTO_IS_CRITICAL EXPORT;
+    static const std::string PHOTO_CRITICAL_TYPE EXPORT;
+    static const std::string PHOTO_RISK_STATUS EXPORT;
     static const std::string PHOTO_CHANGE_TIME EXPORT;
     static const std::string PHOTO_EDIT_DATA_EXIST EXPORT;
 
@@ -228,6 +235,7 @@ public:
     // cloud enhancement
     static const std::string PHOTO_CE_AVAILABLE EXPORT;
     static const std::string PHOTO_CE_STATUS_CODE EXPORT;
+    static const std::string PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE EXPORT;
     static const std::string PHOTO_STRONG_ASSOCIATION EXPORT;
     static const std::string PHOTO_ASSOCIATE_FILE_ID EXPORT;
     static const std::string PHOTO_HAS_CLOUD_WATERMARK EXPORT;
@@ -238,85 +246,15 @@ public:
     // table name
     static const std::string PHOTOS_TABLE EXPORT;
     static const std::string HIGHLIGHT_TABLE EXPORT;
+
     static const std::string TAB_OLD_PHOTOS_TABLE EXPORT;
     static const std::string TAB_ASSET_AND_ALBUM_OPERATION_TABLE EXPORT;
 
     // path
     static const std::string FILES_CLOUD_DIR EXPORT;
     static const std::string FILES_LOCAL_DIR EXPORT;
-
-    // create PhotoTable sql
-    static const std::string CREATE_PHOTO_TABLE EXPORT;
-    static const std::string CREATE_CLOUD_ID_INDEX EXPORT;
-    static const std::string CREATE_YEAR_INDEX EXPORT;
-    static const std::string CREATE_MONTH_INDEX EXPORT;
-    static const std::string CREATE_DAY_INDEX EXPORT;
-    static const std::string DROP_SCHPT_MEDIA_TYPE_INDEX EXPORT;
-    static const std::string DROP_BURST_MODE_ALBUM_INDEX EXPORT;
-    static const std::string CREATE_SCHPT_MEDIA_TYPE_INDEX EXPORT;
-    static const std::string CREATE_SCHPT_DAY_INDEX EXPORT;
-    static const std::string DROP_SCHPT_DAY_INDEX EXPORT;
-    static const std::string CREATE_HIDDEN_TIME_INDEX EXPORT;
-    static const std::string CREATE_SCHPT_HIDDEN_TIME_INDEX EXPORT;
-    static const std::string DROP_SCHPT_HIDDEN_TIME_INDEX EXPORT;
-    static const std::string CREATE_PHOTO_FAVORITE_INDEX EXPORT;
-    static const std::string DROP_PHOTO_FAVORITE_INDEX EXPORT;
-    static const std::string CREATE_PHOTO_DISPLAYNAME_INDEX EXPORT;
-    static const std::string CREATE_PHOTO_BURSTKEY_INDEX EXPORT;
-    static const std::string UPDATE_READY_ON_THUMBNAIL_UPGRADE EXPORT;
-    static const std::string UPDATA_PHOTOS_DATA_UNIQUE EXPORT;
-    static const std::string UPDATE_LCD_STATUS_NOT_UPLOADED EXPORT;
-    static const std::string UPDATE_LATITUDE_AND_LONGITUDE_DEFAULT_NULL EXPORT;
-    static const std::string UPDATE_PHOTO_QUALITY_OF_NULL_PHOTO_ID EXPORT;
-
-    // create indexes for Photo
-    static const std::string INDEX_SCTHP_ADDTIME EXPORT;
-    static const std::string DROP_INDEX_SCTHP_ADDTIME EXPORT;
-    static const std::string DROP_INDEX_SCHPT_ADDTIME_ALBUM EXPORT;
-    static const std::string INDEX_CAMERA_SHOT_KEY EXPORT;
-    static const std::string INDEX_SCHPT_READY EXPORT;
-    static const std::string DROP_INDEX_SCHPT_READY EXPORT;
-    static const std::string CREATE_SCHPT_YEAR_COUNT_READY_INDEX;
-    static const std::string CREATE_SCHPT_MONTH_COUNT_READY_INDEX;
-    static const std::string CREATE_SCHPT_MEDIA_TYPE_COUNT_READY_INDEX;
-    static const std::string DROP_SCHPT_YEAR_COUNT_READY_INDEX;
-    static const std::string DROP_SCHPT_MONTH_COUNT_READY_INDEX;
-    static const std::string DROP_SCHPT_MEDIA_TYPE_COUNT_READY_INDEX;
-    static const std::string CREATE_SCHPT_CLOUD_ENHANCEMENT_ALBUM_INDEX;
-    static const std::string INDEX_SCHPT_ALBUM_GENERAL;
-    static const std::string INDEX_SCHPT_ALBUM;
-    static const std::string INDEX_SCTHP_PHOTO_DATEADDED;
-    static const std::string INDEX_LATITUDE;
-    static const std::string INDEX_LONGITUDE;
-    static const std::string CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX;
-    static const std::string CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX;
-    static const std::string CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX;
-    static const std::string CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX;
-    static const std::string CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX;
-    static const std::string CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX;
-    static const std::string CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX;
-    static const std::string CREATE_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX;
-    static const std::string CREATE_PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX;
-    static const std::string CREATE_PHOTO_BURST_MODE_ALBUM_INDEX;
-    static const std::string CREATE_PHOTO_FRONT_CAMERA_ALBUM_INDEX;
-    static const std::string CREATE_PHOTO_RAW_IMAGE_ALBUM_INDEX;
-    static const std::string CREATE_PHOTO_MOVING_PHOTO_ALBUM_INDEX;
-    static const std::string INDEX_QUERY_THUMBNAIL_WHITE_BLOCKS;
-
-    // create Photo cloud sync trigger
-    static const std::string CREATE_PHOTOS_DELETE_TRIGGER EXPORT;
-    static const std::string CREATE_PHOTOS_FDIRTY_TRIGGER EXPORT;
-    static const std::string CREATE_PHOTOS_MDIRTY_TRIGGER EXPORT;
-    static const std::string CREATE_PHOTOS_INSERT_CLOUD_SYNC EXPORT;
-    static const std::string CREATE_PHOTOS_UPDATE_CLOUD_SYNC EXPORT;
-    static const std::string CREATE_PHOTOS_METADATA_DIRTY_TRIGGER EXPORT;
-
-    // highlight trigger
+    
     static const std::string MEDIA_DATA_DB_HIGHLIGHT_TRIGGER EXPORT;
-    static const std::string INSERT_GENERATE_HIGHLIGHT_THUMBNAIL EXPORT;
-    static const std::string UPDATE_GENERATE_HIGHLIGHT_THUMBNAIL EXPORT;
-    static const std::string INDEX_HIGHLIGHT_FILEID EXPORT;
-
     // photo uri
     static const std::string PHOTO_URI_PREFIX EXPORT;
     static const std::string PHOTO_TYPE_URI EXPORT;
@@ -341,8 +279,6 @@ public:
     // all columns
     static const std::set<std::string> PHOTO_COLUMNS EXPORT;
 
-    static const std::string QUERY_MEDIA_VOLUME EXPORT;
-
     static const std::string HIGHTLIGHT_COVER_URI EXPORT;
     static const std::string HIGHTLIGHT_URI EXPORT;
     static const std::string HIDDEN_PHOTO_URI_PREFIX EXPORT;
@@ -351,34 +287,6 @@ public:
     EXPORT static bool IsPhotoColumn(const std::string &columnName);
     EXPORT static std::string CheckUploadPhotoColumns();
     EXPORT static std::string CheckMetaRecoveryPhotoColumns();
-
-    static const std::string PHOTOS_QUERY_FILTER EXPORT;
-};
-
-class AudioColumn : public MediaColumn {
-public:
-    // column only in AudioTable
-    static const std::string AUDIO_ALBUM EXPORT;
-    static const std::string AUDIO_ARTIST EXPORT;
-    static const std::string AUDIO_FILE_SOURCE_TYPE EXPORT;
-
-    // table name
-    static const std::string AUDIOS_TABLE EXPORT;
-
-    // create AudioTable sql
-    static const std::string CREATE_AUDIO_TABLE EXPORT;
-
-    // audio uri
-    static const std::string AUDIO_URI_PREFIX EXPORT;
-    static const std::string AUDIO_TYPE_URI EXPORT;
-    static const std::string DEFAULT_AUDIO_URI EXPORT;
-
-    // all columns
-    static const std::set<std::string> AUDIO_COLUMNS EXPORT;
-
-    static const std::string QUERY_MEDIA_VOLUME EXPORT;
-
-    static bool IsAudioColumn(const std::string &columnName) EXPORT;
 };
 
 class PhotoExtColumn {
@@ -390,9 +298,6 @@ public:
     static const std::string PHOTO_ID EXPORT;
     static const std::string THUMBNAIL_SIZE EXPORT;
     static const std::string EDITDATA_SIZE EXPORT;
-
-    // create table sql
-    static const std::string CREATE_PHOTO_EXT_TABLE EXPORT;
 };
 
 } // namespace OHOS::Media

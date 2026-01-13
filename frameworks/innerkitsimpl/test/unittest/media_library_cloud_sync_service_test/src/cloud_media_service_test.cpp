@@ -83,15 +83,18 @@ HWTEST_F(CloudMediaServiceTest, GetAlbumRecordsIllegalSize_Test, TestSize.Level1
     int32_t size = -1;
     auto services = std::make_shared<CloudMediaAlbumService>();
     ASSERT_TRUE(services);
-    auto result = services->GetAlbumCreatedRecords(size);
-    services->GetAlbumCreatedRecords(1001);
-    EXPECT_EQ(result.empty(), true);
+    bool isCloudSpaceFull = false;
+    std::vector<PhotoAlbumPo> photoAlbumList;
+    auto ret = services->GetCreatedRecords(size, isCloudSpaceFull, photoAlbumList);
+    services->GetCreatedRecords(1001, isCloudSpaceFull, photoAlbumList);
+    EXPECT_EQ(photoAlbumList.empty(), true);
 
-    result = services->GetAlbumMetaModifiedRecords(size);
-    services->GetAlbumMetaModifiedRecords(1001);
-    EXPECT_EQ(result.empty(), true);
+    isCloudSpaceFull = true;
+    ret = services->GetCreatedRecords(size, isCloudSpaceFull, photoAlbumList);
+    services->GetCreatedRecords(1001, isCloudSpaceFull, photoAlbumList);
+    EXPECT_EQ(photoAlbumList.empty(), true);
 
-    result = services->GetAlbumFileModifiedRecords(size);
+    auto result = services->GetAlbumFileModifiedRecords(size);
     services->GetAlbumFileModifiedRecords(1001);
     EXPECT_EQ(result.empty(), true);
 
@@ -104,12 +107,20 @@ HWTEST_F(CloudMediaServiceTest, GetAlbumRecordsNormalSize_Test, TestSize.Level1)
 {
     MEDIA_INFO_LOG("start GetAlbumCreatedRecords_Test");
     int32_t size = 1;
+    bool isCloudSpaceFull = false;
+    std::vector<PhotoAlbumPo> photoAlbumList;
     auto services = std::make_shared<CloudMediaAlbumService>();
     ASSERT_TRUE(services);
-    auto result = services->GetAlbumCreatedRecords(size);
-    EXPECT_EQ(result.empty(), true);
+    auto ret = services->GetCreatedRecords(size, isCloudSpaceFull, photoAlbumList);
+    EXPECT_EQ(photoAlbumList.empty(), true);
+    EXPECT_EQ(ret, E_OK);
 
-    result = services->GetAlbumMetaModifiedRecords(size);
+    isCloudSpaceFull = true;
+    ret = services->GetCreatedRecords(size, isCloudSpaceFull, photoAlbumList);
+    EXPECT_EQ(photoAlbumList.empty(), true);
+    EXPECT_EQ(ret, E_OK);
+
+    auto result = services->GetAlbumMetaModifiedRecords(size);
     EXPECT_EQ(result.empty(), true);
 
     result = services->GetAlbumFileModifiedRecords(size);

@@ -20,6 +20,7 @@
 #include "fetch_result.h"
 #include "media_column.h"
 #include "userfile_manager_types.h"
+#include "media_audio_column.h"
 
 namespace OHOS {
 namespace Media {

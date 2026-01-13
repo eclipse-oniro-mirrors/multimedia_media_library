@@ -24,6 +24,7 @@
 
 #include "photo_album_copy_meta_data_operation.h"
 #include "media_log.h"
+#include "media_upgrade.h"
 
 using namespace testing::ext;
 
@@ -50,7 +51,7 @@ void CleanTestTable()
 void SetTable()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

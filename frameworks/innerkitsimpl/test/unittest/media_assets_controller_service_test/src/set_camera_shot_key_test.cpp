@@ -25,6 +25,7 @@
 #include "datashare_result_set.h"
 #include "media_assets_controller_service.h"
 #include "media_assets_service.h"
+#include "media_file_utils.h"
 #include "rdb_utils.h"
 #undef private
 #undef protected

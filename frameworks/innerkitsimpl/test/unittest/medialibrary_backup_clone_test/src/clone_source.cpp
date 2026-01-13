@@ -28,6 +28,8 @@
 #include "vision_column.h"
 #include "vision_db_sqls_more.h"
 #include "media_config_info_column.h"
+#include "media_audio_column.h"
+#include "media_upgrade.h"
 
 using namespace std;
 
@@ -35,7 +37,7 @@ namespace OHOS {
 namespace Media {
 const std::string SEGMENTATION_ANALYSIS_TABLE = "tab_analysis_segmentation";
 const unordered_map<string, string> TABLE_CREATE_MAP = {
-    { PhotoColumn::PHOTOS_TABLE, PhotoColumn::CREATE_PHOTO_TABLE },
+    { PhotoColumn::PHOTOS_TABLE, PhotoUpgrade::CREATE_PHOTO_TABLE },
     { PhotoAlbumColumns::TABLE, PhotoAlbumColumns::CREATE_TABLE },
     { PhotoMap::TABLE, PhotoMap::CREATE_TABLE },
     { ANALYSIS_ALBUM_TABLE, CREATE_ANALYSIS_ALBUM_FOR_ONCREATE },
@@ -53,6 +55,7 @@ const unordered_map<string, string> TABLE_CREATE_MAP = {
     { ANALYSIS_BEAUTY_SCORE_TABLE, CREATE_AESTHETICS_SCORE_TBL },
     { ANALYSIS_VIDEO_FACE_TABLE, CREATE_VIDEO_FACE_TBL },
     { ConfigInfoColumn::MEDIA_CONFIG_INFO_TABLE_NAME, ConfigInfoColumn::CREATE_CONFIG_INFO_TABLE },
+    { VISION_VIDEO_TOTAL_TABLE, CREATE_TAB_ANALYSIS_VIDEO_TOTAL},
 };
 const unordered_map<string, InsertType> TABLE_INSERT_TYPE_MAP = {
     { PhotoColumn::PHOTOS_TABLE, InsertType::PHOTOS },
@@ -72,6 +75,7 @@ const unordered_map<string, InsertType> TABLE_INSERT_TYPE_MAP = {
     { ANALYSIS_SEARCH_INDEX_TABLE, InsertType::ANALYSIS_SEARCH_INDEX },
     { ANALYSIS_BEAUTY_SCORE_TABLE, InsertType::BEAUTY_SCORE_TBL },
     { ANALYSIS_VIDEO_FACE_TABLE, InsertType::VIDEO_FACE_TBL },
+    { ANALYSIS_VIDEO_TOTAL_TABLE, InsertType::TAB_ANALYSIS_VIDEO_TOTAL},
 };
 const string VALUES_BEGIN = " VALUES (";
 const string VALUES_END = ") ";

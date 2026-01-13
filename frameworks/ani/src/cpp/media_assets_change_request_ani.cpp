@@ -35,6 +35,9 @@ constexpr int32_t USER_COMMENT_MAX_LEN = 420;
 MediaAssetsChangeRequestAni::MediaAssetsChangeRequestAni(vector<shared_ptr<FileAsset>> fileAssets)
 {
     fileAssets_ = fileAssets;
+    isFavorite_ = false;
+    isHidden_ = false;
+    isRecentShow_ = false;
 }
 
 MediaAssetsChangeRequestAni::~MediaAssetsChangeRequestAni()

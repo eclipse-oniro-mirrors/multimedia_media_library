@@ -36,6 +36,11 @@ public:
     std::unordered_map<std::string, int32_t> GetDeleteBehavior(int32_t type);
     void CollectAdaptationToMovingPhotoInfo(const std::string &appName, bool adapted);
     AdaptationToMovingPhotoInfo GetAdaptationToMovingPhotoInfo();
+    void CollectCinematicVideoAccessTimes(bool isByUri, bool isHighQualityRequest);
+    void CollectCinematicVideoAddStartTime(const CinematicWaitType waitType, const std::string videoId);
+    void CollectCinematicVideoAddEndTime(const CinematicWaitType waitType, const std::string videoId);
+    void CollectCinematicVideoMultistageResult(bool multistageResult);
+    CinematicVideoInfo GetCinematicVideoInfo();
 
 private:
     std::mutex thumbnailErrorLock_;
@@ -44,12 +49,14 @@ private:
     std::mutex deleteFromDiskLock_;
     std::mutex removeLock_;
     std::mutex adaptationToMovingPhotoLock_;
+    std::mutex cinematicVideoStaticLock_;
     std::unordered_map<std::string, ThumbnailErrorInfo> thumbnailErrorMap_;
     std::unordered_map<std::string, CommonBehavior> commonBehaviorMap_;
     std::unordered_map<std::string, int32_t> deleteToTrashMap_;
     std::unordered_map<std::string, int32_t> deleteFromDiskMap_;
     std::unordered_map<std::string, int32_t> removeMap_;
     AdaptationToMovingPhotoInfo adaptationToMovingPhotoInfo_;
+    CinematicVideoInfo cinematicVideoInfo_;
 };
 } // namespace Media
 } // namespace OHOS

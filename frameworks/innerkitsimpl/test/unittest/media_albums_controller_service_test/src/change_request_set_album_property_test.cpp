@@ -23,6 +23,7 @@
 #define private public
 #define protected public
 #include "media_albums_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 #undef private
 #undef protected
 
@@ -45,6 +46,7 @@
 #include "media_assets_controller_service.h"
 #include "set_subtitle_vo.h"
 #include "set_highlight_user_action_data_vo.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -56,7 +58,7 @@ static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static constexpr int32_t SLEEP_SECONDS = 1;
 static std::vector<std::string> createTableSqlLists = {
     PhotoAlbumColumns::CREATE_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     CREATE_ANALYSIS_ALBUM_MAP,
     CREATE_HIGHLIGHT_ALBUM_TABLE,
@@ -370,7 +372,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_006, TestSize.
     ASSERT_NE(result, false);
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->ChangeRequestSetIsMe(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;
@@ -405,7 +407,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_007, TestSize.
     ASSERT_NE(result, false);
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->ChangeRequestSetDisplayLevel(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;
@@ -441,7 +443,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_008, TestSize.
     ASSERT_NE(result, false);
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->ChangeRequestDismiss(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;
@@ -479,7 +481,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_009, TestSize.
     ASSERT_NE(result, false);
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->SetHighlightUserActionData(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;
@@ -518,7 +520,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_010, TestSize.
     ASSERT_NE(result, false);
 
     MessageParcel reply;
-    auto service = make_shared<MediaAlbumsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->SetSubtitle(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;

@@ -51,6 +51,7 @@
 #include "medialibrary_data_manager.h"
 #include "form_map.h"
 #include "medialibrary_unittest_utils.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -104,7 +105,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         FormMap::CREATE_FORM_MAP_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

@@ -53,14 +53,15 @@ public:
     void Register(const ProcessorKey& key, Factories&&... factories)
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        registry_[key] = [f = std::make_tuple(std::forward<Factories>(factories)...)]() {
+        bool needPostProcess = (key.second == FileNotifyOperationType::MOD);
+        registry_[key] = [f = std::make_tuple(std::forward<Factories>(factories)...), needPostProcess]() {
             std::vector<std::unique_ptr<IProcessor>> processors;
             processors.reserve(sizeof...(factories));
 
             std::apply([&](auto&&... fac) {
                 (processors.push_back(fac()), ...);
             }, f);
-            return std::make_unique<MediaCompositeProcessor>(std::move(processors));
+            return std::make_unique<MediaCompositeProcessor>(std::move(processors), needPostProcess);
         };
     }
 

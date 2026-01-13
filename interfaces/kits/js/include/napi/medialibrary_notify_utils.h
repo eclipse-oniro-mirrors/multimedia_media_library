@@ -23,17 +23,11 @@
 #include "photo_asset_change_info.h"
 #include "napi/native_api.h"
 #include "media_change_info.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
-
-enum NotifyChangeType {
-    NOTIFY_CHANGE_ADD,
-    NOTIFY_CHANGE_UPDATE,
-    NOTIFY_CHANGE_REMOVE,
-    NOTIFY_CHANGE_YUV_READY,
-};
 
 class RegisterNotifyType {
 public:

@@ -26,6 +26,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "result_set_utils.h"
 #include "vision_db_sqls.h"
+#include "media_upgrade.h"
 
 using namespace testing::ext;
 using namespace OHOS::NativeRdb;
@@ -70,7 +71,7 @@ void MediaLibraryThumbnailGenerationPostProcessTest::SetUpTestCase()
     store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(store, nullptr);
 
-    ret = store->ExecuteSql(PhotoColumn::CREATE_PHOTO_TABLE);
+    ret = store->ExecuteSql(PhotoUpgrade::CREATE_PHOTO_TABLE);
     ASSERT_EQ(ret, NativeRdb::E_OK);
 
     NativeRdb::ValuesBucket values;
@@ -83,7 +84,7 @@ void MediaLibraryThumbnailGenerationPostProcessTest::SetUpTestCase()
 
 void MediaLibraryThumbnailGenerationPostProcessTest::TearDownTestCase()
 {
-    string dropSql = "DROP TABLE " + PhotoColumn::CREATE_PHOTO_TABLE + ";";
+    string dropSql = "DROP TABLE " + PhotoUpgrade::CREATE_PHOTO_TABLE + ";";
     int32_t ret = store->ExecuteSql(dropSql);
     MEDIA_INFO_LOG("Drop photos table success: %{public}d", ret == NativeRdb::E_OK);
     MediaLibraryUnitTestUtils::StopUnistore();

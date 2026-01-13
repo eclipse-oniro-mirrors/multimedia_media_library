@@ -16,8 +16,10 @@ import("//build/ohos.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
 
 config("media_library_manager_config") {
-  include_dirs =
-      [ "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include" ]
+  include_dirs = [
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_permission_helper/include",
+  ]
 }
 
 ohos_shared_library("media_library_manager") {
@@ -33,13 +35,10 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
-    "${MEDIALIB_INNERIMPL_PATH}/notification/include",
-    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
-    "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/common_data",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/include"
   ]
 
   user_ipc_client_include_dirs = [
@@ -89,7 +88,10 @@ ohos_shared_library("media_library_manager") {
 
   public_configs = [ ":media_library_manager_config" ]
 
-  deps = [ "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library" ]
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+  ]
 
   external_deps = [
     "ability_base:want",
@@ -162,7 +164,7 @@ ohos_shared_library("media_library_extend_manager") {
   include_dirs = [
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
-    "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
   ]
 
   user_ipc_client_include_dirs = [
@@ -170,7 +172,6 @@ ohos_shared_library("media_library_extend_manager") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dto",
   ]
 
@@ -179,13 +180,11 @@ ohos_shared_library("media_library_extend_manager") {
   media_assets_manager_vo_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_result_set_from_db_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_result_set_from_photos_extend_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_permission_inner_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uri_permission_inner_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_photo_uri_permission_inner_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_asset_change_scan_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_asset_compress_version_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/notify_asset_sended_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/open_asset_compress_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_asset_compress_version_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_compress_asset_size_vo.cpp",
   ]
 
   user_ipc_client_source = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_inner_ipc_client.cpp" ]
@@ -197,28 +196,17 @@ ohos_shared_library("media_library_extend_manager") {
 
   public_configs = [ ":media_library_manager_config" ]
 
-  deps = [ "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library" ]
+  deps = [ "${MEDIALIB_COMMON_PATH}:media_library_common" ]
 
   external_deps = [
-    "ability_base:want",
-    "ability_base:zuri",
-    "ability_runtime:ability_manager",
-    "ability_runtime:abilitykit_native",
-    "access_token:libaccesstoken_sdk",
-    "access_token:libprivacy_sdk",
-    "access_token:libtokenid_sdk",
-    "app_file_service:fileuri_native",
-    "bundle_framework:appexecfwk_base",
-    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
-    "common_event_service:cesfwk_innerkits",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
-    "ipc:ipc_core",
     "os_account:os_account_innerkits",
     "samgr:samgr_proxy",
+    "ipc:ipc_core",
   ]
 
   ldflags = [ "-Wl,--gc-sections" ]
@@ -263,6 +251,7 @@ ohos_shared_library("media_library_custom_restore") {
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
   ]
 
   user_ipc_client_include_dirs = [
@@ -289,7 +278,10 @@ ohos_shared_library("media_library_custom_restore") {
 
   public_configs = [ ":media_library_manager_config" ]
 
-  deps = [ "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library" ]
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+  ]
 
   external_deps = [
     "c_utils:utils",

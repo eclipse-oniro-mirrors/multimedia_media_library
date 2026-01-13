@@ -30,6 +30,7 @@ AniMediaAssetDataHandler::AniMediaAssetDataHandler(ani_env *env, ani_ref dataHan
     destUri_ = destUri;
     sourceMode_ = sourceMode;
     dataHandlerRef_ = dataHandler;
+    compatibleMode_ = CompatibleMode::ORIGINAL_FORMAT_MODE;
 }
 
 void AniMediaAssetDataHandler::DeleteAniReference(ani_env *env)

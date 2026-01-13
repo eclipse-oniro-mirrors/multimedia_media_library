@@ -35,17 +35,17 @@ ohos_unittest("medialibrary_rdb_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   cflags = [ "-fno-access-control" ]
 
   sources = [
     "${MEDIALIB_CLOUD_SYNC_PATH}/src/cloud_sync_helper.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/moving_photo_processor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/moving_photo_processor.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/src/scanner/metadata.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/metadata.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/event_handler/table_event_handler_on_create_test.cpp",
     "./src/event_handler/table_event_handler_on_upgrade_test.cpp",

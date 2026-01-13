@@ -30,6 +30,8 @@
 #include "media_column.h"
 #include "photo_album_column.h"
 #include "medialibrary_asset_operations.h"
+#include "media_audio_column.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -116,11 +118,11 @@ void SetTestTables(std::shared_ptr<MediaLibraryRdbStore> rdbStore)
     }
 
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         AudioColumn::CREATE_AUDIO_TABLE,
         CREATE_MEDIA_TABLE,
         CREATE_ASSET_UNIQUE_NUMBER_TABLE,
-        PhotoExtColumn::CREATE_PHOTO_EXT_TABLE,
+        PhotoExtUpgrade::CREATE_PHOTO_EXT_TABLE,
         PhotoAlbumColumns::CREATE_TABLE
         // todo: album tables
     };

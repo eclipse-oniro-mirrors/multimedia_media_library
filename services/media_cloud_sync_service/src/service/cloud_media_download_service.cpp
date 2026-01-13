@@ -41,6 +41,7 @@
 #include "photo_video_mode_operation.h"
 #include "metadata_extractor.h"
 #include "medialibrary_unistore_manager.h"
+#include "medialibrary_photo_operations.h"
 #include "result_set_utils.h"
 
 namespace OHOS::Media::CloudSync {
@@ -296,9 +297,8 @@ OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(PhotosPo &
     assetData.needScanShootingMode = (photosPo.shootingModeTag.has_value() && photosPo.shootingModeTag->empty()) ||
         (photosPo.frontCamera.has_value() && photosPo.frontCamera->empty());
     assetData.needScanSubtype = (photosPo.subtype.value_or(0) == 0);
-    assetData.mediaType = photosPo.mediaType.value_or(0);
-    assetData.exifRotate = CloudMediaSyncUtils::GetExifRotate(assetData.mediaType, assetData.localPath);
-    assetData.needScanHdrMode = photosPo.hdrMode.value_or(0) == 0;
+    assetData.needScanHdrMode = photosPo.hdrMode.value_or(0) == 0 || photosPo.editTime.value_or(0) > 0 ||
+        photosPo.movingPhotoEffectMode.value_or(0) > 0;
     return assetData;
 }
 
@@ -327,7 +327,8 @@ OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadLakeAssetData(Photos
     assetData.needScanShootingMode = (photosPo.shootingModeTag.has_value() && photosPo.shootingModeTag->empty()) ||
         (photosPo.frontCamera.has_value() && photosPo.frontCamera->empty());
     assetData.lakeInfo = lakeInfos.at(photosPo.cloudId.value_or(""));
-    assetData.needScanHdrMode = photosPo.hdrMode.value_or(0) == 0;
+    assetData.needScanHdrMode = photosPo.hdrMode.value_or(0) == 0 || photosPo.editTime.value_or(0) > 0 ||
+        photosPo.movingPhotoEffectMode.value_or(0) > 0;
     return assetData;
 }
 
@@ -512,6 +513,9 @@ int32_t CloudMediaDownloadService::OnDownloadAsset(
         MEDIA_DEBUG_LOG(
             "OnDownloadAsset %{public}s, %{public}s", photosPo.ToString().c_str(), assetData.ToString().c_str());
         HandlePhoto(photosPo, assetData);
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+        UpdateBatchDownloadTask(photosPo);
+#endif
         // record result
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = photosPo.cloudId.value_or("");
@@ -564,8 +568,7 @@ void CloudMediaDownloadService::HandlePhoto(const ORM::PhotosPo &photo, OnDownlo
         return;
     }
     CloudMediaScanService::ScanResult scanResult;
-    bool isNeedScan = assetData.needScanShootingMode || assetData.needScanSubtype || assetData.needScanHdrMode;
-    CHECK_AND_EXECUTE(!isNeedScan, this->scanService_.ScanDownloadedFile(assetData.path, scanResult));
+    this->scanService_.ScanDownloadedFile(assetData.path, scanResult);
     if (assetData.lakeInfo) {
         // lake file
         MEDIA_INFO_LOG("the file is lake");
@@ -573,6 +576,7 @@ void CloudMediaDownloadService::HandlePhoto(const ORM::PhotosPo &photo, OnDownlo
     } else {
         ret = this->dao_.UpdateDownloadAsset(assetData, scanResult);
     }
+    CalEditDataSizeInHandlePhoto(photo);
     if (scanResult.scanSuccess) {
         CloudMediaScanService().UpdateAndNotifyShootingModeAlbumIfNeeded(scanResult);
     }
@@ -588,8 +592,7 @@ void CloudMediaDownloadService::HandlePhoto(const ORM::PhotosPo &photo, OnDownlo
         this->ResetAssetModifyTime(assetData);
     }
 
-    UpdateBatchDownloadTask(photo);
-    ret = FixDownloadAssetExifRotate(photo, assetData);
+    ret = FixDownloadAssetExifRotate(photo, scanResult);
     if (ret != E_OK) {
         MEDIA_INFO_LOG("HandlePhoto Failed to fix exif rotate %{public}s",
             MediaFileUtils::DesensitizePath(assetData.localPath).c_str());
@@ -606,7 +609,7 @@ void CloudMediaDownloadService::HandlePhoto(const ORM::PhotosPo &photo, OnDownlo
     }
     MEDIA_INFO_LOG("[OnDownloadAsset] Delete transCode file Success!");
 }
-
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
 void CloudMediaDownloadService::UpdateBatchDownloadTask(const ORM::PhotosPo &photo)
 {
     int32_t fileId = photo.fileId.value_or(-1);
@@ -614,54 +617,67 @@ void CloudMediaDownloadService::UpdateBatchDownloadTask(const ORM::PhotosPo &pho
     MEDIA_INFO_LOG("Successfully download asset[%{public}d] by single task, need to handle batch task.", fileId);
     BackgroundCloudBatchSelectedFileProcessor::UpdateDBStatusInfoForSingleDownloadCompletely(fileId);
 }
+#endif
+void CloudMediaDownloadService::CalEditDataSizeInHandlePhoto(const ORM::PhotosPo &photo)
+{
+    int32_t fileId = photo.fileId.value_or(0);
+    int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(to_string(fileId));
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CalSingleEditDataSize failed for ID: %{public}d (ret code: %{public}d)", fileId, ret);
+    }
+}
 
 int32_t CloudMediaDownloadService::FixDownloadAssetExifRotate(
-    const ORM::PhotosPo &photo, OnDownloadAssetData &assetData)
+    const ORM::PhotosPo &photo, const CloudMediaScanService::ScanResult &scanResult)
 {
-    CHECK_AND_RETURN_RET(assetData.exifRotate != photo.exifRotate.value_or(0),
-        CheckRegenerateThumbnail(photo, assetData));
+    CHECK_AND_RETURN_RET(
+        scanResult.exifRotate != photo.exifRotate.value_or(0), CheckRegenerateThumbnail(photo, scanResult.exifRotate));
 
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
         std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL,
-        "FixDownloadAssetExifRotate Failed to get rdbStore.");
+    CHECK_AND_RETURN_RET_LOG(
+        photoRefresh != nullptr, E_RDB_STORE_NULL, "FixDownloadAssetExifRotate Failed to get rdbStore.");
 
     int32_t oldExifRotate = photo.exifRotate.value_or(0);
-    int32_t newExifRotate = assetData.exifRotate;
     int32_t fileId = photo.fileId.value_or(0);
     int32_t ret;
     MEDIA_INFO_LOG("Need FixDownloadAssetExifRotate, id:%{public}d, mediaType:%{public}d, oldExifRotate:%{public}d, "
-        "newExifRotate:%{public}d", fileId, assetData.mediaType, oldExifRotate, newExifRotate);
-    if (CloudMediaSyncUtils::CanUpdateExifRotateOnly(assetData.mediaType, oldExifRotate, newExifRotate)) {
+                   "newExifRotate:%{public}d",
+        fileId,
+        scanResult.mediaType,
+        oldExifRotate,
+        scanResult.exifRotate);
+    if (CloudMediaSyncUtils::CanUpdateExifRotateOnly(scanResult.mediaType, oldExifRotate, scanResult.exifRotate)) {
         ret = this->dao_.UpdateDownloadAssetExifRotateFix(
-            photoRefresh, fileId, assetData.exifRotate, DirtyTypes::TYPE_MDIRTY, false);
+            photoRefresh, fileId, scanResult.exifRotate, DirtyTypes::TYPE_MDIRTY, false);
         CHECK_AND_RETURN_RET(ret == E_OK, ret);
         photoRefresh->Notify();
         return E_OK;
     }
 
     DirtyTypes dirtyType;
-    if (assetData.mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) {
+    if (scanResult.mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) {
         dirtyType = DirtyTypes::TYPE_MDIRTY;
     } else {
         dirtyType = DirtyTypes::TYPE_FDIRTY;
     }
-    ret = this->dao_.UpdateDownloadAssetExifRotateFix(photoRefresh, fileId, assetData.exifRotate, dirtyType, true);
+    ret = this->dao_.UpdateDownloadAssetExifRotateFix(photoRefresh, fileId, scanResult.exifRotate, dirtyType, true);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
 
     auto thumbnailService = ThumbnailService::GetInstance();
-    thumbnailService->DeleteThumbnailDirAndAstc(std::to_string(fileId), PhotoColumn::PHOTOS_TABLE,
-        assetData.path, std::to_string(photo.dateTaken.value_or(0)));
+    thumbnailService->DeleteThumbnailDirAndAstc(std::to_string(fileId),
+        PhotoColumn::PHOTOS_TABLE,
+        photo.data.value_or(""),
+        std::to_string(photo.dateTaken.value_or(0)));
     photoRefresh->Notify();
     return thumbnailService->FixThumbnailExifRotateAfterDownloadAsset(std::to_string(fileId));
 }
 
-int32_t CloudMediaDownloadService::CheckRegenerateThumbnail(
-    const ORM::PhotosPo &photo, OnDownloadAssetData &assetData)
+int32_t CloudMediaDownloadService::CheckRegenerateThumbnail(const ORM::PhotosPo &photo, const int32_t exifRotate)
 {
-    CHECK_AND_RETURN_RET(ExifRotateUtils::IsExifRotateWithFlip(assetData.exifRotate), E_OK);
+    CHECK_AND_RETURN_RET(ExifRotateUtils::IsExifRotateWithFlip(exifRotate), E_OK);
     int32_t fileId = photo.fileId.value_or(0);
-    MEDIA_INFO_LOG("Need regenerate thumbnail, id:%{public}d, exifRotate:%{public}d", fileId, assetData.exifRotate);
+    MEDIA_INFO_LOG("Need regenerate thumbnail, id:%{public}d, exifRotate:%{public}d", fileId, exifRotate);
     auto thumbnailService = ThumbnailService::GetInstance();
     return thumbnailService->FixThumbnailExifRotateAfterDownloadAsset(std::to_string(fileId), false);
 }

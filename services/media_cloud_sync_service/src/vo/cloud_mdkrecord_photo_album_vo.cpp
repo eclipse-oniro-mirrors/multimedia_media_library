@@ -74,11 +74,20 @@ std::string CloudMdkRecordPhotoAlbumVo::ToString() const
 
 bool CloudMdkRecordPhotoAlbumReqBody::Unmarshalling(MessageParcel &parcel)
 {
-    return IPC::ITypeMediaUtil::Unmarshalling(this->size, parcel);
+    bool status = parcel.ReadInt32(this->size);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadBool(this->isCloudSpaceFull);
+    CHECK_AND_RETURN_RET(status, status);
+    return true;
 }
+
 bool CloudMdkRecordPhotoAlbumReqBody::Marshalling(MessageParcel &parcel) const
 {
-    return IPC::ITypeMediaUtil::Marshalling(this->size, parcel);
+    bool status = parcel.WriteInt32(this->size);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteBool(this->isCloudSpaceFull);
+    CHECK_AND_RETURN_RET(status, status);
+    return true;
 }
 
 std::string CloudMdkRecordPhotoAlbumReqBody::ToString() const

@@ -35,7 +35,7 @@
 #include "album_accurate_refresh.h"
 #include "cloud_media_photos_delete_service.h"
 #include "media_operate_result.h"
-#include "cloud_map_code_dao.h"
+#include "cloud_media_asset_retain_compare_dao.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaPhotosService {
@@ -124,23 +124,40 @@ private:
     std::string GetCloudPath(const std::string &filePath);
     void RefreshAnalysisAlbum(const std::string &cloudId);
     int32_t RemoveLocalFile(const CloudMediaPullDataDto &pullData);
-    void HandleRecordStepTwo(std::set<std::string> &refreshAlbums);
     void SetPullDataFromPhotosPo(CloudMediaPullDataDto &pullData, const PhotosPo &photo);
     int32_t FindPhotoAlbum(CloudMediaPullDataDto &pullData);
     int32_t PullRecycleUpdate(
         CloudMediaPullDataDto &pullData, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
 
-    int32_t MapUpdate(const CloudMediaPullDataDto &pullData);
-    int32_t MapDelete(const CloudMediaPullDataDto &pullData);
-    int32_t MapInsert(const std::vector<CloudMediaPullDataDto> &pullData, std::vector<std::string> &failedRecords);
     bool IsIgnoreMatch(
         const CloudMediaPullDataDto &mergeData, const KeyData &cloudKeyData, const KeyData &localKeyData);
+    int32_t CleanDuplicatePhotosAssets(const std::vector<DuplicatePhotoInfo> &cloudFileInfolist);
+    int32_t ProcessHdcHomeStorageSwitching(const std::vector<CloudMediaPullDataDto> &pullDatas,
+        std::vector<std::string> &failedRecords, std::set<std::string> &refreshAlbums,
+        std::vector<int32_t> &stats, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    void ProcessSinglePhotoRecord(const CloudMediaPullDataDto &data, int64_t maxFileId,
+        std::vector<NativeRdb::ValuesBucket> &inserts, std::vector<NativeRdb::ValuesBucket> &updates,
+        std::vector<int32_t> &cloudFileIds, std::vector<DuplicatePhotoInfo> &duplicateInfos,
+        std::set<std::string> &refreshAlbums, std::map<std::string, int> &analysisAlbumMaps,
+        std::map<std::string, std::set<int>> &recordAlbumMaps, std::vector<std::string> &failedRecords);
+    int32_t ApplyBatchDatabaseChanges(
+        std::vector<NativeRdb::ValuesBucket> &inserts, std::vector<NativeRdb::ValuesBucket> &updates,
+        const std::vector<int32_t> &cloudFileIds, std::map<std::string, int> &analysisAlbumMaps,
+        std::map<std::string, std::set<int>> &recordAlbumMaps,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    void FinalizeAndNotifyChanges(std::set<std::string> &refreshAlbums,
+        const std::vector<NativeRdb::ValuesBucket> &inserts, const std::vector<NativeRdb::ValuesBucket> &updates,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t ProcessDuplicatePhoto(const CloudMediaPullDataDto &pullData, const DuplicatePhotoInfo &duplicateInfo,
+        std::set<std::string> &refreshAlbums, std::vector<NativeRdb::ValuesBucket> &updateFiles);
+
 private:
     CloudMediaPhotoServiceProcessor processor_;
     CloudMediaPhotosDao photosDao_;
     CloudMediaCommonDao commonDao_;
-    CloudMapCodeDao     mapCodeDao_;
     CloudMediaPhotosDeleteService photosDeleteService_;
+    CloudMediaAssetCompareDao assetCompareDao_;
+    bool needRecoverSmartData_{false};
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_SERVICE_H

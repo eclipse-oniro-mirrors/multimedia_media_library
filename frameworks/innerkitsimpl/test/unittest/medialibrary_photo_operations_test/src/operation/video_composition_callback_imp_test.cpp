@@ -28,6 +28,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_photo_operations.h"
 #include "video_composition_callback_imp.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -73,7 +74,7 @@ static void CleanTestTables()
 static void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         if (g_rdbStore == nullptr) {

@@ -77,6 +77,17 @@ static std::shared_ptr<Picture> CreateTestPicture(std::shared_ptr<PixelMap> pixe
 
 static const string HDR_PICTURE_PATH = "/storage/media/local/files/Photo/1/HDR_picture.jpg";
 
+static unique_ptr<ImageSource> CreateTestImageSource()
+{
+    std::string path = HDR_PICTURE_PATH;
+    MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
+    uint32_t err;
+    SourceOptions opts;
+    unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(path, opts, err);
+    CHECK_AND_PRINT_LOG(err == E_OK, "ImageSource::CreateImageSource err: %{public}d", err);
+    return imageSource;
+}
+
 static unique_ptr<ImageSource> CreateTestImageSource(const std::string &path)
 {
     MEDIA_INFO_LOG("file: %{public}s exist: %{public}d", path.c_str(), MediaFileUtils::IsFileExists(path));
@@ -441,5 +452,246 @@ HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, ConvertPixelMapToSdrAndFormatR
     EXPECT_EQ(pixelMap->GetPixelFormat(), PixelFormat::RGBA_8888);
     MEDIA_INFO_LOG("ConvertPixelMapToSdrAndFormatRGBA8888_004 end");
 }
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, CreatePictureTest_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CreatePictureTest_001");
+    constexpr int32_t TEST_TARGET_WIDHT = 350;
+    constexpr int32_t TEST_TARGET_HEIGHT = 1050;
+    Size size = { TEST_TARGET_WIDHT, TEST_TARGET_HEIGHT };
+    auto picture = ThumbnailImageFrameWorkUtils::CreatePicture(CreateTestImageSource(), size);
+    EXPECT_NE(picture, nullptr);
+    MEDIA_INFO_LOG("CreatePictureTest_001 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, CreatePictureTest_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CreatePictureTest_002");
+    constexpr int32_t TEST_TARGET_WIDHT = 350;
+    constexpr int32_t TEST_TARGET_HEIGHT = 1050;
+    Size size = { TEST_TARGET_WIDHT, TEST_TARGET_HEIGHT };
+    auto picture = ThumbnailImageFrameWorkUtils::CreatePicture(nullptr, size);
+    EXPECT_EQ(picture, nullptr);
+    MEDIA_INFO_LOG("CreatePictureTest_002 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, CreatePictureTest_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CreatePictureTest_003");
+    constexpr int32_t TEST_TARGET_WIDHT = 0;
+    constexpr int32_t TEST_TARGET_HEIGHT = 1050;
+    Size size = { TEST_TARGET_WIDHT, TEST_TARGET_HEIGHT };
+    auto picture = ThumbnailImageFrameWorkUtils::CreatePicture(CreateTestImageSource(), size);
+    EXPECT_EQ(picture, nullptr);
+    MEDIA_INFO_LOG("CreatePictureTest_003 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, CreatePictureTest_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CreatePictureTest_004");
+    constexpr int32_t TEST_TARGET_WIDHT = -1;
+    constexpr int32_t TEST_TARGET_HEIGHT = -1;
+    Size size = { TEST_TARGET_WIDHT, TEST_TARGET_HEIGHT };
+    auto picture = ThumbnailImageFrameWorkUtils::CreatePicture(CreateTestImageSource(), size);
+    EXPECT_EQ(picture, nullptr);
+    MEDIA_INFO_LOG("CreatePictureTest_004 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, CreatePixelMapTest_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CreatePixelMapTest_001");
+    uint32_t err = E_OK;
+    constexpr int32_t TEST_TARGET_WIDHT = 350;
+    constexpr int32_t TEST_TARGET_HEIGHT = 1050;
+    Size size = { TEST_TARGET_WIDHT, TEST_TARGET_HEIGHT };
+    DecodeOptions decodeOpts;
+    decodeOpts.desiredDynamicRange = DecodeDynamicRange::SDR;
+    decodeOpts.desiredSize = size;
+    decodeOpts.desiredPixelFormat = PixelFormat::RGBA_8888;
+    auto pixelMap = ThumbnailImageFrameWorkUtils::CreatePixelMap(
+        CreateTestImageSource(), decodeOpts, err);
+    EXPECT_NE(pixelMap, nullptr);
+    MEDIA_INFO_LOG("CreatePixelMapTest_001 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, CreatePixelMapTest_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CreatePixelMapTest_002");
+    uint32_t err = E_OK;
+    constexpr int32_t TEST_TARGET_WIDHT = 350;
+    constexpr int32_t TEST_TARGET_HEIGHT = 1050;
+    Size size = { TEST_TARGET_WIDHT, TEST_TARGET_HEIGHT };
+
+
+    DecodeOptions decodeOpts;
+    decodeOpts.desiredDynamicRange = DecodeDynamicRange::HDR;
+    decodeOpts.desiredSize = size;
+    decodeOpts.desiredPixelFormat = PixelFormat::RGBA_1010102;
+    auto pixelMap = ThumbnailImageFrameWorkUtils::CreatePixelMap(
+        CreateTestImageSource(), decodeOpts, err);
+    
+    EXPECT_NE(pixelMap, nullptr);
+    MEDIA_INFO_LOG("CreatePixelMapTest_002 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, CreatePixelMapTest_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("CreatePixelMapTest_003");
+    uint32_t err = E_OK;
+    constexpr int32_t TEST_TARGET_WIDHT = 350;
+    constexpr int32_t TEST_TARGET_HEIGHT = 1050;
+    Size size = { TEST_TARGET_WIDHT, TEST_TARGET_HEIGHT };
+
+
+    DecodeOptions decodeOpts;
+    decodeOpts.desiredDynamicRange = DecodeDynamicRange::SDR;
+    decodeOpts.desiredSize = size;
+    decodeOpts.desiredPixelFormat = PixelFormat::RGBA_8888;
+    auto pixelMap = ThumbnailImageFrameWorkUtils::CreatePixelMap(
+        nullptr, decodeOpts, err);
+
+    EXPECT_EQ(pixelMap, nullptr);
+    MEDIA_INFO_LOG("CreatePixelMapTest_003 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, ResizePictureTest_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("ResizePictureTest_001: Normal case with valid picture and size");
+    Size sourceSize = {1920, 1080};
+    auto picture = ThumbnailImageFrameWorkUtils::CreatePicture(CreateTestImageSource(), sourceSize);
+    ASSERT_NE(picture, nullptr);
+    
+    Size targetSize = {800, 600};
+    bool ret = ThumbnailImageFrameWorkUtils::ResizePicture(picture, targetSize);
+    EXPECT_EQ(ret, true);
+    MEDIA_INFO_LOG("ResizePictureTest_001 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, ResizePictureTest_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("ResizePictureTest_002: Null picture pointer");
+    
+    PicturePtr picture = nullptr;
+    Size targetSize = {800, 600};
+    bool ret = ThumbnailImageFrameWorkUtils::ResizePicture(picture, targetSize);
+    
+    EXPECT_EQ(ret, false);
+    MEDIA_INFO_LOG("ResizePictureTest_002 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, ResizePictureTest_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("ResizePictureTest_003: Zero target size");
+    
+    Size sourceSize = {1920, 1080};
+    auto picture = ThumbnailImageFrameWorkUtils::CreatePicture(CreateTestImageSource(), sourceSize);
+    ASSERT_NE(picture, nullptr);
+    
+    Size targetSize = {0, 0};
+    bool ret = ThumbnailImageFrameWorkUtils::ResizePicture(picture, targetSize);
+    
+    EXPECT_EQ(ret, false);
+    MEDIA_INFO_LOG("ResizePictureTest_003 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, ResizePictureTest_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("ResizePictureTest_004: Negative target size");
+    
+    Size sourceSize = {1920, 1080};
+    auto picture = ThumbnailImageFrameWorkUtils::CreatePicture(CreateTestImageSource(), sourceSize);
+    ASSERT_NE(picture, nullptr);
+    
+    Size targetSize = {-100, -200};
+    bool ret = ThumbnailImageFrameWorkUtils::ResizePicture(picture, targetSize);
+    
+    EXPECT_EQ(ret, false);
+    MEDIA_INFO_LOG("ResizePictureTest_004 end");
+}
+
+// IsAdaptedHdrType函数测试
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, IsAdaptedHdrTypeTest_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("IsAdaptedHdrTypeTest_001: Test all adapted HDR types");
+    
+    // 测试所有适配的HDR类型
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_ISO_DUAL));
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_CUVA));
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_VIVID_DUAL));
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_LOG_DUAL));
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_VIVID_SINGLE));
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_ISO_SINGLE));
+    
+    MEDIA_INFO_LOG("IsAdaptedHdrTypeTest_001 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, IsAdaptedHdrTypeTest_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("IsAdaptedHdrTypeTest_002: Test non-adapted HDR types");
+    
+    // 测试非适配的HDR类型
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::SDR));
+    
+    // 测试超出枚举范围的值
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(static_cast<ImageHdrType>(100)));
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(static_cast<ImageHdrType>(-1)));
+    
+    MEDIA_INFO_LOG("IsAdaptedHdrTypeTest_002 end");
+}
+
+// IsSinglePixelMapHdrType函数测试
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, IsSinglePixelMapHdrTypeTest_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_001: Test single pixel map HDR types");
+    
+    // 测试单像素图的HDR类型
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::HDR_VIVID_SINGLE));
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::HDR_ISO_SINGLE));
+    
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_001 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, IsSinglePixelMapHdrTypeTest_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_002: Test non-single pixel map HDR types");
+    
+    // 测试非单像素图的HDR类型（但仍然是适配的HDR类型）
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::HDR_ISO_DUAL));
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::HDR_CUVA));
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::HDR_VIVID_DUAL));
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::HDR_LOG_DUAL));
+    
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_002 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, IsSinglePixelMapHdrTypeTest_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_003: Test edge cases");
+    
+    // 测试未适配的HDR类型
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::SDR));
+    
+    // 测试无效枚举值
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(static_cast<ImageHdrType>(99)));
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(static_cast<ImageHdrType>(-5)));
+    
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_003 end");
+}
+
+HWTEST_F(MediaLibraryThumbnailImageFrameworkTest, IsSinglePixelMapHdrTypeTest_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_004: Relationship test between two functions");
+    
+    // 验证两个函数的关系：所有单像素图HDR类型都应该是适配的HDR类型
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_VIVID_SINGLE));
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_ISO_SINGLE));
+    
+    // 验证逆命题不一定成立：适配的HDR类型不一定是单像素图类型
+    EXPECT_TRUE(ThumbnailImageFrameWorkUtils::IsAdaptedHdrType(ImageHdrType::HDR_ISO_DUAL));
+    EXPECT_FALSE(ThumbnailImageFrameWorkUtils::IsSinglePixelMapHdrType(ImageHdrType::HDR_ISO_DUAL));
+    
+    MEDIA_INFO_LOG("IsSinglePixelMapHdrTypeTest_004 end");
+}
+
 } // namespace Media
 } // namespace OHOS

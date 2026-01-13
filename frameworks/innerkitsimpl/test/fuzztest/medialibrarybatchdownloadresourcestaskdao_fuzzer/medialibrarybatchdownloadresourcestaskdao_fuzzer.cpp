@@ -32,6 +32,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_kvstore_manager.h"
 #include "values_bucket.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -360,13 +361,13 @@ static void BatchDownloadResourcesTaskDaoTest2()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
         DownloadResourcesColumn::CREATE_TABLE
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
         if (ret != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Execute sql %{private}s failed", createTableSql.c_str());
+        MEDIA_ERR_LOG("Execute sql %{private}s failed", createTableSql.c_str());
             return;
         }
         MEDIA_DEBUG_LOG("Execute sql %{private}s success", createTableSql.c_str());

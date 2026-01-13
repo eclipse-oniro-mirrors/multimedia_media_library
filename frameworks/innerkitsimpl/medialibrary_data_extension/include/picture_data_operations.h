@@ -128,6 +128,7 @@ public:
     static void SavePictureExecutor(AsyncTaskData *data);
     int32_t AddSavePictureTask(sptr<PicturePair>& picturePair);
     int32_t GetPendingTaskSize();
+    int32_t GetLowPendingTaskSize();
 
 private:
     bool SavePicture(const std::string& imageId, std::map<std::string, sptr<PicturePair>>& pictureMap,

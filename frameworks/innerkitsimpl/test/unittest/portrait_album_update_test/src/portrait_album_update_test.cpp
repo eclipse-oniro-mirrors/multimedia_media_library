@@ -53,6 +53,7 @@
 #include "vision_image_face_column.h"
 #include "vision_photo_map_column.h"
 #include "vision_db_sqls_more.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -76,7 +77,7 @@ constexpr int32_t TEST_INDEX_ONE = 1;
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 
 static std::vector<std::string> createTableSqlLists = {
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
     CREATE_ANALYSIS_ALBUM_MAP,
     CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
     CREATE_TAB_IMAGE_FACE,

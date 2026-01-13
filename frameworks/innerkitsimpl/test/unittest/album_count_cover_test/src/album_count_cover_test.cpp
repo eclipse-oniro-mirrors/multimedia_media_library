@@ -42,6 +42,7 @@
 #include "medialibrary_rdbstore.h"
 #undef private
 #include "album_operation_uri.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -62,7 +63,7 @@ const vector<bool> HIDDEN_STATE = {
 
 static std::vector<std::string> createTableSqlLists = {
     PhotoAlbumColumns::CREATE_TABLE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
 };
 
 static std::vector<std::string> testTables = {
@@ -572,10 +573,10 @@ int32_t InitPhotoTrigger()
 {
     MEDIA_INFO_LOG("start Init Photo Trigger");
     static const vector<string> executeSqlStrs = {
-        PhotoColumn::INDEX_SCTHP_ADDTIME,
-        PhotoColumn::CREATE_SCHPT_MEDIA_TYPE_INDEX,
-        PhotoColumn::CREATE_SCHPT_HIDDEN_TIME_INDEX,
-        PhotoColumn::CREATE_PHOTO_FAVORITE_INDEX
+        PhotoUpgrade::INDEX_SCTHP_ADDTIME,
+        PhotoUpgrade::CREATE_SCHPT_MEDIA_TYPE_INDEX,
+        PhotoUpgrade::CREATE_SCHPT_HIDDEN_TIME_INDEX,
+        PhotoUpgrade::CREATE_PHOTO_FAVORITE_INDEX
     };
     MEDIA_INFO_LOG("start Init Photo Trigger");
     

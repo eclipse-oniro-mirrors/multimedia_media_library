@@ -33,29 +33,10 @@
 #include "medialibrary_album_fusion_utils.h"
 #include "medialibrary_album_operations.h"
 #include "rdb_utils.h"
-#include "location_column.h"
-#include "vision_column.h"
-#include "vision_aesthetics_score_column.h"
-#include "vision_composition_column.h"
-#include "vision_face_tag_column.h"
-#include "vision_head_column.h"
-#include "vision_image_face_column.h"
-#include "vision_label_column.h"
-#include "vision_object_column.h"
-#include "vision_ocr_column.h"
-#include "vision_pet_face_column.h"
-#include "vision_pose_column.h"
-#include "vision_recommendation_column.h"
-#include "vision_saliency_detect_column.h"
-#include "vision_segmentation_column.h"
-#include "vision_total_column.h"
-#include "vision_video_label_column.h"
-#include "vision_multi_crop_column.h"
 #include "medialibrary_data_manager.h"
 #include "media_app_uri_permission_column.h"
 #include "media_app_uri_sensitive_column.h"
 #include "duplicate_photo_operation.h"
-#include "medialibrary_search_operations.h"
 #include "medialibrary_common_utils.h"
 #include "photo_map_column.h"
 #include "album_operation_uri.h"
@@ -64,11 +45,7 @@
 #include "datashare_result_set.h"
 #include "query_result_vo.h"
 #include "user_photography_info_column.h"
-#include "story_album_column.h"
 #include "userfile_manager_types.h"
-#include "story_cover_info_column.h"
-#include "story_play_info_column.h"
-#include "vision_column_comm.h"
 #include "datashare_predicates.h"
 #include "medialibrary_file_operations.h"
 #include "close_asset_vo.h"
@@ -126,8 +103,13 @@ int32_t MediaAssetsService::RemoveFormInfo(const string& formId)
 
 int32_t MediaAssetsService::RemoveGalleryFormInfo(const string& formId)
 {
+#ifdef MEDIALIBRARY_FACARD_SUPPORT
     MEDIA_INFO_LOG("MediaAssetsService::RemoveGalleryFormInfo, formId:%{public}s", formId.c_str());
     return this->rdbOperation_.RemoveGalleryFormInfo(formId);
+#else
+    MEDIA_ERR_LOG("unsupported operation, formId: %{public}s", formId.c_str());
+    return E_FAIL;
+#endif
 }
 
 int32_t MediaAssetsService::SaveFormInfo(const FormInfoDto& formInfoDto)
@@ -139,7 +121,12 @@ int32_t MediaAssetsService::SaveFormInfo(const FormInfoDto& formInfoDto)
 
 int32_t MediaAssetsService::SaveGalleryFormInfo(const FormInfoDto& formInfoDto)
 {
+#ifdef MEDIALIBRARY_FACARD_SUPPORT
     return this->rdbOperation_.SaveGalleryFormInfo(formInfoDto.formIds, formInfoDto.fileUris);
+#else
+    MEDIA_ERR_LOG("unsupported operation, formIds size: %{public}zu", formInfoDto.formIds.size());
+    return E_FAIL;
+#endif
 }
 
 int32_t MediaAssetsService::CommitEditedAsset(const CommitEditedAssetDto& commitEditedAssetDto)
@@ -511,7 +498,8 @@ int32_t MediaAssetsService::SetVideoEnhancementAttr(
     const int32_t fileId, const std::string &photoId, const std::string &path)
 {
     MEDIA_DEBUG_LOG("photoId:%{public}s, fileId:%{public}d, path:%{public}s", photoId.c_str(), fileId, path.c_str());
-    MultiStagesVideoCaptureManager::GetInstance().AddVideo(photoId, to_string(fileId), path);
+    VideoInfo videoInfo = {fileId, VideoCount::SINGLE, path, "", ""};
+    MultiStagesVideoCaptureManager::GetInstance().AddVideo(photoId, to_string(fileId), videoInfo);
     return E_OK;
 }
 
@@ -753,38 +741,6 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetDuplicateA
     return make_shared<DataShare::DataShareResultSet>(resultSetBridge);
 }
 
-int32_t MediaAssetsService::GetIndexConstructProgress(std::string &indexProgress)
-{
-    auto resultSet = MediaLibrarySearchOperations::QueryIndexConstructProgress();
-    CHECK_AND_RETURN_RET_LOG(resultSet, E_FAIL, "Failed to query index construct progress");
-
-    auto errCode = resultSet->GoToFirstRow();
-    if (errCode != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("ResultSet GotoFirstRow failed, errCode=%{public}d", errCode);
-        return E_FAIL;
-    }
-
-    const vector<string> columns = {PHOTO_COMPLETE_NUM, PHOTO_TOTAL_NUM, VIDEO_COMPLETE_NUM, VIDEO_TOTAL_NUM};
-    int32_t index = 0;
-    string value = "";
-    indexProgress = "{";
-    for (const auto &item : columns) {
-        if (resultSet->GetColumnIndex(item, index) != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("ResultSet GetColumnIndex failed, progressObject=%{public}s", item.c_str());
-            return E_FAIL;
-        }
-        if (resultSet->GetString(index, value) != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("ResultSet GetString failed, progressObject=%{public}s", item.c_str());
-            return E_FAIL;
-        }
-        indexProgress += "\"" + item + "\":" + value + ",";
-    }
-    indexProgress = indexProgress.substr(0, indexProgress.length() - 1);
-    indexProgress += "}";
-    MEDIA_DEBUG_LOG("GetProgressStr progress=%{public}s", indexProgress.c_str());
-    return E_OK;
-}
-
 int32_t MediaAssetsService::CreateAsset(CreateAssetDto& dto)
 {
     NativeRdb::ValuesBucket assetInfo;
@@ -1019,106 +975,6 @@ int32_t MediaAssetsService::AddAssetVisitCount(int32_t fileId, int32_t visitType
     return E_OK;
 }
 
-struct AnalysisConfig {
-    std::string tableName;
-    std::string totalColumnName;
-    std::vector<std::string> columns;
-};
-
-static const std::string FACE_ALBUM_URI = "'" + PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX + "' || " +
-    ANALYSIS_ALBUM_TABLE + "." + ALBUM_ID + " AS " + ALBUM_URI;
-
-static const map<int32_t, struct AnalysisConfig> ANALYSIS_CONFIG_MAP = {
-    { ANALYSIS_AESTHETICS_SCORE, { VISION_AESTHETICS_TABLE, AESTHETICS_SCORE, { AESTHETICS_SCORE, PROB } } },
-    { ANALYSIS_LABEL, { VISION_LABEL_TABLE, LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE,
-        SIM_RESULT, SALIENCY_SUB_PROB } } },
-    { ANALYSIS_VIDEO_LABEL, { VISION_VIDEO_LABEL_TABLE, VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
-        SUB_CATEGORY, SUB_CONFIDENCE_PROB, SUB_LABEL, SUB_LABEL_PROB, SUB_LABEL_TYPE,
-        TRACKS, VIDEO_PART_FEATURE, FILTER_TAG} } },
-    { ANALYSIS_OCR, { VISION_OCR_TABLE, OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
-    { ANALYSIS_FACE, { VISION_IMAGE_FACE_TABLE, FACE, { FACE_ID, FACE_ALBUM_URI, SCALE_X, SCALE_Y,
-        SCALE_WIDTH, SCALE_HEIGHT, LANDMARKS, PITCH, YAW, ROLL, PROB, TOTAL_FACES, FEATURES, FACE_OCCLUSION,
-        BEAUTY_BOUNDER_X, BEAUTY_BOUNDER_Y, BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, FACE_AESTHETICS_SCORE,
-        FACE_EYE_CLOSE, FACE_DETAIL_VERSION, AGE, GENDER} } },
-    { ANALYSIS_OBJECT, { VISION_OBJECT_TABLE, OBJECT, { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
-        OBJECT_SCALE_WIDTH, OBJECT_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_RECOMMENDATION, { VISION_RECOMMENDATION_TABLE, RECOMMENDATION, { RECOMMENDATION_ID,
-        RECOMMENDATION_RESOLUTION, RECOMMENDATION_SCALE_X, RECOMMENDATION_SCALE_Y, RECOMMENDATION_SCALE_WIDTH,
-        RECOMMENDATION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_SEGMENTATION, { VISION_SEGMENTATION_TABLE, SEGMENTATION, { SEGMENTATION_AREA, SEGMENTATION_NAME,
-        PROB } } },
-    { ANALYSIS_COMPOSITION, { VISION_COMPOSITION_TABLE, COMPOSITION, { COMPOSITION_ID, COMPOSITION_RESOLUTION,
-        CLOCK_STYLE, CLOCK_LOCATION_X, CLOCK_LOCATION_Y, CLOCK_COLOUR, COMPOSITION_SCALE_X, COMPOSITION_SCALE_Y,
-        COMPOSITION_SCALE_WIDTH, COMPOSITION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_SALIENCY, { VISION_SALIENCY_TABLE, SALIENCY, { SALIENCY_X, SALIENCY_Y } } },
-    { ANALYSIS_DETAIL_ADDRESS, { PhotoColumn::PHOTOS_TABLE, DETAIL_ADDRESS, {
-        PhotoColumn::PHOTOS_TABLE + "." + LATITUDE, PhotoColumn::PHOTOS_TABLE + "." + LONGITUDE, LANGUAGE, COUNTRY,
-        ADMIN_AREA, SUB_ADMIN_AREA, LOCALITY, SUB_LOCALITY, THOROUGHFARE, SUB_THOROUGHFARE, FEATURE_NAME, CITY_NAME,
-        ADDRESS_DESCRIPTION, LOCATION_TYPE, AOI, POI, FIRST_AOI, FIRST_POI, LOCATION_VERSION, FIRST_AOI_CATEGORY,
-        FIRST_POI_CATEGORY} } },
-    { ANALYSIS_HUMAN_FACE_TAG, { VISION_FACE_TAG_TABLE, FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
-        USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL, TAG_ORDER, IS_ME, COVER_URI,
-        COUNT, PORTRAIT_DATE_MODIFY, ALBUM_TYPE, IS_REMOVED, AGE, GENDER } } },
-    { ANALYSIS_HEAD_POSITION, { VISION_HEAD_TABLE, HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
-        HEAD_SCALE_WIDTH, HEAD_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_BONE_POSE, { VISION_POSE_TABLE, POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
-        POSE_SCALE_WIDTH, POSE_SCALE_HEIGHT, PROB, POSE_TYPE, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-    { ANALYSIS_MULTI_CROP, { VISION_RECOMMENDATION_TABLE, RECOMMENDATION, { MOVEMENT_CROP, MOVEMENT_VERSION } } },
-    { ANALYSIS_PET_TAG, { VISION_PET_TAG_TABLE, PET_TAG, { TAG_ID, PET_LABEL, CENTER_FEATURES, TAG_VERSION,
-        COUNT, DATE_MODIFIED, ANALYSIS_VERSION } } },
-    { ANALYSIS_PET_FACE, { VISION_PET_FACE_TABLE, PET_FACE, { FILE_ID, PET_ID, PROB, PET_LABEL, PET_TOTAL_FACES,
-        FEATURES, PET_TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT, HEAD_VERSION, PET_FEATURE_VERSION,
-        TAG_VERSION, BEAUTY_BOUNDER_X, BEAUTY_BOUNDER_Y, BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT,
-        DATE_MODIFIED } } },
-};
-
-int32_t MediaAssetsService::GetAssetAnalysisData(GetAssetAnalysisDataDto &dto)
-{
-    MEDIA_INFO_LOG("fileId:%{public}d, analysisType:%{public}d, language:%{public}s, analysisTotal:%{public}d",
-        dto.fileId, dto.analysisType, dto.language.c_str(), dto.analysisTotal);
-    auto it = ANALYSIS_CONFIG_MAP.find(dto.analysisType);
-    if (it == ANALYSIS_CONFIG_MAP.end()) {
-        MEDIA_ERR_LOG("Invalid analysisType:%{public}d", dto.analysisType);
-        return -EINVAL;
-    }
-
-    const AnalysisConfig &config = it->second;
-    std::shared_ptr<NativeRdb::ResultSet> resultSet;
-    if (dto.analysisTotal) {
-        NativeRdb::RdbPredicates predicate(VISION_TOTAL_TABLE);
-        predicate.EqualTo(MediaColumn::MEDIA_ID, to_string(dto.fileId));
-        resultSet = MediaLibraryRdbStore::QueryWithFilter(predicate, { config.totalColumnName });
-    } else {
-        NativeRdb::RdbPredicates rdbPredicate(config.tableName);
-        if (dto.analysisType == ANALYSIS_FACE) {
-            string onClause = VISION_IMAGE_FACE_TABLE + "." + TAG_ID + " = " + ANALYSIS_ALBUM_TABLE + "." + TAG_ID +
-                " AND " + ANALYSIS_ALBUM_TABLE + "." + ALBUM_SUBTYPE + " = " + to_string(PhotoAlbumSubType::PORTRAIT);
-            rdbPredicate.LeftOuterJoin(ANALYSIS_ALBUM_TABLE)->On({ onClause });
-            rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, to_string(dto.fileId));
-            resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, config.columns);
-        } else if (dto.analysisType == ANALYSIS_HUMAN_FACE_TAG) {
-            string onClause = VISION_IMAGE_FACE_TABLE + "." + TAG_ID + " = " + VISION_FACE_TAG_TABLE + "." + TAG_ID;
-            rdbPredicate.InnerJoin(VISION_IMAGE_FACE_TABLE)->On({ onClause });
-            rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, to_string(dto.fileId));
-            resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, config.columns);
-        } else if (dto.analysisType == ANALYSIS_DETAIL_ADDRESS) {
-            string onClause = GEO_KNOWLEDGE_TABLE + "." + LANGUAGE + " = \'" + dto.language + "\' AND " +
-                PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_ID + " = " + GEO_KNOWLEDGE_TABLE + "." + FILE_ID;
-            rdbPredicate.LeftOuterJoin(GEO_KNOWLEDGE_TABLE)->On({ onClause });
-            rdbPredicate.EqualTo(PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_ID, to_string(dto.fileId));
-            resultSet = MediaLibraryDataManager::QueryGeo(rdbPredicate, config.columns);
-        } else {
-            rdbPredicate.EqualTo(MediaColumn::MEDIA_ID, to_string(dto.fileId));
-            resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, config.columns);
-        }
-    }
-
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet nullptr");
-    auto bridge = RdbUtils::ToResultSetBridge(resultSet);
-    dto.resultSet = make_shared<DataShare::DataShareResultSet>(bridge);
-    return E_OK;
-}
-
 int32_t MediaAssetsService::CloneAsset(const CloneAssetDto& cloneAssetDto)
 {
     MEDIA_INFO_LOG("MediaAssetsService::CloneAsset, fileId:%{public}d, title:%{public}s",
@@ -1324,7 +1180,8 @@ int32_t MediaAssetsService::StartThumbnailCreationTask(
     NativeRdb::RdbPredicates rdbPredicate = OHOS::RdbDataShareAdapter::RdbUtils::ToPredicates(
         startThumbnailCreationTaskDto.predicates, PhotoColumn::PHOTOS_TABLE);
     int32_t errCode =
-        this->rdbOperation_.StartThumbnailCreationTask(rdbPredicate, startThumbnailCreationTaskDto.requestId);
+        this->rdbOperation_.StartThumbnailCreationTask(rdbPredicate, startThumbnailCreationTaskDto.requestId,
+            startThumbnailCreationTaskDto.pid);
     MEDIA_INFO_LOG("MediaAssetsService::startThumbnailCreationTaskDto ret:%{public}d", errCode);
     return errCode;
 }
@@ -1332,7 +1189,8 @@ int32_t MediaAssetsService::StartThumbnailCreationTask(
 int32_t MediaAssetsService::StopThumbnailCreationTask(const StopThumbnailCreationTaskDto &stopThumbnailCreationTaskDto)
 {
     MEDIA_INFO_LOG("enter MediaAssetsService::StopThumbnailCreationTask");
-    int32_t errCode = this->rdbOperation_.StopThumbnailCreationTask(stopThumbnailCreationTaskDto.requestId);
+    int32_t errCode = this->rdbOperation_.StopThumbnailCreationTask(stopThumbnailCreationTaskDto.requestId,
+        stopThumbnailCreationTaskDto.pid);
     MEDIA_INFO_LOG("MediaAssetsService::StopThumbnailCreationTask ret:%{public}d", errCode);
     return errCode;
 }
@@ -1425,6 +1283,12 @@ int32_t MediaAssetsService::LogMovingPhoto(const AdaptedReqBody &req)
     CHECK_AND_WARN_LOG(!packageName.empty(), "Package name is empty, adapted: %{public}d",
         static_cast<int>(req.adapted));
     DfxManager::GetInstance()->HandleAdaptationToMovingPhoto(packageName, req.adapted);
+    return E_SUCCESS;
+}
+
+int32_t MediaAssetsService::LogCinematicVideo(const CinematicVideoAccessReqBody &req)
+{
+    DfxManager::GetInstance()->HandleCinematicVideoAccessTimes(false, req.isHighQaulity);
     return E_SUCCESS;
 }
 
@@ -1653,64 +1517,77 @@ int32_t MediaAssetsService::GetCloudMediaAssetStatus(string &status)
 int32_t MediaAssetsService::StartBatchDownloadCloudResources(StartBatchDownloadCloudResourcesReqBody &reqBody,
     StartBatchDownloadCloudResourcesRespBody &respBody)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
     int32_t ret = instance.StartBatchDownloadCloudResources(reqBody, respBody);
     MEDIA_INFO_LOG("MediaAssetsService StartBatchDownloadCloudResources END ret: %{public}d", ret);
     return ret;
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsService::ResumeBatchDownloadCloudResources(ResumeBatchDownloadCloudResourcesReqBody &reqBody)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
     int32_t ret = instance.ResumeBatchDownloadCloudResources(reqBody);
     MEDIA_INFO_LOG("MediaAssetsService ResumeBatchDownloadCloudResources END ret: %{public}d", ret);
     return ret;
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsService::PauseBatchDownloadCloudResources(PauseBatchDownloadCloudResourcesReqBody &reqBody)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
     int32_t ret = instance.PauseBatchDownloadCloudResources(reqBody);
     MEDIA_INFO_LOG("MediaAssetsService PauseBatchDownloadCloudResources END ret: %{public}d", ret);
     return ret;
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsService::CancelBatchDownloadCloudResources(CancelBatchDownloadCloudResourcesReqBody &reqBody)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
     int32_t ret = instance.CancelBatchDownloadCloudResources(reqBody);
     MEDIA_INFO_LOG("MediaAssetsService CancelBatchDownloadCloudResources END ret: %{public}d", ret);
     return ret;
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesStatus(
     GetBatchDownloadCloudResourcesStatusReqBody &reqBody, GetBatchDownloadCloudResourcesStatusRespBody &respBody)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
     int32_t ret = instance.GetCloudMediaBatchDownloadResourcesStatus(reqBody, respBody);
     MEDIA_INFO_LOG("MediaAssetsService GetCloudMediaBatchDownloadResourcesStatus ret: %{public}d", ret);
     return ret;
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesCount(
     GetBatchDownloadCloudResourcesCountReqBody &reqBody, GetBatchDownloadCloudResourcesCountRespBody &respBody)
 {
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
     int32_t ret = instance.GetCloudMediaBatchDownloadResourcesCount(reqBody, respBody);
     MEDIA_INFO_LOG("MediaAssetsService GetCloudMediaBatchDownloadResourcesCount ret: %{public}d resp size: %{public}d",
         ret, respBody.count);
     return ret;
-}
-
-int32_t MediaAssetsService::StartAssetAnalysis(const StartAssetAnalysisDto &dto, StartAssetAnalysisRespBody &respBody)
-{
-    Uri uri(dto.uri);
-    MediaLibraryCommand cmd(uri);
-    cmd.SetDataSharePred(dto.predicates);
-    auto resultSet = MediaLibraryVisionOperations::HandleForegroundAnalysisOperation(cmd);
-    auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
-    respBody.resultSet = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
-    return E_OK;
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsService::GetCloudEnhancementPair(
@@ -1769,6 +1646,20 @@ int32_t MediaAssetsService::GetUriFromFilePath(const std::string &tempPath, GetU
 
     auto resultSetBridge = RdbUtils::ToResultSetBridge(resultSet);
     respBody.resultSet = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
+    return E_OK;
+}
+
+int32_t MediaAssetsService::CancelRequest(const std::string &photoId,
+    const int32_t mediaType)
+{
+    MEDIA_INFO_LOG("Cancel Request, photoId: %{public}s, mediaType: %{public}d",
+        photoId.c_str(), mediaType);
+    if (static_cast<MediaType>(mediaType) == MEDIA_TYPE_VIDEO) {
+        MultiStagesVideoCaptureManager::GetInstance().CancelProcessRequest(photoId);
+        return E_OK;
+    }
+    MultiStagesPhotoCaptureManager::GetInstance().CancelProcessRequest(photoId);
+ 
     return E_OK;
 }
 
@@ -1851,6 +1742,15 @@ int32_t MediaAssetsService::GetAssetCompressVersion(int32_t &version)
     auto dataManager = MediaLibraryDataManager::GetInstance();
     CHECK_AND_RETURN_RET_LOG(dataManager != nullptr, E_INNER_FAIL, "dataManager is nullptr");
     version = dataManager->GetAssetCompressVersion();
+    return E_SUCCESS;
+}
+
+int32_t MediaAssetsService::GetCompressAssetSize(const std::vector<std::string> &uris,
+    GetCompressAssetSizeRespBody &respBody)
+{
+    MEDIA_INFO_LOG("MediaAssetsService::GetCompressAssetSize start");
+    int32_t ret = MediaLibraryPhotoOperations::GetCompressAssetSize(uris, respBody.totalSize);
+    CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, ret, "Failed to get compress asset size, errCode = %{public}d", ret);
     return E_SUCCESS;
 }
 } // namespace OHOS::Media

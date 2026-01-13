@@ -53,8 +53,6 @@ ani_status CloudMediaAssetManagerAni::Init(ani_env *env)
     }
 
     std::array methods = {
-        ani_native_function {"getCloudMediaAssetManagerInstance", nullptr,
-            reinterpret_cast<void *>(CloudMediaAssetManagerAni::Constructor)},
         ani_native_function {"startDownloadCloudMediaInner", nullptr,
             reinterpret_cast<void *>(CloudMediaAssetManagerAni::StartDownloadCloudMedia)},
         ani_native_function {"pauseDownloadCloudMediaInner", nullptr,
@@ -66,10 +64,19 @@ ani_status CloudMediaAssetManagerAni::Init(ani_env *env)
         ani_native_function {"getCloudMediaAssetStatusInner", nullptr,
             reinterpret_cast<void *>(CloudMediaAssetManagerAni::GetCloudMediaAssetStatus)},
     };
-
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        return status;
+    }
+
+    std::array staticMethods = {
+        ani_native_function {"getCloudMediaAssetManagerInstance", nullptr,
+            reinterpret_cast<void *>(CloudMediaAssetManagerAni::Constructor)},
+    };
+    status = env->Class_BindStaticNativeMethods(cls, staticMethods.data(), staticMethods.size());
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to bind static native methods to: %{public}s", className);
         return status;
     }
     return ANI_OK;

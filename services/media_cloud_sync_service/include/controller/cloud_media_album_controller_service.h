@@ -40,7 +40,6 @@ class EXPORT CloudMediaAlbumControllerService : public IPC::IMediaControllerServ
 private:
     int32_t OnFetchRecords(MessageParcel &data, MessageParcel &reply);
     int32_t OnDentryFileInsert(MessageParcel &data, MessageParcel &reply);
-    int32_t GetCheckRecords(MessageParcel &data, MessageParcel &reply);
     int32_t GetCreatedRecords(MessageParcel &data, MessageParcel &reply);
     int32_t GetMetaModifiedRecords(MessageParcel &data, MessageParcel &reply);
     int32_t GetDeletedRecords(MessageParcel &data, MessageParcel &reply);
@@ -68,8 +67,6 @@ private:
             &CloudMediaAlbumControllerService::GetMetaModifiedRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_DELETED_RECORDS),
             &CloudMediaAlbumControllerService::GetDeletedRecords},
-        {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CHECK_RECORDS),
-            &CloudMediaAlbumControllerService::GetCheckRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_CREATE_RECORDS),
             &CloudMediaAlbumControllerService::OnCreateRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_MDIRTY_RECORDS),

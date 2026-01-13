@@ -54,6 +54,8 @@
 #include "multistages_photo_capture_manager.h"
 #undef private
 #undef protected
+#include "media_audio_column.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace OHOS;
@@ -132,7 +134,7 @@ void PrepareUniqueNumberTable()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         AudioColumn::CREATE_AUDIO_TABLE,
         CREATE_MEDIA_TABLE,
         CREATE_ASSET_UNIQUE_NUMBER_TABLE
@@ -826,8 +828,12 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, ProcessAndSaveHighQualityImage
     std::shared_ptr<CameraStandard::PictureIntf> picture = std::make_shared<CameraStandard::PictureAdapter>();
     picture->Create(surfaceBuffer);
 
-    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, true);
-    callback->OnProcessImageDone(to_string(fileId), picture, false);
+    DpsMetadata metadata;
+    constexpr const char* CLOUD_FLAG = "cloudImageEnhanceFlag";
+    metadata.Set(CLOUD_FLAG, true);
+    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, metadata);
+    metadata.Set(CLOUD_FLAG, false);
+    callback->OnProcessImageDone(to_string(fileId), picture, metadata);
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
     ValuesBucket values;
@@ -836,7 +842,7 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, ProcessAndSaveHighQualityImage
     cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, fileId);
     EXPECT_GT(MediaLibraryPhotoOperations::Update(cmd), E_OK);
 
-    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, false);
+    callback->OnProcessImageDone(PHOTO_ID_FOR_TEST, picture, metadata);
     callback->GetCommandByImageId(PHOTO_ID_FOR_TEST, cmd);
     callback->GetCommandByImageId("2011/11/11", cmd);
 
@@ -1076,6 +1082,35 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, BeginSynchronize_test_001, Tes
     DeferredPhotoProcessingAdapter adapter;
     EXPECT_NE(adapter.deferredPhotoProcSession_, nullptr);
     adapter.BeginSynchronize();
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, CheckMovingPhotoFlag_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CheckMovingPhotoFlag_test_001 Start");
+    auto fileId = PrepareForFirstVisit();
+    EXPECT_GT(fileId, 0);
+
+    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
+
+    auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
+    shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
+    callback->NotifyIfTempFile(fileAsset);
+
+    NativeRdb::ValuesBucket updateValues;
+    uint32_t cloudImageEnhanceFlag = 5;
+    callback->UpdateCEAvailable(fileId, cloudImageEnhanceFlag, updateValues, 0);
+    MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
+    updateCmd.SetValueBucket(updateValues);
+    updateCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, fileId);
+    int32_t result = DatabaseAdapter::Update(updateCmd);
+    EXPECT_EQ(result, 0);
+
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_SESSION_SYNC_NEEDED);
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INTERRUPTED);
+    callback->OnStateChanged(CameraStandard::SESSION_STATE_RUNNALBE);
+    delete callback;
+    MEDIA_INFO_LOG("CheckMovingPhotoFlag_test_001 End");
 }
 }
 }

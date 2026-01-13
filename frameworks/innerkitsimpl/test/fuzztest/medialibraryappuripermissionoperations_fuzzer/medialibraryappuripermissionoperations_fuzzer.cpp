@@ -43,6 +43,7 @@
 #define private public
 #include "medialibrary_app_uri_permission_operations.h"
 #undef private
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -227,7 +228,7 @@ static void AppUriPermissionOperationsFuzzer()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        Media::PhotoColumn::CREATE_PHOTO_TABLE,
+        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
         Media::AppUriPermissionColumn::CREATE_APP_URI_PERMISSION_TABLE,
         Media::AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE,
     };

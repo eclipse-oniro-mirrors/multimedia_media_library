@@ -55,6 +55,7 @@
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "runtime.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -315,7 +316,7 @@ static MediaEnhance::MediaEnhanceBundleHandle* FuzzMediaEnhanceBundle(string pho
 
 void SetTables()
 {
-    vector<string> createTableSqlList = { Media::PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { Media::PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
         if (ret != NativeRdb::E_OK) {
@@ -442,7 +443,7 @@ static void CloudEnhancementGetCountTest()
     cloudEnhancementGetCount.GetStartTimes();
     string photoId = provider->ConsumeBytesAsString(NUM_BYTES);
     cloudEnhancementGetCount.AddStartTime(photoId);
-    cloudEnhancementGetCount.Report(provider->ConsumeBytesAsString(NUM_BYTES), photoId, 0);
+    cloudEnhancementGetCount.Report(provider->ConsumeBytesAsString(NUM_BYTES), photoId, 0, 0);
     cloudEnhancementGetCount.RemoveStartTime(photoId);
     cloudEnhancementGetCount.RemoveStartTime(photoId);
 }
@@ -489,7 +490,7 @@ static void EnhancementServiceCallbackTest()
     int32_t statusCode = provider->ConsumeIntegral<int32_t>();
     uint32_t bytes = provider->ConsumeIntegralInRange<uint32_t>(0, bufferSize);
     Media::CloudEnhancementThreadTask task(provider->ConsumeBytesAsString(NUM_BYTES),
-        statusCode, buffer, bytes, provider->ConsumeBool());
+        statusCode, buffer, bytes, provider->ConsumeBool(), nullptr, 0);
     vector<string> columns;
     Media::MediaLibraryCommand cmd(Media::OperationObject::FILESYSTEM_PHOTO,
         Media::OperationType::QUERY, Media::MediaLibraryApi::API_10);

@@ -26,8 +26,8 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
   module_out_path = "media_library/medialibrary-data"
 
   include_scanner = [
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/include/callback",
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
   ]
 
   include_dirs = [
@@ -37,17 +37,17 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include/enhancement_service",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include/utils",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/enhancement_service",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/utils",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
 
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
     "${MEDIALIB_SERVICES_PATH}/media_async_worker/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/include",
     "${MEDIALIB_SERVICES_PATH}/media_permission/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   include_dirs += include_scanner
@@ -55,8 +55,11 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
   sources = [
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "./src/medialibrary_cloud_enhancement_test.cpp",
   ]
+
+  if (media_library_feature_cloud_enhancement) {
+    sources += [ "./src/medialibrary_cloud_enhancement_test.cpp" ]
+  }
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
@@ -134,8 +137,8 @@ ohos_unittest("medialibrary_cloud_enhancement_get_pair_test") {
   module_out_path = "media_library/cloud_enhancement_get_pair_test"
 
   include_scanner = [
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/include/callback",
-    "${MEDIALIB_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
   ]
 
   include_dirs = [
@@ -145,17 +148,17 @@ ohos_unittest("medialibrary_cloud_enhancement_get_pair_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_UTILS_PATH}/include",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include/enhancement_service",
-    "${MEDIALIB_SERVICES_PATH}/media_cloud_enhancement/include/utils",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/enhancement_service",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/utils",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_thumbnail/include",
 
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
-    "${MEDIALIB_SERVICES_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
     "${MEDIALIB_SERVICES_PATH}/media_async_worker/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/include",
     "${MEDIALIB_SERVICES_PATH}/media_permission/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
   include_dirs += include_scanner
@@ -163,8 +166,11 @@ ohos_unittest("medialibrary_cloud_enhancement_get_pair_test") {
   sources = [
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "./src/medialibrary_cloud_enhancement_get_pair_test.cpp",
   ]
+
+  if (media_library_feature_cloud_enhancement) {
+    sources += [ "./src/medialibrary_cloud_enhancement_get_pair_test.cpp" ]
+  }
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",

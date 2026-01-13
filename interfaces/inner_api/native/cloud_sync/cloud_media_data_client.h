@@ -22,7 +22,7 @@
 #include "i_cloud_media_data_client.h"
 
 #define EXPORT __attribute__ ((visibility ("default")))
-
+//LCOV_EXCL_START
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaDataClient : public ICloudMediaDataClient {
 public:  // constructors
@@ -84,3 +84,4 @@ private:
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_DATA_CLIENT_H
+//LCOV_EXCL_STOP

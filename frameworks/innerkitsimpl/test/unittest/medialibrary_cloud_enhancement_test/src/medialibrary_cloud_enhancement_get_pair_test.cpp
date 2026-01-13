@@ -50,6 +50,7 @@
 #include "enhancement_database_operations.h"
 #undef private
 #undef protected
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -94,7 +95,7 @@ void CleanTestTables()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         CREATE_MEDIA_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
@@ -798,7 +799,7 @@ HWTEST_F(MediaLibraryCloudEnhancementGetPairTest, dfx_total_time_033, TestSize.L
     EXPECT_EQ(CloudEnhancementGetCount::GetInstance().GetStartTimes().empty(), false);
     // sleep for 1234 millseconds
     this_thread::sleep_for(chrono::milliseconds(1234));
-    CloudEnhancementGetCount::GetInstance().Report(type, photoId, 0);
+    CloudEnhancementGetCount::GetInstance().Report(type, photoId, 0, 0);
     EXPECT_EQ(CloudEnhancementGetCount::GetInstance().GetStartTimes().empty(), true);
     MEDIA_INFO_LOG("dfx_total_time_033 End");
 }

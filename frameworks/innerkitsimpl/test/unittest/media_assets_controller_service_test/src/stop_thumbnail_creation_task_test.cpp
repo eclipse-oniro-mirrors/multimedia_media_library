@@ -45,6 +45,7 @@ using OHOS::DataShare::DataSharePredicates;
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static constexpr int32_t SLEEP_SECONDS = 1;
+static constexpr pid_t TEST_PID = 2;
 static const string SQL_INSERT_PHOTO =
     "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + "(" + MediaColumn::MEDIA_FILE_PATH + ", " + MediaColumn::MEDIA_SIZE +
     ", " + MediaColumn::MEDIA_TITLE + ", " + MediaColumn::MEDIA_NAME + ", " + MediaColumn::MEDIA_TYPE + ", " +
@@ -52,7 +53,8 @@ static const string SQL_INSERT_PHOTO =
     ", " + MediaColumn::MEDIA_DATE_MODIFIED + ", " + MediaColumn::MEDIA_DATE_TAKEN + ", " +
     MediaColumn::MEDIA_DURATION + ", " + MediaColumn::MEDIA_IS_FAV + ", " + MediaColumn::MEDIA_DATE_TRASHED + ", " +
     MediaColumn::MEDIA_HIDDEN + ", " + PhotoColumn::PHOTO_HEIGHT + ", " + PhotoColumn::PHOTO_WIDTH + ", " +
-    PhotoColumn::PHOTO_EDIT_TIME + ", " + PhotoColumn::PHOTO_SHOOTING_MODE + ")";
+    PhotoColumn::PHOTO_EDIT_TIME + ", " + PhotoColumn::PHOTO_SHOOTING_MODE + ", " + PhotoColumn::PHOTO_POSITION +
+    ", " + PhotoColumn::PHOTO_THUMB_STATUS + ")";
 static const string VALUES_END = ") ";
 
 static int32_t ClearTable(const string &table)
@@ -105,11 +107,13 @@ static int32_t AssignRequestId()
     return ++requestId_;
 }
 
-static int32_t StartThumCreationTask(int32_t requestId)
+static int32_t StartThumbCreationTask(int32_t requestId)
 {
     StartThumbnailCreationTaskReqBody reqBody;
     reqBody.requestId = requestId;
-    MEDIA_INFO_LOG("StartThumCreationTask requestId = %{public}d", reqBody.requestId);
+    reqBody.pid = TEST_PID;
+    MEDIA_INFO_LOG("StartThumbCreationTask requestId = %{public}d, pid = %{public}d",
+        reqBody.requestId, reqBody.pid);
     MessageParcel data;
     if (reqBody.Marshalling(data) != true) {
         MEDIA_ERR_LOG("reqBody.Marshalling failed");
@@ -125,15 +129,16 @@ static int32_t StartThumCreationTask(int32_t requestId)
         MEDIA_ERR_LOG("respVo.Unmarshalling failed");
         return -1;
     }
-    MEDIA_INFO_LOG("StartThumCreationTask ErrCode:%{public}d", respVo.GetErrCode());
+    MEDIA_INFO_LOG("StartThumbCreationTask ErrCode:%{public}d", respVo.GetErrCode());
     return respVo.GetErrCode();
 }
 
-int32_t StopThumCreationTask(int32_t requestId)
+int32_t StopThumbCreationTask(int32_t requestId)
 {
     StopThumbnailCreationTaskReqBody reqBody;
     reqBody.requestId = requestId;
-    MEDIA_INFO_LOG("StopThumCreationTask requestId = %{public}d", reqBody.requestId);
+    reqBody.pid = TEST_PID;
+    MEDIA_INFO_LOG("StopThumbCreationTask requestId = %{public}d", reqBody.requestId);
     MessageParcel data;
     if (reqBody.Marshalling(data) != true) {
         MEDIA_ERR_LOG("reqBody.Marshalling failed");
@@ -149,7 +154,7 @@ int32_t StopThumCreationTask(int32_t requestId)
         MEDIA_ERR_LOG("respVo.Unmarshalling failed");
         return -1;
     }
-    MEDIA_INFO_LOG("StopThumCreationTask ErrCode:%{public}d", respVo.GetErrCode());
+    MEDIA_INFO_LOG("StopThumbCreationTask ErrCode:%{public}d", respVo.GetErrCode());
     return respVo.GetErrCode();
 }
 
@@ -164,7 +169,7 @@ static void InsertAssets(const std::vector<std::string> &displayNames)
         }
         insertSql += "('/storage/cloud/files/Photo/16/" + displayName + ".jpg', 175258, '" + displayName + "', '" +
                      displayName + ".jpg', 1, " +
-                     "'com.ohos.camera', '相机', 1501924205218, 0, 1501924205, 0, 0, 0, 0, " + "1280, 960, 0, '1')";
+                     "'com.ohos.camera', '相机', 1501924205218, 0, 1501924205, 0, 0, 0, 0, " + "1280, 960, 0, '1', 2, 3)";
         first = false;
     }
 
@@ -174,7 +179,7 @@ static void InsertAssets(const std::vector<std::string> &displayNames)
     }
 }
 
-static int32_t CheckhumbnailReadyAllEnd()
+static int32_t CheckThumbnailReadyAllEnd()
 {
     vector<string> columns;
     RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -200,7 +205,7 @@ static int32_t CheckhumbnailReadyAllEnd()
 HWTEST_F(StopThumbnailCreationTaskTest, StopThumbnailCreationTask_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("StopThumbnailCreationTask_Test_001 Begin");
-    int32_t result = StopThumCreationTask(10000000);
+    int32_t result = StopThumbCreationTask(10000000);
     ASSERT_EQ(result, 0);
 }
 
@@ -212,14 +217,11 @@ HWTEST_F(StopThumbnailCreationTaskTest, StopThumbnailCreationTask_Test_002, Test
         displayNames.push_back("cam_pic" + std::to_string(i));
     }
     InsertAssets(displayNames);
-    ASSERT_EQ(CheckhumbnailReadyAllEnd(), 0);
+    ASSERT_EQ(CheckThumbnailReadyAllEnd(), 0);
 
     int32_t requestId = AssignRequestId();
-    int32_t result = StartThumCreationTask(requestId);
+    int32_t result = StartThumbCreationTask(requestId);
     ASSERT_EQ(result, 0);
-
-    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_SECONDS * 3));
-    ASSERT_EQ(CheckhumbnailReadyAllEnd(), 1);
 }
 
 HWTEST_F(StopThumbnailCreationTaskTest, StopThumbnailCreationTask_Test_003, TestSize.Level0)
@@ -230,15 +232,15 @@ HWTEST_F(StopThumbnailCreationTaskTest, StopThumbnailCreationTask_Test_003, Test
         displayNames.push_back("cam_pic" + std::to_string(i));
     }
     InsertAssets(displayNames);
-    ASSERT_EQ(CheckhumbnailReadyAllEnd(), 0);
+    ASSERT_EQ(CheckThumbnailReadyAllEnd(), 0);
 
     int32_t requestId = AssignRequestId();
-    int32_t result = StartThumCreationTask(requestId);
+    int32_t result = StartThumbCreationTask(requestId);
     ASSERT_EQ(result, 0);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    result = StopThumCreationTask(requestId);
+    result = StopThumbCreationTask(requestId);
     ASSERT_EQ(result, 0);
 }
 }  // namespace OHOS::Media

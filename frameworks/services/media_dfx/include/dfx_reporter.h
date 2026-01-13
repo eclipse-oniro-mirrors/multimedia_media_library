@@ -164,6 +164,12 @@ struct AncoCountFormatInfo {
     std::string assetFormatDistribution = "{}";
 };
 
+struct ThmInodeCleanInfo {
+    int32_t result = 0;
+    int32_t isConfigXattr = 0;
+    std::string xattrInfo;
+};
+
 class DfxReporter {
 public:
     DfxReporter();
@@ -185,6 +191,7 @@ public:
     void ReportCommonVersion(int32_t dbVersion);
     void ReportAnalysisVersion(const std::string &analysisName, int32_t version);
     void ReportAdaptationToMovingPhoto();
+    void ReportCinematicVideo();
     void ReportAlibHeifDuplicate();
     static int32_t ReportCloudSyncThumbGenerationStatus(const int32_t& downloadedThumb, const int32_t& generatedThumb,
         const int32_t& totalDownload, const int32_t& southDeviceType);
@@ -209,6 +216,7 @@ public:
     static int32_t ReportAncoCheckInfo(const AncoCheckInfo& reportData);
     static int32_t ReportAncoOperationChangeInfo(const AncoOperationChangeInfo& reportData);
     static int32_t ReportAncoCountFormatInfo(const AncoCountFormatInfo& reportData, bool firstLoad = false);
+    int32_t ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info);
 };
 } // namespace Media
 } // namespace OHOS

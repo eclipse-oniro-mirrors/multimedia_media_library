@@ -1,0 +1,88 @@
+# Copyright (C) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+ohos_shared_library("media_library_client") {
+  install_enable = true
+
+  include_dirs = [
+    "./include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+  ]
+
+  sources = [
+    "${MEDIALIB_CLIENT_PATH}/src/media_datashare_helper.cpp",
+    "${MEDIALIB_CLIENT_PATH}/src/media_datashare_client.cpp",
+    "${MEDIALIB_CLIENT_PATH}/src/media_common_client.cpp",
+    "${MEDIALIB_CLIENT_PATH}/src/media_client_utils.cpp",
+  ]
+
+  deps = [ 
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common"
+  ]
+
+  external_deps = [
+    "ability_base:zuri",
+    "ability_runtime:app_context",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_single",
+    "os_account:os_account_innerkits",
+    "kv_store:distributeddata_inner",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+    "samgr:samgr_proxy",
+  ]
+
+  ldflags = [ "-Wl,--gc-sections" ]
+
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
+
+  cflags_cc = [ "-Os" ]
+
+  if (!media_library_link_opt) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+      ubsan = true
+      boundary_sanitize = true
+      stack_protector_ret = true
+    }
+  }
+
+  defines = []
+  defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+
+
+  part_name = "media_library"
+  subsystem_name = "multimedia"
+}

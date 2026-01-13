@@ -469,5 +469,21 @@ HWTEST_F(MediaLibraryRdbUtilsTest, medialib_rdbutils_TransformOwnerAppIdToTokenI
     EXPECT_EQ((rowCountAfter - rowCount), 0);
     MEDIA_INFO_LOG("MediaLibraryRestoreTest::medialib_rdbutils_TransformOwnerAppIdToTokenId_test_001:stop");
 }
+
+HWTEST_F(MediaLibraryRdbUtilsTest, medialib_rdbutils_CleanAmbiguousColumn_test_001,
+    testing::ext::TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaLibraryRestoreTest::medialib_rdbutils_CleanAmbiguousColumn_test_001:start");
+    MediaLibraryUnitTestUtils::Init();
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(AppUriPermissionColumn::FILE_ID, "1");
+    vector<string> columns;
+    columns.push_back(AppUriPermissionColumn::FILE_ID);
+    MediaLibraryRdbUtils::CleanAmbiguousColumn(columns, predicates, PhotoColumn::PHOTOS_TABLE);
+    auto operationItems = predicates.GetOperationList();
+    int32_t ret = columns[0].compare(AppUriPermissionColumn::FILE_ID);
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("MediaLibraryRestoreTest::medialib_rdbutils_CleanAmbiguousColumn_test_001:stop");
+}
 } // namespace Media
 } // namespace OHOS

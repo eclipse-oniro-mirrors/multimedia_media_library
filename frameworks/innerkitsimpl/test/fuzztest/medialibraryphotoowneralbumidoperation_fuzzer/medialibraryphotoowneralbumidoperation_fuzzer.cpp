@@ -29,6 +29,7 @@
 #include "medialibrary_kvstore_manager.h"
 #include "photo_album_column.h"
 #include "photo_owner_album_id_operation.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -103,7 +104,7 @@ static void PhotoOwnerAlbumIdOperationTest()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

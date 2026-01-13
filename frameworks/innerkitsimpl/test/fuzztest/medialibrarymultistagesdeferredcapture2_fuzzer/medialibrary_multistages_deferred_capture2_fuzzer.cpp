@@ -35,6 +35,7 @@
 #include "multistages_capture_deferred_photo_proc_session_callback.h"
 #undef private
 #undef protected
+#include "media_upgrade.h"
 
 namespace OHOS {
 namespace Media {
@@ -139,7 +140,7 @@ unique_ptr<FileAsset> QueryPhotoAsset(const string &columnName, const string &va
 
 void SetTables()
 {
-    vector<string> createTableSqlList = { Media::PhotoColumn::CREATE_PHOTO_TABLE };
+    vector<string> createTableSqlList = { Media::PhotoUpgrade::CREATE_PHOTO_TABLE };
     for (auto &createTableSql : createTableSqlList) {
         CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "g_rdbStore is null.");
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
@@ -192,7 +193,10 @@ static void MultistagesCaptureDeferredPhotoProcSessionCallbackTest()
     uint8_t *addr = new uint8_t();
     long bytes = provider->ConsumeIntegral<long>();
     uint32_t cloudImageEnhanceFlag = provider->ConsumeIntegral<uint32_t>();
-    callback->OnProcessImageDone(photoId, picture, cloudImageEnhanceFlag);
+    DpsMetadata metadata;
+    constexpr const char* cloudFlag = "cloudImageEnhanceFlag";
+    metadata.Set(cloudFlag, cloudImageEnhanceFlag);
+    callback->OnProcessImageDone(photoId, picture, metadata);
     callback->OnProcessImageDone(photoId, addr, bytes, cloudImageEnhanceFlag);
 
     photoId = "/test" + SPLIT_PATH + provider->ConsumeBytesAsString(NUM_BYTES);

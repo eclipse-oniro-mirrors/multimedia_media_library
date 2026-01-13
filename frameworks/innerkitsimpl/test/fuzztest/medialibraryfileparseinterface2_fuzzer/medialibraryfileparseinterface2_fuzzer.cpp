@@ -26,7 +26,6 @@
 #include "media_file_utils.h"
 #include "media_library_manager.h"
 #include "mimetype_utils.h"
-#include "mtp_media_library.h"
 #undef private
 #undef protected
 

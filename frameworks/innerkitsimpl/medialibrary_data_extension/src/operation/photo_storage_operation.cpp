@@ -113,14 +113,24 @@ void PhotoStorageOperation::GetTotalThumbnailSize(std::shared_ptr<MediaLibraryRd
 
     std::string sql = "SELECT "
                       "SUM(thumbnail_size) AS total_thumbnail_size, "
-                      "COUNT(thumbnail_size) AS thumbnail_count "
+                      "COUNT(thumbnail_size) AS thumbnail_count, "
+                      "SUM(CASE WHEN thumbnail_size = 0 THEN 1 ELSE 0 END) AS zero_thumbnail_count "
                       "FROM tab_photos_ext";
 
+    // 此处统计为文件逻辑占用大小
     auto statsResult = rdbStore->QuerySql(sql);
+    int32_t zeroThumbSizeCount = 0;
+    constexpr int32_t ZERO_THUMB_SIZE_COUNT_COLUMN_NUMBER = 2;
     if (statsResult && (statsResult->GoToFirstRow() == NativeRdb::E_OK)) {
         statsResult->GetLong(0, totalThumbnailSizeResult.totalThumbnailSize);
         statsResult->GetInt(1, totalThumbnailSizeResult.thumbnailCount);
+        statsResult->GetInt(ZERO_THUMB_SIZE_COUNT_COLUMN_NUMBER, zeroThumbSizeCount);
     }
+
+    // 此接口需返回磁盘占用大小，为每张图片增加8KB大小（经验值），缩略图大小为0的除外
+    constexpr int64_t EXTRA_SIZE_PER_PHOTO = 8 * 1024;
+    totalThumbnailSizeResult.totalThumbnailSize +=
+        (totalThumbnailSizeResult.thumbnailCount - zeroThumbSizeCount) * EXTRA_SIZE_PER_PHOTO;
 }
 
 void PhotoStorageOperation::GetTotalEditdataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,

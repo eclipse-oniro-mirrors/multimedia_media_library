@@ -68,15 +68,32 @@ int32_t MediaAssetsDeleteService::BatchCopyAndMoveLocalAssetToTrash(
     int32_t ret = E_OK;
     bool isValid = false;
     std::optional<PhotosPo> targetPhotoInfoOp;
+    bool isCoverAsset = false;
     for (const PhotosPo &photoInfo : photosList) {
+        // Only process cover asset.
+        isCoverAsset = photoInfo.burstCoverLevel.value_or(1) == 1;
+        CHECK_AND_CONTINUE_INFO_LOG(isCoverAsset,
+            "Skip member asset. fileId: %{public}d, position: %{public}d, cloudId: %{public}s, burstKey: %{public}s",
+            photoInfo.fileId.value_or(-1),
+            photoInfo.position.value_or(-1),
+            photoInfo.cloudId.value_or("").c_str(),
+            photoInfo.burstKey.value_or("").c_str());
+        // Fdirty asset should move to trash directly.
+        isValid = photoInfo.dirty.value_or(0) != static_cast<int32_t>(DirtyType::TYPE_FDIRTY);
+        CHECK_AND_EXECUTE(isValid, targetFileIds.emplace_back(photoInfo.BuildFileUri()));
+        CHECK_AND_CONTINUE_INFO_LOG(isValid,
+            "Delete directly. fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
+            photoInfo.fileId.value_or(-1),
+            photoInfo.position.value_or(-1),
+            photoInfo.cloudId.value_or("").c_str());
         targetPhotoInfoOp.reset();
         // Only handle the LOCAL_AND_CLOUD assets.
-        ret = this->CopyAndMoveLocalAssetToTrash(photoInfo, targetPhotoInfoOp, photoRefresh);
+        ret = this->DeleteLocalAssetSingle(photoInfo, targetPhotoInfoOp, photoRefresh);
         isValid = ret == E_OK && targetPhotoInfoOp.has_value();
-        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(std::to_string(targetPhotoInfoOp->fileId.value_or(-1))));
+        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(targetPhotoInfoOp.value().BuildFileUri()));
         // Handle the LOCAL assets, ignore the CLOUD assets.
         isValid = photoInfo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL);
-        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(std::to_string(photoInfo.fileId.value_or(-1))));
+        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(photoInfo.BuildFileUri()));
     }
     photoRefresh->RefreshAlbumNoDateModified(static_cast<NotifyAlbumType>(
         NotifyAlbumType::SYS_ALBUM | NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
@@ -92,16 +109,19 @@ int32_t MediaAssetsDeleteService::CopyAndMoveLocalAssetToTrash(const PhotosPo &p
     bool isValid = photoInfo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
     CHECK_AND_RETURN_RET_LOG(isValid,
         E_OK,
-        "No need to handle, not LOCAL_AND_CLOUD. fileId: %{public}d, position: %{public}d",
+        "No need to handle, not LOCAL_AND_CLOUD. fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(-1),
-        photoInfo.position.value_or(-1));
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str());
     bool isLocalDirty = photoInfo.dirty.value_or(0) == static_cast<int32_t>(DirtyType::TYPE_FDIRTY);
     CHECK_AND_RETURN_RET_LOG(!isLocalDirty,
         E_OK,
-        "Can not handle, file-modified. fileId: %{public}d, position: %{public}d, dirty: %{public}d",
+        "Can not handle, file-modified. "
+        "fileId: %{public}d, position: %{public}d, dirty: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(-1),
         photoInfo.position.value_or(-1),
-        photoInfo.dirty.value_or(0));
+        photoInfo.dirty.value_or(0),
+        photoInfo.cloudId.value_or("").c_str());
     const std::vector<DeleteFuncHandle> deleteFuncs = {
         &MediaAssetsDeleteService::CopyAndMoveMediaLocalAssetToTrash,
         &MediaAssetsDeleteService::CopyAndMoveLakeLocalAssetToTrash,
@@ -111,7 +131,12 @@ int32_t MediaAssetsDeleteService::CopyAndMoveLocalAssetToTrash(const PhotosPo &p
         ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
         CHECK_AND_BREAK(ret != E_OK);
     }
-    MEDIA_INFO_LOG("CopyAndMoveLocalAssetToTrash completed, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("CopyAndMoveLocalAssetToTrash completed, ret: %{public}d, "
+        "fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
+        ret,
+        photoInfo.fileId.value_or(-1),
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str());
     return ret;
 }
 
@@ -225,16 +250,32 @@ int32_t MediaAssetsDeleteService::BatchCopyAndMoveCloudAssetToTrash(
     int32_t ret = E_OK;
     bool isValid = false;
     std::optional<PhotosPo> targetPhotoInfoOp;
+    bool isCoverAsset = false;
     for (const PhotosPo &photoInfo : photosList) {
+        // Only process cover asset.
+        isCoverAsset = photoInfo.burstCoverLevel.value_or(1) == 1;
+        CHECK_AND_CONTINUE_INFO_LOG(isCoverAsset,
+            "Skip member asset. fileId: %{public}d, position: %{public}d, cloudId: %{public}s, burstKey: %{public}s",
+            photoInfo.fileId.value_or(-1),
+            photoInfo.position.value_or(-1),
+            photoInfo.cloudId.value_or("").c_str(),
+            photoInfo.burstKey.value_or("").c_str());
+        // Fdirty asset should move to trash directly.
+        isValid = photoInfo.dirty.value_or(0) != static_cast<int32_t>(DirtyType::TYPE_FDIRTY);
+        CHECK_AND_EXECUTE(isValid, targetFileIds.emplace_back(photoInfo.BuildFileUri()));
+        CHECK_AND_CONTINUE_INFO_LOG(isValid,
+            "Delete directly. fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
+            photoInfo.fileId.value_or(-1),
+            photoInfo.position.value_or(-1),
+            photoInfo.cloudId.value_or("").c_str());
         targetPhotoInfoOp.reset();
         // Only handle the LOCAL_AND_CLOUD assets.
-        ret = this->CopyAndMoveCloudAssetToTrash(photoRefresh, photoInfo, targetPhotoInfoOp);
+        ret = this->DeleteCloudAssetSingle(photoInfo, targetPhotoInfoOp, photoRefresh);
         isValid = ret == E_OK && targetPhotoInfoOp.has_value();
-        CHECK_AND_EXECUTE(
-            !isValid, targetFileIds.emplace_back(std::to_string(targetPhotoInfoOp.value().fileId.value_or(-1))));
+        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(targetPhotoInfoOp.value().BuildFileUri()));
         // Handle the CLOUD assets, ignore the LOCAL assets.
         isValid = photoInfo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::CLOUD);
-        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(std::to_string(photoInfo.fileId.value_or(-1))));
+        CHECK_AND_EXECUTE(!isValid, targetFileIds.emplace_back(photoInfo.BuildFileUri()));
     }
     photoRefresh->RefreshAlbumNoDateModified(static_cast<NotifyAlbumType>(
         NotifyAlbumType::SYS_ALBUM | NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
@@ -254,25 +295,27 @@ int32_t MediaAssetsDeleteService::BuildTargetFilePath(const PhotosPo &photoInfo,
     return ret;
 }
 
-int32_t MediaAssetsDeleteService::CopyAndMoveCloudAssetToTrash(
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, const PhotosPo &photoInfo,
-    std::optional<PhotosPo> &targetPhotoInfoOp)
+int32_t MediaAssetsDeleteService::CopyAndMoveCloudAssetToTrash(const PhotosPo &photoInfo,
+    std::optional<PhotosPo> &targetPhotoInfoOp, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     CHECK_AND_RETURN_RET_LOG(
         photoRefresh != nullptr, E_RDB_STORE_NULL, "CopyAndMoveCloudAssetToTrash Failed to get photoRefresh.");
     bool isValid = photoInfo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
-    CHECK_AND_RETURN_RET_LOG(isValid,
+    CHECK_AND_RETURN_RET_WARN_LOG(isValid,
         E_OK,
-        "No need to handle, not LOCAL_AND_CLOUD. fileId: %{public}d, position: %{public}d",
+        "No need to handle, not LOCAL_AND_CLOUD. fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(-1),
-        photoInfo.position.value_or(-1));
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str());
     bool isLocalDirty = photoInfo.dirty.value_or(0) == static_cast<int32_t>(DirtyType::TYPE_FDIRTY);
     CHECK_AND_RETURN_RET_LOG(!isLocalDirty,
         E_OK,
-        "Can not handle, file-modified. fileId: %{public}d, position: %{public}d, dirty: %{public}d",
+        "Can not handle, file-modified. "
+        "fileId: %{public}d, position: %{public}d, dirty: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(-1),
         photoInfo.position.value_or(-1),
-        photoInfo.dirty.value_or(0));
+        photoInfo.dirty.value_or(0),
+        photoInfo.cloudId.value_or("").c_str());
     // 1. Copy the CLOUD asset record from LOCAL_AND_CLOUD asset record, and move it into trash.
     const std::vector<DeleteFuncHandle> deleteFuncs = {
         &MediaAssetsDeleteService::CopyAndMoveMediaCloudAssetToTrash,
@@ -283,6 +326,12 @@ int32_t MediaAssetsDeleteService::CopyAndMoveCloudAssetToTrash(
         ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
         CHECK_AND_BREAK(ret != E_OK);
     }
+    MEDIA_INFO_LOG("CopyAndMoveCloudAssetToTrash completed, ret: %{public}d, "
+        "fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
+        ret,
+        photoInfo.fileId.value_or(-1),
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str());
     return E_OK;
 }
 
@@ -388,7 +437,8 @@ int32_t MediaAssetsDeleteService::CreateCloudTrashedPhotosPo(const PhotosPo &pho
     this->SetDateTrashed(targetPhotoInfo, MediaFileUtils::UTCTimeMilliSeconds());
     this->SetPosition(targetPhotoInfo, static_cast<int32_t>(PhotoPositionType::CLOUD));
     this->ResetNullableFields(targetPhotoInfo);
-    this->SetMdirty(targetPhotoInfo);
+    // Scenario, Cloud pulled data, require targetPhotoInfo's dirty should be same as photoInfo.
+    CHECK_AND_EXECUTE(this->isCloudPullData_, this->SetMdirty(targetPhotoInfo));
     this->ResetFileSourceType(targetPhotoInfo);  // Set file_source_type to MEDIA (default).
     return E_OK;
 }
@@ -500,9 +550,10 @@ int32_t MediaAssetsDeleteService::CopyAndMoveMediaLocalAssetToTrash(const Photos
     ret = this->CleanLocalFileAndCreateDentryFile(photoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CleanLocalFileAndCreateDentryFile fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG("CopyAndMoveMediaLocalAssetToTrash completed, "
-                   "sourceFileId: %{public}d, targetFileId: %{public}d",
+                   "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(0),
-        targetPhotoInfo.fileId.value_or(0));
+        targetPhotoInfo.fileId.value_or(0),
+        photoInfo.cloudId.value_or("").c_str());
     targetPhotoInfoOp = targetPhotoInfo;
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, ret, "watch is nullptr");
@@ -523,9 +574,10 @@ int32_t MediaAssetsDeleteService::CopyAndMoveLakeLocalAssetToTrash(const PhotosP
     ret = this->mediaAssetsDao_.ResetPositionToCloudOnly(photoRefresh, photoInfo.fileId.value_or(-1));
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePosition fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG("CopyAndMoveLakeLocalAssetToTrash completed, "
-                   "sourceFileId: %{public}d, targetFileId: %{public}d",
+                   "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(0),
-        targetPhotoInfo.fileId.value_or(0));
+        targetPhotoInfo.fileId.value_or(0),
+        photoInfo.cloudId.value_or("").c_str());
     targetPhotoInfoOp = targetPhotoInfo;
     return E_OK;
 }
@@ -560,9 +612,10 @@ int32_t MediaAssetsDeleteService::CopyAndMoveMediaCloudAssetToTrash(const Photos
     int32_t ret = this->CreateCloudAssetWithDentryFile(photoInfo, targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetWithDentryFile fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG("CopyAndMoveMediaCloudAssetToTrash completed, "
-                   "sourceFileId: %{public}d, targetFileId: %{public}d",
+                   "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(0),
-        targetPhotoInfo.fileId.value_or(0));
+        targetPhotoInfo.fileId.value_or(0),
+        photoInfo.cloudId.value_or("").c_str());
     targetPhotoInfoOp = targetPhotoInfo;
     return E_OK;
 }
@@ -577,9 +630,10 @@ int32_t MediaAssetsDeleteService::CopyAndMoveLakeCloudAssetToTrash(const PhotosP
     int32_t ret = this->CreateCloudAssetWithoutDentryFile(photoInfo, targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetWithoutDentryFile fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG("CopyAndMoveLakeCloudAssetToTrash completed, "
-                   "sourceFileId: %{public}d, targetFileId: %{public}d",
+                   "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(0),
-        targetPhotoInfo.fileId.value_or(0));
+        targetPhotoInfo.fileId.value_or(0),
+        photoInfo.cloudId.value_or("").c_str());
     targetPhotoInfoOp = targetPhotoInfo;
     return E_OK;
 }
@@ -672,6 +726,191 @@ int32_t MediaAssetsDeleteService::SetNull4MissColumn(NativeRdb::ValuesBucket &va
         CHECK_AND_CONTINUE(isValid);  // Continue set NULL if not exist
         valuesBucket.PutNull(columnName);
         ss << columnName << ": null, ";
+    }
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::FindBurstAssetsAndResetBurstKey(
+    const std::string &originalBurstKey, std::optional<PhotosPo> &coverAsset, std::vector<PhotosPo> &burstAssets)
+{
+    int32_t ret = this->mediaAssetsDao_.FindAssetsByBurstKey(originalBurstKey, burstAssets);
+    bool isValid = ret == E_OK && !burstAssets.empty();
+    CHECK_AND_RETURN_RET(isValid, E_INVAL_ARG);
+    // Generate new burst_key.
+    const std::string newBurstKey = LakeFileUtils::GenerateUuid();
+    std::for_each(burstAssets.begin(), burstAssets.end(), [&](auto &element) { element.burstKey = newBurstKey; });
+    auto it = std::find_if(burstAssets.begin(), burstAssets.end(), [](const PhotosPo &element) {
+        return element.burstCoverLevel.value_or(static_cast<int32_t>(BurstCoverLevelType::COVER)) ==
+            static_cast<int32_t>(BurstCoverLevelType::COVER);
+    });
+    CHECK_AND_EXECUTE(it == burstAssets.end(), coverAsset = *it);
+    return E_OK;
+}
+
+/**
+ * Caller should distinguish following scenario:
+ * Scenario 1, Should handle as Burst Assets.
+ *   Check: E_OK & !burstAssets.empty()
+ * Scenario 2, Continuous to handle by responsibility-chain.
+ */
+int32_t MediaAssetsDeleteService::CheckAndFindBurstAssets(
+    const PhotosPo &photoInfo, std::optional<PhotosPo> &coverAssetOp, std::vector<PhotosPo> &burstAssets)
+{
+    bool isValid = photoInfo.dateTrashed.value_or(0) == 0;
+    const std::string originalBurstKey = photoInfo.burstKey.value_or("");
+    isValid = isValid && !originalBurstKey.empty();
+    CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
+    // Find burst assets by burst_key.
+    return this->FindBurstAssetsAndResetBurstKey(originalBurstKey, coverAssetOp, burstAssets);
+}
+
+int32_t MediaAssetsDeleteService::DeleteLocalAssetSingle(const PhotosPo &photoInfo,
+    std::optional<PhotosPo> &targetPhotoInfoOp, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    CHECK_AND_RETURN_RET_LOG(
+        photoRefresh != nullptr, E_RDB_STORE_NULL, "Failed to get photoRefresh.");
+    bool isValid = photoInfo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
+    CHECK_AND_RETURN_RET_WARN_LOG(isValid,
+        E_OK,
+        "No need to handle, not LOCAL_AND_CLOUD. fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
+        photoInfo.fileId.value_or(-1),
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str());
+    const std::vector<DeleteFuncHandle> deleteFuncs = {
+        &MediaAssetsDeleteService::DeleteLocalBurstAssets,
+        &MediaAssetsDeleteService::CopyAndMoveLocalAssetToTrash,
+    };
+    int32_t ret = E_INVALID_MODE;
+    for (auto deleteFunc : deleteFuncs) {  // Chain of responsibility.
+        ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
+        CHECK_AND_BREAK(ret != E_OK);
+    }
+    return E_OK;
+}
+
+/**
+ * The group (same burstKey) of photoInfo will be deleteLocal into trash.
+ * @param photoInfo deleteLocal for this object.
+ * @param targetPhotoInfoOp the new local trashed object of photoInfo.
+ */
+int32_t MediaAssetsDeleteService::DeleteLocalBurstAssets(const PhotosPo &photoInfo,
+    std::optional<PhotosPo> &targetPhotoInfoOp, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    std::optional<PhotosPo> coverAssetOp;
+    std::vector<PhotosPo> burstAssets;
+    int32_t ret = this->CheckAndFindBurstAssets(photoInfo, coverAssetOp, burstAssets);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret); // Not burst assets, continuous in responsibility-chain.
+    const bool hasCoverAsset = coverAssetOp.has_value();
+    const int32_t coverPosition = hasCoverAsset ? coverAssetOp.value().position.value_or(1) : 1;
+    const int32_t coverFileId = hasCoverAsset ? coverAssetOp.value().fileId.value_or(0) : 0;
+    const std::string coverCloudId = hasCoverAsset ? coverAssetOp.value().cloudId.value_or("") : "";
+    bool isValid = hasCoverAsset;
+    isValid = isValid && coverPosition == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
+    CHECK_AND_RETURN_RET_WARN_LOG(isValid,
+        E_OK, // end of responsibility-chain.
+        "No need to handle, cover is not LOCAL_AND_CLOUD. "
+        "fileId: %{public}d, position: %{public}d, cloudId: %{public}s, burstKey: %{public}s, "
+        "hasCoverAsset: %{public}d, coverPosition: %{public}d, coverFileId: %{public}d, coverCloudId: %{public}s",
+        photoInfo.fileId.value_or(-1),
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str(),
+        photoInfo.burstKey.value_or("").c_str(),
+        hasCoverAsset, coverPosition, coverFileId, coverCloudId.c_str());
+    std::optional<PhotosPo> tempPhotoInfoOp;
+    int32_t opCount = 0;
+    bool isCurrAsset = false;
+    for (const auto &element : burstAssets) {
+        ret = this->CopyAndMoveLocalAssetToTrash(element, tempPhotoInfoOp, photoRefresh);
+        isValid = (ret == E_OK) && tempPhotoInfoOp.has_value();
+        CHECK_AND_EXECUTE(!isValid, opCount++);
+        isCurrAsset = photoInfo.fileId.value_or(0) == element.fileId.value_or(0);
+        CHECK_AND_EXECUTE(!(isValid && isCurrAsset), targetPhotoInfoOp = tempPhotoInfoOp); // new asset.
+    }
+    const bool hasNewAsset = targetPhotoInfoOp.has_value();
+    const int32_t targetFileId = hasNewAsset ? targetPhotoInfoOp.value().fileId.value_or(0) : 0;
+    const std::string targetBurstKey = hasNewAsset ? targetPhotoInfoOp.value().burstKey.value_or("") : "";
+    MEDIA_INFO_LOG(
+        "DeleteLocalBurstAssets completed, "
+        "fileId: %{public}d, cloudId: %{public}s, level: %{public}d, burstKey: %{public}s, group-size: %{public}zu, "
+        "hasNewAsset: %{public}d, targetFileId: %{public}d, targetBurstKey: %{public}s, opCount: %{public}d",
+        photoInfo.fileId.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str(),
+        photoInfo.burstCoverLevel.value_or(1),
+        photoInfo.burstKey.value_or("").c_str(),
+        burstAssets.size(),
+        hasNewAsset, targetFileId, targetBurstKey.c_str(), opCount);
+    return E_OK; // end of responsibility-chain.
+}
+
+int32_t MediaAssetsDeleteService::DeleteCloudBurstAssets(const PhotosPo &photoInfo,
+    std::optional<PhotosPo> &targetPhotoInfoOp, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    std::optional<PhotosPo> coverAssetOp;
+    std::vector<PhotosPo> burstAssets;
+    int32_t ret = this->CheckAndFindBurstAssets(photoInfo, coverAssetOp, burstAssets);
+    CHECK_AND_RETURN_RET(ret == E_OK, ret); // Not burst assets, continuous in responsibility-chain.
+    const bool hasCoverAsset = coverAssetOp.has_value();
+    const int32_t coverPosition = hasCoverAsset ? coverAssetOp.value().position.value_or(1) : 1;
+    const int32_t coverFileId = hasCoverAsset ? coverAssetOp.value().fileId.value_or(0) : 0;
+    const std::string coverCloudId = hasCoverAsset ? coverAssetOp.value().cloudId.value_or("") : "";
+    bool isValid = hasCoverAsset;
+    isValid = isValid && coverPosition == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
+    CHECK_AND_RETURN_RET_WARN_LOG(isValid,
+        E_OK, // end of responsibility-chain.
+        "No need to handle, cover is not LOCAL_AND_CLOUD. "
+        "fileId: %{public}d, position: %{public}d, cloudId: %{public}s, burstKey: %{public}s, "
+        "hasCoverAsset: %{public}d, coverPosition: %{public}d, coverFileId: %{public}d, coverCloudId: %{public}s",
+        photoInfo.fileId.value_or(-1),
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str(),
+        photoInfo.burstKey.value_or("").c_str(),
+        hasCoverAsset, coverPosition, coverFileId, coverCloudId.c_str());
+    std::optional<PhotosPo> tempPhotoInfoOp;
+    int32_t opCount = 0;
+    bool isCurrAsset = false;
+    for (const auto &element : burstAssets) {
+        ret = this->CopyAndMoveCloudAssetToTrash(element, tempPhotoInfoOp, photoRefresh);
+        isValid = (ret == E_OK) && tempPhotoInfoOp.has_value();
+        CHECK_AND_EXECUTE(!isValid, opCount++);
+        isCurrAsset = photoInfo.fileId.value_or(0) == element.fileId.value_or(0);
+        CHECK_AND_EXECUTE(!(isValid && isCurrAsset), targetPhotoInfoOp = tempPhotoInfoOp); // new asset.
+    }
+    const bool hasNewAsset = targetPhotoInfoOp.has_value();
+    const int32_t targetFileId = hasNewAsset ? targetPhotoInfoOp.value().fileId.value_or(0) : 0;
+    const std::string targetBurstKey = hasNewAsset ? targetPhotoInfoOp.value().burstKey.value_or("") : "";
+    MEDIA_INFO_LOG(
+        "DeleteCloudBurstAssets completed, "
+        "fileId: %{public}d, cloudId: %{public}s, level: %{public}d, burstKey: %{public}s, group-size: %{public}zu, "
+        "hasNewAsset: %{public}d, targetFileId: %{public}d, targetBurstKey: %{public}s, opCount: %{public}d",
+        photoInfo.fileId.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str(),
+        photoInfo.burstCoverLevel.value_or(1),
+        photoInfo.burstKey.value_or("").c_str(),
+        burstAssets.size(),
+        hasNewAsset, targetFileId, targetBurstKey.c_str(), opCount);
+    return E_OK; // end of responsibility-chain.
+}
+
+int32_t MediaAssetsDeleteService::DeleteCloudAssetSingle(const PhotosPo &photoInfo,
+    std::optional<PhotosPo> &targetPhotoInfoOp, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    CHECK_AND_RETURN_RET_LOG(
+        photoRefresh != nullptr, E_RDB_STORE_NULL, "Failed to get photoRefresh.");
+    bool isValid = photoInfo.position.value_or(1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
+    CHECK_AND_RETURN_RET_WARN_LOG(isValid,
+        E_OK,
+        "No need to handle, not LOCAL_AND_CLOUD. fileId: %{public}d, position: %{public}d, cloudId: %{public}s",
+        photoInfo.fileId.value_or(-1),
+        photoInfo.position.value_or(-1),
+        photoInfo.cloudId.value_or("").c_str());
+    const std::vector<DeleteFuncHandle> deleteFuncs = {
+        &MediaAssetsDeleteService::DeleteCloudBurstAssets,
+        &MediaAssetsDeleteService::CopyAndMoveCloudAssetToTrash,
+    };
+    int32_t ret = E_INVALID_MODE;
+    for (auto deleteFunc : deleteFuncs) {  // Chain of responsibility.
+        ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
+        CHECK_AND_BREAK(ret != E_OK);
     }
     return E_OK;
 }

@@ -526,17 +526,6 @@ bool CloudMediaSyncUtils::CanUpdateExifRotateOnly(int32_t mediaType, int32_t old
     }
 }
 
-int32_t CloudMediaSyncUtils::GetExifRotate(int32_t mediaType, const std::string &path)
-{
-    int32_t exifRotate = static_cast<int32_t>(ExifRotateType::TOP_LEFT);
-    if (mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) {
-        MediaImageFrameWorkUtils::GetExifRotate(path, exifRotate);
-    } else {
-        MediaPlayerFrameWorkUtils::GetExifRotate(path, exifRotate);
-    }
-    return exifRotate;
-}
-
 bool CloudMediaSyncUtils::IsCloudEnhancementSupported()
 {
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT

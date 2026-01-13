@@ -328,10 +328,14 @@ static string GetQueryFilter(const string &tableName)
             to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
     }
     if (tableName == PhotoColumn::PHOTOS_TABLE) {
-        return PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SYNC_STATUS + " = " +
+        std::string filter = PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SYNC_STATUS + " = " +
             to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)) + " AND " +
             PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_CLEAN_FLAG + " = " +
             to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+        if (!PermissionUtils::CheckCallerPermission(PERM_MANAGE_CRITICAL_PHOTOS)) {
+            filter += " AND " + PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_IS_CRITICAL + " = 0";
+        }
+        return filter;
     }
     if (tableName == PhotoAlbumColumns::TABLE) {
         return PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_DIRTY + " != " +
@@ -562,11 +566,15 @@ static int32_t SetCount(const shared_ptr<ResultSet> &fileResult, const UpdateAlb
             values.PutInt(otherColumn, newCount);
             MEDIA_INFO_LOG("AccurateRefresh Update album other count");
         }
-        if (targetColumn == PhotoAlbumColumns::ALBUM_COUNT &&
-            !(data.albumSubtype >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
+        if (!(data.albumSubtype >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
             data.albumSubtype <= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_END))) {
-            MEDIA_INFO_LOG("AccurateRefresh Update album hidden: %{public}d", newCount == 0);
-            values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, newCount == 0);
+            if (targetColumn == PhotoAlbumColumns::ALBUM_COUNT) {
+                MEDIA_INFO_LOG("AccurateRefresh Update album hidden: %{public}d", newCount < 1);
+                values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, newCount < 1);
+            } else {
+                MEDIA_INFO_LOG("AccurateRefresh Update album hidden : %{public}d", data.albumCount < 1);
+                values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, data.albumCount < 1);
+            }
         }
     }
     return newCount;
@@ -1186,8 +1194,8 @@ static inline bool ShouldUpdateGroupPhotoAlbumCover(const shared_ptr<MediaLibrar
         !IsCoverValid(rdbStore, albumId, fileId);
 }
 
-shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(
-    const shared_ptr<MediaLibraryRdbStore>& rdbStore, const string &albumId)
+shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
+    const string &albumId, const PhotoAlbumSubType &subType)
 {
     MediaLibraryTracer tracer;
     tracer.Start("QueryPortraitCover");
@@ -1216,13 +1224,13 @@ shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(
         "AND Photos.hidden = 0 "
         "AND Photos.time_pending = 0 "
         "AND Photos.is_temp = 0 "
-        "AND Photos.burst_cover_level = 1 "
-        "AND tab_analysis_image_face.tag_id IN (SELECT group_tag FROM AnalysisAlbum WHERE album_id = " +
-        albumId + " LIMIT 1) "
-        "AND AnalysisAlbum.album_id IN (SELECT album_id FROM AnalysisAlbum where AnalysisAlbum.group_tag "
-        "IN (SELECT group_tag FROM AnalysisAlbum WHERE album_id = " +
-        albumId +
-        " LIMIT 1))";
+        "AND Photos.burst_cover_level = 1 ";
+    if (subType == PhotoAlbumSubType::PORTRAIT) {
+        clause += "AND tab_analysis_image_face.tag_id IN (SELECT group_tag FROM AnalysisAlbum WHERE album_id = " +
+            albumId + " LIMIT 1) ";
+    }
+    clause += "AND AnalysisAlbum.album_id IN (SELECT album_id FROM AnalysisAlbum where AnalysisAlbum.group_tag "
+        "IN (SELECT group_tag FROM AnalysisAlbum WHERE album_id = " + albumId + " LIMIT 1))";
     predicates.SetWhereClause(clause);
 
     predicates.OrderByAsc(
@@ -1247,7 +1255,7 @@ shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(
 static shared_ptr<ResultSet> QueryGroupPhotoAlbumCover(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     const string &albumId)
 {
-    return MediaLibraryRdbUtils::QueryPortraitAlbumCover(rdbStore, albumId);
+    return MediaLibraryRdbUtils::QueryPortraitAlbumCover(rdbStore, albumId, PhotoAlbumSubType::GROUP_PHOTO);
 }
 
 static void SetPortraitValuesWithCache(shared_ptr<UpdateAlbumDataWithCache> portraitData,
@@ -1329,7 +1337,8 @@ static int32_t SetPortraitUpdateValues(const shared_ptr<MediaLibraryRdbStore>& r
     if (!ShouldUpdatePortraitAlbumCover(rdbStore, albumId, coverId, isCoverSatisfied)) {
         return E_SUCCESS;
     }
-    shared_ptr<ResultSet> coverResult = MediaLibraryRdbUtils::QueryPortraitAlbumCover(rdbStore, albumId);
+    shared_ptr<ResultSet> coverResult = MediaLibraryRdbUtils::QueryPortraitAlbumCover(rdbStore, albumId,
+        PhotoAlbumSubType::PORTRAIT);
     CHECK_AND_RETURN_RET_LOG(coverResult != nullptr, E_HAS_DB_ERROR,
         "Failed to query Portrait Album Cover");
     SetPortraitCover(coverResult, data, values, newCount);
@@ -2282,49 +2291,6 @@ int32_t MediaLibraryRdbUtils::QueryAnalysisAlbumsForAccurateRefresh(
     return E_OK;
 }
 
-int32_t MediaLibraryRdbUtils::ApplyAlbumRefreshInfo(const UpdateAlbumData &base,
-    int32_t deltaCount, std::string newCover)
-{
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "no rdbStore");
-
-    int32_t newCount = base.albumCount + deltaCount;
-    if (newCount < 0) {
-        newCount = 0;
-    }
-
-    if (newCover == "" && newCount != 0) {
-        MEDIA_INFO_LOG("Cover not changed, amend former cover, album: %{public}d", base.albumId);
-        newCover = base.albumCoverUri;
-    }
-
-    if (newCount == base.albumCount && newCover == base.albumCoverUri) {
-        MEDIA_INFO_LOG("ApplyAlbumRefreshInfo: nothing changed: album: %{public}d", base.albumId);
-        return E_OK;
-    }
-
-    ValuesBucket values;
-    values.PutInt(PhotoAlbumColumns::ALBUM_COUNT, newCount);
-    values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, newCover);
-    if (newCover != base.albumCoverUri &&
-        (base.albumSubtype == PhotoAlbumSubType::PORTRAIT || base.albumSubtype == PhotoAlbumSubType::GROUP_PHOTO)) {
-        values.PutInt(IS_COVER_SATISFIED, static_cast<uint8_t>(CoverSatisfiedType::DEFAULT_SETTING));
-    }
-    MEDIA_INFO_LOG("ApplyAlbumRefreshInfo album=%{public}d, beforeCount: %{public}d, afterCount: %{public}d, "
-        "beforeCover:%{public}s, afterCover:%{public}s", base.albumId, base.albumCount, newCount,
-        base.albumCoverUri.c_str(), newCover.c_str());
-
-    RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
-    predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, std::to_string(base.albumId));
-    predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, std::to_string(base.albumSubtype));
-
-    int32_t changedRows = 0;
-    int ret = rdbStore->Update(changedRows, values, predicates);
-    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "Update failed: album: %{public}d", base.albumId);
-
-    return E_OK;
-}
-
 void MediaLibraryRdbUtils::UpdateAnalysisAlbumByUri(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     const vector<string> &uris)
 {
@@ -3200,7 +3166,8 @@ void MediaLibraryRdbUtils::CleanAmbiguousColumn(std::vector<std::string> &column
             operationItemsNew.push_back(item);
             continue;
         }
-        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == MediaColumn::MEDIA_ID) {
+        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == MediaColumn::MEDIA_ID
+            || static_cast<string>(item.GetSingle(FIELD_IDX)) == MediaColumn::MEDIA_DATE_MODIFIED) {
             vector<DataShare::SingleValue::Type> newSingleParam;
             newSingleParam.push_back(tableName + "." + MediaColumn::MEDIA_ID);
             for (size_t i = VALUE_IDX; i < item.singleParams.size(); i++) {
@@ -3214,7 +3181,7 @@ void MediaLibraryRdbUtils::CleanAmbiguousColumn(std::vector<std::string> &column
     predicates = DataShare::DataSharePredicates(operationItemsNew);
     transform(columns.begin(), columns.end(), columns.begin(),
         [tableName](const std::string &column) {
-            if (column == MediaColumn::MEDIA_ID) {
+            if (column == MediaColumn::MEDIA_ID || column == MediaColumn::MEDIA_DATE_MODIFIED) {
                 return tableName + "." + column;
             } else {
                 return column;

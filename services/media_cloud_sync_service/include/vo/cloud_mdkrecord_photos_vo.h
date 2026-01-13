@@ -152,6 +152,10 @@ public:  // functions of Parcelable.
 
 public:  // basic functions
     std::string ToString() const;
+
+public:  // member functions
+    size_t GetDataSize() const;
+    bool TruncateDataBy200K();
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MDKRECORD_PHOTOS_VO_H

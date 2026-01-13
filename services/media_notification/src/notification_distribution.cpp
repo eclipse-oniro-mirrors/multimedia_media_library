@@ -27,6 +27,7 @@
 #include "observer_info.h"
 #include "notification_merging.h"
 #include "media_notification_utils.h"
+#include "medialibrary_tracer.h"
 
 #include <map>
 #include <unordered_set>
@@ -94,6 +95,8 @@ int32_t NotificationDistribution::ProcessMediaChangeInfos(
     Notification::NotifyUriType notifyUriType,
     const ObserverInfo& observerInfo)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessMediaChangeInfos");
     for (const auto& mediaChangeInfo : mediaChangeInfos) {
         // 如果存在一个isForRecheck为true，只需要发送一个add通知
         if (mediaChangeInfo.isForRecheck) {
@@ -122,6 +125,8 @@ int32_t NotificationDistribution::ProcessMediaChangeInfos(
 
 int32_t NotificationDistribution::ProcessNotifyInfo(const NotifyInfo& notifyInfo)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessNotifyInfo");
     for (const auto& observerInfo : notifyInfo.observerInfos) {
         for (const auto& [notifyUriType, mediaChangeInfos] : notifyInfo.changeInfosMap) {
             if (!mediaChangeInfos.empty()) {
@@ -137,7 +142,8 @@ int32_t NotificationDistribution::DistributeNotifyInfo(const std::vector<NotifyI
     CHECK_AND_RETURN_RET_LOG(!notifyInfos.empty(), E_OK, "notifyInfos is null");
 
     MEDIA_INFO_LOG("enter distributeNotifyInfo, notifyInfos size:%{public}d", static_cast<int32_t>(notifyInfos.size()));
-
+    MediaLibraryTracer tracer;
+    tracer.Start("DistributeNotifyInfo");
     for (const auto& notifyInfo : notifyInfos) {
         if (notifyInfo.observerInfos.empty() || notifyInfo.changeInfosMap.empty()) {
             MEDIA_INFO_LOG("notifyInfo has empty observerInfos or changeInfosMap");

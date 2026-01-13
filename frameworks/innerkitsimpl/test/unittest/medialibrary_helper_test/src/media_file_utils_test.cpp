@@ -32,6 +32,11 @@ using namespace testing::ext;
 
 namespace OHOS {
 namespace Media {
+const int32_t ASPECT_RATIO_UNSUPPORT = -1;
+const int32_t ASPECT_RATIO_MAX = 1000;
+const double ASPECT_RATIO_MIN = 0.001;
+const double ASPECT_RATIO_MAX_TEST = 10000;
+
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExists_Test_001, TestSize.Level1)
 {
     string filePath = "/data/test/isfileexists_001";
@@ -1143,6 +1148,48 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckHasAppLink_Test_01, Tes
     EXPECT_TRUE(MediaFileUtils::CheckHasAppLink(1));
     EXPECT_TRUE(MediaFileUtils::CheckHasAppLink(2));
     EXPECT_FALSE(MediaFileUtils::CheckHasAppLink(3));
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CalculateAspectRatio_Test_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_01 Start");
+    int32_t height = ASPECT_RATIO_UNSUPPORT;
+    int32_t width = 1;
+    EXPECT_EQ(MediaFileUtils::CalculateAspectRatio(height, width), ASPECT_RATIO_UNSUPPORT);
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_01 end");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CalculateAspectRatio_Test_02, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_02 Start");
+    int32_t height = 1;
+    int32_t width = ASPECT_RATIO_MAX + 1;
+    double result = MediaFileUtils::CalculateAspectRatio(height, width);
+    MEDIA_INFO_LOG("result is :%{public}f", result);
+    EXPECT_EQ(result, ASPECT_RATIO_MAX);
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_02 end");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CalculateAspectRatio_Test_03, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_03 Start");
+    int32_t height = ASPECT_RATIO_MAX_TEST;
+    int32_t width = 1;
+    double result = MediaFileUtils::CalculateAspectRatio(height, width);
+    MEDIA_INFO_LOG("result is :%{public}f", result);
+    EXPECT_EQ(result, ASPECT_RATIO_MIN);
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_03 end");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CalculateAspectRatio_Test_04, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_04 Start");
+    int32_t height = 16;
+    int32_t width = 8;
+    double result = MediaFileUtils::CalculateAspectRatio(height, width);
+    MEDIA_INFO_LOG("result is :%{public}f", result);
+    EXPECT_EQ(result, 0.5);
+    MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_04 end");
 }
 } // namespace Media
 } // namespace OHOS

@@ -36,7 +36,8 @@ bool CloudMediaAttachmentUtils::AddRawIntoContent(const DownloadAssetData &downl
     MEDIA_INFO_LOG("download rawFilePath %{public}s", rawFilePath.c_str());
     MEDIA_INFO_LOG("download editDataCameraPath %{public}s", editDataCameraPath.c_str());
     bool hasEditDataCamera = (!editDataCameraPath.empty() && access(editDataCameraPath.c_str(), F_OK) == 0);
-    bool hasSource = PhotoFileUtils::HasSource(hasEditDataCamera, downloadData.editTime, downloadData.effectMode);
+    bool hasSource = PhotoFileUtils::HasSource(hasEditDataCamera,
+        downloadData.editTime, downloadData.effectMode, downloadData.subtype);
     bool rawFileExist = access(rawFilePath.c_str(), F_OK) == 0;
     bool isValid = hasSource && !rawFileExist;
     if (!isValid) {

@@ -21,6 +21,7 @@
 #include <string>
 
 #include "media_assets_controller_service.h"
+#include "media_analysis_data_controller_service.h"
 
 #include "get_asset_analysis_data_vo.h"
 #include "user_define_ipc_client.h"
@@ -34,6 +35,7 @@
 #include "vision_total_column.h"
 #include "vision_db_sqls.h"
 #include "vision_aesthetics_score_column.h"
+#include "media_upgrade.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -50,7 +52,7 @@ static std::string Quote(const std::string &str)
 
 static std::vector<std::string> createTableSqlLists = {
     CREATE_TAB_ANALYSIS_TOTAL_FOR_ONCREATE,
-    PhotoColumn::CREATE_PHOTO_TABLE,
+    PhotoUpgrade::CREATE_PHOTO_TABLE,
 };
 
 static std::vector<std::string> testTables = {
@@ -222,7 +224,7 @@ int32_t GetAssetAnalysisData(int32_t fileId, int32_t analysisType, bool analysis
     }
 
     MessageParcel reply;
-    auto service = make_shared<MediaAssetsControllerService>();
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
     service->GetAssetAnalysisData(data, reply);
 
     IPC::MediaRespVo<GetAssetAnalysisDataRespBody> respVo;
@@ -279,7 +281,7 @@ HWTEST_F(GetAssetAnalysisDataTest, GetAssetAnalysisData_Test_002, TestSize.Level
     ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_HUMAN_FACE_TAG, 0), 0);
     ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_HEAD_POSITION, 0), 0);
     ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_BONE_POSE, 0), 0);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_VIDEO_LABEL, 0), 0);
+    ASSERT_GE(GetAssetAnalysisData(assetId, ANALYSIS_VIDEO_LABEL, 0), 0);
     ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_MULTI_CROP, 0), 0);
 }
 

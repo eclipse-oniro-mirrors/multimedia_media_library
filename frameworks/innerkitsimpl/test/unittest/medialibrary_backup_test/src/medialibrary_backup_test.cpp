@@ -41,7 +41,7 @@
 #undef private
 #undef protected
 #include "mimetype_utils.h"
-#include "restore_map_code_utils.h"
+#include "media_audio_column.h"
 
 using namespace std;
 using namespace OHOS;
@@ -2745,9 +2745,9 @@ HWTEST_F(MediaLibraryBackupTest, medialibrary_backup_test_geo_knowledge_test5, T
     MEDIA_INFO_LOG("medialibrary_backup_test_geo_knowledge_test5 end");
 }
 
-HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_longitude_test, TestSize.Level2)
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_longitude_test1, TestSize.Level2)
 {
-    MEDIA_INFO_LOG("mmedialib_backup_get_data_longitude_test start");
+    MEDIA_INFO_LOG("medialib_backup_get_data_longitude_test1 start");
     restoreService->sceneCode_ = I_PHONE_CLONE_RESTORE;
     double setLongitude = 2.0;
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
@@ -2762,9 +2762,63 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_longitude_test, TestSi
     EXPECT_EQ(ret, setLongitude);
 }
 
-HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_latitude_test, TestSize.Level2)
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_longitude_test2, TestSize.Level2)
 {
-    MEDIA_INFO_LOG("mmedialib_backup_get_data_latitudetest start");
+    MEDIA_INFO_LOG("medialib_backup_get_data_longitude_test2 start");
+    restoreService->sceneCode_ = UPGRADE_RESTORE_ID;
+    double setLongitude = 0.0;
+    double setLatitude = 0.0;
+    std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    FileInfo fileInfo;
+    fileInfo.longitude = 1.0;
+    double ret = restoreService->BaseRestore::GetDataLongitude(fileInfo, data);
+    EXPECT_EQ(ret, fileInfo.longitude);
+
+    setLongitude = 2.0;
+    setLatitude = 0.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
+    ret = restoreService->BaseRestore::GetDataLongitude(fileInfo, data);
+    EXPECT_EQ(ret, setLongitude);
+
+    setLongitude = 0.0;
+    setLatitude = 2.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
+    ret = restoreService->BaseRestore::GetDataLongitude(fileInfo, data);
+    EXPECT_EQ(ret, setLongitude);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_longitude_test3, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_get_data_longitude_test3 start");
+    restoreService->sceneCode_ = DUAL_FRAME_CLONE_RESTORE_ID;
+    double setLongitude = 0.0;
+    double setLatitude = 0.0;
+    std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    FileInfo fileInfo;
+    fileInfo.longitude = 1.0;
+    double ret = restoreService->BaseRestore::GetDataLongitude(fileInfo, data);
+    EXPECT_EQ(ret, fileInfo.longitude);
+
+    setLongitude = 2.0;
+    setLatitude = 0.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
+    ret = restoreService->BaseRestore::GetDataLongitude(fileInfo, data);
+    EXPECT_EQ(ret, setLongitude);
+
+    setLongitude = 0.0;
+    setLatitude = 2.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
+    ret = restoreService->BaseRestore::GetDataLongitude(fileInfo, data);
+    EXPECT_EQ(ret, setLongitude);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_latitude_test1, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_get_data_latitude_test1 start");
     restoreService->sceneCode_ = I_PHONE_CLONE_RESTORE;
     double setLatitude = 2.0;
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
@@ -2775,6 +2829,60 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_latitude_test, TestSiz
     EXPECT_EQ(ret, fileInfo.latitude);
 
     fileInfo.latitude = 0.0;
+    ret = restoreService->BaseRestore::GetDataLatitude(fileInfo, data);
+    EXPECT_EQ(ret, setLatitude);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_latitude_test2, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_get_data_latitude_test2 start");
+    restoreService->sceneCode_ = UPGRADE_RESTORE_ID;
+    double setLongitude = 0.0;
+    double setLatitude = 0.0;
+    std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    FileInfo fileInfo;
+    fileInfo.latitude = 1.0;
+    double ret = restoreService->BaseRestore::GetDataLatitude(fileInfo, data);
+    EXPECT_EQ(ret, fileInfo.latitude);
+
+    setLongitude = 2.0;
+    setLatitude = 0.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
+    ret = restoreService->BaseRestore::GetDataLatitude(fileInfo, data);
+    EXPECT_EQ(ret, setLatitude);
+
+    setLongitude = 0.0;
+    setLatitude = 2.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
+    ret = restoreService->BaseRestore::GetDataLatitude(fileInfo, data);
+    EXPECT_EQ(ret, setLatitude);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_data_latitude_test3, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_get_data_latitude_test3 start");
+    restoreService->sceneCode_ = DUAL_FRAME_CLONE_RESTORE_ID;
+    double setLongitude = 0.0;
+    double setLatitude = 0.0;
+    std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    FileInfo fileInfo;
+    fileInfo.latitude = 1.0;
+    double ret = restoreService->BaseRestore::GetDataLatitude(fileInfo, data);
+    EXPECT_EQ(ret, fileInfo.latitude);
+
+    setLongitude = 2.0;
+    setLatitude = 0.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
+    ret = restoreService->BaseRestore::GetDataLatitude(fileInfo, data);
+    EXPECT_EQ(ret, setLatitude);
+
+    setLongitude = 0.0;
+    setLatitude = 2.0;
+    data->SetLongitude(setLongitude);
+    data->SetLatitude(setLatitude);
     ret = restoreService->BaseRestore::GetDataLatitude(fileInfo, data);
     EXPECT_EQ(ret, setLatitude);
 }
@@ -2839,6 +2947,58 @@ HWTEST_F(MediaLibraryBackupTest, medialib_backup_get_cloud_query_sql_test003, Te
     std::string expected = "";
     bool flag = result == expected;
     EXPECT_TRUE(flag);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_base_restore_move_file_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_base_restore_move_file_001 start");
+    int32_t ret = restoreService->BaseRestore::MoveFile("", "");
+    EXPECT_NE(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_base_restore_insert_file_duration_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_base_restore_insert_file_duration_001 start");
+    std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileDuration(1);
+    NativeRdb::ValuesBucket value;
+    FileInfo fileInfo;
+    restoreService->BaseRestore::InsertFileDuration(data, value, fileInfo);
+    int32_t duration = 0;
+    NativeRdb::ValueObject valueObject;
+    if (value.GetObject(MediaColumn::MEDIA_DURATION, valueObject)) {
+        valueObject.GetInt(duration);
+    }
+    EXPECT_EQ(duration, 1);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_base_restore_insert_file_duration_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_base_restore_insert_file_duration_002 start");
+    std::unique_ptr<Metadata> data = make_unique<Metadata>();
+    data->SetFileDuration(1);
+    NativeRdb::ValuesBucket value;
+    value.PutInt(MediaColumn::MEDIA_DURATION, 1);
+    FileInfo fileInfo;
+    restoreService->BaseRestore::InsertFileDuration(data, value, fileInfo);
+    int32_t duration = 0;
+    NativeRdb::ValueObject valueObject;
+    if (value.GetObject(MediaColumn::MEDIA_DURATION, valueObject)) {
+        valueObject.GetInt(duration);
+    }
+    EXPECT_EQ(duration, 1);
+}
+
+HWTEST_F(MediaLibraryBackupTest, medialib_backup_database_helper_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialib_backup_database_helper_001 start");
+    std::unique_ptr<UpgradeRestore> upgrade =
+        std::make_unique<UpgradeRestore>(GALLERY_APP_NAME, MEDIA_APP_NAME, DUAL_FRAME_CLONE_RESTORE_ID);
+    FileInfo fileInfo;
+    int32_t errCode = 0;
+    fileInfo.isInternal = false;
+    upgrade->backupDatabaseHelper_.Init(DUAL_FRAME_CLONE_RESTORE_ID, false, "");
+    EXPECT_EQ(upgrade->CheckInvalidFile(fileInfo, errCode), "");
 }
 } // namespace Media
 } // namespace OHOS

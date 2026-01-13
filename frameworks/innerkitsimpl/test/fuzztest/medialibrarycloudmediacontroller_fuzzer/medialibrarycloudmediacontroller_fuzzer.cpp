@@ -191,7 +191,6 @@ static void CloudMediaAlbumControllerServiceFuzzer()
     CHECK_AND_RETURN_LOG(!errConn, "WriteInterfaceToken failed");
     cloudMediaAlbumControllerService->OnFetchRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->OnDentryFileInsert(dataParcel, reply);
-    cloudMediaAlbumControllerService->GetCheckRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->GetCreatedRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->GetMetaModifiedRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->GetDeletedRecords(dataParcel, reply);

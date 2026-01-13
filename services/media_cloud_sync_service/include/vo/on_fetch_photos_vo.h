@@ -92,6 +92,9 @@ public:
     int32_t fileSourceType;
     std::string storagePath;
     std::map<std::string, std::string> stringfields;
+    // Safe Album: risk status for children's watch
+    int32_t photoRiskStatus{0};
+    int32_t isCritical{0};
 
 public:  // functions of Parcelable.
     virtual ~OnFetchPhotosVo() = default;

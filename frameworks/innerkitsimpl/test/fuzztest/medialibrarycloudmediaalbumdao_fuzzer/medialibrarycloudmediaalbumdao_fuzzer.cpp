@@ -37,6 +37,7 @@
 #include "album_accurate_refresh.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_kvstore_manager.h"
+#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -221,17 +222,16 @@ static void CloudMediaAlbumDaoFuzzer()
     cloudMediaAlbumDao->GetCopyAlbum(limitSize, cloudRecordPoList);
     cloudMediaAlbumDao->GetDeletedRecordsAlbum(limitSize, cloudRecordPoList);
     cloudMediaAlbumDao->GetMetaModifiedAlbum(limitSize, cloudRecordPoList);
-    cloudMediaAlbumDao->GetCreatedAlbum(limitSize, cloudRecordPoList);
+    cloudMediaAlbumDao->GetCreatedRecords(limitSize, cloudRecordPoList);
     InsertDeleteAsset(cloudId);
     limitSize = LIMIT_SIZE;
     cloudMediaAlbumDao->GetDeletedRecordsAlbum(limitSize, cloudRecordPoList);
     cloudMediaAlbumDao->GetMetaModifiedAlbum(limitSize, cloudRecordPoList);
-    cloudMediaAlbumDao->GetCreatedAlbum(limitSize, cloudRecordPoList);
+    cloudMediaAlbumDao->GetCreatedRecords(limitSize, cloudRecordPoList);
 
     string key = "cloud_id";
     vector<string> argrs = { value1 };
     InsertAlbumAsset(value1);
-    cloudMediaAlbumDao->QueryLocalAlbum(key, argrs);
 
     string field2 = PhotoAlbumColumns::ALBUM_LPATH;
     string value2 = "/Pictures/hiddenAlbum";
@@ -265,7 +265,7 @@ void SetTables()
         return;
     }
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {

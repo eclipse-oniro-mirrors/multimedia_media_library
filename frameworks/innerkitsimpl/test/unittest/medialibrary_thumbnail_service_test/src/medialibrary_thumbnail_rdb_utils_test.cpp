@@ -23,6 +23,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "thumbnail_rdb_utils.h"
 #include "thumbnail_service.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -56,7 +57,7 @@ static void InitRdbStore()
     rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(rdbStore, nullptr);
 
-    ret = rdbStore->ExecuteSql(PhotoColumn::CREATE_PHOTO_TABLE);
+    ret = rdbStore->ExecuteSql(PhotoUpgrade::CREATE_PHOTO_TABLE);
     ASSERT_EQ(ret, NativeRdb::E_OK);
 
     NativeRdb::ValuesBucket values;

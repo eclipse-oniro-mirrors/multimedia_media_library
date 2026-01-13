@@ -126,6 +126,8 @@ public:
     static ani_int GetWriteCacheHandler(ani_env *env, ani_object aniObject);
     static ani_object DeleteLocalAssetsPermanently(ani_env *env, [[maybe_unused]] ani_class clazz,
         ani_object context, ani_object assets);
+    static ani_object DeleteLocalAssetsPermanentlyWithUri(ani_env *env, [[maybe_unused]] ani_class clazz,
+        ani_object context, ani_object assetUris);
     static ani_object SetOrientation(ani_env *env, ani_object aniObject, ani_int orientation);
     static ani_object SetSupportedWatermarkType(ani_env *env, ani_object aniObject,
         ani_enum_item watermarkTypeAni);

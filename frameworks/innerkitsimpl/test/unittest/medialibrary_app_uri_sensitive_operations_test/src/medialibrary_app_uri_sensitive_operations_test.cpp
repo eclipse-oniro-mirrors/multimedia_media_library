@@ -58,6 +58,8 @@
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
 #include "photo_album_column.h"
+#include "media_audio_column.h"
+#include "media_upgrade.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -143,12 +145,12 @@ void PrepareUniqueNumberTable()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         AudioColumn::CREATE_AUDIO_TABLE,
         AppUriSensitiveColumn::CREATE_APP_URI_SENSITIVE_TABLE,
         CREATE_MEDIA_TABLE,
         CREATE_ASSET_UNIQUE_NUMBER_TABLE,
-        PhotoExtColumn::CREATE_PHOTO_EXT_TABLE
+        PhotoExtUpgrade::CREATE_PHOTO_EXT_TABLE
         // todo: album tables
     };
     for (auto &createTableSql : createTableSqlList) {

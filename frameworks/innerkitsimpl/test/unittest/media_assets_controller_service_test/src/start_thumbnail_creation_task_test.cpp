@@ -43,6 +43,7 @@ using OHOS::DataShare::DataSharePredicates;
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 static constexpr int32_t SLEEP_SECONDS = 1;
+static constexpr pid_t TEST_PID = 1;
 static const string SQL_INSERT_PHOTO =
     "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + "(" + MediaColumn::MEDIA_FILE_PATH + ", " + MediaColumn::MEDIA_SIZE +
     ", " + MediaColumn::MEDIA_TITLE + ", " + MediaColumn::MEDIA_NAME + ", " + MediaColumn::MEDIA_TYPE + ", " +
@@ -52,6 +53,17 @@ static const string SQL_INSERT_PHOTO =
     MediaColumn::MEDIA_HIDDEN + ", " + PhotoColumn::PHOTO_HEIGHT + ", " + PhotoColumn::PHOTO_WIDTH + ", " +
     PhotoColumn::PHOTO_EDIT_TIME + ", " + PhotoColumn::PHOTO_SHOOTING_MODE + ")";
 static const string VALUES_END = ") ";
+
+static const string SQL_INSERT_THUMB_PHOTO =
+    "INSERT INTO " + PhotoColumn::PHOTOS_TABLE + "(" + MediaColumn::MEDIA_FILE_PATH + ", " + MediaColumn::MEDIA_SIZE +
+    ", " + MediaColumn::MEDIA_TITLE + ", " + MediaColumn::MEDIA_NAME + ", " + MediaColumn::MEDIA_TYPE + ", " +
+    MediaColumn::MEDIA_OWNER_PACKAGE + ", " + MediaColumn::MEDIA_PACKAGE_NAME + ", " + MediaColumn::MEDIA_DATE_ADDED +
+    ", " + MediaColumn::MEDIA_DATE_MODIFIED + ", " + MediaColumn::MEDIA_DATE_TAKEN + ", " +
+    MediaColumn::MEDIA_DURATION + ", " + MediaColumn::MEDIA_IS_FAV + ", " + MediaColumn::MEDIA_DATE_TRASHED + ", " +
+    MediaColumn::MEDIA_HIDDEN + ", " + PhotoColumn::PHOTO_HEIGHT + ", " + PhotoColumn::PHOTO_WIDTH + ", " +
+    PhotoColumn::PHOTO_EDIT_TIME + ", " + PhotoColumn::PHOTO_SHOOTING_MODE + ", " + PhotoColumn::PHOTO_POSITION +
+    ", " + PhotoColumn::PHOTO_THUMB_STATUS + ")";
+
 
 static int32_t ClearTable(const string &table)
 {
@@ -103,12 +115,14 @@ static int32_t AssignRequestId()
     return ++requestId_;
 }
 
-int32_t StartThumCreationTask(int32_t fileId)
+int32_t StartThumbCreationTask(int32_t fileId)
 {
     StartThumbnailCreationTaskReqBody reqBody;
     reqBody.predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
     reqBody.requestId = AssignRequestId();
-    MEDIA_INFO_LOG("StartThumCreationTask fileId = %{public}d, requestId = %{public}d", fileId, reqBody.requestId);
+    reqBody.pid = TEST_PID;
+    MEDIA_INFO_LOG("StartThumbCreationTask fileId = %{public}d, requestId = %{public}d, pid = %{public}d",
+        fileId, reqBody.requestId, reqBody.pid);
     MessageParcel data;
     if (reqBody.Marshalling(data) != true) {
         MEDIA_ERR_LOG("reqBody.Marshalling failed");
@@ -124,7 +138,7 @@ int32_t StartThumCreationTask(int32_t fileId)
         MEDIA_ERR_LOG("respVo.Unmarshalling failed");
         return -1;
     }
-    MEDIA_INFO_LOG("StartThumCreationTask ErrCode:%{public}d", respVo.GetErrCode());
+    MEDIA_INFO_LOG("StartThumbCreationTask ErrCode:%{public}d", respVo.GetErrCode());
     return respVo.GetErrCode();
 }
 
@@ -138,6 +152,22 @@ static void InsertAsset(string displayName)
                             ".jpg', 175258, '" + displayName + "', '" + displayName + ".jpg', 1, " +
                             "'com.ohos.camera', '相机', 1501924205218, 0, 1501924205, 0, 0, 0, 0, " +
                             "1280, 960, 0, '1'" + VALUES_END;
+    int32_t ret = g_rdbStore->ExecuteSql(insertSql);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Execute sql %{public}s failed", insertSql.c_str());
+    }
+}
+
+static void InsertThumbAsset(string displayName, int32_t thumbnailStatus)
+{
+    // data, size,
+    // title, display_name, media_type,
+    // owner_package, package_name, date_added, date_modified, date_taken, duration, is_favorite, date_trashed, hidden
+    // height, width, edit_time, shooting_mode, position, thumb_status
+    std::string insertSql = SQL_INSERT_THUMB_PHOTO + " VALUES (" + "'/storage/cloud/files/Photo/16/" + displayName +
+                            ".jpg', 175258, '" + displayName + "', '" + displayName + ".jpg', 1, " +
+                            "'com.ohos.camera', '相机', 1501924205218, 0, 1501924205, 0, 0, 0, 0, " +
+                            "1280, 960, 0, '1', 2, " + to_string(thumbnailStatus) + VALUES_END;
     int32_t ret = g_rdbStore->ExecuteSql(insertSql);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Execute sql %{public}s failed", insertSql.c_str());
@@ -176,10 +206,10 @@ HWTEST_F(StartThumbnailCreationTaskTest, StartThumbnailCreationTask_Test_001, Te
 {
     MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_001 Begin");
     // invalid requestId test
-    int32_t result = StartThumCreationTask(10000000);
+    int32_t result = StartThumbCreationTask(10000000);
     ASSERT_LT(result, 0);
     // invalid fileId test
-    result = StartThumCreationTask(10000001);
+    result = StartThumbCreationTask(10000001);
     ASSERT_LT(result, 0);
 }
 
@@ -195,12 +225,38 @@ HWTEST_F(StartThumbnailCreationTaskTest, StartThumbnailCreationTask_Test_002, Te
     MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_002 thumbnailReady = %{public}d", thumbnailReady);
     ASSERT_EQ(thumbnailReady, 0);
 
-    int32_t result = StartThumCreationTask(fileId);
+    int32_t result = StartThumbCreationTask(fileId);
     ASSERT_EQ(result, 0);
-    
+
     std::this_thread::sleep_for(std::chrono::seconds(SLEEP_SECONDS));
     thumbnailReady = QueryThumbnailReadyByDisplayName(pic1 + ".jpg");
     MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_002, new thumbnailReady = %{public}d", thumbnailReady);
     ASSERT_NE(thumbnailReady, 0);
+}
+
+HWTEST_F(StartThumbnailCreationTaskTest, StartThumbnailCreationTask_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_003 Begin");
+    string displayName = "cam_pic2";
+    InsertThumbAsset(displayName, 3);
+    int32_t fileId = QueryPhotoIdByDisplayName("cam_pic2.jpg");
+    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_003 fileId = %{public}d", fileId);
+    ASSERT_GT(fileId, 0);
+
+    int32_t result = StartThumbCreationTask(fileId);
+    ASSERT_EQ(result, 0);
+}
+
+HWTEST_F(StartThumbnailCreationTaskTest, StartThumbnailCreationTask_Test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_004 Begin");
+    string displayName = "cam_pic3";
+    InsertThumbAsset(displayName, 0);
+    int32_t fileId = QueryPhotoIdByDisplayName("cam_pic3.jpg");
+    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_004 fileId = %{public}d", fileId);
+    ASSERT_GT(fileId, 0);
+
+    int32_t result = StartThumbCreationTask(fileId);
+    ASSERT_EQ(result, 0);
 }
 }  // namespace OHOS::Media

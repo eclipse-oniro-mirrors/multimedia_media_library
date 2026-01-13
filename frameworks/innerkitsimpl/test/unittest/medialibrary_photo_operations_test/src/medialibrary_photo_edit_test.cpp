@@ -41,7 +41,6 @@
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_photo_operations.h"
-#include "media_file_utils.h"
 #include "medialibrary_inotify.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_type_const.h"

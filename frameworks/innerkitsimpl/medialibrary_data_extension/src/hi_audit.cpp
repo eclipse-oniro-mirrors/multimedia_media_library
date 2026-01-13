@@ -202,4 +202,16 @@ void HiAudit::ZipAuditLog()
     }
     Media::ZipUtil::CloseZipFile(compressZip);
 }
+
+void HiAudit::WriteForCloudDownload(const std::string& bundleName, const int32_t& downloadType,
+    const std::string& status)
+{
+    MEDIA_ERR_LOG("cloud download, bundleName: %{public}s, downloadType: %{public}d, status: %{public}s",
+        bundleName.c_str(), downloadType, status.c_str());
+    AuditLog auditLog = {true, "DFX", "CLOUD_DOWNLOAD", "0", 1};
+    auditLog.id = bundleName;
+    auditLog.type = downloadType;
+    auditLog.operationStatus = status;
+    Write(auditLog);
+}
 }

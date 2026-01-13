@@ -99,6 +99,10 @@
     {
       "name": "permission_receive_update_message",
       "value": "Allow mediaLibrary to receive update message"
+    },
+    {
+      "name": "permission_manage_media_shared_resource",
+      "value": "Allow mediaLibrary to manage media shared resource"
     }
   ]
 }

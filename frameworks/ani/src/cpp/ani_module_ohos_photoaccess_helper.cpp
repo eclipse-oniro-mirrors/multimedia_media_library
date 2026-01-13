@@ -27,9 +27,12 @@
 #include "medialibrary_ani_log.h"
 #include "moving_photo_ani.h"
 #include "photo_album_ani.h"
+#include "photo_asset_custom_record_manager_ani.h"
 #include "photo_proxy_ani.h"
 #include "cloud_media_asset_manager_ani.h"
 #include "cloud_media_asset_status_ani.h"
+#include "album_order_ani.h"
+#include "photo_asset_custom_record_ani.h"
 
 using namespace OHOS::Media;
 
@@ -91,6 +94,10 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
     CHECK_STATUS_RET(CloudEnhancementTaskStateAni::Init(env), "CloudEnhancementTaskStateAni init fail");
     CHECK_STATUS_RET(CloudMediaAssetManagerAni::Init(env), "CloudMediaAssetManagerAni init fail");
     CHECK_STATUS_RET(CloudMediaAssetStatusAni::Init(env), "CloudMediaAssetStatusAni init fail");
+    CHECK_STATUS_RET(PhotoAssetCustomRecordManagerAni::Init(env), "PhotoAssetCustomRecordManagerAni init fail");
+    CHECK_STATUS_RET(AlbumOrderAni::AlbumOrderInit(env), "AlbumOrderAni init fail");
+    CHECK_STATUS_RET(PhotoAssetCustomRecordAni::CustomRecordInit(env),
+        "PhotoAssetCustomRecordAni init fail");
 
     *result = ANI_VERSION_1;
     return ANI_OK;
