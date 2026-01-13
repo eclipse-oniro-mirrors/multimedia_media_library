@@ -365,7 +365,7 @@ static int32_t CollectRanges(const string &path, const HideSensitiveType &sensit
             break;
         case HideSensitiveType::DEFAULT:
             CHECK_AND_RETURN_RET_LOG(!checkResult, E_SUCCESS, "Has MEDIA_LOCATION, no need hide sensitive.");
-            err = imageSource->GetFilterArea(ALL_SENSITIVE_EXIF, areas);
+            err = imageSource->GetFilterArea(GEOGRAPHIC_LOCATION_EXIF, areas);
             break;
         default:
             MEDIA_ERR_LOG("Invaild hide sensitive type %{public}d", sensitiveType);
