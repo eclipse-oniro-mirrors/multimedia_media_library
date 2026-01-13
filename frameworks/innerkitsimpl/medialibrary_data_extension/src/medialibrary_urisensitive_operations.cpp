@@ -333,28 +333,8 @@ int32_t UriSensitiveOperations::GrantUriSensitive(MediaLibraryCommand &cmd,
     return E_OK;
 }
 
-static bool IsOwnerPriviledge(const uint32_t &tokenId, const std::string &fileId)
-{
-    NativeRdb::RdbPredicates rdbPredicate(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE);
-    rdbPredicate.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, (int64_t)tokenId);
-    rdbPredicate.EqualTo(AppUriPermissionColumn::FILE_ID, fileId);
-    rdbPredicate.EqualTo(AppUriPermissionColumn::PERMISSION_TYPE,
-        AppUriPermissionColumn::PERMISSION_PERSIST_READ_WRITE);
-    vector<string> columns;
-    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, false);
-    int32_t numRows = 0;
-    resultSet->GetRowCount(numRows);
-    return numRows > 0;
-}
-
 int32_t UriSensitiveOperations::QuerySensitiveType(const uint32_t &tokenId, const std::string &fileId)
 {
-    // OwnerPriviledge donot need anonymize
-    if (IsOwnerPriviledge(tokenId, fileId)) {
-        return AppUriSensitiveColumn::SENSITIVE_NO_DESENSITIZE;
-    }
-
     NativeRdb::RdbPredicates rdbPredicate(AppUriSensitiveColumn::APP_URI_SENSITIVE_TABLE);
     rdbPredicate.BeginWrap();
     rdbPredicate.And()->EqualTo(AppUriSensitiveColumn::TARGET_TOKENID, (int64_t)tokenId);
