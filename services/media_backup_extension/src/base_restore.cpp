@@ -1544,8 +1544,8 @@ void BaseRestore::StartRestoreEx(const std::string &backupRetoreDir, const std::
         .ReportTask(restoreExInfo)
         .ReportTotal(std::to_string(errorCode_), GetRestoreTotalInfo())
         .ReportTimeCost(migrateFileNumber_ + audioTotalNumber_,
- 	            migratePhotoDuplicateNumber_ + migrateVideoDuplicateNumber_ + migrateAudioDuplicateNumber_,
- 	            totalFailCount_)
+ 	        migratePhotoDuplicateNumber_ + migrateVideoDuplicateNumber_ + migrateAudioDuplicateNumber_,
+ 	        totalFailCount_)
         .ReportProgress("end", std::to_string(MediaFileUtils::UTCTimeSeconds()))
         .ReportUpgradeEnh(std::to_string(errorCode_), GetUpgradeEnhance());
 }
