@@ -2285,6 +2285,9 @@ int32_t MediaAssetsControllerService::StartBatchDownloadCloudResources(MessagePa
     }
     ret = MediaAssetsService::GetInstance().StartBatchDownloadCloudResources(reqBody, respBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+#else
+    return 0;
+#endif
 }
 
 int32_t MediaAssetsControllerService::SetNetworkPolicyForBatchDownload(MessageParcel &data, MessageParcel &reply)
