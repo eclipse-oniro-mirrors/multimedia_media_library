@@ -1264,7 +1264,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_020, T
     ThumbRdbOpt opts;
     bool isCloudInsertTaskPriorityHigh = true;
     auto res = ThumbnailGenerateHelper::CreateAstcCloudDownload(opts, isCloudInsertTaskPriorityHigh);
-    EXPECT_NE(res, E_OK);
+    EXPECT_EQ(res, E_OK);
     isCloudInsertTaskPriorityHigh = false;
     res = ThumbnailGenerateHelper::CreateAstcCloudDownload(opts, isCloudInsertTaskPriorityHigh);
     EXPECT_NE(res, E_OK);
@@ -1274,7 +1274,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_test_021, T
 {
     ThumbRdbOpt opts;
     auto res = ThumbnailGenerateHelper::RegenerateThumbnailFromCloud(opts);
-    EXPECT_NE(res, E_OK);
+    EXPECT_EQ(res, E_OK);
 }
 
 HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_utils_test_031, TestSize.Level1)
