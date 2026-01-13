@@ -1039,7 +1039,8 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
         values.PutString(DownloadResourcesColumn::MEDIA_URI, po.fileUri.value_or(""));
         values.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, po.dateAdded.value_or(0));
         values.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, po.dateFinish.value_or(0));
-        if (MedialibrarySubscriber::IsCellularNetConnected()) { // 当前网络为移动网络，新增任务全部标记为auto_pause状态
+        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime();) {
+            // 当前网络为移动网络，新增任务全部标记为auto_pause状态
             values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
                 static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_PAUSE));
             values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
@@ -1148,7 +1149,8 @@ int32_t CloudMediaAssetManager::ResumeBatchDownloadCloudResources(ResumeBatchDow
     MEDIA_INFO_LOG("BatchSelectFileDownload enter ResumeBatchDownloadCloudResources");
     if (reqBody.uris.empty()) {
         int32_t ret = this->batchDownloadResourcesTaskDao_.UpdateResumeAllDownloadResourcesInfo();
-        if (MedialibrarySubscriber::IsCellularNetConnected()) { // 当前网络为移动网络，default任务标记为auto_pause状态
+        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime();) {
+            // 当前网络为移动网络，default任务标记为auto_pause状态
             this->batchDownloadResourcesTaskDao_.UpdateAutoPauseAllDownloadByNetWorkPolicy();
         }
         return ret;
@@ -1158,7 +1160,8 @@ int32_t CloudMediaAssetManager::ResumeBatchDownloadCloudResources(ResumeBatchDow
 
     int32_t ret = this->batchDownloadResourcesTaskDao_.UpdateResumeDownloadResourcesInfo(allFileIds);
     MEDIA_INFO_LOG("BatchSelectFileDownload ResumeBatchDownloadCloudResources Resume ret:%{public}d", ret);
-    if (MedialibrarySubscriber::IsCellularNetConnected()) { // 当前网络为移动网络，default任务标记为auto_pause状态
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime();) {
+        // 当前网络为移动网络，default任务标记为auto_pause状态
         this->batchDownloadResourcesTaskDao_.UpdateAutoPauseForFileIdByNetWorkPolicy(allFileIds);
     }
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "UpdateResumeDownloadResourcesInfo failed");
