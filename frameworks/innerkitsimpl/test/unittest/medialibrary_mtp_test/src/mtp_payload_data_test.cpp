@@ -55,6 +55,19 @@ const int PARAM_INDEX_2 = 2;
 const int PARAM_INDEX_3 = 3;
 const int PARAM_INDEX_4 = 4;
 const int PARAM_INDEX_5 = 5;
+const int DATA_COUNT_1 = 4;
+const int DATA_COUNT_2 = 6;
+const int DATA_COUNT_3 = 8;
+const int DATA_COUNT_4 = 38;
+const int DATA_COUNT_5 = 42;
+const int DATA_COUNT_6 = 44;
+const int DATA_COUNT_7 = 48;
+const int DATA_COUNT_8 = 60;
+const int IMAGEINFO_COUNT_1 = 2;
+const int IMAGEINFO_COUNT_2 = 6;
+const int IMAGEINFO_COUNT_3 = 10;
+const int IMAGEINFO_COUNT_4 = 14;
+const int IMAGEINFO_COUNT_5 = 22;
 
 namespace OHOS {
 namespace Media {
@@ -820,6 +833,109 @@ HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_001, TestSize
     EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
 }
 
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_002, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (size_t i = 0; i < DATA_COUNT_8; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_003, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (int i = 0; i < DATA_COUNT_1; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_004, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (int i = 0; i < DATA_COUNT_2; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_005, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (int i = 0; i < DATA_COUNT_3; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_006, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (int i = 0; i < DATA_COUNT_4; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_007, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (int i = 0; i < DATA_COUNT_5; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_008, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (int i = 0; i < DATA_COUNT_6; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserData_test_009, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (int i = 0; i < DATA_COUNT_7; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserData(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
 HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForImageInfo_test_001, TestSize.Level1)
 {
     shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
@@ -836,6 +952,71 @@ HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForImageInfo_test_0
     EXPECT_EQ(ret, MTP_SUCCESS);
 }
 
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForImageInfo_test_002, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (size_t i = 0; i < IMAGEINFO_COUNT_1; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserDataForImageInfo(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForImageInfo_test_003, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (size_t i = 0; i < IMAGEINFO_COUNT_2; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserDataForImageInfo(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForImageInfo_test_004, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (size_t i = 0; i < IMAGEINFO_COUNT_3; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserDataForImageInfo(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForImageInfo_test_005, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (size_t i = 0; i < IMAGEINFO_COUNT_4; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserDataForImageInfo(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForImageInfo_test_006, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    vector<uint8_t> buffer;
+    size_t offset = 0;
+    for (size_t i = 0; i < IMAGEINFO_COUNT_5; i++) {
+        buffer.push_back(COUNT_NUM_SMALL);
+    }
+    int ret = sendObjectInfoData.ParserDataForImageInfo(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
 HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForFileInfo_test_001, TestSize.Level1)
 {
     shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
@@ -850,6 +1031,34 @@ HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForFileInfo_test_00
     }
     ret = sendObjectInfoData.ParserDataForFileInfo(buffer, offset);
     EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForFileInfo_test_002, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    std::vector<uint8_t> buffer = {
+        0x08,
+        0x74, 0x00, 0x65, 0x00, 0x73, 0x00, 0x74, 0x00,
+        0x2E, 0x00, 0x6A, 0x00, 0x70, 0x00, 0x67, 0x00
+    };
+    size_t offset = 0;
+    int ret = sendObjectInfoData.ParserDataForFileInfo(buffer, offset);
+    EXPECT_EQ(ret, MTP_ERROR_PACKET_INCORRECT);
+}
+
+HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parserDataForFileInfo_test_003, TestSize.Level1)
+{
+    shared_ptr<MtpOperationContext> context = make_shared<MtpOperationContext>();
+    SendObjectInfoData sendObjectInfoData(context);
+    std::vector<uint8_t> buffer = {
+        0x01, 0x61, 0x00,
+        0x01, 0x31, 0x00,
+        0x01, 0x32, 0x00
+    };
+    size_t offset = 0;
+    int ret = sendObjectInfoData.ParserDataForFileInfo(buffer, offset);
+    EXPECT_EQ(ret, MTP_SUCCESS);
 }
 
 HWTEST_F(MediaLibraryMTPUnitTest, medialibrary_mtp_parser_test_015, TestSize.Level1)
