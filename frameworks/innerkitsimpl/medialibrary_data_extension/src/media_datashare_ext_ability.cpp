@@ -680,7 +680,9 @@ static bool AddOwnerCheck(MediaLibraryCommand &cmd, DataSharePredicates &tokenId
     vector<string> clauses = { onClause };
     tokenIdPredicates.InnerJoin(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE)->On(clauses);
     tokenIdPredicates.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, to_string(tokenid));
-    MediaLibraryRdbUtils::CleanAmbiguousColumn(columns, tokenIdPredicates, PhotoColumn::PHOTOS_TABLE);
+    tokenIdPredicates.EqualTo(AppUriPermissionColumn::PERMISSION_TYPE,
+        AppUriPermissionColumn::PERMISSION_PERSIST_READ_WRITE);
+    MediaLibraryRdbUtils::CleanAmbiguousColumn(columns, tokenIdPredicates, cmd.GetTableName());
     return true;
 }
 
