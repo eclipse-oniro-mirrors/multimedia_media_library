@@ -403,7 +403,8 @@ MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(const std::string &l
 int32_t PhotoOwnerAlbumIdOperation::CheckAndUpdateAlbumName(std::string &albumName, const int32_t albumType)
 {
     CHECK_AND_RETURN_RET(albumType == static_cast<int32_t>(PhotoAlbumType::SOURCE), E_OK);
-    CHECK_AND_RETURN_RET_LOG(this->rdbStore_ != nullptr, E_ERR, "Media_Operation: rdbStore_ is null.");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Media_Operation: rdbStore is null.");
     bool isUnique = false;
     std::string val = albumName;
     int32_t sequence = 1;
@@ -411,7 +412,7 @@ int32_t PhotoOwnerAlbumIdOperation::CheckAndUpdateAlbumName(std::string &albumNa
     while (!isUnique && sequence < MAX_ALBUM_NAME_SEQUENCE) {
         std::vector<NativeRdb::ValueObject> bindArgs = {val};
         std::string sql = this->SQL_QUERY_ALBUM_NAME_UNIQUE;
-        auto resultSet = this->rdbStore_->QuerySql(sql, bindArgs);
+        auto resultSet = rdbStore->QuerySql(sql, bindArgs);
         if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
             val = albumName + " " + std::to_string(sequence);
             sequence++;
