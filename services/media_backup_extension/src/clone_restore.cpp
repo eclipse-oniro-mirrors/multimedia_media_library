@@ -1068,7 +1068,7 @@ vector<NativeRdb::ValuesBucket> CloneRestore::GetInsertValues(int32_t sceneCode,
         if (errCode != E_OK) {
             ErrorInfo errorInfo(RestoreError::FILE_INVALID, 1, std::to_string(errCode),
                 BackupLogUtils::FileInfoToString(sceneCode, fileInfos[i]));
-            UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
+            UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportErrorInAudit(errorInfo);
             continue;
         }
         CHECK_AND_CONTINUE(PrepareCloudPath(PhotoColumn::PHOTOS_TABLE, fileInfos[i]));

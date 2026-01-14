@@ -45,6 +45,7 @@ public:
     UpgradeRestoreTaskReport &ReportInAudit(const std::string &type, const std::string &errorCode,
         const std::string &errorInfo);
     UpgradeRestoreTaskReport &ReportError(const ErrorInfo &info);
+    UpgradeRestoreTaskReport &ReportErrorInAudit(const ErrorInfo &info);
     UpgradeRestoreTaskReport &ReportProgress(const std::string &status, const std::string &progressInfo);
     UpgradeRestoreTaskReport &ReportProgress(const std::string &status, const std::string &progressInfo,
         uint64_t ongoingTotalNumber);

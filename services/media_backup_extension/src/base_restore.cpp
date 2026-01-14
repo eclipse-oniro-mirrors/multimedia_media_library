@@ -424,7 +424,7 @@ bool BaseRestore::PrepareInsertValue(const int32_t sceneCode, FileInfo &fileInfo
         std::string fileDbCheckInfo = CheckInvalidFile(fileInfo, errCode);
         ErrorInfo errorInfo(RestoreError::FILE_INVALID, 1, std::to_string(errCode),
             BackupLogUtils::FileInfoToString(sceneCode, fileInfo, { fileDbCheckInfo }));
-        UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
+        UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportErrorInAudit(errorInfo);
         return false;
     }
     std::string cloudPath;
@@ -1543,7 +1543,9 @@ void BaseRestore::StartRestoreEx(const std::string &backupRetoreDir, const std::
         .SetTaskId(this->taskId_)
         .ReportTask(restoreExInfo)
         .ReportTotal(std::to_string(errorCode_), GetRestoreTotalInfo())
-        .ReportTimeCost(migrateFileNumber_ + audioTotalNumber_, migratePhotoDuplicateNumber_, totalFailCount_)
+        .ReportTimeCost(migrateFileNumber_ + audioTotalNumber_,
+ 	        migratePhotoDuplicateNumber_ + migrateVideoDuplicateNumber_ + migrateAudioDuplicateNumber_,
+ 	        totalFailCount_)
         .ReportProgress("end", std::to_string(MediaFileUtils::UTCTimeSeconds()))
         .ReportUpgradeEnh(std::to_string(errorCode_), GetUpgradeEnhance());
 }
