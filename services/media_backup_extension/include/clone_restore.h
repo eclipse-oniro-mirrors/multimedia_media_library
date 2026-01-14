@@ -235,6 +235,7 @@ private:
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
     int64_t CorrectTimestamp(int64_t originalTime);
+    void UpdatePackageNameForSamePhotos(vector<FileInfo> &fileInfos);
 
     template<typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
