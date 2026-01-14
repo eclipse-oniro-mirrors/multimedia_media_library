@@ -500,7 +500,8 @@ static int32_t UpdateForMergeGroupAlbums(const shared_ptr<MediaLibraryRdbStore> 
             GROUP_TAG + " = '" + it.first + "', " + COVER_URI + " = '" + it.second.coverUri + "', " +
             IS_REMOVED + " = 0, " + IS_COVER_SATISFIED  + " = " + to_string(isCoverSatisfied) + ", " +
             RENAME_OPERATION + " = " + to_string(renameOperation) + ", " + ALBUM_NAME + " = '" +
-            it.second.albumName + "' WHERE " + ALBUM_ID + " = " + to_string(it.second.albumId);
+            it.second.albumName + "', " + IS_ME + " = " + to_string(it.second.isMe) +
+            " WHERE " + ALBUM_ID + " = " + to_string(it.second.albumId);
         updateSqls.push_back(sql);
     }
     int ret = ExecSqls(updateSqls, store);
@@ -550,6 +551,7 @@ int32_t GetMergeAlbumInfo(shared_ptr<NativeRdb::ResultSet> resultSet, MergeAlbum
         GetStringValueFromResultSet(resultSet, COVER_URI, info.coverUri) != E_OK ||
         GetIntValueFromResultSet(resultSet, IS_COVER_SATISFIED, isCoverSatisfied) != E_OK ||
         GetIntValueFromResultSet(resultSet, RENAME_OPERATION, info.renameOperation) != E_OK ||
+        GetIntValueFromResultSet(resultSet, IS_ME, info.isMe) != E_OK ||
         GetStringValueFromResultSet(resultSet, ALBUM_NAME, info.albumName) != E_OK);
     CHECK_AND_RETURN_RET(!cond, E_HAS_DB_ERROR);
 
@@ -559,8 +561,8 @@ int32_t GetMergeAlbumInfo(shared_ptr<NativeRdb::ResultSet> resultSet, MergeAlbum
 
 std::string GetQueryTagIdSql(std::string groupTag1, std::string groupTag2)
 {
-    std::string groupMergeSqlPre = "SELECT " + ALBUM_ID + ", " + COVER_URI + ", " + IS_COVER_SATISFIED + ", "
-        + TAG_ID + ", " + RENAME_OPERATION + ", " + ALBUM_NAME + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " +
+    std::string groupMergeSqlPre = "SELECT " + ALBUM_ID + ", " + COVER_URI + ", " + IS_COVER_SATISFIED + ", " + IS_ME +
+        ", " + TAG_ID + ", " + RENAME_OPERATION + ", " + ALBUM_NAME + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " +
         ALBUM_SUBTYPE + " = " + to_string(GROUP_PHOTO) + " AND (INSTR(" + TAG_ID + ", '";
     std::string queryTagId = groupMergeSqlPre + groupTag1 + "') > 0 OR INSTR(" + TAG_ID + ", '" +
         groupTag2 + "') > 0)";
@@ -568,6 +570,12 @@ std::string GetQueryTagIdSql(std::string groupTag1, std::string groupTag2)
         " ORDER BY CASE WHEN user_display_level = -1 THEN 0 WHEN user_display_level = 3 THEN 3 ELSE 1 END DESC";
     queryTagId += albumMergeUserDisplayLevelOrderClause;
     return queryTagId;
+}
+
+bool AlbumContainMe(const vector<MergeAlbumInfo> &mergeAlbumInfo)
+{
+    CHECK_AND_RETURN_RET_LOG(mergeAlbumInfo.size() > 1, false, "mergeAlbumInfo size is not enough.");
+    return mergeAlbumInfo[0].isMe == ALBUM_IS_ME || mergeAlbumInfo[1].isMe == ALBUM_IS_ME;
 }
 
 int32_t MediaLibraryAnalysisAlbumOperations::UpdateMergeGroupAlbumsInfo(const vector<MergeAlbumInfo> &mergeAlbumInfo)
@@ -581,10 +589,11 @@ int32_t MediaLibraryAnalysisAlbumOperations::UpdateMergeGroupAlbumsInfo(const ve
 
     std::vector<string> deleteId;
     std::unordered_map<string, MergeAlbumInfo> updateMap;
+    bool albumContainMe = AlbumContainMe(mergeAlbumInfo);
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         MergeAlbumInfo info;
         CHECK_AND_RETURN_RET(GetMergeAlbumInfo(resultSet, info) == E_OK, E_HAS_DB_ERROR);
-
+        CHECK_AND_EXECUTE(!albumContainMe, info.isMe = ALBUM_IS_ME);
         string reorderedTagId = ReorderTagId(info.tagId, mergeAlbumInfo);
         auto it = updateMap.find(reorderedTagId);
         if (reorderedTagId.empty()) {
