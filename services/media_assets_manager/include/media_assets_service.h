@@ -76,6 +76,7 @@
 #include "get_batch_download_cloud_resources_status_vo.h"
 #include "get_batch_download_cloud_resources_count_vo.h"
 #include "get_batch_download_cloud_resources_size_vo.h"
+#include "acquire_debug_database_vo.h"
 #include "get_fussion_assets_vo.h"
 #include "get_compress_asset_size_vo.h"
 #include "open_asset_compress_vo.h"
