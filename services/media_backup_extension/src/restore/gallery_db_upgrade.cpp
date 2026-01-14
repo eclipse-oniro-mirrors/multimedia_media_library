@@ -55,6 +55,7 @@ int32_t GalleryDbUpgrade::OnUpgrade(NativeRdb::RdbStore &store)
     this->AddColumnsOfTOcrResult(store);
     this->AddUploadStatusIntoGalleryAlbum(store);
     this->AddHdcUploadStatusIntoGalleryAlbum(store);
+    this->AddDirtyIntoGalleryAlbum(store);
     return NativeRdb::E_OK;
 }
 
@@ -351,6 +352,24 @@ int32_t GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore
         ret,
         sql.c_str());
     MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum success");
+    return ret;
+}
+
+/**
+ * @brief Upgrade gallery_album table in gallery.db.
+ */
+int32_t GalleryDbUpgrade::AddDirtyIntoGalleryAlbum(NativeRdb::RdbStore &store)
+{
+    bool cond = this->dbUpgradeUtils_.IsColumnExists(store, "gallery_album", "dirty");
+    CHECK_AND_RETURN_RET(!cond, NativeRdb::E_OK);
+    std::string sql = this->SQL_GALLERY_ALBUM_TABLE_ADD_DIRTY_COLUMN;
+    int32_t ret = store.ExecuteSql(sql);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
+        "Media_Restore: GalleryDbUpgrade::AddDirtyIntoGalleryAlbum failed,"
+        "ret=%{public}d, sql=%{public}s",
+        ret,
+        sql.c_str());
+    MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddDirtyIntoGalleryAlbum success");
     return ret;
 }
 }  // namespace DataTransfer

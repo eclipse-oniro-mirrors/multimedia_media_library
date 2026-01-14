@@ -32,6 +32,8 @@
 #include "settings_data_manager.h"
 
 namespace OHOS::Media {
+constexpr int32_t ALBUM_FROM_CLOUD = 2;
+
 int32_t PhotoAlbumRestore::ReadResultSet(
     const std::shared_ptr<NativeRdb::ResultSet> &resultSet, PhotoAlbumRestore::GalleryAlbumRowData &albumInfo)
 {
@@ -55,6 +57,7 @@ int32_t PhotoAlbumRestore::ReadResultSet(
         uploadStatus = 1;
     }
     albumInfo.uploadStatus = uploadStatus;
+    albumInfo.isLocal = GetInt32Val(this->GALLERY_DIRTY, resultSet) == 1 ? 0 : ALBUM_FROM_CLOUD;
     return E_OK;
 }
 
@@ -90,10 +93,11 @@ std::vector<PhotoAlbumRestore::GalleryAlbumRowData> PhotoAlbumRestore::GetGaller
     } while (rowCount > 0);
     if (screenShotAlbumInfoOp.has_value()) {
         int32_t uploadStatus = screenShotAlbumInfoOp.value().uploadStatus;
+        int32_t isLocal = screenShotAlbumInfoOp.value().isLocal;
         MEDIA_INFO_LOG(
-            "ScreenShotAlbumInfo has value, auto-create ScreenRecorderAlbumInfo with uploadStatus: %{public}d",
-            uploadStatus);
-        result.emplace_back(this->BuildAlbumInfoOfGalleryRecorders(uploadStatus));
+            "ScreenShotAlbumInfo has value, auto-create ScreenRecorderAlbumInfo with uploadStatus: %{public}d,"
+            "isLocal: %{public}d", uploadStatus, isLocal);
+        result.emplace_back(this->BuildAlbumInfoOfGalleryRecorders(uploadStatus, isLocal));
     }
     return result;
 }
@@ -132,6 +136,7 @@ std::vector<PhotoAlbumDao::PhotoAlbumRowData> PhotoAlbumRestore::GetAlbumsToRest
         albumRowData.priority = galleryAlbum.priority;
         albumRowData.uploadStatus = isAccountValidAndSwitchOn_ ? galleryAlbum.uploadStatus :
             PhotoAlbumUploadStatusOperation::GetAlbumUploadStatusWithLpath(albumRowData.lPath);
+        albumRowData.isLocal = galleryAlbum.isLocal;
         result.emplace_back(albumRowData);
     }
     return result;
@@ -187,6 +192,7 @@ std::vector<PhotoAlbumDao::PhotoAlbumRowData> PhotoAlbumRestore::GetAlbumInfoToU
         albumRowData.lPath = galleryAlbum.lPath;
         albumRowData.priority = galleryAlbum.priority;
         albumRowData.uploadStatus = galleryAlbum.uploadStatus;
+        albumRowData.isLocal = galleryAlbum.isLocal;
         result.emplace_back(albumRowData);
     }
     return result;
@@ -207,7 +213,8 @@ int32_t PhotoAlbumRestore::UpdateAlbums(const std::vector<PhotoAlbumDao::PhotoAl
 /**
  * @brief Build GalleryAlbumRowData for ScreenRecorder.
  */
-PhotoAlbumRestore::GalleryAlbumRowData PhotoAlbumRestore::BuildAlbumInfoOfGalleryRecorders(const int32_t uploadStatus)
+PhotoAlbumRestore::GalleryAlbumRowData PhotoAlbumRestore::BuildAlbumInfoOfGalleryRecorders(const int32_t uploadStatus,
+    const int32_t isLocal)
 {
     PhotoAlbumRestore::GalleryAlbumRowData albumInfo;
     // bind albumName and bundleName by lPath.
@@ -216,6 +223,7 @@ PhotoAlbumRestore::GalleryAlbumRowData PhotoAlbumRestore::BuildAlbumInfoOfGaller
     albumInfo.lPath = AlbumPlugin::LPATH_SCREEN_RECORDS;
     albumInfo.priority = 1;
     albumInfo.uploadStatus = uploadStatus;
+    albumInfo.isLocal = isLocal;
     return albumInfo;
 }
 

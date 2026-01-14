@@ -43,6 +43,7 @@ private:
     int32_t AddColumnsOfTOcrResult(NativeRdb::RdbStore &store);
     int32_t AddUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store);
     int32_t AddHdcUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store);
+    int32_t AddDirtyIntoGalleryAlbum(NativeRdb::RdbStore &store);
 
 private:
     // Note: The column photo_quality's default value is 0.
@@ -85,6 +86,8 @@ private:
         ALTER TABLE gallery_album ADD COLUMN uploadStatus INT DEFAULT 1;";
     const std::string SQL_GALLERY_ALBUM_TABLE_ADD_HDC_UPLOAD_STATUS_COLUMN = "\
         ALTER TABLE gallery_album ADD COLUMN hdcUploadStatus INT DEFAULT 1;";
+    const std::string SQL_GALLERY_ALBUM_TABLE_ADD_DIRTY_COLUMN = "\
+        ALTER TABLE gallery_album ADD COLUMN dirty INT DEFAULT 1;";
 
     const std::string UPDATE_USER_DISPLAY_LEVEL_SQL = R"(
         UPDATE merge_tag
