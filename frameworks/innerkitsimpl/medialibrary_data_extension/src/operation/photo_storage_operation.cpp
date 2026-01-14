@@ -127,8 +127,8 @@ void PhotoStorageOperation::GetTotalThumbnailSize(std::shared_ptr<MediaLibraryRd
         statsResult->GetInt(ZERO_THUMB_SIZE_COUNT_COLUMN_NUMBER, zeroThumbSizeCount);
     }
 
-    // 此接口需返回磁盘占用大小，为每张图片增加8KB大小（经验值），缩略图大小为0的除外
-    constexpr int64_t EXTRA_SIZE_PER_PHOTO = 8 * 1024;
+    // 此接口需返回磁盘占用大小，为每张图片增加12KB大小（经验值），缩略图大小为0的除外
+    constexpr int64_t EXTRA_SIZE_PER_PHOTO = 12 * 1024;
     totalThumbnailSizeResult.totalThumbnailSize +=
         (totalThumbnailSizeResult.thumbnailCount - zeroThumbSizeCount) * EXTRA_SIZE_PER_PHOTO;
 }

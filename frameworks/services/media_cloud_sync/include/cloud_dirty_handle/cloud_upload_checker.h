@@ -47,6 +47,9 @@ private:
     static void UpdateFileSize(const CheckedPhotoInfo &photoInfo, bool isMovingPhoto);
     static void HandleMissingFile(
         const CheckedPhotoInfo &photoInfo, bool isMovingPhoto, std::vector<std::string> &noLcdList);
+    static void FillDbFileSize(const CheckedPhotoInfo &photoInfo, NativeRdb::ValuesBucket &values);
+    static void FillDbHeightAndWidth(const CheckedPhotoInfo &photoInfo, NativeRdb::ValuesBucket &values);
+    static bool RepairPhotoByLcdUpdateDbColumn(const CheckedPhotoInfo &photoInfo);
 
 private:
     static std::mutex mutex_;
