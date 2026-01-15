@@ -15,6 +15,8 @@
 
 #include "media_asset_rdbstore.h"
 
+#include "iservice_registry.h"
+
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -36,6 +38,7 @@ namespace Media {
 const std::string MEDIA_LIBRARY_STARTUP_PARAM_PREFIX = "multimedia.medialibrary.startup.";
 constexpr uint32_t BASE_USER_RANGE = 200000;
 const int32_t ARG_COUNT = 2;
+constexpr int STORAGE_MANAGER_MANAGER_ID = 5003;
 const std::unordered_set<OperationObject> OPERATION_OBJECT_SET = {
     OperationObject::UFM_PHOTO,
     OperationObject::UFM_AUDIO,
@@ -111,6 +114,22 @@ MediaAssetRdbStore::MediaAssetRdbStore()
     MEDIA_INFO_LOG("success to init visitor rdb");
 }
 
+bool ConnectMediaLibrary()
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ConnectMediaLibrary");
+    auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    CHECK_AND_RETURN_RET_LOG(saManager != nullptr, false, "Get system ability mgr failed.");
+
+    auto remoteObj = saManager->GetSystemAbility(STORAGE_MANAGER_MANAGER_ID);
+    CHECK_AND_RETURN_RET_LOG(remoteObj != nullptr, false, "GetSystemAbility Service failed.");
+
+    auto dataShareHelper = DataShare::DataShareHelper::Creator(remoteObj, MEDIALIBRARY_DATA_URI);
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, false, "Connect media library failed");
+    MEDIA_INFO_LOG("ConnectMediaLibrary successfully");
+    return true;
+}
+
 int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
 {
     auto context = AbilityRuntime::Context::GetApplicationContext();
@@ -119,6 +138,10 @@ int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
     const string key = MEDIA_LIBRARY_STARTUP_PARAM_PREFIX + to_string(uid);
     auto rdbInitFlag = system::GetBoolParameter(key, false);
     bool cond = (!rdbInitFlag && !isIgnoreSELinux);
+    if (cond) {
+        MEDIA_WARN_LOG("Failed to get rdb init flag");
+        cond = !ConnectMediaLibrary();
+    }
     CHECK_AND_RETURN_RET_LOG(!cond, NativeRdb::E_ERROR,
         "media library db update not complete, key:%{public}s", key.c_str());
 
