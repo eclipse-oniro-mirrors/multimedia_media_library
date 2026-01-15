@@ -65,6 +65,7 @@ bool ThumbnailUtils::LoadAudioFileInfo(shared_ptr<AVMetadataHelper> avMetadataHe
     }
 
     auto audioPicMemory = avMetadataHelper->FetchArtPicture();
+    CHECK_AND_RETURN_RET_LOG(audioPicMemory != nullptr, false, "AudioPicMemory is nullptr");
     SourceOptions opts;
     unique_ptr<ImageSource> audioImageSource = ImageSource::CreateImageSource(audioPicMemory->GetBase(),
         audioPicMemory->GetSize(), opts, errCode);

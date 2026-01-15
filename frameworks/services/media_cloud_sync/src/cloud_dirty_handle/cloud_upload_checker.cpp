@@ -19,9 +19,11 @@
 
 #include <sys/stat.h>
 
+#include "exif_rotate_utils.h"
 #include "media_file_utils.h"
 #include "media_file_uri.h"
 #include "medialibrary_unistore_manager.h"
+#include "metadata_extractor.h"
 #include "photo_album_column.h"
 #include "thumbnail_const.h"
 #include "media_column.h"
@@ -124,6 +126,57 @@ int32_t GetPhotoRealSize(const bool isMovingPhoto, const std::string &path, int6
     return E_OK;
 }
 
+void CloudUploadChecker::FillDbFileSize(const CheckedPhotoInfo &photoInfo, ValuesBucket &values)
+{
+    int64_t size = 0;
+    bool isMovingPhoto = IsMovingPhoto(photoInfo.subtype, photoInfo.movingPhotoEffectMode);
+
+    CHECK_AND_RETURN_LOG(GetPhotoRealSize(isMovingPhoto, photoInfo.path, size) == E_OK,
+        "get photo real size failed, path=%{public}s", photoInfo.path.c_str());
+
+    values.PutLong(MediaColumn::MEDIA_SIZE, size);
+}
+
+void CloudUploadChecker::FillDbHeightAndWidth(const CheckedPhotoInfo &photoInfo, ValuesBucket &values)
+{
+    std::unique_ptr<Metadata> data = std::make_unique<Metadata>();
+    CHECK_AND_RETURN_LOG(data != nullptr, "Data is nullptr");
+    data->SetFilePath(photoInfo.path);
+    int32_t err = MetadataExtractor::ExtractImageMetadata(data);
+    CHECK_AND_RETURN_LOG(err == E_OK, "Extract image metadata err: %{public}d", err);
+    int32_t height = data->GetFileHeight();
+    int32_t width = data->GetFileWidth();
+    double aspectRatio = MediaFileUtils::CalculateAspectRatio(height, width);
+    values.Put(PhotoColumn::PHOTO_ASPECT_RATIO, aspectRatio);
+    values.PutInt(PhotoColumn::PHOTO_HEIGHT, height);
+    values.PutInt(PhotoColumn::PHOTO_WIDTH, width);
+
+    MEDIA_INFO_LOG("height: %{public}d, width: %{public}d, aspectRatio: %{public}lf", height, width, aspectRatio);
+}
+
+bool CloudUploadChecker::RepairPhotoByLcdUpdateDbColumn(const CheckedPhotoInfo &photoInfo)
+{
+    ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_NEW));
+    FillDbFileSize(photoInfo, values);
+    FillDbHeightAndWidth(photoInfo, values);
+    values.PutInt(PhotoColumn::PHOTO_ORIENTATION, 0);
+    values.PutInt(PhotoColumn::PHOTO_EXIF_ROTATE, static_cast<int32_t>(ExifRotateType::TOP_LEFT));
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
+
+    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, photoInfo.fileId);
+    
+    int32_t updateCount = 0;
+    int32_t err = rdbStore->Update(updateCount, values, predicates);
+
+    CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, false, "Update rdb err: %{public}d, file id: %{public}d",
+        err, photoInfo.fileId);
+    return true;
+}
+
 void CloudUploadChecker::UpdateFileSize(const CheckedPhotoInfo &photoInfo, bool isMovingPhoto)
 {
     int64_t size = 0;
@@ -176,7 +229,7 @@ void CloudUploadChecker::HandleMissingFile(
         photoInfo.fileId);
 
     MEDIA_INFO_LOG("copy lcd to origin photo succeed, file_id: %{public}d", photoInfo.fileId);
-    UpdateFileSize(photoInfo, isMovingPhoto);
+    CHECK_AND_RETURN_LOG(RepairPhotoByLcdUpdateDbColumn(photoInfo), "Update column failed");
 }
 
 void CloudUploadChecker::HandlePhotoInfos(const std::vector<CheckedPhotoInfo> &photoInfos, int32_t &curFileId)
