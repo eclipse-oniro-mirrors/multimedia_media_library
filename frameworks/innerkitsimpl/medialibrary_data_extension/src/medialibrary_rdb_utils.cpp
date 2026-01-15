@@ -566,15 +566,11 @@ static int32_t SetCount(const shared_ptr<ResultSet> &fileResult, const UpdateAlb
             values.PutInt(otherColumn, newCount);
             MEDIA_INFO_LOG("AccurateRefresh Update album other count");
         }
-        if (!(data.albumSubtype >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
+        if (targetColumn == PhotoAlbumColumns::ALBUM_COUNT &&
+            !(data.albumSubtype >= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_START) &&
             data.albumSubtype <= static_cast<int32_t>(PhotoAlbumSubType::ANALYSIS_END))) {
-            if (targetColumn == PhotoAlbumColumns::ALBUM_COUNT) {
-                MEDIA_INFO_LOG("AccurateRefresh Update album hidden: %{public}d", newCount < 1);
-                values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, newCount < 1);
-            } else {
-                MEDIA_INFO_LOG("AccurateRefresh Update album hidden : %{public}d", data.albumCount < 1);
-                values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, data.albumCount < 1);
-            }
+            MEDIA_INFO_LOG("AccurateRefresh Update album hidden: %{public}d", newCount);
+            values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, newCount == 0);
         }
     }
     return newCount;
