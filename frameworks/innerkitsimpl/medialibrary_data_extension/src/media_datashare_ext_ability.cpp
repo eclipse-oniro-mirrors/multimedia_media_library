@@ -103,6 +103,8 @@ static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
     OperationObject::VISION_SALIENCY,
     OperationObject::VISION_HEAD,
     OperationObject::VISION_AFFECTIVE,
+    OperationObject::VISION_DEDUP_SELECTION,
+    OperationObject::VISION_PROFILE,
     OperationObject::VISION_POSE,
     OperationObject::VISION_TOTAL,
     OperationObject::VISION_VIDEO_TOTAL,
