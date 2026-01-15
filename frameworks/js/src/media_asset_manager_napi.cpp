@@ -1542,28 +1542,6 @@ bool IsSaveCallbackInfoByTranscoder(napi_value napiValueOfMedia, napi_env env, A
     return false;
 }
 
-static void SavePicture(const std::shared_ptr<NapiMediaAssetDataHandler>& dataHandler)
-{
-    if (dataHandler->GetReturnDataType() != ReturnDataType::TYPE_ARRAY_BUFFER &&
-        dataHandler->GetReturnDataType() != ReturnDataType::TYPE_IMAGE_SOURCE) {
-        return;
-    }
-    string fileUri = dataHandler->GetRequestUri();
-    std::string uriStr = PATH_SAVE_PICTURE;
-    std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
-    std::size_t index = tempStr.find("/");
-    std::string fileId = tempStr.substr(0, index);
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, fileId);
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, IMAGE_FILE_TYPE, "1");
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, "uri", fileUri);
-    Uri uri(uriStr);
-    DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(PhotoColumn::PHOTO_IS_TEMP, false);
-    DataShare::DataSharePredicates predicate;
-    UserFileClient::Update(uri, predicate, valuesBucket);
-}
-
 void MediaAssetManagerNapi::OnDataPrepared(napi_env env, napi_value cb, void *context, void *data)
 {
     NAPI_INFO_LOG("Begin OnDataPrepared.");
@@ -1595,7 +1573,6 @@ void MediaAssetManagerNapi::OnDataPrepared(napi_env env, napi_value cb, void *co
         }
     }
     bool isPicture = true;
-    SavePicture(dataHandler);
     SetCinematicResult(dataHandler, assetHandler);
     napi_value napiValueOfMedia = assetHandler->isError ? nullptr : GetNapiValueOfMedia(env, dataHandler, isPicture);
     if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_PICTURE) {

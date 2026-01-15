@@ -59,6 +59,8 @@ public:
     EXPORT int32_t GetPendingTaskSize();
     EXPORT int32_t GetLowPendingTaskSize();
     EXPORT void DeleteDataWithImageId(const std::string& imageId, PictureType pictureType);
+    EXPORT void SetLast200mImageId(const std::string& imageId);
+    EXPORT std::string GetLast200mImageId();
 private:
     void Run();
     std::unique_ptr<std::thread> thread_ = nullptr;
@@ -72,6 +74,7 @@ private:
     static std::mutex mutex_;
     sptr<PictureDataOperations> pictureDataOperations_;
     int32_t lastPendingTaskSize_ = 0;
+    std::string last200mImageId_ = "default";
 }; // class PictureManagerThread
 } // namespace Media
 }  // namespace OHOS

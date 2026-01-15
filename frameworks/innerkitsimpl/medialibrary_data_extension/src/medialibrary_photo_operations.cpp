@@ -68,6 +68,7 @@
 #include "multistages_capture_notify.h"
 #include "cloud_media_define.h"
 #include "cloud_media_common.h"
+#include "thumbnail_utils.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -93,6 +94,7 @@ constexpr int32_t ORIGIN_VIDEO = 0;
 constexpr int32_t XT_ORIGIN_VIDEO = 1;
 constexpr int32_t XT_EFFECT_VIDEO = 2;
 constexpr int64_t FIXED_PADDING_BYTES = 1024;
+constexpr int32_t HIGH_PIXEL_SIDE = 12 * 1024;
 const std::string SET_LOCATION_KEY = "set_location";
 const std::string SET_LOCATION_VALUE = "1";
 const std::string SPECIAL_EDIT_COMPATIBLE_FORMAT = "system";
@@ -103,6 +105,7 @@ static const std::string ORIGIN_VIDEO_STR = "1";
 const bool PROCESS_TRANSCODE_SIZE = false;
 static const std::string CONTAIN_ADD_RESOURCE_FALSE = "0";
 static const std::string CONTAIN_ADD_RESOURCE_TRUE = "1";
+static const std::string IS_CAPTURE = "is_capture";
 
 enum ImageFileType : int32_t {
     JPEG = 1,
@@ -848,8 +851,23 @@ static void SetAssetDisplayName(const string &displayName, FileAsset &fileAsset,
     isContains = true;
 }
 
+static void Check200mPicture(MediaLibraryCommand &cmd)
+{
+    string isCapture = cmd.GetQuerySetParam(IS_CAPTURE);
+    if (isCapture != "true") {
+        MEDIA_DEBUG_LOG("no need Check200mPicture");
+    }
+    auto pictureManagerThread = PictureManagerThread::GetInstance();
+    string imageId = pictureManagerThread->GetLast200mImageId();
+    if (pictureManagerThread->IsExsitPictureByImageId(imageId)) {
+        pictureManagerThread->DeleteDataWithImageId(imageId, LOW_QUALITY_PICTURE);
+        pictureManagerThread->SetLast200mImageId("defult");
+    }
+}
+
 int32_t MediaLibraryPhotoOperations::CreateV10(MediaLibraryCommand &cmd)
 {
+    Check200mPicture(cmd);
     FileAsset fileAsset;
     ValuesBucket &values = cmd.GetValueBucket();
     string displayName;
@@ -1607,10 +1625,31 @@ void MediaLibraryPhotoOperations::HandleContainsAddResource(const std::string &f
     MultistagesCaptureNotify::NotifyLowQualityMemoryCount();
 }
 
+static void ResizePicture(std::shared_ptr<Media::Picture> &picture)
+{
+    CHECK_AND_RETURN_LOG(picture != nullptr, "picture is nullptr");
+    auto pixelMap = picture->GetMainPixel();
+    CHECK_AND_RETURN_LOG(pixelMap != nullptr, "pixelMap is nullptr");
+    int32_t height = pixelMap->GetHeight();
+    int32_t width = pixelMap->GetWidth();
+    if (height < HIGH_PIXEL_SIDE || width < HIGH_PIXEL_SIDE) {
+        MEDIA_INFO_LOG("not 200m picture");
+        return;
+    }
+    ThumbnailUtils::ResizeLcd(width, height);
+    float widthScal = (1.0f * width) / pixelMap->GetWidth();
+    float heightScal = (1.0f * height) / pixelMap->GetHeight();
+    pixelMap->resize(widthScal, heightScal);
+    MEDIA_INFO_LOG("ResizePicture : height %{public}d, width%{public}d",
+        pixelMap->GetHeight(), pixelMap->GetWidth());
+}
+
 void MediaLibraryPhotoOperations::HandleScanFile(const std::string &path, int32_t burstCoverLevel,
     std::shared_ptr<Media::Picture> &resultPicture, const std::string &fileId)
 {
     if (!path.empty()) {
+        CHECK_AND_RETURN_LOG(resultPicture != nullptr, "resultPicture is nullptr");
+        ResizePicture(resultPicture);
         MEDIA_INFO_LOG("MultistagesCapture, scan file start, fileId: %{public}s", fileId.c_str());
         if (burstCoverLevel == static_cast<int32_t>(BurstCoverLevelType::COVER)) {
             ScanFile(path, false, true, true, stoi(fileId), resultPicture);
@@ -3836,6 +3875,15 @@ int32_t MediaLibraryPhotoOperations::SavePicture(const int32_t &fileType, const 
     if (pictureManagerThread != nullptr) {
         pictureManagerThread->FinishAccessingPicture(photoId);
         pictureManagerThread->DeleteDataWithImageId(lastPhotoId_, LOW_QUALITY_PICTURE);
+        auto pixelMap = resultPicture->GetMainPixel();
+        if (pixelMap != nullptr) {
+            int32_t height = pixelMap->GetHeight();
+            int32_t width = pixelMap->GetWidth();
+            if (height >= HIGH_PIXEL_SIDE && width >= HIGH_PIXEL_SIDE) {
+                pictureManagerThread->DeleteDataWithImageId(photoId, LOW_QUALITY_PICTURE);
+                pictureManagerThread->SetLast200mImageId("default");
+            }
+        }
     }
     lastPhotoId_ = photoId;
     MultistagesCaptureNotify::NotifyLowQualityMemoryCount();

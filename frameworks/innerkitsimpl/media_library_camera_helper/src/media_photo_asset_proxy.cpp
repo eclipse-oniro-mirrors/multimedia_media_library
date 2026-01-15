@@ -42,6 +42,7 @@ namespace Media {
 const std::string API_VERSION_STR = "api_version";
 const std::string SAVE_PICTURE = "save_picture";
 const std::string CALLING_TOKENID = "tokenId";
+const std::string IS_CAPTURE = "is_capture";
 const double TIMER_MULTIPLIER = 60.0;
 const std::string MEDIA_FILEMODE_READWRITE = "rw";
 
@@ -170,6 +171,7 @@ void PhotoAssetProxy::CreatePhotoAsset(const sptr<PhotoProxy> &photoProxy)
     string uri = PAH_CREATE_PHOTO;
     MediaUriUtils::AppendKeyValue(uri, API_VERSION_STR, to_string(MEDIA_API_VERSION_V10));
     MediaUriUtils::AppendKeyValue(uri, CALLING_TOKENID, to_string(callingTokenId_));
+    MediaUriUtils::AppendKeyValue(uri, IS_CAPTURE, "true");
     Uri createUri(uri);
     fileId_ = dataShareHelper_->InsertExt(createUri, values, uri_);
     CHECK_AND_RETURN_LOG(fileId_ >= 0, "Failed to create Asset, insert database error!");

@@ -52,6 +52,7 @@
 #include "multistages_capture_dfx_trigger_ratio.h"
 #include "multistages_capture_request_task_manager.h"
 #include "multistages_photo_capture_manager.h"
+#include "medialibrary_photo_operations.h"
 #undef private
 #undef protected
 #include "media_audio_column.h"
@@ -676,6 +677,83 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_on_error_002,
     MEDIA_INFO_LOG("session_callback_on_error_002 End");
 }
 
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_on_error_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("session_callback_on_error_003 Start");
+    auto fileId = PrepareForFirstVisit();
+    EXPECT_GT(fileId, 0);
+
+    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
+    callback->OnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INVALID_PHOTO_ID);
+
+    auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
+    shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
+    callback->NotifyIfTempFile(fileAsset, true);
+    delete callback;
+    MEDIA_INFO_LOG("session_callback_on_error_003 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_Handle_on_error_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("session_callback_Handle_on_error_001 Start");
+    auto fileId = PrepareForFirstVisit();
+    EXPECT_GT(fileId, 0);
+
+    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
+    callback->HandleOnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_FAILED);
+    delete callback;
+
+    vector<string> columns = { PhotoColumn::PHOTO_QUALITY };
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    ASSERT_NE(g_rdbStore, nullptr);
+
+    auto resultSet = g_rdbStore->Query(cmd, columns);
+    ASSERT_NE(resultSet, nullptr);
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+
+    int32_t photoQuality = GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet);
+    EXPECT_EQ(photoQuality, static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
+
+    MEDIA_INFO_LOG("session_callback_Handle_on_error_001 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_Handle_on_error_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("session_callback_Handle_on_error_002 Start");
+    auto fileId = PrepareForFirstVisit();
+    EXPECT_GT(fileId, 0);
+
+    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
+    callback->HandleOnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_ABNORMAL);
+
+    auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
+    shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
+    callback->NotifyIfTempFile(fileAsset, true);
+    delete callback;
+    MEDIA_INFO_LOG("session_callback_Handle_on_error_002 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, session_callback_Handle_on_error_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("session_callback_Handle_on_error_003 Start");
+    auto fileId = PrepareForFirstVisit();
+    EXPECT_GT(fileId, 0);
+
+    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
+    callback->HandleOnError(PHOTO_ID_FOR_TEST, CameraStandard::ERROR_IMAGE_PROC_INVALID_PHOTO_ID);
+
+    auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
+    shared_ptr<FileAsset> fileAsset = std::move(fileAssetPtr);
+    callback->NotifyIfTempFile(fileAsset, true);
+    delete callback;
+    MEDIA_INFO_LOG("session_callback_Handle_on_error_003 End");
+}
+
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, deferred_proc_adapter_null_session_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("deferred_proc_adapter_null_session_001 Start");
@@ -780,6 +858,79 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, UpdatePhotoQuality_001, TestSi
     EXPECT_EQ(GetInt32Val(PhotoColumn::PHOTO_IS_TEMP, resultSet), 0);
 
     MEDIA_INFO_LOG("UpdatePhotoQuality_001 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, HandleForNullData_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleForNullData_001 Start");
+    auto fileId = PrepareForFirstVisit();
+    EXPECT_GT(fileId, 0);
+
+    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
+
+    sptr<SurfaceBuffer> surfaceBuffer = SurfaceBuffer::Create();
+    std::shared_ptr<CameraStandard::PictureIntf> picture = std::make_shared<CameraStandard::PictureAdapter>();
+    picture->Create(surfaceBuffer);
+    CameraStandard::PictureAdapter* pictureAdapter = 
+        static_cast<OHOS::CameraStandard::PictureAdapter*>(picture.get());
+    std::shared_ptr<Media::Picture> picture = pictureAdapter->GetPicture();
+
+    vector<string> columns = {PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_DIRTY,
+        PhotoColumn::PHOTO_IS_TEMP };
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    ASSERT_NE(g_rdbStore, nullptr);
+
+    auto resultSet = g_rdbStore->Query(cmd, columns);
+    ASSERT_NE(resultSet, nullptr);
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+
+    std::string imageId = GetStringVal(PhotoColumn::PHOTO_ID, resultSet);
+    ASSERT_NE(imageId, "");
+
+    callback->HandleForNullData(imageId, picture);
+
+    auto pictureManagerThread = PictureManagerThread::GetInstance();
+    auto isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
+    EXPECT_EQ(isExsit, true);
+
+    delete callback;
+    MEDIA_INFO_LOG("HandleForNullData_001 End");
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, HandleForNullData_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleForNullData_002 Start");
+    auto fileId = PrepareForFirstVisit();
+    EXPECT_GT(fileId, 0);
+
+    MultiStagesCaptureDeferredPhotoProcSessionCallback *callback =
+        new MultiStagesCaptureDeferredPhotoProcSessionCallback();
+
+    std::shared_ptr<Media::Picture> picture = nullptr;
+
+    vector<string> columns = {PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_DIRTY,
+        PhotoColumn::PHOTO_IS_TEMP };
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
+    cmd.GetAbsRdbPredicates()->EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
+    ASSERT_NE(g_rdbStore, nullptr);
+
+    auto resultSet = g_rdbStore->Query(cmd, columns);
+    ASSERT_NE(resultSet, nullptr);
+    ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+
+    std::string imageId = GetStringVal(PhotoColumn::PHOTO_ID, resultSet);
+    ASSERT_NE(imageId, "");
+
+    callback->HandleForNullData(imageId, picture);
+
+    auto pictureManagerThread = PictureManagerThread::GetInstance();
+    auto isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
+    EXPECT_EQ(isExsit, true);
+
+    delete callback;
+    MEDIA_INFO_LOG("HandleForNullData_002 End");
 }
 
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, UpdateCEAvailable_test, TestSize.Level1)
@@ -1075,6 +1226,28 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, IsPhotoDeleted_test_002, TestS
     std::string photoId = "abc";
     auto ret = manager.IsPhotoDeleted(photoId);
     EXPECT_EQ(ret, false);
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, UpdateDbInfo_test_001, TestSize.Level1)
+{
+    auto fileId = PrepareForFirstVisit();
+    MultiStagesPhotoCaptureManager& manager = MultiStagesPhotoCaptureManager::GetInstance();
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
+    cmd.GetAbsRdbPredicates()->SetWhereClause(MediaColumn::MEDIA_ID + "= ?");
+    cmd.GetAbsRdbPredicates()->SetWhereArgs({to_string(fileId)});
+    auto ret = manager.UpdateDbInfo(cmd);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, UpdateDbInfo_test_002, TestSize.Level1)
+{
+    PrepareForFirstVisit();
+    MultiStagesPhotoCaptureManager& manager = MultiStagesPhotoCaptureManager::GetInstance();
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
+    cmd.GetAbsRdbPredicates()->SetWhereClause(MediaColumn::MEDIA_ID + "= ?");
+    cmd.GetAbsRdbPredicates()->SetWhereArgs({""});
+    auto ret = manager.UpdateDbInfo(cmd);
+    EXPECT_EQ(ret, E_HAS_DB_ERROR);
 }
 
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, BeginSynchronize_test_001, TestSize.Level1)
