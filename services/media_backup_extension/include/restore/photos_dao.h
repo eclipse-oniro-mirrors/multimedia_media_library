@@ -151,7 +151,6 @@ private:
                 display_name, \
                 size, \
                 orientation, \
-                hidden, \
                 date_trashed, \
                 source_path \
             FROM Photos \
