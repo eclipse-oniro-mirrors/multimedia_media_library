@@ -1282,6 +1282,8 @@ napi_value ParseHiddenPhotosDisplayMode(napi_env env,
             break;
         case ALBUMS_MODE:
             context->predicates.EqualTo(PhotoAlbumColumns::CONTAINS_HIDDEN, to_string(1));
+            context->predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::HIDDEN);
+            context->predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::TRASH);
             break;
         default:
             NapiError::ThrowError(
