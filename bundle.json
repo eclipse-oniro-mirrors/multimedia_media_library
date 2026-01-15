@@ -11,8 +11,6 @@
       "name": "media_library",
       "subsystem": "multimedia",
       "syscap": [
-        "SystemCapability.Multimedia.MediaLibrary.Core",
-        "SystemCapability.Multimedia.MediaLibrary.DistributedCore",
         "SystemCapability.FileManagement.UserFileManager.Core",
         "SystemCapability.FileManagement.UserFileManager.DistributedCore",
         "SystemCapability.FileManagement.PhotoAccessHelper.Core"
