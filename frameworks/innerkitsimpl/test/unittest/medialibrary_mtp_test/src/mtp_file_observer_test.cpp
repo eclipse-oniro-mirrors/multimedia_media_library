@@ -932,12 +932,7 @@ HWTEST_F(MtpFileObserverTest, mtp_file_observer_test_0042, TestSize.Level1)
     auto context = std::make_shared<MtpOperationContext>();
     context->transactionID = 12345;
 
-    try {
-        context->mtpDriver = std::make_shared<MtpDriver>();
-    } catch (...) {
-        context->mtpDriver = nullptr;
-    }
-
+    context->mtpDriver = std::make_shared<MtpDriver>();
     MtpFileObserver::isEventThreadRunning_.store(true);
     {
         std::lock_guard<std::mutex> lock(MtpFileObserver::mutex_);
