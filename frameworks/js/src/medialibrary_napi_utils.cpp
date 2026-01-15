@@ -696,7 +696,7 @@ napi_status MediaLibraryNapiUtils::ParseArgsTwoCallback(napi_env env, napi_callb
         CHECK_STATUS_RET(HasCallback(env, asyncContext->argc, asyncContext->argv, isCallback),
             "Failed to check callback");
         if (isCallback) {
-            int callbackIndex = asyncContext->argc - 2;
+            uint32_t callbackIndex = asyncContext->argc - 2;
             CHECK_STATUS_RET(GetParamFunction(env, asyncContext->argv[callbackIndex],
                 asyncContext->callbackRef), "Failed to get callback");
             CHECK_STATUS_RET(GetParamFunction(env, asyncContext->argv[asyncContext->argc - 1],
