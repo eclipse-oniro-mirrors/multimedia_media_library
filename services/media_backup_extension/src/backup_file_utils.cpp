@@ -456,14 +456,8 @@ int32_t BackupFileUtils::IsFileValid(std::string &filePath, int32_t sceneCode,
     std::string garbledFilePath = BackupFileUtils::GarbleFilePath(filePath, sceneCode);
     struct stat statInfo {};
     if (stat(filePath.c_str(), &statInfo) != E_SUCCESS) {
-        bool res = false;
-        if (fileAccessHelper_ != nullptr) {
-            res = fileAccessHelper_->GetValidPath(filePath);
-        }
-        if (stat(filePath.c_str(), &statInfo) != E_SUCCESS) {
-            return hasLowQualityImage ? IsLowQualityImage(filePath, sceneCode, relativePath, hasLowQualityImage) :
-                E_NO_SUCH_FILE;
-        }
+        return hasLowQualityImage ? IsLowQualityImage(filePath, sceneCode, relativePath, hasLowQualityImage) :
+            E_NO_SUCH_FILE;
     }
     if (statInfo.st_mode & S_IFDIR) {
         MEDIA_ERR_LOG("Invalid file (%{public}s), is a directory", garbledFilePath.c_str());
