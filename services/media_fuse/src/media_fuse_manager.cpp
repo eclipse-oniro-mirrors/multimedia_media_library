@@ -189,6 +189,7 @@ void MediaFuseManager::Start()
 
 void MediaFuseManager::Stop()
 {
+    UMountFuse();
     MEDIA_INFO_LOG("Stop finished successfully");
 }
 
