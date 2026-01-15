@@ -86,6 +86,15 @@ napi_value HighlightAlbumNapi::AnalysisAlbumInit(napi_env env, napi_value export
     return exports;
 }
 
+static void SetPhotoAlbumInstance(unique_ptr<HighlightAlbumNapiAsyncContext> &asyncContext)
+{
+    if (asyncContext == nullptr || asyncContext->objectInfo == nullptr) {
+        NAPI_ERR_LOG("objectInfo is nullptr");
+        return;
+    }
+    asyncContext->photoAlbumInstance_ = asyncContext->objectInfo->GetPhotoAlbumInstance();
+}
+
 static napi_value ParseHighlightAlbum(napi_env env, napi_value arg, shared_ptr<PhotoAlbum>& photoAlbum)
 {
     napi_valuetype valueType;
@@ -238,11 +247,11 @@ static void JSSetHighlightUserActionDataExecute(napi_env env, void *data)
     tracer.Start("JSSetHighlightUserActionDataExecute");
 
     auto *context = static_cast<HighlightAlbumNapiAsyncContext*>(data);
-    int32_t albumId = context->objectInfo->GetPhotoAlbumInstance()->GetAlbumId();
+    int32_t albumId = context->photoAlbumInstance_->GetAlbumId();
     SetHighlightUserActionDataReqBody reqBody;
     reqBody.albumId = to_string(albumId);
     reqBody.userActionType = context->highlightUserActionType;
-    auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
+    auto photoAlbum = context->photoAlbumInstance_;
     reqBody.albumType = static_cast<int32_t>(photoAlbum->GetPhotoAlbumType());
     reqBody.albumSubType = static_cast<int32_t>(photoAlbum->GetPhotoAlbumSubType());
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_HIGH_LIGHT_USER_ACTION_DATA);
@@ -284,8 +293,8 @@ static void JSSetHighlightSubtitleExecute(napi_env env, void *data)
     tracer.Start("JSSetHighlightSubtitleExecute");
 
     auto *context = static_cast<HighlightAlbumNapiAsyncContext*>(data);
-    int albumId = context->objectInfo->GetPhotoAlbumInstance()->GetAlbumId();
-    auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
+    int albumId = context->photoAlbumInstance_->GetAlbumId();
+    auto photoAlbum = context->photoAlbumInstance_;
     SetSubtitleReqBody reqBody;
     reqBody.albumId = to_string(albumId);
     reqBody.subtitle = context->subtitle;
@@ -417,7 +426,7 @@ static void JSGetOrderPositionExecute(napi_env env, void *data)
     auto *context = static_cast<HighlightAlbumNapiAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
 
-    auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
+    auto photoAlbum = context->photoAlbumInstance_;
 
     GetOrderPositionRespBody respBody;
     GetOrderPositionReqBody reqBody;
@@ -494,7 +503,8 @@ napi_value HighlightAlbumNapi::JSGetOrderPosition(napi_env env, napi_callback_in
         "Failed to get object info");
 
     // get this album, check it is an analysis album
-    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    SetPhotoAlbumInstance(asyncContext);
+    auto photoAlbum = asyncContext->photoAlbumInstance_;
     CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "Failed to get photo album instance");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsAnalysisAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
@@ -531,7 +541,8 @@ napi_value HighlightAlbumNapi::JSGetHighlightAlbumInfo(napi_env env, napi_callba
     CHECK_ARGS(env, MediaLibraryNapiUtils::ParseArgsNumberCallback(env, info, asyncContext,
         asyncContext->highlightAlbumInfoType), JS_ERR_PARAMETER_INVALID);
 
-    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    SetPhotoAlbumInstance(asyncContext);
+    auto photoAlbum = asyncContext->photoAlbumInstance_;
     CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsHighlightAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
@@ -558,7 +569,8 @@ napi_value HighlightAlbumNapi::JSSetHighlightUserActionData(napi_env env, napi_c
         asyncContext->highlightUserActionType), JS_ERR_PARAMETER_INVALID);
     CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetInt32Arg(env, asyncContext->argv[1], asyncContext->actionData));
 
-    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    SetPhotoAlbumInstance(asyncContext);
+    auto photoAlbum = asyncContext->photoAlbumInstance_;
     CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsHighlightAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
@@ -582,7 +594,8 @@ napi_value HighlightAlbumNapi::JSGetHighlightResource(napi_env env, napi_callbac
     CHECK_ARGS(env, MediaLibraryNapiUtils::ParseArgsStringCallback(env, info, asyncContext, asyncContext->resourceUri),
         JS_ERR_PARAMETER_INVALID);
 
-    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    SetPhotoAlbumInstance(asyncContext);
+    auto photoAlbum = asyncContext->photoAlbumInstance_;
     CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsHighlightAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
@@ -607,7 +620,8 @@ napi_value HighlightAlbumNapi::JSSetHighlightSubtitle(napi_env env, napi_callbac
 
     CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckHighlightSubtitle(asyncContext->subtitle) == E_OK,
         "Invalid highlight subtitle");
-    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    SetPhotoAlbumInstance(asyncContext);
+    auto photoAlbum = asyncContext->photoAlbumInstance_;
     CHECK_COND_WITH_MESSAGE(env, photoAlbum != nullptr, "photoAlbum is null");
     CHECK_COND_WITH_MESSAGE(env,
         PhotoAlbum::IsHighlightAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
@@ -725,7 +739,7 @@ static void JSGetRelationshipExecute(napi_env env, void* data)
     auto *context = static_cast<HighlightAlbumNapiAsyncContext*>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     CHECK_NULL_PTR_RETURN_VOID(context->objectInfo, "objectInfo is null");
-    auto photoAlbum = context->objectInfo->GetPhotoAlbumInstance();
+    auto photoAlbum = context->photoAlbumInstance_;
     CHECK_NULL_PTR_RETURN_VOID(photoAlbum, "photoAlbum is null");
 
     GetRelationshipReqBody reqBody;
@@ -798,7 +812,8 @@ napi_value HighlightAlbumNapi::JSAnalysisAlbumGetRelationship(napi_env env, napi
         MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_ZERO, ARGS_ZERO) == napi_ok,
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "Failed to get object info");
     // Check album instance
-    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    SetPhotoAlbumInstance(asyncContext);
+    auto photoAlbum = asyncContext->photoAlbumInstance_;
     CHECK_COND_WITH_ERR_MESSAGE(env, photoAlbum != nullptr,
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR, "photoAlbum is null");
     CHECK_COND_WITH_ERR_MESSAGE(env,

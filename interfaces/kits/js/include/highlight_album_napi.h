@@ -76,6 +76,7 @@ struct HighlightAlbumNapiAsyncContext : public NapiError {
     int32_t albumId;
     std::string relationship;
     PhotoAlbumSubType subType;
+    shared_ptr<PhotoAlbum> photoAlbumInstance_ = nullptr;
 
     int32_t highlightAlbumInfoType = HighlightAlbumInfoType::INVALID_INFO;
     int32_t highlightUserActionType = HighlightUserActionType::INVALID_USER_ACTION;
