@@ -38,9 +38,12 @@ namespace OHOS {
 namespace Media {
 const uint32_t MTP_PHOTO_COUNT = 20;
 const int32_t RESPONSE_CODE = -200;
+const int32_t E_RESPONSE_CODE = -202;
 const int32_t OPERATION_READ_MODE = 1;
 const int32_t MTP_MODE = 1;
 const int32_t PTP_MODE = 2;
+const int32_t NONE_MODE = 0;
+const int32_t FILE_COUNT = 60;
 void MtpDfxTest::SetUpTestCase(void) {}
 void MtpDfxTest::TearDownTestCase(void) {}
 void MtpDfxTest::SetUp() {}
@@ -211,6 +214,78 @@ HWTEST_F(MtpDfxTest, mtp_dfx_test_006, TestSize.Level1)
     MtpDfxReporter::GetInstance().DoOperationResultStatistics(MTP_OPERATION_GET_OBJECT_CODE, MTP_OK_CODE);
     MtpDfxReporter::GetInstance().DoOperationResultStatistics(MTP_OPERATION_GET_PARTIAL_OBJECT_CODE, MTP_OK_CODE);
     MtpDfxReporter::GetInstance().NotifyDoDfXReporter(mtpMode);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: DoFileCountInfoStatistics
+ */
+HWTEST_F(MtpDfxTest, mtp_dfx_test_007, TestSize.Level1)
+{
+    MtpDfxReporter::GetInstance().Init();
+    FileCountInfo fileCountInfo;
+    fileCountInfo.burstCount = MTP_PHOTO_COUNT;
+    fileCountInfo.livePhotoCount = MTP_PHOTO_COUNT;
+    fileCountInfo.burstCount = MTP_PHOTO_COUNT;
+    fileCountInfo.burstTotalCount = MTP_PHOTO_COUNT;
+    fileCountInfo.onlyInCloudPhotoCount = MTP_PHOTO_COUNT;
+    fileCountInfo.normalCount = MTP_PHOTO_COUNT;
+    fileCountInfo.pictureCount = MTP_PHOTO_COUNT;
+    fileCountInfo.videoCount = MTP_PHOTO_COUNT;
+    fileCountInfo.albumName = "这是个测试相册";
+    MtpDfxReporter::GetInstance().DoFileCountInfoStatistics(fileCountInfo);
+    MtpDfxReporter::GetInstance().DoFileCountInfoStatistics(fileCountInfo);
+
+    std::string shartalbumName = "a";
+    std::string albumNameShart = MtpDfxReporter::GetInstance().GetSafeAlbumNameWhenChinese(shartalbumName);
+    ASSERT_EQ(albumNameShart, "*a");
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: DoBatchFileCountInfoDfxReporte
+ * CaseDescription: DoSendResponseResultDfxReporter
+ */
+HWTEST_F(MtpDfxTest, mtp_dfx_test_008, TestSize.Level1)
+{
+    MtpDfxReporter::GetInstance().Init();
+    FileCountInfo fileCountInfo;
+    std::string testAlbumName;
+    for (int i = 1; i <= FILE_COUNT; i++)
+    {
+        testAlbumName = "测试" + std::to_string(i);
+        fileCountInfo.burstCount = MTP_PHOTO_COUNT;
+        fileCountInfo.livePhotoCount = MTP_PHOTO_COUNT;
+        fileCountInfo.burstCount = MTP_PHOTO_COUNT;
+        fileCountInfo.burstTotalCount = MTP_PHOTO_COUNT;
+        fileCountInfo.onlyInCloudPhotoCount = MTP_PHOTO_COUNT;
+        fileCountInfo.normalCount = MTP_PHOTO_COUNT;
+        fileCountInfo.pictureCount = MTP_PHOTO_COUNT;
+        fileCountInfo.videoCount = MTP_PHOTO_COUNT;
+        fileCountInfo.albumName = testAlbumName;
+        MtpDfxReporter::GetInstance().DoFileCountInfoStatistics(fileCountInfo);
+    }
+    int32_t mtpMode = NONE_MODE;
+    MtpDfxReporter::GetInstance().DoBatchFileCountInfoDfxReporter(mtpMode);
+
+    std::string longalbumName = "longlonglong";
+    std::string albumNameLong = MtpDfxReporter::GetInstance().GetSafeAlbumNameWhenChinese(longalbumName);
+    ASSERT_EQ(albumNameLong, "*long");
+
+    uint16_t operationCode = MTP_OPERATION_GET_OBJECT_HANDLES_CODE;
+    int32_t operationResult = E_RESPONSE_CODE;
+    uint64_t duration = MTP_PHOTO_COUNT;
+    int32_t operationMode = OPERATION_READ_MODE;
+    MtpDfxReporter::GetInstance().DoSendResponseResultDfxReporter(operationCode,
+        operationResult, duration, operationMode);
 }
 } // namespace Media
 } // namespace OHOS
