@@ -173,7 +173,13 @@ int32_t NotificationDistribution::ProcessUserDefineNotifyInfo(const UserDefineNo
     uintptr_t buf = parcel->GetData();
     auto *uBuf = new (std::nothrow) uint8_t[parcel->GetDataSize()];
     CHECK_AND_RETURN_RET_LOG(uBuf != nullptr, E_ERR, "parcel GetDataSize is null");
-    memcpy_s(uBuf, parcel->GetDataSize(), reinterpret_cast<uint8_t *>(buf), parcel->GetDataSize());
+    errno_t ret = memcpy_s(uBuf, parcel->GetDataSize(), reinterpret_cast<uint8_t *>(buf), parcel->GetDataSize());
+    if (ret != EOK) {
+        MEDIA_ERR_LOG("memcpy_s buf to uBuf failed.");
+        delete[] uBuf;
+        uBuf = nullptr;
+        return E_ERR;
+    }
  
     std::shared_ptr<AAFwk::ChangeInfo> serverChangeInfo = std::make_shared<AAFwk::ChangeInfo>();
     CHECK_AND_RETURN_RET_LOG(serverChangeInfo != nullptr, E_ERR, "serverChangeInfo is null");
