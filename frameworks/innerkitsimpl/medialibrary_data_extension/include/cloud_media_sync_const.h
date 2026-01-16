@@ -224,15 +224,6 @@ const std::vector<std::string> ALBUM_LOCAL_QUERY_COLUMNS = {
     Media::PhotoAlbumColumns::ALBUM_CLOUD_ID,
 };
 
-const std::vector<std::string> ON_UPLOAD_COLUMNS = {
-    Media::PhotoColumn::MEDIA_FILE_PATH,
-    Media::PhotoColumn::MEDIA_DATE_MODIFIED,
-    Media::PhotoColumn::PHOTO_META_DATE_MODIFIED,
-    Media::MediaColumn::MEDIA_ID,
-    Media::PhotoColumn::PHOTO_CLOUD_ID,
-    Media::PhotoColumn::PHOTO_DIRTY,
-};
-
 const std::vector<std::string> PHOTOS_SYNC_COLUMN_STRING = {
     // Add Photos fields here. such as PhotoColumn::PHOTO_MEDIA_SUFFIX,
 };

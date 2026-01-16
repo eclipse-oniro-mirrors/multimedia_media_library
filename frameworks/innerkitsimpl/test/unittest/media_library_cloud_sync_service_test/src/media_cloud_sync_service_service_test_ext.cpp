@@ -380,9 +380,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt, PhotosService_OnCreateRecordSuccess_Test_
     CloudMediaPhotosService service;
     PhotosDto record;
     record.localId = -1;
-    std::unordered_map<std::string, LocalInfo> localMap;
     auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    int32_t ret = service.OnCreateRecordSuccess(record, localMap, photoRefresh);
+    int32_t ret = service.OnCreateRecordSuccess(record, photoRefresh);
     EXPECT_EQ(ret, E_INVAL_ARG);
 }
 
@@ -391,9 +390,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt, PhotosService_OnCreateRecordSuccess_Test_
     CloudMediaPhotosService service;
     PhotosDto record;
     record.localId = 0;
-    std::unordered_map<std::string, LocalInfo> localMap;
     auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    int32_t ret = service.OnCreateRecordSuccess(record, localMap, photoRefresh);
+    int32_t ret = service.OnCreateRecordSuccess(record, photoRefresh);
     EXPECT_EQ(ret, E_OK);
 }
 
@@ -402,12 +400,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt, PhotosService_OnCreateRecordSuccess_Test_
     CloudMediaPhotosService service;
     PhotosDto record;
     record.localId = 0;
-    LocalInfo info;
-    std::unordered_map<std::string, LocalInfo> localMap = {
-        {"0", info},
-    };
     auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    int32_t ret = service.OnCreateRecordSuccess(record, localMap, photoRefresh);
+    int32_t ret = service.OnCreateRecordSuccess(record, photoRefresh);
     EXPECT_EQ(ret, E_OK);
 }
 
@@ -415,9 +409,8 @@ HWTEST_F(CloudMediaSyncServiceTestExt, PhotosService_OnFdirtyRecordSuccess_Test_
 {
     CloudMediaPhotosService service;
     PhotosDto record;
-    std::unordered_map<std::string, LocalInfo> localMap;
     auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    int32_t ret = service.OnFdirtyRecordSuccess(record, localMap, photoRefresh);
+    int32_t ret = service.OnFdirtyRecordSuccess(record, photoRefresh);
     EXPECT_EQ(ret, E_OK);
 }
 

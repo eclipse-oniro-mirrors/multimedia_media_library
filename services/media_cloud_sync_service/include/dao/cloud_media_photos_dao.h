@@ -97,8 +97,6 @@ public:
     int32_t GetFileModifiedRecords(int32_t size, std::vector<PhotosPo> &cloudRecordPoList);
     int32_t GetDeletedRecordsAsset(int32_t size, std::vector<PhotosPo> &cloudRecordPoList);
     int32_t GetCopyRecords(int32_t size, std::vector<PhotosPo> &copyRecords);
-    int32_t GetPhotoLocalInfo(const std::vector<PhotosDto> &records,
-        std::unordered_map<std::string, LocalInfo> &infoMap, const std::string &type);
     int32_t UpdateLocalAlbumMap(const std::string &cloudId);
     int32_t OnModifyPhotoRecord(
         const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
@@ -112,15 +110,12 @@ public:
         const std::string &cloudId, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t DeleteFileNotExistPhoto(
         std::string &path, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
-    int32_t HandleSameNameRename(
-        const PhotosDto &photo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t UpdatePhotoVisible();
     int32_t SetRetry(const std::string &cloudId);
     int32_t DeleteLocalByCloudId(
         const std::string &cloudId, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t UpdateFailRecordsCloudId(
-        const PhotosDto &record, const std::unordered_map<std::string, LocalInfo> &localMap,
-        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+        const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     void UpdateMediaAnalysisHdcData();
     void InsertPhotoCreateFailedRecord(int32_t fileId);
     void InsertPhotoModifyFailedRecord(const std::string &cloudId);
@@ -131,9 +126,7 @@ public:
     int32_t ClearPhotoFailedRecords();
     int32_t HandleNotExistAlbumRecord(const PhotosDto &record);
     int32_t UpdatePhotoCreatedRecord(
-        const PhotosDto &record, const std::unordered_map<std::string, LocalInfo> &localMap,
-        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
-    int32_t GetSameNamePhotoCount(const PhotosDto &photo, bool isHide, int32_t count);
+        const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t AddRemoveAlbumCloudId(std::shared_ptr<MediaLibraryRdbStore> rdbStore, const int32_t fileId,
         const int32_t ownerAlbumId, PhotosPo &record);
     std::shared_ptr<NativeRdb::ResultSet> BatchQueryLocal(
@@ -147,10 +140,9 @@ public:
     int32_t UpdateAlbumReplacedSignal(const std::vector<std::string> &albumIdVector);
     int32_t FindPhotoAlbumInCache(const std::string &albumCloudId, const std::string &lPath,
         const std::string &sourcePath, std::optional<PhotoAlbumPo> &photoAlbumPoOp);
+    int32_t FindPhotoInfo(PhotosDto &record);
 
 private:
-    bool IsTimeChanged(const PhotosDto &record, const std::unordered_map<std::string, LocalInfo> &localMap,
-        const std::string &fileId, const std::string &type);
     void UpdateAllAlbumsCountForCloud(const std::vector<std::string> &albums);
     void UpdateAlbumCountInternal(const std::vector<std::string> &subtypes);
     void GetSourceAlbumFromPath(const CloudMediaPullDataDto &pullData, int32_t &albumId, std::set<int32_t> &cloudMapIds,
@@ -197,6 +189,9 @@ private:
     int32_t FillThumbStatus(NativeRdb::ValuesBucket &values, const bool mtimeChanged);
     void LoadRecoverLocalToCLoudAlbumMap();
     SafeMap<int32_t, std::pair<std::string, std::string>> &GetAlbumRecoverLocalToCloudMap();
+    int32_t GetPhotoInfo(const int32_t fileId, std::optional<PhotosPo> &photosInfoOp);
+    bool IsFileTimeChanged(const PhotosDto &record);
+    bool IsMetaTimeChanged(const PhotosDto &record);
 
 private:
     CloudMediaCommonDao commonDao_;

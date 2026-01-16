@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define MLOG_TAG "PhotoDisplayNameOperation"
+#define MLOG_TAG "Media_Operation"
 
 #include "photo_displayname_operation.h"
 
@@ -34,7 +34,7 @@ std::string PhotoDisplayNameOperation::FindDislayName(
     const std::shared_ptr<MediaLibraryRdbStore> &rdbStore, const PhotoAssetInfo &photoAssetInfo)
 {
     if (photoAssetInfo.displayName.empty() || rdbStore == nullptr) {
-        MEDIA_ERR_LOG("Media_Operation: displayName is empty. Object: %{public}s", photoAssetInfo.ToString().c_str());
+        MEDIA_ERR_LOG("displayName is empty. Object: %{public}s", photoAssetInfo.ToString().c_str());
         return photoAssetInfo.displayName;
     }
     DisplayNameInfo displayNameInfo(photoAssetInfo);
@@ -44,12 +44,12 @@ std::string PhotoDisplayNameOperation::FindDislayName(
     while (IsDisplayNameExists(rdbStore, photoAssetInfo.ownerAlbumId, displayName)) {
         displayName = displayNameInfo.Next();
         if (retryCount++ > MAX_RETRY_COUNT) {
-            MEDIA_ERR_LOG("Media_Operation: can not find unique display after retry %{public}d", MAX_RETRY_COUNT);
+            MEDIA_ERR_LOG("can not find unique display after retry %{public}d", MAX_RETRY_COUNT);
             break;
         }
     }
     if (photoAssetInfo.displayName != displayName) {
-        MEDIA_INFO_LOG("Media_Operation: displayName changed from %{public}s to %{public}s",
+        MEDIA_INFO_LOG("displayName changed from %{public}s to %{public}s",
             photoAssetInfo.ToString().c_str(),
             displayName.c_str());
     }
@@ -71,7 +71,7 @@ bool PhotoDisplayNameOperation::IsDisplayNameExists(
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t albumIdInDb = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
         if (albumIdInDb == ownerAlbumId) {
-            MEDIA_INFO_LOG("Media_Operation: the same displayName: %{public}s, ownerAlbumId: %{public}d",
+            MEDIA_DEBUG_LOG("the same displayName: %{public}s, ownerAlbumId: %{public}d",
                 displayName.c_str(), ownerAlbumId);
             resultSet->Close();
             return true;

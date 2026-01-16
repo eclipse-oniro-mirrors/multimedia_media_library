@@ -86,17 +86,6 @@ struct KeyData {
     int64_t dateTrashed;
 };
 
-struct LocalInfo {
-    std::string parentCloudId;
-    std::string fileName;
-    int64_t mdirtyTime;
-    int64_t fdirtyTime;
-    int64_t recycledTime;
-    int64_t rowId;
-    int32_t thmFlag;
-    int32_t lcdFlag;
-};
-
 //联调临时代码
 enum class PrintfFieldType {
     PFIELD_TYPE_NULL = 0,
