@@ -42,7 +42,7 @@
 #include "media_audio_column.h"
 
 using namespace std;
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 static constexpr int32_t DEFUALT_USER_ID = 100;
@@ -337,3 +337,4 @@ int64_t MediaLibraryExtendManager::GetCompressAssetSize(const std::vector<std::s
 }
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP

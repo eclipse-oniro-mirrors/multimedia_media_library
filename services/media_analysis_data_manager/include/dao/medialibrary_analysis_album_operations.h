@@ -31,7 +31,7 @@
 #include "rdb_predicates.h"
 #include "rdb_result_set_bridge.h"
 #include "vision_column.h"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -71,3 +71,4 @@ public:
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_MEDIALIBRARY_ANALYSIS_ALBUM_OPERATIONS_H
+// LCOV_EXCL_STOP

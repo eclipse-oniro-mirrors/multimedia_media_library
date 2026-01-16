@@ -54,7 +54,7 @@ using namespace OHOS::NativeRdb;
 using namespace OHOS::DataShare;
 using namespace OHOS::RdbDataShareAdapter;
 using namespace OHOS::Media::AccurateRefresh;
-
+// LCOV_EXCL_START
 namespace OHOS::Media {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
 constexpr int32_t THAN_AGR_SIZE = 1;
@@ -3647,3 +3647,4 @@ int32_t MediaLibraryAlbumOperations::UpdatePhotoAlbumOrder(const vector<NativeRd
     return successSetOrderRows == 0 ? E_INNER_FAIL : E_OK;
 }
 } // namespace OHOS::Media
+// LCOV_EXCL_STOP

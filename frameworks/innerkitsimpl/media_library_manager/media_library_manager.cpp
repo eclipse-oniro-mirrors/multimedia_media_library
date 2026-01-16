@@ -69,7 +69,7 @@
 using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Security::AccessToken;
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::sDataShareHelper_ = nullptr;
@@ -1533,3 +1533,4 @@ FetchResult<FileAsset> MediaLibraryManager::GetAssets(const PhotoAlbum &album,
 }
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP

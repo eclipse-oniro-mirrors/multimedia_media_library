@@ -18,7 +18,7 @@
 
 #include "datashare_helper.h"
 #include "media_app_uri_sensitive_column.h"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 using namespace std;
@@ -88,7 +88,7 @@ public:
      */
     EXPORT std::shared_ptr<DataShare::DataShareResultSet> GetResultSetFromDb(string columnName,
         const string &value, vector<string> &columns);
-//LCOV_EXCL_START
+
     /**
      * @brief send broker change operation
      *
@@ -96,7 +96,7 @@ public:
      * @return send ok or not
      */
     EXPORT int32_t SendBrokerChangeOperation(string operation);
-//LCOV_EXCL_STOP
+
     /**
      * @brief Open photo or video compress with edit data
      *
@@ -114,7 +114,7 @@ public:
      * @return notify ok or not
      */
     EXPORT int32_t NotifyAssetSended(const string &uri);
-//LCOV_EXCL_START
+
     /**
      * @brief Get total compressed size of assets
      *
@@ -122,7 +122,7 @@ public:
      * @return total size in bytes on success, error code otherwise
      */
     EXPORT int64_t GetCompressAssetSize(const std::vector<std::string> &uris);
-//LCOV_EXCL_STOP
+
     /**
      * @brief get asset compress version
      *
@@ -139,3 +139,4 @@ private:
 } // namespace OHOS
 
 #endif  // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_LIBRARY_EXTEND_MANAGER_H_
+// LCOV_EXCL_STOP

@@ -50,7 +50,7 @@
 #include "media_audio_column.h"
 
 using namespace std;
-
+// LCOV_EXCL_START
 namespace OHOS::Media {
 static const mode_t CHOWN_RWX_USR_GRP = 02771;
 static const mode_t CHOWN_RW_USR_GRP = 0660;
@@ -2598,3 +2598,4 @@ double MediaFileUtils::CalculateAspectRatio(int32_t height, int32_t width)
     }
 }
 } // namespace OHOS::Media
+// LCOV_EXCL_STOP

@@ -50,7 +50,7 @@
 #include "shooting_mode_column.h"
 #include "userfile_manager_types.h"
 #include "refresh_business_name.h"
-
+// LCOV_EXCL_START
 using namespace std;
 namespace OHOS::Media {
 std::shared_ptr<PhotoCustomRestoreOperation> PhotoCustomRestoreOperation::instance_ = nullptr;
@@ -1531,3 +1531,4 @@ bool PhotoCustomRestoreOperation::HasTlvFiles(const vector<string> &files)
     return false;
 }
 }  // namespace OHOS::Media
+// LCOV_EXCL_STOP

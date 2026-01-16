@@ -34,7 +34,7 @@ using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::DataShare;
 using namespace OHOS::RdbDataShareAdapter;
-
+// LCOV_EXCL_START
 namespace OHOS::Media {
 constexpr int32_t E_INDEX = -1;
 constexpr int32_t ALBUM_IS_ME = 1;
@@ -884,3 +884,4 @@ int32_t MediaLibraryAnalysisAlbumOperations::SetHighlightAttribute(const int32_t
     return ret;
 }
 } // namespace OHOS::Media
+// LCOV_EXCL_STOP

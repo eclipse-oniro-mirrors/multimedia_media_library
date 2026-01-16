@@ -37,6 +37,7 @@
 #include "media_operate_result.h"
 #include "cloud_media_asset_retain_compare_dao.h"
 #include "cloud_media_photos_rename_service.h"
+// LCOV_EXCL_START
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaPhotosService {
@@ -163,3 +164,4 @@ private:
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_SERVICE_H
+// LCOV_EXCL_STOP

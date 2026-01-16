@@ -67,10 +67,10 @@ public:
     EXPORT int32_t GetVideoFd(VideoType videoType);
     EXPORT void NotifyVideoSaveFinished(VideoType videoType);
     EXPORT void UpdatePhotoProxy(const sptr<PhotoProxy> &photoProxy);
-//LCOV_EXCL_START
+// LCOV_EXCL_START
     EXPORT void RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func);
     EXPORT void UnregisterPhotoStateCallback();
-//LCOV_EXCL_STOP
+// LCOV_EXCL_STOP
 
 private:
     void CreatePhotoAsset(const sptr<PhotoProxy> &photoProxy);
