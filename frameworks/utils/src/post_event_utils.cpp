@@ -281,6 +281,71 @@ void PostEventUtils::PostMscTotalTimeCostStat(const VariantMap &stat)
     }
 }
 
+void PostEventUtils::PostSaveCameraPhotoStat(const VariantMap &stat)
+{
+    string photoId = GetStringValue(KEY_PHOTO_ID, stat);
+    int isDecoding = GetIntValue(KEY_IS_DECODING, stat);
+    int mediaSubtype = GetIntValue(KEY_MEDIA_SUBTYPE, stat);
+    string createAssetTime = GetStringValue(KEY_CREATE_ASSET_TIME, stat);
+    string photoCaptureTime = GetStringValue(KEY_PHOTO_CAPTURE_TIME, stat);
+    string saveCameraTime = GetStringValue(KEY_SAVE_CAMERA_TIME, stat);
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_MSC_SAVE_CAMERA_PHOTO",
+        HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
+        KEY_PHOTO_ID, photoId,
+        KEY_IS_DECODING, isDecoding,
+        KEY_MEDIA_SUBTYPE, mediaSubtype,
+        KEY_CREATE_ASSET_TIME, createAssetTime,
+        KEY_PHOTO_CAPTURE_TIME, photoCaptureTime,
+        KEY_SAVE_CAMERA_TIME, saveCameraTime);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("PostSaveCameraPhotoStat error:%{public}d", ret);
+    }
+}
+
+void PostEventUtils::PostCaptureFaultStat(const VariantMap &stat)
+{
+    string photoId = GetStringValue(KEY_PHOTO_ID, stat);
+    int mediaSubtype = GetIntValue(KEY_MEDIA_SUBTYPE, stat);
+    int faultType = GetIntValue(KEY_FAULT_TYPE, stat);
+    string faultReason = GetStringValue(KEY_FAULT_REASON, stat);
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_MSC_CAPTURE_FAULT",
+        HiviewDFX::HiSysEvent::EventType::FAULT,
+        KEY_PHOTO_ID, photoId,
+        KEY_MEDIA_SUBTYPE, mediaSubtype,
+        KEY_FAULT_TYPE, faultType,
+        KEY_FAULT_REASON, faultReason);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("PostCaptureFaultStat error:%{public}d", ret);
+    }
+}
+
+void PostEventUtils::PostCaptureTimesStat(const VariantMap &stat)
+{
+    int createAssetTimes = GetIntValue(KEY_CREATE_ASSET, stat);
+    int createAssetDbErrorTimes = GetIntValue(KEY_CREATE_ASSET_DB_ERROR, stat);
+    int saveAssetTimes = GetIntValue(KEY_SAVE_ASSET, stat);
+    int captureImageSuccessTimes = GetIntValue(KEY_CAPTURE_IMAGE_TIMES_SUCCESS, stat);
+    int captureVideoTimes = GetIntValue(KEY_CAPTURE_VIDEO_TIMES, stat);
+    int captureVideoSuccessTimes = GetIntValue(KEY_CAPTURE_VIDEO_TIMES_SUCCESS, stat);
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_MSC_CAPTURE_TIMES",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        KEY_CREATE_ASSET, createAssetTimes,
+        KEY_CREATE_ASSET_DB_ERROR, createAssetDbErrorTimes,
+        KEY_SAVE_ASSET, saveAssetTimes,
+        KEY_CAPTURE_IMAGE_TIMES_SUCCESS, captureImageSuccessTimes,
+        KEY_CAPTURE_VIDEO_TIMES, captureVideoTimes,
+        KEY_CAPTURE_VIDEO_TIMES_SUCCESS, captureVideoSuccessTimes);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("PostCaptureTimesStat error:%{public}d", ret);
+    }
+}
+
 void PostEventUtils::PostMscResultStat(const VariantMap &stat)
 {
     string photoId = GetStringValue(KEY_PHOTO_ID, stat);
@@ -485,6 +550,15 @@ void PostEventUtils::PostStatProcess(const uint32_t &statType, const VariantMap 
             break;
         case StatType::CLOUD_ENHANCEMENT_GET_COUNT_STAT:
             PostCloudEnhanceStat(stat);
+            break;
+        case StatType::MSC_SAVE_CAMERA_PHOTO_STAT:
+            PostSaveCameraPhotoStat(stat);
+            break;
+        case StatType::MSC_CAPTURE_FAULT_STAT:
+            PostCaptureFaultStat(stat);
+            break;
+        case StatType::MSC_CAPTURE_TIMES:
+            PostCaptureTimesStat(stat);
             break;
         default:
             PostThumbnailStat(stat);
