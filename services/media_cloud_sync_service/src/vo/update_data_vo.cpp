@@ -1,0 +1,48 @@
+/*
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#define MLOG_TAG "Media_Cloud_Vo"
+
+#include "update_data_vo.h"
+
+#include <sstream>
+
+#include "media_log.h"
+#include "cloud_media_sync_const.h"
+#include "itypes_util.h"
+
+namespace OHOS::Media::CloudSync {
+bool UpdateDataReqBody::Unmarshalling(MessageParcel &parcel)
+{
+    bool status = DataShare::DataSharePredicates::Unmarshal(predicates, parcel);
+    CHECK_AND_RETURN_RET_LOG(status, false, "predicates Unmarshal failed");
+
+    status = ITypesUtil::Unmarshal(parcel, value.valuesMap);
+    CHECK_AND_RETURN_RET_LOG(status, false, "valuebucket Unmarshal failed");
+
+    return ITypesUtil::Unmarshal(parcel, tableName, operateName);
+}
+
+bool UpdateDataReqBody::Marshalling(MessageParcel &parcel) const
+{
+    bool status = DataShare::DataSharePredicates::Marshal(predicates, parcel);
+    CHECK_AND_RETURN_RET_LOG(status, false, "predicates Marshal failed");
+
+    status = ITypesUtil::Marshal(parcel, value.valuesMap);
+    CHECK_AND_RETURN_RET_LOG(status, false, "valuebucket Marshal failed");
+
+    return ITypesUtil::Marshal(parcel, tableName, operateName);
+}
+}  // namespace OHOS::Media::CloudSync

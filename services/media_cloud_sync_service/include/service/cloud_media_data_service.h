@@ -59,6 +59,8 @@ public:
     int32_t CheckAndFixAlbum();
     int32_t QueryData(const DataShare::DataSharePredicates &predicates, const std::vector<std::string> &columnNames,
                       const std::string &tableName, std::vector<std::unordered_map<std::string, std::string>> &results);
+    int32_t UpdateData(const std::string &tableName, const DataShare::DataSharePredicates &predicates,
+                        const DataShare::DataShareValuesBucket &value, const std::string &operateName);
 
 private:
     enum {

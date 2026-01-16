@@ -313,4 +313,14 @@ int32_t CloudMediaDataClient::QueryData(const DataShare::DataSharePredicates &pr
     }
     return this->dataHandler_->QueryData(predicates, columnNames, tableName, results);
 }
+
+int32_t CloudMediaDataClient::UpdateData(const std::string &tableName, const DataShare::DataSharePredicates &predicates,
+    const DataShare::DataShareValuesBucket &value, const std::string &operateName)
+{
+    if (this->dataHandler_ == nullptr) {
+        MEDIA_ERR_LOG("No data handler found!");
+        return E_IPC_INVAL_ARG;
+    }
+    return this->dataHandler_->UpdateData(tableName, predicates, value, operateName);
+}
 }  // namespace OHOS::Media::CloudSync

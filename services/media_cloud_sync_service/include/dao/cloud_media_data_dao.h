@@ -36,6 +36,7 @@
 #include "safe_vector.h"
 #include "cloud_media_dao_const.h"
 #include "aging_file_query_dto.h"
+#include "datashare_values_bucket.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
@@ -68,6 +69,8 @@ public:
     int32_t QueryDataFromPhotoAlbums(const DataShare::DataSharePredicates &predicates,
                                      const std::vector<std::string> &columnNames,
                                      std::vector<PhotoAlbumPo> &photoAlbumInfos);
+    int32_t UpdateDataInPhotos(const DataShare::DataSharePredicates &predicates,
+                               const DataShare::DataShareValuesBucket &value);
 
 private:
     int32_t QueryDirtyTypeStat(const int32_t dirtyType, int64_t &num);

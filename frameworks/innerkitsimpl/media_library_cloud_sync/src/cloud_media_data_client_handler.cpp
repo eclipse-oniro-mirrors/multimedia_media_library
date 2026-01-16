@@ -48,7 +48,7 @@
 #include "media_file_utils.h"
 #include "media_operate_result_vo.h"
 #include "query_data_vo.h"
-
+#include "update_data_vo.h"
 namespace OHOS::Media::CloudSync {
 // LCOV_EXCL_START
 void CloudMediaDataClientHandler::SetUserId(const int32_t &userId)
@@ -604,6 +604,25 @@ int32_t CloudMediaDataClientHandler::QueryData(const DataShare::DataSharePredica
     } else {
         results = respBody.queryResults;
         MEDIA_INFO_LOG("QueryData Client result: %{public}s", respBody.ToString().c_str());
+    }
+    return ret;
+}
+
+int32_t CloudMediaDataClientHandler::UpdateData(const std::string &tableName,
+    const DataShare::DataSharePredicates &predicates, const DataShare::DataShareValuesBucket &value,
+    const std::string &operateName)
+{
+    MEDIA_INFO_LOG("enter CloudMediaDataClientHandler::UpdateData");
+    UpdateDataReqBody reqBody;
+    reqBody.tableName = tableName;
+    reqBody.predicates = predicates;
+    reqBody.value = value;
+    reqBody.operateName = operateName;
+    uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_UPDATE_DATA);
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+            .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}}).Post(operationCode, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Failed to UpdateData, ret: %{public}d", ret);
     }
     return ret;
 }

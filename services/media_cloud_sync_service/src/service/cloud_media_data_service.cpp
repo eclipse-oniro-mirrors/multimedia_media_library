@@ -257,4 +257,19 @@ int32_t CloudMediaDataService::QueryData(const DataShare::DataSharePredicates &p
     }
     return ret;
 }
+
+int32_t CloudMediaDataService::UpdateData(const std::string &tableName,
+    const DataShare::DataSharePredicates &predicates, const DataShare::DataShareValuesBucket &value,
+    const std::string &operateName)
+{
+    int32_t ret;
+    if (tableName == PhotoColumn::PHOTOS_TABLE) {
+        ret = this->dataDao_.UpdateDataInPhotos(predicates, value);
+    } else {
+        MEDIA_INFO_LOG(
+            "Invalid tableName in UpdateData, tableName = %{public}s", tableName.c_str());
+        return E_ERR;
+    }
+    return ret;
+}
 }  // namespace OHOS::Media::CloudSync

@@ -57,6 +57,7 @@ private:
     int32_t SubmitCloudSyncPreparedDataTask(MessageParcel &data, MessageParcel &reply);
     int32_t CheckAndFixAlbum(MessageParcel &data, MessageParcel &reply);
     int32_t QueryData(MessageParcel &data, MessageParcel &reply);
+    int32_t UpdateData(MessageParcel &data, MessageParcel &reply);
 
 private:
     using RequestHandle = int32_t (CloudMediaDataControllerService::*)(MessageParcel &, MessageParcel &);
@@ -95,6 +96,8 @@ private:
             &CloudMediaDataControllerService::CheckAndFixAlbum},
         {static_cast<uint32_t>(CloudMediaOperationCode::CMD_QUERY_DATA),
             &CloudMediaDataControllerService::QueryData},
+        {static_cast<uint32_t>(CloudMediaOperationCode::CMD_UPDATE_DATA),
+            &CloudMediaDataControllerService::UpdateData},
     };
 
 public:

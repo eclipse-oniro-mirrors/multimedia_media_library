@@ -396,4 +396,19 @@ int32_t CloudMediaDataDao::QueryDataFromPhotoAlbums(const DataShare::DataSharePr
     MEDIA_INFO_LOG("QueryData, ret: %{public}d, size: %{public}zu", ret, photoAlbumInfos.size());
     return ret;
 }
+
+int32_t CloudMediaDataDao::UpdateDataInPhotos(const DataShare::DataSharePredicates &predicates,
+    const DataShare::DataShareValuesBucket &value)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "UpdateData Failed to get rdbStore.");
+    NativeRdb::RdbPredicates rdbPredicates =
+        RdbDataShareAdapter::RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
+    NativeRdb::ValuesBucket values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(value);
+    int32_t changedRows = DEFAULT_VALUE;
+    int32_t ret = rdbStore->Update(changedRows, values, rdbPredicates);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to UpdateDataInPhotos, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("UpdateDataInPhotos Check updateRows: %{public}d", changedRows);
+    return ret;
+}
 }  // namespace OHOS::Media::CloudSync
