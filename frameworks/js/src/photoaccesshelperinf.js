@@ -502,7 +502,7 @@ async function createAssetWithShortTermPermissionOk(photoCreationConfig) {
         });
     });
   } catch (error) {
-    return errorResult(new BusinessError(ERROR_MSG_INNER_FAIL, error.code), null);
+    return errorResult(new BusinessError(ERROR_MSG_OHOS_INNER_FAIL, error.code), null);
   }
 }
 
