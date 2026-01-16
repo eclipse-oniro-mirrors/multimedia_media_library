@@ -49,9 +49,9 @@ std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::sh
         cacheSize, highlightSize);
 
     int64_t dfsSize = 0;
- 	int32_t ret = CloudSyncManager::GetInstance().GetDentryFileOccupy(dfsSize);
- 	CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "Media_Storage: Failed to get dfsSize");
- 	MEDIA_INFO_LOG("Media_Storage: dfsSize = %{public}" PRId64 " bytes", dfsSize);
+    int32_t ret = CloudSyncManager::GetInstance().GetDentryFileOccupy(dfsSize);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "Media_Storage: Failed to get dfsSize");
+    MEDIA_INFO_LOG("Media_Storage: dfsSize = %{public}" PRId64 " bytes", dfsSize);
 
     int64_t totalExtSize = cacheSize + highlightSize + totalThumbnailSizeResult.totalThumbnailSize +
         totalEditdataSizeRusult.totalEditdataSize + dfsSize;
