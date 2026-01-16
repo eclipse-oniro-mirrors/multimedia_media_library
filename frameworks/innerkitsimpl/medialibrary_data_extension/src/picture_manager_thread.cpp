@@ -230,5 +230,15 @@ int32_t PictureManagerThread::GetLowPendingTaskSize()
         "GetLowPendingTaskSize failed, pictureDataOperations_ is null");
     return pictureDataOperations_->GetLowPendingTaskSize();
 }
+
+void PictureManagerThread::SetLast200mImageId(const std::string& imageId)
+{
+    last200mImageId_ = imageId;
+}
+
+std::string PictureManagerThread::GetLast200mImageId()
+{
+    return last200mImageId_;
+}
 } // namespace Media
 } // namespace OHOS

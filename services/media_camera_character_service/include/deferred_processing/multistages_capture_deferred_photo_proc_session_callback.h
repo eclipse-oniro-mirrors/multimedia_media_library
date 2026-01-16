@@ -52,11 +52,11 @@ public:
     void SetProcessImageDoneCallback(const ProcessDoneHandler &func);
 
 private:
-    void HandleForNullData(const std::string &imageId, std::shared_ptr<Media::Picture> picture);
-    void HandleForIsTemp(const std::shared_ptr<FileAsset> &fileAsset, std::shared_ptr<Media::Picture> &picture,
+    EXPORT void HandleForNullData(const std::string &imageId, std::shared_ptr<Media::Picture> picture);
+    EXPORT void HandleForIsTemp(const std::shared_ptr<FileAsset> &fileAsset, std::shared_ptr<Media::Picture> &picture,
         uint32_t cloudImageEnhanceFlag);
-    void HandleOnError(const string &imageId, const CameraStandard::DpsErrorCode error);
-    void HandleOnProcessImageDone(const string &imageId, const uint8_t *addr,
+    EXPORT void HandleOnError(const string &imageId, const CameraStandard::DpsErrorCode error);
+    EXPORT void HandleOnProcessImageDone(const string &imageId, const uint8_t *addr,
         const long bytes, uint32_t cloudImageEnhanceFlag);
     void HandleOnProcessImageDone(
         const std::string &imageId, std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,

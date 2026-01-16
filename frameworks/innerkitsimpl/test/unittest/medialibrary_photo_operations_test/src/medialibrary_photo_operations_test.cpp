@@ -57,6 +57,7 @@
 #include "medialibrary_transcode_data_aging_operation.h"
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+#include "picture_manager_thread.h"
 
 namespace OHOS {
 namespace Media {
@@ -1115,6 +1116,72 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_006, Test
     TestPhotoCreateWithExtApi10("mp4", MediaType::MEDIA_TYPE_VIDEO, firstId++);
     TestPhotoCreateWithExtApi10("mkv", MediaType::MEDIA_TYPE_VIDEO, firstId);
     MEDIA_INFO_LOG("end tdd photo_oprn_create_api10_test_006");
+}
+
+HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_007, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start tdd photo_oprn_create_api10_test_007");
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE,
+        MediaLibraryApi::API_10);
+    string extention = "jpg";
+    ValuesBucket values;
+    values.PutString(ASSET_EXTENTION, extention);
+    values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
+    values.PutInt(PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
+    cmd.SetValueBucket(values);
+    auto pictureManagerThread = PictureManagerThread::GetInstance();
+
+    int32_t ret = MediaLibraryPhotoOperations::Create(cmd);
+
+    string imageId = pictureManagerThread->GetLast200mImageId();
+    auto isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
+    EXPECT_EQ(isExsit, false);
+    EXPECT_GE(ret, 0);
+    unordered_map<string, string> verifyMap = {
+        { PhotoColumn::MEDIA_TYPE, to_string(MediaType::MEDIA_TYPE_IMAGE) },
+        { PhotoColumn::MEDIA_TIME_PENDING, to_string(UNOPEN_FILE_COMPONENT_TIMEPENDING) },
+    };
+    bool res = QueryAndVerifyPhotoAsset(PhotoColumn::MEDIA_ID, to_string(ret), verifyMap);
+    EXPECT_EQ(res, true);
+    MEDIA_INFO_LOG("end tdd photo_oprn_create_api10_test_007");
+}
+
+HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_008, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start tdd photo_oprn_create_api10_test_008");
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE,
+        MediaLibraryApi::API_10);
+    string extention = "jpg";
+    ValuesBucket values;
+    values.PutString(ASSET_EXTENTION, extention);
+    values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
+    values.PutInt(PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
+    cmd.SetValueBucket(values);
+    auto pictureManagerThread = PictureManagerThread::GetInstance();
+    string imageId = "123";
+    pictureManagerThread->SetLast200mImageId(imageId);
+    string imageIdInPair = imageId;
+    time_t currentTime = time(NULL);
+    time_t expireTime = currentTime + 20;
+    sptr<PicturePair> picturePair = new PicturePair(nullptr, imageIdInPair, expireTime, true, false);
+    pictureManagerThread->InsertPictureData(imageId, picturePair, LOW_QUALITY_PICTURE);
+    auto isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
+    EXPECT_EQ(isExsit, true);
+
+    int32_t ret = MediaLibraryPhotoOperations::Create(cmd);
+
+    imageId = pictureManagerThread->GetLast200mImageId();
+
+    isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
+    EXPECT_EQ(isExsit, true);
+    EXPECT_GE(ret, 0);
+    unordered_map<string, string> verifyMap = {
+        { PhotoColumn::MEDIA_TYPE, to_string(MediaType::MEDIA_TYPE_IMAGE) },
+        { PhotoColumn::MEDIA_TIME_PENDING, to_string(UNOPEN_FILE_COMPONENT_TIMEPENDING) },
+    };
+    bool res = QueryAndVerifyPhotoAsset(PhotoColumn::MEDIA_ID, to_string(ret), verifyMap);
+    EXPECT_EQ(res, true);
+    MEDIA_INFO_LOG("end tdd photo_oprn_create_api10_test_008");
 }
 
 HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api9_test_001, TestSize.Level2)

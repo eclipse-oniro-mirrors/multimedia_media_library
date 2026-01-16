@@ -50,7 +50,7 @@ using namespace OHOS::CameraStandard;
 namespace OHOS {
 namespace Media {
 const int32_t SAVE_PICTURE_TIMEOUT_SEC = 20;
-
+constexpr int32_t HIGH_PIXEL_SIDE = 12 * 1024;
 MultiStagesPhotoCaptureManager::MultiStagesPhotoCaptureManager()
 {
     deferredProcSession_ = make_shared<DeferredPhotoProcessingAdapter>();
@@ -155,6 +155,13 @@ void MultiStagesPhotoCaptureManager::DealLowQualityPicture(const std::string &im
     }
     time_t expireTime = currentTime + SAVE_PICTURE_TIMEOUT_SEC;
     std::string imageIdInPair = imageId;
+    auto pixelMap = picture->GetMainPixel();
+    CHECK_AND_RETURN_LOG(pixelMap != nullptr, "pixelMap is nullptr");
+    int32_t height = pixelMap->GetHeight();
+    int32_t width = pixelMap->GetWidth();
+    if (height >= HIGH_PIXEL_SIDE && width >= HIGH_PIXEL_SIDE) {
+        pictureManagerThread->SetLast200mImageId(imageId);
+    }
     sptr<PicturePair> picturePair = new PicturePair(std::move(picture), imageIdInPair, expireTime, true, false);
     // 存低质量裸picture
     pictureManagerThread->InsertPictureData(imageId, picturePair, LOW_QUALITY_PICTURE);
