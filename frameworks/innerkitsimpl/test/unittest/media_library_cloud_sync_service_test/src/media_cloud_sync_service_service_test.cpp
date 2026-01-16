@@ -1725,12 +1725,8 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnCreateRecordSucces
     record.fileId = 1;
     record.cloudId = "cloud_id1";
     record.version = 10;
-    LocalInfo info;
-    std::unordered_map<std::string, LocalInfo> localMap = {
-        {"0", info},
-    };
     auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    int32_t ret = service.OnCreateRecordSuccess(record, localMap, photoRefresh);
+    int32_t ret = service.OnCreateRecordSuccess(record, photoRefresh);
     EXPECT_EQ(ret, E_OK);
 
     InitTestTables(g_rdbStore);
