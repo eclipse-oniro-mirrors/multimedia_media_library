@@ -37,6 +37,7 @@
 #include "update_local_file_dirty_vo.h"
 #include "media_operate_result_vo.h"
 #include "query_data_vo.h"
+#include "update_data_vo.h"
 
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaDataControllerService::UpdateDirty(MessageParcel &data, MessageParcel &reply)
@@ -270,5 +271,22 @@ int32_t CloudMediaDataControllerService::QueryData(MessageParcel &data, MessageP
     resp.queryResults = results;
     MEDIA_INFO_LOG("QueryData Resp : %{public}s", resp.ToString().c_str());
     return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
+}
+
+int32_t CloudMediaDataControllerService::UpdateData(MessageParcel &data, MessageParcel &reply)
+{
+    UpdateDataReqBody req;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("UpdateData Get Req Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    DataShare::DataSharePredicates predicates = req.predicates;
+    std::string tableName = req.tableName;
+    DataShare::DataShareValuesBucket value = req.value;
+    std::string operateName = req.operateName;
+    ret = this->dataService_.UpdateData(tableName, predicates, value, operateName);
+    MEDIA_INFO_LOG("UpdateData %{public}d", ret);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 }  // namespace OHOS::Media::CloudSync

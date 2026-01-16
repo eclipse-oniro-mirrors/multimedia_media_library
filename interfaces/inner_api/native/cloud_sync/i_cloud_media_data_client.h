@@ -30,6 +30,7 @@
 #include "media_operate_result.h"
 #include "datashare_predicates.h"
 #include "cloud_lake_info.h"
+#include "datashare_values_bucket.h"
 
 #define EXPORT __attribute__ ((visibility ("default")))
 
@@ -85,6 +86,8 @@ public:
     virtual int32_t QueryData(const DataShare::DataSharePredicates &predicates,
             const std::vector<std::string> &columnNames, const std::string &tableName,
             std::vector<std::unordered_map<std::string, std::string>> &results) = 0;
+    virtual int32_t UpdateData(const std::string &tableName, const DataShare::DataSharePredicates &predicates,
+            const DataShare::DataShareValuesBucket &value, const std::string &operateName) = 0;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_I_CLOUD_MEDIA_DATA_CLIENT_H

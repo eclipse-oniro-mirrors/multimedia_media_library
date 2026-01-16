@@ -1,0 +1,42 @@
+/*
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#ifndef OHOS_MEDIA_CLOUD_SYNC_UPDATE_DATA_VO_H
+#define OHOS_MEDIA_CLOUD_SYNC_UPDATE_DATA_VO_H
+
+#include <string>
+#include <vector>
+#include <sstream>
+
+#include "i_media_parcelable.h"
+#include "cloud_media_define.h"
+#include "datashare_predicates.h"
+#include "datashare_values_bucket.h"
+
+namespace OHOS::Media::CloudSync {
+class EXPORT UpdateDataReqBody : public IPC::IMediaParcelable {
+public:
+    std::string tableName;
+    DataShare::DataSharePredicates predicates;
+    DataShare::DataShareValuesBucket value;
+    std::string operateName;
+
+public:  // functions of Parcelable.
+    virtual ~UpdateDataReqBody() = default;
+    bool Unmarshalling(MessageParcel &parcel) override;
+    bool Marshalling(MessageParcel &parcel) const override;
+};
+}  // namespace OHOS::Media::CloudSync
+#endif  // OHOS_MEDIA_CLOUD_SYNC_UPDATE_DATA_VO_H

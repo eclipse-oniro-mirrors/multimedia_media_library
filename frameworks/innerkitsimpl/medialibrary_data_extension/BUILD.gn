@@ -470,6 +470,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/photo_album_vo.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/photos_vo.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/query_data_vo.cpp",
+    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_data_vo.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_dirty_vo.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_local_file_dirty_vo.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_position_vo.cpp",
