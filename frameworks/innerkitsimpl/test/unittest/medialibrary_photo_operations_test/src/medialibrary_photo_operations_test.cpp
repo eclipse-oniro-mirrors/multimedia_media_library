@@ -1170,9 +1170,9 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_008, Test
 
     int32_t ret = MediaLibraryPhotoOperations::Create(cmd);
 
-    string imageId = pictureManagerThread->GetLast200mImageId();
+    imageId = pictureManagerThread->GetLast200mImageId();
 
-    auto isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
+    isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
     EXPECT_EQ(isExsit, true);
     EXPECT_GE(ret, 0);
     unordered_map<string, string> verifyMap = {

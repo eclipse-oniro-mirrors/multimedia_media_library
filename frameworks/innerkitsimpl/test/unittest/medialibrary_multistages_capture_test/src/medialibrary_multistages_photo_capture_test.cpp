@@ -870,10 +870,10 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, HandleForNullData_001, TestSiz
         new MultiStagesCaptureDeferredPhotoProcSessionCallback();
 
     sptr<SurfaceBuffer> surfaceBuffer = SurfaceBuffer::Create();
-    std::shared_ptr<CameraStandard::PictureIntf> picture = std::make_shared<CameraStandard::PictureAdapter>();
-    picture->Create(surfaceBuffer);
+    std::shared_ptr<CameraStandard::PictureIntf> pictureIntf = std::make_shared<CameraStandard::PictureAdapter>();
+    pictureIntf->Create(surfaceBuffer);
     CameraStandard::PictureAdapter* pictureAdapter =
-        static_cast<OHOS::CameraStandard::PictureAdapter*>(picture.get());
+        static_cast<OHOS::CameraStandard::PictureAdapter*>(pictureIntf.get());
     std::shared_ptr<Media::Picture> picture = pictureAdapter->GetPicture();
 
     vector<string> columns = {PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_DIRTY,
