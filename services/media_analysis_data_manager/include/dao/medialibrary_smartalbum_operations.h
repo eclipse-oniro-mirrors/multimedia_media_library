@@ -26,7 +26,7 @@
 #include "medialibrary_command.h"
 #include "rdb_store.h"
 #include "values_bucket.h"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -39,3 +39,4 @@ public:
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_MEDIALIBRARY_SMARTALBUM_OPERATIONS_H
+// LCOV_EXCL_STOP

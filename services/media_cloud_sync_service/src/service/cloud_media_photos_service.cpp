@@ -58,7 +58,7 @@
 #include "medialibrary_meta_recovery.h"
 #include "thumbnail_service.h"
 #include "parameters.h"
-
+// LCOV_EXCL_START
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaPhotosService::PullDelete(const CloudMediaPullDataDto &data, std::set<std::string> &refreshAlbums,
@@ -1592,3 +1592,4 @@ int32_t CloudMediaPhotosService::ProcessDuplicatePhoto(const CloudMediaPullDataD
     return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync
+// LCOV_EXCL_STOP

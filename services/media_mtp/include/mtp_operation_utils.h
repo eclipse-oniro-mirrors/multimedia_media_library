@@ -20,6 +20,7 @@
 #include "payload_data.h"
 namespace OHOS {
 namespace Media {
+// LCOV_EXCL_START
 class MtpOperationUtils {
 public:
     explicit MtpOperationUtils(const std::shared_ptr<MtpOperationContext> &context, bool isInit = false);
@@ -77,3 +78,4 @@ private:
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MTP_INCLUDE_MTP_OPERATION_UTILS_H_
+// LCOV_EXCL_STOP

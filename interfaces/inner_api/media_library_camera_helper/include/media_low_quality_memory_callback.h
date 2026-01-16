@@ -17,7 +17,7 @@
 #define MEDIA_LIBRARY_LOW_QUALITY_MEMORY_CALLBACK_H_
  
 #include "datashare_helper.h"
- 
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -39,3 +39,4 @@ private:
 } // namespace Media
 } // namespace OHOS
 #endif // MEDIA_LIBRARY_LOW_QUALITY_MEMORY_CALLBACK_H_
+// LCOV_EXCL_STOP

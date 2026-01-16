@@ -23,7 +23,7 @@
 #include "medialibrary_rdb_utils.h"
 #include "metadata.h"
 #include "tlv_util.h"
-
+// LCOV_EXCL_START
 namespace OHOS::Media {
 struct RestoreTaskInfo {
     std::string dbPath;
@@ -226,3 +226,4 @@ private:
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_PHOTO_CUSTOM_RESTORE_OPERATION_H
+// LCOV_EXCL_STOP

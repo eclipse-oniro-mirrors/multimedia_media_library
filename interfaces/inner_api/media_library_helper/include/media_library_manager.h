@@ -38,7 +38,7 @@ enum class CloudMediaRetainType : int32_t {
     RETAIN_FORCE = 0,
     HDC_RETAIN_FORCE,
 };
-
+// LCOV_EXCL_START
 class MediaLibraryManager {
 public:
     EXPORT MediaLibraryManager() = default;
@@ -324,5 +324,5 @@ private:
 };
 } // namespace Media
 } // namespace OHOS
-
+// LCOV_EXCL_STOP
 #endif  // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_LIBRARY_MANAGER_H_

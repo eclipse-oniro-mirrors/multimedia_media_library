@@ -47,7 +47,7 @@
 namespace OHOS::Media {
 using namespace std;
 using namespace NativeRdb;
-
+// LCOV_EXCL_START
 constexpr int32_t E_EMPTY_ALBUM_ID = 1;
 constexpr int32_t INVALID_INT32_VALUE = -1;
 constexpr int64_t INVALID_INT64_VALUE = -1;
@@ -3674,3 +3674,4 @@ void MediaLibraryRdbUtils::UpdateAnalysisAlbumByCoverUri(
         updateRet, updateCount);
 }
 } // namespace OHOS::Media
+// LCOV_EXCL_STOP

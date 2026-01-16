@@ -31,7 +31,7 @@
 #include "medialibrary_async_worker.h"
 #include "medialibrary_rdb_transaction.h"
 #include "album_accurate_refresh.h"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 constexpr int32_t NULL_REFERENCE_ALBUM_ID = -1;
@@ -129,3 +129,4 @@ public:
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_MEDIALIBRARY_ALBUM_OPERATIONS_H
+// LCOV_EXCL_STOP

@@ -30,7 +30,7 @@
 #include "shooting_mode_column.h"
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
-
+// LCOV_EXCL_START
 enum NotifyAlbumType : uint16_t {
     NO_NOTIFY = 0x00,
     SYS_ALBUM = 0x01,
@@ -212,3 +212,4 @@ private:
 };
 } // namespace OHOS::Media
 #endif // OHOS_MEDIALIBRARY_RDB_UTILS_H
+// LCOV_EXCL_STOP

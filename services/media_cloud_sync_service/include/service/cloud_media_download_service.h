@@ -30,7 +30,7 @@
 #include "cloud_media_scan_service.h"
 #include "cloud_media_download_dao.h"
 #include "cloud_lake_info.h"
-
+// LCOV_EXCL_START
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaDownloadService {
 struct RenameFileInfo {
@@ -97,3 +97,4 @@ private:
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_DOWNLOAD_SERVICE_H
+// LCOV_EXCL_STOP

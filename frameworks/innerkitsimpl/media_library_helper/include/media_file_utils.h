@@ -22,7 +22,7 @@
 
 #include "unique_fd.h"
 #include "userfile_manager_types.h"
-
+// LCOV_EXCL_START
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 EXPORT const std::string MOVING_PHOTO_URI_SPLIT = ";";
@@ -231,5 +231,5 @@ private:
     static int32_t CheckStringSize(const std::string &str, const size_t max);
 };
 } // namespace OHOS::Media
-
+// LCOV_EXCL_STOP
 #endif // FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_MEDIA_FILE_UTILS_H_

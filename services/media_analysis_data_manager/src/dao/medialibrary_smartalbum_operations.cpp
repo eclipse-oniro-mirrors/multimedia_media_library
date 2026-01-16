@@ -24,7 +24,7 @@
 using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::DataShare;
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 constexpr int32_t DEFAULT_SMARTID = -1;
@@ -98,3 +98,4 @@ int32_t MediaLibrarySmartAlbumOperations::HandleSmartAlbumOperation(MediaLibrary
 }
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP

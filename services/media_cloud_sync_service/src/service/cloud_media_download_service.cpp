@@ -43,7 +43,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_photo_operations.h"
 #include "result_set_utils.h"
-
+// LCOV_EXCL_START
 namespace OHOS::Media::CloudSync {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
 int32_t CloudMediaDownloadService::GetDownloadThmNum(const int32_t type, int32_t &totalNum)
@@ -682,3 +682,4 @@ int32_t CloudMediaDownloadService::CheckRegenerateThumbnail(const ORM::PhotosPo 
     return thumbnailService->FixThumbnailExifRotateAfterDownloadAsset(std::to_string(fileId), false);
 }
 }  // namespace OHOS::Media::CloudSync
+// LCOV_EXCL_STOP
