@@ -35,7 +35,8 @@ private:
     const int32_t WEAK_BONUS = 30;
 
     const int32_t AESTHETICS_SCORE_THRESHOLD = 40;
-    const int32_t IS_EXCLUDED_THRESHOLD = 3072;
+    // 3203 = 110010000011 表示 NOT_OCCLUSION、NOT_SIDE_FACE、IS_CLEAR、NOT_DOCUMENT、VALID 均为1
+    const int32_t IS_EXCLUDED_THRESHOLD = 3203;
 public:
     // Scoring method used as a column in SQL queries
     const std::string SQL_PORTRAIT_ALBUM_COLUM_TOTAL_SCORE = "\
@@ -90,7 +91,8 @@ public:
         AND is_temp = 0 \
         AND burst_cover_level = 1 \
         AND tab_analysis_image_face.aesthetics_score > " + std::to_string(AESTHETICS_SCORE_THRESHOLD) + " \
-        AND tab_analysis_image_face.is_excluded >= " + std::to_string(IS_EXCLUDED_THRESHOLD);
+        AND (tab_analysis_image_face.is_excluded & " + std::to_string(IS_EXCLUDED_THRESHOLD) +
+        ") = " + std::to_string(IS_EXCLUDED_THRESHOLD);
 
     // get assets that meet the conditions
     const std::string SQL_PORTRAIT_ALBUM_GET_SELECTED_ASSETS = "\
