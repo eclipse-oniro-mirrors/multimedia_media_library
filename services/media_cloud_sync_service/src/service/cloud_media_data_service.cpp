@@ -259,7 +259,7 @@ int32_t CloudMediaDataService::QueryData(const DataShare::DataSharePredicates &p
 }
 
 int32_t CloudMediaDataService::UpdateData(const std::string &tableName,
-    const DataShare::DataSharePredicates &predicates, const DataShare::DataShareValuesBucket &value, 
+    const DataShare::DataSharePredicates &predicates, const DataShare::DataShareValuesBucket &value,
     const std::string &operateName)
 {
     int32_t ret;
