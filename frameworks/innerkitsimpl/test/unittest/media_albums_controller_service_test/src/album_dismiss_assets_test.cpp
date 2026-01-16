@@ -27,6 +27,7 @@
 #undef private
 #undef protected
 
+#include "change_request_move_assets_vo.h"
 #include "vision_db_sqls_more.h"
 #include "change_request_dismiss_assets_vo.h"
 #include "user_define_ipc_client.h"
@@ -210,6 +211,22 @@ int32_t CreatAssetsAndAlbumsForGroupPhoto(vector<PortraitData> &portraits)
     return albumId;
 }
 
+int32_t CreatAssetsAndAlbums(vector<PortraitData> &portraits, const string groupTag, const vector<string> tagIds)
+{
+    portraits = PrepareGroupPhotoData(tagIds);
+    int64_t portraitAlbumId1 = CreateSmartAlbum(tagIds[0]);
+    int64_t portraitAlbumId2 = CreateSmartAlbum(tagIds[1]);
+    int64_t albumId = CreateSmartAlbum(groupTag, PhotoAlbumSubType::GROUP_PHOTO);
+    EXPECT_GT(portraitAlbumId1, 0);
+    EXPECT_GT(portraitAlbumId2, 0);
+    EXPECT_GT(albumId, 0);
+
+    InsertPortraitsToAlbum(portraits, portraitAlbumId1, 1, CoverSatisfiedType::DEFAULT_SETTING);
+    InsertPortraitsToAlbum(portraits, portraitAlbumId2, 1, CoverSatisfiedType::DEFAULT_SETTING);
+    InsertPortraitsToAlbum(portraits, albumId, 1, CoverSatisfiedType::DEFAULT_SETTING);
+    return portraitAlbumId1;
+}
+
 int GetGroupPhotoAssetsCount(int32_t albumId)
 {
     string querySql = "SELECT DISTINCT Photos.file_id ";
@@ -301,5 +318,96 @@ HWTEST_F(AlbumDismissAssetsTest, DismissAsstes_Test_002, TestSize.Level0)
     count = GetGroupPhotoAssetsCount(albumId);
     EXPECT_EQ(count, 0);
     MEDIA_INFO_LOG("DismissAsstes_Test_002 End");
+}
+
+HWTEST_F(AlbumDismissAssetsTest, MoveAsstes_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("MoveAsstes_Test_003 Start");
+    vector<PortraitData> poraitData;
+    const string groupTag = "ser_1711000000000000000,ser_1711000000000000001";
+    const vector<string> tagIds = {"ser_1711000000000000000", "ser_1711000000000000001"};
+    int32_t albumId = CreatAssetsAndAlbums(poraitData, groupTag, tagIds);
+    size_t photoCount = poraitData.size();
+    EXPECT_EQ(photoCount, 5);
+    MEDIA_INFO_LOG("Query albums and check result");
+    int count = GetGroupPhotoAssetsCount(albumId);
+    EXPECT_EQ(count, 5);
+
+    vector<PortraitData> poraitDataTarget;
+    const string targetGroupTag = "ser_1711000000000000002,ser_1711000000000000003";
+    const vector<string> targetTagIds = {"ser_1711000000000000002", "ser_1711000000000000003"};
+    int32_t targetAlbumId = CreatAssetsAndAlbums(poraitDataTarget, targetGroupTag, targetTagIds);
+    size_t targetPhotoCount = poraitDataTarget.size();
+    EXPECT_EQ(targetPhotoCount, 5);
+    MEDIA_INFO_LOG("Query albums and check result");
+    int targetCount = GetGroupPhotoAssetsCount(targetAlbumId);
+    EXPECT_EQ(targetCount, 5);
+
+    MessageParcel data;
+    MessageParcel reply;
+    ChangeRequestMoveAssetsReqBody reqBody;
+    reqBody.albumId = albumId;
+    reqBody.targetAlbumId = targetAlbumId;
+    reqBody.assets = {"file://media/Photo/" + std::to_string(poraitData[0].fileId)};
+    if (reqBody.Marshalling(data) != true) {
+        MEDIA_ERR_LOG("reqBody.Marshalling failed");
+    }
+    auto service = make_shared<MediaAlbumsControllerService>();
+    service->SmartMoveAssets(data, reply);
+
+    IPC::MediaRespVo<MediaEmptyObjVo> resp;
+    ASSERT_EQ(resp.Unmarshalling(reply), true);
+    ASSERT_EQ(resp.GetErrCode(), 0);
+    count = GetGroupPhotoAssetsCount(albumId);
+    EXPECT_EQ(count, 4);
+    targetCount = GetGroupPhotoAssetsCount(targetAlbumId);
+    EXPECT_EQ(targetCount, 6);
+    MEDIA_INFO_LOG("MoveAsstes_Test_003 End");
+}
+
+HWTEST_F(AlbumDismissAssetsTest, MoveAsstes_Test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("MoveAsstes_Test_004 Start");
+    vector<PortraitData> poraitData;
+    const string groupTag = "ser_1711000000000000000,ser_1711000000000000001";
+    const vector<string> tagIds = {"ser_1711000000000000000", "ser_1711000000000000001"};
+    int32_t albumId = CreatAssetsAndAlbums(poraitData, groupTag, tagIds);
+    size_t photoCount = poraitData.size();
+    EXPECT_EQ(photoCount, 5);
+    MEDIA_INFO_LOG("Query albums and check result");
+    int count = GetGroupPhotoAssetsCount(albumId);
+    EXPECT_EQ(count, 5);
+
+    vector<PortraitData> poraitDataTarget;
+    const string targetGroupTag = "ser_1711000000000000002,ser_1711000000000000003";
+    const vector<string> targetTagIds = {"ser_1711000000000000002", "ser_1711000000000000003"};
+    int32_t targetAlbumId = CreatAssetsAndAlbums(poraitDataTarget, targetGroupTag, targetTagIds);
+    size_t targetPhotoCount = poraitDataTarget.size();
+    EXPECT_EQ(targetPhotoCount, 5);
+    MEDIA_INFO_LOG("Query albums and check result");
+    int targetCount = GetGroupPhotoAssetsCount(targetAlbumId);
+    EXPECT_EQ(targetCount, 5);
+
+    MessageParcel data;
+    MessageParcel reply;
+    ChangeRequestMoveAssetsReqBody reqBody;
+    reqBody.albumId = albumId;
+    reqBody.targetAlbumId = targetAlbumId;
+    reqBody.assets = {"file://media/Photo/" + std::to_string(poraitData[0].fileId),
+    "file://media/Photo/" + std::to_string(poraitData[1].fileId)};
+    if (reqBody.Marshalling(data) != true) {
+        MEDIA_ERR_LOG("reqBody.Marshalling failed");
+    }
+    auto service = make_shared<MediaAlbumsControllerService>();
+    service->SmartMoveAssets(data, reply);
+
+    IPC::MediaRespVo<MediaEmptyObjVo> resp;
+    ASSERT_EQ(resp.Unmarshalling(reply), true);
+    ASSERT_EQ(resp.GetErrCode(), 0);
+    count = GetGroupPhotoAssetsCount(albumId);
+    EXPECT_EQ(count, 3);
+    targetCount = GetGroupPhotoAssetsCount(targetAlbumId);
+    EXPECT_EQ(targetCount, 7);
+    MEDIA_INFO_LOG("MoveAsstes_Test_004 End");
 }
 }  // namespace OHOS::Media
