@@ -26,49 +26,13 @@ namespace OHOS::Media {
 class TabOldPhotosRestore {
 public:
     int32_t Restore(std::shared_ptr<NativeRdb::RdbStore> rdbStorePtr, const std::vector<FileInfo> &fileInfos);
-
-private:
-    std::string ToString(const std::vector<NativeRdb::ValueObject> &values);
 };
 
 class TabOldPhotosRestoreHelper {
 public:
-    void SetPlaceHoldersAndBindArgs(const std::vector<FileInfo> &fileInfos);
-    bool IsEmpty();
-    int32_t InsertIntoTable(std::shared_ptr<NativeRdb::RdbStore> rdbStorePtr);
-    std::string GetInsertSql();
-    std::vector<NativeRdb::ValueObject> GetBindArgs();
-    size_t GetInsertSize();
-
-private:
-    void AddPlaceHolders();
-    void AddBindArgs(const FileInfo &fileInfo);
-    std::string GetInputTableClause();
-
-    std::vector<std::string> placeHolders_;
-    std::vector<NativeRdb::ValueObject> bindArgs_;
-
-    const std::string SQL_PLACEHOLDERS = "(?, ?, ?)";
-    const std::string SQL_TAB_OLD_PHOTOS_INSERT = "\
-        INSERT INTO tab_old_photos \
-        ( \
-            file_id, \
-            data, \
-            old_file_id, \
-            old_data \
-        ) \
-        SELECT Photos.file_id, \
-            INPUT.data, \
-            INPUT.old_file_id, \
-            INPUT.old_data \
-        FROM Photos \
-            INNER JOIN INPUT \
-                ON Photos.data=INPUT.data \
-            LEFT JOIN tab_old_photos \
-                ON INPUT.old_data=tab_old_photos.old_data \
-        WHERE tab_old_photos.old_data IS NULL AND \
-            COALESCE(hidden, 0) = 0 AND \
-            COALESCE(date_trashed, 0) = 0;";
+    int32_t BatchInsertWithRetry(std::shared_ptr<NativeRdb::RdbStore> rdbStorePtr,
+        const std::vector<FileInfo> &fileInfos);
+    static std::vector<NativeRdb::ValuesBucket> GetInsertValues(const std::vector<FileInfo> &fileInfos);
 };
 } // namespace OHOS::Media
 #endif // OHOS_BACKUP_MEDIA_TAB_OLD_PHOTOS_RESTORE

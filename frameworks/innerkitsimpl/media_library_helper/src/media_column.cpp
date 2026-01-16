@@ -187,6 +187,10 @@ const std::string PhotoColumn::PHOTO_DETAIL_TIME_FORMAT = "%Y:%m:%d %H:%M:%S";
 const std::string PhotoColumn::PHOTOS_TABLE = "Photos";
 const std::string PhotoColumn::TAB_OLD_PHOTOS_TABLE = "tab_old_photos";
 const std::string PhotoColumn::TAB_ASSET_AND_ALBUM_OPERATION_TABLE = "tab_asset_and_album_operation";
+const std::string PhotoColumn::TAB_OLD_PHOTOS_COLUMN_FILE_ID = "file_id";
+const std::string PhotoColumn::TAB_OLD_PHOTOS_COLUMN_DATA = "data";
+const std::string PhotoColumn::TAB_OLD_PHOTOS_COLUMN_OLD_FILE_ID = "old_file_id";
+const std::string PhotoColumn::TAB_OLD_PHOTOS_COLUMN_OLD_DATA = "old_data";
 
 const std::string PhotoColumn::FILES_CLOUD_DIR = "/storage/cloud/files/";
 const std::string PhotoColumn::FILES_LOCAL_DIR = "/storage/media/local/files/";
