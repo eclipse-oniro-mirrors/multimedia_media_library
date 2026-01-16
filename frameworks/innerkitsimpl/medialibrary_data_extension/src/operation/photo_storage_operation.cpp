@@ -21,6 +21,9 @@
 #include "medialibrary_type_const.h"
 #include "preferences.h"
 #include "preferences_helper.h"
+#include "cloud_sync_manager.h"
+
+using namespace OHOS::FileManagement::CloudSync;
 
 namespace OHOS::Media {
 std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::shared_ptr<MediaLibraryRdbStore> rdbStore)
@@ -45,8 +48,13 @@ std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::sh
     MEDIA_INFO_LOG("Media_Storage: cacheSize = %{public}" PRId64 ", highlightSize = %{public}" PRId64 "",
         cacheSize, highlightSize);
 
+    int64_t dfsSize = 0;
+    int32_t ret = CloudSyncManager::GetInstance().GetDentryFileOccupy(dfsSize);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "Media_Storage: Failed to get dfsSize");
+    MEDIA_INFO_LOG("Media_Storage: dfsSize = %{public}" PRId64 " bytes", dfsSize);
+
     int64_t totalExtSize = cacheSize + highlightSize + totalThumbnailSizeResult.totalThumbnailSize +
-        totalEditdataSizeRusult.totalEditdataSize;
+        totalEditdataSizeRusult.totalEditdataSize + dfsSize;
     std::string sql = this->SQL_DB_STORAGE_QUERY;
     std::vector<NativeRdb::ValueObject> params = {totalExtSize};
     return rdbStore->QuerySql(sql, params);
