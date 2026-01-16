@@ -37,6 +37,7 @@ public:
     EXPORT static int32_t InitCheckList();
     EXPORT static bool CanSupportedCompatibleDuplicate(const std::string &bundleName);
     EXPORT static void UnsubscribeCotaUpdatedEvent();
+    EXPORT static void ClearBundleInfoInCache();
 private:
     static sptr<AppExecFwk::IBundleMgr> GetSysBundleManager();
     static int32_t ParseWhiteList(const nlohmann::json &checkListJson);

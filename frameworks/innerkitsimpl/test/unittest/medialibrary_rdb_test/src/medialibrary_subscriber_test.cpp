@@ -255,6 +255,11 @@ HWTEST_F(MediaLibraryRdbTest, medialib_OnReceiveEvent_test_0010, TestSize.Level1
     eventData.SetWant(want);
     medialibrarySubscriber.OnReceiveEvent(eventData);
     EXPECT_EQ(want.GetAction(), CLOUD_UPDATE_EVENT);
+    action = EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REPLACED;
+    want.SetAction(action);
+    eventData.SetWant(want);
+    medialibrarySubscriber.OnReceiveEvent(eventData);
+    EXPECT_EQ(want.GetAction(), EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REPLACED);
     medialibrarySubscriber.AbortCommonEvent();
 }
 

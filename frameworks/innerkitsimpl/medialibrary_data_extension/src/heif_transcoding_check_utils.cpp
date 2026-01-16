@@ -23,6 +23,7 @@
 #include <thread>
 #include <sys/stat.h>
 
+#include "heif_bundle_info_cache.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -167,6 +168,7 @@ int32_t HeifTranscodingCheckUtils::ReadCheckList()
     }
 
     ClearCheckList();
+    ClearBundleInfoInCache();
 
     if (!checkListJson.contains(LIST_STRATEGY) || !checkListJson[LIST_STRATEGY].is_string()) {
         MEDIA_ERR_LOG("Invalid or missing 'listStrategy' in json");
@@ -221,6 +223,7 @@ int32_t HeifTranscodingCheckUtils::InitCheckList()
     tracer.Start("InitCheckList Excute");
     CHECK_AND_RETURN_RET_INFO_LOG(ReadCheckList() == E_OK, E_FAIL, "ReadCheckList failed");
     CHECK_AND_RETURN_RET_INFO_LOG(SubscribeCotaUpdatedEvent() == E_OK, E_FAIL, "SubscribeCotaUpdatedEvent failed");
+    ClearBundleInfoInCache();
     return E_OK;
 }
 
@@ -307,6 +310,11 @@ int32_t HeifTranscodingCheckUtils::ParseDenyList(const nlohmann::json &checkList
     return E_OK;
 }
 
+void HeifTranscodingCheckUtils::ClearBundleInfoInCache()
+{
+    HeifBundleInfoCache::ClearBundleInfoInCache();
+}
+
 bool HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(const std::string &bundleName)
 {
     if (isUseWhiteList_) {
@@ -314,6 +322,11 @@ bool HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(const std::strin
         if (it == whiteList_.end()) {
             MEDIA_INFO_LOG("Bundle %{public}s is not in white list", bundleName.c_str());
             return true;
+        }
+        bool isSupport = false;
+        if (HeifBundleInfoCache::GetBundleCacheInfo(bundleName, isSupport)) {
+            MEDIA_INFO_LOG("[cache] %{public}s is use jpg [%{public}d]", bundleName.c_str(), isSupport);
+            return isSupport;
         }
         AppExecFwk::BundleInfo bundleInfo;
         ErrCode state = GetSysBundleManager()->GetBundleInfoV9(
@@ -324,10 +337,12 @@ bool HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(const std::strin
             return false;
         }
         if (!CompareVersion(bundleInfo.versionName, it->second)) {
+            HeifBundleInfoCache::InsertBundleCacheInfo(bundleName, true);
             MEDIA_INFO_LOG("Bundle %{public}s version %{public}s is less than white list version %{public}s",
                 bundleName.c_str(), bundleInfo.versionName.c_str(), it->second.c_str());
             return true;
         }
+        HeifBundleInfoCache::InsertBundleCacheInfo(bundleName, false);
         MEDIA_INFO_LOG("Bundle %{public}s version %{public}s is in white list and meets the version requirement",
             bundleName.c_str(), bundleInfo.versionName.c_str());
         return false;

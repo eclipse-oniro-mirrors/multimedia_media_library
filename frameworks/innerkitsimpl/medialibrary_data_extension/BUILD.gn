@@ -852,6 +852,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "src/asset_compress_version_manager.cpp",
     "src/custom_record_operations.cpp",
     "src/foreground_analysis_meta.cpp",
+    "src/heif_bundle_info_cache.cpp",
     "src/heif_transcoding_check_utils.cpp",
     "src/hi_audit.cpp",
     "src/media_datashare_ext_ability.cpp",
