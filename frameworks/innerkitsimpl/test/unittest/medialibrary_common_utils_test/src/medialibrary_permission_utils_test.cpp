@@ -187,5 +187,21 @@ HWTEST_F(MediaLibraryCommonUtilsTest, permission_utils_test_001, TestSize.Level1
     auto ret = PermissionUtils::CheckCallerPermission(perms);
     EXPECT_EQ(ret, false);
 }
+
+HWTEST_F(MediaLibraryCommonUtilsTest, permission_utils_test_002, TestSize.Level1)
+{
+    PermissionUtils::ClearBundleInfoInCache();
+    vector<string> perms = {"PERMISSION_NAME_READ_MEDIA"};
+    auto ret = PermissionUtils::CheckCallerPermission(perms);
+    EXPECT_FALSE(ret);
+
+    perms = {"PERMISSION_NAME_WRITE_MEDIA"};
+    ret = PermissionUtils::CheckCallerPermission(perms);
+    EXPECT_FALSE(ret);
+
+    perms = {"PERMISSION_NAME_READ_MEDIA", "PERMISSION_NAME_WRITE_MEDIA"};
+    ret = PermissionUtils::CheckCallerPermission(perms);
+    EXPECT_FALSE(ret);
+}
 } // namespace Media
 } // namespace OHOS
