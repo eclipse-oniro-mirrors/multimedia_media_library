@@ -40,6 +40,7 @@
 #include "cloud_media_dao_utils.h"
 #include "photo_album_upload_status_operation.h"
 #include "media_album_order_back.h"
+#include "hi_audit.h"
 
 namespace OHOS::Media::CloudSync {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
@@ -52,6 +53,8 @@ int32_t CloudMediaAlbumDao::HandleLPathAndAlbumType(PhotoAlbumDto &record)
     std::unordered_map<std::string, MediaAlbumPluginRowData> writeListMap = QueryWhiteList();
     std::string localPath = record.lPath;
     if (localPath.empty()) {
+        HiAudit::GetInstance().WriteForCloudSyncAlbum(
+            record.albumName, record.cloudId, record.albumType, record.albumSubType, record.bundleName);
         MEDIA_ERR_LOG("HandleLPathAndAlbumType record have no lpath");
         return E_OK;
     }
