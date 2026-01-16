@@ -74,10 +74,11 @@ std::string GetDualDirName()
 
 void BackupRestoreService::Init(const RestoreInfo &info)
 {
+    serviceBackupDir_ = info.backupDir;
+    MEDIA_INFO_LOG("Backup directory: %{public}s", serviceBackupDir_.c_str());
     if (restoreService_ != nullptr) {
         return;
     }
-    serviceBackupDir_ = info.backupDir;
     switch (info.sceneCode) {
         case UPGRADE_RESTORE_ID:
             restoreService_ = std::make_unique<UpgradeRestore>(info.galleryAppName, info.mediaAppName, info.sceneCode,

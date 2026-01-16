@@ -139,7 +139,6 @@ protected:
     void ProcessGalleryFailedOffsets();
     void ProcessCloudGalleryFailedOffsets();
     void ProcessExternalFailedOffsets(int32_t maxId, bool isCamera, int32_t type);
-    void SetCloneParameterAndStopSync();
     int32_t InitDb(bool isUpgrade);
     std::string GetCloudQuerySql();
     std::vector<int32_t> GetCloudPhotoMinIds();

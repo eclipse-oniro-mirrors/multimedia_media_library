@@ -43,6 +43,10 @@
 #include "medialibrary_photo_operations.h"
 #include "preferences.h"
 #include "preferences_helper.h"
+
+#ifdef CLOUD_SYNC_MANAGER
+#include "cloud_sync_manager.h"
+#endif
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -217,6 +221,8 @@ void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::st
         UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
     }
     HandleRestData();
+    StopParameterForRestore();
+    StopParameterForClone();
 }
 
 int32_t BaseRestore::Init(void)
@@ -2318,6 +2324,15 @@ void BaseRestore::RestoreSearchIndex()
 void BaseRestore::SetIsRestore(bool isRestore)
 {
     isRestore_ = isRestore;
+}
+
+void UpgradeRestore::SetCloneParameterAndStopSync()
+{
+    SetParameterForClone();
+    SetParameterForRestore();
+#ifdef CLOUD_SYNC_MANAGER
+    FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync("com.ohos.medialibrary.medialibrarydata");
+#endif
 }
 } // namespace Media
 } // namespace OHOS
