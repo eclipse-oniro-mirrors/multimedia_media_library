@@ -236,7 +236,7 @@ void PictureManagerThread::SetLast200mImageId(const std::string& imageId)
     last200mImageId_ = imageId;
 }
 
-void PictureManagerThread::GetLast200mImageId()
+std::string PictureManagerThread::GetLast200mImageId()
 {
     return last200mImageId_;
 }
