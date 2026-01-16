@@ -856,7 +856,7 @@ static int32_t SetAlbumCoverUri(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     } else if (subtype == PhotoAlbumSubType::FAVORITE) {
         predicates.IndexedBy(PhotoColumn::PHOTO_FAVORITE_INDEX);
     } else if (subtype == PhotoAlbumSubType::CLOUD_ENHANCEMENT) {
-        predicates.OrderByDesc(MediaColumn::MEDIA_DATE_TAKEN);
+        predicates.IndexedBy(PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX);
     } else if (subtype == PhotoAlbumSubType::USER_GENERIC || subtype == PhotoAlbumSubType::SOURCE_GENERIC) {
         predicates.IndexedBy(PhotoColumn::PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX);
     } else {
@@ -1508,7 +1508,7 @@ void MediaLibraryRdbUtils::DetermineQueryOrder(RdbPredicates& predicates, const 
     } else if (subtype == PhotoAlbumSubType::FAVORITE) {
         predicates.IndexedBy(PhotoColumn::PHOTO_FAVORITE_INDEX);
     } else if (subtype == PhotoAlbumSubType::CLOUD_ENHANCEMENT) {
-        predicates.OrderByDesc(MediaColumn::MEDIA_DATE_TAKEN);
+        predicates.IndexedBy(PhotoColumn::PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX);
     } else if (subtype == PhotoAlbumSubType::USER_GENERIC || subtype == PhotoAlbumSubType::SOURCE_GENERIC) {
         predicates.IndexedBy(PhotoColumn::PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX);
     } else if (subtype == PhotoAlbumSubType::SHOOTING_MODE) {
