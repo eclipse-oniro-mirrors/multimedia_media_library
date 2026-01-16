@@ -421,24 +421,6 @@ static void GetDeletedRecordsAssetFuzzer()
     cloudMediaPhotosDao->GetDeletedRecordsAsset(limitSize, cloudRecordPoList);
 }
 
-static void GetPhotoLocalInfoFuzzer()
-{
-    if (cloudMediaPhotosDao == nullptr) {
-        MEDIA_ERR_LOG("cloudMediaPhotosDao is nullptr");
-        return;
-    }
-    std::vector<PhotosDto> records;
-    PhotosDto photo;
-    std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
-    photo.cloudId = cloudId;
-    photo.fileId = provider->ConsumeIntegral<int32_t>();
-    records.emplace_back(photo);
-    std::unordered_map<std::string, LocalInfo> infoMap;
-    std::string type = provider->ConsumeBool() ? PhotoColumn::PHOTO_CLOUD_ID : PhotoColumn::PHOTO_CLOUD_VERSION;
-    InsertPhotoAsset(cloudId);
-    cloudMediaPhotosDao->GetPhotoLocalInfo(records, infoMap, type);
-}
-
 static void UpdateLocalAlbumMapFuzzer()
 {
     if (cloudMediaPhotosDao == nullptr) {
@@ -448,24 +430,6 @@ static void UpdateLocalAlbumMapFuzzer()
     std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
     InsertPhotoAsset(cloudId);
     cloudMediaPhotosDao->UpdateLocalAlbumMap(cloudId);
-}
-
-static void GetSameNamePhotoCountFuzzer()
-{
-    if (cloudMediaPhotosDao == nullptr) {
-        MEDIA_ERR_LOG("cloudMediaPhotosDao is nullptr");
-        return;
-    }
-    PhotosDto photo;
-    photo.displayName = "IMG_20250425_123456.jpg";
-    photo.size = provider->ConsumeIntegral<int64_t>() & 0xff;
-    photo.ownerAlbumId = provider->ConsumeIntegral<int32_t>() & 0xf;
-    photo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
-    photo.rotation = provider->ConsumeIntegral<int32_t>() & 0xf;
-    bool isHide = provider->ConsumeBool();
-    int32_t count = 1;
-    QueryPhotoAsset();
-    cloudMediaPhotosDao->GetSameNamePhotoCount(photo, isHide, count);
 }
 
 static void UpdatePhotoCreatedRecordFuzzer()
@@ -480,9 +444,8 @@ static void UpdatePhotoCreatedRecordFuzzer()
     record.fileId = provider->ConsumeIntegral<int32_t>() & 0xf;
     record.cloudId = cloudId;
     record.version = provider->ConsumeIntegral<int64_t>() & 0xf;
-    std::unordered_map<std::string, LocalInfo> localMap;
     UpdatePhotoAsset(cloudId);
-    cloudMediaPhotosDao->UpdatePhotoCreatedRecord(record, localMap, photoRefresh);
+    cloudMediaPhotosDao->UpdatePhotoCreatedRecord(record, photoRefresh);
 }
 
 static void OnModifyPhotoRecordFuzzer()
@@ -574,20 +537,6 @@ static void DeleteFileNotExistPhotoFuzzer()
     cloudMediaPhotosDao->DeleteFileNotExistPhoto(path, photoRefresh);
 }
 
-static void HandleSameNameRenameFuzzer()
-{
-    if (cloudMediaPhotosDao == nullptr) {
-        MEDIA_ERR_LOG("cloudMediaPhotosDao is nullptr");
-        return;
-    }
-    auto photoRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    PhotosDto photo;
-    photo.fileName = "image.jpg";
-    std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
-    UpdatePhotoAsset(cloudId);
-    cloudMediaPhotosDao->HandleSameNameRename(photo, photoRefresh);
-}
-
 static void UpdatePhotoVisibleFuzzer()
 {
     if (cloudMediaPhotosDao == nullptr) {
@@ -644,9 +593,7 @@ static void UpdateFailRecordsCloudIdFuzzer()
     std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
     record.cloudId = cloudId;
     record.fileId = 1;
-    std::unordered_map<std::string, LocalInfo> localMap;
-    localMap.insert({"1", LocalInfo()});
-    cloudMediaPhotosDao->UpdateFailRecordsCloudId(record, localMap, photoRefresh);
+    cloudMediaPhotosDao->UpdateFailRecordsCloudId(record, photoRefresh);
 }
 
 static void InsertAndRemoveFailedRecordFuzzer()
@@ -678,9 +625,7 @@ static void MediaLibraryCloudMediaPhotosDaoFuzzer()
     GetRecordsFuzzer();
 
     GetDeletedRecordsAssetFuzzer();
-    GetPhotoLocalInfoFuzzer();
     UpdateLocalAlbumMapFuzzer();
-    GetSameNamePhotoCountFuzzer();
 
     UpdatePhotoCreatedRecordFuzzer();
     OnModifyPhotoRecordFuzzer();
@@ -690,7 +635,6 @@ static void MediaLibraryCloudMediaPhotosDaoFuzzer()
     ClearCloudInfoFuzzer();
 
     DeleteFileNotExistPhotoFuzzer();
-    HandleSameNameRenameFuzzer();
     UpdatePhotoVisibleFuzzer();
     UpdateAlbumInternalFuzzer();
     SetRetryFuzzer();

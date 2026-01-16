@@ -1226,65 +1226,6 @@ int32_t CloudMediaPhotosDao::AddRemoveAlbumCloudId(
     return E_OK;
 }
 
-static int32_t BuildInfoMap(const shared_ptr<NativeRdb::ResultSet> resultSet,
-    std::unordered_map<std::string, LocalInfo> &infoMap, const std::string &type)
-{
-    MEDIA_INFO_LOG("BuildInfoMap enter");
-    int32_t idIndex = -1;
-    int32_t mtimeIndex = -1;
-    int32_t metatimeIndex = -1;
-    int32_t ret = resultSet->GetColumnIndex(type, idIndex);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("BuildInfoMap Get type Index Error");
-        return ret;
-    }
-    ret = resultSet->GetColumnIndex(PhotoColumn::MEDIA_DATE_MODIFIED, mtimeIndex);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("BuildInfoMap Get date modified Index Error");
-        return ret;
-    }
-    ret = resultSet->GetColumnIndex(PhotoColumn::PHOTO_META_DATE_MODIFIED, metatimeIndex);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("BuildInfoMap Get meta date modified Index Error");
-        return ret;
-    }
-
-    /* iterate all rows compare mtime metatime */
-    while (resultSet->GoToNextRow() == 0) {
-        std::string idValue;
-        int64_t mtime;
-        int64_t metatime;
-        if (resultSet->GetString(idIndex, idValue) == 0 && resultSet->GetLong(mtimeIndex, mtime) == 0 &&
-            resultSet->GetLong(metatimeIndex, metatime) == 0) {
-            infoMap.insert({idValue, {"", "", metatime, mtime, 0}});
-        }
-    }
-    return E_OK;
-}
-
-int32_t CloudMediaPhotosDao::GetPhotoLocalInfo(
-    const std::vector<PhotosDto> &records, std::unordered_map<std::string, LocalInfo> &infoMap, const std::string &type)
-{
-    MEDIA_INFO_LOG("GetPhotoLocalInfo enter");
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "GetPhotoLocalInfo Failed to get rdbStore.");
-    std::vector<std::string> path;
-    for (auto &record : records) {
-        if (type == PhotoColumn::PHOTO_CLOUD_ID) {
-            path.push_back(record.cloudId);
-        } else {
-            path.push_back(std::to_string(record.fileId));
-        }
-    }
-
-    NativeRdb::AbsRdbPredicates createPredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    createPredicates.And()->In(type, path);
-    auto resultSet = rdbStore->Query(createPredicates, ON_UPLOAD_COLUMNS);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "resultset is null");
-
-    return BuildInfoMap(move(resultSet), infoMap, type);
-}
-
 int32_t CloudMediaPhotosDao::UpdateLocalAlbumMap(const std::string &cloudId)
 {
     MEDIA_INFO_LOG("enter UpdateLocalAlbumMap %{public}s", cloudId.c_str());
@@ -1320,60 +1261,6 @@ int32_t CloudMediaPhotosDao::UpdateLocalAlbumMap(const std::string &cloudId)
     }
     MEDIA_INFO_LOG("UpdateLocalAlbumMap success");
     return ret;
-}
-
-bool CloudMediaPhotosDao::IsTimeChanged(const PhotosDto &record,
-    const std::unordered_map<std::string, LocalInfo> &localMap, const std::string &fileId, const std::string &type)
-{
-    int64_t cloudtime = 0;
-    int64_t localtime = 0;
-    auto it = localMap.find(fileId);
-    if (it == localMap.end()) {
-        MEDIA_INFO_LOG("IsTimeChanged cloudId: %{public}s cause not int local map", record.cloudId.c_str());
-        return true;
-    }
-
-    /* get mtime or metatime */
-    if (type == PhotoColumn::MEDIA_DATE_MODIFIED) {
-        localtime = it->second.fdirtyTime;
-        cloudtime = record.editedTimeMs;
-        if (cloudtime <= 0) {
-            MEDIA_INFO_LOG("IsTimeChanged cloudId: %{public}s cause MEDIA_DATE_MODIFIED err", record.cloudId.c_str());
-            return false;
-        }
-    } else {
-        localtime = it->second.mdirtyTime;
-        cloudtime = record.metaDateModified;
-        if (cloudtime <= 0) {
-            MEDIA_INFO_LOG(
-                "IsTimeChanged cloudId: %{public}s cause PHOTO_META_DATE_MODIFIED err", record.cloudId.c_str());
-            return false;
-        }
-    }
-    MEDIA_INFO_LOG("IsTimeChanged cloudId: %{public}s lt: %{public}ld, ct: %{public}ld",
-        record.cloudId.c_str(),
-        (long)localtime,
-        (long)cloudtime);
-    if (localtime == cloudtime) {
-        return false;
-    }
-    return true;
-}
-
-int32_t CloudMediaPhotosDao::GetSameNamePhotoCount(const PhotosDto &photo, bool isHide, int32_t count)
-{
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "get same name photo get store failed.");
-    NativeRdb::AbsRdbPredicates sameFilePred = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    sameFilePred.EqualTo(PhotoColumn::MEDIA_NAME, photo.displayName)
-        ->EqualTo(PhotoColumn::MEDIA_SIZE, to_string(photo.size))
-        ->EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(photo.ownerAlbumId))
-        ->EqualTo(PhotoColumn::MEDIA_HIDDEN, to_string(isHide));
-    if (photo.mediaType == MediaType::MEDIA_TYPE_IMAGE) {
-        sameFilePred.And()->EqualTo(PhotoColumn::PHOTO_ORIENTATION, photo.rotation);
-    }
-    auto results = rdbStore->Query(sameFilePred, {PhotoColumn::PHOTO_CLOUD_ID});
-    return results->GetRowCount(count);
 }
 
 int32_t CloudMediaPhotosDao::HandleNotExistAlbumRecord(const PhotosDto &record)
@@ -1417,10 +1304,8 @@ int32_t CloudMediaPhotosDao::HandleNotExistAlbumRecord(const PhotosDto &record)
 }
 
 int32_t CloudMediaPhotosDao::UpdatePhotoCreatedRecord(
-    const PhotosDto &record, const std::unordered_map<std::string, LocalInfo> &localMap,
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+    const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
-    MEDIA_INFO_LOG("enter UpdatePhotoCreatedRecord");
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "UpdatePhotoCreatedRecord get store failed.");
     std::string fileId = to_string(record.fileId);
     NativeRdb::ValuesBucket valuesBucket;
@@ -1428,9 +1313,9 @@ int32_t CloudMediaPhotosDao::UpdatePhotoCreatedRecord(
     valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, PhotoPosition::POSITION_BOTH);
     valuesBucket.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, CloudMediaContext::GetInstance().GetCloudType());
     valuesBucket.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, record.version);
-    if (IsTimeChanged(record, localMap, fileId, PhotoColumn::MEDIA_DATE_MODIFIED)) {
+    if (IsFileTimeChanged(record)) {
         valuesBucket.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_FDIRTY));
-    } else if (IsTimeChanged(record, localMap, fileId, PhotoColumn::PHOTO_META_DATE_MODIFIED)) {
+    } else if (IsMetaTimeChanged(record)) {
         valuesBucket.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
     } else {
         valuesBucket.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
@@ -1450,7 +1335,6 @@ int32_t CloudMediaPhotosDao::UpdatePhotoCreatedRecord(
 int32_t CloudMediaPhotosDao::OnModifyPhotoRecord(
     const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
-    MEDIA_INFO_LOG("OnModifyPhotoRecord enter %{public}s", record.ToString().c_str());
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "on modify photo get store failed.");
     if (record.cloudId.empty()) {
         MEDIA_ERR_LOG("OnModifyPhotoRecord cloudId is empty");
@@ -1470,7 +1354,10 @@ int32_t CloudMediaPhotosDao::OnModifyPhotoRecord(
         valuesBucket,
         PhotoColumn::PHOTO_CLOUD_ID + " = ? AND " + PhotoColumn::PHOTO_META_DATE_MODIFIED + " = ?",
         {record.cloudId, std::to_string(record.metaDateModified)});
-    MEDIA_INFO_LOG("OnModifyPhotoRecord Update Dirty %{public}d, ret: %{public}d", changedRows, ret);
+    MEDIA_INFO_LOG("OnModifyPhotoRecord completed, changedRows: %{public}d, ret: %{public}d, cloudId: %{public}s",
+        changedRows,
+        ret,
+        record.cloudId.c_str());
     if (ret != AccurateRefresh::ACCURATE_REFRESH_RET_OK) {
         MEDIA_ERR_LOG("OnModifyPhotoRecord update synced err %{public}d", ret);
         /* update record version anyway */
@@ -1609,61 +1496,6 @@ int32_t CloudMediaPhotosDao::DeleteFileNotExistPhoto(
     }
     MEDIA_INFO_LOG("DeleteFileNotExistPhoto deletedRows: %{public}d, ret: %{public}d", deletedRows, ret);
     return ret;
-}
-
-int32_t CloudMediaPhotosDao::HandleSameNameRename(
-    const PhotosDto &photo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
-{
-    CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "rename same name get store failed.");
-    size_t dotPos = photo.fileName.rfind('.');
-    if (dotPos == std::string::npos) {
-        MEDIA_ERR_LOG("fileName have no suffix, %{private}s.", photo.fileName.c_str());
-        dotPos = photo.fileName.length();
-    }
-    std::string fileName = photo.fileName.substr(0, dotPos);
-    std::string fileExtension = photo.fileName.substr(dotPos);
-    NativeRdb::ValuesBucket values;
-    if (fileName.size() == 0) {
-        MEDIA_ERR_LOG("file name is too short!");
-        return E_DATA;
-    }
-    size_t len = fileName.size() - 1;
-    std::string tmpName;
-    if (len >= 1 && fileName[len - 1] == '_' && isdigit(fileName[len])) {
-        tmpName = fileName.substr(0, len) + to_string(static_cast<int>(fileName[len]) - '0' + 1);
-    } else {
-        tmpName = fileName + "_1";
-    }
-    std::string storagePath = photo.storagePath;
-    if (!storagePath.empty()) {
-        auto index = storagePath.rfind('/');
-        if (index != std::string::npos) {
-            std::string newStoragePath = storagePath.substr(0, index) + "/" + tmpName + fileExtension;
-            if (rename(storagePath.c_str(), newStoragePath.c_str()) != 0) {
-                MEDIA_ERR_LOG("Failed to rename local anco file, file path: %{public}s, errno: %{public}d",
-                    storagePath.c_str(), errno);
-            } else {
-                MEDIA_INFO_LOG("the new storagePath is %{public}s", newStoragePath.c_str());
-                values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, newStoragePath);
-            }
-        }
-    }
-    values.PutString(PhotoColumn::MEDIA_TITLE, tmpName);
-    values.PutString(PhotoColumn::MEDIA_NAME, tmpName + fileExtension);
-    int32_t changedRows = -1;
-    std::vector<std::string> whereArgs = {to_string(photo.fileId)};
-    int ret =
-        photoRefresh->Update(changedRows, PhotoColumn::PHOTOS_TABLE, values, PhotoColumn::MEDIA_ID + " = ?", whereArgs);
-    if (ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK && changedRows > 0) {
-        MEDIA_ERR_LOG("HandleSameNameRename Success %{public}d, %{public}s", photo.fileId, photo.cloudId.c_str());
-        photoCreateFailSet_.Remove(std::to_string(photo.fileId));
-        photoModifyFailSet_.Remove(photo.cloudId);
-        photoCopyFailSet_.Remove(std::to_string(photo.fileId));
-        return E_OK;
-    } else {
-        MEDIA_ERR_LOG("HandleSameNameRename update database fail, ret is %{public}d", ret);
-        return E_RDB;
-    }
 }
 
 int32_t CloudMediaPhotosDao::UpdatePhotoVisible()
@@ -1809,17 +1641,16 @@ int32_t CloudMediaPhotosDao::DeleteLocalByCloudId(
 }
  
 int32_t CloudMediaPhotosDao::UpdateFailRecordsCloudId(
-    const PhotosDto &record, const std::unordered_map<std::string, LocalInfo> &localMap,
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+    const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     bool isValid = record.serverErrorCode != static_cast<int32_t>(ServerErrorCode::RENEW_RESOURCE);
     CHECK_AND_RETURN_RET_INFO_LOG(isValid, E_OK, "Skip UpdateFailRecordsCloudId");
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "UpdateFailRecordsCloudId get store failed.");
     std::string fileId = to_string(record.fileId);
-    if (localMap.find(fileId) == localMap.end()) {
-        MEDIA_INFO_LOG("UpdateFailRecordsCloudId fileId not exist");
-        return E_OK;
-    }
+    CHECK_AND_RETURN_RET_LOG(record.localInfoOp.has_value(),
+        E_OK,
+        "UpdateFailRecordsCloudId fileId not exist, cloudId: %{public}s",
+        record.cloudId.c_str());
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutString(PhotoColumn::PHOTO_CLOUD_ID, record.cloudId);
     int32_t changedRows;
@@ -2211,6 +2042,79 @@ int32_t CloudMediaPhotosDao::FillThumbStatus(NativeRdb::ValuesBucket &values, co
 {
     CHECK_AND_RETURN_RET(mtimeChanged, E_OK);
     values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, static_cast<int32_t>(ThumbState::TO_DOWNLOAD));
+    return E_OK;
+}
+
+bool CloudMediaPhotosDao::IsFileTimeChanged(const PhotosDto &record)
+{
+    CHECK_AND_RETURN_RET_LOG(record.localInfoOp.has_value(),
+        true,
+        "IsFileTimeChanged, localInfoOp has no value. cloudId: %{public}s",
+        record.cloudId.c_str());
+    PhotosPo photoInfo = record.localInfoOp.value();
+    int64_t localtime = photoInfo.dateModified.value_or(0);
+    int64_t cloudtime = record.editedTimeMs;
+    bool isValid = localtime > 0 && cloudtime > 0;
+    CHECK_AND_RETURN_RET_LOG(isValid,
+        false,
+        "IsFileTimeChanged, invalid time, cloudId: %{public}s, localtime: %{public}ld, cloudtime: %{public}ld",
+        record.cloudId.c_str(),
+        (long)localtime,
+        (long)cloudtime);
+    CHECK_AND_RETURN_RET(localtime != cloudtime, false);
+    MEDIA_INFO_LOG("IsFileTimeChanged, cloudId: %{public}s, localtime: %{public}ld, cloudtime: %{public}ld",
+        record.cloudId.c_str(),
+        (long)localtime,
+        (long)cloudtime);
+    return true;
+}
+
+bool CloudMediaPhotosDao::IsMetaTimeChanged(const PhotosDto &record)
+{
+    CHECK_AND_RETURN_RET_LOG(record.localInfoOp.has_value(),
+        true,
+        "IsMetaTimeChanged, localInfoOp has no value. cloudId: %{public}s",
+        record.cloudId.c_str());
+    PhotosPo photoInfo = record.localInfoOp.value();
+    int64_t localtime = photoInfo.metaDateModified.value_or(0);
+    int64_t cloudtime = record.metaDateModified;
+    bool isValid = localtime > 0 && cloudtime > 0;
+    CHECK_AND_RETURN_RET_LOG(isValid,
+        false,
+        "IsMetaTimeChanged, invalid time, cloudId: %{public}s, localtime: %{public}ld, cloudtime: %{public}ld",
+        record.cloudId.c_str(),
+        (long)localtime,
+        (long)cloudtime);
+    CHECK_AND_RETURN_RET(localtime != cloudtime, false);
+    MEDIA_INFO_LOG("IsMetaTimeChanged, cloudId: %{public}s, localtime: %{public}ld, cloudtime: %{public}ld",
+        record.cloudId.c_str(),
+        (long)localtime,
+        (long)cloudtime);
+    return true;
+}
+
+int32_t CloudMediaPhotosDao::GetPhotoInfo(const int32_t fileId, std::optional<PhotosPo> &photosInfoOp)
+{
+    bool isValid = fileId > 0;
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "GetPhotoInfo failed, fileId: %{public}d", fileId);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbstore.");
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(fileId));
+    auto resultSet = rdbStore->Query(predicates, {});
+    std::vector<PhotosPo> photosList;
+    int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photosList);
+    isValid = ret == E_OK && !photosList.empty();
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RESULT_SET_NULL, "GetPhotoInfo empty, fileId: %{public}d", fileId);
+    photosInfoOp = photosList[0];
+    return E_OK;
+}
+
+int32_t CloudMediaPhotosDao::FindPhotoInfo(PhotosDto &record)
+{
+    int32_t ret = this->GetPhotoInfo(record.fileId, record.localInfoOp);
+    bool isValid = ret == E_OK && record.localInfoOp.has_value();
+    CHECK_AND_PRINT_LOG(isValid, "FindPhotoInfo failed, record: %{public}s", record.ToString().c_str());
     return E_OK;
 }
 // LCOV_EXCL_STOP

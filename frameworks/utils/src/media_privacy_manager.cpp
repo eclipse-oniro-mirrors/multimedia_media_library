@@ -41,6 +41,8 @@
 #include "parameters.h"
 #include "lake_file_utils.h"
 #include "directory_ex.h"
+#include "media_app_uri_permission_column.h"
+#include "medialibrary_rdbstore.h"
 
 using namespace std;
 using PrivacyRanges = vector<pair<uint32_t, uint32_t>>;
@@ -379,6 +381,22 @@ static int32_t CollectRanges(const string &path, const HideSensitiveType &sensit
     return E_SUCCESS;
 }
 
+static bool IsOwnerPriviledge(const uint32_t &tokenId, const std::string &fileId)
+{
+    NativeRdb::RdbPredicates rdbPredicate(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE);
+    rdbPredicate.EqualTo(AppUriPermissionColumn::TARGET_TOKENID, (int64_t)tokenId);
+    rdbPredicate.EqualTo(AppUriPermissionColumn::FILE_ID, fileId);
+    rdbPredicate.EqualTo(AppUriPermissionColumn::PERMISSION_TYPE,
+        AppUriPermissionColumn::PERMISSION_PERSIST_READ_WRITE);
+    vector<string> columns;
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+    CHECK_AND_RETURN_RET(resultSet != nullptr, false);
+    int32_t numRows = 0;
+    resultSet->GetRowCount(numRows);
+    resultSet->Close();
+    return numRows > 0;
+}
+
 /*
  * @path: [Input], the real path of the target file
  * @mode: [Input], the mode specified by user
@@ -412,6 +430,9 @@ int32_t MediaPrivacyManager::GetPrivacyRanges()
         tokenId_ = PermissionUtils::GetTokenId();
         result = PermissionUtils::CheckCallerPermission(PERMISSION_NAME_MEDIA_LOCATION);
     } else {
+        Security::AccessToken::AccessTokenID tokenCaller;
+        PermissionUtils::GetTokenCallerForUid(uid_, tokenCaller);
+        tokenId_ = static_cast<uint32_t>(tokenCaller);
         result = PermissionUtils::CheckCallerPermission(PERMISSION_NAME_MEDIA_LOCATION, uid_);
     }
     if ((result == false) && IsWriteMode(mode_)) {
@@ -426,6 +447,7 @@ int32_t MediaPrivacyManager::GetPrivacyRanges()
         HideSensitiveType sensitiveType =
             static_cast<HideSensitiveType>(UriSensitiveOperations::QuerySensitiveType(tokenId_, fileId_));
         MEDIA_DEBUG_LOG("GetPrivacyRanges::sensitiveType: %{public}d", static_cast<int32_t>(sensitiveType));
+        result = (result || IsOwnerPriviledge(tokenId_, fileId_));
         err = CollectRanges(path_, sensitiveType, ranges_, result);
     }
     if (err < 0) {

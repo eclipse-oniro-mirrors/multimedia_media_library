@@ -36,7 +36,9 @@
 #include "cloud_media_photos_delete_service.h"
 #include "media_operate_result.h"
 #include "cloud_media_asset_retain_compare_dao.h"
+#include "cloud_media_photos_rename_service.h"
 // LCOV_EXCL_START
+
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaPhotosService {
 private:
@@ -103,10 +105,10 @@ private:
     int32_t HandleSameNameUploadFail(
         const PhotosDto &photo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t HandleDetailcode(ErrorDetailCode &errorCode);
-    int32_t OnFdirtyRecordSuccess(const PhotosDto &record, const std::unordered_map<std::string, LocalInfo> &localMap,
-        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
-    int32_t OnCreateRecordSuccess(const PhotosDto &record, const std::unordered_map<std::string, LocalInfo> &localMap,
-        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t OnFdirtyRecordSuccess(
+        const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t OnCreateRecordSuccess(
+        const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     void NotifyPhotoInserted(const std::vector<NativeRdb::ValuesBucket> &insertFiles);
     void Notify(const std::string &uri, NotifyType type);
     void ConvertPullDataToPhotosDto(const CloudMediaPullDataDto &data, PhotosDto &dto);
@@ -158,6 +160,7 @@ private:
     CloudMediaPhotosDeleteService photosDeleteService_;
     CloudMediaAssetCompareDao assetCompareDao_;
     bool needRecoverSmartData_{false};
+    CloudMediaPhotosRenameService photosRenameService_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_SERVICE_H

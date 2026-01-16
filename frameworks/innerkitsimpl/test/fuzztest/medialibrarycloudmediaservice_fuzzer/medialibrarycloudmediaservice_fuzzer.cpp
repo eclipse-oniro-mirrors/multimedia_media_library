@@ -519,11 +519,10 @@ static void CloudMediadPhotoServiceFuzzer()
 
     auto photoRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     PhotosDto record = FuzzPhotosDto();
-    std::unordered_map<std::string, LocalInfo> localMap = { {"1", LocalInfo()} };
-    cloudMediaPhotosService->OnCreateRecordSuccess(record, localMap, photoRefresh);
+    cloudMediaPhotosService->OnCreateRecordSuccess(record, photoRefresh);
 
     record.localId = 1;
-    cloudMediaPhotosService->OnCreateRecordSuccess(record, localMap, photoRefresh);
+    cloudMediaPhotosService->OnCreateRecordSuccess(record, photoRefresh);
 }
 
 static void CloudMediaServiceProcessorFuzzer()

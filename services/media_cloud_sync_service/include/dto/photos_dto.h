@@ -27,6 +27,7 @@
 #include "on_copy_records_photos_vo.h"
 #include "userfile_manager_types.h"
 #include "cloud_media_define.h"
+#include "photos_po.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT PhotosDto {
@@ -79,6 +80,7 @@ public:
     std::string localPath;
     int32_t hidden;
     std::map<std::string, CloudFileDataDto> attachment;
+    std::optional<ORM::PhotosPo> localInfoOp;
 
 private:
     void GetAttachment(std::stringstream &ss) const;
