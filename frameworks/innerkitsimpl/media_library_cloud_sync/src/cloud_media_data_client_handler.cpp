@@ -608,7 +608,7 @@ int32_t CloudMediaDataClientHandler::QueryData(const DataShare::DataSharePredica
     return ret;
 }
 
-int32_t CloudMediaDataClientHandler::QueryData(const std::string &tableName,
+int32_t CloudMediaDataClientHandler::UpdateData(const std::string &tableName,
                                                const DataShare::DataSharePredicates &predicates,
                                                const DataShare::DataShareValuesBucket &value,
                                                const std::string &operateName)
@@ -619,7 +619,6 @@ int32_t CloudMediaDataClientHandler::QueryData(const std::string &tableName,
     reqBody.predicates = predicates;
     reqBody.value = value;
     reqBody.operateName = operateName;
-    int32_t ret = 0;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_UPDATE_DATA);
     int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
             .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}}).Post(operationCode, reqBody);
