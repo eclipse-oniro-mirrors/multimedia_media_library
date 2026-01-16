@@ -11309,10 +11309,14 @@ std::string MediaLibraryNapiUtils::GetSingleIdFromNapiPhotoAlbum(
     napi_env env, const napi_value &napiPhotoAlbum)
 {
     PhotoAlbumNapi *obj = nullptr;
+    if (napiPhotoAlbum == nullptr) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID);
+        return "";
+    }
     CHECK_ARGS(env, napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
 
     if (obj == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get album napi object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get album napi object");
         return "";
     }
 

@@ -233,7 +233,7 @@ static int32_t unregisterSingleAssetCallback(UnregisterContext& singleContext)
         }
         {
             std::lock_guard<std::mutex> lock(ChangeListenerNapi::trashMutex_);
-            cbList.erase(cbIt);
+            cbIt = cbList.erase(cbIt);
         }
         if (cbList.empty()) {
             int32_t ret = UnregisterSingleObserver(singleContext.registerUri + URI_SEPARATOR + singleContext.singleId,
@@ -305,7 +305,7 @@ static int32_t UnregisterSingleObserverExecute(UnregisterContext& singleContext)
                 ret, singleContext.registerUri.c_str());
             std::vector<shared_ptr<MediaOnNotifyNewObserver>>::iterator tmp = it;
             std::lock_guard<std::mutex> lock(ChangeListenerNapi::trashMutex_);
-            singleContext.listObj.newObservers_.erase(tmp);
+            tmp = singleContext.listObj.newObservers_.erase(tmp);
             NAPI_INFO_LOG("success to unregister observer, ret: %{public}d, uri: %{public}s", ret,
                 singleContext.registerUri.c_str());
         }
