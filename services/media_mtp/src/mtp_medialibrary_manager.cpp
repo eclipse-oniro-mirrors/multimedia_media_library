@@ -1687,7 +1687,8 @@ int32_t MtpMedialibraryManager::GetCloudPhotoCountFromAlbum(const std::shared_pt
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL, BURST_COVER_LEVEL);
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, MEDIA_PHOTO_TYPE);
     shared_ptr<DataShare::DataShareResultSet> resultSet = dataShareHelper_->Query(uri, predicates, g_photoColumns);
-    CHECK_AND_RETURN_RET_LOG(resultSet->GoToFirstRow() == NativeRdb::E_OK, E_HAS_DB_ERROR, "have no row");
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr,
+        MtpErrorUtils::SolveGetFdError(E_HAS_DB_ERROR), "fail to get result");
     int32_t count = 0;
     CHECK_AND_RETURN_RET_LOG(resultSet->GetRowCount(count) == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "Cannot get row count of resultset");
