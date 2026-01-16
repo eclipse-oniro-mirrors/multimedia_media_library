@@ -30,15 +30,15 @@ std::shared_ptr<MediaInLakeCheckManager> MediaInLakeCheckManager::GetInstance()
 
 void MediaInLakeCheckManager::Start()
 {
-    if (!MediaInLakeNeedCheck()) {
-        MEDIA_DEBUG_LOG("not timeout, media in lake check");
-        return;
-    }
-
     auto &scanner = GlobalScanner::GetInstance();
     auto scannerStatus = scanner.GetScannerStatus();
     if (scannerStatus != ScannerStatus::IDLE) {
         MEDIA_INFO_LOG("scanner is running, scanner status: %{public}d", static_cast<int32_t>(scannerStatus));
+        return;
+    }
+
+    if (!MediaInLakeNeedCheck()) {
+        MEDIA_DEBUG_LOG("not timeout, media in lake check");
         return;
     }
 
