@@ -1249,10 +1249,12 @@ async function photoPickerSelect(...args) {
   let context = undefined;
 
   let globalMovingPhotoState = config.parameters.globalMovingPhotoState;
-  let isGlobalMovingPhotoStateInvalid = checkGlobalMovingPhotoStateInvalid(globalMovingPhotoState);
-  if (isGlobalMovingPhotoStateInvalid) {
-    console.error('[picker] config: globalMovingPhotoState has value but invalid');
-    throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
+  if (globalMovingPhotoState !== undefined) {
+    let isGlobalMovingPhotoStateInvalid = checkGlobalMovingPhotoStateInvalid(globalMovingPhotoState);
+    if (isGlobalMovingPhotoStateInvalid) {
+      console.error('[picker] config: globalMovingPhotoState has value but invalid');
+      throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
+    }
   }
   
   try {
