@@ -1555,6 +1555,8 @@ void MultistagesCaptureOnProcessObserver::OnChange(const UserDefineCallbackWrapp
     std::map<std::string, AssetHandler *> assetHandlers = inProcessUriMap[notifyInfo->uri_];
     for (auto handler : assetHandlers) {
         auto assetHandler = handler.second;
+        auto requestUri = assetHandler->requestUri;
+        auto requestId = assetHandler->requestId;
         if (!MatchNotifyToObserver(notifyInfo->notifyType_, assetHandler->observerType)) {
             continue;
         }
@@ -1565,7 +1567,7 @@ void MultistagesCaptureOnProcessObserver::OnChange(const UserDefineCallbackWrapp
             assetHandler->isError = true;
         }
         MediaAssetManagerNapi::NotifyMediaDataPrepared(assetHandler);
-        DeleteRecordNoLock(handler.second->requestUri, handler.second->requestId);
+        DeleteRecordNoLock(requestUri, requestId);
     }
 }
 
