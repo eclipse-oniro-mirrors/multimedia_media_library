@@ -609,9 +609,8 @@ int32_t CloudMediaDataClientHandler::QueryData(const DataShare::DataSharePredica
 }
 
 int32_t CloudMediaDataClientHandler::UpdateData(const std::string &tableName,
-                                               const DataShare::DataSharePredicates &predicates,
-                                               const DataShare::DataShareValuesBucket &value,
-                                               const std::string &operateName)
+    const DataShare::DataSharePredicates &predicates, const DataShare::DataShareValuesBucket &value,
+    const std::string &operateName)
 {
     MEDIA_INFO_LOG("enter CloudMediaDataClientHandler::UpdateData");
     UpdateDataReqBody reqBody;
