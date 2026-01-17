@@ -197,6 +197,7 @@ void AlbumsRefreshWorker::GetSystemAlbumIds(SyncNotifyInfo &info, std::vector<st
         int32_t ablumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
         albumIds.push_back(std::to_string(ablumId));
     } while (resultSet->GoToNextRow() == E_OK);
+    resultSet->Close();
 }
 
 void AlbumsRefreshWorker::TryDeleteAlbum(SyncNotifyInfo &info, std::vector<std::string> &albumIds)

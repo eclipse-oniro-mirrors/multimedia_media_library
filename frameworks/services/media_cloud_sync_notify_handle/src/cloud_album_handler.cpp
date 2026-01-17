@@ -78,7 +78,9 @@ static int32_t GetCloudAlbumCount(const string &id)
         MEDIA_ERR_LOG("GetCloudAlbumCount error: %{public}d", errno);
         return E_HAS_DB_ERROR;
     }
-    return GetInt32Val("count", resultSet);
+    int32_t count = GetInt32Val("count", resultSet);
+    resultSet->Close();
+    return count;
 }
 
 static void UpdateSourcePath(const shared_ptr<MediaLibraryRdbStore> rdbStore,
@@ -93,6 +95,7 @@ static void UpdateSourcePath(const shared_ptr<MediaLibraryRdbStore> rdbStore,
             int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
             fileAssetsIds.push_back(to_string(fileId));
         }
+        resultSet->Close();
         MediaLibraryPhotoOperations::UpdateSourcePath(fileAssetsIds);
     }
 }
