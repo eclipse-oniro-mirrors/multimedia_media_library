@@ -58,7 +58,7 @@ public:  // basic functions
 class EXPORT CloudMdkRecordPhotoAlbumReqBody : public IPC::IMediaParcelable {
 public:
     int32_t size;
-    bool isCloudSpaceFull;
+    bool isCloudSpaceFull = false;
     
 public:  // functions of Parcelable.
     virtual ~CloudMdkRecordPhotoAlbumReqBody() = default;
