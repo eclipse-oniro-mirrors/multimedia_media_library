@@ -553,6 +553,7 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
         RestoreGallery();
         RestoreMusic();
         UpdateDatabase();
+        MEDIA_INFO_LOG("Deleting RdbStore, path: %{public}s.", dbPath_.c_str());
         (void)NativeRdb::RdbHelper::DeleteRdbStore(dbPath_);
     } else {
         SetErrorCode(RestoreError::INIT_FAILED);

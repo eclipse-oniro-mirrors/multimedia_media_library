@@ -358,6 +358,7 @@ int32_t OthersCloneRestore::Init(const std::string &backupRetoreDir, const std::
         return E_FAIL;
     }
     userId_ = IsPrivateAccount() ? UserId::PRIVATE : UserId::MAIN;
+    SetCloneParameterAndStopSync();
     int64_t startGetInfo = MediaFileUtils::UTCTimeMilliSeconds();
     GetCloneDbInfos(AUDIO_DB_NAME, audioDbInfo_);
     GetCloneDbInfos(PHOTO_DB_NAME, photoDbInfo_);

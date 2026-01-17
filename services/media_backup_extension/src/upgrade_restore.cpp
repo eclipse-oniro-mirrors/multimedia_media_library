@@ -31,10 +31,6 @@
 #include "vision_photo_map_column.h"
 #include "portrait_album_utils.h"
 #include "group_photo_album_restore.h"
-
-#ifdef CLOUD_SYNC_MANAGER
-#include "cloud_sync_manager.h"
-#endif
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -256,10 +252,12 @@ void UpgradeRestore::RestoreAudio(void)
         }
         RestoreAudioFromFile();
     }
+    MEDIA_INFO_LOG("Deleting RdbStore, path: %{public}s.", audioDbPath_.c_str());
     (void)NativeRdb::RdbHelper::DeleteRdbStore(audioDbPath_);
 
     int32_t restoreMode = BaseRestore::GetRestoreMode();
     if (restoreMode == RESTORE_MODE_PROC_ALL_DATA || restoreMode == RESTORE_MODE_PROC_TWIN_DATA) {
+        MEDIA_INFO_LOG("Deleting RdbStore, path: %{public}s.", externalDbPath_.c_str());
         (void)NativeRdb::RdbHelper::DeleteRdbStore(externalDbPath_);
     } else {
         MEDIA_INFO_LOG("restore mode no need to del external db");
@@ -489,8 +487,6 @@ void UpgradeRestore::RestorePhoto()
         .SetTaskId(taskId_)
         .ReportRestoreMode(restoreMode, BaseRestore::GetNotFoundNumber());
     ProcessBurstPhotos();
-    StopParameterForRestore();
-    StopParameterForClone();
 }
 
 void UpgradeRestore::AnalyzeSource()
@@ -818,6 +814,7 @@ void UpgradeRestore::HandleRestData(void)
     MEDIA_INFO_LOG("TimeCost: DeleteEmptyAlbum cost: %{public}" PRId64, endDeleteEmptyAlbum - startDeleteEmptyAlbum);
 
     if (restoreMode_ == RESTORE_MODE_PROC_ALL_DATA || restoreMode_ == RESTORE_MODE_PROC_TWIN_DATA) {
+        MEDIA_INFO_LOG("Deleting RdbStore, path: %{public}s.", galleryDbPath_.c_str());
         (void)NativeRdb::RdbHelper::DeleteRdbStore(galleryDbPath_);
     } else {
         MEDIA_INFO_LOG("restore mode no need to del gallery db");
@@ -1664,15 +1661,6 @@ void UpgradeRestore::RestoreAnalysisAlbum()
     }
 
     RestoreFromGalleryPortraitAlbum();
-}
-
-void UpgradeRestore::SetCloneParameterAndStopSync()
-{
-    SetParameterForClone();
-    SetParameterForRestore();
-#ifdef CLOUD_SYNC_MANAGER
-    FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync("com.ohos.medialibrary.medialibrarydata");
-#endif
 }
 
 int32_t UpgradeRestore::InitDb(bool isUpgrade)
