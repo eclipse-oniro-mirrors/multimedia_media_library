@@ -339,7 +339,7 @@ function getBundleInfo() {
 }
 
 function showAssetsCreationDialogResult(result, reject, resolve) {
-  console.log("showAssetsCreationDialogResult is" + result.result);
+  console.log('showAssetsCreationDialogResult is' + result.result);
   if (result.result !== REQUEST_CODE_SUCCESS) {
     if (result.result === ERR_CODE_OHOS_PERMISSION_DENIED) {
       reject(new BusinessError(ERROR_MSG_OHOS_NO_PERMISSION, result.result));
