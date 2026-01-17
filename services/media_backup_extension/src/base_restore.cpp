@@ -2326,7 +2326,7 @@ void BaseRestore::SetIsRestore(bool isRestore)
     isRestore_ = isRestore;
 }
 
-void UpgradeRestore::SetCloneParameterAndStopSync()
+void BaseRestore::SetCloneParameterAndStopSync()
 {
     SetParameterForClone();
     SetParameterForRestore();
