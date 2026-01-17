@@ -865,20 +865,6 @@ static void Check200mPicture(MediaLibraryCommand &cmd)
     }
 }
 
-static void Check200mPicture(MediaLibraryCommand &cmd)
-{
-    string isCapture = cmd.GetQuerySetParam(IS_CAPTURE);
-    if (isCapture != "true") {
-        MEDIA_DEBUG_LOG("no need Check200mPicture");
-    }
-    auto pictureManagerThread = PictureManagerThread::GetInstance();
-    string imageId = pictureManagerThread->GetLast200mImageId();
-    if (pictureManagerThread->IsExsitPictureByImageId(imageId)) {
-        pictureManagerThread->DeleteDataWithImageId(imageId, LOW_QUALITY_PICTURE);
-        pictureManagerThread->SetLast200mImageId("defult");
-    }
-}
-
 int32_t MediaLibraryPhotoOperations::HandleTrans(FileAsset &fileAsset, const string &extention,
     MediaLibraryCommand &cmd, bool isContains, int32_t &outRow)
 {
@@ -1697,25 +1683,6 @@ static void ResizePicture(std::shared_ptr<Media::Picture> &picture)
         pixelMap->GetHeight(), pixelMap->GetWidth());
 }
 
-static void ResizePicture(std::shared_ptr<Media::Picture> &picture)
-{
-    CHECK_AND_RETURN_LOG(picture != nullptr, "picture is nullptr");
-    auto pixelMap = picture->GetMainPixel();
-    CHECK_AND_RETURN_LOG(pixelMap != nullptr, "pixelMap is nullptr");
-    int32_t height = pixelMap->GetHeight();
-    int32_t width = pixelMap->GetWidth();
-    if (height < HIGH_PIXEL_SIDE || width < HIGH_PIXEL_SIDE) {
-        MEDIA_INFO_LOG("not 200m picture");
-        return;
-    }
-    ThumbnailUtils::ResizeLcd(width, height);
-    float widthScal = (1.0f * width) / pixelMap->GetWidth();
-    float heightScal = (1.0f * height) / pixelMap->GetHeight();
-    pixelMap->resize(widthScal, heightScal);
-    MEDIA_INFO_LOG("ResizePicture : height %{public}d, width%{public}d",
-        pixelMap->GetHeight(), pixelMap->GetWidth());
-}
-
 bool MediaLibraryPhotoOperations::CheckAndReport(bool cond, const int32_t &fileId,
     CaptureFaultType faultType, const string &reason)
 {
@@ -1742,7 +1709,6 @@ bool MediaLibraryPhotoOperations::HandleScanFile(std::shared_ptr<Media::Picture>
     int32_t burstCoverLevel = fileAsset->GetBurstCoverLevel();
     tracer.Start("MediaLibraryPhotoOperations::Scan");
     if (!path.empty()) {
-        CHECK_AND_RETURN_LOG(resultPicture != nullptr, "resultPicture is nullptr");
         ResizePicture(resultPicture);
         MEDIA_INFO_LOG("MultistagesCapture, scan file start, fileId: %{public}s", fileId.c_str());
         if (burstCoverLevel == static_cast<int32_t>(BurstCoverLevelType::COVER)) {
