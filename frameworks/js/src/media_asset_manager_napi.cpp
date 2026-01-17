@@ -241,6 +241,7 @@ static void DeleteRecordNoLock(const std::string &requestUri, const std::string 
         inProcessUriMap.erase(uriLocal);
     }
 
+    std::unique_lock<std::mutex> registerLock(registerTaskLock);
     if (multiStagesObserverNewMap.find(uriLocal) == multiStagesObserverNewMap.end()) {
         return;
     }
