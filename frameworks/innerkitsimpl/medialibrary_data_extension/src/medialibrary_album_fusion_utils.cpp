@@ -646,6 +646,15 @@ static string GetOwnerPackage()
     return clientBundle;
 }
 
+static void HandleBurstPhotoSubtype(shared_ptr<NativeRdb::ResultSet>& resultSet, NativeRdb::ValuesBucket& values)
+{
+    int32_t subType = -1;
+    GetIntValueFromResultSet(resultSet, PhotoColumn::PHOTO_SUBTYPE, subType);
+    if (subType == static_cast<int32_t>(PhotoSubType::BURST)) {
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
+    }
+}
+
 static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
     NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
 {
@@ -691,6 +700,7 @@ static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStor
     if (!copyInfo.isCopyOwnerPackage) {
         values.Put(MediaColumn::MEDIA_OWNER_PACKAGE, GetOwnerPackage());
     }
+    HandleBurstPhotoSubtype(resultSet, values);
     HandleLowQualityAssetValuesBucket(resultSet, values);
     HandleTempFileAssetValuesBucket(resultSet, values);
     HandleCeAvailableValuesBucket(copyInfo, resultSet, values);
