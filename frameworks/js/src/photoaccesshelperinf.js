@@ -38,6 +38,7 @@ const ERROR_MSG_USER_DENY = 'user deny';
 const ERROR_MSG_PARAMERTER_INVALID = 'input parmaeter invalid';
 const ERROR_MSG_INNER_FAIL = 'System inner fail';
 const ERROR_MSG_OHOS_INNER_FAIL = 'Internal system error';
+const ERROR_MSG_OHOS_NO_PERMISSION = 'Permission denied';
 const PARAMETERS_VALIDATE_FAILED_MESSAGE = 
 'Scene parameters validate failed, possible causes:' +
 '  1. An invalid enumeration value was passed. Only MOVING_PHOTO_ENABLE and' +
@@ -338,8 +339,13 @@ function getBundleInfo() {
 }
 
 function showAssetsCreationDialogResult(result, reject, resolve) {
+  console.log("showAssetsCreationDialogResult is" + result.result);
   if (result.result !== REQUEST_CODE_SUCCESS) {
-    reject(new BusinessError(ERROR_MSG_OHOS_INNER_FAIL, result.result));
+    if (result.result === ERR_CODE_OHOS_PERMISSION_DENIED) {
+      reject(new BusinessError(ERROR_MSG_OHOS_NO_PERMISSION, result.result));
+    } else {
+      reject(new BusinessError(ERROR_MSG_OHOS_INNER_FAIL, result.result));
+    }
   }
 
   if (result.data === undefined) {

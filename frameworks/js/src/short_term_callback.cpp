@@ -27,6 +27,7 @@ namespace Media {
 namespace {
 static constexpr int32_t SHORT_TERM_CODE_SUCCESS = 0;
 static const string SHORT_TERM_DES_FILE_URIS = "desFileUris";
+static const string SHORT_TERM_RESULT_CODE = "saveResultCode";
 static const string RESULT_PARAM = "result";
 static const string DATA_PARAM = "data";
 }
@@ -54,7 +55,8 @@ void ShortTermCallback::OnResult(int32_t resultCode, const OHOS::AAFwk::Want &wa
         }
         desFileUris = want.GetStringArrayParam(SHORT_TERM_DES_FILE_URIS);
     } else {
-        this->resultCode_ = JS_INNER_FAIL;
+        this->resultCode_ = want.GetIntParam(SHORT_TERM_RESULT_CODE, JS_INNER_FAIL);
+        NAPI_INFO_LOG("ShortTermCallback.OnResult errCode is %{public}d", this->resultCode_);
     }
     size_t len  = desFileUris.size();
     if (len > 0) {
