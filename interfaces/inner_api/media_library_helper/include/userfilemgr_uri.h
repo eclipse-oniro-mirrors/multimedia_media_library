@@ -21,7 +21,7 @@
 
 namespace OHOS {
 namespace Media {
-inline const std::string MEDIA_OPERN_KEYWORD = "operation";
+const std::string MEDIA_OPERN_KEYWORD = "operation";
 inline const std::string MEDIA_TRIGGER_MODE_KEYWORD = "trigger_mode";
 inline const std::string MEDIA_MOVING_PHOTO_OPRN_KEYWORD = "moving_photo_operation";
 inline const std::string MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD = "movie_video_operation";
@@ -41,7 +41,7 @@ inline const std::string OPRN_ANALYSIS_INDEX = "analysis_index";
 inline const std::string OPRN_HIDE = "hide";
 inline const std::string OPRN_BATCH_UPDATE_FAV = "batch_update_favorite";
 inline const std::string OPRN_BATCH_UPDATE_USER_COMMENT = "batch_update_user_comment";
-inline const std::string OPRN_BATCH_UPDATE_OWNER_ALBUM_ID = "batch_update_owner_album_id";
+const std::string OPRN_BATCH_UPDATE_OWNER_ALBUM_ID = "batch_update_owner_album_id";
 inline const std::string OPRN_BATCH_UPDATE_RECENT_SHOW = "batch_update_recent_show";
 inline const std::string OPRN_QUERY_HIDDEN = "query_hidden";
 inline const std::string OPRN_STORE_FORM_ID = "store_form_id";
@@ -112,7 +112,7 @@ inline const std::string MEDIA_PHOTOOPRN = "photo_operation";
 inline const std::string MEDIA_AUDIOOPRN = "audio_operation";
 inline const std::string MEDIA_APP_URI_PERMISSIONOPRN = "app_uri_permission_operation";
 inline const std::string MEDIA_DOCUMENTOPRN = "document_operation";
-inline const std::string MEDIA_FILEOPRN_CREATEASSET = "create_asset";
+const std::string MEDIA_FILEOPRN_CREATEASSET = "create_asset";
 inline const std::string MEDIA_FILEOPRN_MODIFYASSET = "modify_asset";
 inline const std::string MEDIA_FILEOPRN_DELETEASSET = "delete_asset";
 inline const std::string MEDIA_FILEOPRN_TRASHASSET = "trash_asset";
@@ -295,9 +295,9 @@ inline const std::string PAH_CLOSE_PHOTO = "datashare:///media/phaccess_photo_op
 inline const std::string PAH_UPDATE_PHOTO = "datashare:///media/phaccess_photo_operation/update";
 inline const std::string PAH_UPDATE_PHOTO_COMPONENT =
     "datashare:///media/phaccess_photo_operation/save_camera_photo_component";
-inline const std::string PAH_TRASH_PHOTO = "datashare:///media/phaccess_photo_operation/trash";
+const std::string PAH_TRASH_PHOTO = "datashare:///media/phaccess_photo_operation/trash";
 inline const std::string PAH_SYS_TRASH_PHOTO = "datashare:///media/phaccess_photo_operation/sys_trash";
-inline const std::string PAH_QUERY_PHOTO = "datashare:///media/phaccess_photo_operation/query";
+const std::string PAH_QUERY_PHOTO = "datashare:///media/phaccess_photo_operation/query";
 inline const std::string PAH_EDIT_USER_COMMENT_PHOTO = "datashare:///media/phaccess_photo_operation/set_user_comment";
 inline const std::string PAH_HIDE_PHOTOS = "datashare:///media/phaccess_photo_operation/hide";
 inline const std::string PAH_SUBMIT_CACHE = "datashare:///media/phaccess_photo_operation/operation_submit_cache";
