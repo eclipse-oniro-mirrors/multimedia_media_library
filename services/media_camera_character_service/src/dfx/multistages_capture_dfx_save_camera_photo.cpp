@@ -22,6 +22,7 @@
 
 namespace OHOS {
 namespace Media {
+const int32_t baseTime = 20;
 MultiStagesCaptureDfxSaveCameraPhoto::MultiStagesCaptureDfxSaveCameraPhoto() {}
 MultiStagesCaptureDfxSaveCameraPhoto::~MultiStagesCaptureDfxSaveCameraPhoto() {}
 
@@ -141,18 +142,23 @@ void MultiStagesCaptureDfxSaveCameraPhoto::RemoveTime(const std::string &photoId
     times_.erase(photoId);
 }
 
-void MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &photoId,
+bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &photoId,
     std::string &createAssetTime, std::string &photoCaptureTime, std::string &saveCameraTime)
 {
-if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
+    bool ret = false;
+    if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::END)) !=
         times_[photoId][KEY_CREATE_ASSET_TIME].end() &&
         times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) !=
         times_[photoId][KEY_CREATE_ASSET_TIME].end()) {
         auto stats = times_[photoId][KEY_CREATE_ASSET_TIME];
+        int32_t totalTime = stats[static_cast<int32_t>(AddAssetTimeStat::END)]
+            - stats[static_cast<int32_t>(AddAssetTimeStat::START)];
+        if (totalTime > baseTime) {
+            ret = true;
+        }
         createAssetTime = createAssetTime + "total : " +
-            std::to_string(stats[static_cast<int32_t>(AddAssetTimeStat::END)]
-            - stats[static_cast<int32_t>(AddAssetTimeStat::START)]) + ",";
+            std::to_string(totalTime) + ",";
         for (int32_t i = static_cast<int32_t>(AddAssetTimeStat::START) + 1;
             i < static_cast<int32_t>(AddAssetTimeStat::END); ++i) {
             if (stats.find(i) != stats.end()) {
@@ -169,9 +175,13 @@ if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::START)) !=
         times_[photoId][KEY_PHOTO_CAPTURE_TIME].end()) {
         auto stats = times_[photoId][KEY_PHOTO_CAPTURE_TIME];
+        int32_t totalTime = stats[static_cast<int32_t>(AddCaptureTimeStat::END)]
+            - stats[static_cast<int32_t>(AddCaptureTimeStat::START)];
+        if (totalTime > baseTime) {
+            ret = true;
+        }
         photoCaptureTime = photoCaptureTime + "total : " +
-            std::to_string(stats[static_cast<int32_t>(AddCaptureTimeStat::END)]
-            - stats[static_cast<int32_t>(AddCaptureTimeStat::START)]) + ",";
+            std::to_string(totalTime) + ",";
     }
 
     if (times_[photoId].find(KEY_SAVE_CAMERA_TIME) != times_[photoId].end() &&
@@ -180,9 +190,13 @@ if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) !=
         times_[photoId][KEY_SAVE_CAMERA_TIME].end()) {
         auto stats = times_[photoId][KEY_SAVE_CAMERA_TIME];
+        int32_t totalTime = stats[static_cast<int32_t>(AddSaveTimeStat::END)]
+            - stats[static_cast<int32_t>(AddSaveTimeStat::START)];
+        if (totalTime > baseTime) {
+            ret = true;
+        }
         saveCameraTime = saveCameraTime + "total : " +
-            std::to_string(stats[static_cast<int32_t>(AddSaveTimeStat::END)]
-            - stats[static_cast<int32_t>(AddSaveTimeStat::START)]) + ",";
+            std::to_string(totalTime) + ",";
         for (int32_t i = static_cast<int32_t>(AddSaveTimeStat::START) + 1;
             i < static_cast<int32_t>(AddSaveTimeStat::END); ++i) {
             if (stats.find(i) != stats.end()) {
@@ -192,6 +206,7 @@ if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
             }
         }
     }
+    return ret;
 }
 
 void MultiStagesCaptureDfxSaveCameraPhoto::Report(const std::string &photoId, const int32_t isDecoding,
@@ -205,7 +220,10 @@ void MultiStagesCaptureDfxSaveCameraPhoto::Report(const std::string &photoId, co
     std::string createAssetTime = "";
     std::string photoCaptureTime = "";
     std::string saveCameraTime = "";
-    GetResultString(photoId, createAssetTime, photoCaptureTime, saveCameraTime);
+    bool ret = GetResultString(photoId, createAssetTime, photoCaptureTime, saveCameraTime);
+    if (!ret) {
+        return;
+    }
     times_.erase(photoId);
     VariantMap map = {
         {KEY_PHOTO_ID, photoId},

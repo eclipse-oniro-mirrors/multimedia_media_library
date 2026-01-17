@@ -456,7 +456,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityIma
     string data = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
     bool isEdited = (GetInt64Val(PhotoColumn::PHOTO_EDIT_TIME, resultSet) > 0);
     resultSet->Close();
-    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(imageId, AddCaptureTimeStat::END);
+    MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(photoId, AddCaptureTimeStat::END);
     MultiStagesPhotoCaptureManager::GetInstance().DealLowQualityPicture(photoId, std::move(picture), isEdited);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture save low quality image end",
         MLOG_TAG, __FUNCTION__, __LINE__);
