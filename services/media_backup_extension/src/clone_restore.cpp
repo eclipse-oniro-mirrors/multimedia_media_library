@@ -1532,10 +1532,16 @@ void CloneRestore::GetInsertValueFromValMap(const FileInfo &fileInfo, NativeRdb:
 
 void CloneRestore::SetTimeInfo(const FileInfo &info, NativeRdb::ValuesBucket &values)
 {
-    int64_t dateAdded = info.dateAdded > SECONDS_LEVEL_LIMIT ? info.dateAdded : info.dateAdded * MSEC_TO_SEC;
-    int64_t dateModified =
-        info.dateModified > SECONDS_LEVEL_LIMIT ? info.dateModified : info.dateModified * MSEC_TO_SEC;
-    int64_t dateTaken = info.dateTaken > SECONDS_LEVEL_LIMIT ? info.dateTaken : info.dateTaken * MSEC_TO_SEC;
+    int64_t curTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t dateAdded = info.dateAdded > SECONDS_LEVEL_LIMIT     ? info.dateAdded
+                        : info.dateAdded * MSEC_TO_SEC > curTime ? info.dateAdded
+                                                                 : info.dateAdded * MSEC_TO_SEC;
+    int64_t dateModified = info.dateModified > SECONDS_LEVEL_LIMIT     ? info.dateModified
+                           : info.dateModified * MSEC_TO_SEC > curTime ? info.dateModified
+                                                                       : info.dateModified * MSEC_TO_SEC;
+    int64_t dateTaken = info.dateTaken > SECONDS_LEVEL_LIMIT     ? info.dateTaken
+                        : info.dateTaken * MSEC_TO_SEC > curTime ? info.dateTaken
+                                                                 : info.dateTaken * MSEC_TO_SEC;
 
     dateAdded = PhotoFileUtils::NormalizeTimestamp(dateAdded, MediaFileUtils::UTCTimeMilliSeconds());
     dateModified = PhotoFileUtils::NormalizeTimestamp(dateModified, dateAdded);
