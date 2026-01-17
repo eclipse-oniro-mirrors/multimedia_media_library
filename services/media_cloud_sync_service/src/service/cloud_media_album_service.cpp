@@ -773,7 +773,7 @@ int32_t CloudMediaAlbumService::GetCreatedRecordsWithCondition(const int32_t siz
             albumId,
             albumInfo.cloudId.value_or("").c_str());
         resultList.emplace_back(albumInfo);
-        CHECK_AND_BREAK(resultList.size() < size);
+        CHECK_AND_BREAK(resultList.size() < static_cast<size_t>(size));
     }
     return E_OK;
 }
