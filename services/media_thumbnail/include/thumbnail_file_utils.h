@@ -41,6 +41,7 @@ public:
     EXPORT static bool DeleteAstcDataFromKvStore(const ThumbnailData &data, const ThumbnailType &type);
     EXPORT static bool BatchDeleteAstcData(const ThumbnailDataBatch &dataBatch, const ThumbnailType &type);
     EXPORT static bool RemoveDirectoryAndFile(const std::string &path);
+    EXPORT static std::string GetFileInfo(const std::string &path);
 };
 } // namespace Media
 } // namespace OHOS

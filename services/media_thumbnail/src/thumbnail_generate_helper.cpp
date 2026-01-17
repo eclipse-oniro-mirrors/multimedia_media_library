@@ -528,7 +528,7 @@ int32_t ThumbnailGenerateHelper::GetAvailableFile(ThumbRdbOpt &opts, ThumbnailDa
     fileName = GetAvailablePath(data.path, thumbType);
     if (access(fileName.c_str(), F_OK) == 0) {
         // No need to create thumbnails if corresponding file exists
-        MEDIA_INFO_LOG("File exists, path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
+        MEDIA_INFO_LOG("File exists, file info: %{public}s", ThumbnailFileUtils::GetFileInfo(fileName).c_str());
         return E_OK;
     }
 
@@ -539,7 +539,8 @@ int32_t ThumbnailGenerateHelper::GetAvailableFile(ThumbRdbOpt &opts, ThumbnailDa
     if (access(tempFileName.c_str(), F_OK) == 0) {
         fileName = tempFileName;
         data.isOpeningCloudFile = true;
-        MEDIA_INFO_LOG("Unrotated file exists, path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
+        MEDIA_INFO_LOG("Unrotated file exists, file info: %{public}s",
+            ThumbnailFileUtils::GetFileInfo(tempFileName).c_str());
         return E_OK;
     }
 
