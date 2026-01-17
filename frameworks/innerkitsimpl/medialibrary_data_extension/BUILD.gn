@@ -197,6 +197,10 @@ config("media_data_extension_public_config") {
   include_event_handler = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/event_handler",
   ]
+  
+  include_old_notification = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_old_notification/include",
+  ]
 
   include_dirs = [
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
@@ -243,6 +247,7 @@ config("media_data_extension_public_config") {
   include_dirs += include_media_analysis_data_client_vo
   include_dirs += include_media_analysis_data_extension
   include_dirs += include_event_handler
+  include_dirs += include_old_notification
 
   if (media_library_facard_enable) {
     include_facard = [ "${MEDIALIB_FACARD_PATH}/include/operation" ]
@@ -879,7 +884,6 @@ ohos_shared_library("medialibrary_data_extension") {
     "src/cloud_media_common.cpp",
     "src/medialibrary_json_operation.cpp",
     "src/medialibrary_meta_recovery.cpp",
-    "src/medialibrary_notify.cpp",
     "src/medialibrary_object_utils.cpp",
     "src/medialibrary_photo_operations.cpp",
     "src/medialibrary_ptp_operations.cpp",
@@ -977,6 +981,10 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/dfx/dfx_refresh_manager.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/dfx/dfx_refresh_hander.cpp",
   ]
+   
+  media_old_notification = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_old_notification/src/medialibrary_notify.cpp",
+  ]
 
   sources += media_video_mode_source
   sources += media_scan_source
@@ -1020,6 +1028,7 @@ ohos_shared_library("medialibrary_data_extension") {
   sources += media_analysis_extension_source
   sources += media_cloud_sync_server_source_vo
   sources += event_handler_source
+  sources += media_old_notification
 
   if (media_library_cloud_sync_enable) {
     media_cloud_sync_server_source += media_cloud_sync_server_source_dto

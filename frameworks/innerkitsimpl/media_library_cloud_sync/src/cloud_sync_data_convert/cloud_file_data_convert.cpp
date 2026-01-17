@@ -694,7 +694,7 @@ int32_t CloudFileDataConvert::HandleCompatibleFileds(
     HandleProperties(data, upLoadRecord);
 
     /* cloud sdk extra feature */
-    if (type_ != CloudOperationType::FILE_METADATA_MODIFY) {
+    if (type_ == CloudOperationType::FILE_CREATE || type_ == CloudOperationType::FILE_DATA_MODIFY) {
         ret = HandleAttachments(data, upLoadRecord);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleAttachments failed, ret: %{public}d.", ret);
     }

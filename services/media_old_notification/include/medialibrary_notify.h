@@ -24,10 +24,7 @@
 #include "dataobs_mgr_client.h"
 #include "file_asset.h"
 #include "medialibrary_async_worker.h"
-#include "parcel.h"
 #include "rdb_predicates.h"
-#include "timer.h"
-#include "uri.h"
 #include "userfile_manager_types.h"
 
 namespace OHOS {
@@ -43,7 +40,6 @@ public:
     int albumId_;
     bool hiddenOnly_ = false;
 };
-constexpr size_t MNOTIFY_TIME_INTERVAL = 100;
 class MediaLibraryNotify {
 public:
     EXPORT static std::shared_ptr<MediaLibraryNotify> GetInstance();

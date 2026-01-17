@@ -240,7 +240,7 @@ int32_t CloudMediaAlbumService::OnFetchLPathRecords(
             }
             continue;
         } else {
-            if (changeType != ChangeType::INVAILD) {
+            if (changeType != ChangeType::INVAILD && changeType != ChangeType::DELETE) {
                 MediaGallerySyncNotify::GetInstance().AddNotify(
                     PhotoAlbumColumns::ALBUM_GALLERY_CLOUD_URI_PREFIX, changeType, record.cloudId);
             }

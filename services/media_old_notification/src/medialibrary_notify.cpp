@@ -15,7 +15,6 @@
 #define MLOG_TAG "FileNotify"
 #include "medialibrary_notify.h"
 
-#include "medialibrary_async_worker.h"
 #include "medialibrary_period_worker.h"
 #include "data_ability_helper_impl.h"
 #include "dfx_utils.h"
@@ -28,10 +27,10 @@
 #include "medialibrary_object_utils.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
+#include "parcel.h"
 #include "photo_album_column.h"
 #include "photo_map_column.h"
 #include "result_set_utils.h"
-#include "uri.h"
 #include "media_audio_column.h"
 
 using namespace std;
