@@ -35,7 +35,7 @@ private:
     const int32_t WEAK_BONUS = 30;
 
     const int32_t AESTHETICS_SCORE_THRESHOLD = 40;
-    // 3203 = 110010000011 表示 NOT_OCCLUSION、NOT_SIDE_FACE、IS_CLEAR、NOT_DOCUMENT、VALID 均为1
+    // 3203 means 110010000011
     const int32_t IS_EXCLUDED_THRESHOLD = 3203;
 public:
     // Scoring method used as a column in SQL queries
