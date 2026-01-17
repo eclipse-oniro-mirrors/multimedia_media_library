@@ -364,7 +364,7 @@ static int32_t CollectRanges(const string &path, const HideSensitiveType &sensit
             err = imageSource->GetFilterArea(SHOOTING_PARAM_EXIF, areas);
             break;
         case HideSensitiveType::DEFAULT:
-            CHECK_AND_RETURN_RET_LOG(!checkResult, E_SUCCESS, "Has MEDIA_LOCATION, no need hide sensitive.");
+            CHECK_AND_RETURN_RET_LOG(!checkResult, E_SUCCESS, "Has MEDIA_LOCATION or owner permission, no need hide sensitive.");
             err = imageSource->GetFilterArea(GEOGRAPHIC_LOCATION_EXIF, areas);
             break;
         default:
