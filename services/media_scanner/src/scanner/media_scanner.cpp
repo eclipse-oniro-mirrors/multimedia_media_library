@@ -28,7 +28,6 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_notify.h"
-#include "medialibrary_vision_operations.h"
 #include "mimetype_utils.h"
 #include "post_event_utils.h"
 #include "photo_map_column.h"

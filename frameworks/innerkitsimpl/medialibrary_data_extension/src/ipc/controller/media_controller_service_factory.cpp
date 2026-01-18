@@ -25,7 +25,9 @@
 #include "media_albums_controller_service.h"
 #include "media_refresh_controller_service.h"
 #include "media_camera_character_controller_service.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "media_analysis_data_controller_service.h"
+#endif
 
 namespace OHOS::Media::IPC {
 MediaControllerServiceFactory::MediaControllerServiceFactory()
@@ -41,7 +43,9 @@ MediaControllerServiceFactory::MediaControllerServiceFactory()
         std::make_shared<MediaAlbumsControllerService>(),
         std::make_shared<MediaRefreshControllerService>(),
         std::make_shared<MediaCameraCharacterControllerService>(),
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         std::make_shared<AnalysisData::MediaAnalysisDataControllerService>(),
+#endif
     };
 }
 

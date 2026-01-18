@@ -21,7 +21,9 @@
 #include "dfx_utils.h"
 #include "media_analysis_helper.h"
 #include "medialibrary_album_fusion_utils.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
+#endif
 #include "medialibrary_data_manager.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_object_utils.h"
@@ -2910,8 +2912,10 @@ int32_t MediaLibraryAlbumOperations::MergeAlbums(const NativeRdb::ValuesBucket &
     MEDIA_INFO_LOG("Before merge: %{public}s", MergeAlbumInfoToString(mergeAlbumInfo[1]).c_str());
     err = UpdateMergeAlbumsInfo(mergeAlbumInfo, currentAlbumId);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "MergeAlbum failed, err %{public}d", err);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     err = MediaLibraryAnalysisAlbumOperations::UpdateMergeGroupAlbumsInfo(mergeAlbumInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "MergeGroupAlbum failed, err %{public}d", err);
+#endif
     vector<int32_t> changeAlbumIds = { currentAlbumId };
     NotifyPortraitAlbum(changeAlbumIds);
     return err;
@@ -3558,7 +3562,12 @@ int32_t MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(const OperationTyp
         case OperationType::DISMISS:
         case OperationType::GROUP_ALBUM_NAME:
         case OperationType::GROUP_COVER_URI:
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
             return MediaLibraryAnalysisAlbumOperations::HandleGroupPhotoAlbum(opType, values, predicates);
+#else
+            MEDIA_ERR_LOG("unsupported analysis data");
+            return E_ERR;
+#endif
         default:
             MEDIA_ERR_LOG("Unknown operation type: %{public}d", opType);
             return E_ERR;

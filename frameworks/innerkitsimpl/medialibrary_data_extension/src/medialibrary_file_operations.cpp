@@ -29,7 +29,6 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_object_utils.h"
-#include "medialibrary_smartalbum_map_operations.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
 #include "native_album_asset.h"
