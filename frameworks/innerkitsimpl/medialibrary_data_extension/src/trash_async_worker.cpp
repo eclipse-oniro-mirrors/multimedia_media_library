@@ -14,7 +14,9 @@
  */
 #include "trash_async_worker.h"
 #include "medialibrary_album_operations.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_smartalbum_map_operations.h"
+#endif
 #include "media_log.h"
 
 using namespace std;
@@ -44,15 +46,19 @@ void TrashAsyncTaskWorker::Init()
 
 void TrashAsyncTaskWorker::Interrupt()
 {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     MediaLibrarySmartAlbumMapOperations::SetInterrupt(true);
+#endif
 }
 
 void TrashAsyncTaskWorker::StartWorker()
 {
     string name("TrashAsyncWorker");
     pthread_setname_np(pthread_self(), name.c_str());
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     MediaLibrarySmartAlbumMapOperations::SetInterrupt(false);
     MediaLibrarySmartAlbumMapOperations::HandleAgingOperation();
+#endif
     MediaLibraryAlbumOperations::HandlePhotoAlbum(OperationType::AGING, {}, {});
 }
 } // namespace Media

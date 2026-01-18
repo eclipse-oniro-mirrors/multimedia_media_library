@@ -27,7 +27,9 @@
 #include "media_smart_map_column.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_errno.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_smartalbum_map_operations.h"
+#endif
 #include "medialibrary_object_utils.h"
 #include "rdb_utils.h"
 #include "scanner_utils.h"
@@ -40,6 +42,7 @@ namespace OHOS {
 namespace Media {
 int32_t MediaLibraryDirOperations::TrashDirOperation(MediaLibraryCommand &cmd)
 {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     ValueObject valueObject;
     if (!cmd.GetValueBucket().GetObject(MEDIA_DATA_DB_ID, valueObject)) {
         return E_HAS_DB_ERROR;
@@ -54,6 +57,10 @@ int32_t MediaLibraryDirOperations::TrashDirOperation(MediaLibraryCommand &cmd)
     valuesBucket.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, TRASH_ALBUM_ID_VALUES);
     MediaLibraryCommand smartMapCmd(OperationObject::SMART_ALBUM_MAP, OperationType::CREATE, valuesBucket);
     return MediaLibrarySmartAlbumMapOperations::HandleSmartAlbumMapOperation(smartMapCmd);
+#else
+    MEDIA_ERR_LOG("not support analysis data");
+    return E_ERR;
+#endif
 }
 
 int32_t MediaLibraryDirOperations::CreateDirOperation(MediaLibraryCommand &cmd)

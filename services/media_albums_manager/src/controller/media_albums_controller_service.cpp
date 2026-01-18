@@ -45,8 +45,6 @@
 #include "album_photo_query_vo.h"
 #include "query_albums_vo.h"
 #include "query_albums_dto.h"
-#include "get_order_position_dto.h"
-#include "get_order_position_vo.h"
 #include "permission_common.h"
 #include "get_albums_by_ids_vo.h"
 #include "get_photo_album_object_vo.h"

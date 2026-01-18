@@ -21,7 +21,9 @@
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "medialibrary_album_operations.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
+#endif
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_data_manager.h"

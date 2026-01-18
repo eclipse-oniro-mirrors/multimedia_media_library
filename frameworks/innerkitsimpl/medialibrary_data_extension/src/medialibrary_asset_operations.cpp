@@ -46,7 +46,9 @@
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #include "medialibrary_formmap_operations.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_vision_operations.h"
+#endif
 #include "dfx_manager.h"
 #include "moving_photo_file_utils.h"
 #include "medialibrary_album_fusion_utils.h"
@@ -226,16 +228,18 @@ int32_t MediaLibraryAssetOperations::HandleInsertOperation(MediaLibraryCommand &
             break;
         case OperationType::COMMIT_EDIT:
             errCode = MediaLibraryPhotoOperations::CommitEditInsert(cmd);
-            if (errCode == E_SUCCESS) {
-                MediaLibraryVisionOperations::EditCommitOperation(cmd);
-            }
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
+            CHECK_AND_EXECUTE(errCode != E_SUCCESS, MediaLibraryVisionOperations::EditCommitOperation(cmd));
+#endif
             break;
         case OperationType::REVERT_EDIT:
             errCode = MediaLibraryPhotoOperations::RevertToOrigin(cmd);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
             if (errCode == E_SUCCESS) {
                 MediaLibraryVisionOperations::EditCommitOperation(cmd);
             }
             break;
+#endif
         case OperationType::SUBMIT_CACHE:
             errCode = MediaLibraryPhotoOperations::SubmitCache(cmd);
             break;
