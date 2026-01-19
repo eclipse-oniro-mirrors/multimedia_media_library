@@ -22,7 +22,9 @@
 
 namespace OHOS {
 namespace Media {
-const int32_t baseTime = 20;
+const int32_t createAssetBaseTime = 50;
+const int32_t captureBaseTime = 200;
+const int32_t saveBaseTime = 350;
 MultiStagesCaptureDfxSaveCameraPhoto::MultiStagesCaptureDfxSaveCameraPhoto() {}
 MultiStagesCaptureDfxSaveCameraPhoto::~MultiStagesCaptureDfxSaveCameraPhoto() {}
 
@@ -154,7 +156,7 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
         auto stats = times_[photoId][KEY_CREATE_ASSET_TIME];
         int32_t totalTime = stats[static_cast<int32_t>(AddAssetTimeStat::END)]
             - stats[static_cast<int32_t>(AddAssetTimeStat::START)];
-        if (totalTime > baseTime) {
+        if (totalTime > createAssetBaseTime) {
             ret = true;
         }
         createAssetTime = createAssetTime + "total : " +
@@ -177,7 +179,7 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
         auto stats = times_[photoId][KEY_PHOTO_CAPTURE_TIME];
         int32_t totalTime = stats[static_cast<int32_t>(AddCaptureTimeStat::END)]
             - stats[static_cast<int32_t>(AddCaptureTimeStat::START)];
-        if (totalTime > baseTime) {
+        if (totalTime > captureBaseTime) {
             ret = true;
         }
         photoCaptureTime = photoCaptureTime + "total : " +
@@ -192,7 +194,7 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
         auto stats = times_[photoId][KEY_SAVE_CAMERA_TIME];
         int32_t totalTime = stats[static_cast<int32_t>(AddSaveTimeStat::END)]
             - stats[static_cast<int32_t>(AddSaveTimeStat::START)];
-        if (totalTime > baseTime) {
+        if (totalTime > saveBaseTime) {
             ret = true;
         }
         saveCameraTime = saveCameraTime + "total : " +

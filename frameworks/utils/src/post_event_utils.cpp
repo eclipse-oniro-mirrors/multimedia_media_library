@@ -292,7 +292,7 @@ void PostEventUtils::PostSaveCameraPhotoStat(const VariantMap &stat)
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_MSC_SAVE_CAMERA_PHOTO",
-        HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
         KEY_PHOTO_ID, photoId,
         KEY_IS_DECODING, isDecoding,
         KEY_MEDIA_SUBTYPE, mediaSubtype,
