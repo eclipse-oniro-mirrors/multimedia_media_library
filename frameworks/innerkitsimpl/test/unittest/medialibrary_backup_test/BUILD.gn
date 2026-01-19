@@ -95,6 +95,7 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/photos_dao.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/photos_data_handler.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/photos_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/restore_photos_album_hidden.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/tab_old_photos_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",

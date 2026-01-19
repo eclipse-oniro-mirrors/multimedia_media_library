@@ -1098,6 +1098,7 @@ vector<NativeRdb::ValuesBucket> CloneRestore::GetCloudInsertValues(int32_t scene
 void CloneRestore::HandleRestData(void)
 {
     MEDIA_INFO_LOG("Start to handle rest data in native.");
+    this->restorePhotosAlbumHidden_.UpdateEmptyAlbumHidden(mediaLibraryRdb_);
 }
 
 vector<FileInfo> CloneRestore::QueryFileInfos(int32_t offset, int32_t isRelatedToPhotoMap)

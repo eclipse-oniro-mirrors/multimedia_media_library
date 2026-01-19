@@ -819,6 +819,7 @@ void UpgradeRestore::HandleRestData(void)
     } else {
         MEDIA_INFO_LOG("restore mode no need to del gallery db");
     }
+    this->restorePhotosAlbumHidden_.UpdateEmptyAlbumHidden(mediaLibraryRdb_);
 }
 
 std::vector<FileInfo> UpgradeRestore::QueryFileInfos(int32_t minId)
