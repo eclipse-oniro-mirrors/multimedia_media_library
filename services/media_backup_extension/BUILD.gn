@@ -116,6 +116,7 @@ ohos_shared_library("mediabackup") {
     "./src/restore/photos_dao.cpp",
     "./src/restore/photos_data_handler.cpp",
     "./src/restore/photos_restore.cpp",
+    "./src/restore/restore_photos_album_hidden.cpp",
     "./src/restore/tab_old_albums_clone.cpp",
     "./src/restore/tab_old_photos_restore.cpp",
     "./src/upgrade_restore.cpp",

@@ -1243,7 +1243,10 @@ int32_t CloudMediaPhotosService::OnCompletePull(const MediaOperateResult &optRet
         watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
         SetSmartDataUpdateState(UpdateSmartDataState::IDLE);
     }
-    return this->photosDao_.UpdatePhotoVisible();
+    int32_t ret = this->photosDao_.UpdatePhotoVisible();
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    ret = this->photosAlbumHiddenService_.UpdateEmptyAlbumHidden();
+    return ret;
 }
 
 int32_t CloudMediaPhotosService::OnCompletePush()
