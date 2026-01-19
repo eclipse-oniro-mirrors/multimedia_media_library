@@ -21,13 +21,13 @@ namespace OHOS {
 namespace Media {
 using namespace testing::ext;
 
-void LakeFileMonitorTest::SetUpTestCase() {}
+void LakeMonitorRdbTest::SetUpTestCase() {}
 
-void LakeFileMonitorTest::TearDownTestCase() {}
+void LakeMonitorRdbTest::TearDownTestCase() {}
 
-void LakeFileMonitorTest::SetUp() {}
+void LakeMonitorRdbTest::SetUp() {}
 
-void LakeFileMonitorTest::TearDown() {}
+void LakeMonitorRdbTest::TearDown() {}
 
 } // namespace Media
 } // namespace OHOS
