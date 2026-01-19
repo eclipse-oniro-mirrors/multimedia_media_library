@@ -540,9 +540,9 @@ static void InsertDateAdded(std::unique_ptr<Metadata> &metadata, NativeRdb::Valu
 {
     int64_t dateAdded = 0;
     int64_t dateTaken = metadata->GetDateTaken();
-    if (dateTaken == 0) {
+    if (dateTaken <= 0) {
         int64_t dateModified = metadata->GetFileDateModified();
-        if (dateModified == 0) {
+        if (dateModified <= 0) {
             dateAdded = MediaFileUtils::UTCTimeMilliSeconds();
         } else {
             dateAdded = dateModified;
