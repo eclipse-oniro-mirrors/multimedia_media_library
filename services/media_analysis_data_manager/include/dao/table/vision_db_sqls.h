@@ -535,7 +535,7 @@ const std::string UPGRADE_VISION_INSERT_TRIGGER_FOR_FILE_SOURCE_TYPE =
     " BEGIN " +
     " INSERT INTO " + VISION_TOTAL_TABLE +" (" + FILE_ID + ", " + STATUS + ", " + OCR + ", " + AESTHETICS_SCORE + ", " +
     LABEL + ", " + FACE + ", " + OBJECT + ", " + RECOMMENDATION + ", " + SEGMENTATION + ", " + COMPOSITION + "," +
-    SALIENCY + ", " + HEAD + ", " + POSE + ") " + 
+    SALIENCY + ", " + HEAD + ", " + POSE + ") " +
     " VALUES (" + " NEW.file_id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 );" + " END;";
 
 const std::string DROP_INSERT_VISION_TRIGGER = "DROP TRIGGER IF EXISTS insert_vision_trigger";
