@@ -57,6 +57,9 @@ public:
 private:
     MultiStagesCaptureDfxSaveCameraPhoto();
     ~MultiStagesCaptureDfxSaveCameraPhoto();
+    bool GetCreateAssetTime(const std::string &photoId, std::string &createAssetTime);
+    bool GetPhotoCaptureTime(const std::string &photoId, std::string &photoCaptureTime);
+    bool GetSaveCameraTime(const std::string &photoId, std::string &saveCameraTime);
     bool GetResultString(const std::string &photoId,
         std::string &createAssetTime, std::string &photoCaptureTime, std::string &saveCameraTime);
     std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>>> times_;

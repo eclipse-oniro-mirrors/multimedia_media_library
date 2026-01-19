@@ -144,8 +144,8 @@ void MultiStagesCaptureDfxSaveCameraPhoto::RemoveTime(const std::string &photoId
     times_.erase(photoId);
 }
 
-bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &photoId,
-    std::string &createAssetTime, std::string &photoCaptureTime, std::string &saveCameraTime)
+bool MultiStagesCaptureDfxSaveCameraPhoto::GetCreateAssetTime(const std::string &photoId,
+    std::string &createAssetTime)
 {
     bool ret = false;
     if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
@@ -159,8 +159,7 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
         if (totalTime > createAssetBaseTime) {
             ret = true;
         }
-        createAssetTime = createAssetTime + "total : " +
-            std::to_string(totalTime) + ",";
+        createAssetTime = createAssetTime + "total : " + std::to_string(totalTime) + ",";
         for (int32_t i = static_cast<int32_t>(AddAssetTimeStat::START) + 1;
             i < static_cast<int32_t>(AddAssetTimeStat::END); ++i) {
             if (stats.find(i) != stats.end()) {
@@ -170,7 +169,13 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
             }
         }
     }
+    return ret;
+}
 
+bool MultiStagesCaptureDfxSaveCameraPhoto::GetPhotoCaptureTime(const std::string &photoId,
+    std::string &photoCaptureTime)
+{
+    bool ret = false;
     if (times_[photoId].find(KEY_PHOTO_CAPTURE_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::END)) !=
         times_[photoId][KEY_PHOTO_CAPTURE_TIME].end() &&
@@ -182,10 +187,15 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
         if (totalTime > captureBaseTime) {
             ret = true;
         }
-        photoCaptureTime = photoCaptureTime + "total : " +
-            std::to_string(totalTime) + ",";
+        photoCaptureTime = photoCaptureTime + "total : " + std::to_string(totalTime) + ",";
     }
+    return ret;
+}
 
+bool MultiStagesCaptureDfxSaveCameraPhoto::GetSaveCameraTime(const std::string &photoId,
+    std::string &saveCameraTime)
+{
+    bool ret = false;
     if (times_[photoId].find(KEY_SAVE_CAMERA_TIME) != times_[photoId].end() &&
         times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::END)) !=
         times_[photoId][KEY_SAVE_CAMERA_TIME].end() &&
@@ -197,8 +207,7 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
         if (totalTime > saveBaseTime) {
             ret = true;
         }
-        saveCameraTime = saveCameraTime + "total : " +
-            std::to_string(totalTime) + ",";
+        saveCameraTime = saveCameraTime + "total : " + std::to_string(totalTime) + ",";
         for (int32_t i = static_cast<int32_t>(AddSaveTimeStat::START) + 1;
             i < static_cast<int32_t>(AddSaveTimeStat::END); ++i) {
             if (stats.find(i) != stats.end()) {
@@ -208,6 +217,20 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &ph
             }
         }
     }
+    return ret;
+}
+
+bool MultiStagesCaptureDfxSaveCameraPhoto::GetResultString(const std::string &photoId,
+    std::string &createAssetTime, std::string &photoCaptureTime, std::string &saveCameraTime)
+{
+    bool ret = false;
+    bool createAsset = GetCreateAssetTime(photoId, createAssetTime);
+    bool photoCapture = GetPhotoCaptureTime(photoId, photoCaptureTime);
+    bool saveCamera = GetSaveCameraTime(photoId, saveCameraTime);
+    if (createAsset || photoCapture || saveCamera) {
+        ret = true;
+    }
+    
     return ret;
 }
 
