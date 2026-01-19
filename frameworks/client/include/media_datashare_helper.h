@@ -35,7 +35,7 @@ public:
 
 protected:
     std::shared_ptr<DataShare::DataShareHelper> sDataShareHelper_ = nullptr;
-    int32_t userId_;
+    int32_t userId_{-1};
     SafeMap<int32_t, std::shared_ptr<DataShare::DataShareHelper>> dataShareHelperMap_;
     std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelper(const sptr<IRemoteObject> &token,
         const int32_t userId = -1);
