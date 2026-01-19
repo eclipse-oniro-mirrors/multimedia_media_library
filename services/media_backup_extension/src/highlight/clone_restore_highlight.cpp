@@ -797,6 +797,8 @@ void CloneRestoreHighlight::MoveHighlightWordart(const AnalysisAlbumInfo &info, 
         CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(srcPath));
         std::string dstDir = "/storage/media/local/files/highlight/cover/" +
             std::to_string(info.highlightIdNew.value()) + "/" + ratio;
+        CHECK_AND_CONTINUE_ERR_LOG(!MediaFileUtils::IsDirectory(dstDir) || MediaFileUtils::DeleteDir(dstDir),
+            "remove %{public}s failed", dstDir.c_str());
         CHECK_AND_CONTINUE_ERR_LOG(MediaFileUtils::CreateDirectory(dstDir), "create %{public}s failed",
             BackupFileUtils::GarbleFilePath(dstDir, sceneCode_, GARBLE_DST_PATH).c_str());
 
@@ -816,6 +818,8 @@ void CloneRestoreHighlight::MoveHighlightGround(const AnalysisAlbumInfo &info, c
         std::string groundDstDir = "/storage/media/local/files/highlight/cover/" +
             std::to_string(info.highlightIdNew.value()) + "/full";
         CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(groundPath));
+        CHECK_AND_CONTINUE_ERR_LOG(!MediaFileUtils::IsDirectory(groundDstDir) ||
+            MediaFileUtils::DeleteDir(groundDstDir), "remove %{public}s failed", groundDstDir.c_str());
         CHECK_AND_CONTINUE_ERR_LOG(MediaFileUtils::CreateDirectory(groundDstDir), "create %{public}s failed",
             BackupFileUtils::GarbleFilePath(groundDstDir, sceneCode_, GARBLE_DST_PATH).c_str());
 
@@ -844,10 +848,8 @@ int32_t CloneRestoreHighlight::MoveHighlightMusic(const std::string &srcDir, con
         } else {
             std::string tmpFilePath = srcFilePath;
             std::string dstFilePath = tmpFilePath.replace(0, srcDir.length(), dstDir);
-            CHECK_AND_CONTINUE_INFO_LOG(!MediaFileUtils::IsFileExists(dstFilePath),
-                "dst file already exists, srcPath:%{public}s, dstPath:%{public}s",
-                BackupFileUtils::GarbleFilePath(srcFilePath, sceneCode_, garblePath_).c_str(),
-                BackupFileUtils::GarbleFilePath(dstFilePath, sceneCode_, GARBLE_DST_PATH).c_str());
+            CHECK_AND_CONTINUE_ERR_LOG(!MediaFileUtils::IsFileExists(dstFilePath) ||
+                MediaFileUtils::DeleteFile(dstFilePath), "remove %{public}s failed", dstFilePath.c_str());
             int32_t errCode = BackupFileUtils::MoveFile(srcFilePath.c_str(), dstFilePath.c_str(), sceneCode_);
             CHECK_AND_PRINT_LOG(errCode == E_OK,
                 "move file failed, srcPath:%{public}s, dstPath:%{public}s, errCode:%{public}d",
