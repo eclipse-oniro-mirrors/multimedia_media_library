@@ -172,6 +172,7 @@ static int32_t QueryAlbumIdBySubtype(const shared_ptr<MediaLibraryRdbStore> rdbS
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
     }
+    resultSet->Close();
     return albumId;
 }
 
@@ -541,6 +542,7 @@ static void ConstructAssetsNotifyUris(const shared_ptr<MediaLibraryRdbStore> rdb
             MEDIA_DEBUG_LOG(
                 "#test info.notifyType: NOTIFY_ADD, Uri: %{public}s", uri.c_str());
         } while (resultSet->GoToNextRow() == E_OK);
+        resultSet->Close();
     } else {
         for (auto it = uriIds.begin(); it != uriIds.end(); ++it) {
             string fileId = *it;
