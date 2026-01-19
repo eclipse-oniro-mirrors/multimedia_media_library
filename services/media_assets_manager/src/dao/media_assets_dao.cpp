@@ -437,7 +437,8 @@ int32_t MediaAssetsDao::DeletePhotoExtTable(const std::string &fileId)
     predicates.EqualTo(PhotoExtColumn::PHOTO_ID, fileId);
     int32_t deletedRows = -1;
     int32_t ret = rdbStore->Delete(deletedRows, predicates);
-    MEDIA_INFO_LOG("DeletePhotoExtTable completed, ret: %{public}d, photoId: %{public}s", ret, fileId.c_str());
+    MEDIA_INFO_LOG("DeletePhotoExtTable completed, ret: %{public}d, photoId: %{public}s, deletedRows: %{public}d",
+        ret, fileId.c_str(), deletedRows);
     return ret;
 }
 }  // namespace OHOS::Media::Common
