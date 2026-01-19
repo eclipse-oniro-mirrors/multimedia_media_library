@@ -26,6 +26,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 
+#include "heif_bundle_info_cache.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "system_ability_definition.h"
@@ -532,6 +533,41 @@ HWTEST_F(HeifTranscodingCheckUtilsTest, CanSupportedCompatibleDuplicate_test_006
     auto ret3 = HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(bundleName);
     EXPECT_EQ(ret3, true);
     MEDIA_INFO_LOG("end tdd CanSupportedCompatibleDuplicate_test_006");
+}
+
+HWTEST_F(HeifTranscodingCheckUtilsTest, InsertBundleCacheInfo_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("start tdd InsertBundleCacheInfo_test_001");
+    std::string filePath;
+    if (IsFileOpenable(DUE_INSTALL_DIR_TEST)) {
+        filePath = DUE_INSTALL_DIR_TEST;
+    } else {
+        filePath = HEIF_TRANSCODING_CHECK_LIST_JSON_LOCAL_NAME_PATH_TEST;
+    }
+    const uint32_t CAPACITY_BUNDLE_INFO = 51;
+    std::string bundleName = "com.ohos.test.cache";
+    std::vector<std::string> newWhitelist = {};
+    for (uint32_t i = 0; i < CAPACITY_BUNDLE_INFO; i++) {
+        newWhitelist.push_back(bundleName + std::to_string(i) + "@1.0.0.1");
+    }
+    std::vector<std::string> newDenyList = {};
+    std::string newStrategy = "whiteList";
+    auto ret = UpdateHeifChecklist(filePath, newWhitelist, newDenyList, newStrategy);
+    EXPECT_EQ(ret, true);
+    auto ret1 = HeifTranscodingCheckUtils::InitCheckList();
+    HeifTranscodingCheckUtils::UnsubscribeCotaUpdatedEvent();
+    EXPECT_EQ(ret1, E_OK);
+    HeifTranscodingCheckUtils::ClearBundleInfoInCache();
+    for (uint32_t i = 0; i < CAPACITY_BUNDLE_INFO; i++) {
+        HeifBundleInfoCache::InsertBundleCacheInfo(bundleName + std::to_string(i), true);
+    }
+    auto ret3 = HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(bundleName + std::to_string(0));
+    EXPECT_EQ(ret3, false);
+    for (uint32_t i = 1; i < CAPACITY_BUNDLE_INFO; i++) {
+        ret3 = HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(bundleName + std::to_string(i));
+        EXPECT_EQ(ret3, true);
+    }
+    MEDIA_INFO_LOG("end tdd InsertBundleCacheInfo_test_001");
 }
 }
 }
