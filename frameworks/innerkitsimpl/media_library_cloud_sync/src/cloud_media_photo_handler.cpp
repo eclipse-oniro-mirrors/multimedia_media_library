@@ -402,7 +402,7 @@ int32_t CloudMediaPhotoHandler::GetCopyRecords(std::vector<MDKRecord> &records, 
         return ret;
     }
     std::vector<CloudMdkRecordPhotosVo> copyRecord = respBody.GetPhotosRecords();
-    CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DATA_MODIFY, userId_};
+    CloudFileDataConvert dataConvertor{CloudOperationType::FILE_COPY, userId_};
     for (auto &record : copyRecord) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
