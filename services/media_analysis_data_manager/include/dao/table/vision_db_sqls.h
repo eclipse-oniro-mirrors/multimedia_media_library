@@ -526,6 +526,18 @@ const std::string CREATE_VISION_INSERT_TRIGGER_FOR_ONCREATE =
     ") SELECT NEW.file_id, 0, 0, 0 WHERE NEW.MEDIA_TYPE = 2;" +
     " END;";
 
+const std::string UPGRADE_VISION_INSERT_TRIGGER_FOR_FILE_SOURCE_TYPE =
+    "CREATE TRIGGER IF NOT EXISTS insert_vision_trigger AFTER INSERT ON " +
+    PhotoColumn::PHOTOS_TABLE + " FOR EACH ROW " +
+    " WHEN (NEW.MEDIA_TYPE = 1 OR NEW.MEDIA_TYPE = 2)" +
+    " AND NEW." + PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " <> " +
+    std::to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)) +
+    " BEGIN " +
+    " INSERT INTO " + VISION_TOTAL_TABLE +" (" + FILE_ID + ", " + STATUS + ", " + OCR + ", " + AESTHETICS_SCORE + ", " +
+    LABEL + ", " + FACE + ", " + OBJECT + ", " + RECOMMENDATION + ", " + SEGMENTATION + ", " + COMPOSITION + "," +
+    SALIENCY + ", " + HEAD + ", " + POSE + ") " + 
+    " VALUES (" + " NEW.file_id, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 );" + " END;";
+
 const std::string DROP_INSERT_VISION_TRIGGER = "DROP TRIGGER IF EXISTS insert_vision_trigger";
 const std::string DROP_UPDATE_VISION_TRIGGER = "DROP TRIGGER IF EXISTS update_vision_trigger";
 const std::string DROP_DELETE_VISION_TRIGGER = "DROP TRIGGER IF EXISTS delete_vision_trigger";

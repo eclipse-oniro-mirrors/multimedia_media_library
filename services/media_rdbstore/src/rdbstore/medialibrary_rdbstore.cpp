@@ -5321,7 +5321,7 @@ static void AddFileSourceType(RdbStore &store, int32_t version)
         "DROP TRIGGER IF EXISTS " + INSERT_SEARCH_TRIGGER,
         CREATE_SEARCH_INSERT_TRIGGER,
         DROP_INSERT_VISION_TRIGGER,
-        CREATE_VISION_INSERT_TRIGGER_FOR_ONCREATE,
+        UPGRADE_VISION_INSERT_TRIGGER_FOR_FILE_SOURCE_TYPE,
         "DROP TRIGGER IF EXISTS operation_asset_insert_trigger",
         CREATE_OPERATION_ASSET_INSERT_TRIGGER,
         "DROP TRIGGER IF EXISTS operation_asset_delete_trigger",
