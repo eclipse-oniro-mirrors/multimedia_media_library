@@ -1042,7 +1042,7 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
         if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
             // 当前网络为移动网络，新增任务全部标记为auto_pause状态
             values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
-                static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_PAUSE));
+                static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
             values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
                 static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
         } else {
