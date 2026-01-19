@@ -1443,10 +1443,10 @@ int32_t MediaLibraryAssetOperations::UpdateFileName(MediaLibraryCommand &cmd,
 
 static int32_t HandleImageProperties(vector<string> &filePaths, string &newUserComment)
 {
-    uint32_t err = 0;
-    SourceOptions opts;
     bool isSuccess = true;
     for (const string &filePath : filePaths) {
+        uint32_t err = 0;
+        SourceOptions opts;
         string extension = MediaFileUtils::GetExtensionFromPath(filePath);
         opts.formatHint = "image/" + extension;
         std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(filePath, opts, err);
