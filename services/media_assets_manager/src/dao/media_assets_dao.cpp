@@ -302,7 +302,7 @@ int32_t MediaAssetsDao::DeletePhotoInfo(
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, ret, "watch is nullptr");
     watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(fileId), NotifyType::NOTIFY_REMOVE);
     // Delete Photos should maintain photos_ext_table for storage report.
-    CHECK_AND_EXECUTE(conn, this->DeletePhotoExtTable(std::to_string(fileId)));
+    CHECK_AND_EXECUTE(cond, this->DeletePhotoExtTable(std::to_string(fileId)));
     return E_OK;
 }
 
