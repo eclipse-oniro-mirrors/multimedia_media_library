@@ -768,13 +768,6 @@ static void GetMediaLibraryAsyncExecute(napi_env env, void *data)
     helperLock.unlock();
 }
 
-static void releaseReference(napi_env env, napi_ref &ref) 
-{
-    if (ref != nullptr) {
-        napi_delete_reference(env, ref);
-    }
-}
-
 static void GetMediaLibraryAsyncComplete(napi_env env, napi_status status, void *data)
 {
     MediaLibraryInitContext *context = static_cast<MediaLibraryInitContext *>(data);
@@ -3464,7 +3457,6 @@ bool MediaLibraryNapi::CheckRef(napi_env env,
                 if ((isOff) && (uri.compare(obsUri) == 0)) {
                     obs = static_cast<shared_ptr<DataShare::DataShareObserver>>(*it);
                     listObj.observers_.erase(it);
-                    releaseReference(env, (*it)->ref_);
                     break;
                 }
                 if (uri.compare(obsUri) != 0) {
@@ -3622,7 +3614,6 @@ void MediaLibraryNapi::UnRegisterNotifyChange(napi_env env,
                 offObservers.push_back(*iter);
                 vector<shared_ptr<MediaOnNotifyObserver>>::iterator tmp = iter;
                 iter = listObj.observers_.erase(tmp);
-                releaseReference(env, (*iter)->ref_);
             } else {
                 iter++;
             }
@@ -11954,7 +11945,6 @@ napi_value MediaLibraryNapi::PhotoAccessHelperOffCallback(napi_env env, napi_cal
     }
     tracer.Start("UnRegisterNotifyChange");
     obj->UnRegisterNotifyChange(env, uri, cbOffRef, *g_listObj);
-    releaseReference(env, cbOffRef);
     return undefinedResult;
 }
 
