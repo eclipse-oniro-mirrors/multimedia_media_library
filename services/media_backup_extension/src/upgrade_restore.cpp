@@ -1136,8 +1136,11 @@ void UpgradeRestore::RestoreFromGalleryPortraitAlbum()
         std::vector<std::string> tagIds;
         vector<PortraitAlbumInfo> portraitAlbumInfos = QueryPortraitAlbumInfos(offset,
             tagNameToDeleteSelection);
-        CHECK_AND_RETURN_LOG(BackupDatabaseUtils::DeleteDuplicatePortraitAlbum(maxAnalysisAlbumId_,
-            tagNameToDeleteSelection, tagIds, mediaLibraryRdb_), "Batch delete duplicate portrait album failed.");
+        if (sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
+            bool deleteResult = BackupDatabaseUtils::DeleteDuplicatePortraitAlbum(maxAnalysisAlbumId_,
+                tagNameToDeleteSelection, tagIds, mediaLibraryRdb_);
+            CHECK_AND_RETURN_LOG(!deleteResult, "Batch delete duplicate portrait album failed.");
+        }
         InsertPortraitAlbum(portraitAlbumInfos);
     }
 
@@ -1353,7 +1356,9 @@ void UpgradeRestore::InsertFaceAnalysisData(const std::vector<FileInfo> &fileInf
     std::unordered_set<std::string> excludedFiles;
     std::unordered_set<std::string> filesWithFace;
     auto uniqueFileIdPairs = BackupDatabaseUtils::CollectFileIdPairs(fileInfos);
-    BackupDatabaseUtils::DeleteExistingImageFaceData(mediaLibraryRdb_, uniqueFileIdPairs);
+    if (sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
+        BackupDatabaseUtils::DeleteExistingImageFaceData(mediaLibraryRdb_, uniqueFileIdPairs);
+    }
 
     for (int32_t offset = 0; offset < totalNumber; offset += QUERY_COUNT) {
         std::vector<FaceInfo> faceInfos = QueryFaceInfos(hashSelection, fileInfoMap, offset, excludedFiles);
@@ -1655,7 +1660,7 @@ void UpgradeRestore::RestoreAnalysisAlbum()
         (1 = ? OR COALESCE(storage_id, 0) IN (0, 65537)))";
 
     int32_t totalPortraitAlbumNumber = BackupDatabaseUtils::QueryInt(galleryRdb_, querySql, CUSTOM_COUNT, params);
-    if (totalPortraitAlbumNumber > 0) {
+    if (totalPortraitAlbumNumber > 0 && sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
         int32_t ret = PortraitAlbumUtils::DeleteExistingAlbumData(mediaLibraryRdb_, AlbumDeleteType::ALL);
         CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to delete portrait album data");
     }

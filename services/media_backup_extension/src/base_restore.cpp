@@ -198,6 +198,14 @@ void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::st
     MEDIA_INFO_LOG("StartRestore begin");
 
     backupRestoreDir_ = backupRetoreDir;
+    if (backupRestoreDir_.empty()) {
+        MEDIA_ERR_LOG("backupRestoreDir_ is empty.");
+        SetErrorCode(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY);
+        ErrorInfo errorInfo(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY, 0, "",
+            "backupRestoreDir_ is empty.");
+        UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportError(errorInfo);
+        return;
+    }
     upgradeRestoreDir_ = upgradePath;
     GetAccountValid();
     GetSyncSwitchOn();
