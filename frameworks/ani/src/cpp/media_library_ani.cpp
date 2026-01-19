@@ -974,19 +974,14 @@ static ani_int GetPhotoIndexAsyncCallbackComplete(ani_env *env, unique_ptr<Media
     ani_int retObj = {};
     ani_object error = {};
     context->status = false;
-    int32_t count = -1;
+    int32_t photoIndex = -1;
     if (context->error != ERR_DEFAULT) {
         context->HandleError(env, error);
     } else {
-        if (context->fetchFileResult != nullptr) {
-            auto fileAsset = context->fetchFileResult->GetFirstObject();
-            if (fileAsset != nullptr) {
-                count = fileAsset->GetPhotoIndex();
-            }
-        }
+        photoIndex = context->photoIndex;
         context->status = true;
     }
-    auto status = MediaLibraryAniUtils::GetInt32(env, count, retObj);
+    auto status = MediaLibraryAniUtils::GetInt32(env, photoIndex, retObj);
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to convert int to ani object");
     }
@@ -1072,11 +1067,16 @@ static void PhotoAccessGetPhotoIndexExecute(unique_ptr<MediaLibraryAsyncContext>
         static_cast<uint32_t>(MediaLibraryBusinessCode::GET_PHOTO_INDEX), reqBody, rspBody);
     auto resultSet = rspBody.resultSet;
     if (resultSet == nullptr) {
+        ANI_ERR_LOG("resultSet is nullptr, errCode = %{public}d", errCode);
         context->SaveError(errCode);
         return;
     }
-    context->fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
-    context->fetchFileResult->SetResultNapiType(type);
+    auto fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
+    CHECK_NULL_PTR_RETURN_VOID(fetchFileResult, "fetchFileResult is nullptr.");
+    auto fileAsset = fetchFileResult->GetFirstObject();
+    if (fileAsset != nullptr) {
+        context->photoIndex = fileAsset->GetPhotoIndex();
+    }
 }
 
 ani_int MediaLibraryAni::PhotoAccessGetPhotoIndex([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,

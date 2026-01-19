@@ -6488,15 +6488,9 @@ static void GetPhotoIndexAsyncCallbackComplete(napi_env env, napi_status status,
     if (context->error != ERR_DEFAULT) {
         context->HandleError(env, jsContext->error);
     } else {
-        int32_t count = -1;
-        if (context->fetchFileResult != nullptr) {
-            auto fileAsset = context->fetchFileResult->GetFirstObject();
-            if (fileAsset != nullptr) {
-                count = fileAsset->GetPhotoIndex();
-            }
-        }
+        int32_t photoIndex = context->photoIndex;
         jsContext->status = true;
-        napi_create_int32(env, count, &jsContext->data);
+        napi_create_int32(env, photoIndex, &jsContext->data);
     }
 
     tracer.Finish();
@@ -6530,12 +6524,16 @@ static void GetPhotoIndexExec(napi_env env, void *data, ResultNapiType type)
         static_cast<uint32_t>(MediaLibraryBusinessCode::GET_PHOTO_INDEX), reqBody, respBody);
     auto resultSet = respBody.resultSet;
     if (resultSet == nullptr) {
-        NAPI_ERR_LOG("resultSet is nullptr");
+        NAPI_ERR_LOG("resultSet is nullptr, errCode = %{public}d", errCode);
         context->SaveError(errCode);
         return;
     }
-    context->fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
-    context->fetchFileResult->SetResultNapiType(type);
+    auto fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
+    CHECK_NULL_PTR_RETURN_VOID(fetchFileResult, "fetchFileResult is nullptr.");
+    auto fileAsset = fetchFileResult->GetFirstObject();
+    if (fileAsset != nullptr) {
+        context->photoIndex = fileAsset->GetPhotoIndex();
+    }
 }
 
 static void PhotoAccessGetPhotoIndexExec(napi_env env, void *data)
