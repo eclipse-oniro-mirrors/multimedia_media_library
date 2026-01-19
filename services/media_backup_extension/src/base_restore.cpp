@@ -538,6 +538,7 @@ void BaseRestore::InsertVideoMode(std::unique_ptr<Metadata> &metadata, NativeRdb
 
 static void InsertDateAdded(std::unique_ptr<Metadata> &metadata, NativeRdb::ValuesBucket &value)
 {
+    int64_t dateAdded = 0;
     int64_t dateTaken = metadata->GetDateTaken();
     if (dateTaken == 0) {
         int64_t dateModified = metadata->GetFileDateModified();
