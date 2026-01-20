@@ -36,6 +36,9 @@ MultiStagesCaptureDfxCaptureTimes& MultiStagesCaptureDfxCaptureTimes::GetInstanc
 void MultiStagesCaptureDfxCaptureTimes::AddCaptureTimes(CaptureMessageType type)
 {
     std::lock_guard<std::mutex> lock(captureTimeMutex_);
+    if (ShouldReport()) {
+        Report();
+    }
     switch (type) {
         case CaptureMessageType::CREATE_ASSET:
             createAssetTimes += 1;
@@ -57,9 +60,6 @@ void MultiStagesCaptureDfxCaptureTimes::AddCaptureTimes(CaptureMessageType type)
             break;
         default:
             break;
-    }
-    if (ShouldReport()) {
-        Report();
     }
 }
 bool MultiStagesCaptureDfxCaptureTimes::ShouldReport()

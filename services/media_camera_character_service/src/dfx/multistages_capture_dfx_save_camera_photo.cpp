@@ -40,23 +40,23 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photo
     MEDIA_INFO_LOG("AddAssetTime photoId : %{public}s, stat %{public}d",
         photoId.c_str(), static_cast<int32_t>(stat));
     if (stat != AddAssetTimeStat::START &&
-        (times_.empty() || times_.find(photoId) == times_.end() ||
-        times_[photoId].find(KEY_CREATE_ASSET_TIME) == times_[photoId].end() ||
-        times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) ==
-        times_[photoId][KEY_CREATE_ASSET_TIME].end())) {
+        (dfxTimes_.empty() || dfxTimes_.find(photoId) == dfxTimes_.end() ||
+        dfxTimes_[photoId].find(KEY_CREATE_ASSET_TIME) == dfxTimes_[photoId].end() ||
+        dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) ==
+        dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].end())) {
         return;
     }
     
-    if (!times_.empty() && (times_.find(photoId) != times_.end())) {
-        if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end()) {
-            times_[photoId][KEY_CREATE_ASSET_TIME].emplace(
+    if (!dfxTimes_.empty() && (dfxTimes_.find(photoId) != dfxTimes_.end())) {
+        if (dfxTimes_[photoId].find(KEY_CREATE_ASSET_TIME) != dfxTimes_[photoId].end()) {
+            dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].emplace(
                 static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds());
                 return;
         }
         std::unordered_map<int32_t, int64_t> stats = {
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
         };
-        times_[photoId].emplace(KEY_CREATE_ASSET_TIME, stats);
+        dfxTimes_[photoId].emplace(KEY_CREATE_ASSET_TIME, stats);
     } else {
         std::unordered_map<int32_t, int64_t> stats = {
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
@@ -64,7 +64,7 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photo
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times =  {
             {KEY_CREATE_ASSET_TIME, stats}
         };
-        times_.emplace(photoId, times);
+        dfxTimes_.emplace(photoId, times);
     }
 }
 
@@ -74,22 +74,22 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &pho
     MEDIA_INFO_LOG("AddCaptureTime photoId : %{public}s, stat %{public}d",
         photoId.c_str(), static_cast<int32_t>(stat));
     if (stat != AddCaptureTimeStat::START &&
-        (times_.empty() || times_.find(photoId) == times_.end() ||
-        times_[photoId].find(KEY_PHOTO_CAPTURE_TIME) == times_[photoId].end() ||
-        times_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::START)) ==
-        times_[photoId][KEY_PHOTO_CAPTURE_TIME].end())) {
+        (dfxTimes_.empty() || dfxTimes_.find(photoId) == dfxTimes_.end() ||
+        dfxTimes_[photoId].find(KEY_PHOTO_CAPTURE_TIME) == dfxTimes_[photoId].end() ||
+        dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::START)) ==
+        dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].end())) {
         return;
     }
-    if (!times_.empty() && (times_.find(photoId) != times_.end())) {
-        if (times_[photoId].find(KEY_PHOTO_CAPTURE_TIME) != times_[photoId].end()) {
-            times_[photoId][KEY_PHOTO_CAPTURE_TIME].emplace(
+    if (!dfxTimes_.empty() && (dfxTimes_.find(photoId) != dfxTimes_.end())) {
+        if (dfxTimes_[photoId].find(KEY_PHOTO_CAPTURE_TIME) != dfxTimes_[photoId].end()) {
+            dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].emplace(
                 static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds());
                 return;
         }
         std::unordered_map<int32_t, int64_t> stats = {
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
         };
-        times_[photoId].emplace(KEY_PHOTO_CAPTURE_TIME, stats);
+        dfxTimes_[photoId].emplace(KEY_PHOTO_CAPTURE_TIME, stats);
     } else {
         std::unordered_map<int32_t, int64_t> stats = {
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
@@ -97,7 +97,7 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &pho
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times = {
             {KEY_PHOTO_CAPTURE_TIME, stats}
         };
-        times_.emplace(photoId, times);
+        dfxTimes_.emplace(photoId, times);
     }
 }
 
@@ -107,22 +107,22 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddSaveTime(const std::string &photoI
     MEDIA_INFO_LOG("AddSaveTime photoId : %{public}s, stat %{public}d",
         photoId.c_str(), static_cast<int32_t>(stat));
     if (stat != AddSaveTimeStat::START &&
-        (times_.empty() || times_.find(photoId) == times_.end() ||
-        times_[photoId].find(KEY_SAVE_CAMERA_TIME) == times_[photoId].end() ||
-        times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) ==
-        times_[photoId][KEY_SAVE_CAMERA_TIME].end())) {
+        (dfxTimes_.empty() || dfxTimes_.find(photoId) == dfxTimes_.end() ||
+        dfxTimes_[photoId].find(KEY_SAVE_CAMERA_TIME) == dfxTimes_[photoId].end() ||
+        dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) ==
+        dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].end())) {
         return;
     }
-    if (!times_.empty() && (times_.find(photoId) != times_.end())) {
-        if (times_[photoId].find(KEY_SAVE_CAMERA_TIME) != times_[photoId].end()) {
-            times_[photoId][KEY_SAVE_CAMERA_TIME].emplace(
+    if (!dfxTimes_.empty() && (dfxTimes_.find(photoId) != dfxTimes_.end())) {
+        if (dfxTimes_[photoId].find(KEY_SAVE_CAMERA_TIME) != dfxTimes_[photoId].end()) {
+            dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].emplace(
                 static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds());
                 return;
         }
         std::unordered_map<int32_t, int64_t> stats = {
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
         };
-        times_[photoId].emplace(KEY_SAVE_CAMERA_TIME, stats);
+        dfxTimes_[photoId].emplace(KEY_SAVE_CAMERA_TIME, stats);
     } else {
         std::unordered_map<int32_t, int64_t> stats = {
             {static_cast<int32_t>(stat), MediaFileUtils::UTCTimeMilliSeconds()}
@@ -130,30 +130,30 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddSaveTime(const std::string &photoI
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times = {
             {KEY_SAVE_CAMERA_TIME, stats}
         };
-        times_.emplace(photoId, times);
+        dfxTimes_.emplace(photoId, times);
     }
 }
 
 void MultiStagesCaptureDfxSaveCameraPhoto::RemoveTime(const std::string &photoId)
 {
     std::lock_guard<std::mutex> lock(addTimeMutex_);
-    if (times_.empty() || times_.find(photoId) == times_.end()) {
-        MEDIA_ERR_LOG("times_ is empty or photoId is not in times_");
+    if (dfxTimes_.empty() || dfxTimes_.find(photoId) == dfxTimes_.end()) {
+        MEDIA_ERR_LOG("dfxTimes_ is empty or photoId is not in dfxTimes_");
         return;
     }
-    times_.erase(photoId);
+    dfxTimes_.erase(photoId);
 }
 
 bool MultiStagesCaptureDfxSaveCameraPhoto::GetCreateAssetTime(const std::string &photoId,
     std::string &createAssetTime)
 {
     bool ret = false;
-    if (times_[photoId].find(KEY_CREATE_ASSET_TIME) != times_[photoId].end() &&
-        times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::END)) !=
-        times_[photoId][KEY_CREATE_ASSET_TIME].end() &&
-        times_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) !=
-        times_[photoId][KEY_CREATE_ASSET_TIME].end()) {
-        auto stats = times_[photoId][KEY_CREATE_ASSET_TIME];
+    if (dfxTimes_[photoId].find(KEY_CREATE_ASSET_TIME) != dfxTimes_[photoId].end() &&
+        dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::END)) !=
+        dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].end() &&
+        dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].find(static_cast<int32_t>(AddAssetTimeStat::START)) !=
+        dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].end()) {
+        auto stats = dfxTimes_[photoId][KEY_CREATE_ASSET_TIME];
         int32_t totalTime = stats[static_cast<int32_t>(AddAssetTimeStat::END)]
             - stats[static_cast<int32_t>(AddAssetTimeStat::START)];
         if (totalTime > createAssetBaseTime) {
@@ -176,12 +176,12 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetPhotoCaptureTime(const std::string
     std::string &photoCaptureTime)
 {
     bool ret = false;
-    if (times_[photoId].find(KEY_PHOTO_CAPTURE_TIME) != times_[photoId].end() &&
-        times_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::END)) !=
-        times_[photoId][KEY_PHOTO_CAPTURE_TIME].end() &&
-        times_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::START)) !=
-        times_[photoId][KEY_PHOTO_CAPTURE_TIME].end()) {
-        auto stats = times_[photoId][KEY_PHOTO_CAPTURE_TIME];
+    if (dfxTimes_[photoId].find(KEY_PHOTO_CAPTURE_TIME) != dfxTimes_[photoId].end() &&
+        dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::END)) !=
+        dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].end() &&
+        dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].find(static_cast<int32_t>(AddCaptureTimeStat::START)) !=
+        dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].end()) {
+        auto stats = dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME];
         int32_t totalTime = stats[static_cast<int32_t>(AddCaptureTimeStat::END)]
             - stats[static_cast<int32_t>(AddCaptureTimeStat::START)];
         if (totalTime > captureBaseTime) {
@@ -196,12 +196,12 @@ bool MultiStagesCaptureDfxSaveCameraPhoto::GetSaveCameraTime(const std::string &
     std::string &saveCameraTime)
 {
     bool ret = false;
-    if (times_[photoId].find(KEY_SAVE_CAMERA_TIME) != times_[photoId].end() &&
-        times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::END)) !=
-        times_[photoId][KEY_SAVE_CAMERA_TIME].end() &&
-        times_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) !=
-        times_[photoId][KEY_SAVE_CAMERA_TIME].end()) {
-        auto stats = times_[photoId][KEY_SAVE_CAMERA_TIME];
+    if (dfxTimes_[photoId].find(KEY_SAVE_CAMERA_TIME) != dfxTimes_[photoId].end() &&
+        dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::END)) !=
+        dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].end() &&
+        dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].find(static_cast<int32_t>(AddSaveTimeStat::START)) !=
+        dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].end()) {
+        auto stats = dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME];
         int32_t totalTime = stats[static_cast<int32_t>(AddSaveTimeStat::END)]
             - stats[static_cast<int32_t>(AddSaveTimeStat::START)];
         if (totalTime > saveBaseTime) {
@@ -238,8 +238,8 @@ void MultiStagesCaptureDfxSaveCameraPhoto::Report(const std::string &photoId, co
     const int32_t mediaSubtype)
 {
     std::lock_guard<std::mutex> lock(addTimeMutex_);
-    if (times_.empty() || times_.find(photoId) == times_.end()) {
-        MEDIA_INFO_LOG("times_ is empty or photoId is not in times_");
+    if (dfxTimes_.empty() || dfxTimes_.find(photoId) == dfxTimes_.end()) {
+        MEDIA_INFO_LOG("dfxTimes_ is empty or photoId is not in dfxTimes_");
         return;
     }
     std::string createAssetTime = "";
@@ -249,7 +249,7 @@ void MultiStagesCaptureDfxSaveCameraPhoto::Report(const std::string &photoId, co
     if (!ret) {
         return;
     }
-    times_.erase(photoId);
+    dfxTimes_.erase(photoId);
     VariantMap map = {
         {KEY_PHOTO_ID, photoId},
         {KEY_CREATE_ASSET_TIME, createAssetTime},

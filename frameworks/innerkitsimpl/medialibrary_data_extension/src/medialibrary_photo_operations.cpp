@@ -1774,7 +1774,9 @@ int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
     MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::SAVE_ASSET);
     string fileId = cmd.GetQuerySetParam(PhotoColumn::MEDIA_ID);
     string photoId;
-    GetPhotoIdByFileId(stoi(fileId), photoId);
+    if (MediaLibraryDataManagerUtils::IsNumber(fileId)) {
+        GetPhotoIdByFileId(stoi(fileId), photoId);
+    }
     int32_t subType = std::stoi(cmd.GetQuerySetParam(PhotoColumn::PHOTO_SUBTYPE));
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::START);
     int32_t ret = HandleSaveCameraPhoto(cmd);
