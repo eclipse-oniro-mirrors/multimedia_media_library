@@ -20,7 +20,9 @@
 #include <unordered_set>
 
 #include "medialibrary_bundle_manager.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_vision_operations.h"
+#endif
 #include "media_visit_count_manager.h"
 #include "result_set_utils.h"
 #include "dfx_manager.h"
@@ -78,6 +80,7 @@ constexpr int32_t HIGH_QUALITY_IMAGE = 0;
 unordered_set<std::string> DFXTaskSet;
 std::mutex DFXTaskMutex;
 
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 static void UpdateVisionTableForEdit(AsyncTaskData *taskData)
 {
     CHECK_AND_RETURN_LOG(taskData != nullptr, "taskData is nullptr");
@@ -86,6 +89,7 @@ static void UpdateVisionTableForEdit(AsyncTaskData *taskData)
     string fileId = to_string(data->fileId_);
     MediaAssetsRdbOperations::DeleteFromVisionTables(fileId);
 }
+#endif
 
 MediaAssetsService &MediaAssetsService::GetInstance()
 {
@@ -134,6 +138,7 @@ int32_t MediaAssetsService::CommitEditedAsset(const CommitEditedAssetDto& commit
     int32_t errCode = this->rdbOperation_.CommitEditInsert(commitEditedAssetDto.editData,
         commitEditedAssetDto.fileId);
     CHECK_AND_RETURN_RET(errCode == E_SUCCESS, errCode);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     shared_ptr<MediaLibraryAsyncWorker> asyncWorker = MediaLibraryAsyncWorker::GetInstance();
     CHECK_AND_RETURN_RET_LOG(asyncWorker != nullptr, E_ERR, "Can not get asyncWorker");
     UpdateVisionAsyncTaskData* taskData =
@@ -143,6 +148,7 @@ int32_t MediaAssetsService::CommitEditedAsset(const CommitEditedAssetDto& commit
         make_shared<MediaLibraryAsyncTask>(UpdateVisionTableForEdit, taskData);
     CHECK_AND_PRINT_LOG(updateAsyncTask != nullptr, "UpdateAnalysisDataForEdit fail");
     asyncWorker->AddTask(updateAsyncTask, true);
+#endif
     return errCode;
 }
 
@@ -1063,7 +1069,9 @@ int32_t MediaAssetsService::RevertToOriginal(const RevertToOriginalDto& revertTo
         NativeRdb::ValuesBucket values;
         values.Put(PhotoColumn::MEDIA_ID, fileId);
         cmdEditCommit.SetValueBucket(values);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         MediaLibraryVisionOperations::EditCommitOperation(cmdEditCommit);
+#endif
     }
     return errCode;
 }

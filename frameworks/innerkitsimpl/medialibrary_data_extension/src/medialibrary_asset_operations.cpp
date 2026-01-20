@@ -46,7 +46,9 @@
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #include "medialibrary_formmap_operations.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_vision_operations.h"
+#endif
 #include "dfx_manager.h"
 #include "moving_photo_file_utils.h"
 #include "medialibrary_album_fusion_utils.h"
@@ -226,16 +228,18 @@ int32_t MediaLibraryAssetOperations::HandleInsertOperation(MediaLibraryCommand &
             break;
         case OperationType::COMMIT_EDIT:
             errCode = MediaLibraryPhotoOperations::CommitEditInsert(cmd);
-            if (errCode == E_SUCCESS) {
-                MediaLibraryVisionOperations::EditCommitOperation(cmd);
-            }
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
+            CHECK_AND_EXECUTE(errCode != E_SUCCESS, MediaLibraryVisionOperations::EditCommitOperation(cmd));
+#endif
             break;
         case OperationType::REVERT_EDIT:
             errCode = MediaLibraryPhotoOperations::RevertToOrigin(cmd);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
             if (errCode == E_SUCCESS) {
                 MediaLibraryVisionOperations::EditCommitOperation(cmd);
             }
             break;
+#endif
         case OperationType::SUBMIT_CACHE:
             errCode = MediaLibraryPhotoOperations::SubmitCache(cmd);
             break;
@@ -1441,6 +1445,44 @@ int32_t MediaLibraryAssetOperations::UpdateFileName(MediaLibraryCommand &cmd,
     return E_OK;
 }
 
+static int32_t HandleImageProperties(vector<string> &filePaths, string &newUserComment)
+{
+    bool isSuccess = true;
+    for (const string &filePath : filePaths) {
+        uint32_t err = 0;
+        SourceOptions opts;
+        string extension = MediaFileUtils::GetExtensionFromPath(filePath);
+        opts.formatHint = "image/" + extension;
+        std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(filePath, opts, err);
+        bool cond = (err != 0 || imageSource == nullptr);
+        CHECK_AND_EXECUTE(!cond, isSuccess = false);
+        CHECK_AND_CONTINUE_ERR_LOG(!cond, "Failed to obtain image source, err = %{public}d, filePath = %{public}s",
+            err, DfxUtils::GetSafePath(filePath).c_str());
+ 
+        if (newUserComment.empty()) {
+            string userComment;
+            err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_USER_COMMENT, userComment);
+            CHECK_AND_EXECUTE(!cond, isSuccess = false);
+            CHECK_AND_CONTINUE_ERR_LOG(err == E_OK,
+                "Image does not exist user comment in exif, no need to modify, filePath = %{public}s",
+                DfxUtils::GetSafePath(filePath).c_str());
+            std::set<std::string> keys = { PHOTO_DATA_IMAGE_USER_COMMENT };
+            err = imageSource->RemoveImageProperties(0, keys, filePath);
+            CHECK_AND_EXECUTE(!cond, isSuccess = false);
+            CHECK_AND_CONTINUE_ERR_LOG(err == E_OK, "Failed to remove %{public}s from EXIF, filePath = %{public}s",
+                PHOTO_DATA_IMAGE_USER_COMMENT.c_str(), DfxUtils::GetSafePath(filePath).c_str());
+        } else {
+            err = imageSource->ModifyImageProperty(0, PHOTO_DATA_IMAGE_USER_COMMENT, newUserComment, filePath);
+            CHECK_AND_EXECUTE(!cond, isSuccess = false);
+            CHECK_AND_CONTINUE_ERR_LOG(err == E_OK,
+                "Modify image property user comment failed, filePath = %{public}s",
+                DfxUtils::GetSafePath(filePath).c_str());
+        }
+    }
+    CHECK_AND_RETURN_RET(isSuccess, E_ERR);
+    return E_OK;
+}
+
 int32_t MediaLibraryAssetOperations::SetUserComment(MediaLibraryCommand &cmd,
     const shared_ptr<FileAsset> &fileAsset)
 {
@@ -1454,20 +1496,16 @@ int32_t MediaLibraryAssetOperations::SetUserComment(MediaLibraryCommand &cmd,
         return E_OK;
     }
 
-    uint32_t err = 0;
-    SourceOptions opts;
     string filePath = fileAsset->GetFilePath();
-    string extension = MediaFileUtils::GetExtensionFromPath(filePath);
-    opts.formatHint = "image/" + extension;
-    std::unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(filePath, opts, err);
-    bool cond = (err != 0 || imageSource == nullptr);
-    CHECK_AND_RETURN_RET_LOG(!cond, E_OK, "Failed to obtain image source, err = %{public}d", err);
+    vector<string> filePaths = {filePath};
+    string sourceBackPath = GetEditDataSourceBackPath(filePath);
+    if (MediaFileUtils::IsFileExists(sourceBackPath)) {
+        filePaths.emplace_back(sourceBackPath);
+    }
 
-    string userComment;
-    err = imageSource->GetImagePropertyString(0, PHOTO_DATA_IMAGE_USER_COMMENT, userComment);
-    CHECK_AND_RETURN_RET_LOG(err == 0, E_OK, "Image does not exist user comment in exif, no need to modify");
-    err = imageSource->ModifyImageProperty(0, PHOTO_DATA_IMAGE_USER_COMMENT, newUserComment, filePath);
-    CHECK_AND_PRINT_LOG(err == 0, "Modify image property user comment failed");
+    int32_t errCode = HandleImageProperties(filePaths, newUserComment);
+    CHECK_AND_RETURN_RET(errCode == E_OK, E_OK);
+
     TransCodeExifInfo transCodeExifInfo;
     transCodeExifInfo.userComment = newUserComment;
     MediaLibraryTranscodeDataAgingOperation::ModifyTransCodeFileExif(ExifType::EXIF_USER_COMMENT,

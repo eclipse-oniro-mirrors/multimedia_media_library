@@ -21,7 +21,9 @@
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "medialibrary_album_operations.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
+#endif
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_data_manager.h"
@@ -392,37 +394,121 @@ static int32_t HandleUnCommonAsset(const string &targetAlbumId, MergedAlbumInfo 
     return changedRows;
 }
 
+static bool HavePortraitCover(const shared_ptr<MediaLibraryRdbStore>& rdbStore, const string targetAlbumId)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr! failed GetRdbStore");
+    const std::string queryPortraitAlbumCoverUri = "SELECT " + COVER_URI + " FROM " +
+        ANALYSIS_ALBUM_TABLE + " WHERE " + ALBUM_ID + " = " + targetAlbumId +
+        " AND " + ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " ;";
+    auto resultSet = rdbStore->QuerySql(queryPortraitAlbumCoverUri);
+    CHECK_AND_RETURN_RET(resultSet != nullptr, false);
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        std::string coverUri = GetStringVal(COVER_URI, resultSet);
+        MEDIA_INFO_LOG("Get coverUri Success : %{public}s", coverUri.c_str());
+        CHECK_AND_RETURN_RET_LOG(!coverUri.empty(), false, "Get coverUri is empty");
+        return true;
+    }
+    return false;
+}
+
+static std::string GetBackupPortraitCoverUri(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
+    const string &albumIds)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, "", "RdbStore is nullptr!");
+    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+
+    // INNER JOIN AnalysisPhotoMap ON AnalysisPhotoMap.map_asset = Photos.file_id
+    string anaPhotoMapAsset = ANALYSIS_PHOTO_MAP_TABLE + "." + MAP_ASSET;
+    string photosFileId = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_ID;
+    string clause = anaPhotoMapAsset + " = " + photosFileId;
+    predicates.InnerJoin(ANALYSIS_PHOTO_MAP_TABLE)->On({ clause });
+
+    // INNER JOIN AnalysisAlbum ON AnalysisAlbum.album_id = AnalysisPhotoMap.map_album
+    string anaAlbumId = ANALYSIS_ALBUM_TABLE + "." + ALBUM_ID;
+    string anaPhotoMapAlbum = ANALYSIS_PHOTO_MAP_TABLE + "." + MAP_ALBUM;
+    clause = anaAlbumId + " = " + anaPhotoMapAlbum;
+    predicates.InnerJoin(ANALYSIS_ALBUM_TABLE)->On({ clause });
+
+    clause = "Photos.sync_status = 0 "
+        "AND Photos.clean_flag = 0 "
+        "AND Photos.date_trashed = 0 "
+        "AND Photos.hidden = 0 "
+        "AND Photos.time_pending = 0 "
+        "AND Photos.is_temp = 0 "
+        "AND Photos.burst_cover_level = 1 ";
+    clause += "AND AnalysisAlbum.album_id IN ( " + albumIds + " )";
+    predicates.SetWhereClause(clause);
+
+    predicates.OrderByDesc(PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_DATE_ADDED);
+    predicates.Limit(1);
+    const string columnFileId = PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::MEDIA_ID;
+    const string columnDisplayName = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_NAME;
+    const string columnData = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_FILE_PATH;
+    const vector<string> columns = { columnFileId, columnDisplayName, columnData };
+    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, "", "StepQueryWithoutCheck failed");
+    int32_t err = resultSet->GoToFirstRow();
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, "", "GoToFirstRow failed");
+    string filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+    string fileId = GetStringVal(MediaColumn::MEDIA_ID, resultSet);
+    string fileDisplayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+    string assetUri = MediaFileUri::GetPhotoUri(fileId, filePath, fileDisplayName);
+    return assetUri;
+}
+
+static bool SetPortraitCoverByUri(const shared_ptr<MediaLibraryRdbStore>& rdbStore, string coverUri,
+    const string albumIds)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "RdbStore is nullptr!");
+    std::string updateCoverUri = "UPDATE " + ANALYSIS_ALBUM_TABLE + " SET " + COVER_URI + " = '" + coverUri +
+        "' WHERE " + ALBUM_ID + " IN ( " + albumIds + " ) AND " + ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " ;";
+    int32_t ret = rdbStore->ExecuteSql(updateCoverUri);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, false, "UpdateCoverUri failed, ret = %{public}d", ret);
+    return true;
+}
+
 static int32_t HandleAlbumMapMoveAsset(const string &targetAlbumId,
     const vector<string> &assetIds, MergedAlbumInfo &mergedAlbumInfo)
 {
     if (!mergedAlbumInfo.commonAssets.empty()) {
         int32_t changedRows = HandleCommonAsset(mergedAlbumInfo);
-        CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleCommonAsset Fail ");
+        CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleCommonAsset fail ");
     }
     int32_t changedRows = HandleUnCommonAsset(targetAlbumId, mergedAlbumInfo);
-    CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleUnCommonAsset Fail ");
+    CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleUnCommonAsset fail ");
     return changedRows;
 }
 
 int32_t DoSmartMoveAssets(const string &albumId, const string targetAlbumId,
     const vector<string> &assetIds, MergedAlbumInfo &mergedAlbumInfo)
 {
-    MEDIA_INFO_LOG("DoSmartMoveAssets start ");
+    MEDIA_INFO_LOG("DoSmartMoveAssets start albumId = %{public}s", targetAlbumId.c_str());
     int32_t changedImageFaceRows = HandleImageFaceMoveAsset(albumId, targetAlbumId, assetIds, mergedAlbumInfo);
-    CHECK_AND_RETURN_RET_LOG(changedImageFaceRows >= 0, E_ERR, "HandleImageFaceMoveAsset Fail ");
+    CHECK_AND_RETURN_RET_LOG(changedImageFaceRows >= 0, E_ERR, "HandleImageFaceMoveAsset fail ");
 
     int32_t changedAlbumMapRows = HandleAlbumMapMoveAsset(targetAlbumId, assetIds, mergedAlbumInfo);
-    CHECK_AND_RETURN_RET_LOG(changedAlbumMapRows >= 0, E_ERR, "HandleAlbumMapMoveAsset Fail ");
+    CHECK_AND_RETURN_RET_LOG(changedAlbumMapRows >= 0, E_ERR, "HandleAlbumMapMoveAsset fail ");
 
     int32_t changedAnalysisAlbumRows = HandleAnalysisEditOperationMoveAsset(mergedAlbumInfo);
-    CHECK_AND_RETURN_RET_LOG(changedAnalysisAlbumRows >= 0, E_ERR, "HandleAnalysisEditOperationMoveAsset Fail ");
+    CHECK_AND_RETURN_RET_LOG(changedAnalysisAlbumRows >= 0, E_ERR, "HandleAnalysisEditOperationMoveAsset fail ");
 
     vector<string> updateMapAlbumIds = mergedAlbumInfo.sourceAlbumIds;
     for (auto idItem : mergedAlbumInfo.targetAlbumIds) {
         updateMapAlbumIds.emplace_back(idItem);
     }
-    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(
-        MediaLibraryUnistoreManager::GetInstance().GetRdbStore(), updateMapAlbumIds);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "GetRdbStore fail");
+    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, updateMapAlbumIds);
+    if (!HavePortraitCover(rdbStore, targetAlbumId)) {
+        MEDIA_INFO_LOG("AlbumId = %{public}s do not have portrait cover", targetAlbumId.c_str());
+        string albumIdsStr = "";
+        CHECK_AND_RETURN_RET_LOG(handleSqlParam(albumIdsStr, mergedAlbumInfo.targetAlbumIds) == E_OK,
+            E_ERR, "handleSqlParam targetAlbumIds fail ! ");
+        std::string backupCoverUri = GetBackupPortraitCoverUri(rdbStore, albumIdsStr);
+        CHECK_AND_RETURN_RET_LOG(!backupCoverUri.empty(), E_ERR, "GetBackupPortraitCoverUri fail");
+        CHECK_AND_RETURN_RET_LOG(SetPortraitCoverByUri(rdbStore, backupCoverUri, albumIdsStr),
+            E_ERR, "SetPortraitCoverByUri fail");
+    }
     return E_OK;
 }
 

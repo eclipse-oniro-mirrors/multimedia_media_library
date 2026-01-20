@@ -26,6 +26,7 @@
 #include "ffrt.h"
 #include "ffrt_inner.h"
 #include "ocr_restore.h"
+#include "restore_photos_album_hidden.h"
 #include "photos_restore.h"
 // LCOV_EXCL_START
 namespace OHOS {
@@ -177,6 +178,7 @@ protected:
     int32_t maxId_{-1};
     int64_t maxAnalysisAlbumId_ {0};
     RestoreConfigInfo restoreConfig_;
+    RestorePhotosAlbumHidden restorePhotosAlbumHidden_;
 
 private:
     void BatchDeleteEmptyAlbums(const std::vector<int32_t> &batchAlbumIds, int32_t &deleteRows);

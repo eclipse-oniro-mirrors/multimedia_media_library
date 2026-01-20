@@ -59,6 +59,7 @@ private:
     int32_t ProcessIncrementScanTask(bool isGlobalScanEnd = false);
     void CheckToDeleteAssets(FolderScanner &folderScanner);
     void ResetReportData();
+    void InitTemperatureCondition();
 
 private:
     std::mutex scanMutex_;
@@ -66,6 +67,7 @@ private:
     ScannerStatus scannerStatus_{ScannerStatus::IDLE};
     std::atomic<bool> isNotInterruptScanner_{true};
     AncoCheckInfo reportData_{0, 0, 0, 0, 0};
+    std::atomic<bool> isHighTemperature_{false};
 };
 } // namespace OHOS::Media
 #endif // GLOBAL_SCANNER_H

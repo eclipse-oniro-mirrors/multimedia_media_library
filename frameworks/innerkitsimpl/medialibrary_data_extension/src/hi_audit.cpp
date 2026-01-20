@@ -24,6 +24,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include "dfx_utils.h"
 #include "media_log.h"
 #include "zip_util.h"
 
@@ -212,6 +213,18 @@ void HiAudit::WriteForCloudDownload(const std::string& bundleName, const int32_t
     auditLog.id = bundleName;
     auditLog.type = downloadType;
     auditLog.operationStatus = status;
+    Write(auditLog);
+}
+
+void HiAudit::WriteForCloudSyncAlbum(const std::string& albumName, const std::string& cloudId, const int32_t albumType,
+    const int32_t albumSubType, const std::string& bundleName)
+{
+    AuditLog auditLog = { true, "DFX", "CLOUD_SYNC_ALBUM", "0", 1 };
+    auditLog.id = cloudId;
+    auditLog.albumName = DfxUtils::GetSafeAlbumName(albumName);
+    auditLog.extend = bundleName;
+    auditLog.type = albumType;
+    auditLog.size = albumSubType;
     Write(auditLog);
 }
 }

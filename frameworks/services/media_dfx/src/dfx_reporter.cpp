@@ -124,7 +124,7 @@ void DfxReporter::ReportThumbnailError()
         int32_t method = MediaLibraryDataManagerUtils::IsNumber(thumbnailInfo[1]) ? stoi(thumbnailInfo[1]) : 0;
         // 2 means index of error code
         int32_t errorCode = MediaLibraryDataManagerUtils::IsNumber(thumbnailInfo[2]) ? stoi(thumbnailInfo[2]) : 0;
-        int64_t time = MediaLibraryDataManagerUtils::IsNumber(value) ? stol(value) : 0;
+        int64_t time = MediaLibraryDataManagerUtils::IsNumber(value) ? stoll(value) : 0;
         int ret = HiSysEventWrite(
             MEDIA_LIBRARY,
             "MEDIALIB_THUMBNAIL_ERROR",

@@ -28,7 +28,11 @@
 #include "media_exif.h"
 #include "medialibrary_album_helper.h"
 #include "medialibrary_album_fusion_utils.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
+#include "medialibrary_vision_operations.h"
+#endif
+#include "medialibrary_album_operations.h"
 #include "medialibrary_bundle_manager.h"
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_json_operation.h"
@@ -47,7 +51,6 @@
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #include "medialibrary_formmap_operations.h"
-#include "medialibrary_vision_operations.h"
 #include "dfx_manager.h"
 #include "dfx_utils.h"
 #include "moving_photo_file_utils.h"
@@ -4072,13 +4075,14 @@ int32_t MediaLibraryPhotoOperations::SubmitEditCacheExecute(MediaLibraryCommand&
 
     // delete cloud enhacement task
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
-    vector<string> fileId;
-    fileId.emplace_back(to_string(fileAsset->GetId()));
+    vector<string> fileId = { to_string(fileAsset->GetId()) };
     vector<string> photoId;
     EnhancementManager::GetInstance().CancelTasksInternal(fileId, photoId, CloudEnhancementAvailableType::EDIT);
 #endif
     ScanFile(assetPath, false, true, true);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     MediaLibraryAnalysisAlbumOperations::UpdatePortraitAlbumCoverSatisfied(id);
+#endif
     if (addMovingPhotoGraffiti) {
         UpdateAndNotifyMovingPhotoAlbum();
     }
@@ -4086,7 +4090,9 @@ int32_t MediaLibraryPhotoOperations::SubmitEditCacheExecute(MediaLibraryCommand&
     AccurateRefresh::AlbumAccurateRefresh albumRefresh;
     albumRefresh.IsCoverContentChange(fileIdStr);
     NotifyFormMap(id, assetPath, false);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     MediaLibraryVisionOperations::EditCommitOperation(cmd);
+#endif
     MEDIA_INFO_LOG("SubmitEditCacheExecute success, isWriteGpsAdvanced: %{public}d.", isWriteGpsAdvanced);
     return errCode;
 }

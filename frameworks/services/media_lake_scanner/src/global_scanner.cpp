@@ -24,6 +24,7 @@
 #include "media_file_utils.h"
 #include "media_lake_check.h"
 #include "medialibrary_rdb_utils.h"
+#include "thermal_mgr_client.h"
 
 namespace OHOS::Media {
 namespace fs = std::filesystem;
@@ -52,6 +53,7 @@ void GlobalScanner::Run(const std::string &path, bool isFirstScanner)
             }
         }
         isNotInterruptScanner_ = true;
+        InitTemperatureCondition();
     }
     MEDIA_INFO_LOG("global scan start, isFirstScanner: %{public}d, scannerStatus: %{public}d", isFirstScanner,
         static_cast<int32_t>(scannerStatus_));
@@ -199,6 +201,16 @@ void GlobalScanner::CheckToDeleteAssets(FolderScanner &folderScanner)
     folderScanner.GetFileIds(fileIds);
     CheckAndIfNeedDeleteAssets(folderScanner.GetAlbumId(), fileIds, deleteNum);
     reportData_.checkDelete += deleteNum;
+}
+
+void GlobalScanner::InitTemperatureCondition()
+{
+    const int32_t properDeviceTemperatureLevel40 = 2;
+    
+    auto& thermalMgrClient = PowerMgr::ThermalMgrClient::GetInstance();
+    int32_t currentTemperatureLevel = static_cast<int32_t>(thermalMgrClient.GetThermalLevel());
+    isHighTemperature_ = currentTemperatureLevel > properDeviceTemperatureLevel40 ? true : false;
+    MEDIA_INFO_LOG("Init global scanner temperature condition: %{public}d", isHighTemperature_.load());
 }
 
 }

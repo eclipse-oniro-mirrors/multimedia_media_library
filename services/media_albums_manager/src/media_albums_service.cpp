@@ -29,7 +29,9 @@
 #include "photo_album_column.h"
 #include "media_file_utils.h"
 #include "result_set_utils.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
+#endif
 #include "photo_map_operations.h"
 #include "medialibrary_common_utils.h"
 #include "medialibrary_business_code.h"
@@ -88,11 +90,16 @@ int32_t MediaAlbumsService::SetPortraitAlbumName(const ChangeRequestSetAlbumName
 
 int32_t MediaAlbumsService::SetGroupAlbumName(const ChangeRequestSetAlbumNameDto& dto)
 {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     NativeRdb::ValuesBucket values;
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, dto.albumId);
     values.Put(PhotoAlbumColumns::ALBUM_NAME, dto.albumName);
     return MediaLibraryAnalysisAlbumOperations::SetGroupAlbumName(values, predicates);
+#else
+    MEDIA_ERR_LOG("analysis data not support");
+    return E_ERR;
+#endif
 }
 
 int32_t MediaAlbumsService::SetHighlightAlbumName(const ChangeRequestSetAlbumNameDto& dto)
@@ -141,11 +148,16 @@ int32_t MediaAlbumsService::SetPortraitCoverUri(const ChangeRequestSetCoverUriDt
 
 int32_t MediaAlbumsService::SetGroupAlbumCoverUri(const ChangeRequestSetCoverUriDto& dto)
 {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     NativeRdb::ValuesBucket values;
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, dto.albumId);
     values.Put(PhotoAlbumColumns::ALBUM_COVER_URI, dto.coverUri);
     return MediaLibraryAnalysisAlbumOperations::SetGroupCoverUri(values, predicates);
+#else
+    MEDIA_ERR_LOG("analysis data not support");
+    return E_ERR;
+#endif
 }
 
 int32_t MediaAlbumsService::SetHighlightAlbumCoverUri(const ChangeRequestSetCoverUriDto& dto)
@@ -896,12 +908,17 @@ int32_t MediaAlbumsService::QueryAlbumsLpaths(QueryAlbumsDto &dto)
 
 int32_t MediaAlbumsService::ChangeRequestSetHighlightAttribute(ChangeRequestSetHighlightAttributeDto &dto)
 {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     MEDIA_DEBUG_LOG("MediaAlbumsService::ChangeRequestSetHighlightAttribute Start");
     int32_t ret = MediaLibraryAnalysisAlbumOperations::SetHighlightAttribute(dto.albumId,
         dto.highlightAlbumChangeAttribute, dto.highlightAlbumChangeAttributeValue);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
         "ChangeRequestSetHighlightAttribute failed, error id: %{public}d", ret);
     return E_OK;
+#else
+    MEDIA_ERR_LOG("analysis data not support");
+    return E_ERR;
+#endif
 }
 
 int32_t MediaAlbumsService::ChangeRequestSetUploadStatus(const ChangeRequestSetUploadStatusDto &setUploadStatusDto)
@@ -968,6 +985,7 @@ int32_t MediaAlbumsService::CreateAnalysisAlbum(CreateAnalysisAlbumDto &dto, Cre
 {
     std::string albumName = dto.albumName;
     auto rowId = MediaLibraryAlbumOperations::CreatePortraitAlbum(albumName);
+    CHECK_AND_RETURN_RET_LOG(rowId > 0, E_INNER_FAIL, "Failed to createportraitalbum");
     respBody.albumId = rowId;
     return E_OK;
 }

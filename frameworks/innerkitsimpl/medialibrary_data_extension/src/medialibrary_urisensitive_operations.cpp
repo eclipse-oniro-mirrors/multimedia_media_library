@@ -351,7 +351,7 @@ int32_t UriSensitiveOperations::QuerySensitiveType(const uint32_t &tokenId, cons
     int32_t numRows = 0;
     resultSet->GetRowCount(numRows);
     if (numRows == 0) {
-        // Refer MEDIA_LOCATION permission to hide location and shooting parameters.
+        // Refer MEDIA_LOCATION permission to hide location.
         return AppUriSensitiveColumn::SENSITIVE_DEFAULT;
     }
     resultSet->GoToFirstRow();

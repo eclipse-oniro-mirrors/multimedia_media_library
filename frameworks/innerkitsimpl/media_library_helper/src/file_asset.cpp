@@ -43,6 +43,7 @@ int32_t FileAsset::GetId() const
 
 void FileAsset::SetId(int32_t id)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_ID] = id;
 }
 
@@ -53,6 +54,7 @@ int32_t FileAsset::GetCount() const
 
 void FileAsset::SetCount(int32_t count)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_COUNT] = count;
 }
 
@@ -63,6 +65,7 @@ const string &FileAsset::GetUri() const
 
 void FileAsset::SetUri(const string &uri)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_URI] = uri;
 }
 
@@ -73,6 +76,7 @@ const string &FileAsset::GetPath() const
 
 void FileAsset::SetPath(const string &path)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_FILE_PATH] = path;
 }
 
@@ -83,6 +87,7 @@ const string &FileAsset::GetRelativePath() const
 
 void FileAsset::SetRelativePath(const string &relativePath)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_RELATIVE_PATH] = relativePath;
 }
 
@@ -93,6 +98,7 @@ const string &FileAsset::GetMimeType() const
 
 void FileAsset::SetMimeType(const string &mimeType)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_MIME_TYPE] = mimeType;
 }
 
@@ -103,6 +109,7 @@ MediaType FileAsset::GetMediaType() const
 
 void FileAsset::SetMediaType(MediaType mediaType)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_MEDIA_TYPE] = mediaType;
 }
 
@@ -113,6 +120,7 @@ const string &FileAsset::GetDisplayName() const
 
 void FileAsset::SetDisplayName(const string &displayName)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_NAME] = displayName;
 }
 
@@ -123,6 +131,7 @@ int64_t FileAsset::GetSize() const
 
 void FileAsset::SetSize(int64_t size)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_SIZE] = size;
 }
 
@@ -133,6 +142,7 @@ const string &FileAsset::GetCloudId() const
 
 void FileAsset::SetCloudId(const string &cloudId)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_CLOUD_ID] = cloudId;
 }
 
@@ -143,6 +153,7 @@ int64_t FileAsset::GetDateAdded() const
 
 void FileAsset::SetDateAdded(int64_t dateAdded)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_DATE_ADDED] = dateAdded;
 }
 
@@ -153,6 +164,7 @@ int64_t FileAsset::GetDateModified() const
 
 void FileAsset::SetDateModified(int64_t dateModified)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_DATE_MODIFIED] = dateModified;
 }
 
@@ -163,6 +175,7 @@ const string &FileAsset::GetTitle() const
 
 void FileAsset::SetTitle(const string &title)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_TITLE] = title;
 }
 
@@ -173,6 +186,7 @@ const string &FileAsset::GetArtist() const
 
 void FileAsset::SetArtist(const string &artist)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_ARTIST] = artist;
 }
 
@@ -183,6 +197,7 @@ const string &FileAsset::GetAlbum() const
 
 void FileAsset::SetAlbum(const string &album)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_ALBUM] = album;
 }
 
@@ -193,6 +208,7 @@ int32_t FileAsset::GetPosition() const
 
 void FileAsset::SetPosition(int32_t position)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_POSITION] = position;
 }
 
@@ -203,6 +219,7 @@ int32_t FileAsset::GetWidth() const
 
 void FileAsset::SetWidth(int32_t width)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[MEDIA_DATA_DB_WIDTH] = width;
 }
 
@@ -846,6 +863,7 @@ void FileAsset::SetExistCompatibleDuplicate(int32_t existCompatibleDuplicate)
 
 void FileAsset::SetChangeTime(const int64_t changeTime)
 {
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::PHOTO_CHANGE_TIME] = changeTime;
 }
 

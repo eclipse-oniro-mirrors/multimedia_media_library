@@ -118,6 +118,7 @@ private:
     DelayTask backgroundDelayTask_{"backgroundTask"};
     DelayTask thumbnailBgDelayTask_{"thumbnailBgTask"};
     EXPORT static bool Subscribe(void);
+    EXPORT void OnReceiveEventSub(const EventFwk::CommonEventData &eventData);
     EXPORT void ClearDirtyData();
     EXPORT void DoBackgroundOperation();
     EXPORT void DoBackgroundOperationStepTwo();

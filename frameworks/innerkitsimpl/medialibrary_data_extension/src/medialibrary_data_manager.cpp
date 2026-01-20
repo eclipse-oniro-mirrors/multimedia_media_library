@@ -53,7 +53,16 @@
 #include "media_smart_album_column.h"
 #include "media_smart_map_column.h"
 #include "media_visit_count_manager.h"
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
+#include "medialibrary_search_operations.h"
+#include "medialibrary_smartalbum_map_operations.h"
+#include "medialibrary_smartalbum_operations.h"
+#include "medialibrary_story_operations.h"
+#include "medialibrary_vision_operations.h"
+#include "medialibrary_location_operations.h"
+#endif
+#include "medialibrary_album_operations.h"
 #include "medialibrary_app_uri_permission_operations.h"
 #include "medialibrary_app_uri_sensitive_operations.h"
 #include "medialibrary_audio_operations.h"
@@ -63,14 +72,10 @@
 #include "medialibrary_file_operations.h"
 #include "medialibrary_inotify.h"
 #include "medialibrary_kvstore_manager.h"
-#include "medialibrary_location_operations.h"
 #include "medialibrary_meta_recovery.h"
 #include "medialibrary_object_utils.h"
 #include "medialibrary_ptp_operations.h"
 #include "medialibrary_restore.h"
-#include "medialibrary_smartalbum_map_operations.h"
-#include "medialibrary_smartalbum_operations.h"
-#include "medialibrary_story_operations.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_tab_old_photos_operations.h"
 #include "medialibrary_tab_old_albums_operations.h"
@@ -78,8 +83,6 @@
 #include "medialibrary_tracer.h"
 #include "medialibrary_uripermission_operations.h"
 #include "medialibrary_urisensitive_operations.h"
-#include "medialibrary_vision_operations.h"
-#include "medialibrary_search_operations.h"
 #include "medialibrary_tab_asset_and_album_operations.h"
 #include "mimetype_utils.h"
 #include "multistages_capture_manager.h"
@@ -1489,7 +1492,7 @@ int32_t MediaLibraryDataManager::SolveInsertCmd(MediaLibraryCommand &cmd)
             return MediaLibraryAlbumOperations::HandlePhotoAlbumOperations(cmd);
         case OperationObject::FILESYSTEM_DIR:
             return MediaLibraryDirOperations::HandleDirOperation(cmd);
-
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         case OperationObject::SMART_ALBUM: {
             string packageName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
             MEDIA_INFO_LOG("%{public}s call smart album insert!", packageName.c_str());
@@ -1497,6 +1500,7 @@ int32_t MediaLibraryDataManager::SolveInsertCmd(MediaLibraryCommand &cmd)
         }
         case OperationObject::SMART_ALBUM_MAP:
             return MediaLibrarySmartAlbumMapOperations::HandleSmartAlbumMapOperation(cmd);
+#endif
 
         case OperationObject::THUMBNAIL:
             return HandleThumbnailOperations(cmd);
@@ -1526,6 +1530,7 @@ int32_t MediaLibraryDataManager::SolveInsertCmdSub(MediaLibraryCommand &cmd)
         return E_FAIL;
     }
     switch (cmd.GetOprnObject()) {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         case OperationObject::VISION_START ... OperationObject::VISION_END:
             return MediaLibraryVisionOperations::InsertOperation(cmd);
 
@@ -1533,9 +1538,12 @@ int32_t MediaLibraryDataManager::SolveInsertCmdSub(MediaLibraryCommand &cmd)
         case OperationObject::GEO_KNOWLEDGE:
         case OperationObject::GEO_PHOTO:
             return MediaLibraryLocationOperations::InsertOperation(cmd);
+        case OperationObject::SEARCH_TOTAL: {
+            return MediaLibrarySearchOperations::InsertOperation(cmd);
+        }
+#endif
         case OperationObject::PAH_FORM_MAP: {
             if (MAP_OPERATION_FLAG) {
-                MEDIA_INFO_LOG("map operation flag is true");
                 return MediaLibraryFormMapOperations::HandleStoreFormIdOperation(cmd);
             }
             return E_OK;
@@ -1549,10 +1557,6 @@ int32_t MediaLibraryDataManager::SolveInsertCmdSub(MediaLibraryCommand &cmd)
             return E_FAIL;
 #endif
         }
-
-        case OperationObject::SEARCH_TOTAL: {
-            return MediaLibrarySearchOperations::InsertOperation(cmd);
-        }
         case OperationObject::STORY_ALBUM:
         case OperationObject::STORY_COVER:
         case OperationObject::STORY_PLAY:
@@ -1560,13 +1564,14 @@ int32_t MediaLibraryDataManager::SolveInsertCmdSub(MediaLibraryCommand &cmd)
         case OperationObject::ANALYSIS_PROGRESS:
         case OperationObject::ANALYSIS_ASSET_SD_MAP:
         case OperationObject::ANALYSIS_ALBUM_ASSET_MAP:
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
             return MediaLibraryStoryOperations::InsertOperation(cmd);
         case OperationObject::ANALYSIS_PHOTO_MAP: {
             return MediaLibrarySearchOperations::InsertOperation(cmd);
         }
+#endif
         default:
-            MEDIA_ERR_LOG("MediaLibraryDataManager SolveInsertCmd: unsupported OperationObject: %{public}d",
-                cmd.GetOprnObject());
+            MEDIA_ERR_LOG("SolveInsertCmd: unsupported OperationObject: %{public}d", cmd.GetOprnObject());
             break;
     }
     return E_FAIL;
@@ -1864,9 +1869,9 @@ int32_t MediaLibraryDataManager::DeleteInRdbPredicatesAnalysis(MediaLibraryComma
         return E_FAIL;
     }
     switch (cmd.GetOprnObject()) {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         case OperationObject::VISION_START ... OperationObject::VISION_END:
             return MediaLibraryVisionOperations::DeleteOperation(cmd);
-
         case OperationObject::GEO_DICTIONARY:
         case OperationObject::GEO_KNOWLEDGE:
         case OperationObject::GEO_PHOTO:
@@ -1881,7 +1886,9 @@ int32_t MediaLibraryDataManager::DeleteInRdbPredicatesAnalysis(MediaLibraryComma
 
         case OperationObject::SEARCH_TOTAL:
             return MediaLibrarySearchOperations::DeleteOperation(cmd);
+#endif
         default:
+            MEDIA_ERR_LOG("unsupported OperationObject: %{public}d", cmd.GetOprnObject());
             break;
     }
 
@@ -2039,6 +2046,7 @@ int32_t MediaLibraryDataManager::UpdateInternal(MediaLibraryCommand &cmd, Native
         case OperationObject::PHOTO_ALBUM:
         case OperationObject::PTP_ALBUM_OPERATION:
             return MediaLibraryAlbumOperations::HandlePhotoAlbum(cmd.GetOprnType(), value, predicates);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         case OperationObject::GEO_DICTIONARY:
         case OperationObject::GEO_KNOWLEDGE:
             return MediaLibraryLocationOperations::UpdateOperation(cmd);
@@ -2048,6 +2056,7 @@ int32_t MediaLibraryDataManager::UpdateInternal(MediaLibraryCommand &cmd, Native
         case OperationObject::USER_PHOTOGRAPHY:
         case OperationObject::ANALYSIS_PROGRESS:
             return MediaLibraryStoryOperations::UpdateOperation(cmd);
+#endif
         case OperationObject::PAH_MULTISTAGES_CAPTURE: {
             std::vector<std::string> columns;
             MultiStagesPhotoCaptureManager::GetInstance().HandleMultiStagesOperation(cmd, columns);
@@ -2066,11 +2075,13 @@ int32_t MediaLibraryDataManager::UpdateInternal(MediaLibraryCommand &cmd, Native
 #endif
         case OperationObject::VISION_IMAGE_FACE:
             return HandleAnalysisFaceUpdate(cmd, value, predicates);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         case OperationObject::ANALYSIS_PHOTO_MAP:
             if (cmd.GetOprnType() == OperationType::UPDATE_ORDER) {
                 return MediaLibraryAnalysisAlbumOperations::SetAnalysisAlbumOrderPosition(cmd);
             }
             break;
+#endif
         case OperationObject::PAH_BACKUP_POSTPROCESS:
             return RestoreInvalidHDCCloudDataPos();
             break;
@@ -2642,9 +2653,11 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QueryAnalysisAlbum(Med
     if (cmd.GetOprnType() == OperationType::QUERY_RAW_ANALYSIS_ALBUM) {
         return MediaLibraryRdbStore::QueryWithFilter(rdbPredicates, columns);
     }
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     if (albumSubtype == PhotoAlbumSubType::GROUP_PHOTO) {
         return MediaLibraryAnalysisAlbumOperations::QueryGroupPhotoAlbum(cmd, columns);
     }
+#endif
     if (CheckIsPortraitAlbum(cmd)) {
         return MediaLibraryAlbumOperations::QueryPortraitAlbum(cmd, columns);
     }
@@ -2802,8 +2815,10 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QueryInternal(MediaLib
         case OperationObject::FILESYSTEM_ALBUM:
         case OperationObject::MEDIA_VOLUME:
             return MediaLibraryAlbumOperations::QueryAlbumOperation(cmd, columns);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         case OperationObject::INDEX_CONSTRUCTION_STATUS:
             return MediaLibrarySearchOperations::QueryIndexConstructProgress();
+#endif
         case OperationObject::PHOTO_ALBUM:
             return MediaLibraryAlbumOperations::QueryPhotoAlbum(cmd, columns);
         case OperationObject::ANALYSIS_PHOTO_ALBUM:
@@ -2857,8 +2872,10 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QueryInternal(MediaLib
         case OperationObject::ASSET_ALBUM_OPERATION:
             return MediaLibraryTableAssetAlbumOperations().Query(
                 RdbUtils::ToPredicates(predicates, PhotoColumn::TAB_ASSET_AND_ALBUM_OPERATION_TABLE), columns);
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
         case OperationObject::ANALYSIS_FOREGROUND:
             return MediaLibraryVisionOperations::HandleForegroundAnalysisOperation(cmd);
+#endif
         case OperationObject::CUSTOM_RECORDS_OPERATION:
             return MediaLibraryRdbStore::QueryWithFilter(RdbUtils::ToPredicates(predicates, cmd.GetTableName()),
                 columns);
@@ -3056,7 +3073,9 @@ int32_t MediaLibraryDataManager::SetCmdBundleAndDevice(MediaLibraryCommand &outC
 int32_t MediaLibraryDataManager::DoTrashAging(shared_ptr<int> countPtr)
 {
     shared_ptr<int> smartAlbumTrashPtr = make_shared<int>();
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     MediaLibrarySmartAlbumMapOperations::HandleAgingOperation(smartAlbumTrashPtr);
+#endif
 
     shared_ptr<int> albumTrashtPtr = make_shared<int>();
     MediaLibraryAlbumOperations::HandlePhotoAlbum(OperationType::AGING, {}, {}, albumTrashtPtr);

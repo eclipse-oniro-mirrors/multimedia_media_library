@@ -757,7 +757,9 @@ static int32_t QueryAlbumCount(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     MediaLibraryRdbUtils::GetAlbumCountAndCoverPredicates(albumInfo, predicates, false);
     auto fetchResult = QueryGoToFirst(rdbStore, predicates, columns);
     CHECK_AND_RETURN_RET(fetchResult != nullptr, E_HAS_DB_ERROR);
-    return GetFileCount(fetchResult);
+    int32_t count = GetFileCount(fetchResult);
+    fetchResult->Close();
+    return count;
 }
 
 static int32_t QueryAlbumVideoCount(const shared_ptr<MediaLibraryRdbStore> rdbStore,
@@ -773,7 +775,9 @@ static int32_t QueryAlbumVideoCount(const shared_ptr<MediaLibraryRdbStore> rdbSt
     predicates.EqualTo(MediaColumn::MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO));
     auto fetchResult = QueryGoToFirst(rdbStore, predicates, columns);
     CHECK_AND_RETURN_RET(fetchResult != nullptr, E_HAS_DB_ERROR);
-    return GetFileCount(fetchResult);
+    int32_t count = GetFileCount(fetchResult);
+    fetchResult->Close();
+    return count;
 }
 
 static int32_t QueryAlbumHiddenCount(const shared_ptr<MediaLibraryRdbStore> rdbStore,
@@ -787,7 +791,9 @@ static int32_t QueryAlbumHiddenCount(const shared_ptr<MediaLibraryRdbStore> rdbS
     MediaLibraryRdbUtils::GetAlbumCountAndCoverPredicates(albumInfo, predicates, true);
     auto fetchResult = QueryGoToFirst(rdbStore, predicates, columns);
     CHECK_AND_RETURN_RET(fetchResult != nullptr, E_HAS_DB_ERROR);
-    return GetFileCount(fetchResult);
+    int32_t count = GetFileCount(fetchResult);
+    fetchResult->Close();
+    return count;
 }
 
 static int32_t SetAlbumCounts(const shared_ptr<MediaLibraryRdbStore> rdbStore,
@@ -867,6 +873,7 @@ static int32_t SetAlbumCoverUri(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     auto fetchResult = QueryGoToFirst(rdbStore, predicates, columns);
     CHECK_AND_RETURN_RET_LOG(fetchResult != nullptr, E_HAS_DB_ERROR, "QueryGoToFirst failed");
     uri = MediaLibraryRdbUtils::GetCover(fetchResult);
+    fetchResult->Close();
     return E_SUCCESS;
 }
 
@@ -889,6 +896,7 @@ static int32_t SetAlbumCoverHiddenUri(const shared_ptr<MediaLibraryRdbStore> rdb
     auto fetchResult = QueryGoToFirst(rdbStore, predicates, columns);
     CHECK_AND_RETURN_RET_LOG(fetchResult != nullptr, E_HAS_DB_ERROR, "QueryGoToFirst failed");
     uri = MediaLibraryRdbUtils::GetCover(fetchResult);
+    fetchResult->Close();
     return E_SUCCESS;
 }
 
@@ -1330,6 +1338,7 @@ static int32_t SetPortraitUpdateValues(const shared_ptr<MediaLibraryRdbStore>& r
     CHECK_AND_RETURN_RET_LOG(countResult != nullptr, E_HAS_DB_ERROR, "Failed to query Portrait Album Count");
 
     int32_t newCount = SetCount(countResult, data, values, false, PhotoAlbumSubType::PORTRAIT);
+    countResult->Close();
     if (!ShouldUpdatePortraitAlbumCover(rdbStore, albumId, coverId, isCoverSatisfied)) {
         return E_SUCCESS;
     }
@@ -1338,6 +1347,7 @@ static int32_t SetPortraitUpdateValues(const shared_ptr<MediaLibraryRdbStore>& r
     CHECK_AND_RETURN_RET_LOG(coverResult != nullptr, E_HAS_DB_ERROR,
         "Failed to query Portrait Album Cover");
     SetPortraitCover(coverResult, data, values, newCount);
+    coverResult->Close();
     return E_SUCCESS;
 }
 
@@ -1359,6 +1369,7 @@ static int32_t SetGroupPhotoUpdateValues(const shared_ptr<MediaLibraryRdbStore> 
     CHECK_AND_RETURN_RET_LOG(countResult != nullptr, E_HAS_DB_ERROR, "Failed to query GroupPhoto Album Count");
 
     int32_t newCount = SetCount(countResult, data, values, false, PhotoAlbumSubType::PORTRAIT);
+    countResult->Close();
     if (!ShouldUpdateGroupPhotoAlbumCover(rdbStore, albumId, coverId, isCoverSatisfied)) {
         return E_SUCCESS;
     }
@@ -1366,6 +1377,7 @@ static int32_t SetGroupPhotoUpdateValues(const shared_ptr<MediaLibraryRdbStore> 
     CHECK_AND_RETURN_RET_LOG(coverResult != nullptr, E_HAS_DB_ERROR,
         "Failed to query GroupPhoto Album Cover");
     SetGroupPhotoCover(coverResult, data, values, newCount);
+    coverResult->Close();
     return E_SUCCESS;
 }
 
@@ -1541,6 +1553,7 @@ static int32_t SetUpdateValues(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
         IsNeedSetCover(data, subtype)) {
         SetCover(fileResult, data, values, hiddenState);
     }
+    fileResult->Close();
     if (hiddenState == 0 && (subtype < PhotoAlbumSubType::ANALYSIS_START ||
         subtype > PhotoAlbumSubType::ANALYSIS_END)) {
         predicates.Clear();
@@ -1556,6 +1569,7 @@ static int32_t SetUpdateValues(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
         auto fileResultVideo = QueryGoToFirst(rdbStore, predicates, columns);
         CHECK_AND_RETURN_RET_LOG(fileResultVideo != nullptr, E_HAS_DB_ERROR, "Failed to query fileResultVideo");
         SetImageVideoCount(newCount, fileResultVideo, data, values);
+        fileResultVideo->Close();
     }
 
     // album datemodified can be update only when the number of user and source album is updated.
@@ -2344,6 +2358,7 @@ int32_t MediaLibraryRdbUtils::GetAlbumIdsForPortrait(const shared_ptr<MediaLibra
             portraitAlbumIds.push_back(albumId);
         }
     }
+    resultSet->Close();
     return E_OK;
 }
 

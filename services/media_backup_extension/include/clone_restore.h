@@ -43,6 +43,7 @@
 #include "ffrt.h"
 #include "ffrt_inner.h"
 #include "settings_data_manager.h"
+#include "restore_photos_album_hidden.h"
 
 namespace OHOS {
 namespace Media {
@@ -306,6 +307,7 @@ private:
     CloneRestoreConfigInfo dstCloneRestoreConfigInfo_;
     CloneRestoreConfigInfo srcCloneRestoreConfigInfo_;
     DstDeviceBackupInfo dstDeviceBackupInfo_;
+    RestorePhotosAlbumHidden restorePhotosAlbumHidden_;
 
 private:
     const std::string SQL_QUERY_CLASSIFY_ALBUM_EXIST = " \

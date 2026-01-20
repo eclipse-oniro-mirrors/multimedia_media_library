@@ -41,6 +41,7 @@
 #include "thermal_mgr_client.h"
 #endif
 
+#include "heif_transcoding_check_utils.h"
 #include "medialibrary_album_fusion_utils.h"
 #include "medialibrary_all_album_refresh_processor.h"
 #include "medialibrary_bundle_manager.h"
@@ -150,6 +151,7 @@ const std::vector<std::string> MedialibrarySubscriber::events_ = {
     EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_OFF,
     EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_ON,
     EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED,
+    EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REPLACED,
     EventFwk::CommonEventSupport::COMMON_EVENT_BATTERY_CHANGED,
     EventFwk::CommonEventSupport::COMMON_EVENT_THERMAL_LEVEL_CHANGED,
     EventFwk::CommonEventSupport::COMMON_EVENT_WIFI_CONN_STATE,
@@ -534,11 +536,6 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     } else if (BACKGROUND_OPERATION_STATUS_MAP.count(action) != 0) {
         UpdateBackgroundOperationStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
         UpdateCloudMediaAssetDownloadStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
-    } else if (action.compare(EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED) == 0) {
-        string packageName = want.GetElement().GetBundleName();
-        RevertPendingByPackage(packageName);
-        MediaLibraryBundleManager::GetInstance()->Clear();
-        PermissionUtils::ClearBundleInfoInCache();
     } else if (action == EventFwk::CommonEventSupport::COMMON_EVENT_HWID_LOGOUT) {
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         BackgroundCloudFileProcessor::SetDownloadLatestFinished(false);
@@ -558,6 +555,25 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
         PermissionWhitelistUtils::OnReceiveEvent();
     }
     HandleNetInfoChange(action);
+    OnReceiveEventSub(eventData);
+    // !! Do not add code here !!
+}
+
+void MedialibrarySubscriber::OnReceiveEventSub(const EventFwk::CommonEventData &eventData)
+{
+    const AAFwk::Want &want = eventData.GetWant();
+    std::string action = want.GetAction();
+    if (action.compare(EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REPLACED) == 0) {
+        HeifTranscodingCheckUtils::ClearBundleInfoInCache();
+    } else if (action.compare(EventFwk::CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED) == 0) {
+        std::string bundleName = want.GetElement().GetBundleName();
+        if (!bundleName.empty()) {
+            RevertPendingByPackage(bundleName);
+        }
+        MediaLibraryBundleManager::GetInstance()->Clear();
+        PermissionUtils::ClearBundleInfoInCache();
+        HeifTranscodingCheckUtils::ClearBundleInfoInCache();
+    }
 }
 
 void MedialibrarySubscriber::HandleNetInfoChange(std::string &action)
