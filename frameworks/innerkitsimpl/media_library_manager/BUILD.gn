@@ -242,8 +242,8 @@ ohos_shared_library("media_library_custom_restore") {
   install_enable = true
 
   sources = [
-    "./media_library_custom_restore.cpp",
-    "./src/medialibrary_custom_restore_observer_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/media_library_custom_restore.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/medialibrary_custom_restore_observer_manager.cpp",
   ]
 
   include_dirs = [
@@ -252,6 +252,7 @@ ohos_shared_library("media_library_custom_restore") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
   ]
 
   user_ipc_client_include_dirs = [
@@ -275,6 +276,11 @@ ohos_shared_library("media_library_custom_restore") {
   sources += media_albums_manager_vo_source
   sources += media_assets_manager_vo_source
   sources += user_ipc_client_source
+
+  if(!media_library_feature_custom_restore) {
+    sources = []
+    include_dirs = []
+  }
 
   public_configs = [ ":media_library_manager_config" ]
 
