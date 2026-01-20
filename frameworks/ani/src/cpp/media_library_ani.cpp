@@ -104,6 +104,7 @@ mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
 mutex ChangeListenerAni::sWorkerMutex_;
 string ChangeListenerAni::trashAlbumUri_;
+mutex ChangeListenerAni::sWrapperMsgMutex_;
 static map<string, ListenerType> ListenerTypeMaps = {
     {"audioChange", AUDIO_LISTENER},
     {"videoChange", VIDEO_LISTENER},
@@ -357,6 +358,8 @@ void ChangeListenerAni::OnChange(MediaChangeListener &listener, const ani_ref cb
     if (msg == nullptr) {
         return;
     }
+
+    msg->data_ = nullptr;
     if (!listener.changeInfo.uris_.empty()) {
         if (listener.changeInfo.changeType_ == DataShare::DataShareObserver::ChangeType::OTHER) {
             ANI_ERR_LOG("changeInfo.changeType_ is other");
@@ -373,6 +376,9 @@ void ChangeListenerAni::OnChange(MediaChangeListener &listener, const ani_ref cb
             int copyRet = memcpy_s(msg->data_, msg->changeInfo_.size_, msg->changeInfo_.data_, msg->changeInfo_.size_);
             if (copyRet != 0) {
                 ANI_ERR_LOG("Parcel data copy failed, err = %{public}d", copyRet);
+                free(msg->data_);
+                delete msg;
+                return;
             }
         }
     }
@@ -468,7 +474,10 @@ void ChangeListenerAni::QueryRdbAndNotifyChange(UvChangeMsg *msg)
         delete msg;
         return;
     }
+
+    std::unique_lock<std::mutex> wapperLock(sWrapperMsgMutex_);
     wrapper->msg_ = msg;
+    wapperLock.unlock();
     MediaLibraryTracer tracer;
     tracer.Start("GetResultSetFromMsg");
     GetResultSetFromMsg(msg, wrapper);
@@ -3735,12 +3744,13 @@ void MediaLibraryAni::UnRegisterNotifyChange(ani_env *env, const std::string &ur
         CheckRef(env, ref, listObj, true, uri);
         return;
     }
-    if (listObj.observers_.size() == 0) {
-        return;
-    }
+
     std::vector<std::shared_ptr<MediaOnNotifyObserver>> offObservers;
     {
         lock_guard<mutex> lock(sOnOffMutex_);
+        if (listObj.observers_.size() == 0) {
+            return;
+        }
         for (auto iter = listObj.observers_.begin(); iter != listObj.observers_.end();) {
             if (uri.compare((*iter)->uri_) == 0) {
                 offObservers.push_back(*iter);

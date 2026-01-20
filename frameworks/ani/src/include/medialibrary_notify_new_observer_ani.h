@@ -78,6 +78,7 @@ private:
     static std::mutex instanceMtx_;
     std::atomic<bool> isThreadRunning_{false};
     static std::mutex vectorMutex_;
+    static std::mutex taskInfoMutex_;
     int64_t lastTaskTime_ = 0;
     int32_t notifyTaskCount_ = 0;
     size_t notifyTaskInfoSize_ = 0;

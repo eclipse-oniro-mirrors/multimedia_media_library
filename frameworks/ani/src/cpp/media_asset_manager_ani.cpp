@@ -48,6 +48,8 @@
 namespace OHOS::Media {
 static std::mutex multiStagesCaptureLock;
 static std::mutex registerTaskLock;
+static std::mutex inProcessUriMapMutex;
+static std::mutex multiStagesObserverMapMutex;
 
 const int32_t LOW_QUALITY_IMAGE = 1;
 const int32_t HIGH_QUALITY_IMAGE = 0;
@@ -168,6 +170,8 @@ static void DeleteRecordNoLock(const std::string &requestUri, const std::string 
 {
     auto uriLocal = MediaFileUtils::GetUriWithoutDisplayname(requestUri);
     auto uriHightemp = uriLocal + HIGH_TEMPERATURE;
+
+    std::lock_guard<std::mutex> uriMapLock(inProcessUriMapMutex);
     if (inProcessUriMap.find(uriLocal) == inProcessUriMap.end()) {
         return;
     }
@@ -185,6 +189,7 @@ static void DeleteRecordNoLock(const std::string &requestUri, const std::string 
 
     inProcessUriMap.erase(uriLocal);
 
+    std::lock_guard<std::mutex> observerMapLock(multiStagesObserverMapMutex);
     if (multiStagesObserverMap.find(uriLocal) != multiStagesObserverMap.end()) {
         UserFileClient::UnregisterObserverExt(Uri(uriLocal),
             static_cast<std::shared_ptr<DataShare::DataShareObserver>>(multiStagesObserverMap[uriLocal]));
@@ -589,6 +594,7 @@ ani_status MediaAssetManagerAni::CreateOnDataPreparedThreadSafeFunc(ThreadFuncti
         CHECK_IF_EQUAL(assetHandler->etsVm != nullptr, "assetHandler etsVm is null");
 
         ani_env *etsEnv {};
+        auto tmpEtsVm = assetHandler->etsVm;
         ani_option interopEnabled {"--interop=disable", nullptr};
         ani_options aniArgs {1, &interopEnabled};
         CHECK_IF_EQUAL(assetHandler->etsVm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &etsEnv) == ANI_OK,
@@ -597,7 +603,7 @@ ani_status MediaAssetManagerAni::CreateOnDataPreparedThreadSafeFunc(ThreadFuncti
         // Do OnDataPrepared in thread
         MediaAssetManagerAni::OnDataPrepared(etsEnv, assetHandler);
 
-        CHECK_IF_EQUAL(assetHandler->etsVm->DetachCurrentThread() == ANI_OK, "DetachCurrentThread fail");
+        CHECK_IF_EQUAL(tmpEtsVm->DetachCurrentThread() == ANI_OK, "DetachCurrentThread fail");
     };
     return ANI_OK;
 }
@@ -609,6 +615,7 @@ ani_status MediaAssetManagerAni::CreateOnProgressThreadSafeFunc(ThreadFunctionOn
         CHECK_IF_EQUAL(progressHandler->etsVm != nullptr, "progressHandler etsVm is null");
 
         ani_env *etsEnv {};
+        ani_vm *etsVm = progressHandler->etsVm;
         ani_option interopEnabled {"--interop=disable", nullptr};
         ani_options aniArgs {1, &interopEnabled};
         CHECK_IF_EQUAL(progressHandler->etsVm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &etsEnv) == ANI_OK,
@@ -616,8 +623,9 @@ ani_status MediaAssetManagerAni::CreateOnProgressThreadSafeFunc(ThreadFunctionOn
 
         // Do OnProgress in thread
         MediaAssetManagerAni::OnProgress(etsEnv, progressHandler);
+        CHECK_IF_EQUAL(etsVm != nullptr, "etsVm is null");
 
-        CHECK_IF_EQUAL(progressHandler->etsVm->DetachCurrentThread() == ANI_OK, "DetachCurrentThread fail");
+        CHECK_IF_EQUAL(etsVm->DetachCurrentThread() == ANI_OK, "DetachCurrentThread fail");
     };
     return ANI_OK;
 }
