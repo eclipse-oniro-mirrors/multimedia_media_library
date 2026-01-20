@@ -16,6 +16,14 @@
 #define MLOG_TAG "LakeFileMonitorTest"
 
 #include "lake_file_monitor_test.h"
+
+#include "media_file_change_processor.h"
+
+#include "media_log.h"
+#include "media_lake_notify_info.h"
+#include "media_file_change_manager.h"
+#include "file_monitor_interface.h"
+#include "lake_file_utils.h"
  
 namespace OHOS {
 namespace Media {
@@ -29,5 +37,21 @@ void LakeFileMonitorTest::SetUp() {}
 
 void LakeFileMonitorTest::TearDown() {}
 
+/**
+ * @tc.number    : media_file_change_manager_test_001
+ * @tc.name      : MediaFileChangeManager test
+ * @tc.desc      : MediaFileChangeManager test
+ */
+HWTEST_F(LakeFileMonitorTest, media_file_change_manager_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("media_file_change_manager_test_001 start");
+
+    auto manager = MediaFileChangeManager::GetInstance();
+    auto processor = MediaFileChangeProcessor::GetInstance();
+    EXPECT_NE(manager, nullptr);
+    EXPECT_NE(processor, nullptr);
+
+    MEDIA_INFO_LOG("media_file_change_manager_test_001 end");
+}
 } // namespace Media
 } // namespace OHOS

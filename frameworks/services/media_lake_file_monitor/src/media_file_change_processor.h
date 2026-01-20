@@ -24,10 +24,10 @@
 #include "media_file_notify_processor.h"
 
 namespace OHOS::Media {
-
+#define EXPORT __attribute__ ((visibility ("default")))
 class MediaFileChangeProcessor : public EnableSharedCreate<MediaFileChangeProcessor> {
 public:
-    static std::shared_ptr<MediaFileChangeProcessor> GetInstance();
+    EXPORT static std::shared_ptr<MediaFileChangeProcessor> GetInstance();
     ~MediaFileChangeProcessor();
 
     void SetFileMonitorProxy(const std::shared_ptr<MediaFileMonitorProxyWrapper>& fileMonitorProxy);
