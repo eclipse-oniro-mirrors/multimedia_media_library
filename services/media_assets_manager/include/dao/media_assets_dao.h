@@ -79,7 +79,6 @@ private:
     int32_t QueryAlbumBylPath(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfo);
     std::string GetLpathFromSourcePath(const std::string &sourcePath);
     int32_t FindSamePhotoInHiddenAlbum(const PhotosPo &photoInfo, std::optional<PhotosPo> &samePhotoInfoOp);
-    int32_t DeletePhotoExtTable(const std::string &fileId);
 
 private:
     const std::string SOURCE_PATH_PERFIX = "/storage/emulated/0";
