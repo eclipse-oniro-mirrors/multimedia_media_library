@@ -56,6 +56,7 @@ public:
     EXPORT static void DealWithSuccessedTask(CloudEnhancementThreadTask& task);
     EXPORT static void DealWithFailedTask(CloudEnhancementThreadTask& task);
     EXPORT static void UpdateAlbumsForCloudEnhancement();
+    EXPORT static std::string ChangeVideoPath(const string &filePath);
 #endif
 
 private:
