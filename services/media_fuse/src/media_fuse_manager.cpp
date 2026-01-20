@@ -229,11 +229,10 @@ static int32_t GetFileIdFromUri(string &fileId, const string &uri)
 static int32_t GetFileIdFromUriForGetAttr(string &fileId, const string &uri)
 {
     string tmpPath;
-    uint32_t pos;
     if (uri.find("/") == 0) {
         tmpPath = uri.substr(strlen("/"));
         CHECK_AND_RETURN_RET(!tmpPath.empty(), E_ERR);
-        pos = tmpPath.find("/");
+        size_t pos = tmpPath.find("/");
         if (pos < tmpPath.size()) {
             tmpPath = tmpPath.substr(0, pos);
         }
@@ -448,7 +447,7 @@ static int32_t DbCheckPermission(const string &filePath, const string &mode, con
     return E_SUCCESS;
 }
 
-int32_t MediafusePermCheckInfo::CheckPermission(uint32_t &tokenCaller)
+bool MediafusePermCheckInfo::CheckPermission(uint32_t &tokenCaller)
 {
     int err = WrCheckPermission(filePath_, mode_, uid_, tokenCaller);
     bool rslt;
@@ -538,8 +537,8 @@ static int32_t OpenFile(const string &filePath, const string &fileId, const stri
     PermissionUtils::GetClientBundle(uid, bundleName);
     string appId = PermissionUtils::GetAppIdByBundleName(bundleName, uid);
     class MediafusePermCheckInfo info(filePath, mode, fileId, appId, uid);
-    int32_t permGranted = info.CheckPermission(tokenCaller);
-    if (permGranted == false) {
+    bool permGranted = info.CheckPermission(tokenCaller);
+    if (!permGrantede) {
         return E_ERR;
     }
     string path = filePath;
