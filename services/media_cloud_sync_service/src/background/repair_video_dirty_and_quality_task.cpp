@@ -34,7 +34,7 @@ namespace OHOS::Media::Background {
 // LCOV_EXCL_START
 bool RepairVideoDirtyAndQualityTask::Accept()
 {
-    return PowerEfficiencyManager::IsChargingAndScreenOff();
+    return MedialibrarySubscriber::IsCurrentStatusOn();
 }
 
 void RepairVideoDirtyAndQualityTask::Execute()

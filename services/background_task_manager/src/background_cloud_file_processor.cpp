@@ -280,6 +280,11 @@ void BackgroundCloudFileProcessor::HandleRepairMimeType(const int32_t &lastRecor
     std::vector<PhotosPo> photosPoVec = GetRepairMimeTypeData(repairRecord);
     do {
         for (PhotosPo photosPo : photosPoVec) {
+            if (!MedialibrarySubscriber::IsCurrentStatusOn()) {
+                MEDIA_INFO_LOG("Break repair cause invalid status");
+                terminate = true;
+                break;
+            }
             std::string path = photosPo.data.value_or("");
             int32_t fileId = photosPo.fileId.value_or(0);
             std::string mimeType = photosPo.mimeType.value_or("");
@@ -289,8 +294,8 @@ void BackgroundCloudFileProcessor::HandleRepairMimeType(const int32_t &lastRecor
                 continue;
             }
             if (position == static_cast<int32_t>(POSITION_CLOUD) &&
-                !MedialibraryRelatedSystemStateManager::GetInstance()->IsWifiConnected()) {
-                MEDIA_INFO_LOG("Break repair cause wifi not connect");
+                !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+                MEDIA_INFO_LOG("Break repair cause wifi is invalid");
                 terminate = true;
                 break;
             }
@@ -304,17 +309,12 @@ void BackgroundCloudFileProcessor::HandleRepairMimeType(const int32_t &lastRecor
 
             // reduce repair frequency
             this_thread::sleep_for(chrono::milliseconds(MIMETYPE_REPAIR_INTERVAL));
-            if (!PowerEfficiencyManager::IsChargingAndScreenOff()) {
-                MEDIA_INFO_LOG("Break repair cause invalid status");
-                terminate = true;
-                break;
-            }
         }
         prefs->PutInt(LAST_LOCAL_MIMETYPE_REPAIR, repairRecord);
         prefs->FlushSync();
         MEDIA_INFO_LOG("repair mimetype to %{public}d", repairRecord);
-        photosPoVec = GetRepairMimeTypeData(repairRecord);
-    } while (photosPoVec.size() > 0 && !terminate);
+        CHECK_AND_EXECUTE(terminate, photosPoVec = GetRepairMimeTypeData(repairRecord));
+    } while (!terminate && !photosPoVec.empty());
 }
 
 void BackgroundCloudFileProcessor::RepairMimeType()
