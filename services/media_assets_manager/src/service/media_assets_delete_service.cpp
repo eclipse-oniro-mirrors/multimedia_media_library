@@ -30,6 +30,7 @@
 #include "dfx_utils.h"
 #include "lake_file_utils.h"
 #include "medialibrary_notify.h"
+#include "medialibrary_photo_operations.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsDeleteService::DeleteLocalAssets(const std::vector<std::string> &fileIds)
@@ -785,6 +786,7 @@ int32_t MediaAssetsDeleteService::DeleteLocalAssetSingle(const PhotosPo &photoIn
         ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
         CHECK_AND_BREAK(ret != E_OK);
     }
+    this->StoreThumbnailAndEditSize(photoInfo, targetPhotoInfoOp);
     return E_OK;
 }
 
@@ -912,6 +914,28 @@ int32_t MediaAssetsDeleteService::DeleteCloudAssetSingle(const PhotosPo &photoIn
         ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
         CHECK_AND_BREAK(ret != E_OK);
     }
+    this->StoreThumbnailAndEditSize(photoInfo, targetPhotoInfoOp);
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(
+    const PhotosPo &photoInfo, const std::optional<PhotosPo> &targetPhotoInfoOp)
+{
+    bool isValid = targetPhotoInfoOp.has_value();
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    PhotosPo targetPhotoInfo = targetPhotoInfoOp.value();
+    this->StoreThumbnailAndEditSize(photoInfo);
+    this->StoreThumbnailAndEditSize(targetPhotoInfo);
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(const PhotosPo &photoInfo)
+{
+    int32_t fileId = photoInfo.fileId.value_or(0);
+    std::string data = photoInfo.data.value_or("");
+    bool isValid = fileId > 0 && !data.empty();
+    CHECK_AND_RETURN_RET(isValid, E_INVAL_ARG);
+    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
     return E_OK;
 }
 }  // namespace OHOS::Media::Common
