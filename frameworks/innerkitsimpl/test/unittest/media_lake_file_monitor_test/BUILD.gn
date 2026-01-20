@@ -23,7 +23,6 @@ ohos_unittest("media_lake_file_monitor_test") {
   module_out_path = "media_library/media_library_asset"
   include_dirs = [
     "./include",
-    "../medialibrary_unittest_utils/include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/include",
@@ -35,7 +34,6 @@ ohos_unittest("media_lake_file_monitor_test") {
   sources = [
     "./src/lake_file_monitor_test.cpp",
     "./src/lake_monitor_rdb_test.cpp",
-    "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
   ]
  
