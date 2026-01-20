@@ -96,9 +96,7 @@ void MediaLibraryInotify::WatchCallBack()
             auto &meetEvent = item.meetEvent_;
             meetEvent = (eventMask & IN_MODIFY) ? (meetEvent | IN_MODIFY) : meetEvent;
             meetEvent = (eventMask & IN_CLOSE_WRITE) ? (meetEvent | IN_CLOSE_WRITE) : meetEvent;
-            meetEvent = (eventMask & IN_CLOSE_NOWRITE) ? (meetEvent | IN_CLOSE_NOWRITE) : meetEvent;
-            if (((meetEvent & IN_CLOSE_WRITE) && (meetEvent & IN_MODIFY)) ||
-                ((meetEvent & IN_CLOSE_NOWRITE) && (meetEvent & IN_MODIFY))) {
+            if ((meetEvent & IN_CLOSE_WRITE) && (meetEvent & IN_MODIFY)) {
                 MEDIA_INFO_LOG("path:%{public}s, meetEvent:%{public}u, uri:%{public}s",
                     MediaFileUtils::DesensitizePath(item.path_).c_str(),
                     meetEvent,
