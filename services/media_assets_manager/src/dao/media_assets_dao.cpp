@@ -301,8 +301,6 @@ int32_t MediaAssetsDao::DeletePhotoInfo(
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, ret, "watch is nullptr");
     watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(fileId), NotifyType::NOTIFY_REMOVE);
-    // Delete Photos should maintain photos_ext_table for storage report.
-    CHECK_AND_EXECUTE(cond, this->DeletePhotoExtTable(std::to_string(fileId)));
     return E_OK;
 }
 
@@ -426,19 +424,6 @@ int32_t MediaAssetsDao::FindAssetsByBurstKey(const std::string &burstKey, std::v
     int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photoInfoList);
     MEDIA_INFO_LOG("FindAssetsByBurstKey, ret: %{public}d, burstKey: %{public}s, size: %{public}zu",
         ret, burstKey.c_str(), photoInfoList.size());
-    return ret;
-}
-
-int32_t MediaAssetsDao::DeletePhotoExtTable(const std::string &fileId)
-{
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
-    NativeRdb::AbsRdbPredicates predicates(PhotoExtColumn::PHOTOS_EXT_TABLE);
-    predicates.EqualTo(PhotoExtColumn::PHOTO_ID, fileId);
-    int32_t deletedRows = -1;
-    int32_t ret = rdbStore->Delete(deletedRows, predicates);
-    MEDIA_INFO_LOG("DeletePhotoExtTable completed, ret: %{public}d, photoId: %{public}s, deletedRows: %{public}d",
-        ret, fileId.c_str(), deletedRows);
     return ret;
 }
 }  // namespace OHOS::Media::Common
