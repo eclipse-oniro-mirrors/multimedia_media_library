@@ -2801,26 +2801,6 @@ bool CloneRestore::IsSameFileForClone(const string &tableName, FileInfo &fileInf
     return ExtraCheckForCloneSameFile(fileInfo, rowData);
 }
 
-NativeRdb::ValuesBucket CloneRestore::GetInsertValue(const AnalysisAlbumTbl &portraitAlbumInfo)
-{
-    NativeRdb::ValuesBucket values;
-
-    PutIfPresent(values, ANALYSIS_COL_ALBUM_TYPE, portraitAlbumInfo.albumType);
-    PutIfPresent(values, ANALYSIS_COL_ALBUM_SUBTYPE, portraitAlbumInfo.albumSubtype);
-    PutIfPresent(values, ANALYSIS_COL_ALBUM_NAME, portraitAlbumInfo.albumName);
-    PutIfPresent(values, ANALYSIS_COL_TAG_ID, portraitAlbumInfo.tagId);
-    PutIfPresent(values, ANALYSIS_COL_USER_OPERATION, portraitAlbumInfo.userOperation);
-    PutIfPresent(values, ANALYSIS_COL_GROUP_TAG, portraitAlbumInfo.groupTag);
-    PutIfPresent(values, ANALYSIS_COL_USER_DISPLAY_LEVEL, portraitAlbumInfo.userDisplayLevel);
-    PutIfPresent(values, ANALYSIS_COL_IS_ME, portraitAlbumInfo.isMe);
-    PutIfPresent(values, ANALYSIS_COL_IS_REMOVED, portraitAlbumInfo.isRemoved);
-    PutIfPresent(values, ANALYSIS_COL_RENAME_OPERATION, portraitAlbumInfo.renameOperation);
-    PutIfPresent(values, ANALYSIS_COL_IS_LOCAL, portraitAlbumInfo.isLocal);
-    PutIfPresent(values, ANALYSIS_COL_RELATIONSHIP, portraitAlbumInfo.relationship);
-
-    return values;
-}
-
 bool CloneRestore::InitAllKvStore()
 {
     std::string oldBaseDir = backupRestoreDir_ + CLONE_KVDB_BACKUP_DIR;
