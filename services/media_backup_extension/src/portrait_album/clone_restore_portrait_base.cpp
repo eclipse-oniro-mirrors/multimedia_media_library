@@ -87,7 +87,7 @@ void CloneRestorePortraitBase::ParseAlbumResultSet(const std::shared_ptr<NativeR
         ANALYSIS_COL_IS_COVER_SATISFIED);
     analysisAlbumTbl.editOperation = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet,
  	    ANALYSIS_COL_EDIT_OPERATION);
-    analysisAlbumTbl.relationship = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet,
+    analysisAlbumTbl.relationship = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
         ANALYSIS_COL_RELATIONSHIP);
 }
 
