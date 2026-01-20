@@ -25,10 +25,10 @@ ohos_unittest("media_lake_file_monitor_test") {
     "./include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/include",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/include",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_load/include",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/include",
   ]
  
   sources = [
