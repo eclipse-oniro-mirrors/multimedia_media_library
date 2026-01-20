@@ -742,10 +742,6 @@ int32_t CloudMediaAlbumService::PullDelete(
         return ret;
     }
     resp.stats[StatsIndex::DELETE_RECORDS_COUNT]++;
-    // Notify
-    ret = albumRefresh->Notify();
-    CHECK_AND_RETURN_RET_LOG(
-        ret == E_OK, ret, "fail to notify, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
     MEDIA_INFO_LOG("PullDelete completed, ret: %{public}d, cloudId: %{public}s", ret, record.cloudId.c_str());
     return E_OK;
 }
