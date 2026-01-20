@@ -935,7 +935,7 @@ int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(const PhotosPo &phot
     std::string data = photoInfo.data.value_or("");
     bool isValid = fileId > 0 && !data.empty();
     CHECK_AND_RETURN_RET(isValid, E_INVAL_ARG);
-    MediaLibraryPhotoOperation::StoreThumbnailAndEditSize(std::to_string(fileId), data);
+    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
     return E_OK;
 }
 }  // namespace OHOS::Media::Common
