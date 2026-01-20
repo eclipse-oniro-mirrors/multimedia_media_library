@@ -192,7 +192,6 @@ private:
     void SetSpecialAttributes(const std::string &tableName, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         FileInfo &fileInfo);
     bool IsSameFileForClone(const std::string &tableName, FileInfo &fileInfo);
-    NativeRdb::ValuesBucket GetInsertValue(const AnalysisAlbumTbl &portraitAlbumInfo);
     int32_t MovePicture(FileInfo &fileInfo);
     int32_t MoveMovingPhotoVideo(FileInfo &fileInfo);
     int32_t MoveEditedData(FileInfo &fileInfo);
