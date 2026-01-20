@@ -272,6 +272,13 @@ config("media_data_extension_public_config") {
     include_dirs += include_cloud_enhancement
   }
 
+  if (media_library_feature_custom_restore) {
+    include_custom_restore = [
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
+    ]
+    include_dirs += include_custom_restore
+  }
+
   if (defined(global_parts_info) &&
       defined(
           global_parts_info.device_cloud_gateway_media_cloud_enhance_service) &&
@@ -318,6 +325,10 @@ ohos_shared_library("medialibrary_data_extension") {
 
   if (media_library_analysis_data_enable) {
     defines += [ "MEDIALIBRARY_FEATURE_ANALYSIS_DATA" ]
+  }
+
+  if (media_library_feature_custom_restore) {
+    defines += [ "MEDIALIBRARY_FEATURE_CUSTOM_RESTORE" ]
   }
 
   media_video_mode_source = [
@@ -848,7 +859,6 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_restore.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_upgrade_utils.cpp",
     "src/asset_compress_version_manager.cpp",
-    "src/custom_record_operations.cpp",
     "src/foreground_analysis_meta.cpp",
     "src/heif_bundle_info_cache.cpp",
     "src/heif_transcoding_check_utils.cpp",
@@ -886,12 +896,10 @@ ohos_shared_library("medialibrary_data_extension") {
     "src/medialibrary_urisensitive_operations.cpp",
     "src/operation/display_name_info.cpp",
     "src/operation/duplicate_photo_operation.cpp",
-    "src/operation/medialibrary_custom_restore_notify.cpp",
     "src/operation/medialibrary_transcode_data_aging_operation.cpp",
     "src/operation/photo_album_copy_meta_data_operation.cpp",
     "src/operation/photo_asset_copy_operation.cpp",
     "src/operation/photo_burst_operation.cpp",
-    "src/operation/photo_custom_restore_operation.cpp",
     "src/operation/photo_displayname_operation.cpp",
     "src/operation/photo_file_operation.cpp",
     "src/operation/photo_owner_album_id_operation.cpp",
@@ -1078,6 +1086,15 @@ ohos_shared_library("medialibrary_data_extension") {
       "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/src/dfx/cloud_enhancement_dfx_get_count.cpp",
     ]
     sources += media_cloud_enhancement_source
+  }
+
+  if (media_library_feature_custom_restore) {
+    media_custom_restore_source = [
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/custom_record_operations.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/medialibrary_custom_restore_notify.cpp",
+      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/photo_custom_restore_operation.cpp",
+    ]
+    sources += media_custom_restore_source
   }
 
   public_configs = [ ":media_data_extension_public_config" ]

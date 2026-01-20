@@ -1445,7 +1445,11 @@ int32_t MediaAssetsService::Restore(const RestoreDto &dto)
     values.PutString("appName", dto.appName);
     values.PutString("appId", dto.appId);
     MediaLibraryCommand cmd(values);
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     return MediaLibraryPhotoOperations::ProcessCustomRestore(cmd);
+#else
+    return E_ERR;
+#endif
 }
 
 int32_t MediaAssetsService::StopRestore(const std::string &keyPath)
@@ -1453,7 +1457,11 @@ int32_t MediaAssetsService::StopRestore(const std::string &keyPath)
     NativeRdb::ValuesBucket values;
     values.PutString("keyPath", keyPath);
     MediaLibraryCommand cmd(values);
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     return MediaLibraryPhotoOperations::CancelCustomRestore(cmd);
+#else
+    return E_ERR;
+#endif
 }
 
 int32_t MediaAssetsService::StartDownloadCloudMedia(CloudMediaDownloadType downloadType)

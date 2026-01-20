@@ -63,7 +63,6 @@ group("media_library_fuzztest") {
     "medialibrarymultistagesdeferredcapture_fuzzer:MediaLibraryMultistagesDeferredCaptureFuzzTest",
     "medialibrarynotification_fuzzer:MediaLibraryNotificationFuzzTest",
     "medialibrarypermission_fuzzer:MediaLibraryPermissionFuzzTest",
-    "medialibraryphotocustomrestoreoperation_fuzzer:MediaLibraryPhotoCustomRestoreOperationFuzzTest",
     "medialibraryphotodaymonthyearoperation_fuzzer:MediaLibraryPhotoDayMonthYearOperationFuzzTest",
     "medialibraryphotoowneralbumidoperation_fuzzer:MediaLibraryPhotoOwnerAlbumIdOperationFuzzTest",
     "medialibraryrefresh_fuzzer:MediaLibraryRefreshFuzzTest",
@@ -90,6 +89,16 @@ group("media_library_fuzztest") {
     "medialibrarycloudmediaprocessor_fuzzer:MediaLibraryCloudMediaProcessorFuzzTest",
     "medialibrarycloudmediasyncdataconvert_fuzzer:MediaLibraryCloudMediaSyncDataConvertFuzzTest",
   ]
+
+  deps_custom_restore_fuzztest = [
+    "medialibraryphotocustomrestoreoperation_fuzzer:MediaLibraryPhotoCustomRestoreOperationFuzzTest",
+  ]
+
+  if (media_library_feature_custom_restore) {
+    deps += deps_custom_restore_fuzztest
+  } else {
+    deps_custom_restore_fuzztest = []
+  }
 
   if (media_library_feature_cloud_enhancement) {
     deps += [ "medialibraryenhancement_fuzzer:MediaLibraryEnhancementFuzzTest" ]
