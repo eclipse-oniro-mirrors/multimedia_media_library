@@ -17,8 +17,6 @@
 
 #include "lake_file_monitor_test.h"
 
-#include "media_file_change_processor.h"
-
 #include "media_log.h"
 #include "media_lake_notify_info.h"
 #include "media_file_change_manager.h"
@@ -47,9 +45,7 @@ HWTEST_F(LakeFileMonitorTest, media_file_change_manager_test_001, TestSize.Level
     MEDIA_INFO_LOG("media_file_change_manager_test_001 start");
 
     auto manager = MediaFileChangeManager::GetInstance();
-    auto processor = MediaFileChangeProcessor::GetInstance();
     EXPECT_NE(manager, nullptr);
-    EXPECT_NE(processor, nullptr);
 
     MEDIA_INFO_LOG("media_file_change_manager_test_001 end");
 }

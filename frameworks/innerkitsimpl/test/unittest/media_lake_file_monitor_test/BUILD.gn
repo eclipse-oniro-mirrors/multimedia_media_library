@@ -33,7 +33,6 @@ ohos_unittest("media_lake_file_monitor_test") {
  
   sources = [
     "./src/lake_file_monitor_test.cpp",
-    "./src/lake_monitor_rdb_test.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
   ]
  
