@@ -538,7 +538,7 @@ static int32_t OpenFile(const string &filePath, const string &fileId, const stri
     string appId = PermissionUtils::GetAppIdByBundleName(bundleName, uid);
     class MediafusePermCheckInfo info(filePath, mode, fileId, appId, uid);
     bool permGranted = info.CheckPermission(tokenCaller);
-    if (!permGrantede) {
+    if (!permGranted) {
         return E_ERR;
     }
     string path = filePath;
