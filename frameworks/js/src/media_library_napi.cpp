@@ -11279,9 +11279,13 @@ std::string MediaLibraryNapiUtils::GetSingleIdFromNapiAssets(
     napi_env env, const napi_value &napiAsset)
 {
     FileAssetNapi *obj = nullptr;
-    CHECK_ARGS(env, napi_unwrap(env, napiAsset, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
+    auto err = napi_unwrap(env, napiAsset, reinterpret_cast<void **>(&obj));
+    if (err != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "napi_unwrap failed to get asset object");
+        return "";
+    }
     if (obj == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get asset napi object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "asset napi object is nullptr");
         return "";
     }
     if (obj->IsHidden() || obj->IsTrash()) {
@@ -11309,17 +11313,15 @@ std::string MediaLibraryNapiUtils::GetSingleIdFromNapiPhotoAlbum(
     napi_env env, const napi_value &napiPhotoAlbum)
 {
     PhotoAlbumNapi *obj = nullptr;
-    if (napiPhotoAlbum == nullptr) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID);
+    auto err = napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj));
+    if (err != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "napi_unwrap failed to get album object");
         return "";
     }
-    CHECK_ARGS(env, napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
-
     if (obj == nullptr) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get album napi object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "album napi object is nullptr");
         return "";
     }
-
     PhotoAlbumSubType albumSubType = obj->GetPhotoAlbumSubType();
     if (albumSubType == PhotoAlbumSubType::TRASH || albumSubType == PhotoAlbumSubType::HIDDEN) {
         NAPI_ERR_LOG("Skip invalid album (trash or hidden), albumId: %{public}d, subType: %{public}d",
