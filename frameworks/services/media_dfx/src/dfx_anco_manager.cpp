@@ -211,7 +211,7 @@ void AncoDfxManager::StartFormatCountTimer()
         return;
     }
     std::thread([this, reportTimeInterval]() {
-        this_thread::sleep_for(chrono::milliseconds(reportTimeInterval));
+        this_thread::sleep_for(chrono::seconds(reportTimeInterval));
         // 上报一次
         InnerReportAncoCountFormatInfo();
         // 注册6小时周期上报
@@ -260,7 +260,7 @@ void AncoDfxManager::StartOptChangeInfoTimer()
         return;
     }
     std::thread([this, reportTimeInterval]() {
-        this_thread::sleep_for(chrono::milliseconds(reportTimeInterval));
+        this_thread::sleep_for(chrono::seconds(reportTimeInterval));
         // 上报一次
         InnerReportAndResetOptChangeInfo();
         // 注册6小时周期上报
