@@ -18,7 +18,7 @@
 
 #include <string>
 #include <mutex>
-#include "media_file_utils.h"
+#include "media_time_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -48,7 +48,7 @@ private:
     int32_t captureImageSuccessTimes = 0;
     int32_t captureVideoTimes = 0;
     int32_t captureVideoSuccessTimes = 0;
-    int64_t lastReportTime_ {MediaFileUtils::UTCTimeMilliSeconds()};
+    int64_t lastReportTime_ {MediaTimeUtils::UTCTimeMilliSeconds()};
     std::mutex captureTimeMutex_;
     volatile bool isReporting_ {false};
 };

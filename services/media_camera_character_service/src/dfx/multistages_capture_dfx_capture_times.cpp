@@ -56,7 +56,7 @@ void MultiStagesCaptureDfxCaptureTimes::AddCaptureTimes(CaptureMessageType type)
             captureVideoTimes += 1;
             break;
         case CaptureMessageType::CAPTURE_VIDEO_TIMES_SUCCESS:
-            captureVideoSuccessTimes +=1;
+            captureVideoSuccessTimes += 1;
             break;
         default:
             break;
@@ -67,7 +67,7 @@ bool MultiStagesCaptureDfxCaptureTimes::ShouldReport()
     if (isReporting_) {
         return false;
     }
-    int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t currentTime = MediaTimeUtils::UTCTimeMilliSeconds();
     if ((currentTime - lastReportTime_) < REPORT_TIME_INTERVAL) {
         return false;
     }
@@ -98,7 +98,7 @@ void MultiStagesCaptureDfxCaptureTimes::Report()
     };
     PostEventUtils::GetInstance().PostStatProcess(StatType::MSC_CAPTURE_TIMES, map);
     Clear();
-    lastReportTime_ = MediaFileUtils::UTCTimeMilliSeconds();
+    lastReportTime_ = MediaTimeUtils::UTCTimeMilliSeconds();
     isReporting_ = false;
 }
 }
