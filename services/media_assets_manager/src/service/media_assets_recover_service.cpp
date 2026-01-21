@@ -182,6 +182,7 @@ int32_t MediaAssetsRecoverService::MergeAssetFile(const PhotosPo &photoInfo, con
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "DeleteThumbnail fail, ret: %{public}d", ret);
     ret = fileOperation.CopyThumbnail(photoInfo, targetPhotoInfo, false);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CopyThumbnail fail, ret: %{public}d", ret);
+    this->StoreThumbnailAndEditSize(targetPhotoInfo);
     MEDIA_INFO_LOG(
         "MergeAssetFile completed, "
         "sourceFileId: %{public}d, sourcePosition: %{public}d, targetFileId: %{public}d, targetPosition: %{public}d, "
@@ -316,7 +317,6 @@ int32_t MediaAssetsRecoverService::MediaAndMediaMergeLocalToCloudAsset(const Pho
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveAssetAndFile fail, ret: %{public}d", ret);
     ret = this->mediaAssetsDao_.UpdatePositionToBoth(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePositionToBoth fail, ret: %{public}d", ret);
-    this->StoreThumbnailAndEditSize(targetPhotoInfo);
     MEDIA_INFO_LOG(
         "MediaAndMediaMergeLocalToCloudAsset completed, "
         "sourceFileId: %{public}d, sourcePosition: %{public}d, targetFileId: %{public}d, targetPosition: %{public}d",
@@ -362,7 +362,6 @@ int32_t MediaAssetsRecoverService::MediaAndLakeMergeLocalToCloudAsset(const Phot
     ret = this->mediaAssetsDao_.UpdatePositionToBothAndFileSourceTypeToLake(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(
         ret == E_OK, ret, "UpdatePositionToBothAndFileSourceTypeToLake fail, ret: %{public}d", ret);
-    this->StoreThumbnailAndEditSize(targetPhotoInfo);
     MEDIA_INFO_LOG(
         "MediaAndLakeMergeLocalToCloudAsset completed, "
         "sourceFileId: %{public}d, sourcePosition: %{public}d, targetFileId: %{public}d, targetPosition: %{public}d",
