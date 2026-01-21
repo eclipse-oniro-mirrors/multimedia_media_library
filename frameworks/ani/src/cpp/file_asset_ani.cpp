@@ -1414,9 +1414,10 @@ static void ProcessEditData(unique_ptr<FileAssetContext> &context, const UniqueF
 {
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     struct stat fileInfo;
+    static const off_t maxEditSize5G = 5LL * 1024 * 1024 * 1024;
     if (fstat(uniqueFd.Get(), &fileInfo) == 0) {
         off_t fileSize = fileInfo.st_size;
-        if (fileSize < 0 || fileSize + 1 < 0) {
+        if (fileSize < 0 || fileSize + 1 < 0 || fileSize >= maxEditSize5G) {
             ANI_ERR_LOG("fileBuffer error : %{public}" PRId64, fileSize);
             context->SaveError(E_FAIL);
             return;
