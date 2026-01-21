@@ -1130,7 +1130,8 @@ static void FillAssetInfo(MediaLibraryCommand &cmd, const FileAsset &fileAsset)
     }
     assetInfo.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, fileAsset.GetFileResourceType());
     if (fileAsset.GetFileResourceType() == static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)) {
-        assetInfo.PutInt(PhotoColumn::PHOTO_DIRTY, -1);
+        assetInfo.Put(PhotoColumn::PHOTO_DIRTY, -1);
+        assetInfo.Put(PhotoColumn::PHOTO_IS_TEMP, static_cast<int32_t>(true));
     }
 
     HandleCallingPackage(cmd, fileAsset, assetInfo);
