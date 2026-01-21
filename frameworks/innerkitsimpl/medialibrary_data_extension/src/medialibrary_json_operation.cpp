@@ -57,7 +57,10 @@ int32_t MediaJsonOperation::MapToJsonFile(
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(outputPath), E_ERR,
             "Failed to create file %{private}s", outputPath.c_str());
     }
-    std::ofstream map_file(outputPath);
+    char realPath[PATH_MAX] = {0};
+    CHECK_AND_RETURN_RET_LOG(realpath(outputPath.c_str(), realPath) != nullptr, E_ERR,
+        "check dirPath fail, dirPath = %{private}s", outputPath.c_str());
+    std::ofstream map_file(realPath);
     CHECK_AND_RETURN_RET_LOG(map_file.is_open(), E_ERR,
         "Failed to convert json file: %{public}s", DfxUtils::GetSafePath(outputPath).c_str());
     map_file << jsonData.dump(JSON_INDENT_WIDTH);
@@ -70,7 +73,10 @@ int32_t MediaJsonOperation::MapToJsonFile(
 bool MediaJsonOperation::CheckPathAndLoadJson(const std::string &jsonFilePath, nlohmann::json &outJsonData)
 {
     CHECK_AND_RETURN_RET_LOG(!jsonFilePath.empty(), false, "Invalid input: json file path is empty");
-    std::ifstream jsonFile(jsonFilePath);
+    char realPath[PATH_MAX] = {0};
+    CHECK_AND_RETURN_RET_LOG(realpath(jsonFilePath.c_str(), realPath) != nullptr, E_ERR,
+        "check dirPath fail, dirPath = %{private}s", jsonFilePath.c_str());
+    std::ifstream jsonFile(realPath);
     CHECK_AND_RETURN_RET_LOG(jsonFile.is_open(), false, "Failed to open json file");
     std::string jsonContent((std::istreambuf_iterator<char>(jsonFile)), std::istreambuf_iterator<char>());
     jsonFile.close();

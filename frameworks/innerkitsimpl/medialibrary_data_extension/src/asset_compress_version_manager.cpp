@@ -69,7 +69,7 @@ AssetCompressSpec AssetCompressVersionManager::GetAssetCompressSpec(int32_t vers
     AssetCompressSpec combinedSpec = {};
     for (const auto& iter : atomicSpecs_) {
         VersionNumber atomicVersion = iter.first;
-        if ((version & atomicVersion) != 0) {
+        if (version > 0 && (static_cast<uint32_t>(version) & atomicVersion) != 0) {
             const AssetCompressSpec& atomicSpec = iter.second;
             combinedSpec.editedDataColumns.insert(combinedSpec.editedDataColumns.end(),
                 atomicSpec.editedDataColumns.begin(), atomicSpec.editedDataColumns.end());
@@ -88,7 +88,7 @@ int32_t AssetCompressVersionManager::GetCompatibleCompressVersion(int32_t versio
             version, CompressVersion::CURRENT_COMPRESS_VERSION);
         return CompressVersion::CURRENT_COMPRESS_VERSION;
     }
-    int32_t compatibleVersion = version & CompressVersion::CURRENT_COMPRESS_VERSION;
+    int32_t compatibleVersion = static_cast<uint32_t>(version) & CompressVersion::CURRENT_COMPRESS_VERSION;
     MEDIA_INFO_LOG("GetCompatibleCompressVersion compatible version: %{public}d", compatibleVersion);
     return compatibleVersion;
 }

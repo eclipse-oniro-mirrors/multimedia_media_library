@@ -5174,7 +5174,10 @@ int32_t MediaLibraryPhotoOperations::HandleOpenAssetCompress(const shared_ptr<Fi
 
     ret = TlvUtil::UpdateTlvHeadSize(tlvFdGuard.Get());
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Update tlv head size failed");
-    int32_t tlvFd = open(tlvPath.c_str(), O_RDONLY);
+    char realPath[PATH_MAX] = {0};
+    CHECK_AND_RETURN_RET_LOG(realpath(tlvPath.c_str(), realPath) != nullptr, E_ERR,
+        "check dirPath fail, dirPath = %{private}s", tlvPath.c_str());
+    int32_t tlvFd = open(realPath, O_RDONLY);
     CHECK_AND_RETURN_RET_LOG(tlvFd >= 0, E_ERR, "Open tlv file failed, errno: %{public}d", errno);
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("Handle open tlv file success, time cost: %{public}ld ms", static_cast<long>(endTime - startTime));
@@ -5620,9 +5623,9 @@ int32_t MediaLibraryPhotoOperations::GetCompressAssetSize(const std::vector<std:
             "Invalid edit data size value");
         result.totalEditDataSize -= result.transcodeTotalSize;
     }
-    CHECK_AND_RETURN_RET_LOG(result.validIds.size() <= UINT64_MAX / FIXED_PADDING_BYTES, E_ERR,
+    CHECK_AND_RETURN_RET_LOG(result.validIds.size() <= INT64_MAX / FIXED_PADDING_BYTES, E_ERR,
         "Padding size overflow");
-    int64_t sumSize = FIXED_PADDING_BYTES * result.validIds.size();
+    int64_t sumSize = static_cast<int64_t>(FIXED_PADDING_BYTES * result.validIds.size());
     CHECK_AND_RETURN_RET(SafeAccumulateSize(result.totalEditDataSize, sumSize), E_ERR);
     CHECK_AND_RETURN_RET(SafeAccumulateSize(result.size, sumSize), E_ERR);
     size = sumSize;
