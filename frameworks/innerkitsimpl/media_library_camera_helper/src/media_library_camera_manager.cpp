@@ -60,6 +60,7 @@ void MediaLibraryCameraManager::InitMediaLibraryCameraManager(const sptr<IRemote
 std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProxy(
     const PhotoAssetProxyCallerInfo &callerInfo, CameraShotType cameraShotType, int32_t videoCount)
 {
+    std::unique_lock<std::mutex> locker(mutex_);
     std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
         DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d.",
@@ -80,6 +81,7 @@ int32_t MediaLibraryCameraManager::OpenAsset(std::string &uri, const std::string
         return E_ERR;
     }
 
+    std::unique_lock<std::mutex> locker(mutex_);
     if (sDataShareHelper_ == nullptr) {
         MEDIA_ERR_LOG("Failed to open Asset, datashareHelper is nullptr");
         return E_ERR;
