@@ -22,8 +22,8 @@
 namespace OHOS::Media {
 class StopThumbnailCreationTaskReqBody : public IPC::IMediaParcelable {
 public:
-    int32_t requestId;
-    pid_t pid;
+    int32_t requestId {0};
+    pid_t pid {0};
 
 public:  // functions of Parcelable.
     bool Unmarshalling(MessageParcel &parcel) override;
