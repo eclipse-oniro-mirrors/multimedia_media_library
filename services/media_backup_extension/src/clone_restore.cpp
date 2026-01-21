@@ -544,6 +544,7 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
     FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync("com.ohos.medialibrary.medialibrarydata");
 #endif
     backupRestoreDir_ = backupRestoreDir;
+    CHECK_AND_RETURN_WARN_LOG(!backupRestoreDir_.empty(), "backupRestoreDir_ is empty.");
     garbagePath_ = backupRestoreDir_ + "/storage/media/local/files";
     int32_t errorCode = Init(backupRestoreDir, upgradePath, true);
     MEDIA_INFO_LOG("the isAccountValid_ is %{public}d,"
@@ -1533,10 +1534,9 @@ void CloneRestore::GetInsertValueFromValMap(const FileInfo &fileInfo, NativeRdb:
 
 void CloneRestore::SetTimeInfo(const FileInfo &info, NativeRdb::ValuesBucket &values)
 {
-    int64_t dateAdded = info.dateAdded > SECONDS_LEVEL_LIMIT ? info.dateAdded : info.dateAdded * MSEC_TO_SEC;
-    int64_t dateModified =
-        info.dateModified > SECONDS_LEVEL_LIMIT ? info.dateModified : info.dateModified * MSEC_TO_SEC;
-    int64_t dateTaken = info.dateTaken > SECONDS_LEVEL_LIMIT ? info.dateTaken : info.dateTaken * MSEC_TO_SEC;
+    int64_t dateAdded = CorrectTimestamp(info.dateAdded);
+    int64_t dateModified = CorrectTimestamp(info.dateModified);
+    int64_t dateTaken = CorrectTimestamp(info.dateTaken);
 
     dateAdded = PhotoFileUtils::NormalizeTimestamp(dateAdded, MediaFileUtils::UTCTimeMilliSeconds());
     dateModified = PhotoFileUtils::NormalizeTimestamp(dateModified, dateAdded);
@@ -3230,6 +3230,16 @@ void CloneRestore::StoreHighlightAlbumMappings(CloneRestoreHighlight& cloneResto
     }
     
     MEDIA_INFO_LOG("Highlight album mappings stored from analysisInfos_. Mapped %{public}d albums", mappedCount);
+}
+
+int64_t CloneRestore::CorrectTimestamp(int64_t originalTime)
+{
+    int64_t curTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t convertedTime = originalTime > SECONDS_LEVEL_LIMIT ? originalTime
+                            : (originalTime * MSEC_TO_SEC < curTime && originalTime * MSEC_TO_SEC > SECONDS_LEVEL_LIMIT)
+                                ? originalTime * MSEC_TO_SEC
+                                : originalTime;
+    return convertedTime;
 }
 } // namespace Media
 } // namespace OHOS
