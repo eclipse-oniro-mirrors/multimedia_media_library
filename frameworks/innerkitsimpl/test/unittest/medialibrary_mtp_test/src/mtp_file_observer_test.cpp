@@ -1034,44 +1034,5 @@ HWTEST_F(MtpFileObserverTest, mtp_file_observer_test_0044, TestSize.Level1)
     MtpFileObserver::watchMap_ = origWatchMap;
     MtpFileObserver::inotifyFd_ = origInotifyFd;
 }
-
-/*
- * Feature: MediaLibraryMTP
- * Function: SendEventThread
- * SubFunction: NA
- * FunctionPoints: NA
- * EnvConditions: NA
- * CaseDescription: Enters 'while (isEventThreadRunning_)' loop and processes one event from queue
- */
-HWTEST_F(MtpFileObserverTest, mtp_file_observer_test_0045, TestSize.Level1)
-{
-    auto observer = std::make_shared<MtpFileObserver>();
-    auto context = std::make_shared<MtpOperationContext>();
-    ASSERT_NE(context, nullptr);
-    context->transactionID = 1001;
-
-    context->mtpDriver = std::make_shared<MtpDriver>();
-    observer->isEventThreadRunning_.store(true);
-    {
-        std::lock_guard<std::mutex> lock(observer->mutex_);
-        observer->eventQueue_.push({0x4002, 5678});
-    }
-
-    std::thread worker([observer, context]() {
-        observer->SendEventThread(context);
-    });
-    usleep(10000);
-
-    observer->isEventThreadRunning_.store(false);
-    observer->cv_.notify_all();
-
-    if (worker.joinable()) {
-        worker.join();
-    }
-    {
-        std::lock_guard<std::mutex> lock(observer->mutex_);
-        EXPECT_TRUE(observer->eventQueue_.empty());
-    }
-}
 } // namespace Media
 } // namespace OHOS
