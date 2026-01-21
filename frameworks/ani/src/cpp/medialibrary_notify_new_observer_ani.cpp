@@ -29,6 +29,7 @@ namespace Media {
 shared_ptr<ChangeInfoTaskWorker> ChangeInfoTaskWorker::changeInfoTaskWorker_{nullptr};
 mutex ChangeInfoTaskWorker::instanceMtx_;
 mutex ChangeInfoTaskWorker::vectorMutex_;
+mutex ChangeInfoTaskWorker::taskInfoMutex_;
 
 static const int64_t MAX_NOTIFY_MILLISECONDS = 10;
 static const int32_t START_NOTIFY_TASK_COUNT = 3;
@@ -228,6 +229,7 @@ void ChangeInfoTaskWorker::GetTaskInfos()
 {
     // taskMap key: 注册给服务端的uriType  value: uriType对应的clientObservers_
     map<Notification::NotifyUriType, NewJsOnChangeCallbackWrapperAni> taskMap;
+    lock_guard<mutex> lock(taskInfoMutex_);
     for (const auto& taskInfo : taskInfos_) {
         const auto& clientObservers = taskInfo.ClientObserverAnis_;
         if (clientObservers.empty()) {
