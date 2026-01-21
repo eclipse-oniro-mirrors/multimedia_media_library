@@ -235,20 +235,20 @@ int32_t MediaLibraryAssetOperations::HandleInsertOperation(MediaLibraryCommand &
         case OperationType::REVERT_EDIT:
             errCode = MediaLibraryPhotoOperations::RevertToOrigin(cmd);
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
-            if (errCode == E_SUCCESS) {
-                MediaLibraryVisionOperations::EditCommitOperation(cmd);
-            }
+            CHECK_AND_EXECUTE(errCode != E_SUCCESS, MediaLibraryVisionOperations::EditCommitOperation(cmd));
             break;
 #endif
         case OperationType::SUBMIT_CACHE:
             errCode = MediaLibraryPhotoOperations::SubmitCache(cmd);
             break;
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
         case OperationType::CUSTOM_RESTORE:
             errCode = MediaLibraryPhotoOperations::ProcessCustomRestore(cmd);
             break;
         case OperationType::CUSTOM_RESTORE_CANCEL:
             errCode = MediaLibraryPhotoOperations::CancelCustomRestore(cmd);
             break;
+#endif
         case OperationType::ADD_FILTERS:
             errCode = MediaLibraryPhotoOperations::AddFilters(cmd);
             break;

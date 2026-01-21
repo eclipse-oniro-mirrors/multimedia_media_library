@@ -830,8 +830,6 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetCopyRecords, TestSize.Level1)
     MDKRecordUtils utils;
     std::vector<std::string> checkFields = {"favorite",
                                             "recycled",
-                                            "thumb_size",
-                                            "lcd_size",
                                             "cover_position",
                                             "size",
                                             "editDataCamera",

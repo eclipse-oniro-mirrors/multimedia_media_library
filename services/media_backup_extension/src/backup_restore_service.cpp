@@ -108,6 +108,7 @@ void BackupRestoreService::StartRestore(const std::shared_ptr<AbilityRuntime::Co
     const RestoreInfo &info)
 {
     MEDIA_INFO_LOG("Start restore service: %{public}d", info.sceneCode);
+    CHECK_AND_RETURN_LOG(restoreService_ == nullptr, "restoreService_ already exists.");
     Init(info);
     CHECK_AND_RETURN_LOG(restoreService_ != nullptr, "Create media restore service failed.");
     CHECK_AND_EXECUTE(context == nullptr, BackupFileUtils::CreateDataShareHelper(context->GetToken()));
@@ -121,6 +122,11 @@ void BackupRestoreService::StartRestoreEx(const std::shared_ptr<AbilityRuntime::
     shared_ptr<MediaLibraryBackupObserver> sqlPrintObserver = std::make_shared<MediaLibraryBackupObserver>();
     DistributedRdb::SqlStatistic::Subscribe(sqlPrintObserver);
     MEDIA_INFO_LOG("Start restoreEx service: %{public}d", info.sceneCode);
+    if (restoreService_ != nullptr) {
+        MEDIA_ERR_LOG("restoreService_ already exists.");
+        restoreExInfo = "";
+        return;
+    }
     Init(info);
     if (restoreService_ == nullptr) {
         MEDIA_ERR_LOG("Create media restore service failed.");
@@ -140,13 +146,13 @@ void BackupRestoreService::GetBackupInfo(int32_t sceneCode, std::string &backupI
         backupInfo = "";
         return;
     }
-    Init({CLONE_RESTORE_ID, "", "", "", ""});
-    if (restoreService_ == nullptr) {
+    auto backupService = std::make_unique<CloneRestore>();
+    if (backupService == nullptr) {
         MEDIA_ERR_LOG("Create media restore service failed.");
         backupInfo = "";
         return;
     }
-    backupInfo = restoreService_->GetBackupInfo();
+    backupInfo = backupService->GetBackupInfo();
 }
 
 void BackupRestoreService::GetProgressInfo(std::string &progressInfo)
@@ -168,6 +174,7 @@ void BackupRestoreService::StartBackup(int32_t sceneCode, const std::string &gal
         MEDIA_ERR_LOG("StartBackup current scene is not supported");
         return;
     }
+    CHECK_AND_RETURN_LOG(restoreService_ == nullptr, "restoreService_ already exists.");
     Init({CLONE_RESTORE_ID, galleryAppName, mediaAppName, "", ""});
     CHECK_AND_RETURN_LOG(restoreService_ != nullptr, "Create media backup service failed.");
     restoreService_->StartBackup();
@@ -179,6 +186,11 @@ void BackupRestoreService::StartBackupEx(int32_t sceneCode, const std::string &g
     MEDIA_INFO_LOG("Start backupEx service: %{public}d", sceneCode);
     if (sceneCode != CLONE_RESTORE_ID) {
         MEDIA_ERR_LOG("StartBackupEx current scene is not supported");
+        backupExInfo = "";
+        return;
+    }
+    if (restoreService_ != nullptr) {
+        MEDIA_ERR_LOG("restoreService_ already exists.");
         backupExInfo = "";
         return;
     }

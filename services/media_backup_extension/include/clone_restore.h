@@ -192,7 +192,6 @@ private:
     void SetSpecialAttributes(const std::string &tableName, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         FileInfo &fileInfo);
     bool IsSameFileForClone(const std::string &tableName, FileInfo &fileInfo);
-    NativeRdb::ValuesBucket GetInsertValue(const AnalysisAlbumTbl &portraitAlbumInfo);
     int32_t MovePicture(FileInfo &fileInfo);
     int32_t MoveMovingPhotoVideo(FileInfo &fileInfo);
     int32_t MoveEditedData(FileInfo &fileInfo);
@@ -235,6 +234,7 @@ private:
     void UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos);
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
+    int64_t CorrectTimestamp(int64_t originalTime);
 
     template<typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,

@@ -47,7 +47,9 @@
 #endif
 #include "parameters.h"
 #include "permission_utils.h"
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "photo_custom_restore_operation.h"
+#endif
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #include "medialibrary_formmap_operations.h"
@@ -4824,9 +4826,11 @@ int32_t MediaLibraryPhotoOperations::ProcessCustomRestore(MediaLibraryCommand& c
         E_INVALID_VALUES, "Failed to get albumLpath: %{public}s", albumLpath.c_str());
     CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "keyPath", keyPath),
         E_INVALID_VALUES, "Failed to get keyPath: %{public}s", keyPath.c_str());
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     string dir = CUSTOM_RESTORE_DIR + "/" + keyPath;
     CHECK_AND_RETURN_RET_LOG(
         MediaFileUtils::IsFileExists(dir), E_NO_SUCH_FILE, "sourceDir: %{public}s does not exist!", dir.c_str());
+#endif
     CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "isDeduplication", isDeduplication),
         E_INVALID_VALUES, "Failed to get isDeduplication: %{public}s", isDeduplication.c_str());
     CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "bundleName", bundleName),
@@ -4835,7 +4839,7 @@ int32_t MediaLibraryPhotoOperations::ProcessCustomRestore(MediaLibraryCommand& c
         E_INVALID_VALUES, "Failed to get appName: %{public}s", appName.c_str());
     GetStringFromValuesBucket(values, "appId", appId);
     GetStringFromValuesBucket(values, "dbPath", dbPath);
-
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     RestoreTaskInfo restoreTaskInfo = {.dbPath = dbPath,
         .albumLpath = albumLpath,
         .keyPath = keyPath,
@@ -4845,6 +4849,7 @@ int32_t MediaLibraryPhotoOperations::ProcessCustomRestore(MediaLibraryCommand& c
         .appId = appId,
         .sourceDir = dir};
     PhotoCustomRestoreOperation::GetInstance().AddTask(restoreTaskInfo).Start();
+#endif
     return E_OK;
 }
 
@@ -4854,8 +4859,10 @@ int32_t MediaLibraryPhotoOperations::CancelCustomRestore(MediaLibraryCommand& cm
     string keyPath;
     CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "keyPath", keyPath),
         E_INVALID_VALUES, "Failed to get keyPath: %{public}s", keyPath.c_str());
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     RestoreTaskInfo restoreTaskInfo = {.keyPath = keyPath};
     PhotoCustomRestoreOperation::GetInstance().CancelTask(restoreTaskInfo);
+#endif
     return E_OK;
 }
 

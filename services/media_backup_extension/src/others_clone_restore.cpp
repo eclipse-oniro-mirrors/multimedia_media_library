@@ -406,11 +406,11 @@ NativeRdb::ValuesBucket OthersCloneRestore::GetInsertValue(const FileInfo &fileI
     values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, fileInfo.packageName);
     values.PutString(MediaColumn::MEDIA_OWNER_PACKAGE, fileInfo.bundleName);
     values.PutInt(PhotoColumn::PHOTO_STRONG_ASSOCIATION, fileInfo.strongAssociation);
-    if (fileInfo.dateTaken != 0) {
+    if (fileInfo.dateTaken > 0) {
         values.PutLong(MediaColumn::MEDIA_DATE_TAKEN, fileInfo.dateTaken);
         values.PutLong(MediaColumn::MEDIA_DATE_ADDED, fileInfo.dateTaken);
     }
-    if (fileInfo.dateModified != 0) {
+    if (fileInfo.dateModified > 0) {
         values.PutLong(MediaColumn::MEDIA_DATE_MODIFIED, fileInfo.dateModified);
     }
     values.PutInt(MediaColumn::MEDIA_HIDDEN, fileInfo.hidden);

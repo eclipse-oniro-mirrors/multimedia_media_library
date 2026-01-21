@@ -66,6 +66,7 @@ declare_args() {
   media_library_cloud_sync_enable = true
   media_library_facard_enable = true
   media_library_analysis_data_enable = true
+  media_library_feature_custom_restore = true
 }
 
 if (defined(global_parts_info) &&

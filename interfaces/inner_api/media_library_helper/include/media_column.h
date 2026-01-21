@@ -249,10 +249,6 @@ public:
 
     static const std::string TAB_OLD_PHOTOS_TABLE EXPORT;
     static const std::string TAB_ASSET_AND_ALBUM_OPERATION_TABLE EXPORT;
-    static const std::string TAB_OLD_PHOTOS_COLUMN_FILE_ID EXPORT;
-    static const std::string TAB_OLD_PHOTOS_COLUMN_DATA EXPORT;
-    static const std::string TAB_OLD_PHOTOS_COLUMN_OLD_FILE_ID EXPORT;
-    static const std::string TAB_OLD_PHOTOS_COLUMN_OLD_DATA EXPORT;
 
     // path
     static const std::string FILES_CLOUD_DIR EXPORT;

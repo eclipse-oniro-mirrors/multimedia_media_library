@@ -21,7 +21,9 @@
 #include <unistd.h>
 
 #define private public
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "photo_custom_restore_operation.h"
+#endif
 #define protected public
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_data_manager.h"
@@ -31,7 +33,9 @@
 
 #include "ability_context_impl.h"
 #include "base_data_uri.h"
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "custom_restore_const.h"
+#endif
 #include "directory_ex.h"
 #include "file_asset.h"
 #include "get_self_permissions.h"
@@ -422,6 +426,7 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_003, TestSize.Level
     EXPECT_EQ(ret, E_OK);
 }
 
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_004, TestSize.Level0)
 {
     MEDIA_INFO_LOG("media_library_share_test_004 Start");
@@ -442,6 +447,7 @@ HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_004, TestSize.Level
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("media_library_share_test_004 End");
 }
+#endif
 
 HWTEST_F(MediaLibraryShareOpenTest, media_library_share_test_005, TestSize.Level0)
 {

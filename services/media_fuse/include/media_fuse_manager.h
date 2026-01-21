@@ -65,7 +65,7 @@ public:
     MediafusePermCheckInfo(const std::string &filePath, const std::string &mode, const std::string &fileId,
         const std::string &appId, const int32_t &uid);
     ~MediafusePermCheckInfo() = default;
-    int32_t CheckPermission(uint32_t &tokenCaller);
+    bool CheckPermission(uint32_t &tokenCaller);
 private:
     std::string filePath_;
     std::string mode_;

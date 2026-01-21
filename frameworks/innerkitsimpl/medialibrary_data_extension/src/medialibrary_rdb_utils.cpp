@@ -1444,14 +1444,15 @@ int32_t UpdateCoverUriSourceToDefault(int32_t albumId)
     return changedRows;
 }
 
-static bool IsNeedSetCover(UpdateAlbumData &data, PhotoAlbumSubType subtype)
+static bool IsNeedSetCover(UpdateAlbumData &data, PhotoAlbumSubType subtype, const bool hiddenState)
 {
     MEDIA_DEBUG_LOG(
-        "IsNeedSetCover enter, albumId:%{public}d, coverUri:%{public}s, subtype:%{public}d, coverUriSource:%{public}d",
-        data.albumId, data.albumCoverUri.c_str(), static_cast<int32_t>(subtype), data.coverUriSource);
+        "IsNeedSetCover enter, albumId:%{public}d, coverUri:%{public}s, subtype:%{public}d, coverUriSource:%{public}d"
+        ", hiddenState:%{public}d", data.albumId, data.albumCoverUri.c_str(), static_cast<int32_t>(subtype),
+        data.coverUriSource, (int)hiddenState);
     // manual cover and cover in the album
     if (data.coverUriSource == static_cast<int32_t>(CoverUriSource::DEFAULT_COVER) ||
-        data.albumCoverUri.empty()) { // first pull
+        data.albumCoverUri.empty() || hiddenState) { // first pull
         return true;
     }
     string &coverUri = data.albumCoverUri;
@@ -1550,7 +1551,7 @@ static int32_t SetUpdateValues(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
     data.newTotalCount = newCount;
 
     if (subtype != PhotoAlbumSubType::HIGHLIGHT && subtype != PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS &&
-        IsNeedSetCover(data, subtype)) {
+        IsNeedSetCover(data, subtype, hiddenState)) {
         SetCover(fileResult, data, values, hiddenState);
     }
     fileResult->Close();

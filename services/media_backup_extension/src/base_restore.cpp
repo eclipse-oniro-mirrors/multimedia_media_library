@@ -198,6 +198,14 @@ void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::st
     MEDIA_INFO_LOG("StartRestore begin");
 
     backupRestoreDir_ = backupRetoreDir;
+    if (backupRestoreDir_.empty()) {
+        MEDIA_ERR_LOG("backupRestoreDir_ is empty.");
+        SetErrorCode(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY);
+        ErrorInfo errorInfo(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY, 0, "",
+            "backupRestoreDir_ is empty.");
+        UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportError(errorInfo);
+        return;
+    }
     upgradeRestoreDir_ = upgradePath;
     GetAccountValid();
     GetSyncSwitchOn();
@@ -538,16 +546,11 @@ void BaseRestore::InsertVideoMode(std::unique_ptr<Metadata> &metadata, NativeRdb
 
 static void InsertDateAdded(std::unique_ptr<Metadata> &metadata, NativeRdb::ValuesBucket &value)
 {
-    int64_t dateAdded = metadata->GetFileDateAdded();
-    if (dateAdded != 0) {
-        value.PutLong(MediaColumn::MEDIA_DATE_ADDED, dateAdded);
-        return;
-    }
-
+    int64_t dateAdded = 0;
     int64_t dateTaken = metadata->GetDateTaken();
-    if (dateTaken == 0) {
+    if (dateTaken <= 0) {
         int64_t dateModified = metadata->GetFileDateModified();
-        if (dateModified == 0) {
+        if (dateModified <= 0) {
             dateAdded = MediaFileUtils::UTCTimeMilliSeconds();
         } else {
             dateAdded = dateModified;

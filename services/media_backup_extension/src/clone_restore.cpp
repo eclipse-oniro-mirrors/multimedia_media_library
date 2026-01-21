@@ -544,6 +544,7 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
     FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync("com.ohos.medialibrary.medialibrarydata");
 #endif
     backupRestoreDir_ = backupRestoreDir;
+    CHECK_AND_RETURN_WARN_LOG(!backupRestoreDir_.empty(), "backupRestoreDir_ is empty.");
     garbagePath_ = backupRestoreDir_ + "/storage/media/local/files";
     int32_t errorCode = Init(backupRestoreDir, upgradePath, true);
     MEDIA_INFO_LOG("the isAccountValid_ is %{public}d,"
@@ -1533,10 +1534,9 @@ void CloneRestore::GetInsertValueFromValMap(const FileInfo &fileInfo, NativeRdb:
 
 void CloneRestore::SetTimeInfo(const FileInfo &info, NativeRdb::ValuesBucket &values)
 {
-    int64_t dateAdded = info.dateAdded > SECONDS_LEVEL_LIMIT ? info.dateAdded : info.dateAdded * MSEC_TO_SEC;
-    int64_t dateModified =
-        info.dateModified > SECONDS_LEVEL_LIMIT ? info.dateModified : info.dateModified * MSEC_TO_SEC;
-    int64_t dateTaken = info.dateTaken > SECONDS_LEVEL_LIMIT ? info.dateTaken : info.dateTaken * MSEC_TO_SEC;
+    int64_t dateAdded = CorrectTimestamp(info.dateAdded);
+    int64_t dateModified = CorrectTimestamp(info.dateModified);
+    int64_t dateTaken = CorrectTimestamp(info.dateTaken);
 
     dateAdded = PhotoFileUtils::NormalizeTimestamp(dateAdded, MediaFileUtils::UTCTimeMilliSeconds());
     dateModified = PhotoFileUtils::NormalizeTimestamp(dateModified, dateAdded);
@@ -2803,26 +2803,6 @@ bool CloneRestore::IsSameFileForClone(const string &tableName, FileInfo &fileInf
     return ExtraCheckForCloneSameFile(fileInfo, rowData);
 }
 
-NativeRdb::ValuesBucket CloneRestore::GetInsertValue(const AnalysisAlbumTbl &portraitAlbumInfo)
-{
-    NativeRdb::ValuesBucket values;
-
-    PutIfPresent(values, ANALYSIS_COL_ALBUM_TYPE, portraitAlbumInfo.albumType);
-    PutIfPresent(values, ANALYSIS_COL_ALBUM_SUBTYPE, portraitAlbumInfo.albumSubtype);
-    PutIfPresent(values, ANALYSIS_COL_ALBUM_NAME, portraitAlbumInfo.albumName);
-    PutIfPresent(values, ANALYSIS_COL_TAG_ID, portraitAlbumInfo.tagId);
-    PutIfPresent(values, ANALYSIS_COL_USER_OPERATION, portraitAlbumInfo.userOperation);
-    PutIfPresent(values, ANALYSIS_COL_GROUP_TAG, portraitAlbumInfo.groupTag);
-    PutIfPresent(values, ANALYSIS_COL_USER_DISPLAY_LEVEL, portraitAlbumInfo.userDisplayLevel);
-    PutIfPresent(values, ANALYSIS_COL_IS_ME, portraitAlbumInfo.isMe);
-    PutIfPresent(values, ANALYSIS_COL_IS_REMOVED, portraitAlbumInfo.isRemoved);
-    PutIfPresent(values, ANALYSIS_COL_RENAME_OPERATION, portraitAlbumInfo.renameOperation);
-    PutIfPresent(values, ANALYSIS_COL_IS_LOCAL, portraitAlbumInfo.isLocal);
-    PutIfPresent(values, ANALYSIS_COL_RELATIONSHIP, portraitAlbumInfo.relationship);
-
-    return values;
-}
-
 bool CloneRestore::InitAllKvStore()
 {
     std::string oldBaseDir = backupRestoreDir_ + CLONE_KVDB_BACKUP_DIR;
@@ -3250,6 +3230,16 @@ void CloneRestore::StoreHighlightAlbumMappings(CloneRestoreHighlight& cloneResto
     }
     
     MEDIA_INFO_LOG("Highlight album mappings stored from analysisInfos_. Mapped %{public}d albums", mappedCount);
+}
+
+int64_t CloneRestore::CorrectTimestamp(int64_t originalTime)
+{
+    int64_t curTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t convertedTime = originalTime > SECONDS_LEVEL_LIMIT ? originalTime
+                            : (originalTime * MSEC_TO_SEC < curTime && originalTime * MSEC_TO_SEC > SECONDS_LEVEL_LIMIT)
+                                ? originalTime * MSEC_TO_SEC
+                                : originalTime;
+    return convertedTime;
 }
 } // namespace Media
 } // namespace OHOS
