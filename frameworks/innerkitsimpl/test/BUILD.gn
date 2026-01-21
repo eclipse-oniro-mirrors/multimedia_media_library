@@ -86,6 +86,7 @@ group("test") {
     "unittest/white_list_check_utils_test:unittest",
     "unittest/media_refresh:unittest",
     "unittest/media_notification_test:unittest",
+    "unittest/media_lake_file_monitor_test:unittest",
     "unittest/media_lake_load_test:unittest",
     "unittest/media_common_utils_test:unittest",
     "unittest/media_permission_helper_test:unittest",

@@ -22,9 +22,10 @@
 #include "media_enable_shared_create.h"
 
 namespace OHOS::Media {
+#define EXPORT __attribute__ ((visibility ("default")))
 class MediaFileChangeManager : protected EnableSharedCreateInit<MediaFileChangeManager> {
 public:
-    static std::shared_ptr<MediaFileChangeManager> GetInstance();
+    EXPORT static std::shared_ptr<MediaFileChangeManager> GetInstance();
     int32_t Initialize();
 
 protected:

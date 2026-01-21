@@ -39,6 +39,7 @@
 #include "form_info_vo.h"
 #include "form_map.h"
 #include "media_upgrade.h"
+#include "form_info_dto.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -431,5 +432,22 @@ HWTEST_F(FormInfoTest, Update_Gallery_Form_Info_Test_002, TestSize.Level0)
     int32_t changedRows = resp.GetErrCode();
     EXPECT_EQ(changedRows, E_GET_PRAMS_FAIL);
     MEDIA_INFO_LOG("End Update_Gallery_Form_Info_Test_002");
+}
+
+HWTEST_F(FormInfoTest, FormInfoDto_ToString, TestSize.Level0)
+{
+    FormInfoDto dto;
+
+    dto.formIds.push_back("file11.txt");
+    dto.formIds.push_back("file22.txt");
+    dto.formIds.push_back("file33.txt");
+
+    dto.fileUris.push_back("file1.txt");
+    dto.fileUris.push_back("file2.txt");
+    dto.fileUris.push_back("file3.txt");
+
+    std::string expected = "{[file11.txt,file22.txt,file33.txt], [file1.txt,file2.txt,file3.txt]}";
+    std::string str = dto.ToString();
+    EXPECT_EQ(expected, str);
 }
 }  // namespace OHOS::Media

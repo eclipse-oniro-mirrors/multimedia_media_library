@@ -1,0 +1,94 @@
+# Copyright (C) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+ 
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+ 
+group("unittest") {
+  testonly = true
+  deps = [ ":media_lake_file_monitor_test" ]
+}
+ 
+ohos_unittest("media_lake_file_monitor_test") {
+  module_out_path = "media_library/media_library_asset"
+  include_dirs = [
+    "./include",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/include",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_load/include",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/include",
+  ]
+ 
+  sources = [
+    "./src/lake_file_monitor_test.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
+  ]
+ 
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+  ]
+ 
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:app_context",
+    "ability_runtime:napi_base_context",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "data_share:datashare_provider",
+    "e2fsprogs:libext2_uuid",
+    "ffrt:libffrt",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "hitrace:hitrace_meter",
+    "i18n:intl_util",
+    "image_framework:image_native",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "ipc:ipc_napi",
+    "kv_store:distributeddata_inner",
+    "libxml2:libxml2",
+    "napi:ace_napi",
+    "os_account:libaccountkits",  # ohos_account
+    "os_account:os_account_innerkits",  # os_account
+    "player_framework:media_client",
+    "preferences:native_preferences",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+    "zlib:shared_libz",
+  ]
+ 
+  defines = []
+ 
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.filemanagement_dfs_service)) {
+    defines += [ "CLOUD_SYNC_MANAGER" ]
+    external_deps += [ "dfs_service:cloudsync_kit_inner" ]
+  }
+ 
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+}

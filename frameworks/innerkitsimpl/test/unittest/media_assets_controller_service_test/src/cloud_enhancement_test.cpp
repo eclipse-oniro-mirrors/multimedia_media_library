@@ -37,6 +37,7 @@
 #include "cloud_enhancement_vo.h"
 #include "enhancement_manager.h"
 #include "create_asset_vo.h"
+#include "cloud_enhancement_dto.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -326,5 +327,19 @@ HWTEST_F(CloudEnhancementTest, CancelAllCloudEnhancementTasks_Test_001, TestSize
     EXPECT_NE(errCode, E_OK);
 
     MEDIA_INFO_LOG("End CancelAllCloudEnhancementTasks_Test_001");
+}
+
+HWTEST_F(CloudEnhancementTest, CloudEnhancementDto_ToString, TestSize.Level0)
+{
+    CloudEnhancementDto dto;
+
+    dto.fileUris.push_back("file1.txt");
+    dto.fileUris.push_back("file2.txt");
+    dto.fileUris.push_back("file3.txt");
+
+    std::string expected = "{\"hasCloudWatermark\": \"0\",\"triggerMode\": \"-1\",\"fileUris\":"
+    " \" [file1.txt, file2.txt, file3.txt]}";
+    std::string str = dto.ToString();
+    EXPECT_EQ(expected, str);
 }
 }  // namespace OHOS::Media
