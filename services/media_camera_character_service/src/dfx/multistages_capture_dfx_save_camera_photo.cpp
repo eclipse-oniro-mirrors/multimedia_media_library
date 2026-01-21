@@ -50,16 +50,16 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddAssetTime(const std::string &photo
     if (!dfxTimes_.empty() && (dfxTimes_.find(photoId) != dfxTimes_.end())) {
         if (dfxTimes_[photoId].find(KEY_CREATE_ASSET_TIME) != dfxTimes_[photoId].end()) {
             dfxTimes_[photoId][KEY_CREATE_ASSET_TIME].emplace(
-                static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds());
+                static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds());
                 return;
         }
         std::unordered_map<int32_t, int64_t> stats = {
-            {static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds()}
+            {static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds()}
         };
         dfxTimes_[photoId].emplace(KEY_CREATE_ASSET_TIME, stats);
     } else {
         std::unordered_map<int32_t, int64_t> stats = {
-            {static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds()}
+            {static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds()}
         };
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times =  {
             {KEY_CREATE_ASSET_TIME, stats}
@@ -83,16 +83,16 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddCaptureTime(const std::string &pho
     if (!dfxTimes_.empty() && (dfxTimes_.find(photoId) != dfxTimes_.end())) {
         if (dfxTimes_[photoId].find(KEY_PHOTO_CAPTURE_TIME) != dfxTimes_[photoId].end()) {
             dfxTimes_[photoId][KEY_PHOTO_CAPTURE_TIME].emplace(
-                static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds());
+                static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds());
                 return;
         }
         std::unordered_map<int32_t, int64_t> stats = {
-            {static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds()}
+            {static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds()}
         };
         dfxTimes_[photoId].emplace(KEY_PHOTO_CAPTURE_TIME, stats);
     } else {
         std::unordered_map<int32_t, int64_t> stats = {
-            {static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds()}
+            {static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds()}
         };
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times = {
             {KEY_PHOTO_CAPTURE_TIME, stats}
@@ -116,16 +116,16 @@ void MultiStagesCaptureDfxSaveCameraPhoto::AddSaveTime(const std::string &photoI
     if (!dfxTimes_.empty() && (dfxTimes_.find(photoId) != dfxTimes_.end())) {
         if (dfxTimes_[photoId].find(KEY_SAVE_CAMERA_TIME) != dfxTimes_[photoId].end()) {
             dfxTimes_[photoId][KEY_SAVE_CAMERA_TIME].emplace(
-                static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds());
+                static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds());
                 return;
         }
         std::unordered_map<int32_t, int64_t> stats = {
-            {static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds()}
+            {static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds()}
         };
         dfxTimes_[photoId].emplace(KEY_SAVE_CAMERA_TIME, stats);
     } else {
         std::unordered_map<int32_t, int64_t> stats = {
-            {static_cast<int32_t>(stat), MediaTimeUtilsUtils::UTCTimeMilliSeconds()}
+            {static_cast<int32_t>(stat), MediaTimeUtils::UTCTimeMilliSeconds()}
         };
         std::unordered_map<std::string, std::unordered_map<int32_t, int64_t>> times = {
             {KEY_SAVE_CAMERA_TIME, stats}
