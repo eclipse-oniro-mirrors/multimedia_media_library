@@ -93,6 +93,7 @@ int32_t MediaLibraryCameraManager::OpenAsset(std::string &uri, const std::string
 int32_t MediaLibraryCameraManager::RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func)
 {
     MEDIA_INFO_LOG("RegisterPhotoStateCallback begin.");
+    std::unique_lock<std::mutex> locker(mutex_);
     if (callback_ == nullptr) {
         callback_ = new MediaLowQualityMemoryCallback();
         CHECK_AND_RETURN_RET_LOG(callback_ != nullptr, E_ERR, "failed to get MediaLibraryCameraCallback.");
@@ -103,6 +104,7 @@ int32_t MediaLibraryCameraManager::RegisterPhotoStateCallback(const LowQualityMe
 int32_t MediaLibraryCameraManager::UnregisterPhotoStateCallback()
 {
     MEDIA_INFO_LOG("UnregisterPhotoStateCallback begin.");
+    std::unique_lock<std::mutex> locker(mutex_);
     CHECK_AND_RETURN_RET_LOG(callback_ != nullptr, E_ERR, "failed to get MediaLibraryCameraCallback.");
     int32_t ret = callback_->UnregisterPhotoStateCallback(sDataShareHelper_);
     if (ret != E_OK) {
