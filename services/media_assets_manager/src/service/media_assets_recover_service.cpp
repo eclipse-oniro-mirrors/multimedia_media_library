@@ -29,6 +29,7 @@
 #include "lake_file_operations.h"
 #include "dfx_utils.h"
 #include "medialibrary_album_operations.h"
+#include "medialibrary_photo_operations.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsRecoverService::BatchMoveOutTrashAndMergeWithSameAsset(
@@ -315,6 +316,7 @@ int32_t MediaAssetsRecoverService::MediaAndMediaMergeLocalToCloudAsset(const Pho
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveAssetAndFile fail, ret: %{public}d", ret);
     ret = this->mediaAssetsDao_.UpdatePositionToBoth(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePositionToBoth fail, ret: %{public}d", ret);
+    this->StoreThumbnailAndEditSize(targetPhotoInfo);
     MEDIA_INFO_LOG(
         "MediaAndMediaMergeLocalToCloudAsset completed, "
         "sourceFileId: %{public}d, sourcePosition: %{public}d, targetFileId: %{public}d, targetPosition: %{public}d",
@@ -360,6 +362,7 @@ int32_t MediaAssetsRecoverService::MediaAndLakeMergeLocalToCloudAsset(const Phot
     ret = this->mediaAssetsDao_.UpdatePositionToBothAndFileSourceTypeToLake(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(
         ret == E_OK, ret, "UpdatePositionToBothAndFileSourceTypeToLake fail, ret: %{public}d", ret);
+    this->StoreThumbnailAndEditSize(targetPhotoInfo);
     MEDIA_INFO_LOG(
         "MediaAndLakeMergeLocalToCloudAsset completed, "
         "sourceFileId: %{public}d, sourcePosition: %{public}d, targetFileId: %{public}d, targetPosition: %{public}d",
@@ -401,5 +404,15 @@ int32_t MediaAssetsRecoverService::RecoverPhotoAsset(const std::string &fileUri)
     DataShare::DataSharePredicates predicates;
     predicates.In(PhotoColumn::MEDIA_ID, fileUriList);
     return MediaLibraryAlbumOperations::RecoverPhotoAssets(predicates);
+}
+
+int32_t MediaAssetsRecoverService::StoreThumbnailAndEditSize(const PhotosPo &photoInfo)
+{
+    int32_t fileId = photoInfo.fileId.value_or(0);
+    std::string data = photoInfo.data.value_or("");
+    bool isValid = fileId > 0 && !data.empty();
+    CHECK_AND_RETURN_RET(isValid, E_INVAL_ARG);
+    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
+    return E_OK;
 }
 }  // namespace OHOS::Media::Common
