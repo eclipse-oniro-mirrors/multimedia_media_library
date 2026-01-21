@@ -433,6 +433,7 @@ void FileAssetAni::Set(ani_env *env, ani_object object, ani_string member, ani_s
 
 static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
 {
+    CHECK_COND_RET(env != nullptr, E_CHECK_SYSTEMAPP_FAIL, "env is nullptr");
     static const set<string> SYSTEM_API_KEYS = {
         MediaColumn::MEDIA_DATE_TRASHED,
         MediaColumn::MEDIA_HIDDEN,
@@ -611,6 +612,7 @@ static inline int64_t GetCompatDate(const string inputKey, const int64_t date)
 
 ani_object FileAssetAni::Get(ani_env *env, ani_object object, ani_string member)
 {
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
     auto fileAssetAni = Unwrap(env, object);
     if (fileAssetAni == nullptr || fileAssetAni->GetFileAssetInstance() == nullptr) {
         ANI_ERR_LOG("fileAssetAni is nullptr");

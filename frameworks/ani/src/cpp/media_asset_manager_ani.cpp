@@ -616,7 +616,8 @@ ani_status MediaAssetManagerAni::CreateOnProgressThreadSafeFunc(ThreadFunctionOn
 
         // Do OnProgress in thread
         MediaAssetManagerAni::OnProgress(etsEnv, progressHandler);
-
+        CHECK_IF_EQUAL(progressHandler != nullptr, "progressHandler is null");
+        CHECK_IF_EQUAL(progressHandler->etsVm != nullptr, "progressHandler etsVm is null");
         CHECK_IF_EQUAL(progressHandler->etsVm->DetachCurrentThread() == ANI_OK, "DetachCurrentThread fail");
     };
     return ANI_OK;
@@ -1459,7 +1460,8 @@ ani_status MediaAssetManagerAni::CreateMovingPhotoHandlerInfo(ani_env *env,
             "AttachCurrentThread fail");
 
         MovingPhotoCallTranscoder::OnProgress(etsEnv, progressHandler);
-
+        CHECK_IF_EQUAL(progressHandler != nullptr, "progressHandler is null");
+        CHECK_IF_EQUAL(progressHandler->etsVm != nullptr, "progressHandler etsVm is null");
         CHECK_IF_EQUAL(progressHandler->etsVm->DetachCurrentThread() == ANI_OK, "DetachCurrentThread fail");
     };
     if (context->mediaAssetProgressHandler != nullptr) {
