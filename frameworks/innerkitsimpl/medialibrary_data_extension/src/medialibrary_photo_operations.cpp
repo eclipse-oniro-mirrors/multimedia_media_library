@@ -1744,6 +1744,7 @@ int32_t MediaLibraryPhotoOperations::HandleSaveCameraPhoto(MediaLibraryCommand &
     PhotoExtInfo photoExtInfo = {"", MIME_TYPE_JPEG, "", "", nullptr};
     int32_t ret = UpdateIsTempAndDirty(cmd, fileId, fileType, getPicRet, photoExtInfo);
     tracer.Finish();
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryDataManagerUtils::IsNumber(fileId), 0, "MultistagesCapture, get fileId fail");
     CHECK_AND_RETURN_RET_LOG(CheckAndReport(ret >= 0, std::stoi(fileId), CaptureFaultType::UPDATE_DB_TIMEOUT,
         "UpdateIsTempAndDirty failed"), 0, "UpdateIsTempAndDirty failed, ret: %{public}d", ret);
     if (photoExtInfo.oldFilePath != "") {
@@ -1777,7 +1778,12 @@ int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
     if (MediaLibraryDataManagerUtils::IsNumber(fileId)) {
         GetPhotoIdByFileId(stoi(fileId), photoId);
     }
-    int32_t subType = std::stoi(cmd.GetQuerySetParam(PhotoColumn::PHOTO_SUBTYPE));
+    int32_t subType = 0;
+    string subTypeStr = cmd.GetQuerySetParam(PhotoColumn::PHOTO_SUBTYPE);
+    if (MediaLibraryDataManagerUtils::IsNumber(subTypeStr)) {
+        subType = std::stoi(subTypeStr);
+    }
+
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::START);
     int32_t ret = HandleSaveCameraPhoto(cmd);
     if (ret <= 0) {
