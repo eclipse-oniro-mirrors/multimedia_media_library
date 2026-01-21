@@ -544,7 +544,14 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
     FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync("com.ohos.medialibrary.medialibrarydata");
 #endif
     backupRestoreDir_ = backupRestoreDir;
-    CHECK_AND_RETURN_WARN_LOG(!backupRestoreDir_.empty(), "backupRestoreDir_ is empty.");
+    if (backupRestoreDir_.empty()) {
+        MEDIA_ERR_LOG("backupRestoreDir_ is empty.");
+        SetErrorCode(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY);
+        ErrorInfo errorInfo(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY, 0, "",
+            "backupRestoreDir_ is empty.");
+        UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportError(errorInfo);
+        return;
+    }
     garbagePath_ = backupRestoreDir_ + "/storage/media/local/files";
     int32_t errorCode = Init(backupRestoreDir, upgradePath, true);
     MEDIA_INFO_LOG("the isAccountValid_ is %{public}d,"
