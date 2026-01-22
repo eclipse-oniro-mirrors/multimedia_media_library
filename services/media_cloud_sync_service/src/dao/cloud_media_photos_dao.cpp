@@ -534,7 +534,7 @@ int32_t CloudMediaPhotosDao::GetInsertParams(const CloudMediaPullDataDto &pullDa
     values.PutInt(PhotoColumn::PHOTO_OWNER_ALBUM_ID, albumId);
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(Media::DirtyType::TYPE_SYNCED));
     values.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(Clean::NOT_NEED_CLEAN));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, PhotoPositionType::CLOUD);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
     values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, CloudMediaContext::GetInstance().GetCloudType());
     values.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, pullData.basicCloudVersion);
     values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, static_cast<int32_t>(ThumbState::TO_DOWNLOAD));
@@ -1310,7 +1310,7 @@ int32_t CloudMediaPhotosDao::UpdatePhotoCreatedRecord(
     std::string fileId = to_string(record.fileId);
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutString(PhotoColumn::PHOTO_CLOUD_ID, record.cloudId);
-    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, PhotoPositionType::LOCAL_AND_CLOUD);
+    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
     valuesBucket.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, CloudMediaContext::GetInstance().GetCloudType());
     valuesBucket.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, record.version);
     if (IsFileTimeChanged(record)) {
@@ -1849,7 +1849,7 @@ int32_t CloudMediaPhotosDao::RenewSameCloudResource(const PhotosDto &photo)
     NativeRdb::ValuesBucket values;
     values.PutNull(PhotoColumn::PHOTO_CLOUD_ID);
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_NEW));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, PhotoPositionType::LOCAL);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL));
     values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL));
     values.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, 0);
     std::string whereClause = PhotoColumn::PHOTO_CLOUD_ID + " = ?";
