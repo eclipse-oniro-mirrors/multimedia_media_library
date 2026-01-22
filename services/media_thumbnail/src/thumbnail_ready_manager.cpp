@@ -477,7 +477,7 @@ void ThumbnailReadyManager::UnRegisterDownloadTimer()
         return;
     }
     timer_.Unregister(timerId);
-    timer_.Shutdown(false);
+    timer_.Shutdown(true);
     timerId = 0;
 }
 
