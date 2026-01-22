@@ -23,7 +23,6 @@
 #include "cloud_media_define.h"
 
 namespace OHOS::Media::CloudSync {
-using namespace OHOS::Media::ORM;
 class EXPORT CloudMdkRecordPhotoAlbumVo : public IPC::IMediaParcelable {
 public:
     int32_t albumId;

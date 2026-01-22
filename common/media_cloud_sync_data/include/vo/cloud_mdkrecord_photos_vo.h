@@ -23,7 +23,6 @@
 #include "cloud_media_define.h"
 
 namespace OHOS::Media::CloudSync {
-using namespace OHOS::Media::ORM;
 class EXPORT CloudMdkRecordPhotosVo : public IPC::IMediaParcelable {
 public:
     std::string title;
