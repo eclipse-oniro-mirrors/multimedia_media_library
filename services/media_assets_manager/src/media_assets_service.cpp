@@ -1541,7 +1541,7 @@ int32_t MediaAssetsService::StartBatchDownloadCloudResources(StartBatchDownloadC
     return 0;
 #endif
 }
- 
+
 int32_t MediaAssetsService::SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody)
 {
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
