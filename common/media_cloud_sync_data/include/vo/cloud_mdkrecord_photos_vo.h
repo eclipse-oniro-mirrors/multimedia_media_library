@@ -19,7 +19,6 @@
 #include <string>
 
 #include "i_media_parcelable.h"
-#include "photos_po.h"
 #include "media_itypes_utils.h"
 #include "cloud_media_define.h"
 
