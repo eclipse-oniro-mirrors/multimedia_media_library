@@ -30,6 +30,14 @@ ohos_fuzztest("MediaLibraryMediaAssetsControllerServiceFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
   ]
 
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
+
   sources = [
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_analysis_process_vo.cpp",
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_face_id_vo.cpp",
@@ -91,13 +99,13 @@ ohos_fuzztest("MediaLibraryMediaAssetsControllerServiceFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_count_vo.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/media_itypes_utils.cpp",
     "./medialibrarymediaassetscontrollerservice_fuzzer.cpp",
   ]
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   external_deps = [
