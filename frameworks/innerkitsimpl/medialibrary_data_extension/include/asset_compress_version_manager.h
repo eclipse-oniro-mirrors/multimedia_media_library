@@ -34,7 +34,7 @@ enum class EditedDataType : int32_t {
     EDIT_DATA_DB_JSON,
 };
 
-using VersionNumber = int32_t;
+using VersionNumber = uint32_t;
 using EditedDataColumn = std::vector<std::string>;
 using EditedDataFileList = std::vector<EditedDataType>;
 
