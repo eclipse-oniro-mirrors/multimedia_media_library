@@ -27,13 +27,13 @@ public:
     static std::string GetLowerPath(const std::string &path, int32_t userId);
     static int32_t GetLocalPathByPhotosVo(const CloudMdkRecordPhotosVo &photosVo, std::string &localPath,
         int32_t userId);
-    std::string GetLocalPath(const std::string &path);
-    std::string FindLocalPathFromCloudPath(const std::string &path, int32_t userId);
-    std::string GetVideoCachePath(const std::string &filePath);
-    void InvalidVideoCache(const std::string &localPath);
+    static std::string GetLocalPath(const std::string &path);
+    static std::string FindLocalPathFromCloudPath(const std::string &path, int32_t userId);
+    static std::string GetVideoCachePath(const std::string &filePath);
+    static void InvalidVideoCache(const std::string &localPath);
 
 private:
-    std::string AppendUserId(const std::string &path, int32_t userId);
+    static std::string AppendUserId(const std::string &path, int32_t userId);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_CLIENT_UTILS_H
