@@ -976,7 +976,6 @@ int32_t MtpMedialibraryManager::GetIdByPath(const std::string &path, uint32_t &o
     CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr,
         MtpErrorUtils::SolveGetHandlesError(E_HAS_DB_ERROR), "fail to get datasharehelper");
     shared_ptr<DataShare::DataShareResultSet> resultSet = dataShareHelper_->Query(uri, predicates, columns);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, E_NO_SUCH_FILE);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr,
         MTP_ERROR_STORE_NOT_AVAILABLE, "fail to get handles");
     unique_ptr<FetchResult<FileAsset>> fetchFileResult = make_unique<FetchResult<FileAsset>>(resultSet);
