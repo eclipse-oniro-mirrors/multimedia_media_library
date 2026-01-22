@@ -458,7 +458,7 @@ int32_t CloudFileDataConvert::CheckContentLivePhoto(const CloudMdkRecordPhotosVo
     CHECK_AND_PRINT_LOG(!isMovingPhoto && !isGraffiti,
         "HandleContent isMovingPhoto: %{public}d, isGraffiti: %{public}d", isMovingPhoto, isGraffiti);
     if (isMovingPhoto && !isGraffiti) {
-        std::string localPath = CloudMediaClientUtils::FindLocalPathFromCloudPath(path, usreId_);
+        std::string localPath = CloudMediaClientUtils::FindLocalPathFromCloudPath(path, userId_);
         bool isValid = MovingPhotoFileUtils::IsExistsLivePhotoFiles(localPath);
         isValid = isValid && MovingPhotoFileUtils::ConvertToLivePhoto(path, coverPosition, lowerPath, userId_) == E_OK;
         CHECK_AND_RETURN_RET_LOG(isValid, E_CONTENT_COVERT_LIVE_PHOTO, "convert to live photo fail");
