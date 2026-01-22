@@ -1117,7 +1117,9 @@ int32_t CloudMediaAssetManager::SetNetworkPolicyForBatchDownload(SetNetworkPolic
     if (reqBody.uris.empty()) {
         int32_t ret = this->batchDownloadResourcesTaskDao_.UpdateAllDownloadResourcesNetworkPolicy(networkPolicy);
         this->batchDownloadResourcesTaskDao_.UpdateStatusAllFailAndAutoPauseToWaiting();
-        // success 不进入 waiting!
+        MEDIA_INFO_LOG("BatchSelectFileDownload Set All LaunchBatchDownloadProcessor");
+        BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
+        BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
         return ret;
     }
     std::vector<std::string> allFileIds;
@@ -1131,7 +1133,7 @@ int32_t CloudMediaAssetManager::SetNetworkPolicyForBatchDownload(SetNetworkPolic
     this->batchDownloadResourcesTaskDao_.UpdateStatusFailAndAutoPauseToWaiting(existedFileIds);
     // success 不进入 waiting!
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "UpdateNetworkPolicyDownloadTasks failed");
-    MEDIA_INFO_LOG("BatchSelectFileDownload Start LaunchBatchDownloadProcessor");
+    MEDIA_INFO_LOG("BatchSelectFileDownload Set LaunchBatchDownloadProcessor");
     BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
     BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
 #endif
@@ -1153,6 +1155,9 @@ int32_t CloudMediaAssetManager::ResumeBatchDownloadCloudResources(ResumeBatchDow
             // 当前网络为移动网络，default任务标记为auto_pause状态
             this->batchDownloadResourcesTaskDao_.UpdateAutoPauseAllDownloadByNetWorkPolicy();
         }
+        MEDIA_INFO_LOG("BatchSelectFileDownload Resume All LaunchBatchDownloadProcessor");
+        BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
+        BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
         return ret;
     }
     std::vector<std::string> allFileIds;
