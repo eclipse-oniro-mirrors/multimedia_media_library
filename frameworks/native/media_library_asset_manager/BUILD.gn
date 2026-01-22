@@ -41,9 +41,7 @@ ohos_shared_library("media_library_asset_manager") {
   ]
 
   user_ipc_client_include_dirs = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
   ]
@@ -52,25 +50,31 @@ ohos_shared_library("media_library_asset_manager") {
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include/enum",
   ]
 
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
+
   media_albums_manager_vo_source = []
 
   media_assets_manager_vo_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_photo_vo.cpp",
   ]
 
-  user_ipc_client_source = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_inner_ipc_client.cpp" ]
-
   include_dirs += user_ipc_client_include_dirs
   include_dirs += camera_include_dirs
   sources += media_albums_manager_vo_source
   sources += media_assets_manager_vo_source
-  sources += user_ipc_client_source
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_UTILS_PATH}:permission_utils",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   external_deps = [
