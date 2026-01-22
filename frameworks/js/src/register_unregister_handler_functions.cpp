@@ -284,11 +284,14 @@ static int32_t UnregisterSingleObserverExecute(UnregisterContext& singleContext)
         if ((*it)->uriType_ != singleContext.uriType) {
             continue;
         }
-        singleContext.observer = *it;
-        singleContext.observersMap = &(*it)->singleClientObservers_;
-        if (singleContext.observersMap == nullptr) {
-            NAPI_ERR_LOG("singleContext.observersMap is nullptr");
-            return JS_E_PARAM_INVALID;
+        {
+            std::lock_guard<std::mutex> lock(ChangeListenerNapi::trashMutex_);
+            singleContext.observer = *it;
+            singleContext.observersMap = &(*it)->singleClientObservers_;
+            if (singleContext.observersMap == nullptr) {
+                NAPI_ERR_LOG("singleContext.observersMap is nullptr");
+                return JS_E_PARAM_INVALID;
+            }
         }
         if (!GetSingleOuterMap(singleContext.observersMap, singleContext.uriType, singleContext.outerIter)) {
             return JS_E_PARAM_INVALID;
@@ -349,9 +352,13 @@ static int32_t CreateCallbackRef(napi_env env, napi_value cbValue, napi_ref& cbR
 std::string GetUnRegisterSingleIdFromNapiAssets(napi_env env, const napi_value &napiAsset)
 {
     FileAssetNapi *obj = nullptr;
-    CHECK_ARGS(env, napi_unwrap(env, napiAsset, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
+    auto err = napi_unwrap(env, napiAsset, reinterpret_cast<void **>(&obj));
+    if (err != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "napi_unwrap failed to get album object");
+        return "";
+    }
     if (obj == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get asset napi object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Album napi object is nullptr");
         return "";
     }
     std::string fileId = to_string(obj->GetFileId());
@@ -367,10 +374,13 @@ std::string GetUnRegisterSingleIdFromNapiAssets(napi_env env, const napi_value &
 std::string GetUnRegisterSingleIdFromNapiPhotoAlbum(napi_env env, const napi_value &napiPhotoAlbum)
 {
     PhotoAlbumNapi *obj = nullptr;
-    CHECK_ARGS(env, napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
-
+    auto err = napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj));
+    if (err != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "napi_unwrap failed to get asset object");
+        return "";
+    }
     if (obj == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get album napi object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "asset napi object is nullptr");
         return "";
     }
     std::string albumId = to_string(obj->GetAlbumId());

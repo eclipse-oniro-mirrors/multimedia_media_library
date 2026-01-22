@@ -254,6 +254,7 @@ int32_t MediaObserverManager::ProcessSingleObserverSingleIds(const NotifyUriType
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_PERMISSION_DENIED, "Permission verification failed");
     auto retVal = CheckSingleListenSize(registerUri);
     CHECK_AND_RETURN_RET_LOG(retVal, MEDIA_LIBRARY_PARAM_INVALID, "Exceeds single register specification limit");
+    std::lock_guard<std::mutex> lock(mutex_);
     auto uriIter = observers_.find(registerUri);
     if (uriIter == observers_.end()) {
         MEDIA_ERR_LOG("the registerUri not registered");
@@ -277,7 +278,6 @@ int32_t MediaObserverManager::AddSingleObserverSingleIds(const NotifyUriType &re
 {
     return ProcessSingleObserverSingleIds(registerUri, dataObserver, singleId,
         [this](std::unordered_set<std::string>& singleIds, const std::string& singleId) {
-            std::lock_guard<std::mutex> lock(mutex_);
             singleIds.insert(singleId);
         });
 }
@@ -287,7 +287,6 @@ int32_t MediaObserverManager::RemoveSingleObserverSingleIds(const NotifyUriType 
 {
     return ProcessSingleObserverSingleIds(registerUri, dataObserver, singleId,
         [this](std::unordered_set<std::string>& singleIds, const std::string& singleId) {
-            std::lock_guard<std::mutex> lock(mutex_);
             singleIds.erase(singleId);
         });
 }
