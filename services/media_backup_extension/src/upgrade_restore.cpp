@@ -1139,7 +1139,7 @@ void UpgradeRestore::RestoreFromGalleryPortraitAlbum()
         if (sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
             bool deleteResult = BackupDatabaseUtils::DeleteDuplicatePortraitAlbum(maxAnalysisAlbumId_,
                 tagNameToDeleteSelection, tagIds, mediaLibraryRdb_);
-            CHECK_AND_RETURN_LOG(!deleteResult, "Batch delete duplicate portrait album failed.");
+            CHECK_AND_RETURN_LOG(deleteResult, "Batch delete duplicate portrait album failed.");
         }
         InsertPortraitAlbum(portraitAlbumInfos);
     }
