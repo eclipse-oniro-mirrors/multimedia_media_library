@@ -26,7 +26,7 @@ ohos_fuzztest("MediaLibraryCloudMediaVoFuzzTest") {
   ]
 
   deps = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync:media_library_cloud_sync",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}:media_library_cloud_sync",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",

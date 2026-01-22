@@ -50,15 +50,23 @@ ohos_unittest("media_library_cloud_sync_test") {
     "../medialibrary_unittest_utils/include/database",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/orm",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/orm/po",
     "${MEDIALIB_TEST_PATH}/unittest/get_self_permissions/include/",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/include/cloud_sync_data_convert/",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/cloud_sync_data_convert/",
   ]
+
+  include_media_cloud_sync_data = [
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include",
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include/vo",
+  ]
+
+  include_dirs += include_media_cloud_sync_data
 
   sources = [
     "${MEDIALIB_TEST_PATH}/unittest/get_self_permissions/src/get_self_permissions.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/src/cloud_sync_data_convert/cloud_album_data_convert.cpp",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/cloud_sync_data_convert/cloud_album_data_convert.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/cloud_media_album_handler_empty_request_test.cpp",
@@ -76,10 +84,11 @@ ohos_unittest("media_library_cloud_sync_test") {
   ]
 
   deps = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync:media_library_cloud_sync",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}:media_library_cloud_sync",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_NATIVE_PATH}/media_library_asset_manager:media_library_asset_manager",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   external_deps = [
