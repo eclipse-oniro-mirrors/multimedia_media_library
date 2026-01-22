@@ -1537,7 +1537,7 @@ HWTEST_F(MtpOperationUtilsUnitTest, medialibrary_MTP_message_testlevel_0_072, Te
     uint32_t handle = 1;
     string path = "/storage/media/local/files/Docs/Desktop/";
     int32_t res = mtpOperationUtils->GetHandleByPaths(path, handle);
-    EXPECT_EQ(res, E_NO_SUCH_FILE);
+    EXPECT_EQ(res, MTP_ERROR_STORE_NOT_AVAILABLE);
 }
 
 /*
