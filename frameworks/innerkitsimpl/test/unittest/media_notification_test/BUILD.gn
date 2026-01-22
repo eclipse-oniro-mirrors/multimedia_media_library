@@ -39,6 +39,7 @@ ohos_unittest("media_notification_test") {
 
   sources = [
     "../get_self_permissions/src/get_self_permissions.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "./src/notification_merging_test.cpp",
     "./src/notification_classification_test.cpp",
     "./src/notification_distribution_test.cpp",

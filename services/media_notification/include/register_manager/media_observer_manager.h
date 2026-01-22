@@ -44,9 +44,11 @@ public:
 
     EXPORT std::unordered_map<NotifyUriType, std::vector<ObserverInfo>> GetObservers();
     EXPORT static std::shared_ptr<Media::Notification::MediaObserverManager> GetObserverManager();
-    EXPORT int32_t ProcessSingleObserverSingleIds(const NotifyUriType &registerUri,
+    EXPORT int32_t ProcessSingleObserverSingleIds(const NotifyUriType &registerUri, bool isAddOperation,
         const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId,
         const UriOperation& operation);
+    EXPORT int32_t CheckSingleOperationPermissionsAndLimit(const NotifyUriType& registerUri,
+        const std::string& singleId);
     EXPORT int32_t AddSingleObserverSingleIds(const NotifyUriType &registerUri,
         const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId);
     EXPORT int32_t RemoveSingleObserverSingleIds(const NotifyUriType &registerUri,

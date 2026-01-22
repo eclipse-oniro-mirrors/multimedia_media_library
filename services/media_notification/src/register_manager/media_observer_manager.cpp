@@ -34,7 +34,6 @@ constexpr size_t MAX_SINGLE_ASSET = 1000 - 1;
 constexpr size_t MAX_SINGLE_ALBUM = 250 - 1;
 constexpr size_t MAX_SINGLE_ASSET_PROCESS = 50;
 constexpr size_t MAX_SINGLE_ALBUM_PROCESS = 50;
-static const int32_t MEDIA_LIBRARY_PARAM_INVALID = 23800151;
 
 std::shared_ptr<Notification::MediaObserverManager> MediaObserverManager::GetObserverManager()
 {
@@ -72,7 +71,7 @@ int32_t MediaObserverManager::AddObserver(const NotifyUriType &uri,
     obsInfo.isSystem = permissionHandle.isSystemApp();
     obsInfo.callingTokenId = IPCSkeleton::GetCallingTokenID();
     auto retVal = CheckSingleProcessSize(uri);
-    CHECK_AND_RETURN_RET_LOG(retVal, MEDIA_LIBRARY_PARAM_INVALID, "Exceeds single register specification limit");
+    CHECK_AND_RETURN_RET_LOG(retVal, E_MAX_ON_SINGLE_NUM, "Exceeds single register specification limit");
     std::lock_guard<std::mutex> lock(mutex_);
     if (observers_.find(uri) == observers_.end()) {
         observers_[uri].push_back(obsInfo);
@@ -225,6 +224,23 @@ std::unordered_map<NotifyUriType, std::vector<ObserverInfo>> MediaObserverManage
     return this->observers_;
 }
 
+int32_t MediaObserverManager::CheckSingleOperationPermissionsAndLimit(const NotifyUriType& registerUri,
+    const std::string& singleId)
+{
+    NotifyRegisterPermission permissionHandle;
+
+    int32_t ret = permissionHandle.ExecuteCheckPermission(registerUri);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_PERMISSION_DENIED, "Permission verification failed");
+
+    ret = permissionHandle.SinglePermissionCheck(registerUri, singleId);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_PERMISSION_DENIED, "Permission verification failed");
+
+    auto retVal = CheckSingleListenSize(registerUri);
+    CHECK_AND_RETURN_RET_LOG(retVal, E_MAX_ON_SINGLE_NUM, "Exceeds single register specification limit");
+
+    return E_OK;
+}
+
 void MediaObserverManager::ExeForReconnect(const NotifyUriType &registerUri,
     const sptr<AAFwk::IDataAbilityObserver> &dataObserver)
 {
@@ -240,20 +256,17 @@ void MediaObserverManager::ExeForReconnect(const NotifyUriType &registerUri,
     MEDIA_WARN_LOG("reconnect server and send recheck for uriType[%{public}d]", registerUri);
 }
 
-int32_t MediaObserverManager::ProcessSingleObserverSingleIds(const NotifyUriType &registerUri,
+int32_t MediaObserverManager::ProcessSingleObserverSingleIds(const NotifyUriType &registerUri, bool isAddOperation,
     const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId, const UriOperation &operation)
 {
-    NotifyRegisterPermission permissionHandle;
     if (!all_of(singleId.begin(), singleId.end(), ::isdigit)) {
         MEDIA_ERR_LOG("The singleId format is invalid");
         return E_URI_IS_INVALID;
     }
-    int32_t ret = permissionHandle.ExecuteCheckPermission(registerUri);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_PERMISSION_DENIED, "Permission verification failed");
-    ret = permissionHandle.SinglePermissionCheck(registerUri, singleId);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_PERMISSION_DENIED, "Permission verification failed");
-    auto retVal = CheckSingleListenSize(registerUri);
-    CHECK_AND_RETURN_RET_LOG(retVal, MEDIA_LIBRARY_PARAM_INVALID, "Exceeds single register specification limit");
+    if (isAddOperation) {
+        auto ret = CheckSingleOperationPermissionsAndLimit(registerUri, singleId);
+        CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     auto uriIter = observers_.find(registerUri);
     if (uriIter == observers_.end()) {
@@ -276,7 +289,7 @@ int32_t MediaObserverManager::ProcessSingleObserverSingleIds(const NotifyUriType
 int32_t MediaObserverManager::AddSingleObserverSingleIds(const NotifyUriType &registerUri,
     const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId)
 {
-    return ProcessSingleObserverSingleIds(registerUri, dataObserver, singleId,
+    return ProcessSingleObserverSingleIds(registerUri, true, dataObserver, singleId,
         [this](std::unordered_set<std::string>& singleIds, const std::string& singleId) {
             singleIds.insert(singleId);
         });
@@ -285,7 +298,7 @@ int32_t MediaObserverManager::AddSingleObserverSingleIds(const NotifyUriType &re
 int32_t MediaObserverManager::RemoveSingleObserverSingleIds(const NotifyUriType &registerUri,
     const sptr<AAFwk::IDataAbilityObserver> &dataObserver, const std::string &singleId)
 {
-    return ProcessSingleObserverSingleIds(registerUri, dataObserver, singleId,
+    return ProcessSingleObserverSingleIds(registerUri, false, dataObserver, singleId,
         [this](std::unordered_set<std::string>& singleIds, const std::string& singleId) {
             singleIds.erase(singleId);
         });
