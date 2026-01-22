@@ -38,7 +38,7 @@
 #include "failed_size_resp_vo.h"
 #include "get_check_records_vo.h"
 #include "media_operate_result_vo.h"
-#include "cloud_media_sync_utils.h"
+#include "cloud_media_client_utils.h"
 
 namespace OHOS::Media::CloudSync {
 void CloudMediaPhotoHandler::SetUserId(const int32_t &userId)
@@ -78,8 +78,7 @@ int32_t CloudMediaPhotoHandler::OnFetchRecordsInner(
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "OnFetchRecordsInner failed, ret: %{public}d", ret);
         for (auto data : nodeRespBody.fdirtyDatas) {
             if (data.attributesMediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
-                MEDIA_INFO_LOG("Need clear VideoCache");
-                CloudMediaSyncUtils::InvalidVideoCache(data.localPath);
+                CloudMediaClientUtils::InvalidVideoCache(data.localPath);
             }
         }
         respBody.MergeRespBody(nodeRespBody);

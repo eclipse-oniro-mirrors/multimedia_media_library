@@ -25,7 +25,7 @@
 #include "exif_rotate_utils.h"
 #include "file_ex.h"
 #include "media_log.h"
-#include "cloud_media_dao_utils.h"
+#include "cloud_media_client_utils.h"
 #include "cloud_media_sync_const.h"
 #include "mdk_record_photos_data.h"
 #include "media_file_utils.h"
@@ -458,12 +458,12 @@ int32_t CloudFileDataConvert::CheckContentLivePhoto(const CloudMdkRecordPhotosVo
     CHECK_AND_PRINT_LOG(!isMovingPhoto && !isGraffiti,
         "HandleContent isMovingPhoto: %{public}d, isGraffiti: %{public}d", isMovingPhoto, isGraffiti);
     if (isMovingPhoto && !isGraffiti) {
-        if (MovingPhotoFileUtils::ConvertToLivePhoto(path, coverPosition, lowerPath, userId_) != E_OK) {
-            MEDIA_ERR_LOG("covert to live photo fail");
-            return E_CONTENT_COVERT_LIVE_PHOTO;
-        }
+        std::string localPath = CloudMediaClientUtils::FindLocalPathFromCloudPath(path, usreId_);
+        bool isValid = MovingPhotoFileUtils::IsExistsLivePhotoFiles(localPath);
+        isValid = isValid && MovingPhotoFileUtils::ConvertToLivePhoto(path, coverPosition, lowerPath, userId_) == E_OK;
+        CHECK_AND_RETURN_RET_LOG(isValid, E_CONTENT_COVERT_LIVE_PHOTO, "convert to live photo fail");
     } else {
-        int32_t ret = CloudMediaDaoUtils::GetLocalPathByPhotosVo(upLoadRecord, lowerPath, userId_);
+        int32_t ret = CloudMediaClientUtils::GetLocalPathByPhotosVo(upLoadRecord, lowerPath, userId_);
         if (ret != E_OK) {
             MEDIA_ERR_LOG("GetLocalPathByPhotosVo fail");
             return ret;
@@ -634,7 +634,7 @@ int32_t CloudFileDataConvert::HandleAttachments(
     if (upLoadRecord.dirty == -1 || upLoadRecord.dirty != static_cast<int32_t>(DirtyType::TYPE_TDIRTY)) {
         MEDIA_DEBUG_LOG("handle content when not TDIRTY");
         ret = HandleContent(recordData, upLoadRecord);
-        CHECK_AND_PRINT_LOG(ret == E_OK, "failed to handle content");
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "failed to handle content");
     }
 
     /* thumb */

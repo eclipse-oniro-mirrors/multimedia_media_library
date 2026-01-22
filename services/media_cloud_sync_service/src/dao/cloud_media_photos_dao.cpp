@@ -1830,7 +1830,6 @@ int32_t CloudMediaPhotosDao::RepushDuplicatedPhoto(const PhotosDto &photo)
     int32_t changeRows;
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(Media::DirtyType::TYPE_FDIRTY));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
     std::string whereClause = MediaColumn::MEDIA_ID + " = ?";
     std::vector<std::string> whereArgs = {std::to_string(photo.fileId)};
     int32_t ret = UpdatePhoto(whereClause, whereArgs, values, changeRows);
