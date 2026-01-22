@@ -25,6 +25,7 @@ ohos_unittest("media_library_client_report_test") {
   include_dirs = [
     "./include",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/cloud_sync_data_convert",
   ]
 
