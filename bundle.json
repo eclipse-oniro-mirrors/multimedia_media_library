@@ -142,8 +142,9 @@
             "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_library_cloud_sync:media_library_cloud_sync",
             "//foundation/multimedia/media_library/common:media_library_common",
             "//foundation/multimedia/media_library/frameworks/client:media_library_client",
-            "//foundation/multimedia/media_library/frameworks/innerkitsimpl/analysis_data_kits:analysis_data_kits"
-
+            "//foundation/multimedia/media_library/frameworks/innerkitsimpl/analysis_data_kits:analysis_data_kits",
+            "//foundation/multimedia/media_library/common/media_cloud_sync_data:media_cloud_sync_data",
+            "//foundation/multimedia/media_library/common/media_ipc_common:media_ipc_common"
           ]
         },
         "inner_kits": [
