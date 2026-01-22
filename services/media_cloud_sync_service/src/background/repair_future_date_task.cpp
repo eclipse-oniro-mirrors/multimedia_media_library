@@ -136,7 +136,7 @@ void RepairFutureDateTask::RepairPhotoDate(int32_t &currentRecord, bool &termina
             continue;
         }
 
-        if (position == static_cast<int32_t>(PhotoPosition::POSITION_CLOUD) &&
+        if (position == static_cast<int32_t>(PhotoPositionType::CLOUD) &&
             !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
             MEDIA_INFO_LOG("Break repair future date cause wifi is invalid");
             terminate = true;
@@ -151,7 +151,7 @@ void RepairFutureDateTask::RepairPhotoDate(int32_t &currentRecord, bool &termina
 
         currentRecord = fileId;
         int32_t dateRepairInterval = FUTURE_DATE_REPAIR_INTERVAL_LOCAL;
-        if (position == static_cast<int32_t>(PhotoPosition::POSITION_CLOUD)) {
+        if (position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
             dateRepairInterval = FUTURE_DATE_REPAIR_INTERVAL_CLOUD;
         }
         this_thread::sleep_for(chrono::milliseconds(dateRepairInterval));
