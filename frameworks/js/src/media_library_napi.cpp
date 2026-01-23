@@ -11446,6 +11446,12 @@ int32_t MediaLibraryNapi::RegisterObserverExecute(napi_env env, napi_ref ref,
     }
     ret = AddSingleClientObserver(env, ref, observer, uriType, fileIdOrAlbumId);
     if (ret != E_OK) {
+        int32_t retUnreg = UserFileClient::UnregisterObserverExtProvider(notifyUri,
+        static_cast<shared_ptr<DataShare::DataShareObserver>>(observer));
+        if (retUnreg != E_OK) {
+            NAPI_ERR_LOG("failed to Unregister observer, retUnreg: %{public}d, uri: %{private}s", retUnreg, registerUri.c_str());
+            return ret;
+        }
         NAPI_ERR_LOG("Failed to add client observer, ret: %{public}d", ret);
         return ret;
     }

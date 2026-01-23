@@ -887,7 +887,7 @@ int MediaLibraryNapiUtils::TransErrorCode(const string &Name, int error)
     if (error <= E_COMMON_START && error >= E_COMMON_END) {
         if (error == -E_CHECK_SYSTEMAPP_FAIL) {
             error = E_CHECK_SYSTEMAPP_FAIL;
-        } else if (error == E_PARAM_CONVERT_FORMAT || error == E_ACQ_BETA_TASK_FAIL) {
+        } else if (error == E_PARAM_CONVERT_FORMAT || error == E_ACQ_BETA_TASK_FAIL || error == E_MAX_ON_SINGLE_NUM) {
             error = JS_E_PARAM_INVALID;
         } else if (innerFailErrorSet.find(error) != innerFailErrorSet.end()) {
             error = JS_E_INNER_FAIL;
