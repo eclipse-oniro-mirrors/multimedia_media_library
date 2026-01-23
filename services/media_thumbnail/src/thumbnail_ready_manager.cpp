@@ -330,6 +330,7 @@ void ThumbnailReadyManager::CreateAstcBatchOnDemandTaskFinish(std::shared_ptr<Th
     } else {
         if (thumbReadyTaskData->isBatchComplete == true) {
             timeoutCount_.store(0);
+            MEDIA_INFO_LOG("CreateAstcBatchOnDemand tasks finish, reset timeout count");
         }
     }
     CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid));
