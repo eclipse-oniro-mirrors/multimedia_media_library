@@ -47,8 +47,16 @@ ohos_unittest("media_library_cloud_sync_client_test") {
     "./include",
     "./include/utils",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/processor/"
   ]
+
+  include_media_cloud_sync_data = [
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include",
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include/vo",
+  ]
+
+  include_dirs += include_media_cloud_sync_data
 
   sources = [
     "./src/media_library_cloud_sync_handler_test.cpp",
@@ -57,9 +65,10 @@ ohos_unittest("media_library_cloud_sync_client_test") {
   ]
 
   deps = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync:media_library_cloud_sync",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}:media_library_cloud_sync",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   external_deps = [

@@ -93,7 +93,6 @@ config("media_data_extension_public_config") {
       [ "${MEDIALIB_SERVICES_PATH}/media_albums_refresh/include" ]
   
   include_cloud_sync_add_server = [
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/vo",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/native/cloud_sync",
   ]
 
@@ -110,10 +109,19 @@ config("media_data_extension_public_config") {
   ]
 
   include_media_ipc = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/controller",
+  ]
+
+  include_media_cloud_sync_data = [
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include",
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include/vo",
+  ]
+
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
   ]
 
   include_media_orm = [
@@ -240,6 +248,8 @@ config("media_data_extension_public_config") {
   include_dirs += include_media_analysis_data_extension
   include_dirs += include_event_handler
   include_dirs += include_old_notification
+  include_dirs += include_media_ipc_common
+  include_dirs += include_media_cloud_sync_data
 
   if (media_library_analysis_data_enable) {
     include_media_analysis_data_server = [
@@ -453,52 +463,6 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/net_connect_observer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_retain_smart_data.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_sync_mutex.cpp",
-  ]
-
-  media_cloud_sync_server_source_vo = [
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/cloud_error_detail_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/cloud_file_data_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/cloud_mdkrecord_photos_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/cloud_mdkrecord_photo_album_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/cloud_sync_unprepared_data_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/failed_size_resp_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_check_records_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_cloud_thm_stat_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_dirty_type_stat_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_download_asset_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_download_thm_by_uri_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_download_thm_num_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_download_thm_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_file_pos_stat_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_retey_records_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_video_to_cache_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/media_operate_result_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_copy_records_photos_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_create_records_album_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_create_records_photos_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/get_aging_file_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_delete_albums_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_delete_records_album_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_delete_records_photos_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_dentry_file_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_download_asset_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_download_thms_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_fetch_photos_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_fetch_records_album_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_fetch_records_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_mdirty_records_album_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_modify_file_dirty_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/on_modify_records_photos_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/photo_album_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/photos_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/query_data_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_data_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_dirty_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_local_file_dirty_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_position_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_sync_status_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/update_thm_status_vo.cpp",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/vo/report_failure_vo.cpp",
   ]
 
   media_cloud_sync_server_source_dto = [
@@ -850,7 +814,6 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_UTILS_PATH}/src/common_event_utils.cpp",
     "${MEDIALIB_UTILS_PATH}/src/cover_position_parser.cpp",
     "${MEDIALIB_UTILS_PATH}/src/cpu_utils.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/media_itypes_utils.cpp",
     "${MEDIALIB_UTILS_PATH}/src/media_privacy_manager.cpp",
     "${MEDIALIB_UTILS_PATH}/src/parameter_utils.cpp",
     "${MEDIALIB_UTILS_PATH}/src/settings_data_manager.cpp",
@@ -1024,7 +987,6 @@ ohos_shared_library("medialibrary_data_extension") {
   sources += media_lake_file_monitor_source
   sources += media_analysis_data_client_vo_source
   sources += media_analysis_extension_source
-  sources += media_cloud_sync_server_source_vo
   sources += event_handler_source
   sources += media_old_notification
 
@@ -1106,6 +1068,8 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_UTILS_PATH}:permission_utils",
     "${MEDIALIB_UTILS_PATH}:post_event_utils",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   include_dirs = [

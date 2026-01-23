@@ -19,12 +19,10 @@
 #include <string>
 
 #include "i_media_parcelable.h"
-#include "photo_album_po.h"
 #include "media_itypes_utils.h"
 #include "cloud_media_define.h"
 
 namespace OHOS::Media::CloudSync {
-using namespace OHOS::Media::ORM;
 class EXPORT CloudMdkRecordPhotoAlbumVo : public IPC::IMediaParcelable {
 public:
     int32_t albumId;

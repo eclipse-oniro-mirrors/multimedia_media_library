@@ -972,7 +972,7 @@ HWTEST_F(CloudMediaDataClientTest, GetDownloadThmNum_test_01, TestSize.Level1)
                        std::to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, std::to_string(static_cast<int32_t>(Clean::NOT_NEED_CLEAN)));
     predicates
-        .NotEqualTo(PhotoColumn::PHOTO_POSITION, std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_LOCAL)))
+        .NotEqualTo(PhotoColumn::PHOTO_POSITION, std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)))
         ->And()
         ->BeginWrap()
         ->EqualTo(PhotoColumn::PHOTO_THUMB_STATUS, std::to_string(static_cast<int32_t>(ThumbState::TO_DOWNLOAD)))

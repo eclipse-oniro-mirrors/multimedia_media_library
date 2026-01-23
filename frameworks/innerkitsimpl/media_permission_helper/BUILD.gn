@@ -30,12 +30,18 @@ ohos_shared_library("media_permission_helper") {
   ]
 
   user_ipc_client_include_dirs = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_assets_manager/include/dto",
   ]
+
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
 
   sources = [
     "./src/media_permission_helper.cpp",
@@ -45,10 +51,6 @@ ohos_shared_library("media_permission_helper") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/base_column.cpp",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_app_uri_permission_column.cpp",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_app_uri_sensitive_column.cpp",
-  ]
-
-  user_ipc_client_source = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_inner_ipc_client.cpp",
   ]
 
   media_assets_manager_vo_source = [
@@ -61,10 +63,12 @@ ohos_shared_library("media_permission_helper") {
 
   include_dirs += user_ipc_client_include_dirs
   sources += columns_sources
-  sources += user_ipc_client_source
   sources += media_assets_manager_vo_source
 
-  deps = [ "${MEDIALIB_COMMON_PATH}:media_library_common" ]
+  deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+  ]
 
   external_deps = [
     "access_token:libaccesstoken_sdk",

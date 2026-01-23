@@ -49,11 +49,11 @@ ohos_unittest("medialibrary_cloud_asset_batch_download_test") {
     "../get_self_permissions/include",
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/include",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
     "${MEDIALIB_SERVICES_PATH}/media_file_extension/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/dto",
-    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/vo",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/orm",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/orm/po",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/controller",
@@ -69,6 +69,13 @@ ohos_unittest("medialibrary_cloud_asset_batch_download_test") {
     "${MEDIALIB_SERVICES_PATH}/media_assets_manager/include/vo",
   ]
 
+  include_media_cloud_sync_data = [
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include",
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include/vo",
+  ]
+
+  include_dirs += include_media_cloud_sync_data
+
   sources = [
     "../get_self_permissions/src/get_self_permissions.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_batch_download_cloud_resources_vo.cpp",
@@ -83,8 +90,9 @@ ohos_unittest("medialibrary_cloud_asset_batch_download_test") {
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync:media_library_cloud_sync",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}:media_library_cloud_sync",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   external_deps = [

@@ -34,11 +34,9 @@
 #include "on_modify_records_photos_vo.h"
 #include "on_fetch_photos_vo.h"
 #include "photo_album_column.h"
-#include "photos_po.h"
 #include "userfile_manager_types.h"
 
 namespace OHOS::Media::CloudSync {
-using namespace OHOS::Media::ORM;
 class CloudFileDataConvert {
 public:
     CloudFileDataConvert() = default;

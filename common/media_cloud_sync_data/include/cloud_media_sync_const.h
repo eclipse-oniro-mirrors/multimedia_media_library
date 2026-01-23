@@ -535,12 +535,6 @@ enum ThmLcdState {
     THMLCD = 0b011,
 };
 
-enum PhotoPosition {
-    POSITION_LOCAL = 1,
-    POSITION_CLOUD,
-    POSITION_BOTH,
-};
-
 enum StatsIndex {
     NEW_RECORDS_COUNT = 0,
     MERGE_RECORDS_COUNT = 1,

@@ -29,6 +29,13 @@ ohos_unittest("medialibrary_photo_enhance_test") {
     "../medialibrary_unittest_utils/include",
   ]
 
+  include_media_cloud_sync_data = [
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include",
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include/vo",
+  ]
+
+  include_dirs += include_media_cloud_sync_data
+
   sources = [
     "./src/photo_enhance_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
@@ -37,6 +44,7 @@ ohos_unittest("medialibrary_photo_enhance_test") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   external_deps = [

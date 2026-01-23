@@ -21,11 +21,7 @@ config("media_library_cloud_sync_config") {
 ohos_shared_library("media_library_cloud_sync") {
   install_enable = true
 
-  include_ipc_client_dirs =
-      [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/util" ]
-
   sources = [
-    "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
     "./src/cloud_media_album_handler.cpp",
     "./src/cloud_media_data_client.cpp",
     "./src/cloud_media_data_client_handler.cpp",
@@ -43,27 +39,47 @@ ohos_shared_library("media_library_cloud_sync") {
     "./src/mdk_record_photos_data.cpp",
     "./src/mdk_record_reader.cpp",
     "./src/processor/cloud_media_data_client_handler_processor.cpp",
+    "./src/utils/cloud_media_client_utils.cpp",
   ]
 
   include_dirs = [
     "./include",
+    "./include/utils",
     "./include/cloud_sync_data_convert",
     "./include/processor",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/native/cloud_sync",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
-    "${MEDIALIB_SERVICES_PATH}/media_async_worker/include",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
-    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
-    "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
-    "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
-    "${MEDIALIB_UTILS_PATH}/include",
-    "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
-    "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
   ]
 
+  include_ipc_client_dirs = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include/napi",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+    "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
+  ]
+
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_media_cloud_sync_data = [
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include",
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include/vo",
+  ]
+
+  include_common_utils_dirs = [ "${MEDIALIB_COMMON_PATH}/utils/include" ]
+
   include_dirs += include_ipc_client_dirs
+  include_dirs += include_media_ipc_common
+  include_dirs += include_media_cloud_sync_data
+  include_dirs += include_common_utils_dirs
 
   source_ipc_client = [
+    "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp",
   ]
 
@@ -78,9 +94,10 @@ ohos_shared_library("media_library_cloud_sync") {
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_NATIVE_PATH}/media_library_asset_manager:media_library_asset_manager",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   external_deps = [

@@ -70,9 +70,7 @@ config("napi_config") {
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/media_cloud_asset_download",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/vo",
@@ -84,6 +82,13 @@ config("napi_config") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
   ]
 
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
   include_dirs += [ "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo" ]
 
   if (media_library_feature_mtp) {
@@ -224,7 +229,6 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src//utils/media_notification_utils.cpp",
     "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
     "${MEDIALIB_UTILS_PATH}/src/media_change_request_utils.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/media_itypes_utils.cpp",
     "${MEDIALIB_JS_PATH}/src/register_unregister_handler_functions.cpp",
     "${MEDIALIB_INNERIMPL_PATH}/camera/src/picture_handle_client.cpp",
     "${MEDIALIB_JS_PATH}/src/report_event.cpp",
@@ -344,6 +348,7 @@ ohos_shared_library("medialibrary_nutils") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   external_deps = [
