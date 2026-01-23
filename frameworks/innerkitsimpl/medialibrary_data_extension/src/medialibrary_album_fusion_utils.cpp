@@ -1621,12 +1621,12 @@ static int32_t UpdateAlbumPhotoOwnerAlbumId(MediaLibraryAlbumFusionUtils::Execut
     }
 }
 
-static bool IsDeleteOtherAlbum(MediaLibraryAlbumFusionUtils::ExecuteObject& executeObject,
-    int32_t oldAlbumId)
+static bool IsDeleteOtherAlbum(int32_t oldAlbumId)
 {
-    CHECK_AND_RETURN_RET_LOG(executeObject.rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
+    std::shared_ptr<MediaLibraryRdbStore> rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
     const std::string querySql = "SELECT lpath from PhotoAlbum WHERE album_id = " + std::to_string(oldAlbumId);
-    auto resultSet = executeObject.rdbStore->QueryByStep(querySql);
+    auto resultSet = rdbStore->QueryByStep(querySql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Is delete other album, find album resultSet null");
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("IsDeleteOtherAlbum first row empty");
@@ -1641,26 +1641,24 @@ static bool IsDeleteOtherAlbum(MediaLibraryAlbumFusionUtils::ExecuteObject& exec
     return false;
 }
 
-static int32_t RecreateOtherAlbum(MediaLibraryAlbumFusionUtils::ExecuteObject& executeObject)
-{
-    CHECK_AND_RETURN_RET_LOG(executeObject.albumRefresh != nullptr, E_HAS_DB_ERROR, "albumRefresh is null");
-    int32_t ret = executeObject.albumRefresh->ExecuteSql(CREATE_DEFALUT_ALBUM_FOR_NO_RELATIONSHIP_ASSET,
-        AccurateRefresh::RDB_OPERATION_ADD);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
-        "Cannot insert new othersAlbum into PhotoAlbum table, ret: %{public}d", ret);
-    return E_OK;
-}
-
 static int32_t BatchDeleteAlbumAndUpdateRelation(MediaLibraryAlbumFusionUtils::ExecuteObject& executeObject,
     int32_t oldAlbumId, int64_t newAlbumId, bool isCloudAblum, const vector<string>* fileIdsInAlbum = nullptr)
 {
     CHECK_AND_RETURN_RET_LOG(executeObject.trans != nullptr, E_HAS_DB_ERROR, "transactionOprn is null");
 
-    bool isOthers = IsDeleteOtherAlbum(executeObject, oldAlbumId);
-    int32_t ret = DeleteOldAlbum(executeObject, oldAlbumId, isCloudAblum);
-    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR,
-        "DELETE expired album failed, ret = %{public}d, albumId is %{public}d",
-        ret, oldAlbumId);
+    int32_t ret = E_ERR;
+    if (IsDeleteOtherAlbum(oldAlbumId)) {
+        MEDIA_INFO_LOG("Reset 'other' album id %{public}d", oldAlbumId);
+        int64_t newId = MediaLibraryAlbumOperations::CreateSourceAlbum("其它", executeObject, "", oldAlbumId);
+        CHECK_AND_RETURN_RET_LOG(newId > 0, E_HAS_DB_ERROR,
+            "Reset 'other' album failed, ret = %{public}" PRId64 ", albumId is %{public}d",
+            newId, oldAlbumId);
+    } else {
+        ret = DeleteOldAlbum(executeObject, oldAlbumId, isCloudAblum);
+        CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR,
+            "DELETE expired album failed, ret = %{public}d, albumId is %{public}d",
+            ret, oldAlbumId);
+    }
 
     const std::string UPDATE_NEW_ALBUM_ID_IN_PHOTO_MAP = "UPDATE PhotoMap SET map_album = " +
         to_string(newAlbumId) + " WHERE dirty != '4' AND map_album = " + to_string(oldAlbumId);
@@ -1673,9 +1671,6 @@ static int32_t BatchDeleteAlbumAndUpdateRelation(MediaLibraryAlbumFusionUtils::E
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR,
         "Update relationship in photo map fails, ret = %{public}d, albumId is %{public}d",
         ret, oldAlbumId);
-    if (isOthers) {
-        ret = RecreateOtherAlbum(executeObject);
-    }
     return E_OK;
 }
 
@@ -1697,7 +1692,8 @@ int32_t MediaLibraryAlbumFusionUtils::DeleteAlbumAndUpdateRelationship(
         errCode = BatchDeleteAlbumAndUpdateRelation(
             executeObject, oldAlbumId, newAlbumId, isCloudAblum, fileIdsInAlbum);
     } else {
-        std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+        std::shared_ptr<TransactionOperations> trans = executeObject.trans ? executeObject.trans :
+            make_shared<TransactionOperations>(__func__);
         ExecuteObject object;
         object.trans = trans;
         std::function<int(void)> func = [&]()->int {

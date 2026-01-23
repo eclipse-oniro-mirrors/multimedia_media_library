@@ -28,6 +28,7 @@
 #include "medialibrary_notify.h"
 #include "medialibrary_object_utils.h"
 #include "medialibrary_tracer.h"
+#include "media_values_bucket_utils.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
 #include "enhancement_manager.h"
 #endif
@@ -329,18 +330,80 @@ static int32_t ObtainMaxAlbumOrder(int32_t &maxAlbumOrder)
     return resultSet->GetInt(0, maxAlbumOrder);
 }
 
-static void PrepareUserAlbum(const string &albumName, ValuesBucket &values)
+void MediaLibraryAlbumOperations::PutGeneralPhotoAlbumValues(const string &albumName,
+    const string &lpath, ValuesBucket &values)
 {
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, albumName);
-    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::USER);
-    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::USER_GENERIC);
+    values.PutString(PhotoAlbumColumns::ALBUM_LPATH, lpath);
     values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutLong(PhotoAlbumColumns::CHANGE_TIME, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, 1); // local album is 1.
-    values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, ALBUM_PRIORITY_DEFAULT);
-    values.PutString(PhotoAlbumColumns::ALBUM_LPATH, USER_ALBUM_LPATH_PREFIX + albumName);
     values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, PhotoAlbumUploadStatusOperation::GetAlbumUploadStatus());
+}
+
+void MediaLibraryAlbumOperations::PrepareUserAlbum(const string &albumName, ValuesBucket &values)
+{
+    string lpath = USER_ALBUM_LPATH_PREFIX + albumName;
+    PutGeneralPhotoAlbumValues(albumName, lpath, values);
+    values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, ALBUM_PRIORITY_DEFAULT);
+    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::USER);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::USER_GENERIC);
+}
+
+static AlbumPlugin::AlbumPluginRowData GetDefaultSourceAlbumInfoByAlbumName(const string &albumName)
+{
+    for (const AlbumPlugin::AlbumPluginRowData &albumInfo : AlbumPlugin::ALBUM_PLUGIN_DATA) {
+        if (albumName == albumInfo.album_name && albumInfo.priority == 1) { // 1 is highest priority
+            return albumInfo;
+            break;
+        }
+    }
+    AlbumPlugin::AlbumPluginRowData tmpData {};
+    tmpData.lpath = "/Pictures/" + albumName;
+    tmpData.bundle_name = "";
+    return tmpData;
+}
+
+static AlbumPlugin::AlbumPluginRowData GetDefaultSourceAlbumInfoByLpath(const string &lpath)
+{
+    for (const AlbumPlugin::AlbumPluginRowData &albumInfo : AlbumPlugin::ALBUM_PLUGIN_DATA) {
+        if (lpath == albumInfo.lpath) {
+            return albumInfo;
+        }
+    }
+    AlbumPlugin::AlbumPluginRowData tmpData {};
+    tmpData.lpath = lpath;
+    tmpData.bundle_name = "";
+    return tmpData;
+}
+
+void MediaLibraryAlbumOperations::PrepareSourceAlbum(const string &albumName, const string &inputLpath,
+    ValuesBucket &values)
+{
+    int32_t albumPriority = ALBUM_PRIORITY_DEFAULT;
+    string bundleName {};
+    string lpath {};
+    if (inputLpath.empty()) {
+        AlbumPlugin::AlbumPluginRowData albumInfo = GetDefaultSourceAlbumInfoByAlbumName(albumName);
+        albumPriority = albumInfo.priority;
+        bundleName = albumInfo.bundle_name;
+        lpath = albumInfo.lpath;
+    } else {
+        lpath = inputLpath;
+        AlbumPlugin::AlbumPluginRowData albumInfo = GetDefaultSourceAlbumInfoByLpath(inputLpath);
+        albumPriority = albumInfo.priority;
+        bundleName = albumInfo.bundle_name;
+    }
+    
+    if (!bundleName.empty()) {
+        values.PutString(PhotoAlbumColumns::ALBUM_BUNDLE_NAME, bundleName);
+    }
+    PutGeneralPhotoAlbumValues(albumName, lpath, values);
+    values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, albumPriority);
+    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC);
+    values.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, 1); // source album is by default hidden when created
 }
 
 static void PrepareSmartAlbum(const string &albumName, ValuesBucket &values)
@@ -439,9 +502,7 @@ static void UseDefaultCreateValue(const string& columnName, const ColumnSchema& 
     } else if (schema.defaultNull) {
         sql.append("NULL");
     } else {
-        sql += '"';
         sql.append(schema.defaultValue);
-        sql += '"';
     }
 }
 
@@ -470,6 +531,21 @@ static string BuildReuseSql(int32_t id, const ValuesBucket& albumValues,
     return sql;
 }
 
+static void EnsureTextValueIsQuoted(string &defaultValue, const string &columnType)
+{
+    if (columnType != "TEXT") {
+        return;
+    }
+    constexpr size_t minQuotedSize = 2;
+    if (defaultValue.size() >= minQuotedSize && defaultValue.front() == '\'' && defaultValue.back() == '\'') {
+        return;
+    }
+    if (defaultValue.size() >= minQuotedSize && defaultValue.front() == '"' && defaultValue.back() == '"') {
+        return;
+    }
+    defaultValue = "'" + defaultValue + "'";
+}
+
 static unordered_map<string, ColumnSchema> QueryPhotoAlbumSchema()
 {
     unordered_map<string, ColumnSchema> photoAlbumSchema;
@@ -485,6 +561,7 @@ static unordered_map<string, ColumnSchema> QueryPhotoAlbumSchema()
             string colName = GetStringVal("name", resultSet);
             string defaultValue = GetStringVal("dflt_value", resultSet);
             string columnType = GetStringVal("type", resultSet);
+            EnsureTextValueIsQuoted(defaultValue, columnType);
             bool isNull;
             int32_t dfltIdx;
             resultSet->GetColumnIndex("dflt_value", dfltIdx);
@@ -605,7 +682,7 @@ int CreatePhotoAlbum(const string &albumName)
     }
 
     ValuesBucket albumValues;
-    PrepareUserAlbum(albumName, albumValues);
+    MediaLibraryAlbumOperations::PrepareUserAlbum(albumName, albumValues);
 
     // try to reuse existing record with same lpath first
     int32_t id = -1;
@@ -748,7 +825,7 @@ int32_t IsAllUserOrSourcePhotoAlbum(std::shared_ptr<MediaLibraryRdbStore> rdbSto
     return E_OK;
 }
 
-static bool DeleteContainsOtherAlbum(RdbPredicates &predicates, const shared_ptr<MediaLibraryRdbStore>& rdbStore)
+static int32_t DeleteContainsOtherAlbum(RdbPredicates &predicates, const shared_ptr<MediaLibraryRdbStore>& rdbStore)
 {
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "DeleteContainsOtherAlbum failed. rdbStore is null");
     vector<string> albumIds = predicates.GetWhereArgs();
@@ -759,26 +836,15 @@ static bool DeleteContainsOtherAlbum(RdbPredicates &predicates, const shared_ptr
     vector<string> columns = {PhotoAlbumColumns::ALBUM_ID};
     shared_ptr<ResultSet> resultSet = rdbStore->Query(queryPredicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "queryResultSet is null!");
-
-    int32_t rowCount = -1;
-    int32_t ret = resultSet->GetRowCount(rowCount);
-    if (ret != 0 || rowCount < 0) {
-        MEDIA_ERR_LOG("result set get row count err %{public}d", ret);
-        return false;
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("DeleteContainsOtherAlbum first row empty");
+        resultSet->Close();
+        return E_ERR;
     }
+    int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+    MEDIA_INFO_LOG("DeleteContainsOtherAlbum deleted albumId: %{public}d", albumId);
     resultSet->Close();
-    return rowCount > 0;
-}
-
-static int32_t RecreateOtherAlbum(AlbumAccurateRefresh *albumRefresh)
-{
-    CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_HAS_DB_ERROR,
-        "RecreateOtherAlbum failed. albumRefresh is null");
-    int32_t ret = albumRefresh->ExecuteSql(CREATE_DEFALUT_ALBUM_FOR_NO_RELATIONSHIP_ASSET,
-        AccurateRefresh::RDB_OPERATION_ADD);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
-        "Cannot insert new othersAlbum into PhotoAlbum table, ret: %{public}d", ret);
-    return E_OK;
+    return albumId;
 }
 
 int32_t MediaLibraryAlbumOperations::DeletePhotoAlbum(RdbPredicates &predicates)
@@ -798,16 +864,21 @@ int32_t MediaLibraryAlbumOperations::DeletePhotoAlbum(RdbPredicates &predicates)
         MEDIA_ERR_LOG("Update trashed asset failed");
         return E_HAS_DB_ERROR;
     }
-    bool isOthers = DeleteContainsOtherAlbum(predicates, rdbStore);
-    AlbumAccurateRefresh albumRefresh(AccurateRefresh::DELETE_PHOTO_ALBUMS_BUSSINESS_NAME);
+    int32_t otherAlbumId = DeleteContainsOtherAlbum(predicates, rdbStore);
+    predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_LPATH, "/Pictures/其它");
+    shared_ptr<AlbumAccurateRefresh> albumRefresh =
+        make_shared<AlbumAccurateRefresh>(AccurateRefresh::DELETE_PHOTO_ALBUMS_BUSSINESS_NAME);
     int deleteRow = -1;
-    albumRefresh.LogicalDeleteReplaceByUpdate(predicates, deleteRow);
-    if (deleteRow > 0) {
-        if (isOthers) {
-            ret = RecreateOtherAlbum(&albumRefresh);
-        }
-        albumRefresh.Notify();
+    albumRefresh->LogicalDeleteReplaceByUpdate(predicates, deleteRow);
+    if (otherAlbumId > 0) {
+        MediaLibraryAlbumFusionUtils::ExecuteObject executeObject {};
+        executeObject.albumRefresh = albumRefresh;
+        MediaLibraryAlbumOperations::CreateSourceAlbum("其它", executeObject, "", otherAlbumId);
     }
+    if (deleteRow > 0 || otherAlbumId > 0) {
+        albumRefresh->Notify();
+    }
+
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
     const vector<string> &notifyUris = predicates.GetWhereArgs();
@@ -3655,6 +3726,90 @@ int32_t MediaLibraryAlbumOperations::UpdatePhotoAlbumOrder(const vector<NativeRd
     int32_t ret = rdbStore->ExecuteSql(SQL_DELETE_ALL_ALBUM_ORDER_BACK);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, false, "Failed to delete albumOrderBackTable data");
     return successSetOrderRows == 0 ? E_INNER_FAIL : E_OK;
+}
+
+static int32_t QueryAlbumIdByLpath(const string &lpath, bool &isDeleted)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdbStore failed");
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_LPATH, lpath);
+    vector<string> columns = { PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_DIRTY };
+    auto resultSet = rdbStore->QueryByStep(predicates, columns);
+    if (!TryToGoToFirstRow(resultSet)) {
+        return -1; // No result
+    }
+    int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+    int32_t dirty = GetInt32Val(PhotoAlbumColumns::ALBUM_DIRTY, resultSet);
+    isDeleted = dirty == static_cast<int32_t>(DirtyType::TYPE_DELETED);
+    return albumId;
+}
+
+static int64_t CreateNewSourceAlbum(ValuesBucket &albumValues,
+    const MediaLibraryAlbumFusionUtils::ExecuteObject &executeObject)
+{
+    int64_t newAlbumId = E_ERR;
+    if (executeObject.albumRefresh != nullptr) {
+        int32_t ret = executeObject.albumRefresh->Insert(newAlbumId, PhotoAlbumColumns::TABLE,
+            albumValues);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+            "albumRefresh insert new album failed, ret: %{public}d", ret);
+    } else if (executeObject.trans != nullptr) {
+        int32_t ret = executeObject.trans->Insert(newAlbumId, PhotoAlbumColumns::TABLE,
+            albumValues);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+            "trans insert new album failed, ret: %{public}d", ret);
+    } else {
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdbStore failed");
+        int32_t ret = rdbStore->Insert(newAlbumId, PhotoAlbumColumns::TABLE, albumValues);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+            "rdbStore insert new album failed, ret: %{public}d", ret);
+    }
+    return newAlbumId;
+}
+
+int64_t MediaLibraryAlbumOperations::CreateSourceAlbum(const string &albumName,
+    const MediaLibraryAlbumFusionUtils::ExecuteObject &executeObject, const string &inputLpath, int32_t reuseId)
+{
+    ValuesBucket albumValues {};
+    PrepareSourceAlbum(albumName, inputLpath, albumValues);
+    string lpath = "";
+    MediaValuesBucketUtils::GetString(albumValues, PhotoAlbumColumns::ALBUM_LPATH, lpath);
+
+    if (reuseId > 0) {
+        int32_t ret = MediaLibraryAlbumOperations::RenewDeletedPhotoAlbum(reuseId, albumValues,
+            executeObject.trans, executeObject.albumRefresh.get());
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+            "Renew deleted source album failed, album id: %{public}d, album name is %{public}s", reuseId,
+            DfxUtils::GetSafeAlbumName(albumName).c_str());
+        MEDIA_INFO_LOG("Reuse existing deleted source album, album id: %{public}d, album name is %{public}s", reuseId,
+            DfxUtils::GetSafeAlbumName(albumName).c_str());
+        return static_cast<int64_t>(reuseId);
+    }
+
+    bool isDeleted = false;
+    reuseId = QueryAlbumIdByLpath(lpath, isDeleted);
+    if (reuseId > 0) {
+        CHECK_AND_RETURN_RET_LOG(isDeleted, E_HAS_DB_ERROR,
+            "Source album lpath exists and not deleted, album id: %{public}d, album name is %{public}s", reuseId,
+            DfxUtils::GetSafeAlbumName(albumName).c_str());
+        int32_t ret = MediaLibraryAlbumOperations::RenewDeletedPhotoAlbum(reuseId, albumValues,
+            executeObject.trans, executeObject.albumRefresh.get());
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+            "Renew deleted source album failed, album id: %{public}d, album name is %{public}s", reuseId,
+            DfxUtils::GetSafeAlbumName(albumName).c_str());
+        MEDIA_INFO_LOG("Reuse found existing deleted source album, album id: %{public}d, album name is %{public}s",
+            reuseId, DfxUtils::GetSafeAlbumName(albumName).c_str());
+        return static_cast<int64_t>(reuseId);
+    }
+
+    int64_t newAlbumId = CreateNewSourceAlbum(albumValues, executeObject);
+    CHECK_AND_RETURN_RET_LOG(newAlbumId > 0, E_HAS_DB_ERROR, "Create new source album failed, album name is %{public}s",
+        DfxUtils::GetSafeAlbumName(albumName).c_str());
+    MEDIA_INFO_LOG("Create new source album success, album id: %{public}" PRId64 ", album name is %{public}s",
+        newAlbumId, DfxUtils::GetSafeAlbumName(albumName).c_str());
+    return newAlbumId;
 }
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP
