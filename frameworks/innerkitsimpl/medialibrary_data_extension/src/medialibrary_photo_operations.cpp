@@ -952,8 +952,7 @@ int32_t MediaLibraryPhotoOperations::CreateV10(MediaLibraryCommand &cmd)
 {
     ValuesBucket &values = cmd.GetValueBucket();
     string photoId;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, PhotoColumn::PHOTO_ID, photoId),
-        E_INVALID_VALUES);
+    GetStringFromValuesBucket(values, PhotoColumn::PHOTO_ID, photoId);
     MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CREATE_ASSET);
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddAssetTime(photoId, AddAssetTimeStat::START);
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(photoId, AddCaptureTimeStat::START);
