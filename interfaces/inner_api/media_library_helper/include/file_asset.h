@@ -278,6 +278,9 @@ public:
     EXPORT void SetExifRotate(int32_t exifRotate);
     EXPORT int32_t GetExifRotate() const;
 
+    EXPORT void SetVideoMode(int32_t videoMode);
+    EXPORT int32_t GetVideoMode() const;
+
     // Safe Album: critical type for children's watch
     EXPORT void SetCritical(int32_t IsCritical);
     EXPORT int32_t GetCritical() const;
