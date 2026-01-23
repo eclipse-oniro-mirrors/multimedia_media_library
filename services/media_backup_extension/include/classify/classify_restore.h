@@ -69,7 +69,9 @@ private:
     void HandleOcrHelper(const std::vector<int32_t> &fileIds);
     void AddIdCardAlbum(OcrAggregateType type, std::unordered_set<int32_t> &fileIdsToUpdateSet);
     void ProcessCategoryAlbums();
-    int64_t GetShouldEndTime(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
+    int64_t GetShouldEndTime(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
+        const int64_t imageCollectionSize);
+    int64_t GetImageCollectionSize();
 
 private:
     int32_t sceneCode_ {-1};
@@ -79,6 +81,7 @@ private:
     std::atomic<int32_t> failInsertLabelCnt_ {0};
     std::atomic<int32_t> duplicateLabelCnt_ {0};
     std::atomic<int32_t> exitCode_ {-1};
+    std::atomic<int64_t> imageCollectionSize_ {-1};
     std::string taskId_;
     std::shared_ptr<NativeRdb::RdbStore> galleryRdb_;
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb_;
