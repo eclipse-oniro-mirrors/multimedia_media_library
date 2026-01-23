@@ -217,7 +217,7 @@ std::shared_ptr<NativeRdb::ResultSet> BackgroundCloudBatchSelectedFileProcessor:
         sql = sql + " AND D." + DownloadResourcesColumn::MEDIA_ID + " NOT IN (" +
             fileIdsStr + ")";
     }
-    if (IsCellularNetConnected()) {
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnected()) {
         sql = sql +" AND D." + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = "
         + std::to_string(static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
     }
@@ -291,7 +291,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchDownloadFinishStatu
     DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = " +
     std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_FAIL)) +
     " THEN 1 ELSE 0 END) AS failed_orders FROM "+ DownloadResourcesColumn::TABLE;
-    if (IsCellularNetConnected()) {
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnected()) {
         sql = sql +" WHERE " + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = "
         + std::to_string(static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
     }
@@ -842,7 +842,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFil
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING)) + ","
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
         + ")";
-    if (IsCellularNetConnected()) {
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnected()) {
         sql = sql + " AND " + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = "
         + std::to_string(static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
     }
@@ -893,7 +893,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumFor
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE)) + ","
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
         + ")";
-    if (IsCellularNetConnected()) {
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnected()) {
         sql = sql + " AND " + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = "
         + std::to_string(static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
     }
@@ -1014,7 +1014,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
         return false;
     }
 
-    if (IsCellularNetConnected()) {
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnected()) {
         // waiting+network cell to pause
         if (QueryWifiNetRunningTaskNum() > 0) {
             MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START");
