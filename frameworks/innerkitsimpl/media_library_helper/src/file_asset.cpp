@@ -940,6 +940,17 @@ int32_t FileAsset::GetExifRotate() const
     return GetInt32Member(PhotoColumn::PHOTO_EXIF_ROTATE);
 }
 
+void FileAsset::SetVideoMode(int32_t videoMode)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_VIDEO_MODE] = videoMode;
+}
+
+int32_t FileAsset::GetVideoMode() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_VIDEO_MODE);
+}
+
 void FileAsset::SetCritical(int32_t isCritical)
 {
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
