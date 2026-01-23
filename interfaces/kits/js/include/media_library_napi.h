@@ -627,6 +627,7 @@ struct MediaLibraryAsyncContext : public NapiError {
         PHOTO_ACCESS_HELPER,
         REGISTER_CHANGE
     } eventType;
+    int32_t photoIndex = -1;
 };
 
 struct MediaLibraryInitContext : public NapiError  {

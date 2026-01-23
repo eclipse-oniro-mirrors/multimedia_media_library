@@ -392,6 +392,7 @@ struct MediaLibraryAsyncContext : public AniError {
     std::string burstKey;
     int32_t photoAlbumType;
     int32_t photoAlbumSubType;
+    int32_t photoIndex = -1;
 };
 } // namespace Media
 } // namespace OHOS
