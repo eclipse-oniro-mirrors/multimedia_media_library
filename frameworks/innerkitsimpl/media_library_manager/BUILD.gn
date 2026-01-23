@@ -247,8 +247,8 @@ ohos_shared_library("media_library_custom_restore") {
   install_enable = true
 
   sources = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/media_library_custom_restore.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/medialibrary_custom_restore_observer_manager.cpp",
+    "./media_library_custom_restore.cpp",
+    "./src/medialibrary_custom_restore_observer_manager.cpp",
   ]
 
   include_dirs = [

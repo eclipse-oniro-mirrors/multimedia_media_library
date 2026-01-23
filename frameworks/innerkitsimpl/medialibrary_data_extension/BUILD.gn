@@ -822,6 +822,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_restore.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_upgrade_utils.cpp",
     "src/asset_compress_version_manager.cpp",
+    "src/custom_record_operations.cpp",
     "src/foreground_analysis_meta.cpp",
     "src/heif_bundle_info_cache.cpp",
     "src/heif_transcoding_check_utils.cpp",
@@ -1052,7 +1053,6 @@ ohos_shared_library("medialibrary_data_extension") {
 
   if (media_library_feature_custom_restore) {
     media_custom_restore_source = [
-      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/custom_record_operations.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/medialibrary_custom_restore_notify.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/photo_custom_restore_operation.cpp",
     ]
