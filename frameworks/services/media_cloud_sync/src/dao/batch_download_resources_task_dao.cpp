@@ -112,11 +112,12 @@ int32_t BatchDownloadResourcesTaskDao::UpdateAllDownloadResourcesNetworkPolicy(B
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     MEDIA_INFO_LOG("BatchSelectFileDownload UpdateNetworkPolicy All");
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdateNetworkPolicy Failed to get rdbStore.");
-    // set network_policy = x where download_status != 4
+    // set network_policy = x where download_status != 4 and network_policy = 0
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_NETWORK_POLICY, static_cast<int32_t>(networkPolicy));
-    std::string whereClause = "";
-    std::vector<std::string> whereArgs = {};
+    std::string whereClause = DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = ? ";
+    std::vector<std::string> whereArgs = {
+        to_string(static_cast<int32_t>(Media::BatchDownloadNetWorkPolicyType::TYPE_DEFAULT))};
     int32_t changedRows = -1;
     int32_t ret = rdbStore->Update(changedRows, DownloadResourcesColumn::TABLE, valuesBucket, whereClause, whereArgs);
     MEDIA_INFO_LOG("BatchSelectFileDownload UpdateNetworkPolicy All ret: %{public}d, changedRows %{public}d",
@@ -133,11 +134,13 @@ int32_t BatchDownloadResourcesTaskDao::UpdateNetworkPolicyDownloadTasks(std::vec
     CHECK_AND_RETURN_RET_INFO_LOG(!fileIds.empty(), NativeRdb::E_OK, "UpdateNetworkPolicyDownloadTasks empty");
     // update download_resources_task_records set network_policy = x where file_id in()
     std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
-    std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0})";
+    std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND " +
+        DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = ? ";
     std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_NETWORK_POLICY, static_cast<int32_t>(networkPolicy));
-    std::vector<std::string> whereArgs = {};
+    std::vector<std::string> whereArgs = {
+        to_string(static_cast<int32_t>(Media::BatchDownloadNetWorkPolicyType::TYPE_DEFAULT))};
     int32_t changedRows = -1;
     int32_t ret = rdbStore->Update(changedRows, DownloadResourcesColumn::TABLE, valuesBucket,
         whereClause, whereArgs);
@@ -331,7 +334,8 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusAllFailAndAutoPauseToWaiting(
      // set download_status = waiting where (download_status = 3 or download_status = 5)
     std::string whereClause = " (" +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ? OR " +
-        DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ?)";
+        DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ?  OR " +
+        DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ?)" ;
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING));
@@ -339,6 +343,7 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusAllFailAndAutoPauseToWaiting(
         static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
     std::vector<std::string> whereArgs = {
         to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_FAIL)),
+        to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_SUCCESS)),
         to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE))};
     int32_t changedRows = -1;
     int32_t ret = rdbStore->Update(changedRows, DownloadResourcesColumn::TABLE, valuesBucket, whereClause, whereArgs);
