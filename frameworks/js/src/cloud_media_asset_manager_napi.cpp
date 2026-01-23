@@ -97,7 +97,7 @@ napi_value CloudMediaAssetManagerNapi::Init(napi_env env, napi_value exports)
     const vector<napi_property_descriptor> staticProps = {
         DECLARE_NAPI_PROPERTY("CloudAssetDownloadCode", CreateDownloadCloudAssetCodeEnum(env)),
         DECLARE_NAPI_PROPERTY("CloudAssetDownloadNotifyType", CreateDownloadAssetsNotifyTypeEnum(env)),
-        DECLARE_NAPI_PROPERTY("CloudAssetNetworkPolicyType", CreateDownloadAssetsNetworkPolicyTypeEnum(env)),
+        DECLARE_NAPI_PROPERTY("CloudDownloadNetworkPolicy", CreateDownloadAssetsNetworkPolicyTypeEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
