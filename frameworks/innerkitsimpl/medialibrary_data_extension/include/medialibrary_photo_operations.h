@@ -31,6 +31,9 @@
 #include "rdb_predicates.h"
 #include "medialibrary_rdbstore.h"
 #include "camera_character_types.h"
+#include "multistages_capture_dfx_capture_fault.h"
+#include "multistages_capture_dfx_capture_times.h"
+#include "multistages_capture_dfx_save_camera_photo.h"
 //LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -148,8 +151,18 @@ public:
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> HandleAnalysisIndex(MediaLibraryCommand &cmd,
         const std::string &photoId, const std::string &albumId);
 private:
+    static int32_t HandleSaveCameraPhoto(MediaLibraryCommand &cmd);
+    static bool CheckAndReport(bool cond, const int32_t &fileId,
+        CaptureFaultType faultType, const string &reason);
+    static int32_t CheckSavePicture(const int32_t getPicRet, PhotoExtInfo &photoExtInfo,
+        shared_ptr<FileAsset> &fileAsset, string &assetPath, const int32_t &fileId);
     static int32_t CreateV9(MediaLibraryCommand &cmd);
     static int32_t CreateV10(MediaLibraryCommand &cmd);
+    static int32_t HandleCreateV10(MediaLibraryCommand &cmd);
+    static int32_t HandleTrans(FileAsset &fileAsset, const string &extention,
+        MediaLibraryCommand &cmd, bool isContains, int32_t &outRow);
+    static void SetFileAssetFromCmd(FileAsset &fileAsset, MediaLibraryCommand &cmd,
+        int32_t mediaType, int32_t fileResourceType);
     static int32_t DeletePhoto(const std::shared_ptr<FileAsset> &fileAsset, MediaLibraryApi api,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr);
     static int32_t UpdateV9(MediaLibraryCommand &cmd);
@@ -218,8 +231,8 @@ private:
     static int32_t EnableYuvAndNotify(const std::shared_ptr<FileAsset> &fileAsset,
         std::shared_ptr<Media::Picture> &picture, bool isEdited, bool isTakeEffect,
         const std::string imageId, const int32_t fileId);
-    static void HandleScanFile(const std::string &path, int32_t burstCoverLevel,
-        std::shared_ptr<Media::Picture> &resultPicture, const std::string &fileId);
+    static bool HandleScanFile(std::shared_ptr<Media::Picture> &resultPicture,
+        const std::string &fileId);
     static void HandleContainsAddResource(const std::string &fileId, const std::string containsAddResource);
 
 private:

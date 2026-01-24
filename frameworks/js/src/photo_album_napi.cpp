@@ -1933,7 +1933,8 @@ static napi_value CheckArgsGetSelectedPhotoAssets(
             nlohmann::json filterJson = nlohmann::json::parse(context->filter.c_str());
             std::string key = "currentFileId";
             size_t sizeLimit = 1;
-            bool cond = filterJson.size() == sizeLimit && filterJson.contains(key);
+            bool cond = !filterJson.is_discarded() &&
+                filterJson.size() == sizeLimit && filterJson.contains(key) && filterJson[key].is_string();
             CHECK_COND_RET(cond, nullptr, "ARGS_TWO must be a JSON object with exactly one key : currentFileId");
             std::string value = filterJson[key];
             bool isValidInteger = !value.empty() &&

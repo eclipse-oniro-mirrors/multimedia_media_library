@@ -160,6 +160,39 @@ std::string MediaFileUtils::DesensitizePath(const std::string &path)
     return result.replace(0, CLOUD_FILE_PATH.length(), "*");
 }
 
+std::string MediaFileUtils::DesensitizeDisplayName(const std::string &displayName)
+{
+    if (displayName.empty()) {
+        return displayName;
+    }
+
+    size_t dotPos = displayName.rfind('.');
+    const size_t nameLength = 2;
+    if (dotPos == std::string::npos) {
+        if (displayName.length() == 1) {
+            return "*";
+        }
+        if (displayName.length() == nameLength) {
+            return displayName[0] + std::string(1, '*');
+        }
+        return displayName[0] + std::string(displayName.length() - nameLength, '*') + displayName.back();
+    }
+
+    if (dotPos == 0) {
+        return displayName;
+    }
+
+    std::string name = displayName.substr(0, dotPos);
+    std::string ext = displayName.substr(dotPos);
+    if (name.length() == 1) {
+        return "*" + ext;
+    }
+    if (name.length() == nameLength) {
+        return name[0] + std::string("*") + ext;
+    }
+    return name[0] + std::string(name.length() - nameLength, '*') + name.back() + ext;
+}
+
 void MediaFileUtils::PrintStatInformation(const std::string& path)
 {
     struct stat statInfo {};

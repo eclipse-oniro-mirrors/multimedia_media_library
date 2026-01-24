@@ -359,27 +359,22 @@ static bool HandleSpecialDateTypePredicate(const OperationItem &item,
     vector<OperationItem> &operations, const FetchOptionType &fetchOptType)
 {
     constexpr int32_t FIELD_IDX = 0;
-    constexpr int32_t VALUE_IDX = 1;
-    constexpr int32_t BETWEENENDVALUE_IDX = 2;
-    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
-        CONST_MEDIA_DATA_DB_DATE_TAKEN};
+    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN};
     string dateType = item.GetSingle(FIELD_IDX);
+    OperationItem tempItem = item;
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
-    if (it != dateTypes.end() && item.singleParams.size() == BETWEENENDVALUE_IDX + 1 &&
-        (item.operation == DataShare::BETWEEN || item.operation == DataShare::NOTBETWEEN)) {
+    if (it != dateTypes.end() && fetchOptType == ASSET_FETCH_OPT && item.operation != DataShare::ORDER_BY_ASC &&
+    item.operation != DataShare::ORDER_BY_DESC) {
         dateType += "_s";
-        operations.push_back({ item.operation, { dateType, item.GetSingle(VALUE_IDX).value,
-            item.GetSingle(BETWEENENDVALUE_IDX).value} });
-        return true;
-    } else if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
-        item.operation != DataShare::ORDER_BY_DESC) {
-        dateType += "_s";
-        operations.push_back({ item.operation, { dateType, static_cast<double>(item.GetSingle(VALUE_IDX)) } });
+        tempItem.singleParams[FIELD_IDX] = dateType;
+        operations.push_back(tempItem);
         return true;
     }
-    if (DATE_TRANSITION_MAP.count(dateType) != 0) {
+    if (DATE_TRANSITION_MAP.count(dateType) != 0 && fetchOptType == ASSET_FETCH_OPT) {
         dateType = DATE_TRANSITION_MAP.at(dateType);
-        operations.push_back({ item.operation, { dateType, static_cast<double>(item.GetSingle(VALUE_IDX)) } });
+        tempItem.singleParams[FIELD_IDX] = dateType;
+        operations.push_back(tempItem);
         return true;
     }
     return false;
@@ -451,6 +446,16 @@ static void PrintPredicateSafe(const shared_ptr<DataShareAbsPredicates>& predica
     NAPI_INFO_LOG("Handle predicate: %{public}s", predicatesStr.c_str());
 }
 
+static void HandleSpecialOrPredicate(vector<OperationItem> &operations, bool operationHasOr)
+{
+    if (!operations.empty() && operations[0].operation != DataShare::OR) {
+        if (operationHasOr) {
+            operations.insert(operations.begin(), { DataShare::BEGIN_WARP });
+            operations.push_back({ DataShare::END_WARP });
+        }
+    }
+}
+
 template <class AsyncContext>
 bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared_ptr<DataShareAbsPredicates> &predicate,
     const FetchOptionType &fetchOptType, vector<OperationItem> operations)
@@ -460,14 +465,16 @@ bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared
     PrintPredicateSafe(predicate);
     auto &items = predicate->GetOperationList();
     bool hasUri = false;
+    bool operationHasOr = false;
     for (auto &item : items) {
+        if (item.operation == DataShare::OR) {
+            operationHasOr = true;
+        }
         if (item.singleParams.empty()) {
             operations.push_back(item);
             continue;
         }
-        if (HandleSpecialDateTypePredicate(item, operations, fetchOptType)) {
-            continue;
-        }
+        CHECK_AND_CONTINUE(!HandleSpecialDateTypePredicate(item, operations, fetchOptType));
         // change uri ->file id
         // get networkid
         // replace networkid with file id
@@ -480,20 +487,15 @@ bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared
             continue;
         }
         if (static_cast<string>(item.GetSingle(FIELD_IDX)) == CONST_MEDIA_DATA_DB_URI) {
-            if (item.operation != DataShare::EQUAL_TO) {
-                NAPI_ERR_LOG("CONST_MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
-                return false;
-            }
+            CHECK_COND_RET(item.operation == DataShare::EQUAL_TO, false,
+                "MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
             HandleSpecialPredicateProcessUri(context, fetchOptType, item, operations, hasUri);
             continue;
         }
-        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == PENDING_STATUS) {
-            // do not query pending files below API11
-            continue;
-        }
-        if (LOCATION_PARAM_MAP.find(static_cast<string>(item.GetSingle(FIELD_IDX))) != LOCATION_PARAM_MAP.end()) {
-            continue;
-        }
+        // do not query pending files below API11
+        CHECK_AND_CONTINUE(static_cast<string>(item.GetSingle(FIELD_IDX)) != PENDING_STATUS);
+        CHECK_AND_CONTINUE(LOCATION_PARAM_MAP.find(static_cast<string>(item.GetSingle(FIELD_IDX))) ==
+            LOCATION_PARAM_MAP.end());
         if (item.operation != DataShare::ORDER_BY_ASC && item.operation != DataShare::ORDER_BY_DESC &&
             static_cast<string>(item.GetSingle(FIELD_IDX)) == PhotoAlbumColumns::ALBUM_LPATH) {
             MakeLpathParamsCaseInsensitive(operations, item);
@@ -505,6 +507,7 @@ bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared
         operations.push_back({ DataShare::NOT_EQUAL_TO, { PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
             to_string(static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER)) } });
     }
+    HandleSpecialOrPredicate(operations, operationHasOr);
     context->predicates = DataSharePredicates(move(operations));
     return true;
 }
