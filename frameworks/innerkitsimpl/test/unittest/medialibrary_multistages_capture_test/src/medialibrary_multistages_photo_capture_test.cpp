@@ -801,11 +801,11 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, file_utils_save_file_001, Test
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, file_utils_save_file_002, TestSize.Level1)
 {
     MEDIA_INFO_LOG("file_utils_save_file_002 Start");
-    const string testFileName = "/data/test/test.jpg";
+    int32_t fileId = -1;
     std::shared_ptr<Media::Picture> picture;
     bool isEdited = false;
     bool isLowQualityPicture = false;
-    auto result = FileUtils::SavePicture(testFileName,
+    auto result = FileUtils::SavePicture(fileId,
         picture, isEdited, isLowQualityPicture);
 
     EXPECT_EQ(result, -1);
