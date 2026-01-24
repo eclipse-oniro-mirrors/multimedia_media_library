@@ -172,6 +172,7 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/dto",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/notify",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/dfx",
   ]
 
   include_backround_task = [
@@ -924,6 +925,9 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/controller/media_camera_character_controller_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/controller/media_camera_character_permission_policy.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/notify/multistages_capture_notify.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_capture_fault.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_capture_times.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_save_camera_photo.cpp",
   ]
 
   media_camera_character_service_vo_source = [
