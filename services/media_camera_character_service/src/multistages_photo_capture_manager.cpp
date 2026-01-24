@@ -140,7 +140,7 @@ void MultiStagesPhotoCaptureManager::SaveLowQualityImageInfo(MediaLibraryCommand
 
 // 低质量入缓存
 void MultiStagesPhotoCaptureManager::DealLowQualityPicture(const std::string &imageId,
-    std::shared_ptr<Media::Picture> picture, bool isEdited)
+    int32_t fileId, std::shared_ptr<Media::Picture> picture, bool isEdited)
 {
     auto pictureManagerThread = PictureManagerThread::GetInstance();
     CHECK_AND_RETURN_LOG(pictureManagerThread != nullptr, "pictureManagerThread not init yet");
@@ -162,7 +162,8 @@ void MultiStagesPhotoCaptureManager::DealLowQualityPicture(const std::string &im
     if (height >= HIGH_PIXEL_SIDE && width >= HIGH_PIXEL_SIDE) {
         pictureManagerThread->SetLast200mImageId(imageId);
     }
-    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), imageIdInPair, expireTime, true, false);
+    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), imageIdInPair, fileId,
+        expireTime, true, false);
     // 存低质量裸picture
     pictureManagerThread->InsertPictureData(imageId, picturePair, LOW_QUALITY_PICTURE);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture photoid: %{public}s",
@@ -186,7 +187,7 @@ void MultiStagesPhotoCaptureManager::SaveLowQualityPicture(const std::string &im
 
 // 高质量编辑图片存20S
 void MultiStagesPhotoCaptureManager::DealHighQualityPicture(const std::string &imageId,
-    std::shared_ptr<Media::Picture> picture, bool isEdited, bool isTakeEffect)
+    int32_t fileId, std::shared_ptr<Media::Picture> picture, bool isEdited, bool isTakeEffect)
 {
     MEDIA_INFO_LOG("photoid: %{public}s", imageId.c_str());
     auto pictureManagerThread = PictureManagerThread::GetInstance();
@@ -199,7 +200,8 @@ void MultiStagesPhotoCaptureManager::DealHighQualityPicture(const std::string &i
     }
     time_t expireTime = currentTime + SAVE_PICTURE_TIMEOUT_SEC;
     std::string imageIdInPair = imageId;
-    sptr<PicturePair> picturePair= new PicturePair(std::move(picture), imageIdInPair, expireTime, true, isEdited);
+    sptr<PicturePair> picturePair= new PicturePair(std::move(picture), imageIdInPair, fileId,
+        expireTime, true, isEdited);
     picturePair->SetTakeEffect(isTakeEffect);
     pictureManagerThread->InsertPictureData(imageId, picturePair, HIGH_QUALITY_PICTURE);
     // delete raw file
