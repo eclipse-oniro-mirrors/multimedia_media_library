@@ -109,7 +109,8 @@ private:
         const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t OnCreateRecordSuccess(
         const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
-    void NotifyPhotoInserted(const std::vector<NativeRdb::ValuesBucket> &insertFiles);
+    void NotifyPhotoInserted(const std::vector<NativeRdb::ValuesBucket> &insertFiles,
+        const std::set<std::string> &refreshAlbums = {});
     void Notify(const std::string &uri, NotifyType type);
     void ConvertPullDataToPhotosDto(const CloudMediaPullDataDto &data, PhotosDto &dto);
     int32_t NotifyUploadErr(const int32_t errorCode, const std::string fileId);

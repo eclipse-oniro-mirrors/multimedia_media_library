@@ -133,6 +133,7 @@ void AlbumsRefreshWorker::TaskFusion(SyncNotifyInfo &info)
     info.taskType = firstTask.taskType;
     info.syncId = firstTask.syncId;
     if (info.forceRefreshType != ForceRefreshType::NONE || info.taskType != TIME_IN_SYNC) {
+        CHECK_AND_EXECUTE(firstTask.taskType != TIME_IN_SYNC_NO_REFRESH, info = firstTask);
         taskQueue_.pop();
         return;
     }

@@ -55,12 +55,15 @@ public:
     EXPORT bool HasRefreshingSystemAlbums();
     EXPORT void RefreshPhotoAlbumsBySyncNotifyInfo(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         SyncNotifyInfo &info);
+    EXPORT int32_t SendNotifyInfoOfAssetAndAlbum(const NotifyType type, const std::set<std::string> &cloudIds,
+        const std::set<std::string> &albumIds);
 
 private:
     AlbumsRefreshManager();
     ~AlbumsRefreshManager();
     AlbumsRefreshManager(const AlbumsRefreshManager &manager) = delete;
     const AlbumsRefreshManager &operator=(const AlbumsRefreshManager &manager) = delete;
+    void AddSystemAlbumIds(std::set<std::string> &albumIds);
 
     std::shared_ptr<AlbumsRefreshWorker> refreshWorker_;
 };
