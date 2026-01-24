@@ -306,7 +306,7 @@ const std::string CREATE_FILES_FDIRTY_TRIGGER =
                         " SELECT cloud_sync_func(); " +
                         " END;";
 
-const std::string CREATE_FILES_MDIRTY_TRIGGER = 
+const std::string CREATE_FILES_MDIRTY_TRIGGER =
                         std::string("CREATE TRIGGER IF NOT EXISTS mdirty_trigger AFTER UPDATE ON ") +
                         CONST_MEDIALIBRARY_TABLE + " FOR EACH ROW WHEN OLD.position <> 1" +
                         " AND new.date_modified = old.date_modified AND old.dirty = " +

@@ -991,7 +991,8 @@ int32_t MediaLibraryManager::ReadPrivateMovingPhoto(const string &uri)
     CHECK_AND_RETURN_RET_LOG(sDataShareHelper_ != nullptr, E_ERR,
         "Failed to read video of moving photo, datashareHelper is nullptr");
     string movingPhotoUri = uri;
-    MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_PRIVATE_LIVE_PHOTO);
+    MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_PRIVATE_LIVE_PHOTO);
     Uri openMovingPhotoUri(movingPhotoUri);
     return sDataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
 }
@@ -1281,7 +1282,8 @@ int32_t MediaLibraryManager::MoveAssets(const std::vector<std::unique_ptr<FileAs
         string displayName = asset->GetStrMember(CONST_MEDIA_DATA_DB_NAME);
         string filePath = asset->GetStrMember(CONST_MEDIA_DATA_DB_FILE_PATH);
         string uri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
-            to_string(asset->GetInt32Member(CONST_MEDIA_DATA_DB_ID)), MediaFileUtils::GetExtraUri(displayName, filePath));
+            to_string(asset->GetInt32Member(CONST_MEDIA_DATA_DB_ID)),
+            MediaFileUtils::GetExtraUri(displayName, filePath));
         reqBody.assets.push_back(uri);
     }
     reqBody.albumId = albumId;

@@ -1272,7 +1272,8 @@ static void BuildCommitModifyUriApi10(FileAssetAsyncContext *context, string &ur
 {
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? CONST_UFM_UPDATE_PHOTO : CONST_PAH_UPDATE_PHOTO;
+        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? CONST_UFM_UPDATE_PHOTO :
+            CONST_PAH_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
         uri = CONST_UFM_UPDATE_AUDIO;
     }
@@ -5488,7 +5489,8 @@ static void GetEditDataString(char* editDataBuffer, string& result)
 
     nlohmann::json editDataJson = nlohmann::json::parse(editDataStr);
     if (editDataJson.contains(CONST_COMPATIBLE_FORMAT) && editDataJson.contains(CONST_FORMAT_VERSION) &&
-        editDataJson.contains(CONST_EDIT_DATA) && editDataJson.contains(CONST_APP_ID) && editDataJson[CONST_EDIT_DATA].is_string()) {
+        editDataJson.contains(CONST_EDIT_DATA) && editDataJson.contains(CONST_APP_ID) &&
+        editDataJson[CONST_EDIT_DATA].is_string()) {
         // edit data saved by media change request
         result = editDataJson.at(CONST_EDIT_DATA);
     } else {
@@ -5514,7 +5516,8 @@ static napi_value GetEditDataObject(napi_env env, char* editDataBuffer)
         editDataJson.contains(CONST_EDIT_DATA) && editDataJson.contains(CONST_APP_ID)) {
         // edit data saved by media change request
         return MediaAssetEditDataNapi::CreateMediaAssetEditData(env,
-            editDataJson.at(CONST_COMPATIBLE_FORMAT), editDataJson.at(CONST_FORMAT_VERSION), editDataJson.at(CONST_EDIT_DATA));
+            editDataJson.at(CONST_COMPATIBLE_FORMAT), editDataJson.at(CONST_FORMAT_VERSION),
+            editDataJson.at(CONST_EDIT_DATA));
     }
 
     // edit data saved by commitEditedAsset

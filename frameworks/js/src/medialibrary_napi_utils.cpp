@@ -2169,8 +2169,8 @@ napi_value MediaLibraryNapiUtils::GetIdArrayFromAssets(napi_env env, vector<napi
 
 void MediaLibraryNapiUtils::FixSpecialDateType(string &selections)
 {
-    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
-        CONST_MEDIA_DATA_DB_DATE_TAKEN };
+    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN };
     for (string dateType : dateTypes) {
         string date2Second = dateType + "_s";
         auto pos = selections.find(dateType);

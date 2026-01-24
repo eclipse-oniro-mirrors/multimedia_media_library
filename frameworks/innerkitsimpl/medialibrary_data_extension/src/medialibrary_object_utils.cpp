@@ -576,7 +576,8 @@ int32_t MediaLibraryObjectUtils::DeleteInfoRecursively(const shared_ptr<FileAsse
         } else {
             queryCmd.GetAbsRdbPredicates()->And()->EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(TRASHED_DIR_CHILD));
         }
-        vector<string> columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_IS_TRASH };
+        vector<string> columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+            CONST_MEDIA_DATA_DB_IS_TRASH };
         auto result = uniStore->Query(queryCmd, columns);
         CHECK_AND_RETURN_RET_LOG(result != nullptr, E_DB_FAIL, "Get child assets failed.");
 
@@ -1614,7 +1615,8 @@ int32_t MediaLibraryObjectUtils::CopyDir(const shared_ptr<FileAsset> &srcDirAsse
     }
     MediaLibraryCommand queryCmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
     queryCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_PARENT_ID, to_string(srcDirAsset->GetId()))->And()->
-        EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, "0")->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_NOFILE));
+        EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, "0")->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+            to_string(MEDIA_TYPE_NOFILE));
     auto resultSet = QueryWithCondition(queryCmd, {});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "query rdbstore failed");
     auto count = 0;

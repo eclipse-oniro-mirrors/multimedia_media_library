@@ -705,7 +705,8 @@ static void CommitModifyNative(const SmartAlbumNapiAsyncContext &albumContext)
     valuesBucket.Put(SMARTALBUM_DB_EXPIRED_TIME, context->objectInfo->GetExpiredTime());
     DataShare::DataSharePredicates predicates;
     predicates.SetWhereClause(SMARTALBUM_DB_ID + " = " + std::to_string(context->objectInfo->GetSmartAlbumId()));
-    Uri commitModifyUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMOPRN + "/" + CONST_MEDIA_SMARTALBUMOPRN_MODIFYALBUM);
+    Uri commitModifyUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMOPRN + "/" +
+        CONST_MEDIA_SMARTALBUMOPRN_MODIFYALBUM);
     context->changedRows = UserFileClient::Update(commitModifyUri, predicates, valuesBucket);
     context->SaveError(context->changedRows);
 }
@@ -1139,7 +1140,8 @@ static void UpdateSelection(SmartAlbumNapiAsyncContext *context)
         context->selectionArgs.emplace_back("0");
         context->selectionArgs.emplace_back(std::to_string(context->objectPtr->GetAlbumId()));
         MediaLibraryNapi::ReplaceSelection(context->selection, context->selectionArgs,
-            CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_RELATIVE_PATH, ReplaceSelectionMode::ADD_DOCS_TO_RELATIVE_PATH);
+            CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+            ReplaceSelectionMode::ADD_DOCS_TO_RELATIVE_PATH);
     }
 }
 

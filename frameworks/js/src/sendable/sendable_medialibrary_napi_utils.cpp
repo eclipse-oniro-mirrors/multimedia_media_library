@@ -196,8 +196,8 @@ static bool HandleSpecialDateTypePredicate(const OperationItem &item,
     vector<OperationItem> &operations, const FetchOptionType &fetchOptType)
 {
     constexpr int32_t FIELD_IDX = 0;
-    vector<string>dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
-        CONST_MEDIA_DATA_DB_DATE_TAKEN };
+    vector<string>dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN };
     string dateType = item.GetSingle(FIELD_IDX);
     OperationItem tempItem = item;
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);

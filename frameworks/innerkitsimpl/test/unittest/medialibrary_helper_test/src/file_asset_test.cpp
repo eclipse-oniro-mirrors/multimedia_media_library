@@ -133,7 +133,8 @@ HWTEST_F(MediaLibraryHelperUnitTest, FileAsset_SetGet_Test_003, TestSize.Level1)
     fileAsset.SetParent(TEST_PARENT);
     EXPECT_EQ(fileAsset.GetParent(), TEST_PARENT);
 
-    const string TEST_ALBUM_URI = MEDIALIBRARY_DATA_URI + CONST_MEDIALIBRARY_TYPE_FILE_URI + "/" + to_string(TEST_PARENT);
+    const string TEST_ALBUM_URI = MEDIALIBRARY_DATA_URI + CONST_MEDIALIBRARY_TYPE_FILE_URI + "/" +
+        to_string(TEST_PARENT);
     fileAsset.SetAlbumUri(TEST_ALBUM_URI);
     EXPECT_EQ(fileAsset.GetAlbumUri(), TEST_ALBUM_URI);
 

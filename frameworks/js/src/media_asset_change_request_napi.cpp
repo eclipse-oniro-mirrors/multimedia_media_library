@@ -1854,7 +1854,8 @@ napi_value MediaAssetChangeRequestNapi::JSAddResourceForPicker(napi_env env, nap
 
     bool isValid = false;
     string displayName = changeRequest->creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
-    changeRequest->creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
+    changeRequest->creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_TITLE,
+        MediaFileUtils::GetTitleFromDisplayName(displayName));
     changeRequest->creationValuesBucket_.Put(CONST_ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
 
     changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE_FOR_PICKER);

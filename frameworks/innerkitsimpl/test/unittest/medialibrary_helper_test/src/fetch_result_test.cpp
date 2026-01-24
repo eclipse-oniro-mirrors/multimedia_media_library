@@ -140,7 +140,8 @@ shared_ptr<DataShare::DataShareResultSet> GetFetchResult()
 {
     vector<string> columns;
     NativeRdb::AbsRdbPredicates dirAbsPred(PhotoColumn::PHOTOS_TABLE);
-    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     shared_ptr<DataShare::ResultSetBridge> result = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(queryResultSet);
     return make_shared<DataShare::DataShareResultSet>(result);
@@ -425,7 +426,8 @@ HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_GetObjectFromRdb_Test_001,
 {
     vector<string> columns;
     NativeRdb::AbsRdbPredicates dirAbsPred(CONST_MEDIALIBRARY_TABLE);
-    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     auto result = make_shared<FetchResult<FileAsset>>();
     auto fileAsset = result->GetObjectFromRdb(queryResultSet, 1);
@@ -478,7 +480,8 @@ HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_GetObjectFromRdb_Test_004,
 {
     vector<string> columns;
     NativeRdb::AbsRdbPredicates dirAbsPred(CONST_MEDIALIBRARY_TABLE);
-    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     auto result = make_shared<FetchResult<FileAsset>>();
     const int32_t TEST_INDEX_LARGE_THAN_ROWS = 100;

@@ -761,7 +761,8 @@ static void GetFileAssetsNative(napi_env env, void *data)
     }
 
     string queryUri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX +
-        (MediaFileUtils::GetNetworkIdFromUri(context->objectPtr->GetAlbumUri())) + CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
+        (MediaFileUtils::GetNetworkIdFromUri(context->objectPtr->GetAlbumUri())) +
+        CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     NAPI_DEBUG_LOG("queryUri is = %{private}s", queryUri.c_str());
     Uri uri(queryUri);
     int errCode = 0;

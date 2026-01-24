@@ -6668,8 +6668,8 @@ int32_t MediaLibraryRdbStore::GetOldVersion()
 
 bool MediaLibraryRdbStore::HasColumnInTable(RdbStore &store, const string &columnName, const string &tableName)
 {
-    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM pragma_table_info('" + tableName + "') WHERE name = '" +
-        columnName + "'";
+    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM pragma_table_info('" +
+        tableName + "') WHERE name = '" + columnName + "'";
     auto resultSet = store.QuerySql(querySql);
     bool cond = (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK);
     CHECK_AND_RETURN_RET_LOG(!cond, false, "Get column count failed");

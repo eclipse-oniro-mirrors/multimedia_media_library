@@ -1682,7 +1682,8 @@ void SetAlbumData(AlbumAsset* albumData, shared_ptr<DataShare::DataShareResultSe
 #endif
 
     // Get album asset count index and value
-    albumData->SetCount(get<int32_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_COUNT, resultSet, TYPE_INT32)));
+    albumData->SetCount(get<int32_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_COUNT,
+        resultSet, TYPE_INT32)));
     MediaFileUri fileUri(MEDIA_TYPE_ALBUM, to_string(albumData->GetAlbumId()), networkId,
         MEDIA_API_VERSION_DEFAULT);
     albumData->SetAlbumUri(fileUri.ToString());

@@ -900,7 +900,8 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_UriPermission_Test_001, Te
 
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(CONST_PERMISSION_FILE_ID, to_string(fileId))->And()->EqualTo(CONST_PERMISSION_BUNDLE_NAME, bundleName);
+    predicates.EqualTo(CONST_PERMISSION_FILE_ID, to_string(fileId))->And()->EqualTo(CONST_PERMISSION_BUNDLE_NAME,
+        bundleName);
     Uri queryUri(CONST_MEDIALIBRARY_BUNDLEPERM_URI);
     int errCode = 0;
     MediaLibraryCommand cmd(queryUri, Media::OperationType::QUERY);

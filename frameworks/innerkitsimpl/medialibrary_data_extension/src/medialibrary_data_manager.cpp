@@ -2973,7 +2973,8 @@ int32_t MediaLibraryDataManager::OpenFile(MediaLibraryCommand &cmd, const string
         oprnObject != OperationObject::REQUEST_PICTURE && oprnObject != OperationObject::PHOTO_REQUEST_PICTURE_BUFFER &&
         oprnObject != OperationObject::KEY_FRAME) {
         string opObject = MediaFileUri::GetPathFirstDentry(const_cast<Uri &>(cmd.GetUri()));
-        if (opObject == CONST_IMAGE_ASSET_TYPE || opObject == CONST_VIDEO_ASSET_TYPE || opObject == CONST_URI_TYPE_PHOTO) {
+        if (opObject == CONST_IMAGE_ASSET_TYPE || opObject == CONST_VIDEO_ASSET_TYPE ||
+            opObject == CONST_URI_TYPE_PHOTO) {
             cmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
             return MediaLibraryAssetOperations::OpenOperation(cmd, mode);
         }

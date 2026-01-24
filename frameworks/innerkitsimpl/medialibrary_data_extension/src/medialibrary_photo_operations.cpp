@@ -3507,8 +3507,8 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckMovingPhotoImage(cachePath), E_INVALID_MOVING_PHOTO,
         "Failed to check image of moving photo");
     string cacheMovingPhotoVideoName;
-    if (GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName) &&
-            !cacheMovingPhotoVideoName.empty()) {
+    if (GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
+        cacheMovingPhotoVideoName) && !cacheMovingPhotoVideoName.empty()) {
         string cacheVideoPath = GetAssetCacheDir() + "/" + cacheMovingPhotoVideoName;
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckMovingPhotoVideo(cacheVideoPath), E_INVALID_MOVING_PHOTO,
             "Failed to check video of moving photo");
@@ -3524,8 +3524,8 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(
 bool MediaLibraryPhotoOperations::CheckCacheCmd(MediaLibraryCommand& cmd, int32_t subtype, const string& displayName)
 {
     string cacheFileName;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_FILE_NAME, cacheFileName), false,
-        "Failed to get cache file name");
+    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_FILE_NAME, cacheFileName),
+        false, "Failed to get cache file name");
     string cacheMimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(cacheFileName));
     string assetMimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(displayName));
 

@@ -204,7 +204,8 @@ int32_t MtpMedialibraryManager::GetHandles(int32_t parentId, vector<int> &outHan
         resultSet = dataShareHelper_->Query(uri, predicates, columns);
     } else {
         Uri uri(CONST_PAH_QUERY_PHOTO);
-        columns.push_back(MediaColumn::MEDIA_ID + " + " + to_string(COMMON_PHOTOS_OFFSET) + " as " + CONST_MEDIA_DATA_DB_ID);
+        columns.push_back(MediaColumn::MEDIA_ID + " + " + to_string(COMMON_PHOTOS_OFFSET) + " as " +
+            CONST_MEDIA_DATA_DB_ID);
         columns.push_back(MediaColumn::MEDIA_SIZE);
         columns.push_back(MediaColumn::MEDIA_NAME);
         columns.push_back(PhotoColumn::PHOTO_OWNER_ALBUM_ID +" as " + PARENT);

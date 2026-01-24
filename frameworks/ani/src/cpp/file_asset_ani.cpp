@@ -670,7 +670,8 @@ static void BuildCommitModifyUriApi10(FileAssetContext *context, string &uri)
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "objectPtr is null");
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? CONST_UFM_UPDATE_PHOTO : CONST_PAH_UPDATE_PHOTO;
+        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? CONST_UFM_UPDATE_PHOTO :
+            CONST_PAH_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
         uri = CONST_UFM_UPDATE_AUDIO;
     }

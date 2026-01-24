@@ -3325,7 +3325,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_convert_live_photo_test_001
     ASSERT_NE(write(imageFd, FILE_TEST_JPG, sizeof(FILE_TEST_JPG)), -1);
     
     string videoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_MOVING_PHOTO_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri videoUri(videoUriStr);
     MediaLibraryCommand videoCmd(videoUri, Media::OperationType::OPEN);
     videoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -3338,7 +3339,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_convert_live_photo_test_001
     closeCmd.SetValueBucket(closeValues);
     MediaLibraryPhotoOperations::Close(closeCmd);
     string livePhotoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(livePhotoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_PRIVATE_LIVE_PHOTO);
+    MediaFileUtils::UriAppendKeyValue(livePhotoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_PRIVATE_LIVE_PHOTO);
     Uri livePhotoUri(livePhotoUriStr);
     MediaLibraryCommand livePhotoCmd(livePhotoUri, Media::OperationType::OPEN);
     livePhotoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -4112,7 +4114,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, cinematic_video_oprn_open_api10_test_0
     MediaFileUri fileUri(MediaType::MEDIA_TYPE_VIDEO, to_string(fileId), "", MEDIA_API_VERSION_V10);
     string fileUriStr = fileUri.ToString();
     string videoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CONST_CREATE_CINEMATIC_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD,
+        CONST_CREATE_CINEMATIC_VIDEO);
     Uri videoUri(videoUriStr);
     MediaLibraryCommand videoCmd(videoUri, Media::OperationType::OPEN);
     videoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -4137,7 +4140,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_query_moving_photo_video_re
     MediaFileUri fileUri(MediaType::MEDIA_TYPE_IMAGE, to_string(fileId), "", MEDIA_API_VERSION_V10);
     string fileUriStr = fileUri.ToString();
     string videoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_MOVING_PHOTO_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri videoUri(videoUriStr);
     MediaLibraryCommand videoCmd(videoUri, Media::OperationType::OPEN);
     videoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
