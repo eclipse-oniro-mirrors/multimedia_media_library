@@ -315,15 +315,31 @@ void ClassifyRestore::EnsureUserCommentAlbum()
     CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK, "EnsureUserCommentAlbum create failed");
 }
 
-int64_t ClassifyRestore::GetShouldEndTime(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
+int64_t ClassifyRestore::GetShouldEndTime(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
+    const int64_t imageCollectionSize)
 {
     CHECK_AND_RETURN_RET_LOG(!taskId_.empty() && MediaLibraryDataManagerUtils::IsNumber(taskId_),
         DEFAULT_FAULT_TIME, "taskId: %{public}s invalid", taskId_.c_str());
     int64_t backupStartTime = std::stoll(taskId_) * 1000;
     int64_t dataSize = static_cast<int64_t>(photoInfoMap.size());
-    MEDIA_INFO_LOG("dataSize: %{public}" PRId64 ", backupStartTime: %{public}" PRId64, dataSize, backupStartTime);
+    MEDIA_INFO_LOG("imageCollectionSize: %{public}" PRId64 ", dataSize: %{public}" PRId64
+        ", backupStartTime: %{public}s", imageCollectionSize, dataSize, std::to_string(backupStartTime).c_str());
     CHECK_AND_RETURN_RET(dataSize > THRESHOLD_DATA_SIZE, backupStartTime + THRESHOLD_DATA_TIME);
     return backupStartTime + (dataSize + SUPPORT_NUMBER) / BASIC_NUMBER * SINGLE_OVER_THRESHOLD_DATA_TIME;
+}
+
+int64_t ClassifyRestore::GetImageCollectionSize()
+{
+    int64_t count = -1;
+    CHECK_AND_RETURN_RET_LOG(galleryRdb_ != nullptr, count, "rdbStore is nullptr");
+    std::string querySql = "SELECT count(1) as count FROM image_collection;";
+    auto resultSet = galleryRdb_->QuerySql(querySql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, count, "resultSet is nullptr");
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        count = GetInt64Val("count", resultSet);
+    }
+    resultSet->Close();
+    return count;
 }
 
 void ClassifyRestore::ProcessImageCollectionInfo(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
@@ -361,8 +377,7 @@ void ClassifyRestore::ProcessLabelInfo(std::unordered_map<std::string, GalleryLa
     std::unordered_map<int32_t, std::vector<int32_t>> subLabelMap;
     for (const auto &pair : galleryLabelInfoMap) {
         GalleryLabelInfo galleryLabelInfo = pair.second;
-        CHECK_AND_CONTINUE_INFO_LOG(photoInfoMap.find(galleryLabelInfo.fileIdOld) != photoInfoMap.end(),
-            "photoInfoMap not find _id: %{public}d", galleryLabelInfo.fileIdOld);
+        CHECK_AND_CONTINUE(photoInfoMap.find(galleryLabelInfo.fileIdOld) != photoInfoMap.end());
         galleryLabelInfo.photoInfo = photoInfoMap.at(galleryLabelInfo.fileIdOld);
         labelFileIds.push_back(galleryLabelInfo.photoInfo.fileIdNew);
         TransferLabelInfo(galleryLabelInfo);
@@ -395,7 +410,8 @@ void ClassifyRestore::RestoreLabel(const std::unordered_map<int32_t, PhotoInfo> 
     MEDIA_INFO_LOG("RestoreLabel start");
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     CHECK_AND_RETURN_LOG(galleryRdb_ != nullptr, "rdbStore is nullptr");
-    int64_t shouldEndTime = GetShouldEndTime(photoInfoMap);
+    imageCollectionSize_ = GetImageCollectionSize();
+    int64_t shouldEndTime = GetShouldEndTime(photoInfoMap, imageCollectionSize_);
     std::string hash = "";
     int rowCount = 0;
     bool firstBatch = true;
@@ -403,9 +419,10 @@ void ClassifyRestore::RestoreLabel(const std::unordered_map<int32_t, PhotoInfo> 
         int64_t partOne = MediaFileUtils::UTCTimeMilliSeconds();
         CHECK_AND_EXECUTE(partOne <= shouldEndTime || !firstBatch, exitCode_ = BEGIN_EXIT_CODE);
         CHECK_AND_EXECUTE(partOne <= shouldEndTime || firstBatch, exitCode_ = MIDDLE_EXIT_CODE);
-        CHECK_AND_RETURN_INFO_LOG(partOne <= shouldEndTime, "current time: %{public}" PRId64
-            ", over shouldEndTime: %{public}" PRId64 ", RestoreLabel cost: %{public}" PRId64,
-            partOne, shouldEndTime, partOne - start);
+        CHECK_AND_RETURN_INFO_LOG(partOne <= shouldEndTime,
+            "current time: %{public}s, over shouldEndTime: %{public}s , RestoreLabel cost: %{public}s",
+            std::to_string(partOne).c_str(), std::to_string(shouldEndTime).c_str(),
+            std::to_string(partOne - start).c_str());
         std::vector<NativeRdb::ValueObject> params = {};
         params.push_back(NativeRdb::ValueObject(hash));
         params.push_back(NativeRdb::ValueObject(std::to_string(PAGE_SIZE)));
@@ -521,7 +538,8 @@ void ClassifyRestore::ReportRestoreTask()
     info.errorInfo =
         "max_id: " + std::to_string(maxIdOfLabel_) +
         ", timeCost: " + std::to_string(restoreTimeCost_) +
-        ", exitCode: " + std::to_string(exitCode_);
+        ", exitCode: " + std::to_string(exitCode_) +
+        ", imageCollectionSize: " + std::to_string(imageCollectionSize_);
     info.successCount = successInsertLabelCnt_;
     info.failedCount = failInsertLabelCnt_;
     info.duplicateCount = duplicateLabelCnt_;
