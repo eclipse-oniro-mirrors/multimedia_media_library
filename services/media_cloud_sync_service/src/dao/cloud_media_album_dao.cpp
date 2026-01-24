@@ -483,7 +483,7 @@ int32_t CloudMediaAlbumDao::QueryConflict(PhotoAlbumDto &record, std::shared_ptr
 
     if (albumName.empty()) {
         MEDIA_ERR_LOG("no album name in record");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     /* query local */
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
@@ -1231,7 +1231,7 @@ bool CloudMediaAlbumDao::GetCoverUriFromCoverCloudId(const string &coverCloudId,
 
 int32_t CloudMediaAlbumDao::GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count)
 {
-    CHECK_AND_RETURN_RET(albumId > 0, E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(albumId > 0, E_INVALID_VALUES);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB, "Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);

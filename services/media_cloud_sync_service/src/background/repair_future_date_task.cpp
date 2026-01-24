@@ -176,7 +176,7 @@ void RepairFutureDateTask::Execute()
     bool terminate = false;
     std::vector<PhotosPo> photos;
     auto ret = GetRepairDateData(currentRecord, photos);
-    CHECK_AND_RETURN_LOG(ret == CloudSync::E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
     CHECK_AND_RETURN_LOG(!photos.empty(), "no future date photo for repair");
 
     do {
@@ -193,7 +193,7 @@ void RepairFutureDateTask::Execute()
 
         photos.clear();
         ret = GetRepairDateData(currentRecord, photos);
-        CHECK_AND_RETURN_LOG(ret == CloudSync::E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
+        CHECK_AND_RETURN_LOG(ret == E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
     } while (!photos.empty());
 
     MEDIA_INFO_LOG("End repair future date, currentRecord:%{public}d", currentRecord);

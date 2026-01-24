@@ -55,7 +55,7 @@ int32_t MediaAssetsDao::CreateNewAsset(std::shared_ptr<AccurateRefresh::AssetAcc
 int32_t MediaAssetsDao::ClearCloudInfo(
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, const int32_t fileId)
 {
-    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVAL_ARG, "ClearCloudInfo invalid fileId.");
+    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "ClearCloudInfo invalid fileId.");
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "ClearCloudInfo Failed to get photoRefresh.");
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -81,7 +81,7 @@ int32_t MediaAssetsDao::ClearCloudInfo(
 int32_t MediaAssetsDao::ResetPositionToCloudOnly(
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, int32_t fileId)
 {
-    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVAL_ARG, "ResetPositionToCloudOnly invalid fileId.");
+    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "ResetPositionToCloudOnly invalid fileId.");
     CHECK_AND_RETURN_RET_LOG(
         photoRefresh != nullptr, E_RDB_STORE_NULL, "ResetPositionToCloudOnly Failed to get photoRefresh.");
 
@@ -105,7 +105,7 @@ int32_t MediaAssetsDao::ResetPositionToCloudOnly(
 
 int32_t MediaAssetsDao::QueryAlbumByAlbumId(const int32_t albumId, std::optional<PhotoAlbumPo> &albumInfo)
 {
-    CHECK_AND_RETURN_RET_LOG(albumId > 0, E_INVAL_ARG, "Invalid albumId, albumId: %{public}d", albumId);
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, E_INVALID_VALUES, "Invalid albumId, albumId: %{public}d", albumId);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
@@ -126,7 +126,7 @@ int32_t MediaAssetsDao::QueryAlbumByAlbumId(const int32_t albumId, std::optional
 
 int32_t MediaAssetsDao::QueryAlbumBylPath(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfo)
 {
-    CHECK_AND_RETURN_RET_LOG(!lPath.empty(), E_INVAL_ARG, "Invalid lPath, lPath: %{public}s", lPath.c_str());
+    CHECK_AND_RETURN_RET_LOG(!lPath.empty(), E_INVALID_VALUES, "Invalid lPath, lPath: %{public}s", lPath.c_str());
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     std::vector<NativeRdb::ValueObject> bindArgs = {lPath};
@@ -195,7 +195,7 @@ int32_t MediaAssetsDao::FindSamePhotoInHiddenAlbum(const PhotosPo &photoInfo, st
     isValid = isValid && photoInfo.displayName.has_value();
     isValid = isValid && photoInfo.size.has_value();
     isValid = isValid && photoInfo.orientation.has_value();
-    CHECK_AND_RETURN_RET_INFO_LOG(isValid, E_INVAL_ARG, "No need to find same photo, not hidden asset.");
+    CHECK_AND_RETURN_RET_INFO_LOG(isValid, E_INVALID_VALUES, "No need to find same photo, not hidden asset.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     std::vector<NativeRdb::ValueObject> bindArgs = {
@@ -225,7 +225,7 @@ int32_t MediaAssetsDao::FindSamePhotoInTargetAlbum(
     isValid = isValid && photoInfo.displayName.has_value();
     isValid = isValid && photoInfo.size.has_value();
     isValid = isValid && photoInfo.orientation.has_value();
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "Invalid args.");
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "Invalid args.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     std::vector<NativeRdb::ValueObject> bindArgs = {
@@ -289,7 +289,7 @@ int32_t MediaAssetsDao::MergeCloudInfoIntoTargetPhoto(const PhotosPo &sourcePhot
 int32_t MediaAssetsDao::DeletePhotoInfo(
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, const int32_t fileId)
 {
-    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVAL_ARG, "DeletePhotoInfo invalid fileId.");
+    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "DeletePhotoInfo invalid fileId.");
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "photoRefresh Failed to get photoRefresh.");
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
@@ -417,7 +417,7 @@ int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(
 
 int32_t MediaAssetsDao::FindAssetsByBurstKey(const std::string &burstKey, std::vector<PhotosPo> &photoInfoList)
 {
-    CHECK_AND_RETURN_RET(!burstKey.empty(), E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(!burstKey.empty(), E_INVALID_VALUES);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);

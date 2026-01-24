@@ -28,7 +28,6 @@ constexpr uint32_t UPLOAD_META_LEN = 6;
 constexpr uint32_t UPLOAD_ALBUM_LEN = 4;
 constexpr uint32_t UPLOAD_META_ERR_LEN = 8;
 constexpr uint32_t UPDATE_DETAILS_LEN = 9;
-constexpr uint32_t CLOUD_SPACE_FULL = 30;
 
 enum SyncStatIndex {
     /* download */

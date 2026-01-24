@@ -31,7 +31,7 @@ std::shared_ptr<IMediaScannerCallback> HighQualityScanFileCallback::Create(const
 int32_t HighQualityScanFileCallback::OnScanFinished(
     const int32_t status, const std::string &uri, const std::string &path)
 {
-    CHECK_AND_RETURN_RET_LOG(this->fileId_ > 0, E_INVAL_ARG, "HighQualityScanFileCallback, image is empty");
+    CHECK_AND_RETURN_RET_LOG(this->fileId_ > 0, E_INVALID_VALUES, "HighQualityScanFileCallback, image is empty");
     return this->multiStagesCaptureDao_.UpdatePhotoDirtyNew(this->fileId_);
 }
 }  // namespace OHOS::Media

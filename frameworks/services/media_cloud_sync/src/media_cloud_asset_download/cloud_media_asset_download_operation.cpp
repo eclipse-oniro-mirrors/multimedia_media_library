@@ -50,9 +50,6 @@ static const std::string TOTAL_COUNT = "COUNT(1)";
 static const std::string TOTAL_SIZE = "SUM(size)";
 static const bool NEED_CLEAN = true;
 static const int32_t EXIT_TASK = 1;
-// CLOUD_E_PATH_NOT_FOUND and CLOUD_E_RDB corresponds to the E_PATH and E_RDB of dfs_error.h
-static const int32_t CLOUD_E_PATH_NOT_FOUND = 28;
-static const int32_t CLOUD_E_RDB = 22;
 static const int32_t SLEEP_FOR_LOCK = 100;
 static const int32_t STATUS_CHANGE_ARG_SIZE = 3;
 static const int32_t INDEX_ZERO = 0;

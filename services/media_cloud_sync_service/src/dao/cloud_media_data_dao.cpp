@@ -236,7 +236,7 @@ void CloudMediaDataDao::InitDirtyTypeStat(std::vector<uint64_t> &dirtyTypeStat)
 int32_t CloudMediaDataDao::GetDirtyTypeStat(std::vector<uint64_t> &dirtyTypeStat, const int32_t dirtyType)
 {
     CHECK_AND_RETURN_RET_LOG(0 <= dirtyType && dirtyType < DIRTY_TYPE_STAT_SIZE,
-        E_INVAL_ARG,
+        E_INVALID_VALUES,
         "dirtyType is invalid, dirtyType: %{public}d",
         dirtyType);
     CHECK_AND_EXECUTE(

@@ -851,7 +851,7 @@ int32_t MediaScannerObj::WalkFileTree(const string &path, int32_t parentId)
 
     while ((ent = readdir(dirPath)) != nullptr) {
         if (*stopFlag_) {
-            err = E_STOP;
+            err = FileManagement::E_STOP;
             break;
         }
 
