@@ -60,9 +60,6 @@ std::string TabOldPhotosRestore::ToString(const std::vector<NativeRdb::ValueObje
 void TabOldPhotosRestoreHelper::SetPlaceHoldersAndBindArgs(const std::vector<FileInfo> &fileInfos)
 {
     for (const auto &fileInfo : fileInfos) {
-        if (!fileInfo.needMove) {
-            continue;
-        }
         AddPlaceHolders();
         AddBindArgs(fileInfo);
     }
