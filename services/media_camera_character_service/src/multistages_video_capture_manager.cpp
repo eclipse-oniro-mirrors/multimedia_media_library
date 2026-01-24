@@ -282,13 +282,13 @@ void MultiStagesVideoCaptureManager::AddVideo(const std::string &videoId,
     }
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
-    string where = MEDIA_DATA_DB_ID + " = ? ";
+    string where = CONST_MEDIA_DATA_DB_ID + " = ? ";
     vector<string> whereArgs { fileId };
     cmd.GetAbsRdbPredicates()->SetWhereClause(where);
     cmd.GetAbsRdbPredicates()->SetWhereArgs(whereArgs);
     NativeRdb::ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_PHOTO_ID, videoId);
-    values.PutInt(MEDIA_DATA_DB_PHOTO_QUALITY, static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
+    values.PutString(CONST_MEDIA_DATA_DB_PHOTO_ID, videoId);
+    values.PutInt(CONST_MEDIA_DATA_DB_PHOTO_QUALITY, static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
     cmd.SetValueBucket(values);
 
     auto result = DatabaseAdapter::Update(cmd);
@@ -351,15 +351,15 @@ void MultiStagesVideoCaptureManager::SyncWithDeferredVideoProcSessionInternal()
     MEDIA_INFO_LOG("SyncWithDeferredVideoProcSessionInternal enter");
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY);
-    string where = MEDIA_DATA_DB_PHOTO_ID + " IS NOT NULL AND " +
-        "((" + MEDIA_DATA_DB_PHOTO_QUALITY + " > 0 AND (" + MEDIA_DATA_DB_MEDIA_TYPE + " = " +
+    string where = string(CONST_MEDIA_DATA_DB_PHOTO_ID) + " IS NOT NULL AND " +
+        "((" + CONST_MEDIA_DATA_DB_PHOTO_QUALITY + " > 0 AND (" + CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " +
         to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) + ") OR (" +
-        MEDIA_DATA_DB_PHOTO_QUALITY + " = 0 AND " + MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS + " IN (" +
+        CONST_MEDIA_DATA_DB_PHOTO_QUALITY + " = 0 AND " + CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS + " IN (" +
         to_string(static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_TO_DELIVER)) + ", " +
         to_string(static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) + "))))";
     cmd.GetAbsRdbPredicates()->SetWhereClause(where);
-    vector<string> columns { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_PHOTO_ID, MEDIA_DATA_DB_FILE_PATH,
-                            MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS };
+    vector<string> columns { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_FILE_PATH,
+                            CONST_MEDIA_DATA_DB_DATE_TRASHED, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS };
 
     auto resultSet = DatabaseAdapter::Query(cmd, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != 0) {
@@ -369,12 +369,12 @@ void MultiStagesVideoCaptureManager::SyncWithDeferredVideoProcSessionInternal()
 
     deferredProcSession_->BeginSynchronize();
     do {
-        std::string videoId = GetStringVal(MEDIA_DATA_DB_PHOTO_ID, resultSet);
-        std::string filePath = GetStringVal(MEDIA_DATA_DB_FILE_PATH, resultSet);
-        bool isMovingPhoto = GetInt32Val(MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet) > 0;
+        std::string videoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+        std::string filePath = GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, resultSet);
+        bool isMovingPhoto = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet) > 0;
         bool isCinematicVideo = QuerySubType(videoId) == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO);
-        bool isTrashed = GetInt64Val(MEDIA_DATA_DB_DATE_TRASHED, resultSet) > 0;
-        int32_t fileId = GetInt32Val(MEDIA_DATA_DB_ID, resultSet);
+        bool isTrashed = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_TRASHED, resultSet) > 0;
+        int32_t fileId = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
         VideoInfo videoInfo = {fileId, isCinematicVideo ? VideoCount::DOUBLE : VideoCount::SINGLE,
             filePath, "", ""};
         GetVideoInfo(videoId, videoInfo);

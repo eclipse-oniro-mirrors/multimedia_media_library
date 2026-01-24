@@ -311,11 +311,11 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_check_table_colu
 int32_t GetAlbumCountByCondition(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &tableName,
     PhotoAlbumSubType albumSubType, const string &albumName = "")
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " +
+    string querySql = "SELECT " + string(CONST_MEDIA_COLUMN_COUNT_1) + " FROM " + tableName + " WHERE " +
         "album_subtype = " + to_string(static_cast<int32_t>(albumSubType));
     querySql += albumName.empty() ? "" : " AND album_name = '" + albumName + "'";
     int32_t result = INVALID_COUNT;
-    QueryInt(rdbStore, querySql, MEDIA_COLUMN_COUNT_1, result);
+    QueryInt(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
 }
 
@@ -337,10 +337,10 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_album_te
 int32_t GetCountByWhereClause(const string &tableName, shared_ptr<NativeRdb::RdbStore> rdbStore,
     const string &whereClause = "")
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
+    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
     querySql += whereClause.empty() ? "" : " WHERE " + whereClause;
     int32_t result = INVALID_COUNT;
-    QueryInt(rdbStore, querySql, MEDIA_COLUMN_COUNT_1, result);
+    QueryInt(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
 }
 
@@ -397,9 +397,9 @@ void RestorePhoto()
 
 int32_t GetMapCountByTable(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &tableName)
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
+    string querySql = "SELECT " + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
     int32_t result = INVALID_COUNT;
-    QueryInt(rdbStore, querySql, MEDIA_COLUMN_COUNT_1, result);
+    QueryInt(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
 }
 

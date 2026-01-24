@@ -81,7 +81,7 @@ void CleanTestTables()
         PhotoColumn::PHOTOS_TABLE,
         AudioColumn::AUDIOS_TABLE,
         AppUriSensitiveColumn::APP_URI_SENSITIVE_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
         ASSET_UNIQUE_NUMBER_TABLE,
         PhotoExtColumn::PHOTOS_EXT_TABLE
     };
@@ -119,9 +119,9 @@ void PrepareUniqueNumberTable()
         return;
     }
 
-    UniqueMemberValuesBucket imageBucket = { IMAGE_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket videoBucket = { VIDEO_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket audioBucket = { AUDIO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket imageBucket = { CONST_IMAGE_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket videoBucket = { CONST_VIDEO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket audioBucket = { CONST_AUDIO_ASSET_TYPE, 1 };
 
     vector<UniqueMemberValuesBucket> uniqueNumberValueBuckets = {
         imageBucket, videoBucket, audioBucket

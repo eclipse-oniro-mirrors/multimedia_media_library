@@ -59,8 +59,8 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialibrary_CreateFileOperati
     ret = MediaLibraryFileOperations::CreateFileOperation(cmd);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
 
-    values.PutString(MEDIA_DATA_DB_NAME, "medialib_CopyAsset_test_001");
-    values.PutString(MEDIA_DATA_DB_NAME, "testCase");
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, "medialib_CopyAsset_test_001");
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, "testCase");
     values.PutInt("media_type", 0);
     cmd.SetValueBucket(values);
     ret = MediaLibraryFileOperations::CreateFileOperation(cmd);
@@ -90,7 +90,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialibrary_ModifyFileOperati
 
     NativeRdb::ValuesBucket values;
     values.PutInt("file_id", -1);
-    values.PutString(MEDIA_DATA_DB_NAME, "medialibrary_ModifyFileOperation_test_001");
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, "medialibrary_ModifyFileOperation_test_001");
     MediaLibraryCommand cmd3(OperationObject::FILESYSTEM_ASSET, OperationType::GETCAPACITY, values);
     cmd3.SetValueBucket(values);
     ret = MediaLibraryFileOperations::ModifyFileOperation(cmd3);
@@ -133,13 +133,13 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialibrary_QueryFileOperatio
 
     MediaLibraryUnitTestUtils::InitUnistore();
 
-    columns = { MEDIA_DATA_DB_THUMBNAIL, MEDIA_DATA_DB_LCD };
+    columns = { CONST_MEDIA_DATA_DB_THUMBNAIL, CONST_MEDIA_DATA_DB_LCD };
     MediaLibraryCommand cmd1(uri, OperationType::QUERY);
-    cmd1.GetAbsRdbPredicates()->BeginWrap()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE))
-        ->Or()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO))->EndWrap()
-        ->And()->EqualTo(MEDIA_DATA_DB_DATE_TRASHED, to_string(0))
-        ->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM))
-        ->OrderByDesc(MEDIA_DATA_DB_DATE_ADDED);
+    cmd1.GetAbsRdbPredicates()->BeginWrap()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE))
+        ->Or()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO))->EndWrap()
+        ->And()->EqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, to_string(0))
+        ->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM))
+        ->OrderByDesc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     resultset = MediaLibraryFileOperations::QueryFileOperation(cmd1, columns);
     EXPECT_EQ((resultset != nullptr), true);
 }
@@ -156,11 +156,11 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialibrary_QueryFavFiles_tes
     MediaLibraryUnitTestUtils::InitUnistore();
 
     MediaLibraryCommand cmd1(uri, OperationType::QUERY);
-    cmd1.GetAbsRdbPredicates()->BeginWrap()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE))
-        ->Or()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO))->EndWrap()
-        ->And()->EqualTo(MEDIA_DATA_DB_DATE_TRASHED, to_string(0))
-        ->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM))
-        ->OrderByDesc(MEDIA_DATA_DB_DATE_ADDED);
+    cmd1.GetAbsRdbPredicates()->BeginWrap()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE))
+        ->Or()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO))->EndWrap()
+        ->And()->EqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, to_string(0))
+        ->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM))
+        ->OrderByDesc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     resultset = MediaLibraryFileOperations::QueryFavFiles(cmd1);
     EXPECT_EQ((resultset != nullptr), true);
 }
@@ -177,11 +177,11 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialibrary_QueryTrashFiles_t
     MediaLibraryUnitTestUtils::InitUnistore();
 
     MediaLibraryCommand cmd1(uri, OperationType::QUERY);
-    cmd1.GetAbsRdbPredicates()->BeginWrap()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE))
-        ->Or()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO))->EndWrap()
-        ->And()->EqualTo(MEDIA_DATA_DB_DATE_TRASHED, to_string(0))
-        ->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM))
-        ->OrderByDesc(MEDIA_DATA_DB_DATE_ADDED);
+    cmd1.GetAbsRdbPredicates()->BeginWrap()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE))
+        ->Or()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_VIDEO))->EndWrap()
+        ->And()->EqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, to_string(0))
+        ->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM))
+        ->OrderByDesc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     resultset = MediaLibraryFileOperations::QueryTrashFiles(cmd1);
     EXPECT_EQ((resultset != nullptr), true);
 }
@@ -198,12 +198,12 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialibrary_GetAlbumCapacityO
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::GETCAPACITY);
     NativeRdb::ValuesBucket value;
     NativeRdb::ValueObject valueObject;
-    value.Put(MEDIA_DATA_DB_IS_FAV, valueObject);
+    value.Put(CONST_MEDIA_DATA_DB_IS_FAV, valueObject);
     cmd.SetValueBucket(value);
     int32_t ret = MediaLibraryFileOperations::GetAlbumCapacityOperation(cmd);
     EXPECT_EQ(ret, E_FAIL);
 
-    value.Put(MEDIA_DATA_DB_IS_TRASH, valueObject);
+    value.Put(CONST_MEDIA_DATA_DB_IS_TRASH, valueObject);
     cmd.SetValueBucket(value);
     ret = MediaLibraryFileOperations::GetAlbumCapacityOperation(cmd);
     EXPECT_EQ(ret, E_FAIL);

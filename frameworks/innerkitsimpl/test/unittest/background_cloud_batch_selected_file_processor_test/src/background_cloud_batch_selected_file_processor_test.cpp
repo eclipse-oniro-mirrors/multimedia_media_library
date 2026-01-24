@@ -64,7 +64,7 @@ void CleanTestTables()
 {
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
-        // MEDIALIBRARY_TABLE,
+        // CONST_MEDIALIBRARY_TABLE,
         // PhotoAlbumColumns::TABLE,
         DownloadResourcesColumn::TABLE,
     };

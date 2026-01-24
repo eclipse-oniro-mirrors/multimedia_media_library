@@ -121,7 +121,7 @@ void CleanTestTables()
 {
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
-        MEDIALIBRARY_TABLE
+        CONST_MEDIALIBRARY_TABLE
     };
     for (auto &dropTable : dropTableList) {
         string dropSql = "DROP TABLE " + dropTable + ";";
@@ -460,39 +460,39 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_enhancement_update_ope
     DataSharePredicates predicates;
     string photoUri = "file://media/Photo/1/IMG_1722329102_000/" + TESTING_DISPLAYNAME;
     predicates.EqualTo(MediaColumn::MEDIA_ID, photoUri);
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "false");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "false");
     Uri addTaskWithoutWaterMarkUri(uriStr);
     MediaLibraryCommand cmd(addTaskWithoutWaterMarkUri);
     cmd.SetDataSharePred(predicates);
     int32_t ret = EnhancementManager::GetInstance().HandleEnhancementUpdateOperation(cmd);
     EXPECT_EQ(ret, -1);
-    uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd2(addTaskUri);
     cmd2.SetDataSharePred(predicates);
     ret = EnhancementManager::GetInstance().HandleEnhancementUpdateOperation(cmd2);
     EXPECT_EQ(ret, -1);
-    uriStr = PAH_CLOUD_ENHANCEMENT_PRIORITIZE;
+    uriStr = CONST_PAH_CLOUD_ENHANCEMENT_PRIORITIZE;
     Uri prioritizeTaskUri(uriStr);
     MediaLibraryCommand cmd3(prioritizeTaskUri);
     cmd3.SetDataSharePred(predicates);
     ret = EnhancementManager::GetInstance().HandleEnhancementUpdateOperation(cmd3);
     EXPECT_EQ(ret, -1);
-    uriStr = PAH_CLOUD_ENHANCEMENT_CANCEL;
+    uriStr = CONST_PAH_CLOUD_ENHANCEMENT_CANCEL;
     Uri cancelTaskUri(uriStr);
     MediaLibraryCommand cmd4(cancelTaskUri);
     cmd4.SetDataSharePred(predicates);
     ret = EnhancementManager::GetInstance().HandleEnhancementUpdateOperation(cmd4);
     EXPECT_EQ(ret, -1);
-    uriStr = PAH_CLOUD_ENHANCEMENT_CANCEL_ALL;
+    uriStr = CONST_PAH_CLOUD_ENHANCEMENT_CANCEL_ALL;
     Uri cancelAllTasksUri(uriStr);
     MediaLibraryCommand cmd5(cancelAllTasksUri);
     cmd5.SetDataSharePred(predicates);
     ret = EnhancementManager::GetInstance().HandleEnhancementUpdateOperation(cmd5);
     EXPECT_EQ(ret, -1);
-    uriStr = PAH_CLOUD_ENHANCEMENT_SYNC;
+    uriStr = CONST_PAH_CLOUD_ENHANCEMENT_SYNC;
     Uri syncTasksUri(uriStr);
     MediaLibraryCommand cmd6(syncTasksUri);
     cmd6.SetDataSharePred(predicates);
@@ -508,14 +508,14 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_enhancement_query_oper
     string photoUri = "file://media/Photo/1/IMG_1722329102_000/" + TESTING_DISPLAYNAME;
     predicates.EqualTo(MediaColumn::MEDIA_ID, photoUri);
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_QUERY;
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_QUERY;
     Uri queryTaskUri(uriStr);
     MediaLibraryCommand cmd1(queryTaskUri);
     cmd1.SetDataSharePred(predicates);
     vector<string> columns;
     shared_ptr<NativeRdb::ResultSet> resultSet1 = instance.HandleEnhancementQueryOperation(cmd1, columns);
     EXPECT_EQ(resultSet1, nullptr);
-    uriStr = PAH_CLOUD_ENHANCEMENT_GET_PAIR;
+    uriStr = CONST_PAH_CLOUD_ENHANCEMENT_GET_PAIR;
     Uri getPairUri(uriStr);
     MediaLibraryCommand cmd2(getPairUri);
     cmd2.SetDataSharePred(predicates);
@@ -558,8 +558,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_add_operation_004, Tes
     predicates.In(MediaColumn::MEDIA_ID, uris);
 
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     cmd.SetDataSharePred(predicates);
@@ -575,8 +575,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_add_operation_005, Tes
 {
     MEDIA_INFO_LOG("manager_handle_add_operation_005 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -596,7 +596,7 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_add_operation_005, Tes
 HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_prioritize_operation_006, TestSize.Level1)
 {
     MEDIA_INFO_LOG("manager_handle_prioritize_operation_006 Start");
-    string uriStr = PAH_CLOUD_ENHANCEMENT_PRIORITIZE;
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_PRIORITIZE;
     Uri prioritizeTaskUri(uriStr);
     MediaLibraryCommand cmd(prioritizeTaskUri);
     EnhancementManager &instance = EnhancementManager::GetInstance();
@@ -625,7 +625,7 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_cancel_operation_007, 
 {
     MEDIA_INFO_LOG("manager_handle_cancel_operation_007 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_CANCEL;
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_CANCEL;
     Uri cancelTaskUri(uriStr);
     MediaLibraryCommand cmd(cancelTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -676,7 +676,7 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_query_operation_010, T
     EnhancementManager &instance = EnhancementManager::GetInstance();
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
     UpdateCEAvailable(fileId, 1);
-    string uriStr = PAH_CLOUD_ENHANCEMENT_QUERY;
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_QUERY;
     Uri queryTaskUri(uriStr);
     MediaLibraryCommand cmd(queryTaskUri);
     DataSharePredicates predicates;
@@ -1181,8 +1181,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_is_add_operation_enabled_001,
 {
     MEDIA_INFO_LOG("manager_is_add_operation_enabled_001 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -1203,8 +1203,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_is_add_operation_enabled_002,
 {
     MEDIA_INFO_LOG("manager_is_add_operation_enabled_002 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -1226,8 +1226,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_is_add_operation_enabled_003,
 {
     MEDIA_INFO_LOG("manager_is_add_operation_enabled_003 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -1250,8 +1250,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_is_add_operation_enabled_004,
 {
     MEDIA_INFO_LOG("manager_is_add_operation_enabled_004 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -1277,8 +1277,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_is_add_operation_enabled_005,
 {
     MEDIA_INFO_LOG("manager_is_add_operation_enabled_005 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -1304,8 +1304,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_is_add_operation_enabled_006,
 {
     MEDIA_INFO_LOG("manager_is_add_operation_enabled_006 Start");
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     int32_t fileId = PrepareHighQualityPhoto(TESTING_PHOTO_ID, TESTING_DISPLAYNAME);
@@ -1353,8 +1353,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_enhancement_update_ope
     DataSharePredicates predicates;
     string photoUri = "file://media/Photo/1/IMG_1722329102_000/" + TESTING_DISPLAYNAME;
     predicates.EqualTo(MediaColumn::MEDIA_ID, photoUri);
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "1");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "1");
     Uri addTaskWithoutWaterMarkUri(uriStr);
     MediaLibraryCommand cmd(addTaskWithoutWaterMarkUri);
     cmd.SetDataSharePred(predicates);
@@ -2159,8 +2159,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, manager_handle_add_operation_006, Tes
     predicates.In(MediaColumn::MEDIA_ID, uris);
 
     EnhancementManager &instance = EnhancementManager::GetInstance();
-    string uriStr = PAH_CLOUD_ENHANCEMENT_ADD;
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, "true");
+    string uriStr = CONST_PAH_CLOUD_ENHANCEMENT_ADD;
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     Uri addTaskUri(uriStr);
     MediaLibraryCommand cmd(addTaskUri);
     cmd.SetDataSharePred(predicates);

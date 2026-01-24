@@ -343,7 +343,7 @@ bool MediaAssetChangeRequestImpl::SaveCameraPhotoExecute()
     MEDIA_INFO_LOG("SaveCameraPhotoExecute begin.");
     bool containsAddResource = find(assetChangeOperations_.begin(), assetChangeOperations_.end(),
         AssetChangeOperation::ADD_RESOURCE) != assetChangeOperations_.end();
-    std::string uriStr = PAH_SAVE_CAMERA_PHOTO;
+    std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     if (containsAddResource && !PermissionUtils::IsSystemApp()) {
         // remove high quality photo
         MEDIA_INFO_LOG("discard high quality photo because add resource by third app");
@@ -362,12 +362,12 @@ bool MediaAssetChangeRequestImpl::SaveCameraPhotoExecute()
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, false, "fileAsset is nullptr");
 
     MediaFileUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    MediaFileUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, to_string(needScan));
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, to_string(needScan));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_FILE_PATH, fileAsset->GetUri());
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileAsset->GetId()));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_SUBTYPE, to_string(fileAsset->GetPhotoSubType()));
-    MediaFileUtils::UriAppendKeyValue(uriStr, IMAGE_FILE_TYPE, to_string(static_cast<int32_t>(imageFileType_)));
-    MediaFileUtils::UriAppendKeyValue(uriStr, CONTAIN_ADD_RESOURCE, to_string(containsAddResource));
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_IMAGE_FILE_TYPE, to_string(static_cast<int32_t>(imageFileType_)));
+    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_CONTAIN_ADD_RESOURCE, to_string(containsAddResource));
     Uri uri(uriStr);
     OHOS::DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::PHOTO_IS_TEMP, false);
@@ -387,7 +387,7 @@ bool MediaAssetChangeRequestImpl::DiscardCameraPhotoExecute()
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     predicates.EqualTo(PhotoColumn::MEDIA_ID, to_string(fileAsset->GetId()));
 
-    string uri = PAH_DISCARD_CAMERA_PHOTO;
+    string uri = CONST_PAH_DISCARD_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uri, PhotoColumn::MEDIA_ID, to_string(fileAsset->GetId()));
     Uri updateAssetUri(uri);
@@ -499,12 +499,12 @@ int32_t MediaAssetChangeRequestImpl::SubmitCache()
     CHECK_AND_RETURN_RET_LOG(!cacheFileName_.empty() || !cacheMovingPhotoVideoName_.empty(), E_FAIL,
         "Failed to check cache file");
 
-    string uri = PAH_SUBMIT_CACHE;
+    string uri = CONST_PAH_SUBMIT_CACHE;
     MediaFileUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri submitCacheUri(uri);
     OHOS::DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset->GetId());
-    valuesBucket.Put(CACHE_FILE_NAME, cacheFileName_);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
     int32_t ret = UserFileClient::Insert(submitCacheUri, valuesBucket);
 
     cacheFileName_.clear();
@@ -564,7 +564,7 @@ bool MediaAssetChangeRequestImpl::WriteCacheByArrayBuffer(const OHOS::UniqueFd& 
 
 void MediaAssetChangeRequestImpl::DiscardHighQualityPhoto()
 {
-    string uriStr = PAH_REMOVE_MSC_TASK;
+    string uriStr = CONST_PAH_REMOVE_MSC_TASK;
     MediaFileUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     OHOS::DataShare::DataSharePredicates predicates;

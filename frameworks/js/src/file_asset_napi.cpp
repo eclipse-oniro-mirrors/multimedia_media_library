@@ -1225,32 +1225,32 @@ void BuildCommitModifyValuesBucket(FileAssetAsyncContext* context, DataShareValu
         valuesBucket.Put(MediaColumn::MEDIA_NAME, fileAsset->GetDisplayName());
     } else {
 #ifdef MEDIALIBRARY_COMPATIBILITY
-        valuesBucket.Put(MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
-        valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH,
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH,
             MediaFileUtils::AddDocsToRelativePath(fileAsset->GetRelativePath()));
         if (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_AUDIO) {
             // IMAGE, VIDEO AND FILES
             if (fileAsset->GetOrientation() >= 0) {
-                valuesBucket.Put(MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
             }
             if ((fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_IMAGE) &&
                 (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_VIDEO)) {
                 // ONLY FILES
-                valuesBucket.Put(MEDIA_DATA_DB_URI, fileAsset->GetUri());
-                valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileAsset->GetUri());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
             }
         }
 #else
-        valuesBucket.Put(MEDIA_DATA_DB_URI, fileAsset->GetUri());
-        valuesBucket.Put(MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileAsset->GetUri());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
 
         if (fileAsset->GetOrientation() >= 0) {
-            valuesBucket.Put(MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
+            valuesBucket.Put(CONST_MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
         }
-        valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, fileAsset->GetRelativePath());
-        valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, fileAsset->GetRelativePath());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
 #endif
-        valuesBucket.Put(MEDIA_DATA_DB_NAME, fileAsset->GetDisplayName());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, fileAsset->GetDisplayName());
     }
 }
 
@@ -1259,11 +1259,11 @@ static void BuildCommitModifyUriApi9(FileAssetAsyncContext *context, string &uri
 {
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = URI_UPDATE_PHOTO;
+        uri = CONST_URI_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = URI_UPDATE_AUDIO;
+        uri = CONST_URI_UPDATE_AUDIO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_FILE) {
-        uri = URI_UPDATE_FILE;
+        uri = CONST_URI_UPDATE_FILE;
     }
 }
 #endif
@@ -1272,9 +1272,9 @@ static void BuildCommitModifyUriApi10(FileAssetAsyncContext *context, string &ur
 {
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? UFM_UPDATE_PHOTO : PAH_UPDATE_PHOTO;
+        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? CONST_UFM_UPDATE_PHOTO : CONST_PAH_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = UFM_UPDATE_AUDIO;
+        uri = CONST_UFM_UPDATE_AUDIO;
     }
 }
 
@@ -1344,7 +1344,7 @@ static void JSCommitModifyExecute(napi_env env, void *data)
 #ifdef MEDIALIBRARY_COMPATIBILITY
             BuildCommitModifyUriApi9(context, uri);
 #else
-            uri = URI_UPDATE_FILE;
+            uri = CONST_URI_UPDATE_FILE;
 #endif
         }
 
@@ -1352,7 +1352,7 @@ static void JSCommitModifyExecute(napi_env env, void *data)
         DataSharePredicates predicates;
         DataShareValuesBucket valuesBucket;
         BuildCommitModifyValuesBucket(context, valuesBucket);
-        predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ? ");
+        predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
         predicates.SetWhereArgs({std::to_string(context->objectPtr->GetId())});
         changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
     }
@@ -1602,17 +1602,17 @@ static void JSCloseExecute(FileAssetAsyncContext *context)
     if (MediaFileUtils::IsFileTablePath(context->objectPtr->GetPath()) ||
         MediaFileUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOC_DIR_VALUES) ||
         MediaFileUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
-        closeUri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN + "/" + MEDIA_FILEOPRN_CLOSEASSET;
+        closeUri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CLOSEASSET;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        closeUri = URI_CLOSE_PHOTO;
+        closeUri = CONST_URI_CLOSE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        closeUri = URI_CLOSE_AUDIO;
+        closeUri = CONST_URI_CLOSE_AUDIO;
     } else {
-        closeUri = URI_CLOSE_FILE;
+        closeUri = CONST_URI_CLOSE_FILE;
     }
 #else
-    string closeUri = URI_CLOSE_FILE;
+    string closeUri = CONST_URI_CLOSE_FILE;
 #endif
     Uri closeAssetUri(closeUri);
     bool isValid = false;
@@ -1628,7 +1628,7 @@ static void JSCloseExecute(FileAssetAsyncContext *context)
     }
     UniqueFd uniFd(mediaFd);
 
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = ERR_INVALID_OUTPUT;
         NAPI_ERR_LOG("getting file uri is invalid");
@@ -1701,7 +1701,7 @@ napi_value GetJSArgsForClose(napi_env env, size_t argc, const napi_value argv[],
         }
     }
     context->valuesBucket.Put(MEDIA_FILEDESCRIPTOR, fd);
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
     // Return true napi_value if params are successfully obtained
     napi_get_boolean(env, true, &result);
     return result;
@@ -2149,47 +2149,47 @@ napi_value FileAssetNapi::JSGetThumbnail(napi_env env, napi_callback_info info)
 const map<int32_t, struct AnalysisSourceInfo>& GetAnalysisInfoMap()
 {
     static const map<int32_t, struct AnalysisSourceInfo> ANALYSIS_SOURCE_INFO_MAP = {
-        { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
-        { ANALYSIS_LABEL, { LABEL, PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
+        { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, CONST_PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
+        { ANALYSIS_LABEL, { LABEL, CONST_PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
             SALIENCY_SUB_PROB } } },
-        { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
+        { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, CONST_PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
             SUB_CATEGORY, SUB_CONFIDENCE_PROB, SUB_LABEL, SUB_LABEL_PROB, SUB_LABEL_TYPE, TRACKS, VIDEO_PART_FEATURE,
             FILTER_TAG} } },
-        { ANALYSIS_OCR, { OCR, PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
-        { ANALYSIS_FACE, { FACE, PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT,
+        { ANALYSIS_OCR, { OCR, CONST_PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
+        { ANALYSIS_FACE, { FACE, CONST_PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT,
             LANDMARKS, PITCH, YAW, ROLL, PROB, TOTAL_FACES, FEATURES, FACE_OCCLUSION,
             BEAUTY_BOUNDER_X, BEAUTY_BOUNDER_Y,
             BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, FACE_AESTHETICS_SCORE, JOINT_BEAUTY_BOUNDER_X,
             JOINT_BEAUTY_BOUNDER_Y, JOINT_BEAUTY_BOUNDER_WIDTH, JOINT_BEAUTY_BOUNDER_HEIGHT} } },
-        { ANALYSIS_OBJECT, { OBJECT, PAH_QUERY_ANA_OBJECT, { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
+        { ANALYSIS_OBJECT, { OBJECT, CONST_PAH_QUERY_ANA_OBJECT, { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
             OBJECT_SCALE_WIDTH, OBJECT_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
+        { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, CONST_PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
             RECOMMENDATION_RESOLUTION, RECOMMENDATION_SCALE_X, RECOMMENDATION_SCALE_Y, RECOMMENDATION_SCALE_WIDTH,
             RECOMMENDATION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_SEGMENTATION, { SEGMENTATION, PAH_QUERY_ANA_SEGMENTATION, { SEGMENTATION_AREA, SEGMENTATION_NAME,
+        { ANALYSIS_SEGMENTATION, { SEGMENTATION, CONST_PAH_QUERY_ANA_SEGMENTATION, { SEGMENTATION_AREA, SEGMENTATION_NAME,
             PROB } } },
-        { ANALYSIS_COMPOSITION, { COMPOSITION, PAH_QUERY_ANA_COMPOSITION, { COMPOSITION_ID, COMPOSITION_RESOLUTION,
+        { ANALYSIS_COMPOSITION, { COMPOSITION, CONST_PAH_QUERY_ANA_COMPOSITION, { COMPOSITION_ID, COMPOSITION_RESOLUTION,
             CLOCK_STYLE, CLOCK_LOCATION_X, CLOCK_LOCATION_Y, CLOCK_COLOUR, COMPOSITION_SCALE_X, COMPOSITION_SCALE_Y,
             COMPOSITION_SCALE_WIDTH, COMPOSITION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_SALIENCY, { SALIENCY, PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
-        { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE +
+        { ANALYSIS_SALIENCY, { SALIENCY, CONST_PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
+        { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, CONST_PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE +
             "." + LATITUDE,
             PhotoColumn::PHOTOS_TABLE + "." + LONGITUDE, LANGUAGE, COUNTRY, ADMIN_AREA, SUB_ADMIN_AREA, LOCALITY,
             SUB_LOCALITY, THOROUGHFARE, SUB_THOROUGHFARE, FEATURE_NAME, CITY_NAME, ADDRESS_DESCRIPTION, LOCATION_TYPE,
             AOI, POI, FIRST_AOI, FIRST_POI, LOCATION_VERSION, FIRST_AOI_CATEGORY, FIRST_POI_CATEGORY} } },
-        { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, PAH_QUERY_ANA_FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
+        { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, CONST_PAH_QUERY_ANA_FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
             USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL, TAG_ORDER,
             IS_ME, COVER_URI,
             COUNT, PORTRAIT_DATE_MODIFY, ALBUM_TYPE, IS_REMOVED } } },
-        { ANALYSIS_HEAD_POSITION, { HEAD, PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
+        { ANALYSIS_HEAD_POSITION, { HEAD, CONST_PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
             HEAD_SCALE_WIDTH, HEAD_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_BONE_POSE, { POSE, PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
+        { ANALYSIS_BONE_POSE, { POSE, CONST_PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
             POSE_SCALE_WIDTH, POSE_SCALE_HEIGHT, PROB, POSE_TYPE, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_MULTI_CROP, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { MOVEMENT_CROP, MOVEMENT_VERSION } } },
-        { ANALYSIS_PET_FACE, { PET_STATUS, PAH_QUERY_ANA_PET, { PET_ID, PET_TAG_ID, PET_TOTAL_FACES, PET_LABEL,
+        { ANALYSIS_MULTI_CROP, { RECOMMENDATION, CONST_PAH_QUERY_ANA_RECOMMENDATION, { MOVEMENT_CROP, MOVEMENT_VERSION } } },
+        { ANALYSIS_PET_FACE, { PET_STATUS, CONST_PAH_QUERY_ANA_PET, { PET_ID, PET_TAG_ID, PET_TOTAL_FACES, PET_LABEL,
             FEATURES, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT, BEAUTY_BOUNDER_X, BEAUTY_BOUNDER_Y,
             BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, DATE_MODIFIED} } },
-        { ANALYSIS_PET_TAG, { PET_TAG, PAH_QUERY_ANA_PET_TAG, { VISION_PET_TAG_TABLE + "." + TAG_ID, PET_LABEL,
+        { ANALYSIS_PET_TAG, { PET_TAG, CONST_PAH_QUERY_ANA_PET_TAG, { VISION_PET_TAG_TABLE + "." + TAG_ID, PET_LABEL,
             CENTER_FEATURES, COUNT } } },
     };
     return ANALYSIS_SOURCE_INFO_MAP;
@@ -2244,7 +2244,7 @@ static std::shared_ptr<DataShare::DataShareResultSet> CallQueryAnalysisData(
     int32_t errCode = 0;
     DataShare::DataSharePredicates predicates;
     if (analysisTotal) {
-        Uri uriTotal(PAH_QUERY_ANA_TOTAL);
+        Uri uriTotal(CONST_PAH_QUERY_ANA_TOTAL);
         std::vector<std::string> fetchColumn = { analysisInfo.fieldStr };
         predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(context->objectInfo->GetFileId()));
         return UserFileClient::Query(uriTotal, predicates, fetchColumn, errCode, userId);
@@ -2364,9 +2364,9 @@ static bool GetIsDirectoryiteNative(napi_env env, const FileAssetAsyncContext &f
 #else
     vector<string> selectionArgs = { to_string(context->objectPtr->GetId()) };
 #endif
-    vector<string> columns = { MEDIA_DATA_DB_MEDIA_TYPE };
+    vector<string> columns = { CONST_MEDIA_DATA_DB_MEDIA_TYPE };
     DataSharePredicates predicates;
-    predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ?");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_ID) + " = ?");
     predicates.SetWhereArgs(selectionArgs);
     string queryUri = MEDIALIBRARY_DATA_URI;
     Uri uri(queryUri);
@@ -2377,7 +2377,7 @@ static bool GetIsDirectoryiteNative(napi_env env, const FileAssetAsyncContext &f
         return false;
     }
     int32_t index = 0;
-    if (resultSet->GetColumnIndex(MEDIA_DATA_DB_MEDIA_TYPE, index) != NativeRdb::E_OK) {
+    if (resultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_MEDIA_TYPE, index) != NativeRdb::E_OK) {
         NAPI_ERR_LOG("Query Directory failed");
         return false;
     }
@@ -2547,16 +2547,16 @@ static void FavoriteByUpdate(FileAssetAsyncContext *context)
     string uriString;
     if ((context->objectPtr->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE) ||
         (context->objectPtr->GetMediaType() == MediaType::MEDIA_TYPE_VIDEO)) {
-        uriString = URI_UPDATE_PHOTO;
+        uriString = CONST_URI_UPDATE_PHOTO;
     } else {
-        uriString = URI_UPDATE_AUDIO;
+        uriString = CONST_URI_UPDATE_AUDIO;
     }
-    valuesBucket.Put(MEDIA_DATA_DB_IS_FAV, (context->isFavorite ? IS_FAV : NOT_FAV));
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_IS_FAV, (context->isFavorite ? IS_FAV : NOT_FAV));
     NAPI_INFO_LOG("Update asset %{public}d favorite to %{public}d", context->objectPtr->GetId(),
         context->isFavorite ? IS_FAV : NOT_FAV);
     DataSharePredicates predicates;
     int32_t fileId = context->objectPtr->GetId();
-    predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ? ");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
     predicates.SetWhereArgs({ to_string(fileId) });
     Uri uri(uriString);
     context->changedRows = UserFileClient::Update(uri, predicates, valuesBucket);
@@ -2566,8 +2566,9 @@ static void FavoriteByUpdate(FileAssetAsyncContext *context)
 static void FavoriteByInsert(FileAssetAsyncContext *context)
 {
     DataShareValuesBucket valuesBucket;
-    string uriString = MEDIALIBRARY_DATA_URI + "/" + MEDIA_SMARTALBUMMAPOPRN + "/";
-    uriString += context->isFavorite ? MEDIA_SMARTALBUMMAPOPRN_ADDSMARTALBUM : MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM;
+    string uriString = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMMAPOPRN + "/";
+    uriString += context->isFavorite ? CONST_MEDIA_SMARTALBUMMAPOPRN_ADDSMARTALBUM :
+                                       CONST_MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM;
     valuesBucket.Put(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     valuesBucket.Put(SMARTALBUMMAP_DB_CHILD_ASSET_ID, context->objectPtr->GetId());
     Uri uri(uriString);
@@ -2710,15 +2711,15 @@ static void TrashByUpdate(FileAssetAsyncContext *context)
     string uriString;
     if ((context->objectPtr->GetMediaType() == MediaType::MEDIA_TYPE_IMAGE) ||
         (context->objectPtr->GetMediaType() == MediaType::MEDIA_TYPE_VIDEO)) {
-        uriString = URI_UPDATE_PHOTO;
+        uriString = CONST_URI_UPDATE_PHOTO;
     } else {
-        uriString = URI_UPDATE_AUDIO;
+        uriString = CONST_URI_UPDATE_AUDIO;
     }
-    valuesBucket.Put(MEDIA_DATA_DB_DATE_TRASHED,
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_DATE_TRASHED,
         (context->isTrash ? MediaFileUtils::UTCTimeMilliSeconds() : NOT_TRASH));
     DataSharePredicates predicates;
     int32_t fileId = context->objectPtr->GetId();
-    predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ? ");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
     predicates.SetWhereArgs({ to_string(fileId) });
     Uri uri(uriString);
     context->changedRows = UserFileClient::Update(uri, predicates, valuesBucket);
@@ -2727,8 +2728,9 @@ static void TrashByUpdate(FileAssetAsyncContext *context)
 static void TrashByInsert(FileAssetAsyncContext *context)
 {
     DataShareValuesBucket valuesBucket;
-    string uriString = MEDIALIBRARY_DATA_URI + "/" + MEDIA_SMARTALBUMMAPOPRN + "/";
-    uriString += context->isTrash ? MEDIA_SMARTALBUMMAPOPRN_ADDSMARTALBUM : MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM;
+    string uriString = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMMAPOPRN + "/";
+    uriString += context->isTrash ? CONST_MEDIA_SMARTALBUMMAPOPRN_ADDSMARTALBUM :
+                                    CONST_MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM;
     valuesBucket.Put(SMARTALBUMMAP_DB_ALBUM_ID, TRASH_ALBUM_ID_VALUES);
     valuesBucket.Put(SMARTALBUMMAP_DB_CHILD_ASSET_ID, context->objectPtr->GetId());
     Uri uri(uriString);
@@ -3071,8 +3073,8 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
         PhotoColumn::PHOTO_CLOUD_ID,
         PENDING_STATUS,
-        MEDIA_DATA_DB_DATE_TRASHED_MS,
-        MEDIA_SUM_SIZE,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
+        CONST_MEDIA_SUM_SIZE,
         PhotoColumn::PHOTO_EXIF_ROTATE,
         PhotoColumn::PHOTO_STORAGE_PATH,
         PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
@@ -3161,7 +3163,7 @@ static bool GetDateTakenFromResultSet(const shared_ptr<DataShare::DataShareResul
 static void UpdateDetailTimeByDateTaken(napi_env env, const shared_ptr<FileAsset> &fileAssetPtr,
     const string &detailTime, int64_t &dateTaken)
 {
-    string uri = PAH_UPDATE_PHOTO;
+    string uri = CONST_PAH_UPDATE_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(uri);
     DataSharePredicates predicates;
@@ -3187,7 +3189,7 @@ napi_value FileAssetNapi::HandleGettingDetailTimeKey(napi_env env, const shared_
         napi_create_string_utf8(env, get<string>(detailTimeValue).c_str(), NAPI_AUTO_LENGTH, &jsResult);
     } else if (PHOTO_BUNDLE_NAME != UserFileClient::GetBundleName()) {
         string fileId = MediaFileUtils::GetIdFromUri(fileAssetPtr->GetUri());
-        string queryUriStr = PAH_QUERY_PHOTO;
+        string queryUriStr = CONST_PAH_QUERY_PHOTO;
         MediaLibraryNapiUtils::UriAppendKeyValue(queryUriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri uri(queryUriStr);
         DataShare::DataSharePredicates predicates;
@@ -3232,8 +3234,8 @@ napi_value FileAssetNapi::HandleDateTransitionKey(napi_env env, const string &ke
 
 int64_t FileAssetNapi::GetCompatDate(const string inputKey, const int64_t date)
 {
-    if (inputKey == MEDIA_DATA_DB_DATE_ADDED || inputKey == MEDIA_DATA_DB_DATE_MODIFIED ||
-        inputKey == MEDIA_DATA_DB_DATE_TRASHED || inputKey == MEDIA_DATA_DB_DATE_TAKEN) {
+    if (inputKey == CONST_MEDIA_DATA_DB_DATE_ADDED || inputKey == CONST_MEDIA_DATA_DB_DATE_MODIFIED ||
+        inputKey == CONST_MEDIA_DATA_DB_DATE_TRASHED || inputKey == CONST_MEDIA_DATA_DB_DATE_TAKEN) {
             return date / MSEC_TO_SEC;
         }
     return date;
@@ -3397,9 +3399,9 @@ static void UserFileMgrFavoriteExecute(napi_env env, void *data)
     string uri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = UFM_UPDATE_PHOTO;
+        uri = CONST_UFM_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = UFM_UPDATE_AUDIO;
+        uri = CONST_UFM_UPDATE_AUDIO;
     }
 
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
@@ -3478,7 +3480,7 @@ static napi_value ParseArgsUserFileMgrOpen(napi_env env, napi_callback_info info
         JS_ERR_PARAMETER_INVALID);
     auto fileUri = context->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
 
     if (isReadOnly) {
         context->valuesBucket.Put(MEDIA_FILEMODE, MEDIA_FILEMODE_READONLY);
@@ -3511,7 +3513,7 @@ static void UserFileMgrOpenExecute(napi_env env, void *data)
         context->SaveError(-EINVAL);
         return;
     }
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->SaveError(-EINVAL);
         return ;
@@ -3632,7 +3634,7 @@ static napi_value ParseArgsUserFileMgrClose(napi_env env, napi_callback_info inf
     size_t maxArgs = ARGS_TWO;
     CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
         JS_ERR_PARAMETER_INVALID);
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
 
     int32_t fd = 0;
     CHECK_COND(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd), JS_ERR_PARAMETER_INVALID);
@@ -3661,9 +3663,9 @@ static void UserFileMgrCloseExecute(napi_env env, void *data)
     string closeUri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        closeUri = UFM_CLOSE_PHOTO;
+        closeUri = CONST_UFM_CLOSE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        closeUri = UFM_CLOSE_AUDIO;
+        closeUri = CONST_UFM_CLOSE_AUDIO;
     } else {
         context->SaveError(-EINVAL);
         return;
@@ -3739,7 +3741,7 @@ static void UserFileMgrSetHiddenExecute(napi_env env, void *data)
         return;
     }
 
-    string uri = UFM_HIDE_PHOTO;
+    string uri = CONST_UFM_HIDE_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(uri);
     DataSharePredicates predicates;
@@ -3805,9 +3807,9 @@ static void UserFileMgrSetPendingExecute(napi_env env, void *data)
     string uri = MEDIALIBRARY_DATA_URI + "/";
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri += UFM_PHOTO + "/" + OPRN_PENDING;
+        uri += string(CONST_UFM_PHOTO) + "/" + CONST_OPRN_PENDING;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri += UFM_AUDIO + "/" + OPRN_PENDING;
+        uri += string(CONST_UFM_AUDIO) + "/" + CONST_OPRN_PENDING;
     } else {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
@@ -3964,7 +3966,7 @@ static void UserFileMgrSetUserCommentExecute(napi_env env, void *data)
     tracer.Start("UserFileMgrSetUserCommentExecute");
 
     auto *context = static_cast<FileAssetAsyncContext *>(data);
-    string uri = UFM_SET_USER_COMMENT;
+    string uri = CONST_UFM_SET_USER_COMMENT;
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri editUserCommentUri(uri);
     DataSharePredicates predicates;
@@ -4023,7 +4025,7 @@ static napi_value ParseArgsPhotoAccessHelperOpen(napi_env env, napi_callback_inf
         JS_ERR_PARAMETER_INVALID);
     auto fileUri = context->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
 
     if (isReadOnly) {
         context->valuesBucket.Put(MEDIA_FILEMODE, MEDIA_FILEMODE_READONLY);
@@ -4057,7 +4059,7 @@ static void PhotoAccessHelperOpenExecute(napi_env env, void *data)
         context->SaveError(-EINVAL);
         return;
     }
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->SaveError(-EINVAL);
         return ;
@@ -4134,7 +4136,7 @@ static napi_value ParseArgsPhotoAccessHelperClose(napi_env env, napi_callback_in
     size_t maxArgs = ARGS_TWO;
     CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
         JS_ERR_PARAMETER_INVALID);
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectInfo->GetFileUri());
 
     int32_t fd = 0;
     CHECK_COND(env, MediaLibraryNapiUtils::GetInt32Arg(env, context->argv[PARAM0], fd), JS_ERR_PARAMETER_INVALID);
@@ -4163,7 +4165,7 @@ static void PhotoAccessHelperCloseExecute(napi_env env, void *data)
     string closeUri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        closeUri = PAH_CLOSE_PHOTO;
+        closeUri = CONST_PAH_CLOSE_PHOTO;
     } else {
         context->SaveError(-EINVAL);
         return;
@@ -4231,7 +4233,7 @@ static shared_ptr<FileAsset> getFileAsset(const std::string fileAssetId, const i
     vector<string> columns = { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_FILE_PATH,
         MediaColumn::MEDIA_TITLE, MediaColumn::MEDIA_TYPE };
     int32_t errCode = 0;
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     auto resultSet = UserFileClient::Query(uri, predicates, columns, errCode, userId);
     if (resultSet == nullptr) {
         NAPI_INFO_LOG("Failed to get file asset, err: %{public}d", errCode);
@@ -4577,7 +4579,7 @@ static void PhotoAccessHelperFavoriteExecute(napi_env env, void *data)
     string uri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = PAH_UPDATE_PHOTO;
+        uri = CONST_PAH_UPDATE_PHOTO;
     } else {
         context->SaveError(-EINVAL);
         return;
@@ -4827,7 +4829,7 @@ static void PhotoAccessHelperSetHiddenExecute(napi_env env, void *data)
     if (context->businessCode != 0) {
         changedRows = CallModifyHidden(context);
     } else {
-        string uri = PAH_HIDE_PHOTOS;
+        string uri = CONST_PAH_HIDE_PHOTOS;
         MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri updateAssetUri(uri);
         DataSharePredicates predicates;
@@ -4921,7 +4923,7 @@ static void PhotoAccessHelperSetPendingExecute(napi_env env, void *data)
     string uri = MEDIALIBRARY_DATA_URI + "/";
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri += PAH_PHOTO + "/" + OPRN_PENDING;
+        uri += PAH_PHOTO + "/" + CONST_OPRN_PENDING;
     } else {
         context->SaveError(-EINVAL);
         return;
@@ -5079,7 +5081,7 @@ static void PhotoAccessHelperSetUserCommentExecute(napi_env env, void *data)
     if (context->businessCode != 0) {
         changedRows = CallModifyUserComment(context);
     } else {
-        string uri = PAH_EDIT_USER_COMMENT_PHOTO;
+        string uri = CONST_PAH_EDIT_USER_COMMENT_PHOTO;
         MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri editUserCommentUri(uri);
         DataSharePredicates predicates;
@@ -5224,7 +5226,7 @@ static void PhotoAccessHelperIsEditedExecute(napi_env env, void *data)
     auto *context = static_cast<FileAssetAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     int32_t fileId = context->objectPtr->GetId();
-    string queryUriStr = PAH_QUERY_PHOTO;
+    string queryUriStr = CONST_PAH_QUERY_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(queryUriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(queryUriStr);
     DataShare::DataSharePredicates predicates;
@@ -5408,12 +5410,12 @@ static void PhotoAccessHelperRequestEditDataExecute(napi_env env, void *data)
         return;
     }
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, EDIT_DATA_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_EDIT_DATA_REQUEST);
     Uri uri(fileUri);
     UniqueFd uniqueFd(UserFileClient::OpenFile(uri, "r"));
     if (uniqueFd.Get() <= 0) {
@@ -5447,12 +5449,12 @@ static void PhotoAccessHelperGetEditDataExecute(napi_env env, void *data)
         return;
     }
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, EDIT_DATA_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_EDIT_DATA_REQUEST);
     Uri uri(fileUri);
     UniqueFd uniqueFd(UserFileClient::OpenFile(uri, "r"));
     if (uniqueFd.Get() <= 0) {
@@ -5482,10 +5484,10 @@ static void GetEditDataString(char* editDataBuffer, string& result)
     }
 
     nlohmann::json editDataJson = nlohmann::json::parse(editDataStr);
-    if (editDataJson.contains(COMPATIBLE_FORMAT) && editDataJson.contains(FORMAT_VERSION) &&
-        editDataJson.contains(EDIT_DATA) && editDataJson.contains(APP_ID) && editDataJson[EDIT_DATA].is_string()) {
+    if (editDataJson.contains(CONST_COMPATIBLE_FORMAT) && editDataJson.contains(CONST_FORMAT_VERSION) &&
+        editDataJson.contains(CONST_EDIT_DATA) && editDataJson.contains(CONST_APP_ID) && editDataJson[CONST_EDIT_DATA].is_string()) {
         // edit data saved by media change request
-        result = editDataJson.at(EDIT_DATA);
+        result = editDataJson.at(CONST_EDIT_DATA);
     } else {
         // edit data saved by commitEditedAsset
         result = editDataStr;
@@ -5505,11 +5507,11 @@ static napi_value GetEditDataObject(napi_env env, char* editDataBuffer)
     }
 
     nlohmann::json editDataJson = nlohmann::json::parse(editDataStr);
-    if (editDataJson.contains(COMPATIBLE_FORMAT) && editDataJson.contains(FORMAT_VERSION) &&
-        editDataJson.contains(EDIT_DATA) && editDataJson.contains(APP_ID)) {
+    if (editDataJson.contains(CONST_COMPATIBLE_FORMAT) && editDataJson.contains(CONST_FORMAT_VERSION) &&
+        editDataJson.contains(CONST_EDIT_DATA) && editDataJson.contains(CONST_APP_ID)) {
         // edit data saved by media change request
         return MediaAssetEditDataNapi::CreateMediaAssetEditData(env,
-            editDataJson.at(COMPATIBLE_FORMAT), editDataJson.at(FORMAT_VERSION), editDataJson.at(EDIT_DATA));
+            editDataJson.at(CONST_COMPATIBLE_FORMAT), editDataJson.at(CONST_FORMAT_VERSION), editDataJson.at(CONST_EDIT_DATA));
     }
 
     // edit data saved by commitEditedAsset
@@ -5592,7 +5594,7 @@ napi_value FileAssetNapi::PhotoAccessHelperRequestEditData(napi_env env, napi_ca
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
     auto fileUri = asyncContext->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    asyncContext->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    asyncContext->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperRequestEditData",
         PhotoAccessHelperRequestEditDataExecute, PhotoAccessHelperRequestEditDataComplete);
 }
@@ -5616,7 +5618,7 @@ napi_value FileAssetNapi::PhotoAccessHelperGetEditData(napi_env env, napi_callba
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is null");
     auto fileUri = asyncContext->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    asyncContext->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    asyncContext->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperGetEditData",
         PhotoAccessHelperGetEditDataExecute, PhotoAccessHelperGetEditDataComplete);
 }
@@ -5628,12 +5630,12 @@ static void PhotoAccessHelperRequestSourceExecute(napi_env env, void *data)
     auto *context = static_cast<FileAssetAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     Uri uri(fileUri);
     int32_t retVal = UserFileClient::OpenFile(uri, "r");
     if (retVal <= 0) {
@@ -5693,7 +5695,7 @@ napi_value FileAssetNapi::PhotoAccessHelperRequestSource(napi_env env, napi_call
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
     auto fileUri = asyncContext->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    asyncContext->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    asyncContext->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperRequestSource",
         PhotoAccessHelperRequestSourceExecute, PhotoAccessHelperRequestSourceComplete);
 }
@@ -5754,12 +5756,12 @@ static void PhotoAccessHelperCommitEditExecute(napi_env env, void *data)
     CHECK_IF_EQUAL(uriFd.Get() > 0, "Can not open fileUri");
 
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, COMMIT_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_COMMIT_REQUEST);
     Uri uri(fileUri);
     int32_t realErr = 0;
     UniqueFd fd(UserFileClient::OpenFileWithErrCode(uri, "rw", realErr));
@@ -5784,7 +5786,7 @@ static void PhotoAccessHelperCommitEditExecute(napi_env env, void *data)
             return;
         }
         NAPI_INFO_LOG("commit edit asset copy file finished, fileUri:%{public}s", fileUri.c_str());
-        string editData = context->valuesBucket.Get(EDIT_DATA, isValid);
+        string editData = context->valuesBucket.Get(CONST_EDIT_DATA, isValid);
         int32_t fileId = context->valuesBucket.Get(MediaColumn::MEDIA_ID, isValid);
         if (!isValid) {
             context->error = OHOS_INVALID_PARAM_CODE;
@@ -5844,8 +5846,8 @@ napi_value FileAssetNapi::PhotoAccessHelperCommitEditedAsset(napi_env env, napi_
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
     auto fileUri = asyncContext->objectInfo->GetFileUri();
     MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    asyncContext->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
-    asyncContext->valuesBucket.Put(EDIT_DATA, editData);
+    asyncContext->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
+    asyncContext->valuesBucket.Put(CONST_EDIT_DATA, editData);
     asyncContext->valuesBucket.Put(MediaColumn::MEDIA_ID, asyncContext->objectPtr->GetId());
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperCommitEditedAsset",
         PhotoAccessHelperCommitEditExecute, PhotoAccessHelperCommitEditComplete);
@@ -5866,7 +5868,7 @@ static void PhotoAccessHelperRevertToOriginalExecute(napi_env env, void *data)
     }
     RevertToOriginalReqBody reqBody;
     reqBody.fileId = fileId;
-    reqBody.fileUri = PAH_REVERT_EDIT_PHOTOS;
+    reqBody.fileUri = CONST_PAH_REVERT_EDIT_PHOTOS;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::REVERT_TO_ORIGINAL);
     IPC::UserDefineIPCClient client;
     // db permission

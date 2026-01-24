@@ -81,7 +81,7 @@ void MediaLibraryScannerDbTest::TearDown(void) {}
 HWTEST_F(MediaLibraryScannerDbTest, medialib_DeleteMetadata_test_001, TestSize.Level1)
 {
     MediaScannerDb mediaScannerDb;
-    string tableName = MEDIALIBRARY_TABLE;
+    string tableName = CONST_MEDIALIBRARY_TABLE;
     vector<string> idList;
     bool ret = mediaScannerDb.DeleteMetadata(idList, tableName);
     EXPECT_NE(ret, true);

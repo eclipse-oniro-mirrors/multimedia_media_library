@@ -23,7 +23,7 @@ namespace OHOS::Media {
 static bool IsMediaToolOperation(MediaLibraryCommand &cmd, PermParam &permParam)
 {
     if (permParam.isOpenFile) {
-        return cmd.GetQuerySetParam(IS_TOOL_OPEN) == TOOL_OPEN_TRUE;
+        return cmd.GetQuerySetParam(CONST_IS_TOOL_OPEN) == CONST_TOOL_OPEN_TRUE;
     }
     return IsMediatoolOperation(cmd);
 }

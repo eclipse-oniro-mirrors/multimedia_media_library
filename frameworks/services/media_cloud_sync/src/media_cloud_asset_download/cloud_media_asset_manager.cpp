@@ -893,8 +893,8 @@ int32_t CloudMediaAssetManager::ForceRetainDownloadCloudMedia(CloudMediaRetainTy
     SetSouthDeviceSyncSwitchStatus(CloudSyncStatus::CLOUD_CLEANING);
 
     // 主动停止端云同步
-    MEDIA_INFO_LOG("ForceRetainDownloadCloudMedia StopSync bundleName:%{public}s", BUNDLE_NAME.c_str());
-    CloudSyncManager::GetInstance().StopSync(BUNDLE_NAME);
+    MEDIA_INFO_LOG("ForceRetainDownloadCloudMedia StopSync bundleName:%{public}s", CONST_BUNDLE_NAME);
+    CloudSyncManager::GetInstance().StopSync(CONST_BUNDLE_NAME);
 
     // 备份/恢复需要特殊处理，等待备份和恢复完成再清除;
     WaitIfBackUpingOrRestoring();
@@ -1342,7 +1342,7 @@ void CloudMediaAssetManager::TryToStartSync()
         return;
     }
     MEDIA_INFO_LOG("cloud sync manager start sync");
-    int32_t ret = CloudSyncManager::GetInstance().StartSync(BUNDLE_NAME);
+    int32_t ret = CloudSyncManager::GetInstance().StartSync(CONST_BUNDLE_NAME);
     CHECK_AND_PRINT_LOG(ret == E_OK, "cloud sync manager start sync err %{public}d", ret);
     MEDIA_INFO_LOG("cloud sync manager end sync");
 }

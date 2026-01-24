@@ -399,14 +399,14 @@ void ThumbnailUtils::CancelAfterPacking(const string &tempOutputPath)
 shared_ptr<ResultSet> ThumbnailUtils::QueryThumbnailSet(ThumbRdbOpt &opts)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
     };
 
     vector<string> selectionArgs;
-    string strQueryCondition = MEDIA_DATA_DB_ID + " = " + opts.row;
+    string strQueryCondition = string(CONST_MEDIA_DATA_DB_ID) + " = " + opts.row;
 
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.SetWhereClause(strQueryCondition);
@@ -422,10 +422,10 @@ shared_ptr<ResultSet> ThumbnailUtils::QueryThumbnailInfo(ThumbRdbOpt &opts,
     ThumbnailData &data, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
     };
     MediaLibraryTracer tracer;
     tracer.Start("QueryThumbnailInfo");
@@ -447,14 +447,14 @@ shared_ptr<ResultSet> ThumbnailUtils::QueryThumbnailInfo(ThumbRdbOpt &opts,
 bool ThumbnailUtils::QueryLcdCount(ThumbRdbOpt &opts, int &outLcdCount, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_ID,
     };
     RdbPredicates rdbPredicates(opts.table);
     if (opts.table == PhotoColumn::PHOTOS_TABLE) {
         rdbPredicates.EqualTo(PhotoColumn::PHOTO_LAST_VISIT_TIME, "0");
     }
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
     if (opts.store == nullptr) {
         MEDIA_ERR_LOG("opts.store is nullptr");
         return false;
@@ -485,7 +485,7 @@ bool ThumbnailUtils::QueryLcdCountByTime(const int64_t &time, const bool &before
     int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_ID,
     };
     RdbPredicates rdbPredicates(opts.table);
     if (opts.table == PhotoColumn::PHOTOS_TABLE) {
@@ -495,8 +495,8 @@ bool ThumbnailUtils::QueryLcdCountByTime(const int64_t &time, const bool &before
             rdbPredicates.GreaterThan(PhotoColumn::PHOTO_LAST_VISIT_TIME, to_string(time));
         }
     }
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
     if (opts.store == nullptr) {
         MEDIA_ERR_LOG("opts.store is nullptr");
         return false;
@@ -527,7 +527,7 @@ bool ThumbnailUtils::QueryDistributeLcdCount(ThumbRdbOpt &opts, int &outLcdCount
     };
     RdbPredicates rdbPredicates(REMOTE_THUMBNAIL_TABLE);
     rdbPredicates.EqualTo(REMOTE_THUMBNAIL_DB_UDID, opts.udid);
-    rdbPredicates.IsNotNull(MEDIA_DATA_DB_LCD);
+    rdbPredicates.IsNotNull(CONST_MEDIA_DATA_DB_LCD);
     if (opts.store == nullptr) {
         MEDIA_ERR_LOG("opts.store is nullptr");
         return false;
@@ -556,13 +556,13 @@ bool ThumbnailUtils::QueryAgingLcdInfos(ThumbRdbOpt &opts, int LcdLimit,
     vector<ThumbnailData> &infos, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
     };
     RdbPredicates rdbPredicates(opts.table);
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
 
     rdbPredicates.Limit(LcdLimit);
     if (opts.table == PhotoColumn::PHOTOS_TABLE) {
@@ -577,13 +577,13 @@ bool ThumbnailUtils::QueryAgingLcdInfos(ThumbRdbOpt &opts, int LcdLimit,
 bool ThumbnailUtils::QueryNoLcdInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_POSITION,
-        MEDIA_DATA_DB_ORIENTATION,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_POSITION,
+        CONST_MEDIA_DATA_DB_ORIENTATION,
         PhotoColumn::PHOTO_EXIF_ROTATE,
-        MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
     };
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
@@ -592,7 +592,7 @@ bool ThumbnailUtils::QueryNoLcdInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &i
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_LCD_VISIT_TIME, "0");
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_POSITION, "1");
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
@@ -606,16 +606,16 @@ bool ThumbnailUtils::QueryLocalNoLcdInfos(ThumbRdbOpt &opts, vector<ThumbnailDat
         return false;
     }
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
     };
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_LCD_VISIT_TIME, "0");
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_DIRTY, "1");
     rdbPredicates.Limit(MAXIMUM_LCD_CHECK_NUM);
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
@@ -629,7 +629,7 @@ bool ThumbnailUtils::QueryNoHighlightPath(ThumbRdbOpt &opts, ThumbnailData &data
         return false;
     }
     vector<string> column = {
-        MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
     };
     RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
     rdbPredicates.EqualTo(PhotoColumn::MEDIA_ID, data.id);
@@ -646,7 +646,7 @@ bool ThumbnailUtils::QueryNoHighlightInfos(ThumbRdbOpt &opts, vector<ThumbnailDa
         return false;
     }
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_ID,
         MEDIA_DATA_DB_VIDEO_TRACKS,
         MEDIA_DATA_DB_HIGHLIGHT_TRIGGER,
     };
@@ -684,7 +684,7 @@ bool ThumbnailUtils::GetHighlightTracks(ThumbRdbOpt &opts, vector<int> &trackInf
         return false;
     }
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_ID,
         MEDIA_DATA_DB_VIDEO_TRACKS,
     };
     RdbPredicates rdbPredicates(opts.table);
@@ -746,11 +746,11 @@ std::string ThumbnailUtils::GetHighlightValue(const std::string &str, const std:
 bool ThumbnailUtils::QueryLocalNoThumbnailInfos(ThumbRdbOpt &opt, vector<ThumbnailData> &infos, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_THUMBNAIL_READY,
-        MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_THUMBNAIL_READY,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
         PhotoColumn::PHOTO_LCD_VISIT_TIME,
     };
     RdbPredicates rdbPredicates(opt.table);
@@ -759,10 +759,10 @@ bool ThumbnailUtils::QueryLocalNoThumbnailInfos(ThumbRdbOpt &opt, vector<Thumbna
         EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY,
         std::to_string(static_cast<int32_t>(ThumbnailReady::GENERATE_THUMB_LATER)))
         ->EndWrap();
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
     rdbPredicates.Limit(THUMBNAIL_QUERY_MIN);
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opt.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
@@ -772,8 +772,8 @@ bool ThumbnailUtils::QueryLocalNoThumbnailInfos(ThumbRdbOpt &opt, vector<Thumbna
 bool ThumbnailUtils::QueryNoThumbnailInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
     };
     RdbPredicates rdbPredicates(opts.table);
     if (opts.table == PhotoColumn::PHOTOS_TABLE) {
@@ -782,11 +782,11 @@ bool ThumbnailUtils::QueryNoThumbnailInfos(ThumbRdbOpt &opts, vector<ThumbnailDa
     if ((opts.table == PhotoColumn::PHOTOS_TABLE) || (opts.table == AudioColumn::AUDIOS_TABLE)) {
         rdbPredicates.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, "0");
     } else {
-        rdbPredicates.EqualTo(MEDIA_DATA_DB_IS_TRASH, "0");
+        rdbPredicates.EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, "0");
     }
-    rdbPredicates.EqualTo(MEDIA_DATA_DB_TIME_PENDING, "0");
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
+    rdbPredicates.EqualTo(CONST_MEDIA_DATA_DB_TIME_PENDING, "0");
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
     if (opts.table == PhotoColumn::PHOTOS_TABLE) {
         // Filter data that Only exists in Cloud to avoid cosuming data of downloading the original image
         // meaning of Position: 1--only in local, 2--only in cloud, 3--both in local and cloud
@@ -795,7 +795,7 @@ bool ThumbnailUtils::QueryNoThumbnailInfos(ThumbRdbOpt &opts, vector<ThumbnailDa
     }
 
     rdbPredicates.Limit(THUMBNAIL_QUERY_MAX);
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
     return true;
@@ -805,9 +805,10 @@ bool ThumbnailUtils::QueryUpgradeThumbnailInfos(ThumbRdbOpt &opts, vector<Thumbn
     bool isWifiConnected, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_NAME, MEDIA_DATA_DB_POSITION, MEDIA_DATA_DB_DATE_TAKEN, MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_ORIENTATION, PhotoColumn::PHOTO_EXIF_ROTATE,
+        CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_NAME, CONST_MEDIA_DATA_DB_POSITION,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ORIENTATION, PhotoColumn::PHOTO_EXIF_ROTATE,
     };
 
     RdbPredicates rdbPredicates(opts.table);
@@ -820,7 +821,7 @@ bool ThumbnailUtils::QueryUpgradeThumbnailInfos(ThumbRdbOpt &opts, vector<Thumbn
     if (!isWifiConnected) {
         rdbPredicates.NotEqualTo(PhotoColumn::PHOTO_POSITION, "2");
     }
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
@@ -831,15 +832,15 @@ bool ThumbnailUtils::QueryNoAstcInfosRestored(ThumbRdbOpt &opts, vector<Thumbnai
     const int32_t &restoreAstcCount)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_POSITION,
-        MEDIA_DATA_DB_DATE_TAKEN,
-        MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_ORIENTATION,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_POSITION,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ORIENTATION,
         PhotoColumn::PHOTO_EXIF_ROTATE,
     };
     RdbPredicates rdbPredicates(opts.table);
@@ -863,9 +864,9 @@ bool ThumbnailUtils::QueryNoAstcInfosRestored(ThumbRdbOpt &opts, vector<Thumbnai
 bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos, int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_POSITION, MEDIA_DATA_DB_ORIENTATION, PhotoColumn::PHOTO_EXIF_ROTATE,
-        MEDIA_DATA_DB_DATE_TAKEN, MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_POSITION, CONST_MEDIA_DATA_DB_ORIENTATION, PhotoColumn::PHOTO_EXIF_ROTATE,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
     };
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
@@ -883,7 +884,7 @@ bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &
         ->EndWrap()->Or()->BeginWrap()
         ->EqualTo(PhotoColumn::PHOTO_POSITION, "2")->And()->EqualTo(PhotoColumn::PHOTO_THUMB_STATUS, "0")
         ->EndWrap()->EndWrap();
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos, err),
         false, "QueryThumbnailDataInfos failed, err:%{public}d", err);
@@ -894,22 +895,22 @@ bool ThumbnailUtils::QueryNewThumbnailCount(ThumbRdbOpt &opts, const int64_t &ti
     int &err)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_ID,
     };
     RdbPredicates rdbPredicates(opts.table);
     if (opts.table == PhotoColumn::PHOTOS_TABLE) {
         rdbPredicates.GreaterThan(PhotoColumn::PHOTO_LAST_VISIT_TIME, to_string(time));
     }
-    if (opts.table == MEDIALIBRARY_TABLE) {
-        rdbPredicates.EqualTo(MEDIA_DATA_DB_IS_TRASH, "0");
+    if (opts.table == CONST_MEDIALIBRARY_TABLE) {
+        rdbPredicates.EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, "0");
     } else {
-        rdbPredicates.EqualTo(MEDIA_DATA_DB_DATE_TRASHED, "0");
+        rdbPredicates.EqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, "0");
     }
-    rdbPredicates.EqualTo(MEDIA_DATA_DB_TIME_PENDING, "0");
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
-    rdbPredicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
+    rdbPredicates.EqualTo(CONST_MEDIA_DATA_DB_TIME_PENDING, "0");
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_ALBUM));
+    rdbPredicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_FILE));
 
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
     if (opts.store == nullptr) {
         MEDIA_ERR_LOG("opts.store is nullptr");
         return false;
@@ -971,7 +972,7 @@ bool ThumbnailUtils::UpdateHighlightInfo(ThumbRdbOpt &opts, ThumbnailData &data,
     values.PutLong(PhotoColumn::MEDIA_DATA_DB_HIGHLIGHT_TRIGGER, 1);
 
     RdbPredicates rdbPredicates(opts.table);
-    rdbPredicates.EqualTo(MEDIA_DATA_DB_ID, data.id);
+    rdbPredicates.EqualTo(CONST_MEDIA_DATA_DB_ID, data.id);
     rdbPredicates.EqualTo(MEDIA_DATA_DB_VIDEO_TRACKS, data.tracks);
     err = opts.store->Update(changedRows, values, rdbPredicates);
     CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, false, "UpdateHighlightInfo failed! %{public}d", err);
@@ -987,7 +988,7 @@ bool ThumbnailUtils::UpdateLcdReadyStatus(ThumbRdbOpt &opts, ThumbnailData &data
         MEDIA_ERR_LOG("opts.store is nullptr");
         return false;
     }
-    err = opts.store->Update(changedRows, opts.table, values, MEDIA_DATA_DB_ID + " = ?",
+    err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
         vector<string> { opts.row });
     CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, false,
         "UpdateLcdReadyStatus rdbStore Update failed! %{public}d", err);
@@ -998,12 +999,12 @@ bool ThumbnailUtils::CleanThumbnailInfo(ThumbRdbOpt &opts, bool withThumb, bool 
 {
     ValuesBucket values;
     if (withThumb) {
-        values.PutNull(MEDIA_DATA_DB_THUMBNAIL);
+        values.PutNull(CONST_MEDIA_DATA_DB_THUMBNAIL);
     }
     if (withLcd) {
-        values.PutInt(MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
-        if (opts.table == MEDIALIBRARY_TABLE) {
-            values.PutNull(MEDIA_DATA_DB_LCD);
+        values.PutInt(CONST_MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
+        if (opts.table == CONST_MEDIALIBRARY_TABLE) {
+            values.PutNull(CONST_MEDIA_DATA_DB_LCD);
         }
         if (opts.table == PhotoColumn::PHOTOS_TABLE) {
             values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, 0);
@@ -1014,7 +1015,7 @@ bool ThumbnailUtils::CleanThumbnailInfo(ThumbRdbOpt &opts, bool withThumb, bool 
         MEDIA_ERR_LOG("opts.store is nullptr");
         return false;
     }
-    auto err = opts.store->Update(changedRows, opts.table, values, MEDIA_DATA_DB_ID + " = ?",
+    auto err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
         vector<string> { opts.row });
     CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, false, "RdbStore Update failed! %{public}d", err);
     return true;
@@ -1351,7 +1352,7 @@ bool ThumbnailUtils::DeleteAllThumbFilesAndAstc(ThumbRdbOpt &opts, ThumbnailData
     int changedRows;
     values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, 0);
     values.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME, 0);
-    int32_t err = opts.store->Update(changedRows, opts.table, values, MEDIA_DATA_DB_ID + " = ?",
+    int32_t err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
         vector<string> { data.id });
     CHECK_AND_WARN_LOG(err == NativeRdb::E_OK, "RdbStore Update Failed Before Delete Thumbnail! %{public}d", err);
     MEDIA_INFO_LOG("Start DeleteAllThumbFilesAndAstc, table:%{public}s, id: %{public}s, dateKey:%{public}s, "
@@ -1426,7 +1427,7 @@ int64_t ThumbnailUtils::UTCTimeMilliSeconds()
 void ThumbnailUtils::ParseHighlightQueryResult(const shared_ptr<ResultSet> &resultSet, ThumbnailData &data, int &err)
 {
     int index;
-    err = resultSet->GetColumnIndex(MEDIA_DATA_DB_ID, index);
+    err = resultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_ID, index);
     if (err == NativeRdb::E_OK) {
         ThumbnailRdbUtils::ParseStringResult(resultSet, index, data.id);
     }
@@ -1562,10 +1563,10 @@ bool ThumbnailUtils::CheckDateTaken(ThumbRdbOpt &opts, ThumbnailData &data)
     }
 
     vector<string> column = {
-        MEDIA_DATA_DB_DATE_TAKEN,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN,
     };
     vector<string> selectionArgs;
-    string strQueryCondition = MEDIA_DATA_DB_ID + " = " + data.id;
+    string strQueryCondition = string(CONST_MEDIA_DATA_DB_ID) + " = " + data.id;
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.SetWhereClause(strQueryCondition);
     rdbPredicates.SetWhereArgs(selectionArgs);
@@ -1584,7 +1585,7 @@ bool ThumbnailUtils::CheckDateTaken(ThumbRdbOpt &opts, ThumbnailData &data)
     CHECK_AND_RETURN_RET_LOG(err == E_OK, false, "GoToFirstRow failed, err: %{public}d", err);
 
     int index;
-    err = resultSet->GetColumnIndex(MEDIA_DATA_DB_DATE_TAKEN, index);
+    err = resultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_DATE_TAKEN, index);
     if (err == NativeRdb::E_OK) {
         ThumbnailRdbUtils::ParseStringResult(resultSet, index, data.dateTaken);
     } else {
@@ -1606,18 +1607,18 @@ void ThumbnailUtils::QueryThumbnailDataFromFileId(ThumbRdbOpt &opts, const std::
     RdbPredicates predicates(opts.table);
     predicates.EqualTo(MediaColumn::MEDIA_ID, id);
     vector<string> columns = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_HEIGHT,
-        MEDIA_DATA_DB_WIDTH,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_ORIENTATION,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_HEIGHT,
+        CONST_MEDIA_DATA_DB_WIDTH,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_ORIENTATION,
         PhotoColumn::PHOTO_EXIF_ROTATE,
-        MEDIA_DATA_DB_POSITION,
-        MEDIA_DATA_DB_DATE_TAKEN,
-        MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DIRTY,
+        CONST_MEDIA_DATA_DB_POSITION,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DIRTY,
         MediaColumn::MEDIA_NAME,
     };
 
@@ -1877,14 +1878,14 @@ bool ThumbnailUtils::QueryOldKeyAstcInfos(const std::shared_ptr<MediaLibraryRdbS
     const std::string &table, std::vector<ThumbnailData> &infos)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_TAKEN,
-        MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
     };
     RdbPredicates rdbPredicates(table);
     rdbPredicates.GreaterThanOrEqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "3");
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
 
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(rdbStorePtr, rdbPredicates, column, infos),
         false, "QueryThumbnailDataInfos failed");

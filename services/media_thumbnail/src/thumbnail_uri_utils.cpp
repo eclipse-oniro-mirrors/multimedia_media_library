@@ -56,8 +56,8 @@ bool ThumbnailUriUtils::ParseThumbnailInfo(const string &uriString, string &outF
     outFileId = uri.GetFileId();
     auto &queryKey = uri.GetQueryKeys();
     if (queryKey.count(THUMBNAIL_OPERN_KEYWORD) == 0 &&
-        (queryKey[THUMBNAIL_OPERN_KEYWORD] != MEDIA_DATA_DB_THUMBNAIL ||
-         queryKey[THUMBNAIL_OPERN_KEYWORD] != MEDIA_DATA_DB_THUMB_ASTC)) {
+        (queryKey[THUMBNAIL_OPERN_KEYWORD] != CONST_MEDIA_DATA_DB_THUMBNAIL ||
+         queryKey[THUMBNAIL_OPERN_KEYWORD] != CONST_MEDIA_DATA_DB_THUMB_ASTC)) {
         return false;
     }
 
@@ -147,7 +147,7 @@ string ThumbnailUriUtils::GetTableFromUri(const string &uri)
 {
     string table = MediaFileUri(uri).GetTableName();
     if (table.empty()) {
-        return MEDIALIBRARY_TABLE;
+        return CONST_MEDIALIBRARY_TABLE;
     }
     return table;
 }
@@ -167,7 +167,7 @@ string ThumbnailUriUtils::GetDateTakenFromUri(const string &uri)
         return "";
     }
 
-    if (pairString.substr(0, splitIndex) == ML_URI_DATE_TAKEN) {
+    if (pairString.substr(0, splitIndex) == CONST_ML_URI_DATE_TAKEN) {
         return pairString.substr(splitIndex + 1);
     }
     return "";
@@ -175,7 +175,7 @@ string ThumbnailUriUtils::GetDateTakenFromUri(const string &uri)
 
 string ThumbnailUriUtils::GetDateModifiedFromUri(const string &uri)
 {
-    size_t index = uri.find(ML_URI_DATE_MODIFIED);
+    size_t index = uri.find(CONST_ML_URI_DATE_MODIFIED);
     if (index == std::string::npos) {
         MEDIA_ERR_LOG("GetDateModifiedFromUri find index for dateModified failed: %{private}s", uri.c_str());
         return "";

@@ -151,7 +151,7 @@ static int32_t InsertAlbumAsset(int32_t albumType, int32_t albumSubType)
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, albumType);
     values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, albumSubType);
-    values.PutString(PhotoAlbumColumns::ALBUM_LPATH, MEDIA_DATA_DB_DATE_ADDED);
+    values.PutString(PhotoAlbumColumns::ALBUM_LPATH, CONST_MEDIA_DATA_DB_DATE_ADDED);
     int64_t albumId = 0;
     int32_t ret = g_rdbStore->Insert(albumId, TABLE, values);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_ERR, "g_rdbStore failed to insert ret=%{public}d", ret);
@@ -254,7 +254,7 @@ static void QueryAlbumsLpathsFuzzer()
     QueryAlbumsReqBody reqBody;
     reqBody.albumType = albumType;
     reqBody.albumSubType = albumSubType;
-    reqBody.columns = {MEDIA_DATA_DB_DATE_ADDED};
+    reqBody.columns = {CONST_MEDIA_DATA_DB_DATE_ADDED};
     std::string whereClause = "QueryAlbumsLpathsFuzzer between ? and ?";
     reqBody.predicates.SetWhereClause(whereClause);
 

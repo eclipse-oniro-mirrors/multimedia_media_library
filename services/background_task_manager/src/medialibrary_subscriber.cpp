@@ -339,7 +339,7 @@ static void UploadDBFile()
 {
     std::lock_guard<mutex> lock(uploadDBMutex);
     int64_t begin = MediaFileUtils::UTCTimeMilliSeconds();
-    static const std::string databaseDir = MEDIA_DB_DIR + "/rdb";
+    static const std::string databaseDir = std::string(CONST_MEDIA_DB_DIR) + "/rdb";
     static const std::vector<std::string> dbFileName = { "/media_library.db",
                                                          "/media_library.db-shm",
                                                          "/media_library.db-wal" };
@@ -612,7 +612,7 @@ void DeleteTemporaryPhotos()
         return;
     }
 
-    string UriString = PAH_DISCARD_CAMERA_PHOTO;
+    string UriString = CONST_PAH_DISCARD_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(UriString, URI_PARAM_API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(UriString);
     MediaLibraryCommand cmd(uri);

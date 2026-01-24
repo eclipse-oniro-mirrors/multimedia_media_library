@@ -374,7 +374,7 @@ HWTEST_F(MediaLibraryLocationTest, Location_QueryGeo_Test_001, TestSize.Level1)
     int32_t retVal = InsertGeoKnowledge(latitude, longitude, language);
     EXPECT_GT(retVal, 0);
 
-    Uri cmdUri(PAH_QUERY_ANA_ADDRESS);
+    Uri cmdUri(CONST_PAH_QUERY_ANA_ADDRESS);
     MediaLibraryCommand cmd(cmdUri);
     vector<string> columns{ PhotoColumn::PHOTOS_TABLE + "." + LATITUDE, PhotoColumn::PHOTOS_TABLE + "." + LONGITUDE,
         ADDRESS_DESCRIPTION };

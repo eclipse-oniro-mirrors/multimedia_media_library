@@ -81,7 +81,7 @@ void CleanTestTables()
         PhotoColumn::PHOTOS_TABLE,
         AudioColumn::AUDIOS_TABLE,
         AppUriPermissionColumn::APP_URI_PERMISSION_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
         ASSET_UNIQUE_NUMBER_TABLE,
         PhotoExtColumn::PHOTOS_EXT_TABLE
     };
@@ -123,9 +123,9 @@ void PrepareUniqueNumberTable()
         return;
     }
 
-    UniqueMemberValuesBucket imageBucket = { IMAGE_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket videoBucket = { VIDEO_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket audioBucket = { AUDIO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket imageBucket = { CONST_IMAGE_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket videoBucket = { CONST_VIDEO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket audioBucket = { CONST_AUDIO_ASSET_TYPE, 1 };
 
     vector<UniqueMemberValuesBucket> uniqueNumberValueBuckets = {
         imageBucket, videoBucket, audioBucket
@@ -412,7 +412,7 @@ HWTEST_F(MediaLibraryAppUriPermissionOperationsTest, app_uri_permission_oprn_api
 
 int TestDelete(OHOS::DataShare::DataSharePredicates &dataSharePredicate)
 {
-    // MEDIALIBRARY_TABLE just fro RdbPredicates
+    // CONST_MEDIALIBRARY_TABLE just fro RdbPredicates
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dataSharePredicate,
         AppUriPermissionColumn::APP_URI_PERMISSION_TABLE);
     int ret = MediaLibraryAppUriPermissionOperations::DeleteOperation(rdbPredicate);

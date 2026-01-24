@@ -84,8 +84,8 @@ static int32_t RecvFile(const ExecEnv &env, const FileAsset &fileAsset, bool isR
 
     std::string openUri = fileAsset.GetUri();
     if (isRecvMovingPhotoVideo) {
-        MediaFileUtils::UriAppendKeyValue(openUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-            OPEN_MOVING_PHOTO_VIDEO);
+        MediaFileUtils::UriAppendKeyValue(openUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+            CONST_OPEN_MOVING_PHOTO_VIDEO);
     }
     auto rfd = UserFileClientEx::Open(openUri, Media::MEDIA_FILEMODE_READONLY);
     if (rfd <= 0) {
@@ -243,7 +243,7 @@ bool RecvCommandV10::IsMovingPhotoVideoPath(unique_ptr<FileAsset>& movingPhotoAs
 
 static bool PathExists(const string& path)
 {
-    std::string lsUriStr = TOOL_LS_PHOTO;
+    std::string lsUriStr = CONST_TOOL_LS_PHOTO;
     Uri lsUri(lsUriStr);
     DataShare::DataShareValuesBucket values;
     values.Put(MediaColumn::MEDIA_FILE_PATH, path);

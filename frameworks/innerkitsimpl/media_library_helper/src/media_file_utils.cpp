@@ -1103,8 +1103,8 @@ string MediaFileUtils::GetHighlightPath(const string &uri)
     string uriPrefix = "datashare:///media";
     if (uri.find(uriPrefix) != string::npos) {
         prefixLen = static_cast<int>(uriPrefix.length());
-    } else if (uri.find(ML_FILE_URI_PREFIX) != string::npos) {
-        prefixLen = static_cast<int>(ML_FILE_URI_PREFIX.length());
+    } else if (uri.find(CONST_ML_FILE_URI_PREFIX) != string::npos) {
+        prefixLen = static_cast<int>(string(CONST_ML_FILE_URI_PREFIX).length());
     } else {
         return "";
     }
@@ -1125,8 +1125,8 @@ string MediaFileUtils::GetHighlightVideoPath(const string &uri)
     string uriPrefix = "datashare:///media";
     if (uri.find(uriPrefix) != string::npos) {
         prefixLen = static_cast<int>(uriPrefix.length());
-    } else if (uri.find(ML_FILE_URI_PREFIX) != string::npos) {
-        prefixLen = static_cast<int>(ML_FILE_URI_PREFIX.length());
+    } else if (uri.find(CONST_ML_FILE_URI_PREFIX) != string::npos) {
+        prefixLen = static_cast<int>(string(CONST_ML_FILE_URI_PREFIX).length());
     } else {
         return "";
     }
@@ -1586,18 +1586,18 @@ std::string MediaFileUtils::GetMediaTypeUri(MediaType mediaType)
 {
     switch (mediaType) {
         case MEDIA_TYPE_AUDIO:
-            return MEDIALIBRARY_AUDIO_URI;
+            return CONST_MEDIALIBRARY_AUDIO_URI;
         case MEDIA_TYPE_VIDEO:
-            return MEDIALIBRARY_VIDEO_URI;
+            return CONST_MEDIALIBRARY_VIDEO_URI;
         case MEDIA_TYPE_IMAGE:
-            return MEDIALIBRARY_IMAGE_URI;
+            return CONST_MEDIALIBRARY_IMAGE_URI;
         case MEDIA_TYPE_SMARTALBUM:
-            return MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
+            return CONST_MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
         case MEDIA_TYPE_DEVICE:
-            return MEDIALIBRARY_DEVICE_URI;
+            return CONST_MEDIALIBRARY_DEVICE_URI;
         case MEDIA_TYPE_FILE:
         default:
-            return MEDIALIBRARY_FILE_URI;
+            return CONST_MEDIALIBRARY_FILE_URI;
     }
 }
 
@@ -1610,12 +1610,12 @@ std::string MediaFileUtils::GetMediaTypeUriV10(MediaType mediaType)
         case MEDIA_TYPE_IMAGE:
             return PhotoColumn::DEFAULT_PHOTO_URI;
         case MEDIA_TYPE_SMARTALBUM:
-            return MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
+            return CONST_MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
         case MEDIA_TYPE_DEVICE:
-            return MEDIALIBRARY_DEVICE_URI;
+            return CONST_MEDIALIBRARY_DEVICE_URI;
         case MEDIA_TYPE_FILE:
         default:
-            return MEDIALIBRARY_FILE_URI;
+            return CONST_MEDIALIBRARY_FILE_URI;
     }
 }
 
@@ -1676,7 +1676,7 @@ string MediaFileUtils::GetVirtualUriFromRealUri(const string &uri, const string 
     if ((uri.find(PhotoColumn::PHOTO_TYPE_URI) != string::npos) ||
         (uri.find(AudioColumn::AUDIO_TYPE_URI) != string::npos) ||
         (uri.find(PhotoColumn::HIGHTLIGHT_COVER_URI) != string::npos) ||
-        (uri.find(URI_MTP_OPERATION) != string::npos)) {
+        (uri.find(CONST_URI_MTP_OPERATION) != string::npos)) {
         return uri;
     }
 
@@ -1704,13 +1704,13 @@ string MediaFileUtils::GetVirtualUriFromRealUri(const string &uri, const string 
     }
     int64_t virtualId;
     MediaType type;
-    if ((pureUri.find(MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
+    if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_IMAGE;
         virtualId = GetVirtualIdByType(id, MediaType::MEDIA_TYPE_IMAGE);
-    } else if (pureUri.find(MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
+    } else if (pureUri.find(CONST_MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
         type = MediaType::MEDIA_TYPE_VIDEO;
         virtualId = GetVirtualIdByType(id, MediaType::MEDIA_TYPE_VIDEO);
-    } else if ((pureUri.find(MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
+    } else if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_AUDIO;
         virtualId = GetVirtualIdByType(id, MediaType::MEDIA_TYPE_AUDIO);
     } else {
@@ -1752,8 +1752,8 @@ string MediaFileUtils::GetRealUriFromVirtualUri(const string &uri)
     if ((uri.find(PhotoColumn::PHOTO_TYPE_URI) != string::npos) ||
         (uri.find(AudioColumn::AUDIO_TYPE_URI) != string::npos) ||
         (uri.find(PhotoColumn::HIGHTLIGHT_COVER_URI) != string::npos) ||
-        (uri.find(URI_MTP_OPERATION) != string::npos) ||
-        (uri.find(MEDIA_FILEOPRN_OPEN_DEBUG_DB) != string::npos)) {
+        (uri.find(CONST_URI_MTP_OPERATION) != string::npos) ||
+        (uri.find(CONST_MEDIA_FILEOPRN_OPEN_DEBUG_DB) != string::npos)) {
         return uri;
     }
 
@@ -1772,18 +1772,18 @@ string MediaFileUtils::GetRealUriFromVirtualUri(const string &uri)
     }
     int32_t realId = 0;
     MediaType type;
-    if ((pureUri.find(MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
+    if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_IMAGE;
         realId = static_cast<int32_t>(GetRealIdByTable(id, PhotoColumn::PHOTOS_TABLE));
-    } else if (pureUri.find(MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
+    } else if (pureUri.find(CONST_MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
         type = MediaType::MEDIA_TYPE_VIDEO;
         realId = static_cast<int32_t>(GetRealIdByTable(id, PhotoColumn::PHOTOS_TABLE));
-    } else if ((pureUri.find(MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
+    } else if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_AUDIO;
         realId = static_cast<int32_t>(GetRealIdByTable(id, AudioColumn::AUDIOS_TABLE));
     } else {
         type = MediaType::MEDIA_TYPE_FILE;
-        realId = static_cast<int32_t>(GetRealIdByTable(id, MEDIALIBRARY_TABLE));
+        realId = static_cast<int32_t>(GetRealIdByTable(id, CONST_MEDIALIBRARY_TABLE));
     }
     string extrUri;
     if (fileUri.IsApi10()) {
@@ -1823,7 +1823,7 @@ string MediaFileUtils::GetTableFromVirtualUri(const std::string &virtualUri)
             case VIRTUAL_ID_DIVIDER - AUDIO_VIRTUAL_IDENTIFIER:
                 return AudioColumn::AUDIOS_TABLE;
             case VIRTUAL_ID_DIVIDER - FILE_VIRTUAL_IDENTIFIER:
-                return MEDIALIBRARY_TABLE;
+                return CONST_MEDIALIBRARY_TABLE;
             default:
                 MEDIA_ERR_LOG("virtualId:%{public}ld is wrong", (long) id);
                 return "";
@@ -1837,9 +1837,9 @@ string MediaFileUtils::GetTableFromVirtualUri(const std::string &virtualUri)
 
 bool MediaFileUtils::IsUriV10(const string &mediaType)
 {
-    return mediaType == URI_TYPE_PHOTO ||
-        mediaType == URI_TYPE_PHOTO_ALBUM ||
-        mediaType == URI_TYPE_AUDIO_V10;
+    return mediaType == CONST_URI_TYPE_PHOTO ||
+        mediaType == CONST_URI_TYPE_PHOTO_ALBUM ||
+        mediaType == CONST_URI_TYPE_AUDIO_V10;
 }
 
 bool MediaFileUtils::IsFileTablePath(const string &path)

@@ -44,8 +44,8 @@ char *MallocCString(const std::string &origin)
 static bool HandleSpecialDateTypePredicate(const OperationItem &item,
     vector<OperationItem> &operations, const FetchOptionType &fetchOptType)
 {
-    vector<string>dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_TAKEN};
+    vector<string>dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN};
     string dateType = item.GetSingle(FIELD_IDX);
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
     if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
@@ -115,7 +115,7 @@ static void HandleUriParams(const OperationItem& item,
         fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
     }
     extraInfo.networkId = fileUri.GetNetworkId();
-    string field = (extraInfo.fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : MEDIA_DATA_DB_ID;
+    string field = (extraInfo.fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : CONST_MEDIA_DATA_DB_ID;
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
 }
 
@@ -139,9 +139,9 @@ static bool HandleSpecialPredicate(shared_ptr<DataSharePredicates> &predicatePtr
             }
             extraInfo.networkId = static_cast<string>(item.GetSingle(VALUE_IDX));
             continue;
-        } else if (static_cast<string>(item.GetSingle(FIELD_IDX)) == MEDIA_DATA_DB_URI) {
+        } else if (static_cast<string>(item.GetSingle(FIELD_IDX)) == CONST_MEDIA_DATA_DB_URI) {
             if (item.operation != DataShare::EQUAL_TO) {
-                LOGE("MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
+                LOGE("CONST_MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
                 return false;
             }
             HandleUriParams(item, operations, extraInfo);
@@ -296,9 +296,9 @@ void AddDefaultAssetColumns(vector<string> &fetchColumn,
     for (const auto &column : fetchColumn) {
         if (column == PENDING_STATUS) {
             validFetchColumns.insert(MediaColumn::MEDIA_TIME_PENDING);
-        } else if (isValidColumn(column) || (column == MEDIA_SUM_SIZE && MediaLibraryNapiUtils::IsSystemApp())) {
+        } else if (isValidColumn(column) || (column == CONST_MEDIA_SUM_SIZE && MediaLibraryNapiUtils::IsSystemApp())) {
             validFetchColumns.insert(column);
-        } else if (column == MEDIA_DATA_DB_URI) {
+        } else if (column == CONST_MEDIA_DATA_DB_URI) {
             continue;
         } else if (DATE_TRANSITION_MAP.count(column) != 0) {
             validFetchColumns.insert(DATE_TRANSITION_MAP.at(column));

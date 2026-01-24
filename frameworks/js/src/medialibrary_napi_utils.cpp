@@ -343,13 +343,13 @@ int32_t MediaLibraryNapiUtils::GetFileIdFromPhotoUri(const string &uri)
 
 MediaType MediaLibraryNapiUtils::GetMediaTypeFromUri(const string &uri)
 {
-    if (uri.find(MEDIALIBRARY_IMAGE_URI) != string::npos) {
+    if (uri.find(CONST_MEDIALIBRARY_IMAGE_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_IMAGE;
-    } else if (uri.find(MEDIALIBRARY_VIDEO_URI) != string::npos) {
+    } else if (uri.find(CONST_MEDIALIBRARY_VIDEO_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_VIDEO;
-    } else if (uri.find(MEDIALIBRARY_AUDIO_URI) != string::npos) {
+    } else if (uri.find(CONST_MEDIALIBRARY_AUDIO_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_AUDIO;
-    } else if (uri.find(MEDIALIBRARY_FILE_URI) != string::npos) {
+    } else if (uri.find(CONST_MEDIALIBRARY_FILE_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_FILE;
     }
     return MediaType::MEDIA_TYPE_ALL;
@@ -361,8 +361,8 @@ static bool HandleSpecialDateTypePredicate(const OperationItem &item,
     constexpr int32_t FIELD_IDX = 0;
     constexpr int32_t VALUE_IDX = 1;
     constexpr int32_t BETWEENENDVALUE_IDX = 2;
-    vector<string> dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_TAKEN};
+    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN};
     string dateType = item.GetSingle(FIELD_IDX);
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
     if (it != dateTypes.end() && item.singleParams.size() == BETWEENENDVALUE_IDX + 1 &&
@@ -399,7 +399,7 @@ static void HandleSpecialPredicateProcessUri(AsyncContext &context, const FetchO
         fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
     }
     context->networkId = fileUri.GetNetworkId();
-    string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : MEDIA_DATA_DB_ID;
+    string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : CONST_MEDIA_DATA_DB_ID;
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
 }
 
@@ -479,9 +479,9 @@ bool MediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context, shared
             context->networkId = static_cast<string>(item.GetSingle(VALUE_IDX));
             continue;
         }
-        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == MEDIA_DATA_DB_URI) {
+        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == CONST_MEDIA_DATA_DB_URI) {
             if (item.operation != DataShare::EQUAL_TO) {
-                NAPI_ERR_LOG("MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
+                NAPI_ERR_LOG("CONST_MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
                 return false;
             }
             HandleSpecialPredicateProcessUri(context, fetchOptType, item, operations, hasUri);
@@ -646,9 +646,9 @@ void MediaLibraryNapiUtils::UpdateMediaTypeSelections(AsyncContext *context)
     }
     DataShare::DataSharePredicates &predicates = context->predicates;
     predicates.BeginWrap();
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[FIRST_MEDIA_TYPE]);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[FIRST_MEDIA_TYPE]);
     if (context->mediaTypes.size() == ARGS_TWO) {
-        predicates.Or()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[SECOND_MEDIA_TYPE]);
+        predicates.Or()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[SECOND_MEDIA_TYPE]);
     }
     predicates.EndWrap();
 }
@@ -1145,9 +1145,9 @@ napi_value MediaLibraryNapiUtils::AddDefaultAssetColumns(napi_env env, vector<st
     for (const auto &column : fetchColumn) {
         if (column == PENDING_STATUS) {
             validFetchColumns.insert(MediaColumn::MEDIA_TIME_PENDING);
-        } else if (isValidColumn(column) || (column == MEDIA_SUM_SIZE && IsSystemApp())) {
+        } else if (isValidColumn(column) || (column == CONST_MEDIA_SUM_SIZE && IsSystemApp())) {
             validFetchColumns.insert(column);
-        } else if (column == MEDIA_DATA_DB_URI) {
+        } else if (column == CONST_MEDIA_DATA_DB_URI) {
             continue;
         } else if (DATE_TRANSITION_MAP.count(column) != 0) {
             validFetchColumns.insert(DATE_TRANSITION_MAP.at(column));
@@ -1293,7 +1293,7 @@ int32_t MediaLibraryNapiUtils::GetFeaturedSinglePortraitAlbumPredicates(
 
 bool MediaLibraryNapiUtils::ClearAllRelationship()
 {
-    Uri uri(PAH_RELATIONSHIP_ANA_PHOTO_ALBUM);
+    Uri uri(CONST_PAH_RELATIONSHIP_ANA_PHOTO_ALBUM);
     DataShare::DataShareValuesBucket valuesBucket;
     // Assign empty string to clear relationship
     valuesBucket.Put(ALBUM_RELATIONSHIP, "");
@@ -1597,7 +1597,7 @@ string MediaLibraryNapiUtils::ParseAnalysisFace2JsonStr(shared_ptr<DataShare::Da
         return jsonArray.dump();
     }
  
-    Uri uri(PAH_QUERY_ANA_PHOTO_ALBUM);
+    Uri uri(CONST_PAH_QUERY_ANA_PHOTO_ALBUM);
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::PORTRAIT))->And()->IsNotNull(TAG_ID);
     vector<string> albumColumns = { ALBUM_ID, TAG_ID };
@@ -1845,7 +1845,7 @@ napi_value MediaLibraryNapiUtils::GetNextRowObject(napi_env env, shared_ptr<Nati
     MediaFileUri fileUri(fileAsset->GetMediaType(), to_string(fileAsset->GetId()), "", MEDIA_API_VERSION_V10, extrUri);
     fileAsset->SetUri(move(fileUri.ToString()));
     napi_create_string_utf8(env, fileAsset->GetUri().c_str(), NAPI_AUTO_LENGTH, &value);
-    napi_set_named_property(env, result, MEDIA_DATA_DB_URI.c_str(), value);
+    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI.c_str(), value);
     return result;
 }
 
@@ -1928,7 +1928,7 @@ string MediaLibraryNapiUtils::GetAlbumIdFromUriString(const string& uri)
 napi_value MediaLibraryNapiUtils::GetSharedPhotoAssets(const napi_env& env, vector<string>& fileIds,
     bool isSingleResult)
 {
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri photoUri(queryUri);
     DataShare::DataSharePredicates predicates;
@@ -2166,8 +2166,8 @@ napi_value MediaLibraryNapiUtils::GetIdArrayFromAssets(napi_env env, vector<napi
 
 void MediaLibraryNapiUtils::FixSpecialDateType(string &selections)
 {
-    vector<string> dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_TAKEN };
+    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN };
     for (string dateType : dateTypes) {
         string date2Second = dateType + "_s";
         auto pos = selections.find(dateType);
@@ -2331,7 +2331,7 @@ napi_value MediaLibraryNapiUtils::BuildNextRowObject(const napi_env& env, std::s
         BuildThumbnailReady(env, name, result, index, columnInfo);
     }
     napi_create_string_utf8(env, rowObj->dbUri_.c_str(), NAPI_AUTO_LENGTH, &value);
-    napi_set_named_property(env, result, MEDIA_DATA_DB_URI.c_str(), value);
+    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI.c_str(), value);
     return result;
 }
 
@@ -2386,7 +2386,7 @@ int MediaLibraryNapiUtils::ParseCoverSharedPhotoAsset(int32_t index, std::shared
 
     MediaLibraryTracer tracer;
     tracer.Start("ParseCoverSharedPhotoAsset");
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri photoUri(queryUri);
     DataShare::DataSharePredicates predicates;

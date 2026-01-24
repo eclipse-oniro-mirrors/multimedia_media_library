@@ -179,13 +179,13 @@ napi_status SendableMediaLibraryNapiUtils::hasFetchOpt(napi_env env, const napi_
 
 MediaType SendableMediaLibraryNapiUtils::GetMediaTypeFromUri(const string &uri)
 {
-    if (uri.find(MEDIALIBRARY_IMAGE_URI) != string::npos) {
+    if (uri.find(CONST_MEDIALIBRARY_IMAGE_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_IMAGE;
-    } else if (uri.find(MEDIALIBRARY_VIDEO_URI) != string::npos) {
+    } else if (uri.find(CONST_MEDIALIBRARY_VIDEO_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_VIDEO;
-    } else if (uri.find(MEDIALIBRARY_AUDIO_URI) != string::npos) {
+    } else if (uri.find(CONST_MEDIALIBRARY_AUDIO_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_AUDIO;
-    } else if (uri.find(MEDIALIBRARY_FILE_URI) != string::npos) {
+    } else if (uri.find(CONST_MEDIALIBRARY_FILE_URI) != string::npos) {
         return MediaType::MEDIA_TYPE_FILE;
     }
     return MediaType::MEDIA_TYPE_ALL;
@@ -196,8 +196,8 @@ static bool HandleSpecialDateTypePredicate(const OperationItem &item,
 {
     constexpr int32_t FIELD_IDX = 0;
     constexpr int32_t VALUE_IDX = 1;
-    vector<string>dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_TAKEN };
+    vector<string>dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN };
     string dateType = item.GetSingle(FIELD_IDX);
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
     if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
@@ -228,7 +228,7 @@ static void HandleSpecialPredicateProcessUri(AsyncContext &context, const FetchO
         fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
     }
     context->networkId = fileUri.GetNetworkId();
-    string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : MEDIA_DATA_DB_ID;
+    string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : CONST_MEDIA_DATA_DB_ID;
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
 }
 
@@ -309,9 +309,9 @@ bool SendableMediaLibraryNapiUtils::HandleSpecialPredicate(AsyncContext &context
             context->networkId = static_cast<string>(item.GetSingle(VALUE_IDX));
             continue;
         }
-        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == MEDIA_DATA_DB_URI) {
+        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == CONST_MEDIA_DATA_DB_URI) {
             if (item.operation != DataShare::EQUAL_TO) {
-                NAPI_ERR_LOG("MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
+                NAPI_ERR_LOG("CONST_MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
                 return false;
             }
             HandleSpecialPredicateProcessUri(context, fetchOptType, item, operations, hasUri);
@@ -476,9 +476,9 @@ void SendableMediaLibraryNapiUtils::UpdateMediaTypeSelections(AsyncContext *cont
     }
     DataShare::DataSharePredicates &predicates = context->predicates;
     predicates.BeginWrap();
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[FIRST_MEDIA_TYPE]);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[FIRST_MEDIA_TYPE]);
     if (context->mediaTypes.size() == ARGS_TWO) {
-        predicates.Or()->EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[SECOND_MEDIA_TYPE]);
+        predicates.Or()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[SECOND_MEDIA_TYPE]);
     }
     predicates.EndWrap();
 }
@@ -890,9 +890,9 @@ napi_value SendableMediaLibraryNapiUtils::AddAssetColumns(napi_env env, vector<s
     for (const auto &column : fetchColumn) {
         if (column == PENDING_STATUS) {
             validFetchColumns.insert(MediaColumn::MEDIA_TIME_PENDING);
-        } else if (isValidColumn(column) || (column == MEDIA_SUM_SIZE && IsSystemApp())) {
+        } else if (isValidColumn(column) || (column == CONST_MEDIA_SUM_SIZE && IsSystemApp())) {
             validFetchColumns.insert(column);
-        } else if (column == MEDIA_DATA_DB_URI) {
+        } else if (column == CONST_MEDIA_DATA_DB_URI) {
             continue;
         } else if (DATE_TRANSITION_MAP.count(column) != 0) {
             validFetchColumns.insert(DATE_TRANSITION_MAP.at(column));
@@ -1288,7 +1288,7 @@ napi_value SendableMediaLibraryNapiUtils::GetNextRowObject(napi_env env,
     MediaFileUri fileUri(fileAsset->GetMediaType(), to_string(fileAsset->GetId()), "", MEDIA_API_VERSION_V10, extrUri);
     fileAsset->SetUri(move(fileUri.ToString()));
     napi_create_string_utf8(env, fileAsset->GetUri().c_str(), NAPI_AUTO_LENGTH, &value);
-    napi_set_named_property(env, result, MEDIA_DATA_DB_URI.c_str(), value);
+    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI.c_str(), value);
     return result;
 }
 

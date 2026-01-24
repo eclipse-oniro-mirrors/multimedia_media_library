@@ -70,8 +70,8 @@ static int32_t OpenReadOnlyVideo(const std::string& videoUri, bool isMediaLibUri
 {
     if (isMediaLibUri) {
         std::string openVideoUri = videoUri;
-        MediaFileUtils::UriAppendKeyValue(openVideoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-            OPEN_MOVING_PHOTO_VIDEO);
+        MediaFileUtils::UriAppendKeyValue(openVideoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+            CONST_OPEN_MOVING_PHOTO_VIDEO);
         Uri uri(openVideoUri);
         return UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
     }
@@ -124,8 +124,8 @@ int32_t FfiMovingPhotoImpl::OpenReadOnlyLivePhoto(const string& destLivePhotoUri
     }
     if (MediaFileUtils::IsMediaLibraryUri(destLivePhotoUri)) {
         string livePhotoUri = destLivePhotoUri;
-        MediaFileUtils::UriAppendKeyValue(livePhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-            OPEN_PRIVATE_LIVE_PHOTO);
+        MediaFileUtils::UriAppendKeyValue(livePhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+            CONST_OPEN_PRIVATE_LIVE_PHOTO);
         Uri uri(livePhotoUri);
         return UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
     }
@@ -180,7 +180,7 @@ static int32_t RequestContentToSandbox(const string &destImageUri, const string 
     string movingPhotoUri, SourceMode sourceMode)
 {
     if (sourceMode == SourceMode::ORIGINAL_MODE) {
-        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     if (!destImageUri.empty()) {
         int32_t imageFd = FfiMovingPhotoImpl::OpenReadOnlyFile(movingPhotoUri, true);
@@ -251,7 +251,7 @@ static int32_t AcquireFdForArrayBuffer(string movingPhotoUri, SourceMode sourceM
 {
     int32_t fd = 0;
     if (sourceMode == SourceMode::ORIGINAL_MODE) {
-        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     switch (resourceType) {
         case ResourceType::IMAGE_RESOURCE:

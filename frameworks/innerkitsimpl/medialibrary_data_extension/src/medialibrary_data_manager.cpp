@@ -243,9 +243,10 @@ static void MakeRootDirs(AsyncTaskData *data)
     const unordered_set<string> DIR_CHECK_SET = { ROOT_MEDIA_DIR + BACKUP_DATA_DIR_VALUE,
         ROOT_MEDIA_DIR + BACKUP_SINGLE_DATA_DIR_VALUE };
     for (auto &dir : PRESET_ROOT_DIRS) {
-        Uri createAlbumUri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_ALBUMOPRN + "/" + MEDIA_ALBUMOPRN_CREATEALBUM);
+        Uri createAlbumUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_ALBUMOPRN + "/" +
+            CONST_MEDIA_ALBUMOPRN_CREATEALBUM);
         ValuesBucket valuesBucket;
-        valuesBucket.PutString(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR + dir);
+        valuesBucket.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR + dir);
         MediaLibraryCommand cmd(createAlbumUri, valuesBucket);
         auto ret = MediaLibraryAlbumOperations::CreateAlbumOperation(cmd);
         if (ret == E_FILE_EXIST) {
@@ -1420,7 +1421,7 @@ int32_t MediaLibraryDataManager::MakeDirQuerySetMap(unordered_map<string, DirAss
 {
     int32_t count = -1;
     vector<string> columns;
-    AbsRdbPredicates dirAbsPred(MEDIATYPE_DIRECTORY_TABLE);
+    AbsRdbPredicates dirAbsPred(CONST_MEDIATYPE_DIRECTORY_TABLE);
     CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, E_ERR, "rdbStore_ is nullptr");
 
     auto queryResultSet = rdbStore_->QueryByStep(dirAbsPred, columns);
@@ -1458,12 +1459,12 @@ unordered_map<string, DirAsset> MediaLibraryDataManager::GetDirQuerySetMap()
 #ifdef MEDIALIBRARY_COMPATIBILITY
 static void ChangeUriFromValuesBucket(ValuesBucket &values)
 {
-    if (!values.HasColumn(MEDIA_DATA_DB_URI)) {
+    if (!values.HasColumn(CONST_MEDIA_DATA_DB_URI)) {
         return;
     }
 
     ValueObject value;
-    if (!values.GetObject(MEDIA_DATA_DB_URI, value)) {
+    if (!values.GetObject(CONST_MEDIA_DATA_DB_URI, value)) {
         return;
     }
     string oldUri;
@@ -1471,8 +1472,8 @@ static void ChangeUriFromValuesBucket(ValuesBucket &values)
         return;
     }
     string newUri = MediaFileUtils::GetRealUriFromVirtualUri(oldUri);
-    values.Delete(MEDIA_DATA_DB_URI);
-    values.PutString(MEDIA_DATA_DB_URI, newUri);
+    values.Delete(CONST_MEDIA_DATA_DB_URI);
+    values.PutString(CONST_MEDIA_DATA_DB_URI, newUri);
 }
 #endif
 
@@ -1641,7 +1642,7 @@ int32_t MediaLibraryDataManager::Insert(MediaLibraryCommand &cmd, const DataShar
         return E_FAIL;
     }
     // visit count
-    if (cmd.GetUri().ToString().find(MEDIA_DATA_DB_THUMBNAIL) != string::npos &&
+    if (cmd.GetUri().ToString().find(CONST_MEDIA_DATA_DB_THUMBNAIL) != string::npos &&
         cmd.GetUri().ToString().find(PhotoColumn::PHOTO_LCD_VISIT_COUNT) != string::npos) {
         auto fileId = cmd.GetOprnFileId();
         MediaVisitCountManager::AddVisitCount(MediaVisitCountManager::VisitCountType::PHOTO_LCD, std::move(fileId));
@@ -1710,7 +1711,7 @@ int32_t MediaLibraryDataManager::BatchInsert(MediaLibraryCommand &cmd, const vec
     CHECK_AND_RETURN_RET_LOG(refCnt_.load() > 0, E_FAIL, "MediaLibraryDataManager is not initialized");
 
     string uriString = cmd.GetUri().ToString();
-    if (uriString == UFM_PHOTO_ALBUM_ADD_ASSET || uriString == PAH_PHOTO_ALBUM_ADD_ASSET) {
+    if (uriString == CONST_UFM_PHOTO_ALBUM_ADD_ASSET || uriString == CONST_PAH_PHOTO_ALBUM_ADD_ASSET) {
         return PhotoMapOperations::AddPhotoAssets(values);
     } else if (cmd.GetOprnObject() == OperationObject::ANALYSIS_PHOTO_MAP) {
         return PhotoMapOperations::AddAnaLysisPhotoAssets(values);
@@ -1783,7 +1784,7 @@ int32_t MediaLibraryDataManager::Delete(MediaLibraryCommand &cmd, const DataShar
         "illegal query whereClause input %{private}s", whereClause.c_str());
     tracer.Finish();
 
-    // MEDIALIBRARY_TABLE just for RdbPredicates
+    // CONST_MEDIALIBRARY_TABLE just for RdbPredicates
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates,
         cmd.GetTableName());
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
@@ -1806,8 +1807,9 @@ int32_t MediaLibraryDataManager::DeleteInRdbPredicates(MediaLibraryCommand &cmd,
         case OperationObject::FILESYSTEM_ASSET:
         case OperationObject::FILESYSTEM_DIR:
         case OperationObject::FILESYSTEM_ALBUM: {
-            vector<string> columns = { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_PARENT_ID,
-                MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_IS_TRASH, MEDIA_DATA_DB_RELATIVE_PATH };
+            vector<string> columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH,
+                CONST_MEDIA_DATA_DB_PARENT_ID,
+                CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_IS_TRASH, CONST_MEDIA_DATA_DB_RELATIVE_PATH };
             auto fileAsset = MediaLibraryObjectUtils::GetFileAssetByPredicates(*cmd.GetAbsRdbPredicates(), columns);
             CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_ARGUMENTS, "Get fileAsset failed.");
             CHECK_AND_RETURN_RET_LOG(!fileAsset->GetRelativePath().empty(), E_DELETE_DENIED, "relative_path is empty");
@@ -1925,7 +1927,7 @@ int32_t MediaLibraryDataManager::Update(MediaLibraryCommand &cmd, const DataShar
 
     cmd.SetValueBucket(value);
     cmd.SetDataSharePred(predicates);
-    // MEDIALIBRARY_TABLE just for RdbPredicates
+    // CONST_MEDIALIBRARY_TABLE just for RdbPredicates
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates,
         cmd.GetTableName());
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
@@ -1979,8 +1981,8 @@ static std::string BuildWhereClause(const std::vector<std::string>& dismissAsset
 int MediaLibraryDataManager::HandleAnalysisFaceUpdate(MediaLibraryCommand& cmd, NativeRdb::ValuesBucket &value,
     const DataShare::DataSharePredicates &predicates)
 {
-    string keyOperation = cmd.GetQuerySetParam(MEDIA_OPERN_KEYWORD);
-    if (keyOperation.empty() || keyOperation != UPDATE_DISMISS_ASSET) {
+    string keyOperation = cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD);
+    if (keyOperation.empty() || keyOperation != CONST_UPDATE_DISMISS_ASSET) {
         cmd.SetValueBucket(value);
         return MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd);
     }
@@ -2592,7 +2594,7 @@ shared_ptr<ResultSetBridge> MediaLibraryDataManager::Query(MediaLibraryCommand &
 static const map<OperationObject, string> QUERY_CONDITION_MAP {
     { OperationObject::SMART_ALBUM, SMARTALBUM_DB_ID },
     { OperationObject::SMART_ALBUM_MAP, SMARTALBUMMAP_DB_ALBUM_ID },
-    { OperationObject::FILESYSTEM_DIR, MEDIA_DATA_DB_ID },
+    { OperationObject::FILESYSTEM_DIR, CONST_MEDIA_DATA_DB_ID },
     { OperationObject::ALL_DEVICE, "" },
     { OperationObject::ACTIVE_DEVICE, "" },
     { OperationObject::ASSETMAP, "" },
@@ -2631,8 +2633,8 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryDataManager::QuerySet(MediaLibraryC
     tracer.Finish();
 
     cmd.SetDataSharePred(predicates);
-    // MEDIALIBRARY_TABLE just for RdbPredicates
-    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, MEDIALIBRARY_TABLE);
+    // CONST_MEDIALIBRARY_TABLE just for RdbPredicates
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, CONST_MEDIALIBRARY_TABLE);
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
     cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
     cmd.GetAbsRdbPredicates()->SetOrder(rdbPredicate.GetOrder());
@@ -2933,8 +2935,8 @@ static void AddToMediaVisitCount(OperationObject &oprnObject, MediaLibraryComman
         ExecuteDfxWork(fileId);
     } else if (oprnObject == OperationObject::THUMBNAIL) {
         visitType = MediaVisitCountManager::VisitCountType::PHOTO_LCD;
-        auto height = std::atoi(cmd.GetQuerySetParam(MEDIA_DATA_DB_HEIGHT).c_str());
-        auto width = std::atoi(cmd.GetQuerySetParam(MEDIA_DATA_DB_WIDTH).c_str());
+        auto height = std::atoi(cmd.GetQuerySetParam(CONST_MEDIA_DATA_DB_HEIGHT).c_str());
+        auto width = std::atoi(cmd.GetQuerySetParam(CONST_MEDIA_DATA_DB_WIDTH).c_str());
         int min = std::min(width, height);
         int max = std::max(width, height);
         if (min == DEFAULT_ORIGINAL && max == DEFAULT_ORIGINAL) {
@@ -2971,11 +2973,11 @@ int32_t MediaLibraryDataManager::OpenFile(MediaLibraryCommand &cmd, const string
         oprnObject != OperationObject::REQUEST_PICTURE && oprnObject != OperationObject::PHOTO_REQUEST_PICTURE_BUFFER &&
         oprnObject != OperationObject::KEY_FRAME) {
         string opObject = MediaFileUri::GetPathFirstDentry(const_cast<Uri &>(cmd.GetUri()));
-        if (opObject == IMAGE_ASSET_TYPE || opObject == VIDEO_ASSET_TYPE || opObject == URI_TYPE_PHOTO) {
+        if (opObject == CONST_IMAGE_ASSET_TYPE || opObject == CONST_VIDEO_ASSET_TYPE || opObject == CONST_URI_TYPE_PHOTO) {
             cmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
             return MediaLibraryAssetOperations::OpenOperation(cmd, mode);
         }
-        if (opObject == AUDIO_ASSET_TYPE || opObject == URI_TYPE_AUDIO_V10) {
+        if (opObject == CONST_AUDIO_ASSET_TYPE || opObject == CONST_URI_TYPE_AUDIO_V10) {
             cmd.SetOprnObject(OperationObject::FILESYSTEM_AUDIO);
             return MediaLibraryAssetOperations::OpenOperation(cmd, mode);
         }
@@ -3101,7 +3103,7 @@ int32_t MediaLibraryDataManager::RevertPendingByFileId(const std::string &fileId
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE);
     ValuesBucket values;
-    values.PutLong(Media::MEDIA_DATA_DB_TIME_PENDING, 0);
+    values.PutLong(CONST_MEDIA_DATA_DB_TIME_PENDING, 0);
     cmd.SetValueBucket(values);
 
     int32_t retVal = MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd, fileId);
@@ -3116,10 +3118,10 @@ int32_t MediaLibraryDataManager::RevertPendingByPackage(const std::string &bundl
 {
     MediaLibraryCommand queryCmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
     queryCmd.GetAbsRdbPredicates()
-        ->EqualTo(MEDIA_DATA_DB_OWNER_PACKAGE, bundleName)
+        ->EqualTo(CONST_MEDIA_DATA_DB_OWNER_PACKAGE, bundleName)
         ->And()
-        ->NotEqualTo(MEDIA_DATA_DB_TIME_PENDING, to_string(0));
-    vector<string> columns = { MEDIA_DATA_DB_ID };
+        ->NotEqualTo(CONST_MEDIA_DATA_DB_TIME_PENDING, to_string(0));
+    vector<string> columns = { CONST_MEDIA_DATA_DB_ID };
     auto result = MediaLibraryObjectUtils::QueryWithCondition(queryCmd, columns);
     if (result == nullptr) {
         return E_HAS_DB_ERROR;
@@ -3127,7 +3129,7 @@ int32_t MediaLibraryDataManager::RevertPendingByPackage(const std::string &bundl
 
     int32_t ret = E_SUCCESS;
     while (result->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t id = GetInt32Val(MEDIA_DATA_DB_ID, result);
+        int32_t id = GetInt32Val(CONST_MEDIA_DATA_DB_ID, result);
         int32_t retVal = RevertPendingByFileId(to_string(id));
         if (retVal != E_SUCCESS) {
             ret = retVal;
@@ -3202,7 +3204,7 @@ int32_t MediaLibraryDataManager::ProcessThumbnailBatchCmd(const MediaLibraryComm
 
     int32_t requestId = 0;
     ValueObject valueObject;
-    if (value.GetObject(THUMBNAIL_BATCH_GENERATE_REQUEST_ID, valueObject)) {
+    if (value.GetObject(CONST_THUMBNAIL_BATCH_GENERATE_REQUEST_ID, valueObject)) {
         valueObject.GetInt(requestId);
     }
 
@@ -3214,7 +3216,7 @@ int32_t MediaLibraryDataManager::ProcessThumbnailBatchCmd(const MediaLibraryComm
         return E_OK;
     } else if (cmd.GetOprnType() == OperationType::GENERATE_THUMBNAILS_RESTORE) {
         int32_t restoreAstcCount = 0;
-        if (value.GetObject(RESTORE_REQUEST_ASTC_GENERATE_COUNT, valueObject)) {
+        if (value.GetObject(CONST_RESTORE_REQUEST_ASTC_GENERATE_COUNT, valueObject)) {
             valueObject.GetInt(restoreAstcCount);
         }
         return thumbnailService_->RestoreThumbnailDualFrame(restoreAstcCount);
@@ -3236,7 +3238,7 @@ void MediaLibraryDataManager::UploadDBFileInner(int64_t totalFileSize)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr!");
-    std::string tmpPath = MEDIA_DB_DIR + "/rdb/media_library_tmp.db";
+    std::string tmpPath = std::string(CONST_MEDIA_DB_DIR) + "/rdb/media_library_tmp.db";
     int32_t errCode = rdbStore->Backup(tmpPath);
     CHECK_AND_RETURN_LOG(errCode == 0, "rdb backup fail: %{public}d", errCode);
     std::string destDbPath = "/data/storage/el2/log/logpack/media_library.db";

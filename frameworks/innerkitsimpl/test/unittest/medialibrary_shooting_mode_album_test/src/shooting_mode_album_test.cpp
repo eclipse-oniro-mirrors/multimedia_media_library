@@ -49,9 +49,9 @@ using OHOS::DataShare::DataShareValuesBucket;
 using OHOS::DataShare::DataSharePredicates;
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
-const std::string URI_CREATE_PHOTO_ALBUM = MEDIALIBRARY_DATA_URI + "/" + PHOTO_ALBUM_OPRN + "/" + OPRN_CREATE;
-const std::string URI_UPDATE_PHOTO_ALBUM = MEDIALIBRARY_DATA_URI + "/" + PHOTO_ALBUM_OPRN + "/" + OPRN_UPDATE;
-const std::string URI_ORDER_ALBUM = MEDIALIBRARY_DATA_URI + "/" + PHOTO_ALBUM_OPRN + "/" + OPRN_ORDER_ALBUM;
+const std::string URI_CREATE_PHOTO_ALBUM = MEDIALIBRARY_DATA_URI + "/" + CONST_PHOTO_ALBUM_OPRN + "/" + OPRN_CREATE;
+const std::string URI_UPDATE_PHOTO_ALBUM = MEDIALIBRARY_DATA_URI + "/" + CONST_PHOTO_ALBUM_OPRN + "/" + OPRN_UPDATE;
+const std::string URI_ORDER_ALBUM = MEDIALIBRARY_DATA_URI + "/" + CONST_PHOTO_ALBUM_OPRN + "/" + CONST_OPRN_ORDER_ALBUM;
 constexpr int32_t SHOOTING_MODE_ALBUM_MIN_NUM = 9;
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 
@@ -145,9 +145,9 @@ static int32_t InsertShootingModeAlbumValues(
 {
     ValuesBucket valuesBucket;
     valuesBucket.PutInt(SMARTALBUM_DB_ALBUM_TYPE, SHOOTING_MODE_TYPE);
-    valuesBucket.PutInt(COMPAT_ALBUM_SUBTYPE, SHOOTING_MODE_SUB_TYPE);
-    valuesBucket.PutString(MEDIA_DATA_DB_ALBUM_NAME, albumName);
-    valuesBucket.PutInt(MEDIA_DATA_DB_IS_LOCAL, 1); // local album is 1.
+    valuesBucket.PutInt(CONST_COMPAT_ALBUM_SUBTYPE, SHOOTING_MODE_SUB_TYPE);
+    valuesBucket.PutString(CONST_MEDIA_DATA_DB_ALBUM_NAME, albumName);
+    valuesBucket.PutInt(CONST_MEDIA_DATA_DB_IS_LOCAL, 1); // local album is 1.
     int64_t outRowId = -1;
     int32_t insertResult = store->Insert(outRowId, ANALYSIS_ALBUM_TABLE, valuesBucket);
     return insertResult;
@@ -251,7 +251,7 @@ HWTEST_F(ShootingModeAlbumTest, photoalbum_create_ShootingMode_album_001, TestSi
 HWTEST_F(ShootingModeAlbumTest, query_shooting_mode_album_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("query_shooting_mode_album_001 enter");
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, SHOOTING_MODE_TYPE);

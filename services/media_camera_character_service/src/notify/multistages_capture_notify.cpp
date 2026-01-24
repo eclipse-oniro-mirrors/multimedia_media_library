@@ -44,7 +44,7 @@ int32_t MultistagesCaptureNotify::NotifyOnProcess(
     int32_t fileId = fileAsset->GetId();
 
     std::string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath);
-    auto notifyUri = MediaFileUtils::GetUriByExtrConditions(ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
+    auto notifyUri = MediaFileUtils::GetUriByExtrConditions(CONST_ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
         static_cast<MediaType>(mediaType), MEDIA_API_VERSION_V10) + "/", to_string(fileId), extrUri);
     notifyUri = MediaFileUtils::GetUriWithoutDisplayname(notifyUri);
 

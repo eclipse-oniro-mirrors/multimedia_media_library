@@ -602,17 +602,17 @@ int32_t LakeFileOperations::UpdateMediaAssetEditData(string& fileUri)
 
     nlohmann::json editDataJson;
     if (editDataStr.empty() || !nlohmann::json::accept(editDataStr.c_str(), editDataStr.size())) {
-        editDataJson[COMPATIBLE_FORMAT] = "public";
-        editDataJson[FORMAT_VERSION] = "";
-        editDataJson[EDIT_DATA] = "";
-        editDataJson[APP_ID] = "";
+        editDataJson[CONST_COMPATIBLE_FORMAT] = "public";
+        editDataJson[CONST_FORMAT_VERSION] = "";
+        editDataJson[CONST_EDIT_DATA] = "";
+        editDataJson[CONST_APP_ID] = "";
         MEDIA_ERR_LOG("JSON format is invalid");
     } else {
         auto j = nlohmann::json::parse(editDataStr);
-        editDataJson[COMPATIBLE_FORMAT] = "public";
-        editDataJson[FORMAT_VERSION] = j.value(FORMAT_VERSION, "");
-        editDataJson[EDIT_DATA] = j.value(EDIT_DATA, "");
-        editDataJson[APP_ID] = j.value(APP_ID, "");
+        editDataJson[CONST_COMPATIBLE_FORMAT] = "public";
+        editDataJson[CONST_FORMAT_VERSION] = j.value(CONST_FORMAT_VERSION, "");
+        editDataJson[CONST_EDIT_DATA] = j.value(CONST_EDIT_DATA, "");
+        editDataJson[CONST_APP_ID] = j.value(CONST_APP_ID, "");
     }
 
     std::string editData = editDataJson.dump();

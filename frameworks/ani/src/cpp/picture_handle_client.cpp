@@ -58,7 +58,7 @@ std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32
 void PictureHandlerClient::FinishRequestPicture(const int32_t &fileId)
 {
     ANI_DEBUG_LOG("PictureHandlerClient::FinishRequestPicture fileId: %{public}d", fileId);
-    std::string uri = PAH_FINISH_REQUEST_PICTURE;
+    std::string uri = CONST_PAH_FINISH_REQUEST_PICTURE;
     MediaLibraryAniUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri finishRequestPictureUri(uri);
 

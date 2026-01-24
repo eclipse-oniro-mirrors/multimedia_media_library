@@ -70,7 +70,7 @@ int32_t ThumbnailGenerationPostProcess::UpdateCachedRdbValue(ThumbnailData& data
     tracer.Start("UpdateCachedRdbValue opts.store->Update");
     int32_t changedRows;
     int32_t err = opts.store->Update(changedRows, photosTable,
-        data.rdbUpdateCache, MEDIA_DATA_DB_ID + " = ?", { data.id });
+        data.rdbUpdateCache, CONST_MEDIA_DATA_DB_ID + " = ?", { data.id });
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "UpdateCachedRdbValue failed. table: %{public}s, err: %{public}d",
         photosTable.c_str(), err);
     CHECK_AND_RETURN_RET_LOG(changedRows != 0, E_RDB_UPDATE_NO_ROWS_CHANGED,
@@ -125,7 +125,7 @@ int32_t ThumbnailGenerationPostProcess::GetNotifyType(const ThumbnailData& data,
     CHECK_AND_RETURN_RET_LOG(!data.id.empty(), E_ERR, "Data.id is empty");
 
     vector<string> columns = { PhotoColumn::PHOTO_THUMBNAIL_VISIBLE };
-    string strQueryCondition = MEDIA_DATA_DB_ID + " = " + data.id;
+    string strQueryCondition = CONST_MEDIA_DATA_DB_ID + " = " + data.id;
     RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
     rdbPredicates.SetWhereClause(strQueryCondition);
 

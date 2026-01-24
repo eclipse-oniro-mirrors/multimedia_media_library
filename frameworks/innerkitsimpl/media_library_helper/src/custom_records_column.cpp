@@ -26,7 +26,7 @@ const std::string CustomRecordsColumns::TABLE = "tab_custom_records";
 const std::string CustomRecordsColumns::CREATE_TABLE = CreateTable() +
     TABLE + " (" +
     FILE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
-    BUNDLE_NAME + " TEXT, " +
+    CONST_BUNDLE_NAME + " TEXT, " +
     SHARE_COUNT + " INT DEFAULT 0, " +
     LCD_JUMP_COUNT + " INT DEFAULT 0)";
 

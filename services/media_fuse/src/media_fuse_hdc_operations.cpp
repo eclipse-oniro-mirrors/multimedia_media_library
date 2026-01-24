@@ -134,8 +134,8 @@ int32_t MediaFuseHdcOperations::GetAlbumIdFromAlbumName(const std::string &name,
     }
     NativeRdb::RdbPredicates rdbPredicate(PhotoAlbumColumns::TABLE);
     rdbPredicate.EqualTo(PhotoAlbumColumns::ALBUM_NAME, name);
-    rdbPredicate.And()->IsNotNull(MEDIA_DATA_DB_ALBUM_NAME);
-    rdbPredicate.And()->NotEqualTo(MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
+    rdbPredicate.And()->IsNotNull(CONST_MEDIA_DATA_DB_ALBUM_NAME);
+    rdbPredicate.And()->NotEqualTo(CONST_MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
     std::vector<std::string> columns;
     columns.push_back(PhotoAlbumColumns::ALBUM_ID);
     auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
@@ -377,7 +377,7 @@ int32_t MediaFuseHdcOperations::CreateFd(const std::string &displayName, const i
     std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
     auto mediaType = MediaFileUtils::GetMediaType(displayName);
     NativeRdb::ValuesBucket assetInfo;
-    assetInfo.PutString(ASSET_EXTENTION, extension);
+    assetInfo.PutString(CONST_ASSET_EXTENTION, extension);
     if (mediaType == Media::MediaType::MEDIA_TYPE_IMAGE) {
         assetInfo.PutInt(MediaColumn::MEDIA_TYPE, MEDIA_TYPE_IMAGE);
     } else if (mediaType == Media::MediaType::MEDIA_TYPE_VIDEO) {
@@ -473,7 +473,7 @@ int32_t MediaFuseHdcOperations::UpdatePhotoRdb(const std::string &displayName, c
     }
     MediaLibraryCommand closeCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     NativeRdb::ValuesBucket valuesBucket;
-    valuesBucket.PutString(MEDIA_DATA_DB_URI, uri);
+    valuesBucket.PutString(CONST_MEDIA_DATA_DB_URI, uri);
     closeCmd.SetValueBucket(valuesBucket);
     closeCmd.SetTableName(PhotoColumn::PHOTOS_TABLE);
     int32_t ret = MediaLibraryPhotoOperations::Close(closeCmd);
@@ -513,8 +513,8 @@ int32_t MediaFuseHdcOperations::ScanFileByPath(const std::string &path)
 int32_t MediaFuseHdcOperations::ReadPhotoRootDir(void *buf, fuse_fill_dir_t filler, off_t offset)
 {
     NativeRdb::RdbPredicates rdbPredicate(PhotoAlbumColumns::TABLE);
-    rdbPredicate.IsNotNull(MEDIA_DATA_DB_ALBUM_NAME);
-    rdbPredicate.NotEqualTo(MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
+    rdbPredicate.IsNotNull(CONST_MEDIA_DATA_DB_ALBUM_NAME);
+    rdbPredicate.NotEqualTo(CONST_MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
     rdbPredicate.GroupBy({ PhotoAlbumColumns::ALBUM_NAME });
     std::vector<std::string> columns = {
         PhotoAlbumColumns::ALBUM_NAME,

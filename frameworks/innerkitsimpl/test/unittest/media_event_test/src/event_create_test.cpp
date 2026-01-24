@@ -64,30 +64,30 @@ string ReturnUri(string UriType, string MainUri, string SubUri = "")
 
 int32_t CreateFileAsset(const string &relativePath, const string &displayName, const MediaType &mediaType)
 {
-    Uri createAssetUri(ReturnUri(MEDIALIBRARY_DATA_URI, MEDIA_FILEOPRN, MEDIA_FILEOPRN_CREATEASSET));
+    Uri createAssetUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIA_FILEOPRN, CONST_MEDIA_FILEOPRN_CREATEASSET));
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, displayName);
-    valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
     MediaLibraryCommand cmd(createAssetUri);
     return MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
 }
 
 int32_t CreateAlbum(const string &albumName, const string &dirPath)
 {
-    Uri createAlbumUri(ReturnUri(MEDIALIBRARY_DATA_URI, MEDIA_ALBUMOPRN, MEDIA_ALBUMOPRN_CREATEALBUM));
+    Uri createAlbumUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIA_ALBUMOPRN, CONST_MEDIA_ALBUMOPRN_CREATEALBUM));
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, albumName);
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, dirPath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, albumName);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, dirPath);
     MediaLibraryCommand cmd(createAlbumUri);
     return MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
 }
 
 int32_t DeleteAsset(const int &id)
 {
-    Uri deleteAssetUri(ReturnUri(MEDIALIBRARY_DATA_URI, MEDIA_FILEOPRN, MEDIA_FILEOPRN_DELETEASSET));
+    Uri deleteAssetUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIA_FILEOPRN, CONST_MEDIA_FILEOPRN_DELETEASSET));
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_ID, to_string(id));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(id));
     MediaLibraryCommand cmd(deleteAssetUri, Media::OperationType::DELETE);
     return MediaLibraryDataManager::GetInstance()->Delete(cmd, predicates);
 }

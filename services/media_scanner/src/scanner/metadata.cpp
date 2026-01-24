@@ -70,6 +70,13 @@ Metadata::Metadata()
 
 void Metadata::InitV2()
 {
+    memberFuncMap_[PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
+        &Metadata::SetDynamicRangeType);
+    memberFuncMap_[PhotoColumn::PHOTO_IS_TEMP] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetIsTemp);
+    memberFuncMap_[PhotoColumn::PHOTO_QUALITY] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetPhotoQuality);
+    memberFuncMap_[PhotoColumn::PHOTO_DIRTY] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetDirty);
+    memberFuncMap_[PhotoColumn::PHOTO_FRONT_CAMERA] = make_pair(ResultSetDataType::TYPE_STRING,
+        &Metadata::SetFrontCamera);
     memberFuncMap_[PhotoColumn::MEDIA_FILE_PATH] = make_pair(ResultSetDataType::TYPE_STRING,
         &Metadata::SetMovingPhotoImagePath);
     memberFuncMap_[PhotoColumn::PHOTO_DETAIL_TIME] = make_pair(ResultSetDataType::TYPE_STRING,
@@ -88,31 +95,39 @@ void Metadata::InitV2()
 
 void Metadata::Init()
 {
-    memberFuncMap_[MEDIA_DATA_DB_ID] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileId);
-    memberFuncMap_[MEDIA_DATA_DB_URI] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetUri);
-    memberFuncMap_[MEDIA_DATA_DB_FILE_PATH] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFilePath);
-    memberFuncMap_[MEDIA_DATA_DB_RELATIVE_PATH] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetRelativePath);
-    memberFuncMap_[MEDIA_DATA_DB_MEDIA_TYPE] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileMediaType);
-    memberFuncMap_[MEDIA_DATA_DB_MIME_TYPE] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFileMimeType);
-    memberFuncMap_[MEDIA_DATA_DB_NAME] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFileName);
-    memberFuncMap_[MEDIA_DATA_DB_SIZE] = make_pair(ResultSetDataType::TYPE_INT64, &Metadata::SetFileSize);
-    memberFuncMap_[MEDIA_DATA_DB_DATE_ADDED] = make_pair(ResultSetDataType::TYPE_INT64, &Metadata::SetFileDateAdded);
-    memberFuncMap_[MEDIA_DATA_DB_TITLE] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFileTitle);
-    memberFuncMap_[MEDIA_DATA_DB_ARTIST] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFileArtist);
-    memberFuncMap_[MEDIA_DATA_DB_AUDIO_ALBUM] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetAlbum);
-    memberFuncMap_[MEDIA_DATA_DB_HEIGHT] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileHeight);
-    memberFuncMap_[MEDIA_DATA_DB_WIDTH] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileWidth);
-    memberFuncMap_[MEDIA_DATA_DB_ORIENTATION] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetOrientation);
-    memberFuncMap_[MEDIA_DATA_DB_DURATION] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileDuration);
-    memberFuncMap_[MEDIA_DATA_DB_LONGITUDE] = make_pair(ResultSetDataType::TYPE_DOUBLE, &Metadata::SetLongitude);
-    memberFuncMap_[MEDIA_DATA_DB_LATITUDE] = make_pair(ResultSetDataType::TYPE_DOUBLE, &Metadata::SetLatitude);
-    memberFuncMap_[MEDIA_DATA_DB_BUCKET_NAME] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetAlbumName);
-    memberFuncMap_[MEDIA_DATA_DB_PARENT_ID] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetParentId);
-    memberFuncMap_[MEDIA_DATA_DB_RECYCLE_PATH] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetRecyclePath);
-    memberFuncMap_[MEDIA_DATA_DB_DATE_TAKEN] = make_pair(ResultSetDataType::TYPE_INT64, &Metadata::SetDateTaken);
-    memberFuncMap_[MEDIA_DATA_DB_DATE_MODIFIED] = make_pair(ResultSetDataType::TYPE_INT64,
+    memberFuncMap_[CONST_MEDIA_DATA_DB_ID] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileId);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_URI] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetUri);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_FILE_PATH] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFilePath);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_RELATIVE_PATH] = make_pair(ResultSetDataType::TYPE_STRING,
+        &Metadata::SetRelativePath);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_MEDIA_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
+        &Metadata::SetFileMediaType);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_MIME_TYPE] = make_pair(ResultSetDataType::TYPE_STRING,
+        &Metadata::SetFileMimeType);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_NAME] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFileName);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_SIZE] = make_pair(ResultSetDataType::TYPE_INT64, &Metadata::SetFileSize);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_DATE_ADDED] = make_pair(ResultSetDataType::TYPE_INT64,
+        &Metadata::SetFileDateAdded);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_TITLE] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFileTitle);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_ARTIST] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetFileArtist);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_AUDIO_ALBUM] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetAlbum);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_HEIGHT] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileHeight);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_WIDTH] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileWidth);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_ORIENTATION] = make_pair(ResultSetDataType::TYPE_INT32,
+        &Metadata::SetOrientation);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_DURATION] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetFileDuration);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_LONGITUDE] = make_pair(ResultSetDataType::TYPE_DOUBLE, &Metadata::SetLongitude);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_LATITUDE] = make_pair(ResultSetDataType::TYPE_DOUBLE, &Metadata::SetLatitude);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_BUCKET_NAME] = make_pair(ResultSetDataType::TYPE_STRING,
+        &Metadata::SetAlbumName);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_PARENT_ID] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetParentId);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_RECYCLE_PATH] = make_pair(ResultSetDataType::TYPE_STRING,
+        &Metadata::SetRecyclePath);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_DATE_TAKEN] = make_pair(ResultSetDataType::TYPE_INT64, &Metadata::SetDateTaken);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_DATE_MODIFIED] = make_pair(ResultSetDataType::TYPE_INT64,
         &Metadata::SetFileDateModified);
-    memberFuncMap_[MEDIA_DATA_DB_TIME_PENDING] = make_pair(ResultSetDataType::TYPE_INT64, &Metadata::SetTimePending);
+    memberFuncMap_[CONST_MEDIA_DATA_DB_TIME_PENDING] = make_pair(ResultSetDataType::TYPE_INT64,
+        &Metadata::SetTimePending);
     memberFuncMap_[PhotoColumn::PHOTO_USER_COMMENT] = make_pair(ResultSetDataType::TYPE_STRING,
         &Metadata::SetUserComment);
     memberFuncMap_[PhotoColumn::PHOTO_ALL_EXIF] = make_pair(ResultSetDataType::TYPE_STRING, &Metadata::SetAllExif);
@@ -124,13 +139,6 @@ void Metadata::Init()
     memberFuncMap_[PhotoColumn::PHOTO_SUBTYPE] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetPhotoSubType);
     memberFuncMap_[PhotoColumn::MOVING_PHOTO_EFFECT_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetMovingPhotoEffectMode);
-    memberFuncMap_[PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
-        &Metadata::SetDynamicRangeType);
-    memberFuncMap_[PhotoColumn::PHOTO_IS_TEMP] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetIsTemp);
-    memberFuncMap_[PhotoColumn::PHOTO_QUALITY] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetPhotoQuality);
-    memberFuncMap_[PhotoColumn::PHOTO_DIRTY] = make_pair(ResultSetDataType::TYPE_INT32, &Metadata::SetDirty);
-    memberFuncMap_[PhotoColumn::PHOTO_FRONT_CAMERA] = make_pair(ResultSetDataType::TYPE_STRING,
-        &Metadata::SetFrontCamera);
     InitV2();
 }
 

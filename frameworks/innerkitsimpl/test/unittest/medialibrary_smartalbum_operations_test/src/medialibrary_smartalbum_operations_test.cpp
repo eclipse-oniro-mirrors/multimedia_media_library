@@ -63,7 +63,7 @@ HWTEST_F(MediaLibrarySmartalbumOperationTest, medialib_HandleSmartAlbumOperation
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
     int32_t ret = MediaLibrarySmartAlbumOperations::HandleSmartAlbumOperation(cmd);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     cmd.SetValueBucket(values);
@@ -82,7 +82,7 @@ HWTEST_F(MediaLibrarySmartalbumOperationTest, medialib_CreateSmartAlbumOperation
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
     int32_t ret = MediaLibrarySmartAlbumOperations::CreateSmartAlbumOperation(cmd);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     cmd.SetValueBucket(values);
@@ -102,7 +102,7 @@ HWTEST_F(MediaLibrarySmartalbumOperationTest, medialib_CreateSmartAlbumOperation
 HWTEST_F(MediaLibrarySmartalbumOperationTest, medialib_CreateSmartAlbumOperation_test_002, TestSize.Level0)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     MediaLibraryUnitTestUtils::InitUnistore();
@@ -120,7 +120,7 @@ HWTEST_F(MediaLibrarySmartalbumOperationTest, medialib_DeleteSmartAlbumOperation
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
     int32_t ret = MediaLibrarySmartAlbumOperations::DeleteSmartAlbumOperation(cmd);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUM_DB_ID, DEFAULT_DIR_TYPE);
     cmd.SetValueBucket(values);
@@ -134,7 +134,7 @@ HWTEST_F(MediaLibrarySmartalbumOperationTest, medialib_DeleteSmartAlbumOperation
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
     MediaLibraryUnitTestUtils::InitUnistore();
     NativeRdb::ValuesBucket values;
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     values.PutInt(SMARTALBUM_DB_ID, TYPE_TRASH);
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     cmd.GetAbsRdbPredicates()->SetWhereClause("1 <> 0");

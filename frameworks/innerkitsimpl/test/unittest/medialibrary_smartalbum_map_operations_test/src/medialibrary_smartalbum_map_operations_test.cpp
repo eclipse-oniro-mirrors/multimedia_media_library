@@ -72,7 +72,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleSmartAlbumMapOp
     int32_t ret = MediaLibrarySmartAlbumMapOperations::HandleSmartAlbumMapOperation(cmd);
     EXPECT_EQ(ret, E_SMARTALBUM_IS_NOT_EXISTED);
 
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     cmd.SetValueBucket(values);
@@ -107,7 +107,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleAddAssetOperati
     int32_t ret = MediaLibrarySmartAlbumMapOperations::HandleAddAssetOperation(0, 0, 0, cmd);
     EXPECT_EQ(ret, E_CHILD_CAN_NOT_ADD_SMARTALBUM);
 
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     cmd.SetValueBucket(values);
@@ -132,7 +132,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleAddAssetOperati
 HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleAddAssetOperation_test_002, TestSize.Level0)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     string name = "medialib_HandleAddAssetOperation";
@@ -171,7 +171,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleRemoveAssetOper
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
     int32_t ret = MediaLibrarySmartAlbumMapOperations::HandleRemoveAssetOperation(0, 0, cmd);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUM_DB_ID, DEFAULT_DIR_TYPE);
     cmd.SetValueBucket(values);
@@ -195,7 +195,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleRemoveAssetOper
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
     NativeRdb::ValuesBucket values;
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     values.PutInt(SMARTALBUM_DB_ID, TYPE_TRASH);
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     cmd.GetAbsRdbPredicates()->SetWhereClause("1 <> 0");
@@ -211,7 +211,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleAgingOperation_
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::AGING);
     int32_t ret = MediaLibrarySmartAlbumMapOperations::HandleAgingOperation();
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     cmd.SetValueBucket(values);
@@ -232,7 +232,7 @@ HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleAgingOperation_
 HWTEST_F(MediaLibrarySmartalbumMapOperationsTest, medialib_HandleAgingOperation_test_002, TestSize.Level0)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::AGING);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     NativeRdb::ValuesBucket values;
     values.PutInt(SMARTALBUMMAP_DB_ALBUM_ID, FAVOURITE_ALBUM_ID_VALUES);
     string name = "medialib_HandleAgingOperation";

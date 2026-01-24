@@ -57,10 +57,10 @@ using namespace OHOS::DataShare;
 constexpr int32_t ALBUM_IS_REMOVED = 1;
 constexpr int32_t USER_OPERATION_MODIFYED = 1;
 unordered_map<string, string> dateTypeSecondsMap = {
-    {MEDIA_DATA_DB_DATE_ADDED_TO_SECOND, "CAST(P.date_added / 1000 AS BIGINT) AS date_added_s"},
-    {MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND, "CAST(P.date_trashed / 1000 AS BIGINT) AS date_trashed_s"},
-    {MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND, "CAST(P.date_modified / 1000 AS BIGINT) AS date_modified_s"},
-    {MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND, "CAST(P.date_taken / 1000 AS BIGINT) AS date_taken_s"}
+    {CONST_MEDIA_DATA_DB_DATE_ADDED_TO_SECOND, "CAST(P.date_added / 1000 AS BIGINT) AS date_added_s"},
+    {CONST_MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND, "CAST(P.date_trashed / 1000 AS BIGINT) AS date_trashed_s"},
+    {CONST_MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND, "CAST(P.date_modified / 1000 AS BIGINT) AS date_modified_s"},
+    {CONST_MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND, "CAST(P.date_taken / 1000 AS BIGINT) AS date_taken_s"}
 };
 
 static int32_t InsertAnalysisAsset(const DataShareValuesBucket &value,

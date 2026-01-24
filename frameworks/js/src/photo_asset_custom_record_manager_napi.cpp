@@ -244,7 +244,7 @@ static void CreateCustomRecordsExecute(napi_env env, void* data)
         return;
     }
     std::vector<DataShare::DataShareValuesBucket> valueBuckets = context->valuesBuckets;
-    Uri uri(CUSTOM_RECORDS_CREATE_URI);
+    Uri uri(CONST_CUSTOM_RECORDS_CREATE_URI);
     int32_t ret = UserFileClient::BatchInsert(uri, valueBuckets);
     if (ret <= 0) {
         context->error = JS_E_PARAM_INVALID;
@@ -396,7 +396,7 @@ static void JSGetCustomRecordsExecute(napi_env env, void* data)
 {
     auto* context = static_cast<CustomRecordAsyncContext*>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "async context is null");
-    std::string queryUri = CUSTOM_RECORDS_QUERY_URI;
+    std::string queryUri = CONST_CUSTOM_RECORDS_QUERY_URI;
     Uri uri(queryUri);
     int32_t errCode = 0;
     std::shared_ptr<DataShare::DataShareResultSet> resultSet = UserFileClient::Query(uri,
@@ -477,7 +477,7 @@ napi_value PhotoAssetCustomRecordManager::JSGetCustomRecords(napi_env env, napi_
 static void JSRemoveCustomRecordsExecute(napi_env env, void* data)
 {
     auto* context = static_cast<CustomRecordAsyncContext*>(data);
-    std::string deleteUri = CUSTOM_RECORDS_DELETE_URI;
+    std::string deleteUri = CONST_CUSTOM_RECORDS_DELETE_URI;
     Uri uri(deleteUri);
     int32_t errcode = UserFileClient::Delete(uri, context->predicates);
     if (errcode < 0) {
@@ -529,7 +529,7 @@ static void JSAddShareCountExecute(napi_env env, void* data)
     std::set<int32_t> deduplicationIds(context->fileIds.begin(), context->fileIds.end());
     for (auto id : deduplicationIds) {
         int32_t errcode = 0;
-        std::string queryUriStr = CUSTOM_RECORDS_QUERY_URI;
+        std::string queryUriStr = CONST_CUSTOM_RECORDS_QUERY_URI;
         Uri queryuri(queryUriStr);
         OHOS::DataShare::DataSharePredicates predicates;
         context->fetchColumn.push_back(CustomRecordsColumns::SHARE_COUNT);
@@ -548,7 +548,7 @@ static void JSAddShareCountExecute(napi_env env, void* data)
         }
         int32_t shareCount = get<int32_t>(ResultSetUtils::GetValFromColumn(CustomRecordsColumns::SHARE_COUNT,
             resultSet, TYPE_INT32));
-        Uri updateUri(CUSTOM_RECORDS_UPDATE_URI);
+        Uri updateUri(CONST_CUSTOM_RECORDS_UPDATE_URI);
         DataShare::DataShareValuesBucket valuesBucket;
         valuesBucket.Put(CustomRecordsColumns::SHARE_COUNT, ++shareCount);
         int32_t result = UserFileClient::Update(updateUri, predicates, valuesBucket, context->userId_);
@@ -637,7 +637,7 @@ static void JSAddLcdJumpCountExecute(napi_env env, void* data)
     std::set<int32_t> deduplicationIds(context->fileIds.begin(), context->fileIds.end());
     for (auto id : deduplicationIds) {
         int32_t errcode = 0;
-        Uri queryuri(CUSTOM_RECORDS_QUERY_URI);
+        Uri queryuri(CONST_CUSTOM_RECORDS_QUERY_URI);
         context->fetchColumn.push_back(CustomRecordsColumns::LCD_JUMP_COUNT);
         DataShare::DataSharePredicates predicates;
         predicates.EqualTo(CustomRecordsColumns::FILE_ID, std::to_string(id));
@@ -650,7 +650,7 @@ static void JSAddLcdJumpCountExecute(napi_env env, void* data)
         }
         int32_t lcdJumpCount = get<int32_t>(ResultSetUtils::GetValFromColumn(CustomRecordsColumns::LCD_JUMP_COUNT,
             resultSet, TYPE_INT32));
-        Uri updateUri(CUSTOM_RECORDS_UPDATE_URI);
+        Uri updateUri(CONST_CUSTOM_RECORDS_UPDATE_URI);
         DataShare::DataShareValuesBucket valuesBucket;
         valuesBucket.Put(CustomRecordsColumns::LCD_JUMP_COUNT, ++lcdJumpCount);
         int32_t result = UserFileClient::Update(updateUri, predicates, valuesBucket, context->userId_);
@@ -690,7 +690,7 @@ static void JSSetCustomRecordsExecute(napi_env env, void* data)
         valuesBucket.Put(CustomRecordsColumns::LCD_JUMP_COUNT, lcdJumpCount);
         DataShare::DataSharePredicates predicate;
         predicate.EqualTo(CustomRecordsColumns::FILE_ID, fileId);
-        Uri updateUri(CUSTOM_RECORDS_UPDATE_URI);
+        Uri updateUri(CONST_CUSTOM_RECORDS_UPDATE_URI);
         int32_t result = UserFileClient::Update(updateUri, predicate, valuesBucket);
         if (result <= 0) {
             NAPI_ERR_LOG("JSSetCustomRecordsExecute Update fail");

@@ -258,12 +258,12 @@ static string GetAbnormalLpathCountQuerySql()
 
 static void BuildDbInfo(PhotoRecordInfo &photoRecordInfo)
 {
-    string databaseDir = MEDIA_DB_DIR + "/rdb";
+    string databaseDir = string(CONST_MEDIA_DB_DIR) + "/rdb";
     if (access(databaseDir.c_str(), E_OK) != 0) {
         MEDIA_WARN_LOG("can not get rdb through sandbox");
         return;
     }
-    string dbPath = databaseDir.append("/").append(MEDIA_DATA_ABILITY_DB_NAME);
+    string dbPath = databaseDir.append("/").append(CONST_MEDIA_DATA_ABILITY_DB_NAME);
 
     struct stat statInfo {};
     if (stat(dbPath.c_str(), &statInfo) != 0) {
@@ -273,7 +273,7 @@ static void BuildDbInfo(PhotoRecordInfo &photoRecordInfo)
     photoRecordInfo.dbFileSize = statInfo.st_size;
 
     struct stat slaveStatInfo {};
-    if (stat(MEDIA_DB_FILE_SLAVE.c_str(), &slaveStatInfo) == 0) {
+    if (stat(CONST_MEDIA_DB_FILE_SLAVE, &slaveStatInfo) == 0) {
         photoRecordInfo.slaveDbFileSize = slaveStatInfo.st_size;
     }
 }

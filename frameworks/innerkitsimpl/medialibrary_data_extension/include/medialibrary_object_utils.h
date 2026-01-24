@@ -88,7 +88,7 @@ public:
     EXPORT static int32_t CheckDirExtension(const std::string &relativePath, const std::string &displayName);
     EXPORT static int32_t UpdateDateModified(const std::string &dirPath);
     EXPORT static void GetDefaultRelativePath(const int32_t mediaType, string &relativePath);
-    static void InvalidateThumbnail(const string &id, const string &tableName = MEDIALIBRARY_TABLE,
+    static void InvalidateThumbnail(const string &id, const string &tableName = CONST_MEDIALIBRARY_TABLE,
         const string &path = "");
     static void TryUpdateAnalysisProp(const std::string str);
 

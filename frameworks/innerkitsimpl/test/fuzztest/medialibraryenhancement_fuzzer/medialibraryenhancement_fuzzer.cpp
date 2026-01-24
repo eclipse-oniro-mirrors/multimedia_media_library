@@ -90,9 +90,9 @@ static inline vector<string> FuzzVectorString()
 static inline Uri FuzzUriWithKeyValue(string uriStr)
 {
     if (provider->ConsumeBool()) {
-        Media::MediaFileUtils::UriAppendKeyValue(uriStr, Media::MEDIA_OPERN_KEYWORD, "true");
+        Media::MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "true");
     } else {
-        Media::MediaFileUtils::UriAppendKeyValue(uriStr, Media::MEDIA_OPERN_KEYWORD, "false");
+        Media::MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, "false");
     }
     Uri addTask(uriStr);
     return addTask;

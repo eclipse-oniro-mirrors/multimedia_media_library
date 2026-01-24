@@ -184,10 +184,10 @@ static void UriPermissionTest()
     Media::MediaLibraryCommand cmd(static_cast<Media::OperationObject>(operationObject),
         static_cast<Media::OperationType>(operationType), static_cast<Media::MediaLibraryApi>(mediaLibraryApi));
     NativeRdb::ValuesBucket rdbValueBucket;
-    rdbValueBucket.Put(Media::PERMISSION_FILE_ID, FDP->ConsumeIntegral<int32_t>());
-    rdbValueBucket.Put(Media::PERMISSION_BUNDLE_NAME, FDP->ConsumeBytesAsString(NUM_BYTES));
-    rdbValueBucket.Put(Media::PERMISSION_MODE, "r");
-    rdbValueBucket.Put(Media::PERMISSION_TABLE_TYPE, FDP->ConsumeBytesAsString(NUM_BYTES));
+    rdbValueBucket.Put(CONST_PERMISSION_FILE_ID, FDP->ConsumeIntegral<int32_t>());
+    rdbValueBucket.Put(CONST_PERMISSION_BUNDLE_NAME, FDP->ConsumeBytesAsString(NUM_BYTES));
+    rdbValueBucket.Put(CONST_PERMISSION_MODE, "r");
+    rdbValueBucket.Put(CONST_PERMISSION_TABLE_TYPE, FDP->ConsumeBytesAsString(NUM_BYTES));
     cmd.SetValueBucket(rdbValueBucket);
     Media::UriPermissionOperations::HandleUriPermOperations(cmd);
     Media::UriPermissionOperations::HandleUriPermInsert(cmd);

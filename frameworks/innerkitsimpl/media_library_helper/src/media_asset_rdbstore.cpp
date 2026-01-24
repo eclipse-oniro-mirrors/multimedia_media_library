@@ -56,7 +56,7 @@ std::string GetTableNameFromOprnObject(const OperationObject& object)
         auto cmdObj = TABLE_NAME_MAP.at(object);
         return cmdObj.begin()->second;
     } else {
-        return MEDIALIBRARY_TABLE;
+        return CONST_MEDIALIBRARY_TABLE;
     }
 }
 
@@ -146,8 +146,8 @@ int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
     CHECK_AND_RETURN_RET_LOG(!cond, NativeRdb::E_ERROR,
         "media library db update not complete, key:%{public}s", key.c_str());
 
-    string name = MEDIA_DATA_ABILITY_DB_NAME;
-    string databaseDir = MEDIA_DB_DIR + "/rdb";
+    string name = CONST_MEDIA_DATA_ABILITY_DB_NAME;
+    string databaseDir = string(CONST_MEDIA_DB_DIR) + "/rdb";
     if (access(databaseDir.c_str(), E_OK) != 0) {
         MEDIA_WARN_LOG("can not get rdb through sandbox");
         return NativeRdb::E_ERROR;
@@ -178,11 +178,11 @@ int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
 
 void AddVirtualColumnsOfDateType(vector<string>& columns)
 {
-    vector<string> dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-            MEDIA_DATA_DB_DATE_TAKEN };
-    vector<string> dateTypeSeconds = { MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
-            MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND, MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
-            MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND };
+    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+            CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN };
+    vector<string> dateTypeSeconds = { CONST_MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
+            CONST_MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND, CONST_MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
+            CONST_MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND };
     for (size_t i = 0; i < dateTypes.size(); i++) {
         auto it = find(columns.begin(), columns.end(), dateTypes[i]);
         if (it != columns.end()) {
@@ -193,7 +193,7 @@ void AddVirtualColumnsOfDateType(vector<string>& columns)
 
 void AddQueryIndex(AbsPredicates& predicates, const vector<string>& columns)
 {
-    auto it = find(columns.begin(), columns.end(), MEDIA_COLUMN_COUNT);
+    auto it = find(columns.begin(), columns.end(), CONST_MEDIA_COLUMN_COUNT);
     if (it == columns.end()) {
         return;
     }
@@ -216,8 +216,8 @@ void AddQueryIndex(AbsPredicates& predicates, const vector<string>& columns)
 
 static string GetQueryFilter(const string &tableName)
 {
-    if (tableName == MEDIALIBRARY_TABLE) {
-        return MEDIALIBRARY_TABLE + "." + MEDIA_DATA_DB_SYNC_STATUS + " = " +
+    if (tableName == CONST_MEDIALIBRARY_TABLE) {
+        return string(CONST_MEDIALIBRARY_TABLE) + "." + CONST_MEDIA_DATA_DB_SYNC_STATUS + " = " +
             to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
     }
     if (tableName == PhotoColumn::PHOTOS_TABLE) {
@@ -316,7 +316,7 @@ bool MediaAssetRdbStore::IsQueryGroupPhotoAlbumAssets(const string &albumId)
 bool MediaAssetRdbStore::IsQueryAccessibleViaSandBox(Uri& uri, OperationObject& object,
     const DataShare::DataSharePredicates& predicates, bool isIgnoreSELinux)
 {
-    CHECK_AND_RETURN_RET(access(MEDIA_DB_DIR.c_str(), E_OK) == 0, false);
+    CHECK_AND_RETURN_RET(access(CONST_MEDIA_DB_DIR, E_OK) == 0, false);
     if (rdbStore_ == nullptr) {
         CHECK_AND_RETURN_RET_LOG(TryGetRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, false,
             "fail to acquire rdb when query");
@@ -385,7 +385,7 @@ std::shared_ptr<NativeRdb::ResultSet> MediaAssetRdbStore::QueryByStep(const std:
 
 bool MediaAssetRdbStore::IsSupportSharedAssetQuery(Uri& uri, OperationObject& object, bool isIgnoreSELinux)
 {
-    CHECK_AND_RETURN_RET(access(MEDIA_DB_DIR.c_str(), E_OK) == 0, false);
+    CHECK_AND_RETURN_RET(access(CONST_MEDIA_DB_DIR, E_OK) == 0, false);
     if (rdbStore_ == nullptr) {
         CHECK_AND_RETURN_RET_LOG(TryGetRdbStore(isIgnoreSELinux) == NativeRdb::E_OK, false,
             "fail to acquire rdb when query");

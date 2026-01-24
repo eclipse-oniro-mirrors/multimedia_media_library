@@ -123,8 +123,8 @@ static bool HandleSpecialDateTypePredicate(const OperationItem &item,
 {
     constexpr int32_t fieldIdx = 0;
     constexpr int32_t valueIdx = 1;
-    vector<string>dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_TAKEN};
+    vector<string>dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN};
     string dateType = item.GetSingle(fieldIdx);
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
     if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
@@ -197,9 +197,9 @@ bool MediaAniNativeImpl::ExtractSpecialFields(std::shared_ptr<MediaLibraryAsyncC
         context->networkId = static_cast<string>(item.GetSingle(valueIdx));
         return true;
     }
-    if (static_cast<string>(item.GetSingle(fieldIdx)) == MEDIA_DATA_DB_URI) {
+    if (static_cast<string>(item.GetSingle(fieldIdx)) == CONST_MEDIA_DATA_DB_URI) {
         if (item.operation != DataShare::EQUAL_TO) {
-            ANI_ERR_LOG("MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
+            ANI_ERR_LOG("CONST_MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
             return false;
         }
         string uri = static_cast<string>(item.GetSingle(valueIdx));
@@ -210,7 +210,7 @@ bool MediaAniNativeImpl::ExtractSpecialFields(std::shared_ptr<MediaLibraryAsyncC
             fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
         }
         context->networkId = fileUri.GetNetworkId();
-        string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : MEDIA_DATA_DB_ID;
+        string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : CONST_MEDIA_DATA_DB_ID;
         operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
         return true;
     }
@@ -338,7 +338,7 @@ bool MediaAniNativeImpl::AddDefaultAssetColumns(ani_env *env, vector<string> &fe
             validFetchColumns.insert(MediaColumn::MEDIA_TIME_PENDING);
         } else if (isValidColumn(column)) {
             validFetchColumns.insert(column);
-        } else if (column == MEDIA_DATA_DB_URI) {
+        } else if (column == CONST_MEDIA_DATA_DB_URI) {
             continue;
         } else if (DATE_TRANSITION_MAP.count(column) != 0) {
             validFetchColumns.insert(DATE_TRANSITION_MAP.at(column));
@@ -372,7 +372,7 @@ static void UriAppendKeyValue(string &uri, const string &key, const string &valu
 bool MediaAniNativeImpl::PhotoAccessGetAssetsExecuteSync(std::shared_ptr<MediaLibraryAsyncContext> context,
     std::vector<std::unique_ptr<FileAsset>>& fileAssetArray)
 {
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     CHECK_COND_RET(context != nullptr, false, "context is nullptr");
     Uri uri(queryUri);
@@ -413,7 +413,7 @@ static int32_t GetUserIdFromContext(std::shared_ptr<MediaLibraryAsyncContext> co
 
 bool MediaAniNativeImpl::PhotoAccessGetAssetsExecute(std::shared_ptr<MediaLibraryAsyncContext> context)
 {
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     CHECK_COND_RET(context != nullptr, false, "context is nullptr");
     Uri uri(queryUri);
@@ -442,7 +442,7 @@ bool MediaAniNativeImpl::PhotoAccessGetFileAssetsInfoExecute(std::shared_ptr<Med
     if (context->assetType != TYPE_PHOTO) {
         return false;
     }
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
 
     Uri uri(queryUri);

@@ -165,7 +165,7 @@ int32_t LSCommand::PrintFileInfo(const string& fileInfoJSONString)
 
 int32_t LSCommand::Execute()
 {
-    std::string lsUriStr = TOOL_LS_PHOTO;
+    std::string lsUriStr = CONST_TOOL_LS_PHOTO;
     Uri lsUri(lsUriStr);
     DataShare::DataShareValuesBucket values;
     values.Put(MediaColumn::MEDIA_FILE_PATH, lsPath_);

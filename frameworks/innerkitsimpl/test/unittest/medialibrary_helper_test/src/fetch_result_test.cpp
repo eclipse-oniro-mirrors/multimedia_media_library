@@ -52,7 +52,7 @@ void CleanTestTables()
 {
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
-        MEDIALIBRARY_TABLE
+        CONST_MEDIALIBRARY_TABLE
     };
     for (auto &dropTable : dropTableList) {
         string dropSql = "DROP TABLE " + dropTable + ";";
@@ -108,10 +108,10 @@ void MediaLibraryFetchResultUnitTest::SetUpTestCase(void)
     NativeRdb::ValuesBucket valuesBucket;
     for (int32_t mediaType = MediaType::MEDIA_TYPE_FILE; mediaType <= MEDIA_TYPE_MEDIA; mediaType ++) {
         int64_t rowId = -1;
-        valuesBucket.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-        valuesBucket.PutInt(MEDIA_DATA_DB_DATE_TRASHED, TEST_IS_TRASH);
-        valuesBucket.PutLong(MEDIA_DATA_DB_SIZE, TEST_SIZE);
-        valuesBucket.PutString(MEDIA_DATA_DB_FILE_PATH, TEST_PATH + to_string(mediaType));
+        valuesBucket.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+        valuesBucket.PutInt(CONST_MEDIA_DATA_DB_DATE_TRASHED, TEST_IS_TRASH);
+        valuesBucket.PutLong(CONST_MEDIA_DATA_DB_SIZE, TEST_SIZE);
+        valuesBucket.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, TEST_PATH + to_string(mediaType));
         g_rdbStore->Insert(rowId, PhotoColumn::PHOTOS_TABLE, valuesBucket);
         valuesBucket.Clear();
         EXPECT_EQ(rowId > 0, true);
@@ -140,7 +140,7 @@ shared_ptr<DataShare::DataShareResultSet> GetFetchResult()
 {
     vector<string> columns;
     NativeRdb::AbsRdbPredicates dirAbsPred(PhotoColumn::PHOTOS_TABLE);
-    dirAbsPred.EqualTo(MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     shared_ptr<DataShare::ResultSetBridge> result = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(queryResultSet);
     return make_shared<DataShare::DataShareResultSet>(result);
@@ -150,7 +150,7 @@ shared_ptr<DataShare::DataShareResultSet> GetEmptyFetchResult()
 {
     vector<string> columns;
     NativeRdb::AbsRdbPredicates dirAbsPred(PhotoColumn::PHOTOS_TABLE);
-    dirAbsPred.EqualTo(MEDIA_DATA_DB_ID, to_string(0));
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     shared_ptr<DataShare::ResultSetBridge> result = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(queryResultSet);
     return make_shared<DataShare::DataShareResultSet>(result);
@@ -424,8 +424,8 @@ HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_IsAtLastRow_Test_001, Test
 HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_GetObjectFromRdb_Test_001, TestSize.Level1)
 {
     vector<string> columns;
-    NativeRdb::AbsRdbPredicates dirAbsPred(MEDIALIBRARY_TABLE);
-    dirAbsPred.EqualTo(MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
+    NativeRdb::AbsRdbPredicates dirAbsPred(CONST_MEDIALIBRARY_TABLE);
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     auto result = make_shared<FetchResult<FileAsset>>();
     auto fileAsset = result->GetObjectFromRdb(queryResultSet, 1);
@@ -459,8 +459,8 @@ HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_GetObjectFromRdb_Test_002,
 HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_GetObjectFromRdb_Test_003, TestSize.Level1)
 {
     vector<string> columns;
-    NativeRdb::AbsRdbPredicates dirAbsPred(MEDIALIBRARY_TABLE);
-    dirAbsPred.EqualTo(MEDIA_DATA_DB_ID, to_string(0));
+    NativeRdb::AbsRdbPredicates dirAbsPred(CONST_MEDIALIBRARY_TABLE);
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     auto result = make_shared<FetchResult<FileAsset>>();
     EXPECT_EQ(result->GetObjectFromRdb(queryResultSet, 1), nullptr);
@@ -477,8 +477,8 @@ HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_GetObjectFromRdb_Test_003,
 HWTEST_F(MediaLibraryFetchResultUnitTest, FetchResult_GetObjectFromRdb_Test_004, TestSize.Level1)
 {
     vector<string> columns;
-    NativeRdb::AbsRdbPredicates dirAbsPred(MEDIALIBRARY_TABLE);
-    dirAbsPred.EqualTo(MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
+    NativeRdb::AbsRdbPredicates dirAbsPred(CONST_MEDIALIBRARY_TABLE);
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_SIZE, to_string(0))->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(0));
     std::shared_ptr<NativeRdb::ResultSet> queryResultSet = g_rdbStore->Query(dirAbsPred, columns);
     auto result = make_shared<FetchResult<FileAsset>>();
     const int32_t TEST_INDEX_LARGE_THAN_ROWS = 100;
