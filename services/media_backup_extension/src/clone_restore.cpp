@@ -658,6 +658,7 @@ void CloneRestore::RestorePhoto()
     }
     ffrt::wait();
     ProcessPhotosBatchFailedOffsets();
+    HandleInvalidLocalFiles();
     this->photosClone_.OnStop(otherTotalNumber_, otherProcessStatus_);
 }
 
@@ -1074,6 +1075,10 @@ vector<NativeRdb::ValuesBucket> CloneRestore::GetInsertValues(int32_t sceneCode,
     vector<NativeRdb::ValuesBucket> values;
     for (size_t i = 0; i < fileInfos.size(); i++) {
         int32_t errCode = BackupFileUtils::IsFileValid(fileInfos[i].filePath, CLONE_RESTORE_ID);
+        if (IsInvalidLocalFile(errCode, fileInfos[i])) {
+            AddInvalidLocalFiles(fileInfos[i]);
+            continue;
+        }
         if (errCode != E_OK) {
             ErrorInfo errorInfo(RestoreError::FILE_INVALID, 1, std::to_string(errCode),
                 BackupLogUtils::FileInfoToString(sceneCode, fileInfos[i]));
@@ -1143,7 +1148,10 @@ vector<FileInfo> CloneRestore::QueryCloudFileInfos(int32_t offset, int32_t isRel
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         FileInfo fileInfo;
         fileInfo.isRelatedToPhotoMap = isRelatedToPhotoMap;
-        CHECK_AND_EXECUTE(!ParseResultSet(resultSet, fileInfo), result.emplace_back(fileInfo));
+        if (ParseResultSet(resultSet, fileInfo)) {
+            result.emplace_back(fileInfo);
+            RemoveInvalidLocalFiles(fileInfo);
+        }
     }
     return result;
 }
@@ -2205,6 +2213,7 @@ void CloneRestore::RestoreGallery()
     RestoreGroupPhoto();
     cloneRestoreGeoDictionary_.ReportGeoRestoreTask();
     RestoreAnalysisData();
+    ReportInvalidLocalFiles();
     InheritManualCover();
 }
 
@@ -3020,6 +3029,69 @@ void CloneRestore::SetRestoreFailedAndErrorCount(uint64_t &failed, uint64_t &err
 int32_t CloneRestore::GetNoNeedMigrateCount()
 {
     return this->photosClone_.GetNoNeedMigrateCount();
+}
+
+bool CloneRestore::IsInvalidLocalFile(int32_t errCode, const FileInfo &fileInfo)
+{
+    // requirement: file not exist, local & cloud, cloud_id is not null
+    return errCode == E_NO_SUCH_FILE && fileInfo.position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD) &&
+        !fileInfo.uniqueId.empty();
+}
+
+void CloneRestore::AddInvalidLocalFiles(FileInfo &fileInfo)
+{
+    // add to invalidLocalFiles_, clear cloudPath, set needMove as false to make sure not to insert or move
+    std::lock_guard<mutex> lock(invalidLocalFilesMutex_);
+    if (invalidLocalFiles_.count(fileInfo.fileIdOld) > 0) {
+        return;
+    }
+    invalidLocalFiles_[fileInfo.fileIdOld] = fileInfo;
+    fileInfo.cloudPath.clear();
+    fileInfo.needMove = false;
+}
+
+void CloneRestore::HandleInvalidLocalFiles()
+{
+    // update invalid local files in old device database to be handled as cloud photos
+    if (invalidLocalFiles_.empty()) {
+        return;
+    }
+    MEDIA_INFO_LOG("Start update invalid local files, size: %{public}zu", invalidLocalFiles_.size());
+    std::vector<NativeRdb::ValueObject> fileIds;
+    for (auto it = invalidLocalFiles_.begin(); it != invalidLocalFiles_.end(); ++it) {
+        fileIds.push_back(it->first);
+    }
+
+    std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
+        std::make_unique<NativeRdb::AbsRdbPredicates>(PhotoColumn::PHOTOS_TABLE);
+    predicates->In(MediaColumn::MEDIA_ID, fileIds);
+    NativeRdb::ValuesBucket updateBucket;
+    updateBucket.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
+
+    int32_t updatedRows = 0;
+    int32_t ret = BackupDatabaseUtils::Update(mediaRdb_, updatedRows, updateBucket, predicates);
+    UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_)
+        .Report("HANDLE_INVALID_LOCAL_FILES", std::to_string(ret), std::to_string(updatedRows));
+}
+
+void CloneRestore::RemoveInvalidLocalFiles(const FileInfo &fileInfo)
+{
+    // if handled as cloud photos, remove it from invalidLocalFiles_
+    std::lock_guard<mutex> lock(invalidLocalFilesMutex_);
+    if (invalidLocalFiles_.count(fileInfo.fileIdOld) == 0) {
+        return;
+    }
+    invalidLocalFiles_.erase(fileInfo.fileIdOld);
+}
+
+void CloneRestore::ReportInvalidLocalFiles()
+{
+    // report invalid local files skipped
+    for (auto it = invalidLocalFiles_.begin(); it != invalidLocalFiles_.end(); ++it) {
+        ErrorInfo errorInfo(RestoreError::INVALID_LOCAL_FILE, 1, "",
+            BackupLogUtils::FileInfoToString(sceneCode_, it->second));
+        UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
+    }
 }
 
 void CloneRestore::RestoreAnalysisClassify()

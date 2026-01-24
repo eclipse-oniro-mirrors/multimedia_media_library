@@ -254,6 +254,12 @@ private:
     void AddToPhotoInfoMaps(std::vector<FileInfo> &fileInfos);
     void GetOrientationAndExifRotateValue(const shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &fileInfo);
     void UpdateExistNewAddColumnSet(const std::unordered_map<string, string> &srcColumnInfoMap);
+
+    bool IsInvalidLocalFile(int32_t errCode, const FileInfo &fileInfo);
+    void AddInvalidLocalFiles(FileInfo &fileInfo);
+    void HandleInvalidLocalFiles();
+    void RemoveInvalidLocalFiles(const FileInfo &fileInfo);
+    void ReportInvalidLocalFiles();
     bool UpdateConfigInfo();
     void CheckSrcDstSwitchStatusMatch();
     bool BackupPreprocess();
@@ -297,6 +303,8 @@ private:
     std::atomic<uint64_t> lcdMigrateFileNumber_{0};
     std::atomic<uint64_t> thumbMigrateFileNumber_{0};
     std::atomic<uint64_t> migrateCloudSuccessNumber_{0};
+    std::mutex invalidLocalFilesMutex_;
+    std::unordered_map<int32_t, FileInfo> invalidLocalFiles_;
     CloneRestoreGeoDictionary cloneRestoreGeoDictionary_;
     CloneRestoreAnalysisData cloneRestoreAnalysisData_;
     int64_t maxSearchId_ {0};
