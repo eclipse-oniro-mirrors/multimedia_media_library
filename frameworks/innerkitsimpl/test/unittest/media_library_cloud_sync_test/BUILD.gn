@@ -109,7 +109,7 @@ ohos_unittest("media_library_cloud_sync_test") {
     "jsoncpp:jsoncpp",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
-    "dfs_service:libdistributedfileutils",
+    "dfs_service:libdistributedfileutils_lite",
   ]
 
   sanitize = {

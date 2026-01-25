@@ -1099,7 +1099,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "dfs_service:cloudsync_kit_inner",
-    "dfs_service:libdistributedfileutils",
+    "dfs_service:libdistributedfileutils_lite",
     "drivers_interface_display:display_commontype_idl_headers",
     "e2fsprogs:libext2_uuid",
     "eventhandler:libeventhandler",

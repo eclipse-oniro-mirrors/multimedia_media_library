@@ -117,7 +117,7 @@ ohos_shared_library("media_library_cloud_sync") {
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "dfs_service:cloudfile_kit",
-    "dfs_service:libdistributedfileutils",
+    "dfs_service:libdistributedfileutils_lite",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
