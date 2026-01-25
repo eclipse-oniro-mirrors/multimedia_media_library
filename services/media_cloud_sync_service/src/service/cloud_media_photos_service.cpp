@@ -58,6 +58,8 @@
 #include "medialibrary_meta_recovery.h"
 #include "thumbnail_service.h"
 #include "parameters.h"
+#include "cloud_file_error.h"
+
 // LCOV_EXCL_START
 using ChangeType = OHOS::AAFwk::ChangeInfo::ChangeType;
 namespace OHOS::Media::CloudSync {
@@ -571,7 +573,7 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
                 changeType = ChangeType::UPDATE;
             }
         }
-        if (ret == E_STOP) {
+        if (ret == FileManagement::E_STOP) {
             MEDIA_ERR_LOG("HandleRecord stop sync cloudId: %{public}s, error: %{public}d", cloudId.c_str(), ret);
             return ret;
         }
@@ -811,8 +813,9 @@ int32_t CloudMediaPhotosService::OnCreateRecords(std::vector<PhotosDto> &records
                 failedSize++;
             }
         }
-        if (err == E_SYNC_STOP || err == E_SYNC_FAILED_NETWORK_NOT_AVAILABLE || err == E_CLOUD_STORAGE_FULL ||
-            err == E_STOP || err == E_BUSINESS_MODE_CHANGED) {
+        if (err == FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE ||
+            err == FileManagement::E_CLOUD_STORAGE_FULL || err == FileManagement::E_STOP ||
+            err == FileManagement::E_BUSINESS_MODE_CHANGED) {
             ret = err;
         }
     }
@@ -829,7 +832,7 @@ int32_t CloudMediaPhotosService::OnCreateRecordSuccess(
     int32_t localId = record.localId;
     if (localId < 0) {
         MEDIA_ERR_LOG("OnCreateRecordSuccess invalid local id %{public}d", localId);
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     /* local file deleted */
     if (!record.localInfoOp.has_value()) {
@@ -881,8 +884,9 @@ int32_t CloudMediaPhotosService::OnMdirtyRecords(std::vector<PhotosDto> &records
             this->photosDao_.InsertPhotoModifyFailedRecord(photo.cloudId);
             CloudMediaDfxService::UpdateMetaStat(INDEX_UL_META_ERROR_RDB, 1);
         }
-        if (err == E_SYNC_STOP || err == E_SYNC_FAILED_NETWORK_NOT_AVAILABLE || err == E_CLOUD_STORAGE_FULL ||
-            err == E_STOP || err == E_BUSINESS_MODE_CHANGED) {
+        if (err == FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE ||
+            err == FileManagement::E_CLOUD_STORAGE_FULL || err == FileManagement::E_STOP ||
+            err == FileManagement::E_BUSINESS_MODE_CHANGED) {
             ret = err;
         }
     }
@@ -918,8 +922,9 @@ int32_t CloudMediaPhotosService::OnFdirtyRecords(std::vector<PhotosDto> &records
                        std::to_string(record.dateAdded),
                 NotifyType::NOTIFY_UPDATE);
         }
-        if (err == E_SYNC_STOP || err == E_SYNC_FAILED_NETWORK_NOT_AVAILABLE || err == E_CLOUD_STORAGE_FULL ||
-            err == E_STOP || err == E_BUSINESS_MODE_CHANGED) {
+        if (err == FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE ||
+            err == FileManagement::E_CLOUD_STORAGE_FULL || err == FileManagement::E_STOP ||
+            err == FileManagement::E_BUSINESS_MODE_CHANGED) {
             ret = err;
         }
     }
@@ -943,7 +948,7 @@ int32_t CloudMediaPhotosService::OnFdirtyRecordSuccess(
     }
     if (record.metaDateModified == -1) {
         MEDIA_ERR_LOG("OnFdirtyRecordSuccess metaDateModified error");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     ret = this->photosDao_.UpdateFdirtyVersion(record, photoRefresh);
     if (ret != E_OK) {
@@ -983,8 +988,9 @@ int32_t CloudMediaPhotosService::OnDeleteRecords(std::vector<PhotosDto> &records
             failSize++;
             MEDIA_ERR_LOG("delete record fail: cloud id: %{private}s", photo.dkRecordId.c_str());
         }
-        if (err == E_SYNC_STOP || err == E_SYNC_FAILED_NETWORK_NOT_AVAILABLE || err == E_CLOUD_STORAGE_FULL ||
-            err == E_STOP || err == E_BUSINESS_MODE_CHANGED) {
+        if (err == FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE ||
+            err == FileManagement::E_CLOUD_STORAGE_FULL || err == FileManagement::E_STOP ||
+            err == FileManagement::E_BUSINESS_MODE_CHANGED) {
             ret = err;
         }
     }
@@ -1021,8 +1027,9 @@ int32_t CloudMediaPhotosService::OnCopyRecords(std::vector<PhotosDto> &records, 
                 MEDIA_ERR_LOG("on copy record fail: file id %{private}d", fileId);
             }
         }
-        if (err == E_SYNC_STOP || err == E_SYNC_FAILED_NETWORK_NOT_AVAILABLE || err == E_CLOUD_STORAGE_FULL ||
-            err == E_STOP || err == E_BUSINESS_MODE_CHANGED) {
+        if (err == FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE ||
+            err == FileManagement::E_CLOUD_STORAGE_FULL || err == FileManagement::E_STOP ||
+            err == FileManagement::E_BUSINESS_MODE_CHANGED) {
             ret = err;
         }
     }
@@ -1038,17 +1045,17 @@ int32_t CloudMediaPhotosService::OnRecordFailedErrorDetails(
     ErrorType errorType = photo.errorType;
     if (photo.errorDetails.size() == 0 && errorType != ErrorType::TYPE_NOT_NEED_RETRY) {
         MEDIA_ERR_LOG("errorDetails is empty and errorType is invalid, errorType:%{public}d", errorType);
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     } else if (photo.errorDetails.size() != 0) {
         auto errorDetailcode = static_cast<ErrorDetailCode>(photo.errorDetails[0].detailCode);
         if (errorDetailcode == ErrorDetailCode::SPACE_FULL) {
             /* Stop sync */
-            return E_CLOUD_STORAGE_FULL;
+            return FileManagement::E_CLOUD_STORAGE_FULL;
         }
         if (errorDetailcode == ErrorDetailCode::BUSINESS_MODEL_CHANGE_DATA_UPLOAD_FORBIDDEN) {
             MEDIA_ERR_LOG("Business Mode Change, Upload Fail");
             /* Stop sync */
-            return E_BUSINESS_MODE_CHANGED;
+            return FileManagement::E_BUSINESS_MODE_CHANGED;
         }
         if (errorDetailcode == ErrorDetailCode::SAME_FILENAME_NOT_ALLOWED) {
             CHECK_AND_EXECUTE(photo.localInfoOp.has_value(), this->photosDao_.FindPhotoInfo(photo));
@@ -1064,12 +1071,12 @@ int32_t CloudMediaPhotosService::OnRecordFailedErrorDetails(
         MEDIA_ERR_LOG("errorDetailcode = %{public}d, errorType = %{public}d, no need retry",
             errorDetailcode,
             static_cast<int32_t>(errorType));
-        return E_STOP;
+        return FileManagement::E_STOP;
     } else {
         MEDIA_ERR_LOG("errorType = %{public}d, no need retry", static_cast<int32_t>(errorType));
-        return E_STOP;
+        return FileManagement::E_STOP;
     }
-    return E_UNKNOWN;
+    return FileManagement::E_UNKNOWN;
 }
 
 std::string CloudMediaPhotosService::GetCloudPath(const std::string &filePath)
@@ -1096,7 +1103,7 @@ int32_t CloudMediaPhotosService::HandleDuplicatedResource(const PhotosDto &photo
 int32_t CloudMediaPhotosService::HandleSameCloudResource(const PhotosDto &photo)
 {
     std::string path = photo.path;
-    CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVAL_ARG, "HandleSameCloudResource data invalid, photo: %{public}s",
+    CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_VALUES, "HandleSameCloudResource data invalid, photo: %{public}s",
         photo.ToString().c_str());
 
     bool isLake = photo.fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
@@ -1126,14 +1133,14 @@ int32_t CloudMediaPhotosService::OnRecordFailed(
     int32_t serverErrorCode = photo.serverErrorCode;
     if ((static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::NETWORK_ERROR)) {
         MEDIA_ERR_LOG("Network Error or Response Time Out");
-        return E_SYNC_FAILED_NETWORK_NOT_AVAILABLE;
+        return FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE;
     } else if ((static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::UID_EMPTY) ||
                (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::SWITCH_OFF)) {
         MEDIA_ERR_LOG("switch off or uid empty");
-        return E_STOP;
+        return FileManagement::E_STOP;
     } else if (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::INVALID_LOCK_PARAM) {
         MEDIA_ERR_LOG("Invalid lock param ");
-        return E_STOP;
+        return FileManagement::E_STOP;
     } else if (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::RESPONSE_TIME_OUT) {
         MEDIA_ERR_LOG("on record failed response time out");
     } else if (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::RESOURCE_INVALID) {
@@ -1176,7 +1183,7 @@ int32_t CloudMediaPhotosService::HandleNoContentUploadFail(
 int32_t CloudMediaPhotosService::HandleDetailcode(ErrorDetailCode &errorCode)
 {
     /* Only one record failed, not stop sync */
-    return E_UNKNOWN;
+    return FileManagement::E_UNKNOWN;
 }
 
 int32_t CloudMediaPhotosService::HandleSameNameUploadFail(
@@ -1579,7 +1586,7 @@ int32_t CloudMediaPhotosService::ProcessDuplicatePhoto(const CloudMediaPullDataD
 
     if (tempInsertFiles.empty()) {
         MEDIA_ERR_LOG("No insert files generated for duplicate photo");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
 
     for (auto &values : tempInsertFiles) {

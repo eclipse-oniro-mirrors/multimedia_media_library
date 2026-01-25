@@ -69,6 +69,7 @@ ohos_fuzztest("MediaLibraryDfxFuzzTest") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",

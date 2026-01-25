@@ -78,6 +78,11 @@ ohos_shared_library("media_cloud_sync_data") {
     "${MEDIALIB_IPC_COMMON}/include/vo",
   ]
 
+  include_utils_dirs = [
+    "${MEDIALIB_UTILS_PATH}/include",
+  ]
+
+  include_dirs += include_utils_dirs
   include_dirs += include_media_ipc_common
 
   if (!media_library_cloud_sync_enable) {

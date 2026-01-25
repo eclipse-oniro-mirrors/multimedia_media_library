@@ -38,6 +38,7 @@
 #include "mdk_record_utils.h"
 #include "cloud_data_utils.h"
 #include "photos_dao.h"
+#include "cloud_file_error.h"
 
 using namespace testing::ext;
 using namespace testing::internal;
@@ -179,7 +180,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case003, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_CLOUD_STORAGE_FULL);
+    EXPECT_EQ(ret, FileManagement::E_CLOUD_STORAGE_FULL);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/13/IMG_1739459146_20015.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/13/IMG_1739459146_20016.jpg",
                                             "/storage/cloud/files/Photo/15/IMG_1739459146_20017.jpg"};
@@ -224,7 +225,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case004, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/16/IMG_1739459146_20018.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/1/IMG_1739459147_20019.jpg"};
     EXPECT_EQ(failSize, failedDatas.size());
@@ -268,7 +269,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case005, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_BUSINESS_MODE_CHANGED);
+    EXPECT_EQ(ret, FileManagement::E_BUSINESS_MODE_CHANGED);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/2/IMG_1739459147_20020.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/2/IMG_1739459148_20021.jpg"};
     EXPECT_EQ(failSize, failedDatas.size());
@@ -311,7 +312,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case006, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/2/IMG_1739459148_20022.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/2/IMG_1739459148_20023.jpg"};
     EXPECT_EQ(failSize, failedDatas.size());
@@ -512,7 +513,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case010, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
     std::vector<std::string> datas = {"/storage/cloud/files/Photo/8/IMG_1739459151_20030.jpg",
                                       "/storage/cloud/files/Photo/8/IMG_1739459151_20031.jpg"};
     EXPECT_EQ(failSize, 2);

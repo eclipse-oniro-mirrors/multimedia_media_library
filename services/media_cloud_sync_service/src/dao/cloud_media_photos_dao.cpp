@@ -66,7 +66,6 @@ int32_t CloudMediaPhotosDao::BatchInsertFile(std::map<std::string, int> &recordA
         int64_t rowId = 0;
         std::vector<NativeRdb::ValuesBucket> insertFilesTmp(insertFiles);
         ret = BatchInsertQuick(rowId, PhotoColumn::PHOTOS_TABLE, insertFiles, photoRefresh);
-        CHECK_AND_RETURN_RET_LOG(ret != E_STOP, ret, "BatchInsertFile E_STOP failed");
         if (ret != E_OK) {
             MEDIA_ERR_LOG("BatchInsertFile batch insert failed return %{public}d", ret);
             /* 打点 UpdateMetaStat(INDEX_DL_META_ERROR_RDB, records->size() - params.insertFiles.size()); */
@@ -551,7 +550,7 @@ int32_t CloudMediaPhotosDao::GetSourceAlbumForMerge(const CloudMediaPullDataDto 
     /* if (GetSourceAlbumList(record, list) != E_OK) 变成在序列化反序列化中获取 pullData.attributesSrcAlbumIds */
     if (pullData.attributesSrcAlbumIds.size() <= 0) {
         MEDIA_INFO_LOG("attributesSrcAlbumIds size 0");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     bool isHidden = false;
     for (auto attributesSrcAlbumId : pullData.attributesSrcAlbumIds) {
@@ -562,7 +561,7 @@ int32_t CloudMediaPhotosDao::GetSourceAlbumForMerge(const CloudMediaPullDataDto 
     }
     if (albumCloudIds.size() <= 0) {
         MEDIA_INFO_LOG("albumCloudIds size 0");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     if (isHidden) {
         MEDIA_INFO_LOG("FixData:ishidden");
@@ -696,7 +695,7 @@ int32_t CloudMediaPhotosDao::GetSourceAlbum(const CloudMediaPullDataDto &pullDat
 
     if (pullData.attributesSrcAlbumIds.size() <= 0) {
         MEDIA_ERR_LOG("GetSourceAlbum MDKRecord albumIds is empty");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     for (auto attributesSrcAlbumId : pullData.attributesSrcAlbumIds) {
         std::string cloudId = attributesSrcAlbumId;
@@ -2095,7 +2094,7 @@ bool CloudMediaPhotosDao::IsMetaTimeChanged(const PhotosDto &record)
 int32_t CloudMediaPhotosDao::GetPhotoInfo(const int32_t fileId, std::optional<PhotosPo> &photosInfoOp)
 {
     bool isValid = fileId > 0;
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "GetPhotoInfo failed, fileId: %{public}d", fileId);
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "GetPhotoInfo failed, fileId: %{public}d", fileId);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbstore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);

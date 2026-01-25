@@ -257,14 +257,6 @@ constexpr int32_t E_IPC_NUM_OUT_OF_RANGE = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET,
 constexpr int32_t E_IPC_SEVICE_NOT_FOUND = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET, 12);
 constexpr int32_t E_IPC_SEVICE_MARSHALLING_FAIL = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET, 13);
 constexpr int32_t E_IPC_SEVICE_UNMARSHALLING_FAIL = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET, 14);
-
-// CloudSyncServiceErrCode
-constexpr int32_t E_INVAL_ARG = 2;
-constexpr int32_t E_NETWORK_NOT_AVAILABLE = 13;
-constexpr int32_t E_SYNC_STOP = 24;
-constexpr int32_t E_UNKNOWN = 31;
-constexpr int32_t E_CLOUD_STORAGE_FULL = 32;
-constexpr int32_t E_LOCAL_STORAGE_FULL = 33;
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_MEDIALIBRARY_ERRNO_H

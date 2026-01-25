@@ -38,6 +38,7 @@
 #include "mdk_record_utils.h"
 #include "cloud_data_utils.h"
 #include "photos_dao.h"
+#include "cloud_file_error.h"
 
 using namespace testing::ext;
 using namespace testing::internal;
@@ -107,7 +108,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCopyRecordsTest, OnCopyRecords, TestSize.Level1
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
 
     ret = dataHandler->OnCopyRecords(map, failSize);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
     std::map<std::string, int32_t> successCloudIdFileIdMap = {
         {"373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97d5", 233},
     };
