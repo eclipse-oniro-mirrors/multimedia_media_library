@@ -175,7 +175,7 @@ string PhotoAssetChangeInfo::ToString(bool isDetail) const
         ss << ", timePending_: " << timePending_ << ", isTemp_: " << isTemp_;
         ss << ", burstCoverLevel_: " << burstCoverLevel_;
         ss << ", hiddenTime_: " << hiddenTime_ << ", thumbnailReady_: " << thumbnailReady_;
-        ss << ", displayName_: " << MediaFileUtils::DesensitizePath(displayName_);
+        ss << ", displayName_: " << MediaFileUtils::DesensitizeDisplayName(displayName_);
         ss << ", path_: " << MediaFileUtils::DesensitizePath(path_) << ", dirty_: " << dirty_;
         ss << ", position_: " <<position_ << ", size_: " << size_;
     } else {
@@ -362,8 +362,8 @@ string PhotoAssetChangeInfo::GetAssetDiff(const PhotoAssetChangeInfo &asset, con
     GET_ASSET_DIFF(position_);
     GET_ASSET_DIFF(size_);
     if (asset.displayName_ != compare.displayName_) {
-        ss << "displayName_: " << MediaFileUtils::DesensitizePath(asset.displayName_) << " -> ";
-        ss << MediaFileUtils::DesensitizePath(compare.displayName_);
+        ss << "displayName_: " << MediaFileUtils::DesensitizeDisplayName(asset.displayName_) << " -> ";
+        ss << MediaFileUtils::DesensitizeDisplayName(compare.displayName_);
     }
 
     if (asset.path_ != compare.path_) {

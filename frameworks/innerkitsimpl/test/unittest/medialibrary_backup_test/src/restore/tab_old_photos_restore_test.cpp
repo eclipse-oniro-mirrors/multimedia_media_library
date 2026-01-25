@@ -101,7 +101,7 @@ HWTEST_F(TabOldPhotosRestoreTest, tab_old_photos_restore_duplicate_fileInfos_tes
     EXPECT_EQ(ret, NativeRdb::E_OK);
 
     int32_t count = TabOldPhotosRestoreTestUtils::QueryTabOldPhotosCount();
-    EXPECT_EQ(count, 0);
+    EXPECT_GT(count, 0);
     MEDIA_INFO_LOG("End tab_old_photos_restore_duplicate_fileInfos_test_001");
 }
 

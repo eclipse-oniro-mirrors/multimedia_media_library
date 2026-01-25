@@ -18,7 +18,8 @@
         "/data/storage/el2/database/rdb/",
         "/storage/media/local/files/.thumbs/",
         "/storage/media/local/files/.backup/backup/media_temp_kvdb/",
-        "/storage/media/local/files/highlight/"
+        "/storage/media/local/files/highlight/",
+        "/data/storage/el2/base/preferences/"
     ],
     "compatibleDirMapping": [
         {"backupDir": "/storage/media/local/files/.backup/backup/media_temp_rdb/", "restoreDir": "/data/storage/el2/database/rdb/"}
