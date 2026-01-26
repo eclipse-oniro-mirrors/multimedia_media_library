@@ -842,7 +842,7 @@ static void ConvertToString(const vector<int32_t> &fileIds, std::vector<std::str
 
 int32_t MediaAssetsService::SetAssetTitle(int32_t fileId, const std::string &title)
 {
-    MEDIA_INFO_LOG("SetAssetTitle fileId: %{public}d, title: %{public}s.", fileId, title.c_str());
+    MEDIA_INFO_LOG("SetAssetTitle fileId: %{public}d, title: %{private}s.", fileId, title.c_str());
     NativeRdb::ValuesBucket assetInfo;
     assetInfo.PutString(PhotoColumn::MEDIA_TITLE, title);
 
@@ -1445,7 +1445,11 @@ int32_t MediaAssetsService::Restore(const RestoreDto &dto)
     values.PutString("appName", dto.appName);
     values.PutString("appId", dto.appId);
     MediaLibraryCommand cmd(values);
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     return MediaLibraryPhotoOperations::ProcessCustomRestore(cmd);
+#else
+    return E_ERR;
+#endif
 }
 
 int32_t MediaAssetsService::StopRestore(const std::string &keyPath)
@@ -1453,7 +1457,11 @@ int32_t MediaAssetsService::StopRestore(const std::string &keyPath)
     NativeRdb::ValuesBucket values;
     values.PutString("keyPath", keyPath);
     MediaLibraryCommand cmd(values);
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     return MediaLibraryPhotoOperations::CancelCustomRestore(cmd);
+#else
+    return E_ERR;
+#endif
 }
 
 int32_t MediaAssetsService::StartDownloadCloudMedia(CloudMediaDownloadType downloadType)

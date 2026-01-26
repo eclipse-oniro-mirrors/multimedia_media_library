@@ -115,7 +115,7 @@ void MediaMtpManager::OnMtpParamDisableChanged(const char *key, const char *valu
         MEDIA_INFO_LOG("OnMtpparamDisableChanged GetCurrentFunction = %{public}d ret = %{public}d", funcs, ret);
         CHECK_AND_RETURN_INFO_LOG(ret != 0, "OnMtpparamDisableChanged GetCurrentFunction failed");
         uint32_t unsignedFuncs = static_cast<uint32_t>(funcs);
-        if (unsignedFuncs && USB::UsbSrvSupport::Function::FUNCTION_MTP) {
+        if (unsignedFuncs && static_cast<bool>(USB::UsbSrvSupport::Function::FUNCTION_MTP)) {
             MediaMtpServiceManager::StartMtpService(MtpMode::MTP_MODE);
             return;
         }

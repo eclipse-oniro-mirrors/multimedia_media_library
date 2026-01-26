@@ -192,7 +192,6 @@ private:
     void SetSpecialAttributes(const std::string &tableName, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         FileInfo &fileInfo);
     bool IsSameFileForClone(const std::string &tableName, FileInfo &fileInfo);
-    NativeRdb::ValuesBucket GetInsertValue(const AnalysisAlbumTbl &portraitAlbumInfo);
     int32_t MovePicture(FileInfo &fileInfo);
     int32_t MoveMovingPhotoVideo(FileInfo &fileInfo);
     int32_t MoveEditedData(FileInfo &fileInfo);
@@ -235,6 +234,7 @@ private:
     void UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos);
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
+    int64_t CorrectTimestamp(int64_t originalTime);
 
     template<typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
@@ -254,6 +254,12 @@ private:
     void AddToPhotoInfoMaps(std::vector<FileInfo> &fileInfos);
     void GetOrientationAndExifRotateValue(const shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &fileInfo);
     void UpdateExistNewAddColumnSet(const std::unordered_map<string, string> &srcColumnInfoMap);
+
+    bool IsInvalidLocalFile(int32_t errCode, const FileInfo &fileInfo);
+    void AddInvalidLocalFiles(FileInfo &fileInfo);
+    void HandleInvalidLocalFiles();
+    void RemoveInvalidLocalFiles(const FileInfo &fileInfo);
+    void ReportInvalidLocalFiles();
     bool UpdateConfigInfo();
     void CheckSrcDstSwitchStatusMatch();
     bool BackupPreprocess();
@@ -297,6 +303,8 @@ private:
     std::atomic<uint64_t> lcdMigrateFileNumber_{0};
     std::atomic<uint64_t> thumbMigrateFileNumber_{0};
     std::atomic<uint64_t> migrateCloudSuccessNumber_{0};
+    std::mutex invalidLocalFilesMutex_;
+    std::unordered_map<int32_t, FileInfo> invalidLocalFiles_;
     CloneRestoreGeoDictionary cloneRestoreGeoDictionary_;
     CloneRestoreAnalysisData cloneRestoreAnalysisData_;
     int64_t maxSearchId_ {0};

@@ -66,7 +66,6 @@ int32_t CloudMediaPhotosDao::BatchInsertFile(std::map<std::string, int> &recordA
         int64_t rowId = 0;
         std::vector<NativeRdb::ValuesBucket> insertFilesTmp(insertFiles);
         ret = BatchInsertQuick(rowId, PhotoColumn::PHOTOS_TABLE, insertFiles, photoRefresh);
-        CHECK_AND_RETURN_RET_LOG(ret != E_STOP, ret, "BatchInsertFile E_STOP failed");
         if (ret != E_OK) {
             MEDIA_ERR_LOG("BatchInsertFile batch insert failed return %{public}d", ret);
             /* 打点 UpdateMetaStat(INDEX_DL_META_ERROR_RDB, records->size() - params.insertFiles.size()); */
@@ -480,7 +479,7 @@ int32_t CloudMediaPhotosDao::ConflictDataMerge(const CloudMediaPullDataDto &pull
     string filePath = fullPath;
     NativeRdb::ValuesBucket values;
     values.PutString(PhotoColumn::PHOTO_CLOUD_ID, pullData.cloudId);
-    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPosition::POSITION_BOTH));
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
     values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, CloudMediaContext::GetInstance().GetCloudType());
     values.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(Clean::NOT_NEED_CLEAN));
     values.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, pullData.basicCloudVersion);
@@ -534,7 +533,7 @@ int32_t CloudMediaPhotosDao::GetInsertParams(const CloudMediaPullDataDto &pullDa
     values.PutInt(PhotoColumn::PHOTO_OWNER_ALBUM_ID, albumId);
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(Media::DirtyType::TYPE_SYNCED));
     values.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(Clean::NOT_NEED_CLEAN));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, PhotoPosition::POSITION_CLOUD);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
     values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, CloudMediaContext::GetInstance().GetCloudType());
     values.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, pullData.basicCloudVersion);
     values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, static_cast<int32_t>(ThumbState::TO_DOWNLOAD));
@@ -551,7 +550,7 @@ int32_t CloudMediaPhotosDao::GetSourceAlbumForMerge(const CloudMediaPullDataDto 
     /* if (GetSourceAlbumList(record, list) != E_OK) 变成在序列化反序列化中获取 pullData.attributesSrcAlbumIds */
     if (pullData.attributesSrcAlbumIds.size() <= 0) {
         MEDIA_INFO_LOG("attributesSrcAlbumIds size 0");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     bool isHidden = false;
     for (auto attributesSrcAlbumId : pullData.attributesSrcAlbumIds) {
@@ -562,7 +561,7 @@ int32_t CloudMediaPhotosDao::GetSourceAlbumForMerge(const CloudMediaPullDataDto 
     }
     if (albumCloudIds.size() <= 0) {
         MEDIA_INFO_LOG("albumCloudIds size 0");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     if (isHidden) {
         MEDIA_INFO_LOG("FixData:ishidden");
@@ -696,7 +695,7 @@ int32_t CloudMediaPhotosDao::GetSourceAlbum(const CloudMediaPullDataDto &pullDat
 
     if (pullData.attributesSrcAlbumIds.size() <= 0) {
         MEDIA_ERR_LOG("GetSourceAlbum MDKRecord albumIds is empty");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     for (auto attributesSrcAlbumId : pullData.attributesSrcAlbumIds) {
         std::string cloudId = attributesSrcAlbumId;
@@ -1310,7 +1309,7 @@ int32_t CloudMediaPhotosDao::UpdatePhotoCreatedRecord(
     std::string fileId = to_string(record.fileId);
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutString(PhotoColumn::PHOTO_CLOUD_ID, record.cloudId);
-    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, PhotoPosition::POSITION_BOTH);
+    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
     valuesBucket.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, CloudMediaContext::GetInstance().GetCloudType());
     valuesBucket.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, record.version);
     if (IsFileTimeChanged(record)) {
@@ -1830,7 +1829,6 @@ int32_t CloudMediaPhotosDao::RepushDuplicatedPhoto(const PhotosDto &photo)
     int32_t changeRows;
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(Media::DirtyType::TYPE_FDIRTY));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
     std::string whereClause = MediaColumn::MEDIA_ID + " = ?";
     std::vector<std::string> whereArgs = {std::to_string(photo.fileId)};
     int32_t ret = UpdatePhoto(whereClause, whereArgs, values, changeRows);
@@ -1849,7 +1847,7 @@ int32_t CloudMediaPhotosDao::RenewSameCloudResource(const PhotosDto &photo)
     NativeRdb::ValuesBucket values;
     values.PutNull(PhotoColumn::PHOTO_CLOUD_ID);
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_NEW));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, PhotoPosition::POSITION_LOCAL);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL));
     values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL));
     values.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, 0);
     std::string whereClause = PhotoColumn::PHOTO_CLOUD_ID + " = ?";
@@ -2096,7 +2094,7 @@ bool CloudMediaPhotosDao::IsMetaTimeChanged(const PhotosDto &record)
 int32_t CloudMediaPhotosDao::GetPhotoInfo(const int32_t fileId, std::optional<PhotosPo> &photosInfoOp)
 {
     bool isValid = fileId > 0;
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "GetPhotoInfo failed, fileId: %{public}d", fileId);
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "GetPhotoInfo failed, fileId: %{public}d", fileId);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbstore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);

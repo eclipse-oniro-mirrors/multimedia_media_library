@@ -126,6 +126,7 @@ private:
     ani_env *env_ = nullptr;
     ani_vm *vm_ = nullptr;
     static std::mutex sWorkerMutex_;
+    static std::mutex sWrapperMsgMutex_;
     static ani_status SetSharedAssetArray(ani_env* env, const char* fieldStr,
         ChangeListenerAni::JsOnChangeCallbackWrapper* wrapper, ani_object& result, bool isPhoto);
     static int ParseSharedPhotoAssets(ChangeListenerAni::JsOnChangeCallbackWrapper *wrapper,
@@ -391,6 +392,7 @@ struct MediaLibraryAsyncContext : public AniError {
     std::string burstKey;
     int32_t photoAlbumType;
     int32_t photoAlbumSubType;
+    int32_t photoIndex = -1;
 };
 } // namespace Media
 } // namespace OHOS

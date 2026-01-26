@@ -25,10 +25,12 @@
 #undef protected
 
 using namespace testing::ext;
+using namespace std;
 
 namespace OHOS {
 namespace Media {
 const int32_t TEST_PIXELMAP_WIDTH_AND_HEIGHT = 100;
+const string TEST_IMAGE_PATH = "/storage/cloud/files/Photo/1/CreateImageThumbnailTest_001.jpg";
 
 void MediaLibraryThumbnailFileUtilsTest::SetUpTestCase(void) {}
 
@@ -125,6 +127,14 @@ HWTEST_F(MediaLibraryThumbnailFileUtilsTest, ThumbnailFileUtils_GetThumbFileSize
     EXPECT_EQ(ret, false);
     ret = ThumbnailFileUtils::GetThumbFileSize(data, ThumbnailType::LCD_EX, size);
     EXPECT_EQ(ret, false);
+}
+
+HWTEST_F(MediaLibraryThumbnailFileUtilsTest, ThumbnailFileUtils_GetFileInfo_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("ThumbnailFileUtils_GetFileInfo_001");
+    string ret = ThumbnailFileUtils::GetFileInfo(TEST_IMAGE_PATH);
+    EXPECT_TRUE(!ret.empty());
+    MEDIA_INFO_LOG("ThumbnailFileUtils_GetFileInfo_001 end");
 }
 
 } // namespace Media

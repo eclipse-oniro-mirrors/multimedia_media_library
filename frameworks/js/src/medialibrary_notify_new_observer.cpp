@@ -180,7 +180,8 @@ void MediaOnNotifyNewObserver::OnChange(const ChangeInfo &changeInfo)
     }
 }
 
-static void isFoReCheckNotification(napi_env env, NewJsOnChangeCallbackWrapper* wrapper, napi_value* result)
+static void isFoReCheckNotification(napi_env env, NewJsOnChangeCallbackWrapper* wrapper, napi_value* result,
+    const int32_t resultSize)
 {
     for (const auto& [singleId, observers] : wrapper->singleClientObservers_) {
         for (auto& observer : observers) {
@@ -191,7 +192,7 @@ static void isFoReCheckNotification(napi_env env, NewJsOnChangeCallbackWrapper* 
                 continue;
             }
             napi_value retVal = nullptr;
-            status = napi_call_function(env, nullptr, jsCallback, ARGS_ONE, result, &retVal);
+            status = napi_call_function(env, nullptr, jsCallback, resultSize, result, &retVal);
             if (status != napi_ok) {
                 NAPI_ERR_LOG("Call JS callback fail for singleId %s, status: %{public}d", singleId.c_str(), status);
                 continue;
@@ -216,7 +217,7 @@ static napi_value ProcessSinglePhotoIdNotifications(napi_env env, napi_handle_sc
         napi_value result[ARGS_ONE];
         result[PARAM0] = buildResult;
         if (singlePhotoId == "isForReCheck") {
-            isFoReCheckNotification(env, wrapper, result);
+            isFoReCheckNotification(env, wrapper, result, ARGS_ONE);
             return buildResult;
         }
         auto obsIt = wrapper->singleClientObservers_.find(singlePhotoId);
@@ -259,7 +260,7 @@ static napi_value ProcessSingleAlbumIdNotifications(napi_env env, napi_handle_sc
         napi_value result[ARGS_ONE];
         result[PARAM0] = buildResult;
         if (singleAlbumId == "isForReCheck") {
-            isFoReCheckNotification(env, wrapper, result);
+            isFoReCheckNotification(env, wrapper, result, ARGS_ONE);
             return buildResult;
         }
         auto obsIt = wrapper->singleClientObservers_.find(singleAlbumId);

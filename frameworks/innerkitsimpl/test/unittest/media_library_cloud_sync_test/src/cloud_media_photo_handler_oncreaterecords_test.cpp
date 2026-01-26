@@ -38,6 +38,7 @@
 #include "mdk_record_utils.h"
 #include "cloud_data_utils.h"
 #include "photos_dao.h"
+#include "cloud_file_error.h"
 
 using namespace testing::ext;
 using namespace testing::internal;
@@ -117,7 +118,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case001, Tes
         GTEST_LOG_(INFO) << "OnCreateRecords_case001 Photo:" << photo.ToString();
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) > 0);
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_BOTH));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_SYNCED));
     }
 }
@@ -150,7 +151,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case002, Tes
     for (auto &photo : photos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case002 Photo:" << photo.ToString();
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_BOTH));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
         if (photo.data.value_or("") == "/storage/cloud/files/Photo/11/IMG_1739459144_20013.jpg") {
             EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 20013);
             EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_FDIRTY));
@@ -179,7 +180,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case003, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_CLOUD_STORAGE_FULL);
+    EXPECT_EQ(ret, FileManagement::E_CLOUD_STORAGE_FULL);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/13/IMG_1739459146_20015.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/13/IMG_1739459146_20016.jpg",
                                             "/storage/cloud/files/Photo/15/IMG_1739459146_20017.jpg"};
@@ -192,14 +193,14 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case003, Tes
     EXPECT_EQ(failedPhotos.size(), failedDatas.size());
     for (auto &photo : successPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case003 Success Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_BOTH));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 20015);
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_SYNCED));
     }
     for (auto &photo : failedPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case003 Failed Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_LOCAL));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL));
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_NEW));
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 0);
@@ -224,7 +225,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case004, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/16/IMG_1739459146_20018.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/1/IMG_1739459147_20019.jpg"};
     EXPECT_EQ(failSize, failedDatas.size());
@@ -236,14 +237,14 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case004, Tes
     EXPECT_EQ(failedPhotos.size(), failedDatas.size());
     for (auto &photo : successPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case004 Success Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_BOTH));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 20018);
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_SYNCED));
     }
     for (auto &photo : failedPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case004 Failed Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_LOCAL));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL));
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_NEW));
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 0);
@@ -268,7 +269,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case005, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_BUSINESS_MODE_CHANGED);
+    EXPECT_EQ(ret, FileManagement::E_BUSINESS_MODE_CHANGED);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/2/IMG_1739459147_20020.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/2/IMG_1739459148_20021.jpg"};
     EXPECT_EQ(failSize, failedDatas.size());
@@ -280,14 +281,14 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case005, Tes
     EXPECT_EQ(failedPhotos.size(), failedDatas.size());
     for (auto &photo : successPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case005 Success Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_BOTH));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 20020);
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_SYNCED));
     }
     for (auto &photo : failedPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case005 Failed Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_LOCAL));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL));
         EXPECT_TRUE(!photo.cloudId.value_or("").empty());
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_NEW));
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 0);
@@ -311,7 +312,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case006, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
     std::vector<std::string> successDatas = {"/storage/cloud/files/Photo/2/IMG_1739459148_20022.jpg"};
     std::vector<std::string> failedDatas = {"/storage/cloud/files/Photo/2/IMG_1739459148_20023.jpg"};
     EXPECT_EQ(failSize, failedDatas.size());
@@ -329,14 +330,14 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case006, Tes
     EXPECT_EQ(failedPhotos.size(), failedDatas.size());
     for (auto &photo : successPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case006 Success Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_BOTH));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
         EXPECT_TRUE(photo.cloudId.value_or("") == "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20022");
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 20022);
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_SYNCED));
     }
     for (auto &photo : failedPhotos) {
         GTEST_LOG_(INFO) << "OnCreateRecords_case006 Failed Photo:" << photo.ToString();
-        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPosition::POSITION_LOCAL));
+        EXPECT_TRUE(photo.position.value_or(-1) == static_cast<int32_t>(PhotoPositionType::LOCAL));
         EXPECT_TRUE(photo.cloudId.value_or("") == "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20023");
         EXPECT_TRUE(photo.dirty.value_or(-1) == static_cast<int32_t>(DirtyType::TYPE_NEW));
         EXPECT_TRUE(photo.cloudVersion.value_or(-1) == 0);
@@ -369,11 +370,11 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case007, Tes
     std::vector<ORM::PhotosPo> photos = dao.QueryPhotosByFilePaths(datas);
     std::map<std::string, std::vector<std::string>> resultMap = {
         {"/storage/cloud/files/Photo/2/IMG_1739459148_20024.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_BOTH)), "20024",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)), "20024",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_SYNCED)), "IMG_1739459148_20024.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20024"}},
         {"/storage/cloud/files/Photo/13/IMG_1739459145_20025.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_LOCAL)), "0",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)), "0",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)), "IMG_1739459145_20025_1.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20025"}},
     };
@@ -421,7 +422,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case008, Tes
     std::vector<ORM::PhotosPo> photos = dao.QueryPhotosByFilePaths(datas);
     std::map<std::string, std::vector<std::string>> resultMap = {
         {"/storage/cloud/files/Photo/8/IMG_1739459149_20026.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_BOTH)), "20026",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)), "20026",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_SYNCED)), "IMG_1739459149_20026.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20026"}},
     };
@@ -469,11 +470,11 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case009, Tes
     std::vector<ORM::PhotosPo> photos = dao.QueryPhotosByFilePaths(datas);
     std::map<std::string, std::vector<std::string>> resultMap = {
         {"/storage/cloud/files/Photo/8/IMG_1739459151_20028.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_BOTH)), "20028",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)), "20028",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_SYNCED)), "IMG_1739459151_20028.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20028"}},
         {"/storage/cloud/files/Photo/8/IMG_1739459151_20029.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_LOCAL)), "0",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)), "0",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)), "IMG_1739459151_20029.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20029"}},
     };
@@ -512,7 +513,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case010, Tes
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCreateRecords(map, failSize);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
     std::vector<std::string> datas = {"/storage/cloud/files/Photo/8/IMG_1739459151_20030.jpg",
                                       "/storage/cloud/files/Photo/8/IMG_1739459151_20031.jpg"};
     EXPECT_EQ(failSize, 2);
@@ -520,11 +521,11 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case010, Tes
     std::vector<ORM::PhotosPo> photos = dao.QueryPhotosByFilePaths(datas);
     std::map<std::string, std::vector<std::string>> resultMap = {
         {"/storage/cloud/files/Photo/8/IMG_1739459151_20030.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_LOCAL)), "0",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)), "0",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)), "IMG_1739459151_20030.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20030"}},
         {"/storage/cloud/files/Photo/8/IMG_1739459151_20031.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_LOCAL)), "0",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)), "0",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)), "IMG_1739459151_20031.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20031"}},
     };
@@ -577,15 +578,15 @@ HWTEST_F(CloudMediaPhotoHandlerOnCreateRecordsTest, OnCreateRecords_case011, Tes
     std::vector<ORM::PhotosPo> photos = dao.QueryPhotosByFilePaths(datas);
     std::map<std::string, std::vector<std::string>> resultMap = {
         {"/storage/cloud/files/Photo/8/IMG_1739459151_20032.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_BOTH)), "20032",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)), "20032",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_SYNCED)), "IMG_1739459151_20032.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20032"}},
         {"/storage/cloud/files/Photo/8/IMG_1739459151_20033.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_LOCAL)), "0",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)), "0",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)), "IMG_1739459151_20033.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20033"}},
         {"/storage/cloud/files/Photo/8/IMG_1739459151_20034.jpg",
-         {std::to_string(static_cast<int32_t>(PhotoPosition::POSITION_LOCAL)), "0",
+         {std::to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)), "0",
           std::to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)), "IMG_1739459151_20034.jpg",
           "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff20034"}},
     };

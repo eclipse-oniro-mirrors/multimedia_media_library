@@ -23,28 +23,37 @@ ohos_fuzztest("MediaLibraryCloudMediaProcessorFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_SERVICES_PATH}/inner_api/native/cloud_sync",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/include",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/include/cloud_sync_data_convert",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/include/processor",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/cloud_sync_data_convert",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/processor",
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
   ]
+
+  include_media_cloud_sync_data = [
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include",
+    "${MEDIALIB_CLOUD_SYNC_DATA}/include/vo",
+  ]
+
+  include_dirs += include_media_cloud_sync_data
 
   sources = [
     "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
     "./medialibrarycloudmediaprocessor_fuzzer.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/src/cloud_sync_data_convert/cloud_data_convert_to_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/src/cloud_sync_data_convert/cloud_album_data_convert.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/src/cloud_sync_data_convert/cloud_file_data_convert.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/src/mdk_record/mdk_record.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/src/mdk_record/mdk_record_field.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync/src/processor/cloud_media_data_client_handler_processor.cpp",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/cloud_sync_data_convert/cloud_data_convert_to_vo.cpp",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/cloud_sync_data_convert/cloud_album_data_convert.cpp",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/cloud_sync_data_convert/cloud_file_data_convert.cpp",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/mdk_record/mdk_record.cpp",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/mdk_record/mdk_record_field.cpp",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/processor/cloud_media_data_client_handler_processor.cpp",
   ]
 
   deps = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync:media_library_cloud_sync",
+    "${MEDIALIB_CLOUD_SYNC_CLIENT}:media_library_cloud_sync",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   external_deps = [

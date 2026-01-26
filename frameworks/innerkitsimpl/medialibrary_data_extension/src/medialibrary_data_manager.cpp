@@ -114,10 +114,14 @@
 #include "thermal_mgr_client.h"
 #endif
 #include "zip_util.h"
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "photo_custom_restore_operation.h"
+#endif
 #include "vision_column.h"
 #include "album_operation_uri.h"
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "custom_record_operations.h"
+#endif
 #include "medialibrary_photo_operations.h"
 #include "medialibrary_upgrade_utils.h"
 #include "settings_data_manager.h"
@@ -1724,7 +1728,11 @@ int32_t MediaLibraryDataManager::BatchInsert(MediaLibraryCommand &cmd, const vec
     } else if (cmd.GetOprnObject() == OperationObject::MTH_AND_YEAR_ASTC) {
         return AstcMthAndYearInsert(cmd, values);
     } else if (cmd.GetOprnObject() == OperationObject::CUSTOM_RECORDS_OPERATION) {
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
         return CustomRecordOperations::BatchAddCustomRecords(cmd, values);
+#else
+    return E_ERR;
+#endif
     }
     if (uriString.find(MEDIALIBRARY_DATA_URI) == string::npos) {
         MEDIA_ERR_LOG("MediaLibraryDataManager BatchInsert: Input parameter is invalid");
@@ -2293,9 +2301,9 @@ int32_t MediaLibraryDataManager::DoAging()
     }
 
     CacheAging(); // aging file in .cache
-
+#ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     PhotoCustomRestoreOperation::GetInstance().CleanTimeoutCustomRestoreTaskDir();
-
+#endif
     ClearInvalidDeletedAlbum(); // Clear invalid album data with null cloudid and dirty '4'
 
     MediaLibraryTableAssetAlbumOperations().OprnTableOversizeChecker();

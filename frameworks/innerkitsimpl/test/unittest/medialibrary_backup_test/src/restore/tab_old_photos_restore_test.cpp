@@ -80,10 +80,9 @@ HWTEST_F(TabOldPhotosRestoreTest, tab_old_photos_restore_empty_fileInfos_test_00
 {
     MEDIA_INFO_LOG("Start tab_old_photos_restore_empty_fileInfos_test_001");
     TabOldPhotosRestore tabOldPhotosRestore;
-    int32_t E_ERR = -1;
     std::vector<FileInfo> fileInfos;
     int32_t ret = tabOldPhotosRestore.Restore(g_rdbStore->GetRaw(), fileInfos);
-    EXPECT_EQ(ret, E_ERR);
+    EXPECT_EQ(ret, NativeRdb::E_OK);
     MEDIA_INFO_LOG("End tab_old_photos_restore_empty_fileInfos_test_001");
 }
 
@@ -102,7 +101,7 @@ HWTEST_F(TabOldPhotosRestoreTest, tab_old_photos_restore_duplicate_fileInfos_tes
     EXPECT_EQ(ret, NativeRdb::E_OK);
 
     int32_t count = TabOldPhotosRestoreTestUtils::QueryTabOldPhotosCount();
-    EXPECT_EQ(count, 0);
+    EXPECT_GT(count, 0);
     MEDIA_INFO_LOG("End tab_old_photos_restore_duplicate_fileInfos_test_001");
 }
 
@@ -122,6 +121,21 @@ HWTEST_F(TabOldPhotosRestoreTest, tab_old_photos_restore_normal_test_001, TestSi
     int32_t count = TabOldPhotosRestoreTestUtils::QueryTabOldPhotosCount();
     EXPECT_GT(count, 0);
     MEDIA_INFO_LOG("End tab_old_photos_restore_normal_test_001");
+}
+
+HWTEST_F(TabOldPhotosRestoreTest, tab_old_photos_helper_insert_into_table_failed_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start tab_old_photos_helper_insert_into_table_failed_test_001");
+    FileInfo fileInfo;
+    fileInfo.localMediaId = TEST_OLD_LOCAL_MEDIA_ID;
+    fileInfo.oldPath = TEST_OLD_DATA;
+    fileInfo.cloudPath = TEST_NEW_DATA;
+    TabOldPhotosRestoreHelper restoreHelper;
+    restoreHelper.AddBindArgs(fileInfo); // insert sql & args incompatible
+
+    int32_t ret = restoreHelper.InsertIntoTable(g_rdbStore->GetRaw());
+    EXPECT_NE(ret, NativeRdb::E_OK);
+    MEDIA_INFO_LOG("End tab_old_photos_helper_insert_into_table_failed_test_001");
 }
 
 void TabOldPhotosRestoreTestUtils::ClearAllData()

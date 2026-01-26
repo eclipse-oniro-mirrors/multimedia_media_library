@@ -1,0 +1,79 @@
+# Copyright (C) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+config("media_ipc_common_config") {
+}
+
+ohos_shared_library("media_ipc_common") {
+  install_enable = true
+
+  include_dirs = [
+    "./include/config",
+    "./include/utils",
+    "./include/vo",
+  ]
+
+  include_utils_dirs = [
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/utils/include",
+    "${MEDIALIB_ROOT_PATH}/interfaces/inner_api/media_library_helper/include",
+  ]
+
+  include_dirs += include_utils_dirs
+
+  sources = [
+    "./src/utils/media_itypes_utils.cpp",
+    "./src/utils/user_inner_ipc_client.cpp",
+  ]
+
+  public_configs = [ ":media_ipc_common_config" ]
+
+  deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "data_share:datashare_provider",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+  ]
+
+  ldflags = [ "-Wl,--gc-sections" ]
+
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
+
+  cflags_cc = [ "-Os" ]
+
+  if (!media_library_link_opt) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+      ubsan = true
+      boundary_sanitize = true
+      stack_protector_ret = true
+    }
+  }
+
+  part_name = "media_library"
+  subsystem_name = "multimedia"
+}

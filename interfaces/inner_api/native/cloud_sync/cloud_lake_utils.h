@@ -24,7 +24,7 @@ class CloudLakeUtils {
 public:
     static std::string GetAbsoluteLakeDir(int32_t userId)
     {
-        return "/mnt/data/" + to_string(userId) + "/HO_MEDIA/";
+        return "/mnt/data/" + std::to_string(userId) + "/HO_MEDIA/";
     }
 
     static bool StartsWith(const std::string &str, const std::string &prefix)
@@ -35,7 +35,7 @@ public:
     // 提供给端云使用
     static std::string GetAbsoluteLakePath(const std::string &storagePath, int32_t userId)
     {
-        string lakeDir = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/";
+        std::string lakeDir = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/";
         if (!StartsWith(storagePath, lakeDir)) {
             return "";
         }

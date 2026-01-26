@@ -6489,15 +6489,9 @@ static void GetPhotoIndexAsyncCallbackComplete(napi_env env, napi_status status,
     if (context->error != ERR_DEFAULT) {
         context->HandleError(env, jsContext->error);
     } else {
-        int32_t count = -1;
-        if (context->fetchFileResult != nullptr) {
-            auto fileAsset = context->fetchFileResult->GetFirstObject();
-            if (fileAsset != nullptr) {
-                count = fileAsset->GetPhotoIndex();
-            }
-        }
+        int32_t photoIndex = context->photoIndex;
         jsContext->status = true;
-        napi_create_int32(env, count, &jsContext->data);
+        napi_create_int32(env, photoIndex, &jsContext->data);
     }
 
     tracer.Finish();
@@ -6531,12 +6525,16 @@ static void GetPhotoIndexExec(napi_env env, void *data, ResultNapiType type)
         static_cast<uint32_t>(MediaLibraryBusinessCode::GET_PHOTO_INDEX), reqBody, respBody);
     auto resultSet = respBody.resultSet;
     if (resultSet == nullptr) {
-        NAPI_ERR_LOG("resultSet is nullptr");
+        NAPI_ERR_LOG("resultSet is nullptr, errCode = %{public}d", errCode);
         context->SaveError(errCode);
         return;
     }
-    context->fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
-    context->fetchFileResult->SetResultNapiType(type);
+    auto fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
+    CHECK_NULL_PTR_RETURN_VOID(fetchFileResult, "fetchFileResult is nullptr.");
+    auto fileAsset = fetchFileResult->GetFirstObject();
+    if (fileAsset != nullptr) {
+        context->photoIndex = fileAsset->GetPhotoIndex();
+    }
 }
 
 static void PhotoAccessGetPhotoIndexExec(napi_env env, void *data)
@@ -11279,9 +11277,13 @@ std::string MediaLibraryNapiUtils::GetSingleIdFromNapiAssets(
     napi_env env, const napi_value &napiAsset)
 {
     FileAssetNapi *obj = nullptr;
-    CHECK_ARGS(env, napi_unwrap(env, napiAsset, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
+    auto err = napi_unwrap(env, napiAsset, reinterpret_cast<void **>(&obj));
+    if (err != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "napi_unwrap failed to get asset object");
+        return "";
+    }
     if (obj == nullptr) {
-        NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to get asset napi object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "asset napi object is nullptr");
         return "";
     }
     if (obj->IsHidden() || obj->IsTrash()) {
@@ -11309,17 +11311,15 @@ std::string MediaLibraryNapiUtils::GetSingleIdFromNapiPhotoAlbum(
     napi_env env, const napi_value &napiPhotoAlbum)
 {
     PhotoAlbumNapi *obj = nullptr;
-    if (napiPhotoAlbum == nullptr) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID);
+    auto err = napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj));
+    if (err != napi_ok) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "napi_unwrap failed to get album object");
         return "";
     }
-    CHECK_ARGS(env, napi_unwrap(env, napiPhotoAlbum, reinterpret_cast<void **>(&obj)), JS_INNER_FAIL);
-
     if (obj == nullptr) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get album napi object");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "album napi object is nullptr");
         return "";
     }
-
     PhotoAlbumSubType albumSubType = obj->GetPhotoAlbumSubType();
     if (albumSubType == PhotoAlbumSubType::TRASH || albumSubType == PhotoAlbumSubType::HIDDEN) {
         NAPI_ERR_LOG("Skip invalid album (trash or hidden), albumId: %{public}d, subType: %{public}d",
@@ -11446,6 +11446,12 @@ int32_t MediaLibraryNapi::RegisterObserverExecute(napi_env env, napi_ref ref,
     }
     ret = AddSingleClientObserver(env, ref, observer, uriType, fileIdOrAlbumId);
     if (ret != E_OK) {
+        int32_t retUnreg = UserFileClient::UnregisterObserverExtProvider(notifyUri,
+        static_cast<shared_ptr<DataShare::DataShareObserver>>(observer));
+        if (retUnreg != E_OK) {
+            NAPI_ERR_LOG("failed to Unregister observer, retUnreg: %{public}d, uri: %{private}s", retUnreg, registerUri.c_str());
+            return ret;
+        }
         NAPI_ERR_LOG("Failed to add client observer, ret: %{public}d", ret);
         return ret;
     }

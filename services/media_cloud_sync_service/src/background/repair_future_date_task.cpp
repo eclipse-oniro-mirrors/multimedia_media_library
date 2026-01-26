@@ -136,7 +136,7 @@ void RepairFutureDateTask::RepairPhotoDate(int32_t &currentRecord, bool &termina
             continue;
         }
 
-        if (position == static_cast<int32_t>(PhotoPosition::POSITION_CLOUD) &&
+        if (position == static_cast<int32_t>(PhotoPositionType::CLOUD) &&
             !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
             MEDIA_INFO_LOG("Break repair future date cause wifi is invalid");
             terminate = true;
@@ -151,7 +151,7 @@ void RepairFutureDateTask::RepairPhotoDate(int32_t &currentRecord, bool &termina
 
         currentRecord = fileId;
         int32_t dateRepairInterval = FUTURE_DATE_REPAIR_INTERVAL_LOCAL;
-        if (position == static_cast<int32_t>(PhotoPosition::POSITION_CLOUD)) {
+        if (position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
             dateRepairInterval = FUTURE_DATE_REPAIR_INTERVAL_CLOUD;
         }
         this_thread::sleep_for(chrono::milliseconds(dateRepairInterval));
@@ -176,7 +176,7 @@ void RepairFutureDateTask::Execute()
     bool terminate = false;
     std::vector<PhotosPo> photos;
     auto ret = GetRepairDateData(currentRecord, photos);
-    CHECK_AND_RETURN_LOG(ret == CloudSync::E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
     CHECK_AND_RETURN_LOG(!photos.empty(), "no future date photo for repair");
 
     do {
@@ -193,7 +193,7 @@ void RepairFutureDateTask::Execute()
 
         photos.clear();
         ret = GetRepairDateData(currentRecord, photos);
-        CHECK_AND_RETURN_LOG(ret == CloudSync::E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
+        CHECK_AND_RETURN_LOG(ret == E_OK, "GetRepairDateData failed, ret: %{public}d", ret);
     } while (!photos.empty());
 
     MEDIA_INFO_LOG("End repair future date, currentRecord:%{public}d", currentRecord);

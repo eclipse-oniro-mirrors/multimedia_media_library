@@ -35,6 +35,7 @@
 #include "result_set_utils.h"
 #include "media_file_uri.h"
 #include "media_upgrade.h"
+#include "album_recover_assets_dto.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -187,5 +188,18 @@ HWTEST_F(AlbumRecoverAssetsTest, RecoverAssets_Test_002, TestSize.Level0)
     ASSERT_EQ(resp.Unmarshalling(reply), true);
     ASSERT_LT(resp.GetErrCode(), 0);
     MEDIA_INFO_LOG("end RecoverAssets_Test_002");
+}
+
+HWTEST_F(AlbumRecoverAssetsTest, AlbumRecoverAssetsDto_ToString, TestSize.Level0)
+{
+    AlbumRecoverAssetsDto dto;
+
+    dto.uris.push_back("file1.txt");
+    dto.uris.push_back("file2.txt");
+    dto.uris.push_back("file3.txt");
+
+    std::string expected = "{\"uris\": \" [file1.txt, file2.txt, file3.txt]}";
+    std::string str = dto.ToString();
+    EXPECT_EQ(expected, str);
 }
 }  // namespace OHOS::Media

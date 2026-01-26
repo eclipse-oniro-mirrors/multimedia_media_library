@@ -411,9 +411,6 @@ void MedialibrarySubscriber::UpdateCurrentStatus()
         currentStatus_, newStatus, isScreenOff_, isCharging_, isPowerSufficient, newTemperatureLevel_);
     currentStatus_ = newStatus;
     backgroundDelayTask_.EndBackgroundOperationThread();
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    BackgroundCloudFileProcessor::RepairMimeType();
-#endif
     if (currentStatus_) {
         backgroundDelayTask_.SetOperationThread([this] { this->DoBackgroundOperation(); });
     } else {
@@ -1064,6 +1061,9 @@ void MedialibrarySubscriber::DoBackgroundOperationStepTwo()
     CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to schedule DoCleanPhotosTableCloudData task");
     ThumbnailService::GetInstance()->DfxReportThumbnailDirAcl();
     ResetCloneFlagAfterOneDay();
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    BackgroundCloudFileProcessor::RepairMimeType();
+#endif
 }
 
 static void PauseBackgroundDownloadCloudMedia()

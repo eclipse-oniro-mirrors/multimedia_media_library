@@ -15,35 +15,30 @@
 
 #define MLOG_TAG "Media_Cloud_Vo"
 
-#include "on_create_records_photos_vo.h"
+#include "on_modify_file_dirty_vo.h"
 
 #include <sstream>
 
 #include "media_itypes_utils.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS::Media::CloudSync {
-
-bool OnCreateRecord::Unmarshalling(MessageParcel &parcel)
+bool OnFileDirtyRecord::Unmarshalling(MessageParcel &parcel)
 {
     parcel.ReadString(this->cloudId);
     parcel.ReadInt32(this->fileId);
-    parcel.ReadInt32(this->localId);
     parcel.ReadInt32(this->rotation);
     parcel.ReadInt32(this->fileType);
     parcel.ReadInt64(this->size);
-    parcel.ReadInt64(this->createTime);
-    parcel.ReadInt64(this->modifiedTime);
-    parcel.ReadInt64(this->editedTimeMs);
     parcel.ReadInt64(this->metaDateModified);
+    parcel.ReadInt64(this->createTime);
+    parcel.ReadInt64(this->modifyTime);
     parcel.ReadString(this->path);
     parcel.ReadString(this->fileName);
     parcel.ReadString(this->sourcePath);
-    parcel.ReadString(this->livePhotoCachePath);
     parcel.ReadInt64(this->version);
     parcel.ReadInt32(this->serverErrorCode);
     parcel.ReadBool(this->isSuccess);
-    parcel.ReadInt32(this->fileSourceType);
-    parcel.ReadString(this->storagePath);
     IPC::ITypeMediaUtil::UnmarshallingParcelable<CloudErrorDetail>(this->errorDetails, parcel);
     int32_t copyRecordErrorType;
     parcel.ReadInt32(copyRecordErrorType);
@@ -51,92 +46,84 @@ bool OnCreateRecord::Unmarshalling(MessageParcel &parcel)
     return true;
 }
 
-bool OnCreateRecord::Marshalling(MessageParcel &parcel) const
+bool OnFileDirtyRecord::Marshalling(MessageParcel &parcel) const
 {
     parcel.WriteString(this->cloudId);
     parcel.WriteInt32(this->fileId);
-    parcel.WriteInt32(this->localId);
     parcel.WriteInt32(this->rotation);
     parcel.WriteInt32(this->fileType);
     parcel.WriteInt64(this->size);
-    parcel.WriteInt64(this->createTime);
-    parcel.WriteInt64(this->modifiedTime);
-    parcel.WriteInt64(this->editedTimeMs);
     parcel.WriteInt64(this->metaDateModified);
+    parcel.WriteInt64(this->createTime);
+    parcel.WriteInt64(this->modifyTime);
     parcel.WriteString(this->path);
     parcel.WriteString(this->fileName);
     parcel.WriteString(this->sourcePath);
-    parcel.WriteString(this->livePhotoCachePath);
     parcel.WriteInt64(this->version);
     parcel.WriteInt32(this->serverErrorCode);
     parcel.WriteBool(this->isSuccess);
-    parcel.WriteInt32(this->fileSourceType);
-    parcel.WriteString(this->storagePath);
     IPC::ITypeMediaUtil::MarshallingParcelable<CloudErrorDetail>(this->errorDetails, parcel);
     parcel.WriteInt32(static_cast<int32_t>(this->errorType));
     return true;
 }
 
-std::string OnCreateRecord::ToString() const
+std::string OnFileDirtyRecord::ToString() const
 {
     std::stringstream ss;
     ss << "{"
        << "\"cloudId\": \"" << cloudId << "\","
-       << "\"fileId\": " << fileId << ","
-       << "\"localId\": \"" << localId << "\","
-       << "\"rotation\": " << rotation << ","
-       << "\"fileType\": " << fileType << ","
-       << "\"size\": " << size << ","
-       << "\"createTime\": " << createTime << ","
-       << "\"modifiedTime\": " << modifiedTime << ","
-       << "\"editedTimeMs\": " << editedTimeMs << ","
-       << "\"metaDateModified\": " << metaDateModified << ","
-       << "\"version\": " << version << ","
-       << "\"serverErrorCode\": " << serverErrorCode << ","
+       << "\"fileId\": \"" << fileId << "\","
+       << "\"rotation\": \"" << rotation << "\","
+       << "\"fileType\": \"" << fileType << "\","
+       << "\"size\": \"" << size << "\","
+       << "\"path\": \"" << path << "\","
+       << "\"createTime\": \"" << createTime << "\","
+       << "\"modifyTime\": \"" << modifyTime << "\","
+       << "\"version\": \"" << version << "\","
+       << "\"serverErrorCode\": \"" << serverErrorCode << "\","
        << "\"isSuccess\": \"" << isSuccess << "\","
-       << "\"fileSourceType\": \"" << fileSourceType << "\","
-       << "\"storagePath\": \"" << storagePath << "\","
-       << "\"livePhotoCachePath\": \"" << livePhotoCachePath << "\","
        << "\"errorType\": \"" << static_cast<int32_t>(errorType) << "\","
-       << "\"errorDetails\": [";
+       << "\"errorDetails\": \"[";
     for (uint32_t i = 0; i < errorDetails.size(); ++i) {
-        ss << errorDetails[i].ToString();
         if (i != errorDetails.size() - 1) {
-            ss << ",";
+            ss << errorDetails[i].ToString() << ",";
+            continue;
         }
+        ss << errorDetails[i].ToString();
     }
     ss << "]}";
     return ss.str();
 }
 
-bool OnCreateRecordsPhotosReqBody::Unmarshalling(MessageParcel &parcel)
+bool OnFileDirtyRecordsReqBody::Unmarshalling(MessageParcel &parcel)
 {
     return IPC::ITypeMediaUtil::UnmarshallingParcelable(this->records, parcel);
 }
 
-bool OnCreateRecordsPhotosReqBody::Marshalling(MessageParcel &parcel) const
+bool OnFileDirtyRecordsReqBody::Marshalling(MessageParcel &parcel) const
 {
     IPC::ITypeMediaUtil::MarshallingParcelable(this->records, parcel);
     return true;
 }
 
-int32_t OnCreateRecordsPhotosReqBody::AddRecord(const OnCreateRecord &record)
+int32_t OnFileDirtyRecordsReqBody::AddRecord(const OnFileDirtyRecord &record)
 {
     this->records.push_back(record);
     return E_OK;
 }
 
-std::string OnCreateRecordsPhotosReqBody::ToString() const
+std::string OnFileDirtyRecordsReqBody::ToString() const
 {
     std::stringstream ss;
-    ss << "[";
+    ss << "{\"records\":[";
     for (uint32_t i = 0; i < records.size(); ++i) {
-        ss << records[i].ToString();
         if (i != records.size() - 1) {
-            ss << ",";
+            ss << records[i].ToString() << ",";
+            continue;
         }
+        ss << records[i].ToString();
     }
-    ss << "]";
+    ss << "]}";
     return ss.str();
 }
 }  // namespace OHOS::Media::CloudSync

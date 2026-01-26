@@ -86,6 +86,7 @@ constexpr int32_t E_BETA_VERSION_FAIL    =  MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 4
 constexpr int32_t E_THREAD_HAS_STOPPED =    MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 50);
 constexpr int32_t E_INIT_FAIL =             MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 51);
 constexpr int32_t E_DOUBLE_CHECK =          MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 52);
+constexpr int32_t E_MAX_ON_SINGLE_NUM =     MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 53);
 constexpr int32_t E_COMMON_END =            MEDIA_LIBRARY_ERR(E_COMMON_OFFSET, 1799);
 
 // medialibary directory and file type control { 2000, 2099 }
@@ -256,14 +257,6 @@ constexpr int32_t E_IPC_NUM_OUT_OF_RANGE = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET,
 constexpr int32_t E_IPC_SEVICE_NOT_FOUND = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET, 12);
 constexpr int32_t E_IPC_SEVICE_MARSHALLING_FAIL = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET, 13);
 constexpr int32_t E_IPC_SEVICE_UNMARSHALLING_FAIL = MEDIA_LIBRARY_ERR(E_MEDIA_IPC_OFFSET, 14);
-
-// CloudSyncServiceErrCode
-constexpr int32_t E_INVAL_ARG = 2;
-constexpr int32_t E_NETWORK_NOT_AVAILABLE = 13;
-constexpr int32_t E_SYNC_STOP = 24;
-constexpr int32_t E_UNKNOWN = 31;
-constexpr int32_t E_CLOUD_STORAGE_FULL = 32;
-constexpr int32_t E_LOCAL_STORAGE_FULL = 33;
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_MEDIALIBRARY_ERRNO_H

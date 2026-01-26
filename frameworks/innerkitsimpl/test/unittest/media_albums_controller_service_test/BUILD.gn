@@ -43,12 +43,17 @@ ohos_unittest("media_albums_controller_service_test") {
   ]
 
   include_media_ipc = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/controller",
   ]
 
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
   include_dirs += include_media_ipc
 
   sources = [
@@ -76,6 +81,9 @@ ohos_unittest("media_albums_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_remove_assets_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_album_name_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_cover_uri_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/dto/album_add_assets_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/dto/album_recover_assets_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/dto/album_remove_assets_dto.cpp",
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_display_level_vo.cpp",
     "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_is_me_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_highlight_attribute_vo.cpp",
@@ -96,7 +104,6 @@ ohos_unittest("media_albums_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_vo.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_album_operations.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/media_itypes_utils.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_albums_lpath_by_ids_vo.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/album_add_assets_test.cpp",
@@ -134,6 +141,7 @@ ohos_unittest("media_albums_controller_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   external_deps = [

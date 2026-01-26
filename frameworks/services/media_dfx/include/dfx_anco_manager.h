@@ -60,8 +60,8 @@ private:
     int32_t NOTIFY_ADD_OPT_TYPE = 0;
     int32_t NOTIFY_MOD_OPT_TYPE = 1;
     int32_t NOTIFY_DEL_OPT_TYPE = 2;
-    int32_t REPORT_OPT_CHANGE_INFO_INTERVAL = SIX_HOUR * TO_MILLION;
-    int32_t REPORT_FORMAT_COUNT_INFO_INTERVAL = ONE_WEEK * TO_MILLION;
+    int32_t REPORT_OPT_CHANGE_INFO_INTERVAL = SIX_HOUR;
+    int32_t REPORT_FORMAT_COUNT_INFO_INTERVAL = ONE_WEEK;
     std::string ANCO_DFX_START_TIME = "anco_dfx_start_time";
     std::string ANCO_OPT_CHANGE_LAST_REPORT_TIME = "anco_opt_change_info_last_report_time";
     std::string ANCO_FORMAT_COUNT_LAST_REPORT_TIME = "anco_foramt_count_info_last_report_time";

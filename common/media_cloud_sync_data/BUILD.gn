@@ -1,0 +1,133 @@
+# Copyright (C) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/ohos.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+config("media_cloud_sync_data_config") {
+  include_dirs = [ "${MEDIALIB_INTERFACES_PATH}/inner_api/native/cloud_sync" ]
+}
+
+ohos_shared_library("media_cloud_sync_data") {
+  install_enable = true
+
+  include_dirs = [
+    "./include",
+    "./include/vo",
+  ]
+
+  sources = [
+    "./src/vo/cloud_error_detail_vo.cpp",
+    "./src/vo/cloud_file_data_vo.cpp",
+    "./src/vo/cloud_mdkrecord_photos_vo.cpp",
+    "./src/vo/cloud_mdkrecord_photo_album_vo.cpp",
+    "./src/vo/cloud_sync_unprepared_data_vo.cpp",
+    "./src/vo/failed_size_resp_vo.cpp",
+    "./src/vo/get_check_records_vo.cpp",
+    "./src/vo/get_cloud_thm_stat_vo.cpp",
+    "./src/vo/get_dirty_type_stat_vo.cpp",
+    "./src/vo/get_download_asset_vo.cpp",
+    "./src/vo/get_download_thm_by_uri_vo.cpp",
+    "./src/vo/get_download_thm_num_vo.cpp",
+    "./src/vo/get_download_thm_vo.cpp",
+    "./src/vo/get_file_pos_stat_vo.cpp",
+    "./src/vo/get_retey_records_vo.cpp",
+    "./src/vo/get_video_to_cache_vo.cpp",
+    "./src/vo/media_operate_result_vo.cpp",
+    "./src/vo/on_copy_records_photos_vo.cpp",
+    "./src/vo/on_create_records_album_vo.cpp",
+    "./src/vo/on_create_records_photos_vo.cpp",
+    "./src/vo/get_aging_file_vo.cpp",
+    "./src/vo/on_delete_albums_vo.cpp",
+    "./src/vo/on_delete_records_album_vo.cpp",
+    "./src/vo/on_delete_records_photos_vo.cpp",
+    "./src/vo/on_dentry_file_vo.cpp",
+    "./src/vo/on_download_asset_vo.cpp",
+    "./src/vo/on_download_thms_vo.cpp",
+    "./src/vo/on_fetch_photos_vo.cpp",
+    "./src/vo/on_fetch_records_album_vo.cpp",
+    "./src/vo/on_fetch_records_vo.cpp",
+    "./src/vo/on_mdirty_records_album_vo.cpp",
+    "./src/vo/on_modify_file_dirty_vo.cpp",
+    "./src/vo/on_modify_records_photos_vo.cpp",
+    "./src/vo/photo_album_vo.cpp",
+    "./src/vo/photos_vo.cpp",
+    "./src/vo/query_data_vo.cpp",
+    "./src/vo/update_data_vo.cpp",
+    "./src/vo/update_dirty_vo.cpp",
+    "./src/vo/update_local_file_dirty_vo.cpp",
+    "./src/vo/update_position_vo.cpp",
+    "./src/vo/update_sync_status_vo.cpp",
+    "./src/vo/update_thm_status_vo.cpp",
+    "./src/vo/report_failure_vo.cpp",
+  ]
+
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_utils_dirs = [
+    "${MEDIALIB_UTILS_PATH}/include",
+  ]
+
+  include_dirs += include_utils_dirs
+  include_dirs += include_media_ipc_common
+
+  if (!media_library_cloud_sync_enable) {
+    sources = []
+    include_dirs = []
+  }
+
+  public_configs = [ ":media_cloud_sync_data_config" ]
+
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "kv_store:distributeddata_inner",
+    "relational_store:native_rdb",
+  ]
+
+  ldflags = [ "-Wl,--gc-sections" ]
+
+  cflags = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
+
+  cflags_cc = [ "-Os" ]
+
+  if (!media_library_link_opt) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+      integer_overflow = true
+      ubsan = true
+      boundary_sanitize = true
+      stack_protector_ret = true
+    }
+  }
+
+  part_name = "media_library"
+  subsystem_name = "multimedia"
+}

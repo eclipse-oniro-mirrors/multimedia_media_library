@@ -24,6 +24,7 @@ ohos_unittest("media_library_share_tlv_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/operation",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
   ]
 
   sources = [
@@ -33,7 +34,7 @@ ohos_unittest("media_library_share_tlv_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager/media_library_extend_manager.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_command.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_json_operation.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_custom_restore_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/photo_custom_restore_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/tlv_util.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "../../get_self_permissions/src/get_self_permissions.cpp",

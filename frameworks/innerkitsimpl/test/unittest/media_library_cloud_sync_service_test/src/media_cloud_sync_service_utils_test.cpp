@@ -645,11 +645,11 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, GetFileIdFromUri_Test, TestSize.Level1)
 {
     int32_t fileId = 0;
     int32_t ret = CloudMediaUriUtils::GetFileIdFromUri("/test/file://media/Photo/", fileId);
-    EXPECT_EQ(ret, E_INVAL_ARG);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
     ret = CloudMediaUriUtils::GetFileIdFromUri("file://media/Photo/testcar", fileId);
-    EXPECT_EQ(ret, E_INVAL_ARG);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
     ret = CloudMediaUriUtils::GetFileIdFromUri("file://media/Photo/test/car", fileId);
-    EXPECT_EQ(ret, E_INVAL_ARG);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
     ret = CloudMediaUriUtils::GetFileIdFromUri("file://media/Photo/01/car", fileId);
     EXPECT_EQ(ret, E_OK);
 }
@@ -662,7 +662,7 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, GetFileIds_Test, TestSize.Level1)
     uris.emplace_back("file://media/Photo/test/car");
     uris.emplace_back("file://media/Photo/01/car");
     int32_t ret = CloudMediaUriUtils::GetFileIds(uris, fileIds);
-    EXPECT_EQ(ret, E_INVAL_ARG);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
 
     uris.clear();
     fileIds.clear();

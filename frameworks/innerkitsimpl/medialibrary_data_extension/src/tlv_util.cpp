@@ -63,7 +63,7 @@ bool TlvUtil::ProcessWriteAll(int fd, const char* data, size_t size)
         }
         CHECK_AND_RETURN_RET_LOG(n != 0, false, "write returned 0 bytes");
         ptr += n;
-        left -= n;
+        left -= static_cast<size_t>(n);
     }
     return true;
 }
@@ -80,8 +80,10 @@ int32_t TlvUtil::ValidateTlvFile(const std::string &tlvFilePath)
 {
     MEDIA_INFO_LOG("ValidateTlvFile start");
     CHECK_AND_RETURN_RET_LOG(!tlvFilePath.empty(), E_ERR, "tlvFilePath is empty");
-    
-    TlvFile tlvFile = open(tlvFilePath.c_str(), O_RDONLY);
+    char realPath[PATH_MAX] = {0};
+    CHECK_AND_RETURN_RET_LOG(realpath(tlvFilePath.c_str(), realPath) != nullptr, E_ERR,
+        "check dirPath fail, dirPath = %{private}s", tlvFilePath.c_str());
+    TlvFile tlvFile = open(realPath, O_RDONLY);
     CHECK_AND_RETURN_RET_LOG(tlvFile >= 0, E_ERR, "Failed to open TLV file");
     UniqueFd tlvFileFd(tlvFile);
     
@@ -102,7 +104,10 @@ int32_t TlvUtil::ValidateTlvFile(TlvFile tlvFile)
         header.type, TlvTag::TLV_TAG_HEADER);
     
     off_t fileSize = GetFileSize(tlvFile);
-    TlvLength expectedDataSize = fileSize - sizeof(TlvNode);
+    CHECK_AND_RETURN_RET_LOG(fileSize > 0 &&
+        static_cast<TlvLength>(fileSize) > static_cast<TlvLength>(sizeof(TlvNode)), E_ERR,
+        "Invalid file size: %{public}lld", (long long)fileSize);
+    TlvLength expectedDataSize = static_cast<TlvLength>(fileSize) - static_cast<TlvLength>(sizeof(TlvNode));
     
     CHECK_AND_RETURN_RET_LOG(header.length == expectedDataSize, E_ERR,
         "TLV data size mismatch: header says %{public}" PRId64 ", file says %{public}" PRId64,
@@ -174,8 +179,10 @@ int32_t TlvUtil::WriteTaggedFileToTlv(TlvFile tlvFile, TlvTag tag, const std::st
     CHECK_AND_RETURN_RET_LOG(tlvFile >= 0, E_ERR, "tlvFile is invalid");
     std::error_code ec;
     CHECK_AND_RETURN_RET_LOG(std::filesystem::exists(srcFilePath, ec), E_ERR, "src file does not exist");
-    
-    auto srcFd = open(srcFilePath.c_str(), O_RDONLY);
+    char realPath[PATH_MAX] = {0};
+    CHECK_AND_RETURN_RET_LOG(realpath(srcFilePath.c_str(), realPath) != nullptr, E_ERR,
+        "check dirPath fail, dirPath = %{private}s", srcFilePath.c_str());
+    auto srcFd = open(realPath, O_RDONLY);
     UniqueFd srcUniqueFd(srcFd);
     CHECK_AND_RETURN_RET_LOG(srcUniqueFd.Get() >= 0, E_ERR, "src file open failed");
     return TlvUtil::WriteTaggedFileToTlv(tlvFile, tag, srcUniqueFd.Get());
@@ -262,11 +269,10 @@ int32_t TlvUtil::WriteDataValueToTlv(TlvFile tlvFile, TlvFile srcFile)
     CHECK_AND_RETURN_RET_LOG(srcFile >= 0, E_ERR, "srcFile is invalid");
 
     char buffer[TLV_BUFFER_SIZE] = {0};
-    size_t bytesRead = 0;
-    size_t bytesWritten = 0;
+    ssize_t bytesRead = 0;
     bool ret = false;
     while ((bytesRead = read(srcFile, buffer, sizeof(buffer))) > 0) {
-        ret = ProcessWriteAll(tlvFile, buffer, bytesRead);
+        ret = ProcessWriteAll(tlvFile, buffer, static_cast<size_t>(bytesRead));
         CHECK_AND_RETURN_RET_LOG(ret, E_ERR, "failed to write tlv file, errno: %{public}d", errno);
     }
     CHECK_AND_RETURN_RET_LOG(bytesRead >= 0, E_ERR, "failed to write tlv file, errno: %{public}d", errno);
@@ -290,10 +296,11 @@ int32_t TlvUtil::UpdateTlvHeadSize(TlvFile tlvFile)
     int32_t ret = WritePaddingToTlv(tlvFile);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "WritePaddingToTlv failed");
     off_t currentPos = GetCurrentPosition(tlvFile);
-    CHECK_AND_RETURN_RET_LOG(currentPos > sizeof(TlvNode), E_ERR,
+    CHECK_AND_RETURN_RET_LOG(currentPos > 0 &&
+        static_cast<TlvLength>(currentPos) > static_cast<TlvLength>(sizeof(TlvNode)), E_ERR,
         "Invalid current position: %{public}lld", (long long)currentPos);
     
-    TlvLength totalDataSize = currentPos - sizeof(TlvNode);
+    TlvLength totalDataSize = static_cast<TlvLength>(currentPos) - static_cast<TlvLength>(sizeof(TlvNode));
     MEDIA_INFO_LOG("UpdateTlvHeadSize tlv file size: currentPos=%{public}" PRId64 ", dataSize=%{public}" PRId64,
         static_cast<int64_t>(currentPos), totalDataSize);
     
@@ -348,10 +355,10 @@ int32_t TlvUtil::ExtractFileData(TlvFile tlvFile, const std::string& outFilePath
         size_t toRead = (remaining < TLV_BUFFER_SIZE) ? remaining : TLV_BUFFER_SIZE;
         bytes = read(tlvFile, buffer, toRead);
         CHECK_AND_RETURN_RET_LOG(bytes > 0, E_ERR, "failed to read file data, errno: %{public}d", errno);
-        ret = ProcessWriteAll(outTlvFd.Get(), buffer, bytes);
+        ret = ProcessWriteAll(outTlvFd.Get(), buffer, static_cast<size_t>(bytes));
         CHECK_AND_RETURN_RET_LOG(ret, E_ERR, "failed to write to output file, errno: %{public}d", errno);
 
-        remaining -= bytes;
+        remaining -= static_cast<size_t>(bytes);
     }
     return E_OK;
 }
@@ -555,7 +562,10 @@ int32_t TlvUtil::ExtractTlv(const std::string &tlvFilePath, const std::string &d
     if (!std::filesystem::exists(destDir)) {
         std::filesystem::create_directories(destDir);
     }
-    TlvFile tlvFile = open(tlvFilePath.c_str(), O_RDONLY);
+    char realPath[PATH_MAX] = {0};
+    CHECK_AND_RETURN_RET_LOG(realpath(tlvFilePath.c_str(), realPath) != nullptr, E_ERR,
+        "check dirPath fail, dirPath = %{private}s", tlvFilePath.c_str());
+    TlvFile tlvFile = open(realPath, O_RDONLY);
     CHECK_AND_RETURN_RET_LOG(tlvFile >= 0, E_ERR, "tlvFile is invalid");
     UniqueFd tlvFileFd(tlvFile);
     if (lseek(tlvFileFd.Get(), sizeof(TlvNode), SEEK_SET) == E_ERR) {

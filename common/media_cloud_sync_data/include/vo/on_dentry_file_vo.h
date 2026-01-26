@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "i_media_parcelable.h"
-#include "photos_po.h"
 #include "on_fetch_photos_vo.h"
 #include "media_itypes_utils.h"
 #include "cloud_media_define.h"

@@ -164,7 +164,9 @@ void HeightWidthCorrectOperation::RemoveInvalidFromFailIds(std::unordered_set<in
         tempItem = i > 0 ? ", ?" : "?";
         placeholders += tempItem;
     }
-    std::string queryPhoto = "SELECT file_id FROM Photos WHERE file_id IN (" + placeholders + ");";
+    std::string queryPhoto = "SELECT file_id FROM Photos WHERE sync_status = 0 AND clean_flag = 0 AND time_pending = 0 "
+                             "AND is_temp = 0 AND file_id IN (" +
+                             placeholders + ");";
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Failed to get rdbStore.");
     auto resultSet = rdbStore->QuerySql(queryPhoto, bindArgs);
@@ -188,7 +190,8 @@ int32_t HeightWidthCorrectOperation::QueryNoCheckPhotoCount(int32_t startFileId)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Failed to get rdbStore.");
-    std::string queryNoCheckPhotoCount = "SELECT COUNT( * ) AS Count FROM Photos WHERE file_id > ?;";
+    std::string queryNoCheckPhotoCount = "SELECT COUNT( * ) AS Count FROM Photos WHERE sync_status = 0 AND clean_flag "
+                                         "= 0 AND time_pending = 0 AND is_temp = 0 AND file_id > ?;";
     const std::vector<NativeRdb::ValueObject> bindArgs = {startFileId};
     auto resultSet = rdbStore->QuerySql(queryNoCheckPhotoCount, bindArgs);
     CHECK_AND_RETURN_RET_LOG(
@@ -242,7 +245,10 @@ std::vector<CheckPhotoInfo> HeightWidthCorrectOperation::QueryNoCheckPhotoInfo(i
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, photoInfos, "Failed to get rdbstore!");
 
     const std::vector<NativeRdb::ValueObject> bindArgs = {startFileId, BATCH_SIZE};
-    auto resultSet = rdbStore->QuerySql(SQL_PHOTOS_TABLE_QUERY_PHOTO_INFO + "WHERE file_id > ? LIMIT ?;", bindArgs);
+    auto resultSet = rdbStore->QuerySql(
+        SQL_PHOTOS_TABLE_QUERY_PHOTO_INFO +
+            "WHERE sync_status = 0 AND clean_flag = 0 AND time_pending = 0 AND is_temp = 0 AND file_id > ? LIMIT ?;",
+        bindArgs);
     if (resultSet == nullptr) {
         return photoInfos;
     }
@@ -261,7 +267,8 @@ std::vector<CheckPhotoInfo> HeightWidthCorrectOperation::QueryCheckFailPhotoInfo
     size_t moveCount = failIds.size() >= BATCH_SIZE ? BATCH_SIZE : failIds.size();
     std::vector<NativeRdb::ValueObject> bindArgs;
     bindArgs.insert(bindArgs.end(), failIds.begin(), failIds.begin() + moveCount);
-    std::string placeholders = "WHERE file_id IN (";
+    std::string placeholders =
+        "WHERE sync_status = 0 AND clean_flag = 0 AND time_pending = 0 AND is_temp = 0 AND file_id IN (";
     std::string tempItem;
     for (size_t i = 0; i < moveCount; i++) {
         tempItem = i > 0 ? ", ?" : "?";

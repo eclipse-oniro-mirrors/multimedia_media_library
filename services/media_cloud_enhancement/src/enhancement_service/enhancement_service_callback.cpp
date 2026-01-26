@@ -194,12 +194,32 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
     return info->fileId;
 }
 
+string EnhancementServiceCallback::ChangeVideoPath(const string &filePath)
+{
+    string filename;
+    string dirPath;
+    size_t lastSlash = filePath.find_last_of('/');
+    if (lastSlash != std::string::npos) {
+        dirPath = filePath.substr(0, lastSlash);
+        filename = filePath.substr(lastSlash + 1);
+    } else {
+        MEDIA_ERR_LOG("file path is error:%{private}s", filePath.c_str());
+        return "";
+    }
+    char realPath[PATH_MAX] = {0};
+    bool bflag = realpath(dirPath.c_str(), realPath) == nullptr;
+    CHECK_AND_RETURN_RET_LOG(!bflag, "", "check filePath fail, dirPath = %{private}s", dirPath.c_str());
+    return (std::string(realPath) + "/" + filename);
+}
+
 static int32_t SaveVideo(const string &filePath, void *output, size_t writeSize)
 {
     const mode_t fileMode = 0644;
     MediaLibraryTracer tracer;
     tracer.Start("FileUtils::SaveVideo");
-    string filePathTemp = filePath + ".high";
+    string pathTemp = filePath + ".high";
+    string filePathTemp = EnhancementServiceCallback::ChangeVideoPath(pathTemp);
+    CHECK_AND_RETURN_RET_LOG(!filePathTemp.empty(), E_ERR, "filePathTemp is empty");
     UniqueFd fd(open(filePathTemp.c_str(), O_CREAT|O_WRONLY|O_TRUNC, fileMode));
     if (!FileUtils::IsFileExist(filePathTemp)) {
         MEDIA_ERR_LOG("file not exist: %{private}s", filePathTemp.c_str());
@@ -278,6 +298,7 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo(shared_
         MEDIA_INFO_LOG("save cloud enhancement video failed. ret=%{public}d, errno=%{public}d", ret, errno);
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(editVideoDataSourceBackPath, primarySourcePath), E_ERR,
             "Fail to move %{private}s to %{private}s", editVideoDataSourceBackPath.c_str(), primarySourcePath.c_str());
+        return E_ERR;
     }
     ret = MediaFileUtils::DeleteFile(editVideoDataSourceBackPath);
 

@@ -439,10 +439,8 @@ int32_t EnhancementServiceAdapter::FillTaskWithResultBuffer(MediaEnhanceBundleHa
         bundleGetResBufferFunc = (BundleHandleGetResBuffer)dynamicLoader_->GetFunction(MEDIA_CLOUD_ENHANCE_LIB_SO,
             "MediaEnhanceBundle_GetResultBuffers");
     }
-    if (bundleGetResBufferFunc == nullptr) {
-        MEDIA_ERR_LOG("MediaEnhanceBundle_GetResultBuffers dlsym failed. error:%{public}s", dlerror());
-        return E_ERR;
-    }
+    CHECK_AND_RETURN_RET_LOG(bundleGetResBufferFunc != nullptr, E_ERR,
+        "MediaEnhanceBundle_GetResultBuffers dlsym failed. error:%{public}s", dlerror());
     bundleGetResBufferFunc(bundle, &rawDataVec, &size);
     if (rawDataVec == nullptr || size == 0) {
         MEDIA_ERR_LOG("MediaEnhanceBundle_GetResultBuffers rawDataVec is nullptr or size = 0");
@@ -468,6 +466,9 @@ int32_t EnhancementServiceAdapter::FillTaskWithResultBuffer(MediaEnhanceBundleHa
         ret = memcpy_s(copyVideoData, videoBytes, videoAddr, videoBytes);
         if (ret != E_OK) {
             MEDIA_ERR_LOG("copy video buffer failed");
+            delete[] copyData;
+            copyData = nullptr;
+            task.addr = nullptr;
             delete[] copyVideoData;
             copyVideoData = nullptr;
             return E_ERR;

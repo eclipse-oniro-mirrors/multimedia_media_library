@@ -36,9 +36,7 @@ ohos_shared_library("media_library_camera_helper") {
 
   inner_ipc_include_dirs = [
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/vo",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
   ]
 
   notify_include_dirs = [
@@ -47,6 +45,13 @@ ohos_shared_library("media_library_camera_helper") {
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
   ]
 
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
   include_dirs += inner_ipc_include_dirs
   include_dirs += notify_include_dirs
 
@@ -62,7 +67,6 @@ ohos_shared_library("media_library_camera_helper") {
   inner_ipc_sources = [
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_image_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_process_video_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_inner_ipc_client.cpp",
   ]
 
   notify_sources = [
@@ -75,6 +79,7 @@ ohos_shared_library("media_library_camera_helper") {
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   public_configs = [ ":media_library_camera_config" ]

@@ -44,7 +44,6 @@ group("test") {
     "unittest/medialibrary_cloud_asset_download_test:unittest",
     "unittest/medialibrary_common_utils_test:unittest",
     "unittest/medialibrary_cover_position_parser_test:unittest",
-    "unittest/medialibrary_custom_restore_test:unittest",
     "unittest/medialibrary_datamanager_test:unittest",
     "unittest/medialibrary_dfx_test:unittest",
     "unittest/medialibrary_file_manager_temp_file_aging_test:unittest",
@@ -87,6 +86,7 @@ group("test") {
     "unittest/white_list_check_utils_test:unittest",
     "unittest/media_refresh:unittest",
     "unittest/media_notification_test:unittest",
+    "unittest/media_lake_file_monitor_test:unittest",
     "unittest/media_lake_load_test:unittest",
     "unittest/media_common_utils_test:unittest",
     "unittest/media_permission_helper_test:unittest",
@@ -101,6 +101,16 @@ group("test") {
     "unittest/medialibrary_cloud_asset_batch_download_test:unittest",
     "unittest/medialibrary_client_report_test:unittest",
   ]
+
+  deps_custom_restore_unittest = [
+    "unittest/medialibrary_custom_restore_test:unittest",
+  ]
+
+  if (media_library_feature_custom_restore) {
+    deps += deps_custom_restore_unittest
+  } else {
+    deps_custom_restore_unittest = []
+  }
 
   if (media_library_cloud_sync_enable) {
     deps += deps_cloud_sync_unittest

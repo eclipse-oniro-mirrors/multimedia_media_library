@@ -292,6 +292,19 @@ bool ThumbnailFileUtils::RemoveDirectoryAndFile(const std::string &path)
         errno, DfxUtils::GetSafePath(path).c_str(), errCode.value());
     return true;
 }
+
+std::string ThumbnailFileUtils::GetFileInfo(const string &path)
+{
+    size_t fileSize = 0;
+    CHECK_AND_PRINT_LOG(MediaFileUtils::GetFileSize(path, fileSize), "Get file size failed");
+    int64_t dataModified = 0;
+    CHECK_AND_PRINT_LOG(MediaFileUtils::GetDateModified(path, dataModified), "Get data modified failed");
+    std::string res;
+    res += "file: " + DfxUtils::GetSafePath(path) + " ";
+    res += "size: " + to_string(fileSize) + ", ";
+    res += "data modified: " + to_string(dataModified);
+    return res;
+}
 // LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

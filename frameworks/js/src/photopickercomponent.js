@@ -99,6 +99,8 @@ const PickerFilterPhotoKeys = {
     MEDIA_SUFFIX: 'media_suffix',
     
     ASPECT_RATIO: 'aspect_ratio',
+    
+    DATE_TAKEN_MS: 'date_taken_ms',
   }
   
 var isPhotoBrowserShow = false; 

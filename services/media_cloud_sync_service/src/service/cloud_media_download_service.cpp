@@ -363,7 +363,7 @@ int32_t CloudMediaDownloadService::SliceAssetFile(const std::string &originalFil
     MEDIA_INFO_LOG("SliceAssetFile");
     if (access(originalFile.c_str(), F_OK) != F_OK) {
         MEDIA_ERR_LOG("SliceAssetFile Not exist %{public}s", originalFile.c_str());
-        return E_PATH;
+        return E_NO_SUCH_FILE;
     }
     std::string temp = originalFile + ".slicetemp";
     if (rename(originalFile.c_str(), temp.c_str()) == 0) {
@@ -379,14 +379,14 @@ int32_t CloudMediaDownloadService::SliceAssetFile(const std::string &originalFil
             if (unlink(temp.c_str()) != 0) {
                 MEDIA_WARN_LOG("SliceAssetFile convert failed delete temp");
             }
-            return E_PATH;
+            return E_NO_SUCH_FILE;
         }
         if (unlink(temp.c_str()) != 0) {
             MEDIA_WARN_LOG("SliceAssetFile convert success delete temp");
         }
     } else {
         MEDIA_ERR_LOG("SliceAssetFile rename failed path:%{public}s, to temp:%{public}s", path.c_str(), temp.c_str());
-        return E_PATH;
+        return E_NO_SUCH_FILE;
     }
     return E_OK;
 }
@@ -415,7 +415,7 @@ int32_t CloudMediaDownloadService::SliceAsset(const OnDownloadAssetData &assetDa
         std::string extraDataPath = isGraffiti ? "" : CloudMediaSyncUtils::GetMovingPhotoExtraDataPath(assetData.path);
         if (!ForceCreateDirectory(extraDir)) {
             MEDIA_ERR_LOG("HandleAssetFile %{public}s error %{public}d", extraDir.c_str(), errno);
-            return E_PATH;
+            return E_NO_SUCH_FILE;
         }
         ret = SliceAssetFile(assetData.localPath, assetData.localPath, videoPath, extraDataPath);
         if (ret == E_OK && assetData.needParseCover) {

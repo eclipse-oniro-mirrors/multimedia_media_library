@@ -36,6 +36,7 @@
 #include "thumbnail_rdb_utils.h"
 #include "thumbnail_source_loading.h"
 #include "thumbnail_utils.h"
+#include "cloud_file_error.h"
 
 using namespace std;
 using namespace OHOS::FileManagement::CloudSync;
@@ -68,6 +69,9 @@ void ThumbnailCloudDownloadCallback::OnDownloadProcess(const DownloadProgressObj
         progress.batchState == DownloadProgressObj::Status::FAILED) {
         MEDIA_INFO_LOG("download thumbnail file, progress.batchState is %{public}d", progress.batchState);
         ThumbnailReadyManager::GetInstance().SetDownloadEnd(pid_);
+        if (progress.batchState == DownloadProgressObj::Status::COMPLETED) {
+            thumbReadyTaskData->isBatchComplete = true;
+        }
         std::lock_guard<std::mutex> cvLock(thumbReadyTaskData->cvMutex);
         thumbReadyTaskData->pendingTasks--;
         if (thumbReadyTaskData->pendingTasks <= 0) {
@@ -287,10 +291,10 @@ void ThumbnailReadyManager::HandleDownloadBatch(int32_t requestId, pid_t pid)
     auto downloadCallback = std::make_shared<ThumbnailCloudDownloadCallback>(requestId, pid);
     int32_t ret = CloudSyncManager::GetInstance().StartFileCache(thumbReadyTaskData->cloudPaths,
         thumbReadyTaskData->downloadId, FieldKey::FIELDKEY_LCD, downloadCallback, TIME_MILLI_SECONDS);
-    if (ret == CloudSync::E_OK) {
+    if (ret == E_OK) {
         RegisterDownloadTimer(requestId, pid);
     } else {
-        if (ret == CloudSync::E_TIMEOUT) {
+        if (ret == FileManagement::E_TIMEOUT) {
             timeoutCount_++;
             MEDIA_INFO_LOG("Download thumbnail timeout, count:%{public}d", timeoutCount_.load());
             auto currentMilliSecond = MediaFileUtils::UTCTimeMilliSeconds();
@@ -324,6 +328,10 @@ void ThumbnailReadyManager::CreateAstcBatchOnDemandTaskFinish(std::shared_ptr<Th
         CHECK_AND_RETURN_LOG(thumbReadyTaskData->downloadId != -1, "downloadId is invalid");
         int res = CloudSyncManager::GetInstance().StopFileCache(thumbReadyTaskData->downloadId, true);
         thumbReadyTaskData->downloadId = THUMB_INVALID_VALUE;
+    } else {
+        if (thumbReadyTaskData->isBatchComplete == true) {
+            timeoutCount_.store(0);
+        }
     }
     CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid));
     ThumbGenBatchTaskFinishNotify(requestId, pid);
@@ -441,9 +449,6 @@ void ThumbnailReadyManager::DownloadTimeOut(int32_t requestId, pid_t pid)
         std::lock_guard<std::mutex> cvLock(timerInfo->cvMutex);
         timerInfo->isCancel.store(true);
         timerInfo->cv.notify_all();
-    } else {
-        MEDIA_INFO_LOG("Download thumbnail timeout 15s, but download is end, reset timeout count");
-        timeoutCount_.store(0);
     }
 }
 
@@ -473,7 +478,7 @@ void ThumbnailReadyManager::UnRegisterDownloadTimer()
         return;
     }
     timer_.Unregister(timerId);
-    timer_.Shutdown(false);
+    timer_.Shutdown(true);
     timerId = 0;
 }
 

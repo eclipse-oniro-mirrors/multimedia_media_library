@@ -21,13 +21,15 @@
 namespace OHOS {
 namespace Media {
 namespace CompressVersion {
-constexpr int CompressVersion(int n) noexcept
+constexpr uint32_t VERSION_MAX_CNT = 30;
+constexpr uint32_t CompressVersion(uint32_t n) noexcept
 {
-    return 1 << n;
+    n = (n > VERSION_MAX_CNT) ? VERSION_MAX_CNT : n;
+    return 1u << n;
 }
 
 // 初始版本
-constexpr VersionNumber BASE = CompressVersion(0);
+constexpr VersionNumber BASE = CompressVersion(0u);
 
 // 当前版本 = 现存版本按位或的结果
 constexpr VersionNumber CURRENT_COMPRESS_VERSION = BASE;
@@ -60,7 +62,9 @@ const std::unordered_map<VersionNumber, AssetCompressSpec> AssetCompressVersionM
 };
 int32_t AssetCompressVersionManager::GetAssetCompressVersion()
 {
-    return CompressVersion::CURRENT_COMPRESS_VERSION;
+    CHECK_AND_RETURN_RET_LOG(CompressVersion::CURRENT_COMPRESS_VERSION <= static_cast<uint32_t>(INT32_MAX),
+        INT32_MAX, "current version overflow");
+    return static_cast<int32_t>(CompressVersion::CURRENT_COMPRESS_VERSION);
 }
 
 AssetCompressSpec AssetCompressVersionManager::GetAssetCompressSpec(int32_t version)
@@ -69,7 +73,7 @@ AssetCompressSpec AssetCompressVersionManager::GetAssetCompressSpec(int32_t vers
     AssetCompressSpec combinedSpec = {};
     for (const auto& iter : atomicSpecs_) {
         VersionNumber atomicVersion = iter.first;
-        if ((version & atomicVersion) != 0) {
+        if (version > 0 && (static_cast<uint32_t>(version) & atomicVersion) != 0) {
             const AssetCompressSpec& atomicSpec = iter.second;
             combinedSpec.editedDataColumns.insert(combinedSpec.editedDataColumns.end(),
                 atomicSpec.editedDataColumns.begin(), atomicSpec.editedDataColumns.end());
@@ -83,14 +87,18 @@ AssetCompressSpec AssetCompressVersionManager::GetAssetCompressSpec(int32_t vers
 int32_t AssetCompressVersionManager::GetCompatibleCompressVersion(int32_t version)
 {
     MEDIA_INFO_LOG("GetCompatibleCompressVersion begin");
-    if (version <= 0 || version > CompressVersion::CURRENT_COMPRESS_VERSION) {
-        MEDIA_ERR_LOG("invalid version: %{public}d, use current version: %{public}d",
+    if (version <= 0 || static_cast<uint32_t>(version) > CompressVersion::CURRENT_COMPRESS_VERSION) {
+        MEDIA_ERR_LOG("invalid version: %{public}d, use current version: %{public}u",
             version, CompressVersion::CURRENT_COMPRESS_VERSION);
-        return CompressVersion::CURRENT_COMPRESS_VERSION;
+        CHECK_AND_RETURN_RET_LOG(CompressVersion::CURRENT_COMPRESS_VERSION <= static_cast<uint32_t>(INT32_MAX),
+            INT32_MAX, "current version overflow");
+        return static_cast<int32_t>(CompressVersion::CURRENT_COMPRESS_VERSION);
     }
-    int32_t compatibleVersion = version & CompressVersion::CURRENT_COMPRESS_VERSION;
-    MEDIA_INFO_LOG("GetCompatibleCompressVersion compatible version: %{public}d", compatibleVersion);
-    return compatibleVersion;
+    uint32_t compatibleVersion = static_cast<uint32_t>(version) & CompressVersion::CURRENT_COMPRESS_VERSION;
+    MEDIA_INFO_LOG("GetCompatibleCompressVersion compatible version: %{public}u", compatibleVersion);
+    CHECK_AND_RETURN_RET_LOG(compatibleVersion <= static_cast<uint32_t>(INT32_MAX), INT32_MAX,
+        "compatibleVersion overflow");
+    return static_cast<int32_t>(compatibleVersion);
 }
 } // namespace Media
 } // namespace OHOS

@@ -60,7 +60,7 @@ static int32_t TryNotifyChange()
         auto obsMgrClient = AAFwk::DataObsMgrClient::GetInstance();
         if (obsMgrClient == nullptr) {
             MEDIA_ERR_LOG("TryNotifyChange %{public}s obsMgrClient is nullptr", __func__);
-            return E_SA_LOAD_FAILED;
+            return E_IPC_SA_LOAD_FAILED;
         }
         for (auto it = MediaGallerySyncNotify::notifyListMap_.begin();
                   it != MediaGallerySyncNotify::notifyListMap_.end(); ++it) {
@@ -103,7 +103,7 @@ static int32_t NotifyAlbumMapChange(const std::string &uri, const ChangeType cha
 static int32_t AddAndNotify(
     const bool notify, const std::string &uri, const ChangeType changeType, const std::string &fileAssetId)
 {
-    int ret = E_NOTIFY;
+    int ret = E_FAIL;
     if (uri.find(PhotoColumn::PHOTO_CLOUD_URI_PREFIX) != std::string::npos) {
         ret = NotifyFileAssetChange(notify, uri, changeType);
     } else if (uri.find(PhotoColumn::PHOTO_GALLERY_CLOUD_URI_PREFIX) != std::string::npos) {
@@ -143,7 +143,7 @@ int32_t MediaGallerySyncNotify::FinalNotify()
     auto obsMgrClient = AAFwk::DataObsMgrClient::GetInstance();
     if (obsMgrClient == nullptr) {
         MEDIA_ERR_LOG("FinalNotify %{public}s obsMgrClient is nullptr", __func__);
-        return E_SA_LOAD_FAILED;
+        return E_IPC_SA_LOAD_FAILED;
     }
     std::lock_guard<mutex> lock(MediaGallerySyncNotify::mtx_);
     for (auto it = MediaGallerySyncNotify::notifyListMap_.begin(); it != MediaGallerySyncNotify::notifyListMap_.end();
@@ -168,7 +168,7 @@ int32_t MediaGallerySyncNotify::NotifyProgress(NotifyTaskType taskType, const st
     auto obsMgrClient = AAFwk::DataObsMgrClient::GetInstance();
     if (obsMgrClient == nullptr) {
         MEDIA_ERR_LOG("NotifyProgress %{public}s obsMgrClient is nullptr", __func__);
-        return E_SA_LOAD_FAILED;
+        return E_IPC_SA_LOAD_FAILED;
     }
     AAFwk::ChangeInfo changeInfo;
     changeInfo.uris_.push_back(Uri(GALLERY_PROGRESS_URI));

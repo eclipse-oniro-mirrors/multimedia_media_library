@@ -586,6 +586,10 @@ bool ThumbnailUtils::QueryNoLcdInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &i
         MEDIA_DATA_DB_DATE_MODIFIED,
     };
     RdbPredicates rdbPredicates(opts.table);
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    rdbPredicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_LCD_VISIT_TIME, "0");
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_POSITION, "1");
     rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
@@ -807,6 +811,10 @@ bool ThumbnailUtils::QueryUpgradeThumbnailInfos(ThumbRdbOpt &opts, vector<Thumbn
     };
 
     RdbPredicates rdbPredicates(opts.table);
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    rdbPredicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, std::to_string(
         static_cast<int32_t>(ThumbnailReady::THUMB_UPGRADE)));
     if (!isWifiConnected) {
@@ -860,6 +868,10 @@ bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &
         MEDIA_DATA_DB_DATE_TAKEN, MEDIA_DATA_DB_DATE_MODIFIED,
     };
     RdbPredicates rdbPredicates(opts.table);
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    rdbPredicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, 0);
+    rdbPredicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);
     rdbPredicates.BeginWrap()
         ->EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "0")
         ->Or()->EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "2")

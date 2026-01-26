@@ -401,28 +401,6 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_GetMetaDataRealPath_001, Tes
         "/storage/cloud/1/files/.meta/Photo/1/IMG_123435213_124.jpg.json");
 }
 
-HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_IsThumbnailLatest_002, TestSize.Level1)
-{
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/1/"), true);
-    string photoPath = "";
-    EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
-    photoPath = "/storage/cloud/files/Photo/1/IMG_123456789_123.jpg";
-    EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
-
-    EXPECT_EQ(MediaFileUtils::CreateFile(photoPath), true);
-    EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
-
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg"), true);
-    EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg/THM.jpg"), true);
-    EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
-    EXPECT_EQ(MediaFileUtils::CreateFile("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg/LCD.jpg"), true);
-    EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
-    EXPECT_EQ(MediaFileUtils::DeleteDir("/storage/cloud/files/Photo/1/"), true);
-    EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg"), true);
-    EXPECT_EQ(PhotoFileUtils::IsThumbnailLatest(photoPath), false);
-    EXPECT_EQ(MediaFileUtils::DeleteDir("/storage/cloud/files/.thumbs/Photo/1/IMG_123456789_123.jpg"), true);
-}
-
 HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_GetThumbDir_001, TestSize.Level1)
 {
     std::string photoPath = "/Picture/";

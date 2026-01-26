@@ -15,23 +15,23 @@
 
 #define MLOG_TAG "Media_Cloud_Vo"
 
-#include "on_modify_file_dirty_vo.h"
+#include "on_copy_records_photos_vo.h"
 
 #include <sstream>
 
 #include "media_itypes_utils.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS::Media::CloudSync {
-bool OnFileDirtyRecord::Unmarshalling(MessageParcel &parcel)
+
+bool OnCopyRecord::Unmarshalling(MessageParcel &parcel)
 {
     parcel.ReadString(this->cloudId);
     parcel.ReadInt32(this->fileId);
     parcel.ReadInt32(this->rotation);
     parcel.ReadInt32(this->fileType);
     parcel.ReadInt64(this->size);
-    parcel.ReadInt64(this->metaDateModified);
     parcel.ReadInt64(this->createTime);
-    parcel.ReadInt64(this->modifyTime);
     parcel.ReadString(this->path);
     parcel.ReadString(this->fileName);
     parcel.ReadString(this->sourcePath);
@@ -44,17 +44,14 @@ bool OnFileDirtyRecord::Unmarshalling(MessageParcel &parcel)
     this->errorType = static_cast<ErrorType>(copyRecordErrorType);
     return true;
 }
-
-bool OnFileDirtyRecord::Marshalling(MessageParcel &parcel) const
+bool OnCopyRecord::Marshalling(MessageParcel &parcel) const
 {
     parcel.WriteString(this->cloudId);
     parcel.WriteInt32(this->fileId);
     parcel.WriteInt32(this->rotation);
     parcel.WriteInt32(this->fileType);
     parcel.WriteInt64(this->size);
-    parcel.WriteInt64(this->metaDateModified);
     parcel.WriteInt64(this->createTime);
-    parcel.WriteInt64(this->modifyTime);
     parcel.WriteString(this->path);
     parcel.WriteString(this->fileName);
     parcel.WriteString(this->sourcePath);
@@ -66,52 +63,48 @@ bool OnFileDirtyRecord::Marshalling(MessageParcel &parcel) const
     return true;
 }
 
-std::string OnFileDirtyRecord::ToString() const
+std::string OnCopyRecord::ToString() const
 {
     std::stringstream ss;
     ss << "{"
        << "\"cloudId\": \"" << cloudId << "\","
-       << "\"fileId\": \"" << fileId << "\","
-       << "\"rotation\": \"" << rotation << "\","
-       << "\"fileType\": \"" << fileType << "\","
-       << "\"size\": \"" << size << "\","
+       << "\"fileId\": " << fileId << ","
+       << "\"rotation\": " << rotation << ","
+       << "\"fileType\": " << fileType << ","
+       << "\"size\": " << size << ","
+       << "\"createTime\": " << createTime << ","
        << "\"path\": \"" << path << "\","
-       << "\"createTime\": \"" << createTime << "\","
-       << "\"modifyTime\": \"" << modifyTime << "\","
-       << "\"version\": \"" << version << "\","
-       << "\"serverErrorCode\": \"" << serverErrorCode << "\","
-       << "\"isSuccess\": \"" << isSuccess << "\","
-       << "\"errorType\": \"" << static_cast<int32_t>(errorType) << "\","
-       << "\"errorDetails\": \"[";
-    for (uint32_t i = 0; i < errorDetails.size(); ++i) {
-        if (i != errorDetails.size() - 1) {
-            ss << errorDetails[i].ToString() << ",";
-            continue;
-        }
-        ss << errorDetails[i].ToString();
-    }
-    ss << "]}";
+       << "\"version\": " << version << ","
+       << "\"serverErrorCode\": " << serverErrorCode << ","
+       << "\"isSuccess\": " << std::to_string(isSuccess) << ","
+       << "\"errorType\": " << static_cast<int32_t>(errorType) << ""
+       << "}";
     return ss.str();
 }
 
-bool OnFileDirtyRecordsReqBody::Unmarshalling(MessageParcel &parcel)
+bool OnCopyRecordsPhotosReqBody::Unmarshalling(MessageParcel &parcel)
 {
     return IPC::ITypeMediaUtil::UnmarshallingParcelable(this->records, parcel);
 }
 
-bool OnFileDirtyRecordsReqBody::Marshalling(MessageParcel &parcel) const
+bool OnCopyRecordsPhotosReqBody::Marshalling(MessageParcel &parcel) const
 {
     IPC::ITypeMediaUtil::MarshallingParcelable(this->records, parcel);
     return true;
 }
 
-int32_t OnFileDirtyRecordsReqBody::AddRecord(const OnFileDirtyRecord &record)
+int32_t OnCopyRecordsPhotosReqBody::AddCopyRecord(const OnCopyRecord &record)
 {
     this->records.push_back(record);
     return E_OK;
 }
 
-std::string OnFileDirtyRecordsReqBody::ToString() const
+std::vector<OnCopyRecord> OnCopyRecordsPhotosReqBody::GetRecords()
+{
+    return records;
+}
+
+std::string OnCopyRecordsPhotosReqBody::ToString() const
 {
     std::stringstream ss;
     ss << "{\"records\":[";

@@ -3113,6 +3113,10 @@ napi_value FileAssetNapi::HandleGettingSpecialKey(napi_env env, const string &ke
         int32_t value = fileAssetPtr->GetExifRotate();
         int32_t exifRotate = value == 0 ? static_cast<int32_t>(ExifRotateType::TOP_LEFT) : value;
         napi_create_int32(env, exifRotate, &jsResult);
+    } else if (key == PhotoColumn::PHOTO_VIDEO_MODE) {
+        int32_t value = fileAssetPtr->GetVideoMode();
+        int32_t videoMode = value == -1 ? static_cast<int32_t>(VideoMode::NOT_LOG_VIDEO) : value;
+        napi_create_int32(env, videoMode, &jsResult);
     }
 
     return jsResult;

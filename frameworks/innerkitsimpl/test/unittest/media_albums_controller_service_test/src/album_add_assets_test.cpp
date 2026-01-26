@@ -179,4 +179,20 @@ HWTEST_F(AlbumAddAssetsTest, AddAssets_Test_002, TestSize.Level0)
     ASSERT_LT(resp.GetErrCode(), 0);
     MEDIA_INFO_LOG("end AddAssets_Test_002");
 }
+
+HWTEST_F(AlbumAddAssetsTest, AlbumAddAssetsDto_ToString, TestSize.Level0)
+{
+    AlbumAddAssetsDto dto;
+
+    dto.albumId = 123;
+
+    dto.assetsArray.push_back("file1.txt");
+    dto.assetsArray.push_back("file2.txt");
+    dto.assetsArray.push_back("file3.txt");
+
+    std::string expected = "{\"albumId\": \"123\", \"isSmartAlbum\": \"0\", "
+    "\"assetsArray\": \" [file1.txt, file2.txt, file3.txt]}";
+    std::string str = dto.ToString();
+    EXPECT_EQ(expected, str);
+}
 }  // namespace OHOS::Media

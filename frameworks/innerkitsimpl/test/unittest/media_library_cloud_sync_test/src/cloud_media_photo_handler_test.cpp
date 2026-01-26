@@ -41,6 +41,7 @@
 #include "mdk_record_utils.h"
 #include "cloud_data_utils.h"
 #include "photos_dao.h"
+#include "cloud_file_error.h"
 
 using namespace testing::ext;
 using namespace testing::internal;
@@ -830,8 +831,6 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetCopyRecords, TestSize.Level1)
     MDKRecordUtils utils;
     std::vector<std::string> checkFields = {"favorite",
                                             "recycled",
-                                            "thumb_size",
-                                            "lcd_size",
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
@@ -990,7 +989,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, OnMdirtyRecords, TestSize.Level1)
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t failSize = 0;
     int32_t ret = dataHandler->OnMdirtyRecords(map, failSize);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
     std::vector<std::string> successCloudIds = {"373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97c1"};
     std::vector<std::string> failedCloudIds = {"373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97ca"};
     EXPECT_EQ(failSize, failedCloudIds.size());
@@ -1035,7 +1034,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, OnFdirtyRecords, TestSize.Level1)
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t failSize = 0;
     int32_t ret = dataHandler->OnFdirtyRecords(map, failSize);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
     std::vector<std::string> recordIdSuccess = {"373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97cd"};
     std::vector<std::string> recordIdFailed = {"373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97cc"};
     EXPECT_EQ(failSize, recordIdFailed.size());

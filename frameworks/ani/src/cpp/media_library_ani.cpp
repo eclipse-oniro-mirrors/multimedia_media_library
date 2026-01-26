@@ -104,6 +104,7 @@ mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
 mutex ChangeListenerAni::sWorkerMutex_;
 string ChangeListenerAni::trashAlbumUri_;
+mutex ChangeListenerAni::sWrapperMsgMutex_;
 static map<string, ListenerType> ListenerTypeMaps = {
     {"audioChange", AUDIO_LISTENER},
     {"videoChange", VIDEO_LISTENER},
@@ -357,6 +358,8 @@ void ChangeListenerAni::OnChange(MediaChangeListener &listener, const ani_ref cb
     if (msg == nullptr) {
         return;
     }
+
+    msg->data_ = nullptr;
     if (!listener.changeInfo.uris_.empty()) {
         if (listener.changeInfo.changeType_ == DataShare::DataShareObserver::ChangeType::OTHER) {
             ANI_ERR_LOG("changeInfo.changeType_ is other");
@@ -373,6 +376,9 @@ void ChangeListenerAni::OnChange(MediaChangeListener &listener, const ani_ref cb
             int copyRet = memcpy_s(msg->data_, msg->changeInfo_.size_, msg->changeInfo_.data_, msg->changeInfo_.size_);
             if (copyRet != 0) {
                 ANI_ERR_LOG("Parcel data copy failed, err = %{public}d", copyRet);
+                free(msg->data_);
+                delete msg;
+                return;
             }
         }
     }
@@ -468,7 +474,10 @@ void ChangeListenerAni::QueryRdbAndNotifyChange(UvChangeMsg *msg)
         delete msg;
         return;
     }
+
+    std::unique_lock<std::mutex> wapperLock(sWrapperMsgMutex_);
     wrapper->msg_ = msg;
+    wapperLock.unlock();
     MediaLibraryTracer tracer;
     tracer.Start("GetResultSetFromMsg");
     GetResultSetFromMsg(msg, wrapper);
@@ -976,19 +985,14 @@ static ani_int GetPhotoIndexAsyncCallbackComplete(ani_env *env, unique_ptr<Media
     ani_int retObj = {};
     ani_object error = {};
     context->status = false;
-    int32_t count = -1;
+    int32_t photoIndex = -1;
     if (context->error != ERR_DEFAULT) {
         context->HandleError(env, error);
     } else {
-        if (context->fetchFileResult != nullptr) {
-            auto fileAsset = context->fetchFileResult->GetFirstObject();
-            if (fileAsset != nullptr) {
-                count = fileAsset->GetPhotoIndex();
-            }
-        }
+        photoIndex = context->photoIndex;
         context->status = true;
     }
-    auto status = MediaLibraryAniUtils::GetInt32(env, count, retObj);
+    auto status = MediaLibraryAniUtils::GetInt32(env, photoIndex, retObj);
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to convert int to ani object");
     }
@@ -1074,11 +1078,16 @@ static void PhotoAccessGetPhotoIndexExecute(unique_ptr<MediaLibraryAsyncContext>
         static_cast<uint32_t>(MediaLibraryBusinessCode::GET_PHOTO_INDEX), reqBody, rspBody);
     auto resultSet = rspBody.resultSet;
     if (resultSet == nullptr) {
+        ANI_ERR_LOG("resultSet is nullptr, errCode = %{public}d", errCode);
         context->SaveError(errCode);
         return;
     }
-    context->fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
-    context->fetchFileResult->SetResultNapiType(type);
+    auto fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
+    CHECK_NULL_PTR_RETURN_VOID(fetchFileResult, "fetchFileResult is nullptr.");
+    auto fileAsset = fetchFileResult->GetFirstObject();
+    if (fileAsset != nullptr) {
+        context->photoIndex = fileAsset->GetPhotoIndex();
+    }
 }
 
 ani_int MediaLibraryAni::PhotoAccessGetPhotoIndex([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,
@@ -3735,12 +3744,13 @@ void MediaLibraryAni::UnRegisterNotifyChange(ani_env *env, const std::string &ur
         CheckRef(env, ref, listObj, true, uri);
         return;
     }
-    if (listObj.observers_.size() == 0) {
-        return;
-    }
+
     std::vector<std::shared_ptr<MediaOnNotifyObserver>> offObservers;
     {
         lock_guard<mutex> lock(sOnOffMutex_);
+        if (listObj.observers_.size() == 0) {
+            return;
+        }
         for (auto iter = listObj.observers_.begin(); iter != listObj.observers_.end();) {
             if (uri.compare((*iter)->uri_) == 0) {
                 offObservers.push_back(*iter);

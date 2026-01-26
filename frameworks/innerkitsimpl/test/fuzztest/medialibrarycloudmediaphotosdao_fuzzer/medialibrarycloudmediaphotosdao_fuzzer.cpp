@@ -86,14 +86,14 @@ static inline Media::CloudFilePosition FuzzCloudFilePosition()
     return Media::CloudFilePosition::POSITION_LOCAL;
 }
 
-static inline Media::CloudSync::PhotoPosition FuzzPhotoPosition()
+static inline int32_t FuzzPhotoPosition()
 {
     int32_t value = provider->ConsumeIntegral<int32_t>() % 3;
-    if (value >= static_cast<int32_t>(Media::CloudSync::PhotoPosition::POSITION_LOCAL) &&
-        value <= static_cast<int32_t>(Media::CloudSync::PhotoPosition::POSITION_BOTH)) {
-        return static_cast<Media::CloudSync::PhotoPosition>(value);
+    if (value >= static_cast<int32_t>(PhotoPositionType::LOCAL) &&
+        value <= static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) {
+        return static_cast<int32_t>(static_cast<PhotoPositionType>(value));
     }
-    return Media::CloudSync::PhotoPosition::POSITION_BOTH;
+    return static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
 }
 
 static inline Media::SyncStatusType FuzzSyncStatusType()

@@ -122,20 +122,22 @@ static bool HandleSpecialDateTypePredicate(const OperationItem &item,
     vector<OperationItem> &operations, const FetchOptionType &fetchOptType)
 {
     constexpr int32_t fieldIdx = 0;
-    constexpr int32_t valueIdx = 1;
     vector<string>dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
         MEDIA_DATA_DB_DATE_TAKEN};
     string dateType = item.GetSingle(fieldIdx);
+    OperationItem tempItem = item;
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
-    if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
-        item.operation != DataShare::ORDER_BY_DESC) {
+    if (it != dateTypes.end() && fetchOptType == ASSET_FETCH_OPT && item.operation != DataShare::ORDER_BY_ASC &&
+    item.operation != DataShare::ORDER_BY_DESC) {
         dateType += "_s";
-        operations.push_back({ item.operation, { dateType, static_cast<double>(item.GetSingle(valueIdx)) } });
+        tempItem.singleParams[fieldIdx] = dateType;
+        operations.push_back(tempItem);
         return true;
     }
-    if (DATE_TRANSITION_MAP.count(dateType) != 0) {
+    if (DATE_TRANSITION_MAP.count(dateType) != 0 && fetchOptType == ASSET_FETCH_OPT) {
         dateType = DATE_TRANSITION_MAP.at(dateType);
-        operations.push_back({ item.operation, { dateType, static_cast<double>(item.GetSingle(valueIdx)) } });
+        tempItem.singleParams[fieldIdx] = dateType;
+        operations.push_back(tempItem);
         return true;
     }
     return false;
@@ -228,6 +230,16 @@ bool MediaAniNativeImpl::ExtractSpecialFields(std::shared_ptr<MediaLibraryAsyncC
     return false;
 }
 
+static void HandleSpecialOrPredicate(vector<OperationItem> &operations, bool operationHasOr)
+{
+    if (!operations.empty() && operations[0].operation != DataShare::OR) {
+        if (operationHasOr) {
+            operations.insert(operations.begin(), { DataShare::BEGIN_WARP });
+            operations.push_back({ DataShare::END_WARP });
+        }
+    }
+}
+
 bool MediaAniNativeImpl::HandleSpecialPredicate(std::shared_ptr<MediaLibraryAsyncContext> context,
     const DataSharePredicates *predicate, const FetchOptionType &fetchOptType)
 {
@@ -235,7 +247,11 @@ bool MediaAniNativeImpl::HandleSpecialPredicate(std::shared_ptr<MediaLibraryAsyn
     CHECK_COND_RET(context != nullptr, false, "context is nullptr");
     std::vector<OperationItem> operations;
     auto &items = predicate->GetOperationList();
+    bool operationHasOr = false;
     for (auto &item : items) {
+        if (item.operation == DataShare::OR) {
+            operationHasOr = true;
+        }
         if (item.singleParams.empty()) {
             operations.push_back(item);
             continue;
@@ -248,6 +264,7 @@ bool MediaAniNativeImpl::HandleSpecialPredicate(std::shared_ptr<MediaLibraryAsyn
         }
         operations.push_back(item);
     }
+    HandleSpecialOrPredicate(operations, operationHasOr);
     context->predicates = DataSharePredicates(move(operations));
     return true;
 }

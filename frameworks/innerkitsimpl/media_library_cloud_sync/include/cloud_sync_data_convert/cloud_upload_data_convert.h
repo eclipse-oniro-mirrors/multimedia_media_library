@@ -21,7 +21,6 @@
 #include "mdk_record.h"
 #include "mdk_reference.h"
 #include "mdk_database.h"
-#include "photos_po.h"
 #include "photo_album_dto.h"
 #include "cloud_mdkrecord_photos_vo.h"
 #include "cloud_mdkrecord_photo_album_vo.h"

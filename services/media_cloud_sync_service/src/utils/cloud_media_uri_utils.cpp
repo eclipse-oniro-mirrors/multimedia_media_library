@@ -29,22 +29,22 @@ int32_t CloudMediaUriUtils::GetFileIdFromUri(const std::string &uri, int32_t &fi
     size_t index = uri.find(mediaDirPath);
     if (index != 0) {
         MEDIA_INFO_LOG("Failed to get media dir from uri: %{public}s", MediaFileUtils::DesensitizePath(uri).c_str());
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     std::string uriTails = uri.substr(index + mediaDirPath.length());
     index = uriTails.find('/');
     if (index == std::string::npos) {
         MEDIA_INFO_LOG("Failed to get fileId from uri: %{public}s", MediaFileUtils::DesensitizePath(uri).c_str());
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     std::string fileId = uriTails.substr(0, index);
     if (!all_of(fileId.begin(), fileId.end(), ::isdigit)) {
         MEDIA_INFO_LOG("Invalid fileId from uri: %{public}s", fileId.c_str());
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     if (!StrToInt(fileId, fileUniqueId)) {
         MEDIA_INFO_LOG("Invalid meida uri: %{public}s", MediaFileUtils::DesensitizePath(uri).c_str());
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     return E_OK;
 }
@@ -59,6 +59,6 @@ int32_t CloudMediaUriUtils::GetFileIds(const std::vector<std::string> &uris, std
         fileIds.push_back(fileId);
         MEDIA_DEBUG_LOG("GetFileIds uri:%{public}s, fileId:%{public}d", uri.c_str(), fileId);
     }
-    return uris.size() == fileIds.size() ? E_OK : E_INVAL_ARG;
+    return uris.size() == fileIds.size() ? E_OK : E_INVALID_VALUES;
 }
 }  // namespace OHOS::Media::CloudSync

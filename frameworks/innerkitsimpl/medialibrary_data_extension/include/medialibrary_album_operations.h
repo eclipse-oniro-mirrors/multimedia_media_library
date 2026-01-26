@@ -31,6 +31,7 @@
 #include "medialibrary_async_worker.h"
 #include "medialibrary_rdb_transaction.h"
 #include "album_accurate_refresh.h"
+#include "medialibrary_album_fusion_utils.h"
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -123,8 +124,23 @@ public:
         const vector<NativeRdb::RdbPredicates> &predicatesArray);
     static int32_t CreatePortraitAlbum(const string &albumName);
 
+    // ReuseId: if > 0, try to reuse the deleted album id; Otherwise query for an existing id;
+    // Gatekeep that no duplicate lpath will be created.
+    // Returns the created album id, or negative value if failed.
+    static int64_t CreateSourceAlbum(const std::string &albumName,
+        const MediaLibraryAlbumFusionUtils::ExecuteObject &executeObject = {},
+        const std::string &inputLpath = "", int32_t reuseId = 0);
+    static void PrepareUserAlbum(const std::string &albumName, NativeRdb::ValuesBucket &values);
+
     // Get column informations of PhotoAlbum table except primary key column
     static const std::unordered_map<std::string, ColumnSchema>& GetPhotoAlbumTableSchema();
+
+private:
+    static void PrepareSourceAlbum(const std::string &albumName, const std::string &lpath,
+        NativeRdb::ValuesBucket &values);
+    // Values that both source album and user album share when locally created.
+    static void PutGeneralPhotoAlbumValues(const std::string &albumName, const std::string &lpath,
+        NativeRdb::ValuesBucket &values);
 };
 } // namespace Media
 } // namespace OHOS

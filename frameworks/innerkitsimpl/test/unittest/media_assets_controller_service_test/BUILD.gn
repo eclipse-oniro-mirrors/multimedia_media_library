@@ -47,12 +47,17 @@ ohos_unittest("media_assets_controller_service_test") {
   ]
 
   include_media_ipc = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/vo",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/controller",
   ]
 
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
   include_dirs += include_media_ipc
 
   sources = [
@@ -111,7 +116,8 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/trash_photos_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/acquire_debug_database_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/release_debug_database_vo.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/media_itypes_utils.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/cloud_enhancement_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/form_info_dto.cpp",
     "${MEDIALIB_UTILS_PATH}/src/parameter_utils.cpp",
     "../../../media_library_manager/src/media_library_tab_old_photos_client.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
@@ -179,6 +185,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   external_deps = [

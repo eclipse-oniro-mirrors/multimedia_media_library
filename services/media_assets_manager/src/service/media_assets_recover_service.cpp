@@ -29,6 +29,7 @@
 #include "lake_file_operations.h"
 #include "dfx_utils.h"
 #include "medialibrary_album_operations.h"
+#include "medialibrary_photo_operations.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsRecoverService::BatchMoveOutTrashAndMergeWithSameAsset(
@@ -181,6 +182,7 @@ int32_t MediaAssetsRecoverService::MergeAssetFile(const PhotosPo &photoInfo, con
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "DeleteThumbnail fail, ret: %{public}d", ret);
     ret = fileOperation.CopyThumbnail(photoInfo, targetPhotoInfo, false);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CopyThumbnail fail, ret: %{public}d", ret);
+    this->StoreThumbnailAndEditSize(targetPhotoInfo);
     MEDIA_INFO_LOG(
         "MergeAssetFile completed, "
         "sourceFileId: %{public}d, sourcePosition: %{public}d, targetFileId: %{public}d, targetPosition: %{public}d, "
@@ -401,5 +403,15 @@ int32_t MediaAssetsRecoverService::RecoverPhotoAsset(const std::string &fileUri)
     DataShare::DataSharePredicates predicates;
     predicates.In(PhotoColumn::MEDIA_ID, fileUriList);
     return MediaLibraryAlbumOperations::RecoverPhotoAssets(predicates);
+}
+
+int32_t MediaAssetsRecoverService::StoreThumbnailAndEditSize(const PhotosPo &photoInfo)
+{
+    int32_t fileId = photoInfo.fileId.value_or(0);
+    std::string data = photoInfo.data.value_or("");
+    bool isValid = fileId > 0 && !data.empty();
+    CHECK_AND_RETURN_RET(isValid, E_INVALID_VALUES);
+    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
+    return E_OK;
 }
 }  // namespace OHOS::Media::Common

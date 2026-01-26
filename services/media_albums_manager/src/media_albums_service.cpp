@@ -681,7 +681,7 @@ int32_t MediaAlbumsService::SmartMoveAssets(ChangeRequestMoveAssetsDto &smartMov
         "SmartMoveAssets assets is empery");
 
     vector<std::string> assets;
-    for (const string asset : smartMoveAssetsDto.assets) {
+    for (const string& asset : smartMoveAssetsDto.assets) {
         size_t pos = asset.find(PhotoColumn::PHOTO_URI_PREFIX);
         if (pos != string::npos) {
             string fileId = MediaLibraryDataManagerUtils::GetFileIdFromPhotoUri(asset);

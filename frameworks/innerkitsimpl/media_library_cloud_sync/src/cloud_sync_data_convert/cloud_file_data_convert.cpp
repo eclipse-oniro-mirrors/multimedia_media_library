@@ -25,7 +25,7 @@
 #include "exif_rotate_utils.h"
 #include "file_ex.h"
 #include "media_log.h"
-#include "cloud_media_dao_utils.h"
+#include "cloud_media_client_utils.h"
 #include "cloud_media_sync_const.h"
 #include "mdk_record_photos_data.h"
 #include "media_file_utils.h"
@@ -381,7 +381,7 @@ int32_t CloudFileDataConvert::HandleRawFile(
     if (isMovingPhoto) {
         if (MovingPhotoFileUtils::ConvertToSourceLivePhoto(path, rawFilePath, userId_) != E_OK) {
             MEDIA_ERR_LOG("ConvertToSourceLivePhoto failed %{public}s", path.c_str());
-            return E_PATH;
+            return E_NO_SUCH_FILE;
         }
     }
     MDKAsset content;
@@ -458,12 +458,12 @@ int32_t CloudFileDataConvert::CheckContentLivePhoto(const CloudMdkRecordPhotosVo
     CHECK_AND_PRINT_LOG(!isMovingPhoto && !isGraffiti,
         "HandleContent isMovingPhoto: %{public}d, isGraffiti: %{public}d", isMovingPhoto, isGraffiti);
     if (isMovingPhoto && !isGraffiti) {
-        if (MovingPhotoFileUtils::ConvertToLivePhoto(path, coverPosition, lowerPath, userId_) != E_OK) {
-            MEDIA_ERR_LOG("covert to live photo fail");
-            return E_CONTENT_COVERT_LIVE_PHOTO;
-        }
+        std::string localPath = CloudMediaClientUtils::FindLocalPathFromCloudPath(path, userId_);
+        bool isValid = MovingPhotoFileUtils::IsExistsLivePhotoFiles(localPath);
+        isValid = isValid && MovingPhotoFileUtils::ConvertToLivePhoto(path, coverPosition, lowerPath, userId_) == E_OK;
+        CHECK_AND_RETURN_RET_LOG(isValid, E_CONTENT_COVERT_LIVE_PHOTO, "convert to live photo fail");
     } else {
-        int32_t ret = CloudMediaDaoUtils::GetLocalPathByPhotosVo(upLoadRecord, lowerPath, userId_);
+        int32_t ret = CloudMediaClientUtils::GetLocalPathByPhotosVo(upLoadRecord, lowerPath, userId_);
         if (ret != E_OK) {
             MEDIA_ERR_LOG("GetLocalPathByPhotosVo fail");
             return ret;
@@ -634,7 +634,7 @@ int32_t CloudFileDataConvert::HandleAttachments(
     if (upLoadRecord.dirty == -1 || upLoadRecord.dirty != static_cast<int32_t>(DirtyType::TYPE_TDIRTY)) {
         MEDIA_DEBUG_LOG("handle content when not TDIRTY");
         ret = HandleContent(recordData, upLoadRecord);
-        CHECK_AND_PRINT_LOG(ret == E_OK, "failed to handle content");
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "failed to handle content");
     }
 
     /* thumb */
@@ -934,14 +934,14 @@ int32_t CloudFileDataConvert::ConvertToOnCreateRecord(
 
 int32_t CloudFileDataConvert::ExtractPosition(const std::string &position, double &latitude, double &longitude)
 {
-    CHECK_AND_RETURN_RET_LOG(!position.empty(), E_INVAL_ARG, "position is empty.");
+    CHECK_AND_RETURN_RET_LOG(!position.empty(), E_INVALID_VALUES, "position is empty.");
     auto json = nlohmann::json::parse(position, nullptr, false);
     bool isValid = !json.is_discarded();
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "position json parse error, %{private}s", position.c_str());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "position json parse error, %{private}s", position.c_str());
     isValid = json.contains("x") && json.contains("y");
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "position miss x or y fields, %{private}s", position.c_str());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "position miss x or y fields, %{private}s", position.c_str());
     isValid = json["x"].is_string() && json["y"].is_string();
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "position x or y is not string, %{private}s", position.c_str());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "position x or y is not string, %{private}s", position.c_str());
     std::string latitudeStr = json["x"].get<std::string>();
     std::string longitudeStr = json["y"].get<std::string>();
     std::stringstream latitudestream(latitudeStr);

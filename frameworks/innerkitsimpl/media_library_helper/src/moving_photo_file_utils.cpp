@@ -996,5 +996,37 @@ size_t MovingPhotoFileUtils::GetMovingPhotoSize(const std::string &imagePath, in
     (void)MediaFileUtils::GetFileSize(movingPhotoExtraDataPath, extraDataSize);
     return imageSize + videoSize + extraDataSize;
 }
+
+bool MovingPhotoFileUtils::IsExistsLivePhotoFiles(const std::string &imagePath)
+{
+    bool isValid = !imagePath.empty();
+    CHECK_AND_RETURN_RET(isValid, false);
+    std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(imagePath);
+    isValid = !imagePath.empty() && !videoPath.empty();
+    CHECK_AND_RETURN_RET(isValid, false);
+    std::string absImagePath;
+    CHECK_AND_RETURN_RET_LOG(PathToRealPath(imagePath, absImagePath),
+        false,
+        "file is not real path: %{public}s, errno: %{public}d",
+        MediaFileUtils::DesensitizePath(imagePath).c_str(),
+        errno);
+    std::string absVideoPath;
+    CHECK_AND_RETURN_RET_LOG(PathToRealPath(videoPath, absVideoPath),
+        false,
+        "file is not real path: %{public}s, errno: %{public}d",
+        MediaFileUtils::DesensitizePath(videoPath).c_str(),
+        errno);
+    isValid = MediaFileUtils::IsFileExists(absImagePath);
+    CHECK_AND_RETURN_RET_LOG(isValid,
+        false,
+        "file not exists, absImagePath: %{public}s",
+        MediaFileUtils::DesensitizePath(absImagePath).c_str());
+    isValid = MediaFileUtils::IsFileExists(absVideoPath);
+    CHECK_AND_RETURN_RET_LOG(isValid,
+        false,
+        "file not exists, absVideoPath: %{public}s",
+        MediaFileUtils::DesensitizePath(absVideoPath).c_str());
+    return true;
+}
 // LCOV_EXCL_STOP
 } // namespace OHOS::Media

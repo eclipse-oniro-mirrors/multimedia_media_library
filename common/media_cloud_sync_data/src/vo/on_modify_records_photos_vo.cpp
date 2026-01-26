@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "media_itypes_utils.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnModifyRecord::Unmarshalling(MessageParcel &parcel)

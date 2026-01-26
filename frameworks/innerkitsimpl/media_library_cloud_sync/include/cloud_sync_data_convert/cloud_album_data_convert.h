@@ -32,7 +32,6 @@
 #include "media_column.h"
 #include "medialibrary_type_const.h"
 #include "photo_album_column.h"
-#include "photo_album_po.h"
 #include "userfile_manager_types.h"
 
 namespace OHOS::Media::CloudSync {
