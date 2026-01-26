@@ -406,6 +406,7 @@ void CloudMediaDownloadDao::FillScanedHeightWidth(
     CHECK_AND_RETURN(isValid);
     values.Put(PhotoColumn::PHOTO_HEIGHT, scanResult.height);
     values.Put(PhotoColumn::PHOTO_WIDTH, scanResult.width);
+    values.Put(PhotoColumn::PHOTO_ORIENTATION, scanResult.orientation);
     double aspectRatio = MediaFileUtils::CalculateAspectRatio(scanResult.height, scanResult.width);
     values.Put(PhotoColumn::PHOTO_ASPECT_RATIO, aspectRatio);
 }
