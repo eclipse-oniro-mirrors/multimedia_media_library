@@ -320,11 +320,9 @@ bool SourceLoader::CreateVideoFramePixelMap()
     if (!data_.tracks.empty()) {
         timeStamp = SafeStoll(data_.timeStamp) * MS_TRANSFER_US;
     }
-    if (state_ == SourceState::CLOUD_ORIGIN && timeStamp != AV_FRAME_TIME) {
-        MEDIA_ERR_LOG("Avoid reading specific frame from cloud video, path %{public}s",
+    bool cond = (state_ == SourceState::CLOUD_ORIGIN && timeStamp != AV_FRAME_TIME);
+    CHECK_AND_RETURN_RET_LOG(!cond, false, "Avoid reading specific frame from cloud video, path %{public}s",
             DfxUtils::GetSafePath(data_.path).c_str());
-        return false;
-    }
     return ThumbnailUtils::LoadVideoFrame(data_, desiredSize_, timeStamp);
 }
 

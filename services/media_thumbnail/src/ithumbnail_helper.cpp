@@ -1172,11 +1172,9 @@ bool IThumbnailHelper::DoCreateAstcMthAndYear(ThumbRdbOpt &opts, ThumbnailData &
 
 bool GenerateRotatedThumbnail(ThumbRdbOpt &opts, ThumbnailData &data, ThumbnailType thumbType)
 {
-    if (thumbType == ThumbnailType::LCD && !IThumbnailHelper::DoCreateLcd(opts, data)) {
-        MEDIA_ERR_LOG("Get lcd thumbnail pixelmap, rotate lcd failed: %{public}s",
-            DfxUtils::GetSafePath(data.path).c_str());
-        return false;
-    }
+    bool cond = (thumbType == ThumbnailType::LCD && !IThumbnailHelper::DoCreateLcd(opts, data));
+    CHECK_AND_RETURN_RET_LOG(!cond, false,
+        "Get lcd thumbnail pixelmap, rotate lcd failed: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
     if (thumbType != ThumbnailType::LCD && !IThumbnailHelper::DoRotateThumbnail(opts, data)) {
         MEDIA_ERR_LOG("Get default thumbnail pixelmap, rotate thumbnail failed: %{public}s",
             DfxUtils::GetSafePath(data.path).c_str());

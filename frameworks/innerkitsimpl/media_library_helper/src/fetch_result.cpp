@@ -338,9 +338,7 @@ int32_t FetchResult<T>::GetObjectIndexById(int32_t assetId)
             CHECK_AND_RETURN_RET_LOG(resultset_->GoToRow(i) == NativeRdb::E_OK, -1, "GoToRow failed");
             int32_t fileId =
                 get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultset_, TYPE_INT32));
-            if (fileId == assetId) {
-                return i;
-            }
+            CHECK_AND_RETURN_RET(fileId != assetId, i);
         }
     } else if constexpr (std::is_same<T, AlbumAsset>::value || std::is_same<T, SmartAlbumAsset>::value ||
         std::is_same<T, AlbumOrder>::value) {
@@ -348,9 +346,7 @@ int32_t FetchResult<T>::GetObjectIndexById(int32_t assetId)
                 CHECK_AND_RETURN_RET_LOG(resultset_->GoToRow(i) == NativeRdb::E_OK, -1, "GoToRow failed");
                 int32_t albumId =
                     get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_ID, resultset_, TYPE_INT32));
-                if (albumId == assetId) {
-                    return i;
-                }
+                CHECK_AND_RETURN_RET(albumId != assetId, i);
             }
         } else {
             MEDIA_ERR_LOG("unsupported FetchResType");
@@ -398,9 +394,8 @@ template <class T>
 variant<int32_t, int64_t, string, double> FetchResult<T>::GetRowValFromColumn(string columnName,
     ResultSetDataType dataType, shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
-    if ((resultset_ == nullptr) && (resultSet == nullptr)) {
-        return ReturnDefaultOnError("Resultset is null", dataType);
-    }
+    bool cond = ((resultset_ == nullptr) && (resultSet == nullptr));
+    CHECK_AND_RETURN_RET(!cond, ReturnDefaultOnError("Resultset is null", dataType));
     int index;
     int status;
     if (resultSet) {

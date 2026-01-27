@@ -615,9 +615,7 @@ static inline string GetCover(const shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     string coverUri;
     int32_t fileId = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::MEDIA_ID, resultSet, TYPE_INT32));
-    if (fileId <= 0) {
-        return coverUri;
-    }
+    CHECK_AND_RETURN_RET(fileId > 0,coverUri);
 
     string extrUri = MediaFileUtils::GetExtraUri(
         get<string>(ResultSetUtils::GetValFromColumn(PhotoColumn::MEDIA_NAME, resultSet, TYPE_STRING)),

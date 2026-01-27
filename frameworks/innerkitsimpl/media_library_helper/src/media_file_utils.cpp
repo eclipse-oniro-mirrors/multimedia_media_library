@@ -639,10 +639,7 @@ static std::unique_ptr<Picture> DecodeAsset(int32_t fd)
 
 static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType, int32_t dstFd)
 {
-    if (picturePtr == nullptr) {
-        MEDIA_ERR_LOG("picturePtr is nullptr");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "picturePtr is nullptr");
     MediaLibraryTracer tracer;
     tracer.Start("EncodeSaveAsset");
 
@@ -664,10 +661,7 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
 static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::string &extension)
 {
     std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd);
-    if (picturePtr == nullptr) {
-        MEDIA_ERR_LOG("DecodeAsset failed");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "DecodeAsset failed");
 
     std::string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
     if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd)) {
@@ -683,10 +677,7 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
 {
     MEDIA_DEBUG_LOG("ConvertFormatCopy srcFile: %{public}s, dstFile: %{public}s, extension: %{public}s",
         srcFile.c_str(), dstFile.c_str(), extension.c_str());
-    if (srcFile.size() >= PATH_MAX) {
-        MEDIA_ERR_LOG("File path too long %{public}d", static_cast<int>(srcFile.size()));
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(srcFile.size() < PATH_MAX, false, "File path too long %{public}d", static_cast<int>(srcFile.size()));
     string absFilePath;
     if (!PathToRealPath(srcFile, absFilePath)) {
         MEDIA_ERR_LOG("file is not real path, file path: %{private}s", srcFile.c_str());
@@ -749,10 +740,8 @@ static bool IsTranscodeFile(const std::string &filePath)
 bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, const std::string &dstDir,
     const std::string &extension)
 {
-    if (srcDir.empty() || dstDir.empty()) {
-        MEDIA_ERR_LOG("srcDir or dstDir is empty");
-        return E_MODIFY_DATA_FAIL;
-    }
+    bool cond = (srcDir.empty() || dstDir.empty());
+    CHECK_AND_RETURN_RET_LOG(!cond, E_MODIFY_DATA_FAIL, "srcDir or dstDir is empty");
     if (!IsFileExists(srcDir)) {
         MEDIA_ERR_LOG("SrcDir: %{public}s is not exist", srcDir.c_str());
         return E_NO_SUCH_FILE;
@@ -761,11 +750,8 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
         MEDIA_ERR_LOG("DstDir: %{public}s exists", dstDir.c_str());
         return E_FILE_EXIST;
     }
-    if (!IsDirectory(srcDir) || !CreateDirectory(dstDir)) {
-        MEDIA_ERR_LOG("srcDir is not directory or Create dstDir failed");
-        return E_FAIL;
-    }
-
+    cond = (!IsDirectory(srcDir) || !CreateDirectory(dstDir));
+    CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL, "srcDir is not directory or Create dstDir failed");
     std::string sourceFilePath = srcDir + "/source." + GetExtensionFromPath(srcDir);
     for (const auto& entry : std::filesystem::recursive_directory_iterator(srcDir)) {
         std::string srcFilePath = entry.path();
@@ -787,10 +773,7 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
             } else {
                 ret = CopyFileUtil(srcFilePath, dstFilePath);
             }
-            if (!ret) {
-                MEDIA_ERR_LOG("copyFile failed, isSrcFile: %{public}d", isEqual);
-                return E_FAIL;
-            }
+            CHECK_AND_RETURN_RET_LOG(ret, E_FAIL, "copyFile failed, isSrcFile: %{public}d", isEqual);
         } else {
             MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
             return E_FAIL;
@@ -2045,9 +2028,8 @@ string MediaFileUtils::GetMovingPhotoVideoPath(const string &imagePath)
 {
     size_t splitIndex = imagePath.find_last_of('.');
     size_t lastSlashIndex = imagePath.find_last_of('/');
-    if (splitIndex == string::npos || (lastSlashIndex != string::npos && lastSlashIndex > splitIndex)) {
-        return "";
-    }
+    bool cond = (splitIndex == string::npos || (lastSlashIndex != string::npos && lastSlashIndex > splitIndex));
+    CHECK_AND_RETURN_RET(!cond, "");
     return imagePath.substr(0, splitIndex) + ".mp4";
 }
 
@@ -2124,17 +2106,12 @@ bool MediaFileUtils::CheckMovingPhotoVideo(const UniqueFd &uniqueFd)
     }
 
     shared_ptr<AVMetadataHelper> avMetadataHelper = AVMetadataHelperFactory::CreateAVMetadataHelper();
-    if (avMetadataHelper == nullptr) {
-        MEDIA_WARN_LOG("Failed to create AVMetadataHelper, ignore checking duration");
-        return true;
-    }
+    CHECK_AND_RETURN_RET_WARN_LOG(avMetadataHelper == nullptr, true,
+        "Failed to create AVMetadataHelper, ignore checking duration");
 
     int32_t err = avMetadataHelper->SetSource(uniqueFd.Get(), 0,
         static_cast<int64_t>(st.st_size), AV_META_USAGE_META_ONLY);
-    if (err != 0) {
-        MEDIA_ERR_LOG("SetSource failed for the given file descriptor, err = %{public}d", err);
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == 0, false, "SetSource failed for the given file descriptor, err = %{public}d", err);
 
     unordered_map<int32_t, string> resultMap = avMetadataHelper->ResolveMetadata();
     if (resultMap.find(AV_KEY_DURATION) == resultMap.end()) {

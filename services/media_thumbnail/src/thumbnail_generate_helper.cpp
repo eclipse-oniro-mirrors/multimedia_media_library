@@ -218,11 +218,8 @@ int32_t ThumbnailGenerateHelper::CreateAstcCloudDownload(ThumbRdbOpt &opts, bool
     ThumbnailUtils::RecordStartGenerateStats(data.stats, GenerateScene::CLOUD, LoadSourceType::LOCAL_PHOTO);
     int err = 0;
     ThumbnailUtils::QueryThumbnailDataFromFileId(opts, opts.fileId, data, err);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("QueryThumbnailDataFromFileId failed, path: %{public}s",
-            DfxUtils::GetSafePath(data.path).c_str());
-        return err;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err,
+        "QueryThumbnailDataFromFileId failed, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
     ValuesBucket values;
     Size lcdSize;
     if (data.mediaType == MEDIA_TYPE_VIDEO && ThumbnailUtils::GetLocalThumbSize(data, ThumbnailType::LCD, lcdSize)) {
@@ -263,11 +260,8 @@ int32_t ThumbnailGenerateHelper::RegenerateThumbnailFromCloud(ThumbRdbOpt &opts)
     ThumbnailData data;
     int err = 0;
     ThumbnailUtils::QueryThumbnailDataFromFileId(opts, opts.fileId, data, err);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("Query data from fileId failed, path: %{public}s",
-            DfxUtils::GetSafePath(data.path).c_str());
-        return err;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err,
+        "Query data from fileId failed, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
     if (data.dirty != static_cast<int32_t>(DirtyType::TYPE_SYNCED)) {
         MEDIA_ERR_LOG("Not synced data, RegenerateThumbnailFromCloud cancelled, path: %{public}s",
             DfxUtils::GetSafePath(data.path).c_str());
@@ -1034,9 +1028,8 @@ int32_t ThumbnailGenerateHelper::DfxReportThumbnailDirAcl()
         NativePreferences::PreferencesHelper::GetPreferences(THUMBNAIL_RECORD_EVENT, errCode);
     CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr, E_ERR,  "Prefs is nullptr, err:%{public}d", errCode);
     int32_t status = prefs->GetInt(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL, 0);
-    if (status == RECORD_REPORT_THUMBNAIL_DIR_ACL) {
-        return E_OK;
-    }
+    CHECK_AND_RETURN_RET(status != RECORD_REPORT_THUMBNAIL_DIR_ACL, E_OK);
+    
 
     MEDIA_INFO_LOG("Start DfxReportThumbnailDirAcl");
     ThmInodeCleanInfo info = GetThmInodeCleanInfo();

@@ -314,9 +314,7 @@ void ThumbnailRdbUtils::ParseInt64Result(const shared_ptr<ResultSet> &resultSet,
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "ResultSet is nullptr!");
     bool isNull = true;
     int err = resultSet->IsColumnNull(index, isNull);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("Failed to check column %{public}d null %{public}d", index, err);
-    }
+    CHECK_AND_PRINT_LOG(err == E_OK, "Failed to check column %{public}d null %{public}d", index, err);
 
     if (!isNull) {
         err = resultSet->GetLong(index, data);

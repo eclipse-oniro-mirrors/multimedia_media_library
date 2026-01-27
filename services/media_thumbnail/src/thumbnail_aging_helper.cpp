@@ -30,14 +30,10 @@ namespace Media {
 // LCOV_EXCL_START
 static void AgingLcd(AsyncTaskData *data)
 {
-    if (data == nullptr) {
-        return;
-    }
+    CHECK_AND_RETURN(data != nullptr);
     AgingAsyncTaskData* taskData = static_cast<AgingAsyncTaskData*>(data);
     int32_t err = ThumbnailAgingHelper::ClearLcdFromFileTable(taskData->opts);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("Failed to ClearLcdFormFileTable %{public}d", err);
-    }
+    CHECK_AND_PRINT_LOG(err == E_OK, "Failed to ClearLcdFormFileTable %{public}d", err);
 }
 
 int32_t ThumbnailAgingHelper::AgingLcdBatch(ThumbRdbOpt &opts)
@@ -77,26 +73,17 @@ int32_t ThumbnailAgingHelper::ClearLcdFromFileTable(ThumbRdbOpt &opts)
 {
     int lcdCount = 0;
     int32_t err = GetLcdCount(opts, lcdCount);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("Failed to GetLcdCount %{public}d", err);
-        return err;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Failed to GetLcdCount %{public}d", err);
     MEDIA_DEBUG_LOG("lcdCount %{public}d", lcdCount);
-    if (lcdCount <= THUMBNAIL_LCD_AGING_THRESHOLD) {
-        MEDIA_INFO_LOG("Not need aging Lcd. lcdCount: %{public}d", lcdCount);
-        return E_OK;
-    }
+    CHECK_AND_RETURN_RET_INFO_LOG(lcdCount > THUMBNAIL_LCD_AGING_THRESHOLD, E_OK,
+        "Not need aging Lcd. lcdCount: %{public}d", lcdCount);
     vector<ThumbnailData> infos;
     err = GetAgingLcdData(opts, lcdCount - THUMBNAIL_LCD_AGING_THRESHOLD, infos);
-    if ((err != E_OK) || infos.empty()) {
-        MEDIA_ERR_LOG("Failed to GetAgingLcdData %{public}d", err);
-        return err;
-    }
+    bool cond = ((err != E_OK) || infos.empty());
+    CHECK_AND_RETURN_RET_LOG(!cond, err, "Failed to GetAgingLcdData %{public}d", err);
 
     shared_ptr<MediaLibraryAsyncWorker> asyncWorker = MediaLibraryAsyncWorker::GetInstance();
-    if (asyncWorker == nullptr) {
-        return E_ERR;
-    }
+    CHECK_AND_RETURN_RET(asyncWorker != nullptr, E_ERR);
     for (uint32_t i = 0; i < infos.size(); i++) {
         opts.row = infos[i].id;
         if (ThumbnailFileUtils::DeleteThumbFile(infos[i], ThumbnailType::LCD)) {
