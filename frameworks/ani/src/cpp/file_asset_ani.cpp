@@ -830,7 +830,7 @@ static void CommitModifyExecute(ani_env *env, unique_ptr<FileAssetContext> &cont
         DataSharePredicates predicates;
         DataShareValuesBucket valuesBucket;
         BuildCommitModifyValuesBucket(context.get(), valuesBucket);
-        predicates.SetWhereClause(std::to_string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
+        predicates.SetWhereClause(std::string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
         predicates.SetWhereArgs({std::to_string(context->objectPtr->GetId())});
         changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
     }

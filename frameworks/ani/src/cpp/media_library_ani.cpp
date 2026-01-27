@@ -3254,7 +3254,7 @@ static void getFileAssetById(int32_t id, const string &networkId, unique_ptr<Med
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
 
-    predicates.SetWhereClause(std::to_string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
+    predicates.SetWhereClause(std::string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
     predicates.SetWhereArgs({ to_string(id) });
 
     string queryUri = MEDIALIBRARY_DATA_URI;

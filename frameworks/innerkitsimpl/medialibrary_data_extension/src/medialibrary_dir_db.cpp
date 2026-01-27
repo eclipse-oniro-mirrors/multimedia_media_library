@@ -23,7 +23,7 @@ using namespace OHOS::NativeRdb;
 
 namespace OHOS {
 namespace Media {
-static const std::string DIR_DB_COND = std::to_string(CONST_MEDIA_DATA_DB_ID) + " = ?";
+static const std::string DIR_DB_COND = std::string(CONST_MEDIA_DATA_DB_ID) + " = ?";
 int32_t MediaLibraryDirDb::DeleteDirInfo(const int32_t dirId, const shared_ptr<RdbStore> &rdbStore)
 {
     CHECK_AND_RETURN_RET_LOG((rdbStore != nullptr) && (dirId > 0), E_DIR_OPER_ERR, "Invalid input");

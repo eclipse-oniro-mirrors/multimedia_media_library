@@ -232,7 +232,7 @@ std::unique_ptr<FileAsset> GetFile(int mediaTypeId)
     }
     vector<string> columns;
     DataSharePredicates predicates;
-    string prefix = std::to_string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " = " + std::to_string(mediaTypeId);
+    string prefix = std::string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " = " + std::to_string(mediaTypeId);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(MEDIALIBRARY_DATA_URI);
     shared_ptr<DataShareResultSet> resultSet = nullptr;
