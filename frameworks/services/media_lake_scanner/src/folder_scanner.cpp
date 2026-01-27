@@ -115,7 +115,7 @@ FolderScanner FolderScanner::BuildSubDirFolderScanner(const std::string &current
     return FolderScanner("", scanMode_);
 }
 
-int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue, bool isLakeCloneRestoring)
+int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue)
 {
     CHECK_AND_RETURN_RET(!IsIncrementScanConflict(), ERR_SUCCESS);
 
