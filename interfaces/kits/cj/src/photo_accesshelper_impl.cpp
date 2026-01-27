@@ -1022,5 +1022,83 @@ PhotoSelectResult PhotoAccessHelperImpl::StartPhotoPicker(int64_t id, PhotoSelec
     photoSelectResult.isOriginalPhoto = pickerCallBack->isOrigin;
     return photoSelectResult;
 }
+
+Ace::UIContent* GetUIContentV2(int64_t context, PhotoSelectOptions& option)
+{
+    Ace::UIContent* uiContent = GetSubWindowUIContent(option);
+    if (uiContent != nullptr) {
+        LOGI("GetSubWindowUIContent success");
+        return uiContent;
+    }
+
+    auto* abilityContext = reinterpret_cast<AbilityRuntime::AbilityContext*>(context);
+    if (abilityContext == nullptr) {
+        LOGE("Fail to get abilityContext");
+        return nullptr;
+    }
+    return abilityContext->GetUIContent();
+}
+
+static bool StartPickerExtension(
+    int64_t context, PhotoSelectOptions& option, shared_ptr<PickerCallBack>& pickerCallBack)
+{
+    LOGI("StartPickerExtension start");
+    Ace::UIContent* uiContent = GetUIContentV2(context, option);
+    if (uiContent == nullptr) {
+        LOGE("get uiContent failed");
+        return false;
+    }
+    AAFwk::Want request;
+    SetRequestInfo(option, request);
+    auto callback = make_shared<ModalUICallback>(uiContent, pickerCallBack.get());
+    Ace::ModalUIExtensionCallbacks extensionCallback = {
+        ([callback](auto arg) { callback->OnRelease(arg); }),
+        ([callback](auto arg1, auto arg2) { callback->OnResultForModal(arg1, arg2); }),
+        ([callback](auto arg) { callback->OnReceive(arg); }),
+        ([callback](auto arg1, auto arg2, auto arg3) { callback->OnError(arg1, arg2, arg3); }),
+        std::bind(&ModalUICallback::OnDestroy, callback),
+    };
+    Ace::ModalUIExtensionConfig config;
+    config.isProhibitBack = true;
+    int sessionId = uiContent->CreateModalUIExtension(request, extensionCallback, config);
+    if (sessionId == 0) {
+        LOGE("create modalUIExtension failed");
+        return false;
+    }
+    callback->SetSessionId(sessionId);
+    return true;
+}
+
+PhotoSelectResult PhotoAccessHelperImpl::StartPhotoPickerV2(
+    int64_t context, PhotoSelectOptions& option, int32_t& errCode)
+{
+    LOGI("StartPhotoPickerV2 start");
+    PhotoSelectResult photoSelectResult = { .photoUris = { .head = nullptr, .size = 0 }, .isOriginalPhoto = false };
+    shared_ptr<PickerCallBack> pickerCallBack = make_shared<PickerCallBack>();
+    if (!StartPickerExtension(context, option, pickerCallBack)) {
+        errCode = JS_INNER_FAIL;
+        return photoSelectResult;
+    }
+    while (!pickerCallBack->ready) {
+        this_thread::sleep_for(chrono::milliseconds(SLEEP_TIME));
+    }
+    errCode = pickerCallBack->resultCode;
+    size_t uriSize = pickerCallBack->uris.size();
+    if (uriSize > 0) {
+        char** head = static_cast<char**>(malloc(sizeof(char*) * uriSize));
+        if (head == nullptr) {
+            LOGE("malloc photoUris failed.");
+            errCode = ERR_MEM_ALLOCATION;
+            return photoSelectResult;
+        }
+        for (size_t i = 0; i < uriSize; i++) {
+            head[i] = MallocCString(pickerCallBack->uris[i]);
+        }
+        photoSelectResult.photoUris.head = head;
+        photoSelectResult.photoUris.size = static_cast<int64_t>(uriSize);
+    }
+    photoSelectResult.isOriginalPhoto = pickerCallBack->isOrigin;
+    return photoSelectResult;
+}
 }
 }

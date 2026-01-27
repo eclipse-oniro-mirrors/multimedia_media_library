@@ -170,6 +170,7 @@ public:
         ExtraInfo &extraInfo, int32_t &errCode);
     static bool CheckWhetherInitSuccess(const sptr<IRemoteObject> &token);
     static PhotoSelectResult StartPhotoPicker(int64_t id, PhotoSelectOptions &option, int32_t &errCode);
+    static PhotoSelectResult StartPhotoPickerV2(int64_t context, PhotoSelectOptions& option, int32_t& errCode);
 
     static std::mutex sUserFileClientMutex_;
     static int64_t contextId;

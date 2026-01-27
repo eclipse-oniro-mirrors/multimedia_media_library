@@ -498,6 +498,12 @@ extern "C" {
         return PhotoAccessHelperImpl::StartPhotoPicker(id, option, *errCode);
     }
 
+    FFI_EXPORT PhotoSelectResult FfiPhotoAccessHelperStartPhotoPickerV2(
+        int64_t context, PhotoSelectOptions option, int32_t* errCode)
+    {
+        return PhotoAccessHelperImpl::StartPhotoPickerV2(context, option, *errCode);
+    }
+
     char* FfiMovingPhotoGetUri(int64_t id, int32_t* errCode)
     {
         auto ffiMovingPhotoImpl = FFIData::GetData<FfiMovingPhotoImpl>(id);
