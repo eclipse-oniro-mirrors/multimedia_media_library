@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "albums_refresh_manager.h"
 #include "cloud_media_dao_utils.h"
 #include "cloud_media_sync_utils.h"
 #include "dataobs_mgr_changeinfo.h"
@@ -101,6 +102,7 @@ int32_t CloudMediaPhotosService::PullDelete(const CloudMediaPullDataDto &data, s
     std::string notifyUri =
         PhotoColumn::PHOTO_GALLERY_CLOUD_URI_PREFIX + std::to_string(data.localFileId) + '/' + data.localDateAdded;
     MediaGallerySyncNotify::GetInstance().TryNotify(notifyUri, ChangeType::DELETE, std::to_string(data.localFileId));
+    Notify(PhotoColumn::PHOTO_URI_PREFIX + std::to_string(data.localFileId), NotifyType::NOTIFY_REMOVE);
     refreshAlbums.emplace(std::to_string(data.localOwnerAlbumId));
     this->RemoveLocalFile(data);
     return E_OK;
@@ -231,6 +233,7 @@ int32_t CloudMediaPhotosService::PullUpdate(CloudMediaPullDataDto &pullData, std
     std::string notifyUri = PhotoColumn::PHOTO_GALLERY_CLOUD_URI_PREFIX + std::to_string(pullData.localFileId);
     MediaGallerySyncNotify::GetInstance().TryNotify(
         notifyUri, ChangeType::UPDATE, std::to_string(pullData.localFileId));
+    Notify(PhotoColumn::PHOTO_URI_PREFIX + std::to_string(pullData.localFileId), NotifyType::NOTIFY_UPDATE);
 
     refreshAlbums.emplace(std::to_string(pullData.localOwnerAlbumId));
     ExtractEditDataCamera(pullData);
@@ -428,15 +431,16 @@ int32_t CloudMediaPhotosService::PullInsert(
     ret = this->photosDao_.BatchInsertFile(recordAnalysisAlbumMaps, recordAlbumMaps, insertFiles, photoRefresh);
     photoRefresh->RefreshAlbumNoDateModified();
     photoRefresh->Notify();
-    this->photosDao_.UpdateAlbumInternal(refreshAlbums);
-    NotifyPhotoInserted(insertFiles);
+    this->photosDao_.UpdateAnalysisAlbumsCountForCloud();
+    NotifyPhotoInserted(insertFiles, refreshAlbums);
     return ret;
 }
 
-void CloudMediaPhotosService::NotifyPhotoInserted(const std::vector<NativeRdb::ValuesBucket> &insertFiles)
+void CloudMediaPhotosService::NotifyPhotoInserted(const std::vector<NativeRdb::ValuesBucket> &insertFiles,
+    const std::set<std::string> &refreshAlbums)
 {
     MEDIA_INFO_LOG("NotifyPhotoInserted enter %{public}zu", insertFiles.size());
-    std::vector<std::string> cloudIds;
+    std::set<std::string> cloudIds;
     bool ret = false;
     for (auto const &value : insertFiles) {
         if (value.HasColumn(Media::PhotoColumn::PHOTO_CLOUD_ID)) {
@@ -451,11 +455,15 @@ void CloudMediaPhotosService::NotifyPhotoInserted(const std::vector<NativeRdb::V
             MEDIA_INFO_LOG("NotifyPhotoInserted CloudId %{public}s", cloudId.c_str());
             MediaGallerySyncNotify::GetInstance().AddNotify(
                 PhotoColumn::PHOTO_GALLERY_CLOUD_URI_PREFIX + cloudId, ChangeType::INSERT, cloudId);
+            cloudIds.emplace(cloudId);
         } else {
             MEDIA_ERR_LOG("NotifyPhotoInserted no CloudId");
         }
     }
     MediaGallerySyncNotify::GetInstance().FinalNotify();
+    CHECK_AND_EXECUTE(refreshAlbums.empty(),
+        AlbumsRefreshManager::GetInstance().SendNotifyInfoOfAssetAndAlbum(
+            NotifyType::NOTIFY_ADD, cloudIds, refreshAlbums));
 }
 
 void CloudMediaPhotosService::Notify(const std::string &uri, NotifyType type)
@@ -549,9 +557,8 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
     std::vector<CloudMediaPullDataDto> insertPullDatas;
     uint64_t rdbFail = 0;
     int32_t ret = E_OK;
+    NotifyType notifyType = NotifyType::NOTIFY_INVALID;
     for (auto &cloudId : cloudIds) {
-        ChangeType changeType = ChangeType::INVAILD;
-
         CloudMediaPullDataDto pullData = cloudIdRelativeMap.at(cloudId);
         std::string dateAdded = pullData.localDateAdded;
         MEDIA_INFO_LOG("pulldata HandleRecord pullData: %{public}s", pullData.ToString().c_str());
@@ -562,15 +569,15 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
         } else if (!pullData.localPath.empty()) {
             if (this->photosDeleteService_.IsClearCloudInfoOnly(pullData)) {
                 ret = this->photosDeleteService_.PullClearCloudInfo(pullData, refreshAlbums, stats, photoRefresh);
-                changeType = ChangeType::DELETE;
+                notifyType = NotifyType::NOTIFY_REMOVE;
             } else if (pullData.basicIsDelete) {
                 ret = PullDelete(pullData, refreshAlbums, photoRefresh);
-                changeType = ChangeType::DELETE;
+                notifyType = NotifyType::NOTIFY_REMOVE;
                 stats[StatsIndex::DELETE_RECORDS_COUNT]++;
             } else {
                 // 需要更新
                 ret = PullUpdate(pullData, refreshAlbums, fdirtyData, stats, photoRefresh);
-                changeType = ChangeType::UPDATE;
+                notifyType = NotifyType::NOTIFY_UPDATE;
             }
         }
         if (ret == FileManagement::E_STOP) {
@@ -592,7 +599,8 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
     ret = CreateEntry(insertPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
     photoRefresh->RefreshAlbumNoDateModified();
     photoRefresh->Notify();
-    this->photosDao_.UpdateAlbumInternal(refreshAlbums);
+    this->photosDao_.UpdateAnalysisAlbumsCountForCloud();
+    AlbumsRefreshManager::GetInstance().SendNotifyInfoOfAssetAndAlbum(notifyType, {}, refreshAlbums);
     MediaGallerySyncNotify::GetInstance().FinalNotify();
     return ret;
 }
