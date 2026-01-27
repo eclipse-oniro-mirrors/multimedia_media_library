@@ -29,6 +29,7 @@
 #include "medialibrary_type_const.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_kvstore_manager.h"
+#include "media_upgrade.h"
 #include "userfile_manager_types.h"
 
 namespace OHOS {
@@ -56,12 +57,18 @@ int32_t g_photoAlbumSubTypeArray[] = {
 
 static inline int32_t FuzzPhotoAlbumSubType()
 {
+    if (provider == nullptr) {
+        return E_ERR;
+    }
     return provider->PickValueInArray(g_photoAlbumSubTypeArray);
 }
 
 static inline KeyData FuzzKeyData()
 {
     KeyData KeyData;
+    if (provider == nullptr) {
+        return KeyData;
+    }
     KeyData.modifyTime = provider->ConsumeIntegral<int64_t>();
     KeyData.createTime = provider->ConsumeIntegral<int64_t>();
     return KeyData;
@@ -69,42 +76,63 @@ static inline KeyData FuzzKeyData()
 
 static inline CloudMediaPhotoOperationCode FuzzApiCode()
 {
+    if (provider == nullptr) {
+        return  PHOTO_OPERATION_CODE_LIST[0];
+    }
     int32_t data = provider->ConsumeIntegralInRange<int32_t>(0, PHOTO_OPERATION_CODE_LIST.size() - INDEX);
     return static_cast<CloudMediaPhotoOperationCode>(PHOTO_OPERATION_CODE_LIST[data]);
 }
 
-static inline CloudSyncServiceErrCode FuzzErrorCode()
+static inline int32_t FuzzErrorCode()
 {
+    if (provider == nullptr) {
+        return ERR_CODE_LIST[0];
+    }
     int32_t data = provider->ConsumeIntegralInRange<int32_t>(0, ERR_CODE_LIST.size() - INDEX);
-    return static_cast<CloudSyncServiceErrCode>(ERR_CODE_LIST[data]);
+    return ERR_CODE_LIST[data];
 }
 
-static inline ServerErrorCode FuzzServerErrorCode()
+static inline int32_t FuzzServerErrorCode()
 {
+    if (provider == nullptr) {
+        return SERVER_ERROR_CODE_LIST[0];
+    }
     int32_t data = provider->ConsumeIntegralInRange<int32_t>(0, SERVER_ERROR_CODE_LIST.size() - INDEX);
-    return static_cast<ServerErrorCode>(SERVER_ERROR_CODE_LIST[data]);
+    return SERVER_ERROR_CODE_LIST[data];
 }
 
-static inline ErrorDetailCode FuzzErrorDetailCode()
+static inline int32_t FuzzErrorDetailCode()
 {
+    if (provider == nullptr) {
+        return ERROR_DETAIL_CODE_LIST[0];
+    }
     int32_t data = provider->ConsumeIntegralInRange<int32_t>(0, ERROR_DETAIL_CODE_LIST.size() - INDEX);
-    return static_cast<ErrorDetailCode>(ERROR_DETAIL_CODE_LIST[data]);
+    return ERROR_DETAIL_CODE_LIST[data];
 }
 
 static inline int32_t FuzzFileType()
 {
+    if (provider == nullptr) {
+        return E_ERR;
+    }
     int32_t data = provider->ConsumeIntegralInRange<int32_t>(0, FILE_TYPE_LIST.size() - INDEX);
     return FILE_TYPE_LIST[data];
 }
 
 static inline ErrorType FuzzErrorType()
 {
+    if (provider == nullptr) {
+        return ErrorType::TYPE_UNKNOWN;
+    }
     int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, MAX_ERROR_TYPE);
     return static_cast<ErrorType>(value);
 }
 
 static inline CoverUriSource FuzzCoverUriSource()
 {
+    if (provider == nullptr) {
+        return CoverUriSource::DEFAULT_COVER;
+    }
     int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, MAX_COVER_URI_SOURCE);
     return static_cast<CoverUriSource>(value);
 }
@@ -127,6 +155,9 @@ static int32_t InsertAlbumAsset()
 
 static int32_t InsertPhotoAsset()
 {
+    if (provider == nullptr) {
+        return E_ERR;
+    }
     NativeRdb::ValuesBucket values;
     values.PutString(MediaColumn::MEDIA_FILE_PATH, provider->ConsumeBytesAsString(NUM_BYTES));
     values.PutString(PhotoColumn::PHOTO_CLOUD_ID, "cloudId");
@@ -139,6 +170,9 @@ static int32_t InsertPhotoAsset()
 
 static void ExtractEditDataCameraTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     CloudMediaPullDataDto pullData;
     pullData.attributesEditDataCamera = provider->ConsumeBytesAsString(NUM_BYTES);
     pullData.localPath = ROOT_MEDIA_DIR + provider->ConsumeBytesAsString(NUM_BYTES);
@@ -160,6 +194,9 @@ static void ClearLocalDataTest()
 
 static void GetCloudKeyDataTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     CloudMediaPullDataDto pullData;
     pullData.hasAttributes = true;
     pullData.basicFileName = provider->ConsumeBytesAsString(NUM_BYTES);
@@ -184,6 +221,9 @@ static void DoDataMergeTest()
 
 static void PullRecordsDataMergeTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     CloudMediaPullDataDto pullData;
     string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
     pullData.cloudId = cloudId;
@@ -213,6 +253,9 @@ static void SetPullDataFromPhotosPoTest()
 
 static void HandleCloudDeleteRecordTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     CloudMediaPullDataDto pullData;
     pullData.localPath = provider->ConsumeBytesAsString(NUM_BYTES);
     pullData.basicIsDelete = provider->ConsumeBool();
@@ -225,6 +268,9 @@ static void HandleCloudDeleteRecordTest()
 
 static void GetCheckRecordsTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     std::vector<std::string> cloudIds = {provider->ConsumeBytesAsString(NUM_BYTES)};
     CHECK_AND_RETURN_LOG(cloudMediaPhotosService != nullptr, "cloudMediaPhotosService is nullptr");
     cloudMediaPhotosService->GetCheckRecords(cloudIds);
@@ -232,6 +278,9 @@ static void GetCheckRecordsTest()
 
 static void GetDeletedRecordsTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     int32_t size = provider->ConsumeIntegral<int32_t>();
     CHECK_AND_RETURN_LOG(cloudMediaPhotosService != nullptr, "cloudMediaPhotosService is nullptr");
     cloudMediaPhotosService->GetDeletedRecords(size);
@@ -246,11 +295,14 @@ static void GetCloudPathTest()
 
 static void ReportFailureTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     ReportFailureDto failureDto;
     failureDto.apiCode = static_cast<int32_t>(FuzzApiCode());
     failureDto.fileId = provider->ConsumeIntegral<int32_t>();
     failureDto.cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
-    failureDto.errorCode = static_cast<int32_t>(FuzzErrorCode());
+    failureDto.errorCode = FuzzErrorCode();
 
     CHECK_AND_RETURN_LOG(cloudMediaPhotosService != nullptr, "cloudMediaPhotosService is nullptr");
     cloudMediaPhotosService->ReportFailure(failureDto);
@@ -258,6 +310,9 @@ static void ReportFailureTest()
 
 static void OnRecordFailedTest()
 {
+    if (provider == nullptr) {
+        return;
+    }
     PhotoAlbumDto album;
     album.serverErrorCode = FuzzServerErrorCode();
     CloudErrorDetail errorDetail;
@@ -302,7 +357,7 @@ static void CloudMediadPhotoService2Test()
 void SetTables()
 {
     vector<string> createTableSqlList = {
-        PhotoColumn::CREATE_PHOTO_TABLE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE
     };
     for (auto &createTableSql : createTableSqlList) {
