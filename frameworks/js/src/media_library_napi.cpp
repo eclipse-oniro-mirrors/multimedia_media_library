@@ -1402,7 +1402,7 @@ static void GetFileAssetUpdateSelections(MediaLibraryAsyncContext *context)
     MediaLibraryNapi::ReplaceSelection(context->selection, context->selectionArgs, CONST_MEDIA_DATA_DB_RELATIVE_PATH,
         CONST_MEDIA_DATA_DB_RELATIVE_PATH, ReplaceSelectionMode::ADD_DOCS_TO_RELATIVE_PATH);
 #else
-    string trashPrefix = CONST_MEDIA_DATA_DB_DATE_TRASHED + " = ? ";
+    string trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " = ? ";
     MediaLibraryNapiUtils::AppendFetchOptionSelection(context->selection, trashPrefix);
     context->selectionArgs.emplace_back("0");
 #endif
@@ -1757,7 +1757,7 @@ static inline void ReplaceRelativePath(string &selection, size_t pos, const stri
 {
     bool shouldReplace = DoReplaceRelativePath(arg, argInstead);
     if (shouldReplace) {
-        selection.replace(pos, CONST_MEDIA_DATA_DB_RELATIVE_PATH.length(), keyInstead);
+        selection.replace(pos, string(CONST_MEDIA_DATA_DB_RELATIVE_PATH).length(), keyInstead);
     }
 }
 
@@ -4148,9 +4148,9 @@ static void SetSmartAlbumCoverUri(MediaLibraryAsyncContext *context, unique_ptr<
     }
     string trashPrefix;
     if (smartAlbum->GetAlbumId() == TRASH_ALBUM_ID_VALUES) {
-        trashPrefix = CONST_MEDIA_DATA_DB_DATE_TRASHED + " <> ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
+        trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " <> ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
     } else {
-        trashPrefix = CONST_MEDIA_DATA_DB_DATE_TRASHED + " = ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
+        trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " = ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
     }
     MediaLibraryNapiUtils::AppendFetchOptionSelection(context->selection, trashPrefix);
     context->selectionArgs.emplace_back("0");

@@ -1291,7 +1291,7 @@ ani_object MediaLibraryAniUtils::GetNextRowObject(ani_env *env, shared_ptr<Nativ
     fileAsset->SetUri(move(fileUri.ToString()));
     ani_string aniValue {};
     MediaLibraryAniUtils::ToAniString(env, fileAsset->GetUri(), aniValue);
-    env->Object_SetPropertyByName_Ref(result, CONST_MEDIA_DATA_DB_URI.c_str(), aniValue);
+    env->Object_SetPropertyByName_Ref(result, CONST_MEDIA_DATA_DB_URI, aniValue);
     return result;
 }
 
@@ -1480,7 +1480,7 @@ ani_object MediaLibraryAniUtils::BuildNextRowObject(ani_env* env, std::shared_pt
     }
     ani_string aniString;
     MediaLibraryAniUtils::ToAniString(env, rowObj->dbUri_, aniString);
-    env->Object_SetPropertyByName_Ref(result, CONST_MEDIA_DATA_DB_URI.c_str(), aniString);
+    env->Object_SetPropertyByName_Ref(result, CONST_MEDIA_DATA_DB_URI, aniString);
     return result;
 }
 

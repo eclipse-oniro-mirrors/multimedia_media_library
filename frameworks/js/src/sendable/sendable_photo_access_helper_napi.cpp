@@ -496,7 +496,7 @@ static inline void ReplaceRelativePath(string &selection, size_t pos, const stri
 {
     bool shouldReplace = DoReplaceRelativePath(arg, argInstead);
     if (shouldReplace) {
-        selection.replace(pos, CONST_MEDIA_DATA_DB_RELATIVE_PATH.length(), keyInstead);
+        selection.replace(pos, string(CONST_MEDIA_DATA_DB_RELATIVE_PATH).length(), keyInstead);
     }
 }
 

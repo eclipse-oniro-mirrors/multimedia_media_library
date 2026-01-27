@@ -1848,7 +1848,7 @@ napi_value MediaLibraryNapiUtils::GetNextRowObject(napi_env env, shared_ptr<Nati
     MediaFileUri fileUri(fileAsset->GetMediaType(), to_string(fileAsset->GetId()), "", MEDIA_API_VERSION_V10, extrUri);
     fileAsset->SetUri(move(fileUri.ToString()));
     napi_create_string_utf8(env, fileAsset->GetUri().c_str(), NAPI_AUTO_LENGTH, &value);
-    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI.c_str(), value);
+    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI, value);
     return result;
 }
 
@@ -2334,7 +2334,7 @@ napi_value MediaLibraryNapiUtils::BuildNextRowObject(const napi_env& env, std::s
         BuildThumbnailReady(env, name, result, index, columnInfo);
     }
     napi_create_string_utf8(env, rowObj->dbUri_.c_str(), NAPI_AUTO_LENGTH, &value);
-    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI.c_str(), value);
+    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI, value);
     return result;
 }
 

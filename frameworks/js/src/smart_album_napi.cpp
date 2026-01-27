@@ -1132,9 +1132,9 @@ static void UpdateSelection(SmartAlbumNapiAsyncContext *context)
     } else {
         string trashPrefix;
         if (context->objectPtr->GetAlbumId() == TRASH_ALBUM_ID_VALUES) {
-            trashPrefix = CONST_MEDIA_DATA_DB_DATE_TRASHED + " <> ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
+            trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " <> ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
         } else {
-            trashPrefix = CONST_MEDIA_DATA_DB_DATE_TRASHED + " = ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
+            trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " = ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
         }
         MediaLibraryNapiUtils::AppendFetchOptionSelection(context->selection, trashPrefix);
         context->selectionArgs.emplace_back("0");

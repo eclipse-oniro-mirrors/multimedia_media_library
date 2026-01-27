@@ -1301,7 +1301,7 @@ napi_value SendableMediaLibraryNapiUtils::GetNextRowObject(napi_env env,
     MediaFileUri fileUri(fileAsset->GetMediaType(), to_string(fileAsset->GetId()), "", MEDIA_API_VERSION_V10, extrUri);
     fileAsset->SetUri(move(fileUri.ToString()));
     napi_create_string_utf8(env, fileAsset->GetUri().c_str(), NAPI_AUTO_LENGTH, &value);
-    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI.c_str(), value);
+    napi_set_named_property(env, result, CONST_MEDIA_DATA_DB_URI, value);
     return result;
 }
 
