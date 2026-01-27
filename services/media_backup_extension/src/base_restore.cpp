@@ -184,7 +184,7 @@ bool BaseRestore::IsRestorePhoto()
     return true;
 }
 
-void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::string &upgradePath)
+void BaseRestore::StartRestore(const std::string &backupRestoreDir, const std::string &upgradePath)
 {
     MEDIA_INFO_LOG("enter StartRestore");
     if (WaitSouthDeviceExitTimeout()) {
@@ -197,7 +197,7 @@ void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::st
     }
     MEDIA_INFO_LOG("StartRestore begin");
 
-    backupRestoreDir_ = backupRetoreDir;
+    backupRestoreDir_ = backupRestoreDir;
     if (backupRestoreDir_.empty()) {
         MEDIA_ERR_LOG("backupRestoreDir_ is empty.");
         SetErrorCode(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY);
@@ -210,7 +210,7 @@ void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::st
     GetAccountValid();
     GetSyncSwitchOn();
     GetSourceDeviceInfo();
-    int32_t errorCode = Init(backupRetoreDir, upgradePath, true);
+    int32_t errorCode = Init(backupRestoreDir, upgradePath, true);
     if (errorCode == E_OK) {
         RestorePhoto();
         RestoreAudio();
@@ -1528,7 +1528,7 @@ void BaseRestore::BatchInsertMap(const vector<FileInfo> &fileInfos, int64_t &tot
     totalRowNum += rowNum;
 }
 
-void BaseRestore::StartRestoreEx(const std::string &backupRetoreDir, const std::string &upgradePath,
+void BaseRestore::StartRestoreEx(const std::string &backupRestoreDir, const std::string &upgradePath,
     std::string &restoreExInfo)
 {
     UpgradeRestoreTaskReport()
@@ -1537,7 +1537,7 @@ void BaseRestore::StartRestoreEx(const std::string &backupRetoreDir, const std::
         .ReportProgress("start", std::to_string(MediaFileUtils::UTCTimeSeconds()));
     restoreMode_ = GetRestoreModeFromRestoreInfo(restoreInfo_);
     MEDIA_INFO_LOG("set restore mode to :%{public}d", restoreMode_);
-    StartRestore(backupRetoreDir, upgradePath);
+    StartRestore(backupRestoreDir, upgradePath);
     DatabaseReport()
         .SetSceneCode(this->sceneCode_)
         .SetTaskId(this->taskId_)

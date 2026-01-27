@@ -41,12 +41,12 @@ class BaseRestore {
 public:
     BaseRestore() = default;
     virtual ~BaseRestore() = default;
-    virtual void StartRestore(const std::string &backupRetorePath, const std::string &upgradePath);
-    virtual int32_t Init(const std::string &backupRetorePath, const std::string &upgradePath, bool isUpgrade) = 0;
+    virtual void StartRestore(const std::string &backupRestorePath, const std::string &upgradePath);
+    virtual int32_t Init(const std::string &backupRestorePath, const std::string &upgradePath, bool isUpgrade) = 0;
     virtual NativeRdb::ValuesBucket GetInsertValue(const FileInfo &fileInfo, const std::string &newPath,
         int32_t sourceType) = 0;
     virtual std::string GetBackupInfo();
-    void StartRestoreEx(const std::string &backupRetorePath, const std::string &upgradePath,
+    void StartRestoreEx(const std::string &backupRestorePath, const std::string &upgradePath,
         std::string &restoreExInfo);
     std::string GetRestoreExInfo();
     void ReportPortraitStat(int32_t sceneCode);

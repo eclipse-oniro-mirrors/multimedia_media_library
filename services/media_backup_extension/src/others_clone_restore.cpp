@@ -347,7 +347,8 @@ void OthersCloneRestore::ReportMissingFilesFromDB(std::vector<CloneDbInfo> &medi
     }
 }
 
-int32_t OthersCloneRestore::Init(const std::string &backupRetoreDir, const std::string &upgradeFilePath, bool isUpgrade)
+int32_t OthersCloneRestore::Init(
+    const std::string &backupRestoreDir, const std::string &upgradeFilePath, bool isUpgrade)
 {
     if (BaseRestore::Init() != E_OK) {
         MEDIA_ERR_LOG("GetBackupInfo init failed");
