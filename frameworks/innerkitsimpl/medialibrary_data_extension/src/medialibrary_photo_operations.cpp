@@ -340,7 +340,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::HandleIndexOfUri(
     MediaLibraryCommand &cmd, RdbPredicates &predicates, const string &photoId, const string &albumId)
 {
     CHECK_AND_RETURN_RET(albumId.empty(), HandleAlbumIndexOfUri(cmd, photoId, albumId));
-    string indexClause = " COUNT(*) as " + CONST_PHOTO_INDEX;
+    string indexClause = " COUNT(*) as " + string(CONST_PHOTO_INDEX);
     vector<string> columns;
     columns.push_back(indexClause);
     predicates.And()->EqualTo(

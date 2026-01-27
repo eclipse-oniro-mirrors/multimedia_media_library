@@ -171,7 +171,7 @@ static void ReplaceRelativePath(string &selection, vector<string> &selectionArgs
             return;
         }
         selection.replace(argPos, 1, "? OR 1=1)");
-        selection.replace(pos, CONST_MEDIA_DATA_DB_RELATIVE_PATH.length(), "(" + PhotoAlbumColumns::ALBUM_ID);
+        selection.replace(pos, string(CONST_MEDIA_DATA_DB_RELATIVE_PATH).length(), "(" + PhotoAlbumColumns::ALBUM_ID);
 
         selectionArgs[argIndex] = "1";
         pos = argPos + 1;
@@ -201,7 +201,7 @@ static void ReplaceMediaType(string &selection, vector<string> &selectionArgs)
             break;
         }
         selection.replace(argPos, 1, "? OR 1=1)");
-        selection.replace(pos, CONST_MEDIA_DATA_DB_MEDIA_TYPE.length(), "(" + PhotoAlbumColumns::ALBUM_ID);
+        selection.replace(pos, string(CONST_MEDIA_DATA_DB_MEDIA_TYPE).length(), "(" + PhotoAlbumColumns::ALBUM_ID);
 
         selectionArgs[argIndex] = "1";
         pos = argPos + 1;

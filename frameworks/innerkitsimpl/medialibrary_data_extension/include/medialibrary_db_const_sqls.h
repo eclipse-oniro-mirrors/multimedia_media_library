@@ -84,7 +84,7 @@ const std::string CREATE_MEDIA_TABLE = std::string("CREATE TABLE IF NOT EXISTS "
                                        CONST_MEDIA_DATA_DB_META_DATE_MODIFIED + "  BIGINT DEFAULT 0, " +
                                        CONST_MEDIA_DATA_DB_SYNC_STATUS + " INT DEFAULT 0)";
 
-const std::string CREATE_BUNDLE_PREMISSION_TABLE = "CREATE TABLE IF NOT EXISTS " +
+const std::string CREATE_BUNDLE_PREMISSION_TABLE = std::string("CREATE TABLE IF NOT EXISTS ") +
                                       CONST_BUNDLE_PERMISSION_TABLE + " (" +
                                       CONST_PERMISSION_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                                       CONST_PERMISSION_BUNDLE_NAME + " TEXT NOT NULL, " +
@@ -92,7 +92,7 @@ const std::string CREATE_BUNDLE_PREMISSION_TABLE = "CREATE TABLE IF NOT EXISTS "
                                       CONST_PERMISSION_MODE + " TEXT NOT NULL, " +
                                       CONST_PERMISSION_TABLE_TYPE + " INT )";
 
-const std::string CREATE_IMAGE_VIEW = "CREATE VIEW IF NOT EXISTS Image AS SELECT " +
+const std::string CREATE_IMAGE_VIEW = std::string("CREATE VIEW IF NOT EXISTS Image AS SELECT ") +
                                       CONST_MEDIA_DATA_DB_ID + ", " +
                                       CONST_MEDIA_DATA_DB_FILE_PATH + ", " +
                                       CONST_MEDIA_DATA_DB_SIZE + ", " +
