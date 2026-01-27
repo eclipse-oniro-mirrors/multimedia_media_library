@@ -397,7 +397,7 @@ void RestorePhoto()
 
 int32_t GetMapCountByTable(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &tableName)
 {
-    string querySql = "SELECT " + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
+    string querySql = "SELECT " + string(CONST_MEDIA_COLUMN_COUNT_1) + " FROM " + tableName;
     int32_t result = INVALID_COUNT;
     QueryInt(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
