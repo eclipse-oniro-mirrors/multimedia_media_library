@@ -52,6 +52,10 @@ const std::string JOINT_BEAUTY_BOUNDER_Y = "joint_beauty_bounder_y";
 const std::string JOINT_BEAUTY_BOUNDER_WIDTH = "joint_beauty_bounder_width";
 const std::string JOINT_BEAUTY_BOUNDER_HEIGHT = "joint_beauty_bounder_height";
 const std::string GROUP_VERSION = "group_version";
+const std::string EMOTION = "emotion";
+const std::string COMPLETENESS = "completeness";
+const std::string SIMPLE_FACE_SCORE = "face_score";
+const std::string SIMPLE_FACE_SCORE_VERSION = "face_score_version";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_IMAGE_FACE_COLUMN_H

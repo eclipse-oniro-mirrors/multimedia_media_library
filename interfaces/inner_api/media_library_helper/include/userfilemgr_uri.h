@@ -248,6 +248,8 @@ namespace Media {
 #define CONST_PAH_ANA_COMPOSITION "phaccess_ana_composition_operation"
 #define CONST_PAH_ANA_HEAD "phaccess_ana_head_operation"
 #define CONST_PAH_ANA_AFFECTIVE "phaccess_ana_affective_operation"
+#define CONST_PAH_ANA_DEDUP_SELECTION "phaccess_ana_dedup_selection_operation"
+#define CONST_PAH_ANA_PROFILE "phaccess_ana_profile_operation"
 #define CONST_PAH_ANA_POSE "phaccess_ana_pose_operation"
 #define CONST_PAH_ANA_PET "phaccess_ana_pet_operation"
 #define CONST_PAH_ANA_PET_TAG "phaccess_ana_pet_tag_operation"

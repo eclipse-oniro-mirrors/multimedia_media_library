@@ -1875,6 +1875,8 @@ static const vector<string> onCreateSqlStrs = {
     CREATE_TAB_FACE_TAG,
     CREATE_TAB_ANALYSIS_TOTAL_FOR_ONCREATE,
     CREATE_TAB_ANALYSIS_VIDEO_TOTAL,
+    CREATE_TAB_ANALYSIS_DEDUP_SELECTION,
+    CREATE_TAB_ANALYSIS_PROFILE,
     CREATE_VISION_UPDATE_TRIGGER,
     CREATE_VISION_DELETE_TRIGGER,
     CREATE_VISION_INSERT_TRIGGER_FOR_ONCREATE,
@@ -5047,6 +5049,29 @@ static void AddPhotoMovingphotoEnhancementType(RdbStore &store, int32_t version)
     MEDIA_INFO_LOG("Add moving photo enhancement column end");
 }
 
+
+static void AddTableAnalysisDedupSelection(RdbStore &store, int32_t version)
+{
+    MEDIA_INFO_LOG("AddTableAnalysisDedupSelection start");
+    const vector<string> sqls = {
+        "ALTER TABLE " + VISION_TOTAL_TABLE + " ADD COLUMN " + SIMILARITY + " INT NOT NULL DEFAULT 0 ",
+        "ALTER TABLE " + VISION_TOTAL_TABLE + " ADD COLUMN " + DUPLICATE + " INT NOT NULL DEFAULT 0 ",
+        "ALTER TABLE " + VISION_TOTAL_TABLE + " ADD COLUMN " + TOTAL_SCORE_STATUS + " INT NOT NULL DEFAULT 0 ",
+        CREATE_TAB_ANALYSIS_DEDUP_SELECTION,
+        CREATE_TAB_ANALYSIS_PROFILE,
+        "ALTER TABLE " + VISION_IMAGE_FACE_TABLE + " ADD COLUMN " + EMOTION + " STRING ",
+        "ALTER TABLE " + VISION_IMAGE_FACE_TABLE + " ADD COLUMN " + COMPLETENESS + " INT ",
+        "ALTER TABLE " + VISION_IMAGE_FACE_TABLE + " ADD COLUMN " + SIMPLE_FACE_SCORE + " INT ",
+        "ALTER TABLE " + VISION_IMAGE_FACE_TABLE + " ADD COLUMN " + SIMPLE_FACE_SCORE_VERSION + " TEXT ",
+        "ALTER TABLE " + VISION_AFFECTIVE_TABLE + " ADD COLUMN " + AFFECTIVE_SCORE + " INT ",
+        "ALTER TABLE " + VISION_AFFECTIVE_TABLE + " ADD COLUMN " + AFFECTIVE_SCORE_VERSION + " TEXT ",
+        "ALTER TABLE " + VISION_LABEL_TABLE + " ADD COLUMN " + SIGNIFICANCE_SCORE + " INT ",
+        "ALTER TABLE " + VISION_LABEL_TABLE + " ADD COLUMN " + SIGNIFICANCE_SCORE_VERSION + " TEXT ",
+    };
+    ExecSqlsWithDfx(sqls, store, version);
+    MEDIA_INFO_LOG("AddTableAnalysisDedupSelection end");
+}
+
 static void UpgradeFromAPI15(RdbStore &store, unordered_map<string, bool> &photoColumnExists)
 {
     MEDIA_INFO_LOG("Start VERSION_UPDATE_SOURCE_PHOTO_ALBUM_TRIGGER_AGAIN");
@@ -5774,6 +5799,12 @@ static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
         int32_t ret = AlbumPluginTableEventHandler().FixMinecraftPE(store, oldVersion, MEDIA_RDB_VERSION);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_MINECRAFT_PE, true);
         RdbUpgradeUtils::AddUpgradeDfxMessages(VERSION_FIX_MINECRAFT_PE, 0, ret);
+    }
+
+    if (oldVersion < VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION, true)) {
+        AddTableAnalysisDedupSelection(store, VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION, true);
     }
 }
 
