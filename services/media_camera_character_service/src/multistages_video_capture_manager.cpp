@@ -283,7 +283,7 @@ void MultiStagesVideoCaptureManager::AddVideo(const std::string &videoId,
     }
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
-    string where = CONST_MEDIA_DATA_DB_ID + " = ? ";
+    string where = string(CONST_MEDIA_DATA_DB_ID) + " = ? ";
     vector<string> whereArgs { fileId };
     cmd.GetAbsRdbPredicates()->SetWhereClause(where);
     cmd.GetAbsRdbPredicates()->SetWhereArgs(whereArgs);
