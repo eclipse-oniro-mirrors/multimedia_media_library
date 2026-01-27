@@ -1029,7 +1029,6 @@ int32_t ThumbnailGenerateHelper::DfxReportThumbnailDirAcl()
     CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr, E_ERR,  "Prefs is nullptr, err:%{public}d", errCode);
     int32_t status = prefs->GetInt(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL, 0);
     CHECK_AND_RETURN_RET(status != RECORD_REPORT_THUMBNAIL_DIR_ACL, E_OK);
-    
 
     MEDIA_INFO_LOG("Start DfxReportThumbnailDirAcl");
     ThmInodeCleanInfo info = GetThmInodeCleanInfo();

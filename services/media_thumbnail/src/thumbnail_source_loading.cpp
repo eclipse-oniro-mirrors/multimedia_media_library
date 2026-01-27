@@ -322,7 +322,7 @@ bool SourceLoader::CreateVideoFramePixelMap()
     }
     bool cond = (state_ == SourceState::CLOUD_ORIGIN && timeStamp != AV_FRAME_TIME);
     CHECK_AND_RETURN_RET_LOG(!cond, false, "Avoid reading specific frame from cloud video, path %{public}s",
-            DfxUtils::GetSafePath(data_.path).c_str());
+        DfxUtils::GetSafePath(data_.path).c_str());
     return ThumbnailUtils::LoadVideoFrame(data_, desiredSize_, timeStamp);
 }
 

@@ -477,7 +477,7 @@ void CloudMediaDownloadService::UpdateVideoMode(std::vector<PhotosPo> &photosPoV
         videoModeData->SetFilePath(logVideoPath);
         int32_t err = MetadataExtractor::ExtractAVMetadata(videoModeData);
         CHECK_AND_CONTINUE_INFO_LOG(err == E_OK, "Failed to extract metadata for photosPo: %{public}s",
-                 DfxUtils::GetSafePath(logVideoPath).c_str());
+            DfxUtils::GetSafePath(logVideoPath).c_str());
         int32_t videoModeUpdate = videoModeData->GetVideoMode();
         MEDIA_INFO_LOG("photosPo videoMode=%{public}d", videoModeUpdate);
         auto photoRet = PhotoVideoModeOperation::UpdatePhotosVideoMode(videoModeUpdate, fileId);
