@@ -1163,7 +1163,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_008, Test
     string imageIdInPair = imageId;
     time_t currentTime = time(NULL);
     time_t expireTime = currentTime + 20;
-    sptr<PicturePair> picturePair = new PicturePair(nullptr, imageIdInPair, expireTime, true, false);
+    sptr<PicturePair> picturePair = new PicturePair(nullptr, imageIdInPair, 0, expireTime, true, false);
     pictureManagerThread->InsertPictureData(imageId, picturePair, LOW_QUALITY_PICTURE);
     auto isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
     EXPECT_EQ(isExsit, true);
@@ -3748,7 +3748,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, picture_date_test_001, TestSize.Level2
     }
     std::shared_ptr<Media::Picture> picture;
     time_t expireTime = currentTime + PICTURE_TIMEOUT_SEC;
-    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), fileId, expireTime, true, false);
+    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), fileId, fileId1, expireTime, true, false);
 
     // insert low quality picture
     s_pictureDataOperations->InsertPictureData(fileId, picturePair, PictureType::LOW_QUALITY_PICTURE);

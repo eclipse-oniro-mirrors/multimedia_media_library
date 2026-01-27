@@ -41,15 +41,17 @@ class PicturePair : public RefBase {
 public:
     std::shared_ptr<Media::Picture> picture_;
     std::string photoId_ = "default";
+    int32_t fileId_ = 0;
     time_t expireTime_;
     bool isCleanImmediately_ = true;
     bool isEdited_ = false;
     bool isTakeEffect_ = false;
     explicit PicturePair(std::shared_ptr<Media::Picture> picture, std::string photoId,
-        time_t expireTime, bool isCleanImmediately, bool isEdited)
+        int32_t fileId, time_t expireTime, bool isCleanImmediately, bool isEdited)
     {
         picture_ = std::move(picture);
         photoId_ = std::move(photoId);
+        fileId_ = fileId;
         expireTime_ = expireTime;
         isCleanImmediately_ = isCleanImmediately;
         isEdited_ = isEdited;
@@ -60,6 +62,7 @@ public:
     {
         picture_ = std::move(other.picture_);
         photoId_ = std::move(other.photoId_);
+        fileId_ = other.fileId_;
         expireTime_ = other.expireTime_;
         isCleanImmediately_ = other.isCleanImmediately_;
         isEdited_ = other.isEdited_;
@@ -71,6 +74,7 @@ public:
         if (this != &other) {
             picture_ = std::move(other.picture_);
             photoId_ = std::move(other.photoId_);
+            fileId_ = other.fileId_;
             expireTime_ = other.expireTime_;
             isCleanImmediately_ = other.isCleanImmediately_;
             isEdited_ = other.isEdited_;
@@ -92,6 +96,7 @@ public:
         std::stringstream ss;
         ss << "{"
            << "\"photoId\": " << this->photoId_
+           << "\"fileId\": " << this->fileId_
            << "; \"picture use\": " << static_cast<int32_t>(this->picture_.use_count())
            << "; \"picture point to addr\": " << std::to_string(reinterpret_cast<long long>(this->picture_.get()))
            << "}";

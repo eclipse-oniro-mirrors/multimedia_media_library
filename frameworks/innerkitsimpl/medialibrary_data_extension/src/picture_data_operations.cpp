@@ -42,14 +42,14 @@ PictureDataOperations::~PictureDataOperations()
     highQualityPictureImageId.clear();
 }
 
-static int32_t IsPictureTempAndEdited(const string &photoId, bool &isTemp, bool &isEdited)
+static int32_t IsPictureTempAndEdited(int32_t fileId, bool &isTemp, bool &isEdited)
 {
     MediaLibraryTracer tracer;
-    tracer.Start("IsPictureTempAndEdited " + photoId);
+    tracer.Start("IsPictureTempAndEdited " + to_string(fileId));
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Failed to get rdbStore");
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::PHOTO_ID, photoId);
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
     vector<string> columns { PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_EDIT_TIME };
     auto resultSet = rdbStore->Query(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
@@ -72,10 +72,11 @@ void PictureDataOperations::CleanPictureMapData(std::map<std::string, sptr<Pictu
         if (isNeedDeletePicture || ((iter->second)->expireTime_ + SAVE_PICTURE_TIMEOUT_SEC) < now) {
             bool isTemp = false;
             bool isEdited = false;
-            IsPictureTempAndEdited(iter->first, isTemp, isEdited);
+            int32_t fileId = (iter->second)->fileId_;
+            IsPictureTempAndEdited(fileId, isTemp, isEdited);
             bool isLowQualityPicture = (pictureType != HIGH_QUALITY_PICTURE);
             if (isTemp) {
-                FileUtils::SavePicture(iter->first, (iter->second)->picture_, isEdited, isLowQualityPicture);
+                FileUtils::SavePicture(fileId, (iter->second)->picture_, isEdited, isLowQualityPicture);
                 MEDIA_INFO_LOG("end SavePicture, photoId: %{public}s, isEdited: %{public}d",
                     (iter->first).c_str(), static_cast<int32_t>(isEdited));
             }
@@ -170,9 +171,10 @@ void PictureDataOperations::CleanHighQualityPictureDataInternal(const std::strin
         if (iterPicture != highQualityPictureMap_.end() && (iterPicture->second)->isCleanImmediately_) {
             bool isTemp = false;
             bool isEdited = false;
-            IsPictureTempAndEdited(iterPicture->first, isTemp, isEdited);
+            int32_t fileId = (iterPicture->second)->fileId_;
+            IsPictureTempAndEdited(fileId, isTemp, isEdited);
             if (isTemp) {
-                FileUtils::SavePicture(iterPicture->first, (iterPicture->second)->picture_, isEdited, false);
+                FileUtils::SavePicture(fileId, (iterPicture->second)->picture_, isEdited, false);
                 MEDIA_INFO_LOG("end SavePicture, photoId: %{public}s, isEdited: %{public}d",
                     (iterPicture->first).c_str(), static_cast<int32_t>(isEdited));
             }
@@ -322,7 +324,8 @@ bool PictureDataOperations::SavePicture(const std::string& imageId,
         iter = pictureMap.find(imageId);
     }
     if (iter != pictureMap.end()) {
-        FileUtils::SavePicture(iter->first, (iter->second)->picture_, false, isLowQualityPicture);
+        int32_t fileId = (iter->second)->fileId_;
+        FileUtils::SavePicture(fileId, (iter->second)->picture_, false, isLowQualityPicture);
         MEDIA_INFO_LOG("SavePicture, photoId: %{public}s, isLowQualityPicture: %{public}d",
             imageId.c_str(), isLowQualityPicture);
         // 落盘后清除缓存数据
@@ -339,7 +342,7 @@ void PictureDataOperations::SavePictureExecutor(AsyncTaskData *data)
     auto picturePair = taskData->picturePair_;
 
     MEDIA_DEBUG_LOG("SavePictureExecutor %{public}d ", taskSize);
-    FileUtils::SavePicture(picturePair->photoId_, picturePair->picture_, false, true);
+    FileUtils::SavePicture(picturePair->fileId_, picturePair->picture_, false, true);
     picturePair->isCleanImmediately_ = true;
     taskSize --;
 }

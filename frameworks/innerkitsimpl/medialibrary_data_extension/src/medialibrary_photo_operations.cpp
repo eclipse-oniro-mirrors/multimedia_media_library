@@ -4578,7 +4578,7 @@ int32_t MediaLibraryPhotoOperations::EnableYuvAndNotify(
         return E_ERR;
     }
     MultiStagesPhotoCaptureManager::GetInstance().DealHighQualityPicture(
-        imageId, picture, isEdited, isTakeEffect);
+        imageId, fileId, picture, isEdited, isTakeEffect);
     MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::YUV_READY);
     auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(
         AccurateRefresh::YUV_READY_BUSSINESS_NAME);
