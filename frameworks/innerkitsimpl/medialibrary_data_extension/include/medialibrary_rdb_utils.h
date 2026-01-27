@@ -203,6 +203,8 @@ public:
     EXPORT static bool ExecuteDatabaseQuickCheck(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
     EXPORT static void UpdateAnalysisAlbumByCoverUri(const std::shared_ptr<MediaLibraryRdbStore>& rdbStore,
         const std::string& fileId);
+    EXPORT static void BuildDoubleCheckPredicates(NativeRdb::RdbPredicates &rdbPredicate, int64_t tokenId,
+        int32_t passCode);
 
 private:
     static std::atomic<bool> isNeedRefreshAlbum;

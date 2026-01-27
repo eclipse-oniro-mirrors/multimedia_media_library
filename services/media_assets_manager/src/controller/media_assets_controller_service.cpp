@@ -1251,24 +1251,6 @@ int32_t MediaAssetsControllerService::SetCompositeDisplayMode(MessageParcel &dat
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
-static void BuildDoubleCheckPredicates(DataShare::DataSharePredicates &predicates,
-    std::vector<std::string> &columns, int64_t tokenId, bool ownerCheck)
-{
-    string clause = AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::FILE_ID +
-            " = " + PhotoColumn::PHOTOS_TABLE + "." + AppUriPermissionColumn::FILE_ID;
-    predicates.InnerJoin(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE)->On({clause});
-    if (ownerCheck) {
-        predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
-            AppUriPermissionColumn::PERMISSION_TYPE, AppUriPermissionColumn::PERMISSION_PERSIST_READ_WRITE);
-    } else {
-        predicates.In(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
-            AppUriPermissionColumn::PERMISSION_TYPE, AppUriPermissionColumn::PERMISSION_TYPES_READ_STR);
-    }
-    predicates.EqualTo(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
-        AppUriPermissionColumn::TARGET_TOKENID, tokenId);
-    MediaLibraryRdbUtils::CleanAmbiguousColumn(columns, predicates, PhotoColumn::PHOTOS_TABLE);
-}
-
 int32_t MediaAssetsControllerService::GetAssets(
     MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context)
 {
@@ -1285,23 +1267,28 @@ int32_t MediaAssetsControllerService::GetAssets(
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     GetAssetsDto dto = GetAssetsDto::Create(reqBody);
+    int32_t passCode = E_SUCCESS;
     if (context.GetByPassCode() == E_PERMISSION_DB_BYPASS) {
         int64_t tokenId = static_cast<int64_t>(PermissionUtils::GetTokenId());
         if (tokenId == 0) {
             MEDIA_ERR_LOG("Get tokenId fail");
             return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
         }
-        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, true);
+        dto.tokenId = tokenId;
+        passCode = E_PERMISSION_DB_BYPASS;
     } else if (context.GetByPassCode() == E_DOUBLE_CHECK) {
         int64_t tokenId = static_cast<int64_t>(PermissionUtils::GetTokenId());
         if (tokenId == 0) {
             MEDIA_ERR_LOG("Get tokenId fail");
             return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
         }
-        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, false);
+        dto.tokenId = tokenId;
+        passCode = E_DOUBLE_CHECK;
+    } else {
+        MEDIA_INFO_LOG("GetAssets by read permission");
     }
 
-    auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto);
+    auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto, passCode);
     MEDIA_DEBUG_LOG("GetAssets finish");
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
@@ -1329,23 +1316,28 @@ int32_t MediaAssetsControllerService::GetBurstAssets(
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     GetAssetsDto dto = GetAssetsDto::Create(reqBody);
+    int32_t passCode = E_SUCCESS;
     if (context.GetByPassCode() == E_PERMISSION_DB_BYPASS) {
         int64_t tokenId = static_cast<int64_t>(PermissionUtils::GetTokenId());
         if (tokenId == 0) {
             MEDIA_ERR_LOG("Get tokenId fail");
             return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
         }
-        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, true);
+        dto.tokenId = tokenId;
+        passCode = E_PERMISSION_DB_BYPASS;
     } else if (context.GetByPassCode() == E_DOUBLE_CHECK) {
         int64_t tokenId = static_cast<int64_t>(PermissionUtils::GetTokenId());
         if (tokenId == 0) {
             MEDIA_ERR_LOG("Get tokenId fail");
             return IPC::UserDefineIPC().WriteResponseBody(reply, Media::E_PERMISSION_DENIED);
         }
-        BuildDoubleCheckPredicates(dto.predicates, dto.columns, tokenId, false);
+        dto.tokenId = tokenId;
+        passCode = E_DOUBLE_CHECK;
+    } else {
+        MEDIA_INFO_LOG("GetAssets by read permission");
     }
     dto.predicates.OrderByAsc(MediaColumn::MEDIA_NAME);
-    auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto);
+    auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto, passCode);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);

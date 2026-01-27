@@ -112,7 +112,7 @@ public:
     int32_t SetHasAppLink(const int32_t fileId, const int32_t hasAppLink);
     int32_t SetAppLink(const int32_t fileId, const std::string appLink);
     int32_t SetSupportedWatermarkType(const int32_t fileId, const int32_t watermarkType);
-    std::shared_ptr<DataShare::DataShareResultSet> GetAssets(GetAssetsDto &dto);
+    std::shared_ptr<DataShare::DataShareResultSet> GetAssets(GetAssetsDto &dto, int32_t passCode = 0);
     std::shared_ptr<DataShare::DataShareResultSet> GetAllDuplicateAssets(GetAssetsDto &dto);
     std::shared_ptr<DataShare::DataShareResultSet> GetDuplicateAssetsToDelete(GetAssetsDto &dto);
     int32_t CreateAsset(CreateAssetDto &dto);
