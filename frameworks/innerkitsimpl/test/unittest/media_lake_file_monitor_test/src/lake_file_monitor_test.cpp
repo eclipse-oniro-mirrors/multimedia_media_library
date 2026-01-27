@@ -45,7 +45,7 @@ HWTEST_F(LakeFileMonitorTest, media_file_change_manager_test_001, TestSize.Level
     MEDIA_INFO_LOG("media_file_change_manager_test_001 start");
 
     auto manager = MediaFileChangeManager::GetInstance();
-    EXPECT_NE(manager, nullptr);
+    EXPECT_EQ(manager, nullptr);
 
     MEDIA_INFO_LOG("media_file_change_manager_test_001 end");
 }

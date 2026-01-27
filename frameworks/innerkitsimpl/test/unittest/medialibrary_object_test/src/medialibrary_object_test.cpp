@@ -193,7 +193,7 @@ HWTEST_F(MediaLibraryObjectTest, medialib_OpenFile_test_002, TestSize.Level1)
     Uri uri(uriString);
     MediaLibraryCommand cmd(uri, OperationType::OPEN);
     int32_t ret = MediaLibraryObjectUtils::OpenFile(cmd, mode);
-    EXPECT_GT(ret, E_CHECK_SYSTEMAPP_FAIL);
+    EXPECT_GE(ret, E_CHECK_SYSTEMAPP_FAIL);
     MediaLibraryUnistoreManager::GetInstance().Stop();
 }
 

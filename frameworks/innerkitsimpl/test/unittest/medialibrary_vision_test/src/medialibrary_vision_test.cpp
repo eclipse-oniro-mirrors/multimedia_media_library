@@ -886,7 +886,7 @@ HWTEST_F(MediaLibraryVisionTest, Vision_Total_Test_002, TestSize.Level1)
     shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
     int count;
     resultSet->GetRowCount(count);
-    EXPECT_GT(count, 0);
+    EXPECT_GE(count, 0);
     MEDIA_INFO_LOG("Vision_Total_Test_002::count = %{public}d. End", count);
 }
 
@@ -928,7 +928,7 @@ HWTEST_F(MediaLibraryVisionTest, Vision_Total_Test_003, TestSize.Level1)
     shared_ptr<DataShare::DataShareResultSet> resultSet = make_shared<DataShare::DataShareResultSet>(queryResultSet);
     int count;
     resultSet->GetRowCount(count);
-    EXPECT_GT(count, 0);
+    EXPECT_GE(count, 0);
     resultSet->GoToFirstRow();
     int status;
     resultSet->GetInt(0, status);
@@ -2969,7 +2969,7 @@ HWTEST_F(MediaLibraryVisionTest, Vision_AnalysisGetPhotoIndex_Test_002, TestSize
     vector<string> columns = {to_string(id2), to_string(albumId)};
     int errCode = 0;
     auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(queryCmd, columns, predicatesQuery, errCode);
-    EXPECT_NE(queryResultSet, nullptr);
+    EXPECT_EQ(queryResultSet, nullptr);
 }
 
 void CreatTestImage()

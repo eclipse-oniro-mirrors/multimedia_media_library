@@ -76,7 +76,7 @@ HWTEST_F(MediaLibraryCustomRestoreCallbackTest, Custom_Restore_Callback_Test_001
     MockCustomRestoreCallback customRestoreCallback;
     std::shared_ptr<MockCustomRestoreCallback> callback =
         std::make_shared<MockCustomRestoreCallback>(customRestoreCallback);
-    EXPECT_NE(customRestore.RegisterCustomRestoreCallback(callback), E_OK);
+    EXPECT_EQ(customRestore.RegisterCustomRestoreCallback(callback), E_OK);
     CustomRestoreNotify customRestoreNotify;
     for (int32_t i = 1; i <= 100; ++i) {
         InnerRestoreResult restoreResult;

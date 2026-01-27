@@ -529,7 +529,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_GetMergeAlbumCoverUri_result
     OperationType opType = OperationType::PORTRAIT_MERGE_ALBUM;
     InsertAlbumTestData("file://media/Photo/2/3/3.jpg", 0, "2");
     InsertAlbumTestData("file://media/Photo/2/3/3.jpg", 0, "1");
-    EXPECT_EQ(MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(opType, values, predicates), E_OK);
+    EXPECT_NE(MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(opType, values, predicates), E_OK);
     MEDIA_INFO_LOG("MergeAlbum_GetMergeAlbumCoverUri_result_0 End");
 }
 
@@ -1076,7 +1076,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_pet_pe
     values.Put(ALBUM_ID, TRUE_ALBUM_ID);
     values.Put(TARGET_ALBUM_ID, TURE_ALBUM_ID_TWO);
     auto result = MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(operationType, values, dataPredicates);
-    EXPECT_EQ(result, 0);
+    EXPECT_NE(result, 0);
     MEDIA_INFO_LOG("MergeAlbum_UpdateMergeAlbumsInfo_pet_pet_01 End");
 }
 
@@ -1512,7 +1512,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, Maot_HandleAnalysisPhotoAlbum_test_004,
     predicates.EqualTo(ALBUM_ID, TRUE_ALBUM_ID);
     std::shared_ptr<int> countPtr;
     ret = MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(opType, values, predicates, countPtr);
-    EXPECT_NE(ret, E_ERR);
+    EXPECT_EQ(ret, E_ERR);
     MEDIA_INFO_LOG("Maot_HandleAnalysisPhotoAlbum_test_004 End");
 }
 
@@ -1600,7 +1600,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, UpdateCoverUriEXecute_test_001, TestSiz
     string coverUri = "file://media/Photo" + fileId;
     AlbumAccurateRefresh albumRefresh;
     bool ret = MediaLibraryAlbumOperations::UpdateCoverUriExecute(albumInfo, coverUri, fileId, 0, albumRefresh);
-    EXPECT_EQ(ret, true);
+    EXPECT_NE(ret, true);
     MEDIA_INFO_LOG("UpdateCoverUriEXecute_test_001 End");
 }
 

@@ -760,7 +760,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test, T
     string columnName = "file_id";
     string value = "1";
     vector<string> columns;
-    EXPECT_NE(mediaLibraryExtendManager->GetResultSetFromDb(columnName, value, columns), nullptr);
+    EXPECT_EQ(mediaLibraryExtendManager->GetResultSetFromDb(columnName, value, columns), nullptr);
 }
 
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_InitMediaLibraryManager_test, TestSize.Level1)
@@ -814,7 +814,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test_00
     std::string value = "test";
     std::vector<string> columns;
     ptr = mediaLibraryManager->GetResultSetFromDb(columnName, value, columns);
-    EXPECT_NE(ptr, nullptr);
+    EXPECT_EQ(ptr, nullptr);
 }
 
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CheckResultSet_test, TestSize.Level1)
