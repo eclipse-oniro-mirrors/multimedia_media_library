@@ -67,25 +67,25 @@ UpgradeRestore::UpgradeRestore(const std::string &galleryAppName, const std::str
     MEDIA_INFO_LOG("Set ffrt_disable_worker_escape");
 }
 
-int32_t UpgradeRestore::Init(const std::string &backupRetoreDir, const std::string &upgradeFilePath, bool isUpgrade)
+int32_t UpgradeRestore::Init(const std::string &backupRestoreDir, const std::string &upgradeFilePath, bool isUpgrade)
 {
-    appDataPath_ = backupRetoreDir;
+    appDataPath_ = backupRestoreDir;
     string photosPreferencesPath;
     if (sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
-        filePath_ = backupRetoreDir;
-        galleryDbPath_ = backupRetoreDir + "/" + GALLERY_DB_NAME;
-        audioDbPath_ = backupRetoreDir + INTERNAL_PREFIX + "/0/" + AUDIO_DB_NAME;
-        photosPreferencesPath = backupRetoreDir + "/" + galleryAppName_ + "_preferences.xml";
+        filePath_ = backupRestoreDir;
+        galleryDbPath_ = backupRestoreDir + "/" + GALLERY_DB_NAME;
+        audioDbPath_ = backupRestoreDir + INTERNAL_PREFIX + "/0/" + AUDIO_DB_NAME;
+        photosPreferencesPath = backupRestoreDir + "/" + galleryAppName_ + "_preferences.xml";
         // gallery db may include both internal & external, set flag to differentiate, default false
         shouldIncludeSd_ = BackupFileUtils::ShouldIncludeSd(filePath_);
         backupDatabaseHelper_.Init(sceneCode_, shouldIncludeSd_, filePath_);
         SetCloneParameterAndStopSync();
     } else {
         filePath_ = upgradeFilePath;
-        galleryDbPath_ = backupRetoreDir + "/" + galleryAppName_ + "/ce/databases/gallery.db";
-        externalDbPath_ = backupRetoreDir + "/" + mediaAppName_ + "/ce/databases/external.db";
+        galleryDbPath_ = backupRestoreDir + "/" + galleryAppName_ + "/ce/databases/gallery.db";
+        externalDbPath_ = backupRestoreDir + "/" + mediaAppName_ + "/ce/databases/external.db";
         photosPreferencesPath =
-            backupRetoreDir + "/" + galleryAppName_ + "/ce/shared_prefs/" + galleryAppName_ + "_preferences.xml";
+            backupRestoreDir + "/" + galleryAppName_ + "/ce/shared_prefs/" + galleryAppName_ + "_preferences.xml";
         shouldIncludeSd_ = false;
         if (!MediaFileUtils::IsFileExists(externalDbPath_)) {
             ErrorInfo errorInfo(RestoreError::INIT_FAILED, 0, "", "External db is not exist.");
