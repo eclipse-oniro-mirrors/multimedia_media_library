@@ -32,6 +32,8 @@ public:
 
     void SetFileMonitorProxy(const std::shared_ptr<MediaFileMonitorProxyWrapper>& fileMonitorProxy);
     int32_t OnFileChanged();
+    void StartProcessMsgs();
+    void StopProcessMsgs();
 
 protected:
     MediaFileChangeProcessor();
@@ -49,7 +51,7 @@ protected:
 private:
     std::shared_ptr<MediaFileMonitorProxyWrapper> fileMonitorProxy_;
     ThreadPool threadPool_;
-    bool isIgnoreMsg_{false};
+    std::atomic<bool> shouldProcessMsg_{true};
 };
 
 }

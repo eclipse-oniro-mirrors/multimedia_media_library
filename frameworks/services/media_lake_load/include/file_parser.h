@@ -52,9 +52,11 @@ private:
         int32_t mediaType {0};
         int32_t fileSourceType {0};
         int32_t ownerAlbumId {0};
+        int32_t syncStatus {0};
         int64_t size {0};
         int64_t dateModified {0};
         int64_t dateTaken {0};
+        int64_t editTime {0};
         std::string data;
         std::string inode;
         std::string mimeType;
@@ -63,6 +65,7 @@ private:
         std::string packageName;
         bool IsExist();
         std::string ToString() const;
+        int32_t subtype {0};
     };
     struct MetaStatus {
         bool isMediaTypeChanged {false};
@@ -70,6 +73,7 @@ private:
         bool isDateModifiedChanged {false};
         bool isMimeTypeChanged {false};
         bool isStoragePathChanged {false};
+        bool isInvisible {false};
         bool IsChanged() const;
         std::string ToString() const;
     };
@@ -99,6 +103,7 @@ private:
     void SetAssetBurstValues(NativeRdb::ValuesBucket &values);
     void SetAssetCloudEnhancementValues(NativeRdb::ValuesBucket &values);
     void SetAssetLocationValues(NativeRdb::ValuesBucket &values);
+    void SetAssetEditValues(NativeRdb::ValuesBucket &values);
     void PutStringVal(NativeRdb::ValuesBucket &values, const std::string &columnName, const std::string &columnVal);
     static std::string GetThumbnailUri(const ThumbnailInfo &info);
     int32_t UpdateAssetInDatabase();
@@ -118,7 +123,7 @@ private:
 
     const std::string SQL_PHOTOS_FIND_SAME_FILE_BY_STORAGE_PATH = "\
         SELECT file_id, size, date_modified, mime_type, media_type, inode, storage_path, file_source_type, \
-        owner_album_id, owner_package, package_name, date_taken, data \
+        owner_album_id, owner_package, package_name, date_taken, data, sync_status, edit_time, subtype \
         FROM Photos \
         WHERE LOWER(storage_path) = LOWER(?) AND \
         (file_source_type = ? OR (file_source_type = ? AND position IN (?, ?) AND date_trashed = ? AND hidden = ?)) \

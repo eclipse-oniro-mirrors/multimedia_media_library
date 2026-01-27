@@ -59,6 +59,7 @@ private:
     int32_t ProcessIncrementScanTask(bool isGlobalScanEnd = false);
     void CheckToDeleteAssets(FolderScanner &folderScanner);
     void ResetReportData();
+    bool IsForceScanning();
     void InitTemperatureCondition();
 
 private:

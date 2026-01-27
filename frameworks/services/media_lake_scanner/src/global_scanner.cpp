@@ -23,6 +23,7 @@
 #include "lake_file_utils.h"
 #include "media_file_utils.h"
 #include "media_lake_check.h"
+#include "media_lake_clone_event_manager.h"
 #include "medialibrary_rdb_utils.h"
 #include "thermal_mgr_client.h"
 
@@ -37,6 +38,7 @@ GlobalScanner& GlobalScanner::GetInstance()
 
 void GlobalScanner::Run(const std::string &path, bool isFirstScanner)
 {
+    CHECK_AND_RETURN_LOG(!IsForceScanning(), "Global scan is prohibited during the Restore process");
     {
         std::lock_guard<std::mutex> lock(scanMutex_);
         if (scannerStatus_ != ScannerStatus::IDLE) {
@@ -58,6 +60,7 @@ void GlobalScanner::Run(const std::string &path, bool isFirstScanner)
     MEDIA_INFO_LOG("global scan start, isFirstScanner: %{public}d, scannerStatus: %{public}d", isFirstScanner,
         static_cast<int32_t>(scannerStatus_));
     int32_t ret = WalkFileTree(path);
+    CHECK_AND_RETURN_LOG(!IsForceScanning(), "WalkFileTree is prohibited during the Restore process");
     ProcessIncrementScanTask(true);
     CHECK_AND_RETURN_LOG(ret == ERR_SUCCESS, "An exception occurred while walking the file tree");
     if (isFirstScanner) {
@@ -105,6 +108,11 @@ int32_t GlobalScanner::WalkFileTree(const std::string &path)
 
         FolderScanner folderScanner(currentDir, LakeScanMode::FULL);
         int32_t ret = folderScanner.ScanCurrentDirectory(dirQueue);
+
+        CHECK_AND_RETURN_RET_WARN_LOG(!IsForceScanning(), ERR_SUCCESS,
+            "Global scan is due to the Restore process stopping at dir[%{public}s] scanning",
+            LakeFileUtils::GarbleFilePath(currentDir).c_str());
+        
         CHECK_AND_CONTINUE_ERR_LOG(ret == ERR_SUCCESS, "Scan dir[%{public}s] failed",
             LakeFileUtils::GarbleFilePath(currentDir).c_str());
 
@@ -201,6 +209,21 @@ void GlobalScanner::CheckToDeleteAssets(FolderScanner &folderScanner)
     folderScanner.GetFileIds(fileIds);
     CheckAndIfNeedDeleteAssets(folderScanner.GetAlbumId(), fileIds, deleteNum);
     reportData_.checkDelete += deleteNum;
+}
+
+bool GlobalScanner::IsForceScanning()
+{
+    bool isRestore = MediaLakeCloneEventManager::GetInstance().IsRestoring();
+    if (!isRestore) {
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(scanMutex_);
+        std::queue<std::pair<MediaLakeNotifyInfo, ScanTaskType>> scanTaskQueue;
+        scanTaskQueue.swap(scanTaskQueue_);
+    }
+    MEDIA_WARN_LOG("Global scan is forcibly stopped");
+    return true;
 }
 
 void GlobalScanner::InitTemperatureCondition()

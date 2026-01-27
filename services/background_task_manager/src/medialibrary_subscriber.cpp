@@ -57,6 +57,7 @@
 #include "medialibrary_restore.h"
 #include "medialibrary_subscriber_database_utils.h"
 #include "media_lake_check_manager.h"
+#include "media_lake_clone_event_manager.h"
 #include "ability_manager_client.h"
 #include "resource_type.h"
 #include "dfx_manager.h"
@@ -159,6 +160,8 @@ const std::vector<std::string> MedialibrarySubscriber::events_ = {
     EventFwk::CommonEventSupport::COMMON_EVENT_TIME_TICK,
     EventFwk::CommonEventSupport::COMMON_EVENT_HWID_LOGOUT,
     EventFwk::CommonEventSupport::COMMON_EVENT_DATA_SHARE_READY,
+    EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_START,
+    EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_END,
     EventFwk::CommonEventSupport::COMMON_EVENT_POWER_CONNECTED,
     EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED,
     CLOUD_UPDATE_EVENT
@@ -537,6 +540,8 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         BackgroundCloudFileProcessor::SetDownloadLatestFinished(false);
 #endif
+    } else if (MediaLakeCloneEventManager::IsRestoreEvent(want)) {
+        MediaLakeCloneEventManager::GetInstance().HandleRestoreEvent(want);
     }
     if (action == EventFwk::CommonEventSupport::COMMON_EVENT_BATTERY_CHANGED &&
         isScreenOff_ && isCharging_ && IsBetaVersion() && batteryCapacity_ >= PROPER_DEVICE_BATTERY_CAPACITY) {

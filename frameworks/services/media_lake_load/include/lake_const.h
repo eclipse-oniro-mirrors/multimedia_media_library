@@ -102,6 +102,7 @@ struct InnerFileInfo {
     int64_t dateTaken {0};
     int64_t duration {0};
     int64_t fileSize {0};
+    int64_t editTime {0};
     int64_t lastVisitTime {0};
     double latitude {0.0};
     double longitude {0.0};

@@ -42,7 +42,7 @@ MediaFileChangeProcessor::MediaFileChangeProcessor() : threadPool_("MonitorFileC
     const char* mediaInLakeIgnoredFlag = "multimedia.medialibrary.in.lake.file_ignored_flag";
     int64_t defaultValue = 1;
     defaultValue = system::GetIntParameter(mediaInLakeIgnoredFlag, defaultValue);
-    isIgnoreMsg_ = defaultValue == 0;
+    shouldProcessMsg_ = defaultValue != 0;
 }
 
 MediaFileChangeProcessor::~MediaFileChangeProcessor() {}
@@ -90,10 +90,10 @@ void MediaFileChangeProcessor::ProcessFileChanged()
 
         for (const auto& fileInfo: msgs) {
             ids.push_back(fileInfo.id);
-            if (!isIgnoreMsg_) {
+            if (shouldProcessMsg_) {
                 ProcessSingleFileChange(fileInfo);
+                UpdateDfxData(fileInfo);
             }
-            UpdateDfxData(fileInfo);
         }
         UpdateMonitorRequests(ids);
     }
@@ -197,5 +197,18 @@ void MediaFileChangeProcessor::UpdateMonitorRequests(const std::vector<int32_t> 
     auto ret = fileMonitorProxy_->UpdateRequest(ids);
     CHECK_AND_RETURN_LOG(ret == E_OK, "UpdateRequest failed, ret: %{public}d", ret);
 }
+
+void MediaFileChangeProcessor::StartProcessMsgs()
+{
+    MEDIA_INFO_LOG("StartProcessMsgs");
+    shouldProcessMsg_ = true;
+}
+
+void MediaFileChangeProcessor::StopProcessMsgs()
+{
+    MEDIA_INFO_LOG("StopProcessMsgs");
+    shouldProcessMsg_ = false;
+}
+
 }
 
