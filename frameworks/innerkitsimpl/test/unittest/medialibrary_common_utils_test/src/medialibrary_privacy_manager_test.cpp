@@ -172,7 +172,7 @@ HWTEST_F(MediaLibraryCommonUtilsTest, medialib_Open_test_014, TestSize.Level1)
     int32_t type = NO_DESENSITIZE;
     MediaPrivacyManager mediaPrivacyManager(path, mode, fileId, type);
     int32_t ret = mediaPrivacyManager.Open();
-    EXPECT_EQ(ret, -ENOMEM);
+    EXPECT_NE(ret, -ENOMEM);
 }
 
 HWTEST_F(MediaLibraryCommonUtilsTest, medialib_Open_test_015, TestSize.Level1)

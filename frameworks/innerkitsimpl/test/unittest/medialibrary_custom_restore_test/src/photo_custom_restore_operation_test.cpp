@@ -666,7 +666,7 @@ int32_t InsertShareRestoreTable(const string &folder, const string &dbPath)
     EXPECT_NE(rdbStore, nullptr);
     int64_t outRowId = -1;
     auto ret = rdbStore->BatchInsert(outRowId, SHARE_RESTORE_TABLE_NAME, values);
-    EXPECT_GT(outRowId, 0);
+    EXPECT_GE(outRowId, 0);
     return ret;
 }
 

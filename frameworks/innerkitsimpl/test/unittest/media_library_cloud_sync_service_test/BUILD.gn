@@ -22,7 +22,7 @@ group("unittest") {
     ":media_library_cloud_sync_service_dto_test",
     ":media_library_cloud_sync_service_controller_service_test",
     ":media_library_cloud_sync_service_controller_processor_test",
-    ":media_library_cloud_sync_service_service_test",
+    ":media_library_cloud_sync_service_service_test", 
     ":media_library_cloud_sync_service_service_ext_test",
   ]
 }
