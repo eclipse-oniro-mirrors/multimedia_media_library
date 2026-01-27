@@ -385,7 +385,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryDirTable_Test_001, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -399,7 +399,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryAlbum_Test_001, TestS
     MEDIA_INFO_LOG("DataManager_QueryAlbum_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIA_ALBUMOPRN_QUERYALBUM));
     int errCode = 0;
@@ -413,7 +413,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryVolume_Test_001, Test
     MEDIA_INFO_LOG("DataManager_QueryVolume_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIA_QUERYOPRN_QUERYVOLUME));
     int errCode = 0;
@@ -427,7 +427,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryFiles_Test_001, TestS
     MEDIA_INFO_LOG("DataManager_QueryFiles_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(MEDIALIBRARY_DATA_URI);
     int errCode = 0;
@@ -2197,7 +2197,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryGeoAssets_Test_001, T
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -2212,7 +2212,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryInternal_Test_001, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -2227,7 +2227,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryInternal_Test_002, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -2242,7 +2242,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryInternal_Test_003, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -2257,7 +2257,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryInternal_Test_004, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -2272,7 +2272,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryInternal_Test_005, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -2287,7 +2287,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryInternal_Test_006, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
@@ -2302,7 +2302,7 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, DataManager_QueryInternal_Test_007, Te
     MEDIA_INFO_LOG("DataManager_QueryDirTable_Test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = CONST_MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIATYPE_DIRECTORY_OBJ));
     int errCode = 0;
