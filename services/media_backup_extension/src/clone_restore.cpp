@@ -1031,6 +1031,30 @@ void CloneRestore::UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos)
     }
 }
 
+void CloneRestore::UpdatePackageNameForSamePhotos(vector<FileInfo> &fileInfos)
+{
+    for (FileInfo &fileInfo : fileInfos) {
+        if (fileInfo.fileIdNew <= 0 || fileInfo.isNew) {
+            continue;
+        }
+
+        if (fileInfo.originalPackageName.empty()) {
+            continue;
+        }
+
+        // Should not update if the package_name is already filled.
+        std::string querySql = "UPDATE Photos SET package_name = ? WHERE file_id = ? "
+            "AND (package_name IS NULL OR package_name = '')";
+        std::vector<NativeRdb::ValueObject> params = {fileInfo.originalPackageName, fileInfo.fileIdNew};
+        auto ret = mediaLibraryRdb_->ExecuteSql(querySql, params);
+        if (ret != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("Update failed for file_id: %{public}d with package_name: %{public}s, error: %{public}d",
+                fileInfo.fileIdNew, fileInfo.originalPackageName.c_str(), ret);
+            continue;
+        }
+    }
+}
+
 int CloneRestore::InsertPhoto(vector<FileInfo> &fileInfos)
 {
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_OK, "mediaLibraryRdb_ is null");
@@ -1038,6 +1062,7 @@ int CloneRestore::InsertPhoto(vector<FileInfo> &fileInfos)
     int64_t startGenerate = MediaFileUtils::UTCTimeMilliSeconds();
     vector<NativeRdb::ValuesBucket> values = GetInsertValues(CLONE_RESTORE_ID, fileInfos, SourceType::PHOTOS);
     UpdateRiskStatusForSamePhotos(fileInfos);
+    UpdatePackageNameForSamePhotos(fileInfos);
     int64_t startInsertPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t photoRowNum = 0;
     int32_t errCode = BatchInsertWithRetry(PhotoColumn::PHOTOS_TABLE, values, photoRowNum);
@@ -2799,6 +2824,7 @@ void CloneRestore::SetSpecialAttributes(const string &tableName, const shared_pt
     // find PhotoAlbum info in target database. PackageName and BundleName should be fixed after clone.
     fileInfo.lPath = this->photosClone_.FindlPath(fileInfo);
     fileInfo.ownerAlbumId = this->photosClone_.FindAlbumId(fileInfo);
+    fileInfo.originalPackageName = GetStringVal(MediaColumn::MEDIA_PACKAGE_NAME, resultSet);
     fileInfo.packageName = this->photosClone_.FindPackageName(fileInfo);
     fileInfo.bundleName = this->photosClone_.FindBundleName(fileInfo);
     fileInfo.photoQuality = this->photosClone_.FindPhotoQuality(fileInfo);
