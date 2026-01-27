@@ -2639,7 +2639,7 @@ static void AddPackageNameColumnOnTables(RdbStore &store)
         " ADD COLUMN " + PhotoColumn::MEDIA_PACKAGE_NAME + " TEXT";
     static const string ADD_PACKAGE_NAME_ON_AUDIOS = "ALTER TABLE " + AudioColumn::AUDIOS_TABLE +
         " ADD COLUMN " + AudioColumn::MEDIA_PACKAGE_NAME + " TEXT";
-    static const string ADD_PACKAGE_NAME_ON_FILES = std::string("ALTER TABLE ") + CONST_MEDIALIBRARY_TABLE +
+    static const string ADD_PACKAGE_NAME_ON_FILES = "ALTER TABLE " + std::string(CONST_MEDIALIBRARY_TABLE) +
         " ADD COLUMN " + CONST_MEDIA_DATA_DB_PACKAGE_NAME + " TEXT";
 
     int32_t result = ExecSqlWithRetry([&]() { return store.ExecuteSql(ADD_PACKAGE_NAME_ON_PHOTOS); });
