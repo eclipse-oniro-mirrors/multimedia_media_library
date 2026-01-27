@@ -77,9 +77,9 @@ void MediaAssetChangeRequestImplTest::SetUpTestCase(void)
     // make sure board is empty
     ClearAllFile();
 
-    Uri scanUri(URI_SCANNER);
+    Uri scanUri(CONST_URI_SCANNER);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
     sDataShareHelper_->Insert(scanUri, valuesBucket);
     sleep(SCAN_WAIT_TIME);
 

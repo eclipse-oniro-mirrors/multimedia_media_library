@@ -359,7 +359,7 @@ static MultiStagesCapturePhotoStatus QueryViaSandBox(int fileId,
     std::vector<std::string> fetchColumn { PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_ID};
     string queryUri;
     if (hasReadPermission) {
-        queryUri = PAH_QUERY_PHOTO;
+        queryUri = CONST_PAH_QUERY_PHOTO;
     } else {
         queryUri = photoUri;
         MediaFileUri::RemoveAllFragment(queryUri);
@@ -426,7 +426,7 @@ MultiStagesCapturePhotoStatus MediaAssetManagerNapi::QueryPhotoStatus(int fileId
 
 void MediaAssetManagerNapi::ProcessImage(const int fileId, const int deliveryMode)
 {
-    std::string uriStr = PAH_PROCESS_IMAGE;
+    std::string uriStr = CONST_PAH_PROCESS_IMAGE;
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;
@@ -437,7 +437,7 @@ void MediaAssetManagerNapi::ProcessImage(const int fileId, const int deliveryMod
 
 void MediaAssetManagerNapi::AddImage(const int fileId, DeliveryMode deliveryMode)
 {
-    Uri updateAssetUri(PAH_ADD_IMAGE);
+    Uri updateAssetUri(CONST_PAH_ADD_IMAGE);
     DataShare::DataSharePredicates predicates;
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileId);
@@ -1885,10 +1885,10 @@ void MediaAssetManagerNapi::GetImageSourceNapiObject(const std::string &fileUri,
     }
     std::string tmpUri = fileUri;
     if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
         NAPI_INFO_LOG("request source image's imageSource");
     }
-    MediaFileUtils::UriAppendKeyValue(tmpUri, PHOTO_TRANSCODE_OPERATION, OPRN_TRANSCODE_HEIF);
+    MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_PHOTO_TRANSCODE_OPERATION, CONST_OPRN_TRANSCODE_HEIF);
     Uri uri(tmpUri);
     int fd = UserFileClient::OpenFile(uri, "r");
     if (fd < 0) {
@@ -1951,7 +1951,7 @@ void MediaAssetManagerNapi::GetByteArrayNapiObject(const std::string &requestUri
     
     std::string tmpUri = requestUri;
     if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     Uri uri(tmpUri);
     int imageFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
@@ -2112,7 +2112,7 @@ void MediaAssetManagerNapi::WriteDataToDestPath(WriteData &writeData, napi_value
     }
     std::string tmpUri = writeData.requestUri;
     if (writeData.isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     Uri srcUri(tmpUri);
     int srcFd = UserFileClient::OpenFile(srcUri, MEDIA_FILEMODE_READONLY);
@@ -2386,7 +2386,7 @@ void MediaAssetManagerNapi::JSRequestExecute(napi_env env, void *data)
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     OnHandleRequestImage(env, context);
     if (context->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = LOG_MOVING_PHOTO;
+        string uri = CONST_LOG_MOVING_PHOTO;
         Uri logMovingPhotoUri(uri);
         DataShare::DataShareValuesBucket valuesBucket;
         string result;

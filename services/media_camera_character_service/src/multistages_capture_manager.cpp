@@ -49,8 +49,8 @@ void MultiStagesCaptureManager::RemovePhotos(const NativeRdb::AbsRdbPredicates &
 
     predicatesNew.SetWhereClause(where);
     predicatesNew.SetWhereArgs(predicates.GetWhereArgs());
-    vector<string> columns { MediaColumn::MEDIA_ID, MEDIA_DATA_DB_PHOTO_ID, MEDIA_DATA_DB_PHOTO_QUALITY,
-        MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS };
+    vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicatesNew, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_INFO_LOG("Result set is empty");
@@ -58,21 +58,21 @@ void MultiStagesCaptureManager::RemovePhotos(const NativeRdb::AbsRdbPredicates &
     }
 
     do {
-        string photoId = GetStringVal(MEDIA_DATA_DB_PHOTO_ID, resultSet);
-        int32_t stageVideoTaskStatus = GetInt32Val(MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
+        string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+        int32_t stageVideoTaskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
         // Moving photo remove video task
         if (stageVideoTaskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
             MultiStagesVideoCaptureManager::GetInstance().RemoveVideo(photoId, isRestorable);
             continue;
         }
 
-        int32_t photoQuality = GetInt32Val(MEDIA_DATA_DB_PHOTO_QUALITY, resultSet);
+        int32_t photoQuality = GetInt32Val(CONST_MEDIA_DATA_DB_PHOTO_QUALITY, resultSet);
         if (photoId.empty() || photoQuality == static_cast<int32_t>(MultiStagesPhotoQuality::FULL)) {
             MEDIA_DEBUG_LOG("photoId is empty or task status invalid ");
             continue;
         }
 
-        int32_t mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
+        int32_t mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
         switch (mediaType) {
             case MediaType::MEDIA_TYPE_IMAGE:
                 MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(photoId, isRestorable);
@@ -93,8 +93,8 @@ void MultiStagesCaptureManager::RemovePhotosWithResultSet(const shared_ptr<Nativ
         MEDIA_ERR_LOG("Result set is empty");
         return;
     }
-    string photoId = GetStringVal(MEDIA_DATA_DB_PHOTO_ID, resultSet);
-    int32_t stageVideoTaskStatus = GetInt32Val(MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
+    string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+    int32_t stageVideoTaskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
     // Moving photo remove video task
     if (stageVideoTaskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
         string mediaFilePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
@@ -103,12 +103,12 @@ void MultiStagesCaptureManager::RemovePhotosWithResultSet(const shared_ptr<Nativ
             isRestorable);
         return;
     }
-    int32_t photoQuality = GetInt32Val(MEDIA_DATA_DB_PHOTO_QUALITY, resultSet);
+    int32_t photoQuality = GetInt32Val(CONST_MEDIA_DATA_DB_PHOTO_QUALITY, resultSet);
     if (photoId.empty() || photoQuality == static_cast<int32_t>(MultiStagesPhotoQuality::FULL)) {
         MEDIA_DEBUG_LOG("photoId is empty or task status invalid ");
         return;
     }
-    int32_t mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
+    int32_t mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
     switch (mediaType) {
         case MediaType::MEDIA_TYPE_IMAGE:
             MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(photoId, isRestorable);
@@ -140,21 +140,21 @@ void MultiStagesCaptureManager::RestorePhotos(const NativeRdb::AbsRdbPredicates 
         to_string(static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
     predicatesNew.SetWhereClause(where);
     predicatesNew.SetWhereArgs(predicates.GetWhereArgs());
-    vector<string> columns { MediaColumn::MEDIA_ID, MEDIA_DATA_DB_PHOTO_ID, MEDIA_DATA_DB_PHOTO_QUALITY,
-        MEDIA_DATA_DB_MEDIA_TYPE };
+    vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicatesNew, columns);
     bool cond = (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK);
     CHECK_AND_RETURN_INFO_LOG(!cond, "Result set is empty");
 
     do {
-        string photoId = GetStringVal(MEDIA_DATA_DB_PHOTO_ID, resultSet);
-        int32_t photoQuality = GetInt32Val(MEDIA_DATA_DB_PHOTO_QUALITY, resultSet);
+        string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+        int32_t photoQuality = GetInt32Val(CONST_MEDIA_DATA_DB_PHOTO_QUALITY, resultSet);
         if (photoId.empty() || photoQuality == static_cast<int32_t>(MultiStagesPhotoQuality::FULL)) {
             MEDIA_DEBUG_LOG("photoId is empty or full quality ");
             continue;
         }
 
-        int32_t mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
+        int32_t mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
         switch (mediaType) {
             case MediaType::MEDIA_TYPE_IMAGE:
                 MultiStagesPhotoCaptureManager::GetInstance().RestoreImage(photoId);

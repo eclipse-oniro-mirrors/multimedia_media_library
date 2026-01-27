@@ -57,7 +57,7 @@ HWTEST_F(MediaLibraryVisitorDbTest, Visitor_Query_Test_001, TestSize.Level1)
     if (MediaAssetRdbStore::GetInstance()->IsQueryAccessibleViaSandBox(uri, object, predicates, true)) {
         predicates.EqualTo(MediaColumn::MEDIA_ID, id);
         vector<string> columns = {
-            MEDIA_DATA_DB_ID,
+            CONST_MEDIA_DATA_DB_ID,
         };
         auto resultSet = MediaAssetRdbStore::GetInstance()->Query(predicates, columns, object, errCode);
         EXPECT_NE(resultSet, nullptr);
@@ -74,7 +74,7 @@ HWTEST_F(MediaLibraryVisitorDbTest, Visitor_Query_Test_002, TestSize.Level1)
     if (MediaAssetRdbStore::GetInstance()->IsSupportSharedAssetQuery(uri, object, true)) {
         predicates.EqualTo(MediaColumn::MEDIA_ID, id);
         vector<string> columns = {
-            MEDIA_DATA_DB_ID,
+            CONST_MEDIA_DATA_DB_ID,
         };
         auto resultSet = MediaAssetRdbStore::GetInstance()->QueryRdb(predicates, columns, object);
         EXPECT_NE(resultSet, nullptr);

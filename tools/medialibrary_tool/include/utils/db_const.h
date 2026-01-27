@@ -26,7 +26,7 @@ namespace OHOS {
 namespace Media {
 namespace MediaTool {
 const std::unordered_map<std::string, ResultSetDataType> RESULT_TYPE_MAP = {
-    { MEDIA_DATA_DB_URI, ResultSetDataType::TYPE_STRING},
+    { CONST_MEDIA_DATA_DB_URI, ResultSetDataType::TYPE_STRING},
     { MediaColumn::MEDIA_ID, ResultSetDataType::TYPE_INT32 },
     { MediaColumn::MEDIA_FILE_PATH, ResultSetDataType::TYPE_STRING },
     { MediaColumn::MEDIA_SIZE, ResultSetDataType::TYPE_INT64 },

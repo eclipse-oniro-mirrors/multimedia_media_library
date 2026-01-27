@@ -60,7 +60,7 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::NotifyIfTempFile(
     CHECK_AND_RETURN_LOG(watch != nullptr, "get instance notify failed NotifyIfTempFile abortion");
 
     std::string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath);
-    auto notifyUri = MediaFileUtils::GetUriByExtrConditions(ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
+    auto notifyUri = MediaFileUtils::GetUriByExtrConditions(CONST_ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
         MediaType::MEDIA_TYPE_VIDEO, MEDIA_API_VERSION_V10) + "/", to_string(fileId), extrUri);
     notifyUri = MediaFileUtils::GetUriWithoutDisplayname(notifyUri);
     CHECK_AND_EXECUTE(!isError, notifyUri += HIGH_TEMPERATURE_VIDEO);

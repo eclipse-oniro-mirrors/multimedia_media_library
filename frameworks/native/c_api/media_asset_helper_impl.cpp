@@ -73,7 +73,7 @@ OH_MediaAsset *MediaAssetHelperImpl::GetOhMediaAsset(const std::string &uri)
         PhotoColumn::MEDIA_IS_FAV,
         PhotoColumn::MEDIA_TYPE};
 
-    Uri queryUri(PAH_QUERY_PHOTO);
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
     int errCode;
     auto resultSet = UserFileClient::Query(queryUri, predicates, columns, errCode);
     CHECK_AND_RETURN_RET_LOG(
@@ -195,7 +195,7 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetHelperImpl::QueryFileAs
         PhotoColumn::MEDIA_IS_FAV,
         PhotoColumn::MEDIA_TITLE
     };
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     int errCode;
     auto resultSet = UserFileClient::Query(uri, predicates, fetchColumn, errCode);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {

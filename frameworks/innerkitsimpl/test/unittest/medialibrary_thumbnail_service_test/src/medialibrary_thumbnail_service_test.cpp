@@ -76,7 +76,7 @@ void CleanTestTables()
 {
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
         VISION_VIDEO_LABEL_TABLE,
         AudioColumn::AUDIOS_TABLE,
     };
@@ -151,7 +151,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_GetThumbnail_test_001, TestS
     string uri = "";
     auto fd = serverTest->GetThumbnailFd(uri);
     EXPECT_LT(fd, 0);
-    uri = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    uri = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     fd = serverTest->GetThumbnailFd(uri);
     EXPECT_LT(fd, 0);
@@ -1302,7 +1302,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_utils_test_044, Te
     res = ThumbnailUtils::QueryNewThumbnailCount(opts, time, count, err);
     EXPECT_EQ(res, false);
 
-    opts.table = MEDIALIBRARY_TABLE;
+    opts.table = CONST_MEDIALIBRARY_TABLE;
     res = ThumbnailUtils::QueryNewThumbnailCount(opts, time, count, err);
     EXPECT_EQ(res, false);
 }
@@ -1331,7 +1331,7 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, medialib_thumbnail_utils_test_047, Te
     ThumbRdbOpt opts;
     bool withThumb = false;
     bool withLcd = false;
-    opts.table = MEDIALIBRARY_TABLE;
+    opts.table = CONST_MEDIALIBRARY_TABLE;
     auto res = ThumbnailUtils::CleanThumbnailInfo(opts, withThumb, withLcd);
     EXPECT_EQ(res, false);
 

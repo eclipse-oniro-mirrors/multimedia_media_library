@@ -515,12 +515,12 @@ void BackupFileUtils::CreateDataShareHelper(const sptr<IRemoteObject> &token)
 void BackupFileUtils::GenerateThumbnailsAfterRestore(int32_t restoreAstcCount)
 {
     CHECK_AND_RETURN(sDataShareHelper_ != nullptr);
-    std::string updateUri = PAH_GENERATE_THUMBNAILS_RESTORE;
+    std::string updateUri = CONST_PAH_GENERATE_THUMBNAILS_RESTORE;
     MediaFileUtils::UriAppendKeyValue(updateUri, URI_PARAM_API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(updateUri);
     DataShare::DataSharePredicates emptyPredicates;
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(RESTORE_REQUEST_ASTC_GENERATE_COUNT, restoreAstcCount);
+    valuesBucket.Put(CONST_RESTORE_REQUEST_ASTC_GENERATE_COUNT, restoreAstcCount);
     int result = sDataShareHelper_->Update(uri, emptyPredicates, valuesBucket);
     CHECK_AND_PRINT_LOG(result >= 0, "generate thumbnails after restore failed, the sDataShareHelper_ update error");
 }
@@ -928,12 +928,12 @@ bool BackupFileUtils::HasOrientationOrExifRotate(const FileInfo &info)
 
 void BackupFileUtils::RestoreInvalidHDCCloudDataPos()
 {
-    std::string updateUri = PAH_RESTORE_INVALID_HDC_CLOUD_DATA_POS;
+    std::string updateUri = CONST_PAH_RESTORE_INVALID_HDC_CLOUD_DATA_POS;
     MediaFileUtils::UriAppendKeyValue(updateUri, URI_PARAM_API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(updateUri);
     DataShare::DataSharePredicates emptyPredicates;
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG, 0);
+    valuesBucket.Put(CONST_BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG, 0);
     CHECK_AND_RETURN_LOG(sDataShareHelper_, "sDataShareHelper_ is nullptr");
     int result = sDataShareHelper_->Update(uri, emptyPredicates, valuesBucket);
     CHECK_AND_PRINT_LOG(result >= 0, "restore invaildated pos of cloud hdc data failed,"

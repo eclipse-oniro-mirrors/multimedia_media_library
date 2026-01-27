@@ -220,7 +220,7 @@ int32_t MediaLibraryManager::GetAstcYearAndMonth(const std::vector<string> &uris
         return E_ERR;
     }
     string abilityUri = MEDIALIBRARY_DATA_URI;
-    Uri astcUri(abilityUri + "/" + MTH_AND_YEAR_ASTC + "/" + MTH_AND_YEAR_ASTC);
+    Uri astcUri(abilityUri + "/" + CONST_MTH_AND_YEAR_ASTC + "/" + CONST_MTH_AND_YEAR_ASTC);
     DataShareValuesBucket bucket;
     for (auto uri : uris) {
         bucket.Put(uri, false);
@@ -235,7 +235,7 @@ int32_t MediaLibraryManager::QueryTotalSize(MediaVolume &outMediaVolume)
     auto dataShareHelper = DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
     CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_FAIL, "dataShareHelper is null");
     vector<string> columns;
-    Uri uri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_QUERYOPRN_QUERYVOLUME + "/" + MEDIA_QUERYOPRN_QUERYVOLUME);
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_QUERYOPRN_QUERYVOLUME + "/" + CONST_MEDIA_QUERYOPRN_QUERYVOLUME);
     DataSharePredicates predicates;
     auto queryResultSet = dataShareHelper->Query(uri, predicates, columns);
     CHECK_AND_RETURN_RET_LOG(queryResultSet != nullptr, E_FAIL, "queryResultSet is null!");
@@ -247,9 +247,9 @@ int32_t MediaLibraryManager::QueryTotalSize(MediaVolume &outMediaVolume)
     if (count >= 0) {
         int thumbnailType = -1;
         while (queryResultSet->GoToNextRow() == NativeRdb::E_OK) {
-            int mediatype = get<int32_t>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_MEDIA_TYPE,
+            int mediatype = get<int32_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_MEDIA_TYPE,
                 queryResultSet, TYPE_INT32));
-            int64_t size = get<int64_t>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_SIZE,
+            int64_t size = get<int64_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_SIZE,
                 queryResultSet, TYPE_INT64));
             MEDIA_INFO_LOG("media_type: %{public}d, size: %{public}lld", mediatype, static_cast<long long>(size));
             if (mediatype == MEDIA_TYPE_IMAGE || mediatype == thumbnailType) {
@@ -291,7 +291,7 @@ std::shared_ptr<DataShareResultSet> GetResultSetFromPhotos(const string &value, 
 std::shared_ptr<DataShareResultSet> MediaLibraryManager::GetResultSetFromDb(string columnName, const string &value,
     vector<string> &columns)
 {
-    if (columnName == MEDIA_DATA_DB_URI) {
+    if (columnName == CONST_MEDIA_DATA_DB_URI) {
         auto resultSet = GetResultSetFromPhotos(value, columns, token_, sDataShareHelper_);
         if (resultSet == nullptr) {
             MEDIA_ERR_LOG("resultset is null, reconnect and retry");
@@ -387,12 +387,12 @@ int32_t MediaLibraryManager::GetFilePathFromUri(const Uri &fileUri, string &file
     CHECK_AND_RETURN_RET(virtualUri.IsValid(), E_URI_INVALID);
     string virtualId = virtualUri.GetFileId();
 #ifdef MEDIALIBRARY_COMPATIBILITY
-    if (MediaFileUtils::GetTableFromVirtualUri(uri) != MEDIALIBRARY_TABLE) {
+    if (MediaFileUtils::GetTableFromVirtualUri(uri) != CONST_MEDIALIBRARY_TABLE) {
         MEDIA_INFO_LOG("uri:%{private}s does not match Files Table", uri.c_str());
         return E_URI_INVALID;
     }
 #endif
-    vector<string> columns = { MEDIA_DATA_DB_FILE_PATH };
+    vector<string> columns = { CONST_MEDIA_DATA_DB_FILE_PATH };
     auto resultSet = GetFilePathResultSetFromDb(virtualId, token_);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_INVALID_URI,
         "GetFilePathFromUri::uri is not correct: %{private}s", uri.c_str());
@@ -461,7 +461,7 @@ int32_t MediaLibraryManager::GetUriFromFilePath(const string &filePath, Uri &fil
         return E_DIR_CHECK_DIR_FAIL;
     }
 
-    vector<string> columns = { MEDIA_DATA_DB_ID};
+    vector<string> columns = { CONST_MEDIA_DATA_DB_ID};
     auto resultSet = GetUriResultSetFromDb(tempPath, token_);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_INVALID_URI,
         "GetUriFromFilePath::tempPath is not correct: %{private}s", tempPath.c_str());
@@ -600,7 +600,7 @@ static void GetUriParamsFromQueryKey(UriParams& uriParams,
         }
     }
     if (queryKey.count(THUMBNAIL_OPER) != 0) {
-        uriParams.isAstc = queryKey[THUMBNAIL_OPER] == MEDIA_DATA_DB_THUMB_ASTC;
+        uriParams.isAstc = queryKey[THUMBNAIL_OPER] == CONST_MEDIA_DATA_DB_THUMB_ASTC;
     }
     if (queryKey.count(THUMBNAIL_USER) != 0) {
         uriParams.user = queryKey[THUMBNAIL_USER];
@@ -704,9 +704,10 @@ unique_ptr<PixelMap> MediaLibraryManager::QueryThumbnail(UriParams& params)
     MediaLibraryTracer tracer;
     tracer.Start("QueryThumbnail uri:" + params.fileUri);
 
-    string oper = params.isAstc ? MEDIA_DATA_DB_THUMB_ASTC : MEDIA_DATA_DB_THUMBNAIL;
-    string openUriStr = params.fileUri + "?" + MEDIA_OPERN_KEYWORD + "=" + oper + "&" + MEDIA_DATA_DB_WIDTH +
-        "=" + to_string(params.size.width) + "&" + MEDIA_DATA_DB_HEIGHT + "=" + to_string(params.size.height);
+    string oper = params.isAstc ? CONST_MEDIA_DATA_DB_THUMB_ASTC : CONST_MEDIA_DATA_DB_THUMBNAIL;
+    string openUriStr = params.fileUri + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + oper + "&" +
+        CONST_MEDIA_DATA_DB_WIDTH +
+        "=" + to_string(params.size.width) + "&" + CONST_MEDIA_DATA_DB_HEIGHT + "=" + to_string(params.size.height);
     if (params.user != "") {
         openUriStr = openUriStr + "&" + THUMBNAIL_USER + "=" + params.user;
         bool cond = (!params.path.empty() && !params.path.find(MULTI_USER_URI_FLAG));
@@ -827,7 +828,7 @@ int32_t MediaLibraryManager::GetBatchAstcs(const vector<string> &uriBatch, vecto
         MEDIA_INFO_LOG("GetBatchAstcs uriBatch is empty");
         return E_INVALID_URI;
     }
-    if (uriBatch.at(0).find(ML_URI_OFFSET) != std::string::npos) {
+    if (uriBatch.at(0).find(CONST_ML_URI_OFFSET) != std::string::npos) {
         return GetAstcsByOffset(uriBatch, astcBatch);
     } else {
         return GetAstcsBatch(uriBatch, astcBatch);
@@ -875,9 +876,9 @@ std::unique_ptr<PixelMap> MediaLibraryManager::GetAstc(const Uri &uri)
         return nullptr;
     }
     tracer.Start("GetAstc uri:" + uriParams.fileUri);
-    string openUriStr = uriParams.fileUri + "?" + MEDIA_OPERN_KEYWORD + "=" +
-        MEDIA_DATA_DB_THUMB_ASTC + "&" + MEDIA_DATA_DB_WIDTH + "=" + to_string(uriParams.size.width) +
-            "&" + MEDIA_DATA_DB_HEIGHT + "=" + to_string(uriParams.size.height);
+    string openUriStr = uriParams.fileUri + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" +
+        CONST_MEDIA_DATA_DB_THUMB_ASTC + "&" + CONST_MEDIA_DATA_DB_WIDTH + "=" + to_string(uriParams.size.width) +
+            "&" + CONST_MEDIA_DATA_DB_HEIGHT + "=" + to_string(uriParams.size.height);
     if (uriParams.user != "") {
         openUriStr = openUriStr + "&" + THUMBNAIL_USER + "=" + uriParams.user;
         if (!uriParams.path.empty() && !uriParams.path.find(MULTI_USER_URI_FLAG)) {
@@ -944,19 +945,19 @@ int32_t MediaLibraryManager::ReadMovingPhotoVideo(const string &uri, const strin
     CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR,
         "Failed to read video of moving photo, datashareHelper is nullptr");
     string videoUri = uri;
-    MediaFileUtils::UriAppendKeyValue(videoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, option);
+    MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, option);
     Uri openVideoUri(videoUri);
     return dataShareHelper->OpenFile(openVideoUri, MEDIA_FILEMODE_READONLY);
 }
 
 int32_t MediaLibraryManager::ReadMovingPhotoVideo(const string &uri)
 {
-    return ReadMovingPhotoVideo(uri, OPEN_MOVING_PHOTO_VIDEO);
+    return ReadMovingPhotoVideo(uri, CONST_OPEN_MOVING_PHOTO_VIDEO);
 }
 
 int32_t MediaLibraryManager::ReadMovingPhotoVideo(const string &uri, off_t &offset)
 {
-    int32_t fd = ReadMovingPhotoVideo(uri, OPEN_MOVING_PHOTO_VIDEO_CLOUD);
+    int32_t fd = ReadMovingPhotoVideo(uri, CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD);
     if (fd < 0) {
         MEDIA_ERR_LOG("Failed to open video of moving photo: %{public}d", fd);
         return E_ERR;
@@ -990,7 +991,8 @@ int32_t MediaLibraryManager::ReadPrivateMovingPhoto(const string &uri)
     CHECK_AND_RETURN_RET_LOG(sDataShareHelper_ != nullptr, E_ERR,
         "Failed to read video of moving photo, datashareHelper is nullptr");
     string movingPhotoUri = uri;
-    MediaFileUtils::UriAppendKeyValue(movingPhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_LIVE_PHOTO);
+    MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_PRIVATE_LIVE_PHOTO);
     Uri openMovingPhotoUri(movingPhotoUri);
     return sDataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
 }
@@ -1052,7 +1054,7 @@ int64_t MediaLibraryManager::GetMovingPhotoDateModified(const string &uri)
     }
 
     CHECK_AND_RETURN_RET_LOG(CheckPhotoUri(uri), E_ERR, "Failed to check invalid uri: %{public}s", uri.c_str());
-    Uri queryUri(PAH_QUERY_PHOTO);
+    Uri queryUri(CONST_PAH_QUERY_PHOTO);
     DataSharePredicates predicates;
     string fileId = MediaFileUtils::GetIdFromUri(uri);
     predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
@@ -1277,10 +1279,11 @@ int32_t MediaLibraryManager::MoveAssets(const std::vector<std::unique_ptr<FileAs
             MEDIA_INFO_LOG("Skip invalid asset, mediaType: %{public}d", asset->GetMediaType());
             continue;
         }
-        string displayName = asset->GetStrMember(MEDIA_DATA_DB_NAME);
-        string filePath = asset->GetStrMember(MEDIA_DATA_DB_FILE_PATH);
+        string displayName = asset->GetStrMember(CONST_MEDIA_DATA_DB_NAME);
+        string filePath = asset->GetStrMember(CONST_MEDIA_DATA_DB_FILE_PATH);
         string uri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX,
-            to_string(asset->GetInt32Member(MEDIA_DATA_DB_ID)), MediaFileUtils::GetExtraUri(displayName, filePath));
+            to_string(asset->GetInt32Member(CONST_MEDIA_DATA_DB_ID)),
+            MediaFileUtils::GetExtraUri(displayName, filePath));
         reqBody.assets.push_back(uri);
     }
     reqBody.albumId = albumId;
@@ -1468,9 +1471,9 @@ static bool AddDefaultAssetColumnsForInner(vector<string> &fetchColumn,
     for (const auto &column : fetchColumn) {
         if (column == PENDING_STATUS_INNER) {
             validFetchColumns.insert(MediaColumn::MEDIA_TIME_PENDING);
-        } else if (isValidColumn(column) || (column == MEDIA_SUM_SIZE)) {
+        } else if (isValidColumn(column) || (column == CONST_MEDIA_SUM_SIZE)) {
             validFetchColumns.insert(column);
-        } else if (column == MEDIA_DATA_DB_URI) {
+        } else if (column == CONST_MEDIA_DATA_DB_URI) {
             continue;
         } else if (DATE_TRANSITION_MAP.count(column) != 0) {
             validFetchColumns.insert(DATE_TRANSITION_MAP.at(column));

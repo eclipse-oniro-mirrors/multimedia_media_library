@@ -88,8 +88,8 @@ static int32_t CheckSystemApiKeys(const string &key)
         PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
         PhotoColumn::PHOTO_CLOUD_ID,
         PENDING_STATUS,
-        MEDIA_DATA_DB_DATE_TRASHED_MS,
-        MEDIA_SUM_SIZE,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
+        CONST_MEDIA_SUM_SIZE,
         PhotoColumn::PHOTO_EXIF_ROTATE,
     };
 
@@ -155,8 +155,8 @@ static PhotoAssetMember HandleGettingSpecialKey(const string &key, const shared_
 
 static inline int64_t GetCompatDate(const string inputKey, const int64_t date)
 {
-    if (inputKey == MEDIA_DATA_DB_DATE_ADDED || inputKey == MEDIA_DATA_DB_DATE_MODIFIED ||
-        inputKey == MEDIA_DATA_DB_DATE_TRASHED || inputKey == MEDIA_DATA_DB_DATE_TAKEN) {
+    if (inputKey == CONST_MEDIA_DATA_DB_DATE_ADDED || inputKey == CONST_MEDIA_DATA_DB_DATE_MODIFIED ||
+        inputKey == CONST_MEDIA_DATA_DB_DATE_TRASHED || inputKey == CONST_MEDIA_DATA_DB_DATE_TAKEN) {
             return date / MSEC_TO_SEC;
     }
     return date;
@@ -245,9 +245,9 @@ void PhotoAssetImpl::CommitModify(int32_t &errCode)
     string uri;
     if (fileAssetPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         fileAssetPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = PAH_UPDATE_PHOTO;
+        uri = CONST_PAH_UPDATE_PHOTO;
     } else if (fileAssetPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = UFM_UPDATE_AUDIO;
+        uri = CONST_UFM_UPDATE_AUDIO;
     }
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
 
@@ -257,7 +257,7 @@ void PhotoAssetImpl::CommitModify(int32_t &errCode)
     DataSharePredicates predicates;
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_TITLE, fileAssetPtr->GetTitle());
-    predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ? ");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
     predicates.SetWhereArgs({to_string(fileAssetPtr->GetId())});
 
     int32_t changedRows = static_cast<int32_t>(UserFileClient::Update(updateAssetUri, predicates, valuesBucket));

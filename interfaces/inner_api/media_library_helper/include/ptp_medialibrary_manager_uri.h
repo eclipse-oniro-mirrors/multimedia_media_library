@@ -20,11 +20,10 @@
 
 namespace OHOS {
 namespace Media {
-const std::string PTP_MEDIALIBRARY_DATA_URI = "datashare:///media";
-const std::string PTP_OPERATION = "ptp_operation";
-const std::string PTP_ALBUM_OPERATION = "ptp_album_operation";
-const std::string URI_MTP_OPERATION = PTP_MEDIALIBRARY_DATA_URI + "/" + PTP_OPERATION;
-const std::string OPRN_UPDATE_OWNER_ALBUM_ID = "update_owner_album_id";
+#define CONST_PTP_OPERATION "ptp_operation"
+#define CONST_PTP_ALBUM_OPERATION "ptp_album_operation"
+#define CONST_URI_MTP_OPERATION "datashare:///media/ptp_operation"
+#define CONST_OPRN_UPDATE_OWNER_ALBUM_ID "update_owner_album_id"
 
 } // namespace Media
 } // namespace OHOS

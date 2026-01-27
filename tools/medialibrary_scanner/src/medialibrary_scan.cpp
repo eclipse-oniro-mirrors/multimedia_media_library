@@ -89,9 +89,9 @@ int32_t main()
         MEDIA_ERR_LOG("mediaDataShareHelper fail");
         return 0;
     }
-    Uri scanUri(URI_SCANNER);
+    Uri scanUri(CONST_URI_SCANNER);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
     mediaDataShareHelper->Insert(scanUri, valuesBucket);
     // Waiting for scanner to complete.
     constexpr int32_t estimatedScanTime = 10;

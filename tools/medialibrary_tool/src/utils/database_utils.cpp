@@ -116,7 +116,7 @@ static std::string GetApi10Uri(const std::string &path, const std::string &displ
         return "";
     }
     string extrUri = MediaFileUtils::GetExtraUri(displayName, path);
-    return MediaFileUtils::GetUriByExtrConditions(ML_FILE_URI_PREFIX +
+    return MediaFileUtils::GetUriByExtrConditions(CONST_ML_FILE_URI_PREFIX +
         MediaFileUri::GetMediaTypeUri(static_cast<MediaType>(mediaType), MEDIA_API_VERSION_V10) + "/",
         to_string(fileId), extrUri);
 }
@@ -124,7 +124,7 @@ static std::string GetApi10Uri(const std::string &path, const std::string &displ
 static int32_t GetStrFromResultSet(const std::string &name, ResultSetDataType type,
     const std::shared_ptr<DataShare::DataShareResultSet> &resultSet, std::string &str)
 {
-    if (name == MEDIA_DATA_DB_URI) {
+    if (name == CONST_MEDIA_DATA_DB_URI) {
         int32_t id = get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet,
             ResultSetDataType::TYPE_INT32));
         int32_t mediaType = get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_TYPE, resultSet,
@@ -206,7 +206,7 @@ int32_t DatabaseUtils::GetColumnInfo(const DumpOpt &opt,
     for (const auto &name : names) {
         ColumnInfo columnInfo;
         columnInfo.name = name;
-        if (name != MEDIA_DATA_DB_URI) {
+        if (name != CONST_MEDIA_DATA_DB_URI) {
             int32_t err = resultSet->GetColumnIndex(name, columnInfo.index);
             if (err != NativeRdb::E_OK) {
                 printf("%s get column index failed. err:%d, name:%s.\n", STR_FAIL.c_str(), err, name.c_str());

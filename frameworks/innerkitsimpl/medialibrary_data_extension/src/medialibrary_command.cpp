@@ -260,7 +260,7 @@ void MediaLibraryCommand::ParseOprnTypeFromUri()
 
 static string GetDistTable(const string &table, const string &networkId)
 {
-    string ret = MEDIALIBRARY_TABLE;
+    string ret = CONST_MEDIALIBRARY_TABLE;
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (rdbStore == nullptr) {
         return ret;
@@ -270,7 +270,7 @@ static string GetDistTable(const string &table, const string &networkId)
     if (table == PhotoColumn::PHOTOS_TABLE || table == AudioColumn::AUDIOS_TABLE) {
         ret = rdbStore->ObtainDistributedTableName(networkId, table, errCode);
     } else {
-        ret = rdbStore->ObtainDistributedTableName(networkId, MEDIALIBRARY_TABLE, errCode);
+        ret = rdbStore->ObtainDistributedTableName(networkId, CONST_MEDIALIBRARY_TABLE, errCode);
     }
     return ret;
 }
@@ -284,10 +284,10 @@ void MediaLibraryCommand::ParseTableName()
         } else if (cmdObj.find(OperationType::UNKNOWN_TYPE) != cmdObj.end()) {
             tableName_ = cmdObj.at(OperationType::UNKNOWN_TYPE);
         } else {
-            tableName_ = MEDIALIBRARY_TABLE;
+            tableName_ = CONST_MEDIALIBRARY_TABLE;
         }
     } else {
-        tableName_ = MEDIALIBRARY_TABLE;
+        tableName_ = CONST_MEDIALIBRARY_TABLE;
     }
     // distributed tablename, smartalbum and smartalbumMap can not distributed
     if ((oprnObject_ == OperationObject::SMART_ALBUM) || (oprnObject_ == OperationObject::SMART_ALBUM_MAP)) {
@@ -315,7 +315,7 @@ void MediaLibraryCommand::ParseFileId()
 {
     int32_t fileIdInValue = -1;
     ValueObject valueObject;
-    if (insertValue_.GetObject(MEDIA_DATA_DB_ID, valueObject)) {
+    if (insertValue_.GetObject(CONST_MEDIA_DATA_DB_ID, valueObject)) {
         valueObject.GetInt(fileIdInValue);
     }
     if (fileIdInValue != -1) {
@@ -323,7 +323,7 @@ void MediaLibraryCommand::ParseFileId()
         return;
     }
     string uriInValue;
-    if (insertValue_.GetObject(MEDIA_DATA_DB_URI, valueObject)) {
+    if (insertValue_.GetObject(CONST_MEDIA_DATA_DB_URI, valueObject)) {
         valueObject.GetString(uriInValue);
     }
     if (uriInValue.empty()) {
@@ -373,8 +373,8 @@ void MediaLibraryCommand::SetApiFromQuerySetMap()
 
 int32_t MediaLibraryCommand::GetVideoType()
 {
-    if (querySetMap_.find(VIDEO_TYPE_KEYWORD) != querySetMap_.end()) {
-        return std::stoul(querySetMap_[VIDEO_TYPE_KEYWORD]);
+    if (querySetMap_.find(CONST_VIDEO_TYPE_KEYWORD) != querySetMap_.end()) {
+        return std::stoul(querySetMap_[CONST_VIDEO_TYPE_KEYWORD]);
     }
     return 0;
 }

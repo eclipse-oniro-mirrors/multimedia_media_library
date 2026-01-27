@@ -119,7 +119,8 @@ static const map<int32_t, struct AnalysisConfig> ANALYSIS_CONFIG_MAP = {
 const map<int32_t, struct HighlightAlbumInfo> GetHighlightAlbumInfoMap()
 {
     static const std::map<int32_t, struct HighlightAlbumInfo> HIGHLIGHT_ALBUM_INFO_MAP = {
-        { COVER_INFO, { PAH_QUERY_HIGHLIGHT_COVER, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+        { COVER_INFO, { CONST_PAH_QUERY_HIGHLIGHT_COVER, {
+            ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
             AI_ALBUM_ID, SUB_TITLE, CLUSTER_TYPE, CLUSTER_SUB_TYPE,
             CLUSTER_CONDITION, MIN_DATE_ADDED, MAX_DATE_ADDED, GENERATE_TIME, HIGHLIGHT_VERSION,
             REMARKS, HIGHLIGHT_STATUS, RATIO, BACKGROUND, FOREGROUND, WORDART, IS_COVERED, COLOR,
@@ -128,9 +129,9 @@ const map<int32_t, struct HighlightAlbumInfo> GetHighlightAlbumInfoMap()
             BACKGROUND_RECT_WIDTH, BACKGROUND_RECT_HEIGHT, LAYOUT_INDEX, COVER_ALGO_VERSION, COVER_KEY, COVER_STATUS,
             HIGHLIGHT_IS_MUTED, HIGHLIGHT_IS_FAVORITE, HIGHLIGHT_THEME,
             HIGHLIGHT_PIN_TIME, HIGHLIGHT_USE_SUBTITLE } } },
-        { PLAY_INFO, { PAH_QUERY_HIGHLIGHT_PLAY, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+        { PLAY_INFO, { CONST_PAH_QUERY_HIGHLIGHT_PLAY, { ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
             MUSIC, FILTER, HIGHLIGHT_PLAY_INFO, IS_CHOSEN, PLAY_INFO_VERSION, PLAY_INFO_ID } } },
-        { ALBUM_INFO, { PAH_QUERY_HIGHLIGHT_ALBUM, {ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
+        { ALBUM_INFO, { CONST_PAH_QUERY_HIGHLIGHT_ALBUM, {ID, HIGHLIGHT_ALBUM_TABLE + "." + PhotoAlbumColumns::ALBUM_ID,
             HIGHLIGHT_STATUS, HIGHLIGHT_IS_VIEWED, HIGHLIGHT_NOTIFICATION_TIME } } },
     };
     return HIGHLIGHT_ALBUM_INFO_MAP;
@@ -525,7 +526,7 @@ int32_t MediaAnalysisDataService::DismissAssets(ChangeRequestDismissAssetsDto &d
         cmd.SetDataSharePred(updatePredicates);
         cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicateUpdate.GetWhereClause());
         cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicateUpdate.GetWhereArgs());
-        cmd.SetApiParam(MEDIA_OPERN_KEYWORD, UPDATE_DISMISS_ASSET);
+        cmd.SetApiParam(CONST_MEDIA_OPERN_KEYWORD, CONST_UPDATE_DISMISS_ASSET);
         auto dataManager = MediaLibraryDataManager::GetInstance();
         dataManager->HandleAnalysisFaceUpdate(cmd, value, updatePredicates);
     }

@@ -26,5 +26,5 @@ const string FormMap::FORMMAP_FORM_ID = "form_id";
 const string FormMap::FORMMAP_URI = "uri";
 
 const string FormMap::CREATE_FORM_MAP_TABLE = "CREATE TABLE IF NOT EXISTS " + FORM_MAP_TABLE + " (" +
-    FORMMAP_FORM_ID + " TEXT PRIMARY KEY, " + MEDIA_DATA_DB_URI + " TEXT) ";
+    FORMMAP_FORM_ID + " TEXT PRIMARY KEY, " + CONST_MEDIA_DATA_DB_URI + " TEXT) ";
 } // namespace OHOS::Media

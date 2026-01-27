@@ -121,7 +121,7 @@ void MediaLibraryHandler::InitMediaLibraryHandler()
 std::shared_ptr<DataShareResultSet> GetResultSetFromPhotos(const string &columnName, const vector<string> &values,
     vector<string> &columns, shared_ptr<DataShare::DataShareHelper> &dataShareHelper)
 {
-    Uri queryUri(PAH_QUERY_CONVERT_PHOTOS);
+    Uri queryUri(CONST_PAH_QUERY_CONVERT_PHOTOS);
     DataSharePredicates predicates;
     predicates.In(columnName, values);
     DatashareBusinessError businessError;
@@ -181,8 +181,9 @@ int32_t MediaLibraryHandler::GetDataUris(const vector<string> &uris, vector<stri
         return E_FAIL;
     }
 
-    vector<string> columns = {MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, PHOTO_STORAGE_PATH, PHOTO_FILE_SOURCE_TYPE};
-    auto resultSet = GetResultSetFromPhotos(MEDIA_DATA_DB_ID, realIds, columns, sDataShareHelper_);
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH,
+        PHOTO_STORAGE_PATH, PHOTO_FILE_SOURCE_TYPE};
+    auto resultSet = GetResultSetFromPhotos(CONST_MEDIA_DATA_DB_ID, realIds, columns, sDataShareHelper_);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is nullptr");
         return E_FAIL;

@@ -487,7 +487,7 @@ int32_t CloneRestoreGroupPhoto::DeleteGroupPhotoAlbumInfoInNewDb()
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, querySql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "query analysis portrait album err!");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int albumId = get<int32_t>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_ALBUM_ID,
+        int albumId = get<int32_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_ALBUM_ID,
             resultSet, TYPE_INT32));
         deletedGroupPhotoAlbumIds.push_back(std::to_string(albumId));
     }

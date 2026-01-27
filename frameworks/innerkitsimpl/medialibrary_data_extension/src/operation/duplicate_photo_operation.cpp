@@ -289,7 +289,7 @@ std::shared_ptr<NativeRdb::ResultSet> DuplicatePhotoOperation::GetAllDuplicateAs
 {
     int limit = predicates.GetLimit();
     int offset = predicates.GetOffset();
-    bool isQueryCount = find(columns.begin(), columns.end(), MEDIA_COLUMN_COUNT) != columns.end();
+    bool isQueryCount = find(columns.begin(), columns.end(), CONST_MEDIA_COLUMN_COUNT) != columns.end();
     MEDIA_INFO_LOG("Limit: %{public}d, Offset: %{public}d, isQueryCount: %{public}d", limit, offset, isQueryCount);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, nullptr, "GetAllDuplicateAssets failed, rdbStore is nullptr");
@@ -313,7 +313,7 @@ std::shared_ptr<NativeRdb::ResultSet> DuplicatePhotoOperation::GetDuplicateAsset
 {
     int limit = predicates.GetLimit();
     int offset = predicates.GetOffset();
-    bool isQueryCount = find(columns.begin(), columns.end(), MEDIA_COLUMN_COUNT) != columns.end();
+    bool isQueryCount = find(columns.begin(), columns.end(), CONST_MEDIA_COLUMN_COUNT) != columns.end();
     MEDIA_INFO_LOG("Limit: %{public}d, Offset: %{public}d, isQueryCount: %{public}d", limit, offset, isQueryCount);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, nullptr, "GetAllDuplicateAssets failed, rdbStore is nullptr");

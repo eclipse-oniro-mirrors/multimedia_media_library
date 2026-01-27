@@ -86,7 +86,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_QueryThumbnailSet_test_001, TestSize.Le
     string row = "medialib_QueryThumbnailSet_test_001";
     ThumbRdbOpt opts = {
         .store = storePtr,
-        .table = MEDIALIBRARY_TABLE,
+        .table = CONST_MEDIALIBRARY_TABLE,
         .row = row
     };
     auto resultSetPtr = ThumbnailUtils::QueryThumbnailSet(opts);
@@ -99,7 +99,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_QueryThumbnailInfo_test_001, TestSize.L
     string row = "medialib_QueryThumbnailInfo_test_001";
     ThumbRdbOpt opts = {
         .store = storePtr,
-        .table = MEDIALIBRARY_TABLE,
+        .table = CONST_MEDIALIBRARY_TABLE,
         .row = row
     };
     ThumbnailData data;
@@ -126,7 +126,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_QueryLcdCount_test_001, TestSize.Level1
     ASSERT_NE(storePtr, nullptr);
     ThumbRdbOpt opts = {
         .store = storePtr,
-        .table = MEDIALIBRARY_TABLE
+        .table = CONST_MEDIALIBRARY_TABLE
     };
     int outLcdCount = 0;
     int err = 0;
@@ -364,7 +364,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_DeleteAllThumbFilesAndAstc_test_001, Te
     string row = "medialib_DeleteAllThumbFilesAndAstc_test_001";
     ThumbRdbOpt opts = {
         .store = storePtr,
-        .table = MEDIALIBRARY_TABLE,
+        .table = CONST_MEDIALIBRARY_TABLE,
         .row = row
     };
     ThumbnailData data;
@@ -441,7 +441,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_parseQueryResult_test_001, TestSize.Lev
 {
     vector<string> column = {
         REMOTE_THUMBNAIL_DB_FILE_ID,
-        MEDIA_DATA_DB_LCD
+        CONST_MEDIA_DATA_DB_LCD
     };
     ThumbnailData data;
     data.id = "0";
@@ -453,7 +453,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_parseQueryResult_test_001, TestSize.Lev
         .table = REMOTE_THUMBNAIL_TABLE,
     };
     RdbPredicates rdbPredicates(opts.table);
-    rdbPredicates.IsNotNull(MEDIA_DATA_DB_LCD);
+    rdbPredicates.IsNotNull(CONST_MEDIA_DATA_DB_LCD);
     rdbPredicates.EqualTo(REMOTE_THUMBNAIL_DB_UDID, opts.udid);
     rdbPredicates.Limit(0);
     shared_ptr<ResultSet> resultSet = opts.store->QueryByStep(rdbPredicates, column);
@@ -465,7 +465,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_parseHighlightQueryResult_test_001, Tes
 {
     vector<string> column = {
         REMOTE_THUMBNAIL_DB_FILE_ID,
-        MEDIA_DATA_DB_LCD
+        CONST_MEDIA_DATA_DB_LCD
     };
     ThumbnailData data;
     data.id = "0";
@@ -477,7 +477,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_parseHighlightQueryResult_test_001, Tes
         .table = REMOTE_THUMBNAIL_TABLE,
     };
     RdbPredicates rdbPredicates(opts.table);
-    rdbPredicates.IsNotNull(MEDIA_DATA_DB_LCD);
+    rdbPredicates.IsNotNull(CONST_MEDIA_DATA_DB_LCD);
     rdbPredicates.EqualTo(REMOTE_THUMBNAIL_DB_UDID, opts.udid);
     rdbPredicates.Limit(0);
     shared_ptr<ResultSet> resultSet = opts.store->QueryByStep(rdbPredicates, column);
@@ -489,7 +489,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_parseStringResult_test_001, TestSize.Le
 {
     vector<string> column = {
         REMOTE_THUMBNAIL_DB_FILE_ID,
-        MEDIA_DATA_DB_LCD
+        CONST_MEDIA_DATA_DB_LCD
     };
     ThumbRdbOpt opts = {
         .store = storePtr,
@@ -497,7 +497,7 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_parseStringResult_test_001, TestSize.Le
     int index = 0;
     string data = "ParseStringResult";
     RdbPredicates rdbPredicates(REMOTE_THUMBNAIL_TABLE);
-    rdbPredicates.IsNotNull(MEDIA_DATA_DB_LCD);
+    rdbPredicates.IsNotNull(CONST_MEDIA_DATA_DB_LCD);
     rdbPredicates.EqualTo(REMOTE_THUMBNAIL_DB_UDID, opts.udid);
     rdbPredicates.Limit(0);
     shared_ptr<ResultSet> resultSet = opts.store->QueryByStep(rdbPredicates, column);
@@ -511,21 +511,21 @@ HWTEST_F(MediaLibraryUtilsTest, medialib_parseStringResult_test_001, TestSize.Le
 HWTEST_F(MediaLibraryUtilsTest, medialib_checkResultSetCount_test_001, TestSize.Level1)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_THUMBNAIL,
-        MEDIA_DATA_DB_LCD,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_DATE_MODIFIED
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_THUMBNAIL,
+        CONST_MEDIA_DATA_DB_LCD,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED
     };
     ThumbRdbOpt opts = {
         .store = storePtr,
-        .table = MEDIALIBRARY_TABLE,
+        .table = CONST_MEDIALIBRARY_TABLE,
         .row = "CheckResultSetCount",
     };
     int err = 0;
     RdbPredicates rdbPredicates(opts.table);
-    rdbPredicates.IsNotNull(MEDIA_DATA_DB_LCD);
+    rdbPredicates.IsNotNull(CONST_MEDIA_DATA_DB_LCD);
     rdbPredicates.EqualTo(REMOTE_THUMBNAIL_DB_UDID, opts.udid);
     rdbPredicates.Limit(0);
     shared_ptr<ResultSet> resultSet = opts.store->QueryByStep(rdbPredicates, column);

@@ -182,7 +182,7 @@ private:
 
     std::shared_mutex mgrSharedMutex_;
     std::shared_ptr<OHOS::AbilityRuntime::Context> context_;
-    std::string bundleName_ {BUNDLE_NAME};
+    std::string bundleName_ {CONST_BUNDLE_NAME};
     static std::mutex mutex_;
     static std::unique_ptr<MediaLibraryDataManager> instance_;
     static std::unordered_map<std::string, DirAsset> dirQuerySetMap_;

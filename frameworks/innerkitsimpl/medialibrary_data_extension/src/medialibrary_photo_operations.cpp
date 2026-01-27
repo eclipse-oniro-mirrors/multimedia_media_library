@@ -279,10 +279,10 @@ static bool GetValidOrderClause(const DataSharePredicates &predicate, string &cl
     for (const auto &item : items) {
         if (item.operation == ORDER_BY_ASC) {
             count++;
-            clause += static_cast<string>(item.GetSingle(FIELD_IDX)) + " ASC) as " + PHOTO_INDEX;
+            clause += static_cast<string>(item.GetSingle(FIELD_IDX)) + " ASC) as " + CONST_PHOTO_INDEX;
         } else if (item.operation == ORDER_BY_DESC) {
             count++;
-            clause += static_cast<string>(item.GetSingle(FIELD_IDX)) + " DESC) as " + PHOTO_INDEX;
+            clause += static_cast<string>(item.GetSingle(FIELD_IDX)) + " DESC) as " + CONST_PHOTO_INDEX;
         }
     }
 
@@ -340,7 +340,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::HandleIndexOfUri(
     MediaLibraryCommand &cmd, RdbPredicates &predicates, const string &photoId, const string &albumId)
 {
     CHECK_AND_RETURN_RET(albumId.empty(), HandleAlbumIndexOfUri(cmd, photoId, albumId));
-    string indexClause = " COUNT(*) as " + PHOTO_INDEX;
+    string indexClause = " COUNT(*) as " + string(CONST_PHOTO_INDEX);
     vector<string> columns;
     columns.push_back(indexClause);
     predicates.And()->EqualTo(
@@ -461,7 +461,7 @@ bool CheckOpenMovingPhoto(int32_t photoSubType, int32_t effectMode, const string
 {
     return photoSubType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
         (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY) &&
-        request == SOURCE_REQUEST);
+        request == CONST_SOURCE_REQUEST);
 }
 
 static void RefreshLivePhotoCache(const string &movingPhotoImagePath, int64_t movingPhotoSize)
@@ -482,7 +482,7 @@ static void RefreshLivePhotoCache(const string &movingPhotoImagePath, int64_t mo
 
 int32_t GetMovingPhotoVideoInputPath(MediaLibraryCommand &cmd, string &inputPath, const string &imagePath, bool isTemp)
 {
-    string videoTypeStr = cmd.GetQuerySetParam(VIDEO_TYPE_KEYWORD);
+    string videoTypeStr = cmd.GetQuerySetParam(CONST_VIDEO_TYPE_KEYWORD);
     int32_t videoTypeNum = 0;
 
     if (videoTypeStr != "") {
@@ -509,12 +509,12 @@ int32_t GetMovingPhotoVideoInputPath(MediaLibraryCommand &cmd, string &inputPath
 int32_t MediaLibraryPhotoOperations::ProcessMovingPhotoOprnKey(MediaLibraryCommand& cmd,
     shared_ptr<FileAsset>& fileAsset, const string& id, bool& isMovingPhotoVideo)
 {
-    string movingPhotoOprnKey = cmd.GetQuerySetParam(MEDIA_MOVING_PHOTO_OPRN_KEYWORD);
-    if (movingPhotoOprnKey == OPEN_MOVING_PHOTO_VIDEO || movingPhotoOprnKey == CREATE_MOVING_PHOTO_VIDEO ||
-        movingPhotoOprnKey == OPEN_MOVING_PHOTO_VIDEO_CLOUD) {
-        bool isTemp = movingPhotoOprnKey == CREATE_MOVING_PHOTO_VIDEO;
+    string movingPhotoOprnKey = cmd.GetQuerySetParam(CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD);
+    if (movingPhotoOprnKey == CONST_OPEN_MOVING_PHOTO_VIDEO || movingPhotoOprnKey == CONST_CREATE_MOVING_PHOTO_VIDEO ||
+        movingPhotoOprnKey == CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD) {
+        bool isTemp = movingPhotoOprnKey == CONST_CREATE_MOVING_PHOTO_VIDEO;
         CHECK_AND_RETURN_RET_LOG(CheckOpenMovingPhoto(fileAsset->GetPhotoSubType(),
-            fileAsset->GetMovingPhotoEffectMode(), cmd.GetQuerySetParam(MEDIA_OPERN_KEYWORD)),
+            fileAsset->GetMovingPhotoEffectMode(), cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD)),
             E_INVALID_VALUES,
             "Non-moving photo is requesting moving photo operation, file id: %{public}s, actual subtype: %{public}d",
             id.c_str(), fileAsset->GetPhotoSubType());
@@ -524,11 +524,11 @@ int32_t MediaLibraryPhotoOperations::ProcessMovingPhotoOprnKey(MediaLibraryComma
             E_HAS_FS_ERROR, "Can not create dir for xtstle origin photo");
         fileAsset->SetPath(inputPath);
         isMovingPhotoVideo = true;
-        if (movingPhotoOprnKey == OPEN_MOVING_PHOTO_VIDEO_CLOUD && fileAsset->GetPosition() == POSITION_CLOUD) {
+        if (movingPhotoOprnKey == CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD && fileAsset->GetPosition() == POSITION_CLOUD) {
             fileAsset->SetPath(imagePath);
             isMovingPhotoVideo = false;
         }
-    } else if (movingPhotoOprnKey == OPEN_PRIVATE_LIVE_PHOTO) {
+    } else if (movingPhotoOprnKey == CONST_OPEN_PRIVATE_LIVE_PHOTO) {
         CHECK_AND_RETURN_RET_LOG(fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO),
             E_INVALID_VALUES,
             "Non-moving photo is requesting moving photo operation, file id: %{public}s, actual subtype: %{public}d",
@@ -546,7 +546,7 @@ int32_t MediaLibraryPhotoOperations::ProcessMovingPhotoOprnKey(MediaLibraryComma
             E_INVALID_VALUES,
             "Failed convert to live photo");
         fileAsset->SetPath(livePhotoPath);
-    } else if (movingPhotoOprnKey == OPEN_PRIVATE_MOVING_PHOTO_METADATA) {
+    } else if (movingPhotoOprnKey == CONST_OPEN_PRIVATE_MOVING_PHOTO_METADATA) {
         string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(fileAsset->GetPath());
         fileAsset->SetPath(extraDataPath);
     }
@@ -556,15 +556,15 @@ int32_t MediaLibraryPhotoOperations::ProcessMovingPhotoOprnKey(MediaLibraryComma
 int32_t MediaLibraryPhotoOperations::ProcessCinematicVideoOprnKey(MediaLibraryCommand& cmd,
     shared_ptr<FileAsset>& fileAsset, const string& id)
 {
-    string cinematicVideoOprnKey = cmd.GetQuerySetParam(MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD);
-    bool isValid = (cinematicVideoOprnKey == CREATE_CINEMATIC_VIDEO);
+    string cinematicVideoOprnKey = cmd.GetQuerySetParam(CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD);
+    bool isValid = (cinematicVideoOprnKey == CONST_CREATE_CINEMATIC_VIDEO);
     CHECK_AND_RETURN_RET_INFO_LOG(isValid, E_OK,
         "cinematicVideoOprnKey is not valid. cinematicVideoOprnKey: %{public}s", cinematicVideoOprnKey.c_str());
 
     string videoPath = fileAsset->GetPath();
     MEDIA_INFO_LOG("ProcessCinematicVideoOprnKey videoPath %{private}s", videoPath.c_str());
     string inputPath;
-    if (cmd.GetQuerySetParam(VIDEO_TYPE_KEYWORD) == ORIGIN_VIDEO_STR) {
+    if (cmd.GetQuerySetParam(CONST_VIDEO_TYPE_KEYWORD) == ORIGIN_VIDEO_STR) {
         inputPath = PhotoFileUtils::GetEditDataSourcePath(videoPath);
         string editDataDirPath = GetEditDataDirPath(videoPath);
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
@@ -573,7 +573,7 @@ int32_t MediaLibraryPhotoOperations::ProcessCinematicVideoOprnKey(MediaLibraryCo
         inputPath = videoPath;
     }
     MEDIA_INFO_LOG("ProcessCinematicVideoOprnKey inputPath %{private}s, videoType %{public}s",
-        inputPath.c_str(), cmd.GetQuerySetParam(VIDEO_TYPE_KEYWORD).c_str());
+        inputPath.c_str(), cmd.GetQuerySetParam(CONST_VIDEO_TYPE_KEYWORD).c_str());
     fileAsset->SetPath(inputPath);
     return E_OK;
 }
@@ -653,7 +653,7 @@ int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string
     if (errCode != E_OK || !isSkipEdit) {
         return errCode;
     }
-    bool isHeif = cmd.GetQuerySetParam(PHOTO_TRANSCODE_OPERATION) == OPRN_TRANSCODE_HEIF;
+    bool isHeif = cmd.GetQuerySetParam(CONST_PHOTO_TRANSCODE_OPERATION) == CONST_OPRN_TRANSCODE_HEIF;
     string uriString = cmd.GetUriStringWithoutSegment();
     string id = MediaFileUtils::GetIdFromUri(uriString);
     CHECK_AND_RETURN_RET(!uriString.empty() && MediaLibraryDataManagerUtils::IsNumber(id), E_INVALID_URI);
@@ -701,7 +701,7 @@ int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
 {
     const ValuesBucket &values = cmd.GetValueBucket();
     string uriString;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, MEDIA_DATA_DB_URI, uriString), E_INVALID_VALUES);
+    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_URI, uriString), E_INVALID_VALUES);
     string pendingStatus = cmd.GetQuerySetParam(MediaColumn::MEDIA_TIME_PENDING);
 
     shared_ptr<FileAsset> fileAsset = GetFileAssetByUri(uriString, true, PHOTO_COLUMN_VECTOR, pendingStatus);
@@ -724,10 +724,10 @@ int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
 static inline void SetPhotoTypeByRelativePath(const string &relativePath, FileAsset &fileAsset)
 {
     int32_t subType = static_cast<int32_t>(PhotoSubType::DEFAULT);
-    if (relativePath.compare(CAMERA_PATH) == 0) {
+    if (relativePath.compare(CONST_CAMERA_PATH) == 0) {
         subType = static_cast<int32_t>(PhotoSubType::CAMERA);
-    } else if (relativePath.compare(SCREEN_RECORD_PATH) == 0 ||
-        relativePath.compare(SCREEN_SHOT_PATH) == 0) {
+    } else if (relativePath.compare(CONST_SCREEN_RECORD_PATH) == 0 ||
+        relativePath.compare(CONST_SCREEN_SHOT_PATH) == 0) {
         subType = static_cast<int32_t>(PhotoSubType::SCREENSHOT);
     }
 
@@ -758,7 +758,7 @@ static inline int32_t GetCallingUid(MediaLibraryCommand &cmd)
 {
     int32_t callingUid = 0;
     ValueObject value;
-    if (cmd.GetValueBucket().GetObject(MEDIA_DATA_CALLING_UID, value)) {
+    if (cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_CALLING_UID, value)) {
         value.GetInt(callingUid);
     }
     return callingUid;
@@ -843,7 +843,7 @@ void MediaLibraryPhotoOperations::SolvePhotoAlbumInCreate(MediaLibraryCommand &c
 {
     ValuesBucket &values = cmd.GetValueBucket();
     string albumUri;
-    GetStringFromValuesBucket(values, MEDIA_DATA_DB_ALBUM_ID, albumUri);
+    GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_ALBUM_ID, albumUri);
     if (!albumUri.empty()) {
         PhotosAddAsset(stoi(MediaFileUtils::GetIdFromUri(albumUri)), to_string(fileAsset.GetId()),
             MediaFileUtils::GetExtraUri(fileAsset.GetDisplayName(), fileAsset.GetPath()));
@@ -917,7 +917,7 @@ int32_t MediaLibraryPhotoOperations::HandleCreateV10(MediaLibraryCommand &cmd)
         SetAssetDisplayName(displayName, fileAsset, isContains);
         fileAsset.SetTimePending(UNCREATE_FILE_TIMEPENDING);
     } else {
-        CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, ASSET_EXTENTION, extention), E_HAS_DB_ERROR);
+        CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_ASSET_EXTENTION, extention), E_HAS_DB_ERROR);
         isNeedGrant = true;
         fileAsset.SetTimePending(UNOPEN_FILE_COMPONENT_TIMEPENDING);
         string title;
@@ -1172,8 +1172,8 @@ static void DeleteBehaviorAsync(AsyncTaskData *data)
 static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,  const vector<string> &fileIds,
     std::shared_ptr<AlbumData> albumData)
 {
-    vector<string> columns { MediaColumn::MEDIA_ID, MEDIA_DATA_DB_PHOTO_ID, MEDIA_DATA_DB_PHOTO_QUALITY,
-        MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
+    vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
@@ -1190,7 +1190,7 @@ static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,
         albumData->isHidden.push_back(isHidden);
     }
     int32_t quality = GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet);
-    int32_t taskStatus = GetInt32Val(MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
+    int32_t taskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
     if (quality == static_cast<int32_t>(MultiStagesPhotoQuality::LOW)
         || taskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
         MultiStagesCaptureManager::RemovePhotosWithResultSet(resultSet, true);
@@ -1206,8 +1206,8 @@ static void HandleQualityAndHiddenBatch(NativeRdb::AbsRdbPredicates predicates, 
         PhotoColumn::STAGE_VIDEO_TASK_STATUS + " = " +
         to_string(static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) + ")";
     predicates.SetWhereClause(where);
-    vector<string> columns { MediaColumn::MEDIA_ID, MEDIA_DATA_DB_PHOTO_ID, MEDIA_DATA_DB_PHOTO_QUALITY,
-        MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
+    vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
@@ -1739,12 +1739,13 @@ int32_t MediaLibraryPhotoOperations::HandleSaveCameraPhoto(MediaLibraryCommand &
         "MultistagesCapture, get fileId fail"), 0, "MultistagesCapture, get fileId fail");
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture, start save fileId: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, fileId.c_str());
-    std::string containsAddResource = cmd.GetQuerySetParam(CONTAIN_ADD_RESOURCE);
+
+    std::string containsAddResource = cmd.GetQuerySetParam(CONST_CONTAIN_ADD_RESOURCE);
     if (!containsAddResource.empty()) {
         HandleContainsAddResource(fileId, containsAddResource);
     }
     tracer.Start("MediaLibraryPhotoOperations::UpdateIsTempAndDirty");
-    string fileType = cmd.GetQuerySetParam(IMAGE_FILE_TYPE);
+    string fileType = cmd.GetQuerySetParam(CONST_IMAGE_FILE_TYPE);
     MEDIA_ERR_LOG("MultistagesCapture fileType: %{public}s", fileType.c_str());
     int32_t getPicRet = -1;
     PhotoExtInfo photoExtInfo = {"", MIME_TYPE_JPEG, "", "", nullptr};
@@ -1768,7 +1769,7 @@ int32_t MediaLibraryPhotoOperations::HandleSaveCameraPhoto(MediaLibraryCommand &
             fileId.c_str(), ret);
         return ret;
     }
-    string needScanStr = cmd.GetQuerySetParam(MEDIA_OPERN_KEYWORD);
+    string needScanStr = cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD);
     CHECK_AND_RETURN_RET(HandleScanFile(resultPicture, fileId), 0);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "MultistagesCapture Success, fileId: %{public}s, ret: %{public}d, needScanStr: %{public}s",
@@ -2647,17 +2648,17 @@ int32_t MediaLibraryPhotoOperations::OpenCache(MediaLibraryCommand& cmd, const s
 int32_t MediaLibraryPhotoOperations::OpenEditOperation(MediaLibraryCommand &cmd, bool &isSkip)
 {
     isSkip = true;
-    string operationKey = cmd.GetQuerySetParam(MEDIA_OPERN_KEYWORD);
+    string operationKey = cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD);
     if (operationKey.empty()) {
         return E_OK;
     }
-    if (operationKey == EDIT_DATA_REQUEST) {
+    if (operationKey == CONST_EDIT_DATA_REQUEST) {
         isSkip = false;
         return RequestEditData(cmd);
-    } else if (operationKey == SOURCE_REQUEST) {
+    } else if (operationKey == CONST_SOURCE_REQUEST) {
         isSkip = false;
         return RequestEditSource(cmd);
-    } else if (operationKey == COMMIT_REQUEST) {
+    } else if (operationKey == CONST_COMMIT_REQUEST) {
         isSkip = false;
         return CommitEditOpen(cmd);
     }
@@ -2758,12 +2759,12 @@ int32_t MediaLibraryPhotoOperations::RequestEditSource(MediaLibraryCommand &cmd)
         "Can not get file path, uri=%{private}s", uriString.c_str());
     string movingPhotoVideoPath = "";
     bool isMovingPhotoVideoRequest =
-        cmd.GetQuerySetParam(MEDIA_MOVING_PHOTO_OPRN_KEYWORD) == OPEN_MOVING_PHOTO_VIDEO;
+        cmd.GetQuerySetParam(CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD) == CONST_OPEN_MOVING_PHOTO_VIDEO;
     bool isMovingPhotoMetadataRequest =
-        cmd.GetQuerySetParam(MEDIA_MOVING_PHOTO_OPRN_KEYWORD) == OPEN_PRIVATE_MOVING_PHOTO_METADATA;
+        cmd.GetQuerySetParam(CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD) == CONST_OPEN_PRIVATE_MOVING_PHOTO_METADATA;
     CHECK_AND_RETURN_RET_LOG((!isMovingPhotoVideoRequest && !isMovingPhotoMetadataRequest) ||
         CheckOpenMovingPhoto(fileAsset->GetPhotoSubType(), fileAsset->GetMovingPhotoEffectMode(),
-            cmd.GetQuerySetParam(MEDIA_OPERN_KEYWORD)),
+            cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD)),
         E_INVALID_VALUES,
         "Non-moving photo requesting moving photo operation, file id: %{public}s, actual subtype: %{public}d",
         id.c_str(), fileAsset->GetPhotoSubType());
@@ -3103,7 +3104,7 @@ int32_t MediaLibraryPhotoOperations::CommitEditInsert(MediaLibraryCommand &cmd)
         PhotoEditingRecord::GetInstance()->EndCommitEdit(id);
         return E_INVALID_VALUES;
     }
-    if (!GetStringFromValuesBucket(values, EDIT_DATA, editData)) {
+    if (!GetStringFromValuesBucket(values, CONST_EDIT_DATA, editData)) {
         MEDIA_ERR_LOG("Failed to get editdata");
         PhotoEditingRecord::GetInstance()->EndCommitEdit(id);
         return E_INVALID_VALUES;
@@ -3348,10 +3349,10 @@ int32_t MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(const std::sh
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(editDataPath), E_HAS_FS_ERROR,
         "Failed to create editdata file %{private}s", editDataPath.c_str());
     nlohmann::json editDataJson;
-    editDataJson[COMPATIBLE_FORMAT] = SPECIAL_EDIT_COMPATIBLE_FORMAT;
-    editDataJson[FORMAT_VERSION] = SPECIAL_EDIT_FORMAT_VERSION;
-    editDataJson[EDIT_DATA] = SPECIAL_EDIT_EDIT_DATA;
-    editDataJson[APP_ID] = SPECIAL_EDIT_APP_ID;
+    editDataJson[CONST_COMPATIBLE_FORMAT] = SPECIAL_EDIT_COMPATIBLE_FORMAT;
+    editDataJson[CONST_FORMAT_VERSION] = SPECIAL_EDIT_FORMAT_VERSION;
+    editDataJson[CONST_EDIT_DATA] = SPECIAL_EDIT_EDIT_DATA;
+    editDataJson[CONST_APP_ID] = SPECIAL_EDIT_APP_ID;
     string editData = editDataJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::WriteStrToFile(editDataPath, editData), E_HAS_FS_ERROR,
         "Failed to write editdata:%{private}s", editDataPath.c_str());
@@ -3506,8 +3507,8 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckMovingPhotoImage(cachePath), E_INVALID_MOVING_PHOTO,
         "Failed to check image of moving photo");
     string cacheMovingPhotoVideoName;
-    if (GetStringFromValuesBucket(cmd.GetValueBucket(), CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName) &&
-            !cacheMovingPhotoVideoName.empty()) {
+    if (GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
+        cacheMovingPhotoVideoName) && !cacheMovingPhotoVideoName.empty()) {
         string cacheVideoPath = GetAssetCacheDir() + "/" + cacheMovingPhotoVideoName;
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckMovingPhotoVideo(cacheVideoPath), E_INVALID_MOVING_PHOTO,
             "Failed to check video of moving photo");
@@ -3523,8 +3524,8 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(
 bool MediaLibraryPhotoOperations::CheckCacheCmd(MediaLibraryCommand& cmd, int32_t subtype, const string& displayName)
 {
     string cacheFileName;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(cmd.GetValueBucket(), CACHE_FILE_NAME, cacheFileName), false,
-        "Failed to get cache file name");
+    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_FILE_NAME, cacheFileName),
+        false, "Failed to get cache file name");
     string cacheMimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(cacheFileName));
     string assetMimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(displayName));
 
@@ -3539,7 +3540,7 @@ bool MediaLibraryPhotoOperations::CheckCacheCmd(MediaLibraryCommand& cmd, int32_
     if (subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) && isCreation) {
         string movingPhotoVideoName;
         bool containsVideo = GetStringFromValuesBucket(cmd.GetValueBucket(),
-            CACHE_MOVING_PHOTO_VIDEO_NAME, movingPhotoVideoName);
+            CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, movingPhotoVideoName);
         CHECK_AND_RETURN_RET_LOG(containsVideo, false, "Failed to get video when creating moving photo");
 
         string videoExtension = MediaFileUtils::GetExtensionFromPath(movingPhotoVideoName);
@@ -3555,9 +3556,9 @@ int32_t MediaLibraryPhotoOperations::ParseMediaAssetEditData(MediaLibraryCommand
     string formatVersion;
     string data;
     const ValuesBucket& values = cmd.GetValueBucket();
-    bool containsCompatibleFormat = GetStringFromValuesBucket(values, COMPATIBLE_FORMAT, compatibleFormat);
-    bool containsFormatVersion = GetStringFromValuesBucket(values, FORMAT_VERSION, formatVersion);
-    bool containsData = GetStringFromValuesBucket(values, EDIT_DATA, data);
+    bool containsCompatibleFormat = GetStringFromValuesBucket(values, CONST_COMPATIBLE_FORMAT, compatibleFormat);
+    bool containsFormatVersion = GetStringFromValuesBucket(values, CONST_FORMAT_VERSION, formatVersion);
+    bool containsData = GetStringFromValuesBucket(values, CONST_EDIT_DATA, data);
     bool notContainsEditData = !containsCompatibleFormat && !containsFormatVersion && !containsData;
     bool containsEditData = containsCompatibleFormat && containsFormatVersion && containsData;
     if (!containsEditData && !notContainsEditData) {
@@ -3569,10 +3570,10 @@ int32_t MediaLibraryPhotoOperations::ParseMediaAssetEditData(MediaLibraryCommand
 
     nlohmann::json editDataJson;
     string bundleName = cmd.GetBundleName();
-    editDataJson[COMPATIBLE_FORMAT] = compatibleFormat.empty() ? bundleName : compatibleFormat;
-    editDataJson[FORMAT_VERSION] = formatVersion;
-    editDataJson[EDIT_DATA] = data;
-    editDataJson[APP_ID] = bundleName;
+    editDataJson[CONST_COMPATIBLE_FORMAT] = compatibleFormat.empty() ? bundleName : compatibleFormat;
+    editDataJson[CONST_FORMAT_VERSION] = formatVersion;
+    editDataJson[CONST_EDIT_DATA] = data;
+    editDataJson[CONST_APP_ID] = bundleName;
     editData = editDataJson.dump();
     return E_OK;
 }
@@ -3583,8 +3584,8 @@ void MediaLibraryPhotoOperations::ParseCloudEnhancementEditData(string& editData
         "Failed to verify the editData format, editData is: %{private}s", editData.c_str());
     string editDataJsonStr;
     nlohmann::json jsonObject = nlohmann::json::parse(editData);
-    if (jsonObject.contains(EDIT_DATA)) {
-        editDataJsonStr = jsonObject[EDIT_DATA];
+    if (jsonObject.contains(CONST_EDIT_DATA)) {
+        editDataJsonStr = jsonObject[CONST_EDIT_DATA];
         nlohmann::json editDataJson = nlohmann::json::parse(editDataJsonStr, nullptr, false);
         if (editDataJson.is_discarded()) {
             MEDIA_INFO_LOG("editDataJson parse failed");
@@ -3657,9 +3658,9 @@ bool MediaLibraryPhotoOperations::IsContainsData(MediaLibraryCommand &cmd)
     string formatVersion;
     string data;
     const ValuesBucket& values = cmd.GetValueBucket();
-    bool containsCompatibleFormat = GetStringFromValuesBucket(values, COMPATIBLE_FORMAT, compatibleFormat);
-    bool containsFormatVersion = GetStringFromValuesBucket(values, FORMAT_VERSION, formatVersion);
-    bool containsData = GetStringFromValuesBucket(values, EDIT_DATA, data);
+    bool containsCompatibleFormat = GetStringFromValuesBucket(values, CONST_COMPATIBLE_FORMAT, compatibleFormat);
+    bool containsFormatVersion = GetStringFromValuesBucket(values, CONST_FORMAT_VERSION, formatVersion);
+    bool containsData = GetStringFromValuesBucket(values, CONST_EDIT_DATA, data);
     return containsCompatibleFormat && containsFormatVersion && containsData;
 }
 
@@ -3680,8 +3681,8 @@ int32_t MediaLibraryPhotoOperations::ReadEditdataFromFile(const std::string &edi
         return E_OK;
     }
     nlohmann::json editdataJson = nlohmann::json::parse(editDataStr);
-    if (editdataJson.contains(EDIT_DATA)) {
-        editData = editdataJson[EDIT_DATA];
+    if (editdataJson.contains(CONST_EDIT_DATA)) {
+        editData = editdataJson[CONST_EDIT_DATA];
     } else {
         editData = editDataStr;
     }
@@ -3702,7 +3703,7 @@ int32_t MediaLibraryPhotoOperations::SaveEditDataCamera(MediaLibraryCommand &cmd
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::WriteStrToFile(editDataCameraPath, editDataStr), E_HAS_FS_ERROR,
         "Failed to write editdata:%{private}s", editDataCameraPath.c_str());
     const ValuesBucket& values = cmd.GetValueBucket();
-    GetStringFromValuesBucket(values, EDIT_DATA, editData);
+    GetStringFromValuesBucket(values, CONST_EDIT_DATA, editData);
     return ret;
 }
 
@@ -3855,9 +3856,9 @@ int32_t MediaLibraryPhotoOperations::AddFilters(MediaLibraryCommand& cmd)
     // moving photo video save and add filters
     const ValuesBucket& values = cmd.GetValueBucket();
     int32_t videoType = ORIGIN_VIDEO;
-    GetInt32FromValuesBucket(values, VIDEO_TYPE_KEYWORD, videoType);
+    GetInt32FromValuesBucket(values, CONST_VIDEO_TYPE_KEYWORD, videoType);
     string videoSaveFinishedUri;
-    if (GetStringFromValuesBucket(values, NOTIFY_VIDEO_SAVE_FINISHED, videoSaveFinishedUri)) {
+    if (GetStringFromValuesBucket(values, CONST_NOTIFY_VIDEO_SAVE_FINISHED, videoSaveFinishedUri)) {
         int32_t id = -1;
         CHECK_AND_RETURN_RET_LOG(GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, id),
             E_INVALID_VALUES, "Failed to get fileId");
@@ -3888,7 +3889,7 @@ int32_t MediaLibraryPhotoOperations::AddFilters(MediaLibraryCommand& cmd)
 int32_t MediaLibraryPhotoOperations::ForceSavePicture(MediaLibraryCommand& cmd)
 {
     MEDIA_DEBUG_LOG("ForceSavePicture");
-    int fileType = std::atoi(cmd.GetQuerySetParam(IMAGE_FILE_TYPE).c_str());
+    int fileType = std::atoi(cmd.GetQuerySetParam(CONST_IMAGE_FILE_TYPE).c_str());
     int fileId = std::atoi(cmd.GetQuerySetParam(PhotoColumn::MEDIA_ID).c_str());
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(fileId));
@@ -4306,7 +4307,7 @@ int32_t MediaLibraryPhotoOperations::SubmitEditMovingPhotoExecute(MediaLibraryCo
     }
 
     string cacheMovingPhotoVideoName;
-    GetStringFromValuesBucket(cmd.GetValueBucket(), CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName);
+    GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName);
     if (cacheMovingPhotoVideoName.empty()) {
         string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
         CHECK_AND_RETURN_RET_LOG(!videoPath.empty(), E_INVALID_PATH, "Can not get video path");
@@ -4333,8 +4334,8 @@ int32_t MediaLibraryPhotoOperations::GetMovingPhotoCachePath(MediaLibraryCommand
     string imageCacheName;
     string videoCacheName;
     const ValuesBucket& values = cmd.GetValueBucket();
-    GetStringFromValuesBucket(values, CACHE_FILE_NAME, imageCacheName);
-    GetStringFromValuesBucket(values, CACHE_MOVING_PHOTO_VIDEO_NAME, videoCacheName);
+    GetStringFromValuesBucket(values, CONST_CACHE_FILE_NAME, imageCacheName);
+    GetStringFromValuesBucket(values, CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, videoCacheName);
     CHECK_AND_RETURN_RET_LOG(!imageCacheName.empty() || !videoCacheName.empty(),
         E_INVALID_VALUES, "Failed to check cache file of moving photo");
 
@@ -4436,14 +4437,14 @@ int32_t MediaLibraryPhotoOperations::SubmitCache(MediaLibraryCommand& cmd)
 
     const ValuesBucket& values = cmd.GetValueBucket();
     string fileName;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, CACHE_FILE_NAME, fileName),
+    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, CONST_CACHE_FILE_NAME, fileName),
         E_INVALID_VALUES, "Failed to get fileName");
     string cacheDir = GetAssetCacheDir();
     string cachePath = cacheDir + "/" + fileName;
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(cachePath), E_NO_SUCH_FILE,
         "cachePath: %{private}s does not exist!", cachePath.c_str());
     string movingPhotoVideoName;
-    if (GetStringFromValuesBucket(values, CACHE_MOVING_PHOTO_VIDEO_NAME, movingPhotoVideoName)) {
+    if (GetStringFromValuesBucket(values, CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, movingPhotoVideoName)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(cacheDir + "/" + movingPhotoVideoName),
             E_NO_SUCH_FILE, "cahce moving video path: %{private}s does not exist!", cachePath.c_str());
     }
@@ -4828,7 +4829,7 @@ int32_t MediaLibraryPhotoOperations::ScanFileWithoutAlbumUpdate(MediaLibraryComm
     }
     const ValuesBucket &values = cmd.GetValueBucket();
     string uriString;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, MEDIA_DATA_DB_URI, uriString), E_INVALID_VALUES);
+    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_URI, uriString), E_INVALID_VALUES);
 
     string path = MediaFileUri::GetPathFromUri(uriString, true);
     string fileIdStr = MediaFileUri::GetPhotoId(uriString);

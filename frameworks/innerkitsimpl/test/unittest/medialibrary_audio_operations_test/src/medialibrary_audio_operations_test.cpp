@@ -81,7 +81,7 @@ void CleanTestTables()
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
         AudioColumn::AUDIOS_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
         ASSET_UNIQUE_NUMBER_TABLE
     };
     for (auto &dropTable : dropTableList) {
@@ -122,9 +122,9 @@ void PrepareUniqueNumberTable()
         return;
     }
 
-    UniqueMemberValuesBucket imageBucket = { IMAGE_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket videoBucket = { VIDEO_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket audioBucket = { AUDIO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket imageBucket = { CONST_IMAGE_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket videoBucket = { CONST_VIDEO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket audioBucket = { CONST_AUDIO_ASSET_TYPE, 1 };
 
     vector<UniqueMemberValuesBucket> uniqueNumberValueBuckets = {
         imageBucket, videoBucket, audioBucket
@@ -665,7 +665,7 @@ void TestAudioCloseParamsApi10(string uri, ExceptIntFunction func)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_AUDIO, OperationType::CLOSE);
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_URI, uri);
+    values.PutString(CONST_MEDIA_DATA_DB_URI, uri);
     cmd.SetValueBucket(values);
     int32_t ret = MediaLibraryAudioOperations::Close(cmd);
     func(ret);
@@ -826,9 +826,9 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_create_api10_test_005, Test
         MediaLibraryApi::API_10);
     string extention = "mp3";
     ValuesBucket values;
-    values.PutString(ASSET_EXTENTION, extention);
+    values.PutString(CONST_ASSET_EXTENTION, extention);
     values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_AUDIO);
-    values.PutInt(PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_AUDIOS));
+    values.PutInt(CONST_PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_AUDIOS));
     cmd.SetValueBucket(values);
     int32_t ret = MediaLibraryAudioOperations::Create(cmd);
     EXPECT_GE(ret, 0);
@@ -1374,7 +1374,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_pending_api10_test_001, Tes
     auto fileAssetPtr = QueryAudioAsset(AudioColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     int32_t ret = MediaLibraryAudioOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -1418,7 +1418,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_pending_api10_test_002, Tes
     auto fileAssetPtr = QueryAudioAsset(AudioColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     ret = MediaLibraryAudioOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -1470,7 +1470,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_pending_api10_test_003, Tes
     auto fileAssetPtr = QueryAudioAsset(AudioColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     ret = MediaLibraryAudioOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -1509,7 +1509,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_pending_api9_test_001, Test
     auto fileAssetPtr = QueryAudioAsset(AudioColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     int32_t ret = MediaLibraryAudioOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -1583,7 +1583,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_006
 {
     MEDIA_INFO_LOG("start tdd medialibrary_asset_operations_test_006");
     FileAsset fileAsset;
-    fileAsset.member_[MEDIA_DATA_DB_FILE_PATH] = "path/to/file";
+    fileAsset.member_[CONST_MEDIA_DATA_DB_FILE_PATH] = "path/to/file";
     auto ret = MediaLibraryAssetOperations::SetAssetPathInCreate(fileAsset);
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("end tdd medialibrary_asset_operations_test_006");

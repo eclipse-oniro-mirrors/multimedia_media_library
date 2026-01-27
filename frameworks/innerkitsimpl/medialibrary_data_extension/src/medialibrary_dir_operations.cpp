@@ -44,7 +44,7 @@ int32_t MediaLibraryDirOperations::TrashDirOperation(MediaLibraryCommand &cmd)
 {
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     ValueObject valueObject;
-    if (!cmd.GetValueBucket().GetObject(MEDIA_DATA_DB_ID, valueObject)) {
+    if (!cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_DB_ID, valueObject)) {
         return E_HAS_DB_ERROR;
     }
     int32_t dirId = DEFAULT_ASSETID;
@@ -66,7 +66,7 @@ int32_t MediaLibraryDirOperations::TrashDirOperation(MediaLibraryCommand &cmd)
 int32_t MediaLibraryDirOperations::CreateDirOperation(MediaLibraryCommand &cmd)
 {
     ValueObject valueObject;
-    if (!cmd.GetValueBucket().GetObject(MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
+    if (!cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
         return E_HAS_DB_ERROR;
     }
     string relativePath;
@@ -75,9 +75,9 @@ int32_t MediaLibraryDirOperations::CreateDirOperation(MediaLibraryCommand &cmd)
         return E_GET_VALUEBUCKET_FAIL;
     }
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_NAME, MEDIA_NO_FILE);
-    values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
-    values.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_NOFILE);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, MEDIA_NO_FILE);
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    values.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_NOFILE);
     cmd.SetValueBucket(values);
     return MediaLibraryObjectUtils::CreateFileObj(cmd);
 }

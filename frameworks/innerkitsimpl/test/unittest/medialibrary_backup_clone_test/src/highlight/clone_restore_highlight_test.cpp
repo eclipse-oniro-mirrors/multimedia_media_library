@@ -184,9 +184,9 @@ void QueryIntBySql(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &query
 int32_t GetAlbumCountByCondition(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &tableName,
     const string condition)
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " + condition;
+    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " + condition;
     int32_t result = INVALID_COUNT;
-    QueryIntBySql(rdbStore, querySql, MEDIA_COLUMN_COUNT_1, result);
+    QueryIntBySql(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
 }
 

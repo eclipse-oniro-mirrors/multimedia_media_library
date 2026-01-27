@@ -563,7 +563,7 @@ static void JSPhotoAccessGetPhotoAssetsExecute(napi_env env, void *data)
     tracer.Start("JSPhotoAccessGetPhotoAssetsExecute");
 
     auto *context = static_cast<SendablePhotoAlbumNapiAsyncContext *>(data);
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(context);
     ConvertColumnsForFeaturedSinglePortrait(context);
     int32_t errCode = 0;
@@ -683,7 +683,7 @@ static void JSCommitModifyExecute(napi_env env, void *data)
 
     auto *context = static_cast<SendablePhotoAlbumNapiAsyncContext*>(data);
     string commitModifyUri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ?
-        UFM_UPDATE_PHOTO_ALBUM : PAH_UPDATE_PHOTO_ALBUM;
+        CONST_UFM_UPDATE_PHOTO_ALBUM : CONST_PAH_UPDATE_PHOTO_ALBUM;
     Uri uri(commitModifyUri);
     int changedRows = UserFileClient::Update(uri, context->predicates, context->valuesBucket);
     context->SaveError(changedRows);
@@ -774,7 +774,7 @@ napi_value SendablePhotoAlbumNapi::JSPhotoAccessGetSharedPhotoAssets(napi_env en
     SendablePhotoAlbumNapiAsyncContext* context =
         static_cast<SendablePhotoAlbumNapiAsyncContext*>((asyncContext.get()));
 
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(context);
     ConvertColumnsForFeaturedSinglePortrait(context);
     shared_ptr<NativeRdb::ResultSet> resultSet = UserFileClient::QueryRdb(uri,
@@ -815,7 +815,7 @@ static void PhotoAccessHelperGetFaceIdExec(napi_env env, void *data)
         return;
     }
 
-    Uri uri(PAH_QUERY_ANA_PHOTO_ALBUM);
+    Uri uri(CONST_PAH_QUERY_ANA_PHOTO_ALBUM);
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, objectInfo->GetAlbumId());
     vector<string> fetchColumn = { GROUP_TAG };

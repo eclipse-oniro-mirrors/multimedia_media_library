@@ -55,20 +55,20 @@ const std::string SQL_REPAIR_EXIF_ROTATE_WITHOUT_REGENERATE_THUMBNAIL = "\
 
 using HandleFunc = void(*)(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, int idx, ThumbnailData &data);
 const std::unordered_map<std::string, HandleFunc> ThumbnailRdbUtils::RESULT_SET_HANDLER = {
-    {MEDIA_DATA_DB_ID, HandleId},
-    {MEDIA_DATA_DB_FILE_PATH, HandleFilePath},
-    {MEDIA_DATA_DB_DATE_ADDED, HandleDateAdded},
-    {MEDIA_DATA_DB_NAME, HandleDisplayName},
-    {MEDIA_DATA_DB_MEDIA_TYPE, HandleMediaType},
-    {MEDIA_DATA_DB_DATE_TAKEN, HandleDateTaken},
-    {MEDIA_DATA_DB_DATE_MODIFIED, HandleDateModified},
-    {MEDIA_DATA_DB_ORIENTATION, HandleOrientation},
+    {CONST_MEDIA_DATA_DB_ID, HandleId},
+    {CONST_MEDIA_DATA_DB_FILE_PATH, HandleFilePath},
+    {CONST_MEDIA_DATA_DB_DATE_ADDED, HandleDateAdded},
+    {CONST_MEDIA_DATA_DB_NAME, HandleDisplayName},
+    {CONST_MEDIA_DATA_DB_MEDIA_TYPE, HandleMediaType},
+    {CONST_MEDIA_DATA_DB_DATE_TAKEN, HandleDateTaken},
+    {CONST_MEDIA_DATA_DB_DATE_MODIFIED, HandleDateModified},
+    {CONST_MEDIA_DATA_DB_ORIENTATION, HandleOrientation},
     {PhotoColumn::PHOTO_EXIF_ROTATE, HandleExifRotate},
-    {MEDIA_DATA_DB_POSITION, HandlePosition},
-    {MEDIA_DATA_DB_HEIGHT, HandlePhotoHeight},
-    {MEDIA_DATA_DB_WIDTH, HandlePhotoWidth},
-    {MEDIA_DATA_DB_DIRTY, HandleDirty},
-    {MEDIA_DATA_DB_THUMBNAIL_READY, HandleReady},
+    {CONST_MEDIA_DATA_DB_POSITION, HandlePosition},
+    {CONST_MEDIA_DATA_DB_HEIGHT, HandlePhotoHeight},
+    {CONST_MEDIA_DATA_DB_WIDTH, HandlePhotoWidth},
+    {CONST_MEDIA_DATA_DB_DIRTY, HandleDirty},
+    {CONST_MEDIA_DATA_DB_THUMBNAIL_READY, HandleReady},
     {PhotoColumn::PHOTO_LCD_VISIT_TIME, HandleLcdVisitTime},
     {PhotoColumn::PHOTO_THUMB_STATUS, HandleThumbStatus},
 };
@@ -327,10 +327,10 @@ void ThumbnailRdbUtils::ParseInt64Result(const shared_ptr<ResultSet> &resultSet,
 bool ThumbnailRdbUtils::QueryLocalNoExifRotateInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &infos)
 {
     vector<string> column = {
-        MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_NAME,
     };
     RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    rdbPredicates.OrderByDesc(MEDIA_DATA_DB_DATE_TAKEN);
+    rdbPredicates.OrderByDesc(CONST_MEDIA_DATA_DB_DATE_TAKEN);
     rdbPredicates.BeginWrap()
         ->EqualTo(PhotoColumn::PHOTO_EXIF_ROTATE, "0")
         ->And()->EqualTo(MediaColumn::MEDIA_TIME_PENDING, "0")

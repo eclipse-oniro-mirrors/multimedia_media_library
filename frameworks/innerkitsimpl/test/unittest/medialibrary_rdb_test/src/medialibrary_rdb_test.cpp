@@ -42,16 +42,16 @@ using namespace OHOS::NativeRdb;
 namespace OHOS {
 namespace Media {
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
-const std::string QUERY_MEDIA_VOLUME = "SELECT sum(" + MEDIA_DATA_DB_SIZE + ") AS " +
-    MEDIA_DATA_DB_SIZE + "," +
-    MEDIA_DATA_DB_MEDIA_TYPE + " FROM " +
-    MEDIALIBRARY_TABLE + " WHERE " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_FILE) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_IMAGE) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_VIDEO) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_ALBUM) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_AUDIO) + " GROUP BY " +
-    MEDIA_DATA_DB_MEDIA_TYPE;
+const std::string QUERY_MEDIA_VOLUME = std::string("SELECT sum(") + CONST_MEDIA_DATA_DB_SIZE + ") AS " +
+    CONST_MEDIA_DATA_DB_SIZE + "," +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " FROM " +
+    CONST_MEDIALIBRARY_TABLE + " WHERE " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_FILE) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_IMAGE) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_VIDEO) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_ALBUM) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_AUDIO) + " GROUP BY " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE;
 
 static shared_ptr<MediaLibraryRdbStore> rdbStorePtr = nullptr;
 
@@ -59,7 +59,7 @@ void CleanTestTables()
 {
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
     };
     for (auto &dropTable : dropTableList) {
         string dropSql = "DROP TABLE " + dropTable + ";";
@@ -118,20 +118,20 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Insert_test_001, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
     rdbStorePtr->Init();
-    string deleteSql = "DELETE FROM " + MEDIALIBRARY_TABLE +";";
+    string deleteSql = string("DELETE FROM ") + CONST_MEDIALIBRARY_TABLE +";";
     int32_t ret = rdbStorePtr->ExecuteSql(deleteSql);
     EXPECT_EQ(ret, E_OK);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     ValuesBucket values;
     string name = "test name";
-    values.PutString(MEDIA_DATA_DB_NAME, name);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, name);
     string data = "medialib_Insert_test_001";
-    values.PutString(MEDIA_DATA_DB_FILE_PATH, data);
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, data);
     string title = "insert test";
-    values.PutString(MEDIA_DATA_DB_TITLE, title);
+    values.PutString(CONST_MEDIA_DATA_DB_TITLE, title);
     int32_t fileId = 3;
-    values.PutInt(MEDIA_DATA_DB_ID, fileId);
+    values.PutInt(CONST_MEDIA_DATA_DB_ID, fileId);
     cmd.SetValueBucket(values);
     int64_t rowId = 1;
     ret = rdbStorePtr->Insert(cmd, rowId);
@@ -142,12 +142,12 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Insert_test_002, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     ValuesBucket values;
     string name = "medialib_Insert_test_002";
-    values.PutString(MEDIA_DATA_DB_NAME, name);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, name);
     string displayname = "medialib_Insert_test_002/test";
-    values.PutString(MEDIA_DATA_DB_NAME, displayname);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, displayname);
     cmd.SetValueBucket(values);
     int64_t rowId = 1;
     int32_t ret = rdbStorePtr->Insert(cmd, rowId);
@@ -167,10 +167,10 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Insert_test_004, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
-    cmd.SetTableName(MEDIALIBRARY_TABLE);
+    cmd.SetTableName(CONST_MEDIALIBRARY_TABLE);
     ValuesBucket values;
     string name = "medialib_Insert_test_004";
-    values.PutString(MEDIA_DATA_DB_NAME, name);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, name);
     cmd.SetValueBucket(values);
     int64_t rowId = 1;
     rdbStorePtr->Stop();
@@ -183,7 +183,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Query_test_001, TestSize.Level1)
     ASSERT_NE(rdbStorePtr, nullptr);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
     vector<string> columns;
-    columns.push_back(MEDIA_DATA_DB_RECYCLE_PATH);
+    columns.push_back(CONST_MEDIA_DATA_DB_RECYCLE_PATH);
     rdbStorePtr->Init();
     auto queryResultSet = rdbStorePtr->Query(cmd, columns);
     EXPECT_NE(queryResultSet, nullptr);
@@ -194,7 +194,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Query_test_002, TestSize.Level1)
     ASSERT_NE(rdbStorePtr, nullptr);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
     vector<string> columns;
-    columns.push_back(MEDIA_DATA_DB_DATE_TRASHED);
+    columns.push_back(CONST_MEDIA_DATA_DB_DATE_TRASHED);
     rdbStorePtr->Stop();
     auto queryResultSet = rdbStorePtr->Query(cmd, columns);
     EXPECT_EQ(queryResultSet, nullptr);
@@ -204,7 +204,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Delete_test_001, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
-    string selection = MEDIA_DATA_DB_ID + " = ? OR " + MEDIA_DATA_DB_PARENT_ID + " = ?";
+    string selection = string(CONST_MEDIA_DATA_DB_ID) + " = ? OR " + CONST_MEDIA_DATA_DB_PARENT_ID + " = ?";
     cmd.GetAbsRdbPredicates()->SetWhereClause(selection);
     vector<string> selectionArgs;
     int32_t rowId = 3;
@@ -232,7 +232,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Update_test_001, TestSize.Level1)
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE);
     ValuesBucket valuesBucket;
     string title = "medialib_Update_test_001";
-    valuesBucket.PutString(MEDIA_DATA_DB_TITLE, title);
+    valuesBucket.PutString(CONST_MEDIA_DATA_DB_TITLE, title);
     cmd.SetValueBucket(valuesBucket);
     int32_t updatedRows = E_HAS_DB_ERROR;
     rdbStorePtr->Init();
@@ -288,7 +288,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Transaction_test_001, TestSize.Level1)
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE);
     ValuesBucket valuesBucket;
     string title = "medialib_Update_test_001";
-    valuesBucket.PutString(MEDIA_DATA_DB_TITLE, title);
+    valuesBucket.PutString(CONST_MEDIA_DATA_DB_TITLE, title);
     cmd.SetValueBucket(valuesBucket);
     int32_t updatedRows = E_HAS_DB_ERROR;
     ret = rdbStorePtr->Update(cmd, updatedRows);
@@ -312,7 +312,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Transaction_test_002, TestSize.Level1)
 HWTEST_F(MediaLibraryRdbTest, medialib_ExecuteSql_test_001, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
-    string modifySql = "UPDATE " + MEDIALIBRARY_TABLE + " SET ";
+    string modifySql = string("UPDATE ") + CONST_MEDIALIBRARY_TABLE + " SET ";
     int32_t ret = rdbStorePtr->ExecuteSql(modifySql);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
 }
@@ -321,7 +321,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_ExecuteSql_test_002, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
     rdbStorePtr->Stop();
-    string modifySql = "UPDATE " + MEDIALIBRARY_TABLE + " SET ";
+    string modifySql = string("UPDATE ") + CONST_MEDIALIBRARY_TABLE + " SET ";
     int32_t ret = rdbStorePtr->ExecuteSql(modifySql);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
 }

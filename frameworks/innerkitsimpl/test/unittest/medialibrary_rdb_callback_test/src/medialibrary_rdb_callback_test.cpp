@@ -40,16 +40,16 @@ using namespace testing::ext;
 
 namespace OHOS {
 namespace Media {
-const std::string QUERY_MEDIA_VOLUME = "SELECT sum(" + MEDIA_DATA_DB_SIZE + ") AS " +
-    MEDIA_DATA_DB_SIZE + "," +
-    MEDIA_DATA_DB_MEDIA_TYPE + " FROM " +
-    MEDIALIBRARY_TABLE + " WHERE " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_FILE) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_IMAGE) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_VIDEO) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_ALBUM) + " OR " +
-    MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_AUDIO) + " GROUP BY " +
-    MEDIA_DATA_DB_MEDIA_TYPE;
+const std::string QUERY_MEDIA_VOLUME = std::string("SELECT sum(") + CONST_MEDIA_DATA_DB_SIZE + ") AS " +
+    CONST_MEDIA_DATA_DB_SIZE + "," +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " FROM " +
+    CONST_MEDIALIBRARY_TABLE + " WHERE " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_FILE) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_IMAGE) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_VIDEO) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_ALBUM) + " OR " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(MEDIA_TYPE_AUDIO) + " GROUP BY " +
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE;
 
 shared_ptr <MediaLibraryRdbStore> rdbStorePtr = nullptr;
 
@@ -57,7 +57,7 @@ void CleanTestTables()
 {
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
     };
     for (auto &dropTable : dropTableList) {
         string dropSql = "DROP TABLE " + dropTable + ";";

@@ -421,7 +421,7 @@ void EnhancementServiceCallback::DealWithSuccessedTask(CloudEnhancementThreadTas
     int32_t sourceCEAvailable = GetInt32Val(PhotoColumn::PHOTO_CE_AVAILABLE, resultSet);
     int32_t movingEnhanceType = GetInt32Val(PhotoColumn::PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE, resultSet);
     int32_t stageVideoTaskStatus = GetInt32Val(PhotoColumn::STAGE_VIDEO_TASK_STATUS, resultSet);
-    string photoId = GetStringVal(MEDIA_DATA_DB_PHOTO_ID, resultSet);
+    string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
     CHECK_AND_PRINT_LOG((sourceCEAvailable == static_cast<int32_t>(CloudEnhancementAvailableType::PROCESSING_MANUAL) ||
         sourceCEAvailable == static_cast<int32_t>(CloudEnhancementAvailableType::PROCESSING_AUTO)),
         "enhancement callback error: db CE_AVAILABLE status not processing, file_id: %{public}d", sourceFileId);

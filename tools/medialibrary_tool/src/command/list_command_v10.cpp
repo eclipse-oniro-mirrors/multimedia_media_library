@@ -50,7 +50,7 @@ static int32_t ListAsset(const ExecEnv &env, const std::string &tableName, const
     DumpOpt dumpOpt;
     dumpOpt.count = fetchResult->GetCount();
     dumpOpt.columns = {
-        MEDIA_DATA_DB_URI,
+        CONST_MEDIA_DATA_DB_URI,
         MediaColumn::MEDIA_NAME,
         MediaColumn::MEDIA_FILE_PATH
     };
@@ -82,7 +82,7 @@ static int32_t ListAssets(const ExecEnv &env, const std::string &tableName)
     dumpOpt.count = fetchResult->GetCount();
     MEDIA_DEBUG_LOG("count:%{public}d", dumpOpt.count);
     dumpOpt.columns = {
-        MEDIA_DATA_DB_URI,
+        CONST_MEDIA_DATA_DB_URI,
         MediaColumn::MEDIA_NAME,
         MediaColumn::MEDIA_FILE_PATH
     };

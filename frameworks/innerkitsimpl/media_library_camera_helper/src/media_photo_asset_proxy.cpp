@@ -83,7 +83,7 @@ PhotoAssetProxy::~PhotoAssetProxy()
 {
     if (cameraShotType_ == CameraShotType::MOVING_PHOTO && !isMovingPhotoVideoSaved_) {
         CHECK_AND_RETURN_LOG(dataShareHelper_ != nullptr, "datashareHelper is nullptr, cannot degenerate moving photo");
-        string uri = PAH_DEGENERATE_MOVING_PHOTO;
+        string uri = CONST_PAH_DEGENERATE_MOVING_PHOTO;
         MediaUriUtils::AppendKeyValue(uri, API_VERSION_STR, to_string(MEDIA_API_VERSION_V10));
         Uri updateUri(uri);
         DataShare::DataSharePredicates predicates;
@@ -108,7 +108,7 @@ DataShare::DataShareValuesBucket PhotoAssetProxy::HandleAssetValues(const sptr<P
     DataShare::DataShareValuesBucket values;
     values.Put(MediaColumn::MEDIA_NAME, displayName);
     values.Put(MediaColumn::MEDIA_TYPE, static_cast<int32_t>(mediaType));
-    values.Put(MEDIA_DATA_CALLING_UID, static_cast<int32_t>(callingUid_));
+    values.Put(CONST_MEDIA_DATA_CALLING_UID, static_cast<int32_t>(callingUid_));
     values.Put(PhotoColumn::PHOTO_IS_TEMP, true);
     if (photoProxy->GetPhotoId().size() > 0) {
         values.Put(PhotoColumn::PHOTO_ID, photoProxy->GetPhotoId());
@@ -168,7 +168,7 @@ void PhotoAssetProxy::CreatePhotoAsset(const sptr<PhotoProxy> &photoProxy)
     CHECK_AND_RETURN_LOG(!cond,
         "Failed to create Asset, invalid file type %{public}d", static_cast<int32_t>(mediaType));
     DataShare::DataShareValuesBucket values = HandleAssetValues(photoProxy, displayName, mediaType);
-    string uri = PAH_CREATE_PHOTO;
+    string uri = CONST_PAH_CREATE_PHOTO;
     MediaUriUtils::AppendKeyValue(uri, API_VERSION_STR, to_string(MEDIA_API_VERSION_V10));
     MediaUriUtils::AppendKeyValue(uri, CALLING_TOKENID, to_string(callingTokenId_));
     MediaUriUtils::AppendKeyValue(uri, IS_CAPTURE, "true");
@@ -234,10 +234,10 @@ int32_t CloseFd(const shared_ptr<DataShare::DataShareHelper> &dataShareHelper, c
 
     int32_t retVal = E_FAIL;
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_URI, uri);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, uri);
 
     if (dataShareHelper != nullptr) {
-        string uriStr = PAH_SCAN_WITHOUT_ALBUM_UPDATE;
+        string uriStr = CONST_PAH_SCAN_WITHOUT_ALBUM_UPDATE;
         MediaUriUtils::AppendKeyValue(uriStr, API_VERSION_STR, to_string(MEDIA_API_VERSION_V10));
         Uri closeAssetUri(uriStr);
 
@@ -402,7 +402,7 @@ int PhotoAssetProxy::SaveLowQualityPhoto(std::shared_ptr<DataShare::DataShareHel
 {
     MediaLibraryTracer tracer;
     tracer.Start("SaveLowQualityPhoto");
-    string uri = PAH_ADD_LOWQUALITY_IMAGE;
+    string uri = CONST_PAH_ADD_LOWQUALITY_IMAGE;
     MediaUriUtils::AppendKeyValue(uri, API_VERSION_STR, to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(uri);
     DataShare::DataSharePredicates predicates;
@@ -499,11 +499,11 @@ int32_t PhotoAssetProxy::GetVideoFd(VideoType videoType)
     CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "Failed to read video, datashareHelper is nullptr");
     string videoUri = uri_;
     if (cameraShotType_ == CameraShotType::MOVING_PHOTO) {
-        MediaUriUtils::AppendKeyValue(videoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CREATE_MOVING_PHOTO_VIDEO);
-        MediaUriUtils::AppendKeyValue(videoUri, VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
+        MediaUriUtils::AppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_CREATE_MOVING_PHOTO_VIDEO);
+        MediaUriUtils::AppendKeyValue(videoUri, CONST_VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
     } else {
-        MediaUriUtils::AppendKeyValue(videoUri, MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CREATE_CINEMATIC_VIDEO);
-        MediaUriUtils::AppendKeyValue(videoUri, VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
+        MediaUriUtils::AppendKeyValue(videoUri, CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CONST_CREATE_CINEMATIC_VIDEO);
+        MediaUriUtils::AppendKeyValue(videoUri, CONST_VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
     }
     Uri openVideoUri(videoUri);
     int32_t fd = dataShareHelper_->OpenFile(openVideoUri, MEDIA_FILEMODE_READWRITE);
@@ -526,12 +526,12 @@ void PhotoAssetProxy::NotifyVideoSaveFinished(VideoType videoType)
         MLOG_TAG, __FUNCTION__, __LINE__, videoType);
     isMovingPhotoVideoSaved_ = true;
     CHECK_AND_RETURN_LOG(dataShareHelper_ != nullptr, "datashareHelper is nullptr");
-    string uriStr = PAH_ADD_FILTERS;
+    string uriStr = CONST_PAH_ADD_FILTERS;
     Uri uri(uriStr);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileId_);
-    valuesBucket.Put(NOTIFY_VIDEO_SAVE_FINISHED, uri_);
-    valuesBucket.Put(VIDEO_TYPE_KEYWORD, static_cast<int32_t>(videoType));
+    valuesBucket.Put(CONST_NOTIFY_VIDEO_SAVE_FINISHED, uri_);
+    valuesBucket.Put(CONST_VIDEO_TYPE_KEYWORD, static_cast<int32_t>(videoType));
     dataShareHelper_->Insert(uri, valuesBucket);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} video save finished %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, uri_.c_str());

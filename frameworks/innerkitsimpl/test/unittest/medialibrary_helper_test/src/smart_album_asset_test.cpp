@@ -45,7 +45,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, SmartAlbumAsset_SetGet_Test_001, TestSize.L
     smartAlbumAsset.SetAlbumName(TEST_ALBUM_NAME);
     EXPECT_EQ(smartAlbumAsset.GetAlbumName(), TEST_ALBUM_NAME);
 
-    const string TEST_URI = MEDIALIBRARY_DATA_URI + MEDIALIBRARY_TYPE_FILE_URI + "/" + to_string(TEST_ALBUM_ID);
+    const string TEST_URI = MEDIALIBRARY_DATA_URI + CONST_MEDIALIBRARY_TYPE_FILE_URI + "/" + to_string(TEST_ALBUM_ID);
     smartAlbumAsset.SetAlbumUri(TEST_URI);
     EXPECT_EQ(smartAlbumAsset.GetAlbumUri(), TEST_URI);
 

@@ -67,7 +67,7 @@ static std::vector<std::string> createTableSqlLists = {
 static std::vector<std::string> testTables = {
     PhotoAlbumColumns::TABLE,
     PhotoColumn::PHOTOS_TABLE,
-    MEDIALIBRARY_TABLE,
+    CONST_MEDIALIBRARY_TABLE,
 };
 
 void MediaLibraryMetaRecoveryUnitTest::SetUpTestCase(void)
@@ -182,7 +182,7 @@ HWTEST_F(MediaLibraryMetaRecoveryUnitTest, MetaRecovery_Backup_001, TestSize.Lev
 
     MediaLibraryCommand closeCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     NativeRdb::ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, fileUri.ToString());
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, fileUri.ToString());
     closeCmd.SetValueBucket(closeValues);
     auto ret = MediaLibraryPhotoOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);

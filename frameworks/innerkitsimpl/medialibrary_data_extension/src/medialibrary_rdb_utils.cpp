@@ -323,8 +323,8 @@ static inline shared_ptr<ResultSet> GetAnalysisAlbumBySubtype(const shared_ptr<M
 
 static string GetQueryFilter(const string &tableName)
 {
-    if (tableName == MEDIALIBRARY_TABLE) {
-        return MEDIALIBRARY_TABLE + "." + MEDIA_DATA_DB_SYNC_STATUS + " = " +
+    if (tableName == CONST_MEDIALIBRARY_TABLE) {
+        return string(CONST_MEDIALIBRARY_TABLE) + "." + CONST_MEDIA_DATA_DB_SYNC_STATUS + " = " +
             to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
     }
     if (tableName == PhotoColumn::PHOTOS_TABLE) {
@@ -428,7 +428,7 @@ static int32_t ForEachRow(const shared_ptr<MediaLibraryRdbStore> rdbStore, std::
 
 static inline int32_t GetFileCount(const shared_ptr<ResultSet> &resultSet)
 {
-    return GetIntValFromColumn(resultSet, MEDIA_COLUMN_COUNT_1);
+    return GetIntValFromColumn(resultSet, CONST_MEDIA_COLUMN_COUNT_1);
 }
 
 static inline int32_t GetPortraitFileCount(const shared_ptr<ResultSet> &resultSet)
@@ -749,7 +749,7 @@ static void SetImageVideoCount(int32_t newTotalCount, const shared_ptr<ResultSet
 static int32_t QueryAlbumCount(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     int32_t albumId, PhotoAlbumSubType subtype)
 {
-    const vector<string> columns = { MEDIA_COLUMN_COUNT_1 };
+    const vector<string> columns = { CONST_MEDIA_COLUMN_COUNT_1 };
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     UpdateAlbumData albumInfo;
     albumInfo.albumId = albumId;
@@ -765,7 +765,7 @@ static int32_t QueryAlbumCount(const shared_ptr<MediaLibraryRdbStore> rdbStore,
 static int32_t QueryAlbumVideoCount(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     int32_t albumId, PhotoAlbumSubType subtype)
 {
-    const vector<string> columns = { MEDIA_COLUMN_COUNT_1 };
+    const vector<string> columns = { CONST_MEDIA_COLUMN_COUNT_1 };
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     UpdateAlbumData albumInfo;
     albumInfo.albumId = albumId;
@@ -783,7 +783,7 @@ static int32_t QueryAlbumVideoCount(const shared_ptr<MediaLibraryRdbStore> rdbSt
 static int32_t QueryAlbumHiddenCount(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     int32_t albumId, PhotoAlbumSubType subtype)
 {
-    const vector<string> columns = { MEDIA_COLUMN_COUNT_1 };
+    const vector<string> columns = { CONST_MEDIA_COLUMN_COUNT_1 };
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     UpdateAlbumData albumInfo;
     albumInfo.albumId = albumId;
@@ -1536,7 +1536,7 @@ static int32_t SetUpdateValues(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
 {
     PhotoAlbumSubType subtype = static_cast<PhotoAlbumSubType>(data.albumSubtype);
     vector<string> columns = {
-        MEDIA_COLUMN_COUNT_1, PhotoColumn::MEDIA_ID,
+        CONST_MEDIA_COLUMN_COUNT_1, PhotoColumn::MEDIA_ID,
         PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME,
         PhotoColumn::PHOTO_HIDDEN_TIME,
         PhotoColumn::MEDIA_DATE_ADDED,
@@ -3036,7 +3036,7 @@ int RefreshAnalysisPhotoAlbums(const shared_ptr<MediaLibraryRdbStore> rdbStore,
 static bool IsRefreshAlbumEmpty(const shared_ptr<MediaLibraryRdbStore> rdbStore)
 {
     RdbPredicates predicates(ALBUM_REFRESH_TABLE);
-    vector<string> columns = { MEDIA_COLUMN_COUNT_1 };
+    vector<string> columns = { CONST_MEDIA_COLUMN_COUNT_1 };
     auto resultSet = rdbStore->Query(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, true, "Can not query ALBUM_REFRESH_TABLE");
     int32_t count = GetFileCount(resultSet);
@@ -3131,7 +3131,7 @@ void MediaLibraryRdbUtils::UpdateAllAlbumsCountForCloud(const std::shared_ptr<Me
 
 void MediaLibraryRdbUtils::AddQueryIndex(AbsPredicates& predicates, const vector<string>& columns)
 {
-    auto it = find(columns.begin(), columns.end(), MEDIA_COLUMN_COUNT);
+    auto it = find(columns.begin(), columns.end(), CONST_MEDIA_COLUMN_COUNT);
     if (it == columns.end()) {
         return;
     }
@@ -3153,11 +3153,11 @@ void MediaLibraryRdbUtils::AddQueryIndex(AbsPredicates& predicates, const vector
 
 void MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(vector<string>& columns)
 {
-    vector<string> dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-            MEDIA_DATA_DB_DATE_TAKEN };
-    vector<string> dateTypeSeconds = { MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
-            MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND, MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
-            MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND };
+    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+            CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN };
+    vector<string> dateTypeSeconds = { CONST_MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
+            CONST_MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND, CONST_MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
+            CONST_MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND };
     for (size_t i = 0; i < dateTypes.size(); i++) {
         auto it = find(columns.begin(), columns.end(), dateTypes[i]);
         if (it != columns.end()) {
@@ -3241,7 +3241,7 @@ vector<string> GetPhotoAndKnowledgeConnection()
 
 int QueryCount(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const RdbPredicates &predicates)
 {
-    const vector<string> columns = { MEDIA_COLUMN_COUNT_1 };
+    const vector<string> columns = { CONST_MEDIA_COLUMN_COUNT_1 };
     auto fetchResult = QueryGoToFirst(rdbStore, predicates, columns);
     CHECK_AND_RETURN_RET(fetchResult != nullptr, 0);
     return GetFileCount(fetchResult);

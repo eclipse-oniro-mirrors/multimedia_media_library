@@ -60,7 +60,7 @@ const std::string ROOT_TEST_MEDIA_DIR =
  */
 HWTEST_F(MovingPhotoTest, moving_photo_test_001, TestSize.Level0)
 {
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -78,7 +78,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_001, TestSize.Level0)
  */
 HWTEST_F(MovingPhotoTest, moving_photo_test_002, TestSize.Level0)
 {
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -115,7 +115,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_003, TestSize.Level0)
     MEDIA_INFO_LOG("createFile uri: %{public}s", destUri_.c_str());
     sleep(SCAN_WAIT_TIME_1S);
 
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -133,7 +133,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_003, TestSize.Level0)
  */
 HWTEST_F(MovingPhotoTest, moving_photo_test_004, TestSize.Level0)
 {
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -170,7 +170,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_005, TestSize.Level0)
     MEDIA_INFO_LOG("createFile uri: %{public}s", destUri.c_str());
     sleep(SCAN_WAIT_TIME_1S);
 
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -199,7 +199,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_006, TestSize.Level0)
     MEDIA_INFO_LOG("createFile uri: %{public}s", destUri.c_str());
     sleep(SCAN_WAIT_TIME_1S);
 
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -222,7 +222,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_006, TestSize.Level0)
  */
 HWTEST_F(MovingPhotoTest, moving_photo_test_007, TestSize.Level0)
 {
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -243,7 +243,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_007, TestSize.Level0)
  */
 HWTEST_F(MovingPhotoTest, moving_photo_test_008, TestSize.Level0)
 {
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);
@@ -282,7 +282,7 @@ HWTEST_F(MovingPhotoTest, moving_photo_test_009, TestSize.Level0)
     MEDIA_INFO_LOG("createFile uri: %{public}s", destUri.c_str());
     sleep(SCAN_WAIT_TIME_1S);
 
-    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    std::string uri_ = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     auto movingPhotoImpl = MovingPhotoFactory::CreateMovingPhoto(uri_);
     auto movingPhoto = new OH_MovingPhoto(movingPhotoImpl);

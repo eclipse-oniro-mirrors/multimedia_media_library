@@ -311,203 +311,203 @@ enum FileSourceType {
     MEDIA_HO_LAKE,
 };
 
-const std::string MEDIA_LIBRARY_VERSION = "1.0";
-
 const int32_t DEVICE_SYNCSTATUSING = 0;
 const int32_t DEVICE_SYNCSTATUS_COMPLETE = 1;
+const std::string MEDIA_DATA_DB_URI = "uri";
+const std::string MEDIA_DATA_DB_MEDIA_TYPE = "media_type";
+const std::string MEDIA_DATA_DB_NAME = "display_name";
+const std::string MEDIA_DATA_DB_DATE_TAKEN = "date_taken";
+const std::string MEDIA_DATA_DB_DATE_TAKEN_MS = "date_taken_ms";
+const std::string MEDIA_DATA_DB_DATE_ADDED = "date_added";
+const std::string MEDIA_DATA_DB_DATE_ADDED_MS = "date_added_ms";
+const std::string MEDIA_DATA_DB_SIZE = "size";
 
-const std::string MEDIALIBRARY_TABLE = "Files";
-const std::string SMARTALBUM_TABLE = "SmartAlbum";
-const std::string SMARTALBUM_MAP_TABLE = "SmartMap";
-const std::string CATEGORY_SMARTALBUM_MAP_TABLE = "CategorySmartAlbumMap";
-const std::string MEDIATYPE_DIRECTORY_TABLE = "MediaTypeDirectory";
-const std::string DEVICE_TABLE = "Device";
-const std::string BUNDLE_PERMISSION_TABLE = "BundlePermission";
-const std::string MEDIA_DATA_ABILITY_DB_NAME = "media_library.db";
+#define CONST_MEDIALIBRARY_TABLE "Files"
+#define CONST_SMARTALBUM_TABLE "SmartAlbum"
+#define CONST_SMARTALBUM_MAP_TABLE "SmartMap"
+#define CONST_CATEGORY_SMARTALBUM_MAP_TABLE "CategorySmartAlbumMap"
+#define CONST_MEDIATYPE_DIRECTORY_TABLE "MediaTypeDirectory"
+#define CONST_DEVICE_TABLE "Device"
+#define CONST_BUNDLE_PERMISSION_TABLE "BundlePermission"
+#define CONST_MEDIA_DATA_ABILITY_DB_NAME "media_library.db"
 
-const std::string BUNDLE_NAME = "com.ohos.medialibrary.medialibrarydata";
+#define CONST_BUNDLE_NAME "com.ohos.medialibrary.medialibrarydata"
 
 constexpr int64_t AGING_TIME = 30LL * 60 * 60 * 24 * 1000;
 
-const std::string MEDIA_DATA_BETA_ISSUE_ID = "beta_issue_id";
-const std::string MEDIA_DATA_BETA_SCENARIO = "beta_scenario";
-const std::string MEDIA_DATA_BETA_DEBUG_DB_FD = "beta_debug_db_fd";
-const std::string MEDIA_DATA_DB_ID = "file_id";
-const std::string MEDIA_DATA_DB_URI = "uri";
-const std::string MEDIA_DATA_DB_FILE_PATH = "data";
-const std::string MEDIA_DATA_DB_SIZE = "size";
-const std::string MEDIA_DATA_DB_PARENT_ID = "parent";
-const std::string MEDIA_DATA_DB_DATE_MODIFIED = "date_modified";
-const std::string MEDIA_DATA_DB_DATE_MODIFIED_S = "date_modified_s";
-const std::string MEDIA_DATA_DB_DATE_MODIFIED_MS = "date_modified_ms";
-const std::string MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND = "CAST(date_modified / 1000 AS BIGINT) AS date_modified_s";
-const std::string MEDIA_DATA_DB_DATE_ADDED = "date_added";
-const std::string MEDIA_DATA_DB_DATE_ADDED_S = "date_added_s";
-const std::string MEDIA_DATA_DB_DATE_ADDED_MS = "date_added_ms";
-const std::string MEDIA_DATA_DB_DATE_ADDED_TO_SECOND = "CAST(date_added / 1000 AS BIGINT) AS date_added_s";
-const std::string MEDIA_DATA_DB_MIME_TYPE = "mime_type";
-const std::string MEDIA_DATA_DB_TITLE = "title";
-const std::string MEDIA_DATA_DB_DESCRIPTION = "description";
-const std::string MEDIA_DATA_DB_NAME = "display_name";
-const std::string MEDIA_DATA_DB_ORIENTATION = "orientation";
-const std::string MEDIA_DATA_DB_LATITUDE = "latitude";
-const std::string MEDIA_DATA_DB_LONGITUDE = "longitude";
-const std::string MEDIA_DATA_DB_DATE_TAKEN = "date_taken";
-const std::string MEDIA_DATA_DB_DATE_TAKEN_S = "date_taken_s";
-const std::string MEDIA_DATA_DB_DATE_TAKEN_MS = "date_taken_ms";
-const std::string MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND = "CAST(date_taken / 1000 AS BIGINT) AS date_taken_s";
-const std::string MEDIA_DATA_DB_THUMBNAIL = "thumbnail";
-const std::string MEDIA_DATA_DB_THUMB_ASTC = "astc";
-const std::string MEDIA_DATA_DB_HAS_ASTC = "has_astc"; // This attribute has been replaced by "thumbnail_ready"
-const std::string MEDIA_DATA_DB_CONTENT_CREATE_TIME = "content_create_time";
-const std::string MEDIA_DATA_DB_POSITION = "position";
-const std::string MEDIA_DATA_DB_DIRTY = "dirty";
-const std::string MEDIA_DATA_DB_CLOUD_ID = "cloud_id";
-const std::string MEDIA_DATA_DB_META_DATE_MODIFIED = "meta_date_modified";
-const std::string MEDIA_DATA_DB_SYNC_STATUS = "sync_status";
-const std::string MEDIA_DATA_DB_THUMBNAIL_READY = "thumbnail_ready";
-const std::string MEDIA_DATA_DB_ALL_EXIF = "all_exif";
-const std::string MEDIA_DATA_DB_SHOOTING_MODE = "shooting_mode";
-const std::string MEDIA_DATA_DB_SHOOTING_MODE_TAG = "shooting_mode_tag";
-const std::string MEDIA_DATA_DB_PHOTOS_LATITUDE = "photos." + MEDIA_DATA_DB_LATITUDE;
-const std::string MEDIA_DATA_DB_PHOTOS_LONGITUDE = "photos." + MEDIA_DATA_DB_LONGITUDE;
-const std::string MEDIA_DATA_DB_USER_OPERATION = "user_operation";
-const std::string MEDIA_DATA_DB_RENAME_OPERATION = "rename_operation";
-const std::string MEDIA_DATA_DB_COVER_SATISFIED = "is_cover_satisfied";
+#define CONST_MEDIA_DATA_BETA_ISSUE_ID "beta_issue_id"
+#define CONST_MEDIA_DATA_BETA_SCENARIO "beta_scenario"
+#define CONST_MEDIA_DATA_BETA_DEBUG_DB_FD "beta_debug_db_fd"
+#define CONST_MEDIA_DATA_DB_ID "file_id"
+#define CONST_MEDIA_DATA_DB_URI "uri"
+#define CONST_MEDIA_DATA_DB_FILE_PATH "data"
+#define CONST_MEDIA_DATA_DB_SIZE "size"
+#define CONST_MEDIA_DATA_DB_PARENT_ID "parent"
+#define CONST_MEDIA_DATA_DB_DATE_MODIFIED "date_modified"
+#define CONST_MEDIA_DATA_DB_DATE_MODIFIED_S "date_modified_s"
+#define CONST_MEDIA_DATA_DB_DATE_MODIFIED_MS "date_modified_ms"
+#define CONST_MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND "CAST(date_modified / 1000 AS BIGINT) AS date_modified_s"
+#define CONST_MEDIA_DATA_DB_DATE_ADDED "date_added"
+#define CONST_MEDIA_DATA_DB_DATE_ADDED_S "date_added_s"
+#define CONST_MEDIA_DATA_DB_DATE_ADDED_MS "date_added_ms"
+#define CONST_MEDIA_DATA_DB_DATE_ADDED_TO_SECOND "CAST(date_added / 1000 AS BIGINT) AS date_added_s"
+#define CONST_MEDIA_DATA_DB_MIME_TYPE "mime_type"
+#define CONST_MEDIA_DATA_DB_TITLE "title"
+#define CONST_MEDIA_DATA_DB_DESCRIPTION "description"
+#define CONST_MEDIA_DATA_DB_NAME "display_name"
+#define CONST_MEDIA_DATA_DB_ORIENTATION "orientation"
+#define CONST_MEDIA_DATA_DB_LATITUDE "latitude"
+#define CONST_MEDIA_DATA_DB_LONGITUDE "longitude"
+#define CONST_MEDIA_DATA_DB_DATE_TAKEN "date_taken"
+#define CONST_MEDIA_DATA_DB_DATE_TAKEN_S "date_taken_s"
+#define CONST_MEDIA_DATA_DB_DATE_TAKEN_MS "date_taken_ms"
+#define CONST_MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND "CAST(date_taken / 1000 AS BIGINT) AS date_taken_s"
+#define CONST_MEDIA_DATA_DB_THUMBNAIL "thumbnail"
+#define CONST_MEDIA_DATA_DB_THUMB_ASTC "astc"
+#define CONST_MEDIA_DATA_DB_POSITION "position"
+#define CONST_MEDIA_DATA_DB_DIRTY "dirty"
+#define CONST_MEDIA_DATA_DB_CLOUD_ID "cloud_id"
+#define CONST_MEDIA_DATA_DB_META_DATE_MODIFIED "meta_date_modified"
+#define CONST_MEDIA_DATA_DB_SYNC_STATUS "sync_status"
+#define CONST_MEDIA_DATA_DB_THUMBNAIL_READY "thumbnail_ready"
+#define CONST_MEDIA_DATA_DB_ALL_EXIF "all_exif"
+#define CONST_MEDIA_DATA_DB_SHOOTING_MODE "shooting_mode"
+#define CONST_MEDIA_DATA_DB_SHOOTING_MODE_TAG "shooting_mode_tag"
+#define CONST_MEDIA_DATA_DB_PHOTOS_LATITUDE "photos.latitude"
+#define CONST_MEDIA_DATA_DB_PHOTOS_LONGITUDE "photos.longitude"
+#define CONST_MEDIA_DATA_DB_USER_OPERATION "user_operation"
+#define CONST_MEDIA_DATA_DB_RENAME_OPERATION "rename_operation"
+#define CONST_MEDIA_DATA_DB_COVER_SATISFIED "is_cover_satisfied"
 
-const std::string MEDIA_DATA_DB_LCD = "lcd";
-const std::string MEDIA_DATA_DB_BUCKET_ID = "bucket_id";
-const std::string MEDIA_DATA_DB_BUCKET_NAME = "bucket_display_name";
-const std::string MEDIA_DATA_DB_DURATION = "duration";
-const std::string MEDIA_DATA_DB_ARTIST = "artist";
+#define CONST_MEDIA_DATA_DB_LCD "lcd"
+#define CONST_MEDIA_DATA_DB_BUCKET_ID "bucket_id"
+#define CONST_MEDIA_DATA_DB_BUCKET_NAME "bucket_display_name"
+#define CONST_MEDIA_DATA_DB_DURATION "duration"
+#define CONST_MEDIA_DATA_DB_ARTIST "artist"
 
-const std::string MEDIA_DATA_DB_AUDIO_ALBUM = "audio_album";
-const std::string MEDIA_DATA_DB_MEDIA_TYPE = "media_type";
+#define CONST_MEDIA_DATA_DB_AUDIO_ALBUM "audio_album"
+#define CONST_MEDIA_DATA_DB_MEDIA_TYPE "media_type"
 
-const std::string MEDIA_DATA_DB_HEIGHT = "height";
-const std::string MEDIA_DATA_DB_WIDTH = "width";
-const std::string MEDIA_DATA_DB_ASPECT_RATIO = "aspect_ratio";
-const std::string MEDIA_DATA_DB_OWNER_PACKAGE = "owner_package";
-const std::string MEDIA_DATA_DB_OWNER_APPID = "owner_appid";
-const std::string MEDIA_DATA_DB_PACKAGE_NAME = "package_name";
+#define CONST_MEDIA_DATA_DB_HEIGHT "height"
+#define CONST_MEDIA_DATA_DB_WIDTH "width"
+#define CONST_MEDIA_DATA_DB_ASPECT_RATIO "aspect_ratio"
+#define CONST_MEDIA_DATA_DB_OWNER_PACKAGE "owner_package"
+#define CONST_MEDIA_DATA_DB_OWNER_APPID "owner_appid"
+#define CONST_MEDIA_DATA_DB_PACKAGE_NAME "package_name"
 
-const std::string MEDIA_DATA_DB_IS_FAV = "is_favorite";
-const std::string MEDIA_DATA_DB_IS_TRASH = "is_trash";
-const std::string MEDIA_DATA_DB_RECYCLE_PATH = "recycle_path";
-const std::string MEDIA_DATA_DB_DATE_TRASHED = "date_trashed";
-const std::string MEDIA_DATA_DB_DATE_TRASHED_S = "date_trashed_s";
-const std::string MEDIA_DATA_DB_DATE_TRASHED_MS = "date_trashed_ms";
-const std::string MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND = "CAST(date_trashed / 1000 AS BIGINT) AS date_trashed_s";
-const std::string MEDIA_DATA_DB_IS_PENDING = "is_pending";
-const std::string MEDIA_DATA_DB_TIME_PENDING = "time_pending";
-const std::string MEDIA_DATA_DB_RELATIVE_PATH = "relative_path";
-const std::string MEDIA_DATA_DB_VOLUME_NAME = "volume_name";
-const std::string MEDIA_DATA_DB_SELF_ID = "self_id";
-const std::string MEDIA_DATA_DB_DEVICE_NAME = "device_name";
+#define CONST_MEDIA_DATA_DB_IS_FAV "is_favorite"
+#define CONST_MEDIA_DATA_DB_IS_TRASH "is_trash"
+#define CONST_MEDIA_DATA_DB_RECYCLE_PATH "recycle_path"
+#define CONST_MEDIA_DATA_DB_DATE_TRASHED "date_trashed"
+#define CONST_MEDIA_DATA_DB_DATE_TRASHED_S "date_trashed_s"
+#define CONST_MEDIA_DATA_DB_DATE_TRASHED_MS "date_trashed_ms"
+#define CONST_MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND "CAST(date_trashed / 1000 AS BIGINT) AS date_trashed_s"
+#define CONST_MEDIA_DATA_DB_IS_PENDING "is_pending"
+#define CONST_MEDIA_DATA_DB_TIME_PENDING "time_pending"
+#define CONST_MEDIA_DATA_DB_RELATIVE_PATH "relative_path"
+#define CONST_MEDIA_DATA_DB_VOLUME_NAME "volume_name"
+#define CONST_MEDIA_DATA_DB_SELF_ID "self_id"
+#define CONST_MEDIA_DATA_DB_DEVICE_NAME "device_name"
 
-const std::string MEDIA_DATA_DB_ALBUM = "album";
-const std::string MEDIA_DATA_DB_ALBUM_ID = "album_id";
-const std::string MEDIA_DATA_DB_REFERENCE_ALBUM_ID = "reference_album_id";
-const std::string MEDIA_DATA_DB_ALBUM_NAME = "album_name";
-const std::string MEDIA_DATA_DB_COUNT = "count";
-const std::string MEDIA_DATA_BUNDLENAME = "bundle_name";
-const std::string MEDIA_DATA_DB_IS_LOCAL = "is_local";
+#define CONST_MEDIA_DATA_DB_ALBUM "album"
+#define CONST_MEDIA_DATA_DB_ALBUM_ID "album_id"
+#define CONST_MEDIA_DATA_DB_ALBUM_NAME "album_name"
+#define CONST_MEDIA_DATA_DB_COUNT "count"
+#define CONST_MEDIA_DATA_DB_IS_LOCAL "is_local"
 
-const std::string MEDIA_DATA_CALLING_UID = "calling_uid";
+#define CONST_MEDIA_DATA_CALLING_UID "calling_uid"
 
 const std::map<std::string, std::string> DATE_TRANSITION_MAP = {
-    { MEDIA_DATA_DB_DATE_MODIFIED_MS, MEDIA_DATA_DB_DATE_MODIFIED },
-    { MEDIA_DATA_DB_DATE_ADDED_MS, MEDIA_DATA_DB_DATE_ADDED },
-    { MEDIA_DATA_DB_DATE_TRASHED_MS, MEDIA_DATA_DB_DATE_TRASHED },
-    { MEDIA_DATA_DB_DATE_TAKEN_MS, MEDIA_DATA_DB_DATE_TAKEN },
+    { CONST_MEDIA_DATA_DB_DATE_MODIFIED_MS, CONST_MEDIA_DATA_DB_DATE_MODIFIED },
+    { CONST_MEDIA_DATA_DB_DATE_ADDED_MS, CONST_MEDIA_DATA_DB_DATE_ADDED },
+    { CONST_MEDIA_DATA_DB_DATE_TRASHED_MS, CONST_MEDIA_DATA_DB_DATE_TRASHED },
+    { CONST_MEDIA_DATA_DB_DATE_TAKEN_MS, CONST_MEDIA_DATA_DB_DATE_TAKEN },
 };
 
-const std::string MEDIA_DATA_DB_ALARM_URI = "alarm_uri";
+#define CONST_MEDIA_DATA_DB_ALARM_URI "alarm_uri"
 
-const std::string MEDIA_DATA_DB_PHOTO_ID = "photo_id";
-const std::string MEDIA_DATA_DB_PHOTO_QUALITY = "photo_quality";
-const std::string MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS = "stage_video_task_status";
+#define CONST_MEDIA_DATA_DB_PHOTO_ID "photo_id"
+#define CONST_MEDIA_DATA_DB_PHOTO_QUALITY "photo_quality"
+#define CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS "stage_video_task_status"
 
-const std::string MEDIA_COLUMN_COUNT = "count(*)";
-const std::string MEDIA_COLUMN_COUNT_1 = "count(1)";
-const std::string MEDIA_SUM_SIZE = "sum(size)";
+#define CONST_MEDIA_COLUMN_COUNT "count(*)"
+#define CONST_MEDIA_COLUMN_COUNT_1 "count(1)"
+#define CONST_MEDIA_SUM_SIZE "sum(size)"
 
-const std::string PHOTO_INDEX = "photo_index";
+#define CONST_PHOTO_INDEX "photo_index"
 
-const std::string PERMISSION_ID = "id";
-const std::string PERMISSION_BUNDLE_NAME = "bundle_name";
-const std::string PERMISSION_FILE_ID = "file_id";
-const std::string PERMISSION_MODE = "mode";
-const std::string PERMISSION_TABLE_TYPE = "table_type";
+#define CONST_PERMISSION_ID "id"
+#define CONST_PERMISSION_BUNDLE_NAME "bundle_name"
+#define CONST_PERMISSION_FILE_ID "file_id"
+#define CONST_PERMISSION_MODE "mode"
+#define CONST_PERMISSION_TABLE_TYPE "table_type"
 
-const std::string ALBUM_TABLE = "album";
-const std::string ALBUM_VIEW_NAME = "Album";
+#define CONST_ALBUM_TABLE "album"
+#define CONST_ALBUM_VIEW_NAME "Album"
 
-const std::string ASSETMAP_VIEW_NAME = "AssetMap";
+#define CONST_ASSETMAP_VIEW_NAME "AssetMap"
 
-const std::string IMAGE_ASSET_TYPE = "image";
-const std::string VIDEO_ASSET_TYPE = "video";
-const std::string AUDIO_ASSET_TYPE = "audio";
+#define CONST_IMAGE_ASSET_TYPE "image"
+#define CONST_VIDEO_ASSET_TYPE "video"
+#define CONST_AUDIO_ASSET_TYPE "audio"
 
 // Caution: Keep same definition as MediaColumn! Only for where clause check in API9 getAlbums and album.getFileAssets
-const std::string COMPAT_ALBUM_SUBTYPE = "album_subtype";
-const std::string COMPAT_HIDDEN = "hidden";
-const std::string COMPAT_PHOTO_SYNC_STATUS = "sync_status";
-const std::string COMPAT_FILE_SUBTYPE = "subtype";
-const std::string COMPAT_CAMERA_SHOT_KEY = "camera_shot_key";
+#define CONST_COMPAT_ALBUM_SUBTYPE "album_subtype"
+#define CONST_COMPAT_HIDDEN "hidden"
+#define CONST_COMPAT_PHOTO_SYNC_STATUS "sync_status"
+#define CONST_COMPAT_FILE_SUBTYPE "subtype"
+#define CONST_COMPAT_CAMERA_SHOT_KEY "camera_shot_key"
 
 // system relativePath and albumName, use for API9 compatible API10
-const std::string CAMERA_PATH = "Camera/";
-const std::string SCREEN_SHOT_PATH = "Pictures/Screenshots/";
-const std::string SCREEN_RECORD_PATH = "Videos/ScreenRecordings/";
+#define CONST_CAMERA_PATH "Camera/"
+#define CONST_SCREEN_SHOT_PATH "Pictures/Screenshots/"
+#define CONST_SCREEN_RECORD_PATH "Videos/ScreenRecordings/"
 
-const std::string CAMERA_ALBUM_NAME = "Camera";
-const std::string SCREEN_SHOT_ALBUM_NAME = "Screenshots";
-const std::string SCREEN_RECORD_ALBUM_NAME = "ScreenRecordings";
+#define CONST_CAMERA_ALBUM_NAME "Camera"
+#define CONST_SCREEN_SHOT_ALBUM_NAME "Screenshots"
+#define CONST_SCREEN_RECORD_ALBUM_NAME "ScreenRecordings"
 
 // extension
-const std::string ASSET_EXTENTION = "extention";
+#define CONST_ASSET_EXTENTION "extention"
 
 // edit param
-const std::string EDIT_DATA_REQUEST = "edit_data_request";  // MEDIA_OPERN_KEYWORD=EDIT_DATA_REQUEST
-const std::string SOURCE_REQUEST = "source_request";        // MEDIA_OPERN_KEYWORD=SOURCE_REQUEST
-const std::string COMMIT_REQUEST = "commit_request";        // MEDIA_OPERN_KEYWORD=COMMIT_REQUEST
-const std::string EDIT_DATA = "edit_data";
-const std::string COMPATIBLE_FORMAT = "compatible_format";
-const std::string FORMAT_VERSION = "format_version";
-const std::string APP_ID = "app_id";
+#define CONST_EDIT_DATA_REQUEST "edit_data_request"
+#define CONST_SOURCE_REQUEST "source_request"
+#define CONST_COMMIT_REQUEST "commit_request"
+#define CONST_EDIT_DATA "edit_data"
+#define CONST_COMPATIBLE_FORMAT "compatible_format"
+#define CONST_FORMAT_VERSION "format_version"
+#define CONST_APP_ID "app_id"
 
 // write cache
-const std::string CACHE_FILE_NAME = "cache_file_name";
-const std::string CACHE_MOVING_PHOTO_VIDEO_NAME = "cache_moving_photo_video_name";
+#define CONST_CACHE_FILE_NAME "cache_file_name"
+#define CONST_CACHE_MOVING_PHOTO_VIDEO_NAME "cache_moving_photo_video_name"
 
 // moving photo param
-const std::string CREATE_MOVING_PHOTO_VIDEO = "create_video";
-const std::string OPEN_MOVING_PHOTO_VIDEO = "open_video"; // MEDIA_MOVING_PHOTO_OPRN_KEYWORD=OPEN_MOVING_PHOTO_VIDEO
-const std::string OPEN_PRIVATE_MOVING_PHOTO_METADATA = "open_metadata";
-const std::string OPEN_PRIVATE_LIVE_PHOTO = "open_private_live_photo";
-const std::string OPEN_MOVING_PHOTO_VIDEO_CLOUD = "open_moving_photo_video_cloud";
-const std::string NOTIFY_VIDEO_SAVE_FINISHED = "notify_video_save_finished"; // movingPhoto video save finish
+#define CONST_CREATE_MOVING_PHOTO_VIDEO "create_video"
+#define CONST_OPEN_MOVING_PHOTO_VIDEO "open_video"
+#define CONST_OPEN_PRIVATE_MOVING_PHOTO_METADATA "open_metadata"
+#define CONST_OPEN_PRIVATE_LIVE_PHOTO "open_private_live_photo"
+#define CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD "open_moving_photo_video_cloud"
+#define CONST_NOTIFY_VIDEO_SAVE_FINISHED "notify_video_save_finished"
 
 // movie mode param
-const std::string CREATE_CINEMATIC_VIDEO = "create_cinematic_video";
+#define CONST_CREATE_CINEMATIC_VIDEO "create_cinematic_video"
 
 // db sandbox directory
-const std::string MEDIA_DB_DIR = "/data/medialibrary/database";
+#define CONST_MEDIA_DB_DIR "/data/medialibrary/database"
 
 // slave medialibrary db file path
-const std::string MEDIA_DB_BINLOG_DIR = "/data/storage/el2/database/rdb/media_library.db_binlog";
-const std::string MEDIA_DB_FILE_SLAVE = "/data/storage/el2/database/rdb/media_library_slave.db";
-const std::string MEDIA_DB_FILE_SLAVE_SHM = "/data/storage/el2/database/rdb/media_library_slave.db-shm";
-const std::string MEDIA_DB_FILE_SLAVE_WAL = "/data/storage/el2/database/rdb/media_library_slave.db-wal";
+#define CONST_MEDIA_DB_BINLOG_DIR "/data/storage/el2/database/rdb/media_library.db_binlog"
+#define CONST_MEDIA_DB_FILE_SLAVE "/data/storage/el2/database/rdb/media_library_slave.db"
 
 // requestId for generating thumbnail in batches
-const std::string THUMBNAIL_BATCH_GENERATE_REQUEST_ID = "thumbnail_request_id";
-const std::string IMAGE_FILE_TYPE = "image_file_type";
-const std::string CONTAIN_ADD_RESOURCE = "contain_add_resource";
+#define CONST_THUMBNAIL_BATCH_GENERATE_REQUEST_ID "thumbnail_request_id"
+#define CONST_IMAGE_FILE_TYPE "image_file_type"
+#define CONST_CONTAIN_ADD_RESOURCE "contain_add_resource"
 
-const std::string RESTORE_REQUEST_ASTC_GENERATE_COUNT = "restore_request_astc_generate_count";
-const std::string BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG = "BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG";
+#define CONST_RESTORE_REQUEST_ASTC_GENERATE_COUNT "restore_request_astc_generate_count"
+#define CONST_BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG "BACKUP_RESTORE_INVALID_HDC_CLOUD_DATA_POS_FLAG"
 } // namespace Media
 } // namespace OHOS
 

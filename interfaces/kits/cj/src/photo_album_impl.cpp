@@ -197,7 +197,7 @@ shared_ptr<FetchResult<FileAsset>> PhotoAlbumImpl::GetAssets(COptions options, i
         LOGE("ParseArgsGetPhotoAssets failed.");
         return nullptr;
     }
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(photoAlbumPtr, fetchColumn);
     auto resultSet = UserFileClient::Query(uri, predicates, fetchColumn, errCode);
     if (resultSet == nullptr) {
@@ -238,7 +238,7 @@ void PhotoAlbumImpl::CommitModify(int32_t &errCode)
     DataSharePredicates predicates;
     DataShareValuesBucket valuesBucket;
     ParseArgsCommitModify(photoAlbumPtr, predicates, valuesBucket, errCode);
-    string commitModifyUri = PAH_UPDATE_PHOTO_ALBUM;
+    string commitModifyUri = CONST_PAH_UPDATE_PHOTO_ALBUM;
     Uri uri(commitModifyUri);
     int changedRows = UserFileClient::Update(uri, predicates, valuesBucket);
     if (changedRows < 0) {

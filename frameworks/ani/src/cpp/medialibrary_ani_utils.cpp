@@ -1126,8 +1126,8 @@ ani_status MediaLibraryAniUtils::GetPredicate(ani_env *env, const ani_object fet
 static bool HandleSpecialDateTypePredicate(const OperationItem &item,
     vector<OperationItem> &operations, const FetchOptionType &fetchOptType)
 {
-    vector<string> dateTypes = { MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_TRASHED, MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_TAKEN};
+    vector<string> dateTypes = { CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED, CONST_MEDIA_DATA_DB_DATE_TAKEN};
     string dateType = item.GetSingle(FIELD_IDX);
     auto it = find(dateTypes.begin(), dateTypes.end(), dateType);
     if (it != dateTypes.end() && item.operation != DataShare::ORDER_BY_ASC &&
@@ -1291,7 +1291,7 @@ ani_object MediaLibraryAniUtils::GetNextRowObject(ani_env *env, shared_ptr<Nativ
     fileAsset->SetUri(move(fileUri.ToString()));
     ani_string aniValue {};
     MediaLibraryAniUtils::ToAniString(env, fileAsset->GetUri(), aniValue);
-    env->Object_SetPropertyByName_Ref(result, MEDIA_DATA_DB_URI.c_str(), aniValue);
+    env->Object_SetPropertyByName_Ref(result, CONST_MEDIA_DATA_DB_URI, aniValue);
     return result;
 }
 
@@ -1480,7 +1480,7 @@ ani_object MediaLibraryAniUtils::BuildNextRowObject(ani_env* env, std::shared_pt
     }
     ani_string aniString;
     MediaLibraryAniUtils::ToAniString(env, rowObj->dbUri_, aniString);
-    env->Object_SetPropertyByName_Ref(result, MEDIA_DATA_DB_URI.c_str(), aniString);
+    env->Object_SetPropertyByName_Ref(result, CONST_MEDIA_DATA_DB_URI, aniString);
     return result;
 }
 
@@ -1645,7 +1645,7 @@ int MediaLibraryAniUtils::ParseCoverSharedPhotoAsset(int32_t index, std::shared_
 
     MediaLibraryTracer tracer;
     tracer.Start("ParseCoverSharedPhotoAsset");
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     MediaLibraryAniUtils::UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri photoUri(queryUri);
     DataShare::DataSharePredicates predicates;
@@ -1758,7 +1758,7 @@ bool MediaLibraryAniUtils::HandleSpecialField(AniContext& context, const Operati
     if (field == DEVICE_DB_NETWORK_ID) {
         return HandleNetworkIdField(context, item, value);
     }
-    if (field == MEDIA_DATA_DB_URI) {
+    if (field == CONST_MEDIA_DATA_DB_URI) {
         return HandleUriField(context, item, value, operations, fetchOptType);
     }
     if (field == PENDING_STATUS || LOCATION_PARAM_MAP.count(field)) {
@@ -1791,7 +1791,7 @@ bool MediaLibraryAniUtils::HandleUriField(AniContext& context, const OperationIt
 {
     CHECK_COND_RET(context != nullptr, false, "context is nullptr");
     if (item.operation != DataShare::EQUAL_TO) {
-        ANI_ERR_LOG("MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
+        ANI_ERR_LOG("CONST_MEDIA_DATA_DB_URI predicates not support %{public}d", item.operation);
         return false;
     }
     string uri = uriValue;
@@ -1802,7 +1802,7 @@ bool MediaLibraryAniUtils::HandleUriField(AniContext& context, const OperationIt
         fileUri = MediaFileUri(MediaFileUtils::GetRealUriFromVirtualUri(uri));
     }
     context->networkId = fileUri.GetNetworkId();
-    string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : MEDIA_DATA_DB_ID;
+    string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : CONST_MEDIA_DATA_DB_ID;
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
     return true;
 }
@@ -2077,7 +2077,7 @@ string MediaLibraryAniUtils::ParseAnalysisFace2JsonStr(shared_ptr<DataShare::Dat
         return jsonArray.dump();
     }
 
-    Uri uri(PAH_QUERY_ANA_PHOTO_ALBUM);
+    Uri uri(CONST_PAH_QUERY_ANA_PHOTO_ALBUM);
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::PORTRAIT))->And()->IsNotNull(TAG_ID);
     vector<string> albumColumns = { ALBUM_ID, TAG_ID };
@@ -2156,9 +2156,9 @@ ani_status MediaLibraryAniUtils::AddDefaultAssetColumns(ani_env *env, vector<str
     for (const auto &column : fetchColumn) {
         if (column == PENDING_STATUS) {
             validFetchColumns.insert(MediaColumn::MEDIA_TIME_PENDING);
-        } else if (isValidColumn(column) || (column == MEDIA_SUM_SIZE && IsSystemApp())) {
+        } else if (isValidColumn(column) || (column == CONST_MEDIA_SUM_SIZE && IsSystemApp())) {
             validFetchColumns.insert(column);
-        } else if (column == MEDIA_DATA_DB_URI) {
+        } else if (column == CONST_MEDIA_DATA_DB_URI) {
             continue;
         } else if (DATE_TRANSITION_MAP.count(column) != 0) {
             validFetchColumns.insert(DATE_TRANSITION_MAP.at(column));
@@ -2554,7 +2554,7 @@ ani_status MediaLibraryAniUtils::GetNextRowObject(ani_env *env, shared_ptr<Nativ
     fileAsset->SetUri(std::move(fileUri.ToString()));
     Var uriValue;
     uriValue.emplace<std::string>(fileAsset->GetUri());
-    result.emplace(MEDIA_DATA_DB_URI, uriValue);
+    result.emplace(CONST_MEDIA_DATA_DB_URI, uriValue);
     return ANI_OK;
 }
 

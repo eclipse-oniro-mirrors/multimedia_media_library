@@ -455,8 +455,8 @@ bool CloneRestore::BackupPreprocess()
         auto context = AbilityRuntime::Context::GetApplicationContext();
         CHECK_AND_RETURN_RET_LOG(context != nullptr, E_FAIL, "Failed to get context");
         std::shared_ptr<NativeRdb::RdbStore> backupRdb;
-        int32_t err = BackupDatabaseUtils::InitDb(backupRdb, MEDIA_DATA_ABILITY_DB_NAME, tmpDbPath_, BUNDLE_NAME, true,
-            context->GetArea());
+        int32_t err = BackupDatabaseUtils::InitDb(backupRdb, CONST_MEDIA_DATA_ABILITY_DB_NAME, tmpDbPath_,
+            CONST_BUNDLE_NAME, true, context->GetArea());
         CHECK_AND_RETURN_RET_LOG(backupRdb != nullptr, E_FAIL, "Init remote medialibrary rdb fail, err = %{public}d",
             err);
         bool ret = InvalidateHdcCloudData(backupRdb);
@@ -600,8 +600,8 @@ int32_t CloneRestore::Init(const string &backupRestoreDir, const string &upgrade
 
     auto context = AbilityRuntime::Context::GetApplicationContext();
     CHECK_AND_RETURN_RET_LOG(context != nullptr, E_FAIL, "Failed to get context");
-    int32_t err = BackupDatabaseUtils::InitDb(mediaRdb_, MEDIA_DATA_ABILITY_DB_NAME, dbPath_, BUNDLE_NAME, true,
-        context->GetArea());
+    int32_t err = BackupDatabaseUtils::InitDb(mediaRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME, dbPath_,
+        CONST_BUNDLE_NAME, true, context->GetArea());
     CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, E_FAIL, "Init remote medialibrary rdb fail, err = %{public}d", err);
 
     BackupDatabaseUtils::CheckDbIntegrity(mediaRdb_, sceneCode_, "OLD_MEDIA_LIBRARY");
@@ -891,7 +891,7 @@ static void UpdateThumbnailStatusToFailed(std::shared_ptr<NativeRdb::RdbStore> &
         values.PutInt(PhotoColumn::PHOTO_LCD_VISIT_TIME, RESTORE_LCD_VISIT_TIME_NO_LCD);
     }
     int32_t err = rdbStore->Update(changedRows, PhotoColumn::PHOTOS_TABLE,
-        values, MEDIA_DATA_DB_ID + " = ?", vector<string> { id });
+        values, string(CONST_MEDIA_DATA_DB_ID) + " = ?", vector<string> { id });
     CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "singleClone rdbStore Update failed! %{public}d", err);
 }
 
@@ -1193,7 +1193,7 @@ int32_t CloneRestore::QueryTotalNumber(const string &tableName)
         this->photoAlbumClone_.GetPhotoAlbumCountInOriginalDb());
     CHECK_AND_RETURN_RET(tableName != PhotoColumn::PHOTOS_TABLE,
         this->photosClone_.GetPhotosRowCountNotInPhotoMap());
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
+    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
     string whereClause = GetQueryWhereClauseByTable(tableName);
     querySql += whereClause.empty() ? "" : " WHERE " + whereClause;
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
@@ -1204,7 +1204,7 @@ int32_t CloneRestore::QueryTotalNumber(const string &tableName)
         resultSet->Close();
         return 0;
     }
-    int32_t result = GetInt32Val(MEDIA_COLUMN_COUNT_1, resultSet);
+    int32_t result = GetInt32Val(CONST_MEDIA_COLUMN_COUNT_1, resultSet);
     resultSet->Close();
     return result;
 }
@@ -2062,7 +2062,7 @@ bool CloneRestore::HasSameAlbum(AlbumInfo &albumInfo, const string &tableName)
     // check if the album already exists
     CHECK_AND_RETURN_RET(tableName != PhotoAlbumColumns::TABLE,
         this->photoAlbumClone_.HasSameAlbum(albumInfo.lPath, albumInfo.albumIdNew));
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " +
+    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " +
         PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(albumInfo.albumType) + " AND " +
         PhotoAlbumColumns::ALBUM_SUBTYPE + " = " + to_string(albumInfo.albumSubType) + " AND " +
         PhotoAlbumColumns::ALBUM_NAME + " = '" + albumInfo.albumName + "'";
@@ -2073,7 +2073,7 @@ bool CloneRestore::HasSameAlbum(AlbumInfo &albumInfo, const string &tableName)
         resultSet->Close();
         return false;
     }
-    int32_t count = GetInt32Val(MEDIA_COLUMN_COUNT_1, resultSet);
+    int32_t count = GetInt32Val(CONST_MEDIA_COLUMN_COUNT_1, resultSet);
     resultSet->Close();
     return count > 0;
 }
@@ -2518,7 +2518,7 @@ size_t CloneRestore::StatClonetotalSize(std::shared_ptr<NativeRdb::RdbStore> med
     CHECK_AND_RETURN_RET_LOG(mediaRdb != nullptr, 0, "rdbStore is nullptr");
 
     string thumbSizeSql {};
-    thumbSizeSql = "SELECT SUM(CAST(" + PhotoExtColumn::THUMBNAIL_SIZE + " AS BIGINT)) AS " + MEDIA_DATA_DB_SIZE +
+    thumbSizeSql = "SELECT SUM(CAST(" + PhotoExtColumn::THUMBNAIL_SIZE + " AS BIGINT)) AS " + CONST_MEDIA_DATA_DB_SIZE +
                           ", -1 AS " + MediaColumn::MEDIA_TYPE +
                           " FROM " + PhotoExtColumn::PHOTOS_EXT_TABLE;
 
@@ -2588,8 +2588,8 @@ string CloneRestore::GetBackupInfo()
 int32_t CloneRestore::QueryTotalNumberByMediaType(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &tableName,
     MediaType mediaType)
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " + MediaColumn::MEDIA_TYPE +
-        " = " + to_string(static_cast<int32_t>(mediaType));
+    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " +
+        MediaColumn::MEDIA_TYPE + " = " + to_string(static_cast<int32_t>(mediaType));
     string whereClause = GetQueryWhereClauseByTable(tableName);
     querySql += whereClause.empty() ? "" : " AND " + whereClause;
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(rdbStore, querySql);
@@ -2599,7 +2599,7 @@ int32_t CloneRestore::QueryTotalNumberByMediaType(shared_ptr<NativeRdb::RdbStore
         resultSet->Close();
         return 0;
     }
-    int32_t result = GetInt32Val(MEDIA_COLUMN_COUNT_1, resultSet);
+    int32_t result = GetInt32Val(CONST_MEDIA_COLUMN_COUNT_1, resultSet);
     resultSet->Close();
     return result;
 }

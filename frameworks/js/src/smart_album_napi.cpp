@@ -691,7 +691,7 @@ static void CommitModifyNative(const SmartAlbumNapiAsyncContext &albumContext)
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(SMARTALBUM_DB_DESCRIPTION, context->objectInfo->GetDescription());
     string coverUri = context->objectInfo->GetCoverUri();
-    if (coverUri.empty() || (coverUri.find(MEDIALIBRARY_MEDIA_PREFIX) == string::npos)) {
+    if (coverUri.empty() || (coverUri.find(CONST_MEDIALIBRARY_MEDIA_PREFIX) == string::npos)) {
         context->error = E_VIOLATION_PARAMETERS;
         NAPI_ERR_LOG("CoverUri is invalid");
         return;
@@ -705,7 +705,8 @@ static void CommitModifyNative(const SmartAlbumNapiAsyncContext &albumContext)
     valuesBucket.Put(SMARTALBUM_DB_EXPIRED_TIME, context->objectInfo->GetExpiredTime());
     DataShare::DataSharePredicates predicates;
     predicates.SetWhereClause(SMARTALBUM_DB_ID + " = " + std::to_string(context->objectInfo->GetSmartAlbumId()));
-    Uri commitModifyUri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_SMARTALBUMOPRN + "/" + MEDIA_SMARTALBUMOPRN_MODIFYALBUM);
+    Uri commitModifyUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMOPRN + "/" +
+        CONST_MEDIA_SMARTALBUMOPRN_MODIFYALBUM);
     context->changedRows = UserFileClient::Update(commitModifyUri, predicates, valuesBucket);
     context->SaveError(context->changedRows);
 }
@@ -726,8 +727,8 @@ static void JSAddAssetExecute(SmartAlbumNapiAsyncContext *context)
         valuesBucket.Put(SMARTALBUMMAP_DB_CHILD_ASSET_ID, id);
         values.push_back(valuesBucket);
     }
-    Uri addAssetUri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_SMARTALBUMMAPOPRN + "/" +
-        MEDIA_SMARTALBUMMAPOPRN_ADDSMARTALBUM);
+    Uri addAssetUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMMAPOPRN + "/" +
+        CONST_MEDIA_SMARTALBUMMAPOPRN_ADDSMARTALBUM);
     context->changedRows = UserFileClient::BatchInsert(addAssetUri, values);
     if (context->changedRows != static_cast<int32_t>(context->assetIds.size())) {
         context->error = E_INVALID_VALUES;
@@ -750,8 +751,8 @@ static void JSRemoveAssetExecute(SmartAlbumNapiAsyncContext *context)
         valuesBucket.Put(SMARTALBUMMAP_DB_CHILD_ASSET_ID, id);
         values.push_back(valuesBucket);
     }
-    Uri removeAssetUri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_SMARTALBUMMAPOPRN + "/" +
-        MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM);
+    Uri removeAssetUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMMAPOPRN + "/" +
+        CONST_MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM);
     context->changedRows = UserFileClient::BatchInsert(removeAssetUri, values);
     if (context->changedRows != static_cast<int32_t>(context->assetIds.size())) {
         context->error = E_INVALID_VALUES;
@@ -1121,25 +1122,26 @@ static void UpdateSelection(SmartAlbumNapiAsyncContext *context)
 {
     if (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) {
         context->predicates.EqualTo(SMARTALBUMMAP_DB_ALBUM_ID, context->objectPtr->GetAlbumId());
-        context->predicates.EqualTo(MEDIA_DATA_DB_TIME_PENDING, to_string(0));
+        context->predicates.EqualTo(CONST_MEDIA_DATA_DB_TIME_PENDING, to_string(0));
         if (context->objectPtr->GetAlbumId() == TRASH_ALBUM_ID_VALUES) {
-            context->predicates.NotEqualTo(MEDIA_DATA_DB_DATE_TRASHED, "0");
+            context->predicates.NotEqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, "0");
         } else {
-            context->predicates.EqualTo(MEDIA_DATA_DB_DATE_TRASHED, "0");
+            context->predicates.EqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, "0");
         }
         MediaLibraryNapiUtils::UpdateMediaTypeSelections(context);
     } else {
         string trashPrefix;
         if (context->objectPtr->GetAlbumId() == TRASH_ALBUM_ID_VALUES) {
-            trashPrefix = MEDIA_DATA_DB_DATE_TRASHED + " <> ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
+            trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " <> ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
         } else {
-            trashPrefix = MEDIA_DATA_DB_DATE_TRASHED + " = ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
+            trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " = ? AND " + SMARTALBUMMAP_DB_ALBUM_ID + " = ? ";
         }
         MediaLibraryNapiUtils::AppendFetchOptionSelection(context->selection, trashPrefix);
         context->selectionArgs.emplace_back("0");
         context->selectionArgs.emplace_back(std::to_string(context->objectPtr->GetAlbumId()));
         MediaLibraryNapi::ReplaceSelection(context->selection, context->selectionArgs,
-            MEDIA_DATA_DB_RELATIVE_PATH, MEDIA_DATA_DB_RELATIVE_PATH, ReplaceSelectionMode::ADD_DOCS_TO_RELATIVE_PATH);
+            CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+            ReplaceSelectionMode::ADD_DOCS_TO_RELATIVE_PATH);
     }
 }
 
@@ -1160,14 +1162,15 @@ static void GetFileAssetsNative(napi_env env, void *data)
     if (context->resultNapiType == ResultNapiType::TYPE_MEDIALIBRARY) {
         context->fetchColumn = FILE_ASSET_COLUMNS;
     } else {
-        context->fetchColumn.push_back(MEDIA_DATA_DB_ID);
-        context->fetchColumn.push_back(MEDIA_DATA_DB_NAME);
-        context->fetchColumn.push_back(MEDIA_DATA_DB_MEDIA_TYPE);
+        context->fetchColumn.push_back(CONST_MEDIA_DATA_DB_ID);
+        context->fetchColumn.push_back(CONST_MEDIA_DATA_DB_NAME);
+        context->fetchColumn.push_back(CONST_MEDIA_DATA_DB_MEDIA_TYPE);
     }
 
-    string queryUri = MEDIALIBRARY_DATA_ABILITY_PREFIX +
+    string queryUri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX +
         (MediaFileUtils::GetNetworkIdFromUri(context->objectPtr->GetAlbumUri())) +
-        MEDIALIBRARY_DATA_URI_IDENTIFIER + "/" + MEDIA_ALBUMOPRN_QUERYALBUM + "/" + ASSETMAP_VIEW_NAME;
+        CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER + "/" + CONST_MEDIA_ALBUMOPRN_QUERYALBUM +
+        "/" + CONST_ASSETMAP_VIEW_NAME;
     Uri uri(queryUri);
     int errCode = 0;
     auto resultSet = UserFileClient::Query(uri, context->predicates, context->fetchColumn, errCode);
@@ -1285,8 +1288,8 @@ static void JSRecoverAssetExecute(napi_env env, void *data)
     auto context = static_cast<SmartAlbumNapiAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
 
-    string recoverUri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_SMARTALBUMMAPOPRN + "/" +
-        MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM;
+    string recoverUri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_SMARTALBUMMAPOPRN + "/" +
+        CONST_MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM;
     Uri recoverAssetUri(recoverUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(SMARTALBUMMAP_DB_ALBUM_ID, context->objectPtr->GetAlbumId());
@@ -1353,10 +1356,10 @@ static void JSDeleteAssetExecute(napi_env env, void *data)
     auto context = static_cast<SmartAlbumNapiAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
 
-    string deleteUri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN + "/" + MEDIA_FILEOPRN_DELETEASSET;
+    string deleteUri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_DELETEASSET;
     Uri deleteAssetUri(deleteUri);
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_ID, MediaLibraryNapiUtils::GetFileIdFromUri(context->uri));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, MediaLibraryNapiUtils::GetFileIdFromUri(context->uri));
     int retVal = UserFileClient::Delete(deleteAssetUri, {});
     context->SaveError(retVal);
 }

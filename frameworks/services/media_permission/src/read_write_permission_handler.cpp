@@ -124,10 +124,10 @@ static int32_t SystemApiCheck(MediaLibraryCommand &cmd)
 
     static const set<string> SYSTEM_API_URIS = {
         // Deleting asset permanently from system is only allowed for system apps.
-        URI_DELETE_PHOTOS,
+        CONST_URI_DELETE_PHOTOS,
         // Deleting asset to trash album directly without a pop-up box is only allowed for system apps.
-        UFM_DELETE_PHOTOS,
-        PAH_DELETE_PHOTOS,
+        CONST_UFM_DELETE_PHOTOS,
+        CONST_PAH_DELETE_PHOTOS,
     };
 
     OperationObject obj = cmd.GetOprnObject();
@@ -152,8 +152,8 @@ static inline void AddHiddenAlbumPermission(MediaLibraryCommand &cmd, vector<str
 
 static int32_t HandleSecurityComponentPermission(MediaLibraryCommand &cmd)
 {
-    if (cmd.GetUri().ToString().find(OPRN_CREATE_COMPONENT) != string::npos ||
-        cmd.GetUri().ToString().find(OPRN_SAVE_CAMERA_PHOTO_COMPONENT) != string::npos) {
+    if (cmd.GetUri().ToString().find(CONST_OPRN_CREATE_COMPONENT) != string::npos ||
+        cmd.GetUri().ToString().find(CONST_OPRN_SAVE_CAMERA_PHOTO_COMPONENT) != string::npos) {
 #ifdef MEDIALIBRARY_SECURITY_OPEN
         auto tokenId = PermissionUtils::GetTokenId();
         if (!Security::SecurityComponent::SecCompKit::VerifySavePermission(tokenId)) {
@@ -252,8 +252,8 @@ static inline int32_t HandleBundlePermCheck(const MediaLibraryCommand &cmd)
 static int32_t HandleNoPermCheck(MediaLibraryCommand &cmd)
 {
     static const set<string> NO_NEED_PERM_CHECK_URI = {
-        URI_CLOSE_FILE,
-        MEDIALIBRARY_DIRECTORY_URI,
+        CONST_URI_CLOSE_FILE,
+        CONST_MEDIALIBRARY_DIRECTORY_URI,
     };
 
     static const set<OperationObject> NO_NEED_PERM_CHECK_OBJ = {

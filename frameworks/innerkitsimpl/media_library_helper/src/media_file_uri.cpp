@@ -40,14 +40,14 @@ static std::string SolveMediaTypeV9(MediaType mediaType)
 {
     switch (mediaType) {
         case MEDIA_TYPE_AUDIO:
-            return MEDIALIBRARY_TYPE_AUDIO_URI;
+            return CONST_MEDIALIBRARY_TYPE_AUDIO_URI;
         case MEDIA_TYPE_VIDEO:
-            return MEDIALIBRARY_TYPE_VIDEO_URI;
+            return CONST_MEDIALIBRARY_TYPE_VIDEO_URI;
         case MEDIA_TYPE_IMAGE:
-            return MEDIALIBRARY_TYPE_IMAGE_URI;
+            return CONST_MEDIALIBRARY_TYPE_IMAGE_URI;
         case MEDIA_TYPE_FILE:
         default:
-            return MEDIALIBRARY_TYPE_FILE_URI;
+            return CONST_MEDIALIBRARY_TYPE_FILE_URI;
     }
 }
 
@@ -61,7 +61,7 @@ static std::string SolveMediaTypeV10(MediaType mediaType)
             return PhotoColumn::PHOTO_TYPE_URI;
         case MEDIA_TYPE_FILE:
         default:
-            return MEDIALIBRARY_TYPE_FILE_URI;
+            return CONST_MEDIALIBRARY_TYPE_FILE_URI;
     }
 }
 
@@ -69,18 +69,18 @@ static std::string SolveMediaType(MediaType mediaType)
 {
     switch (mediaType) {
         case MEDIA_TYPE_AUDIO:
-            return MEDIALIBRARY_TYPE_AUDIO_URI;
+            return CONST_MEDIALIBRARY_TYPE_AUDIO_URI;
         case MEDIA_TYPE_VIDEO:
-            return MEDIALIBRARY_TYPE_VIDEO_URI;
+            return CONST_MEDIALIBRARY_TYPE_VIDEO_URI;
         case MEDIA_TYPE_IMAGE:
-            return MEDIALIBRARY_TYPE_IMAGE_URI;
+            return CONST_MEDIALIBRARY_TYPE_IMAGE_URI;
         case MEDIA_TYPE_ALBUM:
-            return MEDIALIBRARY_TYPE_ALBUM_URI;
+            return CONST_MEDIALIBRARY_TYPE_ALBUM_URI;
         case MEDIA_TYPE_SMARTALBUM:
-            return MEDIALIBRARY_TYPE_SMART_URI;
+            return CONST_MEDIALIBRARY_TYPE_SMART_URI;
         case MEDIA_TYPE_FILE:
         default:
-            return MEDIALIBRARY_TYPE_FILE_URI;
+            return CONST_MEDIALIBRARY_TYPE_FILE_URI;
     }
 }
 
@@ -115,14 +115,14 @@ std::string MediaFileUri::GetMediaTypeUri(MediaType mediaType, const int32_t &ap
 std::string MediaFileUri::MediaFileUriConstruct(MediaType mediaType, const std::string &fileId,
     const std::string &networkId, const int32_t &apiVersion, const std::string &extrUri)
 {
-    std::string uri = ML_FILE_URI_PREFIX;
+    std::string uri = CONST_ML_FILE_URI_PREFIX;
     uri += GetMediaTypeUri(mediaType, apiVersion);
     if (!fileId.empty()) {
         uri += "/" + fileId;
     }
 
     if (!networkId.empty()) {
-        uri += ML_URI_NETWORKID_EQUAL + networkId;
+        uri += CONST_ML_URI_NETWORKID_EQUAL + networkId;
     }
 
     if (apiVersion == MEDIA_API_VERSION_V10) {
@@ -156,12 +156,12 @@ static std::string CalNetworkId(MediaFileUri* uri, std::unordered_map<std::strin
     std::string> queryMap)
 {
     std::string scheme = uri->GetScheme();
-    if (scheme == ML_FILE_SCHEME) {
-        if (queryMap.find(ML_URI_NETWORKID) != queryMap.end()) {
-            return queryMap[ML_URI_NETWORKID];
+    if (scheme == CONST_ML_FILE_SCHEME) {
+        if (queryMap.find(CONST_ML_URI_NETWORKID) != queryMap.end()) {
+            return queryMap[CONST_ML_URI_NETWORKID];
         }
         return "";
-    } else if (scheme == ML_DATA_SHARE_SCHEME) {
+    } else if (scheme == CONST_ML_DATA_SHARE_SCHEME) {
         return uri->GetAuthority();
     }
     MEDIA_DEBUG_LOG("CalNetworkId scheme is invalid, scheme is %{private}s", scheme.c_str());
@@ -247,10 +247,10 @@ std::string MediaFileUri::GetFileId()
 std::string MediaFileUri::GetTableName()
 {
     static std::map<std::string, std::string> tableNameMap = {
-        { MEDIALIBRARY_TYPE_IMAGE_URI, PhotoColumn::PHOTOS_TABLE },
-        { MEDIALIBRARY_TYPE_VIDEO_URI, PhotoColumn::PHOTOS_TABLE },
-        { MEDIALIBRARY_TYPE_AUDIO_URI, AudioColumn::AUDIOS_TABLE },
-        { MEDIALIBRARY_TYPE_FILE_URI, MEDIALIBRARY_TABLE },
+        { CONST_MEDIALIBRARY_TYPE_IMAGE_URI, PhotoColumn::PHOTOS_TABLE },
+        { CONST_MEDIALIBRARY_TYPE_VIDEO_URI, PhotoColumn::PHOTOS_TABLE },
+        { CONST_MEDIALIBRARY_TYPE_AUDIO_URI, AudioColumn::AUDIOS_TABLE },
+        { CONST_MEDIALIBRARY_TYPE_FILE_URI, CONST_MEDIALIBRARY_TABLE },
         { AudioColumn::AUDIO_TYPE_URI, AudioColumn::AUDIOS_TABLE },
         { PhotoColumn::PHOTO_TYPE_URI, PhotoColumn::PHOTOS_TABLE }
     };
@@ -281,7 +281,7 @@ std::string MediaFileUri::GetFilePath()
 
     DataShare::DatashareBusinessError error;
     const std::string uriString = ToString();
-    std::string queryUri(UFM_QUERY_PHOTO);
+    std::string queryUri(CONST_UFM_QUERY_PHOTO);
     DataShare::DataSharePredicates predicates;
     std::vector<std::string> columns;
     /* check api version */
@@ -290,8 +290,8 @@ std::string MediaFileUri::GetFilePath()
         columns.emplace_back(MediaColumn::MEDIA_FILE_PATH);
         MediaFileUtils::UriAppendKeyValue(queryUri, URI_PARAM_API_VERSION);
     } else {
-        predicates.EqualTo(MEDIA_DATA_DB_ID, GetFileId());
-        columns.emplace_back(MEDIA_DATA_DB_FILE_PATH);
+        predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, GetFileId());
+        columns.emplace_back(CONST_MEDIA_DATA_DB_FILE_PATH);
     }
     Uri uri(queryUri);
     /* query and check */
@@ -331,14 +331,14 @@ std::string MediaFileUri::GetFilePath()
 bool MediaFileUri::IsValid()
 {
     std::string scheme = this->GetScheme();
-    if (scheme != ML_FILE_SCHEME &&
-        scheme != ML_DATA_SHARE_SCHEME) {
+    if (scheme != CONST_ML_FILE_SCHEME &&
+        scheme != CONST_ML_DATA_SHARE_SCHEME) {
         MEDIA_ERR_LOG("scheme is invalid, uri is %{private}s", this->ToString().c_str());
         return false;
     }
 
-    if (this->GetAuthority() != ML_URI_AUTHORITY &&
-        this->GetPath().find(MEDIALIBRARY_DATA_URI_IDENTIFIER) != 0) {
+    if (this->GetAuthority() != CONST_ML_URI_AUTHORITY &&
+        this->GetPath().find(CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER) != 0) {
         MEDIA_ERR_LOG("failed to find /media, uri is %{private}s", this->ToString().c_str());
         return false;
     }
@@ -383,17 +383,17 @@ MediaType MediaFileUri::GetMediaTypeFromUri(const std::string &uri)
         return MEDIA_TYPE_AUDIO;
     } else if (MediaFileUtils::StartsWith(uri, PhotoAlbumColumns::ALBUM_URI_PREFIX)) {
         return Media::MEDIA_TYPE_ALBUM;
-    } else if (MediaFileUtils::StartsWith(uri, AUDIO_URI_PREFIX)) {
+    } else if (MediaFileUtils::StartsWith(uri, CONST_AUDIO_URI_PREFIX)) {
         return Media::MEDIA_TYPE_AUDIO;
-    } else if (MediaFileUtils::StartsWith(uri, VIDEO_URI_PREFIX)) {
+    } else if (MediaFileUtils::StartsWith(uri, CONST_VIDEO_URI_PREFIX)) {
         return Media::MEDIA_TYPE_VIDEO;
-    } else if (MediaFileUtils::StartsWith(uri, IMAGE_URI_PREFIX)) {
+    } else if (MediaFileUtils::StartsWith(uri, CONST_IMAGE_URI_PREFIX)) {
         return Media::MEDIA_TYPE_IMAGE;
-    } else if (MediaFileUtils::StartsWith(uri, ALBUM_URI_PREFIX)) {
+    } else if (MediaFileUtils::StartsWith(uri, CONST_ALBUM_URI_PREFIX)) {
         return Media::MEDIA_TYPE_ALBUM;
-    } else if (MediaFileUtils::StartsWith(uri, FILE_URI_PREFIX)) {
+    } else if (MediaFileUtils::StartsWith(uri, CONST_FILE_URI_PREFIX)) {
         return Media::MEDIA_TYPE_FILE;
-    } else if (MediaFileUtils::StartsWith(uri, HIGHLIGHT_URI_PREFIX)) {
+    } else if (MediaFileUtils::StartsWith(uri, CONST_HIGHLIGHT_URI_PREFIX)) {
         return Media::MEDIA_TYPE_FILE;
     }
     return Media::MEDIA_TYPE_DEFAULT;
@@ -410,12 +410,13 @@ void MediaFileUri::RemoveAllFragment(std::string &uri)
 static int32_t UriValidCheck(Uri &uri)
 {
     std::string scheme = uri.GetScheme();
-    if (scheme != ML_FILE_SCHEME && scheme != ML_DATA_SHARE_SCHEME) {
+    if (scheme != CONST_ML_FILE_SCHEME && scheme != CONST_ML_DATA_SHARE_SCHEME) {
         MEDIA_ERR_LOG("scheme is invalid, uri is %{private}s", uri.ToString().c_str());
         return E_INVALID_URI;
     }
 
-    if (uri.GetAuthority() != ML_URI_AUTHORITY && uri.GetPath().find(MEDIALIBRARY_DATA_URI_IDENTIFIER) != 0) {
+    if (uri.GetAuthority() != CONST_ML_URI_AUTHORITY &&
+        uri.GetPath().find(CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER) != 0) {
         MEDIA_ERR_LOG("failed to find /media, uri is %{private}s", uri.ToString().c_str());
         return E_INVALID_URI;
     }
@@ -425,8 +426,8 @@ static int32_t UriValidCheck(Uri &uri)
 static inline void HandleOldUriPath(std::string &path)
 {
     // Handle datashare:///media and datashare:///media/file_operation case
-    if (MediaFileUtils::StartsWith(path, MEDIALIBRARY_DATA_URI_IDENTIFIER)) {
-        path = path.substr(MEDIALIBRARY_DATA_URI_IDENTIFIER.size());
+    if (MediaFileUtils::StartsWith(path, CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER)) {
+        path = path.substr(string(CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER).size());
         return;
     }
 }
@@ -490,12 +491,12 @@ void MediaFileUri::GetTimeIdFromUri(const std::vector<std::string> &uriBatch, st
         if (uri.empty()) {
             continue;
         }
-        auto index = uri.rfind(ML_URI_TIME_ID);
+        auto index = uri.rfind(CONST_ML_URI_TIME_ID);
         if (index == std::string::npos) {
             MEDIA_ERR_LOG("GetTimeIdFromUri find index for time_id failed: %{private}s", uri.c_str());
             continue;
         }
-        timeIdBatch.emplace_back(uri.substr(index + ML_URI_TIME_ID.length()));
+        timeIdBatch.emplace_back(uri.substr(index + string(CONST_ML_URI_TIME_ID).length()));
     }
 }
 
@@ -511,22 +512,22 @@ void MediaFileUri::GetTimeIdFromUri(const std::vector<std::string> &uriBatch, st
         if (uri.empty()) {
             continue;
         }
-        auto indexStart = uri.rfind(ML_URI_TIME_ID);
+        auto indexStart = uri.rfind(CONST_ML_URI_TIME_ID);
         if (indexStart == std::string::npos) {
             MEDIA_ERR_LOG("GetTimeIdFromUri find indexStart for time_id failed: %{private}s", uri.c_str());
             continue;
         }
-        auto indexEnd = uri.rfind(ML_URI_OFFSET);
+        auto indexEnd = uri.rfind(CONST_ML_URI_OFFSET);
         if (indexEnd == std::string::npos) {
             MEDIA_ERR_LOG("GetTimeIdFromUri find indexEnd for time_id failed: %{private}s", uri.c_str());
             continue;
         }
-        uint32_t timeIdLen = indexEnd - indexStart - ML_URI_TIME_ID.length();
+        uint32_t timeIdLen = indexEnd - indexStart - string(CONST_ML_URI_TIME_ID).length();
         if (indexEnd <= uri.size()) {
-            timeIdBatch.emplace_back(uri.substr(indexStart + ML_URI_TIME_ID.length(), timeIdLen));
+            timeIdBatch.emplace_back(uri.substr(indexStart + string(CONST_ML_URI_TIME_ID).length(), timeIdLen));
         }
-        if (indexEnd + ML_URI_OFFSET.length() <= uri.size()) {
-            offset.emplace_back(stoi(uri.substr(indexEnd + ML_URI_OFFSET.length())));
+        if (indexEnd + string(CONST_ML_URI_OFFSET).length() <= uri.size()) {
+            offset.emplace_back(stoi(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length())));
         }
     }
     if (offset.size() != BATCH_SIZE_START_AND_END) {

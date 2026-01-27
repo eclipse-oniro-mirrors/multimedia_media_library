@@ -148,52 +148,52 @@ const std::vector<std::string> videoEnhancementTypeEnum {
 };
 
 const std::vector<std::pair<std::string, std::string>> FILE_KEY_ENUM_PROPERTIES = {
-    std::make_pair("ID",                        MEDIA_DATA_DB_ID),
-    std::make_pair("RELATIVE_PATH",             MEDIA_DATA_DB_RELATIVE_PATH),
-    std::make_pair("DISPLAY_NAME",              MEDIA_DATA_DB_NAME),
-    std::make_pair("PARENT",                    MEDIA_DATA_DB_PARENT_ID),
-    std::make_pair("MIME_TYPE",                 MEDIA_DATA_DB_MIME_TYPE),
-    std::make_pair("MEDIA_TYPE",                MEDIA_DATA_DB_MEDIA_TYPE),
-    std::make_pair("SIZE",                      MEDIA_DATA_DB_SIZE),
-    std::make_pair("DATE_ADDED",                MEDIA_DATA_DB_DATE_ADDED),
-    std::make_pair("DATE_MODIFIED",             MEDIA_DATA_DB_DATE_MODIFIED),
-    std::make_pair("DATE_TAKEN",                MEDIA_DATA_DB_DATE_TAKEN),
-    std::make_pair("TITLE",                     MEDIA_DATA_DB_TITLE),
-    std::make_pair("ARTIST",                    MEDIA_DATA_DB_ARTIST),
-    std::make_pair("AUDIOALBUM",                MEDIA_DATA_DB_AUDIO_ALBUM),
-    std::make_pair("DURATION",                  MEDIA_DATA_DB_DURATION),
-    std::make_pair("WIDTH",                     MEDIA_DATA_DB_WIDTH),
-    std::make_pair("HEIGHT",                    MEDIA_DATA_DB_HEIGHT),
-    std::make_pair("ORIENTATION",               MEDIA_DATA_DB_ORIENTATION),
-    std::make_pair("ALBUM_ID",                  MEDIA_DATA_DB_BUCKET_ID),
-    std::make_pair("ALBUM_NAME",                MEDIA_DATA_DB_BUCKET_NAME)
+    std::make_pair("ID",                        CONST_MEDIA_DATA_DB_ID),
+    std::make_pair("RELATIVE_PATH",             CONST_MEDIA_DATA_DB_RELATIVE_PATH),
+    std::make_pair("DISPLAY_NAME",              CONST_MEDIA_DATA_DB_NAME),
+    std::make_pair("PARENT",                    CONST_MEDIA_DATA_DB_PARENT_ID),
+    std::make_pair("MIME_TYPE",                 CONST_MEDIA_DATA_DB_MIME_TYPE),
+    std::make_pair("MEDIA_TYPE",                CONST_MEDIA_DATA_DB_MEDIA_TYPE),
+    std::make_pair("SIZE",                      CONST_MEDIA_DATA_DB_SIZE),
+    std::make_pair("DATE_ADDED",                CONST_MEDIA_DATA_DB_DATE_ADDED),
+    std::make_pair("DATE_MODIFIED",             CONST_MEDIA_DATA_DB_DATE_MODIFIED),
+    std::make_pair("DATE_TAKEN",                CONST_MEDIA_DATA_DB_DATE_TAKEN),
+    std::make_pair("TITLE",                     CONST_MEDIA_DATA_DB_TITLE),
+    std::make_pair("ARTIST",                    CONST_MEDIA_DATA_DB_ARTIST),
+    std::make_pair("AUDIOALBUM",                CONST_MEDIA_DATA_DB_AUDIO_ALBUM),
+    std::make_pair("DURATION",                  CONST_MEDIA_DATA_DB_DURATION),
+    std::make_pair("WIDTH",                     CONST_MEDIA_DATA_DB_WIDTH),
+    std::make_pair("HEIGHT",                    CONST_MEDIA_DATA_DB_HEIGHT),
+    std::make_pair("ORIENTATION",               CONST_MEDIA_DATA_DB_ORIENTATION),
+    std::make_pair("ALBUM_ID",                  CONST_MEDIA_DATA_DB_BUCKET_ID),
+    std::make_pair("ALBUM_NAME",                CONST_MEDIA_DATA_DB_BUCKET_NAME)
 };
 
 const std::vector<std::pair<std::string, std::string>> USERFILEMGR_FILEKEY_ENUM_PROPERTIES = {
-    std::make_pair("URI",                       MEDIA_DATA_DB_URI),
-    std::make_pair("RELATIVE_PATH",             MEDIA_DATA_DB_RELATIVE_PATH),
-    std::make_pair("DISPLAY_NAME",              MEDIA_DATA_DB_NAME),
-    std::make_pair("DATE_ADDED",                MEDIA_DATA_DB_DATE_ADDED),
-    std::make_pair("DATE_MODIFIED",             MEDIA_DATA_DB_DATE_MODIFIED),
-    std::make_pair("TITLE",                     MEDIA_DATA_DB_TITLE)
+    std::make_pair("URI",                       CONST_MEDIA_DATA_DB_URI),
+    std::make_pair("RELATIVE_PATH",             CONST_MEDIA_DATA_DB_RELATIVE_PATH),
+    std::make_pair("DISPLAY_NAME",              CONST_MEDIA_DATA_DB_NAME),
+    std::make_pair("DATE_ADDED",                CONST_MEDIA_DATA_DB_DATE_ADDED),
+    std::make_pair("DATE_MODIFIED",             CONST_MEDIA_DATA_DB_DATE_MODIFIED),
+    std::make_pair("TITLE",                     CONST_MEDIA_DATA_DB_TITLE)
 };
 
 const std::vector<std::pair<std::string, std::string>> AUDIOKEY_ENUM_PROPERTIES = {
-    std::make_pair("URI",                       MEDIA_DATA_DB_URI),
-    std::make_pair("DISPLAY_NAME",              MEDIA_DATA_DB_NAME),
-    std::make_pair("DATE_ADDED",                MEDIA_DATA_DB_DATE_ADDED),
-    std::make_pair("DATE_MODIFIED",             MEDIA_DATA_DB_DATE_MODIFIED),
-    std::make_pair("TITLE",                     MEDIA_DATA_DB_TITLE),
-    std::make_pair("ARTIST",                    MEDIA_DATA_DB_ARTIST),
-    std::make_pair("AUDIOALBUM",                MEDIA_DATA_DB_AUDIO_ALBUM),
-    std::make_pair("DURATION",                  MEDIA_DATA_DB_DURATION),
-    std::make_pair("FAVORITE",                  MEDIA_DATA_DB_IS_FAV),
+    std::make_pair("URI",                       CONST_MEDIA_DATA_DB_URI),
+    std::make_pair("DISPLAY_NAME",              CONST_MEDIA_DATA_DB_NAME),
+    std::make_pair("DATE_ADDED",                CONST_MEDIA_DATA_DB_DATE_ADDED),
+    std::make_pair("DATE_MODIFIED",             CONST_MEDIA_DATA_DB_DATE_MODIFIED),
+    std::make_pair("TITLE",                     CONST_MEDIA_DATA_DB_TITLE),
+    std::make_pair("ARTIST",                    CONST_MEDIA_DATA_DB_ARTIST),
+    std::make_pair("AUDIOALBUM",                CONST_MEDIA_DATA_DB_AUDIO_ALBUM),
+    std::make_pair("DURATION",                  CONST_MEDIA_DATA_DB_DURATION),
+    std::make_pair("FAVORITE",                  CONST_MEDIA_DATA_DB_IS_FAV),
     std::make_pair("SIZE",                      MediaColumn::MEDIA_SIZE),
     std::make_pair("PACKAGE_NAME",              MediaColumn::MEDIA_PACKAGE_NAME)
 };
 
 const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPERTIES = {
-    std::make_pair("URI",                       MEDIA_DATA_DB_URI),
+    std::make_pair("URI",                       CONST_MEDIA_DATA_DB_URI),
     std::make_pair("DISPLAY_NAME",              MediaColumn::MEDIA_NAME),
     std::make_pair("DATE_ADDED",                MediaColumn::MEDIA_DATE_ADDED),
     std::make_pair("FILE_TYPE",                 MediaColumn::MEDIA_TYPE),
@@ -204,7 +204,7 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("WIDTH",                     PhotoColumn::PHOTO_WIDTH),
     std::make_pair("HEIGHT",                    PhotoColumn::PHOTO_HEIGHT),
     std::make_pair("DATE_TAKEN",                MediaColumn::MEDIA_DATE_TAKEN),
-    std::make_pair("DATE_TAKEN_MS",             MEDIA_DATA_DB_DATE_TAKEN_MS),
+    std::make_pair("DATE_TAKEN_MS",             CONST_MEDIA_DATA_DB_DATE_TAKEN_MS),
     std::make_pair("DETAIL_TIME",               PhotoColumn::PHOTO_DETAIL_TIME),
     std::make_pair("ORIENTATION",               PhotoColumn::PHOTO_ORIENTATION),
     std::make_pair("EXIF_ROTATE",               PhotoColumn::PHOTO_EXIF_ROTATE),
@@ -221,9 +221,9 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("DATE_MONTH",                PhotoColumn::PHOTO_DATE_MONTH),
     std::make_pair("DATE_DAY",                  PhotoColumn::PHOTO_DATE_DAY),
     std::make_pair("PENDING",                   "pending"),
-    std::make_pair("DATE_ADDED_MS",             MEDIA_DATA_DB_DATE_ADDED_MS),
-    std::make_pair("DATE_MODIFIED_MS",          MEDIA_DATA_DB_DATE_MODIFIED_MS),
-    std::make_pair("DATE_TRASHED_MS",           MEDIA_DATA_DB_DATE_TRASHED_MS),
+    std::make_pair("DATE_ADDED_MS",             CONST_MEDIA_DATA_DB_DATE_ADDED_MS),
+    std::make_pair("DATE_MODIFIED_MS",          CONST_MEDIA_DATA_DB_DATE_MODIFIED_MS),
+    std::make_pair("DATE_TRASHED_MS",           CONST_MEDIA_DATA_DB_DATE_TRASHED_MS),
     std::make_pair("PHOTO_SUBTYPE",             PhotoColumn::PHOTO_SUBTYPE),
     std::make_pair("DYNAMIC_RANGE_TYPE",        PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE),
     std::make_pair("LCD_SIZE",                  PhotoColumn::PHOTO_LCD_SIZE),
@@ -241,11 +241,11 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES = {
-    std::make_pair("URI",                       MEDIA_DATA_DB_URI),
+    std::make_pair("URI",                       CONST_MEDIA_DATA_DB_URI),
     std::make_pair("ALBUM_NAME",                PhotoAlbumColumns::ALBUM_NAME),
-    std::make_pair("FILE_TYPE",                 MEDIA_DATA_DB_MEDIA_TYPE),
-    std::make_pair("DATE_ADDED",                MEDIA_DATA_DB_DATE_ADDED),
-    std::make_pair("DATE_MODIFIED",             MEDIA_DATA_DB_DATE_MODIFIED)
+    std::make_pair("FILE_TYPE",                 CONST_MEDIA_DATA_DB_MEDIA_TYPE),
+    std::make_pair("DATE_ADDED",                CONST_MEDIA_DATA_DB_DATE_ADDED),
+    std::make_pair("DATE_MODIFIED",             CONST_MEDIA_DATA_DB_DATE_MODIFIED)
 };
 
 const std::vector<std::pair<std::string, std::string>> DEFAULT_URI_ENUM_PROPERTIES = {
@@ -276,29 +276,29 @@ const std::vector<std::string> ALBUM_COLUMN = {
 };
 
 const std::vector<std::string> PHOTO_COLUMN = {
-    MEDIA_DATA_DB_ID,
-    MEDIA_DATA_DB_FILE_PATH,
-    MEDIA_DATA_DB_MEDIA_TYPE,
-    MEDIA_DATA_DB_NAME,
-    MEDIA_DATA_DB_SIZE,
-    MEDIA_DATA_DB_DATE_ADDED,
-    MEDIA_DATA_DB_DATE_MODIFIED,
-    MEDIA_DATA_DB_DURATION,
-    MEDIA_DATA_DB_WIDTH,
-    MEDIA_DATA_DB_HEIGHT,
-    MEDIA_DATA_DB_DATE_TAKEN,
-    MEDIA_DATA_DB_ORIENTATION,
-    MEDIA_DATA_DB_IS_FAV,
-    MEDIA_DATA_DB_TITLE,
-    MEDIA_DATA_DB_POSITION,
-    MEDIA_DATA_DB_DATE_TRASHED,
+    CONST_MEDIA_DATA_DB_ID,
+    CONST_MEDIA_DATA_DB_FILE_PATH,
+    CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+    CONST_MEDIA_DATA_DB_NAME,
+    CONST_MEDIA_DATA_DB_SIZE,
+    CONST_MEDIA_DATA_DB_DATE_ADDED,
+    CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+    CONST_MEDIA_DATA_DB_DURATION,
+    CONST_MEDIA_DATA_DB_WIDTH,
+    CONST_MEDIA_DATA_DB_HEIGHT,
+    CONST_MEDIA_DATA_DB_DATE_TAKEN,
+    CONST_MEDIA_DATA_DB_ORIENTATION,
+    CONST_MEDIA_DATA_DB_IS_FAV,
+    CONST_MEDIA_DATA_DB_TITLE,
+    CONST_MEDIA_DATA_DB_POSITION,
+    CONST_MEDIA_DATA_DB_DATE_TRASHED,
     MediaColumn::MEDIA_HIDDEN,
     PhotoColumn::PHOTO_USER_COMMENT,
     PhotoColumn::CAMERA_SHOT_KEY,
     PhotoColumn::PHOTO_DATE_YEAR,
     PhotoColumn::PHOTO_DATE_MONTH,
     PhotoColumn::PHOTO_DATE_DAY,
-    MEDIA_DATA_DB_TIME_PENDING,
+    CONST_MEDIA_DATA_DB_TIME_PENDING,
     PhotoColumn::PHOTO_SUBTYPE,
     PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
     PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE,
@@ -308,9 +308,9 @@ const std::vector<std::string> PHOTO_COLUMN = {
 };
 
 const std::set<std::string> TIME_COLUMN = {
-    MEDIA_DATA_DB_DATE_ADDED,
-    MEDIA_DATA_DB_DATE_MODIFIED,
-    MEDIA_DATA_DB_DATE_TRASHED,
+    CONST_MEDIA_DATA_DB_DATE_ADDED,
+    CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+    CONST_MEDIA_DATA_DB_DATE_TRASHED,
 };
 
 const std::vector<std::pair<std::string, std::string>> SUPPORTED_IMAGE_FORMAT_ENUM_PROPERTIES = {

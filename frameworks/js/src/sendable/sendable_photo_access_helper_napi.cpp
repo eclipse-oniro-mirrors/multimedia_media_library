@@ -382,10 +382,10 @@ static void SetCompatAlbumName(AlbumAsset *albumData)
     string albumName;
     switch (albumData->GetAlbumSubType()) {
         case PhotoAlbumSubType::CAMERA:
-            albumName = CAMERA_ALBUM_NAME;
+            albumName = CONST_CAMERA_ALBUM_NAME;
             break;
         case PhotoAlbumSubType::SCREENSHOT:
-            albumName = SCREEN_SHOT_ALBUM_NAME;
+            albumName = CONST_SCREEN_SHOT_ALBUM_NAME;
             break;
         default:
             NAPI_WARN_LOG("Ignore unsupported compat album type: %{public}d", albumData->GetAlbumSubType());
@@ -399,13 +399,13 @@ static void SetAlbumCoverUri(SendablePhotoAccessHelperAsyncContext *context, uni
     tracer.Start("SetAlbumCoverUri");
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     DataShare::DataSharePredicates predicates;
-    predicates.SetWhereClause(MEDIA_DATA_DB_BUCKET_ID + " = ? ");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_BUCKET_ID) + " = ? ");
     predicates.SetWhereArgs({ to_string(album->GetAlbumId()) });
-    predicates.SetOrder(MEDIA_DATA_DB_DATE_ADDED + " DESC LIMIT 0,1 ");
+    predicates.SetOrder(string(CONST_MEDIA_DATA_DB_DATE_ADDED) + " DESC LIMIT 0,1 ");
     vector<string> columns;
     string queryUri = MEDIALIBRARY_DATA_URI;
     if (!context->networkId.empty()) {
-        queryUri = MEDIALIBRARY_DATA_ABILITY_PREFIX + context->networkId + MEDIALIBRARY_DATA_URI_IDENTIFIER;
+        queryUri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX + context->networkId + CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
         NAPI_DEBUG_LOG("querycoverUri is = %{private}s", queryUri.c_str());
     }
     Uri uri(queryUri);
@@ -439,34 +439,35 @@ void SetAlbumData(AlbumAsset* albumData, shared_ptr<DataShare::DataShareResultSe
     SetCompatAlbumName(albumData);
 #else
     // Get album id index and value
-    albumData->SetAlbumId(get<int32_t>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_BUCKET_ID, resultSet,
+    albumData->SetAlbumId(get<int32_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_BUCKET_ID, resultSet,
         TYPE_INT32)));
 
     // Get album title index and value
-    albumData->SetAlbumName(get<string>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_TITLE, resultSet,
+    albumData->SetAlbumName(get<string>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_TITLE, resultSet,
         TYPE_STRING)));
 #endif
 
     // Get album asset count index and value
-    albumData->SetCount(get<int32_t>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_COUNT, resultSet, TYPE_INT32)));
+    albumData->SetCount(get<int32_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_COUNT,
+        resultSet, TYPE_INT32)));
     MediaFileUri fileUri(MEDIA_TYPE_ALBUM, to_string(albumData->GetAlbumId()), networkId,
         MEDIA_API_VERSION_DEFAULT);
     albumData->SetAlbumUri(fileUri.ToString());
     // Get album relativePath index and value
-    albumData->SetAlbumRelativePath(get<string>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_RELATIVE_PATH,
+    albumData->SetAlbumRelativePath(get<string>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_RELATIVE_PATH,
         resultSet, TYPE_STRING)));
-    albumData->SetAlbumDateModified(get<int64_t>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_DATE_MODIFIED,
+    albumData->SetAlbumDateModified(get<int64_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_DATE_MODIFIED,
         resultSet, TYPE_INT64)));
 }
 
 #ifdef MEDIALIBRARY_COMPATIBILITY
 static void ReplaceAlbumName(const string &arg, string &argInstead)
 {
-    if (arg == CAMERA_ALBUM_NAME) {
+    if (arg == CONST_CAMERA_ALBUM_NAME) {
         argInstead = to_string(PhotoAlbumSubType::CAMERA);
-    } else if (arg == SCREEN_SHOT_ALBUM_NAME) {
+    } else if (arg == CONST_SCREEN_SHOT_ALBUM_NAME) {
         argInstead = to_string(PhotoAlbumSubType::SCREENSHOT);
-    } else if (arg == SCREEN_RECORD_ALBUM_NAME) {
+    } else if (arg == CONST_SCREEN_RECORD_ALBUM_NAME) {
         argInstead = to_string(PhotoAlbumSubType::SCREENSHOT);
     } else {
         argInstead = arg;
@@ -475,11 +476,11 @@ static void ReplaceAlbumName(const string &arg, string &argInstead)
 
 static bool DoReplaceRelativePath(const string &arg, string &argInstead)
 {
-    if (arg == CAMERA_PATH) {
+    if (arg == CONST_CAMERA_PATH) {
         argInstead = to_string(PhotoAlbumSubType::CAMERA);
-    } else if (arg == SCREEN_SHOT_PATH) {
+    } else if (arg == CONST_SCREEN_SHOT_PATH) {
         argInstead = to_string(PhotoAlbumSubType::SCREENSHOT);
-    } else if (arg == SCREEN_RECORD_PATH) {
+    } else if (arg == CONST_SCREEN_RECORD_PATH) {
         argInstead = to_string(PhotoAlbumSubType::SCREENSHOT);
     } else if (arg.empty()) {
         argInstead = arg;
@@ -495,7 +496,7 @@ static inline void ReplaceRelativePath(string &selection, size_t pos, const stri
 {
     bool shouldReplace = DoReplaceRelativePath(arg, argInstead);
     if (shouldReplace) {
-        selection.replace(pos, MEDIA_DATA_DB_RELATIVE_PATH.length(), keyInstead);
+        selection.replace(pos, string(CONST_MEDIA_DATA_DB_RELATIVE_PATH).length(), keyInstead);
     }
 }
 
@@ -525,16 +526,16 @@ void SendablePhotoAccessHelper::ReplaceSelection(string &selection, vector<strin
         }
         const string &arg = selectionArgs[argIndex];
         string argInstead = arg;
-        if (key == MEDIA_DATA_DB_RELATIVE_PATH) {
+        if (key == CONST_MEDIA_DATA_DB_RELATIVE_PATH) {
             if (mode == SendableReplaceSelectionMode::SENDABLE_ADD_DOCS_TO_RELATIVE_PATH) {
                 argInstead = MediaFileUtils::AddDocsToRelativePath(arg);
             } else {
                 ReplaceRelativePath(selection, pos, keyInstead, arg, argInstead);
             }
-        } else if (key == MEDIA_DATA_DB_BUCKET_NAME) {
+        } else if (key == CONST_MEDIA_DATA_DB_BUCKET_NAME) {
             ReplaceAlbumName(arg, argInstead);
             selection.replace(pos, key.length(), keyInstead);
-        } else if (key == MEDIA_DATA_DB_BUCKET_ID) {
+        } else if (key == CONST_MEDIA_DATA_DB_BUCKET_ID) {
             selection.replace(pos, key.length(), keyInstead);
         }
         selectionArgs[argIndex] = argInstead;
@@ -579,9 +580,9 @@ napi_value GetJSArgsForCreateAsset(napi_env env, size_t argc, const napi_value a
     }
     }
 
-    context->valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, fileMediaType);
-    context->valuesBucket.Put(MEDIA_DATA_DB_NAME, string(titleBuffer));
-    context->valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, string(relativePathBuffer));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileMediaType);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, string(titleBuffer));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, string(relativePathBuffer));
 
     context->assetType = TYPE_DEFAULT;
     if (fileMediaType == MediaType::MEDIA_TYPE_IMAGE || fileMediaType == MediaType::MEDIA_TYPE_VIDEO) {
@@ -622,7 +623,7 @@ napi_value GetJSArgsForDeleteAsset(napi_env env, size_t argc, const napi_value a
         }
     }
 
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, string(buffer));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, string(buffer));
 
     // Return true napi_value if params are successfully obtained
     napi_get_boolean(env, true, &result);
@@ -710,7 +711,7 @@ static napi_value AddDefaultPhotoAlbumColumns(napi_env env, vector<string> &fetc
     for (const auto &column : fetchColumn) {
         if (PhotoAlbumColumns::IsPhotoAlbumColumn(column)) {
             validFetchColumns.insert(column);
-        } else if (column.compare(MEDIA_DATA_DB_URI) == 0) {
+        } else if (column.compare(CONST_MEDIA_DATA_DB_URI) == 0) {
             // uri is default property of album
             continue;
         } else {
@@ -792,7 +793,7 @@ static napi_value ParseArgsGetAssets(napi_env env, napi_callback_info info,
         case TYPE_PHOTO: {
             if (needExtraOption) {
                 bool isAddDefaultColumn =
-                    std::find(context->fetchColumn.begin(), context->fetchColumn.end(), MEDIA_DATA_DB_URI) !=
+                    std::find(context->fetchColumn.begin(), context->fetchColumn.end(), CONST_MEDIA_DATA_DB_URI) !=
                         context->fetchColumn.end();
                 if (isAddDefaultColumn) {
                     CHECK_NULLPTR_RET(SendableMediaLibraryNapiUtils::AddDefaultAssetColumns(env, context->fetchColumn,
@@ -831,10 +832,10 @@ static napi_value ParseArgsGetAssets(napi_env env, napi_callback_info info,
 static bool EasterEgg(SendablePhotoAccessHelperAsyncContext* context)
 {
     string queryUri;
-    if (context->uri == URI_FIND_ALL_DUPLICATE_ASSETS) {
-        queryUri = PAH_FIND_ALL_DUPLICATE_ASSETS;
-    } else if (context->uri == URI_FIND_ALL_DUPLICATE_ASSETS_TO_DELETE) {
-        queryUri = PAH_FIND_DUPLICATE_ASSETS_TO_DELETE;
+    if (context->uri == CONST_URI_FIND_ALL_DUPLICATE_ASSETS) {
+        queryUri = CONST_PAH_FIND_ALL_DUPLICATE_ASSETS;
+    } else if (context->uri == CONST_URI_FIND_ALL_DUPLICATE_ASSETS_TO_DELETE) {
+        queryUri = CONST_PAH_FIND_DUPLICATE_ASSETS_TO_DELETE;
     } else {
         return false;
     }
@@ -842,12 +843,12 @@ static bool EasterEgg(SendablePhotoAccessHelperAsyncContext* context)
         NAPI_ERR_LOG("Easter egg operation failed, target is not system app");
         return false;
     };
-    bool isQueryCount = find(context->fetchColumn.begin(), context->fetchColumn.end(), MEDIA_COLUMN_COUNT)
+    bool isQueryCount = find(context->fetchColumn.begin(), context->fetchColumn.end(), CONST_MEDIA_COLUMN_COUNT)
         != context->fetchColumn.end();
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     NAPI_INFO_LOG(
         "Easter egg operation start: %{public}s, is query count: %{public}d",
-        queryUri == PAH_FIND_ALL_DUPLICATE_ASSETS ?
+        queryUri == CONST_PAH_FIND_ALL_DUPLICATE_ASSETS ?
         "find all duplicate assets" : "find all duplicate assets to delete", isQueryCount);
     int errCode = 0;
     Uri uri(queryUri);
@@ -863,7 +864,7 @@ static bool EasterEgg(SendablePhotoAccessHelperAsyncContext* context)
     context->fetchFileResult->SetUserId(GetUserIdFromSendableContext(context));
     NAPI_INFO_LOG(
         "Easter egg operation end: %{public}s, is query count: %{public}d, cost time: %{public}" PRId64 "ms",
-        queryUri == PAH_FIND_ALL_DUPLICATE_ASSETS ?
+        queryUri == CONST_PAH_FIND_ALL_DUPLICATE_ASSETS ?
         "find all duplicate assets" : "find all duplicate assets to delete", isQueryCount,
         MediaFileUtils::UTCTimeMilliSeconds() - startTime);
     return true;
@@ -881,7 +882,7 @@ static void PhotoAccessGetAssetsExecute(napi_env env, void *data)
     string queryUri;
     switch (context->assetType) {
         case TYPE_PHOTO: {
-            queryUri = PAH_QUERY_PHOTO;
+            queryUri = CONST_PAH_QUERY_PHOTO;
             SendableMediaLibraryNapiUtils::UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
             break;
         }
@@ -945,13 +946,13 @@ static void JSGetPhotoAlbumsExecute(napi_env env, void *data)
     string queryUri;
     if (context->hiddenOnly || context->hiddenAlbumFetchMode == ASSETS_MODE) {
         queryUri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ?
-            UFM_QUERY_HIDDEN_ALBUM : PAH_QUERY_HIDDEN_ALBUM;
+            CONST_UFM_QUERY_HIDDEN_ALBUM : CONST_PAH_QUERY_HIDDEN_ALBUM;
     } else if (context->isAnalysisAlbum) {
         queryUri = context->isLocationAlbum == PhotoAlbumSubType::GEOGRAPHY_LOCATION ?
-            PAH_QUERY_GEO_PHOTOS : PAH_QUERY_ANA_PHOTO_ALBUM;
+            CONST_PAH_QUERY_GEO_PHOTOS : CONST_PAH_QUERY_ANA_PHOTO_ALBUM;
     } else {
         queryUri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ?
-            UFM_QUERY_PHOTO_ALBUM : PAH_QUERY_PHOTO_ALBUM;
+            CONST_UFM_QUERY_PHOTO_ALBUM : CONST_PAH_QUERY_PHOTO_ALBUM;
     }
     Uri uri(queryUri);
     int errCode = 0;
@@ -1383,7 +1384,7 @@ static bool CheckDisplayNameParams(SendablePhotoAccessHelperAsyncContext *contex
     }
     if (!context->isCreateByComponent) {
         bool isValid = false;
-        string displayName = context->valuesBucket.Get(MEDIA_DATA_DB_NAME, isValid);
+        string displayName = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
         if (!isValid) {
             NAPI_ERR_LOG("getting displayName is invalid");
             return false;
@@ -1472,7 +1473,7 @@ static napi_value ParseArgsCreatePhotoAssetSystem(napi_env env, napi_callback_in
         napi_ok, "Failed to get displayName");
     mediaType = MediaFileUtils::GetMediaType(displayName);
     NAPI_ASSERT(env, (mediaType == MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO), "invalid file type");
-    context->valuesBucket.Put(MEDIA_DATA_DB_NAME, displayName);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
 
     /* Parse the second argument into albumUri if exists */
     string albumUri;
@@ -1481,7 +1482,7 @@ static napi_value ParseArgsCreatePhotoAssetSystem(napi_env env, napi_callback_in
         if (valueType == napi_string) {
             if (SendableMediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[ARGS_ONE],
                 albumUri) == napi_ok) {
-                context->valuesBucket.Put(MEDIA_DATA_DB_ALARM_URI, albumUri);
+                context->valuesBucket.Put(CONST_MEDIA_DATA_DB_ALARM_URI, albumUri);
             }
         } else if (valueType == napi_object) {
             NAPI_ASSERT(env, ParsePhotoAssetCreateOption(env, context->argv[ARGS_ONE], *context) == napi_ok,
@@ -1489,7 +1490,7 @@ static napi_value ParseArgsCreatePhotoAssetSystem(napi_env env, napi_callback_in
         }
     }
 
-    context->valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
     NAPI_ASSERT(env, SendableMediaLibraryNapiUtils::GetParamCallback(env, context) == napi_ok,
         "Failed to get callback");
 
@@ -1559,7 +1560,7 @@ static napi_value ParseArgsCreatePhotoAssetComponent(napi_env env, napi_callback
     string extention;
     NAPI_ASSERT(env, SendableMediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[ARGS_ONE], extention) ==
         napi_ok, "Failed to get extention");
-    context->valuesBucket.Put(ASSET_EXTENTION, extention);
+    context->valuesBucket.Put(CONST_ASSET_EXTENTION, extention);
 
     /* Parse the third argument into albumUri if exists */
     if (context->argc >= ARGS_THREE) {
@@ -1573,7 +1574,7 @@ static napi_value ParseArgsCreatePhotoAssetComponent(napi_env env, napi_callback
         }
     }
 
-    context->valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
 
     napi_value result = nullptr;
     NAPI_CALL(env, napi_get_boolean(env, true, &result));
@@ -1584,7 +1585,7 @@ static void PhotoAccessSetFileAssetByIdV10(int32_t id, const string &networkId, 
                                            SendablePhotoAccessHelperAsyncContext *context)
 {
     bool isValid = false;
-    string displayName = context->valuesBucket.Get(MEDIA_DATA_DB_NAME, isValid);
+    string displayName = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
     if (!isValid) {
         NAPI_ERR_LOG("getting title is invalid");
         return;
@@ -1609,14 +1610,14 @@ static void GetCreateUri(SendablePhotoAccessHelperAsyncContext *context, string 
         switch (context->assetType) {
             case TYPE_PHOTO:
                 if (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) {
-                    uri = (context->isCreateByComponent) ? UFM_CREATE_PHOTO_COMPONENT : UFM_CREATE_PHOTO;
+                    uri = (context->isCreateByComponent) ? CONST_UFM_CREATE_PHOTO_COMPONENT : CONST_UFM_CREATE_PHOTO;
                 } else {
-                    uri = (context->isCreateByComponent) ? PAH_CREATE_PHOTO_COMPONENT :
-                        (context->needSystemApp ? PAH_SYS_CREATE_PHOTO : PAH_CREATE_PHOTO);
+                    uri = (context->isCreateByComponent) ? CONST_PAH_CREATE_PHOTO_COMPONENT :
+                        (context->needSystemApp ? CONST_PAH_SYS_CREATE_PHOTO : CONST_PAH_CREATE_PHOTO);
                 }
                 break;
             case TYPE_AUDIO:
-                uri = (context->isCreateByComponent) ? UFM_CREATE_AUDIO_COMPONENT : UFM_CREATE_AUDIO;
+                uri = (context->isCreateByComponent) ? CONST_UFM_CREATE_AUDIO_COMPONENT : CONST_UFM_CREATE_AUDIO;
                 break;
             default:
                 NAPI_ERR_LOG("Unsupported creation napitype %{public}d", static_cast<int32_t>(context->assetType));
@@ -1626,22 +1627,22 @@ static void GetCreateUri(SendablePhotoAccessHelperAsyncContext *context, string 
     } else {
 #ifdef MEDIALIBRARY_COMPATIBILITY
         bool isValid = false;
-        string relativePath = context->valuesBucket.Get(MEDIA_DATA_DB_RELATIVE_PATH, isValid);
+        string relativePath = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_RELATIVE_PATH, isValid);
         if (MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
             MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
-            uri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN + "/" + MEDIA_FILEOPRN_CREATEASSET;
+            uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
             SendableMediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V9));
             return;
         }
         switch (context->assetType) {
             case TYPE_PHOTO:
-                uri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_PHOTOOPRN + "/" + MEDIA_FILEOPRN_CREATEASSET;
+                uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_PHOTOOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
                 break;
             case TYPE_AUDIO:
-                uri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_AUDIOOPRN + "/" + MEDIA_FILEOPRN_CREATEASSET;
+                uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_AUDIOOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
                 break;
             case TYPE_DEFAULT:
-                uri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN + "/" + MEDIA_FILEOPRN_CREATEASSET;
+                uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
                 break;
             default:
                 NAPI_ERR_LOG("Unsupported creation napi type %{public}d", static_cast<int32_t>(context->assetType));
@@ -1649,7 +1650,7 @@ static void GetCreateUri(SendablePhotoAccessHelperAsyncContext *context, string 
         }
         SendableMediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V9));
 #else
-        uri = MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN + "/" + MEDIA_FILEOPRN_CREATEASSET;
+        uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
 #endif
     }
 }
@@ -1861,7 +1862,7 @@ napi_value SendablePhotoAccessHelper::PhotoAccessGetSharedPhotoAssets(napi_env e
 
     SendablePhotoAccessHelperAsyncContext* context =
         static_cast<SendablePhotoAccessHelperAsyncContext*>((asyncContext.get()));
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     SendableMediaLibraryNapiUtils::UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
 
     Uri uri(queryUri);

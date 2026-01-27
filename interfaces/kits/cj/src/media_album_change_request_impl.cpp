@@ -179,7 +179,7 @@ static bool FetchNewCount(shared_ptr<PhotoAlbum>& album)
         return false;
     }
 
-    Uri queryUri(PAH_QUERY_PHOTO_ALBUM);
+    Uri queryUri(CONST_PAH_QUERY_PHOTO_ALBUM);
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, album->GetAlbumId());
     vector<string> fetchColumns = { PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_COUNT,
@@ -219,7 +219,7 @@ static bool AddAssetsExecute(MediaAlbumChangeRequestImpl* changeRequest)
         valuesBuckets.push_back(pair);
     }
 
-    Uri addAssetsUri(PAH_PHOTO_ALBUM_ADD_ASSET);
+    Uri addAssetsUri(CONST_PAH_PHOTO_ALBUM_ADD_ASSET);
     int ret = UserFileClient::BatchInsert(addAssetsUri, valuesBuckets);
     changeRequest->ClearAddAssetArray();
     if (ret < 0) {
@@ -240,7 +240,7 @@ static bool RemoveAssetsExecute(MediaAlbumChangeRequestImpl* changeRequest)
     predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(albumId));
     predicates.And()->In(PhotoColumn::MEDIA_ID, changeRequest->GetRemoveAssetArray());
 
-    Uri removeAssetsUri(PAH_PHOTO_ALBUM_REMOVE_ASSET);
+    Uri removeAssetsUri(CONST_PAH_PHOTO_ALBUM_REMOVE_ASSET);
     int ret = UserFileClient::Delete(removeAssetsUri, predicates);
     changeRequest->ClearRemoveAssetArray();
     if (ret < 0) {
@@ -256,17 +256,17 @@ static bool RemoveAssetsExecute(MediaAlbumChangeRequestImpl* changeRequest)
 static void GetAlbumUpdateCoverUri(shared_ptr<PhotoAlbum>& photoAlbum, string& uri)
 {
     if (photoAlbum->GetPhotoAlbumSubType() == PhotoAlbumSubType::PORTRAIT) {
-        uri = PAH_PORTRAIT_ANAALBUM_COVER_URI;
+        uri = CONST_PAH_PORTRAIT_ANAALBUM_COVER_URI;
     } else if (photoAlbum->GetPhotoAlbumSubType() == PhotoAlbumSubType::GROUP_PHOTO) {
-        uri = PAH_GROUP_ANAALBUM_COVER_URI;
+        uri = CONST_PAH_GROUP_ANAALBUM_COVER_URI;
     } else if (PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        uri = PAH_UPDATE_USER_ALBUM_COVER_URI;
+        uri = CONST_PAH_UPDATE_USER_ALBUM_COVER_URI;
     } else if (PhotoAlbum::IsUserPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        uri = PAH_UPDATE_USER_ALBUM_COVER_URI;
+        uri = CONST_PAH_UPDATE_USER_ALBUM_COVER_URI;
     } else if (PhotoAlbum::IsSourceAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType())) {
-        uri = PAH_UPDATE_SOURCE_ALBUM_COVER_URI;
+        uri = CONST_PAH_UPDATE_SOURCE_ALBUM_COVER_URI;
     } else {
-        uri = PAH_UPDATE_SYSTEM_ALBUM_COVER_URI;
+        uri = CONST_PAH_UPDATE_SYSTEM_ALBUM_COVER_URI;
     }
 }
 
@@ -281,11 +281,11 @@ static bool GetAlbumUpdateValue(shared_ptr<PhotoAlbum>& photoAlbum, const AlbumC
     switch (changeOperation) {
         case AlbumChangeOperation::SET_ALBUM_NAME:
             if (photoAlbum->GetPhotoAlbumSubType() == PhotoAlbumSubType::PORTRAIT) {
-                uri = PAH_PORTRAIT_ANAALBUM_ALBUM_NAME;
+                uri = CONST_PAH_PORTRAIT_ANAALBUM_ALBUM_NAME;
             } else if (photoAlbum->GetPhotoAlbumSubType() == PhotoAlbumSubType::GROUP_PHOTO) {
-                uri = PAH_GROUP_ANAALBUM_ALBUM_NAME;
+                uri = CONST_PAH_GROUP_ANAALBUM_ALBUM_NAME;
             } else {
-                uri = PAH_SET_PHOTO_ALBUM_NAME;
+                uri = CONST_PAH_SET_PHOTO_ALBUM_NAME;
             }
             property = PhotoAlbumColumns::ALBUM_NAME;
             valuesBucket.Put(property, photoAlbum->GetAlbumName());
@@ -296,20 +296,20 @@ static bool GetAlbumUpdateValue(shared_ptr<PhotoAlbum>& photoAlbum, const AlbumC
             valuesBucket.Put(property, photoAlbum->GetCoverUri());
             break;
         case AlbumChangeOperation::RESET_COVER_URI:
-            uri = PAH_RESET_ALBUM_COVER_URI;
+            uri = CONST_PAH_RESET_ALBUM_COVER_URI;
             break;
         case AlbumChangeOperation::SET_DISPLAY_LEVEL:
-            uri = PAH_PORTRAIT_DISPLAY_LEVLE;
+            uri = CONST_PAH_PORTRAIT_DISPLAY_LEVLE;
             property = USER_DISPLAY_LEVEL;
             valuesBucket.Put(property, photoAlbum->GetDisplayLevel());
             break;
         case AlbumChangeOperation::SET_IS_ME:
-            uri = PAH_PORTRAIT_IS_ME;
+            uri = CONST_PAH_PORTRAIT_IS_ME;
             property = IS_ME;
             valuesBucket.Put(property, 1);
             break;
         case AlbumChangeOperation::DISMISS:
-            uri = PAH_GROUP_ANAALBUM_DISMISS;
+            uri = CONST_PAH_GROUP_ANAALBUM_DISMISS;
             property = IS_REMOVED;
             valuesBucket.Put(property, 1);
             break;

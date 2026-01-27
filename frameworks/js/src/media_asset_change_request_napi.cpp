@@ -573,7 +573,7 @@ static bool HasAccessMedialibThumbDbPermission()
 static bool CheckMovingPhotoCreationArgs(MediaAssetChangeRequestAsyncContext& context)
 {
     bool isValid = false;
-    int32_t mediaType = context.valuesBucket.Get(MEDIA_DATA_DB_MEDIA_TYPE, isValid);
+    int32_t mediaType = context.valuesBucket.Get(CONST_MEDIA_DATA_DB_MEDIA_TYPE, isValid);
     if (!isValid) {
         NAPI_ERR_LOG("Failed to get media type");
         return false;
@@ -584,12 +584,12 @@ static bool CheckMovingPhotoCreationArgs(MediaAssetChangeRequestAsyncContext& co
         return false;
     }
 
-    string extension = context.valuesBucket.Get(ASSET_EXTENTION, isValid);
+    string extension = context.valuesBucket.Get(CONST_ASSET_EXTENTION, isValid);
     if (isValid) {
         return MediaFileUtils::CheckMovingPhotoExtension(extension);
     }
 
-    string displayName = context.valuesBucket.Get(MEDIA_DATA_DB_NAME, isValid);
+    string displayName = context.valuesBucket.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
     return isValid && MediaFileUtils::CheckMovingPhotoExtension(MediaFileUtils::GetExtensionFromPath(displayName));
 }
 
@@ -696,8 +696,8 @@ static napi_value ParseArgsCreateAssetSystem(
     CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName) == E_OK, "Failed to check displayName");
     mediaType = MediaFileUtils::GetMediaType(displayName);
     CHECK_COND_WITH_MESSAGE(env, mediaType == MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO, "Invalid file type");
-    context->valuesBucket.Put(MEDIA_DATA_DB_NAME, displayName);
-    context->valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
 
     // Parse options if exists.
     if (context->argc == ARGS_THREE) {
@@ -735,8 +735,8 @@ static napi_value ParseArgsCreateAssetCommon(
         "Failed to get extension");
     CHECK_COND_WITH_MESSAGE(
         env, mediaType == MediaFileUtils::GetMediaType("." + extension), "Failed to check extension");
-    context->valuesBucket.Put(ASSET_EXTENTION, extension);
-    context->valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
+    context->valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
 
     // Parse options if exists.
     if (context->argc == ARGS_FOUR) {
@@ -765,7 +765,7 @@ static napi_value ParseArgsCreateAssetCommon(
     string displayName = title + "." + extension;
     CHECK_COND_WITH_MESSAGE(env, MediaFileUtils::CheckDisplayName(displayName, true) == E_OK,
         "Failed to check displayName");
-    context->valuesBucket.Put(MEDIA_DATA_DB_NAME, displayName);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
     RETURN_NAPI_TRUE(env);
 }
 
@@ -806,7 +806,7 @@ napi_value MediaAssetChangeRequestNapi::JSCreateAssetRequest(napi_env env, napi_
     CHECK_COND_WITH_MESSAGE(env, ParseArgsCreateAsset(env, info, asyncContext), "Failed to parse args");
 
     bool isValid = false;
-    string displayName = asyncContext->valuesBucket.Get(MEDIA_DATA_DB_NAME, isValid);
+    string displayName = asyncContext->valuesBucket.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
     int32_t subtype = asyncContext->valuesBucket.Get(PhotoColumn::PHOTO_SUBTYPE, isValid); // default is 0
     auto emptyFileAsset = make_unique<FileAsset>();
     emptyFileAsset->SetDisplayName(displayName);
@@ -883,9 +883,9 @@ napi_value MediaAssetChangeRequestNapi::CreateAssetRequestFromRealPath(napi_env 
     CHECK_ARGS(env, napi_unwrap(env, instance, reinterpret_cast<void**>(&changeRequest)), JS_INNER_FAIL);
     CHECK_COND(env, changeRequest != nullptr, JS_INNER_FAIL);
     changeRequest->realPath_ = realPath;
-    changeRequest->creationValuesBucket_.Put(MEDIA_DATA_DB_NAME, displayName);
-    changeRequest->creationValuesBucket_.Put(ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
-    changeRequest->creationValuesBucket_.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
+    changeRequest->creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
+    changeRequest->creationValuesBucket_.Put(CONST_ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
+    changeRequest->creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
     changeRequest->creationValuesBucket_.Put(PhotoColumn::MEDIA_TITLE, title);
     changeRequest->RecordChangeOperation(AssetChangeOperation::CREATE_FROM_URI);
     return instance;
@@ -1174,7 +1174,7 @@ napi_value MediaAssetChangeRequestNapi::JSSetTitle(napi_env env, napi_callback_i
     // Merge the creation and SET_TITLE operations.
     if (changeRequest->Contains(AssetChangeOperation::CREATE_FROM_SCRATCH) ||
         changeRequest->Contains(AssetChangeOperation::CREATE_FROM_URI)) {
-        changeRequest->creationValuesBucket_.valuesMap[MEDIA_DATA_DB_NAME] = displayName;
+        changeRequest->creationValuesBucket_.valuesMap[CONST_MEDIA_DATA_DB_NAME] = displayName;
         changeRequest->creationValuesBucket_.valuesMap[PhotoColumn::MEDIA_TITLE] = title;
     }
     RETURN_NAPI_UNDEFINED(env);
@@ -1853,9 +1853,10 @@ napi_value MediaAssetChangeRequestNapi::JSAddResourceForPicker(napi_env env, nap
     changeRequest->addResourceMode_ = AddResourceMode::FILE_URI;
 
     bool isValid = false;
-    string displayName = changeRequest->creationValuesBucket_.Get(MEDIA_DATA_DB_NAME, isValid);
-    changeRequest->creationValuesBucket_.Put(MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
-    changeRequest->creationValuesBucket_.Put(ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
+    string displayName = changeRequest->creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
+    changeRequest->creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_TITLE,
+        MediaFileUtils::GetTitleFromDisplayName(displayName));
+    changeRequest->creationValuesBucket_.Put(CONST_ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
 
     changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE_FOR_PICKER);
     changeRequest->addResourceTypes_.push_back(GetResourceType(resourceType));
@@ -1974,7 +1975,7 @@ int32_t MediaAssetChangeRequestNapi::CopyMovingPhotoVideo(const string& assetUri
     }
 
     string videoUri = assetUri;
-    MediaFileUtils::UriAppendKeyValue(videoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_MOVING_PHOTO_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri uri(videoUri);
     int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITEONLY);
     if (videoFd < 0) {
@@ -2000,11 +2001,11 @@ int32_t MediaAssetChangeRequestNapi::CreateAssetBySecurityComponent(string &asse
     bool isValid = false;
     string title = creationValuesBucket_.Get(PhotoColumn::MEDIA_TITLE, isValid);
     CHECK_COND_RET(isValid, E_FAIL, "Failed to get title");
-    string extension = creationValuesBucket_.Get(ASSET_EXTENTION, isValid);
+    string extension = creationValuesBucket_.Get(CONST_ASSET_EXTENTION, isValid);
     CHECK_COND_RET(isValid && MediaFileUtils::CheckDisplayName(title + "." + extension) == E_OK,
         E_FAIL,
         "Failed to check displayName");
-    creationValuesBucket_.valuesMap.erase(MEDIA_DATA_DB_NAME);
+    creationValuesBucket_.valuesMap.erase(CONST_MEDIA_DATA_DB_NAME);
 
     AssetChangeReqBody reqBody;
     reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
@@ -2098,9 +2099,9 @@ int32_t MediaAssetChangeRequestNapi::PutMediaAssetEditData(DataShare::DataShareV
     string data = editData_->GetData();
     CHECK_COND_RET(!data.empty(), E_FAIL, "Failed to check data");
 
-    valuesBucket.Put(COMPATIBLE_FORMAT, compatibleFormat);
-    valuesBucket.Put(FORMAT_VERSION, formatVersion);
-    valuesBucket.Put(EDIT_DATA, data);
+    valuesBucket.Put(CONST_COMPATIBLE_FORMAT, compatibleFormat);
+    valuesBucket.Put(CONST_FORMAT_VERSION, formatVersion);
+    valuesBucket.Put(CONST_EDIT_DATA, data);
     return E_OK;
 }
 
@@ -2134,12 +2135,12 @@ int32_t MediaAssetChangeRequestNapi::SubmitCache(
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_SUBMIT_CACHE);
     if (isCreation) {
         bool isValid = false;
-        string displayName = creationValuesBucket_.Get(MEDIA_DATA_DB_NAME, isValid);
+        string displayName = creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
         CHECK_COND_RET(
             isValid && MediaFileUtils::CheckDisplayName(displayName) == E_OK, E_FAIL, "Failed to check displayName");
-        creationValuesBucket_.Put(CACHE_FILE_NAME, cacheFileName_);
+        creationValuesBucket_.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
         if (IsMovingPhoto()) {
-            creationValuesBucket_.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         HandleValueBucketForSetLocation(fileAsset_, creationValuesBucket_, isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
@@ -2147,15 +2148,15 @@ int32_t MediaAssetChangeRequestNapi::SubmitCache(
     } else {
         DataShare::DataShareValuesBucket valuesBucket;
         valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
-        valuesBucket.Put(CACHE_FILE_NAME, cacheFileName_);
+        valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
         ret = PutMediaAssetEditData(valuesBucket);
         CHECK_COND_RET(ret == E_OK, ret, "Failed to put editData");
         if (IsMovingPhoto()) {
-            valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         if (isSetEffectMode) {
             valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
-            valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         HandleValueBucketForSetLocation(fileAsset_, valuesBucket, isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
@@ -2182,9 +2183,9 @@ int32_t MediaAssetChangeRequestNapi::SubmitCacheForPicker(bool isCreation, const
     SubmitCacheRespBody respBody;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_SUBMIT_CACHE_FOR_PICKER);
     if (isCreation) {
-        creationValuesBucket_.Put(CACHE_FILE_NAME, cacheFileName_);
+        creationValuesBucket_.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
         if (IsMovingPhoto()) {
-            creationValuesBucket_.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         creationValuesBucket_.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
             static_cast<int32_t>(FileSourceTypes::TEMP_FILE_MANAGER));
@@ -2193,11 +2194,11 @@ int32_t MediaAssetChangeRequestNapi::SubmitCacheForPicker(bool isCreation, const
     } else {
         DataShare::DataShareValuesBucket valuesBucket;
         valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
-        valuesBucket.Put(CACHE_FILE_NAME, cacheFileName_);
+        valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
         ret = PutMediaAssetEditData(valuesBucket);
         CHECK_COND_RET(ret == E_OK, ret, "Failed to put editData");
         if (IsMovingPhoto()) {
-            valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         valuesBucket.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int64_t>(FileSourceTypes::TEMP_FILE_MANAGER));
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
@@ -2403,7 +2404,7 @@ static bool CancelProcessCinematicVideo(MediaAssetChangeRequestAsyncContext& con
     CHECK_COND_RET(fileAsset != nullptr, false, "fileAsset is nullptr");
     int32_t fileId = fileAsset->GetId();
 
-    string uriStr = PAH_CANCEL_PROCESS_VIDEO;
+    string uriStr = CONST_PAH_CANCEL_PROCESS_VIDEO;
     MediaFileUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;
@@ -2655,7 +2656,7 @@ static bool SetPhotoQualityExecute(MediaAssetChangeRequestAsyncContext& context)
     std::pair<std::string, int> photoQuality = fileAsset->GetPhotoIdAndQuality();
     valuesBucket.Put(PhotoColumn::PHOTO_ID, photoQuality.first);
     valuesBucket.Put(PhotoColumn::PHOTO_QUALITY, photoQuality.second);
-    return UpdateAssetProperty(context, PAH_SET_PHOTO_QUALITY, predicates, valuesBucket);
+    return UpdateAssetProperty(context, CONST_PAH_SET_PHOTO_QUALITY, predicates, valuesBucket);
 }
 
 static bool SetLocationExecute(MediaAssetChangeRequestAsyncContext &context)

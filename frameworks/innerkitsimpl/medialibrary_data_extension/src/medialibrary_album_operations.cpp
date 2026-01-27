@@ -129,7 +129,7 @@ int32_t MediaLibraryAlbumOperations::ModifyAlbumOperation(MediaLibraryCommand &c
     auto values = cmd.GetValueBucket();
     string dstDirName;
     ValueObject valueObject;
-    if (values.GetObject(MEDIA_DATA_DB_NAME, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_NAME, valueObject)) {
         valueObject.GetString(dstDirName);
     }
     int ret;
@@ -146,7 +146,7 @@ int32_t MediaLibraryAlbumOperations::ModifyAlbumOperation(MediaLibraryCommand &c
 static void ReplaceRelativePath(string &selection, vector<string> &selectionArgs)
 {
     for (size_t pos = 0; pos != string::npos;) {
-        pos = selection.find(MEDIA_DATA_DB_RELATIVE_PATH, pos);
+        pos = selection.find(CONST_MEDIA_DATA_DB_RELATIVE_PATH, pos);
         if (pos == string::npos) {
             break;
         }
@@ -171,7 +171,7 @@ static void ReplaceRelativePath(string &selection, vector<string> &selectionArgs
             return;
         }
         selection.replace(argPos, 1, "? OR 1=1)");
-        selection.replace(pos, MEDIA_DATA_DB_RELATIVE_PATH.length(), "(" + PhotoAlbumColumns::ALBUM_ID);
+        selection.replace(pos, string(CONST_MEDIA_DATA_DB_RELATIVE_PATH).length(), "(" + PhotoAlbumColumns::ALBUM_ID);
 
         selectionArgs[argIndex] = "1";
         pos = argPos + 1;
@@ -181,7 +181,7 @@ static void ReplaceRelativePath(string &selection, vector<string> &selectionArgs
 static void ReplaceMediaType(string &selection, vector<string> &selectionArgs)
 {
     for (size_t pos = 0; pos != string::npos;) {
-        pos = selection.find(MEDIA_DATA_DB_MEDIA_TYPE, pos);
+        pos = selection.find(CONST_MEDIA_DATA_DB_MEDIA_TYPE, pos);
         if (pos == string::npos) {
             break;
         }
@@ -201,7 +201,7 @@ static void ReplaceMediaType(string &selection, vector<string> &selectionArgs)
             break;
         }
         selection.replace(argPos, 1, "? OR 1=1)");
-        selection.replace(pos, MEDIA_DATA_DB_MEDIA_TYPE.length(), "(" + PhotoAlbumColumns::ALBUM_ID);
+        selection.replace(pos, string(CONST_MEDIA_DATA_DB_MEDIA_TYPE).length(), "(" + PhotoAlbumColumns::ALBUM_ID);
 
         selectionArgs[argIndex] = "1";
         pos = argPos + 1;
@@ -282,8 +282,8 @@ shared_ptr<ResultSet> MediaLibraryAlbumOperations::QueryAlbumOperation(
     }
 
     string whereClause = cmd.GetAbsRdbPredicates()->GetWhereClause();
-    if (whereClause.find(MEDIA_DATA_DB_RELATIVE_PATH) != string::npos ||
-        whereClause.find(MEDIA_DATA_DB_MEDIA_TYPE) != string::npos) {
+    if (whereClause.find(CONST_MEDIA_DATA_DB_RELATIVE_PATH) != string::npos ||
+        whereClause.find(CONST_MEDIA_DATA_DB_MEDIA_TYPE) != string::npos) {
         string sql;
         vector<string> selectionArgs;
         GetSqlArgs(cmd, sql, selectionArgs, columns);
@@ -1049,7 +1049,8 @@ bool IsSupportQueryIsMe()
         MEDIA_ERR_LOG("uniStore is nullptr! failed query album order");
         return false;
     }
-    const std::string queryAnalyzedPic = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + VISION_TOTAL_TABLE + " WHERE " +
+    const std::string queryAnalyzedPic = "SELECT " + string(CONST_MEDIA_COLUMN_COUNT_1) + " FROM " +
+        VISION_TOTAL_TABLE + " WHERE " +
         FACE + " = " + to_string(FACE_ANALYSISED_STATE) + " OR " +
         FACE + " = " + to_string(FACE_NO_NEED_ANALYSIS_STATE);
     auto resultSetAnalyzed = uniStore->QuerySql(queryAnalyzedPic);
@@ -1057,19 +1058,19 @@ bool IsSupportQueryIsMe()
     CHECK_AND_RETURN_RET(!cond, false);
 
     int analyzedCount;
-    if (GetIntValueFromResultSet(resultSetAnalyzed, MEDIA_COLUMN_COUNT_1, analyzedCount) != NativeRdb::E_OK) {
+    if (GetIntValueFromResultSet(resultSetAnalyzed, CONST_MEDIA_COLUMN_COUNT_1, analyzedCount) != NativeRdb::E_OK) {
         return false;
     }
     if (analyzedCount <= 0) {
         return false;
     }
 
-    const std::string queryAllPic = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + VISION_TOTAL_TABLE;
+    const std::string queryAllPic = "SELECT " + string(CONST_MEDIA_COLUMN_COUNT_1) + " FROM " + VISION_TOTAL_TABLE;
     auto resultSetTotal = uniStore->QuerySql(queryAnalyzedPic);
     cond = (resultSetTotal == nullptr || resultSetTotal->GoToFirstRow() != NativeRdb::E_OK);
     CHECK_AND_RETURN_RET(!cond, false);
     int totleCount;
-    if (GetIntValueFromResultSet(resultSetTotal, MEDIA_COLUMN_COUNT_1, totleCount) != NativeRdb::E_OK) {
+    if (GetIntValueFromResultSet(resultSetTotal, CONST_MEDIA_COLUMN_COUNT_1, totleCount) != NativeRdb::E_OK) {
         return false;
     }
     if (totleCount == 0 ||

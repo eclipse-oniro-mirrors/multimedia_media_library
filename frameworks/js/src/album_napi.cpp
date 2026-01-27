@@ -687,7 +687,7 @@ static void UpdateCompatAlbumSelection(AlbumNapiAsyncContext *context)
         }
         case PhotoAlbumSubType::TRASH: {
             static const string TRASH_FILTER =
-                PhotoColumn::MEDIA_DATE_TRASHED + " > 0 AND " + MEDIA_DATA_DB_IS_TRASH + " <> " +
+                PhotoColumn::MEDIA_DATE_TRASHED + " > 0 AND " + CONST_MEDIA_DATA_DB_IS_TRASH + " <> " +
                 to_string(static_cast<int32_t>(TRASHED_DIR_CHILD));
             filterClause = TRASH_FILTER;
             break;
@@ -704,7 +704,7 @@ static void UpdateCompatAlbumSelection(AlbumNapiAsyncContext *context)
         context->selection = filterClause;
     }
     MediaLibraryNapi::ReplaceSelection(context->selection, context->selectionArgs,
-        MEDIA_DATA_DB_RELATIVE_PATH, MEDIA_DATA_DB_RELATIVE_PATH);
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_RELATIVE_PATH);
 }
 #endif
 
@@ -712,9 +712,9 @@ static void UpdateSelection(AlbumNapiAsyncContext *context)
 {
     if (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR ||
         context->resultNapiType == ResultNapiType::TYPE_PHOTOACCESS_HELPER) {
-        context->predicates.EqualTo(MEDIA_DATA_DB_DATE_TRASHED, 0);
-        context->predicates.NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_ALBUM);
-        context->predicates.EqualTo(MEDIA_DATA_DB_BUCKET_ID, context->objectPtr->GetAlbumId());
+        context->predicates.EqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, 0);
+        context->predicates.NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_ALBUM);
+        context->predicates.EqualTo(CONST_MEDIA_DATA_DB_BUCKET_ID, context->objectPtr->GetAlbumId());
         context->predicates.EqualTo(MediaColumn::MEDIA_TIME_PENDING, to_string(0));
         context->predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(0));
         context->predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
@@ -724,15 +724,15 @@ static void UpdateSelection(AlbumNapiAsyncContext *context)
 #ifdef MEDIALIBRARY_COMPATIBILITY
         UpdateCompatAlbumSelection(context);
 #else
-        string trashPrefix = MEDIA_DATA_DB_DATE_TRASHED + " = ? ";
+        string trashPrefix = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " = ? ";
         MediaLibraryNapiUtils::AppendFetchOptionSelection(context->selection, trashPrefix);
         context->selectionArgs.emplace_back("0");
 
-        string prefix = MEDIA_DATA_DB_MEDIA_TYPE + " <> ? ";
+        string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> ? ";
         MediaLibraryNapiUtils::AppendFetchOptionSelection(context->selection, prefix);
         context->selectionArgs.emplace_back(to_string(MEDIA_TYPE_ALBUM));
 
-        string idPrefix = MEDIA_DATA_DB_BUCKET_ID + " = ? ";
+        string idPrefix = string(CONST_MEDIA_DATA_DB_BUCKET_ID) + " = ? ";
         MediaLibraryNapiUtils::AppendFetchOptionSelection(context->selection, idPrefix);
         context->selectionArgs.emplace_back(std::to_string(context->objectPtr->GetAlbumId()));
 #endif
@@ -755,13 +755,14 @@ static void GetFileAssetsNative(napi_env env, void *data)
     if (context->resultNapiType == ResultNapiType::TYPE_MEDIALIBRARY) {
         context->fetchColumn = FILE_ASSET_COLUMNS;
     } else {
-        context->fetchColumn.push_back(MEDIA_DATA_DB_ID);
-        context->fetchColumn.push_back(MEDIA_DATA_DB_NAME);
-        context->fetchColumn.push_back(MEDIA_DATA_DB_MEDIA_TYPE);
+        context->fetchColumn.push_back(CONST_MEDIA_DATA_DB_ID);
+        context->fetchColumn.push_back(CONST_MEDIA_DATA_DB_NAME);
+        context->fetchColumn.push_back(CONST_MEDIA_DATA_DB_MEDIA_TYPE);
     }
 
-    string queryUri = MEDIALIBRARY_DATA_ABILITY_PREFIX +
-        (MediaFileUtils::GetNetworkIdFromUri(context->objectPtr->GetAlbumUri())) + MEDIALIBRARY_DATA_URI_IDENTIFIER;
+    string queryUri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX +
+        (MediaFileUtils::GetNetworkIdFromUri(context->objectPtr->GetAlbumUri())) +
+        CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     NAPI_DEBUG_LOG("queryUri is = %{private}s", queryUri.c_str());
     Uri uri(queryUri);
     int errCode = 0;
@@ -840,19 +841,19 @@ static void CommitModifyNative(napi_env env, void *data)
 #else
     DataSharePredicates predicates;
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_TITLE, objectPtr->GetAlbumName());
-    predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ? ");
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, objectPtr->GetAlbumName());
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
     predicates.SetWhereArgs({ std::to_string(objectPtr->GetAlbumId()) });
 
     string updateUri = MEDIALIBRARY_DATA_URI + "/" +
-        MEDIA_ALBUMOPRN + "/" + MEDIA_ALBUMOPRN_MODIFYALBUM + "/" + std::to_string(objectPtr->GetAlbumId());
+        CONST_MEDIA_ALBUMOPRN + "/" + CONST_MEDIA_ALBUMOPRN_MODIFYALBUM + "/" + std::to_string(objectPtr->GetAlbumId());
     Uri uri(updateUri);
     int changedRows = UserFileClient::Update(uri, predicates, valuesBucket);
     if (changedRows > 0) {
         DataSharePredicates filePredicates;
         DataShareValuesBucket fileValuesBucket;
-        fileValuesBucket.Put(MEDIA_DATA_DB_BUCKET_NAME, objectPtr->GetAlbumName());
-        filePredicates.SetWhereClause(MEDIA_DATA_DB_BUCKET_ID + " = ? ");
+        fileValuesBucket.Put(CONST_MEDIA_DATA_DB_BUCKET_NAME, objectPtr->GetAlbumName());
+        filePredicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_BUCKET_ID) + " = ? ");
         filePredicates.SetWhereArgs({ std::to_string(objectPtr->GetAlbumId()) });
 
         string fileUriStr = MEDIALIBRARY_DATA_URI;
@@ -877,7 +878,7 @@ static void JSCommitModifyCompleteCallback(napi_env env, napi_status status, voi
         napi_create_int32(env, context->changedRows, &jsContext->data);
         napi_get_undefined(env, &jsContext->error);
         jsContext->status = true;
-        auto contextUri = make_unique<Uri>(MEDIALIBRARY_ALBUM_URI);
+        auto contextUri = make_unique<Uri>(CONST_MEDIALIBRARY_ALBUM_URI);
         UserFileClient::NotifyChange(*contextUri);
     } else {
         napi_get_undefined(env, &jsContext->data);

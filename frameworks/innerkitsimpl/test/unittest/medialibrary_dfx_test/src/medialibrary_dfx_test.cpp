@@ -1008,7 +1008,7 @@ HWTEST_F(MediaLibraryDfxTest, medialib_dfx_QueryAnalysisVersion_test_001, TestSi
 HWTEST_F(MediaLibraryDfxTest, medialib_dfx_QueryDouble_test_001, TestSize.Level0)
 {
     NativeRdb::AbsRdbPredicates dirAbsPred(PhotoColumn::PHOTOS_TABLE);
-    dirAbsPred.EqualTo(MEDIA_DATA_DB_ID, to_string(0));
+    dirAbsPred.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(0));
     vector<string> columns = {};
     std::string queryColumn = "queryColumn";
     double value = 1;

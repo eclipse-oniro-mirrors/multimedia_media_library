@@ -114,7 +114,7 @@ static int32_t CheckPermission(void)
         return E_FAIL;
     }
     std::string bundleName = context->GetBundleName();
-    if (bundleName.compare(BUNDLE_NAME) != 0) {
+    if (bundleName.compare(CONST_BUNDLE_NAME) != 0) {
         NAPI_ERR_LOG("bundleName is invalid, %{public}s", bundleName.c_str());
         return E_FAIL;
     }

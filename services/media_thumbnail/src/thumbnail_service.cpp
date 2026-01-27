@@ -415,7 +415,7 @@ int32_t ThumbnailService::GenerateThumbnailBackground()
     vector<string> tableList;
     tableList.emplace_back(PhotoColumn::PHOTOS_TABLE);
     tableList.emplace_back(AudioColumn::AUDIOS_TABLE);
-    tableList.emplace_back(MEDIALIBRARY_TABLE);
+    tableList.emplace_back(CONST_MEDIALIBRARY_TABLE);
 
     for (const auto &tableName : tableList) {
         ThumbRdbOpt opts = {
@@ -506,7 +506,7 @@ int32_t ThumbnailService::LcdAging()
     vector<string> tableList;
     tableList.emplace_back(PhotoColumn::PHOTOS_TABLE);
     tableList.emplace_back(AudioColumn::AUDIOS_TABLE);
-    tableList.emplace_back(MEDIALIBRARY_TABLE);
+    tableList.emplace_back(CONST_MEDIALIBRARY_TABLE);
 
     for (const auto &tableName : tableList) {
         ThumbRdbOpt opts = {
@@ -581,7 +581,7 @@ int32_t ThumbnailService::GetAgingDataSize(const int64_t &time, int &count)
     vector<string> tableList;
     tableList.emplace_back(PhotoColumn::PHOTOS_TABLE);
     tableList.emplace_back(AudioColumn::AUDIOS_TABLE);
-    tableList.emplace_back(MEDIALIBRARY_TABLE);
+    tableList.emplace_back(CONST_MEDIALIBRARY_TABLE);
 
     for (const auto &tableName : tableList) {
         ThumbRdbOpt opts = {
@@ -606,7 +606,7 @@ int32_t ThumbnailService::QueryNewThumbnailCount(const int64_t &time, int32_t &c
     vector<string> tableList;
     tableList.emplace_back(PhotoColumn::PHOTOS_TABLE);
     tableList.emplace_back(AudioColumn::AUDIOS_TABLE);
-    tableList.emplace_back(MEDIALIBRARY_TABLE);
+    tableList.emplace_back(CONST_MEDIALIBRARY_TABLE);
 
     for (const auto &tableName : tableList) {
         ThumbRdbOpt opts = {
@@ -737,7 +737,8 @@ static void UpdateThumbnailReadyToFailed(ThumbRdbOpt &opts, std::string id)
     ValuesBucket values;
     int changedRows;
     values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, THUMBNAIL_READY_FAILED);
-    int32_t err = opts.store->Update(changedRows, opts.table, values, MEDIA_DATA_DB_ID + " = ?", vector<string> { id });
+    int32_t err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
+        vector<string> { id });
     CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "RdbStore Update failed! %{public}d", err);
 }
 

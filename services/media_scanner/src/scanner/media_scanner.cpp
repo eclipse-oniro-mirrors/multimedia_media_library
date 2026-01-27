@@ -353,9 +353,9 @@ void MediaScannerObj::SetPhotoSubType(const string &parent)
     size_t len = ROOT_MEDIA_DIR.length();
     parentPath.erase(0, len);
 
-    if (parentPath == CAMERA_PATH) {
+    if (parentPath == CONST_CAMERA_PATH) {
         data_->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::CAMERA));
-    } else if ((parentPath == SCREEN_RECORD_PATH) || (parentPath == SCREEN_SHOT_PATH)) {
+    } else if ((parentPath == CONST_SCREEN_RECORD_PATH) || (parentPath == CONST_SCREEN_SHOT_PATH)) {
         data_->SetPhotoSubType(static_cast<int32_t>(PhotoSubType::SCREENSHOT));
     }
 }
@@ -737,7 +737,7 @@ int32_t MediaScannerObj::InsertOrUpdateAlbumInfo(const string &albumPath, int32_
         albumId = albumInfo.GetFileId();
 
         if ((albumInfo.GetFileDateModified() / MSEC_TO_SEC) == statInfo.st_mtime) {
-            scannedIds_.insert(make_pair(MEDIALIBRARY_TABLE, albumId));
+            scannedIds_.insert(make_pair(CONST_MEDIALIBRARY_TABLE, albumId));
             return albumId;
         } else {
             update = true;
@@ -763,7 +763,7 @@ int32_t MediaScannerObj::InsertOrUpdateAlbumInfo(const string &albumPath, int32_
     } else {
         albumId = mediaScannerDb_->InsertAlbum(metadata);
     }
-    scannedIds_.insert(make_pair(MEDIALIBRARY_TABLE, albumId));
+    scannedIds_.insert(make_pair(CONST_MEDIALIBRARY_TABLE, albumId));
 
     return albumId;
 }
@@ -772,7 +772,7 @@ int32_t MediaScannerObj::CleanupDirectory()
 {
     unordered_set<MediaType> mediaTypeSet;
     vector<string> scanTables = {
-        MEDIALIBRARY_TABLE, PhotoColumn::PHOTOS_TABLE, AudioColumn::AUDIOS_TABLE
+        CONST_MEDIALIBRARY_TABLE, PhotoColumn::PHOTOS_TABLE, AudioColumn::AUDIOS_TABLE
     };
 
     for (auto table : scanTables) {

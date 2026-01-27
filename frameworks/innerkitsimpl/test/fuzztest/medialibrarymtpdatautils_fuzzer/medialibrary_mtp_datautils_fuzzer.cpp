@@ -234,7 +234,7 @@ static void SetOneDefaultlPropListTest()
     ResultSetDataType typeTwo = TYPE_INT32;
     MtpDataUtils::SetProperty(column, resultSet, typeTwo, prop);
     ResultSetDataType typeThree = TYPE_INT64;
-    column = provider->ConsumeBool() ? MEDIA_DATA_DB_DATE_MODIFIED : provider->ConsumeBytesAsString(NUM_BYTES);
+    column = provider->ConsumeBool() ? CONST_MEDIA_DATA_DB_DATE_MODIFIED : provider->ConsumeBytesAsString(NUM_BYTES);
     MtpDataUtils::SetProperty(column, resultSet, typeThree, prop);
     ResultSetDataType typeFour = TYPE_DOUBLE;
     MtpDataUtils::SetProperty(column, resultSet, typeFour, prop);
@@ -273,31 +273,31 @@ static void GetMtpOneRowPropTest()
 
 static void SetMtpPropertyTest()
 {
-    string column = MEDIA_DATA_DB_NAME;
+    string column = CONST_MEDIA_DATA_DB_NAME;
     string path = provider->ConsumeBytesAsString(NUM_BYTES);
     ResultSetDataType type;
     Property prop;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
-    column = MEDIA_DATA_DB_SIZE;
+    column = CONST_MEDIA_DATA_DB_SIZE;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
-    column = MEDIA_DATA_DB_DATE_MODIFIED;
+    column = CONST_MEDIA_DATA_DB_DATE_MODIFIED;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
-    column = MEDIA_DATA_DB_DATE_ADDED;
+    column = CONST_MEDIA_DATA_DB_DATE_ADDED;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
-    column = MEDIA_DATA_DB_DESCRIPTION;
+    column = CONST_MEDIA_DATA_DB_DESCRIPTION;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
-    column = MEDIA_DATA_DB_DURATION;
+    column = CONST_MEDIA_DATA_DB_DURATION;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
-    column = MEDIA_DATA_DB_ARTIST;
+    column = CONST_MEDIA_DATA_DB_ARTIST;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
-    column = MEDIA_DATA_DB_ALBUM_NAME;
+    column = CONST_MEDIA_DATA_DB_ALBUM_NAME;
     MtpDataUtils::SetMtpProperty(column, path, type, prop);
 
     column = MEDIA_DATA_DB_COMPOSER;
@@ -306,7 +306,7 @@ static void SetMtpPropertyTest()
 
 static void SetPtpPropertyTest()
 {
-    string column = MEDIA_DATA_DB_NAME;
+    string column = CONST_MEDIA_DATA_DB_NAME;
     string path = provider->ConsumeBytesAsString(NUM_BYTES);
     MovingType movingType;
     movingType.displayName = provider->ConsumeBytesAsString(NUM_BYTES);
@@ -314,16 +314,16 @@ static void SetPtpPropertyTest()
     prop.currentValue = make_shared<Property::Value>();
     MtpDataUtils::SetPtpProperty(column, path, movingType, prop);
 
-    column = MEDIA_DATA_DB_PARENT_ID;
+    column = CONST_MEDIA_DATA_DB_PARENT_ID;
     MtpDataUtils::SetPtpProperty(column, path, movingType, prop);
 
-    column = MEDIA_DATA_DB_SIZE;
+    column = CONST_MEDIA_DATA_DB_SIZE;
     MtpDataUtils::SetPtpProperty(column, path, movingType, prop);
 
-    column = MEDIA_DATA_DB_DATE_MODIFIED;
+    column = CONST_MEDIA_DATA_DB_DATE_MODIFIED;
     MtpDataUtils::SetPtpProperty(column, path, movingType, prop);
 
-    column = MEDIA_DATA_DB_DATE_ADDED;
+    column = CONST_MEDIA_DATA_DB_DATE_ADDED;
     MtpDataUtils::SetPtpProperty(column, path, movingType, prop);
 }
 

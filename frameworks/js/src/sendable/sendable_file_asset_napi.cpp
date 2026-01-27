@@ -433,32 +433,32 @@ void BuildCommitModifyValuesBucket(SendableFileAssetAsyncContext* context, DataS
         valuesBucket.Put(MediaColumn::MEDIA_NAME, fileAsset->GetDisplayName());
     } else {
 #ifdef MEDIALIBRARY_COMPATIBILITY
-        valuesBucket.Put(MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
-        valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH,
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH,
             MediaFileUtils::AddDocsToRelativePath(fileAsset->GetRelativePath()));
         if (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_AUDIO) {
             // IMAGE, VIDEO AND FILES
             if (fileAsset->GetOrientation() >= 0) {
-                valuesBucket.Put(MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
             }
             if ((fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_IMAGE) &&
                 (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_VIDEO)) {
                 // ONLY FILES
-                valuesBucket.Put(MEDIA_DATA_DB_URI, fileAsset->GetUri());
-                valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileAsset->GetUri());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
             }
         }
 #else
-        valuesBucket.Put(MEDIA_DATA_DB_URI, fileAsset->GetUri());
-        valuesBucket.Put(MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileAsset->GetUri());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
 
         if (fileAsset->GetOrientation() >= 0) {
-            valuesBucket.Put(MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
+            valuesBucket.Put(CONST_MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
         }
-        valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, fileAsset->GetRelativePath());
-        valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, fileAsset->GetRelativePath());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
 #endif
-        valuesBucket.Put(MEDIA_DATA_DB_NAME, fileAsset->GetDisplayName());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, fileAsset->GetDisplayName());
     }
 }
 
@@ -467,11 +467,11 @@ static void BuildCommitModifyUriApi9(SendableFileAssetAsyncContext *context, str
 {
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = URI_UPDATE_PHOTO;
+        uri = CONST_URI_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = URI_UPDATE_AUDIO;
+        uri = CONST_URI_UPDATE_AUDIO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_FILE) {
-        uri = URI_UPDATE_FILE;
+        uri = CONST_URI_UPDATE_FILE;
     }
 }
 #endif
@@ -480,9 +480,10 @@ static void BuildCommitModifyUriApi10(SendableFileAssetAsyncContext *context, st
 {
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? UFM_UPDATE_PHOTO : PAH_UPDATE_PHOTO;
+        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? CONST_UFM_UPDATE_PHOTO :
+            CONST_PAH_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = UFM_UPDATE_AUDIO;
+        uri = CONST_UFM_UPDATE_AUDIO;
     }
 }
 
@@ -521,7 +522,7 @@ static void JSCommitModifyExecute(napi_env env, void *data)
 #ifdef MEDIALIBRARY_COMPATIBILITY
         BuildCommitModifyUriApi9(context, uri);
 #else
-        uri = URI_UPDATE_FILE;
+        uri = CONST_URI_UPDATE_FILE;
 #endif
     }
 
@@ -531,7 +532,7 @@ static void JSCommitModifyExecute(napi_env env, void *data)
     DataSharePredicates predicates;
     DataShareValuesBucket valuesBucket;
     BuildCommitModifyValuesBucket(context, valuesBucket);
-    predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ? ");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
     predicates.SetWhereArgs({std::to_string(context->objectPtr->GetId())});
 
     int32_t changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
@@ -774,44 +775,47 @@ napi_value GetPhotoRequestArgs(napi_env env, size_t argc, const napi_value argv[
 const map<int32_t, struct SendableAnalysisSourceInfo>& GetAnalysisInfoMap()
 {
     static const map<int32_t, struct SendableAnalysisSourceInfo> ANALYSIS_SOURCE_INFO_MAP = {
-        { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
-        { ANALYSIS_LABEL, { LABEL, PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
+        { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, CONST_PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
+        { ANALYSIS_LABEL, { LABEL, CONST_PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
             SALIENCY_SUB_PROB } } },
-        { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
+        { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, CONST_PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
             SUB_CATEGORY, SUB_CONFIDENCE_PROB, SUB_LABEL, SUB_LABEL_PROB, SUB_LABEL_TYPE, TRACKS, VIDEO_PART_FEATURE,
             FILTER_TAG} } },
-        { ANALYSIS_OCR, { OCR, PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
-        { ANALYSIS_FACE, { FACE, PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT,
+        { ANALYSIS_OCR, { OCR, CONST_PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
+        { ANALYSIS_FACE, { FACE, CONST_PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y,
+            SCALE_WIDTH, SCALE_HEIGHT,
             LANDMARKS, PITCH, YAW, ROLL, PROB, TOTAL_FACES, FEATURES, FACE_OCCLUSION, JOINT_BEAUTY_BOUNDER_X,
             JOINT_BEAUTY_BOUNDER_Y, JOINT_BEAUTY_BOUNDER_WIDTH, JOINT_BEAUTY_BOUNDER_HEIGHT} } },
-        { ANALYSIS_OBJECT, { OBJECT, PAH_QUERY_ANA_OBJECT, { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
+        { ANALYSIS_OBJECT, { OBJECT, CONST_PAH_QUERY_ANA_OBJECT, { OBJECT_ID, OBJECT_LABEL,
+            OBJECT_SCALE_X, OBJECT_SCALE_Y,
             OBJECT_SCALE_WIDTH, OBJECT_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
+        { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, CONST_PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
             RECOMMENDATION_RESOLUTION, RECOMMENDATION_SCALE_X, RECOMMENDATION_SCALE_Y, RECOMMENDATION_SCALE_WIDTH,
             RECOMMENDATION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_SEGMENTATION, { SEGMENTATION, PAH_QUERY_ANA_SEGMENTATION, { SEGMENTATION_AREA, SEGMENTATION_NAME,
-            PROB } } },
-        { ANALYSIS_COMPOSITION, { COMPOSITION, PAH_QUERY_ANA_COMPOSITION, { COMPOSITION_ID, COMPOSITION_RESOLUTION,
+        { ANALYSIS_SEGMENTATION, { SEGMENTATION, CONST_PAH_QUERY_ANA_SEGMENTATION, { SEGMENTATION_AREA,
+            SEGMENTATION_NAME, PROB } } },
+        { ANALYSIS_COMPOSITION, { COMPOSITION, CONST_PAH_QUERY_ANA_COMPOSITION, { COMPOSITION_ID,
+            COMPOSITION_RESOLUTION,
             CLOCK_STYLE, CLOCK_LOCATION_X, CLOCK_LOCATION_Y, CLOCK_COLOUR, COMPOSITION_SCALE_X, COMPOSITION_SCALE_Y,
             COMPOSITION_SCALE_WIDTH, COMPOSITION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_SALIENCY, { SALIENCY, PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
-        { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE +
+        { ANALYSIS_SALIENCY, { SALIENCY, CONST_PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
+        { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, CONST_PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE +
             "." + LATITUDE,
             PhotoColumn::PHOTOS_TABLE + "." + LONGITUDE, LANGUAGE, COUNTRY, ADMIN_AREA, SUB_ADMIN_AREA, LOCALITY,
             SUB_LOCALITY, THOROUGHFARE, SUB_THOROUGHFARE, FEATURE_NAME, CITY_NAME, ADDRESS_DESCRIPTION, LOCATION_TYPE,
             AOI, POI, FIRST_AOI, FIRST_POI, LOCATION_VERSION, FIRST_AOI_CATEGORY, FIRST_POI_CATEGORY} } },
-        { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, PAH_QUERY_ANA_FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
-            USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL, TAG_ORDER,
+        { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, CONST_PAH_QUERY_ANA_FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID,
+            TAG_NAME, USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL, TAG_ORDER,
             IS_ME, COVER_URI,
             COUNT, PORTRAIT_DATE_MODIFY, ALBUM_TYPE, IS_REMOVED } } },
-        { ANALYSIS_HEAD_POSITION, { HEAD, PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
+        { ANALYSIS_HEAD_POSITION, { HEAD, CONST_PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
             HEAD_SCALE_WIDTH, HEAD_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_BONE_POSE, { POSE, PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
+        { ANALYSIS_BONE_POSE, { POSE, CONST_PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
             POSE_SCALE_WIDTH, POSE_SCALE_HEIGHT, PROB, POSE_TYPE, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_PET_FACE, { PET_STATUS, PAH_QUERY_ANA_PET, { PET_ID, PET_TAG_ID, PET_TOTAL_FACES, PET_LABEL,
+        { ANALYSIS_PET_FACE, { PET_STATUS, CONST_PAH_QUERY_ANA_PET, { PET_ID, PET_TAG_ID, PET_TOTAL_FACES, PET_LABEL,
             FEATURES, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT, BEAUTY_BOUNDER_X, BEAUTY_BOUNDER_Y,
             BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, DATE_MODIFIED} } },
-        { ANALYSIS_PET_TAG, { PET_TAG, PAH_QUERY_ANA_PET_TAG, { VISION_PET_TAG_TABLE + "." + TAG_ID, PET_LABEL,
+        { ANALYSIS_PET_TAG, { PET_TAG, CONST_PAH_QUERY_ANA_PET_TAG, { VISION_PET_TAG_TABLE + "." + TAG_ID, PET_LABEL,
             CENTER_FEATURES, COUNT } } },
     };
     return ANALYSIS_SOURCE_INFO_MAP;
@@ -887,7 +891,7 @@ static void JSGetAnalysisDataExecute(SendableFileAssetAsyncContext *context)
     context->analysisData = MediaLibraryNapiUtils::ParseResultSet2JsonStr(resultSet,
         fetchColumn, context->analysisType);
     if (context->analysisData == ANALYSIS_NO_RESULTS) {
-        Uri uri(PAH_QUERY_ANA_TOTAL);
+        Uri uri(CONST_PAH_QUERY_ANA_TOTAL);
         DataShare::DataSharePredicates predicates;
         std::vector<std::string> fetchColumn = { analysisInfo.fieldStr };
         predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
@@ -920,8 +924,8 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
         PhotoColumn::PHOTO_CLOUD_ID,
         PENDING_STATUS,
-        MEDIA_DATA_DB_DATE_TRASHED_MS,
-        MEDIA_SUM_SIZE,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
+        CONST_MEDIA_SUM_SIZE,
         PhotoColumn::PHOTO_EXIF_ROTATE,
         MediaColumn::MEDIA_OWNER_PACKAGE,
     };
@@ -1003,7 +1007,7 @@ static bool GetDateTakenFromResultSet(const shared_ptr<DataShare::DataShareResul
 static void UpdateDetailTimeByDateTaken(napi_env env, const shared_ptr<FileAsset> &fileAssetPtr,
     const string &detailTime, int64_t &dateTaken)
 {
-    string uri = PAH_UPDATE_PHOTO;
+    string uri = CONST_PAH_UPDATE_PHOTO;
     SendableMediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(uri);
     DataSharePredicates predicates;
@@ -1029,7 +1033,7 @@ static napi_value HandleGettingDetailTimeKey(napi_env env, const shared_ptr<File
         napi_create_string_utf8(env, get<string>(detailTimeValue).c_str(), NAPI_AUTO_LENGTH, &jsResult);
     } else if (SENDABLE_PHOTO_BUNDLE_NAME != UserFileClient::GetBundleName()) {
         string fileId = MediaFileUtils::GetIdFromUri(fileAssetPtr->GetUri());
-        string queryUriStr = PAH_QUERY_PHOTO;
+        string queryUriStr = CONST_PAH_QUERY_PHOTO;
         SendableMediaLibraryNapiUtils::UriAppendKeyValue(queryUriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri uri(queryUriStr);
         DataShare::DataSharePredicates predicates;
@@ -1073,8 +1077,8 @@ static napi_value HandleDateTransitionKey(napi_env env, const string &key, const
 
 static inline int64_t GetCompatDate(const string inputKey, const int64_t date)
 {
-    if (inputKey == MEDIA_DATA_DB_DATE_ADDED || inputKey == MEDIA_DATA_DB_DATE_MODIFIED ||
-        inputKey == MEDIA_DATA_DB_DATE_TRASHED || inputKey == MEDIA_DATA_DB_DATE_TAKEN) {
+    if (inputKey == CONST_MEDIA_DATA_DB_DATE_ADDED || inputKey == CONST_MEDIA_DATA_DB_DATE_MODIFIED ||
+        inputKey == CONST_MEDIA_DATA_DB_DATE_TRASHED || inputKey == CONST_MEDIA_DATA_DB_DATE_TAKEN) {
             return date / MSEC_TO_SEC;
         }
     return date;
@@ -1287,12 +1291,12 @@ static void PhotoAccessHelperRequestSourceExecute(napi_env env, void *data)
     auto *context = static_cast<SendableFileAssetAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     Uri uri(fileUri);
     int32_t retVal = UserFileClient::OpenFile(uri, "r", context->objectPtr->GetUserId());
     if (retVal <= 0) {
@@ -1353,7 +1357,7 @@ napi_value SendableFileAssetNapi::PhotoAccessHelperRequestSource(napi_env env, n
     CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
     auto fileUri = asyncContext->objectInfo->GetFileUri();
     SendableMediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    asyncContext->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    asyncContext->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
     return SendableMediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperRequestSource",
         PhotoAccessHelperRequestSourceExecute, PhotoAccessHelperRequestSourceComplete);
 }

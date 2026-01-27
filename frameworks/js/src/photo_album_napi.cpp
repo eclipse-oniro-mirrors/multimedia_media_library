@@ -737,7 +737,7 @@ static void JSCommitModifyExecute(napi_env env, void *data)
         return;
     }
 
-    Uri uri(UFM_UPDATE_PHOTO_ALBUM);
+    Uri uri(CONST_UFM_UPDATE_PHOTO_ALBUM);
     int changedRows = UserFileClient::Update(uri, context->predicates, context->valuesBucket);
     context->SaveError(changedRows);
     context->changedRows = changedRows;
@@ -874,7 +874,7 @@ static napi_value ParseArgsAddAssets(napi_env env, napi_callback_info info,
 static int32_t FetchNewCount(PhotoAlbumNapiAsyncContext *context)
 {
     string queryUri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ?
-        UFM_QUERY_PHOTO_ALBUM : PAH_QUERY_PHOTO_ALBUM;
+        CONST_UFM_QUERY_PHOTO_ALBUM : CONST_PAH_QUERY_PHOTO_ALBUM;
     Uri qUri(queryUri);
     int errCode = 0;
     DataSharePredicates predicates;
@@ -958,7 +958,7 @@ static void JSPhotoAlbumAddAssetsExecute(napi_env env, void *data)
         return;
     }
 
-    Uri uri(UFM_PHOTO_ALBUM_ADD_ASSET);
+    Uri uri(CONST_UFM_PHOTO_ALBUM_ADD_ASSET);
     auto changedRows = UserFileClient::BatchInsert(uri, context->valuesBuckets);
     if (changedRows < 0) {
         context->SaveError(changedRows);
@@ -1097,7 +1097,7 @@ static void JSPhotoAlbumRemoveAssetsExecute(napi_env env, void *data)
         return;
     }
 
-    Uri uri(UFM_PHOTO_ALBUM_REMOVE_ASSET);
+    Uri uri(CONST_UFM_PHOTO_ALBUM_REMOVE_ASSET);
     auto deletedRows = UserFileClient::Delete(uri, context->predicates);
     if (deletedRows < 0) {
         NAPI_ERR_LOG("Remove assets failed: %{public}d", deletedRows);
@@ -1267,7 +1267,7 @@ static void JSGetPhotoAssetsExecute(napi_env env, void *data)
     tracer.Start("JSGetPhotoAssetsExecute");
 
     auto *context = static_cast<PhotoAlbumNapiAsyncContext *>(data);
-    string queryUri = UFM_QUERY_PHOTO_MAP;
+    string queryUri = CONST_UFM_QUERY_PHOTO_MAP;
     Uri uri(queryUri);
     int32_t errCode = 0;
     std::vector<DataShare::OperationItem> operationItems = context->predicates.GetOperationList();
@@ -1320,7 +1320,7 @@ static void JSPhotoAccessGetPhotoAssetsExecute(napi_env env, void *data)
 
     auto *context = static_cast<PhotoAlbumNapiAsyncContext *>(data);
     CHECK_IF_EQUAL(context != nullptr, "context is nullptr");
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(context);
     int32_t errCode = 0;
     int32_t userId = -1;
@@ -1364,7 +1364,7 @@ static void JSPhotoAccessGetPhotoAssetsExecute(napi_env env, void *data)
 static napi_value JSPhotoAccessGetPhotoAssetsExecuteSync(napi_env env, PhotoAlbumNapiAsyncContext& asyncContext)
 {
     auto context = &asyncContext;
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(context);
     int32_t errCode = 0;
     auto resultSet = UserFileClient::Query(uri, context->predicates, context->fetchColumn, errCode);
@@ -1564,7 +1564,7 @@ static void RecoverPhotosExecute(napi_env env, void *data)
             .env = env,
             .data = data,
             .tracerLabel = "RecoverPhotosExecute",
-            .uri = UFM_RECOVER_PHOTOS,
+            .uri = CONST_UFM_RECOVER_PHOTOS,
         };
         TrashAlbumExecute(opt);
         return;
@@ -1654,7 +1654,7 @@ static void DeletePhotosExecute(napi_env env, void *data)
         .data = data,
         .tracerLabel = "DeletePhotosExecute",
         .uri = (static_cast<PhotoAlbumNapiAsyncContext *>(data)->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ?
-            UFM_DELETE_PHOTOS : PAH_DELETE_PHOTOS,
+            CONST_UFM_DELETE_PHOTOS : CONST_PAH_DELETE_PHOTOS,
     };
     TrashAlbumExecute(opt);
 }
@@ -1879,7 +1879,7 @@ napi_value PhotoAlbumNapi::JSPhotoAccessGetSharedPhotoAssets(napi_env env, napi_
     PhotoAlbumNapiAsyncContext* context =
         static_cast<PhotoAlbumNapiAsyncContext*>((asyncContext.get()));
 
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(context);
     shared_ptr<NativeRdb::ResultSet> resultSet = UserFileClient::QueryRdb(uri,
         context->predicates, context->fetchColumn);

@@ -39,7 +39,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, FileAsset_SetGet_Test_001, TestSize.Level1)
     fileAsset.SetId(TEST_FILE_ID);
     EXPECT_EQ(fileAsset.GetId(), TEST_FILE_ID);
 
-    const string TEST_URI = MEDIALIBRARY_DATA_URI + MEDIALIBRARY_TYPE_IMAGE_URI + "/" + to_string(TEST_FILE_ID);
+    const string TEST_URI = MEDIALIBRARY_DATA_URI + CONST_MEDIALIBRARY_TYPE_IMAGE_URI + "/" + to_string(TEST_FILE_ID);
     fileAsset.SetUri(TEST_URI);
     EXPECT_EQ(fileAsset.GetUri(), TEST_URI);
 
@@ -133,7 +133,8 @@ HWTEST_F(MediaLibraryHelperUnitTest, FileAsset_SetGet_Test_003, TestSize.Level1)
     fileAsset.SetParent(TEST_PARENT);
     EXPECT_EQ(fileAsset.GetParent(), TEST_PARENT);
 
-    const string TEST_ALBUM_URI = MEDIALIBRARY_DATA_URI + MEDIALIBRARY_TYPE_FILE_URI + "/" + to_string(TEST_PARENT);
+    const string TEST_ALBUM_URI = MEDIALIBRARY_DATA_URI + CONST_MEDIALIBRARY_TYPE_FILE_URI + "/" +
+        to_string(TEST_PARENT);
     fileAsset.SetAlbumUri(TEST_ALBUM_URI);
     EXPECT_EQ(fileAsset.GetAlbumUri(), TEST_ALBUM_URI);
 
@@ -172,7 +173,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, FileAsset_GetMemberValue_Test_001, TestSize
     FileAsset fileAsset;
     const int32_t TEST_FILE_ID = 1;
     fileAsset.SetId(TEST_FILE_ID);
-    EXPECT_EQ(get<int32_t>(fileAsset.GetMemberValue(MEDIA_DATA_DB_ID)), TEST_FILE_ID);
+    EXPECT_EQ(get<int32_t>(fileAsset.GetMemberValue(CONST_MEDIA_DATA_DB_ID)), TEST_FILE_ID);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, FileAsset_Test_001, TestSize.Level1)

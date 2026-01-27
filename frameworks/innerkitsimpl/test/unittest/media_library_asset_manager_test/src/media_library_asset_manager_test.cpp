@@ -103,9 +103,9 @@ void MediaLibraryAssetManagerTest::SetUpTestCase(void)
     // make sure board is empty
     ClearAllFile();
 
-    Uri scanUri(URI_SCANNER);
+    Uri scanUri(CONST_URI_SCANNER);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
     sDataShareHelper_->Insert(scanUri, valuesBucket);
     sleep(SCAN_WAIT_TIME);
 
@@ -183,9 +183,9 @@ void DeleteFile(std::string fileUri)
     if (sDataShareHelper_ == nullptr) {
         return;
     }
-    Uri deleteAssetUri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN);
+    Uri deleteAssetUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN);
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_ID, MediaFileUtils::GetIdFromUri(fileUri));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, MediaFileUtils::GetIdFromUri(fileUri));
     int retVal = sDataShareHelper_->Delete(deleteAssetUri, predicates);
     MEDIA_INFO_LOG("MediaSpaceStatistics_test DeleteFile::uri :%{private}s", deleteAssetUri.ToString().c_str());
     ASSERT_NE(retVal, E_ERR);
@@ -198,7 +198,7 @@ void ClearFile()
     }
     vector<string> columns;
     DataSharePredicates predicates;
-    string prefix = MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(g_albumMediaType);
+    string prefix = std::string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(g_albumMediaType);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(MEDIALIBRARY_DATA_URI);
     shared_ptr<DataShareResultSet> resultSet = nullptr;

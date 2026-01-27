@@ -20,12 +20,12 @@
 
 #include "custom_records_column.h"
 namespace OHOS::Media {
-const std::string CUSTOM_RECORDS_OPERATION = "custom_records";
+#define CONST_CUSTOM_RECORDS_OPERATION "custom_records"
 
-const std::string CUSTOM_RECORDS_CREATE_URI = CustomRecordsColumns::CUSTOM_RECORDS_URI_PREFIX + "/" + OPRN_CREATE;
-const std::string CUSTOM_RECORDS_QUERY_URI = CustomRecordsColumns::CUSTOM_RECORDS_URI_PREFIX + "/" + OPRN_QUERY;
-const std::string CUSTOM_RECORDS_DELETE_URI = CustomRecordsColumns::CUSTOM_RECORDS_URI_PREFIX + "/" + OPRN_DELETE;
-const std::string CUSTOM_RECORDS_UPDATE_URI = CustomRecordsColumns::CUSTOM_RECORDS_URI_PREFIX + "/" + OPRN_UPDATE;
+#define CONST_CUSTOM_RECORDS_CREATE_URI "file://media/custom_records/create"
+#define CONST_CUSTOM_RECORDS_QUERY_URI "file://media/custom_records/query"
+#define CONST_CUSTOM_RECORDS_DELETE_URI "file://media/custom_records/delete"
+#define CONST_CUSTOM_RECORDS_UPDATE_URI "file://media/custom_records/update"
 
 }
 

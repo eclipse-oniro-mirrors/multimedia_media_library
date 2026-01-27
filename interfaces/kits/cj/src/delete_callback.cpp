@@ -41,7 +41,7 @@ void DeleteCallback::OnResult(int32_t resultCode, const OHOS::AAFwk::Want& resul
 {
     if (resultCode == DELETE_CODE_SUCCESS) {
         this->resultCode_ = resultCode;
-        string trashUri = PAH_TRASH_PHOTO;
+        string trashUri = CONST_PAH_TRASH_PHOTO;
         MediaLibraryNapiUtils::UriAppendKeyValue(trashUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri updateAssetUri(trashUri);
         DataSharePredicates predicates;

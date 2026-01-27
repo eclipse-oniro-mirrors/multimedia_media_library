@@ -53,27 +53,27 @@ static MediaLibraryMockHapToken* mockToken = nullptr;
 void MakeTestData()
 {
     DataShareValuesBucket datashareValues;
-    datashareValues.Put(MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
-    datashareValues.Put(MEDIA_DATA_DB_URI, MediaFileUtils::GetMediaTypeUri(MEDIA_TYPE_IMAGE));
+    datashareValues.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_URI, MediaFileUtils::GetMediaTypeUri(MEDIA_TYPE_IMAGE));
     string displayName = "test.jpg";
     string extension = ScannerUtils::GetFileExtension(displayName);
-    datashareValues.Put(MEDIA_DATA_DB_MIME_TYPE, MimeTypeUtils::GetMimeTypeFromExtension(extension));
-    datashareValues.Put(MEDIA_DATA_DB_RELATIVE_PATH, PIC_DIR_VALUES);
-    datashareValues.Put(MEDIA_DATA_DB_NAME, displayName);
-    datashareValues.Put(MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
-    datashareValues.Put(MEDIA_DATA_DB_SIZE, 0);
-    datashareValues.Put(MEDIA_DATA_DB_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
-    datashareValues.Put(MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-    datashareValues.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR + PIC_DIR_VALUES + displayName);
-    datashareValues.Put(MEDIA_DATA_DB_BUCKET_ID, 1);
-    datashareValues.Put(MEDIA_DATA_DB_PARENT_ID, 1);
-    datashareValues.Put(MEDIA_DATA_DB_BUCKET_NAME, PIC_DIR_VALUES);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_MIME_TYPE, MimeTypeUtils::GetMimeTypeFromExtension(extension));
+    datashareValues.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, PIC_DIR_VALUES);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
+    datashareValues.Put(CONST_MEDIA_DATA_DB_SIZE, 0);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
+    datashareValues.Put(CONST_MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
+    datashareValues.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR + PIC_DIR_VALUES + displayName);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_BUCKET_ID, 1);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_PARENT_ID, 1);
+    datashareValues.Put(CONST_MEDIA_DATA_DB_BUCKET_NAME, PIC_DIR_VALUES);
     ValuesBucket values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(datashareValues);
 
     Uri uri(MEDIALIBRARY_DATA_URI);
     for (int i = 0; i < DATA_COUNT; i++) {
         int64_t rowId = -1;
-        MediaLibraryDataManager::GetInstance()->rdbStore_->Insert(rowId, MEDIALIBRARY_TABLE, values);
+        MediaLibraryDataManager::GetInstance()->rdbStore_->Insert(rowId, CONST_MEDIALIBRARY_TABLE, values);
     }
 }
 
@@ -162,9 +162,9 @@ int64_t UTCTimeSeconds()
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_001, TestSize.Level1)
 {
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
-    predicates.OrderByAsc(MEDIA_DATA_DB_DATE_ADDED);
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    predicates.OrderByAsc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     vector<string> columns;
 
     int64_t start = UTCTimeSeconds();
@@ -182,20 +182,20 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_001, TestSize.Lev
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_002, TestSize.Level1)
 {
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
-    predicates.OrderByAsc(MEDIA_DATA_DB_DATE_ADDED);
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    predicates.OrderByAsc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     vector<string> columns {
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_TITLE,
-        MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_MODIFIED
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+        CONST_MEDIA_DATA_DB_MIME_TYPE,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE,
+        CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED
     };
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
@@ -212,21 +212,21 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_002, TestSize.Lev
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_003, TestSize.Level1)
 {
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
-    predicates.OrderByAsc(MEDIA_DATA_DB_DATE_ADDED);
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    predicates.OrderByAsc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     predicates.Limit(50);
     vector<string> columns {
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_TITLE,
-        MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_MODIFIED
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+        CONST_MEDIA_DATA_DB_MIME_TYPE,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE,
+        CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED
     };
     int64_t start = UTCTimeSeconds();
     MediaLibraryTracer tracer;
@@ -243,9 +243,9 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_003, TestSize.Lev
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_004, TestSize.Level1)
 {
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
-    predicates.OrderByAsc(MEDIA_DATA_DB_DATE_ADDED);
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    predicates.OrderByAsc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     vector<string> columns;
 
     int32_t mediaType;
@@ -270,16 +270,16 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_004, TestSize.Lev
         ASSERT_TRUE(count >= DATA_COUNT);
         result->GoToFirstRow();
         do {
-            mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result);
-            parentId = GetInt32Val(MEDIA_DATA_DB_PARENT_ID, result);
-            relativePath = GetStringVal(MEDIA_DATA_DB_RELATIVE_PATH, result);
-            mimeType = GetStringVal(MEDIA_DATA_DB_MIME_TYPE, result);
-            displayName = GetStringVal(MEDIA_DATA_DB_NAME, result);
-            title = GetStringVal(MEDIA_DATA_DB_TITLE, result);
-            bucketId = GetInt32Val(MEDIA_DATA_DB_BUCKET_ID, result);
-            bucketName = GetStringVal(MEDIA_DATA_DB_BUCKET_NAME, result);
-            dateAdded = GetInt64Val(MEDIA_DATA_DB_DATE_ADDED, result);
-            dateModified = GetInt64Val(MEDIA_DATA_DB_DATE_MODIFIED, result);
+            mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result);
+            parentId = GetInt32Val(CONST_MEDIA_DATA_DB_PARENT_ID, result);
+            relativePath = GetStringVal(CONST_MEDIA_DATA_DB_RELATIVE_PATH, result);
+            mimeType = GetStringVal(CONST_MEDIA_DATA_DB_MIME_TYPE, result);
+            displayName = GetStringVal(CONST_MEDIA_DATA_DB_NAME, result);
+            title = GetStringVal(CONST_MEDIA_DATA_DB_TITLE, result);
+            bucketId = GetInt32Val(CONST_MEDIA_DATA_DB_BUCKET_ID, result);
+            bucketName = GetStringVal(CONST_MEDIA_DATA_DB_BUCKET_NAME, result);
+            dateAdded = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_ADDED, result);
+            dateModified = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_MODIFIED, result);
         } while (!result->GoToNextRow());
     }
     tracer.Finish();
@@ -290,12 +290,13 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_004, TestSize.Lev
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_005, TestSize.Level1)
 {
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
-    predicates.OrderByAsc(MEDIA_DATA_DB_DATE_ADDED);
-    vector<string> columns { MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_PARENT_ID, MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE, MEDIA_DATA_DB_NAME, MEDIA_DATA_DB_TITLE, MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME, MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_MODIFIED };
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    predicates.OrderByAsc(CONST_MEDIA_DATA_DB_DATE_ADDED);
+    vector<string> columns { CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_MIME_TYPE, CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE, CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME, CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_MODIFIED };
 
     int32_t mediaType;
     int32_t parentId;
@@ -319,16 +320,16 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_005, TestSize.Lev
         ASSERT_TRUE(count >= DATA_COUNT);
         result->GoToFirstRow();
         do {
-            mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result);
-            parentId = GetInt32Val(MEDIA_DATA_DB_PARENT_ID, result);
-            relativePath = GetStringVal(MEDIA_DATA_DB_RELATIVE_PATH, result);
-            mimeType = GetStringVal(MEDIA_DATA_DB_MIME_TYPE, result);
-            displayName = GetStringVal(MEDIA_DATA_DB_NAME, result);
-            title = GetStringVal(MEDIA_DATA_DB_TITLE, result);
-            bucketId = GetInt32Val(MEDIA_DATA_DB_BUCKET_ID, result);
-            bucketName = GetStringVal(MEDIA_DATA_DB_BUCKET_NAME, result);
-            dateAdded = GetInt64Val(MEDIA_DATA_DB_DATE_ADDED, result);
-            dateModified = GetInt64Val(MEDIA_DATA_DB_DATE_MODIFIED, result);
+            mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result);
+            parentId = GetInt32Val(CONST_MEDIA_DATA_DB_PARENT_ID, result);
+            relativePath = GetStringVal(CONST_MEDIA_DATA_DB_RELATIVE_PATH, result);
+            mimeType = GetStringVal(CONST_MEDIA_DATA_DB_MIME_TYPE, result);
+            displayName = GetStringVal(CONST_MEDIA_DATA_DB_NAME, result);
+            title = GetStringVal(CONST_MEDIA_DATA_DB_TITLE, result);
+            bucketId = GetInt32Val(CONST_MEDIA_DATA_DB_BUCKET_ID, result);
+            bucketName = GetStringVal(CONST_MEDIA_DATA_DB_BUCKET_NAME, result);
+            dateAdded = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_ADDED, result);
+            dateModified = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_MODIFIED, result);
         } while (!result->GoToNextRow());
     }
     tracer.Finish();
@@ -339,13 +340,14 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_005, TestSize.Lev
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_006, TestSize.Level1)
 {
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
-    predicates.OrderByAsc(MEDIA_DATA_DB_DATE_ADDED);
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    predicates.OrderByAsc(CONST_MEDIA_DATA_DB_DATE_ADDED);
     predicates.Limit(50);
-    vector<string> columns { MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_PARENT_ID, MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE, MEDIA_DATA_DB_NAME, MEDIA_DATA_DB_TITLE, MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME, MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_MODIFIED };
+    vector<string> columns { CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_MIME_TYPE, CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE, CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME, CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_MODIFIED };
     int32_t mediaType;
     int32_t parentId;
     int32_t bucketId;
@@ -368,16 +370,16 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_006, TestSize.Lev
         ASSERT_TRUE(count <= 50);
         result->GoToFirstRow();
         do {
-            mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result);
-            parentId = GetInt32Val(MEDIA_DATA_DB_PARENT_ID, result);
-            relativePath = GetStringVal(MEDIA_DATA_DB_RELATIVE_PATH, result);
-            mimeType = GetStringVal(MEDIA_DATA_DB_MIME_TYPE, result);
-            displayName = GetStringVal(MEDIA_DATA_DB_NAME, result);
-            title = GetStringVal(MEDIA_DATA_DB_TITLE, result);
-            bucketId = GetInt32Val(MEDIA_DATA_DB_BUCKET_ID, result);
-            bucketName = GetStringVal(MEDIA_DATA_DB_BUCKET_NAME, result);
-            dateAdded = GetInt64Val(MEDIA_DATA_DB_DATE_ADDED, result);
-            dateModified = GetInt64Val(MEDIA_DATA_DB_DATE_MODIFIED, result);
+            mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result);
+            parentId = GetInt32Val(CONST_MEDIA_DATA_DB_PARENT_ID, result);
+            relativePath = GetStringVal(CONST_MEDIA_DATA_DB_RELATIVE_PATH, result);
+            mimeType = GetStringVal(CONST_MEDIA_DATA_DB_MIME_TYPE, result);
+            displayName = GetStringVal(CONST_MEDIA_DATA_DB_NAME, result);
+            title = GetStringVal(CONST_MEDIA_DATA_DB_TITLE, result);
+            bucketId = GetInt32Val(CONST_MEDIA_DATA_DB_BUCKET_ID, result);
+            bucketName = GetStringVal(CONST_MEDIA_DATA_DB_BUCKET_NAME, result);
+            dateAdded = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_ADDED, result);
+            dateModified = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_MODIFIED, result);
         } while (!result->GoToNextRow());
     }
     tracer.Finish();
@@ -410,16 +412,16 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_008, TestSi
     Uri uri(MEDIALIBRARY_DATA_URI);
     DataSharePredicates predicates;
     vector<string> columns {
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_TITLE,
-        MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_MODIFIED
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+        CONST_MEDIA_DATA_DB_MIME_TYPE,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE,
+        CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED
     };
 
     int64_t start = UTCTimeSeconds();
@@ -440,21 +442,21 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_009, TestSi
 {
     Uri uri(MEDIALIBRARY_DATA_URI);
     DataSharePredicates predicates;
-    string selection = MEDIA_DATA_DB_ID + " <> ? LIMIT 0, 50 ";
+    string selection = string(CONST_MEDIA_DATA_DB_ID) + " <> ? LIMIT 0, 50 ";
     vector<string> selectionArgs = { "0" };
     predicates.SetWhereClause(selection);
     predicates.SetWhereArgs(selectionArgs);
     vector<string> columns {
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_TITLE,
-        MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_MODIFIED
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+        CONST_MEDIA_DATA_DB_MIME_TYPE,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE,
+        CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED
     };
 
     int64_t start = UTCTimeSeconds();
@@ -497,16 +499,16 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_010, TestSi
         result->GetRowCount(count);
         result->GoToFirstRow();
         do {
-            mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result);
-            parentId = GetInt32Val(MEDIA_DATA_DB_PARENT_ID, result);
-            relativePath = GetStringVal(MEDIA_DATA_DB_RELATIVE_PATH, result);
-            mimeType = GetStringVal(MEDIA_DATA_DB_MIME_TYPE, result);
-            displayName = GetStringVal(MEDIA_DATA_DB_NAME, result);
-            title = GetStringVal(MEDIA_DATA_DB_TITLE, result);
-            bucketId = GetInt32Val(MEDIA_DATA_DB_BUCKET_ID, result);
-            bucketName = GetStringVal(MEDIA_DATA_DB_BUCKET_NAME, result);
-            dateAdded = GetInt64Val(MEDIA_DATA_DB_DATE_ADDED, result);
-            dateModified = GetInt64Val(MEDIA_DATA_DB_DATE_MODIFIED, result);
+            mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result);
+            parentId = GetInt32Val(CONST_MEDIA_DATA_DB_PARENT_ID, result);
+            relativePath = GetStringVal(CONST_MEDIA_DATA_DB_RELATIVE_PATH, result);
+            mimeType = GetStringVal(CONST_MEDIA_DATA_DB_MIME_TYPE, result);
+            displayName = GetStringVal(CONST_MEDIA_DATA_DB_NAME, result);
+            title = GetStringVal(CONST_MEDIA_DATA_DB_TITLE, result);
+            bucketId = GetInt32Val(CONST_MEDIA_DATA_DB_BUCKET_ID, result);
+            bucketName = GetStringVal(CONST_MEDIA_DATA_DB_BUCKET_NAME, result);
+            dateAdded = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_ADDED, result);
+            dateModified = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_MODIFIED, result);
         } while (!result->GoToNextRow());
     }
     tracer.Finish();
@@ -517,13 +519,14 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_010, TestSi
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_011, TestSize.Level1)
 {
-    string queryUri = PAH_QUERY_PHOTO;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
     UriAppendKeyValue(queryUri, "api_version", to_string(MEDIA_API_VERSION_V10));
     Uri uri(queryUri);
     DataSharePredicates predicates;
-    vector<string> columns { MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_IS_FAV, MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE, MEDIA_DATA_DB_NAME, MEDIA_DATA_DB_TITLE, MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_DATE_TAKEN, MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_MODIFIED };
+    vector<string> columns { CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_IS_FAV,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_MIME_TYPE, CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE, CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_MODIFIED };
 
     int32_t mediaType;
     int32_t is_favorite;
@@ -546,16 +549,16 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_011, TestSi
         result->GetRowCount(count);
         result->GoToFirstRow();
         do {
-            mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result);
-            is_favorite = GetInt32Val(MEDIA_DATA_DB_IS_FAV, result);
-            relativePath = GetStringVal(MEDIA_DATA_DB_RELATIVE_PATH, result);
-            mimeType = GetStringVal(MEDIA_DATA_DB_MIME_TYPE, result);
-            displayName = GetStringVal(MEDIA_DATA_DB_NAME, result);
-            title = GetStringVal(MEDIA_DATA_DB_TITLE, result);
-            parent = GetInt32Val(MEDIA_DATA_DB_PARENT_ID, result);
-            date_taken = GetInt64Val(MEDIA_DATA_DB_DATE_TAKEN, result);
-            dateAdded = GetInt64Val(MEDIA_DATA_DB_DATE_ADDED, result);
-            dateModified = GetInt64Val(MEDIA_DATA_DB_DATE_MODIFIED, result);
+            mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result);
+            is_favorite = GetInt32Val(CONST_MEDIA_DATA_DB_IS_FAV, result);
+            relativePath = GetStringVal(CONST_MEDIA_DATA_DB_RELATIVE_PATH, result);
+            mimeType = GetStringVal(CONST_MEDIA_DATA_DB_MIME_TYPE, result);
+            displayName = GetStringVal(CONST_MEDIA_DATA_DB_NAME, result);
+            title = GetStringVal(CONST_MEDIA_DATA_DB_TITLE, result);
+            parent = GetInt32Val(CONST_MEDIA_DATA_DB_PARENT_ID, result);
+            date_taken = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_TAKEN, result);
+            dateAdded = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_ADDED, result);
+            dateModified = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_MODIFIED, result);
         } while (!result->GoToNextRow());
     }
     tracer.Finish();
@@ -568,13 +571,14 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_012, TestSi
 {
     Uri uri(MEDIALIBRARY_DATA_URI);
     DataSharePredicates predicates;
-    string selection = MEDIA_DATA_DB_ID + " <> ? LIMIT 0, 50 ";
+    string selection = string(CONST_MEDIA_DATA_DB_ID) + " <> ? LIMIT 0, 50 ";
     vector<string> selectionArgs = { "0" };
     predicates.SetWhereClause(selection);
     predicates.SetWhereArgs(selectionArgs);
-    vector<string> columns { MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_PARENT_ID, MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_MIME_TYPE, MEDIA_DATA_DB_NAME, MEDIA_DATA_DB_TITLE, MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME, MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_DATE_MODIFIED };
+    vector<string> columns { CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH, CONST_MEDIA_DATA_DB_MIME_TYPE, CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE, CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME, CONST_MEDIA_DATA_DB_DATE_ADDED, CONST_MEDIA_DATA_DB_DATE_MODIFIED };
 
     int32_t mediaType;
     int32_t parentId;
@@ -597,16 +601,16 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_012, TestSi
         ASSERT_TRUE(count <= 50);
         result->GoToFirstRow();
         do {
-            mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result);
-            parentId = GetInt32Val(MEDIA_DATA_DB_PARENT_ID, result);
-            relativePath = GetStringVal(MEDIA_DATA_DB_RELATIVE_PATH, result);
-            mimeType = GetStringVal(MEDIA_DATA_DB_MIME_TYPE, result);
-            displayName = GetStringVal(MEDIA_DATA_DB_NAME, result);
-            title = GetStringVal(MEDIA_DATA_DB_TITLE, result);
-            bucketId = GetInt32Val(MEDIA_DATA_DB_BUCKET_ID, result);
-            bucketName = GetStringVal(MEDIA_DATA_DB_BUCKET_NAME, result);
-            dateAdded = GetInt64Val(MEDIA_DATA_DB_DATE_ADDED, result);
-            dateModified = GetInt64Val(MEDIA_DATA_DB_DATE_MODIFIED, result);
+            mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result);
+            parentId = GetInt32Val(CONST_MEDIA_DATA_DB_PARENT_ID, result);
+            relativePath = GetStringVal(CONST_MEDIA_DATA_DB_RELATIVE_PATH, result);
+            mimeType = GetStringVal(CONST_MEDIA_DATA_DB_MIME_TYPE, result);
+            displayName = GetStringVal(CONST_MEDIA_DATA_DB_NAME, result);
+            title = GetStringVal(CONST_MEDIA_DATA_DB_TITLE, result);
+            bucketId = GetInt32Val(CONST_MEDIA_DATA_DB_BUCKET_ID, result);
+            bucketName = GetStringVal(CONST_MEDIA_DATA_DB_BUCKET_NAME, result);
+            dateAdded = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_ADDED, result);
+            dateModified = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_MODIFIED, result);
         } while (!result->GoToNextRow());
     }
     tracer.Finish();
@@ -617,8 +621,8 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_012, TestSi
 
 HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_RdbQuery_test_013, TestSize.Level1)
 {
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
     vector<string> columns;
 
     int64_t timeSum = 0;
@@ -640,7 +644,7 @@ HWTEST_F(MediaLibraryQueryPerfUnitTest, medialib_datashareQuery_test_014, TestSi
 {
     Uri uri(MEDIALIBRARY_DATA_URI);
     DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_IMAGE));
     vector<string> columns;
 
     int64_t timeSum = 0;
