@@ -81,7 +81,7 @@ static shared_ptr<NativeRdb::ResultSet> QueryAgeingTrashFiles()
     resultSet.reset();
 
     int64_t dateAgeing = MediaFileUtils::UTCTimeMilliSeconds();
-    string strAgeingQueryCondition = CONST_MEDIA_DATA_DB_DATE_TRASHED + "> 0" + " AND " +
+    string strAgeingQueryCondition = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + "> 0" + " AND " +
         to_string(dateAgeing) + " - " +
         CONST_MEDIA_DATA_DB_DATE_TRASHED + " > " + to_string(recycleDays * ONEDAY_TO_SEC * MSEC_TO_SEC);
     MEDIA_INFO_LOG("StrAgeingQueryCondition = %{private}s", strAgeingQueryCondition.c_str());
