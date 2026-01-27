@@ -713,11 +713,9 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(Get
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
     cmd.SetDataSharePred(dto.predicates);
-    // CONST_MEDIALIBRARY_TABLE just for RdbPredicates
-    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, CONST_MEDIALIBRARY_TABLE);
-    cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
-    cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
-    cmd.GetAbsRdbPredicates()->SetOrder(rdbPredicate.GetOrder());
+    // MEDIALIBRARY_TABLE just for RdbPredicates
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    MediaLibraryRdbUtils::BuildDoubleCheckPredicates(rdbPredicate, dto.tokenId, passCode);
 
     auto resultSet = MediaLibraryPhotoOperations::Query(cmd, dto.columns);
     CHECK_AND_RETURN_RET_LOG(resultSet, nullptr, "Failed to query assets");
