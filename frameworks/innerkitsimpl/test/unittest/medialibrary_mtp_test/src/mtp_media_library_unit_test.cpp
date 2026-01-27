@@ -2554,5 +2554,190 @@ HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_114, TestSi
     int32_t res = mtpMediaLib_->CopyGalleryAlbum(context, albumName, paths, outObjectHandle);
     EXPECT_EQ(res, MTP_ERROR_INVALID_OBJECTHANDLE);
 }
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:SendObjectInfo
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: SendObjectInfo
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_115, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->storageID = 2;
+    context->parent = 0;
+    context->format = MTP_FORMAT_ASSOCIATION_CODE;
+    for (int i = 1; i <= 10; i++) {
+        mtpMediaLib_->AddToHandlePathMap(FILE_PATH + "/" + std::to_string(i) + ".txt", i);
+    }
+    mtpMediaLib_->AddExternalStorage(FILE_PATH, context->storageID);
+    uint32_t outStorageID = 0;
+    uint32_t outParent = 0;
+    uint32_t outHandle = 0;
+    mtpMediaLib_->SendObjectInfo(context, outStorageID, outParent, outHandle);
+    EXPECT_NE(outStorageID, context->storageID);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: MoveObjectSub
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_116, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::string path = FILE_PATH;
+    uint32_t id = 10;
+    mtpMediaLib_->AddToHandlePathMap(path, id);
+    mtpMediaLib_->AddToHandlePathMap(path, id);
+
+    bool isDir = true;
+    uint32_t repeatHandle = 0;
+    uint32_t errcode = 1;
+    errcode = mtpMediaLib_->MoveObjectSub(FILE_PATH, STORAGE_FILE, isDir, repeatHandle);
+    EXPECT_EQ(errcode, MTP_SUCCESS);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: MoveObjectSub
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_117, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    for (int i = 1; i <= 10; i++) {
+        mtpMediaLib_->AddToHandlePathMap(FILE_PATH + "/" + std::to_string(i) + ".txt", i);
+    }
+
+    mtpMediaLib_->AddToHandlePathMap(STORAGE_FILE, 11);
+    bool isDir = true;
+    uint32_t repeatHandle = 0;
+    uint32_t errcode = 1;
+    errcode = mtpMediaLib_->MoveObjectSub(FILE_PATH, STORAGE_FILE, isDir, repeatHandle);
+    EXPECT_EQ(errcode, MTP_SUCCESS);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: GetHandlesMap
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_118, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->property = 1;
+    context->depth = 0;
+    context->handle = 1;
+    context->storageID = 1;
+    for (int i = 1; i <= 10; i++) {
+        mtpMediaLib_->AddToHandlePathMap(FILE_PATH + "/" + std::to_string(i) + ".txt", i);
+    }
+
+    auto handlesMap = std::make_shared<std::unordered_map<uint32_t, std::string>>();
+    handlesMap = mtpMediaLib_->GetHandlesMap(context);
+    EXPECT_TRUE(handlesMap->empty());
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: GetHandlesMap
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_119, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->property = 1;
+    context->depth = 1;
+    context->handle = 1;
+    context->storageID = 1;
+    for (int i = 1; i <= 10; i++) {
+        mtpMediaLib_->AddToHandlePathMap(FILE_PATH + "/" + std::to_string(i) + ".txt", i);
+    }
+
+    auto handlesMap = std::make_shared<std::unordered_map<uint32_t, std::string>>();
+    handlesMap = mtpMediaLib_->GetHandlesMap(context);
+    EXPECT_TRUE(handlesMap->empty());
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: AddExternalStorage and CorrectStorageId
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_120, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    context->handle = 1;
+    context->storageID = 1;
+    for (int i = 1; i <= 10; i++) {
+        mtpMediaLib_->AddToHandlePathMap("/storage/External" + FILE_PATH + "/" + std::to_string(i) + ".txt", i);
+    }
+    std::string fsUuid = "storage/media/local/files/Docs/Desktop/1.txt";
+    uint32_t storageId = 1;
+    mtpMediaLib_->AddExternalStorage(fsUuid, storageId);
+    bool ret = mtpMediaLib_->AddExternalStorage(fsUuid, storageId);
+    EXPECT_TRUE(ret);
+    mtpMediaLib_->CorrectStorageId(context);
+}
+
+/*
+ * Feature: MediaLibraryMTP
+ * Function:
+ * SubFunction: NA
+ * FunctionPoints: NA
+ * EnvConditions: NA
+ * CaseDescription: GetObjectPropValue
+ */
+HWTEST_F(MtpMediaLibraryUnitTest, medialibrary_MTP_message_testlevel_121, TestSize.Level1)
+{
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
+    std::shared_ptr<MtpOperationContext> context = std::make_shared<MtpOperationContext>();
+    ASSERT_NE(context, nullptr);
+    uint64_t outIntVal = 0;
+    uint128_t outLongVal = { 0 };
+    std::string outStrVal = "";
+    context->handle = 1;
+    context->property = MTP_PROPERTY_PARENT_OBJECT_CODE;
+    for (int i = 1; i <= 10; i++) {
+        mtpMediaLib_->AddToHandlePathMap(FILE_PATH + "/" + std::to_string(i) + ".txt", i);
+    }
+
+    int32_t errcode = -1;
+    errcode = mtpMediaLib_->GetObjectPropValue(context, outIntVal, outLongVal, outStrVal);
+    EXPECT_EQ(errcode, MTP_SUCCESS);
+}
 } // namespace Media
 } // namespace OHOS
