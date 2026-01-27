@@ -296,7 +296,7 @@ namespace Media {
 #define CONST_PAH_SCAN_WITHOUT_ALBUM_UPDATE "datashare:///media/phaccess_photo_operation/scan_without_album_update"
 #define CONST_PATH_SAVE_PICTURE "datashare:///media/phaccess_photo_operation/save_picture"
 #define CONST_PAH_FIND_ALL_DUPLICATE_ASSETS "datashare:///media/phaccess_photo_operation/all_duplicate_assets"
-#define CONST_PAH_FIND_DUPLICATE_ASSETS_TO_DELETE
+#define CONST_PAH_FIND_DUPLICATE_ASSETS_TO_DELETE \
     "datashare:///media/phaccess_photo_operation/can_del_duplicate_assets"
 
 // MultiStages capture related operation uri
@@ -309,7 +309,7 @@ namespace Media {
 
 // Video
 #define CONST_PAH_VIDEO "video_operation"
- 
+
 // Video
 #define CONST_PAH_SET_VIDEO_ENHANCEMENT_ATTR "datashare:///media/video_operation/set_video_enhancement_attr"
 
