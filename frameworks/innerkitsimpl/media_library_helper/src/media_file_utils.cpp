@@ -2106,7 +2106,7 @@ bool MediaFileUtils::CheckMovingPhotoVideo(const UniqueFd &uniqueFd)
     }
 
     shared_ptr<AVMetadataHelper> avMetadataHelper = AVMetadataHelperFactory::CreateAVMetadataHelper();
-    CHECK_AND_RETURN_RET_WARN_LOG(avMetadataHelper == nullptr, true,
+    CHECK_AND_RETURN_RET_WARN_LOG(avMetadataHelper != nullptr, true,
         "Failed to create AVMetadataHelper, ignore checking duration");
 
     int32_t err = avMetadataHelper->SetSource(uniqueFd.Get(), 0,
