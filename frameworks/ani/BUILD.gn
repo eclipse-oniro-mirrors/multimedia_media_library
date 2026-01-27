@@ -287,6 +287,7 @@ ohos_shared_library("photo_access_helper_ani") {
     "ability_runtime:ability_runtime",
     "ability_runtime:abilitykit_native",
     "ability_runtime:ani_base_context",
+    "ability_runtime:napi_common",
     "access_token:libaccesstoken_sdk",
     "data_share:datashare_consumer",
     "hilog:libhilog",
