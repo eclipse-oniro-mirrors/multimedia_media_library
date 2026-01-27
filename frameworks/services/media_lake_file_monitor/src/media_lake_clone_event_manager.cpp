@@ -156,7 +156,7 @@ void MediaLakeCloneEventManager::RunGlobalScanner()
         "LakeClone: Scanner is running, status: %{public}d", static_cast<int32_t>(scannerStatus));
 
     MEDIA_INFO_LOG("LakeClone: Start RunGlobalScanner");
-    auto scannerFunc = []() { GlobalScanner::GetInstance().Run(GLOBAL_SCAN_ROOT_DIR, false, true); };
+    auto scannerFunc = []() { GlobalScanner::GetInstance().Run(GLOBAL_SCAN_ROOT_DIR, false); };
     Media::thread myThread("LakeClone", scannerFunc);
     if (myThread.is_invalid()) {
         MEDIA_ERR_LOG("LakeClone: Start RunGlobalScanner thread failed.");
@@ -190,7 +190,7 @@ void MediaLakeCloneEventManager::SetDeathRecipient()
         backupSaRemoteObject_ = saManager->LoadSystemAbility(BACKUP_SA_ID, MIN_TIME_OUT);
         CHECK_AND_RETURN_LOG(backupSaRemoteObject_ != nullptr, "LakeClone: backupSaRemoteObject_ is null.");
     }
-    
+
     CHECK_AND_PRINT_LOG(backupSaRemoteObject_->AddDeathRecipient(sptr(new MediaLakeCloneDeathRecipient())),
         "LakeClone: Failed to add death recipient.");
 }
