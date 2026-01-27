@@ -96,4 +96,15 @@ int32_t MediaFileChangeManager::Initialize()
     return 0;
 }
 
+void MediaFileChangeManager::StartProcessChangeData()
+{
+    auto processor = MediaFileChangeProcessor::GetInstance();
+    processor->StartProcessMsgs();
+}
+
+void MediaFileChangeManager::StopProcessChangeData()
+{
+    auto processor = MediaFileChangeProcessor::GetInstance();
+    processor->StopProcessMsgs();
+}
 }

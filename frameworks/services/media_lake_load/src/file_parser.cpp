@@ -68,7 +68,8 @@ std::string FileParser::PhotosRowData::ToString() const
 
 bool FileParser::MetaStatus::IsChanged() const
 {
-    return isMediaTypeChanged || isSizeChanged || isDateModifiedChanged || isMimeTypeChanged || isStoragePathChanged;
+    return isMediaTypeChanged || isSizeChanged || isDateModifiedChanged || isMimeTypeChanged || isStoragePathChanged ||
+        isInvisible;
 }
 
 std::string FileParser::MetaStatus::ToString() const
@@ -79,7 +80,8 @@ std::string FileParser::MetaStatus::ToString() const
         << "isSizeChanged: " << isSizeChanged << ", "
         << "isDateModifiedChanged: " << isDateModifiedChanged << ", "
         << "isMimeTypeChanged: " << isMimeTypeChanged  << ", "
-        << "isStoragePathChanged: " << isStoragePathChanged  << "]";
+        << "isStoragePathChanged: " << isStoragePathChanged  << ", "
+        << "isInvisible: " << isInvisible  << "]";
     return ss.str();
 }
 
@@ -284,6 +286,7 @@ bool FileParser::HasChangePart(const FileParser::PhotosRowData &rowData)
     metaStatus_.isDateModifiedChanged = rowData.dateModified != fileInfo_.dateModified;
     metaStatus_.isMimeTypeChanged = rowData.mimeType != fileInfo_.mimeType;
     metaStatus_.isStoragePathChanged = rowData.storagePath != fileInfo_.filePath;
+    metaStatus_.isInvisible = rowData.syncStatus != static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE);
     bool ret = metaStatus_.IsChanged();
     CHECK_AND_EXECUTE(!ret, MEDIA_INFO_LOG("metaStatus: %{public}s, fileInfo: %{public}s",
         metaStatus_.ToString().c_str(), ToString().c_str()));
@@ -373,8 +376,10 @@ FileParser::PhotosRowData FileParser::FindSameFileInDatabase(const std::string &
     rowData.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     rowData.mediaType = GetInt32Val(MediaColumn::MEDIA_TYPE, resultSet);
     rowData.fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+    rowData.syncStatus = GetInt32Val(PhotoColumn::PHOTO_SYNC_STATUS, resultSet);
     rowData.size = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);
     rowData.dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
+    rowData.editTime = GetInt64Val(PhotoColumn::PHOTO_EDIT_TIME, resultSet);
     rowData.inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
     rowData.mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
     rowData.storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
@@ -491,6 +496,7 @@ void FileParser::SetByPhotosRowData(const PhotosRowData &rowData)
     SetAlbumInfo(rowData.ownerAlbumId, rowData.ownerPackage, rowData.packageName);
     fileInfo_.cloudPath = rowData.data;
     fileInfo_.dateTaken = rowData.dateTaken;
+    fileInfo_.editTime = rowData.editTime;
 }
 
 NativeRdb::ValuesBucket FileParser::GetAssetInsertValues()
@@ -514,6 +520,7 @@ NativeRdb::ValuesBucket FileParser::GetAssetInsertValues()
 NativeRdb::ValuesBucket FileParser::GetAssetUpdateValues()
 {
     NativeRdb::ValuesBucket values = GetAssetCommonValues();
+    SetAssetEditValues(values);
     return values;
 }
 
@@ -526,6 +533,7 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
     values.Put(MediaColumn::MEDIA_TYPE, fileInfo_.fileType);
     values.Put(MediaColumn::MEDIA_MIME_TYPE, fileInfo_.mimeType);
     values.Put(PhotoColumn::PHOTO_MEDIA_SUFFIX, fileInfo_.mediaSuffix);
+    values.Put(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
 
     values.Put(MediaColumn::MEDIA_DATE_MODIFIED, fileInfo_.dateModified);
     values.Put(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
@@ -595,6 +603,22 @@ void FileParser::SetAssetLocationValues(NativeRdb::ValuesBucket &values)
     } else {
         values.PutNull(PhotoColumn::PHOTO_LONGITUDE);
         values.PutNull(PhotoColumn::PHOTO_LATITUDE);
+    }
+}
+
+void FileParser::SetAssetEditValues(NativeRdb::ValuesBucket &values)
+{
+    std::string editDataPath =
+        LakeFileUtils::GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL_EDIT_DATA, fileInfo_.cloudPath);
+    CHECK_AND_RETURN(fileInfo_.editTime > 0);
+    bool isEditDataPathExist = MediaFileUtils::IsFileExists(editDataPath);
+    bool isEditDataPathDir = MediaFileUtils::IsDirectory(editDataPath);
+    bool isEditDataPathNotEmpty = !MediaFileUtils::IsDirEmpty(editDataPath);
+    if (!(isEditDataPathExist && isEditDataPathDir && isEditDataPathNotEmpty)) {
+        MEDIA_ERR_LOG("Reset edit_time = 0, editTime: %{public}" PRId64", isEditDataPathExist: %{public}d, "
+            "isEditDataPathDir: %{public}d, isEditDataPathNotEmpty: %{public}d, fileInfo: %{public}s",
+            fileInfo_.editTime, isEditDataPathExist, isEditDataPathDir, isEditDataPathNotEmpty, ToString().c_str());
+        values.Put(PhotoColumn::PHOTO_EDIT_TIME, 0);
     }
 }
 

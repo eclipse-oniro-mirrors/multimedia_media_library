@@ -27,6 +27,8 @@ class MediaFileChangeManager : protected EnableSharedCreateInit<MediaFileChangeM
 public:
     EXPORT static std::shared_ptr<MediaFileChangeManager> GetInstance();
     int32_t Initialize();
+    EXPORT void StartProcessChangeData();
+    EXPORT void StopProcessChangeData();
 
 protected:
     MediaFileChangeManager();
