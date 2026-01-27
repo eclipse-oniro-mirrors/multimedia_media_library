@@ -36,6 +36,7 @@
 #include "thumbnail_rdb_utils.h"
 #include "thumbnail_source_loading.h"
 #include "thumbnail_utils.h"
+#include "cloud_file_error.h"
 
 using namespace std;
 using namespace OHOS::FileManagement::CloudSync;
@@ -290,10 +291,10 @@ void ThumbnailReadyManager::HandleDownloadBatch(int32_t requestId, pid_t pid)
     auto downloadCallback = std::make_shared<ThumbnailCloudDownloadCallback>(requestId, pid);
     int32_t ret = CloudSyncManager::GetInstance().StartFileCache(thumbReadyTaskData->cloudPaths,
         thumbReadyTaskData->downloadId, FieldKey::FIELDKEY_LCD, downloadCallback, TIME_MILLI_SECONDS);
-    if (ret == CloudSync::E_OK) {
+    if (ret == E_OK) {
         RegisterDownloadTimer(requestId, pid);
     } else {
-        if (ret == CloudSync::E_TIMEOUT) {
+        if (ret == FileManagement::E_TIMEOUT) {
             timeoutCount_++;
             MEDIA_INFO_LOG("Download thumbnail timeout, count:%{public}d", timeoutCount_.load());
             auto currentMilliSecond = MediaFileUtils::UTCTimeMilliSeconds();
@@ -330,6 +331,7 @@ void ThumbnailReadyManager::CreateAstcBatchOnDemandTaskFinish(std::shared_ptr<Th
     } else {
         if (thumbReadyTaskData->isBatchComplete == true) {
             timeoutCount_.store(0);
+            MEDIA_INFO_LOG("CreateAstcBatchOnDemand tasks finish, reset timeout count");
         }
     }
     CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid));

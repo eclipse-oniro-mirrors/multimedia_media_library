@@ -381,7 +381,7 @@ int32_t CloudFileDataConvert::HandleRawFile(
     if (isMovingPhoto) {
         if (MovingPhotoFileUtils::ConvertToSourceLivePhoto(path, rawFilePath, userId_) != E_OK) {
             MEDIA_ERR_LOG("ConvertToSourceLivePhoto failed %{public}s", path.c_str());
-            return E_PATH;
+            return E_NO_SUCH_FILE;
         }
     }
     MDKAsset content;
@@ -934,14 +934,14 @@ int32_t CloudFileDataConvert::ConvertToOnCreateRecord(
 
 int32_t CloudFileDataConvert::ExtractPosition(const std::string &position, double &latitude, double &longitude)
 {
-    CHECK_AND_RETURN_RET_LOG(!position.empty(), E_INVAL_ARG, "position is empty.");
+    CHECK_AND_RETURN_RET_LOG(!position.empty(), E_INVALID_VALUES, "position is empty.");
     auto json = nlohmann::json::parse(position, nullptr, false);
     bool isValid = !json.is_discarded();
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "position json parse error, %{private}s", position.c_str());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "position json parse error, %{private}s", position.c_str());
     isValid = json.contains("x") && json.contains("y");
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "position miss x or y fields, %{private}s", position.c_str());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "position miss x or y fields, %{private}s", position.c_str());
     isValid = json["x"].is_string() && json["y"].is_string();
-    CHECK_AND_RETURN_RET_LOG(isValid, E_INVAL_ARG, "position x or y is not string, %{private}s", position.c_str());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_VALUES, "position x or y is not string, %{private}s", position.c_str());
     std::string latitudeStr = json["x"].get<std::string>();
     std::string longitudeStr = json["y"].get<std::string>();
     std::stringstream latitudestream(latitudeStr);

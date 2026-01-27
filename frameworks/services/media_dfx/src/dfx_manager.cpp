@@ -41,6 +41,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "settings_data_manager.h"
 #include "result_set_utils.h"
+#include "cloud_file_error.h"
 
 using namespace std;
 
@@ -1191,7 +1192,7 @@ void DfxManager::HandleUpdateUploadMetaStat(uint32_t index, uint64_t diff)
 
 void DfxManager::HandleUpdateUploadDetailError(int32_t error)
 {
-    if (error == E_CLOUD_STORAGE_FULL) {
+    if (error == FileManagement::E_CLOUD_STORAGE_FULL) {
         uploadMetaErr_[INDEX_UL_META_ERR_STORAGE].fetch_add(1);
     }
 }

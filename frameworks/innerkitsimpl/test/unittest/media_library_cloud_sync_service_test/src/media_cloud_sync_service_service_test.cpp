@@ -40,6 +40,7 @@
 #include "cloud_media_photos_service.h"
 #include "cloud_media_scan_service.h"
 #undef private
+#include "cloud_file_error.h"
 
 using namespace testing::ext;
 using namespace OHOS::NativeRdb;
@@ -971,7 +972,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_SliceAssetFile_Tes
     std::string videoPath = "";
     std::string extraDataPat = "";
     int32_t ret = service.SliceAssetFile(originalFile, path, videoPath, extraDataPat);
-    EXPECT_EQ(ret, E_PATH);
+    EXPECT_EQ(ret, E_NO_SUCH_FILE);
 }
 
 HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_SliceAssetFile_Test_002, TestSize.Level1)
@@ -986,7 +987,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_SliceAssetFile_Tes
     std::string videoPath = "";
     std::string extraDataPat = "";
     int32_t ret = service.SliceAssetFile(originalFile, path, videoPath, extraDataPat);
-    EXPECT_EQ(ret, E_PATH);
+    EXPECT_EQ(ret, E_NO_SUCH_FILE);
 
     system("rm -rf /data/filetdd.txt");
 }
@@ -1244,7 +1245,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnCreateRecords_Test
     std::vector<PhotosDto> records = {dto1, dto2, dto3};
     int32_t failedSize = 0;
     int32_t ret = service.OnCreateRecords(records, failedSize);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     EXPECT_EQ(failedSize, 2);
 }
 
@@ -1289,7 +1290,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnMdirtyRecords_Test
     std::vector<PhotosDto> records = {dto1, dto2, dto3};
     int32_t failedSize = 0;
     int32_t ret = service.OnMdirtyRecords(records, failedSize);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     EXPECT_EQ(failedSize, 2);
 }
 
@@ -1336,7 +1337,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnFdirtyRecords_Test
     std::vector<PhotosDto> records = {dto1, dto2, dto3};
     int32_t failedSize = 0;
     int32_t ret = service.OnFdirtyRecords(records, failedSize);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     EXPECT_EQ(failedSize, 2);
 }
 
@@ -1358,7 +1359,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnDeleteRecords_Test
     std::vector<PhotosDto> records = {dto1, dto2, dto3};
     int32_t failedSize = 0;
     int32_t ret = service.OnDeleteRecords(records, failedSize);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     EXPECT_EQ(failedSize, 1);
 }
 
@@ -1381,7 +1382,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnCopyRecords_Test_0
     std::vector<PhotosDto> records = {dto1, dto2, dto3};
     int32_t failedSize = 0;
     int32_t ret = service.OnCopyRecords(records, failedSize);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     EXPECT_EQ(failedSize, 1);
 }
 
@@ -1752,24 +1753,24 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnRecordFailed_Test_
     auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
 
     int32_t ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
+    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
 
     photo.serverErrorCode = ServerErrorCode::UID_EMPTY;
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
 
     photo.serverErrorCode = ServerErrorCode::SWITCH_OFF;
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
 
     photo.serverErrorCode = ServerErrorCode::INVALID_LOCK_PARAM;
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
 
     photo.serverErrorCode = ServerErrorCode::RESPONSE_TIME_OUT;
     photo.errorType = ErrorType::TYPE_UNKNOWN;
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_INVAL_ARG);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
 
     CloudErrorDetail detailError;
 
@@ -1779,7 +1780,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnRecordFailed_Test_
     photo.errorDetails.clear();
     photo.errorDetails.emplace_back(detailError);
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_CLOUD_STORAGE_FULL);
+    EXPECT_EQ(ret, FileManagement::E_CLOUD_STORAGE_FULL);
 
     photo.serverErrorCode = ServerErrorCode::RESPONSE_TIME_OUT;
     photo.errorType = ErrorType::TYPE_UNKNOWN;
@@ -1787,7 +1788,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnRecordFailed_Test_
     photo.errorDetails.clear();
     photo.errorDetails.emplace_back(detailError);
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_BUSINESS_MODE_CHANGED);
+    EXPECT_EQ(ret, FileManagement::E_BUSINESS_MODE_CHANGED);
 }
 
 HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnRecordFailed_Test_002, TestSize.Level1)
@@ -1820,7 +1821,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnRecordFailed_Test_
     photo.errorDetails.clear();
     photo.errorDetails.emplace_back(detailError);
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_UNKNOWN);
+    EXPECT_EQ(ret, FileManagement::E_UNKNOWN);
 
     photo.serverErrorCode = ServerErrorCode::RESPONSE_TIME_OUT;
     photo.errorType = ErrorType::TYPE_NOT_NEED_RETRY;
@@ -1828,13 +1829,13 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnRecordFailed_Test_
     photo.errorDetails.clear();
     photo.errorDetails.emplace_back(detailError);
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
 
     photo.errorDetails.clear();
     photo.serverErrorCode = ServerErrorCode::RESPONSE_TIME_OUT;
     photo.errorType = ErrorType::TYPE_NOT_NEED_RETRY;
     ret = service.OnRecordFailed(photo, photoRefresh);
-    EXPECT_EQ(ret, E_STOP);
+    EXPECT_EQ(ret, FileManagement::E_STOP);
 }
 
 HWTEST_F(CloudMediaSyncServiceTest, CloudMediaScanService_FillMetadata_Test_001, TestSize.Level1)

@@ -61,7 +61,7 @@ std::string CloudMediaAlbumCache::ToLower(const std::string &str)
 
 int32_t CloudMediaAlbumCache::QueryAlbumByCloudId(const std::string &cloudId, std::optional<PhotoAlbumPo> &albumInfo)
 {
-    CHECK_AND_RETURN_RET(!cloudId.empty(), E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(!cloudId.empty(), E_INVALID_VALUES);
     CHECK_AND_RETURN_RET_LOG(!this->albumInfoList_.Empty(), E_QUERY_CONTENT_IS_EMPTY, "albumInfoList_ is empty.");
     std::vector<PhotoAlbumPo> albumInfos = this->albumInfoList_.ToVector();
     auto it = std::find_if(albumInfos.begin(), albumInfos.end(), [&](const PhotoAlbumPo &info) {
@@ -77,7 +77,7 @@ int32_t CloudMediaAlbumCache::QueryAlbumByCloudId(const std::string &cloudId, st
 
 int32_t CloudMediaAlbumCache::QueryAlbumBylPath(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfo)
 {
-    CHECK_AND_RETURN_RET(!lPath.empty(), E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(!lPath.empty(), E_INVALID_VALUES);
     CHECK_AND_RETURN_RET_LOG(!this->albumInfoList_.Empty(), E_QUERY_CONTENT_IS_EMPTY, "albumInfoList_ is empty.");
     std::vector<PhotoAlbumPo> albumInfos = this->albumInfoList_.ToVector();
     std::string lowerlPath = this->ToLower(lPath);
@@ -95,7 +95,7 @@ int32_t CloudMediaAlbumCache::QueryAlbumBylPath(const std::string &lPath, std::o
 int32_t CloudMediaAlbumCache::QueryAlbumBySourcePath(
     const std::string &sourcePath, std::optional<PhotoAlbumPo> &albumInfo)
 {
-    CHECK_AND_RETURN_RET(!sourcePath.empty(), E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(!sourcePath.empty(), E_INVALID_VALUES);
     CHECK_AND_RETURN_RET_LOG(!this->albumInfoList_.Empty(), E_QUERY_CONTENT_IS_EMPTY, "albumInfoList_ is empty.");
     std::vector<PhotoAlbumPo> albumInfos = this->albumInfoList_.ToVector();
     std::string lPath = CloudMediaSyncUtils::GetLpathFromSourcePath(sourcePath);

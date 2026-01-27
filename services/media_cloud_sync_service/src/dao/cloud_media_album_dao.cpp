@@ -277,6 +277,31 @@ bool CloudMediaAlbumDao::ReplaceCoverUriCondition(const std::string &coverUri, c
     return true;
 }
 
+static void UpdateAlbum(const PhotoAlbumDto &record)
+{
+    int32_t coverUriSource = 0;
+    int32_t albumId = 0;
+    if (record.localAlbumInfo.has_value() && record.localAlbumInfo.value().albumId.has_value()) {
+        albumId = record.localAlbumInfo.value().albumId.value();
+    }
+    if (record.localAlbumInfo.has_value() && record.localAlbumInfo.value().coverUriSource.has_value()) {
+        coverUriSource = record.localAlbumInfo.value().coverUriSource.value();
+    }
+    CHECK_AND_RETURN(coverUriSource == CoverUriSource::MANUAL_CLOUD_COVER);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN(rdbStore != nullptr);
+    std::vector<string> albumIds = { std::to_string(albumId) };
+    if (record.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC)) {
+        MediaLibraryRdbUtils::UpdateUserAlbumInternal(rdbStore, albumIds, true);
+        MEDIA_INFO_LOG("UpdateUserAlbum Success, AlbumId: %{public}d, CloudId: %{public}s",
+            albumId, record.cloudId.c_str());
+    } else if (record.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC)) {
+        MediaLibraryRdbUtils::UpdateSourceAlbumInternal(rdbStore, albumIds, true);
+        MEDIA_INFO_LOG("UpdateSourceAlbum Success, AlbumId: %{public}d, CloudId: %{public}s",
+            albumId, record.cloudId.c_str());
+    }
+}
+
 int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, const std::string &field,
     const std::string &value, std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle)
 {
@@ -320,10 +345,13 @@ int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, c
             values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, CoverUriSource::MANUAL_WAIT_PULL_COVER);
             values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, record.coverCloudId);
         }
+    } else if (record.coverUriSource == CoverUriSource::DEFAULT_COVER) {
+        values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, record.coverUriSource);
     }
     ret = albumRefreshHandle->Update(changedRows, PhotoAlbumColumns::TABLE, values, field + " = ?", {value});
     CHECK_AND_RETURN_RET_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK, E_RDB,
         "Insert pull record failed, rdb ret = %{public}d", ret);
+    CHECK_AND_EXECUTE(record.coverUriSource != CoverUriSource::DEFAULT_COVER, UpdateAlbum(record));
     return E_OK;
 }
 
@@ -483,7 +511,7 @@ int32_t CloudMediaAlbumDao::QueryConflict(PhotoAlbumDto &record, std::shared_ptr
 
     if (albumName.empty()) {
         MEDIA_ERR_LOG("no album name in record");
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     }
     /* query local */
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
@@ -1231,7 +1259,7 @@ bool CloudMediaAlbumDao::GetCoverUriFromCoverCloudId(const string &coverCloudId,
 
 int32_t CloudMediaAlbumDao::GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count)
 {
-    CHECK_AND_RETURN_RET(albumId > 0, E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(albumId > 0, E_INVALID_VALUES);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB, "Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);

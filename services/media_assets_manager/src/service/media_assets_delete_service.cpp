@@ -736,7 +736,7 @@ int32_t MediaAssetsDeleteService::FindBurstAssetsAndResetBurstKey(
 {
     int32_t ret = this->mediaAssetsDao_.FindAssetsByBurstKey(originalBurstKey, burstAssets);
     bool isValid = ret == E_OK && !burstAssets.empty();
-    CHECK_AND_RETURN_RET(isValid, E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(isValid, E_INVALID_VALUES);
     // Generate new burst_key.
     const std::string newBurstKey = LakeFileUtils::GenerateUuid();
     std::for_each(burstAssets.begin(), burstAssets.end(), [&](auto &element) { element.burstKey = newBurstKey; });
@@ -934,7 +934,7 @@ int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(const PhotosPo &phot
     int32_t fileId = photoInfo.fileId.value_or(0);
     std::string data = photoInfo.data.value_or("");
     bool isValid = fileId > 0 && !data.empty();
-    CHECK_AND_RETURN_RET(isValid, E_INVAL_ARG);
+    CHECK_AND_RETURN_RET(isValid, E_INVALID_VALUES);
     MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
     return E_OK;
 }

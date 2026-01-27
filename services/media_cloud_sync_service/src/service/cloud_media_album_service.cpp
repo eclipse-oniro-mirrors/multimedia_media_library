@@ -33,6 +33,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_data_manager_utils.h"
 #include "media_file_utils.h"
+#include "cloud_file_error.h"
 
 namespace OHOS::Media::CloudSync {
 const std::unordered_map<std::string, std::vector<std::string>> screensMap = {
@@ -77,7 +78,7 @@ int32_t CloudMediaAlbumService::OnFetchRecords(
     int32_t ret = E_OK;
     for (auto &album : albumDtoList) {
         ret = this->albumDao_.HandleLPathAndAlbumType(album);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_STOP, "OnFetchRecords HandleLPathAndAlbumType Error");
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, FileManagement::E_STOP, "OnFetchRecords HandleLPathAndAlbumType Error");
         if (IsDoubleScreenshot(album.lPath, album.cloudId)) {
             MEDIA_INFO_LOG("OnFetchRecords IsDoubleScreenshot");
             ConvertToSingleScreenshots(album, lpathRecords);
@@ -92,7 +93,7 @@ int32_t CloudMediaAlbumService::OnFetchRecords(
         oldRecords.emplace_back(album);
     }
     ret = OnFetchOldRecords(oldRecords, resp);
-    if (ret == E_STOP) {
+    if (ret == FileManagement::E_STOP) {
         MEDIA_ERR_LOG("OnFetchRecords OnFetchOldRecords Error");
         return ret;
     }
@@ -204,9 +205,9 @@ int32_t CloudMediaAlbumService::OnFetchOldRecords(
         if (ret != E_OK) {
             MEDIA_ERR_LOG("OnFetchOldRecords recordId %{public}s error %{public}d", record.cloudId.c_str(), ret);
             /* might need specific error type */
-            if (ret == E_STOP || ret == E_RDB) {
+            if (ret == FileManagement::E_STOP || ret == E_RDB) {
                 MediaGallerySyncNotify::GetInstance().FinalNotify();
-                return E_STOP;
+                return FileManagement::E_STOP;
             }
             continue;
         } else {
@@ -234,9 +235,9 @@ int32_t CloudMediaAlbumService::OnFetchLPathRecords(
         if (ret != E_OK) {
             MEDIA_INFO_LOG("OnFetchLPathRecords recordId %{public}s error %{public}d", record.cloudId.c_str(), ret);
             /* might need specific error type */
-            if (ret == E_STOP || ret == E_RDB) {
+            if (ret == FileManagement::E_STOP || ret == E_RDB) {
                 MediaGallerySyncNotify::GetInstance().FinalNotify();
-                return E_STOP;
+                return FileManagement::E_STOP;
             }
             continue;
         } else {
@@ -318,7 +319,7 @@ int32_t CloudMediaAlbumService::HandleCloudAlbumNotFound(const PhotoAlbumDto &al
 int32_t CloudMediaAlbumService::HandleDetailcode(ErrorDetailCode &errorCode)
 {
     /* Only one record failed, not stop sync */
-    return E_UNKNOWN;
+    return FileManagement::E_UNKNOWN;
 }
 
 int32_t CloudMediaAlbumService::OnRecordFailedErrorDetails(const PhotoAlbumDto &album)
@@ -326,17 +327,17 @@ int32_t CloudMediaAlbumService::OnRecordFailedErrorDetails(const PhotoAlbumDto &
     ErrorType errorType = album.errorType;
     if (album.errorDetails.size() == 0 && errorType != ErrorType::TYPE_NOT_NEED_RETRY) {
         MEDIA_ERR_LOG("errorDetails is empty and errorType is invalid, errorType:%{public}d", errorType);
-        return E_INVAL_ARG;
+        return E_INVALID_VALUES;
     } else if (album.errorDetails.size() != 0) {
         auto errorDetailcode = static_cast<ErrorDetailCode>(album.errorDetails[0].detailCode);
         if (errorDetailcode == ErrorDetailCode::SPACE_FULL) {
             /* Stop sync */
-            return E_CLOUD_STORAGE_FULL;
+            return FileManagement::E_CLOUD_STORAGE_FULL;
         }
         if (errorDetailcode == ErrorDetailCode::BUSINESS_MODEL_CHANGE_DATA_UPLOAD_FORBIDDEN) {
             MEDIA_ERR_LOG("Business Mode Change, Upload Fail");
             /* Stop sync */
-            return E_BUSINESS_MODE_CHANGED;
+            return FileManagement::E_BUSINESS_MODE_CHANGED;
         }
         if (errorDetailcode == ErrorDetailCode::SAME_FILENAME_NOT_ALLOWED) {
             MEDIA_ERR_LOG("Business Mode Change, Same Name Upload Fail");
@@ -351,12 +352,12 @@ int32_t CloudMediaAlbumService::OnRecordFailedErrorDetails(const PhotoAlbumDto &
         MEDIA_ERR_LOG("errorDetailcode = %{public}d, errorType = %{public}d, no need retry",
             errorDetailcode,
             static_cast<int32_t>(errorType));
-        return E_STOP;
+        return FileManagement::E_STOP;
     } else {
         MEDIA_ERR_LOG("errorType = %{public}d, no need retry", static_cast<int32_t>(errorType));
-        return E_STOP;
+        return FileManagement::E_STOP;
     }
-    return E_UNKNOWN;
+    return FileManagement::E_UNKNOWN;
 }
 
 int32_t CloudMediaAlbumService::OnRecordFailed(const PhotoAlbumDto &album)
@@ -364,14 +365,14 @@ int32_t CloudMediaAlbumService::OnRecordFailed(const PhotoAlbumDto &album)
     int32_t serverErrorCode = album.serverErrorCode;
     if ((static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::NETWORK_ERROR)) {
         MEDIA_ERR_LOG("Network Error or Response Time Out");
-        return E_SYNC_FAILED_NETWORK_NOT_AVAILABLE;
+        return FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE;
     } else if ((static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::UID_EMPTY) ||
                (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::SWITCH_OFF)) {
         MEDIA_ERR_LOG("switch off or uid empty");
-        return E_STOP;
+        return FileManagement::E_STOP;
     } else if (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::INVALID_LOCK_PARAM) {
         MEDIA_ERR_LOG("Invalid lock param ");
-        return E_STOP;
+        return FileManagement::E_STOP;
     } else if (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::RESPONSE_TIME_OUT) {
         MEDIA_ERR_LOG("on record failed response time out");
     } else if (static_cast<ServerErrorCode>(serverErrorCode) == ServerErrorCode::RESOURCE_INVALID) {
@@ -412,8 +413,9 @@ int32_t CloudMediaAlbumService::OnCreateRecords(std::vector<PhotoAlbumDto> &albu
             MEDIA_ERR_LOG("OnCreateRecords create record fail: cloudId %{public}s, err %{public}d",
                 album.cloudId.c_str(), err);
         }
-        if (err == E_SYNC_STOP || err == E_SYNC_FAILED_NETWORK_NOT_AVAILABLE || err == E_CLOUD_STORAGE_FULL ||
-            err == E_STOP || err == E_BUSINESS_MODE_CHANGED) {
+        if (err == FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE ||
+            err == FileManagement::E_CLOUD_STORAGE_FULL || err == FileManagement::E_STOP ||
+            err == FileManagement::E_BUSINESS_MODE_CHANGED) {
             ret = err;
         }
     }
@@ -441,8 +443,9 @@ int32_t CloudMediaAlbumService::OnMdirtyRecords(std::vector<PhotoAlbumDto> &albu
             MEDIA_ERR_LOG("OnMdirtyRecords create record fail: cloudId %{public}s, err %{public}d",
                 album.cloudId.c_str(), err);
         }
-        if (err == E_SYNC_STOP || err == E_SYNC_FAILED_NETWORK_NOT_AVAILABLE || err == E_CLOUD_STORAGE_FULL ||
-            err == E_STOP || err == E_BUSINESS_MODE_CHANGED) {
+        if (err == FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE ||
+            err == FileManagement::E_CLOUD_STORAGE_FULL || err == FileManagement::E_STOP ||
+            err == FileManagement::E_BUSINESS_MODE_CHANGED) {
             ret = err;
         }
     }
@@ -668,7 +671,7 @@ int32_t CloudMediaAlbumService::PullInsert(
     CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL, "failed to get albumRefresh.");
     // Check
     const bool insertFlag = !record.localAlbumInfo.has_value() && !record.isDelete;
-    CHECK_AND_RETURN_RET_LOG(insertFlag, E_INVAL_ARG, "invalid data");
+    CHECK_AND_RETURN_RET_LOG(insertFlag, E_INVALID_VALUES, "invalid data");
     // Process
     changeType = ChangeType::INSERT;
     int32_t ret = this->albumDao_.InsertCloudByLPath(record, albumRefresh);
@@ -696,7 +699,7 @@ int32_t CloudMediaAlbumService::PullUpdate(
     CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL, "failed to get albumRefresh.");
     // Check
     const bool updateFlag = record.localAlbumInfo.has_value() && !record.isDelete;
-    CHECK_AND_RETURN_RET_LOG(updateFlag, E_INVAL_ARG, "invalid data");
+    CHECK_AND_RETURN_RET_LOG(updateFlag, E_INVALID_VALUES, "invalid data");
     int32_t dirty = record.localAlbumInfo.value().dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
     bool isValid = dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
                    dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED);
@@ -727,7 +730,7 @@ int32_t CloudMediaAlbumService::PullDelete(
     CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL, "failed to get albumRefresh.");
     // Check
     const bool deleteFlag = record.localAlbumInfo.has_value() && record.isDelete;
-    CHECK_AND_RETURN_RET_LOG(deleteFlag, E_INVAL_ARG, "invalid data");
+    CHECK_AND_RETURN_RET_LOG(deleteFlag, E_INVALID_VALUES, "invalid data");
     int32_t dirty = record.localAlbumInfo.value().dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
     bool isValid = dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
                    dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED);

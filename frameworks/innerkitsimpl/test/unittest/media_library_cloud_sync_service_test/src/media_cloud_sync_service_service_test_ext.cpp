@@ -382,7 +382,7 @@ HWTEST_F(CloudMediaSyncServiceTestExt, PhotosService_OnCreateRecordSuccess_Test_
     record.localId = -1;
     auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
     int32_t ret = service.OnCreateRecordSuccess(record, photoRefresh);
-    EXPECT_EQ(ret, E_INVAL_ARG);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
 }
 
 HWTEST_F(CloudMediaSyncServiceTestExt, PhotosService_OnCreateRecordSuccess_Test_002, TestSize.Level1)

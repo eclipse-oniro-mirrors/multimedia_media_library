@@ -41,6 +41,7 @@ public:
         int32_t mediaType{0};
         int32_t height{0};
         int32_t width{0};
+        int32_t orientation{0};
         double aspectRatio{-2};
         int32_t exifRotate{0};
 

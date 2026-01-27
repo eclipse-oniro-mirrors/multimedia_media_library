@@ -60,6 +60,7 @@ ohos_unittest("media_library_client_report_test") {
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudfile_kit",
+    "dfs_service:libdistributedfileutils_lite",
     "hisysevent:libhisysevent",
   ]
 

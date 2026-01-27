@@ -116,6 +116,7 @@ int32_t CloudMediaScanService::ScanDownloadedFile(const string& path, CloudMedia
     result.mediaType = data->GetFileMediaType();
     result.height = data->GetFileHeight();
     result.width = data->GetFileWidth();
+    result.orientation = data->GetOrientation();
     result.aspectRatio = data->GetFileAspectRatio();
     result.exifRotate = data->GetExifRotate();
     result.scanSuccess = true;

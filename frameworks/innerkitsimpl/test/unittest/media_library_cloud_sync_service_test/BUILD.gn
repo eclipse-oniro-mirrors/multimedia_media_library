@@ -88,6 +88,7 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
   ]
 
@@ -151,6 +152,7 @@ ohos_unittest("media_library_cloud_sync_service_dao_test") {
     "napi:ace_napi",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
   ]
 
@@ -211,6 +213,7 @@ ohos_unittest("media_library_cloud_sync_service_dto_test") {
     "napi:ace_napi",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
   ]
 
@@ -273,6 +276,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_service_test") {
     "napi:ace_napi",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
   ]
 
@@ -332,6 +336,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
     "napi:ace_napi",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
   ]
 
@@ -408,6 +413,7 @@ ohos_unittest("media_library_cloud_sync_service_service_test") {
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
     "e2fsprogs:libext2_uuid",
   ]
@@ -470,6 +476,7 @@ ohos_unittest("media_library_cloud_sync_service_service_ext_test") {
     "napi:ace_napi",
     "player_framework:media_client",
     "dfs_service:cloudsync_kit_inner",
+    "dfs_service:libdistributedfileutils_lite",
     "relational_store:rdb_data_share_adapter",
   ]
 
