@@ -27,7 +27,7 @@
 namespace OHOS {
 namespace Media {
 enum class EditedDataType : int32_t {
-    CONST_EDIT_DATA,
+    EDIT_DATA,
     EDIT_DATA_CAMERA,
     EDIT_DATA_SOURCE,
     EDIT_DATA_SOURCE_BACK,
