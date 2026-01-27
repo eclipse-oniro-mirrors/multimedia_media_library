@@ -3185,6 +3185,34 @@ void MediaLibraryRdbUtils::CleanAmbiguousColumn(std::vector<std::string> &column
         });
 }
 
+void MediaLibraryRdbUtils::BuildDoubleCheckPredicates(NativeRdb::RdbPredicates &rdbPredicate, int64_t tokenId,
+    int32_t passCode)
+{
+    string condition = rdbPredicate.GetWhereClause();
+    string clause = "";
+    if (passCode == E_PERMISSION_DB_BYPASS) { // query photo created by target app
+        clause = " EXISTS (select 1 from " + AppUriPermissionColumn::APP_URI_PERMISSION_TABLE +
+            " where " + AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::FILE_ID +
+            " = " + PhotoColumn::PHOTOS_TABLE + "." + AppUriPermissionColumn::FILE_ID + " and " +
+            AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::TARGET_TOKENID +
+            " = " + to_string(tokenId) + " and " + AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
+            AppUriPermissionColumn::PERMISSION_TYPE + " = 4)";
+    } else if (passCode == E_DOUBLE_CHECK) { // query photo authed to the target app
+        clause = " EXISTS (select 1 from " + AppUriPermissionColumn::APP_URI_PERMISSION_TABLE +
+            " where " + AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::FILE_ID +
+            " = " + PhotoColumn::PHOTOS_TABLE + "." + AppUriPermissionColumn::FILE_ID + " and " +
+            AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." + AppUriPermissionColumn::TARGET_TOKENID +
+            " = " + to_string(tokenId) + " and " + AppUriPermissionColumn::APP_URI_PERMISSION_TABLE + "." +
+            AppUriPermissionColumn::PERMISSION_TYPE + " in (0, 1, 2, 3, 4))";
+    } else {
+        MEDIA_INFO_LOG("Have permission for getAsset");
+        return;
+    }
+    // rebuild rdbpredicates
+    condition = condition.empty() ? clause : condition + " AND " + clause;
+    rdbPredicate.SetWhereClause(condition);
+}
+
 vector<string> GetPhotoAndKnowledgeConnection()
 {
     vector<string> clauses;

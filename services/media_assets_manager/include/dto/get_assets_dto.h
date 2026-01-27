@@ -23,6 +23,7 @@ class GetAssetsDto {
 public:
     DataShare::DataSharePredicates predicates;
     std::vector<std::string> columns;
+    int64_t tokenId;
 
     static GetAssetsDto Create(const GetAssetsReqBody &req);
 };
