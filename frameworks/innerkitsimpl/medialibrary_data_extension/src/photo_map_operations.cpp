@@ -380,9 +380,9 @@ static int32_t HandleCommonAsset(MergedAlbumInfo &mergedAlbumInfo)
     return deleteRow;
 }
 
-static int32_t HandleUnCommonAsset(const string &targetAlbumId, MergedAlbumInfo &mergedAlbumInfo)
+static int32_t UpdateSingleAlbum(const string &targetAlbumId, MergedAlbumInfo &mergedAlbumInfo)
 {
-    MEDIA_INFO_LOG("HandleCommonAsset start");
+    MEDIA_INFO_LOG("HandleUnCommonAsset UpdateSingleAlbum start");
     ValuesBucket value;
     int32_t changedRows = -1;
     NativeRdb::RdbPredicates rdbPredicate { ANALYSIS_PHOTO_MAP_TABLE };
@@ -390,8 +390,49 @@ static int32_t HandleUnCommonAsset(const string &targetAlbumId, MergedAlbumInfo 
     rdbPredicate.And()->In(MAP_ASSET, mergedAlbumInfo.unCommonAssets);
     value.PutString(MAP_ALBUM, targetAlbumId);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL,
+        "UpdateSingleAlbum rdbStore is nullptr!");
     int32_t ret = rdbStore->Update(changedRows, value, rdbPredicate);
     return changedRows;
+}
+
+static int32_t HandleUnCommonAsset(const string &targetAlbumId, MergedAlbumInfo &mergedAlbumInfo)
+{
+    MEDIA_INFO_LOG("HandleUnCommonAsset start");
+    string albumIdsStr = "";
+    string unCommonAssetsStr = "";
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "RdbStore is nullptr!");
+    CHECK_AND_RETURN_RET_LOG(handleSqlParam(albumIdsStr, mergedAlbumInfo.sourceAlbumIds) == E_OK,
+        E_ERR, "handleSqlParam sourceAlbumIds fail!");
+    CHECK_AND_RETURN_RET_LOG(handleSqlParam(unCommonAssetsStr, mergedAlbumInfo.unCommonAssets) == E_OK,
+        E_ERR, "handleSqlParam unCommonAssets fail!");
+    //单个相册直接更新
+    if (mergedAlbumInfo.sourceAlbumIds.size() == 1) {
+        CHECK_AND_RETURN_RET_LOG(UpdateSingleAlbum(targetAlbumId, mergedAlbumInfo) >= 0,
+            E_ERR, "handleSqlParam unCommonAssets fail!");
+        return E_OK;
+    }
+    // 合并相册创建事务 先增后删
+    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> func = [&]() -> int {
+        const std::string insertAssetsIntoTargetAlbum =
+            "INSERT OR IGNORE INTO AnalysisPhotoMap (map_album, map_asset, order_position) "
+            "SELECT " + targetAlbumId + " AS map_album, map_asset, order_position "
+            "FROM AnalysisPhotoMap WHERE map_album IN (" + albumIdsStr + ") AND map_asset IN ( " +
+            unCommonAssetsStr + " );";
+        CHECK_AND_RETURN_RET_LOG(trans->ExecuteSql(insertAssetsIntoTargetAlbum) == E_OK, E_ERR,
+            "insertAssetsIntoTargetAlbum failed");
+        const std::string cleanSourceAlbum =
+            "DELETE FROM AnalysisPhotoMap WHERE map_album IN (" + albumIdsStr + ") AND map_asset IN ("
+            + unCommonAssetsStr + ");";
+        CHECK_AND_RETURN_RET_LOG(trans->ExecuteSql(cleanSourceAlbum) == E_OK, E_ERR,
+            "cleanSourceAlbum failed");
+        return E_OK;
+    };
+    CHECK_AND_RETURN_RET_LOG(trans->RetryTrans(func) == E_OK, E_ERR,
+        "Failed to UpdateMergedAlbum");
+    return E_OK;
 }
 
 static bool HavePortraitCover(const shared_ptr<MediaLibraryRdbStore>& rdbStore, const string targetAlbumId)
@@ -474,9 +515,9 @@ static int32_t HandleAlbumMapMoveAsset(const string &targetAlbumId,
         int32_t changedRows = HandleCommonAsset(mergedAlbumInfo);
         CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleCommonAsset fail ");
     }
-    int32_t changedRows = HandleUnCommonAsset(targetAlbumId, mergedAlbumInfo);
-    CHECK_AND_RETURN_RET_LOG(changedRows >= 0, E_ERR, "HandleUnCommonAsset fail ");
-    return changedRows;
+    int32_t changedRet = HandleUnCommonAsset(targetAlbumId, mergedAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(changedRet == E_OK, E_ERR, "HandleUnCommonAsset fail ");
+    return changedRet;
 }
 
 int32_t DoSmartMoveAssets(const string &albumId, const string targetAlbumId,
@@ -486,8 +527,8 @@ int32_t DoSmartMoveAssets(const string &albumId, const string targetAlbumId,
     int32_t changedImageFaceRows = HandleImageFaceMoveAsset(albumId, targetAlbumId, assetIds, mergedAlbumInfo);
     CHECK_AND_RETURN_RET_LOG(changedImageFaceRows >= 0, E_ERR, "HandleImageFaceMoveAsset fail ");
 
-    int32_t changedAlbumMapRows = HandleAlbumMapMoveAsset(targetAlbumId, assetIds, mergedAlbumInfo);
-    CHECK_AND_RETURN_RET_LOG(changedAlbumMapRows >= 0, E_ERR, "HandleAlbumMapMoveAsset fail ");
+    int32_t changedAlbumMapRet = HandleAlbumMapMoveAsset(targetAlbumId, assetIds, mergedAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(changedAlbumMapRet == E_OK, E_ERR, "HandleAlbumMapMoveAsset fail ");
 
     int32_t changedAnalysisAlbumRows = HandleAnalysisEditOperationMoveAsset(mergedAlbumInfo);
     CHECK_AND_RETURN_RET_LOG(changedAnalysisAlbumRows >= 0, E_ERR, "HandleAnalysisEditOperationMoveAsset fail ");
