@@ -2059,6 +2059,7 @@ static bool SetAlbumNameExecute(MediaAlbumChangeRequestAsyncContext& context)
     int32_t changedRows = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
     if (changedRows < 0) {
         NAPI_ERR_LOG("Failed to set album name, err: %{public}d", changedRows);
+        context.SaveError(changedRows);
         return false;
     }
     return true;
