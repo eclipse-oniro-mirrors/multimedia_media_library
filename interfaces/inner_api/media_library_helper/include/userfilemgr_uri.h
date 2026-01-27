@@ -319,7 +319,7 @@ namespace Media {
 // Generate thumbnails in batches operation uri
 #define CONST_PAH_START_GENERATE_THUMBNAILS \
     "datashare:///media/phaccess_batch_thumbnail_operation/start_generate_thumbnails"
-#define CONST_PAH_STOP_GENERATE_THUMBNAILS
+#define CONST_PAH_STOP_GENERATE_THUMBNAILS \
     "datashare:///media/phaccess_batch_thumbnail_operation/stop_generate_thumbnails"
 #define CONST_PAH_ADD_LOWQUALITY_IMAGE "datashare:///media/phaccess_multistages_capture_operation/add_lowquality_image"
     
