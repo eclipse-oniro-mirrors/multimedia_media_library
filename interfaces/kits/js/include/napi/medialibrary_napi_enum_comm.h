@@ -125,7 +125,7 @@ const std::vector<std::string> hdrModeEnum {
 };
 
 const std::vector<std::string> videoModeEnum{
-    "DEFAULT", "NOT_LOG_VIDEO", "LOG_VIDEO"
+    "DEFAULT", "LOG_VIDEO"
 };
 
 const std::vector<std::string> movingPhotoEffectModeEnum {
