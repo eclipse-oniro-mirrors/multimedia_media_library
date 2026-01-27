@@ -1251,10 +1251,7 @@ int32_t CloudMediaPhotosService::OnCompletePull(const MediaOperateResult &optRet
         int32_t ret = DoUpdateSmartDataAlbum();
         CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to schedule DoUpdateSmartDataAlbum task");
         auto watch = MediaLibraryNotify::GetInstance();
-        if (watch == nullptr) {
-            MEDIA_ERR_LOG("Can not get MediaLibraryNotify Instance");
-            return E_FAIL;
-        }
+        CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_FAIL, "Can not get MediaLibraryNotify Instance");
         watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
         SetSmartDataUpdateState(UpdateSmartDataState::IDLE);
     }
@@ -1460,9 +1457,7 @@ int32_t CloudMediaPhotosService::ProcessHdcHomeStorageSwitching(
 
     int32_t ret = ApplyBatchDatabaseChanges(insertFiles, updateFiles, cloudFileIdlist,
         recordAnalysisAlbumMaps, recordAlbumMaps, photoRefresh);
-    if (ret != E_OK) {
-        return ret;
-    }
+    CHECK_AND_RETURN_RET(ret == E_OK, ret);
 
     FinalizeAndNotifyChanges(refreshAlbums, insertFiles, updateFiles, photoRefresh);
     return E_OK;
@@ -1507,10 +1502,7 @@ int32_t CloudMediaPhotosService::ApplyBatchDatabaseChanges(
     int32_t ret = E_OK;
     if (!updates.empty()) {
         ret = photosDao_.BatchUpdateFile(analysisAlbumMaps, recordAlbumMaps, updates, photoRefresh, cloudFileIds);
-        if (ret != E_OK) {
-            MEDIA_ERR_LOG("BatchUpdateFile failed %d", ret);
-            return ret;
-        }
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "BatchUpdateFile failed %d", ret);
     }
 
     if (!inserts.empty()) {
@@ -1587,10 +1579,7 @@ int32_t CloudMediaPhotosService::ProcessDuplicatePhoto(const CloudMediaPullDataD
     std::vector<NativeRdb::ValuesBucket> tempInsertFiles;
     int32_t ret = this->photosDao_.GetInsertParams(
         pullData, recordAnalysisAlbumMaps, recordAlbumMaps, refreshAlbums, tempInsertFiles);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("GetInsertParams failed for duplicate photo %{public}d", ret);
-        return ret;
-    }
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetInsertParams failed for duplicate photo %{public}d", ret);
 
     if (tempInsertFiles.empty()) {
         MEDIA_ERR_LOG("No insert files generated for duplicate photo");
