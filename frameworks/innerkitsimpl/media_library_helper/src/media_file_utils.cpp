@@ -677,7 +677,7 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
 {
     MEDIA_DEBUG_LOG("ConvertFormatCopy srcFile: %{public}s, dstFile: %{public}s, extension: %{public}s",
         srcFile.c_str(), dstFile.c_str(), extension.c_str());
-    CHECK_AND_RETURN_RET_LOG(srcFile.size() < PATH_MAX, false, 
+    CHECK_AND_RETURN_RET_LOG(srcFile.size() < PATH_MAX, false,
         "File path too long %{public}d", static_cast<int>(srcFile.size()));
     string absFilePath;
     if (!PathToRealPath(srcFile, absFilePath)) {
