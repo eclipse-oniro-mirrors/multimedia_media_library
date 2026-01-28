@@ -172,6 +172,7 @@ public:
         const NativeRdb::AbsRdbPredicates &predicaties);
     EXPORT static int32_t UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::string &photoId, const std::string &photoPath);
+    EXPORT static void AddDefaultInsertPhotoValues(NativeRdb::ValuesBucket& values);
 
 private:
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();

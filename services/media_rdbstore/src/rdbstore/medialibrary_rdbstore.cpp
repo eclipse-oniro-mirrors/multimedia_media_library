@@ -770,13 +770,27 @@ shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::GetRaw()
     return rdbStore_;
 }
 
-static void AddDefaultPhotoValues(ValuesBucket& values)
+void MediaLibraryRdbStore::AddDefaultInsertPhotoValues(ValuesBucket& values)
 {
     ValueObject tmpValue;
+    string tmpStr {};
     if (values.GetObject(MediaColumn::MEDIA_NAME, tmpValue)) {
-        string newDisplayName {};
-        tmpValue.GetString(newDisplayName);
-        values.PutString(PhotoColumn::PHOTO_MEDIA_SUFFIX, ScannerUtils::GetFileExtension(newDisplayName));
+        tmpValue.GetString(tmpStr);
+        values.PutString(PhotoColumn::PHOTO_MEDIA_SUFFIX, ScannerUtils::GetFileExtension(tmpStr));
+    }
+    if (values.GetObject(MediaColumn::MEDIA_DATE_ADDED, tmpValue)) {
+        tmpValue.GetString(tmpStr);
+        int64_t dateAdded = atoll(tmpStr.c_str()) > 0 ? atoll(tmpStr.c_str()) : MediaFileUtils::UTCTimeMilliSeconds();
+        const auto [dateYear, dateMonth, dateDay] = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
+        if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR)) {
+            values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateYear);
+        }
+        if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_MONTH)) {
+            values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateMonth);
+        }
+        if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_DAY)) {
+            values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateDay);
+        }
     }
 }
 
@@ -789,12 +803,13 @@ int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
         MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
         return E_HAS_DB_ERROR;
     }
+    NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
     if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
-        AddDefaultPhotoValues(cmd.GetValueBucket());
+        AddDefaultInsertPhotoValues(tmpValues);
     }
 
     int32_t ret = ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Insert(rowId, cmd.GetTableName(), cmd.GetValueBucket());
+        return MediaLibraryRdbStore::GetRaw()->Insert(rowId, cmd.GetTableName(), tmpValues);
     });
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->Insert failed, ret = %{public}d", ret);
@@ -814,13 +829,14 @@ int32_t MediaLibraryRdbStore::BatchInsert(int64_t &outRowId, const std::string &
     tracer.Start("MediaLibraryRdbStore::BatchInsert");
     CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     if (table == PhotoColumn::PHOTOS_TABLE) {
-        for (auto& value : values) {
-            AddDefaultPhotoValues(value);
+        for (auto& value : tmpValues) {
+            AddDefaultInsertPhotoValues(value);
         }
     }
     int32_t ret = ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->BatchInsert(outRowId, table, values);
+        return MediaLibraryRdbStore::GetRaw()->BatchInsert(outRowId, table, tmpValues);
     });
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->BatchInsert failed, ret = %{public}d", ret);
@@ -840,13 +856,14 @@ int32_t MediaLibraryRdbStore::BatchInsert(MediaLibraryCommand &cmd, int64_t& out
     tracer.Start("MediaLibraryRdbStore::BatchInsert");
     CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
-        for (auto& value : values) {
-            AddDefaultPhotoValues(value);
+        for (auto& value : tmpValues) {
+            AddDefaultInsertPhotoValues(value);
         }
     }
     int32_t ret = ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->BatchInsert(outInsertNum, cmd.GetTableName(), values);
+        return MediaLibraryRdbStore::GetRaw()->BatchInsert(outInsertNum, cmd.GetTableName(), tmpValues);
     });
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->BatchInsert failed, ret = %{public}d", ret);
@@ -861,7 +878,11 @@ int32_t MediaLibraryRdbStore::BatchInsert(MediaLibraryCommand &cmd, int64_t& out
 int32_t MediaLibraryRdbStore::InsertInternal(int64_t &outRowId, const std::string &table,
     NativeRdb::ValuesBucket &row)
 {
-    return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, row); });
+    NativeRdb::ValuesBucket tmpValues = row;
+    if (table == PhotoColumn::PHOTOS_TABLE) {
+        AddDefaultInsertPhotoValues(tmpValues);
+    }
+    return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, tmpValues); });
 }
 
 int32_t MediaLibraryRdbStore::DoDeleteFromPredicates(const AbsRdbPredicates &predicates, int32_t &deletedRows)
@@ -5788,6 +5809,21 @@ static void UpdateMdirtyTrigger(RdbStore &store, int32_t version, const std::str
     MEDIA_INFO_LOG("Update mdirty trigger for %{public}s end", columnName.c_str());
 }
 
+static void AddDateAddedYearMonthDay(RdbStore &store, int32_t version)
+{
+    const vector<string> sqls = {
+        "ALTER TABLE " + PhotoColumn::PHOTOS_TABLE + " ADD COLUMN " +
+            PhotoColumn::PHOTO_DATE_ADDED_YEAR + " TEXT ",
+        "ALTER TABLE " + PhotoColumn::PHOTOS_TABLE + " ADD COLUMN " +
+            PhotoColumn::PHOTO_DATE_ADDED_MONTH + " TEXT ",
+        "ALTER TABLE " + PhotoColumn::PHOTOS_TABLE + " ADD COLUMN " +
+            PhotoColumn::PHOTO_DATE_ADDED_DAY + " TEXT ",
+    };
+    MEDIA_INFO_LOG("Add date_added year month day columns start");
+    ExecSqlsWithDfx(sqls, store, version);
+    MEDIA_INFO_LOG("Add date_added year month day columns end");
+}
+
 static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
 {
     if (oldVersion < VERSION_ADD_PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE &&
@@ -5824,6 +5860,12 @@ static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
         !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_NETWORK_SELECTED_IN_DRTR, true)) {
         AddNetSelectedDownloadColumns(store, VERSION_ADD_NETWORK_SELECTED_IN_DRTR);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_NETWORK_SELECTED_IN_DRTR, true);
+    }
+
+    if (oldVersion < VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, true)) {
+        AddDateAddedYearMonthDay(store, VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, true);
     }
 }
 
@@ -6807,10 +6849,11 @@ int MediaLibraryRdbStore::Insert(int64_t &outRowId, const std::string &table, Va
 {
     CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    NativeRdb::ValuesBucket tmpValues = row;
     if (table == PhotoColumn::PHOTOS_TABLE) {
-        AddDefaultPhotoValues(row);
+        AddDefaultInsertPhotoValues(tmpValues);
     }
-    return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, row); });
+    return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, tmpValues); });
 }
 
 int MediaLibraryRdbStore::Delete(int &deletedRows, const std::string &table, const std::string &whereClause,
@@ -6839,20 +6882,16 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsert(const string
         MEDIA_ERR_LOG("Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
         return {E_HAS_DB_ERROR, -1};
     }
+    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     if (table == PhotoColumn::PHOTOS_TABLE) {
-        for (auto& value : values) {
-            AddDefaultPhotoValues(value);
+        for (auto& value : tmpValues) {
+            AddDefaultInsertPhotoValues(value);
         }
-    }
-
-    ValuesBuckets refRows;
-    for (auto &value : values) {
-        refRows.Put(value);
     }
 
     pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     int32_t ret = ExecSqlWithRetry([&]() {
-        retWithResults = MediaLibraryRdbStore::GetRaw()->BatchInsert(table, values, { returningField });
+        retWithResults = MediaLibraryRdbStore::GetRaw()->BatchInsert(table, tmpValues, { returningField });
         return retWithResults.first;
     });
     if (ret != NativeRdb::E_OK) {

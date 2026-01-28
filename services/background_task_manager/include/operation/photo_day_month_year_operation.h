@@ -35,6 +35,8 @@ struct DateAnomalyPhoto {
 
 class PhotoDayMonthYearOperation {
 public:
+    static const std::string DATE_ADDED_DATE_UPGRADE_XML;
+
     EXPORT static int32_t UpdatePhotosDateAndIdx(const std::shared_ptr<MediaLibraryRdbStore> rdbStore);
 
     EXPORT static int32_t UpdatePhotosDateIdx(const std::shared_ptr<MediaLibraryRdbStore> rdbStore);
@@ -42,6 +44,8 @@ public:
     EXPORT static int32_t UpdatePhotosDate(NativeRdb::RdbStore &rdbStore);
 
     EXPORT static int32_t RepairDateTime();
+
+    EXPORT static void UpdatePhotoDateAddedDateInfo();
 
 private:
     static int32_t UpdatePhotosDate(const std::shared_ptr<MediaLibraryRdbStore> rdbStore);

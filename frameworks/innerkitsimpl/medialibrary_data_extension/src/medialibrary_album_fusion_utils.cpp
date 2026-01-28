@@ -41,6 +41,7 @@
 #include "refresh_business_name.h"
 #include "medialibrary_subscriber.h"
 #include "media_scanner_manager.h"
+#include "media_values_bucket_utils.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -134,6 +135,9 @@ static unordered_map<string, ResultSetDataType> commonColumnTypeMap = {
     {PhotoColumn::PHOTO_IS_RECENT_SHOW, ResultSetDataType::TYPE_INT32},
     {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, ResultSetDataType::TYPE_INT32},
     {PhotoColumn::PHOTO_VIDEO_MODE, ResultSetDataType::TYPE_INT32},
+    {PhotoColumn::PHOTO_DATE_ADDED_DAY, ResultSetDataType::TYPE_STRING},
+    {PhotoColumn::PHOTO_DATE_ADDED_MONTH, ResultSetDataType::TYPE_STRING},
+    {PhotoColumn::PHOTO_DATE_ADDED_YEAR, ResultSetDataType::TYPE_STRING},
 };
 
 static unordered_map<string, ResultSetDataType> thumbnailColumnTypeMap = {
@@ -655,6 +659,17 @@ static void HandleBurstPhotoSubtype(shared_ptr<NativeRdb::ResultSet>& resultSet,
     }
 }
 
+static void RegenerateDateAddedDateParts(NativeRdb::ValuesBucket &values)
+{
+    int64_t dateAdded = 0;
+    MediaValuesBucketUtils::GetLong(values, MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+        PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+}
+
 static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
     NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
 {
@@ -692,6 +707,7 @@ static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStor
     if (!copyInfo.isCopyDateAdded) {
         values.Delete(MediaColumn::MEDIA_DATE_ADDED);
         values.PutLong(MediaColumn::MEDIA_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
+        RegenerateDateAddedDateParts(values);
     }
     if (!copyInfo.isCopyPackageName) {
         values.Delete(MediaColumn::MEDIA_PACKAGE_NAME);
@@ -1133,7 +1149,13 @@ static void SaveDefaultMetaData(NativeRdb::ValuesBucket &values, shared_ptr<Nati
     values.Put(PhotoColumn::PHOTO_BURST_COVER_LEVEL, static_cast<int32_t>(BurstCoverLevelType::COVER));
     values.Put(PhotoColumn::PHOTO_METADATA_FLAGS, static_cast<int32_t>(MetadataFlags::TYPE_NEW));
     values.Put(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-    values.Put(PhotoColumn::MEDIA_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
+    int64_t dateAdded = MediaFileUtils::UTCTimeMilliSeconds();
+    values.Put(PhotoColumn::MEDIA_DATE_ADDED, dateAdded);
+    const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+        PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
     values.Put(PhotoColumn::SUPPORTED_WATERMARK_TYPE, supportedWaterMark);
     values.Put(PhotoColumn::PHOTO_EDIT_TIME, editTime > 0 ? MediaFileUtils::UTCTimeSeconds() : 0);
     if (isBurst) {

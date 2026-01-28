@@ -996,7 +996,6 @@ void MedialibrarySubscriber::DoBackgroundOperation()
     CloudMediaAssetManager::GetInstance().StartDeleteCloudMediaAssets();
     // compat old-version moving photo
     MovingPhotoProcessor::StartProcess();
-    MediaLibraryAlbumFusionUtils::CleanInvalidCloudAlbumAndData(true);
     auto watch = MediaLibraryInotify::GetInstance();
     if (watch != nullptr) {
         watch->DoAging();
@@ -1006,6 +1005,8 @@ void MedialibrarySubscriber::DoBackgroundOperation()
 
 void MedialibrarySubscriber::DoBackgroundOperationStepTwo()
 {
+    PhotoDayMonthYearOperation::UpdatePhotoDateAddedDateInfo();
+    MediaLibraryAlbumFusionUtils::CleanInvalidCloudAlbumAndData(true);
     DfxMovingPhoto::AbnormalMovingPhotoStatistics();
     PhotoMimetypeOperation::UpdateInvalidMimeType();
     HeightWidthCorrectOperation::UpdateHeightAndWidth();

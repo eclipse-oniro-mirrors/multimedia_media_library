@@ -58,6 +58,7 @@
 #include "cloud_media_asset_manager.h"
 #include "heif_transcoding_check_utils.h"
 #include "database_adapter.h"
+#include "photo_day_month_year_operation.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -1304,6 +1305,31 @@ int32_t MediaAssetsService::LogCinematicVideo(const CinematicVideoAccessReqBody 
 {
     DfxManager::GetInstance()->HandleCinematicVideoAccessTimes(false, req.isHighQaulity);
     return E_SUCCESS;
+}
+
+static int32_t IsDateAddedDateUpgradeTaskFinished(bool &result)
+{
+    int32_t errCode = E_OK;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(
+            PhotoDayMonthYearOperation::DATE_ADDED_DATE_UPGRADE_XML, errCode);
+    CHECK_AND_RETURN_RET_LOG(prefs != nullptr, E_ERR, "GetPreferences returned nullptr, errcode: %{public}d", errCode);
+    const string isFinishedKeyName = "is_task_finished";
+    int32_t isFinished = prefs->GetInt(isFinishedKeyName, 0);
+    result = (isFinished != 0);
+    return E_SUCCESS;
+}
+
+int32_t MediaAssetsService::QueryMediaDataStatus(const string &dataKey, bool &result)
+{
+    int32_t ret = E_ERR;
+    if (dataKey == "date_added_year") {
+        ret = IsDateAddedDateUpgradeTaskFinished(result);
+        MEDIA_INFO_LOG("QueryMediaDataStatus date_added_date result is %{public}d", result);
+        return ret;
+    }
+    MEDIA_ERR_LOG("QueryMediaDataStatus invalid dataKey %{public}s", dataKey.c_str());
+    return ret;
 }
 
 int32_t MediaAssetsService::GetResultSetFromDb(const GetResultSetFromDbDto& getResultSetFromDbDto,

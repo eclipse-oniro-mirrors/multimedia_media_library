@@ -912,6 +912,30 @@ static void UpdatePhotoAlbumHidden(const shared_ptr<MediaLibraryRdbStore>& rdbSt
     MEDIA_INFO_LOG("End Update photoalbum hidden column");
 }
 
+static void MarkDateAddedDatesDataStatus(const shared_ptr<MediaLibraryRdbStore>& rdbStore, int32_t version)
+{
+    vector<string> columns = {"max(file_id)"};
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    auto resultSet = rdbStore->QueryByStep(predicates, columns);
+    int count = 0;
+    bool needUpdateDateAddedDatesData = true;
+    CHECK_AND_RETURN_LOG(TryToGoToFirstRow(resultSet), "Query max file id failed");
+    int32_t maxFileId = GetInt32Val("max(file_id)", resultSet);
+    needUpdateDateAddedDatesData = (maxFileId > 0);
+
+    int32_t errCode = E_OK;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(
+            PhotoDayMonthYearOperation::DATE_ADDED_DATE_UPGRADE_XML, errCode);
+    CHECK_AND_RETURN_LOG(prefs != nullptr, "GetPreferences returned nullptr, errcode: %{public}d", errCode);
+    const string isFinishedKeyName = "is_task_finished";
+    const string maxFileIdKeyName = "max_file_id";
+    prefs->PutInt(isFinishedKeyName, needUpdateDateAddedDatesData ? 0 : 1);
+    prefs->PutInt(maxFileIdKeyName, maxFileId);
+    prefs->FlushSync();
+    MEDIA_INFO_LOG("Mark date added dates need update: %{public}d", needUpdateDateAddedDatesData ? 1 : 0);
+}
+
 void HandleUpgradeRdbAsyncPart6(const shared_ptr<MediaLibraryRdbStore> rdbStore, int32_t oldVersion)
 {
     if (oldVersion < VERSION_ADD_CHANGE_TIME &&
@@ -928,6 +952,13 @@ void HandleUpgradeRdbAsyncPart6(const shared_ptr<MediaLibraryRdbStore> rdbStore,
         MediaLibraryRdbStore::DropPhotoStatusForSearchIndex(rdbStore, VERSION_DROP_PHOTO_STATUS_FOR_SEARCH_INDEX);
         rdbStore->SetOldVersion(VERSION_DROP_PHOTO_STATUS_FOR_SEARCH_INDEX);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_DROP_PHOTO_STATUS_FOR_SEARCH_INDEX, false);
+    }
+
+    if (oldVersion < VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, false)) {
+        MarkDateAddedDatesDataStatus(rdbStore, VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY);
+        rdbStore->SetOldVersion(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, false);
     }
 }
 

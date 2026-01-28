@@ -56,6 +56,7 @@
 #endif
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+#include "media_values_bucket_utils.h"
 
 using namespace std;
 namespace OHOS {
@@ -241,7 +242,10 @@ static const unordered_set<string> TIME_INFO_COLUMNS{PhotoColumn::MEDIA_DATE_ADD
     PhotoColumn::PHOTO_DETAIL_TIME,
     PhotoColumn::PHOTO_DATE_YEAR,
     PhotoColumn::PHOTO_DATE_MONTH,
-    PhotoColumn::PHOTO_DATE_DAY};
+    PhotoColumn::PHOTO_DATE_DAY,
+    PhotoColumn::PHOTO_DATE_ADDED_DAY,
+    PhotoColumn::PHOTO_DATE_ADDED_MONTH,
+    PhotoColumn::PHOTO_DATE_ADDED_YEAR};
 
 static std::string GetConfigInfoInsertValue(ConfigInfoSceneId sceneId,
     const std::string key, const std::string value)
@@ -1572,6 +1576,58 @@ void CloneRestore::GetInsertValueFromValMap(const FileInfo &fileInfo, NativeRdb:
     PrepareShootingModeVal(fileInfo, values);
 }
 
+static int32_t GetStringValueFromValMap(const FileInfo &fileInfo, const string &columnName, string &outValue)
+{
+    auto it = fileInfo.valMap.find(columnName);
+    if (it != fileInfo.valMap.end()) {
+        if (const string* p = std::get_if<std::string>(&it->second)) {
+            outValue = *p;
+            return E_OK;
+        }
+    }
+    return E_ERR;
+}
+
+static DateParts GetExistingDateAddedDateParts(const FileInfo &info)
+{
+    string dateAddedYear{};
+    string dateAddedMonth{};
+    string dateAddedDay{};
+    GetStringValueFromValMap(info, PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    GetStringValueFromValMap(info, PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    GetStringValueFromValMap(info, PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+    return {dateAddedYear, dateAddedMonth, dateAddedDay};
+}
+
+static void SetDateAddedYearMonthDay(const FileInfo &info, NativeRdb::ValuesBucket &values, int64_t newDateAdded)
+{
+    string dateAddedYear{};
+    string dateAddedMonth{};
+    string dateAddedDay{};
+
+    if (info.dateAdded != newDateAdded) {
+        DateParts parts = PhotoFileUtils::ConstructDateAddedDateParts(newDateAdded);
+        dateAddedYear = parts.year;
+        dateAddedMonth = parts.month;
+        dateAddedDay = parts.day;
+    } else {
+        DateParts parts = GetExistingDateAddedDateParts(info);
+        dateAddedYear = parts.year;
+        dateAddedMonth = parts.month;
+        dateAddedDay = parts.day;
+        if (dateAddedYear.empty() || dateAddedMonth.empty() || dateAddedDay.empty()) {
+            DateParts parts = PhotoFileUtils::ConstructDateAddedDateParts(newDateAdded);
+            dateAddedYear = parts.year;
+            dateAddedMonth = parts.month;
+            dateAddedDay = parts.day;
+        }
+    }
+
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+}
+
 void CloneRestore::SetTimeInfo(const FileInfo &info, NativeRdb::ValuesBucket &values)
 {
     int64_t dateAdded = CorrectTimestamp(info.dateAdded);
@@ -1583,6 +1639,9 @@ void CloneRestore::SetTimeInfo(const FileInfo &info, NativeRdb::ValuesBucket &va
     dateTaken = PhotoFileUtils::NormalizeTimestamp(dateTaken, min(dateAdded, dateModified));
 
     values.Put(PhotoColumn::MEDIA_DATE_ADDED, dateAdded);
+    int64_t valueBucketDateAdded {};
+    MediaValuesBucketUtils::GetLong(values, MediaColumn::MEDIA_DATE_ADDED, valueBucketDateAdded);
+    SetDateAddedYearMonthDay(info, values, valueBucketDateAdded);
     values.Put(PhotoColumn::MEDIA_DATE_MODIFIED, dateModified);
     values.Put(PhotoColumn::MEDIA_DATE_TAKEN, dateTaken);
 

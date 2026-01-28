@@ -136,6 +136,9 @@ const std::string PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE = "trans_code_file_siz
 const std::string PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE = "exist_compatible_duplicate";
 const std::string PhotoColumn::PHOTO_ASPECT_RATIO = "aspect_ratio";
 const std::string PhotoColumn::PHOTO_EDIT_DATA_EXIST = "edit_data_exist";
+const std::string PhotoColumn::PHOTO_DATE_ADDED_YEAR = "date_added_year";
+const std::string PhotoColumn::PHOTO_DATE_ADDED_MONTH = "date_added_month";
+const std::string PhotoColumn::PHOTO_DATE_ADDED_DAY = "date_added_day";
 
 const std::string PhotoColumn::PHOTO_FILE_INODE = "inode";
 const std::string PhotoColumn::PHOTO_STORAGE_PATH = "storage_path";
@@ -241,6 +244,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_HDR_MODE,
     PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_ASPECT_RATIO,
     PhotoColumn::PHOTO_CHANGE_TIME, PhotoColumn::PHOTO_IS_CRITICAL, PhotoColumn::PHOTO_RISK_STATUS,
+    PhotoColumn::PHOTO_DATE_ADDED_YEAR, PhotoColumn::PHOTO_DATE_ADDED_MONTH, PhotoColumn::PHOTO_DATE_ADDED_DAY,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)

@@ -43,6 +43,7 @@
 #include "medialibrary_photo_operations.h"
 #include "preferences.h"
 #include "preferences_helper.h"
+#include "media_values_bucket_utils.h"
 
 #ifdef CLOUD_SYNC_MANAGER
 #include "cloud_sync_manager.h"
@@ -559,6 +560,13 @@ static void InsertDateAdded(std::unique_ptr<Metadata> &metadata, NativeRdb::Valu
         dateAdded = dateTaken;
     }
     value.PutLong(MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    int64_t valueBucketDateAdded {};
+    MediaValuesBucketUtils::GetLong(value, MediaColumn::MEDIA_DATE_ADDED, valueBucketDateAdded);
+    const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+        PhotoFileUtils::ConstructDateAddedDateParts(valueBucketDateAdded);
+    value.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    value.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    value.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
 }
 
 static void InsertUserComment(std::unique_ptr<Metadata> &metadata, NativeRdb::ValuesBucket &value,

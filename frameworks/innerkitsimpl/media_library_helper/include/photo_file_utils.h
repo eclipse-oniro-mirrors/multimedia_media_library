@@ -29,6 +29,12 @@ const int64_t MAX_MILSEC_TIMESTAMP = 11'991'456'000'000;
 const int64_t MAX_TIMESTAMP_DIFF = 93'600'000;  // 26 hours(UTC+14,UTC-12)
 const int64_t MIN_TIMESTAMP_DIFF = 1'000;       // 1 second
 
+struct DateParts {
+    std::string year;
+    std::string month;
+    std::string day;
+};
+
 class PhotoFileUtils {
 public:
     EXPORT static std::string GetEditDataDir(const std::string &photoPath, int32_t userId = -1);
@@ -53,6 +59,8 @@ public:
     EXPORT static int64_t NormalizeTimestamp(int64_t timestamp, int64_t fallbackValue);
     EXPORT static std::string GetAbsoluteLakeDir(int32_t userId);
     EXPORT static std::string GetAbsoluteLakePath(const std::string &storagePath, int32_t userId);
+    // Construct Photos column value of date_added_year, date_added_month, date_added_day from date_added
+    EXPORT static DateParts ConstructDateAddedDateParts(int64_t dateAdded);
 
 protected:
     EXPORT static std::string AppendUserId(const std::string &path, int32_t userId = -1);

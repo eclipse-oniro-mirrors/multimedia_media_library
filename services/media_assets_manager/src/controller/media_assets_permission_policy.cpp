@@ -148,6 +148,7 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_QUERY_PHOTO_STATUS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_MOVING_PHOTO), {{}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_CINEMATIC_VIDEO), {{}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_MEDIA_DATA_STATUS), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_GET_ASSETS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_BURST_ASSETS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::FIND_ALL_DUPLICATE_ASSETS), {{SYSTEMAPI_PERM, READ_PERM}}},

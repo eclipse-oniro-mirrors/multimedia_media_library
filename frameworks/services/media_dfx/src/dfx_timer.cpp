@@ -173,6 +173,7 @@ const std::map<uint32_t, int64_t> DfxTimer::operationCodeTimeoutMap = {
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_REQUEST_CONTENT), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_MOVING_PHOTO), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::LOG_CINEMATIC_VIDEO), 200},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_MEDIA_DATA_STATUS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_PHOTO_STATUS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::DELETE_HIGH_LIGHT_ALBUMS), 200},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ALBUM), 200},

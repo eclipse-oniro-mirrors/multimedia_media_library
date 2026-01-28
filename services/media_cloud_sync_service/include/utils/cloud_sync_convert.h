@@ -61,6 +61,7 @@ public:
     static int32_t CompensateAttSupportedWatermarkType(
         const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateAttStrongAssociation(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateDateAddedYearMonthDay(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     
     // Safe Album: critical type for children's watch
     static int32_t CompensateAttRiskStatus(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
@@ -91,6 +92,7 @@ public:
     static int32_t CompensateBasicBurstCoverLevel(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateDuration(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static void CompensateTimeInfo(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static void HandleDateAddedYearMonthDay(int64_t originalDateAdded, int64_t dateAdded, NativeRdb::ValuesBucket &values);
 
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);

@@ -60,6 +60,9 @@ const int32_t MINUTES_TO_SECOND = 60;
 const size_t OFFSET_STR_SIZE = 6;  // ±HH:MM
 const size_t COLON_POSITION = 3;
 
+const string PhotoDayMonthYearOperation::DATE_ADDED_DATE_UPGRADE_XML =
+    "/data/storage/el2/base/preferences/date_added_date_upgrade.xml";
+
 std::mutex PhotoDayMonthYearOperation::mutex_;
 
 const std::string QUERY_NEED_UPDATE_FILE_IDS = ""
@@ -484,6 +487,15 @@ static void PutIfChanged(ValuesBucket &values, const std::string &column, const 
 {
     if (newValue != oldValue) {
         values.Put(column, newValue);
+        if constexpr (std::is_same_v<T, int64_t>) {
+            if (column == PhotoColumn::MEDIA_DATE_ADDED) {
+                const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+                    PhotoFileUtils::ConstructDateAddedDateParts(newValue);
+                values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+                values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+                values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+            }
+        }
     }
 }
 
@@ -629,5 +641,83 @@ int32_t PhotoDayMonthYearOperation::RepairDateTime()
     MEDIA_INFO_LOG("Repair date time end file id: %{public}d", curFileId);
     return E_OK;
 }
+
+static int BuildFileIdWhereClauseForBatch(int currentFileId, int maxFileId, string& whereClause)
+{
+    constexpr int batchSize = 200;
+    int32_t startId = currentFileId;
+    int32_t endId = std::min(startId + batchSize, maxFileId);
+    whereClause = MediaColumn::MEDIA_ID + " > " + std::to_string(startId) + " AND " +
+                  MediaColumn::MEDIA_ID + " <= " + std::to_string(endId);
+    return endId;
+}
+
+static string GetDateAddedYearMonthDayUpdateSql()
+{
+    return
+        "UPDATE Photos"
+        " SET date_added_year ="
+        " (CASE"
+        "   WHEN COALESCE(date_added_year, 0) <> 0 THEN date_added_year"
+        "   WHEN date_added IS NOT NULL AND date_added > 0 THEN "
+        "     strftime( '%Y', date_added / 1000, 'unixepoch', 'localtime' )"
+        "   ELSE strftime('%Y', 'now', 'localtime')"
+        " END),"
+        " date_added_month ="
+        " (CASE"
+        "   WHEN COALESCE(date_added_month, 0) <> 0 THEN date_added_month"
+        "   WHEN date_added IS NOT NULL AND date_added > 0 THEN "
+        "     strftime( '%Y%m', date_added / 1000, 'unixepoch', 'localtime' )"
+        "   ELSE strftime('%m', 'now', 'localtime')"
+        " END),"
+        " date_added_day ="
+        " (CASE"
+        "   WHEN COALESCE(date_added_day, 0) <> 0 THEN date_added_day"
+        "   WHEN date_added IS NOT NULL AND date_added > 0 THEN "
+        "     strftime( '%Y%m%d', date_added / 1000, 'unixepoch', 'localtime' )"
+        "   ELSE strftime('%d', 'now', 'localtime')"
+        " END)";
+}
+
+void PhotoDayMonthYearOperation::UpdatePhotoDateAddedDateInfo()
+{
+    MEDIA_INFO_LOG("Start updating photo date added date info");
+    int32_t errCode = E_OK;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(DATE_ADDED_DATE_UPGRADE_XML, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    const string fileIdProgressKeyName = "task_progress";
+    const string isFinishedKeyName = "is_task_finished";
+    CHECK_AND_RETURN_INFO_LOG(prefs->GetInt(isFinishedKeyName, 0) == 0, "is_task_finished is %{public}d",
+        prefs->GetInt(isFinishedKeyName, 0));
+    int32_t currentFileId = prefs->GetInt(fileIdProgressKeyName, 0);
+    int maxFileId = prefs->GetInt("max_file_id", 0);
+    CHECK_AND_RETURN_LOG(maxFileId > 0, "max file id is %{public}d", maxFileId);
+    MEDIA_INFO_LOG("start from file id: %{public}d, max file id is %{public}d", currentFileId, maxFileId);
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "get rdb store failed");
+
+    while (currentFileId < maxFileId && MedialibrarySubscriber::IsCurrentStatusOn()) {
+        string whereClause;
+        int batchEndId = BuildFileIdWhereClauseForBatch(currentFileId, maxFileId, whereClause);
+        whereClause += " AND date_added > 0";
+        const string sql = GetDateAddedYearMonthDayUpdateSql() + " WHERE " + whereClause;
+        int ret = rdbStore->ExecuteSql(sql);
+        if (ret != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("update updating photo date added date info failed, errCode: %{public}d", ret);
+            break;
+        }
+        currentFileId = batchEndId;
+        prefs->PutInt(fileIdProgressKeyName, currentFileId);
+        if (currentFileId >= maxFileId) {
+            prefs->PutInt(isFinishedKeyName, 1); // mark task finished
+        }
+        prefs->FlushSync();
+    }
+
+    MEDIA_INFO_LOG("End updating photo date added date info. File id progress: %{public}d",
+        currentFileId);
+}
+
 } // namespace Media
 } // namespace OHOS

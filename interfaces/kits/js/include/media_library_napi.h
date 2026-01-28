@@ -388,6 +388,7 @@ private:
     EXPORT static napi_value PhotoAccessUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value SinglePhotoAccessUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value SinglePhotoAlbumUnregisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value QueryMediaDataReady(napi_env env, napi_callback_info info);
 
     EXPORT static napi_value CreateAlbumTypeEnum(napi_env env);
     EXPORT static napi_value CreateAlbumSubTypeEnum(napi_env env);
@@ -628,6 +629,8 @@ struct MediaLibraryAsyncContext : public NapiError {
         REGISTER_CHANGE
     } eventType;
     int32_t photoIndex = -1;
+    std::string strParam;
+    bool boolResult;
 };
 
 struct MediaLibraryInitContext : public NapiError  {

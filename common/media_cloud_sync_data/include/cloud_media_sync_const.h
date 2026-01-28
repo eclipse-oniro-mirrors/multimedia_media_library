@@ -225,6 +225,9 @@ const std::vector<std::string> ALBUM_LOCAL_QUERY_COLUMNS = {
 };
 
 const std::vector<std::string> PHOTOS_SYNC_COLUMN_STRING = {
+    PhotoColumn::PHOTO_DATE_ADDED_YEAR,
+    PhotoColumn::PHOTO_DATE_ADDED_MONTH,
+    PhotoColumn::PHOTO_DATE_ADDED_DAY,
     // Add Photos fields here. such as PhotoColumn::PHOTO_MEDIA_SUFFIX,
 };
 
