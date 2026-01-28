@@ -57,6 +57,7 @@ ohos_unittest("media_library_asset_manager_test") {
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_js",
     "${MEDIALIB_NATIVE_PATH}/media_library_asset_manager:media_library_asset_manager",
+    "${MEDIALIB_ROOT_PATH}/frameworks/ani:media_library_ani",
   ]
 
   external_deps = [
