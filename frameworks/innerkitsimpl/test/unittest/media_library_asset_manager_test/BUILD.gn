@@ -155,7 +155,6 @@ ohos_unittest("media_library_asset_manager_test") {
   sources += media_asset_service_vo_source
   sources += media_album_service_vo_source
   sources += media_analysis_data_vo_source
-  sources += ani_sources
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library_packages",
