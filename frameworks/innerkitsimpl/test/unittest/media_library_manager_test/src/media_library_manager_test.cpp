@@ -1944,5 +1944,30 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAssets_test_003, Tes
     EXPECT_LT(ret, 0);
     MEDIA_INFO_LOG("MediaLibraryManager_DeleteAssets_test_003 exit");
 }
+
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_OpenAsset_test, TestSize.Level1)
+{
+    EXPECT_NE(mediaLibraryExtendManager, nullptr);
+    string uri = "test";
+    int fd = mediaLibraryExtendManager->OpenAsset(uri, MEDIA_FILEMODE_READWRITE, HideSensitiveType::ALL_DESENSITIZE);
+    EXPECT_LT(fd, 0);
+}
+
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test, TestSize.Level1)
+{
+    EXPECT_NE(mediaLibraryExtendManager, nullptr);
+    string operation = "test";
+    int ret = mediaLibraryExtendManager->SendBrokerChangeOperation(operation);
+    EXPECT_EQ(ret, 0);
+}
+
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test, TestSize.Level1)
+{
+    EXPECT_NE(mediaLibraryExtendManager, nullptr);
+    string uri = "test";
+    vector<std::string> uris = {uri};
+    int ret = mediaLibraryExtendManager->GetCompressAssetSize(uris);
+    EXPECT_EQ(ret, E_ERR);
+}
 } // namespace Media
 } // namespace OHOS

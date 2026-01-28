@@ -35,6 +35,7 @@
 #include "oh_media_asset.h"
 #include "media_asset.h"
 #include "userfilemgr_uri.h"
+#include "media_library_comm_ani.h"
 
 using namespace std;
 using namespace OHOS;
@@ -642,7 +643,27 @@ HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_009, TestSi
     fileAsset_->SetDisplayName(displayName);
     ret = OH_MediaAssetManager_RequestMovingPhoto(manager, mediaAsset, requestOptions, &requestID, callback);
     EXPECT_EQ(ret, MEDIA_LIBRARY_PARAMETER_ERROR);
+    ret = OH_MediaAssetManager_QuickRequestImage(manager, mediaAsset, requestOptions, &requestID, callback);
     EXPECT_EQ(OH_MediaAssetManager_Release(manager), MEDIA_LIBRARY_OK);
+}
+
+HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_010, TestSize.Level1)
+{
+    ani_env *env = nullptr;
+    string uri = "test";
+    int32_t shotType = 0;
+    string burstKey = "test";
+    MediaLibraryCommAni::CreatePhotoAssetAni(env, uri, shotType, burstKey);
+}
+
+HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_011, TestSize.Level1)
+{
+    ani_env *env = nullptr;
+    string uri = "test";
+    int32_t shotType = 0;
+    string burstKey = "test";
+    int32_t captureId = 0;
+    MediaLibraryCommAni::CreatePhotoAssetAni(env, uri, shotType, captureId, burstKey);
 }
 } // namespace Media
 } // namespace OHOS
