@@ -1953,7 +1953,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_OpenAsset_test, TestSize.L
     EXPECT_LT(fd, 0);
 }
 
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test, TestSize.Level1)
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test_001, TestSize.Level1)
 {
     EXPECT_NE(mediaLibraryExtendManager, nullptr);
     string operation = "test";
@@ -1961,7 +1961,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_
     EXPECT_EQ(ret, 0);
 }
 
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test, TestSize.Level1)
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test_002, TestSize.Level1)
 {
     EXPECT_NE(mediaLibraryExtendManager, nullptr);
     string uri = "test";

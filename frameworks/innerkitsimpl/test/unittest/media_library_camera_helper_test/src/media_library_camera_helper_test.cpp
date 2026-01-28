@@ -937,7 +937,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_RegisterPhotoStateCallbac
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
         .userId = 0,
-    }
+    };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
 
@@ -950,7 +950,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UnregisterPhotoStateCallb
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
         .userId = 0,
-    }
+    };
     auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
     ASSERT_NE(photoAssetProxy, nullptr);
 
