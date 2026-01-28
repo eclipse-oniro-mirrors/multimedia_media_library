@@ -932,7 +932,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_test001,
     MEDIA_INFO_LOG("end PhotoAssetProxy_UpdatePhotoProxy_test001");
 }
 
-HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_RegisterPhotoState)
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_RegisterPhotoStateCallback, TestSize.Level1)
 {
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
@@ -945,7 +945,7 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_RegisterPhotoState)
     photoAssetProxy->RegisterPhotoStateCallback(func);
 }
 
-HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_RegisterPhotoState)
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UnregisterPhotoStateCallback, TestSize.Level1)
 {
     PhotoAssetProxyCallerInfo callerInfo = {
         .callingUid = 0,
