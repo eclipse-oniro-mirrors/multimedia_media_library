@@ -5640,6 +5640,19 @@ static void AddImageFaceAndFaceTagAgeGender(RdbStore &store, int32_t version)
     MEDIA_INFO_LOG("end to add age and gender for image face and face tag");
 }
 
+static void AddNetSelectedDownloadColumns(RdbStore &store, int32_t version)
+{
+    const vector<string> sqls = {
+        "ALTER TABLE " + DownloadResourcesColumn::TABLE + " ADD COLUMN " +
+            DownloadResourcesColumn::MEDIA_TASK_SEQ + " INT NOT NULL DEFAULT 0",
+        "ALTER TABLE " + DownloadResourcesColumn::TABLE + " ADD COLUMN " +
+            DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " INT NOT NULL DEFAULT 0"
+    };
+    MEDIA_INFO_LOG("add download_resources_task_records network_policy columns start");
+    ExecSqlsWithDfx(sqls, store, version);
+    MEDIA_INFO_LOG("add download_resources_task_records network_policy columns end");
+}
+
 static void AddAnalysisProgressColumns(RdbStore &store, int32_t version)
 {
     const vector<string> sqls = {
@@ -5805,6 +5818,12 @@ static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
         !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION, true)) {
         AddTableAnalysisDedupSelection(store, VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_TAB_ANALYSIS_DEDUP_SELECTION, true);
+    }
+
+    if (oldVersion < VERSION_ADD_NETWORK_SELECTED_IN_DRTR &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_NETWORK_SELECTED_IN_DRTR, true)) {
+        AddNetSelectedDownloadColumns(store, VERSION_ADD_NETWORK_SELECTED_IN_DRTR);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_NETWORK_SELECTED_IN_DRTR, true);
     }
 }
 

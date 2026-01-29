@@ -234,6 +234,12 @@ enum class BatchDownloadStatusType : int32_t {
     TYPE_AUTO_PAUSE
 };
 
+enum class BatchDownloadNetWorkPolicyType : int32_t {
+    TYPE_DEFAULT = 0,
+    TYPE_CELLNET,
+    TYPE_WIFI
+};
+
 enum class BatchDownloadAutoPauseReasonType : int32_t {
     TYPE_DEFAULT = 0,
     TYPE_NETWORK_DISCONNECT,

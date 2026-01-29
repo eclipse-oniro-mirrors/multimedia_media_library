@@ -85,11 +85,13 @@ public:
     EXPORT int32_t RetainCloudMediaAsset(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetCloudMediaAssetStatus(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StartBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t SetNetworkPolicyForBatchDownload(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ResumeBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t PauseBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CancelBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesStatus(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesCount(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GetCloudMediaBatchDownloadResourcesSize(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetEditData(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t RequestEditData(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t IsEdited(MessageParcel &data, MessageParcel &reply);

@@ -216,38 +216,7 @@ MedialibrarySubscriber::MedialibrarySubscriber(const EventFwk::CommonEventSubscr
 
 MedialibrarySubscriber::~MedialibrarySubscriber()
 {
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    if (cloudHelper_ != nullptr && CloudMediaAssetUnlimitObserver_ != nullptr) {
-        cloudHelper_->UnregisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_);
-        cloudHelper_ = nullptr;
-    }
-#endif
 }
-
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-void CloudMediaAssetUnlimitObserver::OnChange(const ChangeInfo &changeInfo)
-{
-    auto subscriber = subscriber_.lock();
-    CHECK_AND_RETURN(subscriber != nullptr);
-
-    std::list<Uri> uris = changeInfo.uris_;
-    for (auto &uri : uris) {
-        bool cond = (uri.ToString() != CLOUD_URI || changeInfo.changeType_ != DataShareObserver::ChangeType::OTHER);
-        CHECK_AND_RETURN_INFO_LOG(!cond, "Current uri is not suitable for task.");
-
-        bool isUnlimitedTrafficStatusOn = CloudSyncUtils::IsUnlimitedTrafficStatusOn();
-        MEDIA_INFO_LOG("CloudMediaAssetUnlimitObserver OnChange, isUnlimitedTrafficStatusOn: %{public}d.",
-            isUnlimitedTrafficStatusOn);
-        if (isUnlimitedTrafficStatusOn) {
-            BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadResourceCheck();
-        }
-        if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsWifiConnectedAtRealTime() &&
-            !isUnlimitedTrafficStatusOn) {
-            BackgroundCloudBatchSelectedFileProcessor::TriggerAutoStopBatchDownloadResourceCheck(); // 批量下载立即停止
-        }
-    }
-}
-#endif
 
 bool MedialibrarySubscriber::Subscribe(void)
 {
@@ -270,19 +239,6 @@ bool MedialibrarySubscriber::Subscribe(void)
         subscriber_ = nullptr;
         return false;
     });
-
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    CreateOptions options;
-    options.enabled_ = true;
-    subscriber_->cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_DATASHARE_URI, options);
-    CHECK_AND_RETURN_RET_LOG(subscriber_->cloudHelper_ != nullptr, E_ERR, "cloudHelper_ is null.");
-    std::weak_ptr<MedialibrarySubscriber> subscriberWeakPtr(subscriber_);
-    subscriber_->CloudMediaAssetUnlimitObserver_ = std::make_shared<CloudMediaAssetUnlimitObserver>(subscriberWeakPtr);
-    CHECK_AND_RETURN_RET_LOG(subscriber_->CloudMediaAssetUnlimitObserver_ != nullptr, ret,
-        "CloudMediaAssetUnlimitObserver_ is null.");
-    // observer more than 50, failed to register
-    subscriber_->cloudHelper_->RegisterObserverExt(Uri(CLOUD_URI), subscriber_->CloudMediaAssetUnlimitObserver_, true);
-#endif
     return ret;
 }
 

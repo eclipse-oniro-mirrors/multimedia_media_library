@@ -200,6 +200,10 @@ const std::vector<std::string> photoRiskStatusEnum {
     "UNIDENTIFIED", "APPROVED", "SUSPICIOUS", "REJECTED",
 };
 
+const std::vector<std::string> downloadAssetsNetworkPolicyTypeEnum {
+    "DEFAULT", "CELL", "WLAN"
+};
+
 const std::vector<std::pair<std::string, int32_t>> PHOTO_SUB_TYPE_ENUM_PROPERTIES = {
     std::make_pair("DEFAULT",           static_cast<int32_t>(PhotoSubType::DEFAULT)),
     std::make_pair("SCREENSHOT",        static_cast<int32_t>(PhotoSubType::SCREENSHOT)),

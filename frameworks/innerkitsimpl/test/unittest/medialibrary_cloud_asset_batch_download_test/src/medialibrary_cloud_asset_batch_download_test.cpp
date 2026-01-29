@@ -42,11 +42,13 @@
 #include "medialibrary_unistore.h"
 #include "cloud_media_dao_utils.h"
 #include "start_batch_download_cloud_resources_vo.h"
+#include "set_network_policy_batch_download_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "cancel_batch_download_cloud_resources_vo.h"
 #include "get_batch_download_cloud_resources_status_vo.h"
 #include "get_batch_download_cloud_resources_count_vo.h"
+#include "get_batch_download_cloud_resources_size_vo.h"
 #include "batch_download_resources_task_dao.h"
 #define private public
 #define protected public

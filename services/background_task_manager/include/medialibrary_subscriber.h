@@ -49,20 +49,6 @@ enum class StatusEventType {
 static const std::string CLOUD_DATASHARE_URI = "datashareproxy://com.huawei.hmos.clouddrive";
 static const std::string CLOUD_URI = CLOUD_DATASHARE_URI + "/cloud_sp?key=useMobileNetworkData";
 
-class MedialibrarySubscriber;
-
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-class CloudMediaAssetUnlimitObserver : public DataShare::DataShareObserver {
-public:
-    CloudMediaAssetUnlimitObserver(std::weak_ptr<MedialibrarySubscriber> subscriber) : subscriber_(subscriber) {}
-    ~CloudMediaAssetUnlimitObserver() {}
-    void OnChange(const ChangeInfo &changeInfo) override;
-
-private:
-    std::weak_ptr<MedialibrarySubscriber> subscriber_;
-};
-#endif
-
 class EXPORT MedialibrarySubscriber : public EventFwk::CommonEventSubscriber {
 public:
     class DelayTask {
@@ -90,9 +76,6 @@ public:
     EXPORT static bool IsCurrentStatusOn();
 private:
     std::shared_ptr<DataShare::DataShareHelper> cloudHelper_;
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    std::shared_ptr<CloudMediaAssetUnlimitObserver> CloudMediaAssetUnlimitObserver_;
-#endif
     static const std::vector<std::string> events_;
     bool isScreenOff_ {false};
     bool isCharging_ {false};
