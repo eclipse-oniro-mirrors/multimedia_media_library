@@ -26,6 +26,7 @@ ohos_unittest("medialibrary_analysis_progress_test") {
     "../medialibrary_unittest_utils/include",
     "../get_self_permissions/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include",
   ]
 
   cflags = [ "-fno-access-control" ]
@@ -34,11 +35,13 @@ ohos_unittest("medialibrary_analysis_progress_test") {
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_analysis_progress_test.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/analysis_data_manager.cpp",
   ]
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits:analysis_data_kits",
   ]
 
   external_deps = [
@@ -61,5 +64,15 @@ ohos_unittest("medialibrary_analysis_progress_test") {
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
     "relational_store:native_rdb",
+    "ability_base:want",
+    "access_token:libprivacy_sdk",
+    "access_token:libtokenid_sdk",
+    "app_file_service:fileuri_native",
+    "bundle_framework:appexecfwk_base",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_consumer",
+    "hitrace:hitrace_meter",
+    "samgr:samgr_proxy",
+    "ipc:ipc_core",
   ]
 }

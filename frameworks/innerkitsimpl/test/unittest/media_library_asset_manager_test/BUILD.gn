@@ -68,93 +68,7 @@ ohos_unittest("media_library_asset_manager_test") {
     "./src/media_library_asset_manager_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "${MEDIALIB_ROOT_PATH}/frameworks/ani/src/cpp/media_library_comm_ani.cpp",
-    "${MEDIALIB_ROOT_PATH}/frameworks/ani/src/cpp/file_asset_ani.cpp",
-    "${MEDIALIB_ROOT_PATH}/frameworks/ani/src/cpp/medialibrary_ani_utils.cpp",
-    "${MEDIALIB_ROOT_PATH}/frameworks/ani/src/cpp/album_order_ani.cpp",
   ]
-
-  media_asset_service_vo_source = [
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/commit_edited_asset_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/form_info_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_asset_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/clone_asset_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/convert_format_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_completed_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_change_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/submit_cache_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_image_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/save_camera_photo_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/trash_photos_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/revert_to_original_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cloud_enhancement_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/modify_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/retain_cloud_media_asset_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_download_cloud_media_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uri_permission_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uris_permission_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_permission_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_thumbnail_creation_task_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/stop_thumbnail_creation_task_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/is_edited_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/request_edit_data_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_edit_data_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_cloudmedia_asset_status_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/request_content_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_cloud_enhancement_pair_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_cloud_enhancement_task_state_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_photo_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/adapted_vo.cpp",
-  ]
-
-  media_album_service_vo_source = [
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/create_album_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_albums_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_album_name_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_cover_uri_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_add_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_remove_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_move_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_recover_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_delete_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_commit_modify_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_add_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_remove_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_recover_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_photo_query_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_get_assets_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/query_albums_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_albums_by_ids_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_photo_index_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/query_result_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_photo_album_object_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/set_photo_album_order_vo.cpp",
-  ]
-
-  media_analysis_data_vo_source = [
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_asset_analysis_data_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_index_construct_progress_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/start_asset_analysis_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_order_position_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_order_position_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_face_id_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_analysis_process_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/delete_highlight_albums_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_dismiss_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_display_level_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_set_is_me_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/set_highlight_user_action_data_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/set_subtitle_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_dismiss_assets_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_merge_album_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/change_request_place_before_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_highlight_album_info_vo.cpp",
-  ]
-
-  sources += media_asset_service_vo_source
-  sources += media_album_service_vo_source
-  sources += media_analysis_data_vo_source
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library_packages",
@@ -163,7 +77,7 @@ ohos_unittest("media_library_asset_manager_test") {
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_js",
     "${MEDIALIB_NATIVE_PATH}/media_library_asset_manager:media_library_asset_manager",
-
+    "${MEDIALIB_ROOT_PATH}/frameworks/ani:medialibrary_ani_utils",
   ]
 
   external_deps = [

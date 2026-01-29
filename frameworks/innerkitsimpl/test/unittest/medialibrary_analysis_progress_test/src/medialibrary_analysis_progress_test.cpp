@@ -136,7 +136,7 @@ HWTEST_F(MediaLibraryAnalysisProgressTest, Update_Analysis_Progress_Test, TestSi
 
 HWTEST_F(MediaLibraryAnalysisProgressTest, AnalysisDataManager_GetInstance_test, TestSize.Level1)
 {
-    AnalysisDataManager analysisDataManager = AnalysisDataManager::GetInstance();
+    AnalysisData::AnalysisDataManager::GetInstance();
 }
 } // namespace Media
 } // namespace OHOS
