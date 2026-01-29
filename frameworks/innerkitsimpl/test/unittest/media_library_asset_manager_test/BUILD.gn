@@ -42,12 +42,32 @@ ohos_unittest("media_library_asset_manager_test") {
     "${MEDIALIB_NOTIFICATION_MERGING_PATH}/include/data",
     "${MEDIALIB_INNERIMPL_PATH}/notification/include",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/ani/src/include",
+    "${MEDIALIB_ROOT_PATH}/services/media_analysis_data_manager/include/dao/table",
+    "${MEDIALIB_ROOT_PATH}/interfaces/inner_api/media_library_camera_helper/include/enum",
+    "${MEDIALIB_SERVICES_PATH}/media_async_worker/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
+    "${MEDIALIB_BUSINESS_PATH}/media_notification/include/utils",
+    "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_FACARD_PATH}/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/include/data",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/vo",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include/enum",
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
   ]
 
   sources = [
     "../get_self_permissions/src/get_self_permissions.cpp",
     "./src/media_library_asset_manager_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
+    "${MEDIALIB_ROOT_PATH}/frameworks/ani/src/cpp/media_library_comm_ani.cpp",
   ]
 
   deps = [
@@ -57,6 +77,7 @@ ohos_unittest("media_library_asset_manager_test") {
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_js",
     "${MEDIALIB_NATIVE_PATH}/media_library_asset_manager:media_library_asset_manager",
+    "${MEDIALIB_ROOT_PATH}/frameworks/ani:medialibrary_ani_utils",
   ]
 
   external_deps = [
@@ -84,5 +105,26 @@ ohos_unittest("media_library_asset_manager_test") {
     "resource_management:librawfile",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "runtime_core:ani",
+    "image_framework:image_ani",
+    "i18n:intl_util",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ani_base_context",
+    "ability_runtime:app_context",
+    "ability_runtime:appkit_native",
+    "ability_runtime:ui_extension",
+    "access_token:libprivacy_sdk",
+    "access_token:libtokenid_sdk",
+    "bundle_framework:appexecfwk_core",
+    "image_framework:image_taihe",
+    "image_framework:ohimage",
+    "ipc:ipc_single",
+    "ipc:rpc",
+    "libexif:libexif",
+    "player_framework:media_client",
+    "relational_store:rdb_data_share_adapter",
+    "runtime_core:libarkruntime",
+    "runtime_core:ani_helpers",
+    "window_manager:libwm",
   ]
 }

@@ -931,5 +931,32 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_test001,
 
     MEDIA_INFO_LOG("end PhotoAssetProxy_UpdatePhotoProxy_test001");
 }
+
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_RegisterPhotoStateCallback, TestSize.Level1)
+{
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    LowQualityMemoryNumHandler func;
+    photoAssetProxy->RegisterPhotoStateCallback(func);
+}
+
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UnregisterPhotoStateCallback, TestSize.Level1)
+{
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    LowQualityMemoryNumHandler func;
+    photoAssetProxy->UnregisterPhotoStateCallback();
+}
+
 } // namespace Media
 } // namespace OHOS

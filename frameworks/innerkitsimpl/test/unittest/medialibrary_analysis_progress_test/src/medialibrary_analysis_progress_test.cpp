@@ -24,6 +24,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "media_log.h"
 #include "uri.h"
+#include "analysis_data_manager.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -131,6 +132,11 @@ HWTEST_F(MediaLibraryAnalysisProgressTest, Update_Analysis_Progress_Test, TestSi
     int searchCount = -1;
     resultSet->GetInt(0, searchCount);
     EXPECT_EQ(searchCount, 100);
+}
+
+HWTEST_F(MediaLibraryAnalysisProgressTest, AnalysisDataManager_GetInstance_test, TestSize.Level1)
+{
+    AnalysisData::AnalysisDataManager::GetInstance();
 }
 } // namespace Media
 } // namespace OHOS
