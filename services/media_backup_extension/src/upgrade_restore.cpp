@@ -366,7 +366,7 @@ void UpgradeRestore::RestoreSmartAlbums()
     int64_t endRestoreHighlight = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t startGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     CloneGroupPhotoAlbum cloneGroupPhotoAlbum(sceneCode_, taskId_, mediaLibraryRdb_, galleryRdb_);
-    cloneGroupPhotoAlbum.UpdateGroupPhoto();
+    cloneGroupPhotoAlbum.RestoreGroupPhotoAlbum(photoInfoMap_);
     int64_t endGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     classifyRestore_.RestoreClassify(photoInfoMap_);
     int64_t endRestoreClassify = MediaFileUtils::UTCTimeMilliSeconds();
