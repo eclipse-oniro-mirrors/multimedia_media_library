@@ -112,7 +112,7 @@ int32_t BatchDownloadResourcesTaskDao::UpdateAllDownloadResourcesNetworkPolicy(B
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     MEDIA_INFO_LOG("BatchSelectFileDownload UpdateNetworkPolicy All");
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdateNetworkPolicy Failed to get rdbStore.");
-    // set network_policy = x where download_status != 4 and network_policy = 0
+    // set network_policy = x where network_policy = 0
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_NETWORK_POLICY, static_cast<int32_t>(networkPolicy));
     std::string whereClause = DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = ? ";
@@ -534,9 +534,9 @@ int32_t BatchDownloadResourcesTaskDao::UpdateAutoPauseForFileIdByNetWorkPolicy(c
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "AutoPauseByNet Failed to get rdbStore.");
     // set download_status = auto_pause where file_id in (1,2,3) AND network_policy = default
     std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
-    std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND " +
+    std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND (" +
         DownloadResourcesColumn::MEDIA_NETWORK_POLICY+ " = ? OR " +
-        DownloadResourcesColumn::MEDIA_NETWORK_POLICY+ " = ?";
+        DownloadResourcesColumn::MEDIA_NETWORK_POLICY+ " = ?)";
     std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
