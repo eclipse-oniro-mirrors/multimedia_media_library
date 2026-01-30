@@ -967,6 +967,7 @@ int32_t CloudMediaAssetManager::ForceRetainDownloadCloudMediaEx(CloudMediaRetain
     MEDIA_INFO_LOG("BatchSelectFileDownload ForceRetainDownloadCloudMedia CleanDownloadTasksTable");
     CleanDownloadTasksTable();
 #endif
+    CancelDownloadCloudAsset();
     // 停止后台异步清理云图任务，待本次云上信息标记完后重新开启
     doDeleteTask_.store(TaskDeleteState::IDLE);
     int32_t updateRet = UpdateCloudMediaAssets(retainType, mode);
