@@ -95,7 +95,7 @@ bool ReadStreamToString(std::istringstream &iss, std::string &str)
         return false;
     }
     // Get string content
-    if (len > 0) {
+    if (len > 0 && len < MAX_IPC_SIZE) {
         str.resize(len, '\0');
         iss.read(str.data(), len);
     }
