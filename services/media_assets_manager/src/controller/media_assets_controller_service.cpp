@@ -580,6 +580,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::DeleteCloudAssetsWithUri
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::DELETE_ASSETS_PERMANENTLY_WITH_URI),
+        &MediaAssetsControllerService::DeleteAssetsPermanentlyWithUri
+    },
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_OPEN_ASSET_COMPRESS),
         &MediaAssetsControllerService::OpenAssetCompress
     },
@@ -2845,6 +2849,24 @@ int32_t MediaAssetsControllerService::DeleteCloudAssetsWithUri(MessageParcel &da
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     ret = this->mediaAssetsDeleteService_.DeleteCloudAssets(reqBody.fileIds);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::DeleteAssetsPermanentlyWithUri(MessageParcel &data, MessageParcel &reply)
+{
+    DeletePhotosCompletedReqBody reqBody;
+ 
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("DeleteAssetsPermanentlyWithUri Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = ParameterUtils::CheckDeletePhotosCompleted(reqBody.fileIds);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("fileIds is invalid");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = MediaAssetsService::GetInstance().DeleteAssetsPermanentlyWithUri(reqBody.fileIds);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 

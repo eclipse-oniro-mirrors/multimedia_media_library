@@ -4003,6 +4003,27 @@ export namespace photoAccessHelper {
       });
     }
 
+    static deleteAssetsPermanentlyWithUri(context: Context, assetUris: Array<string>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            MediaAssetChangeRequest.deleteAssetsPermanentlyWithUriSync(context, assetUris);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
     private create(nativePointer: long): void {
       if (this.nativeHandle == 0) {
         this.nativeHandle = nativePointer;
@@ -4017,6 +4038,7 @@ export namespace photoAccessHelper {
     private native static deleteAssetsSync(context: Context, assets: Array<AssetType> | Array<string>): void;
     private native static deleteLocalAssetsPermanentlySync(context: Context, assets: Array<PhotoAsset>): void;
     private native static deleteLocalAssetsPermanentlyWithUriSync(context: Context, assetUris: Array<string>): void;
+    private native static deleteAssetsPermanentlyWithUriSync(context: Context, assetUris: Array<string>): void;
   }
 
   export class MediaAssetsChangeRequest implements MediaChangeRequest {

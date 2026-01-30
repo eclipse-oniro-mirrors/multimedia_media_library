@@ -140,6 +140,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/create_temporary_compatible_duplicate_test.cpp",
     "./src/custom_restore_test.cpp",
     "./src/delete_asset_test.cpp",
+    "./src/delete_assets_permanently_test.cpp",
     "./src/delete_photos_completed_test.cpp",
     "./src/get_asset_analysis_data_test.cpp",
     "./src/get_assets_test.cpp",

@@ -132,6 +132,7 @@ public:
     EXPORT int32_t GetFusionAssetsInfo(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteLocalAssetsWithUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteCloudAssetsWithUri(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteAssetsPermanentlyWithUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t OpenAssetCompress(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t NotifyAssetSended(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetAssetCompressVersion(MessageParcel &data, MessageParcel &reply);

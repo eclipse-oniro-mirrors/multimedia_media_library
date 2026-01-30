@@ -66,6 +66,8 @@
 #include "lake_file_utils.h"
 #include "cloud_media_common.h"
 #include "media_audio_column.h"
+#include "lake_file_operations.h"
+#include "medialibrary_db_const.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -3631,6 +3633,65 @@ int32_t MediaLibraryAssetOperations::DeletePermanently(AbsRdbPredicates &predica
     }
     NotifyPhotoAlbum(std::vector<int32_t>(changedAlbumIds.begin(), changedAlbumIds.end()), assetRefresh);
     return E_OK;
+}
+
+std::string BuildFileUri(const std::string &fileId, const std::string &filePath,
+    const std::string &displayName, int32_t mediaType)
+{
+    if (fileId.empty() || filePath.empty() || displayName.empty()) {
+        return "";
+    }
+    string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath, false);
+    MediaFileUri fileUri(static_cast<MediaType>(mediaType), fileId, "", MEDIA_API_VERSION_V10, extrUri);
+    return fileUri.ToString();
+}
+
+int32_t MediaLibraryAssetOperations::DeletePermanentlyWithUri(AbsRdbPredicates &predicates)
+{
+    int32_t deleteRows = 0;
+    vector<string> fileIds = predicates.GetWhereArgs();
+    MEDIA_INFO_LOG("Start delete permanently %{public}zu photos", fileIds.size());
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), deleteRows, "fileIds is empty.");
+    string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    string sql = "SELECT file_id, data, display_name, media_type FROM Photos WHERE burst_key IN ("
+        "SELECT DISTINCT burst_key FROM Photos WHERE file_id IN (" + inClause + ") "
+        "AND burst_cover_level = 1 AND subtype = 4 ) OR file_id IN (" + inClause + ");";
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, deleteRows, "get rdb store fail");
+    auto resultSet = rdbStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, deleteRows, "Failed to query selected files!");
+    vector<string> uris;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        string fileId = to_string(get<int32_t>(ResultSetUtils::GetValFromColumn("file_id", resultSet, TYPE_INT32)));
+        string path = get<string>(ResultSetUtils::GetValFromColumn("data", resultSet, TYPE_STRING));
+        string displayName = get<string>(ResultSetUtils::GetValFromColumn("display_name", resultSet, TYPE_STRING));
+        int32_t mediaType = get<int32_t>(ResultSetUtils::GetValFromColumn("media_type", resultSet, TYPE_INT32));
+        CHECK_AND_CONTINUE(!fileId.empty() && !path.empty() && !displayName.empty());
+        auto it = std::find(fileIds.begin(), fileIds.end(), fileId);
+        if (it != fileIds.end()) {
+            uris.emplace_back(BuildFileUri(fileId, path, displayName, mediaType));
+        } else {
+            fileIds.push_back(fileId);
+        }
+    }
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty() && !uris.empty(), deleteRows, "fileIds or uris is empty.");
+    set<string> albumIds;
+    MediaLibraryRdbUtils::QueryAnalysisAlbumIdOfAssets(fileIds, albumIds);
+    MediaLibraryPhotoOperations::UpdateSourcePath(fileIds);
+    int32_t ret = LakeFileOperations::MoveAssetsFromLake(fileIds);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to move assets from lake.");
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
+    vector<string> photoIds;
+    EnhancementManager::GetInstance().CancelTasksInternal(fileIds, photoIds, CloudEnhancementAvailableType::TRASH);
+#endif
+    predicates.SetWhereArgs(uris);
+    deleteRows = DeleteFromDisk(predicates, false, true);
+    vector<string> albumIdVector(albumIds.begin(), albumIds.end());
+    if (albumIdVector.size() > 0 && rdbStore != nullptr) {
+        MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, albumIdVector);
+    }
+    return deleteRows;
 }
 } // namespace Media
 } // namespace OHOS

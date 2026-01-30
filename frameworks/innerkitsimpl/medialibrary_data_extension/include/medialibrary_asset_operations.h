@@ -103,6 +103,7 @@ public:
         const bool compatible = false);
     EXPORT static int32_t DeletePermanently(NativeRdb::AbsRdbPredicates &predicates, const bool isAging,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr);
+    EXPORT static int32_t DeletePermanentlyWithUri(NativeRdb::AbsRdbPredicates &predicates);
     EXPORT static int32_t DeleteNormalPhotoPermanently(std::shared_ptr<FileAsset> &fileAsset,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr);
     EXPORT static std::string GetEditDataSourcePath(const std::string &path);

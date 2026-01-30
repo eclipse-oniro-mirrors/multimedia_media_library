@@ -95,6 +95,7 @@ public:
     int32_t TrashPhotos(const std::vector<std::string> &uris);
     int32_t DeletePhotos(const std::vector<std::string> &uris);
     int32_t DeletePhotosCompleted(const std::vector<std::string> &fileIds);
+    int32_t DeleteAssetsPermanentlyWithUri(const std::vector<std::string> &fileIds);
     int32_t AssetChangeSetFavorite(const int32_t fileId, const bool favorite);
     int32_t AssetChangeSetHidden(const std::string &uri, const bool hidden);
     int32_t AssetChangeSetUserComment(const int32_t fileId, const std::string &userComment);
