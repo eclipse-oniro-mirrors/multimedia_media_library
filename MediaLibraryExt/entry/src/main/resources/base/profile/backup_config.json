@@ -21,6 +21,9 @@
         "/storage/media/local/files/highlight/",
         "/data/storage/el2/base/preferences/"
     ],
+    "excludes": [
+        "/data/storage/el2/database/rdb/media_library.db_binlog/"
+    ],
     "compatibleDirMapping": [
         {"backupDir": "/storage/media/local/files/.backup/backup/media_temp_rdb/", "restoreDir": "/data/storage/el2/database/rdb/"}
     ],

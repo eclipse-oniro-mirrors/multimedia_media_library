@@ -109,7 +109,7 @@ void CloneRestorePortrait::DeleteExistingImageFaceInfos()
     MEDIA_INFO_LOG("Update TableAnalysisTotal");
     std::unique_ptr<NativeRdb::AbsRdbPredicates> totalTablePredicates =
         std::make_unique<NativeRdb::AbsRdbPredicates>(VISION_TOTAL_TABLE);
-    std::string statusCondition = " status = 1";
+    std::string statusCondition = " status >= 0";
     totalTablePredicates->SetWhereClause(fileIdCondition + " AND" + statusCondition);
     NativeRdb::ValuesBucket totalValues;
     totalValues.PutInt("face", 0);
