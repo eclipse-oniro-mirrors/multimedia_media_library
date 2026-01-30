@@ -62,7 +62,7 @@ static unordered_map<string, ResultSetDataType> albumColumnTypeMap = {
 void CleanTestTables(std::shared_ptr<MediaLibraryRdbStore> rdbStore)
 {
     vector<string> dropTableList = {
-        PhotoColumn::PHOTOS_TABLE, AudioColumn::AUDIOS_TABLE,        MEDIALIBRARY_TABLE,
+        PhotoColumn::PHOTOS_TABLE, AudioColumn::AUDIOS_TABLE,        CONST_MEDIALIBRARY_TABLE,
         ASSET_UNIQUE_NUMBER_TABLE, PhotoExtColumn::PHOTOS_EXT_TABLE, PhotoAlbumColumns::TABLE};
     for (const std::string &dropTable : dropTableList) {
         string dropSql = "DROP TABLE " + dropTable + ";";
@@ -92,9 +92,9 @@ void PrepareUniqueNumberTable(std::shared_ptr<MediaLibraryRdbStore> rdbStore)
         return;
     }
 
-    UniqueMemberValuesBucket imageBucket = {IMAGE_ASSET_TYPE, 1};
-    UniqueMemberValuesBucket videoBucket = {VIDEO_ASSET_TYPE, 1};
-    UniqueMemberValuesBucket audioBucket = {AUDIO_ASSET_TYPE, 1};
+    UniqueMemberValuesBucket imageBucket = {CONST_IMAGE_ASSET_TYPE, 1};
+    UniqueMemberValuesBucket videoBucket = {CONST_VIDEO_ASSET_TYPE, 1};
+    UniqueMemberValuesBucket audioBucket = {CONST_AUDIO_ASSET_TYPE, 1};
 
     vector<UniqueMemberValuesBucket> uniqueNumberValueBuckets = {imageBucket, videoBucket, audioBucket};
 

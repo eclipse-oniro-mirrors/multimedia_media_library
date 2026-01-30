@@ -68,21 +68,21 @@ static void ReadThumbnailFile(const string &path, vector<uint8_t> &buffer)
 string MediaLibraryFormMapOperations::GetUriByFileId(const int32_t &fileId, const string &path)
 {
     MediaLibraryCommand queryCmd(OperationObject::UFM_PHOTO, OperationType::QUERY);
-    queryCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(fileId));
+    queryCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileId));
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (uniStore == nullptr) {
         MEDIA_ERR_LOG("UniStore is nullptr");
         return "";
     }
     vector<string> columns = {
-        MEDIA_DATA_DB_ID, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_NAME
+        CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_NAME
     };
     auto queryResult = uniStore->Query(queryCmd, columns);
     if (queryResult == nullptr || queryResult->GoToFirstRow() != NativeRdb::E_OK) {
         return "";
     }
-    string displayName = GetStringVal(MEDIA_DATA_DB_NAME, queryResult);
-    int32_t mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, queryResult);
+    string displayName = GetStringVal(CONST_MEDIA_DATA_DB_NAME, queryResult);
+    int32_t mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, queryResult);
     if (mediaType != MEDIA_TYPE_IMAGE) {
         return "";
     }
@@ -153,21 +153,21 @@ void MediaLibraryFormMapOperations::GetFormIdsByUris(const vector<string> &notif
 string MediaLibraryFormMapOperations::GetFilePathById(const string &fileId)
 {
     MediaLibraryCommand queryCmd(OperationObject::UFM_PHOTO, OperationType::QUERY);
-    queryCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, fileId);
+    queryCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, fileId);
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (uniStore == nullptr) {
         MEDIA_ERR_LOG("UniStore is nullptr");
         return "";
     }
     vector<string> columns = {
-        MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH
+        CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH
     };
     auto queryResult = uniStore->Query(queryCmd, columns);
     if (queryResult == nullptr || queryResult->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Get path by Id failed , id is %{private}s", fileId.c_str());
         return "";
     }
-    return GetStringVal(MEDIA_DATA_DB_FILE_PATH, queryResult);
+    return GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, queryResult);
 }
 
 void MediaLibraryFormMapOperations::ModifyFormMapMessage(const string &uri, const int64_t &formId, const bool &isSave)
@@ -210,7 +210,7 @@ void MediaLibraryFormMapOperations::PublishedChange(const string newUri, const v
                 to_string(formId).c_str(), NO_PICTURES.size());
             data.datas_.emplace_back(PublishedDataItem(MEDIA_LIBRARY_PROXY_DATA_URI, formId, tempData));
             data.datas_.emplace_back(PublishedDataItem(MEDIA_LIBRARY_PROXY_IMAGE_URI, formId, tempData));
-            dataShareHelper->Publish(data, BUNDLE_NAME);
+            dataShareHelper->Publish(data, CONST_BUNDLE_NAME);
             MediaLibraryFormMapOperations::ModifyFormMapMessage(NO_PICTURES, formId, isSave);
         }
     } else {
@@ -229,7 +229,7 @@ void MediaLibraryFormMapOperations::PublishedChange(const string newUri, const v
                     to_string(formId).c_str(), buffer.size(), newUri.c_str());
                 data.datas_.emplace_back(PublishedDataItem(MEDIA_LIBRARY_PROXY_DATA_URI, formId, tempData));
                 data.datas_.emplace_back(PublishedDataItem(MEDIA_LIBRARY_PROXY_IMAGE_URI, formId, uriData));
-                dataShareHelper->Publish(data, BUNDLE_NAME);
+                dataShareHelper->Publish(data, CONST_BUNDLE_NAME);
                 MediaLibraryFormMapOperations::ModifyFormMapMessage(newUri, formId, isSave);
             }
         }
@@ -267,8 +267,8 @@ bool MediaLibraryFormMapOperations::CheckQueryIsInDb(const OperationObject &oper
         queryFormMapCmd.GetAbsRdbPredicates()->EqualTo(FormMap::FORMMAP_FORM_ID, queryId);
         columns = { FormMap::FORMMAP_FORM_ID };
     } else if (operationObject == OperationObject::UFM_PHOTO) {
-        queryFormMapCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, queryId);
-        columns = { MEDIA_DATA_DB_ID };
+        queryFormMapCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, queryId);
+        columns = { CONST_MEDIA_DATA_DB_ID };
     }
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (uniStore == nullptr) {

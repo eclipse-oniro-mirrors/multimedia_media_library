@@ -1567,8 +1567,7 @@ void CloudMediaPhotosDao::UpdateAllAlbumsCountForCloud(const std::vector<std::st
         UpdateAlbumCountInternal(ALL_SYSTEM_PHOTO_ALBUM);
         UpdateAlbumReplacedSignal(albums);
     }
-    std::vector<std::string> subtype = {"4101"};
-    MediaLibraryRdbUtils::UpdateAnalysisAlbumCountInternal(rdbStore, subtype);
+    UpdateAnalysisAlbumsCountForCloud();
 }
 
 void CloudMediaPhotosDao::UpdateAlbumCountInternal(const std::vector<std::string> &subtypes)
@@ -2114,6 +2113,14 @@ int32_t CloudMediaPhotosDao::FindPhotoInfo(PhotosDto &record)
     bool isValid = ret == E_OK && record.localInfoOp.has_value();
     CHECK_AND_PRINT_LOG(isValid, "FindPhotoInfo failed, record: %{public}s", record.ToString().c_str());
     return E_OK;
+}
+
+void CloudMediaPhotosDao::UpdateAnalysisAlbumsCountForCloud()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "UpdateAllAlbumsCountForCloud Failed to get rdbStore.");
+    std::vector<std::string> subtype = { to_string(PhotoAlbumSubType::SHOOTING_MODE) };
+    MediaLibraryRdbUtils::UpdateAnalysisAlbumCountInternal(rdbStore, subtype);
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media::CloudSync

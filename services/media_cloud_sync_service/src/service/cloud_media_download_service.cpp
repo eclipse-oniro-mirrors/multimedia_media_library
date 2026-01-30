@@ -471,19 +471,13 @@ void CloudMediaDownloadService::UpdateVideoMode(std::vector<PhotosPo> &photosPoV
         CHECK_AND_RETURN_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
             "UpdateVideoMode resultSet is nullptr or empty.");
         int32_t videoMode = GetInt32Val(PhotoColumn::PHOTO_VIDEO_MODE, resultSet);
-        if (videoMode != static_cast<int32_t>(VideoMode::DEFAULT)) {
-            MEDIA_INFO_LOG("photosPo has scannered");
-            continue;
-        }
+        CHECK_AND_CONTINUE_INFO_LOG(videoMode == static_cast<int32_t>(VideoMode::DEFAULT), "photosPo has scannered");
         string logVideoPath = photosPo.data.value_or("");
         unique_ptr<Metadata> videoModeData = make_unique<Metadata>();
         videoModeData->SetFilePath(logVideoPath);
         int32_t err = MetadataExtractor::ExtractAVMetadata(videoModeData);
-        if (err != E_OK) {
-            MEDIA_ERR_LOG("Failed to extract metadata for photosPo: %{public}s",
-                DfxUtils::GetSafePath(logVideoPath).c_str());
-            continue;
-        }
+        CHECK_AND_CONTINUE_INFO_LOG(err == E_OK, "Failed to extract metadata for photosPo: %{public}s",
+            DfxUtils::GetSafePath(logVideoPath).c_str());
         int32_t videoModeUpdate = videoModeData->GetVideoMode();
         MEDIA_INFO_LOG("photosPo videoMode=%{public}d", videoModeUpdate);
         auto photoRet = PhotoVideoModeOperation::UpdatePhotosVideoMode(videoModeUpdate, fileId);

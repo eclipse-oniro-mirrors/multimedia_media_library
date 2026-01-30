@@ -19,23 +19,22 @@
 
 namespace OHOS {
 namespace Media {
-const std::string MEDIALIBRARY_DIRECTORY_URI = MEDIALIBRARY_DATA_URI + "/MediaTypeDirectory";
-const std::string MEDIALIBRARY_BUNDLEPERM_URI = MEDIALIBRARY_DATA_URI + "/bundle_permission_insert_operation";
+#define CONST_MEDIALIBRARY_DIRECTORY_URI "datashare:///media/MediaTypeDirectory"
+#define CONST_MEDIALIBRARY_BUNDLEPERM_URI "datashare:///media/bundle_permission_insert_operation"
 
-const std::string MEDIALIBRARY_CHECK_URIPERM_URI = MEDIALIBRARY_DATA_URI + "/phaccess_checkuripermission";
-const std::string MEDIALIBRARY_GRANT_URIPERM_URI = MEDIALIBRARY_DATA_URI + "/phaccess_granturipermission";
-const std::string PAH_CREATE_APP_URI_PERMISSION =
-    MEDIALIBRARY_DATA_URI + "/app_uri_permission_operation/" + OPRN_CREATE;
+#define CONST_MEDIALIBRARY_CHECK_URIPERM_URI "datashare:///media/phaccess_checkuripermission"
+#define CONST_MEDIALIBRARY_GRANT_URIPERM_URI "datashare:///media/phaccess_granturipermission"
+#define CONST_PAH_CREATE_APP_URI_PERMISSION "datashare:///media/app_uri_permission_operation/create"
 
-const std::string MEDIALIBRARY_AUDIO_URI = MEDIALIBRARY_DATA_URI + '/' + "audio";
-const std::string MEDIALIBRARY_VIDEO_URI = MEDIALIBRARY_DATA_URI + '/' + "video";
-const std::string MEDIALIBRARY_IMAGE_URI = MEDIALIBRARY_DATA_URI + '/' + "image";
-const std::string MEDIALIBRARY_FILE_URI  =  MEDIALIBRARY_DATA_URI + '/' + "file";
-const std::string MEDIALIBRARY_ALBUM_URI  =  MEDIALIBRARY_DATA_URI + '/' + "album";
-const std::string MEDIALIBRARY_SMARTALBUM_CHANGE_URI  =  MEDIALIBRARY_DATA_URI + '/' + "smartalbum";
-const std::string MEDIALIBRARY_DEVICE_URI  =  MEDIALIBRARY_DATA_URI + '/' + "device";
-const std::string MEDIALIBRARY_SMART_URI = MEDIALIBRARY_DATA_URI + '/' + "smart";
-const std::string MEDIALIBRARY_REMOTEFILE_URI = MEDIALIBRARY_DATA_URI + '/' + "remotfile";
+#define CONST_MEDIALIBRARY_AUDIO_URI "datashare:///media/audio"
+#define CONST_MEDIALIBRARY_VIDEO_URI "datashare:///media/video"
+#define CONST_MEDIALIBRARY_IMAGE_URI "datashare:///media/image"
+#define CONST_MEDIALIBRARY_FILE_URI "datashare:///media/file"
+#define CONST_MEDIALIBRARY_ALBUM_URI "datashare:///media/album"
+#define CONST_MEDIALIBRARY_SMARTALBUM_CHANGE_URI "datashare:///media/smartalbum"
+#define CONST_MEDIALIBRARY_DEVICE_URI "datashare:///media/device"
+#define CONST_MEDIALIBRARY_SMART_URI "datashare:///media/smart"
+#define CONST_MEDIALIBRARY_REMOTEFILE_URI "datashare:///media/remotfile"
 } // namespace Media
 } // namespace OHOS
 

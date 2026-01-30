@@ -119,7 +119,7 @@ void PhotoCustomRestoreOperation::ApplyEfficiencyQuota(int32_t fileNum)
         MEDIA_WARN_LOG("quota is zero, skip apply efficiency quota.");
         return;
     }
-    string module = BUNDLE_NAME;
+    string module = CONST_BUNDLE_NAME;
     string reason = "Custom Restore";
     MEDIA_DEBUG_LOG("ApplyEfficiencyQuota. quota: %{public}" PRId64, quota);
     void *resourceQuotaMgrHandle = dlopen(ABNORMAL_MANAGER_LIB.c_str(), RTLD_NOW);
@@ -877,7 +877,7 @@ int32_t PhotoCustomRestoreOperation::UpdatePhotoAlbum(RestoreTaskInfo &restoreTa
     restoreTaskInfo.firstFileId = fileId;
     string extrUri = MediaFileUtils::GetExtraUri(fileInfo.displayName, fileInfo.filePath);
     restoreTaskInfo.firstFileUri = MediaFileUtils::GetUriByExtrConditions(
-        ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(fileInfo.mediaType, MEDIA_API_VERSION_V10) + "/",
+        CONST_ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(fileInfo.mediaType, MEDIA_API_VERSION_V10) + "/",
         to_string(fileId),
         extrUri);
     if (restoreTaskInfo.uriType == RESTORE_URI_TYPE_PHOTO) {

@@ -51,7 +51,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, AlbumAsset_SetGet_Test_001, TestSize.Level1
     albumAsset->SetAlbumName(albumName);
     EXPECT_EQ(albumAsset->GetAlbumName(), albumName);
 
-    string albumUri = MEDIALIBRARY_DATA_URI + MEDIALIBRARY_TYPE_FILE_URI;
+    string albumUri = MEDIALIBRARY_DATA_URI + CONST_MEDIALIBRARY_TYPE_FILE_URI;
     albumAsset->SetAlbumUri(albumUri);
     EXPECT_EQ(albumAsset->GetAlbumUri(), albumUri);
 
@@ -68,7 +68,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, AlbumAsset_SetGet_Test_001, TestSize.Level1
     EXPECT_EQ(albumAsset->GetAlbumRelativePath(), albumRelativePath);
 
     const int32_t TEST_FILE_ID = 1;
-    string coverUri = MEDIALIBRARY_DATA_URI + MEDIALIBRARY_TYPE_IMAGE_URI + "/" + to_string(TEST_FILE_ID);
+    string coverUri = MEDIALIBRARY_DATA_URI + CONST_MEDIALIBRARY_TYPE_IMAGE_URI + "/" + to_string(TEST_FILE_ID);
     albumAsset->SetCoverUri(coverUri);
     EXPECT_EQ(albumAsset->GetCoverUri(), coverUri);
 

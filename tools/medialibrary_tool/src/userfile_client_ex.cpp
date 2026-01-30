@@ -60,21 +60,21 @@ enum class MediaToolOperation {
 };
 
 const std::map<MediaToolOperation, std::string> PHOTOOPRN_URI_MAP = {
-    { MediaToolOperation::INSERT, TOOL_CREATE_PHOTO },
-    { MediaToolOperation::QUERY, TOOL_QUERY_PHOTO },
-    { MediaToolOperation::LIST, TOOL_LIST_PHOTO },
-    { MediaToolOperation::CLOSE, TOOL_CLOSE_PHOTO },
-    { MediaToolOperation::DELETE, TOOL_DELETE_PHOTO },
-    { MediaToolOperation::UPDATE, TOOL_UPDATE_PHOTO }
+    { MediaToolOperation::INSERT, CONST_TOOL_CREATE_PHOTO },
+    { MediaToolOperation::QUERY, CONST_TOOL_QUERY_PHOTO },
+    { MediaToolOperation::LIST, CONST_TOOL_LIST_PHOTO },
+    { MediaToolOperation::CLOSE, CONST_TOOL_CLOSE_PHOTO },
+    { MediaToolOperation::DELETE, CONST_TOOL_DELETE_PHOTO },
+    { MediaToolOperation::UPDATE, CONST_TOOL_UPDATE_PHOTO }
 };
 
 const std::map<MediaToolOperation, std::string> AUDIOOPRN_URI_MAP = {
-    { MediaToolOperation::INSERT, TOOL_CREATE_AUDIO },
-    { MediaToolOperation::QUERY, TOOL_QUERY_AUDIO },
-    { MediaToolOperation::LIST, TOOL_LIST_AUDIO },
-    { MediaToolOperation::CLOSE, TOOL_CLOSE_AUDIO },
-    { MediaToolOperation::DELETE, TOOL_DELETE_AUDIO },
-    { MediaToolOperation::UPDATE, TOOL_UPDATE_AUDIO }
+    { MediaToolOperation::INSERT, CONST_TOOL_CREATE_AUDIO },
+    { MediaToolOperation::QUERY, CONST_TOOL_QUERY_AUDIO },
+    { MediaToolOperation::LIST, CONST_TOOL_LIST_AUDIO },
+    { MediaToolOperation::CLOSE, CONST_TOOL_CLOSE_AUDIO },
+    { MediaToolOperation::DELETE, CONST_TOOL_DELETE_AUDIO },
+    { MediaToolOperation::UPDATE, CONST_TOOL_UPDATE_AUDIO }
 };
 
 // delete_tool
@@ -334,8 +334,8 @@ int UserFileClientEx::Open(const std::string &uri, const std::string &mode, bool
         return Media::E_FAIL;
     }
     std::string uriWithKey {uri};
-    MediaFileUtils::UriAppendKeyValue(uriWithKey, IS_TOOL_OPEN,
-        TOOL_OPEN_TRUE);
+    MediaFileUtils::UriAppendKeyValue(uriWithKey, CONST_IS_TOOL_OPEN,
+        CONST_TOOL_OPEN_TRUE);
     Uri openUri(uriWithKey);
     MEDIA_INFO_LOG("open. uri:%{public}s, mode:%{public}s", uriWithKey.c_str(), mode.c_str());
     return UserFileClient::OpenFile(openUri, mode);
@@ -362,7 +362,7 @@ int UserFileClientEx::Close(const std::string &uri, const int fileFd, const std:
         return Media::E_OK;
     }
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_URI, uri);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, uri);
     if (isCreateThumbSync) {
         valuesBucket.Put(CLOSE_CREATE_THUMB_STATUS, CREATE_THUMB_SYNC_STATUS);
     }
@@ -480,7 +480,7 @@ int32_t UserFileClientEx::Delete(bool isOnlyDeleteDb, bool isRestart)
     }
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(DELETE_TOOL_ONLY_DATABASE, isOnlyDeleteDb);
-    std::string uri = URI_DELETE_TOOL;
+    std::string uri = CONST_URI_DELETE_TOOL;
     Uri deleteUri(uri);
     auto ret = UserFileClient::Insert(deleteUri, valuesBucket);
     if (ret != Media::E_OK) {

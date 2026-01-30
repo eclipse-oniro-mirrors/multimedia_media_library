@@ -991,7 +991,7 @@ static bool CreateAlbumExecute(MediaAlbumChangeRequestContext& context)
     auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
     CHECK_COND_RET(photoAlbum != nullptr, false, "photoAlbum is null");
 
-    Uri createAlbumUri(PAH_CREATE_PHOTO_ALBUM);
+    Uri createAlbumUri(CONST_PAH_CREATE_PHOTO_ALBUM);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoAlbumColumns::ALBUM_NAME, photoAlbum->GetAlbumName());
     int32_t ret = UserFileClient::Insert(createAlbumUri, valuesBucket);
@@ -1019,7 +1019,7 @@ static bool FetchNewCount(MediaAlbumChangeRequestContext &context, shared_ptr<Ph
         return false;
     }
 
-    Uri queryUri(PAH_QUERY_PHOTO_ALBUM);
+    Uri queryUri(CONST_PAH_QUERY_PHOTO_ALBUM);
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, album->GetAlbumId());
     vector<string> fetchColumns = { PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_COUNT,
@@ -1143,7 +1143,7 @@ static bool MoveAssetsExecuteWithUri(MediaAlbumChangeRequestContext& context)
 
         DataShare::DataShareValuesBucket valuesBuckets;
         valuesBuckets.Put(PhotoColumn::PHOTO_OWNER_ALBUM_ID, targetAlbumId);
-        string uri = PAH_BATCH_UPDATE_OWNER_ALBUM_ID;
+        string uri = CONST_PAH_BATCH_UPDATE_OWNER_ALBUM_ID;
         MediaLibraryAniUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri moveAssetsUri(uri);
         int ret = UserFileClient::Update(moveAssetsUri, predicates, valuesBuckets);
@@ -1210,7 +1210,7 @@ static bool RecoverAssetsExecuteWithUri(MediaAlbumChangeRequestContext& context)
     predicates.In(PhotoColumn::MEDIA_ID, context.objectInfo->GetRecoverAssetArray());
     valuesBucket.Put(PhotoColumn::MEDIA_DATE_TRASHED, 0);
 
-    Uri recoverAssetsUri(PAH_RECOVER_PHOTOS);
+    Uri recoverAssetsUri(CONST_PAH_RECOVER_PHOTOS);
     int ret = UserFileClient::Update(recoverAssetsUri, predicates, valuesBucket);
     context.objectInfo->ClearRecoverAssetArray();
     if (ret < 0) {
@@ -1260,7 +1260,7 @@ static bool DeleteAssetsExecuteWithUri(MediaAlbumChangeRequestContext& context)
     predicates.GreaterThan(PhotoColumn::MEDIA_DATE_TRASHED, 0);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_DATE_TRASHED, 0);
-    Uri deleteAssetsUri(PAH_DELETE_PHOTOS);
+    Uri deleteAssetsUri(CONST_PAH_DELETE_PHOTOS);
     int ret = UserFileClient::Update(deleteAssetsUri, predicates, valuesBucket, context.objectInfo->GetUserId());
     context.objectInfo->ClearDeleteAssetArray();
     if (ret < 0) {

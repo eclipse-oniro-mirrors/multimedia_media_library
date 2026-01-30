@@ -28,6 +28,8 @@
 #include "rdb_store.h"
 #include "media_column.h"
 #include "download_resources_column.h"
+#include "cloud_media_dao_utils.h"
+#include "medialibrary_type_const.h"
 
 namespace OHOS {
 namespace Media {
@@ -53,6 +55,8 @@ const std::vector<std::string> PULL_QUERY_DOWNLOAD_STATUS_COLUMNS = {
     DownloadResourcesColumn::MEDIA_PERCENT,
     DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
     DownloadResourcesColumn::MEDIA_COVER_LEVEL,
+    DownloadResourcesColumn::MEDIA_TASK_SEQ,
+    DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
 };
 
 class BatchDownloadResourcesTaskDao {
@@ -79,6 +83,13 @@ public:
     EXPORT int32_t HandleDuplicateAddTask(std::vector<DownloadResourcesTaskPo> &taskPos);
     EXPORT int32_t HandleAddExistedDownloadTasks(std::vector<std::string> &fileIds);
 
+    // set networkPolicy
+    EXPORT int32_t UpdateNetworkPolicyDownloadTasks(std::vector<std::string> &fileIds,
+        BatchDownloadNetWorkPolicyType networkPolicy);
+    EXPORT int32_t UpdateAllDownloadResourcesNetworkPolicy(BatchDownloadNetWorkPolicyType networkPolicy);
+    EXPORT int32_t UpdateStatusAllFailAndAutoPauseToWaiting();
+    EXPORT int32_t UpdateStatusFailAndAutoPauseToWaiting(const std::vector<std::string> &fileIds);
+
     // resume
     EXPORT int32_t UpdateResumeDownloadResourcesInfo(const std::vector<std::string> &fileIds);
     EXPORT int32_t UpdateStatusFailedToWaiting(const std::vector<std::string> &fileIds);
@@ -86,6 +97,8 @@ public:
     EXPORT int32_t UpdateStatusPauseToDownloading(const std::vector<std::string> &fileIds);
 
     EXPORT int32_t UpdateResumeAllDownloadResourcesInfo();
+    EXPORT int32_t UpdateAutoPauseAllDownloadByNetWorkPolicy();
+    EXPORT int32_t UpdateAutoPauseForFileIdByNetWorkPolicy(const std::vector<std::string> &fileIds);
     EXPORT int32_t UpdateAllStatusFailedToWaiting();
     EXPORT int32_t UpdateAllStatusPauseToWaiting();
     EXPORT int32_t UpdateAllStatusPauseToDownloading();
@@ -107,6 +120,8 @@ public:
         NativeRdb::RdbPredicates &predicates, std::vector<DownloadResourcesTaskPo> &downloadResourcesTasks);
     EXPORT int32_t QueryCloudMediaBatchDownloadResourcesCount(
         NativeRdb::RdbPredicates &predicates, int32_t &count);
+    EXPORT int32_t QueryCloudMediaBatchDownloadResourcesSize(
+        NativeRdb::RdbPredicates &predicates, int64_t &size, int64_t &count);
 };
 } // namespace Media
 } // namespace OHOS

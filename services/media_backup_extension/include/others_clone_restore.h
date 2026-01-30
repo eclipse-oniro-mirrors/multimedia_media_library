@@ -44,7 +44,7 @@ public:
     OthersCloneRestore(int32_t sceneCode, const std::string &mediaAppName, const std::string &bundleInfo = "");
     virtual ~OthersCloneRestore() = default;
 
-    int32_t Init(const std::string &backupRetorePath, const std::string &upgradePath, bool isUpgrade);
+    int32_t Init(const std::string &backupRestorePath, const std::string &upgradePath, bool isUpgrade);
     NativeRdb::ValuesBucket GetInsertValue(const FileInfo &fileInfo, const std::string &newPath,
         int32_t sourceType);
 

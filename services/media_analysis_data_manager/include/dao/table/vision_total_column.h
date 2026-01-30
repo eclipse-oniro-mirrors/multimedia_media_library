@@ -44,6 +44,9 @@ const std::string AFFECTIVE = "affective";
 const std::string PET_STATUS = "pet";
 const std::string PET_TAG = "pet_tag";
 const std::string PET_FACE = "pet_face";
+const std::string SIMILARITY = "similarity";
+const std::string DUPLICATE = "duplicate";
+const std::string TOTAL_SCORE_STATUS = "total_score";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_TOTAL_COLUMN_H

@@ -333,12 +333,12 @@ int32_t Acl::EnableAcl(const std::string& path, const char* aclAttrName, const u
 
 int32_t Acl::AclSetDatabase()
 {
-    if (EnableAcl(MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
+    if (EnableAcl(CONST_MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
         ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP) != E_OK) {
         MEDIA_ERR_LOG("Failed to set the acl permission for the DB dir");
         return E_ERR;
     }
-    if (RecursiveEnableAcl(MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
+    if (RecursiveEnableAcl(CONST_MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
         ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP) != E_OK) {
         MEDIA_ERR_LOG("Failed to set the acl permission for the DB sub dir");
         return E_ERR;
@@ -362,7 +362,7 @@ bool IsDirExist(const std::string &path)
 
 int32_t Acl::AclSetSlaveDatabase()
 {
-    if (!IsDirExist(MEDIA_DB_DIR)) {
+    if (!IsDirExist(CONST_MEDIA_DB_DIR)) {
         MEDIA_ERR_LOG("Media database directory is not exist");
         return E_ERR;
     }
@@ -377,11 +377,11 @@ int32_t Acl::AclSetSlaveDatabase()
         return E_ERR;
     }
 
-    if (!IsDirExist(MEDIA_DB_BINLOG_DIR)) {
+    if (!IsDirExist(CONST_MEDIA_DB_BINLOG_DIR)) {
         MEDIA_ERR_LOG("binlog not exist");
         return E_OK;
     }
-    if (EnableAcl(MEDIA_DB_BINLOG_DIR, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
+    if (EnableAcl(CONST_MEDIA_DB_BINLOG_DIR, ACL_XATTR_DEFAULT, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
         ACL_PERM::Value::EXECUTE, DDMS_ACL_GROUP) != E_OK) {
         MEDIA_ERR_LOG("Failed to set the acl default permission for the binlog dir");
         return E_ERR;

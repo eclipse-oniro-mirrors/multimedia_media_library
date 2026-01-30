@@ -75,7 +75,7 @@ void CleanTestTables()
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
         AudioColumn::AUDIOS_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
         ASSET_UNIQUE_NUMBER_TABLE
     };
     for (auto &dropTable : dropTableList) {
@@ -112,9 +112,9 @@ void PrepareUniqueNumberTable()
         return;
     }
 
-    UniqueMemberValuesBucket imageBucket = { IMAGE_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket videoBucket = { VIDEO_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket audioBucket = { AUDIO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket imageBucket = { CONST_IMAGE_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket videoBucket = { CONST_VIDEO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket audioBucket = { CONST_AUDIO_ASSET_TYPE, 1 };
 
     vector<UniqueMemberValuesBucket> uniqueNumberValueBuckets = {
         imageBucket, videoBucket, audioBucket
@@ -801,11 +801,11 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, file_utils_save_file_001, Test
 HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, file_utils_save_file_002, TestSize.Level1)
 {
     MEDIA_INFO_LOG("file_utils_save_file_002 Start");
-    const string testFileName = "/data/test/test.jpg";
+    int32_t fileId = -1;
     std::shared_ptr<Media::Picture> picture;
     bool isEdited = false;
     bool isLowQualityPicture = false;
-    auto result = FileUtils::SavePicture(testFileName,
+    auto result = FileUtils::SavePicture(fileId,
         picture, isEdited, isLowQualityPicture);
 
     EXPECT_EQ(result, -1);

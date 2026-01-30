@@ -404,6 +404,7 @@ struct FileInfo {
     std::string localThumbPath;
     std::string localBigThumbPath;
     std::string resolution;
+    std::string originalPackageName;
 
     int32_t thumbType {-1};
     int32_t fileIdOld {-1};

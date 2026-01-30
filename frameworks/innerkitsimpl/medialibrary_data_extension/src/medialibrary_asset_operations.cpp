@@ -931,7 +931,7 @@ static void HandleCallingPackage(MediaLibraryCommand &cmd, const FileAsset &file
 
         int32_t callingUid = 0;
         ValueObject value;
-        if (cmd.GetValueBucket().GetObject(MEDIA_DATA_CALLING_UID, value)) {
+        if (cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_CALLING_UID, value)) {
             value.GetInt(callingUid);
         }
         outValues.PutString(MediaColumn::MEDIA_OWNER_APPID,
@@ -942,7 +942,7 @@ static void HandleCallingPackage(MediaLibraryCommand &cmd, const FileAsset &file
 
     string bundleName;
     ValueObject valueBundleName;
-    if (cmd.GetValueBucket().GetObject(MEDIA_DATA_DB_OWNER_PACKAGE, valueBundleName)) {
+    if (cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_DB_OWNER_PACKAGE, valueBundleName)) {
         valueBundleName.GetString(bundleName);
     }
     if (bundleName.empty()) {
@@ -952,7 +952,7 @@ static void HandleCallingPackage(MediaLibraryCommand &cmd, const FileAsset &file
 
     string appId;
     ValueObject valueAppId;
-    if (cmd.GetValueBucket().GetObject(MEDIA_DATA_DB_OWNER_APPID, valueAppId)) {
+    if (cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_DB_OWNER_APPID, valueAppId)) {
         valueAppId.GetString(appId);
     }
     if (appId.empty()) {
@@ -961,7 +961,7 @@ static void HandleCallingPackage(MediaLibraryCommand &cmd, const FileAsset &file
     outValues.PutString(MediaColumn::MEDIA_OWNER_APPID, appId);
     string packageName;
     ValueObject valuePackageName;
-    if (cmd.GetValueBucket().GetObject(MEDIA_DATA_DB_PACKAGE_NAME, valuePackageName)) {
+    if (cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_DB_PACKAGE_NAME, valuePackageName)) {
         valuePackageName.GetString(packageName);
     }
     if (packageName.empty() && !cmd.GetBundleName().empty()) {
@@ -1192,7 +1192,7 @@ int32_t MediaLibraryAssetOperations::InsertAssetInDb(std::shared_ptr<Transaction
     }
     int32_t callingUid = 0;
     ValueObject value;
-    if (cmd.GetValueBucket().GetObject(MEDIA_DATA_CALLING_UID, value)) {
+    if (cmd.GetValueBucket().GetObject(CONST_MEDIA_DATA_CALLING_UID, value)) {
         value.GetInt(callingUid);
     }
     FillAssetInfo(cmd, fileAsset);
@@ -1213,7 +1213,7 @@ int32_t MediaLibraryAssetOperations::InsertAssetInDb(std::shared_ptr<Transaction
     auto fileId = outRowId;
     ValuesBucket valuesBucket = GetOwnerPermissionBucket(cmd, fileId, callingUid);
     int64_t tmpOutRowId = -1;
-    MediaLibraryCommand cmdPermission(Uri(MEDIALIBRARY_GRANT_URIPERM_URI), valuesBucket);
+    MediaLibraryCommand cmdPermission(Uri(CONST_MEDIALIBRARY_GRANT_URIPERM_URI), valuesBucket);
     auto errCode = trans->Insert(cmdPermission, tmpOutRowId);
     if (errCode != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Insert into db failed, errCode = %{public}d", errCode);
@@ -2288,7 +2288,7 @@ std::string MediaLibraryAssetOperations::CreateExtUriForV10Asset(FileAsset &file
     }
 
     string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath);
-    return MediaFileUtils::GetUriByExtrConditions(ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(mediaType,
+    return MediaFileUtils::GetUriByExtrConditions(CONST_ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(mediaType,
         MEDIA_API_VERSION_V10) + "/", to_string(fileAsset.GetId()), extrUri);
 }
 
@@ -2310,13 +2310,13 @@ int32_t MediaLibraryAssetOperations::CreateAssetUniqueId(int32_t type,
     string typeString;
     switch (type) {
         case MediaType::MEDIA_TYPE_IMAGE:
-            typeString += IMAGE_ASSET_TYPE;
+            typeString += CONST_IMAGE_ASSET_TYPE;
             break;
         case MediaType::MEDIA_TYPE_VIDEO:
-            typeString += VIDEO_ASSET_TYPE;
+            typeString += CONST_VIDEO_ASSET_TYPE;
             break;
         case MediaType::MEDIA_TYPE_AUDIO:
-            typeString += AUDIO_ASSET_TYPE;
+            typeString += CONST_AUDIO_ASSET_TYPE;
             break;
         default:
             MEDIA_ERR_LOG("This type %{public}d can not get unique id", type);
@@ -2359,13 +2359,13 @@ int32_t MediaLibraryAssetOperations::CreateAssetUniqueIds(int32_t type, int32_t 
     string typeString;
     switch (type) {
         case MediaType::MEDIA_TYPE_IMAGE:
-            typeString = IMAGE_ASSET_TYPE;
+            typeString = CONST_IMAGE_ASSET_TYPE;
             break;
         case MediaType::MEDIA_TYPE_VIDEO:
-            typeString = VIDEO_ASSET_TYPE;
+            typeString = CONST_VIDEO_ASSET_TYPE;
             break;
         case MediaType::MEDIA_TYPE_AUDIO:
-            typeString = AUDIO_ASSET_TYPE;
+            typeString = CONST_AUDIO_ASSET_TYPE;
             break;
         default:
             MEDIA_ERR_LOG("This type %{public}d can not get unique id", type);
@@ -2866,10 +2866,10 @@ int32_t QueryFileInfoAndHandleRemovePhotos(const AbsRdbPredicates &predicates, D
         columns.push_back(PhotoColumn::PHOTO_SUBTYPE);
         columns.push_back(MediaColumn::MEDIA_NAME);
         columns.push_back(PhotoColumn::PHOTO_OWNER_ALBUM_ID);
-        columns.push_back(MEDIA_DATA_DB_PHOTO_ID);
-        columns.push_back(MEDIA_DATA_DB_PHOTO_QUALITY);
-        columns.push_back(MEDIA_DATA_DB_MEDIA_TYPE);
-        columns.push_back(MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS);
+        columns.push_back(CONST_MEDIA_DATA_DB_PHOTO_ID);
+        columns.push_back(CONST_MEDIA_DATA_DB_PHOTO_QUALITY);
+        columns.push_back(CONST_MEDIA_DATA_DB_MEDIA_TYPE);
+        columns.push_back(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS);
         columns.push_back(MediaColumn::MEDIA_HIDDEN);
         columns.push_back(PhotoColumn::PHOTO_BURST_COVER_LEVEL);
         columns.push_back(PhotoColumn::PHOTO_BURST_KEY);

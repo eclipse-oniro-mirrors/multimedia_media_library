@@ -548,7 +548,7 @@ bool MediaAssetManagerImpl::NativeCancelRequest(const std::string &requestId)
     bool hasFastRequestInProcess = IsFastRequestCanceled(requestId, photoId);
     bool hasMapRecordInProcess = IsMapRecordCanceled(requestId, photoId);
     if (hasFastRequestInProcess || hasMapRecordInProcess) {
-        std::string uriStr = PAH_CANCEL_PROCESS_IMAGE;
+        std::string uriStr = CONST_PAH_CANCEL_PROCESS_IMAGE;
         UriAppendKeyValue(uriStr, API_VERSION_STR, to_string(MEDIA_API_VERSION_V10));
         Uri updateAssetUri(uriStr);
         DataShare::DataSharePredicates predicates;
@@ -655,7 +655,7 @@ MediaLibrary_ErrorCode MediaAssetManagerImpl::NativeRequestMovingPhoto(OH_MediaA
     bool isSuccess = false;
     asyncContext->requestId = GenerateRequestId();
     isSuccess = OnHandleRequestImage(asyncContext);
-    string uri = LOG_MOVING_PHOTO;
+    string uri = CONST_LOG_MOVING_PHOTO;
     Uri logMovingPhotoUri(uri);
     DataShare::DataShareValuesBucket valuesBucket;
     string result;
@@ -678,8 +678,8 @@ OH_ImageSourceNative* MediaAssetManagerImpl::CreateImageSource(const std::string
         requestId.c_str(), requestUri.c_str());
 
     std::string tmpUri = requestUri;
-    MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
-    MediaFileUtils::UriAppendKeyValue(tmpUri, PHOTO_TRANSCODE_OPERATION, OPRN_TRANSCODE_HEIF);
+    MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_PHOTO_TRANSCODE_OPERATION, CONST_OPRN_TRANSCODE_HEIF);
     Uri uri(tmpUri);
     int fd = UserFileClient::OpenFile(uri, "r");
     CHECK_AND_RETURN_RET_LOG(fd >= 0, nullptr, "get image fd failed");
@@ -815,7 +815,7 @@ void MediaAssetManagerImpl::RegisterTaskObserver(const unique_ptr<RequestSourceA
 void MediaAssetManagerImpl::ProcessImage(const int fileId, const int deliveryMode)
 {
     CHECK_AND_RETURN_LOG(sDataShareHelper_ != nullptr, "Get sDataShareHelper_ failed");
-    std::string uriStr = PAH_PROCESS_IMAGE;
+    std::string uriStr = CONST_PAH_PROCESS_IMAGE;
     MediaFileUtils::UriAppendKeyValue(uriStr, API_VERSION_STR, std::to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;
@@ -880,7 +880,7 @@ int32_t MediaAssetManagerImpl::WriteFileToPath(const std::string &srcUri, const 
     }
     std::string tmpSrcUri = srcUri;
     if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpSrcUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpSrcUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     int srcFd = MediaAssetManagerImpl::mediaLibraryManager_->OpenAsset(tmpSrcUri, MEDIA_FILEMODE_READONLY);
     if (srcFd < 0) {

@@ -81,8 +81,9 @@ static shared_ptr<NativeRdb::ResultSet> QueryAgeingTrashFiles()
     resultSet.reset();
 
     int64_t dateAgeing = MediaFileUtils::UTCTimeMilliSeconds();
-    string strAgeingQueryCondition = MEDIA_DATA_DB_DATE_TRASHED + "> 0" + " AND " + to_string(dateAgeing) + " - " +
-        MEDIA_DATA_DB_DATE_TRASHED + " > " + to_string(recycleDays * ONEDAY_TO_SEC * MSEC_TO_SEC);
+    string strAgeingQueryCondition = string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + "> 0" + " AND " +
+        to_string(dateAgeing) + " - " +
+        CONST_MEDIA_DATA_DB_DATE_TRASHED + " > " + to_string(recycleDays * ONEDAY_TO_SEC * MSEC_TO_SEC);
     MEDIA_INFO_LOG("StrAgeingQueryCondition = %{private}s", strAgeingQueryCondition.c_str());
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
@@ -168,7 +169,7 @@ static int32_t MakeRecycleDisplayName(const int32_t assetId, const string &trash
         MEDIA_INFO_LOG("Asset outRecyclePath = %{private}s", outRecyclePath.c_str());
     }
     int32_t suffixTime = 0;
-    while (MediaLibraryObjectUtils::IsColumnValueExist(outRecyclePath, MEDIA_DATA_DB_RECYCLE_PATH)) {
+    while (MediaLibraryObjectUtils::IsColumnValueExist(outRecyclePath, CONST_MEDIA_DATA_DB_RECYCLE_PATH)) {
         if (suffixTime > HASH_COLLISION_MAX_TRY) {
             MEDIA_ERR_LOG("Reach max hash collision times");
             errorCode = E_MAKE_HASHNAME_FAIL;
@@ -192,8 +193,8 @@ static int32_t MakeRecycleDisplayName(const int32_t assetId, const string &trash
 static int32_t UpdateChildRecycleInfoInDb(const int32_t assetId)
 {
     ValuesBucket values;
-    values.PutLong(MEDIA_DATA_DB_DATE_TRASHED, 0);
-    values.PutInt(MEDIA_DATA_DB_IS_TRASH, 0);
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_TRASHED, 0);
+    values.PutInt(CONST_MEDIA_DATA_DB_IS_TRASH, 0);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
     return MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd, to_string(assetId));
 }
@@ -204,18 +205,18 @@ static int32_t RecycleChildAssetsInfoUtil(const int32_t parentId)
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "UniStore is nullptr");
 
     MediaLibraryCommand queryCmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
-    queryCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_PARENT_ID, to_string(parentId))->And()->
-        EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(TRASHED_DIR_CHILD));
-    auto resultSet = uniStore->Query(queryCmd, { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_MEDIA_TYPE });
+    queryCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_PARENT_ID, to_string(parentId))->And()->
+        EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(TRASHED_DIR_CHILD));
+    auto resultSet = uniStore->Query(queryCmd, { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE });
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "QueryResultSet is nullptr");
 
     int32_t errCode = E_SUCCESS;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t fileId = GetInt32Val(MEDIA_DATA_DB_ID, resultSet);
+        int32_t fileId = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
         errCode = UpdateChildRecycleInfoInDb(fileId);
         CHECK_AND_RETURN_RET_LOG(errCode > 0, errCode, "Failed to UpdateChildRecycleInfoInDb");
 
-        if (GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, resultSet) == MEDIA_TYPE_ALBUM) {
+        if (GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, resultSet) == MEDIA_TYPE_ALBUM) {
             errCode = RecycleChildAssetsInfoUtil(fileId);
             CHECK_AND_RETURN_RET_LOG(errCode >= 0, errCode, "Failed to RecycleChildAssetsInfoUtil");
         }
@@ -243,9 +244,9 @@ static int32_t RecycleChildSameNameInfoUtil(const int32_t parentId, const string
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_HAS_DB_ERROR, "UniStore is nullptr");
 
     MediaLibraryCommand queryCmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
-    queryCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_PARENT_ID, to_string(parentId));
-    vector<string> columns = { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_IS_TRASH, MEDIA_DATA_DB_RECYCLE_PATH, MEDIA_DATA_DB_RELATIVE_PATH };
+    queryCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_PARENT_ID, to_string(parentId));
+    vector<string> columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_IS_TRASH, CONST_MEDIA_DATA_DB_RECYCLE_PATH, CONST_MEDIA_DATA_DB_RELATIVE_PATH };
     auto result = uniStore->Query(queryCmd, columns);
     CHECK_AND_RETURN_RET_LOG(result != nullptr, E_HAS_DB_ERROR, "Failed to obtain value from database");
 
@@ -254,31 +255,31 @@ static int32_t RecycleChildSameNameInfoUtil(const int32_t parentId, const string
     for (int32_t i = 0; i < count; i++) {
         CHECK_AND_RETURN_RET(result->GoToNextRow() == NativeRdb::E_OK, E_HAS_DB_ERROR);
         ValuesBucket values;
-        string relativePath = GetStringVal(MEDIA_DATA_DB_RELATIVE_PATH, result);
-        values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, GetNewPath(relativePath, srcRelPath, newRelPath));
+        string relativePath = GetStringVal(CONST_MEDIA_DATA_DB_RELATIVE_PATH, result);
+        values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, GetNewPath(relativePath, srcRelPath, newRelPath));
 
-        int32_t mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result);
+        int32_t mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result);
         if (isFirstLevel && (mediaType != MEDIA_TYPE_ALBUM)) {
             string newParentName = newRelPath;
             // delete the final '/' in relative_path
             newParentName.pop_back();
             newParentName = MediaLibraryDataManagerUtils::GetDisPlayNameFromPath(newParentName);
-            values.PutString(MEDIA_DATA_DB_BUCKET_NAME, newParentName);
+            values.PutString(CONST_MEDIA_DATA_DB_BUCKET_NAME, newParentName);
         }
 
         // Update recycle_path for TRASHED_ASSET and TRASHED_DIR, update data for TRASHED_DIR_CHILD.
-        int32_t isTrash = GetInt32Val(MEDIA_DATA_DB_IS_TRASH, result);
+        int32_t isTrash = GetInt32Val(CONST_MEDIA_DATA_DB_IS_TRASH, result);
         if (isTrash == TRASHED_DIR_CHILD) {
-            string path = GetStringVal(MEDIA_DATA_DB_FILE_PATH, result);
-            values.PutString(MEDIA_DATA_DB_FILE_PATH, GetNewPath(path, srcRelPath, newRelPath));
+            string path = GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, result);
+            values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, GetNewPath(path, srcRelPath, newRelPath));
         } else {
-            string recyclePath = GetStringVal(MEDIA_DATA_DB_RECYCLE_PATH, result);
-            values.PutString(MEDIA_DATA_DB_RECYCLE_PATH, GetNewPath(recyclePath, srcRelPath, newRelPath));
+            string recyclePath = GetStringVal(CONST_MEDIA_DATA_DB_RECYCLE_PATH, result);
+            values.PutString(CONST_MEDIA_DATA_DB_RECYCLE_PATH, GetNewPath(recyclePath, srcRelPath, newRelPath));
         }
 
-        int32_t fileId = GetInt32Val(MEDIA_DATA_DB_ID, result);
+        int32_t fileId = GetInt32Val(CONST_MEDIA_DATA_DB_ID, result);
         MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
-        updateCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(fileId));
+        updateCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileId));
         int32_t changedRows = -1;
         auto ret = uniStore->Update(updateCmd, changedRows);
         if ((ret != NativeRdb::E_OK) || (changedRows <= 0)) {
@@ -303,7 +304,7 @@ static int32_t RecycleDir(const shared_ptr<FileAsset> &fileAsset)
     int32_t parentId = MediaLibraryObjectUtils::CreateDirWithPath(ROOT_MEDIA_DIR +
         MediaFileUtils::AddDocsToRelativePath(fileAsset->GetRelativePath()));
     if (parentId != fileAsset->GetParent()) {
-        values.PutInt(MEDIA_DATA_DB_PARENT_ID, parentId);
+        values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, parentId);
     }
 
     bool hasSameName = false;
@@ -324,9 +325,9 @@ static int32_t RecycleDir(const shared_ptr<FileAsset> &fileAsset)
         fileAsset->SetRecyclePath(assetPath);
         // update dir info
         string newName = MediaLibraryDataManagerUtils::GetDisPlayNameFromPath(assetPath);
-        values.PutString(MEDIA_DATA_DB_NAME, newName);
-        values.PutString(MEDIA_DATA_DB_TITLE, newName);
-        values.PutString(MEDIA_DATA_DB_RECYCLE_PATH, assetPath);
+        values.PutString(CONST_MEDIA_DATA_DB_NAME, newName);
+        values.PutString(CONST_MEDIA_DATA_DB_TITLE, newName);
+        values.PutString(CONST_MEDIA_DATA_DB_RECYCLE_PATH, assetPath);
 
         // update child info
         string srcRelPath = fileAsset->GetRelativePath() + fileAsset->GetDisplayName() + "/";
@@ -336,7 +337,7 @@ static int32_t RecycleDir(const shared_ptr<FileAsset> &fileAsset)
 
     if (!values.IsEmpty()) {
         MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
-        updateCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+        updateCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
         int32_t changedRows = -1;
         return uniStore->Update(updateCmd, changedRows);
     }
@@ -347,10 +348,10 @@ static int32_t RecycleDir(const shared_ptr<FileAsset> &fileAsset)
 static int32_t UpdateRecycleInfoInDb(const int32_t assetId, const string &realPath)
 {
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_FILE_PATH, realPath);
-    values.PutString(MEDIA_DATA_DB_RECYCLE_PATH, "");
-    values.PutLong(MEDIA_DATA_DB_DATE_TRASHED, 0);
-    values.PutInt(MEDIA_DATA_DB_IS_TRASH, 0);
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, realPath);
+    values.PutString(CONST_MEDIA_DATA_DB_RECYCLE_PATH, "");
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_TRASHED, 0);
+    values.PutInt(CONST_MEDIA_DATA_DB_IS_TRASH, 0);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
     return MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd, to_string(assetId));
 }
@@ -381,8 +382,8 @@ static int32_t RecycleFile(const shared_ptr<FileAsset> &fileAsset)
     int32_t parentId = MediaLibraryObjectUtils::CreateDirWithPath(ROOT_MEDIA_DIR +
         MediaFileUtils::AddDocsToRelativePath(fileAsset->GetRelativePath()));
     if (parentId != fileAsset->GetParent()) {
-        values.PutInt(MEDIA_DATA_DB_PARENT_ID, parentId);
-        values.PutInt(MEDIA_DATA_DB_BUCKET_ID, parentId);
+        values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, parentId);
+        values.PutInt(CONST_MEDIA_DATA_DB_BUCKET_ID, parentId);
     }
 
     bool hasSameName = false;
@@ -403,17 +404,17 @@ static int32_t RecycleFile(const shared_ptr<FileAsset> &fileAsset)
     if (hasSameName) {
         fileAsset->SetRecyclePath(assetPath);
         string newName = MediaLibraryDataManagerUtils::GetDisPlayNameFromPath(assetPath);
-        values.PutString(MEDIA_DATA_DB_NAME, newName);
-        values.PutString(MEDIA_DATA_DB_RECYCLE_PATH, assetPath);
+        values.PutString(CONST_MEDIA_DATA_DB_NAME, newName);
+        values.PutString(CONST_MEDIA_DATA_DB_RECYCLE_PATH, assetPath);
         MediaType mediaType = fileAsset->GetMediaType();
         if ((mediaType != MEDIA_TYPE_VIDEO) && (mediaType != MEDIA_TYPE_AUDIO)) {
-            values.PutString(MEDIA_DATA_DB_TITLE, newName);
+            values.PutString(CONST_MEDIA_DATA_DB_TITLE, newName);
         }
     }
 
     if (!values.IsEmpty()) {
         MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
-        updateCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+        updateCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
         int32_t changedRows = -1;
         return uniStore->Update(updateCmd, changedRows);
     }
@@ -454,7 +455,7 @@ static int32_t RemoveTrashAssetsInfoUtil(const int32_t fileAssetId)
 static int32_t UpdateFavoriteAssetsInfoUtil(const int32_t fileAssetId, const bool isFavorites)
 {
     ValuesBucket values;
-    values.PutInt(MEDIA_DATA_DB_IS_FAV, isFavorites ? 1 : 0);
+    values.PutInt(CONST_MEDIA_DATA_DB_IS_FAV, isFavorites ? 1 : 0);
     MEDIA_INFO_LOG("Update asset %{public}d favorite to %{public}d", fileAssetId, isFavorites ? 1 : 0);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
     return MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd, to_string(fileAssetId));
@@ -479,8 +480,8 @@ int32_t MediaLibrarySmartAlbumMapOperations::HandleRemoveAssetOperation(const in
 static int32_t UpdateChildTrashInfoInDb(const int32_t assetId, const int64_t trashDate)
 {
     ValuesBucket values;
-    values.PutLong(MEDIA_DATA_DB_DATE_TRASHED, trashDate);
-    values.PutInt(MEDIA_DATA_DB_IS_TRASH, TRASHED_DIR_CHILD);
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_TRASHED, trashDate);
+    values.PutInt(CONST_MEDIA_DATA_DB_IS_TRASH, TRASHED_DIR_CHILD);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
     return MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd, to_string(assetId));
 }
@@ -492,10 +493,10 @@ static int32_t TrashChildAssetsInfoUtil(const int32_t parentId, const int64_t &t
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
     string parentPath = MediaLibraryObjectUtils::GetPathByIdFromDb(to_string(parentId));
-    cmd.GetAbsRdbPredicates()->Like(MEDIA_DATA_DB_FILE_PATH, parentPath + "/%")->And()->
-        EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+    cmd.GetAbsRdbPredicates()->Like(CONST_MEDIA_DATA_DB_FILE_PATH, parentPath + "/%")->And()->
+        EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
 
-    auto result = uniStore->Query(cmd, { MEDIA_DATA_DB_ID });
+    auto result = uniStore->Query(cmd, { CONST_MEDIA_DATA_DB_ID });
     CHECK_AND_RETURN_RET_LOG(result != nullptr, E_HAS_DB_ERROR, "QueryResultSet is nullptr");
 
     auto count = 0;
@@ -507,7 +508,7 @@ static int32_t TrashChildAssetsInfoUtil(const int32_t parentId, const int64_t &t
     }
 
     while (result->GoToNextRow() == NativeRdb::E_OK) {
-        auto ret = UpdateChildTrashInfoInDb(GetInt32Val(MEDIA_DATA_DB_ID, result), trashDate);
+        auto ret = UpdateChildTrashInfoInDb(GetInt32Val(CONST_MEDIA_DATA_DB_ID, result), trashDate);
         CHECK_AND_RETURN_RET_LOG(ret >= 0, ret, "Failed to updateChildTrashInfoInDb");
     }
     return E_SUCCESS;
@@ -517,10 +518,10 @@ static int32_t UpdateTrashInfoInDb(const int32_t assetId, const int64_t trashDat
     const string &oldPath, const uint32_t trashType)
 {
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_FILE_PATH, recyclePath);
-    values.PutString(MEDIA_DATA_DB_RECYCLE_PATH, oldPath);
-    values.PutLong(MEDIA_DATA_DB_DATE_TRASHED, trashDate);
-    values.PutInt(MEDIA_DATA_DB_IS_TRASH, trashType);
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, recyclePath);
+    values.PutString(CONST_MEDIA_DATA_DB_RECYCLE_PATH, oldPath);
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_TRASHED, trashDate);
+    values.PutInt(CONST_MEDIA_DATA_DB_IS_TRASH, trashType);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::UPDATE, values);
     return MediaLibraryObjectUtils::ModifyInfoByIdInDb(cmd, to_string(assetId));
 }

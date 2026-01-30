@@ -44,7 +44,7 @@ void BackupDatabaseHelper::InitDb(int32_t dbType, const std::string &prefix)
         "Db not exist, type: %{public}d, path: %{public}s", dbType,
         BackupFileUtils::GarbleFilePath(dbFullPath, DEFAULT_RESTORE_ID).c_str());
 
-    int32_t errCode = BackupDatabaseUtils::InitDb(dbInfo.rdbStore, dbInfo.name, dbFullPath, BUNDLE_NAME, false);
+    int32_t errCode = BackupDatabaseUtils::InitDb(dbInfo.rdbStore, dbInfo.name, dbFullPath, CONST_BUNDLE_NAME, false);
     CHECK_AND_RETURN_LOG(dbInfo.rdbStore != nullptr,
         "Init db failed, type: %{public}d, errCode: %{public}d", dbType, errCode);
     dbInfoMap_[dbType] = dbInfo;

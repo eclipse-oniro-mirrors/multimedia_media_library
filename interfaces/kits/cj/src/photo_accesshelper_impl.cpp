@@ -280,12 +280,12 @@ shared_ptr<FetchResult<FileAsset>> PhotoAccessHelperImpl::GetAssets(COptions opt
         return nullptr;
     }
     string queryUri;
-    if (extraInfo.uri == URI_FIND_ALL_DUPLICATE_ASSETS) {
-        queryUri = PAH_FIND_ALL_DUPLICATE_ASSETS;
-    } else if (extraInfo.uri == URI_FIND_ALL_DUPLICATE_ASSETS_TO_DELETE) {
-        queryUri = PAH_FIND_DUPLICATE_ASSETS_TO_DELETE;
+    if (extraInfo.uri == CONST_URI_FIND_ALL_DUPLICATE_ASSETS) {
+        queryUri = CONST_PAH_FIND_ALL_DUPLICATE_ASSETS;
+    } else if (extraInfo.uri == CONST_URI_FIND_ALL_DUPLICATE_ASSETS_TO_DELETE) {
+        queryUri = CONST_PAH_FIND_DUPLICATE_ASSETS_TO_DELETE;
     } else {
-        queryUri = PAH_QUERY_PHOTO;
+        queryUri = CONST_PAH_QUERY_PHOTO;
     }
     MediaLibraryNapiUtils::UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(queryUri);
@@ -345,13 +345,13 @@ shared_ptr<FetchResult<FileAsset>> PhotoAccessHelperImpl::GetBurstAssets(char* c
         LOGE("ParseArgsGetBurstAssets failed.");
         return nullptr;
     }
-    string queryUri = PAH_QUERY_PHOTO;
-    if (extraInfo.uri == URI_FIND_ALL_DUPLICATE_ASSETS) {
-        queryUri = PAH_FIND_ALL_DUPLICATE_ASSETS;
-    } else if (extraInfo.uri == URI_FIND_ALL_DUPLICATE_ASSETS_TO_DELETE) {
-        queryUri = PAH_FIND_DUPLICATE_ASSETS_TO_DELETE;
+    string queryUri = CONST_PAH_QUERY_PHOTO;
+    if (extraInfo.uri == CONST_URI_FIND_ALL_DUPLICATE_ASSETS) {
+        queryUri = CONST_PAH_FIND_ALL_DUPLICATE_ASSETS;
+    } else if (extraInfo.uri == CONST_URI_FIND_ALL_DUPLICATE_ASSETS_TO_DELETE) {
+        queryUri = CONST_PAH_FIND_DUPLICATE_ASSETS_TO_DELETE;
     } else {
-        queryUri = PAH_QUERY_PHOTO;
+        queryUri = CONST_PAH_QUERY_PHOTO;
     }
     MediaLibraryNapiUtils::UriAppendKeyValue(queryUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(queryUri);
@@ -423,7 +423,7 @@ static bool AddDefaultPhotoAlbumColumns(vector<string> &fetchColumn, int32_t &er
     for (const auto &column : fetchColumn) {
         if (PhotoAlbumColumns::IsPhotoAlbumColumn(column)) {
             validFetchColumns.insert(column);
-        } else if (column.compare(MEDIA_DATA_DB_URI) == 0) {
+        } else if (column.compare(CONST_MEDIA_DATA_DB_URI) == 0) {
             // uri is default property of album
             continue;
         } else {
@@ -494,12 +494,12 @@ shared_ptr<FetchResult<PhotoAlbum>> PhotoAccessHelperImpl::GetAlbums(int32_t typ
     }
     string queryUri;
     if (hiddenOnly || hiddenAlbumFetchMode == ASSETS_MODE) {
-        queryUri = PAH_QUERY_HIDDEN_ALBUM;
+        queryUri = CONST_PAH_QUERY_HIDDEN_ALBUM;
     } else if (isAnalysisAlbum) {
         queryUri = isLocationAlbum == PhotoAlbumSubType::GEOGRAPHY_LOCATION ?
-            PAH_QUERY_GEO_PHOTOS : PAH_QUERY_ANA_PHOTO_ALBUM;
+            CONST_PAH_QUERY_GEO_PHOTOS : CONST_PAH_QUERY_ANA_PHOTO_ALBUM;
     } else {
-        queryUri = PAH_QUERY_PHOTO_ALBUM;
+        queryUri = CONST_PAH_QUERY_PHOTO_ALBUM;
     }
     Uri uri(queryUri);
     auto resultSet = UserFileClient::Query(uri, predicates, fetchColumn, errCode);
@@ -603,33 +603,33 @@ void PhotoAccessHelperImpl::UnRegisterChange(const string &type, ChangeListener 
     switch (typeEnum) {
         case CJ_AUDIO_LISTENER:
             mediaType = MEDIA_TYPE_AUDIO;
-            UserFileClient::UnregisterObserver(Uri(MEDIALIBRARY_AUDIO_URI), listObj.audioDataObserver_);
+            UserFileClient::UnregisterObserver(Uri(CONST_MEDIALIBRARY_AUDIO_URI), listObj.audioDataObserver_);
             listObj.audioDataObserver_ = nullptr;
             break;
         case CJ_VIDEO_LISTENER:
             mediaType = MEDIA_TYPE_VIDEO;
-            UserFileClient::UnregisterObserver(Uri(MEDIALIBRARY_VIDEO_URI), listObj.videoDataObserver_);
+            UserFileClient::UnregisterObserver(Uri(CONST_MEDIALIBRARY_VIDEO_URI), listObj.videoDataObserver_);
             listObj.videoDataObserver_ = nullptr;
             break;
         case CJ_IMAGE_LISTENER:
             mediaType = MEDIA_TYPE_IMAGE;
-            UserFileClient::UnregisterObserver(Uri(MEDIALIBRARY_IMAGE_URI), listObj.imageDataObserver_);
+            UserFileClient::UnregisterObserver(Uri(CONST_MEDIALIBRARY_IMAGE_URI), listObj.imageDataObserver_);
             listObj.imageDataObserver_ = nullptr;
             break;
         case CJ_FILE_LISTENER:
             mediaType = MEDIA_TYPE_FILE;
-            UserFileClient::UnregisterObserver(Uri(MEDIALIBRARY_FILE_URI), listObj.fileDataObserver_);
+            UserFileClient::UnregisterObserver(Uri(CONST_MEDIALIBRARY_FILE_URI), listObj.fileDataObserver_);
             listObj.fileDataObserver_ = nullptr;
             break;
         case CJ_SMARTCJ_ALBUM_LISTENER:
             mediaType = MEDIA_TYPE_SMARTALBUM;
-            UserFileClient::UnregisterObserver(Uri(MEDIALIBRARY_SMARTALBUM_CHANGE_URI),
+            UserFileClient::UnregisterObserver(Uri(CONST_MEDIALIBRARY_SMARTALBUM_CHANGE_URI),
                 listObj.smartAlbumDataObserver_);
             listObj.smartAlbumDataObserver_ = nullptr;
             break;
         case CJ_ALBUM_LISTENER:
             mediaType = MEDIA_TYPE_ALBUM;
-            UserFileClient::UnregisterObserver(Uri(MEDIALIBRARY_ALBUM_URI), listObj.albumDataObserver_);
+            UserFileClient::UnregisterObserver(Uri(CONST_MEDIALIBRARY_ALBUM_URI), listObj.albumDataObserver_);
             listObj.albumDataObserver_ = nullptr;
             break;
         default:

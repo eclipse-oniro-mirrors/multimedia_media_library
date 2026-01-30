@@ -82,15 +82,18 @@ private:
     EXPORT static napi_value JSRetainCloudMediaAsset(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetCloudMediaAssetStatus(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSStartBatchDownloadCloudResources(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSSetNetWorkPolicyForBatchDownload(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSResumeBatchDownloadCloudResources(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSPauseDownloadCloudResources(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSCancelDownloadCloudResources(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetBatchDownloadCloudResourcesStatus(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetBatchDownloadSpecificTaskCount(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetBatchDownloadSpecificTaskCountAndSize(napi_env env, napi_callback_info info);
     EXPORT static napi_value JsBatchDownloadRegisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value JsBatchDownloadUnRegisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value CreateDownloadCloudAssetCodeEnum(napi_env env);
     EXPORT static napi_value CreateDownloadAssetsNotifyTypeEnum(napi_env env);
+    EXPORT static napi_value CreateDownloadAssetsNetworkPolicyTypeEnum(napi_env env);
 
     static int32_t RegisterObserverExecute(napi_env env, napi_ref ref, AssetManagerChangeListenerNapi &listObj,
         const Notification::NotifyUriType uriType);
@@ -106,6 +109,7 @@ private:
     static thread_local napi_ref constructor_;
     static thread_local napi_ref sdownloadCloudAssetCodeeEnumRef_;
     static thread_local napi_ref sdownloadAssetsNotifyTypeEnumRef_;
+    static thread_local napi_ref sdownloadAssetsNetworkPolicyTypeEnumRef_;
 };
 
 struct CloudMediaAssetAsyncContext : public NapiError {
@@ -124,6 +128,9 @@ struct CloudMediaAssetAsyncContext : public NapiError {
     CloudMediaTaskPauseCause cloudMediaTaskPauseCause_;
     string taskInfo_;
     vector<string> startBatchDownloadUris;
+    int32_t taskSeq;
+    vector<string> setNetPolicyBatchDownloadUris;
+    int32_t networkPolicy;
     std::map<std::string, int32_t> startBatchDownloadResp;
     vector<string> resumeBatchDownloadUris;
     vector<string> pauseBatchDownloadUris;
@@ -132,6 +139,9 @@ struct CloudMediaAssetAsyncContext : public NapiError {
     std::vector<std::string> allBatchDownloadStatus;
     DataShare::DataSharePredicates getCountBatchDownloadPredicates;
     int32_t allBatchDownloadCount;
+    DataShare::DataSharePredicates getSizeBatchDownloadPredicates;
+    int64_t allBatchDownloadSize;
+    int64_t allBatchDownloadTotalCount;
 };
 }
 }

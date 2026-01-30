@@ -240,8 +240,8 @@ int32_t AssetAccurateRefresh::DeleteCommon(function<int32_t(ValuesBucket &)> upd
     MediaLibraryTracer tracer;
     tracer.Start("AssetAccurateRefresh::DeleteCommon");
     ValuesBucket valuesBucket;
-    valuesBucket.PutInt(MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
-    valuesBucket.PutInt(MEDIA_DATA_DB_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
+    valuesBucket.PutInt(CONST_MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    valuesBucket.PutInt(CONST_MEDIA_DATA_DB_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
     valuesBucket.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     auto ret = updateExe(valuesBucket);
     if (ret != NativeRdb::E_OK) {

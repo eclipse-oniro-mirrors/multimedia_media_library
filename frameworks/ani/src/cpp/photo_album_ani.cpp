@@ -445,7 +445,7 @@ static void ConvertColumnsForPortrait(unique_ptr<PhotoAlbumAniContext> &context)
 static void PhotoAccessGetPhotoAssetsExecute(ani_env *env, unique_ptr<PhotoAlbumAniContext> &context)
 {
     CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(context);
     int32_t errCode = 0;
     int32_t userId = DEFAULT_USER_ID;
@@ -519,7 +519,7 @@ ani_object PhotoAlbumAni::PhotoAccessGetPhotoAssets(ani_env *env, ani_object obj
 static ani_object PhotoAccessGetPhotoAssetsExecuteSync(ani_env *env, unique_ptr<PhotoAlbumAniContext> &context)
 {
     CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(context);
     int32_t errCode = 0;
     auto resultSet = UserFileClient::Query(uri, context->predicates, context->fetchColumn, errCode);
@@ -648,7 +648,7 @@ static void CommitModifyExecute(ani_env *env, unique_ptr<PhotoAlbumAniContext> &
         return;
     }
 
-    Uri uri(UFM_UPDATE_PHOTO_ALBUM);
+    Uri uri(CONST_UFM_UPDATE_PHOTO_ALBUM);
     int changedRows = UserFileClient::Update(uri, context->predicates, context->valuesBucket);
     context->SaveError(changedRows);
     context->changedRows = changedRows;
@@ -768,7 +768,7 @@ static bool FetchNewCount(unique_ptr<PhotoAlbumAniContext> &context)
         return false;
     }
     string queryUri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ?
-        UFM_QUERY_PHOTO_ALBUM : PAH_QUERY_PHOTO_ALBUM;
+        CONST_UFM_QUERY_PHOTO_ALBUM : CONST_PAH_QUERY_PHOTO_ALBUM;
     Uri qUri(queryUri);
     int errCode = 0;
     DataSharePredicates predicates;
@@ -849,7 +849,7 @@ static void PhotoAlbumAddAssetsExecute(ani_env *env, unique_ptr<PhotoAlbumAniCon
         return;
     }
 
-    Uri uri(UFM_PHOTO_ALBUM_ADD_ASSET);
+    Uri uri(CONST_UFM_PHOTO_ALBUM_ADD_ASSET);
     auto changedRows = UserFileClient::BatchInsert(uri, context->valuesBuckets);
     if (changedRows < 0) {
         context->SaveError(changedRows);
@@ -968,7 +968,7 @@ static void PhotoAlbumRemoveAssetsExecute(ani_env *env, unique_ptr<PhotoAlbumAni
         PhotoAlbumRemoveAssetsIPCExecute(context);
         return;
     }
-    Uri uri(UFM_PHOTO_ALBUM_REMOVE_ASSET);
+    Uri uri(CONST_UFM_PHOTO_ALBUM_REMOVE_ASSET);
     auto deletedRows = UserFileClient::Delete(uri, context->predicates);
     if (deletedRows < 0) {
         ANI_ERR_LOG("Remove assets failed: %{public}d", deletedRows);
@@ -1087,7 +1087,7 @@ static void RecoverPhotosExecute(ani_env *env, unique_ptr<PhotoAlbumAniContext> 
             .env = env,
             .data = static_cast<void*>(context.get()),
             .tracerLabel = "RecoverPhotosExecute",
-            .uri = UFM_RECOVER_PHOTOS,
+            .uri = CONST_UFM_RECOVER_PHOTOS,
         };
         TrashAlbumExecute(opt);
         return;
@@ -1339,7 +1339,7 @@ ani_object PhotoAlbumAni::PhotoAccessGetSharedPhotoAssets(ani_env *env, ani_obje
     CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsGetPhotoAssets(env, object, options, asyncContext) == ANI_OK,
         returnObj, "objectInfo is nullptr");
 
-    Uri uri(PAH_QUERY_PHOTO_MAP);
+    Uri uri(CONST_PAH_QUERY_PHOTO_MAP);
     ConvertColumnsForPortrait(asyncContext);
 
     PhotoAlbumAniContext* context = static_cast<PhotoAlbumAniContext*>(asyncContext.get());

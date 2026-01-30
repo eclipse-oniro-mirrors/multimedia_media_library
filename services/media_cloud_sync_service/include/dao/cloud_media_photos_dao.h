@@ -141,6 +141,7 @@ public:
     int32_t FindPhotoAlbumInCache(const std::string &albumCloudId, const std::string &lPath,
         const std::string &sourcePath, std::optional<PhotoAlbumPo> &photoAlbumPoOp);
     int32_t FindPhotoInfo(PhotosDto &record);
+    void UpdateAnalysisAlbumsCountForCloud();
 
 private:
     void UpdateAllAlbumsCountForCloud(const std::vector<std::string> &albums);

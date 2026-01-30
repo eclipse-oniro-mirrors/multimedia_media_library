@@ -309,9 +309,9 @@ int32_t CancelUrisPermissionInner(std::vector<std::string>& fileIds,
 
 
 static map<string, TableType> tableMap = {
-    { MEDIALIBRARY_TYPE_IMAGE_URI, TableType::TYPE_PHOTOS },
-    { MEDIALIBRARY_TYPE_VIDEO_URI, TableType::TYPE_PHOTOS },
-    { MEDIALIBRARY_TYPE_AUDIO_URI, TableType::TYPE_AUDIOS },
+    { CONST_MEDIALIBRARY_TYPE_IMAGE_URI, TableType::TYPE_PHOTOS },
+    { CONST_MEDIALIBRARY_TYPE_VIDEO_URI, TableType::TYPE_PHOTOS },
+    { CONST_MEDIALIBRARY_TYPE_AUDIO_URI, TableType::TYPE_AUDIOS },
     { PhotoColumn::PHOTO_TYPE_URI, TableType::TYPE_PHOTOS },
     { AudioColumn::AUDIO_TYPE_URI, TableType::TYPE_AUDIOS }
 };
@@ -456,9 +456,9 @@ HWTEST_F(InnerPhotoUriPermissionTest, GetUrisByOldUris_001, TestSize.Level0)
     EXPECT_EQ(ret.empty(), true);
 
     // test case 2 normal uris
-    uris.emplace_back(UFM_CREATE_PHOTO);
-    uris.emplace_back(UFM_CREATE_AUDIO);
-    uris.emplace_back(UFM_CREATE_PHOTO_ALBUM);
+    uris.emplace_back(CONST_UFM_CREATE_PHOTO);
+    uris.emplace_back(CONST_UFM_CREATE_AUDIO);
+    uris.emplace_back(CONST_UFM_CREATE_PHOTO_ALBUM);
     ret = GetUrisByOldUrisInner(uris, tabOldPhotosClient);
     EXPECT_EQ(ret.empty(), true);
 

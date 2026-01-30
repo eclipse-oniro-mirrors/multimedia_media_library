@@ -293,7 +293,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_UTCTimeSeconds_Test_001, Tes
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetNetworkIdFromUri_Test_001, TestSize.Level1)
 {
     string tempNetworkId = "1d3cb099659d53b3ee15faaab3c00a8ff983382ebc8b01aabde039ed084e167b";
-    string uri = MEDIALIBRARY_DATA_ABILITY_PREFIX + tempNetworkId + MEDIALIBRARY_DATA_URI_IDENTIFIER;
+    string uri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX + tempNetworkId + CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     EXPECT_EQ(MediaFileUtils::GetNetworkIdFromUri(uri), tempNetworkId);
 }
 
@@ -305,19 +305,19 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetNetworkIdFromUri_Test_002
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetNetworkIdFromUri_Test_003, TestSize.Level1)
 {
-    string uri = MEDIALIBRARY_DATA_URI_IDENTIFIER;
+    string uri = CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     EXPECT_EQ(MediaFileUtils::GetNetworkIdFromUri(uri), "");
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetNetworkIdFromUri_Test_004, TestSize.Level1)
 {
-    string uri = MEDIALIBRARY_DATA_ABILITY_PREFIX;
+    string uri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX;
     EXPECT_EQ(MediaFileUtils::GetNetworkIdFromUri(uri), "");
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetNetworkIdFromUri_Test_005, TestSize.Level1)
 {
-    string uri = MEDIALIBRARY_DATA_ABILITY_PREFIX + MEDIALIBRARY_DATA_URI_IDENTIFIER;
+    string uri = string(CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX) + CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     EXPECT_EQ(MediaFileUtils::GetNetworkIdFromUri(uri), "");
 }
 
@@ -331,7 +331,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_UpdatePath_Test_002, TestSiz
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_UpdatePath_Test_003, TestSize.Level1)
 {
     string path = "/storage/cloud/100/files";
-    string uri = MEDIALIBRARY_DATA_ABILITY_PREFIX + MEDIALIBRARY_DATA_URI_IDENTIFIER;
+    string uri = string(CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX) + CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     EXPECT_EQ(MediaFileUtils::UpdatePath(path, uri), path);
 }
 
@@ -339,7 +339,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_UpdatePath_Test_005, TestSiz
 {
     string path = "local/files";
     string tempNetworkId = "1d3cb099659d53b3ee15faaab3c00a8ff983382ebc8b01aabde039ed084e167b";
-    string uri = MEDIALIBRARY_DATA_ABILITY_PREFIX + tempNetworkId + MEDIALIBRARY_DATA_URI_IDENTIFIER;
+    string uri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX + tempNetworkId + CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     EXPECT_EQ(MediaFileUtils::UpdatePath(path, uri), path);
 }
 
@@ -347,7 +347,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_UpdatePath_Test_006, TestSiz
 {
     string path = "/storage/cloud/100";
     string tempNetworkId = "1d3cb099659d53b3ee15faaab3c00a8ff983382ebc8b01aabde039ed084e167b";
-    string uri = MEDIALIBRARY_DATA_ABILITY_PREFIX + tempNetworkId + MEDIALIBRARY_DATA_URI_IDENTIFIER;
+    string uri = CONST_MEDIALIBRARY_DATA_ABILITY_PREFIX + tempNetworkId + CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER;
     EXPECT_EQ(MediaFileUtils::UpdatePath(path, uri), path);
 }
 
@@ -601,15 +601,15 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAsset_Test_001, TestSi
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsUriV10_Test_001, TestSize.Level1)
 {
-    string mediaType = URI_TYPE_PHOTO;
+    string mediaType = CONST_URI_TYPE_PHOTO;
     bool ret = MediaFileUtils::IsUriV10(mediaType);
     EXPECT_EQ(ret, true);
 
-    mediaType = URI_TYPE_PHOTO_ALBUM;
+    mediaType = CONST_URI_TYPE_PHOTO_ALBUM;
     ret = MediaFileUtils::IsUriV10(mediaType);
     EXPECT_EQ(ret, true);
 
-    mediaType = URI_TYPE_AUDIO_V10;
+    mediaType = CONST_URI_TYPE_AUDIO_V10;
     ret = MediaFileUtils::IsUriV10(mediaType);
     EXPECT_EQ(ret, true);
 

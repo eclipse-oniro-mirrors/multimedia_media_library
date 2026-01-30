@@ -357,14 +357,14 @@ void MediaLibraryAlbumSourceTest::TearDown()
 void CheckColumnInTable(const string &columnName, const string &tableName)
 {
     EXPECT_NE(g_rdbStore, nullptr);
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM pragma_table_info('" + tableName + "') WHERE name = '" +
-        columnName + "'";
+    string querySql = "SELECT " + string(CONST_MEDIA_COLUMN_COUNT_1) + " FROM pragma_table_info('"
+        + tableName + "') WHERE name = '" + columnName + "'";
     auto resultSet = g_rdbStore->QuerySql(querySql);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Get column count failed");
         return;
     }
-    int32_t count = GetInt32Val(MEDIA_COLUMN_COUNT_1, resultSet);
+    int32_t count = GetInt32Val(CONST_MEDIA_COLUMN_COUNT_1, resultSet);
     EXPECT_GT(count, 0);
 }
 

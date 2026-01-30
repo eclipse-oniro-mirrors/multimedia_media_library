@@ -207,7 +207,7 @@ void CloneRestoreAnalysisData::GetAnalysisDataInsertValue(NativeRdb::ValuesBucke
             PrepareCommonColumnVal(value, columnName, columnType, columnIndex->second);
         }
     }
-    value.PutInt(MEDIA_DATA_DB_ID, info.fileId);
+    value.PutInt(CONST_MEDIA_DATA_DB_ID, info.fileId);
 }
 
 int32_t CloneRestoreAnalysisData::BatchInsertWithRetry(const std::string &tableName,

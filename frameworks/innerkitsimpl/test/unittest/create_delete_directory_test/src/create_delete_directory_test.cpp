@@ -60,16 +60,16 @@ static inline int32_t GetAlbumId(string &&relativePath)
     return MediaLibraryObjectUtils::GetIdByPathFromDb("/storage/cloud/files/" + relativePath);
 }
 
-string PathSplicing(string subpath, string path = MEDIA_DIROPRN)
+string PathSplicing(string subpath, string path = CONST_MEDIA_DIROPRN)
 {
     return (MEDIALIBRARY_DATA_URI + "/" + path + "/" + subpath);
 }
 
 static int32_t CreateDir(string &&relativePath)
 {
-    Uri createAssetUri(PathSplicing(MEDIA_DIROPRN_FMS_CREATEDIR));
+    Uri createAssetUri(PathSplicing(CONST_MEDIA_DIROPRN_FMS_CREATEDIR));
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
     int32_t res = MediaLibraryDataManager::GetInstance()->Insert(createAssetUri, valuesBucket);
     if (res <= 0) {
         MEDIA_ERR_LOG("Failed to create directory, error: %{public}d", res);
@@ -79,9 +79,9 @@ static int32_t CreateDir(string &&relativePath)
 
 static int32_t DeleteDir(string &relativePath)
 {
-    Uri deleteDirUri(PathSplicing(MEDIA_DIROPRN_FMS_DELETEDIR));
+    Uri deleteDirUri(PathSplicing(CONST_MEDIA_DIROPRN_FMS_DELETEDIR));
     DataShareValuesBucket deleteValuesBucket;
-    deleteValuesBucket.Put(MEDIA_DATA_DB_URI, relativePath);
+    deleteValuesBucket.Put(CONST_MEDIA_DATA_DB_URI, relativePath);
     int32_t res = MediaLibraryDataManager::GetInstance()->Insert(deleteDirUri, deleteValuesBucket);
     if (res <= 0) {
         MEDIA_ERR_LOG("Failed to delete directory, error: %{public}d", res);
@@ -92,18 +92,18 @@ static int32_t DeleteDir(string &relativePath)
 static int32_t TrashDir(string &&testNum)
 {
     DataShareValuesBucket valuesBucket;
-    Uri createAssetUri(PathSplicing(MEDIA_FILEOPRN_CREATEASSET, MEDIA_FILEOPRN));
-    valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, testNum + ".jpg");
+    Uri createAssetUri(PathSplicing(CONST_MEDIA_FILEOPRN_CREATEASSET, CONST_MEDIA_FILEOPRN));
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, testNum + ".jpg");
     string relativePath = "Pictures/" + testNum + "/";
-    valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
     int32_t index = MediaLibraryDataManager::GetInstance()->Insert(createAssetUri, valuesBucket);
     if (index <= 0) {
         MEDIA_ERR_LOG("Failed to Insert, error index: %{public}d", index);
         return E_FAIL;
     }
 
-    Uri deleteDirUri(PathSplicing(MEDIA_DIROPRN_FMS_TRASHDIR));
+    Uri deleteDirUri(PathSplicing(CONST_MEDIA_DIROPRN_FMS_TRASHDIR));
     relativePath.pop_back();
     int32_t albumId = GetAlbumId("/storage/cloud/files/" + relativePath);
     if (albumId <= 0) {
@@ -111,7 +111,7 @@ static int32_t TrashDir(string &&testNum)
         return E_FAIL;
     }
     DataShareValuesBucket valuesBucket1;
-    valuesBucket1.Put(MEDIA_DATA_DB_ID, albumId);
+    valuesBucket1.Put(CONST_MEDIA_DATA_DB_ID, albumId);
     int32_t res = MediaLibraryDataManager::GetInstance()->Insert(createAssetUri, valuesBucket1);
     if (res <= 0) {
         MEDIA_ERR_LOG("Failed to trash directory, error: %{public}d", res);

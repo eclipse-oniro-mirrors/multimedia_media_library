@@ -429,11 +429,11 @@ int32_t MediaAssetsService::SaveCameraPhoto(const SaveCameraPhotoDto &dto)
 
         cmd.SetApiParam(PhotoColumn::PHOTO_DIRTY, to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)));
     }
-    cmd.SetApiParam(MEDIA_OPERN_KEYWORD, to_string(dto.needScan));
+    cmd.SetApiParam(CONST_MEDIA_OPERN_KEYWORD, to_string(dto.needScan));
     cmd.SetApiParam(PhotoColumn::MEDIA_FILE_PATH, dto.path);
     cmd.SetApiParam(PhotoColumn::MEDIA_ID, to_string(dto.fileId));
     cmd.SetApiParam(PhotoColumn::PHOTO_SUBTYPE, to_string(dto.photoSubType));
-    cmd.SetApiParam(IMAGE_FILE_TYPE, to_string(dto.imageFileType));
+    cmd.SetApiParam(CONST_IMAGE_FILE_TYPE, to_string(dto.imageFileType));
     NativeRdb::ValuesBucket values;
     if (dto.supportedWatermarkType != INT32_MIN) {
         values.Put(PhotoColumn::SUPPORTED_WATERMARK_TYPE, dto.supportedWatermarkType);
@@ -708,18 +708,17 @@ int32_t MediaAssetsService::CancelPhotoUriPermissionInner(
     return errCode;
 }
 
-std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(GetAssetsDto &dto)
+std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(GetAssetsDto &dto, int32_t passCode)
 {
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
     cmd.SetDataSharePred(dto.predicates);
     // MEDIALIBRARY_TABLE just for RdbPredicates
-    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, MEDIALIBRARY_TABLE);
-    cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
-    cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
-    cmd.GetAbsRdbPredicates()->SetOrder(rdbPredicate.GetOrder());
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
+    MediaLibraryRdbUtils::BuildDoubleCheckPredicates(rdbPredicate, dto.tokenId, passCode);
 
-    auto resultSet = MediaLibraryPhotoOperations::Query(cmd, dto.columns);
+    MediaLibraryRdbUtils::AddQueryIndex(rdbPredicate, dto.columns);
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, dto.columns);
     CHECK_AND_RETURN_RET_LOG(resultSet, nullptr, "Failed to query assets");
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     return make_shared<DataShare::DataShareResultSet>(resultSetBridge);
@@ -750,7 +749,7 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetDuplicateA
 int32_t MediaAssetsService::CreateAsset(CreateAssetDto& dto)
 {
     NativeRdb::ValuesBucket assetInfo;
-    assetInfo.PutString(ASSET_EXTENTION, dto.extension);
+    assetInfo.PutString(CONST_ASSET_EXTENTION, dto.extension);
     assetInfo.PutInt(MediaColumn::MEDIA_TYPE, dto.mediaType);
     assetInfo.PutInt(PhotoColumn::PHOTO_SUBTYPE, dto.photoSubtype);
     if (!dto.title.empty()) {
@@ -778,12 +777,12 @@ int32_t MediaAssetsService::CreateAsset(CreateAssetDto& dto)
 int32_t MediaAssetsService::CreateAssetForApp(CreateAssetDto& dto)
 {
     NativeRdb::ValuesBucket assetInfo;
-    assetInfo.PutString(ASSET_EXTENTION, dto.extension);
+    assetInfo.PutString(CONST_ASSET_EXTENTION, dto.extension);
     assetInfo.PutInt(MediaColumn::MEDIA_TYPE, dto.mediaType);
     assetInfo.PutInt(PhotoColumn::PHOTO_SUBTYPE, dto.photoSubtype);
-    assetInfo.PutString(MEDIA_DATA_DB_OWNER_APPID, dto.appId);
-    assetInfo.PutString(MEDIA_DATA_DB_PACKAGE_NAME, dto.packageName);
-    assetInfo.PutString(MEDIA_DATA_DB_OWNER_PACKAGE, dto.bundleName);
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_OWNER_APPID, dto.appId);
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_PACKAGE_NAME, dto.packageName);
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_OWNER_PACKAGE, dto.bundleName);
     if (!dto.title.empty()) {
         assetInfo.PutString(MediaColumn::MEDIA_TITLE, dto.title);
     }
@@ -809,12 +808,12 @@ int32_t MediaAssetsService::CreateAssetForAppWithAlbum(CreateAssetDto& dto)
     }
 
     NativeRdb::ValuesBucket assetInfo;
-    assetInfo.PutString(ASSET_EXTENTION, dto.extension);
+    assetInfo.PutString(CONST_ASSET_EXTENTION, dto.extension);
     assetInfo.PutInt(MediaColumn::MEDIA_TYPE, dto.mediaType);
     assetInfo.PutInt(PhotoColumn::PHOTO_SUBTYPE, dto.photoSubtype);
-    assetInfo.PutString(MEDIA_DATA_DB_OWNER_APPID, dto.appId);
-    assetInfo.PutString(MEDIA_DATA_DB_PACKAGE_NAME, dto.packageName);
-    assetInfo.PutString(MEDIA_DATA_DB_OWNER_PACKAGE, dto.bundleName);
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_OWNER_APPID, dto.appId);
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_PACKAGE_NAME, dto.packageName);
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_OWNER_PACKAGE, dto.bundleName);
     assetInfo.PutString(PhotoColumn::PHOTO_OWNER_ALBUM_ID, dto.ownerAlbumId);
     if (!dto.title.empty()) {
         assetInfo.PutString(MediaColumn::MEDIA_TITLE, dto.title);
@@ -1305,13 +1304,13 @@ int32_t MediaAssetsService::GetResultSetFromDb(const GetResultSetFromDbDto& getR
 {
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(getResultSetFromDbDto.columnName, getResultSetFromDbDto.value);
-    predicates.And()->EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+    predicates.And()->EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
 
-    Uri uri(MEDIALIBRARY_MEDIA_PREFIX);
+    Uri uri(CONST_MEDIALIBRARY_MEDIA_PREFIX);
     MediaLibraryCommand cmd(uri);
     cmd.SetDataSharePred(predicates);
 
-    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, MEDIALIBRARY_TABLE);
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, CONST_MEDIALIBRARY_TABLE);
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
     cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
     cmd.GetAbsRdbPredicates()->SetOrder(rdbPredicate.GetOrder());
@@ -1370,7 +1369,7 @@ int32_t MediaAssetsService::CloseAsset(const CloseAssetReqBody &req)
 {
     MEDIA_INFO_LOG("enter CloseAsset, req.uri=%{public}s", req.uri.c_str());
     NativeRdb::ValuesBucket valuesBucket;
-    valuesBucket.PutString(MEDIA_DATA_DB_URI, req.uri);
+    valuesBucket.PutString(CONST_MEDIA_DATA_DB_URI, req.uri);
     MediaLibraryCommand cmd(valuesBucket);
     return MediaLibraryObjectUtils::CloseFile(cmd);
 }
@@ -1543,6 +1542,18 @@ int32_t MediaAssetsService::StartBatchDownloadCloudResources(StartBatchDownloadC
 #endif
 }
 
+int32_t MediaAssetsService::SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
+    int32_t ret = instance.SetNetworkPolicyForBatchDownload(reqBody);
+    MEDIA_INFO_LOG("MediaAssetsService SetNetworkPolicyForBatchDownload END ret: %{public}d", ret);
+    return ret;
+#else
+    return 0;
+#endif
+}
+
 int32_t MediaAssetsService::ResumeBatchDownloadCloudResources(ResumeBatchDownloadCloudResourcesReqBody &reqBody)
 {
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
@@ -1606,6 +1617,20 @@ int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesCount(
 #endif
 }
 
+int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesSize(
+    GetBatchDownloadCloudResourcesSizeReqBody &reqBody, GetBatchDownloadCloudResourcesSizeRespBody &respBody)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
+    int32_t ret = instance.GetCloudMediaBatchDownloadResourcesSize(reqBody, respBody);
+    MEDIA_INFO_LOG("MediaAssetsService GetCloudMediaBatchDownloadResourcesSize ret: %{public}d resp size: %{public}"
+        PRId64,  ret, respBody.size);
+    return ret;
+#else
+    return 0;
+#endif
+}
+
 int32_t MediaAssetsService::GetCloudEnhancementPair(
     const GetCloudEnhancementPairDto &dto, GetCloudEnhancementPairRespBody &respBody)
 {
@@ -1618,16 +1643,16 @@ int32_t MediaAssetsService::GetCloudEnhancementPair(
 int32_t MediaAssetsService::GetFilePathFromUri(const std::string &virtualId, GetFilePathFromUriRespBody &respBody)
 {
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_ID, virtualId);
-    predicates.And()->EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, virtualId);
+    predicates.And()->EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
 
-    MediaLibraryCommand cmd(MEDIALIBRARY_TABLE);
+    MediaLibraryCommand cmd(CONST_MEDIALIBRARY_TABLE);
     cmd.SetDataSharePred(predicates);
-    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, MEDIALIBRARY_TABLE);
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, CONST_MEDIALIBRARY_TABLE);
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
     cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
     cmd.GetAbsRdbPredicates()->SetOrder(rdbPredicate.GetOrder());
-    vector<string> columns = { MEDIA_DATA_DB_FILE_PATH };
+    vector<string> columns = { CONST_MEDIA_DATA_DB_FILE_PATH };
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(columns);
     shared_ptr<NativeRdb::ResultSet> resultSet = MediaLibraryFileOperations::QueryFileOperation(cmd, columns);
     if (resultSet == nullptr) {
@@ -1643,16 +1668,16 @@ int32_t MediaAssetsService::GetFilePathFromUri(const std::string &virtualId, Get
 int32_t MediaAssetsService::GetUriFromFilePath(const std::string &tempPath, GetUriFromFilePathRespBody &respBody)
 {
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_FILE_PATH, tempPath);
-    predicates.And()->EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_FILE_PATH, tempPath);
+    predicates.And()->EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
 
-    MediaLibraryCommand cmd(MEDIALIBRARY_TABLE);
+    MediaLibraryCommand cmd(CONST_MEDIALIBRARY_TABLE);
     cmd.SetDataSharePred(predicates);
-    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, MEDIALIBRARY_TABLE);
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, CONST_MEDIALIBRARY_TABLE);
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
     cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
     cmd.GetAbsRdbPredicates()->SetOrder(rdbPredicate.GetOrder());
-    vector<string> columns = { MEDIA_DATA_DB_ID };
+    vector<string> columns = { CONST_MEDIA_DATA_DB_ID };
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(columns);
     shared_ptr<NativeRdb::ResultSet> resultSet = MediaLibraryFileOperations::QueryFileOperation(cmd, columns);
     if (resultSet == nullptr) {

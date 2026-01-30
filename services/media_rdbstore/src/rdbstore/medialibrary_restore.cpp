@@ -102,7 +102,7 @@ void MediaLibraryRestore::StopCloudSync()
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRestore::StopCloudSync");
-    FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync(BUNDLE_NAME, true);
+    FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync(CONST_BUNDLE_NAME, true);
     uint32_t times = 0;
     int ret = WaitParameter(CLOUD_STOP_FLAG_K.c_str(), CLOUD_STOP_FLAG_V.c_str(), WAIT_SECONDS);
     if (ret == PARAMETER_E_OK) {
@@ -135,7 +135,7 @@ void MediaLibraryRestore::ResetHAModeSwitchStatus()
     auto switchStatus = HA_SWITCH_READY;
     SaveHAModeSwitchStatusToPara(std::move(switchStatus));
 #ifdef CLOUD_SYNC_MANAGER
-    auto ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().StartSync(BUNDLE_NAME);
+    auto ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().StartSync(CONST_BUNDLE_NAME);
     MEDIA_INFO_LOG("ResetHAModeSwitchStatus::StartSync [%{public}d]", ret);
     ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().DownloadThumb();
     MEDIA_INFO_LOG("ResetHAModeSwitchStatus::DownloadThumb [%{public}d]", ret);

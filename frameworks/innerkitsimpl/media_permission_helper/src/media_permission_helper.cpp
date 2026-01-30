@@ -62,7 +62,7 @@ static map<string, TableType> tableMap = {
     { PHOTO_TYPE_URI, TableType::TYPE_PHOTOS },
     { AUDIO_TYPE_URI, TableType::TYPE_AUDIOS }
 };
-// LCOV_EXCL_START
+
 MediaPermissionHelper *MediaPermissionHelper::GetMediaPermissionHelper()
 {
     static MediaPermissionHelper mediaPermHelper;
@@ -620,6 +620,5 @@ int32_t MediaPermissionHelper::GetUrisFromFusePaths(const std::vector<std::strin
     }
     return E_SUCCESS;
 }
-// LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

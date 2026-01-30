@@ -436,8 +436,8 @@ static int32_t GetArrayBufferFromServer(const string &uriStr, const string &path
     } else {
         size = thmSize;
     }
-    string openUriStr = uriStr + "?" + MEDIA_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
-        MEDIA_DATA_DB_WIDTH + "=" + to_string(size) + "&" + MEDIA_DATA_DB_HEIGHT + "=" +
+    string openUriStr = uriStr + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
+        CONST_MEDIA_DATA_DB_WIDTH + "=" + to_string(size) + "&" + CONST_MEDIA_DATA_DB_HEIGHT + "=" +
         to_string(size);
     NAPI_DEBUG_LOG("GetArrayBufferFromServer openUriStr = %{public}s", openUriStr.c_str());
     if (IsAsciiString(path)) {
@@ -449,8 +449,8 @@ static int32_t GetArrayBufferFromServer(const string &uriStr, const string &path
 
 static int32_t GetPixelMapFromServer(const string &uriStr, const Size &size, const string &path)
 {
-    string openUriStr = uriStr + "?" + MEDIA_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
-        MEDIA_DATA_DB_WIDTH + "=" + to_string(size.width) + "&" + MEDIA_DATA_DB_HEIGHT + "=" +
+    string openUriStr = uriStr + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
+        CONST_MEDIA_DATA_DB_WIDTH + "=" + to_string(size.width) + "&" + CONST_MEDIA_DATA_DB_HEIGHT + "=" +
         to_string(size.height);
     if (IsAsciiString(path)) {
         openUriStr += "&" + THUMBNAIL_PATH + "=" + path;
@@ -462,7 +462,7 @@ static int32_t GetPixelMapFromServer(const string &uriStr, const Size &size, con
 static int32_t GetKeyFramePixelMapFromServer(const string &uriStr, const string &path,
     const int32_t &beginStamp, const int32_t &type)
 {
-    string openUriStr = uriStr + "?" + MEDIA_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_KEY_FRAME + "&" +
+    string openUriStr = uriStr + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_KEY_FRAME + "&" +
         MEDIA_DATA_DB_BEGIN_STAMP + "=" + to_string(beginStamp) + "&" + MEDIA_DATA_DB_TYPE + "=" + to_string(type);
     if (IsAsciiString(path)) {
         openUriStr += "&" + THUMBNAIL_PATH + "=" + path;

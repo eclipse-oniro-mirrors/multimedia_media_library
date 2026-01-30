@@ -1172,11 +1172,9 @@ bool IThumbnailHelper::DoCreateAstcMthAndYear(ThumbRdbOpt &opts, ThumbnailData &
 
 bool GenerateRotatedThumbnail(ThumbRdbOpt &opts, ThumbnailData &data, ThumbnailType thumbType)
 {
-    if (thumbType == ThumbnailType::LCD && !IThumbnailHelper::DoCreateLcd(opts, data)) {
-        MEDIA_ERR_LOG("Get lcd thumbnail pixelmap, rotate lcd failed: %{public}s",
-            DfxUtils::GetSafePath(data.path).c_str());
-        return false;
-    }
+    bool cond = (thumbType == ThumbnailType::LCD && !IThumbnailHelper::DoCreateLcd(opts, data));
+    CHECK_AND_RETURN_RET_LOG(!cond, false,
+        "Get lcd thumbnail pixelmap, rotate lcd failed: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
     if (thumbType != ThumbnailType::LCD && !IThumbnailHelper::DoRotateThumbnail(opts, data)) {
         MEDIA_ERR_LOG("Get default thumbnail pixelmap, rotate thumbnail failed: %{public}s",
             DfxUtils::GetSafePath(data.path).c_str());
@@ -1330,14 +1328,14 @@ bool IThumbnailHelper::DoRotateThumbnailEx(ThumbRdbOpt &opts, ThumbnailData &dat
 bool IThumbnailHelper::IsPureCloudImage(ThumbRdbOpt &opts)
 {
     vector<string> columns = {
-        MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_ID,
         PhotoColumn::PHOTO_POSITION
     };
     if (opts.row.empty() || opts.table.empty()) {
         MEDIA_ERR_LOG("IsPureCloudImage opts.row is empty");
         return false;
     }
-    string strQueryCondition = MEDIA_DATA_DB_ID + " = " + opts.row;
+    string strQueryCondition = string(CONST_MEDIA_DATA_DB_ID) + " = " + opts.row;
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.SetWhereClause(strQueryCondition);
     if (opts.store == nullptr) {

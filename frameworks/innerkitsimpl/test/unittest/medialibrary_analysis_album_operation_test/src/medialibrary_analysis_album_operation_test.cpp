@@ -220,7 +220,7 @@ void InsertPortraitsToAlbum(const vector<PortraitData> &portraitData,
 
 void InsertAlbumTestData(AlbumColumn &column, const PhotoAlbumSubType &subtype = PhotoAlbumSubType::PORTRAIT)
 {
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SMART);
@@ -652,7 +652,7 @@ HWTEST_F(MediaLibraryAnalysisAlbumOperationTest, DismissGroupPhotoAlbum_update_s
 
 void InsertPortraitAlbumCoverSatisfiedTestData(int fileId, CoverSatisfiedType coverSatisfiedType)
 {
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SMART);

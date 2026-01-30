@@ -27,6 +27,8 @@ const std::string EMOTION_CATEGORY = "category";
 const std::string AROUSAL = "arousal";
 const std::string EXTRA = "extra";
 const std::string CREATE_TIMESTAMP = "timestamp";
+const std::string AFFECTIVE_SCORE = "affective_score";
+const std::string AFFECTIVE_SCORE_VERSION = "affective_score_version";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_AFFECTIVE_COLUMN_H

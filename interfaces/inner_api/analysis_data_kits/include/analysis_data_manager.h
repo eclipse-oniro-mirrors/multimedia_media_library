@@ -19,7 +19,7 @@
 #include "datashare_helper.h"
 #include "analysis_data_visibility.h"
 #include "iremote_object.h"
-//LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media::AnalysisData {
 class AnalysisDataManager {
@@ -42,4 +42,3 @@ private:
 } // namespace Media::AnalysisData
 } // namespace OHOS
 #endif
-//LCOV_EXCL_STOP

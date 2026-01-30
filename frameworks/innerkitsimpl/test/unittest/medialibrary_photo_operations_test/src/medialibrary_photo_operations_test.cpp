@@ -88,7 +88,7 @@ void CleanTestTables()
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
         AudioColumn::AUDIOS_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
         ASSET_UNIQUE_NUMBER_TABLE,
         PhotoExtColumn::PHOTOS_EXT_TABLE,
         PhotoAlbumColumns::TABLE
@@ -127,9 +127,9 @@ void PrepareUniqueNumberTable()
         return;
     }
 
-    UniqueMemberValuesBucket imageBucket = { IMAGE_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket videoBucket = { VIDEO_ASSET_TYPE, 1 };
-    UniqueMemberValuesBucket audioBucket = { AUDIO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket imageBucket = { CONST_IMAGE_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket videoBucket = { CONST_VIDEO_ASSET_TYPE, 1 };
+    UniqueMemberValuesBucket audioBucket = { CONST_AUDIO_ASSET_TYPE, 1 };
 
     vector<UniqueMemberValuesBucket> uniqueNumberValueBuckets = {
         imageBucket, videoBucket, audioBucket
@@ -440,13 +440,13 @@ int32_t MovingPhotoEditByCache(int32_t fileId, string &fileName, string &videoFi
 {
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
     if (!isGraffiti) {
-        valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, videoFileName);
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, videoFileName);
     }
-    valuesBucket.Put(COMPATIBLE_FORMAT, "compatibleFormat");
-    valuesBucket.Put(FORMAT_VERSION, "formatVersion");
-    valuesBucket.Put(EDIT_DATA, "data");
+    valuesBucket.Put(CONST_COMPATIBLE_FORMAT, "compatibleFormat");
+    valuesBucket.Put(CONST_FORMAT_VERSION, "formatVersion");
+    valuesBucket.Put(CONST_EDIT_DATA, "data");
 
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
         OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
@@ -775,7 +775,7 @@ void TestPhotoCloseParamsApi10(string uri, ExceptIntFunction func)
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_URI, uri);
+    values.PutString(CONST_MEDIA_DATA_DB_URI, uri);
     cmd.SetValueBucket(values);
     int32_t ret = MediaLibraryPhotoOperations::Close(cmd);
     func(ret);
@@ -865,7 +865,7 @@ static bool QueryPhotoThumbnailVolumn(int32_t photoId, size_t& queryResult)
         MEDIA_ERR_LOG("uniStore is nullptr!");
         return false;
     }
-    const string sql = "SELECT " + PhotoExtColumn::THUMBNAIL_SIZE + " as " + MEDIA_DATA_DB_SIZE +
+    const string sql = "SELECT " + PhotoExtColumn::THUMBNAIL_SIZE + " as " + CONST_MEDIA_DATA_DB_SIZE +
         " FROM " + PhotoExtColumn::PHOTOS_EXT_TABLE +
         " WHERE " + PhotoExtColumn::PHOTO_ID + " = " + to_string(photoId);
     auto resultSet = uniStore->QuerySql(sql);
@@ -877,7 +877,7 @@ static bool QueryPhotoThumbnailVolumn(int32_t photoId, size_t& queryResult)
         MEDIA_ERR_LOG("go to first row failed");
         return false;
     }
-    int64_t size = get<int64_t>(ResultSetUtils::GetValFromColumn(MEDIA_DATA_DB_SIZE,
+    int64_t size = get<int64_t>(ResultSetUtils::GetValFromColumn(CONST_MEDIA_DATA_DB_SIZE,
         resultSet, TYPE_INT64));
     if (size < 0) {
         MEDIA_ERR_LOG("Invalid size retrieved from database: %{public}" PRId64, size);
@@ -1087,9 +1087,9 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_005, Test
         MediaLibraryApi::API_10);
     string extention = "jpg";
     ValuesBucket values;
-    values.PutString(ASSET_EXTENTION, extention);
+    values.PutString(CONST_ASSET_EXTENTION, extention);
     values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    values.PutInt(PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
+    values.PutInt(CONST_PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
     cmd.SetValueBucket(values);
     int32_t ret = MediaLibraryPhotoOperations::Create(cmd);
     EXPECT_GE(ret, 0);
@@ -1125,9 +1125,9 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_007, Test
         MediaLibraryApi::API_10);
     string extention = "jpg";
     ValuesBucket values;
-    values.PutString(ASSET_EXTENTION, extention);
+    values.PutString(CONST_ASSET_EXTENTION, extention);
     values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    values.PutInt(PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
+    values.PutInt(CONST_PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
     cmd.SetValueBucket(values);
     auto pictureManagerThread = PictureManagerThread::GetInstance();
 
@@ -1153,9 +1153,9 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_008, Test
         MediaLibraryApi::API_10);
     string extention = "jpg";
     ValuesBucket values;
-    values.PutString(ASSET_EXTENTION, extention);
+    values.PutString(CONST_ASSET_EXTENTION, extention);
     values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    values.PutInt(PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
+    values.PutInt(CONST_PERMISSION_TABLE_TYPE, static_cast<int32_t>(TableType::TYPE_PHOTOS));
     cmd.SetValueBucket(values);
     auto pictureManagerThread = PictureManagerThread::GetInstance();
     string imageId = "123";
@@ -1163,7 +1163,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api10_test_008, Test
     string imageIdInPair = imageId;
     time_t currentTime = time(NULL);
     time_t expireTime = currentTime + 20;
-    sptr<PicturePair> picturePair = new PicturePair(nullptr, imageIdInPair, expireTime, true, false);
+    sptr<PicturePair> picturePair = new PicturePair(nullptr, imageIdInPair, 0, expireTime, true, false);
     pictureManagerThread->InsertPictureData(imageId, picturePair, LOW_QUALITY_PICTURE);
     auto isExsit = pictureManagerThread->IsExsitPictureByImageId(imageId);
     EXPECT_EQ(isExsit, true);
@@ -1273,7 +1273,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api9_test_004, TestS
     ValuesBucket values1;
     values1.PutString(MediaColumn::MEDIA_NAME, name);
     values1.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    values1.PutString(MediaColumn::MEDIA_RELATIVE_PATH, CAMERA_PATH);
+    values1.PutString(MediaColumn::MEDIA_RELATIVE_PATH, CONST_CAMERA_PATH);
     cmd1.SetValueBucket(values1);
     int32_t ret = MediaLibraryPhotoOperations::Create(cmd1);
     EXPECT_GE(ret, 0);
@@ -1289,7 +1289,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api9_test_004, TestS
     ValuesBucket values2;
     values2.PutString(MediaColumn::MEDIA_NAME, videoName);
     values2.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_VIDEO);
-    values2.PutString(MediaColumn::MEDIA_RELATIVE_PATH, SCREEN_RECORD_PATH);
+    values2.PutString(MediaColumn::MEDIA_RELATIVE_PATH, CONST_SCREEN_RECORD_PATH);
     cmd2.SetValueBucket(values2);
     ret = MediaLibraryPhotoOperations::Create(cmd2);
     EXPECT_GE(ret, 0);
@@ -1305,7 +1305,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api9_test_004, TestS
     ValuesBucket values3;
     values3.PutString(MediaColumn::MEDIA_NAME, photoName);
     values3.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    values3.PutString(MediaColumn::MEDIA_RELATIVE_PATH, SCREEN_SHOT_PATH);
+    values3.PutString(MediaColumn::MEDIA_RELATIVE_PATH, CONST_SCREEN_SHOT_PATH);
     cmd3.SetValueBucket(values3);
     ret = MediaLibraryPhotoOperations::Create(cmd3);
     EXPECT_GE(ret, 0);
@@ -1821,7 +1821,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_009, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_009");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_SAVE_CAMERA_PHOTO;
+    std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     
     DataSharePredicates predicates;
@@ -1841,7 +1841,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_010, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_010");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_SAVE_CAMERA_PHOTO;
+    std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_SUBTYPE,
@@ -1864,7 +1864,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_011, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_011");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_SAVE_CAMERA_PHOTO;
+    std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_SUBTYPE,
@@ -1887,7 +1887,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_012, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_012");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_SAVE_CAMERA_PHOTO;
+    std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_DIRTY,
@@ -1910,7 +1910,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_013, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_013");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_BATCH_UPDATE_OWNER_ALBUM_ID;
+    std::string uriStr = CONST_PAH_BATCH_UPDATE_OWNER_ALBUM_ID;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     
     DataSharePredicates predicates;
@@ -1935,7 +1935,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_014, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_014");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_DISCARD_CAMERA_PHOTO;
+    std::string uriStr = CONST_PAH_DISCARD_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     
     DataSharePredicates predicates;
@@ -1955,7 +1955,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_015, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_015");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PATH_SAVE_PICTURE;
+    std::string uriStr = CONST_PATH_SAVE_PICTURE;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, "image_file_type", "1");
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
@@ -1977,7 +1977,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_016, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_016");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_SET_VIDEO_ENHANCEMENT_ATTR;
+    std::string uriStr = CONST_PAH_SET_VIDEO_ENHANCEMENT_ATTR;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_ID, "20241218001736");
@@ -2000,7 +2000,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_017, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_017");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_DEGENERATE_MOVING_PHOTO;
+    std::string uriStr = CONST_PAH_DEGENERATE_MOVING_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
     
@@ -2024,7 +2024,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_018, Test
     int32_t ret = UpdateEditTime(fileId, 1);
     EXPECT_EQ(ret, 0);
  
-    std::string uriStr = PAH_DEGENERATE_MOVING_PHOTO;
+    std::string uriStr = CONST_PAH_DEGENERATE_MOVING_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
     
@@ -2045,7 +2045,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_019, Test
     MEDIA_INFO_LOG("start tdd photo_oprn_update_api10_test_019");
     int32_t fileId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg", true);
     EXPECT_GE(fileId, 0);
-    std::string uriStr = PAH_DEGENERATE_MOVING_PHOTO;
+    std::string uriStr = CONST_PAH_DEGENERATE_MOVING_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
     MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
     
@@ -2223,7 +2223,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_open_api10_test_002, TestSi
     int fileId = SetDefaultPhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
     const static int LARGE_NUM = 1000;
-    string requestEditDataStr = MEDIA_OPERN_KEYWORD + "=" + EDIT_DATA_REQUEST;
+    string requestEditDataStr = CONST_MEDIA_OPERN_KEYWORD + "=" + CONST_EDIT_DATA_REQUEST;
     TestPhotoOpenEditParamsApi10(fileId, requestEditDataStr, "r",
         [] (int32_t result) { EXPECT_GE(result, E_OK); });
     TestPhotoOpenEditParamsApi10(fileId + LARGE_NUM, requestEditDataStr, "r",
@@ -2248,7 +2248,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_open_api10_test_003, TestSi
     int fileId = SetDefaultPhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
     const static int LARGE_NUM = 1000;
-    string requestEditDataStr = MEDIA_OPERN_KEYWORD + "=" + SOURCE_REQUEST;
+    string requestEditDataStr = CONST_MEDIA_OPERN_KEYWORD + "=" + CONST_SOURCE_REQUEST;
     TestPhotoOpenEditParamsApi10(fileId + LARGE_NUM, requestEditDataStr, "r",
         [] (int32_t result) { EXPECT_EQ(result, E_INVALID_URI); });
     TestPhotoOpenEditParamsApi10(-1, requestEditDataStr, "r",
@@ -2271,7 +2271,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_open_api10_test_004, TestSi
     int fileId = SetDefaultPhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "photo.jpg");
     EXPECT_GE(fileId, 0);
     const static int LARGE_NUM = 1000;
-    string requestEditDataStr = MEDIA_OPERN_KEYWORD + "=" + COMMIT_REQUEST;
+    string requestEditDataStr = CONST_MEDIA_OPERN_KEYWORD + "=" + CONST_COMMIT_REQUEST;
     TestPhotoOpenEditParamsApi10(fileId, requestEditDataStr, "r",
         [] (int32_t result) { EXPECT_GE(result, E_OK); });
     TestPhotoOpenEditParamsApi10(fileId + LARGE_NUM, requestEditDataStr, "r",
@@ -2335,7 +2335,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_pending_api10_test_001, Tes
     auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     int32_t ret = MediaLibraryPhotoOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -2382,7 +2382,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_pending_api10_test_002, Tes
     auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     ret = MediaLibraryPhotoOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -2437,7 +2437,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_pending_api10_test_003, Tes
     auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     ret = MediaLibraryPhotoOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -2476,7 +2476,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_pending_api9_test_001, Test
     auto fileAssetPtr = QueryPhotoAsset(PhotoColumn::MEDIA_ID, to_string(fileId));
     string uriString = MediaLibraryAssetOperations::CreateExtUriForV10Asset(*fileAssetPtr);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, uriString);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, uriString);
     closeCmd.SetValueBucket(closeValues);
     int32_t ret = MediaLibraryPhotoOperations::Close(closeCmd);
     EXPECT_EQ(ret, 0);
@@ -2501,7 +2501,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_commit_edit_insert_test_001
     cmd.SetValueBucket(values1);
     EXPECT_EQ(MediaLibraryPhotoOperations::CommitEditInsert(cmd), E_INVALID_VALUES);
     ValuesBucket values2;
-    values2.PutString(EDIT_DATA, editData);
+    values2.PutString(CONST_EDIT_DATA, editData);
     cmd.SetValueBucket(values2);
     EXPECT_EQ(MediaLibraryPhotoOperations::CommitEditInsert(cmd), E_INVALID_VALUES);
     ValuesBucket values3;
@@ -2509,14 +2509,14 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_commit_edit_insert_test_001
     cmd.SetValueBucket(values3);
     EXPECT_EQ(MediaLibraryPhotoOperations::CommitEditInsert(cmd), E_INVALID_VALUES);
     ValuesBucket values4;
-    values4.PutString(EDIT_DATA, editData);
+    values4.PutString(CONST_EDIT_DATA, editData);
     values4.PutInt(PhotoColumn::MEDIA_ID, fileId + LARGE_NUM);
     cmd.SetValueBucket(values4);
     EXPECT_EQ(MediaLibraryPhotoOperations::CommitEditInsert(cmd), E_INVALID_VALUES);
     int32_t ret = SetPendingOnly(UNCLOSE_FILE_TIMEPENDING, fileId);
     EXPECT_EQ(ret, 0);
     ValuesBucket values5;
-    values5.PutString(EDIT_DATA, editData);
+    values5.PutString(CONST_EDIT_DATA, editData);
     values5.PutInt(PhotoColumn::MEDIA_ID, fileId);
     cmd.SetValueBucket(values5);
     EXPECT_EQ(MediaLibraryPhotoOperations::CommitEditInsert(cmd), E_IS_PENDING_ERROR);
@@ -2534,7 +2534,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_commit_edit_insert_test_002
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::COMMIT_EDIT,
         MediaLibraryApi::API_10);
     ValuesBucket values;
-    values.PutString(EDIT_DATA, editData);
+    values.PutString(CONST_EDIT_DATA, editData);
     values.PutInt(PhotoColumn::MEDIA_ID, fileId);
     cmd.SetValueBucket(values);
     EXPECT_EQ(MediaLibraryPhotoOperations::CommitEditInsert(cmd), E_OK);
@@ -2865,7 +2865,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_by_cache_test_001, T
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_NAME, "create_by_cache.jpg");
     valuesBucket.Put(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
 
     string assetUri;
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
@@ -2897,7 +2897,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_by_cache_test_002, T
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_NAME, "create_by_cache.mp4");
     valuesBucket.Put(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_VIDEO);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
 
     string assetUri;
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
@@ -2931,7 +2931,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_by_cache_test_003, T
     // submit cache
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
 
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
         OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
@@ -2973,8 +2973,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_by_cache_test_004, T
     valuesBucket.Put(MediaColumn::MEDIA_NAME, "moving_photo.jpg");
     valuesBucket.Put(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
     valuesBucket.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int>(PhotoSubType::MOVING_PHOTO));
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
-    valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, videoFileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, videoFileName);
     MediaLibraryCommand submitCacheCmd(
         OperationObject::FILESYSTEM_PHOTO, OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
     int32_t ret = MediaLibraryDataManager::GetInstance()->Insert(submitCacheCmd, valuesBucket);
@@ -3003,7 +3003,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_by_cache_test_005, T
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_NAME, "moving_photo.jpg");
     valuesBucket.Put(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
-    valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, videoFileName);
+    valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, videoFileName);
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
         OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
     int32_t ret = MediaLibraryDataManager::GetInstance()->Insert(submitCacheCmd, valuesBucket);
@@ -3034,10 +3034,10 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_edit_by_cache_test_001, Tes
     // edit by cache
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
-    valuesBucket.Put(COMPATIBLE_FORMAT, "compatibleFormat");
-    valuesBucket.Put(FORMAT_VERSION, "formatVersion");
-    valuesBucket.Put(EDIT_DATA, "data");
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_COMPATIBLE_FORMAT, "compatibleFormat");
+    valuesBucket.Put(CONST_FORMAT_VERSION, "formatVersion");
+    valuesBucket.Put(CONST_EDIT_DATA, "data");
 
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
         OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
@@ -3069,10 +3069,10 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_edit_by_cache_test_002, Tes
     // edit by cache
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
-    valuesBucket.Put(COMPATIBLE_FORMAT, "compatibleFormat");
-    valuesBucket.Put(FORMAT_VERSION, "formatVersion");
-    valuesBucket.Put(EDIT_DATA, "data");
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_COMPATIBLE_FORMAT, "compatibleFormat");
+    valuesBucket.Put(CONST_FORMAT_VERSION, "formatVersion");
+    valuesBucket.Put(CONST_EDIT_DATA, "data");
 
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
         OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
@@ -3104,7 +3104,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_edit_by_cache_test_003, Tes
     // edit by cache with default edit data
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
 
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
         OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
@@ -3136,8 +3136,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_edit_by_cache_test_004, Tes
     // edit by cache with invalid edit data
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, fileName);
-    valuesBucket.Put(FORMAT_VERSION, "v1.0");
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, fileName);
+    valuesBucket.Put(CONST_FORMAT_VERSION, "v1.0");
 
     MediaLibraryCommand submitCacheCmd(OperationObject::FILESYSTEM_PHOTO,
         OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
@@ -3307,7 +3307,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_convert_live_photo_test_001
 {
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, MediaLibraryApi::API_10);
     ValuesBucket values;
-    values.PutString(ASSET_EXTENTION, "jpg");
+    values.PutString(CONST_ASSET_EXTENTION, "jpg");
     values.PutString(PhotoColumn::MEDIA_TITLE, "live_photo");
     values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
     values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int>(PhotoSubType::MOVING_PHOTO));
@@ -3325,7 +3325,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_convert_live_photo_test_001
     ASSERT_NE(write(imageFd, FILE_TEST_JPG, sizeof(FILE_TEST_JPG)), -1);
     
     string videoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(videoUriStr, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_MOVING_PHOTO_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri videoUri(videoUriStr);
     MediaLibraryCommand videoCmd(videoUri, Media::OperationType::OPEN);
     videoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -3334,11 +3335,12 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_convert_live_photo_test_001
     ASSERT_NE(write(videoFd, FILE_TEST_MP4, sizeof(FILE_TEST_MP4)), -1);
     MediaLibraryCommand closeCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, fileUriStr);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, fileUriStr);
     closeCmd.SetValueBucket(closeValues);
     MediaLibraryPhotoOperations::Close(closeCmd);
     string livePhotoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(livePhotoUriStr, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_LIVE_PHOTO);
+    MediaFileUtils::UriAppendKeyValue(livePhotoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_PRIVATE_LIVE_PHOTO);
     Uri livePhotoUri(livePhotoUriStr);
     MediaLibraryCommand livePhotoCmd(livePhotoUri, Media::OperationType::OPEN);
     livePhotoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -3544,7 +3546,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_SubmitCache_empty_file, Tes
     MEDIA_INFO_LOG("start tdd photo_oprn_SubmitCache_empty_file");
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
     ValuesBucket values;
-    values.PutString(CACHE_FILE_NAME, "moving_cahe.jpg");
+    values.PutString(CONST_CACHE_FILE_NAME, "moving_cahe.jpg");
     cmd.SetValueBucket(values);
     // test case 2 normal bucket but not file created SubmitCache will return E_NO_SUCH_FILE
     auto ret = MediaLibraryPhotoOperations::SubmitCache(cmd);
@@ -3557,8 +3559,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_SubmitCache_normal_file, Te
     MEDIA_INFO_LOG("start tdd photo_oprn_SubmitCache_normal_file");
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::SUBMIT_CACHE, MediaLibraryApi::API_10);
     ValuesBucket values;
-    values.PutString(CACHE_FILE_NAME, "moving_cahe.jpg");
-    values.PutString(ASSET_EXTENTION, "jpg");
+    values.PutString(CONST_CACHE_FILE_NAME, "moving_cahe.jpg");
+    values.PutString(CONST_ASSET_EXTENTION, "jpg");
     values.PutString(PhotoColumn::MEDIA_TITLE, "moving_photo");
     values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
     values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int>(PhotoSubType::MOVING_PHOTO));
@@ -3568,7 +3570,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_SubmitCache_normal_file, Te
     MediaLibraryPhotoOperations::Create(cmd);
     int32_t fileId = QueryPhotoIdByDisplayName("moving_photo.jpg");
     EXPECT_GT(fileId, 0);
-    // test case 3 display name != CACHE_FILE_NAME  will return failed
+    // test case 3 display name != CONST_CACHE_FILE_NAME  will return failed
     auto ret = MediaLibraryPhotoOperations::SubmitCache(cmd);
     EXPECT_EQ(ret, E_INVALID_VALUES);
     MEDIA_INFO_LOG("end tdd photo_oprn_SubmitCache_normal_file");
@@ -3748,7 +3750,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, picture_date_test_001, TestSize.Level2
     }
     std::shared_ptr<Media::Picture> picture;
     time_t expireTime = currentTime + PICTURE_TIMEOUT_SEC;
-    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), fileId, expireTime, true, false);
+    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), fileId, fileId1, expireTime, true, false);
 
     // insert low quality picture
     s_pictureDataOperations->InsertPictureData(fileId, picturePair, PictureType::LOW_QUALITY_PICTURE);
@@ -3994,7 +3996,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, getAllDuplicateAssets_test, TestSize.L
     columns.push_back(MediaColumn::MEDIA_DATE_ADDED);
     auto resultSet = MediaLibraryPhotoOperations::Query(cmd, columns);
     EXPECT_NE(resultSet, nullptr);
-    columns.push_back(MEDIA_COLUMN_COUNT);
+    columns.push_back(CONST_MEDIA_COLUMN_COUNT);
     resultSet = MediaLibraryPhotoOperations::Query(cmd, columns);
     EXPECT_NE(resultSet, nullptr);
 }
@@ -4013,7 +4015,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, getDuplicateAssetsToDelete_test, TestS
     columns.push_back(MediaColumn::MEDIA_DATE_ADDED);
     auto resultSet = MediaLibraryPhotoOperations::Query(cmd, columns);
     EXPECT_NE(resultSet, nullptr);
-    columns.push_back(MEDIA_COLUMN_COUNT);
+    columns.push_back(CONST_MEDIA_COLUMN_COUNT);
     resultSet = MediaLibraryPhotoOperations::Query(cmd, columns);
     EXPECT_NE(resultSet, nullptr);
 }
@@ -4025,7 +4027,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_read_moving_photo_metadata_
     // create moving photo with live photo
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, MediaLibraryApi::API_10);
     ValuesBucket valuesBucket;
-    valuesBucket.PutString(ASSET_EXTENTION, "jpg");
+    valuesBucket.PutString(CONST_ASSET_EXTENTION, "jpg");
     valuesBucket.PutString(PhotoColumn::MEDIA_TITLE, "moving_photo_metadata_test");
     valuesBucket.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
     valuesBucket.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int>(PhotoSubType::DEFAULT));
@@ -4047,14 +4049,14 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_read_moving_photo_metadata_
 
     MediaLibraryCommand closeFileCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, fileUriStr);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, fileUriStr);
     closeFileCmd.SetValueBucket(closeValues);
     MediaLibraryPhotoOperations::Close(closeFileCmd);
 
     // read moving photo metadata
     string metadataUriStr = fileUriStr;
     MediaFileUtils::UriAppendKeyValue(
-        metadataUriStr, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_MOVING_PHOTO_METADATA);
+        metadataUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_PRIVATE_MOVING_PHOTO_METADATA);
     Uri metadataUri(metadataUriStr);
     MediaLibraryCommand metadataCmd(metadataUri, Media::OperationType::OPEN);
     metadataCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -4100,7 +4102,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, cinematic_video_oprn_open_api10_test_0
     MEDIA_INFO_LOG("start tdd cinematic_video_oprn_create_api10_test_001");
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, MediaLibraryApi::API_10);
     ValuesBucket values;
-    values.PutString(ASSET_EXTENTION, "mp4");
+    values.PutString(CONST_ASSET_EXTENTION, "mp4");
     values.PutString(PhotoColumn::MEDIA_TITLE, "cinematic_video");
     values.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_VIDEO);
     values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int>(PhotoSubType::CINEMATIC_VIDEO));
@@ -4112,7 +4114,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, cinematic_video_oprn_open_api10_test_0
     MediaFileUri fileUri(MediaType::MEDIA_TYPE_VIDEO, to_string(fileId), "", MEDIA_API_VERSION_V10);
     string fileUriStr = fileUri.ToString();
     string videoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(videoUriStr, MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CREATE_CINEMATIC_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD,
+        CONST_CREATE_CINEMATIC_VIDEO);
     Uri videoUri(videoUriStr);
     MediaLibraryCommand videoCmd(videoUri, Media::OperationType::OPEN);
     videoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -4121,7 +4124,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, cinematic_video_oprn_open_api10_test_0
     ASSERT_NE(write(videoFd, FILE_TEST_MP4, sizeof(FILE_TEST_MP4)), -1);
     MediaLibraryCommand closeCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, fileUriStr);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, fileUriStr);
     closeCmd.SetValueBucket(closeValues);
     MediaLibraryPhotoOperations::Close(closeCmd);
     MEDIA_INFO_LOG("end tdd cinematic_video_oprn_create_api10_test_001");
@@ -4137,7 +4140,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_query_moving_photo_video_re
     MediaFileUri fileUri(MediaType::MEDIA_TYPE_IMAGE, to_string(fileId), "", MEDIA_API_VERSION_V10);
     string fileUriStr = fileUri.ToString();
     string videoUriStr = fileUriStr;
-    MediaFileUtils::UriAppendKeyValue(videoUriStr, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_MOVING_PHOTO_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUriStr, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+        CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri videoUri(videoUriStr);
     MediaLibraryCommand videoCmd(videoUri, Media::OperationType::OPEN);
     videoCmd.SetOprnObject(OperationObject::FILESYSTEM_PHOTO);
@@ -4146,15 +4150,15 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_query_moving_photo_video_re
     EXPECT_EQ(write(videoFd, FILE_TEST_MP4, sizeof(FILE_TEST_MP4)), sizeof(FILE_TEST_MP4));
     MediaLibraryCommand closeCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, fileUriStr);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, fileUriStr);
     closeCmd.SetValueBucket(closeValues);
     MediaLibraryPhotoOperations::Close(closeCmd);
     videoFd = -1; // set invalid value;
     // check
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
-    Uri uri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
-        + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
+        + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
     MediaLibraryCommand cmd(uri);
     cmd.SetDataSharePred(predicates);
     int errCode = 0;
@@ -4178,8 +4182,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_query_moving_photo_video_re
     // check
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
-    Uri uri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
-        + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
+        + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
     MediaLibraryCommand cmd(uri);
     cmd.SetDataSharePred(predicates);
     int errCode = 0;
@@ -4203,8 +4207,8 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_query_moving_photo_video_re
     // check
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
-    Uri uri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
-        + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
+        + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
     MediaLibraryCommand cmd(uri);
     cmd.SetDataSharePred(predicates);
     int errCode = 0;

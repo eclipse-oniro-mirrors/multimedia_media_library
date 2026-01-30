@@ -260,11 +260,11 @@ DataShareValuesBucket GetValuesBucket(int32_t fileId, std::string cacheFileName,
 {
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, cacheFileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName);
     if (isSetEditData) {
-        valuesBucket.Put(EDIT_DATA, EDITDATA_VALUE);
-        valuesBucket.Put(COMPATIBLE_FORMAT, COMPATIBLE_FORMAT_VALUE);
-        valuesBucket.Put(FORMAT_VERSION, FORMAT_VERSION_VALUE);
+        valuesBucket.Put(CONST_EDIT_DATA, EDITDATA_VALUE);
+        valuesBucket.Put(CONST_COMPATIBLE_FORMAT, COMPATIBLE_FORMAT_VALUE);
+        valuesBucket.Put(CONST_FORMAT_VERSION, FORMAT_VERSION_VALUE);
     }
     return valuesBucket;
 }
@@ -307,7 +307,7 @@ TakePhotoResult TakePhotoMock(bool isAddWater)
     result.path = path;
     DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileId);
-    valuesBucket.Put(CACHE_FILE_NAME, cacheFileName);
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName);
     if (!isAddWater) {
         SubmitCache(valuesBucket, isAddWater, false);
         EXPECT_EQ(ValidSourceFile(path), false);
@@ -315,9 +315,9 @@ TakePhotoResult TakePhotoMock(bool isAddWater)
         EXPECT_EQ(ValidEditdataCamera(path), false);
         EXPECT_EQ(ValidPhoto(path), true);
     } else {
-        valuesBucket.Put(EDIT_DATA, EDITDATA_VALUE);
-        valuesBucket.Put(COMPATIBLE_FORMAT, COMPATIBLE_FORMAT_VALUE);
-        valuesBucket.Put(FORMAT_VERSION, FORMAT_VERSION_VALUE);
+        valuesBucket.Put(CONST_EDIT_DATA, EDITDATA_VALUE);
+        valuesBucket.Put(CONST_COMPATIBLE_FORMAT, COMPATIBLE_FORMAT_VALUE);
+        valuesBucket.Put(CONST_FORMAT_VERSION, FORMAT_VERSION_VALUE);
         SubmitCache(valuesBucket, isAddWater, false);
         EXPECT_EQ(ValidSourceFile(path), true);
         EXPECT_EQ(ValidEditdata(path), false);

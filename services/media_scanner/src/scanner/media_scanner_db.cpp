@@ -59,16 +59,16 @@ static inline void SetVirtualPath(const Metadata &metadata, ValuesBucket &values
 
 static inline void SetRemainFileMetadataApi9(const Metadata &metadata, ValuesBucket &values)
 {
-    values.PutString(MEDIA_DATA_DB_AUDIO_ALBUM, metadata.GetAlbum());
-    values.PutString(MEDIA_DATA_DB_ARTIST, metadata.GetFileArtist());
-    values.PutInt(MEDIA_DATA_DB_HEIGHT, metadata.GetFileHeight());
-    values.PutInt(MEDIA_DATA_DB_WIDTH, metadata.GetFileWidth());
-    values.PutInt(MEDIA_DATA_DB_ORIENTATION, metadata.GetOrientation());
-    values.PutString(MEDIA_DATA_DB_BUCKET_NAME, metadata.GetAlbumName());
-    values.PutInt(MEDIA_DATA_DB_PARENT_ID, metadata.GetParentId());
-    values.PutInt(MEDIA_DATA_DB_BUCKET_ID, metadata.GetParentId());
-    values.PutDouble(MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-    values.PutDouble(MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+    values.PutString(CONST_MEDIA_DATA_DB_AUDIO_ALBUM, metadata.GetAlbum());
+    values.PutString(CONST_MEDIA_DATA_DB_ARTIST, metadata.GetFileArtist());
+    values.PutInt(CONST_MEDIA_DATA_DB_HEIGHT, metadata.GetFileHeight());
+    values.PutInt(CONST_MEDIA_DATA_DB_WIDTH, metadata.GetFileWidth());
+    values.PutInt(CONST_MEDIA_DATA_DB_ORIENTATION, metadata.GetOrientation());
+    values.PutString(CONST_MEDIA_DATA_DB_BUCKET_NAME, metadata.GetAlbumName());
+    values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, metadata.GetParentId());
+    values.PutInt(CONST_MEDIA_DATA_DB_BUCKET_ID, metadata.GetParentId());
+    values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
+    values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
 }
 
 static void SetValuesFromMetaDataAndType(const Metadata &metadata, ValuesBucket &values, MediaType mediaType,
@@ -76,25 +76,25 @@ static void SetValuesFromMetaDataAndType(const Metadata &metadata, ValuesBucket 
 {
 #ifdef MEDIALIBRARY_COMPATIBILITY
     if (mediaType == MediaType::MEDIA_TYPE_IMAGE || mediaType == MEDIA_TYPE_VIDEO) {
-        if (tableName == MEDIALIBRARY_TABLE) {
+        if (tableName == CONST_MEDIALIBRARY_TABLE) {
             SetRemainFileMetadataApi9(metadata, values);
         } else {
-            values.PutInt(MEDIA_DATA_DB_HEIGHT, metadata.GetFileHeight());
-            values.PutInt(MEDIA_DATA_DB_WIDTH, metadata.GetFileWidth());
-            values.PutInt(MEDIA_DATA_DB_ORIENTATION, metadata.GetOrientation());
-            values.PutDouble(MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
-            values.PutDouble(MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
+            values.PutInt(CONST_MEDIA_DATA_DB_HEIGHT, metadata.GetFileHeight());
+            values.PutInt(CONST_MEDIA_DATA_DB_WIDTH, metadata.GetFileWidth());
+            values.PutInt(CONST_MEDIA_DATA_DB_ORIENTATION, metadata.GetOrientation());
+            values.PutDouble(CONST_MEDIA_DATA_DB_LATITUDE, metadata.GetLatitude());
+            values.PutDouble(CONST_MEDIA_DATA_DB_LONGITUDE, metadata.GetLongitude());
             SetVirtualPath(metadata, values);
             if (metadata.GetPhotoSubType() != 0) {
                 values.PutInt(PhotoColumn::PHOTO_SUBTYPE, metadata.GetPhotoSubType());
             }
         }
     } else if (mediaType == MediaType::MEDIA_TYPE_AUDIO) {
-        if (tableName == MEDIALIBRARY_TABLE) {
+        if (tableName == CONST_MEDIALIBRARY_TABLE) {
             SetRemainFileMetadataApi9(metadata, values);
         } else {
-            values.PutString(MEDIA_DATA_DB_AUDIO_ALBUM, metadata.GetAlbum());
-            values.PutString(MEDIA_DATA_DB_ARTIST, metadata.GetFileArtist());
+            values.PutString(CONST_MEDIA_DATA_DB_AUDIO_ALBUM, metadata.GetAlbum());
+            values.PutString(CONST_MEDIA_DATA_DB_ARTIST, metadata.GetFileArtist());
             SetVirtualPath(metadata, values);
         }
     } else {
@@ -160,17 +160,17 @@ static void SetValuesFromMetaDataApi9(const Metadata &metadata, ValuesBucket &va
     const string &table)
 {
     MediaType mediaType = metadata.GetFileMediaType();
-    values.PutString(MEDIA_DATA_DB_FILE_PATH, metadata.GetFilePath());
-    values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, metadata.GetRelativePath());
-    values.PutString(MEDIA_DATA_DB_MIME_TYPE, metadata.GetFileMimeType());
-    values.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-    values.PutString(MEDIA_DATA_DB_NAME, metadata.GetFileName());
-    values.PutString(MEDIA_DATA_DB_TITLE, metadata.GetFileTitle());
-    values.PutLong(MEDIA_DATA_DB_SIZE, metadata.GetFileSize());
-    values.PutLong(MEDIA_DATA_DB_DATE_MODIFIED, metadata.GetFileDateModified());
-    values.PutInt(MEDIA_DATA_DB_DURATION, metadata.GetFileDuration());
-    values.PutLong(MEDIA_DATA_DB_DATE_TAKEN, metadata.GetDateTaken());
-    values.PutLong(MEDIA_DATA_DB_TIME_PENDING, 0);
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, metadata.GetFilePath());
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, metadata.GetRelativePath());
+    values.PutString(CONST_MEDIA_DATA_DB_MIME_TYPE, metadata.GetFileMimeType());
+    values.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, metadata.GetFileName());
+    values.PutString(CONST_MEDIA_DATA_DB_TITLE, metadata.GetFileTitle());
+    values.PutLong(CONST_MEDIA_DATA_DB_SIZE, metadata.GetFileSize());
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_MODIFIED, metadata.GetFileDateModified());
+    values.PutInt(CONST_MEDIA_DATA_DB_DURATION, metadata.GetFileDuration());
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_TAKEN, metadata.GetDateTaken());
+    values.PutLong(CONST_MEDIA_DATA_DB_TIME_PENDING, 0);
 
     SetValuesFromMetaDataAndType(metadata, values, mediaType, table);
     HandleDateAdded(metadata, isInsert, values);
@@ -295,7 +295,7 @@ static void SetValuesFromMetaDataApi10(const Metadata &metadata, ValuesBucket &v
 static void GetTableNameByPath(int32_t mediaType, string &tableName, const string &path = "")
 {
     if (!path.empty() && MediaFileUtils::IsFileTablePath(path)) {
-        tableName = MEDIALIBRARY_TABLE;
+        tableName = CONST_MEDIALIBRARY_TABLE;
         return;
     }
     switch (mediaType) {
@@ -309,7 +309,7 @@ static void GetTableNameByPath(int32_t mediaType, string &tableName, const strin
             break;
         }
         default: {
-            tableName = MEDIALIBRARY_TABLE;
+            tableName = CONST_MEDIALIBRARY_TABLE;
             break;
         }
     }
@@ -366,14 +366,14 @@ string MediaScannerDb::InsertMetadata(const Metadata &metadata, string &tableNam
 #ifdef MEDIALIBRARY_COMPATIBILITY
         if ((mediaType != MediaType::MEDIA_TYPE_IMAGE) && (mediaType != MediaType::MEDIA_TYPE_VIDEO) &&
             (mediaType != MediaType::MEDIA_TYPE_AUDIO)) {
-            values.PutString(MEDIA_DATA_DB_URI, mediaTypeUri);
+            values.PutString(CONST_MEDIA_DATA_DB_URI, mediaTypeUri);
         }
 #else
-        values.PutString(MEDIA_DATA_DB_URI, mediaTypeUri);
+        values.PutString(CONST_MEDIA_DATA_DB_URI, mediaTypeUri);
 #endif
     }
 
-    tableName = MEDIALIBRARY_TABLE;
+    tableName = CONST_MEDIALIBRARY_TABLE;
     if (api == MediaLibraryApi::API_10) {
         SetValuesFromMetaDataApi10(metadata, values, true, true, true);
         GetTableNameByPath(mediaType, tableName);
@@ -409,10 +409,10 @@ static inline void GetUriStringInUpdate(MediaType mediaType, MediaLibraryApi api
 #ifdef MEDIALIBRARY_COMPATIBILITY
         if ((mediaType != MediaType::MEDIA_TYPE_IMAGE) && (mediaType != MediaType::MEDIA_TYPE_VIDEO) &&
             (mediaType != MediaType::MEDIA_TYPE_AUDIO)) {
-            values.PutString(MEDIA_DATA_DB_URI, mediaTypeUri);
+            values.PutString(CONST_MEDIA_DATA_DB_URI, mediaTypeUri);
         }
 #else
-        values.PutString(MEDIA_DATA_DB_URI, mediaTypeUri);
+        values.PutString(CONST_MEDIA_DATA_DB_URI, mediaTypeUri);
 #endif
     }
 }
@@ -428,13 +428,13 @@ string MediaScannerDb::UpdateMetadata(const Metadata &metadata, string &tableNam
 {
     int32_t updateCount(0);
     ValuesBucket values;
-    string whereClause = MEDIA_DATA_DB_ID + " = ?";
+    string whereClause = string(CONST_MEDIA_DATA_DB_ID) + " = ?";
     vector<string> whereArgs = { to_string(metadata.GetFileId()) };
     MediaType mediaType = metadata.GetFileMediaType();
     string mediaTypeUri;
     GetUriStringInUpdate(mediaType, api, mediaTypeUri, values);
 
-    tableName = MEDIALIBRARY_TABLE;
+    tableName = CONST_MEDIALIBRARY_TABLE;
     if (api == MediaLibraryApi::API_10) {
         SetValuesFromMetaDataApi10(metadata, values, false, skipPhoto, needUpdateAssetName);
         GetTableNameByPath(mediaType, tableName);
@@ -497,7 +497,7 @@ bool MediaScannerDb::DeleteMetadata(const vector<string> &idList, const string &
     }
 
     NativeRdb::RdbPredicates rdbPredicate(tableName);
-    rdbPredicate.In(MEDIA_DATA_DB_ID, idList);
+    rdbPredicate.In(CONST_MEDIA_DATA_DB_ID, idList);
     int32_t ret = rdbStore->Delete(rdbPredicate);
     return ret == static_cast<int32_t>(idList.size());
 }
@@ -560,10 +560,10 @@ static void GetQueryParamsByPath(const string &path, MediaLibraryApi api, vector
                 MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_TIME_PENDING
             };
         } else {
-            whereClause = MEDIA_DATA_DB_FILE_PATH + " = ? And " + MEDIA_DATA_DB_IS_TRASH + " = ? ";
+            whereClause = string(CONST_MEDIA_DATA_DB_FILE_PATH) + " = ? And " + CONST_MEDIA_DATA_DB_IS_TRASH + " = ? ";
             columns = {
-                MEDIA_DATA_DB_ID, MEDIA_DATA_DB_SIZE, MEDIA_DATA_DB_DATE_MODIFIED,
-                MEDIA_DATA_DB_NAME, MEDIA_DATA_DB_ORIENTATION, MEDIA_DATA_DB_RECYCLE_PATH
+                CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_SIZE, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+                CONST_MEDIA_DATA_DB_NAME, CONST_MEDIA_DATA_DB_ORIENTATION, CONST_MEDIA_DATA_DB_RECYCLE_PATH
             };
         }
     }
@@ -662,28 +662,29 @@ static void PreparePredicatesAndColumns(const string &path, const string &tableN
     string querySql;
     vector<string> args;
     if (whitePath.empty()) {
-        if (tableName == MEDIALIBRARY_TABLE) {
-            querySql = MEDIA_DATA_DB_FILE_PATH + " LIKE ? AND " + MEDIA_DATA_DB_IS_TRASH + " = ? ";
+        if (tableName == CONST_MEDIALIBRARY_TABLE) {
+            querySql = string(CONST_MEDIA_DATA_DB_FILE_PATH) + " LIKE ? AND " + CONST_MEDIA_DATA_DB_IS_TRASH + " = ? ";
             args = { path.back() != '/' ? path + "/%" : path + "%", to_string(NOT_TRASHED) };
-            columns = { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_RECYCLE_PATH };
+            columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_RECYCLE_PATH };
         } else {
-            querySql = MEDIA_DATA_DB_FILE_PATH + " LIKE ? AND " + MediaColumn::MEDIA_TIME_PENDING + " <> ? ";
+            querySql = string(CONST_MEDIA_DATA_DB_FILE_PATH) + " LIKE ? AND " +
+                MediaColumn::MEDIA_TIME_PENDING + " <> ? ";
             args= { path.back() != '/' ? path + "/%" : path + "%", to_string(UNCREATE_FILE_TIMEPENDING) };
-            columns = { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_MEDIA_TYPE };
+            columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE };
         }
     } else {
-        if (tableName == MEDIALIBRARY_TABLE) {
-            querySql = MEDIA_DATA_DB_FILE_PATH + " LIKE ? AND " + MEDIA_DATA_DB_FILE_PATH + " NOT LIKE ? AND " +
-                MEDIA_DATA_DB_IS_TRASH + " = ? ";
+        if (tableName == CONST_MEDIALIBRARY_TABLE) {
+            querySql = string(CONST_MEDIA_DATA_DB_FILE_PATH) + " LIKE ? AND " +
+                CONST_MEDIA_DATA_DB_FILE_PATH + " NOT LIKE ? AND " + CONST_MEDIA_DATA_DB_IS_TRASH + " = ? ";
             args = { path.back() != '/' ? path + "/%" : path + "%",
             whitePath.back() != '/' ? whitePath + "/%" : whitePath + "%", to_string(NOT_TRASHED) };
-            columns = { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_RECYCLE_PATH };
+            columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_RECYCLE_PATH };
         } else {
-            querySql = MEDIA_DATA_DB_FILE_PATH + " LIKE ? AND " + MEDIA_DATA_DB_FILE_PATH + " NOT LIKE ? AND " +
-                MediaColumn::MEDIA_TIME_PENDING + " <> ? ";
+            querySql = string(CONST_MEDIA_DATA_DB_FILE_PATH) + " LIKE ? AND " +
+                CONST_MEDIA_DATA_DB_FILE_PATH + " NOT LIKE ? AND " + MediaColumn::MEDIA_TIME_PENDING + " <> ? ";
             args= { path.back() != '/' ? path + "/%" : path + "%",
                 whitePath.back() != '/' ? whitePath + "/%" : whitePath + "%", to_string(UNCREATE_FILE_TIMEPENDING) };
-            columns = { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_MEDIA_TYPE };
+            columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE };
         }
     }
 
@@ -721,14 +722,14 @@ unordered_map<int32_t, MediaType> MediaScannerDb::GetIdsFromFilePath(const strin
     }
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        if (tableName == MEDIALIBRARY_TABLE) {
-            string recyclePath = GetStringVal(MEDIA_DATA_DB_RECYCLE_PATH, resultSet);
+        if (tableName == CONST_MEDIALIBRARY_TABLE) {
+            string recyclePath = GetStringVal(CONST_MEDIA_DATA_DB_RECYCLE_PATH, resultSet);
             if (!recyclePath.empty()) {
                 continue;
             }
         }
-        int32_t id = GetInt32Val(MEDIA_DATA_DB_ID, resultSet);
-        int32_t mediaType = GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
+        int32_t id = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
+        int32_t mediaType = GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, resultSet);
         idMap.emplace(make_pair(id, static_cast<MediaType>(mediaType)));
     }
     return idMap;
@@ -739,10 +740,11 @@ string MediaScannerDb::GetFileDBUriFromPath(const string &path)
     string uri;
 
     vector<string> columns = {};
-    columns.push_back(MEDIA_DATA_DB_URI);
+    columns.push_back(CONST_MEDIA_DATA_DB_URI);
 
     DataShare::DataSharePredicates predicates;
-    predicates.SetWhereClause(MEDIA_DATA_DB_FILE_PATH + " = ? AND " + MEDIA_DATA_DB_IS_TRASH + " = ?");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_FILE_PATH) + " = ? AND " +
+        CONST_MEDIA_DATA_DB_IS_TRASH + " = ?");
     vector<string> args = { path, to_string(NOT_TRASHED) };
     predicates.SetWhereArgs(args);
 
@@ -768,7 +770,7 @@ string MediaScannerDb::GetFileDBUriFromPath(const string &path)
 
     int32_t intValue(0);
     int32_t columnIndex(0);
-    resultSet->GetColumnIndex(MEDIA_DATA_DB_ID, columnIndex);
+    resultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_ID, columnIndex);
     resultSet->GetInt(columnIndex, intValue);
     uri = MEDIALIBRARY_DATA_URI + "/" + to_string(intValue);
     return uri;
@@ -780,13 +782,14 @@ int32_t MediaScannerDb::GetIdFromPath(const string &path)
     int32_t columnIndex = -1;
 
     DataShare::DataSharePredicates predicates;
-    predicates.SetWhereClause(MEDIA_DATA_DB_FILE_PATH + " = ? AND " + MEDIA_DATA_DB_IS_TRASH + " = ?");
+    predicates.SetWhereClause(string(CONST_MEDIA_DATA_DB_FILE_PATH) + " = ? AND " +
+        CONST_MEDIA_DATA_DB_IS_TRASH + " = ?");
     vector<string> args = { path, to_string(NOT_TRASHED) };
     predicates.SetWhereArgs(args);
 
     Uri uri(MEDIALIBRARY_DATA_URI);
     MediaLibraryCommand cmd(uri, OperationType::QUERY);
-    vector<string> columns = {MEDIA_DATA_DB_ID};
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID};
     int errCode = 0;
     auto resultSet = MediaLibraryDataManager::GetInstance()->QueryRdb(cmd, columns, predicates, errCode);
     if (resultSet == nullptr) {
@@ -805,7 +808,7 @@ int32_t MediaScannerDb::GetIdFromPath(const string &path)
         return id;
     }
 
-    resultSet->GetColumnIndex(MEDIA_DATA_DB_ID, columnIndex);
+    resultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_ID, columnIndex);
     resultSet->GetInt(columnIndex, id);
 
     return id;
@@ -820,14 +823,14 @@ int32_t MediaScannerDb::ReadAlbums(const string &path, unordered_map<string, Met
         return E_INVALID_ARGUMENTS;
     }
 
-    AbsRdbPredicates predicates(MEDIALIBRARY_TABLE);
-    string queryCmd = MEDIA_DATA_DB_MEDIA_TYPE + " = ? AND " + MEDIA_DATA_DB_FILE_PATH + " like ? AND " +
-        MEDIA_DATA_DB_IS_TRASH + " = ?";
+    AbsRdbPredicates predicates(CONST_MEDIALIBRARY_TABLE);
+    string queryCmd = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " = ? AND " +
+        CONST_MEDIA_DATA_DB_FILE_PATH + " like ? AND " + CONST_MEDIA_DATA_DB_IS_TRASH + " = ?";
     string queryPath = path.back() != '/' ? path + "/%" : path + "%";
     vector<string> args = { to_string(MediaType::MEDIA_TYPE_ALBUM), queryPath, to_string(NOT_TRASHED) };
     predicates.SetWhereClause(queryCmd);
     predicates.SetWhereArgs(args);
-    vector<string> columns = {MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_DATE_MODIFIED};
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_DATE_MODIFIED};
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (rdbStore == nullptr) {
@@ -847,11 +850,11 @@ int32_t MediaScannerDb::ReadAlbums(const string &path, unordered_map<string, Met
     albumMap.clear();
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         Metadata metadata;
-        int32_t intValue = GetInt32Val(MEDIA_DATA_DB_ID, resultSet);
+        int32_t intValue = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
         metadata.SetFileId(intValue);
-        string strValue = GetStringVal(MEDIA_DATA_DB_FILE_PATH, resultSet);
+        string strValue = GetStringVal(CONST_MEDIA_DATA_DB_FILE_PATH, resultSet);
         metadata.SetFilePath(strValue);
-        int64_t dateModified = GetInt64Val(MEDIA_DATA_DB_DATE_MODIFIED, resultSet);
+        int64_t dateModified = GetInt64Val(CONST_MEDIA_DATA_DB_DATE_MODIFIED, resultSet);
         metadata.SetFileDateModified(dateModified);
         albumMap.insert(make_pair(strValue, metadata));
     }

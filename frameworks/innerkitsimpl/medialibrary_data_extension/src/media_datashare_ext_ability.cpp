@@ -103,6 +103,8 @@ static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
     OperationObject::VISION_SALIENCY,
     OperationObject::VISION_HEAD,
     OperationObject::VISION_AFFECTIVE,
+    OperationObject::VISION_DEDUP_SELECTION,
+    OperationObject::VISION_PROFILE,
     OperationObject::VISION_POSE,
     OperationObject::VISION_TOTAL,
     OperationObject::VISION_VIDEO_TOTAL,
@@ -379,7 +381,7 @@ static int32_t CheckOpenFilePermission(MediaLibraryCommand &cmd, string &mode)
     const bool containsRead = ContainsFlag(mode, 'r');
     const bool containsWrite = ContainsFlag(mode, 'w');
 
-    CHECK_AND_RETURN_RET(cmd.GetQuerySetParam(IS_TOOL_OPEN) != TOOL_OPEN_TRUE,
+    CHECK_AND_RETURN_RET(cmd.GetQuerySetParam(CONST_IS_TOOL_OPEN) != CONST_TOOL_OPEN_TRUE,
         IsDeveloperMediaTool(cmd, mode)? E_SUCCESS : E_PERMISSION_DENIED);
     vector<string> perms;
     FillV10Perms(mediaType, containsRead, containsWrite, perms);
@@ -426,10 +428,10 @@ static int32_t SystemApiCheck(MediaLibraryCommand &cmd)
 
     static const set<string> SYSTEM_API_URIS = {
         // Deleting asset permanently from system is only allowed for system apps.
-        URI_DELETE_PHOTOS,
+        CONST_URI_DELETE_PHOTOS,
         // Deleting asset to trash album directly without a pop-up box is only allowed for system apps.
-        UFM_DELETE_PHOTOS,
-        PAH_DELETE_PHOTOS,
+        CONST_UFM_DELETE_PHOTOS,
+        CONST_PAH_DELETE_PHOTOS,
     };
 
     OperationObject obj = cmd.GetOprnObject();
@@ -466,8 +468,8 @@ static inline int32_t HandleBundlePermCheck(const MediaLibraryCommand &cmd)
 static int32_t HandleNoPermCheck(MediaLibraryCommand &cmd)
 {
     static const set<string> NO_NEED_PERM_CHECK_URI = {
-        URI_CLOSE_FILE,
-        MEDIALIBRARY_DIRECTORY_URI,
+        CONST_URI_CLOSE_FILE,
+        CONST_MEDIALIBRARY_DIRECTORY_URI,
     };
 
     static const set<OperationObject> NO_NEED_PERM_CHECK_OBJ = {
@@ -487,8 +489,8 @@ static int32_t HandleNoPermCheck(MediaLibraryCommand &cmd)
 
 static int32_t HandleSecurityComponentPermission(MediaLibraryCommand &cmd)
 {
-    if (cmd.GetUri().ToString().find(OPRN_CREATE_COMPONENT) != string::npos ||
-        cmd.GetUri().ToString().find(OPRN_SAVE_CAMERA_PHOTO_COMPONENT) != string::npos) {
+    if (cmd.GetUri().ToString().find(CONST_OPRN_CREATE_COMPONENT) != string::npos ||
+        cmd.GetUri().ToString().find(CONST_OPRN_SAVE_CAMERA_PHOTO_COMPONENT) != string::npos) {
 #ifdef MEDIALIBRARY_SECURITY_OPEN
         auto tokenId = PermissionUtils::GetTokenId();
         CHECK_AND_RETURN_RET_LOG(Security::SecurityComponent::SecCompKit::VerifySavePermission(tokenId),
@@ -505,8 +507,8 @@ static int32_t HandleSecurityComponentPermission(MediaLibraryCommand &cmd)
 static int32_t HandleShortPermission(const MediaLibraryCommand &cmd, bool &need)
 {
     need = false;
-    if (cmd.GetUriStringWithoutSegment() == PAH_CREATE_PHOTO ||
-        cmd.GetUriStringWithoutSegment() == PAH_SYS_CREATE_PHOTO) {
+    if (cmd.GetUriStringWithoutSegment() == CONST_PAH_CREATE_PHOTO ||
+        cmd.GetUriStringWithoutSegment() == CONST_PAH_SYS_CREATE_PHOTO) {
         if (PermissionUtils::CheckPhotoCallerPermission(PERM_SHORT_TERM_WRITE_IMAGEVIDEO)) {
             need = true;
             return E_SUCCESS;
@@ -518,7 +520,7 @@ static int32_t HandleShortPermission(const MediaLibraryCommand &cmd, bool &need)
 static int32_t HandleRestorePermission(MediaLibraryCommand &cmd)
 {
     std::string uri = cmd.GetUriStringWithoutSegment();
-    if (uri == PAH_GENERATE_THUMBNAILS_RESTORE ||uri == PAH_RESTORE_INVALID_HDC_CLOUD_DATA_POS) {
+    if (uri == CONST_PAH_GENERATE_THUMBNAILS_RESTORE ||uri == CONST_PAH_RESTORE_INVALID_HDC_CLOUD_DATA_POS) {
         return PermissionUtils::CheckCallerPermission(PERM_READ_IMAGEVIDEO) ? E_SUCCESS : E_PERMISSION_DENIED;
     }
     return E_PERMISSION_DENIED;
@@ -658,7 +660,7 @@ static int32_t CheckPermFromUri(MediaLibraryCommand &cmd, bool isWrite)
 static bool AddOwnerCheck(MediaLibraryCommand &cmd, DataSharePredicates &appidPredicates)
 {
     bool cond = (cmd.GetTableName() != PhotoColumn::PHOTOS_TABLE &&
-        cmd.GetTableName() != AudioColumn::AUDIOS_TABLE && cmd.GetTableName() != MEDIALIBRARY_TABLE);
+        cmd.GetTableName() != AudioColumn::AUDIOS_TABLE && cmd.GetTableName() != CONST_MEDIALIBRARY_TABLE);
     CHECK_AND_RETURN_RET(!cond, false);
     string clientAppId = GetClientAppId();
     if (clientAppId.empty()) {
@@ -671,7 +673,7 @@ static bool AddOwnerCheck(MediaLibraryCommand &cmd, DataSharePredicates &appidPr
 static bool AddOwnerCheck(MediaLibraryCommand &cmd, DataSharePredicates &tokenIdPredicates, vector<string> &columns)
 {
     if (cmd.GetTableName() != PhotoColumn::PHOTOS_TABLE && cmd.GetTableName() != AudioColumn::AUDIOS_TABLE &&
-        cmd.GetTableName() != MEDIALIBRARY_TABLE) {
+        cmd.GetTableName() != CONST_MEDIALIBRARY_TABLE) {
         return false;
     }
     uint32_t tokenid = PermissionUtils::GetTokenId();
@@ -736,10 +738,10 @@ int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
     int32_t type = static_cast<int32_t>(command.GetOprnType());
     DfxTimer dfxTimer(type, object, OPEN_FILE_TIME_OUT, true);
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(MEDIA_DATA_DB_THUMBNAIL) == string::npos,
+    CHECK_AND_EXECUTE(command.GetUri().ToString().find(CONST_MEDIA_DATA_DB_THUMBNAIL) == string::npos,
         command.SetOprnObject(OperationObject::THUMBNAIL));
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(MEDIA_DATA_DB_THUMB_ASTC) == string::npos,
+    CHECK_AND_EXECUTE(command.GetUri().ToString().find(CONST_MEDIA_DATA_DB_THUMB_ASTC) == string::npos,
         command.SetOprnObject(OperationObject::THUMBNAIL_ASTC));
 
     CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_CACHE_URI_PREFIX) == string::npos,

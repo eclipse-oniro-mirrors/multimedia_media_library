@@ -306,7 +306,7 @@ DelayBatchTrigger& DelayBatchTrigger::GetTrigger()
 {
     static DelayBatchTrigger trigger([](const std::map<int32_t, std::set<std::string>> &requests) {
         for (const auto &[analysisType, fileIdSet] : requests) {
-            std::string uriStr = PAH_QUERY_ANA_FOREGROUND;
+            std::string uriStr = CONST_PAH_QUERY_ANA_FOREGROUND;
             MediaFileUtils::UriAppendKeyValue(uriStr, FOREGROUND_ANALYSIS_TYPE,
                 std::to_string(AnalysisType::ANALYSIS_SEARCH_INDEX));
             MediaFileUtils::UriAppendKeyValue(uriStr, FOREGROUND_ANALYSIS_TASK_ID,

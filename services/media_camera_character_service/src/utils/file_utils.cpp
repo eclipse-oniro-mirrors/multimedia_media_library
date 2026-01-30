@@ -93,7 +93,7 @@ int32_t FileUtils::SaveImage(const string &filePath, void *output, size_t writeS
     return ret;
 }
 
-int32_t FileUtils::SavePicture(const string &imageId, std::shared_ptr<Media::Picture> &picture,
+int32_t FileUtils::SavePicture(int32_t fileId, std::shared_ptr<Media::Picture> &picture,
     bool isEdited, bool isLowQualityPicture)
 {
     MediaLibraryTracer tracer;
@@ -101,10 +101,10 @@ int32_t FileUtils::SavePicture(const string &imageId, std::shared_ptr<Media::Pic
     if (picture == nullptr) {
         return -1;
     }
-    MEDIA_INFO_LOG("photoid: %{public}s", imageId.c_str());
+    MEDIA_INFO_LOG("fileId: %{public}s", to_string(fileId).c_str());
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY);
-    string where = PhotoColumn::PHOTO_ID + " = ? ";
-    vector<string> whereArgs { imageId };
+    string where = PhotoColumn::MEDIA_ID + " = ? ";
+    vector<string> whereArgs { to_string(fileId) };
     cmd.GetAbsRdbPredicates()->SetWhereClause(where);
     cmd.GetAbsRdbPredicates()->SetWhereArgs(whereArgs);
     vector<string> columns { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_EDIT_TIME,
@@ -118,7 +118,6 @@ int32_t FileUtils::SavePicture(const string &imageId, std::shared_ptr<Media::Pic
     }
     tracer.Finish();
     string path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-    int fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     string sourcePath = isEdited ? MediaLibraryAssetOperations::GetEditDataSourcePath(path) : path;
     //查询是否编辑 编辑目录下
     string mime_type = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);

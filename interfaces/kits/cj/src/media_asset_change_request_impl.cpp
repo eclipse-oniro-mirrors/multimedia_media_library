@@ -108,19 +108,19 @@ static bool ParseFileUri(const std::string& fileUriStr, MediaType mediaType, std
 static bool CheckMovingPhotoCreationArgs(DataShare::DataShareValuesBucket valuesBucket)
 {
     bool isValid = false;
-    int32_t mediaType = valuesBucket.Get(MEDIA_DATA_DB_MEDIA_TYPE, isValid);
+    int32_t mediaType = valuesBucket.Get(CONST_MEDIA_DATA_DB_MEDIA_TYPE, isValid);
     if (!isValid) {
         return false;
     }
     if (mediaType != static_cast<int32_t>(MEDIA_TYPE_IMAGE)) {
         return false;
     }
-    std::string extension = valuesBucket.Get(ASSET_EXTENTION, isValid);
+    std::string extension = valuesBucket.Get(CONST_ASSET_EXTENTION, isValid);
     if (isValid) {
         return MediaFileUtils::CheckMovingPhotoExtension(extension);
     }
 
-    std::string displayName = valuesBucket.Get(MEDIA_DATA_DB_NAME, isValid);
+    std::string displayName = valuesBucket.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
     return isValid && MediaFileUtils::CheckMovingPhotoExtension(MediaFileUtils::GetExtensionFromPath(displayName));
 }
 
@@ -171,8 +171,8 @@ MediaAssetChangeRequestImpl::MediaAssetChangeRequestImpl(
         *errCode = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    valuesBucket.Put(ASSET_EXTENTION, extension);
-    valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
+    valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
     if (!title.empty()) {
         valuesBucket.Put(PhotoColumn::MEDIA_TITLE, title);
     }
@@ -195,7 +195,7 @@ MediaAssetChangeRequestImpl::MediaAssetChangeRequestImpl(
         *errCode = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, displayName);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
     auto emptyFileAsset = std::make_unique<FileAsset>();
     emptyFileAsset->SetDisplayName(displayName);
     emptyFileAsset->SetTitle(MediaFileUtils::GetTitleFromDisplayName(displayName));
@@ -261,7 +261,7 @@ static bool InitDeleteRequest(std::string& appName, std::vector<std::string>& ur
 static int32_t DeleteAssetsExecute(OHOS::DataShare::DataSharePredicates& predicates,
     OHOS::DataShare::DataShareValuesBucket& valuesBucket)
 {
-    std::string trashUri = PAH_SYS_TRASH_PHOTO;
+    std::string trashUri = CONST_PAH_SYS_TRASH_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(trashUri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(trashUri);
     int32_t changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
@@ -381,9 +381,9 @@ MediaAssetChangeRequestImpl::MediaAssetChangeRequestImpl(
         emptyFileAsset->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);
         fileAsset_ = std::move(emptyFileAsset);
         realPath_ = realPath;
-        creationValuesBucket_.Put(MEDIA_DATA_DB_NAME, displayName);
-        creationValuesBucket_.Put(ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
-        creationValuesBucket_.Put(MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
+        creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
+        creationValuesBucket_.Put(CONST_ASSET_EXTENTION, MediaFileUtils::GetExtensionFromPath(displayName));
+        creationValuesBucket_.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, static_cast<int32_t>(mediaType));
         creationValuesBucket_.Put(PhotoColumn::MEDIA_TITLE, title);
         RecordChangeOperation(AssetChangeOperation::CREATE_FROM_URI);
         return;
@@ -495,14 +495,14 @@ int32_t MediaAssetChangeRequestImpl::CreateAssetBySecurityComponent(std::string&
         LOGE("Failed to get title");
         return E_FAIL;
     }
-    std::string extension = creationValuesBucket_.Get(ASSET_EXTENTION, isValid);
+    std::string extension = creationValuesBucket_.Get(CONST_ASSET_EXTENTION, isValid);
     if (!isValid || MediaFileUtils::CheckDisplayName(title + "." + extension) != E_OK) {
         LOGE("Failed to check displayName");
         return E_FAIL;
     }
-    creationValuesBucket_.valuesMap.erase(MEDIA_DATA_DB_NAME);
+    creationValuesBucket_.valuesMap.erase(CONST_MEDIA_DATA_DB_NAME);
 
-    std::string uri = PAH_CREATE_PHOTO_COMPONENT; // create asset by security component
+    std::string uri = CONST_PAH_CREATE_PHOTO_COMPONENT; // create asset by security component
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri createAssetUri(uri);
     return UserFileClient::InsertExt(createAssetUri, creationValuesBucket_, assetUri);
@@ -530,9 +530,9 @@ int32_t MediaAssetChangeRequestImpl::PutMediaAssetEditData(DataShare::DataShareV
         return E_FAIL;
     }
 
-    valuesBucket.Put(COMPATIBLE_FORMAT, compatibleFormat);
-    valuesBucket.Put(FORMAT_VERSION, formatVersion);
-    valuesBucket.Put(EDIT_DATA, data);
+    valuesBucket.Put(CONST_COMPATIBLE_FORMAT, compatibleFormat);
+    valuesBucket.Put(CONST_FORMAT_VERSION, formatVersion);
+    valuesBucket.Put(CONST_EDIT_DATA, data);
     return E_OK;
 }
 
@@ -812,7 +812,7 @@ int32_t MediaAssetChangeRequestImpl::CopyMovingPhotoVideo(const std::string& ass
     }
 
     std::string videoUri = assetUri;
-    MediaFileUtils::UriAppendKeyValue(videoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_MOVING_PHOTO_VIDEO);
+    MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri uri(videoUri);
     int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITEONLY);
     if (videoFd < 0) {
@@ -863,7 +863,7 @@ int32_t MediaAssetChangeRequestImpl::CJSetTitle(std::string title)
     fileAsset_->SetDisplayName(displayName);
     RecordChangeOperation(AssetChangeOperation::SET_TITLE);
     if (Contains(AssetChangeOperation::CREATE_FROM_SCRATCH) || Contains(AssetChangeOperation::CREATE_FROM_URI)) {
-        creationValuesBucket_.valuesMap[MEDIA_DATA_DB_NAME] = displayName;
+        creationValuesBucket_.valuesMap[CONST_MEDIA_DATA_DB_NAME] = displayName;
         creationValuesBucket_.valuesMap[PhotoColumn::MEDIA_TITLE] = title;
     }
     return 0;
@@ -1188,38 +1188,38 @@ int32_t MediaAssetChangeRequestImpl::SubmitCache(bool isCreation, bool isSetEffe
         LOGE("Failed to check cache file");
         return E_FAIL;
     }
-    std::string uri = PAH_SUBMIT_CACHE;
+    std::string uri = CONST_PAH_SUBMIT_CACHE;
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri submitCacheUri(uri);
     std::string assetUri;
     int32_t ret;
     if (isCreation) {
         bool isValid = false;
-        std::string displayName = creationValuesBucket_.Get(MEDIA_DATA_DB_NAME, isValid);
+        std::string displayName = creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
         if (!isValid || MediaFileUtils::CheckDisplayName(displayName) != E_OK) {
             LOGE("Failed to check displayName");
             return E_FAIL;
         }
-        creationValuesBucket_.Put(CACHE_FILE_NAME, cacheFileName_);
+        creationValuesBucket_.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
         if (IsMovingPhoto()) {
-            creationValuesBucket_.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         ret = UserFileClient::InsertExt(submitCacheUri, creationValuesBucket_, assetUri);
     } else {
         DataShare::DataShareValuesBucket valuesBucket;
         valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
-        valuesBucket.Put(CACHE_FILE_NAME, cacheFileName_);
+        valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
         ret = PutMediaAssetEditData(valuesBucket);
         if (ret != E_OK) {
             LOGE("Failed to put editData");
             return E_FAIL;
         }
         if (IsMovingPhoto()) {
-            valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         if (isSetEffectMode) {
             valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
-            valuesBucket.Put(CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
         ret = UserFileClient::Insert(submitCacheUri, valuesBucket);
     }
@@ -1333,7 +1333,7 @@ static int SavePhotoProxyImage(const UniqueFd& destFd, sptr<PhotoProxy> photoPro
 
 static bool AddPhotoProxyResourceExecute(MediaAssetChangeRequestImpl* changeRequest, const UniqueFd& destFd)
 {
-    std::string uri = PAH_ADD_IMAGE;
+    std::string uri = CONST_PAH_ADD_IMAGE;
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(uri);
 
@@ -1457,12 +1457,12 @@ static bool SetTitleExecute(MediaAssetChangeRequestImpl* changeRequest)
     auto fileAsset = changeRequest->GetFileAssetInstance();
     predicates.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileAsset->GetId()));
     valuesBucket.Put(PhotoColumn::MEDIA_TITLE, fileAsset->GetTitle());
-    return UpdateAssetProperty(changeRequest, PAH_UPDATE_PHOTO, predicates, valuesBucket);
+    return UpdateAssetProperty(changeRequest, CONST_PAH_UPDATE_PHOTO, predicates, valuesBucket);
 }
 
 static void DiscardHighQualityPhoto(MediaAssetChangeRequestImpl* changeRequest)
 {
-    std::string uriStr = PAH_REMOVE_MSC_TASK;
+    std::string uriStr = CONST_PAH_REMOVE_MSC_TASK;
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;
@@ -1492,15 +1492,15 @@ static bool SaveCameraPhotoExecute(MediaAssetChangeRequestImpl* changeRequest)
         LOGE("fileAsset is nullptr");
         return false;
     }
-    std::string uriStr = PAH_SAVE_CAMERA_PHOTO;
+    std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, MEDIA_OPERN_KEYWORD, std::to_string(needScan));
+    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, std::to_string(needScan));
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_FILE_PATH, fileAsset->GetUri());
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, std::to_string(fileAsset->GetId()));
     MediaLibraryNapiUtils::UriAppendKeyValue(
         uriStr, PhotoColumn::PHOTO_SUBTYPE, std::to_string(fileAsset->GetPhotoSubType()));
     MediaLibraryNapiUtils::UriAppendKeyValue(
-        uriStr, IMAGE_FILE_TYPE, std::to_string(changeRequest->GetImageFileType()));
+        uriStr, CONST_IMAGE_FILE_TYPE, std::to_string(changeRequest->GetImageFileType()));
     Uri uri(uriStr);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::PHOTO_IS_TEMP, false);
@@ -1519,7 +1519,7 @@ static bool AddFiltersExecute(MediaAssetChangeRequestImpl* changeRequest)
         LOGE("Failed to check fileAsset");
         return false;
     }
-    std::string uri = PAH_ADD_FILTERS;
+    std::string uri = CONST_PAH_ADD_FILTERS;
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri addFiltersUri(uri);
 
@@ -1547,7 +1547,7 @@ static bool DiscardCameraPhotoExecute(MediaAssetChangeRequestImpl* changeRequest
     predicates.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileAsset->GetId()));
     predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, "1"); // only temp camera photo can be discarded
 
-    std::string uri = PAH_DISCARD_CAMERA_PHOTO;
+    std::string uri = CONST_PAH_DISCARD_CAMERA_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(uri);
     int32_t changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
@@ -1569,7 +1569,7 @@ static bool SetOrientationExecute(MediaAssetChangeRequestImpl* changeRequest)
     }
     predicates.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileAsset->GetId()));
     valuesBucket.Put(PhotoColumn::PHOTO_ORIENTATION, fileAsset->GetOrientation());
-    return UpdateAssetProperty(changeRequest, PAH_UPDATE_PHOTO, predicates, valuesBucket);
+    return UpdateAssetProperty(changeRequest, CONST_PAH_UPDATE_PHOTO, predicates, valuesBucket);
 }
 
 static const std::unordered_map<AssetChangeOperation, bool (*)(MediaAssetChangeRequestImpl*)> EXECUTE_MAP = {

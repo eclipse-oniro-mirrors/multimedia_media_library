@@ -182,11 +182,11 @@ static int32_t OpenReadOnlyVideo(const std::string& videoUri, bool isMediaLibUri
     if (isMediaLibUri) {
         std::string openVideoUri = videoUri;
         if (position == POSITION_CLOUD) {
-            MediaFileUtils::UriAppendKeyValue(openVideoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-                OPEN_MOVING_PHOTO_VIDEO_CLOUD);
+            MediaFileUtils::UriAppendKeyValue(openVideoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+                CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD);
         } else {
-            MediaFileUtils::UriAppendKeyValue(openVideoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-                OPEN_MOVING_PHOTO_VIDEO);
+            MediaFileUtils::UriAppendKeyValue(openVideoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+                CONST_OPEN_MOVING_PHOTO_VIDEO);
         }
         Uri uri(openVideoUri);
         return UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
@@ -206,8 +206,8 @@ static int32_t OpenReadOnlyImage(const std::string& imageUri, bool isMediaLibUri
     if (isMediaLibUri) {
         std::string openImageUri = imageUri;
         if (position == POSITION_CLOUD) {
-            MediaFileUtils::UriAppendKeyValue(openImageUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-                OPEN_MOVING_PHOTO_VIDEO_CLOUD);
+            MediaFileUtils::UriAppendKeyValue(openImageUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+                CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD);
         }
         Uri uri(openImageUri);
         return UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
@@ -264,11 +264,11 @@ int32_t MovingPhotoNapi::OpenReadOnlyLivePhoto(const string& destLivePhotoUri, i
         }
         string livePhotoUri = destLivePhotoUri;
         if (position == POSITION_CLOUD) {
-            MediaFileUtils::UriAppendKeyValue(livePhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-                OPEN_MOVING_PHOTO_VIDEO_CLOUD);
+            MediaFileUtils::UriAppendKeyValue(livePhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+                CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD);
         } else {
-            MediaFileUtils::UriAppendKeyValue(livePhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-                OPEN_PRIVATE_LIVE_PHOTO);
+            MediaFileUtils::UriAppendKeyValue(livePhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+                CONST_OPEN_PRIVATE_LIVE_PHOTO);
         }
         Uri uri(livePhotoUri);
         return UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY, userId !="" ? stoi(userId) : -1);
@@ -290,7 +290,7 @@ int32_t MovingPhotoNapi::OpenReadOnlyMetadata(const string& movingPhotoUri)
 
     string movingPhotoMetadataUri = movingPhotoUri;
     MediaFileUtils::UriAppendKeyValue(
-        movingPhotoMetadataUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_MOVING_PHOTO_METADATA);
+        movingPhotoMetadataUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_PRIVATE_MOVING_PHOTO_METADATA);
     Uri uri(movingPhotoMetadataUri);
     return UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
 }
@@ -365,7 +365,7 @@ static int32_t RequestContentToSandbox(napi_env env, MovingPhotoAsyncContext* co
 {
     string movingPhotoUri = context->movingPhotoUri;
     if (context->sourceMode == SourceMode::ORIGINAL_MODE) {
-        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     if (!context->destImageUri.empty()) {
         int32_t imageFd = MovingPhotoNapi::OpenReadOnlyFile(movingPhotoUri, true, context->position);
@@ -409,7 +409,7 @@ static int32_t AcquireFdForArrayBuffer(MovingPhotoAsyncContext* context)
     int32_t fd = 0;
     string movingPhotoUri = context->movingPhotoUri;
     if (context->sourceMode == SourceMode::ORIGINAL_MODE) {
-        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     switch (context->resourceType) {
         case ResourceType::IMAGE_RESOURCE: {
@@ -584,7 +584,7 @@ static int32_t QueryPhotoPosition(const string &movingPhotoUri, bool hasReadPerm
     std::vector<std::string> fetchColumn { PhotoColumn::PHOTO_POSITION };
     string queryUri;
     if (hasReadPermission) {
-        queryUri = PAH_QUERY_PHOTO;
+        queryUri = CONST_PAH_QUERY_PHOTO;
     } else {
         queryUri = movingPhotoUri;
         MediaFileUri::RemoveAllFragment(queryUri);
@@ -1063,8 +1063,8 @@ static void IsMovingPhotoVideoReady(MovingPhotoAsyncContext *context)
     string queryId = MediaFileUtils::GetIdFromUri(context->movingPhotoUri);
     predicates.EqualTo(MediaColumn::MEDIA_ID, queryId);
     vector<string> columns;
-    Uri uri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
-         + MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY + "/"
+         + CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY);
     int errCode = 0;
     shared_ptr<DataShare::DataShareResultSet> resultSet = UserFileClient::Query(uri, predicates, columns, errCode);
     if (errCode == E_PERMISSION_DENIED) {

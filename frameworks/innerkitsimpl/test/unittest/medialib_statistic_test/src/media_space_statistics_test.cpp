@@ -151,18 +151,18 @@ void MediaSpaceStatisticsTest::SetUpTestCase(void)
     ClearAllFile();
 
     // create base file
-    CreateFile(MEDIALIBRARY_IMAGE_URI, "Pictures/", "MediaSpaceStatisticsTest.jpg", MEDIA_TYPE_IMAGE,
+    CreateFile(CONST_MEDIALIBRARY_IMAGE_URI, "Pictures/", "MediaSpaceStatisticsTest.jpg", MEDIA_TYPE_IMAGE,
         FILE_CONTENT_JPG, sizeof(FILE_CONTENT_JPG));
-    CreateFile(MEDIALIBRARY_VIDEO_URI, "Videos/", "MediaSpaceStatisticsTest.mp4", MEDIA_TYPE_VIDEO,
+    CreateFile(CONST_MEDIALIBRARY_VIDEO_URI, "Videos/", "MediaSpaceStatisticsTest.mp4", MEDIA_TYPE_VIDEO,
         FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
-    CreateFile(MEDIALIBRARY_AUDIO_URI, "Audios/", "MediaSpaceStatisticsTest.mp3", MEDIA_TYPE_AUDIO,
+    CreateFile(CONST_MEDIALIBRARY_AUDIO_URI, "Audios/", "MediaSpaceStatisticsTest.mp3", MEDIA_TYPE_AUDIO,
         FILE_CONTENT_MP3, sizeof(FILE_CONTENT_MP3));
-    CreateFile(MEDIALIBRARY_FILE_URI, "Docs/Documents/", "MediaSpaceStatisticsTest.txt", MEDIA_TYPE_FILE,
+    CreateFile(CONST_MEDIALIBRARY_FILE_URI, "Docs/Documents/", "MediaSpaceStatisticsTest.txt", MEDIA_TYPE_FILE,
         FILE_CONTENT_TXT, sizeof(FILE_CONTENT_TXT));
 
-    Uri scanUri(URI_SCANNER);
+    Uri scanUri(CONST_URI_SCANNER);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
     auto ret = sDataShareHelper_->Insert(scanUri, valuesBucket);
     EXPECT_EQ(ret, 0);
     sleep(SCAN_WAIT_TIME);
@@ -232,7 +232,7 @@ std::unique_ptr<FileAsset> GetFile(int mediaTypeId)
     }
     vector<string> columns;
     DataSharePredicates predicates;
-    string prefix = MEDIA_DATA_DB_MEDIA_TYPE + " = " + std::to_string(mediaTypeId);
+    string prefix = std::string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " = " + std::to_string(mediaTypeId);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(MEDIALIBRARY_DATA_URI);
     shared_ptr<DataShareResultSet> resultSet = nullptr;
@@ -274,9 +274,9 @@ void DeleteFile(std::string fileUri)
     if (sDataShareHelper_ == nullptr) {
         return;
     }
-    Uri deleteAssetUri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN);
+    Uri deleteAssetUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN);
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_ID, MediaFileUtils::GetIdFromUri(fileUri));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, MediaFileUtils::GetIdFromUri(fileUri));
     int retVal = sDataShareHelper_->Delete(deleteAssetUri, predicates);
     MEDIA_INFO_LOG("MediaSpaceStatistics_test DeleteFile::uri :%{private}s", deleteAssetUri.ToString().c_str());
     EXPECT_NE(retVal, E_ERR);
@@ -289,7 +289,7 @@ void ClearFile()
     }
     vector<string> columns;
     DataSharePredicates predicates;
-    string prefix = MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(g_albumMediaType);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(g_albumMediaType);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(MEDIALIBRARY_DATA_URI);
     shared_ptr<DataShareResultSet> resultSet = nullptr;
@@ -316,17 +316,17 @@ void CreateFile(std::string baseURI, std::string targetPath, std::string newName
     string abilityUri = Media::MEDIALIBRARY_DATA_URI;
     if (MediaFileUtils::StartsWith(targetPath, "Pictures/") ||
         MediaFileUtils::StartsWith(targetPath, "Videos/")) {
-        abilityUri += Media::MEDIA_PHOTOOPRN + "/" + Media::MEDIA_FILEOPRN_CREATEASSET;
+        abilityUri += string(CONST_MEDIA_PHOTOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     } else if (MediaFileUtils::StartsWith(targetPath, "Audios/")) {
-        abilityUri += Media::MEDIA_AUDIOOPRN + "/" + Media::MEDIA_FILEOPRN_CREATEASSET;
+        abilityUri += string(CONST_MEDIA_AUDIOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     } else {
-        abilityUri += Media::MEDIA_FILEOPRN + "/" + Media::MEDIA_FILEOPRN_CREATEASSET;
+        abilityUri += string(CONST_MEDIA_FILEOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     }
     Uri createAssetUri(abilityUri);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, newName);
-    valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, targetPath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, newName);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, targetPath);
 
     int32_t index = sDataShareHelper_->Insert(createAssetUri, valuesBucket);
     int64_t virtualIndex = MediaFileUtils::GetVirtualIdByType(index, mediaType);
@@ -359,17 +359,17 @@ void CopyFile(std::string srcUri, std::string baseURI, std::string targetPath, s
     string abilityUri = Media::MEDIALIBRARY_DATA_URI;
     if (MediaFileUtils::StartsWith(targetPath, "Pictures/") ||
         MediaFileUtils::StartsWith(targetPath, "Videos/")) {
-        abilityUri += Media::MEDIA_PHOTOOPRN + "/" + Media::MEDIA_FILEOPRN_CREATEASSET;
+        abilityUri += string(CONST_MEDIA_PHOTOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     } else if (MediaFileUtils::StartsWith(targetPath, "Audios/")) {
-        abilityUri += Media::MEDIA_AUDIOOPRN + "/" + Media::MEDIA_FILEOPRN_CREATEASSET;
+        abilityUri += string(CONST_MEDIA_AUDIOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     } else {
-        abilityUri += Media::MEDIA_FILEOPRN + "/" + Media::MEDIA_FILEOPRN_CREATEASSET;
+        abilityUri += string(CONST_MEDIA_FILEOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     }
     Uri createAssetUri(abilityUri);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, newName);
-    valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, targetPath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, newName);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, targetPath);
     int32_t index = sDataShareHelper_->Insert(createAssetUri, valuesBucket);
     int64_t virtualIndex = MediaFileUtils::GetVirtualIdByType(index, mediaType);
     string destUri = baseURI + "/" + std::to_string(virtualIndex);
@@ -422,18 +422,18 @@ void CheckQuerySize(std::string testNo, int mediaTypeId, int targetFileNumber)
 
 int32_t CreateTestFile(MediaType MediaType, string fileName, string relativePath)
 {
-    string abilityUri = Media::ML_FILE_URI_PREFIX;
-    Uri createAssetUri(abilityUri + "/" + Media::MEDIA_FILEOPRN + "/" + Media::MEDIA_FILEOPRN_CREATEASSET);
+    string abilityUri = CONST_ML_FILE_URI_PREFIX;
+    Uri createAssetUri(abilityUri + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, MediaType);
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, fileName);
-    valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MediaType);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, fileName);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
     return sDataShareHelper_->Insert(createAssetUri, valuesBucket);
 }
 
 string ReturnUri(string type)
 {
-    return (ML_FILE_URI_PREFIX + '/' + "file" + "/" + type);
+    return (string(CONST_ML_FILE_URI_PREFIX) + '/' + "file" + "/" + type);
 }
 
 /**
@@ -532,7 +532,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_007, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Pictures/MediaSpaceStatistics_test_007.jpg";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     int32_t ret = mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -561,7 +561,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_008, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Docs/Documents/MediaSpaceStatistics_test_008.txt";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -592,7 +592,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_009, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Docs/Download/MediaSpaceStatistics_test_009.txt";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -619,7 +619,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_010, TestSize.Level
     MEDIA_INFO_LOG("MediaSpaceStatistics_test_010::Start");
     const Uri realUri(ReturnUri("1"));
     const string realPath = "/storage/cloud/100/files/Docs/Documents/MediaSpaceStatistics_test_010.txt";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     int32_t ret = mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -648,7 +648,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_011, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Docs/Documents/test1/MediaSpaceStatistics_test_011.txt";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -679,7 +679,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_012, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Docs/Documents/weixin/test.txt";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -710,7 +710,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_013, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Docs/Download/weixin/MediaSpaceStatistics_test_013.mp3";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -741,7 +741,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_014, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Camera/weixin/MediaSpaceStatistics_test_014.jpg";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     int32_t ret = mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -770,7 +770,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_015, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Docs/Download/weixin/MediaSpaceStatistics_test_015.jpg";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -801,7 +801,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_016, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Docs/Download/weixin/MediaSpaceStatistics_test_016.xxx";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -832,7 +832,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_017, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Videos/MediaSpaceStatistics_test_017.mp4";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     int32_t ret = mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);
@@ -861,7 +861,7 @@ HWTEST_F(MediaSpaceStatisticsTest, MediaSpaceStatistics_test_018, TestSize.Level
     int64_t virtualId = MediaFileUtils::GetVirtualIdByType(index, MediaType::MEDIA_TYPE_FILE);
     const Uri realUri(ReturnUri(to_string(virtualId)));
     const string realPath = "/storage/cloud/100/files/Audios/MediaSpaceStatistics_test_018.mp3";
-    Uri fileUri(ML_FILE_URI_PREFIX);
+    Uri fileUri(CONST_ML_FILE_URI_PREFIX);
     string filePath;
     string userId;
     int32_t ret = mediaLibraryManager->GetUriFromFilePath(realPath, fileUri, userId);

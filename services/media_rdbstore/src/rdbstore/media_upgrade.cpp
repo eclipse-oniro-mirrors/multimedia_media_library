@@ -487,7 +487,7 @@ const std::string PhotoUpgrade::CREATE_PHOTOS_MDIRTY_TRIGGER =
 const std::string PhotoUpgrade::INSERT_GENERATE_HIGHLIGHT_THUMBNAIL =
                         "CREATE TRIGGER IF NOT EXISTS insert_generate_highlight_thumbnail_trigger AFTER INSERT ON " +
                         PhotoColumn::HIGHLIGHT_TABLE + " BEGIN SELECT begin_generate_highlight_thumbnail " +
-                        "(NEW." + MEDIA_DATA_DB_ID + ", NEW." + MEDIA_DATA_DB_VIDEO_TRACKS +
+                        "(NEW." + CONST_MEDIA_DATA_DB_ID + ", NEW." + MEDIA_DATA_DB_VIDEO_TRACKS +
                         ", NEW." + PhotoColumn::MEDIA_DATA_DB_HIGHLIGHT_TRIGGER + ", '" +
                         MEDIA_DATA_DB_INSERT_TYPE + "'); END;";
 
@@ -497,13 +497,13 @@ const std::string PhotoUpgrade::UPDATE_GENERATE_HIGHLIGHT_THUMBNAIL =
                         PhotoColumn::MEDIA_DATA_DB_HIGHLIGHT_TRIGGER + "= 1 " + "AND NEW." +
                         PhotoColumn::MEDIA_DATA_DB_HIGHLIGHT_TRIGGER +
                         "= 0 BEGIN SELECT begin_generate_highlight_thumbnail " +
-                        "(NEW." + MEDIA_DATA_DB_ID + ", NEW." + MEDIA_DATA_DB_VIDEO_TRACKS +
+                        "(NEW." + CONST_MEDIA_DATA_DB_ID + ", NEW." + MEDIA_DATA_DB_VIDEO_TRACKS +
                         ", NEW." + PhotoColumn::MEDIA_DATA_DB_HIGHLIGHT_TRIGGER + ", '" +
                         MEDIA_DATA_DB_UPDATE_TYPE + "'); END;";
 
 const std::string PhotoUpgrade::INDEX_HIGHLIGHT_FILEID =
                         BaseColumn::CreateIndex() + MEDIA_DATA_DB_HIGHLIGHT_INDEX + " ON " +
-                        PhotoColumn::HIGHLIGHT_TABLE + " (" + MEDIA_DATA_DB_ID + ");";
+                        PhotoColumn::HIGHLIGHT_TABLE + " (" + CONST_MEDIA_DATA_DB_ID + ");";
 
 const std::string  PhotoUpgrade::CREATE_PHOTOS_INSERT_CLOUD_SYNC =
                         " CREATE TRIGGER IF NOT EXISTS photo_insert_cloud_sync_trigger AFTER INSERT ON " +

@@ -35,6 +35,8 @@ const string DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS = "download_status";
 const string DownloadResourcesColumn::MEDIA_PERCENT = "percent";
 const string DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON = "auto_pause_reason";
 const string DownloadResourcesColumn::MEDIA_COVER_LEVEL = "cover_level";
+const string DownloadResourcesColumn::MEDIA_TASK_SEQ = "task_sequence";
+const string DownloadResourcesColumn::MEDIA_NETWORK_POLICY = "network_policy";
 
 // index
 const std::string DownloadResourcesColumn::IDSTATUS_INDEX = "idx_drtr_idstatus";
@@ -52,22 +54,13 @@ const std::string DownloadResourcesColumn::CREATE_TABLE = CreateTable() +
     MEDIA_DOWNLOAD_STATUS + " INT NOT NULL DEFAULT -1, " +
     MEDIA_PERCENT + " INT NOT NULL DEFAULT -1, " +
     MEDIA_AUTO_PAUSE_REASON + " INT NOT NULL DEFAULT 0, " +
-    MEDIA_COVER_LEVEL + " INT NOT NULL DEFAULT 1 " +
+    MEDIA_COVER_LEVEL + " INT NOT NULL DEFAULT 1, " +
+    MEDIA_TASK_SEQ + " INT NOT NULL DEFAULT 0, " +
+    MEDIA_NETWORK_POLICY + " INT NOT NULL DEFAULT 0 " +
     ")";
 
 const std::string DownloadResourcesColumn::INDEX_DRTR_ID_STATUS =
     BaseColumn::CreateIndex() + IDSTATUS_INDEX + " ON " + DownloadResourcesColumn::TABLE +
     " (" + MEDIA_ID + "," + MEDIA_DOWNLOAD_STATUS + ");";
 
-// CREATE TABLE IF NOT EXISTS download_resources_task_records (
-//             file_id         INTEGER  PRIMARY KEY NOT NULL,
-//             display_name       TEXT     NOT NULL DEFAULT "",
-//             size       BIGINT NOT NULL DEFAULT -1,
-//             uri        TEXT,
-//             add_time      BIGINT NOT NULL DEFAULT -1,
-//             finish_time     BIGINT NOT NULL DEFAULT -1,
-//             download_status INT NOT NULL DEFAULT -1,
-//             percent         INT NOT NULL DEFAULT -1,
-//             auto_pause_reason INT NOT NULL DEFAULT 0
-//         );
 } // namespace OHOS::MEDIA

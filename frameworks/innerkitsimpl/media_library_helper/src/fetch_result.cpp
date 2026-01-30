@@ -32,46 +32,46 @@ using ResultTypeMap = unordered_map<string, ResultSetDataType>;
 static const ResultTypeMap &GetResultTypeMap()
 {
     static const ResultTypeMap RESULT_TYPE_MAP = {
-        { MEDIA_DATA_DB_ID, TYPE_INT32 },
-        { MEDIA_DATA_DB_NAME, TYPE_STRING },
-        { MEDIA_DATA_DB_RELATIVE_PATH, TYPE_STRING },
-        { MEDIA_DATA_DB_MEDIA_TYPE, TYPE_INT32 },
-        { MEDIA_DATA_DB_PARENT_ID, TYPE_INT32 },
-        { MEDIA_DATA_DB_SIZE, TYPE_INT64 },
-        { MEDIA_DATA_DB_DATE_ADDED, TYPE_INT64 },
-        { MEDIA_DATA_DB_DATE_MODIFIED, TYPE_INT64 },
-        { MEDIA_DATA_DB_DATE_TAKEN, TYPE_INT64 },
-        { MEDIA_DATA_DB_FILE_PATH, TYPE_STRING },
-        { MEDIA_DATA_DB_MIME_TYPE, TYPE_STRING },
-        { MEDIA_DATA_DB_TITLE, TYPE_STRING },
-        { MEDIA_DATA_DB_ARTIST, TYPE_STRING },
-        { MEDIA_DATA_DB_ALBUM, TYPE_STRING },
-        { MEDIA_DATA_DB_WIDTH, TYPE_INT32 },
-        { MEDIA_DATA_DB_HEIGHT, TYPE_INT32 },
-        { MEDIA_DATA_DB_DURATION, TYPE_INT32 },
-        { MEDIA_DATA_DB_ORIENTATION, TYPE_INT32 },
-        { MEDIA_DATA_DB_BUCKET_ID, TYPE_INT32 },
-        { MEDIA_DATA_DB_BUCKET_NAME, TYPE_STRING },
-        { MEDIA_DATA_DB_TIME_PENDING, TYPE_INT64 },
-        { MEDIA_DATA_DB_IS_FAV, TYPE_INT32 },
-        { MEDIA_DATA_DB_DATE_TRASHED, TYPE_INT64 },
-        { MEDIA_DATA_DB_SELF_ID, TYPE_STRING },
-        { MEDIA_DATA_DB_RECYCLE_PATH, TYPE_STRING },
-        { MEDIA_DATA_DB_IS_TRASH, TYPE_INT32 },
-        { MEDIA_DATA_DB_AUDIO_ALBUM, TYPE_STRING },
-        { MEDIA_DATA_DB_OWNER_PACKAGE, TYPE_STRING },
-        { MEDIA_DATA_DB_OWNER_APPID, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_ID, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_NAME, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_RELATIVE_PATH, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_MEDIA_TYPE, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_PARENT_ID, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_SIZE, TYPE_INT64 },
+        { CONST_MEDIA_DATA_DB_DATE_ADDED, TYPE_INT64 },
+        { CONST_MEDIA_DATA_DB_DATE_MODIFIED, TYPE_INT64 },
+        { CONST_MEDIA_DATA_DB_DATE_TAKEN, TYPE_INT64 },
+        { CONST_MEDIA_DATA_DB_FILE_PATH, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_MIME_TYPE, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_TITLE, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_ARTIST, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_ALBUM, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_WIDTH, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_HEIGHT, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_DURATION, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_ORIENTATION, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_BUCKET_ID, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_BUCKET_NAME, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_TIME_PENDING, TYPE_INT64 },
+        { CONST_MEDIA_DATA_DB_IS_FAV, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_DATE_TRASHED, TYPE_INT64 },
+        { CONST_MEDIA_DATA_DB_SELF_ID, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_RECYCLE_PATH, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_IS_TRASH, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_AUDIO_ALBUM, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_OWNER_PACKAGE, TYPE_STRING },
+        { CONST_MEDIA_DATA_DB_OWNER_APPID, TYPE_STRING },
         { MediaColumn::MEDIA_PACKAGE_NAME, TYPE_STRING },
-        { MEDIA_DATA_DB_POSITION, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_POSITION, TYPE_INT32 },
         { MediaColumn::MEDIA_HIDDEN, TYPE_INT32 },
         { MediaColumn::MEDIA_VIRTURL_PATH, TYPE_STRING },
         { PhotoColumn::PHOTO_SUBTYPE, TYPE_INT32 },
-        { MEDIA_COLUMN_COUNT, TYPE_INT32 },
+        { CONST_MEDIA_COLUMN_COUNT, TYPE_INT32 },
         { PhotoColumn::CAMERA_SHOT_KEY, TYPE_STRING },
         { PhotoColumn::PHOTO_ALL_EXIF, TYPE_STRING },
         { PhotoColumn::PHOTO_USER_COMMENT, TYPE_STRING },
-        { PHOTO_INDEX, TYPE_INT32 },
-        { MEDIA_DATA_DB_COUNT, TYPE_INT32 },
+        { CONST_PHOTO_INDEX, TYPE_INT32 },
+        { CONST_MEDIA_DATA_DB_COUNT, TYPE_INT32 },
         { PhotoColumn::PHOTO_DATE_YEAR, TYPE_STRING },
         { PhotoColumn::PHOTO_DATE_MONTH, TYPE_STRING },
         { PhotoColumn::PHOTO_DATE_DAY, TYPE_STRING },
@@ -102,7 +102,7 @@ static const ResultTypeMap &GetResultTypeMap()
         { PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, TYPE_INT32 },
         { PhotoColumn::PHOTO_HAS_APPLINK, TYPE_INT32 },
         { PhotoColumn::PHOTO_APPLINK, TYPE_STRING },
-        { MEDIA_SUM_SIZE, TYPE_INT64 },
+        { CONST_MEDIA_SUM_SIZE, TYPE_INT64 },
         { CustomRecordsColumns::FILE_ID, TYPE_INT32 },
         { CustomRecordsColumns::BUNDLE_NAME, TYPE_STRING },
         { CustomRecordsColumns::SHARE_COUNT, TYPE_INT32 },
@@ -338,9 +338,7 @@ int32_t FetchResult<T>::GetObjectIndexById(int32_t assetId)
             CHECK_AND_RETURN_RET_LOG(resultset_->GoToRow(i) == NativeRdb::E_OK, -1, "GoToRow failed");
             int32_t fileId =
                 get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultset_, TYPE_INT32));
-            if (fileId == assetId) {
-                return i;
-            }
+            CHECK_AND_RETURN_RET(fileId != assetId, i);
         }
     } else if constexpr (std::is_same<T, AlbumAsset>::value || std::is_same<T, SmartAlbumAsset>::value ||
         std::is_same<T, AlbumOrder>::value) {
@@ -348,9 +346,7 @@ int32_t FetchResult<T>::GetObjectIndexById(int32_t assetId)
                 CHECK_AND_RETURN_RET_LOG(resultset_->GoToRow(i) == NativeRdb::E_OK, -1, "GoToRow failed");
                 int32_t albumId =
                     get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_ID, resultset_, TYPE_INT32));
-                if (albumId == assetId) {
-                    return i;
-                }
+                CHECK_AND_RETURN_RET(albumId != assetId, i);
             }
         } else {
             MEDIA_ERR_LOG("unsupported FetchResType");
@@ -398,9 +394,8 @@ template <class T>
 variant<int32_t, int64_t, string, double> FetchResult<T>::GetRowValFromColumn(string columnName,
     ResultSetDataType dataType, shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
-    if ((resultset_ == nullptr) && (resultSet == nullptr)) {
-        return ReturnDefaultOnError("Resultset is null", dataType);
-    }
+    bool cond = ((resultset_ == nullptr) && (resultSet == nullptr));
+    CHECK_AND_RETURN_RET(!cond, ReturnDefaultOnError("Resultset is null", dataType));
     int index;
     int status;
     if (resultSet) {
@@ -523,7 +518,7 @@ void FetchResult<T>::SetFileAsset(FileAsset *fileAsset, shared_ptr<NativeRdb::Re
         }
         auto memberType = GetResultTypeMap().at(name);
         fileAsset->SetResultTypeMap(name, memberType);
-        if (name == MEDIA_DATA_DB_RELATIVE_PATH) {
+        if (name == CONST_MEDIA_DATA_DB_RELATIVE_PATH) {
             map.emplace(move(name), MediaFileUtils::RemoveDocsFromRelativePath(
                 get<string>(GetValByIndex(index, memberType, resultSet))));
         } else {
@@ -609,10 +604,10 @@ static void SetCompatAlbumName(AlbumAsset *albumData)
     string albumName;
     switch (albumData->GetAlbumSubType()) {
         case PhotoAlbumSubType::CAMERA:
-            albumName = CAMERA_ALBUM_NAME;
+            albumName = CONST_CAMERA_ALBUM_NAME;
             break;
         case PhotoAlbumSubType::SCREENSHOT:
-            albumName = SCREEN_SHOT_ALBUM_NAME;
+            albumName = CONST_SCREEN_SHOT_ALBUM_NAME;
             break;
         default:
             MEDIA_WARN_LOG("Ignore unsupported compat album type: %{public}d", albumData->GetAlbumSubType());
@@ -633,24 +628,25 @@ void FetchResult<T>::SetAlbumAsset(AlbumAsset *albumData, shared_ptr<NativeRdb::
     SetCompatAlbumName(albumData);
 #else
     // Get album id index and value
-    albumData->SetAlbumId(get<int32_t>(GetRowValFromColumn(MEDIA_DATA_DB_BUCKET_ID, TYPE_INT32, resultSet)));
+    albumData->SetAlbumId(get<int32_t>(GetRowValFromColumn(CONST_MEDIA_DATA_DB_BUCKET_ID, TYPE_INT32, resultSet)));
     // Get album title index and value
-    albumData->SetAlbumName(get<string>(GetRowValFromColumn(MEDIA_DATA_DB_TITLE, TYPE_STRING, resultSet)));
+    albumData->SetAlbumName(get<string>(GetRowValFromColumn(CONST_MEDIA_DATA_DB_TITLE, TYPE_STRING, resultSet)));
 #endif
     // Get album asset count index and value
-    albumData->SetCount(get<int32_t>(GetRowValFromColumn(MEDIA_DATA_DB_COUNT, TYPE_INT32, resultSet)));
+    albumData->SetCount(get<int32_t>(GetRowValFromColumn(CONST_MEDIA_DATA_DB_COUNT, TYPE_INT32, resultSet)));
     string albumUri;
     if (resultNapiType_ == ResultNapiType::TYPE_USERFILE_MGR ||
         resultNapiType_ == ResultNapiType::TYPE_PHOTOACCESS_HELPER) {
         albumUri = PhotoAlbumColumns::ALBUM_URI_PREFIX + to_string(albumData->GetAlbumId());
     } else {
-        albumUri = ML_FILE_URI_PREFIX + MEDIALIBRARY_TYPE_ALBUM_URI + "/" + to_string(albumData->GetAlbumId());
+        albumUri = string(CONST_ML_FILE_URI_PREFIX) + CONST_MEDIALIBRARY_TYPE_ALBUM_URI + "/" +
+            to_string(albumData->GetAlbumId());
     }
     albumData->SetAlbumUri(albumUri);
     // Get album relativePath index and value
     albumData->SetAlbumRelativePath(MediaFileUtils::RemoveDocsFromRelativePath(
-        get<string>(GetRowValFromColumn(MEDIA_DATA_DB_RELATIVE_PATH, TYPE_STRING, resultSet))));
-    albumData->SetAlbumDateModified(get<int64_t>(GetRowValFromColumn(MEDIA_DATA_DB_DATE_MODIFIED,
+        get<string>(GetRowValFromColumn(CONST_MEDIA_DATA_DB_RELATIVE_PATH, TYPE_STRING, resultSet))));
+    albumData->SetAlbumDateModified(get<int64_t>(GetRowValFromColumn(CONST_MEDIA_DATA_DB_DATE_MODIFIED,
         TYPE_INT64, resultSet)));
 
     albumData->SetResultNapiType(resultNapiType_);

@@ -133,7 +133,7 @@ vector<int32_t> MediaSyncObserver::GetHandlesFromPhotosInfoBurstKeys(vector<std:
     CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, handlesResult,
         "Mtp GetHandlesFromPhotosInfoBurstKeys fail to get datasharehelper");
     CHECK_AND_RETURN_RET_LOG(!handles.empty(), handlesResult, "Mtp handles have no elements!");
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     columns.push_back(PhotoColumn::PHOTO_BURST_KEY);
     DataShare::DataSharePredicates predicates;
@@ -183,7 +183,7 @@ vector<string> MediaSyncObserver::GetAllDeleteHandles()
     vector<string> handlesResult;
     CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, handlesResult,
         "Mtp GetAllDeleteHandles fail to get datasharehelper");
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     columns.push_back(MediaColumn::MEDIA_ID);
     DataShare::DataSharePredicates predicates;
@@ -259,7 +259,7 @@ void MediaSyncObserver::AddBurstPhotoHandle(string burstKey)
     }
     auto specialHandles = PtpSpecialHandles::GetInstance();
     CHECK_AND_RETURN_LOG(specialHandles != nullptr, "specialHandles is nullptr");
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
     shared_ptr<DataShare::DataShareResultSet> resultSet;
@@ -309,7 +309,7 @@ void MediaSyncObserver::AddPhotoHandle(int32_t handle)
         return;
     }
     CHECK_AND_RETURN_LOG(dataShareHelper_ != nullptr, "Mtp AddPhotoHandle fail to get datasharehelper");
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
     shared_ptr<DataShare::DataShareResultSet> resultSet;
@@ -356,7 +356,7 @@ void MediaSyncObserver::GetAddEditPhotoHandles(int32_t handle)
     }
     vector<int32_t> handlesResult;
     CHECK_AND_RETURN_LOG(dataShareHelper_ != nullptr, "Mtp GetAddEditPhotoHandles fail to get datasharehelper");
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
     columns.push_back(PhotoColumn::PHOTO_SUBTYPE);
@@ -392,7 +392,7 @@ void MediaSyncObserver::GetAddEditPhotoHandles(int32_t handle)
 
 int32_t MediaSyncObserver::GetAddEditAlbumHandle(int32_t handle)
 {
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
     columns.push_back(PhotoColumn::PHOTO_OWNER_ALBUM_ID);
@@ -491,15 +491,15 @@ void MediaSyncObserver::GetAlbumIdList(std::set<int32_t> &albumIds)
 {
     CHECK_AND_RETURN_LOG(dataShareHelper_ != nullptr, "Mtp GetAlbumIdList dataShareHelper_ is nullptr");
     DataShare::DataSharePredicates predicates;
-    Uri uri(PAH_QUERY_PHOTO_ALBUM);
+    Uri uri(CONST_PAH_QUERY_PHOTO_ALBUM);
     vector<string> columns;
     columns.push_back(PhotoAlbumColumns::ALBUM_ID);
-    predicates.IsNotNull(MEDIA_DATA_DB_ALBUM_NAME);
-    predicates.NotEqualTo(MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
+    predicates.IsNotNull(CONST_MEDIA_DATA_DB_ALBUM_NAME);
+    predicates.NotEqualTo(CONST_MEDIA_DATA_DB_ALBUM_NAME, HIDDEN_ALBUM);
     predicates.BeginWrap();
-    predicates.NotEqualTo(MEDIA_DATA_DB_IS_LOCAL, IS_LOCAL);
+    predicates.NotEqualTo(CONST_MEDIA_DATA_DB_IS_LOCAL, IS_LOCAL);
     predicates.Or();
-    predicates.IsNull(MEDIA_DATA_DB_IS_LOCAL);
+    predicates.IsNull(CONST_MEDIA_DATA_DB_IS_LOCAL);
     predicates.EndWrap();
     auto resultSet = dataShareHelper_->Query(uri, predicates, columns);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "Mtp GetAlbumIdList Query fail");
@@ -511,7 +511,7 @@ void MediaSyncObserver::GetAlbumIdList(std::set<int32_t> &albumIds)
 void MediaSyncObserver::GetOwnerAlbumIdList(std::set<int32_t> &albumIds)
 {
     CHECK_AND_RETURN_LOG(dataShareHelper_ != nullptr, "Mtp GetOwnerAlbumIdList dataShareHelper_ is nullptr");
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     columns.push_back(PhotoColumn::PHOTO_OWNER_ALBUM_ID);
     DataShare::DataSharePredicates predicates;
@@ -631,7 +631,7 @@ void MediaSyncObserver::HandleMovePhotoEvent(const ChangeInfo &changeInfo)
         MEDIA_DEBUG_LOG("parse changInfo data failed or have no fileId");
         return;
     }
-    Uri uri(PAH_QUERY_PHOTO);
+    Uri uri(CONST_PAH_QUERY_PHOTO);
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
     shared_ptr<DataShare::DataShareResultSet> resultSet;

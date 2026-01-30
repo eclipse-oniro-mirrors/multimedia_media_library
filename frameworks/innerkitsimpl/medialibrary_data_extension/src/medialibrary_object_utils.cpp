@@ -62,7 +62,7 @@ int32_t MediaLibraryObjectUtils::CreateDirWithPath(const string &dirPath)
 
     int64_t rowId = -1;
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_FILE_PATH, dirPath);
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, dirPath);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ALBUM, OperationType::CREATE, values);
     int32_t ret = CreateDirObj(cmd, rowId);
     if (ret == E_FILE_EXIST || ret == E_SUCCESS) {
@@ -94,7 +94,7 @@ NativeAlbumAsset MediaLibraryObjectUtils::GetDirAsset(const string &path)
         return dirAsset;
     }
 
-    string nameVal = GetStringColumnByIdFromDb(to_string(dirId), MEDIA_DATA_DB_NAME);
+    string nameVal = GetStringColumnByIdFromDb(to_string(dirId), CONST_MEDIA_DATA_DB_NAME);
     if (nameVal.empty()) {
         MEDIA_ERR_LOG("Get dir name failed!");
         return dirAsset;
@@ -137,32 +137,32 @@ int32_t MediaLibraryObjectUtils::InsertFileInDb(MediaLibraryCommand &cmd,
     // Fill basic file information into DB
     string displayName = fileAsset.GetDisplayName();
     ValuesBucket assetInfo;
-    assetInfo.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, fileAsset.GetMediaType());
-    assetInfo.PutString(MEDIA_DATA_DB_URI, MediaFileUtils::GetMediaTypeUri(fileAsset.GetMediaType()));
+    assetInfo.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileAsset.GetMediaType());
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_URI, MediaFileUtils::GetMediaTypeUri(fileAsset.GetMediaType()));
     string extension = ScannerUtils::GetFileExtension(displayName);
-    assetInfo.PutString(MEDIA_DATA_DB_MIME_TYPE, MimeTypeUtils::GetMimeTypeFromExtension(extension));
-    assetInfo.PutString(MEDIA_DATA_DB_RELATIVE_PATH, fileAsset.GetRelativePath());
-    assetInfo.PutString(MEDIA_DATA_DB_NAME, displayName);
-    assetInfo.PutString(MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_MIME_TYPE, MimeTypeUtils::GetMimeTypeFromExtension(extension));
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, fileAsset.GetRelativePath());
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_NAME, displayName);
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
     struct stat statInfo {};
     if (stat(fileAsset.GetPath().c_str(), &statInfo) == 0) {
-        assetInfo.PutLong(MEDIA_DATA_DB_SIZE, statInfo.st_size);
-        assetInfo.PutLong(MEDIA_DATA_DB_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
-        assetInfo.PutLong(MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim));
+        assetInfo.PutLong(CONST_MEDIA_DATA_DB_SIZE, statInfo.st_size);
+        assetInfo.PutLong(CONST_MEDIA_DATA_DB_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
+        assetInfo.PutLong(CONST_MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim));
     }
-    assetInfo.PutString(MEDIA_DATA_DB_FILE_PATH, fileAsset.GetPath());
-    assetInfo.PutInt(MEDIA_DATA_DB_BUCKET_ID, dirAsset.GetAlbumId());
-    assetInfo.PutInt(MEDIA_DATA_DB_PARENT_ID, dirAsset.GetAlbumId());
-    assetInfo.PutString(MEDIA_DATA_DB_BUCKET_NAME, dirAsset.GetAlbumName());
-    assetInfo.PutString(MEDIA_DATA_DB_OWNER_PACKAGE, cmd.GetBundleName());
-    assetInfo.PutString(MEDIA_DATA_DB_OWNER_APPID, PermissionUtils::GetAppIdByBundleName(cmd.GetBundleName()));
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, fileAsset.GetPath());
+    assetInfo.PutInt(CONST_MEDIA_DATA_DB_BUCKET_ID, dirAsset.GetAlbumId());
+    assetInfo.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, dirAsset.GetAlbumId());
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_BUCKET_NAME, dirAsset.GetAlbumName());
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_OWNER_PACKAGE, cmd.GetBundleName());
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_OWNER_APPID, PermissionUtils::GetAppIdByBundleName(cmd.GetBundleName()));
     if (!cmd.GetBundleName().empty()) {
-        assetInfo.PutString(MEDIA_DATA_DB_PACKAGE_NAME,
+        assetInfo.PutString(CONST_MEDIA_DATA_DB_PACKAGE_NAME,
             PermissionUtils::GetPackageNameByBundleName(cmd.GetBundleName()));
     }
 
-    assetInfo.PutString(MEDIA_DATA_DB_DEVICE_NAME, cmd.GetDeviceName());
-    assetInfo.PutLong(MEDIA_DATA_DB_TIME_PENDING, fileAsset.GetTimePending());
+    assetInfo.PutString(CONST_MEDIA_DATA_DB_DEVICE_NAME, cmd.GetDeviceName());
+    assetInfo.PutLong(CONST_MEDIA_DATA_DB_TIME_PENDING, fileAsset.GetTimePending());
     cmd.SetValueBucket(assetInfo);
     int64_t outRowId = -1;
     int32_t errCode = uniStore->Insert(cmd, outRowId);
@@ -172,11 +172,11 @@ int32_t MediaLibraryObjectUtils::InsertFileInDb(MediaLibraryCommand &cmd,
 void GetRelativePathFromValues(ValuesBucket &values, string &relativePath, int32_t mediaType)
 {
     ValueObject valueObject;
-    if (values.GetObject(MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
         valueObject.GetString(relativePath);
         return;
     }
-    if (values.GetObject(MEDIA_DATA_DB_URI, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_URI, valueObject)) {
         string albumUri;
         valueObject.GetString(albumUri);
         auto albumAsset = MediaLibraryObjectUtils::GetFileAssetFromUri(albumUri);
@@ -196,7 +196,7 @@ int32_t MediaLibraryObjectUtils::BuildFileAsset(MediaLibraryCommand &cmd, FileAs
 
     ValueObject valueObject;
     ValuesBucket &values = cmd.GetValueBucket();
-    if (!values.GetObject(MEDIA_DATA_DB_NAME, valueObject)) {
+    if (!values.GetObject(CONST_MEDIA_DATA_DB_NAME, valueObject)) {
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
             {KEY_OPT_TYPE, OptType::CREATE}};
         PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_OPT_ERR, map);
@@ -204,7 +204,7 @@ int32_t MediaLibraryObjectUtils::BuildFileAsset(MediaLibraryCommand &cmd, FileAs
     }
     valueObject.GetString(displayName);
     fileAsset.SetDisplayName(displayName);
-    if (!values.GetObject(MEDIA_DATA_DB_MEDIA_TYPE, valueObject)) {
+    if (!values.GetObject(CONST_MEDIA_DATA_DB_MEDIA_TYPE, valueObject)) {
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, E_HAS_DB_ERROR},
             {KEY_OPT_TYPE, OptType::CREATE}};
         PostEventUtils::GetInstance().PostErrorProcess(ErrType::DB_OPT_ERR, map);
@@ -214,7 +214,7 @@ int32_t MediaLibraryObjectUtils::BuildFileAsset(MediaLibraryCommand &cmd, FileAs
     fileAsset.SetMediaType(static_cast<MediaType>(mediaType));
     GetRelativePathFromValues(values, relativePath, mediaType);
     if (!relativePath.empty()) {
-        values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+        values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
         path = ROOT_MEDIA_DIR + relativePath + displayName;
         fileAsset.SetRelativePath(relativePath);
         fileAsset.SetPath(path);
@@ -341,21 +341,21 @@ int32_t SetDirValuesByPath(ValuesBucket &values, const string &path, int32_t par
         relativePath = parentPath.substr(ROOT_MEDIA_DIR.length()) + "/";
     }
 
-    values.PutString(MEDIA_DATA_DB_FILE_PATH, path);
-    values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
-    values.PutString(MEDIA_DATA_DB_TITLE, title);
-    values.PutString(MEDIA_DATA_DB_NAME, title);
-    values.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, MediaType::MEDIA_TYPE_ALBUM);
-    values.PutInt(MEDIA_DATA_DB_PARENT_ID, parentId);
-    values.PutLong(MEDIA_DATA_DB_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, path);
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    values.PutString(CONST_MEDIA_DATA_DB_TITLE, title);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, title);
+    values.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MediaType::MEDIA_TYPE_ALBUM);
+    values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, parentId);
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
 
     struct stat statInfo {};
     if (stat(path.c_str(), &statInfo) == 0) {
-        values.PutLong(MEDIA_DATA_DB_SIZE, statInfo.st_size);
+        values.PutLong(CONST_MEDIA_DATA_DB_SIZE, statInfo.st_size);
         if (statInfo.st_mtime == 0) {
-            values.PutLong(MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
+            values.PutLong(CONST_MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
         } else {
-            values.PutLong(MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim));
+            values.PutLong(CONST_MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim));
         }
     }
     return E_SUCCESS;
@@ -407,7 +407,7 @@ int32_t MediaLibraryObjectUtils::CreateDirObj(MediaLibraryCommand &cmd, int64_t 
     string dirPath;
     ValueObject valueObject;
     const ValuesBucket &values = cmd.GetValueBucket();
-    if (values.GetObject(MEDIA_DATA_DB_FILE_PATH, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_FILE_PATH, valueObject)) {
         valueObject.GetString(dirPath);
     }
     if (dirPath.empty()) {
@@ -441,20 +441,20 @@ int32_t MediaLibraryObjectUtils::CreateDirObj(MediaLibraryCommand &cmd, int64_t 
 int32_t InitQueryParentResultSet(int32_t dirId, int32_t &parentIdVal, string &dirVal,
     shared_ptr<MediaLibraryRdbStore> uniStore)
 {
-    if (MediaLibraryObjectUtils::IsColumnValueExist(to_string(dirId), MEDIA_DATA_DB_PARENT_ID)) {
+    if (MediaLibraryObjectUtils::IsColumnValueExist(to_string(dirId), CONST_MEDIA_DATA_DB_PARENT_ID)) {
         return E_SUCCESS;
     }
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(dirId));
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(dirId));
     shared_ptr<NativeRdb::ResultSet> queryParentResultSet = uniStore->Query(cmd, {});
     if (queryParentResultSet == nullptr || queryParentResultSet->GoToNextRow() != NativeRdb::E_OK) {
         return E_SUCCESS;
     }
     int32_t colIndex = 0;
-    queryParentResultSet->GetColumnIndex(MEDIA_DATA_DB_PARENT_ID, colIndex);
+    queryParentResultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_PARENT_ID, colIndex);
     queryParentResultSet->GetInt(colIndex, parentIdVal);
-    queryParentResultSet->GetColumnIndex(MEDIA_DATA_DB_FILE_PATH, colIndex);
+    queryParentResultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_FILE_PATH, colIndex);
     queryParentResultSet->GetString(colIndex, dirVal);
     queryParentResultSet.reset();
     if (parentIdVal == 0) {
@@ -552,7 +552,7 @@ int32_t MediaLibraryObjectUtils::DeleteFileObj(const shared_ptr<FileAsset> &file
 
     // delete file in db
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(fileId));
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileId));
     int32_t deleteRows = DeleteInfoByIdInDb(cmd);
     if (deleteRows <= 0) {
         MEDIA_ERR_LOG("Delete file info in database failed!");
@@ -570,21 +570,22 @@ int32_t MediaLibraryObjectUtils::DeleteInfoRecursively(const shared_ptr<FileAsse
     string fileId = to_string(fileAsset->GetId());
     if (fileAsset->GetMediaType() == MEDIA_TYPE_ALBUM) {
         MediaLibraryCommand queryCmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
-        queryCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_PARENT_ID, fileId);
+        queryCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_PARENT_ID, fileId);
         if (fileAsset->GetIsTrash() == NOT_TRASHED) {
-            queryCmd.GetAbsRdbPredicates()->And()->EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+            queryCmd.GetAbsRdbPredicates()->And()->EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
         } else {
-            queryCmd.GetAbsRdbPredicates()->And()->EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(TRASHED_DIR_CHILD));
+            queryCmd.GetAbsRdbPredicates()->And()->EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(TRASHED_DIR_CHILD));
         }
-        vector<string> columns = { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_IS_TRASH };
+        vector<string> columns = { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+            CONST_MEDIA_DATA_DB_IS_TRASH };
         auto result = uniStore->Query(queryCmd, columns);
         CHECK_AND_RETURN_RET_LOG(result != nullptr, E_DB_FAIL, "Get child assets failed.");
 
         while (result->GoToNextRow() == NativeRdb::E_OK) {
             auto childAsset = make_shared<FileAsset>();
-            childAsset->SetId(GetInt32Val(MEDIA_DATA_DB_ID, result));
-            childAsset->SetMediaType(static_cast<MediaType>(GetInt32Val(MEDIA_DATA_DB_MEDIA_TYPE, result)));
-            childAsset->SetIsTrash(GetInt32Val(MEDIA_DATA_DB_IS_TRASH, result));
+            childAsset->SetId(GetInt32Val(CONST_MEDIA_DATA_DB_ID, result));
+            childAsset->SetMediaType(static_cast<MediaType>(GetInt32Val(CONST_MEDIA_DATA_DB_MEDIA_TYPE, result)));
+            childAsset->SetIsTrash(GetInt32Val(CONST_MEDIA_DATA_DB_IS_TRASH, result));
             auto ret = DeleteInfoRecursively(childAsset);
             CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, ret,
                 "Delete file info in database failed, file_id: %{public}d, ret: %{public}d", childAsset->GetId(), ret);
@@ -695,9 +696,9 @@ int32_t MediaLibraryObjectUtils::RenameDirObj(MediaLibraryCommand &cmd,
     }
 
     ValuesBucket &values = cmd.GetValueBucket();
-    values.PutString(Media::MEDIA_DATA_DB_RELATIVE_PATH, MediaFileUtils::GetParentPath(dstDirPath));
-    values.PutString(Media::MEDIA_DATA_DB_FILE_PATH, dstDirPath);
-    values.PutLong(MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::GetAlbumDateModified(dstDirPath));
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, MediaFileUtils::GetParentPath(dstDirPath));
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, dstDirPath);
+    values.PutLong(CONST_MEDIA_DATA_DB_DATE_MODIFIED, MediaFileUtils::GetAlbumDateModified(dstDirPath));
     int32_t retVal = ModifyInfoByIdInDb(cmd);
     if (retVal <= 0) {
         return retVal;
@@ -705,12 +706,13 @@ int32_t MediaLibraryObjectUtils::RenameDirObj(MediaLibraryCommand &cmd,
 
     // Update the path, relative path and album Name for internal files
     const string modifyAlbumInternalsStmt =
-        "UPDATE " + MEDIALIBRARY_TABLE + " SET " + MEDIA_DATA_DB_FILE_PATH + " = replace(" +
-        MEDIA_DATA_DB_FILE_PATH + ", '" + srcDirPath + "/' , '" + dstDirPath + "/'), " +
-        MEDIA_DATA_DB_RELATIVE_PATH + " = replace(" + MEDIA_DATA_DB_RELATIVE_PATH + ", '" + srcDirPath + "', '" +
-        dstDirPath + "'), " + MEDIA_DATA_DB_ALBUM_NAME + " = replace(" + MEDIA_DATA_DB_ALBUM_NAME + ", '" +
+        string("UPDATE ") + CONST_MEDIALIBRARY_TABLE + " SET " + CONST_MEDIA_DATA_DB_FILE_PATH + " = replace(" +
+        CONST_MEDIA_DATA_DB_FILE_PATH + ", '" + srcDirPath + "/' , '" + dstDirPath + "/'), " +
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH + " = replace(" + CONST_MEDIA_DATA_DB_RELATIVE_PATH + ", '" +
+        srcDirPath + "', '" +
+        dstDirPath + "'), " + CONST_MEDIA_DATA_DB_ALBUM_NAME + " = replace(" + CONST_MEDIA_DATA_DB_ALBUM_NAME + ", '" +
         MediaFileUtils::GetFileName(srcDirPath) + "', '" + dstDirName + "')" + "where " +
-        MEDIA_DATA_DB_FILE_PATH + " LIKE '" + srcDirPath + "/%'";
+        CONST_MEDIA_DATA_DB_FILE_PATH + " LIKE '" + srcDirPath + "/%'";
     if (uniStore->ExecuteSql(modifyAlbumInternalsStmt) != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Album update sql failed");
         return E_HAS_DB_ERROR;
@@ -836,7 +838,7 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
         MEDIA_ERR_LOG("Failed to open fileId:%{public}d, it is not owner", fileAsset->GetId());
         return E_IS_PENDING_ERROR;
     }
-    bool isHeif = cmd.GetQuerySetParam(PHOTO_TRANSCODE_OPERATION) == OPRN_TRANSCODE_HEIF;
+    bool isHeif = cmd.GetQuerySetParam(CONST_PHOTO_TRANSCODE_OPERATION) == CONST_OPRN_TRANSCODE_HEIF;
     int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(fileAsset, mode, isHeif);
     string path = MediaFileUtils::UpdatePath(fileAsset->GetPath(), fileAsset->GetUri());
     string fileId = MediaFileUtils::GetIdFromUri(fileAsset->GetUri());
@@ -863,7 +865,7 @@ void MediaLibraryObjectUtils::ScanFileAsync(const string &path, const string &id
 {
     string tableName;
     if (MediaFileUtils::IsFileTablePath(path)) {
-        tableName = MEDIALIBRARY_TABLE;
+        tableName = CONST_MEDIALIBRARY_TABLE;
     } else if (MediaFileUtils::IsPhotoTablePath(path)) {
         tableName = PhotoColumn::PHOTOS_TABLE;
     } else {
@@ -892,7 +894,7 @@ void MediaLibraryObjectUtils::ScanFileSyncWithoutAlbumUpdate(const string &path,
 {
     string tableName;
     if (MediaFileUtils::IsFileTablePath(path)) {
-        tableName = MEDIALIBRARY_TABLE;
+        tableName = CONST_MEDIALIBRARY_TABLE;
     } else if (MediaFileUtils::IsPhotoTablePath(path)) {
         tableName = PhotoColumn::PHOTOS_TABLE;
     } else {
@@ -1003,8 +1005,8 @@ int32_t MediaLibraryObjectUtils::ProcessNoMediaFile(const string &dstFileName, c
     // the whole folder containing .nomedia file is invisible in database
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
     string dstAlbumPathPrefix = dstAlbumPath.back() != '/' ? (dstAlbumPath + "/") : dstAlbumPath;
-    cmd.GetAbsRdbPredicates()->BeginsWith(MEDIA_DATA_DB_FILE_PATH, dstAlbumPathPrefix);
-    cmd.GetAbsRdbPredicates()->Or()->EqualTo(MEDIA_DATA_DB_FILE_PATH, dstAlbumPath);
+    cmd.GetAbsRdbPredicates()->BeginsWith(CONST_MEDIA_DATA_DB_FILE_PATH, dstAlbumPathPrefix);
+    cmd.GetAbsRdbPredicates()->Or()->EqualTo(CONST_MEDIA_DATA_DB_FILE_PATH, dstAlbumPath);
 
     int32_t deletedRows = -1;
     if (uniStore->Delete(cmd, deletedRows) != NativeRdb::E_OK) {
@@ -1042,8 +1044,8 @@ int32_t MediaLibraryObjectUtils::ProcessHiddenDir(const string &dstDirName, cons
 
     MediaLibraryCommand deleteCmd(OperationObject::FILESYSTEM_ASSET, OperationType::DELETE);
     string dstAlbumPathPrefix = srcDirPath.back() != '/' ? (srcDirPath + "/") : srcDirPath;
-    deleteCmd.GetAbsRdbPredicates()->BeginsWith(MEDIA_DATA_DB_FILE_PATH, dstAlbumPathPrefix);
-    deleteCmd.GetAbsRdbPredicates()->Or()->EqualTo(MEDIA_DATA_DB_FILE_PATH, srcDirPath);
+    deleteCmd.GetAbsRdbPredicates()->BeginsWith(CONST_MEDIA_DATA_DB_FILE_PATH, dstAlbumPathPrefix);
+    deleteCmd.GetAbsRdbPredicates()->Or()->EqualTo(CONST_MEDIA_DATA_DB_FILE_PATH, srcDirPath);
 
     int32_t deletedRows = -1;
     if (uniStore->Delete(deleteCmd, deletedRows) != NativeRdb::E_OK) {
@@ -1068,7 +1070,7 @@ int32_t MediaLibraryObjectUtils::UpdateDateModified(const string &dirPath)
         return 0;
     }
 #endif
-    valuesBucket.PutLong(MEDIA_DATA_DB_DATE_MODIFIED, dateModified);
+    valuesBucket.PutLong(CONST_MEDIA_DATA_DB_DATE_MODIFIED, dateModified);
 
     cmd.SetValueBucket(valuesBucket);
 
@@ -1096,7 +1098,7 @@ shared_ptr<FileAsset> MediaLibraryObjectUtils::GetFileAssetFromId(const string &
     }
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY, networkId);
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, id);
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, id);
 
     auto resultSet = QueryWithCondition(cmd, {});
     if (resultSet == nullptr) {
@@ -1176,16 +1178,16 @@ int32_t MediaLibraryObjectUtils::UpdateFileInfoInDb(MediaLibraryCommand &cmd, co
     MediaType mediaType = MimeTypeUtils::GetMediaTypeFromMimeType(mimeType);
     string displayName = MediaLibraryDataManagerUtils::GetDisPlayNameFromPath(dstPath);
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_NAME, displayName);
-    values.PutString(MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
-    values.PutString(MEDIA_DATA_DB_FILE_PATH, dstPath);
-    values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, GetRelativePathFromFilePath(dstPath));
-    values.PutString(MEDIA_DATA_DB_BUCKET_NAME, bucketName);
-    values.PutString(MEDIA_DATA_DB_MIME_TYPE, mimeType);
-    values.PutString(MEDIA_DATA_DB_URI, MediaFileUtils::GetMediaTypeUri(mediaType));
-    values.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-    values.PutInt(MEDIA_DATA_DB_BUCKET_ID, bucketId);
-    values.PutInt(MEDIA_DATA_DB_PARENT_ID, bucketId);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, displayName);
+    values.PutString(CONST_MEDIA_DATA_DB_TITLE, MediaFileUtils::GetTitleFromDisplayName(displayName));
+    values.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, dstPath);
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, GetRelativePathFromFilePath(dstPath));
+    values.PutString(CONST_MEDIA_DATA_DB_BUCKET_NAME, bucketName);
+    values.PutString(CONST_MEDIA_DATA_DB_MIME_TYPE, mimeType);
+    values.PutString(CONST_MEDIA_DATA_DB_URI, MediaFileUtils::GetMediaTypeUri(mediaType));
+    values.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+    values.PutInt(CONST_MEDIA_DATA_DB_BUCKET_ID, bucketId);
+    values.PutInt(CONST_MEDIA_DATA_DB_PARENT_ID, bucketId);
     cmd.SetValueBucket(values);
 
     return ModifyInfoByIdInDb(cmd, fileId);
@@ -1193,7 +1195,7 @@ int32_t MediaLibraryObjectUtils::UpdateFileInfoInDb(MediaLibraryCommand &cmd, co
 
 string MediaLibraryObjectUtils::GetPathByIdFromDb(const string &id, const bool isDelete)
 {
-    return GetStringColumnByIdFromDb(id, MEDIA_DATA_DB_FILE_PATH, isDelete);
+    return GetStringColumnByIdFromDb(id, CONST_MEDIA_DATA_DB_FILE_PATH, isDelete);
 }
 
 string MediaLibraryObjectUtils::GetStringColumnByIdFromDb(const string &id, const string &column, const bool isDelete)
@@ -1212,10 +1214,10 @@ string MediaLibraryObjectUtils::GetStringColumnByIdFromDb(const string &id, cons
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
     if (isDelete) {
-        cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, id);
+        cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, id);
     } else {
-        cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, id)->And()->
-            EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+        cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, id)->And()->
+            EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
     }
     vector<string> columns;
     columns.push_back(column);
@@ -1255,18 +1257,18 @@ int32_t MediaLibraryObjectUtils::GetIdByPathFromDb(const string &path)
     int32_t fileId = E_INVALID_FILEID;
 
     vector<string> columns;
-    columns.push_back(MEDIA_DATA_DB_ID);
+    columns.push_back(CONST_MEDIA_DATA_DB_ID);
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_FILE_PATH, newPath)->And()->
-        EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_FILE_PATH, newPath)->And()->
+        EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
     auto queryResultSet = uniStore->Query(cmd, columns);
     CHECK_AND_RETURN_RET_LOG(queryResultSet != nullptr, fileId, "Failed to obtain path from database");
 
     auto ret = queryResultSet->GoToFirstRow();
     CHECK_AND_RETURN_RET(ret == 0, fileId);
 
-    ret = queryResultSet->GetColumnIndex(MEDIA_DATA_DB_ID, columnIndex);
+    ret = queryResultSet->GetColumnIndex(CONST_MEDIA_DATA_DB_ID, columnIndex);
     CHECK_AND_RETURN_RET_LOG(ret == 0, fileId, "Failed to obtain column index");
 
     ret = queryResultSet->GetInt(columnIndex, fileId);
@@ -1303,7 +1305,7 @@ int32_t MediaLibraryObjectUtils::DeleteInfoByPathInDb(MediaLibraryCommand &cmd, 
     }
 
     int32_t deletedRows = E_HAS_DB_ERROR;
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_FILE_PATH, path);
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_FILE_PATH, path);
     int32_t result = uniStore->Delete(cmd, deletedRows);
     if (result != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Delete operation failed. Result %{public}d. Deleted %{public}d", result, deletedRows);
@@ -1329,7 +1331,7 @@ int32_t MediaLibraryObjectUtils::DeleteInfoByIdInDb(MediaLibraryCommand &cmd, co
             MEDIA_ERR_LOG("MediaLibraryObjectUtils DeleteFile: Index not digit");
             return E_INVALID_FILEID;
         }
-        cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, strRow);
+        cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, strRow);
     }
 
     int32_t deletedRows = E_HAS_DB_ERROR;
@@ -1350,7 +1352,7 @@ int32_t MediaLibraryObjectUtils::ModifyInfoByPathInDb(MediaLibraryCommand &cmd, 
         return E_HAS_DB_ERROR;
     }
 
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_FILE_PATH, path);
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_FILE_PATH, path);
     int32_t updatedRows = E_HAS_DB_ERROR;
     int32_t result = uniStore->Update(cmd, updatedRows);
     if (result != NativeRdb::E_OK || updatedRows <= 0) {
@@ -1376,7 +1378,7 @@ int32_t MediaLibraryObjectUtils::ModifyInfoByIdInDb(MediaLibraryCommand &cmd, co
             MEDIA_ERR_LOG("DeleteFile: Index not digit");
             return E_INVALID_FILEID;
         }
-        cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, strRow);
+        cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, strRow);
     }
 
     int32_t updatedRows = E_HAS_DB_ERROR;
@@ -1448,10 +1450,10 @@ bool MediaLibraryObjectUtils::IsAssetExistInDb(const int32_t id, const bool isIn
     }
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
     if (isIncludeTrash) {
-        cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(id));
+        cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(id));
     } else {
-        cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, to_string(id))->And()->
-            EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+        cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(id))->And()->
+            EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
     }
     vector<string> columns;
     auto queryResultSet = QueryWithCondition(cmd, columns);
@@ -1469,11 +1471,11 @@ bool MediaLibraryObjectUtils::IsFileExistInDb(const string &path)
     }
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_FILE_PATH, path)
-        ->And()->EqualTo(MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_FILE_PATH, path)
+        ->And()->EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, to_string(NOT_TRASHED));
 
     vector<string> columns;
-    columns.push_back(MEDIA_DATA_DB_FILE_PATH);
+    columns.push_back(CONST_MEDIA_DATA_DB_FILE_PATH);
     auto queryResultSet = QueryWithCondition(cmd, columns);
     if (queryResultSet != nullptr && queryResultSet->GoToNextRow() == NativeRdb::E_OK) {
         return true;
@@ -1508,15 +1510,15 @@ int32_t MediaLibraryObjectUtils::CopyAsset(const shared_ptr<FileAsset> &srcFileA
     // dest asset
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
     string displayName = srcFileAsset->GetDisplayName();
-    values.PutString(MEDIA_DATA_DB_NAME, displayName);
-    values.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, srcFileAsset->GetMediaType());
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, displayName);
+    values.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, srcFileAsset->GetMediaType());
     cmd.SetValueBucket(values);
     int32_t outRow = CreateFileObj(cmd);
     while (outRow == E_FILE_EXIST) {
         displayName = displayName + ASSET_RECYCLE_SUFFIX;
-        values.PutString(MEDIA_DATA_DB_NAME, displayName);
+        values.PutString(CONST_MEDIA_DATA_DB_NAME, displayName);
         outRow = CreateFileObj(cmd);
     }
     if (outRow < 0) {
@@ -1560,7 +1562,7 @@ int32_t MediaLibraryObjectUtils::CopyAssetByFd(int32_t srcFd, int32_t srcId, int
 void MediaLibraryObjectUtils::CloseFileById(int32_t fileId)
 {
     ValuesBucket values;
-    values.PutInt(MEDIA_DATA_DB_ID, fileId);
+    values.PutInt(CONST_MEDIA_DATA_DB_ID, fileId);
     MediaLibraryCommand closeCmd(OperationObject::FILESYSTEM_ASSET, OperationType::CLOSE, values);
     CloseFile(closeCmd);
 }
@@ -1595,16 +1597,16 @@ int32_t MediaLibraryObjectUtils::CopyDir(const shared_ptr<FileAsset> &srcDirAsse
         return E_INVALID_URI;
     }
     ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_NAME, ".nofile");
-    values.PutInt(MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_NOFILE);
+    values.PutString(CONST_MEDIA_DATA_DB_NAME, ".nofile");
+    values.PutInt(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_NOFILE);
     string displayName = srcDirAsset->GetDisplayName();
-    values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, relativePath + displayName + "/");
+    values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath + displayName + "/");
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_ASSET, OperationType::CREATE);
     cmd.SetValueBucket(values);
     int32_t outRow = CreateFileObj(cmd);
     while (outRow == E_FILE_EXIST) {
         displayName = displayName + ASSET_RECYCLE_SUFFIX;
-        values.PutString(MEDIA_DATA_DB_RELATIVE_PATH, relativePath + displayName + "/");
+        values.PutString(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath + displayName + "/");
         outRow = CreateFileObj(cmd);
     }
     if (outRow < 0) {
@@ -1612,8 +1614,9 @@ int32_t MediaLibraryObjectUtils::CopyDir(const shared_ptr<FileAsset> &srcDirAsse
         return outRow;
     }
     MediaLibraryCommand queryCmd(OperationObject::FILESYSTEM_ASSET, OperationType::QUERY);
-    queryCmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_PARENT_ID, to_string(srcDirAsset->GetId()))->And()->
-        EqualTo(MEDIA_DATA_DB_IS_TRASH, "0")->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, to_string(MEDIA_TYPE_NOFILE));
+    queryCmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_PARENT_ID, to_string(srcDirAsset->GetId()))->And()->
+        EqualTo(CONST_MEDIA_DATA_DB_IS_TRASH, "0")->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+            to_string(MEDIA_TYPE_NOFILE));
     auto resultSet = QueryWithCondition(queryCmd, {});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "query rdbstore failed");
     auto count = 0;

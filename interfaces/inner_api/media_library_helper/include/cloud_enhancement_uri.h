@@ -19,29 +19,22 @@
 
 namespace OHOS {
 namespace Media {
-const std::string OPRN_ENHANCEMENT_ADD = "add_enhancement";
-const std::string OPRN_ENHANCEMENT_PRIORITIZE = "prioritize_enhancement";
-const std::string OPRN_ENHANCEMENT_CANCEL = "cancel_enhancement";
-const std::string OPRN_ENHANCEMENT_CANCEL_ALL = "cancel_all_enhancement";
-const std::string OPRN_ENHANCEMENT_SYNC = "sync_all_enhancement";
-const std::string OPRN_ENHANCEMENT_QUERY = "query_enhancement";
-const std::string OPRN_ENHANCEMENT_GET_PAIR = "get_pair_enhancement";
-const std::string PAH_CLOUD_ENHANCEMENT_OPERATE = "cloud_enhancement_operation";
+#define CONST_OPRN_ENHANCEMENT_ADD "add_enhancement"
+#define CONST_OPRN_ENHANCEMENT_PRIORITIZE "prioritize_enhancement"
+#define CONST_OPRN_ENHANCEMENT_CANCEL "cancel_enhancement"
+#define CONST_OPRN_ENHANCEMENT_CANCEL_ALL "cancel_all_enhancement"
+#define CONST_OPRN_ENHANCEMENT_SYNC "sync_all_enhancement"
+#define CONST_OPRN_ENHANCEMENT_QUERY "query_enhancement"
+#define CONST_OPRN_ENHANCEMENT_GET_PAIR "get_pair_enhancement"
+#define CONST_PAH_CLOUD_ENHANCEMENT_OPERATE "cloud_enhancement_operation"
 
-const std::string PAH_CLOUD_ENHANCEMENT_ADD = MEDIALIBRARY_DATA_URI + "/" + PAH_CLOUD_ENHANCEMENT_OPERATE + "/" +
-    OPRN_ENHANCEMENT_ADD;
-const std::string PAH_CLOUD_ENHANCEMENT_PRIORITIZE = MEDIALIBRARY_DATA_URI + "/" + PAH_CLOUD_ENHANCEMENT_OPERATE + "/" +
-    OPRN_ENHANCEMENT_PRIORITIZE;
-const std::string PAH_CLOUD_ENHANCEMENT_CANCEL = MEDIALIBRARY_DATA_URI + "/" + PAH_CLOUD_ENHANCEMENT_OPERATE + "/" +
-    OPRN_ENHANCEMENT_CANCEL;
-const std::string PAH_CLOUD_ENHANCEMENT_CANCEL_ALL = MEDIALIBRARY_DATA_URI + "/" + PAH_CLOUD_ENHANCEMENT_OPERATE + "/" +
-    OPRN_ENHANCEMENT_CANCEL_ALL;
-const std::string PAH_CLOUD_ENHANCEMENT_SYNC = MEDIALIBRARY_DATA_URI + "/" + PAH_CLOUD_ENHANCEMENT_OPERATE + "/" +
-    OPRN_ENHANCEMENT_SYNC;
-const std::string PAH_CLOUD_ENHANCEMENT_QUERY = MEDIALIBRARY_DATA_URI + "/" + PAH_CLOUD_ENHANCEMENT_OPERATE + "/" +
-    OPRN_ENHANCEMENT_QUERY;
-const std::string PAH_CLOUD_ENHANCEMENT_GET_PAIR = MEDIALIBRARY_DATA_URI + "/" + PAH_CLOUD_ENHANCEMENT_OPERATE + "/" +
-    OPRN_ENHANCEMENT_GET_PAIR;
+#define CONST_PAH_CLOUD_ENHANCEMENT_ADD "datashare:///media/cloud_enhancement_operation/add_enhancement"
+#define CONST_PAH_CLOUD_ENHANCEMENT_PRIORITIZE "datashare:///media/cloud_enhancement_operation/prioritize_enhancement"
+#define CONST_PAH_CLOUD_ENHANCEMENT_CANCEL "datashare:///media/cloud_enhancement_operation/cancel_enhancement"
+#define CONST_PAH_CLOUD_ENHANCEMENT_CANCEL_ALL "datashare:///media/cloud_enhancement_operation/cancel_all_enhancement"
+#define CONST_PAH_CLOUD_ENHANCEMENT_SYNC "datashare:///media/cloud_enhancement_operation/sync_all_enhancement"
+#define CONST_PAH_CLOUD_ENHANCEMENT_QUERY "datashare:///media/cloud_enhancement_operation/query_enhancement"
+#define CONST_PAH_CLOUD_ENHANCEMENT_GET_PAIR "datashare:///media/cloud_enhancement_operation/get_pair_enhancement"
 
 } // namespace Media
 } // namespace OHOS

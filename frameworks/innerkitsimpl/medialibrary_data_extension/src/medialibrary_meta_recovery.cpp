@@ -1276,7 +1276,7 @@ int32_t MediaLibraryMetaRecovery::DeleteMetaDataByPath(const string &filePath)
 void MediaLibraryMetaRecovery::StopCloudSync()
 {
     MEDIA_INFO_LOG("Begin StopCloudSync");
-    FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync(BUNDLE_NAME, true);
+    FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync(CONST_BUNDLE_NAME, true);
 }
 
 void MediaLibraryMetaRecovery::RestartCloudSync()
@@ -1286,7 +1286,7 @@ void MediaLibraryMetaRecovery::RestartCloudSync()
     uid_t uid = getuid() / baseUserRange;
     FileManagement::CloudSync::CloudSyncManager::GetInstance().ResetCursor();
 
-    int32_t ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().StartSync(BUNDLE_NAME);
+    int32_t ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().StartSync(CONST_BUNDLE_NAME);
     if (ret != 0) {
         MEDIA_ERR_LOG("StartCloudSync fail, errcode=%{public}d", ret);
     }

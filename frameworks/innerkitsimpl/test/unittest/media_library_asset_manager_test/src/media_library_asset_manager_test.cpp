@@ -35,6 +35,7 @@
 #include "oh_media_asset.h"
 #include "media_asset.h"
 #include "userfilemgr_uri.h"
+#include "media_library_comm_ani.h"
 
 using namespace std;
 using namespace OHOS;
@@ -103,9 +104,9 @@ void MediaLibraryAssetManagerTest::SetUpTestCase(void)
     // make sure board is empty
     ClearAllFile();
 
-    Uri scanUri(URI_SCANNER);
+    Uri scanUri(CONST_URI_SCANNER);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
     sDataShareHelper_->Insert(scanUri, valuesBucket);
     sleep(SCAN_WAIT_TIME);
 
@@ -183,9 +184,9 @@ void DeleteFile(std::string fileUri)
     if (sDataShareHelper_ == nullptr) {
         return;
     }
-    Uri deleteAssetUri(MEDIALIBRARY_DATA_URI + "/" + MEDIA_FILEOPRN);
+    Uri deleteAssetUri(MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN);
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo(MEDIA_DATA_DB_ID, MediaFileUtils::GetIdFromUri(fileUri));
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, MediaFileUtils::GetIdFromUri(fileUri));
     int retVal = sDataShareHelper_->Delete(deleteAssetUri, predicates);
     MEDIA_INFO_LOG("MediaSpaceStatistics_test DeleteFile::uri :%{private}s", deleteAssetUri.ToString().c_str());
     ASSERT_NE(retVal, E_ERR);
@@ -198,7 +199,7 @@ void ClearFile()
     }
     vector<string> columns;
     DataSharePredicates predicates;
-    string prefix = MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(g_albumMediaType);
+    string prefix = std::string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(g_albumMediaType);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(MEDIALIBRARY_DATA_URI);
     shared_ptr<DataShareResultSet> resultSet = nullptr;
@@ -642,7 +643,28 @@ HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_009, TestSi
     fileAsset_->SetDisplayName(displayName);
     ret = OH_MediaAssetManager_RequestMovingPhoto(manager, mediaAsset, requestOptions, &requestID, callback);
     EXPECT_EQ(ret, MEDIA_LIBRARY_PARAMETER_ERROR);
+    static OH_MediaLibrary_OnQuickImageDataPrepared requestCallback = nullptr;
+    ret = OH_MediaAssetManager_QuickRequestImage(manager, mediaAsset, requestOptions, &requestID, requestCallback);
     EXPECT_EQ(OH_MediaAssetManager_Release(manager), MEDIA_LIBRARY_OK);
+}
+
+HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_010, TestSize.Level1)
+{
+    ani_env *env = nullptr;
+    string uri = "test";
+    int32_t shotType = 0;
+    string burstKey = "test";
+    MediaLibraryCommAni::CreatePhotoAssetAni(env, uri, shotType, burstKey);
+}
+
+HWTEST_F(MediaLibraryAssetManagerTest, MediaLibraryAssetManager_test_011, TestSize.Level1)
+{
+    ani_env *env = nullptr;
+    string uri = "test";
+    int32_t shotType = 0;
+    string burstKey = "test";
+    int32_t captureId = 0;
+    MediaLibraryCommAni::CreatePhotoAssetAni(env, uri, shotType, captureId, burstKey);
 }
 } // namespace Media
 } // namespace OHOS

@@ -22,7 +22,7 @@ group("unittest") {
     ":media_library_cloud_sync_service_dto_test",
     ":media_library_cloud_sync_service_controller_service_test",
     ":media_library_cloud_sync_service_controller_processor_test",
-    ":media_library_cloud_sync_service_service_test",
+    ":media_library_cloud_sync_service_service_test", 
     ":media_library_cloud_sync_service_service_ext_test",
   ]
 }
@@ -194,6 +194,7 @@ ohos_unittest("media_library_cloud_sync_service_dto_test") {
   ]
 
   external_deps = [
+    "ability_runtime:ability_connect_callback_stub",
     "ability_runtime:ability_manager",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
@@ -317,6 +318,7 @@ ohos_unittest("media_library_cloud_sync_service_controller_processor_test") {
   ]
 
   external_deps = [
+    "ability_runtime:ability_connect_callback_stub",
     "ability_runtime:ability_manager",
     "data_share:datashare_common",
     "data_share:datashare_consumer",

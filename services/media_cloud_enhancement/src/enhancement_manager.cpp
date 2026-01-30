@@ -532,8 +532,8 @@ int32_t EnhancementManager::HandleEnhancementUpdateOperation(MediaLibraryCommand
     switch (cmd.GetOprnType()) {
         case OperationType::ENHANCEMENT_ADD: {
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
-            string hasCloudWatermark = cmd.GetQuerySetParam(MEDIA_OPERN_KEYWORD);
-            int triggerMode = std::atoi(cmd.GetQuerySetParam(MEDIA_TRIGGER_MODE_KEYWORD).c_str());
+            string hasCloudWatermark = cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD);
+            int triggerMode = std::atoi(cmd.GetQuerySetParam(CONST_MEDIA_TRIGGER_MODE_KEYWORD).c_str());
             MEDIA_INFO_LOG("the triggerMode is %{public}d", triggerMode);
             if (hasCloudWatermark.compare(to_string(YES)) == 0) {
                 return HandleAddOperation(cmd, true, triggerMode);

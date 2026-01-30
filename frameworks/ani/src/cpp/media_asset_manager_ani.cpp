@@ -653,13 +653,13 @@ bool MediaAssetManagerAni::CreateOnProgressHandlerInfo(ani_env *env, unique_ptr<
 
 static void SavePicture(const std::string &fileUri)
 {
-    std::string uriStr = PATH_SAVE_PICTURE;
+    std::string uriStr = CONST_PATH_SAVE_PICTURE;
     std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
     std::size_t index = tempStr.find("/");
     std::string fileId = tempStr.substr(0, index);
     MediaLibraryAniUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     MediaLibraryAniUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, fileId);
-    MediaLibraryAniUtils::UriAppendKeyValue(uriStr, IMAGE_FILE_TYPE, "1");
+    MediaLibraryAniUtils::UriAppendKeyValue(uriStr, CONST_IMAGE_FILE_TYPE, "1");
     MediaLibraryAniUtils::UriAppendKeyValue(uriStr, "uri", fileUri);
     Uri uri(uriStr);
     DataShare::DataShareValuesBucket valuesBucket;
@@ -705,7 +705,7 @@ void MediaAssetManagerAni::GetImageSourceAniObject(const std::string &fileUri, a
     }
     std::string tmpUri = fileUri;
     if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
         ANI_INFO_LOG("request source image's imageSource");
     }
     Uri uri(tmpUri);
@@ -765,7 +765,7 @@ void MediaAssetManagerAni::GetByteArrayAniObject(const std::string &requestUri, 
 
     std::string tmpUri = requestUri;
     if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     Uri uri(tmpUri);
     int imageFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
@@ -801,7 +801,7 @@ void MediaAssetManagerAni::WriteDataToDestPath(WriteData &writeData, ani_object 
     }
     std::string tmpUri = writeData.requestUri;
     if (writeData.isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     Uri srcUri(tmpUri);
     int srcFd = UserFileClient::OpenFile(srcUri, MEDIA_FILEMODE_READONLY);
@@ -1108,7 +1108,7 @@ static MultiStagesCapturePhotoStatus QueryViaSandBox(int fileId,
     std::vector<std::string> fetchColumn { PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_ID};
     string queryUri;
     if (hasReadPermission) {
-        queryUri = PAH_QUERY_PHOTO;
+        queryUri = CONST_PAH_QUERY_PHOTO;
     } else {
         queryUri = photoUri;
         MediaFileUri::RemoveAllFragment(queryUri);
@@ -1146,7 +1146,7 @@ static MultiStagesCapturePhotoStatus QueryViaSandBox(int fileId,
 
 void MediaAssetManagerAni::ProcessImage(const int fileId, const int deliveryMode)
 {
-    std::string uriStr = PAH_PROCESS_IMAGE;
+    std::string uriStr = CONST_PAH_PROCESS_IMAGE;
     MediaLibraryAniUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;
@@ -1299,7 +1299,7 @@ void MediaAssetManagerAni::RequestExecute(ani_env *env, unique_ptr<MediaAssetMan
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     OnHandleRequestImage(env, context);
     if (context->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = LOG_MOVING_PHOTO;
+        string uri = CONST_LOG_MOVING_PHOTO;
         Uri logMovingPhotoUri(uri);
         DataShare::DataShareValuesBucket valuesBucket;
         string result;
@@ -1726,7 +1726,7 @@ static bool IsMapRecordCanceled(const std::string &requestId, std::string &photo
 
 void MediaAssetManagerAni::CancelProcessImage(const std::string &photoId)
 {
-    std::string uriStr = PAH_CANCEL_PROCESS_IMAGE;
+    std::string uriStr = CONST_PAH_CANCEL_PROCESS_IMAGE;
     MediaLibraryAniUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;

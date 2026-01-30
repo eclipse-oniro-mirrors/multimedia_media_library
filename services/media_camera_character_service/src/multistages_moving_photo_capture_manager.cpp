@@ -62,7 +62,7 @@ static int32_t UpdateMultStagesMovingPhotoVideoTaskStatus(const int32_t &fileId,
     cmd.GetAbsRdbPredicates()->SetWhereClause(where);
     cmd.GetAbsRdbPredicates()->SetWhereArgs(whereArgs);
     NativeRdb::ValuesBucket values;
-    values.PutString(MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, to_string(static_cast<int32_t>(taskStatus)));
+    values.PutString(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, to_string(static_cast<int32_t>(taskStatus)));
     cmd.SetValueBucket(values);
 
     auto result = DatabaseAdapter::Update(cmd);

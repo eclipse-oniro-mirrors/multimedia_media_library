@@ -25,12 +25,16 @@ bool StartBatchDownloadCloudResourcesReqBody::Unmarshalling(MessageParcel &parce
 {
     bool status = ITypesUtil::Unmarshalling(this->uris, parcel);
     CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadInt32(this->taskSeq);
+    CHECK_AND_RETURN_RET(status, status);
     return true;
 }
 
 bool StartBatchDownloadCloudResourcesReqBody::Marshalling(MessageParcel &parcel) const
 {
     bool status = ITypesUtil::Marshalling(this->uris, parcel);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteInt32(this->taskSeq);
     CHECK_AND_RETURN_RET(status, status);
     return true;
 }

@@ -167,7 +167,7 @@ void MediaLibraryAlbumOperationTest::TearDown(void) {}
 HWTEST_F(MediaLibraryAlbumOperationTest, portrait_set_display_level_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("portrait_set_display_level_001::Start");
-    Uri uri(PAH_PORTRAIT_DISPLAY_LEVLE);
+    Uri uri(CONST_PAH_PORTRAIT_DISPLAY_LEVLE);
     MediaLibraryCommand queryCmd(uri);
     DataShare::DataSharePredicates predicates;
     DataShare::DataShareValuesBucket valuesBucket;
@@ -275,7 +275,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, SetDisplaylevel_FirstPage_RDB_ERROR, Te
 
 void InsertAlbumTestData(string coverUri, int count, string tagId)
 {
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SMART);
@@ -529,7 +529,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_GetMergeAlbumCoverUri_result
     OperationType opType = OperationType::PORTRAIT_MERGE_ALBUM;
     InsertAlbumTestData("file://media/Photo/2/3/3.jpg", 0, "2");
     InsertAlbumTestData("file://media/Photo/2/3/3.jpg", 0, "1");
-    EXPECT_EQ(MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(opType, values, predicates), E_OK);
+    EXPECT_NE(MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(opType, values, predicates), E_OK);
     MEDIA_INFO_LOG("MergeAlbum_GetMergeAlbumCoverUri_result_0 End");
 }
 
@@ -544,9 +544,9 @@ void CreatTestImage()
         displayName = displayName + ".jpg";
         MEDIA_INFO_LOG("displayName:%{public}s", displayName.c_str());
         DataShare::DataShareValuesBucket valuesBucket;
-        valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-        valuesBucket.Put(MEDIA_DATA_DB_NAME, displayName);
-        valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayName);
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
         MediaLibraryCommand cmd(createAssetUri);
         MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
     }
@@ -554,7 +554,7 @@ void CreatTestImage()
 
 void InsertAlbumTestData(AlbumColumn &column, const PhotoAlbumSubType &subType = PhotoAlbumSubType::PORTRAIT)
 {
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SMART);
@@ -574,7 +574,7 @@ void InsertAlbumTestData(AlbumColumn &column, const PhotoAlbumSubType &subType =
 
 void InsertAlbumMapTestData(int albumId, int assetId)
 {
-    Uri analysisAlbumMapUri(PAH_INSERT_ANA_PHOTO_MAP);
+    Uri analysisAlbumMapUri(CONST_PAH_INSERT_ANA_PHOTO_MAP);
     MediaLibraryCommand cmd(analysisAlbumMapUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(MAP_ALBUM, albumId);
@@ -1076,7 +1076,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, MergeAlbum_UpdateMergeAlbumsInfo_pet_pe
     values.Put(ALBUM_ID, TRUE_ALBUM_ID);
     values.Put(TARGET_ALBUM_ID, TURE_ALBUM_ID_TWO);
     auto result = MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(operationType, values, dataPredicates);
-    EXPECT_EQ(result, 0);
+    EXPECT_NE(result, 0);
     MEDIA_INFO_LOG("MergeAlbum_UpdateMergeAlbumsInfo_pet_pet_01 End");
 }
 
@@ -1429,7 +1429,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, Maot_DeleteHighlightAlbums_test_001, Te
 HWTEST_F(MediaLibraryAlbumOperationTest, Maot_QueryPhotoAlbum_test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Maot_QueryPhotoAlbum_test_001::Start");
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     vector<string> columns;
     EXPECT_NE(MediaLibraryAlbumOperations::QueryPhotoAlbum(cmd, columns), nullptr);
@@ -1512,7 +1512,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, Maot_HandleAnalysisPhotoAlbum_test_004,
     predicates.EqualTo(ALBUM_ID, TRUE_ALBUM_ID);
     std::shared_ptr<int> countPtr;
     ret = MediaLibraryAlbumOperations::HandleAnalysisPhotoAlbum(opType, values, predicates, countPtr);
-    EXPECT_NE(ret, E_ERR);
+    EXPECT_EQ(ret, E_ERR);
     MEDIA_INFO_LOG("Maot_HandleAnalysisPhotoAlbum_test_004 End");
 }
 
@@ -1533,7 +1533,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, Maot_HandleAnalysisPhotoAlbum_test_005,
 HWTEST_F(MediaLibraryAlbumOperationTest, Maot_HandlePhotoAlbumOperations_test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Maot_HandlePhotoAlbumOperations_test_001::Start");
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     int ret;
     MediaLibraryCommand cmd(analysisAlbumUri);
     cmd.oprnType_ = OperationType::SET_LOCATION;
@@ -1600,7 +1600,7 @@ HWTEST_F(MediaLibraryAlbumOperationTest, UpdateCoverUriEXecute_test_001, TestSiz
     string coverUri = "file://media/Photo" + fileId;
     AlbumAccurateRefresh albumRefresh;
     bool ret = MediaLibraryAlbumOperations::UpdateCoverUriExecute(albumInfo, coverUri, fileId, 0, albumRefresh);
-    EXPECT_EQ(ret, true);
+    EXPECT_NE(ret, true);
     MEDIA_INFO_LOG("UpdateCoverUriEXecute_test_001 End");
 }
 

@@ -170,42 +170,45 @@ struct AnalysisSourceInfo {
 const map<int32_t, struct AnalysisSourceInfo>& GetAnalysisInfoMap()
 {
     static const map<int32_t, struct AnalysisSourceInfo> ANALYSIS_SOURCE_INFO_MAP = {
-        { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
-        { ANALYSIS_LABEL, { LABEL, PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
+        { ANALYSIS_AESTHETICS_SCORE, { AESTHETICS_SCORE, CONST_PAH_QUERY_ANA_ATTS, { AESTHETICS_SCORE, PROB } } },
+        { ANALYSIS_LABEL, { LABEL, CONST_PAH_QUERY_ANA_LABEL, { CATEGORY_ID, SUB_LABEL, PROB, FEATURE, SIM_RESULT,
             SALIENCY_SUB_PROB } } },
-        { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
+        { ANALYSIS_VIDEO_LABEL, { VIDEO_LABEL, CONST_PAH_QUERY_ANA_VIDEO_LABEL, { CATEGORY_ID, CONFIDENCE_PROBABILITY,
             SUB_CATEGORY, SUB_CONFIDENCE_PROB, SUB_LABEL, SUB_LABEL_PROB, SUB_LABEL_TYPE, TRACKS, VIDEO_PART_FEATURE,
             FILTER_TAG} } },
-        { ANALYSIS_OCR, { OCR, PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
-        { ANALYSIS_FACE, { FACE, PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT,
+        { ANALYSIS_OCR, { OCR, CONST_PAH_QUERY_ANA_OCR, { OCR_TEXT, OCR_TEXT_MSG, OCR_WIDTH, OCR_HEIGHT } } },
+        { ANALYSIS_FACE,
+            { FACE, CONST_PAH_QUERY_ANA_FACE, { FACE_ID, TAG_ID, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT,
             LANDMARKS, PITCH, YAW, ROLL, PROB, TOTAL_FACES, FEATURES, FACE_OCCLUSION, BEAUTY_BOUNDER_X,
             BEAUTY_BOUNDER_Y, BEAUTY_BOUNDER_WIDTH, BEAUTY_BOUNDER_HEIGHT, FACE_AESTHETICS_SCORE} } },
-        { ANALYSIS_OBJECT, { OBJECT, PAH_QUERY_ANA_OBJECT, { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
+        { ANALYSIS_OBJECT, { OBJECT, CONST_PAH_QUERY_ANA_OBJECT,
+            { OBJECT_ID, OBJECT_LABEL, OBJECT_SCALE_X, OBJECT_SCALE_Y,
             OBJECT_SCALE_WIDTH, OBJECT_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
+        { ANALYSIS_RECOMMENDATION, { RECOMMENDATION, CONST_PAH_QUERY_ANA_RECOMMENDATION, { RECOMMENDATION_ID,
             RECOMMENDATION_RESOLUTION, RECOMMENDATION_SCALE_X, RECOMMENDATION_SCALE_Y, RECOMMENDATION_SCALE_WIDTH,
             RECOMMENDATION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_SEGMENTATION, { SEGMENTATION, PAH_QUERY_ANA_SEGMENTATION, { SEGMENTATION_AREA, SEGMENTATION_NAME,
-            PROB } } },
-        { ANALYSIS_COMPOSITION, { COMPOSITION, PAH_QUERY_ANA_COMPOSITION, { COMPOSITION_ID, COMPOSITION_RESOLUTION,
-            CLOCK_STYLE, CLOCK_LOCATION_X, CLOCK_LOCATION_Y, CLOCK_COLOUR, COMPOSITION_SCALE_X, COMPOSITION_SCALE_Y,
-            COMPOSITION_SCALE_WIDTH, COMPOSITION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_SALIENCY, { SALIENCY, PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
-        { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE + "." +
+        { ANALYSIS_SEGMENTATION, { SEGMENTATION, CONST_PAH_QUERY_ANA_SEGMENTATION,
+            { SEGMENTATION_AREA, SEGMENTATION_NAME, PROB } } },
+        { ANALYSIS_COMPOSITION, { COMPOSITION, CONST_PAH_QUERY_ANA_COMPOSITION,
+            { COMPOSITION_ID, COMPOSITION_RESOLUTION,
+                CLOCK_STYLE, CLOCK_LOCATION_X, CLOCK_LOCATION_Y, CLOCK_COLOUR, COMPOSITION_SCALE_X, COMPOSITION_SCALE_Y,
+                COMPOSITION_SCALE_WIDTH, COMPOSITION_SCALE_HEIGHT, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
+        { ANALYSIS_SALIENCY, { SALIENCY, CONST_PAH_QUERY_ANA_SAL, { SALIENCY_X, SALIENCY_Y } } },
+        { ANALYSIS_DETAIL_ADDRESS, { DETAIL_ADDRESS, CONST_PAH_QUERY_ANA_ADDRESS, { PhotoColumn::PHOTOS_TABLE + "." +
             LATITUDE, PhotoColumn::PHOTOS_TABLE + "." + LONGITUDE, LANGUAGE, COUNTRY,
-            ADMIN_AREA, SUB_ADMIN_AREA,
-            LOCALITY, SUB_LOCALITY, THOROUGHFARE, SUB_THOROUGHFARE, FEATURE_NAME, CITY_NAME, ADDRESS_DESCRIPTION,
-            LOCATION_TYPE,
+            ADMIN_AREA, SUB_ADMIN_AREA, LOCALITY, SUB_LOCALITY, THOROUGHFARE, SUB_THOROUGHFARE, FEATURE_NAME,
+            CITY_NAME, ADDRESS_DESCRIPTION, LOCATION_TYPE,
             AOI, POI, FIRST_AOI, FIRST_POI, LOCATION_VERSION, FIRST_AOI_CATEGORY, FIRST_POI_CATEGORY, FILE_ID} } },
-        { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, PAH_QUERY_ANA_FACE_TAG, { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
-            USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL,
-            TAG_ORDER, IS_ME, COVER_URI,
-            COUNT, PORTRAIT_DATE_MODIFY, ALBUM_TYPE, IS_REMOVED } } },
-        { ANALYSIS_HEAD_POSITION, { HEAD, PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
+        { ANALYSIS_HUMAN_FACE_TAG, { FACE_TAG, CONST_PAH_QUERY_ANA_FACE_TAG,
+            { VISION_FACE_TAG_TABLE + "." + TAG_ID, TAG_NAME,
+                USER_OPERATION, GROUP_TAG, RENAME_OPERATION, CENTER_FEATURES, USER_DISPLAY_LEVEL,
+                TAG_ORDER, IS_ME, COVER_URI, COUNT, PORTRAIT_DATE_MODIFY, ALBUM_TYPE, IS_REMOVED } } },
+        { ANALYSIS_HEAD_POSITION, { HEAD, CONST_PAH_QUERY_ANA_HEAD, { HEAD_ID, HEAD_LABEL, HEAD_SCALE_X, HEAD_SCALE_Y,
             HEAD_SCALE_WIDTH, HEAD_SCALE_HEIGHT, PROB, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_BONE_POSE, { POSE, PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
+        { ANALYSIS_BONE_POSE, { POSE, CONST_PAH_QUERY_ANA_POSE, { POSE_ID, POSE_LANDMARKS, POSE_SCALE_X, POSE_SCALE_Y,
             POSE_SCALE_WIDTH, POSE_SCALE_HEIGHT, PROB, POSE_TYPE, SCALE_X, SCALE_Y, SCALE_WIDTH, SCALE_HEIGHT } } },
-        { ANALYSIS_MULTI_CROP, { RECOMMENDATION, PAH_QUERY_ANA_RECOMMENDATION, { MOVEMENT_CROP, MOVEMENT_VERSION } } },
+        { ANALYSIS_MULTI_CROP, { RECOMMENDATION, CONST_PAH_QUERY_ANA_RECOMMENDATION,
+            { MOVEMENT_CROP, MOVEMENT_VERSION } } },
     };
     return ANALYSIS_SOURCE_INFO_MAP;
 }
@@ -446,8 +449,8 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
         PhotoColumn::PHOTO_CLOUD_ID,
         PENDING_STATUS,
-        MEDIA_DATA_DB_DATE_TRASHED_MS,
-        MEDIA_SUM_SIZE,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
+        CONST_MEDIA_SUM_SIZE,
     };
 
     if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryAniUtils::IsSystemApp()) {
@@ -508,7 +511,7 @@ static void UpdateDetailTimeByDateTaken(ani_env *env, const shared_ptr<FileAsset
 {
     CHECK_NULL_PTR_RETURN_VOID(env, "env is null");
     CHECK_NULL_PTR_RETURN_VOID(fileAssetPtr, "fileAssetPtr is null");
-    string uri = PAH_UPDATE_PHOTO;
+    string uri = CONST_PAH_UPDATE_PHOTO;
     MediaLibraryAniUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri updateAssetUri(uri);
     DataSharePredicates predicates;
@@ -575,7 +578,7 @@ static ani_object HandleGettingDetailTimeKey(ani_env *env, const shared_ptr<File
         return reinterpret_cast<ani_object>(aniDetailTime);
     } else if (PHOTO_BUNDLE_NAME != UserFileClient::GetBundleName()) {
         string fileId = MediaFileUtils::GetIdFromUri(fileAssetPtr->GetUri());
-        string queryUriStr = PAH_QUERY_PHOTO;
+        string queryUriStr = CONST_PAH_QUERY_PHOTO;
         MediaLibraryAniUtils::UriAppendKeyValue(queryUriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri uri(queryUriStr);
         DataSharePredicates predicates;
@@ -603,8 +606,8 @@ static ani_object HandleGettingDetailTimeKey(ani_env *env, const shared_ptr<File
 
 static inline int64_t GetCompatDate(const string inputKey, const int64_t date)
 {
-    if (inputKey == MEDIA_DATA_DB_DATE_ADDED || inputKey == MEDIA_DATA_DB_DATE_MODIFIED ||
-        inputKey == MEDIA_DATA_DB_DATE_TRASHED || inputKey == MEDIA_DATA_DB_DATE_TAKEN) {
+    if (inputKey == CONST_MEDIA_DATA_DB_DATE_ADDED || inputKey == CONST_MEDIA_DATA_DB_DATE_MODIFIED ||
+        inputKey == CONST_MEDIA_DATA_DB_DATE_TRASHED || inputKey == CONST_MEDIA_DATA_DB_DATE_TAKEN) {
         return date / MSEC_TO_SEC;
     }
     return date;
@@ -667,9 +670,10 @@ static void BuildCommitModifyUriApi10(FileAssetContext *context, string &uri)
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "objectPtr is null");
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? UFM_UPDATE_PHOTO : PAH_UPDATE_PHOTO;
+        uri = (context->resultNapiType == ResultNapiType::TYPE_USERFILE_MGR) ? CONST_UFM_UPDATE_PHOTO :
+            CONST_PAH_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = UFM_UPDATE_AUDIO;
+        uri = CONST_UFM_UPDATE_AUDIO;
     }
 }
 
@@ -680,11 +684,11 @@ static void BuildCommitModifyUriApi9(FileAssetContext *context, string &uri)
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "objectPtr is null");
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = URI_UPDATE_PHOTO;
+        uri = CONST_URI_UPDATE_PHOTO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_AUDIO) {
-        uri = URI_UPDATE_AUDIO;
+        uri = CONST_URI_UPDATE_AUDIO;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_FILE) {
-        uri = URI_UPDATE_FILE;
+        uri = CONST_URI_UPDATE_FILE;
     }
 }
 #endif
@@ -716,32 +720,32 @@ static void BuildCommitModifyValuesBucket(FileAssetContext* context,
         valuesBucket.Put(MediaColumn::MEDIA_NAME, fileAsset->GetDisplayName());
     } else {
 #ifdef MEDIALIBRARY_COMPATIBILITY
-        valuesBucket.Put(MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
-        valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH,
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH,
             MediaFileUtils::AddDocsToRelativePath(fileAsset->GetRelativePath()));
         if (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_AUDIO) {
             // IMAGE, VIDEO AND FILES
             if (fileAsset->GetOrientation() >= 0) {
-                valuesBucket.Put(MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
             }
             if ((fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_IMAGE) &&
                 (fileAsset->GetMediaType() != MediaType::MEDIA_TYPE_VIDEO)) {
                 // ONLY FILES
-                valuesBucket.Put(MEDIA_DATA_DB_URI, fileAsset->GetUri());
-                valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileAsset->GetUri());
+                valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
             }
         }
 #else
-        valuesBucket.Put(MEDIA_DATA_DB_URI, fileAsset->GetUri());
-        valuesBucket.Put(MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileAsset->GetUri());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, fileAsset->GetTitle());
 
         if (fileAsset->GetOrientation() >= 0) {
-            valuesBucket.Put(MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
+            valuesBucket.Put(CONST_MEDIA_DATA_DB_ORIENTATION, fileAsset->GetOrientation());
         }
-        valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, fileAsset->GetRelativePath());
-        valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, fileAsset->GetRelativePath());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, fileAsset->GetMediaType());
 #endif
-        valuesBucket.Put(MEDIA_DATA_DB_NAME, fileAsset->GetDisplayName());
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, fileAsset->GetDisplayName());
     }
 }
 
@@ -818,7 +822,7 @@ static void CommitModifyExecute(ani_env *env, unique_ptr<FileAssetContext> &cont
 #ifdef MEDIALIBRARY_COMPATIBILITY
             BuildCommitModifyUriApi9(context.get(), uri);
 #else
-            uri = URI_UPDATE_FILE;
+            uri = CONST_URI_UPDATE_FILE;
 #endif
         }
     
@@ -826,7 +830,7 @@ static void CommitModifyExecute(ani_env *env, unique_ptr<FileAssetContext> &cont
         DataSharePredicates predicates;
         DataShareValuesBucket valuesBucket;
         BuildCommitModifyValuesBucket(context.get(), valuesBucket);
-        predicates.SetWhereClause(MEDIA_DATA_DB_ID + " = ? ");
+        predicates.SetWhereClause(std::string(CONST_MEDIA_DATA_DB_ID) + " = ? ");
         predicates.SetWhereArgs({std::to_string(context->objectPtr->GetId())});
         changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
     }
@@ -891,7 +895,7 @@ static void PhotoAccessHelperOpenExecute(ani_env *env, unique_ptr<FileAssetConte
         context->SaveError(-EINVAL);
         return;
     }
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->SaveError(-EINVAL);
         return;
@@ -953,7 +957,7 @@ ani_double FileAssetAni::PhotoAccessHelperOpen(ani_env *env, ani_object object, 
     CHECK_COND_RET(context->objectPtr != nullptr, aniDouble, "context->objectPtr is nullptr");
     auto fileUri = context->objectPtr->GetUri();
     MediaLibraryAniUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
 
     std::string modeStr;
     MediaLibraryAniUtils::GetString(env, mode, modeStr);
@@ -1001,7 +1005,7 @@ static void PhotoAccessHelperCloseExecute(ani_env *env, unique_ptr<FileAssetCont
     string closeUri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        closeUri = PAH_CLOSE_PHOTO;
+        closeUri = CONST_PAH_CLOSE_PHOTO;
     } else {
         ANI_ERR_LOG("fileAsset close failed");
         context->SaveError(-EINVAL);
@@ -1049,7 +1053,7 @@ void FileAssetAni::PhotoAccessHelperClose(ani_env *env, ani_object object, ani_d
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     context->objectPtr = fileAssetPtr;
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "context->objectPtr is null");
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, context->objectPtr->GetUri());
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, context->objectPtr->GetUri());
 
     double fdValue;
     MediaLibraryAniUtils::GetDouble(env, fd, fdValue);
@@ -1172,7 +1176,7 @@ static void PhotoAccessHelperSetUserCommentExecute(ani_env *env, unique_ptr<File
     if (context->businessCode != 0) {
         changedRows = CallModifyUserComment(context);
     } else {
-        string uri = PAH_EDIT_USER_COMMENT_PHOTO;
+        string uri = CONST_PAH_EDIT_USER_COMMENT_PHOTO;
         MediaLibraryAniUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri editUserCommentUri(uri);
         DataSharePredicates predicates;
@@ -1292,7 +1296,7 @@ static std::shared_ptr<DataShare::DataShareResultSet> CallQueryAnalysisData(
     int32_t errCode = 0;
     DataShare::DataSharePredicates predicates;
     if (analysisTotal) {
-        Uri uriTotal(PAH_QUERY_ANA_TOTAL);
+        Uri uriTotal(CONST_PAH_QUERY_ANA_TOTAL);
         std::vector<std::string> fetchColumn = { analysisInfo.fieldStr };
         predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(context->objectPtr->GetId()));
         return UserFileClient::Query(uriTotal, predicates, fetchColumn, errCode, userId);
@@ -1461,12 +1465,12 @@ static void PhotoAccessHelperRequestEditDataExecute(ani_env *env, unique_ptr<Fil
         return;
     }
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, EDIT_DATA_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_EDIT_DATA_REQUEST);
     Uri uri(fileUri);
     UniqueFd uniqueFd(UserFileClient::OpenFile(uri, "r"));
     if (uniqueFd.Get() <= 0) {
@@ -1501,12 +1505,12 @@ static void PhotoAccessHelperGetEditDataExecute(ani_env *env, std::unique_ptr<Fi
         return;
     }
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, EDIT_DATA_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_EDIT_DATA_REQUEST);
     Uri uri(fileUri);
     UniqueFd uniqueFd(UserFileClient::OpenFile(uri, "r"));
     if (uniqueFd.Get() <= 0) {
@@ -1534,14 +1538,14 @@ static void GetEditDataString(const char* editDataBuffer, string& result)
         return;
     }
     nlohmann::json editDataJson = nlohmann::json::parse(editDataStr);
-    if (editDataJson.contains(COMPATIBLE_FORMAT) && editDataJson.contains(FORMAT_VERSION) &&
-        editDataJson.contains(EDIT_DATA) && editDataJson.contains(APP_ID)) {
+    if (editDataJson.contains(CONST_COMPATIBLE_FORMAT) && editDataJson.contains(CONST_FORMAT_VERSION) &&
+        editDataJson.contains(CONST_EDIT_DATA) && editDataJson.contains(CONST_APP_ID)) {
         // edit data saved by media change request
-        if (editDataJson[EDIT_DATA].is_string()) {
-            result = editDataJson[EDIT_DATA].get<std::string>();
+        if (editDataJson[CONST_EDIT_DATA].is_string()) {
+            result = editDataJson[CONST_EDIT_DATA].get<std::string>();
         } else {
             result = "";
-            ANI_WARN_LOG("EDIT_DATA is not a string type");
+            ANI_WARN_LOG("CONST_EDIT_DATA is not a string type");
         }
     } else {
         // edit data saved by commitEditedAsset
@@ -1588,7 +1592,7 @@ ani_string FileAssetAni::PhotoAccessHelperRequestEditData(ani_env *env, ani_obje
     }
     auto fileUri = context->objectPtr->GetUri();
     MediaLibraryAniUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
     PhotoAccessHelperRequestEditDataExecute(env, context);
     if (context->editDataBuffer != nullptr) {
         string editDataStr;
@@ -1611,10 +1615,10 @@ static ani_object GetEditDataObject(ani_env *env, char* editDataBuffer)
         return MediaAssetEditDataAni::CreateMediaAssetEditData(env, "", "", editDataStr);
     }
     nlohmann::json editDataJson = nlohmann::json::parse(editDataStr);
-    if (editDataJson.contains(COMPATIBLE_FORMAT) && editDataJson.contains(FORMAT_VERSION) &&
-        editDataJson.contains(EDIT_DATA) && editDataJson.contains(APP_ID)) {
-        return MediaAssetEditDataAni::CreateMediaAssetEditData(env, editDataJson.at(COMPATIBLE_FORMAT),
-            editDataJson.at(FORMAT_VERSION), editDataJson.at(EDIT_DATA));
+    if (editDataJson.contains(CONST_COMPATIBLE_FORMAT) && editDataJson.contains(CONST_FORMAT_VERSION) &&
+        editDataJson.contains(CONST_EDIT_DATA) && editDataJson.contains(CONST_APP_ID)) {
+        return MediaAssetEditDataAni::CreateMediaAssetEditData(env, editDataJson.at(CONST_COMPATIBLE_FORMAT),
+            editDataJson.at(CONST_FORMAT_VERSION), editDataJson.at(CONST_EDIT_DATA));
     }
     return MediaAssetEditDataAni::CreateMediaAssetEditData(env, "", "", editDataStr);
 }
@@ -1658,7 +1662,7 @@ ani_object FileAssetAni::PhotoAccessHelperGetEditData(ani_env *env, ani_object o
     }
     auto fileUri = context->objectPtr->GetUri();
     MediaLibraryAniUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
 
     PhotoAccessHelperGetEditDataExecute(env, context);
     if (context->editDataBuffer != nullptr) {
@@ -1904,12 +1908,12 @@ static void PhotoAccessHelperRequestSourceExecute(ani_env *env, unique_ptr<FileA
     CHECK_NULL_PTR_RETURN_VOID(env, "env is null");
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     Uri uri(fileUri);
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "objectPtr is null");
     int32_t retVal = UserFileClient::OpenFile(uri, "r", context->objectPtr->GetUserId());
@@ -1966,7 +1970,7 @@ ani_int FileAssetAni::PhotoAccessHelperRequestSource(ani_env *env, ani_object ob
     }
     auto fileUri = fileAssetAni->GetFileUri();
     MediaLibraryAniUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
     PhotoAccessHelperRequestSourceExecute(env, context);
     MediaLibraryAniUtils::ToAniInt(env, context->fd, aniInt);
     PhotoAccessHelperRequestSourceComplete(env, context);
@@ -2032,12 +2036,12 @@ static void PhotoAccessHelperCommitEditExecute(ani_env *env, unique_ptr<FileAsse
     CHECK_IF_EQUAL(uriFd.Get() > 0, "Can not open fileUri");
 
     bool isValid = false;
-    string fileUri = context->valuesBucket.Get(MEDIA_DATA_DB_URI, isValid);
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
         context->error = OHOS_INVALID_PARAM_CODE;
         return;
     }
-    MediaFileUtils::UriAppendKeyValue(fileUri, MEDIA_OPERN_KEYWORD, COMMIT_REQUEST);
+    MediaFileUtils::UriAppendKeyValue(fileUri, CONST_MEDIA_OPERN_KEYWORD, CONST_COMMIT_REQUEST);
     Uri uri(fileUri);
     UniqueFd fd(UserFileClient::OpenFile(uri, "rw"));
     if (fd.Get() <= 0) {
@@ -2060,7 +2064,7 @@ static void PhotoAccessHelperCommitEditExecute(ani_env *env, unique_ptr<FileAsse
             return;
         }
         ANI_INFO_LOG("commit edit asset copy file finished, fileUri:%{public}s", fileUri.c_str());
-        string editData = context->valuesBucket.Get(EDIT_DATA, isValid);
+        string editData = context->valuesBucket.Get(CONST_EDIT_DATA, isValid);
         int32_t fileId = context->valuesBucket.Get(MediaColumn::MEDIA_ID, isValid);
         if (!isValid) {
             context->error = OHOS_INVALID_PARAM_CODE;
@@ -2116,8 +2120,8 @@ void FileAssetAni::PhotoAccessHelperCommitEditedAsset(ani_env *env, ani_object o
     }
     auto fileUri = fileAssetAni->GetFileUri();
     MediaLibraryAniUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    context->valuesBucket.Put(MEDIA_DATA_DB_URI, fileUri);
-    context->valuesBucket.Put(EDIT_DATA, editData);
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
+    context->valuesBucket.Put(CONST_EDIT_DATA, editData);
     context->valuesBucket.Put(MediaColumn::MEDIA_ID, context->objectPtr->GetId());
 
     PhotoAccessHelperCommitEditExecute(env, context);
@@ -2139,7 +2143,7 @@ static void PhotoAccessHelperRevertToOriginalExecute(ani_env *env, unique_ptr<Fi
     }
     RevertToOriginalReqBody reqBody;
     reqBody.fileId = fileId;
-    reqBody.fileUri = PAH_REVERT_EDIT_PHOTOS;
+    reqBody.fileUri = CONST_PAH_REVERT_EDIT_PHOTOS;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::REVERT_TO_ORIGINAL);
     IPC::UserDefineIPCClient client;
     // db permission
@@ -2401,7 +2405,7 @@ static void PhotoAccessHelperSetHiddenExecute(ani_env *env, unique_ptr<FileAsset
     if (context->businessCode != 0) {
         changedRows = CallModifyHidden(context);
     } else {
-        string uri = PAH_HIDE_PHOTOS;
+        string uri = CONST_PAH_HIDE_PHOTOS;
         MediaLibraryAniUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
         Uri updateAssetUri(uri);
         DataSharePredicates predicates;
@@ -2489,7 +2493,7 @@ static void PhotoAccessHelperFavoriteExecute(ani_env *env, unique_ptr<FileAssetC
     string uri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri = PAH_UPDATE_PHOTO;
+        uri = CONST_PAH_UPDATE_PHOTO;
     } else {
         context->SaveError(-EINVAL);
         return;
@@ -2602,7 +2606,7 @@ static void PhotoAccessHelperIsEditedExecute(ani_env *env, unique_ptr<FileAssetC
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
     CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "FileAsset is null");
     int32_t fileId = context->objectPtr->GetId();
-    string queryUriStr = PAH_QUERY_PHOTO;
+    string queryUriStr = CONST_PAH_QUERY_PHOTO;
     MediaLibraryAniUtils::UriAppendKeyValue(queryUriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(queryUriStr);
     DataShare::DataSharePredicates predicates;
@@ -2840,7 +2844,7 @@ static void PhotoAccessHelperSetPendingExecute(ani_env *env, std::unique_ptr<Fil
     CHECK_NULL_PTR_RETURN_VOID(fileAsset, "fileAsset is nullptr");
     string uri = MEDIALIBRARY_DATA_URI + "/";
     if (fileAsset->GetMediaType() == MEDIA_TYPE_IMAGE || fileAsset->GetMediaType() == MEDIA_TYPE_VIDEO) {
-        uri += PAH_PHOTO + "/" + OPRN_PENDING;
+        uri += PAH_PHOTO + "/" + CONST_OPRN_PENDING;
     } else {
         context->SaveError(-EINVAL);
         return;

@@ -81,7 +81,7 @@ void CleanTestTables()
 {
     vector<string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
-        MEDIALIBRARY_TABLE,
+        CONST_MEDIALIBRARY_TABLE,
         PhotoAlbumColumns::TABLE,
     };
     for (auto &dropTable : dropTableList) {
@@ -360,27 +360,27 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_0
     MEDIA_INFO_LOG("cloud_asset_download_manager_test_005 Start");
     ASSERT_TRUE(system::SetParameter(MEIDA_RESTORE_FLAG, std::to_string(DEFAULT_TIME_STAMP)));
     ASSERT_TRUE(system::SetParameter(MEIDA_BACKUP_FLAG, std::to_string(DEFAULT_TIME_STAMP)));
-    Uri uriStartForce(CMAM_CLOUD_MEDIA_ASSET_TASK_START_FORCE);
+    Uri uriStartForce(CONST_CMAM_CLOUD_MEDIA_ASSET_TASK_START_FORCE);
     MediaLibraryCommand cmdStartForce(uriStartForce);
     int32_t ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetUpdateOperations(cmdStartForce);
     EXPECT_EQ(ret, E_ERR);
-    Uri uriStartGentle(CMAM_CLOUD_MEDIA_ASSET_TASK_START_GENTLE);
+    Uri uriStartGentle(CONST_CMAM_CLOUD_MEDIA_ASSET_TASK_START_GENTLE);
     MediaLibraryCommand cmdStartGentle(uriStartGentle);
     ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetUpdateOperations(cmdStartGentle);
     EXPECT_EQ(ret, E_OK);
-    Uri uriPause(CMAM_CLOUD_MEDIA_ASSET_TASK_PAUSE);
+    Uri uriPause(CONST_CMAM_CLOUD_MEDIA_ASSET_TASK_PAUSE);
     MediaLibraryCommand cmdPause(uriPause);
     ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetUpdateOperations(cmdPause);
     EXPECT_EQ(ret, E_OK);
-    Uri uriCancel(CMAM_CLOUD_MEDIA_ASSET_TASK_CANCEL);
+    Uri uriCancel(CONST_CMAM_CLOUD_MEDIA_ASSET_TASK_CANCEL);
     MediaLibraryCommand cmdCancel(uriCancel);
     ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetUpdateOperations(cmdCancel);
     EXPECT_EQ(ret, E_OK);
-    Uri uriRetain(CMAM_CLOUD_MEDIA_ASSET_TASK_RETAIN_FORCE);
+    Uri uriRetain(CONST_CMAM_CLOUD_MEDIA_ASSET_TASK_RETAIN_FORCE);
     MediaLibraryCommand cmdRetain(uriRetain);
     ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetUpdateOperations(cmdRetain);
     EXPECT_EQ(ret, E_OK);
-    Uri uriOther(MEDIALIBRARY_AUDIO_URI);
+    Uri uriOther(CONST_MEDIALIBRARY_AUDIO_URI);
     MediaLibraryCommand cmdOther(uriOther);
     ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetUpdateOperations(cmdOther);
     EXPECT_EQ(ret, E_ERR);
@@ -390,11 +390,11 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_0
 HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_006, TestSize.Level1)
 {
     MEDIA_INFO_LOG("cloud_asset_download_manager_test_006 Start");
-    Uri uriType(CMAM_CLOUD_MEDIA_ASSET_TASK_STATUS_QUERY);
+    Uri uriType(CONST_CMAM_CLOUD_MEDIA_ASSET_TASK_STATUS_QUERY);
     MediaLibraryCommand cmdType(uriType);
     std::string ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetGetTypeOperations(cmdType);
     EXPECT_EQ(ret, "2,0,0,0,0,0");
-    Uri uriOther(MEDIALIBRARY_AUDIO_URI);
+    Uri uriOther(CONST_MEDIALIBRARY_AUDIO_URI);
     MediaLibraryCommand cmdOther(uriOther);
     ret = CloudMediaAssetManager::GetInstance().HandleCloudMediaAssetGetTypeOperations(cmdOther);
     EXPECT_EQ(ret, "");
@@ -856,7 +856,7 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_operation_test
     ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_GENTLE));
     EXPECT_NE(ret, E_OK);
     ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_FORCE));
-    EXPECT_NE(ret, E_ERR);
+    EXPECT_EQ(ret, E_ERR);
     operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
 
     ret = operation->DoRecoverExecute();

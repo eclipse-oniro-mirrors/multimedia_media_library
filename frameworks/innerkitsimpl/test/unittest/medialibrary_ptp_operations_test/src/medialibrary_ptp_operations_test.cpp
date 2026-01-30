@@ -130,7 +130,7 @@ static void InsertPtpTestData(NativeRdb::ValuesBucket valuesBucket)
 {
     MEDIA_INFO_LOG("InsertPtpTestData start");
     int64_t outRow = -1;
-    Uri uri(MEDIALIBRARY_DATA_URI + "/" + PTP_OPERATION + "/" + OPRN_CREATE);
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_PTP_OPERATION + "/" + OPRN_CREATE);
     int32_t ret = g_RdbStore->Insert(outRow, PhotoColumn::PHOTOS_TABLE, valuesBucket);
     MEDIA_INFO_LOG("insert test data outRow:%{public}d", ret);
 }
@@ -139,7 +139,7 @@ static void InsertPtpAlbumTestData(NativeRdb::ValuesBucket valuesBucket)
 {
     MEDIA_INFO_LOG("InsertPtpAlbumTestData start");
     int64_t outRow = -1;
-    Uri uri(MEDIALIBRARY_DATA_URI + "/" + PTP_ALBUM_OPERATION + "/" + OPRN_CREATE);
+    Uri uri(MEDIALIBRARY_DATA_URI + "/" + CONST_PTP_ALBUM_OPERATION + "/" + OPRN_CREATE);
     int32_t ret = g_RdbStore->Insert(outRow, PhotoAlbumColumns::TABLE, valuesBucket);
     MEDIA_INFO_LOG("insert album test data ret:%{public}d", ret);
 }

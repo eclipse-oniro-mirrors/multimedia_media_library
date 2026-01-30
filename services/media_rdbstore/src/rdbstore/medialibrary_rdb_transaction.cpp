@@ -403,9 +403,9 @@ static int32_t DoDeleteFromPredicates(
     int32_t ret = NativeRdb::E_ERROR;
     string tableName = predicates.GetTableName();
     ValuesBucket valuesBucket;
-    if (tableName == MEDIALIBRARY_TABLE || tableName == PhotoColumn::PHOTOS_TABLE) {
-        valuesBucket.PutInt(MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
-        valuesBucket.PutInt(MEDIA_DATA_DB_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
+    if (tableName == CONST_MEDIALIBRARY_TABLE || tableName == PhotoColumn::PHOTOS_TABLE) {
+        valuesBucket.PutInt(CONST_MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+        valuesBucket.PutInt(CONST_MEDIA_DATA_DB_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
         valuesBucket.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
         auto res = transaction->Update(valuesBucket, predicates);
         ret = res.first;

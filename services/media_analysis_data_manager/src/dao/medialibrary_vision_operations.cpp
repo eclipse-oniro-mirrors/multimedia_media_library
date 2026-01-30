@@ -117,7 +117,7 @@ static int32_t UpdateAnalysisTotal(string &uriTotal, string &selection, const st
 static int32_t DeleteFromVisionTables(string &fileId, string &selectionTotal,
     const string &columnTotal, const string &tableName)
 {
-    string uriTotal = MEDIALIBRARY_DATA_URI + "/" + PAH_ANA_TOTAL;
+    string uriTotal = MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_TOTAL;
     int32_t updateRows = UpdateAnalysisTotal(uriTotal, selectionTotal, columnTotal);
     MEDIA_DEBUG_LOG("Update %{public}d rows at total for edit commit to %{public}s", updateRows, columnTotal.c_str());
     if (updateRows <= 0) {
@@ -148,37 +148,37 @@ static void UpdateVisionTableForEdit(AsyncTaskData *taskData)
     AnalysisData::AnalysisDataVideoDao::FixVideoAnalysisDataAfterEdit(fileId);
 
     string selectionTotal = FILE_ID + " = " + fileId + " AND " + LABEL + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, LABEL, PAH_ANA_LABEL);
+    DeleteFromVisionTables(fileId, selectionTotal, LABEL, CONST_PAH_ANA_LABEL);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + AESTHETICS_SCORE + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, AESTHETICS_SCORE, PAH_ANA_ATTS);
+    DeleteFromVisionTables(fileId, selectionTotal, AESTHETICS_SCORE, CONST_PAH_ANA_ATTS);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + OCR + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, OCR, PAH_ANA_OCR);
+    DeleteFromVisionTables(fileId, selectionTotal, OCR, CONST_PAH_ANA_OCR);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + SALIENCY + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, SALIENCY, PAH_ANA_SALIENCY);
+    DeleteFromVisionTables(fileId, selectionTotal, SALIENCY, CONST_PAH_ANA_SALIENCY);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + FACE + " IN (-2, 1, 2, 3, 4)";
-    DeleteFromVisionTables(fileId, selectionTotal, FACE, PAH_ANA_FACE);
+    DeleteFromVisionTables(fileId, selectionTotal, FACE, CONST_PAH_ANA_FACE);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + OBJECT + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, OBJECT, PAH_ANA_OBJECT);
+    DeleteFromVisionTables(fileId, selectionTotal, OBJECT, CONST_PAH_ANA_OBJECT);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + RECOMMENDATION + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, RECOMMENDATION, PAH_ANA_RECOMMENDATION);
+    DeleteFromVisionTables(fileId, selectionTotal, RECOMMENDATION, CONST_PAH_ANA_RECOMMENDATION);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + SEGMENTATION + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, SEGMENTATION, PAH_ANA_SEGMENTATION);
+    DeleteFromVisionTables(fileId, selectionTotal, SEGMENTATION, CONST_PAH_ANA_SEGMENTATION);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + HEAD + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, HEAD, PAH_ANA_HEAD);
+    DeleteFromVisionTables(fileId, selectionTotal, HEAD, CONST_PAH_ANA_HEAD);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + POSE + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, POSE, PAH_ANA_POSE);
+    DeleteFromVisionTables(fileId, selectionTotal, POSE, CONST_PAH_ANA_POSE);
 
     selectionTotal = FILE_ID + " = " + fileId + " AND " + AESTHETICS_SCORE_ALL_STATUS + " = 1";
-    DeleteFromVisionTables(fileId, selectionTotal, AESTHETICS_SCORE_ALL_STATUS, PAH_ANA_ATTS);
+    DeleteFromVisionTables(fileId, selectionTotal, AESTHETICS_SCORE_ALL_STATUS, CONST_PAH_ANA_ATTS);
 }
 
 int32_t MediaLibraryVisionOperations::EditCommitOperation(MediaLibraryCommand &cmd)

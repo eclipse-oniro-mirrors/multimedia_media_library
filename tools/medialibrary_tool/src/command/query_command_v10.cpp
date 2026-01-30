@@ -79,7 +79,7 @@ static int32_t QueryMediaFiles(const QueryParam &queryParam)
         dumpOpt.count = fetchResult->GetCount();
         MEDIA_DEBUG_LOG("count:%{public}d", dumpOpt.count);
         dumpOpt.columns = {
-            MEDIA_DATA_DB_URI
+            CONST_MEDIA_DATA_DB_URI
         };
         DatabaseUtils::Dump(dumpOpt, fetchResult);
     }

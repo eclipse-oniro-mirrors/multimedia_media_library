@@ -311,11 +311,11 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_check_table_colu
 int32_t GetAlbumCountByCondition(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &tableName,
     PhotoAlbumSubType albumSubType, const string &albumName = "")
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName + " WHERE " +
+    string querySql = "SELECT " + string(CONST_MEDIA_COLUMN_COUNT_1) + " FROM " + tableName + " WHERE " +
         "album_subtype = " + to_string(static_cast<int32_t>(albumSubType));
     querySql += albumName.empty() ? "" : " AND album_name = '" + albumName + "'";
     int32_t result = INVALID_COUNT;
-    QueryInt(rdbStore, querySql, MEDIA_COLUMN_COUNT_1, result);
+    QueryInt(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
 }
 
@@ -337,10 +337,10 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_album_te
 int32_t GetCountByWhereClause(const string &tableName, shared_ptr<NativeRdb::RdbStore> rdbStore,
     const string &whereClause = "")
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
+    string querySql = string("SELECT ") + CONST_MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
     querySql += whereClause.empty() ? "" : " WHERE " + whereClause;
     int32_t result = INVALID_COUNT;
-    QueryInt(rdbStore, querySql, MEDIA_COLUMN_COUNT_1, result);
+    QueryInt(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
 }
 
@@ -397,9 +397,9 @@ void RestorePhoto()
 
 int32_t GetMapCountByTable(shared_ptr<NativeRdb::RdbStore> rdbStore, const string &tableName)
 {
-    string querySql = "SELECT " + MEDIA_COLUMN_COUNT_1 + " FROM " + tableName;
+    string querySql = "SELECT " + string(CONST_MEDIA_COLUMN_COUNT_1) + " FROM " + tableName;
     int32_t result = INVALID_COUNT;
-    QueryInt(rdbStore, querySql, MEDIA_COLUMN_COUNT_1, result);
+    QueryInt(rdbStore, querySql, CONST_MEDIA_COLUMN_COUNT_1, result);
     return result;
 }
 
@@ -5382,5 +5382,56 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_BuildDbPa
         "/storage/media/local/files/.backup/restore/storage/emulated/10/video_MediaInfo.db");
     MEDIA_INFO_LOG("End medialibrary_backup_others_clone_BuildDbPath_004");
 }
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_update_package_name_for_same_photos_test_001,
+    TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_update_package_name_for_same_photos_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    auto newRdbStore = cloneSource.cloneStorePtr_;
+
+    newRdbStore->ExecuteSql("INSERT INTO Photos (file_id, package_name) VALUES (?, ?)", {1337, "package_name_1"});
+    newRdbStore->ExecuteSql("INSERT INTO Photos (file_id, package_name) VALUES (?, ?)", {1338, "package_name_2"});
+    newRdbStore->ExecuteSql("INSERT INTO Photos (file_id, package_name) VALUES (?, ?)", {1339, "package_name_3"});
+    newRdbStore->ExecuteSql("INSERT INTO Photos (file_id, package_name) VALUES (?, ?)", {1340, "package_name_4"});
+    newRdbStore->ExecuteSql("INSERT INTO Photos (file_id) VALUES (?)", {1341});
+    newRdbStore->ExecuteSql("INSERT INTO Photos (file_id, package_name) VALUES (?, ?)", {1342, ""});
+
+    vector<FileInfo> oldFiles = {
+        { .isNew = true, .fileIdNew = 1337, .originalPackageName = "new_package_name_1" }, // Negative Case
+        { .isNew = false, .fileIdNew = -1, .originalPackageName = "new_package_name_2" }, // Negative Case
+        { .isNew = false, .fileIdNew = 1339, .originalPackageName = "" }, // Negative Case
+        { .isNew = false, .fileIdNew = 1340, .originalPackageName = "new_package_name_4" }, // Negative Case
+        { .isNew = false, .fileIdNew = 1341, .originalPackageName = "new_package_name_5" }, // Positive Case
+        { .isNew = false, .fileIdNew = 1342, .originalPackageName = "new_package_name_6" }, // Positive Case
+    };
+
+    cloneRestore.UpdatePackageNameForSamePhotos(oldFiles);
+
+    auto verifyPackageName = [&](int32_t fileId, const FileInfo& fileInfo, bool expect) {
+        auto resultSet = newRdbStore->QuerySql("SELECT package_name FROM Photos WHERE file_id = ?", {fileId});
+        ASSERT_NE(resultSet, nullptr);
+        ASSERT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+
+        string packageName;
+        resultSet->GetString(0, packageName);
+        EXPECT_EQ(packageName == fileInfo.originalPackageName, expect);
+        resultSet->Close();
+    };
+
+    verifyPackageName(1337, oldFiles[0], false);
+    verifyPackageName(1338, oldFiles[1], false);
+    verifyPackageName(1339, oldFiles[2], false);
+    verifyPackageName(1340, oldFiles[3], false);
+    verifyPackageName(1341, oldFiles[4], true);
+    verifyPackageName(1342, oldFiles[5], true);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
 } // namespace Media
 } // namespace OHOS

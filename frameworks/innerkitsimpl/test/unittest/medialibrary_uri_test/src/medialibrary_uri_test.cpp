@@ -61,21 +61,21 @@ HWTEST_F(MediaLibraryUriTest, medialib_ParseThumbnailInfo_test_001, TestSize.Lev
     bool ret = ThumbnailUriUtils::ParseThumbnailInfo(uriString, outFileId, outSize,
         outNetworkId, outTableName);
     EXPECT_EQ(ret, false);
-    uriString = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL;
+    uriString = string("ParseThumbnailInfo?") + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL;
     ret = ThumbnailUriUtils::ParseThumbnailInfo(uriString, outFileId, outSize,
         outNetworkId, outTableName);
     EXPECT_EQ(ret, true);
-    uriString = "ParseThumbnailInfo?=" + MEDIA_DATA_DB_THUMBNAIL + "&" + THUMBNAIL_WIDTH + "=&" +
+    uriString = string("ParseThumbnailInfo?=") + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" + THUMBNAIL_WIDTH + "=&" +
         THUMBNAIL_HEIGHT + "=";
     ret = ThumbnailUriUtils::ParseThumbnailInfo(uriString, outFileId, outSize,
         outNetworkId, outTableName);
     EXPECT_EQ(ret, false);
-    uriString = "ParseThumbnailInfo?test=" + MEDIA_DATA_DB_THUMBNAIL + "&" + THUMBNAIL_WIDTH + "=&" +
+    uriString = string("ParseThumbnailInfo?test=") + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" + THUMBNAIL_WIDTH + "=&" +
         THUMBNAIL_HEIGHT + "=";
     ret = ThumbnailUriUtils::ParseThumbnailInfo(uriString, outFileId, outSize,
         outNetworkId, outTableName);
     EXPECT_EQ(ret, false);
-    uriString = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL + "&" +
+    uriString = string("ParseThumbnailInfo?") + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL + "&" +
         THUMBNAIL_WIDTH + "=1&" + THUMBNAIL_HEIGHT + "=1";
     ret = ThumbnailUriUtils::ParseThumbnailInfo(uriString, outFileId, outSize,
         outNetworkId, outTableName);
@@ -85,11 +85,11 @@ HWTEST_F(MediaLibraryUriTest, medialib_ParseThumbnailInfo_test_001, TestSize.Lev
 HWTEST_F(MediaLibraryUriTest, medialib_GetDateTakenFromUri_test_001, TestSize.Level1)
 {
     string testDateTaken = "0001";
-    string uriString = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + MEDIA_DATA_DB_THUMBNAIL;
+    string uriString = "ParseThumbnailInfo?" + THUMBNAIL_OPERN_KEYWORD + "=" + CONST_MEDIA_DATA_DB_THUMBNAIL;
     string output = ThumbnailUriUtils::GetDateTakenFromUri(uriString);
     EXPECT_EQ(output, "");
 
-    uriString = TEST_STRING + ML_URI_DATE_TAKEN + testDateTaken;
+    uriString = TEST_STRING + CONST_ML_URI_DATE_TAKEN + testDateTaken;
     output = ThumbnailUriUtils::GetDateTakenFromUri(uriString);
     EXPECT_EQ(output, "");
 
@@ -97,7 +97,7 @@ HWTEST_F(MediaLibraryUriTest, medialib_GetDateTakenFromUri_test_001, TestSize.Le
     output = ThumbnailUriUtils::GetDateTakenFromUri(uriString);
     EXPECT_EQ(output, "");
 
-    uriString = TEST_STRING + ML_URI_DATE_TAKEN + "=" + testDateTaken;
+    uriString = TEST_STRING + CONST_ML_URI_DATE_TAKEN + "=" + testDateTaken;
     output = ThumbnailUriUtils::GetDateTakenFromUri(uriString);
     EXPECT_EQ(output, testDateTaken);
 }

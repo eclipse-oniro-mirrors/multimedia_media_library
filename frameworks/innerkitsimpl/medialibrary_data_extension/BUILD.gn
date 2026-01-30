@@ -616,8 +616,10 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/pause_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/resume_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_batch_download_cloud_resources_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/set_network_policy_batch_download_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_count_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_size_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/acquire_debug_database_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/release_debug_database_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_fussion_assets_vo.cpp",
@@ -775,6 +777,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_file_change_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_file_change_processor.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_file_notify_processor.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_lake_clone_event_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_lake_monitor_rdb_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_delete_lake_dir_processor.cpp",
   ]

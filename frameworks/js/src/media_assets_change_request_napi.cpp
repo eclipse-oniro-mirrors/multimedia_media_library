@@ -334,20 +334,20 @@ static bool SetAssetsPropertyExecute(MediaAssetsChangeRequestAsyncContext& conte
     predicates.In(PhotoColumn::MEDIA_ID, changeRequest->GetFileAssetUriArray());
     switch (changeOperation) {
         case AssetsChangeOperation::BATCH_SET_FAVORITE:
-            uri = PAH_BATCH_UPDATE_FAVORITE;
+            uri = CONST_PAH_BATCH_UPDATE_FAVORITE;
             valuesBucket.Put(PhotoColumn::MEDIA_IS_FAV, changeRequest->GetFavoriteStatus() ? YES : NO);
             NAPI_INFO_LOG("Batch set favorite: %{public}d", changeRequest->GetFavoriteStatus() ? YES : NO);
             break;
         case AssetsChangeOperation::BATCH_SET_HIDDEN:
-            uri = PAH_HIDE_PHOTOS;
+            uri = CONST_PAH_HIDE_PHOTOS;
             valuesBucket.Put(PhotoColumn::MEDIA_HIDDEN, changeRequest->GetHiddenStatus() ? YES : NO);
             break;
         case AssetsChangeOperation::BATCH_SET_USER_COMMENT:
-            uri = PAH_BATCH_UPDATE_USER_COMMENT;
+            uri = CONST_PAH_BATCH_UPDATE_USER_COMMENT;
             valuesBucket.Put(PhotoColumn::PHOTO_USER_COMMENT, changeRequest->GetUpdatedUserComment());
             break;
         case AssetsChangeOperation::BATCH_SET_RECENT_SHOW:
-            uri = PAH_BATCH_UPDATE_RECENT_SHOW;
+            uri = CONST_PAH_BATCH_UPDATE_RECENT_SHOW;
             valuesBucket.Put(PhotoColumn::PHOTO_IS_RECENT_SHOW, changeRequest->GetRecentShowStatus() ? YES : NO);
             break;
         default:

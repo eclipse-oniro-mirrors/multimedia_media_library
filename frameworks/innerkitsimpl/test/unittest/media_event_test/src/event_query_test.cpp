@@ -55,9 +55,9 @@ HWTEST_F(EventQueryTest, medialib_event_Query_test_001, TestSize.Level1)
     MEDIA_INFO_LOG("medialib_event_Query_test_001::Start");
     vector<string> columns;
     DataShare::DataSharePredicates predicates;
-    string prefix = MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(MEDIA_TYPE_ALBUM);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(MEDIA_TYPE_ALBUM);
     predicates.SetWhereClause(prefix);
-    Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, MEDIA_ALBUMOPRN_QUERYALBUM));
+    Uri queryFileUri(ReturnUri(MEDIALIBRARY_DATA_URI, CONST_MEDIA_ALBUMOPRN_QUERYALBUM));
     int errCode = 0;
     MediaLibraryCommand cmd(queryFileUri, Media::OperationType::QUERY);
     auto resultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, predicates, errCode);

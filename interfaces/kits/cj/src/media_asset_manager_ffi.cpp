@@ -140,7 +140,7 @@ MultiStagesCapturePhotoStatus MediaAssetManagerImpl::QueryPhotoStatus(int fileId
     std::vector<std::string> fetchColumn { PhotoColumn::PHOTO_QUALITY, PhotoColumn::PHOTO_ID};
     string queryUri;
     if (hasReadPermission) {
-        queryUri = PAH_QUERY_PHOTO;
+        queryUri = CONST_PAH_QUERY_PHOTO;
     } else {
         queryUri = photoUri;
         MediaFileUri::RemoveAllFragment(queryUri);
@@ -228,7 +228,7 @@ void MediaAssetManagerImpl::NotifyDataPreparedWithoutRegister(unique_ptr<MediaAs
 
 void MediaAssetManagerImpl::ProcessImage(const int fileId, const int deliveryMode)
 {
-    string uriStr = PAH_PROCESS_IMAGE;
+    string uriStr = CONST_PAH_PROCESS_IMAGE;
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;
@@ -403,13 +403,13 @@ bool IsSaveCallbackInfoByTranscoder(MediaObject &mediaObject,
 
 static void SavePicture(std::string &fileUri)
 {
-    std::string uriStr = PATH_SAVE_PICTURE;
+    std::string uriStr = CONST_PATH_SAVE_PICTURE;
     std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
     std::size_t index = tempStr.find("/");
     std::string fileId = tempStr.substr(0, index);
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, fileId);
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, IMAGE_FILE_TYPE, "1");
+    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, CONST_IMAGE_FILE_TYPE, "1");
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, "uri", fileUri);
     Uri uri(uriStr);
     DataShare::DataShareValuesBucket valuesBucket;
@@ -423,7 +423,7 @@ void MediaAssetManagerImpl::GetByteArrayObject(const string &requestUri,
 {
     std::string tmpUri = requestUri;
     if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     Uri uri(tmpUri);
     int imageFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
@@ -460,7 +460,7 @@ void MediaAssetManagerImpl::GetImageSourceObject(const std::string &fileUri,
 {
     std::string tmpUri = fileUri;
     if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
         LOGI("request source image's imageSource");
     }
     Uri uri(tmpUri);
@@ -510,7 +510,7 @@ void MediaAssetManagerImpl::WriteDataToDestPath(WriteData &writeData, MediaObjec
     }
     std::string tmpUri = writeData.requestUri;
     if (writeData.isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
     Uri srcUri(tmpUri);
     int srcFd = UserFileClient::OpenFile(srcUri, MEDIA_FILEMODE_READONLY);
@@ -743,7 +743,7 @@ char* MediaAssetManagerImpl::RequestImage(int64_t contextId, int64_t photoAssetI
     asyncContext->requestId = GenerateRequestId();
     OnHandleRequestImage(asyncContext);
     if (asyncContext->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = LOG_MOVING_PHOTO;
+        string uri = CONST_LOG_MOVING_PHOTO;
         Uri logMovingPhotoUri(uri);
         DataShare::DataShareValuesBucket valuesBucket;
         string result;
@@ -793,7 +793,7 @@ char* MediaAssetManagerImpl::RequestImageData(int64_t contextId, int64_t photoAs
     asyncContext->requestId = GenerateRequestId();
     MediaAssetManagerImpl::OnHandleRequestImage(asyncContext);
     if (asyncContext->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = LOG_MOVING_PHOTO;
+        string uri = CONST_LOG_MOVING_PHOTO;
         Uri logMovingPhotoUri(uri);
         DataShare::DataShareValuesBucket valuesBucket;
         string result;
@@ -842,7 +842,7 @@ char* MediaAssetManagerImpl::RequestMovingPhoto(int64_t contextId, int64_t photo
     asyncContext->dataHandler = funcId;
     asyncContext->requestId = GenerateRequestId();
     OnHandleRequestImage(asyncContext);
-    string uri = LOG_MOVING_PHOTO;
+    string uri = CONST_LOG_MOVING_PHOTO;
     Uri logMovingPhotoUri(uri);
     DataShare::DataShareValuesBucket valuesBucket;
     string result;
@@ -990,7 +990,7 @@ static bool IsMapRecordCanceled(const std::string &requestId, std::string &photo
 
 void MediaAssetManagerImpl::CancelProcessImage(const string &photoId)
 {
-    string uriStr = PAH_CANCEL_PROCESS_IMAGE;
+    string uriStr = CONST_PAH_CANCEL_PROCESS_IMAGE;
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;

@@ -137,9 +137,9 @@ void MediaLibraryCameraHelperTest::SetUpTestCase(void)
     // make sure board is empty
     ClearAllFile();
 
-    Uri scanUri(URI_SCANNER);
+    Uri scanUri(CONST_URI_SCANNER);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
     sDataShareHelper_->Insert(scanUri, valuesBucket);
     sleep(SCAN_WAIT_TIME);
     MEDIA_INFO_LOG("MediaLibraryCameraHelperTest::SetUpTestCase:: Finish");
@@ -188,7 +188,7 @@ static std::shared_ptr<DataShareResultSet> QueryPhotoAsset(const std::shared_ptr
 {
     DataSharePredicates predicates;
     predicates.EqualTo(MediaColumn::MEDIA_ID, photoAssetProxy->fileId_);
-    std::string uriStr = URI_QUERY_PHOTO;
+    std::string uriStr = CONST_URI_QUERY_PHOTO;
     MediaUriUtils::AppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri queryFileUri(uriStr);
     std::vector<std::string> columns = QUERY_COLUMN;
@@ -931,5 +931,32 @@ HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UpdatePhotoProxy_test001,
 
     MEDIA_INFO_LOG("end PhotoAssetProxy_UpdatePhotoProxy_test001");
 }
+
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_RegisterPhotoStateCallback, TestSize.Level1)
+{
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    LowQualityMemoryNumHandler func;
+    photoAssetProxy->RegisterPhotoStateCallback(func);
+}
+
+HWTEST_F(MediaLibraryCameraHelperTest, PhotoAssetProxy_UnregisterPhotoStateCallback, TestSize.Level1)
+{
+    PhotoAssetProxyCallerInfo callerInfo = {
+        .callingUid = 0,
+        .userId = 0,
+    };
+    auto photoAssetProxy = mediaLibraryManager->CreatePhotoAssetProxy(callerInfo, CameraShotType::IMAGE);
+    ASSERT_NE(photoAssetProxy, nullptr);
+
+    LowQualityMemoryNumHandler func;
+    photoAssetProxy->UnregisterPhotoStateCallback();
+}
+
 } // namespace Media
 } // namespace OHOS

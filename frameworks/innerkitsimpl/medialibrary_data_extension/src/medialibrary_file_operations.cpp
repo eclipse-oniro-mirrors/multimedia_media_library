@@ -52,7 +52,7 @@ int32_t MediaLibraryFileOperations::HandleFileOperation(MediaLibraryCommand &cmd
     string actualUri;
 
     ValueObject valueObject;
-    if (values.GetObject(MEDIA_DATA_DB_URI, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_URI, valueObject)) {
         valueObject.GetString(actualUri);
     }
 
@@ -94,8 +94,8 @@ int32_t MediaLibraryFileOperations::CloseFileOperation(MediaLibraryCommand &cmd)
 
 shared_ptr<NativeRdb::ResultSet> MediaLibraryFileOperations::QueryFavFiles(MediaLibraryCommand &cmd)
 {
-    cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_IS_FAV, "1");
-    cmd.GetAbsRdbPredicates()->And()->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, std::to_string(MEDIA_TYPE_ALBUM));
+    cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_IS_FAV, "1");
+    cmd.GetAbsRdbPredicates()->And()->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, std::to_string(MEDIA_TYPE_ALBUM));
 
     return MediaLibraryObjectUtils::QueryWithCondition(cmd, {});
 }
@@ -103,9 +103,9 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryFileOperations::QueryFavFiles(Media
 shared_ptr<NativeRdb::ResultSet> MediaLibraryFileOperations::QueryTrashFiles(MediaLibraryCommand &cmd)
 {
     cmd.GetAbsRdbPredicates()
-        ->GreaterThan(MEDIA_DATA_DB_DATE_TRASHED, std::to_string(NOT_TRASHED))
+        ->GreaterThan(CONST_MEDIA_DATA_DB_DATE_TRASHED, std::to_string(NOT_TRASHED))
         ->And()
-        ->NotEqualTo(MEDIA_DATA_DB_MEDIA_TYPE, std::to_string(MEDIA_TYPE_ALBUM));
+        ->NotEqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, std::to_string(MEDIA_TYPE_ALBUM));
 
     return MediaLibraryObjectUtils::QueryWithCondition(cmd, {});
 }
@@ -119,10 +119,10 @@ int32_t MediaLibraryFileOperations::GetAlbumCapacityOperation(MediaLibraryComman
     ValueObject valueObject;
     int32_t isFavourite = 0;
     bool isTrash = false;
-    if (values.GetObject(MEDIA_DATA_DB_IS_FAV, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_IS_FAV, valueObject)) {
         valueObject.GetInt(isFavourite);
     }
-    if (values.GetObject(MEDIA_DATA_DB_IS_TRASH, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_IS_TRASH, valueObject)) {
         valueObject.GetBool(isTrash);
     }
 
@@ -159,10 +159,10 @@ int32_t MediaLibraryFileOperations::ModifyFileOperation(MediaLibraryCommand &cmd
     string dstReFilePath;
     auto values = cmd.GetValueBucket();
     ValueObject valueObject;
-    if (values.GetObject(MEDIA_DATA_DB_NAME, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_NAME, valueObject)) {
         valueObject.GetString(dstFileName);
     }
-    if (values.GetObject(MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
         valueObject.GetString(dstReFilePath);
     }
     string dstFilePath = ROOT_MEDIA_DIR + dstReFilePath + dstFileName;
@@ -185,7 +185,7 @@ static void SolvePendingInQuery(AbsRdbPredicates* predicates)
     }
 
     predicates->SetWhereClause(whereClause);
-    predicates->EqualTo(MEDIA_DATA_DB_TIME_PENDING, "0");
+    predicates->EqualTo(CONST_MEDIA_DATA_DB_TIME_PENDING, "0");
     if (!groupBy.empty()) {
         predicates->SetWhereClause(predicates->GetWhereClause() + groupBy);
     }
@@ -194,15 +194,16 @@ static void SolvePendingInQuery(AbsRdbPredicates* predicates)
 #ifdef MEDIALIBRARY_COMPATIBILITY
 const std::string EMPTY_COLUMN_AS = "'' AS ";
 const std::string DEFAULT_INT_COLUMN_AS = "0 AS ";
-const std::string COMPAT_COLUMN_ARTIST = EMPTY_COLUMN_AS + MEDIA_DATA_DB_ARTIST;
-const std::string COMPAT_COLUMN_AUDIO_ALBUM = EMPTY_COLUMN_AS + MEDIA_DATA_DB_AUDIO_ALBUM;
-const std::string COMPAT_COLUMN_ORIENTATION = DEFAULT_INT_COLUMN_AS + MEDIA_DATA_DB_ORIENTATION;
-const std::string COMPAT_COLUMN_BUCKET_ID = DEFAULT_INT_COLUMN_AS + MEDIA_DATA_DB_BUCKET_ID;
-const std::string COMPAT_COLUMN_BUCKET_NAME = EMPTY_COLUMN_AS + MEDIA_DATA_DB_BUCKET_NAME;
-const std::string COMPAT_COLUMN_IS_TRASH = MEDIA_DATA_DB_DATE_TRASHED + " AS " + MEDIA_DATA_DB_IS_TRASH;
-const std::string COMPAT_COLUMN_WIDTH = DEFAULT_INT_COLUMN_AS + MEDIA_DATA_DB_WIDTH;
-const std::string COMPAT_COLUMN_HEIGHT = DEFAULT_INT_COLUMN_AS + MEDIA_DATA_DB_HEIGHT;
-const std::string COMPAT_COLUMN_URI = EMPTY_COLUMN_AS + MEDIA_DATA_DB_URI;
+const std::string COMPAT_COLUMN_ARTIST = EMPTY_COLUMN_AS + CONST_MEDIA_DATA_DB_ARTIST;
+const std::string COMPAT_COLUMN_AUDIO_ALBUM = EMPTY_COLUMN_AS + CONST_MEDIA_DATA_DB_AUDIO_ALBUM;
+const std::string COMPAT_COLUMN_ORIENTATION = DEFAULT_INT_COLUMN_AS + CONST_MEDIA_DATA_DB_ORIENTATION;
+const std::string COMPAT_COLUMN_BUCKET_ID = DEFAULT_INT_COLUMN_AS + CONST_MEDIA_DATA_DB_BUCKET_ID;
+const std::string COMPAT_COLUMN_BUCKET_NAME = EMPTY_COLUMN_AS + CONST_MEDIA_DATA_DB_BUCKET_NAME;
+const std::string COMPAT_COLUMN_IS_TRASH = std::string(CONST_MEDIA_DATA_DB_DATE_TRASHED) + " AS " +
+    CONST_MEDIA_DATA_DB_IS_TRASH;
+const std::string COMPAT_COLUMN_WIDTH = DEFAULT_INT_COLUMN_AS + CONST_MEDIA_DATA_DB_WIDTH;
+const std::string COMPAT_COLUMN_HEIGHT = DEFAULT_INT_COLUMN_AS + CONST_MEDIA_DATA_DB_HEIGHT;
+const std::string COMPAT_COLUMN_URI = EMPTY_COLUMN_AS + CONST_MEDIA_DATA_DB_URI;
 
 static const vector<string> &PhotosCompatColumns()
 {
@@ -213,34 +214,34 @@ static const vector<string> &PhotosCompatColumns()
      *     o FILES_COMPAT_COLUMNS
      */
     static const vector<string> PHOTOS_COMPAT_COLUMNS = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
         COMPAT_COLUMN_URI,
-        MEDIA_DATA_DB_MIME_TYPE,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_TITLE,
-        MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_SIZE,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
-        MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
-        MEDIA_DATA_DB_DATE_TAKEN,
-        MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND,
+        CONST_MEDIA_DATA_DB_MIME_TYPE,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+        CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_SIZE,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND,
         COMPAT_COLUMN_ARTIST,
         COMPAT_COLUMN_AUDIO_ALBUM,
-        MEDIA_DATA_DB_WIDTH,
-        MEDIA_DATA_DB_HEIGHT,
-        MEDIA_DATA_DB_ORIENTATION,
-        MEDIA_DATA_DB_DURATION,
+        CONST_MEDIA_DATA_DB_WIDTH,
+        CONST_MEDIA_DATA_DB_HEIGHT,
+        CONST_MEDIA_DATA_DB_ORIENTATION,
+        CONST_MEDIA_DATA_DB_DURATION,
         COMPAT_COLUMN_BUCKET_ID,
         COMPAT_COLUMN_BUCKET_NAME,
         COMPAT_COLUMN_IS_TRASH,
-        MEDIA_DATA_DB_IS_FAV,
-        MEDIA_DATA_DB_DATE_TRASHED,
-        MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_IS_FAV,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND,
 
         MediaColumn::MEDIA_HIDDEN,
         PhotoColumn::PHOTO_SYNC_STATUS,
@@ -258,34 +259,34 @@ static const vector<string> &AudiosCompatColumns()
      *     o FILES_COMPAT_COLUMNS
      */
     static const vector<string> AUDIOS_COMPAT_COLUMNS = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
         COMPAT_COLUMN_URI,
-        MEDIA_DATA_DB_MIME_TYPE,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_TITLE,
-        MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_SIZE,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
-        MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
-        MEDIA_DATA_DB_DATE_TAKEN,
-        MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND,
-        MEDIA_DATA_DB_ARTIST,
-        MEDIA_DATA_DB_AUDIO_ALBUM,
+        CONST_MEDIA_DATA_DB_MIME_TYPE,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+        CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_SIZE,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND,
+        CONST_MEDIA_DATA_DB_ARTIST,
+        CONST_MEDIA_DATA_DB_AUDIO_ALBUM,
         COMPAT_COLUMN_WIDTH,
         COMPAT_COLUMN_HEIGHT,
         COMPAT_COLUMN_ORIENTATION,
-        MEDIA_DATA_DB_DURATION,
+        CONST_MEDIA_DATA_DB_DURATION,
         COMPAT_COLUMN_BUCKET_ID,
         COMPAT_COLUMN_BUCKET_NAME,
         COMPAT_COLUMN_IS_TRASH,
-        MEDIA_DATA_DB_IS_FAV,
-        MEDIA_DATA_DB_DATE_TRASHED,
-        MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_IS_FAV,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND,
 
         DEFAULT_INT_COLUMN_AS + MediaColumn::MEDIA_HIDDEN,
         DEFAULT_INT_COLUMN_AS + PhotoColumn::PHOTO_SYNC_STATUS,
@@ -303,34 +304,34 @@ static const vector<string> &FilesCompatColumns()
      *     o FILES_COMPAT_COLUMNS
      */
     static const vector<string> FILES_COMPAT_COLUMNS = {
-        MEDIA_DATA_DB_ID,
-        MEDIA_DATA_DB_FILE_PATH,
-        MEDIA_DATA_DB_URI,
-        MEDIA_DATA_DB_MIME_TYPE,
-        MEDIA_DATA_DB_MEDIA_TYPE,
-        MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_TITLE,
-        MEDIA_DATA_DB_RELATIVE_PATH,
-        MEDIA_DATA_DB_PARENT_ID,
-        MEDIA_DATA_DB_SIZE,
-        MEDIA_DATA_DB_DATE_ADDED,
-        MEDIA_DATA_DB_DATE_MODIFIED,
-        MEDIA_DATA_DB_DATE_TAKEN,
-        MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
-        MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
-        MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND,
-        MEDIA_DATA_DB_ARTIST,
+        CONST_MEDIA_DATA_DB_ID,
+        CONST_MEDIA_DATA_DB_FILE_PATH,
+        CONST_MEDIA_DATA_DB_URI,
+        CONST_MEDIA_DATA_DB_MIME_TYPE,
+        CONST_MEDIA_DATA_DB_MEDIA_TYPE,
+        CONST_MEDIA_DATA_DB_NAME,
+        CONST_MEDIA_DATA_DB_TITLE,
+        CONST_MEDIA_DATA_DB_RELATIVE_PATH,
+        CONST_MEDIA_DATA_DB_PARENT_ID,
+        CONST_MEDIA_DATA_DB_SIZE,
+        CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN,
+        CONST_MEDIA_DATA_DB_DATE_ADDED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_DATE_MODIFIED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN_TO_SECOND,
+        CONST_MEDIA_DATA_DB_ARTIST,
         COMPAT_COLUMN_AUDIO_ALBUM,
-        MEDIA_DATA_DB_WIDTH,
-        MEDIA_DATA_DB_HEIGHT,
-        MEDIA_DATA_DB_ORIENTATION,
-        MEDIA_DATA_DB_DURATION,
-        MEDIA_DATA_DB_BUCKET_ID,
-        MEDIA_DATA_DB_BUCKET_NAME,
-        MEDIA_DATA_DB_IS_TRASH,
-        MEDIA_DATA_DB_IS_FAV,
-        MEDIA_DATA_DB_DATE_TRASHED,
-        MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND,
+        CONST_MEDIA_DATA_DB_WIDTH,
+        CONST_MEDIA_DATA_DB_HEIGHT,
+        CONST_MEDIA_DATA_DB_ORIENTATION,
+        CONST_MEDIA_DATA_DB_DURATION,
+        CONST_MEDIA_DATA_DB_BUCKET_ID,
+        CONST_MEDIA_DATA_DB_BUCKET_NAME,
+        CONST_MEDIA_DATA_DB_IS_TRASH,
+        CONST_MEDIA_DATA_DB_IS_FAV,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED,
+        CONST_MEDIA_DATA_DB_DATE_TRASHED_TO_SECOND,
 
         DEFAULT_INT_COLUMN_AS + MediaColumn::MEDIA_HIDDEN,
         PhotoColumn::PHOTO_SYNC_STATUS,
@@ -350,9 +351,9 @@ static void BuildQueryColumns(const vector<string> &columns, string &sql)
 
 static void ReplaceAlbumName(const string &arg, string &argInstead)
 {
-    if (arg == CAMERA_ALBUM_NAME) {
+    if (arg == CONST_CAMERA_ALBUM_NAME) {
         argInstead = to_string(static_cast<int32_t>(PhotoSubType::CAMERA));
-    } else if (arg == SCREEN_SHOT_ALBUM_NAME || arg == SCREEN_RECORD_ALBUM_NAME) {
+    } else if (arg == CONST_SCREEN_SHOT_ALBUM_NAME || arg == CONST_SCREEN_RECORD_ALBUM_NAME) {
         argInstead = to_string(static_cast<int32_t>(PhotoSubType::SCREENSHOT));
     } else {
         argInstead = arg;
@@ -404,9 +405,9 @@ static void ReplaceSelectionAndArgsInQuery(string &selection, vector<string> &se
         }
         const string &arg = selectionArgs[argIndex];
         string argInstead = arg;
-        if (key == MEDIA_DATA_DB_BUCKET_NAME) {
+        if (key == CONST_MEDIA_DATA_DB_BUCKET_NAME) {
             ReplaceAlbumName(arg, argInstead);
-        } else if (key == MEDIA_DATA_DB_ID) {
+        } else if (key == CONST_MEDIA_DATA_DB_ID) {
             ReplaceId(arg, argInstead, tableName);
         }
         selectionArgs[argIndex] = argInstead;
@@ -424,10 +425,10 @@ static void BuildCompatQuerySql(MediaLibraryCommand &cmd, const string table, co
     string whereClause = cmd.GetAbsRdbPredicates()->GetWhereClause();
     vector<string> whereArgs = cmd.GetAbsRdbPredicates()->GetWhereArgs();
     if (table == PhotoColumn::PHOTOS_TABLE) {
-        ReplaceSelectionAndArgsInQuery(whereClause, whereArgs, table, MEDIA_DATA_DB_BUCKET_NAME,
+        ReplaceSelectionAndArgsInQuery(whereClause, whereArgs, table, CONST_MEDIA_DATA_DB_BUCKET_NAME,
             PhotoColumn::PHOTO_SUBTYPE);
     }
-    ReplaceSelectionAndArgsInQuery(whereClause, whereArgs, table, MEDIA_DATA_DB_ID);
+    ReplaceSelectionAndArgsInQuery(whereClause, whereArgs, table, CONST_MEDIA_DATA_DB_ID);
 
     if (!whereClause.empty()) {
         sql += " WHERE " + whereClause;
@@ -469,7 +470,7 @@ static void BuildQueryFileSql(MediaLibraryCommand &cmd, vector<string> &selectio
     sql += " UNION ";
     BuildCompatQuerySql(cmd, AudioColumn::AUDIOS_TABLE, AudiosCompatColumns(), selectionArgs, sql);
     sql += " UNION ";
-    BuildCompatQuerySql(cmd, MEDIALIBRARY_TABLE, FilesCompatColumns(), selectionArgs, sql);
+    BuildCompatQuerySql(cmd, CONST_MEDIALIBRARY_TABLE, FilesCompatColumns(), selectionArgs, sql);
     sql += ") ";
 
     if (!groupBy.empty()) {
@@ -530,7 +531,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryFileOperations::QueryFileOperation(
 
     string fileId = cmd.GetOprnFileId();
     if (cmd.GetAbsRdbPredicates()->GetWhereClause().empty() && !fileId.empty()) {
-        cmd.GetAbsRdbPredicates()->EqualTo(MEDIA_DATA_DB_ID, fileId);
+        cmd.GetAbsRdbPredicates()->EqualTo(CONST_MEDIA_DATA_DB_ID, fileId);
     }
 
     if (START_PENDING) {
@@ -562,7 +563,7 @@ int32_t MediaLibraryFileOperations::CopyFileOperation(MediaLibraryCommand &cmd)
     auto assetId = cmd.GetOprnFileId();
     ValueObject valueObject;
     string relativePath;
-    if (values.GetObject(MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
+    if (values.GetObject(CONST_MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
         valueObject.GetString(relativePath);
     }
     Uri srcUri(MEDIALIBRARY_DATA_URI + "/" + assetId);

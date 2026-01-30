@@ -86,7 +86,7 @@ HWTEST_F(MediaPermissionTest, MediaPermissionTest_002, TestSize.Level1)
 HWTEST_F(MediaPermissionTest, MediaPermissionTest_003, TestSize.Level1)
 {
     MEDIA_INFO_LOG("MediaPermissionTest_003 begin");
-    Uri uri(URI_CLOSE_FILE); // HandleNoPermCheck 使得鉴权通过
+    Uri uri(CONST_URI_CLOSE_FILE); // HandleNoPermCheck 使得鉴权通过
     MediaLibraryCommand cmd(uri);
     PermParam permParam = {
         .isWrite = true,

@@ -110,8 +110,7 @@ std::string CloudMediaClientUtils::GetVideoCachePath(const std::string &filePath
     std::string cachePath = HMDFS_PATH_PREFIX + cachePathPrefix + PHOTOS_PATH +
         cachepathSuffix + filePath.substr(sandboxPrefix.length());
     MEDIA_INFO_LOG("The cachePath is: %{public}s", cachePath.c_str());
-    char resolvedPathBuf[PATH_MAX] = {0};
-    auto resolvedPath = realpath(cachePath.c_str(), resolvedPathBuf);
+    auto resolvedPath = realpath(cachePath.c_str(), nullptr);
     if (resolvedPath == nullptr) {
         if (errno != ENOENT) {
             MEDIA_ERR_LOG("GetVideoCachePath realpath failed, path: %{public}s",

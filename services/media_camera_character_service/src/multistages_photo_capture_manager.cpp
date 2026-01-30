@@ -140,7 +140,7 @@ void MultiStagesPhotoCaptureManager::SaveLowQualityImageInfo(MediaLibraryCommand
 
 // 低质量入缓存
 void MultiStagesPhotoCaptureManager::DealLowQualityPicture(const std::string &imageId,
-    std::shared_ptr<Media::Picture> picture, bool isEdited)
+    int32_t fileId, std::shared_ptr<Media::Picture> picture, bool isEdited)
 {
     auto pictureManagerThread = PictureManagerThread::GetInstance();
     CHECK_AND_RETURN_LOG(pictureManagerThread != nullptr, "pictureManagerThread not init yet");
@@ -162,7 +162,8 @@ void MultiStagesPhotoCaptureManager::DealLowQualityPicture(const std::string &im
     if (height >= HIGH_PIXEL_SIDE && width >= HIGH_PIXEL_SIDE) {
         pictureManagerThread->SetLast200mImageId(imageId);
     }
-    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), imageIdInPair, expireTime, true, false);
+    sptr<PicturePair> picturePair = new PicturePair(std::move(picture), imageIdInPair, fileId,
+        expireTime, true, false);
     // 存低质量裸picture
     pictureManagerThread->InsertPictureData(imageId, picturePair, LOW_QUALITY_PICTURE);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture photoid: %{public}s",
@@ -186,7 +187,7 @@ void MultiStagesPhotoCaptureManager::SaveLowQualityPicture(const std::string &im
 
 // 高质量编辑图片存20S
 void MultiStagesPhotoCaptureManager::DealHighQualityPicture(const std::string &imageId,
-    std::shared_ptr<Media::Picture> picture, bool isEdited, bool isTakeEffect)
+    int32_t fileId, std::shared_ptr<Media::Picture> picture, bool isEdited, bool isTakeEffect)
 {
     MEDIA_INFO_LOG("photoid: %{public}s", imageId.c_str());
     auto pictureManagerThread = PictureManagerThread::GetInstance();
@@ -199,7 +200,8 @@ void MultiStagesPhotoCaptureManager::DealHighQualityPicture(const std::string &i
     }
     time_t expireTime = currentTime + SAVE_PICTURE_TIMEOUT_SEC;
     std::string imageIdInPair = imageId;
-    sptr<PicturePair> picturePair= new PicturePair(std::move(picture), imageIdInPair, expireTime, true, isEdited);
+    sptr<PicturePair> picturePair= new PicturePair(std::move(picture), imageIdInPair, fileId,
+        expireTime, true, isEdited);
     picturePair->SetTakeEffect(isTakeEffect);
     pictureManagerThread->InsertPictureData(imageId, picturePair, HIGH_QUALITY_PICTURE);
     // delete raw file
@@ -216,7 +218,7 @@ int32_t MultiStagesPhotoCaptureManager::UpdateDbInfo(MediaLibraryCommand &cmd)
         valueObject.GetInt(photoQuality);
     }
     if (photoQuality == static_cast<int32_t>(MultiStagesPhotoQuality::LOW)) {
-        values.PutInt(MEDIA_DATA_DB_DIRTY, -1); // prevent uploading low-quality photo
+        values.PutInt(CONST_MEDIA_DATA_DB_DIRTY, -1); // prevent uploading low-quality photo
     }
     cmdLocal.SetValueBucket(values);
     cmdLocal.GetAbsRdbPredicates()->SetWhereClause(cmd.GetAbsRdbPredicates()->GetWhereClause());
@@ -391,7 +393,7 @@ void MultiStagesPhotoCaptureManager::AddImage(MediaLibraryCommand &cmd)
     AddImage(fileId, photoId, deferredProcType);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(photoId);
     MultiStagesCaptureDfxTriggerRatio::GetInstance().SetTrigger(MultiStagesCaptureTriggerType::AUTO);
-    if (OPRN_ADD_LOWQUALITY_IMAGE == cmd.GetQuerySetParam("save_picture")) {
+    if (CONST_OPRN_ADD_LOWQUALITY_IMAGE == cmd.GetQuerySetParam("save_picture")) {
         MEDIA_DEBUG_LOG("save last low quality Image");
         SaveLowQualityImageInfo(cmd);
     }
@@ -446,11 +448,11 @@ void MultiStagesPhotoCaptureManager::SyncWithDeferredProcSessionInternal()
     MEDIA_INFO_LOG("enter");
     // 进程重启场景，媒体库需要和延时子服务同步
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY);
-    string where = MEDIA_DATA_DB_PHOTO_ID + " is not null and " +
-        MEDIA_DATA_DB_PHOTO_QUALITY + " > 0 and " + MEDIA_DATA_DB_MEDIA_TYPE + " = " +
+    string where = string(CONST_MEDIA_DATA_DB_PHOTO_ID) + " is not null and " +
+        CONST_MEDIA_DATA_DB_PHOTO_QUALITY + " > 0 and " + CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " +
         to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE));
     cmd.GetAbsRdbPredicates()->SetWhereClause(where);
-    vector<string> columns { MEDIA_DATA_DB_ID, MEDIA_DATA_DB_PHOTO_ID, MEDIA_DATA_DB_DATE_TRASHED,
+    vector<string> columns { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_DATE_TRASHED,
         PhotoColumn::PHOTO_DEFERRED_PROC_TYPE, MediaColumn::MEDIA_OWNER_PACKAGE };
     auto resultSet = DatabaseAdapter::Query(cmd, columns);
     bool cond = (resultSet == nullptr || resultSet->GoToFirstRow() != 0);
@@ -460,9 +462,9 @@ void MultiStagesPhotoCaptureManager::SyncWithDeferredProcSessionInternal()
     deferredProcSession_->BeginSynchronize();
 
     do {
-        int32_t fileId = GetInt32Val(MEDIA_DATA_DB_ID, resultSet);
-        string photoId = GetStringVal(MEDIA_DATA_DB_PHOTO_ID, resultSet);
-        bool isTrashed = GetInt32Val(MEDIA_DATA_DB_DATE_TRASHED, resultSet) > 0;
+        int32_t fileId = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
+        string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
+        bool isTrashed = GetInt32Val(CONST_MEDIA_DATA_DB_DATE_TRASHED, resultSet) > 0;
         std::string packageName = GetStringVal(MediaColumn::MEDIA_OWNER_PACKAGE, resultSet);
         if (setOfDeleted_.find(fileId) != setOfDeleted_.end()) {
             MEDIA_INFO_LOG("remove image, fileId: %{public}d, photoId: %{public}s", fileId, photoId.c_str());

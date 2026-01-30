@@ -518,7 +518,7 @@ static void AddHighlightAlbumPredicates(DataShare::DataSharePredicates& predicat
 static void GenerateAnalysisCmd(MediaLibraryCommand &cmd,
     DataShare::DataSharePredicates &predicates)
 {
-    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, MEDIALIBRARY_TABLE);
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates, CONST_MEDIALIBRARY_TABLE);
     cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
     cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
     cmd.GetAbsRdbPredicates()->SetOrder(rdbPredicate.GetOrder());

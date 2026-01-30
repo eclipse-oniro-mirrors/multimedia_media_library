@@ -438,10 +438,10 @@ int32_t CreateSingleImage(string displayname, string appId)
     string relativePath = "Pictures/";
     MediaType mediaType = MEDIA_TYPE_IMAGE;
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
-    valuesBucket.Put(MEDIA_DATA_DB_NAME, displayname);
-    valuesBucket.Put(MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
-    valuesBucket.Put(MEDIA_DATA_DB_OWNER_APPID, appId);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, mediaType);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, displayname);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, relativePath);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_OWNER_APPID, appId);
     MediaLibraryCommand cmd(createAssetUri);
     return MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
 }

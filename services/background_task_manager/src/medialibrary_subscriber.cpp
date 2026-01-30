@@ -57,6 +57,7 @@
 #include "medialibrary_restore.h"
 #include "medialibrary_subscriber_database_utils.h"
 #include "media_lake_check_manager.h"
+#include "media_lake_clone_event_manager.h"
 #include "ability_manager_client.h"
 #include "resource_type.h"
 #include "dfx_manager.h"
@@ -159,6 +160,8 @@ const std::vector<std::string> MedialibrarySubscriber::events_ = {
     EventFwk::CommonEventSupport::COMMON_EVENT_TIME_TICK,
     EventFwk::CommonEventSupport::COMMON_EVENT_HWID_LOGOUT,
     EventFwk::CommonEventSupport::COMMON_EVENT_DATA_SHARE_READY,
+    EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_START,
+    EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_END,
     EventFwk::CommonEventSupport::COMMON_EVENT_POWER_CONNECTED,
     EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED,
     CLOUD_UPDATE_EVENT
@@ -213,38 +216,7 @@ MedialibrarySubscriber::MedialibrarySubscriber(const EventFwk::CommonEventSubscr
 
 MedialibrarySubscriber::~MedialibrarySubscriber()
 {
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    if (cloudHelper_ != nullptr && CloudMediaAssetUnlimitObserver_ != nullptr) {
-        cloudHelper_->UnregisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_);
-        cloudHelper_ = nullptr;
-    }
-#endif
 }
-
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-void CloudMediaAssetUnlimitObserver::OnChange(const ChangeInfo &changeInfo)
-{
-    auto subscriber = subscriber_.lock();
-    CHECK_AND_RETURN(subscriber != nullptr);
-
-    std::list<Uri> uris = changeInfo.uris_;
-    for (auto &uri : uris) {
-        bool cond = (uri.ToString() != CLOUD_URI || changeInfo.changeType_ != DataShareObserver::ChangeType::OTHER);
-        CHECK_AND_RETURN_INFO_LOG(!cond, "Current uri is not suitable for task.");
-
-        bool isUnlimitedTrafficStatusOn = CloudSyncUtils::IsUnlimitedTrafficStatusOn();
-        MEDIA_INFO_LOG("CloudMediaAssetUnlimitObserver OnChange, isUnlimitedTrafficStatusOn: %{public}d.",
-            isUnlimitedTrafficStatusOn);
-        if (isUnlimitedTrafficStatusOn) {
-            BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadResourceCheck();
-        }
-        if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsWifiConnectedAtRealTime() &&
-            !isUnlimitedTrafficStatusOn) {
-            BackgroundCloudBatchSelectedFileProcessor::TriggerAutoStopBatchDownloadResourceCheck(); // 批量下载立即停止
-        }
-    }
-}
-#endif
 
 bool MedialibrarySubscriber::Subscribe(void)
 {
@@ -267,19 +239,6 @@ bool MedialibrarySubscriber::Subscribe(void)
         subscriber_ = nullptr;
         return false;
     });
-
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    CreateOptions options;
-    options.enabled_ = true;
-    subscriber_->cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_DATASHARE_URI, options);
-    CHECK_AND_RETURN_RET_LOG(subscriber_->cloudHelper_ != nullptr, E_ERR, "cloudHelper_ is null.");
-    std::weak_ptr<MedialibrarySubscriber> subscriberWeakPtr(subscriber_);
-    subscriber_->CloudMediaAssetUnlimitObserver_ = std::make_shared<CloudMediaAssetUnlimitObserver>(subscriberWeakPtr);
-    CHECK_AND_RETURN_RET_LOG(subscriber_->CloudMediaAssetUnlimitObserver_ != nullptr, ret,
-        "CloudMediaAssetUnlimitObserver_ is null.");
-    // observer more than 50, failed to register
-    subscriber_->cloudHelper_->RegisterObserverExt(Uri(CLOUD_URI), subscriber_->CloudMediaAssetUnlimitObserver_, true);
-#endif
     return ret;
 }
 
@@ -339,7 +298,7 @@ static void UploadDBFile()
 {
     std::lock_guard<mutex> lock(uploadDBMutex);
     int64_t begin = MediaFileUtils::UTCTimeMilliSeconds();
-    static const std::string databaseDir = MEDIA_DB_DIR + "/rdb";
+    static const std::string databaseDir = std::string(CONST_MEDIA_DB_DIR) + "/rdb";
     static const std::vector<std::string> dbFileName = { "/media_library.db",
                                                          "/media_library.db-shm",
                                                          "/media_library.db-wal" };
@@ -537,6 +496,8 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
         BackgroundCloudFileProcessor::SetDownloadLatestFinished(false);
 #endif
+    } else if (MediaLakeCloneEventManager::IsRestoreEvent(want)) {
+        MediaLakeCloneEventManager::GetInstance().HandleRestoreEvent(want);
     }
     if (action == EventFwk::CommonEventSupport::COMMON_EVENT_BATTERY_CHANGED &&
         isScreenOff_ && isCharging_ && IsBetaVersion() && batteryCapacity_ >= PROPER_DEVICE_BATTERY_CAPACITY) {
@@ -612,7 +573,7 @@ void DeleteTemporaryPhotos()
         return;
     }
 
-    string UriString = PAH_DISCARD_CAMERA_PHOTO;
+    string UriString = CONST_PAH_DISCARD_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(UriString, URI_PARAM_API_VERSION, to_string(MEDIA_API_VERSION_V10));
     Uri uri(UriString);
     MediaLibraryCommand cmd(uri);

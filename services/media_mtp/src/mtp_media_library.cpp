@@ -927,7 +927,7 @@ int32_t MtpMediaLibrary::SetObjectPropValue(const std::shared_ptr<MtpOperationCo
     variant<int64_t, std::string> colValue;
     int32_t errCode = MtpDataUtils::SolveSetObjectPropValueData(context, colName, colValue);
     CHECK_AND_RETURN_RET_LOG(errCode == 0, errCode, "fail to SolveSetObjectPropValueData");
-    CHECK_AND_RETURN_RET(colName.compare(MEDIA_DATA_DB_PARENT_ID) != 0, MTP_SUCCESS);
+    CHECK_AND_RETURN_RET(colName.compare(CONST_MEDIA_DATA_DB_PARENT_ID) != 0, MTP_SUCCESS);
     std::string path("");
     CHECK_AND_RETURN_RET_LOG(GetPathById(context->handle, path) == MTP_SUCCESS,
         MtpErrorUtils::SolveObjectPropValueError(E_HAS_DB_ERROR),

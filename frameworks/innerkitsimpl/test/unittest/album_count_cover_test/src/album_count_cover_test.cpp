@@ -518,7 +518,7 @@ int32_t FavoriteFileAsset(const int32_t fileId, bool favoriteState)
 
 int32_t DeletePermanentlyFileAsset(const int32_t fileId)
 {
-    MediaLibraryCommand cmd((Uri(URI_DELETE_PHOTOS)));
+    MediaLibraryCommand cmd((Uri(CONST_URI_DELETE_PHOTOS)));
     DataSharePredicates predicates;
     predicates.EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));
     DataShareValuesBucket values;
@@ -544,7 +544,7 @@ unique_ptr<PhotoAlbum> CreatePhotoAlbum(const string &albumName)
 
 int32_t AlbumAddAssets(unique_ptr<PhotoAlbum> &album, unique_ptr<FileAsset> &fileAsset)
 {
-    MediaLibraryCommand cmd((Uri(PAH_PHOTO_ALBUM_ADD_ASSET)));
+    MediaLibraryCommand cmd((Uri(CONST_PAH_PHOTO_ALBUM_ADD_ASSET)));
     DataShareValuesBucket values;
     values.Put(PhotoColumn::PHOTO_OWNER_ALBUM_ID, album->GetAlbumId());
     values.Put(MediaColumn::MEDIA_ID, fileAsset->GetUri());
@@ -558,7 +558,7 @@ int32_t AlbumAddAssets(unique_ptr<PhotoAlbum> &album, unique_ptr<FileAsset> &fil
 
 int32_t AlbumRemoveAssets(unique_ptr<PhotoAlbum> &album, unique_ptr<FileAsset> &fileAsset)
 {
-    MediaLibraryCommand cmd((Uri(URI_QUERY_PHOTO_MAP)));
+    MediaLibraryCommand cmd((Uri(CONST_URI_QUERY_PHOTO_MAP)));
     DataSharePredicates predicates;
     predicates.EqualTo(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(album->GetAlbumId()));
     predicates.EqualTo(MediaColumn::MEDIA_ID, MediaFileUri::GetPhotoId(fileAsset->GetUri()));

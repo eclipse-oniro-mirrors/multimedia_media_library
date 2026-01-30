@@ -126,6 +126,8 @@ private:
     EXPORT static int32_t UpdateDBProgressInfoForFileId(std::string &fileIdStr, int32_t percent,
         int64_t finishTime, int32_t status);
     EXPORT static int32_t QueryBatchSelectedResourceFilesNum();
+    EXPORT static int32_t QueryBatchSelectedResourceFilesNumWithNetCondition();
+    EXPORT static int32_t QueryWifiNetRunningTaskNum();
     EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResume();
     EXPORT static int32_t QueryBatchDownloadFinishStatusCountFromDB(int32_t &totalValue,
         int32_t &completedValue, int32_t &failedValue);
@@ -138,6 +140,8 @@ private:
 
     // Auto pause resume
     EXPORT static int32_t UpdateAllAutoPauseDownloadResourcesInfo(BatchDownloadAutoPauseReasonType &autoPauseReason);
+    EXPORT static int32_t PauseAllWifiNetTask();
+    EXPORT static int32_t QueryAllWifiNetTask(std::vector<std::string> &fileIds);
     EXPORT static int32_t UpdateAllAutoResumeDownloadResourcesInfo();
     EXPORT static int32_t UpdateAllStatusAutoPauseToDownloading();
     EXPORT static int32_t UpdateAllStatusAutoPauseToWaiting();

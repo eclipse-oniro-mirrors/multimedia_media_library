@@ -32,7 +32,7 @@ using namespace std;
 
 int32_t MediatoolCommandUtils::QueryActiveUserId(string& activeUserId)
 {
-    std::string queryUserIdUriStr = QUERY_ACTIVE_USER_ID;
+    std::string queryUserIdUriStr = CONST_QUERY_ACTIVE_USER_ID;
     Uri queryUserIdUri(queryUserIdUriStr);
     DataShare::DataShareValuesBucket values;
     const string stubValue = "stub";

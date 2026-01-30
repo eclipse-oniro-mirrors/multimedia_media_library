@@ -558,8 +558,8 @@ HWTEST_F(AssetChangeRequestTest, AssetChangeRequest_Test_011, TestSize.Level0)
 {
     MEDIA_INFO_LOG("AssetChangeRequest_Test_011 for AssetChangeCreateAsset Begin");
     AssetChangeReqBody reqBody;
-    reqBody.values.Put(ASSET_EXTENTION, "jpg");
-    reqBody.values.Put(MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
+    reqBody.values.Put(CONST_ASSET_EXTENTION, "jpg");
+    reqBody.values.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
     reqBody.values.Put(PhotoColumn::MEDIA_TITLE, "20250602162718617");
 
     MessageParcel data;

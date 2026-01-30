@@ -19,7 +19,7 @@
 #include "datashare_helper.h"
 #include "media_app_uri_permission_column.h"
 #include "media_app_uri_sensitive_column.h"
-//LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media {
 using namespace std;
@@ -30,7 +30,7 @@ enum class OperationMode : uint32_t {
     WRITE_MODE = 0b10,
     READ_WRITE_MODE = 0b11,
 };
-// LCOV_EXCL_START
+
 class MediaPermissionHelper {
 public:
     EXPORT MediaPermissionHelper() = default;
@@ -137,6 +137,4 @@ private:
 };
 } // namespace Media
 } // namespace OHOS
-// LCOV_EXCL_STOP
 #endif  // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_PERMISSION_HELPER_H_
-//LCOV_EXCL_STOP

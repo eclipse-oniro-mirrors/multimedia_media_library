@@ -91,7 +91,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::NotifyIfTempFile(
     CHECK_AND_RETURN_LOG(watch != nullptr, "get instance notify failed NotifyIfTempFile abortion");
 
     string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath);
-    auto notifyUri = MediaFileUtils::GetUriByExtrConditions(ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
+    auto notifyUri = MediaFileUtils::GetUriByExtrConditions(CONST_ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
         static_cast<MediaType>(mediaType), MEDIA_API_VERSION_V10) + "/", to_string(fileId), extrUri);
     notifyUri = MediaFileUtils::GetUriWithoutDisplayname(notifyUri);
     if (isError) {
@@ -309,7 +309,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleForNullData(const
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} result set is empty",
         MLOG_TAG, __FUNCTION__, __LINE__);
     if (picture != nullptr) {
-        MultiStagesPhotoCaptureManager::GetInstance().DealHighQualityPicture(imageId, std::move(picture));
+        MultiStagesPhotoCaptureManager::GetInstance().DealHighQualityPicture(imageId, 0, std::move(picture));
     }
     MultiStagesCaptureDfxTotalTime::GetInstance().RemoveStartTime(imageId);
     // When subType query failed, default mediaType is Image
@@ -323,7 +323,7 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleForIsTemp(
 {
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture, this picture is temp.",
         MLOG_TAG, __FUNCTION__, __LINE__);
-    MultiStagesPhotoCaptureManager::GetInstance().DealHighQualityPicture(fileAsset->GetPhotoId(),
+    MultiStagesPhotoCaptureManager::GetInstance().DealHighQualityPicture(fileAsset->GetPhotoId(), fileAsset->GetId(),
         std::move(picture));
     bool isEdited = fileAsset->GetPhotoEditTime() > 0;
     bool isTrashed = fileAsset->GetIsTrash() > 0;
@@ -452,10 +452,11 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnDeliveryLowQualityIma
     tracer.Finish();
     string photoId = GetStringVal(PhotoColumn::PHOTO_ID, resultSet);
     string data = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+    int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     bool isEdited = (GetInt64Val(PhotoColumn::PHOTO_EDIT_TIME, resultSet) > 0);
     resultSet->Close();
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(photoId, AddCaptureTimeStat::END);
-    MultiStagesPhotoCaptureManager::GetInstance().DealLowQualityPicture(photoId, std::move(picture), isEdited);
+    MultiStagesPhotoCaptureManager::GetInstance().DealLowQualityPicture(photoId, fileId, std::move(picture), isEdited);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture save low quality image end",
         MLOG_TAG, __FUNCTION__, __LINE__);
 }

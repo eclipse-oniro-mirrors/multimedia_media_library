@@ -113,7 +113,7 @@ int32_t MediaLibraryAudioOperations::Close(MediaLibraryCommand &cmd)
 {
     const ValuesBucket &values = cmd.GetValueBucket();
     string uriString;
-    if (!GetStringFromValuesBucket(values, MEDIA_DATA_DB_URI, uriString)) {
+    if (!GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_URI, uriString)) {
         return E_INVALID_VALUES;
     }
     string pendingStatus = cmd.GetQuerySetParam(MediaColumn::MEDIA_TIME_PENDING);
@@ -203,7 +203,7 @@ int32_t MediaLibraryAudioOperations::CreateV10(MediaLibraryCommand &cmd)
         fileAsset.SetTimePending(UNCREATE_FILE_TIMEPENDING);
         isContains = true;
     } else {
-        CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, ASSET_EXTENTION, extention), E_HAS_DB_ERROR);
+        CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_ASSET_EXTENTION, extention), E_HAS_DB_ERROR);
         isNeedGrant = true;
         fileAsset.SetTimePending(UNOPEN_FILE_COMPONENT_TIMEPENDING);
         string title;

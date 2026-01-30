@@ -184,7 +184,7 @@ bool BaseRestore::IsRestorePhoto()
     return true;
 }
 
-void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::string &upgradePath)
+void BaseRestore::StartRestore(const std::string &backupRestoreDir, const std::string &upgradePath)
 {
     MEDIA_INFO_LOG("enter StartRestore");
     if (WaitSouthDeviceExitTimeout()) {
@@ -197,7 +197,7 @@ void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::st
     }
     MEDIA_INFO_LOG("StartRestore begin");
 
-    backupRestoreDir_ = backupRetoreDir;
+    backupRestoreDir_ = backupRestoreDir;
     if (backupRestoreDir_.empty()) {
         MEDIA_ERR_LOG("backupRestoreDir_ is empty.");
         SetErrorCode(RestoreError::BACKUP_RESTORE_DIRECTORY_IS_EMPTY);
@@ -210,7 +210,7 @@ void BaseRestore::StartRestore(const std::string &backupRetoreDir, const std::st
     GetAccountValid();
     GetSyncSwitchOn();
     GetSourceDeviceInfo();
-    int32_t errorCode = Init(backupRetoreDir, upgradePath, true);
+    int32_t errorCode = Init(backupRestoreDir, upgradePath, true);
     if (errorCode == E_OK) {
         RestorePhoto();
         RestoreAudio();
@@ -246,8 +246,8 @@ int32_t BaseRestore::Init(void)
         return E_FAIL;
     }
 
-    int32_t err = BackupDatabaseUtils::InitDb(mediaLibraryRdb_, MEDIA_DATA_ABILITY_DB_NAME, DATABASE_PATH, BUNDLE_NAME,
-        true, context->GetArea());
+    int32_t err = BackupDatabaseUtils::InitDb(mediaLibraryRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
+        DATABASE_PATH, CONST_BUNDLE_NAME, true, context->GetArea());
     if (err != E_OK) {
         ErrorInfo errorInfo(RestoreError::INIT_FAILED, 0, "", "medialibrary rdb fail, err = " + std::to_string(err));
         UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
@@ -270,9 +270,9 @@ int32_t BaseRestore::Init(void)
     migrateVideoFileNumber_ = 0;
     migrateAudioDatabaseNumber_ = 0;
     migrateAudioFileNumber_ = 0;
-    imageNumber_ = BackupDatabaseUtils::QueryUniqueNumber(mediaLibraryRdb_, IMAGE_ASSET_TYPE);
-    videoNumber_ = BackupDatabaseUtils::QueryUniqueNumber(mediaLibraryRdb_, VIDEO_ASSET_TYPE);
-    audioNumber_ = BackupDatabaseUtils::QueryUniqueNumber(mediaLibraryRdb_, AUDIO_ASSET_TYPE);
+    imageNumber_ = BackupDatabaseUtils::QueryUniqueNumber(mediaLibraryRdb_, CONST_IMAGE_ASSET_TYPE);
+    videoNumber_ = BackupDatabaseUtils::QueryUniqueNumber(mediaLibraryRdb_, CONST_VIDEO_ASSET_TYPE);
+    audioNumber_ = BackupDatabaseUtils::QueryUniqueNumber(mediaLibraryRdb_, CONST_AUDIO_ASSET_TYPE);
     MEDIA_INFO_LOG("imageNumber: %{public}d", (int)imageNumber_);
     MEDIA_INFO_LOG("videoNumber: %{public}d", (int)videoNumber_);
     MEDIA_INFO_LOG("audioNumber: %{public}d", (int)audioNumber_);
@@ -1528,7 +1528,7 @@ void BaseRestore::BatchInsertMap(const vector<FileInfo> &fileInfos, int64_t &tot
     totalRowNum += rowNum;
 }
 
-void BaseRestore::StartRestoreEx(const std::string &backupRetoreDir, const std::string &upgradePath,
+void BaseRestore::StartRestoreEx(const std::string &backupRestoreDir, const std::string &upgradePath,
     std::string &restoreExInfo)
 {
     UpgradeRestoreTaskReport()
@@ -1537,7 +1537,7 @@ void BaseRestore::StartRestoreEx(const std::string &backupRetoreDir, const std::
         .ReportProgress("start", std::to_string(MediaFileUtils::UTCTimeSeconds()));
     restoreMode_ = GetRestoreModeFromRestoreInfo(restoreInfo_);
     MEDIA_INFO_LOG("set restore mode to :%{public}d", restoreMode_);
-    StartRestore(backupRetoreDir, upgradePath);
+    StartRestore(backupRestoreDir, upgradePath);
     DatabaseReport()
         .SetSceneCode(this->sceneCode_)
         .SetTaskId(this->taskId_)
@@ -1977,9 +1977,9 @@ void BaseRestore::UpdateDatabase()
     MediaLibraryRdbUtils::UpdateAllAlbums(rdbStore, {}, { NotifyAlbumType::NO_NOTIFY, true,
         AlbumOperationType::DEFAULT, false });
     MEDIA_INFO_LOG("Start update unique number");
-    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, imageNumber_, IMAGE_ASSET_TYPE);
-    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, videoNumber_, VIDEO_ASSET_TYPE);
-    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, audioNumber_, AUDIO_ASSET_TYPE);
+    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, imageNumber_, CONST_IMAGE_ASSET_TYPE);
+    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, videoNumber_, CONST_VIDEO_ASSET_TYPE);
+    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, audioNumber_, CONST_AUDIO_ASSET_TYPE);
     MEDIA_INFO_LOG("Start notify");
     NotifyAlbum();
     updateProcessStatus_ = ProcessStatus::STOP;

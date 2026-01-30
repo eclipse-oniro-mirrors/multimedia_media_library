@@ -76,7 +76,7 @@ struct UniqueMemberValuesBucket {
 void CleanTestTables()
 {
     vector<string> dropTableList = {
-        PhotoColumn::PHOTOS_TABLE, AudioColumn::AUDIOS_TABLE, MEDIALIBRARY_TABLE,
+        PhotoColumn::PHOTOS_TABLE, AudioColumn::AUDIOS_TABLE, CONST_MEDIALIBRARY_TABLE,
         ASSET_UNIQUE_NUMBER_TABLE, PhotoExtColumn::PHOTOS_EXT_TABLE, PhotoAlbumColumns::TABLE};
     for (auto &dropTable : dropTableList) {
         string dropSql = "DROP TABLE " + dropTable + ";";
@@ -107,9 +107,9 @@ void PrepareUniqueNumberTable()
         return;
     }
 
-    UniqueMemberValuesBucket imageBucket = {IMAGE_ASSET_TYPE, 1};
-    UniqueMemberValuesBucket videoBucket = {VIDEO_ASSET_TYPE, 1};
-    UniqueMemberValuesBucket audioBucket = {AUDIO_ASSET_TYPE, 1};
+    UniqueMemberValuesBucket imageBucket = {CONST_IMAGE_ASSET_TYPE, 1};
+    UniqueMemberValuesBucket videoBucket = {CONST_VIDEO_ASSET_TYPE, 1};
+    UniqueMemberValuesBucket audioBucket = {CONST_AUDIO_ASSET_TYPE, 1};
 
     vector<UniqueMemberValuesBucket> uniqueNumberValueBuckets = {imageBucket, videoBucket, audioBucket};
 
@@ -191,7 +191,7 @@ static string CreateMovingPhoto()
     // create moving photo with live photo
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, MediaLibraryApi::API_10);
     ValuesBucket valuesBucket;
-    valuesBucket.PutString(ASSET_EXTENTION, "jpg");
+    valuesBucket.PutString(CONST_ASSET_EXTENTION, "jpg");
     valuesBucket.PutString(PhotoColumn::MEDIA_TITLE, "moving_photo_metadata_test");
     valuesBucket.PutInt(MediaColumn::MEDIA_TYPE, MediaType::MEDIA_TYPE_IMAGE);
     valuesBucket.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int>(PhotoSubType::DEFAULT));
@@ -210,7 +210,7 @@ static string CreateMovingPhoto()
 
     MediaLibraryCommand closeFileCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CLOSE);
     ValuesBucket closeValues;
-    closeValues.PutString(MEDIA_DATA_DB_URI, fileUriStr);
+    closeValues.PutString(CONST_MEDIA_DATA_DB_URI, fileUriStr);
     closeFileCmd.SetValueBucket(closeValues);
     MediaLibraryPhotoOperations::Close(closeFileCmd);
     return filePath;

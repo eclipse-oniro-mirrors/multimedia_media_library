@@ -105,8 +105,8 @@ constexpr uint32_t MEDIA_DB_ACL_GROUP = 3008;
 constexpr uint32_t DDMS_ACL_GROUP = 3012;
 
 EXPORT const std::string THUMB_DIR = "/storage/cloud/files/.thumbs/Photo";
-EXPORT const std::string RDB_DIR = MEDIA_DB_DIR + "/rdb";
-EXPORT const std::string KVDB_DIR = MEDIA_DB_DIR + "/kvdb";
+EXPORT const std::string RDB_DIR = std::string(CONST_MEDIA_DB_DIR) + "/rdb";
+EXPORT const std::string KVDB_DIR = std::string(CONST_MEDIA_DB_DIR) + "/kvdb";
 /*
  * ACL data structure
  */

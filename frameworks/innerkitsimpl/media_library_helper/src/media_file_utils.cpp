@@ -639,10 +639,7 @@ static std::unique_ptr<Picture> DecodeAsset(int32_t fd)
 
 static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType, int32_t dstFd)
 {
-    if (picturePtr == nullptr) {
-        MEDIA_ERR_LOG("picturePtr is nullptr");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "picturePtr is nullptr");
     MediaLibraryTracer tracer;
     tracer.Start("EncodeSaveAsset");
 
@@ -664,10 +661,7 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
 static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::string &extension)
 {
     std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd);
-    if (picturePtr == nullptr) {
-        MEDIA_ERR_LOG("DecodeAsset failed");
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "DecodeAsset failed");
 
     std::string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
     if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd)) {
@@ -683,10 +677,8 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
 {
     MEDIA_DEBUG_LOG("ConvertFormatCopy srcFile: %{public}s, dstFile: %{public}s, extension: %{public}s",
         srcFile.c_str(), dstFile.c_str(), extension.c_str());
-    if (srcFile.size() >= PATH_MAX) {
-        MEDIA_ERR_LOG("File path too long %{public}d", static_cast<int>(srcFile.size()));
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(srcFile.size() < PATH_MAX, false,
+        "File path too long %{public}d", static_cast<int>(srcFile.size()));
     string absFilePath;
     if (!PathToRealPath(srcFile, absFilePath)) {
         MEDIA_ERR_LOG("file is not real path, file path: %{private}s", srcFile.c_str());
@@ -749,10 +741,8 @@ static bool IsTranscodeFile(const std::string &filePath)
 bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, const std::string &dstDir,
     const std::string &extension)
 {
-    if (srcDir.empty() || dstDir.empty()) {
-        MEDIA_ERR_LOG("srcDir or dstDir is empty");
-        return E_MODIFY_DATA_FAIL;
-    }
+    bool cond = (srcDir.empty() || dstDir.empty());
+    CHECK_AND_RETURN_RET_LOG(!cond, E_MODIFY_DATA_FAIL, "srcDir or dstDir is empty");
     if (!IsFileExists(srcDir)) {
         MEDIA_ERR_LOG("SrcDir: %{public}s is not exist", srcDir.c_str());
         return E_NO_SUCH_FILE;
@@ -761,11 +751,8 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
         MEDIA_ERR_LOG("DstDir: %{public}s exists", dstDir.c_str());
         return E_FILE_EXIST;
     }
-    if (!IsDirectory(srcDir) || !CreateDirectory(dstDir)) {
-        MEDIA_ERR_LOG("srcDir is not directory or Create dstDir failed");
-        return E_FAIL;
-    }
-
+    cond = (!IsDirectory(srcDir) || !CreateDirectory(dstDir));
+    CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL, "srcDir is not directory or Create dstDir failed");
     std::string sourceFilePath = srcDir + "/source." + GetExtensionFromPath(srcDir);
     for (const auto& entry : std::filesystem::recursive_directory_iterator(srcDir)) {
         std::string srcFilePath = entry.path();
@@ -787,10 +774,7 @@ bool MediaFileUtils::ConvertFormatExtraDataDirectory(const std::string &srcDir, 
             } else {
                 ret = CopyFileUtil(srcFilePath, dstFilePath);
             }
-            if (!ret) {
-                MEDIA_ERR_LOG("copyFile failed, isSrcFile: %{public}d", isEqual);
-                return E_FAIL;
-            }
+            CHECK_AND_RETURN_RET_LOG(ret, E_FAIL, "copyFile failed, isSrcFile: %{public}d", isEqual);
         } else {
             MEDIA_ERR_LOG("Unhandled path type, path:%{public}s", DesensitizePath(srcFilePath).c_str());
             return E_FAIL;
@@ -1136,8 +1120,8 @@ string MediaFileUtils::GetHighlightPath(const string &uri)
     string uriPrefix = "datashare:///media";
     if (uri.find(uriPrefix) != string::npos) {
         prefixLen = static_cast<int>(uriPrefix.length());
-    } else if (uri.find(ML_FILE_URI_PREFIX) != string::npos) {
-        prefixLen = static_cast<int>(ML_FILE_URI_PREFIX.length());
+    } else if (uri.find(CONST_ML_FILE_URI_PREFIX) != string::npos) {
+        prefixLen = static_cast<int>(string(CONST_ML_FILE_URI_PREFIX).length());
     } else {
         return "";
     }
@@ -1158,8 +1142,8 @@ string MediaFileUtils::GetHighlightVideoPath(const string &uri)
     string uriPrefix = "datashare:///media";
     if (uri.find(uriPrefix) != string::npos) {
         prefixLen = static_cast<int>(uriPrefix.length());
-    } else if (uri.find(ML_FILE_URI_PREFIX) != string::npos) {
-        prefixLen = static_cast<int>(ML_FILE_URI_PREFIX.length());
+    } else if (uri.find(CONST_ML_FILE_URI_PREFIX) != string::npos) {
+        prefixLen = static_cast<int>(string(CONST_ML_FILE_URI_PREFIX).length());
     } else {
         return "";
     }
@@ -1619,18 +1603,18 @@ std::string MediaFileUtils::GetMediaTypeUri(MediaType mediaType)
 {
     switch (mediaType) {
         case MEDIA_TYPE_AUDIO:
-            return MEDIALIBRARY_AUDIO_URI;
+            return CONST_MEDIALIBRARY_AUDIO_URI;
         case MEDIA_TYPE_VIDEO:
-            return MEDIALIBRARY_VIDEO_URI;
+            return CONST_MEDIALIBRARY_VIDEO_URI;
         case MEDIA_TYPE_IMAGE:
-            return MEDIALIBRARY_IMAGE_URI;
+            return CONST_MEDIALIBRARY_IMAGE_URI;
         case MEDIA_TYPE_SMARTALBUM:
-            return MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
+            return CONST_MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
         case MEDIA_TYPE_DEVICE:
-            return MEDIALIBRARY_DEVICE_URI;
+            return CONST_MEDIALIBRARY_DEVICE_URI;
         case MEDIA_TYPE_FILE:
         default:
-            return MEDIALIBRARY_FILE_URI;
+            return CONST_MEDIALIBRARY_FILE_URI;
     }
 }
 
@@ -1643,12 +1627,12 @@ std::string MediaFileUtils::GetMediaTypeUriV10(MediaType mediaType)
         case MEDIA_TYPE_IMAGE:
             return PhotoColumn::DEFAULT_PHOTO_URI;
         case MEDIA_TYPE_SMARTALBUM:
-            return MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
+            return CONST_MEDIALIBRARY_SMARTALBUM_CHANGE_URI;
         case MEDIA_TYPE_DEVICE:
-            return MEDIALIBRARY_DEVICE_URI;
+            return CONST_MEDIALIBRARY_DEVICE_URI;
         case MEDIA_TYPE_FILE:
         default:
-            return MEDIALIBRARY_FILE_URI;
+            return CONST_MEDIALIBRARY_FILE_URI;
     }
 }
 
@@ -1709,7 +1693,7 @@ string MediaFileUtils::GetVirtualUriFromRealUri(const string &uri, const string 
     if ((uri.find(PhotoColumn::PHOTO_TYPE_URI) != string::npos) ||
         (uri.find(AudioColumn::AUDIO_TYPE_URI) != string::npos) ||
         (uri.find(PhotoColumn::HIGHTLIGHT_COVER_URI) != string::npos) ||
-        (uri.find(URI_MTP_OPERATION) != string::npos)) {
+        (uri.find(CONST_URI_MTP_OPERATION) != string::npos)) {
         return uri;
     }
 
@@ -1737,13 +1721,13 @@ string MediaFileUtils::GetVirtualUriFromRealUri(const string &uri, const string 
     }
     int64_t virtualId;
     MediaType type;
-    if ((pureUri.find(MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
+    if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_IMAGE;
         virtualId = GetVirtualIdByType(id, MediaType::MEDIA_TYPE_IMAGE);
-    } else if (pureUri.find(MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
+    } else if (pureUri.find(CONST_MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
         type = MediaType::MEDIA_TYPE_VIDEO;
         virtualId = GetVirtualIdByType(id, MediaType::MEDIA_TYPE_VIDEO);
-    } else if ((pureUri.find(MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
+    } else if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_AUDIO;
         virtualId = GetVirtualIdByType(id, MediaType::MEDIA_TYPE_AUDIO);
     } else {
@@ -1785,8 +1769,8 @@ string MediaFileUtils::GetRealUriFromVirtualUri(const string &uri)
     if ((uri.find(PhotoColumn::PHOTO_TYPE_URI) != string::npos) ||
         (uri.find(AudioColumn::AUDIO_TYPE_URI) != string::npos) ||
         (uri.find(PhotoColumn::HIGHTLIGHT_COVER_URI) != string::npos) ||
-        (uri.find(URI_MTP_OPERATION) != string::npos) ||
-        (uri.find(MEDIA_FILEOPRN_OPEN_DEBUG_DB) != string::npos)) {
+        (uri.find(CONST_URI_MTP_OPERATION) != string::npos) ||
+        (uri.find(CONST_MEDIA_FILEOPRN_OPEN_DEBUG_DB) != string::npos)) {
         return uri;
     }
 
@@ -1805,18 +1789,18 @@ string MediaFileUtils::GetRealUriFromVirtualUri(const string &uri)
     }
     int32_t realId = 0;
     MediaType type;
-    if ((pureUri.find(MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
+    if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_IMAGE_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_IMAGE;
         realId = static_cast<int32_t>(GetRealIdByTable(id, PhotoColumn::PHOTOS_TABLE));
-    } else if (pureUri.find(MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
+    } else if (pureUri.find(CONST_MEDIALIBRARY_TYPE_VIDEO_URI) != string::npos) {
         type = MediaType::MEDIA_TYPE_VIDEO;
         realId = static_cast<int32_t>(GetRealIdByTable(id, PhotoColumn::PHOTOS_TABLE));
-    } else if ((pureUri.find(MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
+    } else if ((pureUri.find(CONST_MEDIALIBRARY_TYPE_AUDIO_URI) != string::npos)) {
         type = MediaType::MEDIA_TYPE_AUDIO;
         realId = static_cast<int32_t>(GetRealIdByTable(id, AudioColumn::AUDIOS_TABLE));
     } else {
         type = MediaType::MEDIA_TYPE_FILE;
-        realId = static_cast<int32_t>(GetRealIdByTable(id, MEDIALIBRARY_TABLE));
+        realId = static_cast<int32_t>(GetRealIdByTable(id, CONST_MEDIALIBRARY_TABLE));
     }
     string extrUri;
     if (fileUri.IsApi10()) {
@@ -1856,7 +1840,7 @@ string MediaFileUtils::GetTableFromVirtualUri(const std::string &virtualUri)
             case VIRTUAL_ID_DIVIDER - AUDIO_VIRTUAL_IDENTIFIER:
                 return AudioColumn::AUDIOS_TABLE;
             case VIRTUAL_ID_DIVIDER - FILE_VIRTUAL_IDENTIFIER:
-                return MEDIALIBRARY_TABLE;
+                return CONST_MEDIALIBRARY_TABLE;
             default:
                 MEDIA_ERR_LOG("virtualId:%{public}ld is wrong", (long) id);
                 return "";
@@ -1870,9 +1854,9 @@ string MediaFileUtils::GetTableFromVirtualUri(const std::string &virtualUri)
 
 bool MediaFileUtils::IsUriV10(const string &mediaType)
 {
-    return mediaType == URI_TYPE_PHOTO ||
-        mediaType == URI_TYPE_PHOTO_ALBUM ||
-        mediaType == URI_TYPE_AUDIO_V10;
+    return mediaType == CONST_URI_TYPE_PHOTO ||
+        mediaType == CONST_URI_TYPE_PHOTO_ALBUM ||
+        mediaType == CONST_URI_TYPE_AUDIO_V10;
 }
 
 bool MediaFileUtils::IsFileTablePath(const string &path)
@@ -2045,9 +2029,8 @@ string MediaFileUtils::GetMovingPhotoVideoPath(const string &imagePath)
 {
     size_t splitIndex = imagePath.find_last_of('.');
     size_t lastSlashIndex = imagePath.find_last_of('/');
-    if (splitIndex == string::npos || (lastSlashIndex != string::npos && lastSlashIndex > splitIndex)) {
-        return "";
-    }
+    bool cond = (splitIndex == string::npos || (lastSlashIndex != string::npos && lastSlashIndex > splitIndex));
+    CHECK_AND_RETURN_RET(!cond, "");
     return imagePath.substr(0, splitIndex) + ".mp4";
 }
 
@@ -2124,17 +2107,12 @@ bool MediaFileUtils::CheckMovingPhotoVideo(const UniqueFd &uniqueFd)
     }
 
     shared_ptr<AVMetadataHelper> avMetadataHelper = AVMetadataHelperFactory::CreateAVMetadataHelper();
-    if (avMetadataHelper == nullptr) {
-        MEDIA_WARN_LOG("Failed to create AVMetadataHelper, ignore checking duration");
-        return true;
-    }
+    CHECK_AND_RETURN_RET_WARN_LOG(avMetadataHelper != nullptr, true,
+        "Failed to create AVMetadataHelper, ignore checking duration");
 
     int32_t err = avMetadataHelper->SetSource(uniqueFd.Get(), 0,
         static_cast<int64_t>(st.st_size), AV_META_USAGE_META_ONLY);
-    if (err != 0) {
-        MEDIA_ERR_LOG("SetSource failed for the given file descriptor, err = %{public}d", err);
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(err == 0, false, "SetSource failed for the given file descriptor, err = %{public}d", err);
 
     unordered_map<int32_t, string> resultMap = avMetadataHelper->ResolveMetadata();
     if (resultMap.find(AV_KEY_DURATION) == resultMap.end()) {

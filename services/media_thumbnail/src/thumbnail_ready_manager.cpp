@@ -190,10 +190,10 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
     MediaLibraryTracer tracer;
     tracer.Start("QueryNoAstcInfosOnDemand");
     vector<string> column = {
-        MEDIA_DATA_DB_ID, MEDIA_DATA_DB_FILE_PATH, MEDIA_DATA_DB_HEIGHT, MEDIA_DATA_DB_WIDTH,
-        MEDIA_DATA_DB_POSITION, MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_DATA_DB_DATE_ADDED, MEDIA_DATA_DB_NAME,
-        MEDIA_DATA_DB_ORIENTATION, PhotoColumn::PHOTO_EXIF_ROTATE, MEDIA_DATA_DB_DATE_TAKEN,
-        MEDIA_DATA_DB_DATE_MODIFIED, PhotoColumn::PHOTO_THUMB_STATUS,
+        CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_HEIGHT, CONST_MEDIA_DATA_DB_WIDTH,
+        CONST_MEDIA_DATA_DB_POSITION, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_DATE_ADDED,
+        CONST_MEDIA_DATA_DB_NAME, CONST_MEDIA_DATA_DB_ORIENTATION, PhotoColumn::PHOTO_EXIF_ROTATE,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_DATE_MODIFIED, PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "0");
@@ -209,10 +209,10 @@ bool ThumbnailReadyManager::QueryNoAstcInfosOnDemand(ThumbRdbOpt &opts,
             AddQueryNoAstcRulesOnlyLocal(rdbPredicate);
         }
     }
-    rdbPredicate.EqualTo(MEDIA_DATA_DB_TIME_PENDING, "0");
+    rdbPredicate.EqualTo(CONST_MEDIA_DATA_DB_TIME_PENDING, "0");
     rdbPredicate.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, "0");
-    rdbPredicate.EqualTo(MEDIA_DATA_DB_DATE_TRASHED, "0");
-    rdbPredicate.EqualTo(COMPAT_HIDDEN, "0");
+    rdbPredicate.EqualTo(CONST_MEDIA_DATA_DB_DATE_TRASHED, "0");
+    rdbPredicate.EqualTo(CONST_COMPAT_HIDDEN, "0");
     rdbPredicate.Limit(THUMBNAIL_GENERATE_BATCH_COUNT);
 
     vector<ThumbnailData> infos;
@@ -253,7 +253,7 @@ void ThumbnailReadyManager::CreateAstcAfterDownloadThumbOnDemand(const std::stri
         ThumbnailUtils::SetThumbnailSizeValue(values, lcdSize, PhotoColumn::PHOTO_LCD_SIZE);
         int changedRows;
         CHECK_AND_RETURN_LOG(opts.store != nullptr, "store is null");
-        int32_t err = opts.store->Update(changedRows, opts.table, values, MEDIA_DATA_DB_ID + " = ?",
+        int32_t err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
         vector<string> { data.id });
         CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "RdbStore lcd size failed! %{public}d", err);
     }
@@ -331,6 +331,7 @@ void ThumbnailReadyManager::CreateAstcBatchOnDemandTaskFinish(std::shared_ptr<Th
     } else {
         if (thumbReadyTaskData->isBatchComplete == true) {
             timeoutCount_.store(0);
+            MEDIA_INFO_LOG("CreateAstcBatchOnDemand tasks finish, reset timeout count");
         }
     }
     CHECK_AND_RETURN(IsNeedExecuteTask(requestId, pid));

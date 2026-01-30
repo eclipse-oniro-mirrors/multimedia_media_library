@@ -28,6 +28,7 @@ using ChangeType = AAFwk::ChangeInfo::ChangeType;
 
 void AlbumsRefreshNotify::SendBatchUris(NotifyType type, list<Uri> &uris, list<Uri> &extraUris)
 {
+    CHECK_AND_RETURN(!uris.empty());
     auto obsMgrClient = AAFwk::DataObsMgrClient::GetInstance();
     void *data = extraUris.empty() ? nullptr : new list<Uri>(extraUris);
     MEDIA_DEBUG_LOG("#testSendBatchUris1, type: %{public}d", type);

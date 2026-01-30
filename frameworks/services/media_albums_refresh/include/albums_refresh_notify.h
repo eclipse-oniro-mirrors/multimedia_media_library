@@ -41,6 +41,7 @@ static const uint8_t OTHER_URI_TYPE = 2;
 static const uint16_t TIME_BEGIN_SYNC = 0;
 static const uint16_t TIME_END_SYNC = 1;
 static const uint16_t TIME_IN_SYNC = 2;
+static const uint16_t TIME_IN_SYNC_NO_REFRESH = 3;
 
 struct SyncNotifyInfo {
     uint16_t taskType = TIME_IN_SYNC;

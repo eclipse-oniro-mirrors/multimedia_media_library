@@ -893,8 +893,8 @@ int32_t CloudMediaAssetManager::ForceRetainDownloadCloudMedia(CloudMediaRetainTy
     SetSouthDeviceSyncSwitchStatus(CloudSyncStatus::CLOUD_CLEANING);
 
     // 主动停止端云同步
-    MEDIA_INFO_LOG("ForceRetainDownloadCloudMedia StopSync bundleName:%{public}s", BUNDLE_NAME.c_str());
-    CloudSyncManager::GetInstance().StopSync(BUNDLE_NAME);
+    MEDIA_INFO_LOG("ForceRetainDownloadCloudMedia StopSync bundleName:%{public}s", CONST_BUNDLE_NAME);
+    CloudSyncManager::GetInstance().StopSync(CONST_BUNDLE_NAME);
 
     // 备份/恢复需要特殊处理，等待备份和恢复完成再清除;
     WaitIfBackUpingOrRestoring();
@@ -1028,7 +1028,7 @@ int32_t CloudMediaAssetManager::UpdateAddTaskStatus(const std::vector<std::strin
 }
 
 int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
-    int64_t &insertCount, std::vector<DownloadResourcesTaskPo> &newTaskPos)
+    int64_t &insertCount, std::vector<DownloadResourcesTaskPo> &newTaskPos, int32_t taskSeq)
 {
     std::vector<NativeRdb::ValuesBucket> batchValues;
     for (auto &po : newTaskPos) {
@@ -1039,10 +1039,20 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
         values.PutString(DownloadResourcesColumn::MEDIA_URI, po.fileUri.value_or(""));
         values.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, po.dateAdded.value_or(0));
         values.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, po.dateFinish.value_or(0));
-        values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, po.downloadStatus.value_or(0));
+        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
+            // 当前网络为移动网络，新增任务全部标记为auto_pause状态
+            values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+                static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
+            values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
+                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
+        } else {
+            values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, po.downloadStatus.value_or(0));
+            values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, po.autoPauseReason.value_or(0));
+        }
         values.PutInt(DownloadResourcesColumn::MEDIA_PERCENT, po.percent.value_or(-1));
-        values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, po.autoPauseReason.value_or(0));
         values.PutInt(DownloadResourcesColumn::MEDIA_COVER_LEVEL, po.coverLevel.value_or(1));
+        values.PutInt(DownloadResourcesColumn::MEDIA_TASK_SEQ, taskSeq);
+        values.PutInt(DownloadResourcesColumn::MEDIA_NETWORK_POLICY, po.networkPolicy.value_or(0));
         batchValues.push_back(values);
     }
     MEDIA_INFO_LOG("BatchSelectFileDownload Insert Bucket Size:%{public}zu", batchValues.size());
@@ -1075,7 +1085,7 @@ int32_t CloudMediaAssetManager::StartBatchDownloadCloudResources(StartBatchDownl
     int32_t ret = this->batchDownloadResourcesTaskDao_.QueryValidBatchDownloadPoFromPhotos(newTaskFileIds, newTaskPos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "QueryValidBatchDownloadPoFromPhotos failed");
     int64_t insertCount = 0;
-    int32_t result = BuildTaskValuesAndBatchInsert(insertCount, newTaskPos);
+    int32_t result = BuildTaskValuesAndBatchInsert(insertCount, newTaskPos, reqBody.taskSeq);
     MEDIA_INFO_LOG("BatchSelectFileDownload AddTask Res:%{public}d, Count:%{public}" PRId64, result, insertCount);
     UpdateAddTaskStatus(newTaskFileIds,
         CloudMediaTaskDownloadCloudAssetCode::ADD_DOWNLOAD_TASK_SUCC, respBody.uriStatusMap);
@@ -1083,8 +1093,47 @@ int32_t CloudMediaAssetManager::StartBatchDownloadCloudResources(StartBatchDownl
         CloudMediaTaskDownloadCloudAssetCode::ADD_DOWNLOAD_TASK_SUCC, respBody.uriStatusMap);
     UpdateAddTaskStatus(invalidFileIds,
         CloudMediaTaskDownloadCloudAssetCode::ADD_DOWNLOAD_ASSET_NOT_EXIST, respBody.uriStatusMap);
-
     MEDIA_INFO_LOG("BatchSelectFileDownload Start LaunchBatchDownloadProcessor");
+    BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
+    BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
+#endif
+    return E_OK;
+}
+
+int32_t CloudMediaAssetManager::SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    CHECK_AND_RETURN_RET_LOG(reqBody.networkPolicy >= static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_DEFAULT)
+        && reqBody.networkPolicy <= static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_WIFI),
+        E_INVALID_ARGS, "SetNetworkPolicy invalid type");
+    CHECK_AND_RETURN_RET_LOG(!(reqBody.uris.size() > MAX_BATCH_DOWNLOAD_TASK_SIZE), E_INVALID_ARGS,
+        "StartBatchDownload uris is greater than %{public}d", MAX_BATCH_DOWNLOAD_TASK_SIZE);
+    std::unique_lock<std::mutex> lock(batchDownloadMutex_);
+    BatchDownloadNetWorkPolicyType networkPolicy = static_cast<BatchDownloadNetWorkPolicyType>(
+        reqBody.networkPolicy);
+    MediaLibraryTracer tracer;
+    tracer.Start("SetNetworkPolicyForBatchDownload");
+    MEDIA_INFO_LOG("BatchSelectFileDownload Enter SetNetworkPolicyForBatchDownload");
+    if (reqBody.uris.empty()) {
+        int32_t ret = this->batchDownloadResourcesTaskDao_.UpdateAllDownloadResourcesNetworkPolicy(networkPolicy);
+        this->batchDownloadResourcesTaskDao_.UpdateStatusAllFailAndAutoPauseToWaiting();
+        MEDIA_INFO_LOG("BatchSelectFileDownload Set All LaunchBatchDownloadProcessor");
+        BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
+        BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
+        return ret;
+    }
+    std::vector<std::string> allFileIds;
+    this->batchDownloadResourcesTaskDao_.FromUriToAllFileIds(reqBody.uris, allFileIds);
+    std::vector<std::string> newTaskFileIds;
+    std::vector<std::string> existedFileIds;
+    std::vector<std::string> invalidFileIds;
+    this->batchDownloadResourcesTaskDao_.ClassifyExistedDownloadTasks(allFileIds, newTaskFileIds, existedFileIds);
+    int32_t ret = this->batchDownloadResourcesTaskDao_.UpdateNetworkPolicyDownloadTasks(existedFileIds,
+        networkPolicy);
+    this->batchDownloadResourcesTaskDao_.UpdateStatusFailAndAutoPauseToWaiting(existedFileIds);
+    // success 不进入 waiting!
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "UpdateNetworkPolicyDownloadTasks failed");
+    MEDIA_INFO_LOG("BatchSelectFileDownload Set LaunchBatchDownloadProcessor");
     BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
     BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
 #endif
@@ -1101,13 +1150,25 @@ int32_t CloudMediaAssetManager::ResumeBatchDownloadCloudResources(ResumeBatchDow
     tracer.Start("ResumeBatchDownloadCloudResources");
     MEDIA_INFO_LOG("BatchSelectFileDownload enter ResumeBatchDownloadCloudResources");
     if (reqBody.uris.empty()) {
-        return this->batchDownloadResourcesTaskDao_.UpdateResumeAllDownloadResourcesInfo();
+        int32_t ret = this->batchDownloadResourcesTaskDao_.UpdateResumeAllDownloadResourcesInfo();
+        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
+            // 当前网络为移动网络，default任务标记为auto_pause状态
+            this->batchDownloadResourcesTaskDao_.UpdateAutoPauseAllDownloadByNetWorkPolicy();
+        }
+        MEDIA_INFO_LOG("BatchSelectFileDownload Resume All LaunchBatchDownloadProcessor");
+        BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
+        BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
+        return ret;
     }
     std::vector<std::string> allFileIds;
     this->batchDownloadResourcesTaskDao_.FromUriToAllFileIds(reqBody.uris, allFileIds);
 
     int32_t ret = this->batchDownloadResourcesTaskDao_.UpdateResumeDownloadResourcesInfo(allFileIds);
     MEDIA_INFO_LOG("BatchSelectFileDownload ResumeBatchDownloadCloudResources Resume ret:%{public}d", ret);
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
+        // 当前网络为移动网络，default任务标记为auto_pause状态
+        this->batchDownloadResourcesTaskDao_.UpdateAutoPauseForFileIdByNetWorkPolicy(allFileIds);
+    }
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "UpdateResumeDownloadResourcesInfo failed");
     MEDIA_INFO_LOG("BatchSelectFileDownload Resume LaunchBatchDownloadProcessor");
     BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
@@ -1209,7 +1270,9 @@ int32_t CloudMediaAssetManager::GetCloudMediaBatchDownloadResourcesStatus(
                     << downloadResourcesTask.downloadStatus.value_or(0) << "|"
                     << downloadResourcesTask.percent.value_or(0) << "|"
                     << downloadResourcesTask.autoPauseReason.value_or(0) << "|"
-                    << downloadResourcesTask.coverLevel.value_or(1);
+                    << downloadResourcesTask.coverLevel.value_or(1) << "|"
+                    << downloadResourcesTask.taskSeq.value_or(0) << "|"
+                    << downloadResourcesTask.networkPolicy.value_or(0);
 
         std::string entry = entryStream.str();
         respBody.downloadResourcesStatus.emplace_back(std::move(entry));
@@ -1233,6 +1296,28 @@ int32_t CloudMediaAssetManager::GetCloudMediaBatchDownloadResourcesCount(
     int32_t ret = this->batchDownloadResourcesTaskDao_.QueryCloudMediaBatchDownloadResourcesCount(rdbPredicates,
         count);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "QueryCloudMediaBatchDownloadResourcesCount failed");
+    respBody.count = count;
+#endif
+    return E_OK;
+}
+
+int32_t CloudMediaAssetManager::GetCloudMediaBatchDownloadResourcesSize(
+    GetBatchDownloadCloudResourcesSizeReqBody &reqBody, GetBatchDownloadCloudResourcesSizeRespBody &respBody)
+{
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    std::unique_lock<std::mutex> lock(batchDownloadMutex_);
+    MediaLibraryTracer tracer;
+    tracer.Start("GetCloudMediaBatchDownloadResourcesSize");
+    MEDIA_INFO_LOG("BatchSelectFileDownload enter GetCloudMediaBatchDownloadResourcesSize");
+    DataShare::DataSharePredicates predicates = reqBody.predicates;
+    NativeRdb::RdbPredicates rdbPredicates =
+        RdbDataShareAdapter::RdbUtils::ToPredicates(predicates, DownloadResourcesColumn::TABLE);
+    int64_t size = 0;
+    int64_t count = 0;
+    int32_t ret = this->batchDownloadResourcesTaskDao_.QueryCloudMediaBatchDownloadResourcesSize(rdbPredicates,
+        size, count);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "QueryCloudMediaBatchDownloadResourcesSize failed");
+    respBody.size = size;
     respBody.count = count;
 #endif
     return E_OK;
@@ -1342,7 +1427,7 @@ void CloudMediaAssetManager::TryToStartSync()
         return;
     }
     MEDIA_INFO_LOG("cloud sync manager start sync");
-    int32_t ret = CloudSyncManager::GetInstance().StartSync(BUNDLE_NAME);
+    int32_t ret = CloudSyncManager::GetInstance().StartSync(CONST_BUNDLE_NAME);
     CHECK_AND_PRINT_LOG(ret == E_OK, "cloud sync manager start sync err %{public}d", ret);
     MEDIA_INFO_LOG("cloud sync manager end sync");
 }

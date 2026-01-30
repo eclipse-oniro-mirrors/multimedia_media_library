@@ -466,6 +466,7 @@ static void HandleAllRefreshAlbums(const shared_ptr<MediaLibraryRdbStore> rdbSto
 void AlbumsRefreshManager::RefreshPhotoAlbumsBySyncNotifyInfo(const shared_ptr<MediaLibraryRdbStore> rdbStore,
     SyncNotifyInfo &info)
 {
+    CHECK_AND_RETURN(info.taskType != TIME_IN_SYNC_NO_REFRESH);
     uint32_t countThreshold = GetRefreshCountThreshold(info.notifyType);
     int32_t timeThreshold = GetRefreshTimeThreshold();
 
@@ -639,6 +640,42 @@ SyncNotifyInfo AlbumsRefreshManager::GetSyncNotifyInfo(CloudSyncNotifyInfo &noti
     info.taskType = TIME_IN_SYNC;
     PrintSyncInfo(info);
     return info;
+}
+
+void AlbumsRefreshManager::AddSystemAlbumIds(std::set<std::string> &albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "AddSystemAlbumIds Failed to get rdbStore.");
+    std::string querySystemAlbumSql = "SELECT album_id FROM PhotoAlbum WHERE album_subtype >= "
+        + to_string(PhotoAlbumSubType::SYSTEM_START) + " AND album_subtype <= "
+        + to_string(PhotoAlbumSubType::SYSTEM_END);
+    auto resultSet = rdbStore->QuerySql(querySystemAlbumSql);
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "AddSystemAlbumIds Failed to query resultSet.");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        albumIds.emplace(GetStringVal(PhotoAlbumColumns::ALBUM_ID, resultSet));
+    }
+    resultSet->Close();
+}
+
+int32_t AlbumsRefreshManager::SendNotifyInfoOfAssetAndAlbum(const NotifyType type,
+    const std::set<std::string> &assetCloudIds, const std::set<std::string> &albumIds)
+{
+    CHECK_AND_RETURN_RET(type != NotifyType::NOTIFY_INVALID, E_ERR);
+    SyncNotifyInfo info;
+    info.notifyType = type;
+    CHECK_AND_EXECUTE(assetCloudIds.empty(), info.uriIds.insert(assetCloudIds.begin(), assetCloudIds.end()));
+    std::set<std::string> albumIdSet(albumIds.begin(), albumIds.end());
+    AddSystemAlbumIds(albumIdSet);
+    for (auto &albumId : albumIdSet) {
+        std::string albumUri = PhotoAlbumColumns::ALBUM_URI_PREFIX + albumId;
+        info.extraUris.emplace_back(Uri(albumUri));
+    }
+    info.taskType = TIME_IN_SYNC_NO_REFRESH;
+    info.notifyAssets = true;
+    info.notifyAlbums = true;
+    info.refreshResult = E_SUCCESS;
+    refreshWorker_->AddAlbumRefreshTask(info);
+    return E_OK;
 }
 }  // namespace Media
 }  // namespace OHOS

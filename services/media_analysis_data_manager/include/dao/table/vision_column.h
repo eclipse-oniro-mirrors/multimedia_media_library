@@ -48,6 +48,8 @@ const std::string VISION_VIDEO_FACE_TABLE = "tab_analysis_video_face";
 const std::string VISION_ANALYSIS_ALBUM_TOTAL_TABLE = "tab_analysis_album_total";
 const std::string VISION_FACE_TAG_TABLE = "tab_analysis_face_tag";
 const std::string VISION_AFFECTIVE_TABLE = "tab_analysis_affective";
+const std::string VISION_DEDUP_SELECTION = "tab_analysis_dedup_selection";
+const std::string VISION_PROFILE = "tab_analysis_profile";
 const std::string SEARCH_TOTAL_TABLE = "tab_analysis_search_index";
 const std::string ANALYSIS_ALBUM_TABLE = "AnalysisAlbum";
 const std::string ANALYSIS_PHOTO_MAP_TABLE = "AnalysisPhotoMap";
@@ -99,6 +101,8 @@ const std::string URI_MULTI_CROP = MEDIALIBRARY_DATA_URI + "/phaccess_ana_multi_
 const std::string URI_ANALYSIS_ALBUM_TOTAL = MEDIALIBRARY_DATA_URI + "/" + VISION_ANALYSIS_ALBUM_TOTAL_TABLE;
 const std::string URI_ASSET_SD_MAP = MEDIALIBRARY_DATA_URI + "/" + ANALYSIS_ASSET_SD_MAP_TABLE;
 const std::string URI_ALBUM_ASSET_MAP = MEDIALIBRARY_DATA_URI + "/" + ANALYSIS_ALBUM_ASSET_MAP_TABLE;
+const std::string URI_DEDUP_SELECTION = MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_DEDUP_SELECTION;
+const std::string URI_PROFILE = MEDIALIBRARY_DATA_URI + "/" + CONST_PAH_ANA_PROFILE;
 
 constexpr int32_t ANALYSIS_ALBUM_OFFSET = 100000000;
 } // namespace Media

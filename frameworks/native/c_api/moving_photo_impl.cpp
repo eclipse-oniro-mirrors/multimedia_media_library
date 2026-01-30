@@ -115,7 +115,7 @@ int32_t MovingPhotoImpl::RequestContentToSandbox()
 {
     std::string movingPhotoUri = imageUri_;
     if (sourceMode_ == SourceMode::ORIGINAL_MODE) {
-        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, MEDIA_OPERN_KEYWORD, SOURCE_REQUEST);
+        MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
     }
 
     if (destImageUri_ && strlen(destImageUri_) > 0) {
@@ -236,8 +236,8 @@ int32_t MovingPhotoImpl::OpenReadOnlyVideo(const std::string& videoUri, bool isM
 {
     if (isMediaLibUri) {
         std::string openVideoUri = videoUri;
-        MediaFileUtils::UriAppendKeyValue(openVideoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
-            OPEN_MOVING_PHOTO_VIDEO);
+        MediaFileUtils::UriAppendKeyValue(openVideoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
+            CONST_OPEN_MOVING_PHOTO_VIDEO);
         Uri uri(openVideoUri);
         return UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
     }

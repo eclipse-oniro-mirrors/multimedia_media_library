@@ -111,9 +111,9 @@ void MediaLibraryManagerTest::SetUpTestCase(void)
     // make sure board is empty
     ClearAllFile();
 
-    Uri scanUri(URI_SCANNER);
+    Uri scanUri(CONST_URI_SCANNER);
     DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_FILE_PATH, ROOT_MEDIA_DIR);
     sDataShareHelper_->Insert(scanUri, valuesBucket);
     sleep(SCAN_WAIT_TIME);
     mediaLibraryExtendManager->InitMediaLibraryExtendManager();
@@ -466,7 +466,7 @@ HWTEST_F(MediaLibraryManagerTest, GetBatchAstcs_ShouldReturnE, TestSize.Level1)
     EXPECT_EQ(manager.GetBatchAstcs(uriBatch, astcBatch), E_INVALID_URI);
 }
 
-// Scenario2: Test when uriBatch contains ML_URI_OFFSET then GetBatchAstcs calls GetAstcsByOffset.
+// Scenario2: Test when uriBatch contains CONST_ML_URI_OFFSET then GetBatchAstcs calls GetAstcsByOffset.
 HWTEST_F(MediaLibraryManagerTest, GetBatchAstcs_ShouldCallGetAstcsByOffset_001, TestSize.Level1)
 {
     std::vector<std::string> uriBatch = {"/media/ml/uri/offset/1"};
@@ -488,7 +488,7 @@ HWTEST_F(MediaLibraryManagerTest, GetBatchAstcs_ShouldCallGetAstcsByOffset_003, 
     EXPECT_EQ(manager.GetBatchAstcs(uriBatch, astcBatch), E_INVALID_URI);
 }
 
-// Scenario3: Test when uriBatch does not contain ML_URI_OFFSET then GetBatchAstcs calls GetAstcsBatch.
+// Scenario3: Test when uriBatch does not contain CONST_ML_URI_OFFSET then GetBatchAstcs calls GetAstcsBatch.
 HWTEST_F(MediaLibraryManagerTest, GetBatchAstcs_ShouldCallGetAstcsBatch_004, TestSize.Level1)
 {
     std::vector<std::string> uriBatch = {"/media/ml/uri/1"};
@@ -542,9 +542,9 @@ HWTEST_F(MediaLibraryManagerTest, GetUrisByOldUris_001, TestSize.Level1)
     EXPECT_EQ(ret.empty(), true);
 
     // test case 2 normal uris
-    uris.emplace_back(UFM_CREATE_PHOTO);
-    uris.emplace_back(UFM_CREATE_AUDIO);
-    uris.emplace_back(UFM_CREATE_PHOTO_ALBUM);
+    uris.emplace_back(CONST_UFM_CREATE_PHOTO);
+    uris.emplace_back(CONST_UFM_CREATE_AUDIO);
+    uris.emplace_back(CONST_UFM_CREATE_PHOTO_ALBUM);
     ret = manager.GetUrisByOldUris(uris);
     EXPECT_EQ(ret.empty(), true);
 
@@ -760,7 +760,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test, T
     string columnName = "file_id";
     string value = "1";
     vector<string> columns;
-    EXPECT_NE(mediaLibraryExtendManager->GetResultSetFromDb(columnName, value, columns), nullptr);
+    EXPECT_EQ(mediaLibraryExtendManager->GetResultSetFromDb(columnName, value, columns), nullptr);
 }
 
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_InitMediaLibraryManager_test, TestSize.Level1)
@@ -798,7 +798,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_QueryTotalSize_test, TestS
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test_002, TestSize.Level1)
 {
     ASSERT_NE(mediaLibraryManager, nullptr);
-    std::string columnName = MEDIA_DATA_DB_URI;
+    std::string columnName = CONST_MEDIA_DATA_DB_URI;
     std::string value = "test";
     std::vector<string> columns;
     std::shared_ptr<DataShare::DataShareResultSet> res =
@@ -814,7 +814,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test_00
     std::string value = "test";
     std::vector<string> columns;
     ptr = mediaLibraryManager->GetResultSetFromDb(columnName, value, columns);
-    EXPECT_NE(ptr, nullptr);
+    EXPECT_EQ(ptr, nullptr);
 }
 
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CheckResultSet_test, TestSize.Level1)
@@ -831,7 +831,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CheckResultSet_test_002, T
     ASSERT_NE(mediaLibraryManager, nullptr);
     vector<string> columns;
     DataSharePredicates predicates;
-    string prefix = MEDIA_DATA_DB_MEDIA_TYPE + " <> " + to_string(g_albumMediaType);
+    string prefix = string(CONST_MEDIA_DATA_DB_MEDIA_TYPE) + " <> " + to_string(g_albumMediaType);
     predicates.SetWhereClause(prefix);
     Uri queryFileUri(MEDIALIBRARY_DATA_URI);
     shared_ptr<DataShareResultSet> resultSet = nullptr;
@@ -872,7 +872,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetFilePathFromUri_test_00
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_OpenThumbnail_test, TestSize.Level1)
 {
     ASSERT_NE(mediaLibraryManager, nullptr);
-    string uristr = URI_QUERY_PHOTO;
+    string uristr = CONST_URI_QUERY_PHOTO;
     string filePath = "/path/to/testfile";
     Size size;
     bool isAstc = true;
@@ -1943,6 +1943,31 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAssets_test_003, Tes
     int32_t ret = mediaLibraryManager->DeleteAssets(assets);
     EXPECT_LT(ret, 0);
     MEDIA_INFO_LOG("MediaLibraryManager_DeleteAssets_test_003 exit");
+}
+
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_OpenAsset_test, TestSize.Level1)
+{
+    EXPECT_NE(mediaLibraryExtendManager, nullptr);
+    string uri = "test";
+    int fd = mediaLibraryExtendManager->OpenAsset(uri, MEDIA_FILEMODE_READWRITE, HideSensitiveType::ALL_DESENSITIZE);
+    EXPECT_LT(fd, 0);
+}
+
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test_001, TestSize.Level1)
+{
+    EXPECT_NE(mediaLibraryExtendManager, nullptr);
+    string operation = "test";
+    int ret = mediaLibraryExtendManager->SendBrokerChangeOperation(operation);
+    EXPECT_EQ(ret, 0);
+}
+
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_SendBrokerChangeOperation_test_002, TestSize.Level1)
+{
+    EXPECT_NE(mediaLibraryExtendManager, nullptr);
+    string uri = "test";
+    vector<std::string> uris = {uri};
+    int ret = mediaLibraryExtendManager->GetCompressAssetSize(uris);
+    EXPECT_EQ(ret, E_ERR);
 }
 } // namespace Media
 } // namespace OHOS

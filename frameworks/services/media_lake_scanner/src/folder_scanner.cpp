@@ -22,6 +22,7 @@
 #include "global_scanner.h"
 #include "lake_file_utils.h"
 #include "medialibrary_errno.h"
+#include "media_lake_clone_event_manager.h"
 
 namespace OHOS::Media {
 namespace fs = std::filesystem;
@@ -86,6 +87,12 @@ int32_t FolderScanner::Run()
 
         FolderScanner folderScanner = BuildSubDirFolderScanner(currentDir);
         int32_t ret = folderScanner.ScanCurrentDirectory(dirQueue);
+
+        bool isRestore = MediaLakeCloneEventManager::GetInstance().IsRestoring();
+        CHECK_AND_RETURN_RET_WARN_LOG(!isRestore, ERR_SUCCESS,
+            "Global scan is due to the Restore process stopping at dir[%{public}s] scanning",
+            LakeFileUtils::GarbleFilePath(currentDir).c_str());
+
         CHECK_AND_CONTINUE_ERR_LOG(ret == ERR_SUCCESS, "Scan dir[%{public}s] failed",
             LakeFileUtils::GarbleFilePath(currentDir).c_str());
     }
@@ -110,15 +117,11 @@ FolderScanner FolderScanner::BuildSubDirFolderScanner(const std::string &current
 
 int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue)
 {
-    if (IsIncrementScanConflict()) {
-        return ERR_SUCCESS;
-    }
+    CHECK_AND_RETURN_RET(!IsIncrementScanConflict(), ERR_SUCCESS);
 
     FolderOperationType type = folderParser_.PreProcessFolder();
-    if (type == FolderOperationType::SKIP) {
-        MEDIA_INFO_LOG("Skip current directory: %{public}s", LakeFileUtils::GarbleFilePath(rootPath_).c_str());
-        return ERR_SUCCESS;
-    }
+    CHECK_AND_RETURN_RET_INFO_LOG(type != FolderOperationType::SKIP, ERR_SUCCESS,
+        "Skip current directory: %{public}s", LakeFileUtils::GarbleFilePath(rootPath_).c_str());
 
     // 性能优化，是否跳过当前文件夹下所有文件扫描
     CheckSetFileScannerSkip(type);
@@ -132,6 +135,16 @@ int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue)
     while ((currentFile = readdir(dirPath)) != nullptr) {
         std::string fileName = currentFile->d_name;
         std::string currentFilePath = rootPath_ + "/" + fileName;
+
+        bool isRestore = MediaLakeCloneEventManager::GetInstance().IsRestoring();
+        if (isRestore) {
+            closedir(dirPath);
+            dirPath = nullptr;
+            MEDIA_WARN_LOG("Current folder scan stop at file[%{public}s] scanning",
+                LakeFileUtils::GarbleFilePath(currentFilePath).c_str());
+            return ERR_SUCCESS;
+        }
+
         struct stat statInfo;
         if (lstat(currentFilePath.c_str(), &statInfo) != 0) {
             MEDIA_INFO_LOG("lstat error: %{public}s, errno: %{public}d",

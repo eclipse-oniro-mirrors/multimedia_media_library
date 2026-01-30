@@ -126,7 +126,7 @@ HWTEST_F(SetEditDataTest, SetEditDataTest_Test_001, TestSize.Level0)
     int fileId = GetInt32Val(MediaColumn::MEDIA_ID, resSet);
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileId);
     std::string editData = "edit_data";
-    valuesBucket.Put(EDIT_DATA, editData);
+    valuesBucket.Put(CONST_EDIT_DATA, editData);
     reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
     MessageParcel data;
     MessageParcel reply;
