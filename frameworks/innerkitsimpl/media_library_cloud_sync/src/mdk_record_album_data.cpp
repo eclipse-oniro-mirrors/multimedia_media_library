@@ -19,6 +19,7 @@
 #include <string>
 
 #include "media_log.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media::CloudSync {
 MDKRecordAlbumData::MDKRecordAlbumData(const MDKRecord &record)
@@ -59,11 +60,11 @@ void MDKRecordAlbumData::SetDKRecord(MDKRecord &record)
 }
 std::optional<std::string> MDKRecordAlbumData::GetBundleName() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, this->ALBUM_BUNDLE_NAME);
+    return this->recordReader_.GetStringValue(this->properties_, PhotoAlbumColumns::ALBUM_BUNDLE_NAME);
 }
 void MDKRecordAlbumData::SetBundleName(const std::string &bundleName)
 {
-    this->properties_[this->ALBUM_BUNDLE_NAME] = MDKRecordField(bundleName);
+    this->properties_[PhotoAlbumColumns::ALBUM_BUNDLE_NAME] = MDKRecordField(bundleName);
 }
 std::optional<std::string> MDKRecordAlbumData::GetAlbumName() const
 {
@@ -83,7 +84,8 @@ void MDKRecordAlbumData::SetlPath(const std::string &path)
 }
 std::optional<int32_t> MDKRecordAlbumData::GetAlbumType() const
 {
-    std::optional<std::string> albumTypeStr = this->recordReader_.GetStringValue(this->properties_, this->ALBUM_TYPE);
+    std::optional<std::string> albumTypeStr =
+        this->recordReader_.GetStringValue(this->properties_, PhotoAlbumColumns::ALBUM_TYPE);
     if (albumTypeStr.has_value()) {
         std::stringstream ss(albumTypeStr.value());
         int32_t result = 0;
@@ -95,12 +97,12 @@ std::optional<int32_t> MDKRecordAlbumData::GetAlbumType() const
 }
 void MDKRecordAlbumData::SetAlbumType(const int32_t &albumType)
 {
-    this->properties_[this->ALBUM_TYPE] = MDKRecordField(albumType);
+    this->properties_[PhotoAlbumColumns::ALBUM_TYPE] = MDKRecordField(albumType);
 }
 std::optional<int32_t> MDKRecordAlbumData::GetAlbumSubType() const
 {
     std::optional<std::string> albumSubTypeStr =
-        this->recordReader_.GetStringValue(this->properties_, this->ALBUM_SUBTYPE);
+        this->recordReader_.GetStringValue(this->properties_, PhotoAlbumColumns::ALBUM_SUBTYPE);
     if (albumSubTypeStr.has_value()) {
         std::stringstream ss(albumSubTypeStr.value());
         int32_t result = 0;
@@ -112,11 +114,12 @@ std::optional<int32_t> MDKRecordAlbumData::GetAlbumSubType() const
 }
 void MDKRecordAlbumData::SetAlbumSubType(const int32_t &albumSubType)
 {
-    this->properties_[this->ALBUM_SUBTYPE] = MDKRecordField(albumSubType);
+    this->properties_[PhotoAlbumColumns::ALBUM_SUBTYPE] = MDKRecordField(albumSubType);
 }
 std::optional<int64_t> MDKRecordAlbumData::GetDateAdded() const
 {
-    std::optional<std::string> strOpt = this->recordReader_.GetStringValue(this->properties_, this->ALBUM_DATE_ADDED);
+    std::optional<std::string> strOpt =
+        this->recordReader_.GetStringValue(this->properties_, PhotoAlbumColumns::ALBUM_DATE_ADDED);
     if (strOpt.has_value()) {
         std::stringstream ss(strOpt.value());
         int64_t result = 0;
@@ -128,12 +131,12 @@ std::optional<int64_t> MDKRecordAlbumData::GetDateAdded() const
 }
 void MDKRecordAlbumData::SetDateAdded(const int64_t &dateAdded)
 {
-    this->properties_[this->ALBUM_DATE_ADDED] = MDKRecordField(dateAdded);
+    this->properties_[PhotoAlbumColumns::ALBUM_DATE_ADDED] = MDKRecordField(dateAdded);
 }
 std::optional<int64_t> MDKRecordAlbumData::GetDateModified() const
 {
     std::optional<std::string> strOpt =
-        this->recordReader_.GetStringValue(this->properties_, this->ALBUM_DATE_MODIFIED);
+        this->recordReader_.GetStringValue(this->properties_, PhotoAlbumColumns::ALBUM_DATE_MODIFIED);
     if (strOpt.has_value()) {
         std::stringstream ss(strOpt.value());
         int64_t result = 0;
@@ -145,7 +148,7 @@ std::optional<int64_t> MDKRecordAlbumData::GetDateModified() const
 }
 void MDKRecordAlbumData::SetDateModified(const int64_t &dateModified)
 {
-    this->properties_[this->ALBUM_DATE_MODIFIED] = MDKRecordField(dateModified);
+    this->properties_[PhotoAlbumColumns::ALBUM_DATE_MODIFIED] = MDKRecordField(dateModified);
 }
 // albumId in DKRecord, means cloud_id in album table.
 std::optional<std::string> MDKRecordAlbumData::GetCloudId() const
@@ -184,11 +187,11 @@ void MDKRecordAlbumData::SetType(const std::string &type)
 }
 std::optional<std::string> MDKRecordAlbumData::GetLocalLanguage() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, this->ALBUM_LOCAL_LANGUAGE);
+    return this->recordReader_.GetStringValue(this->properties_, PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE);
 }
 void MDKRecordAlbumData::SetLocalLanguage(const std::string &localLanguage)
 {
-    this->properties_[this->ALBUM_LOCAL_LANGUAGE] = MDKRecordField(localLanguage);
+    this->properties_[PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE] = MDKRecordField(localLanguage);
 }
 void MDKRecordAlbumData::SetNewCreate(const bool &isNewCreate)
 {
@@ -217,34 +220,34 @@ void MDKRecordAlbumData::SetEmptyShow(const std::string &emptyShow)
 }
 std::optional<int32_t> MDKRecordAlbumData::GetAlbumOrder() const
 {
-    return this->recordReader_.GetIntValue(this->fields_, this->ALBUM_ORDER);
+    return this->recordReader_.GetIntValue(this->fields_, PhotoAlbumColumns::ALBUM_ORDER);
 }
 void MDKRecordAlbumData::SetAlbumOrder(const int32_t &albumOrder)
 {
-    this->fields_[this->ALBUM_ORDER] = MDKRecordField(albumOrder);
+    this->fields_[PhotoAlbumColumns::ALBUM_ORDER] = MDKRecordField(albumOrder);
 }
 std::optional<int32_t> MDKRecordAlbumData::GetPriority() const
 {
-    return this->recordReader_.GetIntValue(this->fields_, this->ALBUM_PRIORITY);
+    return this->recordReader_.GetIntValue(this->fields_, PhotoAlbumColumns::ALBUM_PRIORITY);
 }
 void MDKRecordAlbumData::SetPriority(const int32_t &priority)
 {
-    this->fields_[this->ALBUM_PRIORITY] = MDKRecordField(priority);
+    this->fields_[PhotoAlbumColumns::ALBUM_PRIORITY] = MDKRecordField(priority);
 }
 std::optional<int32_t> MDKRecordAlbumData::GetCoverUriSource() const
 {
-    return this->recordReader_.GetIntValue(this->attributes_, this->COVER_URI_SOURCE);
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoAlbumColumns::COVER_URI_SOURCE);
 }
 void MDKRecordAlbumData::SetCoverUriSource(const int32_t &coverUriSource)
 {
-    this->attributes_[this->COVER_URI_SOURCE] = MDKRecordField(coverUriSource);
+    this->attributes_[PhotoAlbumColumns::COVER_URI_SOURCE] = MDKRecordField(coverUriSource);
 }
 std::optional<std::string> MDKRecordAlbumData::GetCoverCloudId() const
 {
-    return this->recordReader_.GetStringValue(this->attributes_, this->COVER_CLOUD_ID);
+    return this->recordReader_.GetStringValue(this->attributes_, PhotoAlbumColumns::COVER_CLOUD_ID);
 }
 void MDKRecordAlbumData::SetCoverCloudId(const std::string &coverCloudId)
 {
-    this->attributes_[this->COVER_CLOUD_ID] = MDKRecordField(coverCloudId);
+    this->attributes_[PhotoAlbumColumns::COVER_CLOUD_ID] = MDKRecordField(coverCloudId);
 }
 }  // namespace OHOS::Media::CloudSync

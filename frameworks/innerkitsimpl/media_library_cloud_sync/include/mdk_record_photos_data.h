@@ -42,15 +42,15 @@ public:  // constructor & destructor
     virtual ~MDKRecordPhotosData() = default;
 
 private:  // Marshalling & UnMarshalling
-    void UnMarshalling(const MDKRecord &record);
-    void Marshalling();
+    MDKRecordPhotosData &UnMarshalling(const MDKRecord &record);
+    MDKRecordPhotosData &Marshalling();
 
 public:  // getter & setter
     MDKRecord GetDKRecord();
-    void SetDKRecord(MDKRecord &record);
+    MDKRecordPhotosData &SetDKRecord(MDKRecord &record);
     std::optional<std::string> GetType() const;
     // type, "directory" or "file"
-    void SetType(const std::string &type);
+    MDKRecordPhotosData &SetType(const std::string &type);
 
 public:  // record data getter & setter - gallery-specific or shared fileds
     std::optional<int32_t> GetFileId() const;
@@ -60,31 +60,31 @@ public:  // record data getter & setter - gallery-specific or shared fileds
     std::optional<int32_t> GetFileType() const;
     MDKRecordPhotosData &SetFileType(const int32_t &fileType);
     std::optional<std::string> GetFileName() const;
-    void SetFileName(const std::string &fileName);
+    MDKRecordPhotosData &SetFileName(const std::string &fileName);
     std::optional<int64_t> GetCreatedTime() const;
-    void SetCreatedTime(const int64_t &createdTime);
+    MDKRecordPhotosData &SetCreatedTime(const int64_t &createdTime);
     std::optional<std::string> GetHashId() const;
-    void SetHashId(const std::string &hashId);
+    MDKRecordPhotosData &SetHashId(const std::string &hashId);
     std::optional<int64_t> GetSize() const;
-    void SetSize(const int64_t &size);
+    MDKRecordPhotosData &SetSize(const int64_t &size);
     std::optional<std::string> GetSource() const;
-    void SetSource(const std::string &source);
+    MDKRecordPhotosData &SetSource(const std::string &source);
     std::optional<bool> GetRecycled() const;
-    void SetRecycled(const bool &recycled);
+    MDKRecordPhotosData &SetRecycled(const bool &recycled);
     std::optional<int64_t> GetRecycledTime() const;
-    void SetRecycledTime(const int64_t &recycledTime);
+    MDKRecordPhotosData &SetRecycledTime(const int64_t &recycledTime);
     std::optional<bool> GetFavorite() const;
-    void SetFavorite(const bool &favorite);
+    MDKRecordPhotosData &SetFavorite(const bool &favorite);
     std::optional<std::string> GetDescription() const;
-    void SetDescription(const std::string &description);
+    MDKRecordPhotosData &SetDescription(const std::string &description);
     std::optional<std::string> GetMimeType() const;
-    void SetMimeType(const std::string &mimeType);
+    MDKRecordPhotosData &SetMimeType(const std::string &mimeType);
     std::optional<MDKAsset> GetFileContent() const;
-    void SetFileContent(const MDKAsset &asset);
+    MDKRecordPhotosData &SetFileContent(const MDKAsset &asset);
     std::optional<MDKAsset> GetFileRaw() const;
-    void SetFileRaw(const MDKAsset &asset);
+    MDKRecordPhotosData &SetFileRaw(const MDKAsset &asset);
     std::optional<MDKAsset> GetFileEditData() const;
-    void SetFileEditData(const MDKAsset &asset);
+    MDKRecordPhotosData &SetFileEditData(const MDKAsset &asset);
 
 public:  // attributes getter & setter
     std::optional<std::string> GetTitle() const;
@@ -166,51 +166,51 @@ public:  // attributes getter & setter
     std::optional<int64_t> GetThmSize() const;
     MDKRecordPhotosData &SetThmSize(const int64_t thmSize);
     std::optional<int64_t> GetEditTimeMs() const;
-    void SetEditTimeMs(int64_t editedTimeMs);
+    MDKRecordPhotosData &SetEditTimeMs(int64_t editedTimeMs);
     std::optional<std::string> GetEditDataCamera() const;
     MDKRecordPhotosData &SetEditDataCamera(const std::string &editDataCamera);
     std::optional<int32_t> GetFileSourceType() const;
-    void SetFileSourceType(int32_t fileSourceType);
+    MDKRecordPhotosData &SetFileSourceType(int32_t fileSourceType);
     std::optional<std::string> GetStoragePath() const;
-    void SetStoragePath(const std::string &storagePath);
+    MDKRecordPhotosData &SetStoragePath(const std::string &storagePath);
     std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
 
 public:  // properties getter & setter - gallery expand fields
     std::optional<std::string> GetSourcePath() const;
-    void SetSourcePath(const std::string &sourcePath);
+    MDKRecordPhotosData &SetSourcePath(const std::string &sourcePath);
     std::optional<std::string> GetSourceFileName() const;
-    void SetSourceFileName(const std::string &sourceFileName);
+    MDKRecordPhotosData &SetSourceFileName(const std::string &sourceFileName);
     std::optional<std::string> GetFirstUpdateTime() const;
-    void SetFirstUpdateTime(const std::string firstUpdateTime);
+    MDKRecordPhotosData &SetFirstUpdateTime(const std::string firstUpdateTime);
     std::optional<std::string> GetFileCreateTime() const;
-    void SetFileCreateTime(const std::string &fileCreateTime);
+    MDKRecordPhotosData &SetFileCreateTime(const std::string &fileCreateTime);
     std::optional<std::string> GetDetailTime() const;
-    void SetDetailTime(const std::string &detailTime);
+    MDKRecordPhotosData &SetDetailTime(const std::string &detailTime);
     std::optional<int32_t> GetHeight() const;
-    void SetHeight(const int32_t &height);
+    MDKRecordPhotosData &SetHeight(const int32_t &height);
     std::optional<int32_t> GetWidth() const;
-    void SetWidth(const int32_t &width);
+    MDKRecordPhotosData &SetWidth(const int32_t &width);
     std::optional<std::string> GetPosition() const;
-    void SetPosition(const std::string &position);
+    MDKRecordPhotosData &SetPosition(const std::string &position);
     std::optional<int32_t> GetRotate() const;
-    void SetRotate(const int32_t &rotate);
+    MDKRecordPhotosData &SetRotate(const int32_t &rotate);
     bool hasAttributes();
     bool hasProperties();
 
 private:
-    const std::string VALUE_RECORD_TYPE = "album";
+    static const std::string VALUE_RECORD_TYPE = "album";
     /* basic */
-    const std::string KEY_PROPERTIES = "properties";
-    const std::string KEY_TYPE = "type";
-    const std::string KEY_ATTRIBUTES = "attributes";
-    const std::string FILE_LOCAL_ID = "local_id";
-    const std::string FILE_ID = "file_id";
-    const std::string FILE_CONTENT = "content";
-    const std::string FILE_RAW = "raw";
-    const std::string FILE_THUMBNAIL = "thumbnail";
-    const std::string FILE_LCD = "lcdThumbnail";
-    const std::string FILE_EDIT_DATA = "editData";
-    const std::string FILE_MIME_TYPE = "mimeType";
+    static const std::string KEY_PROPERTIES = "properties";
+    static const std::string KEY_TYPE = "type";
+    static const std::string KEY_ATTRIBUTES = "attributes";
+    static const std::string FILE_LOCAL_ID = "local_id";
+    static const std::string FILE_ID = "file_id";
+    static const std::string FILE_CONTENT = "content";
+    static const std::string FILE_RAW = "raw";
+    static const std::string FILE_THUMBNAIL = "thumbnail";
+    static const std::string FILE_LCD = "lcdThumbnail";
+    static const std::string FILE_EDIT_DATA = "editData";
+    static const std::string FILE_MIME_TYPE = "mimeType";
     static const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
     static const std::string KEY_EDIT_TIME_MS = "editedTime_ms";
     static const std::string KEY_LCD_SIZE = "lcd_size";
@@ -236,7 +236,7 @@ private:
     static const std::string KEY_WIDTH = "width";
 
     /* attributes */
-    const std::string FILE_FIX_VERSION = "fix_version";
+    static const std::string FILE_FIX_VERSION = "fix_version";
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_MDK_RECORD_PHOTOS_DATA_H

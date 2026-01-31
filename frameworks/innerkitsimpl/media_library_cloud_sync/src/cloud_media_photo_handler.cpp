@@ -134,7 +134,7 @@ int32_t CloudMediaPhotoHandler::OnDentryFileInsertInner(
                   .SetTraceId(this->traceId_)
                   .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
                   .Post(operationCode, nodeReqBody, nodeRespBody);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "OnFetchRecordsInner failed, ret: %{public}d", ret);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "OnDentryFileInsertInner failed, ret: %{public}d", ret);
         respBody.MergeRespBody(nodeRespBody);
     }
     return ret;
