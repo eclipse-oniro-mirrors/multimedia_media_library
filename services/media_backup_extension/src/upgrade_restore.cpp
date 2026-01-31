@@ -1132,6 +1132,7 @@ void UpgradeRestore::RestoreFromGalleryPortraitAlbum()
     int32_t totalNumber = QueryPortraitAlbumTotalNumber();
     MEDIA_INFO_LOG("QueryPortraitAlbumTotalNumber, totalNumber = %{public}d", totalNumber);
 
+    isNeedCloneIsMe_ = CheckIsNeedCloneIsMe();
     for (int32_t offset = 0; offset < totalNumber; offset += QUERY_COUNT) {
         std::vector<std::string> tagNameToDeleteSelection;
         std::vector<std::string> tagIds;
@@ -1191,6 +1192,15 @@ vector<PortraitAlbumInfo> UpgradeRestore::QueryPortraitAlbumInfos(int32_t offset
     return result;
 }
 
+bool UpgradeRestore::CheckIsNeedCloneIsMe()
+{
+    std::string querySql = "SELECT COUNT(DISTINCT " + GALLERY_GROUP_TAG + ") AS " + CUSTOM_COUNT + " FROM " +
+        GALLERY_TABLE_MERGE_TAG + " WHERE " + GALLERY_USER_DISPLAY_LEVEL + " = 1 AND " +
+        GALLERY_RELATIONSHIP + " = '0'";
+    int32_t isMeNum = BackupDatabaseUtils::QueryInt(galleryRdb_, querySql, CUSTOM_COUNT);
+    return isMeNum == 1;
+}
+
 bool UpgradeRestore::ParsePortraitAlbumResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
     PortraitAlbumInfo &portraitAlbumInfo)
 {
@@ -1201,7 +1211,7 @@ bool UpgradeRestore::ParsePortraitAlbumResultSet(const std::shared_ptr<NativeRdb
     portraitAlbumInfo.renameOperation = (!portraitAlbumInfo.tagName.empty() ? RENAME_OPERATION_RENAMED : 0);
     portraitAlbumInfo.userDisplayLevel = GetInt32Val(GALLERY_USER_DISPLAY_LEVEL, resultSet);
     std::string oldRelationshipId = GetStringVal(GALLERY_RELATIONSHIP, resultSet);
-    if (oldRelationshipId != std::to_string(INDEX_ME)) {
+    if (isNeedCloneIsMe_ || oldRelationshipId != std::to_string(INDEX_ME)) {
         auto it = RELATIONSHIP_MAP.find(oldRelationshipId);
         if (it != RELATIONSHIP_MAP.end()) {
             portraitAlbumInfo.relationship = it->second;
@@ -1275,6 +1285,11 @@ NativeRdb::ValuesBucket UpgradeRestore::GetInsertValue(const PortraitAlbumInfo &
         values.PutInt(USER_OPERATION, portraitAlbumInfo.userOperation);
         values.PutInt(RENAME_OPERATION, portraitAlbumInfo.renameOperation);
         values.PutString("relationship", portraitAlbumInfo.relationship);
+        if (portraitAlbumInfo.relationship == "me") {
+            values.PutInt(IS_ME, 1);
+        } else {
+            values.PutNull(IS_ME);
+        }
         values.PutInt(ALBUM_TYPE, PhotoAlbumType::SMART);
         values.PutInt(ALBUM_SUBTYPE, PhotoAlbumSubType::PORTRAIT);
         values.PutInt(USER_DISPLAY_LEVEL, portraitAlbumInfo.userDisplayLevel);

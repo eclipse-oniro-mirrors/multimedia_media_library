@@ -146,6 +146,7 @@ protected:
     std::vector<int32_t> GetLocalPhotoMinIds();
     void SetOrientationAndExifRotate(FileInfo &info, NativeRdb::ValuesBucket &value,
         std::unique_ptr<Metadata> &data) override;
+    bool CheckIsNeedCloneIsMe();
 
 protected:
     std::shared_ptr<NativeRdb::RdbStore> galleryRdb_;
@@ -179,6 +180,7 @@ protected:
     int64_t maxAnalysisAlbumId_ {0};
     RestoreConfigInfo restoreConfig_;
     RestorePhotosAlbumHidden restorePhotosAlbumHidden_;
+    bool isNeedCloneIsMe_ = false;
 
 private:
     void BatchDeleteEmptyAlbums(const std::vector<int32_t> &batchAlbumIds, int32_t &deleteRows);
