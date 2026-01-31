@@ -1044,7 +1044,7 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
             values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
                 static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
             values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
-                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
+                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
         } else {
             values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, po.downloadStatus.value_or(0));
             values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, po.autoPauseReason.value_or(0));
