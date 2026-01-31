@@ -14419,7 +14419,7 @@ static void QueryMediaDataReadyExecute(napi_env env, void *data)
     reqBody.dataKey = context->strParam;
     int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody, respBody); 
     if (ret != 0) {
-        MEDIA_ERR_LOG("UserDefineIPCClient().Call failed");
+        NAPI_ERR_LOG("UserDefineIPCClient().Call failed");
         if (ret == E_INVALID_ARGUMENTS) {
             context->error = JS_E_PARAM_INVALID;
             return;

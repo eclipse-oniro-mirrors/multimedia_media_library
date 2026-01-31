@@ -1579,6 +1579,9 @@ export namespace photoAccessHelper {
     VIDEO_MODE = 'video_mode',
     ASPECT_RATIO = 'aspect_ratio',
     EDIT_DATA_EXIST = 'edit_data_exist',
+    DATE_ADDED_YEAR = 'date_added_year',
+    DATE_ADDED_MONTH = 'date_added_month',
+    DATE_ADDED_DAY = 'date_added_day',
   }
 
   export enum AlbumKeys {
@@ -2487,6 +2490,7 @@ export namespace photoAccessHelper {
     getPhotoAlbums(options?: FetchOptions): Promise<FetchResult<Album>>;
     getPhotoAlbumOrder(orderStyle: int, options?: FetchOptions): Promise<FetchResult<AlbumOrder>>;
     setPhotoAlbumOrder(orderStyle: int, albumOrders: Array<AlbumOrder>): Promise<void>;
+    isMediaDataReady(mediaDataKey: string): Promise<boolean>;
   }
 
   interface AppInfo {
@@ -3611,6 +3615,80 @@ export namespace photoAccessHelper {
       });
     }
 
+    setPhotoAlbumOrder(orderStyle: int, albumOrders: Array<AlbumOrder>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.setPhotoAlbumsOrderInner(orderStyle, albumOrders);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
+    cancelPhotoUriPermission(tokenId: long, uri: string,
+      photoPermissionType: PhotoPermissionType): Promise<int> {
+      return new Promise<int>((resolve: (v: int) => void, reject: RejectString) => {
+        let cb = (): int | MediaLibraryAniError => {
+          let result: int | MediaLibraryAniError;
+          try {
+            result = this.cancelPhotoUriPermissionInner(tokenId, uri, photoPermissionType);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as int);
+            }
+          }
+        });
+      });
+    }
+
+    isMediaDataReady(mediaDataKey: string): Promise<boolean> {
+      return new Promise<boolean>((resolve: (v: boolean) => void, reject: RejectString) => {
+        let cb = (): boolean | MediaLibraryAniError => {
+          let result: boolean | MediaLibraryAniError;
+          try {
+            result = this.isMediaDataReadyInner(mediaDataKey);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as boolean);
+            }
+          }
+        });
+      });
+    }
+
     native startThumbnailCreationTask(predicate: dataSharePredicates.DataSharePredicates,
       callback: AsyncCallback<void>): int;
     native startCreateThumbnailTask(predicate: dataSharePredicates.DataSharePredicates): int;
@@ -3669,6 +3747,7 @@ export namespace photoAccessHelper {
     native getPhotoAlbumsInner(options?: FetchOptions): FetchResult<Album>;
     native getPhotoAlbumsOrderInner(orderStyle: int, options?: FetchOptions): FetchResult<AlbumOrder>;
     native setPhotoAlbumsOrderInner(orderStyle: int, albumOrders: Array<AlbumOrder>): void;
+    native isMediaDataReadyInner(mediaDataKey: string): boolean;
   }
 
   export interface GalleryFormInfo {

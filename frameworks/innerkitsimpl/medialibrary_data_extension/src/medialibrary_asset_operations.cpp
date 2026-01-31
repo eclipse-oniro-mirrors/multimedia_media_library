@@ -197,6 +197,9 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_IS_RECTIFICATION_COVER, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_CHANGE_TIME, MEMBER_TYPE_INT64 },
+    { PhotoColumn::PHOTO_DATE_ADDED_DAY, MEMBER_TYPE_STRING },
+    { PhotoColumn::PHOTO_DATE_ADDED_MONTH, MEMBER_TYPE_STRING },
+    { PhotoColumn::PHOTO_DATE_ADDED_YEAR, MEMBER_TYPE_STRING },
 };
 
 const std::unordered_map<std::string, int>& GetFileAssetMemberMap()

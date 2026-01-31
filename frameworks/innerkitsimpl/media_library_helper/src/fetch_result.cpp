@@ -116,6 +116,9 @@ static const ResultTypeMap &GetResultTypeMap()
         { PhotoColumn::PHOTO_CHANGE_TIME, TYPE_INT64 },
         { PhotoColumn::PHOTO_IS_CRITICAL, TYPE_INT32 },
         { PhotoColumn::PHOTO_RISK_STATUS, TYPE_INT32 },
+        { PhotoColumn::PHOTO_DATE_ADDED_DAY, TYPE_STRING },
+        { PhotoColumn::PHOTO_DATE_ADDED_MONTH, TYPE_STRING },
+        { PhotoColumn::PHOTO_DATE_ADDED_YEAR, TYPE_STRING },
     };
     return RESULT_TYPE_MAP;
 }

@@ -193,6 +193,9 @@ static const std::unordered_set<std::string> FILE_KEY_WHITE_LIST {
     CONST_MEDIA_DATA_DB_RENAME_OPERATION,
     CONST_MEDIA_DATA_DB_COVER_SATISFIED,
     PhotoColumn::PHOTO_OWNER_ALBUM_ID,
+    PhotoColumn::PHOTO_DATE_ADDED_DAY,
+    PhotoColumn::PHOTO_DATE_ADDED_MONTH,
+    PhotoColumn::PHOTO_DATE_ADDED_YEAR,
 
     // Analysis aesthetics score
     AESTHETICS_ALL_VERSION,
