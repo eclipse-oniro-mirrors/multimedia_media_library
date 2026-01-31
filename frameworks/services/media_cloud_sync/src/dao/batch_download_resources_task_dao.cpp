@@ -516,7 +516,7 @@ int32_t BatchDownloadResourcesTaskDao::UpdateAutoPauseAllDownloadByNetWorkPolicy
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
-        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
+        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
     std::vector<std::string> whereArgs = {
         to_string(static_cast<int32_t>(Media::BatchDownloadNetWorkPolicyType::TYPE_DEFAULT)),
         to_string(static_cast<int32_t>(Media::BatchDownloadNetWorkPolicyType::TYPE_WIFI))};
@@ -542,7 +542,7 @@ int32_t BatchDownloadResourcesTaskDao::UpdateAutoPauseForFileIdByNetWorkPolicy(c
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
-        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
+        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
     std::vector<std::string> whereArgs = {
         to_string(static_cast<int32_t>(Media::BatchDownloadNetWorkPolicyType::TYPE_DEFAULT)),
         to_string(static_cast<int32_t>(Media::BatchDownloadNetWorkPolicyType::TYPE_WIFI))};
