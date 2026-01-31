@@ -159,6 +159,7 @@ protected:
     void UpdateProcessedNumber(const std::atomic<int32_t> &processStatus, std::atomic<uint64_t> &processedNumber,
         const std::atomic<uint64_t> &totalNumber);
     nlohmann::json GetSubProcessInfoJson(const std::string &type, const SubProcessInfo &subProcessInfo);
+    void ExecuteAnalyzeInDatabase(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     void UpdateDatabase();
     void UpdatePhotoAlbumDateModified(const std::vector<std::string> &albumIds, const std::string &tableName);
     void GetUpdateTotalCount();

@@ -1967,12 +1967,23 @@ nlohmann::json BaseRestore::GetSubProcessInfoJson(const std::string &type, const
     return subProcessInfoJson;
 }
 
+void BaseRestore::ExecuteAnalyzeInDatabase(const shared_ptr<NativeRdb::RdbStore> &rdbStore)
+{
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Failed to get rdb store");
+    const string analyzeSql = "ANALYZE;";
+    MEDIA_INFO_LOG("start ExecuteAnalyzeInDatabase");
+    int32_t ret = rdbStore->ExecuteSql(analyzeSql);
+    CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK, "Failed to execute analyze sql");
+    MEDIA_INFO_LOG("end ExecuteAnalyzeInDatabase");
+}
+
 void BaseRestore::UpdateDatabase()
 {
     int64_t startUpdateDatabase = MediaFileUtils::UTCTimeMilliSeconds();
     updateProcessStatus_ = ProcessStatus::START;
     GetUpdateTotalCount();
     MEDIA_INFO_LOG("Start update all albums");
+    ExecuteAnalyzeInDatabase(mediaLibraryRdb_);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     MediaLibraryRdbUtils::UpdateAllAlbums(rdbStore, {}, { NotifyAlbumType::NO_NOTIFY, true,
         AlbumOperationType::DEFAULT, false });
