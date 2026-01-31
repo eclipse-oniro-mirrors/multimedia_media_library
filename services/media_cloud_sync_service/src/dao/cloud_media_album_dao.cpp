@@ -114,11 +114,12 @@ int32_t CloudMediaAlbumDao::QuerySameNameAlbum(const PhotoAlbumDto &record, int3
             break;
         }
         std::string loaclAlbumName = "";
-        resultSet->GoToNextRow();
+        CHECK_AND_RETURN_RET_LOG(resultSet->GoToNextRow() == E_OK, E_RDB, "GoToNextRow error.");
         albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
         loaclAlbumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
         newAlbumName = loaclAlbumName + " " + std::to_string(tryTime);
         ++tryTime;
+        resultSet->Close();
     }
     if (tryTime >= MAX_TRY_TIMES) {
         MEDIA_ERR_LOG("rename too may times");
@@ -685,7 +686,6 @@ int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
 {
     NativeRdb::ValuesBucket values;
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, record.albumName);
-    values.PutString(PhotoAlbumColumns::ALBUM_LPATH, record.lPath);
     if (!record.lPath.empty() && record.lPath.substr(0, ALBUM_LOCAL_PATH_PREFIX.size()) != ALBUM_LOCAL_PATH_PREFIX) {
         values.PutString(PhotoAlbumColumns::ALBUM_LPATH, record.lPath);
     }
@@ -837,8 +837,7 @@ int32_t CloudMediaAlbumDao::GetDeletedRecordsAlbum(int32_t size, std::vector<Pho
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "get album deleted records get count error.");
     /* results to records */
     cloudRecordPoList.reserve(tempList.size());
-    std::unordered_map<std::string, MediaAlbumPluginRowData> writeListMap = QueryWhiteList();
-    for (auto &record : tempList) {
+    for (const auto &record : tempList) {
         // dirty为delete的相册如果非空，则不删除，设置相册dirty为new
         std::string albumCloudId = record.cloudId.value_or("");
         if (IsEmptyAlbum(rdbStore, albumCloudId) != E_OK) {

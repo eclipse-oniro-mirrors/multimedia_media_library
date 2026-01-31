@@ -73,7 +73,7 @@ std::vector<PhotosVo> CloudMediaPhotoControllerProcessor::SetNewDataVoFromDto(st
         newDataVo.modifiedTime = newDataDto.modifiedTime;
         newDataVo.originalCloudId = newDataDto.originalCloudId;
         newDataVo.fileSourceType = newDataDto.fileSourceType;
-        newDataDto.storagePath = newDataDto.storagePath;
+        newDataVo.storagePath = newDataDto.storagePath;
         for (auto &nodePair : newDataDto.attachment) {
             CloudFileDataVo fileData;
             fileData.fileName = nodePair.second.fileName;

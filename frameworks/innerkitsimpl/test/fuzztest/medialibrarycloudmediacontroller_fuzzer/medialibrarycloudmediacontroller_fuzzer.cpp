@@ -190,15 +190,12 @@ static void CloudMediaAlbumControllerServiceFuzzer()
     bool errConn = !dataParcel.WriteInterfaceToken(DESCRIPTOR);
     CHECK_AND_RETURN_LOG(!errConn, "WriteInterfaceToken failed");
     cloudMediaAlbumControllerService->OnFetchRecords(dataParcel, reply);
-    cloudMediaAlbumControllerService->OnDentryFileInsert(dataParcel, reply);
     cloudMediaAlbumControllerService->GetCreatedRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->GetMetaModifiedRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->GetDeletedRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->OnCreateRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->OnMdirtyRecords(dataParcel, reply);
-    cloudMediaAlbumControllerService->OnFdirtyRecords(dataParcel, reply);
     cloudMediaAlbumControllerService->OnDeleteRecords(dataParcel, reply);
-    cloudMediaAlbumControllerService->OnCopyRecords(dataParcel, reply);
 }
 
 static void CloudMediaDataControllerServiceFuzzer()

@@ -196,10 +196,8 @@ int32_t CloudMediaDownloadDao::GetFileIdFromCloudId(
     std::vector<PhotosPo> photos;
     int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetFileIdFromCloudId Failed to query, ret: %{public}d", ret);
-    for (auto photo : photos) {
-        if (!photo.fileId.has_value()) {
-            continue;
-        }
+    for (const auto &photo : photos) {
+        CHECK_AND_CONTINUE(photo.fileId.has_value());
         fileIds.emplace_back(std::to_string(photo.fileId.value_or(0)));
     }
     return ret;

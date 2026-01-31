@@ -452,6 +452,6 @@ int32_t CloudMediaPhotoControllerService::ReportFailure(MessageParcel &data, Mes
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     ret = this->photosService_.ReportFailure(this->processor_.GetReportFailureDto(reqBody));
-    return IPC::UserDefineIPC().WriteResponseBody(reply);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 }  // namespace OHOS::Media::CloudSync

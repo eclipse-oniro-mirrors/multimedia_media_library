@@ -39,7 +39,7 @@ std::vector<PhotosDto> CloudMediaDownloadServiceProcessor::GetPhotosDto(std::vec
 {
     std::vector<PhotosDto> photosDtos;
     bool isValid = true;
-    for (auto photosPo : photosPos) {
+    for (const auto &photosPo : photosPos) {
         isValid = this->CheckPhotosPo(photosPo);
         CHECK_AND_CONTINUE_ERR_LOG(isValid, "Invalid Data, PhotosPo: %{public}s", photosPo.ToString().c_str());
         PhotosDto photosDto;
@@ -84,7 +84,7 @@ void CloudMediaDownloadServiceProcessor::GetDownloadAssetData(
 void CloudMediaDownloadServiceProcessor::GetDownloadAssetData(
     const std::vector<PhotosPo> &photosPos, std::vector<DownloadAssetData> &downloadAssetDatas)
 {
-    for (auto photosPo : photosPos) {
+    for (const auto &photosPo : photosPos) {
         DownloadAssetData assetData;
         this->GetDownloadAssetData(photosPo, assetData);
         downloadAssetDatas.emplace_back(assetData);

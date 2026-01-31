@@ -795,7 +795,7 @@ int32_t CloudMediaPhotosService::GetCopyRecords(int32_t size, std::vector<Photos
     return ret;
 }
 
-int32_t CloudMediaPhotosService::OnCreateRecords(std::vector<PhotosDto> &records, int32_t &failedSize)
+int32_t CloudMediaPhotosService::OnCreateRecords(std::vector<PhotosDto> &records, int32_t &failSize)
 {
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
         std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
@@ -866,7 +866,7 @@ int32_t CloudMediaPhotosService::OnCreateRecordSuccess(
     return E_OK;
 }
 
-int32_t CloudMediaPhotosService::OnMdirtyRecords(std::vector<PhotosDto> &records, int32_t &failedSize)
+int32_t CloudMediaPhotosService::OnMdirtyRecords(std::vector<PhotosDto> &records, int32_t &failSize)
 {
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
         std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
@@ -904,7 +904,7 @@ int32_t CloudMediaPhotosService::OnMdirtyRecords(std::vector<PhotosDto> &records
     return ret;
 }
 
-int32_t CloudMediaPhotosService::OnFdirtyRecords(std::vector<PhotosDto> &records, int32_t &failedSize)
+int32_t CloudMediaPhotosService::OnFdirtyRecords(std::vector<PhotosDto> &records, int32_t &failSize)
 {
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
         std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
@@ -1008,7 +1008,7 @@ int32_t CloudMediaPhotosService::OnDeleteRecords(std::vector<PhotosDto> &records
     return ret;
 }
 
-int32_t CloudMediaPhotosService::OnCopyRecords(std::vector<PhotosDto> &records, int32_t &failedSize)
+int32_t CloudMediaPhotosService::OnCopyRecords(std::vector<PhotosDto> &records, int32_t &failSize)
 {
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
         std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
@@ -1188,7 +1188,7 @@ int32_t CloudMediaPhotosService::HandleNoContentUploadFail(
     return ret;
 }
 
-int32_t CloudMediaPhotosService::HandleDetailcode(ErrorDetailCode &errorCode)
+int32_t CloudMediaPhotosService::HandleDetailcode(const ErrorDetailCode &errorCode)
 {
     /* Only one record failed, not stop sync */
     return FileManagement::E_UNKNOWN;

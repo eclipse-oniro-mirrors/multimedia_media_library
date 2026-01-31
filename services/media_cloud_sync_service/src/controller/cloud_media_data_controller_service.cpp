@@ -135,7 +135,7 @@ int32_t CloudMediaDataControllerService::GetAgingFile(MessageParcel &data, Messa
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     std::vector<PhotosVo> photosVoList;
-    for (auto photosDto : photosDtoList) {
+    for (const auto &photosDto : photosDtoList) {
         PhotosVo photosVo = this->processor_.ConvertPhotosDtoToPhotosVo(photosDto);
         photosVoList.push_back(photosVo);
     }
@@ -165,7 +165,7 @@ int32_t CloudMediaDataControllerService::GetActiveAgingFile(MessageParcel &data,
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     std::vector<PhotosVo> photosVoList;
-    for (auto photosDto : photosDtoList) {
+    for (const auto &photosDto : photosDtoList) {
         PhotosVo photosVo = this->processor_.ConvertPhotosDtoToPhotosVo(photosDto);
         photosVoList.push_back(photosVo);
     }

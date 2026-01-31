@@ -61,7 +61,7 @@ private:
 
 private:
     using RequestHandle = int32_t (CloudMediaPhotoControllerService::*)(MessageParcel &, MessageParcel &);
-    const std::map<uint32_t, RequestHandle> HANDLERS = {
+    static const std::map<uint32_t, RequestHandle> HANDLERS = {
         {static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_FETCH_RECORDS),
             &CloudMediaPhotoControllerService::OnFetchRecords},
         {static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_DENTRY_FILE_INSERT),
@@ -113,16 +113,9 @@ public:
     int32_t OnRemoteRequest(
         uint32_t code, MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context) override
     {
-        auto headerMap = context.GetHeader();
-        auto headerIt = headerMap.find(PhotoColumn::CLOUD_TYPE);
-        if (headerIt != headerMap.end()) {
-            int32_t cloudType = std::atoi(headerIt->second.c_str());
-            CloudMediaContext::GetInstance().SetCloudType(cloudType);
-        }
+        CloudMediaContext::GetInstance().SetCloudType(context);
         auto it = this->HANDLERS.find(code);
-        if (!this->Accept(code) || it == this->HANDLERS.end()) {
-            return IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND);
-        }
+        CHECK_AND_RETURN_RET(it != this->HANDLERS.end(), IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND));
         SysUtils::SlowDown();
         return (this->*(it->second))(data, reply);
     }

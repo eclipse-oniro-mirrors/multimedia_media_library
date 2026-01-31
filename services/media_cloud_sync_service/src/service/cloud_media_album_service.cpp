@@ -251,11 +251,6 @@ int32_t CloudMediaAlbumService::OnFetchLPathRecords(
     return E_OK;
 }
 
-int32_t CloudMediaAlbumService::OnDentryFileInsert()
-{
-    return 0;
-}
-
 int32_t CloudMediaAlbumService::OnDeleteAlbums(std::vector<std::string> &failedAlbumIds)
 {
     MEDIA_INFO_LOG("CloudMediaAlbumService::OnDeleteAlbums enter");
@@ -316,7 +311,7 @@ int32_t CloudMediaAlbumService::HandleCloudAlbumNotFound(const PhotoAlbumDto &al
     return albumDao_.HandleNotExistAlbumRecord(album);
 }
 
-int32_t CloudMediaAlbumService::HandleDetailcode(ErrorDetailCode &errorCode)
+int32_t CloudMediaAlbumService::HandleDetailcode(const ErrorDetailCode &errorCode)
 {
     /* Only one record failed, not stop sync */
     return FileManagement::E_UNKNOWN;
@@ -389,7 +384,7 @@ int32_t CloudMediaAlbumService::OnRecordFailed(const PhotoAlbumDto &album)
     return OnRecordFailedErrorDetails(album);
 }
 
-int32_t CloudMediaAlbumService::OnCreateRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failedSize)
+int32_t CloudMediaAlbumService::OnCreateRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failSize)
 {
     MEDIA_INFO_LOG("enter CloudMediaAlbumService::OnCreateRecords %{public}zu", albumDtoList.size());
     if (albumDtoList.size() <= 0) {
@@ -422,11 +417,11 @@ int32_t CloudMediaAlbumService::OnCreateRecords(std::vector<PhotoAlbumDto> &albu
     return ret;
 }
 
-int32_t CloudMediaAlbumService::OnMdirtyRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failedSize)
+int32_t CloudMediaAlbumService::OnMdirtyRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failSize)
 {
     MEDIA_INFO_LOG("enter CloudMediaAlbumService::OnMdirtyRecords %{public}zu", albumDtoList.size());
     int32_t ret = E_OK;
-    for (auto album : albumDtoList) {
+    for (const auto &album : albumDtoList) {
         MEDIA_DEBUG_LOG("OnCreateRecords album: %{public}s", album.ToString().c_str());
         int32_t err;
         if (album.isSuccess) {
@@ -452,15 +447,11 @@ int32_t CloudMediaAlbumService::OnMdirtyRecords(std::vector<PhotoAlbumDto> &albu
     return ret;
 }
 
-int32_t CloudMediaAlbumService::OnFdirtyRecords()
-{
-    return 0;
-}
 int32_t CloudMediaAlbumService::OnDeleteRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failSize)
 {
     MEDIA_INFO_LOG("enter CloudMediaAlbumService::OnDeleteRecords %{public}zu", albumDtoList.size());
     int32_t ret = E_OK;
-    for (auto album : albumDtoList) {
+    for (const auto &album : albumDtoList) {
         if (album.isSuccess) {
             ret = this->albumDao_.OnDeleteAlbumRecords(album.cloudId);
         } else {
@@ -472,10 +463,6 @@ int32_t CloudMediaAlbumService::OnDeleteRecords(std::vector<PhotoAlbumDto> &albu
         }
     }
     return ret;
-}
-int32_t CloudMediaAlbumService::OnCopyRecords()
-{
-    return 0;
 }
 
 int32_t CloudMediaAlbumService::OnStartSync()

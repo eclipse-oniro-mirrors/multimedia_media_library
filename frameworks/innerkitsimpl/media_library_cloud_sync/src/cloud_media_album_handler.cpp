@@ -137,10 +137,7 @@ int32_t CloudMediaAlbumHandler::OnFetchRecords(const std::vector<MDKRecord> &rec
 int32_t CloudMediaAlbumHandler::OnDentryFileInsert(
     std::vector<MDKRecord> &records, std::vector<std::string> &failedRecords)
 {
-    MEDIA_INFO_LOG("OnDentryFileInsert, records size: %{public}zu", records.size());
-    uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_DENTRY_FILE_INSERT);
-    return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}}).Post(operationCode);
+    return E_OK;
 }
 
 // album does not handle this operation <GetRetryRecords>.
@@ -319,12 +316,7 @@ int32_t CloudMediaAlbumHandler::OnMdirtyRecords(
 int32_t CloudMediaAlbumHandler::OnFdirtyRecords(
     const std::map<std::string, MDKRecordOperResult> &map, int32_t &failSize)
 {
-    MEDIA_INFO_LOG("CloudMediaAlbumHandler::OnFdirtyRecords, size: %{public}zu", map.size());
-    CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnFdirtyRecords Album param error");
-    uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_FDIRTY_RECORDS);
-    return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
-        .Post(operationCode);
+    return E_OK;
 }
 
 int32_t CloudMediaAlbumHandler::OnDeleteRecords(
@@ -356,12 +348,7 @@ int32_t CloudMediaAlbumHandler::OnDeleteRecords(
 
 int32_t CloudMediaAlbumHandler::OnCopyRecords(const std::map<std::string, MDKRecordOperResult> &map, int32_t &failSize)
 {
-    MEDIA_INFO_LOG("OnCopyRecords, map size: %{public}zu", map.size());
-    CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnCopyRecords Album param error");
-    uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_COPY_RECORDS);
-    return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
-        .Post(operationCode);
+    return E_OK;
 }
 
 int32_t CloudMediaAlbumHandler::OnStartSync()

@@ -41,6 +41,17 @@ public:
     CloudMediaContext(const CloudMediaContext&) = delete;
     CloudMediaContext& operator=(const CloudMediaContext&) = delete;
 
+    void SetCloudType(const OHOS::Media::IPC::IPCContext &context)
+    {
+        auto headerMap = context.GetHeader();
+        auto headerIt = headerMap.find(PhotoColumn::CLOUD_TYPE);
+        bool isValid = headerIt != headerMap.end();
+        isValid = isValid && MediaLibraryDataManagerUtils::IsNumber(headerIt->second.c_str());
+        CHECK_AND_RETURN(isValid);
+        int32_t cloudType = std::atoi(headerIt->second.c_str());
+        this->SetCloudType(cloudType);
+    }
+
 private:
     std::atomic<int32_t> cloudType_;
     CloudMediaContext() = default;

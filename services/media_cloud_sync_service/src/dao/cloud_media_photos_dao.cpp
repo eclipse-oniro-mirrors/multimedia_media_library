@@ -97,7 +97,7 @@ int32_t CloudMediaPhotosDao::BatchInsertAssetMaps(std::map<std::string, std::set
             if (it.first != photo.cloudId.value_or("")) {
                 continue;
             }
-            for (auto albumId : it.second) {
+            for (const auto &albumId : it.second) {
                 NativeRdb::ValuesBucket values;
                 values.PutInt(PhotoMap::ALBUM_ID, albumId);
                 values.PutInt(PhotoMap::ASSET_ID, photo.fileId.value_or(-1));
