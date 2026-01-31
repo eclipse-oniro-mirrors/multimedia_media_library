@@ -76,7 +76,7 @@ int32_t CloudMediaPhotoHandler::OnFetchRecordsInner(
                   .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
                   .Post(operationCode, nodeReqBody, nodeRespBody);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "OnFetchRecordsInner failed, ret: %{public}d", ret);
-        for (auto data : nodeRespBody.fdirtyDatas) {
+        for (const auto &data : nodeRespBody.fdirtyDatas) {
             if (data.attributesMediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
                 CloudMediaClientUtils::InvalidVideoCache(data.localPath);
             }
@@ -100,7 +100,7 @@ int32_t CloudMediaPhotoHandler::OnFetchRecords(const std::vector<MDKRecord> &rec
     OnFetchRecordsReqBody reqBody;
     OnFetchRecordsRespBody respBody;
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DATA_MODIFY, userId_};
-    for (auto record : records) {
+    for (const auto &record : records) {
         OnFetchPhotosVo onFetchPhotoVo;
         // 需要从MDKRecord转换成vo 在vo中增加了两个属性
         if (dataConvertor.ConverMDKRecordToOnFetchPhotosVo(record, onFetchPhotoVo) != E_OK) {
@@ -149,7 +149,7 @@ int32_t CloudMediaPhotoHandler::OnDentryFileInsert(
     OnDentryFileReqBody reqBody;
     OnDentryFileRespBody respBody;
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DATA_MODIFY, userId_};
-    for (auto record : records) {
+    for (const auto &record : records) {
         OnFetchPhotosVo onDentryRecord;
         if (dataConvertor.ConverMDKRecordToOnFetchPhotosVo(record, onDentryRecord) != E_OK) {
             MEDIA_ERR_LOG("OnDentryFileInsert ConverMDKRecordToOnFetchPhotosVo error");
@@ -194,7 +194,7 @@ int32_t CloudMediaPhotoHandler::GetCheckRecords(
     }
     MEDIA_INFO_LOG("GetCheckRecords GetCheckRecordsRespBody: %{public}s", respBody.ToString().c_str());
     checkRecords.clear();
-    for (auto &[cloudId, info] : respBody.checkDataList) {
+    for (const auto &[cloudId, info] : respBody.checkDataList) {
         CloudCheckData cloudCheckData;
         cloudCheckData.cloudId = cloudId;
         cloudCheckData.size = info.size;
@@ -209,7 +209,7 @@ int32_t CloudMediaPhotoHandler::GetCheckRecords(
         cloudCheckData.thmStatus = info.thmStatus;
         cloudCheckData.fileSourceType = info.fileSourceType;
         cloudCheckData.storagePath = info.storagePath;
-        for (auto &[key, value] : info.attachment) {
+        for (const auto &[key, value] : info.attachment) {
             CloudFileData fileData;
             fileData.fileName = value.fileName;
             fileData.filePath = value.filePath;
@@ -237,7 +237,7 @@ int32_t CloudMediaPhotoHandler::GetCreatedRecords(std::vector<MDKRecord> &record
     }
     std::vector<CloudMdkRecordPhotosVo> createdRecords = respBody.GetPhotosRecords();
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_CREATE, userId_};
-    for (auto &record : createdRecords) {
+    for (const auto &record : createdRecords) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
         if (ret == E_OK) {
@@ -278,7 +278,7 @@ int32_t CloudMediaPhotoHandler::GetMetaModifiedRecords(std::vector<MDKRecord> &r
     }
     std::vector<CloudMdkRecordPhotosVo> metaModifiedRecord = respBody.GetPhotosRecords();
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_METADATA_MODIFY, userId_};
-    for (auto &record : metaModifiedRecord) {
+    for (const auto &record : metaModifiedRecord) {
         MDKRecord dkRecord;
         MEDIA_INFO_LOG("SetUpdateSourceAlbum CloudMdkRecordPhotosVo: %{public}s", record.ToString().c_str());
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
@@ -321,7 +321,7 @@ int32_t CloudMediaPhotoHandler::GetFileModifiedRecords(std::vector<MDKRecord> &r
     }
     std::vector<CloudMdkRecordPhotosVo> fileModifiedRecord = respBody.GetPhotosRecords();
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DATA_MODIFY, userId_};
-    for (auto &record : fileModifiedRecord) {
+    for (const auto &record : fileModifiedRecord) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
         if (ret == E_OK) {
@@ -363,7 +363,7 @@ int32_t CloudMediaPhotoHandler::GetDeletedRecords(std::vector<MDKRecord> &record
     }
     std::vector<CloudMdkRecordPhotosVo> deletedRecord = respBody.GetPhotosRecords();
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DELETE, userId_};
-    for (auto &record : deletedRecord) {
+    for (const auto &record : deletedRecord) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
         if (ret == E_OK) {
@@ -402,7 +402,7 @@ int32_t CloudMediaPhotoHandler::GetCopyRecords(std::vector<MDKRecord> &records, 
     }
     std::vector<CloudMdkRecordPhotosVo> copyRecord = respBody.GetPhotosRecords();
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_COPY, userId_};
-    for (auto &record : copyRecord) {
+    for (const auto &record : copyRecord) {
         MDKRecord dkRecord;
         ret = dataConvertor.ConvertToMdkRecord(record, dkRecord);
         if (ret == E_OK) {
@@ -441,12 +441,11 @@ int32_t CloudMediaPhotoHandler::OnCreateRecords(
     CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnCreateRecords records is empty");
     OnCreateRecordsPhotosReqBody req;
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_CREATE, userId_};
-    for (auto &entry : map) {
+    int32_t ret = E_OK;
+    for (const auto &entry : map) {
         OnCreateRecord record;
-        if (dataConvertor.ConvertToOnCreateRecord(entry.first, entry.second, record) != E_OK) {
-            MEDIA_ERR_LOG("OnCreateRecords ConvertToOnCreateRecord error");
-            continue;
-        }
+        ret = dataConvertor.ConvertToOnCreateRecord(entry.first, entry.second, record);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "OnCreateRecords ConvertToOnCreateRecord error");
         MEDIA_INFO_LOG("OnCreateRecords Record:%{public}s", record.ToString().c_str());
         req.records.emplace_back(record);
         DeleteTempLivePhotoFile(record.livePhotoCachePath);
@@ -455,7 +454,7 @@ int32_t CloudMediaPhotoHandler::OnCreateRecords(
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_CREATE_RECORDS);
     FailedSizeResp resp;
     resp.failedSize = 0;
-    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+    ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
         .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;
@@ -470,19 +469,18 @@ int32_t CloudMediaPhotoHandler::OnMdirtyRecords(
     CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnMdirtyRecords records is empty");
     OnModifyRecordsPhotosReqBody req;
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DATA_MODIFY, userId_};
-    for (auto &entry : map) {
+    int32_t ret;
+    for (const auto &entry : map) {
         OnModifyRecord record;
-        if (dataConvertor.BuildModifyRecord(entry.first, entry.second, record) != E_OK) {
-            MEDIA_ERR_LOG("OnMdirtyRecords BuildModifyRecord error");
-            continue;
-        }
+        ret = dataConvertor.BuildModifyRecord(entry.first, entry.second, record);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "OnMdirtyRecords BuildModifyRecord error");
         MEDIA_INFO_LOG("enter OnMdirtyRecords Record:%{public}s", record.ToString().c_str());
         req.AddModifyRecord(record);
     }
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_MDIRTY_RECORDS);
     FailedSizeResp resp;
     resp.failedSize = 0;
-    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+    ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
         .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;
@@ -498,12 +496,11 @@ int32_t CloudMediaPhotoHandler::OnFdirtyRecords(
     OnFileDirtyRecordsReqBody req;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_FDIRTY_RECORDS);
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DATA_MODIFY, userId_};
+    int32_t ret = E_OK;
     for (const auto &entry : map) {
         OnFileDirtyRecord record;
-        if (dataConvertor.ConvertFdirtyRecord(entry.first, entry.second, record) != E_OK) {
-            MEDIA_ERR_LOG("OnFdirtyRecords ConvertFdirtyRecord Error");
-            continue;
-        }
+        ret = dataConvertor.ConvertFdirtyRecord(entry.first, entry.second, record);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "OnFdirtyRecords ConvertFdirtyRecord Error");
         MEDIA_INFO_LOG("OnFdirtyRecords Record: %{public}s", record.ToString().c_str());
         req.AddRecord(record);
         DeleteTempLivePhotoFile(record.livePhotoCachePath);
@@ -511,7 +508,7 @@ int32_t CloudMediaPhotoHandler::OnFdirtyRecords(
     }
     FailedSizeResp resp;
     resp.failedSize = 0;
-    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+    ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
         .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;
@@ -528,7 +525,7 @@ int32_t CloudMediaPhotoHandler::OnDeleteRecords(
     OnDeleteRecordsPhotosRespBody resp;
     resp.failSize = 0;
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_DATA_MODIFY, userId_};
-    for (auto &entry : map) {
+    for (const auto &entry : map) {
         const MDKRecordOperResult &result = entry.second;
         OnDeleteRecordsPhoto deleteRecord;
         deleteRecord.dkRecordId = entry.first;
@@ -551,19 +548,18 @@ int32_t CloudMediaPhotoHandler::OnCopyRecords(const std::map<std::string, MDKRec
     CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnCopyRecords records is empty");
     OnCopyRecordsPhotosReqBody req;
     CloudFileDataConvert dataConvertor{CloudOperationType::FILE_COPY, userId_};
-    for (auto &entry : map) {
+    int32_t ret = E_OK;
+    for (const auto &entry : map) {
         OnCopyRecord copyRecord;
-        if (dataConvertor.BuildCopyRecord(entry.first, entry.second, copyRecord) != E_OK) {
-            MEDIA_ERR_LOG("OnCopyRecords BuildCopyRecord error");
-            continue;
-        }
+        ret = dataConvertor.BuildCopyRecord(entry.first, entry.second, copyRecord);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "OnCopyRecords BuildCopyRecord error");
         MEDIA_INFO_LOG("OnCopyRecords Record JSON:%{public}s", copyRecord.ToString().c_str());
         req.AddCopyRecord(copyRecord);
     }
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_COPY_RECORDS);
     FailedSizeResp resp;
     resp.failedSize = 0;
-    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+    ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
         .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
         .Post(operationCode, req, resp);
     failSize = resp.failedSize;

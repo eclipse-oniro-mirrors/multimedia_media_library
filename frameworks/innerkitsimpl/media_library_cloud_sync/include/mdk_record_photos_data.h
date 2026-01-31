@@ -165,8 +165,6 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetLcdSize(const int64_t lcdSize);
     std::optional<int64_t> GetThmSize() const;
     MDKRecordPhotosData &SetThmSize(const int64_t thmSize);
-    std::optional<std::string> GetFileEditDataCamera() const;
-    MDKRecordPhotosData &SetFileEditDataCamera(const std::string &fileEditDataCamera);
     std::optional<int64_t> GetEditTimeMs() const;
     void SetEditTimeMs(int64_t editedTimeMs);
     std::optional<std::string> GetEditDataCamera() const;
@@ -192,8 +190,6 @@ public:  // properties getter & setter - gallery expand fields
     void SetHeight(const int32_t &height);
     std::optional<int32_t> GetWidth() const;
     void SetWidth(const int32_t &width);
-    std::optional<std::string> GetFilePosition() const;
-    void SetFilePosition(const std::string &position);
     std::optional<std::string> GetPosition() const;
     void SetPosition(const std::string &position);
     std::optional<int32_t> GetRotate() const;
@@ -215,8 +211,29 @@ private:
     const std::string FILE_LCD = "lcdThumbnail";
     const std::string FILE_EDIT_DATA = "editData";
     const std::string FILE_MIME_TYPE = "mimeType";
-    const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
-    const std::string VIDEO_MODE = "video_mode";
+    static const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
+    static const std::string KEY_EDIT_TIME_MS = "editedTime_ms";
+    static const std::string KEY_LCD_SIZE = "lcd_size";
+    static const std::string KEY_THUMB_SIZE = "thumb_size";
+    static const std::string KEY_ROTATE = "rotate";
+    static const std::string KEY_POSITION = "position";
+    static const std::string KEY_FILE_TYPE = "fileType";
+    static const std::string KEY_FILE_NAME = "fileName";
+    static const std::string KEY_CREATED_TIME = "createdTime";
+    static const std::string KEY_HASH_ID = "hashId";
+    static const std::string KEY_SIZE = "size";
+    static const std::string KEY_SOURCE = "source";
+    static const std::string KEY_RECYCLED = "recycled";
+    static const std::string KEY_RECYCLED_TIME = "recycledTime";
+    static const std::string KEY_FAVORITE = "favorite";
+    static const std::string KEY_DESCRIPTION = "description";
+    static const std::string KEY_SOURCE_PATH = "sourcePath";
+    static const std::string KEY_SOURCE_FILE_NAME = "sourceFileName";
+    static const std::string KEY_FIRST_UPDATE_TIME = "first_update_time";
+    static const std::string KEY_FILE_CREATE_TIME = "fileCreateTime";
+    static const std::string KEY_DETAIL_TIME = "detail_time";
+    static const std::string KEY_HEIGHT = "height";
+    static const std::string KEY_WIDTH = "width";
 
     /* attributes */
     const std::string FILE_FIX_VERSION = "fix_version";

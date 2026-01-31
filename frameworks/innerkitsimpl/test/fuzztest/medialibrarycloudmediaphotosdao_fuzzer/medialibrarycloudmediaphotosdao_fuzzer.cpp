@@ -76,14 +76,14 @@ static inline Media::DirtyType FuzzDirtyType()
     return Media::DirtyType::TYPE_RETRY;
 }
 
-static inline Media::CloudFilePosition FuzzCloudFilePosition()
+static inline Media::PhotoPositionType FuzzPhotoPositionType()
 {
     int32_t value = provider->ConsumeIntegral<int32_t>() % 2;
-    if (value >= static_cast<int32_t>(Media::CloudFilePosition::POSITION_LOCAL) &&
-        value <= static_cast<int32_t>(Media::CloudFilePosition::POSITION_CLOUD)) {
-        return static_cast<Media::CloudFilePosition>(value);
+    if (value >= static_cast<int32_t>(Media::PhotoPositionType::LOCAL) &&
+        value <= static_cast<int32_t>(Media::PhotoPositionType::CLOUD)) {
+        return static_cast<Media::PhotoPositionType>(value);
     }
-    return Media::CloudFilePosition::POSITION_LOCAL;
+    return Media::PhotoPositionType::LOCAL;
 }
 
 static inline int32_t FuzzPhotoPosition()
@@ -153,7 +153,7 @@ static int32_t InsertPhotoAsset(string &cloudId)
     NativeRdb::ValuesBucket values;
     values.PutString(PhotoColumn::PHOTO_CLOUD_ID, cloudId);
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(FuzzDirtyTypes()));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(FuzzCloudFilePosition()));
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(FuzzPhotoPositionType()));
     values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_READY, static_cast<int32_t>(ThumbnailReady::GENERATE_THUMB_COMPLETED));
     values.PutInt(PhotoColumn::PHOTO_LCD_VISIT_TIME, static_cast<int32_t>(LcdReady::GENERATE_LCD_COMPLETED));
     values.PutLong(PhotoColumn::MEDIA_DATE_TRASHED, 0);

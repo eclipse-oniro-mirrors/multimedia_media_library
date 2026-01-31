@@ -315,13 +315,11 @@ private:
         {"cloud_id", &MDKRecordPhotosData::GetCloudId},
         {"original_asset_cloud_id", &MDKRecordPhotosData::GetOriginalAssetCloudId},
         {"data", &MDKRecordPhotosData::GetFilePath},
-        {"editDataCamera", &MDKRecordPhotosData::GetFileEditDataCamera},
         {"sourcePath", &MDKRecordPhotosData::GetSourcePath},
         {"sourceFileName", &MDKRecordPhotosData::GetSourceFileName},
         {"first_update_time", &MDKRecordPhotosData::GetFirstUpdateTime},
         {"fileCreateTime", &MDKRecordPhotosData::GetFileCreateTime},
         {"detail_time", &MDKRecordPhotosData::GetDetailTime},
-        {"file_position", &MDKRecordPhotosData::GetFilePosition},
         {"position", &MDKRecordPhotosData::GetPosition},
     };
 
@@ -360,7 +358,6 @@ private:
                                                            "size",
                                                            "createdTime",
                                                            "editDataCamera",
-                                                           "file_position",
                                                            "detail_time",
                                                            "fileCreateTime",
                                                            "first_update_time",

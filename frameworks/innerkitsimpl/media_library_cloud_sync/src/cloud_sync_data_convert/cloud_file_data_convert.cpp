@@ -33,6 +33,7 @@
 #include "photo_file_utils.h"
 #include "cloud_report_utils.h"
 #include "nlohmann/json.hpp"
+#include "mdk_record_photos_data.h"
 
 namespace OHOS::Media::CloudSync {
 
@@ -199,7 +200,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::MEDIA_HIDDEN] = MDKRecordField(upLoadRecord.hidden);
     map[PhotoColumn::PHOTO_HIDDEN_TIME] = MDKRecordField(upLoadRecord.hiddenTime);
     map[PhotoColumn::MEDIA_RELATIVE_PATH] = MDKRecordField(upLoadRecord.relativePath);
-    map[PhotoColumn::MEDIA_VIRTURL_PATH] = MDKRecordField(upLoadRecord.virtualPath);
+    map[PhotoColumn::MEDIA_VIRTUAL_PATH] = MDKRecordField(upLoadRecord.virtualPath);
     map[PhotoColumn::PHOTO_META_DATE_MODIFIED] = MDKRecordField(upLoadRecord.metaDateModified);
     map[PhotoColumn::PHOTO_SUBTYPE] = MDKRecordField(upLoadRecord.subtype);
     map[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = MDKRecordField(upLoadRecord.burstCoverLevel);
@@ -229,7 +230,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_BURST_KEY] = MDKRecordField(upLoadRecord.burstKey);
     map[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = MDKRecordField(upLoadRecord.ownerAlbumId);
     map[FILE_FIX_VERSION] = MDKRecordField(0);
-    map["editedTime_ms"] = MDKRecordField(upLoadRecord.dateModified);
+    map[MDKRecordPhotosData::KEY_EDIT_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
     map[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = MDKRecordField(upLoadRecord.fileSourceType);
     map[PhotoColumn::PHOTO_STORAGE_PATH] = MDKRecordField(upLoadRecord.storagePath);
     HandleAttributesHashMap(map, upLoadRecord);
@@ -770,7 +771,7 @@ int32_t CloudFileDataConvert::InsertAlbumIdChanges(
     std::vector<MDKRecordField> rmList;
     /* remove */
     std::vector<std::string> removeId = upLoadRecord.removeAlbumCloudId;
-    for (auto &id : removeId) {
+    for (const auto &id : removeId) {
         rmList.push_back(MDKRecordField(MDKReference{id, "album"}));
     }
     if (!rmList.empty()) {

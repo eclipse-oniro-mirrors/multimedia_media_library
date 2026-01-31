@@ -64,7 +64,7 @@ static const ResultTypeMap &GetResultTypeMap()
         { MediaColumn::MEDIA_PACKAGE_NAME, TYPE_STRING },
         { CONST_MEDIA_DATA_DB_POSITION, TYPE_INT32 },
         { MediaColumn::MEDIA_HIDDEN, TYPE_INT32 },
-        { MediaColumn::MEDIA_VIRTURL_PATH, TYPE_STRING },
+        { MediaColumn::MEDIA_VIRTUAL_PATH, TYPE_STRING },
         { PhotoColumn::PHOTO_SUBTYPE, TYPE_INT32 },
         { CONST_MEDIA_COLUMN_COUNT, TYPE_INT32 },
         { PhotoColumn::CAMERA_SHOT_KEY, TYPE_STRING },

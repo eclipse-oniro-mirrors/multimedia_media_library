@@ -63,7 +63,7 @@ FuzzedDataProvider *provider = nullptr;
 static inline int32_t FuzzPhotoPosition()
 {
     int32_t value = provider->ConsumeIntegralInRange<int32_t>(MIN_PHOTO_POSITION, MAX_PHOTO_POSITION);
-    return static_cast<CloudFilePosition>(value);
+    return static_cast<PhotoPositionType>(value);
 }
 
 static inline CleanType FuzzCleanType()

@@ -551,7 +551,7 @@ static void CheckDeletePositionCloudRecordSuccess(std::vector<std::string> &test
     bool checkFlag = false;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
-        EXPECT_EQ(position, static_cast<int32_t>(CloudFilePosition::POSITION_LOCAL));
+        EXPECT_EQ(position, static_cast<int32_t>(PhotoPositionType::LOCAL));
 
         std::string cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
         EXPECT_EQ(cloudId.empty(), true);

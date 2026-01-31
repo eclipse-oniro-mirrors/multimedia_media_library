@@ -89,84 +89,84 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetLocalId(const int32_t localId)
 }
 std::optional<int32_t> MDKRecordPhotosData::GetFileType() const
 {
-    return this->recordReader_.GetIntValue(this->fields_, "fileType");
+    return this->recordReader_.GetIntValue(this->fields_, KEY_FILE_TYPE);
 }
 MDKRecordPhotosData &MDKRecordPhotosData::SetFileType(const int32_t &fileType)
 {
-    this->fields_["fileType"] = MDKRecordField(fileType);
+    this->fields_[KEY_FILE_TYPE] = MDKRecordField(fileType);
     return *this;
 }
 std::optional<std::string> MDKRecordPhotosData::GetFileName() const
 {
-    return this->recordReader_.GetStringValue(this->fields_, "fileName");
+    return this->recordReader_.GetStringValue(this->fields_, KEY_FILE_NAME);
 }
 void MDKRecordPhotosData::SetFileName(const std::string &fileName)
 {
-    this->fields_["fileName"] = MDKRecordField(fileName);
+    this->fields_[KEY_FILE_NAME] = MDKRecordField(fileName);
 }
 std::optional<int64_t> MDKRecordPhotosData::GetCreatedTime() const
 {
-    return this->recordReader_.GetLongValue(this->fields_, "createdTime");
+    return this->recordReader_.GetLongValue(this->fields_, KEY_CREATED_TIME);
 }
 void MDKRecordPhotosData::SetCreatedTime(const int64_t &createdTime)
 {
-    this->fields_["createdTime"] = MDKRecordField(createdTime);
+    this->fields_[KEY_CREATED_TIME] = MDKRecordField(createdTime);
 }
 std::optional<std::string> MDKRecordPhotosData::GetHashId() const
 {
-    return this->recordReader_.GetStringValue(this->fields_, "hashId");
+    return this->recordReader_.GetStringValue(this->fields_, KEY_HASH_ID);
 }
 void MDKRecordPhotosData::SetHashId(const std::string &hashId)
 {
-    this->fields_["hashId"] = MDKRecordField(hashId);
+    this->fields_[KEY_HASH_ID] = MDKRecordField(hashId);
 }
 std::optional<int64_t> MDKRecordPhotosData::GetSize() const
 {
-    return this->recordReader_.GetLongValue(this->fields_, "size");
+    return this->recordReader_.GetLongValue(this->fields_, KEY_SIZE);
 }
 void MDKRecordPhotosData::SetSize(const int64_t &size)
 {
-    this->fields_["size"] = MDKRecordField(size);
+    this->fields_[KEY_SIZE] = MDKRecordField(size);
 }
 std::optional<std::string> MDKRecordPhotosData::GetSource() const
 {
-    return this->recordReader_.GetStringValue(this->fields_, "source");
+    return this->recordReader_.GetStringValue(this->fields_, KEY_SOURCE);
 }
 void MDKRecordPhotosData::SetSource(const std::string &source)
 {
-    this->fields_["source"] = MDKRecordField(source);
+    this->fields_[KEY_SOURCE] = MDKRecordField(source);
 }
 std::optional<bool> MDKRecordPhotosData::GetRecycled() const
 {
-    return this->recordReader_.GetBoolValue(this->fields_, "recycled");
+    return this->recordReader_.GetBoolValue(this->fields_, KEY_RECYCLED);
 }
 void MDKRecordPhotosData::SetRecycled(const bool &recycled)
 {
-    this->fields_["recycled"] = MDKRecordField(recycled);
+    this->fields_[KEY_RECYCLED] = MDKRecordField(recycled);
 }
 std::optional<int64_t> MDKRecordPhotosData::GetRecycledTime() const
 {
-    return this->recordReader_.GetLongValue(this->fields_, "recycledTime");
+    return this->recordReader_.GetLongValue(this->fields_, KEY_RECYCLED_TIME);
 }
 void MDKRecordPhotosData::SetRecycledTime(const int64_t &recycledTime)
 {
-    this->fields_["recycledTime"] = MDKRecordField(recycledTime);
+    this->fields_[KEY_RECYCLED_TIME] = MDKRecordField(recycledTime);
 }
 std::optional<bool> MDKRecordPhotosData::GetFavorite() const
 {
-    return this->recordReader_.GetBoolValue(this->fields_, "favorite");
+    return this->recordReader_.GetBoolValue(this->fields_, KEY_FAVORITE);
 }
 void MDKRecordPhotosData::SetFavorite(const bool &favorite)
 {
-    this->fields_["favorite"] = MDKRecordField(favorite);
+    this->fields_[KEY_FAVORITE] = MDKRecordField(favorite);
 }
 std::optional<std::string> MDKRecordPhotosData::GetDescription() const
 {
-    return this->recordReader_.GetStringValue(this->fields_, "description");
+    return this->recordReader_.GetStringValue(this->fields_, KEY_DESCRIPTION);
 }
 void MDKRecordPhotosData::SetDescription(const std::string &description)
 {
-    this->fields_["description"] = MDKRecordField(description);
+    this->fields_[KEY_DESCRIPTION] = MDKRecordField(description);
 }
 std::optional<std::string> MDKRecordPhotosData::GetMimeType() const
 {
@@ -266,11 +266,11 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetRelativePath(const std::string &rel
 }
 std::optional<std::string> MDKRecordPhotosData::GetVirtualPath() const
 {
-    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::MEDIA_VIRTURL_PATH);
+    return this->recordReader_.GetStringValue(this->attributes_, PhotoColumn::MEDIA_VIRTUAL_PATH);
 }
 MDKRecordPhotosData &MDKRecordPhotosData::SetVirtualPath(const std::string &virtualPath)
 {
-    this->attributes_[PhotoColumn::MEDIA_VIRTURL_PATH] = MDKRecordField(virtualPath);
+    this->attributes_[PhotoColumn::MEDIA_VIRTUAL_PATH] = MDKRecordField(virtualPath);
     return *this;
 }
 std::optional<int64_t> MDKRecordPhotosData::GetDateModified() const
@@ -536,46 +536,37 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetFixVersion(const int64_t fixVersion
 }
 std::optional<int64_t> MDKRecordPhotosData::GetLcdSize() const
 {
-    return this->recordReader_.GetLongValue(this->attributes_, "lcd_size");
+    return this->recordReader_.GetLongValue(this->attributes_, MDKRecordPhotosData::KEY_LCD_SIZE);
 }
 MDKRecordPhotosData &MDKRecordPhotosData::SetLcdSize(const int64_t lcdSize)
 {
-    this->attributes_["lcd_size"] = MDKRecordField(lcdSize);
+    this->attributes_[MDKRecordPhotosData::KEY_LCD_SIZE] = MDKRecordField(lcdSize);
     return *this;
 }
 std::optional<int64_t> MDKRecordPhotosData::GetThmSize() const
 {
-    return this->recordReader_.GetLongValue(this->attributes_, "thumb_size");
+    return this->recordReader_.GetLongValue(this->attributes_, MDKRecordPhotosData::KEY_THUMB_SIZE);
 }
 MDKRecordPhotosData &MDKRecordPhotosData::SetThmSize(const int64_t thmSize)
 {
-    this->attributes_["thumb_size"] = MDKRecordField(thmSize);
-    return *this;
-}
-std::optional<std::string> MDKRecordPhotosData::GetFileEditDataCamera() const
-{
-    return this->recordReader_.GetStringValue(this->attributes_, FILE_EDIT_DATA_CAMERA);
-}
-MDKRecordPhotosData &MDKRecordPhotosData::SetFileEditDataCamera(const std::string &fileEditDataCamera)
-{
-    this->attributes_[FILE_EDIT_DATA_CAMERA] = MDKRecordField(fileEditDataCamera);
+    this->attributes_[MDKRecordPhotosData::KEY_THUMB_SIZE] = MDKRecordField(thmSize);
     return *this;
 }
 std::optional<int64_t> MDKRecordPhotosData::GetEditTimeMs() const
 {
-    return this->recordReader_.GetLongValue(this->attributes_, "editedTime_ms");
+    return this->recordReader_.GetLongValue(this->attributes_, MDKRecordPhotosData::KEY_EDIT_TIME_MS);
 }
 void MDKRecordPhotosData::SetEditTimeMs(int64_t editedTimeMs)
 {
-    this->attributes_["editedTime_ms"] = MDKRecordField(editedTimeMs);
+    this->attributes_[MDKRecordPhotosData::KEY_EDIT_TIME_MS] = MDKRecordField(editedTimeMs);
 }
 std::optional<std::string> MDKRecordPhotosData::GetEditDataCamera() const
 {
-    return this->recordReader_.GetStringValue(this->attributes_, "editDataCamera");
+    return this->recordReader_.GetStringValue(this->attributes_, MDKRecordPhotosData::FILE_EDIT_DATA_CAMERA);
 }
 MDKRecordPhotosData &MDKRecordPhotosData::SetEditDataCamera(const std::string &editDataCamera)
 {
-    this->attributes_["editDataCamera"] = MDKRecordField(editDataCamera);
+    this->attributes_[MDKRecordPhotosData::FILE_EDIT_DATA_CAMERA] = MDKRecordField(editDataCamera);
     return *this;
 }
 std::optional<int32_t> MDKRecordPhotosData::GetFileSourceType() const
@@ -597,86 +588,78 @@ void MDKRecordPhotosData::SetStoragePath(const std::string &storagePath)
 
 std::optional<std::string> MDKRecordPhotosData::GetSourcePath() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, "sourcePath");
+    return this->recordReader_.GetStringValue(this->properties_, KEY_SOURCE_PATH);
 }
 void MDKRecordPhotosData::SetSourcePath(const std::string &sourcePath)
 {
-    this->properties_["sourcePath"] = MDKRecordField(sourcePath);
+    this->properties_[KEY_SOURCE_PATH] = MDKRecordField(sourcePath);
 }
 std::optional<std::string> MDKRecordPhotosData::GetSourceFileName() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, "sourceFileName");
+    return this->recordReader_.GetStringValue(this->properties_, KEY_SOURCE_FILE_NAME);
 }
 void MDKRecordPhotosData::SetSourceFileName(const std::string &sourceFileName)
 {
-    this->properties_["sourceFileName"] = MDKRecordField(sourceFileName);
+    this->properties_[KEY_SOURCE_FILE_NAME] = MDKRecordField(sourceFileName);
 }
 std::optional<std::string> MDKRecordPhotosData::GetFirstUpdateTime() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, "first_update_time");
+    return this->recordReader_.GetStringValue(this->properties_, KEY_FIRST_UPDATE_TIME);
 }
 void MDKRecordPhotosData::SetFirstUpdateTime(const std::string firstUpdateTime)
 {
-    this->properties_["first_update_time"] = MDKRecordField(firstUpdateTime);
+    this->properties_[KEY_FIRST_UPDATE_TIME] = MDKRecordField(firstUpdateTime);
 }
 std::optional<std::string> MDKRecordPhotosData::GetFileCreateTime() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, "fileCreateTime");
+    return this->recordReader_.GetStringValue(this->properties_, KEY_FILE_CREATE_TIME);
 }
 void MDKRecordPhotosData::SetFileCreateTime(const std::string &fileCreateTime)
 {
-    this->properties_["fileCreateTime"] = MDKRecordField(fileCreateTime);
+    this->properties_[KEY_FILE_CREATE_TIME] = MDKRecordField(fileCreateTime);
 }
 std::optional<std::string> MDKRecordPhotosData::GetDetailTime() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, "detail_time");
+    return this->recordReader_.GetStringValue(this->properties_, KEY_DETAIL_TIME);
 }
 void MDKRecordPhotosData::SetDetailTime(const std::string &detailTime)
 {
-    this->properties_["detail_time"] = MDKRecordField(detailTime);
+    this->properties_[KEY_DETAIL_TIME] = MDKRecordField(detailTime);
 }
 std::optional<int32_t> MDKRecordPhotosData::GetHeight() const
 {
-    return this->recordReader_.GetIntValue(this->properties_, "height");
+    return this->recordReader_.GetIntValue(this->properties_, KEY_HEIGHT);
 }
 void MDKRecordPhotosData::SetHeight(const int32_t &height)
 {
-    this->properties_["height"] = MDKRecordField(height);
+    this->properties_[KEY_HEIGHT] = MDKRecordField(height);
 }
 std::optional<int32_t> MDKRecordPhotosData::GetWidth() const
 {
-    return this->recordReader_.GetIntValue(this->properties_, "width");
+    return this->recordReader_.GetIntValue(this->properties_, KEY_WIDTH);
 }
 void MDKRecordPhotosData::SetWidth(const int32_t &width)
 {
-    this->properties_["width"] = MDKRecordField(width);
-}
-std::optional<std::string> MDKRecordPhotosData::GetFilePosition() const
-{
-    return this->recordReader_.GetStringValue(this->properties_, "file_position");
-}
-void MDKRecordPhotosData::SetFilePosition(const std::string &position)
-{
-    this->properties_["file_position"] = MDKRecordField(position);
+    this->properties_[KEY_WIDTH] = MDKRecordField(width);
 }
 
 std::optional<std::string> MDKRecordPhotosData::GetPosition() const
 {
-    return this->recordReader_.GetStringValue(this->properties_, "position");
+    return this->recordReader_.GetStringValue(this->properties_, MDKRecordPhotosData::KEY_POSITION);
 }
 
 void MDKRecordPhotosData::SetPosition(const std::string &position)
 {
-    this->properties_["position"] = MDKRecordField(position);
+    this->properties_[MDKRecordPhotosData::KEY_POSITION] = MDKRecordField(position);
 }
 
 std::optional<int32_t> MDKRecordPhotosData::GetRotate() const
 {
-    return this->recordReader_.GetIntValue(this->properties_, "rotate");
+    return this->recordReader_.GetIntValue(this->properties_, MDKRecordPhotosData::KEY_ROTATE);
 }
 void MDKRecordPhotosData::SetRotate(const int32_t &rotate)
 {
-    this->properties_["rotate"] = MDKRecordField(rotate);
+    this->properties_[MDKRecordPhotosData::KEY_ROTATE] = MDKRecordField(rotate);
 }
 
 bool MDKRecordPhotosData::hasAttributes()

@@ -116,7 +116,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetMetaModifiedRecords_Mdirty, TestSize.Lev
     EXPECT_EQ(targets.size(), 1);
     MDKRecordUtils utils;
     std::vector<std::string> checkFields = {"favorite", "recycled", "thumb_size", "lcd_size", "cover_position", "size",
-        "editDataCamera", "file_position", "sourceFileName", "sourcePath", "data", "original_asset_cloud_id",
+        "editDataCamera", "sourceFileName", "sourcePath", "data", "original_asset_cloud_id",
         "cloud_id", "front_camera", "shooting_mode_tag", "shooting_mode", "date_day", "date_month", "date_year",
         "burst_key", "virtual_path", "relative_path", "title", "mimeType", "description", "source", "hashId", "type",
         "fileName", "rotate", "width", "height", "fix_version", "owner_album_id" "strong_association",
@@ -150,7 +150,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetMetaModifiedRecords_Sdirty, TestSize.Lev
     EXPECT_EQ(targets.size(), 1);
     MDKRecordUtils utils;
     std::vector<std::string> checkFields = {"favorite", "recycled", "thumb_size", "lcd_size", "cover_position", "size",
-        "editDataCamera", "file_position", "sourceFileName", "sourcePath", "data", "original_asset_cloud_id",
+        "editDataCamera", "sourceFileName", "sourcePath", "data", "original_asset_cloud_id",
         "cloud_id", "front_camera", "shooting_mode_tag", "shooting_mode", "date_day", "date_month", "date_year",
         "burst_key", "virtual_path", "relative_path", "title", "mimeType", "description", "source", "hashId", "type",
         "fileName", "rotate", "width", "height", "fix_version", "owner_album_id" "strong_association",
@@ -385,7 +385,6 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetFileModifiedRecords, TestSize.Level1)
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",
@@ -425,7 +424,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetFileModifiedRecords, TestSize.Level1)
                                             "fileType"};
     int32_t checkCount = 0;
     Json::FastWriter writer;
-    for (auto record : records) {
+    for (const auto &record : records) {
         std::string json = writer.write(record.ToJsonValue());
         GTEST_LOG_(INFO) << "record:" << json;
         for (auto &target : targetRecords) {
@@ -467,7 +466,6 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetFileModifiedRecords_case001, TestSize.Le
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",
@@ -561,7 +559,6 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetFileModifiedRecords_case002, TestSize.Le
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",
@@ -654,7 +651,6 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetFileModifiedRecords_case003, TestSize.Le
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",
@@ -768,7 +764,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetDeletedRecords_001, TestSize.Level1)
     EXPECT_GT(records.size(), 0);
     std::string cloudId = "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97d0";
     Json::FastWriter writer;
-    for (auto record : records) {
+    for (const auto &record : records) {
         std::string json = writer.write(record.ToJsonValue());
         GTEST_LOG_(INFO) << "GetDeletedRecords_001:" << json;
         EXPECT_TRUE(!record.GetRecordId().empty());
@@ -834,7 +830,6 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetCopyRecords, TestSize.Level1)
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",

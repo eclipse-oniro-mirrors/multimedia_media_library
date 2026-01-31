@@ -49,7 +49,7 @@ const std::unordered_map<std::string, ResultSetDataType> RESULT_TYPE_MAP = {
     { MediaColumn::MEDIA_HIDDEN, ResultSetDataType::TYPE_INT32 },
     { MediaColumn::MEDIA_PARENT_ID, ResultSetDataType::TYPE_INT32 },
     { MediaColumn::MEDIA_RELATIVE_PATH, ResultSetDataType::TYPE_STRING },
-    { MediaColumn::MEDIA_VIRTURL_PATH, ResultSetDataType::TYPE_STRING },
+    { MediaColumn::MEDIA_VIRTUAL_PATH, ResultSetDataType::TYPE_STRING },
     { AudioColumn::AUDIO_ARTIST, ResultSetDataType::TYPE_STRING },
     { AudioColumn::AUDIO_ALBUM, ResultSetDataType::TYPE_STRING },
     { PhotoColumn::PHOTO_DIRTY, ResultSetDataType::TYPE_INT32 },

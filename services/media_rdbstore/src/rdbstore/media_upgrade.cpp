@@ -48,7 +48,7 @@ const std::string PhotoUpgrade::CREATE_PHOTO_TABLE = "CREATE TABLE IF NOT EXISTS
     MediaColumn::MEDIA_HIDDEN + " INT DEFAULT 0, " +
     MediaColumn::MEDIA_PARENT_ID + " INT DEFAULT 0, " +
     MediaColumn::MEDIA_RELATIVE_PATH + " TEXT, " +
-    MediaColumn::MEDIA_VIRTURL_PATH + " TEXT UNIQUE, " +
+    MediaColumn::MEDIA_VIRTUAL_PATH + " TEXT UNIQUE, " +
     PhotoColumn::PHOTO_DIRTY + " INT DEFAULT 1, " +
     PhotoColumn::PHOTO_CLOUD_ID + " TEXT, " +
     PhotoColumn::PHOTO_META_DATE_MODIFIED + "  BIGINT DEFAULT 0, " +

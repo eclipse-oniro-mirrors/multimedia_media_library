@@ -126,7 +126,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     { MediaColumn::MEDIA_HIDDEN, MEMBER_TYPE_INT32 },
     { MediaColumn::MEDIA_PARENT_ID, MEMBER_TYPE_INT32 },
     { MediaColumn::MEDIA_RELATIVE_PATH, MEMBER_TYPE_STRING },
-    { MediaColumn::MEDIA_VIRTURL_PATH, MEMBER_TYPE_STRING },
+    { MediaColumn::MEDIA_VIRTUAL_PATH, MEMBER_TYPE_STRING },
     { PhotoColumn::PHOTO_ORIENTATION, MEMBER_TYPE_INT32 },
     { PhotoColumn::PHOTO_LATITUDE, MEMBER_TYPE_DOUBLE },
     { PhotoColumn::PHOTO_LONGITUDE, MEMBER_TYPE_DOUBLE },
@@ -1112,7 +1112,7 @@ static void FillAssetInfo(MediaLibraryCommand &cmd, const FileAsset &fileAsset)
     assetInfo.PutString(MediaColumn::MEDIA_FILE_PATH, fileAsset.GetPath());
     if (cmd.GetApi() == MediaLibraryApi::API_OLD) {
         assetInfo.PutString(MediaColumn::MEDIA_RELATIVE_PATH, fileAsset.GetRelativePath());
-        assetInfo.PutString(MediaColumn::MEDIA_VIRTURL_PATH,
+        assetInfo.PutString(MediaColumn::MEDIA_VIRTUAL_PATH,
             GetVirtualPath(fileAsset.GetRelativePath(), fileAsset.GetDisplayName()));
     } else {
         assetInfo.PutLong(MediaColumn::MEDIA_TIME_PENDING, fileAsset.GetTimePending());
@@ -1569,7 +1569,7 @@ void MediaLibraryAssetOperations::UpdateVirtualPath(MediaLibraryCommand &cmd,
         relativePath += '/';
     }
     string virtualPath = relativePath + displayName;
-    values.PutString(MediaColumn::MEDIA_VIRTURL_PATH, virtualPath);
+    values.PutString(MediaColumn::MEDIA_VIRTUAL_PATH, virtualPath);
 }
 
 int32_t MediaLibraryAssetOperations::UpdateFileInDb(MediaLibraryCommand &cmd)
@@ -2505,7 +2505,7 @@ const std::unordered_map<std::string, std::vector<VerifyFunction>>
     { MediaColumn::MEDIA_HIDDEN, { IsBool, IsUniqueValue } },
     { MediaColumn::MEDIA_PARENT_ID, { IsInt64, IsBelowApi9 } },
     { MediaColumn::MEDIA_RELATIVE_PATH, { IsString, IsBelowApi9 } },
-    { MediaColumn::MEDIA_VIRTURL_PATH, { Forbidden } },
+    { MediaColumn::MEDIA_VIRTUAL_PATH, { Forbidden } },
     { PhotoColumn::PHOTO_ORIENTATION, { IsInt64 } },
     { PhotoColumn::PHOTO_LATITUDE, { Forbidden } },
     { PhotoColumn::PHOTO_LONGITUDE, { Forbidden } },

@@ -301,11 +301,6 @@ enum {
     MEDIA_API_VERSION_V10,
 };
 
-enum CloudFilePosition {
-    POSITION_LOCAL = 1 << 0,
-    POSITION_CLOUD = 1 << 1,
-};
-
 enum FileSourceType {
     MEDIA,
     FILE_MANAGER,

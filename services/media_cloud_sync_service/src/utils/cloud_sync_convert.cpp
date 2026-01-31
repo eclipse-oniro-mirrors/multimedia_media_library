@@ -95,7 +95,7 @@ int32_t CloudSyncConvert::CompensateAttVirtualPath(const CloudMediaPullDataDto &
 {
     std::string virtualPath = data.attributesVirtualPath;
     CHECK_AND_RETURN_RET(!virtualPath.empty(), E_CLOUDSYNC_INVAL_ARG);
-    values.PutString(PhotoColumn::MEDIA_VIRTURL_PATH, virtualPath);
+    values.PutString(PhotoColumn::MEDIA_VIRTUAL_PATH, virtualPath);
     return E_OK;
 }
 

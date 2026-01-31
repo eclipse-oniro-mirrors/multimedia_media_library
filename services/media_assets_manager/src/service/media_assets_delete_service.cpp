@@ -145,7 +145,7 @@ int32_t MediaAssetsDeleteService::EraseCloudInfo(PhotosPo &photoInfo)
 {
     photoInfo.cloudId.reset();
     photoInfo.dirty = static_cast<int32_t>(DirtyType::TYPE_NEW);
-    photoInfo.position = static_cast<int32_t>(CloudFilePosition::POSITION_LOCAL);
+    photoInfo.position = static_cast<int32_t>(PhotoPositionType::LOCAL);
     photoInfo.cloudVersion.reset();
     return E_OK;
 }
