@@ -1079,7 +1079,8 @@ int32_t CloudMediaAssetManager::StartBatchDownloadCloudResources(StartBatchDownl
     this->batchDownloadResourcesTaskDao_.ClassifyExistedDownloadTasks(allFileIds, newTaskFileIds, existedFileIds);
     this->batchDownloadResourcesTaskDao_.ClassifyInvalidDownloadTasks(newTaskFileIds, invalidFileIds);
     this->batchDownloadResourcesTaskDao_.HandleAddExistedDownloadTasks(existedFileIds);
-
+    this->batchDownloadResourcesTaskDao_.UpdateNetworkPolicyDownloadTasks(existedFileIds,
+        BatchDownloadNetWorkPolicyType::TYPE_DEFAULT);
     // 查photos表 构建任务表记录
     std::vector<DownloadResourcesTaskPo> newTaskPos;
     int32_t ret = this->batchDownloadResourcesTaskDao_.QueryValidBatchDownloadPoFromPhotos(newTaskFileIds, newTaskPos);
