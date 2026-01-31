@@ -59,6 +59,7 @@
 #include "heif_transcoding_check_utils.h"
 #include "database_adapter.h"
 #include "photo_day_month_year_operation.h"
+#include "preferences_helper.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;

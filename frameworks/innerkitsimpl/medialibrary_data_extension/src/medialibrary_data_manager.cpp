@@ -912,12 +912,11 @@ static void UpdatePhotoAlbumHidden(const shared_ptr<MediaLibraryRdbStore>& rdbSt
     MEDIA_INFO_LOG("End Update photoalbum hidden column");
 }
 
-static void MarkDateAddedDatesDataStatus(const shared_ptr<MediaLibraryRdbStore>& rdbStore, int32_t version)
+static void MarkDateAddedDatesDataStatus(const shared_ptr<MediaLibraryRdbStore>& rdbStore)
 {
     vector<string> columns = {"max(file_id)"};
     NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     auto resultSet = rdbStore->QueryByStep(predicates, columns);
-    int count = 0;
     bool needUpdateDateAddedDatesData = true;
     CHECK_AND_RETURN_LOG(TryToGoToFirstRow(resultSet), "Query max file id failed");
     int32_t maxFileId = GetInt32Val("max(file_id)", resultSet);
@@ -956,7 +955,7 @@ void HandleUpgradeRdbAsyncPart6(const shared_ptr<MediaLibraryRdbStore> rdbStore,
 
     if (oldVersion < VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY &&
         !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, false)) {
-        MarkDateAddedDatesDataStatus(rdbStore, VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY);
+        MarkDateAddedDatesDataStatus(rdbStore);
         rdbStore->SetOldVersion(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, false);
     }

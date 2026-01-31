@@ -700,7 +700,6 @@ void PhotoDayMonthYearOperation::UpdatePhotoDateAddedDateInfo()
     while (currentFileId < maxFileId && MedialibrarySubscriber::IsCurrentStatusOn()) {
         string whereClause;
         int batchEndId = BuildFileIdWhereClauseForBatch(currentFileId, maxFileId, whereClause);
-        whereClause += " AND date_added > 0";
         const string sql = GetDateAddedYearMonthDayUpdateSql() + " WHERE " + whereClause;
         int ret = rdbStore->ExecuteSql(sql);
         if (ret != NativeRdb::E_OK) {

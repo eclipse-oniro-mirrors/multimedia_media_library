@@ -30,6 +30,7 @@
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
 #include "media_upgrade.h"
+#include "preferences_helper.h"
 
 namespace OHOS {
 namespace Media {
@@ -362,6 +363,45 @@ HWTEST_F(PhotoDayMonthYearOperationTest, photo_day_month_year_operation_test_002
     count = QueryAbnormalPhotosCount();
     EXPECT_GT(count, 0);
     MEDIA_INFO_LOG("photo_day_month_year_operation_test_002 End");
+}
+
+static void MarkDateAddedDatesDataStatus(const shared_ptr<MediaLibraryRdbStore>& rdbStore)
+{
+    vector<string> columns = {"max(file_id)"};
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    auto resultSet = rdbStore->QueryByStep(predicates, columns);
+    bool needUpdateDateAddedDatesData = true;
+    CHECK_AND_RETURN_LOG(TryToGoToFirstRow(resultSet), "Query max file id failed");
+    int32_t maxFileId = GetInt32Val("max(file_id)", resultSet);
+    needUpdateDateAddedDatesData = (maxFileId > 0);
+
+    int32_t errCode = E_OK;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(
+            PhotoDayMonthYearOperation::DATE_ADDED_DATE_UPGRADE_XML, errCode);
+    CHECK_AND_RETURN_LOG(prefs != nullptr, "GetPreferences returned nullptr, errcode: %{public}d", errCode);
+    const string isFinishedKeyName = "is_task_finished";
+    const string maxFileIdKeyName = "max_file_id";
+    prefs->PutInt(isFinishedKeyName, needUpdateDateAddedDatesData ? 0 : 1);
+    prefs->PutInt(maxFileIdKeyName, maxFileId);
+    prefs->FlushSync();
+    MEDIA_INFO_LOG("Mark date added dates need update: %{public}d", needUpdateDateAddedDatesData ? 1 : 0);
+}
+
+HWTEST_F(PhotoDayMonthYearOperationTest, UpdatePhotoDateAddedDateInfo_test, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("UpdatePhotoDateAddedDateInfo_test Start");
+    MarkDateAddedDatesDataStatus(g_rdbStore);
+
+    PhotoDayMonthYearOperation::UpdatePhotoDateAddedDateInfo();
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(
+            PhotoDayMonthYearOperation::DATE_ADDED_DATE_UPGRADE_XML, errCode);
+    EXPECT_NE(prefs, nullptr);
+    const string maxFileIdKeyName = "max_file_id";
+    EXPECT_EQ(prefs->GetInt(maxFileIdKeyName, 0), 0);
+    MEDIA_INFO_LOG("UpdatePhotoDateAddedDateInfo_test End");
 }
 }  // namespace Media
 }  // namespace OHOS

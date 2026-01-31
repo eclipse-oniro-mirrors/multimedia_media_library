@@ -2496,7 +2496,7 @@ static void QueryMediaDataReadyExecute(ani_env *env, unique_ptr<MediaLibraryAsyn
     QueryMediaDataStatusReqBody reqBody;
     QueryMediaDataStatusRespBody respBody;
     reqBody.dataKey = context->strParam;
-    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody, respBody); 
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody, respBody);
     if (ret != 0) {
         ANI_ERR_LOG("UserDefineIPCClient().Call failed");
         if (ret == E_INVALID_ARGUMENTS) {

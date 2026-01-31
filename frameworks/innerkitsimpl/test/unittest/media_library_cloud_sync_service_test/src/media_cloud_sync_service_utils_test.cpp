@@ -679,4 +679,24 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, CanUpdateExifRotateOnly_Test, TestSize.
     int32_t ret = CloudMediaSyncUtils::CanUpdateExifRotateOnly(mediaType, oldExifRotate, newExifRotate);
     EXPECT_EQ(ret, false);
 }
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, CompensateDateAddedYearMonthDay_Test, TestSize.Level1)
+{
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    int64_t timeStamp = 1700000000;
+    values.PutLong(MediaColumn::MEDIA_DATE_ADDED, timeStamp);
+    auto ret = CloudSyncConvert::CompensateDateAddedYearMonthDay(data, values);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaSyncServiceUtilsTest, HandleDateAddedYearMonthDay_Test, TestSize.Level1)
+{
+    CloudMediaPullDataDto data;
+    ValuesBucket values;
+    int64_t oldDateAdded = 1700000000;
+    int64_t newDateAdded = 1700000001;
+    CloudSyncConvert::HandleDateAddedYearMonthDay(oldDateAdded, newDateAdded, values);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR), true);
+}
 }

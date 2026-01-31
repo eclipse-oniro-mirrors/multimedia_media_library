@@ -14417,7 +14417,7 @@ static void QueryMediaDataReadyExecute(napi_env env, void *data)
     QueryMediaDataStatusReqBody reqBody;
     QueryMediaDataStatusRespBody respBody;
     reqBody.dataKey = context->strParam;
-    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody, respBody); 
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody, respBody);
     if (ret != 0) {
         NAPI_ERR_LOG("UserDefineIPCClient().Call failed");
         if (ret == E_INVALID_ARGUMENTS) {
