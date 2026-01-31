@@ -21,6 +21,7 @@
 namespace OHOS::Media {
 int32_t PhotoVideoModeOperation::UpdatePhotosVideoMode(const int32_t videoMode, const int32_t fileId)
 {
+    CHECK_AND_RETURN_RET_LOG(videoMode == static_cast<int32_t>(VideoMode::LOG_VIDEO), E_OK, "Not log video");
     MEDIA_INFO_LOG("UpdatePhotosVideoMode: videoMode=%{public}d, fileId=%{public}d", videoMode, fileId);
     std::shared_ptr<MediaLibraryRdbStore> rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (rdbStore == nullptr) {
