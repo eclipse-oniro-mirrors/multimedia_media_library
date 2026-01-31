@@ -2142,6 +2142,17 @@ int32_t MediaLibraryAlbumOperations::DeletePhotoAssetsCompleted(
     return deletedRows;
 }
 
+int32_t MediaLibraryAlbumOperations::DeletePhotoAssetsPermanentlyWithUri(const DataSharePredicates &predicates)
+{
+    MEDIA_INFO_LOG("DeletePhotoAssetsPermanentlyWithUri start.");
+    DealWithHighlightSdTable(predicates);
+    RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
+    int32_t deletedRows = MediaLibraryAssetOperations::DeletePermanentlyWithUri(rdbPredicates);
+    MediaAnalysisHelper::StartMediaAnalysisServiceAsync(
+        static_cast<int32_t>(MediaAnalysisProxy::ActivateServiceType::START_DELETE_INDEX));
+    return deletedRows;
+}
+
 int32_t AgingPhotoAssets(shared_ptr<int> countPtr)
 {
     auto time = MediaFileUtils::UTCTimeMilliSeconds();

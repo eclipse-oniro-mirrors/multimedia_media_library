@@ -177,6 +177,8 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
         {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_DELETE_CLOUD_ASSETS_WITH_URI),
         {{SYSTEMAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::DELETE_ASSETS_PERMANENTLY_WITH_URI),
+        {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_OPEN_ASSET_COMPRESS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_NOTIFY_ASSET_SENDED), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ASSET_COMPRESS_VERSION), {{READ_PERM}}},

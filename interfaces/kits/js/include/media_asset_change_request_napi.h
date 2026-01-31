@@ -162,6 +162,7 @@ private:
     EXPORT static napi_value JSDeleteLocalAssetsPermanentlyWithUri(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSDeleteLocalAssetsWithUri(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSDeleteCloudAssetsWithUri(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSDeleteAssetsPermanentlyWithUri(napi_env env, napi_callback_info info);
 
     bool CheckChangeOperations(napi_env env);
     bool CheckMovingPhotoWriteOperation();

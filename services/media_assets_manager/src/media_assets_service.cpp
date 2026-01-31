@@ -178,6 +178,13 @@ int32_t MediaAssetsService::DeletePhotosCompleted(const std::vector<std::string>
     return MediaLibraryAlbumOperations::DeletePhotoAssetsCompleted(predicates, false);
 }
 
+int32_t MediaAssetsService::DeleteAssetsPermanentlyWithUri(const std::vector<std::string> &fileIds)
+{
+    DataShare::DataSharePredicates predicates;
+    predicates.In(PhotoColumn::MEDIA_ID, fileIds);
+    return MediaLibraryAlbumOperations::DeletePhotoAssetsPermanentlyWithUri(predicates);
+}
+
 static std::string GetLocalDeviceName()
 {
     return "";

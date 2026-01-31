@@ -161,6 +161,7 @@ napi_value MediaAssetChangeRequestNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_FUNCTION("addResourceForPicker", JSAddResourceForPicker),
             DECLARE_NAPI_STATIC_FUNCTION("deleteLocalAssetsWithUri", JSDeleteLocalAssetsWithUri),
             DECLARE_NAPI_STATIC_FUNCTION("deleteCloudAssetsWithUri", JSDeleteCloudAssetsWithUri),
+            DECLARE_NAPI_STATIC_FUNCTION("deleteAssetsPermanentlyWithUri", JSDeleteAssetsPermanentlyWithUri),
         } };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
     return exports;
@@ -3399,5 +3400,64 @@ napi_value MediaAssetChangeRequestNapi::JSDeleteCloudAssetsWithUri(napi_env env,
     }
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ChangeRequestDeleteCloudAssetsWithUri",
         DeleteCloudAssetsWithUriExecute, DeleteCloudAssetsWithUriCallback);
+}
+
+static void DeleteAssetsPermanentlyWithUriExecute(napi_env env, void *data)
+{
+    NAPI_INFO_LOG("enter DeleteAssetsPermanentlyWithUriExecute.");
+    MediaLibraryTracer tracer;
+    tracer.Start("DeleteAssetsPermanentlyWithUriExecute");
+
+    auto *context = static_cast<MediaAssetChangeRequestAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    CHECK_IF_EQUAL(!context->fileIds.empty(), "fileIds is empty");
+
+    DeletePhotosCompletedReqBody reqBody;
+    reqBody.fileIds = context->fileIds;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::DELETE_ASSETS_PERMANENTLY_WITH_URI);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    CHECK_AND_RETURN(ret < 0);
+    if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+        context->SaveError(ret);
+    } else {
+        context->error = JS_E_INNER_FAIL;
+    }
+    NAPI_ERR_LOG("Failed to delete cloud assets, err: %{public}d", ret);
+    return;
+}
+
+static void DeleteAssetsPermanentlyWithUriCallback(napi_env env, napi_status status, void* data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("DeleteAssetsPermanentlyWithUriCallback");
+    auto* context = static_cast<MediaAssetChangeRequestAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    auto jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    napi_get_undefined(env, &jsContext->data);
+    napi_get_undefined(env, &jsContext->error);
+    if (context->error == ERR_DEFAULT) {
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(
+            env, context->deferred, context->callbackRef, context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaAssetChangeRequestNapi::JSDeleteAssetsPermanentlyWithUri(napi_env env, napi_callback_info info)
+{
+    NAPI_DEBUG_LOG("enter JSDeleteAssetsPermanentlyWithUri.");
+    auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
+    if (!ParseArgsDeleteLocalOrCloudAssets(env, info, asyncContext)) {
+        NAPI_ERR_LOG("Failed to parse args");
+        return nullptr;
+    }
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ChangeRequestDeleteAssetsPermanentlyWithUri",
+        DeleteAssetsPermanentlyWithUriExecute, DeleteAssetsPermanentlyWithUriCallback);
 }
 } // namespace OHOS::Media

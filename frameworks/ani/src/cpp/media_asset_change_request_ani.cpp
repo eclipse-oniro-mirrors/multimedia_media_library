@@ -121,6 +121,8 @@ std::array staticMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteLocalAssetsPermanently)},
     ani_native_function {"deleteLocalAssetsPermanentlyWithUriSync", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteLocalAssetsPermanentlyWithUri)},
+    ani_native_function {"deleteAssetsPermanentlyWithUriSync", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::DeleteAssetsPermanentlyWithUri)},
 };
 } // namespace
 std::atomic<uint32_t> MediaAssetChangeRequestAni::cacheFileId_ = 0;
@@ -2813,6 +2815,90 @@ ani_object MediaAssetChangeRequestAni::DeleteLocalAssetsPermanentlyWithUri(ani_e
         env, context, assetUris, asyncContext, true) != nullptr, "Failed to parse args");
     DeleteLocalAssetsPermanentlydExecute(env, asyncContext);
     DeleteLocalAssetsPermanentlyComplete(env, asyncContext);
+    return ReturnAniUndefined(env);
+}
+
+static ani_object ParseArgsDeleteAssetsPermanentlyWithUri(
+    ani_env *env, ani_object aniContext, ani_object assetUris, unique_ptr<MediaAssetChangeRequestAniContext>& context)
+{
+    ANI_DEBUG_LOG("enter ParseArgsDeleteAssetsPermanentlyWithUri.");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    CHECK_COND(env, MediaAssetChangeRequestAni::InitUserFileClient(env, aniContext), JS_E_INNER_FAIL);
+
+    vector<ani_object> uriArray;
+    CHECK_COND_RET(MediaLibraryAniUtils::GetAniValueArray(env, assetUris, uriArray) == ANI_OK, nullptr,
+        "Failed to get uri array from assetUris");
+    CHECK_COND_WITH_MESSAGE(env, !uriArray.empty(), "array is empty");
+ 
+    constexpr size_t sizeOfArray = 0;
+    if (uriArray.size() > BATCH_DELETE_MAX_NUMBER || uriArray.size() == sizeOfArray) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "size of assetUris is 0 or over 500.");
+        return nullptr;
+    }
+    vector<string> deleteIds;
+    for (const auto& uri : uriArray) {
+        FileAssetAni *obj = FileAssetAni::Unwrap(env, static_cast<ani_object>(uri));
+        CHECK_COND_WITH_MESSAGE(env, obj != nullptr, "Failed to get photo napi object");
+        deleteIds.push_back(to_string(obj->GetFileId()));
+    }
+    CHECK_COND_WITH_MESSAGE(env, context != nullptr, "context is nullptr");
+    context->fileIds = deleteIds;
+    context->predicates.In(PhotoColumn::MEDIA_ID, deleteIds);
+    ani_object ret = nullptr;
+    MediaLibraryAniUtils::ToAniBooleanObject(env, true, ret);
+    return ret;
+}
+
+static void DeleteAssetsPermanentlyWithUriExecute(ani_env *env, unique_ptr<MediaAssetChangeRequestAniContext>& context)
+{
+    ANI_DEBUG_LOG("enter DeleteAssetsPermanentlyWithUriExecute.");
+    MediaLibraryTracer tracer;
+    tracer.Start("DeleteAssetsPermanentlyWithUriExecute");
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+
+    CHECK_IF_EQUAL(!context->fileIds.empty(), "fileIds is empty");
+
+    DeletePhotosCompletedReqBody reqBody;
+    reqBody.fileIds = context->fileIds;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::DELETE_ASSETS_PERMANENTLY_WITH_URI);
+    ANI_INFO_LOG("test before IPC::UserDefineIPCClient().Call");
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    ANI_INFO_LOG("test after IPC::UserDefineIPCClient().Call");
+
+    if (ret < 0) {
+        if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(ret);
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        ANI_ERR_LOG("Failed to delete assets from local album permanently, err: %{public}d", ret);
+        return;
+    }
+}
+
+static void DeleteAssetsPermanentlyWithUriComplete(ani_env *env, unique_ptr<MediaAssetChangeRequestAniContext>& context)
+{
+    ANI_DEBUG_LOG("enter DeleteAssetsPermanentlyWithUriComplete.");
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    ani_object errorObj {};
+    if (context->error == ERR_DEFAULT) {
+        context->HandleError(env, errorObj);
+    }
+    context.reset();
+}
+
+ani_object MediaAssetChangeRequestAni::DeleteAssetsPermanentlyWithUri(ani_env *env,
+    [[maybe_unused]] ani_class clazz, ani_object context, ani_object assetUris)
+{
+    ANI_DEBUG_LOG("enter DeleteAssetsPermanentlyWithUri.");
+    auto asyncContext = make_unique<MediaAssetChangeRequestAniContext>();
+    CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteAssetsPermanentlyWithUri(
+        env, context, assetUris, asyncContext) != nullptr, "Failed to parse args");
+    DeleteAssetsPermanentlyWithUriExecute(env, asyncContext);
+    DeleteAssetsPermanentlyWithUriComplete(env, asyncContext);
     return ReturnAniUndefined(env);
 }
 
