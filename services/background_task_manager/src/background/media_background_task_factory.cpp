@@ -15,6 +15,7 @@
 #define MLOG_TAG "Media_Background"
 
 #include "media_background_task_factory.h"
+#include "media_clear_invalid_user_comment_task.h"
 #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "media_cloud_sync_backgroud_task.h"
 #endif
@@ -33,6 +34,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         #endif
         std::make_shared<MediaFileManagerTempFileAgingTask>(),
         std::make_shared<MediaVideoModeTask>(),
+        std::make_shared<MediaClearInvalidUserCommentTask>(),
         std::make_shared<MediaDeletedFileTask>(),
     };
 }
