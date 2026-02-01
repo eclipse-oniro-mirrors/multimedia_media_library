@@ -37,6 +37,7 @@ ohos_unittest("medialibrary_scanner_test") {
 
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "./src/metadata_extractor_test.cpp",
     "./src/medialibrary_scanner_test.cpp",
   ]
   deps = [
@@ -64,6 +65,7 @@ ohos_unittest("medialibrary_scanner_test") {
     "image_framework:image_native",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
+    "player_framework:media_client",
     "relational_store:native_rdb",
   ]
 
