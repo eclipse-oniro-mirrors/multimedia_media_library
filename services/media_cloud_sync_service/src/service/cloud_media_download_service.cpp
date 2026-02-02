@@ -468,10 +468,10 @@ void CloudMediaDownloadService::UpdateVideoMode(std::vector<PhotosPo> &photosPoV
         auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is null!");
         std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryVideoSql);
-        CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, void, "resultSet is null");
+        CHECK_AND_RETURN_LOG(resultSet != nullptr, "resultSet is null");
         bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
         CHECK_AND_EXECUTE(isValid, resultSet->Close());
-        CHECK_AND_RETURN_RET_LOG(isValid, void, "failed to get row");
+        CHECK_AND_RETURN_LOG(isValid, "failed to get row");
         int32_t videoMode = GetInt32Val(PhotoColumn::PHOTO_VIDEO_MODE, resultSet);
         resultSet->Close();
         CHECK_AND_CONTINUE_INFO_LOG(videoMode == static_cast<int32_t>(VideoMode::DEFAULT), "photosPo has scannered");

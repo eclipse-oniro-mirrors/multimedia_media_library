@@ -230,7 +230,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_BURST_KEY] = MDKRecordField(upLoadRecord.burstKey);
     map[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = MDKRecordField(upLoadRecord.ownerAlbumId);
     map[FILE_FIX_VERSION] = MDKRecordField(0);
-    map[MDKRecordPhotosData::KEY_EDIT_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
+    map[KEY_EDIT_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
     map[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = MDKRecordField(upLoadRecord.fileSourceType);
     map[PhotoColumn::PHOTO_STORAGE_PATH] = MDKRecordField(upLoadRecord.storagePath);
     HandleAttributesHashMap(map, upLoadRecord);

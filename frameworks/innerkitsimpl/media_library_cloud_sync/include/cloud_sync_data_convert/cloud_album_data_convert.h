@@ -72,7 +72,7 @@ private:
 private:
     bool isCloudSpaceFull_{false};
     CloudAlbumOperationType type_;
-    const std::string recordType_;
+    static const std::string recordType_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_UPLOAD_DATA_CONVERT_H
