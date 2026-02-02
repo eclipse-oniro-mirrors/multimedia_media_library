@@ -77,6 +77,7 @@
 #include "medialibrary_notify_callback_wrapper_ani.h"
 #include "media_audio_column.h"
 #include <charconv>
+#include "query_media_data_status_vo.h"
 
 namespace OHOS {
 namespace Media {
@@ -251,6 +252,8 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessGetPhotoAlbumOrder)},
     ani_native_function {"setPhotoAlbumsOrderInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessSetPhotoAlbumOrder)},
+    ani_native_function {"isMediaDataReadyInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::QueryMediaDataReady)},
 };
 } // namespace
 
@@ -2444,6 +2447,81 @@ void MediaLibraryAni::SinglePhotoChangeOffCallback(ani_env *env, ani_object obje
     tracer.Start("SinglePhotoChangeOffCallback");
     ANI_INFO_LOG("SinglePhotoChangeOffCallback Start");
     ANI_INFO_LOG("SinglePhotoChangeOffCallback End");
+}
+
+static ani_status ParseArgsQueryMediaDataReady(ani_env *env, ani_string dataKey,
+    std::unique_ptr<MediaLibraryAsyncContext>& context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+
+    auto status = MediaLibraryAniUtils::GetString(env, dataKey, context->strParam);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to get string value from dataKey");
+        return status;
+    }
+    return ANI_OK;
+}
+
+static ani_object QueryMediaDataReadyCompleteCallback(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("Ani QueryMediaDataReadyCompleteCallback");
+
+    ani_object boolObject {};
+    if (context->error != ERR_DEFAULT) {
+        ANI_ERR_LOG("QueryMediaDataReady failed, error: %{public}d", context->error);
+        if (context->error == JS_E_PARAM_INVALID) {
+            AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "invalid parameter");
+            return nullptr;
+        } else {
+            AniError::ThrowError(env, JS_E_INNER_FAIL, "medialibrary inner fail");
+            return nullptr;
+        }
+    } else {
+        if (MediaLibraryAniUtils::ToAniBooleanObject(env, context->boolResult, boolObject) != ANI_OK) {
+            ANI_ERR_LOG("Failed to create result value");
+            AniError::ThrowError(env, JS_E_INNER_FAIL, "medialibrary inner fail");
+            return nullptr;
+        }
+    }
+    return boolObject;
+}
+
+static void QueryMediaDataReadyExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("Ani QueryMediaDataReadyExecute");
+
+    QueryMediaDataStatusReqBody reqBody;
+    QueryMediaDataStatusRespBody respBody;
+    reqBody.dataKey = context->strParam;
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody, respBody);
+    if (ret != 0) {
+        ANI_ERR_LOG("UserDefineIPCClient().Call failed");
+        if (ret == E_INVALID_ARGUMENTS) {
+            context->error = JS_E_PARAM_INVALID;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->boolResult = respBody.result;
+}
+
+ani_object MediaLibraryAni::QueryMediaDataReady(ani_env *env, ani_object object, ani_string dataKey)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("Ani QueryMediaDataReady");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_RET(ParseArgsQueryMediaDataReady(env, dataKey, asyncContext) == ANI_OK, nullptr,
+        "Failed to parse QueryMediaDataReady params");
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_MEDIA_DATA_STATUS);
+    SetUserIdFromObjectInfo(asyncContext);
+    QueryMediaDataReadyExecute(env, asyncContext);
+    return QueryMediaDataReadyCompleteCallback(env, asyncContext);
 }
 
 static void GetPhotoAlbumsWithoutSubtypeExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)

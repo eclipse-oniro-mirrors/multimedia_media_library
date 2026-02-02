@@ -182,6 +182,9 @@ public:
     static const std::string PHOTO_RISK_STATUS EXPORT;
     static const std::string PHOTO_CHANGE_TIME EXPORT;
     static const std::string PHOTO_EDIT_DATA_EXIST EXPORT;
+    static const std::string PHOTO_DATE_ADDED_YEAR EXPORT;
+    static const std::string PHOTO_DATE_ADDED_MONTH EXPORT;
+    static const std::string PHOTO_DATE_ADDED_DAY EXPORT;
 
     // Photo-only default fetch columns
     static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;

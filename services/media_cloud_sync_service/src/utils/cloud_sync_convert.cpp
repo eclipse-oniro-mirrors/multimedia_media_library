@@ -31,6 +31,7 @@
 #include "shooting_mode_column.h"
 #include "media_file_utils.h"
 #include "photo_file_utils.h"
+#include "media_values_bucket_utils.h"
 
 namespace OHOS::Media::CloudSync {
 static bool convertToLong(const std::string &str, int64_t &value)
@@ -386,8 +387,10 @@ void CloudSyncConvert::CompensateTimeInfo(const CloudMediaPullDataDto &data, Nat
             data.cloudId.c_str());
         dateAdded = data.basicCreatedTime;
     }
+    int64_t originalDateAdded = dateAdded;
     dateAdded = PhotoFileUtils::NormalizeTimestamp(dateAdded, MediaFileUtils::UTCTimeMilliSeconds());
     values.Put(PhotoColumn::MEDIA_DATE_ADDED, dateAdded);
+    HandleDateAddedYearMonthDay(originalDateAdded, dateAdded, values);
 
     int64_t dateModified = data.attributesEditedTimeMs;
     if (dateModified <= 0) {
@@ -628,8 +631,6 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttMovingPhotoEffectMode(data, values);
     CompensateAttSupportedWatermarkType(data, values);
     CompensateAttStrongAssociation(data, values);
-    // attributes HashMap
-    CompensateAttributesHashMap(data, values);
     // Safe Album: risk status for children's watch
     CompensateAttRiskStatus(data, values);
     CompensateAttIsCritical(data, values);
@@ -658,6 +659,8 @@ int32_t CloudSyncConvert::ExtractCompatibleValue(const CloudMediaPullDataDto &da
     CompensatePropWidth(data, values);
     CompensatePropAspectRatio(data, values);
     CompensatePropSourcePath(data, values);
+    // attributes HashMap
+    CompensateAttributesHashMap(data, values);
     return E_OK;
 }
 
@@ -679,8 +682,52 @@ bool CloudSyncConvert::RecordToValueBucket(const CloudMediaPullDataDto &data, Na
 int32_t CloudSyncConvert::CompensateAttributesHashMap(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
-    CHECK_AND_RETURN_RET(!data.stringfields.empty(), E_OK);
     // compensate attributes HashMap here.
+    CompensateDateAddedYearMonthDay(data, values);
     return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateDateAddedYearMonthDay(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    auto itYear = data.stringfields.find(PhotoColumn::PHOTO_DATE_ADDED_YEAR);
+    auto itMonth = data.stringfields.find(PhotoColumn::PHOTO_DATE_ADDED_MONTH);
+    auto itDay = data.stringfields.find(PhotoColumn::PHOTO_DATE_ADDED_DAY);
+    string dateAddedYear = "";
+    string dateAddedMonth = "";
+    string dateAddedDay = "";
+    if (itYear != data.stringfields.end()) {
+        dateAddedYear = itYear->second;
+    }
+    if (itMonth != data.stringfields.end()) {
+        dateAddedMonth = itMonth->second;
+    }
+    if (itDay != data.stringfields.end()) {
+        dateAddedDay = itDay->second;
+    }
+    if (dateAddedYear.empty() || dateAddedMonth.empty() || dateAddedDay.empty()) {
+        int64_t dateAdded = 0;
+        MediaValuesBucketUtils::GetLong(values, MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+        DateParts parts = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
+        dateAddedYear = parts.year;
+        dateAddedMonth = parts.month;
+        dateAddedDay = parts.day;
+    }
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+    return E_OK;
+}
+
+void CloudSyncConvert::HandleDateAddedYearMonthDay(int64_t originalDateAdded, int64_t dateAdded,
+    NativeRdb::ValuesBucket &values)
+{
+    if (originalDateAdded != dateAdded) {
+        const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+            PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
+        values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+        values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+        values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+    }
 }
 }  // namespace OHOS::Media::CloudSync

@@ -252,7 +252,11 @@ int32_t TransactionOperations::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
         return E_HAS_DB_ERROR;
     }
 
-    auto [ret, rows] = transaction_->Insert(cmd.GetTableName(), cmd.GetValueBucket());
+    NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
+    if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
+        MediaLibraryRdbStore::AddDefaultInsertPhotoValues(tmpValues);
+    }
+    auto [ret, rows] = transaction_->Insert(cmd.GetTableName(), tmpValues);
     rowId = rows;
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->Insert failed, ret = %{public}d", ret);
@@ -331,8 +335,13 @@ int32_t TransactionOperations::BatchInsert(
         MEDIA_ERR_LOG("transaction_ is null");
         return E_HAS_DB_ERROR;
     }
-
-    auto [ret, rows] = transaction_->BatchInsert(table, values);
+    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
+    if (table == PhotoColumn::PHOTOS_TABLE) {
+        for (auto& value : tmpValues) {
+            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
+        }
+    }
+    auto [ret, rows] = transaction_->BatchInsert(table, tmpValues);
     outRowId = rows;
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("transaction_->BatchInsert failed, ret = %{public}d", ret);
@@ -350,8 +359,14 @@ int32_t TransactionOperations::BatchInsert(int64_t &changeRows, const std::strin
         MEDIA_ERR_LOG("transaction_ is null");
         return E_HAS_DB_ERROR;
     }
- 
-    auto [ret, rows] = transaction_->BatchInsert(table, values, resolution);
+
+    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
+    if (table == PhotoColumn::PHOTOS_TABLE) {
+        for (auto& value : tmpValues) {
+            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
+        }
+    }
+    auto [ret, rows] = transaction_->BatchInsert(table, tmpValues, resolution);
     changeRows = rows;
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("transaction_->BatchInsert failed, ret = %{public}d", ret);
@@ -370,7 +385,13 @@ int32_t TransactionOperations::BatchInsert(
         MEDIA_ERR_LOG("transaction_ is null");
         return E_HAS_DB_ERROR;
     }
-    auto [ret, rows] = transaction_->BatchInsert(cmd.GetTableName(), values);
+    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
+    if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
+        for (auto& value : tmpValues) {
+            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
+        }
+    }
+    auto [ret, rows] = transaction_->BatchInsert(cmd.GetTableName(), tmpValues);
     outInsertNum = rows;
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("transaction_->BatchInsert failed, ret = %{public}d", ret);
@@ -385,7 +406,11 @@ int32_t TransactionOperations::Insert(
     int64_t &rowId, const std::string tableName, const NativeRdb::ValuesBucket &values)
 {
     CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
-    auto [ret, rows] = transaction_->Insert(tableName, values);
+    NativeRdb::ValuesBucket tmpValues = values;
+    if (tableName == PhotoColumn::PHOTOS_TABLE) {
+        MediaLibraryRdbStore::AddDefaultInsertPhotoValues(tmpValues);
+    }
+    auto [ret, rows] = transaction_->Insert(tableName, tmpValues);
     rowId = rows;
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("transaction_->Insert failed, ret = %{public}d", ret);
@@ -450,10 +475,15 @@ pair<int32_t, NativeRdb::Results> TransactionOperations::BatchInsert(
         MEDIA_ERR_LOG("transaction_ is null");
         return {E_HAS_DB_ERROR, -1};
     }
-    ValuesBuckets refRows;
-    for (auto &value : values) {
-        refRows.Put(value);
+
+    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
+    if (table == PhotoColumn::PHOTOS_TABLE) {
+        for (auto &value : tmpValues) {
+            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
+        }
     }
+
+    ValuesBuckets refRows {std::move(tmpValues)};
 
     pair<int32_t, NativeRdb::Results> result = transaction_->BatchInsert(table, refRows, { returningField },
         resolution);

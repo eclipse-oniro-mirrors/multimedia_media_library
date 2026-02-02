@@ -25,6 +25,7 @@
 #include "photo_file_utils.h"
 #include "result_set_utils.h"
 #include "upgrade_restore_task_report.h"
+#include "media_values_bucket_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -180,6 +181,13 @@ void CloudBackupRestore::SetTimeInfo(const std::unique_ptr<Metadata> &data, File
     info.dateTaken = PhotoFileUtils::NormalizeTimestamp(info.dateTaken, min(info.firstUpdateTime, info.dateModified));
 
     value.Put(MediaColumn::MEDIA_DATE_ADDED, info.firstUpdateTime);
+    int64_t valueBucketDateAdded {};
+    MediaValuesBucketUtils::GetLong(value, MediaColumn::MEDIA_DATE_ADDED, valueBucketDateAdded);
+    const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+        PhotoFileUtils::ConstructDateAddedDateParts(valueBucketDateAdded);
+    value.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    value.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    value.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
     value.Put(MediaColumn::MEDIA_DATE_MODIFIED, info.dateModified);
     value.Put(MediaColumn::MEDIA_DATE_TAKEN, info.dateTaken);
     InsertDateTime(value, info);

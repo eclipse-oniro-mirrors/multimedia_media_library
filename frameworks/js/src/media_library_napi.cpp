@@ -96,6 +96,7 @@
 #include "get_cloned_album_uris_vo.h"
 #include "acquire_debug_database_vo.h"
 #include "release_debug_database_vo.h"
+#include "query_media_data_status_vo.h"
 #include "userfilemgr_uri.h"
 
 #include "parcel.h"
@@ -469,6 +470,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("onSinglePhotoAlbumChange", SinglePhotoAlbumRegisterCallback),
             DECLARE_NAPI_FUNCTION("offSinglePhotoChange", SinglePhotoAccessUnregisterCallback),
             DECLARE_NAPI_FUNCTION("offSinglePhotoAlbumChange", SinglePhotoAlbumUnregisterCallback),
+            DECLARE_NAPI_FUNCTION("isMediaDataReady", QueryMediaDataReady),
         }
     };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
@@ -14356,6 +14358,88 @@ napi_value MediaLibraryNapi::PhotoAccessGetAlbumIdByBundleName(napi_env env, nap
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "GetAlbumIdByBundleName",
        GetAlbumIdByLpathOrBundleNameExecute, GetAlbumIdByLpathOrBundleNameCompleteCallback);
+}
+
+static napi_value ParseArgsQueryMediaDataReady(napi_env env, napi_callback_info info,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_INNER_FAIL);
+    constexpr size_t minArgs = ARGS_ONE;
+    constexpr size_t maxArgs = ARGS_ONE;
+    napi_status status = MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs);
+    CHECK_ARGS(env, status, JS_E_PARAM_INVALID);
+    CHECK_ARGS(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[ARGS_ZERO], context->strParam),
+        JS_E_PARAM_INVALID);
+    return result;
+}
+
+static void QueryMediaDataReadyCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("QueryMediaDataReadyCompleteCallback");
+
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL);
+    if (status != napi_ok || context->error != ERR_DEFAULT) {
+        NAPI_ERR_LOG("QueryMediaDataReady failed, status: %{public}d, error: %{public}d", status, context->error);
+        context->HandleError(env, jsContext->error);
+    } else {
+        napi_status napiStatus = napi_get_boolean(env, context->boolResult, &jsContext->data);
+        if (napiStatus == napi_ok) {
+            jsContext->status = true;
+        } else {
+            NAPI_ERR_LOG("Failed to create result value");
+            context->error = JS_E_INNER_FAIL;
+            context->HandleError(env, jsContext->error);
+        }
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
+static void QueryMediaDataReadyExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("QueryMediaDataReadyExecute");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    QueryMediaDataStatusReqBody reqBody;
+    QueryMediaDataStatusRespBody respBody;
+    reqBody.dataKey = context->strParam;
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody, respBody);
+    if (ret != 0) {
+        NAPI_ERR_LOG("UserDefineIPCClient().Call failed");
+        if (ret == E_INVALID_ARGUMENTS) {
+            context->error = JS_E_PARAM_INVALID;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->boolResult = respBody.result;
+}
+
+napi_value MediaLibraryNapi::QueryMediaDataReady(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("QueryMediaDataReady");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_NULLPTR_RET(ParseArgsQueryMediaDataReady(env, info, asyncContext));
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_MEDIA_DATA_STATUS);
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "QueryMediaDataReady",
+       QueryMediaDataReadyExecute, QueryMediaDataReadyCompleteCallback);
 }
 } // namespace Media
 } // namespace OHOS

@@ -103,6 +103,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/log_cinematic_access_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/modify_assets_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_cloud_enhancement_task_state_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_media_data_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_photo_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/request_content_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/request_edit_data_vo.cpp",
@@ -158,6 +159,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/modify_assets_test.cpp",
     "./src/query_cloud_enhancement_task_state_test.cpp",
     "./src/query_edit_asset_status_test.cpp",
+    "./src/query_media_data_status_test.cpp",
     "./src/request_content_test.cpp",
     "./src/request_image_test.cpp",
     "./src/revert_to_original_test.cpp",
@@ -229,6 +231,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
     "player_framework:media_client",
+    "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "zlib:shared_libz",

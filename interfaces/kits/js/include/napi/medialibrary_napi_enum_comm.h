@@ -326,6 +326,9 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("EDIT_DATA_EXIST",           PhotoColumn::PHOTO_EDIT_DATA_EXIST),
     std::make_pair("IS_CRITICAL",               PhotoColumn::PHOTO_IS_CRITICAL),
     std::make_pair("PHOTO_RISK_STATUS",         PhotoColumn::PHOTO_RISK_STATUS),
+    std::make_pair("DATE_ADDED_YEAR",           PhotoColumn::PHOTO_DATE_ADDED_YEAR),
+    std::make_pair("DATE_ADDED_MONTH",          PhotoColumn::PHOTO_DATE_ADDED_MONTH),
+    std::make_pair("DATE_ADDED_DAY",            PhotoColumn::PHOTO_DATE_ADDED_DAY),
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES = {

@@ -537,5 +537,16 @@ HWTEST_F(MediaLibraryRdbTest, medialib_ExecuteSqls_test, TestSize.Level1)
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("end medialib_ExecuteSqls_test");
 }
+
+HWTEST_F(MediaLibraryRdbTest, medialib_AddDefaultInsertPhotoValues_test, TestSize.Level1)
+{
+    NativeRdb::ValuesBucket values;
+    values.Put(MediaColumn::MEDIA_NAME, "test_photo.jpg");
+    int64_t timeStamp = 1622547800;
+    values.Put(MediaColumn::MEDIA_DATE_ADDED, timeStamp);
+    MediaLibraryRdbStore::AddDefaultInsertPhotoValues(values);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR), true);
+    EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_MEDIA_SUFFIX), true);
+}
 } // namespace Media
 } // namespace OHOS

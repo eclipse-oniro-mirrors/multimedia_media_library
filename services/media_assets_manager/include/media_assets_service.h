@@ -196,6 +196,7 @@ public:
     int32_t NotifyAssetSended(const std::string &uri);
     int32_t GetAssetCompressVersion(int32_t &version);
     int32_t GetCompressAssetSize(const std::vector<std::string> &uris, GetCompressAssetSizeRespBody &respBody);
+    int32_t QueryMediaDataStatus(const std::string &dataKey, bool &result);
 
 private:
     int32_t SubmitMetadataChanged(const int32_t fileId);

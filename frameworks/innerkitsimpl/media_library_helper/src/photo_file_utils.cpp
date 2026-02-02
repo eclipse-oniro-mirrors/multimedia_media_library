@@ -334,4 +334,17 @@ string PhotoFileUtils::GetAbsoluteLakePath(const std::string &storagePath, int32
 
     return GetAbsoluteLakeDir(userId) + storagePath.substr(lakeDir.length());
 }
+
+DateParts PhotoFileUtils::ConstructDateAddedDateParts(int64_t dateAdded)
+{
+    if (dateAdded <= 0) {
+        dateAdded = MediaFileUtils::UTCTimeMilliSeconds();
+    }
+    string dateAddedDateInfo = MediaFileUtils::StrCreateTimeByMilliseconds(
+        PhotoColumn::PHOTO_DETAIL_TIME_FORMAT, dateAdded);
+
+    const auto [dateYear, dateMonth, dateDay] = PhotoFileUtils::ExtractYearMonthDay(dateAddedDateInfo);
+    DateParts dateParts = {dateYear, dateMonth, dateDay};
+    return dateParts;
+}
 } // namespace OHOS::Media

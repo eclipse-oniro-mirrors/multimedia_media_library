@@ -105,6 +105,7 @@
 #include "open_asset_compress_vo.h"
 #include "open_asset_compress_dto.h"
 #include "get_compress_asset_size_vo.h"
+#include "query_media_data_status_vo.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -486,6 +487,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CONVERT_FORMAT_MIME_TYPE),
         &MediaAssetsControllerService::CheckMimeType
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_MEDIA_DATA_STATUS),
+        &MediaAssetsControllerService::QueryMediaDataStatus
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CREATE_TMP_DUPLICATE),
@@ -2553,6 +2558,36 @@ int32_t MediaAssetsControllerService::LogCinematicvideo(MessageParcel &data, Mes
     }
     ret = MediaAssetsService::GetInstance().LogCinematicVideo(reqBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::QueryMediaDataStatus(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_MEDIA_DATA_STATUS);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    QueryMediaDataStatusReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryMediaDataStatus Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    const unordered_set<string> validDataKeys = {
+        "date_added_year"
+    };
+    if (validDataKeys.find(reqBody.dataKey) == validDataKeys.end()) {
+        MEDIA_ERR_LOG("Query data key is not supported: %{public}s", reqBody.dataKey.c_str());
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_ARGUMENTS);
+    }
+    bool result = false;
+    ret = MediaAssetsService::GetInstance().QueryMediaDataStatus(reqBody.dataKey, result);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryMediaDataStatus failed, ret: %{public}d, data key: %{public}s", ret,
+            reqBody.dataKey.c_str());
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INNER_FAIL);
+    }
+    QueryMediaDataStatusRespBody respBody;
+    respBody.result = result;
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 
 int32_t MediaAssetsControllerService::GetResultSetFromDb(MessageParcel &data, MessageParcel &reply)

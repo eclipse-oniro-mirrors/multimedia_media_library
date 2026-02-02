@@ -423,5 +423,20 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_GetTHMPath_001, TestSize.Lev
     string res = PhotoFileUtils::GetTHMPath(photoPath, userId);
     EXPECT_EQ(res, "");
 }
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ConstructDateAddedDateParts, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("PhotoFileUtils_ConstructDateAddedDateParts Start");
+    int64_t dateAdded = 1732767140000; // 2024-11-28 02:25:40
+    auto parts = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
+    EXPECT_EQ(parts.year, "2024");
+    EXPECT_EQ(parts.month, "202411");
+    EXPECT_EQ(parts.day, "20241128");
+    parts = PhotoFileUtils::ConstructDateAddedDateParts(0);
+    EXPECT_NE(parts.year, "");
+    EXPECT_NE(parts.month, "");
+    EXPECT_NE(parts.day, "");
+    MEDIA_INFO_LOG("PhotoFileUtils_ConstructDateAddedDateParts End");
+}
 } // namespace Media
 } // namespace OHOS
