@@ -413,6 +413,7 @@ int32_t CloudMediaAssetDownloadOperation::StartDownloadTask(int32_t cloudMediaDo
     CHECK_AND_RETURN_RET_LOG(taskStatus_ == CloudMediaAssetTaskStatus::IDLE, E_ERR,
         "StartDownloadTask permission denied");
     MEDIA_INFO_LOG("enter, download type: %{public}d", cloudMediaDownloadType);
+    ResetParameter();
     int32_t ret = DoRelativedRegister();
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
 
@@ -547,6 +548,7 @@ int32_t CloudMediaAssetDownloadOperation::PauseDownloadTask(const CloudMediaTask
 
 void CloudMediaAssetDownloadOperation::ResetParameter()
 {
+    MEDIA_INFO_LOG("enter reset parameter");
     ClearData(readyForDownload_);
     ClearData(notFoundForDownload_);
     ClearData(cacheForDownload_);
