@@ -560,10 +560,10 @@ static int32_t RequestContentToSandbox(MovingPhotoAsyncContext* context)
             int32_t ret = MovingPhotoAni::DoMovingPhotoTranscode(videoFd, context);
             CHECK_COND_RET(ret == E_OK, ret, "moving video transcode failed");
         } else {
-            int32_t position = context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)
+            MovingPhotoResourceType resourceType = context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)
                                 ? MovingPhotoResourceType::CLOUD_VIDEO
                                 : MovingPhotoResourceType::DEFAULT;
-            int32_t ret = WriteToSandboxUri(videoFd, context->destVideoUri, position);
+            int32_t ret = WriteToSandboxUri(videoFd, context->destVideoUri, resourceType);
             CHECK_COND_RET(ret == E_OK, ret, "Write video to sandbox failed");
         }
     }
