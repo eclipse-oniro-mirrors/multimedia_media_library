@@ -273,7 +273,6 @@ static void CloudMediaAlbumServiceFuzzer()
     OnFetchRecordsAlbumRespBody resp;
     cloudMediaAlbumService->OnCreateRecords(albumDtoList, failSize);
     cloudMediaAlbumService->OnMdirtyRecords(albumDtoList, failSize);
-    cloudMediaAlbumService->OnFdirtyRecords();
     cloudMediaAlbumService->OnDeleteRecords(albumDtoList, failSize);
 
     cloudMediaAlbumService->OnFetchRecords(albumDtoList, resp);

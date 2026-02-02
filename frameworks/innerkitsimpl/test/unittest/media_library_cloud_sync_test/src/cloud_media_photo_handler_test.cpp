@@ -424,7 +424,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetFileModifiedRecords, TestSize.Level1)
                                             "fileType"};
     int32_t checkCount = 0;
     Json::FastWriter writer;
-    for (const auto &record : records) {
+    for (auto &record : records) {
         std::string json = writer.write(record.ToJsonValue());
         GTEST_LOG_(INFO) << "record:" << json;
         for (auto &target : targetRecords) {
@@ -764,7 +764,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, GetDeletedRecords_001, TestSize.Level1)
     EXPECT_GT(records.size(), 0);
     std::string cloudId = "373b364a41e54ebf912b3414aeabe963507a901b2b1a4332939d51ed54ff97d0";
     Json::FastWriter writer;
-    for (const auto &record : records) {
+    for (auto &record : records) {
         std::string json = writer.write(record.ToJsonValue());
         GTEST_LOG_(INFO) << "GetDeletedRecords_001:" << json;
         EXPECT_TRUE(!record.GetRecordId().empty());
