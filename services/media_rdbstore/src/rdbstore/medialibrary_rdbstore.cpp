@@ -73,7 +73,7 @@
 #include "media_audio_column.h"
 #include "media_edit_utils.h"
 #include "media_string_utils.h"
-
+#include "media_values_bucket_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -772,6 +772,24 @@ shared_ptr<NativeRdb::RdbStore> MediaLibraryRdbStore::GetRaw()
     return rdbStore_;
 }
 
+static void PutDefaultDateAddedYearMonthDay(ValuesBucket& values)
+{
+    string dateAddedStr = "0";
+    MediaValuesBucketUtils::GetString(values, MediaColumn::MEDIA_DATE_ADDED, dateAddedStr);
+    int64_t dateAdded = atoll(dateAddedStr.c_str()) > 0 ? atoll(dateAddedStr.c_str()) :
+        MediaFileUtils::UTCTimeMilliSeconds();
+    const auto [dateYear, dateMonth, dateDay] = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
+    if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR)) {
+        values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateYear);
+    }
+    if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_MONTH)) {
+        values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateMonth);
+    }
+    if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_DAY)) {
+        values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateDay);
+    }
+}
+
 void MediaLibraryRdbStore::AddDefaultInsertPhotoValues(ValuesBucket& values)
 {
     ValueObject tmpValue;
@@ -780,20 +798,7 @@ void MediaLibraryRdbStore::AddDefaultInsertPhotoValues(ValuesBucket& values)
         tmpValue.GetString(tmpStr);
         values.PutString(PhotoColumn::PHOTO_MEDIA_SUFFIX, ScannerUtils::GetFileExtension(tmpStr));
     }
-    if (values.GetObject(MediaColumn::MEDIA_DATE_ADDED, tmpValue)) {
-        tmpValue.GetString(tmpStr);
-        int64_t dateAdded = atoll(tmpStr.c_str()) > 0 ? atoll(tmpStr.c_str()) : MediaFileUtils::UTCTimeMilliSeconds();
-        const auto [dateYear, dateMonth, dateDay] = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
-        if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR)) {
-            values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateYear);
-        }
-        if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_MONTH)) {
-            values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateMonth);
-        }
-        if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_DAY)) {
-            values.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateDay);
-        }
-    }
+    PutDefaultDateAddedYearMonthDay(values);
 }
 
 int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)

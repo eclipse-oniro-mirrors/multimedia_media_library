@@ -668,14 +668,14 @@ static string GetDateAddedYearMonthDayUpdateSql()
         "   WHEN COALESCE(date_added_month, 0) <> 0 THEN date_added_month"
         "   WHEN date_added IS NOT NULL AND date_added > 0 THEN "
         "     strftime( '%Y%m', date_added / 1000, 'unixepoch', 'localtime' )"
-        "   ELSE strftime('%m', 'now', 'localtime')"
+        "   ELSE strftime('%Y%m', 'now', 'localtime')"
         " END),"
         " date_added_day ="
         " (CASE"
         "   WHEN COALESCE(date_added_day, 0) <> 0 THEN date_added_day"
         "   WHEN date_added IS NOT NULL AND date_added > 0 THEN "
         "     strftime( '%Y%m%d', date_added / 1000, 'unixepoch', 'localtime' )"
-        "   ELSE strftime('%d', 'now', 'localtime')"
+        "   ELSE strftime('%Y%m%d', 'now', 'localtime')"
         " END)";
 }
 

@@ -26,6 +26,7 @@
 #include "post_event_utils.h"
 #include "photo_file_utils.h"
 #include "media_audio_column.h"
+#include "media_values_bucket_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -128,6 +129,13 @@ static void InsertDateAdded(const Metadata &metadata, ValuesBucket &outValues)
         }
     }
     outValues.PutLong(MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    int64_t valueBucketDateAdded {};
+    MediaValuesBucketUtils::GetLong(outValues, MediaColumn::MEDIA_DATE_ADDED, valueBucketDateAdded);
+    const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+        PhotoFileUtils::ConstructDateAddedDateParts(valueBucketDateAdded);
+    outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+    outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+    outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
 }
 
 static inline void HandleDateAdded(const Metadata &metadata, const bool isInsert, ValuesBucket &outValues)
