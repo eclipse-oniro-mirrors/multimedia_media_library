@@ -1071,11 +1071,11 @@ ohos_shared_library("medialibrary_data_extension") {
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_SERVICES_PATH}/media_async_worker:medialibrary_async_worker",
     "${MEDIALIB_UTILS_PATH}:medialibrary_common_utils",
     "${MEDIALIB_UTILS_PATH}:permission_utils",
     "${MEDIALIB_UTILS_PATH}:post_event_utils",
-    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_IPC_COMMON}:media_ipc_common",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]

@@ -78,6 +78,7 @@
 #include "media_audio_column.h"
 #include <charconv>
 #include "query_media_data_status_vo.h"
+#include "media_string_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -3248,8 +3249,8 @@ static void GetCreateUriSub(unique_ptr<MediaLibraryAsyncContext> &context, strin
     CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
     bool isValid = false;
     string relativePath = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_RELATIVE_PATH, isValid);
-    if (MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
-        MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
+    if (MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
+        MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
         uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
         MediaLibraryAniUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V9));
         return;
@@ -3380,8 +3381,8 @@ static void SetFileAssetByIdV9(int32_t id, const string &networkId, unique_ptr<M
     fileAsset->SetId(id);
     MediaType mediaType = MediaFileUtils::GetMediaType(displayName);
     string uri;
-    if (MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
-        MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
+    if (MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
+        MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
         uri = MediaFileUtils::GetVirtualUriFromRealUri(MediaFileUri(MediaType::MEDIA_TYPE_FILE,
             to_string(id), networkId, MEDIA_API_VERSION_V9).ToString());
         relativePath = MediaFileUtils::RemoveDocsFromRelativePath(relativePath);

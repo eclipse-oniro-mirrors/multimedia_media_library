@@ -27,6 +27,7 @@
 #include "medialibrary_common_utils.h"
 #include "media_file_uri.h"
 #include "medialibrary_data_manager_utils.h"
+#include "media_edit_utils.h"
 
 #define private public
 #include "permission_utils.h"
@@ -196,12 +197,12 @@ static void PhotoFileUtilsTest()
 {
     std::string photoPath = provider->ConsumeBool() ? ROOT_MEDIA_DIR : provider->ConsumeBytesAsString(NUM_BYTES);
     int32_t userId = provider->ConsumeIntegral<int32_t>();
-    Media::PhotoFileUtils::GetEditDataPath(photoPath, userId);
-    Media::PhotoFileUtils::GetEditDataCameraPath(photoPath, userId);
-    Media::PhotoFileUtils::GetEditDataSourcePath(photoPath, userId);
+    Media::MediaEditUtils::GetEditDataPath(photoPath, userId);
+    Media::MediaEditUtils::GetEditDataCameraPath(photoPath, userId);
+    Media::MediaEditUtils::GetEditDataSourcePath(photoPath, userId);
 
     int64_t editTime = provider->ConsumeIntegral<int64_t>();
-    Media::PhotoFileUtils::HasEditData(editTime);
+    Media::MediaEditUtils::HasEditData(editTime);
     bool hasEditDataCamera = provider->ConsumeBool();
     int32_t effectMode = provider->ConsumeIntegral<int32_t>();
     int32_t subtype = provider->ConsumeIntegral<int32_t>();

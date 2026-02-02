@@ -34,6 +34,7 @@
 #include "medialibrary_object_utils.h"
 #include "picture.h"
 #include "image_type.h"
+#include "media_edit_utils.h"
 
 using namespace std;
 
@@ -118,7 +119,7 @@ int32_t FileUtils::SavePicture(int32_t fileId, std::shared_ptr<Media::Picture> &
     }
     tracer.Finish();
     string path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-    string sourcePath = isEdited ? MediaLibraryAssetOperations::GetEditDataSourcePath(path) : path;
+    string sourcePath = isEdited ? MediaEditUtils::GetEditDataSourcePath(path) : path;
     //查询是否编辑 编辑目录下
     string mime_type = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
     resultSet->Close();
@@ -217,7 +218,7 @@ int32_t FileUtils::SaveVideo(const std::string &filePath, bool isEdited)
     string tempPath = filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.'));
     string targetPath = filePath;
     if (isEdited) {
-        targetPath = MediaLibraryAssetOperations::GetEditDataSourcePath(filePath);
+        targetPath = MediaEditUtils::GetEditDataSourcePath(filePath);
     }
 
     if (!IsFileExist(tempPath)) {
@@ -240,7 +241,7 @@ int32_t FileUtils::SaveMovingPhotoVideo(const std::string &filePath, bool isEdit
     string targetPath;
     string videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(filePath);
     string sourceVideoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(
-        MediaLibraryAssetOperations::GetEditDataSourcePath(filePath));
+        MediaEditUtils::GetEditDataSourcePath(filePath));
 
     if (!IsFileExist(tempPath)) {
         MEDIA_ERR_LOG("file not exist: %{public}s", DfxUtils::GetSafePath(tempPath).c_str());
@@ -265,7 +266,7 @@ int32_t FileUtils::SaveMovingPhotoVideo(const std::string &filePath, bool isEdit
         return ret;
     }
 
-    string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(filePath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(filePath);
     if (!isEdited && !isMovingPhotoEffectMode && IsFileExist(editDataCameraPath) && IsFileExist(sourceVideoPath)) {
         ret = MediaLibraryPhotoOperations::AddFiltersToVideoExecute(filePath, false, true);
         MEDIA_INFO_LOG("MediaLibraryPhotoOperations AddFiltersToVideoExecute ret: %{public}d", ret);

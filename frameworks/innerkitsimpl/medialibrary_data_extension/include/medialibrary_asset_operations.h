@@ -106,8 +106,6 @@ public:
     EXPORT static int32_t DeletePermanentlyWithUri(NativeRdb::AbsRdbPredicates &predicates);
     EXPORT static int32_t DeleteNormalPhotoPermanently(std::shared_ptr<FileAsset> &fileAsset,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr);
-    EXPORT static std::string GetEditDataSourcePath(const std::string &path);
-    EXPORT static std::string GetEditDataSourceBackPath(const string& path);
     EXPORT static int32_t GetAlbumIdByPredicates(const std::string &whereClause,
         const std::vector<std::string> &whereArgs);
     EXPORT static int32_t CheckExist(const std::string &path);
@@ -119,7 +117,6 @@ public:
         int32_t &value);
     EXPORT static bool GetStringFromValuesBucket(const NativeRdb::ValuesBucket &values, const std::string &column,
         std::string &value);
-    EXPORT static std::string GetEditDataDirPath(const std::string &path);
     static std::shared_ptr<FileAsset> GetAssetFromResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         const std::vector<std::string> &columns);
     EXPORT static std::shared_ptr<FileAsset> GetFileAssetFromDb(const std::string &column, const std::string &value,
@@ -198,8 +195,6 @@ protected:
     static void ScanFileWithoutAlbumUpdate(const std::string &path, bool isCreateThumbSync, bool isInvalidateThumb,
         bool isForceScan = false, int32_t fileId = 0, std::shared_ptr<Media::Picture> resultPicture = nullptr);
 
-    EXPORT static std::string GetEditDataPath(const std::string &path);
-    EXPORT static std::string GetEditDataCameraPath(const std::string &path);
     static std::string GetAssetCacheDir();
     static std::string GetAssetCompressJsonPath(const std::string &path);
     static int32_t AddOtherBurstIdsToFileIds(std::vector<std::string> &fileIds);

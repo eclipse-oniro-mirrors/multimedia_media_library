@@ -24,6 +24,7 @@
 #include "cloud_media_file_utils.h"
 #include "photo_file_utils.h"
 #include "thumbnail_const.h"
+#include "media_edit_utils.h"
 
 namespace OHOS::Media::CloudSync {
 // LCOV_EXCL_START
@@ -31,8 +32,8 @@ bool CloudMediaAttachmentUtils::AddRawIntoContent(const DownloadAssetData &downl
 {
     bool isAdded = false;
     std::string path = downloadData.path;
-    std::string rawFilePath = PhotoFileUtils::GetEditDataSourcePath(path);
-    std::string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(path);
+    std::string rawFilePath = MediaEditUtils::GetEditDataSourcePath(path);
+    std::string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path);
     MEDIA_INFO_LOG("download rawFilePath %{public}s", rawFilePath.c_str());
     MEDIA_INFO_LOG("download editDataCameraPath %{public}s", editDataCameraPath.c_str());
     bool hasEditDataCamera = (!editDataCameraPath.empty() && access(editDataCameraPath.c_str(), F_OK) == 0);
@@ -70,13 +71,13 @@ bool CloudMediaAttachmentUtils::AddEditDataIntoContent(const DownloadAssetData &
 {
     bool isAdded = false;
     std::string path = downloadData.path;
-    std::string rawFilePath = PhotoFileUtils::GetEditDataSourcePath(path);
-    std::string editDataPath = PhotoFileUtils::GetEditDataPath(path);
-    std::string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(path);
+    std::string rawFilePath = MediaEditUtils::GetEditDataSourcePath(path);
+    std::string editDataPath = MediaEditUtils::GetEditDataPath(path);
+    std::string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path);
     MEDIA_INFO_LOG("download rawFilePath %{public}s", rawFilePath.c_str());
     MEDIA_INFO_LOG("download editDataPath %{public}s", editDataPath.c_str());
     MEDIA_INFO_LOG("download editDataCameraPath %{public}s", editDataCameraPath.c_str());
-    bool isValid = PhotoFileUtils::HasEditData(downloadData.editTime) && access(editDataPath.c_str(), F_OK) != 0;
+    bool isValid = MediaEditUtils::HasEditData(downloadData.editTime) && access(editDataPath.c_str(), F_OK) != 0;
     if (!isValid) {
         return isAdded;
     }
@@ -118,14 +119,14 @@ int32_t CloudMediaAttachmentUtils::GetContent(
 
     bool added = false;
     added = CloudMediaAttachmentUtils::AddRawIntoContent(downloadData, photosDto);
-    if (PhotoFileUtils::HasEditData(downloadData.editTime)) {
+    if (MediaEditUtils::HasEditData(downloadData.editTime)) {
         bool editAdded = CloudMediaAttachmentUtils::AddEditDataIntoContent(downloadData, photosDto);
         added = added || editAdded;
     }
     if (added) {
         std::string parentPath;
         std::string parentName;
-        std::string rawFilePath = PhotoFileUtils::GetEditDataSourcePath(downloadData.path);
+        std::string rawFilePath = MediaEditUtils::GetEditDataSourcePath(downloadData.path);
         CHECK_AND_RETURN_RET_LOG(CloudMediaFileUtils::GetParentPathAndFilename(rawFilePath, parentPath, parentName),
             E_ERR,
             "failed to GetParentPathAndFilename");

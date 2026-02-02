@@ -37,6 +37,7 @@
 #include "thermal_mgr_client.h"
 #endif
 #include "parameters.h"
+#include "media_string_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -793,7 +794,7 @@ int32_t MediaLibraryMetaRecovery::ReadMetadataFromFile(const string &filePath, F
     if (pos != string::npos) {
         mediaFilePath.replace(pos, META_RECOVERY_META_RELATIVE_PATH.length(), META_RECOVERY_PHOTO_RELATIVE_PATH);
     }
-    if (MediaFileUtils::EndsWith(mediaFilePath, META_RECOVERY_META_FILE_SUFFIX)) {
+    if (MediaStringUtils::EndsWith(mediaFilePath, META_RECOVERY_META_FILE_SUFFIX)) {
         mediaFilePath.erase(mediaFilePath.length() - META_RECOVERY_META_FILE_SUFFIX.length());
     }
     fileAsset.SetFilePath(mediaFilePath);

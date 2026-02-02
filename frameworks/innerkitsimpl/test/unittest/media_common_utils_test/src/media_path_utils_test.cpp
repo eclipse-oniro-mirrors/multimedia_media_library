@@ -68,6 +68,5 @@ HWTEST_F(MediaPathUtilsUnitTest, medialib_get_extension_test_001, TestSize.Level
     std::string resutl6 = MediaPathUtils::GetExtension(filePath6);
     EXPECT_EQ(resutl6, "");
 }
-
 } // namespace Media
 } // namespace OHOS

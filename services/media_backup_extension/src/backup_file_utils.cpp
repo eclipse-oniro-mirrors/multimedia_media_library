@@ -36,6 +36,7 @@
 #include "post_proc.h"
 #include "thumbnail_utils.h"
 #include "ohos_account_kits.h"
+#include "media_string_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -655,7 +656,7 @@ std::string BackupFileUtils::GetFileFolderFromPath(const std::string &path, bool
             GarbleFilePath(path, DEFAULT_RESTORE_ID).c_str());
         return "";
     }
-    size_t startPos = MediaFileUtils::StartsWith(path, "/") && !shouldStartWithSlash ? 1 : 0;
+    size_t startPos = MediaStringUtils::StartsWith(path, "/") && !shouldStartWithSlash ? 1 : 0;
     if (startPos >= endPos) {
         MEDIA_ERR_LOG("Failed to obtain file folder because start %{public}zu >= end %{public}zu, path: %{public}s",
             startPos, endPos, GarbleFilePath(path, DEFAULT_RESTORE_ID).c_str());
@@ -678,7 +679,7 @@ bool BackupFileUtils::IsAppTwinData(const std::string &path)
 int32_t BackupFileUtils::GetUserId(const std::string &path)
 {
     int32_t userId = -1;
-    if (!MediaFileUtils::StartsWith(path, INTERNAL_PREFIX)) {
+    if (!MediaStringUtils::StartsWith(path, INTERNAL_PREFIX)) {
         return userId;
     }
     std::string tmpPath = path.substr(INTERNAL_PREFIX.size());

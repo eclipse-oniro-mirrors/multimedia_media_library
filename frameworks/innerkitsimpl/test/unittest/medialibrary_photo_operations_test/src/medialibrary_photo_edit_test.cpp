@@ -50,6 +50,7 @@
 #include "uri.h"
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
+#include "media_edit_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -269,26 +270,21 @@ DataShareValuesBucket GetValuesBucket(int32_t fileId, std::string cacheFileName,
     return valuesBucket;
 }
 
-string GetEditDataDirPath(std::string &path)
-{
-    return ROOT_DIR + ".editData/" + path.substr(ROOT_DIR.length());
-}
-
 bool ValidSourceFile(std::string &path)
 {
-    string sourcePath = GetEditDataDirPath(path) + "/source.jpg";
+    string sourcePath = MediaEditUtils::GetEditDataDir(path) + "/source.jpg";
     return MediaFileUtils::IsFileExists(sourcePath);
 }
 
 bool ValidEditdata(std::string &path)
 {
-    string editdataPath = GetEditDataDirPath(path) + "/editdata";
+    string editdataPath = MediaEditUtils::GetEditDataDir(path) + "/editdata";
     return MediaFileUtils::IsFileExists(editdataPath);
 }
 
 bool ValidEditdataCamera(std::string &path)
 {
-    string editdataCameraPath = GetEditDataDirPath(path) + "/editdata_camera";
+    string editdataCameraPath = MediaEditUtils::GetEditDataDir(path) + "/editdata_camera";
     return MediaFileUtils::IsFileExists(editdataCameraPath);
 }
 

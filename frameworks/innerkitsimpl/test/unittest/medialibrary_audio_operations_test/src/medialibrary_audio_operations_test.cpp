@@ -55,6 +55,7 @@
 #include "transaction.h"
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+#include "media_edit_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -1662,51 +1663,6 @@ HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_013
     auto ret = MediaLibraryAssetOperations::CloseAsset(fileAsset, isCreateThumbSync);
     EXPECT_EQ(ret, E_INVALID_VALUES);
     MEDIA_INFO_LOG("end tdd medialibrary_asset_operations_test_013");
-}
-
-HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_014, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("start tdd medialibrary_asset_operations_test_014");
-    string path;
-    auto ret = MediaLibraryAssetOperations::GetEditDataDirPath(path);
-    EXPECT_EQ(ret, "");
-    MEDIA_INFO_LOG("end tdd medialibrary_asset_operations_test_014");
-}
-
-HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_015, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("start tdd medialibrary_asset_operations_test_015");
-    string path = ROOT_MEDIA_DIR;
-    auto ret = MediaLibraryAssetOperations::GetEditDataDirPath(path);
-    EXPECT_EQ(ret, ROOT_MEDIA_DIR + ".editData/" + path.substr(ROOT_MEDIA_DIR.length()));
-    MEDIA_INFO_LOG("end tdd medialibrary_asset_operations_test_015");
-}
-
-HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_016, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("start tdd medialibrary_asset_operations_test_016");
-    string path;
-    auto ret = MediaLibraryAssetOperations::GetEditDataSourcePath(path);
-    EXPECT_EQ(ret, "");
-    MEDIA_INFO_LOG("end tdd medialibrary_asset_operations_test_016");
-}
-
-HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_017, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("start tdd medialibrary_asset_operations_test_017");
-    string path;
-    auto ret = MediaLibraryAssetOperations::GetEditDataPath(path);
-    EXPECT_EQ(ret, "");
-    MEDIA_INFO_LOG("end tdd medialibrary_asset_operations_test_017");
-}
-
-HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_018, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("start tdd medialibrary_asset_operations_test_018");
-    string path;
-    auto ret = MediaLibraryAssetOperations::GetEditDataCameraPath(path);
-    EXPECT_EQ(ret, "");
-    MEDIA_INFO_LOG("end tdd medialibrary_asset_operations_test_018");
 }
 
 HWTEST_F(MediaLibraryAudioOperationsTest, medialibrary_asset_operations_test_019, TestSize.Level1)

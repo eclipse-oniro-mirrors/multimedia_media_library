@@ -18,6 +18,7 @@
 #include "sendable_photo_access_helper_napi.h"
 
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_smart_album_column.h"
 #include "medialibrary_client_errno.h"
 #include "medialibrary_data_manager.h"
@@ -1628,8 +1629,8 @@ static void GetCreateUri(SendablePhotoAccessHelperAsyncContext *context, string 
 #ifdef MEDIALIBRARY_COMPATIBILITY
         bool isValid = false;
         string relativePath = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_RELATIVE_PATH, isValid);
-        if (MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
-            MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
+        if (MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
+            MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
             uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
             SendableMediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V9));
             return;

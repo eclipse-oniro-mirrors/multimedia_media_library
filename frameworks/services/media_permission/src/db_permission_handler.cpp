@@ -31,6 +31,7 @@
 #include "medialibrary_data_manager.h"
 #include "media_column.h"
 #include "media_audio_column.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -86,12 +87,12 @@ static bool ParseFileIdFromPredicates(const DataShare::DataSharePredicates &pred
 
 static bool ParseInfoFromCmd(MediaLibraryCommand &cmd, string &fileId, int32_t &uriType)
 {
-    if (MediaFileUtils::StartsWith(cmd.GetUri().ToString(), PhotoColumn::PHOTO_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(cmd.GetUri().ToString(), PhotoColumn::PHOTO_URI_PREFIX)) {
         uriType = static_cast<int32_t>(TableType::TYPE_PHOTOS);
         fileId = MediaFileUtils::GetIdFromUri(cmd.GetUri().ToString());
         return true;
     }
-    if (MediaFileUtils::StartsWith(cmd.GetUri().ToString(), AudioColumn::AUDIO_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(cmd.GetUri().ToString(), AudioColumn::AUDIO_URI_PREFIX)) {
         uriType = static_cast<int32_t>(TableType::TYPE_AUDIOS);
         fileId = MediaFileUtils::GetIdFromUri(cmd.GetUri().ToString());
         return true;
@@ -101,13 +102,13 @@ static bool ParseInfoFromCmd(MediaLibraryCommand &cmd, string &fileId, int32_t &
         MEDIA_DEBUG_LOG("DataSharePred is nullptr");
         return false;
     }
-    bool isPhotoType = MediaFileUtils::StartsWith(cmd.GetUri().ToString(), UFM_PHOTO_PREFIX)
-        || MediaFileUtils::StartsWith(cmd.GetUri().ToString(), PATH_PHOTO_PREFIX);
+    bool isPhotoType = MediaStringUtils::StartsWith(cmd.GetUri().ToString(), UFM_PHOTO_PREFIX)
+        || MediaStringUtils::StartsWith(cmd.GetUri().ToString(), PATH_PHOTO_PREFIX);
     if (isPhotoType) {
         uriType = static_cast<int32_t>(TableType::TYPE_PHOTOS);
         return ParseFileIdFromPredicates(cmd.GetDataSharePred(), fileId);
     }
-    if (MediaFileUtils::StartsWith(cmd.GetUri().ToString(), UFM_AUDIO_PREFIX)) {
+    if (MediaStringUtils::StartsWith(cmd.GetUri().ToString(), UFM_AUDIO_PREFIX)) {
         uriType = static_cast<int32_t>(TableType::TYPE_AUDIOS);
         return ParseFileIdFromPredicates(cmd.GetDataSharePred(), fileId);
     }

@@ -19,6 +19,7 @@
 #include "abs_rdb_predicates.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_unistore_manager.h"
@@ -74,7 +75,7 @@ int32_t PhotoMimetypeOperation::UpdateInvalidMimeType()
             std::string fileId = GetStringVal(MediaColumn::MEDIA_ID, resultSet);
             std::string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
             std::string mimeType = MediaFileUtils::GetMimeTypeFromDisplayName(displayName);
-            if (fileId.empty() || mimeType.empty() || !MediaFileUtils::StartsWith(mimeType, PREFIX_IMAGE)) {
+            if (fileId.empty() || mimeType.empty() || !MediaStringUtils::StartsWith(mimeType, PREFIX_IMAGE)) {
                 MEDIA_WARN_LOG("Invalid, fileId: %{public}s, mimeType: %{public}s.", fileId.c_str(), mimeType.c_str());
                 continue;
             }

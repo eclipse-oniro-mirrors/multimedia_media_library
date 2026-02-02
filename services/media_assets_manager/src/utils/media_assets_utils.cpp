@@ -19,13 +19,13 @@
 
 #include "media_log.h"
 #include "media_column.h"
-#include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_file_uri.h"
 
 namespace OHOS::Media {
 std::string MediaAssetsUtils::GetFileId(const std::string &arg)
 {
-    bool isValidPrefix = MediaFileUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX);
+    bool isValidPrefix = MediaStringUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX);
     CHECK_AND_RETURN_RET(isValidPrefix, arg);  // arg is file id
     return MediaFileUri::GetPhotoId(arg);
 }

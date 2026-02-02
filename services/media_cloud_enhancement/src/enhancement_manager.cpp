@@ -40,7 +40,7 @@
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_photo_operations.h"
 #include "mimetype_utils.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #include "image_source.h"
 #include "medialibrary_formmap_operations.h"
 #include "medialibrary_related_system_state_manager.h"
@@ -864,7 +864,7 @@ static std::shared_ptr<Picture> DecodePictureSourcePath(const string &filePath)
 {
     SourceOptions opts;
     uint32_t err = 0;
-    string sourcePath = PhotoFileUtils::GetEditDataSourcePath(filePath);
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(filePath);
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(sourcePath, opts, err);
     CHECK_AND_RETURN_RET_LOG(imageSource != nullptr, nullptr,
         "Decode Picture from filePath failed, CreateImageSource err: %{public}d", err);
@@ -882,10 +882,10 @@ static std::shared_ptr<Picture> DecodePictureSourcePath(const string &filePath)
 
 int32_t EnhancementManager::DoChangeDisplayModeFile(int32_t fileId, const string &filePath)
 {
-    string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(filePath);
-    string editDataSourcePath = PhotoFileUtils::GetEditDataSourcePath(filePath);
-    string editDataSourceBackPath = PhotoFileUtils::GetEditDataSourceBackPath(filePath);
-    string editDataSourceTempPath = PhotoFileUtils::GetEditDataSourceTempPath(filePath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(filePath);
+    string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(filePath);
+    string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(filePath);
+    string editDataSourceTempPath = MediaEditUtils::GetEditDataSourceTempPath(filePath);
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(filePath), E_ERR, "Can not get photo file");
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(editDataSourceBackPath), E_ERR,
         "Can not get source_back file");
@@ -927,7 +927,7 @@ int32_t EnhancementManager::SetCompositeDisplayMode(int32_t fileId, const int32_
     CHECK_AND_RETURN_RET_LOG(result.has_value(), E_DB_FAIL, "Failed to get file path and composite display status");
     auto [filePath, fileStatus, fileCeAvailable] = result.value();
 
-    CHECK_AND_RETURN_RET_LOG(PhotoFileUtils::IsEditDataSourceBackExists(filePath), E_ERR,
+    CHECK_AND_RETURN_RET_LOG(MediaEditUtils::IsEditDataSourceBackExists(filePath), E_ERR,
         "the asset is not a composite photo");
 
     int32_t compositeDisplayStatus = 0;
@@ -1396,9 +1396,9 @@ optional<tuple<string, int32_t, int32_t>> EnhancementManager::QueryCompositePhot
 bool EnhancementManager::SyncDealWithCompositePhoto(const std::string &photoPath)
 {
     // do change composite source_back
-    string editDataTempPath = PhotoFileUtils::GetEditDataTempPath(photoPath);
-    string editDataSourcePath = PhotoFileUtils::GetEditDataSourcePath(photoPath);
-    string editDataSourceBackPath = PhotoFileUtils::GetEditDataSourceBackPath(photoPath);
+    string editDataTempPath = MediaEditUtils::GetEditDataTempPath(photoPath);
+    string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(photoPath);
+    string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(photoPath);
 
     bool isValid = false;
     size_t editDataSourceSize = 0;
@@ -1445,7 +1445,7 @@ pair<int32_t, int32_t> EnhancementManager::SyncDealWithCompositeDisplayStatus(in
     int32_t compositeDisplayStatus = 0;
     int32_t ceAvailable = static_cast<int32_t>(CloudEnhancementAvailableType::NOT_SUPPORT);
     int32_t featureValue = oldCompositeDisplayStatus + static_cast<int32_t>(exchange);
-    string editDataPath = PhotoFileUtils::GetEditDataPath(photoPath);
+    string editDataPath = MediaEditUtils::GetEditDataPath(photoPath);
     bool editDataPathExist = MediaFileUtils::IsFileExists(editDataPath);
     MEDIA_INFO_LOG("oldCompositeDisplayStatus:%{public}d, exchange:%{public}d, editDataPathExist:%{public}d",
         oldCompositeDisplayStatus, static_cast<int32_t>(exchange), static_cast<int32_t>(editDataPathExist));
@@ -1473,8 +1473,8 @@ pair<int32_t, int32_t> EnhancementManager::SyncDealWithCompositeDisplayStatus(in
 bool EnhancementManager::SyncCleanCompositePhoto(const std::string &photoPath)
 {
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
-    string editDataTempPath = PhotoFileUtils::GetEditDataTempPath(photoPath);
-    string editDataSourceBackPath = PhotoFileUtils::GetEditDataSourceBackPath(photoPath);
+    string editDataTempPath = MediaEditUtils::GetEditDataTempPath(photoPath);
+    string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(photoPath);
 
     bool exchange = false;
     if (MediaFileUtils::IsFileExists(editDataTempPath)) {

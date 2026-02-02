@@ -31,4 +31,12 @@ bool MediaStringUtils::StartsWith(const std::string &str, const std::string &pre
 {
     return str.compare(0, prefix.size(), prefix) == 0;
 }
+
+bool MediaStringUtils::EndsWith(const std::string &str, const std::string &suffix)
+{
+    if (str.length() < suffix.length()) {
+        return false;
+    }
+    return str.rfind(suffix) == str.length() - suffix.length();
+}
 } // namespace OHOS::Media

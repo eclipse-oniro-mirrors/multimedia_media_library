@@ -29,7 +29,6 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_kvstore_manager.h"
 #include "photo_album_column.h"
-#include "photo_file_utils.h"
 
 #define private public
 #include "dfx_collector.h"

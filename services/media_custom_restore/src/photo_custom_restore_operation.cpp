@@ -50,6 +50,7 @@
 #include "shooting_mode_column.h"
 #include "userfile_manager_types.h"
 #include "refresh_business_name.h"
+#include "media_edit_utils.h"
 // LCOV_EXCL_START
 using namespace std;
 namespace OHOS::Media {
@@ -552,7 +553,7 @@ int32_t PhotoCustomRestoreOperation::UpdateTlvEditDataSize(const std::string &as
     }
     int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     resultSet->Close();
-    std::string editDir = PhotoFileUtils::GetEditDataDir(assetPath);
+    std::string editDir = MediaEditUtils::GetEditDataDir(assetPath);
     CHECK_AND_RETURN_RET_LOG(!editDir.empty(), E_ERR, "Edit data dir is empty for assetPath: %{public}s",
         DfxUtils::GetSafePath(assetPath).c_str());
     int32_t ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, to_string(fileId), editDir);
@@ -610,18 +611,18 @@ void PhotoCustomRestoreOperation::RestoreTlvRollback(const std::string &assetPat
 {
     MEDIA_INFO_LOG("RestoreTlvRollback begin");
 
-    string sourcePhotoPath = PhotoFileUtils::GetEditDataSourcePath(assetPath);
+    string sourcePhotoPath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(sourcePhotoPath), MediaFileUtils::DeleteFile(sourcePhotoPath));
 
-    string sourceBackPhotoPath = PhotoFileUtils::GetEditDataSourceBackPath(assetPath);
+    string sourceBackPhotoPath = MediaEditUtils::GetEditDataSourceBackPath(assetPath);
     CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(sourceBackPhotoPath),
         MediaFileUtils::DeleteFile(sourceBackPhotoPath));
  
-    string editDataPath = PhotoFileUtils::GetEditDataPath(assetPath);
+    string editDataPath = MediaEditUtils::GetEditDataPath(assetPath);
     CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(editDataPath),
         MediaFileUtils::DeleteFile(editDataPath));
 
-    string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(assetPath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     CHECK_AND_EXECUTE(!MediaFileUtils::IsFileExists(editDataCameraPath),
         MediaFileUtils::DeleteFile(editDataCameraPath));
 
@@ -648,7 +649,7 @@ int32_t PhotoCustomRestoreOperation::HandlePhotoSourceRestore(const string &orig
     const std::string &assetPath)
 {
     MEDIA_INFO_LOG("HandlePhotoSourceRestore start");
-    string targetPath = PhotoFileUtils::GetEditDataSourcePath(assetPath);
+    string targetPath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     int32_t ret = MoveFile(originalSrcPath, targetPath);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Move photo source file failed to %{public}s",
         DfxUtils::GetSafePath(targetPath).c_str());
@@ -694,7 +695,7 @@ int32_t PhotoCustomRestoreOperation::HandlePhotoSourceBackRestore(const std::str
     const std::string &assetPath)
 {
     MEDIA_INFO_LOG("HandlePhotoSourceBackRestore start");
-    std::string targetPath = PhotoFileUtils::GetEditDataSourceBackPath(assetPath);
+    std::string targetPath = MediaEditUtils::GetEditDataSourceBackPath(assetPath);
     int32_t ret = MoveFile(sourceBackSrcPath, targetPath);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Move source back file failed to %{public}s",
         DfxUtils::GetSafePath(targetPath).c_str());
@@ -704,7 +705,7 @@ int32_t PhotoCustomRestoreOperation::HandlePhotoSourceBackRestore(const std::str
 int32_t PhotoCustomRestoreOperation::HandleEditDataRestore(const string &editDataSrcPath, const std::string &assetPath)
 {
     MEDIA_INFO_LOG("HandleEditDataRestore start");
-    string targetPath = PhotoFileUtils::GetEditDataPath(assetPath);
+    string targetPath = MediaEditUtils::GetEditDataPath(assetPath);
     int32_t ret = MoveFile(editDataSrcPath, targetPath);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Move edit data file failed to %{public}s",
         DfxUtils::GetSafePath(targetPath).c_str());
@@ -725,7 +726,7 @@ int32_t PhotoCustomRestoreOperation::HandleEditDataCameraRestore(const string &e
     const std::string &assetPath)
 {
     MEDIA_INFO_LOG("HandleEditDataCameraRestore start");
-    string targetPath = PhotoFileUtils::GetEditDataCameraPath(assetPath);
+    string targetPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     int32_t ret = MoveFile(editDataCameraSrcPath, targetPath);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Move edit camera file failed to %{public}s",
         DfxUtils::GetSafePath(targetPath).c_str());

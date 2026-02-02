@@ -24,6 +24,7 @@
 #include "ffrt_inner.h"
 #include "media_file_utils.h"
 #include "upgrade_restore_task_report.h"
+#include "media_string_utils.h"
 
 namespace OHOS::Media {
 void PhotosDataHandler::OnStart(int32_t sceneCode, const std::string &taskId,
@@ -184,7 +185,7 @@ void PhotosDataHandler::AddToSetVisibleFiles(const PhotosDao::PhotosRowData &dir
 
 bool PhotosDataHandler::IsLocalFileExist(const PhotosDao::PhotosRowData &dirtyFile)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::StartsWith(dirtyFile.data, RESTORE_FILES_CLOUD_DIR), false,
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(dirtyFile.data, RESTORE_FILES_CLOUD_DIR), false,
         "Invalid prefix, path: %{public}s",
         BackupFileUtils::GarbleFilePath(dirtyFile.data, DEFAULT_RESTORE_ID).c_str());
     std::string localPath =

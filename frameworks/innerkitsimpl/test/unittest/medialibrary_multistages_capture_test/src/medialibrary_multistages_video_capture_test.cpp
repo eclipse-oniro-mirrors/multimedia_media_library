@@ -31,6 +31,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "result_set_utils.h"
 #include "process_video_dto.h"
+#include "media_edit_utils.h"
 
 #define private public
 #define protected public
@@ -174,13 +175,6 @@ int32_t GetDirty(int fileId)
     return dirty;
 }
 
-string GetEditDataSourcePath(const string &filePath)
-{
-    string editDataSourcePath =
-        "/storage/cloud/files/.editData/" + filePath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    return editDataSourcePath;
-}
-
 string GetMovingPhotoVideoPath(const string &imagePath)
 {
     size_t splitIndex = imagePath.find_last_of('.');
@@ -321,7 +315,7 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_002, TestSiz
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::photoIdInProcess_.count(videoId), 1);
     EXPECT_EQ(MultiStagesVideoCaptureManager::videoInfoMap_.count(videoId), 1);
     EXPECT_EQ(videoInfo.absSrcFilePath, filePath);
-    EXPECT_EQ(videoInfo.videoPath, GetEditDataSourcePath(filePath));
+    EXPECT_EQ(videoInfo.videoPath, MediaEditUtils::GetEditDataSourcePath(filePath));
     EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
     EXPECT_EQ(GetDirty(fileId), -1);
 
@@ -384,7 +378,7 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_004, TestSiz
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::photoIdInProcess_.count(videoId), 1);
     EXPECT_EQ(MultiStagesVideoCaptureManager::videoInfoMap_.count(videoId), 1);
     EXPECT_EQ(videoInfo.absSrcFilePath, movingPhotoVideoPath);
-    EXPECT_EQ(videoInfo.videoPath, GetEditDataSourcePath(movingPhotoVideoPath));
+    EXPECT_EQ(videoInfo.videoPath, MediaEditUtils::GetEditDataSourcePath(movingPhotoVideoPath));
     EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
     EXPECT_EQ(GetDirty(fileId), -1);
 

@@ -17,10 +17,26 @@
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "media_string_utils.h"
 
 namespace OHOS::Media {
 const char DOT = '.';
 const std::string EMPTY_STRING = "";
+const std::string ROOT_MEDIA_DIR = "/storage/cloud/files";
+
+std::string MediaPathUtils::AppendUserId(const std::string& path, int32_t userId)
+{
+    if (userId < 0 || !MediaStringUtils::StartsWith(path, ROOT_MEDIA_DIR)) {
+        return path;
+    }
+
+    return "/storage/cloud/" + std::to_string(userId) + "/files/" + path.substr(ROOT_MEDIA_DIR.length());
+}
+
+bool MediaPathUtils::CheckPhotoPath(const std::string& photoPath)
+{
+    return photoPath.length() >= ROOT_MEDIA_DIR.length() && MediaStringUtils::StartsWith(photoPath, ROOT_MEDIA_DIR);
+}
 
 std::string MediaPathUtils::GetFileName(const std::string &filePath)
 {

@@ -30,7 +30,7 @@
 #include "mdk_record_photos_data.h"
 #include "media_file_utils.h"
 #include "moving_photo_file_utils.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #include "cloud_report_utils.h"
 #include "nlohmann/json.hpp"
 
@@ -358,7 +358,7 @@ static void DeleteTmpFile(bool needDelete, const std::string &path)
 int32_t CloudFileDataConvert::HandleRawFile(
     std::map<std::string, MDKRecordField> &data, std::string &path, bool isMovingPhoto)
 {
-    std::string rawFilePath = PhotoFileUtils::GetEditDataSourcePath(path, userId_);
+    std::string rawFilePath = MediaEditUtils::GetEditDataSourcePath(path, userId_);
     MEDIA_INFO_LOG("HandleEditData rawFilePath %{public}s", rawFilePath.c_str());
     if (rawFilePath.empty()) {
         return E_OK;
@@ -395,7 +395,7 @@ int32_t CloudFileDataConvert::HandleRawFile(
 int32_t CloudFileDataConvert::HandleEditData(std::map<std::string, MDKRecordField> &data, std::string &path)
 {
     MEDIA_INFO_LOG("enter HandleEditData editDataPath %{public}s", path.c_str());
-    std::string editDataPath = PhotoFileUtils::GetEditDataPath(path, userId_);
+    std::string editDataPath = MediaEditUtils::GetEditDataPath(path, userId_);
     MEDIA_INFO_LOG("HandleEditData editDataPath %{public}s", editDataPath.c_str());
     if (!editDataPath.empty()) {
         MDKAsset content;
@@ -414,7 +414,7 @@ int32_t CloudFileDataConvert::HandleEditData(std::map<std::string, MDKRecordFiel
 int32_t CloudFileDataConvert::HandleEditDataCamera(std::map<std::string, MDKRecordField> &data, std::string &path)
 {
     MEDIA_INFO_LOG("enter HandleEditData editDataPath %{public}s", path.c_str());
-    std::string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(path, userId_);
+    std::string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path, userId_);
 
     // -- editDataCamera as properties, append to FILE_ATTRIBUTES --
     MEDIA_INFO_LOG("HandleEditData editDataCameraPath %{public}s", editDataCameraPath.c_str());

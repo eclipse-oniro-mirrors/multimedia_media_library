@@ -19,6 +19,7 @@
 #include "lake_file_operations.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_rdb_utils.h"
@@ -105,7 +106,7 @@ static int32_t QueryLakeData(const vector<string> &fileIdList, vector<LakeData> 
 
 static bool IsValidLakeStoragePath(const string &storagePath)
 {
-    if (!MediaFileUtils::StartsWith(storagePath, "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/")) {
+    if (!MediaStringUtils::StartsWith(storagePath, "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/")) {
         MEDIA_ERR_LOG("Failed to check storagePath: %{public}s", storagePath.c_str());
         return false;
     }
@@ -137,7 +138,7 @@ static int32_t GetLpath(const string &storagePath, string &lpath)
 
     string dir = storagePath.substr(0, lastSlash);
     string prefix = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
-    if (!MediaFileUtils::StartsWith(dir, prefix)) {
+    if (!MediaStringUtils::StartsWith(dir, prefix)) {
         MEDIA_ERR_LOG("Failed to check storage path: %{public}s", storagePath.c_str());
         return E_ERR;
     }
@@ -170,7 +171,7 @@ static void HandleLakeFileMove(const LakeData &data, unordered_map<int32_t, vect
 
 static void HandleLakeFileRename(AssetAccurateRefresh &refresh, const LakeData &data)
 {
-    if (MediaFileUtils::EndsWith(data.storagePath, data.displayName)) {
+    if (MediaStringUtils::EndsWith(data.storagePath, data.displayName)) {
         return;
     }
 

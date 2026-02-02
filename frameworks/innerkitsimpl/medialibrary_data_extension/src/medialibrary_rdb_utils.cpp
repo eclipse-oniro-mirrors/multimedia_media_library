@@ -43,6 +43,7 @@
 #include "refresh_business_name.h"
 #include "accurate_common_data.h"
 #include "lake_file_operations.h"
+#include "media_string_utils.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -2092,7 +2093,7 @@ int32_t MediaLibraryRdbUtils::UpdateOwnerAlbumId(const shared_ptr<MediaLibraryRd
     for (const auto &value : values) {
         bool isValidNew = false;
         std::string assetUri = value.Get(MediaColumn::MEDIA_ID, isValidNew);
-        CHECK_AND_CONTINUE(MediaFileUtils::StartsWith(assetUri, PhotoColumn::PHOTO_URI_PREFIX));
+        CHECK_AND_CONTINUE(MediaStringUtils::StartsWith(assetUri, PhotoColumn::PHOTO_URI_PREFIX));
         if (!MediaLibraryDataManagerUtils::IsNumber(MediaFileUri::GetPhotoId(assetUri))) {
             MEDIA_INFO_LOG("invalid photo id: %{public}s", MediaFileUri::GetPhotoId(assetUri).c_str());
             continue;

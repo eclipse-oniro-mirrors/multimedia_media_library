@@ -211,14 +211,7 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, BackUpEditDataSourcePath_Test02, TestSi
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, CommonPath_Test, TestSize.Level1)
 {
-    EXPECT_EQ(CloudMediaSyncUtils::GetEditDataDir(""), "");
-    string result = CloudMediaSyncUtils::GetEditDataDir("/storage/cloud/files/user/test");
-    EXPECT_EQ(result, "/storage/cloud/files/.editData/user/test");
-
-    EXPECT_EQ(CloudMediaSyncUtils::GetEditDataPath(""), "");
-    EXPECT_EQ(CloudMediaSyncUtils::GetEditDataPath("/storage/cloud/files/user/test"),
-              "/storage/cloud/files/.editData/user/test/editdata");
-
+    string result = "";
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath(""), "");
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath("test"), "");
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath(".test"), ".mp4");

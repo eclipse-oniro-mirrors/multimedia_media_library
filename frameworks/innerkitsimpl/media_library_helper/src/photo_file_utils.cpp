@@ -26,107 +26,12 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_type_const.h"
+#include "media_path_utils.h"
+#include "media_string_utils.h"
 
 using namespace std;
 
 namespace OHOS::Media {
-string PhotoFileUtils::AppendUserId(const string& path, int32_t userId)
-{
-    if (userId < 0 || !MediaFileUtils::StartsWith(path, ROOT_MEDIA_DIR)) {
-        return path;
-    }
-
-    return "/storage/cloud/" + to_string(userId) + "/files/" + path.substr(ROOT_MEDIA_DIR.length());
-}
-
-static bool CheckPhotoPath(const string& photoPath)
-{
-    return photoPath.length() >= ROOT_MEDIA_DIR.length() && MediaFileUtils::StartsWith(photoPath, ROOT_MEDIA_DIR);
-}
-
-string PhotoFileUtils::GetEditDataDir(const string& photoPath, int32_t userId)
-{
-    if (!CheckPhotoPath(photoPath)) {
-        return "";
-    }
-
-    return AppendUserId(MEDIA_EDIT_DATA_DIR, userId) + photoPath.substr(ROOT_MEDIA_DIR.length());
-}
-
-string PhotoFileUtils::GetEditDataPath(const string& photoPath, int32_t userId)
-{
-    string parentPath = GetEditDataDir(photoPath, userId);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/editdata";
-}
-
-string PhotoFileUtils::GetEditDataCameraPath(const string& photoPath, int32_t userId)
-{
-    string parentPath = GetEditDataDir(photoPath, userId);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/editdata_camera";
-}
-
-string PhotoFileUtils::GetTransCodePath(const string& photoPath, int32_t userId)
-{
-    string parentPath = GetEditDataDir(photoPath, userId);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/transcode.jpg";
-}
-
-string PhotoFileUtils::GetEditDataSourcePath(const string& photoPath, int32_t userId)
-{
-    string parentPath = GetEditDataDir(photoPath, userId);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/source." + MediaFileUtils::GetExtensionFromPath(photoPath);
-}
-
-string PhotoFileUtils::GetEditDataSourceBackPath(const string& photoPath, int32_t userId)
-{
-    string parentPath = GetEditDataDir(photoPath, userId);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/source_back." + MediaFileUtils::GetExtensionFromPath(photoPath);
-}
-
-string PhotoFileUtils::GetEditDataTempPath(const string &photoPath, int32_t userId)
-{
-    string parentPath = GetEditDataDir(photoPath, userId);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/photo_temp." + MediaFileUtils::GetExtensionFromPath(photoPath);
-}
-
-string PhotoFileUtils::GetEditDataSourceTempPath(const string& photoPath, int32_t userId)
-{
-    string parentPath = GetEditDataDir(photoPath, userId);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/source_temp." + MediaFileUtils::GetExtensionFromPath(photoPath);
-}
-
-bool PhotoFileUtils::IsEditDataSourceBackExists(const std::string &photoPath, int32_t userId)
-{
-    string editDataSourceBackPath = GetEditDataSourceBackPath(photoPath);
-    return MediaFileUtils::IsFileExists(editDataSourceBackPath);
-}
-
-bool PhotoFileUtils::HasEditData(int64_t editTime)
-{
-    return editTime > 0;
-}
-
 bool PhotoFileUtils::HasSource(bool hasEditDataCamera, int64_t editTime, int32_t effectMode, int32_t subtype)
 {
     return hasEditDataCamera || editTime > 0 ||
@@ -167,15 +72,16 @@ string PhotoFileUtils::GetMetaDataRealPath(const string &photoPath, int32_t user
     if (ret != E_OK) {
         return "";
     }
-    return AppendUserId(ROOT_MEDIA_DIR, userId) + metaPath.substr(ROOT_MEDIA_DIR.length());
+    return MediaPathUtils::AppendUserId(ROOT_MEDIA_DIR, userId) + metaPath.substr(ROOT_MEDIA_DIR.length());
 }
 
 string PhotoFileUtils::GetThumbDir(const string &photoPath, int32_t userId)
 {
-    if (!CheckPhotoPath(photoPath)) {
+    if (!MediaPathUtils::CheckPhotoPath(photoPath)) {
         return "";
     }
-    return AppendUserId(ROOT_MEDIA_DIR, userId) + ".thumbs/" + photoPath.substr(ROOT_MEDIA_DIR.length());
+    return MediaPathUtils::AppendUserId(
+        ROOT_MEDIA_DIR, userId) + ".thumbs/" + photoPath.substr(ROOT_MEDIA_DIR.length());
 }
 
 string PhotoFileUtils::GetLCDPath(const string &photoPath, int32_t userId)
@@ -327,7 +233,7 @@ int64_t PhotoFileUtils::NormalizeTimestamp(int64_t timestamp, int64_t fallbackVa
 string PhotoFileUtils::GetAbsoluteLakePath(const std::string &storagePath, int32_t userId)
 {
     string lakeDir = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/";
-    if (!MediaFileUtils::StartsWith(storagePath, lakeDir)) {
+    if (!MediaStringUtils::StartsWith(storagePath, lakeDir)) {
         MEDIA_INFO_LOG("Failed to check storagePath: %{public}s", storagePath.c_str());
         return "";
     }

@@ -22,7 +22,7 @@
 #include "preferences_helper.h"
 #include "dfx_utils.h"
 #include "media_file_utils.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -135,7 +135,7 @@ void MediaFileManagerTempFileAgingTask::DeleteTempFiles(std::shared_ptr<MediaLib
         CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(path),
             "Failed to delete temp file path: %{public}s, errno: %{public}d",
             DfxUtils::GetSafePath(path).c_str(), errno);
-        std::string editDataPath = PhotoFileUtils::GetEditDataPath(path);
+        std::string editDataPath = MediaEditUtils::GetEditDataPath(path);
         if (MediaFileUtils::IsFileExists(editDataPath)) {
             CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(editDataPath),
                 "Failed to delete edit data path: %{public}s, errno: %{public}d",

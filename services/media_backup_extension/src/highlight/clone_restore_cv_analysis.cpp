@@ -22,6 +22,7 @@
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "upgrade_restore_task_report.h"
+#include "media_string_utils.h"
 
 namespace OHOS::Media {
 const int32_t PAGE_SIZE = 200;
@@ -213,9 +214,9 @@ void CloneRestoreCVAnalysis::ProcessEffectVideoUri(nlohmann::json &effectlineInf
     CHECK_AND_RETURN(effectlineInfo.is_object());
     CHECK_AND_RETURN(effectlineInfo.contains("effectVideoUri") && effectlineInfo["effectVideoUri"].is_string());
     std::string oldEffectVideoUri = effectlineInfo["effectVideoUri"];
-    if (MediaFileUtils::StartsWith(oldEffectVideoUri, PHOTO_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(oldEffectVideoUri, PHOTO_URI_PREFIX)) {
         effectlineInfo["effectVideoUri"] = GetNewPhotoUriByUri(oldEffectVideoUri, cloneHighlight);
-    } else if (MediaFileUtils::StartsWith(oldEffectVideoUri, HIGHLIGHT_ASSET_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(oldEffectVideoUri, HIGHLIGHT_ASSET_URI_PREFIX)) {
         effectlineInfo["effectVideoUri"] = GetNewEffectVideoUri(oldEffectVideoUri, cloneHighlight);
     }
 }

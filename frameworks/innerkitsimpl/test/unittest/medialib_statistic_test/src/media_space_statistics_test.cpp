@@ -31,6 +31,7 @@
 #include "userfilemgr_uri.h"
 #include "media_file_uri.h"
 #include "data_secondary_directory_uri.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS;
@@ -314,10 +315,10 @@ void CreateFile(std::string baseURI, std::string targetPath, std::string newName
     }
 
     string abilityUri = Media::MEDIALIBRARY_DATA_URI;
-    if (MediaFileUtils::StartsWith(targetPath, "Pictures/") ||
-        MediaFileUtils::StartsWith(targetPath, "Videos/")) {
+    if (MediaStringUtils::StartsWith(targetPath, "Pictures/") ||
+        MediaStringUtils::StartsWith(targetPath, "Videos/")) {
         abilityUri += string(CONST_MEDIA_PHOTOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
-    } else if (MediaFileUtils::StartsWith(targetPath, "Audios/")) {
+    } else if (MediaStringUtils::StartsWith(targetPath, "Audios/")) {
         abilityUri += string(CONST_MEDIA_AUDIOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     } else {
         abilityUri += string(CONST_MEDIA_FILEOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
@@ -357,10 +358,10 @@ void CopyFile(std::string srcUri, std::string baseURI, std::string targetPath, s
     ASSERT_GT(srcFd, 0);
 
     string abilityUri = Media::MEDIALIBRARY_DATA_URI;
-    if (MediaFileUtils::StartsWith(targetPath, "Pictures/") ||
-        MediaFileUtils::StartsWith(targetPath, "Videos/")) {
+    if (MediaStringUtils::StartsWith(targetPath, "Pictures/") ||
+        MediaStringUtils::StartsWith(targetPath, "Videos/")) {
         abilityUri += string(CONST_MEDIA_PHOTOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
-    } else if (MediaFileUtils::StartsWith(targetPath, "Audios/")) {
+    } else if (MediaStringUtils::StartsWith(targetPath, "Audios/")) {
         abilityUri += string(CONST_MEDIA_AUDIOOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
     } else {
         abilityUri += string(CONST_MEDIA_FILEOPRN) + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;

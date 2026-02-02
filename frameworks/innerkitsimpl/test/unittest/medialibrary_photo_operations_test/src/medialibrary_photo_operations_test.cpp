@@ -4223,18 +4223,6 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_query_moving_photo_video_re
     EXPECT_EQ(ready, 0);
 }
 
-HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_get_transcode_path_001, TestSize.Level2)
-{
-    string photoPath = "/storage/cloud/files/Photo/1/photo.heif";
-    EXPECT_EQ(MediaLibraryTranscodeDataAgingOperation::GetTransCodePath(photoPath),
-        "/storage/cloud/files/.editData/Photo/1/photo.heif/transcode.jpg");
-}
-
-HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_get_transcode_path_002, TestSize.Level2)
-{
-    string photoPath = "";
-    EXPECT_EQ(MediaLibraryTranscodeDataAgingOperation::GetTransCodePath(photoPath), "");
-}
 //test error case
 HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_delete_transCode_info_test_001, TestSize.Level2)
 {

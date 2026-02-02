@@ -34,7 +34,7 @@
 #include "medialibrary_errno.h"
 #include "on_fetch_records_vo.h"
 #include "photos_dto.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #include "result_set_utils.h"
 #include "medialibrary_asset_operations.h"
 #include "scanner_utils.h"
@@ -147,7 +147,7 @@ void CloudMediaPhotosService::ExtractEditDataCamera(const CloudMediaPullDataDto 
     std::string editDataCamera = pullData.attributesEditDataCamera;
     CHECK_AND_RETURN(!editDataCamera.empty());
 
-    std::string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(pullData.localPath);
+    std::string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(pullData.localPath);
     MEDIA_INFO_LOG("editDataCameraPath: %{public}s , editDataCamera: %{public}s",
         editDataCameraPath.c_str(),
         editDataCamera.c_str());
@@ -186,7 +186,7 @@ int32_t CloudMediaPhotosService::ClearLocalData(const CloudMediaPullDataDto &pul
         CloudMediaSyncUtils::RemoveEditDataPath(pullData.localPath);
         // for cloud enhancement composite photo
         if (CloudMediaSyncUtils::IsCloudEnhancementSupported() &&
-            PhotoFileUtils::IsEditDataSourceBackExists(pullData.localPath)) {
+            MediaEditUtils::IsEditDataSourceBackExists(pullData.localPath)) {
             CloudMediaSyncUtils::BackUpEditDataSourcePath(pullData.localPath);
         }
         CloudMediaSyncUtils::RemoveEditDataSourcePath(pullData.localPath);

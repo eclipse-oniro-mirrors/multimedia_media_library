@@ -51,6 +51,7 @@
 
 #include "lake_file_operations.h"
 #include "photo_album_upload_status_operation.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -2071,7 +2072,7 @@ void DealWithHighlightSdTable(const DataSharePredicates &predicates)
     vector<string> whereIdArgs;
     whereIdArgs.reserve(whereUriArgs.size());
     for (const auto &arg : whereUriArgs) {
-        if (!MediaFileUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX)) {
             continue;
         }
         whereIdArgs.push_back(MediaFileUri::GetPhotoId(arg));

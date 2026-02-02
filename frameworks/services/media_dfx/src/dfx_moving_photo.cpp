@@ -23,7 +23,7 @@
 #include "media_log.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_subscriber.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #include "preferences_helper.h"
 #include "result_set_utils.h"
 
@@ -121,9 +121,9 @@ void DfxMovingPhoto::StatisticsMovingPhotos(
 
         const uint8_t isCloud = position == PhotoPositionType::LOCAL_AND_CLOUD ? 1 : 0;
         const uint8_t hasEditData =
-            MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataPath(photoInfo.path)) ? 1 : 0;
+            MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataPath(photoInfo.path)) ? 1 : 0;
         const uint8_t hasEditDataCamera =
-            MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataCameraPath(photoInfo.path)) ? 1 : 0;
+            MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataCameraPath(photoInfo.path)) ? 1 : 0;
 
         const uint8_t stateFlags = (hasEditDataCamera << 2) | (hasEditData << 1) | isCloud;
         switch (stateFlags) {

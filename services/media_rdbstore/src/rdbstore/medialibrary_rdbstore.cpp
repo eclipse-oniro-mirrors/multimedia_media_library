@@ -71,6 +71,8 @@
 #include "download_resources_column.h"
 #include "tab_cloned_old_photos_table_event_handler.h"
 #include "media_audio_column.h"
+#include "media_edit_utils.h"
+#include "media_string_utils.h"
 
 
 using namespace std;
@@ -1003,8 +1005,8 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::QueryEditDataExists(
 
     string photoPath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
 
-    cond = MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataPath(photoPath)) ||
-        MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataCameraPath(photoPath));
+    cond = MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataPath(photoPath)) ||
+        MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataCameraPath(photoPath));
     CHECK_AND_RETURN_RET(!cond,
         MediaLibraryRdbStore::GetRaw()->QuerySql("SELECT 1 AS hasEditData"));
     return MediaLibraryRdbStore::GetRaw()->QuerySql("SELECT 0 AS hasEditData");
@@ -1336,7 +1338,7 @@ void MediaLibraryRdbStore::ReplacePredicatesUriToId(AbsRdbPredicates &predicates
     vector<string> whereIdArgs;
     whereIdArgs.reserve(whereUriArgs.size());
     for (const auto &arg : whereUriArgs) {
-        if (!MediaFileUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX)) {
             whereIdArgs.push_back(arg);
             continue;
         }

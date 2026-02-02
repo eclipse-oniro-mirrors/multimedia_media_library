@@ -48,6 +48,7 @@
 #include "image_source.h"
 #include "image_packer.h"
 #include "media_audio_column.h"
+#include "media_string_utils.h"
 
 using namespace std;
 // LCOV_EXCL_START
@@ -1899,19 +1900,6 @@ bool MediaFileUtils::IsPhotoTablePath(const string &path)
     return false;
 }
 
-bool MediaFileUtils::StartsWith(const std::string &str, const std::string &prefix)
-{
-    return str.compare(0, prefix.size(), prefix) == 0;
-}
-
-bool MediaFileUtils::EndsWith(const std::string &str, const std::string &suffix)
-{
-    if (str.length() < suffix.length()) {
-        return false;
-    }
-    return str.rfind(suffix) == str.length() - suffix.length();
-}
-
 void MediaFileUtils::ReplaceAll(std::string &str, const std::string &from, const std::string &to)
 {
     size_t startPos = 0;
@@ -1994,8 +1982,8 @@ string MediaFileUtils::Encode(const string &uri)
 
 string MediaFileUtils::AddDocsToRelativePath(const string &relativePath)
 {
-    if (MediaFileUtils::StartsWith(relativePath, DOC_DIR_VALUES) ||
-        MediaFileUtils::StartsWith(relativePath, DOWNLOAD_DIR_VALUES)) {
+    if (MediaStringUtils::StartsWith(relativePath, DOC_DIR_VALUES) ||
+        MediaStringUtils::StartsWith(relativePath, DOWNLOAD_DIR_VALUES)) {
         return DOCS_PATH + relativePath;
     }
     return relativePath;
@@ -2003,7 +1991,7 @@ string MediaFileUtils::AddDocsToRelativePath(const string &relativePath)
 
 string MediaFileUtils::RemoveDocsFromRelativePath(const string &relativePath)
 {
-    if (MediaFileUtils::StartsWith(relativePath, DOCS_PATH)) {
+    if (MediaStringUtils::StartsWith(relativePath, DOCS_PATH)) {
         return relativePath.substr(DOCS_PATH.size());
     }
     return relativePath;

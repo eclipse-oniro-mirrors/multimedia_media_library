@@ -19,7 +19,7 @@
 #include <regex>
 
 #include "medialibrary_errno.h"
-#include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "userfile_client.h"
 #include "userfilemgr_uri.h"
@@ -49,7 +49,7 @@ bool MediatoolCommandUtils::CheckAndReformatPathParam(const std::string& inputPa
 {
     const string basePath = "/storage/media/local/files/Photo";
 
-    if (MediaFileUtils::StartsWith(inputPath, basePath)) {
+    if (MediaStringUtils::StartsWith(inputPath, basePath)) {
         reformattedPath = inputPath;
         return true;
     }
@@ -63,7 +63,7 @@ bool MediatoolCommandUtils::CheckAndReformatPathParam(const std::string& inputPa
 
     const string allowedBaseUIDPath = "/storage/media/" + activeUserId + "/local/files/Photo";
 
-    if (MediaFileUtils::StartsWith(inputPath, allowedBaseUIDPath)) {
+    if (MediaStringUtils::StartsWith(inputPath, allowedBaseUIDPath)) {
         // reformat "/storage/media/xxx/local/files/Photo" into "/storage/media/local/files/Photo"
         string extendedPath = inputPath.substr(allowedBaseUIDPath.length());
         reformattedPath = basePath + extendedPath;

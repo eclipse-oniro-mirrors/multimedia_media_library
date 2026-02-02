@@ -30,6 +30,8 @@
 #include "album_accurate_refresh.h"
 #include "refresh_business_name.h"
 #include "medialibrary_rdb_utils.h"
+#include "media_edit_utils.h"
+
 using namespace std;
 namespace OHOS::Media {
 constexpr int64_t INVALID_SIZE = 0;
@@ -163,9 +165,9 @@ void MediaLibraryPtpOperations::GetMovingPhotoExternalInfo(ExternalInfo &exInfo,
 void MediaLibraryPtpOperations::GetEditPhotoExternalInfo(ExternalInfo &exInfo, vector<string> &attachment)
 {
     CHECK_AND_RETURN_LOG(exInfo.editTime != 0, "editTime is zero");
-    exInfo.editDataPath = PhotoFileUtils::GetEditDataPath(exInfo.path);
-    exInfo.editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(exInfo.path);
-    exInfo.editDataSourcePath = PhotoFileUtils::GetEditDataSourcePath(exInfo.path);
+    exInfo.editDataPath = MediaEditUtils::GetEditDataPath(exInfo.path);
+    exInfo.editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(exInfo.path);
+    exInfo.editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(exInfo.path);
     PushMovingPhotoExternalPath(exInfo.editDataPath, "editDataPath", attachment);
     PushMovingPhotoExternalPath(exInfo.editDataCameraPath, "editDataCameraPath", attachment);
     PushMovingPhotoExternalPath(exInfo.editDataSourcePath, "editDataSourcePath", attachment);

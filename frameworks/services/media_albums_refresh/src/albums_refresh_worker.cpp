@@ -19,7 +19,8 @@
 
 #include "media_log.h"
 #include "media_column.h"
-#include "media_file_utils.h"
+#include "media_string_utils.h"
+#include "media_time_utils.h"
 #include "medialibrary_errno.h"
 #include "albums_refresh_manager.h"
 #include "cloud_album_handler.h"
@@ -93,7 +94,7 @@ static string extractIdByPhotoUriString(const string &input)
     }
     out.replace(pos, prefix.length(), "");
     // 全量排查验证cloudsync uri解析
-    if (MediaFileUtils::EndsWith(out, "/meta") || MediaFileUtils::EndsWith(out, "/asset")) {
+    if (MediaStringUtils::EndsWith(out, "/meta") || MediaStringUtils::EndsWith(out, "/asset")) {
         size_t lastSlashPos = out.find_last_of('/');
         out = out.substr(0, lastSlashPos);
     }
@@ -211,7 +212,7 @@ void AlbumsRefreshWorker::TryDeleteAlbum(SyncNotifyInfo &info, std::vector<std::
 void AlbumsRefreshWorker::TaskExecute(SyncNotifyInfo &info)
 {
     if (info.taskType == TIME_END_SYNC) {
-        VariantMap map = {{KEY_END_DOWNLOAD_TIME, MediaFileUtils::UTCTimeMilliSeconds()}};
+        VariantMap map = {{KEY_END_DOWNLOAD_TIME, MediaTimeUtils::UTCTimeMilliSeconds()}};
         PostEventUtils::GetInstance().UpdateCloudDownloadSyncStat(map);
         PostEventUtils::GetInstance().PostCloudDownloadSyncStat(info.syncId);
     }

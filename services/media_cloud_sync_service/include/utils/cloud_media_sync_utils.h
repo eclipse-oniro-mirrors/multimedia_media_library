@@ -56,12 +56,8 @@ public:
     static std::string GetLpath(const CloudMediaPullDataDto &pullData);
     static std::string GetMovingPhotoExtraDataDir(const std::string &localPath);
     static std::string GetMovingPhotoExtraDataPath(const std::string &localPath);
-    static std::string GetEditDataDir(const std::string &localPath);
-    static std::string GetEditDataPath(const std::string &localPath);
-    static std::string GetTransCodePath(const std::string &localPath);
     static std::string GetMovingPhotoVideoPath(const std::string &localPath);
     static std::string GetMovingPhotoTmpPath(const std::string &localPath);
-    static std::string GetEditDataSourcePath(const std::string& photoPath);
     static std::string GetSourceMovingPhotoImagePath(const std::string& photoPath);
     static std::string GetSourceMovingPhotoVideoPath(const std::string& photoPath);
     static bool IsMovingPhoto(const PhotosPo &photosPo);

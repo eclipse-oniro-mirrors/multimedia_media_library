@@ -26,6 +26,8 @@
 #include "result_set_utils.h"
 #include "upgrade_restore_task_report.h"
 #include "media_values_bucket_utils.h"
+#include "media_string_utils.h"
+#include "media_time_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -176,7 +178,7 @@ void CloudBackupRestore::SetTimeInfo(const std::unique_ptr<Metadata> &data, File
     info.firstUpdateTime = info.firstUpdateTime > 0 ? info.firstUpdateTime : info.dateModified;
 
     info.firstUpdateTime =
-        PhotoFileUtils::NormalizeTimestamp(info.firstUpdateTime, MediaFileUtils::UTCTimeMilliSeconds());
+        PhotoFileUtils::NormalizeTimestamp(info.firstUpdateTime, MediaTimeUtils::UTCTimeMilliSeconds());
     info.dateModified = PhotoFileUtils::NormalizeTimestamp(info.dateModified, info.firstUpdateTime);
     info.dateTaken = PhotoFileUtils::NormalizeTimestamp(info.dateTaken, min(info.firstUpdateTime, info.dateModified));
 
@@ -206,7 +208,7 @@ void CloudBackupRestore::InsertPhotoRelated(std::vector<FileInfo> &fileInfos, in
 bool CloudBackupRestore::ConvertPathToRealPath(const std::string &srcPath, const std::string &prefix,
     std::string &newPath, std::string &relativePath, FileInfo &fileInfo)
 {
-    if (MediaFileUtils::StartsWith(srcPath, INTERNAL_PREFIX)) {
+    if (MediaStringUtils::StartsWith(srcPath, INTERNAL_PREFIX)) {
         return UpgradeRestore::ConvertPathToRealPath(srcPath, prefix, newPath, relativePath);
     }
     size_t pos = 0;

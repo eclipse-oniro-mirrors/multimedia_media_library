@@ -22,11 +22,12 @@
 #include <safe_map.h>
 
 #include "backup_const_column.h"
-#include "media_file_utils.h"
 #include "media_log.h"
 #include "vision_video_total_column.h"
 #include "vision_image_face_column.h"
 #include "vision_column_comm.h"
+#include "media_string_utils.h"
+#include "media_time_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -432,7 +433,7 @@ bool BackupDatabaseUtils::SetTagIdNew(FaceInfo &faceInfo, const std::unordered_m
         return true;
     }
     faceInfo.tagIdNew = tagIdMap.at(faceInfo.tagIdOld);
-    bool cond = (faceInfo.tagIdNew.empty() || !MediaFileUtils::StartsWith(faceInfo.tagIdNew, TAG_ID_PREFIX));
+    bool cond = (faceInfo.tagIdNew.empty() || !MediaStringUtils::StartsWith(faceInfo.tagIdNew, TAG_ID_PREFIX));
     CHECK_AND_RETURN_RET_LOG(!cond, false,
         "Set new tag_id for face %{public}s failed, new tag_id %{public}s empty or invalid",
         faceInfo.tagIdNew.c_str(), faceInfo.faceId.c_str());
@@ -454,7 +455,7 @@ bool BackupDatabaseUtils::SetAlbumIdNew(FaceInfo &faceInfo, const std::unordered
 
 void BackupDatabaseUtils::PrintErrorLog(const std::string &errorLog, int64_t start)
 {
-    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t end = MediaTimeUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("%{public}s, cost %{public}ld", errorLog.c_str(), (long)(end - start));
 }
 

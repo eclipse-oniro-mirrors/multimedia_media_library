@@ -31,6 +31,7 @@
 #include "vision_photo_map_column.h"
 #include "portrait_album_utils.h"
 #include "group_photo_album_restore.h"
+#include "media_string_utils.h"
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -1093,7 +1094,7 @@ bool UpgradeRestore::ConvertPathToRealPath(const std::string &srcPath, const std
 bool UpgradeRestore::ConvertPathToRealPath(const std::string &srcPath, const std::string &prefix,
     std::string &newPath, std::string &relativePath, FileInfo &fileInfo)
 {
-    if (MediaFileUtils::StartsWith(srcPath, INTERNAL_PREFIX)) {
+    if (MediaStringUtils::StartsWith(srcPath, INTERNAL_PREFIX)) {
         return ConvertPathToRealPath(srcPath, prefix, newPath, relativePath);
     }
     size_t pos = 0;
