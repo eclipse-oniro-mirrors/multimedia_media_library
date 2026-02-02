@@ -493,6 +493,7 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_0
     std::string result = "2,0,0,0,0,0";
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
     std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    instance.operation_ = operation;
     operation->taskStatus_ =  CloudMediaAssetTaskStatus::IDLE;
     std::string ret = instance.GetCloudMediaAssetTaskStatus();
     EXPECT_EQ(ret, result);
@@ -797,6 +798,7 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_operation_test
     int32_t ret = operation->InitDownloadTaskInfo();
     EXPECT_EQ(ret, E_OK);
     CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
+    instance.operation_ = operation;
     instance.SetIsThumbnailUpdate();
     ret = operation->InitDownloadTaskInfo();
     EXPECT_EQ(ret, E_ERR);
