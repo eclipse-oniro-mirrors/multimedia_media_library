@@ -398,12 +398,12 @@ int32_t CloudMediaAlbumService::OnCreateRecords(std::vector<PhotoAlbumDto> &albu
             err = this->albumDao_.OnCreateRecord(album);
         } else {
             err = OnRecordFailed(album);
-            failedSize++;
+            failSize++;
         }
         if (err != E_OK) {
             this->albumDao_.InsertAlbumCreateFailedRecord(album.cloudId);
             if (album.isSuccess) {
-                failedSize++;
+                failSize++;
             }
             MEDIA_ERR_LOG("OnCreateRecords create record fail: cloudId %{public}s, err %{public}d",
                 album.cloudId.c_str(), err);
@@ -428,12 +428,12 @@ int32_t CloudMediaAlbumService::OnMdirtyRecords(std::vector<PhotoAlbumDto> &albu
             err = this->albumDao_.OnMdirtyAlbumRecords(album.cloudId);
         } else {
             err = OnRecordFailed(album);
-            failedSize++;
+            failSize++;
         }
         if (err != E_OK) {
             this->albumDao_.InsertAlbumModifyFailedRecord(album.cloudId);
             if (album.isSuccess) {
-                failedSize++;
+                failSize++;
             }
             MEDIA_ERR_LOG("OnMdirtyRecords create record fail: cloudId %{public}s, err %{public}d",
                 album.cloudId.c_str(), err);
