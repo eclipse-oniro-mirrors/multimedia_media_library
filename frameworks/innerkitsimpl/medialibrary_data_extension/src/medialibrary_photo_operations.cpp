@@ -3584,7 +3584,7 @@ void MediaLibraryPhotoOperations::ParseCloudEnhancementEditData(string& editData
         "Failed to verify the editData format, editData is: %{private}s", editData.c_str());
     string editDataJsonStr;
     nlohmann::json jsonObject = nlohmann::json::parse(editData);
-    if (jsonObject.contains(CONST_EDIT_DATA)) {
+    if (jsonObject.contains(CONST_EDIT_DATA) && jsonObject[CONST_EDIT_DATA].is_string()) {
         editDataJsonStr = jsonObject[CONST_EDIT_DATA];
         nlohmann::json editDataJson = nlohmann::json::parse(editDataJsonStr, nullptr, false);
         if (editDataJson.is_discarded()) {
@@ -3681,7 +3681,7 @@ int32_t MediaLibraryPhotoOperations::ReadEditdataFromFile(const std::string &edi
         return E_OK;
     }
     nlohmann::json editdataJson = nlohmann::json::parse(editDataStr);
-    if (editdataJson.contains(CONST_EDIT_DATA)) {
+    if (editdataJson.contains(CONST_EDIT_DATA) && editdataJson[CONST_EDIT_DATA].is_string()) {
         editData = editdataJson[CONST_EDIT_DATA];
     } else {
         editData = editDataStr;
