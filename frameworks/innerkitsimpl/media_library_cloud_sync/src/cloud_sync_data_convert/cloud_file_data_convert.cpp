@@ -348,12 +348,9 @@ std::string CloudFileDataConvert::GetLowerPath(const std::string &path)
 
 static void DeleteTmpFile(bool needDelete, const std::string &path)
 {
-    if (!needDelete) {
-        return;
-    }
-    if (unlink(path.c_str()) < 0) {
-        MEDIA_ERR_LOG("unlink temp file fail, err: %{public}d", errno);
-    }
+    CHECK_AND_RETURN(needDelete);
+    bool isValid = unlink(path.c_str()) >= 0;
+    CHECK_AND_PRINT_LOG(isValid, "unlink temp file fail, err: %{public}d, path: %{public}s", errno, path.c_str());
 }
 
 int32_t CloudFileDataConvert::HandleRawFile(
