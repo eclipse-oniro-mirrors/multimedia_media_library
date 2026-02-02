@@ -383,9 +383,10 @@ static int32_t RequestContentToSandbox(napi_env env, MovingPhotoAsyncContext* co
             int32_t ret = MovingPhotoNapi::DoMovingPhotoTranscode(env, videoFd, context);
             CHECK_COND_RET(ret == E_OK, ret, "moving video transcode failed");
         } else {
-            int32_t position = static_cast<int32_t>(PhotoPositionType::CLOUD) ? MovingPhotoResourceType::CLOUD_VIDEO
-                                                    : MovingPhotoResourceType::DEFAULT;
-            int32_t ret = WriteToSandboxUri(videoFd, context->destVideoUri, context->position == position);
+            int32_t position = context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)
+                                ? MovingPhotoResourceType::CLOUD_VIDEO
+                                : MovingPhotoResourceType::DEFAULT;
+            int32_t ret = WriteToSandboxUri(videoFd, context->destVideoUri, position);
             CHECK_COND_RET(ret == E_OK, ret, "Write video to sandbox failed");
         }
     }

@@ -388,7 +388,7 @@ int32_t CloudMediaDataClientHandler::GetDownloadThms(
 }
 
 int32_t CloudMediaDataClientHandler::OnDownloadThmsInner(
-    std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize)
+    const std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize)
 {
     MEDIA_INFO_LOG("enter CloudMediaDataClientHandler::OnDownloadThmsInner");
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_ON_DOWNLOAD_THMS);
