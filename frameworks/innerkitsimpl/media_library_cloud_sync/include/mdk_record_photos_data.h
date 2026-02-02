@@ -198,45 +198,45 @@ public:  // properties getter & setter - gallery expand fields
     bool hasProperties();
 
 private:
-    static const std::string VALUE_RECORD_TYPE = "album";
+    const std::string VALUE_RECORD_TYPE = "album";
     /* basic */
-    static const std::string KEY_PROPERTIES = "properties";
-    static const std::string KEY_TYPE = "type";
-    static const std::string KEY_ATTRIBUTES = "attributes";
-    static const std::string FILE_LOCAL_ID = "local_id";
-    static const std::string FILE_ID = "file_id";
-    static const std::string FILE_CONTENT = "content";
-    static const std::string FILE_RAW = "raw";
-    static const std::string FILE_THUMBNAIL = "thumbnail";
-    static const std::string FILE_LCD = "lcdThumbnail";
-    static const std::string FILE_EDIT_DATA = "editData";
-    static const std::string FILE_MIME_TYPE = "mimeType";
-    static const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
-    static const std::string KEY_EDIT_TIME_MS = "editedTime_ms";
-    static const std::string KEY_LCD_SIZE = "lcd_size";
-    static const std::string KEY_THUMB_SIZE = "thumb_size";
-    static const std::string KEY_ROTATE = "rotate";
-    static const std::string KEY_POSITION = "position";
-    static const std::string KEY_FILE_TYPE = "fileType";
-    static const std::string KEY_FILE_NAME = "fileName";
-    static const std::string KEY_CREATED_TIME = "createdTime";
-    static const std::string KEY_HASH_ID = "hashId";
-    static const std::string KEY_SIZE = "size";
-    static const std::string KEY_SOURCE = "source";
-    static const std::string KEY_RECYCLED = "recycled";
-    static const std::string KEY_RECYCLED_TIME = "recycledTime";
-    static const std::string KEY_FAVORITE = "favorite";
-    static const std::string KEY_DESCRIPTION = "description";
-    static const std::string KEY_SOURCE_PATH = "sourcePath";
-    static const std::string KEY_SOURCE_FILE_NAME = "sourceFileName";
-    static const std::string KEY_FIRST_UPDATE_TIME = "first_update_time";
-    static const std::string KEY_FILE_CREATE_TIME = "fileCreateTime";
-    static const std::string KEY_DETAIL_TIME = "detail_time";
-    static const std::string KEY_HEIGHT = "height";
-    static const std::string KEY_WIDTH = "width";
+    const std::string KEY_PROPERTIES = "properties";
+    const std::string KEY_TYPE = "type";
+    const std::string KEY_ATTRIBUTES = "attributes";
+    const std::string FILE_LOCAL_ID = "local_id";
+    const std::string FILE_ID = "file_id";
+    const std::string FILE_CONTENT = "content";
+    const std::string FILE_RAW = "raw";
+    const std::string FILE_THUMBNAIL = "thumbnail";
+    const std::string FILE_LCD = "lcdThumbnail";
+    const std::string FILE_EDIT_DATA = "editData";
+    const std::string FILE_MIME_TYPE = "mimeType";
+    const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
+    const std::string KEY_EDIT_TIME_MS = "editedTime_ms";
+    const std::string KEY_LCD_SIZE = "lcd_size";
+    const std::string KEY_THUMB_SIZE = "thumb_size";
+    const std::string KEY_ROTATE = "rotate";
+    const std::string KEY_POSITION = "position";
+    const std::string KEY_FILE_TYPE = "fileType";
+    const std::string KEY_FILE_NAME = "fileName";
+    const std::string KEY_CREATED_TIME = "createdTime";
+    const std::string KEY_HASH_ID = "hashId";
+    const std::string KEY_SIZE = "size";
+    const std::string KEY_SOURCE = "source";
+    const std::string KEY_RECYCLED = "recycled";
+    const std::string KEY_RECYCLED_TIME = "recycledTime";
+    const std::string KEY_FAVORITE = "favorite";
+    const std::string KEY_DESCRIPTION = "description";
+    const std::string KEY_SOURCE_PATH = "sourcePath";
+    const std::string KEY_SOURCE_FILE_NAME = "sourceFileName";
+    const std::string KEY_FIRST_UPDATE_TIME = "first_update_time";
+    const std::string KEY_FILE_CREATE_TIME = "fileCreateTime";
+    const std::string KEY_DETAIL_TIME = "detail_time";
+    const std::string KEY_HEIGHT = "height";
+    const std::string KEY_WIDTH = "width";
 
     /* attributes */
-    static const std::string FILE_FIX_VERSION = "fix_version";
+    const std::string FILE_FIX_VERSION = "fix_version";
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_MDK_RECORD_PHOTOS_DATA_H

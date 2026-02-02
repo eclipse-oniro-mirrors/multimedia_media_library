@@ -61,7 +61,7 @@ private:
 
 private:
     using RequestHandle = int32_t (CloudMediaPhotoControllerService::*)(MessageParcel &, MessageParcel &);
-    static const std::map<uint32_t, RequestHandle> HANDLERS = {
+    const std::map<uint32_t, RequestHandle> HANDLERS = {
         {static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_FETCH_RECORDS),
             &CloudMediaPhotoControllerService::OnFetchRecords},
         {static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_ON_DENTRY_FILE_INSERT),

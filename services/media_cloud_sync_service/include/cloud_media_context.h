@@ -18,6 +18,12 @@
 
 #include <atomic>
 #include <string>
+#include <unordered_map>
+
+#include "ipc_context.h"
+#include "medialibrary_data_manager_utils.h"
+#include "media_log.h"
+#include "media_column.h"
 
 namespace OHOS::Media::CloudSync {
 class CloudMediaContext {

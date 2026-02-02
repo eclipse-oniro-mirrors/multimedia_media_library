@@ -95,19 +95,19 @@ public:  // getter & setter
     void SetCoverCloudId(const std::string &coverCloudId);
 
 private:
-    static const std::string VALUE_RECORD_TYPE = "album";
+    const std::string VALUE_RECORD_TYPE = "album";
     /* basic */
-    static const std::string ALBUM_ID = "albumId";
-    static const std::string ALBUM_LOGIC_TYPE = "logicType";
-    static const std::string ALBUM_LOCAL_PATH = "localPath";
-    static const std::string ALBUM_IS_LOGIC = "isLogic";
-    static const std::string KEY_TYPE = "type";
-    static const std::string KEY_PROPERTIES = "properties";
-    static const std::string KEY_ATTRIBUTES = "attributes";
+    const std::string ALBUM_ID = "albumId";
+    const std::string ALBUM_LOGIC_TYPE = "logicType";
+    const std::string ALBUM_LOCAL_PATH = "localPath";
+    const std::string ALBUM_IS_LOGIC = "isLogic";
+    const std::string KEY_TYPE = "type";
+    const std::string KEY_PROPERTIES = "properties";
+    const std::string KEY_ATTRIBUTES = "attributes";
 
     /* properties */
-    static const std::string ALBUM_NAME = "albumName";
-    static const std::string ALBUM_EMPTY_SHOW = "emptyShow";
+    const std::string ALBUM_NAME = "albumName";
+    const std::string ALBUM_EMPTY_SHOW = "emptyShow";
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_MDK_RECORD_ALBUM_DATA_H

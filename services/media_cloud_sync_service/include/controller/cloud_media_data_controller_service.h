@@ -61,7 +61,7 @@ private:
 
 private:
     using RequestHandle = int32_t (CloudMediaDataControllerService::*)(MessageParcel &, MessageParcel &);
-    static const std::map<uint32_t, RequestHandle> HANDLERS = {
+    const std::map<uint32_t, RequestHandle> HANDLERS = {
         {static_cast<uint32_t>(CloudMediaOperationCode::CMD_UPDATE_DIRTY_FOR_CLOUD_CHECK),
             &CloudMediaDataControllerService::UpdateDirty},
         {static_cast<uint32_t>(CloudMediaOperationCode::CMD_UPDATE_POSITION_FOR_CLOUD_CHECK),

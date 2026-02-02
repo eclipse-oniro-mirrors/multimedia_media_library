@@ -105,7 +105,7 @@ private:
     /* identifier */
     int32_t userId_;
     std::string bundleName_;
-    static const std::string recordType_;
+    const std::string recordType_;
     CloudOperationType type_;
 
     /* path */

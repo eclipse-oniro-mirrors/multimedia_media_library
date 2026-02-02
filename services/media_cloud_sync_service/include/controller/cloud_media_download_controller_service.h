@@ -45,7 +45,7 @@ private:
 
 private:
     using RequestHandle = int32_t (CloudMediaDownloadControllerService::*)(MessageParcel &, MessageParcel &);
-    static const std::map<uint32_t, RequestHandle> HANDLERS = {
+    const std::map<uint32_t, RequestHandle> HANDLERS = {
         {static_cast<uint32_t>(CloudMediaOperationCode::CMD_GET_DOWNLOAD_THM),
             &CloudMediaDownloadControllerService::GetDownloadThms},
         {static_cast<uint32_t>(CloudMediaOperationCode::CMD_GET_DOWNLOAD_THM_NUM),

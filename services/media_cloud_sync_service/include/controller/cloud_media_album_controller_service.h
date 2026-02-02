@@ -53,7 +53,7 @@ private:
 
 private:
     using RequestHandle = int32_t (CloudMediaAlbumControllerService::*)(MessageParcel &, MessageParcel &);
-    static const std::map<uint32_t, RequestHandle> HANDLERS = {
+    const std::map<uint32_t, RequestHandle> HANDLERS = {
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_FETCH_RECORDS),
             &CloudMediaAlbumControllerService::OnFetchRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS),
