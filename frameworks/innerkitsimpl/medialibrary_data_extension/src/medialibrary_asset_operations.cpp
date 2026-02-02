@@ -1643,7 +1643,7 @@ static int32_t CreateFileAndSetPending(const shared_ptr<FileAsset> &fileAsset,
 static int32_t SolvePendingStatus(const shared_ptr<FileAsset> &fileAsset, bool isMovingPhotoVideo, const string &mode)
 {
     int64_t pendingTime = fileAsset->GetTimePending();
-    MEDIA_INFO_LOG("SolvePendingStatus pendingTime : %{public}lld", pendingTime);
+    MEDIA_INFO_LOG("SolvePendingStatus pendingTime : %{public}ld", static_cast<long>(pendingTime));
     if (pendingTime != 0) {
         if (mode == MEDIA_FILEMODE_READONLY) {
             MEDIA_ERR_LOG("FileAsset [%{private}s] pending status is %{public}ld and open mode is READ_ONLY",
