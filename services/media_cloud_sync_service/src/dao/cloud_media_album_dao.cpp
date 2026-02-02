@@ -1047,7 +1047,7 @@ int32_t CloudMediaAlbumDao::ClearAlbumFailedRecords()
 int32_t CloudMediaAlbumDao::ReportAbnormalLocalRecords()
 {
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::PHOTO_POSITION, to_string(static_cast<int32_t>(POSITION_LOCAL)))
+    predicates.EqualTo(PhotoColumn::PHOTO_POSITION, to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)))
         ->And()->EqualTo(PhotoColumn::MEDIA_DATE_TRASHED, "0");
     if (!albumCreateFailSet_.empty()) {
         predicates.And()->NotIn(PhotoColumn::MEDIA_ID, albumCreateFailSet_);

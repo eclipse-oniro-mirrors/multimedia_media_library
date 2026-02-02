@@ -524,7 +524,8 @@ int32_t MediaLibraryPhotoOperations::ProcessMovingPhotoOprnKey(MediaLibraryComma
             E_HAS_FS_ERROR, "Can not create dir for xtstle origin photo");
         fileAsset->SetPath(inputPath);
         isMovingPhotoVideo = true;
-        if (movingPhotoOprnKey == CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD && fileAsset->GetPosition() == POSITION_CLOUD) {
+        if (movingPhotoOprnKey == CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD &&
+            fileAsset->GetPosition() == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
             fileAsset->SetPath(imagePath);
             isMovingPhotoVideo = false;
         }

@@ -293,7 +293,7 @@ void BackgroundCloudFileProcessor::HandleRepairMimeType(const int32_t &lastRecor
                 repairRecord = fileId;
                 continue;
             }
-            if (position == static_cast<int32_t>(POSITION_CLOUD) &&
+            if (position == static_cast<int32_t>(static_cast<int32_t>(PhotoPositionType::CLOUD)) &&
                 !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
                 MEDIA_INFO_LOG("Break repair cause wifi is invalid");
                 terminate = true;
@@ -465,7 +465,7 @@ void BackgroundCloudFileProcessor::ParseDownloadFiles(std::shared_ptr<NativeRdb:
 
         int32_t position =
             get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_POSITION, resultSet, TYPE_INT32));
-        if (position != static_cast<int32_t>(POSITION_CLOUD)) {
+        if (position != static_cast<int32_t>(static_cast<int32_t>(PhotoPositionType::CLOUD))) {
             continue;
         }
         int32_t fileId = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::MEDIA_ID, resultSet, TYPE_INT32));

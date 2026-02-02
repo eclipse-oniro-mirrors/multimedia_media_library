@@ -435,7 +435,7 @@ void BackgroundCloudBatchSelectedFileProcessor::ParseBatchSelectedToDoFiles(
         }
         int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
         // 1表示本地，2表示纯云，3表示本地和云都有
-        if (position != static_cast<int32_t>(POSITION_CLOUD)) {
+        if (position != static_cast<int32_t>(static_cast<int32_t>(PhotoPositionType::CLOUD))) {
             MEDIA_INFO_LOG("BatchSelectFileDownload cloud file invalid position: %{public}d", position);
             localFileIds.push_back(fileId); // 清理任务表记录 已下载的 直接更新为完成状态
             continue;
