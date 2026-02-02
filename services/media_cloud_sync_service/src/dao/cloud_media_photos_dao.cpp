@@ -93,7 +93,7 @@ int32_t CloudMediaPhotosDao::BatchInsertAssetMaps(std::map<std::string, std::set
     }
     std::vector<NativeRdb::ValuesBucket> valuesList;
     for (const auto &it : recordAlbumMaps) {
-        for (auto &photo : photos) {
+        for (const auto &photo : photos) {
             if (it.first != photo.cloudId.value_or("")) {
                 continue;
             }
@@ -133,7 +133,7 @@ int32_t CloudMediaPhotosDao::BatchInsertAssetAnalysisMaps(std::map<std::string, 
     }
     std::vector<NativeRdb::ValuesBucket> batchValues;
     for (const auto &it : recordAnalysisAlbumMaps) {
-        for (auto &photo : photos) {
+        for (const auto &photo : photos) {
             if (it.first != photo.cloudId.value_or("")) {
                 continue;
             }
@@ -989,7 +989,7 @@ int32_t CloudMediaPhotosDao::GetRetryRecords(std::vector<std::string> &cloudIds)
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetRetryRecords Failed to query.");
     int32_t rowCount = 0;
     int32_t ret = resultSet->GetRowCount(rowCount);
-    CHECK_AND_RETURN_RET_LOG((ret == 0 && rowCount >= 0), E_RDB, "GetRetryRecords Failed to Get Count.");
+    CHECK_AND_RETURN_RET_LOG((ret == E_OK && rowCount >= 0), E_RDB, "GetRetryRecords Failed to Get Count.");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         std::string cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
         if (cloudId.empty()) {

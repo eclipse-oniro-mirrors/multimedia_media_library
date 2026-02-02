@@ -90,7 +90,7 @@ std::unordered_map<std::string, CheckData> CloudMediaPhotoControllerProcessor::G
     std::vector<PhotosDto> photosDtoVec)
 {
     std::unordered_map<std::string, GetCheckRecordsRespBodyCheckData> checkDataList;
-    for (auto &photosDto : photosDtoVec) {
+    for (const auto &photosDto : photosDtoVec) {
         GetCheckRecordsRespBodyCheckData checkData;
         checkData.cloudId = photosDto.cloudId;
         checkData.size = photosDto.size;

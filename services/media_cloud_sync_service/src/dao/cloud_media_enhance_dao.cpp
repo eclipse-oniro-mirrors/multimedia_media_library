@@ -45,10 +45,10 @@ int32_t CloudMediaEnhanceDao::GetCloudSyncUnPreparedDataCount(int32_t &result)
     queryPredicates.And()->IsNotNull(PhotoColumn::PHOTO_ID);
     vector<string> queryColums = {"COUNT(1) AS count"};
     auto resultSet = rdbStore->Query(queryPredicates, queryColums);
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("resultSet is null or failed to get row");
-        return E_RDB;
-    }
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+    bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
+    CHECK_AND_EXECUTE(isValid, resultSet->Close());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "failed to get row");
     result = GetInt32Val("count", resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("GetCloudSyncUnPreparedDataCount end %{public}d", result);

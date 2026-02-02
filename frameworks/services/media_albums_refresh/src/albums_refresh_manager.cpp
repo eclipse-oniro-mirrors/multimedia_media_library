@@ -294,7 +294,7 @@ static void RefreshEachPhotoAlbums(const shared_ptr<MediaLibraryRdbStore> rdbSto
     bool notifyAlbums = false;
     bool notifyAssets = false;
     int32_t ret = E_SUCCESS;
-    for (auto photoAlbum : photoAlbums) {
+    for (const auto &photoAlbum : photoAlbums) {
         CHECK_AND_CONTINUE(photoAlbum.albumSubtype > 0);
         PhotoAlbumSubType subtype = static_cast<PhotoAlbumSubType>(photoAlbum.albumSubtype);
         ret = RefreshAlbumInfoAndUris(rdbStore, photoAlbum.albumId, subtype, info);
@@ -392,7 +392,7 @@ static void HandleAllPhotoAlbums(const shared_ptr<MediaLibraryRdbStore> rdbStore
 
     std::vector<string> updateAlbumIds;
     std::vector<string> updateFailedAlbumIds;
-    for (auto photoAlbum : photoAlbums) {
+    for (const auto &photoAlbum : photoAlbums) {
         updateAlbumIds.push_back(to_string(photoAlbum.albumId));
     }
     ret = BatchSetRefreshAlbumStatusInPending(rdbStore, updateAlbumIds, IS_PENDING);
@@ -416,7 +416,7 @@ static void HandleImageAndVideoAlbums(const shared_ptr<MediaLibraryRdbStore> rdb
 
     std::vector<string> updateAlbumIds;
     std::vector<string> updateFailedAlbumIds;
-    for (auto photoAlbum : photoAlbums) {
+    for (const auto &photoAlbum : photoAlbums) {
         updateAlbumIds.push_back(to_string(photoAlbum.albumId));
     }
     ret = BatchSetRefreshAlbumStatusInPending(rdbStore, updateAlbumIds, IS_PENDING);

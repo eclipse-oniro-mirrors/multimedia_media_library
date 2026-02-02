@@ -62,7 +62,7 @@ PhotosDto CloudMediaPhotoServiceProcessor::Parse(const PhotosPo &photosPo)
 std::vector<PhotosDto> CloudMediaPhotoServiceProcessor::GetPhotosDtos(const std::vector<PhotosPo> &photosPos)
 {
     std::vector<PhotosDto> photosDtoList;
-    for (auto &photosPo : photosPos) {
+    for (const auto &photosPo : photosPos) {
         photosDtoList.emplace_back(this->Parse(photosPo));
     }
     return photosDtoList;

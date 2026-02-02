@@ -182,7 +182,7 @@ int32_t CloudMediaDataControllerService::GetVideoToCache(MessageParcel &data, Me
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     std::vector<PhotosVo> photosVoList;
-    for (auto &photosDto : photosDtoVec) {
+    for (const auto &photosDto : photosDtoVec) {
         PhotosVo photosVo = this->processor_.ConvertPhotosDtoToPhotosVo(photosDto);
         photosVoList.push_back(photosVo);
     }

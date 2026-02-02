@@ -199,7 +199,7 @@ int32_t CloudMediaDataService::UpdateLocalFileDirty(const std::vector<std::strin
     int32_t ret = this->commonDao_.QueryLocalByCloudId(cloudIds, queryColums, photos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "UpdateLocalFileDirty Query Error");
 
-    for (auto &photo : photos) {
+    for (const auto &photo : photos) {
         std::string cloudId = photo.cloudId.value_or("");
         MEDIA_INFO_LOG("UpdateLocalFileDirty Query CloudId: %{public}s", cloudId.c_str());
         if (cloudId.empty() || std::find(cloudIds.begin(), cloudIds.end(), cloudId) == cloudIds.end()) {

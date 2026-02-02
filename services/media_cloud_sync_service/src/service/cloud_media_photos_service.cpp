@@ -79,9 +79,9 @@ int32_t CloudMediaPhotosService::PullDelete(const CloudMediaPullDataDto &data, s
         MEDIA_ERR_LOG("local record dirty, ignore cloud delete");
         return this->photosDao_.ClearCloudInfo(cloudId, photoRefresh);
     }
-
+    int32_t ret = E_OK;
     if (isLocal && CloudMediaFileUtils::LocalWriteOpen(localPath)) {
-        int32_t ret = this->photosDao_.SetRetry(cloudId);
+        ret = this->photosDao_.SetRetry(cloudId);
         if (ret != E_OK) {
             std::string errMsg = "update retry flag failed, ret = " + to_string(ret);
             REPORT_SYNC_FAULT({FaultScenario::CLOUD_SYNC_PULL, FaultType::MODIFY_DATABASE, ret, errMsg});
@@ -89,10 +89,10 @@ int32_t CloudMediaPhotosService::PullDelete(const CloudMediaPullDataDto &data, s
         return ret;
     }
     this->RefreshAnalysisAlbum(cloudId);
-    int32_t ret = this->photosDao_.DeleteLocalByCloudId(cloudId, photoRefresh);
+    ret = this->photosDao_.DeleteLocalByCloudId(cloudId, photoRefresh);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("delete in rdb failed, ret:%{public}d", ret);
-        int32_t ret = this->photosDao_.SetRetry(cloudId);
+        ret = this->photosDao_.SetRetry(cloudId);
         if (ret != E_OK) {
             std::string errMsg = "update retry flag failed, ret = " + to_string(ret);
             REPORT_SYNC_FAULT({FaultScenario::CLOUD_SYNC_PULL, FaultType::MODIFY_DATABASE, ret, errMsg});
@@ -248,8 +248,8 @@ int32_t CloudMediaPhotosService::PullUpdate(CloudMediaPullDataDto &pullData, std
 
 int32_t CloudMediaPhotosService::GetCloudKeyData(const CloudMediaPullDataDto &pullData, KeyData &keyData)
 {
-    bool ret = (!pullData.hasAttributes || pullData.basicFileName.empty() || pullData.basicSize == -1);
-    CHECK_AND_RETURN_RET_LOG(!ret, E_CLOUDSYNC_INVAL_ARG, "PullData cannot find attributes or filename or size");
+    bool isInValid = (!pullData.hasAttributes || pullData.basicFileName.empty() || pullData.basicSize == -1);
+    CHECK_AND_RETURN_RET_LOG(!isInValid, E_CLOUDSYNC_INVAL_ARG, "PullData cannot find attributes or filename or size");
 
     keyData.displayName = pullData.basicFileName;
 
@@ -664,7 +664,7 @@ int32_t CloudMediaPhotosService::OnFetchRecords(const std::vector<std::string> &
     // cloudIdRelativeMap是待下行数据，photos是新机已有的数据
     for (auto it = cloudIdRelativeMap.begin(); it != cloudIdRelativeMap.end(); it++) {
         bool found = false;
-        for (auto &photo : photos) {
+        for (const auto &photo : photos) {
             std::string cloudId = photo.cloudId.value_or("");
             if (cloudId.empty()) {
                 MEDIA_WARN_LOG("OnFetchRecords cloudId: %{public}s.", cloudId.c_str());
@@ -855,7 +855,7 @@ int32_t CloudMediaPhotosService::OnCreateRecordSuccess(
         CloudMediaDfxService::UpdateMetaStat(INDEX_UL_META_ERROR_RDB, 1);
     }
     ret = this->photosDao_.UpdatePhotoCreatedRecord(record, photoRefresh);
-    if (ret != 0) {
+    if (ret != E_OK) {
         MEDIA_ERR_LOG("OnCreateRecordSuccess update synced err %{public}d, %{public}d", ret, localId);
         CloudMediaDfxService::UpdateMetaStat(INDEX_UL_META_ERROR_RDB, 1);
         return ret;
@@ -873,7 +873,7 @@ int32_t CloudMediaPhotosService::OnMdirtyRecords(std::vector<PhotosDto> &records
     CHECK_AND_RETURN_RET_LOG(
         photoRefresh != nullptr, E_RDB_STORE_NULL, "Photos OnMdirtyRecords Failed to get photoRefresh.");
     int32_t ret = E_OK;
-    for (auto &photo : records) {
+    for (const auto &photo : records) {
         int32_t err;
         if (photo.isSuccess) {
             err = this->photosDao_.OnModifyPhotoRecord(photo, photoRefresh);
@@ -973,7 +973,7 @@ int32_t CloudMediaPhotosService::OnDeleteRecords(std::vector<PhotosDto> &records
     CHECK_AND_RETURN_RET_LOG(
         photoRefresh != nullptr, E_RDB_STORE_NULL, "Photos OnMdirtyRecords Failed to get photoRefresh.");
     int32_t ret = E_OK;
-    for (auto &photo : records) {
+    for (const auto &photo : records) {
         int32_t err;
         MEDIA_DEBUG_LOG("CloudMediaPhotosService::OnDeleteRecords isSuccess: %{public}d", photo.isSuccess);
         if (photo.isSuccess) {
@@ -1016,7 +1016,7 @@ int32_t CloudMediaPhotosService::OnCopyRecords(std::vector<PhotosDto> &records, 
         photoRefresh != nullptr, E_RDB_STORE_NULL, "Photos OnMdirtyRecords Failed to get photoRefresh.");
 
     int32_t ret = E_OK;
-    for (auto &photo : records) {
+    for (const auto &photo : records) {
         int32_t err;
         MEDIA_INFO_LOG("OnCopyRecords photo: %{public}s", photo.ToString().c_str());
         if (photo.isSuccess) {

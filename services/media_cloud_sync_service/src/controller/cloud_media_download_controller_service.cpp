@@ -53,7 +53,7 @@ int32_t CloudMediaDownloadControllerService::GetDownloadThms(MessageParcel &data
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     std::vector<PhotosVo> photosVoList;
-    for (auto &photosDto : photosDtoVec) {
+    for (const auto &photosDto : photosDtoVec) {
         PhotosVo photosVo = this->processor_.ConvertPhotosDtoToPhotosVo(photosDto);
         MEDIA_DEBUG_LOG("GetDownloadThms Dto: %{public}s, Vo: %{public}s.",
             photosDto.ToString().c_str(),
@@ -100,7 +100,7 @@ int32_t CloudMediaDownloadControllerService::GetDownloadThmsByUri(MessageParcel 
     std::vector<PhotosDto> photosDtoList = this->service_.GetDownloadThmsByUri(fileIds, reqBody.thmType);
     MEDIA_INFO_LOG(
         "GetDownloadThmsByUri Query:%{public}zu, Result:%{public}zu", photosDtoList.size(), photosVoList.size());
-    for (auto &photosDto : photosDtoList) {
+    for (const auto &photosDto : photosDtoList) {
         PhotosVo photosVo = this->processor_.ConvertPhotosDtoToPhotosVo(photosDto);
         MEDIA_DEBUG_LOG("GetDownloadThmsByUri PhotoVo: %{public}s", photosVo.ToString().c_str());
         photosVoList.push_back(photosVo);
@@ -154,7 +154,7 @@ int32_t CloudMediaDownloadControllerService::GetDownloadAsset(MessageParcel &dat
     }
     std::vector<PhotosDto> photosDtoList = this->service_.GetDownloadAsset(fileIds);
     std::vector<PhotosVo> photosVoList;
-    for (auto &photosDto : photosDtoList) {
+    for (const auto &photosDto : photosDtoList) {
         PhotosVo photosVo = this->processor_.ConvertPhotosDtoToPhotosVo(photosDto);
         MEDIA_DEBUG_LOG("GetDownloadAsset PhotoVo: %{public}s", photosVo.ToString().c_str());
         photosVoList.push_back(photosVo);

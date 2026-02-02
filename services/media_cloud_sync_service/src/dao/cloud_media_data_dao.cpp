@@ -169,10 +169,10 @@ int32_t CloudMediaDataDao::QueryFilePosStat(const int32_t position, int &num)
     queryPredicates.EqualTo(PhotoColumn::PHOTO_POSITION, std::to_string(position));
     std::vector<std::string> queryColums = {"COUNT(1) AS count"};
     auto resultSet = rdbStore->Query(queryPredicates, queryColums);
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("resultSet is null or failed to get row");
-        return E_RDB;
-    }
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+    bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
+    CHECK_AND_EXECUTE(isValid, resultSet->Close());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "failed to get row");
     num = GetInt32Val("count", resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("QueryFilePosStat end %{public}d", num);
@@ -195,10 +195,10 @@ int32_t CloudMediaDataDao::QueryCloudThmStat(const int32_t cloudThmStat, int &nu
         ->EndWrap();
     std::vector<std::string> queryColums = {"COUNT(1) AS count"};
     auto resultSet = rdbStore->Query(queryPredicates, queryColums);
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("resultSet is null or failed to get row");
-        return E_RDB;
-    }
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+    bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
+    CHECK_AND_EXECUTE(isValid, resultSet->Close());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "failed to get row");
     num = GetInt32Val("count", resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("QueryCloudThmStat end %{public}d", num);

@@ -68,10 +68,10 @@ int32_t CloudMediaDownloadDao::GetDownloadThmNum(const int32_t type, int32_t &to
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Query Thumbs to Download Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = this->GetDownloadThmsConditions(type);
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, {"COUNT(1) AS count"});
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("get nullptr Query Thumbs to Download");
-        return E_RDB;
-    }
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+    bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
+    CHECK_AND_EXECUTE(isValid, resultSet->Close());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "failed to get row");
     totalNum = GetInt32Val("count", resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("QueryThumbsToDownload end %{public}d", totalNum);
