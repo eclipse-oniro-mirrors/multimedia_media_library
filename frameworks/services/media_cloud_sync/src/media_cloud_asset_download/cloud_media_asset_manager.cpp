@@ -1045,7 +1045,7 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
             values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
                 static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
             values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
-                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
+                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
         } else {
             values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, po.downloadStatus.value_or(0));
             values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, po.autoPauseReason.value_or(0));
@@ -1080,7 +1080,8 @@ int32_t CloudMediaAssetManager::StartBatchDownloadCloudResources(StartBatchDownl
     this->batchDownloadResourcesTaskDao_.ClassifyExistedDownloadTasks(allFileIds, newTaskFileIds, existedFileIds);
     this->batchDownloadResourcesTaskDao_.ClassifyInvalidDownloadTasks(newTaskFileIds, invalidFileIds);
     this->batchDownloadResourcesTaskDao_.HandleAddExistedDownloadTasks(existedFileIds);
-
+    this->batchDownloadResourcesTaskDao_.UpdateNetworkPolicyDownloadTasks(existedFileIds,
+        BatchDownloadNetWorkPolicyType::TYPE_DEFAULT);
     // 查photos表 构建任务表记录
     std::vector<DownloadResourcesTaskPo> newTaskPos;
     int32_t ret = this->batchDownloadResourcesTaskDao_.QueryValidBatchDownloadPoFromPhotos(newTaskFileIds, newTaskPos);

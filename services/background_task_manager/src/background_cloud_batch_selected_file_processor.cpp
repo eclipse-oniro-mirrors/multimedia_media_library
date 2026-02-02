@@ -1024,7 +1024,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
             PauseAllWifiNetTask();
             int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
                 DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
-                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
+                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
             MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE Cellnet ret: %{public}d", ret);
         }
     }
@@ -1087,7 +1087,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::PauseAllWifiNetTask()
     value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
-        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT));
+        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
     int32_t changedRows = -1;
     int32_t ret = rdbStore->Update(changedRows, value, predicates);
     MEDIA_INFO_LOG("AllAutoPause net limit After ret: %{public}d, changedRows %{public}d", ret, changedRows);
@@ -1393,7 +1393,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryAutoPauseReason(int32_t 
     predicates.EqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
         static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
     predicates.NotEqualTo(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
-        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_CELLNET_LIMIT)); // 排除网络限制原因
+        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT)); // 排除网络限制原因
     predicates.Limit(1);
     auto resultSet = rdbStore->Query(predicates, {DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "QueryAutoPauseReason rs is null");
