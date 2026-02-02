@@ -3365,7 +3365,7 @@ int32_t MediaLibraryAlbumOperations::SetHighlightSubtitle(const ValuesBucket &va
         return err;
     };
     int32_t ret = trans->RetryTrans(Func);
-    CHECK_AND_RETURN_RET_LOG(ret = =E_OK, E_HAS_DB_ERROR,
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
         "fail to set highlight subtitle trans, ret: %{public}d", ret);
     return ret;
 }
