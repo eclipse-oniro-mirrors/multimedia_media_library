@@ -46,6 +46,8 @@ const std::string MediaColumn::MEDIA_HIDDEN = "hidden";
 const std::string MediaColumn::MEDIA_PARENT_ID = "parent";
 const std::string MediaColumn::MEDIA_RELATIVE_PATH = "relative_path";
 const std::string MediaColumn::MEDIA_VIRTUAL_PATH = "virtual_path";
+// deprecated since 6.1-release
+const std::string MediaColumn::MEDIA_VIRTURL_PATH = MediaColumn::MEDIA_VIRTUAL_PATH;
 const std::set<std::string> MediaColumn::MEDIA_COLUMNS = {
     MEDIA_ID, MEDIA_FILE_PATH, MEDIA_SIZE, MEDIA_TITLE, MEDIA_NAME, MEDIA_TYPE, MEDIA_MIME_TYPE,
     MEDIA_OWNER_PACKAGE, MEDIA_OWNER_APPID, MEDIA_PACKAGE_NAME, MEDIA_DEVICE_NAME, MEDIA_DATE_MODIFIED,
