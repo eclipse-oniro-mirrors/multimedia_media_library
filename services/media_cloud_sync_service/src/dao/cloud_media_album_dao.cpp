@@ -335,8 +335,6 @@ int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, c
     values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
     if (record.coverUriSource == CoverUriSource::MANUAL_CLOUD_COVER &&
         IsNeedPullCoverByDateModified(record.lPath, record.coverCloudId)) {
-        MEDIA_DEBUG_LOG("IsNeedPullCover:lPath:%{public}s, coverCloudId:%{public}s",
-            record.lPath.c_str(), record.coverCloudId.c_str());
         string coverUri;
         if (IsCoverIdExist(record.coverCloudId) && GetCoverUriFromCoverCloudId(record.coverCloudId, coverUri)) {
             values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, record.coverUriSource);
@@ -345,7 +343,6 @@ int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, c
                 values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, coverUri);
             }
         } else {
-            MEDIA_DEBUG_LOG("cloud cover need pull");
             values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, CoverUriSource::MANUAL_WAIT_PULL_COVER);
             values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, record.coverCloudId);
         }

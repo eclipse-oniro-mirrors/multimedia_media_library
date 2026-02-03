@@ -48,7 +48,8 @@ public:
     int32_t HandleProperties(std::shared_ptr<MDKRecord> &record, std::map<std::string, MDKRecordField> &data,
         const CloudMdkRecordPhotoAlbumVo &albumData);
     int32_t HandleAttributes(std::map<std::string, MDKRecordField> &data, const CloudMdkRecordPhotoAlbumVo &albumData);
-    int32_t HandleAlbumLogicType(std::map<std::string, MDKRecordField> &map, const CloudMdkRecordPhotoAlbumVo &albumData);
+    int32_t HandleAlbumLogicType(
+        std::map<std::string, MDKRecordField> &map, const CloudMdkRecordPhotoAlbumVo &albumData);
     int32_t HandleType(std::map<std::string, MDKRecordField> &map, const CloudMdkRecordPhotoAlbumVo &albumData);
     int32_t HandleAlbumId(std::map<std::string, MDKRecordField> &map, const CloudMdkRecordPhotoAlbumVo &albumData);
     int32_t HandleRecordId(std::shared_ptr<MDKRecord> record, const CloudMdkRecordPhotoAlbumVo &albumData);
