@@ -1624,20 +1624,26 @@ static int32_t SetPendingTime(const shared_ptr<FileAsset> &fileAsset, int64_t pe
     return E_OK;
 }
 
-static int32_t CreateFileAndSetPending(const shared_ptr<FileAsset> &fileAsset, int64_t pendingTime)
+static int32_t CreateFileAndSetPending(const shared_ptr<FileAsset> &fileAsset,
+    bool isMovingPhotoVideo, int64_t pendingTime)
 {
     int32_t errCode = MediaFileUtils::CreateAsset(fileAsset->GetPath());
     if (errCode != E_OK) {
         MEDIA_ERR_LOG("Create asset failed, path=%{private}s", fileAsset->GetPath().c_str());
         return errCode;
     }
+    if (isMovingPhotoVideo) {
+        MEDIA_INFO_LOG("CreateFileAndSetPending isMovingPhotoVideo true");
+        return E_OK;
+    }
 
     return SetPendingTime(fileAsset, pendingTime);
 }
 
-static int32_t SolvePendingStatus(const shared_ptr<FileAsset> &fileAsset, const string &mode)
+static int32_t SolvePendingStatus(const shared_ptr<FileAsset> &fileAsset, bool isMovingPhotoVideo, const string &mode)
 {
     int64_t pendingTime = fileAsset->GetTimePending();
+    MEDIA_INFO_LOG("SolvePendingStatus pendingTime : %{public}ld", static_cast<long>(pendingTime));
     if (pendingTime != 0) {
         if (mode == MEDIA_FILEMODE_READONLY) {
             MEDIA_ERR_LOG("FileAsset [%{private}s] pending status is %{public}ld and open mode is READ_ONLY",
@@ -1650,7 +1656,8 @@ static int32_t SolvePendingStatus(const shared_ptr<FileAsset> &fileAsset, const 
             return E_IS_PENDING_ERROR;
         }
         if (pendingTime == UNCREATE_FILE_TIMEPENDING) {
-            int32_t errCode = CreateFileAndSetPending(fileAsset, UNCLOSE_FILE_TIMEPENDING);
+            MEDIA_INFO_LOG("SolvePendingStatus pendingTime : -1");
+            int32_t errCode = CreateFileAndSetPending(fileAsset, isMovingPhotoVideo, UNCLOSE_FILE_TIMEPENDING);
             return errCode;
         }
         if (pendingTime == UNOPEN_FILE_COMPONENT_TIMEPENDING) {
@@ -1721,7 +1728,7 @@ int32_t MediaLibraryAssetOperations::OpenAsset(const shared_ptr<FileAsset> &file
 
     string path;
     if (api == MediaLibraryApi::API_10) {
-        int32_t errCode = SolvePendingStatus(fileAsset, mode);
+        int32_t errCode = SolvePendingStatus(fileAsset, isMovingPhotoVideo, mode);
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
             "Solve pending status failed, errCode=%{public}d", errCode);
         path = fileAsset->GetPath();
@@ -2156,7 +2163,7 @@ int32_t MediaLibraryAssetOperations::SetPendingTrue(const shared_ptr<FileAsset> 
         MEDIA_ERR_LOG("fileAsset time_pending is 0, not allowed");
         return E_INVALID_VALUES;
     } else if (fileAsset->GetTimePending() == UNCREATE_FILE_TIMEPENDING) {
-        int32_t errCode = CreateFileAndSetPending(fileAsset, timestamp);
+        int32_t errCode = CreateFileAndSetPending(fileAsset, false, timestamp);
         if (errCode != E_OK) {
             MEDIA_ERR_LOG("Create asset failed, id=%{public}d", fileAsset->GetId());
             return errCode;
