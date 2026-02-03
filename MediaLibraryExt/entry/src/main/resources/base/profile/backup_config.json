@@ -22,7 +22,11 @@
         "/data/storage/el2/base/preferences/"
     ],
     "excludes": [
-        "/data/storage/el2/database/rdb/media_library.db_binlog/"
+        "/data/storage/el2/database/rdb/media_library.db_binlog/",
+        "/data/storage/el2/database/rdb/media_library_slave.db",
+        "/data/storage/el2/database/rdb/media_library_slave.db-dwr",
+        "/data/storage/el2/database/rdb/media_library_slave.db-shm",
+        "/data/storage/el2/database/rdb/media_library_slave.db-wal"
     ],
     "compatibleDirMapping": [
         {"backupDir": "/storage/media/local/files/.backup/backup/media_temp_rdb/", "restoreDir": "/data/storage/el2/database/rdb/"}
