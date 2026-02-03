@@ -370,9 +370,10 @@ static int32_t RequestContentToSandbox(napi_env env, MovingPhotoAsyncContext* co
     if (!context->destImageUri.empty()) {
         int32_t imageFd = MovingPhotoNapi::OpenReadOnlyFile(movingPhotoUri, true, context->position);
         CHECK_COND_RET(HandleFd(imageFd), imageFd, "Open source image file failed");
-        int32_t ret = WriteToSandboxUri(imageFd, context->destImageUri,
-            context->position == static_cast<int32_t>(PhotoPositionType::CLOUD) ? MovingPhotoResourceType::CLOUD_IMAGE
-                                                : MovingPhotoResourceType::DEFAULT);
+        MovingPhotoResourceType resourceType = context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)
+                            ? MovingPhotoResourceType::CLOUD_IMAGE
+                            : MovingPhotoResourceType::DEFAULT;
+        int32_t ret = WriteToSandboxUri(imageFd, context->destImageUri, resourceType);
         CHECK_COND_RET(ret == E_OK, ret, "Write image to sandbox failed");
     }
     if (!context->destVideoUri.empty()) {
