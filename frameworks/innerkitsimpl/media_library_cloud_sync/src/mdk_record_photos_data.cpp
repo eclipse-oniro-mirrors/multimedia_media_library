@@ -149,7 +149,7 @@ std::optional<bool> MDKRecordPhotosData::GetRecycled() const
 {
     return this->recordReader_.GetBoolValue(this->fields_, KEY_RECYCLED);
 }
-MDKRecordPhotosData &MDKRecordPhotosData::SetRecycled(const bool &recycled)
+MDKRecordPhotosData &MDKRecordPhotosData::SetRecycled(const bool recycled)
 {
     this->fields_[KEY_RECYCLED] = MDKRecordField(recycled);
     return *this;
@@ -167,7 +167,7 @@ std::optional<bool> MDKRecordPhotosData::GetFavorite() const
 {
     return this->recordReader_.GetBoolValue(this->fields_, KEY_FAVORITE);
 }
-MDKRecordPhotosData &MDKRecordPhotosData::SetFavorite(const bool &favorite)
+MDKRecordPhotosData &MDKRecordPhotosData::SetFavorite(const bool favorite)
 {
     this->fields_[KEY_FAVORITE] = MDKRecordField(favorite);
     return *this;
@@ -569,22 +569,22 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetThmSize(const int64_t thmSize)
     this->attributes_[KEY_THUMB_SIZE] = MDKRecordField(thmSize);
     return *this;
 }
-std::optional<int64_t> MDKRecordPhotosData::GetEditTimeMs() const
+std::optional<int64_t> MDKRecordPhotosData::GetEditedTimeMs() const
 {
-    return this->recordReader_.GetLongValue(this->attributes_, KEY_EDIT_TIME_MS);
+    return this->recordReader_.GetLongValue(this->attributes_, KEY_EDITED_TIME_MS);
 }
-MDKRecordPhotosData &MDKRecordPhotosData::SetEditTimeMs(int64_t editedTimeMs)
+MDKRecordPhotosData &MDKRecordPhotosData::SetEditedTimeMs(int64_t editedTimeMs)
 {
-    this->attributes_[KEY_EDIT_TIME_MS] = MDKRecordField(editedTimeMs);
+    this->attributes_[KEY_EDITED_TIME_MS] = MDKRecordField(editedTimeMs);
     return *this;
 }
 std::optional<std::string> MDKRecordPhotosData::GetEditDataCamera() const
 {
-    return this->recordReader_.GetStringValue(this->attributes_, MDKRecordPhotosData::FILE_EDIT_DATA_CAMERA);
+    return this->recordReader_.GetStringValue(this->attributes_, FILE_EDIT_DATA_CAMERA);
 }
 MDKRecordPhotosData &MDKRecordPhotosData::SetEditDataCamera(const std::string &editDataCamera)
 {
-    this->attributes_[MDKRecordPhotosData::FILE_EDIT_DATA_CAMERA] = MDKRecordField(editDataCamera);
+    this->attributes_[FILE_EDIT_DATA_CAMERA] = MDKRecordField(editDataCamera);
     return *this;
 }
 std::optional<int32_t> MDKRecordPhotosData::GetFileSourceType() const

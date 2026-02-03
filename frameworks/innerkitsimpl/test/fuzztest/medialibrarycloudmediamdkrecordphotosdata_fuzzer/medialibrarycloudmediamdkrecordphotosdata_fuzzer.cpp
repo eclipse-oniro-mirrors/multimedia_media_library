@@ -78,8 +78,8 @@ static void MdkRecordPhotosDataTest1()
 static void MdkRecordPhotosDataTest2()
 {
     MDKRecordPhotosData PhotoData;
-    PhotoData.SetEditTimeMs(provider->ConsumeIntegral<int64_t>());
-    PhotoData.GetEditTimeMs();
+    PhotoData.SetEditedTimeMs(provider->ConsumeIntegral<int64_t>());
+    PhotoData.GetEditedTimeMs();
     PhotoData.SetEditDataCamera(provider->ConsumeBytesAsString(NAME_LEN));
     PhotoData.GetEditDataCamera();
     PhotoData.SetSourcePath(provider->ConsumeBytesAsString(NAME_LEN));

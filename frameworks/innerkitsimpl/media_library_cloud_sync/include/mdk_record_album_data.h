@@ -72,13 +72,13 @@ public:  // getter & setter
     // locgicType, 0 - Physical, 1 - Logical
     void SetLogicType(const int32_t &logicType);
     std::optional<bool> IsLogic() const;
-    void SetIsLogic(const bool &isLogic);
+    void SetIsLogic(const bool isLogic);
     std::optional<std::string> GetType() const;
     // type, "directory" or "file"
     void SetType(const std::string &type);
     std::optional<std::string> GetLocalLanguage() const;
     void SetLocalLanguage(const std::string &localLanguage);
-    void SetNewCreate(const bool &isNewCreate);
+    void SetNewCreate(const bool isNewCreate);
     bool GetNewCreate() const;
     std::string GetRecordId() const;
     void SetRecordId(std::string recordId);

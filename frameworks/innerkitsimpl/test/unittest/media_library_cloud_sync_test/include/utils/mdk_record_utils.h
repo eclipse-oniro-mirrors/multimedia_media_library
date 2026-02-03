@@ -315,6 +315,7 @@ private:
         {"cloud_id", &MDKRecordPhotosData::GetCloudId},
         {"original_asset_cloud_id", &MDKRecordPhotosData::GetOriginalAssetCloudId},
         {"data", &MDKRecordPhotosData::GetFilePath},
+        {"editDataCamera", &MDKRecordPhotosData::GetEditDataCamera},
         {"sourcePath", &MDKRecordPhotosData::GetSourcePath},
         {"sourceFileName", &MDKRecordPhotosData::GetSourceFileName},
         {"first_update_time", &MDKRecordPhotosData::GetFirstUpdateTime},

@@ -230,7 +230,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_BURST_KEY] = MDKRecordField(upLoadRecord.burstKey);
     map[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = MDKRecordField(upLoadRecord.ownerAlbumId);
     map[FILE_FIX_VERSION] = MDKRecordField(0);
-    map[KEY_EDIT_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
+    map[KEY_EDITED_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
     map[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = MDKRecordField(upLoadRecord.fileSourceType);
     map[PhotoColumn::PHOTO_STORAGE_PATH] = MDKRecordField(upLoadRecord.storagePath);
     HandleAttributesHashMap(map, upLoadRecord);
@@ -917,7 +917,7 @@ int32_t CloudFileDataConvert::ConvertToOnCreateRecord(
     record.fileType = photosData.GetFileType().value_or(-1);
     record.size = photosData.GetSize().value_or(-1);
     record.createTime = photosData.GetCreatedTime().value_or(-1);
-    record.editedTimeMs = photosData.GetEditTimeMs().value_or(-1);
+    record.editedTimeMs = photosData.GetEditedTimeMs().value_or(-1);
     record.metaDateModified = photosData.GetPhotoMetaDateModified().value_or(-1);
     record.version = result.GetDKRecord().GetVersion();
     record.isSuccess = result.IsSuccess();
@@ -981,7 +981,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.lcdSize = data.GetLcdSize().value_or(0L);
     onFetchPhotoVo.thmSize = data.GetThmSize().value_or(0L);
     onFetchPhotoVo.metaDateModified = data.GetPhotoMetaDateModified().value_or(0L);
-    onFetchPhotoVo.editedTimeMs = data.GetEditTimeMs().value_or(0L);
+    onFetchPhotoVo.editedTimeMs = data.GetEditedTimeMs().value_or(0L);
     onFetchPhotoVo.fixVersion = data.GetFixVersion().value_or(-1);
     onFetchPhotoVo.frontCamera = data.GetFrontCamera().value_or("");
     onFetchPhotoVo.editDataCamera = data.GetEditDataCamera().value_or("");

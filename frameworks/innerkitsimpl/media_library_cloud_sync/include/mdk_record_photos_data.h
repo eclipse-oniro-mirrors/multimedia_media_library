@@ -70,11 +70,11 @@ public:  // record data getter & setter - gallery-specific or shared fileds
     std::optional<std::string> GetSource() const;
     MDKRecordPhotosData &SetSource(const std::string &source);
     std::optional<bool> GetRecycled() const;
-    MDKRecordPhotosData &SetRecycled(const bool &recycled);
+    MDKRecordPhotosData &SetRecycled(const bool recycled);
     std::optional<int64_t> GetRecycledTime() const;
     MDKRecordPhotosData &SetRecycledTime(const int64_t &recycledTime);
     std::optional<bool> GetFavorite() const;
-    MDKRecordPhotosData &SetFavorite(const bool &favorite);
+    MDKRecordPhotosData &SetFavorite(const bool favorite);
     std::optional<std::string> GetDescription() const;
     MDKRecordPhotosData &SetDescription(const std::string &description);
     std::optional<std::string> GetMimeType() const;
@@ -165,8 +165,8 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetLcdSize(const int64_t lcdSize);
     std::optional<int64_t> GetThmSize() const;
     MDKRecordPhotosData &SetThmSize(const int64_t thmSize);
-    std::optional<int64_t> GetEditTimeMs() const;
-    MDKRecordPhotosData &SetEditTimeMs(int64_t editedTimeMs);
+    std::optional<int64_t> GetEditedTimeMs() const;
+    MDKRecordPhotosData &SetEditedTimeMs(int64_t editedTimeMs);
     std::optional<std::string> GetEditDataCamera() const;
     MDKRecordPhotosData &SetEditDataCamera(const std::string &editDataCamera);
     std::optional<int32_t> GetFileSourceType() const;
@@ -212,7 +212,7 @@ private:
     const std::string FILE_EDIT_DATA = "editData";
     const std::string FILE_MIME_TYPE = "mimeType";
     const std::string FILE_EDIT_DATA_CAMERA = "editDataCamera";
-    const std::string KEY_EDIT_TIME_MS = "editedTime_ms";
+    const std::string KEY_EDITED_TIME_MS = "editedTime_ms";
     const std::string KEY_LCD_SIZE = "lcd_size";
     const std::string KEY_THUMB_SIZE = "thumb_size";
     const std::string KEY_ROTATE = "rotate";

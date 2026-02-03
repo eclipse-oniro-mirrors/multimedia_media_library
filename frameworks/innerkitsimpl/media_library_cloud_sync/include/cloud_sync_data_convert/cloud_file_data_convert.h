@@ -107,7 +107,7 @@ private:
     std::string bundleName_;
     static const std::string recordType_;
     CloudOperationType type_;
-    const std::string KEY_EDIT_TIME_MS = "editedTime_ms";
+    const std::string KEY_EDITED_TIME_MS = "editedTime_ms";
 
     /* path */
     static std::string prefixLCD_;

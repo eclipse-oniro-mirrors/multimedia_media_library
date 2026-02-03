@@ -472,7 +472,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnFetchRecordsTest, OnFetchRecords_No_Change_test
         for (auto &record : records) {
             if (cloudId == record.GetRecordId()) {
                 MDKRecordPhotosData photosData = MDKRecordPhotosData(record);
-                EXPECT_NE(photo.dateModified.value_or(0), photosData.GetEditTimeMs().value_or(0));
+                EXPECT_NE(photo.dateModified.value_or(0), photosData.GetEditedTimeMs().value_or(0));
                 EXPECT_NE(std::to_string(photo.dateAdded.value_or(0)), photosData.GetFirstUpdateTime().value_or("0"));
                 checkCount++;
             }

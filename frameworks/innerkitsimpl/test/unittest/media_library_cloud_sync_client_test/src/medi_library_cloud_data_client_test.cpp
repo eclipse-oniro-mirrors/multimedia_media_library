@@ -255,7 +255,7 @@ HWTEST_F(CloudMediaDataClientTest, CloudMediaDataClient_MDKRecordProperties_Test
     data->SetSourceFileName("video.avi");
     data->SetSourcePath("/usr/local/bin");
     data->SetEditDataCamera("001");
-    data->SetEditTimeMs(10011);
+    data->SetEditedTimeMs(10011);
 
     data->SetThmSize(10086);
     data->SetLcdSize(2);

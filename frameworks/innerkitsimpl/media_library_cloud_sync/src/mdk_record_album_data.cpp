@@ -172,7 +172,7 @@ std::optional<bool> MDKRecordAlbumData::IsLogic() const
 {
     return this->recordReader_.GetBoolValue(this->fields_, this->ALBUM_IS_LOGIC);
 }
-void MDKRecordAlbumData::SetIsLogic(const bool &isLogic)
+void MDKRecordAlbumData::SetIsLogic(const bool isLogic)
 {
     this->fields_[this->ALBUM_IS_LOGIC] = MDKRecordField(isLogic);
 }
@@ -193,7 +193,7 @@ void MDKRecordAlbumData::SetLocalLanguage(const std::string &localLanguage)
 {
     this->properties_[PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE] = MDKRecordField(localLanguage);
 }
-void MDKRecordAlbumData::SetNewCreate(const bool &isNewCreate)
+void MDKRecordAlbumData::SetNewCreate(const bool isNewCreate)
 {
     this->record_.SetNewCreate(isNewCreate);
 }
