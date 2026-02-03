@@ -296,7 +296,6 @@ void MediaDataShareExtAbility::OnStop()
     MediaFuseManager::GetInstance().Stop();
     MediaLibraryDataManager::GetInstance()->ClearMediaLibraryMgr();
     MedialibraryAppStateObserverManager::GetInstance().UnSubscribeAppState();
-    Media::MedialibrarySubscriber::UnSubscribe();
     MEDIA_INFO_LOG("%{public}s end.", __func__);
 }
 
