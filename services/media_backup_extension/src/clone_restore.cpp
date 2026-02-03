@@ -494,11 +494,17 @@ bool CloneRestore::InvalidateHdcCloudData(std::shared_ptr<NativeRdb::RdbStore> &
     return true;
 }
 
-
 CloneRestoreConfigInfo CloneRestore::GetCurrentDeviceCloneConfigInfo()
 {
     CloneRestoreConfigInfo cloneConfigInfo;
     cloneConfigInfo.switchStatus = SettingsDataManager::GetPhotosSyncSwitchStatus();
+    if (cloneConfigInfo.switchStatus == SwitchStatus::NONE) {
+        int32_t isCloudSpaceSyncSwitchOn = BackupFileUtils::IsCloneCloudSpaceSyncSwitchOn(sceneCode_);
+        MEDIA_WARN_LOG("fail to query photo sync switch status, isCloudSpaceSyncSwitchOn:%{public}d",
+            isCloudSpaceSyncSwitchOn);
+        cloneConfigInfo.switchStatus = (isCloudSpaceSyncSwitchOn == CheckSwitchType::SUCCESS_ON ?
+            SwitchStatus::CLOUD : SwitchStatus::NONE);
+    }
     bool isSyncSwitchStatusValid = (cloneConfigInfo.switchStatus != SwitchStatus::NONE);
     bool isDeviceIdValid = (cloneConfigInfo.switchStatus == SwitchStatus::HDC ?
         SettingsDataManager::GetHdcDeviceId(cloneConfigInfo.deviceId) : true);

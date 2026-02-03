@@ -842,24 +842,32 @@ int32_t BackupFileUtils::IsCloneCloudSyncSwitchOn(int32_t sceneCode)
         MEDIA_DEBUG_LOG("GetPhotosSyncSwitchStatus success, switchStatus: %{public}d", static_cast<int>(switchStatus));
         return (switchStatus != SwitchStatus::CLOSE) ? CheckSwitchType::SUCCESS_ON : CheckSwitchType::SUCCESS_OFF;
     }
-    MEDIA_DEBUG_LOG("GetPhotosSyncSwitchStatus fail, continue query old sync switch");
+    MEDIA_WARN_LOG("GetPhotosSyncSwitchStatus fail, continue query old sync switch");
 
-    if (sceneCode == UPGRADE_RESTORE_ID) {
-        return CheckSwitchType::UPGRADE_FAILED_ON;
-    }
+    return IsCloneCloudSpaceSyncSwitchOn(sceneCode);
+}
 
+int32_t BackupFileUtils::IsCloneCloudSpaceSyncSwitchOn(int32_t sceneCode)
+{
     std::shared_ptr<DataShare::DataShareHelper> cloudHelper = GetCloudHelper(CLOUD_BASE_URI);
     CHECK_AND_RETURN_RET_LOG(cloudHelper != nullptr, CheckSwitchType::CLOUD_HELPER_NULL, "cloudHelper is null");
+
     DataShare::DataSharePredicates predicates;
     predicates.EqualTo("bundleName", "generic.cloudstorage");
     Uri cloudUri(CLOUD_SYNC_SWITCH_URI);
     vector<string> columns = { "isSwitchOn" };
     shared_ptr<DataShare::DataShareResultSet> resultSet = cloudHelper->Query(cloudUri, predicates, columns);
+    if (resultSet == nullptr && sceneCode == UPGRADE_RESTORE_ID) {
+        MEDIA_INFO_LOG("resultSet is null, but scenario is UPGRADE_RESTORE.");
+        return CheckSwitchType::UPGRADE_FAILED_ON;
+    }
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, CheckSwitchType::RESULT_NULL, "resultSet is null");
 
     string switchOn = "0";
     if (resultSet->GoToNextRow() == E_OK) {
         resultSet->GetString(0, switchOn);
+    } else if (sceneCode == UPGRADE_RESTORE_ID) {
+        return CheckSwitchType::UPGRADE_FAILED_ON;
     }
     return (switchOn == MOBILE_NETWORK_STATUS_ON) ? CheckSwitchType::SUCCESS_ON : CheckSwitchType::SUCCESS_OFF;
 }

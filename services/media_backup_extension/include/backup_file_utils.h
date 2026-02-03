@@ -85,6 +85,7 @@ public:
     static bool IsValidFile(const std::string &path);
     static bool IsMovingPhotoExist(const std::string &path);
     static bool HasOrientationOrExifRotate(const FileInfo &info);
+    static int32_t IsCloneCloudSpaceSyncSwitchOn(int32_t sceneCode);
     static bool GetAccountValid(const int32_t sceneCode, const std::string &restoreInfo);
 
 private:
