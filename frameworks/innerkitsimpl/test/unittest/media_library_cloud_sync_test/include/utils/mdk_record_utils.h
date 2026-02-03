@@ -334,7 +334,7 @@ private:
         {"edit_time", &MDKRecordPhotosData::GetEditTime},
         {"cover_position", &MDKRecordPhotosData::GetCoverPosition},
         {"date_added", &MDKRecordPhotosData::GetDateAdded},
-        {"editedTime_ms", &MDKRecordPhotosData::GetEditTimeMs},
+        {"editedTime_ms", &MDKRecordPhotosData::GetEditedTimeMs},
         {"lcd_size", &MDKRecordPhotosData::GetLcdSize},
         {"thumb_size", &MDKRecordPhotosData::GetThmSize},
         {"fix_version", &MDKRecordPhotosData::GetFixVersion},
