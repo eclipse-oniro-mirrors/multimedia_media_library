@@ -110,7 +110,6 @@ private:
     EXPORT int32_t UpdateLocalAlbums();
     EXPORT int32_t UpdateBothLocalAndCloudAssets(
         CloudMediaRetainType retainType = CloudMediaRetainType::RETAIN_FORCE);
-    EXPORT static std::string GetEditDataDirPath(const std::string &path);
     EXPORT static void CleanUpFileData(const std::string& path);
     EXPORT bool HasDataForUpdate(CloudMediaRetainType retainType, std::vector<std::string> &updateFileIds,
         const std::string &lastFileId, SmartDataProcessingMode mode);

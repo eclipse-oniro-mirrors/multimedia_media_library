@@ -56,7 +56,7 @@
 #include "media_enhance_handles.h"
 #include "media_enhance_client_c_api.h"
 #include "media_enhance_bundle_c_api.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #endif
 #include "media_upgrade.h"
 
@@ -1754,8 +1754,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_Test_001, Tes
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataSourceBackPath(path)), false);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), false);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");
@@ -1776,8 +1776,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_002, TestSize
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataSourceBackPath(path)), true);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");
@@ -1801,8 +1801,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_Test_003, Tes
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataSourceBackPath(path)), true);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");
@@ -1825,8 +1825,8 @@ HWTEST_F(MediaLibraryCloudEnhancementTest, SyncCleanCompositePhoto_Test_004, Tes
     string path = "/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg";
     bool ret = EnhancementManager::GetInstance().SyncCleanCompositePhoto(path);
     ASSERT_EQ(ret, true);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataTempPath(path)), false);
-    ASSERT_EQ(MediaFileUtils::IsFileExists(PhotoFileUtils::GetEditDataSourceBackPath(path)), true);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataTempPath(path)), false);
+    ASSERT_EQ(MediaFileUtils::IsFileExists(MediaEditUtils::GetEditDataSourceBackPath(path)), true);
 
     system("rm -rf  /storage/cloud/files/Photo/16/IMG_1501924305_000.jpg");
     system("rm -rf  /storage/cloud/files/.editData/Photo/16/IMG_1501924305_000.jpg/source.jpg");

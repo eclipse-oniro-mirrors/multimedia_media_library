@@ -111,6 +111,7 @@
 #include "report_event.h"
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -2032,8 +2033,8 @@ static void SetFileAssetByIdV9(int32_t id, const string &networkId, MediaLibrary
     fileAsset->SetId(id);
     MediaType mediaType = MediaFileUtils::GetMediaType(displayName);
     string uri;
-    if (MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
-        MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
+    if (MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
+        MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
         uri = MediaFileUtils::GetVirtualUriFromRealUri(MediaFileUri(MediaType::MEDIA_TYPE_FILE,
             to_string(id), networkId, MEDIA_API_VERSION_V9).ToString());
         relativePath = MediaFileUtils::RemoveDocsFromRelativePath(relativePath);
@@ -2457,8 +2458,8 @@ static void GetCreateUri(MediaLibraryAsyncContext *context, string &uri)
 #ifdef MEDIALIBRARY_COMPATIBILITY
         bool isValid = false;
         string relativePath = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_RELATIVE_PATH, isValid);
-        if (MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
-            MediaFileUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
+        if (MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOC_DIR_VALUES) ||
+            MediaStringUtils::StartsWith(relativePath, DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
             uri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CREATEASSET;
             MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V9));
             return;
@@ -2502,8 +2503,8 @@ static void JSCreateAssetExecute(napi_env env, void *data)
     bool isValid = false;
     string relativePath = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_RELATIVE_PATH, isValid);
     if (isValid) {
-        if (MediaFileUtils::StartsWith(relativePath, DOC_DIR_VALUES) ||
-            MediaFileUtils::StartsWith(relativePath, DOWNLOAD_DIR_VALUES)) {
+        if (MediaStringUtils::StartsWith(relativePath, DOC_DIR_VALUES) ||
+            MediaStringUtils::StartsWith(relativePath, DOWNLOAD_DIR_VALUES)) {
             context->valuesBucket.valuesMap.erase(CONST_MEDIA_DATA_DB_RELATIVE_PATH);
             context->valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, DOCS_PATH + relativePath);
         }

@@ -17,6 +17,7 @@
 
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_db_const.h"
@@ -387,13 +388,13 @@ void MediaLibraryCommand::ParseOprnObjectFromFileUri()
 
     string uri = uri_.ToString();
     // parse cache file uri
-    if (MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
         oprnObject_ = OperationObject::PAH_PHOTO;
         return;
     }
 
     for (const auto &item : OPRN_MAP) {
-        if (MediaFileUtils::StartsWith(uri, item.first)) {
+        if (MediaStringUtils::StartsWith(uri, item.first)) {
             oprnObject_ = item.second;
             break;
         }

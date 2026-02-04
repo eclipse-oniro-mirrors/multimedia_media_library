@@ -26,6 +26,7 @@
 #include "photo_map_column.h"
 #include "vision_column.h"
 #include "rdb_sql_utils.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -76,11 +77,11 @@ OperationObject GetOprnObjectFromUri(Uri& uri)
     CHECK_AND_RETURN_RET(OPRN_OBJ_MAP.find(opObject) == OPRN_OBJ_MAP.end(),
         OPRN_OBJ_MAP.at(opObject));
     std::string uriString = uri.ToString();
-    CHECK_AND_RETURN_RET(!MediaFileUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX),
+    CHECK_AND_RETURN_RET(!MediaStringUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX),
         OperationObject::PAH_PHOTO);
 
     for (const auto &item : OPRN_MAP) {
-        CHECK_AND_RETURN_RET(!MediaFileUtils::StartsWith(uriString, item.first), item.second);
+        CHECK_AND_RETURN_RET(!MediaStringUtils::StartsWith(uriString, item.first), item.second);
     }
     return OperationObject::UNKNOWN_OBJECT;
 }

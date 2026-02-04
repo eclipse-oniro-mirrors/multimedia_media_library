@@ -16,7 +16,7 @@
 #include "uri_convert_handler.h"
 
 #include "media_column.h"
-#include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "photo_album_column.h"
 
@@ -57,7 +57,7 @@ static void AddNewNotify(CloudSyncHandleData &newHandleData,
 
 static string GetMediaUriWithRemark(const string &mediaUri, string &remark)
 {
-    if (!MediaFileUtils::StartsWith(mediaUri, PhotoColumn::PHOTO_URI_PREFIX)) {
+    if (!MediaStringUtils::StartsWith(mediaUri, PhotoColumn::PHOTO_URI_PREFIX)) {
         return mediaUri;
     }
 

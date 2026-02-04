@@ -29,6 +29,9 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_type_const.h"
+#include "media_edit_utils.h"
+#include "media_path_utils.h"
+#include "media_string_utils.h"
 
 using namespace std;
 
@@ -79,7 +82,7 @@ static string GetDurationTag(int64_t coverPosition, const string& data = "")
         MEDIA_WARN_LOG("coverPosition data err %{public}" PRId64, coverPosition);
     }
     string buffer;
-    if (data.size() != 0 && !MediaFileUtils::StartsWith(data, "0:0")) {
+    if (data.size() != 0 && !MediaStringUtils::StartsWith(data, "0:0")) {
         buffer += data;
     } else {
         if (frame < AUTO_PLAY_DURATION_MS) {
@@ -381,7 +384,7 @@ static bool IsValidLivePhotoCache(const string &movingPhotoImagepath, const stri
 int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const string& movingPhotoImagepath, int64_t coverPosition,
     std::string &livePhotoPath, int32_t userId)
 {
-    string imagePath = AppendUserId(movingPhotoImagepath, userId);
+    string imagePath = MediaPathUtils::AppendUserId(movingPhotoImagepath, userId);
     string videoPath = GetMovingPhotoVideoPath(movingPhotoImagepath, userId);
     string cacheDir = GetLivePhotoCacheDir(movingPhotoImagepath, userId);
     string extraPath = GetMovingPhotoExtraDataPath(movingPhotoImagepath, userId);
@@ -433,7 +436,7 @@ int32_t MovingPhotoFileUtils::ConvertToLivePhoto(const string& movingPhotoImagep
 
 string MovingPhotoFileUtils::GetSourceBackMovingPhotoImagePath(const string& imagePath, int32_t userId)
 {
-    return GetEditDataSourceBackPath(imagePath, userId);
+    return MediaEditUtils::GetEditDataSourceBackPath(imagePath, userId);
 }
 
 string MovingPhotoFileUtils::GetSourceBackMovingPhotoVideoPath(const string& imagePath, int32_t userId)
@@ -704,7 +707,7 @@ int32_t MovingPhotoFileUtils::ConvertToMovingPhoto(const std::string &livePhotoP
         "Failed to lseek live tag, errno:%{public}d", errno);
     CHECK_AND_RETURN_RET_LOG(read(livePhotoFd.Get(), liveTag, LIVE_TAG_LEN) != -1, E_HAS_FS_ERROR,
         "Failed to read live tag, errno:%{public}d", errno);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::StartsWith(liveTag, LIVE_TAG), E_INVALID_VALUES, "Invalid live photo");
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(liveTag, LIVE_TAG), E_INVALID_VALUES, "Invalid live photo");
 
     int64_t liveSize = atoi(liveTag + LIVE_TAG.length());
     int64_t imageSize = totalSize - liveSize - LIVE_TAG_LEN - PLAY_INFO_LEN;
@@ -748,7 +751,7 @@ int32_t MovingPhotoFileUtils::GetMovingPhotoDetailedSize(const int32_t fd,
         "Failed to lseek live tag, errno:%{public}d", errno);
     CHECK_AND_RETURN_RET_LOG(read(fd, liveTag, LIVE_TAG_LEN) != -1, E_HAS_FS_ERROR,
         "Failed to read live tag, errno:%{public}d", errno);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::StartsWith(liveTag, LIVE_TAG), E_INVALID_VALUES, "Invalid live photo");
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::StartsWith(liveTag, LIVE_TAG), E_INVALID_VALUES, "Invalid live photo");
 
     int64_t liveSize = atoi(liveTag + LIVE_TAG.length());
     imageSize = totalSize - liveSize - LIVE_TAG_LEN - PLAY_INFO_LEN;
@@ -861,14 +864,6 @@ int32_t MovingPhotoFileUtils::GetCoverPosition(const std::string &videoPath, con
     return GetMovingPhotoCoverPosition(uniqueFd, st.st_size, frameIndex, coverPosition, scene);
 }
 
-bool EndsWith(const string &str, const string &endStr)
-{
-    if (str.length() < endStr.length()) {
-        return false;
-    }
-    return str.rfind(endStr) == str.length() - endStr.length();
-}
-
 int32_t MovingPhotoFileUtils::GetVersionAndFrameNum(const string &tag,
     uint32_t &version, uint32_t &frameIndex, bool &hasCinemagraphInfo)
 {
@@ -889,7 +884,7 @@ int32_t MovingPhotoFileUtils::GetVersionAndFrameNum(const string &tag,
     if (blankIndex != string::npos) {
         tagTrimmed = tagTrimmed.substr(0, blankIndex);
     }
-    hasCinemagraphInfo = EndsWith(tagTrimmed, "_c") || EndsWith(tagTrimmed, "_C");
+    hasCinemagraphInfo = MediaStringUtils::EndsWith(tagTrimmed, "_c") || MediaStringUtils::EndsWith(tagTrimmed, "_C");
     return E_OK;
 }
 
@@ -914,15 +909,15 @@ int32_t MovingPhotoFileUtils::GetVersionAndFrameNum(int32_t fd,
 
 string MovingPhotoFileUtils::GetMovingPhotoVideoPath(const string &imagePath, int32_t userId)
 {
-    return MediaFileUtils::GetMovingPhotoVideoPath(AppendUserId(imagePath, userId));
+    return MediaFileUtils::GetMovingPhotoVideoPath(MediaPathUtils::AppendUserId(imagePath, userId));
 }
 
 string MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(const string &imagePath, int32_t userId)
 {
-    if (imagePath.length() < ROOT_MEDIA_DIR.length() || !MediaFileUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
+    if (imagePath.length() < ROOT_MEDIA_DIR.length() || !MediaStringUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
         return "";
     }
-    return AppendUserId(MEDIA_EXTRA_DATA_DIR, userId) + imagePath.substr(ROOT_MEDIA_DIR.length());
+    return MediaPathUtils::AppendUserId(MEDIA_EXTRA_DATA_DIR, userId) + imagePath.substr(ROOT_MEDIA_DIR.length());
 }
 
 string MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(const string &imagePath, int32_t userId)
@@ -936,7 +931,7 @@ string MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(const string &imagePath
 
 string MovingPhotoFileUtils::GetSourceMovingPhotoImagePath(const string& imagePath, int32_t userId)
 {
-    return GetEditDataSourcePath(imagePath, userId);
+    return MediaEditUtils::GetEditDataSourcePath(imagePath, userId);
 }
 
 string MovingPhotoFileUtils::GetSourceMovingPhotoVideoPath(const string& imagePath, int32_t userId)
@@ -946,10 +941,10 @@ string MovingPhotoFileUtils::GetSourceMovingPhotoVideoPath(const string& imagePa
 
 string MovingPhotoFileUtils::GetLivePhotoCacheDir(const string &imagePath, int32_t userId)
 {
-    if (imagePath.length() < ROOT_MEDIA_DIR.length() || !MediaFileUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
+    if (imagePath.length() < ROOT_MEDIA_DIR.length() || !MediaStringUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
         return "";
     }
-    return AppendUserId(MEDIA_CACHE_DIR, userId) + imagePath.substr(ROOT_MEDIA_DIR.length());
+    return MediaPathUtils::AppendUserId(MEDIA_CACHE_DIR, userId) + imagePath.substr(ROOT_MEDIA_DIR.length());
 }
 
 string MovingPhotoFileUtils::GetLivePhotoCachePath(const string &imagePath, int32_t userId)
@@ -985,7 +980,7 @@ bool MovingPhotoFileUtils::IsGraffiti(int32_t subtype, int32_t originalSubtype)
 
 size_t MovingPhotoFileUtils::GetMovingPhotoSize(const std::string &imagePath, int32_t userId)
 {
-    string movingPhotoImagePath = AppendUserId(imagePath, userId);
+    string movingPhotoImagePath = MediaPathUtils::AppendUserId(imagePath, userId);
     string movingPhotoVideoPath = GetMovingPhotoVideoPath(imagePath, userId);
     string movingPhotoExtraDataPath = GetMovingPhotoExtraDataPath(imagePath, userId);
     size_t imageSize = 0;

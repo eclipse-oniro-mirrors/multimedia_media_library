@@ -79,6 +79,7 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
   ]
 

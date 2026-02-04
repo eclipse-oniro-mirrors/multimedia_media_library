@@ -47,6 +47,7 @@
 #include "media_datashare_ext_ability.h"
 #include "media_directory_type_column.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_old_photos_column.h"
 #include "media_old_albums_column.h"
 #include "media_scanner_manager.h"
@@ -1794,10 +1795,10 @@ int32_t MediaLibraryDataManager::Delete(MediaLibraryCommand &cmd, const DataShar
     }
 
     string uriString = cmd.GetUri().ToString();
-    if (MediaFileUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
         return MediaLibraryAssetOperations::DeleteOperation(cmd);
     }
-    if (MediaFileUtils::StartsWith(uriString, CustomRecordsColumns::CUSTOM_RECORDS_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(uriString, CustomRecordsColumns::CUSTOM_RECORDS_URI_PREFIX)) {
         NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicates,
             cmd.GetTableName());
         cmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());

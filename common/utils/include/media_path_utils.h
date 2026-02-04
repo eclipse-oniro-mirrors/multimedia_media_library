@@ -33,6 +33,8 @@ public:
     EXPORT ~MediaPathUtils();
     EXPORT static std::string GetFileName(const std::string &filePath);
     EXPORT static std::string GetExtension(const std::string &path);
+    EXPORT static std::string AppendUserId(const std::string& path, int32_t userId);
+    EXPORT static bool CheckPhotoPath(const std::string& photoPath);
 };
 } // namespace OHOS::Media
 

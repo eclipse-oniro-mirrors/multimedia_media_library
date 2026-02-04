@@ -25,6 +25,7 @@
 #include "media_asset_rdbstore.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_kvstore_manager.h"
@@ -164,7 +165,7 @@ static bool CheckPhotoUri(const string &uri)
         return false;
     }
     string photoUriPrefix = "file://media/Photo/";
-    return MediaFileUtils::StartsWith(uri, photoUriPrefix);
+    return MediaStringUtils::StartsWith(uri, photoUriPrefix);
 }
 
 int32_t MediaLibraryManager::OpenAsset(string &uri, const string openMode)

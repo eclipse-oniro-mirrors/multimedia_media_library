@@ -47,6 +47,7 @@
 #include "access_token.h"
 #include "accesstoken_kit.h"
 #include "medialibrary_napi_enum_comm.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS::Security::AccessToken;
@@ -664,7 +665,7 @@ static napi_status ParseArgsStartBatchDownloadCloudResources(napi_env env, napi_
         return napi_invalid_arg;
     }
     for (const auto &uri : uris) {
-        if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
             NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check uri format, not a photo uri!");
             return napi_invalid_arg;
         }
@@ -768,7 +769,7 @@ static napi_status ParseArgsSetNetWorkPolicyForBatchDownload(napi_env env, napi_
         return napi_invalid_arg;
     }
     for (const auto &uri : uris) {
-        if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
             NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check uri format, not a photo uri!");
             return napi_invalid_arg;
         }
@@ -867,7 +868,7 @@ static napi_status ParseArgsResumeBatchDownloadCloudResources(napi_env env, napi
     vector<string> uris;
     MediaLibraryNapiUtils::GetStringArray(env, context->argv[ARGS_ZERO], uris); // 接受null
     for (const auto &uri : uris) {
-        if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
             NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check uri format, not a photo uri!");
             return napi_invalid_arg;
         }
@@ -962,7 +963,7 @@ static napi_status ParseArgsPauseDownloadCloudResources(napi_env env, napi_callb
     vector<string> uris;
     MediaLibraryNapiUtils::GetStringArray(env, context->argv[ARGS_ZERO], uris); // 接受null
     for (const auto &uri : uris) {
-        if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
             NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check uri format, not a photo uri!");
             return napi_invalid_arg;
         }
@@ -1057,7 +1058,7 @@ static napi_status ParseArgsCancelDownloadCloudResources(napi_env env, napi_call
     vector<string> uris;
     MediaLibraryNapiUtils::GetStringArray(env, context->argv[ARGS_ZERO], uris); // 接受null
     for (const auto &uri : uris) {
-        if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
             NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check uri format, not a photo uri!");
             return napi_invalid_arg;
         }

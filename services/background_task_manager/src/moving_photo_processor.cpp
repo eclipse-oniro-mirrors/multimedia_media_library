@@ -41,6 +41,7 @@
 #include "scanner_utils.h"
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
+#include "media_edit_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -555,7 +556,7 @@ int32_t MovingPhotoProcessor::ProcessLocalCloudLivePhoto(LivePhotoData& data)
 {
     CHECK_AND_RETURN_RET(data.editTime != 0, ProcessLocalLivePhoto(data));
     data.isLivePhoto = false;
-    string sourcePath = PhotoFileUtils::GetEditDataSourcePath(data.path);
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(data.path);
     bool isLivePhotoEdited = MovingPhotoFileUtils::IsLivePhoto(sourcePath);
     CHECK_AND_RETURN_RET(isLivePhotoEdited, E_OK);
     data.metaDateModified = MediaFileUtils::UTCTimeMilliSeconds();

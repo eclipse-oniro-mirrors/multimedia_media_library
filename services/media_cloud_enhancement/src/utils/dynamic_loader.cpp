@@ -20,6 +20,7 @@
 #include <dlfcn.h>
 #include "media_log.h"
 #include "medialibrary_tracer.h"
+#include "media_string_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -44,7 +45,7 @@ void* DynamicLoader::OpenDynamicHandle(std::string dynamicLibrary)
     MediaLibraryTracer tracer;
     tracer.Start("EnhancementDynamicLoader::OpenDynamicHandle");
     std::lock_guard loaderLock(libLock_);
-    if (!EndsWith(dynamicLibrary, K_LIBRARY_SUFFIX)) {
+    if (!MediaStringUtils::EndsWith(dynamicLibrary, K_LIBRARY_SUFFIX)) {
         MEDIA_ERR_LOG("CloseDynamicHandle with error name!");
         return nullptr;
     }
@@ -87,7 +88,7 @@ void DynamicLoader::CloseDynamicHandle(std::string dynamicLibrary)
     MediaLibraryTracer tracer;
     tracer.Start("EnhancementDynamicLoader::CloseDynamicHandle");
     std::lock_guard loaderLock(libLock_);
-    if (!EndsWith(dynamicLibrary, K_LIBRARY_SUFFIX)) {
+    if (!MediaStringUtils::EndsWith(dynamicLibrary, K_LIBRARY_SUFFIX)) {
         MEDIA_ERR_LOG("CloseDynamicHandle with error name!");
         return;
     }

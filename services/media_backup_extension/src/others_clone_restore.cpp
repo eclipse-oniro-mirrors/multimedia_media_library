@@ -40,6 +40,7 @@
 #include "medialibrary_rdb_transaction.h"
 #include "os_account_manager.h"
 #include "upgrade_restore_task_report.h"
+#include "media_string_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -637,7 +638,7 @@ bool OthersCloneRestore::ConvertPathToRealPath(const std::string &srcPath, const
     std::string &newPath, std::string &relativePath, FileInfo &fileInfo)
 {
     CHECK_AND_RETURN_RET(srcPath != "", false);
-    if (MediaFileUtils::StartsWith(srcPath, INTERNAL_PREFIX)) {
+    if (MediaStringUtils::StartsWith(srcPath, INTERNAL_PREFIX)) {
         return ConvertPathToRealPath(srcPath, prefix, newPath, relativePath);
     }
     size_t pos = 0;

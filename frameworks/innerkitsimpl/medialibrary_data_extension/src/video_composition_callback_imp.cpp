@@ -23,11 +23,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "medialibrary_errno.h"
-#include "photo_file_utils.h"
 #include "dfx_utils.h"
 #include "directory_ex.h"
 #include "medialibrary_object_utils.h"
 #include "lake_file_utils.h"
+#include "media_edit_utils.h"
+#include "media_string_utils.h"
 
 using std::string;
 
@@ -200,7 +201,7 @@ int32_t VideoCompositionCallbackImpl::CallStartComposite(const std::string& sour
 void VideoCompositionCallbackImpl::AddCompositionTask(const std::string& assetPath,
     std::string& editData, bool isNeedScan)
 {
-    string sourceImagePath = PhotoFileUtils::GetEditDataSourcePath(assetPath);
+    string sourceImagePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
     string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourceImagePath);
 
@@ -241,7 +242,7 @@ int32_t VideoCompositionCallbackImpl::EraseWatermarkTagAndStickerField(std::stri
             // handle sticker field
             if (keep && filter.contains(NAME_FIELD) && filter[NAME_FIELD].is_string()) {
                 std::string name = filter[NAME_FIELD].get<std::string>();
-                CHECK_AND_EXECUTE(!MediaFileUtils::EndsWith(name, STICKER), keep = false);
+                CHECK_AND_EXECUTE(!MediaStringUtils::EndsWith(name, STICKER), keep = false);
             }
             CHECK_AND_EXECUTE(!keep, newFilters.push_back(filter));
         }

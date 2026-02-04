@@ -36,7 +36,7 @@
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_notify.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #include "medialibrary_photo_operations.h"
 #include "mimetype_utils.h"
 #include "securec.h"
@@ -146,10 +146,10 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckDisplayName(info->displayName) == E_OK,
         E_ERR, "display name not valid");
 
-    string editDataDirPath = PhotoFileUtils::GetEditDataDir(info->filePath);
-    string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(info->filePath);
-    string editDataSourcePath = PhotoFileUtils::GetEditDataSourcePath(info->filePath);
-    string editDataSourceBackPath = PhotoFileUtils::GetEditDataSourceBackPath(info->filePath);
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(info->filePath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(info->filePath);
+    string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(info->filePath);
+    string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(info->filePath);
 
     if (!MediaFileUtils::IsDirExists(editDataDirPath)) {
         if (!MediaFileUtils::CreateDirectory(editDataDirPath)) {
@@ -276,12 +276,12 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementMovingPhotoVideo(shared_
     string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(info->filePath);
     CHECK_AND_RETURN_RET_LOG(!videoPath.empty(), E_ERR, "Can not get video path, fileid: %{public}d", info->fileId);
 
-    string editDataDirPath = PhotoFileUtils::GetEditDataDir(info->filePath);
-    string editDataSourcePath = PhotoFileUtils::GetEditDataSourcePath(info->filePath);
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(info->filePath);
+    string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(info->filePath);
     string editVideoDataSourcePath = MediaFileUtils::GetMovingPhotoVideoPath(editDataSourcePath);
-    string editDataSourceBackPath = PhotoFileUtils::GetEditDataSourceBackPath(info->filePath);
+    string editDataSourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(info->filePath);
     string editVideoDataSourceBackPath = MediaFileUtils::GetMovingPhotoVideoPath(editDataSourceBackPath);
-    string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(info->filePath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(info->filePath);
     if (!MediaFileUtils::IsDirExists(editDataDirPath)) {
         if (!MediaFileUtils::CreateDirectory(editDataDirPath)) {
             MEDIA_ERR_LOG("Failed to create editData directory, path: %{private}s", editDataDirPath.c_str());

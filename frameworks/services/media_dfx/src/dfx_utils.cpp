@@ -21,6 +21,7 @@
 
 #include "dfx_const.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 using namespace std;
 namespace OHOS {
@@ -59,7 +60,7 @@ string DfxUtils::GetSafePath(const string &path)
     if (path == "") {
         return safePath;
     }
-    if (MediaFileUtils::StartsWith(path, CLOUD_PHOTO_PATH)) {
+    if (MediaStringUtils::StartsWith(path, CLOUD_PHOTO_PATH)) {
         return safePath.replace(0, CLOUD_PHOTO_PATH.length(), GARBLE);
     }
     safePath = safePath.replace(0, CLOUD_FILE_PATH.length(), GARBLE);

@@ -49,7 +49,6 @@
 #include "medialibrary_unittest_utils.h"
 #include "media_library_extend_manager.h"
 #include "photo_album_column.h"
-#include "photo_file_utils.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
 #include "userfilemgr_uri.h"
@@ -60,7 +59,7 @@
 #include "iservice_registry.h"
 #include "unique_fd.h"
 #include "tlv_util.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 
 using namespace testing;
 using namespace std;
@@ -279,22 +278,22 @@ void MediaLibraryShareOpenTest::InitTestFileAsset(const std::string &id, bool is
 
 void MediaLibraryShareOpenTest::InitEditedFiles(const std::string &assetPath)
 {
-    std::string editData = PhotoFileUtils::GetEditDataPath(assetPath);
+    std::string editData = MediaEditUtils::GetEditDataPath(assetPath);
     bool isParentDirExist = CheckAndCreateDir(editData);
     bool copyFile = MediaFileUtils::CopyFileSafe(EDIT_DATA_PATH, editData);
     EXPECT_TRUE(copyFile);
 
-    std::string sourceBackPath = PhotoFileUtils::GetEditDataSourceBackPath(assetPath);
+    std::string sourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(assetPath);
     isParentDirExist = CheckAndCreateDir(sourceBackPath);
     copyFile = MediaFileUtils::CopyFileSafe(EDIT_DATA_SOURCE_BACK_PATH, sourceBackPath);
     EXPECT_TRUE(copyFile);
 
-    std::string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(assetPath);
+    std::string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     isParentDirExist = CheckAndCreateDir(editDataCameraPath);
     copyFile = MediaFileUtils::CopyFileSafe(EDIT_DATA_CAMERA_PATH, editDataCameraPath);
     EXPECT_TRUE(copyFile);
 
-    std::string sourcePath = PhotoFileUtils::GetEditDataSourcePath(assetPath);
+    std::string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     isParentDirExist = CheckAndCreateDir(sourcePath);
     copyFile = MediaFileUtils::CopyFileSafe(EDIT_DATA_SOURCE_PATH, sourcePath);
     EXPECT_TRUE(copyFile);

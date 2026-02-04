@@ -17,7 +17,7 @@
 
 #include "clone_restore_highlight_test.h"
 #include "clone_highlight_source.h"
-#include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "vision_db_sqls.h"
 #include "vision_db_sqls_more.h"
 #include "story_db_sqls.h"
@@ -692,13 +692,14 @@ HWTEST_F(CloneRestoreHighlightTest, clone_restore_cv_analysis_test_006, TestSize
     nlohmann::json newPlayInfo1 = nlohmann::json::parse(oldPlayInfo1, nullptr, false);
     std::string oldEffectVideoUri0 = newPlayInfo1["effectline"]["effectline"][0]["effectVideoUri"];
     std::string oldEffectVideoUri1 = newPlayInfo1["effectline"]["effectline"][1]["effectVideoUri"];
-    EXPECT_TRUE(MediaFileUtils::StartsWith(oldEffectVideoUri0, PHOTO_URI_PREFIX));
-    EXPECT_TRUE(MediaFileUtils::StartsWith(oldEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX));
+    EXPECT_TRUE(MediaStringUtils::StartsWith(oldEffectVideoUri0, PHOTO_URI_PREFIX));
+    EXPECT_TRUE(MediaStringUtils::StartsWith(oldEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX));
     cloneRestoreCVAnalysis->ParseEffectline(newPlayInfo1, restoreHighlight);
     MEDIA_INFO_LOG("newPlayInfo1: %{public}s",
         newPlayInfo1.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace).c_str());
     std::string newEffectVideoUri1 = newPlayInfo1["effectline"]["effectline"][1]["effectVideoUri"];
-    EXPECT_FALSE(MediaFileUtils::StartsWith(newEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX)); // invalid effectVideoUri
+    // invalid effectVideoUri
+    EXPECT_FALSE(MediaStringUtils::StartsWith(newEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX));
 
     std::string oldPlayInfo2 = R"({
         "effectline": {

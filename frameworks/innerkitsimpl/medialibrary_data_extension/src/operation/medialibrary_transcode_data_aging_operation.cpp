@@ -87,6 +87,7 @@
 #include "background_cloud_batch_selected_file_processor.h"
 #include "cloud_media_dao_utils.h"
 #include "media_file_manager_temp_file_aging_task.h"
+#include "media_edit_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -117,19 +118,11 @@ MediaLibraryTranscodeDataAgingOperation* MediaLibraryTranscodeDataAgingOperation
     return instance_.get();
 }
 
-string GetEditDataDirPath(const string &path)
-{
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
-        return "";
-    }
-    return MEDIA_EDIT_DATA_DIR + path.substr(ROOT_MEDIA_DIR.length());
-}
-
 int32_t MediaLibraryTranscodeDataAgingOperation::DeleteTranscodePhotos(const std::string &filePath)
 {
     CHECK_AND_RETURN_RET_LOG(!filePath.empty(), E_INNER_FAIL, "filePath is empty");
 
-    auto editPath = GetEditDataDirPath(filePath);
+    auto editPath = MediaEditUtils::GetEditDataDir(filePath);
     CHECK_AND_RETURN_RET_LOG(!editPath.empty(), E_INNER_FAIL, "editPath is empty");
 
     auto transcodeFile = editPath + "/transcode.jpg";
@@ -184,19 +177,10 @@ string LocationValueToString(double value)
     return result;
 }
 
-string MediaLibraryTranscodeDataAgingOperation::GetTransCodePath(const string &path)
-{
-    string parentPath = GetEditDataDirPath(path);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/transcode.jpg";
-}
-
 void MediaLibraryTranscodeDataAgingOperation::ModifyTransCodeFileExif(const ExifType type, const std::string &path,
     const TransCodeExifInfo &exifInfo, const std::string &functionName)
 {
-    string transCodePath = PhotoFileUtils::GetTransCodePath(path);
+    string transCodePath = MediaEditUtils::GetTransCodePath(path);
     MEDIA_DEBUG_LOG("transCodePath path is %{public}s", transCodePath.c_str());
     if (!MediaFileUtils::IsFileExists(transCodePath)) {
         MEDIA_DEBUG_LOG("transCodePath path is not exists.");
@@ -265,7 +249,7 @@ int32_t MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(std:
     CHECK_AND_RETURN_RET_LOG(fileAsset->GetExistCompatibleDuplicate(), E_INNER_FAIL,
         "SetTranscodeUriToFileAsset compatible duplicate is not exist, fileAsset uri: %{public}s",
         fileAsset->GetUri().c_str());
-    string path = GetEditDataDirPath(fileAsset->GetPath());
+    string path = MediaEditUtils::GetEditDataDir(fileAsset->GetPath());
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INNER_FAIL,
         "Get edit data dir path failed, fileAsset uri: %{public}s", fileAsset->GetUri().c_str());
     string newPath = path + "/transcode.jpg";

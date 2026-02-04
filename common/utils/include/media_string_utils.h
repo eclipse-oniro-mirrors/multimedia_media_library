@@ -30,6 +30,7 @@ public:
     EXPORT ~MediaStringUtils();
     EXPORT static bool ConvertToInt(const std::string &number, int &value);
     EXPORT static bool StartsWith(const std::string &str, const std::string &prefix);
+    EXPORT static bool EndsWith(const std::string &str, const std::string &suffix);
 };
 } // namespace OHOS::Media
 

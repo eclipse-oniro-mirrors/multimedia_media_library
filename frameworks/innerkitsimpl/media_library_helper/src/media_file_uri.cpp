@@ -24,6 +24,7 @@
 #include "string_ex.h"
 #include "userfilemgr_uri.h"
 #include "media_audio_column.h"
+#include "media_string_utils.h"
 
 using namespace std;
 namespace OHOS {
@@ -86,13 +87,13 @@ static std::string SolveMediaType(MediaType mediaType)
 
 void MediaFileUri::ParseUri(const string &uri)
 {
-    if (MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
         uriType_ = API10_PHOTO_URI;
-    } else if (MediaFileUtils::StartsWith(uri, PhotoAlbumColumns::ALBUM_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, PhotoAlbumColumns::ALBUM_URI_PREFIX)) {
         uriType_ = API10_PHOTOALBUM_URI;
-    } else if (MediaFileUtils::StartsWith(uri, AudioColumn::AUDIO_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, AudioColumn::AUDIO_URI_PREFIX)) {
         uriType_ = API10_AUDIO_URI;
-    } else if (MediaFileUtils::StartsWith(uri, PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX)) {
         uriType_ = API10_ANALYSISALBUM_URI;
     } else  {
         uriType_ = API9_URI;
@@ -377,23 +378,23 @@ int MediaFileUri::GetUriType()
 
 MediaType MediaFileUri::GetMediaTypeFromUri(const std::string &uri)
 {
-    if (MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
         return MEDIA_TYPE_PHOTO;
-    } else if (MediaFileUtils::StartsWith(uri, AudioColumn::AUDIO_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, AudioColumn::AUDIO_URI_PREFIX)) {
         return MEDIA_TYPE_AUDIO;
-    } else if (MediaFileUtils::StartsWith(uri, PhotoAlbumColumns::ALBUM_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, PhotoAlbumColumns::ALBUM_URI_PREFIX)) {
         return Media::MEDIA_TYPE_ALBUM;
-    } else if (MediaFileUtils::StartsWith(uri, CONST_AUDIO_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, CONST_AUDIO_URI_PREFIX)) {
         return Media::MEDIA_TYPE_AUDIO;
-    } else if (MediaFileUtils::StartsWith(uri, CONST_VIDEO_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, CONST_VIDEO_URI_PREFIX)) {
         return Media::MEDIA_TYPE_VIDEO;
-    } else if (MediaFileUtils::StartsWith(uri, CONST_IMAGE_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, CONST_IMAGE_URI_PREFIX)) {
         return Media::MEDIA_TYPE_IMAGE;
-    } else if (MediaFileUtils::StartsWith(uri, CONST_ALBUM_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, CONST_ALBUM_URI_PREFIX)) {
         return Media::MEDIA_TYPE_ALBUM;
-    } else if (MediaFileUtils::StartsWith(uri, CONST_FILE_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, CONST_FILE_URI_PREFIX)) {
         return Media::MEDIA_TYPE_FILE;
-    } else if (MediaFileUtils::StartsWith(uri, CONST_HIGHLIGHT_URI_PREFIX)) {
+    } else if (MediaStringUtils::StartsWith(uri, CONST_HIGHLIGHT_URI_PREFIX)) {
         return Media::MEDIA_TYPE_FILE;
     }
     return Media::MEDIA_TYPE_DEFAULT;
@@ -426,7 +427,7 @@ static int32_t UriValidCheck(Uri &uri)
 static inline void HandleOldUriPath(std::string &path)
 {
     // Handle datashare:///media and datashare:///media/file_operation case
-    if (MediaFileUtils::StartsWith(path, CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER)) {
+    if (MediaStringUtils::StartsWith(path, CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER)) {
         path = path.substr(string(CONST_MEDIALIBRARY_DATA_URI_IDENTIFIER).size());
         return;
     }
@@ -434,7 +435,7 @@ static inline void HandleOldUriPath(std::string &path)
 
 static inline void RemovePrecedSlash(std::string &path)
 {
-    if (MediaFileUtils::StartsWith(path, SLASH_STR)) {
+    if (MediaStringUtils::StartsWith(path, SLASH_STR)) {
         path = path.substr(SLASH_STR.size());
     }
 }
@@ -477,7 +478,7 @@ std::string MediaFileUri::GetPathSecondDentry(Uri &uri)
 
 std::string MediaFileUri::GetPhotoId(const std::string &uri)
 {
-    if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+    if (!MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
         return "";
     }
     std::string tmp = uri.substr(PhotoColumn::PHOTO_URI_PREFIX.size());

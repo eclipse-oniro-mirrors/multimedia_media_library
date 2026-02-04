@@ -20,6 +20,7 @@
 #include "mimetype_utils.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "photo_album.h"
 #include "userfile_manager_types.h"
 #include "media_file_uri.h"
@@ -385,7 +386,7 @@ bool ParameterUtils::CheckPhotoUri(const string &uri)
         return false;
     }
     string photoUriPrefix = "file://media/Photo/";
-    return MediaFileUtils::StartsWith(uri, photoUriPrefix);
+    return MediaStringUtils::StartsWith(uri, photoUriPrefix);
 }
 
 int32_t ParameterUtils::CheckRestore(const RestoreReqBody &reqBody)

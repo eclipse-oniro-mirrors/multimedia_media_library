@@ -71,9 +71,9 @@ ohos_shared_library("media_library_asset_manager") {
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_UTILS_PATH}:permission_utils",
-    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 

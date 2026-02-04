@@ -280,6 +280,7 @@ ohos_shared_library("photo_access_helper_ani") {
   deps = [
     ":medialibrary_ani_utils",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [
@@ -327,6 +328,7 @@ ohos_shared_library("userfile_manager_ani") {
   deps = [
     ":medialibrary_ani_utils",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [

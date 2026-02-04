@@ -43,6 +43,7 @@
 #include "cloud_media_sync_mutex.h"
 #include "medialibrary_bundle_manager.h"
 #include "hi_audit.h"
+#include "media_edit_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -377,15 +378,9 @@ int32_t CloudMediaAssetManager::ReadyDataForDelete(std::vector<std::string> &fil
     return E_OK;
 }
 
-std::string CloudMediaAssetManager::GetEditDataDirPath(const std::string &path)
-{
-    CHECK_AND_RETURN_RET(path.length() >= ROOT_MEDIA_DIR.length(), "");
-    return MEDIA_EDIT_DATA_DIR + path.substr(ROOT_MEDIA_DIR.length());
-}
-
 int32_t CloudMediaAssetManager::DeleteEditdata(const std::string &path)
 {
-    string editDataDirPath = GetEditDataDirPath(path);
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(path);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_ERR, "Cannot get editPath, path: %{private}s", path.c_str());
     if (MediaFileUtils::IsFileExists(editDataDirPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::DeleteDir(editDataDirPath), E_ERR,

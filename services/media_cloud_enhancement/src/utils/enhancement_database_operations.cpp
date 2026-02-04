@@ -21,6 +21,9 @@
 #include "medialibrary_unistore_manager.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_pure_file_utils.h"
+#include "media_string_utils.h"
+#include "media_time_utils.h"
 #include "media_log.h"
 #include "scanner_utils.h"
 #include "mimetype_utils.h"
@@ -47,7 +50,7 @@ std::shared_ptr<NativeRdb::ResultSet> EnhancementDatabaseOperations::Query(Media
     RdbPredicates clientPredicates = RdbUtils::ToPredicates(cmd.GetDataSharePred(), PhotoColumn::PHOTOS_TABLE);
     const vector<string> &whereUriArgs = clientPredicates.GetWhereArgs();
     string uri = whereUriArgs.front();
-    if (!MediaFileUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
+    if (!MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_URI_PREFIX)) {
         MEDIA_ERR_LOG("invalid URI: %{private}s", uri.c_str());
         return nullptr;
     }
@@ -65,7 +68,7 @@ std::shared_ptr<NativeRdb::ResultSet> EnhancementDatabaseOperations::BatchQuery(
     vector<string> whereIdArgs;
     whereIdArgs.reserve(whereUriArgs.size());
     for (const auto &arg : whereUriArgs) {
-        if (!MediaFileUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX)) {
+        if (!MediaStringUtils::StartsWith(arg, PhotoColumn::PHOTO_URI_PREFIX)) {
             MEDIA_ERR_LOG("invalid URI: %{private}s", arg.c_str());
             continue;
         }
@@ -117,11 +120,11 @@ static void HandleDateAdded(const MediaType type, ValuesBucket &outValues,
         return;
     }
     outValues.PutString(PhotoColumn::PHOTO_DATE_YEAR,
-        MediaFileUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DATE_YEAR_FORMAT, dateTaken));
+        MediaTimeUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DATE_YEAR_FORMAT, dateTaken));
     outValues.PutString(PhotoColumn::PHOTO_DATE_MONTH,
-        MediaFileUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DATE_MONTH_FORMAT, dateTaken));
+        MediaTimeUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DATE_MONTH_FORMAT, dateTaken));
     outValues.PutString(PhotoColumn::PHOTO_DATE_DAY,
-        MediaFileUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DATE_DAY_FORMAT, dateTaken));
+        MediaTimeUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DATE_DAY_FORMAT, dateTaken));
     outValues.PutLong(MediaColumn::MEDIA_DATE_TAKEN, dateTaken);
 }
 
@@ -196,7 +199,7 @@ int32_t EnhancementDatabaseOperations::InsertCloudEnhancementImageInDb(MediaLibr
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdb store failed");
-    CHECK_AND_RETURN_RET_LOG(fileAsset.GetPath().empty() || !MediaFileUtils::IsFileExists(fileAsset.GetPath()),
+    CHECK_AND_RETURN_RET_LOG(fileAsset.GetPath().empty() || !MediaPureFileUtils::IsFileExists(fileAsset.GetPath()),
         E_FILE_EXIST, "file %{private}s exists now", fileAsset.GetPath().c_str());
     ValuesBucket assetInfo;
     SetBasicAttributes(cmd, fileAsset, assetInfo, resultSet);
@@ -319,7 +322,7 @@ std::shared_ptr<NativeRdb::ResultSet> EnhancementDatabaseOperations::GetPair(Med
     RdbPredicates clientPredicates = RdbUtils::ToPredicates(cmd.GetDataSharePred(), PhotoColumn::PHOTOS_TABLE);
     const vector<string> &whereUriArgs = clientPredicates.GetWhereArgs();
     string UriArg = whereUriArgs.front();
-    if (!MediaFileUtils::StartsWith(UriArg, PhotoColumn::PHOTO_URI_PREFIX)) {
+    if (!MediaStringUtils::StartsWith(UriArg, PhotoColumn::PHOTO_URI_PREFIX)) {
         return nullptr;
     }
     string fileId = MediaFileUri::GetPhotoId(UriArg);

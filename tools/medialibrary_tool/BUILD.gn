@@ -55,6 +55,7 @@ ohos_executable("mediatool") {
 
   deps += [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
   ]
 

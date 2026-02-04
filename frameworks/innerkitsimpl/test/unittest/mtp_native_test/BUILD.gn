@@ -57,6 +57,7 @@ if (media_library_feature_mtp) {
 
     deps = [
       "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
       "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
       "${MEDIALIB_MTP_PATH}:media_mtp",
     ]

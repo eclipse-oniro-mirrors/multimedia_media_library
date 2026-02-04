@@ -483,6 +483,7 @@ ohos_shared_library("medialibrary") {
     ":medialibraryinf_abc",
     ":medialibraryinf_js",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [
@@ -554,6 +555,7 @@ ohos_shared_library("userfilemanager") {
   deps = [
     ":medialibrary_nutils",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [
@@ -630,6 +632,7 @@ ohos_shared_library("photoaccesshelpernative") {
   deps = [
     ":medialibrary_nutils",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [
@@ -873,9 +876,9 @@ ohos_shared_library("sendablephotoaccesshelper") {
   ]
 
   deps = [
-    "${MEDIALIB_COMMON_PATH}:media_library_common",
     ":medialibrary_nutils",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]
 
   external_deps = [

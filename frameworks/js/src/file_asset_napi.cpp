@@ -29,6 +29,7 @@
 #include "media_asset_edit_data_napi.h"
 #include "media_exif.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_smart_map_column.h"
 #include "medialibrary_client_errno.h"
 #include "medialibrary_napi_enum_comm.h"
@@ -1601,8 +1602,8 @@ static void JSCloseExecute(FileAssetAsyncContext *context)
 #ifdef MEDIALIBRARY_COMPATIBILITY
     string closeUri;
     if (MediaFileUtils::IsFileTablePath(context->objectPtr->GetPath()) ||
-        MediaFileUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOC_DIR_VALUES) ||
-        MediaFileUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
+        MediaStringUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOC_DIR_VALUES) ||
+        MediaStringUtils::StartsWith(context->objectPtr->GetRelativePath(), DOCS_PATH + DOWNLOAD_DIR_VALUES)) {
         closeUri = MEDIALIBRARY_DATA_URI + "/" + CONST_MEDIA_FILEOPRN + "/" + CONST_MEDIA_FILEOPRN_CLOSEASSET;
     } else if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {

@@ -46,6 +46,42 @@ HWTEST_F(MediaStringUtilsUnitTest, medialib_Conver_test_001, TestSize.Level1)
     EXPECT_EQ(ret, true);
     value = 1;
 }
+HWTEST_F(MediaStringUtilsUnitTest, medialib_Convert_test_001, TestSize.Level1)
+{
+    std::string srt = "";
+    int32_t value = -1;
+    bool ret = MediaStringUtils::ConvertToInt(srt, value);
+    EXPECT_EQ(ret, false);
+    EXPECT_EQ(value, -1);
+    srt = "medialib_IsNumber_test_001";
+    ret = MediaStringUtils::ConvertToInt(srt, value);
+    EXPECT_EQ(ret, false);
+    srt = "1";
+    ret = MediaStringUtils::ConvertToInt(srt, value);
+    EXPECT_EQ(ret, true);
+    value = 1;
+}
 
+HWTEST_F(MediaStringUtilsUnitTest, medialib_start_wtith_test_001, TestSize.Level1)
+{
+    std::string emptyString = "";
+    EXPECT_EQ(MediaStringUtils::StartWith(emptyString, ""), true);
+    EXPECT_EQ(MediaStringUtils::StartWith(emptyString, "1"), false);
+    std::string testJpg = "1.jpg"
+    EXPECT_EQ(MediaStringUtils::StartWith(string, ""), true);
+    EXPECT_EQ(MediaStringUtils::StartWith(string, "1"), true);
+    EXPECT_EQ(MediaStringUtils::StartWith(string, "2"), false);
+}
+
+HWTEST_F(MediaStringUtilsUnitTest, medialib_end_wtith_test_001, TestSize.Level1)
+{
+    std::string emptyString = "";
+    EXPECT_EQ(MediaStringUtils::EndsWith(emptyString, ""), true);
+    EXPECT_EQ(MediaStringUtils::EndsWith(emptyString, "jpg"), false);
+    std::string testJpg = "1.jpg"
+    EXPECT_EQ(MediaStringUtils::EndsWith(string, ""), true);
+    EXPECT_EQ(MediaStringUtils::EndsWith(string, "jpg"), true);
+    EXPECT_EQ(MediaStringUtils::EndsWith(string, "png"), false);
+}
 } // namespace Media
 } // namespace OHOS

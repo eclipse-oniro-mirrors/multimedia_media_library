@@ -35,6 +35,9 @@
 #include "thumbnail_const.h"
 #include "moving_photo_file_utils.h"
 #include "cloud_media_uri_utils.h"
+#include "media_edit_utils.h"
+#include "media_path_utils.h"
+#include "media_string_utils.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
 #include "enhancement_manager.h"
 #endif
@@ -158,7 +161,7 @@ void CloudMediaSyncUtils::RemoveThmParentPath(const std::string &path, const std
 
 void CloudMediaSyncUtils::RemoveEditDataParentPath(const std::string &path)
 {
-    std::string editParentPath = PhotoFileUtils::GetEditDataDir(path);
+    std::string editParentPath = MediaEditUtils::GetEditDataDir(path);
 
     MEDIA_INFO_LOG("filePath: %{public}s, editDataParentDir: %{public}s",
         MediaFileUtils::DesensitizePath(path).c_str(),
@@ -229,7 +232,7 @@ void CloudMediaSyncUtils::InvalidVideoCache(const std::string &localPath)
 
 std::string CloudMediaSyncUtils::GetMovingPhotoExtraDataDir(const std::string &localPath)
 {
-    if (localPath.length() < ROOT_MEDIA_DIR.length() || !MediaFileUtils::StartsWith(localPath, ROOT_MEDIA_DIR)) {
+    if (localPath.length() < ROOT_MEDIA_DIR.length() || !MediaStringUtils::StartsWith(localPath, ROOT_MEDIA_DIR)) {
         return "";
     }
     return MEDIA_EDIT_DATA_DIR + localPath.substr(ROOT_MEDIA_DIR.length());
@@ -244,55 +247,14 @@ std::string CloudMediaSyncUtils::GetMovingPhotoExtraDataPath(const std::string &
     return parentPath + "/extraData";
 }
 
-static bool CheckPhotoPath(const std::string &localPath)
-{
-    return localPath.length() >= ROOT_MEDIA_DIR.length() && MediaFileUtils::StartsWith(localPath, ROOT_MEDIA_DIR);
-}
-
-std::string CloudMediaSyncUtils::GetEditDataSourcePath(const string& photoPath)
-{
-    string parentPath = GetEditDataDir(photoPath);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/source." + MediaFileUtils::GetExtensionFromPath(photoPath);
-}
-
 std::string CloudMediaSyncUtils::GetSourceMovingPhotoImagePath(const string& imagePath)
 {
-    return GetEditDataSourcePath(imagePath);
+    return MediaEditUtils::GetEditDataSourcePath(imagePath);
 }
 
 std::string CloudMediaSyncUtils::GetSourceMovingPhotoVideoPath(const string& imagePath)
 {
     return GetMovingPhotoVideoPath(GetSourceMovingPhotoImagePath(imagePath));
-}
-
-std::string CloudMediaSyncUtils::GetEditDataDir(const std::string &localPath)
-{
-    if (!CheckPhotoPath(localPath)) {
-        return "";
-    }
-
-    return MEDIA_EDIT_DATA_DIR + localPath.substr(ROOT_MEDIA_DIR.length());
-}
-
-std::string CloudMediaSyncUtils::GetEditDataPath(const std::string &localPath)
-{
-    std::string parentPath = GetEditDataDir(localPath);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/editdata";
-}
-
-std::string CloudMediaSyncUtils::GetTransCodePath(const std::string &localPath)
-{
-    std::string parentPath = GetEditDataDir(localPath);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/transcode.jpg";
 }
 
 std::string CloudMediaSyncUtils::GetMovingPhotoVideoPath(const std::string &localPath)
@@ -308,7 +270,7 @@ std::string CloudMediaSyncUtils::GetMovingPhotoVideoPath(const std::string &loca
 std::string CloudMediaSyncUtils::GetMovingPhotoTmpPath(const std::string &localPath)
 {
     std::string tempDownloadParent = "/mnt/hmdfs/account/device_view/local/files/.cloud_cache/download_cache/";
-    if (!CheckPhotoPath(localPath)) {
+    if (!MediaPathUtils::CheckPhotoPath(localPath)) {
         return "";
     }
     return tempDownloadParent + localPath.substr(ROOT_MEDIA_DIR.length());
@@ -316,8 +278,8 @@ std::string CloudMediaSyncUtils::GetMovingPhotoTmpPath(const std::string &localP
 
 void CloudMediaSyncUtils::BackUpEditDataSourcePath(const std::string &localPath)
 {
-    std::string editDataSourcePath = MovingPhotoFileUtils::GetEditDataSourcePath(localPath);
-    std::string editDataTempPath = MovingPhotoFileUtils::GetEditDataTempPath(localPath);
+std::string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(localPath);
+    std::string editDataTempPath = MediaEditUtils::GetEditDataTempPath(localPath);
     if (MediaFileUtils::IsFileExists(editDataSourcePath)) {
         if (!MediaFileUtils::MoveFile(editDataSourcePath, editDataTempPath)) {
             MEDIA_ERR_LOG("MoveFile failed. Fail to back source file of photo, errno:%{public}d", errno);
@@ -331,7 +293,7 @@ void CloudMediaSyncUtils::BackUpEditDataSourcePath(const std::string &localPath)
 
 void CloudMediaSyncUtils::RemoveEditDataSourcePath(const std::string &localPath)
 {
-    std::string editDataSourcePath = GetEditDataSourcePath(localPath);
+    std::string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(localPath);
     MEDIA_INFO_LOG("RemoveEditDataSourcePath EditDataSourcePath: %{public}s", editDataSourcePath.c_str());
     if (unlink(editDataSourcePath.c_str()) != 0 && errno != ENOENT) {
         MEDIA_ERR_LOG("unlink editDataSource failed, errno %{public}d", errno);
@@ -340,7 +302,7 @@ void CloudMediaSyncUtils::RemoveEditDataSourcePath(const std::string &localPath)
 
 void CloudMediaSyncUtils::RemoveEditDataPath(const std::string &localPath)
 {
-    std::string editDataPath = GetEditDataPath(localPath);
+    std::string editDataPath = MediaEditUtils::GetEditDataPath(localPath);
     MEDIA_INFO_LOG("RemoveEditDataPath EditDataPath: %{public}s", editDataPath.c_str());
     if (unlink(editDataPath.c_str()) != 0 && errno != ENOENT) {
         MEDIA_ERR_LOG("unlink editData failed, errno %{public}d", errno);
@@ -349,7 +311,7 @@ void CloudMediaSyncUtils::RemoveEditDataPath(const std::string &localPath)
 
 void CloudMediaSyncUtils::RemoveTransCodePath(const std::string &localPath)
 {
-    std::string transCodePath = GetTransCodePath(localPath);
+    std::string transCodePath = MediaEditUtils::GetTransCodePath(localPath);
     MEDIA_INFO_LOG("RemoveTransCodePath TransCodePath: %{public}s", transCodePath.c_str());
     if (unlink(transCodePath.c_str()) != 0 && errno != ENOENT) {
         MEDIA_ERR_LOG("[CloudMedia] unlink transCode failed, errno %{public}d", errno);
@@ -539,7 +501,7 @@ void CloudMediaSyncUtils::SyncDealWithCompositePhoto(const std::string &assetDat
 {
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
     string photoCloudPath = CloudMediaSyncUtils::RestoreCloudPath(assetDataPath);
-    if (PhotoFileUtils::IsEditDataSourceBackExists(photoCloudPath)) {
+    if (MediaEditUtils::IsEditDataSourceBackExists(photoCloudPath)) {
         bool exchange = EnhancementManager::GetInstance().SyncCleanCompositePhoto(photoCloudPath);
         auto [compositeDisplayStatus, ceAvailable] =
             EnhancementManager::GetInstance().SyncDealWithCompositeDisplayStatus(photoId, photoCloudPath, exchange);

@@ -35,13 +35,6 @@ public:
     void* OpenDynamicHandle(std::string dynamicLibrary);
     void CloseDynamicHandle(std::string dynamicLibrary);
     void* GetFunction(const std::string dynamicLibrary, const std::string function);
-    inline bool EndsWith(const std::string& str, const std::string& suffix)
-    {
-        if (str.length() >= suffix.length()) {
-            return str.compare(str.length() - suffix.length(), suffix.length(), suffix) == 0;
-        }
-        return false;
-    }
 
 private:
     std::map<std::string, void *> dynamicLibHandle_;

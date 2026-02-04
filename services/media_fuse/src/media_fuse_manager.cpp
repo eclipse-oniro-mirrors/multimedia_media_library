@@ -37,7 +37,7 @@
 #include "media_column.h"
 #include "media_privacy_manager.h"
 #include "media_visit_count_manager.h"
-#include "medialibrary_asset_operations.h"
+#include "media_edit_utils.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_rdbstore.h"
 #include "rdb_utils.h"
@@ -512,7 +512,7 @@ static int32_t GetTranscodeUri(string &filePath, const string &bundleName, const
     GetCompatibleModeFromFileId(compatibleMode, fileId);
     CHECK_AND_RETURN_RET_LOG(compatibleMode != 0, E_INNER_FAIL,
         "Is not have transcode file, filePath: %{private}s", filePath.c_str());
-    string path = MediaLibraryAssetOperations::GetEditDataDirPath(filePath);
+    string path = MediaEditUtils::GetEditDataDir(filePath);
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INNER_FAIL,
         "Get edit data dir path failed, filePath: %{private}s", filePath.c_str());
     MEDIA_INFO_LOG("GetTranscodeUri path: %{private}s", path.c_str());

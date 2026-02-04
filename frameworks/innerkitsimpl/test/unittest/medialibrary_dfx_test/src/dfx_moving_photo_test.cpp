@@ -37,7 +37,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 #include "rdb_predicates.h"
 
 namespace OHOS::Media {
@@ -124,12 +124,12 @@ static void PreparePhoto(const bool hasEditDataCamera, const bool hasEditData, c
     int32_t position = isCloud ? 3 : 1;
     string path = InsertPhoto(position);
     if (hasEditDataCamera) {
-        string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(path);
+        string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path);
         EXPECT_FALSE(editDataCameraPath.empty());
         std::system(("mkdir -p " + editDataCameraPath).c_str());
     }
     if (hasEditData) {
-        string editDataPath = PhotoFileUtils::GetEditDataPath(path);
+        string editDataPath = MediaEditUtils::GetEditDataPath(path);
         EXPECT_FALSE(editDataPath.empty());
         std::system(("mkdir -p " + editDataPath).c_str());
     }

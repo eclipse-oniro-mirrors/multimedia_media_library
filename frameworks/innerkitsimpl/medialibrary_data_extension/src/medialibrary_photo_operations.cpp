@@ -74,6 +74,8 @@
 #include "cloud_media_define.h"
 #include "cloud_media_common.h"
 #include "thumbnail_utils.h"
+#include "media_edit_utils.h"
+#include "media_string_utils.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -178,7 +180,8 @@ int32_t MediaLibraryPhotoOperations::Create(MediaLibraryCommand &cmd)
 int32_t MediaLibraryPhotoOperations::DeleteCache(MediaLibraryCommand& cmd)
 {
     string uriString = cmd.GetUriStringWithoutSegment();
-    CHECK_AND_RETURN_RET(MediaFileUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX), E_INVALID_VALUES);
+    CHECK_AND_RETURN_RET(MediaStringUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX),
+        E_INVALID_VALUES);
 
     string fileName = uriString.substr(PhotoColumn::PHOTO_CACHE_URI_PREFIX.size());
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckDisplayName(fileName) == E_OK, E_INVALID_URI,
@@ -195,7 +198,7 @@ int32_t MediaLibraryPhotoOperations::DeleteCache(MediaLibraryCommand& cmd)
 int32_t MediaLibraryPhotoOperations::Delete(MediaLibraryCommand& cmd)
 {
     // delete file in .cache
-    if (MediaFileUtils::StartsWith(cmd.GetUri().ToString(), PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
+    if (MediaStringUtils::StartsWith(cmd.GetUri().ToString(), PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
         return DeleteCache(cmd);
     }
 
@@ -493,7 +496,7 @@ int32_t GetMovingPhotoVideoInputPath(MediaLibraryCommand &cmd, string &inputPath
         inputPath = isTemp ? MediaFileUtils::GetTempOriMovingPhotoVideoPath(imagePath)
             : MediaFileUtils::GetOriMovingPhotoVideoPath(imagePath);
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(
-            MediaLibraryAssetOperations::GetEditDataDirPath(imagePath)), E_HAS_FS_ERROR,
+            MediaEditUtils::GetEditDataDir(imagePath)), E_HAS_FS_ERROR,
                 "Can not create dir %{private}s", inputPath.c_str());
     } else {
         inputPath = isTemp ? MediaFileUtils::GetTempMovingPhotoVideoPath(imagePath)
@@ -565,8 +568,8 @@ int32_t MediaLibraryPhotoOperations::ProcessCinematicVideoOprnKey(MediaLibraryCo
     MEDIA_INFO_LOG("ProcessCinematicVideoOprnKey videoPath %{private}s", videoPath.c_str());
     string inputPath;
     if (cmd.GetQuerySetParam(CONST_VIDEO_TYPE_KEYWORD) == ORIGIN_VIDEO_STR) {
-        inputPath = PhotoFileUtils::GetEditDataSourcePath(videoPath);
-        string editDataDirPath = GetEditDataDirPath(videoPath);
+        inputPath = MediaEditUtils::GetEditDataSourcePath(videoPath);
+        string editDataDirPath = MediaEditUtils::GetEditDataDir(videoPath);
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
             "Can not create dir %{private}s", editDataDirPath.c_str());
     } else {
@@ -1576,7 +1579,7 @@ static int32_t ConvertPhotoPathToEditDataDirPath(const std::string &sourcePath, 
         return E_INVALID_PATH;
     }
 
-    editDataDir = MediaLibraryAssetOperations::GetEditDataDirPath(sourcePath);
+    editDataDir = MediaEditUtils::GetEditDataDir(sourcePath);
     if (editDataDir.empty()) {
         MEDIA_ERR_LOG("Failed to convert path: %{public}s", sourcePath.c_str());
         return E_INVALID_PATH;
@@ -2616,7 +2619,7 @@ int32_t MediaLibraryPhotoOperations::OpenCache(MediaLibraryCommand& cmd, const s
 {
     isCacheOperation = false;
     string uriString = cmd.GetUriStringWithoutSegment();
-    if (!MediaFileUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
+    if (!MediaStringUtils::StartsWith(uriString, PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
         return E_OK;
     }
 
@@ -2712,17 +2715,17 @@ int32_t MediaLibraryPhotoOperations::RequestEditData(MediaLibraryCommand &cmd)
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_URI, "Can not get file path, uri=%{private}s",
         uriString.c_str());
 
-    string editDataPath = GetEditDataPath(path);
+    string editDataPath = MediaEditUtils::GetEditDataPath(path);
     string dataPath = editDataPath;
     if (!MediaFileUtils::IsFileExists(dataPath)) {
-        dataPath = GetEditDataCameraPath(path);
+        dataPath = MediaEditUtils::GetEditDataCameraPath(path);
     }
     CHECK_AND_RETURN_RET_LOG(!dataPath.empty(), E_INVALID_PATH, "Get edit data path from path %{private}s failed",
         dataPath.c_str());
     if (fileAsset->GetPhotoEditTime() == 0 && !MediaFileUtils::IsFileExists(dataPath)) {
         MEDIA_INFO_LOG("File %{private}s does not have edit data", uriString.c_str());
         dataPath = editDataPath;
-        string dataPathDir = GetEditDataDirPath(path);
+        string dataPathDir = MediaEditUtils::GetEditDataDir(path);
         CHECK_AND_RETURN_RET_LOG(!dataPathDir.empty(), E_INVALID_PATH,
             "Get edit data dir path from path %{private}s failed", path.c_str());
         if (!MediaFileUtils::IsDirectory(dataPathDir)) {
@@ -2778,8 +2781,8 @@ int32_t MediaLibraryPhotoOperations::RequestEditSource(MediaLibraryCommand &cmd)
     }
 
     string sourcePath = isMovingPhotoVideoRequest ?
-        MediaFileUtils::GetMovingPhotoVideoPath(GetEditDataSourcePath(path)) :
-        GetEditDataSourcePath(path);
+        MediaFileUtils::GetMovingPhotoVideoPath(MediaEditUtils::GetEditDataSourcePath(path)) :
+        MediaEditUtils::GetEditDataSourcePath(path);
     if (sourcePath.empty() || !MediaFileUtils::IsFileExists(sourcePath)) {
         MEDIA_INFO_LOG("sourcePath does not exist: %{private}s", sourcePath.c_str());
         return OpenFileWithPrivacy(isMovingPhotoVideoRequest ? movingPhotoVideoPath : path, "r", id);
@@ -2817,11 +2820,11 @@ int32_t MediaLibraryPhotoOperations::CommitEditOpenExecute(const shared_ptr<File
     string path = fileAsset->GetFilePath();
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_URI, "Can not get file path");
     if (fileAsset->GetPhotoEditTime() == 0) {
-        string sourceDirPath = GetEditDataDirPath(path);
+        string sourceDirPath = MediaEditUtils::GetEditDataDir(path);
         CHECK_AND_RETURN_RET_LOG(!sourceDirPath.empty(), E_INVALID_URI, "Can not get edit dir path");
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(sourceDirPath), E_HAS_FS_ERROR,
             "Can not create dir %{private}s", sourceDirPath.c_str());
-        string sourcePath = GetEditDataSourcePath(path);
+        string sourcePath = MediaEditUtils::GetEditDataSourcePath(path);
         CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Can not get edit source path");
         if (!MediaFileUtils::IsFileExists(sourcePath)) {
             string realPath = LakeFileUtils::GetAssetRealPath(path);
@@ -2990,7 +2993,7 @@ int32_t MediaLibraryPhotoOperations::UpdateExtension(const int32_t &fileId, cons
 
 void MediaLibraryPhotoOperations::UpdateEditDataPath(std::string filePath, const std::string &extension)
 {
-    string editDataPath = GetEditDataDirPath(filePath);
+    string editDataPath = MediaEditUtils::GetEditDataDir(filePath);
     string tempOutputPath = editDataPath;
     size_t pos = tempOutputPath.find_last_of('.');
     if (pos != string::npos) {
@@ -3147,10 +3150,10 @@ int32_t MediaLibraryPhotoOperations::CommitEditInsertExecute(const shared_ptr<Fi
 
     string path = fileAsset->GetPath();
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_VALUES, "File path is empty");
-    string editDataPath = GetEditDataPath(path);
+    string editDataPath = MediaEditUtils::GetEditDataPath(path);
     CHECK_AND_RETURN_RET_LOG(!editDataPath.empty(), E_INVALID_VALUES, "EditData path is empty");
     if (!MediaFileUtils::IsFileExists(editDataPath)) {
-        string dataPathDir = GetEditDataDirPath(path);
+        string dataPathDir = MediaEditUtils::GetEditDataDir(path);
         CHECK_AND_RETURN_RET_LOG(!dataPathDir.empty(), E_INVALID_PATH,
             "Get edit data dir path from path %{private}s failed", path.c_str());
         if (!MediaFileUtils::IsDirectory(dataPathDir)) {
@@ -3281,7 +3284,7 @@ int32_t MediaLibraryPhotoOperations::DoRevertEdit(const std::shared_ptr<FileAsse
 
     string path = fileAsset->GetFilePath();
     CHECK_AND_RETURN_RET_LOG(!path.empty(), E_INVALID_URI, "Can not get file path, fileId=%{public}d", fileId);
-    string sourcePath = GetEditDataSourcePath(path);
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(path);
     CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Cannot get source path, id=%{public}d", fileId);
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(sourcePath), E_NO_SUCH_FILE, "Can not get source file");
 
@@ -3295,7 +3298,7 @@ int32_t MediaLibraryPhotoOperations::DoRevertEdit(const std::shared_ptr<FileAsse
         revertMovingPhotoGraffiti = true;
     }
 
-    string editDataPath = GetEditDataPath(path);
+    string editDataPath = MediaEditUtils::GetEditDataPath(path);
     CHECK_AND_RETURN_RET_LOG(!editDataPath.empty(), E_INVALID_URI, "Cannot get editdata path, id=%{public}d", fileId);
 
     errCode = RevertMetadata(fileId, 0, fileAsset->GetMovingPhotoEffectMode(), fileAsset->GetPhotoSubType());
@@ -3344,7 +3347,7 @@ int32_t MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(const std::sh
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(sourcePath, path), E_HAS_FS_ERROR,
         "Failed to copy source file.");
 
-    string editDataPath = GetEditDataPath(path);
+    string editDataPath = MediaEditUtils::GetEditDataPath(path);
     CHECK_AND_RETURN_RET_LOG(!editDataPath.empty(), E_INVALID_VALUES, "EditData path is empty");
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(editDataPath), E_HAS_FS_ERROR,
         "Failed to create editdata file %{private}s", editDataPath.c_str());
@@ -3364,7 +3367,7 @@ int32_t MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(const std::sh
 int32_t MediaLibraryPhotoOperations::DoRevertFilters(const std::shared_ptr<FileAsset> &fileAsset,
     std::string &path, std::string &sourcePath)
 {
-    string editDataCameraPath = GetEditDataCameraPath(path);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path);
     int32_t subtype = static_cast<int32_t>(fileAsset->GetPhotoSubType());
     if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
         string storagePath = fileAsset->GetStoragePath();
@@ -3403,7 +3406,7 @@ void MediaLibraryPhotoOperations::DeleteRevertMessage(const string &path)
 {
     CHECK_AND_RETURN_LOG(!path.empty(), "Input path is empty");
 
-    string editDirPath = GetEditDataDirPath(path);
+    string editDirPath = MediaEditUtils::GetEditDataDir(path);
     CHECK_AND_RETURN_LOG(!editDirPath.empty(), "Can not get edit data dir path from path %{private}s", path.c_str());
 
     CHECK_AND_RETURN_LOG(MediaFileUtils::IsDirectory(editDirPath), "Edit dir path is not exist.");
@@ -3463,7 +3466,7 @@ int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     }
 
     string imagePath = fileAsset->GetFilePath();
-    string sourceImagePath = GetEditDataSourcePath(imagePath);
+    string sourceImagePath = MediaEditUtils::GetEditDataSourcePath(imagePath);
     CHECK_AND_RETURN_RET_LOG(!sourceImagePath.empty(), E_INVALID_PATH, "Cannot get source image path");
     string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourceImagePath);
     CHECK_AND_RETURN_RET_LOG(!sourceVideoPath.empty(), E_INVALID_PATH, "Cannot get source video path");
@@ -3480,7 +3483,7 @@ int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     int32_t errCode = Move(sourceVideoPath, videoPath);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_HAS_FS_ERROR, "Failed to move video from %{private}s to %{private}s",
         sourceVideoPath.c_str(), videoPath.c_str());
-    string editDataCameraPath = GetEditDataCameraPath(imagePath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(imagePath);
     if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
         errCode = Move(sourceImagePath, imagePath);
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_HAS_FS_ERROR,
@@ -3693,7 +3696,7 @@ int32_t MediaLibraryPhotoOperations::SaveEditDataCamera(MediaLibraryCommand &cmd
     std::string &editData)
 {
     string editDataStr;
-    string editDataCameraPath = GetEditDataCameraPath(assetPath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     CHECK_AND_RETURN_RET_LOG(!editDataCameraPath.empty(), E_INVALID_VALUES, "Failed to get edit data path");
     if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(editDataCameraPath), E_HAS_FS_ERROR,
@@ -3714,17 +3717,17 @@ int32_t MediaLibraryPhotoOperations::SaveSourceAndEditData(
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
     string assetPath = fileAsset->GetFilePath();
     CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_INVALID_VALUES, "Failed to get asset path");
-    string editDataPath = GetEditDataPath(assetPath);
+    string editDataPath = MediaEditUtils::GetEditDataPath(assetPath);
     CHECK_AND_RETURN_RET_LOG(!editDataPath.empty(), E_INVALID_VALUES, "Failed to get edit data path");
 
     string tmpPath = LakeFileUtils::GetAssetRealPath(assetPath);
     if (fileAsset->GetPhotoEditTime() == 0) { // the asset has not been edited before
-        string editDataDirPath = GetEditDataDirPath(assetPath);
+        string editDataDirPath = MediaEditUtils::GetEditDataDir(assetPath);
         CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_INVALID_URI, "Failed to get edit dir path");
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
             "Failed to create dir %{private}s", editDataDirPath.c_str());
 
-        string sourcePath = GetEditDataSourcePath(assetPath);
+        string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
         CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Failed to get source path");
         if (!MediaFileUtils::IsFileExists(sourcePath)) {
             string tmpPath = LakeFileUtils::GetAssetRealPath(assetPath);
@@ -3959,11 +3962,11 @@ int32_t MediaLibraryPhotoOperations::SavePicture(const int32_t &fileType, const 
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::GET_FILE_ASSET);
     string editData = "";
-    string editDataCameraPath = GetEditDataCameraPath(assetPath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     bool existEditData = (ReadEditdataFromFile(editDataCameraPath, editData) == E_OK);
     if (existEditData) {
-        FileUtils::DealPicture(photoExtInfo.format, GetEditDataSourcePath(assetPath), photoExtInfo.picture,
-            photoExtInfo.isHighQualityPicture);
+        FileUtils::DealPicture(photoExtInfo.format, MediaEditUtils::GetEditDataSourcePath(assetPath),
+            photoExtInfo.picture, photoExtInfo.isHighQualityPicture);
     } else {
         FileUtils::DealPicture(photoExtInfo.format, assetPath, photoExtInfo.picture, photoExtInfo.isHighQualityPicture);
     }
@@ -4013,11 +4016,11 @@ int32_t MediaLibraryPhotoOperations::AddFiltersExecute(MediaLibraryCommand& cmd,
     int32_t fileId = fileAsset->GetId();
     string assetPath = fileAsset->GetFilePath();
     CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_INVALID_VALUES, "Failed to get asset path");
-    string editDataDirPath = GetEditDataDirPath(assetPath);
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(assetPath);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_INVALID_URI, "Can not get editdara dir path");
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
         "Can not create dir %{private}s", editDataDirPath.c_str());
-    string sourcePath = GetEditDataSourcePath(assetPath);
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Can not get edit source path");
 
     if (cachePath.empty()) {
@@ -4066,7 +4069,7 @@ int32_t SaveTempMovingPhotoVideo(const string &assetPath, int32_t videoType)
 
 int32_t MediaLibraryPhotoOperations::CopyVideoFile(const string& assetPath, bool toSource)
 {
-    string sourceImagePath = PhotoFileUtils::GetEditDataSourcePath(assetPath);
+    string sourceImagePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
     string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourceImagePath);
     if (toSource) {
@@ -4087,7 +4090,7 @@ int32_t MediaLibraryPhotoOperations::CopyVideoFile(const string& assetPath, bool
 int32_t MediaLibraryPhotoOperations::AddFiltersToVideoExecute(const std::string &assetPath,
     bool isSaveVideo, bool isNeedScan, int32_t videoType)
 {
-    string editDataCameraPath = MediaLibraryAssetOperations::GetEditDataCameraPath(assetPath);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     if ((MediaFileUtils::IsFileExists(editDataCameraPath)) && (videoType == ORIGIN_VIDEO)) {
         string editData;
         CHECK_AND_RETURN_RET_LOG(ReadEditdataFromFile(editDataCameraPath, editData) == E_OK, E_HAS_FS_ERROR,
@@ -4138,9 +4141,9 @@ int32_t MediaLibraryPhotoOperations::AddFiltersForCloudEnhancementPhoto(int32_t 
     const string& assetPath, const string& editDataCameraSourcePath, const string& mimeType)
 {
     CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_INVALID_VALUES, "Failed to get asset path");
-    string editDataDirPath = GetEditDataDirPath(assetPath);
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(assetPath);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_INVALID_URI, "Can not get editdata dir path");
-    string sourcePath = GetEditDataSourcePath(assetPath);
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Can not get edit source path");
 
     string editData;
@@ -4258,7 +4261,7 @@ int32_t MediaLibraryPhotoOperations::SaveSourceVideoFile(const string& assetPath
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "Moving photo SaveSourceVideoFile begin, assetPath: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, DfxUtils::GetSafePath(assetPath).c_str());
-    string sourceImagePath = GetEditDataSourcePath(assetPath);
+    string sourceImagePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     CHECK_AND_RETURN_RET_LOG(!sourceImagePath.empty(), E_INVALID_PATH, "Can not get source image path");
     string videoPath = isTemp ? MediaFileUtils::GetTempMovingPhotoVideoPath(assetPath)
         : MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
@@ -4397,12 +4400,12 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
     string assetPath = fileAsset->GetPath();
     string assetVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
     if (fileAsset->GetPhotoEditTime() == 0) { // save source moving photo
-        string editDataDirPath = GetEditDataDirPath(assetPath);
+        string editDataDirPath = MediaEditUtils::GetEditDataDir(assetPath);
         CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_INVALID_URI, "Failed to get edit dir path");
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
             "Failed to create dir %{private}s", editDataDirPath.c_str());
 
-        string sourceImagePath = GetEditDataSourcePath(assetPath);
+        string sourceImagePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
         CHECK_AND_RETURN_RET_LOG(!sourceImagePath.empty(), E_INVALID_PATH, "Cannot get source image path");
         string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourceImagePath);
         CHECK_AND_RETURN_RET_LOG(!sourceVideoPath.empty(), E_INVALID_PATH, "Cannot get source video path");
@@ -4486,8 +4489,8 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesPhoto(const std::shared_p
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryPhotoOperations::ProcessMultistagesPhoto");
     std::string path = fileAsset->GetFilePath();
-    string editDataSourcePath = GetEditDataSourcePath(path);
-    string editDataCameraPath = GetEditDataCameraPath(path);
+    string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(path);
+    string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path);
 
     bool isEdited = fileAsset->GetPhotoEditTime() > 0;
     if (isEdited) {
@@ -4532,8 +4535,8 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesPhotoForPicture(const std
     int32_t fileId = fileAsset->GetId();
     std::string imageId = fileAsset->GetPhotoId();
     std::string mime_type = fileAsset->GetMimeType();
-    std::string editDataSourcePath = GetEditDataSourcePath(path);
-    std::string editDataCameraPath = GetEditDataCameraPath(path);
+    std::string editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(path);
+    std::string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path);
 
     bool isEdited = fileAsset->GetPhotoEditTime() > 0;
     if (isEdited) {
@@ -4613,7 +4616,7 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToPhoto(const std::string &inputP
         return E_ERR;
     }
 
-    string editDataPath = GetEditDataPath(outputPath);
+    string editDataPath = MediaEditUtils::GetEditDataPath(outputPath);
     if (MediaFileUtils::IsFileExists(editDataPath)) {
         HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
             "Editdata path: %{private}s exists, cannot add filters to photo",
@@ -5172,7 +5175,7 @@ int32_t MediaLibraryPhotoOperations::LSMediaFiles(MediaLibraryCommand& cmd)
     string realPath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(dirPath, realPath),
         E_INVALID_PATH, "real path failed: %{public}s, errno: %{public}d", dirPath.c_str(), errno);
-    if (!MediaFileUtils::StartsWith(realPath, "/storage/media/local/files/Photo")) {
+    if (!MediaStringUtils::StartsWith(realPath, "/storage/media/local/files/Photo")) {
         MEDIA_ERR_LOG("dirPath: %{public}s is not under local photo directory", dirPath.c_str());
         return E_INVALID_PATH;
     }
@@ -5188,7 +5191,7 @@ int32_t MediaLibraryPhotoOperations::WriteEditedDataToTlv(const std::string &ass
 {
     MEDIA_INFO_LOG("WriteEditedDataToTlv start");
     CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_ERR, "assetPath is empty.");
-    std::string editedDataPath = MediaLibraryAssetOperations::GetEditDataPath(assetPath);
+    std::string editedDataPath = MediaEditUtils::GetEditDataPath(assetPath);
     if (MediaFileUtils::IsFileExists(editedDataPath)) {
         MEDIA_INFO_LOG("Edited data file exist");
         int32_t ret = TlvUtil::WriteEditDataToTlv(tlv, editedDataPath);
@@ -5202,7 +5205,7 @@ int32_t MediaLibraryPhotoOperations::WriteEditedDataCameraToTlv(const std::strin
 {
     MEDIA_INFO_LOG("WriteEditedDataCameraToTlv start");
     CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_ERR, "assetPath is empty.");
-    std::string editedDataPath = MediaLibraryAssetOperations::GetEditDataCameraPath(assetPath);
+    std::string editedDataPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     if (MediaFileUtils::IsFileExists(editedDataPath)) {
         MEDIA_INFO_LOG("Edited data camera file exist");
         int32_t ret = TlvUtil::WriteCameraDataToTlv(tlv, editedDataPath);
@@ -5452,7 +5455,7 @@ int32_t MediaLibraryPhotoOperations::HandleOpenSourceFile(const shared_ptr<FileA
     MEDIA_INFO_LOG("HandleOpenSourceFile start");
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
     string assetPath = fileAsset->GetPath();
-    string sourcePath = GetEditDataSourcePath(assetPath);
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
     int32_t ret = E_OK;
     if (MediaFileUtils::IsFileExists(sourcePath)) {
         MEDIA_INFO_LOG("source file exist");
@@ -5494,7 +5497,7 @@ int32_t MediaLibraryPhotoOperations::HandleOpenSourceBackFile(const shared_ptr<F
     MEDIA_INFO_LOG("HandleOpenSourceBackFile start");
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
     string assetPath = fileAsset->GetPath();
-    string sourceBackPath = GetEditDataSourceBackPath(assetPath);
+    string sourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(assetPath);
     int32_t ret = E_OK;
     if (MediaFileUtils::IsFileExists(sourceBackPath)) {
         MEDIA_INFO_LOG("source back file exist");

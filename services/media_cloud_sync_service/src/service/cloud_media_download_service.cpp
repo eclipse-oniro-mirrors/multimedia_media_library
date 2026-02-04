@@ -43,6 +43,8 @@
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_photo_operations.h"
 #include "result_set_utils.h"
+#include "media_edit_utils.h"
+
 // LCOV_EXCL_START
 namespace OHOS::Media::CloudSync {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
@@ -394,7 +396,7 @@ int32_t CloudMediaDownloadService::SliceAssetFile(const std::string &originalFil
 int32_t CloudMediaDownloadService::SliceAsset(const OnDownloadAssetData &assetData, const PhotosPo &photo)
 {
     if (assetData.needSliceRaw) {
-        std::string rawFilePath = PhotoFileUtils::GetEditDataSourcePath(assetData.path);
+        std::string rawFilePath = MediaEditUtils::GetEditDataSourcePath(assetData.path);
         bool isLivePhoto = MovingPhotoFileUtils::IsLivePhoto(rawFilePath);
         if (isLivePhoto) {
             std::string sourceImage = CloudMediaSyncUtils::GetSourceMovingPhotoImagePath(assetData.path);

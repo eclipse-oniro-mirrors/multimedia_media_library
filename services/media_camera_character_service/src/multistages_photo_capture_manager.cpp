@@ -41,6 +41,7 @@
 #include "result_set_utils.h"
 #include "userfilemgr_uri.h"
 #include "medialibrary_transcode_data_aging_operation.h"
+#include "media_edit_utils.h"
 
 using namespace std;
 #ifdef ABILITY_CAMERA_SUPPORT
@@ -254,7 +255,7 @@ static int32_t WriteGpsInfoAndUpdateDb(const std::string &path, const int32_t &f
     tracer.Finish();
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "write gps info fail");
 
-    std::string originPath = MediaLibraryAssetOperations::GetEditDataSourcePath(path);
+    std::string originPath = MediaEditUtils::GetEditDataSourcePath(path);
     if (MediaFileUtils::IsFileExists(originPath)) {
         // write gps info if this photo was edited.
         tracer.Start("WriteGpsInfoAndUpdateDb, originPath");

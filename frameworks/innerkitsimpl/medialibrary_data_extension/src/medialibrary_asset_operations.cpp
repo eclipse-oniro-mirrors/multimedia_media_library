@@ -68,6 +68,7 @@
 #include "media_audio_column.h"
 #include "lake_file_operations.h"
 #include "medialibrary_db_const.h"
+#include "media_edit_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -1504,7 +1505,7 @@ int32_t MediaLibraryAssetOperations::SetUserComment(MediaLibraryCommand &cmd,
 
     string filePath = fileAsset->GetFilePath();
     vector<string> filePaths = {filePath};
-    string sourceBackPath = GetEditDataSourceBackPath(filePath);
+    string sourceBackPath = MediaEditUtils::GetEditDataSourceBackPath(filePath);
     if (MediaFileUtils::IsFileExists(sourceBackPath)) {
         filePaths.emplace_back(sourceBackPath);
     }
@@ -1902,50 +1903,6 @@ void MediaLibraryAssetOperations::ScanFileWithoutAlbumUpdate(const string &path,
     int ret = MediaScannerManager::GetInstance()->ScanFileSyncWithoutAlbumUpdate(path, scanAssetCallback,
         MediaLibraryApi::API_10, isForceScan, fileId);
     CHECK_AND_PRINT_LOG(ret == 0, "Scan file failed with error: %{public}d", ret);
-}
-
-string MediaLibraryAssetOperations::GetEditDataDirPath(const string &path)
-{
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
-        return "";
-    }
-    return MEDIA_EDIT_DATA_DIR + path.substr(ROOT_MEDIA_DIR.length());
-}
-
-string MediaLibraryAssetOperations::GetEditDataSourcePath(const string &path)
-{
-    string parentPath = GetEditDataDirPath(path);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/source." + MediaFileUtils::GetExtensionFromPath(path);
-}
-
-string MediaLibraryAssetOperations::GetEditDataSourceBackPath(const string& path)
-{
-    string parentPath = GetEditDataDirPath(path);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/source_back." + MediaFileUtils::GetExtensionFromPath(path);
-}
-
-string MediaLibraryAssetOperations::GetEditDataPath(const string &path)
-{
-    string parentPath = GetEditDataDirPath(path);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/editdata";
-}
-
-string MediaLibraryAssetOperations::GetEditDataCameraPath(const string &path)
-{
-    string parentPath = GetEditDataDirPath(path);
-    if (parentPath.empty()) {
-        return "";
-    }
-    return parentPath + "/editdata_camera";
 }
 
 string MediaLibraryAssetOperations::GetAssetCacheDir()
@@ -2991,9 +2948,9 @@ static void GetEditPhotoExternalInfo(ExternalInfo &exInfo, vector<string> &attac
     MEDIA_DEBUG_LOG("GetEditPhotoExternalInfo start.");
     CHECK_AND_RETURN_LOG(exInfo.editTime != 0, "editTime is zero");
 
-    exInfo.editDataPath = PhotoFileUtils::GetEditDataPath(exInfo.path);
-    exInfo.editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(exInfo.path);
-    exInfo.editDataSourcePath = PhotoFileUtils::GetEditDataSourcePath(exInfo.path);
+    exInfo.editDataPath = MediaEditUtils::GetEditDataPath(exInfo.path);
+    exInfo.editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(exInfo.path);
+    exInfo.editDataSourcePath = MediaEditUtils::GetEditDataSourcePath(exInfo.path);
     PushMovingPhotoExternalPath(exInfo.editDataPath, "editDataPath", attachment);
     PushMovingPhotoExternalPath(exInfo.editDataCameraPath, "editDataCameraPath", attachment);
     PushMovingPhotoExternalPath(exInfo.editDataSourcePath, "editDataSourcePath", attachment);
@@ -3451,13 +3408,13 @@ static int32_t DeleteEditPhotoPermanently(shared_ptr<FileAsset> &fileAsset)
     int64_t editTime = fileAsset->GetPhotoEditTime();
     if (editTime != 0) {
         string path = fileAsset->GetPath();
-        string editDataPath = PhotoFileUtils::GetEditDataPath(path);
+        string editDataPath = MediaEditUtils::GetEditDataPath(path);
         MEDIA_DEBUG_LOG("edit photo editDataPath path is %{public}s", editDataPath.c_str());
         if (!MediaFileUtils::DeleteFile(editDataPath)) {
             MEDIA_INFO_LOG("delete edit data path is %{public}s, errno: %{public}d",
                 DfxUtils::GetSafePath(editDataPath).c_str(), errno);
         }
-        string editDataCameraPath = PhotoFileUtils::GetEditDataCameraPath(path);
+        string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(path);
         if (!MediaFileUtils::DeleteFile(editDataCameraPath)) {
             MEDIA_INFO_LOG("delete edit data camera path is %{public}s, errno: %{public}d",
                 DfxUtils::GetSafePath(editDataCameraPath).c_str(), errno);
@@ -3471,7 +3428,7 @@ static int32_t DeleteTransCodePhotoPermanently(shared_ptr<FileAsset> &fileAsset)
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_HAS_DB_ERROR,
         "Photo Asset is nullptr");
     string path = fileAsset->GetPath();
-    string transCodePath = PhotoFileUtils::GetTransCodePath(path);
+    string transCodePath = MediaEditUtils::GetTransCodePath(path);
     MEDIA_DEBUG_LOG("transCodePath path is %{public}s", transCodePath.c_str());
     if (!MediaFileUtils::IsFileExists(transCodePath)) {
         return E_OK;

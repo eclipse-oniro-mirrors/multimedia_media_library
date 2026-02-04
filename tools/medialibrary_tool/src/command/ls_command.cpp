@@ -23,7 +23,7 @@
 #include "constant.h"
 #include "medialibrary_errno.h"
 #include "utils/mediatool_command_utils.h"
-#include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "mediatool_uri.h"
 #include "userfile_client.h"
@@ -69,7 +69,7 @@ bool LSCommand::ParseArgs(const std::vector<std::string>& commandArgs)
     vector<string> positionalArgs;
     vector<string> flags;
     for (size_t i = 0; i < commandArgs.size(); ++i) {
-        if (MediaFileUtils::StartsWith(commandArgs[i], "-")) {
+        if (MediaStringUtils::StartsWith(commandArgs[i], "-")) {
             flags.push_back(commandArgs[i]);
         } else {
             positionalArgs.push_back(commandArgs[i]);

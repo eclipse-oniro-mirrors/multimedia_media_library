@@ -27,6 +27,7 @@
 #include "rdb_predicates.h"
 #include "rdb_utils.h"
 #include "thumbnail_service.h"
+#include "media_edit_utils.h"
 
 using namespace OHOS::NativeRdb;
 
@@ -360,15 +361,9 @@ inline std::string RemovePrefix(const std::string &uri, const std::string &prefi
     return uri.substr(prefix.size());
 }
 
-inline std::string GetEditDataDirPath(const std::string &path)
-{
-    CHECK_AND_RETURN_RET(path.length() >= ROOT_MEDIA_DIR.length(), "");
-    return MEDIA_EDIT_DATA_DIR + path.substr(ROOT_MEDIA_DIR.length());
-}
-
 inline int32_t DeleteEditdata(const std::string &path)
 {
-    std::string editDataDirPath = GetEditDataDirPath(path);
+    std::string editDataDirPath = MediaEditUtils::GetEditDataDir(path);
     CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_ERR, "Cannot get editPath, path: %{private}s", path.c_str());
     if (MediaFileUtils::IsFileExists(editDataDirPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::DeleteDir(editDataDirPath), E_ERR,

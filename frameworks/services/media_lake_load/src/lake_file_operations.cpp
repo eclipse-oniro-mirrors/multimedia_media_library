@@ -31,7 +31,8 @@
 #include "medialibrary_unistore_manager.h"
 #include "photo_album_column.h"
 #include "result_set_utils.h"
-#include "photo_file_utils.h"
+#include "media_edit_utils.h"
+#include "media_string_utils.h"
 
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Media::AccurateRefresh;
@@ -52,7 +53,7 @@ static void UpdateModifyTime(const string &path, int64_t localMtime)
     times[1] = times[0];
 
     string pathToModifyTime = path;
-    if (MediaFileUtils::StartsWith(path, PhotoColumn::FILES_CLOUD_DIR)) {
+    if (MediaStringUtils::StartsWith(path, PhotoColumn::FILES_CLOUD_DIR)) {
         pathToModifyTime.replace(0, PhotoColumn::FILES_CLOUD_DIR.length(), PhotoColumn::FILES_LOCAL_DIR);
     }
 
@@ -560,7 +561,7 @@ static int32_t GetEditPathAndEditTime(const std::string& fileUri, std::string& e
     resultSet->GetString(1, cloudPath);
 
     editTime = editTimeLocal;
-    editPath = PhotoFileUtils::GetEditDataPath(cloudPath);
+    editPath = MediaEditUtils::GetEditDataPath(cloudPath);
     if (!MediaFileUtils::IsFileExists(editPath)) {
         MEDIA_ERR_LOG("Path does not exist, editPath:%{public}s", DfxUtils::GetSafePath(editPath).c_str());
         return -1;

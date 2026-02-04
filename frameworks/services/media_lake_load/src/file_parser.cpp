@@ -25,6 +25,7 @@
 #include "lake_file_utils.h"
 #include "media_column.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_lake_notify_info.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -129,7 +130,7 @@ bool FileParser::CheckSizeValid()
 
 bool FileParser::CheckIsNotHidden()
 {
-    return !MediaFileUtils::StartsWith(fileInfo_.displayName, PATH_HIDDEN_PREFIX);
+    return !MediaStringUtils::StartsWith(fileInfo_.displayName, PATH_HIDDEN_PREFIX);
 }
 
 bool FileParser::IsFileValidAsset()

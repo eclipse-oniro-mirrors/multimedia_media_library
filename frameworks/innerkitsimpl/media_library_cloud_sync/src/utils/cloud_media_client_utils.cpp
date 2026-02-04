@@ -23,6 +23,7 @@
 #include "cloud_lake_utils.h"
 #include "media_file_utils.h"
 #include "medialibrary_errno.h"
+#include "media_string_utils.h"
 
 namespace OHOS::Media::CloudSync {
 // Anco FileSourceType
@@ -82,13 +83,13 @@ std::string CloudMediaClientUtils::AppendUserId(const std::string &path, int32_t
     const std::string ROOT_MEDIA_LOCAL_MIDFIX = "/local/files/";
     // pattern(source): /storage/cloud/files/Photo/${bucketId}/${fileName}.${suffix}
     // pattern(target): /storage/cloud/${userId}/files/Photo/${bucketId}/${fileName}.${suffix}
-    if (MediaFileUtils::StartsWith(path, ROOT_MEDIA_CLOUD_DIR)) {
+    if (MediaStringUtils::StartsWith(path, ROOT_MEDIA_CLOUD_DIR)) {
         return ROOT_MEDIA_CLOUD_PREFIX + std::to_string(userId) + ROOT_MEDIA_CLOUD_MIDFIX +
                path.substr(ROOT_MEDIA_CLOUD_DIR.length());
     }
     // pattern(source): /storage/media/local/files/Photo/${bucketId}/${fileName}.${suffix}
     // pattern(target): /storage/media/${userId}/local/files/Photo/${bucketId}/${fileName}.${suffix}
-    if (MediaFileUtils::StartsWith(path, ROOT_MEDIA_LOCAL_DIR)) {
+    if (MediaStringUtils::StartsWith(path, ROOT_MEDIA_LOCAL_DIR)) {
         return ROOT_MEDIA_LOCAL_PREFIX + std::to_string(userId) + ROOT_MEDIA_LOCAL_MIDFIX +
                path.substr(ROOT_MEDIA_LOCAL_DIR.length());
     }
