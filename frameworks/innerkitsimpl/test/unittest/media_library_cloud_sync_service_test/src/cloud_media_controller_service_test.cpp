@@ -72,7 +72,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_Accept_Test_001, TestS
     ASSERT_TRUE(service != nullptr);
 
     EXPECT_EQ(service->Accept(0), false);
-    EXPECT_EQ(service->Accept(static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_DENTRY_FILE_INSERT)), true);
     EXPECT_EQ(service->Accept(static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_CREATE_RECORDS)), true);
 }
 
@@ -132,21 +131,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnFetchRecords_Test_00
 
     int32_t ret = reply.ReadInt32();
     EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnDentryFileInsert_Test_001, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_DENTRY_FILE_INSERT);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, 0);
 }
 
 HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetCreatedRecords_Test_001, TestSize.Level1)
@@ -390,21 +374,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnMdirtyRecords_Test_0
     EXPECT_EQ(ret, E_OK);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnFdirtyRecords_Test_001, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_FDIRTY_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnDeleteRecords_Test_001, TestSize.Level1)
 {
     std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
@@ -448,21 +417,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnDeleteRecords_Test_0
     MessageParcel reply;
     IPCContext context(MessageOption(), 0);
     uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_DELETE_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnCopyRecords_Test_001, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_COPY_RECORDS);
     service->OnRemoteRequest(code, data, reply, context);
 
     int32_t ret = reply.ReadInt32();
@@ -2042,15 +1996,12 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_Test, TestSize.Level1)
 
     std::array<CloudMediaAlbumOperationCode, ALBUM_OPRN_COUNT> operations = {{
         CloudMediaAlbumOperationCode::CMD_ON_FETCH_RECORDS,
-        CloudMediaAlbumOperationCode::CMD_ON_DENTRY_FILE_INSERT,
         CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS,
         CloudMediaAlbumOperationCode::CMD_GET_META_MODIFIED_RECORDS,
         CloudMediaAlbumOperationCode::CMD_GET_DELETED_RECORDS,
         CloudMediaAlbumOperationCode::CMD_ON_CREATE_RECORDS,
         CloudMediaAlbumOperationCode::CMD_ON_MDIRTY_RECORDS,
-        CloudMediaAlbumOperationCode::CMD_ON_FDIRTY_RECORDS,
         CloudMediaAlbumOperationCode::CMD_ON_DELETE_RECORDS,
-        CloudMediaAlbumOperationCode::CMD_ON_COPY_RECORDS,
         CloudMediaAlbumOperationCode::CMD_ON_START_SYNC,
         CloudMediaAlbumOperationCode::CMD_ON_COMPLETE_SYNC,
         CloudMediaAlbumOperationCode::CMD_ON_COMPLETE_PULL,
