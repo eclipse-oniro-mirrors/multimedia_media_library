@@ -158,14 +158,14 @@ int32_t EnhancementServiceCallback::SaveCloudEnhancementPhoto(shared_ptr<CloudEn
         }
     }
 
-    string primarySourcePath = MediaFileUtils::IsFileExists(editDataCameraPath) ? editDataSourcePath : info->filePath;
+    string primarySourcePath = MediaFileUtils::IsFileExists(editDataSourcePath) ? editDataSourcePath : info->filePath;
     MEDIA_INFO_LOG("Save cloud enhancement image, path: %{public}s", primarySourcePath.c_str());
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFile(primarySourcePath, editDataSourceBackPath), E_ERR,
         "Fail to move %{public}s to %{public}s", primarySourcePath.c_str(), editDataSourceBackPath.c_str());
     int32_t ret = FileUtils::SaveImage(primarySourcePath, (void*)(buffer.get()), static_cast<size_t>(task.bytes));
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "save cloud enhancement photo failed. ret=%{public}d, errno=%{public}d",
         ret, errno);
-        
+
     // 为 primarySourcePath 加exif
     uint32_t errorCode = 0;
     SourceOptions opts;
