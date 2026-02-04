@@ -61,7 +61,7 @@ namespace {
     const std::string RECOVERY_COST_TIME = "RECOVERY_COST_TIME";
     static const std::unordered_set<std::string> EXCLUDED_COLUMNS = {
         MediaColumn::MEDIA_ID,
-        MediaColumn::MEDIA_VIRTURL_PATH,
+        MediaColumn::MEDIA_VIRTUAL_PATH,
         PhotoColumn::PHOTO_THUMBNAIL_READY,
         PhotoColumn::PHOTO_METADATA_FLAGS,
     };

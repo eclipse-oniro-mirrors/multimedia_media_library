@@ -224,13 +224,6 @@ HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnMdirtyRecords_Test_003, TestS
     EXPECT_EQ(failSize, 1);
 }
 
-HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnFdirtyRecords_Test_001, TestSize.Level1)
-{
-    CloudMediaAlbumService service;
-    int32_t ret = service.OnFdirtyRecords();
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnDeleteRecords_Test_001, TestSize.Level1)
 {
     CloudMediaAlbumService service;
@@ -255,13 +248,6 @@ HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnDeleteRecords_Test_002, TestS
     int32_t ret = service.OnDeleteRecords(albumDtoList, failSize);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(failSize, 1);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnCopyRecords_Test_001, TestSize.Level1)
-{
-    CloudMediaAlbumService service;
-    int32_t ret = service.OnCopyRecords();
-    EXPECT_EQ(ret, E_OK);
 }
 
 HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnFetchRecords_Test_001, TestSize.Level1)
@@ -534,13 +520,6 @@ HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnFetchLPathRecords_Test_004, T
     EXPECT_EQ(resp.stats[StatsIndex::META_MODIFY_RECORDS_COUNT], 1);
 
     InitTestTables(g_rdbStore);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnDentryFileInsert_Test_001, TestSize.Level1)
-{
-    CloudMediaAlbumService service;
-    int32_t ret = service.OnDentryFileInsert();
-    EXPECT_EQ(ret, E_OK);
 }
 
 HWTEST_F(CloudMediaSyncServiceTest, AlbumService_OnStartSync_Test_001, TestSize.Level1)
@@ -1359,29 +1338,6 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnDeleteRecords_Test
     std::vector<PhotosDto> records = {dto1, dto2, dto3};
     int32_t failedSize = 0;
     int32_t ret = service.OnDeleteRecords(records, failedSize);
-    EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
-    EXPECT_EQ(failedSize, 1);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaPhotosService_OnCopyRecords_Test_001, TestSize.Level1)
-{
-    CloudMediaPhotosService service;
-    PhotosDto dto1;
-    dto1.isSuccess = true;
-    dto1.localId = -1;
-    dto1.cloudId = "id1";
-    dto1.metaDateModified = 10;
-    PhotosDto dto2;
-    dto2.isSuccess = true;
-    dto2.localId = 1;
-    dto2.metaDateModified = -1;
-    PhotosDto dto3;
-    dto3.isSuccess = false;
-    dto3.serverErrorCode = ServerErrorCode::NETWORK_ERROR;
-    dto3.fileId = 0;
-    std::vector<PhotosDto> records = {dto1, dto2, dto3};
-    int32_t failedSize = 0;
-    int32_t ret = service.OnCopyRecords(records, failedSize);
     EXPECT_EQ(ret, FileManagement::E_SYNC_FAILED_NETWORK_NOT_AVAILABLE);
     EXPECT_EQ(failedSize, 1);
 }

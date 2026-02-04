@@ -87,7 +87,7 @@ public:
 private:
     int32_t GetAgingFile(uint32_t operationCode, GetAgingFileReqBody &reqBody, std::vector<CloudMetaData> &metaData);
     int32_t OnDownloadThmsInner(
-        std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize);
+        const std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize);
 
 private:
     enum {

@@ -174,7 +174,7 @@ public:
             EXPECT_EQ(std::to_string(cmp.dateAdded.value_or(0)), photosData.GetFirstUpdateTime().value_or("0"));
         }
         if (std::find(expetedFileds.begin(), expetedFileds.end(), "dateModified") != expetedFileds.end()) {
-            EXPECT_EQ(cmp.dateModified.value_or(0), photosData.GetEditTimeMs().value_or(0));
+            EXPECT_EQ(cmp.dateModified.value_or(0), photosData.GetEditedTimeMs().value_or(0));
         }
         if (std::find(expetedFileds.begin(), expetedFileds.end(), "dateTaken") != expetedFileds.end()) {
             EXPECT_EQ(cmp.dateTaken.value_or(0), static_cast<int64_t>(cmpTo.GetCreateTime()));

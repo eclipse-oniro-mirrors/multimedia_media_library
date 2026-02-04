@@ -56,7 +56,7 @@ const std::string AudioColumn::CREATE_AUDIO_TABLE = "CREATE TABLE IF NOT EXISTS 
     MEDIA_DATE_DELETED + " BIGINT DEFAULT 0, " +
     MEDIA_PARENT_ID + " INT DEFAULT 0, " +
     MEDIA_RELATIVE_PATH + " TEXT, " +
-    MEDIA_VIRTURL_PATH + " TEXT UNIQUE, " +
+    MEDIA_VIRTUAL_PATH + " TEXT UNIQUE, " +
     AUDIO_ALBUM + " TEXT)";
 
 const std::string AudioColumn::QUERY_MEDIA_VOLUME = "SELECT sum(" + MediaColumn::MEDIA_SIZE + ") AS " +

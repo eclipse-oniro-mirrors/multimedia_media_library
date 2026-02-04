@@ -128,7 +128,6 @@ HWTEST_F(CloudMediaPhotoHandlerGetCreatedRecordsTest, GetCreatedRecords, TestSiz
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",
@@ -275,7 +274,6 @@ HWTEST_F(CloudMediaPhotoHandlerGetCreatedRecordsTest, GetCreatedRecords_rollback
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",
@@ -362,7 +360,6 @@ HWTEST_F(CloudMediaPhotoHandlerGetCreatedRecordsTest, GetCreatedRecords_content_
                                             "cover_position",
                                             "size",
                                             "editDataCamera",
-                                            "file_position",
                                             "sourceFileName",
                                             "sourcePath",
                                             "data",
@@ -427,7 +424,7 @@ HWTEST_F(CloudMediaPhotoHandlerGetCreatedRecordsTest, GetCreatedRecords_no_creat
     std::vector<std::string> dbCloudIds;
 
     std::vector<PhotosPo> photosList = photosDao.QueryAllPhotos();
-    for (auto photos : photosList) {
+    for (const auto &photos : photosList) {
         if (photos.cloudId.has_value() && !photos.cloudId.value().empty()) {
             dbCloudIds.emplace_back(photos.cloudId.value_or(""));
         }

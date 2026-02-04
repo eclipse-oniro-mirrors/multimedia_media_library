@@ -178,7 +178,7 @@ const std::vector<std::string> MEDIA_CLOUD_SYNC_COLUMNS = {
     PhotoColumn::MEDIA_HIDDEN,
     PhotoColumn::PHOTO_HIDDEN_TIME,
     PhotoColumn::MEDIA_RELATIVE_PATH,
-    PhotoColumn::MEDIA_VIRTURL_PATH,
+    PhotoColumn::MEDIA_VIRTUAL_PATH,
     PhotoColumn::PHOTO_META_DATE_MODIFIED,
     PhotoColumn::PHOTO_ORIENTATION,
     PhotoColumn::PHOTO_LATITUDE,

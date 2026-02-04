@@ -472,7 +472,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnFetchRecordsTest, OnFetchRecords_No_Change_test
         for (auto &record : records) {
             if (cloudId == record.GetRecordId()) {
                 MDKRecordPhotosData photosData = MDKRecordPhotosData(record);
-                EXPECT_NE(photo.dateModified.value_or(0), photosData.GetEditTimeMs().value_or(0));
+                EXPECT_NE(photo.dateModified.value_or(0), photosData.GetEditedTimeMs().value_or(0));
                 EXPECT_NE(std::to_string(photo.dateAdded.value_or(0)), photosData.GetFirstUpdateTime().value_or("0"));
                 checkCount++;
             }
@@ -551,7 +551,7 @@ static void CheckDeletePositionCloudRecordSuccess(std::vector<std::string> &test
     bool checkFlag = false;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
-        EXPECT_EQ(position, static_cast<int32_t>(CloudFilePosition::POSITION_LOCAL));
+        EXPECT_EQ(position, static_cast<int32_t>(PhotoPositionType::LOCAL));
 
         std::string cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
         EXPECT_EQ(cloudId.empty(), true);

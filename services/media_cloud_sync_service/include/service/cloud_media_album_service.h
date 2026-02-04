@@ -41,16 +41,13 @@ public:
     std::vector<PhotoAlbumPo> GetAlbumDeletedRecords(int32_t size);
     std::vector<PhotoAlbumPo> GetAlbumCopyRecords(int32_t size);  // it's not exist
     int32_t HandleCloudAlbumNotFound(const PhotoAlbumDto &album);
-    int32_t HandleDetailcode(ErrorDetailCode &errorCode);
+    int32_t HandleDetailcode(const ErrorDetailCode &errorCode);
     int32_t OnRecordFailedErrorDetails(const PhotoAlbumDto &album);
     int32_t OnRecordFailed(const PhotoAlbumDto &album);
-    int32_t OnCreateRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failedSize);
-    int32_t OnMdirtyRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failedSize);
-    int32_t OnFdirtyRecords();
+    int32_t OnCreateRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failSize);
+    int32_t OnMdirtyRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failSize);
     int32_t OnDeleteRecords(std::vector<PhotoAlbumDto> &albumDtoList, int32_t &failSize);
-    int32_t OnCopyRecords();
     int32_t OnFetchRecords(std::vector<PhotoAlbumDto> &albumDtoList, OnFetchRecordsAlbumRespBody &resp);
-    int32_t OnDentryFileInsert();
     int32_t OnStartSync();
     int32_t OnCompleteSync();
     int32_t OnCompletePull(const MediaOperateResult &optRet);

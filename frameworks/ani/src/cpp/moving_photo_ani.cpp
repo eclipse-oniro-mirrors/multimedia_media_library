@@ -180,7 +180,7 @@ void BufferTranscodeRequestContent(int32_t fd, MovingPhotoAsyncContext* context)
 
 void MovingPhotoAni::SubRequestContent(int32_t fd, MovingPhotoAsyncContext* context)
 {
-    if (context->position == POSITION_CLOUD) {
+    if (context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
         return RequestCloudContentArrayBuffer(fd, context);
     }
     BufferTranscodeRequestContent(fd, context);
@@ -308,7 +308,7 @@ static int32_t OpenReadOnlyVideo(const std::string& videoUri, bool isMediaLibUri
 {
     if (isMediaLibUri) {
         std::string openVideoUri = videoUri;
-        if (position == POSITION_CLOUD) {
+        if (position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
             MediaFileUtils::UriAppendKeyValue(openVideoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
                 CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD);
         } else {
@@ -332,7 +332,7 @@ static int32_t OpenReadOnlyImage(const std::string& imageUri, bool isMediaLibUri
 {
     if (isMediaLibUri) {
         std::string openImageUri = imageUri;
-        if (position == POSITION_CLOUD) {
+        if (position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
             MediaFileUtils::UriAppendKeyValue(openImageUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
                 CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD);
         }
@@ -377,7 +377,7 @@ int32_t MovingPhotoAni::OpenReadOnlyLivePhoto(const string& destLivePhotoUri, in
     }
     if (MediaFileUtils::IsMediaLibraryUri(destLivePhotoUri)) {
         string livePhotoUri = destLivePhotoUri;
-        if (position == POSITION_CLOUD) {
+        if (position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
             MediaFileUtils::UriAppendKeyValue(livePhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
                 CONST_OPEN_MOVING_PHOTO_VIDEO_CLOUD);
         } else {
@@ -497,7 +497,7 @@ int32_t MovingPhotoAni::DoMovingPhotoTranscode(int32_t &videoFd, MovingPhotoAsyn
     UniqueFd uniqueVideoFd(videoFd);
     int64_t videoSize = 0;
     int64_t extraDataSize = 0;
-    if (context->position == POSITION_CLOUD) {
+    if (context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
         int32_t ret = MovingPhotoFileUtils::GetMovingPhotoDetailedSize(uniqueVideoFd.Get(), offset, videoSize,
             extraDataSize);
         CHECK_COND_RET(ret == E_OK, E_ERR, "get moving photo detailed size fail");
@@ -547,9 +547,10 @@ static int32_t RequestContentToSandbox(MovingPhotoAsyncContext* context)
     if (!context->destImageUri.empty()) {
         int32_t imageFd = MovingPhotoAni::OpenReadOnlyFile(movingPhotoUri, true, context->position);
         CHECK_COND_RET(HandleFd(imageFd), imageFd, "Open source image file failed");
-        int32_t ret = WriteToSandboxUri(imageFd, context->destImageUri,
-            context->position == POSITION_CLOUD ? MovingPhotoResourceType::CLOUD_IMAGE
-                                                : MovingPhotoResourceType::DEFAULT);
+        MovingPhotoResourceType resourceType = context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)
+                            ? MovingPhotoResourceType::CLOUD_IMAGE
+                            : MovingPhotoResourceType::DEFAULT;
+        int32_t ret = WriteToSandboxUri(imageFd, context->destImageUri, resourceType);
         CHECK_COND_RET(ret == E_OK, ret, "Write image to sandbox failed");
     }
     if (!context->destVideoUri.empty()) {
@@ -560,9 +561,10 @@ static int32_t RequestContentToSandbox(MovingPhotoAsyncContext* context)
             int32_t ret = MovingPhotoAni::DoMovingPhotoTranscode(videoFd, context);
             CHECK_COND_RET(ret == E_OK, ret, "moving video transcode failed");
         } else {
-            int32_t ret = WriteToSandboxUri(videoFd, context->destVideoUri,
-                context->position == POSITION_CLOUD ? MovingPhotoResourceType::CLOUD_VIDEO
-                                                    : MovingPhotoResourceType::DEFAULT);
+            MovingPhotoResourceType resourceType = context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)
+                                ? MovingPhotoResourceType::CLOUD_VIDEO
+                                : MovingPhotoResourceType::DEFAULT;
+            int32_t ret = WriteToSandboxUri(videoFd, context->destVideoUri, resourceType);
             CHECK_COND_RET(ret == E_OK, ret, "Write video to sandbox failed");
         }
     }
@@ -620,7 +622,7 @@ static int32_t ArrayBufferToTranscode(ani_env *env, MovingPhotoAsyncContext* con
     int64_t offset = 0;
     int64_t videoSize = 0;
     int64_t extraDataSize = 0;
-    if (context->position == POSITION_CLOUD) {
+    if (context->position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
         int32_t ret = MovingPhotoFileUtils::GetMovingPhotoDetailedSize(uniqueFd.Get(), offset, videoSize,
             extraDataSize);
         if (ret != E_OK) {
@@ -984,7 +986,7 @@ ani_string MovingPhotoAni::GetUri(ani_env *env, ani_object object)
 
 void MovingPhotoAni::RequestCloudContentArrayBuffer(int32_t fd, MovingPhotoAsyncContext* context)
 {
-    if (context->position != POSITION_CLOUD) {
+    if (context->position != static_cast<int32_t>(PhotoPositionType::CLOUD)) {
         ANI_ERR_LOG("Failed to check postion: %{public}d", context->position);
         context->arrayBufferData = nullptr;
         context->error = JS_INNER_FAIL;

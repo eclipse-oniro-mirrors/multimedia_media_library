@@ -146,9 +146,11 @@ int32_t CloudMediaDaoUtils::QueryCount(const std::string &sql, const std::string
     auto resultSet = rdbStore->QueryByStep(sql);
     CHECK_AND_RETURN_RET_LOG(
         resultSet != nullptr, E_RDB, "Query failed, failed when executing sql: %{public}s", sql.c_str());
-    CHECK_AND_RETURN_RET_LOG(
-        resultSet->GoToFirstRow() == E_OK, E_RDB, "Go to first row failed, sql: %{public}s", sql.c_str());
+    bool isValid = resultSet->GoToFirstRow() == E_OK;
+    CHECK_AND_EXECUTE(isValid, resultSet->Close());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "Go to first row failed, sql: %{public}s", sql.c_str());
     count = GetInt32Val(columnName, resultSet);
+    resultSet->Close();
     return E_OK;
 }
 

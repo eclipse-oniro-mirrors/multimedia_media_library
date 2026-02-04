@@ -72,9 +72,8 @@ public:
         uint32_t code, MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context) override
     {
         auto it = this->HANDLERS.find(code);
-        if (!this->Accept(code) || it == this->HANDLERS.end()) {
-            return IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND);
-        }
+        CHECK_AND_RETURN_RET(
+            it != this->HANDLERS.end(), IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND));
         SysUtils::SlowDown();
         return (this->*(it->second))(data, reply);
     }

@@ -260,7 +260,7 @@ void CloudMdkRecordPhotosVo::GetRemoveAlbumInfo(std::stringstream &ss) const
     ss << "]";
 }
 
-std::string CloudMdkRecordPhotosVo::ToString()
+std::string CloudMdkRecordPhotosVo::ToString() const
 {
     std::stringstream ss;
     ss << "{";

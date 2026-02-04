@@ -164,7 +164,7 @@ static void LogParams(const DataShare::OperationItem& item, string& toPrint)
     const std::string mediaUri = "uri";
     const vector<string> sensitiveInfo = {
         mediaUri, MediaColumn::MEDIA_FILE_PATH, MediaColumn::MEDIA_TITLE, MediaColumn::MEDIA_NAME,
-        MediaColumn::MEDIA_RELATIVE_PATH, MediaColumn::MEDIA_VIRTURL_PATH, PhotoColumn::PHOTO_LATITUDE,
+        MediaColumn::MEDIA_RELATIVE_PATH, MediaColumn::MEDIA_VIRTUAL_PATH, PhotoColumn::PHOTO_LATITUDE,
         PhotoColumn::PHOTO_LONGITUDE, PhotoColumn::PHOTO_SOURCE_PATH, PhotoColumn::PHOTO_STORAGE_PATH,
         PhotoAlbumColumns::ALBUM_NAME, PhotoAlbumColumns::ALBUM_COVER_URI, PhotoAlbumColumns::ALBUM_LPATH
     };

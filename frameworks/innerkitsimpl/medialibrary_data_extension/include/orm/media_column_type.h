@@ -48,7 +48,7 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::MEDIA_HIDDEN, DataType::INT},
     {PhotoColumn::MEDIA_PARENT_ID, DataType::INT},
     {PhotoColumn::MEDIA_RELATIVE_PATH, DataType::STRING},
-    {PhotoColumn::MEDIA_VIRTURL_PATH, DataType::STRING},
+    {PhotoColumn::MEDIA_VIRTUAL_PATH, DataType::STRING},
     {PhotoColumn::PHOTO_DIRTY, DataType::INT},
     /* keep cloud_id at the last, DataType:: so RecordToValueBucket can skip it*/
     {PhotoColumn::PHOTO_CLOUD_ID, DataType::STRING},

@@ -39,7 +39,7 @@ bool CloudMediaPhotosDeleteService::FindAlbumUploadStatus(CloudMediaPullDataDto 
     MEDIA_INFO_LOG("FindAlbumUploadStatus, albumInfo: %{public}s", albumInfo.ToString().c_str());
     // Camera album, upload_status fixed to 1 : upload.
     CHECK_AND_RETURN_RET(!albumInfo.IsCamera(), true);
-    return albumInfo.uploadStatus.value_or(0) == 1 ? true : false;
+    return albumInfo.uploadStatus.value_or(0) == 1;
 }
 
 bool CloudMediaPhotosDeleteService::IsClearCloudInfoOnly(CloudMediaPullDataDto &pullData)

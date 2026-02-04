@@ -99,8 +99,8 @@ void CloudMediaEnhanceService::SubmitNextCloudSyncPreparedDataTask()
         }
         submitPhotoId_ = photoId;
 
-        const std::string hightQualityMode = std::to_string(static_cast<int32_t>(RequestPolicy::HIGH_QUALITY_MODE));
-        vector<std::string> columns { fileId, hightQualityMode };
+        const std::string highQualityMode = std::to_string(static_cast<int32_t>(RequestPolicy::HIGH_QUALITY_MODE));
+        vector<std::string> columns { fileId, highQualityMode };
         std::string uriStr = CONST_PAH_PROCESS_IMAGE;
         MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", std::to_string(MEDIA_API_VERSION_V10));
         Uri uri(uriStr);

@@ -53,7 +53,7 @@ static inline void SetVirtualPath(const Metadata &metadata, ValuesBucket &values
     string relativePath = metadata.GetRelativePath();
     string displayName = metadata.GetFileName();
     string virtualPath = (relativePath.back() == '/' ? relativePath : relativePath + "/") + displayName;
-    values.PutString(MediaColumn::MEDIA_VIRTURL_PATH, virtualPath);
+    values.PutString(MediaColumn::MEDIA_VIRTUAL_PATH, virtualPath);
 }
 #endif
 

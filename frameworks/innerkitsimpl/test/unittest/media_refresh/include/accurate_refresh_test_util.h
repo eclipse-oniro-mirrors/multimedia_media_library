@@ -86,7 +86,7 @@ const std::string CREATE_PHOTO_TABLE = "CREATE TABLE IF NOT EXISTS " +
     PhotoColumn::MEDIA_HIDDEN + " INT DEFAULT 0, " +
     PhotoColumn::MEDIA_PARENT_ID + " INT DEFAULT 0, " +
     PhotoColumn::MEDIA_RELATIVE_PATH + " TEXT, " +
-    PhotoColumn::MEDIA_VIRTURL_PATH + " TEXT UNIQUE, " +
+    PhotoColumn::MEDIA_VIRTUAL_PATH + " TEXT UNIQUE, " +
     PhotoColumn::PHOTO_DIRTY + " INT DEFAULT 1, " +
     PhotoColumn::PHOTO_CLOUD_ID + " TEXT, " +
     PhotoColumn::PHOTO_META_DATE_MODIFIED + "  BIGINT DEFAULT 0, " +

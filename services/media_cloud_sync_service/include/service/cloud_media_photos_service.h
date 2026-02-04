@@ -56,11 +56,11 @@ public:
     int32_t GetFileModifiedRecords(int32_t size, std::vector<PhotosPo> &modifiedRecords);
     std::vector<PhotosPo> GetDeletedRecords(int32_t size);
     int32_t GetCopyRecords(int32_t size, std::vector<PhotosPo> &copyRecords);
-    int32_t OnCreateRecords(std::vector<PhotosDto> &photos, int32_t &failedSize);
-    int32_t OnMdirtyRecords(std::vector<PhotosDto> &records, int32_t &failedSize);
-    int32_t OnFdirtyRecords(std::vector<PhotosDto> &records, int32_t &failedSize);
+    int32_t OnCreateRecords(std::vector<PhotosDto> &photos, int32_t &failSize);
+    int32_t OnMdirtyRecords(std::vector<PhotosDto> &records, int32_t &failSize);
+    int32_t OnFdirtyRecords(std::vector<PhotosDto> &records, int32_t &failSize);
     int32_t OnDeleteRecords(std::vector<PhotosDto> &records, int32_t &failSize);
-    int32_t OnCopyRecords(std::vector<PhotosDto> &records, int32_t &failedSize);
+    int32_t OnCopyRecords(std::vector<PhotosDto> &records, int32_t &failSize);
     int32_t OnFetchRecords(const std::vector<std::string> &cloudIds,
         std::map<std::string, CloudMediaPullDataDto> &cloudIdRelativeMap, std::vector<PhotosDto> &newData,
         std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats, std::vector<std::string> &failedRecords);
@@ -105,7 +105,7 @@ private:
         const PhotosDto &photo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t HandleSameNameUploadFail(
         const PhotosDto &photo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
-    int32_t HandleDetailcode(ErrorDetailCode &errorCode);
+    int32_t HandleDetailcode(const ErrorDetailCode &errorCode);
     int32_t OnFdirtyRecordSuccess(
         const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t OnCreateRecordSuccess(

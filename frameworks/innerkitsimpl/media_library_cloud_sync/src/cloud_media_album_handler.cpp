@@ -114,7 +114,7 @@ int32_t CloudMediaAlbumHandler::OnFetchRecords(const std::vector<MDKRecord> &rec
     OnFetchRecordsAlbumReqBody req;
     OnFetchRecordsAlbumRespBody resp;
     MEDIA_INFO_LOG("OnFetchRecords %{public}zu records", records.size());
-    for (auto record : records) {
+    for (const auto &record : records) {
         auto cloudId = record.GetRecordId();
         OnFetchRecordsAlbumReqBody::AlbumReqData data;
         data.cloudId = cloudId;
@@ -137,10 +137,7 @@ int32_t CloudMediaAlbumHandler::OnFetchRecords(const std::vector<MDKRecord> &rec
 int32_t CloudMediaAlbumHandler::OnDentryFileInsert(
     std::vector<MDKRecord> &records, std::vector<std::string> &failedRecords)
 {
-    MEDIA_INFO_LOG("OnDentryFileInsert, records size: %{public}zu", records.size());
-    uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_DENTRY_FILE_INSERT);
-    return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}}).Post(operationCode);
+    return E_OK;
 }
 
 // album does not handle this operation <GetRetryRecords>.
@@ -271,23 +268,19 @@ int32_t CloudMediaAlbumHandler::OnCreateRecords(
     CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnCreateRecords Album param error");
     OnCreateRecordsAlbumReqBody reqBody;
     CloudAlbumDataConvert dataConvertor{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
-    for (auto &entry : map) {
-        if (entry.first.empty()) {
-            MEDIA_INFO_LOG("OnCreateRecords is failed");
-            continue;
-        }
+    int32_t ret = E_OK;
+    for (const auto &entry : map) {
+        CHECK_AND_CONTINUE_ERR_LOG(!entry.first.empty(), "OnCreateRecords is failed");
         OnCreateRecordsAlbumReqBodyAlbumData record;
-        if (dataConvertor.ConvertToOnCreateRecord(entry.first, entry.second, record) != E_OK) {
-            MEDIA_ERR_LOG("OnCreateRecords Album ConvertToOnCreateRecord error");
-            continue;
-        }
+        ret = dataConvertor.ConvertToOnCreateRecord(entry.first, entry.second, record);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "OnCreateRecords Album ConvertToOnCreateRecord error");
         MEDIA_INFO_LOG("OnCreateRecords Album:%{public}s", record.ToString().c_str());
         reqBody.albums.emplace_back(record);
     }
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_CREATE_RECORDS);
     FailedSizeResp resp;
     resp.failedSize = 0;
-    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+    ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
         .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
         .Post(operationCode, reqBody, resp);
     failSize = resp.failedSize;
@@ -302,19 +295,18 @@ int32_t CloudMediaAlbumHandler::OnMdirtyRecords(
     CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnMdirtyRecords Album param error");
     OnMdirtyRecordsAlbumReqBody reqBody;
     CloudAlbumDataConvert dataConvertor{CloudAlbumOperationType::PHOTO_ALBUM_METADATA_MODIF};
-    for (auto &entry : map) {
+    int32_t ret = E_OK;
+    for (const auto &entry : map) {
         OnMdirtyAlbumRecord record;
-        if (dataConvertor.BuildModifyRecord(entry.first, entry.second, record) != E_OK) {
-            MEDIA_ERR_LOG("OnMdirtyRecords Album BuildModifyRecord error");
-            continue;
-        }
+        ret = dataConvertor.BuildModifyRecord(entry.first, entry.second, record);
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "OnMdirtyRecords Album BuildModifyRecord error");
         MEDIA_INFO_LOG("OnMdirtyRecords Album Record:%{public}s", record.ToString().c_str());
         reqBody.AddMdirtyRecord(record);
     }
     OnMdirtyRecordsAlbumRespBody respBody;
     respBody.failSize = 0;
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_MDIRTY_RECORDS);
-    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+    ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
         .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
         .Post(operationCode, reqBody, respBody);
     failSize = respBody.failSize;
@@ -324,12 +316,7 @@ int32_t CloudMediaAlbumHandler::OnMdirtyRecords(
 int32_t CloudMediaAlbumHandler::OnFdirtyRecords(
     const std::map<std::string, MDKRecordOperResult> &map, int32_t &failSize)
 {
-    MEDIA_INFO_LOG("CloudMediaAlbumHandler::OnFdirtyRecords, size: %{public}zu", map.size());
-    CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnFdirtyRecords Album param error");
-    uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_FDIRTY_RECORDS);
-    return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
-        .Post(operationCode);
+    return E_OK;
 }
 
 int32_t CloudMediaAlbumHandler::OnDeleteRecords(
@@ -340,7 +327,7 @@ int32_t CloudMediaAlbumHandler::OnDeleteRecords(
     OnDeleteRecordsAlbumReqBody reqBody;
     OnDeleteRecordsAlbumRespBody respBody;
     respBody.failSize = 0;
-    for (auto &entry : map) {
+    for (const auto &entry : map) {
         const MDKRecordOperResult &result = entry.second;
         OnDeleteAlbumData album;
         album.cloudId = entry.first;
@@ -361,12 +348,7 @@ int32_t CloudMediaAlbumHandler::OnDeleteRecords(
 
 int32_t CloudMediaAlbumHandler::OnCopyRecords(const std::map<std::string, MDKRecordOperResult> &map, int32_t &failSize)
 {
-    MEDIA_INFO_LOG("OnCopyRecords, map size: %{public}zu", map.size());
-    CHECK_AND_RETURN_RET_LOG(!map.empty(), E_OK, "OnCopyRecords Album param error");
-    uint32_t operationCode = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_COPY_RECORDS);
-    return IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
-        .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}})
-        .Post(operationCode);
+    return E_OK;
 }
 
 int32_t CloudMediaAlbumHandler::OnStartSync()

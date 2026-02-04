@@ -115,7 +115,7 @@ private:
     bool ReadAttributesInfo(MessageParcel &parcel);
 
 public:  // basic functions
-    std::string ToString();
+    std::string ToString() const;
 };
 
 class EXPORT CloudMdkRecordPhotosReqBody : public IPC::IMediaParcelable {

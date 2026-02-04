@@ -255,9 +255,8 @@ HWTEST_F(CloudMediaDataClientTest, CloudMediaDataClient_MDKRecordProperties_Test
     data->SetSourceFileName("video.avi");
     data->SetSourcePath("/usr/local/bin");
     data->SetEditDataCamera("001");
-    data->SetEditTimeMs(10011);
+    data->SetEditedTimeMs(10011);
 
-    data->SetFileEditDataCamera("test/editDataCamera");
     data->SetThmSize(10086);
     data->SetLcdSize(2);
     data->SetFixVersion(1110011);
@@ -266,7 +265,6 @@ HWTEST_F(CloudMediaDataClientTest, CloudMediaDataClient_MDKRecordProperties_Test
     data->SetHeight(1);
     data->SetWidth(0);
     data->SetDetailTime("1970111000111");
-    data->SetFilePosition("/user/loacal");
     data->SetPosition("Earth");
 
     data->SetRotate(1);

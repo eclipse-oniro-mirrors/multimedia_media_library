@@ -1201,7 +1201,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_create_api9_test_001, TestS
         { PhotoColumn::MEDIA_TITLE, "photo" },
         { PhotoColumn::MEDIA_TYPE, to_string(MediaType::MEDIA_TYPE_IMAGE) },
         { PhotoColumn::MEDIA_RELATIVE_PATH, "Pictures/123/" },
-        { PhotoColumn::MEDIA_VIRTURL_PATH, "Pictures/123/photo.jpg" }
+        { PhotoColumn::MEDIA_VIRTUAL_PATH, "Pictures/123/photo.jpg" }
     };
     bool res = QueryAndVerifyPhotoAsset(PhotoColumn::MEDIA_NAME, name, verifyMap);
     EXPECT_EQ(res, true);
@@ -2079,7 +2079,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api9_test_001, TestS
         { PhotoColumn::MEDIA_NAME, "photo1.jpg" },
         { PhotoColumn::MEDIA_TITLE, "photo1" },
         { PhotoColumn::MEDIA_RELATIVE_PATH, "Pictures/2/"},
-        { PhotoColumn::MEDIA_VIRTURL_PATH, "Pictures/2/photo1.jpg"}
+        { PhotoColumn::MEDIA_VIRTUAL_PATH, "Pictures/2/photo1.jpg"}
     };
     TestPhotoUpdateByQuery(PhotoColumn::MEDIA_ID, to_string(fileId), queryMap, E_OK);
     MEDIA_INFO_LOG("end tdd photo_oprn_update_api9_test_001");

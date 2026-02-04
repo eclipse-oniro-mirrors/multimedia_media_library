@@ -72,13 +72,13 @@ public:  // getter & setter
     // locgicType, 0 - Physical, 1 - Logical
     void SetLogicType(const int32_t &logicType);
     std::optional<bool> IsLogic() const;
-    void SetIsLogic(const bool &isLogic);
+    void SetIsLogic(const bool isLogic);
     std::optional<std::string> GetType() const;
     // type, "directory" or "file"
     void SetType(const std::string &type);
     std::optional<std::string> GetLocalLanguage() const;
     void SetLocalLanguage(const std::string &localLanguage);
-    void SetNewCreate(const bool &isNewCreate);
+    void SetNewCreate(const bool isNewCreate);
     bool GetNewCreate() const;
     std::string GetRecordId() const;
     void SetRecordId(std::string recordId);
@@ -106,20 +106,8 @@ private:
     const std::string KEY_ATTRIBUTES = "attributes";
 
     /* properties */
-    const std::string ALBUM_BUNDLE_NAME = "bundle_name";
     const std::string ALBUM_NAME = "albumName";
     const std::string ALBUM_EMPTY_SHOW = "emptyShow";
-    const std::string ALBUM_TYPE = "album_type";
-    const std::string ALBUM_SUBTYPE = "album_subtype";
-    const std::string ALBUM_DATE_ADDED = "date_added";
-    const std::string ALBUM_DATE_MODIFIED = "date_modified";
-    const std::string ALBUM_LOCAL_LANGUAGE = "local_language";
-    const std::string ALBUM_ORDER = "album_order";
-    const std::string ALBUM_PRIORITY = "priority";
-
-    /* attributes */
-    const std::string COVER_URI_SOURCE = "cover_uri_source";
-    const std::string COVER_CLOUD_ID = "cover_cloud_id";
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_MDK_RECORD_ALBUM_DATA_H

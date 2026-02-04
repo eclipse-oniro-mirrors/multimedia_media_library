@@ -93,11 +93,11 @@ int32_t CloudMediaPhotosDao::BatchInsertAssetMaps(std::map<std::string, std::set
     }
     std::vector<NativeRdb::ValuesBucket> valuesList;
     for (const auto &it : recordAlbumMaps) {
-        for (auto &photo : photos) {
+        for (const auto &photo : photos) {
             if (it.first != photo.cloudId.value_or("")) {
                 continue;
             }
-            for (auto albumId : it.second) {
+            for (const auto &albumId : it.second) {
                 NativeRdb::ValuesBucket values;
                 values.PutInt(PhotoMap::ALBUM_ID, albumId);
                 values.PutInt(PhotoMap::ASSET_ID, photo.fileId.value_or(-1));
@@ -133,7 +133,7 @@ int32_t CloudMediaPhotosDao::BatchInsertAssetAnalysisMaps(std::map<std::string, 
     }
     std::vector<NativeRdb::ValuesBucket> batchValues;
     for (const auto &it : recordAnalysisAlbumMaps) {
-        for (auto &photo : photos) {
+        for (const auto &photo : photos) {
             if (it.first != photo.cloudId.value_or("")) {
                 continue;
             }
@@ -415,7 +415,7 @@ void CloudMediaPhotosDao::UpdateRecordToDatabasePrepare(const CloudMediaPullData
         HandleExifRotateDownloadMetaData(pullData, values);
     }
     if (isLocal && mtimeChanged) {
-        values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(CloudFilePosition::POSITION_CLOUD));
+        values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
         values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, CloudMediaContext::GetInstance().GetCloudType());
         values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA));
     }
@@ -880,7 +880,7 @@ std::shared_ptr<NativeRdb::ResultSet> CloudMediaPhotosDao::BatchQueryLocal(
     MEDIA_INFO_LOG("BatchQueryLocal num: %{public}d.", static_cast<int32_t>(displayNames.size()));
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(CloudFilePosition::POSITION_LOCAL));
+    predicates.EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL));
     predicates.In(PhotoColumn::MEDIA_NAME, displayNames);
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(cleanType));
 
@@ -989,7 +989,7 @@ int32_t CloudMediaPhotosDao::GetRetryRecords(std::vector<std::string> &cloudIds)
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "GetRetryRecords Failed to query.");
     int32_t rowCount = 0;
     int32_t ret = resultSet->GetRowCount(rowCount);
-    CHECK_AND_RETURN_RET_LOG((ret == 0 && rowCount >= 0), E_RDB, "GetRetryRecords Failed to Get Count.");
+    CHECK_AND_RETURN_RET_LOG((ret == E_OK && rowCount >= 0), E_RDB, "GetRetryRecords Failed to Get Count.");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         std::string cloudId = GetStringVal(PhotoColumn::PHOTO_CLOUD_ID, resultSet);
         if (cloudId.empty()) {
@@ -1470,7 +1470,7 @@ int32_t CloudMediaPhotosDao::ClearCloudInfo(
     NativeRdb::ValuesBucket values;
     values.PutNull(PhotoColumn::PHOTO_CLOUD_ID);
     values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_NEW));
-    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(CloudFilePosition::POSITION_LOCAL));
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL));
     values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL));
     values.PutLong(PhotoColumn::PHOTO_CLOUD_VERSION, 0);
     int32_t changedRows = DEFAULT_VALUE;

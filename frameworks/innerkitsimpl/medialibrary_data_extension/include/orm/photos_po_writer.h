@@ -73,7 +73,7 @@ private:
         {PhotoColumn::MEDIA_HIDDEN, {&PhotosPoWriter::GetHidden, &PhotosPoWriter::SetHidden}},
         {PhotoColumn::PHOTO_HIDDEN_TIME, {&PhotosPoWriter::GetHiddenTime, &PhotosPoWriter::SetHiddenTime}},
         {PhotoColumn::MEDIA_RELATIVE_PATH, {&PhotosPoWriter::GetRelativePath, &PhotosPoWriter::SetRelativePath}},
-        {PhotoColumn::MEDIA_VIRTURL_PATH, {&PhotosPoWriter::GetVirtualPath, &PhotosPoWriter::SetVirtualPath}},
+        {PhotoColumn::MEDIA_VIRTUAL_PATH, {&PhotosPoWriter::GetVirtualPath, &PhotosPoWriter::SetVirtualPath}},
         {PhotoColumn::PHOTO_META_DATE_MODIFIED,
             {&PhotosPoWriter::GetMetaDataModified, &PhotosPoWriter::SetMetaDataModified}},
         {PhotoColumn::PHOTO_ORIENTATION, {&PhotosPoWriter::GetOrientation, &PhotosPoWriter::SetOrientation}},

@@ -42,7 +42,7 @@ NativeRdb::AbsRdbPredicates CloudMediaDownloadDao::GetDownloadThmsConditions(con
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
-    predicates.NotEqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(CloudFilePosition::POSITION_LOCAL))
+    predicates.NotEqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL))
         ->And()
         ->BeginWrap();
     ThmLcdState state;
@@ -68,10 +68,10 @@ int32_t CloudMediaDownloadDao::GetDownloadThmNum(const int32_t type, int32_t &to
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Query Thumbs to Download Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = this->GetDownloadThmsConditions(type);
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, {"COUNT(1) AS count"});
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("get nullptr Query Thumbs to Download");
-        return E_RDB;
-    }
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+    bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
+    CHECK_AND_EXECUTE(isValid, resultSet->Close());
+    CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "failed to get row");
     totalNum = GetInt32Val("count", resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("QueryThumbsToDownload end %{public}d", totalNum);
@@ -196,10 +196,8 @@ int32_t CloudMediaDownloadDao::GetFileIdFromCloudId(
     std::vector<PhotosPo> photos;
     int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(photos);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "GetFileIdFromCloudId Failed to query, ret: %{public}d", ret);
-    for (auto photo : photos) {
-        if (!photo.fileId.has_value()) {
-            continue;
-        }
+    for (const auto &photo : photos) {
+        CHECK_AND_CONTINUE(photo.fileId.has_value());
         fileIds.emplace_back(std::to_string(photo.fileId.value_or(0)));
     }
     return ret;

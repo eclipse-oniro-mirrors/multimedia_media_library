@@ -31,7 +31,7 @@ void CloudMediaDataServiceProcessor::GetPhotosDto(
     std::string filePath;
     std::string fileName;
     bool ret = false;
-    for (auto &photo : photosPos) {
+    for (const auto &photo : photosPos) {
         PhotosDto photosDto;
         path = photo.data.value_or("");
         if (path.empty()) {

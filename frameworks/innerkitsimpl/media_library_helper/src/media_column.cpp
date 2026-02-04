@@ -45,12 +45,14 @@ const std::string MediaColumn::MEDIA_DATE_DELETED = "date_deleted";
 const std::string MediaColumn::MEDIA_HIDDEN = "hidden";
 const std::string MediaColumn::MEDIA_PARENT_ID = "parent";
 const std::string MediaColumn::MEDIA_RELATIVE_PATH = "relative_path";
-const std::string MediaColumn::MEDIA_VIRTURL_PATH = "virtual_path";
+const std::string MediaColumn::MEDIA_VIRTUAL_PATH = "virtual_path";
+// deprecated since 6.1-release
+const std::string MediaColumn::MEDIA_VIRTURL_PATH = MediaColumn::MEDIA_VIRTUAL_PATH;
 const std::set<std::string> MediaColumn::MEDIA_COLUMNS = {
     MEDIA_ID, MEDIA_FILE_PATH, MEDIA_SIZE, MEDIA_TITLE, MEDIA_NAME, MEDIA_TYPE, MEDIA_MIME_TYPE,
     MEDIA_OWNER_PACKAGE, MEDIA_OWNER_APPID, MEDIA_PACKAGE_NAME, MEDIA_DEVICE_NAME, MEDIA_DATE_MODIFIED,
     MEDIA_DATE_ADDED, MEDIA_DATE_TAKEN, MEDIA_DURATION, MEDIA_TIME_PENDING, MEDIA_IS_FAV, MEDIA_DATE_TRASHED,
-    MEDIA_DATE_DELETED, MEDIA_HIDDEN, MEDIA_PARENT_ID, MEDIA_RELATIVE_PATH, MEDIA_VIRTURL_PATH
+    MEDIA_DATE_DELETED, MEDIA_HIDDEN, MEDIA_PARENT_ID, MEDIA_RELATIVE_PATH, MEDIA_VIRTUAL_PATH
 };
 const std::set<std::string> MediaColumn::DEFAULT_FETCH_COLUMNS = {
     MEDIA_ID, MEDIA_FILE_PATH, MEDIA_NAME, MEDIA_TYPE

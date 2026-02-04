@@ -28,7 +28,7 @@ std::vector<CloudMetaData> CloudMediaDataClientHandlerProcessor::GetCloudNewData
     if (newDatas.size() <= 0) {
         return newCloudDatas;
     }
-    for (auto newData : newDatas) {
+    for (const auto &newData : newDatas) {
         CloudMetaData newCloudData = CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(newData);
         newCloudDatas.emplace_back(newCloudData);
     }
@@ -42,7 +42,7 @@ std::vector<CloudMetaData> CloudMediaDataClientHandlerProcessor::GetCloudFdirtyD
     if (fdirtyDatas.size() <= 0) {
         return fdirtyCloudDatas;
     }
-    for (auto fdirtyData : fdirtyDatas) {
+    for (const auto &fdirtyData : fdirtyDatas) {
         CloudMetaData fdirtyCloudData = CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(fdirtyData);
         fdirtyCloudDatas.emplace_back(fdirtyCloudData);
     }

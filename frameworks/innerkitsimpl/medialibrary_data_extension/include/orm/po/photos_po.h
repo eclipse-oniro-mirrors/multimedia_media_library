@@ -40,7 +40,7 @@ public:
     std::optional<int32_t> hidden;                    // PhotoColumn::MEDIA_HIDDEN;
     std::optional<int64_t> hiddenTime;                // PhotoColumn::PHOTO_hidden_TIME;
     std::optional<std::string> relativePath;          // PhotoColumn::MEDIA_RELATIVE_PATH;
-    std::optional<std::string> virtualPath;           // PhotoColumn::MEDIA_VIRTURL_PATH;
+    std::optional<std::string> virtualPath;           // PhotoColumn::MEDIA_VIRTUAL_PATH;
     std::optional<int64_t> metaDateModified;          // PhotoColumn::PHOTO_META_DATE_MODIFIED;
     std::optional<int32_t> orientation;               // PhotoColumn::PHOTO_ORIENTATION;
     std::optional<double> latitude;                   // PhotoColumn::PHOTO_LATITUDE;

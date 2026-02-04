@@ -203,7 +203,7 @@ int32_t CloudMediaDataClientHandler::GetAgingFile(
         MEDIA_ERR_LOG("Failed to GetAgingFile, ret: %{public}d", ret);
         return ret;
     }
-    for (auto &photosVo : respBody.photos) {
+    for (const auto &photosVo : respBody.photos) {
         CloudMetaData cloudMetaData = CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(photosVo);
         metaData.push_back(cloudMetaData);
     }
@@ -244,7 +244,7 @@ int32_t CloudMediaDataClientHandler::GetDownloadAsset(
         MEDIA_ERR_LOG("Failed to GetDownloadAsset, ret: %{public}d", ret);
         return ret;
     }
-    for (auto &photosVo : respBody.photos) {
+    for (const auto &photosVo : respBody.photos) {
         CloudMetaData cloudMetaData = CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(photosVo);
         MEDIA_INFO_LOG("GetDownloadAsset MetaData: %{public}s", cloudMetaData.ToString().c_str());
         cloudMetaDataVec.push_back(cloudMetaData);
@@ -269,7 +269,7 @@ int32_t CloudMediaDataClientHandler::GetDownloadLakeAsset(
         MEDIA_ERR_LOG("Failed to GetDownloadAsset, ret: %{public}d", ret);
         return ret;
     }
-    for (auto &photosVo : respBody.photos) {
+    for (const auto &photosVo : respBody.photos) {
         CloudDlFileMeta cloudMetaData = CloudDataConvertToVo::ConvertPhotosVoToLakeCloudMetaData(photosVo);
         MEDIA_INFO_LOG("GetDownloadAsset MetaData: %{public}s", cloudMetaData.ToString().c_str());
         cloudMetaDataVec.push_back(cloudMetaData);
@@ -295,7 +295,7 @@ int32_t CloudMediaDataClientHandler::GetDownloadThmsByUri(
         MEDIA_ERR_LOG("Failed to GetDownloadThmsByUri, ret: %{public}d", ret);
         return ret;
     }
-    for (auto &photosVo : respBody.photos) {
+    for (const auto &photosVo : respBody.photos) {
         CloudMetaData cloudMetaData = CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(photosVo);
         MEDIA_INFO_LOG("GetDownloadThmsByUri MetaData: %{public}s", cloudMetaData.ToString().c_str());
         metaData.push_back(cloudMetaData);
@@ -316,7 +316,7 @@ int32_t CloudMediaDataClientHandler::OnDownloadAsset(
         IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
             .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}}).Post(operationCode, reqBody, respBody);
     result.clear();
-    for (auto &resultVo : respBody.result) {
+    for (const auto &resultVo : respBody.result) {
         MEDIA_INFO_LOG(
             "CloudMediaDataClientHandler::OnDownloadAsset, mediaResult: %{public}s", resultVo.ToString().c_str());
         MediaOperateResult mediaResult;
@@ -344,7 +344,7 @@ int32_t CloudMediaDataClientHandler::OnDownloadLakeAsset(
     int32_t ret =
         IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_).Post(operationCode, reqBody, respBody);
     result.clear();
-    for (auto &resultVo : respBody.result) {
+    for (const auto &resultVo : respBody.result) {
         MEDIA_INFO_LOG(
             "CloudMediaDataClientHandler::OnDownloadLakeAsset, mediaResult: %{public}s", resultVo.ToString().c_str());
         MediaOperateResult mediaResult;
@@ -377,7 +377,7 @@ int32_t CloudMediaDataClientHandler::GetDownloadThms(
         MEDIA_ERR_LOG("GetDownloadThms IPC Err, ret: %{public}d", ret);
         return ret;
     }
-    for (auto &photosVo : respBody.photos) {
+    for (const auto &photosVo : respBody.photos) {
         MEDIA_INFO_LOG("GetDownloadThm %{public}s.", photosVo.ToString().c_str());
         CloudMetaData cloudMetaData = CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(photosVo);
         cloudMetaDataVec.push_back(cloudMetaData);
@@ -388,7 +388,7 @@ int32_t CloudMediaDataClientHandler::GetDownloadThms(
 }
 
 int32_t CloudMediaDataClientHandler::OnDownloadThmsInner(
-    std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize)
+    const std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize)
 {
     MEDIA_INFO_LOG("enter CloudMediaDataClientHandler::OnDownloadThmsInner");
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_ON_DOWNLOAD_THMS);
@@ -424,7 +424,7 @@ int32_t CloudMediaDataClientHandler::OnDownloadThms(
         splitedDataList.size());
     int32_t ret = E_OK;
     int32_t subFailSize = 0;
-    for (auto &dataSubList : splitedDataList) {
+    for (const auto &dataSubList : splitedDataList) {
         ret = this->OnDownloadThmsInner(dataSubList, subFailSize);
         failSize += subFailSize;
         CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "OnDownloadThmsInner failed, ret: %{public}d", ret);
@@ -444,7 +444,7 @@ int32_t CloudMediaDataClientHandler::GetVideoToCache(std::vector<CloudMetaData> 
         MEDIA_ERR_LOG("Failed to GetAgingFile, ret: %{public}d", ret);
         return ret;
     }
-    for (auto &photosVo : respBody.photos) {
+    for (const auto &photosVo : respBody.photos) {
         CloudMetaData cloudMetaData = CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(photosVo);
         cloudMetaDataVec.push_back(cloudMetaData);
     }
@@ -526,7 +526,7 @@ int32_t CloudMediaDataClientHandler::UpdateLocalFileDirty(std::vector<MDKRecord>
 {
     MEDIA_INFO_LOG("CloudMediaDataClientHandler::UpdateLocalFileDirty begin");
     std::vector<std::string> cloudIds;
-    for (auto &record : records) {
+    for (const auto &record : records) {
         if (!record.GetRecordId().empty()) {
             MEDIA_INFO_LOG("UpdateLocalFileDirty CloudId: %{public}s", record.GetRecordId().c_str());
             cloudIds.emplace_back(record.GetRecordId());

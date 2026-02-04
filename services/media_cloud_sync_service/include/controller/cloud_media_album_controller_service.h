@@ -39,15 +39,12 @@ namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaAlbumControllerService : public IPC::IMediaControllerService {
 private:
     int32_t OnFetchRecords(MessageParcel &data, MessageParcel &reply);
-    int32_t OnDentryFileInsert(MessageParcel &data, MessageParcel &reply);
     int32_t GetCreatedRecords(MessageParcel &data, MessageParcel &reply);
     int32_t GetMetaModifiedRecords(MessageParcel &data, MessageParcel &reply);
     int32_t GetDeletedRecords(MessageParcel &data, MessageParcel &reply);
     int32_t OnCreateRecords(MessageParcel &data, MessageParcel &reply);
     int32_t OnMdirtyRecords(MessageParcel &data, MessageParcel &reply);
-    int32_t OnFdirtyRecords(MessageParcel &data, MessageParcel &reply);
     int32_t OnDeleteRecords(MessageParcel &data, MessageParcel &reply);
-    int32_t OnCopyRecords(MessageParcel &data, MessageParcel &reply);
     int32_t OnStartSync(MessageParcel &data, MessageParcel &reply);
     int32_t OnCompleteSync(MessageParcel &data, MessageParcel &reply);
     int32_t OnCompletePull(MessageParcel &data, MessageParcel &reply);
@@ -59,8 +56,6 @@ private:
     const std::map<uint32_t, RequestHandle> HANDLERS = {
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_FETCH_RECORDS),
             &CloudMediaAlbumControllerService::OnFetchRecords},
-        {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_DENTRY_FILE_INSERT),
-            &CloudMediaAlbumControllerService::OnDentryFileInsert},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS),
             &CloudMediaAlbumControllerService::GetCreatedRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_META_MODIFIED_RECORDS),
@@ -71,12 +66,8 @@ private:
             &CloudMediaAlbumControllerService::OnCreateRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_MDIRTY_RECORDS),
             &CloudMediaAlbumControllerService::OnMdirtyRecords},
-        {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_FDIRTY_RECORDS),
-            &CloudMediaAlbumControllerService::OnFdirtyRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_DELETE_RECORDS),
             &CloudMediaAlbumControllerService::OnDeleteRecords},
-        {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_COPY_RECORDS),
-            &CloudMediaAlbumControllerService::OnCopyRecords},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_START_SYNC),
             &CloudMediaAlbumControllerService::OnStartSync},
         {static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_ON_COMPLETE_SYNC),
@@ -98,16 +89,10 @@ public:
     int32_t OnRemoteRequest(
         uint32_t code, MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context) override
     {
-        auto headerMap = context.GetHeader();
-        auto headerIt = headerMap.find(PhotoColumn::CLOUD_TYPE);
-        if (headerIt != headerMap.end()) {
-            int32_t cloudType = std::atoi(headerIt->second.c_str());
-            CloudMediaContext::GetInstance().SetCloudType(cloudType);
-        }
+        CloudMediaContext::GetInstance().SetCloudType(context);
         auto it = this->HANDLERS.find(code);
-        if (!this->Accept(code) || it == this->HANDLERS.end()) {
-            return IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND);
-        }
+        CHECK_AND_RETURN_RET(
+            it != this->HANDLERS.end(), IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND));
         SysUtils::SlowDown();
         return (this->*(it->second))(data, reply);
     }

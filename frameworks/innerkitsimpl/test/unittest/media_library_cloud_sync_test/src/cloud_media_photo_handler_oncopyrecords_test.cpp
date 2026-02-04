@@ -130,7 +130,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCopyRecordsTest, OnCopyRecords, TestSize.Level1
     std::vector<ORM::PhotosPo> photosList;
     photosList = dao.QueryPhotosByCloudIds(recordIdSuccess);
     EXPECT_EQ(photosList.size(), successCloudIdFileIdMap.size());
-    for (auto photo : photosList) {
+    for (const auto &photo : photosList) {
         EXPECT_TRUE(photo.cloudId.has_value());
         EXPECT_EQ(photo.fileId.value_or(-1), successCloudIdFileIdMap[photo.cloudId.value_or("")]);
         EXPECT_EQ(photo.dirty.value_or(-1), static_cast<int32_t>(DirtyType::TYPE_SYNCED));
@@ -142,7 +142,7 @@ HWTEST_F(CloudMediaPhotoHandlerOnCopyRecordsTest, OnCopyRecords, TestSize.Level1
     for (auto failedId : fileIdfailed) {
         photosList = dao.QueryPhotosByFileId(failedId);
         EXPECT_EQ(photosList.size(), 1);
-        for (auto photo : photosList) {
+        for (const auto &photo : photosList) {
             EXPECT_EQ(photo.cloudId.value_or(""), "");
             EXPECT_EQ(photo.dirty.value_or(-1), static_cast<int32_t>(DirtyType::TYPE_COPY));
             EXPECT_EQ(photo.cloudVersion.value_or(-1), 0);

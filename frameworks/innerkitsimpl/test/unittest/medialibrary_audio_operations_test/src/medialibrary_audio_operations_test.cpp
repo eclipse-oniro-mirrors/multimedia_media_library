@@ -889,7 +889,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_create_api9_test_001, TestS
         { AudioColumn::MEDIA_TITLE, "audio" },
         { AudioColumn::MEDIA_TYPE, to_string(MediaType::MEDIA_TYPE_AUDIO) },
         { AudioColumn::MEDIA_RELATIVE_PATH, "Audios/123/" },
-        { AudioColumn::MEDIA_VIRTURL_PATH, "Audios/123/audio.mp3" }
+        { AudioColumn::MEDIA_VIRTUAL_PATH, "Audios/123/audio.mp3" }
     };
     bool res = QueryAndVerifyAudioAsset(AudioColumn::MEDIA_NAME, name, verifyMap);
     EXPECT_EQ(res, true);
@@ -1192,7 +1192,7 @@ HWTEST_F(MediaLibraryAudioOperationsTest, audio_oprn_update_api9_test_001, TestS
         { AudioColumn::MEDIA_NAME, "audio1.mp3" },
         { AudioColumn::MEDIA_TITLE, "audio1" },
         { AudioColumn::MEDIA_RELATIVE_PATH, "Audios/2/"},
-        { AudioColumn::MEDIA_VIRTURL_PATH, "Audios/2/audio1.mp3"}
+        { AudioColumn::MEDIA_VIRTUAL_PATH, "Audios/2/audio1.mp3"}
     };
     TestAudioUpdateByQuery(AudioColumn::MEDIA_ID, to_string(fileId), queryMap, E_OK);
     MEDIA_INFO_LOG("end tdd audio_oprn_update_api9_test_001");

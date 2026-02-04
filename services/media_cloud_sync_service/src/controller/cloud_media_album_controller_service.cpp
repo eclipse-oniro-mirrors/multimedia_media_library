@@ -71,12 +71,6 @@ int32_t CloudMediaAlbumControllerService::OnFetchRecords(MessageParcel &data, Me
     return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
 }
 
-int32_t CloudMediaAlbumControllerService::OnDentryFileInsert(MessageParcel &data, MessageParcel &reply)
-{
-    int32_t ret = this->albumService_.OnDentryFileInsert();
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-}
-
 int32_t CloudMediaAlbumControllerService::GetCreatedRecords(MessageParcel &data, MessageParcel &reply)
 {
     CloudMdkRecordPhotoAlbumReqBody reqBody;
@@ -198,12 +192,6 @@ int32_t CloudMediaAlbumControllerService::OnMdirtyRecords(MessageParcel &data, M
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 
-int32_t CloudMediaAlbumControllerService::OnFdirtyRecords(MessageParcel &data, MessageParcel &reply)
-{
-    int32_t ret = this->albumService_.OnFdirtyRecords();
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-}
-
 int32_t CloudMediaAlbumControllerService::OnDeleteRecords(MessageParcel &data, MessageParcel &reply)
 {
     OnDeleteRecordsAlbumReqBody reqBody;
@@ -225,12 +213,6 @@ int32_t CloudMediaAlbumControllerService::OnDeleteRecords(MessageParcel &data, M
         ret,
         respBody.failSize);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
-}
-
-int32_t CloudMediaAlbumControllerService::OnCopyRecords(MessageParcel &data, MessageParcel &reply)
-{
-    int32_t ret = this->albumService_.OnCopyRecords();
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 
 int32_t CloudMediaAlbumControllerService::OnStartSync(MessageParcel &data, MessageParcel &reply)

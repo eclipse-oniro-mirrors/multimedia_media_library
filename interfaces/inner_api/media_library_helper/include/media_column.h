@@ -94,6 +94,8 @@ public:
     // Asset Parameter deperated
     static const std::string MEDIA_PARENT_ID EXPORT;
     static const std::string MEDIA_RELATIVE_PATH EXPORT;
+    static const std::string MEDIA_VIRTUAL_PATH EXPORT;
+    // deprecated since 6.1-release
     static const std::string MEDIA_VIRTURL_PATH EXPORT;
 
     // All Columns

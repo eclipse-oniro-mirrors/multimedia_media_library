@@ -33,6 +33,7 @@
 #include "media_edit_utils.h"
 #include "cloud_report_utils.h"
 #include "nlohmann/json.hpp"
+#include "mdk_record_photos_data.h"
 
 namespace OHOS::Media::CloudSync {
 
@@ -199,7 +200,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::MEDIA_HIDDEN] = MDKRecordField(upLoadRecord.hidden);
     map[PhotoColumn::PHOTO_HIDDEN_TIME] = MDKRecordField(upLoadRecord.hiddenTime);
     map[PhotoColumn::MEDIA_RELATIVE_PATH] = MDKRecordField(upLoadRecord.relativePath);
-    map[PhotoColumn::MEDIA_VIRTURL_PATH] = MDKRecordField(upLoadRecord.virtualPath);
+    map[PhotoColumn::MEDIA_VIRTUAL_PATH] = MDKRecordField(upLoadRecord.virtualPath);
     map[PhotoColumn::PHOTO_META_DATE_MODIFIED] = MDKRecordField(upLoadRecord.metaDateModified);
     map[PhotoColumn::PHOTO_SUBTYPE] = MDKRecordField(upLoadRecord.subtype);
     map[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = MDKRecordField(upLoadRecord.burstCoverLevel);
@@ -229,7 +230,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::PHOTO_BURST_KEY] = MDKRecordField(upLoadRecord.burstKey);
     map[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = MDKRecordField(upLoadRecord.ownerAlbumId);
     map[FILE_FIX_VERSION] = MDKRecordField(0);
-    map["editedTime_ms"] = MDKRecordField(upLoadRecord.dateModified);
+    map[KEY_EDITED_TIME_MS] = MDKRecordField(upLoadRecord.dateModified);
     map[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = MDKRecordField(upLoadRecord.fileSourceType);
     map[PhotoColumn::PHOTO_STORAGE_PATH] = MDKRecordField(upLoadRecord.storagePath);
     HandleAttributesHashMap(map, upLoadRecord);
@@ -347,12 +348,9 @@ std::string CloudFileDataConvert::GetLowerPath(const std::string &path)
 
 static void DeleteTmpFile(bool needDelete, const std::string &path)
 {
-    if (!needDelete) {
-        return;
-    }
-    if (unlink(path.c_str()) < 0) {
-        MEDIA_ERR_LOG("unlink temp file fail, err: %{public}d", errno);
-    }
+    CHECK_AND_RETURN(needDelete);
+    bool isValid = unlink(path.c_str()) >= 0;
+    CHECK_AND_PRINT_LOG(isValid, "unlink temp file fail, err: %{public}d, path: %{public}s", errno, path.c_str());
 }
 
 int32_t CloudFileDataConvert::HandleRawFile(
@@ -770,7 +768,7 @@ int32_t CloudFileDataConvert::InsertAlbumIdChanges(
     std::vector<MDKRecordField> rmList;
     /* remove */
     std::vector<std::string> removeId = upLoadRecord.removeAlbumCloudId;
-    for (auto &id : removeId) {
+    for (const auto &id : removeId) {
         rmList.push_back(MDKRecordField(MDKReference{id, "album"}));
     }
     if (!rmList.empty()) {
@@ -919,7 +917,7 @@ int32_t CloudFileDataConvert::ConvertToOnCreateRecord(
     record.fileType = photosData.GetFileType().value_or(-1);
     record.size = photosData.GetSize().value_or(-1);
     record.createTime = photosData.GetCreatedTime().value_or(-1);
-    record.editedTimeMs = photosData.GetEditTimeMs().value_or(-1);
+    record.editedTimeMs = photosData.GetEditedTimeMs().value_or(-1);
     record.metaDateModified = photosData.GetPhotoMetaDateModified().value_or(-1);
     record.version = result.GetDKRecord().GetVersion();
     record.isSuccess = result.IsSuccess();
@@ -983,7 +981,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.lcdSize = data.GetLcdSize().value_or(0L);
     onFetchPhotoVo.thmSize = data.GetThmSize().value_or(0L);
     onFetchPhotoVo.metaDateModified = data.GetPhotoMetaDateModified().value_or(0L);
-    onFetchPhotoVo.editedTimeMs = data.GetEditTimeMs().value_or(0L);
+    onFetchPhotoVo.editedTimeMs = data.GetEditedTimeMs().value_or(0L);
     onFetchPhotoVo.fixVersion = data.GetFixVersion().value_or(-1);
     onFetchPhotoVo.frontCamera = data.GetFrontCamera().value_or("");
     onFetchPhotoVo.editDataCamera = data.GetEditDataCamera().value_or("");

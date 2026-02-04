@@ -276,7 +276,7 @@ std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadAsset(const std::ve
     return photosDtoVec;
 }
 
-OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(PhotosPo &photosPo)
+OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(const PhotosPo &photosPo)
 {
     OnDownloadAssetData assetData;
     assetData.err = E_OK;
@@ -304,7 +304,7 @@ OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(PhotosPo &
     return assetData;
 }
 
-OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadLakeAssetData(PhotosPo &photosPo,
+OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadLakeAssetData(const PhotosPo &photosPo,
     const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos)
 {
     OnDownloadAssetData assetData;
@@ -459,7 +459,7 @@ int32_t CloudMediaDownloadService::GetFileId(const PhotosPo &photosPo)
  
 void CloudMediaDownloadService::UpdateVideoMode(std::vector<PhotosPo> &photosPoVec)
 {
-    for (auto &photosPo : photosPoVec) {
+    for (const auto &photosPo : photosPoVec) {
         int32_t mediaTypePhoto = photosPo.mediaType.value_or(0);
         if (mediaTypePhoto != static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
             MEDIA_INFO_LOG("photosPo is not video");
@@ -470,9 +470,12 @@ void CloudMediaDownloadService::UpdateVideoMode(std::vector<PhotosPo> &photosPoV
         auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is null!");
         std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryVideoSql);
-        CHECK_AND_RETURN_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
-            "UpdateVideoMode resultSet is nullptr or empty.");
+        CHECK_AND_RETURN_LOG(resultSet != nullptr, "resultSet is null");
+        bool isValid = resultSet->GoToFirstRow() == NativeRdb::E_OK;
+        CHECK_AND_EXECUTE(isValid, resultSet->Close());
+        CHECK_AND_RETURN_LOG(isValid, "failed to get row");
         int32_t videoMode = GetInt32Val(PhotoColumn::PHOTO_VIDEO_MODE, resultSet);
+        resultSet->Close();
         CHECK_AND_CONTINUE_INFO_LOG(videoMode == static_cast<int32_t>(VideoMode::DEFAULT), "photosPo has scannered");
         string logVideoPath = photosPo.data.value_or("");
         unique_ptr<Metadata> videoModeData = make_unique<Metadata>();
@@ -504,7 +507,7 @@ int32_t CloudMediaDownloadService::OnDownloadAsset(
     // Update
     UpdateVideoMode(photosPoVec);
     OnDownloadAssetData assetData;
-    for (auto &photosPo : photosPoVec) {
+    for (const auto &photosPo : photosPoVec) {
         assetData = this->GetOnDownloadAssetData(photosPo);
         MEDIA_DEBUG_LOG(
             "OnDownloadAsset %{public}s, %{public}s", photosPo.ToString().c_str(), assetData.ToString().c_str());
@@ -538,7 +541,7 @@ int32_t CloudMediaDownloadService::OnDownloadLakeAsset(
         photosPoVec.size());
     // Update
     OnDownloadAssetData assetData;
-    for (auto &photosPo : photosPoVec) {
+    for (const auto &photosPo : photosPoVec) {
         assetData = this->GetOnDownloadLakeAssetData(photosPo, lakeInfos);
         MEDIA_DEBUG_LOG(
             "OnDownloadLakeAsset %{public}s, %{public}s", photosPo.ToString().c_str(), assetData.ToString().c_str());

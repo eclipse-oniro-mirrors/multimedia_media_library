@@ -60,8 +60,8 @@ private:
     int32_t OnDownloadThm(const std::vector<std::string> &thmVector, std::vector<MediaOperateResultDto> &result);
     int32_t OnDownloadLcd(const std::vector<std::string> &lcdVector, std::vector<MediaOperateResultDto> &result);
     int32_t OnDownloadThmAndLcd(const std::vector<std::string> &bothVector, std::vector<MediaOperateResultDto> &result);
-    OnDownloadAssetData GetOnDownloadAssetData(PhotosPo &photosPo);
-    OnDownloadAssetData GetOnDownloadLakeAssetData(PhotosPo &photosPo,
+    OnDownloadAssetData GetOnDownloadAssetData(const PhotosPo &photosPo);
+    OnDownloadAssetData GetOnDownloadLakeAssetData(const PhotosPo &photosPo,
         const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos);
     void UnlinkAsset(OnDownloadAssetData &assetData);
     void ResetAssetModifyTime(OnDownloadAssetData &assetData);

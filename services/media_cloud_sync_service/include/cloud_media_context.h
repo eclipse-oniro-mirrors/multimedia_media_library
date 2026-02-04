@@ -18,6 +18,12 @@
 
 #include <atomic>
 #include <string>
+#include <unordered_map>
+
+#include "ipc_context.h"
+#include "medialibrary_data_manager_utils.h"
+#include "media_log.h"
+#include "media_column.h"
 
 namespace OHOS::Media::CloudSync {
 class CloudMediaContext {
@@ -40,6 +46,17 @@ public:
 
     CloudMediaContext(const CloudMediaContext&) = delete;
     CloudMediaContext& operator=(const CloudMediaContext&) = delete;
+
+    void SetCloudType(const OHOS::Media::IPC::IPCContext &context)
+    {
+        auto headerMap = context.GetHeader();
+        auto headerIt = headerMap.find(PhotoColumn::CLOUD_TYPE);
+        bool isValid = headerIt != headerMap.end();
+        isValid = isValid && MediaLibraryDataManagerUtils::IsNumber(headerIt->second.c_str());
+        CHECK_AND_RETURN(isValid);
+        int32_t cloudType = std::atoi(headerIt->second.c_str());
+        this->SetCloudType(cloudType);
+    }
 
 private:
     std::atomic<int32_t> cloudType_;

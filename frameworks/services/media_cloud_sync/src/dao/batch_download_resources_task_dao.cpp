@@ -77,7 +77,7 @@ int32_t BatchDownloadResourcesTaskDao::QueryValidBatchDownloadPoFromPhotos(std::
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "QueryDownloadResources Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(PhotoColumn::MEDIA_ID, fileIds);
-    predicates.EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(CloudFilePosition::POSITION_CLOUD));
+    predicates.EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
     auto resultSet = rdbStore->Query(predicates, PULL_QUERY_DOWNLOAD_COLUMNS);
     // Resultset 转换成 DownloadResourcesTaskPo
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "QueryValidBatchDownloadPoFromPhotos rs is null");
@@ -727,7 +727,7 @@ int32_t BatchDownloadResourcesTaskDao::ClassifyInvalidDownloadTasks(std::vector<
     std::vector<std::string> columns = {PhotoColumn::MEDIA_ID};
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.And()->In(PhotoColumn::MEDIA_ID, newIds);
-    predicates.And()->EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(CloudFilePosition::POSITION_CLOUD));
+    predicates.And()->EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
     predicates.And()->EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
     predicates.And()->NotEqualTo(PhotoColumn::MEDIA_FILE_PATH, "");
     predicates.And()->IsNotNull(PhotoColumn::MEDIA_FILE_PATH);
