@@ -243,9 +243,7 @@ void MediaLibraryDbUpgrade::AggregateClassifyAlbum(NativeRdb::RdbStore &store)
     std::unordered_map<std::string, std::vector<std::string>> newAlbumMaps;
     bool isSetAggregateBitSecond = false;
     GetAggregateMap(newAlbumMaps);
-    for (const auto &pair : newAlbumMaps) {
-        std::string newAlbumName = pair.first;
-        std::vector<std::string> oriAlbumNames = newAlbumMaps[newAlbumName];
+    for (const auto &[newAlbumName, oriAlbumNames] : newAlbumMaps) {
         ProcessClassifyAlbum(newAlbumName, oriAlbumNames, store, isSetAggregateBitSecond);
     }
     int32_t bitPosition = 1;
