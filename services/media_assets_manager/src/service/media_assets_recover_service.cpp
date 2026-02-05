@@ -178,10 +178,6 @@ int32_t MediaAssetsRecoverService::MergeAssetFile(const PhotosPo &photoInfo, con
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "DeletePhoto fail, ret: %{public}d", ret);
     ret = fileOperation.MovePhoto(photoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CopyPhoto fail, ret: %{public}d", ret);
-    ret = fileOperation.DeleteThumbnail(targetPhotoInfo);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "DeleteThumbnail fail, ret: %{public}d", ret);
-    ret = fileOperation.CopyThumbnail(photoInfo, targetPhotoInfo, false);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CopyThumbnail fail, ret: %{public}d", ret);
     this->StoreThumbnailAndEditSize(targetPhotoInfo);
     MEDIA_INFO_LOG(
         "MergeAssetFile completed, "

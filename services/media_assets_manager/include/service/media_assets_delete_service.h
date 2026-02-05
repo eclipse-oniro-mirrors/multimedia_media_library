@@ -107,6 +107,8 @@ private:
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo, const std::optional<PhotosPo> &targetPhotoInfoOp);
     int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo);
+    int32_t GenerateThumbnail(const PhotosPo &targetPhotosPo);
+    int32_t MoveOrGenerateLocalThumbnail(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
 
 private:
     MediaAssetsDao mediaAssetsDao_;

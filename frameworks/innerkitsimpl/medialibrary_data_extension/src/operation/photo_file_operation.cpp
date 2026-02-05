@@ -18,6 +18,7 @@
 
 #include <sstream>
 
+#include "cloud_media_sync_utils.h"
 #include "dfx_manager.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -29,7 +30,6 @@
 #include "media_column.h"
 #include "result_set_utils.h"
 #include "lake_file_utils.h"
-#include "media_column.h"
 #include "thumbnail_service.h"
 
 namespace OHOS::Media {
@@ -1071,6 +1071,32 @@ std::string PhotoFileOperation::GetAuditLog() const
         ss << item << ", ";
     }
     return ss.str();
+}
+
+/**
+ * @brief Copy thumbnail in "/storage/media/local/files/.thumbs/".
+ */
+int32_t PhotoFileOperation::CopyLocalThumbnail(const PhotosPo &sourcePhotosPo, const PhotosPo &targetPhotosPo)
+{
+    bool isValid = sourcePhotosPo.data.has_value();
+    isValid = isValid && targetPhotosPo.data.has_value();
+    CHECK_AND_RETURN_RET_LOG(isValid, E_INVALID_ARGUMENTS, "Invalid arguments");
+
+    PhotoFileOperation::PhotoAssetInfo sourcePhotoInfo;
+    sourcePhotoInfo.filePath = sourcePhotosPo.data.value_or("");
+    sourcePhotoInfo.filePath = CloudSync::CloudMediaSyncUtils::GetLocalPath(sourcePhotoInfo.filePath);
+    sourcePhotoInfo.thumbnailFolder = this->FindThumbnailFolder(sourcePhotoInfo);
+    isValid = !sourcePhotoInfo.thumbnailFolder.empty() && !MediaFileUtils::IsDirEmpty(sourcePhotoInfo.thumbnailFolder);
+    CHECK_AND_RETURN_RET_LOG(isValid,
+        E_FAIL,
+        "Source thumbnail is empty, skip copy. filePath:%{public}s", sourcePhotoInfo.filePath.c_str());
+
+    PhotoFileOperation::PhotoAssetInfo targetPhotoInfo;
+    targetPhotoInfo.filePath = targetPhotosPo.data.value_or("");
+    targetPhotoInfo.filePath = CloudSync::CloudMediaSyncUtils::GetLocalPath(targetPhotoInfo.filePath);
+    targetPhotoInfo.thumbnailFolder = this->BuildThumbnailFolder(targetPhotoInfo);
+
+    return this->CopyPhotoRelatedThumbnail(sourcePhotoInfo, targetPhotoInfo);
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media

@@ -51,6 +51,7 @@ public:
     int32_t DeletePhoto(const PhotosPo &photoInfo);
     int32_t DeleteThumbnail(const PhotosPo &photoInfo);
     std::string GetAuditLog() const;
+    int32_t CopyLocalThumbnail(const PhotosPo &sourcePhotosPo, const PhotosPo &targetPhotosPo);
 
 private:
     std::string GetVideoFilePath(const PhotoAssetInfo &photoInfo);

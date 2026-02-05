@@ -31,6 +31,7 @@
 #include "lake_file_utils.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_photo_operations.h"
+#include "thumbnail_service.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsDeleteService::DeleteLocalAssets(const std::vector<std::string> &fileIds)
@@ -389,7 +390,10 @@ int32_t MediaAssetsDeleteService::CreateLocalAssetWithFile(const PhotosPo &photo
     ret = this->MoveLocalAssetFile(photoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateLocalAssetFile fail, ret: %{public}d", ret);
     // Create the new asset record in the database.
-    return this->CreateNewAssetInfoAndReturnFileId(targetPhotoInfo, photoRefresh);
+    ret = this->CreateNewAssetInfoAndReturnFileId(targetPhotoInfo, photoRefresh);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateNewAssetInfoAndReturnFileId fail, ret: %{public}d", ret);
+    this->MoveOrGenerateLocalThumbnail(photoInfo, targetPhotoInfo);
+    return ret;
 }
 
 int32_t MediaAssetsDeleteService::CreateLocalTrashedPhotosPo(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo)
@@ -415,10 +419,7 @@ int32_t MediaAssetsDeleteService::MoveLocalAssetFile(const PhotosPo &photoInfo, 
     // Use Move instead of Copy, risk: if move fail, the source file is still in use by other process.
     int32_t ret = fileOperation.MovePhoto(photoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "MovePhoto fail, ret: %{public}d", ret);
-    // Copy the thumnbail files from the LOCAL_AND_CLOUD asset to the LOCAL asset.
-    ret = fileOperation.CopyThumbnail(photoInfo, targetPhotoInfo, false);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CopyThumbnail fail, ret: %{public}d", ret);
-    MEDIA_INFO_LOG("CreateLocalAssetFile completed, "
+    MEDIA_INFO_LOG("MoveLocalAssetFile completed, "
                    "sourceFileId: %{public}d, targetFileId: %{public}d, auditLog: %{public}s",
         photoInfo.fileId.value_or(0),
         targetPhotoInfo.fileId.value_or(0),
@@ -535,7 +536,10 @@ int32_t MediaAssetsDeleteService::CreateLocalAssetWithLakeFile(const PhotosPo &p
     ret = this->MoveLocalAssetFile(photoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateLocalAssetFile fail, ret: %{public}d", ret);
     // Create the new asset record in the database.
-    return this->CreateNewAssetInfoAndReturnFileId(targetPhotoInfo, photoRefresh);
+    ret = this->CreateNewAssetInfoAndReturnFileId(targetPhotoInfo, photoRefresh);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateNewAssetInfoAndReturnFileId fail, ret: %{public}d", ret);
+    this->MoveOrGenerateLocalThumbnail(photoInfo, targetPhotoInfo);
+    return ret;
 }
 
 int32_t MediaAssetsDeleteService::CopyAndMoveMediaLocalAssetToTrash(const PhotosPo &photoInfo,
@@ -545,13 +549,13 @@ int32_t MediaAssetsDeleteService::CopyAndMoveMediaLocalAssetToTrash(const Photos
     isValid = isValid && photoInfo.dateTrashed.value_or(0) == 0;
     CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
     PhotosPo targetPhotoInfo;
-    int32_t ret = this->CreateLocalAssetWithFile(photoInfo, targetPhotoInfo, photoRefresh);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateLocalAsset fail, ret: %{public}d", ret);
+    int32_t opRet = this->CreateLocalAssetWithFile(photoInfo, targetPhotoInfo, photoRefresh);
     // Reset the storage position of the LOCAL_AND_CLOUD asset record to CLOUD asset record (cloud only).
-    ret = this->CleanLocalFileAndCreateDentryFile(photoInfo, photoRefresh);
+    int32_t ret = this->CleanLocalFileAndCreateDentryFile(photoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CleanLocalFileAndCreateDentryFile fail, ret: %{public}d", ret);
-    MEDIA_INFO_LOG("CopyAndMoveMediaLocalAssetToTrash completed, "
+    MEDIA_INFO_LOG("CopyAndMoveMediaLocalAssetToTrash completed, create asset ret: %{public}d, "
                    "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
+        opRet,
         photoInfo.fileId.value_or(0),
         targetPhotoInfo.fileId.value_or(0),
         photoInfo.cloudId.value_or("").c_str());
@@ -569,13 +573,13 @@ int32_t MediaAssetsDeleteService::CopyAndMoveLakeLocalAssetToTrash(const PhotosP
     isValid = isValid && photoInfo.dateTrashed.value_or(0) == 0;
     CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
     PhotosPo targetPhotoInfo;
-    int32_t ret = this->CreateLocalAssetWithLakeFile(photoInfo, targetPhotoInfo, photoRefresh);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateLocalAsset fail, ret: %{public}d", ret);
+    int32_t opRet = this->CreateLocalAssetWithLakeFile(photoInfo, targetPhotoInfo, photoRefresh);
     // Reset the storage position of the LOCAL_AND_CLOUD asset record to CLOUD asset record (cloud only).
-    ret = this->mediaAssetsDao_.ResetPositionToCloudOnly(photoRefresh, photoInfo.fileId.value_or(-1));
+    int32_t ret = this->mediaAssetsDao_.ResetPositionToCloudOnly(photoRefresh, photoInfo.fileId.value_or(-1));
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePosition fail, ret: %{public}d", ret);
-    MEDIA_INFO_LOG("CopyAndMoveLakeLocalAssetToTrash completed, "
+    MEDIA_INFO_LOG("CopyAndMoveLakeLocalAssetToTrash completed, create asset ret: %{public}d, "
                    "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
+        opRet,
         photoInfo.fileId.value_or(0),
         targetPhotoInfo.fileId.value_or(0),
         photoInfo.cloudId.value_or("").c_str());
@@ -937,5 +941,36 @@ int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(const PhotosPo &phot
     CHECK_AND_RETURN_RET(isValid, E_INVALID_VALUES);
     MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
     return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::GenerateThumbnail(const PhotosPo &targetPhotosPo)
+{
+    CHECK_AND_RETURN_RET_LOG(targetPhotosPo.fileId.has_value(), E_INVALID_ARGUMENTS, "target fileId is invalid.");
+    int32_t fileId = targetPhotosPo.fileId.value_or(0);
+    std::string displayName = targetPhotosPo.displayName.value_or("");
+    std::string path = targetPhotosPo.data.value_or("");
+    int64_t dateTaken = targetPhotosPo.dateTaken.value_or(0);
+    int64_t dateModified = targetPhotosPo.dateModified.value_or(0);
+    std::string uri = PhotoColumn::PHOTO_URI_PREFIX + to_string(fileId) + MediaFileUtils::GetExtraUri(displayName, path)
+        + "?api_version=10&date_modified=" + to_string(dateModified) + "&date_taken=" + to_string(dateTaken);
+    CHECK_AND_RETURN_RET_LOG(ThumbnailService::GetInstance() != nullptr, E_ERR, "thumbnailService instance is nullptr");
+    return ThumbnailService::GetInstance()->CreateThumbnailFileScaned(uri, path, false);
+}
+
+int32_t MediaAssetsDeleteService::MoveOrGenerateLocalThumbnail(const PhotosPo &photoInfo,
+    const PhotosPo &targetPhotoInfo)
+{
+    PhotoFileOperation fileOperation;
+    // Copy the local thumbnail files from the LOCAL_AND_CLOUD asset to the LOCAL asset.
+    int32_t ret = fileOperation.CopyLocalThumbnail(photoInfo, targetPhotoInfo);
+    MEDIA_INFO_LOG("CopyLocalThumbnail completed, "
+                   "ret: %{public}d, sourceFileId: %{public}d, targetFileId: %{public}d, auditLog: %{public}s",
+        ret,
+        photoInfo.fileId.value_or(0),
+        targetPhotoInfo.fileId.value_or(0),
+        fileOperation.GetAuditLog().c_str());
+    CHECK_AND_RETURN_RET(ret != E_OK, E_OK);
+    // Generate thumbnail with local file.
+    return this->GenerateThumbnail(targetPhotoInfo);
 }
 }  // namespace OHOS::Media::Common
