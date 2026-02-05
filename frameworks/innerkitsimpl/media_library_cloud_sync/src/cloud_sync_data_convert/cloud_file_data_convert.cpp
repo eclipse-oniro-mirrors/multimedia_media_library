@@ -1086,7 +1086,7 @@ void CloudFileDataConvert::ConvertAttributesHashMap(MDKRecordPhotosData &data, O
     return;
 }
 
-void CloudFileDataConvert::HandleRotation(int32_t &rotate, MDKRecordPhotosData &data)
+void CloudFileDataConvert::HandleRotation(int32_t &rotation, MDKRecordPhotosData &data)
 {
     int32_t rotate = data.GetRotate().value_or(ORIENTATION_NORMAL);
     rotation = ROTATE_ANGLE_0;
