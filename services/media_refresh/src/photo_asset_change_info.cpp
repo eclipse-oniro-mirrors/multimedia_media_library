@@ -339,7 +339,10 @@ string PhotoAssetChangeInfo::GetAssetDiff(const PhotoAssetChangeInfo &asset, con
         return ss.str();
     }
     ss << "asset info fileId[" << asset.fileId_ << "]: ";
-    GET_ASSET_DIFF(uri_);
+    if (asset.uri_ != compare.uri_) {
+        ss << "uri_: " << MediaFileUtils::DesensitizeUri(asset.uri_) << " -> ";
+        ss << MediaFileUtils::DesensitizeUri(compare.uri_);
+    }
     GET_ASSET_DIFF(dateDay_);
     GET_ASSET_DIFF(ownerAlbumUri_);
     GET_ASSET_DIFF(isFavorite_);

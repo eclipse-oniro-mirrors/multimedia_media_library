@@ -133,6 +133,7 @@ ohos_shared_library("media_library") {
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "init:libbegetutil",
     "ipc:ipc_core",
