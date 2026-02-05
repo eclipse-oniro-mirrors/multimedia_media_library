@@ -776,8 +776,14 @@ static void PutDefaultDateAddedYearMonthDay(ValuesBucket& values)
 {
     string dateAddedStr = "0";
     MediaValuesBucketUtils::GetString(values, MediaColumn::MEDIA_DATE_ADDED, dateAddedStr);
-    int64_t dateAdded = atoll(dateAddedStr.c_str()) > 0 ? atoll(dateAddedStr.c_str()) :
-        MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t dateAdded {};
+    if (atoll(dateAddedStr.c_str()) <= 0) {
+        MEDIA_ERR_LOG("dateAdded is invalid, use current time");
+        dateAdded = MediaFileUtils::UTCTimeMilliSeconds();
+    } else {
+        dateAdded = atoll(dateAddedStr.c_str());
+    }
+
     const auto [dateYear, dateMonth, dateDay] = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
     if (!values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR)) {
         values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateYear);
