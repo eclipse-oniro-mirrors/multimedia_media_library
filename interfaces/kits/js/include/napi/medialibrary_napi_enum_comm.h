@@ -201,7 +201,7 @@ const std::vector<std::string> photoRiskStatusEnum {
 };
 
 const std::vector<std::string> downloadAssetsNetworkPolicyTypeEnum {
-    "DEFAULT", "CELL", "WLAN"
+    "DEFAULT", "CELL", "WIFI"
 };
 
 const std::vector<std::pair<std::string, int32_t>> PHOTO_SUB_TYPE_ENUM_PROPERTIES = {
