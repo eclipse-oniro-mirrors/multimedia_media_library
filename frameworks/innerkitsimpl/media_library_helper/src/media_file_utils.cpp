@@ -27,6 +27,9 @@
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <sys/types.h>
+#include <unicode/unistr.h>
+#include <unicode/brkiter.h>
+#include <unicode/normalizer2.h>
 #include <unistd.h>
 #include <unordered_map>
 #include <utime.h>
@@ -98,6 +101,9 @@ const int32_t ASPECT_RATIO_MAX = 1000;
 const double ASPECT_RATIO_MIN = 0.001;
 const double ASPECT_RATIO_PRECISION = 1000.0;
 
+const UChar MASK = 0x002A;  // '*'
+const UChar DOT = 0x002E;   // '.'
+
 static const std::unordered_map<std::string, std::vector<std::string>> MEDIA_EXTRA_MIME_TYPE_MAP = {
     { "audio/3gpp", { "3gpp" } },
     { "audio/midi", { "mid", "midi", "kar" } },
@@ -163,35 +169,67 @@ std::string MediaFileUtils::DesensitizePath(const std::string &path)
 
 std::string MediaFileUtils::DesensitizeDisplayName(const std::string &displayName)
 {
-    if (displayName.empty()) {
-        return displayName;
-    }
+    CHECK_AND_RETURN_RET_LOG(!displayName.empty(), displayName, "displayName is empty");
 
-    size_t dotPos = displayName.rfind('.');
-    const size_t nameLength = 2;
-    if (dotPos == std::string::npos) {
-        if (displayName.length() == 1) {
-            return "*";
+    UErrorCode status = U_ZERO_ERROR;
+    const icu::Normalizer2 *normalizer = icu::Normalizer2::getNFCInstance(status);
+    CHECK_AND_RETURN_RET_LOG(!U_FAILURE(status), displayName, "getNFCInstance failed, status:%{public}d", status);
+
+    icu::UnicodeString uName =
+        icu::UnicodeString::fromUTF8(icu::StringPiece(displayName.data(), (int32_t)displayName.length()));
+    CHECK_AND_RETURN_RET_LOG(!uName.isBogus(), displayName, "uName is Bogus");
+
+    icu::UnicodeString norm = normalizer->normalize(uName, status);
+    CHECK_AND_RETURN_RET_LOG(!U_FAILURE(status), displayName, "normalize failed, status:%{public}d", status);
+
+    const int32_t len = norm.length();
+    const int32_t dotPos = norm.lastIndexOf(DOT);
+    const bool hasExt = (dotPos > 0 && dotPos < len - 1);
+    const int32_t baseEnd = hasExt ? dotPos : len;
+
+    std::unique_ptr<icu::BreakIterator> it(icu::BreakIterator::createCharacterInstance(icu::Locale::getRoot(), status));
+    CHECK_AND_RETURN_RET_LOG(!U_FAILURE(status), displayName, "create iterator failed, status:%{public}d", status);
+    it->setText(norm);
+
+    int32_t clusterCount = 0;
+    int32_t firstEnd = 0;
+    int32_t lastStart = 0;
+
+    for (int32_t start = it->first(), end = it->next(); end != icu::BreakIterator::DONE && end <= baseEnd;
+         start = end, end = it->next()) {
+        if (clusterCount == 0) {
+            firstEnd = end;
         }
-        if (displayName.length() == nameLength) {
-            return displayName[0] + std::string(1, '*');
+        lastStart = start;
+        clusterCount++;
+    }
+
+    CHECK_AND_RETURN_RET_LOG(clusterCount != 0, displayName, "clusterCount is zero");
+
+    icu::UnicodeString out;
+    const int32_t displayCount = 2;
+
+    if (clusterCount == 1) {
+        out.append(MASK);
+    } else if (clusterCount == displayCount) {
+        out.append(norm.tempSubStringBetween(0, firstEnd)).append(MASK);
+    } else {
+        out.append(norm.tempSubStringBetween(0, firstEnd));
+
+        for (int32_t i = 0; i < clusterCount - displayCount; ++i) {
+            out.append(MASK);
         }
-        return displayName[0] + std::string(displayName.length() - nameLength, '*') + displayName.back();
+
+        out.append(norm.tempSubStringBetween(lastStart, baseEnd));
     }
 
-    if (dotPos == 0) {
-        return displayName;
+    if (hasExt) {
+        out.append(norm.tempSubString(dotPos));
     }
 
-    std::string name = displayName.substr(0, dotPos);
-    std::string ext = displayName.substr(dotPos);
-    if (name.length() == 1) {
-        return "*" + ext;
-    }
-    if (name.length() == nameLength) {
-        return name[0] + std::string("*") + ext;
-    }
-    return name[0] + std::string(name.length() - nameLength, '*') + name.back() + ext;
+    std::string result;
+    out.toUTF8String(result);
+    return result;
 }
 
 void MediaFileUtils::PrintStatInformation(const std::string& path)

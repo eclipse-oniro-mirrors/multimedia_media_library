@@ -60,6 +60,7 @@
           "hitrace",
           "huks",
           "i18n",
+          "icu",
           "image_effect",
           "init",
           "ipc",

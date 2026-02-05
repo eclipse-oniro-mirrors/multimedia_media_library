@@ -1191,5 +1191,83 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CalculateAspectRatio_Test_04
     EXPECT_EQ(result, 0.5);
     MEDIA_INFO_LOG("MediaFileUtils_CalculateAspectRatio_Test_04 end");
 }
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DesensitizeDisplayName_Test_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_01 Start");
+
+    std::vector<std::pair<std::string, std::string>> testCases{
+        {"", ""}, {"a", "*"}, {"ab", "a*"}, {"abc", "a*c"}, {"abcd", "a**d"}, {"abcdefghij", "a********j"}};
+
+    for (const auto &testCase : testCases) {
+        std::string displayName = testCase.first;
+        std::string expect = testCase.second;
+        std::string actual = MediaFileUtils::DesensitizeDisplayName(displayName);
+        MEDIA_DEBUG_LOG("DisplayName: %{public}s, Actual: %{public}s", displayName.c_str(), actual.c_str());
+        EXPECT_EQ(actual, expect);
+    }
+
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_01 end");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DesensitizeDisplayName_Test_02, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_02 Start");
+
+    std::vector<std::pair<std::string, std::string>> testCases{
+        {"文", "*"}, {"文字", "文*"}, {"文字国", "文*国"}, {"文字国际", "文**际"}, {"文字国际化测试", "文*****试"}};
+
+    for (const auto &testCase : testCases) {
+        std::string displayName = testCase.first;
+        std::string expect = testCase.second;
+        std::string actual = MediaFileUtils::DesensitizeDisplayName(displayName);
+        MEDIA_DEBUG_LOG("DisplayName: %{public}s, Actual: %{public}s", displayName.c_str(), actual.c_str());
+        EXPECT_EQ(actual, expect);
+    }
+
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_02 end");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DesensitizeDisplayName_Test_03, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_03 Start");
+
+    std::vector<std::pair<std::string, std::string>> testCases{{"👨‍👩‍👧‍👦", "*"},
+        {"ñ🚀", "ñ*"},
+        {"👨‍💻ạ̇👍🏽", "👨‍💻*👍🏽"},
+        {"👷🏾⚠️ﬁ🇨🇳", "👷🏾**🇨🇳"},
+        {"💻👨👩👧👦⚠👍", "💻*****👍"}};
+
+    for (const auto &testCase : testCases) {
+        std::string displayName = testCase.first;
+        std::string expect = testCase.second;
+        std::string actual = MediaFileUtils::DesensitizeDisplayName(displayName);
+        MEDIA_DEBUG_LOG("DisplayName: %{public}s, Actual: %{public}s", displayName.c_str(), actual.c_str());
+        EXPECT_EQ(actual, expect);
+    }
+
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_03 end");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_DesensitizeDisplayName_Test_04, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_04 Start");
+
+    std::vector<std::pair<std::string, std::string>> testCases{{"后缀测试🇺🇳.jpg", "后***🇺🇳.jpg"},
+        {"Suffix test é.mp4", "S***********é.mp4"},
+        {"3️⃣👌🥩👆👇🎫.png", "3️⃣****🎫.png"},
+        {"文3️3test.heic", "文*****t.heic"},
+        {"👌test🈶.3g2", "👌****🈶.3g2"}};
+
+    for (const auto &testCase : testCases) {
+        std::string displayName = testCase.first;
+        std::string expect = testCase.second;
+        std::string actual = MediaFileUtils::DesensitizeDisplayName(displayName);
+        MEDIA_DEBUG_LOG("DisplayName: %{public}s, Actual: %{public}s", displayName.c_str(), actual.c_str());
+        EXPECT_EQ(actual, expect);
+    }
+
+    MEDIA_INFO_LOG("MediaFileUtils_DesensitizeDisplayName_Test_04 end");
+}
 } // namespace Media
 } // namespace OHOS
