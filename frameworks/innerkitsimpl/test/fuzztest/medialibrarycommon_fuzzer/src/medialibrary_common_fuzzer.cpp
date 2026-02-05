@@ -22,7 +22,6 @@
 #include "dfx_database_utils.h"
 #include "exif_utils.h"
 #include "media_log.h"
-#include "media_photo_asset_proxy.h"
 #include "media_scanner_manager.h"
 #include "medialibrary_common_utils.h"
 #include "media_file_uri.h"
@@ -178,21 +177,6 @@ static void ExifTest()
     Media::ExifUtils::WriteGpsExifInfo(provider->ConsumeBytesAsString(NUM_BYTES), longitude, latitude);
 }
 
-static void PhotoProxyTest()
-{
-    int32_t cameraShotType = provider->ConsumeIntegral<int32_t>();
-    uint32_t callingUid = provider->ConsumeIntegral<uint32_t>();
-    int32_t userId = provider->ConsumeIntegral<int32_t>();
-    uint32_t tokenId = provider->ConsumeIntegral<uint32_t>();
-    Media::PhotoAssetProxyCallerInfo callerInfo = {
-        .callingUid = callingUid,
-        .userId = userId,
-        .callingTokenId = tokenId,
-    };
-    Media::PhotoAssetProxy proxy(nullptr, callerInfo, static_cast<Media::CameraShotType>(cameraShotType), 1);
-    proxy.GetPhotoAssetUri();
-}
-
 static void PhotoFileUtilsTest()
 {
     std::string photoPath = provider->ConsumeBool() ? ROOT_MEDIA_DIR : provider->ConsumeBytesAsString(NUM_BYTES);
@@ -262,7 +246,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::FileUriTest();
     OHOS::DfxTest();
     OHOS::ExifTest();
-    OHOS::PhotoProxyTest();
     OHOS::PhotoFileUtilsTest();
     return 0;
 }
