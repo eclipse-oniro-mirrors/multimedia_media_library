@@ -827,10 +827,7 @@ int32_t CloudFileDataConvert::BuildCopyRecord(
     int64_t dualEditTime = static_cast<int64_t>(result.GetDKRecord().GetEditedTime());
     record.modifyTime = dualEditTime > singleEditTime ? dualEditTime : singleEditTime;
     record.createTime = static_cast<int64_t>(result.GetDKRecord().GetCreateTime());
-    int32_t rotate = photosData.GetRotate().value_or(ORIENTATION_NORMAL);
-    if (FILE_ROTATIONS.find(rotate) != FILE_ROTATIONS.end()) {
-        record.rotation = FILE_ROTATIONS.find(rotate)->second;
-    }
+    HandleRotation(record.rotation, photosData);
     std::optional<int32_t> optFileType = photosData.GetFileType();
     record.fileType = optFileType.value_or(-1);
     std::optional<std::string> optSourcePath = photosData.GetSourcePath();
@@ -962,14 +959,13 @@ int32_t CloudFileDataConvert::ExtractPosition(MDKRecordPhotosData &data, OnFetch
 void CloudFileDataConvert::ConvertProperties(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
 {
     onFetchPhotoVo.hasproperties = data.hasProperties();
-    int32_t rotate = data.GetRotate().value_or(ORIENTATION_NORMAL);
-    CHECK_AND_PRINT_LOG(!(FILE_ROTATIONS.find(rotate) == FILE_ROTATIONS.end()), "not find mdkRecord Rotate");
-    onFetchPhotoVo.rotation = FILE_ROTATIONS.find(rotate)->second;
+    HandleRotation(onFetchPhotoVo.rotation, data);
     onFetchPhotoVo.fileSourcePath = data.GetSourcePath().value_or("");
     onFetchPhotoVo.firstVisitTime = data.GetFirstUpdateTime().value_or("");
     onFetchPhotoVo.photoHeight = data.GetHeight().value_or(0);
     onFetchPhotoVo.photoWidth = data.GetWidth().value_or(0);
     onFetchPhotoVo.detailTime = data.GetDetailTime().value_or("");
+    HandlePropertyExifRotate(data, onFetchPhotoVo);
     ExtractPosition(data, onFetchPhotoVo);
 }
 
@@ -1088,5 +1084,27 @@ void CloudFileDataConvert::ConvertAttributesHashMap(MDKRecordPhotosData &data, O
         onFetchPhotoVo.stringfields[fieldName] = valueStrOp.value();
     }
     return;
+}
+
+void CloudFileDataConvert::HandleRotation(int32_t &rotation, MDKRecordPhotosData &data)
+{
+    int32_t rotate = data.GetRotate().value_or(ORIENTATION_NORMAL);
+    rotation = ROTATE_ANGLE_0;
+    if (FILE_ROTATIONS.find(rotate) != FILE_ROTATIONS.end()) {
+        rotation = FILE_ROTATIONS.find(rotate)->second;
+        return;
+    }
+    std::string cloudId = data.GetCloudId().value_or("");
+    MEDIA_WARN_LOG("Rotate is filpped, cloudId = %{public}s, rotate = %{public}d",
+        cloudId.c_str(), rotate);
+}
+
+void CloudFileDataConvert::HandlePropertyExifRotate(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
+{
+    bool isValid = onFetchPhotoVo.exifRotate == 0 && data.GetPropertyExifRotate().has_value();
+    CHECK_AND_RETURN(isValid);
+    onFetchPhotoVo.exifRotate = data.GetPropertyExifRotate().value_or(0);
+    MEDIA_INFO_LOG("Has propertyExifRotate, cloudId = %{public}s, exifRotate = %{public}d",
+        onFetchPhotoVo.cloudId.c_str(), onFetchPhotoVo.exifRotate);
 }
 } // namespace OHOS::Media::CloudSync
