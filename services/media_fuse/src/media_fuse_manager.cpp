@@ -342,12 +342,7 @@ int32_t MediaFuseManager::DoGetAttr(const char *path, struct stat *stbuf)
 {
     string fileId;
     string target = path;
-    bool cond;
-    if (isInLinux_) {
-        cond = (path == nullptr || strlen(path) == 0 || target != "/");
-    } else {
-        cond = (path == nullptr || strlen(path) == 0);
-    }
+    bool cond = (path == nullptr || strlen(path) == 0);
 
     fuse_context *ctx = fuse_get_context();
     if (ctx != nullptr) {
