@@ -64,6 +64,7 @@ const string PhotoDayMonthYearOperation::DATE_ADDED_DATE_UPGRADE_XML =
     "/data/storage/el2/base/preferences/date_added_date_upgrade.xml";
 
 std::mutex PhotoDayMonthYearOperation::mutex_;
+std::mutex PhotoDayMonthYearOperation::DateAddedYearMonthDaymutex_;
 
 const std::string QUERY_NEED_UPDATE_FILE_IDS = ""
     "SELECT file_id FROM Photos "
@@ -681,6 +682,9 @@ static string GetDateAddedYearMonthDayUpdateSql()
 
 void PhotoDayMonthYearOperation::UpdatePhotoDateAddedDateInfo()
 {
+    std::unique_lock<std::mutex> lock(DateAddedYearMonthDaymutex_, std::defer_lock);
+    CHECK_AND_RETURN_INFO_LOG(lock.try_lock(),
+        "UpdatePhotoDateAddedDateInfo has started, skipping this operation");
     MEDIA_INFO_LOG("Start updating photo date added date info");
     int32_t errCode = E_OK;
     shared_ptr<NativePreferences::Preferences> prefs =

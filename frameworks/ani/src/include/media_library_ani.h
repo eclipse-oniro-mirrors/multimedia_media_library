@@ -395,7 +395,7 @@ struct MediaLibraryAsyncContext : public AniError {
     int32_t photoAlbumSubType;
     int32_t photoIndex = -1;
     std::string strParam;
-    bool boolResult;
+    bool boolResult = false;
 };
 } // namespace Media
 } // namespace OHOS
