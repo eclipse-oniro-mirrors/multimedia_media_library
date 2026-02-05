@@ -194,6 +194,8 @@ public:  // properties getter & setter - gallery expand fields
     MDKRecordPhotosData &SetPosition(const std::string &position);
     std::optional<int32_t> GetRotate() const;
     MDKRecordPhotosData &SetRotate(const int32_t &rotate);
+    std::optional<int32_t> GetPropertyExifRotate() const;
+    MDKRecordPhotosData &SetPropertyExifRotate(const int32_t exifRotate);
     bool hasAttributes();
     bool hasProperties();
 

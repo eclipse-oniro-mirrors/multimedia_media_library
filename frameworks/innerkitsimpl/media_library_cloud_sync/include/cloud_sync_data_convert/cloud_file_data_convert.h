@@ -100,6 +100,8 @@ private:
     int32_t HandleAttributesHashMap(
         std::map<std::string, MDKRecordField> &data, const CloudMdkRecordPhotosVo &uploadRecord);
     void ConvertAttributesHashMap(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo);
+    void HandleRotate(int32_t &rotate, MDKRecordPhotosData &data);
+    void HandlePropertyExifRotate(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo);
 
 private:
     /* identifier */

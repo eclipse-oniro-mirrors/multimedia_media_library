@@ -691,6 +691,16 @@ MDKRecordPhotosData &MDKRecordPhotosData::SetRotate(const int32_t &rotate)
     return *this;
 }
 
+std::optional<int32_t> MDKRecordPhotosData::GetPropertyExifRotate() const
+{
+    return this->recordReader_.GetIntValue(this->properties_, PhotoColumn::PHOTO_EXIF_ROTATE);
+}
+MDKRecordPhotosData &MDKRecordPhotosData::SetPropertyExifRotate(const int32_t exifRotate)
+{
+    this->properties_[PhotoColumn::PHOTO_EXIF_ROTATE] = MDKRecordField(exifRotate);
+    return *this;
+}
+
 bool MDKRecordPhotosData::hasAttributes()
 {
     return !this->attributes_.empty();
