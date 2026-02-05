@@ -723,7 +723,7 @@ static void SetNetWorkPolicyForBatchDownloadExecute(napi_env env, void *data)
     NAPI_INFO_LOG("Before SetNetWorkPolicyForBatchDownload IPC::UserDefineIPCClient().Call");
     int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
     NAPI_INFO_LOG("After SetNetWorkPolicyForBatchDownload IPC::UserDefineIPCClient().Call %{public}d", ret);
-    if (ret < 0) {
+    if (ret != 0) {
         context->SaveError(E_INNER_FAIL);
         NAPI_ERR_LOG("SetNetWorkPolicy download cloud media failed, err: %{public}d", ret);
     }
@@ -1323,7 +1323,7 @@ static void GetBatchDownloadSpecificTaskCountAndSizeExecute(napi_env env, void *
     NAPI_INFO_LOG("Before GetBatchDownloadCloudResources IPC::UserDefineIPCClient().Call");
     int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
     NAPI_INFO_LOG("After GetBatchDownloadCloudResources IPC::UserDefineIPCClient().Call %{public}d", ret);
-    if (ret < 0) {
+    if (ret != 0) {
         context->SaveError(E_INNER_FAIL);
         NAPI_ERR_LOG("Get download cloud media status failed, err: %{public}d", ret);
         return;
