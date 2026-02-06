@@ -764,6 +764,28 @@ int32_t BatchDownloadResourcesTaskDao::HandleAddExistedDownloadTasks(std::vector
     return NativeRdb::E_OK;
 }
 
+int32_t BatchDownloadResourcesTaskDao::HandleAddExistedDownloadTasksSeq(std::vector<std::string> &fileIds, int32_t seq)
+{
+    CHECK_AND_RETURN_RET_INFO_LOG(!fileIds.empty(), E_ERR, "HandleAddExistedDownloadTasksSeq No ids");
+    MEDIA_INFO_LOG("HandleAddExistedDownloadTasksSeq In tasks size %{public}zu", fileIds.size());
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL,
+        "FilterExistedDownloadResources Failed to get rdbStore.");
+    // update download_resources_task_records set task_sequence = x where file_id IN ('1' ,'2');
+    std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
+    std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0})";
+    std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
+    MEDIA_DEBUG_LOG("HandleAddExistedDownloadTasksSeq query whereClause: %{public}s", whereClause.c_str());
+    NativeRdb::ValuesBucket valuesBucket;
+    valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_TASK_SEQ, seq);
+    std::vector<std::string> whereArgs = {};
+    int32_t changedRows = -1;
+    int32_t ret = rdbStore->Update(changedRows, DownloadResourcesColumn::TABLE, valuesBucket, whereClause, whereArgs);
+    MEDIA_INFO_LOG("HandleAddExistedDownloadTasksSeq update seq ret: %{public}d, changedRows %{public}d",
+        ret, changedRows);
+    return ret;
+}
+
 int32_t BatchDownloadResourcesTaskDao::FromUriToAllFileIds(
     const std::vector<std::string> &uris, std::vector<std::string> &fileIds)
 {
