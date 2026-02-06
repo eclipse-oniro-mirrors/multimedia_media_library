@@ -19,6 +19,7 @@
 #include "iservice_registry.h"
 #include "mtp_manager.h"
 #include "mtp_ptp_const.h"
+#include "mtp_media_library.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -28,8 +29,18 @@ namespace Media {
 
 static constexpr int STORAGE_MANAGER_UID_TEST = 5003;
 
-void MtpPtpProxyTest::SetUpTestCase(void) {}
-void MtpPtpProxyTest::TearDownTestCase(void) {}
+void MtpPtpProxyTest::SetUpTestCase(void)
+{
+    std::shared_ptr<MtpMediaLibrary> g_mtpMediaLibrary = MtpMediaLibrary::GetInstance();
+    g_mtpMediaLibrary->Clear();
+}
+
+void MtpPtpProxyTest::TearDownTestCase(void)
+{
+    std::shared_ptr<MtpMediaLibrary> g_mtpMediaLibrary = MtpMediaLibrary::GetInstance();
+    g_mtpMediaLibrary->Clear();
+}
+
 void MtpPtpProxyTest::SetUp() {}
 void MtpPtpProxyTest::TearDown(void) {}
 

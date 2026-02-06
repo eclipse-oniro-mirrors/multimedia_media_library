@@ -46,6 +46,8 @@ void MtpMediaLibraryUnitTest::SetUpTestCase(void) {}
 
 void MtpMediaLibraryUnitTest::TearDownTestCase(void)
 {
+    ASSERT_NE(mtpMediaLib_, nullptr);
+    mtpMediaLib_->Clear();
     std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
 }
 
