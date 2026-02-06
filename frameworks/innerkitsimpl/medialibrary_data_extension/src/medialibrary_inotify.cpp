@@ -103,13 +103,10 @@ void MediaLibraryInotify::WatchCallBack()
                     MediaFileUtils::DesensitizeUri(item.uri_).c_str());
                 string id = MediaFileUtils::GetIdFromUri(item.uri_);
                 string itemPath = ConvertMediaPath(item.path_);
-                string bundleName = item.bundleName_;
-                MediaFileUri itemUri(item.uri_);
                 MediaLibraryApi itemApi = item.api_;
                 Remove(event->wd);
                 lock.unlock();
                 MediaLibraryObjectUtils::ScanFileAsync(itemPath, id, itemApi);
-                UriPermissionOperations::DeleteBundlePermission(id, bundleName, itemUri.GetTableName());
             }
         }
     }
