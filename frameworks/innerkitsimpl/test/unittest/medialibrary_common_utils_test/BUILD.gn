@@ -29,10 +29,15 @@ ohos_unittest("medialibrary_common_utils_test") {
 
   sources = [
     "./src/medialibrary_common_utils_test.cpp",
+    "./src/medialibrary_js_interface_helper_test.cpp",
     "./src/medialibrary_permission_utils_test.cpp",
     "./src/medialibrary_privacy_manager_test.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
   ]
-  deps = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension" ]
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+  ]
 
   external_deps = [
     "ability_base:zuri",

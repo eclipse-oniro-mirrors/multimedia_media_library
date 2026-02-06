@@ -630,7 +630,7 @@ struct MediaLibraryAsyncContext : public NapiError {
     } eventType;
     int32_t photoIndex = -1;
     std::string strParam;
-    bool boolResult;
+    bool boolResult = false;
 };
 
 struct MediaLibraryInitContext : public NapiError  {

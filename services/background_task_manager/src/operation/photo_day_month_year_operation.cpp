@@ -64,6 +64,7 @@ const string PhotoDayMonthYearOperation::DATE_ADDED_DATE_UPGRADE_XML =
     "/data/storage/el2/base/preferences/date_added_date_upgrade.xml";
 
 std::mutex PhotoDayMonthYearOperation::mutex_;
+std::mutex PhotoDayMonthYearOperation::DateAddedYearMonthDaymutex_;
 
 const std::string QUERY_NEED_UPDATE_FILE_IDS = ""
     "SELECT file_id FROM Photos "
@@ -668,19 +669,22 @@ static string GetDateAddedYearMonthDayUpdateSql()
         "   WHEN COALESCE(date_added_month, 0) <> 0 THEN date_added_month"
         "   WHEN date_added IS NOT NULL AND date_added > 0 THEN "
         "     strftime( '%Y%m', date_added / 1000, 'unixepoch', 'localtime' )"
-        "   ELSE strftime('%m', 'now', 'localtime')"
+        "   ELSE strftime('%Y%m', 'now', 'localtime')"
         " END),"
         " date_added_day ="
         " (CASE"
         "   WHEN COALESCE(date_added_day, 0) <> 0 THEN date_added_day"
         "   WHEN date_added IS NOT NULL AND date_added > 0 THEN "
         "     strftime( '%Y%m%d', date_added / 1000, 'unixepoch', 'localtime' )"
-        "   ELSE strftime('%d', 'now', 'localtime')"
+        "   ELSE strftime('%Y%m%d', 'now', 'localtime')"
         " END)";
 }
 
 void PhotoDayMonthYearOperation::UpdatePhotoDateAddedDateInfo()
 {
+    std::unique_lock<std::mutex> lock(DateAddedYearMonthDaymutex_, std::defer_lock);
+    CHECK_AND_RETURN_INFO_LOG(lock.try_lock(),
+        "UpdatePhotoDateAddedDateInfo has started, skipping this operation");
     MEDIA_INFO_LOG("Start updating photo date added date info");
     int32_t errCode = E_OK;
     shared_ptr<NativePreferences::Preferences> prefs =

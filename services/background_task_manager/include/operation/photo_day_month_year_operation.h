@@ -55,6 +55,7 @@ private:
     static void RepairDateAnomalyPhotos(const std::vector<DateAnomalyPhoto> &photos, int32_t &curFileId);
 
     static std::mutex mutex_;
+    static std::mutex DateAddedYearMonthDaymutex_;
 };
 }  // namespace Media
 }  // namespace OHOS
