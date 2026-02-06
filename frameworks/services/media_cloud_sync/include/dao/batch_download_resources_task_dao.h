@@ -82,6 +82,7 @@ public:
         std::vector<std::string> &fileIds, const int32_t status, const bool isUpdateTimeStamp);
     EXPORT int32_t HandleDuplicateAddTask(std::vector<DownloadResourcesTaskPo> &taskPos);
     EXPORT int32_t HandleAddExistedDownloadTasks(std::vector<std::string> &fileIds);
+    EXPORT int32_t HandleAddExistedDownloadTasksSeq(std::vector<std::string> &fileIds, int32_t seq);
 
     // set networkPolicy
     EXPORT int32_t UpdateNetworkPolicyDownloadTasks(std::vector<std::string> &fileIds,
