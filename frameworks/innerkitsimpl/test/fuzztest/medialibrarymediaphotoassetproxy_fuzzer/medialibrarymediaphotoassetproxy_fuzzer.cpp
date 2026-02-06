@@ -39,7 +39,6 @@
 #include "system_ability_definition.h"
 #include "userfilemgr_uri.h"
 #include "medialibrary_kvstore_manager.h"
-#include "media_upgrade.h"
 
 namespace OHOS {
 using namespace std;
@@ -164,39 +163,6 @@ static void MediaLibraryMediaPhotoAssetProxyTest()
     MEDIA_INFO_LOG("MediaLibraryMediaPhotoAssetProxyTest end");
 }
 
-void SetTables()
-{
-    vector<string> createTableSqlList = {
-        Media::PhotoUpgrade::CREATE_PHOTO_TABLE,
-    };
-    for (auto &createTableSql : createTableSqlList) {
-        int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
-        if (ret != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Execute sql %{private}s failed", createTableSql.c_str());
-            return;
-        }
-        MEDIA_DEBUG_LOG("Execute sql %{private}s success", createTableSql.c_str());
-    }
-}
-
-static void RdbStoreInit()
-{
-    auto stageContext = std::make_shared<AbilityRuntime::ContextImpl>();
-    auto abilityContextImpl = std::make_shared<OHOS::AbilityRuntime::AbilityContextImpl>();
-    abilityContextImpl->SetStageContext(stageContext);
-    int32_t sceneCode = 0;
-    auto ret = Media::MediaLibraryDataManager::GetInstance()->InitMediaLibraryMgr(abilityContextImpl,
-        abilityContextImpl, sceneCode);
-    CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK, "InitMediaLibraryMgr failed, ret: %{public}d", ret);
-
-    auto rdbStore = Media::MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    if (rdbStore == nullptr) {
-        return;
-    }
-    g_rdbStore = rdbStore;
-    SetTables();
-}
-
 std::vector<OHOS::Security::AccessToken::PermissionStateFull> DefinePermissionStates()
 {
     return {
@@ -292,18 +258,12 @@ static int32_t AddSeed()
     MEDIA_INFO_LOG("seedData has been successfully written to file filename:%{public}s", filename);
     return Media::E_OK;
 }
-
-static inline void ClearKvStore()
-{
-    Media::MediaLibraryKvStoreManager::GetInstance().CloseAllKvStore();
-}
 } // namespace OHOS
 
 extern "C" int LLVMFuzzerInitialize(int *argc, char ***argv)
 {
     OHOS::SetHapPermission();
     OHOS::AddSeed();
-    OHOS::RdbStoreInit();
     return 0;
 }
 
@@ -317,6 +277,5 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     }
     OHOS::MediaLibraryMediaPhotoAssetProxyTest();
-    OHOS::ClearKvStore();
     return 0;
 }

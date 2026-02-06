@@ -156,7 +156,6 @@ static void RefreshNotifyInfoTest()
     instance.CovertCloudId2AlbumId(g_rdbStore, fuzzvector);
     instance.CovertCloudId2FileId(g_rdbStore, fuzzvector);
     instance.RefreshPhotoAlbumsBySyncNotifyInfo(g_rdbStore, fuzznotifyinfo);
-    refreshWorker->StartConsumerThread();
     refreshWorker->AddAlbumRefreshTask(fuzznotifyinfo);
     refreshWorker->GetSystemAlbumIds(fuzznotifyinfo, fuzzvector);
     refreshWorker->TryDeleteAlbum(fuzznotifyinfo, fuzzvector);
@@ -215,6 +214,10 @@ static int32_t AddSeed()
     return Media::E_OK;
 }
 
+static inline void ClearKvStore()
+{
+    Media::MediaLibraryKvStoreManager::GetInstance().CloseAllKvStore();
+}
 } // namespace OHOS
 
 extern "C" int LLVMFuzzerInitialize(int *argc, char ***argv)
@@ -234,6 +237,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
     /* Run your code on data */
     OHOS::RefreshNotifyInfoTest();
-    OHOS::MediaLibraryKvStoreManager::GetInstance().CloseAllKvStore();
+    OHOS::ClearKvStore();
     return 0;
 }
