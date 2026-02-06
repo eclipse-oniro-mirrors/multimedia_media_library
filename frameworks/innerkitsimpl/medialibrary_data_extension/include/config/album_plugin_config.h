@@ -52,7 +52,7 @@ const std::string LPATH_CAMERA = "/DCIM/Camera";
 const std::string BUNDLE_NAME_SCREEN_RECORDS = "com." + BRAND_NAME + ".hmos.screenrecorder";
 const std::string ALBUM_NAME_SCREEN_RECORDS = "屏幕录制";
 const std::vector<AlbumPluginRowData> ALBUM_PLUGIN_DATA = {
-    {"/DCIM/Camera", "相机", "Camera", "com." + BRAND_NAME + ".hmos.camera", "default-album-1", ".Camera"},
+    {"/DCIM/Camera", "相机", "Camera", "com.ohos.camera", "default-album-1", ".Camera"}, // com.ohos.camera为开源相机包名
     {"/Pictures/Screenrecords", ALBUM_NAME_SCREEN_RECORDS, "Screenrecorder",
         "com." + BRAND_NAME + ".hmos.screenrecorder", "default-album-2", ".Screenshots"},
     {"/Pictures/Screenshots", "截图", "Screenshots", "com." + BRAND_NAME + ".hmos.screenshot",
