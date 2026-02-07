@@ -2596,5 +2596,15 @@ double MediaFileUtils::CalculateAspectRatio(int32_t height, int32_t width)
         return std::round(aspect_ratio * ASPECT_RATIO_PRECISION) / ASPECT_RATIO_PRECISION;
     }
 }
+
+std::string MediaFileUtils::GetLocalPath(const std::string &path)
+{
+    std::string localPath = path;
+    size_t pos = localPath.find(PhotoColumn::FILES_CLOUD_DIR);
+    if (pos != std::string::npos) {
+        localPath.replace(pos, PhotoColumn::FILES_CLOUD_DIR.length(), PhotoColumn::FILES_LOCAL_DIR);
+    }
+    return localPath;
+}
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP

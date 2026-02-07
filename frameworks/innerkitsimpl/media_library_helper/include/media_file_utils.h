@@ -223,6 +223,7 @@ public:
     EXPORT static bool CheckHasAppLink(int32_t hasAppLink);
     EXPORT static int32_t UpdateModifyTimeInMsec(const std::string &localPath, int64_t localMtimeInMsec);
     EXPORT static double CalculateAspectRatio(int32_t height, int32_t width);
+    EXPORT static std::string GetLocalPath(const std::string &path);
 
 private:
     static bool Mkdir(const std::string &subStr, std::shared_ptr<int> errCodePtr);

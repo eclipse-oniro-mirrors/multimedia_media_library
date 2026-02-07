@@ -18,7 +18,6 @@
 
 #include <sstream>
 
-#include "cloud_media_sync_utils.h"
 #include "dfx_manager.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -1084,7 +1083,7 @@ int32_t PhotoFileOperation::CopyLocalThumbnail(const PhotosPo &sourcePhotosPo, c
 
     PhotoFileOperation::PhotoAssetInfo sourcePhotoInfo;
     sourcePhotoInfo.filePath = sourcePhotosPo.data.value_or("");
-    sourcePhotoInfo.filePath = CloudSync::CloudMediaSyncUtils::GetLocalPath(sourcePhotoInfo.filePath);
+    sourcePhotoInfo.filePath = MediaFileUtils::GetLocalPath(sourcePhotoInfo.filePath);
     sourcePhotoInfo.thumbnailFolder = this->FindThumbnailFolder(sourcePhotoInfo);
     isValid = !sourcePhotoInfo.thumbnailFolder.empty() && !MediaFileUtils::IsDirEmpty(sourcePhotoInfo.thumbnailFolder);
     CHECK_AND_RETURN_RET_LOG(isValid,
@@ -1093,7 +1092,7 @@ int32_t PhotoFileOperation::CopyLocalThumbnail(const PhotosPo &sourcePhotosPo, c
 
     PhotoFileOperation::PhotoAssetInfo targetPhotoInfo;
     targetPhotoInfo.filePath = targetPhotosPo.data.value_or("");
-    targetPhotoInfo.filePath = CloudSync::CloudMediaSyncUtils::GetLocalPath(targetPhotoInfo.filePath);
+    targetPhotoInfo.filePath = MediaFileUtils::GetLocalPath(targetPhotoInfo.filePath);
     targetPhotoInfo.thumbnailFolder = this->BuildThumbnailFolder(targetPhotoInfo);
 
     return this->CopyPhotoRelatedThumbnail(sourcePhotoInfo, targetPhotoInfo);
