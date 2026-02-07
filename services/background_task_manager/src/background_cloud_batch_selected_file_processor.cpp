@@ -792,9 +792,10 @@ void BackgroundCloudBatchSelectedFileProcessor::HandleBatchSelectedStoppedCallba
         QueryPercentOnTaskStart(fileId, percentDB);
         MEDIA_INFO_LOG("BatchSelectFileDownload StoppedCallback, fileId: %{public}s, percent: %{public}d,"
             "percentDB: %{public}d", fileId.c_str(), percent, percentDB);
-        CHECK_AND_RETURN_LOG(percentDB <= percent, "skip write percent fileId: %{public}s", fileId.c_str());
-        int32_t ret = UpdateDBProgressInfoForFileId(fileId, percent, -1, -1);
-        MEDIA_INFO_LOG("BatchSelectFileDownload StoppedCallback UpdateDBProgress, ret: %{public}d", ret);
+        if (percentDB < percent) { // write percent
+            int32_t ret = UpdateDBProgressInfoForFileId(fileId, percent, -1, -1);
+            MEDIA_INFO_LOG("BatchSelectFileDownload StoppedCallback UpdateDBProgress, ret: %{public}d", ret);
+        }
     }
     unique_lock<mutex> downloadLock(downloadResultMutex_);
     bool cond = (currentDownloadIdFileInfoMap_.find(progress.downloadId) == currentDownloadIdFileInfoMap_.end() ||
@@ -1363,6 +1364,15 @@ void BackgroundCloudBatchSelectedFileProcessor::TriggerPauseBatchDownloadProcess
         ClassifyCurrentRoundFileIdInList(fileIdsDownloading, needStopDownloadIds);
         for (auto downloadId : needStopDownloadIds) {
             StopDownloadFiles(downloadId, false);
+            unique_lock<mutex> downloadLock(downloadResultMutex_);
+            currentDownloadIdFileInfoMap_.erase(downloadId);
+            downloadLock.unlock();
+        }
+        for (auto fileId : fileIdsDownloading) {
+            unique_lock<mutex> downloadLock(downloadResultMutex_);
+            downloadFileIdAndCount_.erase(fileId);
+            downloadResult_.erase(fileId);
+            downloadLock.unlock();
         }
     }
 }
