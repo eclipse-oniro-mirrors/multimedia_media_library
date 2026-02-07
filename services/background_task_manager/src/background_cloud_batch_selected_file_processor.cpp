@@ -1365,7 +1365,7 @@ void BackgroundCloudBatchSelectedFileProcessor::TriggerPauseBatchDownloadProcess
         for (auto downloadId : needStopDownloadIds) {
             StopDownloadFiles(downloadId, false);
             unique_lock<mutex> downloadLock(downloadResultMutex_);
-            currentDownloadIdFileInfoMap_.erase(progress.downloadId);
+            currentDownloadIdFileInfoMap_.erase(downloadId);
             downloadLock.unlock();
         }
         for (auto fileId : fileIdsDownloading) {
