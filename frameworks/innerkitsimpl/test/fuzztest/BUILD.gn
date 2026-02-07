@@ -20,7 +20,6 @@ group("media_library_fuzztest") {
     "medialibraryappuripermissionoperations_fuzzer:MediaLibraryAppUriPermissionOperationsFuzzTest",
     "medialibraryappurisensitiveoperations_fuzzer:MediaLibraryAppUriSensitiveOperationsFuzzTest",
     "medialibrarycloudmediaassetmanager_fuzzer:MediaLibraryCloudMediaAssetManagerFuzzTest",
-    "medialibrarycloudmediavo_fuzzer:MediaLibraryCloudMediaVoFuzzTest",
     "medialibraryclouduploadchecker_fuzzer:MediaLibraryCloudUploadCheckerFuzzTest",
     "medialibrarycommon_fuzzer:MediaLibraryCommonFuzzTest",
     "medialibrarydfx_fuzzer:MediaLibraryDfxFuzzTest",
@@ -77,6 +76,7 @@ group("media_library_fuzztest") {
   ]
 
   deps_cloud_sync_fuzztest = [
+    "medialibrarycloudmediavo_fuzzer:MediaLibraryCloudMediaVoFuzzTest",
     "medialibrarycloudmediacontroller_fuzzer:MediaLibraryCloudMediaControllerFuzzTest",
     "medialibrarycloudmediaalbumdao_fuzzer:MediaLibraryCloudMediaAlbumDaoFuzzTest",
     "medialibrarycloudmediaphotosdao_fuzzer:MediaLibraryCloudMediaPhotosDaoFuzzTest",
@@ -129,7 +129,6 @@ group("media_library_fuzztest") {
       "medialibraryappuripermissionoperations_fuzzer:MediaLibraryAppUriPermissionOperationsFuzzTest",
       "medialibraryappurisensitiveoperations_fuzzer:MediaLibraryAppUriSensitiveOperationsFuzzTest",
       "medialibrarycloudmediaassetmanager_fuzzer:MediaLibraryCloudMediaAssetManagerFuzzTest",
-      "medialibrarycloudmediavo_fuzzer:MediaLibraryCloudMediaVoFuzzTest",
       "medialibraryclouduploadchecker_fuzzer:MediaLibraryCloudUploadCheckerFuzzTest",
       "medialibrarycommon_fuzzer:MediaLibraryCommonFuzzTest",
       "medialibrarydfx_fuzzer:MediaLibraryDfxFuzzTest",
@@ -168,7 +167,6 @@ group("media_library_fuzztest") {
       "medialibrarymultistagesdeferredcapture_fuzzer:MediaLibraryMultistagesDeferredCaptureFuzzTest",
       "medialibrarynotification_fuzzer:MediaLibraryNotificationFuzzTest",
       "medialibrarypermission_fuzzer:MediaLibraryPermissionFuzzTest",
-      "medialibraryphotocustomrestoreoperation_fuzzer:MediaLibraryPhotoCustomRestoreOperationFuzzTest",
       "medialibraryphotodaymonthyearoperation_fuzzer:MediaLibraryPhotoDayMonthYearOperationFuzzTest",
       "medialibraryphotoowneralbumidoperation_fuzzer:MediaLibraryPhotoOwnerAlbumIdOperationFuzzTest",
       "medialibraryrefresh_fuzzer:MediaLibraryRefreshFuzzTest",

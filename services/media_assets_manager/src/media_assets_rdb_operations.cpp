@@ -263,6 +263,7 @@ static void DeleteFromVisionTablesForVideo(const string& fileId, const string& t
 
 void MediaAssetsRdbOperations::DeleteFromVisionTables(const string& fileId)
 {
+#ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
     string selectionTotal = MediaColumn::MEDIA_ID + " = " + fileId + " AND label = 1";
     DeleteFromVisionTable(fileId, LABEL, VISION_LABEL_TABLE, selectionTotal);
     DeleteFromVisionTablesForVideo(fileId, VISION_VIDEO_LABEL_TABLE);
@@ -302,6 +303,7 @@ void MediaAssetsRdbOperations::DeleteFromVisionTables(const string& fileId)
     MediaLibraryRdbUtils::UpdateAnalysisAlbumByFile(rdbStore, {fileId}, NEED_UPDATE_TYPE);
 
     MediaLibraryRdbUtils::UpdateAnalysisAlbumByCoverUri(rdbStore, fileId);
+#endif
 }
 
 bool MediaAssetsRdbOperations::QueryAlbumIdIfExists(const std::string& albumId)
