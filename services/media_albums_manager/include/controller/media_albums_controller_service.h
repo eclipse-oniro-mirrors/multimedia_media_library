@@ -30,6 +30,7 @@ public:
     EXPORT int32_t CreatePhotoAlbum(MessageParcel &data, MessageParcel &reply);
     int32_t ChangeRequestSetAlbumName(MessageParcel &data, MessageParcel &reply);
     int32_t ChangeRequestSetCoverUri(MessageParcel &data, MessageParcel &reply);
+    int32_t ChangeRequestSetDefaultCoverUri(MessageParcel &data, MessageParcel &reply);
     int32_t ChangeRequestResetCoverUri(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AddAssets(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t RemoveAssets(MessageParcel &data, MessageParcel &reply);

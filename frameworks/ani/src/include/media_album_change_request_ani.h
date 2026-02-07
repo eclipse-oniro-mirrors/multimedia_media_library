@@ -49,6 +49,7 @@ enum class AlbumChangeOperation {
     SET_IS_ME,
     DISMISS,
     SET_ORDER_POSITION,
+    SET_DEFAULT_COVER_URI,
     MOVE_ASSETS_WITH_URI,
     RECOVER_ASSETS_WITH_URI,
     DELETE_ASSETS_WITH_URI,
@@ -106,6 +107,7 @@ public:
     static ani_status MoveAssetsWithUri(ani_env *env, ani_object object, ani_object arrayUris, ani_object targetAlbum);
     static ani_status SetDisplayLevel(ani_env *env, ani_object object, ani_int displayLevel);
     static ani_status SetCoverUri(ani_env *env, ani_object object, ani_string coverUri);
+    static ani_status SetDefaultCoverUri(ani_env *env, ani_object object, ani_string coverUri);
     static ani_status SetIsMe(ani_env *env, ani_object object);
     static ani_status Dismiss(ani_env *env, ani_object object);
     static ani_status ResetCoverUri(ani_env *env, ani_object object);

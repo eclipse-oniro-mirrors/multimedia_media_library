@@ -146,6 +146,15 @@ int32_t MediaAlbumsService::SetPortraitCoverUri(const ChangeRequestSetCoverUriDt
     return MediaLibraryAlbumOperations::SetCoverUri(values, predicates);
 }
 
+int32_t MediaAlbumsService::ChangeRequestSetDefaultCoverUri(const ChangeRequestSetCoverUriDto& dto)
+{
+    const string albumId = dto.albumId;
+    const string coverUri = dto.coverUri;
+    CHECK_AND_RETURN_RET_LOG(!albumId.empty(), E_ERR, "albumId is empty illegal");
+    CHECK_AND_RETURN_RET_LOG(!coverUri.empty(), E_ERR, "coverUri is empty illegal");
+    return MediaLibraryAlbumOperations::SetDefaultCoverUri(albumId, coverUri);
+}
+
 int32_t MediaAlbumsService::SetGroupAlbumCoverUri(const ChangeRequestSetCoverUriDto& dto)
 {
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA

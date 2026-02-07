@@ -114,6 +114,7 @@ ani_status MediaAlbumChangeRequestAni::MediaAnalysisAlbumChangeRequestInit(ani_e
 
     std::array methods = {
         ani_native_function {"setOrderPosition", nullptr, reinterpret_cast<void *>(SetOrderPosition)},
+        ani_native_function {"setDefaultCoverUri", nullptr, reinterpret_cast<void *>(SetDefaultCoverUri)},
     };
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
     if (status != ANI_OK) {
@@ -338,6 +339,32 @@ ani_status MediaAlbumChangeRequestAni::SetCoverUri(ani_env *env, ani_object obje
     photoAlbum->SetCoverUri(coverUriStr);
     photoAlbum->SetCoverUriSource(static_cast<int32_t>(CoverUriSource::MANUAL_CLOUD_COVER));
     aniContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::SET_COVER_URI);
+    return ANI_OK;
+}
+
+ani_status MediaAlbumChangeRequestAni::SetDefaultCoverUri(ani_env *env, ani_object object, ani_string coverUri)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is null");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    auto aniContext = make_unique<MediaAlbumChangeRequestContext>();
+    CHECK_COND_RET(aniContext != nullptr, ANI_ERROR, "aniContext is null");
+    aniContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_RET(aniContext->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
+    auto photoAlbum = aniContext->objectInfo->GetPhotoAlbumInstance();
+    string coverUriStr;
+    CHECK_COND_WITH_RET_MESSAGE(env,
+        MediaLibraryAniUtils::GetParamStringPathMax(env, coverUri, coverUriStr) == ANI_OK, ANI_INVALID_ARGS,
+        "Failed to get coverUri");
+    CHECK_COND_WITH_RET_MESSAGE(env, photoAlbum != nullptr, ANI_INVALID_ARGS, "photoAlbum is null");
+    CHECK_COND_WITH_RET_MESSAGE(env,
+        PhotoAlbum::IsSmartPortraitPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
+        ANI_INVALID_ARGS, "only smart portrait photo album can be changed");
+    
+    photoAlbum->SetCoverUri(coverUriStr);
+    aniContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::SET_DEFAULT_COVER_URI);
     return ANI_OK;
 }
 
@@ -1374,6 +1401,28 @@ static bool DismissAssetExecute(MediaAlbumChangeRequestContext& context)
     return true;
 }
 
+static bool SetDefaultCoverUriExecute(MediaAlbumChangeRequestContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
+    CHECK_COND_RET(photoAlbum != nullptr, false, "photoAlbum is nullptr");
+    ChangeRequestSetCoverUriReqBody reqBody;
+    reqBody.albumId = std::to_string(photoAlbum->GetAlbumId());
+    reqBody.coverUri = photoAlbum->GetCoverUri();
+    reqBody.albumType = photoAlbum->GetPhotoAlbumType();
+    reqBody.albumSubType = photoAlbum->GetPhotoAlbumSubType();
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_DEFAULT_COVER_URI);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    if (ret < 0) {
+        ANI_ERR_LOG("Failed to set cover uri, err: %{public}d", ret);
+        context.error = JS_INNER_FAIL;
+        return false;
+    }
+    return true;
+}
+
 static bool SetOrderPositionExecute(MediaAlbumChangeRequestContext &context)
 {
     CHECK_COND_RET(context.objectInfo != nullptr, false, "objectInfo is nullptr");
@@ -1415,6 +1464,7 @@ static const unordered_map<AlbumChangeOperation, bool (*)(MediaAlbumChangeReques
     { AlbumChangeOperation::RECOVER_ASSETS_WITH_URI, RecoverAssetsExecuteWithUri },
     { AlbumChangeOperation::DELETE_ASSETS, DeleteAssetsExecute },
     { AlbumChangeOperation::DELETE_ASSETS_WITH_URI, DeleteAssetsExecuteWithUri },
+    { AlbumChangeOperation::SET_DEFAULT_COVER_URI, SetDefaultCoverUriExecute },
     { AlbumChangeOperation::ORDER_ALBUM, OrderAlbumExecute },
     { AlbumChangeOperation::MERGE_ALBUM, MergeAlbumExecute },
     { AlbumChangeOperation::DISMISS_ASSET, DismissAssetExecute },

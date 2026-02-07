@@ -35,6 +35,11 @@
 #include "result_set_utils.h"
 #include "medialibrary_business_code.h"
 #include "media_upgrade.h"
+#include "media_file_uri.h"
+#include "change_request_set_cover_uri_vo.h"
+#include "vision_image_face_column.h"
+#include "vision_photo_map_column.h"
+#include "vision_db_sqls_more.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -48,11 +53,16 @@ static constexpr int32_t SLEEP_SECONDS = 1;
 static std::vector<std::string> createTableSqlLists = {
     PhotoAlbumColumns::CREATE_TABLE,
     PhotoUpgrade::CREATE_PHOTO_TABLE,
+    CREATE_TAB_IMAGE_FACE,
+    CREATE_ANALYSIS_ALBUM_MAP,
+    CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
 };
 
 static std::vector<std::string> testTables = {
     PhotoAlbumColumns::TABLE,
     PhotoColumn::PHOTOS_TABLE,
+    ANALYSIS_PHOTO_MAP_TABLE,
+    ANALYSIS_ALBUM_TABLE,
 };
 
 void AlbumSetCoverUriTest::SetUpTestCase(void)
@@ -136,6 +146,37 @@ static int32_t ModifyAlbumCover(int32_t albumId, const std::string &uri)
     return resp.GetErrCode();
 }
 
+static void ConstructPhotoMapData(int32_t albumId, int32_t assetFileId)
+{
+    static const string insertToPhotoMap = "INSERT INTO " + ANALYSIS_PHOTO_MAP_TABLE +
+        "(map_album, map_asset, order_position) VALUES (" + std::to_string(albumId) +
+        ", " + std::to_string(assetFileId) + ", 0);";
+    MEDIA_INFO_LOG("insertToPhotoMap sql is %{public}s", insertToPhotoMap.c_str());
+    if (g_rdbStore == NULL) {
+        MEDIA_ERR_LOG("ConstructPhotoMapData g_rdbStore is NULL");
+        return;
+    }
+    int ret = g_rdbStore->ExecuteSql(insertToPhotoMap);
+    MEDIA_INFO_LOG("ConstructPhotoMapData ret is %{public}d", ret);
+}
+
+static void ConstructAnalysisAlbumData(int32_t albumId)
+{
+    static const string insertToAnalysisAlbum = "INSERT INTO " + ANALYSIS_ALBUM_TABLE +
+        " (album_id, album_type, album_subtype, album_name, cover_uri, count, date_modified, rank,"
+        " tag_id, user_operation, group_tag, user_display_level, is_me, is_removed, rename_operation,"
+        " is_local, is_cover_satisfied)"
+        " VALUES ( " + std::to_string(albumId) + ", 4096, 4102, NULL, NULL, 2, NULL, NULL, NULL,"
+        " NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1);";
+    MEDIA_INFO_LOG("insertToAnalysisAlbum sql is %{public}s", insertToAnalysisAlbum.c_str());
+    if (g_rdbStore == NULL) {
+        MEDIA_ERR_LOG("ConstructAnalysisAlbumData g_rdbStore is NULL");
+        return;
+    }
+    int ret = g_rdbStore->ExecuteSql(insertToAnalysisAlbum);
+    MEDIA_INFO_LOG("ConstructAnalysisAlbumData ret is %{public}d", ret);
+}
+
 HWTEST_F(AlbumSetCoverUriTest, SetCoverUri_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start SetCoverUri_Test_001");
@@ -172,5 +213,31 @@ HWTEST_F(AlbumSetCoverUriTest, SetCoverUri_Test_002, TestSize.Level0)
     ASSERT_EQ(resp.Unmarshalling(reply), true);
     ASSERT_LT(resp.GetErrCode(), 0);
     MEDIA_INFO_LOG("end SetCoverUri_Test_002");
+}
+
+HWTEST_F(AlbumSetCoverUriTest, SetAnalysisAlbumCoverUri_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start SetAnalysisAlbumCoverUri_Test_003");
+    int albumId = 1000;
+    int assetFileId = 666;
+    ConstructPhotoMapData(albumId, assetFileId);
+    ConstructAnalysisAlbumData(albumId);
+    MessageParcel data;
+    MessageParcel reply;
+    ChangeRequestSetCoverUriReqBody reqBody;
+    reqBody.albumId = std::to_string(albumId);
+    reqBody.coverUri = "file://media/Photo/"+ std::to_string(assetFileId) +"/IMG_171335.jpg";
+    reqBody.albumType = 4096;
+    reqBody.albumSubType = 4102;
+    if (!reqBody.Marshalling(data)) {
+        MEDIA_INFO_LOG("reqBody Marshalling failed");
+    }
+    auto service = make_shared<MediaAlbumsControllerService>();
+    service->ChangeRequestSetDefaultCoverUri(data, reply);
+
+    IPC::MediaRespVo<MediaEmptyObjVo> resp;
+    ASSERT_EQ(resp.Unmarshalling(reply), true);
+    ASSERT_EQ(resp.GetErrCode(), 0);
+    MEDIA_INFO_LOG("end SetAnalysisAlbumCoverUri_Test_003");
 }
 }  // namespace OHOS::Media
