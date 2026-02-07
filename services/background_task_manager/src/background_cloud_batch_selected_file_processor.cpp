@@ -1364,6 +1364,15 @@ void BackgroundCloudBatchSelectedFileProcessor::TriggerPauseBatchDownloadProcess
         ClassifyCurrentRoundFileIdInList(fileIdsDownloading, needStopDownloadIds);
         for (auto downloadId : needStopDownloadIds) {
             StopDownloadFiles(downloadId, false);
+            unique_lock<mutex> downloadLock(downloadResultMutex_);
+            currentDownloadIdFileInfoMap_.erase(progress.downloadId);
+            downloadLock.unlock();
+        }
+        for (auto fileId : needStopDownloadIds) {
+            unique_lock<mutex> downloadLock(downloadResultMutex_);
+            downloadFileIdAndCount_.erase(fileId);
+            downloadResult_.erase(fileId);
+            downloadLock.unlock();
         }
     }
 }
