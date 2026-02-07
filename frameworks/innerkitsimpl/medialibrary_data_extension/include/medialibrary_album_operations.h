@@ -94,6 +94,8 @@ public:
         const DataShare::DataSharePredicates &predicates);
     static int32_t SetCoverUri(const NativeRdb::ValuesBucket &values,
         const DataShare::DataSharePredicates &predicates);
+    static int32_t SetDefaultCoverUri(const string &albumId,
+ 	  	const string &coverUri);
     static int32_t SetHighlightCoverUri(const NativeRdb::ValuesBucket &values,
         const DataShare::DataSharePredicates &predicates);
     static int32_t UpdatePhotoAlbum(const NativeRdb::ValuesBucket &values,

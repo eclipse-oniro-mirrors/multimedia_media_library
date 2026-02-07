@@ -4180,6 +4180,7 @@ export namespace photoAccessHelper {
     }
 
     native setOrderPosition(assets: Array<PhotoAsset>, position: Array<int>): void;
+    native setDefaultCoverUri(uri: string): void;
   }
 
   export interface SharedPhotoAsset {

@@ -128,6 +128,7 @@ napi_value MediaAlbumChangeRequestNapi::MediaAnalysisAlbumChangeRequestInit(napi
             DECLARE_NAPI_FUNCTION("deleteAssets", JSDeleteAssets),
             DECLARE_NAPI_FUNCTION("setAlbumName", JSSetAlbumName),
             DECLARE_NAPI_FUNCTION("setCoverUri", JSSetCoverUri),
+            DECLARE_NAPI_FUNCTION("setDefaultCoverUri", JSSetDefaultCoverUri),
             DECLARE_NAPI_FUNCTION("placeBefore", JSPlaceBefore),
             DECLARE_NAPI_FUNCTION("setDisplayLevel", JSSetDisplayLevel),
             DECLARE_NAPI_FUNCTION("mergeAlbum", JSMergeAlbum),
@@ -1313,6 +1314,32 @@ napi_value MediaAlbumChangeRequestNapi::JSSetCoverUri(napi_env env, napi_callbac
     RETURN_NAPI_UNDEFINED(env);
 }
 
+napi_value MediaAlbumChangeRequestNapi::JSSetDefaultCoverUri(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("JSSetDefaultCoverUri start ");
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    string coverUri;
+    auto asyncContext = make_unique<MediaAlbumChangeRequestAsyncContext>();
+    CHECK_ARGS_WITH_MEG(env,
+        MediaLibraryNapiUtils::ParseArgsStringCallback(env, info, asyncContext, coverUri) == napi_ok,
+        JS_E_PARAM_INVALID, "Failed to parse value arg");
+    CHECK_ARGS_WITH_MEG(env, asyncContext->argc == ARGS_ONE, JS_E_PARAM_INVALID, "Number of args is invalid");
+    
+    CHECK_ARGS_WITH_MEG(env, asyncContext->objectInfo != nullptr, JS_E_PARAM_INVALID, "objectInfo is invalid");
+    auto photoAlbum = asyncContext->objectInfo->GetPhotoAlbumInstance();
+    CHECK_ARGS_WITH_MEG(env, photoAlbum != nullptr, JS_E_PARAM_INVALID, "photoAlbum is null");
+    CHECK_ARGS_WITH_MEG(env,
+        PhotoAlbum::IsSmartPortraitPhotoAlbum(photoAlbum->GetPhotoAlbumType(), photoAlbum->GetPhotoAlbumSubType()),
+        JS_E_PARAM_INVALID, "only smart portrait photo album can be changed");
+    photoAlbum->SetCoverUri(coverUri);
+    asyncContext->objectInfo->albumChangeOperations_.push_back(AlbumChangeOperation::SET_DEFAULT_COVER_URI);
+    RETURN_NAPI_UNDEFINED(env);
+}
+
 napi_value MediaAlbumChangeRequestNapi::JSResetCoverUri(napi_env env, napi_callback_info info)
 {
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
@@ -2090,6 +2117,30 @@ static bool SetCoverUriExecute(MediaAlbumChangeRequestAsyncContext& context)
     return true;
 }
 
+static bool SetDefaultCoverUriExecute(MediaAlbumChangeRequestAsyncContext& context)
+{
+    NAPI_INFO_LOG("SetDefaultCoverUriExecute start ");
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    auto photoAlbum = changeRequest->GetPhotoAlbumInstance();
+    CHECK_COND_RET(photoAlbum != nullptr, false, "photoAlbum is nullptr");
+    ChangeRequestSetCoverUriReqBody reqBody;
+    reqBody.albumId = std::to_string(photoAlbum->GetAlbumId());
+    reqBody.coverUri = photoAlbum->GetCoverUri();
+    reqBody.albumType = photoAlbum->GetPhotoAlbumType();
+    reqBody.albumSubType = photoAlbum->GetPhotoAlbumSubType();
+
+    uint32_t businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_DEFAULT_COVER_URI);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    if (ret < 0) {
+        NAPI_ERR_LOG("Failed to set cover uri, err: %{public}d", ret);
+        context.error = JS_INNER_FAIL;
+        return false;
+    }
+    return true;
+}
+
 static bool SetDisplayLevelExecute(MediaAlbumChangeRequestAsyncContext& context)
 {
     MediaLibraryTracer tracer;
@@ -2225,6 +2276,7 @@ static const unordered_map<AlbumChangeOperation,
     bool (*)(MediaAlbumChangeRequestAsyncContext&)> PROPERTY_EXECUTE_MAP = {
     { AlbumChangeOperation::SET_ALBUM_NAME, SetAlbumNameExecute },
     { AlbumChangeOperation::SET_COVER_URI, SetCoverUriExecute },
+    { AlbumChangeOperation::SET_DEFAULT_COVER_URI, SetDefaultCoverUriExecute },
     { AlbumChangeOperation::SET_DISPLAY_LEVEL, SetDisplayLevelExecute },
     { AlbumChangeOperation::SET_IS_ME, SetIsMeExecute },
     { AlbumChangeOperation::DISMISS, DismissExecute },
@@ -2321,6 +2373,7 @@ static void ApplyAlbumChangeRequestExecute(napi_env env, void* data)
             valid = iter->second(*context);
         } else if (changeOperation == AlbumChangeOperation::SET_ALBUM_NAME ||
                    changeOperation == AlbumChangeOperation::SET_COVER_URI ||
+                   changeOperation == AlbumChangeOperation::SET_DEFAULT_COVER_URI ||
                    changeOperation == AlbumChangeOperation::SET_IS_ME ||
                    changeOperation == AlbumChangeOperation::SET_DISPLAY_LEVEL ||
                    changeOperation == AlbumChangeOperation::DISMISS ||

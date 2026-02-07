@@ -109,6 +109,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAlbumsControllerService::ChangeRequestResetCoverUri
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_DEFAULT_COVER_URI),
+        &MediaAlbumsControllerService::ChangeRequestSetDefaultCoverUri
+ 	},
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_ADD_ASSETS),
         &MediaAlbumsControllerService::AddAssets
     },
@@ -363,6 +367,33 @@ int32_t MediaAlbumsControllerService::ChangeRequestSetCoverUri(MessageParcel &da
     dto.coverUri = reqBody.coverUri;
     dto.albumId = reqBody.albumId;
     ret = MediaAlbumsService::GetInstance().ChangeRequestSetCoverUri(dto);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::ChangeRequestSetDefaultCoverUri(MessageParcel &data,
+    MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("ChangeRequestSetDefaultCoverUri start");
+    ChangeRequestSetCoverUriReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ChangeRequestSetDefaultCoverUri Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    PhotoAlbumType albumType = GetPhotoAlbumType(reqBody.albumType);
+    PhotoAlbumSubType albumSubtype = GetPhotoAlbumSubType(reqBody.albumSubType);
+    bool cond = PhotoAlbum::IsSmartPortraitPhotoAlbum(albumType, albumSubtype) &&
+        !reqBody.coverUri.empty() && !reqBody.albumId.empty() &&
+        MediaLibraryDataManagerUtils::IsNumber(reqBody.albumId);
+    if (!cond) {
+        MEDIA_ERR_LOG("params is invalid");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
+    ChangeRequestSetCoverUriDto dto;
+    dto.albumSubtype = GetPhotoAlbumSubType(reqBody.albumSubType);
+    dto.coverUri = reqBody.coverUri;
+    dto.albumId = reqBody.albumId;
+    ret = MediaAlbumsService::GetInstance().ChangeRequestSetDefaultCoverUri(dto);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 

@@ -35,6 +35,7 @@
 #include "multistages_capture_manager.h"
 
 #include "result_set_utils.h"
+#include "media_string_utils.h"
 #include "story_album_column.h"
 #include "story_cover_info_column.h"
 #include "medialibrary_formmap_operations.h"
@@ -76,6 +77,7 @@ constexpr int32_t ALBUM_NAME_NOT_NULL_ENABLED = 1;
 constexpr int32_t ALBUM_PRIORITY_DEFAULT = 1;
 constexpr int32_t ALBUM_SETNAME_OK = 1;
 constexpr int32_t HIGHLIGHT_DELETED = -3;
+constexpr int32_t SET_IS_COVER_SATISFIED = 0;
 constexpr int32_t HIGHLIGHT_COVER_STATUS_TITLE = 2;
 constexpr int32_t HIGHLIGHT_COVER_STATUS_COVER = 1;
 constexpr int32_t ALBUM_RENAMED = 2;
@@ -3594,6 +3596,84 @@ int32_t MediaLibraryAlbumOperations::SetCoverUri(const ValuesBucket &values, con
         NotifyPortraitAlbum(changeAlbumIds);
     }
     return err;
+}
+
+bool CheckIsCoverSatisfied(const string &albumId, shared_ptr<MediaLibraryRdbStore> uniStore)
+{
+    RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
+    predicates.EqualTo(ALBUM_ID, albumId);
+    vector<string> columns = { IS_COVER_SATISFIED };
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, false, "uniStore is nullptr!");
+    auto resultSet = uniStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "resultSet is nullptr");
+    CHECK_AND_RETURN_RET_LOG(resultSet->GoToFirstRow() == NativeRdb::E_OK, false, "resultSet is empty");
+    int32_t satisFied = GetInt32Val(IS_COVER_SATISFIED, resultSet);
+    return satisFied == 0 || satisFied == 1;
+}
+
+bool IsAssetInAlbum(const string &albumId, const string &coverUri,
+    shared_ptr<MediaLibraryRdbStore> uniStore)
+{
+    string fileId = MediaLibraryDataManagerUtils::GetFileIdFromPhotoUri(coverUri);
+    RdbPredicates predicates(ANALYSIS_PHOTO_MAP_TABLE);
+    predicates.EqualTo(MAP_ALBUM, albumId);
+    predicates.And()->EqualTo(MAP_ASSET, fileId);
+    vector<string> columns = { MAP_ALBUM };
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, false, "uniStore is nullptr!");
+    auto resultSet = uniStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "resultSet is empty");
+    return resultSet->GoToFirstRow() == NativeRdb::E_OK;
+}
+
+int32_t QueryGroupTags(const string &albumId, vector<string> &groupTags,
+    shared_ptr<MediaLibraryRdbStore> uniStore)
+{
+    RdbPredicates queryPredicates(ANALYSIS_ALBUM_TABLE);
+    queryPredicates.EqualTo(ALBUM_ID, albumId);
+    vector<string> columns = { GROUP_TAG };
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_ERR, "uniStore is nullptr!");
+    auto resultSet = uniStore->Query(queryPredicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "resultSet is empty");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        groupTags.push_back(GetStringVal(GROUP_TAG, resultSet));
+    }
+    return E_OK;
+}
+
+int32_t UpdateForPortraitCoverUri(const string &albumId, const string &coverUri,
+    shared_ptr<MediaLibraryRdbStore> uniStore)
+{
+    vector<string> groupTags;
+    CHECK_AND_RETURN_RET_LOG(QueryGroupTags(albumId, groupTags, uniStore) == E_OK,
+        E_ERR, "QueryTagIds fail");
+    RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
+    predicates.In(GROUP_TAG, groupTags);
+    ValuesBucket values;
+    values.PutInt(IS_COVER_SATISFIED, SET_IS_COVER_SATISFIED);
+    values.PutString(COVER_URI, coverUri);
+    int32_t changedRows = -1;
+    int32_t result = uniStore->Update(changedRows, values, predicates);
+    CHECK_AND_RETURN_RET_LOG(result == E_OK, E_ERR, "update default cover uri fail");
+    return result;
+}
+
+int32_t MediaLibraryAlbumOperations::SetDefaultCoverUri(const string &albumId,
+    const string &coverUri)
+{
+    MEDIA_INFO_LOG("SetAnalysisAlbumCoverUri start ");
+    auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, E_ERR, "uniStore is nullptr!");
+    CHECK_AND_RETURN_RET_LOG(CheckIsCoverSatisfied(albumId, uniStore),
+        E_INVALID_VALUES, "only no setting or default setting can be changed");
+    CHECK_AND_RETURN_RET_LOG(IsAssetInAlbum(albumId, coverUri, uniStore),
+        E_INVALID_VALUES, "coverUri is not found in this album");
+    CHECK_AND_RETURN_RET_LOG(UpdateForPortraitCoverUri(albumId, coverUri, uniStore) == E_OK,
+        E_ERR, "updateForPortraitCoverUri fail");
+    vector<int32_t> changeAlbumIds = { 0 };
+    CHECK_AND_RETURN_RET_LOG(MediaStringUtils::ConvertToInt(albumId.c_str(), changeAlbumIds[0]),
+        E_ERR, "convertToInt fail");
+    NotifyPortraitAlbum(changeAlbumIds);
+    return E_OK;
 }
 
 static bool GetArgsSetUserAlbumName(const ValuesBucket& values,
