@@ -113,7 +113,8 @@ public:
     }
 };
 
-const std::string CUSTOM_RESTORE_DIR = ROOT_MEDIA_DIR + CUSTOM_RESTORE_VALUES;
+const std::string LOCAL_ROOT_MEDIA_DIR = "/storage/media/local/files/";
+const std::string CUSTOM_RESTORE_DIR = LOCAL_ROOT_MEDIA_DIR + CUSTOM_RESTORE_VALUES;
 const int MAX_RESTORE_FILE_NUM = 200;
 const int MAX_RESTORE_THREAD_NUM = 2;
 const int RESTORE_URI_TYPE_PHOTO = 1;

@@ -1084,6 +1084,48 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAssetRealName_Test_002
     EXPECT_EQ(std::string::npos, lastPos);
 }
 
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAssetRealName_Test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_003 begin");
+    string localDir = "/storage/media/local/files/custom_restore/test003/";
+    MediaFileUtils::CreateDirectory(localDir);
+    string cloudDir = "/storage/cloud/files/custom_restore/test003/";
+    string fileName = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.JPG";
+    string localPath = localDir + fileName;
+    string cloudPath = cloudDir + fileName;
+    int result = MediaFileUtils::CreateAsset(localPath);
+    EXPECT_EQ(result, E_OK);
+    bool localExists = MediaFileUtils::IsFileExists(localPath);
+    EXPECT_EQ(localExists, true);
+    bool cloudExists = MediaFileUtils::IsFileExists(cloudPath);
+    EXPECT_EQ(cloudExists, false);
+    MediaFileUtils::RemoveDirectory(localDir);
+    MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_003 finish");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CreateAssetRealName_Test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_004 begin");
+    string localDir = "/storage/media/local/files/custom_restore/test004/";
+    MediaFileUtils::CreateDirectory(localDir);
+    string cloudDir = "/storage/cloud/files/custom_restore/test004/";
+    string fileName = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.JPG";
+    string localPath = localDir + fileName;
+    string cloudPath = cloudDir + fileName;
+    int result = MediaFileUtils::CreateAsset(localPath);
+    EXPECT_EQ(result, E_OK);
+    bool localExists = MediaFileUtils::IsFileExists(localPath);
+    EXPECT_EQ(localExists, true);
+    bool cloudExists = MediaFileUtils::IsFileExists(cloudPath);
+    EXPECT_EQ(cloudExists, true);
+    MediaFileUtils::RemoveDirectory(localDir);
+    MEDIA_INFO_LOG("MediaFileUtils_CreateAssetRealName_Test_004 finish");
+}
+
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetMediaTypeUri_Test_01, TestSize.Level1)
 {
     MediaType mediaType = MEDIA_TYPE_SMARTALBUM;
