@@ -313,7 +313,11 @@ void CloudAlbumDataConvert::SetCloudSpaceFull(bool isCloudSpaceFull)
 // trimming leading/trailing spaces.
 std::string CloudAlbumDataConvert::SanitizeAlbumName(const std::string &albumName)
 {
-    const std::string forbidden = "<>|:*?\"/\\.";
+    bool isSingleOrDoubleDot = (albumName == "." || albumName == "..");
+    if (isSingleOrDoubleDot) {
+        return std::string();
+    }
+    const std::string forbidden = "<>|:*?\"/\\";
     std::string name = albumName;
     for (char &c : name) {
         if (forbidden.find(c) != std::string::npos) {
