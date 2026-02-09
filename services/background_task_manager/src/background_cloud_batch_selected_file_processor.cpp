@@ -1015,8 +1015,9 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
         return false;
     }
 
-    if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
-        // waiting+network cell to pause
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()
+        && !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+        // waiting+network cell to pause 不停cell 非wifi 但蜂窝联网
         if (QueryWifiNetRunningTaskNum() > 0) {
             MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START");
             std::vector<std::string> fileIds;
@@ -1027,6 +1028,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
                 DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
                 static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
             MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE Cellnet ret: %{public}d", ret);
+            return false;
         }
     }
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_DEFAULT;
