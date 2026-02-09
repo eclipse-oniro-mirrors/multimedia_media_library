@@ -204,6 +204,8 @@ void InsertBatchDownloadTask(int32_t fileId, std::string path, std::string displ
     values.PutInt(DownloadResourcesColumn::MEDIA_PERCENT, -1);
     values.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, 1);
     values.PutInt(DownloadResourcesColumn::MEDIA_COVER_LEVEL, 1);
+    values.PutInt(DownloadResourcesColumn::MEDIA_TASK_SEQ, 1);
+    values.PutInt(DownloadResourcesColumn::MEDIA_NETWORK_POLICY, 1);
     int32_t ret = rdbStore->Insert(rowId, DownloadResourcesColumn::TABLE, values);
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("InsertBatchDownloadTask fileId is %{public}s", to_string(fileId).c_str());
