@@ -157,6 +157,8 @@ export class PhotoPickerComponent extends ViewPU {
         this.__pickerController = new SynchedPropertyNesedObjectPU(o.pickerController, this, 'pickerController');
         this.proxy = void 0;
         this.dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
+        this.__revokeIndex = new ObservedPropertySimplePU(0, this, 'revokeIndex');
+        this.isPickerKilled = false;
         this.setInitiallyProvidedValue(o);
         this.declareWatch('pickerController', this.onChanged);
     }
@@ -190,12 +192,34 @@ export class PhotoPickerComponent extends ViewPU {
             this.badgeConfig.uris.splice(this.maxBadgeConfigSize);
         }
         void 0 !== e.proxy && (this.proxy = e.proxy);
+        if (e.revokeIndex !== undefined) { 
+            this.revokeIndex = e.revokeIndex; 
+        }
         const displayName = display.getDefaultDisplaySync().name;
         console.info(`displayName = ${displayName}`);
         if (cooperation_multi_name.includes(displayName)) {
             this.dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_HOST_DPI;
             console.info(`dpiFollowStrategy = ${this.dpiFollowStrategy}`);
         }
+        this.setWindowStageChangeLinstener();
+    }
+
+    setWindowStageChangeLinstener() {
+        console.log('photopickercomponent WindowStageChangeLinstener');
+        let applicationContext = getContext(this).getApplicationContext();
+        console.log(`photopickercomponent WindowStageChangeLinstener isPickerKilled = ${this.isPickerKilled}`);
+        applicationContext.on('applicationStateChange', {
+            onApplicationForeground: () => {
+                console.log('photopickercomponent is foreground');
+                if (this.isPickerKilled) {
+                    console.log('photopickercomponent is revoke', this.revokeIndex);
+                    this.revokeIndex++;
+                }
+            },
+            onApplicationBackground: () => {
+                    console.log('photopickercomponent is foreground');
+            }
+        });
     }
 
     updateStateVars(e) {
@@ -204,16 +228,30 @@ export class PhotoPickerComponent extends ViewPU {
 
     purgeVariableDependenciesOnElmtId(e) {
         this.__pickerController.purgeDependencyOnElmtId(e);
+        this.__revokeIndex.purgeDependencyOnElmtId(e);
     }
 
     aboutToBeDeleted() {
         this.__pickerController.aboutToBeDeleted();
+        this.__revokeIndex.aboutToBeDeleted();
         SubscriberManager.Get().delete(this.id__());
         this.aboutToBeDeletedInternal();
     }
 
     get pickerController() {
         return this.__pickerController.get();
+    }
+
+    get revokeIndex() { 
+        if(this.__revokeIndex.get() === undefined) {
+            this.__revokeIndex = new ObservedPropertySimplePU(0, this, 'revokeIndex');
+        }
+        return this.__revokeIndex.get(); 
+    } 
+ 
+ 
+    set revokeIndex(newValue) { 
+        return this.__revokeIndex.set(); 
     }
 
     onChanged() {
@@ -417,6 +455,7 @@ export class PhotoPickerComponent extends ViewPU {
             let state;
             SecurityUIExtensionComponent.create({
                 parameters: {
+                    errorRevokeIndex: this.revokeIndex,
                     'ability.want.params.uiExtensionTargetType': 'photoPicker',
                     uri: 'multipleselect',
                     targetPage: 'photoPage',
@@ -485,6 +524,11 @@ export class PhotoPickerComponent extends ViewPU {
             }));
             SecurityUIExtensionComponent.onError(((error) => {
                 console.info('PhotoPickerComponent onError: ' + JSON.stringify(error));
+                console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex); 
+                 if (error.code === 100014) { 
+                    console.log('PhotoPickerComponent is set isPickerKilled = true');
+                    this.revokeIndex++; 
+                 }
             }));
         }), SecurityUIExtensionComponent);
         Column.pop();
