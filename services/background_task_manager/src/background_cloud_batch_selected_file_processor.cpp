@@ -1014,24 +1014,24 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
         MEDIA_INFO_LOG("BatchSelectFileDownload no task to stop");
         return false;
     }
-
-    if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
-        // waiting+network cell to pause
-        if (QueryWifiNetRunningTaskNum() > 0) {
-            MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START");
-            std::vector<std::string> fileIds;
-            QueryAllWifiNetTask(fileIds);
-            TriggerPauseBatchDownloadProcessor(fileIds);
-            PauseAllWifiNetTask();
-            int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
-                DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
-                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
-            MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE Cellnet ret: %{public}d", ret);
-        }
-    }
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_DEFAULT;
     if (!BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(autoPauseReason)) {
         MEDIA_INFO_LOG("BatchSelectFileDownload check result: keep downloading");
+        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()
+            && !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+            // waiting+network cell to pause 不停cell 非wifi 但蜂窝联网
+            if (QueryWifiNetRunningTaskNum() > 0) {
+                MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START");
+                std::vector<std::string> fileIds;
+                QueryAllWifiNetTask(fileIds);
+                TriggerPauseBatchDownloadProcessor(fileIds);
+                PauseAllWifiNetTask();
+                int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
+                    DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
+                    static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+                MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE Cellnet ret: %{public}d", ret);
+            }
+        }
         return false;
     }
     AutoStopAction(autoPauseReason);
