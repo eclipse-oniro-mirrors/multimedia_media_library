@@ -69,6 +69,7 @@ public:
 
 private:
     void ConvertErrorTypeDetails(const MDKRecordOperResult &result, std::vector<CloudErrorDetail> &errorDetails);
+    std::string SanitizeAlbumName(const std::string &albumName);
 
 private:
     bool isCloudSpaceFull_{false};

@@ -804,4 +804,65 @@ HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_BuildModifyRecord_01,
     MEDIA_INFO_LOG("OnMdirtyAlbumRecord: %{public}s", recordOut.ToString().c_str());
     EXPECT_EQ(0, ret);
 }
+
+// Test SanitizeAlbumName helper
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_SanitizeAlbumName, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    // Single and double dot should become empty
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("."), "");
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName(".."), "");
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("<>:*?\"/\\"), "");
+    // All forbidden characters should be replaced, resulting in only dots which are then trimmed to empty
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("<>:*?\"/\\."), ".");
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("..<>."), "...");
+    // Trim leading/trailing spaces
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("  abc  "), "abc");
+    // Replace forbidden characters with spaces but preserve interior spacing
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("a<b>c"), "a b c");
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("a<相机>c"), "a 相机 c");
+    // Multiple forbidden and surrounding spaces become trimmed
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("<>:*?\"/\\  name  "), "name");
+}
+
+// Test HandleAlbumName logic
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_HandleAlbumName, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+
+    // Case 1: SOURCE and in whitelist with dualAlbumName -> use dualAlbumName and set localPath
+    std::map<std::string, MDKRecordField> map1;
+    CloudMdkRecordPhotoAlbumVo album1;
+    album1.albumType = AlbumType::SOURCE;
+    album1.isInWhiteList = 1;
+    album1.lpath = "/DCIM/Camera";
+    album1.dualAlbumName = "DualName";
+    album1.albumNameEn = "EnName";
+    album1.albumName = "Orig";
+    EXPECT_EQ(albumDataConvert.HandleAlbumName(map1, album1), E_OK);
+    std::string val;
+    EXPECT_EQ(map1["localPath"].GetString(val), MDKLocalErrorCode::NO_ERROR);
+    EXPECT_EQ(val, album1.lpath);
+    EXPECT_EQ(map1["albumName"].GetString(val), MDKLocalErrorCode::NO_ERROR);
+    EXPECT_EQ(val, "DualName");
+
+    // Case 2: SOURCE and in whitelist without dual but with albumNameEn -> use albumNameEn
+    std::map<std::string, MDKRecordField> map2;
+    CloudMdkRecordPhotoAlbumVo album2 = album1;
+    album2.dualAlbumName = "";
+    album2.albumNameEn = "EnglishName";
+    EXPECT_EQ(albumDataConvert.HandleAlbumName(map2, album2), E_OK);
+    EXPECT_EQ(map2["albumName"].GetString(val), MDKLocalErrorCode::NO_ERROR);
+    EXPECT_EQ(val, "EnglishName");
+
+    // Case 3: not SOURCE or not in whitelist -> use albumName (sanitized)
+    std::map<std::string, MDKRecordField> map3;
+    CloudMdkRecordPhotoAlbumVo album3;
+    album3.albumType = AlbumType::NORMAL;
+    album3.isInWhiteList = 0;
+    album3.albumName = "  a<b>c  ";
+    EXPECT_EQ(albumDataConvert.HandleAlbumName(map3, album3), E_OK);
+    EXPECT_EQ(map3["albumName"].GetString(val), MDKLocalErrorCode::NO_ERROR);
+    EXPECT_EQ(val, "a b c");
+}
 }  // namespace OHOS::Media::CloudSync
