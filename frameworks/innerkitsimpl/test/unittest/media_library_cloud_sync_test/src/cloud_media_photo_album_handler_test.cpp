@@ -804,4 +804,20 @@ HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_BuildModifyRecord_01,
     MEDIA_INFO_LOG("OnMdirtyAlbumRecord: %{public}s", recordOut.ToString().c_str());
     EXPECT_EQ(0, ret);
 }
+
+// Test SanitizeAlbumName helper
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_SanitizeAlbumName, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    // Single and double dot should become empty
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("."), "");
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName(".."), "");
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("<>:*?\"/\\."), "");
+    // Trim leading/trailing spaces
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("  abc  "), "abc");
+    // Replace forbidden characters with spaces but preserve interior spacing
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("a<b>c"), "a b c");
+    // Multiple forbidden and surrounding spaces become trimmed
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("<>:*?\"/\\  name  "), "name");
+}
 }  // namespace OHOS::Media::CloudSync
