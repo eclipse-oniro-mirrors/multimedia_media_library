@@ -207,17 +207,15 @@ export class PhotoPickerComponent extends ViewPU {
     setWindowStageChangeLinstener() {
         console.log('photopickercomponent WindowStageChangeLinstener');
         let applicationContext = getContext(this).getApplicationContext();
-        console.log(`photopickercomponent WindowStageChangeLinstener isPickerKilled = ${this.isPickerKilled}`);
         applicationContext.on('applicationStateChange', {
             onApplicationForeground: () => {
-                console.log('photopickercomponent is foreground');
+                console.log(`photopickercomponent is foreground isPickerKilled = ${this.isPickerKilled} ${this.revokeIndex}`);
                 if (this.isPickerKilled) {
-                    console.log('photopickercomponent is revoke', this.revokeIndex);
                     this.revokeIndex++;
                 }
             },
             onApplicationBackground: () => {
-                    console.log('photopickercomponent is foreground');
+                console.log('photopickercomponent is foreground');
             }
         });
     }
