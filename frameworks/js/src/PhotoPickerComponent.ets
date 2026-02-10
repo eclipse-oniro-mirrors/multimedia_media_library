@@ -82,9 +82,29 @@ export struct PhotoPickerComponent {
   dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
   badgeConfigIsSending: boolean = false;
   @ObjectLink @Watch('onChanged') pickerController: PickerController;
+  @State revokeIndex = 0;
+  isPickerKilled = false;
   private proxy: UIExtensionProxy | undefined;
   pickerController.onEnterPhotoBrowser = () => {
     return false;
+  }
+
+  setWindowStageChangeLinstener() {
+    console.log('photopickercomponent WindowStageChangeLinstener');
+    let applicationContext = getContext(this).getApplicationContext();
+    console.log(`photopickercomponent WindowStageChangeLinstener isPickerKilled = ${this.isPickerKilled}`);
+    applicationContext.on('applicationStateChange', {
+        onApplicationForeground: () => {
+            console.log('photopickercomponent is foreground');
+            if (this.isPickerKilled) {
+                console.log('photopickercomponent is revoke', this.revokeIndex);
+                this.revokeIndex++;
+            }
+        },
+        onApplicationBackground: () => {
+                console.log('photopickercomponent is foreground');
+        }
+    });
   }
 
   pickerController.parseIsMovingPhotoBadgeShown = () => {
@@ -276,6 +296,7 @@ export struct PhotoPickerComponent {
       Column() {
         SecurityUIExtensionComponent({
           parameters: {
+            errorRevokeIndex: this.revokeIndex,
             "ability.want.params.uiExtensionTargetType": "photoPicker",
             uri: "multipleselect",
             targetPage: "photoPage",
@@ -345,6 +366,10 @@ export struct PhotoPickerComponent {
           })
           .onError((error) => {
             console.info('PhotoPickerComponent onError: ' + JSON.stringify(error));
+            console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex); 
+             if (error.code === 100014) { 
+               this.pickerIsKilled = true; 
+             }
           });
       }
       .width('100%')
@@ -392,6 +417,9 @@ export struct PhotoPickerComponent {
     } else if (dataType === 'onBadgeConfigSend') {
       this.handleBadgeConfigSend(wantParam)
       console.info('PhotoPickerComponent onReceive: onBadgeConfigSend');
+    } else if (dataType === 'onBackground') { 
+       console.info('PhotoPickerComponent onReceive: onBackground'); 
+       this.revokeIndex = 0; 
     } else if (dataType === 'onMovingPhotoBadgeStateChange') {
       this.onMovingPhotoBadgeStateChangeSend(wantParam)
       console.info('PhotoPickerComponent onReceive: onMovingPhotoBadgeStateChangeSend');
