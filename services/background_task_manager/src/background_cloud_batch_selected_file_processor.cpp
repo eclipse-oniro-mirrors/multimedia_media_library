@@ -78,7 +78,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::downloadInterval_ = DOWNLOAD_
 int32_t BackgroundCloudBatchSelectedFileProcessor::downloadSelectedInterval_ = DOWNLOAD_SELECTED_INTERVAL;
 int32_t BackgroundCloudBatchSelectedFileProcessor::downloadDuration_ = DOWNLOAD_DURATION; // 10 seconds
 recursive_mutex BackgroundCloudBatchSelectedFileProcessor::mutex_;
-mutex BackgroundCloudBatchSelectedFileProcessor::mtx3Sec;
+mutex BackgroundCloudBatchSelectedFileProcessor::mtxSec;
 
 Utils::Timer BackgroundCloudBatchSelectedFileProcessor::batchDownloadResourceTimer_(
     "background_batch_download_processor");
@@ -1009,9 +1009,9 @@ void BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadProcessRunningSt
     batchDownloadProcessRunningStatus_.store(running);
 }
 
-void BackgroundCloudBatchSelectedFileProcessor::Handle3SecondCellTask()
+void BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask()
 {
-    std::unique_lock<std::mutex> lck(mtx3Sec);
+    std::unique_lock<std::mutex> lck(mtxSec);
     if (BackgroundCloudBatchSelectedFileProcessor::QueryWifiNetRunningTaskNum() > 0) {
         MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START");
         std::vector<std::string> fileIds;
@@ -1039,7 +1039,7 @@ void BackgroundCloudBatchSelectedFileProcessor::Handle3SecondCellTask()
     }
     if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
         BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
-        MEDIA_INFO_LOG("BatchSelectFileDownload Handle3SecondCellTask timeout");
+        MEDIA_INFO_LOG("BatchSelectFileDownload HandleTimeoutCellTask timeout");
         AutoStopAction(autoPauseReason);
     }
 }
@@ -1073,7 +1073,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheckNew()
     }
     if (autoPauseReason == BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT) {
         std::thread([]() {
-            BackgroundCloudBatchSelectedFileProcessor::Handle3SecondCellTask();
+            BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask();
         }).detach();
         return false;
     } else {
