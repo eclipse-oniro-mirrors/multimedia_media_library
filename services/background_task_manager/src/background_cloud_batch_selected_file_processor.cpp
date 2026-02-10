@@ -324,7 +324,7 @@ void BackgroundCloudBatchSelectedFileProcessor::ExitDownloadSelectedBatchResourc
 
 void BackgroundCloudBatchSelectedFileProcessor::DownloadSelectedBatchResources()
 {
-    const int64_t WAIT_NET_SWITCH_TIME = 200000000; // 200000000 us 200ms
+    const int64_t WAIT_NET_SWITCH_TIME = 200000; // 200000 200ms
     usleep(WAIT_NET_SWITCH_TIME);
     MEDIA_INFO_LOG("-- BatchSelectFileDownload Start downloading batch Round START --");
     if (BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()) {
