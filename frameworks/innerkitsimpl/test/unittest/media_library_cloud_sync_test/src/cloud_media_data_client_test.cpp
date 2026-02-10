@@ -1133,6 +1133,26 @@ HWTEST_F(CloudMediaDataClientTest, CheckAndFixAlbum, TestSize.Level1)
     resultSet->Close();
 }
 
+HWTEST_F(CloudMediaDataClientTest, CheckAndFixAlbum_02, TestSize.Level1)
+{
+    CloudMediaDataClient cloudMediaDataClient(1, 100);
+    int32_t ret = cloudMediaDataClient.CheckAndFixAlbum();
+    EXPECT_EQ(ret, 0);
+    EXPECT_TRUE(rdbStore_ != nullptr);
+    std::string cloud_id = "";
+    std::vector<std::string> columns = {PhotoAlbumColumns::ALBUM_DIRTY};
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_CLOUD_ID, cloud_id);
+    auto resultSet = rdbStore_->Query(predicates, columns);
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t dirty = GetInt32Val(PhotoAlbumColumns::ALBUM_DIRTY, resultSet);
+        EXPECT_NE(dirty, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
+        EXPECT_NE(dirty, static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
+        EXPECT_NE(dirty, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    }
+    resultSet->Close();
+}
+
 HWTEST_F(CloudMediaDataClientTest, QueryDataInPhotos, TestSize.Level1)
 {
     DataShare::DataSharePredicates predicates;
