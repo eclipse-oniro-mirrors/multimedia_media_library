@@ -215,7 +215,7 @@ export class PhotoPickerComponent extends ViewPU {
                 }
             },
             onApplicationBackground: () => {
-                console.log('photopickercomponent is foreground');
+                console.log('photopickercomponent is background');
             }
         });
     }
