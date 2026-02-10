@@ -152,7 +152,6 @@ bool MedialibraryRelatedSystemStateManager::IsNetValidatedAtRealTime()
     return isNetValidated;
 }
 
-
 // wifi和 无限流量场景组合 wifi连接+未使用蜂窝+网络连通 受无限流量开关控制 不偷跑流量
 bool MedialibraryRelatedSystemStateManager::IsNetAvailableWithUnlimitCondition()
 {
