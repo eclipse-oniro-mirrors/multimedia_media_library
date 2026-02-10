@@ -548,7 +548,7 @@ void MedialibrarySubscriber::HandleBatchDownloadWhenNetChange()
 {
     if (!isWifiConnected_ && BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus()) {
         MEDIA_INFO_LOG("BatchSelectFileDownload COMMON_EVENT_WIFI_CONN_STATE Change");
-        const int64_t WAIT_NET_SWITCH_TIME = 200000000; // 200000000 us 200ms
+        const int64_t WAIT_NET_SWITCH_TIME = 200000; // 200000 200ms
         usleep(WAIT_NET_SWITCH_TIME);
         BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck();
     }
