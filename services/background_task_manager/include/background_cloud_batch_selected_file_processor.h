@@ -65,6 +65,8 @@ public:
 
     EXPORT static bool IsNetValidated();
 
+    EXPORT static void Handle3SecondCellTask();
+    EXPORT static bool StopProcessConditionCheckNew();
     enum BatchDownloadStatus : int32_t {
         INIT = 0,
         SUCCESS,
@@ -146,14 +148,13 @@ private:
     EXPORT static int32_t UpdateAllStatusAutoPauseToDownloading();
     EXPORT static int32_t UpdateAllStatusAutoPauseToWaiting();
 
-    EXPORT static bool IsCellularNetConnected();
-    EXPORT static bool IsWifiConnected();
     EXPORT static int32_t GetDeviceTemperature();
     EXPORT static void ControlDownloadLimit();
 
     static int32_t downloadInterval_;
     static int32_t downloadDuration_;
     static std::recursive_mutex mutex_;
+    static std::mutex mtx3Sec;
     static std::mutex downloadResultMutex_;
     static std::mutex mutexRunningStatus_;
     static std::mutex autoActionMutex_;
