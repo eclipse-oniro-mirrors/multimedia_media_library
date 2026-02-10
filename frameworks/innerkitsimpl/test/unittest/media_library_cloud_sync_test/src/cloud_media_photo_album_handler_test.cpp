@@ -809,13 +809,14 @@ HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_BuildModifyRecord_01,
 HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_SanitizeAlbumName, TestSize.Level1)
 {
     CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
-    // Single and double dot should become empty
+    // Empty, single and double dot should become empty
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName(""), "");
     EXPECT_EQ(albumDataConvert.SanitizeAlbumName("."), "");
     EXPECT_EQ(albumDataConvert.SanitizeAlbumName(".."), "");
     EXPECT_EQ(albumDataConvert.SanitizeAlbumName("<>:*?\"/\\"), "");
     // All forbidden characters should be replaced, resulting in only dots which are then trimmed to empty
     EXPECT_EQ(albumDataConvert.SanitizeAlbumName("<>:*?\"/\\."), ".");
-    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("..<>."), "...");
+    EXPECT_EQ(albumDataConvert.SanitizeAlbumName("..<>."), "..  .");
     // Trim leading/trailing spaces
     EXPECT_EQ(albumDataConvert.SanitizeAlbumName("  abc  "), "abc");
     // Replace forbidden characters with spaces but preserve interior spacing
