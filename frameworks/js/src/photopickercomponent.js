@@ -527,7 +527,7 @@ export class PhotoPickerComponent extends ViewPU {
                 console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex); 
                  if (error.code === 100014) { 
                     console.log('PhotoPickerComponent is set isPickerKilled = true');
-                    this.revokeIndex++; 
+                    this.isPickerKilled = true; 
                  }
             }));
         }), SecurityUIExtensionComponent);
