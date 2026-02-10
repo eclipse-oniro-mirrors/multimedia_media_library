@@ -324,6 +324,8 @@ void BackgroundCloudBatchSelectedFileProcessor::ExitDownloadSelectedBatchResourc
 
 void BackgroundCloudBatchSelectedFileProcessor::DownloadSelectedBatchResources()
 {
+    const int64_t WAIT_NET_SWITCH_TIME = 200000000; // 200000000 us 200ms
+    usleep(WAIT_NET_SWITCH_TIME);
     MEDIA_INFO_LOG("-- BatchSelectFileDownload Start downloading batch Round START --");
     if (BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()) {
         MEDIA_INFO_LOG("-- BatchSelectFileDownload AutoStop Stop process --");
@@ -1217,16 +1219,17 @@ void BackgroundCloudBatchSelectedFileProcessor::AutoStopAction(BatchDownloadAuto
     unique_lock<std::mutex> lock(autoActionMutex_);
     MEDIA_INFO_LOG("BatchSelectFileDownload AutoStopAction cause: %{public}d", static_cast<int32_t>(autoPauseReason));
     // 检查点 批量下载 通知应用 notify type 4 自动暂停
-    MEDIA_INFO_LOG("BatchSelectFileDownload autoPause START");
+    MEDIA_INFO_LOG("BatchSelectFileDownload autoPause task START");
     StopAllDownloadingTask(false);
     // updateDB
     UpdateAllAutoPauseDownloadResourcesInfo(autoPauseReason);
-    MEDIA_INFO_LOG("BatchSelectFileDownload autoPause END");
+    MEDIA_INFO_LOG("BatchSelectFileDownload autoPause task END");
     TriggerStopBatchDownloadProcessor(false);
     int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
         DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
         static_cast<int32_t>(autoPauseReason));
-    MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE ret: %{public}d", ret);
+    MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE reason: %{public}d ret: %{public}d",
+        static_cast<int32_t>(autoPauseReason), ret);
 }
 
 void BackgroundCloudBatchSelectedFileProcessor::AutoResumeAction()
