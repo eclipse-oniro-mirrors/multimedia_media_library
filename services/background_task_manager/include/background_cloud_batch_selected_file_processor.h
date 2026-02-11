@@ -65,6 +65,11 @@ public:
 
     EXPORT static bool IsNetValidated();
 
+    EXPORT static void HandleTimeoutCellTask();
+    EXPORT static void LaunchNetWorkBatchDownloadProcessor();
+    EXPORT static int32_t ResetReasonForAllWifiNetTask(std::vector<std::string> &fileIds,
+        BatchDownloadAutoPauseReasonType &autoPauseReason);
+
     enum BatchDownloadStatus : int32_t {
         INIT = 0,
         SUCCESS,
@@ -125,6 +130,7 @@ private:
     EXPORT static void UpdateDBProgressStatusInfoForBatch(vector<int32_t> fileIds, int32_t status);
     EXPORT static int32_t UpdateDBProgressInfoForFileId(std::string &fileIdStr, int32_t percent,
         int64_t finishTime, int32_t status);
+    EXPORT static int32_t QueryUnFinishBatchSelectedResourceFilesNum();
     EXPORT static int32_t QueryBatchSelectedResourceFilesNum();
     EXPORT static int32_t QueryBatchSelectedResourceFilesNumWithNetCondition();
     EXPORT static int32_t QueryWifiNetRunningTaskNum();
@@ -146,14 +152,14 @@ private:
     EXPORT static int32_t UpdateAllStatusAutoPauseToDownloading();
     EXPORT static int32_t UpdateAllStatusAutoPauseToWaiting();
 
-    EXPORT static bool IsCellularNetConnected();
-    EXPORT static bool IsWifiConnected();
     EXPORT static int32_t GetDeviceTemperature();
     EXPORT static void ControlDownloadLimit();
 
     static int32_t downloadInterval_;
     static int32_t downloadDuration_;
     static std::recursive_mutex mutex_;
+    static std::mutex mtxSec;
+    static std::atomic<bool> cellThreadRunning;
     static std::mutex downloadResultMutex_;
     static std::mutex mutexRunningStatus_;
     static std::mutex autoActionMutex_;

@@ -481,7 +481,6 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     if (action == EventFwk::CommonEventSupport::COMMON_EVENT_WIFI_CONN_STATE) {
         isWifiConnected_ = eventData.GetCode() == WIFI_STATE_CONNECTED;
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-        HandleBatchDownloadWhenNetChange();
         UpdateBackgroundTimer();
 #endif
     } else if (action == EventFwk::CommonEventSupport::COMMON_EVENT_CONNECTIVITY_CHANGE) {
@@ -542,16 +541,6 @@ void MedialibrarySubscriber::HandleNetInfoChange(std::string &action)
             MedialibraryRelatedSystemStateManager::GetInstance()->SetWifiConnected(isWifiConnected_);
     }
 }
-
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-void MedialibrarySubscriber::HandleBatchDownloadWhenNetChange()
-{
-    if (!isWifiConnected_ && BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus()) {
-        MEDIA_INFO_LOG("BatchSelectFileDownload COMMON_EVENT_WIFI_CONN_STATE Change");
-        BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck();
-    }
-}
-#endif
 
 int64_t MedialibrarySubscriber::GetNowTime()
 {
