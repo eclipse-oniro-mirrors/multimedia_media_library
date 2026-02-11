@@ -48,6 +48,7 @@
 #include "accesstoken_kit.h"
 #include "medialibrary_napi_enum_comm.h"
 #include "media_string_utils.h"
+#include "medialibrary_type_const.h"
 
 using namespace std;
 using namespace OHOS::Security::AccessToken;
@@ -783,6 +784,11 @@ static napi_status ParseArgsSetNetWorkPolicyForBatchDownload(napi_env env, napi_
     int32_t networkPolicy = 0;
     if (MediaLibraryNapiUtils::GetInt32(env, context->argv[ARGS_ONE], networkPolicy) != napi_ok) {
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get networkPolicy argument!");
+        return napi_invalid_arg;
+    }
+     if (networkPolicy > static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_WIFI)
+        || networkPolicy < static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_DEFAULT)) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Invalid NetworkPolicy type!");
         return napi_invalid_arg;
     }
     context->networkPolicy = networkPolicy;
