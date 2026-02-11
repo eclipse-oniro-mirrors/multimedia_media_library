@@ -369,8 +369,6 @@ CloneRestoreConfigInfo CloneRestore::GetCloneConfigInfoFromOriginDB()
             cloneConfigInfo.switchStatus = STRING_SWITCH_STATUS_MAP.at(srcswitchStatusStr);
             cloneConfigInfo.deviceId = \
                 configInfo[ConfigInfoSceneId::CLONE_RESTORE][CONFIG_INFO_CLONE_HDC_DEVICE_ID_KEY];
-            CHECK_AND_RETURN_RET_LOG(CheckSouthDeviceTypeMatchSwitchStatus(cloneConfigInfo.switchStatus),
-                CloneRestoreConfigInfo{}, "south_device_type and switch status do not match");
         }
     }
     cloneConfigInfo.isValid = true;
