@@ -1048,14 +1048,12 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::ResetReasonForAllWifiNetTask(
     // update download_resources_task_records set reason =1 where fileIds in x
     CHECK_AND_RETURN_RET_INFO_LOG(!fileIds.empty(), NativeRdb::E_OK, "ResetReasonForAllWifiNetTask empty");
     std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
-    MEDIA_INFO_LOG("BatchSelectFileDownload ResetReasonForAllWifiNetTask 1");
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0})";
     std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, static_cast<int32_t>(autoPauseReason));
     std::vector<std::string> whereArgs = {};
     int32_t changedRows = -1;
-    MEDIA_INFO_LOG("BatchSelectFileDownload ResetReasonForAllWifiNetTask 1");
     int32_t ret = rdbStore->Update(changedRows, DownloadResourcesColumn::TABLE, valuesBucket,
         whereClause, whereArgs);
     MEDIA_INFO_LOG("BatchSelectFileDownload ResetReasonForAllWifiNetTask After ret: %{public}d, changedRows %{public}d",
