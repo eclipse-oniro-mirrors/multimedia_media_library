@@ -1117,7 +1117,7 @@ int32_t CloudMediaAssetManager::SetNetworkPolicyForBatchDownload(SetNetworkPolic
         this->batchDownloadResourcesTaskDao_.UpdateStatusAllFailAndAutoPauseToWaiting();
         MEDIA_INFO_LOG("BatchSelectFileDownload Set All LaunchBatchDownloadProcessor");
         BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
-        BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
+        BackgroundCloudBatchSelectedFileProcessor::LaunchNetWorkBatchDownloadProcessor(); // 触发启动检查
         return ret;
     }
     std::vector<std::string> allFileIds;
@@ -1133,7 +1133,7 @@ int32_t CloudMediaAssetManager::SetNetworkPolicyForBatchDownload(SetNetworkPolic
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "UpdateNetworkPolicyDownloadTasks failed");
     MEDIA_INFO_LOG("BatchSelectFileDownload Set LaunchBatchDownloadProcessor");
     BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
-    BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor(); // 触发启动检查
+    BackgroundCloudBatchSelectedFileProcessor::LaunchNetWorkBatchDownloadProcessor(); // 触发启动检查
 #endif
     return E_OK;
 }
