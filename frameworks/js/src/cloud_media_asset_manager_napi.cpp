@@ -786,7 +786,7 @@ static napi_status ParseArgsSetNetWorkPolicyForBatchDownload(napi_env env, napi_
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get networkPolicy argument!");
         return napi_invalid_arg;
     }
-     if (networkPolicy > static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_WIFI)
+    if (networkPolicy > static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_WIFI)
         || networkPolicy < static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_DEFAULT)) {
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Invalid NetworkPolicy type!");
         return napi_invalid_arg;
