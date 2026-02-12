@@ -1333,9 +1333,9 @@ bool UpgradeRestore::NeedBatchQueryPhotoForPortrait(const std::vector<FileInfo> 
         " FROM merge_face mf "
         " INNER JOIN merge_tag mt ON mf.tag_id = mt.tag_id "
         " INNER JOIN gallery_media gm ON mf.hash = gm.hash "
-        " WHERE "
-        " COALESCE(gm.recycleFlag, 0) NOT IN (?, ?, ?, ?, ?) "
-        " AND COALESCE(gm.albumId, '') NOT IN (SELECT albumId FROM gallery_album WHERE hide = 1) "
+        " LEFT JOIN gallery_album ga ON gm.albumId = ga.albumId AND ga.hide = 1 "
+        " WHERE (gm.recycleFlag IS NULL OR gm.recycleFlag NOT IN (?, ?, ?, ?, ?)) "
+        " AND ga.albumId IS NULL "
         " GROUP BY mf.hash, mf.face_id "
         " HAVING gm._id IN (" + selection + ")";
     std::vector<NativeRdb::ValueObject> params = { RECYCLE_FLAG_LOCAL, RECYCLE_FLAG_UNSYNCED, RECYCLE_FLAG_SYNCED,
