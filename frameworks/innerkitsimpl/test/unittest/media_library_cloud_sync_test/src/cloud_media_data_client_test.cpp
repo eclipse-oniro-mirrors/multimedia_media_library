@@ -1113,7 +1113,7 @@ HWTEST_F(CloudMediaDataClientTest, UpdateLocalFileDirty, TestSize.Level1)
     resultSet->Close();
 }
 
-HWTEST_F(CloudMediaDataClientTest, CheckAndFixAlbum, TestSize.Level1)
+HWTEST_F(CloudMediaDataClientTest, CheckAndFixAlbum_01, TestSize.Level1)
 {
     CloudMediaDataClient cloudMediaDataClient(1, 100);
     int32_t ret = cloudMediaDataClient.CheckAndFixAlbum();
