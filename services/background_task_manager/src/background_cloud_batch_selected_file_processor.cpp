@@ -955,11 +955,6 @@ bool BackgroundCloudBatchSelectedFileProcessor::GetBatchDownloadAddedFlag()
 bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadResourcesTask()
 {
     MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask START");
-    if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
-        MEDIA_INFO_LOG("Cloud sync switch off, skip BatchSelectFileDownload");
-        SetBatchDownloadAddedFlag(false);
-        return false;
-    }
     CHECK_AND_RETURN_RET_INFO_LOG(batchDownloadTaskAdded_, false, "no batch download start trigger");
     int32_t num = QueryBatchSelectedResourceFilesNumWithNetCondition(); // 查询是否有需要下载 或处理的任务
     if (num == 0) {
@@ -967,6 +962,11 @@ bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadResourcesTask()
         MEDIA_DEBUG_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadResourcesTask change to true");
     } else {
         MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask END count num: %{public}d", num);
+        if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
+            MEDIA_INFO_LOG("Cloud sync switch off, skip BatchSelectFileDownload");
+            SetBatchDownloadAddedFlag(false);
+            return false;
+        }
     }
     return (num > 0);
 }
@@ -974,18 +974,17 @@ bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadResourcesTask()
 bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask()
 {
     MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTask START");
-
     int32_t num = QueryBatchSelectedFilesNumForAutoResume(); // 查询是否有需要下载 或处理的任务
     if (num == 0) {
         downloadLatestFinished_.store(true); // 之前下载已完成
         MEDIA_DEBUG_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadResourcesTask change to true");
     } else {
+        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask END Resume count num: %{public}d", num);
         if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
             MEDIA_INFO_LOG("Cloud sync switch off, skip BatchSelectFileDownload");
             SetBatchDownloadAddedFlag(false);
             return false;
         }
-        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask END Resume count num: %{public}d", num);
     }
     return (num > 0);
 }
