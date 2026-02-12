@@ -61,6 +61,7 @@ const std::string HIGHLIGHT_USE_SUBTITLE = "use_subtitle";
 const std::string HIGHLIGHT_LOCATION = "highlight_location";
 const std::string HIGHLIGHT_IS_VIEWED = "is_viewed";
 const std::string HIGHLIGHT_NOTIFICATION_TIME = "notification_time";
+const std::string HIGHLIGHT_FLUSH = "highlight_flush";
 
 const std::string URI_HIGHLIGHT_ALBUM = "datashare:///media/" + HIGHLIGHT_ALBUM_TABLE;
 } // namespace Media
