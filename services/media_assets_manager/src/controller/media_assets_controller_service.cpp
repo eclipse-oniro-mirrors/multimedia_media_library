@@ -1309,7 +1309,7 @@ int32_t MediaAssetsControllerService::GetAssets(
     }
 
     auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto, passCode);
-    MEDIA_INFO_LOG("GetAssets finish");
+    MEDIA_DEBUG_LOG("GetAssets finish");
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);
