@@ -1273,6 +1273,7 @@ int32_t MediaAssetsControllerService::SetCompositeDisplayMode(MessageParcel &dat
 int32_t MediaAssetsControllerService::GetAssets(
     MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context)
 {
+    MEDIA_INFO_LOG("GetAssets enter");
     GetAssetsReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -1308,7 +1309,7 @@ int32_t MediaAssetsControllerService::GetAssets(
     }
 
     auto resultSet = MediaAssetsService::GetInstance().GetAssets(dto, passCode);
-    MEDIA_DEBUG_LOG("GetAssets finish");
+    MEDIA_INFO_LOG("GetAssets finish");
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("resultSet is null");
         return IPC::UserDefineIPC().WriteResponseBody(reply, E_FAIL);
