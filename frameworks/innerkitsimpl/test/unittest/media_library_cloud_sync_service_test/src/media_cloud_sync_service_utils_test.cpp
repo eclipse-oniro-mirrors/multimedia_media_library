@@ -217,9 +217,9 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, CommonPath_Test, TestSize.Level1)
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath(".test"), ".mp4");
     EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoVideoPath("what/can/i/say.avi"), "what/can/i/say.mp4");
 
-    EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoTmpPath(""), ""),
-        result = CloudMediaSyncUtils::GetMovingPhotoTmpPath("/storage/cloud/files/user/test");
-    EXPECT_EQ(result, "/storage/cloud/files/.editData/user/test");
+    EXPECT_EQ(CloudMediaSyncUtils::GetMovingPhotoTmpPath(""), "");
+    result = CloudMediaSyncUtils::GetMovingPhotoTmpPath("/storage/cloud/files/user/test");
+    EXPECT_EQ(result, "/mnt/hmdfs/account/device_view/local/files/.cloud_cache/download_cache/user/test");
 }
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, GenerateCloudIdWithHash_Test, TestSize.Level1)
