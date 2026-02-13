@@ -1273,6 +1273,7 @@ int32_t MediaAssetsControllerService::SetCompositeDisplayMode(MessageParcel &dat
 int32_t MediaAssetsControllerService::GetAssets(
     MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context)
 {
+    MEDIA_INFO_LOG("GetAssets enter");
     GetAssetsReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
