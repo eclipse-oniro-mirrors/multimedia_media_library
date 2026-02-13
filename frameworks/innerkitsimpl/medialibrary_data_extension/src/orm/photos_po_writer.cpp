@@ -767,4 +767,18 @@ std::string PhotosPoWriter::GetStringValByPrecision(const double doubleVal, cons
     stream << doubleVal;
     return stream.str();
 }
+
+void PhotosPoWriter::SetSouthDeviceType(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.southDeviceType = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetSouthDeviceType(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.southDeviceType.has_value(), false);
+    val = std::to_string(this->photosPo_.southDeviceType.value());
+    return true;
+}
 }  // namespace OHOS::Media::ORM
