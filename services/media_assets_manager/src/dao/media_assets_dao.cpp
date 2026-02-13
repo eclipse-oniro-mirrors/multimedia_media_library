@@ -450,6 +450,7 @@ int32_t MediaAssetsDao::HandleSouthDeviceType(const PhotosPo &sourcePhotoInfo, c
     int32_t targetSouthDeviceType = targetPhotoInfo.southDeviceType.value_or(0);
     bool isSourceValid = sourceSouthDeviceType != static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL);
     bool isTargetValid = targetSouthDeviceType == static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL);
+    CHECK_AND_RETURN_RET(isSourceValid && isTargetValid, E_OK);
     values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, sourceSouthDeviceType);
     MEDIA_DEBUG_LOG("HandleSouthDeviceType, sourceSouthDeviceType: %{public}d, targetSouthDeviceType: %{public}d",
                     sourceSouthDeviceType, targetSouthDeviceType);
