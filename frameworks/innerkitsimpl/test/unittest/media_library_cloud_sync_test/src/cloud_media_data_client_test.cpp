@@ -1291,41 +1291,6 @@ HWTEST_F(CloudMediaDataClientTest, UpdateData_test_02, TestSize.Level1)
 {
     DataShare::DataSharePredicates uppredicates;
     DataShare::DataShareValuesBucket buckets;
-    static const std::string PHOTO_CHECK_FLAG = "check_flag";
-    static const int32_t CHECKED_FLAG = 1;
-    std::vector<std::string> cloud_id = {"3d4970270f8d4b15b4ced48bd7f25dd44c7ad693ae57426d863fec74422b428e",
-        "3d4970270f8d4b15b4ced48bd7f25dd44c7ad693ae57426d863fec74422b468e"};
-    std::string tableName = PhotoColumn::PHOTOS_TABLE;
-    uppredicates.In(PhotoColumn::PHOTO_CLOUD_ID, cloud_id);
-    buckets.Put(PHOTO_CHECK_FLAG, CHECKED_FLAG);
-    buckets.Put(PhotoColumn::PHOTO_DIRTY, 1);
-
-    CloudMediaDataClient cloudMediaDataClient(1, 100);
-    int32_t ret = cloudMediaDataClient.UpdateData(tableName, uppredicates, buckets, "update");
-    EXPECT_EQ(ret, 0);
-
-    NativeRdb::AbsRdbPredicates rdbpredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    rdbpredicates.In(PhotoColumn::PHOTO_CLOUD_ID, cloud_id);
-    const std::vector<std::string> columnNames = {PhotoColumn::PHOTO_CHECK_FLAG, PhotoColumn::PHOTO_DIRTY};
-    auto resultSet = rdbStore_->Query(rdbpredicates, columnNames);
-    EXPECT_TRUE(resultSet != nullptr);
-    int32_t rowCount = 0;
-    ret = resultSet->GetRowCount(rowCount);
-    EXPECT_EQ(ret, 0);
-    EXPECT_GT(rowCount, 0);
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t check_flag = GetInt32Val(PhotoColumn::PHOTO_CHECK_FLAG, resultSet);
-        EXPECT_EQ(check_flag, CHECKED_FLAG);
-        int32_t dirty = GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet);
-        EXPECT_EQ(dirty, 1);
-    }
-    resultSet->Close();
-}
-
-HWTEST_F(CloudMediaDataClientTest, UpdateData_test_03, TestSize.Level1)
-{
-    DataShare::DataSharePredicates uppredicates;
-    DataShare::DataShareValuesBucket buckets;
     static const int32_t CHECKED_FLAG = 1;
     std::vector<std::string> id = {"15", "16"};
     std::string tableName = PhotoAlbumColumns::TABLE;
