@@ -53,4 +53,45 @@ HWTEST_F(CloudFileDataConvertTest, GetFileSize_Report, TestSize.Level0)
 
     EXPECT_EQ(convertor.GetFileSize(path, thumbSuffix, fileSize), ERR);
 }
+
+HWTEST_F(CloudFileDataConvertTest, HandleRotation_01, TestSize.Level1)
+{
+    CloudFileDataConvert convertor(CloudOperationType::FILE_CREATE, 0);
+    MDKRecordPhotosData data;
+    int32_t rotation = 0;
+    data.SetRotate(ORIENTATION_NORMAL);
+    convertor.HandleRotation(rotation, data);
+    EXPECT_EQ(rotation, ROTATE_ANGLE_0);
+}
+
+HWTEST_F(CloudFileDataConvertTest, HandleRotation_02, TestSize.Level1)
+{
+    CloudFileDataConvert convertor(CloudOperationType::FILE_CREATE, 0);
+    MDKRecordPhotosData data;
+    int32_t rotation = 0;
+    data.SetRotate(ORIENTATION_ROTATE_90);
+    convertor.HandleRotation(rotation, data);
+    EXPECT_EQ(rotation, ROTATE_ANGLE_90);
+}
+
+HWTEST_F(CloudFileDataConvertTest, HandlePropertyExifRotate_01, TestSize.Level1)
+{
+    CloudFileDataConvert convertor(CloudOperationType::FILE_CREATE, 0);
+    MDKRecordPhotosData data;
+    OnFetchPhotosVo onFetchPhotosVo;
+    onFetchPhotosVo.exifRotate = 0;
+    data.SetPropertyExifRotate(1);
+    convertor.HandlePropertyExifRotate(data, onFetchPhotosVo);
+    EXPECT_EQ(onFetchPhotosVo.exifRotate, 1);
+}
+
+HWTEST_F(CloudFileDataConvertTest, HandlePropertyExifRotate_02, TestSize.Level1)
+{
+    CloudFileDataConvert convertor(CloudOperationType::FILE_CREATE, 0);
+    MDKRecordPhotosData data;
+    OnFetchPhotosVo onFetchPhotosVo;
+    onFetchPhotosVo.exifRotate = 0;
+    convertor.HandlePropertyExifRotate(data, onFetchPhotosVo);
+    EXPECT_EQ(onFetchPhotosVo.exifRotate, 0);
+}
 }  // namespace OHOS::Media::CloudSync
