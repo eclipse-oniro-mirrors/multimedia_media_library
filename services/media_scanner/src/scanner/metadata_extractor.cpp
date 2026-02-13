@@ -761,7 +761,7 @@ static int32_t GetTransfertype(const std::string transfertypeStr)
 
 int32_t MetadataExtractor::ExtractAVLogMetadata(std::shared_ptr<Meta> &meta)
 {
-    int32_t videoMode = 0;
+    int32_t videoMode = static_cast<int32_t>(VideoMode::DEFAULT);
     static const int huaweiTransfertype = 2;
     CHECK_AND_RETURN_RET_LOG(meta != nullptr, E_ERR, "meta is nullptr");
     Meta logMeta = *meta;
