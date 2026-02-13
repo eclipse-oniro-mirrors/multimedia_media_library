@@ -5835,6 +5835,27 @@ static void AddDateAddedYearMonthDay(RdbStore &store, int32_t version)
     MEDIA_INFO_LOG("Add date_added year month day columns end");
 }
 
+static void AddPersonScoreAndHighlightFlush(RdbStore &store, int32_t version)
+{
+    const vector<string> sqls = {
+        "ALTER TABLE " + HIGHLIGHT_ALBUM_TABLE + " ADD COLUMN " + HIGHLIGHT_FLUSH + " INT NOT NULL DEFAULT 0 ",
+        "ALTER TABLE " + VISION_PROFILE + " ADD COLUMN " + PERSONALIZATION_SCORE + " INT ",
+        "ALTER TABLE " + VISION_PROFILE + " ADD COLUMN " + PERSONALIZATION_SCORE_VERSION + " TEXT ",
+    };
+    MEDIA_INFO_LOG("Add personalization_score and highlight_flush columns start");
+    ExecSqlsWithDfx(sqls, store, version);
+    MEDIA_INFO_LOG("Add personalization_score and highlight_flush columns end");
+}
+
+static void UpgradeExtensionPart15(RdbStore &store, int32_t oldVersion)
+{
+    if (oldVersion < VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH, true)) {
+        AddPersonScoreAndHighlightFlush(store, VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH, true);
+    }
+}
+
 static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
 {
     if (oldVersion < VERSION_ADD_PHOTO_MOVINGPHOTO_ENHANCEMENT_TYPE &&
@@ -5878,6 +5899,7 @@ static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
         AddDateAddedYearMonthDay(store, VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, true);
     }
+    UpgradeExtensionPart15(store, oldVersion);
 }
 
 static void UpgradeExtensionPart13(RdbStore &store, int32_t oldVersion)
