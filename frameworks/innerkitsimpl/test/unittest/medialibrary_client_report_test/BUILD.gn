@@ -35,6 +35,8 @@ ohos_unittest("media_library_client_report_test") {
   ]
 
   include_dirs += include_media_cloud_sync_data
+  
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/src/cloud_sync_data_convert/cloud_file_data_convert.cpp",
