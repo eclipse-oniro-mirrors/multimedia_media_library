@@ -69,7 +69,8 @@ enum class ShootingModeAlbumType : int32_t {
     MP4_3DGS_ALBUM,
     TIME_LAPSE,
     QUICK_CAPTURE_ALBUM,
-    END = QUICK_CAPTURE_ALBUM
+    CINEMATIC_VIDEO_ALBUM,
+    END = CINEMATIC_VIDEO_ALBUM
 };
 
 /* ShootingMode value in medialibrary */
@@ -107,6 +108,9 @@ public:
 
     template <class T>
     EXPORT static void GetRAWImageAlbumPredicates(T& predicates, const bool hiddenState);
+
+    template <class T>
+    EXPORT static void GetCinematicVideoAlbumPredicates(T& predicates, const bool hiddenState);
 
     template <class T>
     EXPORT static void GetGeneralShootingModeAlbumPredicates(const ShootingModeAlbumType type, T& predicates,
