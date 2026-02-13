@@ -356,8 +356,8 @@ bool MediaAssetsDao::IsSameAssetIgnoreAlbum(const PhotosPo &photoInfo, const Pho
     return isSame && isSameOrientation;
 }
 
-int32_t MediaAssetsDao::UpdatePositionToBoth(	 
-    const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)	 
+int32_t MediaAssetsDao::UpdatePositionToBoth(
+    const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     int32_t position = photoInfo.position.value_or(1);
     bool isValid = position != static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
@@ -384,8 +384,8 @@ int32_t MediaAssetsDao::UpdatePositionToBoth(
     return E_OK;
 }
 
-int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(	 
-    const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)	 
+int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(
+    const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     int32_t position = photoInfo.position.value_or(1);
     bool isValid = position != static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);

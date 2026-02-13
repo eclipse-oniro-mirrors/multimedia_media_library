@@ -311,7 +311,7 @@ int32_t MediaAssetsRecoverService::MediaAndMediaMergeLocalToCloudAsset(const Pho
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "MergeAssetFile fail, ret: %{public}d", ret);
     ret = this->RemoveAssetAndFile(sourcePhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveAssetAndFile fail, ret: %{public}d", ret);
-    ret = this->mediaAssetsDao_.UpdatePositionToBoth(sourcePhotoInfo, targetPhotoInfo, photoRefresh);
+    ret = this->mediaAssetsDao_.UpdatePositionToBoth(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePositionToBoth fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG(
         "MediaAndMediaMergeLocalToCloudAsset completed, "
@@ -355,8 +355,7 @@ int32_t MediaAssetsRecoverService::MediaAndLakeMergeLocalToCloudAsset(const Phot
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "MergeAssetFile fail, ret: %{public}d", ret);
     ret = this->RemoveAssetAndFile(sourcePhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveAssetAndFile fail, ret: %{public}d", ret);
-    ret = this->mediaAssetsDao_.UpdatePositionToBothAndFileSourceTypeToLake(
-                                                        sourcePhotoInfo, targetPhotoInfo, photoRefresh);
+    ret = this->mediaAssetsDao_.UpdatePositionToBothAndFileSourceTypeToLake(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(
         ret == E_OK, ret, "UpdatePositionToBothAndFileSourceTypeToLake fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG(
@@ -382,7 +381,7 @@ int32_t MediaAssetsRecoverService::MediaAndLakeMergeLocalToHiddenCloudAsset(cons
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "MergeAssetFile fail, ret: %{public}d", ret);
     ret = this->RemoveAssetAndFile(sourcePhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveAssetAndFile fail, ret: %{public}d", ret);
-    ret = this->mediaAssetsDao_.UpdatePositionToBoth(sourcePhotoInfo, targetPhotoInfo, photoRefresh);
+    ret = this->mediaAssetsDao_.UpdatePositionToBoth(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePositionToBoth fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG(
         "MediaAndLakeMergeLocalToHiddenCloudAsset completed, "
