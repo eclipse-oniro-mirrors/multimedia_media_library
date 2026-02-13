@@ -107,6 +107,7 @@ private:
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo, const std::optional<PhotosPo> &targetPhotoInfoOp);
     int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo);
+    int32_t ResetSouthDeviceType(PhotosPo &photoInfo);
 
 private:
     MediaAssetsDao mediaAssetsDao_;

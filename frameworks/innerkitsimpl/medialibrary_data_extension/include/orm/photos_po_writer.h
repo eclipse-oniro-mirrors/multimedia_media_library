@@ -122,6 +122,8 @@ private:
         {PhotoColumn::PHOTO_CLOUD_VERSION, {&PhotosPoWriter::GetCloudVersion, &PhotosPoWriter::SetCloudVersion}},
         {PhotoColumn::PHOTO_LCD_SIZE, {&PhotosPoWriter::GetLcdSize, &PhotosPoWriter::SetLcdSize}},
         {PhotoColumn::PHOTO_THUMB_SIZE, {&PhotosPoWriter::GetThumbSize, &PhotosPoWriter::SetThumbSize}},
+        {PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE,
+            {&PhotosPoWriter::GetSouthDeviceType, &PhotosPoWriter::SetSouthDeviceType}},
     };
     const std::map<std::string, GetSetNode> EXTRA_HANDLERS = {
         {"album_cloud_id", {&PhotosPoWriter::GetAlbumCloudId, &PhotosPoWriter::SetAlbumCloudId}},
@@ -245,6 +247,8 @@ private:
     void SetThumbSize(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetThumbSize(std::string &val);
     std::string GetStringValByPrecision(const double doubleVal, const int32_t precision);
+    void SetSouthDeviceType(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetSouthDeviceType(std::string &val);
 };
 }  // namespace OHOS::Media::ORM
 #endif  // OHOS_MEDIA_ORM_PHOTOS_PO_WRITER_H
