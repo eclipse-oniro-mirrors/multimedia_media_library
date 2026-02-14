@@ -5848,6 +5848,17 @@ static void AddPersonScoreAndHighlightFlush(RdbStore &store, int32_t version)
     MEDIA_INFO_LOG("Add personalization_score and highlight_flush columns end");
 }
 
+static void AddCinematicVideoAlbum(RdbStore &store, int32_t version)
+{
+    MEDIA_INFO_LOG("Start add cinematic video album");
+    int32_t err = MediaLibraryRdbStore::PrepareShootingModeAlbum(store);
+    if (err != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Prepare cinematic video album failed, ret: %{public}d", err);
+        RdbUpgradeUtils::AddUpgradeDfxMessages(version, 0, err);
+    }
+    MEDIA_INFO_LOG("End add cinematic video album");
+}
+
 static void UpgradeExtensionPart15(RdbStore &store, int32_t oldVersion)
 {
     if (oldVersion < VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH &&
@@ -5861,17 +5872,6 @@ static void UpgradeExtensionPart15(RdbStore &store, int32_t oldVersion)
         AddCinematicVideoAlbum(store, VERSION_ADD_CINEMATIC_VIDEO_ALBUM);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, true);
     }
-}
-
-static void AddCinematicVideoAlbum(RdbStore &store, int32_t version)
-{
-    MEDIA_INFO_LOG("Start add cinematic video album");
-    int32_t err = MediaLibraryRdbStore::PrepareShootingModeAlbum(store);
-    if (err != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Prepare cinematic video album failed, ret: %{public}d", err);
-        RdbUpgradeUtils::AddUpgradeDfxMessages(version, 0, err);
-    }
-    MEDIA_INFO_LOG("End add cinematic video album");
 }
 
 static void UpgradeExtensionPart14(RdbStore &store, int32_t oldVersion)
