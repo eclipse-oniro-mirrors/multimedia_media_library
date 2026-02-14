@@ -116,6 +116,7 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::PHOTO_VIDEO_MODE, DataType::INT},
     {PhotoColumn::PHOTO_FILE_SOURCE_TYPE, DataType::INT},
     {PhotoColumn::PHOTO_STORAGE_PATH, DataType::STRING},
+    {PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, DataType::INT},
 };
 
 static const std::map<std::string, DataType> PHOTO_ALBUM_COLUMNS = {
