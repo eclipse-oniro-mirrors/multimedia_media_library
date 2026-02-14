@@ -84,7 +84,8 @@ void PhotosPo::GetAttributesInfo(std::stringstream &ss) const
        << "\"movingPhotoEffectMode\": " << movingPhotoEffectMode.value_or(0) << ", "
        << "\"supportedWatermarkType\": " << supportedWatermarkType.value_or(0) << ", "
        << "\"isStylePhoto\": " << isStylePhoto.value_or(0) << ", "
-       << "\"strongAssociation\": " << strongAssociation.value_or(0) << ", ";
+       << "\"strongAssociation\": " << strongAssociation.value_or(0) << ", "
+       << "\"southDeviceType\": " << southDeviceType.value_or(0) << ", ";
 }
 
 void PhotosPo::GetCloudInfo(std::stringstream &ss) const

@@ -269,6 +269,7 @@ int32_t MediaAssetsDao::MergeCloudInfoIntoTargetPhoto(const PhotosPo &sourcePhot
     uint32_t position = static_cast<uint32_t>(sourcePhotoInfo.position.value_or(0)) |
                         static_cast<uint32_t>(targetPhotoInfo.position.value_or(0));
     values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(position));
+    this->HandleSouthDeviceType(sourcePhotoInfo, targetPhotoInfo, values);
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
     MEDIA_INFO_LOG("MergeCloudInfoIntoTargetPhoto Completed, "
@@ -408,7 +409,7 @@ int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(
         photoInfo.cloudId.value_or("").c_str());
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to UpdatePositionToBothAndFileSourceTypeToLake.");
     CHECK_AND_RETURN_RET_WARN_LOG(
-        changedRows > 0, ret, "UpdatePositionToBothAndFileSourceTypeToLake Check updateRows: %{public}d.", changedRows);
+        changedRows > 0, ret, "UpdatePositionToBothAndFileSourceTypeToLake updateRows: %{public}d.", changedRows);
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, ret, "watch is nullptr");
     watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(photoInfo.fileId.value_or(0)), NotifyType::NOTIFY_UPDATE);
@@ -440,5 +441,19 @@ int32_t MediaAssetsDao::DeletePhotoExtTable(const std::string &fileId)
     MEDIA_INFO_LOG("DeletePhotoExtTable completed, ret: %{public}d, photoId: %{public}s, deletedRows: %{public}d",
         ret, fileId.c_str(), deletedRows);
     return ret;
+}
+
+int32_t MediaAssetsDao::HandleSouthDeviceType(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
+                                              NativeRdb::ValuesBucket &values)
+{
+    int32_t sourceSouthDeviceType = sourcePhotoInfo.southDeviceType.value_or(0);
+    int32_t targetSouthDeviceType = targetPhotoInfo.southDeviceType.value_or(0);
+    bool isSourceValid = sourceSouthDeviceType != static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL);
+    bool isTargetValid = targetSouthDeviceType == static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL);
+    CHECK_AND_RETURN_RET(isSourceValid && isTargetValid, E_OK);
+    values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, sourceSouthDeviceType);
+    MEDIA_DEBUG_LOG("HandleSouthDeviceType, sourceSouthDeviceType: %{public}d, targetSouthDeviceType: %{public}d",
+                    sourceSouthDeviceType, targetSouthDeviceType);
+    return E_OK;
 }
 }  // namespace OHOS::Media::Common
