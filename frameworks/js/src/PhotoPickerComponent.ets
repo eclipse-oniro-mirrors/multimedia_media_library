@@ -368,7 +368,13 @@ export struct PhotoPickerComponent {
             console.info('PhotoPickerComponent onError: ' + JSON.stringify(error));
             console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex); 
              if (error.code === 100014) { 
-               this.pickerIsKilled = true; 
+                console.log('PhotoPickerComponent is set isPickerKilled = true');
+                this.isPickerKilled = true; 
+                let e = new PickerError();
+                e.functionName = error?.name || 'extension_exit_abnormally';
+                e.errorCode = error.code;
+                e.errorMessage = error?.message || 'the extension ability exited abnormally, please check AMS log.';
+                this.handleOnError(e);
              }
           });
       }
