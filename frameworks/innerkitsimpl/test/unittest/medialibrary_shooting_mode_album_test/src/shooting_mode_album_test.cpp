@@ -18,6 +18,7 @@
 
 #include "shooting_mode_album_test.h"
 
+#include <sstream>
 #include <thread>
 #include "datashare_predicates.h"
 #include "fetch_result.h"
@@ -48,6 +49,25 @@ using namespace OHOS::DataShare;
 using OHOS::DataShare::DataShareValuesBucket;
 using OHOS::DataShare::DataSharePredicates;
 
+struct TestAlbumInfo {
+    int32_t albumId {0};
+    int32_t count {0};
+    string coverUri;
+    string ToString() const
+    {
+        stringstream infoStr;
+        infoStr << "albumId: " << albumId << ", count: " << count << ", coverUri: " << coverUri;
+        return infoStr.str();
+    }
+};
+
+struct TestFileInfo {
+    int64_t fileId {0};
+    int64_t dateTaken {0};
+    string displayName;
+    string data;
+};
+
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 const std::string URI_CREATE_PHOTO_ALBUM = MEDIALIBRARY_DATA_URI + "/" + CONST_PHOTO_ALBUM_OPRN + "/" + OPRN_CREATE;
 const std::string URI_UPDATE_PHOTO_ALBUM = MEDIALIBRARY_DATA_URI + "/" + CONST_PHOTO_ALBUM_OPRN + "/" + OPRN_UPDATE;
@@ -66,6 +86,7 @@ const string HIGH_PIXEL_ALBUM = to_string(static_cast<int32_t>(ShootingModeAlbum
 const string SUPER_MACRO_ALBUM = to_string(static_cast<int32_t>(ShootingModeAlbumType::SUPER_MACRO));
 const string TIME_LAPSE_ALBUM = to_string(static_cast<int32_t>(ShootingModeAlbumType::TIME_LAPSE));
 const string QUICK_CAPTURE_ALBUM = to_string(static_cast<int32_t>(ShootingModeAlbumType::QUICK_CAPTURE_ALBUM));
+const string CINEMATIC_VIDEO_ALBUM = to_string(static_cast<int32_t>(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM));
 
 int32_t ClearTable(const string &table)
 {
@@ -134,63 +155,6 @@ void DoCheckShootingAlbumData(const string &name)
     CheckColumn(resultSet, PhotoAlbumColumns::ALBUM_COUNT, TYPE_INT32, 0);
 }
 
-struct ShootingModeValueBucket {
-    int32_t albumType;
-    int32_t albumSubType;
-    std::string albumName;
-};
-
-static int32_t InsertShootingModeAlbumValues(
-    const string& albumName, const shared_ptr<MediaLibraryRdbStore>& store)
-{
-    ValuesBucket valuesBucket;
-    valuesBucket.PutInt(SMARTALBUM_DB_ALBUM_TYPE, SHOOTING_MODE_TYPE);
-    valuesBucket.PutInt(CONST_COMPAT_ALBUM_SUBTYPE, SHOOTING_MODE_SUB_TYPE);
-    valuesBucket.PutString(CONST_MEDIA_DATA_DB_ALBUM_NAME, albumName);
-    valuesBucket.PutInt(CONST_MEDIA_DATA_DB_IS_LOCAL, 1); // local album is 1.
-    int64_t outRowId = -1;
-    int32_t insertResult = store->Insert(outRowId, ANALYSIS_ALBUM_TABLE, valuesBucket);
-    return insertResult;
-}
-
-static int32_t QueryExistingShootingModeAlbumNames(const shared_ptr<MediaLibraryRdbStore>& store,
-    vector<string>& existingAlbumNames)
-{
-    string queryRowSql = "SELECT " + PhotoAlbumColumns::ALBUM_NAME + " FROM " + ANALYSIS_ALBUM_TABLE +
-        " WHERE " + PhotoAlbumColumns::ALBUM_SUBTYPE + " = " + to_string(PhotoAlbumSubType::SHOOTING_MODE);
-    auto resultSet = store->QuerySql(queryRowSql);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_FAIL,
-        "Can not get shootingMode album names, resultSet is nullptr");
-    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        string albumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
-        if (!albumName.empty()) {
-            existingAlbumNames.push_back(albumName);
-        }
-    }
-    return E_SUCCESS;
-}
-
-static int32_t PrepareShootingModeAlbum()
-{
-    vector<string> existingAlbumNames;
-    if (QueryExistingShootingModeAlbumNames(g_rdbStore, existingAlbumNames) != E_SUCCESS) {
-        MEDIA_ERR_LOG("Query existing shootingMode album names failed");
-        return NativeRdb::E_ERROR;
-    }
-    for (int i = static_cast<int>(ShootingModeAlbumType::START);
-        i <= static_cast<int>(ShootingModeAlbumType::END); ++i) {
-        string albumName = to_string(i);
-        if (find(existingAlbumNames.begin(), existingAlbumNames.end(), albumName) != existingAlbumNames.end()) {
-            continue;
-        }
-        if (InsertShootingModeAlbumValues(albumName, g_rdbStore) != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Prepare shootingMode album failed");
-            return NativeRdb::E_ERROR;
-        }
-    }
-    return NativeRdb::E_OK;
-}
-
 inline int32_t DeletePhotoAlbum(DataSharePredicates &predicates)
 {
     Uri uri(URI_CREATE_PHOTO_ALBUM);
@@ -204,12 +168,14 @@ void ShootingModeAlbumTest::SetUpTestCase()
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ClearAnalysisAlbums();
     ClearTable(ANALYSIS_PHOTO_MAP_TABLE);
+    ClearTable(PhotoColumn::PHOTOS_TABLE);
 }
 
 void ShootingModeAlbumTest::TearDownTestCase()
 {
     ClearAnalysisAlbums();
     ClearTable(ANALYSIS_PHOTO_MAP_TABLE);
+    ClearTable(PhotoColumn::PHOTOS_TABLE);
     std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
 }
 
@@ -227,7 +193,8 @@ void ShootingModeAlbumTest::TearDown() {}
 HWTEST_F(ShootingModeAlbumTest, photoalbum_create_ShootingMode_album_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("photoalbum_create_album_001 enter");
-    auto ret = PrepareShootingModeAlbum();
+    ASSERT_NE(g_rdbStore, nullptr);
+    auto ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
     EXPECT_EQ(ret, E_OK);
     DoCheckShootingAlbumData(PORTRAIT_ALBUM);
     DoCheckShootingAlbumData(WIDE_APERTURE_ALBUM);
@@ -240,7 +207,48 @@ HWTEST_F(ShootingModeAlbumTest, photoalbum_create_ShootingMode_album_001, TestSi
     DoCheckShootingAlbumData(SUPER_MACRO_ALBUM);
     DoCheckShootingAlbumData(TIME_LAPSE_ALBUM);
     DoCheckShootingAlbumData(QUICK_CAPTURE_ALBUM);
+    DoCheckShootingAlbumData(CINEMATIC_VIDEO_ALBUM);
     MEDIA_INFO_LOG("photoalbum_create_album_001 exit");
+}
+
+void GetShootingModeAlbumInfo(const string &albumName, TestAlbumInfo &albumInfo, int32_t &rowCount)
+{
+    RdbPredicates predicates(ANALYSIS_ALBUM_TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_NAME, albumName);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SHOOTING_MODE);
+    const vector<string> columns = { PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_COUNT,
+        PhotoAlbumColumns::ALBUM_COVER_URI };
+    shared_ptr<OHOS::NativeRdb::ResultSet> resultSet = g_rdbStore->Query(predicates, columns);
+    EXPECT_NE(resultSet, nullptr);
+    resultSet->GetRowCount(rowCount);
+    if (resultSet->GoToFirstRow() == E_OK) {
+        albumInfo.albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        albumInfo.count = GetInt32Val(PhotoAlbumColumns::ALBUM_COUNT, resultSet);
+        albumInfo.coverUri = GetStringVal(PhotoAlbumColumns::ALBUM_COVER_URI, resultSet);
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("Query albumInfo of %{public}s: %{public}s", albumName.c_str(), albumInfo.ToString().c_str());
+}
+
+HWTEST_F(ShootingModeAlbumTest, photoalbum_create_ShootingMode_album_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("photoalbum_create_ShootingMode_album_002 enter");
+    ASSERT_NE(g_rdbStore, nullptr);
+    auto ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    EXPECT_EQ(ret, E_OK);
+    TestAlbumInfo albumInfoBefore;
+    int32_t rowCountBefore = -1;
+    GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfoBefore, rowCountBefore);
+    EXPECT_GT(albumInfoBefore.albumId, 0);
+    EXPECT_GT(rowCountBefore, 0);
+    ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    EXPECT_EQ(ret, E_OK);
+    TestAlbumInfo albumInfoAfter;
+    int32_t rowCountAfter = -1;
+    GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfoAfter, rowCountAfter);
+    EXPECT_EQ(albumInfoBefore.albumId, albumInfoAfter.albumId);
+    EXPECT_EQ(rowCountBefore, rowCountAfter); // no duplicate insertation
+    MEDIA_INFO_LOG("photoalbum_create_ShootingMode_album_002 exit");
 }
 
 /**
@@ -272,6 +280,15 @@ HWTEST_F(ShootingModeAlbumTest, query_shooting_mode_album_index_001, TestSize.Le
     string index = ShootingModeAlbum::GetQueryAssetsIndex(type);
     EXPECT_EQ(index, PhotoColumn::PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX);
     MEDIA_INFO_LOG("query_shooting_mode_album_index_001 end");
+}
+
+HWTEST_F(ShootingModeAlbumTest, query_shooting_mode_album_index_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("query_shooting_mode_album_index_002 enter");
+    ShootingModeAlbumType type = ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM;
+    string index = ShootingModeAlbum::GetQueryAssetsIndex(type);
+    EXPECT_EQ(index, PhotoColumn::PHOTO_BURST_MODE_ALBUM_INDEX);
+    MEDIA_INFO_LOG("query_shooting_mode_album_index_002 end");
 }
 
 HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumPredicates_Test_001, TestSize.Level1)
@@ -371,6 +388,69 @@ HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumPredicates_Test_002, TestSiz
     EXPECT_GT(args.size(), 0);
 }
 
+bool IsPrediatesContainColumn(const DataShare::DataSharePredicates &predicates, DataShare::OperationType type,
+    const string &column)
+{
+    const size_t SINGLE_PARAM_MIN_SIZE = 1;
+    const vector<OperationItem> &operationList = predicates.GetOperationList();
+    for (const auto &operationItem : operationList) {
+        if (operationItem.operation != type) {
+            continue;
+        }
+        if (operationItem.singleParams.size() < SINGLE_PARAM_MIN_SIZE) {
+            continue;
+        }
+        string field = static_cast<string>(operationItem.GetSingle(0));
+        if (field == column) {
+            return true;
+        }
+    }
+    return false;
+}
+
+HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumPredicates_Test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetShootingModeAlbumPredicates_Test_003 enter");
+    DataShare::DataSharePredicates predicates;
+    ShootingModeAlbum::GetShootingModeAlbumPredicates(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM, predicates, false);
+    MEDIA_INFO_LOG("Get whereClause: %{public}s", predicates.GetWhereClause().c_str());
+    EXPECT_TRUE(IsPrediatesContainColumn(predicates, DataShare::OperationType::EQUAL_TO, PhotoColumn::PHOTO_SUBTYPE));
+    MEDIA_INFO_LOG("GetShootingModeAlbumPredicates_Test_003 exit");
+}
+
+string GetColumnValueOfPredicates(const NativeRdb::RdbPredicates &predicates, const string &column)
+{
+    const string &whereClause = predicates.GetWhereClause();
+    const vector<string> &whereArgs = predicates.GetWhereArgs();
+    size_t pos = whereClause.find(column);
+    if (pos == string::npos) {
+        MEDIA_ERR_LOG("whereClause is invalid");
+        return "";
+    }
+    size_t argsIndex = 0;
+    for (size_t index = 0; index < pos; index++) {
+        if (whereClause[index] == '?') {
+            argsIndex++;
+        }
+    }
+    if (argsIndex >= whereArgs.size()) {
+        MEDIA_ERR_LOG("whereArgs is invalid");
+        return "";
+    }
+    return whereArgs[argsIndex];
+}
+
+HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumPredicates_Test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetShootingModeAlbumPredicates_Test_004 enter");
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    ShootingModeAlbum::GetShootingModeAlbumPredicates(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM, predicates, true);
+    MEDIA_INFO_LOG("Get whereClause: %{public}s", predicates.GetWhereClause().c_str());
+    string hiddenValue = GetColumnValueOfPredicates(predicates, MediaColumn::MEDIA_HIDDEN);
+    EXPECT_EQ(hiddenValue, "1");
+    MEDIA_INFO_LOG("GetShootingModeAlbumPredicates_Test_004 exit");
+}
+
 HWTEST_F(ShootingModeAlbumTest, AlbumNameToShootingModeAlbumType_Test_001, TestSize.Level1)
 {
     ShootingModeAlbumType result;
@@ -382,7 +462,7 @@ HWTEST_F(ShootingModeAlbumTest, AlbumNameToShootingModeAlbumType_Test_001, TestS
     EXPECT_FALSE(ret);
 }
 
-HWTEST_F(ShootingModeAlbumTest, AlbumNameToShootingModeAlbumType_Test_002, TestSize.Level1)
+HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumOfAsset_Test_001, TestSize.Level1)
 {
     vector<ShootingModeAlbumType> result = ShootingModeAlbum::GetShootingModeAlbumOfAsset(
         static_cast<int>(PhotoSubType::BURST), "image/x-adobe-dng", 0, "1", "1");
@@ -395,6 +475,16 @@ HWTEST_F(ShootingModeAlbumTest, AlbumNameToShootingModeAlbumType_Test_002, TestS
     result = ShootingModeAlbum::GetShootingModeAlbumOfAsset(
         static_cast<int>(PhotoSubType::SPATIAL_3DGS), "image/x-adobe-dng", 0, "1", "1");
     EXPECT_EQ(result.size(), 4);
+}
+
+HWTEST_F(ShootingModeAlbumTest, GetShootingModeAlbumOfAsset_Test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetShootingModeAlbumOfAsset_Test_002 enter");
+    vector<ShootingModeAlbumType> result = ShootingModeAlbum::GetShootingModeAlbumOfAsset(
+        static_cast<int>(PhotoSubType::CINEMATIC_VIDEO), "video/avi", 0, "", "");
+    EXPECT_EQ(result.size(), 1); // only CINEMATIC_VIDEO
+    EXPECT_NE(find(result.begin(), result.end(), ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM), result.end());
+    MEDIA_INFO_LOG("GetShootingModeAlbumOfAsset_Test_002 exit");
 }
 
 HWTEST_F(ShootingModeAlbumTest, MapShootingModeTagToShootingMode_Test_001, TestSize.Level1)
@@ -419,5 +509,41 @@ HWTEST_F(ShootingModeAlbumTest, LookUpShootingMode_Test_001, TestSize.Level1)
     albumType = "1";
     EXPECT_EQ(ShootingModeAlbum::LookUpShootingModeValues(albumType),
         std::to_string(static_cast<int32_t>(ShootingModeValue::PORTRAIT_SHOOTING_MODE)));
+}
+
+int32_t InsertPhotoBySubtype(PhotoSubType subtype, TestFileInfo &fileInfo)
+{
+    static int32_t uniqueId = 1;
+    NativeRdb::ValuesBucket values;
+    fileInfo.data = "/storage/cloud/files/Photo/1/IMG_" + to_string(uniqueId++) + ".jpg";
+    values.Put(MediaColumn::MEDIA_FILE_PATH, fileInfo.data);
+    values.Put(MediaColumn::MEDIA_DATE_TAKEN, fileInfo.dateTaken);
+    values.Put(MediaColumn::MEDIA_NAME, fileInfo.displayName);
+    values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(subtype));
+    return g_rdbStore->Insert(fileInfo.fileId, PhotoColumn::PHOTOS_TABLE, values);
+}
+
+HWTEST_F(ShootingModeAlbumTest, UpdateAnalysisAlbumInternal_Test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("UpdateAnalysisAlbumInternal_Test_001 enter");
+    ASSERT_NE(g_rdbStore, nullptr);
+    int32_t ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    ASSERT_EQ(ret, E_OK);
+    TestFileInfo fileInfoWithLargeDateTaken = { .dateTaken = 1744362716123, .displayName = "large_datetaken.jpg" };
+    TestFileInfo fileInfoWithSmallDateTaken = { .dateTaken = 1744362716000, .displayName = "small_datetaken.jpg" };
+    ret = InsertPhotoBySubtype(PhotoSubType::CINEMATIC_VIDEO, fileInfoWithLargeDateTaken);
+    ASSERT_EQ(ret, E_OK);
+    ret = InsertPhotoBySubtype(PhotoSubType::CINEMATIC_VIDEO, fileInfoWithSmallDateTaken);
+    ASSERT_EQ(ret, E_OK);
+
+    TestAlbumInfo albumInfo;
+    int32_t rowCount = -1;
+    int32_t expectedCount = 2;
+    GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfo, rowCount);
+    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(g_rdbStore, { to_string(albumInfo.albumId) });
+
+    GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfo, rowCount);
+    EXPECT_TRUE(albumInfo.coverUri.find(fileInfoWithLargeDateTaken.displayName) != string::npos);
+    EXPECT_EQ(albumInfo.count, expectedCount);
 }
 } // namespace OHOS::Media

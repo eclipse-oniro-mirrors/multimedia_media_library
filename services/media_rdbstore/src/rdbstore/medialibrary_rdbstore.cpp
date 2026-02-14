@@ -1552,7 +1552,7 @@ static int32_t QueryExistingShootingModeAlbumNames(RdbStore& store, vector<strin
     return E_SUCCESS;
 }
 
-static int32_t PrepareShootingModeAlbum(RdbStore &store)
+int32_t MediaLibraryRdbStore::PrepareShootingModeAlbum(RdbStore &store)
 {
     vector<string> existingAlbumNames;
     if (QueryExistingShootingModeAlbumNames(store, existingAlbumNames) != E_SUCCESS) {
@@ -1565,9 +1565,10 @@ static int32_t PrepareShootingModeAlbum(RdbStore &store)
         if (find(existingAlbumNames.begin(), existingAlbumNames.end(), albumName) != existingAlbumNames.end()) {
             continue;
         }
-        if (InsertShootingModeAlbumValues(albumName, store) != NativeRdb::E_OK) {
+        int32_t insertResult = InsertShootingModeAlbumValues(albumName, store);
+        if (insertResult != NativeRdb::E_OK) {
             MEDIA_ERR_LOG("Prepare shootingMode album failed");
-            return NativeRdb::E_ERROR;
+            return insertResult;
         }
     }
     return NativeRdb::E_OK;
@@ -2064,7 +2065,7 @@ int32_t MediaLibraryDataCallBack::OnCreate(RdbStore &store)
         return NativeRdb::E_ERROR;
     }
 
-    PrepareShootingModeAlbum(store);
+    MediaLibraryRdbStore::PrepareShootingModeAlbum(store);
 
     MediaLibraryRdbStore::SetOldVersion(MEDIA_RDB_VERSION);
     RdbUpgradeUtils::AddMapValueToPreference();
@@ -5847,12 +5848,29 @@ static void AddPersonScoreAndHighlightFlush(RdbStore &store, int32_t version)
     MEDIA_INFO_LOG("Add personalization_score and highlight_flush columns end");
 }
 
+static void AddCinematicVideoAlbum(RdbStore &store, int32_t version)
+{
+    MEDIA_INFO_LOG("Start add cinematic video album");
+    int32_t err = MediaLibraryRdbStore::PrepareShootingModeAlbum(store);
+    if (err != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Prepare cinematic video album failed, ret: %{public}d", err);
+        RdbUpgradeUtils::AddUpgradeDfxMessages(version, 0, err);
+    }
+    MEDIA_INFO_LOG("End add cinematic video album");
+}
+
 static void UpgradeExtensionPart15(RdbStore &store, int32_t oldVersion)
 {
     if (oldVersion < VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH &&
         !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH, true)) {
         AddPersonScoreAndHighlightFlush(store, VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH, true);
+    }
+
+    if (oldVersion < VERSION_ADD_CINEMATIC_VIDEO_ALBUM &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, true)) {
+        AddCinematicVideoAlbum(store, VERSION_ADD_CINEMATIC_VIDEO_ALBUM);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, true);
     }
 }
 
@@ -6167,7 +6185,7 @@ static void UpgradeExtensionPart9(RdbStore &store, int32_t oldVersion)
 static void UpgradeExtensionPart8(RdbStore &store, int32_t oldVersion)
 {
     if (oldVersion < VERSION_SHOOTING_MODE_ALBUM_SECOND_INTERATION) {
-        PrepareShootingModeAlbum(store);
+        MediaLibraryRdbStore::PrepareShootingModeAlbum(store);
     }
 
     if (oldVersion < VERSION_FIX_DB_UPGRADE_FROM_API18) {
