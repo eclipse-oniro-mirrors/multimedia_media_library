@@ -274,6 +274,7 @@ void VideoFaceClone::DeleteExistingVideoFaceData(const std::vector<int32_t>& new
 void VideoFaceClone::StartCloneAnalysisVideoTotalTab(const std::vector<int32_t> &oldFileIds,
     const std::vector<int32_t> &newFileIds)
 {
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     BackupDatabaseUtils::ClearAnalysisVideoTotalTable(destRdb_);
     bool isTableExist = false;
     CHECK_AND_RETURN_LOG(BackupDatabaseUtils::isTableExist(sourceRdb_, VISION_VIDEO_TOTAL_TABLE, isTableExist),
@@ -284,6 +285,8 @@ void VideoFaceClone::StartCloneAnalysisVideoTotalTab(const std::vector<int32_t> 
         UpdateAnalysisVideoTotalTblLabelAndFace(oldFileIds, newFileIds);
         UpdateAnalysisVideoTotalTblFaceAndTagId();
     }
+    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("Clone tab_analysis_video_total cost: %{public}lld ms", static_cast<long long>(end - start));
 }
 
 void VideoFaceClone::UpdateAnalysisVideoTotalTblLabelAndFace(const std::vector<int32_t> &oldFileIds,
