@@ -856,4 +856,158 @@ HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_QueryClou
     EXPECT_NE(count, 0);
     MEDIA_INFO_LOG("End BatchDownloadDaoTest_QueryCloudMediaBatchDownloadResourcesCount_01");
 }
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_QueryCloudMediaBatchDownloadResourcesSize_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_QueryCloudMediaBatchDownloadResourcesSize_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    NativeRdb::RdbPredicates rdbPredicates(DownloadResourcesColumn::TABLE);
+    int64_t size;
+    int64_t count;
+    int32_t ret = dao.QueryCloudMediaBatchDownloadResourcesSize(rdbPredicates, size, count);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_NE(count, 0);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_QueryCloudMediaBatchDownloadResourcesSize_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateAllDownloadResourcesNetworkPolicy_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateAllDownloadResourcesNetworkPolicy_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    int32_t ret = dao.UpdateAllDownloadResourcesNetworkPolicy(
+        Media::BatchDownloadNetWorkPolicyType::TYPE_WIFI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateAllDownloadResourcesNetworkPolicy_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateNetworkPolicyDownloadTasks_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateNetworkPolicyDownloadTasks_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    std::vector<std::string> fileIds = {"1", "2", "3"};
+    int32_t ret = dao.UpdateNetworkPolicyDownloadTasks(fileIds,
+        Media::BatchDownloadNetWorkPolicyType::TYPE_WIFI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateNetworkPolicyDownloadTasks_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateStatusFailedToWaiting_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateStatusFailedToWaiting_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    std::vector<std::string> fileIds = {"1", "2", "3"};
+    int32_t ret = dao.UpdateStatusFailedToWaiting(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateStatusFailedToWaiting_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateStatusPauseToWaiting_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateStatusPauseToWaiting_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    std::vector<std::string> fileIds = {"1", "2", "3"};
+    int32_t ret = dao.UpdateStatusPauseToWaiting(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateStatusPauseToWaiting_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateStatusAllFailAndAutoPauseToWaiting_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateStatusAllFailAndAutoPauseToWaiting_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    int32_t ret = dao.UpdateStatusAllFailAndAutoPauseToWaiting();
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateStatusAllFailAndAutoPauseToWaiting_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateStatusFailAndAutoPauseToWaiting_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateStatusFailAndAutoPauseToWaiting_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    std::vector<std::string> fileIds = {"1", "2", "3"};
+    int32_t ret = dao.UpdateStatusFailAndAutoPauseToWaiting(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateStatusFailAndAutoPauseToWaiting_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateStatusPauseToDownloading_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateStatusPauseToDownloading_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    std::vector<std::string> fileIds = {"1", "2", "3"};
+    int32_t ret = dao.UpdateStatusPauseToDownloading(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateStatusPauseToDownloading_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateAllStatusFailedToWaiting_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateAllStatusFailedToWaiting_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    int32_t ret = dao.UpdateAllStatusFailedToWaiting();
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateAllStatusFailedToWaiting_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateAllStatusPauseToWaiting_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateAllStatusPauseToWaiting_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    int32_t ret = dao.UpdateAllStatusPauseToWaiting();
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateAllStatusPauseToWaiting_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateAllStatusPauseToDownloading_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateAllStatusPauseToDownloading_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    int32_t ret = dao.UpdateAllStatusPauseToDownloading();
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateAllStatusPauseToDownloading_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateAutoPauseAllDownloadByNetWorkPolicy_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateAutoPauseAllDownloadByNetWorkPolicy_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    int32_t ret = dao.UpdateAutoPauseAllDownloadByNetWorkPolicy();
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateAutoPauseAllDownloadByNetWorkPolicy_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateAutoPauseForFileIdByNetWorkPolicy_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_UpdateAutoPauseForFileIdByNetWorkPolicy_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    std::vector<std::string> fileIds = {"1", "2", "3"};
+    int32_t ret = dao.UpdateAutoPauseForFileIdByNetWorkPolicy(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateAutoPauseForFileIdByNetWorkPolicy_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_HandleAddExistedDownloadTasksSeq_01,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchDownloadDaoTest_HandleAddExistedDownloadTasksSeq_01");
+    PrepareBatchDownloadDatasWithDiffStatus();
+    std::vector<std::string> fileIds = {"1", "2", "3"};
+    int32_t seq = 100;
+    int32_t ret = dao.HandleAddExistedDownloadTasksSeq(fileIds, seq);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchDownloadDaoTest_HandleAddExistedDownloadTasksSeq_01");
+}
 }

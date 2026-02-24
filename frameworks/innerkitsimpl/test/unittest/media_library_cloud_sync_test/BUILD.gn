@@ -72,6 +72,7 @@ ohos_unittest("media_library_cloud_sync_test") {
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/cloud_media_album_handler_empty_request_test.cpp",
     "./src/cloud_media_album_handler_onfetchrecords_test.cpp",
+    "./src/cloud_media_client_utils_test.cpp",
     "./src/cloud_media_data_client_empty_request_test.cpp",
     "./src/cloud_media_data_client_test.cpp",
     "./src/cloud_media_photo_album_handler_test.cpp",
