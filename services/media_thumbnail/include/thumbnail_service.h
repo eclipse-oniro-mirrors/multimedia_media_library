@@ -88,7 +88,6 @@ public:
     EXPORT int32_t RepairExifRotateBackground();
     EXPORT int32_t FixThumbnailExifRotateAfterDownloadAsset(const std::string &fileId,
         bool needDeleteFromVisionTables = true);
-    EXPORT int32_t DfxReportThumbnailDirAcl();
 private:
     EXPORT ThumbnailService();
     bool CheckSizeValid();

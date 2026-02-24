@@ -481,10 +481,11 @@ std::string GetTagStr(const ACL_TAG tag)
     return tagStr;
 }
 
-std::string Acl::ParseEntriesToString()
+std::string Acl::ParseAclEntriesToString(const AclXattrHeader &head, const std::vector<AclXattrEntry> &aclEntries)
 {
     std::string result;
-    for (const auto &e: entries) {
+    result += "XattrHeaderVersion: " + std::to_string(head.version) + ", ";
+    for (const auto &e: aclEntries) {
         std::string tagStr = GetTagStr(e.tag);
         result += "tag: " + tagStr +
             ", perm: " + std::to_string(static_cast<uint16_t>(e.perm)) +
@@ -493,19 +494,31 @@ std::string Acl::ParseEntriesToString()
     return result;
 }
 
-std::string Acl::ParseAclToString(const std::string &path, const char* aclAttrName)
+std::string Acl::ParseAclValueToString(const std::vector<uint8_t> &aclValue)
 {
-    ssize_t len = getxattr(path.c_str(), aclAttrName, nullptr, 0);
-    CHECK_AND_RETURN_RET_WARN_LOG(len > 0, "", "Get xattr failed");
+    AclXattrHeader head;
+    std::vector<AclXattrEntry> aclEntries;
+    CHECK_AND_RETURN_RET_LOG(ParseAclToVectorEntry(aclValue, head, aclEntries), "", "ParseAclToVectorEntry failed");
+    return ParseAclEntriesToString(head, aclEntries);
+}
 
-    std::vector<char> buf(len);
-    ssize_t res = getxattr(path.c_str(), aclAttrName, buf.data(), len);
-    CHECK_AND_RETURN_RET_LOG(res == len, "", "Get buffer failed");
+bool Acl::ParseAclToVectorEntry(
+    const std::vector<uint8_t> &aclValue, AclXattrHeader &head, std::vector<AclXattrEntry> &aclEntries)
+{
+    const uint8_t *aclHead = aclValue.data();
+    size_t size = aclValue.size();
+    CHECK_AND_RETURN_RET_LOG(size <= BUF_MAX_SIZE && size >= sizeof(AclXattrHeader), false, "Invalid acl");
+    head = *reinterpret_cast<const AclXattrHeader*>(aclHead);
+    size -= sizeof(AclXattrHeader);
+    aclHead += sizeof(AclXattrHeader);
 
-    Acl acl;
-    int32_t err = acl.DeSerialize(buf.data(), len);
-    CHECK_AND_RETURN_RET_LOG(err == E_OK, "", "DeSerialize failed, err:%{public}d", err);
-    return acl.ParseEntriesToString();
+    for (const AclXattrEntry *entry = reinterpret_cast<const AclXattrEntry*>(aclHead);
+        size >= sizeof(AclXattrEntry) && entry->tag != ACL_TAG::UNDEFINED; entry++) {
+        aclEntries.emplace_back(*entry);
+        size -= sizeof(AclXattrEntry);
+    }
+    CHECK_AND_RETURN_RET_LOG(size >= 0, false, "Size is not 0, invalid acl");
+    return true;
 }
 } // MEDIA
 } // OHOS

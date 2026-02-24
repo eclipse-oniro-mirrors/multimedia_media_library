@@ -862,11 +862,6 @@ int32_t ThumbnailService::FixThumbnailExifRotateAfterDownloadAsset(const std::st
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "FixThumbnailExifRotateAfterDownloadAsset failed, err: %{public}d", err);
     return E_OK;
 }
-
-int32_t ThumbnailService::DfxReportThumbnailDirAcl()
-{
-    return ThumbnailGenerateHelper::DfxReportThumbnailDirAcl();
-}
 // LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

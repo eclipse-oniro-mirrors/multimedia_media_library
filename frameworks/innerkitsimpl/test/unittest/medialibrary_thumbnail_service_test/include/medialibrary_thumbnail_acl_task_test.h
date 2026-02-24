@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Huawei Device Co., Ltd.
+ * Copyright (C) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,15 +13,19 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_MEDIA_BACKGROUND_I_MEDIA_BACKGROUND_TASK_H
-#define OHOS_MEDIA_BACKGROUND_I_MEDIA_BACKGROUND_TASK_H
+#ifndef MEDIALIBRARY_THUMBNAIL_ACL_TASK_TEST_H
+#define MEDIALIBRARY_THUMBNAIL_ACL_TASK_TEST_H
 
+#include <gtest/gtest.h>
+ 
 namespace OHOS::Media::Background {
-#define EXPORT __attribute__ ((visibility ("default")))
-class EXPORT IMediaBackGroundTask {
+class MediaLibraryThumbnailAclTaskTest : public testing::Test {
 public:
-    virtual bool Accept() = 0;
-    virtual void Execute() = 0;
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp();
+    void TearDown();
 };
 }  // namespace OHOS::Media::Background
-#endif  // OHOS_MEDIA_BACKGROUND_I_MEDIA_BACKGROUND_TASK_H
+
+#endif // MEDIALIBRARY_THUMBNAIL_ACL_TASK_TEST_H

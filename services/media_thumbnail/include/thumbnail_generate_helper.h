@@ -49,7 +49,6 @@ public:
     EXPORT static int32_t CheckLcdSizeAndUpdateStatus(ThumbRdbOpt &opts);
     EXPORT static int32_t RepairExifRotateBackground(ThumbRdbOpt &opts);
     EXPORT static int32_t FixThumbnailExifRotateAfterDownloadAsset(ThumbRdbOpt &opts, bool needDeleteFromVisionTables);
-    EXPORT static int32_t DfxReportThumbnailDirAcl();
 
 private:
     EXPORT static int32_t GetLcdCount(ThumbRdbOpt &opts, int &outLcdCount);

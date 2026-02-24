@@ -158,12 +158,15 @@ public:
         const uint16_t& permission, uint32_t groupId);
     EXPORT static int32_t EnableAcl(const std::string& path, const char* aclAttrName,
         const uint16_t& permission, uint32_t groupId);
-    EXPORT static std::string ParseAclToString(const std::string &path, const char* aclAttrName);
+    EXPORT static std::string ParseAclEntriesToString(const AclXattrHeader &head,
+        const std::vector<AclXattrEntry> &aclEntries);
+    EXPORT static std::string ParseAclValueToString(const std::vector<uint8_t> &aclValue);
+    EXPORT static bool ParseAclToVectorEntry(const std::vector<uint8_t> &aclValue, AclXattrHeader &head,
+        std::vector<AclXattrEntry> &aclEntries);
     EXPORT void Print(const std::string& path);
     EXPORT ~Acl();
 private:
     void CompareInsertEntry(const AclXattrEntry &entry);
-    std::string ParseEntriesToString();
 
     AclXattrHeader header;
     /*

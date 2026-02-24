@@ -22,6 +22,7 @@
 #include "media_file_manager_temp_file_aging_task.h"
 #include "media_video_mode_task.h"
 #include "media_deleted_file_task.h"
+#include "media_thumbnail_acl_task.h"
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 
@@ -36,6 +37,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaVideoModeTask>(),
         std::make_shared<MediaClearInvalidUserCommentTask>(),
         std::make_shared<MediaDeletedFileTask>(),
+        std::make_shared<MediaThumbnailAclTask>(),
     };
 }
 
