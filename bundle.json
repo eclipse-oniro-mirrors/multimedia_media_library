@@ -13,7 +13,9 @@
       "syscap": [
         "SystemCapability.FileManagement.UserFileManager.Core",
         "SystemCapability.FileManagement.UserFileManager.DistributedCore",
-        "SystemCapability.FileManagement.PhotoAccessHelper.Core"
+        "SystemCapability.FileManagement.PhotoAccessHelper.Core",
+        "SystemCapability.FileManagement.UserFileManager.DistributedCore",
+        "SystemCapability.FileManagement.UserFileManager.Core"
       ],
       "features": [
         "media_library_link_opt",
