@@ -1027,10 +1027,7 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
     int64_t &insertCount, std::vector<DownloadResourcesTaskPo> &newTaskPos, int32_t taskSeq)
 {
     std::vector<NativeRdb::ValuesBucket> batchValues;
-    bool isCellularNetFlag = false;
-    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
-        isCellularNetFlag = true;
-    }
+    bool isCellularNetFlag = MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime();
     for (auto &po : newTaskPos) {
         NativeRdb::ValuesBucket values;
         values.PutInt(DownloadResourcesColumn::MEDIA_ID, po.fileId.value_or(-1));
