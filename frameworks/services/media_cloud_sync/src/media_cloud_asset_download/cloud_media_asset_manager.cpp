@@ -1027,6 +1027,10 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
     int64_t &insertCount, std::vector<DownloadResourcesTaskPo> &newTaskPos, int32_t taskSeq)
 {
     std::vector<NativeRdb::ValuesBucket> batchValues;
+    bool isCellularNetFlag = false;
+    if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
+        isCellularNetFlag = true;
+    }
     for (auto &po : newTaskPos) {
         NativeRdb::ValuesBucket values;
         values.PutInt(DownloadResourcesColumn::MEDIA_ID, po.fileId.value_or(-1));
@@ -1035,7 +1039,7 @@ int32_t CloudMediaAssetManager::BuildTaskValuesAndBatchInsert(
         values.PutString(DownloadResourcesColumn::MEDIA_URI, po.fileUri.value_or(""));
         values.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, po.dateAdded.value_or(0));
         values.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, po.dateFinish.value_or(0));
-        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
+        if (isCellularNetFlag) {
             // 当前网络为移动网络，新增任务全部标记为auto_pause状态
             values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
                 static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
