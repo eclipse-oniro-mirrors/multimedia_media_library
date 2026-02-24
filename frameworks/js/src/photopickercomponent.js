@@ -539,7 +539,7 @@ export class PhotoPickerComponent extends ViewPU {
             SecurityUIExtensionComponent.onError(((error) => {
                 console.info('PhotoPickerComponent onError: ' + JSON.stringify(error));
                 console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex); 
-                 if (error.code === 100014) { 
+                if (error.code === 100014) { 
                     console.log('PhotoPickerComponent is set isPickerKilled = true');
                     this.isPickerKilled = true; 
                     let e = new PickerError();
