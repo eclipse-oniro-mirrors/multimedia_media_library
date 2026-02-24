@@ -24,8 +24,7 @@
       "media_library_cloud_sync_enable",
       "media_library_facard_enable",
       "media_library_analysis_data_enable",
-      "media_library_feature_custom_restore",
-      "media_library_feature_secure_album"
+      "media_library_feature_custom_restore"
     ],
     "adapted_system_type": [ "small", "standard" ],
     "rom": "10444KB",
@@ -122,10 +121,11 @@
           "//foundation/multimedia/media_library/interfaces/kits/cj:cj_photoaccesshelper_ffi",
           "//foundation/multimedia/media_library/interfaces/kits/js:albumpickercomponent",
           "//foundation/multimedia/media_library/interfaces/kits/js:albumpickercomponent_js",
+          "//foundation/multimedia/media_library/interfaces/kits/js:sendablephotoaccesshelper",
           "//foundation/multimedia/media_library/interfaces/kits/js:recentphotocomponent",
           "//foundation/multimedia/media_library/interfaces/kits/js:recentphotocomponent_js",
-          "//foundation/multimedia/media_library/interfaces/kits/js:sendablephotoaccesshelper",
           "//foundation/multimedia/media_library/frameworks/ani:media_library_ani"
+
         ],
         "service_group": [
           "//foundation/multimedia/media_library/frameworks/innerkitsimpl/media_library_helper:media_library_packages",
