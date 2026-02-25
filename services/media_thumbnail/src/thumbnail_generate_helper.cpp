@@ -1004,44 +1004,6 @@ int32_t ThumbnailGenerateHelper::FixThumbnailExifRotateAfterDownloadAsset(ThumbR
         opts, data, ThumbnailTaskType::FOREGROUND, ThumbnailTaskPriority::MID);
     return E_OK;
 }
-
-ThmInodeCleanInfo GetThmInodeCleanInfo()
-{
-    ThmInodeCleanInfo info = {
-        .result = 0,
-        .isConfigXattr = 0,
-        .xattrInfo = "",
-    };
-
-    ssize_t len = getxattr(THUMB_DIR.c_str(), ACL_XATTR_DEFAULT, nullptr, 0);
-    CHECK_AND_RETURN_RET_INFO_LOG(len > 0, info, "Thumb dir dose not have xattr");
-
-    info.isConfigXattr = 1;
-    info.xattrInfo = Acl::ParseAclToString(THUMB_DIR, ACL_XATTR_DEFAULT);
-    return info;
-}
-
-int32_t ThumbnailGenerateHelper::DfxReportThumbnailDirAcl()
-{
-    int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(THUMBNAIL_RECORD_EVENT, errCode);
-    CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr, E_ERR,  "Prefs is nullptr, err:%{public}d", errCode);
-    int32_t status = prefs->GetInt(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL, 0);
-    CHECK_AND_RETURN_RET(status != RECORD_REPORT_THUMBNAIL_DIR_ACL, E_OK);
-
-    MEDIA_INFO_LOG("Start DfxReportThumbnailDirAcl");
-    ThmInodeCleanInfo info = GetThmInodeCleanInfo();
-    auto instance = DfxManager::GetInstance();
-    CHECK_AND_RETURN_RET_LOG(instance != nullptr, E_ERR, "DfxManager ins nullptr");
-    int32_t err = DfxManager::GetInstance()->HandleThmInodeCleanInfo(info);
-    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "HandleThmInodeCleanInfo failed, err:%{public}d", err);
-
-    prefs->PutInt(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL, RECORD_REPORT_THUMBNAIL_DIR_ACL);
-    prefs->FlushSync();
-    MEDIA_INFO_LOG("Finish DfxReportThumbnailDirAcl, xattr info:%{public}s", info.xattrInfo.c_str());
-    return E_OK;
-}
 // LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS
