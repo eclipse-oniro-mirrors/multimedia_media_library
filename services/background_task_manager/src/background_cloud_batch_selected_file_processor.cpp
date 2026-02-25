@@ -1268,7 +1268,9 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
     }
     if (autoPauseReason == BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT) { // 特殊切换网络状态
         if (!cellThreadRunning.load()) {
-            BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask();
+            std::thread([]() {  // 分类处理 完全断开和切换
+                BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask();
+            }).detach();
         }
         return false;
     } else {
