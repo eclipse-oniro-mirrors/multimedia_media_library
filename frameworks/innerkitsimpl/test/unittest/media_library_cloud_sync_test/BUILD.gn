@@ -41,6 +41,7 @@ ohos_unittest("media_library_cloud_sync_test") {
     "-Wsign-compare",
     "-Dprivate=public",
     "-Dprotected=public",
+    "-fno-access-control",
   ]
 
   module_out_path = "media_library/media_library_asset"
