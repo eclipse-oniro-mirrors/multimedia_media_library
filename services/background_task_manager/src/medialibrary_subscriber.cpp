@@ -481,9 +481,7 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     if (action == EventFwk::CommonEventSupport::COMMON_EVENT_WIFI_CONN_STATE) {
         isWifiConnected_ = eventData.GetCode() == WIFI_STATE_CONNECTED;
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-        std::thread([this]() {
-            this->HandleBatchDownloadWhenNetChange();
-        }).detach();
+        this->HandleBatchDownloadWhenNetChange();
         UpdateBackgroundTimer();
 #endif
     } else if (action == EventFwk::CommonEventSupport::COMMON_EVENT_CONNECTIVITY_CHANGE) {
