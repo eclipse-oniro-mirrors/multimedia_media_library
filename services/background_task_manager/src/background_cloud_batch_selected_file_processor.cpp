@@ -847,6 +847,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryWifiNetRunningTaskNum()
     int num = 0;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         num = GetInt32Val("count", resultSet);
+        MEDIA_INFO_LOG("BatchSelectFileDownload QueryWifiNetRunningTaskNum, num: %{public}d", num);
     }
     if (resultSet != nullptr) {
         resultSet->Close();
@@ -899,6 +900,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishTasksNum()
     int num = 0;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         num = GetInt32Val("count", resultSet);
+        MEDIA_INFO_LOG("BatchSelectFileDownload QueryUnFinishTasksNum, num: %{public}d", num);
     }
     if (resultSet != nullptr) {
         resultSet->Close();
@@ -925,6 +927,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishWifiTasksNum()
     int num = 0;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         num = GetInt32Val("count", resultSet);
+        MEDIA_INFO_LOG("BatchSelectFileDownload QueryUnFinishWifiTasksNum, num: %{public}d", num);
     }
     if (resultSet != nullptr) {
         resultSet->Close();
@@ -1268,9 +1271,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
     }
     if (autoPauseReason == BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT) { // 特殊切换网络状态
         if (!cellThreadRunning.load()) {
-            std::thread([]() {  // 分类处理 完全断开和切换
-                BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask();
-            }).detach();
+            BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask(); // 分类处理 完全断开和切换
         }
         return false;
     } else {
