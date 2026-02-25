@@ -64,7 +64,8 @@ public:
         const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos,
         std::vector<MediaOperateResult> &result) override;
     int32_t GetDownloadThms(std::vector<CloudMetaData> &cloudMetaDataVec, const DownloadThumPara &param) override;
-    int32_t OnDownloadThms(const std::unordered_map<std::string, int32_t> &resMap, int32_t &failSize) override;
+    int32_t OnDownloadThms(const std::unordered_map<std::string, int32_t> &resMap, int32_t &failSize,
+        const int32_t sceneCode = 0) override;
     int32_t GetDownloadThmNum(int32_t &totalNum, int32_t type) override;
     // 缓存视频
     int32_t GetVideoToCache(std::vector<CloudMetaData> &cloudMetaDataVec, int32_t size) override;
@@ -86,8 +87,8 @@ public:
 
 private:
     int32_t GetAgingFile(uint32_t operationCode, GetAgingFileReqBody &reqBody, std::vector<CloudMetaData> &metaData);
-    int32_t OnDownloadThmsInner(
-        const std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize);
+    int32_t OnDownloadThmsInner(const std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList,
+        int32_t &failSize, const int32_t sceneCode);
 
 private:
     enum {

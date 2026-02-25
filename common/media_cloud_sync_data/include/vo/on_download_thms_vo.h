@@ -42,6 +42,7 @@ public:
     };
 
 public:
+    int32_t sceneCode;
     std::vector<DownloadThmsData> downloadThmsDataList;
 
 public:  // functions of Parcelable.
