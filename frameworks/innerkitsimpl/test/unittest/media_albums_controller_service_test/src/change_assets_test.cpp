@@ -169,7 +169,8 @@ HWTEST_F(ChangeAssetsTest, AddAssets_Test_001, TestSize.Level0)
  * @tc.number: AddAssets_Test_002
  * @tc.desc  : 测试当读取请求体失败时,AddAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, AddAssets_Test_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, AddAssets_Test_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -185,7 +186,8 @@ HWTEST_F(ChangeAssetsTest, AddAssets_Test_002, TestSize.Level0) {
  * @tc.number: RemoveAssets_Test_002
  * @tc.desc  : 测试当读取请求体失败时,RemoveAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, RemoveAssets_Test_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, RemoveAssets_Test_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -201,7 +203,8 @@ HWTEST_F(ChangeAssetsTest, RemoveAssets_Test_002, TestSize.Level0) {
  * @tc.number: MoveAssetsTest_001
  * @tc.desc  : 测试当输入参数有效时,MoveAssets 函数应成功更新数据库。
  */
-HWTEST_F(ChangeAssetsTest, MoveAssetsTest_001, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, MoveAssetsTest_001, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
     ChangeRequestMoveAssetsReqBody reqBody;
@@ -225,7 +228,8 @@ HWTEST_F(ChangeAssetsTest, MoveAssetsTest_001, TestSize.Level0) {
  * @tc.number: MoveAssets_Test_002
  * @tc.desc  : 测试当读取请求体失败时,MoveAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, MoveAssets_Test_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, MoveAssets_Test_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -241,7 +245,8 @@ HWTEST_F(ChangeAssetsTest, MoveAssets_Test_002, TestSize.Level0) {
  * @tc.number: RecoverAssetsTest_001
  * @tc.desc  : 测试 RecoverAssets 常规流程
  */
-HWTEST_F(ChangeAssetsTest, RecoverAssetsTest_001, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, RecoverAssetsTest_001, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
     ChangeRequestRecoverAssetsReqBody reqBody;
@@ -263,7 +268,8 @@ HWTEST_F(ChangeAssetsTest, RecoverAssetsTest_001, TestSize.Level0) {
  * @tc.number: RecoverAssetsTest_Test_002
  * @tc.desc  : 测试当读取请求体失败时,RecoverAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, RecoverAssets_Test_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, RecoverAssets_Test_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -279,7 +285,8 @@ HWTEST_F(ChangeAssetsTest, RecoverAssets_Test_002, TestSize.Level0) {
  * @tc.number: DeleteAssetsTest_001
  * @tc.desc  : 测试  DeleteAssets 常规流程
  */
-HWTEST_F(ChangeAssetsTest, DeleteAssetsTest_001, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, DeleteAssetsTest_001, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
     ChangeRequestDeleteAssetsReqBody reqBody;
@@ -301,7 +308,8 @@ HWTEST_F(ChangeAssetsTest, DeleteAssetsTest_001, TestSize.Level0) {
  * @tc.number: DeleteAssetsTest_Test_002
  * @tc.desc  : 测试当读取请求体失败时,DeleteAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, DeleteAssetsTest_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, DeleteAssetsTest_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -317,7 +325,8 @@ HWTEST_F(ChangeAssetsTest, DeleteAssetsTest_002, TestSize.Level0) {
  * @tc.number: DismissAssetsTest_001
  * @tc.desc  : 测试当恢复资产失败时,RecoverAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, DismissAssetsTest_001, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, DismissAssetsTest_001, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -343,7 +352,8 @@ HWTEST_F(ChangeAssetsTest, DismissAssetsTest_001, TestSize.Level0) {
  * @tc.number: DismissAssetsTest_002
  * @tc.desc  : 测试当读取请求体失败时,DismissAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, DismissAssetsTest_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, DismissAssetsTest_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -354,7 +364,8 @@ HWTEST_F(ChangeAssetsTest, DismissAssetsTest_002, TestSize.Level0) {
     ASSERT_LT(respVo.GetErrCode(), 0);
 }
 
-HWTEST_F(ChangeAssetsTest, MergeAlbumTest_001, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, MergeAlbumTest_001, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -380,7 +391,8 @@ HWTEST_F(ChangeAssetsTest, MergeAlbumTest_001, TestSize.Level0) {
  * @tc.number: MergeAlbumTest_002
  * @tc.desc  : 测试当读取请求体失败时,DismissAssets 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, MergeAlbumTest_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, MergeAlbumTest_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -391,7 +403,8 @@ HWTEST_F(ChangeAssetsTest, MergeAlbumTest_002, TestSize.Level0) {
     ASSERT_LT(respVo.GetErrCode(), 0);
 }
 
-HWTEST_F(ChangeAssetsTest, PlaceBeforeTest_001, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, PlaceBeforeTest_001, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -418,7 +431,8 @@ HWTEST_F(ChangeAssetsTest, PlaceBeforeTest_001, TestSize.Level0) {
  * @tc.number: PlaceBeforeTest_002
  * @tc.desc  : 测试当读取请求体失败时,PlaceBefore 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, PlaceBeforeTest_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, PlaceBeforeTest_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -429,7 +443,8 @@ HWTEST_F(ChangeAssetsTest, PlaceBeforeTest_002, TestSize.Level0) {
     ASSERT_LT(respVo.GetErrCode(), 0);
 }
 
-HWTEST_F(ChangeAssetsTest, SetOrderPositionTest_001, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, SetOrderPositionTest_001, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -456,7 +471,8 @@ HWTEST_F(ChangeAssetsTest, SetOrderPositionTest_001, TestSize.Level0) {
  * @tc.number: SetOrderPositionTest_002
  * @tc.desc  : 测试当读取请求体失败时,PlaceBefore 函数应返回错误
  */
-HWTEST_F(ChangeAssetsTest, SetOrderPositionTest_002, TestSize.Level0) {
+HWTEST_F(ChangeAssetsTest, SetOrderPositionTest_002, TestSize.Level0)
+{
     MessageParcel data;
     MessageParcel reply;
 
@@ -466,4 +482,252 @@ HWTEST_F(ChangeAssetsTest, SetOrderPositionTest_002, TestSize.Level0) {
     ASSERT_EQ(respVo.Unmarshalling(reply), true);
     ASSERT_LT(respVo.GetErrCode(), 0);
 }
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsReqBody_MarshallingUnmarshalling_001
+ * @tc.number: ChangeRequestRemoveAssetsReqBody_Test_001
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsReqBody 的序列化和反序列化 - 正常情况
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsReqBody_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsReqBody_Test_001");
+    ChangeRequestRemoveAssetsReqBody reqBody;
+    reqBody.albumId = TEST_ALBUM_ID;
+    reqBody.isHiddenOnly = 0;
+    reqBody.assets = {"file://media/Photo/101", "file://media/Photo/102", "file://media/Photo/103"};
+
+    MessageParcel data;
+    bool ret = reqBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsReqBody unmarshalledReqBody;
+    ret = unmarshalledReqBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledReqBody.albumId, TEST_ALBUM_ID);
+    EXPECT_EQ(unmarshalledReqBody.isHiddenOnly, 0);
+    EXPECT_EQ(unmarshalledReqBody.assets.size(), 3);
+    EXPECT_EQ(unmarshalledReqBody.assets[0], "file://media/Photo/101");
+    EXPECT_EQ(unmarshalledReqBody.assets[1], "file://media/Photo/102");
+    EXPECT_EQ(unmarshalledReqBody.assets[2], "file://media/Photo/103");
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsReqBody_Test_001");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsReqBody_MarshallingUnmarshalling_002
+ * @tc.number: ChangeRequestRemoveAssetsReqBody_Test_002
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsReqBody 的序列化和反序列化 - 空资产列表
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsReqBody_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsReqBody_Test_002");
+    ChangeRequestRemoveAssetsReqBody reqBody;
+    reqBody.albumId = TEST_ALBUM_ID;
+    reqBody.isHiddenOnly = 1;
+    reqBody.assets = {};
+
+    MessageParcel data;
+    bool ret = reqBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsReqBody unmarshalledReqBody;
+    ret = unmarshalledReqBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledReqBody.albumId, TEST_ALBUM_ID);
+    EXPECT_EQ(unmarshalledReqBody.isHiddenOnly, 1);
+    EXPECT_EQ(unmarshalledReqBody.assets.size(), 0);
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsReqBody_Test_002");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsReqBody_MarshallingUnmarshalling_003
+ * @tc.number: ChangeRequestRemoveAssetsReqBody_Test_003
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsReqBody 的序列化和反序列化 - 单个资产
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsReqBody_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsReqBody_Test_003");
+    ChangeRequestRemoveAssetsReqBody reqBody;
+    reqBody.albumId = 100;
+    reqBody.isHiddenOnly = 0;
+    reqBody.assets = {"file://media/Photo/200"};
+
+    MessageParcel data;
+    bool ret = reqBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsReqBody unmarshalledReqBody;
+    ret = unmarshalledReqBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledReqBody.albumId, 100);
+    EXPECT_EQ(unmarshalledReqBody.isHiddenOnly, 0);
+    EXPECT_EQ(unmarshalledReqBody.assets.size(), 1);
+    EXPECT_EQ(unmarshalledReqBody.assets[0], "file://media/Photo/200");
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsReqBody_Test_003");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsReqBody_MarshallingUnmarshalling_004
+ * @tc.number: ChangeRequestRemoveAssetsReqBody_Test_004
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsReqBody 的序列化和反序列化 - 负数 albumId
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsReqBody_Test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsReqBody_Test_004");
+    ChangeRequestRemoveAssetsReqBody reqBody;
+    reqBody.albumId = -1;
+    reqBody.isHiddenOnly = 1;
+    reqBody.assets = {"file://media/Photo/101"};
+
+    MessageParcel data;
+    bool ret = reqBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsReqBody unmarshalledReqBody;
+    ret = unmarshalledReqBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledReqBody.albumId, -1);
+    EXPECT_EQ(unmarshalledReqBody.isHiddenOnly, 1);
+    EXPECT_EQ(unmarshalledReqBody.assets.size(), 1);
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsReqBody_Test_004");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsRespBody_MarshallingUnmarshalling_001
+ * @tc.number: ChangeRequestRemoveAssetsRespBody_Test_001
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsRespBody 的序列化和反序列化 - 正常情况
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsRespBody_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsRespBody_Test_001");
+    ChangeRequestRemoveAssetsRespBody respBody;
+    respBody.albumCount = 5;
+    respBody.imageCount = 10;
+    respBody.videoCount = 3;
+
+    MessageParcel data;
+    bool ret = respBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsRespBody unmarshalledRespBody;
+    ret = unmarshalledRespBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledRespBody.albumCount, 5);
+    EXPECT_EQ(unmarshalledRespBody.imageCount, 10);
+    EXPECT_EQ(unmarshalledRespBody.videoCount, 3);
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsRespBody_Test_001");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsRespBody_MarshallingUnmarshalling_002
+ * @tc.number: ChangeRequestRemoveAssetsRespBody_Test_002
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsRespBody 的序列化和反序列化 - 全零值
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsRespBody_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsRespBody_Test_002");
+    ChangeRequestRemoveAssetsRespBody respBody;
+    respBody.albumCount = 0;
+    respBody.imageCount = 0;
+    respBody.videoCount = 0;
+
+    MessageParcel data;
+    bool ret = respBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsRespBody unmarshalledRespBody;
+    ret = unmarshalledRespBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledRespBody.albumCount, 0);
+    EXPECT_EQ(unmarshalledRespBody.imageCount, 0);
+    EXPECT_EQ(unmarshalledRespBody.videoCount, 0);
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsRespBody_Test_002");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsRespBody_MarshallingUnmarshalling_003
+ * @tc.number: ChangeRequestRemoveAssetsRespBody_Test_003
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsRespBody 的序列化和反序列化 - 负数值
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsRespBody_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsRespBody_Test_003");
+    ChangeRequestRemoveAssetsRespBody respBody;
+    respBody.albumCount = -1;
+    respBody.imageCount = -1;
+    respBody.videoCount = -1;
+
+    MessageParcel data;
+    bool ret = respBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsRespBody unmarshalledRespBody;
+    ret = unmarshalledRespBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledRespBody.albumCount, -1);
+    EXPECT_EQ(unmarshalledRespBody.imageCount, -1);
+    EXPECT_EQ(unmarshalledRespBody.videoCount, -1);
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsRespBody_Test_003");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsRespBody_MarshallingUnmarshalling_004
+ * @tc.number: ChangeRequestRemoveAssetsRespBody_Test_004
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsRespBody 的序列化和反序列化 - 大数值
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsRespBody_Test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsRespBody_Test_004");
+    ChangeRequestRemoveAssetsRespBody respBody;
+    respBody.albumCount = 1000;
+    respBody.imageCount = 5000;
+    respBody.videoCount = 2000;
+
+    MessageParcel data;
+    bool ret = respBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsRespBody unmarshalledRespBody;
+    ret = unmarshalledRespBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledRespBody.albumCount, 1000);
+    EXPECT_EQ(unmarshalledRespBody.imageCount, 5000);
+    EXPECT_EQ(unmarshalledRespBody.videoCount, 2000);
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsRespBody_Test_004");
+}
+
+/**
+ * @tc.name  : ChangeRequestRemoveAssetsReqBody_MarshallingUnmarshalling_005
+ * @tc.number:   ChangeRequestRemoveAssetsReqBody_Test_005
+ * @tc.desc  : 测试 ChangeRequestRemoveAssetsReqBody 的序列化和反序列化 - 混合类型资产
+ */
+HWTEST_F(ChangeAssetsTest, ChangeRequestRemoveAssetsReqBody_Test_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestRemoveAssetsReqBody_Test_005");
+    ChangeRequestRemoveAssetsReqBody reqBody;
+    reqBody.albumId = 50;
+    reqBody.isHiddenOnly = 1;
+    reqBody.assets = {
+        "file://media/Photo/101",
+        "file://media/Video/102",
+        "file://media/Photo/103",
+        "file://media/Video/104"
+    };
+
+    MessageParcel data;
+    bool ret = reqBody.Marshalling(data);
+    EXPECT_EQ(ret, true);
+
+    ChangeRequestRemoveAssetsReqBody unmarshalledReqBody;
+    ret = unmarshalledReqBody.Unmarshalling(data);
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(unmarshalledReqBody.albumId, 50);
+    EXPECT_EQ(unmarshalledReqBody.isHiddenOnly, 1);
+    EXPECT_EQ(unmarshalledReqBody.assets.size(), 4);
+    EXPECT_EQ(unmarshalledReqBody.assets[0], "file://media/Photo/101");
+    EXPECT_EQ(unmarshalledReqBody.assets[1], "file://media/Video/102");
+    EXPECT_EQ(unmarshalledReqBody.assets[2], "file://media/Photo/103");
+    EXPECT_EQ(unmarshalledReqBody.assets[3], "file://media/Video/104");
+    MEDIA_INFO_LOG("End ChangeRequestRemoveAssetsReqBody_Test_005");
+}
+
 }  // namespace OHOS::Media
