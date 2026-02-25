@@ -405,6 +405,7 @@ int32_t MediaAssetsDeleteService::CreateLocalTrashedPhotosPo(const PhotosPo &pho
     this->ClearCloudInfo(targetPhotoInfo);
     this->ResetNullableFields(targetPhotoInfo);
     this->ResetFileSourceType(targetPhotoInfo);  // Set file_source_type to MEDIA (default).
+    this->ResetSouthDeviceType(targetPhotoInfo);  // Reset south_device_type to default: SOUTH_DEVICE_NULL(0).
     return E_OK;
 }
 
@@ -936,6 +937,12 @@ int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(const PhotosPo &phot
     bool isValid = fileId > 0 && !data.empty();
     CHECK_AND_RETURN_RET(isValid, E_INVALID_VALUES);
     MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::ResetSouthDeviceType(PhotosPo &photoInfo)
+{
+    photoInfo.southDeviceType.reset();
     return E_OK;
 }
 }  // namespace OHOS::Media::Common

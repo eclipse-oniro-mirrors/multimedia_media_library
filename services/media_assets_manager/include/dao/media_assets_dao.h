@@ -80,6 +80,8 @@ private:
     std::string GetLpathFromSourcePath(const std::string &sourcePath);
     int32_t FindSamePhotoInHiddenAlbum(const PhotosPo &photoInfo, std::optional<PhotosPo> &samePhotoInfoOp);
     int32_t DeletePhotoExtTable(const std::string &fileId);
+    int32_t HandleSouthDeviceType(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
+        NativeRdb::ValuesBucket &values);
 
 private:
     const std::string SOURCE_PATH_PERFIX = "/storage/emulated/0";
