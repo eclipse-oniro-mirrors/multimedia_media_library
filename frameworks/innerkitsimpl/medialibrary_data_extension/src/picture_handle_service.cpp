@@ -113,7 +113,7 @@ bool PictureHandlerService::WritePicture(const int32_t &fileId, MessageParcel &d
     CHECK_AND_RETURN_RET_LOG(mainPixel != nullptr, false,
         "PictureHandlerService::GetPicture mainPixel is not exist, fileId: %{public}d", fileId);
 
-    WritePhotoQuality(isHighQualityPicture);
+    WritePhotoQuality(data, isHighQualityPicture);
     WritePixelMap(data, mainPixel);
 
     WriteExifMetadata(data, picture);
