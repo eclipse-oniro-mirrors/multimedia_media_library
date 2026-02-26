@@ -224,7 +224,7 @@ HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataCleanState_test_004, TestSize.L
     EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::CLEANING));
     SetSmartDataCleanState(CleanTaskState::IDLE);
     state = GetSmartDataCleanState();
-    EXPECT_EQ(state, static_cast<int<int64_t>(CleanTaskState::IDLE));
+    EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::IDLE));
     MEDIA_INFO_LOG("SmartDataCleanState_test_004 End");
 }
 
@@ -594,6 +594,10 @@ HWTEST_F(CloudMediaRetainSmartDataTest, BackupPhotosAlbumTable_test_038, TestSiz
     resultSet->Close();
     EXPECT_EQ(rowCount, 0);
     MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_038 End");
+}
+
+HWTEST_F(CloudMediaRetainSmartDataTest, UpdateInvalidCloudHighlightInfo_test_039, TestSize.Level1)
+{
     MEDIA_INFO_LOG("UpdateInvalidCloudHighlightInfo_test_039 Start");
     std::string insertSql = "INSERT INTO tab_highlight_album (highlight_status) VALUES (0)";
     g_rdbStore->ExecuteSql(insertSql);

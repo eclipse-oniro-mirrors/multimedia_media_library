@@ -99,6 +99,7 @@ group("test") {
     deps += [
       "unittest/background_cloud_batch_selected_file_processor_test:unittest",
       "unittest/background_cloud_file_processor_test:unittest",
+      "unittest/cloud_media_retain_smart_data_test:unittest",
       "unittest/media_notification_register_manager_test:unittest",
     ]
   }
