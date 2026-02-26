@@ -157,6 +157,26 @@ int32_t ThumbnailGenerateHelper::CreateThumbnailBackground(ThumbRdbOpt &opts)
     return E_OK;
 }
 
+bool CanCloudPhotoLoadLocalThumbnail(const ThumbnailData &data)
+{
+    if (ThumbnailUtils::IsExCloudThumbnail(data)) {
+        std::string localExLcdPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::LCD_EX);
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(localExLcdPath), false,
+            "Local ex lcd:%{public}s is not exist,", DfxUtils::GetSafePath(localExLcdPath).c_str());
+        return true;
+    }
+
+    std::string localLcdPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::LCD);
+    std::string localThumbPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::THUMB);
+    bool isLocalLcdExist = MediaFileUtils::IsFileExists(localLcdPath);
+    bool isLocalThumbExist = MediaFileUtils::IsFileExists(localThumbPath);
+    CHECK_AND_RETURN_RET_LOG(isLocalLcdExist && isLocalThumbExist, false,
+        "Local lcd:%{public}s or thumb:%{public}s is not exist, isLcdExist:%{public}d, isThumbExist:%{public}d",
+        DfxUtils::GetSafePath(localLcdPath).c_str(), DfxUtils::GetSafePath(localThumbPath).c_str(),
+        isLocalLcdExist, isLocalThumbExist);
+    return true;
+}
+
 void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "Data is null");
@@ -168,6 +188,9 @@ void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
         thumbnailData.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
         IThumbnailHelper::CreateThumbnail(data);
     } else {
+        CHECK_AND_RETURN_WARN_LOG(CanCloudPhotoLoadLocalThumbnail(thumbnailData),
+            "Local lcd or thumb is not exist, id:%{public}s, path:%{public}s, thumbStatus:%{public}d",
+            thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str(), thumbnailData.thumbnailStatus);
         thumbnailData.needGenerateExThumbnail = false;
         thumbnailData.loaderOpts.loadingStates = ThumbnailUtils::IsExCloudThumbnail(thumbnailData) ?
             SourceLoader::CLOUD_LCD_SOURCE_LOADING_STATES : SourceLoader::CLOUD_SOURCE_LOADING_STATES;

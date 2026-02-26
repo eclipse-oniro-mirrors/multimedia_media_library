@@ -305,6 +305,30 @@ std::string ThumbnailFileUtils::GetFileInfo(const string &path)
     res += "data modified: " + to_string(dataModified);
     return res;
 }
+
+std::string ThumbnailFileUtils::GetThumbnailFilePathSuffix(const ThumbnailType type)
+{
+    CHECK_AND_RETURN_RET_LOG(THUMB_FILE_NAME_MAP.find(type) != THUMB_FILE_NAME_MAP.end(), "",
+        "Invalid ThumbnailType: %{public}d", type);
+    if (IsExThumbType(type)) {
+        return "THM_EX/" + THUMB_FILE_NAME_MAP.at(type);
+    }
+    return THUMB_FILE_NAME_MAP.at(type);
+}
+
+std::string ThumbnailFileUtils::GetLocalThumbnailFilePath(const string &path, const ThumbnailType type)
+{
+    if (path.length() <= ROOT_MEDIA_DIR.length() ||
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
+        MEDIA_ERR_LOG("Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
+        return "";
+    }
+
+    std::string suffix = GetThumbnailFilePathSuffix(type);
+    CHECK_AND_RETURN_RET_LOG(!suffix.empty(), "", "Suffix is empty, thumbnail type:%{public}d", type);
+
+    return PhotoColumn::FILES_LOCAL_DIR + ".thumbs/" + path.substr(ROOT_MEDIA_DIR.length()) + "/" + suffix;
+}
 // LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS
