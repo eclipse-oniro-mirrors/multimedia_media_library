@@ -310,7 +310,11 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchDownloadFinishStatu
     std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_SUCCESS)) +
     " THEN 1 ELSE 0 END) AS completed_orders, SUM(CASE WHEN " +
     DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = " +
-    std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_FAIL)) +
+    std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_FAIL)) + " OR " +
+    DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = " +
+    std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE)) + " OR " +
+    DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = " +
+    std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_PAUSE)) +
     " THEN 1 ELSE 0 END) AS failed_orders FROM "+ DownloadResourcesColumn::TABLE;
     if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
         sql = sql +" WHERE " + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = "
