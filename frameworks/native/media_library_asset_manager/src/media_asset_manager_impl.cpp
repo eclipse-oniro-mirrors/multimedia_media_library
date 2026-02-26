@@ -385,7 +385,7 @@ bool MediaAssetManagerImpl::NotifyImageDataPrepared(AssetHandler *assetHandler)
             bool isHighQuality = false;
             GetPictureNativeObject(
                 assetHandler->requestId, dataHandler->GetRequestUri(), &pictureNative, &imageSourceNative,
-                isPicture, isHighQuality);\
+                isPicture, isHighQuality);
             if (isHighQuality) {
                 dataHandler->SetPhotoQuality(photoQuality);
             }

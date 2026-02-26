@@ -61,7 +61,8 @@ private:
 
     static OH_ImageSourceNative* CreateImageSource(const std::string requestId, const std::string requestUri);
     static void GetPictureNativeObject(const std::string requestId, const std::string fileUri,
-        OH_PictureNative** pictureNative, OH_ImageSourceNative** imageSourceNative, bool &isPicture, bool &isHighQuality);
+        OH_PictureNative** pictureNative, OH_ImageSourceNative** imageSourceNative, bool &isPicture,
+        bool &isHighQuality);
 
 private:
     static MediaLibraryManager* mediaLibraryManager_;
