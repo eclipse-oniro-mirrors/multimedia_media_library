@@ -1468,10 +1468,20 @@ static napi_value GetInfoMapNapiValue(napi_env env, AssetHandler* assetHandler)
     return mapNapiValue;
 }
 
-static napi_value GetNapiValueOfMedia(napi_env env, const std::shared_ptr<NapiMediaAssetDataHandler>& dataHandler,
-    bool& isPicture)
+static napi_value GetNapiValueOfMedia(napi_env env, AssetHandler *assetHandler)
 {
     NAPI_DEBUG_LOG("GetNapiValueOfMedia");
+
+    if (assetHandler == nullptr) {
+        NAPI_ERR_LOG("assetHandler is nullptr");
+        return nullptr;
+    }
+    auto dataHandler = assetHandler->dataHandler;
+    if (dataHandler == nullptr) {
+        NAPI_ERR_LOG("dataHandler is nullptr");
+        DeleteAssetHandlerSafe(assetHandler, env);
+        return nullptr;
+    }
     napi_value napiValueOfMedia = nullptr;
     if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_ARRAY_BUFFER) {
         MediaAssetManagerNapi::GetByteArrayNapiObject(dataHandler->GetRequestUri(), napiValueOfMedia,
@@ -1497,7 +1507,8 @@ static napi_value GetNapiValueOfMedia(napi_env env, const std::shared_ptr<NapiMe
             dataHandler->GetSourceMode(), movingPhotoParam);
     } else if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_PICTURE) {
         MediaAssetManagerNapi::GetPictureNapiObject(dataHandler->GetRequestUri(), napiValueOfMedia,
-            dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env, isPicture);
+            dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env, assetHandler->isPicture,
+            assetHandler->photoQuality);
     } else if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_READY) {
         napi_get_boolean(env, dataHandler->GetCinematicResult(), &napiValueOfMedia);
     } else {
@@ -1565,6 +1576,8 @@ void MediaAssetManagerNapi::OnDataPrepared(napi_env env, napi_value cb, void *co
         }
     }
 
+    SetCinematicResult(dataHandler, assetHandler);
+    napi_value napiValueOfMedia = assetHandler->isError ? nullptr : GetNapiValueOfMedia(env, dataHandler);
     napi_value napiValueOfInfoMap = nullptr;
     if (assetHandler->needsExtraInfo) {
         napiValueOfInfoMap = GetInfoMapNapiValue(env, assetHandler);
@@ -1573,11 +1586,8 @@ void MediaAssetManagerNapi::OnDataPrepared(napi_env env, napi_value cb, void *co
             napi_get_undefined(env, &napiValueOfInfoMap);
         }
     }
-    bool isPicture = true;
-    SetCinematicResult(dataHandler, assetHandler);
-    napi_value napiValueOfMedia = assetHandler->isError ? nullptr : GetNapiValueOfMedia(env, dataHandler, isPicture);
     if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_PICTURE) {
-        if (isPicture) {
+        if (assetHandler->isPicture) {
             dataHandler->JsOnDataPrepared(env, napiValueOfMedia, nullptr, napiValueOfInfoMap);
         } else {
             if (napiValueOfMedia == nullptr) {
@@ -1909,7 +1919,7 @@ void MediaAssetManagerNapi::GetImageSourceNapiObject(const std::string &fileUri,
 }
 
 void MediaAssetManagerNapi::GetPictureNapiObject(const std::string &fileUri, napi_value &pictureNapiObj,
-    bool isSource, napi_env env,  bool& isPicture)
+    bool isSource, napi_env env,  bool& isPicture, MultiStagesCapturePhotoStatus &photoQuality)
 {
     if (env == nullptr) {
         NAPI_ERR_LOG(" create image source object failed, need to initialize js env");
@@ -1920,14 +1930,19 @@ void MediaAssetManagerNapi::GetPictureNapiObject(const std::string &fileUri, nap
     std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
     std::size_t index = tempStr.find("/");
     std::string fileId = tempStr.substr(0, index);
-    auto pic = PictureHandlerClient::RequestPicture(std::atoi(fileId.c_str()));
+    bool isHighQaulity = false;
+    auto pic = PictureHandlerClient::RequestPicture(std::atoi(fileId.c_str()), isHighQaulity);
     if (pic == nullptr) {
         NAPI_ERR_LOG("picture is null");
         isPicture = false;
         GetImageSourceNapiObject(fileUri, pictureNapiObj, isSource, env);
         return;
     }
+    isPicture = true;
     NAPI_ERR_LOG("picture is not null");
+
+    photoQuality = isHighQaulity ? MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS
+                                 : MultiStagesCapturePhotoStatus::LOW_QUALITY_STATUS;
     napi_value tempPictureNapi;
     PictureNapi::CreatePictureNapi(env, &tempPictureNapi);
     PictureNapi* pictureNapi = nullptr;

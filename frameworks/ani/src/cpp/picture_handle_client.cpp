@@ -38,7 +38,7 @@ namespace OHOS {
 namespace Media {
 const int32_t MAX_VALUE = 100000000;
 constexpr uint32_t MAX_SOURCE_SIZE = 300 * 1024 * 1024;
-std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32_t &fileId)
+std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32_t &fileId, bool &isHighQuality)
 {
     ANI_DEBUG_LOG("PictureHandlerClient::RequestPicture fileId: %{public}d", fileId);
     std::string uri = PhotoColumn::PHOTO_REQUEST_PICTURE;
@@ -50,7 +50,7 @@ std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32
         return nullptr;
     }
     std::shared_ptr<Media::Picture> picture = nullptr;
-    ReadPicture(fd, fileId, picture);
+    ReadPicture(fd, fileId, picture, isHighQuality);
     FinishRequestPicture(fileId);
     return picture;
 }
@@ -150,7 +150,7 @@ uint32_t ReadAuxiliaryPictureCount(const uint8_t* addr, uint32_t& offset)
 }
 
 int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &fileId,
-    std::shared_ptr<Media::Picture> &picture)
+    std::shared_ptr<Media::Picture> &picture, bool &isHighQuality)
 {
     ANI_DEBUG_LOG("PictureHandlerClient::ReadPicture fd: %{public}d", fd);
 
@@ -179,6 +179,7 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
         munmap(addr, msgLen);
         return E_ERR;
     }
+    isHighQuality = pictureParcel.ReadBool();
     std::shared_ptr<PixelMap> pixelMap = PictureHandlerClient::ReadPixelMap(pictureParcel);
     picturePtr = Picture::Create(pixelMap);
     if (picturePtr == nullptr) {

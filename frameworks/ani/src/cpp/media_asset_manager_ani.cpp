@@ -744,7 +744,8 @@ void MediaAssetManagerAni::GetPictureAniObject(const std::string &fileUri, ani_o
     std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
     std::size_t index = tempStr.find("/");
     std::string fileId = tempStr.substr(0, index);
-    auto pic = PictureHandlerClient::RequestPicture(std::atoi(fileId.c_str()));
+    bool isHighQuality = false;
+    auto pic = PictureHandlerClient::RequestPicture(std::atoi(fileId.c_str()), isHighQuality);
     if (pic == nullptr) {
         ANI_ERR_LOG("picture is null");
         isPicture = false;

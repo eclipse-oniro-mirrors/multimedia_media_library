@@ -33,8 +33,7 @@ public:
     static int32_t RequestBufferHandlerFd(const std::string fd);
 private:
 
-    static bool WritePicture(const int32_t &fileId, MessageParcel &data,
-        uint32_t &auxiliaryPictureSize);
+    static bool WritePicture(const int32_t &fileId, MessageParcel &data, uint32_t &auxiliaryPictureSize);
     static bool WritePixelMap(MessageParcel &data, std::shared_ptr<PixelMap> &pixelMap);
     static bool WriteProperties(MessageParcel &data, std::shared_ptr<PixelMap> &pixelMap);
     static bool WriteImageInfo(MessageParcel &data, std::shared_ptr<PixelMap> &pixelMap, bool &isYuv);
