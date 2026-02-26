@@ -119,11 +119,12 @@ void ClearAndRestart()
 int32_t InsertPhotoForClean(int64_t &fileId)
 {
     ValuesBucket valuesBucket;
+    int32_t deleteState = -3;
     valuesBucket.PutInt("media_type", 1);
     valuesBucket.PutInt("position", 1);
     valuesBucket.PutInt("clean_flag", 1);
     valuesBucket.PutInt("south_device_type", 1);
-    valuesBucket.PutInt("real_lcd_visit_time", -3);
+    valuesBucket.PutInt("real_lcd_visit_time", deleteState);
     int32_t ret = g_rdbStore->Insert(fileId, PhotoColumn::PHOTOS_TABLE, valuesBucket);
     return ret;
 }
