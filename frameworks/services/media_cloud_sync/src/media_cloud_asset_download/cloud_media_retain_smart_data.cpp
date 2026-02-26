@@ -20,7 +20,6 @@
 
 #include "parameters.h"
 #include "medialibrary_errno.h"
-#include "media_log.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_type_const.h"
@@ -32,29 +31,18 @@
 
 namespace OHOS::Media {
 
-static const std::string CLOUD_RETIAN_LAST_STATUS_KEY = "persist.multimedia.medialibrary.retain.cloud.last_status";
-static const std::string HDC_RETIAN_LAST_STATUS_KEY = "persist.multimedia.medialibrary.retain.hdc.last_status";
-
-static const std::string IS_RETAIN_SMART_DATA = "persist.multimedia.medialibrary.retain.isretainsmartdata";
-static const std::string IS_RECOVER_SMART_DATA = "persist.multimedia.medialibrary.retain.isrecoversmartdata";
-static const std::string SMART_DATA_RETAIN_TIME = "persist.multimedia.medialibrary.retain.smartdataretaintime";
-static const std::string SMART_DATA_PROCESSING_MODE = "persist.multimedia.medialibrary.retain.smartdataprocessingmode";
-static const std::string SMART_DATA_CLEAN_STATE = "persist.multimedia.medialibrary.smartdatacleanstate";
-static const std::string SMART_DATA_UPDATE_STATE = "persist.multimedia.medialibrary.smartdataupdatestate";
-
-static inline bool SetSystemParameter(const std::string& key, int64_t value)
-{
-    std::string valueStr = std::to_string(value);
-    return system::SetParameter(key, valueStr);
-}
+static const std::string CLOUD_RETIAN_LAST_STATUS_KEY = "smart_data_retain_cloud_last_status";
+static const std::string HDC_RETIAN_LAST_STATUS_KEY = "smart_data_retain_hdc_last_status";
+static const std::string SMART_DATA_RETAIN_TIME = "smart_data_retain_stamp";
+static const std::string SMART_DATA_PROCESSING_MODE = "smart_data_processing_mode";
+static const std::string SMART_DATA_CLEAN_STATE = "smart_data_clean_state";
+static const std::string SMART_DATA_UPDATE_STATE = "smart_data_update_state";
 
 void SetSmartDataCleanState(CleanTaskState currentState)
 {
     int32_t stateValue = static_cast<int64_t>(currentState);
-
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    auto retFlag = SetSystemParameter(SMART_DATA_CLEAN_STATE, stateValue);
-    if (!retFlag) {
+    auto success = SetSmartDataSystemParameter(SMART_DATA_CLEAN_STATE, stateValue);
+    if (!success) {
         MEDIA_ERR_LOG("SetSmartDataCleanState failed. state: %{public}d", stateValue);
         return;
     }
@@ -64,27 +52,95 @@ void SetSmartDataCleanState(CleanTaskState currentState)
 int64_t GetSmartDataCleanState()
 {
     int64_t defaultState = static_cast<int64_t>(CleanTaskState::IDLE);
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    return static_cast<int64_t>(system::GetIntParameter(SMART_DATA_CLEAN_STATE, defaultState));
+    return GetSmartDataSystemParameter(SMART_DATA_CLEAN_STATE, defaultState);
 }
 
 void SetSmartDataUpdateState(UpdateSmartDataState currentState)
 {
-    int64_t stateValue = static_cast<int64_t>(currentState);
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    auto retFlag = SetSystemParameter(SMART_DATA_UPDATE_STATE, stateValue);
-    if (!retFlag) {
-        MEDIA_ERR_LOG("SetSmartDataUpdateState failed. state: %{public}" PRId64, stateValue);
+    int32_t stateValue = static_cast<int64_t>(currentState);
+    auto success = SetSmartDataSystemParameter(SMART_DATA_UPDATE_STATE, stateValue);
+    if (!success) {
+        MEDIA_ERR_LOG("SetSmartDataUpdateState failed. state: %{public}d", stateValue);
         return;
     }
-    MEDIA_INFO_LOG("SetSmartDataUpdateState successful. state: %{public}" PRId64, stateValue);
+    MEDIA_INFO_LOG("SetSmartDataUpdateState successful. state: %{public}d", stateValue);
+
 }
 
 int64_t GetSmartDataUpdateState()
 {
     int64_t defaultState = static_cast<int64_t>(UpdateSmartDataState::IDLE);
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    return static_cast<int64_t>(system::GetIntParameter(SMART_DATA_UPDATE_STATE, defaultState));
+    return GetSmartDataSystemParameter(SMART_DATA_UPDATE_STATE, defaultState);
+}
+
+void SetSmartDataRetainTime()
+{
+    int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
+    auto success = SetSmartDataSystemParameter(SMART_DATA_RETAIN_TIME, currentTime);
+    if (!success) {
+        MEDIA_ERR_LOG("SetSmartDataRetainTime failed. time: %{public}lld", currentTime);
+        return;
+    }
+    MEDIA_INFO_LOG("SetSmartDataRetainTime successful. time: %{public}lld", currentTime);
+}
+
+int64_t GetSmartDataRetainTime()
+{
+    int64_t defaultRetainTime = MediaFileUtils::UTCTimeMilliSeconds();
+    return GetSmartDataSystemParameter(SMART_DATA_RETAIN_TIME, defaultRetainTime);
+}
+
+void SetSmartDataProcessingMode(SmartDataProcessingMode mode)
+{
+    int32_t modeToInt = static_cast<int32_t>(mode);
+    auto success = SetSmartDataSystemParameter(SMART_DATA_PROCESSING_MODE, modeToInt);
+    if (!success) {
+        MEDIA_ERR_LOG("SetSmartDataProcessingMode failed. mode: %{public}d", modeToInt);
+        return;
+    }
+    MEDIA_INFO_LOG("SetSmartDataProcessingMode successful. mode: %{public}d", modeToInt);
+}
+
+SmartDataProcessingMode GetSmartDataProcessingMode()
+{
+    int32_t defaultMode = static_cast<int32_t>(SmartDataProcessingMode::NONE);
+    int32_t modeToInt = GetSmartDataSystemParameter(SMART_DATA_PROCESSING_MODE, defaultMode);
+    return static_cast<SmartDataProcessingMode>(modeToInt);
+}
+
+void SetSouthDeviceNextStatus(CloudMediaRetainType retainType, SwitchStatus switchStatus)
+{
+    auto switchStatusToInt = static_cast<int32_t>(switchStatus);
+    auto retainTypeToInt = static_cast<int32_t>(retainType);
+    bool retFlag = false;
+    if (retainType == CloudMediaRetainType::RETAIN_FORCE) {
+        retFlag = SetSmartDataSystemParameter(CLOUD_RETIAN_LAST_STATUS_KEY, switchStatusToInt);
+    } else if (retainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
+        retFlag = SetSystemParameter(HDC_RETIAN_LAST_STATUS_KEY, switchStatusToInt);
+    } else {
+        MEDIA_ERR_LOG("SetSouthDeviceNextStatus retainType: %{public}d, status: %{public}d",
+            retainTypeToInt, switchStatusToInt);
+        return;
+    }
+    MEDIA_INFO_LOG("set retainType: %{public}d, SwitchStatus: %{public}d, result bool: %{public}d",
+        retainTypeToInt, switchStatusToInt, retFlag);
+}
+
+SwitchStatus GetSouthDeviceNextStatus(CloudMediaRetainType retainType)
+{
+    int32_t defaultSwitchStatus = static_cast<int32_t>(SwitchStatus::NONE);
+    auto retainTypeToInt = static_cast<int32_t>(retainType);
+    if (retainType == CloudMediaRetainType::RETAIN_FORCE) {
+        switchStatus = GetSmartDataSystemParameter(CLOUD_RETIAN_LAST_STATUS_KEY, defaultSwitchStatus);
+    } else if (retainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
+        switchStatus = GetSmartDataSystemParameter(HDC_RETIAN_LAST_STATUS_KEY, defaultSwitchStatus);
+    } else {
+        MEDIA_ERR_LOG("GetSouthDeviceNextStatus invalid retainType: %{public}d", retainTypeToInt);
+        return SwitchStatus::NONE;
+    }
+    MEDIA_INFO_LOG("GetSouthDeviceNextStatus retainType: %{public}d, SwitchStatus: %{public}d",
+        retainTypeToInt, switchStatus);
+    return static_cast<SwitchStatus>(switchStatus);
 }
 
 // 获取云退出时场景
@@ -103,86 +159,6 @@ SmartDataProcessingMode GetSmartDataProcessingMode(CloudMediaRetainType retainTy
     }
 }
 
-void SetSouthDeviceNextStatus(CloudMediaRetainType retainType, SwitchStatus switchStatus)
-{
-    auto switchStatusToInt = static_cast<int32_t>(switchStatus);
-    auto retainTypeToInt = static_cast<int32_t>(retainType);
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    bool retFlag = false;
-    if (retainType == CloudMediaRetainType::RETAIN_FORCE) {
-        retFlag = SetSystemParameter(CLOUD_RETIAN_LAST_STATUS_KEY, switchStatusToInt);
-    } else if (retainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
-        retFlag = SetSystemParameter(HDC_RETIAN_LAST_STATUS_KEY, switchStatusToInt);
-    } else {
-        MEDIA_ERR_LOG("SetSouthDeviceNextStatus retainType: %{public}d, status: %{public}d",
-            retainTypeToInt, switchStatusToInt);
-        return;
-    }
-    MEDIA_INFO_LOG("set retainType: %{public}d, SwitchStatus: %{public}d, result bool: %{public}d",
-        retainTypeToInt, switchStatusToInt, retFlag);
-}
-
-SwitchStatus GetSouthDeviceNextStatus(CloudMediaRetainType retainType)
-{
-    int32_t switchStatus = static_cast<int32_t>(SwitchStatus::NONE);
-    auto retainTypeToInt = static_cast<int32_t>(retainType);
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    if (retainType == CloudMediaRetainType::RETAIN_FORCE) {
-        switchStatus = system::GetIntParameter(CLOUD_RETIAN_LAST_STATUS_KEY, switchStatus);
-    } else if (retainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
-        switchStatus = system::GetIntParameter(HDC_RETIAN_LAST_STATUS_KEY, switchStatus);
-    } else {
-        MEDIA_ERR_LOG("GetSouthDeviceNextStatus invalid retainType: %{public}d", retainTypeToInt);
-        return SwitchStatus::NONE;
-    }
-    MEDIA_INFO_LOG("GetSouthDeviceNextStatus retainType: %{public}d, SwitchStatus: %{public}d",
-        retainTypeToInt, switchStatus);
-    return static_cast<SwitchStatus>(switchStatus);
-}
-
-void SetSmartDataProcessingMode(SmartDataProcessingMode mode)
-{
-    int32_t modeToInt = static_cast<int32_t>(mode);
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    auto retFlag = SetSystemParameter(SMART_DATA_PROCESSING_MODE, modeToInt);
-    if (!retFlag) {
-        MEDIA_ERR_LOG("SetSmartDataProcessingMode failed. mode: %{public}d", modeToInt);
-        return;
-    }
-    MEDIA_INFO_LOG("SetSmartDataProcessingMode mode: %{public}d", modeToInt);
-    return;
-}
-
-void SetSmartDataRetainTime()
-{
-    int64_t retainTime = MediaFileUtils::UTCTimeMilliSeconds();
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    auto retFlag = SetSystemParameter(SMART_DATA_RETAIN_TIME, retainTime);
-    if (!retFlag) {
-        MEDIA_ERR_LOG("SetSmartDataretainTime failed. mode: %{public}" PRId64, retainTime);
-        return;
-    }
-    MEDIA_INFO_LOG("SetSmartRetainTime: %{public}" PRId64, retainTime);
-    return;
-}
-
-int64_t GetSmartDataRetainTime()
-{
-    int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
-    int64_t retainTime {0};
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    retainTime = system::GetIntParameter(SMART_DATA_RETAIN_TIME, currentTime);
-    return retainTime;
-}
-
-SmartDataProcessingMode GetSmartDataProcessingMode()
-{
-    int32_t modeToInt = static_cast<int32_t>(SmartDataProcessingMode::NONE);
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
-    modeToInt = system::GetIntParameter(SMART_DATA_PROCESSING_MODE, modeToInt);
-
-    return static_cast<SmartDataProcessingMode>(modeToInt);
-}
 static const  std::string CREATE_TABLE_BACKUP_ALBUM_SQL = "CREATE TABLE "
     "IF NOT EXISTS PhotosAlbumBackupForSaveAnalysisData ("
         " album_id    INTEGER PRIMARY KEY,"
@@ -404,40 +380,22 @@ int32_t UpdatePhotosLcdVisitTime(const std::vector<std::string> &fileIds)
     return E_OK;
 }
 
-static void UpdateSmartDataAlbumAsync(AsyncTaskData *data)
-{
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    if (rdbStore == nullptr) {
-        MEDIA_ERR_LOG("rdbStore is null.");
-        SetSmartDataUpdateState(UpdateSmartDataState::IDLE);
-        return;
-    }
-
-    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore);
-}
-
 int32_t DoUpdateSmartDataAlbum()
 {
     MEDIA_INFO_LOG("Begin UpdateSmartDataAlbumAsync");
-    auto asyncWorker = MediaLibraryAsyncWorker::GetInstance();
-    if (asyncWorker == nullptr) {
-        MEDIA_ERR_LOG("Failed to get async worker instance!");
-        return E_ERR;
-    }
+    std::thread([]() {
+        CloudSync::SysUtils::SlowDown();
+        MEDIA_INFO_LOG("DoUpdateSmartDataAlbum thread begin");
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        if (rdbStore == nullptr) {
+            MEDIA_ERR_LOG("rdbStore is null.");
+            return;
+        }
+        MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore);
+        MEDIA_INFO_LOG("DoUpdateSmartDataAlbum thread end");
+    }).detach();
 
-    std::shared_ptr<MediaLibraryAsyncTask> updateTask =
-        std::make_shared<MediaLibraryAsyncTask>(UpdateSmartDataAlbumAsync, nullptr);
-    if (updateTask == nullptr) {
-        MEDIA_ERR_LOG("Failed to create async task for DoUpdateSmartDataAlbum!");
-        return E_ERR;
-    }
-
-    if (GetSmartDataUpdateState() > static_cast<int64_t>(UpdateSmartDataState::IDLE)) {
-        asyncWorker->AddTask(updateTask, false);
-    }
-
-    MEDIA_INFO_LOG("Successfully scheduled DoUpdateSmartDataAlbum task.");
+    MEDIA_INFO_LOG("Successfully scheduled UpdateSmartDataAlbumAsync task.");
     return E_OK;
 }
-
 }

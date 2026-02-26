@@ -22,6 +22,9 @@
 #include "cloud_media_asset_types.h"
 #include "settings_data_manager.h"
 #include "cloud_media_sync_mutex.h"
+#include "media_log.h"
+#include "preferences.h"
+#include "preferences_helper.h"
 
 namespace OHOS::Media {
 
@@ -45,6 +48,7 @@ const int64_t REAL_LCD_VISIT_TIME_INVALID = -2;
 const int64_t REAL_LCD_VISIT_TIME_DELETED = -3;
 constexpr int64_t TIMESTAMP_UP_TO_LAST_RETAIN_OF_HDC = 180LL * 24 * 60 * 60 * 1000;
 constexpr int64_t TIMESTAMP_UP_TO_LAST_RETAIN_OF_CLOUD = 30LL * 24 * 60 * 60 * 1000;
+const std::string SMART_DATA_RETAIN_XML = "/data/storage/el2/base/preferences/smartdata_retain.xml";
 
 int64_t GetSmartDataRetainTime();
 SmartDataProcessingMode GetSmartDataProcessingMode(CloudMediaRetainType retainType, SwitchStatus switchStatus);
@@ -68,4 +72,56 @@ void SetSmartDataUpdateState(UpdateSmartDataState currentState);
 int64_t GetSmartDataUpdateState();
 }
 
+template <typename T>
+T GetSmartDataSystemParameter(const std::string &key, const T &defaultValue)
+{
+    int32_t errCode = 0;
+    std::shared_ptr<Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
+    if (prefs == nullptr) {
+        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
+        return defaultValue;
+    }
+
+    std::lock_guard<std::mutex> lock(GetSmartDataMutex());
+    if constexpr (std::is_same_v<T, int32_t>) {
+        return prefs->GetInt(key, defaultValue);
+    } else if constexpr (std::is_same_v<T, int64_t>) {
+        return prefs->GetInt64(key, defaultValue);
+    } else if constexpr (std::is_same _v<T, bool>) {
+        return prefs->GetBool(key, defaultValue);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+        return prefs->GetString(key, defaultValue);
+    } else {
+        MEDIA_ERR_LOG("Unsupported type for GetSmartDataSystemParameter");
+        return defaultValue;
+    }
+}
+
+template <typename T>
+void SetSmartDataSystemParameter(const std::string &key, const T &value)
+{
+    int32_t errCode = 0;
+    std::shared_ptr<Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
+    if (prefs == nullptr) {
+        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(GetSmartDataMutex());
+    if constexpr (std::is_same_v<T, int32_t>) {
+        prefs->PutInt(key, value);
+    } else if constexpr (std::is_same_v<T, int64_t>) {
+        prefs->PutInt64(key, value);
+    } else if constexpr (std::is_same_v<T, bool>) {
+        prefs->PutBool(key, value);
+    } else if constexpr (std::is_same_v<T, std::string>) {
+        prefs->PutString(key, value);
+    } else {
+        MEDIA_ERR_LOG("Unsupported type for SetSmartDataSystemParameter");
+        return;
+    }
+    prefs->Flush();
+}
 #endif
