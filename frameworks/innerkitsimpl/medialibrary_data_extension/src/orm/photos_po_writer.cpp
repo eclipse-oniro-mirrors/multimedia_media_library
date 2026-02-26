@@ -768,6 +768,20 @@ std::string PhotosPoWriter::GetStringValByPrecision(const double doubleVal, cons
     return stream.str();
 }
 
+bool PhotosPoWriter::GetPackageName(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.packageName.has_value(), false);
+    val = this->photosPo_.packageName.value();
+    return true;
+}
+
+void PhotosPoWriter::SetPackageName(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.packageName = std::get<std::string>(val);
+}
+
 void PhotosPoWriter::SetSouthDeviceType(std::variant<int32_t, int64_t, double, std::string> &val)
 {
     bool errConn = !std::holds_alternative<int32_t>(val);

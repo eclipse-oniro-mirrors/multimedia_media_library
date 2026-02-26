@@ -122,6 +122,7 @@ private:
         {PhotoColumn::PHOTO_CLOUD_VERSION, {&PhotosPoWriter::GetCloudVersion, &PhotosPoWriter::SetCloudVersion}},
         {PhotoColumn::PHOTO_LCD_SIZE, {&PhotosPoWriter::GetLcdSize, &PhotosPoWriter::SetLcdSize}},
         {PhotoColumn::PHOTO_THUMB_SIZE, {&PhotosPoWriter::GetThumbSize, &PhotosPoWriter::SetThumbSize}},
+        {MediaColumn::MEDIA_PACKAGE_NAME, {&PhotosPoWriter::GetPackageName, &PhotosPoWriter::SetPackageName}},
         {PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE,
             {&PhotosPoWriter::GetSouthDeviceType, &PhotosPoWriter::SetSouthDeviceType}},
     };
@@ -247,6 +248,8 @@ private:
     void SetThumbSize(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetThumbSize(std::string &val);
     std::string GetStringValByPrecision(const double doubleVal, const int32_t precision);
+    bool GetPackageName(std::string &val);
+    void SetPackageName(std::variant<int32_t, int64_t, double, std::string> &val);
     void SetSouthDeviceType(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetSouthDeviceType(std::string &val);
 };

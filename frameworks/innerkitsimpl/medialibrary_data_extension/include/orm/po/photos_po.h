@@ -89,6 +89,7 @@ public:
     std::optional<std::string> storagePath;           // PhotoColumn::PHOTO_STORAGE_PATH
     std::optional<std::string> lcdSize;               // PhotoColumn::PHOTO_LCD_SIZE
     std::optional<std::string> thumbSize;             // PhotoColumn::PHOTO_THUMB_SIZE
+    std::optional<std::string> packageName;           // MediaColumn::MEDIA_PACKAGE_NAME
     std::optional<int32_t> southDeviceType;           // PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE
 
     /* keep cloud_id at the last; so RecordToValueBucket can skip it*/
