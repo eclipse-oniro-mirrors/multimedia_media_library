@@ -331,10 +331,16 @@ int32_t MediaFuseManager::DoMedialibraryReadPermission(const string &fileId, con
 {
     string bundleName;
     AccessTokenID tokenCaller = INVALID_TOKENID;
+    int32_t permGranted = E_PERMISSION_DENIED;
     PermissionUtils::GetClientBundle(uid, bundleName);
     string appId = PermissionUtils::GetAppIdByBundleName(bundleName, uid);
-    class MediafusePermCheckInfo info(target, MEDIA_FILEMODE_READONLY, fileId, appId, uid);
-    int32_t permGranted = info.CheckPermission(tokenCaller);
+    class MediafusePermCheckInfo infoR(target, MEDIA_FILEMODE_READONLY, fileId, appId, uid);
+    permGranted = infoR.CheckPermission(tokenCaller, false);
+    if (permGranted > 0) {
+        return permGranted;
+    }
+    class MediafusePermCheckInfo infoW(target, MEDIA_FILEMODE_WRITEONLY, fileId, appId, uid);
+    permGranted = infoW.CheckPermission(tokenCaller, false);
     return permGranted;
 }
 
@@ -387,7 +393,7 @@ int32_t MediaFuseManager::DoGetAttr(const char *path, struct stat *stbuf)
 }
 
 static int32_t WrCheckPermission(const string &filePath, const string &mode,
-    const uid_t &uid, AccessTokenID &tokenCaller)
+    const uid_t &uid, AccessTokenID &tokenCaller, bool isNeedRecord = true)
 {
     vector<string> perms;
     if (mode.find("r") != string::npos) {
@@ -395,6 +401,10 @@ static int32_t WrCheckPermission(const string &filePath, const string &mode,
     }
     if (mode.find("w") != string::npos) {
         perms.push_back(PERM_WRITE_IMAGEVIDEO);
+    }
+    if (!isNeedRecord) {
+        return PermissionUtils::CheckPhotoCallerPermissionNoRecord(perms,
+            uid, tokenCaller)? E_SUCCESS : E_PERMISSION_DENIED;
     }
     return PermissionUtils::CheckPhotoCallerPermission(perms, uid, tokenCaller)? E_SUCCESS : E_PERMISSION_DENIED;
 }
@@ -442,9 +452,9 @@ static int32_t DbCheckPermission(const string &filePath, const string &mode, con
     return E_SUCCESS;
 }
 
-bool MediafusePermCheckInfo::CheckPermission(uint32_t &tokenCaller)
+bool MediafusePermCheckInfo::CheckPermission(uint32_t &tokenCaller, bool isNeedRecord)
 {
-    int err = WrCheckPermission(filePath_, mode_, uid_, tokenCaller);
+    int err = WrCheckPermission(filePath_, mode_, uid_, tokenCaller, isNeedRecord);
     bool rslt;
     if (err == E_SUCCESS) {
         MEDIA_INFO_LOG("wr check succ");
@@ -457,11 +467,11 @@ bool MediafusePermCheckInfo::CheckPermission(uint32_t &tokenCaller)
     } else {
         rslt = false;
     }
-    if (mode_.find("r") != string::npos) {
+    if (mode_.find("r") != string::npos && isNeedRecord) {
         PermissionUtils::CollectPermissionInfo(PERM_READ_IMAGEVIDEO, rslt,
             PermissionUsedTypeValue::PICKER_TYPE, uid_);
     }
-    if (mode_.find("w") != string::npos) {
+    if (mode_.find("w") != string::npos && isNeedRecord) {
         PermissionUtils::CollectPermissionInfo(PERM_WRITE_IMAGEVIDEO, rslt,
             PermissionUsedTypeValue::PICKER_TYPE, uid_);
     }

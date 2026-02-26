@@ -404,6 +404,12 @@ bool PermissionUtils::CheckPhotoCallerPermission(const string &permission, const
     return true;
 }
 
+bool PermissionUtils::CheckPhotoCallerPermissionNoRecord(const string &permission, const AccessTokenID &tokenCaller)
+{
+    int res = AccessTokenKit::VerifyAccessToken(tokenCaller, permission);
+    return res == PermissionState::PERMISSION_GRANTED;
+}
+
 bool PermissionUtils::GetTokenCallerForUid(const int &uid, AccessTokenID &tokenCaller)
 {
     string bundleName;
@@ -449,6 +455,18 @@ bool PermissionUtils::CheckPhotoCallerPermission(const vector<string> &perms, co
     CHECK_AND_RETURN_RET(err != false, false);
     for (const auto &perm : perms) {
         CHECK_AND_RETURN_RET(CheckPhotoCallerPermission(perm, tokenCaller), false);
+    }
+    return true;
+}
+
+bool PermissionUtils::CheckPhotoCallerPermissionNoRecord(const vector<string> &perms, const int &uid,
+    AccessTokenID &tokenCaller)
+{
+    bool err = GetTokenCallerForUid(uid, tokenCaller);
+    CHECK_AND_RETURN_RET(!perms.empty(), false);
+    CHECK_AND_RETURN_RET(err, false);
+    for (const auto &perm : perms) {
+        CHECK_AND_RETURN_RET(CheckPhotoCallerPermissionNoRecord(perm, tokenCaller), false);
     }
     return true;
 }
