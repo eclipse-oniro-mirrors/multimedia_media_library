@@ -208,18 +208,34 @@ export class PhotoPickerComponent extends ViewPU {
 
     setWindowStageChangeLinstener() {
         console.log('photopickercomponent WindowStageChangeLinstener');
-        let applicationContext = getContext(this).getApplicationContext();
-        applicationContext.on('applicationStateChange', {
-            onApplicationForeground: () => {
-                console.log(`photopickercomponent is foreground isPickerKilled = ${this.isPickerKilled} ${this.revokeIndex}`);
-                if (this.isPickerKilled) {
-                    this.revokeIndex++;
+        try {
+            let applicationContext = getContext(this).getApplicationContext();
+            applicationContext.on('applicationStateChange', {
+                onApplicationForeground: () => {
+                    console.log(`photopickercomponent is foreground isPickerKilled = ${this.isPickerKilled} ${this.revokeIndex}`);
+                    if (this.isPickerKilled) {
+                        this.revokeIndex++;
+                        this.isPickerKilled = false;
+                    }
+                },
+                onApplicationBackground: () => {
+                    console.log('photopickercomponent is background');
                 }
-            },
-            onApplicationBackground: () => {
-                console.log('photopickercomponent is background');
-            }
-        });
+            });
+        } catch (e) {
+            console.log(`photopickercomponent onWindowStageChangeLinstener on - failed ${JSON.stringify(e)}`);
+        }
+    }
+
+    aboutToDisappear() {
+        try {
+            let applicationContext = getContext(this).getApplicationContext();
+            applicationContext.off('applicationStateChange');
+            console.log(`photopickercomponent onWindowStageChangeLinstener off - disappear`);
+        } catch (e) {
+            // 重复解off会有异常
+            console.log(`photopickercomponent onWindowStageChangeLinstener on - failed ${JSON.stringify(e)}`);
+        }
     }
 
     updateStateVars(e) {
@@ -525,10 +541,15 @@ export class PhotoPickerComponent extends ViewPU {
             SecurityUIExtensionComponent.onError(((error) => {
                 console.info('PhotoPickerComponent onError: ' + JSON.stringify(error));
                 console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex); 
-                 if (error.code === 100014) { 
+                if (error.code === 100014) { 
                     console.log('PhotoPickerComponent is set isPickerKilled = true');
                     this.isPickerKilled = true; 
-                 }
+                    let e = new PickerError();
+                    e.functionName = error?.name || 'extension_exit_abnormally';
+                    e.errorCode = error.code;
+                    e.errorMessage = error?.message || 'the extension ability exited abnormally, please check AMS log.';
+                    this.handleOnError(e);
+                }
             }));
         }), SecurityUIExtensionComponent);
         Column.pop();
