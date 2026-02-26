@@ -13,7 +13,9 @@
       "syscap": [
         "SystemCapability.FileManagement.UserFileManager.Core",
         "SystemCapability.FileManagement.UserFileManager.DistributedCore",
-        "SystemCapability.FileManagement.PhotoAccessHelper.Core"
+        "SystemCapability.FileManagement.PhotoAccessHelper.Core",
+        "SystemCapability.FileManagement.UserFileManager.DistributedCore",
+        "SystemCapability.FileManagement.UserFileManager.Core"
       ],
       "features": [
         "media_library_link_opt",
@@ -42,7 +44,9 @@
           "battery_manager",
           "bundle_framework",
           "c_utils",
+          "cellular_data",
           "camera_framework",
+          "core_service",
           "common_event_service",
           "data_share",
           "device_manager",

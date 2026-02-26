@@ -76,6 +76,13 @@ ohos_unittest("background_cloud_batch_selected_file_processor_test") {
     "relational_store:rdb_data_share_adapter",
   ]
 
+  if (media_library_cellular_data_enable) {
+    external_deps += [
+      "core_service:tel_core_service_api",
+      "cellular_data:tel_cellular_data_api"
+    ]
+  }
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true

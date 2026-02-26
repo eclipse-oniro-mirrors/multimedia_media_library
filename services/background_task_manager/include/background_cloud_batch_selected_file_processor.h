@@ -69,6 +69,12 @@ public:
     EXPORT static void LaunchNetWorkBatchDownloadProcessor();
     EXPORT static int32_t ResetReasonForAllWifiNetTask(std::vector<std::string> &fileIds,
         BatchDownloadAutoPauseReasonType &autoPauseReason);
+    EXPORT static void StopDownloadTaskUnit(int64_t &downloadId);
+    EXPORT static bool IsNonCellPolicyTask(std::string &fileId);
+    EXPORT static int32_t UpdateAutoPauseSpecificFileId(std::string fileId);
+    EXPORT static void AutoPauseNonCellPolicyTaskForWlanDisconnect(
+        std::vector<std::string> &fileIdList);
+    EXPORT static bool StopProcessConditionCheckForWlanDisconnect();
 
     enum BatchDownloadStatus : int32_t {
         INIT = 0,
@@ -100,7 +106,7 @@ private:
 
         SingleDownloadFiles downloadFile_;
     };
-
+    EXPORT static bool GetCurrentRoundInDownloadingFileIdListVec(std::vector<std::string> &fileIdList);
     EXPORT static bool GetCurrentRoundInDownloadingFileIdList(std::string &fileIdsStr);
     EXPORT static bool GetCurrentRoundExcludeList(std::string &fileIdsStr);
     EXPORT static bool IsFileIdInCurrentRoundWithoutLock(const std::string &fileId);
@@ -130,7 +136,9 @@ private:
     EXPORT static void UpdateDBProgressStatusInfoForBatch(vector<int32_t> fileIds, int32_t status);
     EXPORT static int32_t UpdateDBProgressInfoForFileId(std::string &fileIdStr, int32_t percent,
         int64_t finishTime, int32_t status);
-    EXPORT static int32_t QueryUnFinishBatchSelectedResourceFilesNum();
+    EXPORT static int32_t QueryUnFinishTasksNum();
+    EXPORT static int32_t QueryUnFinishWifiTasksNum();
+
     EXPORT static int32_t QueryBatchSelectedResourceFilesNum();
     EXPORT static int32_t QueryBatchSelectedResourceFilesNumWithNetCondition();
     EXPORT static int32_t QueryWifiNetRunningTaskNum();

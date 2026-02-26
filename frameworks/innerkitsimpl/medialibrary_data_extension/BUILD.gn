@@ -322,6 +322,9 @@ ohos_shared_library("medialibrary_data_extension") {
   install_enable = true
   defines = []
 
+  if (media_library_cellular_data_enable) {
+    defines += [ "CELLULAR_DATA_ENABLE" ]
+  }
   if (media_library_facard_enable) {
     defines += [ "MEDIALIBRARY_FACARD_SUPPORT" ]
   }
@@ -1145,6 +1148,13 @@ ohos_shared_library("medialibrary_data_extension") {
     "qos_manager:qos",
     "qos_manager:concurrent_task_client",
   ]
+
+  if (media_library_cellular_data_enable) {
+    external_deps += [
+      "core_service:tel_core_service_api",
+      "cellular_data:tel_cellular_data_api"
+    ]
+  }
 
   if (defined(global_parts_info) &&
     defined(global_parts_info.iotdev_memospace_service)) {

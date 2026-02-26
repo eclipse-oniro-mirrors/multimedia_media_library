@@ -359,8 +359,7 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusFailAndAutoPauseToWaiting(con
     std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND (" +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ? OR " +
-        DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ?) AND " +
-        DownloadResourcesColumn::MEDIA_PERCENT + " = -1";
+        DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ?)";
     std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,

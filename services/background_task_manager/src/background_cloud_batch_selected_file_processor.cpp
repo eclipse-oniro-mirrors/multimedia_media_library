@@ -59,6 +59,10 @@
 #include "net_conn_client.h"
 #include "power_efficiency_manager.h"
 #include "cloud_media_common.h"
+#ifdef CELLULAR_DATA_ENABLE
+#include "core_service_client.h"
+#include "cellular_data_client.h"
+#endif
 
 namespace OHOS {
 namespace Media {
@@ -98,6 +102,19 @@ std::atomic<bool> BackgroundCloudBatchSelectedFileProcessor::downloadLatestFinis
 std::atomic<bool> BackgroundCloudBatchSelectedFileProcessor::batchDownloadProcessRunningStatus_{false};
 int32_t BackgroundCloudBatchSelectedFileProcessor::batchDownloadQueueLimitNum_ = batchDownloadQueueLimitNumHigh;
 // LCOV_EXCL_START
+
+bool BackgroundCloudBatchSelectedFileProcessor::GetCurrentRoundInDownloadingFileIdListVec(
+    std::vector<std::string> &fileIdList)
+{
+    unique_lock<mutex> downloadLock(downloadResultMutex_);
+    CHECK_AND_RETURN_RET_INFO_LOG(!currentDownloadIdFileInfoMap_.empty(), false,
+        "Not file downloading, skip get round file!");
+    for (const auto& entry : currentDownloadIdFileInfoMap_) {
+        fileIdList.emplace_back(entry.second.fileId);
+    }
+    downloadLock.unlock();
+    return !fileIdList.empty();
+}
 
 bool BackgroundCloudBatchSelectedFileProcessor::GetCurrentRoundInDownloadingFileIdList(std::string &fileIdsStr)
 {
@@ -416,7 +433,7 @@ void BackgroundCloudBatchSelectedFileProcessor::DownloadLatestBatchSelectedFinis
         }
     }
     MEDIA_INFO_LOG("BatchSelectFileDownload Timer Shutdown");
-    if (QueryUnFinishBatchSelectedResourceFilesNum() == 0) {
+    if (QueryUnFinishTasksNum() == 0) {
         SetBatchDownloadAddedFlag(false);
     }
     SetBatchDownloadProcessRunningStatus(false);
@@ -830,6 +847,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryWifiNetRunningTaskNum()
     int num = 0;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         num = GetInt32Val("count", resultSet);
+        MEDIA_INFO_LOG("BatchSelectFileDownload QueryWifiNetRunningTaskNum, num: %{public}d", num);
     }
     if (resultSet != nullptr) {
         resultSet->Close();
@@ -865,7 +883,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFil
 }
 
 // 查询是否存在正在下载列表的遗留任务
-int32_t BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishBatchSelectedResourceFilesNum()
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishTasksNum()
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
@@ -882,6 +900,34 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishBatchSelectedRes
     int num = 0;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         num = GetInt32Val("count", resultSet);
+        MEDIA_INFO_LOG("BatchSelectFileDownload QueryUnFinishTasksNum, num: %{public}d", num);
+    }
+    if (resultSet != nullptr) {
+        resultSet->Close();
+    }
+    return num;
+}
+
+// 查询是否存在正在下载列表的遗留WIFI任务
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishWifiTasksNum()
+{
+    auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
+    string sql = "SELECT COUNT(*) AS count FROM " + DownloadResourcesColumn::TABLE
+        + " WHERE "
+        + DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " IN ("
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING)) + ","
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE)) + ","
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_PAUSE)) + ","
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
+        + ") AND " + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " != "
+        + std::to_string(static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
+    int num = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        num = GetInt32Val("count", resultSet);
+        MEDIA_INFO_LOG("BatchSelectFileDownload QueryUnFinishWifiTasksNum, num: %{public}d", num);
     }
     if (resultSet != nullptr) {
         resultSet->Close();
@@ -1063,45 +1109,141 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::ResetReasonForAllWifiNetTask(
 void BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask()
 {
     std::unique_lock<std::mutex> lck(mtxSec);
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload HandleTimeoutCellTask START");
     cellThreadRunning = true;
-    std::vector<std::string> fileIds;
     if (BackgroundCloudBatchSelectedFileProcessor::QueryWifiNetRunningTaskNum() > 0) {
         MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START thread");
+        std::vector<std::string> fileIds;
         BackgroundCloudBatchSelectedFileProcessor::QueryAllWifiNetTask(fileIds);
         BackgroundCloudBatchSelectedFileProcessor::TriggerPauseBatchDownloadProcessor(fileIds);
         BackgroundCloudBatchSelectedFileProcessor::PauseAllWifiNetTask();
     }
-    int32_t count = 0;
-    while (count <= 5) { // 5
-        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
-            // waiting+network cell to pause 不停cell 非wifi 但蜂窝联网
-            if (BackgroundCloudBatchSelectedFileProcessor::QueryWifiNetRunningTaskNum() > 0) {
-                MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START while");
-                int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
-                    DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
-                    static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
-                MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE Cellnet ret: %{public}d", ret);
-                cellThreadRunning = false;
-                return;
-            }
-        } else {
-            const int64_t WAIT_NET_SWITCH_TIME = 1000000; // 1000000 1s
-            usleep(WAIT_NET_SWITCH_TIME);
-            count++;
+#ifdef CELLULAR_DATA_ENABLE
+    bool hasSimCard = false;
+    int32_t slotId = Telephony::CellularDataClient::GetInstance().GetDefaultCellularDataSlotId();
+    MEDIA_INFO_LOG("BatchSelectFileDownload HandleTimeoutCellTask slotId: %{public}d",
+        slotId);
+    DelayedRefSingleton<Telephony::CoreServiceClient>::GetInstance().HasSimCard(slotId, hasSimCard);
+    MEDIA_INFO_LOG("BatchSelectFileDownload HandleTimeoutCellTask hasSimCard: %{public}d",
+        hasSimCard);
+    bool isEnableCellularData {false};
+    auto ret = Telephony::CellularDataClient::GetInstance().IsCellularDataEnabled(isEnableCellularData);
+    CHECK_AND_RETURN_LOG(ret == 0, "Get isEnableCellularData Failed.");
+    MEDIA_INFO_LOG("BatchSelectFileDownload HandleTimeoutCellTask isEnableCellularData: %{public}d",
+        isEnableCellularData);
+    if (hasSimCard && isEnableCellularData) {
+        // waiting+network cell to pause 不停cell 非wifi 但蜂窝联网
+        if (QueryUnFinishWifiTasksNum() > 0) { // 有wifi任务才发通知
+            MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START HandleTimeoutCellTask");
+            int32_t retNotify = NotificationMerging::ProcessNotifyDownloadProgressInfo(
+                DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
+                static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+            MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_PAUSE Cellnet ret: %{public}d",
+                retNotify);
+            cellThreadRunning = false;
+            return;
         }
     }
+#endif
     if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
         BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
         MEDIA_INFO_LOG("BatchSelectFileDownload HandleTimeoutCellTask timeout");
+        std::vector<std::string> fileIds;
+        QueryAllWifiNetTask(fileIds);
         ResetReasonForAllWifiNetTask(fileIds, autoPauseReason);
         AutoStopAction(autoPauseReason);
     }
     cellThreadRunning = false;
 }
 
-bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
+// 查询 蜂窝场景 wifi任务
+bool BackgroundCloudBatchSelectedFileProcessor::IsNonCellPolicyTask(std::string &fileId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, true, "QueryCellPolicyTask Failed to get rdb.");
+    NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
+    NativeRdb::ValuesBucket value;
+    predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_ID, fileId);
+    predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
+        static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
+    auto resultSet = rdbStore->Query(predicates, {DownloadResourcesColumn::MEDIA_ID});
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, true, "resultSet is null");
+    auto ret = resultSet->GoToFirstRow();
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, true, "GoToFirstRow failed");
+    std::string dbResult = to_string(GetInt32Val(DownloadResourcesColumn::MEDIA_ID, resultSet));
+    resultSet->Close();
+    if (fileId == dbResult) { // 仅当任务是蜂窝允许下载 才不停
+        return false;
+    }
+    MEDIA_INFO_LOG("IsCellPolicyTask not found");
+    return true;
+}
+
+void BackgroundCloudBatchSelectedFileProcessor::StopDownloadTaskUnit(int64_t &downloadId)
+{
+    StopDownloadFiles(downloadId, false);
+    unique_lock<mutex> downloadLock(downloadResultMutex_);
+    currentDownloadIdFileInfoMap_.erase(downloadId);
+    downloadLock.unlock();
+}
+
+int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAutoPauseSpecificFileId(std::string fileId)
+{
+    // 除了手动停止的任务 都可设置自动停止
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL,
+        "UpdateAutoPauseSpecificFileId Failed to get rdbStore.");
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload UpdateAutoPauseSpecificFileId");
+    // update download_resources_task_records set download_status = 2 where download_status != 4 AND download_status !=3
+    NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
+    NativeRdb::ValuesBucket value;
+    predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_ID, fileId);
+    predicates.And()->NotEqualTo(DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
+        static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
+    predicates.And()->NotEqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+        static_cast<int32_t>(BatchDownloadStatusType::TYPE_PAUSE));
+
+    value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+        static_cast<int32_t>(BatchDownloadStatusType::TYPE_AUTO_PAUSE));
+    int32_t changedRows = -1;
+    int32_t ret = rdbStore->Update(changedRows, value, predicates);
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload UpdateAutoPauseSpecificFileId ret: %{public}d, changedRows %{public}d",
+        ret, changedRows);
+    return ret;
+}
+
+void BackgroundCloudBatchSelectedFileProcessor::AutoPauseNonCellPolicyTaskForWlanDisconnect(
+    std::vector<std::string> &fileIdList)
+{
+    for (auto fileId : fileIdList) {
+        // 检查fileid 如果策略非cell 停止任务 更新表为autopause
+        if (IsNonCellPolicyTask(fileId)) { // 仅当任务是蜂窝允许下载 才不停任务
+            int64_t downloadId = GetDownloadIdByFileIdInCurrentRound(fileId);
+            StopDownloadTaskUnit(downloadId);
+        }
+        UpdateAutoPauseSpecificFileId(fileId); // 设置成autopause状态
+    }
+}
+
+// 停止当前运行的任务 并自动停止 防止偷跑流量 非cell策略任务 不发通知
+bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheckForWlanDisconnect()
 {
     int32_t num = QueryBatchSelectedResourceFilesNum();
+    if (num == 0) {
+        MEDIA_INFO_LOG("BatchSelectFileDownload no task to stop");
+        return false;
+    }
+    if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsWifiConnectedAtRealTime()) { // wifi确认断开
+        std::vector<std::string> fileIdVec;
+        GetCurrentRoundInDownloadingFileIdListVec(fileIdVec); // 拿当前运行任务列表 fileids
+        AutoPauseNonCellPolicyTaskForWlanDisconnect(fileIdVec);
+    }
+    return true;
+}
+
+bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
+{
+    int32_t num = QueryUnFinishTasksNum();
     if (num == 0) {
         MEDIA_INFO_LOG("BatchSelectFileDownload no task to stop");
         return false;
@@ -1109,8 +1251,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
     BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_DEFAULT;
     if (!BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(autoPauseReason)) {
         MEDIA_INFO_LOG("BatchSelectFileDownload check result: keep downloading");
-        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()
-            && !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsCellularNetConnectedAtRealTime()) {
             // waiting+network cell to pause 不停cell 非wifi 但蜂窝联网
             if (QueryWifiNetRunningTaskNum() > 0) {
                 MEDIA_INFO_LOG("BatchSelectFileDownload AutoPause Cellnet START loop");
@@ -1118,6 +1259,8 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
                 QueryAllWifiNetTask(fileIds);
                 TriggerPauseBatchDownloadProcessor(fileIds);
                 PauseAllWifiNetTask();
+            }
+            if (QueryUnFinishWifiTasksNum() > 0) { // 有wifi任务才发通知
                 int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
                     DownloadAssetsNotifyType::DOWNLOAD_AUTO_PAUSE, -1, -1,
                     static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
@@ -1126,11 +1269,9 @@ bool BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheck()
         }
         return false;
     }
-    if (autoPauseReason == BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT) {
+    if (autoPauseReason == BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT) { // 特殊切换网络状态
         if (!cellThreadRunning.load()) {
-            std::thread([]() {
-                BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask();
-            }).detach();
+            BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask(); // 分类处理 完全断开和切换
         }
         return false;
     } else {
@@ -1150,6 +1291,8 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryAllWifiNetTask(std::vect
         static_cast<int32_t>(BatchDownloadStatusType::TYPE_PAUSE));
     predicates.And()->NotEqualTo(DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
         static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
+    predicates.And()->NotEqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+        static_cast<int32_t>(BatchDownloadStatusType::TYPE_SUCCESS));
     auto resultSet = rdbStore->Query(predicates, {DownloadResourcesColumn::MEDIA_ID});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "resultSet is null");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {

@@ -481,6 +481,7 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     if (action == EventFwk::CommonEventSupport::COMMON_EVENT_WIFI_CONN_STATE) {
         isWifiConnected_ = eventData.GetCode() == WIFI_STATE_CONNECTED;
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+        this->HandleBatchDownloadWhenNetChange();
         UpdateBackgroundTimer();
 #endif
     } else if (action == EventFwk::CommonEventSupport::COMMON_EVENT_CONNECTIVITY_CHANGE) {
@@ -511,7 +512,6 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     if (action == CLOUD_UPDATE_EVENT && want.GetStringParam(CLOUD_EVENT_INFO_TYPE) == CLOUD_EVENT_INFO_TYPE_VALUE) {
         PermissionWhitelistUtils::OnReceiveEvent();
     }
-    HandleNetInfoChange(action);
     OnReceiveEventSub(eventData);
     // !! Do not add code here !!
 }
@@ -531,6 +531,7 @@ void MedialibrarySubscriber::OnReceiveEventSub(const EventFwk::CommonEventData &
         PermissionUtils::ClearBundleInfoInCache();
         HeifTranscodingCheckUtils::ClearBundleInfoInCache();
     }
+    HandleNetInfoChange(action);
 }
 
 void MedialibrarySubscriber::HandleNetInfoChange(std::string &action)
@@ -541,6 +542,17 @@ void MedialibrarySubscriber::HandleNetInfoChange(std::string &action)
             MedialibraryRelatedSystemStateManager::GetInstance()->SetWifiConnected(isWifiConnected_);
     }
 }
+
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+void MedialibrarySubscriber::HandleBatchDownloadWhenNetChange()
+{
+    if (!isWifiConnected_ && BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus()) {
+        MEDIA_INFO_LOG("BatchSelectFileDownload COMMON_EVENT_WIFI_CONN_STATE Change");
+        // 及时停止当前运行的任务 防止流量偷跑 自动停止 非cell策略任务 不发通知
+        BackgroundCloudBatchSelectedFileProcessor::StopProcessConditionCheckForWlanDisconnect();
+    }
+}
+#endif
 
 int64_t MedialibrarySubscriber::GetNowTime()
 {
