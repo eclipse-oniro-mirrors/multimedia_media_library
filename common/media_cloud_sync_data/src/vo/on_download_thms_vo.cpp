@@ -49,11 +49,13 @@ std::string OnDownloadThmsReqBody::DownloadThmsData::ToString() const
 
 bool OnDownloadThmsReqBody::Unmarshalling(MessageParcel &parcel)
 {
+    CHECK_AND_RETURN_RET(parcel.ReadInt32(this->sceneCode), false);
     return IPC::ITypeMediaUtil::UnmarshallingParcelable<DownloadThmsData>(this->downloadThmsDataList, parcel);
 }
 
 bool OnDownloadThmsReqBody::Marshalling(MessageParcel &parcel) const
 {
+    CHECK_AND_RETURN_RET(parcel.WriteInt32(this->sceneCode), false);
     return IPC::ITypeMediaUtil::MarshallingParcelable<DownloadThmsData>(this->downloadThmsDataList, parcel);
 }
 
@@ -61,6 +63,7 @@ std::string OnDownloadThmsReqBody::ToString() const
 {
     std::stringstream ss;
     ss << "{"
+       << "\"sceneCode\": " << this->sceneCode << ", "
        << "\"DownloadThmsData\": [";
     for (size_t i = 0; i < this->downloadThmsDataList.size(); i++) {
         ss << this->downloadThmsDataList[i].ToString();

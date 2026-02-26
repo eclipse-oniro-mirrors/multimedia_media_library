@@ -210,14 +210,15 @@ int32_t CloudMediaDataClient::GetDownloadThms(
     return this->dataHandler_->GetDownloadThms(cloudMetaDataVec, param);
 }
 
-int32_t CloudMediaDataClient::OnDownloadThms(const std::unordered_map<std::string, int32_t> &resMap, int32_t &failSize)
+int32_t CloudMediaDataClient::OnDownloadThms(const std::unordered_map<std::string, int32_t> &resMap,
+    int32_t &failSize, const int32_t sceneCode)
 {
     if (this->dataHandler_ == nullptr) {
         MEDIA_ERR_LOG("No data handler found!");
         return E_IPC_INVAL_ARG;
     }
     CLOUD_DATA_CLIENT_WRITE_LOCK;
-    return this->dataHandler_->OnDownloadThms(resMap, failSize);
+    return this->dataHandler_->OnDownloadThms(resMap, failSize, sceneCode);
 }
 
 int32_t CloudMediaDataClient::GetVideoToCache(std::vector<CloudMetaData> &cloudMetaDataVec, int32_t size)

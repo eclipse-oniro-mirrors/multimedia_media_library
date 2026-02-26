@@ -388,11 +388,13 @@ int32_t CloudMediaDataClientHandler::GetDownloadThms(
 }
 
 int32_t CloudMediaDataClientHandler::OnDownloadThmsInner(
-    const std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList, int32_t &failSize)
+    const std::vector<OnDownloadThmsReqBody::DownloadThmsData> &downloadThmsDataList,
+    int32_t &failSize, const int32_t sceneCode)
 {
     MEDIA_INFO_LOG("enter CloudMediaDataClientHandler::OnDownloadThmsInner");
     uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_ON_DOWNLOAD_THMS);
     OnDownloadThmsReqBody reqBody;
+    reqBody.sceneCode = sceneCode;
     reqBody.downloadThmsDataList = downloadThmsDataList;
     MEDIA_INFO_LOG("OnDownloadThmsReqBody: %{public}zu", reqBody.downloadThmsDataList.size());
     MediaOperateResultRespBody respBody;
@@ -405,7 +407,7 @@ int32_t CloudMediaDataClientHandler::OnDownloadThmsInner(
 }
 
 int32_t CloudMediaDataClientHandler::OnDownloadThms(
-    const std::unordered_map<std::string, int32_t> &resMap, int32_t &failSize)
+    const std::unordered_map<std::string, int32_t> &resMap, int32_t &failSize, const int32_t sceneCode)
 {
     MEDIA_INFO_LOG("OnDownloadThms, resMap: %{public}zu", resMap.size());
     CHECK_AND_RETURN_RET_LOG(!resMap.empty(), E_OK, "OnDownloadThms: resMap is empty");
@@ -425,7 +427,7 @@ int32_t CloudMediaDataClientHandler::OnDownloadThms(
     int32_t ret = E_OK;
     int32_t subFailSize = 0;
     for (const auto &dataSubList : splitedDataList) {
-        ret = this->OnDownloadThmsInner(dataSubList, subFailSize);
+        ret = this->OnDownloadThmsInner(dataSubList, subFailSize, sceneCode);
         failSize += subFailSize;
         CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "OnDownloadThmsInner failed, ret: %{public}d", ret);
     }

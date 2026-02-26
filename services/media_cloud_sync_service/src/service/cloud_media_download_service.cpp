@@ -197,7 +197,8 @@ bool CloudMediaDownloadService::IsCloudInsertTaskPriorityHigh()
 }
 
 int32_t CloudMediaDownloadService::OnDownloadThms(
-    const std::unordered_map<std::string, int32_t> &downloadThumbnailMap, std::vector<MediaOperateResultDto> &result)
+    const std::unordered_map<std::string, int32_t> &downloadThumbnailMap,
+    std::vector<MediaOperateResultDto> &result, const int32_t sceneCode)
 {
     MEDIA_INFO_LOG("enter CloudMediaDownloadService::OnDownloadThms");
     std::vector<std::string> thmVector;
@@ -226,7 +227,9 @@ int32_t CloudMediaDownloadService::OnDownloadThms(
     if (ret == E_OK) {
         astcVector.insert(astcVector.end(), bothVector.begin(), bothVector.end());
     }
-    MEDIA_INFO_LOG("size of astcVector is %{public}zu", astcVector.size());
+    MEDIA_INFO_LOG("size of astcVector is %{public}zu, sceneCode:%{public}d", astcVector.size(), sceneCode);
+    CHECK_AND_RETURN_RET(sceneCode == 0, E_OK);
+    //Only sceneCode is Default(0) can notify ASC task.
     this->NotifyDownloadLcd(astcVector);
     return E_OK;
 }
