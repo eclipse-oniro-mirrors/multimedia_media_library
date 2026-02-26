@@ -1501,14 +1501,6 @@ void BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadRe
         && BackgroundCloudBatchSelectedFileProcessor::GetBatchDownloadAddedFlag()) { // 停止且有添加任务且可恢复状态
         MEDIA_DEBUG_LOG("BatchSelectFileDownload Timely Check AutoResume Processor");
         BackgroundCloudBatchSelectedFileProcessor::LaunchAutoResumeBatchDownloadProcessor(); // 自动恢复
-    } else if (BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus() &&
-        BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask() &&
-        BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()) { // 运行 但是有可能有自动停止任务需要恢复
-        MEDIA_INFO_LOG("BatchSelectFileDownload Timely Check AutoResume Processor with task running");
-        // 有auto_pause任务 wifi场景 触发自动恢复
-        if (MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
-            AutoResumeAction();
-        }
     }
 }
 
