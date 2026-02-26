@@ -359,6 +359,7 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusFailAndAutoPauseToWaiting(con
     std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     std::string whereClauseBefore = DownloadResourcesColumn::MEDIA_ID +  " IN ({0}) AND (" +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ? OR " +
+        DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ? OR " +
         DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " = ?)";
     std::string whereClause = CloudMediaCommon::FillParams(whereClauseBefore, {inClause});
     NativeRdb::ValuesBucket valuesBucket;
@@ -368,6 +369,7 @@ int32_t BatchDownloadResourcesTaskDao::UpdateStatusFailAndAutoPauseToWaiting(con
         static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
     std::vector<std::string> whereArgs = {
         to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_FAIL)),
+        to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_SUCCESS)),
         to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE))};
     int32_t changedRows = -1;
     int32_t ret = rdbStore->Update(changedRows, DownloadResourcesColumn::TABLE, valuesBucket, whereClause, whereArgs);
