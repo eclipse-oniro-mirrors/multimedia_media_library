@@ -67,7 +67,6 @@ void SetSmartDataUpdateState(UpdateSmartDataState currentState)
         return;
     }
     MEDIA_INFO_LOG("SetSmartDataUpdateState successful. state: %{public}d", stateValue);
-
 }
 
 int64_t GetSmartDataUpdateState()
