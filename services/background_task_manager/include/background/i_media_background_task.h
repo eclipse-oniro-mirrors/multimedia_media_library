@@ -17,8 +17,7 @@
 #define OHOS_MEDIA_BACKGROUND_I_MEDIA_BACKGROUND_TASK_H
 
 namespace OHOS::Media::Background {
-#define EXPORT __attribute__ ((visibility ("default")))
-class EXPORT IMediaBackGroundTask {
+class IMediaBackGroundTask {
 public:
     virtual bool Accept() = 0;
     virtual void Execute() = 0;

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "medialibrary_thumbnail_acl_task_test.h"
+#include "media_thumbnail_acl_task_test.h"
 
 #include "medialibrary_errno.h"
 #include "media_log.h"

@@ -17,7 +17,7 @@
 #define MEDIALIBRARY_THUMBNAIL_ACL_TASK_TEST_H
 
 #include <gtest/gtest.h>
- 
+
 namespace OHOS::Media::Background {
 class MediaLibraryThumbnailAclTaskTest : public testing::Test {
 public:
