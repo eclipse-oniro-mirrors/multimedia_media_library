@@ -28,6 +28,9 @@
 #include "media_file_utils.h"
 #include "medialibrary_async_worker.h"
 #include "medialibrary_rdb_utils.h"
+#include "sys_utils.h"
+#include "medialibrary_notify.h"
+#include "photo_album_colnum.h"
 
 namespace OHOS::Media {
 
@@ -392,6 +395,10 @@ int32_t DoUpdateSmartDataAlbum()
             return;
         }
         MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore);
+        auto watch = MediaLibraryNotify::GetInstance();
+        if (watch != nullptr) {
+            watch->Notify(PhotoAlbumColnums::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
+        }
         MEDIA_INFO_LOG("DoUpdateSmartDataAlbum thread end");
     }).detach();
 
