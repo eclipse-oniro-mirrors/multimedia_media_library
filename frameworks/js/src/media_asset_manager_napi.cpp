@@ -1577,7 +1577,7 @@ void MediaAssetManagerNapi::OnDataPrepared(napi_env env, napi_value cb, void *co
     }
 
     SetCinematicResult(dataHandler, assetHandler);
-    napi_value napiValueOfMedia = assetHandler->isError ? nullptr : GetNapiValueOfMedia(env, dataHandler);
+    napi_value napiValueOfMedia = assetHandler->isError ? nullptr : GetNapiValueOfMedia(env, assetHandler);
     napi_value napiValueOfInfoMap = nullptr;
     if (assetHandler->needsExtraInfo) {
         napiValueOfInfoMap = GetInfoMapNapiValue(env, assetHandler);
