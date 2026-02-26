@@ -129,13 +129,17 @@ static void InsertDateAdded(const Metadata &metadata, ValuesBucket &outValues)
         }
     }
     outValues.PutLong(MediaColumn::MEDIA_DATE_ADDED, dateAdded);
-    int64_t valueBucketDateAdded {};
-    MediaValuesBucketUtils::GetLong(outValues, MediaColumn::MEDIA_DATE_ADDED, valueBucketDateAdded);
-    const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
-        PhotoFileUtils::ConstructDateAddedDateParts(valueBucketDateAdded);
-    outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
-    outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
-    outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+
+    MediaType type = metadata.GetFileMediaType();
+    if (type == MEDIA_TYPE_PHOTO || type == MEDIA_TYPE_IMAGE || type == MEDIA_TYPE_VIDEO) {
+        int64_t valueBucketDateAdded{};
+        MediaValuesBucketUtils::GetLong(outValues, MediaColumn::MEDIA_DATE_ADDED, valueBucketDateAdded);
+        const auto [dateAddedYear, dateAddedMonth, dateAddedDay] =
+            PhotoFileUtils::ConstructDateAddedDateParts(valueBucketDateAdded);
+        outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
+        outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);
+        outValues.Put(PhotoColumn::PHOTO_DATE_ADDED_DAY, dateAddedDay);
+    }
 }
 
 static inline void HandleDateAdded(const Metadata &metadata, const bool isInsert, ValuesBucket &outValues)
