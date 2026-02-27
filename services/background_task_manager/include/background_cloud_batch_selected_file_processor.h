@@ -47,7 +47,7 @@ public:
 
     EXPORT static bool HaveBatchDownloadResourcesTask();
     EXPORT static bool HaveBatchDownloadForAutoResumeTask();
-    EXPORT static bool HaveBatchDownloadForAutoResumeTaskNoWifi();
+    EXPORT static bool HaveBatchDownloadForAutoResumeTaskWithNetRestrict();
     EXPORT static bool HaveBatchDownloadInAutoPauseTask();
     EXPORT static bool HaveBatchDownloadInAutoPauseTaskWithException();
     EXPORT static void StartBatchDownloadResourcesTimer();
@@ -148,7 +148,7 @@ private:
     EXPORT static int32_t QueryBatchSelectedResourceFilesNumWithNetCondition();
     EXPORT static int32_t QueryWifiNetRunningTaskNum();
     EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResume();
-    EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResumeNoWifi();
+    EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResumeWithNetRestrict();
     EXPORT static int32_t QueryBatchDownloadFinishStatusCountFromDB(int32_t &totalValue,
         int32_t &completedValue, int32_t &failedValue);
     EXPORT static int32_t ClassifyFileIdsInDownloadResourcesTable(const std::vector<std::string> &fileIds,
