@@ -40,7 +40,6 @@ using namespace OHOS::FileManagement::CloudSync;
 using namespace OHOS::NativeRdb;
 
 namespace OHOS::Media::Background {
-// LCOV_EXCL_START
 constexpr int32_t REPORT_THUMBNAIL_ACL_TASK_RESULT_NO_ACL = 1;
 constexpr int32_t REPORT_THUMBNAIL_ACL_TASK_RESULT_COMPLETE = 2;
 constexpr int32_t REPORT_THUMBNAIL_ACL_TASK_RESULT_UNEXPECTED = 3;
@@ -527,5 +526,4 @@ int32_t MediaThumbnailAclTask::FlushProgressEvent(const std::string &xattrInfo, 
     prefs->FlushSync();
     return E_OK;
 }
-// LCOV_EXCL_STOP
 } // namespace OHOS::Media::Background

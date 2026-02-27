@@ -24,6 +24,7 @@ ohos_unittest("media_background_task_test") {
   include_dirs = [
     "./include",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include/background",
+    "../medialibrary_unittest_utils/include",
   ]
 
   cflags = [ "-fno-access-control" ]
@@ -31,6 +32,7 @@ ohos_unittest("media_background_task_test") {
   sources = [ 
     "./src/media_clear_invalid_user_comment_task_test.cpp",
     "./src/media_thumbnail_acl_task_test.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
