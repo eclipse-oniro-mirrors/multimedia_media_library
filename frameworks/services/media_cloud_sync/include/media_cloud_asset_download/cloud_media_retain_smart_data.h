@@ -76,19 +76,19 @@ template <typename T>
 T GetSmartDataSystemParameter(const std::string &key, const T &defaultValue)
 {
     int32_t errCode = 0;
-    std::shared_ptr<Preferences> prefs =
+    std::shared_ptr<NativePreferences::Preferences> prefs =
     NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
         return defaultValue;
     }
 
-    std::lock_guard<std::mutex> lock(GetSmartDataMutex());
+    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
     if constexpr (std::is_same_v<T, int32_t>) {
         return prefs->GetInt(key, defaultValue);
     } else if constexpr (std::is_same_v<T, int64_t>) {
-        return prefs->GetInt64(key, defaultValue);
-    } else if constexpr (std::is_same _v<T, bool>) {
+        return prefs->GetLong(key, defaultValue);
+    } else if constexpr (std::is_same_v<T, bool>) {
         return prefs->GetBool(key, defaultValue);
     } else if constexpr (std::is_same_v<T, std::string>) {
         return prefs->GetString(key, defaultValue);
@@ -102,18 +102,18 @@ template <typename T>
 void SetSmartDataSystemParameter(const std::string &key, const T &value)
 {
     int32_t errCode = 0;
-    std::shared_ptr<Preferences> prefs =
+    std::shared_ptr<NativePreferences::Preferences> prefs =
     NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
         return;
     }
 
-    std::lock_guard<std::mutex> lock(GetSmartDataMutex());
+    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
     if constexpr (std::is_same_v<T, int32_t>) {
         prefs->PutInt(key, value);
     } else if constexpr (std::is_same_v<T, int64_t>) {
-        prefs->PutInt64(key, value);
+        prefs->PutLong(key, value);
     } else if constexpr (std::is_same_v<T, bool>) {
         prefs->PutBool(key, value);
     } else if constexpr (std::is_same_v<T, std::string>) {
