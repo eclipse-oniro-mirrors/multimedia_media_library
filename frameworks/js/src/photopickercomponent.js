@@ -523,6 +523,7 @@ export class PhotoPickerComponent extends ViewPU {
                     appAlbumFilters: null === (u = this.pickerOptions) || void 0 === u ? void 0 : this.parseAppAlbumFilters(u.appAlbumFilters),
                     gridPinchMode: null === (u = this.pickerOptions) || void 0 === u ? void 0 : u.gridPinchMode,
                     globalMovingPhotoState:  null === (state = this.pickerOptions) || void 0 === state ? void 0 : state.globalMovingPhotoState,
+                    showDateOnScrollbar:  null === (i = this.pickerOptions) || void 0 === i ? void 0 : i.showDateOnScrollbar,
                 }
             }
             ,{

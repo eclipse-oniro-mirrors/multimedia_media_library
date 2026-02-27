@@ -363,6 +363,7 @@ export struct PhotoPickerComponent {
             grindPinchMode: this.pickerOptions?.grindPinchMode
             gridPinchMode: this.pickerOptions?.gridPinchMode,
             globalMovingPhotoState: this.pickerOptions?.globalMovingPhotoState,
+            showDateOnScrollbar: this.pickerOptions?.showDateOnScrollbar,
           }
         },
         {
