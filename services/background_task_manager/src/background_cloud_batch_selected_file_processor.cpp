@@ -986,7 +986,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumFor
     return num;
 }
 
-int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumForAutoResumeNoWifi()
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumForAutoResumeWithNetRestrict()
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
@@ -1064,16 +1064,16 @@ bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTa
 }
 
 
-bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTaskNoWifi()
+bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTaskWithNetRestrict()
 {
-    MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTaskNoWifi START");
-    int32_t num = QueryBatchSelectedFilesNumForAutoResumeNoWifi(); // 查询是否有需要下载 或处理的任务
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTaskWithNetRestrict START");
+    int32_t num = QueryBatchSelectedFilesNumForAutoResumeWithNetRestrict(); // 查询是否有需要下载 或处理的任务
     if (num == 0) {
         downloadLatestFinished_.store(true); // 之前下载已完成
-        MEDIA_INFO_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadForAutoResumeTaskNoWifi"
+        MEDIA_INFO_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadForAutoResumeTaskWithNetRestrict"
             "change to true");
     } else {
-        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTaskNoWifi END Resume count"
+        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTaskWithNetRestrict END Resume count"
             "num: %{public}d", num);
         if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
             MEDIA_INFO_LOG("Cloud sync switch off, skip BatchSelectFileDownload");
@@ -1968,7 +1968,7 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreNetPolicyTaskCondi
             // 有auto_pause任务 wifi场景 触发自动恢复
             AutoResumeActionWithNetRestrict();
             return true;
-        } else if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTaskNoWifi() &&
+        } else if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTaskWithNetRestrict() &&
             !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
             // 有auto_pause任务 非wifi场景 触发自动恢复
             AutoResumeActionWithNetRestrict();
