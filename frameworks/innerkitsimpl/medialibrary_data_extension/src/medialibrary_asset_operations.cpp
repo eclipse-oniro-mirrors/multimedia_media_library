@@ -636,6 +636,7 @@ static int32_t GetAlbumVectorFromResultSet(const shared_ptr<NativeRdb::ResultSet
         PhotoAlbumVector.back()->SetLPath(GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet));
         PhotoAlbumVector.back()->SetPriority(GetInt32Val(PhotoAlbumColumns::ALBUM_PRIORITY, resultSet));
         PhotoAlbumVector.back()->SetAlbumId(GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet));
+        PhotoAlbumVector.back()->SetUploadStatus(GetInt32Val(PhotoAlbumColumns::UPLOAD_STATUS, resultSet));
     }
     return E_OK;
 }
@@ -751,7 +752,8 @@ int32_t MediaLibraryAssetOperations::QueryTotalAlbum(vector<shared_ptr<PhotoAlbu
         PhotoAlbumColumns::CONTAINS_HIDDEN, PhotoAlbumColumns::ALBUM_ORDER,
         PhotoAlbumColumns::ALBUM_BUNDLE_NAME, PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE,
         PhotoAlbumColumns::ALBUM_IS_LOCAL, PhotoAlbumColumns::ALBUM_DATE_ADDED,
-        PhotoAlbumColumns::ALBUM_LPATH, PhotoAlbumColumns::ALBUM_PRIORITY};
+        PhotoAlbumColumns::ALBUM_LPATH, PhotoAlbumColumns::ALBUM_PRIORITY,
+        PhotoAlbumColumns::UPLOAD_STATUS};
 
     MEDIA_INFO_LOG("Start query total photo album");
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
