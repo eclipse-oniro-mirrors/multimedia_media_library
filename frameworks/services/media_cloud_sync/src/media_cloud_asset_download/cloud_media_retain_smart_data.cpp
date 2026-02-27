@@ -118,7 +118,7 @@ void SetSouthDeviceNextStatus(CloudMediaRetainType retainType, SwitchStatus swit
     if (retainType == CloudMediaRetainType::RETAIN_FORCE) {
         retFlag = SetSmartDataSystemParameter(CLOUD_RETIAN_LAST_STATUS_KEY, switchStatusToInt);
     } else if (retainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
-        retFlag = SetSystemParameter(HDC_RETIAN_LAST_STATUS_KEY, switchStatusToInt);
+        retFlag = SetSmartDataSystemParameter(HDC_RETIAN_LAST_STATUS_KEY, switchStatusToInt);
     } else {
         MEDIA_ERR_LOG("SetSouthDeviceNextStatus retainType: %{public}d, status: %{public}d",
             retainTypeToInt, switchStatusToInt);
@@ -132,6 +132,7 @@ SwitchStatus GetSouthDeviceNextStatus(CloudMediaRetainType retainType)
 {
     int32_t defaultSwitchStatus = static_cast<int32_t>(SwitchStatus::NONE);
     auto retainTypeToInt = static_cast<int32_t>(retainType);
+    int32_t switchStatus = defaultSwitchStatus;
     if (retainType == CloudMediaRetainType::RETAIN_FORCE) {
         switchStatus = GetSmartDataSystemParameter(CLOUD_RETIAN_LAST_STATUS_KEY, defaultSwitchStatus);
     } else if (retainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
@@ -396,7 +397,7 @@ int32_t DoUpdateSmartDataAlbum()
         MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore);
         auto watch = MediaLibraryNotify::GetInstance();
         if (watch != nullptr) {
-            watch->Notify(PhotoAlbumColnums::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
+            watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
         }
         MEDIA_INFO_LOG("DoUpdateSmartDataAlbum thread end");
     }).detach();
