@@ -170,5 +170,400 @@ HWTEST_F(MediaLibraryAspectRatioOperationTest, query_unfilled_values_count_test_
     EXPECT_EQ(count, 2);
     MEDIA_INFO_LOG("query_unfilled_values_count_test_002 End");
 }
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_003 Start");
+    InsertTestPhotoRecord(668, 0, 1, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 668);
+    MEDIA_INFO_LOG("get_unfilled_values_test_003 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_004 Start");
+    InsertTestPhotoRecord(669, 1, 0, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 669);
+    MEDIA_INFO_LOG("get_unfilled_values_test_004 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_005 Start");
+    InsertTestPhotoRecord(670, 1920, 1080, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 670);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.777, 0.01);
+    MEDIA_INFO_LOG("get_unfilled_values_test_005 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_006, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_006 Start");
+    InsertTestPhotoRecord(671, 1080, 1920, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 671);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 0.562, 0.001);
+    MEDIA_INFO_LOG("get_unfilled_values_test_006 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_007, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_007 Start");
+    InsertTestPhotoRecord(672, 1000, 1000, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 672);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.0, 0.001);
+    MEDIA_INFO_LOG("get_unfilled_values_test_007 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_008, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_008 Start");
+    InsertTestPhotoRecord(673, 3840, 2160, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 673);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.777, 0.01);
+    MEDIA_INFO_LOG("get_unfilled_values_test_008 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_009, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_009 Start");
+    for (int i = 0; i < 10; i++) {
+        InsertTestPhotoRecord(680 + i, 1920 + i, 1080 + i, -2);
+    }
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("get_unfilled_values_test_009 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, query_unfilled_values_count_test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_003 Start");
+    auto count = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(count, 0);
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_003 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, query_unfilled_values_count_test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_004 Start");
+    InsertTestPhotoRecord(557, 1920, 1080, -2);
+    InsertTestPhotoRecord(558, 1080, 1920, -2);
+    InsertTestPhotoRecord(559, 1000, 1000, -2);
+    auto count = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(count, 3);
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_004 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, query_unfilled_values_count_test_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_005 Start");
+    for (int i = 0; i < 20; i++) {
+        InsertTestPhotoRecord(600 + i, 1920, 1080, -2);
+    }
+    auto count = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(count, 20);
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_005 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, update_aspect_ratio_value_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_001 Start");
+    InsertTestPhotoRecord(700, 1920, 1080, -2);
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_001 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, update_aspect_ratio_value_test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_002 Start");
+    InsertTestPhotoRecord(701, 1, 1, 1);
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 0);
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_002 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, update_aspect_ratio_value_test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_003 Start");
+    for (int i = 0; i < 5; i++) {
+        InsertTestPhotoRecord(710 + i, 1920 + i * 10, 1080 + i * 10, -2);
+    }
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_003 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, update_aspect_ratio_value_test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_004 Start");
+    InsertTestPhotoRecord(720, 0, 1080, -2);
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_004 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, update_aspect_ratio_value_test_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_005 Start");
+    InsertTestPhotoRecord(721, 1920, 0, -2);
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_005 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, comprehensive_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("comprehensive_test_001 Start");
+    for (int i = 0; i < 10; i++) {
+        InsertTestPhotoRecord(900 + i, 1920, 1080, -2);
+    }
+    auto countBefore = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(countBefore, 10);
+    
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    
+    auto countAfter = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(countAfter, 10);
+    MEDIA_INFO_LOG("comprehensive_test_001 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, comprehensive_test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("comprehensive_test_002 Start");
+    std::vector<AssetAspectRatio> photoInfos;
+    for (int i = 0; i < 5; i++) {
+        InsertTestPhotoRecord(910 + i, 1920, 1080, -2);
+        AssetAspectRatio info;
+        info.fileId = 910 + i;
+        info.aspect_ratio = 1.777;
+        photoInfos.push_back(info);
+    }
+    
+    MediaLibraryAspectRatioOperation::HandleAspectRatio(photoInfos);
+    
+    auto count = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(count, 5);
+    MEDIA_INFO_LOG("comprehensive_test_002 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, comprehensive_test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("comprehensive_test_003 Start");
+    InsertTestPhotoRecord(920, 1920, 1080, -2);
+    InsertTestPhotoRecord(921, 1080, 1920, -2);
+    InsertTestPhotoRecord(922, 1000, 1000, -2);
+    InsertTestPhotoRecord(923, 3840, 2160, -2);
+    InsertTestPhotoRecord(924, 2160, 3840, -2);
+    
+    auto countBefore = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(countBefore, 5);
+    
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    
+    auto countAfter = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(countAfter, 5);
+    MEDIA_INFO_LOG("comprehensive_test_003 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, boundary_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("boundary_test_001 Start");
+    InsertTestPhotoRecord(930, 1, 1, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.0, 0.001);
+    MEDIA_INFO_LOG("boundary_test_001 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, boundary_test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("boundary_test_002 Start");
+    InsertTestPhotoRecord(931, 9999, 1, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("boundary_test_002 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, boundary_test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("boundary_test_003 Start");
+    InsertTestPhotoRecord(932, 1, 9999, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 0.0001, 0.01);
+    MEDIA_INFO_LOG("boundary_test_003 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, edge_case_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("edge_case_test_001 Start");
+    InsertTestPhotoRecord(940, -1, 1080, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("edge_case_test_001 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, edge_case_test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("edge_case_test_002 Start");
+    InsertTestPhotoRecord(941, 1920, -1, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("edge_case_test_002 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, edge_case_test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("edge_case_test_003 Start");
+    InsertTestPhotoRecord(942, 0, 0, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("edge_case_test_003 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, mixed_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("mixed_test_001 Start");
+    InsertTestPhotoRecord(950, 1920, 1080, 1);
+    InsertTestPhotoRecord(951, 1920, 1080, -2);
+    InsertTestPhotoRecord(952, 1080, 1920, 1);
+    InsertTestPhotoRecord(953, 1080, 1920, -2);
+    
+    auto count = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(count, 2);
+    
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    
+    auto countAfter = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(countAfter, 2);
+    MEDIA_INFO_LOG("mixed_test_001 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, performance_test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("performance_test_001 Start");
+    for (int i = 0; i < 100; i++) {
+        InsertTestPhotoRecord(1000 + i, 1920, 1080, -2);
+    }
+    
+    auto countBefore = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(countBefore, 100);
+    
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    
+    auto countAfter = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(countAfter, 100);
+    MEDIA_INFO_LOG("performance_test_001 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_010, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_010 Start");
+    InsertTestPhotoRecord(674, 2560, 1440, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 674);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.777, 0.01);
+    MEDIA_INFO_LOG("get_unfilled_values_test_010 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_011, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_011 Start");
+    InsertTestPhotoRecord(675, 1280, 720, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 675);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.777, 0.01);
+    MEDIA_INFO_LOG("get_unfilled_values_test_011 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_012, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_012 Start");
+    InsertTestPhotoRecord(676, 640, 480, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 676);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.333, 0.001);
+    MEDIA_INFO_LOG("get_unfilled_values_test_012 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_013, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_013 Start");
+    InsertTestPhotoRecord(677, 480, 640, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 677);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 0.75, 0.001);
+    MEDIA_INFO_LOG("get_unfilled_values_test_013 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, get_unfilled_values_test_014, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("get_unfilled_values_test_014 Start");
+    InsertTestPhotoRecord(678, 320, 240, -2);
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    EXPECT_EQ(assetInfos[0].fileId, 678);
+    EXPECT_NEAR(assetInfos[0].aspect_ratio, 1.333, 0.001);
+    MEDIA_INFO_LOG("get_unfilled_values_test_014 End End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, update_aspect_ratio_value_test_006, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_006 Start");
+    for (int i = 0; i < 50; i++) {
+        InsertTestPhotoRecord(730 + i, 1920 + i, 1080 + i, -2);
+    }
+    MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
+    std::vector<AssetAspectRatio> assetInfos = MediaLibraryAspectRatioOperation::GetUnfilledValues();
+    EXPECT_EQ(assetInfos.size(), 1);
+    MEDIA_INFO_LOG("update_aspect_ratio_value_test_006 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, query_unfilled_values_count_test_006, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_006 Start");
+    InsertTestPhotoRecord(560, 1920, 1080, -2);
+    InsertTestPhotoRecord(561, 1920, 1080, 1);
+    InsertTestPhotoRecord(562, 1920, 1080, -2);
+    InsertTestPhotoRecord(563, 1920, 1080, 1);
+    auto count = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(count, 2);
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_006 End");
+}
+
+HWTEST_F(MediaLibraryAspectRatioOperationTest, query_unfilled_values_count_test_007, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_007 Start");
+    for (int i = 0; i < 5; i++) {
+        InsertTestPhotoRecord(570 + i, 1920, 1080, -2);
+    }
+    for (int i = 0; i < 5; i++) {
+        InsertTestPhotoRecord(575 + i, 1920, 1080, 1);
+    }
+    auto count = MediaLibraryAspectRatioOperation::QueryUnfilledValueCount();
+    EXPECT_EQ(count, 5);
+    MEDIA_INFO_LOG("query_unfilled_values_count_test_007 End");
+}
 }
 }
