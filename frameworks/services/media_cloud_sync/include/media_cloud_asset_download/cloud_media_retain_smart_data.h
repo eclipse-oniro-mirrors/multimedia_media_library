@@ -70,20 +70,19 @@ void SetSmartDataCleanState(CleanTaskState currentState);
 int64_t GetSmartDataCleanState();
 void SetSmartDataUpdateState(UpdateSmartDataState currentState);
 int64_t GetSmartDataUpdateState();
-}
 
 template <typename T>
 T GetSmartDataSystemParameter(const std::string &key, const T &defaultValue)
 {
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
+    std::shared_ptr<OHOS::NativePreferences::Preferences> prefs =
+    OHOS::NativePreferences::PreferencesHelper::GetPreferences(OHOS::Media::SMART_DATA_RETAIN_XML, errCode);
     if (prefs == nullptr) {
-        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
+        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", OHOS::Media::SMART_DATA_RETAIN_XML.c_str(), errCode);
         return defaultValue;
     }
 
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
+    std::lock_guard<std::mutex> lock(OHOS::Media::GetSyncStatusMutex());
     if constexpr (std::is_same_v<T, int32_t>) {
         return prefs->GetInt(key, defaultValue);
     } else if constexpr (std::is_same_v<T, int64_t>) {
@@ -102,14 +101,14 @@ template <typename T>
 void SetSmartDataSystemParameter(const std::string &key, const T &value)
 {
     int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-    NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
+    std::shared_ptr<OHOS::NativePreferences::Preferences> prefs =
+    OHOS::NativePreferences::PreferencesHelper::GetPreferences(OHOS::Media::SMART_DATA_RETAIN_XML, errCode);
     if (prefs == nullptr) {
-        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
+        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", OHOS::Media::SMART_DATA_RETAIN_XML.c_str(), errCode);
         return;
     }
 
-    std::lock_guard<std::mutex> lock(GetSyncStatusMutex());
+    std::lock_guard<std::mutex> lock(OHOS::Media::GetSyncStatusMutex());
     if constexpr (std::is_same_v<T, int32_t>) {
         prefs->PutInt(key, value);
     } else if constexpr (std::is_same_v<T, int64_t>) {
@@ -123,5 +122,6 @@ void SetSmartDataSystemParameter(const std::string &key, const T &value)
         return;
     }
     prefs->Flush();
+}
 }
 #endif

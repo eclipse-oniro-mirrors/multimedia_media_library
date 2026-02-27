@@ -30,7 +30,7 @@
 #include "medialibrary_rdb_utils.h"
 #include "sys_utils.h"
 #include "medialibrary_notify.h"
-#include "photo_album_colnum.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 
