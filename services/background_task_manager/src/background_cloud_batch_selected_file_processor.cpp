@@ -973,6 +973,30 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumFor
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE)) + ","
         + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
         + ")";
+    // SELECT COUNT(*) FROM download_resources_task_records WHERE download_status IN (0, 1, 2)
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
+    int num = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        num = GetInt32Val("count", resultSet);
+    }
+    if (resultSet != nullptr) {
+        resultSet->Close();
+    }
+    return num;
+}
+
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumForAutoResumeWithNetRestrict()
+{
+    auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
+    string sql = "SELECT COUNT(*) AS count FROM " + DownloadResourcesColumn::TABLE
+        + " WHERE "
+        + DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " IN ("
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING)) + ","
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE)) + ","
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING))
+        + ")";
     if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
         sql = sql + " AND " + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = "
         + std::to_string(static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
@@ -1037,6 +1061,103 @@ bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTa
         }
     }
     return (num > 0);
+}
+
+
+bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTaskWithNetRestrict()
+{
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTaskWithNetRestrict START");
+    int32_t num = QueryBatchSelectedFilesNumForAutoResumeWithNetRestrict(); // 查询是否有需要下载 或处理的任务
+    if (num == 0) {
+        downloadLatestFinished_.store(true); // 之前下载已完成
+        MEDIA_INFO_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadForAutoResumeTaskWithNetRestrict"
+            "change to true");
+    } else {
+        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTaskWithNetRestrict END Resume count"
+            "num: %{public}d", num);
+        if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
+            MEDIA_INFO_LOG("Cloud sync switch off, skip BatchSelectFileDownload");
+            SetBatchDownloadAddedFlag(false);
+            return false;
+        }
+    }
+    return (num > 0);
+}
+
+bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTaskWithException()
+{
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTask START");
+    int32_t num = QueryBatchSelectedFilesNumInAutoPauseWithException(); // 查询是否有需自动停止的任务
+    if (num == 0) {
+        MEDIA_DEBUG_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadInAutoPauseTaskWithException"
+            "change to true");
+    } else {
+        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadInAutoPauseTaskWithException END Resume "
+            "count num: %{public}d", num);
+    }
+    return (num > 0);
+}
+
+bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTask()
+{
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTask START");
+    int32_t num = QueryBatchSelectedFilesNumInAutoPause(); // 查询是否有需自动停止的任务
+    if (num == 0) {
+        MEDIA_DEBUG_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadResourcesTask change to true");
+    } else {
+        MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask END Resume count num: %{public}d", num);
+    }
+    return (num > 0);
+}
+
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInAutoPauseWithException()
+{
+    auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
+    string sql = "SELECT COUNT(*) AS count FROM " + DownloadResourcesColumn::TABLE
+        + " WHERE "
+        + DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " IN ("
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE))
+        + ") AND " + DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON +  " != " +
+		to_string(static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+    // SELECT COUNT(*) FROM download_resources_task_records WHERE download_status IN (5)
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
+    int num = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        num = GetInt32Val("count", resultSet);
+    }
+    if (resultSet != nullptr) {
+        resultSet->Close();
+    }
+    return num;
+}
+
+int32_t BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedFilesNumInAutoPause()
+{
+    auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(uniStore != nullptr, 0, "uniStore is nullptr!");
+    string sql = "SELECT COUNT(*) AS count FROM " + DownloadResourcesColumn::TABLE
+        + " WHERE "
+        + DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS + " IN ("
+        + std::to_string(static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE))
+        + ") AND " + DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON +  " = " +
+		to_string(static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+    if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+        sql = sql + " AND " + DownloadResourcesColumn::MEDIA_NETWORK_POLICY + " = "
+        + std::to_string(static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
+    }
+    // SELECT COUNT(*) FROM download_resources_task_records WHERE download_status IN (5)
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = uniStore->QuerySql(sql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query batch selected files!");
+    int num = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        num = GetInt32Val("count", resultSet);
+    }
+    if (resultSet != nullptr) {
+        resultSet->Close();
+    }
+    return num;
 }
 
 bool BackgroundCloudBatchSelectedFileProcessor::IsStartTimerRunning()
@@ -1415,6 +1536,67 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToWai
     return ret;
 }
 
+// 全量设置网络的自动恢复
+int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllAutoResumeDownloadResourcesInfoWithNetRestrict()
+{
+    int32_t ret = UpdateAllStatusAutoPauseToDownloadingWithNetRestrict();
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "UpdateAllStatusAutoPauseToDownloading fail");
+    ret = UpdateAllStatusAutoPauseToWaitingWithNetRestrict();
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "UpdateAllStatusAutoPauseToWating fail");
+    return ret;
+}
+
+int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToDownloadingWithNetRestrict()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdatePauseDownload Failed to get rdbStore.");
+    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause To Downloading");
+    // update download_resources_task_records set download_status = 1 where (download_status = 5 AND percent > -1)
+    NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
+    NativeRdb::ValuesBucket value;
+    predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+        static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
+    predicates.And()->GreaterThan(DownloadResourcesColumn::MEDIA_PERCENT, -1);
+    if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+        predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
+            static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
+    }
+    value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+        static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_DOWNLOADING));
+    value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
+        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+    int32_t changedRows = -1;
+    int32_t ret = rdbStore->Update(changedRows, value, predicates);
+    MEDIA_INFO_LOG("AutoResume ToDownloading ret: %{public}d, changedRows %{public}d", ret, changedRows);
+    return ret;
+}
+
+int32_t BackgroundCloudBatchSelectedFileProcessor::UpdateAllStatusAutoPauseToWaitingWithNetRestrict()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdatePauseDownload Failed to get rdbStore.");
+    MEDIA_INFO_LOG("BatchSelectFileDownload bg ALL Pause To Waiting");
+    // update download_resources_task_records set download_status = 0 where (download_status = 5 AND percent == -1)
+    NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
+    NativeRdb::ValuesBucket value;
+    predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+        static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_AUTO_PAUSE));
+    predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_PERCENT, -1);
+    if (!MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+        predicates.And()->EqualTo(DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
+            static_cast<int32_t>(BatchDownloadNetWorkPolicyType::TYPE_CELLNET));
+    }
+    value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
+        static_cast<int32_t>(Media::BatchDownloadStatusType::TYPE_WAITING));
+    value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON,
+        static_cast<int32_t>(BatchDownloadAutoPauseReasonType::TYPE_DEFAULT));
+    int32_t changedRows = -1;
+    int32_t ret = rdbStore->Update(changedRows, value, predicates);
+    MEDIA_INFO_LOG("AutoResume ToWaiting ret: %{public}d, changedRows %{public}d", ret, changedRows);
+    return ret;
+}
+
+
 int32_t BackgroundCloudBatchSelectedFileProcessor::ClassifyFileIdsInDownloadResourcesTable(
     const std::vector<std::string> &fileIds, std::vector<std::string> &existedIds)
 {
@@ -1482,6 +1664,18 @@ void BackgroundCloudBatchSelectedFileProcessor::AutoResumeAction()
     MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_RESUME ret: %{public}d", ret);
 }
 
+void BackgroundCloudBatchSelectedFileProcessor::AutoResumeActionWithNetRestrict()
+{
+    unique_lock<std::mutex> lock(autoActionMutex_);
+    MEDIA_INFO_LOG("BatchSelectFileDownload AutoResumeActionWithNetworkRestrict");
+    // updateDB
+    UpdateAllAutoResumeDownloadResourcesInfoWithNetRestrict();
+    // 检查点 批量下载 通知应用 notify type 5 自动恢复
+    int32_t ret = NotificationMerging::ProcessNotifyDownloadProgressInfo(
+        DownloadAssetsNotifyType::DOWNLOAD_AUTO_RESUME, -1, -1);
+    MEDIA_INFO_LOG("BatchSelectFileDownload StartNotify DOWNLOAD_AUTO_RESUME ret: %{public}d", ret);
+}
+
 void BackgroundCloudBatchSelectedFileProcessor::TriggerAutoStopBatchDownloadResourceCheck()
 {
     MEDIA_DEBUG_LOG("BatchSelectFileDownload Inmediately AutoStop check downloading: %{public}d",
@@ -1503,6 +1697,12 @@ void BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadRe
         && BackgroundCloudBatchSelectedFileProcessor::GetBatchDownloadAddedFlag()) { // 停止且有添加任务且可恢复状态
         MEDIA_DEBUG_LOG("BatchSelectFileDownload Timely Check AutoResume Processor");
         BackgroundCloudBatchSelectedFileProcessor::LaunchAutoResumeBatchDownloadProcessor(); // 自动恢复
+    } else if (BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus() &&
+        BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask() &&
+        BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTask() &&
+        BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()) { // 运行 但是有可能有自动停止任务需要恢复
+        MEDIA_INFO_LOG("BatchSelectFileDownload Timely Check AutoResume Processor with task running");
+        CanAutoRestoreNetPolicyTaskCondition();
     }
 }
 
@@ -1515,9 +1715,11 @@ void BackgroundCloudBatchSelectedFileProcessor::LaunchAutoResumeBatchDownloadPro
             !BackgroundCloudBatchSelectedFileProcessor::IsStartTimerRunning() &&
             BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()) { // 有任务 无timer在运行 启动
             MEDIA_INFO_LOG("LaunchAutoResumeBatchDownloadProcessor Start Timer");
-            AutoResumeAction();
-            BackgroundCloudBatchSelectedFileProcessor::StartBatchDownloadResourcesTimer();
-            SetBatchDownloadProcessRunningStatus(true); // 恢复任务
+            CanAutoRestoreNetPolicyTaskCondition();
+            if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadResourcesTask()) {
+                BackgroundCloudBatchSelectedFileProcessor::StartBatchDownloadResourcesTimer();
+                SetBatchDownloadProcessRunningStatus(true); // 恢复任务
+            }
         }
     } else {
         if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask()
@@ -1558,6 +1760,8 @@ void BackgroundCloudBatchSelectedFileProcessor::LaunchBatchDownloadProcessor()
 
 void BackgroundCloudBatchSelectedFileProcessor::LaunchNetWorkBatchDownloadProcessor()
 {
+    CHECK_AND_RETURN_LOG(!StopProcessConditionCheck(),
+        "BatchSelectFileDownload AutoStop satisfy, skip start download process");
     bool isProcessRunning = IsBatchDownloadProcessRunningStatus();
     MEDIA_INFO_LOG("BatchSelectFileDownload LaunchNetWorkBatchDownloadProcessor downloading: %{public}d",
         isProcessRunning);
@@ -1749,6 +1953,29 @@ bool BackgroundCloudBatchSelectedFileProcessor::CanAutoStopCondition(BatchDownlo
         }
     }
     return ableAutoStopDownload;
+}
+
+bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreNetPolicyTaskCondition()
+{
+    if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask() &&
+        BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()) {
+        if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTaskWithException()) {
+            // 有异常恢复任务
+            AutoResumeAction();
+            return true;
+        } else if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadInAutoPauseTask() &&
+            MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+            // 有auto_pause任务 wifi场景 触发自动恢复
+            AutoResumeActionWithNetRestrict();
+            return true;
+        } else if (BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTaskWithNetRestrict() &&
+            !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
+            // 有auto_pause任务 非wifi场景 触发自动恢复
+            AutoResumeActionWithNetRestrict();
+            return true;
+        }
+    }
+    return false;
 }
 
 bool BackgroundCloudBatchSelectedFileProcessor::CanAutoRestoreCondition()

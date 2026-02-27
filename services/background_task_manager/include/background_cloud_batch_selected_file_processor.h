@@ -47,6 +47,9 @@ public:
 
     EXPORT static bool HaveBatchDownloadResourcesTask();
     EXPORT static bool HaveBatchDownloadForAutoResumeTask();
+    EXPORT static bool HaveBatchDownloadForAutoResumeTaskWithNetRestrict();
+    EXPORT static bool HaveBatchDownloadInAutoPauseTask();
+    EXPORT static bool HaveBatchDownloadInAutoPauseTaskWithException();
     EXPORT static void StartBatchDownloadResourcesTimer();
     EXPORT static void StopBatchDownloadResourcesTimer(bool needClean = false);
     EXPORT static bool IsStartTimerRunning();
@@ -57,6 +60,7 @@ public:
 
     EXPORT static void AutoStopAction(BatchDownloadAutoPauseReasonType &autoPauseReason);
     EXPORT static void AutoResumeAction();
+    EXPORT static void AutoResumeActionWithNetRestrict();
     EXPORT static void NotifyRefreshProgressInfo();
     EXPORT static void TriggerAutoResumeBatchDownloadResourceCheck();
     EXPORT static void TriggerAutoStopBatchDownloadResourceCheck();
@@ -75,6 +79,7 @@ public:
     EXPORT static void AutoPauseNonCellPolicyTaskForWlanDisconnect(
         std::vector<std::string> &fileIdList);
     EXPORT static bool StopProcessConditionCheckForWlanDisconnect();
+    EXPORT static bool CanAutoRestoreNetPolicyTaskCondition();
 
     enum BatchDownloadStatus : int32_t {
         INIT = 0,
@@ -143,6 +148,7 @@ private:
     EXPORT static int32_t QueryBatchSelectedResourceFilesNumWithNetCondition();
     EXPORT static int32_t QueryWifiNetRunningTaskNum();
     EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResume();
+    EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResumeWithNetRestrict();
     EXPORT static int32_t QueryBatchDownloadFinishStatusCountFromDB(int32_t &totalValue,
         int32_t &completedValue, int32_t &failedValue);
     EXPORT static int32_t ClassifyFileIdsInDownloadResourcesTable(const std::vector<std::string> &fileIds,
@@ -151,7 +157,8 @@ private:
     EXPORT static int32_t QueryPercentOnTaskStart(std::string &fileId, int32_t &percent);
     EXPORT static int32_t QueryAutoPauseReason(int32_t &autoStopReason);
     EXPORT static int32_t UpdateAllAutoPauseReason(int32_t reason);
-
+    EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPause();
+    EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPauseWithException();
     // Auto pause resume
     EXPORT static int32_t UpdateAllAutoPauseDownloadResourcesInfo(BatchDownloadAutoPauseReasonType &autoPauseReason);
     EXPORT static int32_t PauseAllWifiNetTask();
@@ -159,7 +166,9 @@ private:
     EXPORT static int32_t UpdateAllAutoResumeDownloadResourcesInfo();
     EXPORT static int32_t UpdateAllStatusAutoPauseToDownloading();
     EXPORT static int32_t UpdateAllStatusAutoPauseToWaiting();
-
+    EXPORT static int32_t UpdateAllAutoResumeDownloadResourcesInfoWithNetRestrict();
+    EXPORT static int32_t UpdateAllStatusAutoPauseToDownloadingWithNetRestrict();
+    EXPORT static int32_t UpdateAllStatusAutoPauseToWaitingWithNetRestrict();
     EXPORT static int32_t GetDeviceTemperature();
     EXPORT static void ControlDownloadLimit();
 
