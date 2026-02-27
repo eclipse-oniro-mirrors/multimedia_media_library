@@ -121,6 +121,7 @@ ohos_unittest("medialibrary_cloud_asset_batch_download_test") {
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
+    "preferences:native_preferences",
     "relational_store:native_rdb",
   ]
 
