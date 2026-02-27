@@ -31,6 +31,7 @@ ohos_unittest("cloud_media_retain_smart_data_test") {
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "./src/cloud_media_retain_smart_data_test.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_retain_smart_data.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/media_cloud_asset_download/cloud_media_sync_mutex.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",

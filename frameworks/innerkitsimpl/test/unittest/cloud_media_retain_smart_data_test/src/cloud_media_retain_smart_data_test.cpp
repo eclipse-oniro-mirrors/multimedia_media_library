@@ -28,6 +28,7 @@
 #include "medialibrary_mock_tocken.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
+#include "medialibrary_data_manager.h"
 #include "medialibrary_unittest_utils.h"
 #include "values_bucket.h"
 #include "preferences.h"
@@ -47,8 +48,6 @@ namespace OHOS {
 namespace Media {
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
-static const int64_t DEFAULT_TIME_STAMP = 0;
-static const int64_t INVALID_TIME_STAMP = -1;
 static uint64_t g_shellToken = 0;
 static MediaLibraryMockHapToken* mockToken = nullptr;
 
