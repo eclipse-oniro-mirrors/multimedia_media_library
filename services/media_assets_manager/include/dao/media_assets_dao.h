@@ -52,10 +52,10 @@ public:
     int32_t LogicalDeleteCloudTrashedPhoto(
         const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     bool IsSameAssetIgnoreAlbum(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
-    int32_t UpdatePositionToBoth(
-        const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
-    int32_t UpdatePositionToBothAndFileSourceTypeToLake(
-        const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t UpdatePositionToBoth(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
+            std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t UpdatePositionToBothAndFileSourceTypeToLake(const PhotosPo &sourcePhotoInfo,
+            const PhotosPo &targetPhotoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t FindAssetsByBurstKey(const std::string &burstKey, std::vector<PhotosPo> &photoInfoList);
 
 private:
@@ -80,6 +80,8 @@ private:
     std::string GetLpathFromSourcePath(const std::string &sourcePath);
     int32_t FindSamePhotoInHiddenAlbum(const PhotosPo &photoInfo, std::optional<PhotosPo> &samePhotoInfoOp);
     int32_t DeletePhotoExtTable(const std::string &fileId);
+    int32_t HandlePackageName(
+            const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo, NativeRdb::ValuesBucket &values);
     int32_t HandleSouthDeviceType(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
         NativeRdb::ValuesBucket &values);
 

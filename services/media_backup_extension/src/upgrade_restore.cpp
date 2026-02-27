@@ -984,7 +984,6 @@ bool UpgradeRestore::ParseResultSetFromGallery(const std::shared_ptr<NativeRdb::
     // Find lPath, bundleName, packageName by sourcePath, lPath
     info.lPath = this->photosRestore_.FindlPath(info);
     info.bundleName = this->photosRestore_.FindBundleName(info);
-    info.packageName = this->photosRestore_.FindPackageName(info);
     info.photoQuality = this->photosRestore_.FindPhotoQuality(info);
     info.latitude = GetDoubleVal(GALLERY_LATITUDE, resultSet);
     info.longitude = GetDoubleVal(GALLERY_LONGITUDE, resultSet);

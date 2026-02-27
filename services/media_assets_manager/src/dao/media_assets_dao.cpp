@@ -269,6 +269,7 @@ int32_t MediaAssetsDao::MergeCloudInfoIntoTargetPhoto(const PhotosPo &sourcePhot
     uint32_t position = static_cast<uint32_t>(sourcePhotoInfo.position.value_or(0)) |
                         static_cast<uint32_t>(targetPhotoInfo.position.value_or(0));
     values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(position));
+    this->HandlePackageName(sourcePhotoInfo, targetPhotoInfo, values);
     this->HandleSouthDeviceType(sourcePhotoInfo, targetPhotoInfo, values);
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
@@ -356,38 +357,40 @@ bool MediaAssetsDao::IsSameAssetIgnoreAlbum(const PhotosPo &photoInfo, const Pho
     return isSame && isSameOrientation;
 }
 
-int32_t MediaAssetsDao::UpdatePositionToBoth(
-    const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+int32_t MediaAssetsDao::UpdatePositionToBoth(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
-    int32_t position = photoInfo.position.value_or(1);
+    int32_t position = targetPhotoInfo.position.value_or(1);
     bool isValid = position != static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
     CHECK_AND_RETURN_RET_INFO_LOG(isValid, E_OK, "UpdatePositionToBoth, position is correct, no need to update.");
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "UpdatePosition Failed to get photoRefresh.");
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::MEDIA_ID, photoInfo.fileId.value_or(0));
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, targetPhotoInfo.fileId.value_or(0));
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    this->HandlePackageName(sourcePhotoInfo, targetPhotoInfo, values);
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
     MEDIA_INFO_LOG("UpdatePositionToBoth Completed, "
                    "ret: %{public}d, ChangedRows: %{public}d, cloudId: %{public}s",
         ret,
         changedRows,
-        photoInfo.cloudId.value_or("").c_str());
+        targetPhotoInfo.cloudId.value_or("").c_str());
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to UpdatePositionToBoth.");
     CHECK_AND_RETURN_RET_WARN_LOG(
         changedRows > 0, ret, "UpdatePositionToBoth Check updateRows: %{public}d.", changedRows);
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, ret, "watch is nullptr");
-    watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(photoInfo.fileId.value_or(0)), NotifyType::NOTIFY_UPDATE);
+    watch->Notify(
+        PhotoColumn::PHOTO_URI_PREFIX + to_string(targetPhotoInfo.fileId.value_or(0)), NotifyType::NOTIFY_UPDATE);
     return E_OK;
 }
 
-int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(
-    const PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(const PhotosPo &sourcePhotoInfo,
+    const PhotosPo &targetPhotoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
-    int32_t position = photoInfo.position.value_or(1);
+    int32_t position = targetPhotoInfo.position.value_or(1);
     bool isValid = position != static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
     CHECK_AND_RETURN_RET_INFO_LOG(
         isValid, E_OK, "UpdatePositionToBothAndFileSourceTypeToLake, position is correct, no need to update.");
@@ -396,23 +399,25 @@ int32_t MediaAssetsDao::UpdatePositionToBothAndFileSourceTypeToLake(
         "UpdatePositionToBothAndFileSourceTypeToLake Failed to get photoRefresh.");
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::MEDIA_ID, photoInfo.fileId.value_or(0));
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, targetPhotoInfo.fileId.value_or(0));
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
     values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE));
+    this->HandlePackageName(sourcePhotoInfo, targetPhotoInfo, values);
     int32_t changedRows = -1;
     int32_t ret = photoRefresh->Update(changedRows, values, predicates);
     MEDIA_INFO_LOG("UpdatePositionToBothAndFileSourceTypeToLake Completed, "
                    "ret: %{public}d, ChangedRows: %{public}d, cloudId: %{public}s",
         ret,
         changedRows,
-        photoInfo.cloudId.value_or("").c_str());
+        targetPhotoInfo.cloudId.value_or("").c_str());
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to UpdatePositionToBothAndFileSourceTypeToLake.");
     CHECK_AND_RETURN_RET_WARN_LOG(
         changedRows > 0, ret, "UpdatePositionToBothAndFileSourceTypeToLake updateRows: %{public}d.", changedRows);
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, ret, "watch is nullptr");
-    watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(photoInfo.fileId.value_or(0)), NotifyType::NOTIFY_UPDATE);
+    watch->Notify(
+        PhotoColumn::PHOTO_URI_PREFIX + to_string(targetPhotoInfo.fileId.value_or(0)), NotifyType::NOTIFY_UPDATE);
     return E_OK;
 }
 
@@ -441,6 +446,16 @@ int32_t MediaAssetsDao::DeletePhotoExtTable(const std::string &fileId)
     MEDIA_INFO_LOG("DeletePhotoExtTable completed, ret: %{public}d, photoId: %{public}s, deletedRows: %{public}d",
         ret, fileId.c_str(), deletedRows);
     return ret;
+}
+
+int32_t MediaAssetsDao::HandlePackageName(
+    const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo, NativeRdb::ValuesBucket &values)
+{
+    bool isValid = !sourcePhotoInfo.packageName.value_or("").empty();
+    isValid = targetPhotoInfo.packageName.value_or("").empty();
+    CHECK_AND_RETURN_RET(isValid, E_OK);
+    values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, sourcePhotoInfo.packageName.value_or(""));
+    return E_OK;
 }
 
 int32_t MediaAssetsDao::HandleSouthDeviceType(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
