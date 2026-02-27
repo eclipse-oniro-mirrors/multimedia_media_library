@@ -1139,6 +1139,8 @@ ohos_shared_library("medialibrary_data_extension") {
     "usb_manager:usbsrv_client",
     "window_manager:libdm",
     "zlib:shared_libz",
+    "qos_manager:qos",
+    "qos_manager:concurrent_task_client",
   ]
 
   if (defined(global_parts_info) &&
