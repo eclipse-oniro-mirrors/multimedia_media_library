@@ -98,14 +98,14 @@ T GetSmartDataSystemParameter(const std::string &key, const T &defaultValue)
 }
 
 template <typename T>
-void SetSmartDataSystemParameter(const std::string &key, const T &value)
+bool SetSmartDataSystemParameter(const std::string &key, const T &value)
 {
     int32_t errCode = 0;
     std::shared_ptr<OHOS::NativePreferences::Preferences> prefs =
     OHOS::NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
     if (prefs == nullptr) {
         MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
-        return;
+        return false;
     }
 
     std::lock_guard<std::mutex> lock(OHOS::Media::GetSyncStatusMutex());
@@ -119,9 +119,10 @@ void SetSmartDataSystemParameter(const std::string &key, const T &value)
         prefs->PutString(key, value);
     } else {
         MEDIA_ERR_LOG("Unsupported type for SetSmartDataSystemParameter");
-        return;
+        return false;
     }
-    prefs->Flush();
+    prefs->FlushSync();
+    return true;
 }
 }
 #endif
