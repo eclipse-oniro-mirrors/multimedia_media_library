@@ -76,9 +76,9 @@ T GetSmartDataSystemParameter(const std::string &key, const T &defaultValue)
 {
     int32_t errCode = 0;
     std::shared_ptr<OHOS::NativePreferences::Preferences> prefs =
-    OHOS::NativePreferences::PreferencesHelper::GetPreferences(OHOS::Media::SMART_DATA_RETAIN_XML, errCode);
+    OHOS::NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
     if (prefs == nullptr) {
-        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", OHOS::Media::SMART_DATA_RETAIN_XML.c_str(), errCode);
+        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
         return defaultValue;
     }
 
@@ -102,9 +102,9 @@ void SetSmartDataSystemParameter(const std::string &key, const T &value)
 {
     int32_t errCode = 0;
     std::shared_ptr<OHOS::NativePreferences::Preferences> prefs =
-    OHOS::NativePreferences::PreferencesHelper::GetPreferences(OHOS::Media::SMART_DATA_RETAIN_XML, errCode);
+    OHOS::NativePreferences::PreferencesHelper::GetPreferences(SMART_DATA_RETAIN_XML, errCode);
     if (prefs == nullptr) {
-        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", OHOS::Media::SMART_DATA_RETAIN_XML.c_str(), errCode);
+        MEDIA_ERR_LOG("Get preferences for %{public}s error: %{public}d", SMART_DATA_RETAIN_XML.c_str(), errCode);
         return;
     }
 
