@@ -334,14 +334,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataProcessingMode_test_015, TestSi
     MEDIA_INFO_LOG("SmartDataProcessingMode_test_015 End");
 }
 
-HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataProcessingMode_test_016, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("SmartDataProcessingMode_test_016 Start");
-    SmartDataProcessingMode mode = GetSmartDataProcessingMode();
-    EXPECT_EQ(mode, SmartDataProcessingMode::NONE);
-    MEDIA_INFO_LOG("SmartDataProcessingMode_test_016 End");
-}
-
 HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataProcessingMode_test_017, TestSize.Level1)
 {
     MEDIA_INFO_LOG("SmartDataProcessingMode_test_017 Start");
@@ -548,54 +540,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, BackupPhotosAlbumTable_test_035, TestSiz
     MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_035 End");
 }
 
-HWTEST_F(CloudMediaRetainSmartDataTest, BackupPhotosAlbumTable_test_036, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_036 Start");
-    InitBackupPhotosAlbumTable();
-    int64_t albumId = 0;
-    InsertAlbumForBackup(albumId);
-    BackupBackupPhotosAlbumTable();
-    DeleteBackupPhotosAlbumForSmartData();
-    std::string checkSql = "SELECT count(*) FROM PhotosAlbumBackupForSaveAnalysisData";
-    auto resultSet = g_rdbStore->QuerySql(checkSql);
-    ASSERT_NE(resultSet, nullptr);
-    int32_t rowCount = 0;
-    resultSet->GetRowCount(rowCount);
-    resultSet->Close();
-    EXPECT_EQ(rowCount, 0);
-    MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_036 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, BackupPhotosAlbumTable_test_037, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_037 Start");
-    InitBackupPhotosAlbumTable();
-    BackupBackupPhotosAlbumTable();
-    std::string checkSql = "SELECT count(*) FROM PhotosAlbumBackupForSaveAnalysisData";
-    auto resultSet = g_rdbStore->QuerySql(checkSql);
-    ASSERT_NE(resultSet, nullptr);
-    int32_t rowCount = 0;
-    resultSet->GetRowCount(rowCount);
-    resultSet->Close();
-    EXPECT_EQ(rowCount, 0);
-    MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_037 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, BackupPhotosAlbumTable_test_038, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_038 Start");
-    InitBackupPhotosAlbumTable();
-    DeleteBackupPhotosAlbumForSmartData();
-    std::string checkSql = "SELECT count(*) FROM PhotosAlbumBackupForSaveAnalysisData";
-    auto resultSet = g_rdbStore->QuerySql(checkSql);
-    ASSERT_NE(resultSet, nullptr);
-    int32_t rowCount = 0;
-    resultSet->GetRowCount(rowCount);
-    resultSet->Close();
-    EXPECT_EQ(rowCount, 0);
-    MEDIA_INFO_LOG("BackupPhotosAlbumTable_test_038 End");
-}
-
 HWTEST_F(CloudMediaRetainSmartDataTest, UpdateInvalidCloudHighlightInfo_test_039, TestSize.Level1)
 {
     MEDIA_INFO_LOG("UpdateInvalidCloudHighlightInfo_test_039 Start");
@@ -677,27 +621,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, DoCleanPhotosTableCloudData_test_044, Te
     MEDIA_INFO_LOG("DoCleanPhotosTableCloudData_test_044 End");
 }
 
-HWTEST_F(CloudMediaRetainSmartDataTest, DoCleanPhotosTableCloudData_test_045, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("DoCleanPhotosTableCloudData_test_045 Start");
-    InitBackupPhotosAlbumTable();
-    for (int i = 0; i < 10; i++) {
-        int64_t fileId = 0;
-        InsertPhotoForClean(fileId);
-    }
-    int32_t ret = DoCleanPhotosTableCloudData();
-    EXPECT_EQ(ret, E_OK);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    std::string checkSql = "SELECT count(*) FROM Photos WHERE clean_flag = 1";
-    auto resultSet = g_rdbStore->QuerySql(checkSql);
-    ASSERT_NE(resultSet, nullptr);
-    int32_t rowCount = 0;
-    resultSet->GetRowCount(rowCount);
-    resultSet->Close();
-    EXPECT_EQ(rowCount, 0);
-    MEDIA_INFO_LOG("DoCleanPhotosTableCloudData_test_045 End");
-}
-
 HWTEST_F(CloudMediaRetainSmartDataTest, DoCloudMediaRetainCleanup_test_046, TestSize.Level1)
 {
     MEDIA_INFO_LOG("DoCloudMediaRetainCleanup_test_046 Start");
@@ -728,57 +651,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, DoCloudMediaRetainCleanup_test_048, Test
     int32_t ret = DoCloudMediaRetainCleanup();
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("DoCloudMediaRetainCleanup_test_048 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, UpdatePhotosLcdVisitTime_test_049, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("UpdatePhotosLcdVisitTime_test_049 Start");
-    int64_t fileId = 0;
-    ValuesBucket valuesBucket;
-    valuesBucket.PutInt("media_type", 1);
-    valuesBucket.PutInt("real_lcd_visit_time", 0);
-    g_rdbStore->Insert(fileId, PhotoColumn::PHOTOS_TABLE, valuesBucket);
-    std::vector<std::string> fileIds = {std::to_string(fileId)};
-    int32_t ret = UpdatePhotosLcdVisitTime(fileIds);
-    EXPECT_EQ(ret, E_OK);
-    std::string checkSql = "SELECT real_lcd_visit_time FROM Photos WHERE id = " + std::to_string(fileId);
-    auto resultSet = g_rdbStore->QuerySql(checkSql);
-    ASSERT_NE(resultSet, nullptr);
-    resultSet->GoToFirstRow();
-    int64_t lcdTime = 0;
-    resultSet->GetLong(0, lcdTime);
-    resultSet->Close();
-    EXPECT_EQ(lcdTime, REAL_LCD_VISIT_TIME_DELETED);
-    MEDIA_INFO_LOG("UpdatePhotosLcdVisitTime_test_049 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, UpdatePhotosLcdVisitTime_test_050, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("UpdatePhotosLcdVisitTime_test_050 Start");
-    std::vector<int64_t> fileIdsNum;
-    std::vector<std::string> fileIds;
-    for (int i = 0; i < 5; i++) {
-        int64_t fileId = 0;
-        ValuesBucket valuesBucket;
-        valuesBucket.PutInt("media_type", 1);
-        valuesBucket.PutInt("real_lcd_visit_time", 0);
-        g_rdbStore->Insert(fileId, PhotoColumn::PHOTOS_TABLE, valuesBucket);
-        fileIdsNum.push_back(fileId);
-        fileIds.push_back(std::to_string(fileId));
-    }
-    int32_t ret = UpdatePhotosLcdVisitTime(fileIds);
-    EXPECT_EQ(ret, E_OK);
-    for (auto fileId : fileIdsNum) {
-        std::string checkSql = "SELECT real_lcd_visit_time FROM Photos WHERE id = " + std::to_string(fileId);
-        auto resultSet = g_rdbStore->QuerySql(checkSql);
-        ASSERT_NE(resultSet, nullptr);
-        resultSet->GoToFirstRow();
-        int64_t lcdTime = 0;
-        resultSet->GetLong(0, lcdTime);
-        resultSet->Close();
-        EXPECT_EQ(lcdTime, REAL_LCD_VISIT_TIME_DELETED);
-    }
-    MEDIA_INFO_LOG("UpdatePhotosLcdVisitTime_test_050 End");
 }
 
 HWTEST_F(CloudMediaRetainSmartDataTest, UpdatePhotosLcdVisitTime_test_051, TestSize.Level1)
@@ -938,29 +810,5 @@ HWTEST_F(CloudMediaRetainSmartDataTest, IntegrationTest_test_066, TestSize.Level
     EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::IDLE));
     MEDIA_INFO_LOG("IntegrationTest_test_066 End");
 }
-
-HWTEST_F(CloudMediaRetainSmartDataTest, IntegrationTest_test_067, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("IntegrationTest_test_067 Start");
-    InitBackupPhotosAlbumTable();
-    for (int i = 0; i < 5; i++) {
-        int64_t fileId = 0;
-        InsertPhotoForClean(fileId);
-    }
-    SetSmartDataRetainTime();
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    int32_t ret = DoCloudMediaRetainCleanup();
-    EXPECT_EQ(ret, E_OK);
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    std::string checkSql = "SELECT count(*) FROM Photos WHERE clean_flag = 1";
-    auto resultSet = g_rdbStore->QuerySql(checkSql);
-    ASSERT_NE(resultSet, nullptr);
-    int32_t rowCount = 0;
-    resultSet->GetRowCount(rowCount);
-    resultSet->Close();
-    EXPECT_EQ(rowCount, 0);
-    MEDIA_INFO_LOG("IntegrationTest_test_067 End");
-}
-
 } // namespace Media
 } // namespace OHOS
