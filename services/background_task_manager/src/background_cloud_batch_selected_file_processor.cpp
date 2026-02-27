@@ -1047,11 +1047,11 @@ bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadResourcesTask()
 
 bool BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask()
 {
-    MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTask START");
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload HaveBatchDownloadForAutoResumeTask START");
     int32_t num = QueryBatchSelectedFilesNumForAutoResume(); // 查询是否有需要下载 或处理的任务
     if (num == 0) {
         downloadLatestFinished_.store(true); // 之前下载已完成
-        MEDIA_INFO_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadResourcesTask change to true");
+        MEDIA_DEBUG_LOG("BatchDownloadProgress downloadLatestFinished_ HaveBatchDownloadResourcesTask change to true");
     } else {
         MEDIA_INFO_LOG("BatchSelectFileDownload HaveBatchDownloadResourcesTask END Resume count num: %{public}d", num);
         if (!CloudSyncUtils::IsCloudSyncSwitchOn()) {
@@ -1678,7 +1678,7 @@ void BackgroundCloudBatchSelectedFileProcessor::AutoResumeActionWithNetRestrict(
 
 void BackgroundCloudBatchSelectedFileProcessor::TriggerAutoStopBatchDownloadResourceCheck()
 {
-    MEDIA_INFO_LOG("BatchSelectFileDownload Inmediately AutoStop check downloading: %{public}d",
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload Inmediately AutoStop check downloading: %{public}d",
         BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus());
     if (BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus()
         && BackgroundCloudBatchSelectedFileProcessor::GetBatchDownloadAddedFlag()
@@ -1691,11 +1691,11 @@ void BackgroundCloudBatchSelectedFileProcessor::TriggerAutoStopBatchDownloadReso
 
 void BackgroundCloudBatchSelectedFileProcessor::TriggerAutoResumeBatchDownloadResourceCheck()
 {
-    MEDIA_INFO_LOG("BatchSelectFileDownload Timely check downloading: %{public}d",
+    MEDIA_DEBUG_LOG("BatchSelectFileDownload Timely check downloading: %{public}d",
         BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus());
     if (!BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus()
         && BackgroundCloudBatchSelectedFileProcessor::GetBatchDownloadAddedFlag()) { // 停止且有添加任务且可恢复状态
-        MEDIA_INFO_LOG("BatchSelectFileDownload Timely Check AutoResume Processor");
+        MEDIA_DEBUG_LOG("BatchSelectFileDownload Timely Check AutoResume Processor");
         BackgroundCloudBatchSelectedFileProcessor::LaunchAutoResumeBatchDownloadProcessor(); // 自动恢复
     } else if (BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus() &&
         BackgroundCloudBatchSelectedFileProcessor::HaveBatchDownloadForAutoResumeTask() &&
