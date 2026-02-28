@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#define private public
+#define protected public
+
 #include "media_notification_register_manager_test.h"
 #include "media_datashare_stub_impl.h"
 
@@ -21,6 +24,8 @@
 #include "get_self_permissions.h"
 #include "medialibrary_mock_tocken.h"
 #include "media_change_info.h"
+#undef private
+#undef protected
 
 using namespace testing::ext;
 using namespace OHOS::AbilityRuntime;
@@ -470,22 +475,768 @@ HWTEST_F(NotificationRegisterManagerTest, NotificationSingleRegisterManager_test
     MEDIA_INFO_LOG("NotificationSingleRegisterManager_test_009::End");
 }
 
-HWTEST_F(NotificationRegisterManagerTest, NotificationSingleRegisterManager_test_010, TestSize.Level1) {
-    MEDIA_INFO_LOG("NotificationSingleRegisterManager_test_010::Start");
-    std::vector<string> perms;
-    perms.push_back("ohos.permission.WRITE_IMAGEVIDEO");
-    uint64_t tokenId = -1;
-    PermissionUtilsUnitTest::SetAccessTokenPermission("NotificationRegisterManagerTest", perms, tokenId);
-    ASSERT_TRUE(tokenId != 0);
-    Notification::NotifyUriType singlePhotoUri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+HWTEST_F(NotificationRegisterManagerTest, RemoveObsDeathRecipient_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_001::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    size_t obsCallbackSize = observerManager->obsCallbackPecipients_.size();
+    EXPECT_EQ(obsCallbackSize, 1);
+    wptr<IRemoteObject> object = dataObserver->AsObject();
+    observerManager->RemoveObsDeathRecipient(object);
+    obsCallbackSize = observerManager->obsCallbackPecipients_.size();
+    EXPECT_EQ(obsCallbackSize, 0);
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, RemoveObsDeathRecipient_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_002::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    wptr<IRemoteObject> nullObject;
+    int32_t ret = observerManager->RemoveObsDeathRecipient(nullObject);
+    EXPECT_EQ(ret, E_DATAOBSERVER_IS_NULL);
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, RemoveObsDeathRecipient_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_003::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    wptr<IRemoteObject> object = dataObserver->AsObject();
+    int32_t ret = observerManager->RemoveObsDeathRecipient(object);
+    EXPECT_EQ(ret, E_DATAOBSERVER_IS_NULL);
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, RemoveObserverWithUri_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_001::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    size_t uriSize = observerManager->observers_.size();
+    EXPECT_EQ(uriSize, 1);
+    ret = observerManager->RemoveObserverWithUri(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    uriSize = observerManager->observers_.size();
+    EXPECT_EQ(uriSize, 0);
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, RemoveObserverWithUri_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_002::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->RemoveObserverWithUri(uri, dataObserver);
+    EXPECT_EQ(ret, E_URI_NOT_EXIST);
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, RemoveObserverWithUri_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_003::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    sptr<IDataAbilityObserver> secondDataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(secondDataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    ret = observerManager->AddObserver(uri, secondDataObserver);
+    EXPECT_EQ(ret, E_OK);
+    size_t observerSize = observerManager->FindObserver(uri).size();
+    EXPECT_EQ(observerSize, 2);
+    ret = observerManager->RemoveObserverWithUri(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    observerSize = observerManager->FindObserver(uri).size();
+    EXPECT_EQ(observerSize, 1);
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserverWithUri_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_001::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
+    bool found = observerManager->FindSingleObserverWithUri(uri, callingTokenId);
+    EXPECT_TRUE(found);
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserverWithUri_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_002::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    uint32_t callingTokenId = 12345;
+    bool found = observerManager->FindSingleObserverWithUri(uri, callingTokenId);
+    EXPECT_FALSE(found);
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserverWithUri_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_003::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::INVALID;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
+    bool found = observerManager->FindSingleObserverWithUri(uri, callingTokenId);
+    EXPECT_FALSE(found);
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, GetObservers_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("GetObservers_test_001::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::unordered_map<Notification::NotifyUriType, std::vector<Notification::ObserverInfo>> observers =
+        observerManager->GetObservers();
+    EXPECT_EQ(observers.size(), 0);
+    MEDIA_INFO_LOG("GetObservers_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, GetObservers_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("GetObservers_test_002::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::unordered_map<Notification::NotifyUriType, std::vector<Notification::ObserverInfo>> observers =
+        observerManager->GetObservers();
+    EXPECT_EQ(observers.size(), 1);
+    MEDIA_INFO_LOG("GetObservers_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleOperationPermissionsAndLimit_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleOperationPermissionsAndLimit_test_001::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::INVALID;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::string singleId = "1";
+    int32_t ret = observerManager->CheckSingleOperationPermissionsAndLimit(uri, singleId);
+    EXPECT_EQ(ret, E_PERMISSION_DENIED);
+    MEDIA_INFO_LOG("CheckSingleOperationPermissionsAndLimit_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleOperationPermissionsAndLimit_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleOperationPermissionsAndLimit_test_002::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::string singleId = "1";
+    int32_t ret = observerManager->CheckSingleOperationPermissionsAndLimit(uri, singleId);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("CheckSingleOperationPermissionsAndLimit_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ProcessSingleObserverSingleIds_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_001::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::string singleId = "1";
+    ret = observerManager->ProcessSingleObserverSingleIds(uri, true, dataObserver, singleId,
+        [](std::unordered_set<std::string>& singleIds, const std::string& id) {
+            singleIds.insert(id);
+        });
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ProcessSingleObserverSingleIds_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_002::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    std::string singleId = "abc";
+    int32_t ret = observerManager->ProcessSingleObserverSingleIds(uri, true, dataObserver, singleId,
+        [](std::unordered_set<std::string>& singleIds, const std::string& id) {
+            singleIds.insert(id);
+        });
+    EXPECT_EQ(ret, E_URI_IS_INVALID);
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ProcessSingleObserverSingleIds_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_003::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
     auto observerManager = Notification::MediaObserverManager::GetObserverManager();
     EXPECT_NE(observerManager, nullptr);
     sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
     EXPECT_NE(dataObserver, nullptr);
     std::string singleId = "1";
-    int32_t ret = observerManager->AddSingleObserverSingleIds(singlePhotoUri, dataObserver, singleId);
-    EXPECT_EQ(ret, E_PERMISSION_DENIED);
-    MEDIA_INFO_LOG("NotificationSingleRegisterManager_test_010::End");
+    int32_t ret = observerManager->ProcessSingleObserverSingleIds(uri, true, dataObserver, singleId,
+        [](std::unordered_set<std::string>& singleIds, const std::string& id) {
+            singleIds.insert(id);
+        });
+    EXPECT_EQ(ret, E_URI_NOT_EXIST);
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserver_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserver_test_001::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::vector<Notification::ObserverInfo> obsInfos;
+    bool found = observerManager->FindSingleObserver(uri, obsInfos);
+    EXPECT_TRUE(found);
+    EXPECT_EQ(obsInfos.size(), 1);
+    MEDIA_INFO_LOG("FindSingleObserver_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserver_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserver_test_002::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::vector<Notification::ObserverInfo> obsInfos;
+    bool found = observerManager->FindSingleObserver(uri, obsInfos);
+    EXPECT_FALSE(found);
+    MEDIA_INFO_LOG("FindSingleObserver_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, IsSingleIdDataPresentInSingleObserver_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("IsSingleIdDataPresentInSingleObserver_test_001::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::unordered_set<std::string> singleIds;
+    singleIds.insert("1");
+    singleIds.insert("2");
+    std::string singleId = "1";
+    bool present = observerManager->IsSingleIdDataPresentInSingleObserver(singleIds, singleId);
+    EXPECT_TRUE(present);
+    MEDIA_INFO_LOG("IsSingleIdDataPresentInSingleObserver_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, IsSingleIdDataPresentInSingleObserver_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("IsSingleIdDataPresentInSingleObserver_test_002::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::unordered_set<std::string> singleIds;
+    singleIds.insert("1");
+    singleIds.insert("2");
+    std::string singleId = "3";
+    bool present = observerManager->IsSingleIdDataPresentInSingleObserver(singleIds, singleId);
+    EXPECT_FALSE(present);
+    MEDIA_INFO_LOG("IsSingleIdDataPresentInSingleObserver_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleListenSize_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_001::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    bool result = observerManager->CheckSingleListenSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleListenSize_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_002::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    bool result = observerManager->CheckSingleListenSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleListenSize_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_003::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
+    bool result = observerManager->CheckSingleListenSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleProcessSize_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_001::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    bool result = observerManager->CheckSingleProcessSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleProcessSize_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_002::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    bool result = observerManager->CheckSingleProcessSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleProcessSize_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_003::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
+    bool result = observerManager->CheckSingleProcessSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_001::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::PHOTO_URI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_002::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::PHOTO_ALBUM_URI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_003::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::BATCH_DOWNLOAD_PROGRESS_URI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_004::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::USER_DEFINE_NOTIFY_URI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_005, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_005::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::SINGLE_PHOTO_URI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_005::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_006, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_006::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_006::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_007, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_007::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::INVALID);
+    EXPECT_NE(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_007::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_008, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_008::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    std::string singleId = "1";
+    int32_t ret = permissionHandle.SinglePermissionCheck(Notification::NotifyUriType::SINGLE_PHOTO_URI, singleId);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_008::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_009, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_009::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    std::string singleId = "1";
+    int32_t ret =
+        permissionHandle.SinglePermissionCheck(Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, singleId);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_009::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ObserverCallbackRecipient_test_001, TestSize.Level1) {
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_001::Start");
+    sptr<Notification::ObserverCallbackRecipient> callbackRecipient =
+        new (std::nothrow) Notification::ObserverCallbackRecipient();
+    EXPECT_NE(callbackRecipient, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    wptr<IRemoteObject> object = dataObserver->AsObject();
+    callbackRecipient->OnRemoteDied(object);
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_001::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ObserverCallbackRecipient_test_002, TestSize.Level1) {
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_002::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    sptr<Notification::ObserverCallbackRecipient> callbackRecipient =
+        new (std::nothrow) Notification::ObserverCallbackRecipient();
+    EXPECT_NE(callbackRecipient, nullptr);
+    wptr<IRemoteObject> object = dataObserver->AsObject();
+    callbackRecipient->OnRemoteDied(object);
+    size_t uriSize = observerManager->observers_.size();
+    EXPECT_EQ(uriSize, 0);
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_002::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, RemoveObserverWithUri_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    ret = observerManager->RemoveObserverWithUri(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    ret = observerManager->RemoveObserverWithUri(uri, dataObserver);
+    EXPECT_EQ(ret, E_URI_NOT_EXIST);
+    MEDIA_INFO_LOG("RemoveObserverWithUri_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserverWithUri_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
+    bool found = observerManager->FindSingleObserverWithUri(uri, callingTokenId);
+    EXPECT_TRUE(found);
+    observerManager->RemoveObserverWithUri(uri, dataObserver);
+    found = observerManager->FindSingleObserverWithUri(uri, callingTokenId);
+    EXPECT_FALSE(found);
+    MEDIA_INFO_LOG("FindSingleObserverWithUri_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, GetObservers_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("GetObservers_test_003::Start");
+    Notification::NotifyUriType uri1 = Notification::NotifyUriType::PHOTO_URI;
+    Notification::NotifyUriType uri2 = Notification::NotifyUriType::PHOTO_ALBUM_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri1, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    ret = observerManager->AddObserver(uri2, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::unordered_map<Notification::NotifyUriType, std::vector<Notification::ObserverInfo>> observers =
+        observerManager->GetObservers();
+    EXPECT_EQ(observers.size(), 2);
+    MEDIA_INFO_LOG("GetObservers_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleOperationPermissionsAndLimit_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleOperationPermissionsAndLimit_test_003::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::string singleId = "1";
+    int32_t ret = observerManager->CheckSingleOperationPermissionsAndLimit(uri, singleId);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("CheckSingleOperationPermissionsAndLimit_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ProcessSingleObserverSingleIds_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::string singleId = "1";
+    ret = observerManager->ProcessSingleObserverSingleIds(uri, false, dataObserver, singleId,
+        [](std::unordered_set<std::string>& singleIds, const std::string& id) {
+            singleIds.erase(id);
+        });
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ProcessSingleObserverSingleIds_test_005, TestSize.Level1) {
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_005::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::string singleId = "1";
+    ret = observerManager->ProcessSingleObserverSingleIds(uri, true, dataObserver, singleId,
+        [](std::unordered_set<std::string>& singleIds, const std::string& id) {
+            singleIds.insert(id);
+        });
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_005::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserver_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserver_test_003::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    sptr<IDataAbilityObserver> secondDataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(secondDataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    ret = observerManager->AddObserver(uri, secondDataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::vector<Notification::ObserverInfo> obsInfos;
+    bool found = observerManager->FindSingleObserver(uri, obsInfos);
+    EXPECT_TRUE(found);
+    EXPECT_EQ(obsInfos.size(), 2);
+    MEDIA_INFO_LOG("FindSingleObserver_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, IsSingleIdDataPresentInSingleObserver_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("IsSingleIdDataPresentInSingleObserver_test_003::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    std::unordered_set<std::string> singleIds;
+    std::string singleId = "1";
+    bool present = observerManager->IsSingleIdDataPresentInSingleObserver(singleIds, singleId);
+    EXPECT_FALSE(present);
+    MEDIA_INFO_LOG("IsSingleIdDataPresentInSingleObserver_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleListenSize_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    bool result = observerManager->CheckSingleListenSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleProcessSize_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    bool result = observerManager->CheckSingleProcessSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_013, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_013::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    std::string singleId = "123";
+    int32_t ret = permissionHandle.SinglePermissionCheck(Notification::NotifyUriType::SINGLE_PHOTO_URI, singleId);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_013::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_014, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_014::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    std::string singleId = "999999";
+    int32_t ret =
+        permissionHandle.SinglePermissionCheck(Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, singleId);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_014::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ObserverCallbackRecipient_test_003, TestSize.Level1) {
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_003::Start");
+    sptr<Notification::ObserverCallbackRecipient> callbackRecipient =
+        new (std::nothrow) Notification::ObserverCallbackRecipient();
+    EXPECT_NE(callbackRecipient, nullptr);
+    wptr<IRemoteObject> nullObject;
+    callbackRecipient->OnRemoteDied(nullObject);
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_003::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ObserverCallbackRecipient_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_ALBUM_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    sptr<Notification::ObserverCallbackRecipient> callback =
+        new (std::nothrow) Notification::ObserverCallbackRecipient();
+    EXPECT_NE(callback, nullptr);
+    wptr<IRemoteObject> object = dataObserver->AsObject();
+    callback->OnRemoteDied(object);
+    size_t uriSize = observerManager->observers_.size();
+    EXPECT_EQ(uriSize, 0);
+    MEDIA_INFO_LOG("ObserverCallbackRecipient_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, RemoveObsDeathRecipient_test_005, TestSize.Level1) {
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_005::Start");
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    sptr<IDataAbilityObserver> secondDataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(secondDataObserver, nullptr);
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    ret = observerManager->AddObserver(uri, secondDataObserver);
+    EXPECT_EQ(ret, E_OK);
+    size_t obsCallbackSize = observerManager->obsCallbackPecipients_.size();
+    EXPECT_EQ(obsCallbackSize, 2);
+    wptr<IRemoteObject> object = dataObserver->AsObject();
+    observerManager->RemoveObsDeathRecipient(object);
+    obsCallbackSize = observerManager->obsCallbackPecipients_.size();
+    EXPECT_EQ(obsCallbackSize, 1);
+    MEDIA_INFO_LOG("RemoveObsDeathRecipient_test_005::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, GetObservers_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("GetObservers_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    sptr<IDataAbilityObserver> secondDataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(secondDataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    ret = observerManager->AddObserver(uri, secondDataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::unordered_map<Notification::NotifyUriType, std::vector<Notification::ObserverInfo>> observers =
+        observerManager->GetObservers();
+    EXPECT_EQ(observers.size(), 1);
+    EXPECT_EQ(observers[uri].size(), 2);
+    MEDIA_INFO_LOG("GetObservers_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, FindSingleObserver_test_004, TestSize.Level1) {
+    MEDIA_INFO_LOG("FindSingleObserver_test_004::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::PHOTO_ALBUM_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::vector<Notification::ObserverInfo> obsInfos;
+    bool found = observerManager->FindSingleObserver(uri, obsInfos);
+    EXPECT_TRUE(found);
+    EXPECT_EQ(obsInfos.size(), 1);
+    EXPECT_EQ(obsInfos[0].observer, dataObserver);
+    MEDIA_INFO_LOG("FindSingleObserver_test_004::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleListenSize_test_005, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_005::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    bool result = observerManager->CheckSingleListenSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleListenSize_test_005::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, CheckSingleProcessSize_test_005, TestSize.Level1) {
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_005::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    bool result = observerManager->CheckSingleProcessSize(uri);
+    EXPECT_TRUE(result);
+    MEDIA_INFO_LOG("CheckSingleProcessSize_test_005::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, ProcessSingleObserverSingleIds_test_006, TestSize.Level1) {
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_006::Start");
+    Notification::NotifyUriType uri = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    auto observerManager = Notification::MediaObserverManager::GetObserverManager();
+    EXPECT_NE(observerManager, nullptr);
+    sptr<IDataAbilityObserver> dataObserver = new (std::nothrow) IDataAbilityObserverTest();
+    EXPECT_NE(dataObserver, nullptr);
+    int32_t ret = observerManager->AddObserver(uri, dataObserver);
+    EXPECT_EQ(ret, E_OK);
+    std::string singleId = "1234567890";
+    ret = observerManager->ProcessSingleObserverSingleIds(uri, true, dataObserver, singleId,
+        [](std::unordered_set<std::string>& singleIds, const std::string& id) {
+            singleIds.insert(id);
+        });
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("ProcessSingleObserverSingleIds_test_006::End");
+}
+
+HWTEST_F(NotificationRegisterManagerTest, NotifyRegisterPermission_test_015, TestSize.Level1) {
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_015::Start");
+    Notification::NotifyRegisterPermission permissionHandle;
+    int32_t ret = permissionHandle.ExecuteCheckPermission(Notification::NotifyUriType::INVALID);
+    EXPECT_NE(ret, E_OK);
+    MEDIA_INFO_LOG("NotifyRegisterPermission_test_015::End");
 }
 }
 }

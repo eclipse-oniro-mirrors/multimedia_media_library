@@ -32,6 +32,8 @@ private:
         const std::vector<std::string> &fetchColumns, const DataShare::DataSharePredicates *predicate);
     static bool HandleSpecialPredicate(std::shared_ptr<MediaLibraryAsyncContext> context,
         const DataShare::DataSharePredicates *predicate, const FetchOptionType &fetchOptType);
+    static bool IsPredicateValid(const DataShare::DataSharePredicates *predicate,
+        const FetchOptionType &fetchOptType);
     static bool GetLocationPredicate(std::shared_ptr<MediaLibraryAsyncContext> context,
         const DataShare::DataSharePredicates *predicate);
     static bool AddDefaultAssetColumns(ani_env *env, std::vector<std::string> &fetchColumn,
