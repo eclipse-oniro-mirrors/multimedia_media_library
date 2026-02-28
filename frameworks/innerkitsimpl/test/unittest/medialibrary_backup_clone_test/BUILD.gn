@@ -55,6 +55,8 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "./include/pet_album",
   ]
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/event_handler/album_plugin_table_event_handler.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
