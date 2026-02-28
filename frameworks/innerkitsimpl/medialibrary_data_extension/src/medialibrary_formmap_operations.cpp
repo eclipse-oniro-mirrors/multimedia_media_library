@@ -39,6 +39,7 @@ const string MEDIA_LIBRARY_PROXY_URI = "datashareproxy://com.ohos.medialibrary.m
 const string MEDIA_LIBRARY_PROXY_DATA_URI = "datashareproxy://com.ohos.medialibrary.medialibrarydata/image_data";
 const string MEDIA_LIBRARY_PROXY_IMAGE_URI = "datashareproxy://com.ohos.medialibrary.medialibrarydata/image_uri";
 const string NO_PICTURES = "";
+constexpr int32_t MAX_THUMBNAIL_FILE_SIZE = 10 * 1024 * 1024; // 缩略图文件最大不超过10MB
 
 static void ReadThumbnailFile(const string &path, vector<uint8_t> &buffer)
 {
@@ -47,6 +48,10 @@ static void ReadThumbnailFile(const string &path, vector<uint8_t> &buffer)
     UniqueFd uniqueFd(fd);
     struct stat statInfo;
     if (fstat(uniqueFd.Get(), &statInfo) == E_ERR) {
+        return ;
+    }
+    if (statInfo.st_size <= 0 || statInfo.st_size > MAX_THUMBNAIL_FILE_SIZE) {
+        MEDIA_ERR_LOG("Invalid file size: %{public}" PRId64, static_cast<int64_t>(statInfo.st_size));
         return ;
     }
     buffer.reserve(statInfo.st_size);
@@ -61,7 +66,7 @@ static void ReadThumbnailFile(const string &path, vector<uint8_t> &buffer)
         free(tempBuffer);
         return ;
     }
-    buffer.assign(tempBuffer, tempBuffer + statInfo.st_size);
+    buffer.assign(tempBuffer, tempBuffer + bytes);
     free(tempBuffer);
 }
 
