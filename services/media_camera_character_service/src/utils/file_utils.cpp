@@ -19,6 +19,7 @@
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 
+#include "media_change_effect.h"
 #include "media_log.h"
 #include "media_file_utils.h"
 #include "moving_photo_file_utils.h"
@@ -283,6 +284,97 @@ int32_t FileUtils::DeleteTempVideoFile(const std::string &filePath)
         return DeleteFile(tempPath);
     }
     return E_OK;
+}
+
+static bool HandleAddFiltersError(const std::string& targetPath, const std::string& sourcePath)
+{
+    if (MediaFileUtils::IsFileExists(targetPath)) {
+        MEDIA_WARN_LOG("HandleAddFiltersError targetPath already exists");
+        return true;
+    }
+
+    if (!MediaFileUtils::IsFileExists(sourcePath)) {
+        MEDIA_ERR_LOG("HandleAddFiltersError sourcePath not exists");
+        return false;
+    }
+
+    return MediaFileUtils::CopyFileSafe(sourcePath, targetPath);
+}
+
+void FileUtils::SavePictureWithFilters(std::shared_ptr<Media::Picture> &inPicture, const std::string &outputPath,
+    std::string& editdata, const std::string& mimeType, const std::string& sourcePath)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("FileUtils::SavePictureWithFilters");
+    MEDIA_INFO_LOG("path: %{public}s, editdata: %{public}s", outputPath.c_str(), editdata.c_str());
+
+    // 1.校验指针
+    if (inPicture == nullptr) {
+        MEDIA_ERR_LOG("inPicture is null, using the original image instead.");
+        CHECK_AND_PRINT_LOG(HandleAddFiltersError(outputPath, sourcePath), "Failed to HandleAddFiltersError.");
+        return;
+    }
+
+    // 2.添加水印
+    int32_t ret = MediaChangeEffect::TakeEffectForPicture(inPicture, editdata);
+    if (ret != E_OK) {
+        // 若添加水印失败, 则用裸图代替
+        MEDIA_ERR_LOG("Failed to TakeEffectForPicture, using the original image instead.");
+        CHECK_AND_PRINT_LOG(HandleAddFiltersError(outputPath, sourcePath), "Failed to HandleAddFiltersError.");
+        return;
+    }
+
+    // 3.成功添加水印, 则编码落盘
+    DealPicture(mimeType, outputPath, inPicture, true);
+}
+
+void FileUtils::SavePhotoWithFilters(const std::string &inputPath, const std::string &outputPath,
+    const std::string &editdata, const std::string &photoStatus)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("FileUtils::SavePhotoWithFilters");
+    MEDIA_INFO_LOG("inputPath: %{public}s, outputPath: %{public}s",
+        MediaFileUtils::DesensitizePath(inputPath).c_str(), MediaFileUtils::DesensitizePath(outputPath).c_str());
+
+    // 1.校验入参
+    std::string info = editdata;
+    size_t lastSlash = outputPath.rfind('/');
+    CHECK_AND_RETURN_LOG(lastSlash != string::npos && outputPath.size() > (lastSlash + 1),
+        "Failed to check outputPath: %{public}s", outputPath.c_str());
+
+    // 2.创建落盘文件
+    std::string tempOutputPath = outputPath.substr(0, lastSlash) + "/filters_" + photoStatus
+        + outputPath.substr(lastSlash + 1);
+    int32_t ret = MediaFileUtils::CreateAsset(tempOutputPath);
+    if (ret != E_SUCCESS && ret != E_FILE_EXIST) {
+        // 若失败, 则用裸图代替
+        MEDIA_ERR_LOG("Failed to CreateAsset, using the original image instead.");
+        CHECK_AND_PRINT_LOG(HandleAddFiltersError(outputPath, inputPath), "Failed to HandleAddFiltersError.");
+        return;
+    }
+
+    // 3.添加水印
+    tracer.Start("MediaChangeEffect::TakeEffect");
+    ret = MediaChangeEffect::TakeEffect(inputPath, tempOutputPath, info);
+    tracer.Finish();
+    if (ret != E_OK) {
+        // 若失败, 则用裸图代替
+        MEDIA_ERR_LOG("Failed to TakeEffect, using the original image instead.");
+        CHECK_AND_PRINT_LOG(HandleAddFiltersError(outputPath, inputPath), "Failed to HandleAddFiltersError.");
+        return;
+    }
+
+    // 4.水印图落盘
+    ret = rename(tempOutputPath.c_str(), outputPath.c_str());
+    if (ret < 0) {
+        // 若失败, 则用裸图代替
+        MEDIA_ERR_LOG("Failed to rename temp filters file, ret: %{public}d, errno: %{public}d", ret, errno);
+        CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(tempOutputPath),
+            "Failed to delete temp filters file, errno: %{public}d", errno);
+        CHECK_AND_PRINT_LOG(HandleAddFiltersError(outputPath, inputPath), "Failed to HandleAddFiltersError.");
+        return;
+    }
+    MEDIA_INFO_LOG("FileUtils::SavePhotoWithFilters success.");
 }
 } // namespace Media
 } // namespace OHOS
