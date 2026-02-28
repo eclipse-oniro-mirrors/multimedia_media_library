@@ -55,7 +55,7 @@ ohos_unittest("media_library_share_open_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
     "../../get_self_permissions/src/get_self_permissions.cpp",
     "../../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "../../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
