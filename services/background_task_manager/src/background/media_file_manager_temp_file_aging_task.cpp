@@ -171,7 +171,7 @@ void MediaFileManagerTempFileAgingTask::HandleMediaFileManagerTempFileAging()
     int32_t startFileId = currStartFileId == defaultValueZero ? 1 : currStartFileId;
 
     AgingFilesInfo omittedAgingFilesInfo = QueryAgingFiles(rdbStore, startFileId, true);
-    CHECK_AND_PRINT_INFO_LOG(omittedAgingFilesInfo.fileIds.size() == 0, "Find omitted temp files num: %{public}d",
+    CHECK_AND_PRINT_INFO_LOG(omittedAgingFilesInfo.fileIds.size() == 0, "Find omitted temp files num: %{public}zu",
         omittedAgingFilesInfo.fileIds.size());
     CHECK_AND_EXECUTE(omittedAgingFilesInfo.fileIds.size() == 0, DeleteTempFiles(rdbStore, omittedAgingFilesInfo));
     while (startFileId <= maxFileId) {

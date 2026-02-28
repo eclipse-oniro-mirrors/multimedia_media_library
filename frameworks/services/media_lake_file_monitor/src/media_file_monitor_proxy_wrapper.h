@@ -16,6 +16,7 @@
 #define MEDIA_FILE_MONITOR_PROXY_WRAPPER_H
 
 #include <cstdint>
+#include <cinttypes>
 #include <memory>
 #include "file_monitor_wrapper.h"
 
@@ -28,7 +29,7 @@ class MediaFileMonitorProxyWrapper {
 public:
     explicit MediaFileMonitorProxyWrapper(uint64_t type)
     {
-        MEDIA_INFO_LOG("enter file monitor proxy wrapper, care type: 0x%{public}llu", type);
+        MEDIA_INFO_LOG("enter file monitor proxy wrapper, care type: 0x%{public}" PRIx64, type);
         constexpr int32_t tableId = 100000; // media library proxy
         type_ = type;
         fileMonitorProxy_ = FileMonitorWrapper::GetInstance().CreateFileMonitorProxy(tableId);
@@ -52,7 +53,7 @@ public:
     int32_t RegisterRequest(const std::shared_ptr<FileMonitorService::FileChangeCallback>& callback)
     {
         if (fileMonitorProxy_) {
-            MEDIA_INFO_LOG("file monitor proxy register, type: 0x%{public}llu", type_);
+            MEDIA_INFO_LOG("file monitor proxy register, type: 0x%{public}" PRIx64, type_);
             return fileMonitorProxy_->RegisteRequest(type_, callback);
         }
 

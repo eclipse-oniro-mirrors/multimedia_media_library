@@ -15,6 +15,8 @@
 
 #define MLOG_TAG "Media_Cloud_Dao"
 
+#include <cinttypes>
+
 #include "cloud_media_album_dao.h"
 #include "cloud_media_sync_utils.h"
 #include "cloud_media_operation_code.h"
@@ -1070,7 +1072,8 @@ int32_t CloudMediaAlbumDao::ReportAbnormalLocalRecords()
         int64_t thumbnailReady = record.thumbnailReady.value_or(-1);
         int64_t timePending = record.timePending.value_or(-1);
         MEDIA_INFO_LOG(
-            "abnormal file id is %{public}d, other info is %{public}d, %{public}lld, %{public}lld, %{public}lld",
+            "abnormal file id is %{public}d, other info is %{public}d, %{public}" PRId64 ", %{public}" PRId64
+            ", %{public}" PRId64,
             fileId, dirty, timePending, lcdVisitTime, thumbnailReady);
     }
     return E_OK;

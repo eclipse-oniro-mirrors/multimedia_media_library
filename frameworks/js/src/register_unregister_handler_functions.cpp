@@ -260,7 +260,7 @@ static int32_t HandleArgsByCount(UnregisterContext& singleContext)
         case ARGS_TWO:
             return unregisterSingleAssetCallback(singleContext);
         default:
-            NAPI_ERR_LOG("The number of parameters does not meet the specification argCount is %{public}d",
+            NAPI_ERR_LOG("The number of parameters does not meet the specification argCount is %{public}zu",
                 singleContext.argCount);
             return JS_E_PARAM_INVALID;
     }

@@ -2071,7 +2071,7 @@ static bool GetFusionAssetsInfoResult(napi_env env, unique_ptr<JSAsyncContextOut
     size_t resultArraySize = context->fusionAssetInfos.size();
     napi_status status = napi_create_array_with_length(env, resultArraySize, &entity);
     CHECK_COND_RET(status == napi_ok, false, "Create array error!");
-    NAPI_INFO_LOG("GetFusionAssetsInfoResult, infos size: %{public}u", context->fusionAssetInfos.size());
+    NAPI_INFO_LOG("GetFusionAssetsInfoResult, infos size: %{public}zu", context->fusionAssetInfos.size());
  
     for (size_t i = 0; i < context->fusionAssetInfos.size(); ++i) {
         auto assetInfo = context->fusionAssetInfos[i];
