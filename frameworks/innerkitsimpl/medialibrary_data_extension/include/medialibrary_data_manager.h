@@ -85,8 +85,8 @@ public:
 
     // restore thumbnail for date fronted 2000 photos from dual framework upgrade or clone
     EXPORT int32_t RestoreThumbnailDualFrame();
-    void InterruptBgworker();
-    void InterruptThumbnailBgWorker();
+    EXPORT void InterruptBgworker();
+    EXPORT void InterruptThumbnailBgWorker();
     EXPORT int32_t DoAging();
     EXPORT int32_t DoTrashAging(std::shared_ptr<int> countPtr = nullptr);
     /**
