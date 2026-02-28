@@ -5859,6 +5859,17 @@ static void AddCinematicVideoAlbum(RdbStore &store, int32_t version)
     MEDIA_INFO_LOG("End add cinematic video album");
 }
 
+static void UpdateTriggerForAnalysisAlbum(RdbStore &store, int32_t version)
+{
+    const vector<string> executeSqlStrs = {
+        "DROP TRIGGER IF EXISTS " + ANALYSIS_ALBUM_UPDATE_SEARCH_TRIGGER,
+        CREATE_ANALYSIS_ALBUM_UPDATE_SEARCH_TRIGGER
+    };
+    MEDIA_INFO_LOG("Start update album modify trigger");
+    ExecSqlsWithDfx(executeSqlStrs, store, version);
+    MEDIA_INFO_LOG("End update album modify trigger");
+}
+
 static void UpgradeExtensionPart15(RdbStore &store, int32_t oldVersion)
 {
     if (oldVersion < VERSION_ADD_PERSON_SCORE_AND_HIGHLIGHT_FLUSH &&
@@ -5871,6 +5882,12 @@ static void UpgradeExtensionPart15(RdbStore &store, int32_t oldVersion)
         !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, true)) {
         AddCinematicVideoAlbum(store, VERSION_ADD_CINEMATIC_VIDEO_ALBUM);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, true);
+    }
+
+    if (oldVersion < VERSION_UPDATE_TRIGGER_FOR_ANALYSIS_ALBUM &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_UPDATE_TRIGGER_FOR_ANALYSIS_ALBUM, true)) {
+        AddCinematicVideoAlbum(store, VERSION_UPDATE_TRIGGER_FOR_ANALYSIS_ALBUM);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_UPDATE_TRIGGER_FOR_ANALYSIS_ALBUM, true);
     }
 }
 
