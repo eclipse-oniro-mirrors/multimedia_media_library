@@ -23,12 +23,12 @@ ohos_unittest("media_lake_load_test") {
   module_out_path = "media_library/media_library_asset"
   include_dirs = [
     "./include",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/include",
   ]
  
   sources = [
     "./src/lake_file_operations_test.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
   ]
  
   deps = [

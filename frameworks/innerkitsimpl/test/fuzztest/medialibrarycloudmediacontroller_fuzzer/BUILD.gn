@@ -94,8 +94,8 @@ ohos_fuzztest("MediaLibraryCloudMediaControllerFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/hi_audit.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_owner_album_id_operation.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/zip_util.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/lake_file_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
   ]
 
   deps = [

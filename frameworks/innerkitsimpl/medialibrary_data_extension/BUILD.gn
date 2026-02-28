@@ -182,9 +182,9 @@ config("media_data_extension_public_config") {
   ]
 
   include_media_lake_monitor = [
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/include",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/include",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/include",
   ]
  
   include_media_analysis_data_client_vo = [
@@ -754,33 +754,33 @@ ohos_shared_library("medialibrary_data_extension") {
   ]
   
   media_lake_scanner_source = [
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/src/folder_scanner.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/src/folder_scanner_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/src/global_scanner.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/src/file_scanner.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/src/folder_scanner_helper.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/src/media_lake_check_manager.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_scanner/src/media_lake_check.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/src/folder_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/src/folder_scanner_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/src/global_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/src/file_scanner.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/src/folder_scanner_helper.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/src/media_lake_check_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_scanner/src/media_lake_check.cpp",
   ]
 
   media_load_lake_source = [
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/file_parser.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/folder_parser.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/src/product_info.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/file_parser.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/lake_file_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/folder_parser.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/lake_file_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/src/product_info.cpp",
   ]
 
   media_lake_file_monitor_source = [
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/file_monitor_wrapper.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_delete_dir_processor.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_delete_file_processor.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_file_change_manager.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_file_change_processor.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_file_notify_processor.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_lake_clone_event_manager.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_lake_monitor_rdb_utils.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_file_monitor/src/media_delete_lake_dir_processor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/file_monitor_wrapper.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_delete_dir_processor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_delete_file_processor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_file_change_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_file_change_processor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_file_notify_processor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_lake_clone_event_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_lake_monitor_rdb_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_file_monitor/src/media_delete_lake_dir_processor.cpp",
   ]
 
   media_analysis_extension_source = [

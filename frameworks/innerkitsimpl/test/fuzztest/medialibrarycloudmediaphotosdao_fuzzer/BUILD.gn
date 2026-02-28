@@ -25,7 +25,7 @@ ohos_fuzztest("MediaLibraryCloudMediaPhotosDaoFuzzTest") {
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include",
     "${MEDIALIB_CLOUD_SYNC_CLIENT}/include/utils",
-    "${MEDIALIB_SERVICES_PATH}/media_lake_load/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/include",
   ]
 
   include_media_cloud_sync_data = [
