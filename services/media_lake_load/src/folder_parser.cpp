@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 #include <chrono>
 #include <cctype>
+#include <cinttypes>
 #include "album_accurate_refresh.h"
 #include "album_grey_list.h"
 #include "media_log.h"
@@ -366,7 +367,7 @@ int32_t FolderParser::InsertAlbum(LakeAlbumInfo &lakeAlbumInfo)
     AccurateRefresh::AlbumAccurateRefresh albumRefresh;
     int32_t ret = albumRefresh.Insert(albumId, PhotoAlbumColumns::TABLE, value);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && albumId > 0, E_ERR,
-        "Insert photo albums failed, failed albumId is %{public}lld and lpath is %{public}s",
+        "Insert photo albums failed, failed albumId is %{public}" PRId64 " and lpath is %{public}s",
         albumId, LakeFileUtils::GarbleFilePath(lakeAlbumInfo.lpath).c_str());
     lakeAlbumInfo.albumId = static_cast<int32_t>(albumId);
     MEDIA_INFO_LOG("FolderParser: end insert PhotoAlbum.");

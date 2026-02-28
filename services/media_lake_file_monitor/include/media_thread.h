@@ -20,6 +20,7 @@
 #include <functional>
 #include <pthread.h>
 #include <string>
+#include <cinttypes>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -176,11 +177,11 @@ protected:
             auto threadNum = ++threadNum_;
             auto pthread_slf = pthread_self();
             auto tid = gettid();
-            MEDIA_INFO_LOG("tid: %{public}d, thread(%{public}s-%{public}lu) enter. thread num:%{public}llu",
+            MEDIA_INFO_LOG("tid: %{public}d, thread(%{public}s-%{public}lu) enter. thread num:%{public}" PRIu64,
                 tid, name_.c_str(), pthread_self(), threadNum);
             func_();
             threadNum = --threadNum_;
-            MEDIA_INFO_LOG("tid: %{public}d, thread(%{public}s-%{public}lu): exit. thread num :%{public}llu",
+            MEDIA_INFO_LOG("tid: %{public}d, thread(%{public}s-%{public}lu): exit. thread num :%{public}" PRIu64,
                 tid, name_.c_str(), pthread_slf, threadNum);
         }
     private:

@@ -17,6 +17,8 @@
 
 #include "analysis_data_album_dao.h"
 
+#include <cinttypes>
+
 #include "vision_column.h"
 #include "media_log.h"
 #include "photo_album_column.h"
@@ -65,7 +67,7 @@ int32_t AnalysisDataAlbumDao::SetHighlightUserActionData(const SetHighlightUserA
     }
     int64_t userActionDataCount = GetInt64Val(dto.userActionType, resultSet);
     resultSet->Close();
-    MEDIA_INFO_LOG("userActionDataCount: %{public}lld, dto.actionData: %{public}d",
+    MEDIA_INFO_LOG("userActionDataCount: %{public}" PRId64 ", dto.actionData: %{public}d",
         userActionDataCount, dto.actionData);
     NativeRdb::ValuesBucket valuesBucket;
     valuesBucket.PutString(dto.userActionType, to_string(userActionDataCount + dto.actionData));

@@ -15,6 +15,8 @@
 
 #include "cloud_lake_file_handler.h"
 
+#include <cinttypes>
+
 #include "abs_rdb_predicates.h"
 #include "lake_file_operations.h"
 #include "media_column.h"
@@ -176,7 +178,8 @@ void CloudLakeFileHandler::HandleMetaChanged(int32_t fileId)
     if (errCode != E_OK) {
         return;
     }
-    MEDIA_INFO_LOG("delete the %{public}d storage_path is %{public}s, trash is %{public}lld, hidden is %{public}d",
+    MEDIA_INFO_LOG("delete the %{public}d storage_path is %{public}s, "
+        "trash is %{public}" PRId64 ", hidden is %{public}d",
         lakeData.fileId, lakeData.storagePath.c_str(), lakeData.dateTrashed, lakeData.hidden);
 
     // MEDIA_INFO_LOG("%{public}d lake data changes meta", static_cast<int32_t>(lakeDataList.size()));

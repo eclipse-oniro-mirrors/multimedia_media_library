@@ -531,7 +531,7 @@ int32_t CloudMediaDownloadService::OnDownloadLakeAsset(
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "QueryDownloadLakeAssetByCloudIds failed, ret:%{public}d", ret);
     CHECK_AND_RETURN_RET_LOG(photosPoVec.size() == lakeInfos.size(),
         E_CLOUDSYNC_INVAL_ARG,
-        "QueryDownloadLakeAssetByCloudIds failed, cloudIds size:%{public}u, photosPoVec size:%{public}u",
+        "QueryDownloadLakeAssetByCloudIds failed, cloudIds size:%{public}zu, photosPoVec size:%{public}zu",
         lakeInfos.size(),
         photosPoVec.size());
     // Update

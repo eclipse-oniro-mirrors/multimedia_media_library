@@ -18,6 +18,7 @@
 #include <ctime>
 #include <chrono>
 #include <sys/stat.h>
+#include <cinttypes>
  
 #include "folder_scanner_helper.h"
 #include "lake_file_utils.h"
@@ -60,7 +61,7 @@ void FolderScannerHelper::UpdateFolderModified()
         return;
     }
     if (!IsFolderModified() && albumInfoPath_ == storagePath_) {
-        MEDIA_INFO_LOG("no change path[%{public}s], dateModified[%{public}lld]",
+        MEDIA_INFO_LOG("no change path[%{public}s], dateModified[%{public}" PRId64 "]",
             LakeFileUtils::GarbleFilePath(storagePath_).c_str(), folderDateModified_);
         return;
     }
@@ -80,7 +81,7 @@ void FolderScannerHelper::UpdateFolderModified()
     int32_t changeRows = 0;
     int32_t ret = rdbStore->Update(changeRows, values, predicates);
     CHECK_AND_RETURN_LOG(ret == E_OK, "update ret error");
-    MEDIA_INFO_LOG("update change path[%{public}s], dateModified[%{public}lld]",
+    MEDIA_INFO_LOG("update change path[%{public}s], dateModified[%{public}" PRId64 "]",
         LakeFileUtils::GarbleFilePath(storagePath_).c_str(), folderDateModified_);
 }
  
@@ -98,7 +99,7 @@ void FolderScannerHelper::InsertFolderModified()
     values.Put(LAKE_FOLDER_MODIFIED, folderDateModified_);
     int64_t changeId = 0;
     int32_t ret = rdbStore->Insert(changeId, LAKE_ALBUM_TABLE, values);
-    MEDIA_INFO_LOG("insert albumId[%{public}d] path[%{public}s], dateModified[%{public}lld]", albumId_,
+    MEDIA_INFO_LOG("insert albumId[%{public}d] path[%{public}s], dateModified[%{public}" PRId64 "]", albumId_,
         LakeFileUtils::GarbleFilePath(storagePath_).c_str(), folderDateModified_);
 }
  
@@ -145,7 +146,7 @@ void FolderScannerHelper::InitFolderInfo()
     if (stat(storagePath_.c_str(), &dirStat) == 0) {
         struct timespec ctim = dirStat.st_ctim;
         folderDateModified_ = ctim.tv_sec * MILLISECOND_PER_SECOND + ctim.tv_nsec / MICROSECOND_PER_SECOND;
-        MEDIA_INFO_LOG("folder modified: %{public}lld", folderDateModified_);
+        MEDIA_INFO_LOG("folder modified: %{public}" PRId64, folderDateModified_);
     } else {
         MEDIA_INFO_LOG("get folder stat error");
     }

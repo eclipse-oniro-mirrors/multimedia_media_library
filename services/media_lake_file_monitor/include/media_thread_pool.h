@@ -57,7 +57,7 @@ public:
             threads.emplace_back(threadPoolName_ + std::to_string(threadIndex_++),
                 [poolInfo = poolInfo_]() { LoopForEver(poolInfo); });
         }
-        MEDIA_INFO_LOG("ThreadPool(%{public}s) construct(enter), mix(%{public}u)/max(%{public}u).",
+        MEDIA_INFO_LOG("ThreadPool(%{public}s) construct(enter), mix(%{public}zu)/max(%{public}zu).",
             threadPoolName_.c_str(), minThreads_, maxThreads_);
     }
 
@@ -108,7 +108,7 @@ public:
             poolInfo_->isStop = true;
         }
         poolInfo_->condition.notify_all();
-        MEDIA_INFO_LOG("stop all threads (%{public}s), thread num: %{public}u.",
+        MEDIA_INFO_LOG("stop all threads (%{public}s), thread num: %{public}zu.",
             threadPoolName_.c_str(), poolInfo_->threads.size());
         if (waitThreadExit) {
             Wait<true>();
@@ -159,7 +159,7 @@ protected:
                 poolInfo_->tasks.emplace(std::move(func));
                 auto taskNum = poolInfo_->tasks.size();
                 auto threadNum = poolInfo_->threads.size();
-                MEDIA_INFO_LOG("ThreadPool(%{public}s) tasks: %{public}u, size: %{public}u, max threads: %{public}u",
+                MEDIA_INFO_LOG("ThreadPool(%{public}s) tasks: %{public}zu, size: %{public}zu, max threads: %{public}zu",
                     threadPoolName_.c_str(), taskNum, threadNum, maxThreads_);
                 if (taskNum > threadNum && threadNum < maxThreads_) {
                     AddThreadUnlock(threadIndex_++);
@@ -228,7 +228,7 @@ protected:
                 auto notTimeout = waitCondUnlock(lck, poolInfo.get());
                 if (!notTimeout) {
                     RemoveThreadUnlock(poolInfo.get());
-                    MEDIA_INFO_LOG("detach self, task num: %{public}u, threads num: %{public}u",
+                    MEDIA_INFO_LOG("detach self, task num: %{public}zu, threads num: %{public}zu",
                         poolInfo->tasks.size(), poolInfo->threads.size());
                     return;
                 }
@@ -245,7 +245,7 @@ protected:
             task();
         }
 
-        MEDIA_INFO_LOG("exit thread loop. task num: %{public}u, threads num: %{public}u",
+        MEDIA_INFO_LOG("exit thread loop. task num: %{public}zu, threads num: %{public}zu",
             poolInfo->tasks.size(), poolInfo->threads.size());
         threadIndex_ = 0;
     }

@@ -15,6 +15,8 @@
 
 #include "thumbnail_restore_manager.h"
 
+#include <cinttypes>
+
 #include "res_sched_client.h"
 #ifdef HAS_POWER_MANAGER_PART
 #include "power_mgr_client.h"
@@ -61,7 +63,7 @@ void ThumbnailRestoreManager::InitializeRestore(int64_t totalTasks)
     completedTasks_.store(0);
     isRestoreActive_.store(true);
     
-    MEDIA_INFO_LOG("Initialized restore progress: totalTasks=%{public}lld", totalTasks);
+    MEDIA_INFO_LOG("Initialized restore progress: totalTasks=%{public}" PRId64, totalTasks);
 
     bool isScreenOn = false;
 #ifdef HAS_POWER_MANAGER_PART
