@@ -125,7 +125,7 @@ public:
     static void GetImageSourceAniObject(const std::string &fileUri, ani_object &imageSourceAniObj, bool isSource,
         ani_env *env);
     static void GetPictureAniObject(const std::string &fileUri, ani_object &imageSourceAniObj, bool isSource,
-        ani_env *env, bool& isPicture);
+        ani_env *env, MultiStagesCapturePhotoStatus &photoQuality);
     static void WriteDataToDestPath(WriteData &writeData, ani_object &resultAniValue, std::string requestId);
 
 private:
