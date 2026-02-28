@@ -1,0 +1,59 @@
+# Copyright (C) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+group("unittest") {
+  testonly = true
+  deps = [ ":madvise_utils_test" ]
+}
+
+ohos_unittest("madvise_utils_test") {
+  module_out_path = "media_library/media_library_data"
+  
+  include_dirs = [
+    "./include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+
+  cflags_cc = cflags
+
+  sources = [
+    "./src/madvise_utils_test.cpp",
+    "${MEDIALIB_COMMON_PATH}/utils/src/madvise_utils.cpp",
+  ]
+
+  deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "hilog:libhilog",
+  ]
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  resource_config_file =
+      "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
+}

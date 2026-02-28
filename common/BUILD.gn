@@ -30,6 +30,7 @@ ohos_shared_library("media_library_common") {
     "${MEDIALIB_COMMON_PATH}/utils/src/media_pure_file_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_time_utils.cpp",
     "${MEDIALIB_COMMON_PATH}/utils/src/media_path_utils.cpp",
+    "${MEDIALIB_COMMON_PATH}/utils/src/madvise_utils.cpp",
   ]
 
   external_deps = [

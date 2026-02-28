@@ -25,6 +25,7 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "parameters.h"
+#include "madvise_utils.h"
 
 using namespace std;
 namespace OHOS {
@@ -61,9 +62,31 @@ void DfxWorker::Init()
     delayThread_ = thread([this] { this->InitDelayThread(); });
 }
 
+static void MadviseMemoryCheck()
+{
+    int64_t MAX_IPC_DURATION_TIME = 60 * 1000;
+    int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t lastIPCTime = DfxManager::GetInstance()->GetLastIPCTime();
+    if (!DfxManager::GetInstance()->GetMemoryRelease() && currentTime - lastIPCTime > MAX_IPC_DURATION_TIME) {
+        const vector<string> MADVISE_LIST = {
+            "libmedialibrary_data_extension.z.so",
+            "libmedia_library.z.so",
+            "libmedia_cloud_sync_data.z.so",
+            "libarkdata_db_core.z.so",
+            "libarkweb_engine.so",
+        };
+        MadviseUtils::MadviseMultipleLibraries(MADVISE_LIST);
+        MEDIA_INFO_LOG("Madvise done, currentTime:%{public}ld, lastIPCTime:%{public}ld", currentTime,
+            lastIPCTime);
+        DfxManager::GetInstance()->SetMemoryRelease(true);
+    }
+}
+
 static void HandleLoopTask(DfxData *data)
 {
     MEDIA_DEBUG_LOG("HandleLoopTask");
+    MadviseMemoryCheck();
+
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);

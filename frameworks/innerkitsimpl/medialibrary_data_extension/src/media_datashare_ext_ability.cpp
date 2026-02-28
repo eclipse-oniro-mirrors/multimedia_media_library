@@ -785,7 +785,9 @@ int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
 
     CHECK_AND_EXECUTE(command.GetUri().ToString().find(MEDIA_DATA_DB_KEY_FRAME) == string::npos,
         command.SetOprnObject(OperationObject::KEY_FRAME));
-    return MediaLibraryDataManager::GetInstance()->OpenFile(command, unifyMode);
+    int32_t ret = MediaLibraryDataManager::GetInstance()->OpenFile(command, unifyMode);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
+    return ret;
 }
 
 int MediaDataShareExtAbility::OpenRawFile(const Uri &uri, const string &mode)
@@ -806,7 +808,9 @@ int MediaDataShareExtAbility::Insert(const Uri &uri, const DataShareValuesBucket
     int32_t object = static_cast<int32_t>(cmd.GetOprnObject());
     int32_t type = static_cast<int32_t>(cmd.GetOprnType());
     DfxTimer dfxTimer(type, object, COMMON_TIME_OUT, true);
-    return MediaLibraryDataManager::GetInstance()->Insert(cmd, value);
+    int32_t ret = MediaLibraryDataManager::GetInstance()->Insert(cmd, value);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
+    return ret;
 }
 
 int MediaDataShareExtAbility::InsertExt(const Uri &uri, const DataShareValuesBucket &value, string &result)
@@ -831,6 +835,7 @@ int MediaDataShareExtAbility::InsertExt(const Uri &uri, const DataShareValuesBuc
 
     DfxTimer dfxTimer(type, object, COMMON_TIME_OUT, true);
     int32_t ret =  MediaLibraryDataManager::GetInstance()->InsertExt(cmd, value, result);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
     if (needToResetTime) {
         AccessTokenID tokenCaller = IPCSkeleton::GetCallingTokenID();
         err = Security::AccessToken::AccessTokenKit::GrantPermissionForSpecifiedTime(tokenCaller,
@@ -886,6 +891,7 @@ int MediaDataShareExtAbility::Update(const Uri &uri, const DataSharePredicates &
 
     DfxTimer dfxTimer(type, object, COMMON_TIME_OUT, true);
     auto updateRet = MediaLibraryDataManager::GetInstance()->Update(cmd, value, appidPredicates);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
     bool cond = (err < 0 && updateRet <= 0);
     CHECK_AND_RETURN_RET_LOG(!cond, err, "permission deny: {%{public}d, %{public}d, %{public}d}", type, object, err);
     return updateRet;
@@ -909,7 +915,9 @@ int MediaDataShareExtAbility::Delete(const Uri &uri, const DataSharePredicates &
     }
 
     DfxTimer dfxTimer(type, object, COMMON_TIME_OUT, true);
-    return MediaLibraryDataManager::GetInstance()->Delete(cmd, predicates);
+    int32_t ret = MediaLibraryDataManager::GetInstance()->Delete(cmd, predicates);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
+    return ret;
 }
 
 shared_ptr<DataShareResultSet> MediaDataShareExtAbility::Query(const Uri &uri,
@@ -941,6 +949,7 @@ shared_ptr<DataShareResultSet> MediaDataShareExtAbility::Query(const Uri &uri,
         }
     }
     auto queryResultSet = MediaLibraryDataManager::GetInstance()->Query(cmd, columns, appidPredicates, errCode);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
     businessError.SetCode(to_string(errCode));
     if (queryResultSet == nullptr) {
         MEDIA_ERR_LOG("queryResultSet is nullptr! errCode: %{public}d", errCode);
@@ -992,7 +1001,9 @@ int MediaDataShareExtAbility::BatchInsert(const Uri &uri, const vector<DataShare
         return err;
     }
     DfxTimer dfxTimer(type, object, COMMON_TIME_OUT, true);
-    return MediaLibraryDataManager::GetInstance()->BatchInsert(cmd, values);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
+    int32_t ret = MediaLibraryDataManager::GetInstance()->BatchInsert(cmd, values);
+    return ret;
 }
 
 bool MediaDataShareExtAbility::RegisterObserver(const Uri &uri, const sptr<AAFwk::IDataAbilityObserver> &dataObserver)
@@ -1005,6 +1016,7 @@ bool MediaDataShareExtAbility::RegisterObserver(const Uri &uri, const sptr<AAFwk
     }
 
     ErrCode ret = obsMgrClient->RegisterObserver(uri, dataObserver);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
     CHECK_AND_RETURN_RET_LOG(ret == ERR_OK, false,
         "%{public}s obsMgrClient->RegisterObserver error return %{public}d", __func__, ret);
     MEDIA_INFO_LOG("%{public}s end.", __func__);
@@ -1018,6 +1030,7 @@ bool MediaDataShareExtAbility::UnregisterObserver(const Uri &uri, const sptr<AAF
     CHECK_AND_RETURN_RET_LOG(obsMgrClient != nullptr, false, "%{public}s obsMgrClient is nullptr", __func__);
 
     ErrCode ret = obsMgrClient->UnregisterObserver(uri, dataObserver);
+    DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
     CHECK_AND_RETURN_RET_LOG(ret == ERR_OK, false,
         "%{public}s obsMgrClient->UnregisterObserver error return %{public}d", __func__, ret);
     MEDIA_INFO_LOG("%{public}s end.", __func__);
@@ -1097,6 +1110,7 @@ int32_t MediaDataShareExtAbility::UserDefineFunc(MessageParcel &data, MessagePar
         "code: %{public}d, ret: %{public}d, costTime: %{public}ld",
         MLOG_TAG, __FUNCTION__, __LINE__, userId, traceId.c_str(),
         static_cast<int32_t>(operationCode), ret, static_cast<long>(costTime));
+    DfxManager::GetInstance()->SetLastIPCTime(endTime);
     return ret;
 }
 } // namespace AbilityRuntime
