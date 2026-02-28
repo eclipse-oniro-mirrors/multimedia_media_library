@@ -86,7 +86,8 @@ void MediaLibraryInotify::WatchCallBack()
         int32_t index = 0;
         while (index < len) {
             struct inotify_event *event = reinterpret_cast<struct inotify_event *>(data + index);
-            index += static_cast<int32_t>(sizeof(struct inotify_event)) + event->len;
+            index += static_cast<int32_t>(sizeof(struct inotify_event)) +
+            static_cast<int32_t>(event->len);
             unique_lock<mutex> lock(mutex_);
             if (watchList_.count(event->wd) == 0) {
                 continue;
