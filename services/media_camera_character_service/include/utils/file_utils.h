@@ -42,7 +42,7 @@ public:
 
     // picture处理
     static void SavePictureWithFilters(std::shared_ptr<Media::Picture> &inPicture, const std::string &outputPath,
-        std::string& editdata, const std::string& mimeType, const std::string& sourcePath);
+        std::string& editdata, const std::string& sourcePath);
     static void SavePhotoWithFilters(const std::string &inputPath, const std::string &outputPath,
         const std::string &editdata, const std::string &photoStatus = "");
 };

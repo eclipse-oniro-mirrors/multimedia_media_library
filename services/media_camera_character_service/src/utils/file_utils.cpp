@@ -302,20 +302,23 @@ static bool HandleAddFiltersError(const std::string& targetPath, const std::stri
 }
 
 void FileUtils::SavePictureWithFilters(std::shared_ptr<Media::Picture> &inPicture, const std::string &outputPath,
-    std::string& editdata, const std::string& mimeType, const std::string& sourcePath)
+    std::string& editdata, const std::string& sourcePath)
 {
     MediaLibraryTracer tracer;
     tracer.Start("FileUtils::SavePictureWithFilters");
     MEDIA_INFO_LOG("path: %{public}s, editdata: %{public}s", outputPath.c_str(), editdata.c_str());
 
-    // 1.校验指针
     if (inPicture == nullptr) {
         MEDIA_ERR_LOG("inPicture is null, using the original image instead.");
         CHECK_AND_PRINT_LOG(HandleAddFiltersError(outputPath, sourcePath), "Failed to HandleAddFiltersError.");
         return;
     }
 
-    // 2.添加水印
+    size_t lastSlash = outputPath.rfind('/');
+    CHECK_AND_RETURN_LOG(lastSlash != string::npos && outputPath.size() > (lastSlash + 1),
+        "Failed to check outputPath: %{public}s", outputPath.c_str());
+
+    // 添加水印
     int32_t ret = MediaChangeEffect::TakeEffectForPicture(inPicture, editdata);
     if (ret != E_OK) {
         // 若添加水印失败, 则用裸图代替
@@ -323,9 +326,6 @@ void FileUtils::SavePictureWithFilters(std::shared_ptr<Media::Picture> &inPictur
         CHECK_AND_PRINT_LOG(HandleAddFiltersError(outputPath, sourcePath), "Failed to HandleAddFiltersError.");
         return;
     }
-
-    // 3.成功添加水印, 则编码落盘
-    DealPicture(mimeType, outputPath, inPicture, true);
 }
 
 void FileUtils::SavePhotoWithFilters(const std::string &inputPath, const std::string &outputPath,

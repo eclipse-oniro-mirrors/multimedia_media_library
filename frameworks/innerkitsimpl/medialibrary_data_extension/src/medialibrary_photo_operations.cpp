@@ -4588,6 +4588,7 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesPhoto(const std::shared_p
                 "Failed to read editdata, path=%{public}s", editDataCameraPath.c_str());
             const string HIGH_QUALITY_PHOTO_STATUS = "high";
             FileUtils::SavePhotoWithFilters(editDataSourcePath, path, editData, HIGH_QUALITY_PHOTO_STATUS);
+            MediaLibraryObjectUtils::ScanFileAsync(path, to_string(fileAsset->GetId()), MediaLibraryApi::API_10);
             return E_OK;
         }
     }
@@ -4635,11 +4636,12 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesPhotoForPicture(const std
             CHECK_AND_RETURN_RET_LOG(ReadEditdataFromFile(editDataCameraPath, editData) == E_OK, E_HAS_FS_ERROR,
                 "Failed to read editdata, path=%{public}s", editDataCameraPath.c_str());
             // (3) 添加水印+落盘
-            FileUtils::SavePictureWithFilters(picture, path, editData, fileAsset->GetMimeType(), editDataSourcePath);
+            FileUtils::SavePictureWithFilters(picture, path, editData, editDataSourcePath);
             resultPicture = picture;
             isTakeEffect = true;
             CHECK_AND_PRINT_LOG(EnableYuvAndNotify(fileAsset, picture, isEdited, isTakeEffect,
                 imageId, fileId) == E_OK, "Enable YUV failed.");
+            FileUtils::DealPicture(mime_type, path, picture, true);
             return E_OK;
         }
     }
