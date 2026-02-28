@@ -106,6 +106,10 @@ public:
     void HandleCinematicVideoMultistageResult(bool multistageResult);
     void HandleUpgradeFault(const UpgradeExceptionInfo& reportData);
     int32_t HandleThmInodeCleanInfo(const ThmInodeCleanInfo &info);
+    int64_t GetLastIPCTime();
+    bool GetMemoryRelease();
+    void SetLastIPCTime(int64_t lastIPCTime);
+    void SetMemoryRelease(bool memoryRelease);
 
 private:
     void Init();
@@ -132,6 +136,8 @@ private:
     std::vector<std::atomic<uint64_t>> uploadMetaErr_;
     CloudSyncInfo syncInfo_;
     std::string taskId_;
+    std::atomic<int64_t> lastIPCTime_ {0};
+    std::atomic<bool> memoryRelease_ {false};
 };
 } // namespace Media
 } // namespace OHOS
