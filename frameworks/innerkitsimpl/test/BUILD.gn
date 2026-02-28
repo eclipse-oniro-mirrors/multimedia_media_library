@@ -19,6 +19,7 @@ group("test") {
     "unittest/media_albums_refresh_test:unittest",
     "unittest/media_analysis_extension_test:unittest",
     "unittest/media_asset_test:unittest",
+    "unittest/media_background_task_test:unittest",
     "unittest/media_event_test:unittest",
     "unittest/media_library_asset_helper_capi_test:unittest",
     "unittest/media_library_asset_manager_test:unittest",

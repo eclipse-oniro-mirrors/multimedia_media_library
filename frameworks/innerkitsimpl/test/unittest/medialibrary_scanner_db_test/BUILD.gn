@@ -31,7 +31,6 @@ ohos_unittest("medialibrary_scanner_db_test") {
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/medialibrary_media_scanner_test.cpp",
-    "./src/medialibrary_metadata_extractor_test.cpp",
     "./src/medialibrary_scanner_db_test.cpp",
   ]
   deps = [

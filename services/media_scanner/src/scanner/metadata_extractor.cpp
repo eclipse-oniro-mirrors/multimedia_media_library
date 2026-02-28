@@ -299,18 +299,28 @@ void MetadataExtractor::ExtractImageTimeInfo(const unique_ptr<ImageSource> &imag
         detailTime.c_str());
 }
 
-static string GetCompatibleUserComment(const string& userComment)
+string MetadataExtractor::GetCompatibleUserComment(const string& userComment)
 {
     const string startFlag = "<mgzn-content>";
     const string endFlag = "<mgzn-worksdes>";
     size_t posStart = userComment.find(startFlag);
     size_t posEnd = userComment.find(endFlag);
-    if (posStart == string::npos || posEnd == string::npos || posStart >= posEnd) {
-        return userComment;
+    bool isDualFrameUserComment = posStart != string::npos && posEnd != string::npos && posStart < posEnd;
+    // 如果为双框架格式备注，去除格式标签后返回真实内容
+    if (isDualFrameUserComment) {
+        MEDIA_DEBUG_LOG("Dual frame format user comment, size: %{public}zu", userComment.size());
+        posStart += startFlag.length();
+        return userComment.substr(posStart, posEnd - posStart);
     }
 
-    posStart += startFlag.length();
-    return userComment.substr(posStart, posEnd - posStart);
+    // 如果为非双框架格式且长度大于140，无效备注，返回空。
+    constexpr size_t USER_COMMENT_MAX_LENGTH = 140;
+    CHECK_AND_RETURN_RET_LOG(userComment.size() <= USER_COMMENT_MAX_LENGTH, "",
+        "Invalid user comment, size: %{public}zu.", userComment.size());
+
+    // 如果为非双框架格式且长度小于等于140，认定为用户备注。
+    MEDIA_DEBUG_LOG("Normal user comment, size: %{public}zu", userComment.size());
+    return userComment;
 }
 
 int32_t MetadataExtractor::ExtractImageExif(std::unique_ptr<ImageSource> &imageSource, std::unique_ptr<Metadata> &data)

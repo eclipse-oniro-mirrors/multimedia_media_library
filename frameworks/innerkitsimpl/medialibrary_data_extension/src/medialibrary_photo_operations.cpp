@@ -28,6 +28,7 @@
 #include "media_exif.h"
 #include "medialibrary_album_helper.h"
 #include "medialibrary_album_fusion_utils.h"
+#include "metadata_extractor.h"
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
 #include "medialibrary_vision_operations.h"
@@ -2016,6 +2017,24 @@ static int32_t BatchSetFavorite(MediaLibraryCommand& cmd)
     return updatedRows;
 }
 
+static string ParseUserComment(const std::string &userComment)
+{
+    std::string compatibleUserComment = MetadataExtractor::GetCompatibleUserComment(userComment);
+    // 当设置备注时，传入备注不兼容仍使用原备注信息，保持Js侧setUserComment接口兼容性
+    CHECK_AND_RETURN_RET(!compatibleUserComment.empty(), userComment);
+    return compatibleUserComment;
+}
+
+static std::string GetUserComment(MediaLibraryCommand& cmd)
+{
+    ValueObject valueObject;
+    bool hasUserComment = cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_USER_COMMENT, valueObject);
+    CHECK_AND_RETURN_RET_LOG(hasUserComment, "", "Failed to get user comment from value bucket");
+    std::string userComment;
+    valueObject.GetString(userComment);
+    return userComment;
+}
+
 int32_t MediaLibraryPhotoOperations::BatchSetUserComment(MediaLibraryCommand& cmd)
 {
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::SET_ASSETS_USER_COMMENT_BUSSINESS_NAME);
@@ -2028,8 +2047,13 @@ int32_t MediaLibraryPhotoOperations::BatchSetUserComment(MediaLibraryCommand& cm
         OperationObject::FILESYSTEM_PHOTO, fileAssetVector, columns);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
         "Failed to query file asset vector from db, errCode=%{private}d", errCode);
-
+    
+    // 进行兼容性转换，写入数据库后再转换回来，写入图片exif的备注原封不动
+    std::string userComment = GetUserComment(cmd);
+    cmd.GetValueBucket().Put(PhotoColumn::PHOTO_USER_COMMENT, ParseUserComment(userComment));
     int32_t updateRows = UpdateFileInDb(cmd);
+    cmd.GetValueBucket().Put(PhotoColumn::PHOTO_USER_COMMENT, userComment);
+
     CHECK_AND_RETURN_RET_LOG(updateRows >= 0, updateRows,
         "Update Photo in database failed, updateRows=%{public}d", updateRows);
 
@@ -2475,17 +2499,37 @@ static void HandleAssetMoveFromLake(int32_t mediaId)
     CHECK_AND_PRINT_LOG(ret == E_OK, "HandleAssetMoveFromLake");
 }
 
+static vector<string> GetUpdateFileAssetColumns()
+{
+    return {
+        PhotoColumn::MEDIA_ID,
+        PhotoColumn::MEDIA_FILE_PATH,
+        PhotoColumn::MEDIA_TYPE,
+        PhotoColumn::MEDIA_NAME,
+        PhotoColumn::PHOTO_SUBTYPE,
+        PhotoColumn::PHOTO_EDIT_TIME,
+        MediaColumn::MEDIA_HIDDEN,
+        PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
+        PhotoColumn::PHOTO_ORIENTATION,
+        PhotoColumn::PHOTO_ALL_EXIF,
+        PhotoColumn::PHOTO_OWNER_ALBUM_ID,
+        PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
+        PhotoColumn::PHOTO_STORAGE_PATH,
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE
+    };
+}
+
 int32_t MediaLibraryPhotoOperations::UpdateFileAsset(MediaLibraryCommand &cmd)
 {
+    // 写数据库时去除备注双框架格式标签
+    std::string userComment = GetUserComment(cmd);
+    if (cmd.GetOprnType() == OperationType::SET_USER_COMMENT) {
+        cmd.GetValueBucket().Put(PhotoColumn::PHOTO_USER_COMMENT, ParseUserComment(userComment));
+    }
     shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh =
         make_shared<AccurateRefresh::AssetAccurateRefresh>(AccurateRefresh::UPDATE_FILE_ASSTE_BUSSINESS_NAME);
-    vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_TYPE,
-        PhotoColumn::MEDIA_NAME, PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_EDIT_TIME, MediaColumn::MEDIA_HIDDEN,
-        PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIENTATION, PhotoColumn::PHOTO_ALL_EXIF,
-        PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
-        PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_FILE_SOURCE_TYPE };
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(*(cmd.GetAbsRdbPredicates()),
-        OperationObject::FILESYSTEM_PHOTO, columns);
+        OperationObject::FILESYSTEM_PHOTO, GetUpdateFileAssetColumns());
     CHECK_AND_RETURN_RET(fileAsset != nullptr, E_INVALID_VALUES);
 
     bool isNeedScan = false;
@@ -2514,6 +2558,8 @@ int32_t MediaLibraryPhotoOperations::UpdateFileAsset(MediaLibraryCommand &cmd)
     }
     CHECK_AND_EXECUTE(!isNameChanged, UpdateAlbumDateModified(fileAsset->GetOwnerAlbumId()));
     if (cmd.GetOprnType() == OperationType::SET_USER_COMMENT) {
+        // 写图片exif时，将应用传入备注原封不动写入
+        cmd.GetValueBucket().Put(PhotoColumn::PHOTO_USER_COMMENT, userComment);
         errCode = SetUserComment(cmd, fileAsset);
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Edit user comment errCode = %{private}d", errCode);
     }

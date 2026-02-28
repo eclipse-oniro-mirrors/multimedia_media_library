@@ -39,7 +39,7 @@ public:
     static void ExtractVideoMode(int32_t fileId, std::unique_ptr<Metadata> &data, std::shared_ptr<Meta> &meta);
     EXPORT static int32_t BuildMetaData(
         std::shared_ptr<AVMetadataHelper> &avMetadataHelper, std::unique_ptr<Metadata> &data);
-
+    EXPORT static string GetCompatibleUserComment(const string &userComment);
 private:
     MetadataExtractor() = delete;
     ~MetadataExtractor() = delete;
