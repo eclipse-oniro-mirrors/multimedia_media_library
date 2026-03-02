@@ -165,13 +165,16 @@ bool MtpFileObserver::AddInotifyEvents(const int &inotifyFd, const ContextSptr &
         if (event->len) {
             bool isFind;
             map<int, string>::iterator iter;
+            string path;
             {
                 lock_guard<mutex> lock(eventLock_);
                 iter = watchMap_.find(event->wd);
                 isFind = iter != watchMap_.end();
+                if (isFind) {
+                    path = iter->second;
+                }
             }
             if (isFind && isRunning_) {
-                string path = iter->second;
                 SendEvent(*event, path, context);
             }
         }

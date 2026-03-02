@@ -69,6 +69,7 @@ constexpr int32_t BURST_COVER_LEVEL_INT = 1;
 constexpr int32_t MEDIA_PHOTO_TYPE = 1;
 constexpr int32_t MEDIA_VIDEO_TYPE = 2;
 constexpr int32_t ALBUM_NAME_MAX = 70;
+constexpr size_t MAX_THUMBNAIL_SIZE = 10 * 1024 * 1024; // 10MB
 namespace {
 std::vector<std::string> g_photoColumns = {
     MediaColumn::MEDIA_ID + " + " + to_string(COMMON_PHOTOS_OFFSET) + " as " + CONST_MEDIA_DATA_DB_ID,
@@ -809,8 +810,15 @@ int32_t MtpMedialibraryManager::GetThumbnailFromPath(string &path, shared_ptr<UI
         CHECK_AND_PRINT_LOG(ret == MTP_SUCCESS, "CloseFd fail!");
         return E_ERR;
     }
-    outThumb->resize(fileInfo.st_size);
-    ssize_t numBytes = read(fd, outThumb->data(), fileInfo.st_size);
+    if (fileInfo.st_size <= 0 || static_cast<size_t>(fileInfo.st_size) > MAX_THUMBNAIL_SIZE) {
+        MEDIA_ERR_LOG("Invalid file size: %lld, exceeds safe limit", (long long)fileInfo.st_size);
+        int32_t ret = close(fd);
+        CHECK_AND_PRINT_LOG(ret == MTP_SUCCESS, "CloseFd fail!");
+        return E_ERR;
+    }
+    size_t safeSize = static_cast<size_t>(fileInfo.st_size);
+    outThumb->resize(safeSize);
+    ssize_t numBytes = read(fd, outThumb->data(), safeSize);
     if (numBytes == E_ERR) {
         int32_t ret = close(fd);
         CHECK_AND_PRINT_LOG(ret == MTP_SUCCESS, "CloseFd fail!");
