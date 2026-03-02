@@ -270,7 +270,6 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::ProcessAndSaveHighQuali
         MEDIA_ERR_LOG("Save high quality image failed. ret: %{public}d, errno: %{public}d", ret, errno);
         MultiStagesCaptureDfxResult::Report(imageId,
             static_cast<int32_t>(MultiStagesCaptureResultErrCode::SAVE_IMAGE_FAIL), mediaType);
-        return;
     }
     bool isTrashed = fileAsset->GetIsTrash() > 0;
     int32_t modifyType = isEdited ? static_cast<int32_t>(FirstStageModifyType::EDITED) :
@@ -504,7 +503,6 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnProcessImageDon
             MLOG_TAG, __FUNCTION__, __LINE__, ret, errno);
         MultiStagesCaptureDfxResult::Report(imageId,
             static_cast<int32_t>(MultiStagesCaptureResultErrCode::SAVE_IMAGE_FAIL), mediaType);
-        return;
     }
     UpdateHighQualityPictureInfo(fileAsset->GetId(), cloudImageEnhanceFlag, modifyType);
     MediaLibraryObjectUtils::ScanFileAsync(fileAsset->GetPath(), to_string(fileAsset->GetId()),

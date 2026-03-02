@@ -150,7 +150,6 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::OnProcessVideoDone(cons
             MLOG_TAG, __FUNCTION__, __LINE__, ret, errno);
         MultiStagesCaptureDfxResult::Report(videoId,
             static_cast<int32_t>(MultiStagesCaptureResultErrCode::SAVE_VIDEO_FAIL), dfxCaptureMediaType);
-        return;
     }
     int32_t fileId = fileAsset->GetId();
     UpdateVideoQuality(fileId, fileAsset, true);

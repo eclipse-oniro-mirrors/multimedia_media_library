@@ -3931,7 +3931,9 @@ int32_t MediaLibraryPhotoOperations::AddFilters(MediaLibraryCommand& cmd)
 
     if (IsCameraEditData(cmd)) {
         shared_ptr<FileAsset> fileAsset = GetFileAsset(cmd);
-        return AddFiltersExecute(cmd, fileAsset, "");
+        // 不允许失败
+        SaveCameraPhotoWithFilters(cmd, fileAsset);
+        return E_OK;
     }
     return E_OK;
 }
@@ -4092,6 +4094,32 @@ int32_t MediaLibraryPhotoOperations::AddFiltersExecute(MediaLibraryCommand& cmd,
     bool isHighQualityPicture = false;
     CHECK_AND_RETURN_RET(GetPicture(fileId, picture, true, photoId, isHighQualityPicture) != E_OK, E_OK);
     return ret;
+}
+
+int32_t MediaLibraryPhotoOperations::SaveCameraPhotoWithFilters(MediaLibraryCommand& cmd,
+    const shared_ptr<FileAsset>& fileAsset)
+{
+    MEDIA_INFO_LOG("SaveCameraPhotoWithFilters enter.");
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
+    int32_t fileId = fileAsset->GetId();
+    string assetPath = fileAsset->GetFilePath();
+    CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_INVALID_VALUES, "Failed to get asset path");
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(assetPath);
+    CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_INVALID_URI, "Can not get editdara dir path");
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
+        "Can not create dir %{private}s", editDataDirPath.c_str());
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
+    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Can not get edit source path");
+
+    // Photo目录照片复制到.editdata目录的source.jpg
+    MediaFileUtils::CopyFileUtil(assetPath, sourcePath);
+
+    // 保存editdata_camera文件
+    string editData;
+    SaveEditDataCamera(cmd, assetPath, editData);
+    // 生成水印
+    FileUtils::SavePhotoWithFilters(sourcePath, assetPath, editData);
+    return E_OK;
 }
 
 int32_t SaveTempMovingPhotoVideo(const string &assetPath, int32_t videoType)
@@ -4559,9 +4587,7 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesPhoto(const std::shared_p
             CHECK_AND_RETURN_RET_LOG(ReadEditdataFromFile(editDataCameraPath, editData) == E_OK, E_HAS_FS_ERROR,
                 "Failed to read editdata, path=%{public}s", editDataCameraPath.c_str());
             const string HIGH_QUALITY_PHOTO_STATUS = "high";
-            CHECK_AND_RETURN_RET_LOG(
-                AddFiltersToPhoto(editDataSourcePath, path, editData, HIGH_QUALITY_PHOTO_STATUS) == E_OK,
-                E_FAIL, "Failed to add filters to photo");
+            FileUtils::SavePhotoWithFilters(editDataSourcePath, path, editData, HIGH_QUALITY_PHOTO_STATUS);
             MediaLibraryObjectUtils::ScanFileAsync(path, to_string(fileAsset->GetId()), MediaLibraryApi::API_10);
             return E_OK;
         }
@@ -4609,8 +4635,8 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesPhotoForPicture(const std
             string editData;
             CHECK_AND_RETURN_RET_LOG(ReadEditdataFromFile(editDataCameraPath, editData) == E_OK, E_HAS_FS_ERROR,
                 "Failed to read editdata, path=%{public}s", editDataCameraPath.c_str());
-            CHECK_AND_RETURN_RET_LOG(AddFiltersToPicture(picture, path, editData) == E_OK, E_FAIL,
-                "Failed to add filters to photo");
+            // (3) 添加水印+落盘
+            FileUtils::SavePictureWithFilters(picture, path, editData, editDataSourcePath);
             resultPicture = picture;
             isTakeEffect = true;
             CHECK_AND_PRINT_LOG(EnableYuvAndNotify(fileAsset, picture, isEdited, isTakeEffect,
