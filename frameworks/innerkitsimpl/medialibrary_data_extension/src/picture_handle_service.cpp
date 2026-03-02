@@ -92,6 +92,12 @@ bool PictureHandlerService::OpenPicture(const std::string &fileId, int32_t &fd)
     return true;
 }
 
+static bool WritePhotoQuality(MessageParcel &data, bool isHighQualityPicture)
+{
+    data.WriteBool(isHighQualityPicture);
+    return true;
+}
+
 bool PictureHandlerService::WritePicture(const int32_t &fileId, MessageParcel &data,
     uint32_t &auxiliaryPictureSize)
 {
@@ -107,6 +113,7 @@ bool PictureHandlerService::WritePicture(const int32_t &fileId, MessageParcel &d
     CHECK_AND_RETURN_RET_LOG(mainPixel != nullptr, false,
         "PictureHandlerService::GetPicture mainPixel is not exist, fileId: %{public}d", fileId);
 
+    WritePhotoQuality(data, isHighQualityPicture);
     WritePixelMap(data, mainPixel);
 
     WriteExifMetadata(data, picture);

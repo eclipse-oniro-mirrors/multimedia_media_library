@@ -28,11 +28,12 @@ static const int UINT32_LEN = sizeof(uint32_t);
 
 class PictureHandlerClient {
 public:
-    static std::shared_ptr<Media::Picture> RequestPicture(const int32_t &fileId);
+    static std::shared_ptr<Media::Picture> RequestPicture(const int32_t &fileId, bool &isHighQuality);
 
 private:
     static void FinishRequestPicture(const int32_t &fileId);
-    static int32_t ReadPicture(const int32_t &fd, const int32_t &fileId, std::shared_ptr<Media::Picture> &picture);
+    static int32_t ReadPicture(const int32_t &fd, const int32_t &fileId, std::shared_ptr<Media::Picture> &picture,
+        bool &isHighQuality);
     static std::shared_ptr<PixelMap> ReadPixelMap(MessageParcel &data);
     static bool ReadAuxiliaryPicture(MessageParcel &data, std::unique_ptr<Media::Picture> &picture);
     static bool ReadAuxiliaryPictureInfo(MessageParcel &data, AuxiliaryPictureInfo &auxiliaryPictureInfo);
