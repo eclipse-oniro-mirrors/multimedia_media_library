@@ -49,6 +49,7 @@
 #include "media_operate_result_vo.h"
 #include "query_data_vo.h"
 #include "update_data_vo.h"
+#include "clean_attachment_vo.h"
 namespace OHOS::Media::CloudSync {
 // LCOV_EXCL_START
 void CloudMediaDataClientHandler::SetUserId(const int32_t &userId)
@@ -626,6 +627,22 @@ int32_t CloudMediaDataClientHandler::UpdateData(const std::string &tableName,
     if (ret != E_OK) {
         MEDIA_ERR_LOG("Failed to UpdateData, ret: %{public}d", ret);
     }
+    return ret;
+}
+
+int32_t CloudMediaDataClientHandler::CleanAttachment(const std::vector<std::string> &cloudIdList,
+                                                     int64_t &attachmentSize)
+{
+    CleanAttachmentReqBody reqBody;
+    CleanAttachmentRespBody respBody;
+    reqBody.cloudIdList = cloudIdList;
+    uint32_t operationCode = static_cast<uint32_t>(CloudMediaOperationCode::CMD_CLEAN_ATTACHMENT);
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(userId_).SetTraceId(this->traceId_)
+            .SetHeader({{PhotoColumn::CLOUD_TYPE, to_string(cloudType_)}}).Post(operationCode, reqBody, respBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Failed to CleanAttachment, ret: %{public}d, Idsize: %{public}zu", ret, cloudIdList.size());
+    }
+    attachmentSize = respBody.attachmentSize;
     return ret;
 }
 // LCOV_EXCL_STOP

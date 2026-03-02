@@ -1023,5 +1023,27 @@ bool MovingPhotoFileUtils::IsExistsLivePhotoFiles(const std::string &imagePath)
         MediaFileUtils::DesensitizePath(absVideoPath).c_str());
     return true;
 }
+
+int32_t MovingPhotoFileUtils::FindMovingPhotoAttachments(const std::string &cloudPath,
+    std::vector<std::string> &cloudPathList)
+{
+    std::vector<std::string> attachmentPathList = {
+        // Note. attachement does not include cloudPath.
+        // path: /storage/cloud/files/Photo/${bucketId}/${fileName}.mp4
+        GetMovingPhotoVideoPath(cloudPath),
+        // path: /storage/cloud/files/.editData/Photo/${bucketId}/${fileName}.${suffix}/source.jpg
+        MediaEditUtils::GetEditDataSourcePath(cloudPath),
+        // path: /storage/cloud/files/.editData/Photo/${bucketId}/${fileName}.${suffix}/source.mp4
+        GetSourceMovingPhotoVideoPath(cloudPath),
+        // path: /storage/cloud/files/.cache/Photo/${bucketId}/${fileName}.${suffix}/livePhoto.jpg
+        GetLivePhotoCachePath(cloudPath),
+        // path: /storage/cloud/files/.editData/Photo/${bucketId}/${fileName}.${suffix}/editData
+        MediaEditUtils::GetEditDataPath(cloudPath),
+        // path: /storage/cloud/files/.editData/Photo/${bucketId}/${fileName}.${suffix}/extraData
+        GetMovingPhotoExtraDataPath(cloudPath),
+    };
+    cloudPathList.insert(cloudPathList.end(), attachmentPathList.begin(), attachmentPathList.end());
+    return E_OK;
+}
 // LCOV_EXCL_STOP
 } // namespace OHOS::Media

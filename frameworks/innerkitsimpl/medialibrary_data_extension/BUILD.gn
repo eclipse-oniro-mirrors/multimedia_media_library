@@ -480,6 +480,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/aging_file_query_dto.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/report_failure_dto.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/on_download_asset_data_dto.cpp",
+    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/photo_attachment_dto.cpp",
   ]
 
   media_cloud_sync_server_source = [

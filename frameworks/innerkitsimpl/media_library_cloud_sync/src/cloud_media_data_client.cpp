@@ -324,4 +324,13 @@ int32_t CloudMediaDataClient::UpdateData(const std::string &tableName, const Dat
     }
     return this->dataHandler_->UpdateData(tableName, predicates, value, operateName);
 }
+
+int32_t CloudMediaDataClient::CleanAttachment(const std::vector<std::string> &cloudIdList, int64_t &attachmentSize)
+{
+    if (this->dataHandler_ == nullptr) {
+        MEDIA_ERR_LOG("No data handler found!");
+        return E_IPC_INVAL_ARG;
+    }
+    return this->dataHandler_->CleanAttachment(cloudIdList, attachmentSize);
+}
 }  // namespace OHOS::Media::CloudSync

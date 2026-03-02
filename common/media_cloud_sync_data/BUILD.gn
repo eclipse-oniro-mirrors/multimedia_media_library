@@ -70,6 +70,7 @@ ohos_shared_library("media_cloud_sync_data") {
     "./src/vo/update_sync_status_vo.cpp",
     "./src/vo/update_thm_status_vo.cpp",
     "./src/vo/report_failure_vo.cpp",
+    "./src/vo/clean_attachment_vo.cpp",
   ]
 
   include_media_ipc_common = [

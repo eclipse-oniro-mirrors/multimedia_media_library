@@ -30,6 +30,8 @@
 #include "cloud_media_scan_service.h"
 #include "cloud_media_download_dao.h"
 #include "cloud_lake_info.h"
+#include "cloud_media_common_dao.h"
+#include "photo_attachment_dto.h"
 // LCOV_EXCL_START
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaDownloadService {
@@ -53,6 +55,7 @@ public:
     int32_t OnDownloadAsset(const std::vector<std::string> &cloudIds, std::vector<MediaOperateResultDto> &result);
     int32_t OnDownloadLakeAsset(const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos,
         std::vector<MediaOperateResultDto> &result);
+    int32_t CleanAttachment(const std::vector<std::string> &cloudIdList, int64_t &attachmentSize);
 
 private:
     bool IsCloudInsertTaskPriorityHigh();
@@ -76,6 +79,8 @@ private:
     void UpdateBatchDownloadTask(const ORM::PhotosPo &photo);
 #endif
     void CalEditDataSizeInHandlePhoto(const ORM::PhotosPo &photo);
+    int32_t FindAttachments(const std::vector<PhotosPo> &photoInfos, std::vector<PhotoAttachmentDto> &attachmentList);
+    int32_t CleanAttachments(std::vector<PhotoAttachmentDto> &attachmentList, int64_t &attachmentSize);
 
 private:
     const uint32_t TYPE_THM_MASK = 0x1;
@@ -94,6 +99,7 @@ private:
     CloudMediaDownloadDao dao_;
     CloudMediaDownloadServiceProcessor processor_;
     CloudMediaScanService scanService_;
+    CloudMediaCommonDao commonDao_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_DOWNLOAD_SERVICE_H
