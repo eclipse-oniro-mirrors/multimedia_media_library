@@ -91,6 +91,9 @@ static int32_t CheckSystemApiKeys(const string &key)
         CONST_MEDIA_DATA_DB_DATE_TRASHED_MS,
         CONST_MEDIA_SUM_SIZE,
         PhotoColumn::PHOTO_EXIF_ROTATE,
+        PhotoColumn::PHOTO_DATE_ADDED_YEAR,
+        PhotoColumn::PHOTO_DATE_ADDED_MONTH,
+        PhotoColumn::PHOTO_DATE_ADDED_DAY,
     };
 
     if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryNapiUtils::IsSystemApp()) {

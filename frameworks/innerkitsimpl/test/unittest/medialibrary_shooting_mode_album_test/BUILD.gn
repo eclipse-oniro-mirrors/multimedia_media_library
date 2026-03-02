@@ -30,6 +30,8 @@ ohos_unittest("medialibrary_shootingmode_album_test") {
     "${MEDIALIB_THUMBNAIL_PATH}/include",
   ]
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "../medialibrary_shooting_mode_album_test/src/shooting_mode_album_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",

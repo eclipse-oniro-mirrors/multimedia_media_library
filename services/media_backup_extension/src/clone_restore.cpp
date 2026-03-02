@@ -369,8 +369,6 @@ CloneRestoreConfigInfo CloneRestore::GetCloneConfigInfoFromOriginDB()
             cloneConfigInfo.switchStatus = STRING_SWITCH_STATUS_MAP.at(srcswitchStatusStr);
             cloneConfigInfo.deviceId = \
                 configInfo[ConfigInfoSceneId::CLONE_RESTORE][CONFIG_INFO_CLONE_HDC_DEVICE_ID_KEY];
-            CHECK_AND_RETURN_RET_LOG(CheckSouthDeviceTypeMatchSwitchStatus(cloneConfigInfo.switchStatus),
-                CloneRestoreConfigInfo{}, "south_device_type and switch status do not match");
         }
     }
     cloneConfigInfo.isValid = true;
@@ -3056,6 +3054,10 @@ void CloneRestore::BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,
         bool cond = (updatedRows < 0 || ret < 0);
         CHECK_AND_PRINT_LOG(!cond, "BatchInsertFileInfoData Failed to update column: %s",
             fileInfos[i].cloudPath.c_str());
+        std::string dirPath = GetThumbnailLocalPath(fileInfos[i].cloudPath);
+        if (!MediaFileUtils::IsFileExists(dirPath)) {
+            continue;
+        }
         MediaLibraryPhotoOperations::StoreThumbnailSize(to_string(fileInfos[i].fileIdNew),
             fileInfos[i].cloudPath);
     }

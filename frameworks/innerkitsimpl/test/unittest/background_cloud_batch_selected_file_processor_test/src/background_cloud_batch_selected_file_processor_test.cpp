@@ -651,6 +651,23 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_LaunchBatchDownl
     MEDIA_INFO_LOG("Bcbsfpt_LaunchBatchDownloadProcessor_Test_002 End");
 }
 
+HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_LaunchNetWorkBatchDownloadProcessor_Test_001,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Bcbsfpt_LaunchNetWorkBatchDownloadProcessor_Test_001 Start");
+    EXPECT_EQ(BackgroundCloudBatchSelectedFileProcessor::IsBatchDownloadProcessRunningStatus(), false);
+    BackgroundCloudBatchSelectedFileProcessor::LaunchNetWorkBatchDownloadProcessor();  // 无任务
+    EXPECT_EQ(QueryPhotosCount(), 10);
+    PrepareBatchDownloadTask(10);
+    EXPECT_NE(QueryBatchDownloadTasksCount(), 0);
+    BackgroundCloudBatchSelectedFileProcessor::SetBatchDownloadAddedFlag(true);
+    BackgroundCloudBatchSelectedFileProcessor::LaunchNetWorkBatchDownloadProcessor();  // 有任务
+    BackgroundCloudBatchSelectedFileProcessor::HandleTimeoutCellTask();
+    BackgroundCloudBatchSelectedFileProcessor::TriggerStopBatchDownloadProcessor();
+    BackgroundCloudBatchSelectedFileProcessor::StopAllDownloadingTask();
+    MEDIA_INFO_LOG("Bcbsfpt_LaunchNetWorkBatchDownloadProcessor_Test_001 End");
+}
+
 HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_GetDownloadFileIdCnt_Test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Bcbsfpt_GetDownloadFileIdCnt_Test_001 Start");
@@ -1052,6 +1069,22 @@ HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_QueryPercentOnTa
     int32_t ret = BackgroundCloudBatchSelectedFileProcessor::QueryPercentOnTaskStart(fileId, percent);
     EXPECT_EQ(ret, 0);
     MEDIA_INFO_LOG("Bcbsfpt_TriggerPauseTask_Test_001 End");
+}
+
+HWTEST_F(BackgroundCloudBatchSelectedFileProcessorTest, Bcbsfpt_ResetReasonForAllWifiNetTask_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Bcbsfpt_ResetReasonForAllWifiNetTask_001 Start");
+    PrepareBatchDownloadTask(10);
+    BatchDownloadAutoPauseReasonType autoPauseReason = BatchDownloadAutoPauseReasonType::TYPE_NETWORK_DISCONNECT;
+    vector<std::string> fileIds = { "3" };
+    BackgroundCloudBatchSelectedFileProcessor::ResetReasonForAllWifiNetTask(fileIds, autoPauseReason);
+    BackgroundCloudBatchSelectedFileProcessor::QueryWifiNetRunningTaskNum();
+    BackgroundCloudBatchSelectedFileProcessor::QueryBatchSelectedResourceFilesNumWithNetCondition();
+    BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishTasksNum();
+    BackgroundCloudBatchSelectedFileProcessor::QueryUnFinishWifiTasksNum();
+    int taskCount = QueryBatchDownloadTasksCount();
+    EXPECT_EQ(taskCount, 10);
+    MEDIA_INFO_LOG("Bcbsfpt_ResetReasonForAllWifiNetTask_001 End");
 }
 } // namespace Media
 } // namespace OHOS

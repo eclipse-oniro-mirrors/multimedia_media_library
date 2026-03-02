@@ -22,7 +22,7 @@
 namespace OHOS::Media {
 const char DOT = '.';
 const std::string EMPTY_STRING = "";
-const std::string ROOT_MEDIA_DIR = "/storage/cloud/files";
+const std::string ROOT_MEDIA_DIR = "/storage/cloud/files/";
 
 std::string MediaPathUtils::AppendUserId(const std::string& path, int32_t userId)
 {

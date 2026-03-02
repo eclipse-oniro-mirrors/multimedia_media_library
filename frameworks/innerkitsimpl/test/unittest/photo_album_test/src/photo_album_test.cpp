@@ -539,7 +539,7 @@ HWTEST_F(PhotoAlbumTest, photoalbum_update_album_001, TestSize.Level1)
     values.Put(PhotoAlbumColumns::ALBUM_NAME, newName);
 
     constexpr int32_t changedRows = 1;
-    EXPECT_NE(UpdatePhotoAlbum(values, predicates), changedRows);
+    EXPECT_EQ(UpdatePhotoAlbum(values, predicates), changedRows);
     CheckUpdatedAlbum(albumId, newName, "");
 
     MEDIA_INFO_LOG("photoalbum_update_album_001 end");
@@ -596,7 +596,7 @@ HWTEST_F(PhotoAlbumTest, photoalbum_update_album_003, TestSize.Level1)
     DataSharePredicates predicates;
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
     constexpr int32_t changedRows = 1;
-    EXPECT_NE(UpdatePhotoAlbum(values, predicates), changedRows);
+    EXPECT_EQ(UpdatePhotoAlbum(values, predicates), changedRows);
     CheckUpdatedAlbum(albumId, newName, newCover);
 
     MEDIA_INFO_LOG("photoalbum_update_album_003 end");

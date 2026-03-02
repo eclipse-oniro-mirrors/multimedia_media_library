@@ -92,6 +92,10 @@ public:
         const Security::AccessToken::AccessTokenID &tokenCaller);
     static bool CheckPhotoCallerPermission(const std::vector<std::string> &perms, const int &uid,
         Security::AccessToken::AccessTokenID &tokenCaller);
+    static bool CheckPhotoCallerPermissionNoRecord(const std::vector<std::string> &perms, const int &uid,
+        Security::AccessToken::AccessTokenID &tokenCaller);
+    static bool CheckPhotoCallerPermissionNoRecord(const std::string &permission,
+        const Security::AccessToken::AccessTokenID &tokenCaller);
     static void CollectPermissionInfo(const std::string &permission, const bool permGranted,
         const Security::AccessToken::PermissionUsedType type);
     static void CollectPermissionInfo(const std::string &permission, const bool permGranted,

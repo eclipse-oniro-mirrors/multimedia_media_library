@@ -2312,8 +2312,15 @@ static int32_t UpdateSortedOrder(AlbumAccurateRefresh &albumRefresh, const int32
     predicates.Or();
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(currentAlbumId));
     albumRefresh.Init(predicates);
-    vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder};
-    return ExecuteSqls(albumRefresh, updateSortedAlbumsSqls, RdbOperation::RDB_OPERATION_UPDATE);
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int32_t(void)> func = [&]()->int32_t {
+        vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder };
+        return ExecuteSqls(albumRefresh, updateSortedAlbumsSqls, RdbOperation::RDB_OPERATION_UPDATE);
+    };
+    int32_t ret = trans->RetryTrans(func);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+        "fail to update sorted order trans, ret: %{public}d", ret);
+    return ret;
 }
 
 static int32_t ObtainCurrentAlbumOrder(const int32_t &albumId, int32_t &albumOrder)
@@ -2352,8 +2359,15 @@ static int32_t UpdateNullReferenceOrder(const int32_t &currentAlbumId,
     std::string updateCurrentAlbumOrder = "UPDATE " + PhotoAlbumColumns::TABLE +
         " SET " + PhotoAlbumColumns::ALBUM_ORDER + " = " + to_string(maxAlbumOrder) +
         " WHERE " + PhotoAlbumColumns::ALBUM_ID + " = " + to_string(currentAlbumId);
-    vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder};
-    return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int32_t(void)> func = [&]()->int32_t {
+        vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder };
+        return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    };
+    int32_t ret = trans->RetryTrans(func);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+        "fail to update null reference order trans, ret: %{public}d", ret);
+    return ret;
 }
 
 static int32_t HandleNullReferenceCondition(const int32_t &currentAlbumId)
@@ -2390,8 +2404,15 @@ static int32_t UpdatePortraitNullReferenceOrder(const int32_t currentAlbumId,
         " SET " + RANK + " = " + to_string(maxAlbumOrder) +
         " WHERE " + GROUP_TAG + " IN (SELECT " + GROUP_TAG + " FROM " + ANALYSIS_ALBUM_TABLE +
         " WHERE " + ALBUM_ID + " = " + to_string(currentAlbumId) + ")";
-    vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder };
-    return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int32_t(void)> func = [&]()->int32_t {
+        vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder };
+        return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    };
+    int32_t ret = trans->RetryTrans(func);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+        "fail to update portrait null reference order trans, ret: %{public}d", ret);
+    return ret;
 }
 
 static int32_t ObtainNotifyPortraitAlbumIds(const int32_t currentAlbumOrder, const int32_t referenceAlbumOrder,
@@ -2521,8 +2542,15 @@ static int32_t UpdatePortraitSortedOrder(const int32_t currentAlbumId, const int
             to_string(referenceAlbumOrder) + " WHERE " + GROUP_TAG + " IN (SELECT " + GROUP_TAG + " FROM " +
             ANALYSIS_ALBUM_TABLE + " WHERE " + ALBUM_ID + " = " + to_string(currentAlbumId) + ")";
     }
-    vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder};
-    return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int32_t(void)> func = [&]()->int32_t {
+        vector<string> updateSortedAlbumsSqls = { updateOtherAlbumOrder, updateCurrentAlbumOrder };
+        return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    };
+    int32_t ret = trans->RetryTrans(func);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+        "fail to update portrait sorted order trans, ret: %{public}d", ret);
+    return ret;
 }
 
 bool CheckIsFavoritePortraitAlbum(const int32_t currentAlbumId, const int32_t referenceAlbumId)
@@ -3064,7 +3092,14 @@ static int32_t UpdateFavoritesOrder(const int32_t value, const int32_t currentAl
         updateSortedAlbumsSqls.push_back(updateOtherAlbumOrder);
         updateSortedAlbumsSqls.push_back(updateCurrentAlbumOrder);
     }
-    return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int32_t(void)> func = [&]()->int32_t {
+        return ExecSqls(updateSortedAlbumsSqls, uniStore);
+    };
+    int32_t ret = trans->RetryTrans(func);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+        "fail to update favorites order trans, ret: %{public}d", ret);
+    return ret;
 }
 
 static int32_t UpdateFavorites(int32_t value, const int32_t albumId)
@@ -3240,13 +3275,20 @@ int32_t MediaLibraryAlbumOperations::SetHighlightCoverUri(const ValuesBucket &va
     std::string updateCoverInfoTable = "UPDATE " + HIGHLIGHT_COVER_INFO_TABLE +
         " SET " + COVER_STATUS + " = " + to_string(newCoverStatus) +
         " WHERE " + ALBUM_ID + " = (SELECT id FROM tab_highlight_album WHERE album_id = " + targetAlbumId + " LIMIT 1)";
-    vector<string> updateSqls = { updateAnalysisAlbum, updateCoverInfoTable };
-    err = ExecSqls(updateSqls, uniStore);
-    if (err == E_OK) {
-        vector<int32_t> changeAlbumIds = { atoi(targetAlbumId.c_str()) };
-        NotifyHighlightAlbum(changeAlbumIds);
-    }
-    return err;
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int32_t(void)> func = [&]()->int32_t {
+        vector<string> updateSqls = { updateAnalysisAlbum, updateCoverInfoTable };
+        err = ExecSqls(updateSqls, uniStore);
+        if (err == E_OK) {
+            vector<int32_t> changeAlbumIds = { atoi(targetAlbumId.c_str()) };
+            NotifyHighlightAlbum(changeAlbumIds);
+        }
+        return err;
+    };
+    int32_t ret = trans->RetryTrans(func);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+        "fail to set highlight cover uri trans, ret: %{public}d", ret);
+    return ret;
 }
 
 int32_t MediaLibraryAlbumOperations::SetHighlightAlbumName(const ValuesBucket &values,
@@ -3315,13 +3357,20 @@ int32_t MediaLibraryAlbumOperations::SetHighlightSubtitle(const ValuesBucket &va
     std::string updateCoverInfoTable = "UPDATE " + HIGHLIGHT_COVER_INFO_TABLE + " SET " +
         COVER_STATUS + " = " + to_string(newCoverStatus) + " WHERE " +
         ALBUM_ID + " = (SELECT id FROM tab_highlight_album WHERE album_id = " + highlightAlbumId + " LIMIT 1)";
-    vector<string> updateSqls = { updateAlbumName, updateCoverInfoTable };
-    err = ExecSqls(updateSqls, uniStore);
-    if (err == E_OK) {
-        vector<int32_t> changeAlbumIds = { atoi(highlightAlbumId.c_str()) };
-        NotifyHighlightAlbum(changeAlbumIds);
-    }
-    return err;
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int32_t(void)> func = [&]()->int32_t {
+        vector<string> updateSqls = { updateAlbumName, updateCoverInfoTable };
+        err = ExecSqls(updateSqls, uniStore);
+        if (err == E_OK) {
+            vector<int32_t> changeAlbumIds = { atoi(highlightAlbumId.c_str()) };
+            NotifyHighlightAlbum(changeAlbumIds);
+        }
+        return err;
+    };
+    int32_t ret = trans->RetryTrans(func);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_DB_ERROR,
+        "fail to set highlight subtitle trans, ret: %{public}d", ret);
+    return ret;
 }
 
 int32_t SetAnalysisAlbumRelationship(const ValuesBucket &values, const DataSharePredicates &predicates)

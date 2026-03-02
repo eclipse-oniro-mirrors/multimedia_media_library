@@ -367,7 +367,7 @@ void UpgradeRestore::RestoreSmartAlbums()
     int64_t endRestoreHighlight = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t startGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     CloneGroupPhotoAlbum cloneGroupPhotoAlbum(sceneCode_, taskId_, mediaLibraryRdb_, galleryRdb_);
-    cloneGroupPhotoAlbum.UpdateGroupPhoto();
+    cloneGroupPhotoAlbum.RestoreGroupPhotoAlbum(photoInfoMap_);
     int64_t endGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     classifyRestore_.RestoreClassify(photoInfoMap_);
     int64_t endRestoreClassify = MediaFileUtils::UTCTimeMilliSeconds();
@@ -984,7 +984,6 @@ bool UpgradeRestore::ParseResultSetFromGallery(const std::shared_ptr<NativeRdb::
     // Find lPath, bundleName, packageName by sourcePath, lPath
     info.lPath = this->photosRestore_.FindlPath(info);
     info.bundleName = this->photosRestore_.FindBundleName(info);
-    info.packageName = this->photosRestore_.FindPackageName(info);
     info.photoQuality = this->photosRestore_.FindPhotoQuality(info);
     info.latitude = GetDoubleVal(GALLERY_LATITUDE, resultSet);
     info.longitude = GetDoubleVal(GALLERY_LONGITUDE, resultSet);
@@ -1333,9 +1332,9 @@ bool UpgradeRestore::NeedBatchQueryPhotoForPortrait(const std::vector<FileInfo> 
         " FROM merge_face mf "
         " INNER JOIN merge_tag mt ON mf.tag_id = mt.tag_id "
         " INNER JOIN gallery_media gm ON mf.hash = gm.hash "
-        " WHERE "
-        " COALESCE(gm.recycleFlag, 0) NOT IN (?, ?, ?, ?, ?) "
-        " AND COALESCE(gm.albumId, '') NOT IN (SELECT albumId FROM gallery_album WHERE hide = 1) "
+        " LEFT JOIN gallery_album ga ON gm.albumId = ga.albumId AND ga.hide = 1 "
+        " WHERE (gm.recycleFlag IS NULL OR gm.recycleFlag NOT IN (?, ?, ?, ?, ?)) "
+        " AND ga.albumId IS NULL "
         " GROUP BY mf.hash, mf.face_id "
         " HAVING gm._id IN (" + selection + ")";
     std::vector<NativeRdb::ValueObject> params = { RECYCLE_FLAG_LOCAL, RECYCLE_FLAG_UNSYNCED, RECYCLE_FLAG_SYNCED,

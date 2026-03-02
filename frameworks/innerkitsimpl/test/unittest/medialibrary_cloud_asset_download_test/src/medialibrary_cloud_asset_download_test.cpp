@@ -970,5 +970,1019 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_operation_test
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("cloud_asset_download_operation_test_009 End");
 }
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_delete_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_delete_test_001 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    instance.StartDeleteCloudMediaAssets();
+    instance.StopDeleteCloudMediaAssets();
+    MEDIA_INFO_LOG("cloud_asset_delete_test_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_delete_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_delete_test_002 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> fileIds;
+    std::vector<std::string> paths;
+    std::vector<std::string> dateTakens;
+    std::vector<int64_t> lcdVisitTimes;
+    std::vector<int32_t> subTypes;
+    
+    int32_t ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(fileIds.size(), 0);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ValuesBucket valuesBucket;
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    valuesBucket.PutString(MediaColumn::MEDIA_NAME, "cloud_media_asset_deleted");
+    valuesBucket.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NEED_CLEAN));
+    valuesBucket.PutInt(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, REAL_LCD_VISIT_TIME_INVALID);
+    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId1);
+    int32_t rows = 0;
+    ret = g_rdbStore->Update(rows, valuesBucket, predicates);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_GT(fileIds.size(), 0);
+    
+    MEDIA_INFO_LOG("cloud_asset_delete_test_002 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_delete_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_delete_test_003 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> fileIds;
+    std::vector<std::string> paths;
+    std::vector<std::string> dateTakens;
+    std::vector<int64_t> lcdVisitTimes;
+    std::vector<int32_t> subTypes;
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ValuesBucket valuesBucket;
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    valuesBucket.PutString(MediaColumn::MEDIA_NAME, "cloud_media_asset_deleted");
+    valuesBucket.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NEED_CLEAN));
+    valuesBucket.PutInt(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, REAL_LCD_VISIT_TIME_INVALID);
+    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId1);
+    int32_t rows = 0;
+    ret = g_rdbStore->Update(rows, valuesBucket, predicates);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(ret, E_OK);
+    
+    bool processRet = instance.ProcessDeleteBatch(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(processRet, true);
+    
+    MEDIA_INFO_LOG("cloud_asset_delete_test_003 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_delete_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_delete_test_004 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    std::string editDataPath = data1 + "/editData";
+    bool mkdirRet = MediaFileUtils::CreateDirectory(editDataPath);
+    CHECK_AND_PRINT_LOG(mkdirRet, "create editData dir failed");
+    
+    ret = instance.DeleteEditdata(data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_delete_test_004 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_delete_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_delete_test_005 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> fileIds = {"test_id_1", "test_id_2"};
+    int32_t ret = instance.DeleteBatchCloudFile(fileIds);
+    EXPECT_EQ(ret, E_ERR);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    fileIds.clear();
+    fileIds.push_back(std::to_string(fileId1));
+    ret = instance.DeleteBatchCloudFile(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_delete_test_005 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_update_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_update_test_001 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> updateFileIds;
+    std::string lastFileId = "0";
+    bool hasData = instance.HasDataForUpdate(CloudMediaRetainType::RETAIN_FORCE, updateFileIds, lastFileId,
+        SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(hasData, false);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    hasData = instance.HasDataForUpdate(CloudMediaRetainType::RETAIN_FORCE, updateFileIds, lastFileId,
+        SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(hasData, true);
+    
+    MEDIA_INFO_LOG("cloud_asset_update_test_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_update_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_update_test_002 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> updateFileIds;
+    int32_t ret = instance.UpdateCloudAssets(updateFileIds, SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_ERR);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    updateFileIds.push_back(std::to_string(fileId1));
+    ret = instance.UpdateCloudAssets(updateFileIds, SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_OK);
+    
+    updateFileIds.clear();
+    updateFileIds.push_back(std::to_string(fileId1));
+    ret = instance.UpdateCloudAssets(updateFileIds, SmartDataProcessingMode::RECOVER);
+    EXPECT_EQ(ret, E_OK);
+    
+    updateFileIds.clear();
+    updateFileIds.push_back(std::to_string(fileId1));
+    ret = instance.UpdateCloudAssets(updateFileIds, SmartDataProcessingMode::NONE);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_update_test_002 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_update_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_update_test_003 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> notifyFileIds;
+    instance.NotifyUpdateAssetsChange(notifyFileIds);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    notifyFileIds.push_back(std::to_string(fileId1));
+    instance.NotifyUpdateAssetsChange(notifyFileIds);
+    
+    MEDIA_INFO_LOG("cloud_asset_update_test_003 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_update_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_update_test_004 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<int32_t> albumIds;
+    std::vector<int32_t> result = instance.QueryEmptyAlbumsAndBackup();
+    EXPECT_GE(result.size(), 0);
+    
+    MEDIA_INFO_LOG("cloud_asset_update_test_004 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_update_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_update_test_005 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<int32_t> albumIds = {1, 2, 3};
+    std::string whereClause = instance.BuildEmptyAlbumsWhereClause(albumIds);
+    EXPECT_NE(whereClause, "");
+    
+    albumIds.clear();
+    whereClause = instance.BuildEmptyAlbumsWhereClause(albumIds);
+    EXPECT_NE(whereClause, "");
+    
+    MEDIA_INFO_LOG("cloud_asset_update_test_005 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_local_cloud_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_local_cloud_test_001 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> updateFileIds;
+    std::string lastFileId = "0";
+    bool hasData = instance.HasLocalAndCloudAssets(CloudMediaRetainType::RETAIN_FORCE, updateFileIds, lastFileId);
+    EXPECT_EQ(hasData, false);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAndLocalAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    hasData = instance.HasLocalAndCloudAssets(CloudMediaRetainType::RETAIN_FORCE, updateFileIds, lastFileId);
+    EXPECT_EQ(hasData, true);
+    
+    MEDIA_INFO_LOG("cloud_asset_local_cloud_test_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_local_cloud_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_local_cloud_test_002 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> updateFileIds;
+    int32_t ret = instance.UpdateLocalAndCloudAssets(updateFileIds);
+    EXPECT_EQ(ret, E_ERR);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAndLocalAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    updateFileIds.push_back(std::to_string(fileId1));
+    ret = instance.UpdateLocalAndCloudAssets(updateFileIds);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_local_cloud_test_002 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_batch_test_001 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> fileIds = {"file1", "file2"};
+    std::map<std::string, int32_t> uriStatusMap;
+    int32_t ret = instance.UpdateAddTaskStatus(fileIds,
+        CloudMediaTaskDownloadCloudAssetCode::ADD_DOWNLOAD_TASK_SUCC, uriStatusMap);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(uriStatusMap.size(), 2);
+    
+    fileIds.clear();
+    ret = instance.UpdateAddTaskStatus(fileIds,
+        CloudMediaTaskDownloadCloudAssetCode::ADD_DOWNLOAD_TASK_SUCC, uriStatusMap);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_batch_test_001 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_batch_test_002 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    
+    bool ret = instance.SetIsThumbnailUpdate();
+    EXPECT_EQ(ret, true);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
+    ret = instance.SetIsThumbnailUpdate();
+    EXPECT_EQ(ret, false);
+    
+    MEDIA_INFO_LOG("cloud_asset_batch_test_002 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_batch_test_003 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::ROM_LIMIT;
+    instance.CheckStorageAndRecoverDownloadTask();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
+    instance.CheckStorageAndRecoverDownloadTask();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::USER_PAUSED;
+    instance.CheckStorageAndRecoverDownloadTask();
+    
+    MEDIA_INFO_LOG("cloud_asset_batch_test_003 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_batch_test_004 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::vector<std::string> fileIds;
+    std::vector<std::string> paths;
+    std::vector<std::string> dateTakens;
+    std::vector<int64_t> lcdVisitTimes = {REAL_LCD_VISIT_TIME_INVALID};
+    std::vector<int32_t> subTypes;
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ValuesBucket valuesBucket;
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    valuesBucket.PutString(MediaColumn::MEDIA_NAME, "cloud_media_asset_deleted");
+    valuesBucket.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NEED_CLEAN));
+    valuesBucket.PutInt(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, REAL_LCD_VISIT_TIME_INVALID);
+    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId1);
+    int32_t rows = 0;
+    ret = g_rdbStore->Update(rows, valuesBucket, predicates);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(ret, E_OK);
+    
+    lcdVisitTimes.clear();
+    lcdVisitTimes.push_back(REAL_LCD_VISIT_TIME_DELETED);
+    bool processRet = instance.ProcessDeleteBatch(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(processRet, true);
+    
+    MEDIA_INFO_LOG("cloud_asset_batch_test_004 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_batch_test_005 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ValuesBucket valuesBucket;
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    valuesBucket.PutString(MediaColumn::MEDIA_NAME, "cloud_media_asset_deleted");
+    valuesBucket.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NEED_CLEAN));
+    valuesBucket.PutInt(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, REAL_LCD_VISIT_TIME_INVALID);
+    valuesBucket.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId1);
+    int32_t rows = 0;
+    ret = g_rdbStore->Update(rows, valuesBucket, predicates);
+    EXPECT_EQ(ret, E_OK);
+    
+    std::vector<std::string> fileIds;
+    std::vector<std::string> paths;
+    std::vector<std::string> dateTakens;
+    std::vector<int64_t> lcdVisitTimes;
+    std::vector<int32_t> subTypes;
+    lcdVisitTimes.push_back(100);
+    ret = instance.ReadyDataForDelete(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(ret, E_OK);
+    
+    bool processRet = instance.ProcessDeleteBatch(fileIds, paths, dateTakens, lcdVisitTimes, subTypes);
+    EXPECT_EQ(processRet, true);
+    
+    MEDIA_INFO_LOG("cloud_asset_batch_test_005 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_024, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_024 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_FORCE;
+    int32_t ret = instance.StartDownloadCloudAsset(CloudMediaDownloadType::DOWNLOAD_GENTLE);
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    ret = instance.StartDownloadCloudAsset(CloudMediaDownloadType::DOWNLOAD_FORCE);
+    EXPECT_EQ(ret, E_ERR);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_024 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_025, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_025 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_FORCE;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::USER_PAUSED;
+    
+    int32_t ret = instance.RecoverDownloadCloudAsset(CloudMediaTaskRecoverCause::NETWORK_NORMAL);
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::WIFI_UNAVAILABLE;
+    ret = instance.RecoverDownloadCloudAsset(CloudMediaTaskRecoverCause::NETWORK_NORMAL);
+    EXPECT_EQ(ret, E_ERR);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_025 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_026, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_026 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    operation->isBgDownloadPermission_ = true;
+    
+    int32_t ret = instance.StartDownloadCloudAsset(CloudMediaDownloadType::DOWNLOAD_FORCE);
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_FORCE;
+    ret = instance.StartDownloadCloudAsset(CloudMediaDownloadType::DOWNLOAD_GENTLE);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_026 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_027, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_027 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::RETAIN_FORCE, SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::RETAIN_FORCE, SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_027 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_028, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_028 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::RETAIN_FORCE, SmartDataProcessingMode::RECOVER);
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::RETAIN_FORCE, SmartDataProcessingMode::RECOVER);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_028 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_029, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_029 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::RETAIN_FORCE, SmartDataProcessingMode::NONE);
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::RETAIN_FORCE, SmartDataProcessingMode::NONE);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_029 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_030, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_030 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_030 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_031, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_031 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::RECOVER);
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::HDC_RETAIN_FORCE, SmartDataProcessingMode::RECOVER);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_031 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_test_032, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_download_test_032 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::NONE);
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.UpdateCloudMediaAssets(CloudMediaRetainType::HDC_RETAIN_FORCE, SmartDataProcessingMode::NONE);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_download_test_032 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_010, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_010 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::USER_PAUSED;
+    int32_t ret = operation->PassiveStatusRecoverTask(CloudMediaTaskRecoverCause::FOREGROUND_TEMPERATURE_PROPER);
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->pauseCause_ = CloudMediaTaskPauseCause::WIFI_UNAVAILABLE;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    operation->isBgDownloadPermission_ = true;
+    ret = operation->PassiveStatusRecoverTask(CloudMediaTaskRecoverCause::FOREGROUND_TEMPERATURE_PROPER);
+    EXPECT_EQ(ret, E_ERR);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_010 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_011, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_011 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::WIFI_UNAVAILABLE;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    operation->isBgDownloadPermission_ = false;
+    int32_t ret = operation->PassiveStatusRecoverTask(CloudMediaTaskRecoverCause::NETWORK_NORMAL);
+    EXPECT_EQ(ret, E_OK);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->dataForDownload_.fileDownloadMap.EnsureInsert("test001.jpg", 1024);
+    operation->pauseCause_ = CloudMediaTaskPauseCause::WIFI_UNAVAILABLE;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_FORCE;
+    operation->isBgDownloadPermission_ = true;
+    ret = operation->PassiveStatusRecoverTask(CloudMediaTaskRecoverCause::NETWORK_NORMAL);
+    EXPECT_EQ(ret, E_ERR);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_011 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_012, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_012 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::USER_PAUSED;
+    int32_t ret = operation->PauseDownloadTask(CloudMediaTaskPauseCause::WIFI_UNAVAILABLE);
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::NO_PAUSE;
+    ret = operation->PauseDownloadTask(CloudMediaTaskPauseCause::WIFI_UNAVAILABLE);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_012 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_013, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_013 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    operation->isBgDownloadPermission_ = true;
+    int32_t ret = operation->PassiveStatusRecover();
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    operation->isBgDownloadPermission_ = false;
+    ret = operation->PassiveStatusRecover();
+    EXPECT_EQ(ret, E_OK);
+    
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_FORCE;
+    operation->isBgDownloadPermission_ = false;
+    ret = operation->PassiveStatusRecover();
+    EXPECT_EQ(ret, E_ERR);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_013 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_016, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_016 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadId_ = 1;
+    operation->remainCount_ = 0;
+    operation->remainSize_ = 0;
+    int32_t ret = operation->CancelDownloadTask();
+    EXPECT_EQ(ret, E_OK);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadId_ = -1;
+    ret = operation->CancelDownloadTask();
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_016 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_017, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_017 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    int32_t ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_GENTLE));
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_FORCE));
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_017 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_018, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_018 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
+    int32_t ret = operation->DoForceTaskExecute();
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    ret = operation->DoForceTaskExecute();
+    EXPECT_EQ(ret, E_OK);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    ret = operation->DoForceTaskExecute();
+    EXPECT_EQ(ret, EXIT_TASK);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_018 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_019, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_019 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_FORCE;
+    int32_t ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_GENTLE));
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadId_ = 1;
+    ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_FORCE));
+    EXPECT_EQ(ret, E_ERR);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_019 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_020, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_operation_test_020 Start");
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadId_ = 1;
+    operation->remainCount_ = 0;
+    operation->remainSize_ = 0;
+    CloudMediaAssetDownloadOperation::DownloadFileData datas;
+    int32_t ret = operation->SubmitBatchDownload(datas, true);
+    EXPECT_EQ(ret, E_ERR);
+    
+    operation->downloadId_ = -1;
+    ret = operation->SubmitBatchDownload(datas, false);
+    EXPECT_EQ(ret, EXIT_TASK);
+    
+    MEDIA_INFO_LOG("cloud_asset_operation_test_020 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_033, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_033 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    instance.operation_ = operation;
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
+    
+    int32_t ret = instance.GetTaskStatus();
+    EXPECT_EQ(ret, static_cast<int32_t>(CloudMediaAssetTaskStatus::DOWNLOADING));
+    
+    ret = instance.GetDownloadType();
+    EXPECT_EQ(ret, static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_GENTLE));
+    
+    instance.operation_ = nullptr;
+    ret = instance.GetTaskStatus();
+    EXPECT_EQ(ret, static_cast<int32_t>(CloudMediaAssetTaskStatus::IDLE));
+    
+    MEDIA_INFO_LOG("cloud_asset_test_033 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_034, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_034 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    instance.operation_ = operation;
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::ROM_LIMIT;
+    
+    instance.CheckStorageAndRecoverDownloadTask();
+    
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    instance.CheckStorageAndRecoverDownloadTask();
+    
+    MEDIA_INFO_LOG("cloud_asset_test_034 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_035, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_035 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::string result = instance.GetCloudMediaAssetTaskStatus();
+    EXPECT_NE(result, "");
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    instance.operation_ = operation;
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->downloadId_ = 123;
+    operation->remainCount_ = 10;
+    operation->remainSize_ = 1024;
+    operation->pauseCause_ = CloudMediaTaskPauseCause::USER_PAUSED;
+    
+    result = instance.GetCloudMediaAssetTaskStatus();
+    EXPECT_NE(result, "");
+    
+    MEDIA_INFO_LOG("cloud_asset_test_035 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_036, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_036 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    instance.operation_ = operation;
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    
+    bool ret = instance.SetBgDownloadPermission(true);
+    EXPECT_EQ(ret, true);
+    
+    ret = instance.SetBgDownloadPermission(false);
+    EXPECT_EQ(ret, true);
+    
+    instance.operation_ = nullptr;
+    ret = instance.SetBgDownloadPermission(true);
+    EXPECT_EQ(ret, false);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_036 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_037, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_037 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    instance.operation_ = operation;
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->isThumbnailUpdate_ = false;
+    
+    bool ret = instance.SetIsThumbnailUpdate();
+    EXPECT_EQ(ret, true);
+    EXPECT_EQ(operation->isThumbnailUpdate_, true);
+    
+    ret = instance.SetIsThumbnailUpdate();
+    EXPECT_EQ(ret, false);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_037 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_038, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_038 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
+    instance.operation_ = operation;
+    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
+    operation->isThumbnailUpdate_ = false;
+    
+    int32_t ret = operation->InitDownloadTaskInfo();
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = operation->InitDownloadTaskInfo();
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_038 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_039, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_039 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    instance.StartDeleteCloudMediaAssets();
+    this_thread::sleep_for(chrono::milliseconds(100));
+    instance.StopDeleteCloudMediaAssets();
+    
+    MEDIA_INFO_LOG("cloud_asset_test_039 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_040, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_040 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int64_t fileId1 = 0;
+    std::string data1 = "";
+    int32_t ret = InsertCloudAssetINDb(fileId1, data1);
+    EXPECT_EQ(ret, E_OK);
+    
+    ValuesBucket valuesBucket;
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    valuesBucket.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId1);
+    int32_t rows = 0;
+    ret = g_rdbStore->Update(rows, valuesBucket, predicates);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ClearDeletedDbData();
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_040 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_041, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_041 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.UpdateLocalAlbums();
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_041 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_042, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_042 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.DeleteEmptyCloudAlbums();
+    EXPECT_EQ(ret, E_OK);
+    
+    int64_t albumId = 0;
+    ValuesBucket valuesBucket;
+    valuesBucket.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::USER);
+    valuesBucket.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::USER_GENERIC);
+    valuesBucket.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, ALBUM_FROMCLOUD);
+    ret = g_rdbStore->Insert(albumId, PhotoAlbumColumns::TABLE, valuesBucket);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.DeleteEmptyCloudAlbums();
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_042 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_043, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_043 Start");
+    int32_t ret = CloudMediaAssetManager::GetInstance().ForceRetainDownloadCloudMedia(
+        CloudMediaRetainType::RETAIN_FORCE, false);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_043 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_044, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_044 Start");
+    int32_t ret = CloudMediaAssetManager::GetInstance().ForceRetainDownloadCloudMedia(
+        CloudMediaRetainType::HDC_RETAIN_FORCE, false);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_044 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_045, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_045 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::RETAIN_FORCE,
+        SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::RETAIN_FORCE,
+        SmartDataProcessingMode::RECOVER);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::RETAIN_FORCE,
+        SmartDataProcessingMode::NONE);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_045 End");
+}
+
+HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_test_046, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("cloud_asset_test_046 Start");
+    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
+    
+    int32_t ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::RETAIN);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::RECOVER);
+    EXPECT_EQ(ret, E_OK);
+    
+    ret = instance.ForceRetainDownloadCloudMediaEx(CloudMediaRetainType::HDC_RETAIN_FORCE,
+        SmartDataProcessingMode::NONE);
+    EXPECT_EQ(ret, E_OK);
+    
+    MEDIA_INFO_LOG("cloud_asset_test_046 End");
+}
 }
 }

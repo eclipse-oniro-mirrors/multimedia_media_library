@@ -100,7 +100,7 @@ private:
     EXPORT static int32_t DeleteBatchCloudFile(const std::vector<std::string> &fileIds);
     EXPORT static int32_t ReadyDataForDelete(std::vector<std::string> &fileIds, std::vector<std::string> &paths,
         std::vector<std::string> &dateTakens, std::vector<int64_t>& lcdVisitTimes, std::vector<int32_t> &subTypes);
-    static bool ProcessDeleteBatch(const std::vector<std::string> &fileIds,
+    EXPORT static bool ProcessDeleteBatch(const std::vector<std::string> &fileIds,
         const std::vector<std::string> &paths, const std::vector<std::string> &dateTakens,
         const std::vector<int64_t> &lcdVisitTimes, std::vector<int32_t> &subTypes);
     static void DeleteAllCloudMediaAssetsOperation(AsyncTaskData *data);

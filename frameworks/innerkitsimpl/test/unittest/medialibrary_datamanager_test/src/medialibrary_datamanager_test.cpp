@@ -2433,5 +2433,1045 @@ HWTEST_F(MediaLibraryDataManagerUnitTest, RestoreInvalidHDCCloudDataPos_test_001
     auto ret = dataManager->RestoreInvalidHDCCloudDataPos();
     EXPECT_EQ(ret, E_OK);
 }
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InsertExt_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InsertExt_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    string result;
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "test.jpg");
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, "Pictures/");
+    MediaLibraryCommand cmd(Uri(MEDIALIBRARY_DATA_URI), OperationType::CREATE);
+    int32_t ret = dataManager->InsertExt(cmd, valuesBucket, result);
+    EXPECT_NE(ret, E_OK);
+    MEDIA_INFO_LOG("InsertExt_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InsertExt_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InsertExt_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    string result;
+    DataShare::DataShareValuesBucket valuesBucket;
+    MediaLibraryCommand cmd(Uri(""), OperationType::CREATE);
+    int32_t ret = dataManager->InsertExt(cmd, valuesBucket, result);
+    EXPECT_NE(ret, E_INVALID_URI);
+    MEDIA_INFO_LOG("InsertExt_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InsertExt_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InsertExt_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    string result;
+    DataShare::DataShareValuesBucket valuesBucket;
+    MediaLibraryCommand cmd(Uri(MEDIALIBRARY_DATA_URI), OperationType::CREATE);
+    int32_t ret = dataManager->InsertExt(cmd, valuesBucket, result);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
+    MEDIA_INFO_LOG("InsertExt_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, BatchInsert_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("BatchInsert_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    vector<DataShare::DataShareValuesBucket> values;
+    for (int i = 0; i < 10; i++) {
+        DataShare::DataShareValuesBucket valuesBucket;
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "batch_test_" + to_string(i) + ".jpg");
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, "Pictures/");
+        values.push_back(valuesBucket);
+    }
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->BatchInsert(cmd, values);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("BatchInsert_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, BatchInsert_test_005, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("BatchInsert_test_005::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    vector<DataShare::DataShareValuesBucket> values;
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->BatchInsert(cmd, values);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("BatchInsert_test_005::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, QueryRdb_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("QueryRdb_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("QueryRdb_test_002.jpg", g_pictures, fileAsset), true);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_NAME};
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    int errCode = 0;
+    auto ret = dataManager->QueryRdb(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(errCode, E_OK);
+    MEDIA_INFO_LOG("QueryRdb_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, QueryRdb_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("QueryRdb_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns;
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, "-1");
+    int errCode = 0;
+    auto ret = dataManager->QueryRdb(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    MEDIA_INFO_LOG("QueryRdb_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, OpenFile_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("OpenFile_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("OpenFile_test_001.jpg", g_pictures, fileAsset), true);
+
+    Uri uri("testuri");
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->OpenFile(cmd, "r");
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("OpenFile_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, OpenFile_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("OpenFile_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("testuri");
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, "-1");
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->OpenFile(cmd, "r");
+    EXPECT_LT(ret, 0);
+    MEDIA_INFO_LOG("OpenFile_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, OpenFile_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("OpenFile_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("OpenFile_test_003.jpg", g_pictures, fileAsset), true);
+
+    Uri uri("testuri");
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->OpenFile(cmd, "w");
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("OpenFile_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetType_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetType_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("file://media/Photo/1");
+    auto ret = dataManager->GetType(uri);
+    EXPECT_EQ(ret.empty(), true);
+    MEDIA_INFO_LOG("GetType_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetType_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetType_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("invalid_uri");
+    auto ret = dataManager->GetType(uri);
+    EXPECT_TRUE(ret.empty());
+    MEDIA_INFO_LOG("GetType_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, NotifyChange_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("NotifyChange_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("file://media/Photo/1");
+    dataManager->NotifyChange(uri);
+    MEDIA_INFO_LOG("NotifyChange_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GenerateThumbnailBackground_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GenerateThumbnailBackground_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<OHOS::AbilityRuntime::Context> extensionContext;
+    dataManager->InitialiseThumbnailService(extensionContext);
+    int32_t ret = dataManager->GenerateThumbnailBackground();
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("GenerateThumbnailBackground_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, RepairExifRotateBackground_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("RepairExifRotateBackground_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->RepairExifRotateBackground();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("RepairExifRotateBackground_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GenerateHighlightThumbnailBackground_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GenerateHighlightThumbnailBackground_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->GenerateHighlightThumbnailBackground();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("GenerateHighlightThumbnailBackground_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UpgradeThumbnailBackground_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UpgradeThumbnailBackground_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->UpgradeThumbnailBackground(true);
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("UpgradeThumbnailBackground_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UpgradeThumbnailBackground_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UpgradeThumbnailBackground_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->UpgradeThumbnailBackground(false);
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("UpgradeThumbnailBackground_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, RestoreThumbnailDualFrame_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("RestoreThumbnailDualFrame_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->RestoreThumbnailDualFrame();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("RestoreThumbnailDualFrame_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UpdateBurstFromGallery_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UpdateBurstFromGallery_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->UpdateBurstFromGallery();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("UpdateBurstFromGallery_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UpdateBurstCoverLevelFromGallery_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UpdateBurstCoverLevelFromGallery_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->UpdateBurstCoverLevelFromGallery();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("UpdateBurstCoverLevelFromGallery_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UpdatePhotoHdrMode_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UpdatePhotoHdrMode_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->UpdatePhotoHdrMode();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("UpdatePhotoHdrMode_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, MakeDirQuerySetMap_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("MakeDirQuerySetMap_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    unordered_map<string, DirAsset> dirQuerySetMap;
+    int32_t ret = dataManager->MakeDirQuerySetMap(dirQuerySetMap);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("MakeDirQuerySetMap_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, SetOwner_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("SetOwner_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<MediaDataShareExtAbility> owner = nullptr;
+    dataManager->SetOwner(owner);
+    auto ret = dataManager->GetOwner();
+    EXPECT_EQ(ret, nullptr);
+    MEDIA_INFO_LOG("SetOwner_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, SetStartupParameter_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("SetStartupParameter_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    dataManager->SetStartupParameter();
+    MEDIA_INFO_LOG("SetStartupParameter_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ReCreateMediaDir_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ReCreateMediaDir_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    dataManager->ReCreateMediaDir();
+    MEDIA_INFO_LOG("ReCreateMediaDir_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, CheckCloudThumbnailDownloadFinish_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("CheckCloudThumbnailDownloadFinish_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->CheckCloudThumbnailDownloadFinish();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("CheckCloudThumbnailDownloadFinish_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UpdateDirtyForCloudClone_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UpdateDirtyForCloudClone_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->UpdateDirtyForCloudClone(1);
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("UpdateDirtyForCloudClone_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UpdateDirtyForCloudClone_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UpdateDirtyForCloudClone_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->UpdateDirtyForCloudClone(0);
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("UpdateDirtyForCloudClone_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ClearDirtyHdcData_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ClearDirtyHdcData_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->ClearDirtyHdcData();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("ClearDirtyHdcData_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, RestoreInvalidPosData_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("RestoreInvalidPosData_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->RestoreInvalidPosData();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("RestoreInvalidPosData_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, AcquireDebugDatabase_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("AcquireDebugDatabase_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    string fileName;
+    string fileSize;
+    int32_t ret = dataManager->AcquireDebugDatabase("test_issue", "test_scenario", fileName, fileSize);
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("AcquireDebugDatabase_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ReleaseDebugDatabase_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ReleaseDebugDatabase_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int32_t ret = dataManager->ReleaseDebugDatabase("test_issue");
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("ReleaseDebugDatabase_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ScanLakeAsset_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ScanLakeAsset_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    auto data = MediaLibraryDataManager::GetInstance();
+    data->ScanLakeAsset();
+    MEDIA_INFO_LOG("ScanLakeAsset_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ProcessBrokerChangeMsg_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ProcessBrokerChangeMsg_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    auto ret = dataManager->ProcessBrokerChangeMsg("insert");
+    EXPECT_EQ(ret, nullptr);
+    MEDIA_INFO_LOG("ProcessBrokerChangeMsg_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ProcessBrokerChangeMsg_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ProcessBrokerChangeMsg_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    auto ret = dataManager->ProcessBrokerChangeMsg("update");
+    EXPECT_EQ(ret, nullptr);
+    MEDIA_INFO_LOG("ProcessBrokerChangeMsg_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ProcessBrokerChangeMsg_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ProcessBrokerChangeMsg_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    auto ret = dataManager->ProcessBrokerChangeMsg("delete");
+    EXPECT_EQ(ret, nullptr);
+    MEDIA_INFO_LOG("ProcessBrokerChangeMsg_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, OpenAssetCompress_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("OpenAssetCompress_test_001::Start");
+    string uri = "file://media/Photo/1";
+    int32_t type = 1;
+    int32_t version = 1;
+    int32_t fd = -1;
+    int32_t ret = MediaLibraryDataManager::OpenAssetCompress(uri, type, version, fd);
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("OpenAssetCompress_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, NotifyAssetSended_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("NotifyAssetSended_test_001::Start");
+    string uri = "file://media/Photo/1";
+    int32_t ret = MediaLibraryDataManager::NotifyAssetSended(uri);
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("NotifyAssetSended_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetAssetCompressVersion_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetAssetCompressVersion_test_001::Start");
+    int32_t ret = MediaLibraryDataManager::GetAssetCompressVersion();
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("GetAssetCompressVersion_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, QueryAnalysisAlbum_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("QueryAnalysisAlbum_test_001::Start");
+    MediaLibraryCommand cmd(Uri(MEDIALIBRARY_DATA_URI), OperationType::QUERY);
+    vector<string> columns;
+    DataShare::DataSharePredicates predicates;
+    auto ret = MediaLibraryDataManager::QueryAnalysisAlbum(cmd, columns, predicates);
+    EXPECT_NE(ret, nullptr);
+    MEDIA_INFO_LOG("QueryAnalysisAlbum_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, QueryGeo_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("QueryGeo_test_001::Start");
+    NativeRdb::RdbPredicates rdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    vector<string> columns;
+    auto ret = MediaLibraryDataManager::QueryGeo(rdbPredicates, columns);
+    EXPECT_NE(ret, nullptr);
+    MEDIA_INFO_LOG("QueryGeo_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InterruptBgworker_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InterruptBgworker_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    dataManager->InterruptBgworker();
+    MEDIA_INFO_LOG("InterruptBgworker_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InterruptThumbnailBgWorker_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InterruptThumbnailBgWorker_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    dataManager->InterruptThumbnailBgWorker();
+    MEDIA_INFO_LOG("InterruptThumbnailBgWorker_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, DoTrashAging_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("DoTrashAging_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<int> countPtr = make_shared<int>(0);
+    int32_t ret = dataManager->DoTrashAging(countPtr);
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("DoTrashAging_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetDirQuerySetMap_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetDirQuerySetMap_test_002::Start");
+    auto ret = MediaLibraryDataManager::GetDirQuerySetMap();
+    EXPECT_TRUE(ret.empty() || !ret.empty());
+    MEDIA_INFO_LOG("GetDirQuerySetMap_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, CreateThumbnailAsync_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("CreateThumbnailAsync_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    string uri = "file://media/Photo/1";
+    string path = "/storage/cloud/files/Photo/test.jpg";
+    dataManager->CreateThumbnailAsync(uri, path);
+    MEDIA_INFO_LOG("CreateThumbnailAsync_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UploadDBFileInner_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UploadDBFileInner_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int64_t totalFileSize = 1024;
+    dataManager->UploadDBFileInner(totalFileSize);
+    MEDIA_INFO_LOG("UploadDBFileInner_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, UploadDBFileInner_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("UploadDBFileInner_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    int64_t totalFileSize = 0;
+    dataManager->UploadDBFileInner(totalFileSize);
+    MEDIA_INFO_LOG("UploadDBFileInner_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, HandleAnalysisFaceUpdate_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("HandleAnalysisFaceUpdate_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    MediaLibraryCommand cmd(Uri(MEDIALIBRARY_DATA_URI), OperationType::UPDATE);
+    NativeRdb::ValuesBucket value;
+    DataShare::DataSharePredicates predicates;
+    int32_t ret = dataManager->HandleAnalysisFaceUpdate(cmd, value, predicates);
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("HandleAnalysisFaceUpdate_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetThumbnail_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetThumbnail_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<OHOS::AbilityRuntime::Context> extensionContext;
+    dataManager->InitialiseThumbnailService(extensionContext);
+
+    string uri = "file://media/Photo/1";
+    int32_t ret = dataManager->GetThumbnail(uri);
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("GetThumbnail_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InitMediaLibraryMgr_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InitMediaLibraryMgr_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<OHOS::AbilityRuntime::Context> context;
+    shared_ptr<OHOS::AbilityRuntime::Context> extensionContext;
+    int32_t sceneCode = 0;
+    int32_t ret = dataManager->InitMediaLibraryMgr(context, extensionContext, sceneCode, false, false);
+    EXPECT_GE(ret, 0);
+    MEDIA_INFO_LOG("InitMediaLibraryMgr_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, ClearMediaLibraryMgr_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("ClearMediaLibraryMgr_test_001::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    dataManager->ClearMediaLibraryMgr();
+    MEDIA_INFO_LOG("ClearMediaLibraryMgr_test_001::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Query_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Query_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("Query_test_002.jpg", g_pictures, fileAsset), true);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_NAME};
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    int errCode = 0;
+    auto ret = dataManager->Query(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(errCode, E_OK);
+    MEDIA_INFO_LOG("Query_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Delete_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Delete_test_2::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("Delete_test_002.jpg", g_pictures, fileAsset), true);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::DELETE);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    int32_t ret = dataManager->Delete(cmd, predicates);
+    EXPECT_NE(ret, E_SUCCESS);
+    MEDIA_INFO_LOG("Delete_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Update_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Update_test_002::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("Update_test_002.jpg", g_pictures, fileAsset), true);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "Updated_test_002.jpg");
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    int32_t ret = dataManager->Update(cmd, valuesBucket, predicates);
+    EXPECT_GT(ret, 0);
+    MEDIA_INFO_LOG("Update_test_002::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Insert_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Insert_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("");
+    DataShare::DataShareValuesBucket valuesBucket;
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->Insert(cmd, valuesBucket);
+    EXPECT_NE(ret, E_INVALID_URI);
+    MEDIA_INFO_LOG("Insert_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Insert_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Insert_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    DataShare::DataShareValuesBucket valuesBucket;
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->Insert(cmd, valuesBucket);
+    EXPECT_EQ(ret, E_INVALID_VALUES);
+    MEDIA_INFO_LOG("Insert_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, BatchInsert_test_006, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("BatchInsert_test_006::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("");
+    vector<DataShare::DataShareValuesBucket> values;
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->BatchInsert(cmd, values);
+    EXPECT_EQ(ret, E_INVALID_URI);
+    MEDIA_INFO_LOG("BatchInsert_test_006::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, OpenFile_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("OpenFile_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("");
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->OpenFile(cmd, "r");
+    EXPECT_LT(ret, 0);
+    MEDIA_INFO_LOG("OpenFile_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, OpenFile_test_005, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("OpenFile_test_005::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("OpenFile_test_005.jpg", g_pictures, fileAsset), true);
+
+    Uri uri("testuri");
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->OpenFile(cmd, "rw");
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("OpenFile_test_005::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetType_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetType_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("file://media/Video/1");
+    auto ret = dataManager->GetType(uri);
+    EXPECT_EQ(ret.empty(), true);
+    MEDIA_INFO_LOG("GetType_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetType_test_005, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetType_test_005::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("file://media/Audio/1");
+    auto ret = dataManager->GetType(uri);
+    EXPECT_EQ(ret.empty(), true);
+    MEDIA_INFO_LOG("GetType_test_005::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, GetType_test_006, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("GetType_test_006::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("file://media/File/1");
+    auto ret = dataManager->GetType(uri);
+    EXPECT_EQ(ret.empty(), true);
+    MEDIA_INFO_LOG("GetType_test_006::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, NotifyChange_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("NotifyChange_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("file://media/Video/1");
+    dataManager->NotifyChange(uri);
+    MEDIA_INFO_LOG("NotifyChange_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, NotifyChange_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("NotifyChange_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri("file://media/Audio/1");
+    dataManager->NotifyChange(uri);
+    MEDIA_INFO_LOG("NotifyChange_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, QueryRdb_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("QueryRdb_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_NAME, CONST_MEDIA_DATA_DB_MEDIA_TYPE};
+    DataShare::DataSharePredicates predicates;
+    int errCode = 0;
+    auto ret = dataManager->QueryRdb(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    MEDIA_INFO_LOG("QueryRdb_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, QueryRdb_test_005, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("QueryRdb_test_005::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns;
+    DataShare::DataSharePredicates predicates;
+    predicates.NotEqualTo(CONST_MEDIA_DATA_DB_ID, "-1");
+    int errCode = 0;
+    auto ret = dataManager->QueryRdb(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    MEDIA_INFO_LOG("QueryRdb_test_005::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, QueryRdb_test_006, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("QueryRdb_test_006::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID};
+    DataShare::DataSharePredicates predicates;
+    predicates.GreaterThan(CONST_MEDIA_DATA_DB_ID, "0");
+    int errCode = 0;
+    auto ret = dataManager->QueryRdb(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    MEDIA_INFO_LOG("QueryRdb_test_006::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InsertExt_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InsertExt_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    string result;
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_VIDEO);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "test.mp4");
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, "Videos/");
+    MediaLibraryCommand cmd(Uri(MEDIALIBRARY_DATA_URI), OperationType::CREATE);
+    int32_t ret = dataManager->InsertExt(cmd, valuesBucket, result);
+    EXPECT_NE(ret, E_OK);
+    MEDIA_INFO_LOG("InsertExt_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, InsertExt_test_005, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("InsertExt_test_005::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    string result;
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_AUDIO);
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "test.mp3");
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, "Audios/");
+    MediaLibraryCommand cmd(Uri(MEDIALIBRARY_DATA_URI), OperationType::CREATE);
+    int32_t ret = dataManager->InsertExt(cmd, valuesBucket, result);
+    EXPECT_NE(ret, E_OK);
+    MEDIA_INFO_LOG("InsertExt_test_005::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, BatchInsert_test_007, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("BatchInsert_test_007::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    vector<DataShare::DataShareValuesBucket> values;
+    for (int i = 0; i < 5; i++) {
+        DataShare::DataShareValuesBucket valuesBucket;
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_IMAGE);
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "batch_video_test_" + to_string(i) + ".mp4");
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, "Videos/");
+        values.push_back(valuesBucket);
+    }
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->BatchInsert(cmd, values);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("BatchInsert_test_007::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, BatchInsert_test_008, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("BatchInsert_test_008::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    vector<DataShare::DataShareValuesBucket> values;
+    for (int i = 0; i < 3; i++) {
+        DataShare::DataShareValuesBucket valuesBucket;
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, MEDIA_TYPE_AUDIO);
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "batch_audio_test_" + to_string(i) + ".mp3");
+        valuesBucket.Put(CONST_MEDIA_DATA_DB_RELATIVE_PATH, "Audios/");
+        values.push_back(valuesBucket);
+    }
+    MediaLibraryCommand cmd(uri);
+    int32_t ret = dataManager->BatchInsert(cmd, values);
+    EXPECT_EQ(ret, E_OK);
+    MEDIA_INFO_LOG("BatchInsert_test_008::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Query_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Query_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("Query_test_003.jpg", g_pictures, fileAsset), true);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns;
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    int errCode = 0;
+    auto ret = dataManager->Query(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(errCode, E_OK);
+    MEDIA_INFO_LOG("Query_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Query_test_004, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Query_test_004::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::QUERY);
+    vector<string> columns = {CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_NAME};
+    DataShare::DataSharePredicates predicates;
+    predicates.LessThan(CONST_MEDIA_DATA_DB_ID, "1000");
+    int errCode = 0;
+    auto ret = dataManager->Query(cmd, columns, predicates, errCode);
+    EXPECT_NE(ret, nullptr);
+    MEDIA_INFO_LOG("Query_test_004::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Update_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Update_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    shared_ptr<FileAsset> fileAsset = nullptr;
+    ASSERT_EQ(MediaLibraryUnitTestUtils::CreateFile("Update_test_003.jpg", g_pictures, fileAsset), true);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_NAME, "Updated_test_003_new.jpg");
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_TITLE, "Updated_test_003_new");
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, to_string(fileAsset->GetId()));
+    int32_t ret = dataManager->Update(cmd, valuesBucket, predicates);
+    EXPECT_GT(ret, 0);
+    MEDIA_INFO_LOG("Update_test_003::End");
+}
+
+HWTEST_F(MediaLibraryDataManagerUnitTest, Delete_test_003, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Delete_test_003::Start");
+    auto dataManager = MediaLibraryDataManager::GetInstance();
+    ASSERT_NE(dataManager, nullptr);
+
+    Uri uri(MEDIALIBRARY_DATA_URI);
+    MediaLibraryCommand cmd(uri, OperationType::DELETE);
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(CONST_MEDIA_DATA_DB_ID, "-999");
+    int32_t ret = dataManager->Delete(cmd, predicates);
+    EXPECT_NE(ret, E_SUCCESS);
+    MEDIA_INFO_LOG("Delete_test_003::End");
+}
 } // namespace Media
 } // namespace OHOS

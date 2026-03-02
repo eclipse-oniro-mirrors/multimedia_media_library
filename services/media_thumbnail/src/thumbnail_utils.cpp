@@ -866,7 +866,7 @@ bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &
     vector<string> column = {
         CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_FILE_PATH, CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_NAME,
         CONST_MEDIA_DATA_DB_POSITION, CONST_MEDIA_DATA_DB_ORIENTATION, PhotoColumn::PHOTO_EXIF_ROTATE,
-        CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_DATE_MODIFIED,
+        CONST_MEDIA_DATA_DB_DATE_TAKEN, CONST_MEDIA_DATA_DB_DATE_MODIFIED, PhotoColumn::PHOTO_THUMB_STATUS,
     };
     RdbPredicates rdbPredicates(opts.table);
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));

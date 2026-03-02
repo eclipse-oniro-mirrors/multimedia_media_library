@@ -936,6 +936,22 @@ static void MarkDateAddedDatesDataStatus(const shared_ptr<MediaLibraryRdbStore>&
     MEDIA_INFO_LOG("Mark date added dates need update: %{public}d", needUpdateDateAddedDatesData ? 1 : 0);
 }
 
+static void UpdateCinematicVideoAlbum(const shared_ptr<MediaLibraryRdbStore>& rdbStore)
+{
+    MEDIA_INFO_LOG("Start update cinematic video album");
+    int32_t albumId = -1;
+    CHECK_AND_RETURN_LOG(
+        MediaLibraryRdbUtils::QueryShootingModeAlbumIdByType(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM, albumId),
+        "Failed to query albumId of cinematic video album");
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr");
+    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, { std::to_string(albumId) });
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_LOG(watch != nullptr, "Can not get MediaLibraryNotify Instance");
+    watch->Notify(MediaFileUtils::GetUriByExtrConditions(
+        PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, std::to_string(albumId)), NotifyType::NOTIFY_ADD);
+    MEDIA_INFO_LOG("End update cinematic video album, albumId: %{public}d", albumId);
+}
+
 void HandleUpgradeRdbAsyncPart6(const shared_ptr<MediaLibraryRdbStore> rdbStore, int32_t oldVersion)
 {
     if (oldVersion < VERSION_ADD_CHANGE_TIME &&
@@ -959,6 +975,13 @@ void HandleUpgradeRdbAsyncPart6(const shared_ptr<MediaLibraryRdbStore> rdbStore,
         MarkDateAddedDatesDataStatus(rdbStore);
         rdbStore->SetOldVersion(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY);
         RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_DATE_ADDED_YEAR_MONTH_DAY, false);
+    }
+
+    if (oldVersion < VERSION_ADD_CINEMATIC_VIDEO_ALBUM &&
+        !RdbUpgradeUtils::HasUpgraded(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, false)) {
+        UpdateCinematicVideoAlbum(rdbStore);
+        rdbStore->SetOldVersion(VERSION_ADD_CINEMATIC_VIDEO_ALBUM);
+        RdbUpgradeUtils::SetUpgradeStatus(VERSION_ADD_CINEMATIC_VIDEO_ALBUM, false);
     }
 }
 

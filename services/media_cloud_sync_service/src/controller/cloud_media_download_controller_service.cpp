@@ -131,7 +131,7 @@ int32_t CloudMediaDownloadControllerService::OnDownloadThms(MessageParcel &data,
     }
     MEDIA_INFO_LOG("downloadThumbnailMap: %{public}zu", downloadThumbnailMap.size());
     std::vector<MediaOperateResultDto> resultDtos;
-    ret = this->service_.OnDownloadThms(downloadThumbnailMap, resultDtos);
+    ret = this->service_.OnDownloadThms(downloadThumbnailMap, resultDtos, reqBody.sceneCode);
     MediaOperateResultRespBody respBody;
     respBody.result = this->processor_.GetMediaOperateResult(resultDtos);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);

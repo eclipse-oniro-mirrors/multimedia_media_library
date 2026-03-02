@@ -49,6 +49,7 @@
 
 using namespace std;
 const int UUID_STR_LENGTH = 37;
+constexpr int32_t MAX_THUMBNAIL_FILE_SIZE = 10 * 1024 * 1024; // 缩略图文件最大不超过10MB
 
 namespace OHOS {
 namespace Media {
@@ -374,6 +375,10 @@ static bool DecodeThumbnailDataBuffer(const UniqueFd &uniqueFd, std::vector<uint
     }
 
     auto dataSize = statBuf.st_size;
+    if (dataSize <= 0 || dataSize > MAX_THUMBNAIL_FILE_SIZE) {
+        NAPI_ERR_LOG("Invalid file size: %{public}" PRId64, static_cast<int64_t>(dataSize));
+        return false;
+    }
     buffer.resize(dataSize);
     ssize_t readBytes = read(uniqueFd.Get(), buffer.data(), dataSize);
     if (readBytes != dataSize) {

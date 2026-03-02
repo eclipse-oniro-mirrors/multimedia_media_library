@@ -42,7 +42,7 @@ const std::string API_VERSION_STR = "api_version";
 const std::string MEDIA_FILEMODE_READONLY = "r";
 const int32_t MAX_VALUE = 100000000;
 const int32_t MAX_HANDLE_SIZE = 4 * (100000000 + 100000000);
-std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32_t &fileId)
+std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32_t &fileId, bool &isHighQuality)
 {
     MEDIA_DEBUG_LOG("PictureHandlerClient::RequestPicture fileId: %{public}d", fileId);
     std::string uri = PhotoColumn::PHOTO_REQUEST_PICTURE;
@@ -54,14 +54,14 @@ std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32
         return nullptr;
     }
     std::shared_ptr<Media::Picture> picture = nullptr;
-    ReadPicture(fd, fileId, picture);
+    ReadPicture(fd, fileId, picture, isHighQuality);
     FinishRequestPicture(fileId);
     close(fd);
     return picture;
 }
 
 std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(
-    std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper, const int32_t &fileId)
+    std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper, const int32_t &fileId, bool &isHighQuality)
 {
     MEDIA_DEBUG_LOG("PictureHandlerClient::RequestPicture fileId: %{public}d", fileId);
     if (dataShareHelper == nullptr) {
@@ -77,7 +77,7 @@ std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(
         return nullptr;
     }
     std::shared_ptr<Media::Picture> picture = nullptr;
-    ReadPicture(fd, fileId, picture);
+    ReadPicture(fd, fileId, picture, isHighQuality);
     FinishRequestPicture(fileId);
     close(fd);
     return picture;
@@ -96,7 +96,7 @@ void PictureHandlerClient::FinishRequestPicture(const int32_t &fileId)
 }
 
 int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &fileId,
-    std::shared_ptr<Media::Picture> &picture)
+    std::shared_ptr<Media::Picture> &picture, bool &isHighQuality)
 {
     MEDIA_DEBUG_LOG("PictureHandlerClient::ReadPicture fd: %{public}d", fd);
     // 获取消息总长度
@@ -151,7 +151,7 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
         free(pictureParcelData);
         return E_ERR;
     }
-
+    isHighQuality = pictureParcel.ReadBool();
     MEDIA_DEBUG_LOG("PictureHandlerClient::ReadPicture read mainPixelMap");
     std::shared_ptr<PixelMap> mainPixelMap = ReadPixelMap(pictureParcel);
     std::unique_ptr<Media::Picture> picturePtr = Picture::Create(mainPixelMap);

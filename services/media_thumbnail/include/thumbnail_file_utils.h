@@ -42,6 +42,10 @@ public:
     EXPORT static bool BatchDeleteAstcData(const ThumbnailDataBatch &dataBatch, const ThumbnailType &type);
     EXPORT static bool RemoveDirectoryAndFile(const std::string &path);
     EXPORT static std::string GetFileInfo(const std::string &path);
+    EXPORT static std::string GetLocalThumbnailFilePath(const std::string &path, const ThumbnailType type);
+
+private:
+    EXPORT static std::string GetThumbnailFilePathSuffix(const ThumbnailType type);
 };
 } // namespace Media
 } // namespace OHOS

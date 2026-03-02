@@ -3611,6 +3611,7 @@ bool MediaLibraryRdbUtils::QueryShootingModeAlbumIdByType(ShootingModeAlbumType 
         {ShootingModeAlbumType::MP4_3DGS_ALBUM, -1},
         {ShootingModeAlbumType::TIME_LAPSE, -1},
         {ShootingModeAlbumType::QUICK_CAPTURE_ALBUM, -1},
+        {ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM, -1},
     };
     if (SHOOTING_MODE_ALBUM_ID_CACHE_MAP.find(type) == SHOOTING_MODE_ALBUM_ID_CACHE_MAP.end()) {
         MEDIA_ERR_LOG("Shooting mode type %{public}d is not in the map", static_cast<int32_t>(type));

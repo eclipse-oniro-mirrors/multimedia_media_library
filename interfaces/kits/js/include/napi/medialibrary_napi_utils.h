@@ -406,6 +406,8 @@ public:
     static bool HandleSpecialPredicate(AsyncContext &context,
         std::shared_ptr<DataShare::DataShareAbsPredicates> &predicate, const FetchOptionType &fetchOptType,
         std::vector<DataShare::OperationItem> operations = {});
+    static bool IsPredicateValid(shared_ptr<DataShare::DataShareAbsPredicates> &predicate,
+        const FetchOptionType &fetchOptType);
     template <class AsyncContext>
     static void UpdateMediaTypeSelections(AsyncContext *context);
 

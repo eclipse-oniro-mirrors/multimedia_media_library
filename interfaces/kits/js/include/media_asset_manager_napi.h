@@ -59,6 +59,7 @@ struct AssetHandler {
     bool isError = false;
     bool isCinematicVideoError = false;
     ObserverType observerType{ObserverType::UNDEFINED};
+    bool isPicture = false;
 
     AssetHandler(const std::string &photoId, const std::string &requestId, const std::string &uri,
         const MediaAssetDataHandlerPtr &handler, napi_threadsafe_function func)
@@ -151,7 +152,7 @@ public:
     static void GetImageSourceNapiObject(const std::string &fileUri, napi_value &imageSourceNapiObj, bool isSource,
         napi_env env);
     static void GetPictureNapiObject(const std::string &fileUri, napi_value &imageSourceNapiObj, bool isSource,
-        napi_env env, bool& isPicture);
+        napi_env env, bool& isPicture, MultiStagesCapturePhotoStatus &photoQuality);
     static void WriteDataToDestPath(WriteData &writeData, napi_value &resultNapiValue, std::string requestId);
     void RegisterCallback(std::function<void(int, int)> cb);
 

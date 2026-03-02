@@ -154,6 +154,20 @@
             <option name="push" value="backup_testfile/test4.xml -> /data/test/backup" src="res"/>
         </preparer>
     </target>
+        <target name="medialibrary_scanner_test">
+        <preparer>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/Audio/*"/>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/Audios/*"/>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/Camera/*"/>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/Documents/*"/>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/Photo/*"/>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/Pictures/*"/>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/Videos/*"/>
+            <option name="shell" value="rm -rf /storage/cloud/100/files/.*"/>
+            <option name="push" value="thumbnail_testfile/CreateImageLcdTest_001.jpg -> /storage/cloud/100/files/Documents" src="res"/>
+            <option name="push" value="thumbnail_testfile/CreateVideoThumbnailTest_001.mp4 -> /storage/cloud/100/files/Documents" src="res"/>
+        </preparer>
+    </target>
     <target name="medialibrary_scanner_db_test">
         <preparer>
             <option name="shell" value="rm -rf /storage/cloud/100/files/Audio/*"/>

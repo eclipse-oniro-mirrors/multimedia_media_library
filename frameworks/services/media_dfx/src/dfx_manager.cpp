@@ -1288,5 +1288,26 @@ int32_t DfxManager::HandleThmInodeCleanInfo(const ThmInodeCleanInfo &info)
     CHECK_AND_RETURN_RET_LOG(dfxReporter_ != nullptr, E_ERR, "DfxReporter is nullptr");
     return dfxReporter_->ReportThmInodeCleanInfo(info);
 }
+
+int64_t DfxManager::GetLastIPCTime()
+{
+    return lastIPCTime_;
+}
+
+void DfxManager::SetLastIPCTime(int64_t lastIPCTime)
+{
+    lastIPCTime_ = lastIPCTime;
+    SetMemoryRelease(false);
+}
+
+bool DfxManager::GetMemoryRelease()
+{
+    return memoryRelease_;
+}
+
+void DfxManager::SetMemoryRelease(bool memoryRelease)
+{
+    memoryRelease_ = memoryRelease;
+}
 } // namespace Media
 } // namespace OHOS

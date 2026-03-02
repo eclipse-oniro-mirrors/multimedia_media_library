@@ -19,6 +19,7 @@ group("test") {
     "unittest/media_albums_refresh_test:unittest",
     "unittest/media_analysis_extension_test:unittest",
     "unittest/media_asset_test:unittest",
+    "unittest/media_background_task_test:unittest",
     "unittest/media_event_test:unittest",
     "unittest/media_library_asset_helper_capi_test:unittest",
     "unittest/media_library_asset_manager_test:unittest",
@@ -69,6 +70,7 @@ group("test") {
     "unittest/media_lake_file_monitor_test:unittest",
     "unittest/media_lake_load_test:unittest",
     "unittest/media_library_related_system_state_test:unittest",
+    "unittest/madvise_utils_test:unittest",
   ]
 
   deps_cloud_sync_unittest = [
@@ -98,6 +100,7 @@ group("test") {
     deps += [
       "unittest/background_cloud_batch_selected_file_processor_test:unittest",
       "unittest/background_cloud_file_processor_test:unittest",
+      "unittest/cloud_media_retain_smart_data_test:unittest",
       "unittest/media_notification_register_manager_test:unittest",
     ]
   }

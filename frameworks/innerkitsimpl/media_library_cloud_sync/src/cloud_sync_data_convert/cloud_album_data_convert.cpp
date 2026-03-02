@@ -17,6 +17,7 @@
 #include "cloud_album_data_convert.h"
 
 #include <string>
+#include <algorithm>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -38,6 +39,7 @@ CloudAlbumDataConvert::CloudAlbumDataConvert(CloudAlbumOperationType type) : typ
 int32_t CloudAlbumDataConvert::HandleAlbumName(
     std::map<std::string, MDKRecordField> &map, const CloudMdkRecordPhotoAlbumVo &albumData)
 {
+    std::string albumName = albumData.albumName;
     int32_t albumType = albumData.albumType;
     if (albumType == AlbumType::SOURCE) {
         std::string lpath = albumData.lpath;
@@ -46,16 +48,15 @@ int32_t CloudAlbumDataConvert::HandleAlbumName(
             std::string albumNameEn = albumData.albumNameEn;
             map["localPath"] = MDKRecordField(lpath);
             if (!dualName.empty()) {
-                map["albumName"] = MDKRecordField(dualName);
-                return E_OK;
-            }
-            if (!albumNameEn.empty()) {
-                map["albumName"] = MDKRecordField(albumNameEn);
-                return E_OK;
+                albumName = dualName;
+            } else if (!albumNameEn.empty()) {
+                albumName = albumNameEn;
             }
         }
     }
-    map["albumName"] = MDKRecordField(albumData.albumName);
+
+    albumName = this->SanitizeAlbumName(albumName);
+    map["albumName"] = MDKRecordField(albumName);
     return E_OK;
 }
 
@@ -306,5 +307,28 @@ bool CloudAlbumDataConvert::IsCloudSpaceFull()
 void CloudAlbumDataConvert::SetCloudSpaceFull(bool isCloudSpaceFull)
 {
     this->isCloudSpaceFull_ = isCloudSpaceFull;
+}
+
+// Helper: sanitize album name by replacing forbidden characters with spaces,
+// trimming leading/trailing spaces.
+std::string CloudAlbumDataConvert::SanitizeAlbumName(const std::string &albumName)
+{
+    bool isSingleOrDoubleDot = (albumName == "." || albumName == "..");
+    if (isSingleOrDoubleDot) {
+        return std::string();
+    }
+    const std::string forbidden = "<>|:*?\"/\\";
+    std::string name = albumName;
+    for (char &c : name) {
+        if (forbidden.find(c) != std::string::npos) {
+            c = ' ';
+        }
+    }
+    size_t first = name.find_first_not_of(' ');
+    if (first == std::string::npos) {
+        return std::string();
+    }
+    size_t last = name.find_last_not_of(' ');
+    return name.substr(first, last - first + 1);
 }
 }  // namespace OHOS::Media::CloudSync

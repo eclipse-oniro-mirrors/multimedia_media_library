@@ -124,16 +124,29 @@ bool MedialibraryRelatedSystemStateManager::IsNetValidatedAtRealTime()
 {
     bool isNetValidated = false;
     NetManagerStandard::NetHandle handle;
-    NetManagerStandard::NetAllCapabilities netAllCap;
-    int32_t ret = NetManagerStandard::NetConnClient::GetInstance().GetDefaultNet(handle);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, isNetValidated, "GetDefaultNet failed, err:%{public}d", ret);
-    NetManagerStandard::NetConnClient::GetInstance().GetNetCapabilities(handle, netAllCap);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, isNetValidated, "GetNetCapabilities failed, err:%{public}d",
-        ret);
-    const std::set<NetManagerStandard::NetCap>& types = netAllCap.netCaps_;
-    if (types.count(NetManagerStandard::NET_CAPABILITY_INTERNET) &&
-        types.count(NetManagerStandard::NET_CAPABILITY_VALIDATED)) {
-        isNetValidated = true;
+    std::list<sptr<NetManagerStandard::NetHandle>> netList;
+    int32_t ret = NetManagerStandard::NetConnClient::GetInstance().GetAllNets(netList);
+    CHECK_AND_RETURN_RET_LOG(ret == 0, isNetValidated, "GetAllNets failed, err:%{public}d", ret);
+    if (netList.empty()) {
+        MEDIA_ERR_LOG("HandleConnectivityChanged, no net");
+        return isNetValidated;
+    }
+    for (auto netHandlePtr : netList) {
+        if (!netHandlePtr) {
+            MEDIA_ERR_LOG("invalid netHandle");
+            continue;
+        }
+        NetManagerStandard::NetAllCapabilities netAllCap;
+        int32_t capRet = NetManagerStandard::NetConnClient::GetInstance().GetNetCapabilities(*netHandlePtr, netAllCap);
+        if (capRet != 0) {
+            MEDIA_ERR_LOG("GetNetCapabilities failed, err:%{public}d", capRet);
+            continue;
+        }
+        const std::set<NetManagerStandard::NetCap>& types = netAllCap.netCaps_;
+        if (types.count(NetManagerStandard::NET_CAPABILITY_INTERNET) &&
+            types.count(NetManagerStandard::NET_CAPABILITY_VALIDATED)) {
+            isNetValidated = true;
+        }
     }
     MEDIA_DEBUG_LOG("BatchSelectFileDownload net validate : %{public}d", isNetValidated);
     return isNetValidated;

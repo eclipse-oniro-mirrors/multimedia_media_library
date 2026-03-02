@@ -57,6 +57,7 @@
 #include "parameters.h"
 #include "media_config_info_column.h"
 #include "values_bucket.h"
+#include "group_photo_album_restore.h"
 #include "media_audio_column.h"
 #include "media_upgrade.h"
 
@@ -97,6 +98,7 @@ const int32_t TEST_ORIENTATION_ZERO = 0;
 const int32_t TEST_ORIENTATION_NINETY = 90;
 const int32_t I_PHONE_DYNAMIC_VIDEO_TYPE = 13;
 const int32_t PAGE_SIZE = 200;
+const int32_t GROUP_PHOTO_COUNT = 250;
 
 static std::vector<std::string> createTableSqlLists = {
     PhotoUpgrade::CREATE_PHOTO_TABLE,
@@ -5433,5 +5435,169 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_update_package_n
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
+std::map<int32_t, std::vector<string>> CreateGroupPhotoMap()
+{
+    std::map<int32_t, std::vector<string>> Map;
+    for (int32_t i = 1; i <= GROUP_PHOTO_COUNT; ++i) {
+        std::vector<string> photos;
+        int32_t photoCount = (i % 4) + 1;
+        for (int32_t j = 1; j <= photoCount; ++j) {
+            photos.push_back(std::to_string(i + j));
+        }
+        Map[i] = photos;
+    }
+    return Map;
+}
+
+static void VerifyGroupPhotoRestore(const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
+    string expectAlbumName, string expectGroup_tag, string expectTag_id, int32_t expectCount)
+{
+    if (!destRdb) {
+        MEDIA_ERR_LOG("Destination RDB store is null for verification");
+        return;
+    }
+
+    std::string querySql = "SELECT * FROM " + ANALYSIS_ALBUM_TABLE + " WHERE album_name = "
+        + "'" + expectAlbumName + "'";
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(destRdb, querySql);
+    ASSERT_NE(resultSet, nullptr) << "Failed to query destination DB for video face verification";
+
+    int32_t index = -1;
+    string currentAlbumName;
+    string currentGroup_tag;
+    string currentTag_id;
+    int32_t currentCount = -1;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        resultSet->GetColumnIndex("album_name", index);
+        resultSet->GetString(index, currentAlbumName);
+        resultSet->GetColumnIndex("group_tag", index);
+        resultSet->GetString(index, currentGroup_tag);
+        resultSet->GetColumnIndex("tag_id", index);
+        resultSet->GetString(index, currentTag_id);
+        resultSet->GetColumnIndex("count", index);
+        resultSet->GetInt(index, currentCount);
+    }
+    EXPECT_EQ(expectAlbumName, currentAlbumName);
+    EXPECT_EQ(expectGroup_tag, currentGroup_tag);
+    EXPECT_EQ(expectTag_id, currentTag_id);
+    EXPECT_EQ(expectCount, currentCount);
+
+    resultSet->Close();
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_group_photo_album_restore_test001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialibrary_backup_clone_group_photo_album_restore_test001 start");
+    CloneSource cloneSource;
+    std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb = cloneSource.cloneStorePtr_;
+    std::shared_ptr<NativeRdb::RdbStore> galleryRdb = g_rdbStore->GetRaw();
+    int32_t sceneCode = 0;
+    std::string taskId = std::to_string(1704067200);
+    CloneGroupPhotoAlbum cloneGroupPhotoAlbum(sceneCode, taskId, mediaLibraryRdb, galleryRdb);
+    std::map<int32_t, std::vector<string>> groupPhotoMap = CreateGroupPhotoMap();
+    cloneGroupPhotoAlbum.InsertAnalysisPhotoMap(groupPhotoMap);
+    cloneGroupPhotoAlbum.ModifyGroupVersion(groupPhotoMap);
+    std::vector<NativeRdb::ValuesBucket> values;
+    int64_t rowNum = 0;
+    int32_t ret = cloneGroupPhotoAlbum.BatchInsertWithRetry(ANALYSIS_ALBUM_TABLE, values, rowNum);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    EXPECT_EQ(ret, 0);
+}
+
+void InitTestDatabases(std::shared_ptr<NativeRdb::RdbStore> &mediaLibraryRdb,
+    std::shared_ptr<NativeRdb::RdbStore> &galleryRdb)
+{
+    ExecuteSqls(galleryRdb, { "DROP TABLE IF EXISTS merge_tag;" });
+    std::string gallerySql = string("CREATE TABLE IF NOT EXISTS merge_tag ") +
+    "(_id INTEGER, tag_id TEXT, group_tag TEXT, tag_name TEXT, user_operation INTEGER, rename_operation TEXT);";
+    ExecuteSqls(galleryRdb, { gallerySql });
+
+    std::vector<std::string> mediaSqls = {
+        "DROP TABLE IF EXISTS tab_analysis_image_face;",
+        "DROP TABLE IF EXISTS tab_analysis_face_tag;",
+        "DROP TABLE IF EXISTS AnalysisPhotoMap;",
+        "DROP TABLE IF EXISTS AnalysisAlbum;",
+        CREATE_TAB_IMAGE_FACE,
+        CREATE_TAB_FACE_TAG,
+        CREATE_ANALYSIS_ALBUM_MAP,
+        CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
+    };
+
+    ExecuteSqls(mediaLibraryRdb, mediaSqls);
+}
+
+void PrepareTestData(std::shared_ptr<NativeRdb::RdbStore> &mediaLibraryRdb,
+    std::shared_ptr<NativeRdb::RdbStore> &galleryRdb)
+{
+        std::vector<std::string> mergeTagInserts = {
+            "INSERT INTO merge_tag (_id, tag_id, group_tag, tag_name, user_operation, rename_operation) VALUES "
+            "(1, 'tag_zhangsan|tag_lisi', 'tag_zhangsan|tag_lisi', '张三和李四的合影', 0, '0')",
+
+            "INSERT INTO merge_tag (_id, tag_id, group_tag, tag_name, user_operation, rename_operation) VALUES "
+            "(3, 'tag_zhangsan|tag_lisi|tag_wangwu', 'tag_zhangsan|tag_lisi|tag_wangwu', '家庭合影', 0, '1')",
+
+            "INSERT INTO merge_tag (_id, tag_id, group_tag, tag_name, user_operation, rename_operation) VALUES "
+            "(4, 'tag_zhangsan', 'tag_zhangsan', '张三', 0, '0')",
+            "INSERT INTO merge_tag (_id, tag_id, group_tag, tag_name, user_operation, rename_operation) VALUES "
+            "(5, 'tag_lisi', 'tag_lisi', '李四', 0, '0')",
+            "INSERT INTO merge_tag (_id, tag_id, group_tag, tag_name, user_operation, rename_operation) VALUES "
+            "(6, 'tag_wangwu', 'tag_wangwu', '王五', 0, '0')"
+        };
+
+        std::vector<std::string> faceTagInserts = {
+            "INSERT INTO tab_analysis_face_tag (tag_id, tag_name) VALUES "
+            "('tag_zhangsan', '张三')",
+            "INSERT INTO tab_analysis_face_tag (tag_id, tag_name) VALUES "
+            "('tag_lisi', '李四')",
+            "INSERT INTO tab_analysis_face_tag (tag_id, tag_name) VALUES "
+            "('tag_wangwu', '王五')"
+        };
+
+        std::vector<std::string> imageFaceInserts = {
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1001, 'tag_zhangsan', 2)",
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1001, 'tag_lisi', 2)",
+
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1002, 'tag_zhangsan', 3)",
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1002, 'tag_lisi', 3)",
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1002, 'tag_wangwu', 3)",
+
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1003, 'tag_zhangsan', 1)",
+
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1004, 'tag_zhangsan', 5)",
+            "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1004, 'tag_lisi', 5)"
+        };
+
+    ExecuteSqls(galleryRdb, mergeTagInserts);
+    ExecuteSqls(mediaLibraryRdb, faceTagInserts);
+    ExecuteSqls(mediaLibraryRdb, imageFaceInserts);
+}
+
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_group_photo_album_restore_test002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("medialibrary_backup_clone_group_photo_album_restore_test002 start");
+    CloneSource cloneSource;
+    vector<string> tableList = { VISION_IMAGE_FACE_TABLE, VISION_FACE_TAG_TABLE, ANALYSIS_PHOTO_MAP_TABLE,
+        ANALYSIS_ALBUM_TABLE};
+    Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
+    std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb = cloneSource.cloneStorePtr_;
+    std::shared_ptr<NativeRdb::RdbStore> galleryRdb = g_rdbStore->GetRaw();
+    CHECK_AND_RETURN_LOG(g_rdbStore != nullptr, "Destination RDB store (g_rdbStore) is null");
+    InitTestDatabases(mediaLibraryRdb, galleryRdb);
+    PrepareTestData(mediaLibraryRdb, galleryRdb);
+    int32_t sceneCode = 0;
+    std::unordered_map<int32_t, PhotoInfo> photoInfoMap;
+    PhotoInfo photoInfo;
+    photoInfoMap[1] = photoInfo;
+    std::string taskId = std::to_string(MediaFileUtils::UTCTimeSeconds());
+    CloneGroupPhotoAlbum cloneGroupPhotoAlbum(sceneCode, taskId, mediaLibraryRdb, galleryRdb);
+    cloneGroupPhotoAlbum.RestoreGroupPhotoAlbum(photoInfoMap);
+    VerifyGroupPhotoRestore(mediaLibraryRdb, "张三和李四的合影", "tag_lisi,tag_zhangsan", "tag_lisi,tag_zhangsan", 1);
+    VerifyGroupPhotoRestore(mediaLibraryRdb, "家庭合影", "tag_wangwu,tag_lisi,tag_zhangsan",
+        "tag_wangwu,tag_lisi,tag_zhangsan", 1);
+
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+    MEDIA_INFO_LOG("medialibrary_backup_clone_group_photo_album_restore_test002 end");
+}
 } // namespace Media
 } // namespace OHOS

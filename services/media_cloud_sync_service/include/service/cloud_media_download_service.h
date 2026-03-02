@@ -48,7 +48,7 @@ public:
     int32_t GetDownloadThms(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosDto> &photosDtos);
     std::vector<PhotosDto> GetDownloadThmsByUri(const std::vector<int32_t> &fileIds, const int32_t type);
     int32_t OnDownloadThms(const std::unordered_map<std::string, int32_t> &downloadThumbnailMap,
-        std::vector<MediaOperateResultDto> &result);
+        std::vector<MediaOperateResultDto> &result, const int32_t sceneCode = 0);
     std::vector<PhotosDto> GetDownloadAsset(const std::vector<int32_t> &fileIds);
     int32_t OnDownloadAsset(const std::vector<std::string> &cloudIds, std::vector<MediaOperateResultDto> &result);
     int32_t OnDownloadLakeAsset(const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos,

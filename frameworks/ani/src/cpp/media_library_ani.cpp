@@ -2349,10 +2349,14 @@ static ani_status ToAniPhotoAlbumsMap(ani_env *env, const std::unordered_map<int
     CHECK_STATUS_RET(env->FindClass(className.c_str(), &cls), "Can't find std.core.Map");
 
     ani_method mapConstructor {};
-    CHECK_STATUS_RET(env->Class_FindMethod(cls, "<ctor>", ":", &mapConstructor),
+    CHECK_STATUS_RET(env->Class_FindMethod(cls, "<ctor>",
+        "X{C{std.core.Iterable}C{std.core.Null}C{std.core.ReadonlyArray}}:", &mapConstructor),
         "Can't find method <ctor> in std.core.Map");
 
-    CHECK_STATUS_RET(env->Object_New(cls, mapConstructor, &aniMap, nullptr), "Call method <ctor> fail");
+    ani_ref undefinedArgument {};
+    CHECK_STATUS_RET(env->GetUndefined(&undefinedArgument), "GetUndefined failed");
+
+    CHECK_STATUS_RET(env->Object_New(cls, mapConstructor, &aniMap, undefinedArgument), "Call method <ctor> fail");
 
     ani_method setMethod {};
     CHECK_STATUS_RET(

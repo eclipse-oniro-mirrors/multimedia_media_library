@@ -157,6 +157,26 @@ int32_t ThumbnailGenerateHelper::CreateThumbnailBackground(ThumbRdbOpt &opts)
     return E_OK;
 }
 
+bool CanCloudPhotoLoadLocalThumbnail(const ThumbnailData &data)
+{
+    if (ThumbnailUtils::IsExCloudThumbnail(data)) {
+        std::string localExLcdPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::LCD_EX);
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(localExLcdPath), false,
+            "Local ex lcd:%{public}s is not exist,", DfxUtils::GetSafePath(localExLcdPath).c_str());
+        return true;
+    }
+
+    std::string localLcdPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::LCD);
+    std::string localThumbPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(data.path, ThumbnailType::THUMB);
+    bool isLocalLcdExist = MediaFileUtils::IsFileExists(localLcdPath);
+    bool isLocalThumbExist = MediaFileUtils::IsFileExists(localThumbPath);
+    CHECK_AND_RETURN_RET_LOG(isLocalLcdExist && isLocalThumbExist, false,
+        "Local lcd:%{public}s or thumb:%{public}s is not exist, isLcdExist:%{public}d, isThumbExist:%{public}d",
+        DfxUtils::GetSafePath(localLcdPath).c_str(), DfxUtils::GetSafePath(localThumbPath).c_str(),
+        isLocalLcdExist, isLocalThumbExist);
+    return true;
+}
+
 void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "Data is null");
@@ -168,6 +188,9 @@ void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
         thumbnailData.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
         IThumbnailHelper::CreateThumbnail(data);
     } else {
+        CHECK_AND_RETURN_WARN_LOG(CanCloudPhotoLoadLocalThumbnail(thumbnailData),
+            "Local lcd or thumb is not exist, id:%{public}s, path:%{public}s, thumbStatus:%{public}d",
+            thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str(), thumbnailData.thumbnailStatus);
         thumbnailData.needGenerateExThumbnail = false;
         thumbnailData.loaderOpts.loadingStates = ThumbnailUtils::IsExCloudThumbnail(thumbnailData) ?
             SourceLoader::CLOUD_LCD_SOURCE_LOADING_STATES : SourceLoader::CLOUD_SOURCE_LOADING_STATES;
@@ -1002,44 +1025,6 @@ int32_t ThumbnailGenerateHelper::FixThumbnailExifRotateAfterDownloadAsset(ThumbR
     IThumbnailHelper::AddThumbnailGenerateTask(
         needDeleteFromVisionTables ? taskWithDeleteFromVisionTables : FixThumbnailExifRotateAfterDownloadAssetTask,
         opts, data, ThumbnailTaskType::FOREGROUND, ThumbnailTaskPriority::MID);
-    return E_OK;
-}
-
-ThmInodeCleanInfo GetThmInodeCleanInfo()
-{
-    ThmInodeCleanInfo info = {
-        .result = 0,
-        .isConfigXattr = 0,
-        .xattrInfo = "",
-    };
-
-    ssize_t len = getxattr(THUMB_DIR.c_str(), ACL_XATTR_DEFAULT, nullptr, 0);
-    CHECK_AND_RETURN_RET_INFO_LOG(len > 0, info, "Thumb dir dose not have xattr");
-
-    info.isConfigXattr = 1;
-    info.xattrInfo = Acl::ParseAclToString(THUMB_DIR, ACL_XATTR_DEFAULT);
-    return info;
-}
-
-int32_t ThumbnailGenerateHelper::DfxReportThumbnailDirAcl()
-{
-    int32_t errCode = 0;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(THUMBNAIL_RECORD_EVENT, errCode);
-    CHECK_AND_RETURN_RET_WARN_LOG(prefs != nullptr, E_ERR,  "Prefs is nullptr, err:%{public}d", errCode);
-    int32_t status = prefs->GetInt(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL, 0);
-    CHECK_AND_RETURN_RET(status != RECORD_REPORT_THUMBNAIL_DIR_ACL, E_OK);
-
-    MEDIA_INFO_LOG("Start DfxReportThumbnailDirAcl");
-    ThmInodeCleanInfo info = GetThmInodeCleanInfo();
-    auto instance = DfxManager::GetInstance();
-    CHECK_AND_RETURN_RET_LOG(instance != nullptr, E_ERR, "DfxManager ins nullptr");
-    int32_t err = DfxManager::GetInstance()->HandleThmInodeCleanInfo(info);
-    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "HandleThmInodeCleanInfo failed, err:%{public}d", err);
-
-    prefs->PutInt(EVENT_REPORT_FIX_THUMBNAIL_DIR_ACL, RECORD_REPORT_THUMBNAIL_DIR_ACL);
-    prefs->FlushSync();
-    MEDIA_INFO_LOG("Finish DfxReportThumbnailDirAcl, xattr info:%{public}s", info.xattrInfo.c_str());
     return E_OK;
 }
 // LCOV_EXCL_STOP

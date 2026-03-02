@@ -719,6 +719,7 @@ int32_t MediaAssetsService::CancelPhotoUriPermissionInner(
 
 std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(GetAssetsDto &dto, int32_t passCode)
 {
+    MEDIA_INFO_LOG("MediaAssetsService::GetAssets enter");
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
     cmd.SetDataSharePred(dto.predicates);

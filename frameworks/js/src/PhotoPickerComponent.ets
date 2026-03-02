@@ -82,9 +82,43 @@ export struct PhotoPickerComponent {
   dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
   badgeConfigIsSending: boolean = false;
   @ObjectLink @Watch('onChanged') pickerController: PickerController;
+  @State revokeIndex = 0;
+  isPickerKilled = false;
   private proxy: UIExtensionProxy | undefined;
   pickerController.onEnterPhotoBrowser = () => {
     return false;
+  }
+
+  setWindowStageChangeLinstener() {
+      console.log('photopickercomponent WindowStageChangeLinstener');
+      try {
+          let applicationContext = getContext(this).getApplicationContext();
+          applicationContext.on('applicationStateChange', {
+              onApplicationForeground: () => {
+                  console.log(`photopickercomponent is foreground isPickerKilled = ${this.isPickerKilled} ${this.revokeIndex}`);
+                  if (this.isPickerKilled) {
+                      this.revokeIndex++;
+                      this.isPickerKilled = false;
+                  }
+              },
+              onApplicationBackground: () => {
+                  console.log('photopickercomponent is background');
+              }
+          });
+      } catch (e) {
+          console.log(`photopickercomponent onWindowStageChangeLinstener on - failed ${JSON.stringify(e)}`);
+      }
+  }
+ 	 
+  aboutToDisappear() {
+      try {
+          let applicationContext = getContext(this).getApplicationContext();
+          applicationContext.off('applicationStateChange');
+          console.log(`photopickercomponent onWindowStageChangeLinstener off - disappear`);
+      } catch (e) {
+          // 重复解off会有异常
+          console.log(`photopickercomponent onWindowStageChangeLinstener on - failed ${JSON.stringify(e)}`);
+      }
   }
 
   pickerController.parseIsMovingPhotoBadgeShown = () => {
@@ -276,6 +310,7 @@ export struct PhotoPickerComponent {
       Column() {
         SecurityUIExtensionComponent({
           parameters: {
+            errorRevokeIndex: this.revokeIndex,
             "ability.want.params.uiExtensionTargetType": "photoPicker",
             uri: "multipleselect",
             targetPage: "photoPage",
@@ -345,6 +380,16 @@ export struct PhotoPickerComponent {
           })
           .onError((error) => {
             console.info('PhotoPickerComponent onError: ' + JSON.stringify(error));
+            console.info('PhotoPickerComponent revokeIndex: ' + this.revokeIndex); 
+            if (error.code === 100014) { 
+              console.log('PhotoPickerComponent is set isPickerKilled = true');
+              this.isPickerKilled = true; 
+              let e = new PickerError();
+              e.functionName = error?.name || 'extension_exit_abnormally';
+              e.errorCode = error.code;
+              e.errorMessage = error?.message || 'the extension ability exited abnormally, please check AMS log.';
+              this.handleOnError(e);
+            }
           });
       }
       .width('100%')
@@ -392,6 +437,9 @@ export struct PhotoPickerComponent {
     } else if (dataType === 'onBadgeConfigSend') {
       this.handleBadgeConfigSend(wantParam)
       console.info('PhotoPickerComponent onReceive: onBadgeConfigSend');
+    } else if (dataType === 'onBackground') { 
+       console.info('PhotoPickerComponent onReceive: onBackground'); 
+       this.revokeIndex = 0; 
     } else if (dataType === 'onMovingPhotoBadgeStateChange') {
       this.onMovingPhotoBadgeStateChangeSend(wantParam)
       console.info('PhotoPickerComponent onReceive: onMovingPhotoBadgeStateChangeSend');

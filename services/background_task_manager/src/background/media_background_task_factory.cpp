@@ -15,12 +15,14 @@
 #define MLOG_TAG "Media_Background"
 
 #include "media_background_task_factory.h"
+#include "media_clear_invalid_user_comment_task.h"
 #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "media_cloud_sync_backgroud_task.h"
 #endif
 #include "media_file_manager_temp_file_aging_task.h"
 #include "media_video_mode_task.h"
 #include "media_deleted_file_task.h"
+#include "media_thumbnail_acl_task.h"
 #include "medialibrary_subscriber.h"
 #include "media_log.h"
 
@@ -33,7 +35,9 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         #endif
         std::make_shared<MediaFileManagerTempFileAgingTask>(),
         std::make_shared<MediaVideoModeTask>(),
+        std::make_shared<MediaClearInvalidUserCommentTask>(),
         std::make_shared<MediaDeletedFileTask>(),
+        std::make_shared<MediaThumbnailAclTask>(),
     };
 }
 

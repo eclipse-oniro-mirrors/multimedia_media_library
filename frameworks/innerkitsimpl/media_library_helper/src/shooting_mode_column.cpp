@@ -125,6 +125,15 @@ void ShootingModeAlbum::GetRAWImageAlbumPredicates(T& predicates, const bool hid
 }
 
 template <class T>
+void ShootingModeAlbum::GetCinematicVideoAlbumPredicates(T& predicates, const bool hiddenState)
+{
+    PhotoQueryFilter::Config config {};
+    config.hiddenConfig = hiddenState ? PhotoQueryFilter::ConfigType::INCLUDE : PhotoQueryFilter::ConfigType::EXCLUDE;
+    PhotoQueryFilter::ModifyPredicate(config, predicates);
+    predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO));
+}
+
+template <class T>
 void ShootingModeAlbum::GetGeneralShootingModeAlbumPredicates(const ShootingModeAlbumType type,
     T& predicates, const bool hiddenState)
 {
@@ -158,6 +167,10 @@ void ShootingModeAlbum::GetShootingModeAlbumPredicates(const ShootingModeAlbumTy
         }
         case ShootingModeAlbumType::MP4_3DGS_ALBUM: {
             Get3DGSAlbumPredicates(predicates, hiddenState);
+            return;
+        }
+        case ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM: {
+            GetCinematicVideoAlbumPredicates(predicates, hiddenState);
             return;
         }
         default: {
@@ -200,6 +213,7 @@ string ShootingModeAlbum::GetQueryAssetsIndex(const ShootingModeAlbumType type)
         {ShootingModeAlbumType::MP4_3DGS_ALBUM, PhotoColumn::PHOTO_BURST_MODE_ALBUM_INDEX},
         {ShootingModeAlbumType::TIME_LAPSE, PhotoColumn::PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX},
         {ShootingModeAlbumType::QUICK_CAPTURE_ALBUM, PhotoColumn::PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX},
+        {ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM, PhotoColumn::PHOTO_BURST_MODE_ALBUM_INDEX},
     };
     if (SHOOTING_MODE_INDEX_MAP.find(type) == SHOOTING_MODE_INDEX_MAP.end()) {
         MEDIA_ERR_LOG("Shooting mode type %{public}d is not in the map", static_cast<int32_t>(type));
@@ -224,6 +238,9 @@ vector<ShootingModeAlbumType> ShootingModeAlbum::GetShootingModeAlbumOfAsset(int
     }
     if (photoSubType == static_cast<int32_t>(PhotoSubType::SPATIAL_3DGS)) {
         result.push_back(ShootingModeAlbumType::MP4_3DGS_ALBUM);
+    }
+    if (photoSubType == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
+        result.push_back(ShootingModeAlbumType::CINEMATIC_VIDEO_ALBUM);
     }
     if (mimetype == "image/x-adobe-dng") {
         result.push_back(ShootingModeAlbumType::RAW_IMAGE_ALBUM);

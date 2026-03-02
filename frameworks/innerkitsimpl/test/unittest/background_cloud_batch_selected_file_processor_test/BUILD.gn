@@ -37,6 +37,7 @@ ohos_unittest("background_cloud_batch_selected_file_processor_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background_cloud_batch_selected_file_download_callback.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background_cloud_batch_selected_file_processor.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_related_system_state_manager.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/cloud_media_common.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/background_cloud_batch_selected_file_processor_test.cpp",
     "./src/mock_cloud_sync_utils.cpp",
@@ -74,6 +75,13 @@ ohos_unittest("background_cloud_batch_selected_file_processor_test") {
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]
+
+  if (media_library_cellular_data_enable) {
+    external_deps += [
+      "core_service:tel_core_service_api",
+      "cellular_data:tel_cellular_data_api"
+    ]
+  }
 
   sanitize = {
     cfi = true

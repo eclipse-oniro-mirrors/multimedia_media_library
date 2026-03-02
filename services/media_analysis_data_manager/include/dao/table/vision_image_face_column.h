@@ -56,6 +56,8 @@ const std::string EMOTION = "emotion";
 const std::string COMPLETENESS = "completeness";
 const std::string SIMPLE_FACE_SCORE = "face_score";
 const std::string SIMPLE_FACE_SCORE_VERSION = "face_score_version";
+const std::string PERSONALIZATION_SCORE = "personalization_score";
+const std::string PERSONALIZATION_SCORE_VERSION = "personalization_score_version";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_INCLUDE_VISION_IMAGE_FACE_COLUMN_H

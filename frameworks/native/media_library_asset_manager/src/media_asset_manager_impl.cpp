@@ -379,15 +379,19 @@ bool MediaAssetManagerImpl::NotifyImageDataPrepared(AssetHandler *assetHandler)
         CHECK_AND_RETURN_RET_LOG(strncpyResult == E_OK, false, "strncpy failed");
         if (dataHandler->onRequestQuickImageDataPreparedHandler_ != nullptr) {
             int32_t photoQuality = static_cast<int32_t>(MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS);
-            MediaLibrary_MediaQuality quality = (dataHandler->GetPhotoQuality() == photoQuality)
-                ? MEDIA_LIBRARY_QUALITY_FULL
-                : MEDIA_LIBRARY_QUALITY_FAST;
             bool isPicture = true;
             OH_PictureNative* pictureNative = nullptr;
             OH_ImageSourceNative* imageSourceNative = nullptr;
+            bool isHighQuality = false;
             GetPictureNativeObject(
-                assetHandler->requestId, dataHandler->GetRequestUri(), &pictureNative, &imageSourceNative, isPicture);
-            
+                assetHandler->requestId, dataHandler->GetRequestUri(), &pictureNative, &imageSourceNative,
+                isPicture, isHighQuality);
+            if (isHighQuality && isPicture) {
+                dataHandler->SetPhotoQuality(photoQuality);
+            }
+            MediaLibrary_MediaQuality quality = (dataHandler->GetPhotoQuality() == photoQuality)
+                ? MEDIA_LIBRARY_QUALITY_FULL
+                : MEDIA_LIBRARY_QUALITY_FAST;
             MediaLibrary_ErrorCode status;
             if (isPicture) {
                 status = pictureNative != nullptr ? MEDIA_LIBRARY_OK : MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
@@ -693,14 +697,14 @@ OH_ImageSourceNative* MediaAssetManagerImpl::CreateImageSource(const std::string
 }
 
 void MediaAssetManagerImpl::GetPictureNativeObject(const std::string requestId, const std::string fileUri,
-    OH_PictureNative** pictureNative, OH_ImageSourceNative** imageSourceNative, bool &isPicture)
+    OH_PictureNative** pictureNative, OH_ImageSourceNative** imageSourceNative, bool &isPicture, bool &isHighQuality)
 {
     MEDIA_INFO_LOG("GetPictureNativeObject");
     std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
     std::size_t index = tempStr.find("/");
     std::string fileId = tempStr.substr(0, index);
 
-    auto picture = PictureHandlerClient::RequestPicture(std::atoi(fileId.c_str()));
+    auto picture = PictureHandlerClient::RequestPicture(std::atoi(fileId.c_str()), isHighQuality);
     if (picture == nullptr) {
         MEDIA_INFO_LOG("picture is null");
         isPicture = false;

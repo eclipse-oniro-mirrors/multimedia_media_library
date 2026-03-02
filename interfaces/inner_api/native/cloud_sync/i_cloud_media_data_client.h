@@ -68,7 +68,8 @@ public:
         const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos,
         std::vector<MediaOperateResult> &result) = 0;
     virtual int32_t GetDownloadThms(std::vector<CloudMetaData> &cloudMetaDataVec, const DownloadThumPara &param) = 0;
-    virtual int32_t OnDownloadThms(const std::unordered_map<std::string, int32_t> &resMap, int32_t &failSize) = 0;
+    virtual int32_t OnDownloadThms(const std::unordered_map<std::string, int32_t> &resMap,
+        int32_t &failSize, const int32_t sceneCode = 0) = 0;
     virtual int32_t GetDownloadThmNum(int32_t &totalNum, int32_t type) = 0;
     // 缓存视频
     virtual int32_t GetVideoToCache(std::vector<CloudMetaData> &cloudMetaDataVec, int32_t size) = 0;

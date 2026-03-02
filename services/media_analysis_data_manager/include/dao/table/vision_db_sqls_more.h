@@ -77,7 +77,8 @@ const std::string CREATE_ANALYSIS_ALBUM_FOR_ONCREATE = "CREATE TABLE IF NOT EXIS
 const std::string ANALYSIS_ALBUM_UPDATE_SEARCH_TRIGGER = "analysis_album_update_search_trigger";
 const std::string CREATE_ANALYSIS_ALBUM_UPDATE_SEARCH_TRIGGER = "CREATE TRIGGER IF NOT EXISTS " +
     ANALYSIS_ALBUM_UPDATE_SEARCH_TRIGGER +
-    " AFTER UPDATE OF " + ALBUM_NAME + ", "  + IS_ME + ", " + ALBUM_RELATIONSHIP +
+    " AFTER UPDATE OF " + ALBUM_NAME + ", "  + IS_ME + ", " + ALBUM_RELATIONSHIP + ", " +
+    COVER_URI + ", " + RANK + ", " + TAG_ID + ", " + USER_OPERATION + ", " + GROUP_TAG + ", " + USER_DISPLAY_LEVEL +
     " ON " + ANALYSIS_ALBUM_TABLE +
     " FOR EACH ROW WHEN (NEW." + ALBUM_SUBTYPE + " = " + std::to_string(PORTRAIT) + ")" +
     " BEGIN " +

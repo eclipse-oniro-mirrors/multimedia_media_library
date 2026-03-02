@@ -73,6 +73,7 @@ ohos_unittest("medialibrary_thumbnail_service_test") {
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
+    "dfs_service:cloudsync_kit_inner",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "file_api:filemgmt_libn",
