@@ -214,9 +214,9 @@ int32_t CloudMediaDownloadControllerService::CleanAttachment(MessageParcel &data
     isValid = static_cast<int32_t>(req.cloudIdList.size()) <= maxcloudIdListSize;
     CHECK_AND_RETURN_RET_LOG(isValid, IPC::UserDefineIPC().WriteResponseBody(reply, resp, E_ERR),
         "cloudId size: %{public}d", static_cast<int32_t>(req.cloudIdList.size()));
-    int64_t attachementSize = 0;
-    ret = this->service_.CleanAttachment(req.cloudIdList, attachementSize);
-    resp.attachmentSize = attachementSize;
+    int64_t attachmentSize = 0;
+    ret = this->service_.CleanAttachment(req.cloudIdList, attachmentSize);
+    resp.attachmentSize = attachmentSize;
     return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
 }
 }  // namespace OHOS::Media::CloudSync

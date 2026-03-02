@@ -692,7 +692,7 @@ int32_t CloudMediaDownloadService::CleanAttachment(
     bool isValid = !cloudIdList.empty();
     CHECK_AND_RETURN_RET_LOG(isValid, E_ERR, "cloudId is empty");
     std::vector<PhotosPo> photoInfos;
-    int32_t ret = this->commonDao_QueryLocalByCloudId(cloudIdList, {}, photoInfos);
+    int32_t ret = this->commonDao_.QueryLocalByCloudId(cloudIdList, {}, photoInfos);
     isValid = !photoInfos.empty();
     CHECK_AND_RETURN_RET_LOG(isValid, E_RDB, "No query data. cloudId size: %{public}d",
                              static_cast<int32_t>(cloudIdList.size()));
@@ -733,7 +733,7 @@ int32_t CloudMediaDownloadService::CleanAttachments(
 {
     for (auto &attachmentDto : attachmentList) {
         int64_t allfileSize = 0;
-        for (const auto &cloudPath : attachmentDto.attachements) {
+        for (const auto &cloudPath : attachmentDto.attachments) {
             std::string localPath = CloudMediaSyncUtils::GetLocalPath(cloudPath);
             CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(localPath));
             size_t fileSize = 0;
@@ -743,7 +743,7 @@ int32_t CloudMediaDownloadService::CleanAttachments(
             // should audit int log file.
             attachmentDto.deletedAttachments.emplace_back(localPath);
         }
-        attachmentDto.attachementSize = allfileSize;
+        attachmentDto.attachmentSize = allfileSize;
         attachmentSize += allfileSize;
         MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(attachmentDto.fileId),
                                                                attachmentDto.cloudPath);

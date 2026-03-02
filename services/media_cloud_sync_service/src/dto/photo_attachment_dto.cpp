@@ -25,10 +25,10 @@ std::string PhotoAttachmentDto::ToString() const
     std::stringstream ss;
     ss << "{"
        << "\"fileId\": " << this->fileId << ", "
-       << "\"attachmentSize\": " << this->attachementSize << ", "
+       << "\"attachmentSize\": " << this->attachmentSize << ", "
        << "\"cloudPath\": " << this->cloudPath << ", ";
     ss << "\"attachments\": [";
-    for (const auto &node : this->attachements) {
+    for (const auto &node : this->attachments) {
         ss << "\"" << node << "\", ";
     }
     ss << "], ";
