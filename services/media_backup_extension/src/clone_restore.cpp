@@ -3054,6 +3054,10 @@ void CloneRestore::BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,
         bool cond = (updatedRows < 0 || ret < 0);
         CHECK_AND_PRINT_LOG(!cond, "BatchInsertFileInfoData Failed to update column: %s",
             fileInfos[i].cloudPath.c_str());
+        std::string dirPath = GetThumbnailLocalPath(fileInfos[i].cloudPath);
+        if (!MediaFileUtils::IsFileExists(dirPath)) {
+            continue;
+        }
         MediaLibraryPhotoOperations::StoreThumbnailSize(to_string(fileInfos[i].fileIdNew),
             fileInfos[i].cloudPath);
     }
