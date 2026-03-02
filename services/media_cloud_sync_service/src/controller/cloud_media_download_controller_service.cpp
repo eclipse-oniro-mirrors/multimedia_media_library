@@ -31,6 +31,7 @@
 #include "cloud_media_uri_utils.h"
 #include "get_download_asset_vo.h"
 #include "on_download_asset_vo.h"
+#include "clean_attachment_vo.h"
 
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaDownloadControllerService::GetDownloadThms(MessageParcel &data, MessageParcel &reply)
@@ -197,5 +198,25 @@ int32_t CloudMediaDownloadControllerService::OnDownloadLakeAsset(MessageParcel &
     MediaOperateResultRespBody respBody;
     respBody.result = this->processor_.GetMediaOperateResult(resultDtos);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t CloudMediaDownloadControllerService::CleanAttachment(MessageParcel &data, MessageParcel &reply)
+{
+    CleanAttachmentReqBody req;
+    CleanAttachmentRespBody resp;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, req);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret),
+        "CleanAttachment Read Req Error");
+    bool isValid = !req.cloudIdList.empty();
+    CHECK_AND_RETURN_RET_INFO_LOG(isValid, IPC::UserDefineIPC().WriteResponseBody(reply, resp, E_OK),
+        "cloudId is empty");
+    int32_t maxcloudIdListSize = 500;
+    isValid = static_cast<int32_t>(req.cloudIdList.size()) <= maxcloudIdListSize;
+    CHECK_AND_RETURN_RET_LOG(isValid, IPC::UserDefineIPC().WriteResponseBody(reply, resp, E_ERR),
+        "cloudId size: %{public}d", static_cast<int32_t>(req.cloudIdList.size()));
+    int64_t attachmentSize = 0;
+    ret = this->service_.CleanAttachment(req.cloudIdList, attachmentSize);
+    resp.attachmentSize = attachmentSize;
+    return IPC::UserDefineIPC().WriteResponseBody(reply, resp, ret);
 }
 }  // namespace OHOS::Media::CloudSync

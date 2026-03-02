@@ -1301,4 +1301,38 @@ HWTEST_F(CloudMediaDataClientTest, UpdateData_test_02, TestSize.Level1)
     int32_t ret = cloudMediaDataClient.UpdateData(tableName, uppredicates, buckets, "update");
     EXPECT_EQ(ret, -1);
 }
+
+HWTEST_F(CloudMediaDataClientTest, CleanAttachment_test_01, TestSize.Level1)
+{
+    std::string cloudId = "3d4970270f8d4b15b4ced48bd7f25dd44c7ad693ae57426d863fec74422b388e";
+    std::vector<std::string> cloudIdList = {cloudId};
+    int64_t size = 0;
+    CloudMediaDataClient cloudMediaDataClient(1, 100);
+    int32_t ret = cloudMediaDataClient.CleanAttachment(cloudIdList, size);
+    EXPECT_EQ(ret, 0);
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(PhotoColumn::PHOTO_CLOUD_ID, cloudIdList);
+    const std::vector<std::string> columns = {};
+    auto resultSet = rdbStore_->Query(predicates, columns);
+    EXPECT_TRUE(resultSet != nullptr);
+}
+
+HWTEST_F(CloudMediaDataClientTest, CleanAttachment_test_02, TestSize.Level1)
+{
+    std::string cloudId = "35c73dbc2cde4816833eb4747a80d947347b8302ca494ead9fd5fed15beabb1b";
+    std::vector<std::string> cloudIdList = {cloudId};
+    int64_t size = 0;
+    CloudMediaDataClient cloudMediaDataClient(1, 100);
+    int32_t ret = cloudMediaDataClient.CleanAttachment(cloudIdList, size);
+    EXPECT_EQ(ret, E_RDB);
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(PhotoColumn::PHOTO_CLOUD_ID, cloudIdList);
+    const std::vector<std::string> columns = {};
+    auto resultSet = rdbStore_->Query(predicates, columns);
+    EXPECT_TRUE(resultSet != nullptr);
+    int32_t rowCount = 0;
+    ret = resultSet->GetRowCount(rowCount);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(rowCount, 0);
+}
 }  // namespace OHOS::Media::CloudSync

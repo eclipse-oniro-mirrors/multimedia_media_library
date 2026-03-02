@@ -52,6 +52,7 @@ enum class CloudMediaOperationCode : uint32_t {
     CMD_CHECK_AND_FIX_ALBUM,
     CMD_QUERY_DATA,
     CMD_UPDATE_DATA,
+    CMD_CLEAN_ATTACHMENT,
 };
 
 enum class CloudMediaPhotoOperationCode : uint32_t {

@@ -89,6 +89,7 @@ public:
             std::vector<std::unordered_map<std::string, std::string>> &results) = 0;
     virtual int32_t UpdateData(const std::string &tableName, const DataShare::DataSharePredicates &predicates,
             const DataShare::DataShareValuesBucket &value, const std::string &operateName) = 0;
+    virtual int32_t CleanAttachment(const std::vector<std::string> &cloudIdList, int64_t &attachmentSize) = 0;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_I_CLOUD_MEDIA_DATA_CLIENT_H

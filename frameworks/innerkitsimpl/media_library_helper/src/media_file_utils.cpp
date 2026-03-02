@@ -52,6 +52,9 @@
 #include "image_packer.h"
 #include "media_audio_column.h"
 #include "media_string_utils.h"
+#include "moving_photo_file_utils.h"
+#include "photo_file_utils.h"
+#include "media_edit_utils.h"
 
 using namespace std;
 // LCOV_EXCL_START
@@ -2643,6 +2646,20 @@ std::string MediaFileUtils::GetLocalPath(const std::string &path)
         localPath.replace(pos, PhotoColumn::FILES_CLOUD_DIR.length(), PhotoColumn::FILES_LOCAL_DIR);
     }
     return localPath;
+}
+
+int32_t MediaFileUtils::FindNormalPhotoAttachments(const std::string &cloudPath,
+    std::vector<std::string> &cloudPathList)
+{
+    std::vector<std::string> attachmentPathList = {
+        // Note. attachment does not include cloudPath.
+        // path: /storage/cloud/files/.editData/Photo/${bucketId}/${fileName}.${suffix}/source.jpg
+        MediaEditUtils::GetEditDataSourcePath(cloudPath),
+        // path: /storage/cloud/files/.editData/Photo/${bucketId}/${fileName}.${suffix}/editData
+        MediaEditUtils::GetEditDataPath(cloudPath),
+    };
+    cloudPathList.insert(cloudPathList.end(), attachmentPathList.begin(), attachmentPathList.end());
+    return E_OK;
 }
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP
