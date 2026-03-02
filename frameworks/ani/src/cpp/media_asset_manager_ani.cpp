@@ -651,23 +651,6 @@ bool MediaAssetManagerAni::CreateOnProgressHandlerInfo(ani_env *env, unique_ptr<
     return true;
 }
 
-static void SavePicture(const std::string &fileUri)
-{
-    std::string uriStr = CONST_PATH_SAVE_PICTURE;
-    std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
-    std::size_t index = tempStr.find("/");
-    std::string fileId = tempStr.substr(0, index);
-    MediaLibraryAniUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    MediaLibraryAniUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, fileId);
-    MediaLibraryAniUtils::UriAppendKeyValue(uriStr, CONST_IMAGE_FILE_TYPE, "1");
-    MediaLibraryAniUtils::UriAppendKeyValue(uriStr, "uri", fileUri);
-    Uri uri(uriStr);
-    DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(PhotoColumn::PHOTO_IS_TEMP, false);
-    DataShare::DataSharePredicates predicate;
-    UserFileClient::Update(uri, predicate, valuesBucket);
-}
-
 static string PhotoQualityToString(MultiStagesCapturePhotoStatus photoQuality)
 {
     static const string HIGH_QUALITY_STRING = "high";
@@ -958,11 +941,6 @@ void MediaAssetManagerAni::OnDataPrepared(ani_env *env, AssetHandler *assetHandl
     }
 
     bool isPicture = true;
-    if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_ARRAY_BUFFER ||
-        dataHandler->GetReturnDataType() == ReturnDataType::TYPE_IMAGE_SOURCE) {
-        string uri = dataHandler->GetRequestUri();
-        SavePicture(uri);
-    }
     ani_object aniValueOfMedia = assetHandler->isError ? nullptr : GetAniValueOfMedia(env, dataHandler, isPicture,
         assetHandler->photoQuality);
     ani_object aniValueOfInfoMap = nullptr;

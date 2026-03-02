@@ -401,23 +401,6 @@ bool IsSaveCallbackInfoByTranscoder(MediaObject &mediaObject,
     return false;
 }
 
-static void SavePicture(std::string &fileUri)
-{
-    std::string uriStr = CONST_PATH_SAVE_PICTURE;
-    std::string tempStr = fileUri.substr(PhotoColumn::PHOTO_URI_PREFIX.length());
-    std::size_t index = tempStr.find("/");
-    std::string fileId = tempStr.substr(0, index);
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, fileId);
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, CONST_IMAGE_FILE_TYPE, "1");
-    MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, "uri", fileUri);
-    Uri uri(uriStr);
-    DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(PhotoColumn::PHOTO_IS_TEMP, false);
-    DataShare::DataSharePredicates predicate;
-    UserFileClient::Update(uri, predicate, valuesBucket);
-}
-
 void MediaAssetManagerImpl::GetByteArrayObject(const string &requestUri,
     MediaObject &mediaObject, bool isSource)
 {
@@ -661,11 +644,6 @@ void MediaAssetManagerImpl::NotifyMediaDataPrepared(AssetHandler *assetHandler)
         if (valueOfInfoMap.head == nullptr || valueOfInfoMap.size == 0) {
             LOGE("Failed to get info map");
         }
-    }
-    if (assetHandler->returnDataType == ReturnDataType::TYPE_ARRAY_BUFFER ||
-        assetHandler->returnDataType == ReturnDataType::TYPE_IMAGE_SOURCE) {
-        string uri = assetHandler->requestUri;
-        SavePicture(uri);
     }
     MediaObject mediaObject;
     GetValueOfMedia(assetHandler, mediaObject);
