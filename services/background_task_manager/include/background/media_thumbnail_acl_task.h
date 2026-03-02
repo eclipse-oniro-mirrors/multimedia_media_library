@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_MEDIA_BACKGROUND_MEDIA_THUMANAIL_ACL_TASK
-#define OHOS_MEDIA_BACKGROUND_MEDIA_THUMANAIL_ACL_TASK
+#ifndef OHOS_MEDIA_BACKGROUND_MEDIA_THUMBNAIL_ACL_TASK
+#define OHOS_MEDIA_BACKGROUND_MEDIA_THUMBNAIL_ACL_TASK
 
 #include "i_media_background_task.h"
 
@@ -76,4 +76,4 @@ private:
     int32_t FlushProgressEvent(const std::string &xattrInfo, int32_t fileId);
 };
 }  // namespace OHOS::Media::Background
-#endif  // OHOS_MEDIA_BACKGROUND_MEDIA_THUMANAIL_ACL_TASK
+#endif  // OHOS_MEDIA_BACKGROUND_MEDIA_THUMBNAIL_ACL_TASK
