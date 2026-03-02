@@ -1,0 +1,79 @@
+# Copyright (C) 2021-2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+group("unittest") {
+  testonly = true
+  deps = [ ":media_analysis_data_manager_dto_test" ]
+}
+
+ohos_unittest("media_analysis_data_manager_dto_test") {
+  module_out_path = "media_library/media_analysis_data_manager"
+
+  include_dirs = [
+    "./include",
+    "//foundation/multimedia/media_library/services/media_analysis_data_manager/include",
+    "//foundation/multimedia/media_library/services/media_analysis_data_manager/include/dto",
+    "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_COMMON_PATH}/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
+    "${MEDIALIB_COMMON_PATH}/media_ipc_common/include/utils",
+    "${MEDIALIB_COMMON_PATH}/media_ipc_common/include/vo",
+    "${MEDIALIB_COMMON_PATH}/media_ipc_common/include/config",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_albums_manager/include/dto",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include/controller",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include/service",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include/dto",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include/dao",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include/dao/album",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include/dao/asset",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_analysis_data_manager/include/dao/common",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/dao",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/dto",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/utils",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/controller",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_permission/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_albums_manager/include/dto",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_albums_manager/include/vo",
+  ]
+
+  sources = [
+    "./src/media_analysis_data_manager_dto_test.cpp",
+    "../../../../../services/media_analysis_data_manager/src/dto/get_order_position_dto.cpp",
+  ]
+
+  deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_base:zuri",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "c_utils:utils",
+    "data_share:datashare_consumer",
+    "data_share:datashare_common",
+    "data_share:datashare_provider",
+    "hitrace:hitrace_meter",
+    "ipc:ipc_single",
+    "samgr:samgr_proxy",
+  ]
+}
