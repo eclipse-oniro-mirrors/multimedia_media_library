@@ -17,6 +17,7 @@
 #include "medialibrary_ani_enum_comm.h"
 #include "media_device_column.h"
 #include "photo_album_column.h"
+#include "media_library_napi_def.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "medialibrary_errno.h"
@@ -93,6 +94,10 @@ std::shared_ptr<MediaLibraryAsyncContext> MediaAniNativeImpl::GetAssetsContext(a
     std::shared_ptr<MediaLibraryAsyncContext> context = std::make_shared<MediaLibraryAsyncContext>();
     CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
     context->assetType = TYPE_PHOTO;
+    if (!IsPredicateValid(predicate, ASSET_FETCH_OPT)) {
+        ANI_ERR_LOG("GetAssetsContext: IsPredicateValid failed");
+        return nullptr;
+    }
     if (!HandleSpecialPredicate(context, predicate, ASSET_FETCH_OPT)) {
         ANI_ERR_LOG("HandleSpecialPredicate failed");
         return nullptr;
@@ -116,6 +121,73 @@ std::shared_ptr<MediaLibraryAsyncContext> MediaAniNativeImpl::GetAssetsContext(a
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
         to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
     return context;
+}
+
+static bool CheckKeyInPhotoAlbumEnum(const std::string &inputKey, FetchOptionType fetchOptType)
+{
+    static const std::unordered_set<std::string> photoValidKeys = []() {
+        std::unordered_set<std::string> keys;
+        keys.reserve(IMAGEVIDEOKEY_ENUM_PROPERTIES.size());
+        for (const auto& pair : IMAGEVIDEOKEY_ENUM_PROPERTIES) {
+            keys.insert(pair.second);
+        }
+        return keys;
+    } ();
+    static const std::unordered_set<std::string> albumValidKeys = []() {
+        std::unordered_set<std::string> keys;
+        keys.reserve(ALBUMKEY_ENUM_PROPERTIES.size());
+        for (const auto& pair : ALBUMKEY_ENUM_PROPERTIES) {
+            keys.insert(pair.second);
+        }
+        return keys;
+    } ();
+    if (fetchOptType == ASSET_FETCH_OPT) {
+        return photoValidKeys.find(inputKey) != photoValidKeys.end();
+    }
+    return albumValidKeys.find(inputKey) != albumValidKeys.end();
+}
+
+static bool CheckPublicKey(const std::string &inputKey, FetchOptionType fetchOptType)
+{
+    if (fetchOptType == ASSET_FETCH_OPT) {
+        return PUBLIC_PHOTO_KEYS.find(inputKey) != PUBLIC_PHOTO_KEYS.end();
+    }
+    return PUBLIC_ALBUM_KEYS.find(inputKey) != PUBLIC_ALBUM_KEYS.end();
+}
+
+bool MediaAniNativeImpl::IsPredicateValid(const DataSharePredicates *predicate, const FetchOptionType &fetchOptType)
+{
+    CHECK_COND_RET(predicate != nullptr, false, "IsPredicateValid: predicate is nullptr");
+    constexpr int32_t FIELD_IDX = 0;
+    auto &items = predicate->GetOperationList();
+    if (items.empty()) {
+        ANI_ERR_LOG("IsPredicateValid: predicate operation list is empty, skip check");
+        return true;
+    }
+
+    for (auto &item : items) {
+        if (API23_PLUS_OPERATIONS.find(static_cast<DataShare::OperationType>(item.operation)) ==
+            API23_PLUS_OPERATIONS.end()) {
+            continue;
+        }
+        CHECK_COND_RET(!item.singleParams.empty(), false,
+            "IsPredicateValid: 23+ operation %{public}d field(key) is empty, not allowed",
+            static_cast<int>(item.operation));
+        CHECK_COND_RET(std::holds_alternative<std::string>(item.GetSingle(FIELD_IDX).value), false,
+            "IsPredicateValid: 23+ operation %{public}d field(key) is not string type",
+            static_cast<int>(item.operation));
+        std::string key = static_cast<std::string>(item.GetSingle(FIELD_IDX));
+        if (MediaLibraryAniUtils::IsSystemApp()) {
+            CHECK_COND_RET(CheckKeyInPhotoAlbumEnum(key, fetchOptType), false,
+                "IsPredicateValid: system app operation %{public}d has invalid key %{public}s fetch type %{public}d",
+                item.operation, key.c_str(), fetchOptType);
+        } else {
+            CHECK_COND_RET(CheckPublicKey(key, fetchOptType), false,
+                "IsPredicateValid: operation %{public}d has invalid key %{public}s fetch type %{public}d",
+                item.operation, key.c_str(), fetchOptType);
+        }
+    }
+    return true;
 }
 
 static bool HandleSpecialDateTypePredicate(const OperationItem &item,
