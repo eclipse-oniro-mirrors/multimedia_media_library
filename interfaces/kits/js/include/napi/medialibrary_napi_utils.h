@@ -586,6 +586,7 @@ public:
     static napi_value BuildNextRowObject(const napi_env& env, std::shared_ptr<RowObject>& rowObj, bool isShared);
     static napi_value BuildNextRowAlbumObject(const napi_env& env, std::shared_ptr<RowObject>& rowObj);
     static napi_status hasFetchOpt(napi_env env, const napi_value arg, bool &hasFetchOpt);
+    static bool ParseFileIdFromPredicates(const DataShare::DataSharePredicates &predicates, std::string &fileId);
 
 private:
     static napi_value BuildValueByIndex(const napi_env& env, int32_t index, const std::string& name,
