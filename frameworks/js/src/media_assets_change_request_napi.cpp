@@ -88,11 +88,6 @@ static napi_value GetAssetArray(napi_env env, napi_value arg, vector<shared_ptr<
 
 napi_value MediaAssetsChangeRequestNapi::Constructor(napi_env env, napi_callback_info info)
 {
-    if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "The constructor can be called only by system apps");
-        return nullptr;
-    }
-
     napi_value newTarget = nullptr;
     CHECK_ARGS(env, napi_get_new_target(env, info, &newTarget), JS_INNER_FAIL);
     CHECK_COND_RET(newTarget != nullptr, nullptr, "Failed to check new.target");
@@ -186,11 +181,6 @@ bool MediaAssetsChangeRequestNapi::CheckChangeOperations(napi_env env)
 
 napi_value MediaAssetsChangeRequestNapi::JSSetFavorite(napi_env env, napi_callback_info info)
 {
-    if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-        return nullptr;
-    }
-
     auto asyncContext = make_unique<MediaAssetsChangeRequestAsyncContext>();
     bool isFavorite;
     CHECK_COND_WITH_MESSAGE(env,

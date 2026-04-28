@@ -1171,11 +1171,6 @@ napi_value MediaAssetChangeRequestNapi::JSSetEditData(napi_env env, napi_callbac
 
 napi_value MediaAssetChangeRequestNapi::JSSetFavorite(napi_env env, napi_callback_info info)
 {
-    if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-        return nullptr;
-    }
-
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     bool isFavorite;
     CHECK_COND_WITH_MESSAGE(env,

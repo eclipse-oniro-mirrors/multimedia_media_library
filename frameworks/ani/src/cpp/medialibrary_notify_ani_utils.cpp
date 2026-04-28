@@ -391,13 +391,13 @@ ani_object MediaLibraryNotifyAniUtils::BuildPhotoAssetChangeInfo(ani_env *env,
     SetValueString(env, "uri", photoAssetChangeInfo.uri_.c_str(), retObj);
     SetValueString(env, "albumUri", photoAssetChangeInfo.ownerAlbumUri_.c_str(), retObj);
     SetValueEnum(env, "mediaType", photoAssetChangeInfo.mediaType_, retObj);
+    SetValueBool(env, "isFavorite", photoAssetChangeInfo.isFavorite_, retObj);
     if (!MediaLibraryAniUtils::IsSystemApp()) {
         return retObj;
     }
 
     SetValueInt32(env, "fileId", photoAssetChangeInfo.fileId_, retObj);
     SetValueString(env, "dateDay", photoAssetChangeInfo.dateDay_.c_str(), retObj);
-    SetValueBool(env, "isFavorite", photoAssetChangeInfo.isFavorite_, retObj);
     SetValueBool(env, "isHidden", photoAssetChangeInfo.isHidden_, retObj);
     SetValueEnum(env, "strongAssociation", photoAssetChangeInfo.strongAssociation_, retObj);
     SetValueEnum(env, "thumbnailVisible", photoAssetChangeInfo.thumbnailVisible_, retObj);
