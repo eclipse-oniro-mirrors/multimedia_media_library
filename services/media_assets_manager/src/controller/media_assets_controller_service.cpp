@@ -571,6 +571,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::Restore
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC),
+        &MediaAssetsControllerService::AsyncRestore
+    },
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL),
         &MediaAssetsControllerService::StopRestore
     },
@@ -2936,6 +2940,31 @@ int32_t MediaAssetsControllerService::Restore(MessageParcel &data, MessageParcel
     }
     auto dto = RestoreDto::Create(reqBody);
     ret = MediaAssetsService::GetInstance().Restore(dto);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "Restore failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::AsyncRestore(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter AsyncRestore");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    RestoreReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Restore Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = ParameterUtils::CheckRestore(reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("params is invalid");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    auto dto = RestoreDto::Create(reqBody);
+    ret = MediaAssetsService::GetInstance().AsyncRestore(dto);
     CHECK_AND_PRINT_LOG(ret == E_OK, "Restore failed");
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
