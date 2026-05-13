@@ -17,6 +17,7 @@
 #define MEDIALIBRARY_NOTIFY_NEW_OBSERVER_H
 
 #include <mutex>
+#include <thread>
 #include <vector>
 #include "napi/native_api.h"
 #include "parcel.h"
@@ -90,6 +91,7 @@ public:
     std::map<Notification::NotifyUriType, std::vector<std::shared_ptr<ClientObserver>>> clientObservers_;
     std::map<Notification::NotifyUriType, std::map<std::string,
         std::vector<std::shared_ptr<ClientObserver>>>> singleClientObservers_;
+    std::mutex observerMutex_;
 };
 
 class ChangeInfoTaskWorker {
@@ -100,6 +102,7 @@ public:
     void StartWorker();
     void AddTaskInfo(NewJsOnChangeCallbackWrapper callbackWrapper);
     bool IsRunning();
+    void StopWorker();
 
 private:
     void HandleNotifyTaskPeriod();
@@ -115,9 +118,11 @@ private:
     static std::mutex instanceMtx_;
     std::atomic<bool> isThreadRunning_{false};
     static std::mutex vectorMutex_;
+    std::mutex workerMutex_;
     int64_t lastTaskTime_ = 0;
     int32_t notifyTaskCount_ = 0;
     size_t notifyTaskInfoSize_ = 0;
+    std::thread workerThread_;
 };
 } // Media
 } // OHOS
