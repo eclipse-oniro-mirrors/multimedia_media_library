@@ -5754,9 +5754,9 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesVideo(const std::shared_p
         DfxUtils::GetSafePath(fileAsset->GetFilePath()).c_str(), isEdited, isMovingPhoto);
     if (isMovingPhoto) {
         bool isMovingPhotoEffectMode = (fileAsset->GetMovingPhotoEffectMode()) > 0;
-        return FileUtils::SaveMovingPhotoVideo(fileAsset->GetFilePath(), isEdited, isMovingPhotoEffectMode);
+        return FileUtils::SaveMovingPhotoVideoShareCamera(fileAsset->GetFilePath(), isEdited, isMovingPhotoEffectMode);
     }
-    return FileUtils::SaveVideo(fileAsset->GetFilePath(), isEdited);
+    return FileUtils::SaveVideoShareCamera(fileAsset->GetFilePath(), isEdited);
 }
 
 int32_t MediaLibraryPhotoOperations::RemoveTempVideo(const std::string &path)

@@ -33,12 +33,13 @@ public:
         const std::string &mime_type, bool isEdited = false);
     EXPORT static int DealPicture(const std::string &mime_type, const std::string &path,
         std::shared_ptr<Media::Picture> &picture, bool isHighQualityPicture, bool isCamera = true);
-    EXPORT static int32_t SaveVideo(const std::string &filePath, bool isEdited = false);
-    EXPORT static int32_t SaveMovingPhotoVideo(const std::string &filePath, bool isEdited,
+    EXPORT static int32_t SaveVideoShareCamera(const std::string &filePath, bool isEdited = false);
+    EXPORT static int32_t SaveMovingPhotoVideoShareCamera(const std::string &filePath, bool isEdited,
         bool isMovingPhotoEffectMode);
     EXPORT static int32_t DeleteTempVideoFile(const std::string &filePath);
     EXPORT static int DeleteFile(const std::string &fileName);
     EXPORT static bool IsFileExist(const std::string &fileName);
+    EXPORT static int DeleteFileIfExist(const std::string &fileName);
 
     // picture处理
     static void SavePictureWithFilters(std::shared_ptr<Media::Picture> &inPicture, const std::string &outputPath,

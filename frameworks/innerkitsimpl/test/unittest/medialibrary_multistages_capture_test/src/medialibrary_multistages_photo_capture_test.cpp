@@ -790,8 +790,8 @@ HWTEST_F(MediaLibraryMultiStagesPhotoCaptureTest, file_utils_save_file_001, Test
     const string testFileName = "/data/test/test.jpg";
     char testOutput[] = "test.jpg";
     FileUtils::SaveImage(testFileName, (void*)testOutput, sizeof(testOutput));
-    FileUtils::SaveMovingPhotoVideo(testFileName, false, false);
-
+    FileUtils::SaveMovingPhotoVideoShareCamera(testFileName, false, false);
+    FileUtils::SaveVideoShareCamera(testFileName, false);
     EXPECT_EQ(FileUtils::IsFileExist(testFileName), true);
     EXPECT_EQ(FileUtils::IsFileExist(testFileName + ".tmp"), false);
     EXPECT_EQ(FileUtils::DeleteFile(testFileName), 0);
