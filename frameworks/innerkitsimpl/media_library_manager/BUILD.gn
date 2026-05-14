@@ -27,6 +27,9 @@ ohos_shared_library("media_library_manager") {
 
   sources = [
     "./media_library_manager.cpp",
+    "./src/medialibrary_manager_notify_observer.cpp",
+    "./src/medialibrary_manager_notify_observer_manager.cpp",
+    "./src/medialibrary_manager_notify_utils.cpp",
     "./src/media_library_tab_old_photos_client.cpp",
     "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
   ]
@@ -36,6 +39,8 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/include/data",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
@@ -76,6 +81,7 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_uri_from_filepath_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_filepath_from_uri_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/close_asset_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_single_photo_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_uris_by_old_uris_inner_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/retain_cloud_media_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/trash_photos_vo.cpp",
