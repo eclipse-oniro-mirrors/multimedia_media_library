@@ -20,14 +20,10 @@
 #include <string>
 #include <vector>
 
-#define private public
-#define protected public
 #include "datashare_result_set.h"
 #include "media_assets_controller_service.h"
 #include "media_assets_service.h"
 #include "rdb_utils.h"
-#undef private
-#undef protected
 
 #include "compatible_info_vo.h"
 #include "user_define_ipc_client.h"
