@@ -852,6 +852,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_background_task_factory.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_burst_key_duplicate_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_clear_invalid_user_comment_task.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_camera_cache_clean_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_clean_all_dirty_files_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_deleted_file_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_file_manager_temp_file_aging_task.cpp",
