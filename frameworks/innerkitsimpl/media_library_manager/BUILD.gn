@@ -150,6 +150,7 @@ ohos_shared_library("media_library_manager") {
       "ffrt:libffrt",
       "memmgr_override:libpurgeablemem_plugin",
       "memmgr_override:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
