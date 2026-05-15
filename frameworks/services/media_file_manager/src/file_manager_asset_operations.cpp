@@ -241,9 +241,6 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
             tmpTitle, tmpDisplayName) != E_OK) {
             MEDIA_ERR_LOG("can not move file to %{public}s", DfxUtils::GetSafePath(tmpInnerFilePath).c_str());
             return E_ERR;
-        } else { // 重命名成功后, 需要先修改storage_path, 后续文件通知判断变更
-            // 后续移动失败要回退storage_path
-            UpdateFileManageAssetInfo(refresh, mediaId, tmpInnerFilePath, tmpDisplayName, tmpTitle);
         }
     }
     MoveAssetsToFileManagerUpdateData updateData;

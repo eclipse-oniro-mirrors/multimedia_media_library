@@ -57,6 +57,8 @@ const std::string TARGET_DIR = "/storage/media/local/files";
 const std::string DOCS_DIR = "/storage/media/local/files/Docs";
 const std::string DOCS_LPATH = "/FromDocs";
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
+const std::string CLONE_FILE_ROOT_LPATH = "/FromDocs/";
+const std::string CLONE_FILE_ROOT_ALBUM = "根目录";
 
 
 shared_ptr<NativeRdb::ResultSet> QueryGetAlbumByAlbumId(const int32_t &albumId)
@@ -115,7 +117,12 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
 {
     std::string targetPath;
     if (cloneAssetInfo.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER)) {
-        targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + "/" + cloneAssetInfo.displayName;
+        if (cloneAssetInfo.albumLpath == CLONE_FILE_ROOT_LPATH) {
+            targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + cloneAssetInfo.displayName;
+        } else {
+            targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + "/" +
+                cloneAssetInfo.displayName;
+        }
         AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(std::to_string(cloneAssetInfo.fileId));
         std::string renamePath;
         std::string renameTitle;
@@ -333,6 +340,9 @@ int32_t InsertAlbumByLPath(const string &lpath)
     size_t lastSlashPos = lpath.find_last_of('/');
     if (lastSlashPos != std::string::npos) {
         albumName = lpath.substr(lastSlashPos + 1);
+    }
+    if (lpath == CLONE_FILE_ROOT_LPATH) {
+        albumName = CLONE_FILE_ROOT_ALBUM;
     }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Failed to get rdbStore.");
