@@ -471,6 +471,7 @@ ohos_shared_library("medialibrary_nutils") {
       "ffrt:libffrt",
       "memmgr_override:libpurgeablemem_plugin",
       "memmgr_override:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -572,6 +573,7 @@ ohos_shared_library("medialibrary") {
     external_deps += [
       "memmgr_override:libpurgeablemem_plugin",
       "memmgr_override:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -640,6 +642,7 @@ ohos_shared_library("userfilemanager") {
     external_deps += [
       "memmgr_override:libpurgeablemem_plugin",
       "memmgr_override:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -718,6 +721,7 @@ ohos_shared_library("photoaccesshelpernative") {
     external_deps += [
       "memmgr_override:libpurgeablemem_plugin",
       "memmgr_override:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -978,6 +982,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     external_deps += [
       "memmgr_override:libpurgeablemem_plugin",
       "memmgr_override:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
