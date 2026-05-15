@@ -84,6 +84,9 @@ private:
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t CopyAndMoveLakeCloudAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t CopyAndMoveFileManagerCloudAssetToTrash(const PhotosPo &photoInfo,
+        std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t BuildMediaFilePath(const PhotosPo &photoInfo, std::string &targetPath);
     int32_t BuildLakeFilePath(const PhotosPo &photoInfo, std::string &targetPath);
     int32_t SetValue(NativeRdb::ValuesBucket &valuesBucket,
