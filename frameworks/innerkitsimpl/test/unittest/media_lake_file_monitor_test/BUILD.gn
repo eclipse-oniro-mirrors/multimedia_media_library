@@ -177,7 +177,9 @@ ohos_unittest("media_lake_file_monitor_test") {
     "zlib:shared_libz",
   ]
  
-  defines = []
+  defines = [
+    "MEDIALIBRARY_LAKE_SUPPORT"
+  ]
  
   if (defined(global_parts_info) &&
       defined(global_parts_info.filemanagement_dfs_service)) {

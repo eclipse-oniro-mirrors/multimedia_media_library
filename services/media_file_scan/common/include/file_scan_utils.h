@@ -22,6 +22,14 @@
 #include "metadata.h"
 
 namespace OHOS::Media {
+
+enum class PrefixType {
+    CLOUD = 0,
+    LOCAL,
+    CLOUD_EDIT_DATA,
+    LOCAL_EDIT_DATA,
+    CLOUD_THUMB,
+};
 #define EXPORT __attribute__ ((visibility ("default")))
 class FileScanUtils {
 public:

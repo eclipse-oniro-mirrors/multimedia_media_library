@@ -30,6 +30,9 @@
 #include "single_kvstore.h"
 #include "userfile_manager_types.h"
 #include "thumbnail_const.h"
+#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+#include "file_const.h"
+#endif
 
 namespace OHOS {
 namespace Media {
@@ -92,8 +95,11 @@ public:
     EXPORT int32_t RegenerateAstcBackground();
     EXPORT int32_t SyncRegenerateAstcWithLocal(const std::string &id);
     // FileManager缩略图生成接口
-    EXPORT int32_t CreateThumbnailForFileManager(const std::string &fileId, const std::string &path);
+#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+    EXPORT int32_t CreateThumbnailForFileManager(const ThumbnailInfo &fileInfo);
     EXPORT void RestoreFileManagerThumbnailTasks();
+#endif
+
 private:
     EXPORT ThumbnailService();
     bool CheckSizeValid();

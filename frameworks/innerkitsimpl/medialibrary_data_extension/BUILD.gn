@@ -441,6 +441,7 @@ ohos_shared_library("medialibrary_data_extension") {
 
   media_thumbnail_source = [
     "${MEDIALIB_THUMBNAIL_PATH}/src/cloud_thumbnail_observer.cpp",
+    "${MEDIALIB_THUMBNAIL_PATH}/src/file_manager_thumbnail_helper.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/ithumbnail_helper.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_aging_helper.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_const.cpp",
