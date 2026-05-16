@@ -79,12 +79,9 @@ void ConsistencyCheckManager::RequestRun(CheckScene scene)
 
 void ConsistencyCheckManager::DisableCheck()
 {
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        checkEnabled_ = false;
-        MEDIA_INFO_LOG("checkEnabled_: %{public}d", checkEnabled_);
-    }
-    StopAll();
+    MEDIA_INFO_LOG("Start DisableCheck");
+    StopScenesInternal(true, true);
+    MEDIA_INFO_LOG("End DisableCheck");
 }
 
 void ConsistencyCheckManager::EnableCheck()
@@ -114,23 +111,43 @@ ConsistencyCheckManager::StopAction ConsistencyCheckManager::HandleDeviceStatusA
     return ConsistencyCheckManager::StopAction::NONE;
 }
 
+void ConsistencyCheckManager::StopScenesInternal(bool disableCheck, bool clearQueue)
+{
+    bool shouldInterruptScanner = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        
+        if (disableCheck) {
+            checkEnabled_ = false;
+            MEDIA_INFO_LOG("DisableCheck: checkEnabled_: %{public}d", checkEnabled_);
+        }
+        if (clearQueue) {
+            MEDIA_INFO_LOG("Clear pendingScenes_, size: %{public}zu", pendingScenes_.size());
+            pendingScenes_.clear();
+        }
+        isInterrupted_.store(true);
+        if (runningScene_ != CheckScene::IDLE) {
+            shouldInterruptScanner = true;
+            MEDIA_INFO_LOG("runningScene[%{public}d] is active, disableCheck[%{public}d], clearQueue[%{public}d]",
+                static_cast<int32_t>(runningScene_), disableCheck, clearQueue);
+        }
+    }
+    if (shouldInterruptScanner) {
+        GlobalScanner::GetInstance().InterruptScanner();
+    }
+}
+
 void ConsistencyCheckManager::StopAll()
 {
     MEDIA_INFO_LOG("Start StopAll");
-    {
-        std::lock_guard<std::mutex> lock(mutex_);
-        pendingScenes_.clear();
-        isInterrupted_.store(true);
-    }
-    GlobalScanner::GetInstance().InterruptScanner();
+    StopScenesInternal(false, true);
     MEDIA_INFO_LOG("End StopAll");
 }
 
 void ConsistencyCheckManager::StopRunningScene()
 {
     MEDIA_INFO_LOG("Start StopRunningScene");
-    isInterrupted_.store(true);
-    GlobalScanner::GetInstance().InterruptScanner();
+    StopScenesInternal(false, false);
     MEDIA_INFO_LOG("End StopRunningScene");
 }
 
