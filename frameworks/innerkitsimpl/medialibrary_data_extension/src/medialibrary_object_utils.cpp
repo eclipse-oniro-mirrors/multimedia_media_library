@@ -819,8 +819,14 @@ int32_t HandleRequestPicture(MediaLibraryCommand &cmd)
 
 int32_t HandlePhotoRequestPictureBuffer(MediaLibraryCommand &cmd)
 {
-    std::string fd = cmd.GetQuerySetParam("fd");
-    return PictureHandlerService::RequestBufferHandlerFd(fd);
+    int32_t fd = std::atoi(cmd.GetQuerySetParam("fd").c_str());
+    int32_t fileId = std::atoi(cmd.GetQuerySetParam(MediaColumn::MEDIA_ID).c_str());
+    return PictureHandlerService::RequestBufferHandlerFd(fd, fileId);
+}
+
+void MediaLibraryObjectUtils::ClearBufferFdMap(const int32_t &fileId)
+{
+    PictureHandlerService::ClearBufferFdMap(fileId);
 }
 
 static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeType &transcodeType)

@@ -4801,6 +4801,7 @@ int32_t MediaLibraryPhotoOperations::FinishRequestPicture(MediaLibraryCommand &c
     MEDIA_INFO_LOG("photoId: %{public}s", photoId.c_str());
     auto pictureManagerThread = PictureManagerThread::GetInstance();
     CHECK_AND_EXECUTE(pictureManagerThread == nullptr, pictureManagerThread->FinishAccessingPicture(photoId));
+    MediaLibraryObjectUtils::ClearBufferFdMap(fileId);
     return E_OK;
 }
 

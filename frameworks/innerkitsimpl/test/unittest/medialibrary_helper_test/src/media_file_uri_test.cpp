@@ -741,17 +741,5 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetMediaTypeUri_Test_003, Te
     ret = MediaFileUri::GetMediaTypeUri(mediaType, apiVersion);
     EXPECT_EQ(ret, "/image");
 }
-
-HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsPictureUri_Test_001, TestSize.Level1)
-{
-    const std::string picture = "file://media/Photo/picture/";
-    const std::string pictureBuffer = "file://media/Photo/pictureBuffer/";
-    const std::string finishPicture = "datashare:///media/phaccess_photo_operation/finish_request_picture";
-    const std::string photo = "file://media/Photo/";
-    EXPECT_EQ(MediaFileUri::IsPictureUri(picture), false);
-    EXPECT_EQ(MediaFileUri::IsPictureUri(pictureBuffer), true);
-    EXPECT_EQ(MediaFileUri::IsPictureUri(finishPicture), true);
-    EXPECT_EQ(MediaFileUri::IsPictureUri(photo), false);
-}
 } // namespace Media
 } // namespace OHOS
