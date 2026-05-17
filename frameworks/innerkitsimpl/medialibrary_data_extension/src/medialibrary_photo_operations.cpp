@@ -90,6 +90,7 @@
 #include "media_duplicate_checker_utils.h"
 #include "photo_file_utils.h"
 #include "file_parser.h"
+#include "scan_config_builder.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -4866,7 +4867,7 @@ int32_t MediaLibraryPhotoOperations::AddFilters(MediaLibraryCommand& cmd)
             PhotoColumn::MEDIA_ID, to_string(id), OperationObject::FILESYSTEM_PHOTO, fileAssetColumns);
         CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES,
             "Failed to GetFileAssetFromDb, fileId = %{public}d", id);
-        int32_t errCode = AddFiltersToVideoExecute(fileAsset->GetFilePath(), true, true);
+        int32_t errCode = AddFiltersToVideoExecute(fileAsset->GetFilePath(), true, true, "", id);
         if (fileAsset->GetStageVideoTaskStatus() == static_cast<int32_t>(StageVideoTaskStatus::NEED_TO_STAGE)) {
             MultiStagesMovingPhotoCaptureManager::SaveMovingPhotoVideoFinished(id);
         }
@@ -5104,7 +5105,7 @@ int32_t MediaLibraryPhotoOperations::CopyVideoFile(const string& assetPath, bool
 }
 
 int32_t MediaLibraryPhotoOperations::AddFiltersToVideoExecute(const std::string &assetPath,
-    bool isSaveVideo, bool isNeedScan, const std::string &outputVideoPath)
+    bool isSaveVideo, bool isNeedScan, const std::string &outputVideoPath, int32_t fileId)
 {
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
     if ((MediaFileUtils::IsFileExists(editDataCameraPath))) {
@@ -5129,12 +5130,19 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToVideoExecute(const std::string 
             MLOG_TAG, __FUNCTION__, __LINE__, editData.c_str());
         CHECK_AND_RETURN_RET_LOG(SaveSourceVideoFile(assetPath, true) == E_OK, E_HAS_FS_ERROR,
             "Failed to save source video, path = %{public}s", assetPath.c_str());
-        VideoCompositionCallbackImpl::AddCompositionTask(assetPath, editData, isNeedScan, outputVideoPath);
+        VideoCompositionCallbackImpl::AddCompositionTask(assetPath, editData, isNeedScan, outputVideoPath, fileId);
     } else {
         int32_t ret = SaveTempMovingPhotoVideo(assetPath);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
             "Failed to save temp video, path = %{private}s", assetPath.c_str());
-        MediaLibraryObjectUtils::ScanMovingPhotoVideoAsync(assetPath, true);
+
+        ScanConfig config = ScanConfigBuilder()
+            .UseCameraShotPreset(true, ScanQuality::DEFAULT)
+            .SetFilePath(assetPath)
+            .SetFileId(fileId)
+            .SetNeedGenerateThumbnail(false)
+            .Build();
+        MediaLibraryObjectUtils::ScanFileAsync(config);
     }
 
     return E_OK;

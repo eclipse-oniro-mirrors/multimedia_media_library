@@ -29,6 +29,7 @@
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_object_utils.h"
 #include "medialibrary_inotify.h"
+#include "scan_config_builder.h"
 #ifdef META_RECOVERY_SUPPORT
 #include "medialibrary_meta_recovery.h"
 #endif
@@ -1910,6 +1911,31 @@ void MediaLibraryAssetOperations::InvalidateThumbnail(const string &fileId, int3
         }
     }
     ThumbnailService::GetInstance()->HasInvalidateThumbnail(fileId, tableName);
+}
+
+void MediaLibraryAssetOperations::ScanFile(const ScanConfig &config)
+{
+    auto finalConfig = config;
+
+    if (finalConfig.GetNeedGenerateThumbnail() && !finalConfig.GetCallback()) {
+        auto defaultCallback = make_shared<ScanAssetCallback>();
+        if (defaultCallback == nullptr) {
+            MEDIA_ERR_LOG("Failed to create default scan callback");
+            return;
+        }
+        defaultCallback->SetSync(config.GetCreateThumbSync());
+        defaultCallback->SetIsInvalidateThumb(config.GetInvalidateThumb());
+        defaultCallback->SetOriginalPhotoPicture(config.GetOriginalPicture());
+        
+        finalConfig = ScanConfigBuilder(config)
+            .SetCallback(defaultCallback)
+            .Build();
+    }
+    
+    int32_t ret = MediaScannerManager::GetInstance()->ScanSync(finalConfig);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ScanFile failed with error: %{public}d", ret);
+    }
 }
 
 void MediaLibraryAssetOperations::ScanFile(const string &path, bool isCreateThumbSync, bool isInvalidateThumb,

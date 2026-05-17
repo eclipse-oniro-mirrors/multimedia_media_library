@@ -2789,7 +2789,7 @@ int32_t ScanFileCallback::OnScanFinished(const int32_t status, const string &uri
     return E_OK;
 }
 
-void ScanFileCallback::SetCallback(std::shared_ptr<IMediaScannerCallback> &callback)
+void ScanFileCallback::SetCallback(const std::shared_ptr<IMediaScannerCallback> &callback)
 {
     this->callback_ = callback;
 }

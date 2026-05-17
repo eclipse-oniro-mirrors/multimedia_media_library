@@ -45,14 +45,16 @@ struct Task {
         string assetPath_;
         bool isNeedScan_;
         string outputVideoPath_;
+        int32_t fileId_{0};
         Task(string& sourceVideoPath, string& videoPath, string& editData,
-             const string& assetPath, bool isNeedScan, const string& outputVideoPath = "")
+             const string& assetPath, bool isNeedScan, const string& outputVideoPath = "", int32_t fileId = 0)
             : sourceVideoPath_(sourceVideoPath),
               videoPath_(videoPath),
               editData_(editData),
               assetPath_(assetPath),
               isNeedScan_(isNeedScan),
-              outputVideoPath_(outputVideoPath)
+              outputVideoPath_(outputVideoPath),
+              fileId_(fileId)
         {
         }
     };
@@ -62,9 +64,9 @@ struct Task {
 
     static int32_t CallStartComposite(const std::string& sourceVideoPath, const std::string& videoPath,
         const std::string& effectDescription, const std::string& assetPath, bool isNeedScan,
-        const std::string& outputVideoPath = "");
+        const std::string& outputVideoPath = "", int32_t fileId = 0);
     static void AddCompositionTask(const std::string& assetPath, std::string& editData, bool isNeedScan,
-        const std::string& outputVideoPath = "");
+        const std::string& outputVideoPath = "", int32_t fileId = 0);
     static int32_t EraseWatermarkTagAndStickerField(std::string& editData, bool& isFiltersFieldEmpty);
     static void InitCallbackImpl(std::shared_ptr<VideoCompositionCallbackImpl>& callBack,
         int32_t inputFileFd, int32_t outputFileFd, const std::string& videoPath, std::string& absSourceVideoPath,
@@ -81,6 +83,7 @@ private:
     string tempFilters_;
     string sourceVideoPath_;
     string assetPath_;
+    int32_t fileId_ = 0;
     bool isNeedScan_ = false;
 };
 

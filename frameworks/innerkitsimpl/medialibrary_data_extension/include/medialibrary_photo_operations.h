@@ -157,7 +157,7 @@ public:
     EXPORT static int32_t RemoveTempVideo(const std::string &path);
     EXPORT static int32_t SaveSourceVideoFile(const std::string &assetPath, const bool &isTemp);
     EXPORT static int32_t AddFiltersToVideoExecute(const std::string &assetPath,
-        bool isSaveVideo, bool isNeedScan = false, const std::string &outputVideoPath = "");
+        bool isSaveVideo, bool isNeedScan = false, const std::string &outputVideoPath = "", int32_t fileId = 0);
     EXPORT static int32_t DoRevertFilters(const std::shared_ptr<FileAsset> &fileAsset,
         std::string &path, std::string &sourcePath);
     EXPORT static int32_t CopyVideoFile(const std::string& assetPath, bool toSource);

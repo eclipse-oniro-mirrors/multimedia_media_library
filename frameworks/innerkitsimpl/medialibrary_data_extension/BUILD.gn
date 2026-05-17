@@ -67,6 +67,13 @@ config("media_data_extension_public_config") {
   include_scanner = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/concurrent",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/concurrent/handler",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/concurrent/resolver",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/internal",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/converter",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
   ]
 
   include_multistages_capture = [
@@ -421,7 +428,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_video_mode_operation.cpp",
   ]
 
-  media_scan_source = [
+media_scan_source = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/media_scan_executor.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/media_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/media_scanner_manager.cpp",
@@ -429,6 +436,16 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/metadata.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/metadata_extractor.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/scanner_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/scan_config.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/scan_config_builder.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/concurrent/handler/deduplication_handler.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/concurrent/resolver/quality_conflict_resolver.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/concurrent/resolver/resolver_registry.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/concurrent/enhanced_scan_executor.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/concurrent/scan_task_deduplicator.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/converter/scanner_context_converter.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/default_scan_strategy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/scan_strategy_manager.cpp",
   ]
 
   media_fuse_source = [

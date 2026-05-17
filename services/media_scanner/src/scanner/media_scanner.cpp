@@ -101,6 +101,11 @@ void MediaScannerObj::SetIsSkipAlbumUpdate(bool isSkipAlbumUpdate)
     isSkipAlbumUpdate_ = isSkipAlbumUpdate;
 }
 
+void MediaScannerObj::SetCameraShotMovingPhoto(bool isCameraShotMovingPhoto)
+{
+    isCameraShotMovingPhoto_ = isCameraShotMovingPhoto;
+}
+
 int32_t MediaScannerObj::ScanFile()
 {
     MEDIA_DEBUG_LOG("scan file %{private}s", path_.c_str());
@@ -338,7 +343,7 @@ int32_t MediaScannerObj::Commit()
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
     auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(AccurateRefresh::SCAN_FILE_BUSSINESS_NAME);
     if (data_->GetFileId() != FILE_ID_DEFAULT) {
-        uri_ = mediaScannerDb_->UpdateMetadata(*data_, tableName, api_, true, assetRefresh, needUpdateAssetName_);
+        uri_ = mediaScannerDb_->UpdateMetadata(*data_, tableName, api_, true, assetRefresh);
         if (!isSkipAlbumUpdate_) {
             assetRefresh->RefreshAlbum(static_cast<NotifyAlbumType>(NotifyAlbumType::SYS_ALBUM |
                 NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
@@ -578,14 +583,10 @@ int32_t MediaScannerObj::BuildData(const struct stat &statInfo)
         }
         return E_SCANNED;
     }
-    bool needUpdateAssetName = false;
     if (data_->GetFileId() == FILE_ID_DEFAULT) {
         data_->SetFileName(ScannerUtils::GetFileNameFromUri(path_));
-        needUpdateAssetName = true;
     }
     data_->SetFileTitle(ScannerUtils::GetFileTitle(data_->GetFileName()));
-    // title and display_name are obtained from db, do not to be updated again.
-    needUpdateAssetName_ = needUpdateAssetName;
 
     // statinfo
     data_->SetFileSize(statInfo.st_size);

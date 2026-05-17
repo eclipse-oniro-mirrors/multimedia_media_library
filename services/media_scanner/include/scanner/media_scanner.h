@@ -93,6 +93,8 @@ public:
 
     void SetIsSkipAlbumUpdate(bool isSkipAlbumUpdate);
 
+    void SetCameraShotMovingPhoto(bool isCameraShotMovingPhoto);
+
 private:
     /* file */
     EXPORT int32_t ScanFile();
@@ -150,7 +152,6 @@ private:
     int32_t fileId_ = 0;
     bool isSkipAlbumUpdate_ = false;
     bool isCameraShotMovingPhoto_ = false;
-    bool needUpdateAssetName_ = true;
 };
 
 class ScanErrCallback : public IMediaScannerCallback {
