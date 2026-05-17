@@ -89,6 +89,7 @@
 #include "file_asset.h"
 #include "media_duplicate_checker_utils.h"
 #include "photo_file_utils.h"
+#include "file_parser.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -103,6 +104,7 @@ const string FILE_MANAGER_BUNDLE_NAME = "com." + AlbumPlugin::BRAND_NAME + ".hmo
 constexpr int SAVE_PHOTO_WAIT_MS = 300;
 constexpr int TASK_NUMBER_MAX = 5;
 
+constexpr int32_t BATCH_SIZE = 200;
 constexpr int32_t CROSS_POLICY_ERR = 18;
 constexpr int32_t ORIENTATION_0 = 1;
 constexpr int32_t ORIENTATION_90 = 6;
@@ -2390,11 +2392,10 @@ void GetSystemMoveAssets(AbsRdbPredicates &predicates)
     predicates.SetWhereArgs(whereIdArgs);
 }
 
-int32_t PrepareUpdateArgs(MediaLibraryCommand &cmd, std::map<int32_t, std::vector<int32_t>> &ownerAlbumIds,
-    vector<string> &assetString, RdbPredicates &predicates)
+int32_t PrepareUpdateArgs(std::vector<std::string> fileIds, std::map<int32_t, std::vector<int32_t>> &ownerAlbumIds,
+    std::vector<std::string> &assetString, RdbPredicates &predicates)
 {
-    auto assetVector = cmd.GetAbsRdbPredicates()->GetWhereArgs();
-    for (const auto &fileAsset : assetVector) {
+    for (const auto &fileAsset : fileIds) {
         assetString.push_back(fileAsset);
     }
 
@@ -2759,34 +2760,27 @@ static int32_t HandleOtherMoveOperationsPartitionById(AccurateRefresh::AssetAccu
     return E_ERR;
 }
 
-int32_t UpdateSystemRows(MediaLibraryCommand &cmd)
+int32_t UpdateSystemRows(std::vector<std::string> fileIds, int32_t targetAlbumId)
 {
     std::map<int32_t, std::vector<int32_t>> ownerAlbumIds;
     vector<string> assetString;
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    CHECK_AND_RETURN_RET(PrepareUpdateArgs(cmd, ownerAlbumIds, assetString, predicates) == E_OK, E_INVALID_ARGUMENTS);
-
-    ValueObject value;
-    int32_t targetAlbumId = 0;
-    CHECK_AND_RETURN_RET_LOG(cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_OWNER_ALBUM_ID, value),
-        E_INVALID_ARGUMENTS, "get owner album id fail when move from system album");
-    value.GetInt(targetAlbumId);
+    CHECK_AND_RETURN_RET(
+        PrepareUpdateArgs(fileIds, ownerAlbumIds, assetString, predicates) == E_OK, E_INVALID_ARGUMENTS);
     ValuesBucket values;
     values.Put(PhotoColumn::PHOTO_OWNER_ALBUM_ID, to_string(targetAlbumId));
-
     NativeRdb::AbsRdbPredicates initPredicates(PhotoColumn::PHOTOS_TABLE);
-    initPredicates.In(PhotoColumn::MEDIA_ID, cmd.GetAbsRdbPredicates()->GetWhereArgs());
+    initPredicates.In(PhotoColumn::MEDIA_ID, fileIds);
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::UPDATE_SYSTEM_ASSET_BUSSINESS_NAME);
-    assetRefresh.Init(initPredicates);
+    int32_t ret = assetRefresh.Init(initPredicates);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "fail to init");
     int32_t lakeRet {E_ERR};
     int32_t fileRet {E_ERR};
 #ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
-    fileRet = HandleOtherMoveOperationsPartitionById(assetRefresh, cmd.GetAbsRdbPredicates()->GetWhereArgs(),
-        targetAlbumId);
+    fileRet = HandleOtherMoveOperationsPartitionById(assetRefresh, fileIds, targetAlbumId);
 #endif
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
-    lakeRet = LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(
-        assetRefresh, cmd.GetAbsRdbPredicates()->GetWhereArgs(), targetAlbumId);
+    lakeRet = LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(assetRefresh, fileIds, targetAlbumId);
 #endif
     int32_t changedRows = assetRefresh.UpdateWithDateTime(values, predicates);
     CHECK_AND_RETURN_RET_LOG(changedRows >= 0, changedRows, "Update owner album id fail when move from system album");
@@ -2865,6 +2859,42 @@ static int32_t HandleOtherMoveOperations(AccurateRefresh::AssetAccurateRefresh &
     return E_ERR;
 }
 
+std::vector<std::vector<std::string>> SplitVector(const std::vector<std::string> &input, size_t batchSize)
+{
+    std::vector<std::vector<std::string>> result;
+    for (size_t i = 0; i < input.size(); i += batchSize) {
+        std::vector<std::string> batch;
+        batch.reserve(batchSize);
+        size_t end = std::min(i + batchSize, input.size());
+        for (size_t j = i; j < end; ++j) {
+            batch.push_back(input[j]);
+        }
+        result.push_back(batch);
+    }
+    return result;
+}
+
+int32_t DealWithSystemAlbumMovement(MediaLibraryCommand &cmd)
+{
+    GetSystemMoveAssets(*cmd.GetAbsRdbPredicates());
+    std::vector<std::string> fileIds = cmd.GetAbsRdbPredicates()->GetWhereArgs();
+    ValueObject value;
+    int32_t targetAlbumId = 0;
+    CHECK_AND_RETURN_RET_LOG(cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_OWNER_ALBUM_ID, value),
+        E_INVALID_ARGUMENTS, "get owner album id fail when move from system album");
+    value.GetInt(targetAlbumId);
+    std::vector<std::vector<std::string>> fileIdsVector = SplitVector(fileIds, BATCH_SIZE);
+    int32_t updateSysRows = 0;
+    for (size_t i = 0; i < fileIdsVector.size(); i++) {
+        FileParser::SetFileManagerScanFlag(fileIdsVector[i], true);
+        int32_t updateSysRow = UpdateSystemRows(fileIdsVector[i], targetAlbumId);
+        FileParser::SetFileManagerScanFlag(fileIdsVector[i], false);
+        CHECK_AND_RETURN_RET_LOG(updateSysRow >= 0, updateSysRow, "fail to update system row");
+        updateSysRows += updateSysRow;
+    }
+    return updateSysRows;
+}
+
 int32_t MediaLibraryPhotoOperations::BatchSetOwnerAlbumId(MediaLibraryCommand &cmd)
 {
     vector<shared_ptr<FileAsset>> fileAssetVector;
@@ -2879,8 +2909,7 @@ int32_t MediaLibraryPhotoOperations::BatchSetOwnerAlbumId(MediaLibraryCommand &c
         "Failed to check whether move from system album, errCode=%{public}d", errCode);
     if (isSystemAlbum) {
         MEDIA_INFO_LOG("Move assets from system album");
-        GetSystemMoveAssets(*(cmd.GetAbsRdbPredicates()));
-        int32_t updateSysRows = UpdateSystemRows(cmd);
+        int32_t updateSysRows = DealWithSystemAlbumMovement(cmd);
         return updateSysRows;
     }
 

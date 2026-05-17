@@ -34,6 +34,8 @@
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
+std::mutex g_fileManagerScanFlagMutex;
+std::unordered_map<int32_t, bool> g_fileManagerScanFlag;
 const std::string PATH_HIDDEN_PREFIX = ".";
 // LCOV_EXCL_START
 bool FileParser::PhotosRowData::IsExist()
@@ -272,7 +274,14 @@ bool FileParser::HasChangePart(const FileParser::PhotosRowData &rowData)
     metaStatus_.isMimeTypeChanged = rowData.mimeType != fileInfo_.mimeType;
     metaStatus_.isStoragePathChanged = rowData.storagePath != fileInfo_.filePath;
     metaStatus_.isInvisible = rowData.syncStatus != static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE);
-    bool ret = metaStatus_.IsChanged();
+    bool scanFlag = true;
+    {
+        std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
+        if (g_fileManagerScanFlag.count(rowData.fileId) > 0 && g_fileManagerScanFlag[rowData.fileId]) {
+            scanFlag = false;
+        }
+    }
+    bool ret = metaStatus_.IsChanged() && scanFlag;
     CHECK_AND_EXECUTE(!ret, MEDIA_INFO_LOG("metaStatus: %{public}s, fileInfo: %{public}s",
         metaStatus_.ToString().c_str(), ToString().c_str()));
     return ret;
@@ -814,6 +823,23 @@ int64_t FileParser::GetFileDateAdded(const struct stat &statInfo)
         return mTime;
     }
     return MediaFileUtils::UTCTimeMilliSeconds();
+}
+
+void FileParser::SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan)
+{
+    for (const auto& fileIdStr : fileIds) {
+        CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
+        int32_t fileId = std::stoi(fileIdStr);
+        std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
+        if (stopScan) {
+            g_fileManagerScanFlag[fileId] = stopScan;
+        } else {
+            auto it = g_fileManagerScanFlag.find(fileId);
+            if (it != g_fileManagerScanFlag.end()) {
+                g_fileManagerScanFlag.erase(it);
+            }
+        }
+    }
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media
