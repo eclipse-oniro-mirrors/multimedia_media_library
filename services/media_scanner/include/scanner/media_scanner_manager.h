@@ -18,13 +18,17 @@
 
 #include <memory>
 
+#include "enhanced_scan_executor.h"
 #include "media_scanner.h"
 #include "media_scan_executor.h"
 #include "medialibrary_errno.h"
+#include "scan_config.h"
+#include "scan_strategy_manager.h"
 #include "userfile_manager_types.h"
 
 namespace OHOS {
 namespace Media {
+
 #define EXPORT __attribute__ ((visibility ("default")))
 class MediaScannerManager final {
 public:
@@ -46,13 +50,20 @@ public:
         bool isForceScan = false, int32_t fileId = 0);
     EXPORT int32_t ScanDir(const std::string &path, const std::shared_ptr<IMediaScannerCallback> &callback);
     EXPORT int32_t ScanDirSync(const std::string &path, const std::shared_ptr<IMediaScannerCallback> &callback);
+
+    EXPORT int32_t ScanSync(const ScanConfig &config);
+    EXPORT int32_t ScanAsync(const ScanConfig &config);
+
 private:
-    MediaScannerManager() = default;
+    MediaScannerManager();
+    std::shared_ptr<ScanTaskContext> PrepareValidatedContext(const ScanConfig &config, ScanExecutionMode executionMode);
 
     static std::shared_ptr<MediaScannerManager> instance_;
     static std::mutex instanceMutex_;
 
+    // Executors
     MediaScanExecutor executor_;
+    std::shared_ptr<EnhancedScanExecutor> enhancedExecutor_;
 };
 } // namespace Media
 } // namespace OHOS

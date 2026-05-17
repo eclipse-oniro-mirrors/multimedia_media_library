@@ -16,10 +16,14 @@
 #ifndef IMEDIA_SCANNER_CALLBACK_H
 #define IMEDIA_SCANNER_CALLBACK_H
 
+#include <memory>
 #include <string>
 
 namespace OHOS {
 namespace Media {
+
+class Picture;
+
 #define EXPORT __attribute__ ((visibility ("default")))
 class IMediaScannerCallback {
 public:
@@ -33,6 +37,8 @@ public:
      * @param path The path which was requested for scanning
      */
     EXPORT virtual int32_t OnScanFinished(const int32_t status, const std::string &uri, const std::string &path) = 0;
+    
+    EXPORT virtual void SetOriginalPhotoPicture(const std::shared_ptr<Media::Picture>& picture) {}
 };
 } // namespace Media
 } // namespace OHOS

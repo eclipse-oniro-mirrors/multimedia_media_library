@@ -43,6 +43,7 @@
 #include "request_policy.h"
 #include "medialibrary_asset_operations.h"
 #include "multistages_capture_dfx_capture_times.h"
+#include "scan_config_builder.h"
 
 using namespace std;
 #ifdef ABILITY_CAMERA_SUPPORT
@@ -559,7 +560,14 @@ int32_t MultiStagesVideoCaptureManager::SaveCameraVideo(const SaveCameraPhotoDto
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_ERR, "fileAsset is nullptr.");
     int32_t ret = UpdateIsTempAndDirty(dto, fileAsset->GetPhotoSubType());
     CHECK_AND_RETURN_RET_LOG(!(fileAsset->GetPath().empty()), E_ERR, "path is empty.");
-    MediaLibraryAssetOperations::ScanFile(fileAsset->GetPath(), false, true, true, dto.fileId);
+
+    ScanConfig config = ScanConfigBuilder()
+        .UseCameraShotPreset(false, ScanQuality::DEFAULT)
+        .SetFilePath(fileAsset->GetPath())
+        .SetFileId(dto.fileId)
+        .Build();
+    MediaLibraryAssetOperations::ScanFile(config);
+
     MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CAPTURE_VIDEO_TIMES_SUCCESS);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "MultistagesCapture Success, fileId: %{public}d, ret: %{public}d",

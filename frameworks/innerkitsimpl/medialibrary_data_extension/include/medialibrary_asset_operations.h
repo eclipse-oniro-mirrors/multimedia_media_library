@@ -33,6 +33,7 @@
 #include "medialibrary_command.h"
 #include "photo_album.h"
 #include "picture.h"
+#include "scan_config.h"
 #include "tlv_util.h"
 #include "value_object.h"
 #include "values_bucket.h"
@@ -129,6 +130,7 @@ public:
 #endif
     static void ScanFile(const std::string &path, bool isCreateThumbSync, bool isInvalidateThumb,
         bool isForceScan = false, int32_t fileId = 0, std::shared_ptr<Media::Picture> resultPicture = nullptr);
+    EXPORT static void ScanFile(const ScanConfig &config);
     EXPORT static FileManagement::CloudSync::CleanFileInfo GetCleanFileInfo(shared_ptr<FileAsset> &fileAssetPtr);
     EXPORT static void ClearDeletedFile(const std::vector<std::string> &ids, const std::string &table);
     EXPORT static void SaveDeletedFile(const std::vector<std::string> &ids,
@@ -227,7 +229,7 @@ private:
         {
             isInvalidateThumb = isInvalidate;
         }
-        void SetOriginalPhotoPicture(std::shared_ptr<Media::Picture> resultPicture)
+        void SetOriginalPhotoPicture(const std::shared_ptr<Media::Picture> &resultPicture) override
         {
             originalPhotoPicture = resultPicture;
         }

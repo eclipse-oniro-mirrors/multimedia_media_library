@@ -224,11 +224,11 @@ public:
     ScanFileCallback() = default;
     ~ScanFileCallback() = default;
     int32_t OnScanFinished(const int32_t status, const std::string &uri, const std::string &path) override;
-    void SetOriginalPhotoPicture(std::shared_ptr<Media::Picture> resultPicture)
+    void SetOriginalPhotoPicture(const std::shared_ptr<Media::Picture> &resultPicture) override
     {
         originalPhotoPicture = resultPicture;
     }
-    void SetCallback(std::shared_ptr<IMediaScannerCallback> &callback);
+    void SetCallback(const std::shared_ptr<IMediaScannerCallback> &callback);
 
 private:
     std::shared_ptr<Media::Picture> originalPhotoPicture = nullptr;
