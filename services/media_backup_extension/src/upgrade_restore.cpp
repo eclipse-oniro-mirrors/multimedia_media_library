@@ -116,7 +116,7 @@ RestoreConfigInfo UpgradeRestore::GetCurrentDeviceRestoreConfigInfo()
     restoreConfig.restoreSwitchType = SettingsDataManager::GetPhotosSyncSwitchStatus();
     if (restoreConfig.restoreSwitchType == SwitchStatus::NONE) {
         int32_t isCloudSyncSwitchOn = BackupFileUtils::IsCloneCloudSyncSwitchOn(sceneCode_);
-        MEDIA_WARN_LOG("fail to query photo sync switch status, isCloudSyncSwitchOn:%{public}d",
+        MEDIA_WARN_LOG("fail to query photo sync switch status, isCloudSyncSwitchOn:%{public}d.",
             isCloudSyncSwitchOn);
         restoreConfig.restoreSwitchType = (isCloudSyncSwitchOn == CheckSwitchType::SUCCESS_ON ||
             isCloudSyncSwitchOn == CheckSwitchType::UPGRADE_FAILED_ON) ?
