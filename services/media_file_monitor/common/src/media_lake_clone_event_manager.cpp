@@ -222,7 +222,7 @@ void MediaLakeCloneEventManager::ResetRestoreStatusBitMap()
     std::lock_guard<std::mutex> lock(statusMutex_);
     initRestoreStatusBitMap_.store(0);
     currentRestoreStatusBitMap_.store(0);
-    isExecuteGlobalScan_.store(true); // 重置isExecuteGlobalScan_为默认全盘扫描状态
+    isExecuteGlobalScan_.store(true);
 }
 
 void MediaLakeCloneDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &object)
