@@ -1179,6 +1179,16 @@ int32_t MediaFileUtils::CheckTitleCompatible(const string& title)
     return E_OK;
 }
 
+int32_t MediaFileUtils::CheckTitleAndExtensionSize(const string &title, const string &extension)
+{
+    CHECK_AND_RETURN_RET_LOG(title.length() <= DISPLAYNAME_MAX, -ENAMETOOLONG,
+        "Title length exceeds limit: %{public}zu", title.length());
+    CHECK_AND_RETURN_RET_LOG(title.length() + 1 + extension.length() <= DISPLAYNAME_MAX, -ENAMETOOLONG,
+        "Combined title and extension length exceeds limit: %{public}zu + %{public}zu",
+            title.length(), extension.length());
+    return E_OK;
+}
+
 std::string MediaFileUtils::GetFileAssetUri(const std::string &fileAssetData, const std::string &displayName,
     const int32_t &fileId)
 {

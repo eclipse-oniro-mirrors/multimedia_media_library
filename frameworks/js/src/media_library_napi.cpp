@@ -561,6 +561,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("setForceHideSensitiveType", PhotoAccessHelperSetForceHideSensitiveType),
             DECLARE_NAPI_FUNCTION("getAnalysisData", PhotoAccessHelperGetAnalysisData),
             DECLARE_NAPI_FUNCTION("createAssetsForAppWithAlbum", CreateAssetsForAppWithAlbum),
+            DECLARE_NAPI_FUNCTION("createAssetsWithAlbum", CreateAssetsWithAlbum),
             DECLARE_NAPI_FUNCTION("batchGetPhotoAssetParams", PhotoAccessHelperGetAssetMemberBatch),
             DECLARE_NAPI_FUNCTION("startAssetAnalysis", PhotoAccessStartAssetAnalysis),
             DECLARE_NAPI_FUNCTION("startAssetAnalysisAsync", PhotoAccessStartActiveAnalysis),
@@ -2239,7 +2240,11 @@ static void JSCreateUriArrayInCallback(napi_env env, MediaLibraryAsyncContext *c
         int count = 0;
         for (const auto &uri : context->uriArray) {
             napi_value uriObject = nullptr;
-            status = napi_create_string_utf8(env, uri.c_str(), NAPI_AUTO_LENGTH, &uriObject);
+            if (uri.empty()) {
+                napi_get_null(env, &uriObject);
+            } else {
+                status = napi_create_string_utf8(env, uri.c_str(), NAPI_AUTO_LENGTH, &uriObject);
+            }
             if (status != napi_ok || uriObject == nullptr) {
                 NAPI_ERR_LOG("Failed to get file asset uri array napi object");
                 napi_get_undefined(env, &jsContext->data);
@@ -6480,6 +6485,49 @@ static napi_value ParseArgsCreatePhotoAssetForAppWithAlbum(napi_env env, napi_ca
 
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamCallback(env, context)
         == napi_ok, "Failed to get callback");
+    return result;
+}
+
+static napi_value ParseArgsCreatePhotoAssetWithAlbum(napi_env env, napi_callback_info info,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    constexpr size_t minArgs = ARGS_TWO;
+    constexpr size_t maxArgs = ARGS_THREE;
+    NAPI_ASSERT(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs) ==
+        napi_ok, "Failed to get object info");
+    vector<napi_value> napiValues;
+    BundleInfo bundleInfo;
+    if (context->argc == ARGS_THREE) {
+        napi_valuetype valueType = napi_undefined;
+        napi_typeof(env, context->argv[ARGS_TWO], &valueType);
+        if (valueType == napi_string) {
+            string albumUri;
+            CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[ARGS_TWO],
+                albumUri) == napi_ok, "Failed to get albumUri");
+            context->isContainsAlbumUri = true;
+            MediaFileUri fileUri = MediaFileUri(albumUri);
+            bundleInfo.ownerAlbumId = fileUri.GetUriType() == API10_PHOTOALBUM_URI ?
+                MediaFileUtils::GetIdFromUri(albumUri) : "";
+        }
+    }
+
+    napi_value result = nullptr;
+    NAPI_CALL(env, napi_get_boolean(env, true, &result));
+    CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetNapiValueArray(env, context->argv[ARGS_ZERO], napiValues));
+    if (napiValues.empty() || napiValues.size() > MAX_CREATE_ASSET_LIMIT) {
+        NapiError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+            "CreationSettings array is invalid");
+        return nullptr;
+    }
+
+    for (const auto& napiValue : napiValues) {
+        CHECK_COND_WITH_MESSAGE(env, ParseCreateConfig(env, napiValue, bundleInfo, *context,
+            false) == napi_ok, "Parse asset create config failed");
+    }
+    bool isRealTimeThumb = false;
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamBool(env, context->argv[ARGS_ONE],
+        isRealTimeThumb) == napi_ok, "Failed to get isRealTimeThumb");
+    context->isRealTimeThumb = isRealTimeThumb;
     return result;
 }
 
@@ -11248,6 +11296,34 @@ static int32_t CallPhotoAccessCreateAssetForApp(MediaLibraryAsyncContext* contex
     return respBody.fileId;
 }
 
+static int32_t CallPhotoAccessCreateAssetsWithAlbum(MediaLibraryAsyncContext* context,
+    const DataShareValuesBucket &valuesBucket, std::string &outUri)
+{
+    bool isValid = false;
+    CreateAssetsWithAlbumReqBody reqBody;
+    reqBody.mediaType = valuesBucket.Get(CONST_MEDIA_DATA_DB_MEDIA_TYPE, isValid);
+
+    string extension = valuesBucket.Get(CONST_ASSET_EXTENTION, isValid);
+    string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, isValid);
+    string ownerAlbumId = valuesBucket.Get(PhotoColumn::PHOTO_OWNER_ALBUM_ID, isValid);
+    bool isRealTimeThumb = context->isRealTimeThumb;
+    reqBody.title = title;
+    reqBody.extension = extension;
+    reqBody.isRealTimeThumb = isRealTimeThumb;
+    if (context->isContainsAlbumUri) {
+        reqBody.ownerAlbumId = ownerAlbumId;
+    }
+
+    CreateAssetsWithAlbumRespBody respBody;
+    int32_t errCode = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(context->businessCode, reqBody, respBody);
+    if (errCode != 0) {
+        NAPI_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
+        return errCode;
+    }
+    outUri = respBody.outUri;
+    return respBody.fileId;
+}
+
 static void PhotoAccessAgentCreateAssetsExecute(napi_env env, void *data)
 {
     MediaLibraryTracer tracer;
@@ -11802,6 +11878,69 @@ napi_value MediaLibraryNapi::CreateAssetsForAppWithAlbum(napi_env env, napi_call
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "CreateAssetsForAppWithAlbum",
         PhotoAccessAgentCreateAssetsExecute, JSCreateAssetCompleteCallback);
+}
+
+static void PhotoAccessCreateAssetsWithAlbumExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessCreateAssetsWithAlbumExecute");
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    string uri;
+    GetCreateUri(context, uri);
+    Uri createFileUri(uri);
+    CHECK_IF_EQUAL(!context->valuesBucketArray.empty(), 
+        "valuesBucketArray is empty, no assets to create");
+    if (context->isContainsAlbumUri) {
+        bool isValid = CheckAlbumUri(env, context->valuesBucketArray[0], context);
+        if (!isValid) {
+            context->isContainsAlbumUri = false;
+        }
+    }
+    for (const auto& valuesBucket : context->valuesBucketArray) {
+        bool inValid = false;
+        string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, inValid);
+        string outUri;
+        int index = -EINVAL;
+        if (context->businessCode != 0) {
+            index = CallPhotoAccessCreateAssetsWithAlbum(context, valuesBucket, outUri);
+        }
+        if (index > 0) {
+            context->uriArray.push_back(move(outUri));
+            continue;
+        }
+        if (index == E_PERMISSION_DENIED || index == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(index);
+            NAPI_ERR_LOG("PERMISSION_DENIED, index: %{public}d.", index);
+            return;
+        }
+        context->uriArray.push_back("");
+        NAPI_ERR_LOG("InsertExt fail, index: %{public}d title: %{public}s.", index, title.c_str());
+    }
+}
+
+napi_value MediaLibraryNapi::CreateAssetsWithAlbum(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CreateAssetsWithAlbum");
+
+    NAPI_INFO_LOG("enter");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM);
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->needSystemApp = true;
+    asyncContext->isCreateByAgent = true;
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    NAPI_ASSERT(env, ParseArgsCreatePhotoAssetWithAlbum(env, info, asyncContext), "Failed to parse js args");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext,
+        "CreateAssetsWithAlbum", PhotoAccessCreateAssetsWithAlbumExecute,
+        JSCreateAssetCompleteCallback);
 }
 
 bool MediaLibraryNapi::isSucceedSetting(napi_env env, napi_value &members, napi_value jsResult, std::string &inputKey,

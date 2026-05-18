@@ -680,6 +680,7 @@ int32_t MediaScannerObj::ScanFileInternal()
     }
 
     bool isShareScene = data_->GetForAdd() && data_->GetOwnerPackage() == "com.huawei.hmos.instantshare";
+    int32_t needThumbRet = HandleNeedThumbnail();
     err = Commit();
     if (err != E_OK) {
         MEDIA_ERR_LOG("failed to commit err %{public}d", err);
@@ -689,6 +690,9 @@ int32_t MediaScannerObj::ScanFileInternal()
         return err;
     }
 
+    if (needThumbRet == E_NO_THUMB) {
+        return E_NO_THUMB;
+    }
     return isShareScene ? E_NO_THUMB : E_OK;
 }
 
@@ -1065,6 +1069,20 @@ int32_t MediaScannerObj::SetError()
 {
     int32_t ret = mediaScannerDb_->RecordError(errorPath_);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "record err fail %{public}d", ret);
+    return E_OK;
+}
+
+int32_t MediaScannerObj::HandleNeedThumbnail()
+{
+    if (data_ == nullptr) {
+        MEDIA_ERR_LOG("data_ is nullptr in HandleNeedThumbnail");
+        return E_OK;
+    }
+    int32_t needThumbnail = data_->GetNeedThumbnail();
+    if (needThumbnail == 0) {
+        data_->SetNeedThumbnail(1);
+        return E_NO_THUMB;
+    }
     return E_OK;
 }
 } // namespace Media

@@ -38,5 +38,14 @@ static vector<pair<int32_t, int32_t>> AddPhotoRiskStatusColumnsAndDeleteCritical
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_PHOTO_RISK_STATUS,
     "Photos", AddPhotoRiskStatusColumnsAndDeleteCritical);
+
+static vector<pair<int32_t, int32_t>> AddPhotoNeedThumbnailColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_NEED_THUMBNAIL, "INT DEFAULT 1 NOT NULL")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_NEED_THUMBNAIL, PHOTOS_MODULE_NAME, AddPhotoNeedThumbnailColumn);
 } // namespace Media
 } // namespace OHOS

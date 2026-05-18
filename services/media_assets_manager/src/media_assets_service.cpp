@@ -960,6 +960,31 @@ int32_t MediaAssetsService::CreateAssetForAppWithAlbum(CreateAssetDto& dto)
     return E_OK;
 }
 
+int32_t MediaAssetsService::CreateAssetWithAlbum(CreateAssetDto& dto)
+{
+    NativeRdb::ValuesBucket assetInfo;
+    assetInfo.PutString(CONST_ASSET_EXTENTION, dto.extension);
+    assetInfo.PutInt(MediaColumn::MEDIA_TYPE, dto.mediaType);
+    assetInfo.PutInt(PhotoColumn::PHOTO_NEED_THUMBNAIL, dto.isRealTimeThumb ? 1 : 0);
+    if (!dto.title.empty()) {
+        assetInfo.PutString(MediaColumn::MEDIA_TITLE, dto.title);
+    }
+    if (!dto.ownerAlbumId.empty()) {
+        assetInfo.PutString(PhotoColumn::PHOTO_OWNER_ALBUM_ID, dto.ownerAlbumId);
+    }
+
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, MediaLibraryApi::API_10);
+
+    cmd.SetValueBucket(assetInfo);
+    cmd.SetDeviceName(GetLocalDeviceName());
+    cmd.SetBundleName(GetClientBundleName());
+    int32_t ret = MediaLibraryPhotoOperations::Create(cmd);
+    CHECK_AND_RETURN_RET_LOG(ret > 0, ret, "MediaLibraryPhotoOperations::Create failed");
+    dto.fileId = ret;
+    dto.outUri = cmd.GetResult();
+    return E_OK;
+}
+
 static void ConvertToString(const vector<int32_t> &fileIds, std::vector<std::string> &strIds)
 {
     for (int32_t fileId : fileIds) {

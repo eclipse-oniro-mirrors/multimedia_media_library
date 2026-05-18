@@ -46,6 +46,15 @@ CreateAssetDto::CreateAssetDto(const CreateFileMgrAssetReqBody &reqBody)
     this->ownerAlbumId = reqBody.ownerAlbumId;
 }
 
+CreateAssetDto::CreateAssetDto(const CreateAssetsWithAlbumReqBody &reqBody)
+{
+    this->mediaType = reqBody.mediaType;
+    this->title = reqBody.title;
+    this->extension = reqBody.extension;
+    this->ownerAlbumId = reqBody.ownerAlbumId;
+    this->isRealTimeThumb = reqBody.isRealTimeThumb;
+}
+
 CreateAssetRespBody CreateAssetDto::GetRespBody()
 {
     CreateAssetRespBody respBody;
