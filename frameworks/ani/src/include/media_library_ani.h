@@ -304,7 +304,7 @@ public:
     static ani_int GetAlbumIdByLpath(ani_env *env, ani_object object, ani_string lpath);
     static ani_object GetAlbumIdByBundleName(ani_env *env, ani_object object, ani_string bundleName);
     static ani_object GetAssetCompatibleUris(ani_env *env, ani_object object,
-        ani_string bundleName, ani_object assets, ani_int compatibleFlags = 0);
+        ani_string bundleName, ani_object assets, ani_object compatibleFlags);
     static ani_object ConvertToAsset(ani_env *env, ani_object object, ani_string path);
     static ani_object MoveAssetsToDir(ani_env *env, ani_object object, ani_object assets,
         ani_string targetDir, ani_object option);
