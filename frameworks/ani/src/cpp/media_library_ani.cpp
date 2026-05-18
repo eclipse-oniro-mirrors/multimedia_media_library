@@ -7125,8 +7125,6 @@ static ani_status ParseArgsGetAssetCompatibleUris(ani_env *env, ani_string bundl
         context->photoAssetInfos.push_back(info);
     }
 
-    context->compatibleFlags = compatibleFlags;
-    constexpr int32_t VALID_FLAGS_MASK = 0x3;
     if (MediaLibraryAniUtils::IsUndefined(env, compatibleFlags) == ANI_FALSE) {
         int32_t flag;
         CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, compatibleFlags, flag),
