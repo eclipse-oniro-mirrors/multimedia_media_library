@@ -334,6 +334,7 @@ int32_t MediaAssetsDeleteService::CopyAndMoveCloudAssetToTrash(const PhotosPo &p
     const std::vector<DeleteFuncHandle> deleteFuncs = {
         &MediaAssetsDeleteService::CopyAndMoveMediaCloudAssetToTrash,
         &MediaAssetsDeleteService::CopyAndMoveLakeCloudAssetToTrash,
+        &MediaAssetsDeleteService::CopyAndMoveFileManagerCloudAssetToTrash,
     };
     int32_t ret = E_INVALID_MODE;
     for (auto deleteFunc : deleteFuncs) {  // Chain of responsibility.
@@ -630,13 +631,31 @@ int32_t MediaAssetsDeleteService::CopyAndMoveMediaCloudAssetToTrash(const Photos
 int32_t MediaAssetsDeleteService::CopyAndMoveLakeCloudAssetToTrash(const PhotosPo &photoInfo,
     std::optional<PhotosPo> &targetPhotoInfoOp, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
-    bool isValid = !photoInfo.ShouldHandleAsMediaFile();
+    bool isValid = (!photoInfo.ShouldHandleAsMediaFile() && !photoInfo.ShouldHandleAsFileManager());
     isValid = isValid && photoInfo.dateTrashed.value_or(0) == 0;
     CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
     PhotosPo targetPhotoInfo;
     int32_t ret = this->CreateCloudAssetWithoutDentryFile(photoInfo, targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetWithoutDentryFile fail, ret: %{public}d", ret);
     MEDIA_INFO_LOG("CopyAndMoveLakeCloudAssetToTrash completed, "
+                   "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
+        photoInfo.fileId.value_or(0),
+        targetPhotoInfo.fileId.value_or(0),
+        photoInfo.cloudId.value_or("").c_str());
+    targetPhotoInfoOp = targetPhotoInfo;
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::CopyAndMoveFileManagerCloudAssetToTrash(const PhotosPo &photoInfo,
+    std::optional<PhotosPo> &targetPhotoInfoOp, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    bool isValid = photoInfo.ShouldHandleAsFileManager();
+    isValid = isValid && photoInfo.dateTrashed.value_or(0) == 0;
+    CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
+    PhotosPo targetPhotoInfo;
+    int32_t ret = this->CreateCloudAssetWithDentryFile(photoInfo, targetPhotoInfo, photoRefresh);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateCloudAssetWithDentryFile fail, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("CopyAndMoveFileManagerCloudAssetToTrash completed, "
                    "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
         photoInfo.fileId.value_or(0),
         targetPhotoInfo.fileId.value_or(0),
