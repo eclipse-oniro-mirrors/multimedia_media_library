@@ -91,6 +91,14 @@ struct PhotoStatistics {
     int32_t uploadUserAlbumCount;
     int32_t uploadSourceAlbumCount;
     int32_t notUploadAssetCount;
+    int32_t fileManagerLocalImageCount;
+    int32_t fileManagerLocalVideoCount;
+    int32_t fileManagerCloudImageCount;
+    int32_t fileManagerCloudVideoCount;
+    int32_t fileManagerSharedImageCount;
+    int32_t fileManagerSharedVideoCount;
+    int32_t fileManagerAlbumCount;
+    int32_t uploadFileManagerAlbumCount;
 };
 
 struct LcdAndAstcCount {
@@ -155,12 +163,19 @@ struct AncoOperationChangeInfo {
     int32_t totalOptCount;
 };
 
+enum LoadType : int32_t {
+    LAKE_FIRST_LOAD = 0, // 湖内首次加载
+    FILEMANAGER_FIRST_LOAD = 1, // 文管首次加载
+    FILEMANAGER_CLONE_FIRST_LOAD = 2, // 克隆后，文管首次加载
+};
+
 struct AncoCountFormatInfo {
     uint64_t loadStartTime;
     uint64_t loadEndTime;
     int32_t albumCount;
     int32_t imageCount;
     int32_t videoCount;
+    LoadType loadType;
     std::string assetFormatDistribution = "{}";
 };
 

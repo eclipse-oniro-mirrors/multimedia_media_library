@@ -33,6 +33,8 @@
 #include "values_bucket.h"
 #include "photo_album_column.h"
 #include "settings_data_manager.h"
+#include "dfx_anco_manager.h"
+#include "dfx_reporter.h"
 
 using namespace std;
 namespace OHOS::Media {
@@ -155,6 +157,85 @@ int32_t MediaFileInterworkUtil::SetScannerTaskStatus(int32_t status)
     prefs->PutInt(FILE_PROCESS_STATUS_KEY, status);
     prefs->Flush();
     MEDIA_INFO_LOG("Set task status to: %{public}d", status);
+    return E_OK;
+}
+
+int32_t MediaFileInterworkUtil::SetLoadFirstTime()
+{
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+
+    if (errCode != E_OK || prefs == nullptr) {
+    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+    return E_ERR;
+    }
+    int32_t loadType = prefs->GetInt(SCAN_FILEMANAGER_LOAD_TYPE, 0);
+    if (loadType != static_cast<int32_t>(LoadType::FILEMANAGER_CLONE_FIRST_LOAD)) {
+        prefs->PutInt(SCAN_FILEMANAGER_LOAD_TYPE, LoadType::FILEMANAGER_FIRST_LOAD);
+        prefs->PutBool(IS_INVENTORY_LOADING, true);
+    }
+    int64_t startTime = prefs->GetLong(SCAN_FM_START_TIME, 0);
+    if (startTime == 0) {
+    int64_t curTime = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("fileManager first load, set first load time is:%{public}" PRId64, curTime);
+    prefs->PutLong(SCAN_FM_START_TIME, curTime);
+    }
+
+    prefs->FlushSync();
+    return E_OK;
+}
+
+int32_t MediaFileInterworkUtil::ReportFileManagerFirstLoad()
+{
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+
+    if (errCode != E_OK || prefs == nullptr) {
+    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+    return E_ERR;
+    }
+
+    prefs->PutLong(SCAN_FM_END_TIME, MediaFileUtils::UTCTimeMilliSeconds());
+    prefs->FlushSync();
+    AncoDfxManager::GetInstance().ReportFileManagerFirstLoad();
+    return E_OK;
+}
+
+int32_t MediaFileInterworkUtil::AddImageAndVideoCount(int32_t imageCount, int32_t videoCount)
+{
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+
+    if (errCode != E_OK || prefs == nullptr) {
+    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+    return E_ERR;
+    }
+
+    int32_t curImageCount = prefs->GetInt(SCAN_FM_IMAGE_COUNT, 0);
+    prefs->PutInt(SCAN_FM_IMAGE_COUNT, curImageCount + imageCount);
+    int32_t curVideoCount = prefs->GetInt(SCAN_FM_VIDEO_COUNT, 0);
+    prefs->PutInt(SCAN_FM_VIDEO_COUNT, curVideoCount + videoCount);
+    prefs->FlushSync();
+    return E_OK;
+}
+
+int32_t MediaFileInterworkUtil::AddAlbumCount(int32_t albumCount)
+{
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+    NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+
+    if (errCode != E_OK || prefs == nullptr) {
+    MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+    return E_ERR;
+    }
+
+    int32_t curAlbumCount = prefs->GetInt(SCAN_FM_ALBUM_COUNT, 0);
+    prefs->PutInt(SCAN_FM_ALBUM_COUNT, curAlbumCount + albumCount);
+    prefs->FlushSync();
     return E_OK;
 }
 }

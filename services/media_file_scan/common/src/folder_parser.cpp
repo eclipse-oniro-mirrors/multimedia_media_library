@@ -28,6 +28,7 @@
 #include "photo_album_upload_status_operation.h"
 #include "media_string_utils.h"
 #include "settings_data_manager.h"
+#include "medialibrary_tracer.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -315,6 +316,8 @@ void BuildAlbumTypeByLPath(const std::string &lPath, NativeRdb::ValuesBucket& va
 
 int32_t FolderParser::InsertAlbum(CommonAlbumInfo &commonAlbumInfo)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FolderParser::InsertAlbum");
     MEDIA_INFO_LOG("FolderParser: begin insert PhotoAlbum.");
     CHECK_AND_RETURN_RET_LOG(GetMediaLibraryRdb() != nullptr, E_ERR, "InsertAlbum: rdb is null.");
     NativeRdb::ValuesBucket value;
@@ -344,6 +347,8 @@ int32_t FolderParser::InsertAlbum(CommonAlbumInfo &commonAlbumInfo)
 
 int32_t FolderParser::UpdateAlbum(const CommonAlbumInfo &commonAlbumInfo, const NativeRdb::AbsRdbPredicates &predicates)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FolderParser::UpdateAlbum");
     MEDIA_INFO_LOG("FolderParser: begin update PhotoAlbum.");
     CHECK_AND_RETURN_RET_LOG(GetMediaLibraryRdb() != nullptr, E_ERR, "UpdateAlbum: rdb is null.");
 
@@ -359,6 +364,8 @@ int32_t FolderParser::UpdateAlbum(const CommonAlbumInfo &commonAlbumInfo, const 
 
 int32_t FolderParser::DeleteAlbum(const NativeRdb::AbsRdbPredicates &predicates)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FolderParser::DeleteAlbum");
     MEDIA_INFO_LOG("FolderParser: begin delete PhotoAlbum.");
     CHECK_AND_RETURN_RET_LOG(GetMediaLibraryRdb() != nullptr, E_ERR, "DeleteAlbum: rdb is null.");
     int32_t deletedRows = -1;

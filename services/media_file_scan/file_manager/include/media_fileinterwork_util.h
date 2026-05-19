@@ -27,6 +27,10 @@ public:
     EXPORT static int32_t InsertOrUpdateAlbum(const std::string &albumPath, int32_t &albumId);
     EXPORT static int32_t GetScannerTaskStatus();
     EXPORT static int32_t SetScannerTaskStatus(int32_t status);
+    EXPORT static int32_t SetLoadFirstTime();
+    EXPORT static int32_t ReportFileManagerFirstLoad();
+    EXPORT static int32_t AddImageAndVideoCount(int32_t imageCount, int32_t videoCount);
+    EXPORT static int32_t AddAlbumCount(int32_t albumCount);
 };
 } // namespace OHOS::Media
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_MEDIA_INTERWORKING_UTIL_H

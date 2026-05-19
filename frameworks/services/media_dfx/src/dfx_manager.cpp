@@ -288,7 +288,9 @@ const std::string SQL_ALBUM_UPLOAD_STATISTICS = "\
         COUNT(CASE WHEN album_type = 2048 THEN 1 END) AS SOURCE_ALBUM_COUNT, \
         COUNT(CASE WHEN album_type = 0 THEN 1 END) AS USER_ALBUM_COUNT, \
         COUNT(CASE WHEN album_type = 2048 AND upload_status = 1 THEN 1 END) AS UPLOAD_SOURCE_ALBUM_COUNT, \
-        COUNT(CASE WHEN album_type = 0 AND upload_status = 1 THEN 1 END) AS UPLOAD_USER_ALBUM_COUNT \
+        COUNT(CASE WHEN album_type = 0 AND upload_status = 1 THEN 1 END) AS UPLOAD_USER_ALBUM_COUNT, \
+        COUNT(CASE WHEN album_subtype = 2050 THEN 1 END) AS FILEMANAGER_ALBUM_COUNT, \
+        COUNT(CASE WHEN album_subtype = 2050 AND upload_status = 1 THEN 1 END) AS UPLOAD_FILEMANAGER_ALBUM_COUNT \
     FROM PhotoAlbum;";
 
 const std::string SQL_NOT_UPLOAD_ASSET_COUNT = "\
@@ -328,6 +330,8 @@ static void QueryAssetCountByUpload(PhotoStatistics &stats)
     CHECK_AND_RETURN_WARN_LOG(resultSet != nullptr, "resultSet is nullptr");
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         stats.notUploadAssetCount = GetInt32Val("NOT_UPLOAD_ASSET_COUNT", resultSet);
+        stats.fileManagerAlbumCount = GetInt32Val("FILEMANAGER_ALBUM_COUNT", resultSet);
+        stats.uploadFileManagerAlbumCount = GetInt32Val("UPLOAD_FILEMANAGER_ALBUM_COUNT", resultSet);
     }
     resultSet->Close();
 }
@@ -369,10 +373,38 @@ static void AddSouthDeviceType(PhotoStatistics &stats)
     stats.southDeviceType = static_cast<int32_t>(SettingsDataManager::GetPhotosSyncSwitchStatus());
 }
 
+static void AddFileManagerPhotoStats(PhotoStatistics &stats)
+{
+    const std::vector<QueryParams> queryParamsList = {
+    {MediaType::MEDIA_TYPE_IMAGE, PhotoPositionType::LOCAL},
+    {MediaType::MEDIA_TYPE_VIDEO, PhotoPositionType::LOCAL},
+    {MediaType::MEDIA_TYPE_IMAGE, PhotoPositionType::CLOUD},
+    {MediaType::MEDIA_TYPE_VIDEO, PhotoPositionType::CLOUD},
+    {MediaType::MEDIA_TYPE_IMAGE, PhotoPositionType::LOCAL_AND_CLOUD},
+    {MediaType::MEDIA_TYPE_VIDEO, PhotoPositionType::LOCAL_AND_CLOUD}
+    };
+
+    int32_t* countPtrs[] = {
+    &stats.fileManagerLocalImageCount,
+    &stats.fileManagerLocalVideoCount,
+    &stats.fileManagerCloudImageCount,
+    &stats.fileManagerCloudVideoCount,
+    &stats.fileManagerSharedImageCount,
+    &stats.fileManagerSharedVideoCount
+    };
+
+    for (size_t i = 0; i < queryParamsList.size(); i++) {
+    const auto& params = queryParamsList[i];
+    *countPtrs[i] = DfxDatabaseUtils::QueryFileManagerFromPhotos(params.mediaType,
+    static_cast<int32_t>(params.positionType));
+    }
+}
+
 static void HandlePhotoInfo(std::shared_ptr<DfxReporter>& dfxReporter)
 {
     PhotoStatistics stats = {};
     AddPhotoStats(stats);
+    AddFileManagerPhotoStats(stats);
     AddDownloadTaskInfo(stats);
     AddSouthDeviceType(stats);
     QueryAlbumAndAssetCountByUpload(stats);
@@ -383,14 +415,22 @@ static void HandlePhotoInfo(std::shared_ptr<DfxReporter>& dfxReporter)
                    "DownloadTasksPauseCount: %{public}d, DownloadTasksFailedCount: %{public}d, "
                    "DownloadTasksSuccessCount: %{public}d, DownloadTasksAutoPauseCount: %{public}d, "
                    "DownloadTasksSuccessTotalSize: %{public}" PRId64 " bytes, "
-                   "DownloadTasksSuccessTotalTime: %{public}" PRId64 " seconds",
+                   "DownloadTasksSuccessTotalTime: %{public}" PRId64 " seconds, "
+                   "fileManagerLocalImageCount: %{public}d, fileManagerLocalVideoCount: %{public}d, "
+                   "fileManagerCloudImageCount: %{public}d, fileManagerCloudVideoCount: %{public}d, "
+                   "fileManagerSharedImageCount: %{public}d, fileManagerSharedVideoCount: %{public}d, "
+                   "fileManagerAlbumCount: %{public}d, uploadFileManagerAlbumCount: %{public}d, ",
                    stats.localImageCount, stats.localVideoCount,
                    stats.cloudImageCount, stats.cloudVideoCount,
                    stats.sharedImageCount, stats.sharedVideoCount,
                    stats.tasksWaitingCount, stats.tasksDownloadingCount,
                    stats.tasksPauseCount, stats.tasksFailedCount,
                    stats.tasksSuccessCount, stats.tasksAutoPauseCount,
-                   stats.tasksSuccessTotalSize, stats.tasksSuccessTotalTime
+                   stats.tasksSuccessTotalSize, stats.tasksSuccessTotalTime,
+                   stats.fileManagerLocalImageCount, stats.fileManagerLocalVideoCount,
+                   stats.fileManagerCloudImageCount, stats.fileManagerCloudVideoCount,
+                   stats.fileManagerSharedImageCount, stats.fileManagerSharedVideoCount,
+                   stats.fileManagerAlbumCount, stats.uploadFileManagerAlbumCount
                    );
     dfxReporter->ReportPhotoInfo(stats);
 }

@@ -26,6 +26,11 @@
 #include "media_log.h"
 #include "media_thread.h"
 #include "parameters.h"
+#include "preferences.h"
+#include "dfx_anco_manager.h"
+#include "dfx_const.h"
+#include "dfx_reporter.h"
+#include "preferences_helper.h"
 
 namespace OHOS::Media {
 const int32_t BACKUP_SA_ID = 5203;
@@ -152,6 +157,15 @@ void MediaLakeCloneEventManager::RegisterLakeFileMonitor()
 
 void MediaLakeCloneEventManager::RunGlobalScanner()
 {
+    int32_t errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+    if (errCode != E_OK || prefs == nullptr) {
+        MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+        return;
+    }
+    prefs->PutInt(SCAN_FILEMANAGER_LOAD_TYPE, LoadType::FILEMANAGER_CLONE_FIRST_LOAD);
+    prefs->FlushSync();
     CHECK_AND_RETURN_INFO_LOG(isExecuteGlobalScan_.load(), "LakeClone: no need to run global scan");
     ScannerStatus scannerStatus = GlobalScanner::GetInstance().GetScannerStatus();
     CHECK_AND_RETURN_WARN_LOG(scannerStatus == ScannerStatus::IDLE,

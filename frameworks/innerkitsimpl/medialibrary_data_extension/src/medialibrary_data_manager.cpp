@@ -3894,7 +3894,7 @@ void MediaLibraryDataManager::ScanLakeAsset()
         int64_t startLoadTime = MediaFileUtils::UTCTimeMilliSeconds();
         GlobalScanner::GetInstance().RunLakeScan(LAKE_SCAN_DIR.c_str());
         int64_t endLoadTime = MediaFileUtils::UTCTimeMilliSeconds();
-        AncoDfxManager::GetInstance().ReportFirstLoadInfo(startLoadTime, endLoadTime);
+        AncoDfxManager::GetInstance().ReportFirstLoadInfo(startLoadTime, endLoadTime, LoadType::LAKE_FIRST_LOAD);
         this->SetIsLakeAssetScanned(true);
         MEDIA_INFO_LOG("ScanLakeAsset thread end.");
     });

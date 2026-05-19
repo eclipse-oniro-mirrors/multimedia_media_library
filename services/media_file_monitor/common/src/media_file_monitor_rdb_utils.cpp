@@ -29,6 +29,7 @@
 #include "thumbnail_service.h"
 #include "media_edit_utils.h"
 #include "file_manager_parser.h"
+#include "medialibrary_tracer.h"
 
 using namespace OHOS::NativeRdb;
 
@@ -592,6 +593,8 @@ bool MediaFileMonitorRdbUtils::HandleFileManagerCloudAssets(
 bool MediaFileMonitorRdbUtils::DeleteFileManagerDirByFileManagerPath(const std::string &path,
     std::shared_ptr<MediaLibraryRdbStore> &rdbStore)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaFileMonitorRdbUtils::DeleteFileManagerDirByFileManagerPath");
     // 文管回收站彻底删除文件夹不做处理
     if (path.find(FILE_MANAGER_TRASH_PATH) == 0) {
         MEDIA_DEBUG_LOG("Delete trashed file assets, path: %{public}s", DfxUtils::GetSafePath(path).c_str());
@@ -632,6 +635,8 @@ bool MediaFileMonitorRdbUtils::DeleteFileManagerDirByFileManagerPath(const std::
 bool MediaFileMonitorRdbUtils::DeleteFileManagerAlbumByFileManagerPath(const std::string &path,
     std::shared_ptr<MediaLibraryRdbStore> &rdbStore)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaFileMonitorRdbUtils::DeleteFileManagerAlbumByFileManagerPath");
     // 1. 去除文管前缀
     std::string lPath = FILE_MANAGER_LPATH_PREFIX + RemovePrefix(path, FILE_MANAGER_SCAN_DIR);
     CHECK_AND_RETURN_RET_LOG(!lPath.empty(), false,
@@ -695,6 +700,8 @@ bool MediaFileMonitorRdbUtils::DeleteFileByLakePath(const std::string &path,
 bool MediaFileMonitorRdbUtils::DeleteFileByFileManagerPath(const std::string &path,
     std::shared_ptr<MediaLibraryRdbStore> &rdbStore)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaFileMonitorRdbUtils::DeleteFileByFileManagerPath");
     // 1. 文管回收站彻底删除资产不做处理
     if (path.find(FILE_MANAGER_TRASH_PATH) == 0) {
         MEDIA_DEBUG_LOG("Delete trashed directory, path: %{public}s", DfxUtils::GetSafePath(path).c_str());
