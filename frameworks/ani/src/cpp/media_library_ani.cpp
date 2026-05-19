@@ -7627,6 +7627,8 @@ ani_object MediaLibraryAni::MoveAssetsByPath(ani_env *env, ani_object object, an
     SetUserIdFromObjectInfo(asyncContext);
     MoveAssetsByPathExecute(env, asyncContext);
     return MoveAssetsByPathComplete(env, asyncContext);
+}
+
 // createAssetWithShortTermPermission
 ani_boolean MediaLibraryAni::CheckShortTermPermission(ani_env *env, ani_object object)
 {
@@ -7660,8 +7662,7 @@ ani_object MediaLibraryAni::CreateAssetsHasPermission(ani_env *env, ani_object o
 }
 
 static bool InitShortTermRequest(OHOS::AAFwk::Want &want, shared_ptr<ShortTermCallback> &callback,
-                                 ani_env* env, ani_object photoCreationConfigs, ani_object appInfo,
-                                 ani_fn_object resultcb)
+                                 const InitShortTermRequestParams &params)
 {
     want.SetElementName(CONFIRM_BOX_PACKAGE_NAME, CONFIRM_BOX_EXT_ABILITY_NAME);
     want.SetParam(CONFIRM_BOX_EXTENSION_TYPE, CONFIRM_BOX_REQUEST_TYPE);
@@ -7669,8 +7670,9 @@ static bool InitShortTermRequest(OHOS::AAFwk::Want &want, shared_ptr<ShortTermCa
     CHECK_COND_RET(callback != nullptr, false, "ShortTermCallback is nullptr");
     BundleInfo bundleInfo;
     PhotoCreationConfig config;
-    CHECK_COND_RET(ParseBundleInfo(env, appInfo, bundleInfo), false, "ParseBundleInfo fail");
-    CHECK_COND_RET(ParseCreateConfig(env, photoCreationConfigs, config), false, "Parse asset create config failed");
+    CHECK_COND_RET(ParseBundleInfo(params.env, params.appInfo, bundleInfo), false, "ParseBundleInfo fail");
+    CHECK_COND_RET(ParseCreateConfig(params.env,
+        params.photoCreationConfigs, config), false, "Parse asset create config failed");
 
     want.SetParam(SHORT_TERM_TAG, true);
     want.SetParam(SHORT_TERM_TITLE, config.title);
@@ -7682,7 +7684,7 @@ static bool InitShortTermRequest(OHOS::AAFwk::Want &want, shared_ptr<ShortTermCa
     want.SetParam(CONFIRM_BOX_APP_NAME, bundleInfo.packageName);
     want.SetParam(CONFIRM_BOX_APP_ID, bundleInfo.appId);
 
-    callback->SetFunc(resultcb);
+    callback->SetFunc(params.resultcb);
     return true;
 }
 
@@ -7700,8 +7702,9 @@ ani_object MediaLibraryAni::CreateAssetWithShortTermPermission(ani_env *env, ani
 
     OHOS::AAFwk::Want want;
     shared_ptr<ShortTermCallback> callback = make_shared<ShortTermCallback>(env, uiContent);
+    InitShortTermRequestParams shortTermParams { env, photoCreationConfig, appInfo, resultcb };
     CHECK_COND_WITH_MESSAGE(env,
-        InitShortTermRequest(want, callback, env, photoCreationConfig, appInfo, resultcb) == true,
+        InitShortTermRequest(want, callback, shortTermParams) == true,
         "InitShortTermRequest fail");
     OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
         ([callback](auto arg) { callback->OnRelease(arg); }),
@@ -7776,27 +7779,26 @@ static bool ParseAndSetConfigArray(ani_env *env, OHOS::AAFwk::Want &want, ani_ob
 }
 
 static bool InitConfirmRequest(OHOS::AAFwk::Want &want, shared_ptr<ConfirmCallback> &callback,
-                               ani_env *env, ani_object &srcFileUris, ani_object photoCreationConfigs,
-                               ani_object appInfo, ani_fn_object resultcb)
+                               const InitConfirmRequestParams &params)
 {
     want.SetElementName(CONFIRM_BOX_PACKAGE_NAME, CONFIRM_BOX_EXT_ABILITY_NAME);
     want.SetParam(CONFIRM_BOX_EXTENSION_TYPE, CONFIRM_BOX_REQUEST_TYPE);
     want.AddFlags(OHOS::AAFwk::Want::FLAG_AUTH_READ_URI_PERMISSION);
 
     // second param: Array<string>
-    if (!ParseAndSetFileUriArray(env, want, srcFileUris)) {
+    if (!ParseAndSetFileUriArray(params.env, want, params.srcFileUris)) {
         ANI_ERR_LOG("ParseAndSetFileUriArray fail");
         return false;
     }
 
     // third param: Array<PhotoCreationConfig>
-    if (!ParseAndSetConfigArray(env, want, photoCreationConfigs)) {
+    if (!ParseAndSetConfigArray(params.env, want, params.photoCreationConfigs)) {
         ANI_ERR_LOG("ParseAndSetConfigArray fail");
         return false;
     }
 
     BundleInfo bundleInfo;
-    if (ParseBundleInfo(env, appInfo, bundleInfo) != ANI_OK) {
+    if (ParseBundleInfo(params.env, params.appInfo, bundleInfo) != ANI_OK) {
         ANI_ERR_LOG("ParseBundleInfo fail");
         return false;
     }
@@ -7805,7 +7807,7 @@ static bool InitConfirmRequest(OHOS::AAFwk::Want &want, shared_ptr<ConfirmCallba
     want.SetParam(CONFIRM_BOX_APP_NAME, bundleInfo.packageName);
     want.SetParam(CONFIRM_BOX_APP_ID, bundleInfo.appId);
 
-    callback->SetFunc(resultcb);
+    callback->SetFunc(params.resultcb);
 
     return true;
 }
@@ -7826,8 +7828,8 @@ ani_object MediaLibraryAni::ShowAssetsCreationDialog(ani_env *env, ani_object ob
 
     OHOS::AAFwk::Want want;
     auto callback = std::make_shared<ConfirmCallback>(env, uiContent);
-    CHECK_COND_WITH_MESSAGE(env, InitConfirmRequest(want, callback, env, srcFileUris, photoCreationConfigs,
-        appInfo, resultcb), "Parse input fail.");
+    InitConfirmRequestParams confirmParams { env, srcFileUris, photoCreationConfigs, appInfo, resultcb };
+    CHECK_COND_WITH_MESSAGE(env, InitConfirmRequest(want, callback, confirmParams), "Parse input fail.");
     // regist callback and config
     OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
         [callback](int32_t releaseCode) {
@@ -7856,25 +7858,25 @@ ani_object MediaLibraryAni::ShowAssetsCreationDialog(ani_env *env, ani_object ob
 //--------------------------------------------------------------------------------------------------------------
 // requestPhotoUrisReadPermission
 static bool InitRequestPhotoUrisReadPermissionRequest(OHOS::AAFwk::Want &want,
-    shared_ptr<RequestPhotoUrisReadPermissionCallback> &callback, ani_env* env, ani_object arrayUris,
-    ani_object appNameAni, ani_fn_object resultcb)
+    shared_ptr<RequestPhotoUrisReadPermissionCallback> &callback,
+    const InitRequestPhotoUrisReadPermissionParams &params)
 {
     std::string targetType = "photoPicker";
     want.SetParam(ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE, targetType);
     std::string requestPhotoUrisTag = "requestPhotoUrisPage";
     want.SetParam(TARGET_PAGE, requestPhotoUrisTag);
      // second param: Array<string>
-    if (!ParseAndSetFileUriArray(env, want, arrayUris)) {
+    if (!ParseAndSetFileUriArray(params.env, want, params.arrayUris)) {
         ANI_ERR_LOG("FileUriArray check failed.");
         return false;
     }
     string appName;
-    if (MediaLibraryAniUtils::GetString(env, appNameAni, appName) != ANI_OK) {
+    if (MediaLibraryAniUtils::GetString(params.env, params.appNameAni, appName) != ANI_OK) {
         ANI_ERR_LOG("Failed to get appName");
         return false;
     };
     want.SetParam(CONFIRM_BOX_APP_NAME, appName);
-    callback->SetFunc(resultcb);
+    callback->SetFunc(params.resultcb);
     return true;
 }
 
@@ -7904,8 +7906,9 @@ ani_object MediaLibraryAni::RequestPhotoUrisReadPermission(ani_env *env, ani_obj
     OHOS::AAFwk::Want want;
     shared_ptr<RequestPhotoUrisReadPermissionCallback> callback =
         make_shared<RequestPhotoUrisReadPermissionCallback>(env, uiContent);
+    InitRequestPhotoUrisReadPermissionParams requestParams { env, arrayUris, appName, resultcb };
     CHECK_COND_WITH_MESSAGE(env,
-        InitRequestPhotoUrisReadPermissionRequest(want, callback, env, arrayUris, appName, resultcb),
+        InitRequestPhotoUrisReadPermissionRequest(want, callback, requestParams),
         "Parse RequestPhotoUrisReadPermission input fail.");
 
     // regist callback and config

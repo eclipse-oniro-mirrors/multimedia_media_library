@@ -15,7 +15,7 @@
 
 import {
   Component, Row, Column, Margin, Curve, ICurve, Length, BorderRadiuses, LocalizedBorderRadiuses,
-  Builder
+  Builder, SecurityUIExtensionComponent, SecurityUIExtensionProxy
 } from '@ohos.arkui.component';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { fileIo as fs } from '@kit.CoreFileKit';
@@ -28,7 +28,6 @@ import application from '@ohos.app.ability.application'
 import { Context, UIContext } from '@ohos.arkui.UIContext';
 import { resourceManager } from '@kit.LocalizationKit';
 import { RecordData } from '@ohos.base';
-import { SecurityUIExtensionComponent, SecurityUIExtensionProxy } from 'arkui.component.securityUIExtensionComponent';
 
 const PHOTO_VIEW_MIME_TYPE_MAP = new Map<string, string>([
     ['*/*', 'FILTER_MEDIA_TYPE_ALL'],
@@ -99,7 +98,7 @@ export class PickerController {
   private saveCallbackMap: Map<number, Object> = new Map<number, Object>();
   private createCallbackMap: Map<number, Object> = new Map<number, Object>();
 
-  setData(type: DataType, data: Object) {
+  setData(type: DataType, data: Object): void {
     if (data === undefined) {
       return;
     }
@@ -122,14 +121,14 @@ export class PickerController {
     }
   }
 
-  setMaxSelected(maxSelected: MaxSelected) {
+  setMaxSelected(maxSelected: MaxSelected): void {
     if (maxSelected) {
       this.data = new Map<string, Object>([['SET_MAX_SELECT_COUNT', maxSelected]]);
       console.info('PhotoPickerComponent SET_MAX_SELECT_COUNT' + JSON.stringify(maxSelected));
     }
   }
 
-  setPhotoBrowserItem(uri: string, photoBrowserRange?: PhotoBrowserRange) {
+  setPhotoBrowserItem(uri: string, photoBrowserRange?: PhotoBrowserRange): void {
     let photoBrowserRangeInfo: PhotoBrowserRangeInfo = new PhotoBrowserRangeInfo();
     photoBrowserRangeInfo.uri = uri;
     let newPhotoBrowserRange: PhotoBrowserRange = photoBrowserRange ? photoBrowserRange : PhotoBrowserRange.ALL;
@@ -138,12 +137,12 @@ export class PickerController {
     console.info('PhotoPickerComponent SET_PHOTO_BROWSER_ITEM' + this.encrypt(JSON.stringify(photoBrowserRangeInfo)));
   }
 
-  exitPhotoBrowser() {
+  exitPhotoBrowser(): void {
     this.data = new Map<string, Object>([['EXIT_PHOTO_BROWSER', true]]);
     console.info('PhotoPickerComponent EXIT_PHOTO_BROWSER');
   }
 
-  setPhotoBrowserUIElementVisibility(elements: PhotoBrowserUIElement[], isVisible: boolean) {
+  setPhotoBrowserUIElementVisibility(elements: PhotoBrowserUIElement[], isVisible: boolean): void {
     let photoBrowserUIElementVisibility: PhotoBrowserUIElementVisibility = new PhotoBrowserUIElementVisibility();
     photoBrowserUIElementVisibility.elements = elements;
     photoBrowserUIElementVisibility.isVisible = isVisible;
@@ -184,7 +183,7 @@ export class PickerController {
     return appName;
   }
 
-  replacePhotoPickerPreview(selectedMediaUri: string, replaceUri: string, callback: AsyncCallback<void>) {
+  replacePhotoPickerPreview(selectedMediaUri: string, replaceUri: string, callback: AsyncCallback<void>): void {
     try {
       let fd = fs.openSync(replaceUri).fd;
       fs.close(fd);
@@ -217,7 +216,7 @@ export class PickerController {
   }
 
   saveTrustedPhotoAssets(selectedMediaUris: string[], callback: AsyncCallback<string[]>,
-    config?: photoAccessHelper.PhotoCreationConfig[], saveMode?: SaveMode) {
+    config?: photoAccessHelper.PhotoCreationConfig[], saveMode?: SaveMode): void {
     if (!selectedMediaUris || selectedMediaUris.length === 0) {
       callback({'code': 14000002, 'message': 'Invalid URI', 'name': ''}, []);
       return;
@@ -230,7 +229,7 @@ export class PickerController {
     console.info('PhotoPickerComponent SAVE_TRUSTED_PHOTO_ASSETS ');
   }
 
-  actionCreateCallback(grantUri: string, date: number, code: int, message: string) {
+  actionCreateCallback(grantUri: string, date: number, code: int, message: string): void {
     if (this.createCallbackMap.has(date)) {
       let callback = this.createCallbackMap.get(date) as ((grantUri: string, code: int, message: string) => void);
       if (callback) {
@@ -240,7 +239,7 @@ export class PickerController {
     }
   }
 
-  actionReplaceCallback(date: number, err: BusinessError) {
+  actionReplaceCallback(date: number, err: BusinessError): void {
     if (this.replaceCallbackMap.has(date)) {
       let callback = this.replaceCallbackMap.get(date) as ((err: BusinessError) => void);
       if (callback) {
@@ -250,7 +249,7 @@ export class PickerController {
     }
   }
 
-  actionSaveCallback(date: number, err: BusinessError, data: string[]) {
+  actionSaveCallback(date: number, err: BusinessError, data: string[]): void {
     if (this.saveCallbackMap.has(date)) {
       let callback = this.saveCallbackMap.get(date) as ((err: BusinessError, data: string[]) => void);
       if (callback) {
@@ -260,7 +259,7 @@ export class PickerController {
     }
   }
 
-  encrypt(data: string | undefined) {
+  encrypt(data: string | undefined): string {
     if (!data || data.indexOf('file:///data/storage/') !== -1) {
       return '';
     }
@@ -286,8 +285,8 @@ export class PickerOptions extends photoAccessHelper.BaseSelectOptions {
   public photoBrowserMargin?: Margin;
   public singleLineConfig?: SingleLineConfig;
   public uiComponentColorMode?: PickerColorMode;
-  public isPreviewForSingleSelectionSupported?: boolean;
-  public singleSelectionMode?: photoAccessHelper.SingleSelectionMode;
+  public isPreviewForSingleSelectionSupported?: boolean = undefined;
+  public singleSelectionMode?: photoAccessHelper.SingleSelectionMode = undefined;
   public gridStartOffset?: int;
   public gridEndOffset?: int;
 }
@@ -428,7 +427,7 @@ export struct PhotoPickerComponent {
   private proxy: SecurityUIExtensionProxy | undefined;
   @State revokeIndex: int = 0;
 
-  onChanged(propName: string) {
+  onChanged(propName: string): void {
     if (!this.proxy) {
       return;
     }
@@ -815,7 +814,7 @@ export struct PhotoPickerComponent {
   }
 
   @Builder
-  build() {
+  build(): void {
     Row() {
       Column() {
         SecurityUIExtensionComponent({

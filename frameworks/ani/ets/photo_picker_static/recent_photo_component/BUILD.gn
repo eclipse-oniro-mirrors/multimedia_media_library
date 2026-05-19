@@ -22,13 +22,6 @@ generate_static_abc("recent_photo_component_ets_abc") {
   device_dst_file = "/system/framework/recent_photo_component_ets_abc.abc"
   dst_file = target_out_dir + "/recent_photo_component_ets_abc/modules_static.abc"
   out_puts = [ target_out_dir + "/recent_photo_component_ets_abc/modules_static.abc" ]
-  paths_keys = [
-    "arkui.component.securityUIExtensionComponent",
-  ]
-  paths_values = [
-    "$ohos_ets_inner_path/arkui/component/securityUIExtensionComponent",
-  ]
-  external_dependencies = [ "ace_engine:copy_arkui_ets" ]
 }
 
 ohos_copy("copy_recent_photo_component_ets_abc") {

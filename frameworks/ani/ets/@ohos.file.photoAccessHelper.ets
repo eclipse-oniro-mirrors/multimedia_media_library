@@ -3793,7 +3793,7 @@ export namespace photoAccessHelper {
       });
     }
 
-    checkIsPhotoCreationConfigValid(config: PhotoCreationConfig) {
+    checkIsPhotoCreationConfigValid(config: PhotoCreationConfig): boolean {
       if (!config) {
         console.error('photoAccessHelper invalid, config is null.');
         return false;
@@ -3885,7 +3885,7 @@ export namespace photoAccessHelper {
       }
     }
 
-    showAssetsCreationDialogResult(result: string, reject: RejectString, resolve: (v: string) => void) {
+    showAssetsCreationDialogResult(result: string, reject: RejectString, resolve: (v: string) => void): void {
       if (result === undefined) {
         result = "";
       }
@@ -3893,7 +3893,7 @@ export namespace photoAccessHelper {
     }
 
     showAssetsCreationDialogArrayResult(result: Array<string>, reject: RejectString,
-      resolve: (v: Array<string>) => void) {
+      resolve: (v: Array<string>) => void): void {
       if (result === undefined) {
         result = [];
       }
@@ -3973,7 +3973,7 @@ export namespace photoAccessHelper {
     return true;
   }
 
-  checkConfirmBoxParams(srcFileUris: Array<string>, photoCreationConfigs: Array<PhotoCreationConfig>) {
+  checkConfirmBoxParams(srcFileUris: Array<string>, photoCreationConfigs: Array<PhotoCreationConfig>): boolean {
     // check whether input array is valid
     if (!this.checkArrayAndSize(srcFileUris, MIN_CONFIRM_NUMBER, MAX_CONFIRM_NUMBER)) {
       return false;

@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-import { Component, Row, Column, Builder } from '@ohos.arkui.component';
+import { Component, Row, Column, Builder, SecurityUIExtensionComponent } from '@ohos.arkui.component';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { BaseItemInfo, PickerColorMode } from '@ohos.file.PhotoPickerComponent';
 import { RecordData } from '@ohos.base';
-import { SecurityUIExtensionComponent } from 'arkui.component.securityUIExtensionComponent';
 
 const FILTER_MEDIA_TYPE_ALL = 'FILTER_MEDIA_TYPE_ALL';
 const FILTER_MEDIA_TYPE_IMAGE = 'FILTER_MEDIA_TYPE_IMAGE';
@@ -122,7 +121,7 @@ export struct RecentPhotoComponent {
   }
 
   @Builder
-  build() {
+  build(): void {
     Row() {
       Column() {
         SecurityUIExtensionComponent({

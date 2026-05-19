@@ -365,6 +365,28 @@ struct PhotoCreationConfig {
     int32_t subtype;
 };
 
+struct InitConfirmRequestParams {
+    ani_env *env;
+    ani_object &srcFileUris;
+    ani_object photoCreationConfigs;
+    ani_object appInfo;
+    ani_fn_object resultcb;
+};
+
+struct InitRequestPhotoUrisReadPermissionParams {
+    ani_env *env;
+    ani_object &arrayUris;
+    ani_object appNameAni;
+    ani_fn_object resultcb;
+};
+
+struct InitShortTermRequestParams {
+    ani_env *env;
+    ani_object photoCreationConfigs;
+    ani_object appInfo;
+    ani_fn_object resultcb;
+};
+
 struct PickerCallBack {
     bool ready = false;
     bool isOrigin;

@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-import { Component, Row, Column, Builder } from '@ohos.arkui.component';
+import { Component, Row, Column, Builder, SecurityUIExtensionComponent, SecurityUIExtensionProxy } from '@ohos.arkui.component';
 import { PickerColorMode } from '@ohos.file.PhotoPickerComponent';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { RecordData } from '@ohos.base';
-import { SecurityUIExtensionComponent, SecurityUIExtensionProxy } from 'arkui.component.securityUIExtensionComponent';
 
 export type EmptyAreaClickCallback = () => void;
 
@@ -62,7 +61,7 @@ export struct AlbumPickerComponent {
   }
 
   @Builder
-  build() {
+  build(): void {
     Row() {
       Column() {
         SecurityUIExtensionComponent({
