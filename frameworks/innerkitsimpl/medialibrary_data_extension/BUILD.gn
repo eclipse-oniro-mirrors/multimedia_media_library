@@ -24,7 +24,8 @@ ohos_prebuilt_etc("userfilemanager_mimetypes.json") {
 }
 
 ohos_prebuilt_etc("heif_transcoding_checklist.json") {
-  module_install_dir = "etc/com.ohos.medialibrary.medialibrarydata/heif_transcoding/"
+  module_install_dir =
+      "etc/com.ohos.medialibrary.medialibrarydata/heif_transcoding/"
 
   source = "${MEDIALIB_UTILS_PATH}/configs/heif_transcoding_checklist.json"
 
@@ -33,7 +34,8 @@ ohos_prebuilt_etc("heif_transcoding_checklist.json") {
 }
 
 ohos_prebuilt_etc("version.txt") {
-  module_install_dir = "etc/com.ohos.medialibrary.medialibrarydata/heif_transcoding/"
+  module_install_dir =
+      "etc/com.ohos.medialibrary.medialibrarydata/heif_transcoding/"
 
   source = "${MEDIALIB_UTILS_PATH}/configs/version.txt"
 
@@ -42,7 +44,8 @@ ohos_prebuilt_etc("version.txt") {
 }
 
 ohos_prebuilt_etc("medialibrary_kit_whitelist.json") {
-  module_install_dir = "etc/com.ohos.medialibrary.medialibrarydata/medialibrary_kit_whitelist/"
+  module_install_dir =
+      "etc/com.ohos.medialibrary.medialibrarydata/medialibrary_kit_whitelist/"
 
   source = "${MEDIALIB_UTILS_PATH}/configs/medialibrary_kit_whitelist/medialibrary_kit_whitelist.json"
 
@@ -51,9 +54,11 @@ ohos_prebuilt_etc("medialibrary_kit_whitelist.json") {
 }
 
 ohos_prebuilt_etc("medialibrary_kit_version.txt") {
-  module_install_dir = "etc/com.ohos.medialibrary.medialibrarydata/medialibrary_kit_whitelist/"
+  module_install_dir =
+      "etc/com.ohos.medialibrary.medialibrarydata/medialibrary_kit_whitelist/"
 
-  source = "${MEDIALIB_UTILS_PATH}/configs/medialibrary_kit_whitelist/version.txt"
+  source =
+      "${MEDIALIB_UTILS_PATH}/configs/medialibrary_kit_whitelist/version.txt"
 
   subsystem_name = "multimedia"
   part_name = "media_library"
@@ -99,9 +104,8 @@ config("media_data_extension_public_config") {
   include_albums_refresh =
       [ "${MEDIALIB_SERVICES_PATH}/media_albums_refresh/include" ]
 
-  include_cloud_sync_add_server = [
-    "${MEDIALIB_INTERFACES_PATH}/inner_api/native/cloud_sync",
-  ]
+  include_cloud_sync_add_server =
+      [ "${MEDIALIB_INTERFACES_PATH}/inner_api/native/cloud_sync" ]
 
   include_cloud_sync_server = [
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include",
@@ -156,10 +160,9 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/dao",
     "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
   ]
-  
-  include_media_file_management = [
-    "${MEDIALIB_BUSINESS_PATH}/media_file_management/include/",
-  ]  
+
+  include_media_file_management =
+      [ "${MEDIALIB_BUSINESS_PATH}/media_file_management/include/" ]
 
   include_media_permission =
       [ "${MEDIALIB_BUSINESS_PATH}/media_permission/include/" ]
@@ -204,31 +207,26 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lake_load/include",
   ]
 
-  include_media_analysis_data_client_vo = [
-    "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo",
-  ]
+  include_media_analysis_data_client_vo =
+      [ "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo" ]
 
-  include_media_analysis_data_extension = [
-    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
-  ]
+  include_media_analysis_data_extension =
+      [ "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include" ]
 
-  include_event_handler = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/event_handler",
-  ]
+  include_event_handler =
+      [ "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/event_handler" ]
 
   include_upgrade = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/upgrade",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/upgrade/upgrade_sqls",
   ]
 
-  include_old_notification = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_old_notification/include",
-  ]
+  include_old_notification =
+      [ "${MEDIALIB_NEW_SERVICES_PATH}/media_old_notification/include" ]
 
-  include_lcd_aging = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/include",
-  ]
-  
+  include_lcd_aging =
+      [ "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/include" ]
+
   include_media_file_manager = [
     "${MEDIALIB_SERVICES_PATH}/media_file_manager/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/include",
@@ -315,12 +313,10 @@ config("media_data_extension_public_config") {
     ]
     include_dirs += include_media_file_manager_source
   }
-  
-  
+
   if (media_library_file_manager_enable || media_library_lake_enable) {
-    include_media_file_access_load = [
-      "${MEDIALIB_SERVICES_PATH}/media_file_access_load/include",
-    ]
+    include_media_file_access_load =
+        [ "${MEDIALIB_SERVICES_PATH}/media_file_access_load/include" ]
     include_media_file_scan = [
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/common/include",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/include",
@@ -355,9 +351,8 @@ config("media_data_extension_public_config") {
   }
 
   if (media_library_feature_custom_restore) {
-    include_custom_restore = [
-      "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
-    ]
+    include_custom_restore =
+        [ "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include" ]
     include_dirs += include_custom_restore
   }
 
@@ -424,11 +419,9 @@ ohos_shared_library("medialibrary_data_extension") {
     defines += [ "MEDIALIBRARY_FILE_MGR_SUPPORT" ]
   }
 
-  media_video_mode_source = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_video_mode_operation.cpp",
-  ]
+  media_video_mode_source = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_video_mode_operation.cpp" ]
 
-media_scan_source = [
+  media_scan_source = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/media_scan_executor.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/media_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/media_scanner_manager.cpp",
@@ -938,27 +931,34 @@ media_scan_source = [
 
   sources = [
     "${MEDIALIB_FACARD_PATH}/src/tab_facard_photos_table_event_handler.cpp",
-    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/common_event_utils.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/cover_position_parser.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/duration_parser.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/parser_task_queue_base.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/cpu_utils.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/media_privacy_manager.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/parameter_utils.cpp",
-    "${MEDIALIB_UTILS_PATH}/src/settings_data_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_rdbstore.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_restore.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_upgrade_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/common_event_utils.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/cover_position_parser.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/cpu_utils.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/duration_parser.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/media_privacy_manager.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/parameter_utils.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/parser_task_queue_base.cpp",
+    "${MEDIALIB_UTILS_PATH}/src/settings_data_manager.cpp",
     "src/asset_compress_version_manager.cpp",
+    "src/attribute/extra_info/portrait_extra_info_repository.cpp",
+    "src/attribute/extra_info/portrait_extra_info_service.cpp",
+    "src/attribute/is_removed/portrait_is_removed_service.cpp",
+    "src/attribute/nickname/portrait_nickname_merge_plan.cpp",
+    "src/attribute/nickname/portrait_nickname_relation_resolver.cpp",
+    "src/attribute/nickname/portrait_nickname_repository.cpp",
+    "src/attribute/nickname/portrait_nickname_service.cpp",
+    "src/cloud_media_common.cpp",
     "src/custom_record_operations.cpp",
     "src/foreground_analysis_meta.cpp",
     "src/heif_bundle_info_cache.cpp",
     "src/heif_transcoding_check_utils.cpp",
-    "src/preferred_compatible_mode_check_utils.cpp",
-    "src/highpixel_bundle_info_cache.cpp",
     "src/hi_audit.cpp",
+    "src/highpixel_bundle_info_cache.cpp",
     "src/media_datashare_ext_ability.cpp",
     "src/media_datashare_stub_impl.cpp",
     "src/medialibrary_album_fusion_utils.cpp",
@@ -972,13 +972,6 @@ media_scan_source = [
     "src/medialibrary_audio_operations.cpp",
     "src/medialibrary_bundle_manager.cpp",
     "src/medialibrary_command.cpp",
-    "src/attribute/is_removed/portrait_is_removed_service.cpp",
-    "src/attribute/nickname/portrait_nickname_merge_plan.cpp",
-    "src/attribute/nickname/portrait_nickname_relation_resolver.cpp",
-    "src/attribute/nickname/portrait_nickname_repository.cpp",
-    "src/attribute/nickname/portrait_nickname_service.cpp",
-    "src/attribute/extra_info/portrait_extra_info_service.cpp",
-    "src/attribute/extra_info/portrait_extra_info_repository.cpp",
     "src/medialibrary_critical_photo_operations.cpp",
     "src/medialibrary_data_manager.cpp",
     "src/medialibrary_data_manager_utils.cpp",
@@ -986,7 +979,6 @@ media_scan_source = [
     "src/medialibrary_file_operations.cpp",
     "src/medialibrary_formmap_operations.cpp",
     "src/medialibrary_inotify.cpp",
-    "src/cloud_media_common.cpp",
     "src/medialibrary_json_operation.cpp",
     "src/medialibrary_meta_recovery.cpp",
     "src/medialibrary_object_utils.cpp",
@@ -994,8 +986,8 @@ media_scan_source = [
     "src/medialibrary_ptp_operations.cpp",
     "src/medialibrary_related_system_state_manager.cpp",
     "src/medialibrary_tab_asset_and_album_operations.cpp",
-    "src/medialibrary_tab_old_photos_operations.cpp",
     "src/medialibrary_tab_old_albums_operations.cpp",
+    "src/medialibrary_tab_old_photos_operations.cpp",
     "src/medialibrary_uripermission_operations.cpp",
     "src/medialibrary_urisensitive_operations.cpp",
     "src/operation/display_name_info.cpp",
@@ -1017,11 +1009,12 @@ media_scan_source = [
     "src/picture_data_operations.cpp",
     "src/picture_handle_service.cpp",
     "src/picture_manager_thread.cpp",
+    "src/preferred_compatible_mode_check_utils.cpp",
     "src/tlv_util.cpp",
+    "src/transcode_compatible_info_operations.cpp",
     "src/trash_async_worker.cpp",
     "src/video_composition_callback_imp.cpp",
     "src/zip_util.cpp",
-    "src/transcode_compatible_info_operations.cpp",
   ]
 
   media_notification_source = [
@@ -1108,9 +1101,7 @@ media_scan_source = [
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/dfx/dfx_refresh_hander.cpp",
   ]
 
-  media_old_notification = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_old_notification/src/medialibrary_notify.cpp",
-  ]
+  media_old_notification = [ "${MEDIALIB_NEW_SERVICES_PATH}/media_old_notification/src/medialibrary_notify.cpp" ]
 
   media_lcd_aging = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
@@ -1169,7 +1160,7 @@ media_scan_source = [
   sources += upgrade_source
   sources += media_old_notification
   sources += media_lcd_aging
-  sources += media_file_manager_source 
+  sources += media_file_manager_source
 
   if (media_library_lake_enable) {
     media_lake_scanner_source = [
@@ -1183,7 +1174,7 @@ media_scan_source = [
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/lake/src/media_lake_check_manager.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/lake/src/product_info.cpp",
     ]
-    
+
     media_lake_only_file_monitor_source = [
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/lake/src/media_delete_lake_album_processor.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/lake/src/media_delete_lake_dir_processor.cpp",
@@ -1221,7 +1212,7 @@ media_scan_source = [
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_manager_scan_rule_config.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/lake_scan_rule_config.cpp",
     ]
-    
+
     media_file_manager_scan_source = [
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_check_scenario.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_folder_parser.cpp",
@@ -1246,7 +1237,7 @@ media_scan_source = [
     sources += media_file_scan_common_source
     sources += media_file_manager_scan_source
     sources += media_file_monitor_source
-    
+
     defines += [ "MEDIALIBRARY_FILE_MGR_SUPPORT" ]
   }
 
@@ -1259,15 +1250,13 @@ media_scan_source = [
   }
 
   if (media_library_facard_enable) {
-    media_facard_source = [
-      "${MEDIALIB_FACARD_PATH}/src/operation/medialibrary_facard_operations.cpp",
-    ]
+    media_facard_source = [ "${MEDIALIB_FACARD_PATH}/src/operation/medialibrary_facard_operations.cpp" ]
     sources += media_facard_source
   }
 
   if (media_library_feature_secure_album) {
     defines += [ "MEDIALIBRARY_SECURE_ALBUM_ENABLE=1" ]
-    sources += [ "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/watch_system_handler.cpp", ]
+    sources += [ "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/watch_system_handler.cpp" ]
   }
 
   if (media_library_feature_cloud_download) {
@@ -1338,15 +1327,15 @@ media_scan_source = [
   public_configs = [ ":media_data_extension_public_config" ]
 
   deps = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
-    "${MEDIALIB_INNERKITS_PATH}/media_permission_helper:media_permission_helper",
+    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_INNERKITS_PATH}/media_permission_helper",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
     "${MEDIALIB_SERVICES_PATH}/media_async_worker:medialibrary_async_worker",
     "${MEDIALIB_UTILS_PATH}:medialibrary_common_utils",
     "${MEDIALIB_UTILS_PATH}:permission_utils",
     "${MEDIALIB_UTILS_PATH}:post_event_utils",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
-    "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
   ]
 
   include_dirs = [
@@ -1389,17 +1378,19 @@ media_scan_source = [
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
-    "ipc:ipc_single",
     "ipc:ipc_napi",
+    "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "libexif:libexif",
-    "libfuse:libfuse",
+    "libexif",
+    "libfuse",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
     "player_framework:media_client",
     "player_framework:video_editor",
     "preferences:native_preferences",
+    "qos_manager:concurrent_task_client",
+    "qos_manager:qos",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "resource_schedule_service:ressched_client",
@@ -1409,19 +1400,17 @@ media_scan_source = [
     "usb_manager:usbsrv_client",
     "window_manager:libdm",
     "zlib:shared_libz",
-    "qos_manager:qos",
-    "qos_manager:concurrent_task_client",
   ]
 
   if (media_library_cellular_data_enable) {
     external_deps += [
+      "cellular_data:tel_cellular_data_api",
       "core_service:tel_core_service_api",
-      "cellular_data:tel_cellular_data_api"
     ]
   }
 
   if (defined(global_parts_info) &&
-    defined(global_parts_info.iotdev_memospace_service)) {
+      defined(global_parts_info.iotdev_memospace_service)) {
     external_deps += [ "memospace_service:hdc_proxy" ]
   }
 
@@ -1441,7 +1430,7 @@ media_scan_source = [
   defines += [ "META_RECOVERY_SUPPORT=1" ]
 
   if (defined(global_parts_info) &&
-    defined(global_parts_info.iotdev_memospace_service)) {
+      defined(global_parts_info.iotdev_memospace_service)) {
     defines += [ "MEDIA_LIBRARY_MEMOSPACE_SERVICE_SUPPORT" ]
   }
 
@@ -1462,7 +1451,7 @@ media_scan_source = [
       defined(global_parts_info.multimedia_camera_framework) &&
       global_parts_info.multimedia_camera_framework) {
     defines += [ "ABILITY_CAMERA_SUPPORT" ]
-    external_deps += [ "camera_framework:camera_framework" ]
+    external_deps += [ "camera_framework" ]
     sources += [
       "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/deferred_processing/multistages_capture_deferred_photo_proc_session_callback.cpp",
       "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/deferred_processing/multistages_capture_deferred_video_proc_session_callback.cpp",
