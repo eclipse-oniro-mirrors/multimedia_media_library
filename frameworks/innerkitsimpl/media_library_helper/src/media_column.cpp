@@ -230,6 +230,7 @@ const std::string PhotoColumn::UNIQUE_ID = "unique_id";
 const std::string PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS = "livephoto_4d_status";
 const std::string PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR = "livephoto_4d_latest_pair";
 const std::string PhotoColumn::LOCAL_ASSET_SIZE = "local_asset_size";
+const std::string PhotoColumn::PHOTO_NEED_THUMBNAIL = "need_thumbnail";
 
 const std::string PhotoColumn::LCD_ASPECT_RATIO = "lcd_aspect_ratio";
 
@@ -262,7 +263,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_DATE_ADDED_YEAR, PhotoColumn::PHOTO_DATE_ADDED_MONTH, PhotoColumn::PHOTO_DATE_ADDED_DAY,
     PhotoColumn::UNIQUE_ID, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::LOCAL_ASSET_SIZE,
-    PhotoColumn::PHOTO_FILE_HIDDEN,
+    PhotoColumn::PHOTO_FILE_HIDDEN, PhotoColumn::PHOTO_NEED_THUMBNAIL
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)

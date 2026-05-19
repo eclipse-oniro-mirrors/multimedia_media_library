@@ -299,6 +299,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::CreateAssetForAppWithAlbum
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM),
+        &MediaAssetsControllerService::CreateAssetWithAlbum
+    },
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_PUBLIC_SET_TITLE),
         &MediaAssetsControllerService::SetAssetTitle
     },
@@ -1719,6 +1723,31 @@ int32_t MediaAssetsControllerService::CreateAssetForAppWithAlbum(MessageParcel &
 
     CreateAssetDto dto(reqBody);
     ret = MediaAssetsService::GetInstance().CreateAssetForAppWithAlbum(dto);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, dto.GetRespBody(), ret);
+}
+
+int32_t MediaAssetsControllerService::CreateAssetWithAlbum(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(
+        MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    CreateAssetsWithAlbumReqBody reqBody;
+    CreateAssetsWithAlbumRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CreateAssetWithAlbum Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+
+    ret = ParameterUtils::CheckCreateAssetWithAlbum(reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CheckCreateAssetWithAlbum ret:%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+
+    CreateAssetDto dto(reqBody);
+    ret = MediaAssetsService::GetInstance().CreateAssetWithAlbum(dto);
     return IPC::UserDefineIPC().WriteResponseBody(reply, dto.GetRespBody(), ret);
 }
 

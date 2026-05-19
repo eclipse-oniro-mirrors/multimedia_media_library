@@ -297,6 +297,7 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     if (metadata.GetLocalAssetSize() != 0) {
         values.PutLong(PhotoColumn::LOCAL_ASSET_SIZE, metadata.GetLocalAssetSize());
     }
+    values.PutInt(PhotoColumn::PHOTO_NEED_THUMBNAIL, metadata.GetNeedThumbnail());
     MEDIA_INFO_LOG("MediaScannerDb height: %{public}d, width: %{public}d.",
         metadata.GetFileHeight(), metadata.GetFileWidth());
 }
@@ -580,6 +581,7 @@ static void GetQueryParamsByPath(const string &path, MediaLibraryApi api, vector
                 PhotoColumn::PHOTO_DIRTY, PhotoColumn::PHOTO_QUALITY, MediaColumn::MEDIA_DATE_TAKEN,
                 PhotoColumn::PHOTO_BURST_COVER_LEVEL, PhotoColumn::PHOTO_OWNER_ALBUM_ID,
                 PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_VIDEO_MODE,
+                PhotoColumn::PHOTO_NEED_THUMBNAIL,
             };
         } else if (oprnObject == OperationObject::FILESYSTEM_AUDIO) {
             columns = {

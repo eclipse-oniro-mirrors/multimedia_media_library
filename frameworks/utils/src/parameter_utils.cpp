@@ -226,6 +226,17 @@ int32_t ParameterUtils::CheckCreateAssetForAppWithAlbum(const CreateAssetForAppR
     return E_OK;
 }
 
+int32_t ParameterUtils::CheckCreateAssetWithAlbum(const CreateAssetsWithAlbumReqBody &reqBody)
+{
+    int32_t errCode = CheckCreateAssetTitle(reqBody.title, false);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Invalid title");
+    errCode = MediaFileUtils::CheckTitleAndExtensionSize(reqBody.title, reqBody.extension);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Title and extension size exceeds limit");
+    errCode = CheckCreateAssetMediaType(reqBody.mediaType, reqBody.extension);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Invalid mediaType or extension");
+    return E_OK;
+}
+
 int32_t ParameterUtils::CheckCreatePhotoAlbum(const CreateAlbumReqBody &reqBody)
 {
     int32_t errCode = MediaFileUtils::CheckAlbumName(reqBody.albumName);

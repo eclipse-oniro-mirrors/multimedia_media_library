@@ -587,4 +587,172 @@ HWTEST_F(CreateAssetTest, CreateFileManagerAsset_Test_002, TestSize.Level0)
     }
 }
 
+int32_t ServiceCreateAssetWithAlbum(CreateAssetsWithAlbumReqBody &reqBody, ServiceCall call)
+{
+    MessageParcel data;
+    if (reqBody.Marshalling(data) != true) {
+        MEDIA_ERR_LOG("reqBody.Marshalling failed");
+        return -1;
+    }
+
+    MessageParcel reply;
+    call(data, reply);
+
+    IPC::MediaRespVo<CreateAssetsWithAlbumRespBody> respVo;
+    if (respVo.Unmarshalling(reply) != true) {
+        MEDIA_ERR_LOG("respVo.Unmarshalling failed");
+        return -1;
+    }
+
+    int32_t errCode = respVo.GetErrCode();
+    if (errCode != 0) {
+        MEDIA_ERR_LOG("respVo.GetErrCode: %{public}d", errCode);
+        return errCode;
+    }
+
+    return respVo.GetBody().fileId;
+}
+
+int32_t CreateAssetWithAlbum(const std::string &ext, const std::string &title = "",
+    int32_t albumId = 0, bool isRealTimeThumb = true)
+{
+    CreateAssetsWithAlbumReqBody reqBody;
+    reqBody.mediaType = MEDIA_TYPE_IMAGE;
+    reqBody.title = title;
+    reqBody.extension = ext;
+    reqBody.ownerAlbumId = albumId > 0 ? to_string(albumId) : "";
+    reqBody.isRealTimeThumb = isRealTimeThumb;
+
+    ServiceCall call = [](MessageParcel &data, MessageParcel &reply) {
+        auto service = make_shared<MediaAssetsControllerService>();
+        service->CreateAssetWithAlbum(data, reply);
+    };
+
+    return ServiceCreateAssetWithAlbum(reqBody, call);
+}
+
+bool CheckNeedThumbnail(int32_t assetId, int32_t expectedValue)
+{
+    vector<string> columns = { PhotoColumn::PHOTO_NEED_THUMBNAIL };
+    NativeRdb::RdbPredicates rdbPredicate(PhotoColumn::PHOTOS_TABLE);
+    rdbPredicate.EqualTo(PhotoColumn::MEDIA_ID, assetId);
+    auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("Query need_thumbnail failed for assetId:%{public}d", assetId);
+        return false;
+    }
+    int32_t needThumbnail = -1;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        needThumbnail = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_NEED_THUMBNAIL);
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("assetId:%{public}d needThumbnail:%{public}d expected:%{public}d",
+        assetId, needThumbnail, expectedValue);
+    return needThumbnail == expectedValue;
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_Test_001");
+    int32_t fileId = CreateAssetWithAlbum("xxx");
+    ASSERT_LT(fileId, 0);
+
+    fileId = CreateAssetWithAlbum("jpg", "WithAlbum_001?xxx");
+    ASSERT_LT(fileId, 0);
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_Test_002");
+    int32_t albumId = GetAlbumId("TestUserAlbum");
+    ASSERT_GT(albumId, 0);
+
+    int32_t fileId = CreateAssetWithAlbum("jpg", "", albumId);
+    ASSERT_GT(fileId, 0);
+    bool hasAsset = CheckAsset(fileId);
+    ASSERT_EQ(hasAsset, true);
+
+    fileId = CreateAssetWithAlbum("jpg", "WithAlbum_002", albumId);
+    ASSERT_GT(fileId, 0);
+    hasAsset = CheckAsset(fileId);
+    ASSERT_EQ(hasAsset, true);
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_NeedThumbnail_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_NeedThumbnail_Test_001");
+    int32_t albumId = GetAlbumId("TestUserAlbum");
+    ASSERT_GT(albumId, 0);
+
+    int32_t fileId = CreateAssetWithAlbum("jpg", "ThumbTest_001", albumId, false);
+    ASSERT_GT(fileId, 0);
+    bool result = CheckNeedThumbnail(fileId, 0);
+    ASSERT_EQ(result, true);
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_NeedThumbnail_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_NeedThumbnail_Test_002");
+    int32_t albumId = GetAlbumId("TestUserAlbum");
+    ASSERT_GT(albumId, 0);
+
+    int32_t fileId = CreateAssetWithAlbum("jpg", "ThumbTest_002", albumId, true);
+    ASSERT_GT(fileId, 0);
+    bool result = CheckNeedThumbnail(fileId, 1);
+    ASSERT_EQ(result, true);
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_NeedThumbnail_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_NeedThumbnail_Test_003");
+    int32_t fileId = CreateAssetWithAlbum("jpg", "ThumbTest_003", 0, false);
+    ASSERT_GT(fileId, 0);
+    bool result = CheckNeedThumbnail(fileId, 0);
+    ASSERT_EQ(result, true);
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_TitleAndExtensionSize_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_TitleAndExtensionSize_Test_001");
+    int32_t albumId = GetAlbumId("TestUserAlbum");
+    ASSERT_GT(albumId, 0);
+
+    string longTitle(256, 'a');
+    int32_t fileId = CreateAssetWithAlbum("jpg", longTitle, albumId, false);
+    ASSERT_LT(fileId, 0);
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_TitleAndExtensionSize_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_TitleAndExtensionSize_Test_002");
+    int32_t albumId = GetAlbumId("TestUserAlbum");
+    ASSERT_GT(albumId, 0);
+
+    string longTitle(252, 'a');
+    int32_t fileId = CreateAssetWithAlbum("jpgx", longTitle, albumId, false);
+    ASSERT_LT(fileId, 0);
+}
+
+HWTEST_F(CreateAssetTest, CreateAssetWithAlbum_MediaTypeMismatch_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start CreateAssetWithAlbum_MediaTypeMismatch_Test_001");
+    int32_t albumId = GetAlbumId("TestUserAlbum");
+    ASSERT_GT(albumId, 0);
+
+    CreateAssetsWithAlbumReqBody reqBody;
+    reqBody.mediaType = MEDIA_TYPE_VIDEO;
+    reqBody.title = "TypeMismatch_001";
+    reqBody.extension = "jpg";
+    reqBody.ownerAlbumId = to_string(albumId);
+    reqBody.isRealTimeThumb = false;
+
+    ServiceCall call = [](MessageParcel &data, MessageParcel &reply) {
+        auto service = make_shared<MediaAssetsControllerService>();
+        service->CreateAssetWithAlbum(data, reply);
+    };
+
+    int32_t fileId = ServiceCreateAssetWithAlbum(reqBody, call);
+    ASSERT_LT(fileId, 0);
+}
+
 }  // namespace OHOS::Media

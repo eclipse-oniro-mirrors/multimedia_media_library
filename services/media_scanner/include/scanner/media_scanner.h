@@ -130,6 +130,9 @@ private:
     EXPORT int32_t AddToTransaction();
     EXPORT int32_t CommitTransaction();
 
+    /* thumbnail ops */
+    int32_t HandleNeedThumbnail();
+
     /* callback */
     EXPORT int32_t InvokeCallback(int32_t code);
 

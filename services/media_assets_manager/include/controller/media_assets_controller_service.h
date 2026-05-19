@@ -69,6 +69,7 @@ public:
     EXPORT int32_t PublicCreateAssetForApp(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SystemCreateAssetForApp(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CreateAssetForAppWithAlbum(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CreateAssetWithAlbum(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetAssetTitle(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetAssetPending(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetAssetsFavorite(MessageParcel &data, MessageParcel &reply);

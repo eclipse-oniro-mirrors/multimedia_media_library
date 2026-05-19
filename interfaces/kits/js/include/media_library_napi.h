@@ -348,6 +348,7 @@ private:
     EXPORT static napi_value CreateAssetsHasPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value CreateAssetWithShortTermPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value CreateAssetsForAppWithAlbum(napi_env env, napi_callback_info info);
+    EXPORT static napi_value CreateAssetsWithAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value ShowAssetsCreationDialog(napi_env env, napi_callback_info info);
     EXPORT static napi_value RequestPhotoUrisReadPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value RequestPhotoUrisReadPermissionEx(napi_env env, napi_callback_info info);
@@ -693,6 +694,7 @@ struct MediaLibraryAsyncContext : public NapiError {
     std::string strParam;
     bool boolResult = false;
     bool supportedHighResolution = false;
+    bool isRealTimeThumb = true;
     std::string path;
     std::vector<int32_t> activeAnalysisTypes;
     std::vector<std::string> activeAnalysisFileIds;

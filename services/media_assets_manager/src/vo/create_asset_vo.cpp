@@ -122,4 +122,30 @@ bool CreateFileMgrAssetReqBody::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET(status, status);
     return parcel.WriteString(this->ownerAlbumId);
 }
+
+bool CreateAssetsWithAlbumReqBody::Unmarshalling(MessageParcel &parcel)
+{
+    bool status = parcel.ReadInt32(this->mediaType);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadString(this->title);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadString(this->extension);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.ReadString(this->ownerAlbumId);
+    CHECK_AND_RETURN_RET(status, status);
+    return parcel.ReadBool(this->isRealTimeThumb);
+}
+
+bool CreateAssetsWithAlbumReqBody::Marshalling(MessageParcel &parcel) const
+{
+    bool status = parcel.WriteInt32(this->mediaType);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteString(this->title);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteString(this->extension);
+    CHECK_AND_RETURN_RET(status, status);
+    status = parcel.WriteString(this->ownerAlbumId);
+    CHECK_AND_RETURN_RET(status, status);
+    return parcel.WriteBool(this->isRealTimeThumb);
+}
 } // namespace OHOS::Media

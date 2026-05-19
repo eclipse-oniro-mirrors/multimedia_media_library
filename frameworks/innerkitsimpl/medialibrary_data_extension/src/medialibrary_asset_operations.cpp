@@ -1147,6 +1147,16 @@ static void HandleFileSourceType(const FileAsset &fileAsset, ValuesBucket &asset
     }
 }
 
+static void HandleNeedThumbnail(MediaLibraryCommand &cmd, ValuesBucket &assetInfo)
+{
+    ValueObject needThumbValue;
+    if (cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_NEED_THUMBNAIL, needThumbValue)) {
+        int32_t needThumb = 1;
+        needThumbValue.GetInt(needThumb);
+        assetInfo.PutInt(PhotoColumn::PHOTO_NEED_THUMBNAIL, needThumb);
+    }
+}
+
 static void FillAssetInfo(MediaLibraryCommand &cmd, const FileAsset &fileAsset)
 {
     const string& displayName = fileAsset.GetDisplayName();
@@ -1177,6 +1187,7 @@ static void FillAssetInfo(MediaLibraryCommand &cmd, const FileAsset &fileAsset)
     }
     HandleFileSourceType(fileAsset, assetInfo);
     HandleCallingPackage(cmd, fileAsset, assetInfo);
+    HandleNeedThumbnail(cmd, assetInfo);
 
     assetInfo.PutString(MediaColumn::MEDIA_DEVICE_NAME, cmd.GetDeviceName());
     HandleDateAdded(nowTime,
