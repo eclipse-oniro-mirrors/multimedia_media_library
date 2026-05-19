@@ -105,7 +105,10 @@
           "image_framework",
           "media_foundation",
           "qos_manager",
-          "hiappevent"
+          "hiappevent",
+          "ets_frontend",
+          "json",
+          "drivekit_native"
         ]
       },
       "build": {

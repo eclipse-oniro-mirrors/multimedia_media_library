@@ -101,9 +101,8 @@ config("napi_config") {
   }
 
   if (defined(global_parts_info) &&
-      defined(
-          global_parts_info.device_cloud_gateway_media_cloud_enhance_service)) {
-    include_dirs += [ "${MEDIALIB_CLOUD_ENHANCEMENT_SERVICE_PATH}/interfaces/inner_api/include/c_api" ]
+      defined(global_parts_info.device_cloud_gateway_media_cloud_enhance_service)) {
+    include_dirs += [ "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/common_data" ]
   }
 
   ldflags = [ "-Wl,--gc-sections" ]
