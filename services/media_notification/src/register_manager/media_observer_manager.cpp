@@ -71,7 +71,7 @@ int32_t MediaObserverManager::AddObserver(const NotifyUriType &uri,
     }
     ObserverInfo obsInfo;
     obsInfo.observer = dataObserver;
-    obsInfo.isSystem = permissionHandle.isSystemApp();
+    obsInfo.isSystem = permissionHandle.isSystemApp() || PermissionUtils::IsNativeSAApp();
     obsInfo.callingTokenId = IPCSkeleton::GetCallingTokenID();
     auto retVal = CheckSingleProcessSize(uri);
     CHECK_AND_RETURN_RET_LOG(retVal, E_MAX_ON_SINGLE_NUM, "Exceeds single register specification limit");
