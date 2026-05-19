@@ -102,6 +102,7 @@ using DataShareResultSet = OHOS::DataShare::DataShareResultSet;
 using DataShareValuesBucket = OHOS::DataShare::DataShareValuesBucket;
 
 
+thread_local unique_ptr<ChangeListenerAni> g_listObj = nullptr;
 static SafeMap<int32_t, std::shared_ptr<ThumbnailBatchGenerateObserver>> thumbnailGenerateObserverMap;
 static SafeMap<int32_t, std::shared_ptr<ThumbnailGenerateHandler>> thumbnailGenerateHandlerMap;
 static std::atomic<int32_t> requestIdCounter_ = 0;
@@ -1765,6 +1766,12 @@ ani_object MediaLibraryAni::Constructor(ani_env *env, ani_class clazz, ani_objec
         nativeHandle->listObj_ = std::make_unique<ChangeListenerAni>(vm);
     }
 
+    if (g_listObj == nullptr) {
+        ani_vm *vm = nullptr;
+        CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
+        g_listObj = std::make_unique<ChangeListenerAni>(vm);
+    }
+
     bool isAsync = false;
     CheckWhetherAsync(env, userIdObject, isAsync);
     if (!InitUserFileClient(env, context, isAsync)) {
@@ -1804,6 +1811,12 @@ ani_object MediaLibraryAni::Constructor(ani_env *env, ani_class clazz, ani_objec
         ani_vm *vm = nullptr;
         CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
         nativeHandle->listObj_ = std::make_unique<ChangeListenerAni>(vm);
+    }
+
+    if (g_listObj == nullptr) {
+        ani_vm *vm = nullptr;
+        CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
+        g_listObj = std::make_unique<ChangeListenerAni>(vm);
     }
 
     bool isAsync = true;
@@ -5987,9 +6000,8 @@ void MediaLibraryAni::AvailabilityRegisterCallback(ani_env *env, ani_object obje
     tracer.Start("PhotoAccessOnMedialibraryAvailability");
 
     CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
-    MediaLibraryAni *obj = Unwrap(env, object);
-    if (obj == nullptr || obj->listObj_ == nullptr) {
-        ANI_ERR_LOG("obj or listObj_ is nullptr");
+    if (g_listObj == nullptr) {
+        ANI_ERR_LOG("g_listObj is nullptr");
         AniError::ThrowError(env, JS_E_INNER_FAIL);
         return;
     }
@@ -6001,7 +6013,7 @@ void MediaLibraryAni::AvailabilityRegisterCallback(ani_env *env, ani_object obje
         return;
     }
 
-    int32_t ret = RegisterAvailabilityObserverExecuteAni(env, cbOnRef, *obj->listObj_);
+    int32_t ret = RegisterAvailabilityObserverExecuteAni(env, cbOnRef, *g_listObj);
     if (ret != E_OK) {
         ANI_ERR_LOG("RegisterAvailabilityObserverExecuteAni failed, ret: %{public}d", ret);
         env->GlobalReference_Delete(cbOnRef);
@@ -6028,9 +6040,8 @@ void MediaLibraryAni::AvailabilityUnregisterCallback(ani_env *env, ani_object ob
     tracer.Start("PhotoAccessOffMedialibraryAvailability");
 
     CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
-    MediaLibraryAni *obj = Unwrap(env, object);
-    if (obj == nullptr || obj->listObj_ == nullptr) {
-        ANI_INFO_LOG("obj or listObj_ is nullptr");
+    if (g_listObj == nullptr) {
+        ANI_INFO_LOG("g_listObj is nullptr");
         tracer.Finish();
         return;
     }
@@ -6047,7 +6058,7 @@ void MediaLibraryAni::AvailabilityUnregisterCallback(ani_env *env, ani_object ob
         return;
     }
 
-    int32_t ret = UnregisterAvailabilityObserverExecuteAni(env, *obj->listObj_);
+    int32_t ret = UnregisterAvailabilityObserverExecuteAni(env, *g_listObj);
     if (ret != E_OK) {
         ANI_ERR_LOG("UnregisterAvailabilityObserverExecuteAni failed, ret: %{public}d", ret);
         AniError::ThrowError(env, MediaLibraryNotifyAniUtils::ConvertToJsError(ret));
