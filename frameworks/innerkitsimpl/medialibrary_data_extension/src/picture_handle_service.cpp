@@ -32,6 +32,7 @@
 
 namespace OHOS {
 namespace Media {
+SafeMap<int32_t, std::set<int32_t>> PictureHandlerService::bufferFdMap_ = {};
 
 bool PictureHandlerService::OpenPicture(const std::string &fileId, int32_t &fd)
 {
@@ -114,10 +115,10 @@ bool PictureHandlerService::WritePicture(const int32_t &fileId, MessageParcel &d
         "PictureHandlerService::GetPicture mainPixel is not exist, fileId: %{public}d", fileId);
 
     WritePhotoQuality(data, isHighQualityPicture);
-    WritePixelMap(data, mainPixel);
+    WritePixelMap(data, mainPixel, fileId);
 
     WriteExifMetadata(data, picture);
-    WriteMaintenanceData(data, picture);
+    WriteMaintenanceData(data, picture, fileId);
 
     for (size_t i = 0; i <= AUXILIARY_PICTURE_TYPE_COUNT; i++) {
         if (!picture->HasAuxiliaryPicture(static_cast<AuxiliaryPictureType>(i))) {
@@ -133,16 +134,17 @@ bool PictureHandlerService::WritePicture(const int32_t &fileId, MessageParcel &d
         }
         
         auxiliaryPictureSize ++;
-        WriteAuxiliaryPicture(data, auxiliaryPicture);
+        WriteAuxiliaryPicture(data, auxiliaryPicture, fileId);
     }
     return true;
 }
 
-bool PictureHandlerService::WritePixelMap(MessageParcel &data, std::shared_ptr<PixelMap> &pixelMap)
+bool PictureHandlerService::WritePixelMap(MessageParcel &data, std::shared_ptr<PixelMap> &pixelMap,
+    int32_t fileId)
 {
     WriteProperties(data, pixelMap);
     MEDIA_DEBUG_LOG("PictureHandlerService WritePixelMap write surface buffer");
-    WriteSurfaceBuffer(data, pixelMap);
+    WriteSurfaceBuffer(data, pixelMap, fileId);
     return true;
 }
 
@@ -241,7 +243,8 @@ bool PictureHandlerService::WriteYuvDataInfo(MessageParcel &data, std::shared_pt
     return true;
 }
 
-bool PictureHandlerService::WriteSurfaceBuffer(MessageParcel &data, std::shared_ptr<PixelMap> &pixelMap)
+bool PictureHandlerService::WriteSurfaceBuffer(MessageParcel &data, std::shared_ptr<PixelMap> &pixelMap,
+    int32_t fileId)
 {
     // surfaceBuffer 序列化
     SurfaceBuffer *surfaceBuffer = reinterpret_cast<SurfaceBuffer*> (pixelMap->GetFd());
@@ -255,10 +258,10 @@ bool PictureHandlerService::WriteSurfaceBuffer(MessageParcel &data, std::shared_
     MEDIA_DEBUG_LOG("PictureHandlerService::WriteSurfaceBuffer hasBufferHandle: %{public}d", hasBufferHandle);
     data.WriteBool(hasBufferHandle);
     CHECK_AND_RETURN_RET(hasBufferHandle, false);
-    return WriteBufferHandler(data, *handle);
+    return WriteBufferHandler(data, *handle, fileId);
 }
 
-bool PictureHandlerService ::WriteBufferHandler(MessageParcel &data, BufferHandle &handle)
+bool PictureHandlerService ::WriteBufferHandler(MessageParcel &data, BufferHandle &handle, int32_t fileId)
 {
     MEDIA_DEBUG_LOG("PictureHandlerService::WriteBufferHandler reserveFds: %{public}d", handle.reserveFds);
     data.WriteUint32(handle.reserveFds);
@@ -287,11 +290,12 @@ bool PictureHandlerService ::WriteBufferHandler(MessageParcel &data, BufferHandl
 
     MEDIA_DEBUG_LOG("PictureHandlerService::WriteBufferHandler fd: %{public}d.", handle.fd);
     data.WriteInt32(handle.fd);
-
+    SetBufferFd(fileId, handle.fd);
     for (uint32_t i = 0; i < handle.reserveFds; i++) {
         MEDIA_DEBUG_LOG("PictureHandlerService::WriteBufferHandler reserve[%{public}d]: %{public}d",
             i, handle.reserve[i]);
         data.WriteInt32(handle.reserve[i]);
+        SetBufferFd(fileId, handle.reserve[i]);
     }
     for (uint32_t j = 0; j < handle.reserveInts; j++) {
         data.WriteInt32(handle.reserve[handle.reserveFds + j]);
@@ -311,7 +315,8 @@ bool PictureHandlerService::WriteExifMetadata(MessageParcel &data, std::shared_p
     return exifMetadata->Marshalling(data);
 }
 
-bool PictureHandlerService::WriteMaintenanceData(MessageParcel &data, std::shared_ptr<Media::Picture> &picture)
+bool PictureHandlerService::WriteMaintenanceData(MessageParcel &data, std::shared_ptr<Media::Picture> &picture,
+    int32_t fileId)
 {
     sptr<SurfaceBuffer> surfaceBuffer = picture->GetMaintenanceData();
     bool hasMaintenanceData = (surfaceBuffer != nullptr);
@@ -319,11 +324,11 @@ bool PictureHandlerService::WriteMaintenanceData(MessageParcel &data, std::share
     data.WriteBool(hasMaintenanceData);
     CHECK_AND_RETURN_RET(hasMaintenanceData, true);
     BufferHandle *handle = surfaceBuffer->GetBufferHandle();
-    return WriteBufferHandler(data, *handle);
+    return WriteBufferHandler(data, *handle, fileId);
 }
 
 bool PictureHandlerService::WriteAuxiliaryPicture(MessageParcel &data,
-    std::shared_ptr<AuxiliaryPicture> &auxiliaryPicture)
+    std::shared_ptr<AuxiliaryPicture> &auxiliaryPicture, int32_t fileId)
 {
     MEDIA_DEBUG_LOG("PictureHandlerService WriteAuxiliaryPicture enter");
 
@@ -331,7 +336,7 @@ bool PictureHandlerService::WriteAuxiliaryPicture(MessageParcel &data,
 
     std::shared_ptr<PixelMap> pixelMap = auxiliaryPicture->GetContentPixel();
     if (pixelMap != nullptr) {
-        WritePixelMap(data, pixelMap);
+        WritePixelMap(data, pixelMap, fileId);
     }
 
     WriteAuxiliaryMetadata(data, auxiliaryPicture);
@@ -400,12 +405,45 @@ bool PictureHandlerService::WriteAuxiliaryMetadata(MessageParcel &data,
     return true;
 }
 
-int32_t PictureHandlerService::RequestBufferHandlerFd(const std::string fd)
+void PictureHandlerService::SetBufferFd(int32_t fileId, int32_t fd)
 {
-    MEDIA_DEBUG_LOG("PictureHandlerService RequestBufferHandlerFd fd: %{public}s", fd.c_str());
-    int dupFd = dup(std::atoi(fd.c_str()));
-    MEDIA_DEBUG_LOG("PictureHandlerService::RequestBufferHandlerFd dupFd: %{public}d", dupFd);
+    set<int32_t> bufferFds;
+    if (bufferFdMap_.Find(fileId, bufferFds)) {
+        bufferFds.insert(fd);
+        bufferFdMap_.EnsureInsert(fileId, bufferFds);
+    } else {
+        set<int32_t> bufferFds;
+        bufferFds.insert(fd);
+        bufferFdMap_.EnsureInsert(fileId, bufferFds);
+    }
+}
+
+bool PictureHandlerService::CheckBufferFd(int32_t fileId, int32_t fd)
+{
+    set<int32_t> bufferFds;
+    if (bufferFdMap_.Find(fileId, bufferFds) && bufferFds.count(fd) > 0) {
+        return true;
+    }
+    MEDIA_ERR_LOG("PictureHandlerService CheckBufferFd fileId: %{public}d, fd: %{public}d", fileId, fd);
+    return false;
+}
+
+int32_t PictureHandlerService::RequestBufferHandlerFd(int32_t fd, int32_t fileId)
+{
+    MEDIA_DEBUG_LOG("PictureHandlerService RequestBufferHandlerFd fd: %{public}d, fileId: %{public}d", fd, fileId);
+    int dupFd = -1;
+    if (CheckBufferFd(fileId, fd)) {
+        dupFd = dup(fd);
+    }
+    MEDIA_DEBUG_LOG("PictureHandlerService RequestBufferHandlerFd dupFd: %{public}d, fileId: %{public}d", dupFd,
+        fileId);
     return dupFd;
+}
+
+void PictureHandlerService::ClearBufferFdMap(int32_t fileId)
+{
+    MEDIA_INFO_LOG("PictureHandlerService ClearBufferFdMap fileId: %{public}d", fileId);
+    bufferFdMap_.Erase(fileId);
 }
 }
 }
