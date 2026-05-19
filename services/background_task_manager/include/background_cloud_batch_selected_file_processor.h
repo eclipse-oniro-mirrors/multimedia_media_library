@@ -47,7 +47,6 @@ public:
 
     EXPORT static bool HaveBatchDownloadResourcesTask();
     EXPORT static bool HaveBatchDownloadForAutoResumeTask();
-    EXPORT static bool HaveBatchDownloadForAutoResumeTaskWithNetRestrict();
     EXPORT static bool HaveBatchDownloadInAutoPauseTask();
     EXPORT static bool HaveBatchDownloadInAutoPauseTaskWithException();
     EXPORT static void StartBatchDownloadResourcesTimer();
@@ -60,22 +59,13 @@ public:
 
     EXPORT static void AutoStopAction(BatchDownloadAutoPauseReasonType &autoPauseReason);
     EXPORT static void AutoResumeAction();
-    EXPORT static void AutoResumeActionWithNetRestrict();
     EXPORT static void NotifyRefreshProgressInfo();
     EXPORT static void TriggerAutoResumeBatchDownloadResourceCheck();
     EXPORT static void TriggerAutoStopBatchDownloadResourceCheck();
+
     EXPORT static void UpdateDBStatusInfoForSingleDownloadCompletely(int32_t fileId);
-    EXPORT static void HandleTimeoutCellTask();
-    EXPORT static void LaunchNetWorkBatchDownloadProcessor();
-    EXPORT static int32_t ResetReasonForAllWifiNetTask(std::vector<std::string> &fileIds,
-        BatchDownloadAutoPauseReasonType &autoPauseReason);
-    EXPORT static void StopDownloadTaskUnit(int64_t &downloadId);
-    EXPORT static bool IsNonCellPolicyTask(std::string &fileId);
-    EXPORT static int32_t UpdateAutoPauseSpecificFileId(std::string fileId);
-    EXPORT static void AutoPauseNonCellPolicyTaskForWlanDisconnect(
-        std::vector<std::string> &fileIdList);
-    EXPORT static bool StopProcessConditionCheckForWlanDisconnect();
-    EXPORT static bool CanAutoRestoreNetPolicyTaskCondition();
+    EXPORT static void TriggerSwitchCellCheck();
+    EXPORT static bool TriggerNetLimitCheck();
 
     enum BatchDownloadStatus : int32_t {
         INIT = 0,
@@ -107,7 +97,7 @@ private:
 
         SingleDownloadFiles downloadFile_;
     };
-    EXPORT static bool GetCurrentRoundInDownloadingFileIdListVec(std::vector<std::string> &fileIdList);
+
     EXPORT static bool GetCurrentRoundInDownloadingFileIdList(std::string &fileIdsStr);
     EXPORT static bool GetCurrentRoundExcludeList(std::string &fileIdsStr);
     EXPORT static bool IsFileIdInCurrentRoundWithoutLock(const std::string &fileId);
@@ -137,14 +127,8 @@ private:
     EXPORT static void UpdateDBProgressStatusInfoForBatch(vector<int32_t> fileIds, int32_t status);
     EXPORT static int32_t UpdateDBProgressInfoForFileId(std::string &fileIdStr, int32_t percent,
         int64_t finishTime, int32_t status);
-    EXPORT static int32_t QueryUnFinishTasksNum();
-    EXPORT static int32_t QueryUnFinishWifiTasksNum();
-
     EXPORT static int32_t QueryBatchSelectedResourceFilesNum();
-    EXPORT static int32_t QueryBatchSelectedResourceFilesNumWithNetCondition();
-    EXPORT static int32_t QueryWifiNetRunningTaskNum();
     EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResume();
-    EXPORT static int32_t QueryBatchSelectedFilesNumForAutoResumeWithNetRestrict();
     EXPORT static int32_t QueryBatchDownloadFinishStatusCountFromDB(int32_t &totalValue,
         int32_t &completedValue, int32_t &failedValue);
     EXPORT static int32_t ClassifyFileIdsInDownloadResourcesTable(const std::vector<std::string> &fileIds,
@@ -157,22 +141,15 @@ private:
     EXPORT static int32_t QueryBatchSelectedFilesNumInAutoPauseWithException();
     // Auto pause resume
     EXPORT static int32_t UpdateAllAutoPauseDownloadResourcesInfo(BatchDownloadAutoPauseReasonType &autoPauseReason);
-    EXPORT static int32_t PauseAllWifiNetTask();
-    EXPORT static int32_t QueryAllWifiNetTask(std::vector<std::string> &fileIds);
     EXPORT static int32_t UpdateAllAutoResumeDownloadResourcesInfo();
     EXPORT static int32_t UpdateAllStatusAutoPauseToDownloading();
     EXPORT static int32_t UpdateAllStatusAutoPauseToWaiting();
-    EXPORT static int32_t UpdateAllAutoResumeDownloadResourcesInfoWithNetRestrict();
-    EXPORT static int32_t UpdateAllStatusAutoPauseToDownloadingWithNetRestrict();
-    EXPORT static int32_t UpdateAllStatusAutoPauseToWaitingWithNetRestrict();
     EXPORT static int32_t GetDeviceTemperature();
     EXPORT static void ControlDownloadLimit();
 
     static int32_t downloadInterval_;
     static int32_t downloadDuration_;
     static std::recursive_mutex mutex_;
-    static std::mutex mtxSec;
-    static std::atomic<bool> cellThreadRunning;
     static std::mutex downloadResultMutex_;
     static std::mutex mutexRunningStatus_;
     static std::mutex autoActionMutex_;
@@ -189,7 +166,7 @@ private:
     EXPORT static std::unordered_map<std::string, int32_t> downloadFileIdAndCount_;
     // DownloadId-Info 记录在运行任务 即时清理
     EXPORT static std::unordered_map<int64_t, InDownloadingFileInfo> currentDownloadIdFileInfoMap_;
-    static std::mutex stopProcessConditionMutex_;
+    
     static std::atomic<bool> batchDownloadTaskAdded_;
     static std::atomic<bool> downloadLatestFinished_;
     static std::atomic<bool> batchDownloadProcessRunningStatus_;
