@@ -198,6 +198,28 @@ static void ExecuteCloneToAlbum(napi_env env, void *data)
     NAPI_INFO_LOG("ExecuteCloneToAlbum end error:%{public}d", ctx->cloneCtx.callback->GetErrorCode());
 }
 
+static std::vector<std::shared_ptr<FileAsset>> GetFileAssetFormResult(
+    std::shared_ptr<DataShare::DataShareResultSet> resultSet)
+{
+    if (resultSet == nullptr) {
+        NAPI_ERR_LOG("resultSet error is null");
+        return {};
+    }
+    auto fetchResult = make_unique<FetchResult<FileAsset>>(resultSet);
+    if (fetchResult == nullptr) {
+        NAPI_ERR_LOG("fetchResult error is null");
+        return {};
+    }
+    std::vector<std::shared_ptr<FileAsset>> newFileAssets;
+    auto file = fetchResult->GetFirstObject();
+    while (file != nullptr) {
+        auto newFileAsset = std::shared_ptr<FileAsset>(std::move(file));
+        newFileAssets.push_back(newFileAsset);
+        file = fetchResult->GetNextObject();
+    }
+    return newFileAssets;
+}
+
 static void CompleteCloneToAlbum(napi_env env, napi_status status, void *data)
 {
     NAPI_INFO_LOG("CompleteCloneToAlbum start");
@@ -210,20 +232,16 @@ static void CompleteCloneToAlbum(napi_env env, napi_status status, void *data)
     napi_value jsFileArray = nullptr;
     size_t i = 0;
     auto cloneErrCode = context->cloneCtx.callback->GetErrorCode();
-    auto resultSet = context->cloneCtx.callback->GetResultSet();
-    auto fetchResult = make_unique<FetchResult<FileAsset>>(resultSet);
-    std::vector<std::shared_ptr<FileAsset>> newFileAssets;
-    auto file = fetchResult->GetFirstObject();
-    while (file != nullptr) {
-        auto newFileAsset = std::shared_ptr<FileAsset>(std::move(file));
-        newFileAssets.push_back(newFileAsset);
-        file = fetchResult->GetNextObject();
-    }
+    std::vector<std::shared_ptr<FileAsset>> newFileAssets =
+        GetFileAssetFormResult(context->cloneCtx.callback->GetResultSet());
     napi_create_array_with_length(env, newFileAssets.size(), &jsFileArray);
     if (cloneErrCode == ERR_DEFAULT) {
         for (i = 0; i < newFileAssets.size(); i++) {
             std::shared_ptr<FileAsset> newFileAsset = newFileAssets.at(i);
             CHECK_NULL_PTR_RETURN_VOID(newFileAsset, "newFileAset is null.");
+            std::string newFileAssetUri = MediaFileUtils::GetFileAssetUri(newFileAsset->GetPath(),
+                newFileAsset->GetDisplayName(), newFileAsset->GetId());
+            newFileAsset->SetUri(newFileAssetUri);
             newFileAsset->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);
             napi_value jsFileAsset = FileAssetNapi::CreatePhotoAsset(env, newFileAsset);
             if ((jsFileAsset == nullptr) || (napi_set_element(env, jsFileArray, i, jsFileAsset) != napi_ok)) {
