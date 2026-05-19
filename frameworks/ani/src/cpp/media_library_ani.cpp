@@ -7094,7 +7094,7 @@ ani_object MediaLibraryAni::GetAlbumIdByBundleName(ani_env *env, ani_object obje
 }
 
 static ani_status ParseArgsGetAssetCompatibleUris(ani_env *env, ani_string bundleName, ani_object assets,
-    ani_int compatibleFlags, unique_ptr<MediaLibraryAsyncContext> &context)
+    ani_object compatibleFlags, unique_ptr<MediaLibraryAsyncContext> &context)
 {
     CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
     CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
@@ -7125,11 +7125,19 @@ static ani_status ParseArgsGetAssetCompatibleUris(ani_env *env, ani_string bundl
         context->photoAssetInfos.push_back(info);
     }
 
-    context->compatibleFlags = compatibleFlags;
-    constexpr int32_t VALID_FLAGS_MASK = 0x3;
-    if ((context->compatibleFlags & ~VALID_FLAGS_MASK) != 0) {
-        ANI_ERR_LOG("invalid compatibleFlags: %{public}d", context->compatibleFlags);
-        return ANI_ERROR;
+    if (MediaLibraryAniUtils::IsUndefined(env, compatibleFlags) == ANI_FALSE) {
+        int32_t flag;
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, compatibleFlags, flag),
+            "Failed to parse compatibleFlags");
+        context->compatibleFlags = flag;
+        constexpr uint32_t VALID_FLAGS_MASK = 0x3;
+        uint32_t flags = static_cast<uint32_t>(context->compatibleFlags);
+        if ((flags & ~VALID_FLAGS_MASK) != 0) {
+            ANI_ERR_LOG("invalid compatibleFlags: %{public}d", context->compatibleFlags);
+            return ANI_ERROR;
+        }
+    } else {
+        context->compatibleFlags = THIRD_ENUM;
     }
     return ANI_OK;
 }
@@ -7167,7 +7175,7 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
         }
         std::string ext = item.uri.substr(atDot + 1);
         bool isHeifFile = (ext == "heif" || ext == "heic");
-        if (context->compatibleFlags == 0 || context->compatibleFlags == THIRD_ENUM) {
+        if (context->compatibleFlags == THIRD_ENUM) {
             CompatibleInfo compatibleinfo;
             compatibleinfo.bundleName = context->bundleName;
             compatibleinfo.highResolution = context->supportedHighResolution;
@@ -7199,6 +7207,10 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
 static vector<string> CheckTranscodeUriAni(MediaLibraryAsyncContext *context)
 {
     vector<string> result;
+    uint32_t flags = static_cast<uint32_t>(context->compatibleFlags);
+    if (flags == 0) {
+        return result;
+    }
     bool checkHighPixel = (context->compatibleFlags & 0x1) != 0;
     bool checkHeif = (context->compatibleFlags & 0x2) != 0;
     if (context->preferredCompatibleMode ==
@@ -7248,7 +7260,7 @@ static ani_object GetAssetCompatibleUrisComplete(ani_env *env, unique_ptr<MediaL
 }
 
 ani_object MediaLibraryAni::GetAssetCompatibleUris(ani_env *env, ani_object object,
-    ani_string bundleName, ani_object assets, ani_int compatibleFlags)
+    ani_string bundleName, ani_object assets, ani_object compatibleFlags)
 {
     ANI_DEBUG_LOG("GetAssetCompatibleUris start");
     CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
