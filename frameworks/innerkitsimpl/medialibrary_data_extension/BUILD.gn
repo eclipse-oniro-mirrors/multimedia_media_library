@@ -76,14 +76,6 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
   ]
 
-  include_multistages_capture = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/include/deferred_processing",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/include/dao",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/include/dfx",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/include/utils",
-  ]
-
   include_dfx = [ "${MEDIALIB_SERVICES_PATH}/media_dfx/include" ]
 
   include_cloud_asset_download = [
@@ -183,13 +175,19 @@ config("media_data_extension_public_config") {
   ]
 
   include_media_camera_character = [
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_camera_helper/include/enum",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/capture_object",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/common_data",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/controller",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/dto",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/vo",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/notify",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/dao",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/deferred_processing",
+
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/dfx",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/dto",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/notify",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/vo",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/include/utils",
   ]
 
   include_backround_task = [
@@ -262,7 +260,6 @@ config("media_data_extension_public_config") {
   include_dirs += include_common_utils
   include_dirs += include_fuse
   include_dirs += include_scanner
-  include_dirs += include_multistages_capture
   include_dirs += include_dfx
   include_dirs += include_cloud_asset_download
   include_dirs += include_cloud_dirty_handle
@@ -484,26 +481,6 @@ media_scan_source = [
   media_rdb_utils_source = [
     "src/medialibrary_rdb_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/medialibrary_rdb_transaction.cpp",
-  ]
-
-  media_multistages_capture_source = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/dao/multistages_capture_dao.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/deferred_processing/deferred_photo_proc_adapter.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/deferred_processing/deferred_video_proc_adapter.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/deferred_processing/high_quality_scan_file_callback.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_first_visit.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_request_policy.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_result.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_total_time.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_trigger_ratio.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/utils/database_adapter.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/utils/exif_utils.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/utils/file_utils.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/utils/multistages_capture_request_task_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/multistages_capture_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/multistages_photo_capture_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/multistages_video_capture_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/multistages_moving_photo_capture_manager.cpp",
   ]
 
   media_dfx_source = [
@@ -1083,25 +1060,55 @@ media_scan_source = [
 
   media_camera_character_service_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/media_camera_character_service.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_camera_capture_manager.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_capture_manager.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_moving_photo_capture_manager.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_photo_capture_manager.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/multistages_video_capture_manager.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/camera_asset_info.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/camera_asset_pipeline.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/image_pipeline.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/new_image_pipeline.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/yuv_pipeline.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/controller/media_camera_character_controller_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/controller/media_camera_character_permission_policy.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/notify/multistages_capture_notify.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dao/multistages_capture_dao.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/deferred_processing/deferred_photo_proc_adapter.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/deferred_processing/deferred_video_proc_adapter.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/deferred_processing/high_quality_scan_file_callback.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_capture_fault.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_capture_times.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_first_visit.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_request_policy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_result.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_save_camera_photo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_total_time.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dfx/multistages_capture_dfx_trigger_ratio.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/notify/multistages_capture_notify.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/utils/camera_path_utils.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/utils/database_adapter.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/utils/exif_utils.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/utils/file_utils.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/utils/multistages_capture_request_task_manager.cpp",
   ]
 
   media_camera_character_service_vo_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_process_video_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/cancel_request_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/create_camera_file_fd_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/get_deferred_picture_info_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/get_progress_callback_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/process_video_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/scan_camera_file_vo.cpp",
   ]
 
   media_camera_character_service_dto_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dto/add_process_video_dto.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dto/cancel_request_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dto/create_camera_file_fd_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dto/get_deferred_picture_info_dto.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dto/process_video_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dto/scan_camera_file_dto.cpp",
   ]
 
   accurate_refresh_server_source = [
@@ -1136,7 +1143,6 @@ media_scan_source = [
   sources += media_cloud_sync_server_source_dto
   sources += media_cloud_sync_server_source
   sources += media_rdb_utils_source
-  sources += media_multistages_capture_source
   sources += media_dfx_source
   sources += media_cloud_sync_notify_handle_source
   sources += media_permission_source

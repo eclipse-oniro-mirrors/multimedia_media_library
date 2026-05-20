@@ -29,6 +29,12 @@ public:
     void TearDown();
     MediaLibraryCameraManager manager;
 };
+
+const std::string EDIT_DATA_STRING = "\
+    { \"compatible_format\": \"system\",\
+      \"edit_data\": \"{edit_data}\",\
+      \"format_version\": \"1\" }";
+
 } // namespace Media
 } // namespace OHOS
 #endif // MEDIA_LIBRARY_CAMERA_HELPER_TEST_H

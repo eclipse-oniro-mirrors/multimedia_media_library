@@ -67,6 +67,9 @@ ohos_shared_library("media_library_camera_helper") {
   inner_ipc_sources = [
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_image_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_process_video_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/create_camera_file_fd_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/get_deferred_picture_info_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/scan_camera_file_vo.cpp",
   ]
 
   notify_sources = [

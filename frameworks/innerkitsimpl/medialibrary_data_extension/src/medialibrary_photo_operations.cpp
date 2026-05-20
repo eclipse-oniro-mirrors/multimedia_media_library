@@ -26,6 +26,7 @@
 #include "image_packer.h"
 #include "media_change_effect.h"
 #include "media_exif.h"
+#include "media_values_bucket_utils.h"
 #include "medialibrary_album_helper.h"
 #include "medialibrary_album_fusion_utils.h"
 #include "metadata_extractor.h"
@@ -41,6 +42,7 @@
 #include "medialibrary_object_utils.h"
 #include "medialibrary_tracer.h"
 #include "mimetype_utils.h"
+#include "multistages_camera_capture_manager.h"
 #include "multistages_capture_manager.h"
 #include "multistages_moving_photo_capture_manager.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
@@ -837,7 +839,7 @@ static inline void SetPhotoTypeByRelativePath(const string &relativePath, FileAs
     fileAsset.SetPhotoSubType(subType);
 }
 
-static inline void SetPhotoSubTypeFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsset)
+static void SetPhotoSubTypeFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsset)
 {
     int32_t subType = static_cast<int32_t>(PhotoSubType::DEFAULT);
     ValueObject value;
@@ -845,6 +847,15 @@ static inline void SetPhotoSubTypeFromCmd(MediaLibraryCommand &cmd, FileAsset &f
         value.GetInt(subType);
     }
     fileAsset.SetPhotoSubType(subType);
+    if (fileAsset.GetPhotoSubType() != static_cast<int32_t>(PhotoSubType::BURST)) {
+        return;
+    }
+ 
+    int32_t burstCoverLevel = static_cast<int32_t>(BurstCoverLevelType::COVER);
+    if (cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_BURST_COVER_LEVEL, value)) {
+        value.GetInt(burstCoverLevel);
+    }
+    fileAsset.SetBurstCoverLevel(burstCoverLevel);
 }
 
 static inline void SetCameraShotKeyFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsset)
@@ -959,12 +970,19 @@ static void SetAssetDisplayName(const string &displayName, FileAsset &fileAsset,
     isContains = true;
 }
 
-static void Check200mPicture(MediaLibraryCommand &cmd)
+static void Check200MPicture(MediaLibraryCommand &cmd, std::string& photoId, std::string& editData)
 {
     string isCapture = cmd.GetQuerySetParam(IS_CAPTURE);
     if (isCapture != "true") {
         MEDIA_DEBUG_LOG("no need Check200mPicture");
+        return;
     }
+
+    const NativeRdb::ValuesBucket& values = cmd.GetValueBucket();
+    MediaValuesBucketUtils::GetString(values, PhotoColumn::PHOTO_ID, photoId);
+    MediaValuesBucketUtils::GetString(values, EDIT_DATA, editData);
+    MEDIA_DEBUG_LOG("editdata: %{public}s.", editData.c_str());
+
     auto pictureManagerThread = PictureManagerThread::GetInstance();
     CHECK_AND_RETURN_LOG(pictureManagerThread != nullptr, "pictureManagerThread is null");
     string imageId = pictureManagerThread->GetLast200mImageId();
@@ -1006,15 +1024,26 @@ void MediaLibraryPhotoOperations::SetFileAssetFromCmd(FileAsset &fileAsset, Medi
     SetCallingPackageName(cmd, fileAsset);
 }
 
+static void CreateCameraPipeline(MediaLibraryCommand &cmd, const FileAsset& fileAsset,
+    const std::string& editData = "")
+{
+    // 仅分段式拍照、分段式视频
+    size_t count = MultistagesCameraCaptureManager::GetInstance().InsertCaptureData(cmd, fileAsset, editData);
+    if (count > 0) {
+        MEDIA_INFO_LOG("current pipelines count: %{public}zu.", count);
+    }
+}
+
 int32_t MediaLibraryPhotoOperations::HandleCreateV10(MediaLibraryCommand &cmd)
 {
-    Check200mPicture(cmd);
+    string photoId;
+    string editData;
+    Check200MPicture(cmd, photoId, editData);
     FileAsset fileAsset;
+    fileAsset.SetPhotoId(photoId);
     ValuesBucket &values = cmd.GetValueBucket();
     string displayName;
     string extention;
-    string photoId;
-    GetStringFromValuesBucket(values, PhotoColumn::PHOTO_ID, photoId);
     bool isContains = false;
     bool isNeedGrant = false;
     if (GetStringFromValuesBucket(values, PhotoColumn::MEDIA_NAME, displayName)) {
@@ -1053,6 +1082,7 @@ int32_t MediaLibraryPhotoOperations::HandleCreateV10(MediaLibraryCommand &cmd)
     if (mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
         MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CAPTURE_VIDEO_TIMES);
     }
+    CreateCameraPipeline(cmd, fileAsset, editData);
     cmd.SetResult(fileUri);
     return outRow;
 }
@@ -1514,6 +1544,7 @@ int32_t MediaLibraryPhotoOperations::DiscardCameraPhoto(MediaLibraryCommand &cmd
             MEDIA_WARN_LOG("MultistagesCapture Memory leak may occur, please check yuv picture.");
             isClearCachedPicture = false;
         }
+        MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithFileId(stoi(fileId), true);
     }
 
     if (isClearCachedPicture) {
@@ -1937,9 +1968,11 @@ int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
     MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::SAVE_ASSET);
     string fileId = cmd.GetQuerySetParam(PhotoColumn::MEDIA_ID);
     string photoId;
-    if (MediaLibraryDataManagerUtils::IsNumber(fileId)) {
-        GetPhotoIdByFileId(stoi(fileId), photoId);
+    if (!MediaLibraryDataManagerUtils::IsNumber(fileId)) {
+        MEDIA_ERR_LOG("MultistagesCapture, get fileId fail");
+        return E_ERR;
     }
+    GetPhotoIdByFileId(stoi(fileId), photoId);
     int32_t subType = 0;
     string subTypeStr = cmd.GetQuerySetParam(PhotoColumn::PHOTO_SUBTYPE);
     if (MediaLibraryDataManagerUtils::IsNumber(subTypeStr)) {
@@ -1956,6 +1989,16 @@ int32_t MediaLibraryPhotoOperations::SaveCameraPhoto(MediaLibraryCommand &cmd)
         MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddSaveTime(photoId, AddSaveTimeStat::END);
         MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().Report(photoId, false, subType);
     }
+
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(stoi(fileId), type);
+    if (pipeline == nullptr) {
+        MEDIA_WARN_LOG("pipeline not support, pipeline is nullptr, type: %{public}d.", static_cast<int32_t>(type));
+        return ret;
+    }
+    // 尝试清理数据
+    pipeline->SaveCameraPhotoFinished();
+    MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithFileId(stoi(fileId), false);
     return ret;
 }
 
@@ -3734,7 +3777,8 @@ void MediaLibraryPhotoOperations::UpdateEditDataPath(std::string filePath, const
     string tempOutputPath = editDataPath;
     size_t pos = tempOutputPath.find_last_of('.');
     if (pos != string::npos) {
-        tempOutputPath.replace(pos, extension.length(), extension);
+        tempOutputPath.erase(pos);
+        tempOutputPath.append(extension);
         rename(editDataPath.c_str(), tempOutputPath.c_str());
         MEDIA_DEBUG_LOG("rename, src: %{public}s, dest: %{public}s",
             editDataPath.c_str(), tempOutputPath.c_str());
@@ -4697,6 +4741,7 @@ int32_t MediaLibraryPhotoOperations::SaveEditDataCamera(MediaLibraryCommand &cmd
         "Failed to write editdata:%{private}s", editDataCameraPath.c_str());
     const ValuesBucket& values = cmd.GetValueBucket();
     GetStringFromValuesBucket(values, CONST_EDIT_DATA, editData);
+    MEDIA_DEBUG_LOG("SaveEditDataCamera yuv, editDataStr: %{public}s.", editDataStr.c_str());
     return ret;
 }
 
@@ -4847,6 +4892,21 @@ int64_t MediaLibraryPhotoOperations::CloneSingleAsset(MediaLibraryCommand &cmd)
     return MediaLibraryAlbumFusionUtils::CloneSingleAsset(static_cast<int64_t>(fileId), title);
 }
 
+bool MediaLibraryPhotoOperations::AddFiltersForPipeline(MediaLibraryCommand& cmd)
+{
+    const ValuesBucket& values = cmd.GetValueBucket();
+    int32_t fileId = 0;
+    GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, fileId);
+
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(fileId, type);
+    CHECK_AND_RETURN_RET_LOG(pipeline != nullptr, false, "failed to AddFiltersForPipeline.");
+
+    std::string bundleName = cmd.GetBundleName();
+    pipeline->SaveEditDataCamera(cmd, bundleName);
+    return true;
+}
+
 int32_t MediaLibraryPhotoOperations::AddFilters(MediaLibraryCommand& cmd)
 {
     // moving photo video save and add filters
@@ -4875,6 +4935,11 @@ int32_t MediaLibraryPhotoOperations::AddFilters(MediaLibraryCommand& cmd)
     }
 
     if (IsCameraEditData(cmd)) {
+        if (AddFiltersForPipeline(cmd)) {
+            MEDIA_INFO_LOG("convert to pipeline, success.");
+            return E_OK;
+        }
+        MEDIA_WARN_LOG("no need convert to pipeline.");
         shared_ptr<FileAsset> fileAsset = GetFileAsset(cmd);
         // 不允许失败
         SaveCameraPhotoWithFilters(cmd, fileAsset);

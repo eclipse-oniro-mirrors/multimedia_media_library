@@ -142,6 +142,9 @@ const std::string PhotoColumn::PHOTO_DATE_ADDED_YEAR = "date_added_year";
 const std::string PhotoColumn::PHOTO_DATE_ADDED_MONTH = "date_added_month";
 const std::string PhotoColumn::PHOTO_DATE_ADDED_DAY = "date_added_day";
 
+const std::string PhotoColumn::SUPPORTED_DEFERRED_EFFECTS = "supported_defferred_effects";
+const std::string PhotoColumn::DEFERRED_EFFECT_STATUS = "deferred_effect_status";
+
 const std::string PhotoColumn::PHOTO_FILE_INODE = "inode";
 const std::string PhotoColumn::PHOTO_STORAGE_PATH = "storage_path";
 

@@ -25,7 +25,13 @@
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
- 
+
+struct DeferredPictureInfo {
+    std::string editData;
+    std::string mimeType;       // 二阶段编码格式
+    int32_t orientation{0};     // 二阶段旋转角度
+};
+
 class MediaLibraryCameraManager {
 public:
     EXPORT static MediaLibraryCameraManager *GetMediaLibraryCameraManager();
@@ -33,7 +39,10 @@ public:
 
     EXPORT std::shared_ptr<PhotoAssetProxy> CreatePhotoAssetProxy(
         const PhotoAssetProxyCallerInfo &callerInfo, CameraShotType cameraShotType, int32_t videoCount = 1);
+    EXPORT std::shared_ptr<PhotoAssetProxy> CreatePhotoAssetProxy(
+        const PhotoAssetProxyCallerInfo &callerInfo, const CameraPresetPara &presetPara);
     EXPORT int32_t OpenAsset(std::string &uri, const std::string &openMode);
+    EXPORT DeferredPictureInfo GetDeferredPictureInfo(const std::string& photoId);
 //LCOV_EXCL_START
     EXPORT int32_t RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func);
     EXPORT int32_t UnregisterPhotoStateCallback();

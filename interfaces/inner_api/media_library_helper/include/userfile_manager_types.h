@@ -297,6 +297,24 @@ enum CoverUriSource : int32_t {
     MANUAL_WAIT_PULL_COVER = 3,
 };
 
+enum class DeferredEffects : int32_t {
+    DEFAULT = 0,
+    BLUR,
+    SNAP,
+    BLUR_SNAP,
+    REMOTE,
+    BLUR_REMOTE,
+    SNAP_REMOTE,
+    BLUR_SNAP_REMOTE
+};
+
+enum class DeferredEffectsStatus : int32_t {
+    ASSET_NOT_SUPPORT = -1,
+    ASSET_SUPPORT = 0,
+    USER_DEFINE_STATUS_START = 1,
+    USER_DEFINE_STATUS_END = std::numeric_limits<int32_t>::max()
+};
+
 enum OrderStyleType : int32_t {
     MIX = 0,
     SPLIT = 1

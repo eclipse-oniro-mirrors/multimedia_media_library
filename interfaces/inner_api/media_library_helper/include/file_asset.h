@@ -305,6 +305,9 @@ public:
     EXPORT void SetUniqueId(const std::string &uniqueId);
     EXPORT const std::string GetUniqueId() const;
 
+    EXPORT void SetDeferredProcType(int32_t deferredProcType);
+    EXPORT int32_t GetDeferredProcType() const;
+
     EXPORT int64_t GetLocalAssetSize() const;
     EXPORT void SetLocalAssetSize(int64_t localAssetSize);
 

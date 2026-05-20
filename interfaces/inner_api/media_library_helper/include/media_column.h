@@ -299,6 +299,9 @@ public:
     EXPORT static std::string CheckUploadPhotoColumns();
     EXPORT static std::string CheckMetaRecoveryPhotoColumns();
 
+    static const std::string SUPPORTED_DEFERRED_EFFECTS EXPORT;
+    static const std::string DEFERRED_EFFECT_STATUS EXPORT;
+
     // for cloud sync
     static const std::string LCD_ASPECT_RATIO EXPORT;
 

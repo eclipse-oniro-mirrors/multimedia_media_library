@@ -1012,10 +1012,8 @@ static void HandleCallingPackage(MediaLibraryCommand &cmd, const FileAsset &file
 
 static void HandleBurstPhoto(MediaLibraryCommand &cmd, ValuesBucket &outValues, const std::string displayName)
 {
-#ifdef MEDIA_NATIVE_SA_APP_TEST
     CHECK_AND_RETURN_LOG(PermissionUtils::IsNativeSAApp(),
         "do not have permission to set burst_key or burst_cover_level");
-#endif
 
     string burstKey;
     ValueObject value;
@@ -1041,13 +1039,7 @@ static void HandleBurstPhoto(MediaLibraryCommand &cmd, ValuesBucket &outValues, 
     if (dirty != static_cast<int32_t>(DirtyTypes::TYPE_NEW)) {
         outValues.PutInt(PhotoColumn::PHOTO_DIRTY, dirty);
     }
-    stringstream result;
-    for (size_t i = 0; i < displayName.length(); i++) {
-        if (isdigit(displayName[i])) {
-            result << displayName[i];
-        }
-    }
-    outValues.Put(PhotoColumn::PHOTO_ID, result.str());
+
     outValues.PutInt(PhotoColumn::PHOTO_QUALITY, static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
 }
 
@@ -1085,12 +1077,10 @@ static void UpdateEnhanceParam(MediaLibraryCommand &cmd, ValuesBucket &outValues
 
 static void HandlePhotoInfo(MediaLibraryCommand &cmd, ValuesBucket &outValues, const FileAsset &fileAsset)
 {
-#ifdef MEDIA_NATIVE_SA_APP_TEST
     if (!PermissionUtils::IsNativeSAApp()) {
         MEDIA_DEBUG_LOG("do not have permission to set is_temp");
         return;
     }
-#endif
 
     ValueObject value;
     bool isTemp = 0;
@@ -1107,6 +1097,11 @@ static void HandlePhotoInfo(MediaLibraryCommand &cmd, ValuesBucket &outValues, c
         outValues.PutInt(PhotoColumn::PHOTO_DEFERRED_PROC_TYPE, deferredProcType);
     }
 
+    std::string photoId = fileAsset.GetPhotoId();
+    if (!photoId.empty()) {
+        outValues.PutString(PhotoColumn::PHOTO_ID, photoId);
+    }
+
     // quality、photoId、dirty for burst has been handled in HandleBurstPhoto
     if (fileAsset.GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::BURST)) {
         return;
@@ -1121,14 +1116,6 @@ static void HandlePhotoInfo(MediaLibraryCommand &cmd, ValuesBucket &outValues, c
     }
     if (photoQuality == static_cast<int32_t>(MultiStagesPhotoQuality::LOW)) {
         outValues.PutInt(PhotoColumn::PHOTO_DIRTY, -1); // prevent uploading low-quality photo
-    }
-
-    std::string photoId;
-    if (cmd.GetValueBucket().GetObject(PhotoColumn::PHOTO_ID, value)) {
-        value.GetString(photoId);
-    }
-    if (!photoId.empty()) {
-        outValues.PutString(PhotoColumn::PHOTO_ID, photoId);
     }
 
     UpdateEnhanceParam(cmd, outValues, value);
@@ -1154,8 +1141,8 @@ static void FillAssetInfo(MediaLibraryCommand &cmd, const FileAsset &fileAsset)
     ValuesBucket assetInfo;
     assetInfo.PutInt(MediaColumn::MEDIA_TYPE, fileAsset.GetMediaType());
     string extension = ScannerUtils::GetFileExtension(displayName);
-    assetInfo.PutString(MediaColumn::MEDIA_MIME_TYPE,
-        MimeTypeUtils::GetMimeTypeFromExtension(extension));
+    string mimeType = fileAsset.GetMimeType();
+    assetInfo.PutString(MediaColumn::MEDIA_MIME_TYPE, mimeType);
     assetInfo.PutString(MediaColumn::MEDIA_FILE_PATH, fileAsset.GetPath());
     if (cmd.GetApi() == MediaLibraryApi::API_OLD) {
         assetInfo.PutString(MediaColumn::MEDIA_RELATIVE_PATH, fileAsset.GetRelativePath());
@@ -1383,6 +1370,8 @@ int32_t MediaLibraryAssetOperations::SetAssetPathInCreate(FileAsset &fileAsset,
         return E_OK;
     }
     string extension = MediaFileUtils::GetExtensionFromPath(fileAsset.GetDisplayName());
+    string mimetype = MimeTypeUtils::GetMimeTypeFromExtension(extension);
+    fileAsset.SetMimeType(mimetype);
     string filePath;
     int32_t uniqueId = CreateAssetUniqueId(fileAsset.GetMediaType(), trans);
     int32_t errCode = CreateAssetPathById(uniqueId, fileAsset.GetMediaType(), extension, filePath);

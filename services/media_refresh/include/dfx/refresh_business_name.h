@@ -94,6 +94,8 @@ static const std::string DELETE_PHOTOS_COMPLETED_BUSSINESS_NAME = "DeletePhotosC
 
 static const std::string YUV_READY_BUSSINESS_NAME = "YuvReady";
 
+static const std::string CREATE_CAMERA_FILE_FD = "CreateCameraFileId";
+
 } // namespace Media
 } // namespace OHOS
 

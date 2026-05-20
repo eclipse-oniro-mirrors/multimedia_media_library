@@ -17,6 +17,7 @@
 #define INNER_API_MEDIA_LIBRARY_HELPER_INCLUDE_MEDIA_PHOTO_PROXY_H
 
 #include <refbase.h>
+#include <sstream>
 #include <string>
 
 namespace OHOS {
@@ -28,6 +29,18 @@ enum class CameraShotType : int32_t {
     MOVING_PHOTO, // 动态照片
     BURST, // 连拍照片
     CINEMATIC_VIDEO, // 电影模式
+};
+
+enum class SaveImageType : int32_t {
+    UNDEFINED = 0,
+    ONE_IMAGE = 1,
+    TWO_IMAGE = 2,
+};
+
+enum class SaveVideoType : int32_t {
+    UNDEFINED = 0,
+    ONE_VIDEO = 1,
+    TWO_VIDEO = 2,
 };
 
 enum class VideoType : int32_t {
@@ -84,6 +97,17 @@ public:
     virtual int32_t GetVideoEnhancementType()
     {
         return 0;
+    }
+
+    std::string ToString()
+    {
+        std::stringstream ss;
+        ss << "{"
+           << "\"photoId\": \"" << this->GetPhotoId() << "\","
+           << "\"burstKey\": \"" << this->GetBurstKey() << "\","
+           << "\"ceAvailable\": \"" << std::to_string(this->GetCloudImageEnhanceFlag())
+           << "}";
+        return ss.str();
     }
 };
 } // Media
