@@ -52,9 +52,7 @@ static constexpr int32_t MIN_PHOTO_POSITION = 1;
 static constexpr int32_t MAX_PHOTO_POSITION = 2;
 static constexpr int32_t MIN_CLEAN_TYPE = 1;
 static constexpr int32_t MAX_CLEAN_TYPE = 2;
-static constexpr int32_t MAX_BATCH_DOWNLOAD_NET_WORK_POLICY_TYPE = 2;
 static constexpr int32_t MAX_BATCH_DOWNLOAD_STATUS_TYPE = 6;
-static constexpr int32_t MAX_FILEID_SIZE = 10;
 static constexpr int32_t MAX_BYTE_VALUE = 256;
 static constexpr int32_t SEED_SIZE = 1024;
 const std::string PhotoColumn::PHOTO_URI_PREFIX = "file://media/Photo/";
@@ -79,12 +77,6 @@ static inline BatchDownloadStatusType FuzzBatchDownloadStatusType()
 {
     int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, MAX_BATCH_DOWNLOAD_STATUS_TYPE);
     return static_cast<BatchDownloadStatusType>(value);
-}
-
-static inline BatchDownloadNetWorkPolicyType FuzzBatchDownloadNetWorkPolicyType()
-{
-    int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, MAX_BATCH_DOWNLOAD_NET_WORK_POLICY_TYPE);
-    return static_cast<BatchDownloadNetWorkPolicyType>(value);
 }
 
 static int32_t InsertPhotoAsset()
@@ -112,8 +104,6 @@ static int32_t InsertDownloadResources()
     }
     NativeRdb::ValuesBucket values;
     values.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, static_cast<int32_t>(FuzzBatchDownloadStatusType()));
-    values.PutInt(DownloadResourcesColumn::MEDIA_NETWORK_POLICY,
-        static_cast<int32_t>(FuzzBatchDownloadNetWorkPolicyType()));
     if (provider->ConsumeBool()) {
         values.PutInt(DownloadResourcesColumn::MEDIA_PERCENT, MAX_MEDIA_PERCENT);
         } else {
@@ -297,106 +287,6 @@ static void QueryCloudMediaBatchDownloadResourcesCountTest()
     MEDIA_INFO_LOG("QueryCloudMediaBatchDownloadResourcesCountTest end");
 }
 
-static void UpdateAllDownloadResourcesNetworkPolicyTest()
-{
-    MEDIA_INFO_LOG("UpdateAllDownloadResourcesNetworkPolicyTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    BatchDownloadNetWorkPolicyType networkPolicy = FuzzBatchDownloadNetWorkPolicyType();
-    batchDownloadResourcesTaskDao.UpdateAllDownloadResourcesNetworkPolicy(networkPolicy);
-    MEDIA_INFO_LOG("UpdateAllDownloadResourcesNetworkPolicyTest end");
-}
-
-static void UpdateNetworkPolicyDownloadTasksTest()
-{
-    MEDIA_INFO_LOG("UpdateNetworkPolicyDownloadTasksTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    BatchDownloadNetWorkPolicyType networkPolicy = FuzzBatchDownloadNetWorkPolicyType();
-    int32_t fileId1 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    int32_t fileId2 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    std::vector<std::string> fileIds = {to_string(fileId1), to_string(fileId2)};
-    batchDownloadResourcesTaskDao.UpdateNetworkPolicyDownloadTasks(fileIds, networkPolicy);
-    MEDIA_INFO_LOG("UpdateNetworkPolicyDownloadTasksTest end");
-}
-
-static void UpdateStatusAllFailAndAutoPauseToWaitingTest()
-{
-    MEDIA_INFO_LOG("UpdateStatusAllFailAndAutoPauseToWaitingTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    batchDownloadResourcesTaskDao.UpdateStatusAllFailAndAutoPauseToWaiting();
-    MEDIA_INFO_LOG("UpdateStatusAllFailAndAutoPauseToWaitingTest end");
-}
-
-static void UpdateStatusFailAndAutoPauseToWaitingTest()
-{
-    MEDIA_INFO_LOG("UpdateStatusFailAndAutoPauseToWaitingTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    int32_t fileId1 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    int32_t fileId2 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    std::vector<std::string> fileIds = {to_string(fileId1), to_string(fileId2)};
-    batchDownloadResourcesTaskDao.UpdateStatusFailAndAutoPauseToWaiting(fileIds);
-    MEDIA_INFO_LOG("UpdateStatusFailAndAutoPauseToWaitingTest end");
-}
-
-static void UpdateAutoPauseAllDownloadByNetWorkPolicyTest()
-{
-    MEDIA_INFO_LOG("UpdateAutoPauseAllDownloadByNetWorkPolicyTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    batchDownloadResourcesTaskDao.UpdateAutoPauseAllDownloadByNetWorkPolicy();
-    MEDIA_INFO_LOG("UpdateAutoPauseAllDownloadByNetWorkPolicyTest end");
-}
-
-static void UpdateAutoPauseForFileIdByNetWorkPolicyTest()
-{
-    MEDIA_INFO_LOG("UpdateAutoPauseForFileIdByNetWorkPolicyTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    int32_t fileId1 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    int32_t fileId2 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    std::vector<std::string> fileIds = {to_string(fileId1), to_string(fileId2)};
-    batchDownloadResourcesTaskDao.UpdateAutoPauseForFileIdByNetWorkPolicy(fileIds);
-    MEDIA_INFO_LOG("UpdateAutoPauseForFileIdByNetWorkPolicyTest end");
-}
-
-static void HandleAddExistedDownloadTasksSeqTest()
-{
-    MEDIA_INFO_LOG("HandleAddExistedDownloadTasksSeqTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    int32_t fileId1 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    int32_t fileId2 = provider->ConsumeIntegralInRange<int32_t>(0, MAX_FILEID_SIZE);
-    std::vector<std::string> fileIds = {to_string(fileId1), to_string(fileId2)};
-    int32_t seq = provider->ConsumeIntegral<int32_t>();
-    batchDownloadResourcesTaskDao.HandleAddExistedDownloadTasksSeq(fileIds, seq);
-    MEDIA_INFO_LOG("HandleAddExistedDownloadTasksSeqTest end");
-}
-
-static void QueryCloudMediaBatchDownloadResourcesSizeTest()
-{
-    MEDIA_INFO_LOG("QueryCloudMediaBatchDownloadResourcesSizeTest start");
-    BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao;
-    int32_t fileId = InsertDownloadResources();
-    CHECK_AND_RETURN_LOG(fileId > 0, "fileId is Invalid.");
-    NativeRdb::RdbPredicates predicates(DownloadResourcesColumn::TABLE);
-    predicates.EqualTo(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS,
-        static_cast<int32_t>(FuzzBatchDownloadStatusType()));
-    int64_t size;
-    int64_t count;
-    batchDownloadResourcesTaskDao.QueryCloudMediaBatchDownloadResourcesSize(predicates, size, count);
-    MEDIA_INFO_LOG("QueryCloudMediaBatchDownloadResourcesSizeTest end");
-}
-
 static void BatchDownloadResourcesTaskDaoTest1()
 {
     int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, CASE_6);
@@ -437,7 +327,7 @@ static void BatchDownloadResourcesTaskDaoTest1()
 
 static void BatchDownloadResourcesTaskDaoTest2()
 {
-    int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, CASE_6);
+    int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, CASE_5);
     switch (value) {
         case CASE_0: {
             DeleteCancelStateDownloadResourcesTest();
@@ -463,48 +353,6 @@ static void BatchDownloadResourcesTaskDaoTest2()
             QueryCloudMediaBatchDownloadResourcesCountTest();
             break;
         }
-        case CASE_6: {
-            QueryCloudMediaBatchDownloadResourcesSizeTest();
-            break;
-        }
-        default:
-            MEDIA_ERR_LOG("no case");
-            break;
-    }
-}
-
-static void BatchDownloadResourcesTaskDaoTest3()
-{
-    int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, CASE_6);
-    switch (value) {
-        case CASE_0: {
-            UpdateAllDownloadResourcesNetworkPolicyTest();
-            break;
-        }
-        case CASE_1: {
-            UpdateNetworkPolicyDownloadTasksTest();
-            break;
-        }
-        case CASE_2: {
-            UpdateStatusAllFailAndAutoPauseToWaitingTest();
-            break;
-        }
-        case CASE_3: {
-            UpdateStatusFailAndAutoPauseToWaitingTest();
-            break;
-        }
-        case CASE_4: {
-            UpdateAutoPauseAllDownloadByNetWorkPolicyTest();
-            break;
-        }
-        case CASE_5: {
-            UpdateAutoPauseForFileIdByNetWorkPolicyTest();
-            break;
-        }
-        case CASE_6: {
-            HandleAddExistedDownloadTasksSeqTest();
-            break;
-        }
         default:
             MEDIA_ERR_LOG("no case");
             break;
@@ -520,7 +368,7 @@ void SetTables()
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
         if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Execute sql %{private}s failed", createTableSql.c_str());
+            MEDIA_ERR_LOG("Execute sql %{private}s failed", createTableSql.c_str());
             return;
         }
         MEDIA_DEBUG_LOG("Execute sql %{private}s success", createTableSql.c_str());
@@ -584,6 +432,5 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
     OHOS::Media::BatchDownloadResourcesTaskDaoTest1();
     OHOS::Media::BatchDownloadResourcesTaskDaoTest2();
-    OHOS::Media::BatchDownloadResourcesTaskDaoTest3();
     return 0;
 }
