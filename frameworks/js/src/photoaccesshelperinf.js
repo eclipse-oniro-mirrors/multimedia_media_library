@@ -300,6 +300,7 @@ function checkConfirmBoxParams(srcFileUris, photoCreationConfigs, isImageFullyDi
   // check whether srcFileUris element is valid
   for (let i = 0; i < srcFileUris.length; i++) {
     if (!checkIsUriValid(srcFileUris[i], true)) {
+      console.error('photoAccessHelper invalid uri: ${srcFileUri}.');
       return encrypt(`Invalid uri at srcFileUris[${i}]: ${srcFileUris[i]}.`);
     }
   }
@@ -311,6 +312,7 @@ function checkConfirmBoxParams(srcFileUris, photoCreationConfigs, isImageFullyDi
   }
   if (isImageFullyDisplayed !== undefined) {
     if (typeof isImageFullyDisplayed !== 'boolean') {
+      console.error('photoAccessHelper isImageFullyDisplayed must be boolean if provided.');
       return 'isImageFullyDisplayed must be boolean if provided.';
     }
   }
