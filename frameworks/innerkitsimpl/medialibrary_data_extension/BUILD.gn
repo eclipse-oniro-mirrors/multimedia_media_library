@@ -1256,7 +1256,7 @@ ohos_shared_library("medialibrary_data_extension") {
 
   if (media_library_feature_secure_album) {
     defines += [ "MEDIALIBRARY_SECURE_ALBUM_ENABLE=1" ]
-    sources += [ "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/watch_system_handler.cpp", ]
+    sources += [ "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/watch_system_handler.cpp" ]
   }
 
   if (media_library_feature_cloud_download) {
@@ -1410,7 +1410,7 @@ ohos_shared_library("medialibrary_data_extension") {
   }
 
   if (defined(global_parts_info) &&
-    defined(global_parts_info.iotdev_memospace_service)) {
+      defined(global_parts_info.iotdev_memospace_service)) {
     external_deps += [ "memospace_service:hdc_proxy" ]
   }
 
@@ -1430,7 +1430,7 @@ ohos_shared_library("medialibrary_data_extension") {
   defines += [ "META_RECOVERY_SUPPORT=1" ]
 
   if (defined(global_parts_info) &&
-    defined(global_parts_info.iotdev_memospace_service)) {
+      defined(global_parts_info.iotdev_memospace_service)) {
     defines += [ "MEDIA_LIBRARY_MEMOSPACE_SERVICE_SUPPORT" ]
   }
 
