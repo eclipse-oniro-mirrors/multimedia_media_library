@@ -18,6 +18,7 @@
 #include "medialibrary_manager_notify_observer_manager.h"
 
 #include <algorithm>
+#include <sstream>
 
 #include "check_single_photo_permission_vo.h"
 #include "media_log.h"
@@ -26,6 +27,7 @@
 #include "medialibrary_manager_notify_observer.h"
 #include "medialibrary_manager_notify_utils.h"
 #include "user_inner_ipc_client.h"
+#include "media_file_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -55,6 +57,17 @@ std::string GetValidId(int32_t id)
         return "";
     }
     return std::to_string(id);
+}
+
+void LogForwardingChangeInfo(const char *dispatchName,
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo,
+    Notification::NotifyUriType targetUriType)
+{
+    CHECK_AND_RETURN_LOG(changeInfo != nullptr, "%{public}s changeInfo is nullptr", dispatchName);
+    MEDIA_DEBUG_LOG("%{public}s forward notify: changeCount=%{public}zu, detail=%{public}s",
+        dispatchName,
+        changeInfo->changeInfos.size(),
+        changeInfo->ToString(true).c_str());
 }
 }
 
@@ -448,6 +461,7 @@ int32_t MediaLibraryManagerNotifyObserverManager::UnregisterSingleAlbumCallback(
 void MediaLibraryManagerNotifyObserverManager::DispatchAssetChange(
     const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, Notification::NotifyUriType uriType)
 {
+    LogForwardingChangeInfo("DispatchAssetChange", changeInfo, uriType);
     auto infos = MediaLibraryManagerNotifyUtils::BuildPhotoAssetChangeInfos(changeInfo, uriType);
     std::vector<std::shared_ptr<PhotoAssetChangeCallback>> callbacks;
     {
@@ -466,6 +480,7 @@ void MediaLibraryManagerNotifyObserverManager::DispatchAssetChange(
 void MediaLibraryManagerNotifyObserverManager::DispatchAlbumChange(
     const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, Notification::NotifyUriType uriType)
 {
+    LogForwardingChangeInfo("DispatchAlbumChange", changeInfo, uriType);
     auto infos = MediaLibraryManagerNotifyUtils::BuildAlbumChangeInfos(changeInfo);
     std::vector<std::shared_ptr<PhotoAlbumChangeCallback>> callbacks;
     {
@@ -484,6 +499,7 @@ void MediaLibraryManagerNotifyObserverManager::DispatchAlbumChange(
 void MediaLibraryManagerNotifyObserverManager::DispatchSingleAssetChange(
     const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo)
 {
+    LogForwardingChangeInfo("DispatchSingleAssetChange", changeInfo, Notification::NotifyUriType::SINGLE_PHOTO_URI);
     std::map<std::string, std::vector<std::shared_ptr<PhotoAssetChangeCallback>>> singleCallbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -522,6 +538,8 @@ void MediaLibraryManagerNotifyObserverManager::DispatchSingleAssetChange(
 void MediaLibraryManagerNotifyObserverManager::DispatchSingleAlbumChange(
     const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo)
 {
+    LogForwardingChangeInfo("DispatchSingleAlbumChange", changeInfo,
+        Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
     std::map<std::string, std::vector<std::shared_ptr<PhotoAlbumChangeCallback>>> singleCallbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);

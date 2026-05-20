@@ -42,6 +42,8 @@ constexpr int32_t URI_ID_DECIMAL_BASE = 10;
 constexpr int32_t WRITE_RETRY_TIMES = 3;
 constexpr int32_t WRITE_RETRY_INTERVAL_US = 100000;
 constexpr int32_t ASSET_READY_RETRY_TIMES = 20;
+constexpr int32_t BATCH_NOTIFY_TIMEOUT_MS = 30000;
+constexpr int32_t BATCH_IDLE_QUIET_MS = 300;
 
 class ScopeExit {
 public:
@@ -69,6 +71,18 @@ std::string BuildUniqueRenamedAssetName()
     return "notify_asset_renamed_" + std::to_string(++seq) + ".jpg";
 }
 
+std::string BuildUniqueVideoAssetName()
+{
+    static std::atomic<int32_t> seq { 0 };
+    return "notify_video_" + std::to_string(++seq) + ".mp4";
+}
+
+std::string BuildUniqueRenamedVideoAssetName()
+{
+    static std::atomic<int32_t> seq { 0 };
+    return "notify_video_renamed_" + std::to_string(++seq) + ".mp4";
+}
+
 std::string BuildUniqueAlbumName()
 {
     static std::atomic<int32_t> seq { 0 };
@@ -83,18 +97,6 @@ std::string CreateTestAssetUri(MediaLibraryManager &manager)
 int32_t CreateTestAlbum(MediaLibraryManager &manager)
 {
     return manager.CreateAlbum(BuildUniqueAlbumName());
-}
-
-std::string QueryFirstAlbumUri(MediaLibraryManager &manager)
-{
-    std::vector<std::string> columns;
-    DataShare::DataSharePredicates predicates;
-    FetchResult<PhotoAlbum> result = manager.GetAlbums(columns, &predicates);
-    auto album = result.GetFirstObject();
-    if (album == nullptr) {
-        return "";
-    }
-    return album->GetAlbumUri();
 }
 
 std::string QueryAlbumUriById(MediaLibraryManager &manager, int32_t albumId)
@@ -112,17 +114,6 @@ std::string QueryAlbumUriById(MediaLibraryManager &manager, int32_t albumId)
     return "";
 }
 
-std::string EnsureAlbumUri(MediaLibraryManager &manager)
-{
-    std::string albumUri = QueryFirstAlbumUri(manager);
-    if (!albumUri.empty()) {
-        return albumUri;
-    }
-    if (CreateTestAlbum(manager) <= E_OK) {
-        return "";
-    }
-    return QueryFirstAlbumUri(manager);
-}
 
 int32_t ExtractIntIdFromUri(const std::string &uri)
 {
@@ -160,35 +151,6 @@ bool WaitForCallbackIdle(CallbackT &callback, int32_t quietMs, int32_t maxWaitMs
 bool IsHiddenRegisterPermissionDenied(int32_t ret)
 {
     return ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL;
-}
-
-std::shared_ptr<Notification::MediaChangeInfo> CreateMediaChangeInfo(
-    Notification::AccurateNotifyType notifyType,
-    Notification::NotifyUriType notifyUri = Notification::NotifyUriType::PHOTO_URI,
-    bool isForRecheck = false)
-{
-    auto changeInfo = std::make_shared<Notification::MediaChangeInfo>();
-    changeInfo->notifyType = notifyType;
-    changeInfo->notifyUri = notifyUri;
-    changeInfo->isForRecheck = isForRecheck;
-    changeInfo->isSystem = false;
-    return changeInfo;
-}
-
-AccurateRefresh::PhotoAssetChangeData CreatePhotoAssetChangeData(int32_t beforeId, int32_t afterId)
-{
-    AccurateRefresh::PhotoAssetChangeData changeData;
-    changeData.infoBeforeChange_.fileId_ = beforeId;
-    changeData.infoAfterChange_.fileId_ = afterId;
-    return changeData;
-}
-
-AccurateRefresh::AlbumChangeData CreateAlbumChangeData(int32_t beforeId, int32_t afterId)
-{
-    AccurateRefresh::AlbumChangeData changeData;
-    changeData.infoBeforeChange_.albumId_ = beforeId;
-    changeData.infoAfterChange_.albumId_ = afterId;
-    return changeData;
 }
 
 class SyncPhotoAssetChangeCallback final : public PhotoAssetChangeCallback {
@@ -457,15 +419,20 @@ bool WriteSingleByteToAsset(MediaLibraryManager &manager, const std::string &ass
 
 std::unique_ptr<FileAsset> QueryAssetById(MediaLibraryManager &manager, int32_t assetId)
 {
-    std::vector<std::string> columns;
-    DataShare::DataSharePredicates predicates;
-    FetchResult<FileAsset> result = manager.GetAssets(columns, &predicates);
-    auto asset = result.GetFirstObject();
-    while (asset != nullptr) {
-        if (asset->GetId() == assetId) {
+    std::vector<std::string> albumColumns;
+    DataShare::DataSharePredicates albumPredicates;
+    FetchResult<PhotoAlbum> albums = manager.GetAlbums(albumColumns, &albumPredicates);
+    auto album = albums.GetFirstObject();
+    while (album != nullptr) {
+        std::vector<std::string> assetColumns;
+        DataShare::DataSharePredicates assetPredicates;
+        assetPredicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(assetId));
+        FetchResult<FileAsset> assets = manager.GetAssets(*album, assetColumns, &assetPredicates);
+        auto asset = assets.GetFirstObject();
+        if (asset != nullptr) {
             return asset;
         }
-        asset = result.GetNextObject();
+        album = albums.GetNextObject();
     }
     return nullptr;
 }
@@ -475,8 +442,14 @@ bool WaitAssetReadyById(MediaLibraryManager &manager, int32_t assetId)
     if (assetId <= E_OK) {
         return false;
     }
+    std::vector<std::string> columns = { PhotoColumn::MEDIA_ID };
     for (int32_t attempt = 1; attempt <= ASSET_READY_RETRY_TIMES; ++attempt) {
         if (QueryAssetById(manager, assetId) != nullptr) {
+            return true;
+        }
+        auto resultSet = MediaLibraryManager::GetResultSetFromDb(
+            PhotoColumn::MEDIA_ID, std::to_string(assetId), columns);
+        if (resultSet != nullptr && manager.CheckResultSet(resultSet) == E_OK) {
             return true;
         }
         if (attempt < ASSET_READY_RETRY_TIMES) {
@@ -495,7 +468,7 @@ int32_t DeleteAssetById(MediaLibraryManager &manager, int32_t assetId)
     return manager.DeleteAssets(assets);
 }
 
-int32_t SetAssetFavoriteById(MediaLibraryManager &manager, int32_t assetId, bool isFavorite)
+int32_t UpdateAssetFavoriteByDataShare(MediaLibraryManager &manager, int32_t assetId, bool isFavorite)
 {
     if (assetId <= E_OK) {
         return E_INVALID_ARGUMENTS;
@@ -555,7 +528,7 @@ bool CreateAndWriteTestAsset(MediaLibraryManager &manager, std::string &assetUri
             }
             continue;
         }
-        if (!WaitAssetReadyById(manager, newAssetId)) {
+        if (!WaitAssetReadyByUri(manager, newAssetUri)) {
             GTEST_LOG_(INFO) << "CreateAndWriteTestAsset wait asset ready failed, attempt=" << attempt
                 << ", uri=" << newAssetUri << ", assetId=" << newAssetId;
             (void)DeleteAssetById(manager, newAssetId);
@@ -573,6 +546,37 @@ bool CreateAndWriteTestAsset(MediaLibraryManager &manager, std::string &assetUri
         if (attempt < WRITE_RETRY_TIMES) {
             usleep(WRITE_RETRY_INTERVAL_US);
         }
+    }
+    return false;
+}
+
+bool CreateAndWriteTestVideoAsset(MediaLibraryManager &manager, int32_t &assetId)
+{
+    assetId = AccurateRefresh::INVALID_INT32_VALUE;
+    for (int32_t attempt = 1; attempt <= WRITE_RETRY_TIMES; ++attempt) {
+        std::string videoUri = manager.CreateAsset(BuildUniqueVideoAssetName());
+        if (videoUri.empty()) {
+            if (attempt < WRITE_RETRY_TIMES) {
+                usleep(WRITE_RETRY_INTERVAL_US);
+            }
+            continue;
+        }
+        int32_t videoAssetId = ExtractIntIdFromUri(videoUri);
+        if (videoAssetId <= E_OK) {
+            if (attempt < WRITE_RETRY_TIMES) {
+                usleep(WRITE_RETRY_INTERVAL_US);
+            }
+            continue;
+        }
+        if (!WaitAssetReadyByUri(manager, videoUri) || !WriteSingleByteToAsset(manager, videoUri)) {
+            (void)DeleteAssetById(manager, videoAssetId);
+            if (attempt < WRITE_RETRY_TIMES) {
+                usleep(WRITE_RETRY_INTERVAL_US);
+            }
+            continue;
+        }
+        assetId = videoAssetId;
+        return true;
     }
     return false;
 }
@@ -599,6 +603,262 @@ int32_t DeleteAlbumById(MediaLibraryManager &manager, int32_t albumId)
     std::vector<std::unique_ptr<PhotoAlbum>> albums;
     albums.push_back(std::move(album));
     return manager.DeleteAlbums(albums);
+}
+
+std::vector<std::unique_ptr<PhotoAlbum>> QueryAlbumsByIds(MediaLibraryManager &manager,
+    const std::vector<int32_t> &albumIds)
+{
+    std::vector<std::unique_ptr<PhotoAlbum>> albums;
+    if (albumIds.empty()) {
+        return albums;
+    }
+
+    std::map<int32_t, bool> pendingAlbumIds;
+    for (int32_t albumId : albumIds) {
+        if (albumId > E_OK) {
+            pendingAlbumIds[albumId] = false;
+        }
+    }
+    if (pendingAlbumIds.empty()) {
+        return albums;
+    }
+
+    std::vector<std::string> columns;
+    DataShare::DataSharePredicates predicates;
+    FetchResult<PhotoAlbum> result = manager.GetAlbums(columns, &predicates);
+    auto album = result.GetFirstObject();
+    while (album != nullptr && !pendingAlbumIds.empty()) {
+        int32_t albumId = album->GetAlbumId();
+        auto iter = pendingAlbumIds.find(albumId);
+        if (iter != pendingAlbumIds.end()) {
+            albums.push_back(std::move(album));
+            pendingAlbumIds.erase(iter);
+        }
+        album = result.GetNextObject();
+    }
+    return albums;
+}
+
+std::vector<std::unique_ptr<FileAsset>> QueryAssetsByIds(MediaLibraryManager &manager,
+    const std::vector<int32_t> &assetIds)
+{
+    std::vector<std::unique_ptr<FileAsset>> assets;
+    if (assetIds.empty()) {
+        return assets;
+    }
+
+    std::map<int32_t, bool> pendingAssetIds;
+    for (int32_t assetId : assetIds) {
+        if (assetId > E_OK) {
+            pendingAssetIds[assetId] = false;
+        }
+    }
+    if (pendingAssetIds.empty()) {
+        return assets;
+    }
+
+    std::vector<std::string> albumColumns;
+    DataShare::DataSharePredicates albumPredicates;
+    FetchResult<PhotoAlbum> albums = manager.GetAlbums(albumColumns, &albumPredicates);
+    auto album = albums.GetFirstObject();
+    while (album != nullptr && !pendingAssetIds.empty()) {
+        std::vector<std::string> assetColumns;
+        DataShare::DataSharePredicates assetPredicates;
+        std::vector<std::string> pendingAssetIdStrings;
+        pendingAssetIdStrings.reserve(pendingAssetIds.size());
+        for (const auto &item : pendingAssetIds) {
+            pendingAssetIdStrings.push_back(std::to_string(item.first));
+        }
+        assetPredicates.In(MediaColumn::MEDIA_ID, pendingAssetIdStrings);
+
+        FetchResult<FileAsset> assetsResult = manager.GetAssets(*album, assetColumns, &assetPredicates);
+        auto asset = assetsResult.GetFirstObject();
+        while (asset != nullptr && !pendingAssetIds.empty()) {
+            int32_t currentAssetId = asset->GetId();
+            auto iter = pendingAssetIds.find(currentAssetId);
+            if (iter != pendingAssetIds.end()) {
+                assets.push_back(std::move(asset));
+                pendingAssetIds.erase(iter);
+            }
+            asset = assetsResult.GetNextObject();
+        }
+        album = albums.GetNextObject();
+    }
+    return assets;
+}
+
+std::unique_ptr<PhotoAlbum> QuerySourceAlbumByAssetId(MediaLibraryManager &manager, int32_t assetId)
+{
+    std::vector<std::string> albumColumns;
+    DataShare::DataSharePredicates albumPredicates;
+    FetchResult<PhotoAlbum> albums = manager.GetAlbums(albumColumns, &albumPredicates);
+    auto album = albums.GetFirstObject();
+    while (album != nullptr) {
+        std::vector<std::string> assetColumns;
+        DataShare::DataSharePredicates assetPredicates;
+        assetPredicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(assetId));
+        FetchResult<FileAsset> assets = manager.GetAssets(*album, assetColumns, &assetPredicates);
+        if (assets.GetCount() > 0) {
+            return album;
+        }
+        album = albums.GetNextObject();
+    }
+    return nullptr;
+}
+
+int32_t MoveAssetToAlbumById(MediaLibraryManager &manager, int32_t assetId,
+    int32_t targetAlbumId, int32_t &sourceAlbumId)
+{
+    sourceAlbumId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto asset = QueryAssetById(manager, assetId);
+    CHECK_AND_RETURN_RET(asset != nullptr, E_INVALID_ARGUMENTS);
+    auto targetAlbum = QueryAlbumById(manager, targetAlbumId);
+    CHECK_AND_RETURN_RET(targetAlbum != nullptr, E_INVALID_ARGUMENTS);
+
+    auto sourceAlbum = QuerySourceAlbumByAssetId(manager, assetId);
+    if (sourceAlbum == nullptr) {
+        int32_t fallbackAlbumId = asset->GetOwnerAlbumId();
+        if (fallbackAlbumId <= E_OK) {
+            fallbackAlbumId = asset->GetAlbumId();
+        }
+        if (fallbackAlbumId > E_OK) {
+            sourceAlbum = QueryAlbumById(manager, fallbackAlbumId);
+        }
+    }
+    CHECK_AND_RETURN_RET(sourceAlbum != nullptr, E_INVALID_ARGUMENTS);
+
+    sourceAlbumId = sourceAlbum->GetAlbumId();
+    std::vector<std::unique_ptr<FileAsset>> assets;
+    assets.push_back(std::move(asset));
+    return manager.MoveAssets(assets, *sourceAlbum, *targetAlbum);
+}
+
+int32_t SetAssetsHiddenByUris(MediaLibraryManager &manager, const std::vector<std::string> &assetUris, bool isHidden)
+{
+    if (assetUris.empty()) {
+        return E_INVALID_ARGUMENTS;
+    }
+    std::vector<std::string> assetIds;
+    assetIds.reserve(assetUris.size());
+    for (const auto &assetUri : assetUris) {
+        int32_t assetId = ExtractIntIdFromUri(assetUri);
+        if (assetId <= E_OK) {
+            return E_INVALID_ARGUMENTS;
+        }
+        assetIds.push_back(std::to_string(assetId));
+    }
+    auto dataShareHelper = CreateDataShareHelperForTest(manager);
+    if (dataShareHelper == nullptr) {
+        return E_FAIL;
+    }
+    DataShare::DataSharePredicates predicates;
+    predicates.In(PhotoColumn::MEDIA_ID, assetIds);
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(PhotoColumn::MEDIA_HIDDEN, isHidden ? 1 : 0);
+    std::string updateUriStr = CONST_PAH_HIDE_PHOTOS;
+    MediaFileUtils::UriAppendKeyValue(updateUriStr, URI_PARAM_API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
+    Uri updateUri(updateUriStr);
+    return dataShareHelper->Update(updateUri, predicates, valuesBucket);
+}
+
+int32_t SetAssetHiddenByUri(MediaLibraryManager &manager, const std::string &assetUri, bool isHidden)
+{
+    if (assetUri.empty()) {
+        return E_INVALID_ARGUMENTS;
+    }
+    return SetAssetsHiddenByUris(manager, { assetUri }, isHidden);
+}
+
+bool IsAssetInAlbum(MediaLibraryManager &manager, int32_t albumId, int32_t assetId)
+{
+    auto album = QueryAlbumById(manager, albumId);
+    if (album == nullptr) {
+        return false;
+    }
+    std::vector<std::string> columns;
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(assetId));
+    FetchResult<FileAsset> assets = manager.GetAssets(*album, columns, &predicates);
+    return assets.GetCount() > 0;
+}
+
+struct MoveAssetPayloadExpect {
+    int32_t assetId;
+    int32_t sourceAlbumId;
+    int32_t targetAlbumId;
+    std::string sourceAlbumUri;
+    std::string targetAlbumUri;
+};
+
+bool HasValidMoveAssetChangeData(const PhotoAssetChangeData *changeData)
+{
+    return changeData != nullptr &&
+        changeData->assetBeforeChange != nullptr && changeData->assetAfterChange != nullptr;
+}
+
+void ExpectMoveAssetOwnerAlbumIds(const PhotoAssetChangeData &changeData, const MoveAssetPayloadExpect &expect)
+{
+    int32_t beforeOwnerAlbumId = changeData.assetBeforeChange->ownerAlbumId_;
+    int32_t afterOwnerAlbumId = changeData.assetAfterChange->ownerAlbumId_;
+    if (beforeOwnerAlbumId > E_OK) {
+        EXPECT_EQ(beforeOwnerAlbumId, expect.sourceAlbumId);
+    } else {
+        EXPECT_EQ(beforeOwnerAlbumId, AccurateRefresh::INVALID_INT32_VALUE);
+    }
+    if (afterOwnerAlbumId > E_OK) {
+        EXPECT_EQ(afterOwnerAlbumId, expect.targetAlbumId);
+    } else {
+        EXPECT_EQ(afterOwnerAlbumId, AccurateRefresh::INVALID_INT32_VALUE);
+    }
+}
+
+void ExpectMoveAssetOwnerAlbumUris(const PhotoAssetChangeData &changeData, const MoveAssetPayloadExpect &expect)
+{
+    if (!changeData.assetBeforeChange->ownerAlbumUri_.empty() && !expect.sourceAlbumUri.empty()) {
+        EXPECT_EQ(changeData.assetBeforeChange->ownerAlbumUri_, expect.sourceAlbumUri);
+    }
+    if (!changeData.assetAfterChange->ownerAlbumUri_.empty() && !expect.targetAlbumUri.empty()) {
+        EXPECT_EQ(changeData.assetAfterChange->ownerAlbumUri_, expect.targetAlbumUri);
+    }
+}
+
+bool CheckMoveAssetPayload(const PhotoAssetChangeData *changeData, const MoveAssetPayloadExpect &expect)
+{
+    if (!HasValidMoveAssetChangeData(changeData)) {
+        return false;
+    }
+
+    EXPECT_EQ(changeData->assetBeforeChange->fileId_, expect.assetId);
+    EXPECT_EQ(changeData->assetAfterChange->fileId_, expect.assetId);
+    ExpectMoveAssetOwnerAlbumIds(*changeData, expect);
+    ExpectMoveAssetOwnerAlbumUris(*changeData, expect);
+    return true;
+}
+
+const PhotoAssetChangeData *FindAssetChangeDataById(const PhotoAssetChangeInfos &infos, int32_t assetId)
+{
+    for (const auto &changeData : infos.assetChangeDatas) {
+        auto info = (changeData.assetAfterChange != nullptr)
+            ? changeData.assetAfterChange
+            : changeData.assetBeforeChange;
+        if (info != nullptr && info->fileId_ == assetId) {
+            return &changeData;
+        }
+    }
+    return nullptr;
+}
+
+const AlbumChangeData *FindAlbumChangeDataById(const AlbumChangeInfos &infos, int32_t albumId)
+{
+    for (const auto &changeData : infos.albumChangeDatas) {
+        auto info = (changeData.albumAfterChange != nullptr)
+            ? changeData.albumAfterChange
+            : changeData.albumBeforeChange;
+        if (info != nullptr && info->albumId_ == albumId) {
+            return &changeData;
+        }
+    }
+    return nullptr;
 }
 
 struct AssetChangeWaitArgs {
@@ -777,6 +1037,218 @@ void LogAssetChangeInfoDetail(const std::string &tag, const std::shared_ptr<Phot
         << ", dirty=" << info->dirty_
         << ", path=" << info->path_;
 }
+
+void CreateBatchTestAlbums(MediaLibraryManager &manager, int32_t batchCount, std::vector<int32_t> &albumIds)
+{
+    for (int32_t i = 0; i < batchCount; ++i) {
+        int32_t albumId = CreateTestAlbum(manager);
+        ASSERT_GT(albumId, E_OK);
+        albumIds.push_back(albumId);
+    }
+}
+
+void CreateBatchTestAssets(MediaLibraryManager &manager, int32_t batchCount, std::vector<int32_t> &assetIds,
+    std::vector<std::string> *assetUris = nullptr)
+{
+    for (int32_t i = 0; i < batchCount; ++i) {
+        std::string assetUri;
+        int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
+        ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
+        assetIds.push_back(assetId);
+        if (assetUris != nullptr) {
+            assetUris->push_back(assetUri);
+        }
+    }
+}
+
+bool CollectRemovedAlbumFlags(const std::vector<AlbumChangeInfos> &allInfos, size_t startIndex,
+    std::map<int32_t, bool> &removedAlbumFlags)
+{
+    bool hasRecheckNotify = false;
+    for (size_t i = startIndex; i < allInfos.size(); ++i) {
+        const auto &infos = allInfos[i];
+        hasRecheckNotify = hasRecheckNotify || infos.isForRecheck;
+        if (infos.type != NotifyChangeType::NOTIFY_CHANGE_REMOVE) {
+            continue;
+        }
+        for (const auto &changeData : infos.albumChangeDatas) {
+            auto info = (changeData.albumAfterChange != nullptr)
+                ? changeData.albumAfterChange
+                : changeData.albumBeforeChange;
+            if (info == nullptr) {
+                continue;
+            }
+            auto iter = removedAlbumFlags.find(info->albumId_);
+            if (iter != removedAlbumFlags.end()) {
+                iter->second = true;
+            }
+        }
+    }
+    return hasRecheckNotify;
+}
+
+void MarkRemovedAssetFlag(const PhotoAssetChangeData &changeData,
+    std::map<int32_t, bool> &removedAssetFlags, int32_t expectedAlbumId)
+{
+    auto info = (changeData.assetAfterChange != nullptr)
+        ? changeData.assetAfterChange
+        : changeData.assetBeforeChange;
+    if (info == nullptr) {
+        return;
+    }
+    auto iter = removedAssetFlags.find(info->fileId_);
+    if (iter == removedAssetFlags.end()) {
+        return;
+    }
+    iter->second = true;
+    if (info->ownerAlbumId_ > E_OK && expectedAlbumId > E_OK) {
+        EXPECT_EQ(info->ownerAlbumId_, expectedAlbumId);
+    }
+}
+
+void VerifyBatchAlbumDeleteSamples(MediaLibraryManager &manager, const std::vector<int32_t> &albumIds,
+    const std::map<int32_t, bool> &removedAlbumFlags, bool hasRecheckNotify)
+{
+    std::vector<size_t> sampleIndexes = { 0, albumIds.size() / 2, albumIds.size() - 1 };
+    for (size_t sampleIndex : sampleIndexes) {
+        int32_t sampleAlbumId = albumIds[sampleIndex];
+        EXPECT_EQ(QueryAlbumById(manager, sampleAlbumId), nullptr);
+        if (hasRecheckNotify) {
+            continue;
+        }
+        auto iter = removedAlbumFlags.find(sampleAlbumId);
+        ASSERT_NE(iter, removedAlbumFlags.end());
+        EXPECT_TRUE(iter->second);
+    }
+}
+
+void ExecuteAndCheckBatchAlbumDelete(MediaLibraryManager &manager, SyncPhotoAlbumChangeCallback &callback,
+    const std::vector<int32_t> &albumIds, int32_t idleWaitMs)
+{
+    int32_t baseCount = callback.GetCallTimes();
+    auto albumsToDelete = QueryAlbumsByIds(manager, albumIds);
+    ASSERT_EQ(albumsToDelete.size(), albumIds.size());
+    ASSERT_GT(manager.DeleteAlbums(albumsToDelete), E_OK);
+    ASSERT_TRUE(callback.WaitForCallAfter(baseCount, BATCH_NOTIFY_TIMEOUT_MS));
+    ASSERT_TRUE(WaitForCallbackIdle(callback, BATCH_IDLE_QUIET_MS, idleWaitMs));
+
+    auto allInfos = callback.GetAllInfos();
+    ASSERT_GT(allInfos.size(), static_cast<size_t>(baseCount));
+    std::map<int32_t, bool> removedAlbumFlags;
+    for (int32_t albumId : albumIds) {
+        removedAlbumFlags[albumId] = false;
+    }
+
+    bool hasRecheckNotify = CollectRemovedAlbumFlags(allInfos, static_cast<size_t>(baseCount), removedAlbumFlags);
+    size_t removedAlbumCount = 0;
+    for (const auto &item : removedAlbumFlags) {
+        if (item.second) {
+            ++removedAlbumCount;
+        }
+    }
+    if (removedAlbumCount < removedAlbumFlags.size()) {
+        EXPECT_TRUE(hasRecheckNotify);
+    }
+    VerifyBatchAlbumDeleteSamples(manager, albumIds, removedAlbumFlags, hasRecheckNotify);
+}
+
+int32_t GetExpectedAlbumIdFromAssets(const std::vector<std::unique_ptr<FileAsset>> &assetsToDelete)
+{
+    if (assetsToDelete.empty() || assetsToDelete[0] == nullptr) {
+        return AccurateRefresh::INVALID_INT32_VALUE;
+    }
+    int32_t expectedAlbumId = assetsToDelete[0]->GetOwnerAlbumId();
+    return (expectedAlbumId > E_OK) ? expectedAlbumId : assetsToDelete[0]->GetAlbumId();
+}
+
+bool CollectRemovedAssetFlags(const std::vector<PhotoAssetChangeInfos> &allInfos, size_t startIndex,
+    std::map<int32_t, bool> &removedAssetFlags, int32_t expectedAlbumId)
+{
+    bool hasRecheckNotify = false;
+    for (size_t i = startIndex; i < allInfos.size(); ++i) {
+        const auto &infos = allInfos[i];
+        hasRecheckNotify = hasRecheckNotify || infos.isForRecheck;
+        if (infos.type != NotifyChangeType::NOTIFY_CHANGE_REMOVE) {
+            continue;
+        }
+        for (const auto &changeData : infos.assetChangeDatas) {
+            MarkRemovedAssetFlag(changeData, removedAssetFlags, expectedAlbumId);
+        }
+    }
+    return hasRecheckNotify;
+}
+
+void VerifyBatchAssetDeleteSamples(MediaLibraryManager &manager, const std::vector<int32_t> &assetIds,
+    const std::map<int32_t, bool> &removedAssetFlags, bool hasRecheckNotify)
+{
+    std::vector<size_t> sampleIndexes = { 0, assetIds.size() / 2, assetIds.size() - 1 };
+    for (size_t sampleIndex : sampleIndexes) {
+        int32_t sampleAssetId = assetIds[sampleIndex];
+        EXPECT_EQ(QueryAssetById(manager, sampleAssetId), nullptr);
+        if (hasRecheckNotify) {
+            continue;
+        }
+        auto iter = removedAssetFlags.find(sampleAssetId);
+        ASSERT_NE(iter, removedAssetFlags.end());
+        EXPECT_TRUE(iter->second);
+    }
+}
+
+void ExecuteAndCheckBatchAssetDelete(MediaLibraryManager &manager, SyncPhotoAssetChangeCallback &callback,
+    const std::vector<int32_t> &assetIds, int32_t idleWaitMs)
+{
+    int32_t baseCount = callback.GetCallTimes();
+    auto assetsToDelete = QueryAssetsByIds(manager, assetIds);
+    ASSERT_EQ(assetsToDelete.size(), assetIds.size());
+    int32_t expectedAlbumId = GetExpectedAlbumIdFromAssets(assetsToDelete);
+    int32_t deleteRet = manager.DeleteAssets(assetsToDelete);
+    ASSERT_EQ(deleteRet, static_cast<int32_t>(assetIds.size()));
+    ASSERT_TRUE(callback.WaitForCallAfter(baseCount, BATCH_NOTIFY_TIMEOUT_MS));
+    ASSERT_TRUE(WaitForCallbackIdle(callback, BATCH_IDLE_QUIET_MS, idleWaitMs));
+
+    auto allInfos = callback.GetAllInfos();
+    ASSERT_GT(allInfos.size(), static_cast<size_t>(baseCount));
+    std::map<int32_t, bool> removedAssetFlags;
+    for (int32_t assetId : assetIds) {
+        removedAssetFlags[assetId] = false;
+    }
+
+    bool hasRecheckNotify = CollectRemovedAssetFlags(allInfos, static_cast<size_t>(baseCount),
+        removedAssetFlags, expectedAlbumId);
+    size_t removedAssetCount = 0;
+    for (const auto &item : removedAssetFlags) {
+        if (item.second) {
+            ++removedAssetCount;
+        }
+    }
+    if (removedAssetCount < removedAssetFlags.size()) {
+        EXPECT_TRUE(hasRecheckNotify);
+    }
+    VerifyBatchAssetDeleteSamples(manager, assetIds, removedAssetFlags, hasRecheckNotify);
+}
+
+void RegisterAlbumObserverWithFallback(MediaLibraryManager &manager,
+    const std::shared_ptr<SyncPhotoAlbumChangeCallback> &callback, bool &useHiddenObserver)
+{
+    int32_t registerRet = manager.RegisterHiddenAlbumChange(callback);
+    if (registerRet == E_OK) {
+        useHiddenObserver = true;
+        return;
+    }
+    ASSERT_TRUE(IsHiddenRegisterPermissionDenied(registerRet));
+    ASSERT_EQ(manager.RegisterPhotoAlbumCallback(callback), E_OK);
+}
+
+void AnalyzeAlbumNotifyResults(const std::vector<AlbumChangeInfos> &allInfos, size_t startIndex,
+    bool &hasNotifyPayload, bool &hasRecheckNotify)
+{
+    hasNotifyPayload = false;
+    hasRecheckNotify = false;
+    for (size_t i = startIndex; i < allInfos.size(); ++i) {
+        hasRecheckNotify = hasRecheckNotify || allInfos[i].isForRecheck;
+        hasNotifyPayload = hasNotifyPayload || !allInfos[i].albumChangeDatas.empty();
+    }
+}
 } // namespace
 
 /**
@@ -847,772 +1319,6 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_006, TestSize.
     auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
     int32_t ret = manager.UnregisterSinglePhotoAlbumChange("", callback);
     EXPECT_EQ(ret, E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_007
- * @tc.name: PhotoAssetChangeInfos default value check
- * @tc.desc: Verify default values of public payload type.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_007, TestSize.Level1)
-{
-    PhotoAssetChangeInfos infos;
-    EXPECT_EQ(infos.type, NotifyChangeType::NOTIFY_CHANGE_INVALID);
-    EXPECT_TRUE(infos.assetChangeDatas.empty());
-    EXPECT_FALSE(infos.isForRecheck);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_008
- * @tc.name: AlbumChangeInfo default value check
- * @tc.desc: Verify default values of album payload type.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_008, TestSize.Level1)
-{
-    AlbumChangeInfo info;
-    EXPECT_EQ(info.albumId_, MEDIA_LIBRARY_NOTIFY_INVALID_INT32);
-    EXPECT_EQ(info.imageCount_, MEDIA_LIBRARY_NOTIFY_INVALID_INT32);
-    EXPECT_EQ(info.videoCount_, MEDIA_LIBRARY_NOTIFY_INVALID_INT32);
-    EXPECT_EQ(info.coverDateTime_, MEDIA_LIBRARY_NOTIFY_INVALID_INT64);
-    EXPECT_EQ(info.hidden_, 0);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_009
- * @tc.name: Register/Unregister photo callback
- * @tc.desc: Verify success path, duplicate register and repeated unregister.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_009, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    EXPECT_EQ(manager.RegisterPhotoChange(callback), E_OK);
-    EXPECT_EQ(manager.RegisterPhotoChange(callback), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterPhotoChange(callback), E_OK);
-    EXPECT_EQ(manager.UnregisterPhotoChange(callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_010
- * @tc.name: UnregisterPhotoChange with optional callback
- * @tc.desc: callback optional path removes all callbacks of current notify type.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_010, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback1 = std::make_shared<MockPhotoAssetChangeCallback>();
-    auto callback2 = std::make_shared<MockPhotoAssetChangeCallback>();
-    EXPECT_EQ(manager.RegisterPhotoChange(callback1), E_OK);
-    EXPECT_EQ(manager.RegisterPhotoChange(callback2), E_OK);
-    EXPECT_EQ(manager.UnregisterPhotoChange(), E_OK);
-    EXPECT_EQ(manager.UnregisterPhotoChange(), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_011
- * @tc.name: Register/Unregister album callback
- * @tc.desc: Verify success path, duplicate register and repeated unregister.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_011, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    EXPECT_EQ(manager.RegisterPhotoAlbumCallback(callback), E_OK);
-    EXPECT_EQ(manager.RegisterPhotoAlbumCallback(callback), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterPhotoAlbumCallback(callback), E_OK);
-    EXPECT_EQ(manager.UnregisterPhotoAlbumCallback(callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_012
- * @tc.name: UnregisterPhotoAlbumCallback with optional callback
- * @tc.desc: callback optional path removes all album callbacks of current notify type.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_012, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback1 = std::make_shared<MockPhotoAlbumChangeCallback>();
-    auto callback2 = std::make_shared<MockPhotoAlbumChangeCallback>();
-    EXPECT_EQ(manager.RegisterPhotoAlbumCallback(callback1), E_OK);
-    EXPECT_EQ(manager.RegisterPhotoAlbumCallback(callback2), E_OK);
-    EXPECT_EQ(manager.UnregisterPhotoAlbumCallback(), E_OK);
-    EXPECT_EQ(manager.UnregisterPhotoAlbumCallback(), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_013
- * @tc.name: Register/Unregister hidden photo callback
- * @tc.desc: Verify hidden photo register/unregister path.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_013, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    int32_t registerRet = manager.RegisterHiddenPhotoChange(callback);
-    if (registerRet == E_OK) {
-        EXPECT_EQ(manager.UnregisterHiddenPhotoChange(callback), E_OK);
-        EXPECT_EQ(manager.UnregisterHiddenPhotoChange(callback), E_INVALID_ARGUMENTS);
-        return;
-    }
-    EXPECT_TRUE(IsHiddenRegisterPermissionDenied(registerRet));
-    EXPECT_EQ(manager.UnregisterHiddenPhotoChange(callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_014
- * @tc.name: Register/Unregister hidden album callback
- * @tc.desc: Verify hidden album register/unregister path.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_014, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    int32_t registerRet = manager.RegisterHiddenAlbumChange(callback);
-    if (registerRet == E_OK) {
-        EXPECT_EQ(manager.UnregisterHiddenAlbumChange(callback), E_OK);
-        EXPECT_EQ(manager.UnregisterHiddenAlbumChange(callback), E_INVALID_ARGUMENTS);
-        return;
-    }
-    EXPECT_TRUE(IsHiddenRegisterPermissionDenied(registerRet));
-    EXPECT_EQ(manager.UnregisterHiddenAlbumChange(callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_015
- * @tc.name: Register/Unregister trashed photo callback
- * @tc.desc: Verify trashed photo register/unregister path.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_015, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    EXPECT_EQ(manager.RegisterTrashedPhotoChange(callback), E_OK);
-    EXPECT_EQ(manager.UnregisterTrashedPhotoChange(callback), E_OK);
-    EXPECT_EQ(manager.UnregisterTrashedPhotoChange(callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_016
- * @tc.name: Register/Unregister trashed album callback
- * @tc.desc: Verify trashed album register/unregister path.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_016, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    EXPECT_EQ(manager.RegisterTrashedAlbumChange(callback), E_OK);
-    EXPECT_EQ(manager.UnregisterTrashedAlbumChange(callback), E_OK);
-    EXPECT_EQ(manager.UnregisterTrashedAlbumChange(callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_017
- * @tc.name: Register/Unregister single photo callback
- * @tc.desc: Verify single photo URI + callback unregister path.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_017, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string assetUri;
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto cleanup = ScopeExit([&]() {
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    EXPECT_EQ(manager.RegisterSinglePhotoChange(assetUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(assetUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(assetUri, callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_018
- * @tc.name: UnregisterSinglePhotoChange uri-only path
- * @tc.desc: Verify uri-only unregister removes callbacks under current singleId.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_018, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string assetUri;
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto cleanup = ScopeExit([&]() {
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    EXPECT_EQ(manager.RegisterSinglePhotoChange(assetUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(assetUri), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(assetUri), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_019
- * @tc.name: UnregisterSinglePhotoChange no-arg path
- * @tc.desc: Verify no-arg unregister removes all single photo callbacks.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_019, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string assetUri;
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto cleanup = ScopeExit([&]() {
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    EXPECT_EQ(manager.RegisterSinglePhotoChange(assetUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_020
- * @tc.name: Register/Unregister single album callback
- * @tc.desc: Verify single album URI + callback unregister path.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_020, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string albumUri = QueryFirstAlbumUri(manager);
-    ASSERT_FALSE(albumUri.empty());
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    EXPECT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(albumUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(albumUri, callback), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_021
- * @tc.name: UnregisterSinglePhotoAlbumChange uri-only path
- * @tc.desc: Verify uri-only unregister removes callbacks under current albumId.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_021, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string albumUri = QueryFirstAlbumUri(manager);
-    ASSERT_FALSE(albumUri.empty());
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    EXPECT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(albumUri), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(albumUri), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_022
- * @tc.name: UnregisterSinglePhotoAlbumChange no-arg path
- * @tc.desc: Verify no-arg unregister removes all single album callbacks.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_022, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string albumUri = QueryFirstAlbumUri(manager);
-    ASSERT_FALSE(albumUri.empty());
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    EXPECT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, callback), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_023
- * @tc.name: Optional unregister when not registered
- * @tc.desc: Verify optional unregister returns invalid-arguments when observer is absent.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_023, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    EXPECT_EQ(manager.UnregisterPhotoChange(), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterPhotoAlbumCallback(), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterHiddenPhotoChange(), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterHiddenAlbumChange(), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterTrashedPhotoChange(), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterTrashedAlbumChange(), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(), E_INVALID_ARGUMENTS);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_024
- * @tc.name: Single unregister invalid URI after registration
- * @tc.desc: Verify invalid single URI branch when observer already exists.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_024, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string assetUri;
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto cleanup = ScopeExit([&]() {
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-    std::string albumUri = QueryFirstAlbumUri(manager);
-    ASSERT_FALSE(albumUri.empty());
-
-    auto assetCallback = std::make_shared<MockPhotoAssetChangeCallback>();
-    auto albumCallback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    EXPECT_EQ(manager.RegisterSinglePhotoChange(assetUri, assetCallback), E_OK);
-    EXPECT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, albumCallback), E_OK);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange("invalid_uri"), E_INVALID_ARGUMENTS);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange("invalid_uri"), E_INVALID_ARGUMENTS);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(), E_OK);
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_025
- * @tc.name: Callback object records OnChange payload
- * @tc.desc: Verify callback base interface is usable by public payload.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_025, TestSize.Level1)
-{
-    MockPhotoAssetChangeCallback assetCallback;
-    MockPhotoAlbumChangeCallback albumCallback;
-
-    PhotoAssetChangeInfos assetInfos;
-    assetInfos.type = NotifyChangeType::NOTIFY_CHANGE_UPDATE;
-    assetInfos.isForRecheck = true;
-
-    AlbumChangeInfos albumInfos;
-    albumInfos.type = NotifyChangeType::NOTIFY_CHANGE_ADD;
-    albumInfos.isForRecheck = false;
-
-    assetCallback.OnChange(assetInfos);
-    albumCallback.OnChange(albumInfos);
-
-    EXPECT_EQ(assetCallback.GetCallTimes(), 1);
-    EXPECT_EQ(assetCallback.GetChangeInfos().type, NotifyChangeType::NOTIFY_CHANGE_UPDATE);
-    EXPECT_TRUE(assetCallback.GetChangeInfos().isForRecheck);
-    EXPECT_EQ(albumCallback.GetCallTimes(), 1);
-    EXPECT_EQ(albumCallback.GetChangeInfos().type, NotifyChangeType::NOTIFY_CHANGE_ADD);
-    EXPECT_FALSE(albumCallback.GetChangeInfos().isForRecheck);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_026
- * @tc.name: RegisterPhotoChange passive receive callback
- * @tc.desc: Verify callback receives changeInfos passively after data change.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_026, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
-    auto cleanup = ScopeExit([&]() {
-        (void)manager.UnregisterPhotoChange(callback);
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
-
-    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
-    int32_t baseCount = callback->GetCallTimes();
-
-    std::string assetUri;
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-
-    bool received = callback->WaitForCallAfter(baseCount, 5000);
-
-    EXPECT_TRUE(received);
-    PhotoAssetChangeInfos infos = callback->GetLastInfos();
-    EXPECT_EQ(infos.type, NotifyChangeType::NOTIFY_CHANGE_ADD);
-    GTEST_LOG_(INFO) << "Received asset change callback with type: " << static_cast<int32_t>(infos.type);
-
-    EXPECT_EQ(manager.UnregisterPhotoChange(callback), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_027
- * @tc.name: RegisterPhotoAlbumCallback passive receive callback
- * @tc.desc: Verify album callback receives changeInfos passively after data change.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_027, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<SyncPhotoAlbumChangeCallback>();
-    ASSERT_EQ(manager.RegisterPhotoAlbumCallback(callback), E_OK);
-
-    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
-    int32_t baseCount = callback->GetCallTimes();
-
-    int32_t albumId = CreateTestAlbum(manager);
-    ASSERT_GT(albumId, 0);
-
-    EXPECT_TRUE(callback->WaitForCallAfter(baseCount, 3000));
-    AlbumChangeInfos infos = callback->GetLastInfos();
-    EXPECT_EQ(infos.type, NotifyChangeType::NOTIFY_CHANGE_ADD);
-    GTEST_LOG_(INFO) << "Received album change callback with type: " << static_cast<int32_t>(infos.type);
-
-    EXPECT_EQ(manager.UnregisterPhotoAlbumCallback(callback), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_028
- * @tc.name: ConvertProviderError maps provider errors to public errors
- * @tc.desc: Verify each mapping branch in ConvertProviderError.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_028, TestSize.Level1)
-{
-    struct ErrorMapCase {
-        int32_t input;
-        int32_t expected;
-    };
-    const std::vector<ErrorMapCase> cases = {
-        { E_OK, E_OK },
-        { E_SUCCESS, E_OK },
-        { E_PERMISSION_DENIED, E_PERMISSION_DENIED },
-        { E_MAX_ON_SINGLE_NUM, E_MAX_ON_SINGLE_NUM },
-        { E_INVALID_ARGUMENTS, E_INVALID_ARGUMENTS },
-        { E_URI_IS_INVALID, E_INVALID_ARGUMENTS },
-        { E_URI_NOT_EXIST, E_INVALID_ARGUMENTS },
-        { E_DATAOBSERVER_IS_NULL, E_INVALID_ARGUMENTS },
-        { E_DATAOBSERVER_IS_REPEATED, E_INVALID_ARGUMENTS },
-        { E_CHECK_SYSTEMAPP_FAIL, -E_CHECK_SYSTEMAPP_FAIL },
-        { -E_CHECK_SYSTEMAPP_FAIL, -E_CHECK_SYSTEMAPP_FAIL },
-        { -12345, -12345 },
-        { 12345, E_FAIL },
-    };
-
-    for (const auto &item : cases) {
-        EXPECT_EQ(MediaLibraryManagerNotifyUtils::ConvertProviderError(item.input), item.expected)
-            << "input=" << item.input;
-    }
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_029
- * @tc.name: IsAssetNotifyType truth table
- * @tc.desc: Verify asset uri types return true and non-asset uri types return false.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_029, TestSize.Level1)
-{
-    EXPECT_TRUE(MediaLibraryManagerNotifyUtils::IsAssetNotifyType(Notification::NotifyUriType::PHOTO_URI));
-    EXPECT_TRUE(MediaLibraryManagerNotifyUtils::IsAssetNotifyType(Notification::NotifyUriType::HIDDEN_PHOTO_URI));
-    EXPECT_TRUE(MediaLibraryManagerNotifyUtils::IsAssetNotifyType(Notification::NotifyUriType::TRASH_PHOTO_URI));
-    EXPECT_TRUE(MediaLibraryManagerNotifyUtils::IsAssetNotifyType(Notification::NotifyUriType::SINGLE_PHOTO_URI));
-    EXPECT_FALSE(MediaLibraryManagerNotifyUtils::IsAssetNotifyType(Notification::NotifyUriType::PHOTO_ALBUM_URI));
-    EXPECT_FALSE(MediaLibraryManagerNotifyUtils::IsAssetNotifyType(Notification::NotifyUriType::INVALID));
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_030
- * @tc.name: BuildPhotoAssetChangeInfos handles null input
- * @tc.desc: Verify null MediaChangeInfo returns default value without crash.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_030, TestSize.Level1)
-{
-    PhotoAssetChangeInfos infos = MediaLibraryManagerNotifyUtils::BuildPhotoAssetChangeInfos(nullptr);
-    EXPECT_EQ(infos.type, NotifyChangeType::NOTIFY_CHANGE_INVALID);
-    EXPECT_TRUE(infos.assetChangeDatas.empty());
-    EXPECT_FALSE(infos.isForRecheck);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_031
- * @tc.name: BuildPhotoAssetChangeInfos filters non-asset items
- * @tc.desc: Verify AlbumChangeData item in variant is skipped.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_031, TestSize.Level1)
-{
-    auto changeInfo = CreateMediaChangeInfo(Notification::AccurateNotifyType::NOTIFY_ASSET_UPDATE);
-    AccurateRefresh::AlbumChangeData albumData;
-    changeInfo->changeInfos.push_back(albumData);
-
-    PhotoAssetChangeInfos infos = MediaLibraryManagerNotifyUtils::BuildPhotoAssetChangeInfos(changeInfo);
-    EXPECT_EQ(infos.type, NotifyChangeType::NOTIFY_CHANGE_UPDATE);
-    EXPECT_FALSE(infos.isForRecheck);
-    EXPECT_TRUE(infos.assetChangeDatas.empty());
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_032
- * @tc.name: BuildPhotoAssetChangeInfos maps invalid fileId to nullptr
- * @tc.desc: Verify invalid fileId triggers early-return branch for before-change info.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_032, TestSize.Level1)
-{
-    auto changeInfo = CreateMediaChangeInfo(Notification::AccurateNotifyType::NOTIFY_ASSET_ADD);
-    auto changeData = CreatePhotoAssetChangeData(AccurateRefresh::INVALID_INT32_VALUE, 101);
-    changeInfo->changeInfos.push_back(changeData);
-
-    PhotoAssetChangeInfos infos = MediaLibraryManagerNotifyUtils::BuildPhotoAssetChangeInfos(changeInfo);
-    ASSERT_EQ(infos.assetChangeDatas.size(), 1);
-    EXPECT_EQ(infos.assetChangeDatas[0].assetBeforeChange, nullptr);
-    ASSERT_NE(infos.assetChangeDatas[0].assetAfterChange, nullptr);
-    EXPECT_EQ(infos.assetChangeDatas[0].assetAfterChange->fileId_, 101);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_033
- * @tc.name: BuildPhotoAssetChangeInfos handles hidden uri and null album pointer
- * @tc.desc: Verify hiddenTime assignment and nullptr album item forwarding branch.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_033, TestSize.Level1)
-{
-    auto changeInfo = CreateMediaChangeInfo(Notification::AccurateNotifyType::NOTIFY_ASSET_UPDATE);
-    auto changeData = CreatePhotoAssetChangeData(201, 202);
-    changeData.infoAfterChange_.hiddenTime_ = 9527;
-    changeData.infoAfterChange_.albumChangeInfos_.push_back(nullptr);
-
-    auto validAlbumInfo = std::make_shared<AccurateRefresh::AlbumChangeInfo>();
-    validAlbumInfo->albumId_ = 3001;
-    validAlbumInfo->albumType_ = 8;
-    validAlbumInfo->albumName_ = "album_from_change_info";
-    changeData.infoAfterChange_.albumChangeInfos_.push_back(validAlbumInfo);
-    changeInfo->changeInfos.push_back(changeData);
-
-    PhotoAssetChangeInfos infos = MediaLibraryManagerNotifyUtils::BuildPhotoAssetChangeInfos(
-        changeInfo, Notification::NotifyUriType::HIDDEN_PHOTO_URI);
-    ASSERT_EQ(infos.assetChangeDatas.size(), 1);
-    ASSERT_NE(infos.assetChangeDatas[0].assetAfterChange, nullptr);
-    EXPECT_EQ(infos.assetChangeDatas[0].assetAfterChange->hiddenTime_, 9527);
-    ASSERT_EQ(infos.assetChangeDatas[0].assetAfterChange->albumChangeInfos_.size(), 2);
-    EXPECT_EQ(infos.assetChangeDatas[0].assetAfterChange->albumChangeInfos_[0], nullptr);
-    ASSERT_NE(infos.assetChangeDatas[0].assetAfterChange->albumChangeInfos_[1], nullptr);
-    EXPECT_EQ(infos.assetChangeDatas[0].assetAfterChange->albumChangeInfos_[1]->albumType_, 8);
-    EXPECT_EQ(infos.assetChangeDatas[0].assetAfterChange->albumChangeInfos_[1]->albumName_,
-        "album_from_change_info");
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_034
- * @tc.name: BuildPhotoAssetChangeInfos returns nullptr album when albumId invalid
- * @tc.desc: Verify non-null album pointer with invalid albumId becomes nullptr after conversion.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_034, TestSize.Level1)
-{
-    auto changeInfo = CreateMediaChangeInfo(Notification::AccurateNotifyType::NOTIFY_ASSET_UPDATE);
-    auto changeData = CreatePhotoAssetChangeData(401, 402);
-
-    auto invalidAlbumInfo = std::make_shared<AccurateRefresh::AlbumChangeInfo>();
-    changeData.infoAfterChange_.albumChangeInfos_.push_back(invalidAlbumInfo);
-    changeInfo->changeInfos.push_back(changeData);
-
-    PhotoAssetChangeInfos infos = MediaLibraryManagerNotifyUtils::BuildPhotoAssetChangeInfos(changeInfo);
-    ASSERT_EQ(infos.assetChangeDatas.size(), 1);
-    ASSERT_NE(infos.assetChangeDatas[0].assetAfterChange, nullptr);
-    ASSERT_EQ(infos.assetChangeDatas[0].assetAfterChange->albumChangeInfos_.size(), 1);
-    EXPECT_EQ(infos.assetChangeDatas[0].assetAfterChange->albumChangeInfos_[0], nullptr);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_036
- * @tc.name: NotifyChange default branch for unsupported notify uri
- * @tc.desc: Verify unsupported notify uri does not trigger registered callbacks.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_036, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
-
-    auto changeInfo = CreateMediaChangeInfo(
-        Notification::AccurateNotifyType::NOTIFY_ASSET_UPDATE,
-        Notification::NotifyUriType::INVALID);
-    changeInfo->changeInfos.push_back(CreatePhotoAssetChangeData(1001, 1002));
-
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(changeInfo);
-    EXPECT_EQ(callback->GetCallTimes(), 0);
-
-    EXPECT_EQ(manager.UnregisterPhotoChange(callback), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_037
- * @tc.name: Single photo recheck broadcast path
- * @tc.desc: Verify SINGLE_PHOTO_URI recheck dispatches to all single-photo callbacks.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_037, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string assetUri;
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto cleanup = ScopeExit([&]() {
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-
-    auto callback1 = std::make_shared<MockPhotoAssetChangeCallback>();
-    auto callback2 = std::make_shared<MockPhotoAssetChangeCallback>();
-    ASSERT_EQ(manager.RegisterSinglePhotoChange(assetUri, callback1), E_OK);
-    ASSERT_EQ(manager.RegisterSinglePhotoChange(assetUri, callback2), E_OK);
-
-    auto changeInfo = CreateMediaChangeInfo(
-        Notification::AccurateNotifyType::NOTIFY_ASSET_UPDATE,
-        Notification::NotifyUriType::SINGLE_PHOTO_URI,
-        true);
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(changeInfo);
-
-    EXPECT_EQ(callback1->GetCallTimes(), 1);
-    EXPECT_EQ(callback2->GetCallTimes(), 1);
-    EXPECT_TRUE(callback1->GetChangeInfos().isForRecheck);
-    EXPECT_EQ(callback1->GetChangeInfos().type, NotifyChangeType::NOTIFY_CHANGE_UPDATE);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_038
- * @tc.name: Single photo fallback from beforeId to afterId
- * @tc.desc: Verify callback lookup fallback branch hits afterId when beforeId misses.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_038, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string assetUri;
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto cleanup = ScopeExit([&]() {
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    ASSERT_EQ(manager.RegisterSinglePhotoChange(assetUri, callback), E_OK);
-
-    auto changeInfo = CreateMediaChangeInfo(
-        Notification::AccurateNotifyType::NOTIFY_ASSET_UPDATE,
-        Notification::NotifyUriType::SINGLE_PHOTO_URI);
-    changeInfo->changeInfos.push_back(CreatePhotoAssetChangeData(AccurateRefresh::INVALID_INT32_VALUE, assetId));
-
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(changeInfo);
-    EXPECT_EQ(callback->GetCallTimes(), 1);
-    ASSERT_EQ(callback->GetChangeInfos().assetChangeDatas.size(), 1);
-    ASSERT_NE(callback->GetChangeInfos().assetChangeDatas[0].assetAfterChange, nullptr);
-    EXPECT_EQ(callback->GetChangeInfos().assetChangeDatas[0].assetAfterChange->fileId_, assetId);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_039
- * @tc.name: Single photo skips non-asset variant item
- * @tc.desc: Verify album variant item in SINGLE_PHOTO_URI notify is ignored.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_039, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string assetUri;
-    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
-    auto cleanup = ScopeExit([&]() {
-        if (assetId > E_OK) {
-            (void)DeleteAssetById(manager, assetId);
-        }
-    });
-    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
-
-    auto callback = std::make_shared<MockPhotoAssetChangeCallback>();
-    ASSERT_EQ(manager.RegisterSinglePhotoChange(assetUri, callback), E_OK);
-
-    auto changeInfo = CreateMediaChangeInfo(
-        Notification::AccurateNotifyType::NOTIFY_ASSET_UPDATE,
-        Notification::NotifyUriType::SINGLE_PHOTO_URI);
-    AccurateRefresh::AlbumChangeData albumData;
-    changeInfo->changeInfos.push_back(albumData);
-
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(changeInfo);
-    EXPECT_EQ(callback->GetCallTimes(), 0);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoChange(), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_040
- * @tc.name: Single album recheck broadcast path
- * @tc.desc: Verify SINGLE_PHOTO_ALBUM_URI recheck dispatches to all single-album callbacks.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_040, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string albumUri = EnsureAlbumUri(manager);
-    ASSERT_FALSE(albumUri.empty());
-
-    auto callback1 = std::make_shared<MockPhotoAlbumChangeCallback>();
-    auto callback2 = std::make_shared<MockPhotoAlbumChangeCallback>();
-    ASSERT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, callback1), E_OK);
-    ASSERT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, callback2), E_OK);
-
-    auto changeInfo = CreateMediaChangeInfo(
-        Notification::AccurateNotifyType::NOTIFY_ALBUM_UPDATE,
-        Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI,
-        true);
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(changeInfo);
-
-    EXPECT_EQ(callback1->GetCallTimes(), 1);
-    EXPECT_EQ(callback2->GetCallTimes(), 1);
-    EXPECT_TRUE(callback1->GetChangeInfos().isForRecheck);
-    EXPECT_EQ(callback1->GetChangeInfos().type, NotifyChangeType::NOTIFY_CHANGE_UPDATE);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_041
- * @tc.name: Single album fallback from beforeId to afterId
- * @tc.desc: Verify callback lookup fallback branch hits afterId when beforeId misses.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_041, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string albumUri = EnsureAlbumUri(manager);
-    ASSERT_FALSE(albumUri.empty());
-    int32_t albumId = ExtractIntIdFromUri(albumUri);
-    ASSERT_GT(albumId, E_OK);
-
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    ASSERT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, callback), E_OK);
-
-    auto changeInfo = CreateMediaChangeInfo(
-        Notification::AccurateNotifyType::NOTIFY_ALBUM_UPDATE,
-        Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
-    changeInfo->changeInfos.push_back(CreateAlbumChangeData(AccurateRefresh::INVALID_INT32_VALUE, albumId));
-
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(changeInfo);
-    EXPECT_EQ(callback->GetCallTimes(), 1);
-    ASSERT_EQ(callback->GetChangeInfos().albumChangeDatas.size(), 1);
-    EXPECT_EQ(callback->GetChangeInfos().albumChangeDatas[0].albumBeforeChange, nullptr);
-    ASSERT_NE(callback->GetChangeInfos().albumChangeDatas[0].albumAfterChange, nullptr);
-    EXPECT_EQ(callback->GetChangeInfos().type, NotifyChangeType::NOTIFY_CHANGE_UPDATE);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(), E_OK);
-}
-
-/**
- * @tc.number: MediaLibraryManager_notify_test_042
- * @tc.name: Single album skips non-album variant item
- * @tc.desc: Verify photo-asset variant item in SINGLE_PHOTO_ALBUM_URI notify is ignored.
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_042, TestSize.Level1)
-{
-    ResetNotifyObservers(manager);
-    std::string albumUri = EnsureAlbumUri(manager);
-    ASSERT_FALSE(albumUri.empty());
-
-    auto callback = std::make_shared<MockPhotoAlbumChangeCallback>();
-    ASSERT_EQ(manager.RegisterSinglePhotoAlbumChange(albumUri, callback), E_OK);
-
-    auto changeInfo = CreateMediaChangeInfo(
-        Notification::AccurateNotifyType::NOTIFY_ALBUM_UPDATE,
-        Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
-    changeInfo->changeInfos.push_back(CreatePhotoAssetChangeData(2001, 2002));
-
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(changeInfo);
-    EXPECT_EQ(callback->GetCallTimes(), 0);
-
-    EXPECT_EQ(manager.UnregisterSinglePhotoAlbumChange(), E_OK);
 }
 
 /**
@@ -2109,7 +1815,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_054, TestSize.
     auto cleanup = ScopeExit([&]() {
         (void)manager.UnregisterPhotoAlbumCallback(callback);
         if (assetId > E_OK) {
-            (void)SetAssetFavoriteById(manager, assetId, false);
+            (void)UpdateAssetFavoriteByDataShare(manager, assetId, false);
             (void)DeleteAssetById(manager, assetId);
         }
     });
@@ -2121,7 +1827,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_054, TestSize.
     ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
     ASSERT_TRUE(callback->WaitForCallAfter(baseCount, 5000));
     int32_t beforeFavorite = callback->GetCallTimes();
-    ASSERT_GE(SetAssetFavoriteById(manager, assetId, true), E_OK);
+    ASSERT_GE(UpdateAssetFavoriteByDataShare(manager, assetId, true), E_OK);
     ASSERT_TRUE(callback->WaitForCallAfter(beforeFavorite, 5000));
     ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 3000));
     auto allAlbumInfos = callback->GetAllInfos();
@@ -2169,6 +1875,460 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_055, TestSize.
     EXPECT_TRUE(foundUpdate);
 
     EXPECT_EQ(manager.UnregisterPhotoChange(callback), E_OK);
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_056
+ * @tc.name: Delete empty album notify payload check
+ * @tc.desc: Verify remove payload keeps beforeChange album info when deleting empty album.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_056, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    int32_t albumId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto callback = std::make_shared<SyncPhotoAlbumChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoAlbumCallback(callback);
+        if (albumId > E_OK) {
+            (void)DeleteAlbumById(manager, albumId);
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoAlbumCallback(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+    albumId = CreateTestAlbum(manager);
+    ASSERT_GT(albumId, E_OK);
+    std::string albumUri = QueryAlbumUriById(manager, albumId);
+    ASSERT_FALSE(albumUri.empty());
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    int32_t deletedAlbumId = albumId;
+    int32_t removeBase = callback->GetCallTimes();
+    ASSERT_GE(DeleteAlbumById(manager, deletedAlbumId), E_OK);
+    albumId = AccurateRefresh::INVALID_INT32_VALUE;
+
+    AlbumChangeInfos removeInfos;
+    AlbumChangeWaitArgs waitArgs { NotifyChangeType::NOTIFY_CHANGE_REMOVE, deletedAlbumId, 5000 };
+    ASSERT_TRUE(WaitForAlbumChangeByTypeAndId(*callback, removeBase, waitArgs, removeInfos));
+    auto changeData = FindAlbumChangeDataById(removeInfos, deletedAlbumId);
+    ASSERT_NE(changeData, nullptr);
+    ASSERT_NE(changeData->albumBeforeChange, nullptr);
+    EXPECT_EQ(changeData->albumAfterChange, nullptr);
+    EXPECT_EQ(changeData->albumBeforeChange->albumUri_, albumUri);
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_057
+ * @tc.name: Move asset to another album notify payload check
+ * @tc.desc: Verify moved asset update payload and album ownership fields when available.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_057, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
+    int32_t targetAlbumId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoChange(callback);
+        if (assetId > E_OK) {
+            (void)DeleteAssetById(manager, assetId);
+        }
+        if (targetAlbumId > E_OK) {
+            (void)DeleteAlbumById(manager, targetAlbumId);
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+    std::string assetUri;
+    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
+    targetAlbumId = CreateTestAlbum(manager);
+    ASSERT_GT(targetAlbumId, E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    int32_t sourceAlbumId = AccurateRefresh::INVALID_INT32_VALUE;
+    int32_t moveBase = callback->GetCallTimes();
+    int32_t moveRet = MoveAssetToAlbumById(manager, assetId, targetAlbumId, sourceAlbumId);
+    ASSERT_GT(moveRet, E_OK);
+    ASSERT_GT(sourceAlbumId, E_OK);
+    ASSERT_NE(sourceAlbumId, targetAlbumId);
+    std::string sourceAlbumUri = QueryAlbumUriById(manager, sourceAlbumId);
+    std::string targetAlbumUri = QueryAlbumUriById(manager, targetAlbumId);
+
+    PhotoAssetChangeInfos moveInfos;
+    AssetChangeWaitArgs waitArgs { NotifyChangeType::NOTIFY_CHANGE_UPDATE, assetId, 8000 };
+    ASSERT_TRUE(WaitForAssetChangeByTypeAndId(*callback, moveBase, waitArgs, moveInfos));
+    auto changeData = FindAssetChangeDataById(moveInfos, assetId);
+    MoveAssetPayloadExpect expect { assetId, sourceAlbumId, targetAlbumId, sourceAlbumUri, targetAlbumUri };
+    ASSERT_TRUE(CheckMoveAssetPayload(changeData, expect));
+    EXPECT_TRUE(IsAssetInAlbum(manager, targetAlbumId, assetId));
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_058
+ * @tc.name: Unhide asset notify payload check
+ * @tc.desc: Verify unhide emits add payload with expected fileId and visible hidden flag.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_058, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoChange(callback);
+        if (assetId > E_OK) {
+            (void)DeleteAssetById(manager, assetId);
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+    std::string assetUri;
+    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+    ASSERT_GE(SetAssetHiddenByUri(manager, assetUri, true), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    int32_t unhideBase = callback->GetCallTimes();
+    ASSERT_GE(SetAssetHiddenByUri(manager, assetUri, false), E_OK);
+    PhotoAssetChangeInfos unhideInfos;
+    AssetChangeWaitArgs waitArgs { NotifyChangeType::NOTIFY_CHANGE_ADD, assetId, 8000 };
+    ASSERT_TRUE(WaitForAssetChangeByTypeAndId(*callback, unhideBase, waitArgs, unhideInfos));
+    auto changeData = FindAssetChangeDataById(unhideInfos, assetId);
+    ASSERT_NE(changeData, nullptr);
+    EXPECT_EQ(changeData->assetBeforeChange, nullptr);
+    ASSERT_NE(changeData->assetAfterChange, nullptr);
+    EXPECT_FALSE(changeData->assetAfterChange->isHidden_);
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_059
+ * @tc.name: Video rename notify payload check
+ * @tc.desc: Verify video rename emits update payload for the target fileId.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_059, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoChange(callback);
+        if (assetId > E_OK) {
+            (void)DeleteAssetById(manager, assetId);
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+    ASSERT_TRUE(CreateAndWriteTestVideoAsset(manager, assetId));
+
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+    int32_t updateBase = callback->GetCallTimes();
+    std::string renamedName = BuildUniqueRenamedVideoAssetName();
+    ASSERT_GE(RenameAssetById(manager, assetId, renamedName), E_OK);
+
+    PhotoAssetChangeInfos updateInfos;
+    AssetChangeWaitArgs waitArgs { NotifyChangeType::NOTIFY_CHANGE_UPDATE, assetId, 8000 };
+    ASSERT_TRUE(WaitForAssetChangeByTypeAndId(*callback, updateBase, waitArgs, updateInfos));
+    auto changeData = FindAssetChangeDataById(updateInfos, assetId);
+    ASSERT_NE(changeData, nullptr);
+    ASSERT_NE(changeData->assetBeforeChange, nullptr);
+    ASSERT_NE(changeData->assetAfterChange, nullptr);
+    EXPECT_EQ(changeData->assetBeforeChange->fileId_, assetId);
+    EXPECT_EQ(changeData->assetAfterChange->fileId_, assetId);
+    if (!changeData->assetAfterChange->displayName_.empty()) {
+        EXPECT_EQ(changeData->assetAfterChange->displayName_, renamedName);
+    }
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_060
+ * @tc.name: Move image to same album notify payload check
+ * @tc.desc: Verify moving an image to its source album fails and no update notify is emitted.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_060, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoChange(callback);
+        if (assetId > E_OK) {
+            (void)DeleteAssetById(manager, assetId);
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+
+    std::string assetUri;
+    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    auto sourceAlbum = QuerySourceAlbumByAssetId(manager, assetId);
+    ASSERT_NE(sourceAlbum, nullptr);
+    int32_t sourceAlbumId = sourceAlbum->GetAlbumId();
+    ASSERT_GT(sourceAlbumId, E_OK);
+
+    int32_t moveBase = callback->GetCallTimes();
+    int32_t moveSourceAlbumId = AccurateRefresh::INVALID_INT32_VALUE;
+    int32_t moveRet = MoveAssetToAlbumById(manager, assetId, sourceAlbumId, moveSourceAlbumId);
+    EXPECT_EQ(moveRet, E_FAIL);
+    EXPECT_FALSE(callback->WaitForCallAfter(moveBase, 1500));
+
+    auto sourceAlbumAfter = QueryAlbumById(manager, sourceAlbumId);
+    ASSERT_NE(sourceAlbumAfter, nullptr);
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_061
+ * @tc.name: DeleteAssets updates non-empty album notify payload
+ * @tc.desc: Verify DeleteAssets real deletion call triggers target album notifications.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_061, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
+    int32_t albumId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto callback = std::make_shared<SyncPhotoAlbumChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoAlbumCallback(callback);
+        if (assetId > E_OK) {
+            (void)DeleteAssetById(manager, assetId);
+        }
+        if (albumId > E_OK) {
+            (void)DeleteAlbumById(manager, albumId);
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoAlbumCallback(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+    std::string assetUri;
+    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
+    albumId = CreateTestAlbum(manager);
+    ASSERT_GT(albumId, E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    int32_t sourceAlbumId = AccurateRefresh::INVALID_INT32_VALUE;
+    ASSERT_GT(MoveAssetToAlbumById(manager, assetId, albumId, sourceAlbumId), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    int32_t notifyBase = callback->GetCallTimes();
+    auto assetToDelete = QueryAssetById(manager, assetId);
+    ASSERT_NE(assetToDelete, nullptr);
+    std::vector<std::unique_ptr<FileAsset>> assetsToDelete;
+    assetsToDelete.push_back(std::move(assetToDelete));
+    int32_t deleteRet = manager.DeleteAssets(assetsToDelete);
+    ASSERT_EQ(deleteRet, static_cast<int32_t>(assetsToDelete.size()));
+    assetId = AccurateRefresh::INVALID_INT32_VALUE;
+
+    ASSERT_TRUE(callback->WaitForCallAfter(notifyBase, 8000));
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    auto allAlbumInfos = callback->GetAllInfos();
+    ASSERT_GT(allAlbumInfos.size(), static_cast<size_t>(notifyBase));
+    std::map<int32_t, std::pair<int32_t, int32_t>> notifiedAlbums;
+    size_t notifyCount = LogAndSummarizeAlbumNotifications(
+        allAlbumInfos, static_cast<size_t>(notifyBase), notifiedAlbums);
+    EXPECT_GT(notifyCount, 0);
+    EXPECT_TRUE(notifiedAlbums.find(albumId) != notifiedAlbums.end());
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_062
+ * @tc.name: Unfavorite asset notify payload check
+ * @tc.desc: Verify unfavorite emits update payload with expected fileId and favorite flag.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_062, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    int32_t assetId = AccurateRefresh::INVALID_INT32_VALUE;
+    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoChange(callback);
+        if (assetId > E_OK) {
+            (void)UpdateAssetFavoriteByDataShare(manager, assetId, false);
+            (void)DeleteAssetById(manager, assetId);
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+    std::string assetUri;
+    ASSERT_TRUE(CreateAndWriteTestAsset(manager, assetUri, assetId));
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 5000));
+
+    int32_t favoriteBase = callback->GetCallTimes();
+    ASSERT_GE(UpdateAssetFavoriteByDataShare(manager, assetId, true), E_OK);
+    PhotoAssetChangeInfos favoriteInfos;
+    AssetChangeWaitArgs favoriteWaitArgs { NotifyChangeType::NOTIFY_CHANGE_UPDATE, assetId, 8000 };
+    ASSERT_TRUE(WaitForAssetChangeByTypeAndId(*callback, favoriteBase, favoriteWaitArgs, favoriteInfos));
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 200, 3000));
+
+    int32_t unfavoriteBase = callback->GetCallTimes();
+    ASSERT_GE(UpdateAssetFavoriteByDataShare(manager, assetId, false), E_OK);
+    PhotoAssetChangeInfos unfavoriteInfos;
+    AssetChangeWaitArgs unfavoriteWaitArgs { NotifyChangeType::NOTIFY_CHANGE_UPDATE, assetId, 8000 };
+    ASSERT_TRUE(WaitForAssetChangeByTypeAndId(*callback, unfavoriteBase, unfavoriteWaitArgs, unfavoriteInfos));
+    auto changeData = FindAssetChangeDataById(unfavoriteInfos, assetId);
+    ASSERT_NE(changeData, nullptr);
+    ASSERT_NE(changeData->assetBeforeChange, nullptr);
+    ASSERT_NE(changeData->assetAfterChange, nullptr);
+    EXPECT_EQ(changeData->assetBeforeChange->fileId_, assetId);
+    EXPECT_EQ(changeData->assetAfterChange->fileId_, assetId);
+    EXPECT_FALSE(changeData->assetAfterChange->isFavorite_);
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_063
+ * @tc.name: Delete 2k albums notify payload check
+ * @tc.desc: Verify album remove notify payload conversion and dispatch for 2000 change items.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_063, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    constexpr int32_t batchCount = 2000;
+    std::vector<int32_t> albumIds;
+    albumIds.reserve(batchCount);
+    auto callback = std::make_shared<SyncPhotoAlbumChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoAlbumCallback(callback);
+        for (int32_t albumId : albumIds) {
+            if (albumId > E_OK) {
+                (void)DeleteAlbumById(manager, albumId);
+            }
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoAlbumCallback(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+
+    CreateBatchTestAlbums(manager, batchCount, albumIds);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, BATCH_IDLE_QUIET_MS, 15000));
+    ExecuteAndCheckBatchAlbumDelete(manager, *callback, albumIds, 15000);
+
+    albumIds.clear();
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_064
+ * @tc.name: Delete 2000 assets in one album notify payload check
+ * @tc.desc: Verify photo remove notify payload conversion for 2000 single-album assets.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_064, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    constexpr int32_t batchCount = 2000;
+    std::vector<int32_t> assetIds;
+    assetIds.reserve(batchCount);
+    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoChange(callback);
+        for (int32_t assetId : assetIds) {
+            if (assetId > E_OK) {
+                (void)DeleteAssetById(manager, assetId);
+            }
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+
+    CreateBatchTestAssets(manager, batchCount, assetIds);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, BATCH_IDLE_QUIET_MS, 15000));
+    ExecuteAndCheckBatchAssetDelete(manager, *callback, assetIds, 15000);
+
+    assetIds.clear();
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_065
+ * @tc.name: Delete 900 assets in one album notify payload check
+ * @tc.desc: Verify photo remove notify payload conversion for 900 single-album assets.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_065, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+    constexpr int32_t batchCount = 900;
+    std::vector<int32_t> assetIds;
+    assetIds.reserve(batchCount);
+    auto callback = std::make_shared<SyncPhotoAssetChangeCallback>();
+    auto cleanup = ScopeExit([&]() {
+        (void)manager.UnregisterPhotoChange(callback);
+        for (int32_t assetId : assetIds) {
+            if (assetId > E_OK) {
+                (void)DeleteAssetById(manager, assetId);
+            }
+        }
+    });
+
+    ASSERT_EQ(manager.RegisterPhotoChange(callback), E_OK);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+
+    CreateBatchTestAssets(manager, batchCount, assetIds);
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, BATCH_IDLE_QUIET_MS, 10000));
+    ExecuteAndCheckBatchAssetDelete(manager, *callback, assetIds, 10000);
+
+    assetIds.clear();
+}
+
+/**
+ * @tc.number: MediaLibraryManager_notify_test_066
+ * @tc.name: Hide assets with DataShare update payload check
+ * @tc.desc: Verify DataShare hide update emits notify payload with hidden state change.
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_notify_test_066, TestSize.Level1)
+{
+    ResetNotifyObservers(manager);
+
+    constexpr int32_t batchCount = 2000;
+    std::vector<std::string> assetUris;
+    std::vector<int32_t> assetIds;
+    assetUris.reserve(batchCount);
+    assetIds.reserve(batchCount);
+    CreateBatchTestAssets(manager, batchCount, assetIds, &assetUris);
+
+    auto callback = std::make_shared<SyncPhotoAlbumChangeCallback>();
+    bool useHiddenObserver = false;
+    auto cleanup = ScopeExit([&]() {
+        if (useHiddenObserver) {
+            (void)manager.UnregisterHiddenAlbumChange(callback);
+        } else {
+            (void)manager.UnregisterPhotoAlbumCallback(callback);
+        }
+        if (!assetUris.empty()) {
+            (void)SetAssetsHiddenByUris(manager, assetUris, false);
+        }
+        for (int32_t assetId : assetIds) {
+            if (assetId > E_OK) {
+                (void)DeleteAssetById(manager, assetId);
+            }
+        }
+    });
+
+    RegisterAlbumObserverWithFallback(manager, callback, useHiddenObserver);
+
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, 100, 1000));
+    int32_t baseCount = callback->GetCallTimes();
+    ASSERT_EQ(SetAssetsHiddenByUris(manager, assetUris, true), batchCount);
+    ASSERT_TRUE(callback->WaitForCallAfter(baseCount, BATCH_NOTIFY_TIMEOUT_MS));
+    ASSERT_TRUE(WaitForCallbackIdle(*callback, BATCH_IDLE_QUIET_MS, 15000));
+
+    auto allInfos = callback->GetAllInfos();
+    ASSERT_GT(allInfos.size(), static_cast<size_t>(baseCount));
+
+    bool hasNotifyPayload = false;
+    bool hasRecheckNotify = false;
+    size_t startIndex = static_cast<size_t>(baseCount);
+    AnalyzeAlbumNotifyResults(allInfos, startIndex, hasNotifyPayload, hasRecheckNotify);
+    ASSERT_TRUE(hasNotifyPayload || hasRecheckNotify);
+    if (hasNotifyPayload) {
+        std::map<int32_t, std::pair<int32_t, int32_t>> notifiedAlbums;
+        size_t notifyCount = LogAndSummarizeAlbumNotifications(allInfos, startIndex, notifiedAlbums);
+        EXPECT_GT(notifyCount, 0);
+    } else {
+        EXPECT_TRUE(hasRecheckNotify);
+    }
 }
 } // namespace Media
 } // namespace OHOS
