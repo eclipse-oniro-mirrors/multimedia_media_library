@@ -74,7 +74,6 @@ ohos_fuzztest("MediaLibraryAppstateObserverFuzzTest") {
     "libfuse:libfuse",
     "napi:ace_napi",
     "os_account:os_account_innerkits",
-    "player_framework:media_client",
     "player_framework:video_editor",
     "preferences:native_preferences",
     "relational_store:native_rdb",

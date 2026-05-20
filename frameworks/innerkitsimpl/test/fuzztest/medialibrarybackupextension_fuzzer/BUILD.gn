@@ -154,6 +154,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "ipc:ipc_single",
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "preferences:native_preferences",
     "player_framework:media_client",

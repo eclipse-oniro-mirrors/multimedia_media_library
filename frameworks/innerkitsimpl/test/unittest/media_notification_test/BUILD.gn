@@ -130,7 +130,6 @@ ohos_unittest("media_notification_test") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
-    "player_framework:media_client",
     "relational_store:native_rdb",
   ]
 

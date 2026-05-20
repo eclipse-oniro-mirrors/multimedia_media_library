@@ -97,6 +97,7 @@ ohos_fuzztest("MediaLibraryCloudMediaPhotosDaoFuzzTest") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",

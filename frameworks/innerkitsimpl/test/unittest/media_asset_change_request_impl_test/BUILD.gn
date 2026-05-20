@@ -94,7 +94,6 @@ ohos_unittest("media_asset_change_request_impl_test") {
     "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
-    "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "resource_management:librawfile",

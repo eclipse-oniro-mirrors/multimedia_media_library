@@ -47,6 +47,7 @@ ohos_fuzztest("MediaLibraryThumbnail3FuzzTest") {
     "data_share:datashare_provider",
     "hilog:libhilog",
     "image_framework:image_native",
+    "media_foundation:media_foundation",
     "player_framework:media_client",
     "relational_store:native_rdb",
   ]

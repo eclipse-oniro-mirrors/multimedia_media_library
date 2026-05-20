@@ -147,6 +147,7 @@ ohos_shared_library("media_library") {
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
     "libexif:libexif",
+    "media_foundation:media_foundation",
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

@@ -66,6 +66,7 @@ ohos_fuzztest("MediaLibraryThumbnailFuzzTest") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "ipc:ipc_single",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
