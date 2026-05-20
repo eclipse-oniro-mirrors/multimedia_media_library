@@ -64,16 +64,18 @@ ohos_unittest("media_assets_controller_service_test") {
   cflags = [ "-fno-access-control" ]
 
   sources = [
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_asset_analysis_data_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_index_construct_progress_vo.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/start_asset_analysis_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/cloud_enhancement_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/form_info_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/acquire_debug_database_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/adapted_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_image_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/add_visit_count_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_change_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_permission_inner_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_permission_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_persist_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_photo_uri_permission_inner_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_photo_uris_read_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/clone_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cloud_enhancement_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/commit_edited_asset_vo.cpp",
@@ -83,64 +85,60 @@ ohos_unittest("media_assets_controller_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/form_info_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_count_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_cloud_enhancement_pair_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_cloudmedia_asset_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_edit_data_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_filepath_from_uri_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_moving_photo_date_modified_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_photo_uri_persist_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_result_set_from_db_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_result_set_from_photos_extend_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_batch_download_cloud_resources_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/pause_batch_download_cloud_resources_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/resume_batch_download_cloud_resources_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_batch_download_cloud_resources_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/set_network_policy_batch_download_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_status_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_count_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_batch_download_cloud_resources_size_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_uri_from_filepath_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uri_permission_inner_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uri_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uris_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/is_edited_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_photo_uris_read_permission_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_persist_permission_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_photo_uri_persist_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/log_cinematic_access_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/modify_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/pause_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_cloud_enhancement_task_state_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_media_data_status_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_photo_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/release_debug_database_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/request_content_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/request_edit_data_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/restore_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/resume_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/retain_cloud_media_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/revert_to_original_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/save_camera_photo_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_batch_download_cloud_resources_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_download_cloud_media_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/start_thumbnail_creation_task_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/stop_restore_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/stop_thumbnail_creation_task_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/submit_cache_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/trash_photos_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/acquire_debug_database_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/release_debug_database_vo.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/cloud_enhancement_dto.cpp",
-    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/form_info_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/vo/add_image_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_cloud_permission_check.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_asset_analysis_data_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/get_index_construct_progress_vo.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/analysis_data_kits/vo/start_asset_analysis_vo.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_assets_manager/src/dao/media_assets_dao.cpp",
     "${MEDIALIB_UTILS_PATH}/src/parameter_utils.cpp",
-    "../medialibrary_unittest_utils/src/test_data_builder.cpp",
-    "./src/asset_change_set_hidden_attribute_test.cpp",
-    "./src/asset_change_set_display_name_by_file_test.cpp",
     "../../../media_library_manager/src/media_library_tab_old_photos_client.cpp",
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "../medialibrary_unittest_utils/src/test_data_builder.cpp",
     "./src/add_visit_count_test.cpp",
     "./src/asset_change_request_test.cpp",
+    "./src/asset_change_set_display_name_by_file_test.cpp",
+    "./src/asset_change_set_hidden_attribute_test.cpp",
     "./src/cancel_photo_uri_permission_test.cpp",
     "./src/check_photo_uris_read_permission_test.cpp",
     "./src/clone_asset_test.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_assets_manager/src/dao/media_assets_dao.cpp",
   ]
 
   if (media_library_feature_cloud_enhancement) {
@@ -148,10 +146,10 @@ ohos_unittest("media_assets_controller_service_test") {
   }
 
   sources += [
+    "./src/acquire_debug_database_test.cpp",
     "./src/cloud_media_change_test.cpp",
     "./src/commit_edited_asset_test.cpp",
     "./src/create_asset_test.cpp",
-    "./src/media_assets_dao_test.cpp",
     "./src/create_temporary_compatible_duplicate_test.cpp",
     "./src/custom_restore_test.cpp",
     "./src/delete_asset_test.cpp",
@@ -168,13 +166,15 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/inner_get_result_set_from_db_test.cpp",
     "./src/inner_get_result_set_from_photos_extend_test.cpp",
     "./src/inner_photo_uri_permission_test.cpp",
-    "./src/persist_permission_test.cpp",
     "./src/media_assets_controller_test.cpp",
+    "./src/media_assets_dao_test.cpp",
     "./src/mock_thumbnail_wifi_test.cpp",
     "./src/modify_assets_test.cpp",
+    "./src/persist_permission_test.cpp",
     "./src/query_cloud_enhancement_task_state_test.cpp",
     "./src/query_edit_asset_status_test.cpp",
     "./src/query_media_data_status_test.cpp",
+    "./src/release_debug_database_test.cpp",
     "./src/request_content_test.cpp",
     "./src/request_image_test.cpp",
     "./src/revert_to_original_test.cpp",
@@ -189,20 +189,16 @@ ohos_unittest("media_assets_controller_service_test") {
     "./src/start_thumbnail_creation_task_test.cpp",
     "./src/stop_thumbnail_creation_task_test.cpp",
     "./src/sync_cloud_enhancement_task_status_test.cpp",
-    "./src/acquire_debug_database_test.cpp",
-    "./src/release_debug_database_test.cpp",
   ]
 
   if (media_library_facard_enable) {
-    media_facard_test_source = [
-      "./src/form_info_test.cpp",
-    ]
+    media_facard_test_source = [ "./src/form_info_test.cpp" ]
     sources += media_facard_test_source
   }
 
   deps = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_IPC_COMMON}:media_ipc_common",
@@ -234,13 +230,15 @@ ohos_unittest("media_assets_controller_service_test") {
     "data_share:datashare_provider",
     "e2fsprogs:libext2_uuid",
     "ffrt:libffrt",
+    "googletest:gmock_main",
+    "googletest:gtest_main",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "i18n:intl_util",
-    "ipc:ipc_napi",
     "image_framework:image_native",
     "init:libbegetutil",
+    "ipc:ipc_napi",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
@@ -252,8 +250,6 @@ ohos_unittest("media_assets_controller_service_test") {
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "zlib:shared_libz",
-    "googletest:gmock_main",
-    "googletest:gtest_main",
   ]
   defines = []
   if (defined(global_parts_info) &&
@@ -269,5 +265,6 @@ ohos_unittest("media_assets_controller_service_test") {
     debug = false
   }
 
-  resource_config_file = "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
+  resource_config_file =
+      "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
 }
