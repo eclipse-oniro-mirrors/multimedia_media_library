@@ -33,7 +33,6 @@
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
-#include "meidalibrary_unittest_preprocess.h"
 #include "result_set_utils.h"
 #include "userfile_manager_types.h"
 #include "values_bucket.h"
@@ -299,7 +298,6 @@ void MediaLibraryCloudAssetBatchDownloadTest::TearDownTestCase(void)
     ::system("rm -rf /storage/cloud/files/*");
     ClearAndResetTable();
     g_rdbStore = nullptr;
-    MediaUnittestPreprocess::ClearBundleInfoInCache();
     MediaLibraryDataManager::GetInstance()->ClearMediaLibraryMgr();
     this_thread::sleep_for(chrono::seconds(1));
     MEDIA_INFO_LOG("Clean is finish");
