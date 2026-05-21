@@ -399,7 +399,7 @@ MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(const std::string &l
         albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
     }
     if (PhotoFileUtils::CheckFileManagerLPath(lPath)) {
-        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     }
     return this->BuildAlbumInfoByLPath(lPath, albumType, albumSubType);
 }

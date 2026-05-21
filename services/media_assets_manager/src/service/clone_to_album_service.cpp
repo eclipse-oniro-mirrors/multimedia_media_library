@@ -118,7 +118,7 @@ static std::string GetThumbnailPathFromOrignalPath(std::string srcPath)
 int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
 {
     std::string targetPath;
-    if (cloneAssetInfo.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER)) {
+    if (cloneAssetInfo.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)) {
         if (cloneAssetInfo.albumLpath == CLONE_FILE_ROOT_LPATH) {
             targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + cloneAssetInfo.displayName;
         } else {
@@ -356,7 +356,7 @@ int32_t InsertAlbumByLPath(const string &lpath)
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, albumName);
     values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, static_cast<int32_t>(PhotoAlbumType::SOURCE));
     values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE,
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER));
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
     values.PutString(PhotoAlbumColumns::ALBUM_LPATH, lpath);
     int32_t result = rdbStore->Insert(rowNum, PhotoAlbumColumns::TABLE, values);
     if (result != NativeRdb::E_OK) {
@@ -384,7 +384,7 @@ int32_t GetAlbumByLPath(CloneToAlbumReqBody &reqBody)
         return E_ERR;
     }
     reqBody.albumId = ret;
-    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
     return E_OK;
 }
@@ -422,7 +422,7 @@ int32_t ValidateRequestForDir(CloneToAlbumReqBody &reqBody)
         MEDIA_ERR_LOG("LPath is not file manager");
         return E_ERR;
     }
-    if (reqBody.albumSubType != static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER)) {
+    if (reqBody.albumSubType != static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)) {
         MEDIA_ERR_LOG("SubType is not file manager");
         return E_ERR;
     }
