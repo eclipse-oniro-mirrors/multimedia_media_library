@@ -2406,10 +2406,14 @@ int32_t MediaLibraryAssetOperations::CreateAssetUniqueId(int32_t type,
     }
 
     auto resultSet = rdbStore->QuerySql(querySql);
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+    CHECK_AND_RETURN_RET(resultSet != nullptr, E_HAS_DB_ERROR);
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        resultSet->Close();
         return E_HAS_DB_ERROR;
     }
-    return GetInt32Val(UNIQUE_NUMBER, resultSet);
+    int32_t uniqueId = GetInt32Val(UNIQUE_NUMBER, resultSet);
+    resultSet->Close();
+    return uniqueId;
 }
 
 int32_t MediaLibraryAssetOperations::CreateAssetUniqueIds(int32_t type, int32_t num, int32_t &startUniqueNumber)

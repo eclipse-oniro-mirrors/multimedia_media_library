@@ -92,11 +92,14 @@ void FileManagerParser::SetCloudPath()
         MEDIA_ERR_LOG("File [%{public}s] has exists cloudPath", fileInfo_.cloudPath.c_str());
         return;
     }
-    std::string extension = MediaFileUtils::GetExtensionFromPath(fileInfo_.displayName);
     std::string cloudPath;
-    int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(fileInfo_.fileType, nullptr);
-    int32_t errCode =
-        MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, fileInfo_.fileType, extension, cloudPath);
+    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> tryCreatePath = [&]()->int {
+        int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(fileInfo_.fileType, trans);
+        return MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, fileInfo_.fileType,
+            MediaFileUtils::GetExtensionFromPath(fileInfo_.displayName), cloudPath);
+    };
+    int32_t errCode = trans->RetryTrans(tryCreatePath);
     if (errCode != E_OK) {
         MEDIA_ERR_LOG("FileParser: File Manager CreateAssetPathById failed, errCode: %{public}d, fileInfo: %{public}s",
             errCode, ToString().c_str());
