@@ -17,15 +17,23 @@
 #define OHOS_MEDIA_LCD_AGING_WORKER_H
 
 #include <atomic>
-#include <mutex>
 #include <thread>
 
+#include "deep_optimize_space_callback.h"
+#include "iremote_object.h"
+
 namespace OHOS::Media {
+
 class LcdAgingWorker {
 public:
     static LcdAgingWorker& GetInstance();
-    void StartLcdAgingWorker();
+    
+    int32_t StartDeepOptimizeSpace(const sptr<IRemoteObject> &clientRemote,
+                                    const sptr<IRemoteObject> &callbackRemote);
+    int32_t StopDeepOptimizeSpace();
     bool IsRunning();
+    void OnClientDied();
+    void NotifyProgress(DeepOptimizeSpaceState state, int32_t progress);
 
 private:
     LcdAgingWorker() {}
@@ -33,11 +41,36 @@ private:
     LcdAgingWorker(const LcdAgingWorker &worker) = delete;
     const LcdAgingWorker &operator=(const LcdAgingWorker &worker) = delete;
 
-    void HandleLcdAgingTask();
+    class ClientDeathRecipient;
+    
+    void HandleDeepOptimizeTask();
+    void Cleanup();
+    void CleanupInternal();
+
+    std::atomic<bool> shouldStop_{false};
+    std::atomic<bool> isThreadRunning_{false};
+    std::thread workerThread_;
+    std::mutex mutex_;
+    
+    sptr<IRemoteObject> clientRemote_;
+    sptr<IDepOptimizeSpaceCallback> callbackProxy_;
+    sptr<ClientDeathRecipient> deathRecipient_;
+};
+
+class LcdAgingWorker::ClientDeathRecipient final : public IRemoteObject::DeathRecipient {
+public:
+    explicit ClientDeathRecipient(LcdAgingWorker *worker) : worker_(worker) {}
+    
+    void OnRemoteDied(const wptr<IRemoteObject> &remote) override
+    {
+        if (worker_ != nullptr) {
+            worker_->OnClientDied();
+        }
+    }
 
 private:
-    std::atomic<bool> isThreadRunning_ {false};
-    std::thread workerThread_;
+    LcdAgingWorker *worker_;
 };
+
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LCD_AGING_WORKER_H

@@ -7406,6 +7406,39 @@ int32_t MediaLibraryPhotoOperations::NotifyAssetSended(const std::string &uri, S
     }
     return E_OK;
 }
+
+void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<string, string>>& photoIdPathList)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaLibraryPhotoOperations::BatchStoreThumbnailSize");
+    CHECK_AND_RETURN_LOG(!photoIdPathList.empty(), "photoIdPathList is empty!");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Medialibrary rdbStore is nullptr!");
+
+    string valuesSql;
+    for (const auto& [photoId, photoPath] : photoIdPathList) {
+        string thumbnailDir {photoPath};
+        if (!ConvertPhotoPathToThumbnailDirPath(thumbnailDir)) {
+            MEDIA_ERR_LOG("Failed to get thumbnail dir path! file id: %{public}s", photoId.c_str());
+            continue;
+        }
+        uint64_t photoThumbnailSize = GetFolderSize(thumbnailDir);
+        if (!valuesSql.empty()) {
+            valuesSql += ", ";
+        }
+        valuesSql += "(" + photoId + ", " + to_string(photoThumbnailSize) + ")";
+    }
+
+    CHECK_AND_RETURN_LOG(!valuesSql.empty(), "valuesSql is empty!");
+    string sql = "INSERT INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
+        PhotoExtColumn::PHOTO_ID + ", " + PhotoExtColumn::THUMBNAIL_SIZE + ") VALUES " + valuesSql +
+        " ON CONFLICT(" + PhotoExtColumn::PHOTO_ID + ")" +
+        " DO UPDATE SET " + PhotoExtColumn::THUMBNAIL_SIZE + " = excluded." + PhotoExtColumn::THUMBNAIL_SIZE;
+
+    int32_t ret = rdbStore->ExecuteSql(sql);
+    CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
+        "Failed to execute batch sql, total size: %{public}zu, error code: %{public}d", photoIdPathList.size(), ret);
+}
 } // namespace Media
 } // namespace OHOS
 //LCOV_EXCL_STOP

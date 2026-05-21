@@ -76,6 +76,7 @@ static const std::string PAH_ANI_CLASS_ENUM_COVERURI_SOURCE = PAH_CLASS_SPACE + 
 static const std::string PAH_ANI_CLASS_ENUM_NOTIFYCHANGE_TYPE = PAH_CLASS_SPACE + "NotifyChangeType";
 static const std::string PAH_ANI_CLASS_ENUM_STRONG_ASSOCIATION_TYPE = PAH_CLASS_SPACE + "StrongAssociationType";
 static const std::string PAH_ANI_CLASS_ENUM_THUMBNAIL_VISIBILITY_TYPE = PAH_CLASS_SPACE + "ThumbnailVisibility";
+static const std::string PAH_ANI_CLASS_ENUM_DEEP_OPTIMIZE_STATE = PAH_CLASS_SPACE + "DeepOptimizeState";
 
 // ETS Class in userFileManager
 static const std::string UFM_ANI_CLASS_USER_FILE_MANAGER_HANDLE = UFM_CLASS_SPACE + "UserFileManagerHandle";

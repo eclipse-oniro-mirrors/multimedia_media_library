@@ -61,7 +61,11 @@
 #include "media_audio_column.h"
 #include "media_upgrade.h"
 #include "media_values_bucket_utils.h"
+#include "medialibrary_business_code.h"
 #include "moving_photo_file_utils.h"
+#include "preferences.h"
+#include "preferences_helper.h"
+#include "user_define_ipc_client.h"
 
 using namespace std;
 namespace OHOS {
@@ -666,8 +670,8 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
     StopParameterForRestore();
     StopParameterForClone();
     SetMediaAnalysisClearDirtyDataParameter();
+    CloneActiveLcdAgingFromOldDevice();
     CloseAllKvStore();
-    DelayLcdAgingTime();
     MEDIA_INFO_LOG("End clone restore");
 }
 
@@ -3911,6 +3915,29 @@ int64_t CloneRestore::CorrectTimestamp(int64_t originalTime)
                                 ? originalTime * MSEC_TO_SEC
                                 : originalTime;
     return convertedTime;
+}
+
+void CloneRestore::CloneActiveLcdAgingFromOldDevice()
+{
+    const std::string OLD_LCD_AGING_XML = "/data/storage/el2/base/preferences/lcd_aging.xml";
+    const std::string IS_ACTIVE_LCD_AGING = "is_active_lcd_aging";
+
+    CHECK_AND_RETURN_LOG(IsCloudRestoreSatisfied(), "IsCloudRestoreSatisfied: false");
+    
+    std::string oldPrefsPath = backupRestoreDir_ + OLD_LCD_AGING_XML;
+    CHECK_AND_RETURN_LOG(MediaFileUtils::IsFileExists(oldPrefsPath), "lcd_aging.xml not exist");
+    
+    int32_t errCode;
+    std::shared_ptr<NativePreferences::Preferences> oldPrefs =
+        NativePreferences::PreferencesHelper::GetPreferences(oldPrefsPath, errCode);
+    CHECK_AND_RETURN_LOG(oldPrefs != nullptr, "Get old preferences error: %{public}d", errCode);
+    
+    bool isActive = oldPrefs->GetBool(IS_ACTIVE_LCD_AGING, false);
+    CHECK_AND_RETURN_LOG(isActive, "Old device active lcd aging flag is false");
+    
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING);
+    int32_t result = IPC::UserDefineIPCClient().Call(businessCode);
+    CHECK_AND_PRINT_LOG(result == E_OK, "CloneIsActiveLcdAging IPC call failed, result: %{public}d", result);
 }
 } // namespace Media
 } // namespace OHOS

@@ -120,6 +120,8 @@
 #include "change_request_move_assets_by_path_dto.h"
 #include "asset_cancel_task_vo.h"
 #include "progress_observer_manager.h"
+#include "lcd_aging_manager.h"
+#include "deep_optimize_space_vo.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -715,6 +717,18 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_FILE_MANAGER_ASSET),
         &MediaAssetsControllerService::CreateFileManagerAsset
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE),
+        &MediaAssetsControllerService::StartDeepOptimizeSpace
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE),
+        &MediaAssetsControllerService::StopDeepOptimizeSpace
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING),
+        &MediaAssetsControllerService::CloneIsActiveLcdAging
     },
 };
 
@@ -3559,5 +3573,44 @@ int32_t MediaAssetsControllerService::CreateFileManagerAsset(MessageParcel &data
     CreateAssetDto dto(reqBody);
     ret = MediaAssetsService::GetInstance().CreateFileManagerAsset(dto);
     return IPC::UserDefineIPC().WriteResponseBody(reply, dto.GetRespBody(), ret);
+}
+
+int32_t MediaAssetsControllerService::StartDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    StartDeepOptimizeSpaceReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("StartDeepOptimizeSpace read request error, ret=%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    bool hasCallback = (reqBody.callbackRemote != nullptr);
+    MEDIA_INFO_LOG("StartDeepOptimizeSpace: hasCallback=%{public}d, clientRemote=%{public}d, callbackRemote=%{public}d",
+        hasCallback, reqBody.clientRemote != nullptr, reqBody.callbackRemote != nullptr);
+
+    ret = LcdAgingManager::GetInstance().StartDeepOptimizeSpace(reqBody.clientRemote, reqBody.callbackRemote);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::StopDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    int32_t ret = LcdAgingManager::GetInstance().StopDeepOptimizeSpace();
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::CloneIsActiveLcdAging(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("CloneIsActiveLcdAging start");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    int32_t ret = LcdAgingManager::GetInstance().SetIsActiveLcdAging(true);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media
