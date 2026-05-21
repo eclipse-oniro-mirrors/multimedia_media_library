@@ -129,7 +129,7 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
       global_parts_info.device_cloud_gateway_media_cloud_enhance_service &&
       !factory) {
     defines += [ "ABILITY_CLOUD_ENHANCEMENT_SUPPORT" ]
-    include_dirs += [ "${MEDIALIB_CLOUD_ENHANCEMENT_SERVICE_PATH}/interfaces/inner_api/include/c_api" ]
+    include_dirs += [ "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/common_data" ]
   }
 
   resource_config_file =

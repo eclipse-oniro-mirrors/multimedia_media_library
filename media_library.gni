@@ -40,8 +40,6 @@ MEDIALIB_PLAYER_FRAMEWORK_PATH = "${MEDIALIB_ROOT_PATH}/../player_framework"
 MEDIALIB_MEDIA_FOUNDATION_PATH = "${MEDIALIB_ROOT_PATH}/../media_foundation"
 MEDIALIB_APP_FILE_SERVICE_PATH = "//foundation/filemanagement/app_file_service"
 MEDIALIB_ACCESS_TOKEN_PATH = "//base/security/access_token"
-MEDIALIB_CLOUD_ENHANCEMENT_SERVICE_PATH =
-    "//vendor/huawei/domains/device_cloud_gateway/media_cloud_enhance_service"
 MEDIALIB_BUSINESS_PATH = "${MEDIALIB_ROOT_PATH}/services"
 MEDIALIB_CLOUD_SYNC_CLIENT = "${MEDIALIB_INNERKITS_PATH}/media_library_cloud_sync"
 MEDIALIB_ACCURATE_REFRESH_PATH = "${MEDIALIB_ROOT_PATH}/services/media_refresh"

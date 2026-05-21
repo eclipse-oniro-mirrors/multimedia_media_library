@@ -29,8 +29,6 @@
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
 #include "media_enhance_constants_c_api.h"
 #include "media_enhance_handles.h"
-#include "media_enhance_client_c_api.h"
-#include "media_enhance_bundle_c_api.h"
 #endif
 #include "cloud_enhancement_vo.h"
 #include "medialibrary_business_code.h"
