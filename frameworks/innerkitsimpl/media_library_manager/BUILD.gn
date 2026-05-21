@@ -154,8 +154,9 @@ ohos_shared_library("media_library_manager") {
     defines += [ "IMAGE_PURGEABLE_PIXELMAP" ]
     external_deps += [
       "ffrt:libffrt",
-      "memmgr_override:libpurgeablemem_plugin",
-      "memmgr_override:purgeable_pixelmap_builder",
+      "memmgr:libpurgeablemem_plugin",
+      "memmgr:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 

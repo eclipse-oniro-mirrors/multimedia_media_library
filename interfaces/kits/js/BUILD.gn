@@ -464,8 +464,9 @@ ohos_shared_library("medialibrary_nutils") {
     defines += [ "IMAGE_PURGEABLE_PIXELMAP" ]
     external_deps += [
       "ffrt:libffrt",
-      "memmgr_override:libpurgeablemem_plugin",
-      "memmgr_override:purgeable_pixelmap_builder",
+      "memmgr:libpurgeablemem_plugin",
+      "memmgr:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -565,8 +566,9 @@ ohos_shared_library("medialibrary") {
       defined(global_parts_info.resourceschedule_memmgr_override)) {
     defines += [ "IMAGE_PURGEABLE_PIXELMAP" ]
     external_deps += [
-      "memmgr_override:libpurgeablemem_plugin",
-      "memmgr_override:purgeable_pixelmap_builder",
+      "memmgr:libpurgeablemem_plugin",
+      "memmgr:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -633,8 +635,9 @@ ohos_shared_library("userfilemanager") {
       defined(global_parts_info.resourceschedule_memmgr_override)) {
     defines += [ "IMAGE_PURGEABLE_PIXELMAP" ]
     external_deps += [
-      "memmgr_override:libpurgeablemem_plugin",
-      "memmgr_override:purgeable_pixelmap_builder",
+      "memmgr:libpurgeablemem_plugin",
+      "memmgr:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -712,8 +715,9 @@ ohos_shared_library("photoaccesshelpernative") {
       defined(global_parts_info.resourceschedule_memmgr_override)) {
     defines += [ "IMAGE_PURGEABLE_PIXELMAP" ]
     external_deps += [
-      "memmgr_override:libpurgeablemem_plugin",
-      "memmgr_override:purgeable_pixelmap_builder",
+      "memmgr:libpurgeablemem_plugin",
+      "memmgr:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
@@ -974,8 +978,9 @@ ohos_shared_library("sendablephotoaccesshelper") {
       defined(global_parts_info.resourceschedule_memmgr_override)) {
     defines += [ "IMAGE_PURGEABLE_PIXELMAP" ]
     external_deps += [
-      "memmgr_override:libpurgeablemem_plugin",
-      "memmgr_override:purgeable_pixelmap_builder",
+      "memmgr:libpurgeablemem_plugin",
+      "memmgr:purgeable_pixelmap_builder",
+      "memory_utils:libpurgeablemem",
     ]
   }
 
