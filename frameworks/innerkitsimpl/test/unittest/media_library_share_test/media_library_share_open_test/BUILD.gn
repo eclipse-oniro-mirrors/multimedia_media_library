@@ -113,6 +113,7 @@ ohos_unittest("media_library_share_open_test") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",

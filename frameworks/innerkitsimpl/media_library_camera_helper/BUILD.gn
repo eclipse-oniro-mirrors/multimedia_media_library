@@ -109,6 +109,7 @@ ohos_shared_library("media_library_camera_helper") {
     "data_share:datashare_consumer",
     "image_framework:image_native",
     "ipc:ipc_core",
+    "media_foundation:media_foundation",
     "player_framework:media_client",
     "relational_store:native_rdb",
   ]

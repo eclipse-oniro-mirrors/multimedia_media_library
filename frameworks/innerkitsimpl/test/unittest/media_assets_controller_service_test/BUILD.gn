@@ -242,6 +242,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account

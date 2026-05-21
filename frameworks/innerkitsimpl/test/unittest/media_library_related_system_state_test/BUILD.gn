@@ -63,7 +63,6 @@ ohos_unittest("media_library_related_system_state_test") {
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
-    "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

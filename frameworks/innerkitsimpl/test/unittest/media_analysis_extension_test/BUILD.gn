@@ -59,7 +59,6 @@ ohos_unittest("media_analysis_extension_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
-    "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "ability_base:want",

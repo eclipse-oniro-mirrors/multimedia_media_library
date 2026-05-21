@@ -73,7 +73,6 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "relational_store:native_rdb",
     "dfs_service:cloudsync_kit_inner",
     "hisysevent:libhisysevent",
-    "player_framework:media_client",
     "preferences:native_preferences",
   ]
 

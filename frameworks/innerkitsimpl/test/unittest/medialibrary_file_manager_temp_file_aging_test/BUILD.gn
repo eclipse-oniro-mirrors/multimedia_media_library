@@ -84,7 +84,6 @@ ohos_unittest("medialibrary_file_manager_temp_file_aging_test") {
     "netmanager_base:net_conn_manager_if",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
-    "player_framework:media_client",
     "hitrace:hitrace_meter",
     "ffrt:libffrt",
     "ability_base:want",

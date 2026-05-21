@@ -122,7 +122,6 @@ ohos_unittest("media_library_asset_manager_test") {
     "ipc:ipc_single",
     "ipc:rpc",
     "libexif:libexif",
-    "player_framework:media_client",
     "relational_store:rdb_data_share_adapter",
     "runtime_core:libarkruntime",
     "runtime_core:ani_helpers",

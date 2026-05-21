@@ -68,6 +68,7 @@ ohos_unittest("background_cloud_batch_selected_file_processor_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",

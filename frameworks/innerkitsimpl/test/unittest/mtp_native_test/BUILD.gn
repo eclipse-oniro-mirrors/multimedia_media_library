@@ -82,7 +82,6 @@ if (media_library_feature_mtp) {
       "hitrace:hitrace_meter",
       "init:libbegetutil",
       "ipc:ipc_core",
-      "player_framework:media_client",
       "relational_store:native_rdb",
       "safwk:system_ability_fwk",
       "samgr:samgr_proxy",

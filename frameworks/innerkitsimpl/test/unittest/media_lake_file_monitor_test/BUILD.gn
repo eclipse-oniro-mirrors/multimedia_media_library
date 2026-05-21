@@ -156,6 +156,7 @@ ohos_unittest("media_lake_file_monitor_test") {
     "libexif:libexif",
     "libfuse:libfuse",
     "libxml2:libxml2",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:libaccountkits",  # ohos_account

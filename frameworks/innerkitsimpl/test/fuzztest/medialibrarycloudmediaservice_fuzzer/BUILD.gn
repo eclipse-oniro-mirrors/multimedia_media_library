@@ -79,6 +79,7 @@ ohos_fuzztest("MediaLibraryCloudMediaServiceFuzzTest") {
     "image_framework:image_native",
     "ipc:ipc_napi",
     "ipc:ipc_single",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
