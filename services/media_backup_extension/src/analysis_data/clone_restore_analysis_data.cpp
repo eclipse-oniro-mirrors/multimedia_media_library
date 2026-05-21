@@ -18,6 +18,7 @@
 #include "media_backup_report_data_type.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "medialibrary_data_manager_utils.h"
 #include "result_set_utils.h"
 #include "upgrade_restore_task_report.h"
 
@@ -26,6 +27,15 @@ const int32_t PAGE_SIZE = 200;
 const std::string FILE_ID = "file_id";
 const int32_t ANALYSIS_STATUS_SUCCESS = 1;
 static const uint8_t BINARY_FEATURE_END_FLAG = 0x01;
+const int64_t CAPTION_THRESHOLD_DATA_SIZE = 30000;
+const int64_t CAPTION_THRESHOLD_DATA_TIME = 600000;
+const int64_t CAPTION_DEFAULT_FAULT_TIME = 0;
+const int64_t CAPTION_BASIC_NUMBER = 10000;
+const int64_t CAPTION_SUPPORT_NUMBER = 9999;
+const int64_t CAPTION_SINGLE_OVER_THRESHOLD_DATA_TIME = 216000;
+const int32_t NORMAL_EXIT_CODE = 0;
+const int32_t MIDDLE_EXIT_CODE = 1;
+const int32_t BEGIN_EXIT_CODE = 2;
 const unordered_map<string, ResultSetDataType> COLUMN_TYPE_MAP = {
     { "INT", ResultSetDataType::TYPE_INT32 },
     { "INTEGER", ResultSetDataType::TYPE_INT32 },
@@ -342,6 +352,9 @@ void CloneRestoreAnalysisData::ReportRestoreTaskOfTotal()
     info.type = "CLONE_RESTORE_" + ToUpper(analysisType_) +"_TOTAL";
     info.errorCode = std::to_string(ANALYSIS_STATUS_SUCCESS);
     info.errorInfo = "timeCost: " + std::to_string(restoreTimeCost_);
+    if (enableTimeout_) {
+        info.errorInfo += ", exitCode: " + std::to_string(exitCode_);
+    }
     UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report(info);
 }
 
@@ -351,6 +364,9 @@ void CloneRestoreAnalysisData::ReportRestoreTaskofData()
     info.type = "CLONE_RESTORE_" + ToUpper(analysisType_) +"_DATA";
     info.errorCode = std::to_string(ANALYSIS_STATUS_SUCCESS);
     info.errorInfo = "max_id: " + std::to_string(maxId_);
+    if (enableTimeout_) {
+        info.errorInfo += ", exitCode: " + std::to_string(exitCode_);
+    }
     info.successCount = successCnt_;
     info.failedCount = failCnt_;
     info.duplicateCount = duplicateCnt_;
@@ -368,8 +384,23 @@ void CloneRestoreAnalysisData::GetMaxIds()
     maxId_ = BackupDatabaseUtils::QueryMaxId(mediaLibraryRdb_, table_, "rowid");
 }
 
+int64_t CloneRestoreAnalysisData::GetShouldEndTime(
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
+{
+    CHECK_AND_RETURN_RET_LOG(!taskId_.empty() && MediaLibraryDataManagerUtils::IsNumber(taskId_),
+        CAPTION_DEFAULT_FAULT_TIME, "taskId: %{public}s invalid", taskId_.c_str());
+    int64_t backupStartTime = std::stoll(taskId_) * 1000;
+    int64_t dataSize = static_cast<int64_t>(photoInfoMap.size());
+    MEDIA_INFO_LOG("dataSize: %{public}" PRId64 ", backupStartTime: %{public}s",
+        dataSize, std::to_string(backupStartTime).c_str());
+    CHECK_AND_RETURN_RET(dataSize > CAPTION_THRESHOLD_DATA_SIZE, backupStartTime + CAPTION_THRESHOLD_DATA_TIME);
+    return backupStartTime + (dataSize + CAPTION_SUPPORT_NUMBER) / CAPTION_BASIC_NUMBER
+        * CAPTION_SINGLE_OVER_THRESHOLD_DATA_TIME;
+}
+
 void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const std::string &type,
-    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, const std::unordered_set<std::string> &excludedColumns)
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
+    const std::unordered_set<std::string> &excludedColumns, bool enableTimeout)
 {
     totalCnt_ = 0;
     successCnt_ = 0;
@@ -378,16 +409,31 @@ void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const
     table_ = table;
     analysisType_ = type;
     photoInfoMap_ = photoInfoMap;
+    enableTimeout_ = enableTimeout;
 
     CloneRestoreAnalysisTotal cloneRestoreAnalysisTotal;
     cloneRestoreAnalysisTotal.Init(analysisType_, PAGE_SIZE, mediaRdb_, mediaLibraryRdb_, totalTableName_);
     cloneRestoreAnalysisTotal_ = cloneRestoreAnalysisTotal;
     
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t shouldEndTime = enableTimeout ? GetShouldEndTime(photoInfoMap) : INT64_MAX;
+    bool firstBatch = true;
+    exitCode_ = NORMAL_EXIT_CODE;
     tableCommonColumns_ = GetTableCommonColumns(excludedColumns);
     int32_t totalNumber = cloneRestoreAnalysisTotal_.GetTotalNumber();
     for (int32_t offset = 0; offset < totalNumber; offset += PAGE_SIZE) {
+        if (enableTimeout) {
+            int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
+            CHECK_AND_EXECUTE(currentTime <= shouldEndTime || !firstBatch, exitCode_ = BEGIN_EXIT_CODE);
+            CHECK_AND_EXECUTE(currentTime <= shouldEndTime || firstBatch, exitCode_ = MIDDLE_EXIT_CODE);
+            CHECK_AND_BREAK_INFO_LOG(currentTime <= shouldEndTime,
+                "current time: %{public}s, over shouldEndTime: %{public}s, "
+                "CloneAnalysisData(%{public}s) cost: %{public}" PRId64,
+                std::to_string(currentTime).c_str(), std::to_string(shouldEndTime).c_str(),
+                table_.c_str(), currentTime - start);
+        }
         AnalysisDataRestoreBatch();
+        firstBatch = false;
     }
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     restoreTimeCost_ = end - start;
