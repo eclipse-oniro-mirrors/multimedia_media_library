@@ -173,15 +173,6 @@ void PictureDataOperations::CleanHighQualityPictureDataInternal(const std::strin
         std::map<std::string, sptr<PicturePair>>::iterator iterPicture = highQualityPictureMap_.find(imageId1);
         if (iterPicture != highQualityPictureMap_.end() && (iterPicture->second) != nullptr &&
             (iterPicture->second)->isCleanImmediately_) {
-            bool isTemp = false;
-            bool isEdited = false;
-            int32_t fileId = (iterPicture->second)->fileId_;
-            IsPictureTempAndEdited(fileId, isTemp, isEdited);
-            if (isTemp) {
-                FileUtils::SavePicture(fileId, (iterPicture->second)->picture_, isEdited, false);
-                MEDIA_INFO_LOG("end SavePicture, photoId: %{public}s, isEdited: %{public}d",
-                    (iterPicture->first).c_str(), static_cast<int32_t>(isEdited));
-            }
             highQualityPictureMap_.erase(iterPicture);
             iter = pictureImageIdList.erase(iter);
         } else {

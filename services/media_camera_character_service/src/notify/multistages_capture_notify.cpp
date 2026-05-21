@@ -63,6 +63,40 @@ int32_t MultistagesCaptureNotify::NotifyOnProcess(
     return E_OK;
 }
 
+int32_t MultistagesCaptureNotify::NotifyOnProcess(
+    const CameraAssetInfo& assetInfo, const MultistagesCaptureNotifyType &notifyType)
+{
+    if (assetInfo.GetFileId() <= 0 || notifyType == MultistagesCaptureNotifyType::UNDEFINED) {
+        MEDIA_ERR_LOG("assetInfo is invalid or Invalid observer type.");
+        return E_ERR;
+    }
+    MEDIA_DEBUG_LOG("NotifyOnProcess begin");
+
+    std::string displayName = assetInfo.GetDisplayName();
+    std::string filePath = assetInfo.GetPath();
+    int32_t mediaType = assetInfo.GetMediaType();
+    int32_t fileId = assetInfo.GetFileId();
+
+    std::string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath);
+    auto notifyUri = MediaFileUtils::GetUriByExtrConditions(CONST_ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(
+        static_cast<MediaType>(mediaType), MEDIA_API_VERSION_V10) + "/", to_string(fileId), extrUri);
+    notifyUri = MediaFileUtils::GetUriWithoutDisplayname(notifyUri);
+
+    auto notifyBody = std::make_shared<MultistagesCaptureNotifyServerInfo>();
+    CHECK_AND_RETURN_RET_LOG(notifyBody != nullptr, E_ERR, "notifyBody is nullptr");
+    notifyBody->uri_ = notifyUri;
+    notifyBody->notifyType_ = notifyType;
+
+    UserDefineNotifyInfo notifyInfo(
+        NotifyUriType::USER_DEFINE_NOTIFY_URI, NotifyForUserDefineType::MULTISTAGES_CAPTURE);
+    notifyInfo.SetUserDefineNotifyBody(notifyBody);
+
+    NotificationDistribution::DistributeUserDefineNotifyInfo({ notifyInfo });
+    MEDIA_INFO_LOG("NotifyOnProcess notifyType: %{public}d, notifyUri: %{public}s.",
+        static_cast<int32_t>(notifyType), MediaFileUtils::DesensitizePath(notifyUri).c_str());
+    return E_OK;
+}
+
 int32_t MultistagesCaptureNotify::NotifyLowQualityMemoryCount()
 {
     MEDIA_INFO_LOG("NotifyLowQualityMemoryCount begin.");

@@ -56,10 +56,10 @@ public:
     void AddImageInternal(int32_t fileId, const std::string &photoId, int32_t deferredProcType,
         bool discardable = false, const std::string &packageName = "");
     bool IsHighQualityPhotoExist(const std::string &uri);
-    void DealHighQualityPicture(const std::string &imageId, int32_t fileId, std::shared_ptr<Media::Picture> picture,
-        bool isEdited = false, bool isTakeEffect = false);
-    void DealLowQualityPicture(const std::string &imageId, int32_t fileId, std::shared_ptr<Media::Picture> picture,
-        bool isEdited = false);
+    EXPORT void DealHighQualityPicture(const std::string &imageId, int32_t fileId,
+        std::shared_ptr<Media::Picture> picture, bool isEdited = false, bool isTakeEffect = false);
+    EXPORT void DealLowQualityPicture(const std::string &imageId, int32_t fileId,
+        std::shared_ptr<Media::Picture> picture, bool isEdited = false);
     void SaveLowQualityImageInfo(MediaLibraryCommand &cmd);
     void SaveLowQualityPicture(const std::string &imageId);
 
@@ -81,8 +81,6 @@ private:
     void CancelRequestAndRemoveImage(const std::vector<std::string> &columns);
     int32_t UpdatePictureQuality(const std::string &photoId);
     int32_t UpdatePictureQualityByFileId(int32_t fileId);
-
-    std::unordered_set<int32_t> setOfDeleted_;
 
     std::shared_ptr<DeferredPhotoProcessingAdapter> deferredProcSession_;
     

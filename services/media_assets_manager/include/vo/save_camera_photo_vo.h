@@ -31,6 +31,7 @@ public:
     bool needScan{false};
     std::string path;
     std::string cameraShotKey{"NotSet"};
+    bool containsAddResource{false};
 
 public:  // functions of Parcelable.
     bool Unmarshalling(MessageParcel &parcel) override;

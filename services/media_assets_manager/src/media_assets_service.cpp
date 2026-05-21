@@ -28,6 +28,7 @@
 #include "media_visit_count_manager.h"
 #include "result_set_utils.h"
 #include "dfx_manager.h"
+#include "multistages_camera_capture_manager.h"
 #include "multistages_capture_dfx_request_policy.h"
 #include "multistages_capture_request_task_manager.h"
 #include "multistages_capture_manager.h"
@@ -483,8 +484,33 @@ int32_t MediaAssetsService::SetCameraShotKey(const int32_t fileId, const std::st
     return MediaLibraryPhotoOperations::UpdateFileAsset(cmd);
 }
 
+static bool DoCameraPipeline(const SaveCameraPhotoDto &dto, int32_t& errCode)
+{
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(dto.fileId, type);
+    if (pipeline == nullptr) {
+        MEDIA_WARN_LOG("pipeline not support, pipeline is nullptr.");
+        return false;
+    }
+    if (type == CameraPipelineType::VIDEO) {
+        MEDIA_WARN_LOG("pipeline not support, type: %{public}d.", static_cast<int32_t>(type));
+        return false;
+    }
+
+    errCode = pipeline->SaveCameraPhoto(dto);
+    // 尝试清理数据
+    pipeline->SaveCameraPhotoFinished();
+    size_t count = MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithFileId(dto.fileId, false);
+    MEDIA_INFO_LOG("Clear pipeline for FirstStage, count: %{public}zu.", count);
+    return true;
+}
+
 int32_t MediaAssetsService::SaveCameraPhoto(const SaveCameraPhotoDto &dto)
 {
+    int32_t ret = E_ERR;
+    if (DoCameraPipeline(dto, ret)) {
+        return ret;
+    }
     if (dto.mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
         return MultiStagesVideoCaptureManager::GetInstance().SaveCameraVideo(dto);
     }
@@ -504,6 +530,7 @@ int32_t MediaAssetsService::SaveCameraPhoto(const SaveCameraPhotoDto &dto)
     cmd.SetApiParam(PhotoColumn::MEDIA_ID, to_string(dto.fileId));
     cmd.SetApiParam(PhotoColumn::PHOTO_SUBTYPE, to_string(dto.photoSubType));
     cmd.SetApiParam(CONST_IMAGE_FILE_TYPE, to_string(dto.imageFileType));
+    cmd.SetApiParam(CONST_CONTAIN_ADD_RESOURCE, to_string(dto.containsAddResource));
     NativeRdb::ValuesBucket values;
     if (dto.supportedWatermarkType != INT32_MIN) {
         values.Put(PhotoColumn::SUPPORTED_WATERMARK_TYPE, dto.supportedWatermarkType);

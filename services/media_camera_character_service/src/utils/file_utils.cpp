@@ -20,8 +20,10 @@
 #include <sys/stat.h>
 
 #include "media_change_effect.h"
+#include "media_change_effect.h"
 #include "media_log.h"
 #include "media_file_utils.h"
+#include "mimetype_utils.h"
 #include "moving_photo_file_utils.h"
 #include "database_adapter.h"
 #include "dfx_utils.h"
@@ -157,7 +159,7 @@ int32_t FileUtils::SavePicture(int32_t fileId, std::shared_ptr<Media::Picture> &
 int32_t FileUtils::SavePicture(const string &path, std::shared_ptr<Media::Picture> &picture,
     const std::string &mime_type, bool isHighQualityPicture)
 {
-    MEDIA_INFO_LOG("SavePicture width %{public}d, heigh %{public}d, mime_type %{public}sd",
+    MEDIA_INFO_LOG("SavePicture width %{public}d, heigh %{public}d, mime_type %{public}s",
         picture->GetMainPixel()->GetWidth(), picture->GetMainPixel()->GetHeight(), mime_type.c_str());
     return DealPicture(mime_type, path, picture, isHighQualityPicture);
 }

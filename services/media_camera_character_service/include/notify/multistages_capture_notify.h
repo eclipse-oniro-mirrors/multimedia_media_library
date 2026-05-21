@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 
+#include "camera_asset_info.h"
 #include "camera_character_types.h"
 #include "file_asset.h"
 
@@ -27,8 +28,12 @@ namespace Media::Notification {
 class MultistagesCaptureNotify {
 #define EXPORT __attribute__ ((visibility ("default")))
 public:
+    MultistagesCaptureNotify() {}
+    ~MultistagesCaptureNotify() {}
+
     EXPORT static int32_t NotifyOnProcess(
         const std::shared_ptr<FileAsset> &fileAsset, const MultistagesCaptureNotifyType &notifyType);
+    static int32_t NotifyOnProcess(const CameraAssetInfo& assetInfo, const MultistagesCaptureNotifyType &notifyType);
     static int32_t NotifyLowQualityMemoryCount();
 };
 } // namespace Media::Notification

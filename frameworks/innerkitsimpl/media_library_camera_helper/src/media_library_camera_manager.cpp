@@ -20,9 +20,12 @@
 #include <unordered_set>
 
 #include "base_data_uri.h"
+#include "get_deferred_picture_info_vo.h"
 #include "media_log.h"
 #include "media_uri_utils.h"
+#include "medialibrary_business_code.h"
 #include "medialibrary_errno.h"
+#include "user_inner_ipc_client.h"
 
 namespace OHOS {
 namespace Media {
@@ -68,6 +71,41 @@ std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProx
     std::shared_ptr<PhotoAssetProxy> photoAssetProxy = std::make_shared<PhotoAssetProxy>(
         dataShareHelper, callerInfo, cameraShotType, videoCount);
     return photoAssetProxy;
+}
+
+std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProxy(
+    const PhotoAssetProxyCallerInfo &callerInfo, const CameraPresetPara &presetPara)
+{
+    std::unique_lock<std::mutex> locker(mutex_);
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d.",
+        MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr);
+    std::shared_ptr<PhotoAssetProxy> photoAssetProxy = std::make_shared<PhotoAssetProxy>(
+        dataShareHelper, callerInfo, presetPara);
+    return photoAssetProxy;
+}
+ 
+DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std::string& photoId)
+{
+    MEDIA_INFO_LOG("GetEditData begin.");
+    DeferredPictureInfo pictureInfo;
+
+    std::unique_lock<std::mutex> locker(mutex_);
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    CHECK_AND_RETURN_RET_LOG(
+        dataShareHelper != nullptr, pictureInfo, "Failed to GetEditData, dataShareHelper is nullptr.");
+    GetDeferredPictureInfoReqBody reqBody;
+    reqBody.photoId = photoId;
+
+    GetDeferredPictureInfoRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFERRED_PICTURE_INFO);
+    IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody, respBody);
+
+    pictureInfo.editData = respBody.editData;
+    pictureInfo.mimeType = respBody.mimeType;
+    return pictureInfo;
 }
 
 int32_t MediaLibraryCameraManager::OpenAsset(std::string &uri, const std::string &openMode)

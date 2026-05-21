@@ -25,6 +25,8 @@
 
 // INNER 接口相关
 #include "add_process_video_vo.h"
+#include "create_camera_file_fd_vo.h"
+#include "get_deferred_picture_info_vo.h"
 
 // 自定义接口
 #include "get_progress_callback_vo.h"
@@ -50,6 +52,18 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFINE_GET_PROGRESS_CALLBACK),
         &MediaCameraCharacterControllerService::GetProgressCallback
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_INNER_CREATE_CAMERA_FILE_FD),
+        &MediaCameraCharacterControllerService::CreateCameraFileFd
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_INNER_SCAN_CAMERA_FILE),
+        &MediaCameraCharacterControllerService::ScanCameraFile
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFERRED_PICTURE_INFO),
+        &MediaCameraCharacterControllerService::GetDeferredPictureInfo
     },
 };
 
@@ -137,6 +151,59 @@ int32_t MediaCameraCharacterControllerService::GetProgressCallback(MessageParcel
     GetProgressCallbackRespBody respBody;
     ret = MediaCameraCharacterService::GetInstance().GetProgressCallback(respBody);
     CHECK_AND_PRINT_LOG(ret == E_OK, "GetProgressCallback failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaCameraCharacterControllerService::CreateCameraFileFd(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter CreateCameraFileFd");
+    CreateCameraFileFdReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CreateCameraFileFd Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    auto dto = CreateCameraFileFdDto::Create(reqBody);
+    CreateCameraFileFdRespBody respBody;
+    ret = MediaCameraCharacterService::GetInstance().CreateCameraFileFd(dto, respBody);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "CreateCameraFileFd failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaCameraCharacterControllerService::ScanCameraFile(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter ScanCameraFile");
+    ScanCameraFileReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ScanCameraFile Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    auto dto = ScanCameraFileDto::Create(reqBody);
+    ret = MediaCameraCharacterService::GetInstance().ScanCameraFile(dto);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "ScanCameraFile failed");
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaCameraCharacterControllerService::GetDeferredPictureInfo(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter GetDeferredPictureInfo");
+    GetDeferredPictureInfoReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetDeferredPictureInfo Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    auto dto = GetDeferredPictureInfoDto::Create(reqBody);
+    GetDeferredPictureInfoRespBody respBody;
+    ret = MediaCameraCharacterService::GetInstance().GetDeferredPictureInfo(dto, respBody);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "GetDeferredPictureInfo failed");
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 } // namespace OHOS::Media

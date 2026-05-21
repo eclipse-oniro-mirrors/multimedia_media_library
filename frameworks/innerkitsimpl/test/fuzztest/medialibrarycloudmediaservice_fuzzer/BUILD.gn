@@ -89,4 +89,11 @@ ohos_fuzztest("MediaLibraryCloudMediaServiceFuzzTest") {
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudfile_kit",
   ]
+
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.multimedia_camera_framework) &&
+      global_parts_info.multimedia_camera_framework) {
+    defines = [ "ABILITY_CAMERA_SUPPORT" ]
+    external_deps += [ "camera_framework:camera_framework" ]
+  }
 }

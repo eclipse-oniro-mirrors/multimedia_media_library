@@ -94,9 +94,10 @@
 #include "file_management_utils.h"
 
 namespace OHOS::Media {
+#define EXPORT __attribute__ ((visibility ("default")))
 class MediaAssetsService {
 public:
-    static MediaAssetsService &GetInstance();
+    EXPORT static MediaAssetsService &GetInstance();
 
     int32_t SaveFormInfo(const FormInfoDto& formInfoDto);
     int32_t SaveGalleryFormInfo(const FormInfoDto& formInfoDto);
@@ -121,7 +122,7 @@ public:
     int32_t AssetChangeAddImage(AddImageDto &dto);
     int32_t CameraInnerAddImage(AddImageDto &dto);
     int32_t SetCameraShotKey(const int32_t fileId, const std::string &cameraShotKey);
-    int32_t SaveCameraPhoto(const SaveCameraPhotoDto &dto);
+    EXPORT int32_t SaveCameraPhoto(const SaveCameraPhotoDto &dto);
     int32_t DiscardCameraPhoto(const int32_t fileId);
     int32_t SetEffectMode(const int32_t fileId, const int32_t effectMode);
     int32_t SetOrientation(const int32_t fileId, const int32_t orientation);

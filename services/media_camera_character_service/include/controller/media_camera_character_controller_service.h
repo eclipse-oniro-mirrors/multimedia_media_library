@@ -31,6 +31,9 @@ public:
     EXPORT int32_t CancelRequest(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ProcessVideo(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetProgressCallback(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CreateCameraFileFd(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ScanCameraFile(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GetDeferredPictureInfo(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaCameraCharacterControllerService() = default;

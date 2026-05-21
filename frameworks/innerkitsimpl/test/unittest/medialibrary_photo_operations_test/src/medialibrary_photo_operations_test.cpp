@@ -1775,6 +1775,7 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, photo_oprn_update_api10_test_009, Test
     EXPECT_GE(fileId, 0);
     std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     MediaFileUtils::UriAppendKeyValue(uriStr, "api_version", to_string(MEDIA_API_VERSION_V10));
+    MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileId));
 
     DataSharePredicates predicates;
     predicates.EqualTo(PhotoColumn::MEDIA_ID, to_string(fileId));

@@ -50,7 +50,6 @@ static const int32_t MAX_VIDEO_TYPE = 2;
 static const int32_t MAX_PHOTO_QUALITY_FUZZER_LISTS = 1;
 static const int32_t MAX_CAMERA_SHOT_TYPE_FUZZER_LISTS = 3;
 static const int32_t MAX_PHOTO_FORMAT_FUZZER_LISTS = 4;
-static const int32_t MAX_SUB_TYPE = 6;
 static const int32_t MAX_BYTE_VALUE = 256;
 static const int32_t SEED_SIZE = 1024;
 constexpr int FUZZ_STORAGE_MANAGER_MANAGER_ID = 5003;
@@ -80,12 +79,6 @@ static inline Media::VideoType FuzzVideoType()
 {
     uint8_t data = provider->ConsumeIntegralInRange<uint8_t>(MIN_VIDEO_TYPE, MAX_VIDEO_TYPE);
     return static_cast<Media::VideoType>(data);
-}
-
-static inline Media::PhotoSubType FuzzPhotoSubType()
-{
-    int32_t value = provider->ConsumeIntegralInRange<int32_t>(0, MAX_SUB_TYPE);
-    return static_cast<Media::PhotoSubType>(value);
 }
 
 void CreateDataHelper(int32_t systemAbilityId)
@@ -149,10 +142,6 @@ static void MediaLibraryMediaPhotoAssetProxyTest()
     photoAssetProxy->GetVideoFd(FuzzVideoType());
     photoAssetProxy->NotifyVideoSaveFinished(FuzzVideoType());
     photoAssetProxy->UpdatePhotoProxy((sptr<Media::PhotoProxy>&)photoProxyFuzzTest);
-
-    int32_t fileId = provider->ConsumeIntegral<int32_t>();
-    int32_t subType = static_cast<int32_t>(FuzzPhotoSubType());
-    photoAssetProxy->SaveLowQualityPhoto(sDataShareHelper_, photoProxyFuzzTest, fileId, subType);
     
     uint8_t *data = new uint8_t();
     uint32_t size = sizeof(uint8_t);

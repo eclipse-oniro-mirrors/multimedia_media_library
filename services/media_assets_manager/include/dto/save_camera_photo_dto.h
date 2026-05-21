@@ -30,6 +30,7 @@ public:
     bool needScan{false};
     std::string path;
     std::string cameraShotKey{"NotSet"};
+    bool containsAddResource{false};
 
 public:
     static SaveCameraPhotoDto Create(const SaveCameraPhotoReqBody &req);

@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include "camera_character_types.h"
+#include "camera_mapper.h"
 #include "deferred_photo_proc_session.h"
 #include "result_set_utils.h"
 #include "medialibrary_command.h"
@@ -38,12 +39,14 @@ public:
     EXPORT MultiStagesCaptureDeferredPhotoProcSessionCallback();
     EXPORT ~MultiStagesCaptureDeferredPhotoProcSessionCallback();
 
-    void OnProcessImageDone(
-        const std::string& imageId, std::shared_ptr<PictureIntf> picture, const DpsMetadata& metadata) override {};
     void OnProcessImageDone(const std::string &imageId, const uint8_t *addr, const long bytes,
         uint32_t cloudImageEnhanceFlag) override;
-    void OnProcessImageDone(const std::string &imageId, std::shared_ptr<CameraStandard::PictureIntf> picture,
-        uint32_t cloudImageEnhanceFlag);
+    EXPORT void OnProcessImageDone(const std::string &imageId, std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,
+        const DpsMetadata &metadata) override;
+    EXPORT void OnProcessImageDone(const std::string &imageId, const std::vector<CameraStandard::ImageFd> &imageFds,
+        std::shared_ptr<CameraStandard::PictureIntf> lcdImage, const DpsMetadata& metadata) override;
+    void OnDeliveryLowQualityLcd(const std::string &imageId,
+        std::shared_ptr<CameraStandard::PictureIntf> picture) override;
     void OnDeliveryLowQualityImage(const std::string &imageId,
         std::shared_ptr<CameraStandard::PictureIntf> picture) override;
     EXPORT void OnError(const std::string &imageId, const CameraStandard::DpsErrorCode error) override;
@@ -52,6 +55,25 @@ public:
     void SetProcessImageDoneCallback(const ProcessDoneHandler &func);
 
 private:
+    // 非yuv(旧)
+    EXPORT void OnProcessInternal(const string &imageId, const uint8_t *addr, const long bytes,
+        uint32_t cloudImageEnhanceFlag);
+    EXPORT bool ConvertOnProcessParam(const uint8_t *addr, const long bytes, uint32_t cloudImageEnhanceFlag,
+        OnProcessImageWrapper& wrapper);
+
+    // YUV
+    EXPORT void OnProcessInternal(const std::string &imageId, std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,
+        const DpsMetadata &metadata);
+    EXPORT bool ConvertOnProcessParam(std::shared_ptr<CameraStandard::PictureIntf> pictureIntf,
+        const DpsMetadata &metadata, OnProcessImageWrapper& wrapper);
+
+    // 非yuv(新)
+    EXPORT void OnProcessInternal(const std::string &imageId, const std::vector<CameraStandard::ImageFd> &imageFds,
+        std::shared_ptr<CameraStandard::PictureIntf> lcdImage, const DpsMetadata& metadata);
+    EXPORT bool ConvertOnProcessParam(const std::vector<CameraStandard::ImageFd>& imageFds,
+        std::shared_ptr<CameraStandard::PictureIntf> lcdImage, const DpsMetadata& metadata,
+        OnProcessImageWrapper& wrapper);
+
     EXPORT void HandleForNullData(const std::string &imageId, std::shared_ptr<Media::Picture> picture);
     EXPORT void HandleForIsTemp(const std::shared_ptr<FileAsset> &fileAsset, std::shared_ptr<Media::Picture> &picture,
         uint32_t cloudImageEnhanceFlag);

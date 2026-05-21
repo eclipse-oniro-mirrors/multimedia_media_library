@@ -348,6 +348,7 @@ private:
         const std::string &path, const std::string &sourcePath, const std::string &editDataCameraPath);
     static int32_t RevertLivePhotoAsset(const string &realPath, const string &imagePath,
         const string &sourceImagePath, const string &sourceVideoPath);
+    static bool AddFiltersForPipeline(MediaLibraryCommand& cmd);
     static bool SafeAccumulateSize(int64_t add, int64_t &acc);
     static void ProcessAlbumIdInCreate(FileAsset &fileAsset, MediaLibraryCommand &cmd);
     static std::mutex saveCameraPhotoMutex_;

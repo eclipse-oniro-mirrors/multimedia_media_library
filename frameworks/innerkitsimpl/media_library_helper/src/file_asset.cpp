@@ -812,6 +812,16 @@ const std::string &FileAsset::GetLivePhoto4dLatestPair() const
     return GetStrMember(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR);
 }
 
+void FileAsset::SetDeferredProcType(int32_t deferredProcType)
+{
+    member_[PhotoColumn::PHOTO_DEFERRED_PROC_TYPE] = deferredProcType;
+}
+ 
+int32_t FileAsset::GetDeferredProcType() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_DEFERRED_PROC_TYPE);
+}
+
 void FileAsset::SetOpenStatus(int32_t fd, int32_t openStatus)
 {
     lock_guard<mutex> lock(openStatusMapMutex_);
