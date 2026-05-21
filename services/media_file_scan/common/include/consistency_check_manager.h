@@ -51,6 +51,7 @@ private:
 
     bool IsCheckAllowed() const;
     StopAction HandleDeviceStatusAndGetStopAction(const ConsistencyCheck::DeviceStatus &deviceStatus);
+    void StopScenesInternal(bool disableCheck, bool clearQueue);
     void StopAll();
     void StopRunningScene();
 

@@ -10,15 +10,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
- 
+
 import("//build/test.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
- 
+
 group("unittest") {
   testonly = true
   deps = [ ":media_lake_load_test" ]
 }
- 
+
 ohos_unittest("media_lake_load_test") {
   module_out_path = "media_library/media_library_asset"
   include_dirs = [
@@ -85,6 +85,7 @@ ohos_unittest("media_lake_load_test") {
   ]
 
   sources = [
+    "./src/consistency_check_manager_test.cpp",
     "./src/folder_scanner_test.cpp",
     "./src/global_scanner_test.cpp",
     "./src/lake_file_operations_test.cpp",
@@ -143,8 +144,8 @@ ohos_unittest("media_lake_load_test") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
-    "ipc:ipc_single",
     "ipc:ipc_napi",
+    "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "libexif:libexif",
     "libfuse:libfuse",
@@ -161,14 +162,14 @@ ohos_unittest("media_lake_load_test") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "storage_service:storage_manager_sa_proxy",
+    "thermal_manager:thermalsrv_client",
     "usb_manager:usbsrv_client",
     "window_manager:libdm",
     "zlib:shared_libz",
     "qos_manager:qos",
-    "qos_manager:concurrent_task_client",
-    "thermal_manager:thermalsrv_client"
+    "qos_manager:concurrent_task_client"
   ]
- 
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true

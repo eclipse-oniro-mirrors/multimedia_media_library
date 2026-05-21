@@ -209,10 +209,6 @@ const std::vector<std::string> photoRiskStatusEnum {
     "UNIDENTIFIED", "APPROVED", "SUSPICIOUS", "REJECTED",
 };
 
-const std::vector<std::string> downloadAssetsNetworkPolicyTypeEnum {
-    "DEFAULT", "CELL", "WIFI"
-};
-
 const std::vector<std::string> appLinkStateEnum {
     "DEFAULT", "HAS_NO_LINK", "HAS_LINK"
 };
