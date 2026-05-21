@@ -31,6 +31,7 @@
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #include "media_string_utils.h"
+#include "medialibrary_photo_operations.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -422,6 +423,9 @@ int32_t FileParser::UpdateAssetInfo()
     int32_t errCode = UpdateAssetInDatabase();
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
         "UpdateAssetInDatabase failed, ret: %{public}d, fileInfo: %{public}s", errCode, ToString().c_str());
+    int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(std::to_string(fileInfo_.fileId));
+    CHECK_AND_PRINT_LOG(ret == E_OK,
+        "CalSingleEditDataSize failed ID: %{public}d (ret code: %{public}d)", fileInfo_.fileId, ret);
     CHECK_AND_RETURN_RET_INFO_LOG(ShouldGenerateThumbnail(), E_OK,
         "No need to generate thumbnail, fileInfo: %{public}s", ToString().c_str());
     MEDIA_INFO_LOG("Start generate thumbnail of %{public}s", ToString().c_str());

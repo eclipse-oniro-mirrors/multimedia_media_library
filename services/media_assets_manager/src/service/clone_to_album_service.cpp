@@ -273,15 +273,15 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
 
     std::vector<std::string> columns = {};
     auto resultSet = rdbStore->Query(predicates, columns);
+    std::vector<std::string> resultUris;
+    int32_t result = GetUriFromResult(resultSet, resultUris, cloneTaskInfo.cloneCallbackType);
     if (callback != nullptr && cloneTaskInfo.cloneCallbackType == CloneCallbackType::PHOTOASSET) {
         auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
         auto dataShareresult = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
         callback->OnProgress(cloneTaskInfo.processedSize.load(), totalSize,
             cloneTaskInfo.processedCount.load(), totalCount);
-        callback->OnComplete(ret, {}, dataShareresult);
+        callback->OnComplete(ret, result == E_OK ? resultUris : std::vector<std::string>(), dataShareresult);
     } else if (callback != nullptr) {
-        std::vector<std::string> resultUris;
-        int32_t result = GetUriFromResult(resultSet, resultUris, cloneTaskInfo.cloneCallbackType);
         callback->OnProgress(cloneTaskInfo.processedSize.load(), totalSize,
             cloneTaskInfo.processedCount.load(), totalCount);
         std::shared_ptr<DataShare::DataShareResultSet> resultSet = nullptr;
