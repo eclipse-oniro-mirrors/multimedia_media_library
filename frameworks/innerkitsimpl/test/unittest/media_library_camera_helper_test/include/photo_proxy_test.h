@@ -18,6 +18,7 @@
 
 #include <ctime>
 #include <iostream>
+#include <chrono>
 
 #include "photo_proxy.h"
 
@@ -35,7 +36,9 @@ class PhotoProxyTest : public PhotoProxy {
 public:
     PhotoProxyTest()
     {
-        time_t nowTime = time(NULL);
+        auto now = std::chrono::system_clock::now();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count() % 1000;
+        time_t nowTime = std::chrono::system_clock::to_time_t(now);
         if (nowTime == -1) {
             return;
         }
@@ -54,7 +57,7 @@ public:
         // 设置宽度并使用 '0' 填充未使用的位置
         streamObj2 << std::setw(PADDING_WIDTH) << std::setfill(FILL_CHAR) << to_string(localTime->tm_mon + MONTH_GAP) <<
             to_string(localTime->tm_mday) << to_string(localTime->tm_hour) << to_string(localTime->tm_min) <<
-            to_string(localTime->tm_sec);
+            to_string(localTime->tm_sec) << to_string(ms);
         photoId_ = to_string(localTime->tm_year + BASE_YEAR) + streamObj2.str();
     }
 
