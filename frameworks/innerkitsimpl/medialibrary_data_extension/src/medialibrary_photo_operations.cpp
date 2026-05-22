@@ -2520,16 +2520,16 @@ static unordered_map<MoveStrategy, vector<string>> BuildMoveStrategyPatitions(co
         int32_t fileId = GetInt32Val("file_id", resultSet);
         std::string storagePath = GetStringVal("storage_path", resultSet);
         bool isLakeAsset = storagePath.find(LAKE_PATH_PREFIX) != std::string::npos;
-        if (ownerSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
-            if (targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+        if (ownerSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
+            if (targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_FILEMANAGER_TO_FILEMANAGER, to_string(fileId));
-            } else if (targetSubtype != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+            } else if (targetSubtype != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_FILEMANAGER_TO_MEDIA, to_string(fileId));
             }
         } else {
-            if (isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+            if (isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_LAKE_TO_FILEMANAGER, to_string(fileId));
-            } else if (!isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+            } else if (!isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_MEDIA_TO_FILEMANAGER, to_string(fileId));
             }
         }
@@ -2885,18 +2885,18 @@ static int32_t HandleOtherMoveOperations(AccurateRefresh::AssetAccurateRefresh &
     pair<PhotoAlbumSubType, PhotoAlbumSubType> albumTypes {};
     int32_t ret = QueryAlbumSubtypes(targetAlbumId, oriAlbumId, albumTypes);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Query album subtype failed");
-    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER &&
-        albumTypes.second != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER &&
+        albumTypes.second != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         HandleFileManagerToMedia(refresh, idsToMove);
-    } else if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER &&
-        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    } else if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER &&
+        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         HandleFileManagerToFileManager(refresh, idsToMove, targetAlbumId);
-    } else if (albumTypes.first != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER &&
-        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    } else if (albumTypes.first != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER &&
+        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         HandleMediaToFileManager(refresh, idsToMove, targetAlbumId, true);
     }
-    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER ||
-        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER ||
+        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         return E_OK;
     }
 #endif
@@ -7367,7 +7367,7 @@ void MediaLibraryPhotoOperations::ProcessAlbumIdInCreate(FileAsset &fileAsset, M
     PhotoAlbumSubType subType;
     std::string lPath;
     CHECK_AND_RETURN_LOG(GetAlbumTypeSubTypeLPathById(albumId, type, subType, lPath) == E_SUCCESS, "invalid album id");
-    if (type == PhotoAlbumType::SOURCE && subType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    if (type == PhotoAlbumType::SOURCE && subType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         std::string dir = PhotoFileUtils::GetFileManagerDirFromLPath(lPath);
         CHECK_AND_RETURN_LOG(!dir.empty(), "Failed to get file manager dir from lPath: %{public}s", lPath.c_str());
         std::string displayName = fileAsset.GetDisplayName();

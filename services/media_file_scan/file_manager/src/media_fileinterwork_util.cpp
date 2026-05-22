@@ -109,7 +109,7 @@ int32_t MediaFileInterworkUtil::InsertOrUpdateAlbum(const std::string &albumPath
     NativeRdb::ValuesBucket values;
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, albumName);
     values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
-    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     values.PutString(PhotoAlbumColumns::ALBUM_LPATH, albumLPath);
     
     int64_t rowId = 0;

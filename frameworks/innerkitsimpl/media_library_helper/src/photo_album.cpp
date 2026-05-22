@@ -309,7 +309,9 @@ bool PhotoAlbum::IsTrashAlbum(const PhotoAlbumType albumType, const PhotoAlbumSu
 
 bool PhotoAlbum::IsSourceAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType)
 {
-    return (albumType == PhotoAlbumType::SOURCE) && (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC);
+    return (albumType == PhotoAlbumType::SOURCE) &&
+           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC ||
+               albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
 }
 
 bool PhotoAlbum::IsPetAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType)
@@ -336,9 +338,10 @@ bool PhotoAlbum::CheckPhotoAlbumType(const PhotoAlbumType albumType)
 bool PhotoAlbum::CheckPhotoAlbumSubType(const PhotoAlbumSubType albumSubType)
 {
     return (albumSubType == PhotoAlbumSubType::USER_GENERIC) || (albumSubType == PhotoAlbumSubType::ANY) ||
-        ((albumSubType >= PhotoAlbumSubType::SYSTEM_START) && (albumSubType <= PhotoAlbumSubType::SYSTEM_END)) ||
-        ((albumSubType >= PhotoAlbumSubType::ANALYSIS_START) && (albumSubType <= PhotoAlbumSubType::ANALYSIS_END)) ||
-        (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC);
+           ((albumSubType >= PhotoAlbumSubType::SYSTEM_START) && (albumSubType <= PhotoAlbumSubType::SYSTEM_END)) ||
+           ((albumSubType >= PhotoAlbumSubType::ANALYSIS_START) && (albumSubType <= PhotoAlbumSubType::ANALYSIS_END)) ||
+           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC) ||
+           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
 }
 
 bool PhotoAlbum::IsHighlightAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType)

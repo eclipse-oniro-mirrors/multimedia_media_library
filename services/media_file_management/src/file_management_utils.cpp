@@ -215,7 +215,7 @@ int64_t FileManagementUtils::InsertFileAlbum(const FileAlbumInfo &fileAlbumInfo)
     NativeRdb::ValuesBucket value;
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     value.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
-    value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+    value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     value.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, currentTime);
     value.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, currentTime);
     value.PutString(PhotoAlbumColumns::ALBUM_NAME, fileAlbumInfo.albumName);

@@ -9343,6 +9343,10 @@ napi_value MediaLibraryNapi::CreateAlbumSubTypeEnum(napi_env env)
         JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SOURCE_GENERIC", PhotoAlbumSubType::SOURCE_GENERIC),
         JS_INNER_FAIL);
+    CHECK_ARGS(env,
+        AddIntegerNamedProperty(
+            env, result, "SOURCE_GENERIC_FROM_FILE_MANAGER", PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER),
+        JS_INNER_FAIL);
     for (size_t i = 0; i < systemAlbumSubType.size(); i++) {
         CHECK_ARGS(env, AddIntegerNamedProperty(env, result, systemAlbumSubType[i],
             PhotoAlbumSubType::SYSTEM_START + i), JS_INNER_FAIL);
@@ -11235,7 +11239,9 @@ static bool CheckAlbumUri(napi_env env, OHOS::DataShare::DataShareValuesBucket &
     string queryUri = CONST_PAH_QUERY_PHOTO_ALBUM;
     Uri uri(queryUri);
     DataSharePredicates predicates;
-    vector selectionArgs = { to_string(PhotoAlbumSubType::USER_GENERIC), to_string(PhotoAlbumSubType::SOURCE_GENERIC) };
+    vector selectionArgs = {to_string(PhotoAlbumSubType::USER_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)};
     predicates.In(PhotoAlbumColumns::ALBUM_SUBTYPE, selectionArgs);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, ownerAlbumId);
     int errCode = 0;

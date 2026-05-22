@@ -307,7 +307,7 @@ void BuildAlbumTypeByLPath(const std::string &lPath, NativeRdb::ValuesBucket& va
     target = FILE_MANAGER_LPATH_PREFIX;
     std::transform(target.begin(), target.end(), target.begin(), ::tolower);
     if (lPathLower.find(target) == 0) {
-        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     }
     value.PutInt(PhotoAlbumColumns::ALBUM_TYPE, albumType);
     value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, albumSubType);

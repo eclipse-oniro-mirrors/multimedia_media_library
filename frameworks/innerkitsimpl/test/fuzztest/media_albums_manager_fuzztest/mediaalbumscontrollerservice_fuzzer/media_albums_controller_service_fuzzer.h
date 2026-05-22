@@ -34,7 +34,7 @@ const std::vector<std::pair<PhotoAlbumType, PhotoAlbumSubType>> ALBUM_PAIRS = {
     {PhotoAlbumType::SMART, PhotoAlbumSubType::GEOGRAPHY_LOCATION},
     {PhotoAlbumType::SMART, PhotoAlbumSubType::GEOGRAPHY_CITY},
     {PhotoAlbumType::SOURCE, PhotoAlbumSubType::SOURCE_GENERIC},
-    {PhotoAlbumType::SOURCE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER},
+    {PhotoAlbumType::SOURCE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER},
     {PhotoAlbumType::SYSTEM, PhotoAlbumSubType::TRASH},
     {PhotoAlbumType::SYSTEM, PhotoAlbumSubType::SYSTEM_START},
     {PhotoAlbumType::SYSTEM, PhotoAlbumSubType::HIDDEN}
