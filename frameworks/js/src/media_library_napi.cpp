@@ -502,7 +502,6 @@ napi_value MediaLibraryNapi::UserFileMgrInit(napi_env env, napi_value exports)
         DECLARE_NAPI_PROPERTY("PhotoRiskStatus", CreatePhotoRiskStatusEnum(env)),
         DECLARE_NAPI_PROPERTY("AppLinkState", CreateAppLinkStateEnum(env)),
         DECLARE_NAPI_PROPERTY("LivePhoto4dStatus", CreateLivePhoto4dStatusEnum(env)),
-        DECLARE_NAPI_PROPERTY("AvailabilityStatus", CreateAvailabilityStatusEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
@@ -658,6 +657,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
         DECLARE_NAPI_PROPERTY("HdrMode", CreateHdrModeEnum(env)),
         DECLARE_NAPI_PROPERTY("VideoMode", CreateVideoModeEnum(env)),
         DECLARE_NAPI_PROPERTY("DynamicRangeType", CreateDynamicRangeTypeEnum(env)),
+        DECLARE_NAPI_PROPERTY("AvailabilityStatus", CreateAvailabilityStatusEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
