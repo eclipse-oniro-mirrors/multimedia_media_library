@@ -18,7 +18,7 @@
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <sys/stat.h>
-
+#include <sys/types.h>
 #include "media_change_effect.h"
 #include "media_change_effect.h"
 #include "media_log.h"
@@ -49,6 +49,7 @@ const std::string MIME_TYPE_HEIF = "image/heif";
 const std::string MIME_TYPE_HEIC = "image/heic";
 const uint8_t PACKOPTION_QUALITY = 90;
 const uint8_t PACKOPTION_QUALITY_HEIF = 95;
+
 FileUtils::FileUtils() {}
 
 FileUtils::~FileUtils() {}
@@ -66,6 +67,14 @@ bool FileUtils::IsFileExist(const string &fileName)
 {
     struct stat statInfo {};
     return ((stat(fileName.c_str(), &statInfo)) == E_SUCCESS);
+}
+
+int FileUtils::DeleteFileIfExist(const string &fileName)
+{
+    if (!IsFileExist(fileName)) {
+        return E_OK;
+    }
+    return DeleteFile(fileName);
 }
 
 int32_t FileUtils::SaveImage(const string &filePath, void *output, size_t writeSize)
@@ -217,7 +226,7 @@ int32_t FileUtils::DealPicture(const std::string &mime_type, const std::string &
         return E_OK;
     }
     ret = rename(tempOutputPath.c_str(), path.c_str());
-    CHECK_AND_PRINT_LOG(ret == E_SUCCESS, "Failed rename errno: %{public}d", errno);
+    CHECK_AND_PRINT_LOG(ret == E_SUCCESS, "Failed rename ret: %{public}d, errno: %{public}d", ret, errno);
     if (MediaFileUtils::IsFileExists(tempOutputPath)) {
         HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} file: %{public}s exists and needs to be deleted",
             MLOG_TAG, __FUNCTION__, __LINE__, tempOutputPath.c_str());
@@ -228,71 +237,80 @@ int32_t FileUtils::DealPicture(const std::string &mime_type, const std::string &
     return ret;
 }
 
-int32_t FileUtils::SaveVideo(const std::string &filePath, bool isEdited)
+int32_t FileUtils::SaveVideoShareCamera(const std::string &filePath, bool isEdited)
 {
-    string tempPath = filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.'));
+    size_t indexPrefixEnd = filePath.rfind('/');
+    size_t indexSubfixStart = filePath.rfind('.');
+    std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
+    std::string fileNameSubfix = filePath.substr(indexSubfixStart); // .mp4
+    std::string enhancePathCloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES +
+        fileNamePrefix + "_vid_tmp.mp4";
+    MEDIA_INFO_LOG("SaveVideoShareCamera enhancePathCloudView = %{public}s",
+        DfxUtils::GetSafePath(enhancePathCloudView).c_str());
     string targetPath = filePath;
     if (isEdited) {
         targetPath = MediaEditUtils::GetEditDataSourcePath(filePath);
     }
-
-    if (!IsFileExist(tempPath)) {
-        MEDIA_ERR_LOG("file not exist: %{public}s", DfxUtils::GetSafePath(tempPath).c_str());
+    if (!IsFileExist(enhancePathCloudView)) {
+        MEDIA_ERR_LOG("enhancePathCloudView file not exist: %{public}s", enhancePathCloudView.c_str());
+        return E_ERR;
     }
- 
     if (!IsFileExist(targetPath)) {
-        MEDIA_ERR_LOG("file not exist: %{public}s", DfxUtils::GetSafePath(filePath).c_str());
+        MEDIA_ERR_LOG("targetPath file not exist: %{public}s", targetPath.c_str());
     }
- 
     MEDIA_INFO_LOG("video rename targetPath: %{public}s, tempPath: %{public}s",
-        DfxUtils::GetSafePath(targetPath).c_str(), DfxUtils::GetSafePath(tempPath).c_str());
-    int ret = rename(tempPath.c_str(), targetPath.c_str());
+        DfxUtils::GetSafePath(targetPath).c_str(), DfxUtils::GetSafePath(enhancePathCloudView).c_str());
+    int ret = rename(enhancePathCloudView.c_str(), targetPath.c_str());
     if (ret < 0) {
-        MEDIA_ERR_LOG("rename fail, ret: %{public}d, errno: %{public}d", ret, errno);
-        DeleteFile(tempPath);
+        MEDIA_ERR_LOG("SaveVideoShareCamera rename fail, ret: %{public}d, errno: %{public}d", ret, errno);
+        DeleteFileIfExist(enhancePathCloudView);
         return ret;
     }
+    DeleteFileIfExist(enhancePathCloudView);
     return ret;
 }
 
-int32_t FileUtils::SaveMovingPhotoVideo(const std::string &filePath, bool isEdited, bool isMovingPhotoEffectMode)
+int32_t FileUtils::SaveMovingPhotoVideoShareCamera(const std::string &filePath, bool isEdited,
+    bool isMovingPhotoEffectMode)
 {
-    string tempPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(
-        filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.')));
+    size_t indexPrefixEnd = filePath.rfind('/');
+    size_t indexSubfixStart = filePath.rfind('.');
+    std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
+    std::string enhancePathCloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES +
+        fileNamePrefix + "_vid_tmp.mp4";
+    MEDIA_INFO_LOG("SaveVideoShareCamera enhancePathCloudView = %{public}s",
+        DfxUtils::GetSafePath(enhancePathCloudView).c_str());
     string targetPath;
     string videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(filePath);
     string sourceVideoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(
         MediaEditUtils::GetEditDataSourcePath(filePath));
-
-    if (!IsFileExist(tempPath)) {
-        MEDIA_ERR_LOG("file not exist: %{public}s", DfxUtils::GetSafePath(tempPath).c_str());
+    if (!IsFileExist(enhancePathCloudView)) {
+        MEDIA_ERR_LOG("enhancePathCloudView file not exist: %{public}s", enhancePathCloudView.c_str());
         return E_ERR;
     }
-
     if (IsFileExist(sourceVideoPath)) {
         targetPath = sourceVideoPath;
     } else if (IsFileExist(videoPath)) {
         targetPath = videoPath;
     } else {
-        MEDIA_ERR_LOG("file not exist: %{public}s", DfxUtils::GetSafePath(filePath).c_str());
+        MEDIA_ERR_LOG("filePath file not exist: %{public}s", filePath.c_str());
         return E_ERR;
     }
-
-    MEDIA_INFO_LOG("video rename targetPath: %{public}s, tempPath: %{public}s",
-        DfxUtils::GetSafePath(targetPath).c_str(), DfxUtils::GetSafePath(tempPath).c_str());
-
-    int32_t ret = rename(tempPath.c_str(), targetPath.c_str());
+    MEDIA_INFO_LOG("video rename targetPath: %{public}s, enhancePathCloudView: %{public}s",
+        DfxUtils::GetSafePath(targetPath).c_str(), DfxUtils::GetSafePath(enhancePathCloudView).c_str());
+    int32_t ret = rename(enhancePathCloudView.c_str(), targetPath.c_str());
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("video rename failed, errno: %{public}d", errno);
+        MEDIA_ERR_LOG("SaveMovingPhotoVideoShareCamera video rename failed, errno: %{public}d", errno);
+        DeleteFileIfExist(enhancePathCloudView);
         return ret;
     }
-
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(filePath);
     if (!isEdited && !isMovingPhotoEffectMode && IsFileExist(editDataCameraPath) && IsFileExist(sourceVideoPath)) {
         ret = MediaLibraryPhotoOperations::AddFiltersToVideoExecute(filePath, false, true);
         MEDIA_INFO_LOG("MediaLibraryPhotoOperations AddFiltersToVideoExecute ret: %{public}d", ret);
     }
     MEDIA_INFO_LOG("SaveMovingPhotoVideo end ret: %{public}d", ret);
+    DeleteFileIfExist(enhancePathCloudView);
     return ret;
 }
 

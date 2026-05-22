@@ -35,6 +35,7 @@
 #include "media_burst_key_duplicate_task.h"
 #include "media_lcd_size_task.h"
 #include "media_share_dirty_data_task.h"
+#include "media_camera_cache_clean_task.h"
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
@@ -57,6 +58,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaBurstKeyDuplicateTask>(),
         std::make_shared<MediaUpdateLocalAssetSizeTask>(),
         std::make_shared<MediaShareDirtyDataTask>(),
+        std::make_shared<MediaCameraCacheCleanTask>(),
     };
 }
 

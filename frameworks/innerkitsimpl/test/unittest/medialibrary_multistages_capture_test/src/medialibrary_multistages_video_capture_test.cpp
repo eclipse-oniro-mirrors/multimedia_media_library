@@ -50,7 +50,6 @@ using namespace testing;
 namespace OHOS {
 namespace Media {
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
-
 namespace {
 
 const string BASE_VIDEO_FILE_INNER = "I am base video file";
@@ -508,49 +507,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_with_error_0
     EXPECT_EQ(MultiStagesVideoCaptureManager::videoInfoMap_.count(videoId), 0);
 
     MEDIA_INFO_LOG("manager_add_video_with_error_004 End");
-}
-
-HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_openfd_add_double_video_001, TestSize.Level1)
-{
-    int32_t fileId = PrepareVideoData();
-    string filePath = GetFilePath(fileId);
-    string videoId = "202408062000";
-    string tempFilePath = GetTempFilePath(filePath);
-    int32_t videoCount = 2;
-    PrepareBaseVideoFile(filePath);
-    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, filePath, filePath};
-    videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    videoInfo.absSrcFilePath = videoInfo.videoPath;
-
-    int32_t mockLowSrcFd = 0;
-    int32_t mockSrcFd = 0;
-    int32_t mockSrcFdCopy = 0;
-
-    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
-    bool mockRet = instance.Openfd4AddDoubleVideo(filePath, videoInfo, mockLowSrcFd, mockSrcFd, mockSrcFdCopy);
-    EXPECT_EQ(mockRet, false);
-    EXPECT_EQ(mockSrcFd, -1);
-}
-
-HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_openfd_add_double_video_002, TestSize.Level1)
-{
-    int32_t fileId = PrepareVideoData();
-    string filePath = GetFilePath(fileId);
-    string videoId = "202408122000";
-
-    int32_t videoCount = 2;
-    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, filePath, filePath};
-    videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    videoInfo.absSrcFilePath = videoInfo.videoPath;
-
-    int32_t mockLowSrcFd = 0;
-    int32_t mockSrcFd = 0;
-    int32_t mockSrcFdCopy = 0;
-
-    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
-    bool mockRet = instance.Openfd4AddDoubleVideo(filePath, videoInfo, mockLowSrcFd, mockSrcFd, mockSrcFdCopy);
-    EXPECT_EQ(mockRet, false);
-    EXPECT_EQ(mockLowSrcFd, -1);
 }
 
 HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_001, TestSize.Level1)

@@ -77,8 +77,6 @@ public:
     void InsertCinematicProgress(const std::string &videoId, double progress);
     int32_t ClearCinematicProgressMap(const std::string &videoId);
     EXPORT int32_t GetProgressCallback(GetProgressCallbackRespBody &respbody);
-    EXPORT static bool Openfd4AddDoubleVideo(const std::string &effectVideoPath, VideoInfo &videoInfo,
-        int32_t &lowSrcFd, int32_t &srcFd, int32_t &srcFdCopy);
     int32_t SaveCameraVideo(const SaveCameraPhotoDto &dto);
 
 private:
