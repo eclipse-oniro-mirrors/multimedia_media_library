@@ -103,7 +103,7 @@ void CloneRestoreDupSim::Restore()
     MEDIA_INFO_LOG("Start Restore");
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t shouldEndTime = GetShouldEndTime();
-    CHECK_AND_RETURN_LOG(start <= shouldEndTime, "over shouldEndTime, skip Restore.");
+    CHECK_AND_RETURN_LOG(start <= shouldEndTime, "over shouldEndTime, skip Restore");
 
     CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, "rdbStore is nullptr.");
 
