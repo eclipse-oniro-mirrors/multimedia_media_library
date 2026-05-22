@@ -465,6 +465,11 @@ vector<FileInfo> MediaFileInterworkScanner::GetFileInfos(
 {
     vector<FileInfo> restoreFiles;
     for (const auto &filePath : filePathVector) {
+        if (!MediaFileUtils::IsFileExists(filePath)) {
+            MEDIA_ERR_LOG("File [%{public}s] not exist, skip restore.",
+                MediaFileUtils::DesensitizePath(filePath).c_str());
+            continue;
+        }
         FileInfo fileInfo;
         fileInfo.fileName = MediaFileUtils::GetFileName(filePath);
         fileInfo.displayName = fileInfo.fileName;
