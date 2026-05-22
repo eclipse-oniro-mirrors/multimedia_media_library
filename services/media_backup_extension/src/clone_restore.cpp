@@ -700,7 +700,20 @@ int32_t CloneRestore::Init(const string &backupRestoreDir, const string &upgrade
         CONST_BUNDLE_NAME, true, context->GetArea());
     CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, E_FAIL, "Init remote medialibrary rdb fail, err = %{public}d", err);
 
+    std::string dbSize = "";
+    struct stat statInfo {};
+    if (stat(dbPath_.c_str(), &statInfo) == 0) {
+        dbSize = std::to_string(statInfo.st_size);
+    }
+    int64_t dbIntegrityCheckTime = MediaFileUtils::UTCTimeMilliSeconds();
     BackupDatabaseUtils::CheckDbIntegrity(mediaRdb_, sceneCode_, "OLD_MEDIA_LIBRARY");
+    dbIntegrityCheckTime = MediaFileUtils::UTCTimeMilliSeconds() - dbIntegrityCheckTime;
+    UpgradeRestoreTaskReport()
+        .SetSceneCode(this->sceneCode_)
+        .SetTaskId(this->taskId_)
+        .ReportProgress("OldMediaLibraryDbCheck", dbSize + ";" + std::to_string(dbIntegrityCheckTime));
+    MEDIA_INFO_LOG("end handle old media library integrity check, cost %{public}lld, size %{public}s.",
+        (long long)(dbIntegrityCheckTime), dbSize.c_str());
     srcCloneRestoreConfigInfo_ = GetCloneConfigInfoFromOriginDB();
     dstCloneRestoreConfigInfo_ = GetCurrentDeviceCloneConfigInfo();
     CheckSrcDstSwitchStatusMatch();
@@ -2716,7 +2729,13 @@ void CloneRestore::RestoreGallery()
     CheckTableColumnStatus(mediaRdb_, CLONE_TABLE_LISTS_PHOTO);
     // Upgrade original MediaLibrary Database
     DataTransfer::MediaLibraryDbUpgrade medialibraryDbUpgrade;
+    int64_t startOnUpgrade = MediaFileUtils::UTCTimeMilliSeconds();
     medialibraryDbUpgrade.OnUpgrade(*this->mediaRdb_);
+    int64_t endOnUpgrade = MediaFileUtils::UTCTimeMilliSeconds();
+    UpgradeRestoreTaskReport()
+        .SetSceneCode(this->sceneCode_)
+        .SetTaskId(this->taskId_)
+        .ReportProgress("OnUpgrade", "cost:" + std::to_string(endOnUpgrade - startOnUpgrade));
     // Report the old db info.
     DatabaseReport()
         .SetSceneCode(this->sceneCode_)

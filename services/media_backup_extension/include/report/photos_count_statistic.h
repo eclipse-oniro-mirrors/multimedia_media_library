@@ -70,6 +70,7 @@ private:
     AlbumMediaStatisticInfo GetGalleryAlbumCountInfo();
     AlbumMediaStatisticInfo GetGalleryDeletedAlbumCountInfo();
     AlbumMediaStatisticInfo GetLiveStatInfo();
+    AlbumMediaStatisticInfo GetInvisiblePhotosStatInfo();
 
 private:
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb_;
@@ -162,6 +163,10 @@ private:
             COALESCE(burst_cover_level, 1) = 1 AND \
             COALESCE(date_trashed, 0) = 0 AND \
             COALESCE(hidden, 0) = 0;";
+    const std::string SQL_PHOTOS_INVISIBLE_COUNT = "\
+        SELECT COUNT(1) AS count \
+        FROM Photos \
+        WHERE sync_status <> 0 OR clean_flag <> 0 OR time_pending <> 0 OR is_temp <> 0;";
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_BACKUP_PHOTOS_COUNT_STATISTIC_H

@@ -827,9 +827,23 @@ void UpgradeRestore::HandleRestData(void)
     } else {
         MEDIA_INFO_LOG("restore mode no need to del gallery db");
     }
+    int64_t startUpdateEmptyAlbumHidden = MediaFileUtils::UTCTimeMilliSeconds();
     this->restorePhotosAlbumHidden_.UpdateEmptyAlbumHidden(mediaLibraryRdb_);
+    int64_t endUpdateEmptyAlbumHidden = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("TimeCost: UpdateEmptyAlbumHidden cost: %{public}" PRId64,
+                   endUpdateEmptyAlbumHidden - startUpdateEmptyAlbumHidden);
+    int64_t startProcessVideoRingtones = MediaFileUtils::UTCTimeMilliSeconds();
     VideoRingtoneProcessor videoRingtoneProcessor;
     videoRingtoneProcessor.ProcessVideoRingtones(mediaLibraryRdb_);
+    int64_t endProcessVideoRingtones = MediaFileUtils::UTCTimeMilliSeconds();
+
+    std::string timeCostInfo =
+        "RestoreThumbnail:" + std::to_string(endRestoreThumbnail - startRestoreThumbnail) +
+        ",DeleteDir:" + std::to_string(endDeleteDir - startDeleteDir) +
+        ",DeleteEmptyAlbums:" + std::to_string(endDeleteEmptyAlbum - startDeleteEmptyAlbum) +
+        ",UpdateEmptyAlbumHidden:" + std::to_string(endUpdateEmptyAlbumHidden - startUpdateEmptyAlbumHidden) +
+        ",ProcessVideoRingtones:" + std::to_string(endProcessVideoRingtones - startProcessVideoRingtones);
+    UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report("HandleRestData", "0", timeCostInfo);
 }
 
 std::vector<FileInfo> UpgradeRestore::QueryFileInfos(int32_t minId)
