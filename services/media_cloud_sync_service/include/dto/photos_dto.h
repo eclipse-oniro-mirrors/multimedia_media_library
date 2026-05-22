@@ -80,6 +80,7 @@ public:
     std::string uniqueId;
     std::string packageName;
     int32_t photoRiskStatus;
+    int32_t isCritical;
     std::string localPath;
     int32_t hidden;
     std::map<std::string, CloudFileDataDto> attachment;

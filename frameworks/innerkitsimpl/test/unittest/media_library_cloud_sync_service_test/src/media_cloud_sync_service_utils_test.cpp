@@ -1298,6 +1298,29 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, FillPhotosDto_Test_002, TestSize.Level1
     EXPECT_EQ(photosDto.photoRiskStatus, 1);
 }
 
+HWTEST_F(CloudMediaSyncServiceUtilsTest, FillPhotosDto_Test_003, TestSize.Level1)
+{
+    int32_t thumbState = 0;
+    int32_t orientation = 0;
+    int32_t exifRotate = 0;
+    std::string path = "test";
+    CloudSync::PhotosDto photosDto;
+    CloudSync::CloudMediaPullDataDto data;
+    NativeRdb::ValuesBucket values;
+    values.PutString(PhotoColumn::UNIQUE_ID, "test_unique_id_inner");
+    values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, "test_package_name_inner");
+    values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, 3);
+
+    auto ret = CloudMediaSyncUtils::FillPhotosDto(photosDto, path, orientation, exifRotate, thumbState);
+    EXPECT_EQ(ret, E_OK);
+    ret = CloudMediaSyncUtils::FillPhotosDto(photosDto, data, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(photosDto.uniqueId, "test_unique_id_inner");
+    EXPECT_EQ(photosDto.packageName, "test_package_name_inner");
+    EXPECT_EQ(photosDto.photoRiskStatus, 1);
+    EXPECT_EQ(photosDto.isCritical, 1);
+}
+
 HWTEST_F(CloudMediaSyncServiceUtilsTest, GetLpathWithoutDocPrefix_NormalPath_Test, TestSize.Level1)
 {
     string lPath = "/FromDocs/Documents";
