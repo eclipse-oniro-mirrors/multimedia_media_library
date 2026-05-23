@@ -33,7 +33,7 @@
 #include "media_scan_file_manager_file_processor.h"
 #include "media_delete_file_manager_file_processor.h"
 #include "media_delete_file_manager_dir_processor.h"
-#include "media_delete_file_manager_album_processor.h"
+#include "media_move_file_manager_dir_processor.h"
 #endif
 
 #include "media_log.h"
@@ -104,11 +104,10 @@ void MediaFileNotifyProcessor::RegisterFileManagerProcessors(MediaProcessorRegis
         [this] { return std::make_unique<MediaDeleteFileManagerFileProcessor>(rdbStore_); }
     );
 
-    // FileManager 目录 MOD - 先删除 FileManager Album，再扫描
+    // FileManager 目录 MOD - 移动/重命名
     registry.Register(
         { FileNotifyObjectType::DIRECTORY, FileNotifyOperationType::MOD, FileNotifyPathType::FILE_MANAGER },
-        [this] { return std::make_unique<MediaDeleteFileManagerAlbumProcessor>(rdbStore_); },
-        [] { return std::make_unique<MediaScanDirProcessor>(); }
+        [this] { return std::make_unique<MediaMoveFileManagerDirProcessor>(rdbStore_); }
     );
 
     // FileManager 目录 DEL - 删除整个 FileManager 目录

@@ -338,6 +338,7 @@ int32_t FolderParser::InsertAlbum(CommonAlbumInfo &commonAlbumInfo)
     // 文管相册设置云开关
     CHECK_AND_EXECUTE(!MediaStringUtils::StartsWith(commonAlbumInfo.lpath, FILE_MANAGER_ROOT_LPATH),
         SettingsDataManager::ComfirmUploadStatus());
+    albumRefresh.Notify();
     MEDIA_INFO_LOG("FolderParser: end insert PhotoAlbum.");
     return ret;
 }

@@ -359,7 +359,7 @@ inline void NotifyAssetChange(int fileId)
         NotifyType::NOTIFY_REMOVE);
 }
 
-inline std::string RemovePrefix(const std::string &uri, const std::string &prefix)
+std::string MediaFileMonitorRdbUtils::RemovePrefix(const std::string &uri, const std::string &prefix)
 {
     if (uri.compare(0, prefix.size(), prefix) != 0) {
         MEDIA_ERR_LOG("Invalid path: %{public}s", DfxUtils::GetSafePath(uri).c_str());
@@ -623,36 +623,6 @@ bool MediaFileMonitorRdbUtils::DeleteFileManagerDirByFileManagerPath(const std::
     assetRefresh->Notify();
 
     // 6. 删除空相册
-    CHECK_AND_RETURN_RET_LOG(DeleteEmptyAlbumsByLPath(rdbStore, lPath),
-        false, "DeleteEmptyAlbumsByLPath failed");
-
-    return true;
-}
-
-bool MediaFileMonitorRdbUtils::DeleteFileManagerAlbumByFileManagerPath(const std::string &path,
-    std::shared_ptr<MediaLibraryRdbStore> &rdbStore)
-{
-    // 1. 去除文管前缀
-    std::string lPath = FILE_MANAGER_LPATH_PREFIX + RemovePrefix(path, FILE_MANAGER_SCAN_DIR);
-    CHECK_AND_RETURN_RET_LOG(!lPath.empty(), false,
-        "Invalid path after prefix removal, path: %{public}s", DfxUtils::GetSafePath(path).c_str());
-
-    // 2. 查出该目录及子目录的 album_id
-    std::vector<int32_t> albumIds;
-    std::unordered_map<int32_t, int32_t> albumCounts;
-    CHECK_AND_RETURN_RET_LOG(QueryAlbumByLPath(rdbStore, lPath, albumIds, albumCounts),
-        false, "QueryAlbumByLPath failed, lPath: %{public}s", DfxUtils::GetSafePath(lPath).c_str());
-
-    // 3. 查出对应的所有文管文件的相关数据用于后续处理
-    std::vector<LakeMonitorQueryResultData> dataList;
-    CHECK_AND_RETURN_RET_LOG(QueryDataListByAlbumIds(rdbStore, albumIds, dataList, FileSourceType::FILE_MANAGER),
-        false, "QueryDataListByAlbumIds failed, lPath: %{public}s", DfxUtils::GetSafePath(lPath).c_str());
-
-    // 4. 在相册表删除非融合的纯文管相册
-    CHECK_AND_RETURN_RET_LOG(DeleteLakeAlbums(rdbStore, albumCounts, dataList),
-        false, "DeleteLakeAlbums failed, lPath: %{public}s", DfxUtils::GetSafePath(lPath).c_str());
-
-    // 5. 删除空相册
     CHECK_AND_RETURN_RET_LOG(DeleteEmptyAlbumsByLPath(rdbStore, lPath),
         false, "DeleteEmptyAlbumsByLPath failed");
 
