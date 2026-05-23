@@ -60,7 +60,7 @@ HWTEST_F(CloudMediaPathUtilsTest, FindStoragePath_DocsPath, TestSize.Level1)
     std::string storagePath = "/storage/media/local/files/Docs/test/file.jpg";
     int32_t userId = 100;
     std::string result = CloudMediaPathUtils::FindStoragePath(storagePath, userId);
-    std::string expected = "/data/service/el2/100/hmdfs/account/files/Docs/test/file.jpg";
+    std::string expected = "/storage/media/100/local/files/Docs/test/file.jpg";
     EXPECT_EQ(result, expected);
 }
 
@@ -123,7 +123,7 @@ HWTEST_F(CloudMediaPathUtilsTest, FindStoragePath_DocsPathDifferentUserId, TestS
     std::string storagePath = "/storage/media/local/files/Docs/test/file.jpg";
     int32_t userId = 200;
     std::string result = CloudMediaPathUtils::FindStoragePath(storagePath, userId);
-    std::string expected = "/data/service/el2/200/hmdfs/account/files/Docs/test/file.jpg";
+    std::string expected = "/storage/media/200/local/files/Docs/test/file.jpg";
     EXPECT_EQ(result, expected);
 }
 
@@ -162,7 +162,7 @@ HWTEST_F(CloudMediaPathUtilsTest, FindStoragePath_DocsPathComplex, TestSize.Leve
     std::string storagePath = "/storage/media/local/files/Docs/Document/2025/test.pdf";
     int32_t userId = 100;
     std::string result = CloudMediaPathUtils::FindStoragePath(storagePath, userId);
-    std::string expected = "/data/service/el2/100/hmdfs/account/files/Docs/Document/2025/test.pdf";
+    std::string expected = "/storage/media/100/local/files/Docs/Document/2025/test.pdf";
     EXPECT_EQ(result, expected);
 }
 
@@ -192,7 +192,7 @@ HWTEST_F(CloudMediaPathUtilsTest, FindStoragePath_WithFileTypeFileManager, TestS
     std::string storagePath = "/storage/media/local/files/Docs/test.jpg";
     int32_t userId = 100;
     std::string result = CloudMediaPathUtils::FindStoragePath(fileSourceType, cloudPath, storagePath, userId);
-    std::string expected = "/data/service/el2/100/hmdfs/account/files/Docs/test.jpg";
+    std::string expected = "/storage/media/100/local/files/Docs/test.jpg";
     EXPECT_EQ(result, expected);
 }
 
@@ -261,7 +261,7 @@ HWTEST_F(CloudMediaPathUtilsTest, FindStoragePath_DocsPathWithSpecialChars, Test
     std::string storagePath = "/storage/media/local/files/Docs/test.path/file.name.pdf";
     int32_t userId = 100;
     std::string result = CloudMediaPathUtils::FindStoragePath(storagePath, userId);
-    std::string expected = "/data/service/el2/100/hmdfs/account/files/Docs/test.path/file.name.pdf";
+    std::string expected = "/storage/media/100/local/files/Docs/test.path/file.name.pdf";
     EXPECT_EQ(result, expected);
 }
 }  // namespace OHOS::Media::CloudSync
