@@ -40,6 +40,7 @@ std::vector<AlbumMediaStatisticInfo> PhotosCountStatistic::Load()
         this->GetLiveStatInfo(),
         this->GetGalleryAlbumCountInfo(),
         this->GetGalleryDeletedAlbumCountInfo(),
+        this->GetInvisiblePhotosStatInfo(),
         // statistic info.
         this->GetImageAlbumInfo(),
         this->GetVideoAlbumInfo(),
@@ -790,6 +791,31 @@ AlbumMediaStatisticInfo PhotosCountStatistic::GetLiveStatInfo()
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t costTime = endTime - startTime;
     std::string albumName = "动态照片";
+    std::string lPath = "";
+    int32_t period = this->period_;  // 0 - BEFORE, 1 - AFTER
+    int32_t dbType = 1;              // 0 - GALLERY, 1 - MEDIA
+    info.albumName = AlbumNameInfo()
+                         .SetAlbumName(albumName)
+                         .SetLPath(lPath)
+                         .SetCostTime(costTime)
+                         .SetPeriod(period)
+                         .SetDbType(dbType)
+                         .ToString();
+    return info;
+}
+
+AlbumMediaStatisticInfo PhotosCountStatistic::GetInvisiblePhotosStatInfo()
+{
+    AlbumMediaStatisticInfo info;
+    info.sceneCode = this->sceneCode_;
+    info.taskId = this->taskId_;
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    // build the statistic info.
+    info.totalCount = this->GetCount(this->SQL_PHOTOS_INVISIBLE_COUNT);
+    // build the album name.
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    int64_t costTime = endTime - startTime;
+    std::string albumName = "图库不可见照片";
     std::string lPath = "";
     int32_t period = this->period_;  // 0 - BEFORE, 1 - AFTER
     int32_t dbType = 1;              // 0 - GALLERY, 1 - MEDIA
