@@ -43,6 +43,8 @@ public:
     int32_t ClearCloudInfo(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, const int32_t fileId);
     int32_t ResetPositionToCloudOnly(
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, int32_t fileId);
+    int32_t ResetFileManagerPositionToCloudOnly(
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, int32_t fileId);
     int32_t MergeCloudInfoIntoTargetPhoto(const PhotosPo &sourcePhotoInfo, const PhotosPo &targetPhotoInfo,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t DeletePhotoInfo(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, const int32_t fileId);

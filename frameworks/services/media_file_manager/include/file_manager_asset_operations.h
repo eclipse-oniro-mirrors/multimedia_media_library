@@ -34,7 +34,8 @@ public:
     static int32_t MoveAssetsToFileManager(
         AccurateRefresh::AccurateRefreshBase &refresh, const std::vector<std::string> &ids);
     // 文管到图库，用于隐藏、删除场景
-    static int32_t MoveAssetsFromFileManager(const std::vector<std::string> &ids);
+    static int32_t MoveAssetsFromFileManager(AccurateRefresh::AccurateRefreshBase &refresh,
+        const std::vector<std::string> &ids, bool needRefresh);
     static int32_t MoveFileManagerAsset(
         const std::string &srcPath, const std::string &destPath, bool isMovingPhoto = false);
     // 重命名文管资产

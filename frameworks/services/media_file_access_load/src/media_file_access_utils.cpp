@@ -38,6 +38,7 @@
 #include "photo_file_utils.h"
 #include "moving_photo_file_utils.h"
 #include "multistages_video_capture_manager.h"
+#include "display_name_info.h"
 
 namespace OHOS::Media {
 constexpr int32_t CROSS_POLICY_ERR = 18;
@@ -314,6 +315,46 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &src
     renamePath = tempPath;
     renameTitle = tempTitle;
     renameDisplayName = tempDisplayName;
+    return E_OK;
+}
+
+int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const AssetOperationInfo &srcObj,
+    const std::string &sameNamePath, std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
+{
+    CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
+    std::string displayName = MediaFileUtils::GetFileName(sameNamePath);
+    std::string parentPath = MediaFileUtils::GetParentPath(sameNamePath);
+    CHECK_AND_RETURN_RET_LOG(!parentPath.empty(), E_ERR, "empty parent path");
+
+    std::string tempPath = sameNamePath;
+    size_t dotPos = displayName.rfind('.');
+    std::string tempTitle = dotPos != std::string::npos ? displayName.substr(0, dotPos) : displayName;
+    uint32_t retryCount = 0;
+    while (retryCount < RENAME_MAX_RETRY_COUNT &&
+            (MediaFileUtils::IsFileExists(tempPath) || IsAlbumHasSameNameAsset(srcObj, displayName))) {
+        PhotoAssetInfo photoAssetInfo;
+        photoAssetInfo.displayName = displayName;
+        photoAssetInfo.subtype = static_cast<int32_t>(PhotoSubType::BURST);
+        DisplayNameInfo displayNameInfo(photoAssetInfo);
+        std::string newDisplayName = displayNameInfo.Next();
+        CHECK_AND_RETURN_RET_LOG(!newDisplayName.empty(), E_ERR, "Failed to generate new display name");
+        CHECK_AND_RETURN_RET_LOG(newDisplayName != displayName, E_ERR, "DisplayNameInfo::Next() returns same value");
+        displayName = newDisplayName;
+        tempPath = parentPath + FILE_SEPARATOR + displayName;
+        dotPos = displayName.rfind('.');
+        tempTitle = dotPos != std::string::npos ? displayName.substr(0, dotPos) : displayName;
+        ++retryCount;
+    }
+    if (retryCount == RENAME_MAX_RETRY_COUNT) {
+        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath) &&
+            !IsAlbumHasSameNameAsset(srcObj, displayName), E_ERR, "path still conflict after retry");
+    }
+
+    renamePath = tempPath;
+    renameTitle = tempTitle;
+    renameDisplayName = displayName;
+    MEDIA_INFO_LOG("displayname: %{public}s, renamePath:%{public}s",
+        displayName.c_str(), MediaFileUtils::DesensitizePath(renamePath).c_str());
     return E_OK;
 }
 

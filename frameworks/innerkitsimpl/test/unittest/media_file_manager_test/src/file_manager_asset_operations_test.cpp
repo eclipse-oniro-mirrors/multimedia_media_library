@@ -89,7 +89,8 @@ HWTEST_F(FileManagerAssetOperationsTest, MoveAssetsFromFileManager_test_001, Tes
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg', 0, "
         "'/storage/media/local/files/Docs/Download/mediatool/1.jpg')");
     std::vector<std::string> ids = {"1", "2", "3", "4", "5", "6", "7", "8"};
-    int32_t ret = FileManagerAssetOperations::MoveAssetsFromFileManager(ids);
+    AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::UPDATE_TRASHED_ASSETONALBUM_BUSSINESS_NAME);
+    int32_t ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, ids, true);
     EXPECT_EQ(ret, E_OK);
 
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('/storage/cloud/files/Photo/1/IMG_1501924305_001.jpg', 1, "
@@ -97,7 +98,7 @@ HWTEST_F(FileManagerAssetOperationsTest, MoveAssetsFromFileManager_test_001, Tes
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('', 1, "
         "'/storage/media/local/files/Docs/Download/mediatool/3.jpg')");
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('/storage/cloud/files/Photo/2/IMG_1501924305_002.jpg', 1, '')");
-    ret = FileManagerAssetOperations::MoveAssetsFromFileManager(ids);
+    ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, ids, true);
     EXPECT_NE(ret, E_OK);
 
     MEDIA_INFO_LOG("MoveAssetsFromFileManager_test_001 end");

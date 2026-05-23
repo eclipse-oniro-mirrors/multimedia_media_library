@@ -1221,6 +1221,8 @@ void MediaLibraryPhotoOperations::UpdateSourcePath(const vector<string> &whereAr
                 "CASE "
                     "WHEN COALESCE(PhotoAlbum.lpath, '') = '/' THEN "
                         "'/storage/emulated/0' || '/' || SubPhotos.display_name "
+                    "WHEN COALESCE(PhotoAlbum.lpath, '') = '/FromDocs/' THEN "
+                        "'/storage/emulated/0' || PhotoAlbum.lpath || SubPhotos.display_name "
                     "WHEN COALESCE(PhotoAlbum.lpath, '') <> '/' AND "
                         "COALESCE(PhotoAlbum.lpath, '') <> '' THEN "
                         "'/storage/emulated/0' || PhotoAlbum.lpath || '/' || SubPhotos.display_name "
@@ -1485,7 +1487,7 @@ int32_t MediaLibraryPhotoOperations::TrashPhotos(MediaLibraryCommand &cmd)
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     int32_t ret = LakeFileOperations::MoveAssetsFromLake(rdbPredicate.GetWhereArgs());
     CHECK_AND_PRINT_LOG(ret == E_OK, "trash inner anco file error");
-    ret = FileManagerAssetOperations::MoveAssetsFromFileManager(rdbPredicate.GetWhereArgs());
+    ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, rdbPredicate.GetWhereArgs(), true);
     CHECK_AND_PRINT_LOG(ret == E_OK, "trash file manager asset error");
 #endif
     // delete cloud enhanacement task
@@ -2142,7 +2144,7 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
     } else {
         int32_t ret = LakeFileOperations::MoveAssetsFromLake(predicates.GetWhereArgs());
         CHECK_AND_PRINT_LOG(ret == E_OK, "hide photo inner anco file error");
-        ret = FileManagerAssetOperations::MoveAssetsFromFileManager(predicates.GetWhereArgs());
+        ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, predicates.GetWhereArgs(), true);
         CHECK_AND_PRINT_LOG(ret == E_OK, "hide photo inner file manager error");
     }
 #endif

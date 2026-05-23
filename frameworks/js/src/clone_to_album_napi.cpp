@@ -85,7 +85,7 @@ static void ParseTaskSignalListener(napi_env env, napi_value options, MediaLibra
     CHECK_NULL_PTR_RETURN_VOID(ctx->cloneCtx.callback, "callback is null");
 
     auto cancelCallback = [ctx]() {
-        NAPI_INFO_LOG("TaskSignal cancel callback triggered, %{pbulic}d", ctx->cloneCtx.requestId);
+        NAPI_INFO_LOG("TaskSignal cancel callback triggered, %{public}d", ctx->cloneCtx.requestId);
         if (ctx != nullptr && ctx->cloneCtx.callback != nullptr) {
             ctx->cloneCtx.callback->SetCancelled(ctx->cloneCtx.requestId);
         }
@@ -268,12 +268,44 @@ static void CompleteCloneToAlbum(napi_env env, napi_status status, void *data)
     CleanupReferences(env, context);
 }
 
+napi_value GetNapiValueArray(napi_env env, napi_value arg, vector<napi_value> &values)
+{
+    bool isArray = false;
+    CHECK_ARGS(env, napi_is_array(env, arg, &isArray), JS_E_PARAM_INVALID);
+    if (!isArray) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check array type");
+        return nullptr;
+    }
+
+    uint32_t len = 0;
+    CHECK_ARGS(env, napi_get_array_length(env, arg, &len), JS_E_PARAM_INVALID);
+    if (len == 0) {
+        napi_value result = nullptr;
+        CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_PARAM_INVALID);
+        return result;
+    }
+
+    for (uint32_t i = 0; i < len; i++) {
+        napi_value value = nullptr;
+        CHECK_ARGS(env, napi_get_element(env, arg, i, &value), JS_E_PARAM_INVALID);
+        if (value == nullptr) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get element");
+            return nullptr;
+        }
+        values.push_back(value);
+    }
+
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_PARAM_INVALID);
+    return result;
+}
+
 static napi_value ParseFileAssetArray(napi_env env, napi_value arg, std::vector<std::string>& assetArray)
 {
     vector<napi_value> napiValues;
     napi_valuetype valueType = napi_undefined;
     FileAssetNapi *obj = nullptr;
-    CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetNapiValueArray(env, arg, napiValues));
+    CHECK_NULLPTR_RET(GetNapiValueArray(env, arg, napiValues));
     for (const auto &napiValue : napiValues) {
         CHECK_ARGS(env, napi_typeof(env, napiValue, &valueType), JS_E_PARAM_INVALID);
         CHECK_COND_WITH_ERR_MESSAGE(env, valueType == napi_object, JS_E_PARAM_INVALID, "Invalid argument type");
