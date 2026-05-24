@@ -16,6 +16,7 @@
 #ifndef OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_DAO_H
 #define OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTOS_DAO_H
 
+#include <memory>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -143,6 +144,8 @@ public:
 private:
     void HandleIncomingCloudConflict(const CloudMediaPullDataDto &pullData,
         NativeRdb::ValuesBucket &values);
+    void ProcessResultSetData(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
+        NativeRdb::ValuesBucket &values, const CloudMediaPullDataDto &pullData);
     void UpdateAllAlbumsCountForCloud(const std::vector<std::string> &albums);
     void UpdateAlbumCountInternal(const std::vector<std::string> &subtypes);
     void GetSourceAlbumFromPath(const CloudMediaPullDataDto &pullData, int32_t &albumId, std::set<int32_t> &cloudMapIds,
