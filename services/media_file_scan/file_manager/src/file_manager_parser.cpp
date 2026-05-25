@@ -114,9 +114,13 @@ FileUpdateType FileManagerParser::GetTrashAssetUpdateType()
     bool isRecover = notifyInfo_.beforePath.find(FILE_MANAGER_TRASH_PATH) == 0 &&
         notifyInfo_.afterPath.find(FILE_MANAGER_TRASH_PATH) != 0;
     if (isTrash && rowDataBefore.IsExist()) {
+        SetByPhotosRowData(rowDataBefore);
         updateType_ = FileUpdateType::TRASH;
-    } else if (isRecover) {
-        updateType_ = rowDataAfter.IsExist() ? FileUpdateType::RECOVER : FileUpdateType::INSERT;
+    } else if (isRecover && rowDataAfter.IsExist()) {
+        SetByPhotosRowData(rowDataAfter);
+        updateType_ = FileUpdateType::RECOVER;
+    } else if (isRecover && !rowDataAfter.IsExist()) {
+        updateType_ = FileUpdateType::INSERT;
     } else {
         updateType_ = FileUpdateType::NO_CHANGE;
     }

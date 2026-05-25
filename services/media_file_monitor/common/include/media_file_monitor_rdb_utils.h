@@ -83,10 +83,9 @@ public:
         std::vector<LakeMonitorQueryResultData> dataList);
     static bool DeleteFileManagerDirByFileManagerPath(const std::string &path,
         std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
-    static bool DeleteFileManagerAlbumByFileManagerPath(const std::string &path,
-        std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
     static bool DeleteFileByLakePath(const std::string &path, std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
     static bool DeleteFileByFileManagerPath(const std::string &path, std::shared_ptr<MediaLibraryRdbStore> &rdbStore);
+    static std::string RemovePrefix(const std::string &uri, const std::string &prefix);
 
 private:
     template <typename T>
