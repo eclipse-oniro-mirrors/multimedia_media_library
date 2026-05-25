@@ -72,6 +72,8 @@ static std::string GetSpecificErrorMessage(int32_t err, const char *funcName)
 void NapiError::SetApiName(const std::string &Name)
 {
     apiName = Name;
+    NAPI_INFO_LOG("SetApiName: &apiName=%{public}p, apiName=%{public}s",
+        &apiName, apiName.c_str());
 }
 
 void NapiError::SaveError(const std::shared_ptr<DataShare::DataShareResultSet> &resultSet)
@@ -81,6 +83,8 @@ void NapiError::SaveError(const std::shared_ptr<DataShare::DataShareResultSet> &
 
 void NapiError::SaveError(int32_t ret)
 {
+    NAPI_INFO_LOG("SaveError: &apiName=%{public}p, apiName=%{public}s, ret=%{public}d",
+        &apiName, apiName.c_str(), ret);
     if (ret < 0) {
         error = MediaLibraryNapiUtils::TransErrorCode(apiName, ret);
         if (error == JS_E_FILE_EXTENSION) {
