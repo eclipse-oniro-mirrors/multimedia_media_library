@@ -686,13 +686,16 @@ int32_t CloudMediaAlbumService::PullUpdate(
     // Check
     const bool updateFlag = record.localAlbumInfo.has_value() && !record.isDelete;
     CHECK_AND_RETURN_RET_LOG(updateFlag, E_INVALID_VALUES, "invalid data");
-    int32_t dirty = record.localAlbumInfo.value().dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
+    const PhotoAlbumPo &albumInfo = record.localAlbumInfo.value();
+
+    const int32_t dirty = albumInfo.dirty.value_or(static_cast<int32_t>(DirtyType::TYPE_MDIRTY));
     bool isValid = dirty != static_cast<int32_t>(Media::DirtyType::TYPE_MDIRTY) &&
                    dirty != static_cast<int32_t>(Media::DirtyType::TYPE_DELETED);
     CHECK_AND_RETURN_RET_WARN_LOG(isValid, E_OK, "lpath is dirty, skip. cloudId: %{public}s", record.cloudId.c_str());
     // Process
     changeType = ChangeType::UPDATE;
-    int32_t ret = this->albumDao_.UpdateCloudAlbum(record, PhotoAlbumColumns::ALBUM_LPATH, record.lPath, albumRefresh);
+    const std::string albumIdStr = std::to_string(albumInfo.albumId.value_or(0));
+    int32_t ret = this->albumDao_.UpdateCloudAlbum(record, PhotoAlbumColumns::ALBUM_ID, albumIdStr, albumRefresh);
     if (ret != E_OK) {
         MEDIA_ERR_LOG(
             "UpdateCloudAlbum failed, ret: %{public}d, albumInfo: %{public}s", ret, record.ToString().c_str());
