@@ -704,6 +704,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/change_request_move_assets_by_path_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/change_request_move_assets_to_dir_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_cancel_task_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/deep_optimize_space_vo.cpp",
   ]
 
   media_assets_manager_dto_source = [
@@ -1114,7 +1115,6 @@ ohos_shared_library("medialibrary_data_extension") {
   media_lcd_aging = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_task_priority_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
   ]

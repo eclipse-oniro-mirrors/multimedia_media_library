@@ -39,22 +39,6 @@ using namespace OHOS::NativeRdb;
 // LCOV_EXCL_START
 namespace OHOS::Media::AnalysisData {
 
-int32_t AnalysisLcdAgingDao::IsAgingThresholdReached(bool &isReached)
-{
-    int64_t currentLcdNumber = 0;
-    int32_t ret = LcdAgingDao().GetCurrentNumberOfLcd(currentLcdNumber);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "IsAgingThresholdReached: Failed to GetCurrentLcdNumberOf");
-
-    int64_t scaleThreshold = 0;
-    ret = LcdAgingUtils().GetScaleThresholdOfLcd(scaleThreshold);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "IsAgingThresholdReached: Failed to GetScaleThresholdOfLcd");
-
-    MEDIA_INFO_LOG("IsAgingThresholdReached: currentLcdNumber=%{public}" PRId64 ", scaleThreshold=%{public}" PRId64,
-                   currentLcdNumber, scaleThreshold);
-    isReached = (currentLcdNumber >= scaleThreshold);
-    return E_OK;
-}
-
 int32_t AnalysisLcdAgingDao::QueryDownloadLcdInfo(const std::vector<int64_t> &fileIds,
     std::vector<DownloadLcdFileInfo> &downloadInfos)
 {
@@ -93,46 +77,6 @@ int32_t AnalysisLcdAgingDao::QueryDownloadLcdInfo(const std::vector<int64_t> &fi
     }
     MEDIA_INFO_LOG("downloadInfos.size()=%{public}zu", downloadInfos.size());
     resultSet->Close();
-    return E_OK;
-}
-
-int32_t AnalysisLcdAgingDao::QueryAgingLcdDataByFileIds(const std::vector<int64_t> &fileIds,
-    std::vector<PhotosPo> &lcdAgingPoList)
-{
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "QueryAgingLcdDataByFileIds Failed to get rdbStore.");
-    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_OK, "fileIds is empty");
-
-    std::vector<std::string> fileIdStrs;
-    for (auto fileId : fileIds) {
-        fileIdStrs.push_back(std::to_string(fileId));
-    }
-    std::string fileIdStr = PhotoOwnerAlbumIdOperation().ToStringWithComma(fileIdStrs);
-
-    std::string querySql = "WITH AlbumCoverFileId AS ( \
-            SELECT DISTINCT CAST(SUBSTR(cover_uri, 20, INSTR(SUBSTR(cover_uri, 20), '/') - 1) AS INTEGER) AS file_id \
-            FROM PhotoAlbum \
-            WHERE cover_uri IS NOT NULL AND cover_uri <> '' \
-        ) \
-        SELECT P.* \
-        FROM Photos P \
-        LEFT JOIN AlbumCoverFileId AF ON AF.file_id = P.file_id \
-        WHERE P.file_id IN (" + fileIdStr + ") \
-            AND P.sync_status = 0 \
-            AND P.clean_flag = 0 \
-            AND P.time_pending = 0 \
-            AND P.is_temp = 0 \
-            AND P.position = 2 \
-            AND P.is_favorite = 0 \
-            AND (P.thumb_status & 1) = 0 \
-            AND AF.file_id IS NULL";
-
-    auto resultSet = rdbStore->QuerySql(querySql);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_DB_FAIL, "QueryAgingLcdDataByFileIds Failed to query.");
-
-    int32_t ret = ResultSetReader<PhotosPoWriter, PhotosPo>(resultSet).ReadRecords(lcdAgingPoList);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "QueryAgingLcdDataByFileIds Failed to query, ret: %{public}d", ret);
-    MEDIA_INFO_LOG("QueryAgingLcdDataByFileIds: found %{public}zu files", lcdAgingPoList.size());
     return E_OK;
 }
 

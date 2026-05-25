@@ -33,6 +33,7 @@
 #include "media_change_info.h"
 #include "medialibrary_notify_callback_wrapper_ani.h"
 #include "medialibrary_notify_new_observer_ani.h"
+#include "deep_optimize_space_ani_callback.h"
 
 namespace OHOS {
 namespace Media {
@@ -310,6 +311,8 @@ public:
         ani_string targetDir, ani_object option);
     static ani_object MoveAssetsByPath(ani_env *env, ani_object object, ani_object assets,
         ani_object target, ani_object option);
+    static ani_object PhotoAccessStartDeepOptimizeSpace(ani_env *env, ani_object object, ani_fn_object callback);
+    static ani_object PhotoAccessStopDeepOptimizeSpace(ani_env *env, ani_object object);
 
 private:
     int32_t GetListenerType(const std::string &str) const;
@@ -447,6 +450,8 @@ struct MediaLibraryAsyncContext : public AniError {
     int32_t mode;
     std::atomic<bool> isCancelled{false};
     ani_ref taskSignalRef;
+    bool hasDeepOptimizeSpaceCallback = false;
+    std::shared_ptr<DeepOptimizeSpaceAniCallbackHolder> deepOptimizeSpaceCallbackHolder;
 };
 } // namespace Media
 } // namespace OHOS

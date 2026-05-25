@@ -52,7 +52,6 @@
 #include "change_request_set_default_cover_uri_vo.h"
 #include "prepare_lcd_vo.h"
 #include "remove_cloud_lcd_vo.h"
-#include "lcd_aging_task_priority_manager.h"
  
 namespace OHOS::Media::AnalysisData {
 using namespace std;
@@ -641,7 +640,6 @@ int32_t MediaAnalysisDataControllerService::PrepareLcd(MessageParcel &data, Mess
                       fileIds.size(), MAX_BATCH_SIZE);
         return E_ERR;
     }
-    LcdAgingTaskPriorityManager::GetInstance().RegisterHighPriorityTask(HighPriorityTaskType::ANALYSIS_DOWNLOAD);
     std::unordered_map<uint64_t, int32_t> results;
     ret = MediaAnalysisDataService::GetInstance().PrepareLcd(
         fileIds, netBearerBitmap, results);
@@ -649,7 +647,6 @@ int32_t MediaAnalysisDataControllerService::PrepareLcd(MessageParcel &data, Mess
     respBody.results = results;
     MEDIA_INFO_LOG("PrepareLcd result: %{public}d, results.size()=%{public}zu",
         ret, results.size());
-    LcdAgingTaskPriorityManager::GetInstance().UnregisterHighPriorityTask(HighPriorityTaskType::ANALYSIS_DOWNLOAD);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 

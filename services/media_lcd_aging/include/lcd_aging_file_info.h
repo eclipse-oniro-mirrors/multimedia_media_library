@@ -21,10 +21,10 @@
 namespace OHOS::Media {
 struct LcdAgingFileInfo {
     int32_t fileId {-1};
-    std::string cloudId;
-    std::string path;
-    std::string localLcdPath;
-    std::string localLcdExPath;
+    std::string cloudId {""};
+    std::string path {""};
+    std::string localLcdPath {""};
+    std::string localLcdExPath {""};
     int32_t mediaType {-1};
     int32_t orientation {-1};
     int32_t exifRotate {-1};

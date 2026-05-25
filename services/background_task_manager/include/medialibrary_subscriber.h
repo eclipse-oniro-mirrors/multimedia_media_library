@@ -98,6 +98,7 @@ public:
     EXPORT static bool IsCurrentStatusOn();
     EXPORT static bool IsCriticalTypeStatusOn();
     EXPORT static bool IsCharging();
+    EXPORT static bool IsBackgroundTaskAllowed();
 private:
     std::shared_ptr<DataShare::DataShareHelper> cloudHelper_;
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
@@ -181,7 +182,6 @@ private:
     void PreProcessForUpdateStatus();
     bool CheckOnRestoreAndTryResetFlag();
     void UpdateGlobalStatusForBgTask();
-    bool IsBackgroundTaskAllowed();
 #ifdef MEDIALIBRARY_FACARD_SUPPORT
     void InitFaCardAfterDataShareReady(const std::string &action);
 #endif

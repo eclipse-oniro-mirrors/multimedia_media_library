@@ -1596,5 +1596,6 @@ export default {
   LivePhoto4dStatus: photoAccessHelper.LivePhoto4dStatus,
   AvailabilityStatus: photoAccessHelper.AvailabilityStatus,
   MediaAssetPermissionState: photoAccessHelper.MediaAssetPermissionState,
-  TaskSignal: photoAccessHelper.TaskSignal
+  TaskSignal: photoAccessHelper.TaskSignal,
+  DeepOptimizeState: photoAccessHelper.DeepOptimizeState
 };

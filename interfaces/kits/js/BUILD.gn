@@ -96,6 +96,7 @@ config("napi_config") {
   include_dirs += [
     "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/analysis_data_kits/include/vo",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/include",
   ]
 
   if (media_library_feature_mtp) {
@@ -207,6 +208,7 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_JS_PATH}/src/cloud_media_asset_status_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/cloud_media_download_resources_status_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/confirm_callback.cpp",
+    "${MEDIALIB_JS_PATH}/src/deep_optimize_space_napi_callback.cpp",
     "${MEDIALIB_JS_PATH}/src/default_album_name_callback.cpp",
     "${MEDIALIB_JS_PATH}/src/delete_callback.cpp",
     "${MEDIALIB_JS_PATH}/src/fetch_file_result_napi.cpp",
@@ -306,6 +308,7 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/change_request_move_assets_by_path_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/change_request_move_assets_to_dir_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_cancel_task_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/deep_optimize_space_vo.cpp",
   ]
 
   media_analysis_data_vo_source = [

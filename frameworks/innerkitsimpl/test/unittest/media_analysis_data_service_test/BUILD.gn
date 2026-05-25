@@ -100,6 +100,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
   ]
 
   deps = [

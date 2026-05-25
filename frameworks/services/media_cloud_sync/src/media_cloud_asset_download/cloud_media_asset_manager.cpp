@@ -48,6 +48,7 @@
 #include "medialibrary_bundle_manager.h"
 #include "hi_audit.h"
 #include "media_edit_utils.h"
+#include "lcd_aging_manager.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -886,6 +887,8 @@ int32_t CloudMediaAssetManager::ForceRetainDownloadCloudMedia(CloudMediaRetainTy
         return E_OK;
     }
     SetSouthDeviceSyncSwitchStatus(CloudSyncStatus::CLOUD_CLEANING);
+    // 清除LCD主动老化标记
+    LcdAgingManager::GetInstance().SetIsActiveLcdAging(false);
 
     // 主动停止端云同步
     MEDIA_INFO_LOG("ForceRetainDownloadCloudMedia StopSync bundleName:%{public}s", CONST_BUNDLE_NAME);
