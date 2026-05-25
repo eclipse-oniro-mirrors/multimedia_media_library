@@ -519,7 +519,7 @@ bool CloneRestore::BackupPreprocess()
     ParseDstDeviceBackupInfo();
     if (!dstDeviceBackupInfo_.hdcEnabled && (!srcCloneRestoreConfigInfo_.isValid ||
         srcCloneRestoreConfigInfo_.switchStatus == SwitchStatus::HDC)) {
-        MEDIA_INFO_LOG("dst device does not support hdc while current hdc sync is on");
+        MEDIA_INFO_LOG("dst device does not support hdc while current hdc sync is on.");
         MEDIA_INFO_LOG("Start BackupDb");
 
         // create temp DB path
