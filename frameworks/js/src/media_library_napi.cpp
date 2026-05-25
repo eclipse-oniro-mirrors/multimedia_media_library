@@ -16277,25 +16277,21 @@ static napi_value ParseArgsGetAssetCompatibleUris(napi_env env, napi_callback_in
     if (context->argc >= ARGS_THREE) {
         napi_valuetype valueType = napi_undefined;
         napi_typeof(env, context->argv[ARGS_TWO], &valueType);
-        
         if (valueType == napi_number) {
-            NAPI_INFO_LOG("compatibleFlags is int");
             CHECK_ARGS(env, MediaLibraryNapiUtils::GetInt32(env, context->argv[ARGS_TWO],
                 context->compatibleFlags), JS_E_PARAM_INVALID);
             constexpr uint32_t VALID_FLAGS_MASK = 0x3;
             uint32_t flags = static_cast<uint32_t>(context->compatibleFlags);
             CHECK_COND_WITH_ERR_MESSAGE(env, (flags & ~VALID_FLAGS_MASK) == 0,
                 JS_E_PARAM_INVALID, "invalid compatibleFlags");
-        } else {
+        } else if (valueType == napi_undefined) {
             context->compatibleFlags = THIRD_ENUM;
-            NAPI_INFO_LOG("compatibleFlags is undefined");
+        } else {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "invalid compatibleFlags");
         }
-        
     } else {
-        NAPI_INFO_LOG("no compatibleFlags");
         context->compatibleFlags = THIRD_ENUM;
     }
-    NAPI_INFO_LOG("flag : %{public}d", context->compatibleFlags);
 
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_INNER_FAIL);
