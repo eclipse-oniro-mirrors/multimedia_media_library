@@ -28,7 +28,7 @@ const int32_t FILE_SOURCE_TYPE_LAKE = 3;
 const std::string LAKE_STORAGE_PATH_PREFIX = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/";
 const std::string LAKE_STORAGE_PATH_PATTERN = "/mnt/data/{0}/HO_MEDIA/{1}";
 const std::string DOCS_STORAGE_PATH_PREFIX = "/storage/media/local/files/Docs/";
-const std::string DOCS_STORAGE_PATH_PATTERN = "/data/service/el2/{0}/hmdfs/account/files/Docs/{1}";
+const std::string DOCS_STORAGE_PATH_PATTERN = "/storage/media/{0}/local/files/Docs/{1}";
 const std::string CLOUD_STORAGE_PATH_PREFIX = "/storage/cloud/files/Photo/";
 const std::string CLOUD_STORAGE_PATH_PATTERN = "/data/service/el2/{0}/hmdfs/account/files/Photo/{1}";
 std::string CloudMediaPathUtils::FindStoragePath(const std::string &storagePath, const int32_t userId)

@@ -295,6 +295,7 @@ private:
     void UpdateSourceAlbumName(bool &isUinque, vector<AlbumInfo> &albumInfos, vector<string> &repetedAlbumName,
         size_t index);
     void CreateCloneFileInfoDb();
+    void CloneActiveLcdAgingFromOldDevice();
 
 private:
     std::atomic<uint64_t> migrateDatabaseAlbumNumber_{0};

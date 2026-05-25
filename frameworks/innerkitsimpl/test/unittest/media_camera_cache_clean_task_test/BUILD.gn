@@ -1,0 +1,122 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+group("unittest") {
+  testonly = true
+  deps = [ ":media_camera_cache_clean_task_test" ]
+}
+
+ohos_unittest("media_camera_cache_clean_task_test") {
+  module_out_path = "media_library/media_library_asset"
+  include_dirs = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/cloud_sync_utils",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/dao",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_assets_manager/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include/background/",
+    "../get_self_permissions/include",
+    "../medialibrary_unittest_utils/include",
+    "./include",
+  ]
+
+  sources = [
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/create_asset_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/commit_edited_asset_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/form_info_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/cloud_enhancement_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/set_location_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/asset_change_create_asset_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/submit_cache_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/add_image_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/save_camera_photo_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/get_assets_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/restore_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dto/convert_format_dto.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/media_assets_rdb_operations.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_related_system_state_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_camera_cache_clean_task.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "./src/media_camera_cache_clean_task_test.cpp",
+    "./src/mock_cloud_sync_utils.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
+  ]
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+  ]
+
+  external_deps = [
+    "ability_base:zuri",
+    "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:app_context",
+    "bundle_framework:appexecfwk_core",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libprivacy_sdk",
+    "access_token:libnativetoken",
+    "access_token:libtoken_setproc",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_provider",
+    "dfs_service:cloudsync_kit_inner",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
+    "napi:ace_napi",
+    "netmanager_base:net_conn_manager_if",
+    "player_framework:media_client",
+    "preferences:native_preferences",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+  ]
+
+  if (media_library_cellular_data_enable) {
+    external_deps += [
+      "core_service:tel_core_service_api",
+      "cellular_data:tel_cellular_data_api"
+    ]
+  }
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  cflags = [
+    "-fno-access-control",
+    "-Wno-unused-but-set-variable",
+    "-Wno-unused-function",
+    "-Wno-unused-const-variable",
+  ]
+
+  cflags_cc = [
+    "-fvisibility-inlines-hidden",
+    "-Os",
+    "-Wno-unused-but-set-variable",
+    "-Wno-unused-function",
+    "-Wno-unused-const-variable",
+  ]
+  resource_config_file =
+      "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
+}

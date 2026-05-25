@@ -1156,7 +1156,6 @@ void MedialibrarySubscriber::DoBackgroundOperation()
     bool cond = (!backgroundDelayTask_.IsDelayTaskTimeOut() || !currentStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoBackgroundOperation are not met, will return.");
     PeriodicAnalyzePhotosData();
-    LcdAgingManager::GetInstance().ReadyAgingLcd();
     Background::LcdDownloadTask::HandleLcdDownload();
 #ifdef META_RECOVERY_SUPPORT
     // check metadata recovery state

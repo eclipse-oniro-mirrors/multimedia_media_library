@@ -2520,16 +2520,16 @@ static unordered_map<MoveStrategy, vector<string>> BuildMoveStrategyPatitions(co
         int32_t fileId = GetInt32Val("file_id", resultSet);
         std::string storagePath = GetStringVal("storage_path", resultSet);
         bool isLakeAsset = storagePath.find(LAKE_PATH_PREFIX) != std::string::npos;
-        if (ownerSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
-            if (targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+        if (ownerSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
+            if (targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_FILEMANAGER_TO_FILEMANAGER, to_string(fileId));
-            } else if (targetSubtype != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+            } else if (targetSubtype != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_FILEMANAGER_TO_MEDIA, to_string(fileId));
             }
         } else {
-            if (isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+            if (isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_LAKE_TO_FILEMANAGER, to_string(fileId));
-            } else if (!isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+            } else if (!isLakeAsset && targetSubtype == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
                 InsertOrUpdate(partition, MoveStrategy::FROM_MEDIA_TO_FILEMANAGER, to_string(fileId));
             }
         }
@@ -2885,18 +2885,18 @@ static int32_t HandleOtherMoveOperations(AccurateRefresh::AssetAccurateRefresh &
     pair<PhotoAlbumSubType, PhotoAlbumSubType> albumTypes {};
     int32_t ret = QueryAlbumSubtypes(targetAlbumId, oriAlbumId, albumTypes);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Query album subtype failed");
-    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER &&
-        albumTypes.second != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER &&
+        albumTypes.second != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         HandleFileManagerToMedia(refresh, idsToMove);
-    } else if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER &&
-        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    } else if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER &&
+        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         HandleFileManagerToFileManager(refresh, idsToMove, targetAlbumId);
-    } else if (albumTypes.first != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER &&
-        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    } else if (albumTypes.first != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER &&
+        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         HandleMediaToFileManager(refresh, idsToMove, targetAlbumId, true);
     }
-    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER ||
-        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    if (albumTypes.first == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER ||
+        albumTypes.second == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         return E_OK;
     }
 #endif
@@ -5879,9 +5879,9 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesVideo(const std::shared_p
         DfxUtils::GetSafePath(fileAsset->GetFilePath()).c_str(), isEdited, isMovingPhoto);
     if (isMovingPhoto) {
         bool isMovingPhotoEffectMode = (fileAsset->GetMovingPhotoEffectMode()) > 0;
-        return FileUtils::SaveMovingPhotoVideo(fileAsset->GetFilePath(), isEdited, isMovingPhotoEffectMode);
+        return FileUtils::SaveMovingPhotoVideoShareCamera(fileAsset->GetFilePath(), isEdited, isMovingPhotoEffectMode);
     }
-    return FileUtils::SaveVideo(fileAsset->GetFilePath(), isEdited);
+    return FileUtils::SaveVideoShareCamera(fileAsset->GetFilePath(), isEdited);
 }
 
 int32_t MediaLibraryPhotoOperations::RemoveTempVideo(const std::string &path)
@@ -7367,7 +7367,7 @@ void MediaLibraryPhotoOperations::ProcessAlbumIdInCreate(FileAsset &fileAsset, M
     PhotoAlbumSubType subType;
     std::string lPath;
     CHECK_AND_RETURN_LOG(GetAlbumTypeSubTypeLPathById(albumId, type, subType, lPath) == E_SUCCESS, "invalid album id");
-    if (type == PhotoAlbumType::SOURCE && subType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    if (type == PhotoAlbumType::SOURCE && subType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         std::string dir = PhotoFileUtils::GetFileManagerDirFromLPath(lPath);
         CHECK_AND_RETURN_LOG(!dir.empty(), "Failed to get file manager dir from lPath: %{public}s", lPath.c_str());
         std::string displayName = fileAsset.GetDisplayName();
@@ -7405,6 +7405,39 @@ int32_t MediaLibraryPhotoOperations::NotifyAssetSended(const std::string &uri, S
             DfxUtils::GetSafePath(tempFilePath).c_str());
     }
     return E_OK;
+}
+
+void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<string, string>>& photoIdPathList)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("MediaLibraryPhotoOperations::BatchStoreThumbnailSize");
+    CHECK_AND_RETURN_LOG(!photoIdPathList.empty(), "photoIdPathList is empty!");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Medialibrary rdbStore is nullptr!");
+
+    string valuesSql;
+    for (const auto& [photoId, photoPath] : photoIdPathList) {
+        string thumbnailDir {photoPath};
+        if (!ConvertPhotoPathToThumbnailDirPath(thumbnailDir)) {
+            MEDIA_ERR_LOG("Failed to get thumbnail dir path! file id: %{public}s", photoId.c_str());
+            continue;
+        }
+        uint64_t photoThumbnailSize = GetFolderSize(thumbnailDir);
+        if (!valuesSql.empty()) {
+            valuesSql += ", ";
+        }
+        valuesSql += "(" + photoId + ", " + to_string(photoThumbnailSize) + ")";
+    }
+
+    CHECK_AND_RETURN_LOG(!valuesSql.empty(), "valuesSql is empty!");
+    string sql = "INSERT INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
+        PhotoExtColumn::PHOTO_ID + ", " + PhotoExtColumn::THUMBNAIL_SIZE + ") VALUES " + valuesSql +
+        " ON CONFLICT(" + PhotoExtColumn::PHOTO_ID + ")" +
+        " DO UPDATE SET " + PhotoExtColumn::THUMBNAIL_SIZE + " = excluded." + PhotoExtColumn::THUMBNAIL_SIZE;
+
+    int32_t ret = rdbStore->ExecuteSql(sql);
+    CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
+        "Failed to execute batch sql, total size: %{public}zu, error code: %{public}d", photoIdPathList.size(), ret);
 }
 } // namespace Media
 } // namespace OHOS

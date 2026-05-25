@@ -129,7 +129,7 @@ static int32_t CreateFileManagerSourceAlbum(const std::string &albumName, const 
     std::vector<std::pair<std::string, std::string>> items = {
         {PhotoAlbumColumns::ALBUM_NAME, Quote(albumName)},
         {PhotoAlbumColumns::ALBUM_TYPE, to_string(PhotoAlbumType::SOURCE)},
-        {PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER)},
+        {PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)},
         {PhotoAlbumColumns::ALBUM_DATE_MODIFIED, to_string(now)},
         {PhotoAlbumColumns::ALBUM_DATE_ADDED, to_string(now)},
         {PhotoAlbumColumns::ALBUM_LPATH, Quote(albumLPath)},

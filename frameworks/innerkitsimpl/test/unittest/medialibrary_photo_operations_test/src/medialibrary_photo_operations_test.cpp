@@ -982,7 +982,7 @@ static int32_t CreateSourceAlbumForFileManager(const string &albumName, const st
         PhotoAlbumColumns::ALBUM_TYPE + ", " + PhotoAlbumColumns::ALBUM_SUBTYPE + ", " +
         PhotoAlbumColumns::ALBUM_NAME + ", " + PhotoAlbumColumns::ALBUM_LPATH +
         ") VALUES (" + to_string(PhotoAlbumType::SOURCE) + ", " +
-        to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) + ", '" + albumName + "', '" +
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) + ", '" + albumName + "', '" +
         albumLPath + "')";
     auto ret = uniStore->ExecuteSql(insertSql);
     if (ret != NativeRdb::E_OK) {

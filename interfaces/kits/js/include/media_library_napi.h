@@ -86,6 +86,7 @@ struct AnalysisProperty {
 
 struct MediaLibraryAsyncContext;
 class ActiveAnalysisJsCallbackHolder;
+class DeepOptimizeSpaceJsCallbackHolder;
 
 class MediaOnNotifyObserver;
 class ChangeListenerNapi {
@@ -298,6 +299,7 @@ private:
     EXPORT static napi_value CreateAppLinkStateEnum(napi_env env);
     EXPORT static napi_value CreateLivePhoto4dStatusEnum(napi_env env);
     EXPORT static napi_value CreateAvailabilityStatusEnum(napi_env env);
+    EXPORT static napi_value CreateDeepOptimizeStateEnum(napi_env env);
 
     EXPORT static napi_value CreatePhotoKeysEnum(napi_env env);
     EXPORT static napi_value CreateHiddenPhotosDisplayModeEnum(napi_env env);
@@ -399,6 +401,8 @@ private:
     EXPORT static napi_value PhotoAccessHelperSetFileCompatibleConfig(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperGetAssetCompatibleConfig(napi_env env, napi_callback_info info);
     EXPORT static napi_value GetAssetCompatibleUris(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessStartDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessStopDeepOptimizeSpace(napi_env env, napi_callback_info info);
     
     EXPORT static napi_value SetHidden(napi_env env, napi_callback_info info);
     EXPORT static napi_value PahGetHiddenAlbums(napi_env env, napi_callback_info info);
@@ -568,6 +572,7 @@ private:
     static thread_local napi_ref sAppLinkStateRef_;
     static thread_local napi_ref sLivePhoto4dStatusEnumRef_;
     static thread_local napi_ref sAvailabilityStatusEnumRef_;
+    static thread_local napi_ref sDeepOptimizeStateRef_;
 
     static std::mutex sOnOffMutex_;
     static std::mutex thumbnailMutex_;
@@ -700,6 +705,8 @@ struct MediaLibraryAsyncContext : public NapiError {
     std::vector<std::string> activeAnalysisFileIds;
     std::string activeAnalysisParam;
     std::shared_ptr<ActiveAnalysisJsCallbackHolder> activeAnalysisCallbackHolder;
+    std::shared_ptr<DeepOptimizeSpaceJsCallbackHolder> deepOptimizeSpaceCallbackHolder;
+    bool hasDeepOptimizeSpaceCallback = false;
     std::vector<std::string> checkPhotoPermissionUris;
     mutable std::mutex uriPermissionStateMapMutex;
     std::unordered_map<std::string, int32_t> uriPermissionStateMap;

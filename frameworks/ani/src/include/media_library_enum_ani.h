@@ -25,6 +25,8 @@
 
 namespace OHOS {
 namespace Media {
+enum class DeepOptimizeSpaceState : int32_t;
+
 class MediaLibraryEnumAni {
 public:
     static ani_status EnumGetValueInt32(ani_env *env, ani_enum_item enumItem, int32_t &value);
@@ -44,6 +46,7 @@ public:
     static ani_status ToAniEnum(ani_env *env, PhotoType value, ani_enum_item &aniEnumItem);
     static ani_status ToAniEnum(ani_env *env, ThumbnailVisibility value, ani_enum_item &aniEnumItem);
     static ani_status ToAniEnum(ani_env *env, StrongAssociationType value, ani_enum_item &aniEnumItem);
+    static ani_status ToAniEnum(ani_env *env, DeepOptimizeSpaceState value, ani_enum_item &aniEnumItem);
 };
 } // namespace Media
 } // namespace OHOS

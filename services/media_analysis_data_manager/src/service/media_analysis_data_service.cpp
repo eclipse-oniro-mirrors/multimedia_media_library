@@ -680,27 +680,8 @@ int32_t MediaAnalysisDataService::PrepareLcd(const std::vector<int64_t> &fileIds
 int32_t MediaAnalysisDataService::RemoveCloudLcd(const std::vector<int64_t> &fileIds)
 {
     MEDIA_INFO_LOG("Enter RemoveCloudLcd, fileIds.size()=%{public}zu", fileIds.size());
-    std::lock_guard<std::mutex> lock(LcdAgingManager::GetInstance().GetLcdOperationMutex());
-
-    bool isThresholdReached = false;
-    int32_t ret = this->lcdAgingDao_.IsAgingThresholdReached(isThresholdReached);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "RemoveCloudLcd: Failed to check aging threshold");
-    if (!isThresholdReached) {
-        MEDIA_INFO_LOG("RemoveCloudLcd: aging threshold not reached");
-        return E_OK;
-    }
-    std::vector<PhotosPo> lcdAgingPoList;
-    ret = this->lcdAgingDao_.QueryAgingLcdDataByFileIds(fileIds, lcdAgingPoList);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "RemoveCloudLcd: Failed to query aging LCD data");
-
-    if (lcdAgingPoList.empty()) {
-        MEDIA_INFO_LOG("RemoveCloudLcd: no Remove Cloud LCD data found");
-        return E_OK;
-    }
-    int64_t agingSuccessSize = 0;
-    ret = LcdAgingManager::GetInstance().DoBatchAgingLcdFile(lcdAgingPoList, agingSuccessSize);
-    LcdAgingManager::GetInstance().ClearNotAgingFileIds();
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "RemoveCloudLcd: Failed to do batch aging LCD");
+    int32_t ret = LcdAgingManager::GetInstance().AnalysisRemoveCloudLcd(fileIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RemoveCloudLcd: Failed to do batch aging LCD");
     return E_OK;
 }
 } // namespace OHOS::Media::AnalysisData

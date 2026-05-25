@@ -129,6 +129,7 @@ group("test") {
       "unittest/cloud_media_retain_smart_data_test:unittest",
       "unittest/media_notification_register_manager_test:unittest",
       "unittest/media_clean_all_dirty_files_task_test:unittest",
+      "unittest/media_camera_cache_clean_task_test:unittest",
     ]
   }
 

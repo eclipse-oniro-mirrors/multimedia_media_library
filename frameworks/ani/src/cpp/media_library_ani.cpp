@@ -93,6 +93,9 @@
 #include "photo_album_ani.h"
 #include "change_request_move_assets_to_dir_vo.h"
 #include "change_request_move_assets_by_path_vo.h"
+#include "deep_optimize_space_ani_callback.h"
+#include "deep_optimize_space_vo.h"
+#include "media_library_error_code.h"
 
 namespace OHOS {
 namespace Media {
@@ -317,6 +320,10 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::MoveAssetsToDir)},
     ani_native_function {"moveAssetsByPathInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::MoveAssetsByPath)},
+    ani_native_function {"startDeepOptimizeSpaceInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessStartDeepOptimizeSpace)},
+    ani_native_function {"stopDeepOptimizeSpaceInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessStopDeepOptimizeSpace)},
 };
 } // namespace
 
@@ -7505,6 +7512,268 @@ ani_object MediaLibraryAni::MoveAssetsByPath(ani_env *env, ani_object object, an
     SetUserIdFromObjectInfo(asyncContext);
     MoveAssetsByPathExecute(env, asyncContext);
     return MoveAssetsByPathComplete(env, asyncContext);
+}
+
+static ani_status ParseArgsStartDeepOptimizeSpace(ani_env *env, ani_object object,
+    ani_fn_object callback, std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+
+    context->objectInfo = MediaLibraryAni::Unwrap(env, object);
+    CHECK_COND_RET(context->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
+
+    ani_boolean isUndefined = ANI_FALSE;
+    if (env->Reference_IsUndefined(static_cast<ani_ref>(callback), &isUndefined) != ANI_OK || isUndefined == ANI_TRUE) {
+        ANI_INFO_LOG("No callback provided for startDeepOptimizeSpace");
+        context->hasDeepOptimizeSpaceCallback = false;
+        return ANI_OK;
+    }
+
+    context->hasDeepOptimizeSpaceCallback = true;
+    ani_status status = DeepOptimizeSpaceAniCallbackHolder::Create(env, callback,
+        context->deepOptimizeSpaceCallbackHolder);
+    if (status != ANI_OK || context->deepOptimizeSpaceCallbackHolder == nullptr) {
+        ANI_ERR_LOG("Failed to create deep optimize space ani callback holder");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to create deep optimize space callback");
+        return ANI_ERROR;
+    }
+
+    ANI_INFO_LOG("Created deep optimize space ani callback holder");
+    return ANI_OK;
+}
+
+static void ReleaseStartDeepOptimizeSpaceAniCallback(MediaLibraryAsyncContext *context, uint64_t callbackRegistryId)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    if (callbackRegistryId == 0) {
+        ANI_INFO_LOG("No callback registry, skip release");
+        return;
+    }
+    DeepOptimizeSpaceAniCallbackRegistry::Unregister(callbackRegistryId);
+    CHECK_NULL_PTR_RETURN_VOID(context->deepOptimizeSpaceCallbackHolder.get(),
+        "Deep optimize space ani callback holder is null");
+    context->deepOptimizeSpaceCallbackHolder->Release();
+}
+
+static bool PrepareStartDeepOptimizeSpaceAniCallback(MediaLibraryAsyncContext *context,
+    StartDeepOptimizeSpaceReqBody &reqBody, uint64_t &callbackRegistryId)
+{
+    sptr<DeepOptimizeSpaceCallbackStub> clientStub = nullptr;
+
+    if (context->hasDeepOptimizeSpaceCallback) {
+        if (context->deepOptimizeSpaceCallbackHolder.get() == nullptr) {
+            ANI_ERR_LOG("Deep optimize space ani callback holder is null");
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+
+        clientStub = sptr<DeepOptimizeSpaceCallbackStub>(new (std::nothrow) DeepOptimizeSpaceAniCallbackStub(
+            context->deepOptimizeSpaceCallbackHolder));
+        if (clientStub == nullptr) {
+            ANI_ERR_LOG("Failed to create deep optimize space ani client stub");
+            context->deepOptimizeSpaceCallbackHolder->Release();
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+        reqBody.callbackRemote = clientStub->AsObject();
+        ANI_INFO_LOG("Created ani callback stub, hasCallback: true");
+    } else {
+        clientStub = sptr<DeepOptimizeSpaceCallbackStub>(new (std::nothrow) DeepOptimizeSpaceDummyAniCallbackStub());
+        if (clientStub == nullptr) {
+            ANI_ERR_LOG("Failed to create dummy ani client stub");
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+        reqBody.callbackRemote = nullptr;
+        ANI_INFO_LOG("Created dummy ani stub for death monitoring, hasCallback: false");
+    }
+
+    reqBody.clientRemote = clientStub->AsObject();
+    ANI_INFO_LOG("Prepared deep optimize space ani client remote, clientStubValid: %{public}d, "
+        "clientRemoteValid: %{public}d", clientStub != nullptr, reqBody.clientRemote != nullptr);
+
+    if (context->hasDeepOptimizeSpaceCallback) {
+        callbackRegistryId = DeepOptimizeSpaceAniCallbackRegistry::Register(
+            context->deepOptimizeSpaceCallbackHolder, clientStub, reqBody.callbackRemote);
+        if (callbackRegistryId == 0) {
+            ANI_ERR_LOG("Failed to register deep optimize space ani callback lifecycle record");
+            context->deepOptimizeSpaceCallbackHolder->Release();
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+    } else {
+        callbackRegistryId = 0;
+    }
+
+    return true;
+}
+
+static void StartDeepOptimizeSpaceExecute(MediaLibraryAsyncContext *context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StartDeepOptimizeSpaceExecute");
+
+    StartDeepOptimizeSpaceReqBody reqBody;
+    uint64_t callbackRegistryId = 0;
+    if (!PrepareStartDeepOptimizeSpaceAniCallback(context, reqBody, callbackRegistryId)) {
+        return;
+    }
+
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE), reqBody);
+    ANI_INFO_LOG("Deep optimize space IPC returned, ret: %{public}d, hasCallback: %{public}d",
+        ret, context->hasDeepOptimizeSpaceCallback);
+    if (ret != E_OK) {
+        ReleaseStartDeepOptimizeSpaceAniCallback(context, callbackRegistryId);
+        if (ret == E_ERR) {
+            context->error = JS_E_INNER_FAIL;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->retVal = E_OK;
+}
+
+static ani_object StartDeepOptimizeSpaceComplete(ani_env *env, MediaLibraryAsyncContext *context)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StartDeepOptimizeSpaceComplete");
+
+    ani_object result {};
+    if (context->error != ERR_DEFAULT) {
+        ANI_ERR_LOG("Start deep optimize space failed, error: %{public}d", context->error);
+        if (context->error == JS_E_OPR_TYPE_NOT_SUPPORT) {
+            AniError::ThrowError(env, context->error, "Unsupported operation type, Possible causes: "
+                "1. Restarted repeatedly; 2. system is busy. Please try again later");
+        } else if (context->error == JS_E_INNER_FAIL) {
+            AniError::ThrowError(env, context->error,
+                "Internal system error. It is recommended to retry and check the logs. Possible causes: "
+                "1. Database corrupted; 2. The file system is abnormal; 3. The IPC request timed out");
+        } else {
+            ani_object errorObj {};
+            context->HandleError(env, errorObj);
+        }
+        return nullptr;
+    }
+
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetUndefinedObject(env, result) == ANI_OK,
+        nullptr, "Failed to create undefined result");
+
+    tracer.Finish();
+    return result;
+}
+
+ani_object MediaLibraryAni::PhotoAccessStartDeepOptimizeSpace(ani_env *env, ani_object object,
+    ani_fn_object callback)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessStartDeepOptimizeSpace");
+
+    std::unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsStartDeepOptimizeSpace(env, object, callback, asyncContext) == ANI_OK,
+        nullptr, "Failed to parse args for startDeepOptimizeSpace");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    StartDeepOptimizeSpaceExecute(asyncContext.get());
+    tracer.Finish();
+    return StartDeepOptimizeSpaceComplete(env, asyncContext.get());
+}
+
+static ani_status ParseArgsStopDeepOptimizeSpace(ani_env *env, ani_object object,
+    std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+
+    context->objectInfo = MediaLibraryAni::Unwrap(env, object);
+    CHECK_COND_RET(context->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
+    return ANI_OK;
+}
+
+static void StopDeepOptimizeSpaceExecute(MediaLibraryAsyncContext *context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StopDeepOptimizeSpaceExecute");
+
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE));
+    ANI_INFO_LOG("Stop deep optimize space IPC returned, ret: %{public}d", ret);
+    if (ret != E_OK) {
+        if (ret == E_ERR) {
+            context->error = JS_E_INNER_FAIL;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->retVal = E_OK;
+}
+
+static ani_object StopDeepOptimizeSpaceComplete(ani_env *env, MediaLibraryAsyncContext *context)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StopDeepOptimizeSpaceComplete");
+
+    ani_object result {};
+    if (context->error != ERR_DEFAULT) {
+        ANI_ERR_LOG("Stop deep optimize space failed, error: %{public}d", context->error);
+        if (context->error == JS_E_INNER_FAIL) {
+            AniError::ThrowError(env, context->error,
+                "Internal system error. It is recommended to retry and check the logs. Possible causes: "
+                "1. Database corrupted; 2. The file system is abnormal; 3. The IPC request timed out");
+        } else {
+            ani_object errorObj {};
+            context->HandleError(env, errorObj);
+        }
+        return nullptr;
+    }
+
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetUndefinedObject(env, result) == ANI_OK,
+        nullptr, "Failed to create undefined result");
+
+    tracer.Finish();
+    return result;
+}
+
+ani_object MediaLibraryAni::PhotoAccessStopDeepOptimizeSpace(ani_env *env, ani_object object)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessStopDeepOptimizeSpace");
+
+    std::unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsStopDeepOptimizeSpace(env, object, asyncContext) == ANI_OK,
+        nullptr, "Failed to parse args for stopDeepOptimizeSpace");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    StopDeepOptimizeSpaceExecute(asyncContext.get());
+    tracer.Finish();
+    return StopDeepOptimizeSpaceComplete(env, asyncContext.get());
 }
 } // namespace Media
 } // namespace OHOS

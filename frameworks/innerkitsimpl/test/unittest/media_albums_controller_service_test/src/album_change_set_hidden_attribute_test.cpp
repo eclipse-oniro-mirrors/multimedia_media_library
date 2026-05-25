@@ -259,7 +259,7 @@ HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_FileManagerAlbum_
     
     int32_t ret = SetAlbumHiddenAttribute(g_fileManagerAlbumId, true, true,
         static_cast<int32_t>(PhotoAlbumType::SOURCE),
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER));
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
     EXPECT_EQ(ret, E_OK);
     
     EXPECT_TRUE(CheckAlbumHiddenStatus(g_fileManagerAlbumId, true));

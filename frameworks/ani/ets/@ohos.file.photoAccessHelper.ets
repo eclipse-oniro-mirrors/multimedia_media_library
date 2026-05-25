@@ -380,6 +380,19 @@ export namespace photoAccessHelper {
     CLOUD_ENHANCEMENT = 1
   }
 
+  export enum DeepOptimizeState {
+    RUNNING = 0,
+    COMPLETED = 1,
+    FAILED = 2,
+    STOPPED = 3,
+    INTERRUPTED = 4
+  }
+
+  export interface DeepOptimizeSpaceProgressInfo {
+    state: DeepOptimizeState;
+    progress: number;
+  }
+
   interface PhotoAssetChangeInfo {
     uri: string;
     mediaType: PhotoType;
@@ -2119,6 +2132,7 @@ export namespace photoAccessHelper {
     IMAGE = 1031,
     CLOUD_ENHANCEMENT = 1032,
     SOURCE_GENERIC = 2049,
+    SOURCE_GENERIC_FROM_FILE_MANAGER = 2050,
     CLASSIFY = 4097,
     GEOGRAPHY_LOCATION = 4099,
     GEOGRAPHY_CITY,
@@ -2694,6 +2708,8 @@ export namespace photoAccessHelper {
     getAssetCompatibleUris(bundleName: string, assets: Array<PhotoAsset>, compatibleFlags?: int): Promise<string[]>;
     moveAssetsToDir(assets: string[], target: string, option?: BatchOperationOptions): Promise<string[]>;
     moveAssetsByPath(assets: string[], target: Album, options?: BatchOperationOptions): Promise<string[]>;
+    startDeepOptimizeSpace(callback?: Callback<DeepOptimizeSpaceProgressInfo>): Promise<void>;
+    stopDeepOptimizeSpace(): Promise<void>;
   }
 
   interface AppInfo {
@@ -4212,6 +4228,48 @@ export namespace photoAccessHelper {
         });
       });
     }
+
+    startDeepOptimizeSpace(callback?: Callback<DeepOptimizeSpaceProgressInfo>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.startDeepOptimizeSpaceInner(callback);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
+    stopDeepOptimizeSpace(): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.stopDeepOptimizeSpaceInner();
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
   
     native startThumbnailCreationTask(predicate: dataSharePredicates.DataSharePredicates,
       callback: AsyncCallback<void>): int;
@@ -4289,6 +4347,8 @@ export namespace photoAccessHelper {
     native convertToAssetInner(path: string): PhotoAsset;
     native moveAssetsToDirInner(assets: string[], targetDir: string, options?: BatchOperationOptions): string[];
     native moveAssetsByPathInner(assets: string[], target: Album, option?: BatchOperationOptions): string[];
+    native startDeepOptimizeSpaceInner(callback?: Callback<DeepOptimizeSpaceProgressInfo>): void;
+    native stopDeepOptimizeSpaceInner(): void;
   }
 
   export interface AssetCompatibleCapability {

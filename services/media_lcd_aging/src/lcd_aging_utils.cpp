@@ -26,69 +26,23 @@
 #include "userfile_manager_types.h"
 
 namespace OHOS::Media {
-constexpr double LCD_SCALE_FACTOR = 0.8;
-constexpr int64_t GB_SIZE = 1000 * 1000 * 1000;
-constexpr int64_t TEN_THOUSAND = 10000;
-constexpr int64_t TWENTY_THOUSAND = 20000;
+constexpr double SCALE_FACTOR = 0.8;
+constexpr int64_t MAX_LCD_NUMBER = 50000;
+constexpr int64_t SCALE_LCD_NUMBER = static_cast<int64_t>(MAX_LCD_NUMBER * SCALE_FACTOR);
+
 const std::string DENTRY_INFO_LCD_EX = "THM_EX/LCD";
 const std::string DENTRY_INFO_LCD = "LCD";
 const std::string FILE_NAME_LCD = "LCD.jpg";
 const int64_t THUMB_DENTRY_SIZE = 2 * 1024 * 1024;
 
-int64_t LcdAgingUtils::maxLcdNumber_ = -1;
-int64_t LcdAgingUtils::scaleLcdNumber_ = -1;
-
-// key = storage size, value = max lcd number
-// storage size <= 128GB, max lcd number = 2 * 10000
-// storage size >= 256GB, max lcd number = 5 * 10000
-// storage size >= 512GB, max lcd number = 8 * 10000
-// storage size >= 1024GB, max lcd number = 15 * 10000
-const std::map<int64_t, int64_t> LcdMaxNumberMap = {
-    { 256 * GB_SIZE, 5 * TEN_THOUSAND },
-    { 512 * GB_SIZE, 8 * TEN_THOUSAND },
-    { 1024 * GB_SIZE, 15 * TEN_THOUSAND },
-};
-
-int32_t LcdAgingUtils::GetMaxThresholdOfLcd(int64_t &lcdNumber)
+int64_t LcdAgingUtils::GetMaxThresholdOfLcd()
 {
-    if (maxLcdNumber_ > 0) {
-        lcdNumber = maxLcdNumber_;
-        return E_OK;
-    }
-
-    int64_t diskSize = MediaFileUtils::GetTotalSize();
-    CHECK_AND_EXECUTE(diskSize > 0, diskSize = MediaFileUtils::GetTotalSize());
-    CHECK_AND_RETURN_RET_LOG(diskSize > 0, E_ERR, "Failed to GetTotalSize, diskSize:%{public}" PRId64, diskSize);
-
-    if (diskSize < LcdMaxNumberMap.begin()->first) {
-        maxLcdNumber_ = TWENTY_THOUSAND;
-        lcdNumber = maxLcdNumber_;
-        return E_OK;
-    }
-
-    for (auto it = LcdMaxNumberMap.rbegin(); it != LcdMaxNumberMap.rend(); it++) {
-        CHECK_AND_CONTINUE(diskSize >= it->first);
-        maxLcdNumber_ = it->second;
-        break;
-    }
-    lcdNumber = maxLcdNumber_;
-    return E_OK;
+    return MAX_LCD_NUMBER;
 }
 
-int32_t LcdAgingUtils::GetScaleThresholdOfLcd(int64_t &lcdNumber)
+int64_t LcdAgingUtils::GetScaleThresholdOfLcd()
 {
-    if (scaleLcdNumber_ > 0) {
-        lcdNumber = scaleLcdNumber_;
-        return E_OK;
-    }
-
-    int64_t maxLcdNumber = -1;
-    int32_t ret = GetMaxThresholdOfLcd(maxLcdNumber);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetMaxThresholdOfLcd");
-
-    scaleLcdNumber_ = static_cast<int64_t>(maxLcdNumber * LCD_SCALE_FACTOR);
-    lcdNumber = scaleLcdNumber_;
-    return E_OK;
+    return SCALE_LCD_NUMBER;
 }
 
 std::vector<DentryFileInfo> LcdAgingUtils::ConvertAgingFileToDentryFile(

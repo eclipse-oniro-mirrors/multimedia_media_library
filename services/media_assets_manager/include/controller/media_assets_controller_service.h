@@ -163,6 +163,9 @@ public:
     EXPORT int32_t MoveAssetsToDir(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t MoveAssetsByPath(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CreateFileManagerAsset(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t StartDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t StopDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CloneIsActiveLcdAging(MessageParcel &data, MessageParcel &reply);
     
 public:
     virtual ~MediaAssetsControllerService() = default;

@@ -18,6 +18,7 @@
 #include "ani_class_name.h"
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_type_const.h"
+#include "deep_optimize_space_callback.h"
 
 namespace OHOS {
 namespace Media {
@@ -61,15 +62,16 @@ static const std::map<PhotoAlbumSubType, int32_t> ANI_PHOTOALBUMSUBTYPE_INDEX_MA
     {PhotoAlbumSubType::IMAGE, 7},
     {PhotoAlbumSubType::CLOUD_ENHANCEMENT, 8},
     {PhotoAlbumSubType::SOURCE_GENERIC, 9},
-    {PhotoAlbumSubType::CLASSIFY, 10},
-    {PhotoAlbumSubType::GEOGRAPHY_LOCATION, 11},
-    {PhotoAlbumSubType::GEOGRAPHY_CITY, 12},
-    {PhotoAlbumSubType::SHOOTING_MODE, 13},
-    {PhotoAlbumSubType::PORTRAIT, 14},
-    {PhotoAlbumSubType::GROUP_PHOTO, 15},
-    {PhotoAlbumSubType::HIGHLIGHT, 16},
-    {PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS, 17},
-    {PhotoAlbumSubType::ANY, 18},
+    {PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER, 10},
+    {PhotoAlbumSubType::CLASSIFY, 11},
+    {PhotoAlbumSubType::GEOGRAPHY_LOCATION, 12},
+    {PhotoAlbumSubType::GEOGRAPHY_CITY, 13},
+    {PhotoAlbumSubType::SHOOTING_MODE, 14},
+    {PhotoAlbumSubType::PORTRAIT, 15},
+    {PhotoAlbumSubType::GROUP_PHOTO, 16},
+    {PhotoAlbumSubType::HIGHLIGHT, 17},
+    {PhotoAlbumSubType::HIGHLIGHT_SUGGESTIONS, 18},
+    {PhotoAlbumSubType::ANY, 19},
 };
 
 static const std::map<NotifyType, int32_t> ANI_NOTIFYTYPE_INDEX_MAP = {
@@ -127,6 +129,14 @@ static const std::map<StrongAssociationType, int32_t> ANI_STRONGASSOCIATIONTYPE_
 static const std::map<ThumbnailVisibility, int32_t> ANI_THUMBNAILVISIBILITY_INDEX_MAP = {
     {ThumbnailVisibility::INVISIBLE, 0},
     {ThumbnailVisibility::VISIBLE, 1},
+};
+
+static const std::map<DeepOptimizeSpaceState, int32_t> ANI_DEEP_OPTIMIZE_STATE_INDEX_MAP = {
+    {DeepOptimizeSpaceState::RUNNING, 0},
+    {DeepOptimizeSpaceState::COMPLETED, 1},
+    {DeepOptimizeSpaceState::FAILED, 2},
+    {DeepOptimizeSpaceState::STOPPED, 3},
+    {DeepOptimizeSpaceState::INTERRUPTED, 4},
 };
 
 ani_status MediaLibraryEnumAni::EnumGetValueInt32(ani_env *env, ani_enum_item enumItem, int32_t &value)
@@ -353,6 +363,22 @@ ani_status MediaLibraryEnumAni::ToAniEnum(ani_env *env, StrongAssociationType va
 
     ani_enum aniEnum {};
     CHECK_STATUS_RET(env->FindEnum(PAH_ANI_CLASS_ENUM_STRONG_ASSOCIATION_TYPE.c_str(),
+        &aniEnum), "Find Enum Fail");
+    CHECK_STATUS_RET(env->Enum_GetEnumItemByIndex(aniEnum, enumIndex, &aniEnumItem), "Find Enum item Fail");
+    return ANI_OK;
+}
+
+ani_status MediaLibraryEnumAni::ToAniEnum(ani_env *env, DeepOptimizeSpaceState value, ani_enum_item &aniEnumItem)
+{
+    CHECK_COND_RET(env != nullptr, ANI_INVALID_ARGS, "Invalid env");
+
+    auto it = ANI_DEEP_OPTIMIZE_STATE_INDEX_MAP.find(value);
+    CHECK_COND_RET(it != ANI_DEEP_OPTIMIZE_STATE_INDEX_MAP.end(), ANI_INVALID_ARGS,
+        "Unsupport enum: %{public}d", static_cast<int32_t>(value));
+    ani_int enumIndex = static_cast<ani_int>(it->second);
+
+    ani_enum aniEnum {};
+    CHECK_STATUS_RET(env->FindEnum(PAH_ANI_CLASS_ENUM_DEEP_OPTIMIZE_STATE.c_str(),
         &aniEnum), "Find Enum Fail");
     CHECK_STATUS_RET(env->Enum_GetEnumItemByIndex(aniEnum, enumIndex, &aniEnumItem), "Find Enum item Fail");
     return ANI_OK;

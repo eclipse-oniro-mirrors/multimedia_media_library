@@ -87,9 +87,6 @@ static const std::string MEDIA_LIBRARY_RECOVERY_FLAG_KEY = "media_library_prefer
 const std::string PARAM_CLONE_SEARCH_STATUS = "persist.multimedia.media_analysis_service.clone_search_status";
 const std::string CLONE_SEARCH_INDEXING = "3";
 
-const std::string LCD_AGING_XML = "/data/storage/el2/base/preferences/lcd_aging.xml";
-const std::string LAST_LCD_AGING_END_TIME = "last_lcd_aging_end_time";
-
 static int32_t GetRestoreModeFromRestoreInfo(const string &restoreInfo)
 {
     int32_t restoreMode = RESTORE_MODE_PROC_ALL_DATA;
@@ -246,7 +243,6 @@ void BaseRestore::StartRestore(const std::string &backupRestoreDir, const std::s
     StopParameterForRestore();
     StopParameterForClone();
     SetMediaAnalysisClearDirtyDataParameter();
-    DelayLcdAgingTime();
 }
 
 int32_t BaseRestore::Init(void)
@@ -2539,18 +2535,6 @@ void BaseRestore::SetCloneParameterAndStopSync()
 #ifdef CLOUD_SYNC_MANAGER
     FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync("com.ohos.medialibrary.medialibrarydata");
 #endif
-}
-
-void BaseRestore::DelayLcdAgingTime()
-{
-    int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
-    CHECK_AND_RETURN_LOG(prefs, "Get preferences error: %{public}d", errCode);
-
-    int64_t currentTime = MediaFileUtils::UTCTimeSeconds();
-    prefs->PutLong(LAST_LCD_AGING_END_TIME, currentTime);
-    prefs->FlushSync();
 }
 
 void BaseRestore::NotifyDbStatusForClone()

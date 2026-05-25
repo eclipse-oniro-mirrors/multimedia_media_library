@@ -13,20 +13,22 @@
  * limitations under the License.
  */
 
-#ifndef LCD_AGING_TASK_PRIORITY_MANAGER_TEST_H
-#define LCD_AGING_TASK_PRIORITY_MANAGER_TEST_H
+#ifndef MEDIA_ANALYSIS_DATA_KITS_DEEP_OPTIMIZE_SPACE_VO_H
+#define MEDIA_ANALYSIS_DATA_KITS_DEEP_OPTIMIZE_SPACE_VO_H
 
-#include <gtest/gtest.h>
+#include "i_media_parcelable.h"
+#include "iremote_object.h"
 
-namespace OHOS {
-namespace Media {
-class LcdAgingTaskPriorityManagerTest : public testing::Test {
+namespace OHOS::Media {
+class StartDeepOptimizeSpaceReqBody : public IPC::IMediaParcelable {
 public:
-    static void SetUpTestCase(void);
-    static void TearDownTestCase(void);
-    void SetUp();
-    void TearDown();
+    sptr<IRemoteObject> clientRemote;
+    sptr<IRemoteObject> callbackRemote;
+
+    bool Unmarshalling(MessageParcel &parcel) override;
+    bool Marshalling(MessageParcel &parcel) const override;
+    std::string ToString() const;
 };
-} // namespace Media
-} // namespace OHOS
-#endif // LCD_AGING_TASK_PRIORITY_MANAGER_TEST_H
+} // namespace OHOS::Media
+
+#endif // MEDIA_ANALYSIS_DATA_KITS_DEEP_OPTIMIZE_SPACE_VO_H

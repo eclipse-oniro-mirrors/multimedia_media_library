@@ -15,13 +15,17 @@
 
 #include "media_library_lcd_aging_test.h"
 
+#include <fstream>
+
 #include "lcd_aging_manager.h"
 #include "lcd_aging_utils.h"
 #include "lcd_aging_worker.h"
+#include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "exif_rotate_utils.h"
 #include "userfile_manager_types.h"
+#include "parameters.h"
 
 #include "ithumbnail_helper.h"
 #include "media_file_utils.h"
@@ -31,6 +35,8 @@
 #include "medialibrary_unittest_utils.h"
 #include "thumbnail_source_loading.h"
 #include "values_bucket.h"
+#include "vision_db_sqls.h"
+#include "story_db_sqls.h"
 
 using namespace std;
 using namespace OHOS;
@@ -45,6 +51,14 @@ const int64_t DATE_TAKEN_TEST_VALUE = 1756111539577;
 const string TEST_IMAGE_PATH = "/storage/cloud/files/Photo/1/CreateImageThumbnailTest_001.jpg";
 const int64_t THUMB_DENTRY_SIZE = 2 * 1024 * 1024;
 const std::string FILE_NAME_LCD = "LCD.jpg";
+const int64_t THIRTY_DAYS_MS = 30LL * 24 * 60 * 60 * 1000;
+constexpr int32_t E_AGING_STOP = 2;
+constexpr int32_t E_AGING_INTERRUPT = 3;
+const std::string TEST_MEDIA_BACKUP_FLAG = "multimedia.medialibrary.backupFlag";
+const std::string TEST_MEDIA_RESTORE_FLAG = "multimedia.medialibrary.restoreFlag";
+const std::string TEST_CLOUDSYNC_SWITCH_STATUS_KEY = "persist.kernel.cloudsync.switch_status";
+const std::string TEST_CLONE_STATE = "persist.dataclone.state";
+const std::string TEST_CLONE_FLAG = "multimedia.medialibrary.cloneFlag";
 
 class TddRdbOpenCallback : public NativeRdb::RdbOpenCallback {
 public:
@@ -56,6 +70,19 @@ public:
     {
         return E_OK;
     }
+};
+
+struct PhotoTestData {
+    int64_t dateTaken = DATE_TAKEN_TEST_VALUE - THIRTY_DAYS_MS;
+    int32_t position = 2;
+    int32_t syncStatus = 0;
+    int32_t cleanFlag = 0;
+    int64_t timePending = 0;
+    int32_t isTemp = 0;
+    int32_t isFavorite = 0;
+    int32_t thumbStatus = 0;
+    int64_t dateTrashed = 0;
+    int64_t realLcdVisitTime = DATE_TAKEN_TEST_VALUE - THIRTY_DAYS_MS;
 };
 
 static void InitRdbStore()
@@ -71,6 +98,21 @@ static void InitRdbStore()
 
     ret = g_rdbStore->ExecuteSql(PhotoUpgrade::CREATE_PHOTO_TABLE);
     ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = g_rdbStore->ExecuteSql(PhotoExtUpgrade::CREATE_PHOTO_EXT_TABLE);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = g_rdbStore->ExecuteSql(CREATE_ANALYSIS_ALBUM);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = g_rdbStore->ExecuteSql(CREATE_ANALYSIS_ALBUM_MAP);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = g_rdbStore->ExecuteSql(CREATE_HIGHLIGHT_ALBUM_TABLE);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = g_rdbStore->ExecuteSql(CREATE_HIGHLIGHT_COVER_INFO_TABLE);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
 
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, 0);
@@ -84,7 +126,89 @@ static void DeleteRdbStore()
     string dropSql = "DROP TABLE IF EXISTS " + PhotoColumn::PHOTOS_TABLE + ";";
     int32_t ret = g_rdbStore->ExecuteSql(dropSql);
     MEDIA_INFO_LOG("Drop photos table ret: %{public}d", ret == NativeRdb::E_OK);
+    
+    dropSql = "DROP TABLE IF EXISTS " + PhotoExtColumn::PHOTOS_EXT_TABLE + ";";
+    ret = g_rdbStore->ExecuteSql(dropSql);
+    MEDIA_INFO_LOG("Drop photos_ext table ret: %{public}d", ret == NativeRdb::E_OK);
+    
+    dropSql = "DROP TABLE IF EXISTS AnalysisAlbum;";
+    ret = g_rdbStore->ExecuteSql(dropSql);
+    MEDIA_INFO_LOG("Drop AnalysisAlbum table ret: %{public}d", ret == NativeRdb::E_OK);
+    
+    dropSql = "DROP TABLE IF EXISTS AnalysisPhotoMap;";
+    ret = g_rdbStore->ExecuteSql(dropSql);
+    MEDIA_INFO_LOG("Drop AnalysisPhotoMap table ret: %{public}d", ret == NativeRdb::E_OK);
+    
+    dropSql = "DROP TABLE IF EXISTS tab_highlight_album;";
+    ret = g_rdbStore->ExecuteSql(dropSql);
+    MEDIA_INFO_LOG("Drop tab_highlight_album table ret: %{public}d", ret == NativeRdb::E_OK);
+    
+    dropSql = "DROP TABLE IF EXISTS tab_highlight_cover_info;";
+    ret = g_rdbStore->ExecuteSql(dropSql);
+    MEDIA_INFO_LOG("Drop tab_highlight_cover_info table ret: %{public}d", ret == NativeRdb::E_OK);
+    
     MediaLibraryUnitTestUtils::StopUnistore();
+}
+
+static int32_t InsertPhotoData(int64_t &testId, const PhotoTestData &data)
+{
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, 0);
+    values.PutLong(MediaColumn::MEDIA_DATE_TAKEN, data.dateTaken);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, data.position);
+    values.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, data.syncStatus);
+    values.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, data.cleanFlag);
+    values.PutLong(MediaColumn::MEDIA_TIME_PENDING, data.timePending);
+    values.PutInt(PhotoColumn::PHOTO_IS_TEMP, data.isTemp);
+    values.PutInt(MediaColumn::MEDIA_IS_FAV, data.isFavorite);
+    values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, data.thumbStatus);
+    values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, data.dateTrashed);
+    values.PutLong(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, data.realLcdVisitTime);
+    return g_rdbStore->Insert(testId, PhotoColumn::PHOTOS_TABLE, values);
+}
+
+static int32_t InsertTrashedPhotoData(int64_t &testId)
+{
+    PhotoTestData data;
+    data.dateTrashed = DATE_TAKEN_TEST_VALUE;
+    return InsertPhotoData(testId, data);
+}
+
+static int32_t InsertNotTrashedPhotoData(int64_t &testId)
+{
+    PhotoTestData data;
+    return InsertPhotoData(testId, data);
+}
+
+static int32_t InsertMultiplePhotoData(vector<int64_t> &testIds, int32_t count, bool isTrashed = false)
+{
+    for (int32_t i = 0; i < count; i++) {
+        PhotoTestData data;
+        data.dateTaken = DATE_TAKEN_TEST_VALUE - THIRTY_DAYS_MS + i;
+        if (isTrashed) {
+            data.dateTrashed = DATE_TAKEN_TEST_VALUE;
+        }
+        int64_t testId;
+        int32_t ret = InsertPhotoData(testId, data);
+        if (ret != NativeRdb::E_OK) {
+            return ret;
+        }
+        testIds.push_back(testId);
+    }
+    return NativeRdb::E_OK;
+}
+
+static void DeletePhotoDataById(int64_t testId)
+{
+    string deleteSql = "DELETE FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE file_id = " + to_string(testId);
+    g_rdbStore->ExecuteSql(deleteSql);
+}
+
+static void DeleteMultiplePhotoData(const vector<int64_t> &testIds)
+{
+    for (auto testId : testIds) {
+        DeletePhotoDataById(testId);
+    }
 }
 
 void MediaLibraryLcdAgingTest::SetUpTestCase(void)
@@ -99,73 +223,9 @@ void MediaLibraryLcdAgingTest::TearDownTestCase(void)
 
 void MediaLibraryLcdAgingTest::SetUp()
 {
-    LcdAgingUtils::maxLcdNumber_ = -1;
-    LcdAgingUtils::scaleLcdNumber_ = -1;
 }
 
 void MediaLibraryLcdAgingTest::TearDown(void) {}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_GetMaxThresholdOfLcd_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_GetMaxThresholdOfLcd_test_001: test get max threshold");
-    ThumbRdbOpt opts;
-    ThumbnailData data;
-    opts.store = g_rdbStore;
-    opts.table = PhotoColumn::PHOTOS_TABLE;
-    data.id = std::to_string(g_id);
-    data.path = TEST_IMAGE_PATH;
-    data.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
-    bool result = IThumbnailHelper::DoCreateLcdAndThumbnail(opts, data);
-    EXPECT_EQ(result, true);
-
-    int64_t lcdNumber = 0;
-    int32_t ret = LcdAgingUtils().GetMaxThresholdOfLcd(lcdNumber);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_GE(lcdNumber, 20000);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_GetMaxThresholdOfLcd_Cached_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_GetMaxThresholdOfLcd_Cached_test_002: test return cached maxLcdNumber");
-    LcdAgingUtils::maxLcdNumber_ = 50000;
-    
-    int64_t lcdNumber = 0;
-    int32_t ret = LcdAgingUtils().GetMaxThresholdOfLcd(lcdNumber);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(lcdNumber, 50000);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_GetScaleThresholdOfLcd_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_GetScaleThresholdOfLcd_test_001: test get scale threshold of lcd");
-    int64_t lcdNumber = 0;
-    int32_t ret = LcdAgingUtils().GetScaleThresholdOfLcd(lcdNumber);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_GE(lcdNumber, 15999);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_GetScaleThresholdOfLcd_Cached_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_GetScaleThresholdOfLcd_Cached_test_002: test return cached scaleLcdNumber");
-    LcdAgingUtils::scaleLcdNumber_ = 40000;
-    
-    int64_t lcdNumber = 0;
-    int32_t ret = LcdAgingUtils().GetScaleThresholdOfLcd(lcdNumber);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(lcdNumber, 40000);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_GetScaleThresholdOfLcd_Calculate_test_003, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_GetScaleThresholdOfLcd_Calculate_test_003: test scale threshold calculation");
-    LcdAgingUtils::maxLcdNumber_ = 50000;
-    LcdAgingUtils::scaleLcdNumber_ = -1;
-    
-    int64_t lcdNumber = 0;
-    int32_t ret = LcdAgingUtils().GetScaleThresholdOfLcd(lcdNumber);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(lcdNumber, static_cast<int64_t>(50000 * 0.8));
-}
 
 HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_ConvertAgingFileToDentryFile_Single_test_002, TestSize.Level1)
 {
@@ -184,7 +244,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_ConvertAgingFileToDentryFile_Single
     
     vector<LcdAgingFileInfo> agingFileInfos = {agingFileInfo};
     
-    auto dentryFileInfos = LcdAgingUtils().ConvertAgingFileToDentryFile(agingFileInfos);
+    auto dentryFileInfos = LcdAgingUtils::ConvertAgingFileToDentryFile(agingFileInfos);
     EXPECT_EQ(dentryFileInfos.size(), 1);
     EXPECT_EQ(dentryFileInfos[0].cloudId, "test_cloud_id_001");
     EXPECT_EQ(dentryFileInfos[0].path, "/storage/cloud/files/Photo/test.jpg");
@@ -212,7 +272,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_ConvertAgingFileToDentryFile_ExThum
     
     vector<LcdAgingFileInfo> agingFileInfos = {agingFileInfo};
     
-    auto dentryFileInfos = LcdAgingUtils().ConvertAgingFileToDentryFile(agingFileInfos);
+    auto dentryFileInfos = LcdAgingUtils::ConvertAgingFileToDentryFile(agingFileInfos);
     EXPECT_EQ(dentryFileInfos.size(), 1);
     EXPECT_EQ(dentryFileInfos[0].cloudId, "test_cloud_id_002");
     EXPECT_EQ(dentryFileInfos[0].path, "/storage/cloud/files/Photo/test2.jpg");
@@ -230,7 +290,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_HasExThumbnail_ImageWithOrientation
     agingFileInfo.orientation = 90;
     agingFileInfo.exifRotate = static_cast<int32_t>(ExifRotateType::TOP_LEFT);
     
-    bool result = LcdAgingUtils().HasExThumbnail(agingFileInfo);
+    bool result = LcdAgingUtils::HasExThumbnail(agingFileInfo);
     EXPECT_TRUE(result);
 }
 
@@ -242,7 +302,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_HasExThumbnail_ImageWithExifRotate_
     agingFileInfo.orientation = 0;
     agingFileInfo.exifRotate = static_cast<int32_t>(ExifRotateType::RIGHT_TOP);
     
-    bool result = LcdAgingUtils().HasExThumbnail(agingFileInfo);
+    bool result = LcdAgingUtils::HasExThumbnail(agingFileInfo);
     EXPECT_TRUE(result);
 }
 
@@ -254,7 +314,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_HasExThumbnail_ImageNoRotate_test_0
     agingFileInfo.orientation = 0;
     agingFileInfo.exifRotate = static_cast<int32_t>(ExifRotateType::TOP_LEFT);
     
-    bool result = LcdAgingUtils().HasExThumbnail(agingFileInfo);
+    bool result = LcdAgingUtils::HasExThumbnail(agingFileInfo);
     EXPECT_FALSE(result);
 }
 
@@ -266,7 +326,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_HasExThumbnail_Video_test_004, Test
     agingFileInfo.orientation = 90;
     agingFileInfo.exifRotate = static_cast<int32_t>(ExifRotateType::RIGHT_TOP);
     
-    bool result = LcdAgingUtils().HasExThumbnail(agingFileInfo);
+    bool result = LcdAgingUtils::HasExThumbnail(agingFileInfo);
     EXPECT_FALSE(result);
 }
 
@@ -290,7 +350,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_ConvertAgingFileToDentryFile_AllFie
     
     vector<LcdAgingFileInfo> agingFileInfos = {agingFileInfo};
     
-    auto dentryFileInfos = LcdAgingUtils().ConvertAgingFileToDentryFile(agingFileInfos);
+    auto dentryFileInfos = LcdAgingUtils::ConvertAgingFileToDentryFile(agingFileInfos);
     EXPECT_EQ(dentryFileInfos.size(), 1);
     EXPECT_EQ(dentryFileInfos[0].cloudId, "test_cloud_id_full");
     EXPECT_EQ(dentryFileInfos[0].path, "/storage/cloud/files/Photo/full_test.jpg");
@@ -298,17 +358,6 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_ConvertAgingFileToDentryFile_AllFie
     EXPECT_EQ(dentryFileInfos[0].modifiedTime, 9999999999);
     EXPECT_EQ(dentryFileInfos[0].fileName, FILE_NAME_LCD);
     EXPECT_EQ(dentryFileInfos[0].fileType, "THM_EX/LCD");
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_ClearNotAgingFileIds_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_manager_ClearNotAgingFileIds_test_001: test clear not aging file ids");
-    auto& manager = LcdAgingManager::GetInstance();
-    manager.notAgingFileIds_.push_back("1");
-    manager.notAgingFileIds_.push_back("2");
-    manager.notAgingFileIds_.push_back("3");
-    manager.ClearNotAgingFileIds();
-    EXPECT_TRUE(manager.notAgingFileIds_.empty());
 }
 
 HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_GetFileIdFromAgingFiles_Single_test_002, TestSize.Level1)
@@ -323,6 +372,197 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_GetFileIdFromAgingFiles_Sin
     
     EXPECT_EQ(fileIds.size(), 1);
     EXPECT_EQ(fileIds[0], "100");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFileIdFromAgingFiles_EmptyInput_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFileIdFromAgingFiles_EmptyInput_test_001: test with empty input returns empty vector");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    auto fileIds = manager.GetFileIdFromAgingFiles(agingFileInfos);
+    
+    EXPECT_EQ(fileIds.size(), 0);
+    EXPECT_TRUE(fileIds.empty());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFileIdFromAgingFiles_MultipleFiles_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFileIdFromAgingFiles_MultipleFiles_test_003: test with multiple LcdAgingFileInfo");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    for (int i = 0; i < 5; i++) {
+        LcdAgingFileInfo info;
+        info.fileId = 100 + i;
+        agingFileInfos.push_back(info);
+    }
+    
+    auto fileIds = manager.GetFileIdFromAgingFiles(agingFileInfos);
+    
+    EXPECT_EQ(fileIds.size(), 5);
+    EXPECT_EQ(fileIds[0], "100");
+    EXPECT_EQ(fileIds[1], "101");
+    EXPECT_EQ(fileIds[2], "102");
+    EXPECT_EQ(fileIds[3], "103");
+    EXPECT_EQ(fileIds[4], "104");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_EmptyInput_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_EmptyInput_test_001: test with empty agingFileInfos returns empty vector");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    vector<string> failCloudIds = {"cloud_id_1"};
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 0);
+    EXPECT_TRUE(failFileIds.empty());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_EmptyFailCloudIds_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_EmptyFailCloudIds_test_002: test with empty failCloudIds returns empty vector");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    LcdAgingFileInfo info;
+    info.fileId = 100;
+    info.cloudId = "cloud_id_1";
+    agingFileInfos.push_back(info);
+    
+    vector<string> failCloudIds;
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 0);
+    EXPECT_TRUE(failFileIds.empty());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_SingleMatch_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_SingleMatch_test_003: test with single matching cloudId");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    LcdAgingFileInfo info;
+    info.fileId = 100;
+    info.cloudId = "cloud_id_1";
+    agingFileInfos.push_back(info);
+    
+    vector<string> failCloudIds = {"cloud_id_1"};
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 1);
+    EXPECT_EQ(failFileIds[0], "100");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_NoMatch_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_NoMatch_test_004: test with no matching cloudId");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    LcdAgingFileInfo info;
+    info.fileId = 100;
+    info.cloudId = "cloud_id_1";
+    agingFileInfos.push_back(info);
+    
+    vector<string> failCloudIds = {"cloud_id_2", "cloud_id_3"};
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 0);
+    EXPECT_TRUE(failFileIds.empty());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_MultipleMatches_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_MultipleMatches_test_005: test with multiple matching cloudIds");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    for (int i = 0; i < 3; i++) {
+        LcdAgingFileInfo info;
+        info.fileId = 100 + i;
+        info.cloudId = "cloud_id_" + to_string(i);
+        agingFileInfos.push_back(info);
+    }
+    
+    vector<string> failCloudIds = {"cloud_id_0", "cloud_id_2"};
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 2);
+    EXPECT_EQ(failFileIds[0], "100");
+    EXPECT_EQ(failFileIds[1], "102");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_PartialMatch_test_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_PartialMatch_test_006: test with partial matching cloudIds");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    for (int i = 0; i < 5; i++) {
+        LcdAgingFileInfo info;
+        info.fileId = 100 + i;
+        info.cloudId = "cloud_id_" + to_string(i);
+        agingFileInfos.push_back(info);
+    }
+    
+    vector<string> failCloudIds = {"cloud_id_1", "cloud_id_3"};
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 2);
+    EXPECT_EQ(failFileIds[0], "101");
+    EXPECT_EQ(failFileIds[1], "103");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_AllMatch_test_007, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_AllMatch_test_007: test with all cloudIds matching");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    for (int i = 0; i < 3; i++) {
+        LcdAgingFileInfo info;
+        info.fileId = 100 + i;
+        info.cloudId = "cloud_id_" + to_string(i);
+        agingFileInfos.push_back(info);
+    }
+    
+    vector<string> failCloudIds = {"cloud_id_0", "cloud_id_1", "cloud_id_2"};
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 3);
+    EXPECT_EQ(failFileIds[0], "100");
+    EXPECT_EQ(failFileIds[1], "101");
+    EXPECT_EQ(failFileIds[2], "102");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetFailedFileIds_LargeCloudId_test_010, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetFailedFileIds_LargeCloudId_test_010: test with long cloudId string");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    vector<LcdAgingFileInfo> agingFileInfos;
+    LcdAgingFileInfo info;
+    info.fileId = 100;
+    info.cloudId = "test-cloud-id";
+    agingFileInfos.push_back(info);
+    
+    vector<string> failCloudIds = {"test-cloud-id"};
+    
+    auto failFileIds = manager.GetFailedFileIds(agingFileInfos, failCloudIds);
+    
+    EXPECT_EQ(failFileIds.size(), 1);
+    EXPECT_EQ(failFileIds[0], "100");
 }
 
 HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_DeleteLocalFile_EmptyPath_test_001, TestSize.Level1)
@@ -341,11 +581,50 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_DeleteLocalFile_NonExistent
     EXPECT_EQ(ret, E_ERR);
 }
 
+HWTEST_F(MediaLibraryLcdAgingTest, DeleteLocalFile_CreateAndDelete_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DeleteLocalFile_CreateAndDelete_test_003: test create file then delete successfully");
+    auto& manager = LcdAgingManager::GetInstance();
+    const string testFilePath = "/data/test/lcd_aging_test_file_003.jpg";
+    
+    ofstream outFile(testFilePath);
+    ASSERT_TRUE(outFile.is_open());
+    outFile << "test content for lcd aging";
+    outFile.close();
+    
+    ifstream inFile(testFilePath);
+    ASSERT_TRUE(inFile.is_open());
+    inFile.close();
+    
+    int32_t ret = manager.DeleteLocalFile(testFilePath);
+    EXPECT_EQ(ret, E_OK);
+    
+    ifstream checkFile(testFilePath);
+    EXPECT_FALSE(checkFile.is_open());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, DeleteLocalFile_DeleteAlreadyDeleted_test_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DeleteLocalFile_DeleteAlreadyDeleted_test_006: test delete same file twice");
+    auto& manager = LcdAgingManager::GetInstance();
+    const string testFilePath = "/data/test/lcd_aging_test_file_006.jpg";
+    
+    ofstream outFile(testFilePath);
+    ASSERT_TRUE(outFile.is_open());
+    outFile << "test content";
+    outFile.close();
+    
+    int32_t ret1 = manager.DeleteLocalFile(testFilePath);
+    EXPECT_EQ(ret1, E_OK);
+    
+    int32_t ret2 = manager.DeleteLocalFile(testFilePath);
+    EXPECT_EQ(ret2, E_ERR);
+}
+
 HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_FinishAgingTask_test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("lcd_aging_manager_FinishAgingTask_test_001: test finish aging task clears all state");
     auto& manager = LcdAgingManager::GetInstance();
-    manager.isInAgingPeriod_.store(true);
     manager.hasAgingLcdNumber_ = 1000;
     manager.notAgingFileIds_.push_back("1");
     manager.notAgingFileIds_.push_back("2");
@@ -353,136 +632,73 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_FinishAgingTask_test_001, T
     int32_t ret = manager.FinishAgingTask();
     
     EXPECT_EQ(ret, 1);
-    EXPECT_FALSE(manager.isInAgingPeriod_.load());
     EXPECT_EQ(manager.hasAgingLcdNumber_, 0);
     EXPECT_TRUE(manager.notAgingFileIds_.empty());
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_UpdateLastLcdAgingEndTime_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_DoBatchAgingLcdFile_EmptyInput_test_001, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("lcd_aging_manager_UpdateLastLcdAgingEndTime_test_001: test update last lcd aging end time");
+    MEDIA_INFO_LOG("lcd_aging_manager_DoBatchAgingLcdFile_EmptyInput_test_001: test with empty input returns E_ERR");
     auto& manager = LcdAgingManager::GetInstance();
-    int64_t newTime = 1234567890;
-    manager.UpdateLastLcdAgingEndTime(newTime);
+    std::vector<LcdAgingFileInfo> lcdAgingFileInfoList;
+    std::atomic<bool> shouldStop(false);
     
-    int64_t endTime = manager.GetLastLcdAgingEndTime();
-    EXPECT_EQ(endTime, newTime);
+    int32_t ret = manager.DoBatchAgingLcdFile(lcdAgingFileInfoList, shouldStop);
+    EXPECT_EQ(ret, E_ERR);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_DelayLcdAgingTime_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, DoBatchAgingLcdFile_SingleFileInfo_test_002, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("lcd_aging_manager_DelayLcdAgingTime_test_001: test delay lcd aging time");
+    MEDIA_INFO_LOG("DoBatchAgingLcdFile_SingleFileInfo_test_002: test with single LcdAgingFileInfo");
     auto& manager = LcdAgingManager::GetInstance();
-    int64_t oldTime = manager.GetLastLcdAgingEndTime();
-    
-    manager.DelayLcdAgingTime();
-    
-    int64_t newTime = manager.GetLastLcdAgingEndTime();
-    EXPECT_GE(newTime, oldTime);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_ReadyAgingLcd_AlreadyInPeriod_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_manager_ReadyAgingLcd_AlreadyInPeriod_test_001: test ready aging lcd when already");
-    auto& manager = LcdAgingManager::GetInstance();
-    manager.isInAgingPeriod_.store(true);
-    
-    int32_t ret = manager.ReadyAgingLcd();
-    EXPECT_EQ(ret, E_OK);
-    
-    manager.isInAgingPeriod_.store(false);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_BatchAgingLcdFileTask_StatusOff_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_manager_BatchAgingLcdFileTask_StatusOff_test_001: test batch aging lcd file task");
-    auto& manager = LcdAgingManager::GetInstance();
-    LcdAgingWorker::GetInstance().isThreadRunning_.store(false);
-    
-    int32_t ret = manager.BatchAgingLcdFileTask();
-    EXPECT_EQ(ret, 2);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_CheckLocalLcd_EmptyPath_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_manager_CheckLocalLcd_EmptyPath_test_001: test check local lcd with empty path");
-    auto& manager = LcdAgingManager::GetInstance();
-    LcdAgingFileInfo agingFileInfo;
-    agingFileInfo.localLcdPath = "";
-    agingFileInfo.hasExThumbnail = false;
-    
-    bool result = manager.CheckLocalLcd(agingFileInfo);
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_CheckLocalLcd_NonExistent_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_manager_CheckLocalLcd_NonExistent_test_002: test check local lcd with non-existent file");
-    auto& manager = LcdAgingManager::GetInstance();
-    LcdAgingFileInfo agingFileInfo;
-    agingFileInfo.localLcdPath = "/data/test/non_existent_lcd.jpg";
-    agingFileInfo.hasExThumbnail = false;
-    
-    bool result = manager.CheckLocalLcd(agingFileInfo);
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_GetLcdAgingFileInfo_EmptyInput_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_manager_GetLcdAgingFileInfo_EmptyInput_test_001: test get lcd aging file info ");
-    auto& manager = LcdAgingManager::GetInstance();
-    vector<PhotosPo> photos;
-    
-    auto agingFileInfos = manager.GetLcdAgingFileInfo(photos);
-    EXPECT_TRUE(agingFileInfos.empty());
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_DeleteLocalLcdFiles_WithFailCloudIds_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("lcd_aging_manager_DeleteLocalLcdFiles_WithFailCloudIds_test_002: test delete local lcd files");
-    auto& manager = LcdAgingManager::GetInstance();
-    vector<LcdAgingFileInfo> agingFileInfos;
+    std::atomic<bool> shouldStop(false);
     
     LcdAgingFileInfo info;
     info.fileId = 1;
-    info.cloudId = "failed_cloud_id";
-    info.localLcdPath = "/data/test/lcd.jpg";
-    info.localLcdExPath = "/data/test/lcd_ex.jpg";
-    info.hasExThumbnail = false;
-    agingFileInfos.push_back(info);
+    info.path = "/storage/cloud/files/Photo/test.jpg";
+    info.lcdFileSize = 102400;
+    std::vector<LcdAgingFileInfo> list = {info};
     
-    vector<string> failCloudIds = {"failed_cloud_id"};
-    vector<string> failFileIds;
+    manager.hasAgingLcdNumber_ = 0;
     
-    manager.DeleteLocalLcdFiles(agingFileInfos, failCloudIds, failFileIds);
-    
-    EXPECT_EQ(failFileIds.size(), 1);
-    EXPECT_EQ(failFileIds[0], "1");
+    int32_t ret = manager.DoBatchAgingLcdFile(list, shouldStop);
+    EXPECT_TRUE(ret == E_OK);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_RegenerateAstcWithLocal_NotNeeded_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, DoBatchAgingLcdFile_ShouldStop_test_003, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("lcd_aging_manager_RegenerateAstcWithLocal_NotNeeded_test_001: test regenerate astc not needed");
+    MEDIA_INFO_LOG("DoBatchAgingLcdFile_ShouldStop_test_003: test with shouldStop=true returns E_AGING_STOP");
     auto& manager = LcdAgingManager::GetInstance();
-    LcdAgingFileInfo agingFileInfo;
-    agingFileInfo.fileId = 1;
-    agingFileInfo.path = "/storage/cloud/files/Photo/test.jpg";
-    agingFileInfo.thumbnailReady = 0;
+    std::atomic<bool> shouldStop(true);
     
-    int32_t ret = manager.RegenerateAstcWithLocal(agingFileInfo);
-    EXPECT_EQ(ret, E_ERR);
+    LcdAgingFileInfo info;
+    info.fileId = 1;
+    info.path = "/storage/cloud/files/Photo/test.jpg";
+    std::vector<LcdAgingFileInfo> list = {info};
+    
+    int32_t ret = manager.DoBatchAgingLcdFile(list, shouldStop);
+    EXPECT_EQ(ret, E_AGING_STOP);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_DoBatchAgingLcdFile_EmptyInput_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, DoBatchAgingLcdFile_MultipleFileInfo_test_004, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("lcd_aging_manager_DoBatchAgingLcdFile_EmptyInput_test_001: test do batch aging lcd file");
+    MEDIA_INFO_LOG("DoBatchAgingLcdFile_MultipleFileInfo_test_004: test with multiple LcdAgingFileInfo");
     auto& manager = LcdAgingManager::GetInstance();
-    vector<PhotosPo> lcdAgingPoList;
-    int64_t agingSuccessSize = 0;
+    std::atomic<bool> shouldStop(false);
     
-    int32_t ret = manager.DoBatchAgingLcdFile(lcdAgingPoList, agingSuccessSize);
-    EXPECT_EQ(ret, E_ERR);
-    EXPECT_EQ(agingSuccessSize, 0);
+    std::vector<LcdAgingFileInfo> list;
+    for (int i = 0; i < 505; i++) {
+        LcdAgingFileInfo info;
+        info.fileId = i + 1;
+        info.path = "/storage/cloud/files/Photo/test" + to_string(i) + ".jpg";
+        info.lcdFileSize = 102400 * (i + 1);
+        list.push_back(info);
+    }
+    
+    manager.hasAgingLcdNumber_ = 0;
+    
+    int32_t ret = manager.DoBatchAgingLcdFile(list, shouldStop);
+    EXPECT_TRUE(ret == E_OK);
 }
 
 HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_StateReset_test_001, TestSize.Level1)
@@ -490,37 +706,769 @@ HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_manager_StateReset_test_001, TestSi
     MEDIA_INFO_LOG("lcd_aging_manager_StateReset_test_001: test reset manager state after operations");
     auto& manager = LcdAgingManager::GetInstance();
     
-    manager.isInAgingPeriod_.store(true);
     manager.hasAgingLcdNumber_ = 500;
     manager.notAgingFileIds_.push_back("100");
     manager.notAgingFileIds_.push_back("200");
     
     manager.FinishAgingTask();
     
-    EXPECT_FALSE(manager.isInAgingPeriod_.load());
     EXPECT_EQ(manager.hasAgingLcdNumber_, 0);
     EXPECT_TRUE(manager.notAgingFileIds_.empty());
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_worker_IsRunning_InitiallyFalse_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, BatchAgingLcdFileTask_InitAgingTask_ReturnNoData_test_001, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("lcd_aging_worker_IsRunning_InitiallyFalse_test_001: test is running returns false initially");
-    auto& worker = LcdAgingWorker::GetInstance();
-    worker.isThreadRunning_.store(false);
+    MEDIA_INFO_LOG("BatchAgingLcdFileTask_InitAgingTask_ReturnNoData_test_001: test returns E_NO_QUERY_DATA");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    manager.hasAgingLcdNumber_ = 100;
+    manager.totalAgingLcdNumber_ = 200;
+    manager.lastAgingProgress_ = 50;
+    manager.notAgingFileIds_.push_back("old_id");
     
-    bool running = worker.IsRunning();
-    EXPECT_FALSE(running);
+    int32_t ret = manager.BatchAgingLcdFileTask(shouldStop);
+    
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+    EXPECT_EQ(manager.hasAgingLcdNumber_, 0);
+    EXPECT_EQ(manager.totalAgingLcdNumber_, 0);
+    EXPECT_EQ(manager.lastAgingProgress_, 0);
+    EXPECT_TRUE(manager.notAgingFileIds_.empty());
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, lcd_aging_worker_HandleLcdAgingTask_StatusOff_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, InitAgingTask_GetNeedAgingLcdSize_ReturnNoData_test_001, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("lcd_aging_worker_HandleLcdAgingTask_StatusOff_test_001: test handle task when status is off");
+    MEDIA_INFO_LOG("InitAgingTask_GetNeedAgingLcdSize_ReturnNoData_test_001: test when returns E_NO_QUERY_DATA");
+    auto& manager = LcdAgingManager::GetInstance();
+    int64_t taskSize = -1;
+
+    manager.hasAgingLcdNumber_ = 100;
+    manager.totalAgingLcdNumber_ = 200;
+    manager.lastAgingProgress_ = 50;
+    manager.notAgingFileIds_.push_back("old_id");
+    
+    int32_t ret = manager.InitAgingTask(taskSize);
+    
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+    EXPECT_EQ(taskSize, -1);
+    EXPECT_EQ(manager.hasAgingLcdNumber_, 0);
+    EXPECT_EQ(manager.totalAgingLcdNumber_, 0);
+    EXPECT_EQ(manager.lastAgingProgress_, 0);
+    EXPECT_TRUE(manager.notAgingFileIds_.empty());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, InitAgingTask_WithDatabaseData_test_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("InitAgingTask_WithDatabaseData_test_006: test with preset database data, returns E_NO_QUERY_DATA");
+    auto& manager = LcdAgingManager::GetInstance();
+    int64_t taskSize = -1;
+
+    PhotoTestData data;
+    data.position = 1;
+    int64_t testId;
+    int32_t ret = InsertPhotoData(testId, data);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = manager.InitAgingTask(taskSize);
+    
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+    EXPECT_EQ(taskSize, -1);
+    
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetNeedAgingLcdSize_EmptyDatabase_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetNeedAgingLcdSize_EmptyDatabase_test_001: test with empty database, lcd count < 50000 threshold");
+    auto& manager = LcdAgingManager::GetInstance();
+    int64_t taskSize = -1;
+    
+    int32_t ret = manager.GetNeedAgingLcdSize(taskSize);
+    
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+    EXPECT_EQ(taskSize, -1);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, GetNeedAgingLcdSize_SingleRecord_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("GetNeedAgingLcdSize_SingleRecord_test_002: test with single record, lcd count < 50000");
+    auto& manager = LcdAgingManager::GetInstance();
+    int64_t taskSize = -1;
+
+    int64_t testId;
+    int32_t ret = InsertNotTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = manager.GetNeedAgingLcdSize(taskSize);
+    
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+    EXPECT_EQ(taskSize, -1);
+    
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ZeroTaskSize_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteAgingLoop_ZeroTaskSize_test_001: test with taskSize=0, not enter while loop, returns E_ERR");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int64_t taskSize = 0;
+
+    manager.totalAgingLcdNumber_ = 0;
+    manager.hasAgingLcdNumber_ = 0;
+
+    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+
+    EXPECT_EQ(ret, E_ERR);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_SmallTaskSize_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteAgingLoop_SmallTaskSize_test_003: test with small positive taskSize");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int64_t taskSize = 10;
+
+    manager.totalAgingLcdNumber_ = 10;
+    manager.hasAgingLcdNumber_ = 0;
+
+    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ShouldStopImmediate_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteAgingLoop_ShouldStopImmediate_test_004: test with shouldStop=true");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(true);
+    const int64_t taskSize = 100;
+
+    manager.totalAgingLcdNumber_ = 100;
+    manager.hasAgingLcdNumber_ = 0;
+
+    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+
+    EXPECT_TRUE(ret == E_AGING_STOP);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_NoTrashedData_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_NoTrashedData_test_001: test when hasTrashedData=true but no trashed data");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = true;
+
+    manager.notAgingFileIds_.clear();
+    manager.hasAgingLcdNumber_ = 0;
+
+    int32_t ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_HasTrashedDataFalse_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_HasTrashedDataFalse_test_002: test with hasTrashedData=false");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = false;
+
+    manager.notAgingFileIds_.clear();
+
+    int32_t ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_WithTrashedData_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_WithTrashedData_test_003: test with trashed data preset in db");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = true;
+
+    int64_t testId;
+    int32_t ret = InsertTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    manager.notAgingFileIds_.clear();
+    ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+    EXPECT_TRUE(hasTrashedData == false);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_WithNotTrashedData_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_WithNotTrashedData_test_004: test with not trashed data preset in db");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = false;
+
+    int64_t testId;
+    int32_t ret = InsertNotTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    manager.notAgingFileIds_.clear();
+    ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_BothTrashedAndNotTrashed_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_BothTrashedAndNotTrashed_test_005: test with both trashed and notTrashed data");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = true;
+    vector<int64_t> testIds;
+
+    int32_t ret = InsertMultiplePhotoData(testIds, 1, true);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    ret = InsertMultiplePhotoData(testIds, 1, false);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    manager.notAgingFileIds_.clear();
+    ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+
+    DeleteMultiplePhotoData(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_LocalPosition_test_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_LocalPosition_test_006: test with position=1(local), should not be queried");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = true;
+
+    PhotoTestData data;
+    data.position = 1;
+    int64_t testId;
+    int32_t ret = InsertPhotoData(testId, data);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    manager.notAgingFileIds_.clear();
+    ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_FavoriteData_test_007, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_FavoriteData_test_007: test with is_favorite=1, should be excluded");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = true;
+
+    PhotoTestData data;
+    data.isFavorite = 1;
+    int64_t testId;
+    int32_t ret = InsertPhotoData(testId, data);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    manager.notAgingFileIds_.clear();
+    ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_NotAgingFileIds_test_009, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_NotAgingFileIds_test_009: test with notAgingFileIds preset");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = true;
+
+    int64_t testId;
+    int32_t ret = InsertNotTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    manager.notAgingFileIds_.clear();
+    manager.notAgingFileIds_.push_back(to_string(testId));
+    ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_ShouldStop_test_010, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ExecuteSingleBatch_ShouldStop_test_010: test with shouldStop=true");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(true);
+    const int32_t batchSize = 10;
+    bool hasTrashedData = true;
+
+    int64_t testId;
+    int32_t ret = InsertTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    manager.notAgingFileIds_.clear();
+    manager.hasAgingLcdNumber_ = 0;
+
+    ret = manager.ExecuteSingleBatch(batchSize, hasTrashedData, shouldStop);
+
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, DoBatchAgingLcdFileInternal_EmptyInput_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DoBatchAgingLcdFileInternal_EmptyInput_test_001: test with empty input returns E_ERR");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::vector<LcdAgingFileInfo> lcdAgingFileInfoList;
+    int64_t agingSuccessSize = 0;
+    std::vector<std::string> failFileIds;
+    
+    int32_t ret = manager.DoBatchAgingLcdFileInternal(lcdAgingFileInfoList, agingSuccessSize, failFileIds);
+    EXPECT_EQ(ret, E_ERR);
+    EXPECT_EQ(agingSuccessSize, 0);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, DoBatchAgingLcdFileInternal_SingleValidRecord_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DoBatchAgingLcdFileInternal_SingleValidRecord_test_002: test with single valid database record");
+    auto& manager = LcdAgingManager::GetInstance();
+    int64_t agingSuccessSize = 0;
+
+    int64_t testId;
+    int32_t ret = InsertNotTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    LcdAgingFileInfo info;
+    info.fileId = testId;
+    info.path = "/storage/cloud/files/Photo/test.jpg";
+    info.lcdFileSize = 102400;
+    info.cloudId = "test-cloud-id";
+    std::vector<LcdAgingFileInfo> list = {info};
+    std::vector<std::string> failFileIds;
+
+    ret = manager.DoBatchAgingLcdFileInternal(list, agingSuccessSize, failFileIds);
+    EXPECT_EQ(ret, E_ERR);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, DoBatchAgingLcdFileInternal_WithOnceFlag_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("DoBatchAgingLcdFileInternal_WithOnceFlag_test_004: test with failFileIds output");
+    auto& manager = LcdAgingManager::GetInstance();
+    int64_t agingSuccessSize = 0;
+
+    int64_t testId;
+    int32_t ret = InsertNotTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    LcdAgingFileInfo info;
+    info.fileId = testId;
+    info.path = "/storage/cloud/files/Photo/test.jpg";
+    info.lcdFileSize = 102400;
+    std::vector<LcdAgingFileInfo> list = {info};
+    std::vector<std::string> failFileIds;
+
+    manager.notAgingFileIds_.clear();
+    ret = manager.DoBatchAgingLcdFileInternal(list, agingSuccessSize, failFileIds);
+    EXPECT_EQ(ret, E_ERR);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_IsRunning_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_IsRunning_test_002: test IsRunning returns isThreadRunning_ value");
+    auto& worker = LcdAgingWorker::GetInstance();
+    
+    worker.isThreadRunning_.store(false);
+    EXPECT_FALSE(worker.IsRunning());
+    
+    worker.isThreadRunning_.store(true);
+    EXPECT_TRUE(worker.IsRunning());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_StopDeepOptimizeSpace_NoTask_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_StopDeepOptimizeSpace_NoTask_test_003: test stop when no task running");
+    auto& worker = LcdAgingWorker::GetInstance();
+    
+    worker.isThreadRunning_.store(false);
+    worker.shouldStop_.store(false);
+    
+    int32_t ret = worker.StopDeepOptimizeSpace();
+    
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_StopDeepOptimizeSpace_TaskRunning_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_StopDeepOptimizeSpace_TaskRunning_test_004: test stop sets shouldStop when running");
+    auto& worker = LcdAgingWorker::GetInstance();
+    
+    worker.isThreadRunning_.store(true);
+    worker.shouldStop_.store(false);
+    
+    int32_t ret = worker.StopDeepOptimizeSpace();
+    
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(worker.shouldStop_.load());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_OnClientDied_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_OnClientDied_test_005: test OnClientDied clears callback and sets shouldStop");
+    auto& worker = LcdAgingWorker::GetInstance();
+    
+    worker.callbackProxy_ = nullptr;
+    worker.shouldStop_.store(false);
+    
+    worker.OnClientDied();
+    
+    EXPECT_EQ(worker.callbackProxy_, nullptr);
+    EXPECT_TRUE(worker.shouldStop_.load());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_StartDeepOptimizeSpace_NullClient_test_008, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_StartDeepOptimizeSpace_NullClient_test_008: test with null clientRemote");
+    auto& worker = LcdAgingWorker::GetInstance();
+    
+    int32_t ret = worker.StartDeepOptimizeSpace(nullptr, nullptr);
+    
+    EXPECT_EQ(ret, E_ERR);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_CleanupInternal_test_010, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_CleanupInternal_test_010: test CleanupInternal clears all members");
     auto& worker = LcdAgingWorker::GetInstance();
     worker.isThreadRunning_.store(true);
+    worker.shouldStop_.store(true);
     
-    worker.HandleLcdAgingTask();
+    worker.CleanupInternal();
+    
+    EXPECT_EQ(worker.clientRemote_, nullptr);
+    EXPECT_EQ(worker.deathRecipient_, nullptr);
+    EXPECT_EQ(worker.callbackProxy_, nullptr);
+    EXPECT_FALSE(worker.isThreadRunning_.load());
+    EXPECT_FALSE(worker.shouldStop_.load());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_Cleanup_test_011, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_Cleanup_test_011: test Cleanup calls CleanupInternal with mutex");
+    auto& worker = LcdAgingWorker::GetInstance();
+    
+    worker.isThreadRunning_.store(true);
+    worker.shouldStop_.store(true);
+    
+    worker.Cleanup();
     
     EXPECT_FALSE(worker.isThreadRunning_.load());
+    EXPECT_FALSE(worker.shouldStop_.load());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingWorker_ClientDeathRecipient_OnRemoteDied_test_017, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingWorker_ClientDeathRecipient_OnRemoteDied_test_017: test ClientDeathRecipient OnRemoteDied");
+    auto& worker = LcdAgingWorker::GetInstance();
+    
+    worker.shouldStop_.store(false);
+    
+    LcdAgingWorker::ClientDeathRecipient deathRecipient(&worker);
+    wptr<IRemoteObject> remote(nullptr);
+    deathRecipient.OnRemoteDied(remote);
+    
+    EXPECT_TRUE(worker.shouldStop_.load());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_GetIsActiveLcdAging_FirstLoadTrue_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_GetIsActiveLcdAging_FirstLoadTrue_test_001: first load from prefs returns true");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(true);
+    bool result = manager.GetIsActiveLcdAging();
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_GetIsActiveLcdAging_FirstLoadFalse_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_GetIsActiveLcdAging_FirstLoadFalse_test_002: first load from prefs returns false");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(false);
+    bool result = manager.GetIsActiveLcdAging();
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_GetIsActiveLcdAging_CacheValueOne_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_GetIsActiveLcdAging_CacheValueOne_test_003: cached value is 1");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(true);
+    bool firstResult = manager.GetIsActiveLcdAging();
+    EXPECT_TRUE(firstResult);
+    bool secondResult = manager.GetIsActiveLcdAging();
+    EXPECT_TRUE(secondResult);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_SetIsActiveLcdAging_AlternateSet_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_SetIsActiveLcdAging_AlternateSet_test_005: alternate set true and false");
+    auto& manager = LcdAgingManager::GetInstance();
+    
+    int32_t ret = manager.SetIsActiveLcdAging(true);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(manager.GetIsActiveLcdAging());
+
+    ret = manager.SetIsActiveLcdAging(false);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_FALSE(manager.GetIsActiveLcdAging());
+
+    ret = manager.SetIsActiveLcdAging(true);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(manager.GetIsActiveLcdAging());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_AnalysisRemoveCloudLcd_InactiveAging_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_AnalysisRemoveCloudLcd_InactiveAging_test_001: isActiveLcdAging is false");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(false);
+    
+    vector<int64_t> fileIds = {1, 2, 3};
+    int32_t ret = manager.AnalysisRemoveCloudLcd(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    
+    manager.SetIsActiveLcdAging(true);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_AnalysisRemoveCloudLcd_EmptyFileIds_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_AnalysisRemoveCloudLcd_EmptyFileIds_test_002: fileIds is empty");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(true);
+    
+    vector<int64_t> fileIds;
+    int32_t ret = manager.AnalysisRemoveCloudLcd(fileIds);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_AnalysisRemoveCloudLcd_NoMatchingData_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_AnalysisRemoveCloudLcd_NoMatchingData_test_003: no matching data in database");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(true);
+    
+    PhotoTestData data;
+    data.position = 1;
+    int64_t testId;
+    int32_t ret = InsertPhotoData(testId, data);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    vector<int64_t> fileIds = {testId};
+    ret = manager.AnalysisRemoveCloudLcd(fileIds);
+    EXPECT_EQ(ret, E_OK);
+    
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_AnalysisRemoveCloudLcd_MultipleFileIds_test_012, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_AnalysisRemoveCloudLcd_MultipleFileIds_test_012: multiple fileIds input");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(true);
+    
+    vector<int64_t> testIds;
+    int32_t ret = InsertMultiplePhotoData(testIds, 3, false);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+    
+    vector<int64_t> fileIds = testIds;
+    ret = manager.AnalysisRemoveCloudLcd(fileIds);
+    EXPECT_EQ(ret, E_ERR);
+    
+    DeleteMultiplePhotoData(testIds);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_AnalysisRemoveCloudLcd_NonexistentFileId_test_013, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_AnalysisRemoveCloudLcd_NonexistentFileId_test_013: nonexistent fileId");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(true);
+    
+    vector<int64_t> fileIds = {99999999};
+    int32_t ret = manager.AnalysisRemoveCloudLcd(fileIds);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_StartDeepOptimizeSpace_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_StartDeepOptimizeSpace_003: isActiveLcdAging not set on null client");
+    auto& manager = LcdAgingManager::GetInstance();
+    manager.SetIsActiveLcdAging(false);
+    EXPECT_FALSE(manager.GetIsActiveLcdAging());
+
+    int32_t ret = manager.StartDeepOptimizeSpace(nullptr, nullptr);
+    EXPECT_EQ(ret, E_ERR);
+
+    EXPECT_FALSE(manager.GetIsActiveLcdAging());
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_001: shouldStop=true returns E_AGING_STOP");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(true);
+
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_STOP);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_002: shouldStop=false returns E_OK");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_003: backup flag causes interrupt");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "1");
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_INTERRUPT);
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_004: restore flag causes interrupt");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "1");
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_INTERRUPT);
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "0");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_005: cloudsync switch causes interrupt");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    system::SetParameter(TEST_CLOUDSYNC_SWITCH_STATUS_KEY, "1");
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_INTERRUPT);
+    system::SetParameter(TEST_CLOUDSYNC_SWITCH_STATUS_KEY, "0");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_006, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_006: clone state causes interrupt");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    system::SetParameter(TEST_CLONE_STATE, "1");
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_INTERRUPT);
+    system::SetParameter(TEST_CLONE_STATE, "0");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_007, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_007: clone flag causes interrupt");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    system::SetParameter(TEST_CLONE_FLAG, "1");
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_INTERRUPT);
+    system::SetParameter(TEST_CLONE_FLAG, "0");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_008, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_008: shouldStop takes priority");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(true);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "1");
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_STOP);
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_009, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_009: multiple flags set causes interrupt");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "1");
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "1");
+    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_AGING_INTERRUPT);
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "0");
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_010, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_010: reset flags returns E_OK");
+    auto& manager = LcdAgingManager::GetInstance();
+    std::atomic<bool> shouldStop(false);
+
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "0");
+    system::SetParameter(TEST_CLOUDSYNC_SWITCH_STATUS_KEY, "0");
+    system::SetParameter(TEST_CLONE_STATE, "0");
+    system::SetParameter(TEST_CLONE_FLAG, "0");
+
+int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_StopDeepOptimizeSpace_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LcdAgingManager_StopDeepOptimizeSpace_test_001: task running sets shouldStop and returns E_OK");
+    auto& manager = LcdAgingManager::GetInstance();
+    auto& worker = LcdAgingWorker::GetInstance();
+    worker.isThreadRunning_.store(true);
+    worker.shouldStop_.store(false);
+
+    int32_t ret = manager.StopDeepOptimizeSpace();
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(worker.shouldStop_.load());
+
+    worker.isThreadRunning_.store(false);
+    worker.shouldStop_.store(false);
 }
 
 } // namespace Media

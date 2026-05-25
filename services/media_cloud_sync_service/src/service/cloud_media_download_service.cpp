@@ -52,6 +52,7 @@
 #include "userfile_manager_types.h"
 #include "lcd_aging_dao.h"
 #include "lcd_aging_utils.h"
+#include "lcd_aging_manager.h"
 #include "media_file_utils.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
@@ -775,12 +776,11 @@ int32_t CloudMediaDownloadService::GetDownloadNumberOfLcd(int64_t &lcdNumber)
 
 int32_t CloudMediaDownloadService::UpdateLcdNumberCache()
 {
-    int64_t lcdThresholdNumber = -1;
-    int32_t ret = LcdAgingUtils().GetScaleThresholdOfLcd(lcdThresholdNumber);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetScaleThresholdOfLcd, ret: %{public}d", ret);
+    int64_t lcdThresholdNumber = LcdAgingUtils::GetScaleThresholdOfLcd();
+    CHECK_AND_RETURN_RET_LOG(lcdThresholdNumber > 0, E_ERR, "Failed to GetScaleThresholdOfLcd");
 
     int64_t lcdCurrentNumber = -1;
-    ret = LcdAgingDao().GetCurrentNumberOfLcd(lcdCurrentNumber);
+    int32_t ret = LcdAgingDao().GetCurrentNumberOfLcd(lcdCurrentNumber);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetCurrentNumberOfLcd, ret: %{public}d", ret);
 
     this->lcdNumberCache_ = lcdThresholdNumber - lcdCurrentNumber;
@@ -793,9 +793,15 @@ int32_t CloudMediaDownloadService::GetFullSyncDownloadInfo(std::map<std::string,
 {
     int32_t ret = E_OK;
     if (flagsInfo.empty() || flagsInfo.find(DOWNLOAD_LCD) != flagsInfo.end()) {
+        bool isActiveLcdAging = LcdAgingManager::GetInstance().GetIsActiveLcdAging();
         int64_t lcdNumber = -1;
-        ret = GetDownloadNumberOfLcd(lcdNumber);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetDownloadNumberOfLcd, ret: %{public}d", ret);
+        if (isActiveLcdAging) {
+            ret = GetDownloadNumberOfLcd(lcdNumber);
+            CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetDownloadNumberOfLcd, ret: %{public}d", ret);
+        } else {
+            lcdNumberCache_ = 0;
+            lcdNumber = LcdAgingUtils::GetScaleThresholdOfLcd();
+        }
         flagsInfo[DOWNLOAD_LCD] = lcdNumber;
     }
     return ret;

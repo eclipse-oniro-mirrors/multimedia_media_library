@@ -1168,7 +1168,7 @@ static string GetRealPath(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
 
     int32_t albumSubtype;
     GetIntValueFromResultSet(albumResultSet, PhotoAlbumColumns::ALBUM_SUBTYPE, albumSubtype);
-    CHECK_AND_RETURN_RET_LOG(albumSubtype == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER),
+    CHECK_AND_RETURN_RET_LOG(albumSubtype == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER),
         "", "targetalbum is not file manager album");
     std::string albumPath;
     GetStringValueFromResultSet(albumResultSet, PhotoAlbumColumns::ALBUM_LPATH, albumPath);

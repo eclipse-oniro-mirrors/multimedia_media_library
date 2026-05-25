@@ -90,7 +90,6 @@ ohos_fuzztest("MediaLibraryCloudMediaControllerFuzzTest") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/utils/multistages_capture_request_task_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_task_priority_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
     "${MEDIALIB_UTILS_PATH}/src/cover_position_parser.cpp",
