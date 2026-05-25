@@ -2789,7 +2789,13 @@ void MediaLibraryAssetOperations::TaskDataFileProcess(const std::vector<std::str
         string fileId = i < ids.size() ? ids[i] : "";
         MEDIA_INFO_LOG("Delete file id: %{public}s, path: %{public}s", fileId.c_str(),
             MediaFileUtils::DesensitizePath(filePath).c_str());
-        if (!MediaFileUtils::DeleteFile(filePath) && (errno != ENOENT)) {
+        bool deleteMainFileRet = false;
+#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+        deleteMainFileRet = MediaFileAccessUtils::DeleteAsset(AssetOperationInfo::CreateFromPath(filePath));
+#else
+        deleteMainFileRet = MediaFileUtils::DeleteFile(filePath);
+#endif
+        if (!deleteMainFileRet && (errno != ENOENT)) {
             MEDIA_WARN_LOG("Failed to delete file, errno: %{public}d, path: %{public}s", errno,
                 MediaFileUtils::DesensitizePath(filePath).c_str());
         }
@@ -3730,18 +3736,17 @@ std::string BuildFileUri(const std::string &fileId, const std::string &filePath,
 
 int32_t MediaLibraryAssetOperations::DeletePermanentlyWithUri(AbsRdbPredicates &predicates)
 {
-    int32_t deleteRows = 0;
     vector<string> fileIds = predicates.GetWhereArgs();
     MEDIA_INFO_LOG("Start delete permanently %{public}zu photos", fileIds.size());
-    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), deleteRows, "fileIds is empty.");
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), 0, "fileIds is empty.");
     string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     string sql = "SELECT file_id, data, display_name, media_type FROM Photos WHERE burst_key IN ("
         "SELECT DISTINCT burst_key FROM Photos WHERE file_id IN (" + inClause + ") "
         "AND burst_cover_level = 1 AND subtype = 4 ) OR file_id IN (" + inClause + ");";
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, deleteRows, "get rdb store fail");
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, 0, "get rdb store fail");
     auto resultSet = rdbStore->QuerySql(sql);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, deleteRows, "Failed to query selected files!");
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0, "Failed to query selected files!");
     vector<string> uris;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         string fileId = to_string(get<int32_t>(ResultSetUtils::GetValFromColumn("file_id", resultSet, TYPE_INT32)));
@@ -3757,7 +3762,7 @@ int32_t MediaLibraryAssetOperations::DeletePermanentlyWithUri(AbsRdbPredicates &
         }
     }
     resultSet->Close();
-    CHECK_AND_RETURN_RET_LOG(!fileIds.empty() && !uris.empty(), deleteRows, "fileIds or uris is empty.");
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty() && !uris.empty(), 0, "fileIds or uris is empty.");
     set<string> albumIds;
     MediaLibraryRdbUtils::QueryAnalysisAlbumIdOfAssets(fileIds, albumIds);
     MediaLibraryPhotoOperations::UpdateSourcePath(fileIds);
@@ -3765,14 +3770,15 @@ int32_t MediaLibraryAssetOperations::DeletePermanentlyWithUri(AbsRdbPredicates &
     int32_t ret = LakeFileOperations::MoveAssetsFromLake(fileIds);
     CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to move assets from lake.");
 #endif
-    int32_t res = FileManagerAssetOperations::MoveAssetsFromFileManager(fileIds);
+    AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::TRASH_PHOTOS_BUSSINESS_NAME);
+    int32_t res = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, fileIds, false);
     CHECK_AND_PRINT_LOG(res == E_OK, "Failed to move assets from file manager.");
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
     vector<string> photoIds;
     EnhancementManager::GetInstance().CancelTasksInternal(fileIds, photoIds, CloudEnhancementAvailableType::TRASH);
 #endif
     predicates.SetWhereArgs(uris);
-    deleteRows = DeleteFromDisk(predicates, false, true);
+    int32_t deleteRows = DeleteFromDisk(predicates, false, true);
     vector<string> albumIdVector(albumIds.begin(), albumIds.end());
     if (albumIdVector.size() > 0 && rdbStore != nullptr) {
         MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, albumIdVector);

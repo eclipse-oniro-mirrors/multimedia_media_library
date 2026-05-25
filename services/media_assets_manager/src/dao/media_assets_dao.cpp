@@ -105,6 +105,31 @@ int32_t MediaAssetsDao::ResetPositionToCloudOnly(
     return E_OK;
 }
 
+int32_t MediaAssetsDao::ResetFileManagerPositionToCloudOnly(
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh, int32_t fileId)
+{
+    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "ResetFileManagerPositionToCloudOnly invalid fileId.");
+    CHECK_AND_RETURN_RET_LOG(
+        photoRefresh != nullptr, E_RDB_STORE_NULL, "ResetFileManagerPositionToCloudOnly Failed to get photoRefresh.");
+
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
+
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::CLOUD));
+    values.PutInt(PhotoColumn::LOCAL_ASSET_SIZE, 0);    // position = 2时, local_asset_size = 0
+    int32_t changedRows = -1;
+    int32_t ret = photoRefresh->Update(changedRows, values, predicates);
+    MEDIA_INFO_LOG("Update Ret: %{public}d, ChangedRows: %{public}d", ret, changedRows);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to ResetFileManagerPositionToCloudOnly.");
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        changedRows > 0, ret, "Check updateRows: %{public}d.", changedRows);
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_INVALID_VALUES, "watch is nullptr");
+    watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(fileId), NotifyType::NOTIFY_UPDATE);
+    return E_OK;
+}
+
 int32_t MediaAssetsDao::QueryAlbumByAlbumId(const int32_t albumId, std::optional<PhotoAlbumPo> &albumInfo)
 {
     CHECK_AND_RETURN_RET_LOG(albumId > 0, E_INVALID_VALUES, "Invalid albumId, albumId: %{public}d", albumId);

@@ -53,6 +53,8 @@ struct CloneAssetInfo {
     std::string targetDisplayName = "";
     int32_t photoSubType {0};
     int32_t movingPhotoEffectMode {0};
+    int32_t fileSourceType {-1};
+    std::vector<CloneAssetInfo> burstCloneAssetList;
 };
 
 enum CloneCallbackType {
@@ -102,9 +104,13 @@ private:
     int32_t ValidateRequest(CloneToAlbumReqBody &reqBody);
     int32_t QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBody,
         CloneTaskInfo &assets, uint64_t &displayTotalSize, uint64_t &actualTotalSize);
+    int32_t QueryBurstAssetInfo(CloneAssetInfo &cloneAssetInfo, uint64_t &displayTotalSize,
+        uint64_t &actualTotalSize);
     int32_t HandleAssetClone(const CloneAssetInfo &asset, std::string &newFileId,
-        std::atomic<uint64_t> &processedSize, std::atomic<uint32_t> &processedCount);
+        std::atomic<uint64_t> &processedSize, std::atomic<uint32_t> &processedCount,
+        CloneCallbackType &cloneCallbackType);
     int32_t QueryAssetInfo(const std::string &fileId, CloneAssetInfo &info);
+    int32_t DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo, std::function<void(uint64_t)> progressCallback);
     int32_t GetUriFromResult(std::shared_ptr<OHOS::NativeRdb::ResultSet> &resultSet,
         std::vector<std::string> &resultUris, CloneCallbackType cloneCallbackType);
 };

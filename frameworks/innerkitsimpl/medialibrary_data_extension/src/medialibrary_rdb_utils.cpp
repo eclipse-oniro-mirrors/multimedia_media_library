@@ -2095,7 +2095,7 @@ int32_t MediaLibraryRdbUtils::UpdateTrashedAssetOnAlbum(const shared_ptr<MediaLi
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
         int32_t ret = LakeFileOperations::MoveAssetsFromLake(fileAssetsIds);
         CHECK_AND_PRINT_LOG(ret == E_OK, "trash inner anco file error");
-        ret = FileManagerAssetOperations::MoveAssetsFromFileManager(fileAssetsIds);
+        ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, fileAssetsIds, true);
         CHECK_AND_PRINT_LOG(ret == E_OK, "trash file manager asset error");
 #endif
         MediaAnalysisHelper::StartMediaAnalysisServiceAsync(

@@ -129,8 +129,13 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
         std::string renamePath;
         std::string renameTitle;
         std::string renameDisplayName;
-        int32_t ret = MediaFileAccessUtils::HandleSameNameRename(srcObj, targetPath, renamePath, renameTitle,
-            renameDisplayName);
+        if (cloneAssetInfo.burstKey.empty()) {
+            MediaFileAccessUtils::HandleSameNameRename(srcObj, targetPath, renamePath, renameTitle,
+                renameDisplayName);
+        } else {
+            MediaFileAccessUtils::HandleBurstSameNameRename(srcObj, targetPath, renamePath, renameTitle,
+                renameDisplayName);
+        }
         if (targetPath != renamePath && cloneAssetInfo.mode == NOT_SUPPORT_RENAME) {
             MEDIA_ERR_LOG("HandleSameName error");
             return E_SCENE_HAS_RENAMED;
@@ -142,6 +147,57 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
     } else {
         cloneAssetInfo.targetDisplayName = cloneAssetInfo.displayName;
     }
+    return E_OK;
+}
+
+int32_t CloneToAlbumService::QueryBurstAssetInfo(CloneAssetInfo &cloneAssetInfo, uint64_t &displayTotalSize,
+    uint64_t &actualTotalSize)
+{
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.NotEqualTo(PhotoColumn::MEDIA_ID, cloneAssetInfo.fileId);
+    predicates.EqualTo(PhotoColumn::PHOTO_BURST_KEY, cloneAssetInfo.burstKey);
+    std::vector<std::string> columns = {
+    PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH, MediaColumn::MEDIA_NAME, PhotoColumn::MEDIA_TYPE,
+    PhotoColumn::MEDIA_SIZE, MediaColumn::MEDIA_HIDDEN, MediaColumn::MEDIA_DATE_TRASHED,
+    PhotoColumn::PHOTO_POSITION, PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_SOURCE_PATH,
+    PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_FILE_SOURCE_TYPE
+    };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow()!= NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Asset not found, fileId:%{public}" PRId64, cloneAssetInfo.fileId);
+        return E_SCENE_HAS_RENAMED;
+    }
+    struct stat editStatInfo {};
+    struct stat thumStatInfo {};
+    do {
+        CloneAssetInfo burstCloneAssetInfo;
+        burstCloneAssetInfo.fileId = GetInt32Val(PhotoColumn::MEDIA_ID, resultSet);
+        burstCloneAssetInfo.filePath = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
+        burstCloneAssetInfo.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+        burstCloneAssetInfo.mediaType = GetInt32Val(PhotoColumn::MEDIA_TYPE, resultSet);
+        burstCloneAssetInfo.size = GetInt64Val(PhotoColumn::MEDIA_SIZE, resultSet);
+        burstCloneAssetInfo.hidden = GetInt32Val(MediaColumn::MEDIA_HIDDEN, resultSet);
+        burstCloneAssetInfo.dateTrashed = GetInt64Val(MediaColumn::MEDIA_DATE_TRASHED, resultSet);
+        burstCloneAssetInfo.position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
+        burstCloneAssetInfo.storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+        burstCloneAssetInfo.sourcePath = GetStringVal(PhotoColumn::PHOTO_SOURCE_PATH, resultSet);
+        burstCloneAssetInfo.burstKey = GetStringVal(PhotoColumn::PHOTO_BURST_KEY, resultSet);
+        burstCloneAssetInfo.fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+        actualTotalSize += static_cast<uint64_t>(burstCloneAssetInfo.size);
+        std::string editDataPath = MediaEditUtils::GetEditDataPath(burstCloneAssetInfo.filePath);
+        if (stat(editDataPath.c_str(), &editStatInfo) == E_OK) {
+            actualTotalSize += editStatInfo.st_size;
+        }
+        std::string thumbnailPath = GetThumbnailPathFromOrignalPath(burstCloneAssetInfo.filePath);
+        if (stat(thumbnailPath.c_str(), &thumStatInfo) == E_OK) {
+            actualTotalSize += thumStatInfo.st_size;
+        }
+        displayTotalSize += static_cast<uint64_t>(burstCloneAssetInfo.size);
+        burstCloneAssetInfo.albumId = cloneAssetInfo.albumId;
+        burstCloneAssetInfo.targetDisplayName = burstCloneAssetInfo.displayName;
+        cloneAssetInfo.burstCloneAssetList.push_back(burstCloneAssetInfo);
+    } while (!resultSet->GoToNextRow());
+    resultSet->Close();
     return E_OK;
 }
 
@@ -169,7 +225,6 @@ int32_t CloneToAlbumService::QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBo
             MEDIA_ERR_LOG("check name error");
             return ret;
         }
-        assets.cloneAssetInfo.push_back(info);
         actualTotalSize += static_cast<uint64_t>(info.size);
         displayTotalSize += static_cast<uint64_t>(info.size);
         std::string editDataPath = MediaEditUtils::GetEditDataPath(info.filePath);
@@ -180,6 +235,14 @@ int32_t CloneToAlbumService::QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBo
         if (stat(thumbnailPath.c_str(), &thumStatInfo) == E_OK) {
             actualTotalSize += thumStatInfo.st_size;
         }
+        if (!info.burstKey.empty()) {
+            ret = QueryBurstAssetInfo(info, displayTotalSize, actualTotalSize);
+            if (ret != E_OK) {
+                MEDIA_ERR_LOG("QueryBurstAssetInfo failed, id=%{public}" PRId64, info.fileId);
+                return ret;
+            }
+        }
+        assets.cloneAssetInfo.push_back(info);
     }
     assets.requestId = reqBody.requestId;
     return E_OK;
@@ -197,7 +260,7 @@ bool CheckFreeSpace(int32_t needFreeSize)
 
 int32_t CloneToAlbumService::HandleAssetClone(const CloneAssetInfo &cloneAssetInfo,
     std::string &newFileId, std::atomic<uint64_t> &processedSize,
-    std::atomic<uint32_t> &processedCount)
+    std::atomic<uint32_t> &processedCount, CloneCallbackType &cloneCallbackType)
 {
     auto progressCb = [&processedSize](uint64_t copiedSize) {
         processedSize.fetch_add(copiedSize);
@@ -210,6 +273,26 @@ int32_t CloneToAlbumService::HandleAssetClone(const CloneAssetInfo &cloneAssetIn
     }
 
     processedCount.fetch_add(1);
+    //如果是连拍
+    if (!cloneAssetInfo.burstKey.empty() && cloneCallbackType == CloneCallbackType::PHOTOASSET) {
+    int32_t ret = DoBurstAssetsClone(cloneAssetInfo, progressCb);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed toDoBurstAssetsClone.");
+    }
+    return E_OK;
+}
+
+int32_t CloneToAlbumService::DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo,
+    std::function<void(uint64_t)> progressCallback)
+{
+    for (const auto &asset : cloneAssetInfo.burstCloneAssetList) {
+        std::string newFileId = "";
+        int32_t result = MediaLibraryAlbumFusionUtils::CloneProgressAsset(asset,
+        asset.albumId, newFileId, progressCallback);
+        if (result != E_OK) {
+            MEDIA_ERR_LOG("clone error result %{public}d", result);
+            return result;
+        }
+    }
     return E_OK;
 }
 
@@ -259,7 +342,8 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
     std::vector<std::string> resultFileId;
     for (const auto &asset : cloneTaskInfo.cloneAssetInfo) {
         std::string newFileId = "";
-        ret = HandleAssetClone(asset, newFileId, cloneTaskInfo.processedSize, cloneTaskInfo.processedCount);
+        ret = HandleAssetClone(asset, newFileId, cloneTaskInfo.processedSize,
+            cloneTaskInfo.processedCount, cloneTaskInfo.cloneCallbackType);
         CHECK_AND_BREAK(ret == E_OK);
         resultFileId.push_back(newFileId);
     }

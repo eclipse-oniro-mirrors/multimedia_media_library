@@ -67,6 +67,8 @@ public:
 
     EXPORT static int32_t HandleSameNameRename(const AssetOperationInfo &srcObj, const std::string &sameNamePath,
         std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
+    EXPORT static int32_t HandleBurstSameNameRename(const AssetOperationInfo &srcObj, const std::string &sameNamePath,
+        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
 
     EXPORT static bool IsDirectoryEmpty(const std::string& dirPath);
     EXPORT static void UpdateModifyTime(const std::string &path, int64_t localMtime);
