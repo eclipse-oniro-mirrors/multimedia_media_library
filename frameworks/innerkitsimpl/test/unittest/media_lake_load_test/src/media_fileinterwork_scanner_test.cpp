@@ -26,23 +26,13 @@ namespace OHOS {
 namespace Media {
 using namespace testing::ext;
 
-static const std::string TEST_DIR = "/data/test/interwork_scanner_test";
-static const std::string TEST_EXIST_IMG = TEST_DIR + "/exist_image.jpg";
-static const std::string TEST_EXIST_VIDEO = TEST_DIR + "/exist_video.mp4";
+static const std::string TEST_DIR = "/data/test/media_lake_load_test";
+static const std::string TEST_EXIST_IMG = TEST_DIR + "/test.jpg";
+static const std::string TEST_EXIST_VIDEO = TEST_DIR + "/test.mp4";
 
-void MediaFileInterworkScannerTest::SetUpTestCase()
-{
-    MediaFileUtils::CreateDirectory(TEST_DIR);
-    MediaFileUtils::CreateFile(TEST_EXIST_IMG);
-    MediaFileUtils::WriteStrToFile(TEST_EXIST_IMG, "test_image_content");
-    MediaFileUtils::CreateFile(TEST_EXIST_VIDEO);
-    MediaFileUtils::WriteStrToFile(TEST_EXIST_VIDEO, "test_video_content");
-}
+void MediaFileInterworkScannerTest::SetUpTestCase() {}
 
-void MediaFileInterworkScannerTest::TearDownTestCase()
-{
-    MediaFileUtils::DeleteDir(TEST_DIR);
-}
+void MediaFileInterworkScannerTest::TearDownTestCase() {}
 
 void MediaFileInterworkScannerTest::SetUp() {}
 void MediaFileInterworkScannerTest::TearDown() {}
@@ -67,9 +57,9 @@ HWTEST_F(MediaFileInterworkScannerTest, GetFileInfos_OnlyExistingPathsInResult_0
     EXPECT_EQ(result.size(), EXPECTED_RESULT_COUNT);
     EXPECT_EQ(uniqueNumber.imageTotalNumber, EXPECTED_IMAGE_COUNT);
     EXPECT_EQ(uniqueNumber.videoTotalNumber, EXPECTED_VIDEO_COUNT);
-    for (const auto &fi : result) {
-        EXPECT_FALSE(fi.originFilePath.empty());
-        EXPECT_TRUE(MediaFileUtils::IsFileExists(fi.originFilePath));
+    for (const auto &info : result) {
+        EXPECT_FALSE(info.originFilePath.empty());
+        EXPECT_TRUE(MediaFileUtils::IsFileExists(info.originFilePath));
     }
     MEDIA_INFO_LOG("End GetFileInfos_OnlyExistingPathsInResult_001");
 }
