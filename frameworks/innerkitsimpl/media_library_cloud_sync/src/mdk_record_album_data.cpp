@@ -242,6 +242,25 @@ void MDKRecordAlbumData::SetCoverUriSource(const int32_t &coverUriSource)
 {
     this->attributes_[PhotoAlbumColumns::COVER_URI_SOURCE] = MDKRecordField(coverUriSource);
 }
+
+std::optional<int32_t> MDKRecordAlbumData::GetSceneId() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoAlbumColumns::ALBUM_SCENE_ID);
+}
+void MDKRecordAlbumData::SetSceneId(const int32_t &sceneId)
+{
+    this->attributes_[PhotoAlbumColumns::ALBUM_SCENE_ID] = MDKRecordField(sceneId);
+}
+
+std::optional<int32_t> MDKRecordAlbumData::GetShareType() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoAlbumColumns::ALBUM_SHARE_TYPE);
+}
+void MDKRecordAlbumData::SetShareType(const int32_t &shareType)
+{
+    this->attributes_[PhotoAlbumColumns::ALBUM_SHARE_TYPE] = MDKRecordField(shareType);
+}
+
 std::optional<std::string> MDKRecordAlbumData::GetCoverCloudId() const
 {
     return this->recordReader_.GetStringValue(this->attributes_, PhotoAlbumColumns::COVER_CLOUD_ID);

@@ -412,6 +412,36 @@ int32_t PhotoAlbum::GetHidden() const
     return hidden_;
 }
 
+void PhotoAlbum::SetCloudId(const std::string &cloudId)
+{
+    cloudId_ = cloudId;
+}
+
+const std::string& PhotoAlbum::GetCloudId() const
+{
+    return cloudId_;
+}
+
+void PhotoAlbum::SetSceneId(const int32_t sceneId)
+{
+    sceneId_ = sceneId;
+}
+
+int32_t PhotoAlbum::GetSceneId() const
+{
+    return sceneId_;
+}
+
+void PhotoAlbum::SetShareType(const int32_t shareType)
+{
+    shareType_ = shareType;
+}
+
+int32_t PhotoAlbum::GetShareType() const
+{
+    return shareType_;
+}
+
 void PhotoAlbum::SetFileHidden(bool fileHidden)
 {
     fileHidden_ = fileHidden;

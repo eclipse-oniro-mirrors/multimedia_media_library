@@ -487,6 +487,9 @@ static void AddNoSmartFetchColumns(std::vector<std::string> &fetchColumn)
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SCENE_ID);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SHARE_TYPE);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
 }
 
 static void AddPhotoAlbumTypeFilter(DataShare::DataSharePredicates &predicates,

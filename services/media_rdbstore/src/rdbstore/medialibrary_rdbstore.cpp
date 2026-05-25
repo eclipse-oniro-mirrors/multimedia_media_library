@@ -3757,6 +3757,19 @@ int32_t AddMultiStagesCaptureColumns(RdbStore &store)
 }
 REGISTER_SYNC_UPGRADE_TASK(VERSION_ADD_MULTISTAGES_CAPTURE, "Photos", AddMultiStagesCaptureColumns);
 
+static void AddAlbumSceneIdAndShareTypeColumns(RdbStore &store, int32_t version)
+{
+    const vector<string> sqls = {
+        "ALTER TABLE " + PhotoAlbumColumns::TABLE + " ADD COLUMN " +
+            PhotoAlbumColumns::ALBUM_SCENE_ID + " INT DEFAULT 0",
+        "ALTER TABLE " + PhotoAlbumColumns::TABLE + " ADD COLUMN " +
+            PhotoAlbumColumns::ALBUM_SHARE_TYPE + " INT DEFAULT 0",
+    };
+    MEDIA_INFO_LOG("Add scene_id and share_type columns for PhotoAlbum start");
+    ExecSqlsWithDfx(sqls, store, version);
+    MEDIA_INFO_LOG("Add scene_id and share_type columns for PhotoAlbum end");
+}
+
 static int32_t CreateBackupInfoTable(RdbStore& store)
 {
     MEDIA_INFO_LOG("create table ConfigInfo start");

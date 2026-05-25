@@ -41,6 +41,8 @@ std::string PhotoAlbumDto::ToString() const
        << "\"coverUriSource\": " << std::to_string(this->coverUriSource) << ","
        << "\"coverCloudId\": " << this->coverCloudId << ","
        << "\"uniqueId\": " << this->uniqueId << ","
+       << "\"shareType\": \"" << this->shareType << "\", "
+       << "\"sceneId\": \"" << this->sceneId << "\", "
        << "\"serverErrorCode\": " << serverErrorCode << ","
        << "\"errorType\": \"" << static_cast<int32_t>(errorType) << "\","
        << "\"errorDetails\": [";

@@ -56,6 +56,18 @@ void CloudMediaAlbumHandler::SetCloudType(const int32_t cloudType)
     this->cloudType_ = cloudType;
 }
 
+static void InitSceneAndShareData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
+{
+    auto sceneIdOpt = albumData.GetSceneId();
+    if (sceneIdOpt.has_value()) {
+        data.sceneId = sceneIdOpt.value();
+    }
+    auto shareTypeOpt = albumData.GetShareType();
+    if (shareTypeOpt.has_value()) {
+        data.shareType = shareTypeOpt.value();
+    }
+}
+
 static void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
 {
     auto lpathOpt = albumData.GetlPath();
@@ -104,6 +116,7 @@ static void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumR
     if (albumsUniqueId.has_value()) {
         data.uniqueId = albumsUniqueId.value();
     }
+    InitSceneAndShareData(albumData, data);
 }
 
 /**

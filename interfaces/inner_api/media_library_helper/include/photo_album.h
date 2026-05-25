@@ -133,6 +133,15 @@ public:
 
     EXPORT void SetHidden(const int32_t hidden);
     EXPORT int32_t GetHidden() const;
+
+    EXPORT void SetCloudId(const std::string &cloudId);
+    EXPORT const std::string& GetCloudId() const;
+
+    EXPORT void SetSceneId(const int32_t sceneId);
+    EXPORT int32_t GetSceneId() const;
+
+    EXPORT void SetShareType(const int32_t shareType);
+    EXPORT int32_t GetShareType() const;
 private:
     int32_t albumId_;
     PhotoAlbumType type_;
@@ -166,6 +175,9 @@ private:
     int32_t hidden_ = 0;
     bool fileHidden_ = false;
     int64_t changeTime_ {0};
+    std::string cloudId_;
+    int32_t sceneId_ = 0;
+    int32_t shareType_ = 0;
 };
 } // namespace Media
 } // namespace OHOS

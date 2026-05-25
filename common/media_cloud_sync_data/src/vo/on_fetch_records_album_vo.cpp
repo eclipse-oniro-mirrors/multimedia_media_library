@@ -41,6 +41,8 @@ bool OnFetchRecordsAlbumReqBody::AlbumReqData::Unmarshalling(MessageParcel &parc
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->coverUriSource), false, "coverUriSource");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->coverCloudId), false, "coverCloudId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->uniqueId), false, "uniqueId");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->sceneId), false, "sceneId");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->shareType), false, "shareType");
     return true;
 }
 bool OnFetchRecordsAlbumReqBody::AlbumReqData::Marshalling(MessageParcel &parcel) const
@@ -61,6 +63,8 @@ bool OnFetchRecordsAlbumReqBody::AlbumReqData::Marshalling(MessageParcel &parcel
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->coverUriSource), false, "coverUriSource");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->coverCloudId), false, "coverCloudId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->uniqueId), false, "uniqueId");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->sceneId), false, "sceneId");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->shareType), false, "shareType");
     return true;
 }
 

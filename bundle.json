@@ -108,7 +108,8 @@
           "hiappevent",
           "ets_frontend",
           "json",
-          "drivekit_native"
+          "drivekit_native",
+          "bounds_checking_function"
         ]
       },
       "build": {

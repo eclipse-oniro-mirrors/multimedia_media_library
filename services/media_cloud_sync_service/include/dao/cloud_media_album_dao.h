@@ -85,6 +85,8 @@ public:
     int32_t ReportAbnormalLocalRecords();
     void HandleIncomingUniqueId(PhotoAlbumDto &album);
     int32_t UpdateAlbumOrderInfo(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void SetAlbumBasicInfo(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void FillAlbumBaseValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
     int32_t GetPhotoAlbum(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfoOp);
     int32_t GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count);
 

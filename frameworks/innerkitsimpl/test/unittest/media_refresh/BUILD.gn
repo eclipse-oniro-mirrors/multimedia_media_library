@@ -29,6 +29,7 @@ ohos_unittest("media_refresh_test") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/core",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/base",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/strategies",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
   ]
 
   sources = [

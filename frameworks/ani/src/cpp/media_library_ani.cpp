@@ -1993,6 +1993,9 @@ static void AddDefaultColumnsForNonAnalysisAlbums(unique_ptr<MediaLibraryAsyncCo
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+        context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SCENE_ID);
+        context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SHARE_TYPE);
+        context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
     }
 }
 

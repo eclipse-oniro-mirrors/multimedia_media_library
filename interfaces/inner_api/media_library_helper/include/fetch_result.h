@@ -85,6 +85,11 @@ private:
     void SetFileAsset(FileAsset *fileAsset, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     void SetAlbumAsset(AlbumAsset* albumData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     void SetPhotoAlbum(PhotoAlbum* photoAlbumData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
+    void SetPhotoAlbumBasicFields(PhotoAlbum* photoAlbumData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
+    void SetPhotoAlbumUriAndCover(PhotoAlbum* photoAlbumData, int32_t albumId,
+        std::shared_ptr<NativeRdb::ResultSet> &resultSet);
+    void SetPhotoAlbumCountsAndLocation(PhotoAlbum* photoAlbumData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
+    void SetPhotoAlbumExtendedFields(PhotoAlbum* photoAlbumData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     void SetSmartAlbumAsset(SmartAlbumAsset* smartAlbumData, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     void SetPhotoAssetCustomRecordAsset(PhotoAssetCustomRecord* smartAlbumData,
         std::shared_ptr<NativeRdb::ResultSet> &resultSet);

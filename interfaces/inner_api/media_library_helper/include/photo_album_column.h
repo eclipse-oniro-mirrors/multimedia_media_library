@@ -56,6 +56,8 @@ public:
     static const std::string ALBUM_HIDDEN EXPORT;
     static const std::string UNIQUE_ID EXPORT;
     static const std::string ALBUM_FILE_HIDDEN EXPORT;
+    static const std::string ALBUM_SCENE_ID EXPORT;
+    static const std::string ALBUM_SHARE_TYPE EXPORT;
 
     // For api9 compatibility
     static const std::string ALBUM_RELATIVE_PATH EXPORT;
