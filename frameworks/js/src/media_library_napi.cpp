@@ -16391,10 +16391,15 @@ static vector<string> CheckTranscodeUri(MediaLibraryAsyncContext *context)
             }
             std::string ext = item.uri.substr(atDot + 1);
             bool isHeifFile = (ext == "heif" || ext == "heic");
-            if (!isHighPixel && !isHeifFile) {
+            if (checkHighPixel && isHighPixel) {
+                result.push_back(item.uri);
                 continue;
             }
-            result.push_back(item.uri);
+            if (checkHeif && isHeifFile)
+            {
+                result.push_back(item.uri);
+                continue;
+            }
         }
         return result;
     }
