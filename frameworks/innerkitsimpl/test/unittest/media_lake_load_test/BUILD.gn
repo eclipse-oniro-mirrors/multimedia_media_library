@@ -186,4 +186,7 @@ ohos_unittest("media_lake_load_test") {
   if (media_library_file_manager_enable) {
     defines += [ "MEDIALIBRARY_FILE_MGR_SUPPORT" ]
   }
+
+  resource_config_file =
+    "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
 }

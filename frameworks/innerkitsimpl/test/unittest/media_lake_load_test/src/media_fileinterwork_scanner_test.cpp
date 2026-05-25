@@ -26,7 +26,7 @@ namespace OHOS {
 namespace Media {
 using namespace testing::ext;
 
-static const std::string TEST_DIR = "/data/test/media_lake_load_test";
+static const std::string TEST_DIR = "/data/test/media_lake_load_test_data";
 static const std::string TEST_EXIST_IMG = TEST_DIR + "/test.jpg";
 static const std::string TEST_EXIST_VIDEO = TEST_DIR + "/test.mp4";
 

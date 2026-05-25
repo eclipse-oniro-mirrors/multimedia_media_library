@@ -35,7 +35,7 @@ static constexpr int32_t SLEEP_SECONDS = 1;
 static const size_t THREAD_COUNT = 8;
 static const size_t CALL_COUNT_PER_THREAD = 20;
 static const size_t IMAGE_RATIO = 4;
-static const std::string TEST_PATH_PREFIX = "/data/test/media_lake_load_test/";
+static const std::string TEST_PATH_PREFIX = "/data/test/media_lake_load_test_data/";
 static const std::string TEST_IMAGE_NAME = "test.jpg";
 static const std::string TEST_VIDEO_NAME = "test.mp4";
 
