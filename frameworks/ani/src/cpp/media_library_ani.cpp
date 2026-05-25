@@ -7249,8 +7249,7 @@ static vector<string> CheckTranscodeUriAni(MediaLibraryAsyncContext *context)
                 result.push_back(item.uri);
                 continue;
             }
-            if (checkHeif && isHeifFile)
-            {
+            if (checkHeif && isHeifFile) {
                 result.push_back(item.uri);
                 continue;
             }
