@@ -153,7 +153,8 @@ private:
     const std::string SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE = "\
         SELECT file_id \
         FROM Photos \
-        WHERE owner_album_id = ? AND display_name = ? AND size = ? AND orientation = ? \
+        WHERE owner_album_id = ? AND display_name = ? AND size = ? \
+        AND (1 <> ? OR orientation = ?) \
         LIMIT 1;";
 
 protected:

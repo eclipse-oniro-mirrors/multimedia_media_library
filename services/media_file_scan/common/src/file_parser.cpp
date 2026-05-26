@@ -396,12 +396,13 @@ FileParser::PhotosRowData FileParser::FindSameFileInDatabase(const std::string &
 int32_t FileParser::IsExistSameFileForCloneRestore(int32_t ownerAlbumId)
 {
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_ERR, "mediaLibraryRdb_ is null.");
+    int pictureFlag = fileInfo_.fileType == MediaType::MEDIA_TYPE_VIDEO ? 0 : 1;
     std::vector<NativeRdb::ValueObject> params = { ownerAlbumId, fileInfo_.displayName,
-        fileInfo_.fileSize, fileInfo_.orientation};
+        fileInfo_.fileSize, pictureFlag, fileInfo_.orientation};
     auto resultSet = mediaLibraryRdb_->QuerySql(SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE, params);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
         E_ERR, "Query failed, not exist same file");
-
+    resultSet->Close();
     return E_OK;
 }
 
