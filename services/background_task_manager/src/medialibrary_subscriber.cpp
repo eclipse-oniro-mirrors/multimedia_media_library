@@ -237,6 +237,7 @@ MedialibrarySubscriber::~MedialibrarySubscriber()
     if (cloudHelper_ != nullptr && CloudMediaAssetUnlimitObserver_ != nullptr) {
         cloudHelper_->UnregisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_);
         cloudHelper_ = nullptr;
+        CloudMediaAssetUnlimitObserver_ = nullptr;
     }
     if (defaultNetObserver_ != nullptr) {
         NetConnClient::GetInstance().UnregisterNetConnCallback(defaultNetObserver_);
