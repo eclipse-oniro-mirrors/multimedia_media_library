@@ -8943,6 +8943,8 @@ static void JSGetPhotoAlbumsExecute(napi_env env, void *data)
         context->userId);
     if (resultSet == nullptr) {
         NAPI_ERR_LOG("resultSet == nullptr, errCode is %{public}d", errCode);
+        NAPI_INFO_LOG("PhotoAlbumsExecute: &apiName=%{public}p, apiName=%{public}s, errCode=%{public}d",
+            &(context->apiName), context->apiName.c_str(), errCode);
         if (errCode == E_PERMISSION_DENIED || errCode == -E_CHECK_SYSTEMAPP_FAIL) {
             context->SaveError(errCode);
         } else {

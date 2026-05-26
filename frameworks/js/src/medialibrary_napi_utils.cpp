@@ -989,6 +989,8 @@ int MediaLibraryNapiUtils::TransErrorCode(const string &Name, shared_ptr<DataSha
 
 int MediaLibraryNapiUtils::TransErrorCode(const string &Name, int error)
 {
+    NAPI_INFO_LOG("TransErrorCode: &Name=%{public}p, Name=%{public}s, error=%{public}d",
+        &Name, Name.c_str(), error);
     NAPI_ERR_LOG("interface: %{public}s, server errcode:%{public}d ", Name.c_str(), error);
     // Transfer Server error to napi error code
     if (error <= E_COMMON_START && error >= E_COMMON_END) {
