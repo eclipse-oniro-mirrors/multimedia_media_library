@@ -1359,7 +1359,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_003, Test
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
 
-    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "1");
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_INTERRUPT);
     system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
@@ -1371,7 +1371,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_004, Test
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
 
-    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "1");
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_INTERRUPT);
     system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "0");
@@ -1383,7 +1383,8 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_005, Test
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
 
-    system::SetParameter(TEST_CLOUDSYNC_SWITCH_STATUS_KEY, "1");
+    system::SetParameter(TEST_CLOUDSYNC_SWITCH_STATUS_KEY,
+        std::to_string(MediaFileUtils::UTCTimeMilliSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_INTERRUPT);
     system::SetParameter(TEST_CLOUDSYNC_SWITCH_STATUS_KEY, "0");
@@ -1407,7 +1408,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_007, Test
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
 
-    system::SetParameter(TEST_CLONE_FLAG, "1");
+    system::SetParameter(TEST_CLONE_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_INTERRUPT);
     system::SetParameter(TEST_CLONE_FLAG, "0");
@@ -1419,7 +1420,7 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_008, Test
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(true);
 
-    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "1");
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_STOP);
     system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
@@ -1431,8 +1432,8 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_009, Test
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
 
-    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "1");
-    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, "1");
+    system::SetParameter(TEST_MEDIA_BACKUP_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
+    system::SetParameter(TEST_MEDIA_RESTORE_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_INTERRUPT);
     system::SetParameter(TEST_MEDIA_BACKUP_FLAG, "0");
