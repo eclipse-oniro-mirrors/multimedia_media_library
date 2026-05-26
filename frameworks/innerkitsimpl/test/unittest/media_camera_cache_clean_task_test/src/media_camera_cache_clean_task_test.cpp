@@ -235,7 +235,7 @@ HWTEST_F(MediaCameraCacheCleanTaskTest, Mccctt_DeleteEnhanceFolderDirtyfile_03, 
     std::this_thread::sleep_for(std::chrono::seconds(TEST_SLEEP_SECONDS));
 
     // 验证程序正常运行
-    EXPECT_TRUE(true);
+    EXPECT_TRUE(FileExists(testDir));
 
     // 清空测试目录
     ClearTestDirectory(testDir);
