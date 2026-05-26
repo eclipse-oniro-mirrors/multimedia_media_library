@@ -490,9 +490,9 @@ int32_t LcdAgingManager::CheckLcdAgingStatus(const std::atomic<bool> &shouldStop
         return E_AGING_STOP;
     }
     bool isClone = !MedialibrarySubscriber::IsBackgroundTaskAllowed();
-    bool isBackUp = system::GetIntParameter(MEDIA_BACKUP_FLAG, 0) != 0;
-    bool isRestore = system::GetIntParameter(MEDIA_RESTORE_FLAG, 0) != 0;
-    bool isCloudCleaning = system::GetIntParameter(CLOUDSYNC_SWITCH_STATUS_KEY, 0) != 0;
+    bool isBackUp = system::GetParameter(MEDIA_BACKUP_FLAG, "0") != "0";
+    bool isRestore = system::GetParameter(MEDIA_RESTORE_FLAG, "0") != "0";
+    bool isCloudCleaning = system::GetParameter(CLOUDSYNC_SWITCH_STATUS_KEY, "0") != "0";
     // wyftodo 正在标记时刻
 
     bool shouldInterrupt = isClone || isBackUp || isRestore || isCloudCleaning;
