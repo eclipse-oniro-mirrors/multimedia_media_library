@@ -130,9 +130,12 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
     }
-    std::string realPathToFileDir = REAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) + REAL_PATH_SUFFIX;
+    std::string realPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
+        PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
     size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
+    CHECK_AND_RETURN_LOG(indexPrefixEnd != std::string::npos && indexPrefixEnd != std::string::npos,
+        "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
     std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
 
@@ -168,9 +171,12 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     } else {
         videoInfo.videoPath = effectVideoPath;
     }
-    std::string realPathToFileDir = REAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) + REAL_PATH_SUFFIX;
+    std::string realPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
+        PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
     size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
+    CHECK_AND_RETURN_LOG(indexPrefixEnd != std::string::npos && indexPrefixEnd != std::string::npos,
+        "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
     std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
     std::string srcRealPath = realPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
