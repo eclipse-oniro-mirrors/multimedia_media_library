@@ -294,7 +294,7 @@ static inline shared_ptr<ResultSet> GetSourceAlbum(const shared_ptr<MediaLibrary
     if (!sourceAlbumIds.empty()) {
         predicates.In(PhotoAlbumColumns::ALBUM_ID, sourceAlbumIds);
     } else {
-        predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC));
+        predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::SOURCE));
     }
     CHECK_AND_RETURN_RET(rdbStore != nullptr, nullptr);
     return rdbStore->Query(predicates, columns);
@@ -1879,7 +1879,7 @@ static int32_t UpdateSourceAlbumIfNeeded(const std::shared_ptr<MediaLibraryRdbSt
 
     RdbPredicates predicates(PhotoAlbumColumns::TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, to_string(data.albumId));
-    predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC));
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::SOURCE));
     int32_t changedRows = 0;
     err = albumRefresh.Update(changedRows, values, predicates);
     CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, err,
