@@ -427,6 +427,7 @@ MoveResult MediaFileAccessUtils::MoveNormalAsset(const AssetOperationInfo &srcOb
     }
     if (result.isExecuteRename && needRename == RenameMode::NOT_RENAME) {
         result.errCode = E_RENAME;
+        return result;
     } else if (result.isExecuteRename && needRename == RenameMode::RENAME) {
         int32_t ret = UpateMetaDataForRename(srcObj, result);
         result.errCode = (ret == E_OK) ? E_OK : E_RDB;

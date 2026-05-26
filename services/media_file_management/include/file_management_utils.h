@@ -35,7 +35,11 @@ const std::vector<std::string> FORBIDDEN_PREFIXES = {
     "/storage/media/local/files/Docs/.thumbs",
     "/storage/media/local/files/Docs/.Recent",
     "/storage/media/local/files/Docs/.backup",
-    "/storage/media/local/files/Docs/.Trash"
+    "/storage/media/local/files/Docs/.Trash",
+    "/storage/media/local/files/Docs/.VMDocs",
+    "/storage/media/local/files/Docs/.ohpm",
+    "/storage/media/local/files/Docs/PCEngine",
+    "/storage/media/local/files/Docs/appdata",
 };
 struct FileAssetsInfo {
     int32_t fileId;
@@ -58,6 +62,11 @@ struct FileAlbumInfo {
     std::string albumName;
     std::string lpath;
     std::string targetDir;
+};
+
+enum ResultInfoType {
+    FILE_MANAGEMENT_URI,
+    FILE_MANAGEMENT_PATH
 };
 
 class FileManagementUtils {
