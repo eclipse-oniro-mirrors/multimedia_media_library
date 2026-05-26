@@ -794,6 +794,7 @@ struct MediaAssetInfo {
     int32_t assetId = -1;
     int32_t newAssetId = -1;
     int32_t ownerAlbumId = -1;
+    std::string targetPath = "";
 };
 
 static int32_t UpdateRelationship(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const MediaAssetInfo &assetInfo,
@@ -988,9 +989,12 @@ static int32_t UpdateCopyInfo(const std::shared_ptr<MediaLibraryRdbStore> rdbSto
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(assetInfo.newAssetId));
 
+    int64_t dateAdded = MediaFileUtils::UTCTimeMilliSeconds();
     NativeRdb::ValuesBucket values;
     values.PutInt(MediaColumn::MEDIA_TIME_PENDING, 0);
-    values.PutLong(MediaColumn::MEDIA_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
+    values.PutLong(MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    values.PutLong(MediaColumn::MEDIA_DATE_MODIFIED, dateAdded);
+    MediaFileUtils::ModifyFile(assetInfo.targetPath, dateAdded / MSEC_TO_SEC);
     RegenerateDateAddedDateParts(values);
     int32_t updateCount = 0;
     int32_t changeRows = -1;
@@ -1094,7 +1098,8 @@ static bool UpdateCloneState(const std::shared_ptr<MediaLibraryRdbStore> &upgrad
             "ownerAlbumId: %{public}d, ret = %{public}d", assetId, targetAssetInfo.newAssetId, ownerAlbumId, err);
         return false;
     }
-    err = UpdateCopyInfo(upgradeStore, {assetId, targetAssetInfo.newAssetId, ownerAlbumId}, assetRefresh);
+    err = UpdateCopyInfo(upgradeStore, {assetId, targetAssetInfo.newAssetId, ownerAlbumId,
+	    targetAssetInfo.targetRealPath}, assetRefresh);
     if (err != E_OK) {
         MEDIA_ERR_LOG("UpdateCopyInfo fail, assetId: %{public}d, targetAssetInfo.newAssetId: %{public}" PRId64
             "ownerAlbumId: %{public}d, ret = %{public}d", assetId, targetAssetInfo.newAssetId, ownerAlbumId, err);
