@@ -48,8 +48,8 @@ public:
     static void CopyToDestPath(int32_t srcFd, const std::string &destPath);
     static void InitAsset(std::string &dataFileUri, FileSourceType sourceType);
     static bool CheckDBIsSupported();
-    static void RunSameNameRenameCase(AssetOperationInfo &srcObj, const std::string &sameNamePath,
-        const std::vector<std::string> &existingPaths, const std::string &expectedPath);
+    static void RunSameNameRenameCase(const std::string &sameNamePath, const std::vector<std::string> &existingPaths,
+        const std::string &expectedPath);
 private:
     static void CleanInitAssetResource();
     static std::mutex Mutex_;

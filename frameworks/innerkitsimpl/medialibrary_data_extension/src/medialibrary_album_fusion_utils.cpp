@@ -1251,11 +1251,10 @@ static string GetRealPath(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
     }
     targetPath += displayName;
 
-    AssetOperationInfo srcObj = AssetOperationInfo::CreateFromPath(targetPath, AssetPathType::NORMAL_PATH);
     std::string renamePath;
     std::string renameTitle;
     std::string renameDisplayName;
-    int32_t ret = MediaFileAccessUtils::HandleSameNameRename(srcObj, targetPath, renamePath, renameTitle,
+    int32_t ret = MediaFileAccessUtils::HandleSameNameRename(targetPath, renamePath, renameTitle,
         renameDisplayName);
     displayName = renameDisplayName;
     return renamePath;

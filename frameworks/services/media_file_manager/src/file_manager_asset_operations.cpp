@@ -215,7 +215,7 @@ static bool IsMovingPhoto(shared_ptr<NativeRdb::ResultSet> &resultSet)
 }
 
 static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
-    shared_ptr<NativeRdb::ResultSet> &resultSet, std::vector<MoveAssetsToFileManagerUpdateData> &updateDatas)
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     int32_t mediaId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     std::string sourcePath = GetStringVal(PhotoColumn::PHOTO_SOURCE_PATH, resultSet);
@@ -231,6 +231,12 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
             DfxUtils::GetSafePath(innerFileSourcePath).c_str());
         return E_OK;
     }
+    // 纯云资产仅更新数据库
+    if (GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet) == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        MEDIA_INFO_LOG("CLOUD file manager");
+        UpdateFileManageAssetInfo(refresh, mediaId, innerFileSourcePath, tmpDisplayName, tmpTitle);
+        return E_OK;
+    }
     if (!MediaFileUtils::IsFileExists(outerFilePath)) {
         MEDIA_ERR_LOG("file not exist %{public}s", DfxUtils::GetSafePath(outerFilePath).c_str());
         return E_ERR;
@@ -238,8 +244,7 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
     std::string tmpInnerFilePath = innerFileSourcePath;
     // 同路径存在同名文件
     if (MediaFileUtils::IsFileExists(tmpInnerFilePath)) {
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(to_string(mediaId));
-        if (MediaFileAccessUtils::HandleSameNameRename(srcObj, tmpInnerFilePath, tmpInnerFilePath,
+        if (MediaFileAccessUtils::HandleSameNameRename(tmpInnerFilePath, tmpInnerFilePath,
             tmpTitle, tmpDisplayName) != E_OK) {
             MEDIA_ERR_LOG("can not move file to %{public}s", DfxUtils::GetSafePath(tmpInnerFilePath).c_str());
             return E_ERR;
@@ -247,23 +252,11 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
     }
     //移动源文件前需要刷新数据库字段
     UpdateFileManageAssetInfo(refresh, mediaId, tmpInnerFilePath, tmpDisplayName, tmpTitle);
-    MoveAssetsToFileManagerUpdateData updateData;
-    updateData.mediaId = mediaId;
-    updateData.title = tmpTitle;
-    updateData.displayName = tmpDisplayName;
-    updateData.sourcePath = "";
-    updateData.storagePath = tmpInnerFilePath;
-    // 纯云资产仅更新数据库
-    if (GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet) == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
-        updateDatas.emplace_back(updateData);
-        return E_OK;
-    }
     int32_t ret = FileManagerAssetOperations::MoveFileManagerAsset(outerFilePath, tmpInnerFilePath,
         IsMovingPhoto(resultSet));
     CHECK_AND_PRINT_LOG(ret == E_OK, "move asset %{public}s to %{public}s error, errno: %{public}d.",
         DfxUtils::GetSafePath(outerFilePath).c_str(), DfxUtils::GetSafePath(tmpInnerFilePath).c_str(), errno);
     if (ret == E_OK) {
-        updateDatas.emplace_back(updateData);
         if (tmpInnerFilePath.compare(innerFileSourcePath) != E_OK) {
             UpdateFileManageAssetInfo(refresh, mediaId, tmpInnerFilePath, tmpDisplayName, tmpTitle);
         }
@@ -299,9 +292,8 @@ int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::Acc
         resultSet->Close();
         return E_OK;
     }
-    std::vector<MoveAssetsToFileManagerUpdateData> updateDatas;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        MoveAssetToFileManage(refresh, resultSet, updateDatas);
+        MoveAssetToFileManage(refresh, resultSet);
     }
     resultSet->Close();
     return E_OK;

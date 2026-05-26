@@ -65,9 +65,9 @@ public:
 
     EXPORT static bool DeleteAsset(const AssetOperationInfo &obj);
 
-    EXPORT static int32_t HandleSameNameRename(const AssetOperationInfo &srcObj, const std::string &sameNamePath,
+    EXPORT static int32_t HandleSameNameRename(const std::string &sameNamePath,
         std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
-    EXPORT static int32_t HandleBurstSameNameRename(const AssetOperationInfo &srcObj, const std::string &sameNamePath,
+    EXPORT static int32_t HandleBurstSameNameRename(const std::string &sameNamePath,
         std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
 
     EXPORT static bool IsDirectoryEmpty(const std::string& dirPath);
@@ -94,7 +94,6 @@ private:
     static bool NeedConvertPath(const std::string& path);
 
     static bool NeedCheckSameNameRename(FileSourceType destSourceType);
-    static bool IsAlbumHasSameNameAsset(const AssetOperationInfo &srcObj, const std::string &displayName);
 
     static int32_t MoveFileCrossPolicy(const std::string &srcPath, const std::string &destPath,
         bool deleteSrc = false);
