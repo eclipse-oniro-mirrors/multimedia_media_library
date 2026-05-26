@@ -130,7 +130,7 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
     }
-    std::string realPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
+    std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
     size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
@@ -139,10 +139,10 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
     std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
 
-    std::string srcRealPath = realPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
-    std::string sharedTemp1RealPath = realPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+    std::string srcPhysicalPath = physicalPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
+    std::string sharedTemp1PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
         fileNamePrefix + "_tmp1" + fileNameSubfix;
-    std::string sharedTemp2RealPath = realPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+    std::string sharedTemp2PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
         fileNamePrefix + "_tmp2" + fileNameSubfix;
     std::string sharedTemp1CloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
         fileNamePrefix + "_tmp1" + fileNameSubfix;
@@ -150,7 +150,7 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
         fileNamePrefix + "_tmp2" + fileNameSubfix;
     MediaFileUtils::CreateFile(sharedTemp1CloudView);
     MediaFileUtils::CreateFile(sharedTemp2CloudView);
-    deferredProcSession_->AddVideo(videoId, srcRealPath, sharedTemp1RealPath, sharedTemp2RealPath);
+    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
 }
 
@@ -171,7 +171,7 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     } else {
         videoInfo.videoPath = effectVideoPath;
     }
-    std::string realPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
+    std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
     size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
@@ -179,10 +179,10 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
         "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
     std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
-    std::string srcRealPath = realPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
-    std::string sharedTemp1RealPath = realPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+    std::string srcPhysicalPath = physicalPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
+    std::string sharedTemp1PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
         fileNamePrefix + "_tmp1" + fileNameSubfix;
-    std::string sharedTemp2RealPath = realPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+    std::string sharedTemp2PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
         fileNamePrefix + "_tmp2" + fileNameSubfix;
     std::string sharedTemp1CloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
         fileNamePrefix + "_tmp1" + fileNameSubfix;
@@ -190,9 +190,10 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
         fileNamePrefix + "_tmp2" + fileNameSubfix;
     MediaFileUtils::CreateFile(sharedTemp1CloudView);
     MediaFileUtils::CreateFile(sharedTemp2CloudView);
-    std::string moviePathRealPath = realPathToFileDir + MEDIA_EDITDATA_DIR_REAL_PATH +
+    std::string moviePathRealPath = physicalPathToFileDir + MEDIA_EDITDATA_DIR_REAL_PATH +
         videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    deferredProcSession_->AddVideo(videoId, srcRealPath, sharedTemp1RealPath, sharedTemp2RealPath, moviePathRealPath);
+    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath,
+        moviePathRealPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
     DfxManager::GetInstance()->HandleCinematicVideoAddStartTime(CinematicWaitType::PROCESS_CINEMATIC, videoId);
     DfxManager::GetInstance()->HandleCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, videoId);
