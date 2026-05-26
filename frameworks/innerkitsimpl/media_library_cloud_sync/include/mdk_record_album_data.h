@@ -95,6 +95,10 @@ public:  // getter & setter
     void SetCoverCloudId(const std::string &coverCloudId);
     std::optional<std::string> GetUniqueId() const;
     void SetUniqueId(const std::string &uniqueId);
+    std::optional<int32_t> GetSceneId() const;
+    void SetSceneId(const int32_t &sceneId);
+    std::optional<int32_t> GetShareType() const;
+    void SetShareType(const int32_t &shareType);
 
 private:
     const std::string VALUE_RECORD_TYPE = "album";

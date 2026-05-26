@@ -35,7 +35,7 @@ public:
         callCount_++;
         lastChangeType_ = info.type;
         lastInfo_ = info;
-        return 0;
+        return NOTIFY_OK;
     }
 
     int32_t GetCallCount() const
@@ -79,4 +79,3 @@ public:
 } // namespace OHOS
 
 #endif // NOTIFICATION_HELPER_TEST_H
-

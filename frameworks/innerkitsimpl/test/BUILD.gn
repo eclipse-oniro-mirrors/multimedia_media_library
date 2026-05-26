@@ -82,6 +82,7 @@ group("test") {
     "unittest/medialibrary_backup_test:unittest",
     "unittest/media_assets_controller_service_test:unittest",
     "unittest/media_file_manager_test:unittest",
+    "unittest/notification_helper_test:unittest",
   ]
 
   deps_cloud_sync_unittest = [
