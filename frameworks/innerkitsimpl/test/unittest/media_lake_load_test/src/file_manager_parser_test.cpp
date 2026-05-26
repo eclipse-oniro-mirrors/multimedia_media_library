@@ -24,6 +24,7 @@
 
 #include "file_manager_parser.h"
 #include "media_log.h"
+#include "medialibrary_db_const_sqls.h"
 #include "medialibrary_unittest_utils.h"
 
 namespace OHOS {
@@ -36,8 +37,23 @@ static const size_t THREAD_COUNT = 8;
 static const size_t CALL_COUNT_PER_THREAD = 20;
 static const size_t IMAGE_RATIO = 4;
 static const std::string TEST_PATH_PREFIX = "/data/test/media_lake_load_test_data/";
-static const std::string TEST_IMAGE_NAME = "test.jpg";
-static const std::string TEST_VIDEO_NAME = "test.mp4";
+
+void ExecuteSqls(const std::vector<std::string> &sqls)
+{
+    ASSERT_NE(g_rdbStore, nullptr);
+    for (const auto &sql : sqls) {
+        int32_t err = g_rdbStore->ExecuteSql(sql);
+        MEDIA_INFO_LOG("Execute sql: %{public}s result: %{public}d", sql.c_str(), err);
+    }
+}
+
+void CreateTables()
+{
+    const std::vector<std::string> SQLS = {
+        CREATE_ASSET_UNIQUE_NUMBER_TABLE,
+    };
+    ExecuteSqls(SQLS);
+}
 
 void FileManagerParserTest::SetUpTestCase()
 {
@@ -45,6 +61,7 @@ void FileManagerParserTest::SetUpTestCase()
     MediaLibraryUnitTestUtils::Init();
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(g_rdbStore, nullptr);
+    CreateTables();
 }
 
 void FileManagerParserTest::TearDownTestCase()
@@ -64,10 +81,12 @@ HWTEST_F(FileManagerParserTest, SetCloudPath_Concurrent_MixedMediaTypeNoDuplicat
     parsers.reserve(totalCount);
     for (size_t i = 0; i < totalCount; i++) {
         bool isImage = (i % IMAGE_RATIO != 0);
-        std::string storagePath = isImage ? TEST_PATH_PREFIX + TEST_IMAGE_NAME : TEST_PATH_PREFIX + TEST_VIDEO_NAME;
+        std::string extension = isImage ? ".jpg" : ".mp4";
+        std::string displayName = "FileManagerParserTest001_" + std::to_string(i) + extension;
+        std::string storagePath = TEST_PATH_PREFIX + displayName;
         parsers.emplace_back(storagePath, ScanMode::INCREMENT);
         parsers[i].fileInfo_.fileType = isImage ? MediaType::MEDIA_TYPE_IMAGE : MediaType::MEDIA_TYPE_VIDEO;
-        parsers[i].fileInfo_.displayName = isImage ? TEST_IMAGE_NAME : TEST_VIDEO_NAME;
+        parsers[i].fileInfo_.displayName = displayName;
         parsers[i].fileInfo_.cloudPath = "";
     }
     EXPECT_EQ(parsers.size(), totalCount);
@@ -116,9 +135,11 @@ HWTEST_F(FileManagerParserTest, SetCloudPath_SingleThread_AllPathsNotEmpty_002, 
     std::vector<FileManagerParser> parsers;
     parsers.reserve(COUNT);
     for (size_t i = 0; i < COUNT; i++) {
-        parsers.emplace_back(TEST_PATH_PREFIX + TEST_IMAGE_NAME, ScanMode::INCREMENT);
+        std::string displayName = "FileManagerParserTest002_" + std::to_string(i) + ".jpg";
+        std::string storagePath = TEST_PATH_PREFIX + displayName;
+        parsers.emplace_back(storagePath, ScanMode::INCREMENT);
         parsers[i].fileInfo_.fileType = MediaType::MEDIA_TYPE_IMAGE;
-        parsers[i].fileInfo_.displayName = TEST_IMAGE_NAME;
+        parsers[i].fileInfo_.displayName = displayName;
         parsers[i].fileInfo_.cloudPath = "";
     }
     EXPECT_EQ(parsers.size(), COUNT);
@@ -137,9 +158,11 @@ HWTEST_F(FileManagerParserTest, SetCloudPath_SingleThread_AllPathsNotEmpty_002, 
 HWTEST_F(FileManagerParserTest, SetCloudPath_ExistingCloudPath_NoOverwrite_003, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Start SetCloudPath_ExistingCloudPath_NoOverwrite_003");
-    FileManagerParser parser(TEST_PATH_PREFIX + TEST_VIDEO_NAME, ScanMode::INCREMENT);
+    std::string displayName = "FileManagerParserTest003.mp4";
+    std::string storagePath = TEST_PATH_PREFIX + displayName;
+    FileManagerParser parser(storagePath, ScanMode::INCREMENT);
     parser.fileInfo_.fileType = MediaType::MEDIA_TYPE_VIDEO;
-    parser.fileInfo_.displayName = TEST_VIDEO_NAME;
+    parser.fileInfo_.displayName = displayName;
     const std::string EXPECTED_PATH = "/storage/cloud/files/Photo/1/IMG_existing.mp4";
     parser.fileInfo_.cloudPath = EXPECTED_PATH;
     parser.SetCloudPath();
