@@ -395,9 +395,9 @@ export enum PhotoBrowserUIElement {
 export enum VideoPlayerState {
   PLAYING = 0,
   PAUSED = 1,
-  STOPPED = 3,
-  SEEK_START = 4,
-  SEEK_FINISH = 5
+  STOPPED = 2,
+  SEEK_START = 3,
+  SEEK_FINISH = 4
 }
 
 export enum SaveMode {
