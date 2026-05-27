@@ -58,7 +58,13 @@ static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 
 string GetTempFilePath(const string &filePath)
 {
-    return filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.'));
+    size_t indexPrefixEnd = filePath.rfind('/');
+    size_t indexSubfixStart = filePath.rfind('.');
+    std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
+    std::string fileNameSubfix = filePath.substr(indexSubfixStart); // .mp4
+    std::string tempFilePath = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
+        fileNamePrefix + "_tmp1" + fileNameSubfix;
+    return tempFilePath;
 }
 
 void PrepareBaseVideoFile(const string &filePath)
@@ -274,16 +280,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_001, TestSiz
     string videoId = "202408011800";
 
     PrepareBaseVideoFile(filePath);
-
+    // /storage/cloud/files/Photo/14/VID_1779891774_030.mp4
+    MEDIA_INFO_LOG("manager_add_video_001 filePath %{public}s", filePath.c_str());
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     VideoInfo videoInfo = {fileId, VideoCount::SINGLE, filePath, "", ""};
     instance.AddVideo(videoId, to_string(fileId), videoInfo);
 
     string absFilePath;
     string absTempFilePath;
-
+    // old /storage/cloud/files/Photo/14/VID_1779891774_030_tmp.mp4
+    // new /storage/cloud/files/cameraCache/temp/VID_1779891774_030_tmp1.mp4
     string tempFilePath = GetTempFilePath(filePath);
-
+    MEDIA_INFO_LOG("manager_add_video_001 tempFilePath %{public}s", tempFilePath.c_str());
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
     EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
 
