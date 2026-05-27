@@ -743,22 +743,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408071800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     callback->OnProcessVideoDone(videoId);
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(!PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), TEMP_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);
@@ -777,7 +773,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408081800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
@@ -786,7 +781,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     SetEdited(fileId);
 
@@ -794,7 +788,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_FALSE(PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);
