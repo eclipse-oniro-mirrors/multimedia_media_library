@@ -183,6 +183,30 @@ struct DeleteBehaviorParams {
     map<string, string> ownerAlbumIds;
 };
 
+struct TrashSceneInfo {
+    bool hasBurstCover = false;
+    bool hasLivePhoto4d = false;
+};
+
+static void DetectTrashScene(shared_ptr<NativeRdb::ResultSet> &resultSet, TrashSceneInfo &sceneInfo)
+{
+    if (!sceneInfo.hasBurstCover) {
+        int32_t burstCoverLevel = GetInt32Val(PhotoColumn::PHOTO_BURST_COVER_LEVEL, resultSet);
+        string burstKey = GetStringVal(PhotoColumn::PHOTO_BURST_KEY, resultSet);
+        int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+        if (burstCoverLevel == static_cast<int32_t>(BurstCoverLevelType::COVER)
+            && subtype == static_cast<int32_t>(PhotoSubType::BURST) && !burstKey.empty()) {
+            sceneInfo.hasBurstCover = true;
+        }
+    }
+    if (!sceneInfo.hasLivePhoto4d) {
+        int32_t livePhoto4dStatus = GetInt32Val(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, resultSet);
+        if (livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+            sceneInfo.hasLivePhoto4d = true;
+        }
+    }
+}
+
 class DeleteBehaviorTaskData : public AsyncTaskData {
 public:
     DeleteBehaviorTaskData() = default;
@@ -1312,11 +1336,12 @@ static void DeleteBehaviorAsync(AsyncTaskData *data)
 }
 
 static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,  const vector<string> &fileIds,
-    std::shared_ptr<AlbumData> albumData)
+    std::shared_ptr<AlbumData> albumData, TrashSceneInfo &sceneInfo)
 {
     vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
         CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
-        PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN };
+        PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN, PhotoColumn::PHOTO_BURST_COVER_LEVEL,
+        PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Result set is empty");
@@ -1331,6 +1356,7 @@ static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,
     if (resultSet->GetInt(isHiddenIndex, isHidden) == NativeRdb::E_OK) {
         albumData->isHidden.push_back(isHidden);
     }
+    DetectTrashScene(resultSet, sceneInfo);
     int32_t quality = GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet);
     int32_t taskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
     if (quality == static_cast<int32_t>(MultiStagesPhotoQuality::LOW)
@@ -1341,16 +1367,21 @@ static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,
 }
 
 static void HandleQualityAndHiddenBatch(NativeRdb::AbsRdbPredicates predicates, const vector<string> &fileIds,
-    std::shared_ptr<AlbumData> albumData)
+    std::shared_ptr<AlbumData> albumData, TrashSceneInfo &sceneInfo)
 {
     string where = predicates.GetWhereClause() + " AND (" + PhotoColumn::PHOTO_QUALITY + "=" +
         to_string(static_cast<int32_t>(MultiStagesPhotoQuality::LOW)) + " OR " +
         PhotoColumn::STAGE_VIDEO_TASK_STATUS + " = " +
-        to_string(static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) + ")";
+        to_string(static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) + " OR " +
+        PhotoColumn::PHOTO_BURST_COVER_LEVEL + " = " +
+        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) + " OR " +
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS + " = " +
+        to_string(static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) + ")";
     predicates.SetWhereClause(where);
     vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
         CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
-        PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN };
+        PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN, PhotoColumn::PHOTO_BURST_COVER_LEVEL,
+        PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Result set is empty");
@@ -1366,13 +1397,19 @@ static void HandleQualityAndHiddenBatch(NativeRdb::AbsRdbPredicates predicates, 
         albumData->isHidden.push_back(isHidden);
     }
     do {
-        MultiStagesCaptureManager::RemovePhotosWithResultSet(resultSet, true);
+        DetectTrashScene(resultSet, sceneInfo);
+        int32_t quality = GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet);
+        int32_t taskStatus = GetInt32Val(CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, resultSet);
+        if (quality == static_cast<int32_t>(MultiStagesPhotoQuality::LOW)
+            || taskStatus == static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {
+            MultiStagesCaptureManager::RemovePhotosWithResultSet(resultSet, true);
+        }
     } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
     resultSet->Close();
 }
 
 static void HandleQualityAndHidden(NativeRdb::RdbPredicates predicates, const vector<string> &fileIds,
-    std::shared_ptr<AlbumData> albumData)
+    std::shared_ptr<AlbumData> albumData, TrashSceneInfo &sceneInfo)
 {
     if (predicates.GetTableName() != PhotoColumn::PHOTOS_TABLE) {
         MEDIA_INFO_LOG("Invalid table name: %{public}s", predicates.GetTableName().c_str());
@@ -1382,9 +1419,9 @@ static void HandleQualityAndHidden(NativeRdb::RdbPredicates predicates, const ve
     predicatesNew.SetWhereClause(predicates.GetWhereClause());
     predicatesNew.SetWhereArgs(predicates.GetWhereArgs());
     if (predicates.GetWhereArgs().size() > 1) {
-        HandleQualityAndHiddenBatch(predicatesNew, fileIds, albumData);
+        HandleQualityAndHiddenBatch(predicatesNew, fileIds, albumData, sceneInfo);
     } else {
-        HandleQualityAndHiddenSingle(predicatesNew, fileIds, albumData);
+        HandleQualityAndHiddenSingle(predicatesNew, fileIds, albumData, sceneInfo);
     }
 }
 
@@ -1416,6 +1453,29 @@ static void HandleLivePhoto4dStatus(const vector<string> &fileIds, AccurateRefre
         "livePhoto4d:update live photo 4d parent failed, filedIds:%{public}s, ret:%{public}d", inClause.c_str(), ret);
 }
 
+static int32_t TrashPhotosDbUpdateAndRefreshAlbum(AccurateRefresh::AssetAccurateRefresh &assetRefresh,
+    NativeRdb::RdbPredicates &rdbPredicate, vector<string> &fileIds,
+    ValuesBucket &values, const TrashSceneInfo &sceneInfo)
+{
+    // 2、AssetRefresh -> Update()
+    // 删除适配连拍照片
+    if (sceneInfo.hasBurstCover) {
+        BurstDao::CompleteBurstFileIds(fileIds);
+    }
+    CHECK_AND_PRINT_LOG(!fileIds.empty(), "get burst member photo failed. fileIds is empty.");
+    rdbPredicate.Clear();
+    rdbPredicate.In(PhotoColumn::MEDIA_ID, fileIds);
+    rdbPredicate.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
+    int32_t updatedRows = assetRefresh.UpdateWithDateTime(values, rdbPredicate);
+    MEDIA_DEBUG_LOG("TrashPhotos updatedRows: %{public}d.", updatedRows);
+    if (sceneInfo.hasLivePhoto4d) {
+        HandleLivePhoto4dStatus(fileIds, assetRefresh);
+    }
+    // 3、AssetRefresh -> RefreshAlbums()
+    assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
+    return updatedRows;
+}
+
 int32_t MediaLibraryPhotoOperations::TrashPhotos(MediaLibraryCommand &cmd)
 {
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::TRASH_PHOTOS_BUSSINESS_NAME);
@@ -1426,24 +1486,14 @@ int32_t MediaLibraryPhotoOperations::TrashPhotos(MediaLibraryCommand &cmd)
     std::shared_ptr<AlbumData> albumData = std::make_shared<AlbumData>();
     vector<string> fileIds = rdbPredicate.GetWhereArgs();
     MEDIA_INFO_LOG("Start trash %{public}zu photos", fileIds.size());
-    HandleQualityAndHidden(rdbPredicate, fileIds, albumData);
+    TrashSceneInfo sceneInfo;
+    HandleQualityAndHidden(rdbPredicate, fileIds, albumData, sceneInfo);
     // 1、AssetRefresh -> Init(rdbPredicate)
     UpdateSourcePath(fileIds);
     ValuesBucket values;
     values.Put(MediaColumn::MEDIA_DATE_TRASHED, MediaFileUtils::UTCTimeMilliSeconds());
     cmd.SetValueBucket(values);
-    // 2、AssetRefresh -> Update()
-    // 删除适配连拍照片
-    BurstDao::CompleteBurstFileIds(fileIds);
-    CHECK_AND_PRINT_LOG(!fileIds.empty(), "get burst member photo failed. fileIds is empty.");
-    rdbPredicate.Clear();
-    rdbPredicate.In(PhotoColumn::MEDIA_ID, fileIds);
-    rdbPredicate.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
-    int32_t updatedRows = assetRefresh.UpdateWithDateTime(values, rdbPredicate);
-    MEDIA_DEBUG_LOG("TrashPhotos updatedRows: %{public}d.", updatedRows);
-    HandleLivePhoto4dStatus(fileIds, assetRefresh);
-    // 3、AssetRefresh -> RefreshAlbums()
-    assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
+    int32_t updatedRows = TrashPhotosDbUpdateAndRefreshAlbum(assetRefresh, rdbPredicate, fileIds, values, sceneInfo);
     CHECK_AND_RETURN_RET_LOG(updatedRows >= 0, E_HAS_DB_ERROR, "Trash photo failed. Result %{public}d.", updatedRows);
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     int32_t ret = LakeFileOperations::MoveAssetsFromLake(rdbPredicate.GetWhereArgs());
