@@ -102,6 +102,7 @@ static std::string ConvertFileId2VideoId(const int32_t fileId)
     std::vector<std::string> fileAssetColumns = {PhotoColumn::MEDIA_ID, PhotoColumn::PHOTO_ID};
     shared_ptr<FileAsset> fileAsset = MediaLibraryAssetOperations::GetFileAssetFromDb(
         PhotoColumn::MEDIA_ID, to_string(fileId), OperationObject::FILESYSTEM_PHOTO, fileAssetColumns);
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, "", "fileAsset is null");
     return fileAsset->GetPhotoId();
 }
 
@@ -134,7 +135,7 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
     size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
-    CHECK_AND_RETURN_LOG(indexPrefixEnd != std::string::npos && indexPrefixEnd != std::string::npos,
+    CHECK_AND_RETURN_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos,
         "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
     std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
@@ -175,7 +176,7 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
     size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
-    CHECK_AND_RETURN_LOG(indexPrefixEnd != std::string::npos && indexPrefixEnd != std::string::npos,
+    CHECK_AND_RETURN_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos,
         "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
     std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
