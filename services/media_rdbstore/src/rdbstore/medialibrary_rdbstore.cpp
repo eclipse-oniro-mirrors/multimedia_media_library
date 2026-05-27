@@ -129,6 +129,35 @@ const std::string PIC_EXTENSION_VALUES = DIR_ALL_IMAGE_CONTAINER_TYPE;
 
 const std::string AUDIO_EXTENSION_VALUES = DIR_ALL_AUDIO_CONTAINER_TYPE;
 
+constexpr uint64_t ATTACHMENT_PLACEHOLDER_SIZE = 1024;
+const std::string ATTACHMENT_FILE_EDITDATA = "editdata";
+const std::string ATTACHMENT_FILE_EDITDATA_CAMERA = "editdata_camera";
+const std::string ATTACHMENT_FILE_SOURCE = "source";
+const std::string ATTACHMENT_FILE_SOURCE_BACK = "source_back";
+
+static bool IsAttachmentWhitelistFile(const std::string &fileName)
+{
+    MEDIA_DEBUG_LOG("Checking file: %{public}s", MediaFileUtils::DesensitizeName(fileName).c_str());
+    if (fileName == ATTACHMENT_FILE_EDITDATA || fileName == ATTACHMENT_FILE_EDITDATA_CAMERA) {
+        return true;
+    }
+
+    // Match source/source_back by base name and allow any extension (e.g. source.jpg/source.mp4).
+    size_t dotPos = fileName.find('.');
+    std::string baseName = (dotPos == std::string::npos) ? fileName : fileName.substr(0, dotPos);
+    return baseName == ATTACHMENT_FILE_SOURCE || baseName == ATTACHMENT_FILE_SOURCE_BACK;
+}
+
+static void StatEditAndAttachmentSize(const std::string &rootPath, uint64_t &editDataSize, uint64_t &attachmentSize)
+{
+    attachmentSize = ATTACHMENT_PLACEHOLDER_SIZE;
+    size_t editDataSizeCalc = 0;
+    size_t attachmentSizeCalc = 0;
+    MediaFileUtils::StatDirSize(rootPath, editDataSizeCalc, attachmentSizeCalc, IsAttachmentWhitelistFile);
+    editDataSize = editDataSizeCalc;
+    attachmentSize += attachmentSizeCalc;
+}
+
 const std::string RDB_OLD_VERSION = "rdb_old_version";
 
 const std::string SLAVE = "slave";
@@ -936,6 +965,7 @@ namespace {
         {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, "INT NOT NULL DEFAULT 0"},
         {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, "TEXT"},
         {PhotoColumn::LOCAL_ASSET_SIZE, "BIGINT NOT NULL DEFAULT 0"},
+        {PhotoColumn::ATTACHMENT_SIZE, "BIGINT NOT NULL DEFAULT -1"},
     };
 
     constexpr size_t PHOTO_TABLE_COLUMN_COUNT = sizeof(PHOTO_TABLE_COLUMNS) / sizeof(ColumnInfo);
@@ -988,18 +1018,43 @@ REGISTER_ASYNC_UPGRADE_TASK(VERSION_CREATE_VIDEO_FACE_TAG_ID_INDEX, "Photos", Ad
 int32_t MediaLibraryRdbStore::UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
     const std::string &photoId, const std::string &editDataDir)
 {
-    size_t size = 0;
-    MediaFileUtils::StatDirSize(editDataDir, size);
-    std::string sql = "UPDATE " + PhotoExtColumn::PHOTOS_EXT_TABLE + " "
-                    "SET " + PhotoExtColumn::EDITDATA_SIZE + " = " + std::to_string(size) + " "
-                    "WHERE " + PhotoExtColumn::PHOTO_ID + " = '" + photoId + "'";
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
 
-    int32_t ret = rdbStore->ExecuteSql(sql);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Execute SQL failed: %{public}d", ret);
-        return E_DB_FAIL;
-    }
-    return E_OK;
+    uint64_t editDataSize = 0;
+    uint64_t attachmentSize = 0;
+    StatEditAndAttachmentSize(editDataDir, editDataSize, attachmentSize);
+
+    std::string updatePhotoExtSql = "UPDATE " + PhotoExtColumn::PHOTOS_EXT_TABLE + " "
+        "SET " + PhotoExtColumn::EDITDATA_SIZE + " = ? "
+        "WHERE " + PhotoExtColumn::PHOTO_ID + " = ? ;";
+    std::string updatePhotoSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+        " SET " + PhotoColumn::ATTACHMENT_SIZE + " = ?"
+        " WHERE " + MediaColumn::MEDIA_ID + " = ? ;";
+
+    std::vector<ValueObject> editDataBindArgs = {
+        ValueObject(to_string(editDataSize)),
+        ValueObject(photoId)
+    };
+    std::vector<ValueObject> attachmentBindArgs = {
+        ValueObject(to_string(attachmentSize)),
+        ValueObject(photoId)
+    };
+
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> updateFunc = [&]() -> int32_t {
+        int32_t ret = trans->ExecuteSql(updatePhotoExtSql, editDataBindArgs);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+            "Update editdata_size failed, photoId:%{public}s", photoId.c_str());
+
+        ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+            "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
+        return E_OK;
+    };
+    int32_t errCode = trans->RetryTrans(updateFunc);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Trans fail!, ret:%{public}d", errCode);
+    MEDIA_DEBUG_LOG("end update edit data size and attachment size");
+    return errCode;
 }
 
 static int32_t UpdateLocationKnowledgeIdx(RdbStore& store)

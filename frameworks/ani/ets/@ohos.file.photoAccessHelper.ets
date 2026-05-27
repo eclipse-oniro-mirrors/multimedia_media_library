@@ -1644,6 +1644,7 @@ export namespace photoAccessHelper {
     DATE_ADDED_DAY = 'date_added_day',
     HIDDEN_TIME = "hidden_time",
     FILE_HIDDEN = 'file_hidden',
+    ATTACHMENT_SIZE = 'attachment_size',
   }
 
   export enum AlbumKeys {

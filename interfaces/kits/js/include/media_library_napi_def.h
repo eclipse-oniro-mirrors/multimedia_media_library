@@ -69,6 +69,7 @@ static const unordered_set<std::string> PUBLIC_PHOTO_KEYS = {
     PhotoColumn::PHOTO_ASPECT_RATIO,
     PhotoColumn::PHOTO_IS_CRITICAL,
     PhotoColumn::LOCAL_ASSET_SIZE,
+    PhotoColumn::ATTACHMENT_SIZE,
 };
 static const unordered_set<std::string> PUBLIC_ALBUM_KEYS = {
     CONST_MEDIA_DATA_DB_URI,

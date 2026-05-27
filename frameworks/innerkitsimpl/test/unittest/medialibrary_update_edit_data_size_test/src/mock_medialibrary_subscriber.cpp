@@ -13,15 +13,16 @@
  * limitations under the License.
  */
 
-#ifndef UPGRADE_PHOTOS_SQLS_H
-#define UPGRADE_PHOTOS_SQLS_H
-// table name need to be added here
-#define TABLE_PHOTOS "Photos"
-// column name should be added here
-#define COLUMN_PHOTO_RISK_STATUS "photo_risk_status"
-#define COLUMN_CRITICAL_TYPE "critical_type"
-#define COLUMN_PHOTO_NEED_THUMBNAIL "need_thumbnail"
-#define COLUMN_ATTACHMENT_SIZE "attachment_size"
-// sqls only execute in upgrade progress should be added here
+#define MLOG_TAG "MockMedialibrarySubscriber"
 
-#endif // UPGRADE_PHOTOS_SQLS_H
+#include "medialibrary_subscriber.h"
+
+#include "media_log.h"
+
+namespace OHOS::Media {
+bool MedialibrarySubscriber::IsCurrentStatusOn()
+{
+    MEDIA_INFO_LOG("Use mocked MedialibrarySubscriber::IsCurrentStatusOn");
+    return true;
+}
+} // namespace OHOS::Media
