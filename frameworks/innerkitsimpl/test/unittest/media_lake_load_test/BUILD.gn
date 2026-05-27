@@ -82,6 +82,7 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_parser.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scan_policy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/media_fileinterwork_scanner.cpp",
   ]
 
   sources = [
@@ -90,6 +91,8 @@ ohos_unittest("media_lake_load_test") {
     "./src/global_scanner_test.cpp",
     "./src/lake_file_operations_test.cpp",
     "./src/file_parser_test.cpp",
+    "./src/file_manager_parser_test.cpp",
+    "./src/media_fileinterwork_scanner_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
@@ -113,7 +116,9 @@ ohos_unittest("media_lake_load_test") {
     "ability_base:want",
     "ability_base:zuri",
     "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_context_native",
     "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
     "ability_runtime:app_context",
     "ability_runtime:app_manager",
     "ability_runtime:dataobs_manager",
@@ -183,4 +188,7 @@ ohos_unittest("media_lake_load_test") {
   if (media_library_file_manager_enable) {
     defines += [ "MEDIALIBRARY_FILE_MGR_SUPPORT" ]
   }
+
+  resource_config_file =
+    "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
 }
