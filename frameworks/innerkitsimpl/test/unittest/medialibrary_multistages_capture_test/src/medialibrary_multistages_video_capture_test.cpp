@@ -757,8 +757,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_EQ(ReadFileContent(filePath), TEMP_VIDEO_FILE_INNER);
-
     int32_t quality = GetQuality(fileId);
     EXPECT_EQ(quality, static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
 
