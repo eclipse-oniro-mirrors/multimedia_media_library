@@ -167,7 +167,8 @@ ohos_unittest("media_lake_load_test") {
     "window_manager:libdm",
     "zlib:shared_libz",
     "qos_manager:qos",
-    "qos_manager:concurrent_task_client"
+    "qos_manager:concurrent_task_client",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

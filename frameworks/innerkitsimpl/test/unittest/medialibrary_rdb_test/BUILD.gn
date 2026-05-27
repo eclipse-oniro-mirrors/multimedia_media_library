@@ -88,6 +88,7 @@ ohos_unittest("medialibrary_rdb_test") {
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
+    "graphic_surface:surface",
   ]
 
   defines = []

@@ -94,6 +94,7 @@ ohos_unittest("medialibrary_thumbnail_service_test") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

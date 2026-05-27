@@ -162,6 +162,7 @@ ohos_fuzztest("MediaLibraryCloudMediaControllerFuzzTest") {
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudfile_kit",
+    "graphic_surface:surface",
   ]
 
   if (defined(global_parts_info) &&

@@ -176,6 +176,7 @@ ohos_unittest("media_lake_file_monitor_test") {
     "usb_manager:usbsrv_client",
     "window_manager:libdm",
     "zlib:shared_libz",
+    "graphic_surface:surface",
   ]
  
   defines = []

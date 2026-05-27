@@ -444,6 +444,7 @@ ohos_unittest("media_library_cloud_sync_service_service_test") {
     "relational_store:rdb_data_share_adapter",
     "e2fsprogs:libext2_uuid",
     "preferences:native_preferences",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

@@ -62,6 +62,7 @@ ohos_unittest("medialibrary_common_utils_test") {
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

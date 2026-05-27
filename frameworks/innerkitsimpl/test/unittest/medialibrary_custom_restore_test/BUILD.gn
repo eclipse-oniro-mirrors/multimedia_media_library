@@ -119,6 +119,7 @@ ohos_unittest("medialibrary_custom_restore_test") {
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "samgr:samgr_proxy",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

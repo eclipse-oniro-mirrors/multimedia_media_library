@@ -65,6 +65,7 @@ ohos_unittest("medialibrary_cover_position_parser_test") {
     "napi:ace_napi",
     "relational_store:native_rdb",
     "dfs_service:cloudsync_kit_inner",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

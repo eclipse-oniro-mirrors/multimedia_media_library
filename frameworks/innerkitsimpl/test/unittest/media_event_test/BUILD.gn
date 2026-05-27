@@ -121,6 +121,7 @@ ohos_unittest("event_scan_test") {
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
+    "graphic_surface:surface",
   ]
 
   sanitize = {
@@ -231,6 +232,7 @@ ohos_unittest("event_thumbnail_test") {
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
+    "graphic_surface:surface",
   ]
 
   sanitize = {
