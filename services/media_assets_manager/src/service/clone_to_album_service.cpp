@@ -46,6 +46,7 @@
 #include "file_manager_scanner.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_tracer.h"
+#include "file_management_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -376,6 +377,8 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
 
 int32_t CloneToAlbumService::CloneToAlbum(CloneToAlbumReqBody &reqBody)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("CloneToAlbum");
     MEDIA_INFO_LOG("CloneToAlbum start, assets=%{public}zu, albumId=%{public}d, requestId=%{public}d",
         reqBody.assetsArray.size(), reqBody.albumId,  reqBody.requestId);
     int32_t ret = ValidateRequest(reqBody);
@@ -424,30 +427,19 @@ shared_ptr<NativeRdb::ResultSet> QueryGetAlbumByLPath(const string &lpath)
 
 int32_t InsertAlbumByLPath(const string &lpath)
 {
+    FileAlbumInfo insertAlbumInfo;
+    insertAlbumInfo.lpath = lpath;
     string albumName = "";
     size_t lastSlashPos = lpath.find_last_of('/');
     if (lastSlashPos != std::string::npos) {
-        albumName = lpath.substr(lastSlashPos + 1);
+        insertAlbumInfo.albumName = lpath.substr(lastSlashPos + 1);
     }
     if (lpath == CLONE_FILE_ROOT_LPATH) {
-        albumName = CLONE_FILE_ROOT_ALBUM;
+        insertAlbumInfo.albumName = CLONE_FILE_ROOT_ALBUM;
     }
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Failed to get rdbStore.");
-    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
-    int64_t rowNum = 0;
-    NativeRdb::ValuesBucket values;
-    values.PutString(PhotoAlbumColumns::ALBUM_NAME, albumName);
-    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, static_cast<int32_t>(PhotoAlbumType::SOURCE));
-    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE,
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
-    values.PutString(PhotoAlbumColumns::ALBUM_LPATH, lpath);
-    int32_t result = rdbStore->Insert(rowNum, PhotoAlbumColumns::TABLE, values);
-    if (result != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Insert error! ");
-        return E_ERR;
-    }
-    return rowNum;
+    int32_t albumId = FileManagementUtils::InsertFileAlbum(insertAlbumInfo);
+    CHECK_AND_RETURN_RET_LOG(albumId > 0, E_ERR, "InsertFileAlbum failed.");
+    return albumId;
 }
 
 int32_t GetAlbumByLPath(CloneToAlbumReqBody &reqBody)
@@ -515,6 +507,8 @@ int32_t ValidateRequestForDir(CloneToAlbumReqBody &reqBody)
 
 int32_t CloneToAlbumService::CloneToDir(CloneToAlbumReqBody &reqBody)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("CloneToDir");
     MEDIA_INFO_LOG("CloneToDir start, assets=%{public}zu",
         reqBody.assetsArray.size());
     int32_t ret = ValidateRequestForDir(reqBody);
@@ -657,6 +651,8 @@ int32_t ValidateRequestByPath(CloneToAlbumReqBody &reqBody)
 
 int32_t CloneToAlbumService::CloneAssetByPath(CloneToAlbumReqBody &reqBody)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("CloneAssetByPath");
     MEDIA_INFO_LOG("CloneAssetByPath start");
     int32_t ret = ValidateRequestByPath(reqBody);
     if (ret != E_OK) {
