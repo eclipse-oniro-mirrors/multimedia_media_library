@@ -86,6 +86,7 @@
 #include "release_debug_database_vo.h"
 #include "compatible_info_vo.h"
 #include "check_photo_uris_read_permission_vo.h"
+#include "check_db_availability_vo.h"
 #include "get_albumid_by_lpath_vo.h"
 
 namespace OHOS {
@@ -96,6 +97,7 @@ using DataShareResultSet = OHOS::DataShare::DataShareResultSet;
 using DataShareValuesBucket = OHOS::DataShare::DataShareValuesBucket;
 
 
+thread_local unique_ptr<ChangeListenerAni> g_listObj = nullptr;
 static SafeMap<int32_t, std::shared_ptr<ThumbnailBatchGenerateObserver>> thumbnailGenerateObserverMap;
 static SafeMap<int32_t, std::shared_ptr<ThumbnailGenerateHandler>> thumbnailGenerateHandlerMap;
 static std::atomic<int32_t> requestIdCounter_ = 0;
@@ -294,6 +296,10 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::SetFileCompatibleConfig)},
     ani_native_function {"getAssetCompatibleConfigInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::GetAssetCompatibleConfig)},
+    ani_native_function {"onMediaLibraryAvailability", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::AvailabilityRegisterCallback)},
+    ani_native_function {"offMediaLibraryAvailability", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::AvailabilityUnregisterCallback)},
     ani_native_function {"getAlbumIdByLpathInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::GetAlbumIdByLpath)},
     ani_native_function {"getAlbumIdByBundleNameInner", nullptr,
@@ -1747,6 +1753,12 @@ ani_object MediaLibraryAni::Constructor(ani_env *env, ani_class clazz, ani_objec
         nativeHandle->listObj_ = std::make_unique<ChangeListenerAni>(vm);
     }
 
+    if (g_listObj == nullptr) {
+        ani_vm *vm = nullptr;
+        CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
+        g_listObj = std::make_unique<ChangeListenerAni>(vm);
+    }
+
     bool isAsync = false;
     CheckWhetherAsync(env, userIdObject, isAsync);
     if (!InitUserFileClient(env, context, isAsync)) {
@@ -1786,6 +1798,12 @@ ani_object MediaLibraryAni::Constructor(ani_env *env, ani_class clazz, ani_objec
         ani_vm *vm = nullptr;
         CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
         nativeHandle->listObj_ = std::make_unique<ChangeListenerAni>(vm);
+    }
+
+    if (g_listObj == nullptr) {
+        ani_vm *vm = nullptr;
+        CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
+        g_listObj = std::make_unique<ChangeListenerAni>(vm);
     }
 
     bool isAsync = true;
@@ -5905,6 +5923,182 @@ void MediaLibraryAni::PhotoAccessOnTrashedAlbumChange(ani_env *env, ani_object o
     return;
 }
 
+int32_t MediaLibraryAni::CreateAndRegisterNewAvailabilityObserverAni(ani_env *env, ani_ref ref,
+    Notification::NotifyUriType registerUriType, std::string& registerUri, ChangeListenerAni& listObj)
+{
+    auto observer = make_shared<MediaOnNotifyNewObserverAni>(registerUriType, registerUri, env);
+
+    Uri notifyUri(registerUri);
+    int32_t ret = UserFileClient::RegisterObserverExtProvider(notifyUri,
+        static_cast<shared_ptr<DataShare::DataShareObserver>>(observer), false);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("RegisterObserverExtProvider failed, ret: %{public}d", ret);
+        return ret;
+    }
+
+    auto clientObserver = make_shared<ClientObserverAni>(registerUriType, ref);
+    observer->ClientObserverAnis_[registerUriType].push_back(clientObserver);
+    listObj.newObservers_.push_back(observer);
+
+    ANI_INFO_LOG("Register availability observer success");
+    return E_OK;
+}
+
+int32_t MediaLibraryAni::OverrideExistingAvailabilityObserverAni(ani_env *env, ani_ref ref,
+    MediaOnNotifyNewObserverAni& observer, Notification::NotifyUriType registerUriType)
+{
+    ANI_INFO_LOG("Found existing availability observer, overriding...");
+    auto& clientObservers = observer.ClientObserverAnis_;
+    auto iter = clientObservers.find(registerUriType);
+    if (iter != clientObservers.end()) {
+        for (auto& oldObs : iter->second) {
+            if (oldObs != nullptr && oldObs->ref_ != nullptr) {
+                ANI_INFO_LOG("Delete old ani_ref to avoid leak");
+                env->GlobalReference_Delete(oldObs->ref_);
+            }
+        }
+        iter->second.clear();
+    }
+    auto clientObserver = make_shared<ClientObserverAni>(registerUriType, ref);
+    clientObservers[registerUriType].push_back(clientObserver);
+    ANI_INFO_LOG("Availability callback overridden successfully");
+    return E_OK;
+}
+
+int32_t MediaLibraryAni::RegisterAvailabilityObserverExecuteAni(ani_env *env, ani_ref ref, ChangeListenerAni &listObj)
+{
+    Notification::NotifyUriType registerUriType = Notification::NotifyUriType::AVAILABILITY_URI;
+    std::string registerUri = RegisterNotifyType::MEDIALIBRARY_AVAILABILITY_CHANGE;
+
+    for (auto it = listObj.newObservers_.begin(); it != listObj.newObservers_.end(); ++it) {
+        if ((*it) && (*it)->uriType_ == registerUriType) {
+            return OverrideExistingAvailabilityObserverAni(env, ref, **it, registerUriType);
+        }
+    }
+
+    return CreateAndRegisterNewAvailabilityObserverAni(env, ref, registerUriType, registerUri, listObj);
+}
+
+
+void MediaLibraryAni::AvailabilityRegisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnMedialibraryAvailability");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnMedialibraryAvailability");
+
+    CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
+    if (g_listObj == nullptr) {
+        ANI_ERR_LOG("g_listObj is nullptr");
+        AniError::ThrowError(env, JS_E_INNER_FAIL);
+        return;
+    }
+
+    ani_ref cbOnRef {};
+    if (env->GlobalReference_Create(static_cast<ani_ref>(callbackOn), &cbOnRef) != ANI_OK) {
+        ANI_ERR_LOG("GlobalReference_Create failed");
+        AniError::ThrowError(env, JS_E_INNER_FAIL);
+        return;
+    }
+
+    int32_t ret = RegisterAvailabilityObserverExecuteAni(env, cbOnRef, *g_listObj);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("RegisterAvailabilityObserverExecuteAni failed, ret: %{public}d", ret);
+        env->GlobalReference_Delete(cbOnRef);
+        AniError::ThrowError(env, MediaLibraryNotifyAniUtils::ConvertToJsError(ret));
+        return;
+    }
+    std::thread([]() {
+        ANI_INFO_LOG("Start CheckDbAvailability (isOnlyCheckPermission = false)");
+        uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHECK_DB_AVAILABILITY);
+        CheckDbAvailabilityReqBody reqBody;
+        reqBody.isOnlyCheckPermission = false;
+        int32_t ipcRet = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+        ANI_INFO_LOG("CheckDbAvailability ret:%{public}d", ipcRet);
+    }).join();
+    ANI_INFO_LOG("PhotoAccessOnMedialibraryAvailability success");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::AvailabilityUnregisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffMedialibraryAvailability");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffMedialibraryAvailability");
+
+    CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
+    if (g_listObj == nullptr) {
+        ANI_INFO_LOG("g_listObj is nullptr");
+        tracer.Finish();
+        return;
+    }
+
+    ANI_INFO_LOG("Start CheckDbAvailability (isOnlyCheckPermission = true)");
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHECK_DB_AVAILABILITY);
+    CheckDbAvailabilityReqBody reqBody;
+    reqBody.isOnlyCheckPermission = true;
+    int32_t ipcRet = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    ANI_INFO_LOG("CheckDbAvailability ret:%{public}d", ipcRet);
+    if (ipcRet < 0) {
+        ANI_ERR_LOG("CheckDbAvailability fail, result: %{public}d.", ipcRet);
+        AniError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE);
+        return;
+    }
+
+    int32_t ret = UnregisterAvailabilityObserverExecuteAni(env, *g_listObj);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("UnregisterAvailabilityObserverExecuteAni failed, ret: %{public}d", ret);
+        AniError::ThrowError(env, MediaLibraryNotifyAniUtils::ConvertToJsError(ret));
+        return;
+    }
+
+    ANI_INFO_LOG("PhotoAccessOffMedialibraryAvailability success");
+    tracer.Finish();
+    return;
+}
+
+int32_t MediaLibraryAni::UnregisterAvailabilityObserverExecuteAni(ani_env *env, ChangeListenerAni &listObj)
+{
+    auto registerUriType = Notification::NotifyUriType::AVAILABILITY_URI;
+    std::string registerUri = RegisterNotifyType::MEDIALIBRARY_AVAILABILITY_CHANGE;
+
+    std::shared_ptr<MediaOnNotifyNewObserverAni> targetObserver = nullptr;
+    for (auto& obs : listObj.newObservers_) {
+        if (obs && obs->uriType_ == registerUriType) {
+            targetObserver = obs;
+            break;
+        }
+    }
+
+    if (targetObserver == nullptr) {
+        ANI_INFO_LOG("No availability observer");
+        return E_OK;
+    }
+
+    auto& clientObserversMap = targetObserver->ClientObserverAnis_;
+    if (clientObserversMap.count(registerUriType)) {
+        auto& observers = clientObserversMap[registerUriType];
+        for (auto& co : observers) {
+            if (co && co->ref_ != nullptr) {
+                ANI_INFO_LOG("Delete old ani_ref");
+                env->GlobalReference_Delete(co->ref_);
+                co->ref_ = nullptr;
+            }
+        }
+        clientObserversMap.erase(registerUriType);
+    }
+
+    int32_t ret = UserFileClient::UnregisterObserverExtProvider(Uri(registerUri), targetObserver);
+    ANI_INFO_LOG("UnregisterObserverExtProvider ret: %{public}d", ret);
+
+    auto it = std::find(listObj.newObservers_.begin(), listObj.newObservers_.end(), targetObserver);
+    if (it != listObj.newObservers_.end()) {
+        listObj.newObservers_.erase(it);
+    }
+
+    ANI_INFO_LOG("Availability unregister clean success");
+    return ret;
+}
 
 int32_t MediaLibraryAni::RemoveClientObserver(ani_env *env, ani_ref ref,
     map<Notification::NotifyUriType, vector<shared_ptr<ClientObserverAni>>> &ClientObservers,

@@ -89,6 +89,8 @@ static const std::string PAH_ANI_CLASS_ALBUM_CHANGE_DATA_HANDLE = PAH_CLASS_SPAC
 static const std::string PAH_ANI_CLASS_ALBUM_CHANGE_INFO_HANDLE = PAH_CLASS_SPACE + "AlbumChangeInfoHandle";
 static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFOS_HANDLE =
     PAH_CLASS_SPACE + "PhotoAssetChangeInfosHandle";
+static const std::string PAH_ANI_CLASS_MEDIALIBRARY_AVAILABILITY_HANDLE =
+    PAH_CLASS_SPACE + "MediaLibraryAvailabilityHandle";
 static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_DATA_HANDLE = PAH_CLASS_SPACE + "PhotoAssetChangeDataHandle";
 static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CHANGE_INFO_HANDLE = PAH_CLASS_SPACE + "PhotoAssetChangeInfoHandle";
 static const std::string PAH_ANI_CLASS_ALBUM_ORDER_HANDLE = PAH_CLASS_SPACE + "AlbumOrderHandle";

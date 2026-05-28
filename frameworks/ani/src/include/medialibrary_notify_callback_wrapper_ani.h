@@ -44,6 +44,7 @@ struct NewJsOnChangeCallbackWrapperAni {
     std::shared_ptr<Notification::AssetManagerNotifyInfo> assetManagerInfo_;
     std::shared_ptr<Notification::UserDefineNotifyInfo> userDefineInfo_;
     std::vector<std::shared_ptr<ClientObserverAni>> ClientObserverAnis_;
+    std::shared_ptr<Notification::DbAvailabilityData> dbAvailabilityInfo_;
 };
 } // Media
 } // OHOS
