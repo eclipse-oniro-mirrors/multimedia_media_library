@@ -3405,7 +3405,6 @@ int32_t MediaLibraryAssetOperations::DeleteNormalPhotoPermanently(shared_ptr<Fil
     MEDIA_INFO_LOG("Delete Photo displayName is %{public}s", MediaFileUtils::DesensitizeName(displayName).c_str());
     MEDIA_DEBUG_LOG("Delete Photo path is %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
     CHECK_AND_RETURN_RET_LOG(!filePath.empty(), E_INVALID_PATH, "get file path failed");
-    FileUtils::DeleteTempVideoFile(filePath);
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
     bool res = MediaFileAccessUtils::DeleteAsset(AssetOperationInfo::CreateFromPath(filePath));
 #else
