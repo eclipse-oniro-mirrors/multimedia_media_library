@@ -2550,7 +2550,8 @@ int32_t MediaAssetsService::ScanMoveAssets(const std::vector<std::string> &allAs
     NativeRdb::RdbPredicates predicate(PhotoColumn::PHOTOS_TABLE);
     predicate.In(PhotoColumn::PHOTO_STORAGE_PATH, unScannedAssetPath);
     ret = FileManagementUtils::QueryMoveAssetInfos(predicate, recordedInfos);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_INNER_FAIL, "fail to query moveassets.");
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK && !recordedInfos.empty(),
+        E_ERR, "fail to query moveassets.");
     return E_OK;
 }
 
@@ -2624,6 +2625,9 @@ int32_t MediaAssetsService::MoveAssetsByPath(ChangeRequestMoveAssetsByPathDto &d
         ret = ScanMoveAssets(dto.assetPaths, moveAssetInfos, dto);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "fail to scan file");
     }
+    CHECK_AND_WARN_LOG(moveAssetInfos.size() == dto.assetPaths.size(),
+        "Mismatch: moveAssetInfos size: %{public}zu, assetPaths size: %{public}zu",
+        moveAssetInfos.size(), dto.assetPaths.size());
     ret = DoMoveFilesByPath(moveAssetInfos, handle, dto);
     return E_OK;
 }

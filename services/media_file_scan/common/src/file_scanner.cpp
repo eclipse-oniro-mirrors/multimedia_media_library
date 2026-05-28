@@ -32,6 +32,9 @@
 using namespace std;
 
 namespace OHOS::Media {
+
+KeydMutex<string> FileScanner::keydMutexByPath_;
+
 // LCOV_EXCL_START
 FileScanner::FileScanner(ScanMode scanMode) : scanMode_(scanMode)
 {
@@ -49,6 +52,24 @@ int32_t FileScanner::Run(vector<MediaNotifyInfo> fileInfos)
     sort(fileInfos.begin(), fileInfos.end(), [](const MediaNotifyInfo &a, const MediaNotifyInfo &b) {
         return a.afterPath > b.afterPath;
     });
+
+    // 使用排序后的path去重后用于获取锁
+    vector<string> uniquePaths;
+    uniquePaths.reserve(fileInfos.size());
+    for (const auto& fileInfo : fileInfos) {
+        uniquePaths.push_back(fileInfo.afterPath);
+    }
+    uniquePaths.erase(std::unique(uniquePaths.begin(), uniquePaths.end()), uniquePaths.end());
+    vector<shared_ptr<mutex>> pathMutexes;
+    pathMutexes.reserve(uniquePaths.size());
+    for (const string& path : uniquePaths) {
+        pathMutexes.push_back(keydMutexByPath_.Get(path));
+    }
+    vector<unique_lock<mutex>> pathGuards;
+    pathGuards.reserve(pathMutexes.size());
+    for (auto& mutexSharedPtr : pathMutexes) {
+        pathGuards.emplace_back(*mutexSharedPtr);
+    }
 
     for (auto &fileInfo : fileInfos) {
         auto afterPath = fileInfo.afterPath;
