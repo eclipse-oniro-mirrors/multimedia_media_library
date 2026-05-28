@@ -72,6 +72,7 @@ ohos_unittest("media_library_lcd_aging_test") {
     "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

@@ -1410,6 +1410,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "usb_manager:usbsrv_client",
     "window_manager:libdm",
     "zlib:shared_libz",
+    "graphic_surface:surface",
   ]
 
   if (media_library_cellular_data_enable) {

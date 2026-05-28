@@ -142,6 +142,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "ffrt:libffrt",
     "preferences:native_preferences",
     "netmanager_base:net_conn_manager_if",
+    "graphic_surface:surface",
   ]
 
   defines = []

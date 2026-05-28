@@ -437,6 +437,7 @@ ohos_shared_library("medialibrary_nutils") {
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
     "window_manager:libwm",
+    "qos_manager:qos",
   ]
 
   defines = [ "IMAGE_COLORSPACE_FLAG" ]
@@ -958,6 +959,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
+    "qos_manager:qos",
   ]
 
   defines = []
