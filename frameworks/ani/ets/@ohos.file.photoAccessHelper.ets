@@ -4822,7 +4822,7 @@ export namespace photoAccessHelper {
           let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
             worker.start();
             const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
-            let result = job.Await();
+            let result = await job;
             worker.join();
             if (result instanceof MediaLibraryAniError) {
               reject(businessError<string>(result.code.toInt(), result.message));
@@ -4874,7 +4874,7 @@ export namespace photoAccessHelper {
         let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
           worker.start();
           const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
-          let result = job.Await();
+          let result = await job;
           worker.join();
           if (result instanceof MediaLibraryAniError) {
             callback(businessError(result.code.toInt(), result.message), undefined);
@@ -4923,7 +4923,7 @@ export namespace photoAccessHelper {
         let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
           worker.start();
           const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
-          let result = job.Await();
+          let result = await job;
           worker.join();
           if (result instanceof MediaLibraryAniError) {
             callback(businessError(result.code.toInt(), result.message), undefined);
