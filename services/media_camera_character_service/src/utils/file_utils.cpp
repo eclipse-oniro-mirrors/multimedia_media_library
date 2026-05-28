@@ -241,6 +241,8 @@ int32_t FileUtils::SaveVideoShareCamera(const std::string &filePath, bool isEdit
 {
     size_t indexPrefixEnd = filePath.rfind('/');
     size_t indexSubfixStart = filePath.rfind('.');
+    CHECK_AND_RETURN_RET_LOG(indexPrefixEnd != std::string::npos && indexPrefixEnd != std::string::npos, E_ERR,
+        "Failed to parse the path %{private}s", filePath.c_str());
     std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = filePath.substr(indexSubfixStart); // .mp4
     std::string enhancePathCloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES +
@@ -275,6 +277,8 @@ int32_t FileUtils::SaveMovingPhotoVideoShareCamera(const std::string &filePath, 
 {
     size_t indexPrefixEnd = filePath.rfind('/');
     size_t indexSubfixStart = filePath.rfind('.');
+    CHECK_AND_RETURN_RET_LOG(indexPrefixEnd != std::string::npos && indexPrefixEnd != std::string::npos, E_ERR,
+        "Failed to parse the path %{private}s", filePath.c_str());
     std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string enhancePathCloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES +
         fileNamePrefix + "_vid_tmp.mp4";
@@ -312,16 +316,6 @@ int32_t FileUtils::SaveMovingPhotoVideoShareCamera(const std::string &filePath, 
     MEDIA_INFO_LOG("SaveMovingPhotoVideo end ret: %{public}d", ret);
     DeleteFileIfExist(enhancePathCloudView);
     return ret;
-}
-
-int32_t FileUtils::DeleteTempVideoFile(const std::string &filePath)
-{
-    MEDIA_INFO_LOG("filePath: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
-    string tempPath = filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.'));
-    if (IsFileExist(tempPath)) {
-        return DeleteFile(tempPath);
-    }
-    return E_OK;
 }
 
 static bool HandleAddFiltersError(const std::string& targetPath, const std::string& sourcePath)

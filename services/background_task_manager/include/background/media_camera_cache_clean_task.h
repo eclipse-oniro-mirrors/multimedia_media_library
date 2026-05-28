@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_MEDIA_BACKGROUND_MEDIA_CAMRA_CACHE_CLEAN_TASK_H
-#define OHOS_MEDIA_BACKGROUND_MEDIA_CAMRA_CACHE_CLEAN_TASK_H
+#ifndef OHOS_MEDIA_BACKGROUND_MEDIA_CAMERA_CACHE_CLEAN_TASK_H
+#define OHOS_MEDIA_BACKGROUND_MEDIA_CAMERA_CACHE_CLEAN_TASK_H
 
 #include <cstdint>
 #include <vector>
@@ -29,8 +29,6 @@ class EXPORT MediaCameraCacheCleanTask : public IMediaBackGroundTask {
 public:
     MediaCameraCacheCleanTask() = default;
     virtual ~MediaCameraCacheCleanTask() = default;
-
-public:
     bool Accept() override;
     void Execute() override;
 
@@ -41,4 +39,4 @@ private:
     std::mutex taskRunningMutex_;
 };
 } // namespace OHOS::Media::Background
-#endif // OHOS_MEDIA_BACKGROUND_MEDIA_CAMRA_CACHE_CLEAN_TASK_H
+#endif // OHOS_MEDIA_BACKGROUND_MEDIA_CAMERA_CACHE_CLEAN_TASK_H

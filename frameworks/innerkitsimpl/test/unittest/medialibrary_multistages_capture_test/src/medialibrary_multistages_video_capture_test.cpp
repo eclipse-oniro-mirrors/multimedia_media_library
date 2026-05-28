@@ -53,12 +53,19 @@ static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
 namespace {
 
 const string BASE_VIDEO_FILE_INNER = "I am base video file";
-const string TEMP_VIDEO_FILE_INNER = "I am temp video file";
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 
 string GetTempFilePath(const string &filePath)
 {
-    return filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.'));
+    size_t indexPrefixEnd = filePath.rfind('/');
+    size_t indexSubfixStart = filePath.rfind('.');
+    CHECK_AND_RETURN_RET_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos, "",
+        "Failed to parse the path %{private}s", filePath.c_str());
+    std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
+    std::string fileNameSubfix = filePath.substr(indexSubfixStart); // .mp4
+    std::string tempFilePath = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
+        fileNamePrefix + "_tmp1" + fileNameSubfix;
+    return tempFilePath;
 }
 
 void PrepareBaseVideoFile(const string &filePath)
@@ -67,19 +74,6 @@ void PrepareBaseVideoFile(const string &filePath)
     EXPECT_NE(fd, -1);
 
     ssize_t written = write(fd, BASE_VIDEO_FILE_INNER.c_str(), BASE_VIDEO_FILE_INNER.size());
-    EXPECT_NE(written, -1);
-
-    close(fd);
-}
-
-void PrepareTempVideoFile(const string &filePath)
-{
-    string tempFilePath = GetTempFilePath(filePath);
-
-    int fd = open(tempFilePath.c_str(), O_WRONLY | O_CREAT, 0644);
-    EXPECT_NE(fd, -1);
-
-    ssize_t written = write(fd, TEMP_VIDEO_FILE_INNER.c_str(), TEMP_VIDEO_FILE_INNER.size());
     EXPECT_NE(written, -1);
 
     close(fd);
@@ -274,16 +268,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_001, TestSiz
     string videoId = "202408011800";
 
     PrepareBaseVideoFile(filePath);
-
+    // /storage/cloud/files/Photo/14/VID_1779891774_030.mp4
+    MEDIA_INFO_LOG("manager_add_video_001 filePath %{public}s", filePath.c_str());
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     VideoInfo videoInfo = {fileId, VideoCount::SINGLE, filePath, "", ""};
     instance.AddVideo(videoId, to_string(fileId), videoInfo);
 
     string absFilePath;
     string absTempFilePath;
-
+    // old /storage/cloud/files/Photo/14/VID_1779891774_030_tmp.mp4
+    // new /storage/cloud/files/cameraCache/temp/VID_1779891774_030_tmp1.mp4
     string tempFilePath = GetTempFilePath(filePath);
-
+    MEDIA_INFO_LOG("manager_add_video_001 tempFilePath %{public}s", tempFilePath.c_str());
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
     EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
 
@@ -516,25 +512,17 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_001, Test
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408051800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
-
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     instance.RemoveVideo(videoId, true);
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
-
-    EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-
     MEDIA_INFO_LOG("manager_remove_video_001 End");
 }
 
@@ -545,30 +533,19 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_with_erro
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408061800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
-
     PrepareBaseVideoFile(filePath);
 
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     instance.RemoveVideo(videoId, true);
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(!PathToRealPath(tempFilePath, absTempFilePath));
-    EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-
-    PrepareTempVideoFile(filePath);
     instance.RemoveVideo("32345678", true);
-
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
-    EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-
     MEDIA_INFO_LOG("manager_remove_video_with_error_001 End");
 }
 
@@ -735,24 +712,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408071800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     callback->OnProcessVideoDone(videoId);
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(!PathToRealPath(tempFilePath, absTempFilePath));
-    EXPECT_EQ(ReadFileContent(filePath), TEMP_VIDEO_FILE_INNER);
-
     int32_t quality = GetQuality(fileId);
     EXPECT_EQ(quality, static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
 
@@ -769,7 +740,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408081800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
@@ -778,7 +748,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     SetEdited(fileId);
 
@@ -786,7 +755,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_FALSE(PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);
@@ -806,24 +774,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest,
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408091800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
-
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     callback->OnProcessVideoDone("42345678");
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-    EXPECT_EQ(ReadFileContent(tempFilePath), TEMP_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);
     EXPECT_EQ(quality, static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
@@ -841,7 +803,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_error_001, TestSiz
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408101800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
@@ -850,13 +811,11 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_error_001, TestSiz
     string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     callback->OnError(videoId, CameraStandard::ERROR_SESSION_SYNC_NEEDED);
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);

@@ -5886,12 +5886,6 @@ int32_t MediaLibraryPhotoOperations::ProcessMultistagesVideo(const std::shared_p
     return FileUtils::SaveVideoShareCamera(fileAsset->GetFilePath(), isEdited);
 }
 
-int32_t MediaLibraryPhotoOperations::RemoveTempVideo(const std::string &path)
-{
-    MEDIA_INFO_LOG("RemoveTempVideo path: %{public}s", DfxUtils::GetSafePath(path).c_str());
-    return FileUtils::DeleteTempVideoFile(path);
-}
-
 PhotoEditingRecord::PhotoEditingRecord()
 {
 }
