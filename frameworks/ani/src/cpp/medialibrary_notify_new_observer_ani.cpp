@@ -21,6 +21,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_ani_log.h"
 #include "medialibrary_tracer.h"
+#include "ani_class_name.h"
 
 using namespace std;
 
@@ -30,6 +31,7 @@ shared_ptr<ChangeInfoTaskWorker> ChangeInfoTaskWorker::changeInfoTaskWorker_{nul
 mutex ChangeInfoTaskWorker::instanceMtx_;
 mutex ChangeInfoTaskWorker::vectorMutex_;
 mutex ChangeInfoTaskWorker::taskInfoMutex_;
+mutex MediaOnNotifyNewObserverAni::clientObserverAnisMutex_;
 
 static const int64_t MAX_NOTIFY_MILLISECONDS = 10;
 static const int32_t START_NOTIFY_TASK_COUNT = 3;
@@ -37,6 +39,50 @@ static const int32_t MAX_NOTIFY_TASK_COUNT = 23;
 static const size_t MAX_NOTIFY_TASK_INFO_SIZE = 5000;
 static const uint32_t MAX_PARCEL_SIZE = 200 * 1024;
 static const int32_t ARGS_ONE = 1;
+
+static std::shared_ptr<MessageParcel> CreateTempParcelFromChangeInfoAni(
+    const DataShare::DataShareObserver::ChangeInfo &changeInfo)
+{
+    uint8_t *tempParcelData = static_cast<uint8_t *>(malloc(changeInfo.size_));
+    CHECK_AND_RETURN_RET_LOG(tempParcelData != nullptr, nullptr, "tempParcelData malloc failed");
+ 
+    if (memcpy_s(tempParcelData, changeInfo.size_, changeInfo.data_, changeInfo.size_) != 0) {
+        ANI_ERR_LOG("tempParcelData copy parcel data failed");
+        free(tempParcelData);
+        return nullptr;
+    }
+
+    auto tempParcel = std::make_shared<MessageParcel>();
+    if (!tempParcel->ParseFrom(reinterpret_cast<uintptr_t>(tempParcelData), changeInfo.size_)) {
+        ANI_ERR_LOG("Parse parcelData failed");
+        free(tempParcelData);
+        return nullptr;
+    }
+
+    return tempParcel;
+}
+
+bool MediaOnNotifyNewObserverAni::ProcessDbAvailabilityData(NewJsOnChangeCallbackWrapperAni& callbackWrapper,
+    shared_ptr<MessageParcel>& parcel)
+{
+    ANI_INFO_LOG("begin ProcessDbAvailabilityData");
+
+    callbackWrapper.dbAvailabilityInfo_ = NotificationUtils::UnmarshalDbAvailabilityData(*parcel);
+    CHECK_AND_RETURN_RET_LOG(callbackWrapper.dbAvailabilityInfo_ != nullptr, false, "invalid dbAvailabilityInfo_");
+    lock_guard<mutex> lock(clientObserverAnisMutex_);
+    auto it = ClientObserverAnis_.find(Notification::NotifyUriType::AVAILABILITY_URI);
+    CHECK_AND_RETURN_RET_LOG(it != ClientObserverAnis_.end(), false, "No observer for AVAILABILITY_URI");
+
+    callbackWrapper.ClientObserverAnis_ = it->second;
+    callbackWrapper.observerUriType_ = Notification::NotifyUriType::AVAILABILITY_URI;
+    callbackWrapper.etsVm_ = vm_;
+
+    auto worker = ChangeInfoTaskWorker::GetInstance();
+    CHECK_AND_RETURN_RET_LOG(worker != nullptr, false, "Get ChangeInfoTaskWorker instance failed");
+    worker->AddTaskInfo(callbackWrapper);
+    CHECK_AND_EXECUTE(worker->IsRunning(), worker->StartWorker());
+    return true;
+}
 
 void MediaOnNotifyNewObserverAni::OnChange(const ChangeInfo &changeInfo)
 {
@@ -65,7 +111,12 @@ void MediaOnNotifyNewObserverAni::OnChange(const ChangeInfo &changeInfo)
         free(parcelData);
         return;
     }
+
+    auto tempParcel = CreateTempParcelFromChangeInfoAni(changeInfo);
+    CHECK_AND_RETURN_LOG(tempParcel != nullptr, "Create temp parcel failed");
+
     NewJsOnChangeCallbackWrapperAni callbackWrapper;
+    CHECK_AND_RETURN_INFO_LOG(!ProcessDbAvailabilityData(callbackWrapper, tempParcel), "notify db availability");
     if (!BuildCallbackWrapper(callbackWrapper, parcel)) {
         ANI_ERR_LOG("Build CallbackWrapper failed");
         return;
@@ -124,7 +175,31 @@ void MediaOnNotifyNewObserverAni::ReadyForCallbackEvent(const NewJsOnChangeCallb
     jsCallback->ClientObserverAnis_ = callbackWrapper.ClientObserverAnis_;
     jsCallback->observerUriType_ = callbackWrapper.observerUriType_;
     jsCallback->mediaChangeInfo_ = callbackWrapper.mediaChangeInfo_;
+    jsCallback->dbAvailabilityInfo_ = callbackWrapper.dbAvailabilityInfo_;
     OnJsCallbackEvent(jsCallback);
+}
+
+static ani_object ProcessDbAvailabilityNotification(ani_env *env, NewJsOnChangeCallbackWrapperAni* wrapper)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ProcessDbAvailabilityNotification");
+
+    ani_object result = nullptr;
+    CHECK_COND_RET(MediaLibraryNotifyAniUtils::CreateAniObject(
+        env, PAH_ANI_CLASS_MEDIALIBRARY_AVAILABILITY_HANDLE, result) == ANI_OK,
+        nullptr, "CreateAniObject fail");
+    CHECK_COND_RET(result != nullptr, nullptr, "result is nullptr");
+
+    CHECK_AND_RETURN_RET_LOG(wrapper != nullptr && wrapper->dbAvailabilityInfo_ != nullptr, result,
+        "dbAvailabilityInfo_ is nullptr");
+
+    MediaLibraryNotifyAniUtils::SetValueString(env, "availabilityStatus",
+        wrapper->dbAvailabilityInfo_->status.c_str(), result);
+
+    MediaLibraryNotifyAniUtils::SetValueString(env, "unavailabilityReason",
+        wrapper->dbAvailabilityInfo_->reason.c_str(), result);
+
+    return result;
 }
 
 static ani_object HandleObserverUriType(ani_env *env, NewJsOnChangeCallbackWrapperAni* wrapper,
@@ -150,6 +225,9 @@ static ani_object HandleObserverUriType(ani_env *env, NewJsOnChangeCallbackWrapp
             buildResult = mediaChangeInfo == nullptr ?
                 MediaLibraryNotifyAniUtils::BuildAlbumRecheckChangeInfos(env) :
                 MediaLibraryNotifyAniUtils::BuildAlbumChangeInfos(env, mediaChangeInfo);
+            break;
+        case Notification::NotifyUriType::AVAILABILITY_URI:
+            buildResult = ProcessDbAvailabilityNotification(env, wrapper);
             break;
         default:
             ANI_ERR_LOG("Invalid registerUriType");

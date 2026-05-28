@@ -2662,6 +2662,8 @@ export namespace photoAccessHelper {
     getAssetCompatibleCapability(bundleName: string): Promise<AssetCompatibleCapability>;
     getAlbumIdByLpath(lpath: string): Promise<int>;
     getAlbumIdByBundleName(bundleName: string): Promise<int>;
+    onMediaLibraryAvailability(callback: Callback<MediaLibraryAvailability>): void;
+    offMediaLibraryAvailability(callback?: Callback<MediaLibraryAvailability>): void;
   }
 
   interface AppInfo {
@@ -4146,6 +4148,8 @@ export namespace photoAccessHelper {
     native getAssetCompatibleConfigInner(bundleName: string): AssetCompatibleCapability;
     native getAlbumIdByLpathInner(lpath: string): int;
     native getAlbumIdByBundleNameInner(bundleName: string): int;
+    native onMediaLibraryAvailability(callback: Callback<MediaLibraryAvailability>): void;
+    native offMediaLibraryAvailability(callback?: Callback<MediaLibraryAvailability>): void;
   }
 
   export interface AssetCompatibleCapability {
@@ -5663,6 +5667,22 @@ export namespace photoAccessHelper {
     native getFileId(): int;
     native getShareCount(): int;
     native getLcdJumpCount(): int;
+  }
+
+  export interface MediaLibraryAvailability {
+    availabilityStatus: AvailabilityStatus;
+    unavailabilityReason: string;
+  }
+
+  class MediaLibraryAvailabilityHandle implements MediaLibraryAvailability {
+    constructor() {}
+    availabilityStatus: AvailabilityStatus;
+    unavailabilityReason: string;
+  }
+
+  export enum AvailabilityStatus {
+    AVAILABLE = 'available',
+    UNAVAILABLE = 'unavailable'
   }
 
   export class PhotoAssetCustomRecordManager {

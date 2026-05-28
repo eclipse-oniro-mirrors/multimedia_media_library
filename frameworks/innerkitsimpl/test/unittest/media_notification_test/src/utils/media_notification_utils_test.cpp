@@ -41,6 +41,9 @@ const std::string NEED_DC_EXTRA_QUOTA_ANALYSIS = "1";
 const std::string PARAM_NEED_DC_PROACTIVE_ANALYSIS = "persist.multimedia.media_analysis.dc_proactive_analysis";
 const std::string NO_NEED_DC_PROACTIVE_ANALYSIS = "0";
 const std::string NEED_DC_PROACTIVE_ANALYSIS = "1";
+const std::string DB_STATUS_UNAVAILABLE = "unavailable";
+const std::string DB_REASON_CORRUPTED = "Database corrupted";
+const std::string DB_REASON_CLONE_OCCUPIED = "Database occupied by Clone application";
 
 void NotificationUtilsTest::SetUpTestCase(void) {}
 
@@ -1639,6 +1642,72 @@ HWTEST_F(NotificationUtilsTest, medialib_notification_utils_test080, TestSize.Le
     int32_t result = NotificationUtils::SendNotification(dataObserver, mediaChangeInfo);
     EXPECT_EQ(result, E_OK);
     MEDIA_INFO_LOG("end medialib_notification_utils_test080");
+}
+
+HWTEST_F(NotificationUtilsTest, medialib_notification_utils_test081, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter medialib_notification_utils_test081");
+    Parcel parcel;
+    parcel.WriteUint16(static_cast<uint16_t>(Notification::NotifyUriType::AVAILABILITY_URI));
+    parcel.WriteString("available");
+    parcel.WriteString("");
+
+    std::shared_ptr<Notification::DbAvailabilityData> info = NotificationUtils::UnmarshalDbAvailabilityData(parcel);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->notifyType, Notification::NotifyUriType::AVAILABILITY_URI);
+    EXPECT_EQ(info->status, "available");
+    EXPECT_EQ(info->reason, "");
+    MEDIA_INFO_LOG("end medialib_notification_utils_test081");
+}
+
+HWTEST_F(NotificationUtilsTest, medialib_notification_utils_test082, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter medialib_notification_utils_test082");
+    Parcel parcel;
+    parcel.WriteUint16(static_cast<uint16_t>(Notification::NotifyUriType::PHOTO_URI));
+
+    std::shared_ptr<Notification::DbAvailabilityData> info = NotificationUtils::UnmarshalDbAvailabilityData(parcel);
+    EXPECT_EQ(info, nullptr);
+    MEDIA_INFO_LOG("end medialib_notification_utils_test082");
+}
+
+HWTEST_F(NotificationUtilsTest, medialib_notification_utils_test083, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter medialib_notification_utils_test083");
+    std::shared_ptr<AAFwk::ChangeInfo> changeInfo = std::make_shared<AAFwk::ChangeInfo>();
+    int32_t result = NotificationUtils::SendDbAvailabilityNotification(nullptr, changeInfo);
+    EXPECT_EQ(result, E_ERR);
+    MEDIA_INFO_LOG("end medialib_notification_utils_test083");
+}
+
+HWTEST_F(NotificationUtilsTest, medialib_notification_utils_test084, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter medialib_notification_utils_test084");
+    sptr<AAFwk::IDataAbilityObserver> dataObserver = new (std::nothrow)IDataAbilityObserverTest();
+    ASSERT_NE(dataObserver, nullptr);
+
+    int32_t result = NotificationUtils::SendDbAvailabilityNotification(dataObserver, nullptr);
+    EXPECT_EQ(result, E_ERR);
+    MEDIA_INFO_LOG("end medialib_notification_utils_test084");
+}
+
+HWTEST_F(NotificationUtilsTest, medialib_notification_utils_test085, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("enter medialib_notification_utils_test085");
+    Notification::DbAvailabilityData data;
+    data.notifyType = Notification::NotifyUriType::AVAILABILITY_URI;
+    data.status = DB_STATUS_UNAVAILABLE;
+    data.reason = DB_REASON_CORRUPTED;
+
+    Parcel parcel;
+    ASSERT_TRUE(data.WriteToParcel(parcel));
+
+    Notification::DbAvailabilityData parsed;
+    ASSERT_TRUE(parsed.Unmarshalling(parcel));
+    EXPECT_EQ(parsed.notifyType, Notification::NotifyUriType::AVAILABILITY_URI);
+    EXPECT_EQ(parsed.status, DB_STATUS_UNAVAILABLE);
+    EXPECT_EQ(parsed.reason, DB_REASON_CORRUPTED);
+    MEDIA_INFO_LOG("end medialib_notification_utils_test085");
 }
 
 } // namespace Media

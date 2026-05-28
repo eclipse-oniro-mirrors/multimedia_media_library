@@ -37,7 +37,12 @@ namespace Media {
 class MediaOnNotifyNewObserverAni : public DataShare::DataShareObserver  {
 public:
     MediaOnNotifyNewObserverAni(Notification::NotifyUriType &uriType, std::string &uri,
-        ani_env *env) : uriType_(uriType), uri_(uri), env_(env) {}
+        ani_env *env) : uriType_(uriType), uri_(uri), env_(env)
+    {
+        if (env == nullptr || env->GetVM(&vm_) != ANI_OK) {
+            ANI_ERR_LOG("GetVM failed");
+        }
+    }
 
     ~MediaOnNotifyNewObserverAni() = default;
 
@@ -48,11 +53,15 @@ public:
     void static OnJsCallbackEvent(std::unique_ptr<NewJsOnChangeCallbackWrapperAni> &jsCallback);
     void ProcessObserverBranches(NewJsOnChangeCallbackWrapperAni& callbackWrapper,
         Notification::NotifyUriType infoUriType);
+    bool ProcessDbAvailabilityData(NewJsOnChangeCallbackWrapperAni& callbackWrapper,
+    shared_ptr<MessageParcel>& parcel);
 
     Notification::NotifyUriType uriType_;
     std::string uri_;
     ani_env *env_ = nullptr;
+    ani_vm *vm_ = nullptr;
     std::map<Notification::NotifyUriType, std::vector<std::shared_ptr<ClientObserverAni>>> ClientObserverAnis_;
+    static std::mutex clientObserverAnisMutex_;
 };
 
 class ChangeInfoTaskWorker {

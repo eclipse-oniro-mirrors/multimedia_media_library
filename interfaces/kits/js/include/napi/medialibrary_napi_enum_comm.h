@@ -442,6 +442,11 @@ const std::set<std::string> TIME_COLUMN = {
     CONST_MEDIA_DATA_DB_DATE_TRASHED,
 };
 
+const std::vector<std::pair<std::string, std::string>> AVAILABILITY_STATUS_ENUM_PROPERTIES = {
+    std::make_pair("AVAILABLE", "available"),
+    std::make_pair("UNAVAILABLE", "unavailable"),
+};
+
 const std::vector<std::pair<std::string, std::string>> SUPPORTED_IMAGE_FORMAT_ENUM_PROPERTIES = {
     std::make_pair("AVFILE_FORMAT_JPG", "jpg"),
 };

@@ -1594,5 +1594,6 @@ export default {
   CloudDownloadNetworkPolicy: photoAccessHelper.CloudDownloadNetworkPolicy,
   AppLinkState: photoAccessHelper.AppLinkState,
   LivePhoto4dStatus: photoAccessHelper.LivePhoto4dStatus,
+  AvailabilityStatus: photoAccessHelper.AvailabilityStatus,
   MediaAssetPermissionState: photoAccessHelper.MediaAssetPermissionState
 };

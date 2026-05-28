@@ -282,6 +282,7 @@ public:
     static void PhotoAccessOnPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void PhotoAccessOnHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
     static void PhotoAccessOnTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn);
+    static void AvailabilityRegisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOn);
 
     static void PhotoAccessOffPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void PhotoAccessOffHiddenPhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
@@ -289,6 +290,7 @@ public:
     static void PhotoAccessOffPhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void PhotoAccessOffHiddenAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void PhotoAccessOffTrashedAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff);
+    static void AvailabilityUnregisterCallback(ani_env *env, ani_object object, ani_fn_object callbackOff);
     static void SetPreferredCompatibleMode(ani_env *env, ani_object object, ani_string bundleName, ani_int mode);
     static ani_int GetPreferredCompatibleMode(ani_env *env, ani_object object, ani_string bundleName);
     static ani_object QueryMediaDataReady(ani_env *env, ani_object object, ani_string dataKey);
@@ -321,6 +323,12 @@ private:
         const Notification::NotifyUriType uriType, ani_ref ref, ChangeListenerAni &listObj);
     static void unregisterAssetExecute(ani_env *env, ani_object object, ani_fn_object callbackOff, std::string type);
     static void registerAssetExecute(ani_env *env, ani_object object, ani_fn_object callbackOff, std::string type);
+    static int32_t RegisterAvailabilityObserverExecuteAni(ani_env *env, ani_ref ref, ChangeListenerAni &listObj);
+    static int32_t OverrideExistingAvailabilityObserverAni(ani_env *env, ani_ref ref,
+        MediaOnNotifyNewObserverAni& observer, Notification::NotifyUriType registerUriType);
+    static int32_t CreateAndRegisterNewAvailabilityObserverAni(ani_env *env, ani_ref ref,
+        Notification::NotifyUriType registerUriType, std::string& registerUri, ChangeListenerAni& listObj);
+    static int32_t UnregisterAvailabilityObserverExecuteAni(ani_env *env, ChangeListenerAni &listObj);
 
     ani_env *env_;
     int32_t userId_ = -1;

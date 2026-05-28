@@ -38,6 +38,7 @@ const std::string RegisterNotifyType::HIDDEN_ALBUM_CHANGE = "hiddenAlbumChange";
 const std::string RegisterNotifyType::TRASHED_ALBUM_CHANGE = "trashedAlbumChange";
 const std::string RegisterNotifyType::BATCH_DOWNLOAD_PROGRESS_CHANGE = "downloadProgressChange";
 const std::string RegisterNotifyType::USER_CLIENT_CHANGE = "userDefineChange";
+const std::string RegisterNotifyType::MEDIALIBRARY_AVAILABILITY_CHANGE = "medialibraryAvailabilityChange";
 
 const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
     MediaLibraryNotifyAniUtils::REGISTER_ASSET_MANAGER_TYPE_MAP = {
