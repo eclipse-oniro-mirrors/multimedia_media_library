@@ -154,7 +154,6 @@ public:
     EXPORT static void TrashPhotosSendNotify(const std::vector<std::string> &notifyUris,
         std::shared_ptr<AlbumData> albumData = nullptr);
     EXPORT static int32_t ProcessMultistagesVideo(const std::shared_ptr<FileAsset> &fileAsset);
-    EXPORT static int32_t RemoveTempVideo(const std::string &path);
     EXPORT static int32_t SaveSourceVideoFile(const std::string &assetPath, const bool &isTemp);
     EXPORT static int32_t AddFiltersToVideoExecute(const std::string &assetPath,
         bool isSaveVideo, bool isNeedScan = false, const std::string &outputVideoPath = "", int32_t fileId = 0);
