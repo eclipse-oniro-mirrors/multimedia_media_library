@@ -415,10 +415,6 @@ void MultiStagesVideoCaptureManager::RemoveVideo(const std::string &videoId, con
         static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         data = MovingPhotoFileUtils::GetMovingPhotoVideoPath(data);
     }
-    int ret = MediaLibraryPhotoOperations::RemoveTempVideo(data);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Delete temp video file failed. ret: %{public}d, errno: %{public}d", ret, errno);
-    }
 }
 
 void MultiStagesVideoCaptureManager::RemoveVideo(const std::string &videoId, const std::string &mediaFilePath,
@@ -434,10 +430,6 @@ void MultiStagesVideoCaptureManager::RemoveVideo(const std::string &videoId, con
     string data = mediaFilePath;
     if (photoSubType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         data = MovingPhotoFileUtils::GetMovingPhotoVideoPath(data);
-    }
-    int ret = MediaLibraryPhotoOperations::RemoveTempVideo(data);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Delete temp video file failed. ret: %{public}d, errno: %{public}d", ret, errno);
     }
 }
 
