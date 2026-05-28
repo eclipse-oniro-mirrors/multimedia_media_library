@@ -60,7 +60,7 @@ string GetTempFilePath(const string &filePath)
 {
     size_t indexPrefixEnd = filePath.rfind('/');
     size_t indexSubfixStart = filePath.rfind('.');
-    CHECK_AND_RETURN_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos,
+    CHECK_AND_RETURN_RET_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos, ""
         "Failed to parse the path %{private}s", filePath.c_str());
     std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = filePath.substr(indexSubfixStart); // .mp4
