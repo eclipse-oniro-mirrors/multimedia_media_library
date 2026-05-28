@@ -36,7 +36,6 @@ public:
     EXPORT static int32_t SaveVideoShareCamera(const std::string &filePath, bool isEdited = false);
     EXPORT static int32_t SaveMovingPhotoVideoShareCamera(const std::string &filePath, bool isEdited,
         bool isMovingPhotoEffectMode);
-    EXPORT static int32_t DeleteTempVideoFile(const std::string &filePath);
     EXPORT static int DeleteFile(const std::string &fileName);
     EXPORT static bool IsFileExist(const std::string &fileName);
     EXPORT static int DeleteFileIfExist(const std::string &fileName);
