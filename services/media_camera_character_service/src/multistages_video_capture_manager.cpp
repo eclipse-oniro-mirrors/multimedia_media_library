@@ -139,7 +139,8 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
         "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
     std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
     std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
-
+    CHECK_AND_RETURN_LOG(videoInfo.videoPath.substr(0, ROOT_MEDIA_DIR.length()) == ROOT_MEDIA_DIR,
+        "Invalid video path %{private}s, does not start with %{private}s", videoInfo.videoPath.c_str(), ROOT_MEDIA_DIR.c_str());
     std::string srcPhysicalPath = physicalPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
     std::string sharedTemp1PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
         fileNamePrefix + "_tmp1" + fileNameSubfix;
@@ -161,8 +162,8 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     std::string effectVideoPath = videoInfo.videoPath;
     CHECK_AND_RETURN_LOG(videoInfo.videoPath.size() >= MEDIA_EDIT_DATA_DIR.size(),
         "videoPath is too short, video Path: %{private}s", videoInfo.videoPath.c_str());
-    CHECK_AND_RETURN_LOG(videoInfo.videoPath.find(ROOT_MEDIA_DIR) == 0,
-        "videoPath does not begin with ROOT_MEDIA_DIR, video Path: %{private}s", videoInfo.videoPath.c_str());
+    CHECK_AND_RETURN_LOG(videoInfo.videoPath.substr(0, ROOT_MEDIA_DIR.length()) == ROOT_MEDIA_DIR,
+        "Invalid video path %{private}s, does not start with %{private}s", videoInfo.videoPath.c_str(), ROOT_MEDIA_DIR.c_str());
     // 原始视频
     videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
     CHECK_AND_RETURN_LOG(PathToRealPath(videoInfo.videoPath, videoInfo.absSrcFilePath),
