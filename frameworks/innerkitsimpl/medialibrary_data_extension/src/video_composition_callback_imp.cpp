@@ -104,7 +104,7 @@ static int32_t ProcessLivePhotoRevert(const string& assetPath, const string& vid
 
     if (isLivePhotoRevert) {
         string cacheDir = videoPath.substr(0, videoPath.rfind('/'));
-        string tempImagePath = cacheDir + "/image_livephoto" + MediaFileUtils::GetExtensionFromPath(assetPath);
+        string tempImagePath = cacheDir + "/image_livephoto." + MediaFileUtils::GetExtensionFromPath(assetPath);
 
         int64_t coverPosition = 0;
         int32_t ret = MovingPhotoFileUtils::GetLivePhotoCoverPosition(videoPath, realPath, coverPosition);
