@@ -318,16 +318,6 @@ int32_t FileUtils::SaveMovingPhotoVideoShareCamera(const std::string &filePath, 
     return ret;
 }
 
-int32_t FileUtils::DeleteTempVideoFile(const std::string &filePath)
-{
-    MEDIA_INFO_LOG("filePath: %{public}s", MediaFileUtils::DesensitizePath(filePath).c_str());
-    string tempPath = filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.'));
-    if (IsFileExist(tempPath)) {
-        return DeleteFile(tempPath);
-    }
-    return E_OK;
-}
-
 static bool HandleAddFiltersError(const std::string& targetPath, const std::string& sourcePath)
 {
     if (MediaFileUtils::IsFileExists(targetPath)) {
