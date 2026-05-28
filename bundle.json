@@ -133,7 +133,8 @@
             "//foundation/multimedia/media_library/interfaces/kits/js:sendablephotoaccesshelper",
             "//foundation/multimedia/media_library/interfaces/kits/js:recentphotocomponent",
             "//foundation/multimedia/media_library/interfaces/kits/js:recentphotocomponent_js",
-            "//foundation/multimedia/media_library/frameworks/ani:media_library_ani"
+            "//foundation/multimedia/media_library/frameworks/ani:media_library_ani",
+            "//foundation/multimedia/media_library/frameworks/ani/ets/photo_picker_static:photo_picker_static"
 
           ],
           "service_group": [

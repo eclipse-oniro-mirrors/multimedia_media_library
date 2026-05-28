@@ -16,14 +16,23 @@
 import { AsyncCallback, Callback, BusinessError } from '@ohos.base';
 import image from '@ohos.multimedia.image';
 import dataSharePredicates from '@ohos.data.dataSharePredicates';
+import AppContext from '@ohos.app.ability.application';
 import Context from 'application.Context';
 import { CustomColors } from '@ohos.arkui.theme';
+import bundleManager from '@ohos.bundle.bundleManager';
+import deviceinfo from '@ohos.deviceInfo';
+import { UIContext } from '@ohos.arkui.UIContext';
 
 class SizeImpl implements image.Size {
   height: int = 0;
   width: int = 0;
 }
 
+let g_PickerContext: Context | undefined = undefined;
+const MAX_DELETE_NUMBER = 300;
+const MIN_DELETE_NUMBER = 1;
+const MAX_CONFIRM_NUMBER = 100;
+const MIN_CONFIRM_NUMBER = 1;
 type RejectString = (e: BusinessError<string>) => void;
 
 function businessError<T = void>(c: int, d?: string): BusinessError<T> {
@@ -35,6 +44,21 @@ function businessError<T = void>(c: int, d?: string): BusinessError<T> {
 
 function isNullish(d: Any): boolean {
   return (d === null || d === undefined) ? true : false;
+}
+
+function getBundleInfo() {
+  let flags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_ABILITY | // for appName
+    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE | // for appName
+    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_SIGNATURE_INFO | // for appId
+    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION; // for appInfo
+  let bundleInfo = bundleManager.getBundleInfoForSelfSync(flags);
+  if (((bundleInfo === undefined) || (bundleInfo.name === undefined)) ||
+      ((bundleInfo.hapModulesInfo === undefined) || (bundleInfo.hapModulesInfo.length === 0)) ||
+      (bundleInfo.signatureInfo === undefined) || (bundleInfo.appInfo === undefined)) {
+    console.error('photoAccessHelper failed to get bundle info.');
+    return undefined;
+  }
+  return bundleInfo;
 }
 
 class MediaLibraryAniError extends BusinessError {
@@ -2701,6 +2725,10 @@ export namespace photoAccessHelper {
     setAssetCompatibleCapability(bundleName: string, config: AssetCompatibleCapability): Promise<void>;
     setAssetCompatibleCapability(config: AssetCompatibleCapability): Promise<void>;
     getAssetCompatibleCapability(bundleName: string): Promise<AssetCompatibleCapability>;
+    createAssetWithShortTermPermission(phCreationConfig: PhotoCreationConfig): Promise<string>;
+    showAssetsCreationDialog(srcFileUris: Array<string>,
+      photoCreationConfigs: Array<PhotoCreationConfig>): Promise<Array<string>>;
+    requestPhotoUrisReadPermission(srcFileUris: Array<string>): Promise<Array<string>>;
     onMediaLibraryAvailability(callback: Callback<MediaLibraryAvailability>): void;
     offMediaLibraryAvailability(callback?: Callback<MediaLibraryAvailability>): void;
     getAlbumIdByLpath(lpath: string): Promise<int>;
@@ -3765,6 +3793,294 @@ export namespace photoAccessHelper {
       });
     }
 
+    checkIsPhotoCreationConfigValid(config: PhotoCreationConfig): boolean {
+      if (!config) {
+        console.error('photoAccessHelper invalid, config is null.');
+        return false;
+      }
+
+      // check whether input is a object
+      if (typeof config !== 'object') {
+        console.error('photoAccessHelper invalid, config type is not object.');
+        return false;
+      }
+
+      // check whether title is string if exsit
+      if ((config.title) && (typeof config.title !== 'string')) {
+        console.error('photoAccessHelper invalid, config.title type is not string.');
+        return false;
+      }
+
+      // check whether fileNameExtension is string
+      if (!config.fileNameExtension) {
+        console.error('photoAccessHelper invalid, config.fileNameExtension is null.');
+        return false;
+      }
+      if (typeof config.fileNameExtension !== 'string') {
+        console.error('photoAccessHelper invalid, config.fileNameExtension type is not string.');
+        return false;
+      }
+
+      // check whether photoType is int
+      if (!config.photoType) {
+        console.error('photoAccessHelper invalid, config.photoType is null.');
+        return false;
+      }
+      if (typeof config.photoType !== 'int') {
+        console.error('photoAccessHelper invalid, config.photoType type is not int.');
+        return false;
+      }
+
+      // check whether subtype is int if exsit
+      if ((config.subtype) && (typeof config.subtype !== 'int')) {
+        console.error('photoAccessHelper invalid, config.subtype type is not int.');
+        return false;
+      }
+
+      return true;
+    }
+
+    async getPickerAppInfo(): Promise<AppInfo | null> {
+      let bundleInfo: bundleManager.BundleInfo | undefined = getBundleInfo();
+      if ((bundleInfo === undefined) || (bundleInfo === null) ||
+          (g_PickerContext === undefined) || (g_PickerContext === null) ||
+          (bundleInfo.appInfo === undefined) || (bundleInfo.hapModulesInfo === null) ||
+          (bundleInfo.hapModulesInfo === undefined) || (bundleInfo.hapModulesInfo === undefined)) {
+        return null;
+      }
+      let bundleName = bundleInfo!.name;
+      let appId = bundleInfo!.signatureInfo!.appId;
+      let labelId = bundleInfo!.appInfo!.labelId;
+      let appName = '';
+      let tokenId = bundleInfo!.appInfo!.accessTokenId;
+      console.info('photoAccessHelper bundleName is ' + bundleName + '.');
+      console.info('photoAccessHelper appId is ' + appId + '.');
+      console.info('photoAccessHelper labelId is ' + labelId + '.');
+      console.info('photoAccessHelper tokenId is ' + tokenId + '.');
+      let moduleName = '';
+      for (let hapInfo of bundleInfo.hapModulesInfo) {
+        if (labelId === hapInfo.labelId) {
+          moduleName = hapInfo.name;
+        }
+      }
+      if (moduleName === '') {
+        console.error('get moduleName failed.');
+        return null;
+      }
+      console.info('photoAccessHelper modeleName is ' + moduleName + '.');
+      try{
+        let appContext:Context = await AppContext.createModuleContext(g_PickerContext!,moduleName!);
+        appName = await appContext.resourceManager.getStringValue(labelId);
+        console.info('photoAccessHelper appName is ' + appName + '.');
+        let appInformation: AppInfo = {
+          bundleName: bundleName,
+          appName: appName,
+          appId: appId,
+          tokenId: tokenId
+        };
+        return appInformation;
+      } catch(err) {
+        console.error('get appName failed.' + err + '.');
+        return null;
+      }
+    }
+
+    showAssetsCreationDialogResult(result: string, reject: RejectString, resolve: (v: string) => void): void {
+      if (result === undefined) {
+        result = "";
+      }
+      resolve(result);
+    }
+
+    showAssetsCreationDialogArrayResult(result: Array<string>, reject: RejectString,
+      resolve: (v: Array<string>) => void): void {
+      if (result === undefined) {
+        result = [];
+      }
+      resolve(result);
+    }
+
+    async createAssetWithShortTermPermissionExecute(phCreationConfig: PhotoCreationConfig): Promise<string> {
+      let appInfo = await this.getPickerAppInfo();
+      if (appInfo === null) {
+        return new Promise<string>((resolve: (v: string) => void, reject: RejectString) => {
+          reject(businessError<string>(-1, "getPickerAppInfo failed"));
+        });
+      }
+
+      try{
+        if (this.checkShortTermPermissionInner()) {
+          let photoCreationConfigs = [phCreationConfig];
+          let desFileUris = this.createAssetsHasPermissionInner();
+          return new Promise<string>((resolve: (v: string) => void, reject: RejectString) => {
+            resolve(desFileUris[0]);
+          });
+        }
+
+      return new Promise<string>((resolve: (v: string) => void, reject: RejectString) => {
+        this.createAssetWithShortTermPermissionInner(g_PickerContext!, phCreationConfig,
+           appInfo!, (retVal:string) => {
+            this.showAssetsCreationDialogResult(retVal, reject, resolve);
+          }
+      );
+      });
+      } catch(error) {
+        let err = error as MediaLibraryAniError;
+        return new Promise<string>((resolve: (v: string) => void, reject: RejectString)  => {
+          reject(businessError<string>(err.code.toInt(), err.message));
+        });
+      }
+    }
+
+  createAssetWithShortTermPermission(phCreationConfig: PhotoCreationConfig): Promise<string> {
+    if (!this.checkIsPhotoCreationConfigValid(phCreationConfig)) {
+      return new Promise<string>((resolve: (v: string) => void, reject: RejectString)  => {
+          reject(businessError<string>(401, "Param Invalid"));
+        });
+    }
+    return this.createAssetWithShortTermPermissionExecute(phCreationConfig);
+  }
+
+  checkArrayAndSize<T>(array: Array<T>, minSize: int , maxSize:int): boolean {
+    // check whether input is array
+    if (!Array.isArray(array)) {
+      console.error('photoAccessHelper invalid, array is null.');
+      return false;
+    }
+
+    // check whether array length is valid
+    let len = array.length;
+    if ((len < minSize) || (len > maxSize)) {
+      console.error('photoAccessHelper invalid, array size invalid.');
+      return false;
+    }
+
+    return true;
+  }
+
+  checkIsUriValid(uri: string, isAppUri: boolean): boolean {
+    if (!uri) {
+      console.error('photoAccessHelper invalid, uri is null.');
+      return false;
+    }
+
+    // media library uri starts with 'file://media/Photo/', createDeleteReques delete media library resource should check
+    if (!isAppUri) {
+      return uri.includes('file://media/Photo/');
+    }
+
+    // showAssetsCreationDialog store third part application resource to media library, no need to check it
+    return true;
+  }
+
+  checkConfirmBoxParams(srcFileUris: Array<string>, photoCreationConfigs: Array<PhotoCreationConfig>): boolean {
+    // check whether input array is valid
+    if (!this.checkArrayAndSize(srcFileUris, MIN_CONFIRM_NUMBER, MAX_CONFIRM_NUMBER)) {
+      return false;
+    }
+    if (!this.checkArrayAndSize(photoCreationConfigs, MIN_CONFIRM_NUMBER, MAX_CONFIRM_NUMBER)) {
+      return false;
+    }
+    if (srcFileUris.length !== photoCreationConfigs.length) {
+      return false;
+    }
+    // check whether srcFileUris element is valid
+    for (let srcFileUri of srcFileUris) {
+      if (!this.checkIsUriValid(srcFileUri, true)) {
+        console.error('photoAccessHelper invalid uri: ${srcFileUri}.');
+        return false;
+      }
+    }
+    // check whether photoCreationConfigs element is valid
+    for (let photoCreateConfig of photoCreationConfigs) {
+      if (!this.checkIsPhotoCreationConfigValid(photoCreateConfig)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  async showAssetsCreationDialogParamsExecute(srcFileUris: Array<string>,
+    photoCreationConfigs: Array<PhotoCreationConfig>): Promise<Array<string>> {
+    let appInfo = await this.getPickerAppInfo();
+    if (appInfo === null) {
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
+        reject(businessError<string>(-1, "Param Invalid"));
+      });
+    }
+    try {
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString) => {
+        this.showAssetsCreationDialogInner(g_PickerContext!, srcFileUris,
+          photoCreationConfigs, appInfo!, (retVal:Array<string>) => {
+            this.showAssetsCreationDialogArrayResult(retVal, reject, resolve);
+          }
+      );
+      });
+    } catch (error) {
+      let err = error as MediaLibraryAniError;
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
+        reject(businessError<string>(err.code.toInt(), err.message));
+      });
+    }
+  }
+
+  showAssetsCreationDialog(srcFileUris: Array<string>, photoCreationConfigs: Array<PhotoCreationConfig>): Promise<Array<string>>{
+    if (!this.checkConfirmBoxParams(srcFileUris, photoCreationConfigs)) {
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
+        reject(businessError<string>(401, "Param Invalid"));
+      });
+    }
+    return this.showAssetsCreationDialogParamsExecute(srcFileUris, photoCreationConfigs);
+  }
+
+  async requestPhotoUrisReadPermission(srcFileUris: Array<string>): Promise<Array<string>> {
+    console.info('requestPhotoUrisReadPermission enter');
+
+    //check whether srcFileUris is valid
+    if (srcFileUris === undefined || srcFileUris.length < MIN_CONFIRM_NUMBER) {
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
+        reject(businessError<string>(-1, "photoAccessHelper invalid, array size invalid."));
+      });
+    }
+    for (let srcFileUri of srcFileUris) {
+      if (!this.checkIsUriValid(srcFileUri, true)) {
+        console.error('photoAccesshelper invalid uri : ${srcFileUri}.' + srcFileUri);
+        return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
+          reject(businessError<string>(-1, "photoAccesshelper invalid uri"));
+        });
+      }
+    }
+
+    let appInfo = await this.getPickerAppInfo();
+    if (appInfo === null) {
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
+        reject(businessError<string>(-1, "Param Invalid"));
+      });
+    }
+
+    let context = g_PickerContext;
+    if (context === undefined) {
+      console.info('photoAccessHelper gContet undefined');
+      // context = common.getContext(this);
+    }
+
+    try {
+      let appName = appInfo!.appName;
+      console.info('photoAccessHelper appName is ' + appName + '.');
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString) => {
+        this.requestPhotoUrisReadPermissionInner(context!, srcFileUris, appName,
+          (retVal:Array<string>) => {
+            this.showAssetsCreationDialogArrayResult(retVal, reject, resolve);
+        });
+      });
+    } catch (error) {
+      let err = error as MediaLibraryAniError;
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
+        reject(businessError<string>(err.code.toInt(), err.message));
+      });
+    }
+  }
+
     acquireDebugDatabase(betaIssueId: string, betaScenario: string): Promise<Map<string, string>> {
       return new Promise<Map<string, string>>((resolve: (v: Map<string, string>) => void, reject: RejectString) => {
         let cb = (): Map<string, string> | MediaLibraryAniError => {
@@ -4339,6 +4655,15 @@ export namespace photoAccessHelper {
     native setFileCompatibleConfigSysInner(bundleName: string, config: AssetCompatibleCapability): void;
     native setFileCompatibleConfigInner(config: AssetCompatibleCapability): void;
     native getAssetCompatibleConfigInner(bundleName: string): AssetCompatibleCapability;
+    native checkShortTermPermissionInner(): boolean;
+    native createAssetsHasPermissionInner(): Array<string>;
+    native createAssetWithShortTermPermissionInner(context: Context, phCreationConfig: PhotoCreationConfig,
+      appInfo: AppInfo, result: (retVal: string) => void): string;
+    native showAssetsCreationDialogInner(context: Context, srcFileUris: Array<string>,
+      photoCreationConfigs: Array<PhotoCreationConfig>, appInfo: AppInfo,
+      result: (retVal: Array<string>) => void): Array<string>;
+    native requestPhotoUrisReadPermissionInner(context: Context, srcFileUris: Array<string>, appName: string,
+      result: (retVal: Array<string>) => void): Array<string>;
     native onMediaLibraryAvailability(callback: Callback<MediaLibraryAvailability>): void;
     native offMediaLibraryAvailability(callback?: Callback<MediaLibraryAvailability>): void;
     native getAlbumIdByLpathInner(lpath: string): int;
@@ -4412,6 +4737,12 @@ export namespace photoAccessHelper {
     MOVING_PHOTO_IMAGE_TYPE = 'image/movingPhoto'
   }
 
+  export enum SingleSelectionMode {
+    BROWSER_MODE = 0,
+    SELECT_MODE = 1,
+    BROWSER_AND_SELECT_MODE = 2
+  }
+
   export class BaseSelectOptions {
     MIMEType: PhotoViewMIMETypes | undefined;
     maxSelectNumber: int | undefined;
@@ -4420,6 +4751,10 @@ export namespace photoAccessHelper {
     recommendationOptions: RecommendationOptions | undefined;
     preselectedUris: Array<string> | undefined;
     isPreviewForSingleSelectionSupported: boolean | undefined;
+      singleSelectionMode: SingleSelectionMode | undefined;
+    mimeTypeFilter: MimeTypeFilter | undefined;
+    fileSizeFilter: FileSizeFilter | undefined;
+    videoDurationFilter: VideoDurationFilter | undefined;
   }
 
   export class PhotoSelectOptions extends BaseSelectOptions {
@@ -4428,6 +4763,8 @@ export namespace photoAccessHelper {
     subWindowName: string | undefined;
     themeColor: CustomColors | undefined;
     completeButtonText: CompleteButtonText | undefined;
+    userId: int | undefined;
+    isPc: boolean | undefined;
   }
 
   export class RecommendationOptions {
@@ -4445,6 +4782,165 @@ export namespace photoAccessHelper {
   }
 
   export class PhotoViewPicker {
+
+    select(option?: PhotoSelectOptions): Promise<PhotoSelectResult>{
+      let context: Context|undefined = undefined;
+      try {
+        let uicontext = UIContext.getCallingScopeUIContext();
+        if (uicontext) {
+          context = uicontext.getHostContext();
+        }
+      } catch (Error) {
+        return new Promise<PhotoSelectResult>((resolve: (v: PhotoSelectResult) => void, reject: RejectString) => {
+          reject(businessError<string>(-1, "getContext failed"));
+        });
+      }
+
+      if (context === undefined || context === null) {
+        return new Promise<PhotoSelectResult>((resolve: (v: PhotoSelectResult) => void, reject: RejectString) => {
+          reject(businessError<string>(-1, "getContext Context is null") );
+        });
+      }
+
+      if (option != undefined) {
+        option.isPc = deviceinfo.deviceType === '2in1' ;
+      } else {
+        option = new PhotoSelectOptions();
+      }
+      const worker = new EAWorker();
+      return new Promise<PhotoSelectResult>((resolve: (v: PhotoSelectResult) => void, reject: RejectString) => {
+        try {
+          let func = (context: Context, option: PhotoSelectOptions): PhotoSelectResult | MediaLibraryAniError => {
+            let ret: PhotoSelectResult | MediaLibraryAniError;
+            try{
+              ret = this.startPhotoPickerInner(context, option);
+            } catch(e) {
+              ret = e as MediaLibraryAniError;
+            }
+            return ret;
+          };
+          let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
+            worker.start();
+            const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
+            let result = await job;
+            worker.join();
+            if (result instanceof MediaLibraryAniError) {
+              reject(businessError<string>(result.code.toInt(), result.message));
+            } else if (isNullish(result)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(result as PhotoSelectResult);
+            }
+          };
+          funcAsync(context!, option!);
+        } catch (e) {
+          worker.join();
+          reject(businessError<string>(-1, "Process failed"));
+        }
+      });
+    }
+
+    select(option: PhotoSelectOptions, callback: AsyncCallback<PhotoSelectResult | undefined>): void {
+      let context: Context|undefined = undefined;
+      try {
+        let uicontext = UIContext.getCallingScopeUIContext();
+        if (uicontext) {
+          context = uicontext.getHostContext();
+        }
+      } catch (Error) {
+        callback(businessError(-1, "getContext failed"), undefined);
+        return;
+      }
+
+      if (context === undefined || context === null) {
+        callback(businessError(-1, "getContext Context is nill"), undefined);
+        return;
+      }
+      if (option != undefined) {
+        option.isPc = deviceinfo.deviceType === '2in1' ;
+      }
+
+      const worker = new EAWorker();
+      try {
+        let func = (context: Context, option: PhotoSelectOptions): PhotoSelectResult | MediaLibraryAniError => {
+          let ret: PhotoSelectResult | MediaLibraryAniError;
+          try{
+            ret = this.startPhotoPickerInner(context!, option);
+          } catch(e) {
+            ret = e as MediaLibraryAniError;
+          }
+          return ret;
+        };
+        let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
+          worker.start();
+          const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
+          let result = await job;
+          worker.join();
+          if (result instanceof MediaLibraryAniError) {
+            callback(businessError(result.code.toInt(), result.message), undefined);
+          } else if (isNullish(result)) {
+            callback(businessError(-1, "Operation failed"), undefined);
+          } else {
+            callback(businessError(0), result as PhotoSelectResult);
+          }
+        };
+        funcAsync(context!, option!);
+      } catch (e) {
+        worker.join();
+        callback(businessError(-1, "Process failed"), undefined);
+      }
+    }
+
+    select(callback: AsyncCallback<PhotoSelectResult | undefined>): void {
+      let context: Context|undefined = undefined;
+      try {
+        let uicontext = UIContext.getCallingScopeUIContext();
+        if (uicontext) {
+          context = uicontext.getHostContext();
+        }
+      } catch (Error) {
+        callback(businessError(-1, "getContext failed"), undefined);
+        return;
+      }
+
+      if (context === undefined || context === null) {
+        callback(businessError(-1, "getContext Context is nill"), undefined);
+        return;
+      }
+
+      let option = new PhotoSelectOptions();
+      const worker = new EAWorker();
+      try {
+        let func = (context: Context, option: PhotoSelectOptions): PhotoSelectResult | MediaLibraryAniError => {
+          let ret: PhotoSelectResult | MediaLibraryAniError;
+          try{
+            ret = this.startPhotoPickerInner(context!, option);
+          } catch(e) {
+            ret = e as MediaLibraryAniError;
+          }
+          return ret;
+        };
+        let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
+          worker.start();
+          const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
+          let result = await job;
+          worker.join();
+          if (result instanceof MediaLibraryAniError) {
+            callback(businessError(result.code.toInt(), result.message), undefined);
+          } else if (isNullish(result)) {
+            callback(businessError(-1, "Operation failed"), undefined);
+          } else {
+            callback(businessError(0), result as PhotoSelectResult);
+          }
+        };
+        funcAsync(context!, option!);
+      } catch (e) {
+        worker.join();
+        callback(businessError(-1, "Process failed"), undefined);
+      }
+    }
+
+    native startPhotoPickerInner(context: Context, config: PhotoSelectOptions): PhotoSelectResult;
   }
 
   export class MediaAssetEditData {

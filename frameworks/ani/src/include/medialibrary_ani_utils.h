@@ -324,6 +324,7 @@ public:
     static ani_status MakeAniArray(ani_env* env, uint32_t size, ani_object &aniArray, ani_method &setMethod);
     static ani_status GetAniValueArray(ani_env *env, ani_object arg, vector<ani_object> &array);
 
+    static ani_status GetProperty(ani_env *env, ani_object arg, const std::string &propName, uint64_t &propValue);
     static ani_status GetProperty(ani_env *env, ani_object arg, const std::string &propName, uint32_t &propValue);
     static ani_status GetProperty(ani_env *env, ani_object arg, const std::string &propName, std::string &propValue);
     static ani_status GetProperty(ani_env *env, ani_object arg, const std::string &propName, ani_object &propObj);

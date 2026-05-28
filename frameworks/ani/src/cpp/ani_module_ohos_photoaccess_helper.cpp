@@ -77,6 +77,7 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
 
     CHECK_STATUS_RET(OHOS::Media::Ani::GlobalFunctionInit(env), "GlobalFunctionInit fail");
     CHECK_STATUS_RET(MediaLibraryAni::PhotoAccessHelperInit(env), "PhotoAccessHelperInit fail");
+    CHECK_STATUS_RET(MediaLibraryAni::PhotoViewPickerInit(env), "PhotoViewPickerInit fail");
     CHECK_STATUS_RET(FetchFileResultAni::PhotoAccessHelperInit(env), "FetchFileResult init fail");
     CHECK_STATUS_RET(FileAssetAni::PhotoAccessHelperInit(env), "FileAssetAni init fail");
     CHECK_STATUS_RET(PhotoAlbumAni::PhotoAccessInit(env), "PhotoAccessInit fail");
