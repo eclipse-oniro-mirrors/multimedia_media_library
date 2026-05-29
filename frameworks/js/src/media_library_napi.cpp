@@ -5599,7 +5599,7 @@ static Ability *CreateAsyncCallbackInfo(napi_env env)
         NAPI_ERR_LOG("get_named_property=%{public}d e:%{public}s", ret, errorInfo->error_message);
     }
     Ability *ability = nullptr;
-    ret = napi_get_value_external(env, abilityObj, (void **)&ability);
+    ret = napi_get_value_external(env, abilityObj, reinterpret_cast<void**>(&ability));
     if (ret != napi_ok) {
         napi_get_last_error_info(env, &errorInfo);
         NAPI_ERR_LOG("get_value_external=%{public}d e:%{public}s", ret, errorInfo->error_message);
