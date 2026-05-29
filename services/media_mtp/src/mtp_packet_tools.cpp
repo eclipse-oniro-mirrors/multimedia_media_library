@@ -756,7 +756,7 @@ bool MtpPacketTool::GetString(const std::vector<uint8_t> &buffer, size_t &offset
         tmpbuf[i] = ch;
     }
 
-    str = Utf16ToUtf8(std::u16string(tmpbuf.data()));
+    str = Utf16ToUtf8(std::u16string(tmpbuf.data(), count));
     return true;
 }
 
