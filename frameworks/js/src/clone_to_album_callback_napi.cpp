@@ -67,6 +67,7 @@ int32_t CloneToAlbumCallbackNapi::OnProgress(uint64_t processedSize, uint64_t to
         auto task = [this, processedSize, totalSize]() {
             TriggerSizeProgressCallback(processedSize, totalSize);
             taskSize_.fetch_sub(1);
+            cv_.notify_one();
             MEDIA_DEBUG_LOG("progress size end task:%{public}d", taskSize_.load());
         };
         taskSize_.fetch_add(1);
@@ -82,6 +83,7 @@ int32_t CloneToAlbumCallbackNapi::OnProgress(uint64_t processedSize, uint64_t to
         auto task = [this, processedCount, totalCount]() {
             TriggerCountProgressCallback(processedCount, totalCount);
             taskSize_.fetch_sub(1);
+            cv_.notify_one();
             MEDIA_DEBUG_LOG("progress count end task:%{public}d", taskSize_.load());
         };
         taskSize_.fetch_add(1);
@@ -116,6 +118,7 @@ int32_t CloneToAlbumCallbackNapi::OnComplete(int32_t errorCode, const std::vecto
             auto task = [this]() {
                 this->TriggerResultListenerCallback(errorCode_, successUris_);
                 taskSize_.fetch_sub(1);
+                cv_.notify_one();
                 MEDIA_DEBUG_LOG("complete end task:%{public}d", taskSize_.load());
             };
             taskSize_.fetch_add(1);
@@ -130,6 +133,7 @@ int32_t CloneToAlbumCallbackNapi::OnComplete(int32_t errorCode, const std::vecto
     {
         std::lock_guard<std::mutex> lock(cvMutex_);
         isCompleted_ = true;
+        cv_.notify_one();
     }
     return E_OK;
 }

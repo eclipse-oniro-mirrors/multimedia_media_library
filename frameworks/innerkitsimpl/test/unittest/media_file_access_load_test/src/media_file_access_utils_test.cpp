@@ -966,8 +966,8 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_asset_005,
 
         MoveResult result = MediaFileAccessUtils::MoveAsset(srcObj, destPath, FileSourceType::FILE_MANAGER, true);
         EXPECT_EQ(result.errCode, E_OK);
-        EXPECT_TRUE(result.isExecuteRename);
-        EXPECT_EQ(result.newPath, finalPath);
+        EXPECT_FALSE(result.isExecuteRename);
+        EXPECT_EQ(result.newPath, destPath);
 
         MediaFileUtils::DeleteFile(destPath);
         MediaFileUtils::DeleteFile(finalPath);
@@ -1026,8 +1026,8 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_delete_asset_00
     EXPECT_FALSE(MediaFileUtils::IsFileExists(testPath));
 }
 
-void MediaLibraryMediaFileAccessUtilsTest::RunSameNameRenameCase(AssetOperationInfo &srcObj,
-    const std::string &sameNamePath, const std::vector<std::string> &existingPaths, const std::string &expectedPath)
+void MediaLibraryMediaFileAccessUtilsTest::RunSameNameRenameCase(const std::string &sameNamePath,
+    const std::vector<std::string> &existingPaths, const std::string &expectedPath)
 {
     std::vector<std::string> cleanupPaths = existingPaths;
     cleanupPaths.push_back(sameNamePath);
@@ -1044,7 +1044,7 @@ void MediaLibraryMediaFileAccessUtilsTest::RunSameNameRenameCase(AssetOperationI
     std::string renamePath;
     std::string renameTitle;
     std::string renameDisplayName;
-    int32_t ret = MediaFileAccessUtils::HandleSameNameRename(srcObj, sameNamePath, renamePath, renameTitle,
+    int32_t ret = MediaFileAccessUtils::HandleSameNameRename(sameNamePath, renamePath, renameTitle,
         renameDisplayName);
     EXPECT_EQ(ret, E_OK);
     EXPECT_NE(renamePath, sameNamePath);
@@ -1059,163 +1059,87 @@ void MediaLibraryMediaFileAccessUtilsTest::RunSameNameRenameCase(AssetOperationI
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_001, TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils_same_name.jpg",
-            { "/data/local/tmp/file_access_utils_same_name(1).jpg" },
-            "/data/local/tmp/file_access_utils_same_name(2).jpg");
-    }
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils_same_name.jpg",
+        { "/data/local/tmp/file_access_utils_same_name(1).jpg" },
+        "/data/local/tmp/file_access_utils_same_name(2).jpg");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_002, TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils_same_name",
-            { "/data/local/tmp/file_access_utils_same_name(1)" },
-            "/data/local/tmp/file_access_utils_same_name(2)");
-    }
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils_same_name",
+        { "/data/local/tmp/file_access_utils_same_name(1)" },
+        "/data/local/tmp/file_access_utils_same_name(2)");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_003, TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils_same_(1)name",
-            {},
-            "/data/local/tmp/file_access_utils_same_(1)name(1)");
-    }
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils_same_(1)name",
+        {},
+        "/data/local/tmp/file_access_utils_same_(1)name(1)");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_004, TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils_same_name(1).jpg",
-            {},
-            "/data/local/tmp/file_access_utils_same_name(1)(1).jpg");
-    }
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils_same_name(1).jpg",
+        {},
+        "/data/local/tmp/file_access_utils_same_name(1)(1).jpg");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_005, TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils.same.name.jpg",
-            {},
-            "/data/local/tmp/file_access_utils.same.name(1).jpg");
-    }
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils.same.name.jpg",
+        {},
+        "/data/local/tmp/file_access_utils.same.name(1).jpg");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_006, TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils_same_name(test).jpg",
-            {},
-            "/data/local/tmp/file_access_utils_same_name(test)(1).jpg");
-    }
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils_same_name(test).jpg",
+        {},
+        "/data/local/tmp/file_access_utils_same_name(test)(1).jpg");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_007, TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils_same_name.jpg",
-            {
-                "/data/local/tmp/file_access_utils_same_name(1).jpg",
-                "/data/local/tmp/file_access_utils_same_name(2).jpg",
-            },
-            "/data/local/tmp/file_access_utils_same_name(3).jpg");
-    }
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils_same_name.jpg",
+        {
+            "/data/local/tmp/file_access_utils_same_name(1).jpg",
+            "/data/local/tmp/file_access_utils_same_name(2).jpg",
+        },
+        "/data/local/tmp/file_access_utils_same_name(3).jpg");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_empty_title_001,
     TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
+    std::string sameNamePath = "/data/local/tmp/.jpg";
+    MediaFileUtils::DeleteFile(sameNamePath);
+    ASSERT_TRUE(CreateFileWithData(sameNamePath, "same_name"));
 
-        std::string sameNamePath = "/data/local/tmp/.jpg";
-        MediaFileUtils::DeleteFile(sameNamePath);
-        ASSERT_TRUE(CreateFileWithData(sameNamePath, "same_name"));
+    std::string renamePath;
+    std::string renameTitle;
+    std::string renameDisplayName;
+    int32_t ret = MediaFileAccessUtils::HandleSameNameRename(sameNamePath, renamePath, renameTitle,
+        renameDisplayName);
+    EXPECT_EQ(ret, E_ERR);
 
-        std::string renamePath;
-        std::string renameTitle;
-        std::string renameDisplayName;
-        int32_t ret = MediaFileAccessUtils::HandleSameNameRename(srcObj, sameNamePath, renamePath, renameTitle,
-            renameDisplayName);
-        EXPECT_EQ(ret, E_ERR);
-
-        MediaFileUtils::DeleteFile(sameNamePath);
-    }
+    MediaFileUtils::DeleteFile(sameNamePath);
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_empty_extension_001,
     TestSize.Level0)
 {
-    std::string uri = "";
-    MediaLibraryMediaFileAccessUtilsTest::InitAsset(uri, FileSourceType::FILE_MANAGER);
-    if (CheckDBIsSupported()) {
-        EXPECT_NE(uri, "");
-        std::string id = MediaFileUtils::GetIdFromUri(uri);
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(id);
-        RunSameNameRenameCase(srcObj,
-            "/data/local/tmp/file_access_utils_no_ext.",
-            {},
-            "/data/local/tmp/file_access_utils_no_ext(1).");
-    }
-}
-
-HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_handle_same_name_rename_no_file_id_001,
-    TestSize.Level0)
-{
-    AssetOperationInfo srcObj = AssetOperationInfo::CreateFromPath(
-        "/data/local/tmp/file_access_utils_no_file_id_src.jpg", AssetPathType::NORMAL_PATH);
-
-    RunSameNameRenameCase(srcObj,
-        "/data/local/tmp/file_access_utils_no_file_id_same_name.jpg",
-        { "/data/local/tmp/file_access_utils_no_file_id_same_name(1).jpg" },
-        "/data/local/tmp/file_access_utils_no_file_id_same_name(2).jpg");
+    RunSameNameRenameCase(
+        "/data/local/tmp/file_access_utils_no_ext.",
+        {},
+        "/data/local/tmp/file_access_utils_no_ext(1).");
 }
 
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_get_file_asset_from_db_001, TestSize.Level0)

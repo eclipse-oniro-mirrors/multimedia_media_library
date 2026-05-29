@@ -125,16 +125,13 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
             targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + "/" +
                 cloneAssetInfo.displayName;
         }
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(std::to_string(cloneAssetInfo.fileId));
         std::string renamePath;
         std::string renameTitle;
         std::string renameDisplayName;
         if (cloneAssetInfo.burstKey.empty()) {
-            MediaFileAccessUtils::HandleSameNameRename(srcObj, targetPath, renamePath, renameTitle,
-                renameDisplayName);
+            MediaFileAccessUtils::HandleSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName);
         } else {
-            MediaFileAccessUtils::HandleBurstSameNameRename(srcObj, targetPath, renamePath, renameTitle,
-                renameDisplayName);
+            MediaFileAccessUtils::HandleBurstSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName);
         }
         if (targetPath != renamePath && cloneAssetInfo.mode == NOT_SUPPORT_RENAME) {
             MEDIA_ERR_LOG("HandleSameName error");
@@ -348,7 +345,6 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
         resultFileId.push_back(newFileId);
     }
     timer.Unregister(timerId);
-    timer.Shutdown();
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -371,6 +367,7 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
         std::shared_ptr<DataShare::DataShareResultSet> resultSet = nullptr;
         callback->OnComplete(ret, result == E_OK ? resultUris : std::vector<std::string>(), resultSet);
     }
+    timer.Shutdown();
     return E_OK;
 }
 

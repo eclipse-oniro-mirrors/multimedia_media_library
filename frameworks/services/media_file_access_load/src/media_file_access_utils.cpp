@@ -261,28 +261,7 @@ MoveResult MediaFileAccessUtils::MoveAsset(const AssetOperationInfo &srcObj, con
     }
 }
 
-bool MediaFileAccessUtils::IsAlbumHasSameNameAsset(const AssetOperationInfo &srcObj, const std::string &displayName)
-{
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "get rdbstore error");
-    std::string sql = "SELECT COUNT(1) AS count FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " +
-                      MediaColumn::MEDIA_NAME + " = ? AND " + MediaColumn::MEDIA_ID + "<>? AND " +
-                      PhotoColumn::PHOTO_OWNER_ALBUM_ID + "= ?;";
-    std::vector<std::string> args = {displayName, srcObj.GetFileId(), srcObj.GetOwnerAlbumId()};
-    auto resultSet = rdbStore->QuerySql(sql, args);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "query database error");
-    if (resultSet->GoToFirstRow() != E_OK) {
-        MEDIA_ERR_LOG("query resultset error");
-        resultSet->Close();
-        return E_ERR;
-    }
-    int32_t count = MediaLibraryRdbStore::GetInt(resultSet, "count");
-    resultSet->Close();
-    MEDIA_INFO_LOG("IsAlbumHasSameNameAsset fileId: %{public}s, count: %{public}d", srcObj.GetFileId().c_str(), count);
-    return count > 0;
-}
-
-int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &srcObj, const std::string &sameNamePath,
+int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePath,
     std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
 {
     MEDIA_DEBUG_LOG("HandleSameNameRename sameNamePath: %{public}s",
@@ -300,8 +279,7 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &src
     std::string baseName = tempTitle;
 
     uint32_t retryCount = 0;
-    while (retryCount < RENAME_MAX_RETRY_COUNT &&
-            (MediaFileUtils::IsFileExists(tempPath) || IsAlbumHasSameNameAsset(srcObj, tempDisplayName))) {
+    while (retryCount < RENAME_MAX_RETRY_COUNT && MediaFileUtils::IsFileExists(tempPath)) {
         ++retryCount;
         tempTitle = baseName + "(" + std::to_string(retryCount) + ")";
         tempDisplayName = tempTitle + fileExtension;
@@ -309,8 +287,7 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &src
         MEDIA_DEBUG_LOG("path conflict, try new path: %{public}s", MediaFileUtils::DesensitizePath(tempPath).c_str());
     }
     if (retryCount == RENAME_MAX_RETRY_COUNT) {
-        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath) &&
-            !IsAlbumHasSameNameAsset(srcObj, tempDisplayName), E_ERR, "path still conflict after retry");
+        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath), E_ERR, "path still conflict after retry");
     }
     renamePath = tempPath;
     renameTitle = tempTitle;
@@ -318,8 +295,8 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &src
     return E_OK;
 }
 
-int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const AssetOperationInfo &srcObj,
-    const std::string &sameNamePath, std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
+int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
 {
     CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
     std::string displayName = MediaFileUtils::GetFileName(sameNamePath);
@@ -330,8 +307,7 @@ int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const AssetOperationInfo
     size_t dotPos = displayName.rfind('.');
     std::string tempTitle = dotPos != std::string::npos ? displayName.substr(0, dotPos) : displayName;
     uint32_t retryCount = 0;
-    while (retryCount < RENAME_MAX_RETRY_COUNT &&
-            (MediaFileUtils::IsFileExists(tempPath) || IsAlbumHasSameNameAsset(srcObj, displayName))) {
+    while (retryCount < RENAME_MAX_RETRY_COUNT && MediaFileUtils::IsFileExists(tempPath)) {
         PhotoAssetInfo photoAssetInfo;
         photoAssetInfo.displayName = displayName;
         photoAssetInfo.subtype = static_cast<int32_t>(PhotoSubType::BURST);
@@ -346,8 +322,7 @@ int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const AssetOperationInfo
         ++retryCount;
     }
     if (retryCount == RENAME_MAX_RETRY_COUNT) {
-        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath) &&
-            !IsAlbumHasSameNameAsset(srcObj, displayName), E_ERR, "path still conflict after retry");
+        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath), E_ERR, "path still conflict after retry");
     }
 
     renamePath = tempPath;
@@ -420,7 +395,7 @@ MoveResult MediaFileAccessUtils::MoveNormalAsset(const AssetOperationInfo &srcOb
     result.newDisplayName = MediaPathUtils::GetFileName(destPath);
     result.newTitle = MediaFileUtils::GetTitleFromDisplayName(result.newDisplayName);
     if (NeedCheckSameNameRename(destSourceType)) {
-        result.errCode = MediaFileAccessUtils::HandleSameNameRename(srcObj, destPath, result.newPath, result.newTitle,
+        result.errCode = MediaFileAccessUtils::HandleSameNameRename(destPath, result.newPath, result.newTitle,
             result.newDisplayName);
         CHECK_AND_RETURN_RET_LOG(result.errCode == E_OK, result, "handle same name failed");
         result.isExecuteRename = destPath != result.newPath;
