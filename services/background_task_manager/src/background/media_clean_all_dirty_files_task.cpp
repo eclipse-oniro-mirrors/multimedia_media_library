@@ -37,6 +37,7 @@
 #include "submit_cache_dto.h"
 #include "thumbnail_const.h"
 #include "thumbnail_service.h"
+#include "mimetype_utils.h"
 
 using namespace OHOS::NativeRdb;
 
@@ -84,6 +85,7 @@ const std::string SPECIAL_EDIT_COMPATIBLE_FORMAT = "com.hmos.photos";
 const std::string SPECIAL_EDIT_FORMAT_VERSION = "1.0";
 const std::string SPECIAL_EDIT_EDIT_DATA = "{}";
 const std::string SPECIAL_EDIT_APP_ID = "com.hmos.photos";
+const string JPG_MIME_TYPE_FORMAT = "image/jpeg";
 
 static bool Starts_With(const std::string& str, const std::string& prefix)
 {
@@ -569,6 +571,18 @@ bool MediaCleanAllDirtyFilesTask::IsMovingPhotosInOrgFolder(int32_t curBucketNum
     return false;
 }
 
+bool MediaCleanAllDirtyFilesTask::IsJpgImageFile(const std::string &fileName)
+{
+    MediaType mediaType = MediaFileUtils::GetMediaType(fileName);
+    if (mediaType == MediaType::MEDIA_TYPE_IMAGE) {
+        string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(fileName));
+        if (mimeType == JPG_MIME_TYPE_FORMAT) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool MediaCleanAllDirtyFilesTask::IsMovingPhotosInEditFolder(int32_t curBucketNum, const std::string &fileName)
 {
     // 同文件目录 存在其他类型的同title文件 source.jpg  source.mp4
@@ -1012,6 +1026,9 @@ bool MediaCleanAllDirtyFilesTask::HandleThumbsBucketFolder(int32_t curBucketNum)
         std::string dataPath = ROOT_MEDIA_ORG_DIR + std::to_string(curBucketNum) + SLASH_STR + folderName;
         CHECK_AND_CONTINUE_INFO_LOG(!ExistCloudAssetPathInDB(dataPath), // 纯云图跳过
             "DirtyMediaHandler Skip cloud File While HandleThumbsBucketFolder %{public}s",
+            MediaFileUtils::DesensitizePath(dataPath).c_str());
+        CHECK_AND_CONTINUE_INFO_LOG(IsJpgImageFile(folderName), // 非JPG静态图跳过缩略图处理
+            "DirtyMediaHandler Skip video File While HandleThumbsBucketFolder %{public}s",
             MediaFileUtils::DesensitizePath(dataPath).c_str());
         bool finish = ProcessThumbsFolderBatch(curBucketNum, folderName);
         CHECK_AND_RETURN_RET_LOG(finish, false,
