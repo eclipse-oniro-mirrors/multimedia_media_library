@@ -72,6 +72,7 @@
 #include "permission_utils.h"
 #include "thumbnail_generate_worker_manager.h"
 #include "shooting_mode_album_operation.h"
+#include "attachment_size_update_operation.h"
 #include "parameters.h"
 #include "height_width_correct_operation.h"
 #include "net_conn_client.h"
@@ -1240,6 +1241,7 @@ void MedialibrarySubscriber::DoBackgroundOperationStepTwo()
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     BackgroundCloudFileProcessor::RepairMimeType();
 #endif
+    AttachmentSizeUpdateOperation::UpdateAttachmentSize();
 }
 
 static void PauseBackgroundDownloadCloudMedia()
@@ -1270,6 +1272,7 @@ void MedialibrarySubscriber::StopBackgroundOperation()
     MediaLibraryAspectRatioOperation::Stop();
     ShootingModeAlbumOperation::Stop();
     AgingTmpCompatibleDuplicates(false);
+    AttachmentSizeUpdateOperation::Stop();
 }
 
 void MedialibrarySubscriber::UpdateThumbnailBgGenerationStatus()

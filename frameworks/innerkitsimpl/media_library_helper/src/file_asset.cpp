@@ -1054,5 +1054,16 @@ void FileAsset::SetLocalAssetSize(int64_t localAssetSize)
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::LOCAL_ASSET_SIZE] = localAssetSize;
 }
+
+int64_t FileAsset::GetAttachmentSize() const
+{
+    return GetInt64Member(PhotoColumn::ATTACHMENT_SIZE);
+}
+
+void FileAsset::SetAttachmentSize(int64_t attachmentSize)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::ATTACHMENT_SIZE] = attachmentSize;
+}
 }  // namespace Media
 }  // namespace OHOS

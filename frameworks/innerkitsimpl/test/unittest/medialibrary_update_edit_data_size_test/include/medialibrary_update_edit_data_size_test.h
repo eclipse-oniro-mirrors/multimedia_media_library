@@ -13,15 +13,19 @@
  * limitations under the License.
  */
 
-#ifndef UPGRADE_PHOTOS_SQLS_H
-#define UPGRADE_PHOTOS_SQLS_H
-// table name need to be added here
-#define TABLE_PHOTOS "Photos"
-// column name should be added here
-#define COLUMN_PHOTO_RISK_STATUS "photo_risk_status"
-#define COLUMN_CRITICAL_TYPE "critical_type"
-#define COLUMN_PHOTO_NEED_THUMBNAIL "need_thumbnail"
-#define COLUMN_ATTACHMENT_SIZE "attachment_size"
-// sqls only execute in upgrade progress should be added here
+#ifndef MEDIALIBRARY_UPDATE_EDIT_DATA_SIZE_TEST_H
+#define MEDIALIBRARY_UPDATE_EDIT_DATA_SIZE_TEST_H
 
-#endif // UPGRADE_PHOTOS_SQLS_H
+#include <gtest/gtest.h>
+
+namespace OHOS::Media {
+class MediaLibraryUpdateEditDataSizeTest : public testing::Test {
+public:
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp() override;
+    void TearDown() override;
+};
+} // namespace OHOS::Media
+
+#endif // MEDIALIBRARY_UPDATE_EDIT_DATA_SIZE_TEST_H

@@ -2051,5 +2051,70 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_001, TestSi
     
     EXPECT_EQ(MediaFileUtils::DeleteDir(rootPath), true);
 }
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_002, TestSize.Level1)
+{
+    string rootPath = "/data/test/statdirsize_002";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(rootPath), true);
+
+    string fileEditData = rootPath + "/editdata";
+    string fileSourceJpg = rootPath + "/source.jpg";
+    string fileSourceMp4 = rootPath + "/source.mp4";
+    string fileOther = rootPath + "/other.bin";
+
+    EXPECT_EQ(MediaFileUtils::CreateFile(fileEditData), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(fileSourceJpg), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(fileSourceMp4), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(fileOther), true);
+
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(fileEditData, "1234567890"), true);   // 10
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(fileSourceJpg, "1234567890123"), true); // 13
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(fileSourceMp4, "1234567"), true);       // 7
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(fileOther, "1234"), true);               // 4
+
+    size_t totalSize = 0;
+    size_t matchedSize = 0;
+    auto predicate = [](const std::string &fileName) {
+        if (fileName == "editdata") {
+            return true;
+        }
+        size_t dotPos = fileName.find('.');
+        std::string baseName = (dotPos == std::string::npos) ? fileName : fileName.substr(0, dotPos);
+        return baseName == "source";
+    };
+
+    MediaFileUtils::StatDirSize(rootPath, totalSize, matchedSize, predicate);
+    EXPECT_EQ(totalSize, 34);
+    EXPECT_EQ(matchedSize, 30);
+
+    EXPECT_EQ(MediaFileUtils::DeleteDir(rootPath), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_StatDirSize_Test_003, TestSize.Level1)
+{
+    string rootPath = "/data/test/statdirsize_003";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(rootPath), true);
+
+    string file1 = rootPath + "/a.txt";
+    string file2 = rootPath + "/b.txt";
+    EXPECT_EQ(MediaFileUtils::CreateFile(file1), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(file2), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(file1, "12345"), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(file2, "1234567"), true);
+
+    size_t totalSizeOldApi = 0;
+    MediaFileUtils::StatDirSize(rootPath, totalSizeOldApi);
+
+    size_t totalSizeNewApi = 0;
+    size_t matchedSize = 0;
+    std::function<bool(const std::string&)> emptyPredicate;
+    MediaFileUtils::StatDirSize(rootPath, totalSizeNewApi, matchedSize, emptyPredicate);
+
+    EXPECT_EQ(totalSizeOldApi, 12);
+    EXPECT_EQ(totalSizeNewApi, totalSizeOldApi);
+    EXPECT_EQ(matchedSize, 0);
+
+    EXPECT_EQ(MediaFileUtils::DeleteDir(rootPath), true);
+}
 } // namespace Media
 } // namespace OHOS

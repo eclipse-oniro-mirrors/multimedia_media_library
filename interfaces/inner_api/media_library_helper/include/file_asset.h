@@ -311,6 +311,9 @@ public:
     EXPORT int64_t GetLocalAssetSize() const;
     EXPORT void SetLocalAssetSize(int64_t localAssetSize);
 
+    EXPORT int64_t GetAttachmentSize() const;
+    EXPORT void SetAttachmentSize(int64_t attachmentSize);
+
 private:
     int32_t userId_ = -1;
     std::string albumUri_;
