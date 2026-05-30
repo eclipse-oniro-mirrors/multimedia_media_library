@@ -268,6 +268,10 @@ const std::unordered_set<std::string> FILE_MANAGER_EXCLUDED_DIR_NAMES = {
     ".Recent",
     ".backup",
     ".Trash",
+    ".VMDocs",
+    ".ohpm",
+    "PCEngine",
+    "appdata",
 };
 
 static bool CheckSubDirForFileManager(const std::string &path, size_t startPos)

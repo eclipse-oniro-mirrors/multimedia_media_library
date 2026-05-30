@@ -32,6 +32,7 @@
 #include "photo_file_utils.h"
 #include "media_uri_utils.h"
 #include "userfile_manager_types.h"
+#include "settings_data_manager.h"
 
 namespace OHOS::Media {
 using namespace AccurateRefresh;
@@ -225,6 +226,7 @@ int64_t FileManagementUtils::InsertFileAlbum(const FileAlbumInfo &fileAlbumInfo)
     int64_t albumId = 0;
     AlbumAccurateRefresh albumRefresh;
     int32_t ret = albumRefresh.Insert(albumId, PhotoAlbumColumns::TABLE, value);
+    SettingsDataManager::ComfirmUploadStatus();
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && albumId > 0, E_ERR,
         "Insert photo albums failed, failed lpath is %{public}s", fileAlbumInfo.lpath.c_str());
     MEDIA_INFO_LOG("FolderParser: end insert PhotoAlbum.");

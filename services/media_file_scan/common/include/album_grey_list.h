@@ -200,6 +200,10 @@ const std::unordered_set<std::string> FILE_MANAGER_ALBUM_BLACKLIST = {
     "/.Recent",
     "/.backup",
     "/.Trash",
+    "/.VMDocs",
+    "/.ohpm",
+    "/PCEngine",
+    "/appdata",
 };
 } // namespace AlbumGreyList
 } // namespace OHOS_Media

@@ -2428,6 +2428,33 @@ int32_t UpdateMoveAssetData(std::shared_ptr<AssetAccurateRefresh> &refresh, cons
     return E_OK;
 }
 
+template <class T>
+void UpdateProgressData(T &dto, const FileAssetsInfo &info,
+    std::shared_ptr<FileMoveHandle> &handle, const ResultInfoType &returnType)
+{
+    std::string result {""};
+    if (returnType == ResultInfoType::FILE_MANAGEMENT_URI) {
+        std::string extraUri = MediaFileUtils::GetExtraUri(info.displayName, info.data, false);
+        result = MediaFileUri(MediaType(info.mediaType), ToString(info.fileId), "",
+            MEDIA_API_VERSION_V10, extraUri).ToString();
+    } else if (returnType == ResultInfoType::FILE_MANAGEMENT_PATH) {
+        std::string relativeDir;
+        FileManagementUtils::GetRelativeDir(dto.targetDir, relativeDir);
+        std::string tmpPath = "/Docs/" + relativeDir + "/" + info.displayName;
+        std::string tmpRootPath = "/Docs/" + info.displayName;
+        result = relativeDir.empty() ? tmpRootPath : tmpPath;
+    } else {
+        MEDIA_ERR_LOG("returnType is invaild");
+    }
+    dto.changeInfo->processedCount++;
+    dto.changeInfo->processedSize += info.size;
+    dto.resultList.push_back(result);
+    if (handle != nullptr) {
+        handle->targetPath_ = "";
+        handle->CalculateProgress();
+    }
+}
+
 int32_t DoMoveFilesToDir(const std::map<int32_t, FileAssetsInfo> &infos, std::shared_ptr<FileMoveHandle> &handle,
     ChangeRequestMoveAssetsToDirDto &dto, std::string & targetDir, int32_t targetAlbumId)
 {
@@ -2458,6 +2485,10 @@ int32_t DoMoveFilesToDir(const std::map<int32_t, FileAssetsInfo> &infos, std::sh
         updateInfo.fileSourceType = static_cast<int32_t>(FileSourceType::FILE_MANAGER);
         int32_t ret = UpdateMoveAssetData(assetRefresh, updateInfo);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "fail to update asset");
+        if (info.second.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+            UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_PATH);
+            continue;
+        }
         RenameMode mode = static_cast<RenameMode>(dto.mode);
         auto result = MediaFileAccessUtils::MoveAsset(srcpath, storagePath, FileSourceType::FILE_MANAGER, mode);
         if (result.errCode != E_OK) {
@@ -2465,13 +2496,9 @@ int32_t DoMoveFilesToDir(const std::map<int32_t, FileAssetsInfo> &infos, std::sh
             dto.errCode = result.errCode;
             ret = UpdateMoveAssetData(assetRefresh, info.second);
             MEDIA_ERR_LOG("fail to move asset");
-            return E_INVALID_PARAM;
+            return result.errCode;
         }
-        handle->targetPath_ = "";
-        dto.changeInfo->processedCount++;
-        dto.changeInfo->processedSize += info.second.size;
-        dto.resultList.push_back(storagePath);
-        handle->CalculateProgress();
+        UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_PATH);
     }
     assetRefresh->RefreshAlbum();
     assetRefresh->Notify();
@@ -2579,6 +2606,10 @@ int32_t DoMoveFilesByPath(const std::map<int32_t, FileAssetsInfo> &moveAssetInfo
         updateInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA);
         int32_t ret = UpdateMoveAssetData(assetRefresh, updateInfo);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "fail to update asset");
+        if (info.second.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+            UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_URI);
+            continue;
+        }
         RenameMode mode = static_cast<RenameMode>(dto.mode);
         auto result = MediaFileAccessUtils::MoveAsset(srcpath, localTargetPath, FileSourceType::MEDIA, mode);
         if (result.errCode != E_OK) {
@@ -2586,16 +2617,9 @@ int32_t DoMoveFilesByPath(const std::map<int32_t, FileAssetsInfo> &moveAssetInfo
             dto.errCode = result.errCode;
             ret = UpdateMoveAssetData(assetRefresh, info.second);
             MEDIA_INFO_LOG("fail to move asset");
-            return E_INVALID_PARAM;
+            return result.errCode;
         }
-        std::string extraUri = MediaFileUtils::GetExtraUri(info.second.displayName, info.second.data, false);
-        std::string photoUri = MediaFileUri(MediaType(info.second.mediaType), ToString(info.second.fileId), "",
-            MEDIA_API_VERSION_V10,  extraUri).ToString();
-        handle->targetPath_ = "";
-        dto.changeInfo->processedCount++;
-        dto.changeInfo->processedSize += info.second.size;
-        dto.resultList.push_back(photoUri);
-        handle->CalculateProgress();
+        UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_URI);
     }
     assetRefresh->RefreshAlbum();
     assetRefresh->Notify();

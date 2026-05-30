@@ -29,6 +29,7 @@ class ChangeRequestMoveAssetsByPathDto {
 public:
     std::vector<std::string> assetPaths;
     std::string targetAlbumId{0};
+    std::string targetDir {""};
     int32_t requestId{0};
     std::vector<std::string> resultList;
     int32_t errCode{0};

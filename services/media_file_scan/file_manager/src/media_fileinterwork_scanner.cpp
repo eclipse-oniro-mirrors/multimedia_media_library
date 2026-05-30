@@ -78,6 +78,10 @@ const std::vector<std::string> SKIP_SCAN_DIR = {
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::RECENT_DIR,
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::BACKUP_DIR,
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::TRASH_DIR_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::VM_DOCS_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::OHPM_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::PCE_ENGINE_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::APPDATA_DIR,
 };
 
 MediaFileInterworkScanner* MediaFileInterworkScanner::GetInstance()

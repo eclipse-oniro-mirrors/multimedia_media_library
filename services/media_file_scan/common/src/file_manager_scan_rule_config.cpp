@@ -22,6 +22,10 @@ const std::unordered_set<std::string> FILE_MANAGER_BLACK_LIST = {
     "/storage/media/local/files/Docs/.Recent",
     "/storage/media/local/files/Docs/.backup",
     "/storage/media/local/files/Docs/.Trash",
+    "/storage/media/local/files/Docs/.VMDocs",
+    "/storage/media/local/files/Docs/.ohpm",
+    "/storage/media/local/files/Docs/PCEngine",
+    "/storage/media/local/files/Docs/appdata",
 };
 const std::regex FILE_MANAGER_PATTERN_RELATIVE_PATH(
     R"(^/storage/media/local/files/Docs)",

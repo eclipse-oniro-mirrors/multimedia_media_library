@@ -181,6 +181,10 @@ const std::unordered_set<std::string> FILE_MANAGER_EXCLUDED_DIR_NAMES = {
     ".Recent",
     ".backup",
     ".Trash",
+    ".VMDocs",
+    ".ohpm",
+    "PCEngine",
+    "appdata",
 };
 
 enum class PhotoPermissionState : int32_t {
@@ -16887,6 +16891,7 @@ static void MoveAssetsToDirExecute(napi_env env, void *data)
     reqBody.assets = context->uriArray;
     reqBody.targetDir = context->targetDir;
     reqBody.requestId = context->requestId;
+    reqBody.mode = context->mode;
     int32_t ret = IPC::UserDefineIPCClient().Call(
         static_cast<uint32_t>(MediaLibraryBusinessCode::MOVE_ASSETS_TO_DIR),
         reqBody, respBody);
