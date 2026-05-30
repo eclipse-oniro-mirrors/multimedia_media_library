@@ -1810,8 +1810,10 @@ int32_t MediaLibraryAlbumOperations::ResetCoverUri(const ValuesBucket &values, c
 
     RdbPredicates newPredicates(PhotoAlbumColumns::TABLE);
     ValuesBucket updateValues;
-    updateValues.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
+    int64_t dateModified = MediaFileUtils::UTCTimeMilliSeconds();
+    updateValues.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, dateModified);
     updateValues.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, CoverUriSource::DEFAULT_COVER);
+    updateValues.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, to_string(dateModified) + ",");
 
     string UPDATE_CONDITION = PhotoAlbumColumns::ALBUM_ID + " = " + albumId + " AND " +
         PhotoAlbumColumns::COVER_URI_SOURCE + " > " + to_string(CoverUriSource::DEFAULT_COVER);
