@@ -64,7 +64,7 @@ void CloudEnhancementChecker::AddPermissionForCloudEnhancement()
     predicates.And();
     predicates.EqualTo(PhotoColumn::PHOTO_STRONG_ASSOCIATION,
         to_string(static_cast<int32_t>(StrongAssociationType::CLOUD_ENHANCEMENT)));
-    auto resultSet = MediaLibraryRdbStore::StepQueryWithoutCheck(predicates, columns);
+    auto resultSet = MediaLibraryRdbStore::StepQueryWithoutCheck(predicates, columns, true);
     errCode = (resultSet == nullptr) ? E_ERR : E_OK;
     CHECK_AND_EXECUTE(resultSet == nullptr, errCode = (resultSet->GoToFirstRow() != E_OK) ? E_ERR : E_OK);
     if (errCode == E_ERR) {
