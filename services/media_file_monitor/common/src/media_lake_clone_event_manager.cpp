@@ -159,7 +159,7 @@ void MediaLakeCloneEventManager::RunGlobalScanner()
 
     MEDIA_INFO_LOG("LakeClone: Start RunGlobalScanner");
     auto scannerFunc = []() {
-        GlobalScanner::GetInstance().RunLakeScan(std::string(LAKE_ROOT_PATH), false, true);
+        GlobalScanner::GetInstance().RunLakeScan(std::string(LAKE_ROOT_PATH), true, true);
     };
     Media::thread myThread("LakeClone", scannerFunc);
     if (myThread.is_invalid()) {
