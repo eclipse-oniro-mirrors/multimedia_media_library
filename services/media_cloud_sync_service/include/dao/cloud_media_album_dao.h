@@ -114,6 +114,8 @@ private:
     bool IsCloudCoverDateModifiedUpdated(const std::string &lPath, const std::string &coverCloudIdFromCloud,
         const std::string &coverCloudIdFromLocal);
     bool FillAlbumCoverIfNeedUpdate(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void FillAlbumCoverValues(int32_t coverUriSource, const std::string &coverCloudId,
+        NativeRdb::ValuesBucket &values);
 
 private:
     /* album failure records */

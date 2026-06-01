@@ -747,6 +747,8 @@ int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
             values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, CoverUriSource::MANUAL_WAIT_PULL_COVER);
             values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, record.coverCloudId);
         }
+    } else if (record.coverUriSource == CoverUriSource::DEFAULT_COVER) {
+        FillAlbumCoverValues(record.coverUriSource, record.coverCloudId, values);
     }
     values.PutString(PhotoAlbumColumns::UNIQUE_ID, record.uniqueId);
     values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS,
@@ -1365,11 +1367,17 @@ bool CloudMediaAlbumDao::FillAlbumCoverIfNeedUpdate(const PhotoAlbumDto &record,
         MEDIA_INFO_LOG("Not overwrite coverUriSource for %{public}s", record.cloudId.c_str());
         return false;
     }
-    values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, record.coverUriSource);
-    if (!record.coverCloudId.empty()) {
-        values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, record.coverCloudId);
-    }
+    FillAlbumCoverValues(record.coverUriSource, record.coverCloudId, values);
     return true;
+}
+
+void CloudMediaAlbumDao::FillAlbumCoverValues(int32_t coverUriSource, const std::string &coverCloudId,
+    NativeRdb::ValuesBucket &values)
+{
+    values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, coverUriSource);
+    if (!coverCloudId.empty()) {
+        values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, coverCloudId);
+    }
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media::CloudSync
