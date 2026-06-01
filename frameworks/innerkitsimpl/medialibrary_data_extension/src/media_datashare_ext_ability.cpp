@@ -774,6 +774,32 @@ int MediaDataShareExtAbility::CheckPermissionForOpenFile(const Uri &uri,
 }
 //LCOV_EXCL_STOP
 
+static void SetOprnObjectWithOperationValue(MediaLibraryCommand &cmd,
+    const std::unordered_map<std::string, std::string> &queryKeys)
+{
+    auto it = queryKeys.find(CONST_MEDIA_OPERN_KEYWORD);
+    CHECK_AND_RETURN(it != queryKeys.end());
+
+    const std::string &operationValue = it->second;
+    CHECK_AND_RETURN(!operationValue.empty());
+    if (operationValue == CONST_MEDIA_DATA_DB_THUMBNAIL) {
+        cmd.SetOprnObject(OperationObject::THUMBNAIL);
+    } else if (operationValue == CONST_MEDIA_DATA_DB_THUMB_ASTC) {
+        cmd.SetOprnObject(OperationObject::THUMBNAIL_ASTC);
+    }
+}
+
+static void SetOprnObjectWithUriQueryKeys(MediaLibraryCommand &cmd)
+{
+    std::string uriString = cmd.GetUri().ToString();
+    string::size_type pos = uriString.find_last_of('?');
+    CHECK_AND_RETURN(pos != string::npos);
+
+    MediaFileUri uri(uriString);
+    auto &queryKeys = uri.GetQueryKeys();
+    SetOprnObjectWithOperationValue(cmd, queryKeys);
+}
+
 int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
 {
 #ifdef MEDIALIBRARY_COMPATIBILITY
@@ -793,11 +819,7 @@ int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
     int32_t type = static_cast<int32_t>(command.GetOprnType());
     DfxTimer dfxTimer(type, object, OPEN_FILE_TIME_OUT, true);
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(CONST_MEDIA_DATA_DB_THUMBNAIL) == string::npos,
-        command.SetOprnObject(OperationObject::THUMBNAIL));
-
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(CONST_MEDIA_DATA_DB_THUMB_ASTC) == string::npos,
-        command.SetOprnObject(OperationObject::THUMBNAIL_ASTC));
+    SetOprnObjectWithUriQueryKeys(command);
 
     CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_CACHE_URI_PREFIX) == string::npos,
         command.SetOprnObject(OperationObject::FILESYSTEM_PHOTO));
