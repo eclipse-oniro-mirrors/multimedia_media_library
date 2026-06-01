@@ -97,6 +97,7 @@ std::unordered_set<uint32_t> PermissionCheck::deprecatedWritePermissionSet = {
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_ASSET),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CLOSE_ASSET),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE),
+    static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_FILE_MANAGER_ASSET),
 

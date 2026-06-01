@@ -81,6 +81,16 @@ public:
     EXPORT int32_t Restore(std::string dbPath = "");
 
     /**
+     * @brief start async restore files
+     *
+     * @param dbPath The database path transmitted by the sender
+     * @return close status. <0> for success and <-1> for fail
+     * @since 1.0
+     * @version 6.0
+     */
+    EXPORT int32_t AsyncRestore(std::string dbPath = "");
+
+    /**
      * @brief stop restore files
      *
      * @return close status. <0> for success and <-1> for fail
