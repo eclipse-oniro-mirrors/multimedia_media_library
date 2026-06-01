@@ -18,12 +18,14 @@
 
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 #include "photo_album_po.h"
 #include "photos_dto.h"
 #include "photos_po.h"
 #include "cloud_media_dao_const.h"
 #include "cloud_media_pull_data_dto.h"
+#include "media_log.h"
 
 namespace OHOS::Media::CloudSync {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -78,6 +80,14 @@ public:
     static bool IsLivePhotoWithMetaData(const PhotosPo &photosPo);
     static bool IsMediaFile(const std::string &filePath);
     static int32_t MoveLivePhoto(const std::string &srcPath, const std::string &destPath, std::string &finalDestPath);
+
+    template <typename T>
+    static T GetMapValue(const std::unordered_map<std::string, T> &map, const std::string &key)
+    {
+        auto iter = map.find(key);
+        CHECK_AND_RETURN_RET_LOG(iter != map.end(), T(), "GetMapValue failed, key: %{public}s not found", key.c_str());
+        return iter->second;
+    }
 };
 } // namespace OHOS::Media::CloudSync
 #endif // OHOS_CLOUD_MEDIA_SYNC_UTILS_H
