@@ -179,7 +179,9 @@ ohos_unittest("media_lake_file_monitor_test") {
     "graphic_surface:surface",
   ]
  
-  defines = []
+  defines = [
+    "MEDIALIBRARY_LAKE_SUPPORT"
+  ]
  
   if (defined(global_parts_info) &&
       defined(global_parts_info.filemanagement_dfs_service)) {

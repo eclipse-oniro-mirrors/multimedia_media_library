@@ -204,9 +204,7 @@ int32_t FileManagerParser::GenerateThumbnailForFileManager(const ThumbnailInfo &
 {
     MEDIA_INFO_LOG("GenerateThumbnailForFileManager called, fileId: %{public}d", info.fileId);
 
-    // 调用ThumbnailService的接口
-    std::string fileIdStr = to_string(info.fileId);
-    return ThumbnailService::GetInstance()->CreateThumbnailForFileManager(fileIdStr, info.path);
+    return ThumbnailService::GetInstance()->CreateThumbnailForFileManager(info);
 }
 
 // FileManager新增多文件缩略图生成接口（支持功耗管控）
