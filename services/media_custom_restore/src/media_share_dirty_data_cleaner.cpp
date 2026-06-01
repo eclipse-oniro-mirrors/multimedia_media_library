@@ -37,16 +37,20 @@ namespace OHOS::Media {
 static const int32_t MEDIA_ID_INDEX = 0;
 static const int32_t MEDIA_FILE_PATH_INDEX = 1;
 
+std::atomic<bool> MediaShareDirtyDataCleaner::isSharing_ = false;
+
 void MediaShareDirtyDataCleaner::CheckDirtyData()
 {
     int64_t lastShareTime = MediaTimeUtils::UTCTimeMilliSeconds();
-    bool isNeedClean = IsNeedClean(lastShareTime);
+    bool isNeedClean = IsNeedClean(lastShareTime) && !isSharing_;
     if (isNeedClean) {
         MEDIA_INFO_LOG("start clean share dirty data");
         CleanDirtyData(lastShareTime);
         UpdateCleanFlag(false);
         UpdateShareTime(false);
         MEDIA_INFO_LOG("end clean share dirty data");
+    } else {
+        MEDIA_INFO_LOG("no need clean, isSharing_: %{public}d", static_cast<int32_t> (isSharing_));
     }
 }
 
@@ -114,6 +118,16 @@ void MediaShareDirtyDataCleaner::CleanDirtyData(int64_t lastShareTime)
         return;
     }
     DeleteDb(deletedFileIds);
+}
+
+void MediaShareDirtyDataCleaner::SetSharingState(bool isSharing)
+{
+    isSharing_ = isSharing;
+}
+
+bool MediaShareDirtyDataCleaner::GetSharingState()
+{
+    return isSharing_;
 }
 
 std::unordered_map<int32_t, std::string> MediaShareDirtyDataCleaner::GetDirtyData(int64_t lastShareTime)

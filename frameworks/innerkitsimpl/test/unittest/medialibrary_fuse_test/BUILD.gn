@@ -88,7 +88,6 @@ ohos_unittest("medialibrary_fuse_test") {
     "libfuse:libfuse",
     "napi:ace_napi",
     "os_account:os_account_innerkits",
-    "player_framework:media_client",
     "relational_store:native_appdatafwk",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

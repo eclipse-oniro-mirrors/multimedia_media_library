@@ -71,13 +71,11 @@
 #include "get_uri_from_filepath_vo.h"
 #include "heif_transcoding_check_vo.h"
 #include "start_batch_download_cloud_resources_vo.h"
-#include "set_network_policy_batch_download_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
 #include "cancel_batch_download_cloud_resources_vo.h"
 #include "get_batch_download_cloud_resources_status_vo.h"
 #include "get_batch_download_cloud_resources_count_vo.h"
-#include "get_batch_download_cloud_resources_size_vo.h"
 #include "acquire_debug_database_vo.h"
 #include "get_fussion_assets_vo.h"
 #include "get_compress_asset_size_vo.h"
@@ -96,9 +94,10 @@
 #include "file_management_utils.h"
 
 namespace OHOS::Media {
+#define EXPORT __attribute__ ((visibility ("default")))
 class MediaAssetsService {
 public:
-    static MediaAssetsService &GetInstance();
+    EXPORT static MediaAssetsService &GetInstance();
 
     int32_t SaveFormInfo(const FormInfoDto& formInfoDto);
     int32_t SaveGalleryFormInfo(const FormInfoDto& formInfoDto);
@@ -123,7 +122,7 @@ public:
     int32_t AssetChangeAddImage(AddImageDto &dto);
     int32_t CameraInnerAddImage(AddImageDto &dto);
     int32_t SetCameraShotKey(const int32_t fileId, const std::string &cameraShotKey);
-    int32_t SaveCameraPhoto(const SaveCameraPhotoDto &dto);
+    EXPORT int32_t SaveCameraPhoto(const SaveCameraPhotoDto &dto);
     int32_t DiscardCameraPhoto(const int32_t fileId);
     int32_t SetEffectMode(const int32_t fileId, const int32_t effectMode);
     int32_t SetOrientation(const int32_t fileId, const int32_t orientation);
@@ -138,6 +137,7 @@ public:
     int32_t CreateAsset(CreateAssetDto &dto);
     int32_t CreateAssetForApp(CreateAssetDto &dto);
     int32_t CreateAssetForAppWithAlbum(CreateAssetDto &dto);
+    int32_t CreateAssetWithAlbum(CreateAssetDto &dto);
     int32_t UpdateExistedTasksTitle(int32_t fileId);
     int32_t SetAssetTitle(int32_t fileId, const std::string &title);
     int32_t SetAssetPending(int32_t fileId, int32_t pending);
@@ -192,7 +192,6 @@ public:
     int32_t GetCloudMediaAssetStatus(std::string &status);
     int32_t StartBatchDownloadCloudResources(StartBatchDownloadCloudResourcesReqBody &reqBody,
         StartBatchDownloadCloudResourcesRespBody &respBody);
-    int32_t SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody);
     int32_t ResumeBatchDownloadCloudResources(ResumeBatchDownloadCloudResourcesReqBody &reqBody);
     int32_t PauseBatchDownloadCloudResources(PauseBatchDownloadCloudResourcesReqBody &reqBody);
     int32_t CancelBatchDownloadCloudResources(CancelBatchDownloadCloudResourcesReqBody &reqBody);
@@ -200,8 +199,6 @@ public:
         GetBatchDownloadCloudResourcesStatusRespBody &respBody);
     int32_t GetCloudMediaBatchDownloadResourcesCount(
         GetBatchDownloadCloudResourcesCountReqBody &reqBody, GetBatchDownloadCloudResourcesCountRespBody &respBody);
-    int32_t GetCloudMediaBatchDownloadResourcesSize(
-        GetBatchDownloadCloudResourcesSizeReqBody &reqBody, GetBatchDownloadCloudResourcesSizeRespBody &respBody);
     int32_t GetCloudEnhancementPair(const GetCloudEnhancementPairDto &dto, GetCloudEnhancementPairRespBody &respBody);
     int32_t GetFilePathFromUri(const std::string &virtualId, GetFilePathFromUriRespBody &respBody);
     int32_t GetUriFromFilePath(const std::string &tempPath, GetUriFromFilePathRespBody &respBody);

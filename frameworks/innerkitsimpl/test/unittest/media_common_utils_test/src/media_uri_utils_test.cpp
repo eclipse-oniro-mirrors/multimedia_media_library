@@ -17,6 +17,7 @@
 
 #include "media_log.h"
 #include "media_uri_utils.h"
+#include "medialibrary_errno.h"
 
 namespace OHOS {
 namespace Media {

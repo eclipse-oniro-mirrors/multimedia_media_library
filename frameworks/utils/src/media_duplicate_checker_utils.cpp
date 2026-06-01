@@ -152,7 +152,7 @@ int32_t MediaDuplicateCheckerUtils::checkAlbumNameDuplicateInDB(const string &ne
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::SOURCE))->And()->BeginWrap();
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, std::to_string(PhotoAlbumSubType::SOURCE_GENERIC))->Or();
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE,
-        std::to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER))->EndWrap();
+        std::to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))->EndWrap();
 
     predicates.EndWrap();  // 结束第二部分
     predicates.EndWrap();  // 结束外层大括号
@@ -196,7 +196,7 @@ int32_t MediaDuplicateCheckerUtils::checkAlbumNameDuplicate(const std::string &a
             "checkAlbumNameDuplicateInDB failed");
     }
     // 文管相册
-    if (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER) {
+    if (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER) {
         CHECK_AND_RETURN_RET_LOG(checkAlbumNameDuplicateInDB(newAlbumName) == E_OK, E_ERR,
             "checkAlbumNameDuplicateInDB failed");
         std::string actualPath;
@@ -235,7 +235,7 @@ int32_t MediaDuplicateCheckerUtils::checkDirectoryNameConflict(const NativeRdb::
     if (newAlbumValues.GetObject(PhotoAlbumColumns::ALBUM_SUBTYPE, tmpObject)) {
         tmpObject.GetInt(albumSubType);
     }
-    CHECK_AND_RETURN_RET_LOG(albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER,
+    CHECK_AND_RETURN_RET_LOG(albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER,
         E_OK, "not file manager album, no need to process.");
 
     string newAlbumName;

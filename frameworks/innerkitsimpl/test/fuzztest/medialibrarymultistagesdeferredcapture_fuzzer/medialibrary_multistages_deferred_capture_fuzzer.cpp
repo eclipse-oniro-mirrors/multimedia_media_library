@@ -101,9 +101,10 @@ static void MultistagesCaptureDeferredVideoProcAdapterTest()
     }
     deferredProcSession->BeginSynchronize();
     std::string videoId = provider->ConsumeBytesAsString(NUM_BYTES);
-    int srcFd = provider->ConsumeIntegral<int32_t>();
-    int dstFd = provider->ConsumeIntegral<int32_t>();
-    deferredProcSession->AddVideo(videoId, srcFd, dstFd);
+    std::string srcPath = "/data/service/el2/100/hmdfs/account/files/Photo/4/VID_1778744376_004.mp4";
+    std::string tmp1Path = "/data/service/el2/100/hmdfs/account/files/cameraCache/temp/VID_1778744376_004_tmp1.mp4";
+    std::string tmp2Path = "/data/service/el2/100/hmdfs/account/files/cameraCache/temp/VID_1778744376_004_tmp2.mp4";
+    deferredProcSession->AddVideo(videoId, srcPath, tmp1Path, tmp2Path);
     deferredProcSession->RemoveVideo(videoId, provider->ConsumeBool());
     deferredProcSession->RestoreVideo(videoId);
     deferredProcSession->EndSynchronize();

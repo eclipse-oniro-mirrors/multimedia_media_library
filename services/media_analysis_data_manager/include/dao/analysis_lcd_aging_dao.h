@@ -47,15 +47,9 @@ public:
         PROHIBITED        // 网络不满足要求
     };
 
-    // 判断是否达到老化阈值
-    int32_t IsAgingThresholdReached(bool &isReached);
-
     // 查询需要下载LCD的文件信息（cloudId、filePath、fileName 和本地文件状态）
     int32_t QueryDownloadLcdInfo(const std::vector<int64_t> &fileIds,
         std::vector<DownloadLcdFileInfo> &downloadInfos);
-
-    int32_t QueryAgingLcdDataByFileIds(const std::vector<int64_t> &fileIds,
-        std::vector<ORM::PhotosPo> &lcdAgingPoList);
 
     // 标记数据库中不存在的文件
     void MarkNotFoundFiles(const std::vector<int64_t> &fileIds, const std::set<int64_t> &foundFileIds,

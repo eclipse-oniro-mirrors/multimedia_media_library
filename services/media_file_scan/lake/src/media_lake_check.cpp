@@ -69,13 +69,13 @@ bool MediaInLakeNeedCheck()
         } else {
             ret = system::SetParameter(MEDIA_IN_LAKE_CHECK_PRIVACY_TIME, std::to_string(initCheckTime));
         }
-        MEDIA_INFO_LOG("Set init time in lake check, ret:%{public}d, nowTime: %{public}lld, checkTime: %{public}lld",
+        MEDIA_INFO_LOG("Set init time in lake check, ret:%{public}d, nowTime: %{public}" PRId64 ", checkTime: %{public}" PRId64,
             ret, nowTime, initCheckTime);
         lastTime = initCheckTime;
     }
     constexpr int64_t timeout = 72 * 60 * 60;
     if (nowTime > lastTime + timeout) {
-        MEDIA_INFO_LOG("timeout in lake check, nowTime: %{public}lld, last checkTime: %{public}lld", nowTime, lastTime);
+        MEDIA_INFO_LOG("timeout in lake check, nowTime: %{public}" PRId64 ", last checkTime: %{public}" PRId64, nowTime, lastTime);
         return true;
     }
     return false;

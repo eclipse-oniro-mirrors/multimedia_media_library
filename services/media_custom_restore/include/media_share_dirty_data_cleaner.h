@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <atomic>
 
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -33,8 +34,11 @@ public:
     static void CheckDirtyData();
     static bool UpdateCleanFlag(bool isNeedClean);
     static bool UpdateShareTime(bool isStartShare);
+    static bool GetSharingState();
+    static void SetSharingState(bool isSharing);
 
 private:
+    static std::atomic<bool> isSharing_;
     static bool IsNeedClean(int64_t &lastShareTime);
     static void CleanDirtyData(int64_t lastShareTime);
     static std::unordered_map<int32_t, std::string> GetDirtyData(int64_t lastShareTime);

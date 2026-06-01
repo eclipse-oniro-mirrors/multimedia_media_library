@@ -154,10 +154,9 @@ public:
     EXPORT static void TrashPhotosSendNotify(const std::vector<std::string> &notifyUris,
         std::shared_ptr<AlbumData> albumData = nullptr);
     EXPORT static int32_t ProcessMultistagesVideo(const std::shared_ptr<FileAsset> &fileAsset);
-    EXPORT static int32_t RemoveTempVideo(const std::string &path);
     EXPORT static int32_t SaveSourceVideoFile(const std::string &assetPath, const bool &isTemp);
     EXPORT static int32_t AddFiltersToVideoExecute(const std::string &assetPath,
-        bool isSaveVideo, bool isNeedScan = false, const std::string &outputVideoPath = "");
+        bool isSaveVideo, bool isNeedScan = false, const std::string &outputVideoPath = "", int32_t fileId = 0);
     EXPORT static int32_t DoRevertFilters(const std::shared_ptr<FileAsset> &fileAsset,
         std::string &path, std::string &sourcePath);
     EXPORT static int32_t CopyVideoFile(const std::string& assetPath, bool toSource);
@@ -205,6 +204,7 @@ public:
     EXPORT static std::string GetLivePhotoCachePathById(const std::string &fileId);
     EXPORT static int32_t NotifyAssetSended(const std::string &uri,
         ServiceShareType shareType = ServiceShareType::ASSET_LEVEL);
+    EXPORT static void BatchStoreThumbnailSize(const std::vector<std::pair<std::string, std::string>>& photoIdPathList);
 private:
     static int32_t HandleAssetRenameAndMove(MediaLibraryCommand &cmd, std::shared_ptr<FileAsset> fileAsset,
         bool isNameChanged, AccurateRefresh::AccurateRefreshBase &baseRefresh);
@@ -348,6 +348,7 @@ private:
         const std::string &path, const std::string &sourcePath, const std::string &editDataCameraPath);
     static int32_t RevertLivePhotoAsset(const string &realPath, const string &imagePath,
         const string &sourceImagePath, const string &sourceVideoPath);
+    static bool AddFiltersForPipeline(MediaLibraryCommand& cmd);
     static bool SafeAccumulateSize(int64_t add, int64_t &acc);
     static void ProcessAlbumIdInCreate(FileAsset &fileAsset, MediaLibraryCommand &cmd);
     static std::mutex saveCameraPhotoMutex_;

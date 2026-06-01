@@ -93,6 +93,7 @@ ohos_unittest("media_library_helper_test") {
     "hilog:libhilog",
     "image_framework:image_native",
     "ipc:ipc_single",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",

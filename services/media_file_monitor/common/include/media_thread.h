@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -177,11 +177,13 @@ protected:
             auto pthread_slf = pthread_self();
             auto tid = gettid();
             MEDIA_DEBUG_LOG("tid: %{public}d, thread(%{public}s-%{public}llu) enter. thread num:%{public}llu",
-                tid, name_.c_str(), static_cast<unsigned long long>(pthread_self()), threadNum);
+                tid, name_.c_str(), static_cast<unsigned long long>(pthread_self()),
+                static_cast<unsigned long long>(threadNum));
             func_();
             threadNum = --threadNum_;
             MEDIA_INFO_LOG("tid: %{public}d, thread(%{public}s-%{public}llu): exit. thread num :%{public}llu",
-                tid, name_.c_str(), static_cast<unsigned long long>(pthread_slf), threadNum);
+                tid, name_.c_str(), static_cast<unsigned long long>(pthread_slf),
+                static_cast<unsigned long long>(threadNum));
         }
     private:
         std::string name_;

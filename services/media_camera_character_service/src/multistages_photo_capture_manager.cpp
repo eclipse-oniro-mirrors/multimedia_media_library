@@ -32,6 +32,8 @@
 #include "media_log.h"
 #include "medialibrary_formmap_operations.h"
 #include "picture_manager_thread.h"
+#include "multistages_camera_capture_manager.h"
+#include "multistages_capture_dao.h"
 #include "multistages_capture_dfx_first_visit.h"
 #include "multistages_capture_dfx_request_policy.h"
 #include "multistages_capture_dfx_total_time.h"
@@ -205,8 +207,6 @@ void MultiStagesPhotoCaptureManager::DealHighQualityPicture(const std::string &i
         expireTime, true, isEdited);
     picturePair->SetTakeEffect(isTakeEffect);
     pictureManagerThread->InsertPictureData(imageId, picturePair, HIGH_QUALITY_PICTURE);
-    // delete raw file
-    MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(imageId, false);
 }
 
 int32_t MultiStagesPhotoCaptureManager::UpdateDbInfo(MediaLibraryCommand &cmd)
@@ -322,6 +322,12 @@ void MultiStagesPhotoCaptureManager::AddImageInternal(int32_t fileId, const stri
         "discardable: %{public}d, packageName: %{public}s",
         fileId, photoId.c_str(), deferredProcType, discardable, packageName.c_str());
     MultiStagesCaptureRequestTaskManager::AddPhotoInProgress(fileId, photoId, discardable);
+
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(fileId, type);
+    if (pipeline != nullptr) {
+        pipeline->SetActiveType(CameraInfoActiveType::SecondStage);
+    }
 
 #ifdef ABILITY_CAMERA_SUPPORT
     DpsMetadata metadata;
@@ -448,35 +454,29 @@ void MultiStagesPhotoCaptureManager::SyncWithDeferredProcSessionInternal()
 {
     MEDIA_INFO_LOG("enter");
     // 进程重启场景，媒体库需要和延时子服务同步
-    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY);
-    string where = string(CONST_MEDIA_DATA_DB_PHOTO_ID) + " is not null and " +
-        CONST_MEDIA_DATA_DB_PHOTO_QUALITY + " > 0 and " + CONST_MEDIA_DATA_DB_MEDIA_TYPE + " = " +
-        to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE));
-    cmd.GetAbsRdbPredicates()->SetWhereClause(where);
-    vector<string> columns { CONST_MEDIA_DATA_DB_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_DATE_TRASHED,
-        PhotoColumn::PHOTO_DEFERRED_PROC_TYPE, MediaColumn::MEDIA_OWNER_PACKAGE };
-    auto resultSet = DatabaseAdapter::Query(cmd, columns);
-    bool cond = (resultSet == nullptr || resultSet->GoToFirstRow() != 0);
-    CHECK_AND_RETURN_LOG(!cond, "result set is empty");
+    auto fileAssets = MultiStagesCaptureDao::QueryForSessionSyncImage();
+    CHECK_AND_RETURN_LOG(!fileAssets.empty(), "fileAssets is empty");
+
     MediaLibraryTracer tracer;
     tracer.Start("MultiStagesPhotoCaptureManager::SyncWithDeferredProcSession");
-    deferredProcSession_->BeginSynchronize();
 
-    do {
-        int32_t fileId = GetInt32Val(CONST_MEDIA_DATA_DB_ID, resultSet);
-        string photoId = GetStringVal(CONST_MEDIA_DATA_DB_PHOTO_ID, resultSet);
-        bool isTrashed = GetInt32Val(CONST_MEDIA_DATA_DB_DATE_TRASHED, resultSet) > 0;
-        std::string packageName = GetStringVal(MediaColumn::MEDIA_OWNER_PACKAGE, resultSet);
-        if (setOfDeleted_.find(fileId) != setOfDeleted_.end()) {
-            MEDIA_INFO_LOG("remove image, fileId: %{public}d, photoId: %{public}s", fileId, photoId.c_str());
-            deferredProcSession_->RemoveImage(photoId);
+    deferredProcSession_->BeginSynchronize();
+    for (auto fileAsset : fileAssets) {
+        if (fileAsset == nullptr) {
             continue;
         }
-        MEDIA_INFO_LOG("AddImage fileId: %{public}d, photoId: %{public}s", fileId, photoId.c_str());
-        int32_t deferredProcType = GetInt32Val(PhotoColumn::PHOTO_DEFERRED_PROC_TYPE, resultSet);
+        // 恢复pipeline中的数据
+        MultistagesCameraCaptureManager::GetInstance().RecoverForSessionSync(*fileAsset, true);
+
+        int32_t fileId = fileAsset->GetId();
+        std::string photoId = fileAsset->GetPhotoId();
+        bool isTrashed = (fileAsset->GetIsTrash()) > 0;
+        std::string packageName = fileAsset->GetOwnerPackage();
+        int32_t deferredProcType = fileAsset->GetDeferredProcType();
+
+        // 下发二阶段任务
         AddImageInternal(fileId, photoId, deferredProcType, isTrashed, packageName);
-    } while (!resultSet->GoToNextRow());
-    resultSet->Close();
+    }
     deferredProcSession_->EndSynchronize();
     MEDIA_INFO_LOG("exit");
 }
@@ -573,6 +573,7 @@ bool MultiStagesPhotoCaptureManager::IsPhotoDeleted(const std::string &photoId)
 
 void MultiStagesPhotoCaptureManager::NotifyProcessImage()
 {
+    MEDIA_INFO_LOG("NotifyProcessImage enter.");
     CHECK_AND_RETURN_LOG(deferredProcSession_ != nullptr, "deferredProcSession is nullptr.");
     deferredProcSession_->NotifyProcessImage();
 }

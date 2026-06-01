@@ -43,6 +43,7 @@
 #include "request_policy.h"
 #include "medialibrary_asset_operations.h"
 #include "multistages_capture_dfx_capture_times.h"
+#include "scan_config_builder.h"
 
 using namespace std;
 #ifdef ABILITY_CAMERA_SUPPORT
@@ -54,6 +55,7 @@ namespace OHOS {
 namespace Media {
 const int32_t MULTISTAGES_OPERATION_CMD_SIZE = 2;
 std::map<std::string, VideoInfo> MultiStagesVideoCaptureManager::videoInfoMap_ = {};
+constexpr uint32_t BASE_USER_RANGE = 200000;
 
 MultiStagesVideoCaptureManager::MultiStagesVideoCaptureManager()
 {
@@ -100,6 +102,7 @@ static std::string ConvertFileId2VideoId(const int32_t fileId)
     std::vector<std::string> fileAssetColumns = {PhotoColumn::MEDIA_ID, PhotoColumn::PHOTO_ID};
     shared_ptr<FileAsset> fileAsset = MediaLibraryAssetOperations::GetFileAssetFromDb(
         PhotoColumn::MEDIA_ID, to_string(fileId), OperationObject::FILESYSTEM_PHOTO, fileAssetColumns);
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, "", "fileAsset is null");
     return fileAsset->GetPhotoId();
 }
 
@@ -125,108 +128,74 @@ shared_ptr<OHOS::NativeRdb::ResultSet> MultiStagesVideoCaptureManager::HandleMul
 void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
     VideoInfo &videoInfo, bool isMovingPhoto)
 {
-    const mode_t fileMode = 0644;
-    int32_t srcFd = open(videoInfo.absSrcFilePath.c_str(), O_RDONLY);
-    CHECK_AND_RETURN_LOG(srcFd >= 0, "open file fail, srcFd = %{public}d, errno:%{public}d", srcFd, errno);
-
-    std::string dirPath = videoInfo.filePath.substr(0, videoInfo.filePath.rfind('/'));
-    char realDirPath[PATH_MAX] = {0};
-    if (realpath(dirPath.c_str(), realDirPath) == nullptr) {
-        MEDIA_ERR_LOG("check dirPath fail, dirPath = %{public}s", dirPath.c_str());
-        close(srcFd);
-        return;
-    }
-
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
     }
-
-    std::string tempPath = realDirPath + videoInfo.videoPath.substr(videoInfo.videoPath.rfind('/'),
-        videoInfo.videoPath.rfind('.') - videoInfo.videoPath.rfind('/')) + "_tmp" +
-        videoInfo.videoPath.substr(videoInfo.videoPath.rfind('.'));
-    int32_t dstFd = open(tempPath.c_str(), O_CREAT|O_WRONLY|O_TRUNC, fileMode);
-    if (dstFd < 0) {
-        MEDIA_ERR_LOG("open file fail, dstFd = %{public}d, errno:%{public}d", dstFd, errno);
-        close(srcFd);
-        return;
-    }
-
-    deferredProcSession_->AddVideo(videoId, srcFd, dstFd);
+    std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
+        PHYSICAL_PATH_SUFFIX;
+    size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
+    size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
+    CHECK_AND_RETURN_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos,
+        "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
+    std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
+    std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
+    CHECK_AND_RETURN_LOG(videoInfo.videoPath.substr(0, ROOT_MEDIA_DIR.length()) == ROOT_MEDIA_DIR,
+        "Invalid video path %{private}s does not begin with ROOT_MEDIA_DIR", videoInfo.videoPath.c_str());
+    std::string srcPhysicalPath = physicalPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
+    std::string sharedTemp1PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+        fileNamePrefix + "_tmp1" + fileNameSubfix;
+    std::string sharedTemp2PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+        fileNamePrefix + "_tmp2" + fileNameSubfix;
+    std::string sharedTemp1CloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
+        fileNamePrefix + "_tmp1" + fileNameSubfix;
+    std::string sharedTemp2CloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
+        fileNamePrefix + "_tmp2" + fileNameSubfix;
+    MediaFileUtils::CreateFile(sharedTemp1CloudView);
+    MediaFileUtils::CreateFile(sharedTemp2CloudView);
+    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
-}
-
-bool MultiStagesVideoCaptureManager::Openfd4AddDoubleVideo(const std::string &effectVideoPath,
-    VideoInfo &videoInfo, int32_t &lowSrcFd, int32_t &srcFd, int32_t &srcFdCopy)
-{
-    lowSrcFd = open(effectVideoPath.c_str(), O_RDONLY);
-    CHECK_AND_RETURN_RET_LOG(lowSrcFd >= 0, false, "open file fail, lowSrcFd = %{public}d", lowSrcFd);
-    srcFd = open(videoInfo.absSrcFilePath.c_str(), O_RDONLY);
-    if (srcFd < 0) {
-        MEDIA_WARN_LOG("open file fail, srcFd = %{public}d, lowSrcFd = %{public}d", srcFd, lowSrcFd);
-        close(lowSrcFd);
-        return false;
-    }
-
-    srcFdCopy = open(videoInfo.absSrcFilePath.c_str(), O_RDONLY);
-    if (srcFdCopy < 0) {
-        MEDIA_WARN_LOG("open file fail, srcFd = %{public}d, srcFdCopy = %{public}d, lowSrcFd = %{public}d",
-            srcFd, srcFdCopy, lowSrcFd);
-        close(lowSrcFd);
-        close(srcFd);
-        return false;
-    }
-
-    return true;
 }
 
 void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     VideoInfo &videoInfo, bool isMovingPhoto)
 {
-    const mode_t fileMode = 0644;
     std::string effectVideoPath = videoInfo.videoPath;
     CHECK_AND_RETURN_LOG(videoInfo.videoPath.size() >= MEDIA_EDIT_DATA_DIR.size(),
         "videoPath is too short, video Path: %{private}s", videoInfo.videoPath.c_str());
-    CHECK_AND_RETURN_LOG(videoInfo.videoPath.find(ROOT_MEDIA_DIR) == 0,
-        "videoPath does not begin with ROOT_MEDIA_DIR, video Path: %{private}s", videoInfo.videoPath.c_str());
+    CHECK_AND_RETURN_LOG(videoInfo.videoPath.substr(0, ROOT_MEDIA_DIR.length()) == ROOT_MEDIA_DIR,
+        "Invalid video path %{private}s does not begin with ROOT_MEDIA_DIR", videoInfo.videoPath.c_str());
     // 原始视频
     videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
     CHECK_AND_RETURN_LOG(PathToRealPath(videoInfo.videoPath, videoInfo.absSrcFilePath),
         "file is not real path, file path: %{private}s", videoInfo.videoPath.c_str());
-
-    int32_t lowSrcFd = 0;
-    int32_t srcFd = 0;
-    int32_t srcFdCopy = 0;
-    CHECK_AND_RETURN(Openfd4AddDoubleVideo(effectVideoPath, videoInfo, lowSrcFd, srcFd, srcFdCopy));
-
-    std::string dirPath = videoInfo.filePath.substr(0, videoInfo.filePath.rfind('/'));
-    char realDirPath[PATH_MAX] = {0};
-    if (realpath(dirPath.c_str(), realDirPath) == nullptr) {
-        MEDIA_ERR_LOG("check dirPath fail, dirPath = %{public}s", dirPath.c_str());
-        close(lowSrcFd);
-        close(srcFd);
-        close(srcFdCopy);
-        return;
-    }
-
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
     } else {
         videoInfo.videoPath = effectVideoPath;
     }
-    std::string tempPath = realDirPath + videoInfo.videoPath.substr(videoInfo.videoPath.rfind('/'),
-        videoInfo.videoPath.rfind('.') - videoInfo.videoPath.rfind('/')) + "_tmp" +
-        videoInfo.videoPath.substr(videoInfo.videoPath.rfind('.'));
-    int32_t dstFd = open(tempPath.c_str(), O_CREAT|O_WRONLY|O_TRUNC, fileMode);
-    if (dstFd < 0) {
-        MEDIA_ERR_LOG("open file fail, dstFd = %{public}d, errno:%{public}d", dstFd, errno);
-        close(lowSrcFd);
-        close(srcFd);
-        close(srcFdCopy);
-        return;
-    }
-
-    std::vector<int32_t> fds {lowSrcFd, dstFd, srcFd, srcFdCopy};
-    deferredProcSession_->AddVideo(videoId, fds);
+    std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
+        PHYSICAL_PATH_SUFFIX;
+    size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
+    size_t indexSubfixStart = videoInfo.videoPath.rfind('.');
+    CHECK_AND_RETURN_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos,
+        "Failed to parse the path %{private}s", videoInfo.filePath.c_str());
+    std::string fileNamePrefix = videoInfo.videoPath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
+    std::string fileNameSubfix = videoInfo.videoPath.substr(indexSubfixStart); // .mp4
+    std::string srcPhysicalPath = physicalPathToFileDir + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length());
+    std::string sharedTemp1PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+        fileNamePrefix + "_tmp1" + fileNameSubfix;
+    std::string sharedTemp2PhysicalPath = physicalPathToFileDir + MEDIA_CAMERA_CACHE_TMP_DIR +
+        fileNamePrefix + "_tmp2" + fileNameSubfix;
+    std::string sharedTemp1CloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
+        fileNamePrefix + "_tmp1" + fileNameSubfix;
+    std::string sharedTemp2CloudView = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
+        fileNamePrefix + "_tmp2" + fileNameSubfix;
+    MediaFileUtils::CreateFile(sharedTemp1CloudView);
+    MediaFileUtils::CreateFile(sharedTemp2CloudView);
+    std::string moviePathRealPath = physicalPathToFileDir + MEDIA_EDITDATA_DIR_REAL_PATH +
+        videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
+    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath,
+        moviePathRealPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
     DfxManager::GetInstance()->HandleCinematicVideoAddStartTime(CinematicWaitType::PROCESS_CINEMATIC, videoId);
     DfxManager::GetInstance()->HandleCinematicVideoAddStartTime(CinematicWaitType::CANCEL_CINEMATIC, videoId);
@@ -235,6 +204,13 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
 void MultiStagesVideoCaptureManager::AddVideoInternal(const std::string &videoId,
     VideoInfo &videoInfo, bool isTrashed, bool isMovingPhoto)
 {
+    MEDIA_INFO_LOG("AddVideoInternal, file path: %{private}s", videoInfo.videoPath.c_str());
+    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_CAMERA_CACHE_DIR)) {
+        if (!MediaFileUtils::CreateDirectory(ROOT_MEDIA_CAMERA_CACHE_DIR)) {
+            MEDIA_ERR_LOG("Create camera cache directory failed");
+            return;
+        }
+    }
     MultiStagesCaptureRequestTaskManager::AddPhotoInProgress(videoInfo.fileId, videoId, isTrashed);
 #ifdef ABILITY_CAMERA_SUPPORT
     videoInfo.videoPath = videoInfo.filePath;
@@ -244,12 +220,9 @@ void MultiStagesVideoCaptureManager::AddVideoInternal(const std::string &videoId
             videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
         }
     }
-
     CHECK_AND_RETURN_LOG(PathToRealPath(videoInfo.videoPath, videoInfo.absSrcFilePath),
         "file is not real path, file path: %{private}s", videoInfo.videoPath.c_str());
-
     AddVideoInfo(videoId, videoInfo);
-    MEDIA_INFO_LOG("AddVideoInternal, file path: %{public}s", DfxUtils::GetSafePath(videoInfo.absSrcFilePath).c_str());
     switch (videoInfo.videoCount) {
         case VideoCount::SINGLE:
             AddSingleVideo(videoId, videoInfo, isMovingPhoto);
@@ -442,10 +415,6 @@ void MultiStagesVideoCaptureManager::RemoveVideo(const std::string &videoId, con
         static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         data = MovingPhotoFileUtils::GetMovingPhotoVideoPath(data);
     }
-    int ret = MediaLibraryPhotoOperations::RemoveTempVideo(data);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Delete temp video file failed. ret: %{public}d, errno: %{public}d", ret, errno);
-    }
 }
 
 void MultiStagesVideoCaptureManager::RemoveVideo(const std::string &videoId, const std::string &mediaFilePath,
@@ -461,10 +430,6 @@ void MultiStagesVideoCaptureManager::RemoveVideo(const std::string &videoId, con
     string data = mediaFilePath;
     if (photoSubType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         data = MovingPhotoFileUtils::GetMovingPhotoVideoPath(data);
-    }
-    int ret = MediaLibraryPhotoOperations::RemoveTempVideo(data);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Delete temp video file failed. ret: %{public}d, errno: %{public}d", ret, errno);
     }
 }
 
@@ -559,7 +524,14 @@ int32_t MultiStagesVideoCaptureManager::SaveCameraVideo(const SaveCameraPhotoDto
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_ERR, "fileAsset is nullptr.");
     int32_t ret = UpdateIsTempAndDirty(dto, fileAsset->GetPhotoSubType());
     CHECK_AND_RETURN_RET_LOG(!(fileAsset->GetPath().empty()), E_ERR, "path is empty.");
-    MediaLibraryAssetOperations::ScanFile(fileAsset->GetPath(), false, true, true, dto.fileId);
+
+    ScanConfig config = ScanConfigBuilder()
+        .UseCameraShotPreset(false, ScanQuality::DEFAULT)
+        .SetFilePath(fileAsset->GetPath())
+        .SetFileId(dto.fileId)
+        .Build();
+    MediaLibraryAssetOperations::ScanFile(config);
+
     MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CAPTURE_VIDEO_TIMES_SUCCESS);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "MultistagesCapture Success, fileId: %{public}d, ret: %{public}d",

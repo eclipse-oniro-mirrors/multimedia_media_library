@@ -45,6 +45,7 @@ const PARAMETERS_VALIDATE_FAILED_MESSAGE =
 '  MOVING_PHOTO_DISABLE are supported for globalMovingPhotoState;' +
 '  2. The elements of the array can only be \'image/heic\' or \'image/jpeg\',' +
 '  and the array length cannot be greater than two for supportedMimeType;';
+const GET_BUNDLE_INFO_FAIL = 'Failed to get bundle info';
 
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 
@@ -284,43 +285,38 @@ function checkIsPhotoCreationConfigValid(config) {
 function checkConfirmBoxParams(srcFileUris, photoCreationConfigs, isImageFullyDisplayed) {
   // check param number
   if (arguments.length < ARGS_TWO || arguments.length > ARGS_THREE) {
-    return false;
+    return 'Invalid parameter number, expected 2 or 3 parameters.';
   }
-
   // check whether input array is valid
   if (!checkArrayAndSize(srcFileUris, MIN_CONFIRM_NUMBER, MAX_CONFIRM_NUMBER)) {
-    return false;
+    return `srcFileUris must be an array with size between ${MIN_CONFIRM_NUMBER} and ${MAX_CONFIRM_NUMBER}.`;
   }
   if (!checkArrayAndSize(photoCreationConfigs, MIN_CONFIRM_NUMBER, MAX_CONFIRM_NUMBER)) {
-    return false;
+    return `photoCreationConfigs must be an array with size between ${MIN_CONFIRM_NUMBER} and ${MAX_CONFIRM_NUMBER}.`;
   }
   if (srcFileUris.length !== photoCreationConfigs.length) {
-    return false;
+    return 'srcFileUris and photoCreationConfigs must have the same length';
   }
-
   // check whether srcFileUris element is valid
-  for (let srcFileUri of srcFileUris) {
-    if (!checkIsUriValid(srcFileUri, true)) {
+  for (let i = 0; i < srcFileUris.length; i++) {
+    if (!checkIsUriValid(srcFileUris[i], true)) {
       console.error('photoAccessHelper invalid uri: ${srcFileUri}.');
-      return false;
+      return encrypt(`Invalid uri at srcFileUris[${i}]: ${srcFileUris[i]}.`);
     }
   }
-
   // check whether photoCreationConfigs element is valid
-  for (let photoCreateConfig of photoCreationConfigs) {
-    if (!checkIsPhotoCreationConfigValid(photoCreateConfig)) {
-      return false;
+  for (let i = 0; i < photoCreationConfigs.length; i++) {
+    if (!checkIsPhotoCreationConfigValid(photoCreationConfigs[i])) {
+      return `Invalid photoCreationConfig at index ${i}.`;
     }
   }
-
   if (isImageFullyDisplayed !== undefined) {
     if (typeof isImageFullyDisplayed !== 'boolean') {
       console.error('photoAccessHelper isImageFullyDisplayed must be boolean if provided.');
-      return false;
+      return 'isImageFullyDisplayed must be boolean if provided.';
     }
   }
-
-  return true;
+  return undefined;
 }
 
 function getBundleInfo() {
@@ -361,7 +357,7 @@ async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfig
   let bundleInfo = getBundleInfo();
   if (bundleInfo === undefined) {
     return new Promise((resolve, reject) => {
-      reject(new BusinessError(ERROR_MSG_PARAMERTER_INVALID, ERR_CODE_OHOS_PARAMERTER_INVALID));
+      reject(new BusinessError(GET_BUNDLE_INFO_FAIL, ERR_CODE_OHOS_PARAMERTER_INVALID));
     });
   }
 
@@ -411,8 +407,9 @@ function showAssetsCreationDialogEx(srcFileUri, photoCreationConfigs) {
 }
 
 function showAssetsCreationDialog(...params) {
-  if (!checkConfirmBoxParams(...params)) {
-    throw new BusinessError(ERROR_MSG_PARAMERTER_INVALID, ERR_CODE_OHOS_PARAMERTER_INVALID);
+  let checkConfigResult = checkConfirmBoxParams(...params);
+  if (checkConfigResult !== undefined) {
+    throw new BusinessError(checkConfigResult, ERR_CODE_OHOS_PARAMERTER_INVALID);
   }
   return showAssetsCreationDialogParamsOk(...params);
 }
@@ -1595,10 +1592,10 @@ export default {
   GridPinchModeType: GridPinchModeType,
   GridLevel: GridLevel,
   GridPinchMode: GridPinchMode,
-  CloudDownloadNetworkPolicy: photoAccessHelper.CloudDownloadNetworkPolicy,
   AppLinkState: photoAccessHelper.AppLinkState,
   LivePhoto4dStatus: photoAccessHelper.LivePhoto4dStatus,
   AvailabilityStatus: photoAccessHelper.AvailabilityStatus,
   MediaAssetPermissionState: photoAccessHelper.MediaAssetPermissionState,
-  TaskSignal: photoAccessHelper.TaskSignal
+  TaskSignal: photoAccessHelper.TaskSignal,
+  DeepOptimizeState: photoAccessHelper.DeepOptimizeState
 };

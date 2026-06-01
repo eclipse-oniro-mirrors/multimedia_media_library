@@ -368,7 +368,7 @@ void SetTables()
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
         if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Execute sql %{private}s failed", createTableSql.c_str());
+            MEDIA_ERR_LOG("Execute sql %{private}s failed", createTableSql.c_str());
             return;
         }
         MEDIA_DEBUG_LOG("Execute sql %{private}s success", createTableSql.c_str());

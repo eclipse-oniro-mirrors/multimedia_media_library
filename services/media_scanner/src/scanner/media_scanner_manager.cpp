@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#define MLOG_TAG "Scanner"
+#define MLOG_TAG "MediaScannerManager"
 
 #include "media_scanner_manager.h"
 
@@ -22,11 +22,18 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_scanner_db.h"
+#include "scan_config_builder.h"
 
 namespace OHOS {
 namespace Media {
 std::shared_ptr<MediaScannerManager> MediaScannerManager::instance_ = nullptr;
 std::mutex MediaScannerManager::instanceMutex_;
+
+MediaScannerManager::MediaScannerManager()
+{
+    enhancedExecutor_ = std::make_shared<EnhancedScanExecutor>();
+    MEDIA_INFO_LOG("EnhancedScanExecutor created in constructor");
+}
 
 std::shared_ptr<MediaScannerManager> MediaScannerManager::GetInstance()
 {
@@ -188,6 +195,10 @@ void MediaScannerManager::Stop()
     /* stop all working threads */
     this->executor_.Stop();
 
+    if (enhancedExecutor_ != nullptr) {
+        enhancedExecutor_->Stop();
+    }
+
     MediaScannerDb::GetDatabaseInstance()->DeleteError(ROOT_MEDIA_DIR);
 }
 
@@ -203,5 +214,89 @@ void MediaScannerManager::ErrorRecord(const std::string &path)
     scanner->SetErrorPath(path);
     executor_.Commit(move(scanner));
 }
+
+int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
+{
+    MEDIA_INFO_LOG("scan file sync, path %{public}s, fileId %{public}d",
+        MediaFileUtils::DesensitizePath(config.GetFilePath()).c_str(), config.GetFileId());
+
+    auto context = PrepareValidatedContext(config, ScanExecutionMode::SYNC);
+    if (context == nullptr) {
+        MEDIA_ERR_LOG("prepare context failed");
+        return E_INVALID_PATH;
+    }
+
+    if (enhancedExecutor_ == nullptr) {
+        MEDIA_ERR_LOG("enhancedExecutor is null");
+        return E_ERR;
+    }
+
+    ScanSubmitResult submitResult = enhancedExecutor_->Submit(context);
+    if (submitResult == ScanSubmitResult::REJECTED) {
+        MEDIA_ERR_LOG("task rejected");
+        return E_ERR;
+    }
+
+    if (submitResult == ScanSubmitResult::WAITING) {
+        enhancedExecutor_->WaitForSyncScanCompletion(context->config.GetFileId());
+        MEDIA_INFO_LOG("waiting completed (fileId %{public}d)", context->config.GetFileId());
+        return E_OK;
+    }
+
+    enhancedExecutor_->StartSync(context);
+    MEDIA_INFO_LOG("completed (fileId %{public}d)", context->config.GetFileId());
+    return E_OK;
+}
+
+int32_t MediaScannerManager::ScanAsync(const ScanConfig &config)
+{
+    MEDIA_INFO_LOG("scan file async, path %{public}s, fileId %{public}d",
+        MediaFileUtils::DesensitizePath(config.GetFilePath()).c_str(), config.GetFileId());
+    
+    auto context = PrepareValidatedContext(config, ScanExecutionMode::ASYNC);
+    if (context == nullptr) {
+        MEDIA_ERR_LOG("prepare context failed");
+        return E_INVALID_PATH;
+    }
+
+    if (enhancedExecutor_ == nullptr) {
+        MEDIA_ERR_LOG("enhancedExecutor is null");
+        return E_ERR;
+    }
+
+    ScanSubmitResult submitResult = enhancedExecutor_->Submit(context);
+    if (submitResult == ScanSubmitResult::REJECTED) {
+        MEDIA_ERR_LOG("task rejected");
+        return E_ERR;
+    }
+
+    if (submitResult == ScanSubmitResult::WAITING) {
+        MEDIA_INFO_LOG("merged to existing task (fileId %{public}d)",
+            context->config.GetFileId());
+        return E_OK;
+    }
+
+    enhancedExecutor_->StartAsync();
+    MEDIA_INFO_LOG("submitted (fileId %{public}d, result %{public}d)",
+        context->config.GetFileId(), static_cast<int32_t>(submitResult));
+    return E_OK;
+}
+
+std::shared_ptr<ScanTaskContext> MediaScannerManager::PrepareValidatedContext(const ScanConfig &config,
+    ScanExecutionMode executionMode)
+{
+    std::string realPath;
+    if (!config.Validate(realPath)) {
+        return nullptr;
+    }
+
+    auto finalConfig = ScanConfigBuilder(config)
+        .SetFilePath(realPath)
+        .SetExecutionMode(executionMode)
+        .Build();
+
+    return std::make_shared<ScanTaskContext>(finalConfig);
+}
+
 } // namespace Media
 } // namespace OHOS

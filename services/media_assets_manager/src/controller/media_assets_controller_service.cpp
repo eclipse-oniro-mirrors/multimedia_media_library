@@ -92,13 +92,11 @@
 #include "media_app_uri_permission_column.h"
 #include "cancel_request_vo.h"
 #include "start_batch_download_cloud_resources_vo.h"
-#include "set_network_policy_batch_download_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
 #include "cancel_batch_download_cloud_resources_vo.h"
 #include "get_batch_download_cloud_resources_status_vo.h"
 #include "get_batch_download_cloud_resources_count_vo.h"
-#include "get_batch_download_cloud_resources_size_vo.h"
 #include "acquire_debug_database_vo.h"
 #include "release_debug_database_vo.h"
 #include "get_fussion_assets_vo.h"
@@ -122,6 +120,8 @@
 #include "change_request_move_assets_by_path_dto.h"
 #include "asset_cancel_task_vo.h"
 #include "progress_observer_manager.h"
+#include "lcd_aging_manager.h"
+#include "deep_optimize_space_vo.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -299,6 +299,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::CreateAssetForAppWithAlbum
     },
     {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM),
+        &MediaAssetsControllerService::CreateAssetWithAlbum
+    },
+    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_PUBLIC_SET_TITLE),
         &MediaAssetsControllerService::SetAssetTitle
     },
@@ -463,10 +467,6 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         &MediaAssetsControllerService::StartBatchDownloadCloudResources
     },
     {
-        static_cast<uint32_t>(MediaLibraryBusinessCode::SET_NETWORK_POLICY_FOR_BATCH_DOWNLOAD),
-        &MediaAssetsControllerService::SetNetworkPolicyForBatchDownload
-    },
-    {
         static_cast<uint32_t>(MediaLibraryBusinessCode::RESUME_BATCH_DOWNLOAD_CLOUD_RESOURCES),
         &MediaAssetsControllerService::ResumeBatchDownloadCloudResources
     },
@@ -485,10 +485,6 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_GET_CLOUDMEDIA_BATCH_RESOURCES_COUNT),
         &MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesCount
-    },
-    {
-        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_GET_CLOUDMEDIA_BATCH_RESOURCES_SIZE),
-        &MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesSize
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_REQUEST_CONTENT),
@@ -721,6 +717,18 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_FILE_MANAGER_ASSET),
         &MediaAssetsControllerService::CreateFileManagerAsset
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE),
+        &MediaAssetsControllerService::StartDeepOptimizeSpace
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE),
+        &MediaAssetsControllerService::StopDeepOptimizeSpace
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING),
+        &MediaAssetsControllerService::CloneIsActiveLcdAging
     },
 };
 
@@ -1722,6 +1730,31 @@ int32_t MediaAssetsControllerService::CreateAssetForAppWithAlbum(MessageParcel &
     return IPC::UserDefineIPC().WriteResponseBody(reply, dto.GetRespBody(), ret);
 }
 
+int32_t MediaAssetsControllerService::CreateAssetWithAlbum(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(
+        MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    CreateAssetsWithAlbumReqBody reqBody;
+    CreateAssetsWithAlbumRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CreateAssetWithAlbum Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+
+    ret = ParameterUtils::CheckCreateAssetWithAlbum(reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CheckCreateAssetWithAlbum ret:%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+    }
+
+    CreateAssetDto dto(reqBody);
+    ret = MediaAssetsService::GetInstance().CreateAssetWithAlbum(dto);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, dto.GetRespBody(), ret);
+}
+
 int32_t MediaAssetsControllerService::SetAssetTitle(MessageParcel &data, MessageParcel &reply)
 {
     ModifyAssetsReqBody reqBody;
@@ -2493,23 +2526,6 @@ int32_t MediaAssetsControllerService::StartBatchDownloadCloudResources(MessagePa
 #endif
 }
 
-int32_t MediaAssetsControllerService::SetNetworkPolicyForBatchDownload(MessageParcel &data, MessageParcel &reply)
-{
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    MEDIA_INFO_LOG("enter MediaAssetsControllerService SetNetworkPolicyForBatchDownload");
-    SetNetworkPolicyForBatchDownloadReqBody reqBody;
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("SetNetworkPolicyForBatchDownload Read Request Error");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-    ret = MediaAssetsService::GetInstance().SetNetworkPolicyForBatchDownload(reqBody);
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-#else
-    return 0;
-#endif
-}
-
 int32_t MediaAssetsControllerService::ResumeBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply)
 {
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
@@ -2597,27 +2613,6 @@ int32_t MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesCount(M
     ret = MediaAssetsService::GetInstance().GetCloudMediaBatchDownloadResourcesCount(reqBody, respBody);
     MEDIA_INFO_LOG("MediaAssetsControllerService GetCloudMediaBatchDownloadResourcesCount count: %{public}d",
         respBody.count);
-    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
-#else
-    return 0;
-#endif
-}
-
-int32_t MediaAssetsControllerService::GetCloudMediaBatchDownloadResourcesSize(MessageParcel &data,
-    MessageParcel &reply)
-{
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    MEDIA_INFO_LOG("enter MediaAssetsControllerService GetCloudMediaBatchDownloadResourcesSize");
-    GetBatchDownloadCloudResourcesSizeReqBody reqBody;
-    GetBatchDownloadCloudResourcesSizeRespBody respBody;
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("GetCloudMediaBatchDownloadResourcesSize Read Request Error");
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-    ret = MediaAssetsService::GetInstance().GetCloudMediaBatchDownloadResourcesSize(reqBody, respBody);
-    MEDIA_INFO_LOG("MediaAssetsControllerService GetCloudMediaBatchDownloadResourcesSize size: %{public}" PRId64,
-        respBody.size);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 #else
     return 0;
@@ -2846,6 +2841,7 @@ int32_t MediaAssetsControllerService::GetMovingPhotoDateModified(MessageParcel &
     ret = MediaAssetsService::GetInstance().GetMovingPhotoDateModified(reqBody.fileId, respBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
+
 int32_t MediaAssetsControllerService::GetFilePathFromUri(MessageParcel &data, MessageParcel &reply)
 {
     MEDIA_INFO_LOG("enter GetFilePathFromUri");
@@ -3062,11 +3058,11 @@ int32_t MediaAssetsControllerService::DeleteLocalAssetsWithUri(MessageParcel &da
     ret = this->mediaAssetsDeleteService_.DeleteLocalAssets(reqBody.fileIds);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
- 
+
 int32_t MediaAssetsControllerService::DeleteCloudAssetsWithUri(MessageParcel &data, MessageParcel &reply)
 {
     DeletePhotosCompletedReqBody reqBody;
- 
+
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("DeleteCloudAssetsWithUri Read Request Error");
@@ -3198,7 +3194,7 @@ int32_t MediaAssetsControllerService::GetPhotoUriPersistPermission(MessageParcel
         static_cast<uint32_t>(reqBody.tokenId), respBody.permissionTypes);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
- 
+
 int32_t MediaAssetsControllerService::CancelPhotoUriPersistPermission(MessageParcel &data, MessageParcel &reply)
 {
     MEDIA_INFO_LOG("enter CancelPhotoUriPersistPermission");
@@ -3577,5 +3573,44 @@ int32_t MediaAssetsControllerService::CreateFileManagerAsset(MessageParcel &data
     CreateAssetDto dto(reqBody);
     ret = MediaAssetsService::GetInstance().CreateFileManagerAsset(dto);
     return IPC::UserDefineIPC().WriteResponseBody(reply, dto.GetRespBody(), ret);
+}
+
+int32_t MediaAssetsControllerService::StartDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    StartDeepOptimizeSpaceReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("StartDeepOptimizeSpace read request error, ret=%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    bool hasCallback = (reqBody.callbackRemote != nullptr);
+    MEDIA_INFO_LOG("StartDeepOptimizeSpace: hasCallback=%{public}d, clientRemote=%{public}d, callbackRemote=%{public}d",
+        hasCallback, reqBody.clientRemote != nullptr, reqBody.callbackRemote != nullptr);
+
+    ret = LcdAgingManager::GetInstance().StartDeepOptimizeSpace(reqBody.clientRemote, reqBody.callbackRemote);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::StopDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply)
+{
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    int32_t ret = LcdAgingManager::GetInstance().StopDeepOptimizeSpace();
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::CloneIsActiveLcdAging(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("CloneIsActiveLcdAging start");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    int32_t ret = LcdAgingManager::GetInstance().SetIsActiveLcdAging(true);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media

@@ -16,6 +16,8 @@
 #ifndef FILE_PARSER_H
 #define FILE_PARSER_H
 #include <string>
+#include <mutex>
+#include <unordered_map>
  
 #include "asset_accurate_refresh.h"
 #include "file_const.h"
@@ -24,6 +26,8 @@
 #include "metadata.h"
 
 namespace OHOS::Media {
+extern std::mutex g_fileManagerScanFlagMutex;
+extern std::unordered_map<int32_t, bool> g_fileManagerScanFlag;
 class FileParser {
 public:
     FileParser(const std::string &path, const FileSourceType &sourceType,
@@ -48,6 +52,7 @@ public:
     static int32_t GenerateSingleThumbnail(const ThumbnailInfo &info);
     int32_t IsExistSameFileForCloneRestore(int32_t ownerAlbumId);
     static std::string GetThumbnailUri(const ThumbnailInfo &info);
+    static void SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan);
     
     virtual bool IsFileValidAsset();
     virtual FileUpdateType GetFileUpdateType() = 0;
@@ -148,7 +153,8 @@ private:
     const std::string SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE = "\
         SELECT file_id \
         FROM Photos \
-        WHERE owner_album_id = ? AND display_name = ? AND size = ? AND orientation = ? \
+        WHERE owner_album_id = ? AND display_name = ? AND size = ? \
+        AND (1 <> ? OR orientation = ?) \
         LIMIT 1;";
 
 protected:

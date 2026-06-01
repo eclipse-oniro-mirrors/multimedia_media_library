@@ -203,7 +203,6 @@ protected:
     void StopParameterForRestore();
     void RestoreSearchIndex();
     void SetCloneParameterAndStopSync();
-    void DelayLcdAgingTime();
 
 protected:
     std::atomic<uint64_t> migrateDatabaseNumber_{0};

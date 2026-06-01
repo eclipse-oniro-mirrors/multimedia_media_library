@@ -260,6 +260,7 @@ void PhotoCustomRestoreOperation::DoCustomRestore(RestoreTaskInfo &restoreTaskIn
     }
     ffrt::wait();
     MediaShareDirtyDataCleaner::UpdateShareTime(false);
+    MediaShareDirtyDataCleaner::SetSharingState(false);
     ReleaseCustomRestoreTask(restoreTaskInfo);
 }
 
@@ -420,10 +421,12 @@ int32_t PhotoCustomRestoreOperation::HandleCustomRestore(const unordered_map<str
     MediaShareDirtyDataCleaner::UpdateCleanFlag(true);
     vector<FileInfo> insertRestoreFiles =
         BatchInsert(timeInfoMap, restoreTaskInfo, destRestoreFiles, sameFileNum, isFirst);
+    MediaShareDirtyDataCleaner::SetSharingState(true);
     int32_t successFileNum = RenameFiles(insertRestoreFiles);
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::CUSTOM_RESTORE_BUSSINESS_NAME);
     errCode = BatchUpdateTimePending(insertRestoreFiles, assetRefresh);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "BatchUpdateTimePending failed. errCode: %{public}d", errCode);
+    MediaShareDirtyDataCleaner::SetSharingState(false);
     MediaShareDirtyDataCleaner::UpdateCleanFlag(false);
     assetRefresh.RefreshAlbum();
     assetRefresh.Notify();
@@ -590,6 +593,7 @@ int32_t PhotoCustomRestoreOperation::HandleTlvSingleRestore(const std::unordered
     vector<FileInfo> insertRestoreFiles =
         BatchInsert(timeInfoMap, restoreTaskInfo, destRestoreFiles, sameFileNum, isFirst);
     CHECK_AND_RETURN_RET_INFO_LOG(sameFileNum == 0, E_FILE_EXIST, "tlv single restore has same file.");
+    MediaShareDirtyDataCleaner::SetSharingState(true);
     int32_t successFileNum = RenameFiles(insertRestoreFiles);
     CHECK_AND_RETURN_RET_LOG(successFileNum > 0, E_ERR, "RenameFiles failed.");
 
@@ -606,6 +610,7 @@ int32_t PhotoCustomRestoreOperation::HandleTlvSingleRestore(const std::unordered
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::CUSTOM_RESTORE_BUSSINESS_NAME);
     ret = BatchUpdateTimePending(insertRestoreFiles, assetRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "BatchUpdateTimePending failed. ret: %{public}d", ret);
+    MediaShareDirtyDataCleaner::SetSharingState(false);
     MediaShareDirtyDataCleaner::UpdateCleanFlag(false);
     assetRefresh.RefreshAlbum();
     assetRefresh.Notify();

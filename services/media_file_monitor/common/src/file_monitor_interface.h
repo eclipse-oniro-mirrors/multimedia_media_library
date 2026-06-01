@@ -320,8 +320,9 @@ class FileMonitorProxy {
 public:
     // 通过获取到的对象调用请求接口
     virtual ~FileMonitorProxy(){};
-    virtual int32_t RegisteRequest(uint64_t type) = 0;
-    virtual int32_t RegisteRequest(uint64_t type, std::shared_ptr<FileChangeCallback> callback) = 0;
+    virtual int32_t RegisteRequest(uint64_t type, bool isSyncMainTable = true) = 0;
+    virtual int32_t RegisteRequest(uint64_t type, std::shared_ptr<FileChangeCallback> callback,
+        bool isSyncMainTable = true) = 0;
     virtual int32_t UnregisteRequest() = 0;
     virtual int32_t SearchRequest(int32_t state, uint64_t type, std::vector<FileMsgModel> &outMsgs) = 0;
     virtual int32_t SearchMonitorData(uint64_t type, std::vector<FileMsgModel> &outMsgs,

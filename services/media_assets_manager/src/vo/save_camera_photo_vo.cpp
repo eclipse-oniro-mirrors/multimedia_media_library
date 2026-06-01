@@ -30,7 +30,8 @@ bool SaveCameraPhotoReqBody::Unmarshalling(MessageParcel &parcel)
         discardHighQualityPhoto,
         needScan,
         path,
-        cameraShotKey);
+        cameraShotKey,
+        containsAddResource);
 }
 
 bool SaveCameraPhotoReqBody::Marshalling(MessageParcel &parcel) const
@@ -44,6 +45,7 @@ bool SaveCameraPhotoReqBody::Marshalling(MessageParcel &parcel) const
         discardHighQualityPhoto,
         needScan,
         path,
-        cameraShotKey);
+        cameraShotKey,
+        containsAddResource);
 }
 }  // namespace OHOS::Media

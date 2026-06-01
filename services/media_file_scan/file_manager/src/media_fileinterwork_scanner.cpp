@@ -78,6 +78,10 @@ const std::vector<std::string> SKIP_SCAN_DIR = {
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::RECENT_DIR,
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::BACKUP_DIR,
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::TRASH_DIR_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::VM_DOCS_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::OHPM_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::PCE_ENGINE_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::APPDATA_DIR,
 };
 
 MediaFileInterworkScanner* MediaFileInterworkScanner::GetInstance()
@@ -466,6 +470,11 @@ vector<FileInfo> MediaFileInterworkScanner::GetFileInfos(
 {
     vector<FileInfo> restoreFiles;
     for (const auto &filePath : filePathVector) {
+        if (!MediaFileUtils::IsFileExists(filePath)) {
+            MEDIA_ERR_LOG("File [%{public}s] not exist, skip restore.",
+                MediaFileUtils::DesensitizePath(filePath).c_str());
+            continue;
+        }
         FileInfo fileInfo;
         fileInfo.fileName = MediaFileUtils::GetFileName(filePath);
         fileInfo.displayName = fileInfo.fileName;
@@ -614,6 +623,7 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
     std::vector<string> filesToInsert = GetPhotosNotExists(rdbStore, files);
     UniqueNumber uniqueNumber;
     vector<FileInfo> restoreFiles = GetFileInfos(filesToInsert, uniqueNumber);
+    CHECK_AND_RETURN_RET_INFO_LOG(!restoreFiles.empty(), E_OK, "no need to restore");
     int32_t errCode = UpdateUniqueNumber(uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "UpdateUniqueNumber failed. errCode: %{public}d", errCode);
 

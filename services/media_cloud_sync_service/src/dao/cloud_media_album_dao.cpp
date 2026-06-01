@@ -76,7 +76,7 @@ int32_t CloudMediaAlbumDao::HandleLPathAndAlbumType(PhotoAlbumDto &record)
     }
     if (CloudMediaSyncUtils::IsFileManagerAlbumPath(localPath)) {
         albumType = PhotoAlbumType::SOURCE;
-        subType = PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER;
+        subType = PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER;
     }
     if (record.albumType == static_cast<int32_t>(PhotoAlbumType::INVALID)) {
         record.albumDateAdded = record.albumDateCreated;
@@ -311,12 +311,26 @@ static void UpdateAlbum(const PhotoAlbumDto &record)
     }
 }
 
+void CloudMediaAlbumDao::FillAlbumBaseValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
+{
+    values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
+    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, record.albumType);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, record.albumSubType);
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, record.albumDateAdded);
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, record.albumDateModified);
+    values.PutString(PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE, record.localLanguage);
+    values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
+    values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
+}
+
 int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, const std::string &field,
     const std::string &value, std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle)
 {
     CHECK_AND_RETURN_RET_LOG(albumRefreshHandle != nullptr, E_RDB_STORE_NULL, "albumRefreshHandle is null");
-    int32_t changedRows;
     NativeRdb::ValuesBucket values;
+    int32_t changedRows;
     if (!record.albumName.empty()) {
         values.PutString(PhotoAlbumColumns::ALBUM_NAME, record.albumName);
     }
@@ -331,15 +345,7 @@ int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, c
     if (!record.bundleName.empty()) {
         values.PutString(PhotoAlbumColumns::ALBUM_BUNDLE_NAME, record.bundleName);
     }
-    values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
-    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, record.albumType);
-    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, record.albumSubType);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, record.albumDateAdded);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, record.albumDateModified);
-    values.PutString(PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE, record.localLanguage);
-    values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
-    values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
-    values.PutString(PhotoAlbumColumns::UNIQUE_ID, record.uniqueId);
+    FillAlbumBaseValues(record, values);
     if (record.coverUriSource == CoverUriSource::MANUAL_CLOUD_COVER &&
         IsNeedPullCoverByDateModified(record.lPath, record.coverCloudId)) {
         string coverUri;
@@ -691,6 +697,21 @@ int32_t CloudMediaAlbumDao::UpdateAlbumOrderInfo(const PhotoAlbumDto &record, Na
     return E_ERR;
 }
 
+void CloudMediaAlbumDao::SetAlbumBasicInfo(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values)
+{
+    values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
+    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, record.albumType);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, record.albumSubType);
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, record.albumDateAdded);
+    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, record.albumDateModified);
+    values.PutString(PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE, record.localLanguage);
+    values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
+    values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
+    values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, ALBUM_FROM_CLOUD);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
+    values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
+}
+
 int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
     std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> &albumRefreshHandle)
 {
@@ -706,15 +727,7 @@ int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
     if (!record.bundleName.empty()) {
         values.PutString(PhotoAlbumColumns::ALBUM_BUNDLE_NAME, record.bundleName);
     }
-    values.PutInt(PhotoAlbumColumns::ALBUM_PRIORITY, 1);
-    values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, record.albumType);
-    values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, record.albumSubType);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, record.albumDateAdded);
-    values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, record.albumDateModified);
-    values.PutString(PhotoAlbumColumns::ALBUM_LOCAL_LANGUAGE, record.localLanguage);
-    values.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
-    values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
-    values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, ALBUM_FROM_CLOUD);
+    SetAlbumBasicInfo(record, values);
     if (record.coverUriSource == CoverUriSource::MANUAL_CLOUD_COVER &&
         IsNeedPullCoverByDateModified(record.lPath, record.coverCloudId)) {
         MEDIA_DEBUG_LOG("IsNeedPullCover:lPath:%{public}s, coverCloudId:%{public}s",
@@ -733,11 +746,10 @@ int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,
         }
     }
     values.PutString(PhotoAlbumColumns::UNIQUE_ID, record.uniqueId);
-    values.PutInt(
-        PhotoAlbumColumns::UPLOAD_STATUS, PhotoAlbumUploadStatusOperation::GetAlbumUploadStatusWithLpath(record.lPath));
+    values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS,
+        PhotoAlbumUploadStatusOperation::GetAlbumUploadStatusWithLpath(record.lPath));
     ret = UpdateAlbumOrderInfo(record, values);
     CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateAlbumOrderInfo failed. ret %{public}d.", ret);
-    /* update if a album with the same name exists? */
     int64_t rowId;
     ret = albumRefreshHandle->Insert(rowId, PhotoAlbumColumns::TABLE, values);
     MEDIA_INFO_LOG("InsertAlbum completed, ret: %{public}d, rowId: %{public}" PRId64 ", record: %{public}s",

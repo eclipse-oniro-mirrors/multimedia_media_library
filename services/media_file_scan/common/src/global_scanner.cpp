@@ -92,8 +92,8 @@ void GlobalScanner::Run(const std::string &path, IScanPolicy &policy, CheckDfxCo
         scannerStatus_ = isFirstScanner ? ScannerStatus::GLOBAL_SCAN : ScannerStatus::CHECK_SCAN;
         isNotInterruptScanner_ = true;
         InitTemperatureCondition();
+        deleteCountForCloneRestore_.store(0);
     }
-    CHECK_AND_EXECUTE(!isLakeCloneRestoring, deleteCountForCloneRestore_.store(0));
     MEDIA_INFO_LOG("global scan start, isFirstScanner: %{public}d, scannerStatus: %{public}d, "
         "isLakeCloneRestoring: %{public}d", isFirstScanner, static_cast<int32_t>(scannerStatus_),
         static_cast<int32_t>(isLakeCloneRestoring));

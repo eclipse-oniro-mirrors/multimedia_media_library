@@ -24,6 +24,7 @@
 #include "scanner_utils.h"
 #include "userfile_manager_types.h"
 #include "medialibrary_errno.h"
+#include "permission_utils.h"
 
 using namespace std;
 using namespace OHOS;
@@ -41,6 +42,7 @@ void MediaLibraryScannerTest::SetUpTestCase(void)
 void MediaLibraryScannerTest::TearDownTestCase(void)
 {
     std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
+    PermissionUtils::ClearBundleInfoInCache();
 }
 
 // SetUp:Execute before each test case

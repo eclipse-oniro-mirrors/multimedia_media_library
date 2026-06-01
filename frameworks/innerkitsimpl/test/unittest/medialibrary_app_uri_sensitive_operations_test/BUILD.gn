@@ -64,7 +64,6 @@ ohos_unittest("medialibrary_app_uri_sensitive_operations_test") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
-    "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudsync_kit_inner",

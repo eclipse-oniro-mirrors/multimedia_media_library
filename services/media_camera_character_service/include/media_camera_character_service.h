@@ -21,18 +21,27 @@
 
 #include "add_process_video_dto.h"
 #include "cancel_request_dto.h"
+#include "create_camera_file_fd_dto.h"
+#include "create_camera_file_fd_vo.h"
+#include "get_deferred_picture_info_dto.h"
+#include "get_deferred_picture_info_vo.h"
 #include "get_progress_callback_vo.h"
+#include "scan_camera_file_dto.h"
 #include "process_video_dto.h"
 
 namespace OHOS::Media {
 class MediaCameraCharacterService {
+#define EXPORT __attribute__ ((visibility ("default")))
 public:
-    static MediaCameraCharacterService &GetInstance();
+    EXPORT static MediaCameraCharacterService &GetInstance();
 
     int32_t AddProcessVideo(const AddProcessVideoDto &dto);
     int32_t CancelRequest(const CancelRequestDto &dto);
     int32_t ProcessVideo(const ProcessVideoDto &dto);
     int32_t GetProgressCallback(GetProgressCallbackRespBody &respbody);
+    EXPORT int32_t CreateCameraFileFd(const CreateCameraFileFdDto &dto, CreateCameraFileFdRespBody &respbody);
+    EXPORT int32_t ScanCameraFile(const ScanCameraFileDto &dto);
+    int32_t GetDeferredPictureInfo(const GetDeferredPictureInfoDto& dto, GetDeferredPictureInfoRespBody& respbody);
 };
 } // namespace OHOS::Media
 #endif // OHOS_MEDIA_CAMERA_CHARACTER_SERVICE_H

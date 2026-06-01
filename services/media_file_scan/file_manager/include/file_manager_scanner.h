@@ -23,7 +23,7 @@
 namespace OHOS::Media {
 
 const std::unordered_set<std::string> FILE_MANAGER_BLOCKED_DIRS = {
-    "HO_DATA_EXT_MISC", ".Trash", ".thumbs", ".Recent", ".backup",
+    "HO_DATA_EXT_MISC", ".Trash", ".thumbs", ".Recent", ".backup", ".VMDocs", ".ohpm", "PCEngine", "appdata",
 };
 
 class FileManagerScanner : public FileScanner {

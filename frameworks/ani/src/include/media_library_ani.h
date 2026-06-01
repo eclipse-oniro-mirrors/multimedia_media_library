@@ -33,6 +33,7 @@
 #include "media_change_info.h"
 #include "medialibrary_notify_callback_wrapper_ani.h"
 #include "medialibrary_notify_new_observer_ani.h"
+#include "deep_optimize_space_ani_callback.h"
 
 namespace OHOS {
 namespace Media {
@@ -179,6 +180,7 @@ public:
 class MediaLibraryAni {
 public:
     static ani_status PhotoAccessHelperInit(ani_env *env);
+    static ani_status PhotoViewPickerInit(ani_env *env);
     static ani_status UserFileMgrInit(ani_env *env);
     static ani_object CreateNewInstance(ani_env *env, ani_class clazz, ani_object context,
         bool isAsync = false);
@@ -304,12 +306,25 @@ public:
     static ani_int GetAlbumIdByLpath(ani_env *env, ani_object object, ani_string lpath);
     static ani_object GetAlbumIdByBundleName(ani_env *env, ani_object object, ani_string bundleName);
     static ani_object GetAssetCompatibleUris(ani_env *env, ani_object object,
-        ani_string bundleName, ani_object assets, ani_int compatibleFlags = 0);
+        ani_string bundleName, ani_object assets, ani_object compatibleFlags);
     static ani_object ConvertToAsset(ani_env *env, ani_object object, ani_string path);
     static ani_object MoveAssetsToDir(ani_env *env, ani_object object, ani_object assets,
         ani_string targetDir, ani_object option);
     static ani_object MoveAssetsByPath(ani_env *env, ani_object object, ani_object assets,
         ani_object target, ani_object option);
+    static ani_object PhotoAccessStartDeepOptimizeSpace(ani_env *env, ani_object object, ani_fn_object callback);
+    static ani_object PhotoAccessStopDeepOptimizeSpace(ani_env *env, ani_object object);
+    static ani_boolean CheckShortTermPermission(ani_env *env, ani_object object);
+    static ani_object CreateAssetsHasPermission(ani_env *env, ani_object object);
+    static ani_object CreateAssetWithShortTermPermission(ani_env *env, ani_object object,
+        ani_object context, ani_object photoCreationConfigs, ani_object appInfo, ani_fn_object result);
+    static ani_object ShowAssetsCreationDialog(ani_env *env, ani_object object,
+        ani_object context, ani_object srcFileUris, ani_object photoCreationConfigs, ani_object appInfo,
+        ani_fn_object result);
+    static ani_object RequestPhotoUrisReadPermission(ani_env *env, ani_object object,
+        ani_object context, ani_object srcFileUris, ani_object appInfo, ani_fn_object result);
+    static ani_object StartPhotoPicker(ani_env *env, ani_object object, ani_object context,
+        ani_object photoSelectOptions);
 
 private:
     int32_t GetListenerType(const std::string &str) const;
@@ -343,11 +358,45 @@ private:
     std::unique_ptr<ChangeListenerAni> listObj_ = nullptr;
 };
 
+struct PhotoCreationConfig {
+    std::string title;
+    std::string fileNameExtension;
+    int32_t photoType;
+    int32_t subtype;
+};
+
+struct InitConfirmRequestParams {
+    ani_env *env;
+    ani_object &srcFileUris;
+    ani_object photoCreationConfigs;
+    ani_object appInfo;
+    ani_fn_object resultcb;
+};
+
+struct InitRequestPhotoUrisReadPermissionParams {
+    ani_env *env;
+    ani_object &arrayUris;
+    ani_object appNameAni;
+    ani_fn_object resultcb;
+};
+
+struct InitShortTermRequestParams {
+    ani_env *env;
+    ani_object photoCreationConfigs;
+    ani_object appInfo;
+    ani_fn_object resultcb;
+};
+
 struct PickerCallBack {
     bool ready = false;
     bool isOrigin;
     int32_t resultCode;
     vector<string> uris;
+};
+
+struct PhotoSelectResult {
+    vector<string> photoUris;
+    bool isOriginalPhoto;
 };
 
 constexpr int32_t DEFAULT_PRIVATEALBUMTYPE = 3;
@@ -447,6 +496,8 @@ struct MediaLibraryAsyncContext : public AniError {
     int32_t mode;
     std::atomic<bool> isCancelled{false};
     ani_ref taskSignalRef;
+    bool hasDeepOptimizeSpaceCallback = false;
+    std::shared_ptr<DeepOptimizeSpaceAniCallbackHolder> deepOptimizeSpaceCallbackHolder;
 };
 } // namespace Media
 } // namespace OHOS

@@ -36,8 +36,10 @@ public:
 
     EXPORT virtual void BeginSynchronize();
     EXPORT virtual void EndSynchronize();
-    void AddVideo(const std::string &videoId, int32_t srcFd, int32_t dstFd);
-    void AddVideo(const std::string &videoId, const std::vector<int32_t> &fds);
+    void AddVideo(const std::string &videoId, const std::string &srcPath,
+        const std::string &sharedTemp1Path, const std::string &sharedTemp2Path, const std::string &moviePath);
+    void AddVideo(const std::string &videoId, const std::string &srcPath,
+        const std::string &sharedTemp1Path, const std::string &sharedTemp2Path);
     EXPORT virtual void RemoveVideo(const std::string &videoId, const bool isRestorable = true);
     EXPORT void RestoreVideo(const std::string &videoId);
     EXPORT void ProcessVideo(const std::string &appName, const std::string &videoId);

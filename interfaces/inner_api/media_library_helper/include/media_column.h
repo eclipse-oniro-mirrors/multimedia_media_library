@@ -191,7 +191,9 @@ public:
     static const std::string MOVING_PHOTO_LIVEPHOTO_4D_STATUS EXPORT;
     static const std::string MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR EXPORT;
     static const std::string LOCAL_ASSET_SIZE EXPORT;
+    static const std::string ATTACHMENT_SIZE EXPORT;
     static const std::string PHOTO_FILE_HIDDEN EXPORT;
+    static const std::string PHOTO_NEED_THUMBNAIL EXPORT;
 
     // Photo-only default fetch columns
     static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;
@@ -298,6 +300,9 @@ public:
     EXPORT static bool IsPhotoColumn(const std::string &columnName);
     EXPORT static std::string CheckUploadPhotoColumns();
     EXPORT static std::string CheckMetaRecoveryPhotoColumns();
+
+    static const std::string SUPPORTED_DEFERRED_EFFECTS EXPORT;
+    static const std::string DEFERRED_EFFECT_STATUS EXPORT;
 
     // for cloud sync
     static const std::string LCD_ASPECT_RATIO EXPORT;

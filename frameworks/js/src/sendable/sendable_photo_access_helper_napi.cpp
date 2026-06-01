@@ -1008,6 +1008,10 @@ napi_value SendablePhotoAccessHelper::CreateAlbumSubTypeEnum(napi_env env)
         JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SOURCE_GENERIC", PhotoAlbumSubType::SOURCE_GENERIC),
         JS_INNER_FAIL);
+    CHECK_ARGS(env,
+        AddIntegerNamedProperty(
+            env, result, "SOURCE_GENERIC_FROM_FILE_MANAGER", PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER),
+        JS_INNER_FAIL);
     for (size_t i = 0; i < systemAlbumSubType.size(); i++) {
         CHECK_ARGS(env, AddIntegerNamedProperty(env, result, systemAlbumSubType[i],
             PhotoAlbumSubType::SYSTEM_START + i), JS_INNER_FAIL);

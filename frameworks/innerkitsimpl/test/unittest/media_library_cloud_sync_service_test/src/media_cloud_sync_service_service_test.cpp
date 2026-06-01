@@ -42,6 +42,7 @@
 #undef private
 #include "cloud_file_error.h"
 #include "lcd_aging_dao.h"
+#include "lcd_aging_manager.h"
 #include "lcd_aging_utils.h"
 #include "cloud_lake_info.h"
 #include "ithumbnail_helper.h"
@@ -1998,11 +1999,9 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullDelete_Test_001, 
 
 static int64_t GetExpectedNumberOfLcd()
 {
-    int64_t lcdThresholdNumber = -1;
-    int32_t ret = LcdAgingUtils().GetScaleThresholdOfLcd(lcdThresholdNumber);
-    EXPECT_EQ(ret, E_OK);
+    int64_t lcdThresholdNumber = LcdAgingUtils::GetScaleThresholdOfLcd();
     int64_t lcdCurrentNumber = -1;
-    ret = LcdAgingDao().GetCurrentNumberOfLcd(lcdCurrentNumber);
+    int32_t ret = LcdAgingDao().GetCurrentNumberOfLcd(lcdCurrentNumber);
     EXPECT_EQ(ret, E_OK);
     return lcdThresholdNumber - lcdCurrentNumber;
 }
@@ -2011,19 +2010,7 @@ static int64_t GetExpectedNumberOfLcd()
 HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetFullSyncDownloadInfo_test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Begin CloudMediaDownloadService_GetFullSyncDownloadInfo_test_001");
-    ValuesBucket values;
-    SetValuesBucketInPhotosTable(PhotoColumn::MEDIA_DATE_TAKEN, "1756111539577", values);
-    int64_t id = -1;
-    InsertTable(g_rdbStore, PhotoColumn::PHOTOS_TABLE, values, id);
-    ThumbRdbOpt opts;
-    ThumbnailData data;
-    opts.store = g_rdbStore;
-    opts.table = PhotoColumn::PHOTOS_TABLE;
-    data.id = std::to_string(id);
-    data.path = "/storage/cloud/files/Photo/1/CreateImageThumbnailTest_001.jpg";
-    data.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
-    bool result = IThumbnailHelper::DoCreateLcdAndThumbnail(opts, data);
-    EXPECT_EQ(result, true);
+    LcdAgingManager::GetInstance().SetIsActiveLcdAging(true);
 
     int64_t lcdThresholdNumber = GetExpectedNumberOfLcd();
     CloudMediaDownloadService service;
@@ -2032,7 +2019,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetFullSyncDownloa
     EXPECT_EQ(ret, E_OK);
     bool isValid = flagsInfo.find("DOWNLOAD_LCD") != flagsInfo.end();
     EXPECT_TRUE(isValid);
-    EXPECT_GE(flagsInfo["DOWNLOAD_LCD"], lcdThresholdNumber);
+    EXPECT_EQ(flagsInfo["DOWNLOAD_LCD"], lcdThresholdNumber);
     CloudMediaDownloadService::lcdNumberCache_ = 0;
     CloudMediaDownloadService::queryCount_ = 0;
     InitTestTables(g_rdbStore);
@@ -2050,7 +2037,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetFullSyncDownloa
     int64_t lcdThresholdNumber = GetExpectedNumberOfLcd();
     EXPECT_FALSE(flagsInfo.empty());
     EXPECT_TRUE(flagsInfo.find("DOWNLOAD_LCD") != flagsInfo.end());
-    EXPECT_GE(flagsInfo["DOWNLOAD_LCD"], lcdThresholdNumber);
+    EXPECT_EQ(flagsInfo["DOWNLOAD_LCD"], lcdThresholdNumber);
     CloudMediaDownloadService::lcdNumberCache_ = 0;
     CloudMediaDownloadService::queryCount_ = 0;
 }
@@ -2070,16 +2057,59 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetFullSyncDownloa
     CloudMediaDownloadService::queryCount_ = 0;
 }
 
+// Test: flagsInfo为空 && isActiveLcdAging == false，直接获取阈值
+// Branch: flagsInfo.empty() == true, isActiveLcdAging == false
+// Expected: flagsInfo被填充DOWNLOAD_LCD字段，lcdNumberCache_=0，返回E_OK
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetFullSyncDownloadInfo_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CloudMediaDownloadService_GetFullSyncDownloadInfo_test_005");
+    LcdAgingManager::GetInstance().SetIsActiveLcdAging(false);
+    std::map<std::string, int64_t> flagsInfo;
+    CloudMediaDownloadService service;
+    service.lcdNumberCache_ = 100;
+    int32_t ret = service.GetFullSyncDownloadInfo(flagsInfo);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(flagsInfo.find("DOWNLOAD_LCD") != flagsInfo.end());
+    EXPECT_EQ(flagsInfo["DOWNLOAD_LCD"], LcdAgingUtils::GetScaleThresholdOfLcd());
+    EXPECT_EQ(service.lcdNumberCache_, 0);
+    CloudMediaDownloadService::lcdNumberCache_ = 0;
+    CloudMediaDownloadService::queryCount_ = 0;
+}
+
+// Test: flagsInfo非空含DOWNLOAD_LCD && isActiveLcdAging == false
+// Branch: flagsInfo非空含DOWNLOAD_LCD, isActiveLcdAging == false
+// Expected: lcdNumberCache_=0，lcdNumber=阈值，返回E_OK
+HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetFullSyncDownloadInfo_test_007, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CloudMediaDownloadService_GetFullSyncDownloadInfo_test_007");
+    LcdAgingManager::GetInstance().SetIsActiveLcdAging(false);
+    std::map<std::string, int64_t> flagsInfo;
+    flagsInfo["DOWNLOAD_LCD"] = 50;
+    flagsInfo["OTHER_FLAG"] = 100;
+    CloudMediaDownloadService service;
+    service.lcdNumberCache_ = 200;
+    int32_t ret = service.GetFullSyncDownloadInfo(flagsInfo);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_TRUE(flagsInfo.find("DOWNLOAD_LCD") != flagsInfo.end());
+    EXPECT_TRUE(flagsInfo.find("OTHER_FLAG") != flagsInfo.end());
+    EXPECT_EQ(flagsInfo["DOWNLOAD_LCD"], LcdAgingUtils::GetScaleThresholdOfLcd());
+    EXPECT_EQ(flagsInfo["OTHER_FLAG"], 100);
+    EXPECT_EQ(service.lcdNumberCache_, 0);
+    CloudMediaDownloadService::lcdNumberCache_ = 0;
+    CloudMediaDownloadService::queryCount_ = 0;
+}
+
 // Test: Verify that first call to GetDownloadNumberOfLcd queries database and returns valid lcdNumber
 HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetDownloadNumberOfLcd_test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Begin CloudMediaDownloadService_GetDownloadNumberOfLcd_test_001");
+    LcdAgingManager::GetInstance().SetIsActiveLcdAging(true);
     CloudMediaDownloadService service;
     int64_t lcdNumber = -1;
     int32_t ret = service.GetDownloadNumberOfLcd(lcdNumber);
     EXPECT_EQ(ret, E_OK);
     int64_t lcdThresholdNumber = GetExpectedNumberOfLcd();
-    EXPECT_GE(lcdNumber, lcdThresholdNumber);
+    EXPECT_EQ(lcdNumber, lcdThresholdNumber);
     CloudMediaDownloadService::lcdNumberCache_ = 0;
     CloudMediaDownloadService::queryCount_ = 0;
 }
@@ -2094,7 +2124,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetDownloadNumberO
     EXPECT_EQ(ret, E_OK);
     
     int64_t lcdThresholdNumber = GetExpectedNumberOfLcd();
-    EXPECT_GE(lcdNumber, lcdThresholdNumber);
+    EXPECT_EQ(lcdNumber, lcdThresholdNumber);
     
     int64_t firstLcdNumber = lcdNumber;
     ret = service.GetDownloadNumberOfLcd(lcdNumber);
@@ -2114,7 +2144,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetDownloadNumberO
     EXPECT_EQ(ret, E_OK);
     
     int64_t lcdThresholdNumber = GetExpectedNumberOfLcd();
-    EXPECT_GE(lcdNumber, lcdThresholdNumber);
+    EXPECT_EQ(lcdNumber, lcdThresholdNumber);
     
     for (int i = 0; i < 9; i++) {
         ret = service.GetDownloadNumberOfLcd(lcdNumber);
@@ -2123,7 +2153,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetDownloadNumberO
 
     ret = service.GetDownloadNumberOfLcd(lcdNumber);
     EXPECT_EQ(ret, E_OK);
-    EXPECT_GE(lcdNumber, lcdThresholdNumber);
+    EXPECT_EQ(lcdNumber, lcdThresholdNumber);
     CloudMediaDownloadService::lcdNumberCache_ = 0;
     CloudMediaDownloadService::queryCount_ = 0;
 }
@@ -2170,9 +2200,9 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetDownloadNumberO
     }
     
     int64_t lcdThresholdNumber = GetExpectedNumberOfLcd();
-    EXPECT_GE(firstQueryValue, lcdThresholdNumber);
-    EXPECT_GE(secondQueryValue, lcdThresholdNumber);
-    EXPECT_GE(thirdQueryValue, lcdThresholdNumber);
+    EXPECT_EQ(firstQueryValue, lcdThresholdNumber);
+    EXPECT_EQ(secondQueryValue, lcdThresholdNumber);
+    EXPECT_EQ(thirdQueryValue, lcdThresholdNumber);
     CloudMediaDownloadService::lcdNumberCache_ = 0;
     CloudMediaDownloadService::queryCount_ = 0;
 }
@@ -2193,7 +2223,7 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_GetDownloadNumberO
     EXPECT_EQ(ret, E_OK);
     
     int64_t lcdThresholdNumber = GetExpectedNumberOfLcd();
-    EXPECT_GE(lcdNumber, lcdThresholdNumber);
+    EXPECT_EQ(lcdNumber, lcdThresholdNumber);
     CloudMediaDownloadService::lcdNumberCache_ = 0;
     CloudMediaDownloadService::queryCount_ = 0;
 }

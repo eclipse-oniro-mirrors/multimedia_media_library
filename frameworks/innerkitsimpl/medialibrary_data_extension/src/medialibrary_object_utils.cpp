@@ -36,6 +36,7 @@
 #include "photo_file_utils.h"
 #include "result_set_utils.h"
 #include "sandbox_helper.h"
+#include "scan_config_builder.h"
 #include "medialibrary_tracer.h"
 #include "picture_handle_service.h"
 #include "post_event_utils.h"
@@ -819,8 +820,14 @@ int32_t HandleRequestPicture(MediaLibraryCommand &cmd)
 
 int32_t HandlePhotoRequestPictureBuffer(MediaLibraryCommand &cmd)
 {
-    std::string fd = cmd.GetQuerySetParam("fd");
-    return PictureHandlerService::RequestBufferHandlerFd(fd);
+    int32_t fd = std::atoi(cmd.GetQuerySetParam("fd").c_str());
+    int32_t fileId = std::atoi(cmd.GetQuerySetParam(MediaColumn::MEDIA_ID).c_str());
+    return PictureHandlerService::RequestBufferHandlerFd(fd, fileId);
+}
+
+void MediaLibraryObjectUtils::ClearBufferFdMap(const int32_t &fileId)
+{
+    PictureHandlerService::ClearBufferFdMap(fileId);
 }
 
 static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeType &transcodeType)
@@ -896,6 +903,30 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
     return fd;
 }
 
+void MediaLibraryObjectUtils::ScanFileAsync(const ScanConfig &config)
+{
+    auto finalConfig = config;
+    
+    if (finalConfig.GetNeedGenerateThumbnail() && !finalConfig.GetCallback()) {
+        auto defaultCallback = make_shared<ScanFileCallback>();
+        if (defaultCallback == nullptr) {
+            MEDIA_ERR_LOG("Failed to create default scan callback");
+            return;
+        }
+        defaultCallback->SetOriginalPhotoPicture(config.GetOriginalPicture());
+        defaultCallback->SetCallback(config.GetUpdateDirtyCallback());
+        
+        finalConfig = ScanConfigBuilder(config)
+            .SetCallback(defaultCallback)
+            .Build();
+    }
+    
+    int32_t ret = MediaScannerManager::GetInstance()->ScanAsync(finalConfig);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ScanFileAsync failed with error: %{public}d", ret);
+    }
+}
+
 void MediaLibraryObjectUtils::ScanFileAsync(const string &path, const string &id, MediaLibraryApi api,
     bool isCameraShotMovingPhoto, std::shared_ptr<Media::Picture> resultPicture,
     std::shared_ptr<IMediaScannerCallback> callback)
@@ -913,10 +944,10 @@ void MediaLibraryObjectUtils::ScanFileAsync(const string &path, const string &id
         InvalidateThumbnail(id, tableName);
     }
 
-    shared_ptr<ScanFileCallback> scanFileCb = make_shared<ScanFileCallback>();
+    auto scanFileCb = make_shared<ScanFileCallback>();
     if (scanFileCb == nullptr) {
         MEDIA_ERR_LOG("Failed to create scan file callback object");
-        return ;
+        return;
     }
     scanFileCb->SetOriginalPhotoPicture(resultPicture);
     scanFileCb->SetCallback(callback);

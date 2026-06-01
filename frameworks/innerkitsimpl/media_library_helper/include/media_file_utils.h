@@ -126,6 +126,7 @@ public:
         const bool useDotCompatibleRule = false);
     EXPORT static int32_t CheckTitle(const std::string& title);
     EXPORT static int32_t CheckTitleCompatible(const std::string& title);
+    EXPORT static int32_t CheckTitleAndExtensionSize(const std::string &title, const std::string &extension);
     EXPORT static int32_t CheckFileDisplayName(const std::string &displayName);
     EXPORT static std::string GetFileAssetUri(const std::string &fileAssetData, const std::string &displayName,
         const int32_t &fileId);
@@ -217,6 +218,8 @@ public:
     EXPORT static int64_t GetTotalSize();
     EXPORT static int64_t GetFreeSize();
     EXPORT static void StatDirSize(const std::string& rootPath, size_t& totalSize);
+    EXPORT static void StatDirSize(const std::string& rootPath, size_t& totalSize, size_t& matchedSize,
+        const std::function<bool(const std::string&)> &fileNamePredicate);
     EXPORT static std::string GetMimeTypeFromDisplayName(const std::string &displayName);
     EXPORT static std::string DesensitizeUri(const std::string &fileUri);
     EXPORT static bool DeleteFileOrFolder(const std::string &path, bool isFile);

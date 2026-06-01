@@ -34,16 +34,18 @@ private:
     static void FinishRequestPicture(const int32_t &fileId);
     static int32_t ReadPicture(const int32_t &fd, const int32_t &fileId, std::shared_ptr<Media::Picture> &picture,
         bool &isHighQuality);
-    static std::shared_ptr<PixelMap> ReadPixelMap(MessageParcel &data);
-    static bool ReadAuxiliaryPicture(MessageParcel &data, std::unique_ptr<Media::Picture> &picture);
+    static std::shared_ptr<PixelMap> ReadPixelMap(MessageParcel &data, int32_t fileId);
+    static bool ReadAuxiliaryPicture(MessageParcel &data, std::unique_ptr<Media::Picture> &picture,
+        int32_t fileId);
     static bool ReadAuxiliaryPictureInfo(MessageParcel &data, AuxiliaryPictureInfo &auxiliaryPictureInfo);
     static bool ReadImageInfo(MessageParcel &data, ImageInfo &imageInfo);
     static bool ReadYuvDataInfo(MessageParcel &data, YUVDataInfo &yuvInfo);
-    static bool ReadSurfaceBuffer(MessageParcel &data, std::unique_ptr<PixelMap> &pixelMap);
-    static bool ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuffer> &surfaceBuffer);
+    static bool ReadSurfaceBuffer(MessageParcel &data, std::unique_ptr<PixelMap> &pixelMap, int32_t fileId);
+    static bool ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuffer> &surfaceBuffer, int32_t fileId);
     static bool ReadExifMetadata(MessageParcel &data, std::unique_ptr<Media::Picture> &picture);
-    static bool ReadMaintenanceData(MessageParcel &data, std::unique_ptr<Media::Picture> &picture);
-    static int32_t RequestBufferHandlerFd(const int32_t &fd);
+    static bool ReadMaintenanceData(MessageParcel &data, std::unique_ptr<Media::Picture> &picture,
+        int32_t fileId);
+    static int32_t RequestBufferHandlerFd(int32_t fd, int32_t fileId);
 };
 
 } // namespace Media

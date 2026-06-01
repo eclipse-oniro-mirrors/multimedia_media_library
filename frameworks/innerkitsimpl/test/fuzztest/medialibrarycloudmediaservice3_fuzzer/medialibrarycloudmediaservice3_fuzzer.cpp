@@ -85,17 +85,12 @@ static void CloudMediaAlbumServiceFuzzer()
     cloudMediaAlbumService->OnMdirtyRecords(albumDtoList, failSize);
     cloudMediaAlbumService->OnDeleteRecords(albumDtoList, failSize);
 
-    cloudMediaAlbumService->OnFetchRecords(albumDtoList, resp);
-
     albumDtoList.clear();
     PhotoAlbumDto record = FuzzPhotoAlbumDto();
     albumDtoList.emplace_back(record);
-    record.lPath = "";
+    record.lPath = "/Pictures/Screenshots";
     cloudMediaAlbumService->OnFetchRecords(albumDtoList, resp);
 
-    record.lPath = "/Pictures/Screenshots";
-    record.cloudId = "default-album-2";
-    cloudMediaAlbumService->OnFetchRecords(albumDtoList, resp);
     cloudMediaAlbumService->ConvertToSingleScreenshots(record, albumDtoList);
     vector<string> failedAlbumIds = { "default" };
     cloudMediaAlbumService->OnDeleteAlbums(failedAlbumIds);

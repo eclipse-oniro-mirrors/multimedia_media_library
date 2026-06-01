@@ -29,6 +29,7 @@
 #include "native_album_asset.h"
 #include "imedia_scanner_callback.h"
 #include "picture.h"
+#include "scan_config.h"
 #include "rdb_utils.h"
 #include "uri.h"
 #include "value_object.h"
@@ -58,6 +59,7 @@ public:
     EXPORT static void ScanFileAsync(const std::string &path, const std::string &id, MediaLibraryApi api,
         bool isCameraShotMovingPhoto = false, std::shared_ptr<Media::Picture> resultPicture = nullptr,
         std::shared_ptr<IMediaScannerCallback> callback = nullptr);
+    EXPORT static void ScanFileAsync(const ScanConfig &config);
     static void ScanFileSyncWithoutAlbumUpdate(const std::string &path, const std::string &id, MediaLibraryApi api,
         std::shared_ptr<Media::Picture> picture = nullptr);
     EXPORT static void ScanMovingPhotoVideoAsync(
@@ -91,6 +93,7 @@ public:
     static void InvalidateThumbnail(const string &id, const string &tableName = CONST_MEDIALIBRARY_TABLE,
         const string &path = "");
     static void TryUpdateAnalysisProp(const std::string str);
+    EXPORT static void ClearBufferFdMap(const int32_t &fileId);
 
 private:
     static int32_t DeleteEmptyDirsRecursively(int32_t dirId);

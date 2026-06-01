@@ -206,8 +206,10 @@ static constexpr int ADD_ASYNC_TASK_SUCCESS = 0;
 
 const std::vector<std::string> PRESET_ROOT_DIRS = {
     CAMERA_DIR_VALUES, VIDEO_DIR_VALUES, PIC_DIR_VALUES, AUDIO_DIR_VALUES,
-    PHOTO_BUCKET + "/", AUDIO_BUCKET + "/", BACKUP_DATA_DIR_VALUE, EDIT_DATA_DIR_VALUE + "/",
-    BACKUP_SINGLE_DATA_DIR_VALUE, CACHE_DIR_VALUE, CUSTOM_RESTORE_VALUES
+    PHOTO_BUCKET + SLASH_STR, AUDIO_BUCKET + SLASH_STR, BACKUP_DATA_DIR_VALUE, EDIT_DATA_DIR_VALUE + SLASH_STR,
+    BACKUP_SINGLE_DATA_DIR_VALUE, CACHE_DIR_VALUE, CUSTOM_RESTORE_VALUES, CAMERA_CACHE_DIR_VALUES,
+    CAMERA_CACHE_DIR_VALUES + CAMERA_CACHE_ENHANCE_DIR_VALUES + SLASH_STR,
+    CAMERA_CACHE_DIR_VALUES + CAMERA_CACHE_TEMP_DIR_VALUES + SLASH_STR,
 };
 
 const std::vector<std::string> E_POLICY_DIRS = {
@@ -2789,7 +2791,7 @@ int32_t ScanFileCallback::OnScanFinished(const int32_t status, const string &uri
     return E_OK;
 }
 
-void ScanFileCallback::SetCallback(std::shared_ptr<IMediaScannerCallback> &callback)
+void ScanFileCallback::SetCallback(const std::shared_ptr<IMediaScannerCallback> &callback)
 {
     this->callback_ = callback;
 }

@@ -126,5 +126,15 @@ HWTEST_F(MediaShareDirtyDataCleanerTest, media_share_dirty_data_cleaner_test_003
     MediaShareDirtyDataCleaner::CheckDirtyData();
     MEDIA_INFO_LOG("media_share_dirty_data_cleaner_test_003 End");
 }
+
+HWTEST_F(MediaShareDirtyDataCleanerTest, media_share_dirty_data_cleaner_test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("media_share_dirty_data_cleaner_test_004 Start");
+    MediaShareDirtyDataCleaner::SetSharingState(true);
+    EXPECT_TRUE(MediaShareDirtyDataCleaner::GetSharingState());
+    MediaShareDirtyDataCleaner::SetSharingState(false);
+    EXPECT_FALSE(MediaShareDirtyDataCleaner::GetSharingState());
+    MEDIA_INFO_LOG("media_share_dirty_data_cleaner_test_004 End");
+}
 }
 }

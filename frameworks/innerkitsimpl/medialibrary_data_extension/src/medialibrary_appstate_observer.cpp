@@ -70,6 +70,7 @@ void MedialibraryAppStateObserverManager::SubscribeAppState()
 
 void MedialibraryAppStateObserverManager::UnSubscribeAppState()
 {
+    std::lock_guard<std::mutex> lock(mutex_);
     CHECK_AND_RETURN_LOG(appStateObserver_ != nullptr, "appStateObserver_ is nullptr");
 
     sptr<IAppMgr> appManager = GetAppManagerInstance();

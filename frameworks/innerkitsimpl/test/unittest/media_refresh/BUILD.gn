@@ -29,6 +29,7 @@ ohos_unittest("media_refresh_test") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/core",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/base",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/include/analysis/strategies",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
   ]
 
   sources = [
@@ -108,7 +109,6 @@ ohos_unittest("media_refresh_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
-    "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]

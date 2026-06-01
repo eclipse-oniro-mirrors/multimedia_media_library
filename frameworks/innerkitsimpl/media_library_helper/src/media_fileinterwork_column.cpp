@@ -40,4 +40,8 @@ const std::string MediaFileInterworkColumn::THUMBS_DIR = "/.thumbs";
 const std::string MediaFileInterworkColumn::RECENT_DIR = "/.Recent";
 const std::string MediaFileInterworkColumn::BACKUP_DIR = "/.backup";
 const std::string MediaFileInterworkColumn::TRASH_DIR_DIR = "/.Trash";
+const std::string MediaFileInterworkColumn::VM_DOCS_DIR = "/.VMDocs";
+const std::string MediaFileInterworkColumn::OHPM_DIR = "/.ohpm";
+const std::string MediaFileInterworkColumn::PCE_ENGINE_DIR = "/PCEngine";
+const std::string MediaFileInterworkColumn::APPDATA_DIR = "/appdata";
 } // namespace OHOS::Media

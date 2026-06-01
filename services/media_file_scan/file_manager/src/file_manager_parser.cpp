@@ -92,11 +92,14 @@ void FileManagerParser::SetCloudPath()
         MEDIA_ERR_LOG("File [%{public}s] has exists cloudPath", fileInfo_.cloudPath.c_str());
         return;
     }
-    std::string extension = MediaFileUtils::GetExtensionFromPath(fileInfo_.displayName);
     std::string cloudPath;
-    int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(fileInfo_.fileType, nullptr);
-    int32_t errCode =
-        MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, fileInfo_.fileType, extension, cloudPath);
+    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> tryCreatePath = [&]()->int {
+        int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(fileInfo_.fileType, trans);
+        return MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, fileInfo_.fileType,
+            MediaFileUtils::GetExtensionFromPath(fileInfo_.displayName), cloudPath);
+    };
+    int32_t errCode = trans->RetryTrans(tryCreatePath);
     if (errCode != E_OK) {
         MEDIA_ERR_LOG("FileParser: File Manager CreateAssetPathById failed, errCode: %{public}d, fileInfo: %{public}s",
             errCode, ToString().c_str());
@@ -114,9 +117,13 @@ FileUpdateType FileManagerParser::GetTrashAssetUpdateType()
     bool isRecover = notifyInfo_.beforePath.find(FILE_MANAGER_TRASH_PATH) == 0 &&
         notifyInfo_.afterPath.find(FILE_MANAGER_TRASH_PATH) != 0;
     if (isTrash && rowDataBefore.IsExist()) {
+        SetByPhotosRowData(rowDataBefore);
         updateType_ = FileUpdateType::TRASH;
-    } else if (isRecover) {
-        updateType_ = rowDataAfter.IsExist() ? FileUpdateType::RECOVER : FileUpdateType::INSERT;
+    } else if (isRecover && rowDataAfter.IsExist()) {
+        SetByPhotosRowData(rowDataAfter);
+        updateType_ = FileUpdateType::RECOVER;
+    } else if (isRecover && !rowDataAfter.IsExist()) {
+        updateType_ = FileUpdateType::INSERT;
     } else {
         updateType_ = FileUpdateType::NO_CHANGE;
     }

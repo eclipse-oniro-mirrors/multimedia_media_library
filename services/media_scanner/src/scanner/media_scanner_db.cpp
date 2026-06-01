@@ -297,20 +297,20 @@ static void SetImageVideoValuesFromMetaDataApi10(const Metadata &metadata, Value
     if (metadata.GetLocalAssetSize() != 0) {
         values.PutLong(PhotoColumn::LOCAL_ASSET_SIZE, metadata.GetLocalAssetSize());
     }
+    values.PutInt(PhotoColumn::PHOTO_NEED_THUMBNAIL, metadata.GetNeedThumbnail());
     MEDIA_INFO_LOG("MediaScannerDb height: %{public}d, width: %{public}d.",
         metadata.GetFileHeight(), metadata.GetFileWidth());
 }
 
 static void SetValuesFromMetaDataApi10(const Metadata &metadata, ValuesBucket &values, bool isInsert,
-    bool skipPhoto = true, bool needUpdateAssetName = true)
+    bool skipPhoto = true)
 {
-    MEDIA_INFO_LOG("isInsert: %{public}d, skipPhoto: %{public}d, needUpdateAssetName: %{public}d.",
-        isInsert, skipPhoto, needUpdateAssetName);
+    MEDIA_INFO_LOG("isInsert: %{public}d, skipPhoto: %{public}d.", isInsert, skipPhoto);
     MediaType mediaType = metadata.GetFileMediaType();
 
     values.PutString(MediaColumn::MEDIA_FILE_PATH, metadata.GetFilePath());
     values.PutInt(MediaColumn::MEDIA_TYPE, mediaType);
-    if (skipPhoto && needUpdateAssetName) {
+    if (skipPhoto) {
         values.PutString(MediaColumn::MEDIA_NAME, metadata.GetFileName());
         values.PutString(MediaColumn::MEDIA_TITLE, metadata.GetFileTitle());
     }
@@ -418,7 +418,7 @@ string MediaScannerDb::InsertMetadata(const Metadata &metadata, string &tableNam
 
     tableName = CONST_MEDIALIBRARY_TABLE;
     if (api == MediaLibraryApi::API_10) {
-        SetValuesFromMetaDataApi10(metadata, values, true, true, true);
+        SetValuesFromMetaDataApi10(metadata, values, true, true);
         GetTableNameByPath(mediaType, tableName);
     } else {
 #ifdef MEDIALIBRARY_COMPATIBILITY
@@ -467,7 +467,7 @@ static inline void GetUriStringInUpdate(MediaType mediaType, MediaLibraryApi api
  * @return string The mediatypeUri corresponding to the given metadata
  */
 string MediaScannerDb::UpdateMetadata(const Metadata &metadata, string &tableName, MediaLibraryApi api, bool skipPhoto,
-    shared_ptr<AccurateRefresh::AssetAccurateRefresh> refresh, bool needUpdateAssetName)
+    shared_ptr<AccurateRefresh::AssetAccurateRefresh> refresh)
 {
     int32_t updateCount(0);
     ValuesBucket values;
@@ -479,7 +479,7 @@ string MediaScannerDb::UpdateMetadata(const Metadata &metadata, string &tableNam
 
     tableName = CONST_MEDIALIBRARY_TABLE;
     if (api == MediaLibraryApi::API_10) {
-        SetValuesFromMetaDataApi10(metadata, values, false, skipPhoto, needUpdateAssetName);
+        SetValuesFromMetaDataApi10(metadata, values, false, skipPhoto);
         GetTableNameByPath(mediaType, tableName);
     } else {
 #ifdef MEDIALIBRARY_COMPATIBILITY
@@ -581,6 +581,7 @@ static void GetQueryParamsByPath(const string &path, MediaLibraryApi api, vector
                 PhotoColumn::PHOTO_DIRTY, PhotoColumn::PHOTO_QUALITY, MediaColumn::MEDIA_DATE_TAKEN,
                 PhotoColumn::PHOTO_BURST_COVER_LEVEL, PhotoColumn::PHOTO_OWNER_ALBUM_ID,
                 PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_VIDEO_MODE,
+                PhotoColumn::PHOTO_NEED_THUMBNAIL,
             };
         } else if (oprnObject == OperationObject::FILESYSTEM_AUDIO) {
             columns = {

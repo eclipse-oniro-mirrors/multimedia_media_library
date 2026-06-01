@@ -142,6 +142,9 @@ const std::string PhotoColumn::PHOTO_DATE_ADDED_YEAR = "date_added_year";
 const std::string PhotoColumn::PHOTO_DATE_ADDED_MONTH = "date_added_month";
 const std::string PhotoColumn::PHOTO_DATE_ADDED_DAY = "date_added_day";
 
+const std::string PhotoColumn::SUPPORTED_DEFERRED_EFFECTS = "supported_defferred_effects";
+const std::string PhotoColumn::DEFERRED_EFFECT_STATUS = "deferred_effect_status";
+
 const std::string PhotoColumn::PHOTO_FILE_INODE = "inode";
 const std::string PhotoColumn::PHOTO_STORAGE_PATH = "storage_path";
 
@@ -230,6 +233,8 @@ const std::string PhotoColumn::UNIQUE_ID = "unique_id";
 const std::string PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS = "livephoto_4d_status";
 const std::string PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR = "livephoto_4d_latest_pair";
 const std::string PhotoColumn::LOCAL_ASSET_SIZE = "local_asset_size";
+const std::string PhotoColumn::PHOTO_NEED_THUMBNAIL = "need_thumbnail";
+const std::string PhotoColumn::ATTACHMENT_SIZE = "attachment_size";
 
 const std::string PhotoColumn::LCD_ASPECT_RATIO = "lcd_aspect_ratio";
 
@@ -262,7 +267,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::PHOTO_DATE_ADDED_YEAR, PhotoColumn::PHOTO_DATE_ADDED_MONTH, PhotoColumn::PHOTO_DATE_ADDED_DAY,
     PhotoColumn::UNIQUE_ID, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::LOCAL_ASSET_SIZE,
-    PhotoColumn::PHOTO_FILE_HIDDEN,
+    PhotoColumn::PHOTO_FILE_HIDDEN, PhotoColumn::PHOTO_NEED_THUMBNAIL, PhotoColumn::ATTACHMENT_SIZE,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)

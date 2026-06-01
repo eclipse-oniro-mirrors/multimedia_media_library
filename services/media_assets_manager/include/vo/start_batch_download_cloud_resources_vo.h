@@ -26,7 +26,6 @@ namespace OHOS::Media {
 class StartBatchDownloadCloudResourcesReqBody : public IPC::IMediaParcelable {
 public:
     std::vector<std::string> uris{};
-    int32_t taskSeq = 0;
 
 public:  // functions of Parcelable.
     bool Unmarshalling(MessageParcel &parcel) override;

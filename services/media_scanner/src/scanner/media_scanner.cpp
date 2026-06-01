@@ -101,6 +101,11 @@ void MediaScannerObj::SetIsSkipAlbumUpdate(bool isSkipAlbumUpdate)
     isSkipAlbumUpdate_ = isSkipAlbumUpdate;
 }
 
+void MediaScannerObj::SetCameraShotMovingPhoto(bool isCameraShotMovingPhoto)
+{
+    isCameraShotMovingPhoto_ = isCameraShotMovingPhoto;
+}
+
 int32_t MediaScannerObj::ScanFile()
 {
     MEDIA_DEBUG_LOG("scan file %{private}s", path_.c_str());
@@ -338,7 +343,7 @@ int32_t MediaScannerObj::Commit()
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
     auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(AccurateRefresh::SCAN_FILE_BUSSINESS_NAME);
     if (data_->GetFileId() != FILE_ID_DEFAULT) {
-        uri_ = mediaScannerDb_->UpdateMetadata(*data_, tableName, api_, true, assetRefresh, needUpdateAssetName_);
+        uri_ = mediaScannerDb_->UpdateMetadata(*data_, tableName, api_, true, assetRefresh);
         if (!isSkipAlbumUpdate_) {
             assetRefresh->RefreshAlbum(static_cast<NotifyAlbumType>(NotifyAlbumType::SYS_ALBUM |
                 NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
@@ -578,14 +583,10 @@ int32_t MediaScannerObj::BuildData(const struct stat &statInfo)
         }
         return E_SCANNED;
     }
-    bool needUpdateAssetName = false;
     if (data_->GetFileId() == FILE_ID_DEFAULT) {
         data_->SetFileName(ScannerUtils::GetFileNameFromUri(path_));
-        needUpdateAssetName = true;
     }
     data_->SetFileTitle(ScannerUtils::GetFileTitle(data_->GetFileName()));
-    // title and display_name are obtained from db, do not to be updated again.
-    needUpdateAssetName_ = needUpdateAssetName;
 
     // statinfo
     data_->SetFileSize(statInfo.st_size);
@@ -679,6 +680,7 @@ int32_t MediaScannerObj::ScanFileInternal()
     }
 
     bool isShareScene = data_->GetForAdd() && data_->GetOwnerPackage() == "com.huawei.hmos.instantshare";
+    int32_t needThumbRet = HandleNeedThumbnail();
     err = Commit();
     if (err != E_OK) {
         MEDIA_ERR_LOG("failed to commit err %{public}d", err);
@@ -688,6 +690,9 @@ int32_t MediaScannerObj::ScanFileInternal()
         return err;
     }
 
+    if (needThumbRet == E_NO_THUMB) {
+        return E_NO_THUMB;
+    }
     return isShareScene ? E_NO_THUMB : E_OK;
 }
 
@@ -775,7 +780,7 @@ int32_t MediaScannerObj::InsertOrUpdateAlbumInfo(const string &albumPath, int32_
     int32_t albumId = UNKNOWN_ID;
     bool update = false;
 
-    if (stat(albumPath.c_str(), &statInfo)) {
+    if (stat(albumPath.c_str(), &statInfo) == -1) {
         MEDIA_ERR_LOG("stat dir error %{public}d", errno);
         VariantMap map = {{KEY_ERR_FILE, __FILE__}, {KEY_ERR_LINE, __LINE__}, {KEY_ERR_CODE, -errno},
             {KEY_OPT_FILE, albumPath}, {KEY_OPT_TYPE, OptType::SCAN}};
@@ -959,6 +964,7 @@ int32_t MediaScannerObj::ScanDirInternal()
      * 1. may query albums in batch for the big data case
      * 2. postpone this operation might avoid some conflicts
      */
+    CHECK_AND_RETURN_RET_LOG(mediaScannerDb_!= nullptr, E_ERR, "mediaScannerDb_ is nullptr");
     int32_t err = mediaScannerDb_->ReadAlbums(dir_, albumMap_);
     if (err != E_OK) {
         MEDIA_ERR_LOG("read albums err %{public}d", err);
@@ -1063,6 +1069,20 @@ int32_t MediaScannerObj::SetError()
 {
     int32_t ret = mediaScannerDb_->RecordError(errorPath_);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "record err fail %{public}d", ret);
+    return E_OK;
+}
+
+int32_t MediaScannerObj::HandleNeedThumbnail()
+{
+    if (data_ == nullptr) {
+        MEDIA_ERR_LOG("data_ is nullptr in HandleNeedThumbnail");
+        return E_OK;
+    }
+    int32_t needThumbnail = data_->GetNeedThumbnail();
+    if (needThumbnail == 0) {
+        data_->SetNeedThumbnail(1);
+        return E_NO_THUMB;
+    }
     return E_OK;
 }
 } // namespace Media

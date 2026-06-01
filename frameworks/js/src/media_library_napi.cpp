@@ -29,6 +29,8 @@
 #include "active_analysis_napi_callback.h"
 #include "album_order_napi.h"
 #include "confirm_callback.h"
+#include "deep_optimize_space_napi_callback.h"
+#include "deep_optimize_space_vo.h"
 #include "default_album_name_callback.h"
 #include "directory_ex.h"
 #include "locale_config.h"
@@ -179,6 +181,10 @@ const std::unordered_set<std::string> FILE_MANAGER_EXCLUDED_DIR_NAMES = {
     ".Recent",
     ".backup",
     ".Trash",
+    ".VMDocs",
+    ".ohpm",
+    "PCEngine",
+    "appdata",
 };
 
 enum class PhotoPermissionState : int32_t {
@@ -386,6 +392,7 @@ thread_local napi_ref MediaLibraryNapi::sRiskStatusEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sAppLinkStateRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sLivePhoto4dStatusEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sAvailabilityStatusEnumRef_ = nullptr;
+thread_local napi_ref MediaLibraryNapi::sDeepOptimizeStateRef_ = nullptr;
 
 constexpr int32_t DEFAULT_REFCOUNT = 1;
 constexpr int32_t DEFAULT_ALBUM_COUNT = 1;
@@ -502,7 +509,7 @@ napi_value MediaLibraryNapi::UserFileMgrInit(napi_env env, napi_value exports)
         DECLARE_NAPI_PROPERTY("PhotoRiskStatus", CreatePhotoRiskStatusEnum(env)),
         DECLARE_NAPI_PROPERTY("AppLinkState", CreateAppLinkStateEnum(env)),
         DECLARE_NAPI_PROPERTY("LivePhoto4dStatus", CreateLivePhoto4dStatusEnum(env)),
-        DECLARE_NAPI_PROPERTY("AvailabilityStatus", CreateAvailabilityStatusEnum(env)),
+        DECLARE_NAPI_PROPERTY("DeepOptimizeState", CreateDeepOptimizeStateEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
@@ -561,6 +568,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("setForceHideSensitiveType", PhotoAccessHelperSetForceHideSensitiveType),
             DECLARE_NAPI_FUNCTION("getAnalysisData", PhotoAccessHelperGetAnalysisData),
             DECLARE_NAPI_FUNCTION("createAssetsForAppWithAlbum", CreateAssetsForAppWithAlbum),
+            DECLARE_NAPI_FUNCTION("createAssetsWithAlbum", CreateAssetsWithAlbum),
             DECLARE_NAPI_FUNCTION("batchGetPhotoAssetParams", PhotoAccessHelperGetAssetMemberBatch),
             DECLARE_NAPI_FUNCTION("startAssetAnalysis", PhotoAccessStartAssetAnalysis),
             DECLARE_NAPI_FUNCTION("startAssetAnalysisAsync", PhotoAccessStartActiveAnalysis),
@@ -596,6 +604,8 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("getAssetCompatibleUris", GetAssetCompatibleUris),
             DECLARE_NAPI_FUNCTION("moveAssetsToDir", MoveAssetsToDir),
             DECLARE_NAPI_FUNCTION("moveAssetsByPath", MoveAssetsByPath),
+            DECLARE_NAPI_FUNCTION("startDeepOptimizeSpace", PhotoAccessStartDeepOptimizeSpace),
+            DECLARE_NAPI_FUNCTION("stopDeepOptimizeSpace", PhotoAccessStopDeepOptimizeSpace),
         }
     };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
@@ -657,6 +667,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
         DECLARE_NAPI_PROPERTY("HdrMode", CreateHdrModeEnum(env)),
         DECLARE_NAPI_PROPERTY("VideoMode", CreateVideoModeEnum(env)),
         DECLARE_NAPI_PROPERTY("DynamicRangeType", CreateDynamicRangeTypeEnum(env)),
+        DECLARE_NAPI_PROPERTY("AvailabilityStatus", CreateAvailabilityStatusEnum(env)),
     };
     MediaLibraryNapiUtils::NapiAddStaticProps(env, exports, staticProps);
     return exports;
@@ -2239,7 +2250,11 @@ static void JSCreateUriArrayInCallback(napi_env env, MediaLibraryAsyncContext *c
         int count = 0;
         for (const auto &uri : context->uriArray) {
             napi_value uriObject = nullptr;
-            status = napi_create_string_utf8(env, uri.c_str(), NAPI_AUTO_LENGTH, &uriObject);
+            if (uri.empty()) {
+                napi_get_null(env, &uriObject);
+            } else {
+                status = napi_create_string_utf8(env, uri.c_str(), NAPI_AUTO_LENGTH, &uriObject);
+            }
             if (status != napi_ok || uriObject == nullptr) {
                 NAPI_ERR_LOG("Failed to get file asset uri array napi object");
                 napi_get_undefined(env, &jsContext->data);
@@ -5588,7 +5603,7 @@ static Ability *CreateAsyncCallbackInfo(napi_env env)
         NAPI_ERR_LOG("get_named_property=%{public}d e:%{public}s", ret, errorInfo->error_message);
     }
     Ability *ability = nullptr;
-    ret = napi_get_value_external(env, abilityObj, (void **)&ability);
+    ret = napi_get_value_external(env, abilityObj, reinterpret_cast<void**>(&ability));
     if (ret != napi_ok) {
         napi_get_last_error_info(env, &errorInfo);
         NAPI_ERR_LOG("get_value_external=%{public}d e:%{public}s", ret, errorInfo->error_message);
@@ -6480,6 +6495,49 @@ static napi_value ParseArgsCreatePhotoAssetForAppWithAlbum(napi_env env, napi_ca
 
     CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamCallback(env, context)
         == napi_ok, "Failed to get callback");
+    return result;
+}
+
+static napi_value ParseArgsCreatePhotoAssetWithAlbum(napi_env env, napi_callback_info info,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    constexpr size_t minArgs = ARGS_TWO;
+    constexpr size_t maxArgs = ARGS_THREE;
+    NAPI_ASSERT(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs) ==
+        napi_ok, "Failed to get object info");
+    vector<napi_value> napiValues;
+    BundleInfo bundleInfo;
+    if (context->argc == ARGS_THREE) {
+        napi_valuetype valueType = napi_undefined;
+        napi_typeof(env, context->argv[ARGS_TWO], &valueType);
+        if (valueType == napi_string) {
+            string albumUri;
+            CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[ARGS_TWO],
+                albumUri) == napi_ok, "Failed to get albumUri");
+            context->isContainsAlbumUri = true;
+            MediaFileUri fileUri = MediaFileUri(albumUri);
+            bundleInfo.ownerAlbumId = fileUri.GetUriType() == API10_PHOTOALBUM_URI ?
+                MediaFileUtils::GetIdFromUri(albumUri) : "";
+        }
+    }
+
+    napi_value result = nullptr;
+    NAPI_CALL(env, napi_get_boolean(env, true, &result));
+    CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetNapiValueArray(env, context->argv[ARGS_ZERO], napiValues));
+    if (napiValues.empty() || napiValues.size() > MAX_CREATE_ASSET_LIMIT) {
+        NapiError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
+            "CreationSettings array is invalid");
+        return nullptr;
+    }
+
+    for (const auto& napiValue : napiValues) {
+        CHECK_COND_WITH_MESSAGE(env, ParseCreateConfig(env, napiValue, bundleInfo, *context,
+            false) == napi_ok, "Parse asset create config failed");
+    }
+    bool isRealTimeThumb = false;
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::GetParamBool(env, context->argv[ARGS_ONE],
+        isRealTimeThumb) == napi_ok, "Failed to get isRealTimeThumb");
+    context->isRealTimeThumb = isRealTimeThumb;
     return result;
 }
 
@@ -9295,6 +9353,10 @@ napi_value MediaLibraryNapi::CreateAlbumSubTypeEnum(napi_env env)
         JS_INNER_FAIL);
     CHECK_ARGS(env, AddIntegerNamedProperty(env, result, "SOURCE_GENERIC", PhotoAlbumSubType::SOURCE_GENERIC),
         JS_INNER_FAIL);
+    CHECK_ARGS(env,
+        AddIntegerNamedProperty(
+            env, result, "SOURCE_GENERIC_FROM_FILE_MANAGER", PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER),
+        JS_INNER_FAIL);
     for (size_t i = 0; i < systemAlbumSubType.size(); i++) {
         CHECK_ARGS(env, AddIntegerNamedProperty(env, result, systemAlbumSubType[i],
             PhotoAlbumSubType::SYSTEM_START + i), JS_INNER_FAIL);
@@ -10740,6 +10802,11 @@ napi_value MediaLibraryNapi::CreateAppLinkStateEnum(napi_env env)
     return CreateNumberEnumProperty(env, appLinkStateEnum, sAppLinkStateRef_);
 }
 
+napi_value MediaLibraryNapi::CreateDeepOptimizeStateEnum(napi_env env)
+{
+    return CreateNumberEnumProperty(env, deepOptimizeStateEnum, sDeepOptimizeStateRef_);
+}
+
 static bool CheckTitleCompatible(MediaLibraryAsyncContext* context)
 {
     if (!context->isCreateByComponent) {
@@ -11187,7 +11254,9 @@ static bool CheckAlbumUri(napi_env env, OHOS::DataShare::DataShareValuesBucket &
     string queryUri = CONST_PAH_QUERY_PHOTO_ALBUM;
     Uri uri(queryUri);
     DataSharePredicates predicates;
-    vector selectionArgs = { to_string(PhotoAlbumSubType::USER_GENERIC), to_string(PhotoAlbumSubType::SOURCE_GENERIC) };
+    vector selectionArgs = {to_string(PhotoAlbumSubType::USER_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)};
     predicates.In(PhotoAlbumColumns::ALBUM_SUBTYPE, selectionArgs);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, ownerAlbumId);
     int errCode = 0;
@@ -11239,6 +11308,34 @@ static int32_t CallPhotoAccessCreateAssetForApp(MediaLibraryAsyncContext* contex
     reqBody.ownerAlbumId = ownerAlbumId;
 
     CreateAssetForAppRespBody respBody;
+    int32_t errCode = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(context->businessCode, reqBody, respBody);
+    if (errCode != 0) {
+        NAPI_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
+        return errCode;
+    }
+    outUri = respBody.outUri;
+    return respBody.fileId;
+}
+
+static int32_t CallPhotoAccessCreateAssetsWithAlbum(MediaLibraryAsyncContext* context,
+    const DataShareValuesBucket &valuesBucket, std::string &outUri)
+{
+    bool isValid = false;
+    CreateAssetsWithAlbumReqBody reqBody;
+    reqBody.mediaType = valuesBucket.Get(CONST_MEDIA_DATA_DB_MEDIA_TYPE, isValid);
+
+    string extension = valuesBucket.Get(CONST_ASSET_EXTENTION, isValid);
+    string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, isValid);
+    string ownerAlbumId = valuesBucket.Get(PhotoColumn::PHOTO_OWNER_ALBUM_ID, isValid);
+    bool isRealTimeThumb = context->isRealTimeThumb;
+    reqBody.title = title;
+    reqBody.extension = extension;
+    reqBody.isRealTimeThumb = isRealTimeThumb;
+    if (context->isContainsAlbumUri) {
+        reqBody.ownerAlbumId = ownerAlbumId;
+    }
+
+    CreateAssetsWithAlbumRespBody respBody;
     int32_t errCode = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(context->businessCode, reqBody, respBody);
     if (errCode != 0) {
         NAPI_ERR_LOG("after IPC::UserDefineIPCClient().Call, errCode: %{public}d.", errCode);
@@ -11802,6 +11899,69 @@ napi_value MediaLibraryNapi::CreateAssetsForAppWithAlbum(napi_env env, napi_call
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "CreateAssetsForAppWithAlbum",
         PhotoAccessAgentCreateAssetsExecute, JSCreateAssetCompleteCallback);
+}
+
+static void PhotoAccessCreateAssetsWithAlbumExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessCreateAssetsWithAlbumExecute");
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    string uri;
+    GetCreateUri(context, uri);
+    Uri createFileUri(uri);
+    CHECK_IF_EQUAL(!context->valuesBucketArray.empty(), 
+        "valuesBucketArray is empty, no assets to create");
+    if (context->isContainsAlbumUri) {
+        bool isValid = CheckAlbumUri(env, context->valuesBucketArray[0], context);
+        if (!isValid) {
+            context->isContainsAlbumUri = false;
+        }
+    }
+    for (const auto& valuesBucket : context->valuesBucketArray) {
+        bool inValid = false;
+        string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, inValid);
+        string outUri;
+        int index = -EINVAL;
+        if (context->businessCode != 0) {
+            index = CallPhotoAccessCreateAssetsWithAlbum(context, valuesBucket, outUri);
+        }
+        if (index > 0) {
+            context->uriArray.push_back(move(outUri));
+            continue;
+        }
+        if (index == E_PERMISSION_DENIED || index == -E_CHECK_SYSTEMAPP_FAIL) {
+            context->SaveError(index);
+            NAPI_ERR_LOG("PERMISSION_DENIED, index: %{public}d.", index);
+            return;
+        }
+        context->uriArray.push_back("");
+        NAPI_ERR_LOG("InsertExt fail, index: %{public}d title: %{public}s.", index, title.c_str());
+    }
+}
+
+napi_value MediaLibraryNapi::CreateAssetsWithAlbum(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CreateAssetsWithAlbum");
+
+    NAPI_INFO_LOG("enter");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM);
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+    asyncContext->needSystemApp = true;
+    asyncContext->isCreateByAgent = true;
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    NAPI_ASSERT(env, ParseArgsCreatePhotoAssetWithAlbum(env, info, asyncContext), "Failed to parse js args");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext,
+        "CreateAssetsWithAlbum", PhotoAccessCreateAssetsWithAlbumExecute,
+        JSCreateAssetCompleteCallback);
 }
 
 bool MediaLibraryNapi::isSucceedSetting(napi_env env, napi_value &members, napi_value jsResult, std::string &inputKey,
@@ -16119,11 +16279,22 @@ static napi_value ParseArgsGetAssetCompatibleUris(napi_env env, napi_callback_in
     }
 
     if (context->argc >= ARGS_THREE) {
-        CHECK_ARGS(env, MediaLibraryNapiUtils::GetInt32(env, context->argv[ARGS_THREE],
-            context->compatibleFlags), JS_E_PARAM_INVALID);
-        constexpr int32_t VALID_FLAGS_MASK = 0x3;
-        CHECK_COND_WITH_ERR_MESSAGE(env, (context->compatibleFlags & ~VALID_FLAGS_MASK) == 0,
-            JS_E_PARAM_INVALID, "invalid compatibleFlags");
+        napi_valuetype valueType = napi_undefined;
+        napi_typeof(env, context->argv[ARGS_TWO], &valueType);
+        if (valueType == napi_number) {
+            CHECK_ARGS(env, MediaLibraryNapiUtils::GetInt32(env, context->argv[ARGS_TWO],
+                context->compatibleFlags), JS_E_PARAM_INVALID);
+            constexpr uint32_t VALID_FLAGS_MASK = 0x3;
+            uint32_t flags = static_cast<uint32_t>(context->compatibleFlags);
+            CHECK_COND_WITH_ERR_MESSAGE(env, (flags & ~VALID_FLAGS_MASK) == 0,
+                JS_E_PARAM_INVALID, "invalid compatibleFlags");
+        } else if (valueType == napi_undefined) {
+            context->compatibleFlags = THIRD_ENUM;
+        } else {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "invalid compatibleFlags");
+        }
+    } else {
+        context->compatibleFlags = THIRD_ENUM;
     }
 
     napi_value result = nullptr;
@@ -16168,7 +16339,7 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
         }
         std::string ext = item.uri.substr(atDot + 1);
         bool isHeifFile = (ext == "heif" || ext == "heic");
-        if (context->compatibleFlags == 0 || context->compatibleFlags == THIRD_ENUM) {
+        if (context->compatibleFlags == THIRD_ENUM) {
             CompatibleInfo compatibleinfo;
             compatibleinfo.bundleName = context->bundleName;
             compatibleinfo.highResolution = context->supportedHighResolution;
@@ -16200,6 +16371,10 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
 static vector<string> CheckTranscodeUri(MediaLibraryAsyncContext *context)
 {
     vector<string> result;
+    uint32_t flags = static_cast<uint32_t>(context->compatibleFlags);
+    if (flags == 0) {
+        return result;
+    }
     bool checkHighPixel = (context->compatibleFlags & 0x1) != 0;
     bool checkHeif = (context->compatibleFlags & 0x2) != 0;
     if (context->preferredCompatibleMode ==
@@ -16216,10 +16391,14 @@ static vector<string> CheckTranscodeUri(MediaLibraryAsyncContext *context)
             }
             std::string ext = item.uri.substr(atDot + 1);
             bool isHeifFile = (ext == "heif" || ext == "heic");
-            if (!isHighPixel && !isHeifFile) {
+            if (checkHighPixel && isHighPixel) {
+                result.push_back(item.uri);
                 continue;
             }
-            result.push_back(item.uri);
+            if (checkHeif && isHeifFile) {
+                result.push_back(item.uri);
+                continue;
+            }
         }
         return result;
     }
@@ -16712,6 +16891,7 @@ static void MoveAssetsToDirExecute(napi_env env, void *data)
     reqBody.assets = context->uriArray;
     reqBody.targetDir = context->targetDir;
     reqBody.requestId = context->requestId;
+    reqBody.mode = context->mode;
     int32_t ret = IPC::UserDefineIPCClient().Call(
         static_cast<uint32_t>(MediaLibraryBusinessCode::MOVE_ASSETS_TO_DIR),
         reqBody, respBody);
@@ -16989,6 +17169,287 @@ napi_value MediaLibraryNapi::MoveAssetsByPath(napi_env env, napi_callback_info i
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "MoveAssetsByPath",
         MoveAssetsByPathExecute, MoveAssetsByPathCompleteCallback);
+}
+
+static napi_value ParseArgsStartDeepOptimizeSpace(
+    napi_env env, napi_callback_info info, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    constexpr size_t minArgs = ARGS_ZERO;
+    constexpr size_t maxArgs = ARGS_ONE;
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs,
+        maxArgs) == napi_ok, "Failed to get object info");
+
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    context->hasDeepOptimizeSpaceCallback = (context->argc >= ARGS_ONE);
+    if (context->hasDeepOptimizeSpaceCallback) {
+        CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::CheckJSArgsTypeAsFunc(env, context->argv[ARGS_ZERO]),
+            OHOS_INVALID_PARAM_CODE, "callback invalid");
+        CHECK_COND_WITH_ERR_MESSAGE(env,
+            DeepOptimizeSpaceJsCallbackHolder::Create(env, context->argv[ARGS_ZERO],
+            context->deepOptimizeSpaceCallbackHolder) == napi_ok, OHOS_INVALID_PARAM_CODE,
+            "Failed to create deep optimize space callback");
+        if (context->callbackRef != nullptr) {
+            napi_delete_reference(env, context->callbackRef);
+            context->callbackRef = nullptr;
+        }
+    }
+
+    if (context->objectInfo) {
+        context->userId = context->objectInfo->GetUserId();
+    } else {
+        NAPI_ERR_LOG("objectInfo is nullptr.");
+    }
+
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), OHOS_INVALID_PARAM_CODE);
+    return result;
+}
+
+static void ReleaseStartDeepOptimizeSpaceCallback(MediaLibraryAsyncContext *context, uint64_t callbackRegistryId)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    if (callbackRegistryId == 0) {
+        NAPI_INFO_LOG("No callback registry, skip release");
+        return;
+    }
+    DeepOptimizeSpaceJsCallbackRegistry::Unregister(callbackRegistryId);
+    CHECK_NULL_PTR_RETURN_VOID(context->deepOptimizeSpaceCallbackHolder.get(),
+        "Deep optimize space callback holder is null");
+    context->deepOptimizeSpaceCallbackHolder->Release();
+}
+
+static bool PrepareStartDeepOptimizeSpaceCallback(MediaLibraryAsyncContext *context,
+    StartDeepOptimizeSpaceReqBody &reqBody, uint64_t &callbackRegistryId)
+{
+    sptr<DeepOptimizeSpaceCallbackStub> clientStub = nullptr;
+    
+    if (context->hasDeepOptimizeSpaceCallback) {
+        if (context->deepOptimizeSpaceCallbackHolder.get() == nullptr) {
+            NAPI_ERR_LOG("Deep optimize space callback holder is null");
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+
+        clientStub = sptr<DeepOptimizeSpaceCallbackStub>(new (std::nothrow) DeepOptimizeSpaceJsCallbackStub(
+            context->deepOptimizeSpaceCallbackHolder));
+        if (clientStub == nullptr) {
+            NAPI_ERR_LOG("Failed to create deep optimize space client stub");
+            context->deepOptimizeSpaceCallbackHolder->Release();
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+        reqBody.callbackRemote = clientStub->AsObject();
+        NAPI_INFO_LOG("Created callback stub, hasCallback: true");
+    } else {
+        clientStub = sptr<DeepOptimizeSpaceCallbackStub>(new (std::nothrow) DeepOptimizeSpaceDummyJsCallbackStub());
+        if (clientStub == nullptr) {
+            NAPI_ERR_LOG("Failed to create dummy client stub");
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+        reqBody.callbackRemote = nullptr;
+        NAPI_INFO_LOG("Created dummy stub for death monitoring, hasCallback: false");
+    }
+
+    reqBody.clientRemote = clientStub->AsObject();
+    NAPI_INFO_LOG("Prepared deep optimize space client remote, clientStubValid: %{public}d, "
+        "clientRemoteValid: %{public}d", clientStub != nullptr, reqBody.clientRemote != nullptr);
+
+    if (context->hasDeepOptimizeSpaceCallback) {
+        callbackRegistryId = DeepOptimizeSpaceJsCallbackRegistry::Register(
+            context->deepOptimizeSpaceCallbackHolder, clientStub, reqBody.callbackRemote);
+        if (callbackRegistryId == 0) {
+            NAPI_ERR_LOG("Failed to register deep optimize space callback lifecycle record");
+            context->deepOptimizeSpaceCallbackHolder->Release();
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+    } else {
+        callbackRegistryId = 0;
+    }
+
+    return true;
+}
+
+static void JSStartDeepOptimizeSpaceExecute(napi_env env, void *data)
+{
+    (void)env;
+    MediaLibraryTracer tracer;
+    tracer.Start("JSStartDeepOptimizeSpaceExecute");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    StartDeepOptimizeSpaceReqBody reqBody;
+    uint64_t callbackRegistryId = 0;
+    if (!PrepareStartDeepOptimizeSpaceCallback(context, reqBody, callbackRegistryId)) {
+        return;
+    }
+
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE), reqBody);
+    NAPI_INFO_LOG("Deep optimize space IPC returned, ret: %{public}d, hasCallback: %{public}d",
+        ret, context->hasDeepOptimizeSpaceCallback);
+    if (ret != E_OK) {
+        ReleaseStartDeepOptimizeSpaceCallback(context, callbackRegistryId);
+        if (ret == E_ERR) {
+            context->error = JS_E_INNER_FAIL;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->retVal = E_OK;
+}
+
+static void JSStartDeepOptimizeSpaceCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSStartDeepOptimizeSpaceCompleteCallback");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), OHOS_INVALID_PARAM_CODE);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), OHOS_INVALID_PARAM_CODE);
+
+    if (status == napi_ok && context->error == ERR_DEFAULT && context->retVal == E_OK) {
+        jsContext->status = true;
+    } else {
+        if (context->error == JS_E_OPR_TYPE_NOT_SUPPORT) {
+            context->errorMsg = "Unsupported operation type, Possible causes: "
+                "1. Restarted repeatedly; 2. system is busy. Please try again later";
+        } else if (context->error == JS_E_INNER_FAIL) {
+            context->errorMsg = "Internal system error. It is recommended to retry and check the logs. Possible causes:"
+                "1. Database corrupted; 2. The file system is abnormal; 3. The IPC request timed out";
+        }
+        context->HandleError(env, jsContext->error);
+    }
+    NAPI_INFO_LOG("JSStartDeepOptimizeSpaceCompleteCallback finish, status: %{public}d, error: %{public}d, retVal: "
+        "%{public}d", static_cast<int32_t>(status), context->error, context->retVal);
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessStartDeepOptimizeSpace(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessStartDeepOptimizeSpace");
+
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+    CHECK_NULLPTR_RET(ParseArgsStartDeepOptimizeSpace(env, info, asyncContext));
+
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessStartDeepOptimizeSpace",
+        JSStartDeepOptimizeSpaceExecute, JSStartDeepOptimizeSpaceCompleteCallback);
+}
+
+static napi_value ParseArgsStopDeepOptimizeSpace(
+    napi_env env, napi_callback_info info, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    constexpr size_t minArgs = ARGS_ZERO;
+    constexpr size_t maxArgs = ARGS_ZERO;
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs,
+        maxArgs) == napi_ok, "Failed to get object info");
+
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    if (context->objectInfo) {
+        context->userId = context->objectInfo->GetUserId();
+    } else {
+        NAPI_ERR_LOG("objectInfo is nullptr.");
+    }
+
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), OHOS_INVALID_PARAM_CODE);
+    return result;
+}
+
+static void JSStopDeepOptimizeSpaceExecute(napi_env env, void *data)
+{
+    (void)env;
+    MediaLibraryTracer tracer;
+    tracer.Start("JSStopDeepOptimizeSpaceExecute");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE));
+    NAPI_INFO_LOG("Stop deep optimize space IPC returned, ret: %{public}d", ret);
+    if (ret != E_OK) {
+        if (ret == E_ERR) {
+            context->error = JS_E_INNER_FAIL;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->retVal = E_OK;
+}
+
+static void JSStopDeepOptimizeSpaceCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSStopDeepOptimizeSpaceCompleteCallback");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), OHOS_INVALID_PARAM_CODE);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), OHOS_INVALID_PARAM_CODE);
+
+    if (status == napi_ok && context->error == ERR_DEFAULT && context->retVal == E_OK) {
+        jsContext->status = true;
+    } else {
+        if (context->error == JS_E_INNER_FAIL) {
+            context->errorMsg = "Internal system error. It is recommended to retry and check the logs. Possible causes:"
+                "1. Database corrupted; 2. The file system is abnormal; 3. The IPC request timed out";
+        }
+        context->HandleError(env, jsContext->error);
+    }
+    NAPI_INFO_LOG("JSStopDeepOptimizeSpaceCompleteCallback finish, status: %{public}d, error: %{public}d, retVal: "
+        "%{public}d", static_cast<int32_t>(status), context->error, context->retVal);
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessStopDeepOptimizeSpace(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessStopDeepOptimizeSpace");
+
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+    CHECK_NULLPTR_RET(ParseArgsStopDeepOptimizeSpace(env, info, asyncContext));
+
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessStopDeepOptimizeSpace",
+        JSStopDeepOptimizeSpaceExecute, JSStopDeepOptimizeSpaceCompleteCallback);
 }
 } // namespace Media
 } // namespace OHOS

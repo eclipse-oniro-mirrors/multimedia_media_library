@@ -76,6 +76,9 @@ private:
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t CopyAndMoveLakeLocalAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t CopyAndMoveFileManagerLocalAssetToTrash(const PhotosPo &photoInfo,
+        std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t CreateNewAssetInfoAndReturnFileId(
         PhotosPo &photoInfo, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t CreateCloudAssetWithoutDentryFile(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo,
@@ -83,6 +86,9 @@ private:
     int32_t CopyAndMoveMediaCloudAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t CopyAndMoveLakeCloudAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t CopyAndMoveFileManagerCloudAssetToTrash(const PhotosPo &photoInfo,
+        std::optional<PhotosPo> &targetPhotoInfoOp,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t BuildMediaFilePath(const PhotosPo &photoInfo, std::string &targetPath);
     int32_t BuildLakeFilePath(const PhotosPo &photoInfo, std::string &targetPath);

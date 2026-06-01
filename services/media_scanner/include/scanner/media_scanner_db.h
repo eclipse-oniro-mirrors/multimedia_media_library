@@ -56,7 +56,7 @@ public:
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> refresh = nullptr);
     EXPORT std::string UpdateMetadata(const Metadata &metadata, std::string &tableName,
         MediaLibraryApi api = MediaLibraryApi::API_OLD, bool skipPhoto = true,
-        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> refresh = nullptr, bool needUpdateAssetName = true);
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> refresh = nullptr);
     EXPORT std::string GetFileDBUriFromPath(const std::string &path);
     EXPORT int32_t InsertAlbum(const Metadata &metadata);
     EXPORT int32_t UpdateAlbum(const Metadata &metadata);

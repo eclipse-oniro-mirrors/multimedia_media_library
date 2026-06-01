@@ -24,6 +24,7 @@ using namespace std;
 const MediaType FILE_MEDIA_TYPE_DEFAULT = MEDIA_TYPE_FILE;
 const MediaType FILE_MEDIA_TYPE_MAX = MEDIA_TYPE_DEFAULT;
 
+// LCOV_EXCL_START
 Metadata::Metadata()
     : id_(FILE_ID_DEFAULT),
     uri_(URI_DEFAULT),
@@ -91,6 +92,8 @@ void Metadata::InitV2()
         &Metadata::SetFileSourceType);
     memberFuncMap_[PhotoColumn::PHOTO_VIDEO_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetVideoMode);
+    memberFuncMap_[PhotoColumn::PHOTO_NEED_THUMBNAIL] = make_pair(ResultSetDataType::TYPE_INT32,
+        &Metadata::SetNeedThumbnail);
 }
 
 void Metadata::Init()
@@ -706,5 +709,16 @@ int64_t Metadata::GetLocalAssetSize() const
 {
     return localAssetSize_;
 }
+
+void Metadata::SetNeedThumbnail(const VariantData &needThumbnail)
+{
+    needThumbnail_ = std::get<int32_t>(needThumbnail);
+}
+
+int32_t Metadata::GetNeedThumbnail() const
+{
+    return needThumbnail_;
+}
+// LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

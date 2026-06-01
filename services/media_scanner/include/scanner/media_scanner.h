@@ -93,6 +93,8 @@ public:
 
     void SetIsSkipAlbumUpdate(bool isSkipAlbumUpdate);
 
+    void SetCameraShotMovingPhoto(bool isCameraShotMovingPhoto);
+
 private:
     /* file */
     EXPORT int32_t ScanFile();
@@ -128,6 +130,9 @@ private:
     EXPORT int32_t AddToTransaction();
     EXPORT int32_t CommitTransaction();
 
+    /* thumbnail ops */
+    int32_t HandleNeedThumbnail();
+
     /* callback */
     EXPORT int32_t InvokeCallback(int32_t code);
 
@@ -150,7 +155,6 @@ private:
     int32_t fileId_ = 0;
     bool isSkipAlbumUpdate_ = false;
     bool isCameraShotMovingPhoto_ = false;
-    bool needUpdateAssetName_ = true;
 };
 
 class ScanErrCallback : public IMediaScannerCallback {

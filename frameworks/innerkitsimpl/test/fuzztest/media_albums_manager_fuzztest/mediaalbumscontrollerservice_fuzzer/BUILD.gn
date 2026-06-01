@@ -1,0 +1,80 @@
+# Copyright (c) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+ohos_fuzztest("MediaAlbumsControllerServiceFuzzTest") {
+  module_out_path = "media_library/media_library"
+  fuzz_config_file = "."
+
+  include_dirs = [
+    "${MEDIALIB_TEST_PATH}/fuzztest/common/include",
+  ]
+
+  sources = [
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_add_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_commit_modify_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_recover_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_remove_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_move_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_album_name_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_cover_uri_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/check_db_availability_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/get_albumid_by_lpath_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/query_albums_vo.cpp",
+    "${MEDIALIB_TEST_PATH}/fuzztest/common/src/medialibrary_rdbstore_utils_fuzzer.cpp",
+    "./media_albums_controller_service_fuzzer.cpp",
+  ]
+
+  cflags = [ "-fno-access-control" ]
+  
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:app_context",
+    "ability_runtime:app_manager",
+    "ability_runtime:extensionkit_native",
+    "ability_runtime:runtime",
+    "ability_runtime:uri_permission_mgr",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken",
+    "access_token:libnativetoken_shared",
+    "access_token:libprivacy_sdk",
+    "access_token:libtoken_setproc",
+    "access_token:libtokensetproc_shared",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_provider",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "kv_store:distributeddata_inner",
+    "napi:ace_napi",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+  ]
+
+  defines = []
+  defines += [ "MEDIALIBRARY_FEATURE_ANALYSIS_DATA" ]
+}

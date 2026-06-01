@@ -28,6 +28,7 @@
 #include "media_visit_count_manager.h"
 #include "result_set_utils.h"
 #include "dfx_manager.h"
+#include "multistages_camera_capture_manager.h"
 #include "multistages_capture_dfx_request_policy.h"
 #include "multistages_capture_request_task_manager.h"
 #include "multistages_capture_manager.h"
@@ -483,8 +484,33 @@ int32_t MediaAssetsService::SetCameraShotKey(const int32_t fileId, const std::st
     return MediaLibraryPhotoOperations::UpdateFileAsset(cmd);
 }
 
+static bool DoCameraPipeline(const SaveCameraPhotoDto &dto, int32_t& errCode)
+{
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(dto.fileId, type);
+    if (pipeline == nullptr) {
+        MEDIA_WARN_LOG("pipeline not support, pipeline is nullptr.");
+        return false;
+    }
+    if (type == CameraPipelineType::VIDEO) {
+        MEDIA_WARN_LOG("pipeline not support, type: %{public}d.", static_cast<int32_t>(type));
+        return false;
+    }
+
+    errCode = pipeline->SaveCameraPhoto(dto);
+    // 尝试清理数据
+    pipeline->SaveCameraPhotoFinished();
+    size_t count = MultistagesCameraCaptureManager::GetInstance().DeletePipelineWithFileId(dto.fileId, false);
+    MEDIA_INFO_LOG("Clear pipeline for FirstStage, count: %{public}zu.", count);
+    return true;
+}
+
 int32_t MediaAssetsService::SaveCameraPhoto(const SaveCameraPhotoDto &dto)
 {
+    int32_t ret = E_ERR;
+    if (DoCameraPipeline(dto, ret)) {
+        return ret;
+    }
     if (dto.mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
         return MultiStagesVideoCaptureManager::GetInstance().SaveCameraVideo(dto);
     }
@@ -504,6 +530,7 @@ int32_t MediaAssetsService::SaveCameraPhoto(const SaveCameraPhotoDto &dto)
     cmd.SetApiParam(PhotoColumn::MEDIA_ID, to_string(dto.fileId));
     cmd.SetApiParam(PhotoColumn::PHOTO_SUBTYPE, to_string(dto.photoSubType));
     cmd.SetApiParam(CONST_IMAGE_FILE_TYPE, to_string(dto.imageFileType));
+    cmd.SetApiParam(CONST_CONTAIN_ADD_RESOURCE, to_string(dto.containsAddResource));
     NativeRdb::ValuesBucket values;
     if (dto.supportedWatermarkType != INT32_MIN) {
         values.Put(PhotoColumn::SUPPORTED_WATERMARK_TYPE, dto.supportedWatermarkType);
@@ -951,6 +978,31 @@ int32_t MediaAssetsService::CreateAssetForAppWithAlbum(CreateAssetDto& dto)
 
     cmd.SetValueBucket(assetInfo);
     cmd.SetApiParam("tokenId", to_string(dto.tokenId));
+    cmd.SetDeviceName(GetLocalDeviceName());
+    cmd.SetBundleName(GetClientBundleName());
+    int32_t ret = MediaLibraryPhotoOperations::Create(cmd);
+    CHECK_AND_RETURN_RET_LOG(ret > 0, ret, "MediaLibraryPhotoOperations::Create failed");
+    dto.fileId = ret;
+    dto.outUri = cmd.GetResult();
+    return E_OK;
+}
+
+int32_t MediaAssetsService::CreateAssetWithAlbum(CreateAssetDto& dto)
+{
+    NativeRdb::ValuesBucket assetInfo;
+    assetInfo.PutString(CONST_ASSET_EXTENTION, dto.extension);
+    assetInfo.PutInt(MediaColumn::MEDIA_TYPE, dto.mediaType);
+    assetInfo.PutInt(PhotoColumn::PHOTO_NEED_THUMBNAIL, dto.isRealTimeThumb ? 1 : 0);
+    if (!dto.title.empty()) {
+        assetInfo.PutString(MediaColumn::MEDIA_TITLE, dto.title);
+    }
+    if (!dto.ownerAlbumId.empty()) {
+        assetInfo.PutString(PhotoColumn::PHOTO_OWNER_ALBUM_ID, dto.ownerAlbumId);
+    }
+
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, MediaLibraryApi::API_10);
+
+    cmd.SetValueBucket(assetInfo);
     cmd.SetDeviceName(GetLocalDeviceName());
     cmd.SetBundleName(GetClientBundleName());
     int32_t ret = MediaLibraryPhotoOperations::Create(cmd);
@@ -1839,18 +1891,6 @@ int32_t MediaAssetsService::StartBatchDownloadCloudResources(StartBatchDownloadC
 #endif
 }
 
-int32_t MediaAssetsService::SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody)
-{
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
-    int32_t ret = instance.SetNetworkPolicyForBatchDownload(reqBody);
-    MEDIA_INFO_LOG("MediaAssetsService SetNetworkPolicyForBatchDownload END ret: %{public}d", ret);
-    return ret;
-#else
-    return 0;
-#endif
-}
-
 int32_t MediaAssetsService::ResumeBatchDownloadCloudResources(ResumeBatchDownloadCloudResourcesReqBody &reqBody)
 {
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
@@ -1908,20 +1948,6 @@ int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesCount(
     int32_t ret = instance.GetCloudMediaBatchDownloadResourcesCount(reqBody, respBody);
     MEDIA_INFO_LOG("MediaAssetsService GetCloudMediaBatchDownloadResourcesCount ret: %{public}d resp size: %{public}d",
         ret, respBody.count);
-    return ret;
-#else
-    return 0;
-#endif
-}
-
-int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesSize(
-    GetBatchDownloadCloudResourcesSizeReqBody &reqBody, GetBatchDownloadCloudResourcesSizeRespBody &respBody)
-{
-#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
-    CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
-    int32_t ret = instance.GetCloudMediaBatchDownloadResourcesSize(reqBody, respBody);
-    MEDIA_INFO_LOG("MediaAssetsService GetCloudMediaBatchDownloadResourcesSize ret: %{public}d resp size: %{public}"
-        PRId64,  ret, respBody.size);
     return ret;
 #else
     return 0;
@@ -2402,6 +2428,33 @@ int32_t UpdateMoveAssetData(std::shared_ptr<AssetAccurateRefresh> &refresh, cons
     return E_OK;
 }
 
+template <class T>
+void UpdateProgressData(T &dto, const FileAssetsInfo &info,
+    std::shared_ptr<FileMoveHandle> &handle, const ResultInfoType &returnType)
+{
+    std::string result {""};
+    if (returnType == ResultInfoType::FILE_MANAGEMENT_URI) {
+        std::string extraUri = MediaFileUtils::GetExtraUri(info.displayName, info.data, false);
+        result = MediaFileUri(MediaType(info.mediaType), ToString(info.fileId), "",
+            MEDIA_API_VERSION_V10, extraUri).ToString();
+    } else if (returnType == ResultInfoType::FILE_MANAGEMENT_PATH) {
+        std::string relativeDir;
+        FileManagementUtils::GetRelativeDir(dto.targetDir, relativeDir);
+        std::string tmpPath = "/Docs/" + relativeDir + "/" + info.displayName;
+        std::string tmpRootPath = "/Docs/" + info.displayName;
+        result = relativeDir.empty() ? tmpRootPath : tmpPath;
+    } else {
+        MEDIA_ERR_LOG("returnType is invaild");
+    }
+    dto.changeInfo->processedCount++;
+    dto.changeInfo->processedSize += info.size;
+    dto.resultList.push_back(result);
+    if (handle != nullptr) {
+        handle->targetPath_ = "";
+        handle->CalculateProgress();
+    }
+}
+
 int32_t DoMoveFilesToDir(const std::map<int32_t, FileAssetsInfo> &infos, std::shared_ptr<FileMoveHandle> &handle,
     ChangeRequestMoveAssetsToDirDto &dto, std::string & targetDir, int32_t targetAlbumId)
 {
@@ -2432,6 +2485,10 @@ int32_t DoMoveFilesToDir(const std::map<int32_t, FileAssetsInfo> &infos, std::sh
         updateInfo.fileSourceType = static_cast<int32_t>(FileSourceType::FILE_MANAGER);
         int32_t ret = UpdateMoveAssetData(assetRefresh, updateInfo);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "fail to update asset");
+        if (info.second.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+            UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_PATH);
+            continue;
+        }
         RenameMode mode = static_cast<RenameMode>(dto.mode);
         auto result = MediaFileAccessUtils::MoveAsset(srcpath, storagePath, FileSourceType::FILE_MANAGER, mode);
         if (result.errCode != E_OK) {
@@ -2439,13 +2496,9 @@ int32_t DoMoveFilesToDir(const std::map<int32_t, FileAssetsInfo> &infos, std::sh
             dto.errCode = result.errCode;
             ret = UpdateMoveAssetData(assetRefresh, info.second);
             MEDIA_ERR_LOG("fail to move asset");
-            return E_INVALID_PARAM;
+            return result.errCode;
         }
-        handle->targetPath_ = "";
-        dto.changeInfo->processedCount++;
-        dto.changeInfo->processedSize += info.second.size;
-        dto.resultList.push_back(storagePath);
-        handle->CalculateProgress();
+        UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_PATH);
     }
     assetRefresh->RefreshAlbum();
     assetRefresh->Notify();
@@ -2553,6 +2606,10 @@ int32_t DoMoveFilesByPath(const std::map<int32_t, FileAssetsInfo> &moveAssetInfo
         updateInfo.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA);
         int32_t ret = UpdateMoveAssetData(assetRefresh, updateInfo);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "fail to update asset");
+        if (info.second.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+            UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_URI);
+            continue;
+        }
         RenameMode mode = static_cast<RenameMode>(dto.mode);
         auto result = MediaFileAccessUtils::MoveAsset(srcpath, localTargetPath, FileSourceType::MEDIA, mode);
         if (result.errCode != E_OK) {
@@ -2560,16 +2617,9 @@ int32_t DoMoveFilesByPath(const std::map<int32_t, FileAssetsInfo> &moveAssetInfo
             dto.errCode = result.errCode;
             ret = UpdateMoveAssetData(assetRefresh, info.second);
             MEDIA_INFO_LOG("fail to move asset");
-            return E_INVALID_PARAM;
+            return result.errCode;
         }
-        std::string extraUri = MediaFileUtils::GetExtraUri(info.second.displayName, info.second.data, false);
-        std::string photoUri = MediaFileUri(MediaType(info.second.mediaType), ToString(info.second.fileId), "",
-            MEDIA_API_VERSION_V10,  extraUri).ToString();
-        handle->targetPath_ = "";
-        dto.changeInfo->processedCount++;
-        dto.changeInfo->processedSize += info.second.size;
-        dto.resultList.push_back(photoUri);
-        handle->CalculateProgress();
+        UpdateProgressData(dto, info.second, handle, ResultInfoType::FILE_MANAGEMENT_URI);
     }
     assetRefresh->RefreshAlbum();
     assetRefresh->Notify();

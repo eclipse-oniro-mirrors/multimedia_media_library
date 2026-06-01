@@ -92,7 +92,7 @@ int32_t TestDataBuilder::CreateAlbum(TestAlbumType albumType, const std::string&
             break;
         case TestAlbumType::FILE_MANAGER_ALBUM:
             albumData.albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
-            albumData.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+            albumData.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
             albumData.albumLpath = "/FromDocs/" + albumName;
             break;
         default:

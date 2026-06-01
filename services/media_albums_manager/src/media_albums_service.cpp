@@ -487,6 +487,9 @@ static void AddNoSmartFetchColumns(std::vector<std::string> &fetchColumn)
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
     fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SCENE_ID);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SHARE_TYPE);
+    fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
 }
 
 static void AddPhotoAlbumTypeFilter(DataShare::DataSharePredicates &predicates,
@@ -510,6 +513,7 @@ static void AddPhotoAlbumTypeFilter(DataShare::DataSharePredicates &predicates,
             to_string(PhotoAlbumSubType::VIDEO),
             to_string(PhotoAlbumSubType::IMAGE),
             to_string(PhotoAlbumSubType::SOURCE_GENERIC),
+            to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER),
         }));
     }
 }
@@ -1063,7 +1067,7 @@ int32_t MediaAlbumsService::AlbumChangeSetHiddenAttribute(const AlbumChangeSetHi
         (dto.albumType == PhotoAlbumType::USER && dto.albumSubType == PhotoAlbumSubType::USER_GENERIC) ||
         (dto.albumType == PhotoAlbumType::SOURCE && dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC) ||
         (dto.albumType == PhotoAlbumType::SOURCE &&
-            dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+            dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     CHECK_AND_RETURN_RET_LOG(valid, E_INVALID_VALUES, "Invalid albumType or albumSubType");
     return MediaLibraryAlbumOperations::AlbumChangeSetHiddenAttribute(dto.albumId, dto.fileHidden, dto.inherited);
 }
@@ -1074,7 +1078,7 @@ int32_t MediaAlbumsService::AlbumChangeSetAlbumNameByFile(const AlbumChangeSetAl
         (dto.albumType == PhotoAlbumType::USER && dto.albumSubType == PhotoAlbumSubType::USER_GENERIC) ||
         (dto.albumType == PhotoAlbumType::SOURCE && dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC) ||
         (dto.albumType == PhotoAlbumType::SOURCE &&
-            dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+            dto.albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     CHECK_AND_RETURN_RET_LOG(valid, E_INVALID_VALUES, "Invalid albumType or albumSubType");
 
     NativeRdb::ValuesBucket values;

@@ -308,7 +308,7 @@ void BuildAlbumTypeByLPath(const std::string &lPath, NativeRdb::ValuesBucket& va
     target = FILE_MANAGER_LPATH_PREFIX;
     std::transform(target.begin(), target.end(), target.begin(), ::tolower);
     if (lPathLower.find(target) == 0) {
-        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     }
     value.PutInt(PhotoAlbumColumns::ALBUM_TYPE, albumType);
     value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, albumSubType);
@@ -334,13 +334,14 @@ int32_t FolderParser::InsertAlbum(CommonAlbumInfo &commonAlbumInfo)
     AccurateRefresh::AlbumAccurateRefresh albumRefresh;
     int32_t ret = albumRefresh.Insert(albumId, PhotoAlbumColumns::TABLE, value);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && albumId > 0, E_ERR,
-        "Insert photo albums failed, failed albumId is %{public}lld and lpath is %{public}s",
+        "Insert photo albums failed, failed albumId is %{public}" PRId64 " and lpath is %{public}s",
         albumId, FileScanUtils::GarbleFilePath(commonAlbumInfo.lpath).c_str());
     commonAlbumInfo.albumId = static_cast<int32_t>(albumId);
 
     // 文管相册设置云开关
     CHECK_AND_EXECUTE(!MediaStringUtils::StartsWith(commonAlbumInfo.lpath, FILE_MANAGER_ROOT_LPATH),
         SettingsDataManager::ComfirmUploadStatus());
+    albumRefresh.Notify();
     MEDIA_INFO_LOG("FolderParser: end insert PhotoAlbum.");
     return ret;
 }

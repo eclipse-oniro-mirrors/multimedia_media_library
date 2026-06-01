@@ -16,6 +16,7 @@
 
 #include "media_background_task_factory.h"
 #include "media_clear_invalid_user_comment_task.h"
+#include "media_clone_pending_task.h"
 #ifdef MEDIALIBRARY_CLOUD_SYNC_SERVICE_SUPPORT
 #include "media_cloud_sync_backgroud_task.h"
 #endif
@@ -35,6 +36,7 @@
 #include "media_burst_key_duplicate_task.h"
 #include "media_lcd_size_task.h"
 #include "media_share_dirty_data_task.h"
+#include "media_camera_cache_clean_task.h"
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
@@ -56,7 +58,9 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaUpdateMovingPhotoDurationTask>(),
         std::make_shared<MediaBurstKeyDuplicateTask>(),
         std::make_shared<MediaUpdateLocalAssetSizeTask>(),
+        std::make_shared<MediaClonePendingTask>(),
         std::make_shared<MediaShareDirtyDataTask>(),
+        std::make_shared<MediaCameraCacheCleanTask>(),
     };
 }
 

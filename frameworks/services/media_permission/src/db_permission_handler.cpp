@@ -95,7 +95,8 @@ static bool ParseInfoFromCmd(MediaLibraryCommand &cmd, string &fileId, int32_t &
         if (fileId != "-1") {
             return true;
         }
-        if (MediaStringUtils::StartsWith(cmdUri, PhotoColumn::PHOTO_REQUEST_PICTURE)) {
+        if (MediaStringUtils::StartsWith(cmdUri, PhotoColumn::PHOTO_REQUEST_PICTURE) ||
+            MediaStringUtils::StartsWith(cmdUri, PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER)) {
             uriType = static_cast<int32_t>(TableType::TYPE_PHOTOS);
             fileId = cmd.GetQuerySetParam(MediaColumn::MEDIA_ID);
         }
@@ -128,7 +129,6 @@ static bool ParseInfoFromCmd(MediaLibraryCommand &cmd, string &fileId, int32_t &
 int32_t DbPermissionHandler::ExecuteCheckPermission(MediaLibraryCommand &cmd, PermParam &permParam)
 {
     MEDIA_DEBUG_LOG("DbPermissionHandler enter");
-    CHECK_AND_RETURN_RET_LOG(!MediaFileUri::IsPictureUri(cmd.GetUri().ToString()), E_SUCCESS, "Is picture buffer uri");
     bool isWrite = permParam.isWrite;
     string appId = GetClientAppId();
     uint32_t tokenId = PermissionUtils::GetTokenId();

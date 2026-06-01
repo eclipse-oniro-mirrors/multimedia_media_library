@@ -31,9 +31,12 @@
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #include "media_string_utils.h"
+#include "medialibrary_photo_operations.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
+std::mutex g_fileManagerScanFlagMutex;
+std::unordered_map<int32_t, bool> g_fileManagerScanFlag;
 const std::string PATH_HIDDEN_PREFIX = ".";
 // LCOV_EXCL_START
 bool FileParser::PhotosRowData::IsExist()
@@ -272,7 +275,14 @@ bool FileParser::HasChangePart(const FileParser::PhotosRowData &rowData)
     metaStatus_.isMimeTypeChanged = rowData.mimeType != fileInfo_.mimeType;
     metaStatus_.isStoragePathChanged = rowData.storagePath != fileInfo_.filePath;
     metaStatus_.isInvisible = rowData.syncStatus != static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE);
-    bool ret = metaStatus_.IsChanged();
+    bool scanFlag = true;
+    {
+        std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
+        if (g_fileManagerScanFlag.count(rowData.fileId) > 0 && g_fileManagerScanFlag[rowData.fileId]) {
+            scanFlag = false;
+        }
+    }
+    bool ret = metaStatus_.IsChanged() && scanFlag;
     CHECK_AND_EXECUTE(!ret, MEDIA_INFO_LOG("metaStatus: %{public}s, fileInfo: %{public}s",
         metaStatus_.ToString().c_str(), ToString().c_str()));
     return ret;
@@ -386,12 +396,13 @@ FileParser::PhotosRowData FileParser::FindSameFileInDatabase(const std::string &
 int32_t FileParser::IsExistSameFileForCloneRestore(int32_t ownerAlbumId)
 {
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_ERR, "mediaLibraryRdb_ is null.");
+    int pictureFlag = fileInfo_.fileType == MediaType::MEDIA_TYPE_VIDEO ? 0 : 1;
     std::vector<NativeRdb::ValueObject> params = { ownerAlbumId, fileInfo_.displayName,
-        fileInfo_.fileSize, fileInfo_.orientation};
+        fileInfo_.fileSize, pictureFlag, fileInfo_.orientation};
     auto resultSet = mediaLibraryRdb_->QuerySql(SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE, params);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
         E_ERR, "Query failed, not exist same file");
-
+    resultSet->Close();
     return E_OK;
 }
 
@@ -413,6 +424,9 @@ int32_t FileParser::UpdateAssetInfo()
     int32_t errCode = UpdateAssetInDatabase();
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
         "UpdateAssetInDatabase failed, ret: %{public}d, fileInfo: %{public}s", errCode, ToString().c_str());
+    int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(std::to_string(fileInfo_.fileId));
+    CHECK_AND_PRINT_LOG(ret == E_OK,
+        "CalSingleEditDataSize failed ID: %{public}d (ret code: %{public}d)", fileInfo_.fileId, ret);
     CHECK_AND_RETURN_RET_INFO_LOG(ShouldGenerateThumbnail(), E_OK,
         "No need to generate thumbnail, fileInfo: %{public}s", ToString().c_str());
     MEDIA_INFO_LOG("Start generate thumbnail of %{public}s", ToString().c_str());
@@ -814,6 +828,23 @@ int64_t FileParser::GetFileDateAdded(const struct stat &statInfo)
         return mTime;
     }
     return MediaFileUtils::UTCTimeMilliSeconds();
+}
+
+void FileParser::SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan)
+{
+    for (const auto& fileIdStr : fileIds) {
+        CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
+        int32_t fileId = std::stoi(fileIdStr);
+        std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
+        if (stopScan) {
+            g_fileManagerScanFlag[fileId] = stopScan;
+        } else {
+            auto it = g_fileManagerScanFlag.find(fileId);
+            if (it != g_fileManagerScanFlag.end()) {
+                g_fileManagerScanFlag.erase(it);
+            }
+        }
+    }
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media

@@ -42,6 +42,7 @@ static const std::string PAH_ANI_CLASS_ANALYSIS_ALBUM = PAH_CLASS_SPACE + "Analy
 static const std::string PAH_ANI_CLASS_PHOTO_ASSET = PAH_CLASS_SPACE + "PhotoAsset";
 static const std::string PAH_ANI_CLASS_PHOTO_ASSET_HANDLE = PAH_CLASS_SPACE + "PhotoAssetHandle";
 static const std::string PAH_ANI_CLASS_PHOTO_ACCESS_HELPER_HANDLE = PAH_CLASS_SPACE + "PhotoAccessHelperHandle";
+static const std::string PAH_ANI_CLASS_PHOTO_VIEW_PICKER = PAH_CLASS_SPACE + "PhotoViewPicker";
 static const std::string PAH_ANI_CLASS_PHOTO_PROXY_HANDLE = PAH_CLASS_SPACE + "PhotoProxyHandle";
 static const std::string PAH_ANI_CLASS_SIZE = PAH_CLASS_SPACE + "SizeImpl";
 static const std::string PAH_ANI_CLASS_MOVING_PHOTO_HANDLE = PAH_CLASS_SPACE + "MovingPhotoHandle";
@@ -76,6 +77,7 @@ static const std::string PAH_ANI_CLASS_ENUM_COVERURI_SOURCE = PAH_CLASS_SPACE + 
 static const std::string PAH_ANI_CLASS_ENUM_NOTIFYCHANGE_TYPE = PAH_CLASS_SPACE + "NotifyChangeType";
 static const std::string PAH_ANI_CLASS_ENUM_STRONG_ASSOCIATION_TYPE = PAH_CLASS_SPACE + "StrongAssociationType";
 static const std::string PAH_ANI_CLASS_ENUM_THUMBNAIL_VISIBILITY_TYPE = PAH_CLASS_SPACE + "ThumbnailVisibility";
+static const std::string PAH_ANI_CLASS_ENUM_DEEP_OPTIMIZE_STATE = PAH_CLASS_SPACE + "DeepOptimizeState";
 
 // ETS Class in userFileManager
 static const std::string UFM_ANI_CLASS_USER_FILE_MANAGER_HANDLE = UFM_CLASS_SPACE + "UserFileManagerHandle";

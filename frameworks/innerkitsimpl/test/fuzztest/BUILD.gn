@@ -16,6 +16,8 @@ import("//foundation/multimedia/media_library/media_library.gni")
 group("media_library_fuzztest") {
   testonly = true
   deps = [
+    "background_task_manager_fuzztest/medialivephoto4dstatustask_fuzzer:MediaLivePhoto4dStatusTaskFuzzTest",
+    "media_albums_manager_fuzztest/mediaalbumscontrollerservice_fuzzer:MediaAlbumsControllerServiceFuzzTest",
     "medialibraryappstateobserver_fuzzer:MediaLibraryAppstateObserverFuzzTest",
     "medialibraryappuripermissionoperations_fuzzer:MediaLibraryAppUriPermissionOperationsFuzzTest",
     "medialibraryappurisensitiveoperations_fuzzer:MediaLibraryAppUriSensitiveOperationsFuzzTest",

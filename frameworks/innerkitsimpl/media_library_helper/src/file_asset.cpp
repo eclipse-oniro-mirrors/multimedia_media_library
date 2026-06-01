@@ -812,6 +812,16 @@ const std::string &FileAsset::GetLivePhoto4dLatestPair() const
     return GetStrMember(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR);
 }
 
+void FileAsset::SetDeferredProcType(int32_t deferredProcType)
+{
+    member_[PhotoColumn::PHOTO_DEFERRED_PROC_TYPE] = deferredProcType;
+}
+ 
+int32_t FileAsset::GetDeferredProcType() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_DEFERRED_PROC_TYPE);
+}
+
 void FileAsset::SetOpenStatus(int32_t fd, int32_t openStatus)
 {
     lock_guard<mutex> lock(openStatusMapMutex_);
@@ -1043,6 +1053,17 @@ void FileAsset::SetLocalAssetSize(int64_t localAssetSize)
 {
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::LOCAL_ASSET_SIZE] = localAssetSize;
+}
+
+int64_t FileAsset::GetAttachmentSize() const
+{
+    return GetInt64Member(PhotoColumn::ATTACHMENT_SIZE);
+}
+
+void FileAsset::SetAttachmentSize(int64_t attachmentSize)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::ATTACHMENT_SIZE] = attachmentSize;
 }
 }  // namespace Media
 }  // namespace OHOS

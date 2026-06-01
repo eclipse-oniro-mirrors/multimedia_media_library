@@ -32,6 +32,8 @@ using namespace OHOS::DataShare;
 struct UriParams;
 class PhotoAlbum;
 class FileAsset;
+class PhotoAlbumChangeCallback;
+class PhotoAssetChangeCallback;
 template <class T>
 class FetchResult;
 
@@ -322,6 +324,142 @@ public:
 
     EXPORT FetchResult<FileAsset> GetAssets(const std::vector<std::string> &fetchColumns,
        const DataShare::DataSharePredicates *predicate);
+
+    /**
+     * @brief Register photo asset change callback.
+     *
+     * @param callback Callback invoked when photo assets change.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback);
+
+    /**
+     * @brief Unregister photo asset change callback.
+     *
+     * @param callback Callback to unregister. If nullptr, unregister all photo asset callbacks.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback = nullptr);
+
+    /**
+     * @brief Register photo album change callback.
+     *
+     * @param callback Callback invoked when photo albums change.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback);
+
+    /**
+     * @brief Unregister photo album change callback.
+     *
+     * @param callback Callback to unregister. If nullptr, unregister all photo album callbacks.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback = nullptr);
+
+    /**
+     * @brief Register single photo change callback by asset URI.
+     *
+     * @param assetUri Asset URI used to identify a single photo observer target.
+     * @param callback Callback invoked when the specified photo changes.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterSinglePhotoChange(const std::string &assetUri,
+        std::shared_ptr<PhotoAssetChangeCallback> callback);
+
+    /**
+     * @brief Unregister single photo change callback.
+     *
+     * @param assetUri Target asset URI. If empty and callback is nullptr, unregister all single photo callbacks.
+     * @param callback Callback to unregister. If nullptr, unregister callbacks under the specified URI.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterSinglePhotoChange(const std::string &assetUri = "",
+        std::shared_ptr<PhotoAssetChangeCallback> callback = nullptr);
+
+    /**
+     * @brief Register single photo album change callback by album URI.
+     *
+     * @param albumUri Album URI used to identify a single album observer target.
+     * @param callback Callback invoked when the specified album changes.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterSinglePhotoAlbumChange(const std::string &albumUri,
+        std::shared_ptr<PhotoAlbumChangeCallback> callback);
+
+    /**
+     * @brief Unregister single photo album change callback.
+     *
+     * @param albumUri Target album URI. If empty and callback is nullptr, unregister all single album callbacks.
+     * @param callback Callback to unregister. If nullptr, unregister callbacks under the specified URI.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterSinglePhotoAlbumChange(const std::string &albumUri = "",
+        std::shared_ptr<PhotoAlbumChangeCallback> callback = nullptr);
+
+    /**
+     * @brief Register trashed photo change callback.
+     *
+     * @param callback Callback invoked when trashed photos change.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback);
+
+    /**
+     * @brief Unregister trashed photo change callback.
+     *
+     * @param callback Callback to unregister. If nullptr, unregister all trashed photo callbacks.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback = nullptr);
+
+    /**
+     * @brief Register trashed album change callback.
+     *
+     * @param callback Callback invoked when trashed albums change.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback);
+
+    /**
+     * @brief Unregister trashed album change callback.
+     *
+     * @param callback Callback to unregister. If nullptr, unregister all trashed album callbacks.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback = nullptr);
+
+    /**
+     * @brief Register hidden photo change callback.
+     *
+     * @param callback Callback invoked when hidden photos change.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback);
+
+    /**
+     * @brief Unregister hidden photo change callback.
+     *
+     * @param callback Callback to unregister. If nullptr, unregister all hidden photo callbacks.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback = nullptr);
+
+    /**
+     * @brief Register hidden album change callback.
+     *
+     * @param callback Callback invoked when hidden albums change.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t RegisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback);
+
+    /**
+     * @brief Unregister hidden album change callback.
+     *
+     * @param callback Callback to unregister. If nullptr, unregister all hidden album callbacks.
+     * @return E_OK for success or errorCode.
+     */
+    EXPORT int32_t UnregisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback = nullptr);
 
 private:
     int32_t ReadMovingPhotoVideo(const string &uri, const string &option);

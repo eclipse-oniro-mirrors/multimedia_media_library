@@ -209,16 +209,16 @@ const std::vector<std::string> photoRiskStatusEnum {
     "UNIDENTIFIED", "APPROVED", "SUSPICIOUS", "REJECTED",
 };
 
-const std::vector<std::string> downloadAssetsNetworkPolicyTypeEnum {
-    "DEFAULT", "CELL", "WIFI"
-};
-
 const std::vector<std::string> appLinkStateEnum {
     "DEFAULT", "HAS_NO_LINK", "HAS_LINK"
 };
 
 const std::vector<std::string> livePhoto4dStatusTypeEnum {
     "UNIDENTIFIED", "UNSUPPORTED", "SUPPORTED", "USED", "FOURD_LIVEPHOTO"
+};
+
+const std::vector<std::string> deepOptimizeStateEnum {
+    "RUNNING", "COMPLETED", "FAILED", "STOPPED", "INTERRUPTED"
 };
 
 const std::vector<std::pair<std::string, int32_t>> PHOTO_SUB_TYPE_ENUM_PROPERTIES = {
@@ -351,6 +351,7 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("HIDDEN_TIME",               PhotoColumn::PHOTO_HIDDEN_TIME),
     std::make_pair("LOCAL_ASSET_SIZE",          PhotoColumn::LOCAL_ASSET_SIZE),
     std::make_pair("FILE_HIDDEN",               PhotoColumn::PHOTO_FILE_HIDDEN),
+    std::make_pair("ATTACHMENT_SIZE",           PhotoColumn::ATTACHMENT_SIZE),
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES = {

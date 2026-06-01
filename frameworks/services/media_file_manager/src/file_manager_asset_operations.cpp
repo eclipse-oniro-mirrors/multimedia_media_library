@@ -83,31 +83,75 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(
     return ret;
 }
 
-static int32_t UpdateFileManagerAsset(const std::vector<std::string> &updateIds)
+static int32_t UpdateFileManagerAsset(AccurateRefreshBase &refresh, const MoveAssetsToFileManagerUpdateData &data,
+    bool needRefresh)
 {
-    CHECK_AND_RETURN_RET_LOG(!updateIds.empty(), E_INVALID_ARGUMENTS, "update param error");
-    std::string inClause;
-    for (size_t i = 0; i < updateIds.size(); i++) {
-        if (i > 0) {
-            inClause += ",";
-        }
-        inClause += updateIds[i];
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, data.mediaId);
+    ValuesBucket values;
+    if (data.storagePath.empty()) {
+        values.PutNull(PhotoColumn::PHOTO_STORAGE_PATH);
+    } else {
+        values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, data.storagePath);
     }
-    const std::string updateSql = "UPDATE Photos SET storage_path = data,"
-        " file_source_type = 0 WHERE file_id IN (" + inClause + ");";
-    MEDIA_INFO_LOG("UpdateFileManagerAsset updateSql = %{public}s", updateSql.c_str());
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    int32_t ret = rdbStore->ExecuteSql(updateSql);
+    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA));
+    int32_t changedRows = -1;
+    int32_t ret = E_ERR;
+    if (needRefresh) {
+        ret = refresh.Update(changedRows, values, predicates);
+    } else {
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB, "get rdb store error");
+        ret = rdbStore->Update(changedRows, values, predicates);
+    }
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to update file manager asset");
     return E_OK;
 }
 
-int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(const std::vector<std::string> &ids)
+static void ReNameAssetsFromFileManager(AccurateRefreshBase &refresh,
+    shared_ptr<NativeRdb::ResultSet> &resultSet, bool needRefresh)
+{
+    int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+    std::string fileManagerPath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+    std::string mediaPath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+    if (mediaPath.empty() || fileManagerPath.empty()) {
+        MEDIA_ERR_LOG("fileId: %{public}d, mediaPath or fileManagerPath is empty", fileId);
+        return;
+    }
+    int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+    int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
+    int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
+    // 刷新数据库字段
+    MoveAssetsToFileManagerUpdateData data;
+    data.mediaId = fileId;
+    data.storagePath = "";
+    int32_t ret = UpdateFileManagerAsset(refresh, data, needRefresh);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to update file manager asset");
+    // 纯云资产字段同步刷新，但无需移动原文件
+    if (position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        return;
+    }
+    // 先判断是否是动图
+    bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
+    if (isMovingPhoto) {
+        MoveResult result = MediaFileAccessUtils::ProcessLivePhotoToMovingPhoto(fileManagerPath, mediaPath, true);
+        ret = result.errCode;
+    } else {
+        ret = FileManagerAssetOperations::MoveFileManagerAsset(fileManagerPath, mediaPath);
+    }
+    CHECK_AND_PRINT_LOG(ret == E_OK, "move asset from %{public}s to %{public}s error, errno: %{public}d",
+        DfxUtils::GetSafePath(fileManagerPath).c_str(), DfxUtils::GetSafePath(mediaPath).c_str(), errno);
+}
+
+int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(AccurateRefreshBase &refresh,
+    const std::vector<std::string> &ids, bool needRefresh)
 {
     MEDIA_INFO_LOG("MoveAssetsFromFileManager enter %{public}zu", ids.size());
     CHECK_AND_RETURN_RET_LOG(!ids.empty(), E_INVALID_ARGUMENTS, "move asset param error");
     vector<string> columns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH,
-        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE};
+        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
+        PhotoColumn::PHOTO_POSITION };
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(MediaColumn::MEDIA_ID, ids);
     predicates.EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
@@ -125,33 +169,11 @@ int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(const std::vector<
         resultSet->Close();
         return E_OK;
     }
-    std::vector<std::string> updateIds;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-        std::string fileManagerPath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
-        std::string mediaPath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-        if (mediaPath.empty() || fileManagerPath.empty()) {
-            continue;
-        }
-        int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-        int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
-        int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
-        // 先判断是否是动图
-        bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
-        if (isMovingPhoto) {
-            MoveResult result = MediaFileAccessUtils::ProcessLivePhotoToMovingPhoto(fileManagerPath, mediaPath, true);
-            ret = result.errCode;
-        } else {
-            ret = MoveFileManagerAsset(fileManagerPath, mediaPath);
-        }
-        CHECK_AND_PRINT_LOG(ret == E_OK, "move asset from %{public}s to %{public}s error, errno: %{public}d",
-            DfxUtils::GetSafePath(fileManagerPath).c_str(), DfxUtils::GetSafePath(mediaPath).c_str(), errno);
-        if (ret == E_OK) {
-            updateIds.emplace_back(to_string(fileId));
-        }
+        ReNameAssetsFromFileManager(refresh, resultSet, needRefresh);
     }
     resultSet->Close();
-    return UpdateFileManagerAsset(updateIds);
+    return E_OK;
 }
 
 static int32_t UpdateFileManageAssetInfo(AccurateRefreshBase &refresh,
@@ -160,10 +182,10 @@ static int32_t UpdateFileManageAssetInfo(AccurateRefreshBase &refresh,
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
     ValuesBucket values;
-    values.PutString(PhotoColumn::PHOTO_SOURCE_PATH, sourcePath);
     values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, sourcePath);
     values.PutString(MediaColumn::MEDIA_NAME, displayName);
     values.PutString(MediaColumn::MEDIA_TITLE, title);
+    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
     int32_t changedRows = -1;
     int32_t ret = refresh.Update(changedRows, values, predicates);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK && changedRows > 0,
@@ -171,25 +193,6 @@ static int32_t UpdateFileManageAssetInfo(AccurateRefreshBase &refresh,
         "update path error ret: %{public}d, change rows: %{public}d",
         ret,
         changedRows);
-    return E_OK;
-}
-
-static int32_t UpdateAfterMoveAssetsToFileManage(AccurateRefreshBase &refresh,
-    const std::vector<MoveAssetsToFileManagerUpdateData> &updateDatas, const FileSourceType &type)
-{
-    CHECK_AND_RETURN_RET_LOG(!updateDatas.empty(), E_INVALID_ARGUMENTS, "update file source type param error");
-    for (auto &updateData : updateDatas) {
-        AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-        predicates.EqualTo(MediaColumn::MEDIA_ID, updateData.mediaId);
-        ValuesBucket values;
-        values.PutString(MediaColumn::MEDIA_NAME, updateData.displayName);
-        values.PutString(MediaColumn::MEDIA_TITLE, updateData.title);
-        values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, updateData.storagePath);
-        values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(type));
-        int32_t changedRows = -1;
-        int32_t ret = refresh.Update(changedRows, values, predicates);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "update move assets from lake error");
-    }
     return E_OK;
 }
 
@@ -212,13 +215,13 @@ static bool IsMovingPhoto(shared_ptr<NativeRdb::ResultSet> &resultSet)
 }
 
 static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
-    shared_ptr<NativeRdb::ResultSet> &resultSet, std::vector<MoveAssetsToFileManagerUpdateData> &updateDatas)
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     int32_t mediaId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
     std::string sourcePath = GetStringVal(PhotoColumn::PHOTO_SOURCE_PATH, resultSet);
     std::string outerFilePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-    std::string title = GetStringVal(MediaColumn::MEDIA_TITLE, resultSet);
-    std::string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+    std::string tmpTitle = GetStringVal(MediaColumn::MEDIA_TITLE, resultSet);
+    std::string tmpDisplayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
     bool cond = outerFilePath.empty() || sourcePath.empty();
     CHECK_AND_RETURN_RET(!cond, E_ERR);
     std::string innerFileSourcePath = ConvertPath(sourcePath);
@@ -228,39 +231,32 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
             DfxUtils::GetSafePath(innerFileSourcePath).c_str());
         return E_OK;
     }
+    // 纯云资产仅更新数据库
+    if (GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet) == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        MEDIA_INFO_LOG("CLOUD file manager");
+        UpdateFileManageAssetInfo(refresh, mediaId, innerFileSourcePath, tmpDisplayName, tmpTitle);
+        return E_OK;
+    }
     if (!MediaFileUtils::IsFileExists(outerFilePath)) {
         MEDIA_ERR_LOG("file not exist %{public}s", DfxUtils::GetSafePath(outerFilePath).c_str());
         return E_ERR;
     }
     std::string tmpInnerFilePath = innerFileSourcePath;
-    std::string tmpTitle = title;
-    std::string tmpDisplayName = displayName;
     // 同路径存在同名文件
     if (MediaFileUtils::IsFileExists(tmpInnerFilePath)) {
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(to_string(mediaId));
-        if (MediaFileAccessUtils::HandleSameNameRename(srcObj, tmpInnerFilePath, tmpInnerFilePath,
+        if (MediaFileAccessUtils::HandleSameNameRename(tmpInnerFilePath, tmpInnerFilePath,
             tmpTitle, tmpDisplayName) != E_OK) {
             MEDIA_ERR_LOG("can not move file to %{public}s", DfxUtils::GetSafePath(tmpInnerFilePath).c_str());
             return E_ERR;
-        } else { // 重命名成功后, 需要先修改storage_path, 后续文件通知判断变更
-            // 后续移动失败要回退storage_path
-            UpdateFileManageAssetInfo(refresh, mediaId, tmpInnerFilePath, tmpDisplayName, tmpTitle);
         }
     }
     //移动源文件前需要刷新数据库字段
     UpdateFileManageAssetInfo(refresh, mediaId, tmpInnerFilePath, tmpDisplayName, tmpTitle);
-    MoveAssetsToFileManagerUpdateData updateData;
-    updateData.mediaId = mediaId;
-    updateData.title = tmpTitle;
-    updateData.displayName = tmpDisplayName;
-    updateData.sourcePath = "";
-    updateData.storagePath = tmpInnerFilePath;
-    bool isMovingPhoto = IsMovingPhoto(resultSet);
-    int32_t ret = FileManagerAssetOperations::MoveFileManagerAsset(outerFilePath, tmpInnerFilePath, isMovingPhoto);
+    int32_t ret = FileManagerAssetOperations::MoveFileManagerAsset(outerFilePath, tmpInnerFilePath,
+        IsMovingPhoto(resultSet));
     CHECK_AND_PRINT_LOG(ret == E_OK, "move asset %{public}s to %{public}s error, errno: %{public}d.",
         DfxUtils::GetSafePath(outerFilePath).c_str(), DfxUtils::GetSafePath(tmpInnerFilePath).c_str(), errno);
     if (ret == E_OK) {
-        updateDatas.emplace_back(updateData);
         if (tmpInnerFilePath.compare(innerFileSourcePath) != E_OK) {
             UpdateFileManageAssetInfo(refresh, mediaId, tmpInnerFilePath, tmpDisplayName, tmpTitle);
         }
@@ -276,23 +272,12 @@ int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::Acc
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(MediaColumn::MEDIA_ID, ids);
     predicates.EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA));
-    predicates.And()
-        ->BeginWrap()
-        ->IsNotNull(PhotoColumn::PHOTO_STORAGE_PATH)
-        ->And()
-        ->NotEqualTo(PhotoColumn::PHOTO_STORAGE_PATH, "")
-        ->EndWrap();
-    predicates.And()
-        ->BeginWrap()
-        ->EqualTo(PhotoColumn::PHOTO_POSITION, to_string(static_cast<int32_t>(PhotoPositionType::LOCAL)))
-        ->Or()
-        ->EqualTo(PhotoColumn::PHOTO_POSITION, to_string(static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)))
-        ->EndWrap();
     predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0);
 
     vector<string> columns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_TITLE, MediaColumn::MEDIA_NAME,
         MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_SOURCE_PATH,
-        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE};
+        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
+        PhotoColumn::PHOTO_POSITION };
     auto resultSet = MediaLibraryRdbStore::Query(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "query storage path error");
     int32_t rowCount = -1;
@@ -307,12 +292,11 @@ int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::Acc
         resultSet->Close();
         return E_OK;
     }
-    std::vector<MoveAssetsToFileManagerUpdateData> updateDatas;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        MoveAssetToFileManage(refresh, resultSet, updateDatas);
+        MoveAssetToFileManage(refresh, resultSet);
     }
     resultSet->Close();
-    return UpdateAfterMoveAssetsToFileManage(refresh, updateDatas, FileSourceType::FILE_MANAGER);
+    return E_OK;
 }
 
 int32_t FileManagerAssetOperations::CheckAndRenameFileManagerAsset(AccurateRefresh::AccurateRefreshBase &refresh,

@@ -20,6 +20,8 @@
 // column name should be added here
 #define COLUMN_PHOTO_RISK_STATUS "photo_risk_status"
 #define COLUMN_CRITICAL_TYPE "critical_type"
+#define COLUMN_PHOTO_NEED_THUMBNAIL "need_thumbnail"
+#define COLUMN_ATTACHMENT_SIZE "attachment_size"
 // sqls only execute in upgrade progress should be added here
 
 #endif // UPGRADE_PHOTOS_SQLS_H

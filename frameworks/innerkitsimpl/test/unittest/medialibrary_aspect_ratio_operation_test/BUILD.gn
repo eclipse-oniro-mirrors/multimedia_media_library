@@ -77,6 +77,7 @@ ohos_unittest("medialibrary_aspect_ratio_operation_test") {
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",

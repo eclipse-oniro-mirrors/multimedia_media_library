@@ -26,6 +26,7 @@
 #include "medialibrary_related_system_state_manager.h"
 #include <sstream>
 #include "media_analysis_data_service.h"
+#include "lcd_aging_manager.h"
 
 namespace OHOS::Media::Background {
 
@@ -36,30 +37,45 @@ static constexpr int32_t WAIT_FOR_START_SYNC = 150000;
 const int32_t BATCH_SIZE = 50;
 
 const std::string SQL_QUERY_DOWNLOAD_FILE = "\
-    WITH AlbumCoverFileId AS ( \
-        SELECT DISTINCT CAST(SUBSTR(cover_uri, 20, INSTR(SUBSTR(cover_uri, 20), '/') - 1) AS INTEGER) AS file_id \
-        FROM PhotoAlbum \
-        WHERE cover_uri IS NOT NULL AND cover_uri <> '' \
-    ), \
-    ShootingCoverFileId AS ( \
+    WITH PortraitCoverFileId AS ( \
         SELECT DISTINCT CAST(SUBSTR(cover_uri, 20, INSTR(SUBSTR(cover_uri, 20), '/') - 1) AS INTEGER) AS file_id \
         FROM AnalysisAlbum \
-        WHERE album_subtype = 4101 \
-            AND cover_uri IS NOT NULL AND cover_uri <> '' \
+        WHERE (album_subtype = 4102 OR album_subtype = 4103) AND cover_uri IS NOT NULL AND cover_uri <> '' \
+    ), \
+    HighlightCoverFileId AS ( \
+        SELECT DISTINCT CAST( \
+            SUBSTR( \
+                cover_key, \
+                INSTR(cover_key, 'file://media/Photo/') + LENGTH('file://media/Photo/'), \
+                INSTR(SUBSTR(cover_key, \
+                    INSTR(cover_key, 'file://media/Photo/') + LENGTH('file://media/Photo/')), '/') - 1 \
+            ) AS INTEGER \
+        ) AS file_id \
+        FROM tab_highlight_cover_info \
+        WHERE cover_key IS NOT NULL AND cover_key <> '' AND cover_key LIKE '%file://media/Photo/%' \
+    ), \
+    FavoriteHighlightFileId AS ( \
+        SELECT DISTINCT map_asset AS file_id \
+        FROM AnalysisPhotoMap \
+        WHERE map_album IN ( \
+            SELECT album_id FROM tab_highlight_album WHERE is_favorite <> 0 AND highlight_status = 1 \
+        ) \
     ), \
     FavoriteFileId AS ( \
         SELECT file_id \
         FROM Photos \
         WHERE is_favorite = 1 \
     ) \
-    SELECT DISTINCT P.file_id, P.data, P.display_name \
+    SELECT P.file_id, P.data, P.display_name \
     FROM Photos P \
     INNER JOIN ( \
-        SELECT file_id FROM AlbumCoverFileId \
+        SELECT file_id FROM PortraitCoverFileId \
+        UNION \
+        SELECT file_id FROM HighlightCoverFileId \
+        UNION \
+        SELECT file_id FROM FavoriteHighlightFileId \
         UNION \
         SELECT file_id FROM FavoriteFileId \
-        UNION \
-        SELECT file_id FROM ShootingCoverFileId \
     ) AS T ON T.file_id = P.file_id \
     WHERE P.sync_status = 0 \
       AND P.clean_flag = 0 \
@@ -101,6 +117,9 @@ int32_t LcdDownloadTask::HandleLcdDownload()
 {
     std::unique_lock<std::mutex> lock(LcdDownloadMutex_, std::defer_lock);
     CHECK_AND_RETURN_RET_LOG(lock.try_lock(), E_OK, "Smart Data LCD download has started, skipping this operation");
+    // 执行过主动老化，才进行下载LCD
+    bool isActiveLcdAging = LcdAgingManager::GetInstance().GetIsActiveLcdAging();
+    CHECK_AND_RETURN_RET_INFO_LOG(isActiveLcdAging, E_OK, "isActiveLcdAging is false");
     if (!MedialibrarySubscriber::IsCurrentStatusOn()) {
         MEDIA_INFO_LOG("TryStartPendingDownload: conditions not met, wait for next time");
         return E_OK;

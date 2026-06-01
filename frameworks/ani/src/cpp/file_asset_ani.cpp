@@ -457,6 +457,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::UNIQUE_ID,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         PhotoColumn::PHOTO_HIDDEN_TIME,
+        PhotoColumn::ATTACHMENT_SIZE,
     };
 
     if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryAniUtils::IsSystemApp()) {

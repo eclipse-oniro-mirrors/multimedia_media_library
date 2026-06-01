@@ -61,7 +61,6 @@ ohos_fuzztest("MediaLibraryPhotoOwnerAlbumIdOperationFuzzTest") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
-    "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "samgr:samgr_proxy",

@@ -129,6 +129,7 @@ public:  // basic function
     int32_t TryGetMdirty() const;
     bool ShouldHandleAsMediaFile() const;
     bool ShouldHandleAsLakeFile() const;
+    bool ShouldHandleAsFileManager() const;
     std::string BuildFileUri() const;
 };
 }  // namespace OHOS::Media::ORM

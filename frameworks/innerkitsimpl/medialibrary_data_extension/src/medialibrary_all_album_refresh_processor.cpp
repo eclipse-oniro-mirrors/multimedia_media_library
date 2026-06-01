@@ -146,6 +146,31 @@ int32_t GetPhotoAlbumIds(PhotoAlbumSubType albumSubtype, int32_t currentAlbumId,
     return E_OK;
 }
 
+int32_t GetSourceAlbumIds(int32_t currentAlbumId, vector<int32_t>& albumIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
+
+    NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(PhotoAlbumType::SOURCE))
+    ->And()
+    ->GreaterThan(PhotoAlbumColumns::ALBUM_ID, currentAlbumId)
+    ->OrderByAsc(PhotoAlbumColumns::ALBUM_ID);
+    vector<string> columns = { PhotoAlbumColumns::ALBUM_ID };
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Failed to query photo album");
+
+    while (resultSet->GoToNextRow() == E_OK) {
+        int32_t albumId = GetAlbumId(resultSet);
+        if (albumId <= 0) {
+            MEDIA_WARN_LOG("Failed to GetAlbumId: %{public}d", albumId);
+            continue;
+        }
+        albumIds.push_back(albumId);
+    }
+    return E_OK;
+}
+
 int32_t GetAnalysisAlbumIds(int32_t currentAlbumId, vector<int32_t>& albumIds)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -177,7 +202,7 @@ int32_t GetAlbumIds(AlbumRefreshStatus albumRefreshStatus, int32_t currentAlbumI
         case AlbumRefreshStatus::USER:
             return GetPhotoAlbumIds(PhotoAlbumSubType::USER_GENERIC, currentAlbumId, albumIds);
         case AlbumRefreshStatus::SOURCE:
-            return GetPhotoAlbumIds(PhotoAlbumSubType::SOURCE_GENERIC, currentAlbumId, albumIds);
+            return GetSourceAlbumIds(currentAlbumId, albumIds);
         case AlbumRefreshStatus::ANALYSIS:
             return GetAnalysisAlbumIds(currentAlbumId, albumIds);
         default:

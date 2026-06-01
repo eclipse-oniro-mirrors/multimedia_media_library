@@ -57,6 +57,8 @@ const std::string TARGET_DIR = "/storage/media/local/files";
 const std::string DOCS_DIR = "/storage/media/local/files/Docs";
 const std::string DOCS_LPATH = "/FromDocs";
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
+const std::string CLONE_FILE_ROOT_LPATH = "/FromDocs/";
+const std::string CLONE_FILE_ROOT_ALBUM = "根目录";
 
 
 shared_ptr<NativeRdb::ResultSet> QueryGetAlbumByAlbumId(const int32_t &albumId)
@@ -116,14 +118,21 @@ static std::string GetThumbnailPathFromOrignalPath(std::string srcPath)
 int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
 {
     std::string targetPath;
-    if (cloneAssetInfo.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER)) {
-        targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + "/" + cloneAssetInfo.displayName;
-        AssetOperationInfo srcObj = AssetOperationInfo::CreateFromFileId(std::to_string(cloneAssetInfo.fileId));
+    if (cloneAssetInfo.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)) {
+        if (cloneAssetInfo.albumLpath == CLONE_FILE_ROOT_LPATH) {
+            targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + cloneAssetInfo.displayName;
+        } else {
+            targetPath = DOCS_DIR + cloneAssetInfo.albumLpath.substr(DOCS_LPATH_LENGTH) + "/" +
+                cloneAssetInfo.displayName;
+        }
         std::string renamePath;
         std::string renameTitle;
         std::string renameDisplayName;
-        int32_t ret = MediaFileAccessUtils::HandleSameNameRename(srcObj, targetPath, renamePath, renameTitle,
-            renameDisplayName);
+        if (cloneAssetInfo.burstKey.empty()) {
+            MediaFileAccessUtils::HandleSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName);
+        } else {
+            MediaFileAccessUtils::HandleBurstSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName);
+        }
         if (targetPath != renamePath && cloneAssetInfo.mode == NOT_SUPPORT_RENAME) {
             MEDIA_ERR_LOG("HandleSameName error");
             return E_SCENE_HAS_RENAMED;
@@ -135,6 +144,57 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
     } else {
         cloneAssetInfo.targetDisplayName = cloneAssetInfo.displayName;
     }
+    return E_OK;
+}
+
+int32_t CloneToAlbumService::QueryBurstAssetInfo(CloneAssetInfo &cloneAssetInfo, uint64_t &displayTotalSize,
+    uint64_t &actualTotalSize)
+{
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.NotEqualTo(PhotoColumn::MEDIA_ID, cloneAssetInfo.fileId);
+    predicates.EqualTo(PhotoColumn::PHOTO_BURST_KEY, cloneAssetInfo.burstKey);
+    std::vector<std::string> columns = {
+    PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH, MediaColumn::MEDIA_NAME, PhotoColumn::MEDIA_TYPE,
+    PhotoColumn::MEDIA_SIZE, MediaColumn::MEDIA_HIDDEN, MediaColumn::MEDIA_DATE_TRASHED,
+    PhotoColumn::PHOTO_POSITION, PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_SOURCE_PATH,
+    PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_FILE_SOURCE_TYPE
+    };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow()!= NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Asset not found, fileId:%{public}" PRId64, cloneAssetInfo.fileId);
+        return E_SCENE_HAS_RENAMED;
+    }
+    struct stat editStatInfo {};
+    struct stat thumStatInfo {};
+    do {
+        CloneAssetInfo burstCloneAssetInfo;
+        burstCloneAssetInfo.fileId = GetInt32Val(PhotoColumn::MEDIA_ID, resultSet);
+        burstCloneAssetInfo.filePath = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
+        burstCloneAssetInfo.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+        burstCloneAssetInfo.mediaType = GetInt32Val(PhotoColumn::MEDIA_TYPE, resultSet);
+        burstCloneAssetInfo.size = GetInt64Val(PhotoColumn::MEDIA_SIZE, resultSet);
+        burstCloneAssetInfo.hidden = GetInt32Val(MediaColumn::MEDIA_HIDDEN, resultSet);
+        burstCloneAssetInfo.dateTrashed = GetInt64Val(MediaColumn::MEDIA_DATE_TRASHED, resultSet);
+        burstCloneAssetInfo.position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
+        burstCloneAssetInfo.storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+        burstCloneAssetInfo.sourcePath = GetStringVal(PhotoColumn::PHOTO_SOURCE_PATH, resultSet);
+        burstCloneAssetInfo.burstKey = GetStringVal(PhotoColumn::PHOTO_BURST_KEY, resultSet);
+        burstCloneAssetInfo.fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+        actualTotalSize += static_cast<uint64_t>(burstCloneAssetInfo.size);
+        std::string editDataPath = MediaEditUtils::GetEditDataPath(burstCloneAssetInfo.filePath);
+        if (stat(editDataPath.c_str(), &editStatInfo) == E_OK) {
+            actualTotalSize += editStatInfo.st_size;
+        }
+        std::string thumbnailPath = GetThumbnailPathFromOrignalPath(burstCloneAssetInfo.filePath);
+        if (stat(thumbnailPath.c_str(), &thumStatInfo) == E_OK) {
+            actualTotalSize += thumStatInfo.st_size;
+        }
+        displayTotalSize += static_cast<uint64_t>(burstCloneAssetInfo.size);
+        burstCloneAssetInfo.albumId = cloneAssetInfo.albumId;
+        burstCloneAssetInfo.targetDisplayName = burstCloneAssetInfo.displayName;
+        cloneAssetInfo.burstCloneAssetList.push_back(burstCloneAssetInfo);
+    } while (!resultSet->GoToNextRow());
+    resultSet->Close();
     return E_OK;
 }
 
@@ -162,7 +222,6 @@ int32_t CloneToAlbumService::QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBo
             MEDIA_ERR_LOG("check name error");
             return ret;
         }
-        assets.cloneAssetInfo.push_back(info);
         actualTotalSize += static_cast<uint64_t>(info.size);
         displayTotalSize += static_cast<uint64_t>(info.size);
         std::string editDataPath = MediaEditUtils::GetEditDataPath(info.filePath);
@@ -173,6 +232,14 @@ int32_t CloneToAlbumService::QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBo
         if (stat(thumbnailPath.c_str(), &thumStatInfo) == E_OK) {
             actualTotalSize += thumStatInfo.st_size;
         }
+        if (!info.burstKey.empty()) {
+            ret = QueryBurstAssetInfo(info, displayTotalSize, actualTotalSize);
+            if (ret != E_OK) {
+                MEDIA_ERR_LOG("QueryBurstAssetInfo failed, id=%{public}" PRId64, info.fileId);
+                return ret;
+            }
+        }
+        assets.cloneAssetInfo.push_back(info);
     }
     assets.requestId = reqBody.requestId;
     return E_OK;
@@ -190,7 +257,7 @@ bool CheckFreeSpace(int32_t needFreeSize)
 
 int32_t CloneToAlbumService::HandleAssetClone(const CloneAssetInfo &cloneAssetInfo,
     std::string &newFileId, std::atomic<uint64_t> &processedSize,
-    std::atomic<uint32_t> &processedCount)
+    std::atomic<uint32_t> &processedCount, CloneCallbackType &cloneCallbackType)
 {
     auto progressCb = [&processedSize](uint64_t copiedSize) {
         processedSize.fetch_add(copiedSize);
@@ -203,6 +270,26 @@ int32_t CloneToAlbumService::HandleAssetClone(const CloneAssetInfo &cloneAssetIn
     }
 
     processedCount.fetch_add(1);
+    //如果是连拍
+    if (!cloneAssetInfo.burstKey.empty() && cloneCallbackType == CloneCallbackType::PHOTOASSET) {
+    int32_t ret = DoBurstAssetsClone(cloneAssetInfo, progressCb);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed toDoBurstAssetsClone.");
+    }
+    return E_OK;
+}
+
+int32_t CloneToAlbumService::DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo,
+    std::function<void(uint64_t)> progressCallback)
+{
+    for (const auto &asset : cloneAssetInfo.burstCloneAssetList) {
+        std::string newFileId = "";
+        int32_t result = MediaLibraryAlbumFusionUtils::CloneProgressAsset(asset,
+        asset.albumId, newFileId, progressCallback);
+        if (result != E_OK) {
+            MEDIA_ERR_LOG("clone error result %{public}d", result);
+            return result;
+        }
+    }
     return E_OK;
 }
 
@@ -252,12 +339,12 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
     std::vector<std::string> resultFileId;
     for (const auto &asset : cloneTaskInfo.cloneAssetInfo) {
         std::string newFileId = "";
-        ret = HandleAssetClone(asset, newFileId, cloneTaskInfo.processedSize, cloneTaskInfo.processedCount);
+        ret = HandleAssetClone(asset, newFileId, cloneTaskInfo.processedSize,
+            cloneTaskInfo.processedCount, cloneTaskInfo.cloneCallbackType);
         CHECK_AND_BREAK(ret == E_OK);
         resultFileId.push_back(newFileId);
     }
     timer.Unregister(timerId);
-    timer.Shutdown();
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -266,20 +353,21 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
 
     std::vector<std::string> columns = {};
     auto resultSet = rdbStore->Query(predicates, columns);
+    std::vector<std::string> resultUris;
+    int32_t result = GetUriFromResult(resultSet, resultUris, cloneTaskInfo.cloneCallbackType);
     if (callback != nullptr && cloneTaskInfo.cloneCallbackType == CloneCallbackType::PHOTOASSET) {
         auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
         auto dataShareresult = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
         callback->OnProgress(cloneTaskInfo.processedSize.load(), totalSize,
             cloneTaskInfo.processedCount.load(), totalCount);
-        callback->OnComplete(ret, {}, dataShareresult);
+        callback->OnComplete(ret, result == E_OK ? resultUris : std::vector<std::string>(), dataShareresult);
     } else if (callback != nullptr) {
-        std::vector<std::string> resultUris;
-        int32_t result = GetUriFromResult(resultSet, resultUris, cloneTaskInfo.cloneCallbackType);
         callback->OnProgress(cloneTaskInfo.processedSize.load(), totalSize,
             cloneTaskInfo.processedCount.load(), totalCount);
         std::shared_ptr<DataShare::DataShareResultSet> resultSet = nullptr;
         callback->OnComplete(ret, result == E_OK ? resultUris : std::vector<std::string>(), resultSet);
     }
+    timer.Shutdown();
     return E_OK;
 }
 
@@ -338,6 +426,9 @@ int32_t InsertAlbumByLPath(const string &lpath)
     if (lastSlashPos != std::string::npos) {
         albumName = lpath.substr(lastSlashPos + 1);
     }
+    if (lpath == CLONE_FILE_ROOT_LPATH) {
+        albumName = CLONE_FILE_ROOT_ALBUM;
+    }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "Failed to get rdbStore.");
     NativeRdb::RdbPredicates predicates(PhotoAlbumColumns::TABLE);
@@ -346,7 +437,7 @@ int32_t InsertAlbumByLPath(const string &lpath)
     values.PutString(PhotoAlbumColumns::ALBUM_NAME, albumName);
     values.PutInt(PhotoAlbumColumns::ALBUM_TYPE, static_cast<int32_t>(PhotoAlbumType::SOURCE));
     values.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE,
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER));
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
     values.PutString(PhotoAlbumColumns::ALBUM_LPATH, lpath);
     int32_t result = rdbStore->Insert(rowNum, PhotoAlbumColumns::TABLE, values);
     if (result != NativeRdb::E_OK) {
@@ -374,7 +465,7 @@ int32_t GetAlbumByLPath(CloneToAlbumReqBody &reqBody)
         return E_ERR;
     }
     reqBody.albumId = ret;
-    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
     return E_OK;
 }
@@ -412,7 +503,7 @@ int32_t ValidateRequestForDir(CloneToAlbumReqBody &reqBody)
         MEDIA_ERR_LOG("LPath is not file manager");
         return E_ERR;
     }
-    if (reqBody.albumSubType != static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER)) {
+    if (reqBody.albumSubType != static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)) {
         MEDIA_ERR_LOG("SubType is not file manager");
         return E_ERR;
     }

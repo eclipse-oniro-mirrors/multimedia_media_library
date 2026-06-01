@@ -53,6 +53,8 @@ const string PhotoAlbumColumns::UPLOAD_STATUS = "upload_status";
 const string PhotoAlbumColumns::ALBUM_HIDDEN = "hidden";
 const string PhotoAlbumColumns::UNIQUE_ID = "unique_id";
 const string PhotoAlbumColumns::ALBUM_FILE_HIDDEN = "file_hidden";
+const string PhotoAlbumColumns::ALBUM_SCENE_ID = "scene_id";
+const string PhotoAlbumColumns::ALBUM_SHARE_TYPE = "share_type";
 
 // For api9 compatibility
 const string PhotoAlbumColumns::ALBUM_RELATIVE_PATH = "relative_path";
@@ -205,7 +207,9 @@ const string PhotoAlbumColumns::CREATE_TABLE = CreateTable() +
     ALBUM_HIDDEN + " INT NOT NULL DEFAULT 0, " +
     CHANGE_TIME + " BIGINT NOT NULL DEFAULT 0, " +
     UNIQUE_ID + " TEXT DEFAULT NULL, " +
-    ALBUM_FILE_HIDDEN + " INT NOT NULL DEFAULT 0" +
+    ALBUM_FILE_HIDDEN + " INT NOT NULL DEFAULT 0, " +
+    ALBUM_SCENE_ID + " INT DEFAULT 0, " +
+    ALBUM_SHARE_TYPE + " INT DEFAULT 0 " +
     ")";
 
 // Create indexes
@@ -262,6 +266,8 @@ bool PhotoAlbumColumns::IsPhotoAlbumColumn(const string &columnName)
         PhotoAlbumColumns::ALBUM_RELATIVE_PATH, CONTAINS_HIDDEN, HIDDEN_COUNT, HIDDEN_COVER, ALBUM_LPATH,
         PhotoAlbumColumns::COVER_URI_SOURCE, PhotoAlbumColumns::UPLOAD_STATUS,
         PhotoAlbumColumns::ALBUM_HIDDEN, PhotoAlbumColumns::CHANGE_TIME,
+        PhotoAlbumColumns::UNIQUE_ID, PhotoAlbumColumns::ALBUM_SHARE_TYPE,
+        PhotoAlbumColumns::ALBUM_CLOUD_ID, PhotoAlbumColumns::ALBUM_SCENE_ID,
     };
     return PHOTO_ALBUM_COLUMNS.find(columnName) != PHOTO_ALBUM_COLUMNS.end();
 }

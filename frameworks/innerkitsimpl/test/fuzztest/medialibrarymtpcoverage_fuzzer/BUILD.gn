@@ -67,6 +67,7 @@ ohos_fuzztest("MediaLibraryMtpCoverageFuzzTest") {
     "image_framework:image_native",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "media_foundation:media_foundation",
     "player_framework:media_client",
     "relational_store:native_rdb",
     "safwk:system_ability_fwk",

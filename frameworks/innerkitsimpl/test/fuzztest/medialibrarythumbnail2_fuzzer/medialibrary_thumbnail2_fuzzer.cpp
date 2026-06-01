@@ -105,7 +105,6 @@ static Media::ThumbnailTaskPriority FuzzThumbnailTaskPriority()
 static void ThumbnailAgingHelperTest()
 {
     Media::ThumbRdbOpt opt = FuzzThumbRdbOpt(false);
-    Media::ThumbnailAgingHelper::AgingLcdBatch(opt);
     int64_t time = provider->ConsumeIntegral<int64_t>();
     bool before = provider->ConsumeBool();
     int outLcdCount;

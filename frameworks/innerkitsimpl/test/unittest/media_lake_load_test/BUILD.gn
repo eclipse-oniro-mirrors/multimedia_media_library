@@ -10,15 +10,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
- 
+
 import("//build/test.gni")
 import("//foundation/multimedia/media_library/media_library.gni")
- 
+
 group("unittest") {
   testonly = true
   deps = [ ":media_lake_load_test" ]
 }
- 
+
 ohos_unittest("media_lake_load_test") {
   module_out_path = "media_library/media_library_asset"
   include_dirs = [
@@ -82,13 +82,17 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_parser.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/file_manager_scan_policy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/file_manager/src/media_fileinterwork_scanner.cpp",
   ]
 
   sources = [
+    "./src/consistency_check_manager_test.cpp",
     "./src/folder_scanner_test.cpp",
     "./src/global_scanner_test.cpp",
     "./src/lake_file_operations_test.cpp",
     "./src/file_parser_test.cpp",
+    "./src/file_manager_parser_test.cpp",
+    "./src/media_fileinterwork_scanner_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
@@ -112,7 +116,9 @@ ohos_unittest("media_lake_load_test") {
     "ability_base:want",
     "ability_base:zuri",
     "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_context_native",
     "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
     "ability_runtime:app_context",
     "ability_runtime:app_manager",
     "ability_runtime:dataobs_manager",
@@ -143,11 +149,12 @@ ohos_unittest("media_lake_load_test") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
-    "ipc:ipc_single",
     "ipc:ipc_napi",
+    "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "libexif:libexif",
     "libfuse:libfuse",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
@@ -160,14 +167,15 @@ ohos_unittest("media_lake_load_test") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "storage_service:storage_manager_sa_proxy",
+    "thermal_manager:thermalsrv_client",
     "usb_manager:usbsrv_client",
     "window_manager:libdm",
     "zlib:shared_libz",
     "qos_manager:qos",
     "qos_manager:concurrent_task_client",
-    "thermal_manager:thermalsrv_client"
+    "graphic_surface:surface",
   ]
- 
+
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -181,4 +189,7 @@ ohos_unittest("media_lake_load_test") {
   if (media_library_file_manager_enable) {
     defines += [ "MEDIALIBRARY_FILE_MGR_SUPPORT" ]
   }
+
+  resource_config_file =
+    "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
 }

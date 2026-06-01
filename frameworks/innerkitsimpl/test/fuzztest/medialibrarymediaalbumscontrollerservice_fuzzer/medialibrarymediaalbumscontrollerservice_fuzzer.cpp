@@ -30,7 +30,6 @@
 #include "set_highlight_user_action_data_vo.h"
 #include "change_request_dismiss_vo.h"
 #include "change_request_set_album_name_vo.h"
-#include "change_request_set_cover_uri_vo.h"
 #include "change_request_set_display_level_vo.h"
 #include "change_request_set_is_me_vo.h"
 #include "change_request_add_assets_vo.h"
@@ -42,10 +41,6 @@
 #include "change_request_merge_album_vo.h"
 #include "change_request_place_before_vo.h"
 #include "change_request_set_order_position_vo.h"
-#include "album_commit_modify_vo.h"
-#include "album_add_assets_vo.h"
-#include "album_remove_assets_vo.h"
-#include "album_recover_assets_vo.h"
 #include "query_albums_vo.h"
 #include "get_albums_by_ids_vo.h"
 #include "get_order_position_vo.h"
@@ -168,34 +163,6 @@ static void SetHighlightUserActionDataFuzzer()
     MessageParcel reply;
     reqBody.Marshalling(data);
     analysisDataControllerService->SetHighlightUserActionData(data, reply);
-}
-
-static void ChangeRequestSetAlbumNameFuzzer()
-{
-    ChangeRequestSetAlbumNameReqBody reqBody;
-    reqBody.albumId = to_string(FDP->ConsumeIntegral<int32_t>());
-    reqBody.albumName = FDP->ConsumeBytesAsString(NUM_BYTES);
-    reqBody.albumType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumSubType = FDP->ConsumeIntegral<int32_t>();
-
-    MessageParcel data;
-    MessageParcel reply;
-    reqBody.Marshalling(data);
-    mediaAlbumsControllerService->ChangeRequestSetAlbumName(data, reply);
-}
-
-static void ChangeRequestSetCoverUriFuzzer()
-{
-    ChangeRequestSetCoverUriReqBody reqBody;
-    reqBody.albumId = to_string(FDP->ConsumeIntegral<int32_t>());
-    reqBody.coverUri = FDP->ConsumeBytesAsString(NUM_BYTES);
-    reqBody.albumType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumSubType = FDP->ConsumeIntegral<int32_t>();
-
-    MessageParcel data;
-    MessageParcel reply;
-    reqBody.Marshalling(data);
-    mediaAlbumsControllerService->ChangeRequestSetCoverUri(data, reply);
 }
 
 static void ChangeRequestSetIsMeFuzzer()
@@ -351,75 +318,6 @@ static void SetOrderPositionFuzzer()
     analysisDataControllerService->SetOrderPosition(data, reply);
 }
 
-static void AlbumCommitModifyFuzzer()
-{
-    AlbumCommitModifyReqBody reqBody;
-    reqBody.albumName = FDP->ConsumeBytesAsString(NUM_BYTES);
-    reqBody.albumId = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumSubType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_COMMIT_MODIFY);
-
-    MessageParcel data;
-    MessageParcel reply;
-    reqBody.Marshalling(data);
-    mediaAlbumsControllerService->AlbumCommitModify(data, reply);
-}
-
-static void AlbumAddAssetsFuzzer()
-{
-    AlbumAddAssetsReqBody reqBody;
-    reqBody.albumId = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumSubType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.assetsArray = {to_string(FDP->ConsumeIntegral<int32_t>()), to_string(FDP->ConsumeIntegral<int32_t>())};
-
-    MessageParcel data;
-    MessageParcel reply;
-    reqBody.Marshalling(data);
-    mediaAlbumsControllerService->AlbumAddAssets(data, reply);
-}
-
-static void AlbumRemoveAssetsFuzzer()
-{
-    AlbumRemoveAssetsReqBody reqBody;
-    reqBody.albumId = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumSubType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.assetsArray = {to_string(FDP->ConsumeIntegral<int32_t>()), to_string(FDP->ConsumeIntegral<int32_t>())};
-
-    MessageParcel data;
-    MessageParcel reply;
-    reqBody.Marshalling(data);
-    mediaAlbumsControllerService->AlbumRemoveAssets(data, reply);
-}
-
-static void AlbumRecoverAssetsFuzzer()
-{
-    AlbumRecoverAssetsReqBody reqBody;
-    reqBody.albumType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumSubType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.uris = {to_string(FDP->ConsumeIntegral<int32_t>()), to_string(FDP->ConsumeIntegral<int32_t>())};
-
-    MessageParcel data;
-    MessageParcel reply;
-    reqBody.Marshalling(data);
-    mediaAlbumsControllerService->AlbumRecoverAssets(data, reply);
-}
-
-static void QueryAlbumsFuzzer()
-{
-    QueryAlbumsReqBody reqBody;
-    reqBody.albumType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.albumSubType = FDP->ConsumeIntegral<int32_t>();
-    reqBody.columns = {to_string(FDP->ConsumeIntegral<int32_t>()), to_string(FDP->ConsumeIntegral<int32_t>())};
-
-    MessageParcel data;
-    MessageParcel reply;
-    reqBody.Marshalling(data);
-    mediaAlbumsControllerService->QueryAlbums(data, reply);
-}
-
 static void QueryHiddenAlbumsFuzzer()
 {
     QueryAlbumsReqBody reqBody;
@@ -524,8 +422,6 @@ static void MediaAlbumsControllerServiceFuzzer()
     CreatePhotoAlbumFuzzer();
     SetSubtitleFuzzer();
     SetHighlightUserActionDataFuzzer();
-    ChangeRequestSetAlbumNameFuzzer();
-    ChangeRequestSetCoverUriFuzzer();
     ChangeRequestSetIsMeFuzzer();
     ChangeRequestSetDisplayLevelFuzzer();
     ChangeRequestDismissFuzzer();
@@ -538,11 +434,6 @@ static void MediaAlbumsControllerServiceFuzzer()
     MergeAlbumFuzzer();
     PlaceBeforeFuzzer();
     SetOrderPositionFuzzer();
-    AlbumCommitModifyFuzzer();
-    AlbumAddAssetsFuzzer();
-    AlbumRemoveAssetsFuzzer();
-    AlbumRecoverAssetsFuzzer();
-    QueryAlbumsFuzzer();
     QueryHiddenAlbumsFuzzer();
     GetAlbumsByIdsFuzzer();
     GetOrderPositionFuzzer();

@@ -116,10 +116,12 @@ ohos_unittest("event_scan_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
+    "graphic_surface:surface",
   ]
 
   sanitize = {
@@ -225,10 +227,12 @@ ohos_unittest("event_thumbnail_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

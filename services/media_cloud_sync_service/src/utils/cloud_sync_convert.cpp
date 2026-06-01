@@ -308,11 +308,12 @@ int32_t CloudSyncConvert::CompensateAttRiskStatus(
 int32_t CloudSyncConvert::CompensateAttIsCritical(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
-    int32_t isCritical = data.attributesIsCritical;
     int32_t photoRiskStatus = data.attributesRiskStatus;
-    // Only put value if cloud has actual risk control information
-    if (photoRiskStatus >= 1) {
-        values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, isCritical);
+    // Put value according to photoRiskStatus
+    if (photoRiskStatus > 1) {
+        values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, 1);
+    } else {
+        values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, 0);
     }
     return E_OK;
 }
