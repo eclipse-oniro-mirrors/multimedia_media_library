@@ -987,7 +987,7 @@ static int32_t TransCommonErrorCode(int error)
 
 int MediaLibraryNapiUtils::TransErrorCode(const string &Name, shared_ptr<DataShare::DataShareResultSet> resultSet)
 {
-    NAPI_ERR_LOG("interface: %{public}s, server return nullptr", Name.c_str());
+    NAPI_ERR_LOG("TransErrorCode, server return nullptr");
     // Query can't return errorcode, so assume nullptr as permission deny
     if (resultSet == nullptr) {
         return JS_ERR_PERMISSION_DENIED;
@@ -997,7 +997,7 @@ int MediaLibraryNapiUtils::TransErrorCode(const string &Name, shared_ptr<DataSha
 
 int MediaLibraryNapiUtils::TransErrorCode(const string &Name, int error)
 {
-    NAPI_ERR_LOG("interface: %{public}s, server errcode:%{public}d ", Name.c_str(), error);
+    NAPI_ERR_LOG("TransErrorCode, server errcode:%{public}d", error);
     // Transfer Server error to napi error code
     if (error <= E_COMMON_START && error >= E_COMMON_END) {
         return TransCommonErrorCode(error);
@@ -1011,7 +1011,7 @@ int MediaLibraryNapiUtils::TransErrorCode(const string &Name, int error)
 
 int MediaLibraryNapiUtils::TransMoveErrorCode(const string &Name, int error)
 {
-    NAPI_ERR_LOG("interface: %{public}s, server errcode:%{public}d ", Name.c_str(), error);
+    NAPI_ERR_LOG("TransMoveErrorCode, server errcode:%{public}d", error);
     if (error <= E_COMMON_START && error >= E_COMMON_END) {
         return TransCommonErrorCode(error);
     } else if (error == E_PERMISSION_DENIED) {
