@@ -3778,23 +3778,28 @@ napi_value MediaAssetChangeRequestNapi::JSSetMovingPhotoVersion(napi_env env, na
         return nullptr;
     }
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
-    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext,
-        ARGS_ONE, ARGS_ONE) == napi_ok, "Failed to get object info");
+    if (MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_ONE, ARGS_ONE) != napi_ok) {
+        NapiError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "Failed to get object info");
+        return nullptr;
+    }
+
     auto changeRequest = asyncContext->objectInfo;
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR);
 
     uint32_t movingPhotoVersion = 0;
-    CHECK_COND_WITH_MESSAGE(env,
-        MediaLibraryNapiUtils::GetUInt32(env, asyncContext->argv[PARAM0], movingPhotoVersion) == napi_ok,
-        "Failed to parse moving photo version");
+    if (MediaLibraryNapiUtils::GetUInt32(env, asyncContext->argv[PARAM0], movingPhotoVersion) != napi_ok) {
+        NapiError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, "Failed to parse moving photo version");
+        return nullptr;
+    }
+
+    NAPI_INFO_LOG("set moving photo version: %{public}d", movingPhotoVersion);
     if (movingPhotoVersion != static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_9)) {
         NapiError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR,
             "movingPhotoVersion: %{public}d is invalid, only version 9 is allowed.", movingPhotoVersion);
         return nullptr;
     }
 
-    NAPI_INFO_LOG("set moving photo version: %{public}d", movingPhotoVersion);
     changeRequest->SetMovingPhotoVersion(movingPhotoVersion);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_MOVING_PHOTO_VERSION);
 
