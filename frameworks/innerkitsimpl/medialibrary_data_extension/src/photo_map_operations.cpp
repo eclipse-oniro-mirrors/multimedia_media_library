@@ -543,6 +543,46 @@ static int32_t HandleAlbumMapMoveAsset(const string &targetAlbumId,
     }
     return E_OK;
 }
+static int32_t AccurateRefreshNotifyChangedAssets(const vector<string>& AddAssetsArray,
+    const vector<string>& RemoveAssetsArray, const string &sourceAlbumId,
+    const string &targetAlbumId)
+{
+    vector<int32_t> AddAssetIdIntegers;
+    vector<int32_t> RemoveAssetIdIntegers;
+    vector<string> RemoveAssetIdStrings;
+
+    for (const auto &id : AddAssetsArray) {
+        CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(id));
+        AddAssetIdIntegers.emplace_back(stoi(id));
+        MEDIA_INFO_LOG("HandleAlbumMapMoveAsset add id = %{public}d", stoi(id));
+    }
+
+    for (const auto &id : RemoveAssetsArray) {
+        CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(id));
+        RemoveAssetIdIntegers.emplace_back(stoi(id));
+        RemoveAssetIdStrings.emplace_back(id);
+        MEDIA_INFO_LOG("HandleAlbumMapMoveAsset removed id = %{public}d", stoi(id));
+    }
+
+    if (AddAssetIdIntegers.size() > 0) {
+        AccurateRefresh::AnalysisAlbumAccurateRefresh AddAlbumRefresh;
+        AddAlbumRefresh.CustomUpdateAlbumsWithDeltaCount(AddAssetIdIntegers.size(), std::vector<string>{targetAlbumId});
+        AddAlbumRefresh.NotifyAnalysisAssetChange(AddAssetIdIntegers, AccurateRefresh::RDB_OPERATION_ADD_ANALYSIS);
+        AddAlbumRefresh.Notify();
+    }
+
+    if (RemoveAssetIdIntegers.size() > 0) {
+        AccurateRefresh::AnalysisAlbumAccurateRefresh RemoveAlbumRefresh;
+        int32_t deltaCount = 0 - static_cast<int32_t>(RemoveAssetIdIntegers.size());
+        RemoveAlbumRefresh.CustomUpdateAlbumsWithDeltaCount(deltaCount,
+            std::vector<string>{sourceAlbumId}, RemoveAssetIdStrings);
+        RemoveAlbumRefresh.NotifyAnalysisAssetChange(RemoveAssetIdIntegers,
+            AccurateRefresh::RDB_OPERATION_REMOVE_ANALYSIS);
+        RemoveAlbumRefresh.Notify();
+    }
+
+    return E_OK;
+}
 
 int32_t DoSmartMoveAssets(const string &albumId, const string targetAlbumId,
     const vector<string> &assetIds, MergedAlbumInfo &mergedAlbumInfo)
@@ -563,7 +603,9 @@ int32_t DoSmartMoveAssets(const string &albumId, const string targetAlbumId,
     }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "GetRdbStore fail");
-    MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, updateMapAlbumIds);
+    CHECK_AND_RETURN_RET_LOG(
+        AccurateRefreshNotifyChangedAssets(mergedAlbumInfo.unCommonAssets, assetIds, albumId, targetAlbumId) == E_OK,
+        E_ERR, "AccurateRefreshNotifyChangedAssets fail");
     if (!HavePortraitCover(rdbStore, targetAlbumId)) {
         MEDIA_INFO_LOG("AlbumId = %{public}s do not have portrait cover", targetAlbumId.c_str());
         string albumIdsStr = "";
@@ -586,13 +628,13 @@ int32_t NotifyChangedAssets(const vector<string> &AddAssetsArray, const vector<s
         CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(AddAssetsArray[i]));
         std::string UpdateUri = PhotoColumn::PHOTO_URI_PREFIX + AddAssetsArray[i];
         watch->Notify(MediaFileUtils::Encode(UpdateUri),
-            NotifyType::NOTIFY_ALBUM_DISMISS_ASSET, std::stoi(sourceAlbumId));
+            NotifyType::NOTIFY_ALBUM_ADD_ASSET, std::stoi(sourceAlbumId));
     }
     for (size_t i = 0; i < RemoveAssetsArray.size(); i++) {
         CHECK_AND_CONTINUE(MediaFileUtils::IsValidInteger(RemoveAssetsArray[i]));
         std::string UpdateUri = PhotoColumn::PHOTO_URI_PREFIX + RemoveAssetsArray[i];
         watch->Notify(MediaFileUtils::Encode(UpdateUri),
-            NotifyType::NOTIFY_ALBUM_ADD_ASSET, std::stoi(targetAlbumId));
+            NotifyType::NOTIFY_ALBUM_DISMISS_ASSET, std::stoi(targetAlbumId));
     }
     return E_OK;
 }
@@ -610,7 +652,7 @@ int32_t PhotoMapOperations::SmartMoveAssets(const string &albumId,
 
     int32_t ret = DoSmartMoveAssets(albumId, targetAlbumId, assetsArray, mergedAlbumInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "SmartMoveAssets Fail ");
-    CHECK_AND_RETURN_RET_LOG(NotifyChangedAssets(assetsArray, mergedAlbumInfo.unCommonAssets,
+    CHECK_AND_RETURN_RET_LOG(NotifyChangedAssets(mergedAlbumInfo.unCommonAssets, assetsArray,
         albumId, targetAlbumId) == E_OK, E_ERR, "NotifyChangedAssets Fail ");
     return ret;
 }
