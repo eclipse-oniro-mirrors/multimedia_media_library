@@ -496,7 +496,7 @@ static std::string GetBackupPortraitCoverUri(const shared_ptr<MediaLibraryRdbSto
     const string columnDisplayName = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_NAME;
     const string columnData = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_FILE_PATH;
     const vector<string> columns = { columnFileId, columnDisplayName, columnData };
-    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns);
+    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns, true);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, "", "StepQueryWithoutCheck failed");
     int32_t err = resultSet->GoToFirstRow();
     CHECK_AND_RETURN_RET_LOG(err == E_OK, "", "GoToFirstRow failed");
