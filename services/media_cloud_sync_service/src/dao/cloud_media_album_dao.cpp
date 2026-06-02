@@ -1377,6 +1377,8 @@ void CloudMediaAlbumDao::FillAlbumCoverValues(int32_t coverUriSource, const std:
     values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, coverUriSource);
     if (!coverCloudId.empty()) {
         values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, coverCloudId);
+    } else {
+        values.PutNull(PhotoAlbumColumns::COVER_CLOUD_ID);
     }
 }
 // LCOV_EXCL_STOP
