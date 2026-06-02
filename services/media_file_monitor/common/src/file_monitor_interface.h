@@ -218,7 +218,8 @@ struct FileMsgModel {
     int64_t createDate{0};
     int32_t openSource{0};
     int64_t closeDate{0};
-    std::string currentAppName;
+    std::string currentAppName;         //当前应用来源
+    std::string diskId;                 //数据盘标识,""表示系统盘,"data0"等表示数据盘
 };
 // 来源：扫盘/监听
 constexpr uint64_t MSG_TYPE_SOURCE_SCAN         = 0x00000001;    // 00000000 00000000 00000000 00000001
