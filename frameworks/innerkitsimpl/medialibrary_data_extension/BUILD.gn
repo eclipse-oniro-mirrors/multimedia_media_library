@@ -487,6 +487,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_timer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_transaction.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_worker.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_system_photo_keys.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_database_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/xcollie_helper.cpp",

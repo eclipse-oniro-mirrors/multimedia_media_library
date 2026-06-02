@@ -122,6 +122,7 @@ ohos_shared_library("medialibrary_ani_utils") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src//utils/media_notification_utils.cpp",
     "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/preferred_compatible_mode_check_utils.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_system_photo_keys.cpp",
   ]
 
   media_asset_service_vo_source = [
@@ -256,6 +257,7 @@ ohos_shared_library("medialibrary_ani_utils") {
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "hilog:libhilog",
+    "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "i18n:intl_util",
     "image_framework:image_ani",
