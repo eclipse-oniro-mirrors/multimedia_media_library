@@ -60,13 +60,15 @@ const STAT_TYPE_VIDEO = 'video';
 const STAT_TYPE_AUDIO = 'audio';
 const STAT_TYPE_LAKE_PHOTO = 'ancoPhoto';
 const STAT_TYPE_LAKE_VIDEO = 'ancoVideo';
+const STAT_TYPE_FILE_MANAGER_PHOTO = 'fileManagerPhoto';
+const STAT_TYPE_FILE_MANAGER_VIDEO = 'fileManagerVideo';
 const STAT_TYPE_PHOTO_VIDEO = 'photo&video';
 const STAT_TYPE_UPDATE = 'update';
 const STAT_TYPE_THUMBNAIL = 'thumbnail';
 const STAT_TYPE_OTHER = 'other';
 const STAT_TYPE_ONGOING = 'ongoing';
 const STAT_TYPES = [STAT_TYPE_PHOTO, STAT_TYPE_VIDEO, STAT_TYPE_AUDIO,
-    STAT_TYPE_LAKE_PHOTO, STAT_TYPE_LAKE_VIDEO];
+    STAT_TYPE_LAKE_PHOTO, STAT_TYPE_LAKE_VIDEO, STAT_TYPE_FILE_MANAGER_PHOTO, STAT_TYPE_FILE_MANAGER_VIDEO];
 const RESULT_INFO_NUM = 2;
 const JS_TYPE_STRING = 'string';
 const JS_TYPE_BOOLEAN = 'boolean';
@@ -113,6 +115,20 @@ const DEFAULT_RESTORE_EX_INFO = {
         },
         {
           'backupInfo': STAT_TYPE_LAKE_VIDEO,
+          'successCount': 0,
+          'duplicateCount': 0,
+          'failedCount': 0,
+          'details': null
+        },
+        {
+          'backupInfo': STAT_TYPE_FILE_MANAGER_PHOTO,
+          'successCount': 0,
+          'duplicateCount': 0,
+          'failedCount': 0,
+          'details': null
+        },
+        {
+          'backupInfo': STAT_TYPE_FILE_MANAGER_VIDEO,
           'successCount': 0,
           'duplicateCount': 0,
           'failedCount': 0,
@@ -363,6 +379,8 @@ export default class MediaBackupExtAbility extends BackupExtensionAbility {
     let hasAudio = false;
     let hasLakePhoto = false;
     let hasLakeVideo = false;
+    let hasFileManagerPhoto = false;
+    let hasFileManagerVideo = false;
     for (let subCountInfo of subCountInfos) {
       if (!this.isSubCountInfoValid(subCountInfo)) {
         return false;
@@ -372,8 +390,11 @@ export default class MediaBackupExtAbility extends BackupExtensionAbility {
       hasAudio = hasAudio || subCountInfo[STAT_KEY_BACKUP_INFO] === STAT_TYPE_AUDIO;
       hasLakePhoto = hasLakePhoto || subCountInfo[STAT_KEY_BACKUP_INFO] === STAT_TYPE_LAKE_PHOTO;
       hasLakeVideo = hasLakeVideo || subCountInfo[STAT_KEY_BACKUP_INFO] === STAT_TYPE_LAKE_VIDEO;
+      hasFileManagerPhoto = hasFileManagerPhoto || subCountInfo[STAT_KEY_BACKUP_INFO] === STAT_TYPE_FILE_MANAGER_PHOTO;
+      hasFileManagerVideo = hasFileManagerVideo || subCountInfo[STAT_KEY_BACKUP_INFO] === STAT_TYPE_FILE_MANAGER_VIDEO;
     }
-    return hasPhoto && hasVideo && hasAudio && hasLakePhoto && hasLakeVideo;
+    return hasPhoto && hasVideo && hasAudio && hasLakePhoto && hasLakeVideo &&
+        hasFileManagerPhoto && hasFileManagerVideo;
   }
 
   private isSubCountInfoValid(subCountInfo: JSON): boolean {

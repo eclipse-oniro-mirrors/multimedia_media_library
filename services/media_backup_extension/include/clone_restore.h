@@ -291,6 +291,8 @@ private:
     void UpdateDuplicateNumber(const FileInfo &fileInfo);
     void QueryAndSetLakeFileFailCount();
     void ReportRestoreTaskofLakeFiles();
+    void QueryAndSetFileManagerFileFailCount();
+    void ReportRestoreTaskofFileManagerFiles();
     bool CheckAlbumNameUnique(std::string albumName, const std::vector<string> &repetedAlbumName);
     void UpdateSourceAlbumName(bool &isUinque, vector<AlbumInfo> &albumInfos, vector<string> &repetedAlbumName,
         size_t index);

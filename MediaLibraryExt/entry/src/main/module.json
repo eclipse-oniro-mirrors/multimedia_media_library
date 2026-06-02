@@ -25,6 +25,10 @@
       {
         "name": "SupportLivePhoto",
         "value": "1"
+      },
+      {
+        "name": "SupportAncoClone",
+        "value": "3"
       }
     ],
     "abilities": [

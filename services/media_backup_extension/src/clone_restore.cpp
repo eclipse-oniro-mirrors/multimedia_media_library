@@ -180,7 +180,7 @@ const unordered_map<string, unordered_map<string, string>> TABLE_QUERY_WHERE_CLA
                 to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)) },
             { MediaColumn::MEDIA_TIME_PENDING, MediaColumn::MEDIA_TIME_PENDING + " = 0" },
             { PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_IS_TEMP + " = 0" },
-            { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " IN (0, 3)" },
+            { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " IN (0, 1, 3)" },
         }},
     { PhotoAlbumColumns::TABLE,
         {
@@ -207,7 +207,7 @@ const unordered_map<string, unordered_map<string, string>> TABLE_QUERY_WHERE_CLA
                 to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)) },
             { MediaColumn::MEDIA_TIME_PENDING, MediaColumn::MEDIA_TIME_PENDING + " = 0" },
             { PhotoColumn::PHOTO_IS_TEMP, PhotoColumn::PHOTO_IS_TEMP + " = 0" },
-            { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " IN (0, 3)" },
+            { PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_FILE_SOURCE_TYPE + " IN (0, 1,3)" },
         }},
     { PhotoAlbumColumns::TABLE,
         {
@@ -735,6 +735,7 @@ void CloneRestore::RestorePhoto()
 {
     MEDIA_INFO_LOG("Start clone restore: photos");
     this->photosClone_.InitDeduplicationInfo();
+    this->photosClone_.InitFileManagerDeduplicationInfo();
     CHECK_AND_RETURN_LOG(IsReadyForRestore(PhotoColumn::PHOTOS_TABLE),
         "Column status is not ready for restore photo, quit");
     unordered_map<string, string> srcColumnInfoMap = BackupDatabaseUtils::GetColumnInfoMap(mediaRdb_,
@@ -960,6 +961,8 @@ void CloneRestore::MoveMigrateFile(std::vector<FileInfo> &fileInfos, int64_t &fi
 {
     int64_t lakeFileMoveCount = 0;
     int64_t lakeVideoFileMoveCount = 0;
+    int64_t fileManagerFileMoveCount = 0;
+    int64_t fileManagerVideoFileMoveCount = 0;
     vector<std::string> moveFailedData;
     for (size_t i = 0; i < fileInfos.size(); i++) {
         if (!MediaFileUtils::IsFileExists(fileInfos[i].filePath) ||
@@ -989,13 +992,18 @@ void CloneRestore::MoveMigrateFile(std::vector<FileInfo> &fileInfos, int64_t &fi
         lakeFileMoveCount += FileAdapter::IsLakeFile(fileInfos[i]);
         lakeVideoFileMoveCount += fileInfos[i].fileType == MediaType::MEDIA_TYPE_VIDEO &&
             FileAdapter::IsLakeFile(fileInfos[i]);
+        fileManagerFileMoveCount += FileAdapter::IsFileManagerFile(fileInfos[i]);
+        fileManagerVideoFileMoveCount += fileInfos[i].fileType == MediaType::MEDIA_TYPE_VIDEO &&
+            FileAdapter::IsFileManagerFile(fileInfos[i]);
     }
     DeleteMoveFailedData(moveFailedData);
     SetVisiblePhoto(fileInfos);
-    migrateFileNumber_ += fileMoveCount - lakeFileMoveCount;
-    migrateVideoFileNumber_ += videoFileMoveCount - lakeVideoFileMoveCount;
+    migrateFileNumber_ += fileMoveCount - lakeFileMoveCount - fileManagerFileMoveCount;
+    migrateVideoFileNumber_ += videoFileMoveCount - lakeVideoFileMoveCount - fileManagerVideoFileMoveCount;
     migrateLakePhotoNumber_ += lakeFileMoveCount - lakeVideoFileMoveCount;
     migrateLakeVideoNumber_ += lakeVideoFileMoveCount;
+    migrateFileManagerPhotoNumber_ += fileManagerFileMoveCount - fileManagerVideoFileMoveCount;
+    migrateFileManagerVideoNumber_ += fileManagerVideoFileMoveCount;
 }
 
 static void UpdateThumbnailStatusToFailed(std::shared_ptr<NativeRdb::RdbStore> &rdbStore, std::string id,
@@ -1166,6 +1174,8 @@ void CloneRestore::UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &file
         values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
         if (FileAdapter::IsLakeFile(fileInfo)) {
             values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, FileSourceType::MEDIA_HO_LAKE);
+        } else if (FileAdapter::IsFileManagerFile(fileInfo)) {
+            values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, FileSourceType::FILE_MANAGER);
         }
         int64_t localAssetSize = 0;
         MovingPhotoFileUtils::GetLocalAssetSize(fileInfo.effectMode, FileAdapter::GetOriginalFilePath(fileInfo),
@@ -1573,7 +1583,7 @@ void CloneRestore::AnalyzeSource()
 
 int32_t CloneRestore::MovePicture(FileInfo &fileInfo)
 {
-    if (FileAdapter::IsLakeFile(fileInfo)) {
+    if (FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo)) {
         MediaFileUtils::UpdateModifyTimeInMsec(fileInfo.filePath, fileInfo.dateModified);
         return E_OK;
     }
@@ -2781,8 +2791,10 @@ void CloneRestore::RestoreGallery()
     // selection clone is dependent on dup_sim clone
     RestoreAnalysisSelection();
     QueryAndSetLakeFileFailCount();
+    QueryAndSetFileManagerFileFailCount();
     ReportInvalidLocalFiles();
     ReportRestoreTaskofLakeFiles();
+    ReportRestoreTaskofFileManagerFiles();
     InheritManualCover();
 }
 
@@ -3866,11 +3878,23 @@ void CloneRestore::StoreHighlightAlbumMappings(CloneRestoreHighlight& cloneResto
 void CloneRestore::UpdateDuplicateNumber(const FileInfo &fileInfo)
 {
     if (fileInfo.fileType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) {
-        FileAdapter::IsLakeFile(fileInfo) ? migrateLakePhotoDuplicateNumber_++ : migratePhotoDuplicateNumber_++;
+        if (FileAdapter::IsLakeFile(fileInfo)) {
+            migrateLakePhotoDuplicateNumber_++;
+        } else if (FileAdapter::IsFileManagerFile(fileInfo)) {
+            migrateFileManagerPhotoDuplicateNumber_++;
+        } else {
+            migratePhotoDuplicateNumber_++;
+        }
         return;
     }
     if (fileInfo.fileType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
-        FileAdapter::IsLakeFile(fileInfo) ? migrateLakeVideoDuplicateNumber_++ : migrateVideoDuplicateNumber_++;
+        if (FileAdapter::IsLakeFile(fileInfo)) {
+            migrateLakeVideoDuplicateNumber_++;
+        } else if (FileAdapter::IsFileManagerFile(fileInfo)) {
+            migrateFileManagerVideoDuplicateNumber_++;
+        } else {
+            migrateVideoDuplicateNumber_++;
+        }
         return;
     }
     if (fileInfo.fileType == static_cast<int32_t>(MediaType::MEDIA_TYPE_AUDIO)) {
@@ -3923,6 +3947,52 @@ void CloneRestore::ReportRestoreTaskofLakeFiles()
     info.duplicateCount = static_cast<int64_t>(migrateLakePhotoDuplicateNumber_) +
         static_cast<int64_t>(migrateLakeVideoDuplicateNumber_);
     info.failedCount = static_cast<int64_t>(totalLakePhotoFailCount + totalLakeVideoFailCount);
+    UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report(info);
+}
+
+void CloneRestore::QueryAndSetFileManagerFileFailCount()
+{
+    std::unordered_map<std::string, FailedFileInfo> fileManagerPhotoFailedFiles;
+    std::unordered_map<std::string, FailedFileInfo> fileManagerVideoFailedFiles;
+    this->photosClone_.QueryFileManagerFileFailInfo(fileManagerPhotoFailedFiles, fileManagerVideoFailedFiles);
+
+    migrateFileManagerPhotoFailNumber_ = static_cast<uint64_t>(fileManagerPhotoFailedFiles.size());
+    migrateFileManagerVideoFailNumber_ = static_cast<uint64_t>(fileManagerVideoFailedFiles.size());
+
+    {
+        std::lock_guard<mutex> lock(failedFilesMutex_);
+        for (const auto &pair : fileManagerPhotoFailedFiles) {
+            failedFilesMap_[STAT_TYPE_FILE_MANAGER_PHOTO].emplace(pair.first, pair.second);
+        }
+        for (const auto &pair : fileManagerVideoFailedFiles) {
+            failedFilesMap_[STAT_TYPE_FILE_MANAGER_VIDEO].emplace(pair.first, pair.second);
+        }
+    }
+
+    MEDIA_INFO_LOG("FileManagerClone: fileManagerPhotoFailCount: %{public}zu, fileManagerVideoFailCount: %{public}zu",
+        fileManagerPhotoFailedFiles.size(), fileManagerVideoFailedFiles.size());
+}
+
+void CloneRestore::ReportRestoreTaskofFileManagerFiles()
+{
+    auto fileManagerPhotoFailedFiles = GetFailedFiles(STAT_TYPE_FILE_MANAGER_PHOTO);
+    auto fileManagerVideoFailedFiles = GetFailedFiles(STAT_TYPE_FILE_MANAGER_VIDEO);
+    uint64_t totalFileManagerPhotoFailCount = fileManagerPhotoFailedFiles.size();
+    uint64_t totalFileManagerVideoFailCount = fileManagerVideoFailedFiles.size();
+
+    RestoreTaskInfo info;
+    info.type = "FILE_MANAGER_CLONE";
+    info.errorCode = std::to_string(E_OK);
+    info.errorInfo = "Success photo: " + std::to_string(migrateFileManagerPhotoNumber_) +
+        ", video: " + std::to_string(migrateFileManagerVideoNumber_) +
+        ", duplicate photo: " + std::to_string(migrateFileManagerPhotoDuplicateNumber_) +
+        ", video: " + std::to_string(migrateFileManagerVideoDuplicateNumber_) +
+        ", fail photo: " + std::to_string(totalFileManagerPhotoFailCount) +
+        ", video: " + std::to_string(totalFileManagerVideoFailCount);
+    info.successCount = static_cast<int32_t>(migrateFileManagerPhotoNumber_ + migrateFileManagerVideoNumber_);
+    info.duplicateCount = static_cast<int32_t>(migrateFileManagerPhotoDuplicateNumber_) +
+        static_cast<int32_t>(migrateFileManagerVideoDuplicateNumber_);
+    info.failedCount = static_cast<int32_t>(totalFileManagerPhotoFailCount + totalFileManagerVideoFailCount);
     UpgradeRestoreTaskReport().SetSceneCode(sceneCode_).SetTaskId(taskId_).Report(info);
 }
 

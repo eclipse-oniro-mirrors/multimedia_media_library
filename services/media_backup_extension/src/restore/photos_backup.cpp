@@ -27,44 +27,33 @@
 namespace OHOS::Media {
 std::string PhotosBackup::BackupInfo::ToString() const
 {
-    nlohmann::json jsonObject = {
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_PHOTO + suffix},
-            {STAT_KEY_NUMBER, photoCount}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_VIDEO + suffix},
-            {STAT_KEY_NUMBER, videoCount}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_AUDIO + suffix},
-            {STAT_KEY_NUMBER, audioCount}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_TOTAL_SIZE + suffix},
-            {STAT_KEY_NUMBER, totalSize}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_CLOUD_PHOTO + suffix},
-            {STAT_KEY_NUMBER, cloudPhotoCount}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_CLOUD_VIDEO + suffix},
-            {STAT_KEY_NUMBER, cloudVideoCount}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_LAKE_PHOTO + suffix},
-            {STAT_KEY_NUMBER, lakePhotoCount}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_LAKE_VIDEO + suffix},
-            {STAT_KEY_NUMBER, lakeVideoCount}
-        },
-        {
-            {STAT_KEY_BACKUP_INFO, STAT_TYPE_LAKE_TOTAL_SIZE + suffix},
-            {STAT_KEY_NUMBER, lakeTotalSize}
-        }
+    struct StatMapping {
+        std::string typePrefix;
+        int64_t value;
     };
+
+    const StatMapping mappings[] = {
+        {STAT_TYPE_PHOTO,              photoCount},
+        {STAT_TYPE_VIDEO,              videoCount},
+        {STAT_TYPE_AUDIO,              audioCount},
+        {STAT_TYPE_TOTAL_SIZE,         static_cast<int64_t>(totalSize)},
+        {STAT_TYPE_CLOUD_PHOTO,        cloudPhotoCount},
+        {STAT_TYPE_CLOUD_VIDEO,        cloudVideoCount},
+        {STAT_TYPE_LAKE_PHOTO,         lakePhotoCount},
+        {STAT_TYPE_LAKE_VIDEO,         lakeVideoCount},
+        {STAT_TYPE_LAKE_TOTAL_SIZE,    static_cast<int64_t>(lakeTotalSize)},
+        {STAT_TYPE_FILE_MANAGER_PHOTO, fileManagerPhotoCount},
+        {STAT_TYPE_FILE_MANAGER_VIDEO, fileManagerVideoCount},
+        {STAT_TYPE_FILE_MANAGER_TOTAL_SIZE, static_cast<int64_t>(fileManagerTotalSize)},
+    };
+
+    nlohmann::json jsonObject;
+    for (const auto& m : mappings) {
+        jsonObject.push_back({
+            {STAT_KEY_BACKUP_INFO, std::string(m.typePrefix) + suffix},
+            {STAT_KEY_NUMBER, m.value}
+        });
+    }
     return jsonObject.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 }
 
@@ -105,7 +94,16 @@ std::string PhotosBackup::GetBackupInfoOfMediaFile()
         .lakeVideoCount = photosDao_.GetBackupMediaCount({MediaType::MEDIA_TYPE_VIDEO}, {FileSourceType::MEDIA_HO_LAKE},
             {static_cast<int32_t>(PhotoPositionType::LOCAL),
              static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)}),
-        .lakeTotalSize = GetBackupTotalSizeOfLakeFile()
+        .lakeTotalSize = GetBackupTotalSizeOfLakeFile(),
+        .fileManagerPhotoCount = photosDao_.GetBackupMediaCount({MediaType::MEDIA_TYPE_IMAGE},
+            {FileSourceType::FILE_MANAGER},
+            {static_cast<int32_t>(PhotoPositionType::LOCAL),
+            static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)}),
+        .fileManagerVideoCount = photosDao_.GetBackupMediaCount({MediaType::MEDIA_TYPE_VIDEO},
+            {FileSourceType::FILE_MANAGER},
+            {static_cast<int32_t>(PhotoPositionType::LOCAL),
+                static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)}),
+        .fileManagerTotalSize = GetBackupTotalSizeOfFileManagerFile()
     };
     UpgradeRestoreTaskReport(sceneCode_, taskId_).Report("BACKUP_INFO_MEDIA", "0", backupInfo.ToString());
     return backupInfo.ToString();
@@ -151,6 +149,11 @@ size_t PhotosBackup::GetBackupTotalSizeOfMediaFile()
 size_t PhotosBackup::GetBackupTotalSizeOfLakeFile()
 {
     return static_cast<size_t>(photosDao_.GetAssetTotalSizeByFileSourceType(FileSourceType::MEDIA_HO_LAKE));
+}
+
+size_t PhotosBackup::GetBackupTotalSizeOfFileManagerFile()
+{
+    return static_cast<size_t>(photosDao_.GetAssetTotalSizeByFileSourceType(FileSourceType::FILE_MANAGER));
 }
 
 static void DeleteCloneFileInfoDb(const std::string dbPath)
