@@ -2295,7 +2295,7 @@ static bool CheckGetAttributePermission(napi_env env)
         return false;
     }
     if (!CheckAlbumChangeRequestCallerPermission(PERM_READ_IMAGEVIDEO)) {
-        NapiError::ThrowError(env, E_PERMISSION_DENIED, "Permission denied: "
+        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "Permission denied: "
             + string(PERM_READ_IMAGEVIDEO));
         return false;
     }

@@ -403,9 +403,6 @@ int32_t MediaAlbumsControllerService::GetAnalysisAlbumAttribute(MessageParcel &d
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
         "AnalysisAlbumGetAttribute Read Request Error");
-    ret = CheckOperateAttributeThumbDbPermission(JS_INNER_FAIL);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
-        "AnalysisAlbumGetAttribute permission denied");
     GetAttributeRespBody respBody;
     std::vector<std::unordered_map<std::string, std::string>> queryResults = {};
     AnalysisAlbumGetAttributeDto dto;

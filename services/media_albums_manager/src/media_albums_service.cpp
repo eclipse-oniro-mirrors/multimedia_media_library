@@ -178,7 +178,7 @@ int32_t MediaAlbumsService::GetAnalysisAlbumAttribute(const AnalysisAlbumGetAttr
     vector<std::unordered_map<std::string, std::string>> &queryResults)
 {
     auto photoAlbum = BuildAnalysisAlbumTarget(dto);
-    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INVALID_VALUES, "failed to build analysis album target");
+    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INNER_FAIL, "failed to build analysis album target");
     std::vector<std::string> attrs = dto.attrs;
     return AnalysisAlbumAttributeDispatcher::GetAttributeExecute(photoAlbum, attrs, queryResults);
 }

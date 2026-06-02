@@ -164,13 +164,13 @@ HWTEST_F(GetAlbumAttributeTest, GetExtraInfoTest_Test_001, TestSize.Level0)
 
     std::vector<std::string> attributeArray = { EXTRA_INFO };
     int32_t ret = GetAttribute(albumId, PhotoAlbumType::SMART, PhotoAlbumSubType::HIGHLIGHT, attributeArray);
-    EXPECT_EQ(ret, JS_INNER_FAIL);
+    EXPECT_EQ(ret, E_PARAM_CONVERT_FORMAT);
 
     ret = GetAttribute(albumId, PhotoAlbumType::USER, PhotoAlbumSubType::PORTRAIT, attributeArray);
-    EXPECT_EQ(ret, JS_INNER_FAIL);
+    EXPECT_EQ(ret, E_PARAM_CONVERT_FORMAT);
 
     ret = GetAttribute(albumId, PhotoAlbumType::SMART, PhotoAlbumSubType::PORTRAIT, attributeArray);
-    EXPECT_EQ(ret, JS_INNER_FAIL);
+    EXPECT_EQ(ret, E_OK);
 
     MEDIA_INFO_LOG("end GetExtraInfoTest_Test_001");
 }
