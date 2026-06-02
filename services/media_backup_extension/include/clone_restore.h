@@ -259,7 +259,7 @@ private:
         const std::optional<T>& optionalValue, const U& defaultValue);
     bool NeedSkipMergedThumbnailUpdate(const FileInfo &fileInfo);
     void ResolveMergedThumbExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist);
-    bool FillMergedLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillMergedThmLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     std::string GetThumbnailLocalPath(const string path);
     void BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,
         unordered_map<string, CloudPhotoFileExistFlag> &resultExistMap);

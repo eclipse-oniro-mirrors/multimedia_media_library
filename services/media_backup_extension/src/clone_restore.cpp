@@ -1260,9 +1260,9 @@ void CloneRestore::ResolveMergedThumbExistence(const FileInfo &fileInfo, bool &i
         MediaFileUtils::IsFileExists(thumbnailDir + "/THM.jpg");
 }
 
-bool CloneRestore::FillMergedLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
+bool CloneRestore::FillMergedThmLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
 {
-    if (!fileInfo.hasMergedLcdThumbnail) {
+    if (!fileInfo.hasMergedThmThumbnail && !fileInfo.hasMergedLcdThumbnail) {
         return false;
     }
     values.PutInt(PhotoColumn::PHOTO_LCD_VISIT_TIME, RESTORE_LCD_VISIT_TIME_SUCCESS);
@@ -1273,11 +1273,18 @@ bool CloneRestore::FillMergedLcdValues(const FileInfo &fileInfo, NativeRdb::Valu
     if (GetIntegralValueFromValMap(fileInfo, PhotoColumn::PHOTO_LCD_VISIT_COUNT, oldValue) == E_OK) {
         values.PutLong(PhotoColumn::PHOTO_LCD_VISIT_COUNT, oldValue);
     }
-    if (GetIntegralValueFromValMap(fileInfo, PhotoColumn::PHOTO_LCD_SIZE, oldValue) == E_OK) {
-        values.PutLong(PhotoColumn::PHOTO_LCD_SIZE, oldValue);
+
+    std::string strValue;
+    if (GetStringValueFromValMap(fileInfo, PhotoColumn::PHOTO_LCD_SIZE, strValue) == E_OK) {
+        values.PutString(PhotoColumn::PHOTO_LCD_SIZE, strValue);
     }
     if (GetIntegralValueFromValMap(fileInfo, PHOTO_LCD_FILE_SIZE, oldValue) == E_OK) {
         values.PutLong(PHOTO_LCD_FILE_SIZE, oldValue);
+    }
+    if (fileInfo.hasMergedThmThumbnail) {
+        if (GetStringValueFromValMap(fileInfo, PhotoColumn::PHOTO_THUMB_SIZE, strValue) == E_OK) {
+            values.PutString(PhotoColumn::PHOTO_THUMB_SIZE, strValue);
+        }
     }
     return true;
 }
@@ -1290,7 +1297,7 @@ void CloneRestore::UpdateMergedThumbnailStatusForSamePhotos(vector<FileInfo> &fi
         }
 
         NativeRdb::ValuesBucket values;
-        bool hasUpdate = FillMergedLcdValues(fileInfo, values);
+        bool hasUpdate = FillMergedThmLcdValues(fileInfo, values);
         if (fileInfo.hasMergedLcdThumbnail || fileInfo.hasMergedThmThumbnail) {
             bool isLcdExist = false;
             bool isThmExist = false;
