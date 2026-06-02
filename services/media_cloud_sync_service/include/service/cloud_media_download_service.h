@@ -64,8 +64,7 @@ private:
     int32_t OnDownloadThm(const std::vector<std::string> &thmVector, std::vector<MediaOperateResultDto> &result);
     int32_t OnDownloadLcd(const std::vector<std::string> &lcdVector, std::vector<MediaOperateResultDto> &result);
     int32_t OnDownloadThmAndLcd(const std::vector<std::string> &bothVector, std::vector<MediaOperateResultDto> &result);
-    OnDownloadAssetData GetOnDownloadAssetData(const PhotosPo &photosPo,
-        const std::unordered_map<std::string, AdditionFileInfo> &lakeInfos);
+    int32_t GetOnDownloadAssetData(const PhotosPo &photosPo, OnDownloadAssetData &assetData);
     void UnlinkAsset(OnDownloadAssetData &assetData);
     void ResetAssetModifyTime(OnDownloadAssetData &assetData);
     int32_t SliceAssetFile(const std::string &originalFile, const std::string &path,

@@ -295,10 +295,8 @@ std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadAsset(const std::ve
     return photosDtoVec;
 }
 
-OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(const PhotosPo &photosPo,
-    const std::unordered_map<std::string, AdditionFileInfo> &downloadedFileInfos)
+int32_t CloudMediaDownloadService::GetOnDownloadAssetData(const PhotosPo &photosPo, OnDownloadAssetData &assetData)
 {
-    OnDownloadAssetData assetData;
     assetData.err = E_OK;
     assetData.errorMsg = "";
     bool isMovingPhoto = CloudMediaSyncUtils::IsMovingPhoto(photosPo);
@@ -306,10 +304,11 @@ OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(const Phot
     bool isLivePhoto = CloudMediaSyncUtils::IsLivePhoto(photosPo);
     bool isInvalidCover = photosPo.coverPosition.value_or(0) == 0 && photosPo.isRectificationCover.value_or(0) == 0;
     bool isInvalidDuration = photosPo.duration.value_or(0) == 0;
+    const std::string cloudId = photosPo.cloudId.value_or("");
     MEDIA_INFO_LOG("GetOnDownloadAssetData, "
-        "isMovingPhoto: %{public}d, isGraffiti: %{public}d, isLivePhoto: %{public}d",
-        isMovingPhoto, isGraffiti, isLivePhoto);
-    assetData.fixFileType = isMovingPhoto && !isGraffiti && !isLivePhoto;
+        "cloudId: %{public}s, isMovingPhoto: %{public}d, isGraffiti: %{public}d, isLivePhoto: %{public}d",
+        cloudId.c_str(), isMovingPhoto, isGraffiti, isLivePhoto);
+    assetData.fixFileType = assetData.lakeInfo.fileSourceType == 0 && isMovingPhoto && !isGraffiti && !isLivePhoto;
     assetData.needSliceContent = (isMovingPhoto && !isGraffiti) && isLivePhoto;
     assetData.needParseCover = isMovingPhoto && isInvalidCover;
     assetData.needSliceRaw = isMovingPhoto;
@@ -327,9 +326,8 @@ OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(const Phot
     this->FindRealLocalPath(assetData.fileInfo.filePath, assetData);
     assetData.needParseDuration = isInvalidDuration &&
         photosPo.subtype.value_or(0) == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
-    assetData.lakeInfo = downloadedFileInfos.at(photosPo.cloudId.value_or(""));
     assetData.cloudId = photosPo.cloudId.value_or("");
-    return assetData;
+    return E_OK;
 }
 
 void CloudMediaDownloadService::UnlinkAsset(OnDownloadAssetData &assetData)
@@ -829,9 +827,12 @@ int32_t CloudMediaDownloadService::OnDownloadAsset(
         photosPoVec.size());
     UpdateVideoMode(photosPoVec);
     OnDownloadAssetData assetData;
+    std::string cloudId;
     for (const auto &photosPo : photosPoVec) {
-        assetData = this->GetOnDownloadAssetData(photosPo, downloadedFileInfos);
+        cloudId = photosPo.cloudId.value_or("");
         assetData.localPhotosPoOp = photosPo;
+        assetData.lakeInfo = CloudMediaSyncUtils::GetMapValue(downloadedFileInfos, cloudId);
+        this->GetOnDownloadAssetData(photosPo, assetData);
         MEDIA_DEBUG_LOG("OnDownloadAsset, photosPo: %{public}s, assetData: %{public}s",
             photosPo.ToString().c_str(),
             assetData.ToString().c_str());
@@ -840,7 +841,7 @@ int32_t CloudMediaDownloadService::OnDownloadAsset(
         UpdateBatchDownloadTask(photosPo);
 #endif
         MediaOperateResultDto mediaResult;
-        mediaResult.cloudId = photosPo.cloudId.value_or("");
+        mediaResult.cloudId = cloudId;
         mediaResult.errorCode = assetData.err;
         mediaResult.errorMsg = assetData.errorMsg;
         result.emplace_back(mediaResult);
