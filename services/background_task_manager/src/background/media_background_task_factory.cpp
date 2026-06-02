@@ -38,6 +38,7 @@
 #include "media_share_dirty_data_task.h"
 #include "media_camera_cache_clean_task.h"
 #include "media_fix_lcd_file_size_task.h"
+#include "dirty_file_report_task.h"
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
@@ -63,6 +64,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaShareDirtyDataTask>(),
         std::make_shared<MediaCameraCacheCleanTask>(),
         std::make_shared<MediaFixLcdFileSizeTask>(),
+        std::make_shared<DirtyFileReportTask>(),
     };
 }
 
