@@ -2508,7 +2508,9 @@ int32_t DoMoveFilesToDir(const std::map<int32_t, FileAssetsInfo> &infos, std::sh
             continue;
         }
         RenameMode mode = static_cast<RenameMode>(dto.mode);
+        FileParser::SetFileManagerScanFlagBySingle(std::to_string(info.second.fileId), true);
         auto result = MediaFileAccessUtils::MoveAsset(srcpath, storagePath, FileSourceType::FILE_MANAGER, mode);
+        FileParser::SetFileManagerScanFlagBySingle(std::to_string(info.second.fileId), false);
         if (result.errCode != E_OK) {
             dto.resultList.push_back("null");
             dto.errCode = result.errCode;
@@ -2629,7 +2631,9 @@ int32_t DoMoveFilesByPath(const std::map<int32_t, FileAssetsInfo> &moveAssetInfo
             continue;
         }
         RenameMode mode = static_cast<RenameMode>(dto.mode);
+        FileParser::SetFileManagerScanFlagBySingle(std::to_string(info.second.fileId), true);
         auto result = MediaFileAccessUtils::MoveAsset(srcpath, localTargetPath, FileSourceType::MEDIA, mode);
+        FileParser::SetFileManagerScanFlagBySingle(std::to_string(info.second.fileId), false);
         if (result.errCode != E_OK) {
             dto.resultList.push_back("null");
             dto.errCode = result.errCode;

@@ -204,7 +204,6 @@ bool MediaFileAccessUtils::IsDirectoryEmpty(const std::string& dirPath)
 void MediaFileAccessUtils::UpdateModifyTime(const std::string &path, int64_t localMtime)
 {
     CHECK_AND_RETURN_LOG(!path.empty(), "empty path");
-    CHECK_AND_RETURN_LOG(PhotoFileUtils::CheckFileManagerRealPath(path), "not file manager path");
 
     struct timeval times[2];
     // set atime
