@@ -345,7 +345,8 @@ HWTEST_F(PhotosBackupTest, BackupInfo_FileManagerFields_Test_001, TestSize.Level
     EXPECT_GE(jsonObject.size(), 12);
     EXPECT_EQ(GetIntFromJsonByKey(jsonObject, "fileManagerPhoto"), backupInfo.fileManagerPhotoCount);
     EXPECT_EQ(GetIntFromJsonByKey(jsonObject, "fileManagerVideo"), backupInfo.fileManagerVideoCount);
-    EXPECT_EQ(GetIntFromJsonByKey(jsonObject, "fileManagerTotalSize"), static_cast<int64_t>(backupInfo.fileManagerTotalSize));
+    EXPECT_EQ(GetIntFromJsonByKey(jsonObject, "fileManagerTotalSize"),
+        static_cast<int64_t>(backupInfo.fileManagerTotalSize));
     MEDIA_INFO_LOG("BackupInfo_FileManagerFields_Test_001 end");
 }
 

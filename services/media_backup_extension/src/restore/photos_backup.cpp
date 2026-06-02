@@ -102,7 +102,7 @@ std::string PhotosBackup::GetBackupInfoOfMediaFile()
         .fileManagerVideoCount = photosDao_.GetBackupMediaCount({MediaType::MEDIA_TYPE_VIDEO},
             {FileSourceType::FILE_MANAGER},
             {static_cast<int32_t>(PhotoPositionType::LOCAL),
-            static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)}),
+                static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)}),
         .fileManagerTotalSize = GetBackupTotalSizeOfFileManagerFile()
     };
     UpgradeRestoreTaskReport(sceneCode_, taskId_).Report("BACKUP_INFO_MEDIA", "0", backupInfo.ToString());

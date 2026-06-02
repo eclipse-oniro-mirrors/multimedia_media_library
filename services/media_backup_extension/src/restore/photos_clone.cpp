@@ -796,7 +796,7 @@ bool PhotosClone::ApplyDeduplicationFileInfo(FileInfo &fileInfo, const Deduplica
 
 bool PhotosClone::ShouldDeleteDuplicateLakeFile(const FileInfo &fileInfo)
 {
-     CHECK_AND_RETURN_RET((FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo)), true);
+    CHECK_AND_RETURN_RET((FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo)), true);
     // keep source only when target is pure-cloud(position=2) and container original already exists;
     // otherwise always delete.
     bool keepSource = (fileInfo.needMove|| fileInfo.isStoragePathExistInDb);
