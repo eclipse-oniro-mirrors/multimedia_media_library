@@ -536,7 +536,7 @@ bool CloneRestore::BackupPreprocess()
         CHECK_AND_RETURN_RET_LOG(errCode == 0, false, "rdb backup fail: %{public}d", errCode);
         MEDIA_INFO_LOG("End BackupDb");
         auto context = AbilityRuntime::Context::GetApplicationContext();
-        CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "Failed to get context");
+        CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "Failed to get context!");
 
         // initialize backup database connection
         std::shared_ptr<NativeRdb::RdbStore> backupRdb;
