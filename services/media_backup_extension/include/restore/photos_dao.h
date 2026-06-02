@@ -221,7 +221,7 @@ private:
     const std::string SQL_AUDIOS_GET_AUDIO_COUNT =
         "SELECT count(1) as count FROM Audios WHERE media_type IN ({0})";
     const std::string SQL_PHOTOS_GET_EXISTING_STORAGE_PATHS =
-        "SELECT storage_path FROM Photos WHERE file_id <= ? AND file_source_type = ? AND storage_path IN ({0})";
+        "SELECT storage_path FROM Photos WHERE file_id <= ? AND file_source_type IN (?, ?) AND storage_path IN ({0})";
     const std::string SQL_PHOTOS_GET_EXISTING_DATA = "SELECT data FROM Photos WHERE file_id <= ? AND data IN ({0})";
     const std::string SQL_GET_CLONE_FILE_INFO = "\
         SELECT file_id, storage_path, display_name, media_type, size, date_modified, file_source_type \

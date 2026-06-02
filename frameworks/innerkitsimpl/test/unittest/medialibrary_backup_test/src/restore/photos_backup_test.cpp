@@ -33,7 +33,19 @@
 using namespace testing::ext;
 
 namespace OHOS::Media {
+const size_t EXPECTED_BACKUP_INFO_SIZE = 12;
 static std::shared_ptr<MediaLibraryRdbStore> g_rdbStore;
+
+static int64_t GetIntFromJsonByKey(const nlohmann::json &jsonObj, const std::string &key)
+{
+    for (const auto &item : jsonObj) {
+        if (item.contains("backupInfo") && item["backupInfo"] == key &&
+            item.contains("number") && item["number"].is_number()) {
+            return item["number"].get<int64_t>();
+        }
+    }
+    return -1;
+}
 
 void PhotosBackupTest::SetUpTestCase(void)
 {
@@ -71,13 +83,19 @@ HWTEST_F(PhotosBackupTest, BackupInfo_ToString_Test_001, TestSize.Level0)
     backupInfo.cloudVideoCount = 2;
     backupInfo.audioCount = 7;
     backupInfo.totalSize = 1024000;
-    
+    backupInfo.lakePhotoCount = 15;
+    backupInfo.lakeVideoCount = 8;
+    backupInfo.lakeTotalSize = 2048000;
+    backupInfo.fileManagerPhotoCount = 20;
+    backupInfo.fileManagerVideoCount = 10;
+    backupInfo.fileManagerTotalSize = 3072000;
+
     std::string result = backupInfo.ToString();
     EXPECT_FALSE(result.empty());
-    
+
     nlohmann::json jsonObject = nlohmann::json::parse(result);
     EXPECT_TRUE(jsonObject.is_array());
-    EXPECT_EQ(jsonObject.size(), 6);
+    EXPECT_GE(jsonObject.size(), EXPECTED_BACKUP_INFO_SIZE);
     MEDIA_INFO_LOG("BackupInfo_ToString_Test_001 end");
 }
 
@@ -141,6 +159,8 @@ HWTEST_F(PhotosBackupTest, GetBackupInfo_Test_001, TestSize.Level0)
     nlohmann::json jsonObject = nlohmann::json::parse(backupInfo);
     EXPECT_TRUE(jsonObject.is_array());
     EXPECT_GE(jsonObject.size(), 1);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "fileManagerPhoto"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "fileManagerVideo"), 0);
     MEDIA_INFO_LOG("GetBackupInfo_Test_001 end");
 }
 
@@ -158,6 +178,37 @@ HWTEST_F(PhotosBackupTest, GetBackupInfo_Test_002, TestSize.Level0)
     nlohmann::json jsonObject = nlohmann::json::parse(backupInfo);
     EXPECT_TRUE(jsonObject.is_array());
     MEDIA_INFO_LOG("GetBackupInfo_Test_002 end");
+}
+
+HWTEST_F(PhotosBackupTest, GetBackupInfo_VerifyAllFields_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("GetBackupInfo_VerifyAllFields_Test_001 start");
+    int32_t sceneCode = 1001;
+    std::string taskId = "task_001";
+
+    PhotosBackup photosBackup(sceneCode, taskId, g_rdbStore->GetRaw());
+
+    std::string backupInfo = photosBackup.GetBackupInfo();
+    EXPECT_FALSE(backupInfo.empty());
+
+    nlohmann::json jsonObject = nlohmann::json::parse(backupInfo, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_array());
+
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "photo"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "video"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "cloudPhoto"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "cloudVideo"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "audio"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "totalSize"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "ancoPhoto"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "ancoVideo"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "ancoTotalSize"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "fileManagerPhoto"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "fileManagerVideo"), 0);
+    EXPECT_GE(GetIntFromJsonByKey(jsonObject, "fileManagerTotalSize"), 0);
+
+    MEDIA_INFO_LOG("GetBackupInfo_VerifyAllFields_Test_001 end");
 }
 
 HWTEST_F(PhotosBackupTest, GetBackupInfoOfMediaFile_Test_001, TestSize.Level0)
@@ -265,6 +316,55 @@ HWTEST_F(PhotosBackupTest, BackupInfo_LakeFields_Test_002, TestSize.Level0)
     ASSERT_FALSE(jsonObject.is_discarded());
     EXPECT_TRUE(jsonObject.is_array());
     MEDIA_INFO_LOG("BackupInfo_LakeFields_Test_002 end");
+}
+
+HWTEST_F(PhotosBackupTest, BackupInfo_FileManagerFields_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("BackupInfo_FileManagerFields_Test_001 start");
+    PhotosBackup::BackupInfo backupInfo;
+    backupInfo.suffix = "";
+    backupInfo.photoCount = 10;
+    backupInfo.videoCount = 5;
+    backupInfo.cloudPhotoCount = 3;
+    backupInfo.cloudVideoCount = 2;
+    backupInfo.audioCount = 7;
+    backupInfo.totalSize = 1024000;
+    backupInfo.lakePhotoCount = 15;
+    backupInfo.lakeVideoCount = 8;
+    backupInfo.lakeTotalSize = 2048000;
+    backupInfo.fileManagerPhotoCount = 20;
+    backupInfo.fileManagerVideoCount = 10;
+    backupInfo.fileManagerTotalSize = 3072000;
+
+    std::string result = backupInfo.ToString();
+    EXPECT_FALSE(result.empty());
+
+    nlohmann::json jsonObject = nlohmann::json::parse(result, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_array());
+    EXPECT_GE(jsonObject.size(), 12);
+    EXPECT_EQ(GetIntFromJsonByKey(jsonObject, "fileManagerPhoto"), backupInfo.fileManagerPhotoCount);
+    EXPECT_EQ(GetIntFromJsonByKey(jsonObject, "fileManagerVideo"), backupInfo.fileManagerVideoCount);
+    EXPECT_EQ(GetIntFromJsonByKey(jsonObject, "fileManagerTotalSize"), static_cast<int64_t>(backupInfo.fileManagerTotalSize));
+    MEDIA_INFO_LOG("BackupInfo_FileManagerFields_Test_001 end");
+}
+
+HWTEST_F(PhotosBackupTest, BackupInfo_FileManagerFields_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("BackupInfo_FileManagerFields_Test_002 start");
+    PhotosBackup::BackupInfo backupInfo;
+    backupInfo.suffix = "_fileManager";
+    backupInfo.fileManagerPhotoCount = 0;
+    backupInfo.fileManagerVideoCount = 0;
+    backupInfo.fileManagerTotalSize = 0;
+
+    std::string result = backupInfo.ToString();
+    EXPECT_FALSE(result.empty());
+
+    nlohmann::json jsonObject = nlohmann::json::parse(result, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    EXPECT_TRUE(jsonObject.is_array());
+    MEDIA_INFO_LOG("BackupInfo_FileManagerFields_Test_002 end");
 }
 
 HWTEST_F(PhotosBackupTest, CreateCloneFileInfoDb_Test_001, TestSize.Level0)

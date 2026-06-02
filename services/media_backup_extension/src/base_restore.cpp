@@ -1740,6 +1740,12 @@ SubCountInfo BaseRestore::GetSubCountInfo(const std::string &type)
     if (type == STAT_TYPE_LAKE_VIDEO) {
         return SubCountInfo(migrateLakeVideoNumber_, migrateLakeVideoDuplicateNumber_, failedFiles);
     }
+    if (type == STAT_TYPE_FILE_MANAGER_PHOTO) {
+        return SubCountInfo(migrateFileManagerPhotoNumber_, migrateFileManagerPhotoDuplicateNumber_, failedFiles);
+    }
+    if (type == STAT_TYPE_FILE_MANAGER_VIDEO) {
+        return SubCountInfo(migrateFileManagerVideoNumber_, migrateFileManagerVideoDuplicateNumber_, failedFiles);
+    }
     return SubCountInfo(0, 0, failedFiles);
 }
 
@@ -1797,6 +1803,8 @@ void BaseRestore::UpdateFailedFileByFileType(int32_t fileType, const FileInfo &f
     if (fileType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) {
         if (FileAdapter::IsLakeFile(fileInfo)) {
             failedFilesMap_[STAT_TYPE_LAKE_PHOTO].emplace(fileInfo.oldPath, failedFileInfo);
+        } else if (FileAdapter::IsFileManagerFile(fileInfo)) {
+            failedFilesMap_[STAT_TYPE_FILE_MANAGER_PHOTO].emplace(fileInfo.oldPath, failedFileInfo);
         } else {
             failedFilesMap_[STAT_TYPE_PHOTO].emplace(fileInfo.oldPath, failedFileInfo);
         }
@@ -1805,6 +1813,8 @@ void BaseRestore::UpdateFailedFileByFileType(int32_t fileType, const FileInfo &f
     if (fileType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
         if (FileAdapter::IsLakeFile(fileInfo)) {
             failedFilesMap_[STAT_TYPE_LAKE_VIDEO].emplace(fileInfo.oldPath, failedFileInfo);
+        } else if (FileAdapter::IsFileManagerFile(fileInfo)) {
+            failedFilesMap_[STAT_TYPE_FILE_MANAGER_VIDEO].emplace(fileInfo.oldPath, failedFileInfo);
         } else {
             failedFilesMap_[STAT_TYPE_VIDEO].emplace(fileInfo.oldPath, failedFileInfo);
         }

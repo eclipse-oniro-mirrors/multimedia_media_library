@@ -323,7 +323,8 @@ std::unordered_set<std::string> PhotosDao::GetExistingStoragePaths(const std::ve
         BackupDatabaseUtils::UpdateSelection(selection, storagePath, true);
     }
     std::string querySql = MediaStringUtils::FillParams(SQL_PHOTOS_GET_EXISTING_STORAGE_PATHS, { selection });
-    std::vector<NativeRdb::ValueObject> params = { maxFileId, FileSourceType::MEDIA_HO_LAKE };
+    std::vector<NativeRdb::ValueObject> params = { maxFileId,
+        FileSourceType::MEDIA_HO_LAKE, FileSourceType::FILE_MANAGER };
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, querySql, params);
     CHECK_AND_RETURN_RET(resultSet != nullptr, existingStoragePaths);
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
