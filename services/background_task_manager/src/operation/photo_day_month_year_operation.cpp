@@ -474,10 +474,17 @@ static std::tuple<int64_t, std::string> ExtractShootingTime(const nlohmann::json
 
 static UpdatePhoto ExtractDateTime(const std::string &exif)
 {
-    if (exif.empty() || !nlohmann::json::accept(exif)) {
+    if (exif.empty()) {
+        MEDIA_DEBUG_LOG("exif string is empty");
         return {};
     }
+
     nlohmann::json exifJson = nlohmann::json::parse(exif, nullptr, false);
+    if (exifJson.is_discarded()) {
+        MEDIA_ERR_LOG("JSON parsing failed! The input string is in the wrong format.");
+        return {};
+    }
+
     auto const [dateTaken, detailTime] = ExtractShootingTime(exifJson);
     if (dateTaken <= 0) {
         return {};
