@@ -1260,6 +1260,18 @@ void CloneRestore::ResolveMergedThumbExistence(const FileInfo &fileInfo, bool &i
         MediaFileUtils::IsFileExists(thumbnailDir + "/THM.jpg");
 }
 
+static int32_t GetStringValueFromValMap(const FileInfo &fileInfo, const string &columnName, string &outValue)
+{
+    auto it = fileInfo.valMap.find(columnName);
+    if (it != fileInfo.valMap.end()) {
+        if (const string* p = std::get_if<std::string>(&it->second)) {
+            outValue = *p;
+            return E_OK;
+        }
+    }
+    return E_ERR;
+}
+
 bool CloneRestore::FillMergedThmLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
 {
     if (!fileInfo.hasMergedThmThumbnail && !fileInfo.hasMergedLcdThumbnail) {
@@ -2019,18 +2031,6 @@ void CloneRestore::GetLakeInfoInsertValue(const FileInfo &fileInfo, NativeRdb::V
     fileInfo.storagePath.empty() ? values.PutNull(PhotoColumn::PHOTO_STORAGE_PATH) :
         values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, fileInfo.storagePath);
     values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, fileInfo.fileSourceType);
-}
-
-static int32_t GetStringValueFromValMap(const FileInfo &fileInfo, const string &columnName, string &outValue)
-{
-    auto it = fileInfo.valMap.find(columnName);
-    if (it != fileInfo.valMap.end()) {
-        if (const string* p = std::get_if<std::string>(&it->second)) {
-            outValue = *p;
-            return E_OK;
-        }
-    }
-    return E_ERR;
 }
 
 static DateParts GetExistingDateAddedDateParts(const FileInfo &info)
