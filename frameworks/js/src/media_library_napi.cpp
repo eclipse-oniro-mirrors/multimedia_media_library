@@ -11071,8 +11071,8 @@ static void PhotoAccessCreatePhotoAssetExecute(napi_env env, void *data)
     }
 
     if (index < 0) {
-        context->error = JS_E_INNER_FAIL;
-        NAPI_ERR_LOG("inner fail, index: %{public}d.", index);
+        context->SaveError(index);
+        NAPI_ERR_LOG("InsertExt fail, index: %{public}d.", index);
     } else {
         context->uri = outUri;
     }
