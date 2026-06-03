@@ -108,7 +108,7 @@ static int32_t UpdateFileManagerAsset(AccurateRefreshBase &refresh, const MoveAs
     return E_OK;
 }
 
-static void ReNameAssetsFromFileManager(AccurateRefreshBase &refresh,
+static int32_t ReNameAssetsFromFileManager(AccurateRefreshBase &refresh,
     shared_ptr<NativeRdb::ResultSet> &resultSet, bool needRefresh)
 {
     int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
@@ -116,7 +116,7 @@ static void ReNameAssetsFromFileManager(AccurateRefreshBase &refresh,
     std::string mediaPath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
     if (mediaPath.empty() || fileManagerPath.empty()) {
         MEDIA_ERR_LOG("fileId: %{public}d, mediaPath or fileManagerPath is empty", fileId);
-        return;
+        return E_ERR;
     }
     int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
     int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
@@ -127,10 +127,10 @@ static void ReNameAssetsFromFileManager(AccurateRefreshBase &refresh,
     data.mediaId = fileId;
     data.storagePath = "";
     int32_t ret = UpdateFileManagerAsset(refresh, data, needRefresh);
-    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to update file manager asset");
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to update file manager asset");
     // 纯云资产字段同步刷新，但无需移动原文件
     if (position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
-        return;
+        return E_OK;
     }
     // 先判断是否是动图
     bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
@@ -140,8 +140,9 @@ static void ReNameAssetsFromFileManager(AccurateRefreshBase &refresh,
     } else {
         ret = FileManagerAssetOperations::MoveFileManagerAsset(fileManagerPath, mediaPath);
     }
-    CHECK_AND_PRINT_LOG(ret == E_OK, "move asset from %{public}s to %{public}s error, errno: %{public}d",
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "move asset from %{public}s to %{public}s error, errno: %{public}d",
         DfxUtils::GetSafePath(fileManagerPath).c_str(), DfxUtils::GetSafePath(mediaPath).c_str(), errno);
+    return E_OK;
 }
 
 int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(AccurateRefreshBase &refresh,
@@ -169,11 +170,15 @@ int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(AccurateRefreshBas
         resultSet->Close();
         return E_OK;
     }
+    ret = E_OK;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        ReNameAssetsFromFileManager(refresh, resultSet, needRefresh);
+        if (ReNameAssetsFromFileManager(refresh, resultSet, needRefresh) != E_OK) {
+            MEDIA_ERR_LOG("move asset from file manager error, errno: %{public}d", errno);
+            ret = E_ERR;
+        }
     }
     resultSet->Close();
-    return E_OK;
+    return ret;
 }
 
 static int32_t UpdateFileManageAssetInfo(AccurateRefreshBase &refresh,
@@ -182,7 +187,11 @@ static int32_t UpdateFileManageAssetInfo(AccurateRefreshBase &refresh,
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
     ValuesBucket values;
-    values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, sourcePath);
+    if (sourcePath.empty()) {
+        values.PutNull(PhotoColumn::PHOTO_STORAGE_PATH);
+    } else {
+        values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, sourcePath);
+    }
     values.PutString(MediaColumn::MEDIA_NAME, displayName);
     values.PutString(MediaColumn::MEDIA_TITLE, title);
     values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
@@ -214,6 +223,24 @@ static bool IsMovingPhoto(shared_ptr<NativeRdb::ResultSet> &resultSet)
     return MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
 }
 
+static bool CheckBurstToFileManage(AccurateRefreshBase &refresh,
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
+    bool isBurst = (subtype == static_cast<int32_t>(PhotoSubType::BURST) ||
+        originalSubtype == static_cast<int32_t>(PhotoSubType::BURST));
+    if (!isBurst) {
+        return false;
+    }
+    int32_t burstCoverLevel = GetInt32Val(PhotoColumn::PHOTO_BURST_COVER_LEVEL, resultSet);
+    if (burstCoverLevel == static_cast<int32_t>(BurstCoverLevelType::COVER)) {
+        return false;
+    }
+    MEDIA_INFO_LOG("burst member to file manager");
+    return true;
+}
+
 static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
     shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
@@ -229,6 +256,10 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
     if (!PhotoFileUtils::CheckFileManagerRealPath(innerFileSourcePath)) {
         MEDIA_INFO_LOG("file is not file manager, path: %{public}s",
             DfxUtils::GetSafePath(innerFileSourcePath).c_str());
+        return E_OK;
+    }
+    // 连拍成员仅更新数据库
+    if (CheckBurstToFileManage(refresh, resultSet)) {
         return E_OK;
     }
     // 纯云资产仅更新数据库
@@ -272,12 +303,11 @@ int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::Acc
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(MediaColumn::MEDIA_ID, ids);
     predicates.EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA));
-    predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0);
 
     vector<string> columns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_TITLE, MediaColumn::MEDIA_NAME,
         MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_SOURCE_PATH,
         PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
-        PhotoColumn::PHOTO_POSITION };
+        PhotoColumn::PHOTO_POSITION, PhotoColumn::PHOTO_BURST_COVER_LEVEL };
     auto resultSet = MediaLibraryRdbStore::Query(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "query storage path error");
     int32_t rowCount = -1;

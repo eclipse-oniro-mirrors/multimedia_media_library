@@ -67,8 +67,12 @@ public:
 
     EXPORT static int32_t HandleSameNameRename(const std::string &sameNamePath,
         std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
+    EXPORT static int32_t HandleSameNameRename(const std::string &sameNamePath,
+        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+        const std::function<bool(const std::string &)> &isPathOccupiedChecker);
     EXPORT static int32_t HandleBurstSameNameRename(const std::string &sameNamePath,
-        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName);
+        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+        const std::function<bool(const std::string &)> &isPathOccupiedChecker);
 
     EXPORT static bool IsDirectoryEmpty(const std::string& dirPath);
     EXPORT static void UpdateModifyTime(const std::string &path, int64_t localMtime);
@@ -109,6 +113,9 @@ private:
     static bool CheckBurstMemberDataExist(PhotoSubType subType, BurstCoverLevelType burstCoverLevel,
         const std::string &assetPath);
     static int32_t UpateMetaDataForRename(const AssetOperationInfo &srcObj, const MoveResult &result);
+    static int32_t HandleSameNameRenameImpl(const std::string &sameNamePath,
+        std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+        const std::function<bool(const std::string &)> &isPathOccupiedChecker);
 };
 } // namespace OHOS::Media
 #endif // FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_MEDIA_FILE_ACCESS_UTILS_H_

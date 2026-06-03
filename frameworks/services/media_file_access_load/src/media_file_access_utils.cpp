@@ -264,9 +264,28 @@ MoveResult MediaFileAccessUtils::MoveAsset(const AssetOperationInfo &srcObj, con
 int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePath,
     std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
 {
+    return HandleSameNameRenameImpl(sameNamePath, renamePath, renameTitle, renameDisplayName,
+        [](const std::string &path) {
+            return MediaFileUtils::IsFileExists(path);
+        });
+}
+
+int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
+{
+    return HandleSameNameRenameImpl(sameNamePath, renamePath, renameTitle, renameDisplayName,
+        isPathOccupiedChecker);
+}
+
+int32_t MediaFileAccessUtils::HandleSameNameRenameImpl(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
+{
     MEDIA_DEBUG_LOG("HandleSameNameRename sameNamePath: %{public}s",
         MediaFileUtils::DesensitizePath(sameNamePath).c_str());
     CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
+    CHECK_AND_RETURN_RET_LOG(static_cast<bool>(isPathOccupiedChecker), E_ERR, "empty conflict checker");
     std::string tempPath = sameNamePath;
     std::string tempDisplayName = MediaFileUtils::GetFileName(sameNamePath);
     size_t dotPos = tempDisplayName.rfind('.');
@@ -279,7 +298,7 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePa
     std::string baseName = tempTitle;
 
     uint32_t retryCount = 0;
-    while (retryCount < RENAME_MAX_RETRY_COUNT && MediaFileUtils::IsFileExists(tempPath)) {
+    while (retryCount < RENAME_MAX_RETRY_COUNT && isPathOccupiedChecker(tempPath)) {
         ++retryCount;
         tempTitle = baseName + "(" + std::to_string(retryCount) + ")";
         tempDisplayName = tempTitle + fileExtension;
@@ -287,7 +306,7 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePa
         MEDIA_DEBUG_LOG("path conflict, try new path: %{public}s", MediaFileUtils::DesensitizePath(tempPath).c_str());
     }
     if (retryCount == RENAME_MAX_RETRY_COUNT) {
-        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath), E_ERR, "path still conflict after retry");
+        CHECK_AND_RETURN_RET_LOG(!isPathOccupiedChecker(tempPath), E_ERR, "path still conflict after retry");
     }
     renamePath = tempPath;
     renameTitle = tempTitle;
@@ -296,9 +315,11 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePa
 }
 
 int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameNamePath,
-    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
 {
     CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
+    CHECK_AND_RETURN_RET_LOG(static_cast<bool>(isPathOccupiedChecker), E_ERR, "empty conflict checker");
     std::string displayName = MediaFileUtils::GetFileName(sameNamePath);
     std::string parentPath = MediaFileUtils::GetParentPath(sameNamePath);
     CHECK_AND_RETURN_RET_LOG(!parentPath.empty(), E_ERR, "empty parent path");
@@ -307,7 +328,7 @@ int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameN
     size_t dotPos = displayName.rfind('.');
     std::string tempTitle = dotPos != std::string::npos ? displayName.substr(0, dotPos) : displayName;
     uint32_t retryCount = 0;
-    while (retryCount < RENAME_MAX_RETRY_COUNT && MediaFileUtils::IsFileExists(tempPath)) {
+    while (retryCount < RENAME_MAX_RETRY_COUNT && isPathOccupiedChecker(tempPath)) {
         PhotoAssetInfo photoAssetInfo;
         photoAssetInfo.displayName = displayName;
         photoAssetInfo.subtype = static_cast<int32_t>(PhotoSubType::BURST);
@@ -322,7 +343,7 @@ int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameN
         ++retryCount;
     }
     if (retryCount == RENAME_MAX_RETRY_COUNT) {
-        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath), E_ERR, "path still conflict after retry");
+        CHECK_AND_RETURN_RET_LOG(!isPathOccupiedChecker(tempPath), E_ERR, "path still conflict after retry");
     }
 
     renamePath = tempPath;

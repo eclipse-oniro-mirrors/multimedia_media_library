@@ -68,6 +68,7 @@ const int32_t HIGH_PIXEL_START_SIZE = 6 * 1024 * 8 * 1024;
 const int32_t HIGH_PIXEL_STOP_SIZE = 4 * 1024 * 6 * 1024;
 const double HIGH_PIXEL_RESIZE_SCALE = 1.4;
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
+constexpr int32_t NOT_SUPPORT_RENAME = 1;
 
 const int32_t HIGH_PIXEL_SIZE = 9 * 1024 * 12 * 1024;
 static const int32_t INVALID_PARAMETER_ERROR = -23800151;
@@ -598,14 +599,15 @@ struct MediaAssetCopyInfo {
     bool isCopyOwnerPackage;
     bool isCopyFileManger;
     std::string targetRealPath;
+    bool supportRename;
     MediaAssetCopyInfo(const std::string& targetPath, bool isCopyThumbnail, int32_t ownerAlbumId,
         const std::string& displayName = "", bool isCopyDateAdded = true, bool isCopyCeAvailable = false,
         bool isCopyPackageName = true, bool isCopyOwnerPackage = true, bool isCopyFileManger = false,
-        const std::string& targetRealPath = "")
+        const std::string& targetRealPath = "", bool supportRename = true)
         : targetPath(targetPath), isCopyThumbnail(isCopyThumbnail), ownerAlbumId(ownerAlbumId),
         displayName(displayName), isCopyDateAdded(isCopyDateAdded), isCopyCeAvailable(isCopyCeAvailable),
         isCopyPackageName(isCopyPackageName), isCopyOwnerPackage(isCopyOwnerPackage),
-        isCopyFileManger(isCopyFileManger), targetRealPath(targetRealPath) {}
+        isCopyFileManger(isCopyFileManger), targetRealPath(targetRealPath), supportRename(supportRename) {}
 };
 
 static void HandleLowQualityAssetValuesBucket(shared_ptr<NativeRdb::ResultSet>& resultSet,
@@ -724,15 +726,27 @@ static void HandleManageFile(const MediaAssetCopyInfo &copyInfo,
     }
 }
 
+static int32_t HandleAssteCopyOperation(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+    NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
+{
+    auto op = std::make_shared<PhotoAssetCopyOperation>();
+    op->SetTargetPhotoInfo(resultSet)
+        .SetTargetAlbumId(copyInfo.ownerAlbumId)
+        .SetDisplayName(copyInfo.displayName)
+        .CopyPhotoAsset(rdbStore, values);
+    if (op->CheckDisplayNameRenamed() && !copyInfo.supportRename) {
+        MEDIA_ERR_LOG("not support rename, failed to copy asset");
+        return E_SCENE_HAS_RENAMED;
+    }
+    return E_OK;
+}
+
 static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
     NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
 {
     values.PutString(MediaColumn::MEDIA_FILE_PATH, copyInfo.targetPath);
-    PhotoAssetCopyOperation()
-        .SetTargetPhotoInfo(resultSet)
-        .SetTargetAlbumId(copyInfo.ownerAlbumId)
-        .SetDisplayName(copyInfo.displayName)
-        .CopyPhotoAsset(rdbStore, values);
+    int32_t ret = HandleAssteCopyOperation(rdbStore, values, resultSet, copyInfo);
+    CHECK_AND_RETURN_RET_LOG(ret != E_SCENE_HAS_RENAMED, ret, "not support rename, failed to copy asset");
     for (auto it = commonColumnTypeMap.begin(); it != commonColumnTypeMap.end(); ++it) {
         string columnName = it->first;
         ResultSetDataType columnType = it->second;
@@ -1074,10 +1088,10 @@ static int32_t PrepareCloneTargetAndPending(ClonePrepareContext &context, CloneP
         result.targetPath, context.targetAssetInfo.displayName, mediaType);
 
     MediaAssetCopyInfo copyInfo(result.targetPath, false, context.ownerAlbumId, context.targetAssetInfo.displayName,
-        false, false, true, true, true, context.targetAssetInfo.targetRealPath);
+        false, false, true, true, true, context.targetAssetInfo.targetRealPath, context.targetAssetInfo.supportRename);
     int32_t err = InsertAssetCopy(context.assetRefresh, context.upgradeStore,
         copyInfo, context.resultSet, context.targetAssetInfo);
-    CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR, "Failed to copy asset db.");
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Failed to copy asset db.");
 
     result.pendingFileId = static_cast<int32_t>(context.targetAssetInfo.newAssetId);
     Background::ClonePendingRecordUtils::AddPendingFileId(result.pendingFileId);
@@ -2892,6 +2906,7 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
     targetAssetInfo.displayName = cloneAssetInfo.targetDisplayName;
     targetAssetInfo.progressCallback = progressCallback;
     targetAssetInfo.requestId = to_string(cloneAssetInfo.requestId);
+    targetAssetInfo.supportRename = cloneAssetInfo.mode != NOT_SUPPORT_RENAME;
     int32_t err = CopyLocalSingleFileSync(assetRefresh, targetAlbumId, resultSet, targetAssetInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Clone local asset failed, ret = %{public}d, assetId = %{public}" PRId64,
         err, cloneAssetInfo.fileId);
