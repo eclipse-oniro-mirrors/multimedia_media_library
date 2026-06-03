@@ -21,6 +21,7 @@
 #include "datashare_errno.h"
 #include "datashare_predicates.h"
 #include "datashare_result_set.h"
+#include "dfx_system_photo_keys.h"
 #include "image_type.h"
 #include "media_column.h"
 #include "media_file_utils.h"
@@ -98,10 +99,19 @@ static int32_t CheckSystemApiKeys(const string &key)
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     };
 
-    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryNapiUtils::IsSystemApp()) {
+    if (MediaLibraryNapiUtils::IsSystemApp()) {
+        return E_SUCCESS;
+    }
+
+    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
         LOGE("This key can only be used by system apps");
         return E_CHECK_SYSTEMAPP_FAIL;
     }
+
+    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
+        LOGE("Report Third party application failed, key:%{public}s", key.c_str());
+    }
+
     return E_SUCCESS;
 }
 
