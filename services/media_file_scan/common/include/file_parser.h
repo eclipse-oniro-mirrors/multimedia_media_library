@@ -53,8 +53,7 @@ public:
     static int32_t GenerateSingleThumbnail(const ThumbnailInfo &info);
     int32_t IsExistSameFileForCloneRestore(int32_t ownerAlbumId);
     static std::string GetThumbnailUri(const ThumbnailInfo &info);
-    static void SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan);
-    
+    static void SetFileManagerScanFlagBySingle(const std::string &fileIdStr, bool stopScan);
     virtual bool IsFileValidAsset();
     virtual FileUpdateType GetFileUpdateType() = 0;
 
