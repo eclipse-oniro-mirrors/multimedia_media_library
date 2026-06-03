@@ -83,8 +83,13 @@ ohos_shared_library("media_cloud_sync_data") {
     "${MEDIALIB_UTILS_PATH}/include",
   ]
 
+  include_helper_dirs = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+  ]
+
   include_dirs += include_utils_dirs
   include_dirs += include_media_ipc_common
+  include_dirs += include_helper_dirs
 
   if (!media_library_cloud_sync_enable) {
     sources = []

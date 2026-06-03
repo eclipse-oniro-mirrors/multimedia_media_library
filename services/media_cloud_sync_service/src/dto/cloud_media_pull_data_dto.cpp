@@ -79,7 +79,7 @@ void CloudMediaPullDataDto::GetAttributesInfo(std::stringstream &ss) const
        << "\"attributesEditDataCamera\": \"" << attributesEditDataCamera.empty() << "\","
        << "\"deferredEffectsStatus\": " << deferredEffectsStatus << ","
        << "\"fileSourceType\": " << attributesFileSourceType << ","
-       << "\"storagePath\": " << attributesStoragePath << ",";
+       << "\"storagePath\": " << MediaFileUtils::DesensitizePath(attributesStoragePath) << ",";
 }
 void CloudMediaPullDataDto::GetPropertiesInfo(std::stringstream &ss) const
 {
@@ -90,7 +90,7 @@ void CloudMediaPullDataDto::GetPropertiesInfo(std::stringstream &ss) const
        << "\"propertiesFirstUpdateTime\": \"" << propertiesFirstUpdateTime << "\","
        << "\"propertiesDetailTime\": \"" << propertiesDetailTime << "\","
        << "\"localFileId\": " << localFileId << ","
-       << "\"localPath\": \"" << localPath << "\","
+       << "\"localPath\": \"" << MediaFileUtils::DesensitizePath(localPath) << "\","
        << "\"localSize\": " << localSize << ","
        << "\"lcdSize\": " << lcdSize << ","
        << "\"thmSize\": " << thmSize << ","
