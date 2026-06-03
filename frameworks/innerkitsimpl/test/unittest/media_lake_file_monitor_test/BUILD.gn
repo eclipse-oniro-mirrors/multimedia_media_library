@@ -93,7 +93,6 @@ ohos_unittest("media_lake_file_monitor_test") {
     "./src/media_lake_clone_event_manager_test.cpp",
     "./src/media_lake_monitor_rdb_utils_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
