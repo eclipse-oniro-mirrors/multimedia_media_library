@@ -102,6 +102,10 @@
 #ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
 #include "media_fileinterwork_scanner.h"
 #endif
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+#include "watch_system_handler.h"
+#include "critical_label_task_queue.h"
+#endif
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::NetManagerStandard;
@@ -653,6 +657,11 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
         bool isNetConnected = eventData.GetCode() == NET_CONN_STATE_CONNECTED;
         MEDIA_INFO_LOG("netType: %{public}d, isConnected: %{public}d.", netType, static_cast<int32_t>(isNetConnected));
         isCellularNetConnected_ = netType == BEARER_CELLULAR ? isNetConnected : isCellularNetConnected_;
+        #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+            if (isNetConnected) {
+                WatchSystemHandler::UpdateAllowNetworkSwitch();
+            }
+        #endif
     } else if (BACKGROUND_OPERATION_STATUS_MAP.count(action) != 0) {
         UpdateBackgroundOperationStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
         UpdateCloudMediaAssetDownloadStatus(want, BACKGROUND_OPERATION_STATUS_MAP.at(action));
@@ -710,6 +719,12 @@ void MedialibrarySubscriber::HandleNetInfoChange(std::string &action)
             MedialibraryRelatedSystemStateManager::GetInstance()->SetCellularNetConnected(isCellularNetConnected_);
             MedialibraryRelatedSystemStateManager::GetInstance()->SetWifiConnected(isWifiConnected_);
     }
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+        auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
+        if (criticalLabelTaskQueue != nullptr) {
+            criticalLabelTaskQueue->NotifyThread();
+        }
+#endif
 }
 
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
@@ -1338,9 +1353,19 @@ bool MedialibrarySubscriber::UpdateCheckCriticalTypeStatus()
     auto instance = MedialibraryRelatedSystemStateManager::GetInstance();
     bool isNetworkSufficient = instance->IsNetAvailableInOnlyWifiCondition();
     bool isPowerSufficient = batteryCapacity_ >= PROPER_DEVICE_BATTERY_CRITICAL_LEVEL;
+    bool prevState = checkCriticalTypeStatus_;
     checkCriticalTypeStatus_ = isNetworkSufficient && isCharging_ && isPowerSufficient &&
             newTemperatureLevel_ <= PROPER_DEVICE_TEMPERATURE_LEVEL_37 && isScreenOff_;
 
+    MEDIA_DEBUG_LOG("update non-realtime status:%{public}d, %{public}d, %{public}d, %{public}d, %{public}d",
+        checkCriticalTypeStatus_, isScreenOff_, isCharging_, isPowerSufficient, newTemperatureLevel_);
+
+    if (prevState != checkCriticalTypeStatus_) {
+        auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
+        if (criticalLabelTaskQueue != nullptr) {
+            criticalLabelTaskQueue->NotifyThread();
+        }
+    }
     return checkCriticalTypeStatus_;
 }
 #endif

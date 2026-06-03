@@ -3110,6 +3110,7 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::UNIQUE_ID,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         PhotoColumn::PHOTO_HIDDEN_TIME,
+        PhotoColumn::PHOTO_RISK_STATUS,
         PhotoColumn::ATTACHMENT_SIZE,
         PhotoColumn::PHOTO_LCD_FILE_SIZE,
         PhotoColumn::PHOTO_THUMB_STATUS,
