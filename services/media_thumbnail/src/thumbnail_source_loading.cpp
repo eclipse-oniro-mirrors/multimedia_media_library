@@ -741,6 +741,8 @@ bool CloudThumbSource::IsSizeLargeEnough(ThumbnailData &data, int32_t &minSize)
 std::string CloudLcdSource::GetSourcePath(ThumbnailData &data, int32_t &error)
 {
     std::string tmpPath;
+    std::string localPath = GetLocalThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
+    bool isLocalThumbnailAvailable = access(localPath.c_str(), F_OK) == 0;
     if (ThumbnailUtils::IsExCloudThumbnail(data)) {
         tmpPath = GetLcdExPath(data.path);
     } else {
@@ -749,6 +751,11 @@ std::string CloudLcdSource::GetSourcePath(ThumbnailData &data, int32_t &error)
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     if (!IsCloudSourceAvailable(tmpPath)) {
         return "";
+    }
+    if (tmpPath.find(THUMBNAIL_LCD_SUFFIX) != std::string::npos &&
+        !isLocalThumbnailAvailable) {
+        int32_t ret = ThumbnailGenerateHelper::UpdateLcdFileSizeAndThumbStatus(data.id, data.path);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "Fail to UpdateLcdThumbStatus");
     }
     int32_t totalCost = static_cast<int32_t>(MediaFileUtils::UTCTimeMilliSeconds() - startTime);
     data.stats.openLcdCost = totalCost;

@@ -391,6 +391,7 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
   ]
 
   external_deps = [

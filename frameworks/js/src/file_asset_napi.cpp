@@ -3111,6 +3111,8 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         PhotoColumn::PHOTO_HIDDEN_TIME,
         PhotoColumn::ATTACHMENT_SIZE,
+        PhotoColumn::PHOTO_LCD_FILE_SIZE,
+        PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
     if (MediaLibraryNapiUtils::IsSystemApp()) {

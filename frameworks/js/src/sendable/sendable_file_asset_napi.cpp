@@ -934,6 +934,8 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_DATE_ADDED_MONTH,
         PhotoColumn::PHOTO_DATE_ADDED_DAY,
         PhotoColumn::PHOTO_HIDDEN_TIME,
+        PhotoColumn::PHOTO_LCD_FILE_SIZE,
+        PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
     if (SendableMediaLibraryNapiUtils::IsSystemApp()) {

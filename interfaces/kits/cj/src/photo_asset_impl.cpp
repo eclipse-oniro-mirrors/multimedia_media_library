@@ -97,6 +97,9 @@ static int32_t CheckSystemApiKeys(const string &key)
         PhotoColumn::PHOTO_DATE_ADDED_DAY,
         PhotoColumn::UNIQUE_ID,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        PhotoColumn::PHOTO_LCD_FILE_SIZE,
+        PhotoColumn::PHOTO_THUMB_STATUS,
+
     };
 
     if (MediaLibraryNapiUtils::IsSystemApp()) {

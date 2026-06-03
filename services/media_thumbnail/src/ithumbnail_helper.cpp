@@ -33,6 +33,7 @@
 #include "medialibrary_astc_stat.h"
 #include "medialibrary_object_utils.h"
 #include "media_audio_column.h"
+#include "dfx_manager.h"
 using namespace std;
 using namespace OHOS::DistributedKv;
 using namespace OHOS::NativeRdb;
@@ -1375,10 +1376,12 @@ void IThumbnailHelper::CreateAstcOnlyWithThm(std::shared_ptr<ThumbnailTaskData> 
     int32_t minSize = thmSize.width < thmSize.height ? thmSize.width : thmSize.height;
     // 短边小于350，仅生成年月纹理
     if (minSize < SHORT_SIDE_THRESHOLD) {
+        auto dfxManager = DfxManager::GetInstance();
         thumbnailData.loaderOpts.thumbnailSceneType = ThumbnailSceneType::ONLY_THM_DOWNLOAD;
         thumbnailData.genThumbScene = GenThumbScene::CLOUD_DOWNLOAD_THM_SHORT_SIDE_NOT_SATISFIED;
         IThumbnailHelper::DoCreateAstcMthAndYear(data->opts_, data->thumbnailData_);
         ThumbnailGenerationPostProcess::SetRegenerateAstcStatus(data->thumbnailData_, data->opts_);
+        dfxManager->HandleThumbnailQuality();
         return;
     }
     thumbnailData.genThumbScene = GenThumbScene::CLOUD_DOWNLOAD_THM_SHORT_SIDE_SATISFIED;

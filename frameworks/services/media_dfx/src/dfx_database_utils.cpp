@@ -900,5 +900,66 @@ int32_t DfxDatabaseUtils::QueryAllCompatibleInfo(std::map<std::string, DfxCompat
     resultSet->Close();
     return E_OK;
 }
+
+int32_t DfxDatabaseUtils::QueryLcdFromPhotos(std::vector<int32_t> thumbStatus, int32_t isFavorite)
+{
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    if (!thumbStatus.empty()) {
+        std::vector<std::string> thumbStatusStr;
+        for (const auto& status : thumbStatus) {
+            thumbStatusStr.push_back(to_string(status));
+        }
+        predicates.In(PhotoColumn::PHOTO_THUMB_STATUS, thumbStatusStr);
+    }
+    if (isFavorite == 1) {
+        predicates.EqualTo(MediaColumn::MEDIA_IS_FAV, to_string(isFavorite));
+    }
+    std::vector<std::string> columns = { "count(1) AS count" };
+    std::string queryColumn = "count";
+
+    int32_t count = 0;
+    int32_t errCode = QueryInt(predicates, columns, queryColumn, count);
+    CHECK_AND_PRINT_LOG(errCode == E_OK, "query photos fail: %{public}d", errCode);
+    return count;
+}
+
+int32_t DfxDatabaseUtils::QueryAlbumCoverCount()
+{
+    std::shared_ptr<MediaLibraryRdbStore> rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, -1, "rdbStore is nullptr");
+
+    const std::string SQL_ALBUM_COVER_COUNT = "\
+        SELECT COUNT(DISTINCT cover_uri) AS album_cover_count \
+        FROM PhotoAlbum WHERE cover_uri IS NOT NULL AND cover_uri <> ''";
+    std::vector<NativeRdb::ValueObject> params = {};
+    auto resultSet = rdbStore->QuerySql(SQL_ALBUM_COVER_COUNT, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, -1, "resultSet is nullptr");
+
+    int32_t count = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        count = GetInt32Val("album_cover_count", resultSet);
+    }
+    resultSet->Close();
+    return count;
+}
+
+int32_t DfxDatabaseUtils::QueryPhotoExtSmartCount()
+{
+    std::shared_ptr<MediaLibraryRdbStore> rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, -1, "rdbStore is nullptr");
+
+    const std::string SQL_PHOTO_EXT_SMART_COUNT =
+        "SELECT COUNT(1) AS smart_count FROM tab_photos_ext WHERE lcd_using_status != 0";
+    std::vector<NativeRdb::ValueObject> params = {};
+    auto resultSet = rdbStore->QuerySql(SQL_PHOTO_EXT_SMART_COUNT, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, -1, "resultSet is nullptr");
+
+    int32_t count = 0;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        count = GetInt32Val("smart_count", resultSet);
+    }
+    resultSet->Close();
+    return count;
+}
 } // namespace Media
 } // namespace OHOS

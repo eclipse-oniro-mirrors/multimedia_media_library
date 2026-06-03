@@ -124,6 +124,9 @@ const std::string ALIB_HIGH_PIXEL_DUPLICATE_XML = "/data/storage/el2/base/prefer
 const std::string ALIB_HIGH_PIXEL_HEIF_DUPLICATE_XML =
     "/data/storage/el2/base/preferences/alib_high_pixel_heif_duplicate.xml";
 const std::string DFX_COMMON_XML = "/data/storage/el2/base/preferences/dfx_common.xml";
+const std::string AGING_LCD_INFO = "/data/storage/el2/base/preferences/aging_lcd_info.xml";
+const std::string READ_LCD_INFO = "/data/storage/el2/base/preferences/read_lcd_info.xml";
+const std::string THUMBNAIL_QUALITY_INFO = "/data/storage/el2/base/preferences/thumbnail_quality_info.xml";
 const std::string LAST_REPORT_TIME = "last_report_time";
 const std::string LAST_MIDDLE_REPORT_TIME = "last_middle_report_time";
 const std::string LAST_HALF_DAY_REPORT_TIME = "last_half_day_report_time";
@@ -164,6 +167,39 @@ const std::string TRANSCODE_FAILED_TIMES = "transcode_failed_times";
 const std::string INNER_FAILED_TIMES = "inner_failed_times";
 const std::string CODEC_FAILED_TIMES = "codec_failed_times";
 const std::string APP_PACKAGE_CONFIG = "app_package_config";
+
+const std::string LCD_AGING_TOTAL_TIME = "lcd_aging_total_time";
+const std::string LOCAL_LCD_NUM = "local_lcd_num";
+const std::string CLOUD_LCD_NUM = "cloud_lcd_num";
+const std::string LOCAL_AND_CLOUD_LCD_NUM = "local_and_cloud_lcd_num";
+const std::string FAVORITE_LCD_NUM = "favorite_lcd_num";
+const std::string ALBUM_COVER_NUM = "album_cover_num";
+const std::string SMART_NUM = "smart_num";
+const std::string AGING_LCD_NUM = "aging_lcd_num";
+const std::string AGING_CONTINUE_NUM = "aging_continue_num";
+const std::string FLASH_TOTAL_SIZE = "flash_total_size";
+const std::string FLASH_FREE_SIZE = "flash_free_size";
+const std::string FLASH_FREE_SIZE_OLD = "flash_free_size_old";
+
+const std::string SUCCESS_NUM = "success_num";
+const std::string FAIL_NUM = "fail_num";
+const std::string MOBILE_RD_SUCCESS_NUM = "mobile_rd_success_num";
+const std::string MOBILE_RD_FAIL_NUM = "mobile_rd_fail_num";
+const std::string WIFI_RD_SUCCESS_NUM = "wifi_rd_success_num";
+const std::string WIFI_RD_FAIL_NUM = "wifi_rd_fail_num";
+const std::string OTHER_RD_SUCCESS_NUM = "other_rd_success_num";
+const std::string OTHER_RD_FAIL_NUM = "other_rd_fail_num";
+const std::string ETHERNET_RD_SUCCESS_NUM = "ethernet_rd_success_num";
+const std::string ETHERNET_RD_FAIL_NUM = "ethernet_rd_fail_num";
+const std::string SYSTEM_APP_RD_NUM = "system_app_rd_num";
+const std::string NON_SYSTEM_APP_RD_NUM = "non_system_app_rd_num";
+const std::string SYSTEM_APP_VISIT_NUM = "system_app_visit_num";
+const std::string NON_SYSTEM_APP_VISIT_NUM = "non_system_app_visit_num";
+const std::string SOUTH_DEVICE_TYPE = "south_device_type";
+const std::string THUMBNAIL_LOW_QUALITY_NUM = "thumbnail_low_quality_num";
+const std::string THUMBNAIL_LOW_QUALITY_NUM_NULL = "thumbnail_low_quality_num_null";
+const std::string THUMBNAIL_LOW_QUALITY_NUM_CLOUD = "thumbnail_low_quality_num_cloud";
+const std::string THUMBNAIL_LOW_QUALITY_NUM_HDC = "thumbnail_low_quality_num_hdc";
 
 struct ThumbnailErrorInfo {
     int32_t method;
@@ -260,6 +296,21 @@ enum TranscodeAccessType {
 enum TranscodeErrorType {
     INNER_FAILED = 0,
     CODEC_FAILED,
+};
+
+enum NetConnStatusType {
+    NO_NETWORK = 0,
+    WIFI_CONNECTED,
+    CELLULAR_CONNECTED,
+    ETHERNET_CONNECTED,
+};
+
+struct PhotoLcdStatistics {
+    int32_t localPropertyCount = 0;
+    int32_t cloudPropertyCount = 0;
+    int32_t favoriteCount = 0;
+    int32_t albumCoverCount = 0;
+    int32_t smartCount = 0;
 };
 } // namespace Media
 } // namespace OHOS

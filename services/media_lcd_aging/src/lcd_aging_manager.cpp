@@ -37,6 +37,7 @@
 #include "ithumbnail_helper.h"
 #include "thumbnail_source_loading.h"
 #include "medialibrary_unistore_manager.h"
+#include "dfx_manager.h"
 
 namespace OHOS::Media {
 const std::string LCD_AGING_XML = "/data/storage/el2/base/preferences/lcd_aging.xml";
@@ -52,6 +53,7 @@ constexpr uint32_t MAX_PROGRESS = 100;
 const std::string MEDIA_RESTORE_FLAG = "multimedia.medialibrary.restoreFlag";
 const std::string MEDIA_BACKUP_FLAG = "multimedia.medialibrary.backupFlag";
 const std::string CLOUDSYNC_SWITCH_STATUS_KEY = "persist.kernel.cloudsync.switch_status";
+constexpr int32_t DIVISOR = 1024 * 1024;
 
 constexpr uint32_t DELETE_LCD_FILES_WAIT_SECONDS = 2;
 
@@ -63,12 +65,16 @@ LcdAgingManager& LcdAgingManager::GetInstance()
 
 int32_t LcdAgingManager::ReadyAgingLcd()
 {
+    auto dfxManager = DfxManager::GetInstance();
     MediaLibraryTracer tracer;
     tracer.Start("ReadyAgingLcd");
     this->hasAgingLcdNumber_ = 0;
+    this->freeSizeOld_ = MediaFileUtils::GetFreeSize() / DIVISOR;
+    this->startTime_ = MediaFileUtils::UTCTimeSeconds();
     this->totalAgingLcdNumber_ = 0;
     this->lastAgingProgress_ = 0;
     this->notAgingFileIds_.clear();
+    dfxManager->HandleAgingLcdContinue();
     return E_OK;
 }
 
@@ -336,12 +342,20 @@ int32_t LcdAgingManager::GetNeedAgingLcdSize(int64_t &taskSize)
 int32_t LcdAgingManager::FinishAgingTask()
 {
     MEDIA_INFO_LOG("start FinishAgingTask");
+    auto dfxManager = DfxManager::GetInstance();
     // 打点上报
+    int32_t totalSize = MediaFileUtils::GetTotalSize() / DIVISOR;
+    int64_t freeSize = MediaFileUtils::GetFreeSize() / DIVISOR;
+    int64_t totalTime = MediaFileUtils::UTCTimeSeconds() - this->startTime_;
+    CHECK_AND_PRINT_LOG(totalTime > 0, "Get Lcdaging totalTime error");
+    dfxManager->HandleAgingLcdFinish(this->hasAgingLcdNumber_, totalSize,
+        this->freeSizeOld_, freeSize, totalTime);
 
     // 清理缓存
     this->hasAgingLcdNumber_ = 0;
     this->totalAgingLcdNumber_ = 0;
     this->lastAgingProgress_ = 0;
+    this->freeSizeOld_ = 0;
     this->notAgingFileIds_.clear();
     MEDIA_INFO_LOG("end FinishAgingTask");
     return E_FINISH;

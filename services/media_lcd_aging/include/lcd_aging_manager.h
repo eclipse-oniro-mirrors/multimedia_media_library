@@ -103,6 +103,8 @@ private:
     std::mutex deleteLcdFilesTaskMutex_;
     std::condition_variable deleteLcdFilesTaskCv_;
     std::atomic<bool> isDeleteLcdFilesWorkerRunning_ {false};
+    int64_t freeSizeOld_{0};
+    int64_t startTime_{0};
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LCD_AGING_MANAGER_H

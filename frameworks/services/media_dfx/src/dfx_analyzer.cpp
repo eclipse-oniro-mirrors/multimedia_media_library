@@ -21,6 +21,9 @@
 #include "media_log.h"
 #include "preferences.h"
 #include "preferences_helper.h"
+#include "media_column.h"
+#include "dfx_const.h"
+#include "permission_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -328,6 +331,140 @@ void DfxAnalyzer::FlushCinematicVideoInfo(CinematicVideoInfo& newCinematicVideoI
     prefs->PutInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_SUCCESS_TIMES, multistageSuccessTime);
     prefs->PutInt(CINEMATIC_VIDEO_KEY_MULTISTAGE_FAILED_TIMES, multistageFailedTime);
 
+    prefs->FlushSync();
+}
+
+void DfxAnalyzer::FlushAgingLcdCount(PhotoLcdStatistics stats)
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    prefs->PutInt(LOCAL_LCD_NUM, stats.localPropertyCount);
+    prefs->PutInt(CLOUD_LCD_NUM, stats.cloudPropertyCount);
+    prefs->PutInt(LOCAL_AND_CLOUD_LCD_NUM, stats.cloudPropertyCount + stats.localPropertyCount);
+    prefs->PutInt(FAVORITE_LCD_NUM, stats.favoriteCount);
+    prefs->PutInt(ALBUM_COVER_NUM, stats.albumCoverCount);
+    prefs->PutInt(SMART_NUM, stats.smartCount);
+    prefs->FlushSync();
+}
+
+void DfxAnalyzer::FlushAgingLcdContinue()
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    int32_t LcdContinueTimes = prefs->GetInt(AGING_CONTINUE_NUM.c_str(), 0);
+    prefs->PutInt(AGING_CONTINUE_NUM, LcdContinueTimes + 1);
+    prefs->FlushSync();
+}
+
+void DfxAnalyzer::FlushAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSize,
+    int64_t freeSizeOld, int64_t freeSize, int64_t totalTime)
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    prefs->PutInt(AGING_LCD_NUM, hasAgingLcdNumber);
+    prefs->PutInt(FLASH_TOTAL_SIZE, totalSize);
+    prefs->PutInt(FLASH_FREE_SIZE, freeSize);
+    prefs->PutInt(FLASH_FREE_SIZE_OLD, freeSizeOld);
+    prefs->PutInt(LCD_AGING_TOTAL_TIME.c_str(), totalTime);
+    prefs->FlushSync();
+}
+void DfxAnalyzer::FlushReadLcdTimes(bool isSuccess, NetConnStatusType netStatus)
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    const char* successKey = nullptr;
+    const char* typeKey = nullptr;
+    if (isSuccess == true) {
+        successKey = SUCCESS_NUM.c_str();
+    } else {
+        successKey = FAIL_NUM.c_str();
+    }
+    const NetTypeKeyMap keyMap[] = {
+        { NO_NETWORK,         OTHER_RD_SUCCESS_NUM, OTHER_RD_FAIL_NUM },
+        { WIFI_CONNECTED,     WIFI_RD_SUCCESS_NUM,     WIFI_RD_FAIL_NUM },
+        { CELLULAR_CONNECTED, MOBILE_RD_SUCCESS_NUM,   MOBILE_RD_FAIL_NUM },
+        { ETHERNET_CONNECTED, ETHERNET_RD_SUCCESS_NUM, ETHERNET_RD_FAIL_NUM }
+    };
+    bool isFound = false;
+    for (const auto& item : keyMap) {
+        if (item.typeValue == netStatus) {
+            if (isSuccess) {
+                typeKey = item.successFunc.c_str();
+            } else {
+                typeKey = item.failFunc.c_str();
+            }
+            isFound = true;
+            break;
+        }
+    }
+    if (!isFound) {
+        MEDIA_ERR_LOG("get ReadLcdNetType error");
+        return;
+    }
+    int32_t readLcdTimes = prefs->GetInt(successKey, 0);
+    int32_t netLcdTimes = prefs->GetInt(typeKey, 0);
+    int32_t systemAppRdTimes = prefs->GetInt(SYSTEM_APP_RD_NUM, 0);
+    int32_t nonsystemAppRdTimes = prefs->GetInt(NON_SYSTEM_APP_RD_NUM, 0);
+    if (PermissionUtils::IsSystemApp()) {
+        prefs->PutInt(SYSTEM_APP_RD_NUM, systemAppRdTimes + 1);
+    } else {
+        prefs->PutInt(NON_SYSTEM_APP_RD_NUM, nonsystemAppRdTimes + 1);
+    }
+    prefs->PutInt(successKey, readLcdTimes + 1);
+    prefs->PutInt(typeKey, netLcdTimes + 1);
+    prefs->FlushSync();
+}
+
+void DfxAnalyzer::FlushThumbnailQuality(const int32_t southDeviceType)
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+
+    std::string typeKey;
+    switch (southDeviceType) {
+        case static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL):
+            typeKey = THUMBNAIL_LOW_QUALITY_NUM_NULL;
+            break;
+        case static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_CLOUD):
+            typeKey = THUMBNAIL_LOW_QUALITY_NUM_CLOUD;
+            break;
+        case static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_HDC):
+            typeKey = THUMBNAIL_LOW_QUALITY_NUM_HDC;
+            break;
+        default:
+            MEDIA_ERR_LOG("Invalid southDeviceType: %{public}d", southDeviceType);
+            return;
+    }
+
+    int32_t lowQualityCounts = prefs->GetInt(typeKey, 0);
+    prefs->PutInt(typeKey, lowQualityCounts + 1);
+    prefs->FlushSync();
+}
+
+void DfxAnalyzer::FlushVisitLcd()
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+ 
+    int32_t systemAppVisitTimes = prefs->GetInt(SYSTEM_APP_VISIT_NUM, 0);
+    int32_t nonsystemAppVisitTimes = prefs->GetInt(NON_SYSTEM_APP_VISIT_NUM, 0);
+    if (PermissionUtils::IsSystemApp()) {
+        prefs->PutInt(SYSTEM_APP_VISIT_NUM, systemAppVisitTimes + 1);
+    } else {
+        prefs->PutInt(NON_SYSTEM_APP_VISIT_NUM, nonsystemAppVisitTimes + 1);
+    }
     prefs->FlushSync();
 }
 

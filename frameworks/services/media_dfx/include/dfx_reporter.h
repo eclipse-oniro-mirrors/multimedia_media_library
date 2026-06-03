@@ -218,6 +218,9 @@ public:
     static int32_t ReportAncoOperationChangeInfo(const AncoOperationChangeInfo& reportData);
     static int32_t ReportAncoCountFormatInfo(const AncoCountFormatInfo& reportData, bool firstLoad = false);
     int32_t ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info);
+    void ReportReadLcd(const int32_t southDeviceType);
+    void ReportAgingLcdInfo();
+    void ReportVisitLcd(const int32_t southDeviceType);
 };
 } // namespace Media
 } // namespace OHOS
