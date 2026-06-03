@@ -710,7 +710,17 @@ static void HandleManageFile(const MediaAssetCopyInfo &copyInfo,
             values.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
             values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, copyInfo.targetRealPath);
         }
+        values.Delete(MediaColumn::MEDIA_TIME_PENDING);
         values.Put(MediaColumn::MEDIA_TIME_PENDING, -1);
+        values.Delete(PhotoColumn::PHOTO_OWNER_ALBUM_ID);
+        values.Put(PhotoColumn::PHOTO_OWNER_ALBUM_ID, copyInfo.ownerAlbumId);
+        string strPackage = "";
+        values.Delete(MediaColumn::MEDIA_OWNER_PACKAGE);
+        GetStringValueFromResultSet(resultSet, MediaColumn::MEDIA_OWNER_PACKAGE, strPackage);
+        values.PutString(MediaColumn::MEDIA_OWNER_PACKAGE, strPackage);
+        values.Delete(MediaColumn::MEDIA_PACKAGE_NAME);
+        GetStringValueFromResultSet(resultSet, MediaColumn::MEDIA_PACKAGE_NAME, strPackage);
+        values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, strPackage);
     }
 }
 
@@ -1012,7 +1022,7 @@ int32_t InsertAssetCopy(shared_ptr<AccurateRefresh::AssetAccurateRefresh> &asset
     MediaLibraryAlbumFusionUtils::TargetAssetInfo &targetAssetInfo)
 {
     MediaLibraryTracer tracer;
-    tracer.Start("CopyMateData");
+    tracer.Start("InsertAssetCopy");
     NativeRdb::ValuesBucket values;
     int32_t err = BuildInsertValuesBucket(upgradeStore, values, resultSet, copyInfo);
     if (err != E_OK) {
@@ -1064,7 +1074,7 @@ static int32_t PrepareCloneTargetAndPending(ClonePrepareContext &context, CloneP
         result.targetPath, context.targetAssetInfo.displayName, mediaType);
 
     MediaAssetCopyInfo copyInfo(result.targetPath, false, context.ownerAlbumId, context.targetAssetInfo.displayName,
-        false, false, false, false, true, context.targetAssetInfo.targetRealPath);
+        false, false, true, true, true, context.targetAssetInfo.targetRealPath);
     int32_t err = InsertAssetCopy(context.assetRefresh, context.upgradeStore,
         copyInfo, context.resultSet, context.targetAssetInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR, "Failed to copy asset db.");
@@ -1092,13 +1102,7 @@ static bool UpdateCloneState(const std::shared_ptr<MediaLibraryRdbStore> &upgrad
     const MediaLibraryAlbumFusionUtils::TargetAssetInfo &targetAssetInfo,
     shared_ptr<AccurateRefresh::AssetAccurateRefresh> &assetRefresh)
 {
-    int32_t err = UpdateRelationship(upgradeStore, {assetId, targetAssetInfo.newAssetId, ownerAlbumId}, assetRefresh);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("UpdateRelationship fail, assetId: %{public}d, targetAssetInfo.newAssetId: %{public}" PRId64
-            "ownerAlbumId: %{public}d, ret = %{public}d", assetId, targetAssetInfo.newAssetId, ownerAlbumId, err);
-        return false;
-    }
-    err = UpdateCopyInfo(upgradeStore, {assetId, targetAssetInfo.newAssetId, ownerAlbumId,
+    int32_t err = UpdateCopyInfo(upgradeStore, {assetId, targetAssetInfo.newAssetId, ownerAlbumId,
 	    targetAssetInfo.targetRealPath}, assetRefresh);
     if (err != E_OK) {
         MEDIA_ERR_LOG("UpdateCopyInfo fail, assetId: %{public}d, targetAssetInfo.newAssetId: %{public}" PRId64
@@ -2866,6 +2870,8 @@ int32_t MediaLibraryAlbumFusionUtils::CheckBatchAssets(const std::vector<string>
 int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &cloneAssetInfo,
     const int32_t targetAlbumId, std::string &newAssetIds, std::function<void(uint64_t)> progressCallback)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("CloneProgressAsset");
     CHECK_AND_RETURN_RET_LOG(CheckBatchAssets({to_string(cloneAssetInfo.fileId)}) == E_OK, E_INNER_FAIL,
         "CheckBatchAssets failed");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
@@ -2898,7 +2904,7 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
         MEDIA_INFO_LOG("Query not matched data fails");
         return E_DB_FAIL;
     }
-
+    tracer.Start("SendNewAssetNotify");
     string newFileAssetUri =
         MediaFileUtils::GetFileAssetUri(GetStringVal(MediaColumn::MEDIA_FILE_PATH, newResultSet),
         cloneAssetInfo.targetDisplayName, targetAssetInfo.newAssetId);

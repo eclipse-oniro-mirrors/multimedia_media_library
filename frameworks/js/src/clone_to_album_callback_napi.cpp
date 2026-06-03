@@ -19,6 +19,7 @@
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_tracer.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 #include "clone_to_album_vo.h"
@@ -157,6 +158,8 @@ void CloneToAlbumCallbackNapi::SetCancelled(int32_t requestId)
 
 int CloneToAlbumCallbackNapi::WaitForCloneResult()
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("WaitForCloneResult");
     {
         std::unique_lock<std::mutex> lock(cvMutex_);
         lastHeartbeatTime_ = std::chrono::steady_clock::now();
@@ -189,6 +192,8 @@ int CloneToAlbumCallbackNapi::WaitForCloneResult()
 
 void CloneToAlbumCallbackNapi::TriggerSizeProgressCallback(uint64_t processedSize, uint64_t totalSize)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("TriggerSizeProgressCallback");
     napi_handle_scope scope = nullptr;
     napi_status status = napi_open_handle_scope(env_, &scope);
     if (status != napi_ok || scope == nullptr) {
@@ -226,6 +231,8 @@ void CloneToAlbumCallbackNapi::TriggerSizeProgressCallback(uint64_t processedSiz
 
 void CloneToAlbumCallbackNapi::TriggerCountProgressCallback(uint32_t processedCount, uint32_t totalCount)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("TriggerCountProgressCallback");
     napi_handle_scope scope = nullptr;
     napi_status status = napi_open_handle_scope(env_, &scope);
     if (status != napi_ok || scope == nullptr) {
@@ -264,6 +271,8 @@ void CloneToAlbumCallbackNapi::TriggerCountProgressCallback(uint32_t processedCo
 void CloneToAlbumCallbackNapi::TriggerResultListenerCallback(int32_t code,
     const std::vector<std::string> &resultUris)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("TriggerResultListenerCallback");
     napi_handle_scope scope = nullptr;
     napi_status status = napi_open_handle_scope(env_, &scope);
     if (status != napi_ok || scope == nullptr) {
