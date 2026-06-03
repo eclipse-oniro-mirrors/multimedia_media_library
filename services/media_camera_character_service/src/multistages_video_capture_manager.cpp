@@ -205,9 +205,16 @@ void MultiStagesVideoCaptureManager::AddVideoInternal(const std::string &videoId
     VideoInfo &videoInfo, bool isTrashed, bool isMovingPhoto)
 {
     MEDIA_INFO_LOG("AddVideoInternal, file path: %{private}s", videoInfo.videoPath.c_str());
-    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_CAMERA_CACHE_DIR)) {
-        if (!MediaFileUtils::CreateDirectory(ROOT_MEDIA_CAMERA_CACHE_DIR)) {
-            MEDIA_ERR_LOG("Create camera cache directory failed");
+    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES)) {
+        if (!MediaFileUtils::CreateDirectory(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES)) {
+            MEDIA_ERR_LOG("Create camera cache temp directory failed");
+            return;
+        }
+    }
+    if (!MediaFileUtils::IsFileExists(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES)) {
+        if (!MediaFileUtils::CreateDirectory(ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR +
+                CAMERA_CACHE_ENHANCE_DIR_VALUES)) {
+            MEDIA_ERR_LOG("Create camera cache enhanced directory failed");
             return;
         }
     }
