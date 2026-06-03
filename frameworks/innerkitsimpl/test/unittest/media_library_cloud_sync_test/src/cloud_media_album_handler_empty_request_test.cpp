@@ -78,7 +78,7 @@ HWTEST_F(CloudMediaAlbumHandlerEmptyRequestTest, OnFetchRecords_EMPTY, TestSize.
     std::vector<std::string> failedRecords;
     std::vector<int32_t> stats;
 
-    int32_t ret = dataHandler->OnFetchRecords(records, newData, fdirtyData, failedRecords, stats);
+    ret = dataHandler->OnFetchRecords(records, newData, fdirtyData, failedRecords, stats);
     EXPECT_EQ(ret, E_OK);
     EXPECT_TRUE(newData.empty());
     EXPECT_TRUE(fdirtyData.empty());
