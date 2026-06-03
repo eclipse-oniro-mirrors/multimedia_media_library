@@ -106,7 +106,7 @@ public:
     static void BuildTargetFilePath(std::string &targetPath, std::string displayName, int32_t mediaType);
     EXPORT static int32_t CloneProgressAsset(const CloneAssetInfo &cloneAssetInfo, const int32_t targetAlbumId,
         std::string &newAssetIds, std::function<void(uint64_t)> progressCallback);
-    EXPORT static int32_t CheckBatchAssets(const std::vector<string> &assetIds);
+    EXPORT static int32_t CheckBatchAssets(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);
 
 private:
     EXPORT static void SetRefreshAlbum(bool needRefresh);

@@ -2842,28 +2842,16 @@ static int32_t CheckAssetsPendingCloning(const std::shared_ptr<NativeRdb::Result
     return E_OK;
 }
 
-int32_t MediaLibraryAlbumFusionUtils::CheckBatchAssets(const std::vector<string> &assetIds)
+int32_t MediaLibraryAlbumFusionUtils::CheckBatchAssets(const std::shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    if (rdbStore == nullptr) {
-        MEDIA_ERR_LOG("Failed to get rdbStore.");
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("resultSet is null or no data");
         return E_DB_FAIL;
     }
-
-    const std::string queryAssetSqlPrefix = "SELECT * FROM Photos WHERE file_id = ";
-    int64_t totalSize = 0;
-    for (auto fileIdStr: assetIds) {
-        const std::string queryAssetSql = queryAssetSqlPrefix + fileIdStr;
-        shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryAssetSql);
-        if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-            MEDIA_INFO_LOG("Query not matched data fails");
-            break;
-        }
-        auto err = CheckAssetsPendingCloning(resultSet);
-        CHECK_AND_RETURN_RET_LOG(err == E_OK, err,
-            "Asset validation failed for assetId: %{public}s, error: %{public}d", fileIdStr.c_str(), err);
-        totalSize += GetAssetsSize(resultSet, fileIdStr);
-    }
+    do {
+        CHECK_AND_RETURN_RET_LOG(CheckAssetsPendingCloning(resultSet) == E_OK, E_INNER_FAIL,
+            "CheckAssetsPendingCloning failed");
+    } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
     return E_OK;
 }
 
@@ -2872,8 +2860,6 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
 {
     MediaLibraryTracer tracer;
     tracer.Start("CloneProgressAsset");
-    CHECK_AND_RETURN_RET_LOG(CheckBatchAssets({to_string(cloneAssetInfo.fileId)}) == E_OK, E_INNER_FAIL,
-        "CheckBatchAssets failed");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "Failed to get rdbStore.");
 
@@ -2884,6 +2870,7 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
         MEDIA_ERR_LOG("CloneSingleAsset query asset meta failed, assetId: %{public}" PRId64, cloneAssetInfo.fileId);
         return E_DB_FAIL;
     }
+    CHECK_AND_RETURN_RET_LOG(CheckBatchAssets(resultSet) == E_OK, E_INNER_FAIL, "CheckBatchAssets failed");
 
     auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(
         AccurateRefresh::CLONE_SINGLE_ASSET_BUSSINESS_NAME);
