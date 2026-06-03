@@ -6766,6 +6766,20 @@ static int32_t AddLakeTriggerFilterForFileManager(RdbStore &store)
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_LAKE_TRIGGER_FILTER_FOR_FILE_MANAGER,
     "Photos", AddLakeTriggerFilterForFileManager);
 
+static int32_t AddLcdFileSize(RdbStore &store)
+{
+    const vector<string> sqls = {
+        "ALTER TABLE " + PHOTOS_TABLE + " ADD COLUMN " +
+            PhotoColumn::PHOTO_LCD_FILE_SIZE + " INT NOT NULL DEFAULT 0 "
+    };
+    MEDIA_INFO_LOG("Add lcd aging columns start");
+    int32_t ret = ExecSqlsWithDfx(sqls, store, VERSION_ADD_PHOTO_LCD_FILE_SIZE);
+    MEDIA_INFO_LOG("Add lcd aging columns end");
+    return ret;
+}
+REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_PHOTO_LCD_FILE_SIZE,
+    "Photos", AddLcdFileSize);
+
 int32_t MediaLibraryDataCallBack::OnUpgrade(RdbStore &store, int32_t oldVersion, int32_t newVersion)
 {
     MediaLibraryTracer tracer;

@@ -1065,5 +1065,27 @@ void FileAsset::SetAttachmentSize(int64_t attachmentSize)
     std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
     member_[PhotoColumn::ATTACHMENT_SIZE] = attachmentSize;
 }
+
+void FileAsset::SetThumbStatus(int32_t thumbStatus)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_THUMB_STATUS] = thumbStatus;
+}
+ 
+int32_t FileAsset::GetThumbStatus() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_THUMB_STATUS);
+}
+ 
+void FileAsset::SetLcdFileSize(int32_t lcdFileSize)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::PHOTO_LCD_FILE_SIZE] = lcdFileSize;
+}
+ 
+int32_t FileAsset::GetLcdFileSize() const
+{
+    return GetInt32Member(PhotoColumn::PHOTO_LCD_FILE_SIZE);
+}
 }  // namespace Media
 }  // namespace OHOS

@@ -110,6 +110,13 @@ public:
     bool GetMemoryRelease();
     void SetLastIPCTime(int64_t lastIPCTime);
     void SetMemoryRelease(bool memoryRelease);
+    EXPORT void HandleAgingLcdCount();
+    EXPORT void HandleAgingLcdContinue();
+    EXPORT void HandleAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSize,
+        int64_t freeSizeOld, int64_t freeSize, int64_t totalTime);
+    EXPORT void HandleReadLcd(bool isSuccess);
+    EXPORT void HandleThumbnailQuality();
+    EXPORT void HandleVisitLcd();
 
 private:
     void Init();

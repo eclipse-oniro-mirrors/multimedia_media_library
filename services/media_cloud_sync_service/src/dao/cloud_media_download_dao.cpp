@@ -36,6 +36,8 @@
 #include "metadata_extractor.h"
 #include "exif_rotate_utils.h"
 #include "media_string_utils.h"
+#include "thumbnail_const.h"
+#include "thumbnail_source_loading.h"
 
 namespace OHOS::Media::CloudSync {
 NativeRdb::AbsRdbPredicates CloudMediaDownloadDao::GetDownloadThmsConditions(const int32_t type)
@@ -358,5 +360,51 @@ int32_t CloudMediaDownloadDao::HandleAdditionalFileInfo(
         values.PutString(MediaColumn::MEDIA_NAME, assetData.lakeInfo.displayName);
     }
     return E_OK;
+}
+
+int32_t CloudMediaDownloadDao::UpdateLcdFileSize(const std::vector<std::string> &cloudIds)
+{
+    MEDIA_DEBUG_LOG("enter UpdateLcdFileSize");
+    CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_ERR, "UpdateLcdFileSize cloudIds is empty.");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+
+    NativeRdb::AbsRdbPredicates queryPredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    queryPredicates.In(PhotoColumn::PHOTO_CLOUD_ID, cloudIds);
+    std::vector<std::string> queryColumns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH};
+    auto resultSet = rdbStore->Query(queryPredicates, queryColumns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "resultSet is null");
+
+    std::vector<std::pair<int32_t, int64_t>> fileIdAndSizeList;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+        std::string filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+        std::string suffixes[] = {THUMBNAIL_LCD_EX_SUFFIX, THUMBNAIL_LCD_SUFFIX};
+        size_t lcdFileSize = 0;
+        for (const auto& suffix : suffixes) {
+            std::string lcdCloudPath = GetThumbnailPath(filePath, suffix);
+            if (!lcdCloudPath.empty() && MediaFileUtils::GetFileSize(lcdCloudPath, lcdFileSize)) {
+                fileIdAndSizeList.emplace_back(std::make_pair(fileId, static_cast<int64_t>(lcdFileSize)));
+                break;
+            }
+        }
+    }
+    resultSet->Close();
+
+    CHECK_AND_RETURN_RET(!fileIdAndSizeList.empty(), E_OK);
+
+    std::string updateSql = "UPDATE Photos SET lcd_file_size = CASE file_id ";
+    std::string fileIdList = "";
+    for (const auto &item : fileIdAndSizeList) {
+        updateSql += " WHEN " + std::to_string(item.first) + " THEN " + std::to_string(item.second);
+        fileIdList += std::to_string(item.first) + ",";
+    }
+    fileIdList.pop_back();
+    updateSql += " ELSE lcd_file_size END WHERE file_id IN (" + fileIdList + ");";
+
+    int32_t ret = rdbStore->ExecuteSql(updateSql);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "failed to execute sql: %{public}s, ret: %{public}d",
+        updateSql.c_str(), ret);
+    return ret;
 }
 }  // namespace OHOS::Media::CloudSync

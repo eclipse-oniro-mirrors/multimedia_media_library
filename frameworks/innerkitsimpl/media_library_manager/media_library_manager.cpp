@@ -67,6 +67,8 @@
 #include "js_interface_helper.h"
 #include "get_assets_vo.h"
 #include "moving_photo_file_utils.h"
+#include "media_path_utils.h"
+#include "thumbnail_manager.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
 #include "purgeable_pixelmap_builder.h"
@@ -633,7 +635,8 @@ static int32_t GetFdFromSandbox(const string &path, string &sandboxPath, bool is
     return open(absFilePath.c_str(), O_RDONLY);
 }
 
-static void UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper, const string &fileIdStr)
+void MediaLibraryManager::UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper,
+    const string &fileIdStr)
 {
     MEDIA_INFO_LOG("UpdateAssetVisitCount fileIdStr :%{public}s", fileIdStr.c_str());
     AddAssetVisitCountReqBody reqBody;
@@ -669,7 +672,7 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
         return dataShareHelper->OpenFile(openUri, "R");
     }
     string sandboxPath = GetSandboxPath(path, size, isAstc);
-    if ((sandboxPath.find("LCD") != std::string::npos) && CheckIsCloudFile(sandboxPath)) {
+    if ((sandboxPath.find("LCD.jpg") != std::string::npos) && MediaPathUtils::CheckIsCloudFile(sandboxPath)) {
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
@@ -1672,17 +1675,6 @@ FetchResult<FileAsset> MediaLibraryManager::GetAssets(const PhotoAlbum &album,
         return fileAsset;
     }
     return FetchResult<FileAsset>(std::move(resultSet));
-}
-
-bool MediaLibraryManager::CheckIsCloudFile(const std::string &sandboxPath)
-{
-    constexpr size_t MAX_ATTR_NAME = 64;
-    constexpr const char* CLOUD_LOCATION_ATTR = "user.cloud.location";
-    char cloudvalue[MAX_ATTR_NAME] = {'\0'};
-    auto valueLen = getxattr(sandboxPath.c_str(), CLOUD_LOCATION_ATTR, cloudvalue, MAX_ATTR_NAME);
-    CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s", sandboxPath.c_str());
-    constexpr const char FILE_POSITION_CLOUD = '2';
-    return cloudvalue[0] == FILE_POSITION_CLOUD;
 }
 
 FetchResult<FileAsset> MediaLibraryManager::GetAssets(const std::vector<std::string> &fetchColumns,

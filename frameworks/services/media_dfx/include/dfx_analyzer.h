@@ -22,6 +22,11 @@
 
 namespace OHOS {
 namespace Media {
+struct NetTypeKeyMap {
+    NetConnStatusType typeValue;
+    const std::string successFunc;
+    const std::string failFunc;
+};
 class DfxAnalyzer {
 public:
     DfxAnalyzer();
@@ -34,6 +39,13 @@ public:
     void FlushTranscodeFailed(const TranscodeErrorType type, TranscodeType transcodeType);
     void FlushTranscodeCostTime(const int32_t costTime, TranscodeType transcodeType);
     void FlushCinematicVideoInfo(CinematicVideoInfo& newCinematicVideoInfo);
+    void FlushAgingLcdCount(PhotoLcdStatistics stats);
+    void FlushAgingLcdContinue();
+    void FlushAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSize,
+        int64_t freeSizeOld, int64_t freeSize, int64_t totalTime);
+    void FlushReadLcdTimes(bool isSuccess, NetConnStatusType netStatus);
+    void FlushThumbnailQuality(const int32_t southDeviceType);
+    void FlushVisitLcd();
 
 private:
     int32_t CalculateAvgWaitTime(CinematicWaitType waitType, const CinematicVideoInfo& cinematicVideoInfo,

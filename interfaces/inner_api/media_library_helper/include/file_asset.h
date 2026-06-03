@@ -314,6 +314,12 @@ public:
     EXPORT int64_t GetAttachmentSize() const;
     EXPORT void SetAttachmentSize(int64_t attachmentSize);
 
+    EXPORT void SetThumbStatus(int32_t thumbstatus);
+    EXPORT int32_t GetThumbStatus() const;
+ 
+    EXPORT void SetLcdFileSize(int32_t lcdFileSize);
+    EXPORT int32_t GetLcdFileSize() const;
+
 private:
     int32_t userId_ = -1;
     std::string albumUri_;
