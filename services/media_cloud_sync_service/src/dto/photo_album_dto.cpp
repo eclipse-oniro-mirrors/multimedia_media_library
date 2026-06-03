@@ -19,6 +19,8 @@
 
 #include <sstream>
 
+#include "media_file_utils.h"
+
 namespace OHOS::Media::CloudSync {
 std::string PhotoAlbumDto::ToString() const
 {
@@ -27,8 +29,8 @@ std::string PhotoAlbumDto::ToString() const
        << "\"albumId\": \"" << this->albumId << "\", "
        << "\"albumType\": " << this->albumType << ", "
        << "\"albumSubType\": " << this->albumSubType << ","
-       << "\"albumName\": \"" << this->albumName << "\","
-       << "\"lPath\": \"" << this->lPath << "\","
+       << "\"albumName\": \"" << MediaFileUtils::DesensitizeName(this->albumName) << "\","
+       << "\"lPath\": \"" << MediaFileUtils::DesensitizePath(this->lPath) << "\","
        << "\"bundleName\": \"" << this->bundleName << "\","
        << "\"priority\": " << this->priority << ","
        << "\"cloudId\": " << this->cloudId << ","
