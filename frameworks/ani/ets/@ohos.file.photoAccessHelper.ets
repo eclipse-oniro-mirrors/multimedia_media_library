@@ -246,6 +246,18 @@ export namespace photoAccessHelper {
     AVFILE_FORMAT_JPG = 'jpg',
   }
 
+export class ContextRecoveryInfo {
+    albumUri: string;
+    time: long;
+    displayName: string;
+    recommendationType: int;
+    selectedRecommendationType: int;
+    version: int;
+    gridLevel?: GridLevel;
+    sortRule?: string;
+    fileSize?: int;
+  }
+
   export enum FilterOperator {
     EQUAL_TO = 0,
     NOT_EQUAL_TO = 1,
@@ -4942,6 +4954,33 @@ export namespace photoAccessHelper {
     }
 
     native startPhotoPickerInner(context: Context, config: PhotoSelectOptions): PhotoSelectResult;
+  }
+
+  export enum MovingPhotoBadgeStateType {
+    NOT_MOVING_PHOTO = 0,
+    MOVING_PHOTO_ENABLED = 1,
+    MOVING_PHOTO_DISABLED =	2
+  }
+
+  export class AutoPlayScene {
+    sceneType: SceneType;
+    playMode: PlayMode;
+  }
+
+  export enum SceneType {
+    GRID_TO_PHOTO_BROWSER = 0,
+    PHOTO_BROWSER_SWIPE = 1,
+  }
+
+  export enum PlayMode {
+    DEFAULT = 0,
+    AUTO_PLAY = 1,
+  }
+  
+  export enum GridLevel {
+    SPACIOUS = 0,
+    STANDARD = 1,
+    COMPACT = 2
   }
 
   export class MediaAssetEditData {

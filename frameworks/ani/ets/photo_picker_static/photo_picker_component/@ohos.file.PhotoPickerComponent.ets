@@ -409,16 +409,25 @@ export enum ItemDisplayRatio {
   SQUARE_RATIO = 0,
   ORIGINAL_SIZE_RATIO = 1
 }
+
+export type SelectCallback = (uri: string) => void;
+export type DeSelectCallback = (uri: string) => void;
+export type ItemClickedCallback = (itemInfo: ItemInfo, clickType: ClickType) => boolean;
+export type EnterPhotoBrowserCallback = (photoBrowserInfo: PhotoBrowserInfo) => boolean;
+export type ExitPhotoBrowserCallback = (photoBrowserInfo: PhotoBrowserInfo) => boolean;
+export type PickerControllerReadyCallback = () => void;
+export type PhotoBrowserChangedCallback = (browserItemInfo: BaseItemInfo) => boolean;
+
 @Component
 export struct PhotoPickerComponent {
   pickerOptions?: PickerOptions | undefined;
-  onSelect?: (uri: string) => void;
-  onDeselect?: (uri: string) => void;
-  onItemClicked?: (itemInfo: ItemInfo, clickType: ClickType) => boolean;
-  onEnterPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
-  onExitPhotoBrowser?: (photoBrowserInfo: PhotoBrowserInfo) => boolean;
-  onPickerControllerReady?: () => void;
-  onPhotoBrowserChanged?: (browserItemInfo: BaseItemInfo) => boolean;
+  onSelect?: SelectCallback;
+  onDeselect?: DeSelectCallback;
+  onItemClicked?: ItemClickedCallback;
+  onEnterPhotoBrowser?: EnterPhotoBrowserCallback;
+  onExitPhotoBrowser?: ExitPhotoBrowserCallback;
+  onPickerControllerReady?: PickerControllerReadyCallback;
+  onPhotoBrowserChanged?: PhotoBrowserChangedCallback;
   onSelectedItemsDeleted?: ItemsDeletedCallback;
   onExceedMaxSelected?: ExceedMaxSelectedCallback;
   onCurrentAlbumDeleted?: CurrentAlbumDeletedCallback;
