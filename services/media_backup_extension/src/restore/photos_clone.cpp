@@ -608,6 +608,8 @@ void PhotosClone::UpdateFileInfoFromCloneRestoreDb(std::vector<FileInfo> &fileIn
 
     for (auto it = fileInfos.begin(); it != fileInfos.end();) {
         if (!FileAdapter::IsLakeFile(*it)) {
+            it->inode.clear();
+            it->storagePath.clear();
             ++it;
             continue;
         }
