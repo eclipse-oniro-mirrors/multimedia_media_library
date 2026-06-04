@@ -421,6 +421,7 @@ ohos_shared_library("medialibrary_nutils") {
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "i18n:intl_util",
+    "icu:shared_icuuc",
     "image_framework:image",
     "image_framework:image_native",
     "init:libbegetutil",

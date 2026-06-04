@@ -110,6 +110,7 @@ ohos_shared_library("media_library_camera_helper") {
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_consumer",
+    "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_core",
     "media_foundation:media_foundation",
