@@ -56,6 +56,7 @@
 #include "portrait_nickname_service.h"
 #include "refresh_business_name.h"
 #include "parameters.h"
+#include "burst_dao.h"
 #include "media_album_order_back.h"
 
 #include "lake_file_operations.h"
@@ -1996,14 +1997,27 @@ static void HandleLakeAndFileManager(AccurateRefreshBase &refresh, const std::ve
     return;
 }
 
+static void PreparePredicatesForBurstRecovery(RdbPredicates &rdbPredicates)
+{
+    std::vector<std::string> fileIds = rdbPredicates.GetWhereArgs();
+    BurstDao::CompleteBurstFileIds(fileIds);
+    CHECK_AND_PRINT_LOG(!fileIds.empty(), "get burst member photo failed. fileIds is empty.");
+
+    rdbPredicates.Clear();
+    rdbPredicates.In(PhotoColumn::MEDIA_ID, fileIds);
+}
+
 int32_t MediaLibraryAlbumOperations::RecoverPhotoAssets(const DataSharePredicates &predicates)
 {
     RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
-    rdbPredicates.GreaterThan(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
     vector<string> whereArgs = rdbPredicates.GetWhereArgs();
     MediaLibraryRdbStore::ReplacePredicatesUriToId(rdbPredicates);
     MEDIA_INFO_LOG("Start recover %{public}d assets from trash",
         static_cast<int32_t>(whereArgs.size()) - THAN_AGR_SIZE);
+
+    // 恢复适配连拍照片
+    PreparePredicatesForBurstRecovery(rdbPredicates);
+    rdbPredicates.GreaterThan(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
 
     MediaLibraryAlbumOperations::DealwithNoAlbumAssets(rdbPredicates.GetWhereArgs());
     // notify deferred processing session to restore image
@@ -2014,6 +2028,7 @@ int32_t MediaLibraryAlbumOperations::RecoverPhotoAssets(const DataSharePredicate
 
     AssetAccurateRefresh assetRefresh(AccurateRefresh::RECOVER_ASSETS_BUSSINESS_NAME);
     int32_t changedRows = assetRefresh.UpdateWithDateTime(rdbValues, rdbPredicates);
+    MEDIA_DEBUG_LOG("RecoverPhotoAssets changeRow: %{public}d.", changedRows);
     CHECK_AND_RETURN_RET(changedRows >= 0, changedRows);
     assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     HandleLakeAndFileManager(assetRefresh, rdbPredicates.GetWhereArgs());
