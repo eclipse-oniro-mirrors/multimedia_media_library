@@ -31,6 +31,7 @@
 #include "medialibrary_async_worker.h"
 #include "medialibrary_rdb_transaction.h"
 #include "album_accurate_refresh.h"
+#include "default_cover_order_info.h"
 #include "medialibrary_album_fusion_utils.h"
 // LCOV_EXCL_START
 namespace OHOS {
@@ -75,6 +76,12 @@ struct RenameAlbumInput {
 struct RenameAlbumOutput {
     int64_t newAlbumId = -1;
     bool argInvalid = false;
+};
+
+struct AlbumCoverResult {
+    int32_t albumId = 0;
+    int32_t count = 0;
+    int32_t coverUriSource = -1;
 };
 
 class MediaLibraryAlbumOperations {
@@ -159,6 +166,10 @@ public:
     // Get column informations of PhotoAlbum table except primary key column
     static const std::unordered_map<std::string, ColumnSchema>& GetPhotoAlbumTableSchema();
 
+    static int32_t ModifyAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+        bool disable, bool isAsyncRefreshAlbum);
+    static int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+        bool disable, bool isAsyncRefreshAlbum);
 private:
     static int32_t GetTargetAlbumId(const DataShare::DataSharePredicates &predicates, std::string &targetAlbumId);
     static int32_t GetAndCheckTargetAlbum(const DataShare::DataSharePredicates &predicates, std::string &targetAlbumId);

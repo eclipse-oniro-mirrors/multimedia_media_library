@@ -54,6 +54,7 @@
 #include "userfile_manager_types.h"
 #include "media_config_info_column.h"
 #include "settings_data_manager.h"
+#include "cover_record_columns.h"
 
 #ifdef CLOUD_SYNC_MANAGER
 #include "cloud_sync_manager.h"
@@ -2738,6 +2739,18 @@ void CloneRestore::PrepareEditTimeVal(NativeRdb::ValuesBucket &values, int64_t e
     PrepareCommonColumnVal(values, PhotoColumn::PHOTO_EDIT_TIME, newEditTime, commonColumnInfoMap);
 }
 
+void CloneRestore::RestoreGalleryExecyte()
+{
+    // selection clone is dependent on dup_sim clone
+    RestoreAnalysisSelection();
+    QueryAndSetLakeFileFailCount();
+    QueryAndSetFileManagerFileFailCount();
+    ReportInvalidLocalFiles();
+    ReportRestoreTaskofLakeFiles();
+    ReportRestoreTaskofFileManagerFiles();
+    InheritManualCover();
+}
+
 void CloneRestore::RestoreGallery()
 {
     CheckTableColumnStatus(mediaRdb_, CLONE_TABLE_LISTS_PHOTO);
@@ -2763,6 +2776,7 @@ void CloneRestore::RestoreGallery()
     // Restore the backup db info.
     RestoreAlbum();
     RestorePhoto();
+    RestoreTabCoverRecord();
     if (IsCloudRestoreSatisfied()) {
         MEDIA_INFO_LOG("singlCloud cloud clone");
         RestorePhotoForCloud();
@@ -2788,14 +2802,7 @@ void CloneRestore::RestoreGallery()
     cloneRestoreGeoDictionary_.ReportGeoRestoreTask();
     RestoreAnalysisData();
     RestoreAnalysisDupSim();
-    // selection clone is dependent on dup_sim clone
-    RestoreAnalysisSelection();
-    QueryAndSetLakeFileFailCount();
-    QueryAndSetFileManagerFileFailCount();
-    ReportInvalidLocalFiles();
-    ReportRestoreTaskofLakeFiles();
-    ReportRestoreTaskofFileManagerFiles();
-    InheritManualCover();
+    RestoreGalleryExecyte();
 }
 
 void CloneRestore::RestoreAnalysisTablesData()
@@ -2934,6 +2941,160 @@ bool CloneRestore::PrepareCloudPath(const string &tableName, FileInfo &fileInfo)
         return false;
     }
     return true;
+}
+
+static int32_t BatchInsertCoverRecord(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
+    std::vector<NativeRdb::ValuesBucket> &valuesBuckets, int64_t &migrateCount)
+{
+    if (valuesBuckets.empty()) {
+        return NativeRdb::E_OK;
+    }
+    int64_t rowId = 0;
+    auto ret = rdbStore->BatchInsert(rowId, CoverRecordColumns::COVER_RECORD_TABLE, valuesBuckets);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Batch insert tab_cover_record failed, ret: %{public}d", ret);
+        return ret;
+    }
+    migrateCount += rowId;
+    for (const auto &values : valuesBuckets) {
+        int32_t albumType = -1;
+        int32_t albumSubtype = 0;
+        std::string lpath = "";
+        MediaValuesBucketUtils::GetInt(values, CoverRecordColumns::ALBUM_TYPE, albumType);
+        MediaValuesBucketUtils::GetInt(values, CoverRecordColumns::ALBUM_SUBTYPE, albumSubtype);
+        MediaValuesBucketUtils::GetString(values, CoverRecordColumns::ALBUM_LPATH, lpath);
+        if (albumType == -1 || albumSubtype == 0) {
+            continue;
+        }
+        std::string whereClause = (albumType == PhotoAlbumType::SYSTEM ? "album_type = ? AND album_subtype = ?" :
+            "album_type = ? AND album_subtype = ? AND LOWER(lpath) = LOWER(?)");
+        std::vector<std::string> whereArgs;
+        whereArgs = albumType == PhotoAlbumType::SYSTEM ?
+            vector<string>{ to_string(albumType), to_string(albumSubtype) } :
+            vector<string>{ to_string(albumType), to_string(albumSubtype), lpath };
+        int32_t changedRows = 0;
+        auto ret = rdbStore->Update(changedRows, "PhotoAlbum", values, whereClause, whereArgs);
+        if (ret != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("Update PhotoAlbum failed, ret: %{public}d", ret);
+            return ret;
+        }
+    }
+    valuesBuckets.clear();
+    return NativeRdb::E_OK;
+}
+
+static bool CheckCoverRecordExist(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore, int32_t albumType,
+    int32_t albumSubtype, const std::string &lpath)
+{
+    std::string checkSql = "SELECT 1 FROM tab_cover_record ";
+    std::string whereClause = (albumType == PhotoAlbumType::SYSTEM ? "WHERE album_type = ? AND album_subtype = ?" :
+        "WHERE album_type = ? AND album_subtype = ? AND LOWER(lpath) = LOWER(?)");
+    checkSql += whereClause;
+    std::vector<NativeRdb::ValueObject> checkParams;
+    checkParams = albumType == PhotoAlbumType::SYSTEM ? vector<NativeRdb::ValueObject>{ albumType, albumSubtype } :
+        vector<NativeRdb::ValueObject>{ albumType, albumSubtype, lpath };
+    auto checkResultSet = BackupDatabaseUtils::QuerySql(rdbStore, checkSql, checkParams);
+    CHECK_AND_RETURN_RET(checkResultSet != nullptr, false);
+    bool exist = false;
+    if (checkResultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        exist = true;
+    }
+    checkResultSet->Close();
+    return exist;
+}
+
+static int32_t ProcessCoverRecordBatch(const std::shared_ptr<NativeRdb::RdbStore> &dstRdb,
+    const std::shared_ptr<NativeRdb::ResultSet> &resultSet, int64_t &migrateCount)
+{
+    std::vector<NativeRdb::ValuesBucket> valuesBuckets;
+    valuesBuckets.reserve(CLONE_QUERY_COUNT);
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumType = GetInt32Val(CoverRecordColumns::ALBUM_TYPE, resultSet);
+        int32_t albumSubtype = GetInt32Val(CoverRecordColumns::ALBUM_SUBTYPE, resultSet);
+        std::string lpath = GetStringVal(CoverRecordColumns::ALBUM_LPATH, resultSet);
+        bool exist = CheckCoverRecordExist(dstRdb, albumType, albumSubtype, lpath);
+
+        NativeRdb::ValuesBucket values;
+        values.PutInt(CoverRecordColumns::ALBUM_TYPE, albumType);
+        values.PutInt(CoverRecordColumns::ALBUM_SUBTYPE, albumSubtype);
+        if (albumType != PhotoAlbumType::SYSTEM) {
+            values.PutString(CoverRecordColumns::ALBUM_LPATH, lpath);
+        }
+        values.PutString(CoverRecordColumns::COVER_ORDER_KEY, GetStringVal("cover_order_key", resultSet));
+        values.PutString(CoverRecordColumns::COVER_ORDER_SUBKEY, GetStringVal("cover_order_subkey", resultSet));
+        values.PutInt(CoverRecordColumns::COVER_ORDER_TYPE, GetInt32Val("cover_order_type", resultSet));
+        values.PutString(CoverRecordColumns::HIDDEN_COVER_ORDER_KEY, GetStringVal("hidden_cover_order_key", resultSet));
+        values.PutString(CoverRecordColumns::HIDDEN_COVER_ORDER_SUBKEY,
+            GetStringVal("hidden_cover_order_subkey", resultSet));
+        values.PutInt(CoverRecordColumns::HIDDEN_COVER_ORDER_TYPE, GetInt32Val("hidden_cover_order_type", resultSet));
+
+        if (exist) {
+            std::string whereClause = (albumType == PhotoAlbumType::SYSTEM ?
+                "album_type = ? AND album_subtype = ?" :
+                "album_type = ? AND album_subtype = ? AND LOWER(lpath) = LOWER(?)");
+            std::vector<std::string> whereArgs;
+            whereArgs = albumType == PhotoAlbumType::SYSTEM ?
+                vector<string>{ to_string(albumType), to_string(albumSubtype) } :
+                vector<string>{ to_string(albumType), to_string(albumSubtype), lpath };
+            int32_t changedRows = 0;
+            auto ret = dstRdb->Update(changedRows, "tab_cover_record", values, whereClause, whereArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret,
+                "Update tab_cover_record failed, ret: %{public}d", ret);
+            migrateCount += changedRows;
+            ret = dstRdb->Update(changedRows, "PhotoAlbum", values, whereClause, whereArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "Update PhotoAlbum failed, ret: %{public}d", ret);
+            continue;
+        }
+
+        valuesBuckets.push_back(values);
+        if (valuesBuckets.size() >= CLONE_QUERY_COUNT) {
+            auto ret = BatchInsertCoverRecord(dstRdb, valuesBuckets, migrateCount);
+            CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret,
+                "Batch insert tab_cover_record failed, ret: %{public}d", ret);
+        }
+    }
+
+    return BatchInsertCoverRecord(dstRdb, valuesBuckets, migrateCount);
+}
+
+void CloneRestore::RestoreTabCoverRecord()
+{
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("Start clone restore: tab_cover_record");
+    CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, "rdb stores are null");
+
+    bool existTab = false;
+    CHECK_AND_RETURN_LOG(BackupDatabaseUtils::isTableExist(mediaRdb_, "tab_cover_record", existTab) && existTab,
+        "tab_cover_record does not exist in mediaRdb_. Cost: %{public}lld ms",
+        (long long)(MediaFileUtils::UTCTimeMilliSeconds() - start));
+    CHECK_AND_RETURN_LOG(BackupDatabaseUtils::isTableExist(mediaLibraryRdb_, "tab_cover_record", existTab) && existTab,
+        "tab_cover_record does not exist in mediaLibraryRdb_. Cost: %{public}lld ms",
+        (long long)(MediaFileUtils::UTCTimeMilliSeconds() - start));
+
+    std::vector<std::string> commonColumns =
+        BackupDatabaseUtils::GetCommonColumnInfos(mediaRdb_, mediaLibraryRdb_, "tab_cover_record");
+    CHECK_AND_RETURN_LOG(!commonColumns.empty(), "No common columns found for tab_cover_record. Cost: %{public}lld ms",
+        (long long)(MediaFileUtils::UTCTimeMilliSeconds() - start));
+    std::string countSql = "SELECT count(1) AS count FROM tab_cover_record;";
+    int32_t totalNumber = BackupDatabaseUtils::QueryInt(mediaRdb_, countSql, "count");
+    CHECK_AND_RETURN_LOG(totalNumber > 0, "No tab_cover_record entries to clone. Cost: %{public}lld ms",
+        (long long)(MediaFileUtils::UTCTimeMilliSeconds() - start));
+    std::string columnList = BackupDatabaseUtils::JoinValues<std::string>(commonColumns, ", ");
+    std::string querySql = "SELECT " + columnList + " FROM tab_cover_record;";
+    auto resultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, querySql, {});
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "Query tab_cover_record failed");
+
+    int64_t migrateCount = 0;
+    TransactionOperations trans{__func__};
+    trans.SetBackupRdbStore(mediaLibraryRdb_);
+    std::function<int(void)> func = [&]()->int {
+        return ProcessCoverRecordBatch(mediaLibraryRdb_, resultSet, migrateCount);
+    };
+    auto ret = trans.RetryTrans(func, true);
+    resultSet->Close();
+    MEDIA_INFO_LOG("RestoreTabCoverRecord completed. Migrated %{public}lld records. Total time: %{public}lld ms"
+        "result: %{public}s", (long long)migrateCount, (long long)(MediaFileUtils::UTCTimeMilliSeconds() - start),
+        (ret == NativeRdb::E_OK ? "success" : "failure"));
 }
 
 void CloneRestore::RestoreMusic()

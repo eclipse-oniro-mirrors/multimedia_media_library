@@ -19,6 +19,7 @@
 
 #include <climits>
 #include <filesystem>
+#include <thread>
 
 #include "album_plugin_config.h"
 #include "analysis_album_attribute_const.h"
@@ -28,6 +29,7 @@
 #ifdef MEDIALIBRARY_FEATURE_ANALYSIS_DATA
 #include "medialibrary_analysis_album_operations.h"
 #endif
+#include "medialibrary_async_worker.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_object_utils.h"
@@ -116,6 +118,17 @@ const vector<string> NOT_CHANGEABLE_ALBUM = {
     AlbumPlugin::LPATH_CAMERA
 };
 const std::string MINUS_5_SOMETHING = "-5_";
+
+class RefreshAlbumCoverTaskData : public AsyncTaskData {
+public:
+    RefreshAlbumCoverTaskData() = default;
+    ~RefreshAlbumCoverTaskData() override = default;
+
+    int32_t albumId_ = 0;
+    DefaultCoverOrderInfo info_;
+    bool enable_ = false;
+    bool isHidden_ = false;
+};
 
 int32_t MediaLibraryAlbumOperations::CreateAlbumOperation(MediaLibraryCommand &cmd)
 {
@@ -341,6 +354,40 @@ static int32_t ObtainMaxAlbumOrder(int32_t &maxAlbumOrder)
     return resultSet->GetInt(0, maxAlbumOrder);
 }
 
+void PutCoverOrderValues(const string &lpath, ValuesBucket &values)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PutCoverOrderValues");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr.");
+    string querySql = "SELECT cover_order_key, cover_order_subkey, cover_order_type, hidden_cover_order_key, "
+        "hidden_cover_order_subkey, hidden_cover_order_type FROM tab_cover_record WHERE lpath = ?;";
+    vector<NativeRdb::ValueObject> params = { lpath };
+    auto resultSet = rdbStore->QuerySql(querySql, params);
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "Query tab_cover_record failed");
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        string coverOrderKey = GetStringVal("cover_order_key", resultSet);
+        string coverOrderSubkey = GetStringVal("cover_order_subkey", resultSet);
+        int32_t coverOrderType = GetInt32Val("cover_order_type", resultSet);
+        string hiddenCoverOrderKey = GetStringVal("hidden_cover_order_key", resultSet);
+        string hiddenCoverOrderSubkey = GetStringVal("hidden_cover_order_subkey", resultSet);
+        int32_t hiddenCoverOrderType = GetInt32Val("hidden_cover_order_type", resultSet);
+        CHECK_AND_EXECUTE(coverOrderKey.empty(), values.PutString(PhotoAlbumColumns::COVER_ORDER_KEY, coverOrderKey));
+        CHECK_AND_EXECUTE(coverOrderSubkey.empty(),
+            values.PutString(PhotoAlbumColumns::COVER_ORDER_SUBKEY, coverOrderSubkey));
+        CHECK_AND_EXECUTE(coverOrderType != 0 && coverOrderType != 1,
+            values.PutInt(PhotoAlbumColumns::COVER_ORDER_TYPE, coverOrderType));
+        CHECK_AND_EXECUTE(hiddenCoverOrderKey.empty(),
+            values.PutString(PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY, hiddenCoverOrderKey));
+        CHECK_AND_EXECUTE(hiddenCoverOrderSubkey.empty(),
+            values.PutString(PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY, hiddenCoverOrderSubkey));
+        CHECK_AND_EXECUTE(hiddenCoverOrderType != 0 && hiddenCoverOrderType != 1,
+            values.PutInt(PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE, hiddenCoverOrderType));
+    }
+    resultSet->Close();
+    return;
+}
+
 void MediaLibraryAlbumOperations::PutGeneralPhotoAlbumValues(const string &albumName,
     const string &lpath, ValuesBucket &values)
 {
@@ -352,6 +399,7 @@ void MediaLibraryAlbumOperations::PutGeneralPhotoAlbumValues(const string &album
     values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, 1); // local album is 1.
     values.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, PhotoAlbumUploadStatusOperation::GetAlbumUploadStatus());
+    PutCoverOrderValues(lpath, values);
 }
 
 void MediaLibraryAlbumOperations::PrepareUserAlbum(const string &albumName, ValuesBucket &values)
@@ -781,7 +829,7 @@ int32_t IsAllUserOrSourcePhotoAlbum(std::shared_ptr<MediaLibraryRdbStore> rdbSto
     if (static_cast<size_t>(rowCount) != albumIds.size()) {
         int32_t nonUserAlbumUriCount = static_cast<int32_t>(albumIds.size()) - rowCount;
         MEDIA_ERR_LOG("deleted Albums Uri Contains non-user albums count is %{public}d",
-            (int)nonUserAlbumUriCount);
+            nonUserAlbumUriCount);
         return E_INVALID_URI;
     }
     return E_OK;
@@ -1163,10 +1211,10 @@ shared_ptr<ResultSet> MediaLibraryAlbumOperations::QueryPhotoAlbum(MediaLibraryC
 
 static int32_t CheckIsSpecialSourceAlbum(const shared_ptr<MediaLibraryRdbStore>& rdbStore, int32_t oldAlbumId)
 {
-    const std::string QUERY_ALBUM_LPATH_TO_RENAME =
-        "SELECT lpath FROM PhotoAlbum WHERE album_id = "+ std::to_string(oldAlbumId);
+    const std::string queryAlbumLpathToRename =
+        "SELECT lpath FROM PhotoAlbum WHERE album_id = " + std::to_string(oldAlbumId);
     std::string albumLPath = "";
-    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(QUERY_ALBUM_LPATH_TO_RENAME);
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryAlbumLpathToRename);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_OK, "resultSet is nullptr! failed query lpath");
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         GetStringValueFromResultSet(resultSet, PhotoAlbumColumns::ALBUM_LPATH, albumLPath);
@@ -1303,14 +1351,20 @@ static int32_t CheckConflictsWithExistingAlbum(const NativeRdb::ValuesBucket& ne
 static bool BuildNewNameValuesBucket(const shared_ptr<MediaLibraryRdbStore>& rdbStore, int32_t albumId,
     NativeRdb::ValuesBucket& newNameValues, const string& newAlbumName, bool& isCloudAlbum)
 {
-    const std::string QUERY_OLD_ALBUM_INFO =
+    const std::string queryOldAlbumInfo =
         "SELECT * FROM PhotoAlbum WHERE " + PhotoAlbumColumns::ALBUM_ID + " = " + to_string(albumId) +
         " AND (" + PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::USER) + " OR " +
         PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::SOURCE) + ")";
-    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(QUERY_OLD_ALBUM_INFO);
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryOldAlbumInfo);
     CHECK_AND_RETURN_RET_LOG(TryToGoToFirstRow(resultSet), false,
         "Rename user album failed. Query old album info failed");
     MediaLibraryAlbumFusionUtils::BuildAlbumInsertValuesSetName(rdbStore, newNameValues, resultSet, newAlbumName);
+    string newLPath;
+    ValueObject tmpObject;
+    if (newNameValues.GetObject(PhotoAlbumColumns::ALBUM_LPATH, tmpObject)) {
+        tmpObject.GetString(newLPath);
+    }
+    PutCoverOrderValues(newLPath, newNameValues);
     const string albumCloudId = GetStringVal(PhotoAlbumColumns::ALBUM_CLOUD_ID, resultSet);
     isCloudAlbum = !albumCloudId.empty();
     return true;
@@ -1370,10 +1424,10 @@ static void UpdateAnalysisIndexAfterRename(const vector<string>& fileIdsToUpdate
 static vector<string> GetAssetIdsFromOldAlbum(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
     int32_t oldAlbumId)
 {
-    const std::string  QUERY_FILEID_TO_UPDATE_INDEX =
+    const std::string queryFileidToUpdateIndex =
         "SELECT file_id FROM Photos WHERE owner_album_id = " + to_string(oldAlbumId);
     vector<string> fileIds;
-    shared_ptr<NativeRdb::ResultSet> queryIdsResultSet = rdbStore->QuerySql(QUERY_FILEID_TO_UPDATE_INDEX);
+    shared_ptr<NativeRdb::ResultSet> queryIdsResultSet = rdbStore->QuerySql(queryFileidToUpdateIndex);
     CHECK_AND_PRINT_LOG(queryIdsResultSet != nullptr, "Query file id to update index failed");
     while (queryIdsResultSet != nullptr && queryIdsResultSet->GoToNextRow() == NativeRdb::E_OK) {
         fileIds.push_back(to_string(GetInt32Val("file_id", queryIdsResultSet)));
@@ -1384,10 +1438,10 @@ static vector<string> GetAssetIdsFromOldAlbum(const shared_ptr<MediaLibraryRdbSt
 static int32_t GetAlbumTypeFromOldAlbum(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
     int32_t oldAlbumId)
 {
-    const std::string QUERY_ALBUM_TYPE_TO_RENAME =
+    const std::string queryAlbumTypeToRename =
         "SELECT album_type FROM PhotoAlbum WHERE album_id = " + to_string(oldAlbumId);
     int32_t oldAlbumType = -1;
-    shared_ptr<NativeRdb::ResultSet> queryTypeResultSet = rdbStore->QuerySql(QUERY_ALBUM_TYPE_TO_RENAME);
+    shared_ptr<NativeRdb::ResultSet> queryTypeResultSet = rdbStore->QuerySql(queryAlbumTypeToRename);
     CHECK_AND_PRINT_LOG(queryTypeResultSet != nullptr, "Query album type to rename album failed");
     if (queryTypeResultSet->GoToNextRow() == NativeRdb::E_OK) {
         oldAlbumType = GetInt32Val("album_type", queryTypeResultSet);
@@ -1452,6 +1506,17 @@ static int32_t DoRenameUserAlbum(const RenameAlbumInput& input, RenameAlbumOutpu
     return E_OK;
 }
 
+static void HandleLakeAssets(const vector<string> &fileIdsInAlbum, int32_t newAlbumId)
+{
+#ifdef MEDIALIBRARY_LAKE_SUPPORT
+    auto assetsRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
+    AccurateRefreshBase &refreshBase = *assetsRefresh;
+    int32_t ret = LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(refreshBase, fileIdsInAlbum, newAlbumId);
+    CHECK_AND_PRINT_LOG(ret == E_OK, "move inner anco asset to new album error");
+#endif
+    return;
+}
+
 // Set album name: delete old and build a new one
 static int32_t RenameUserAlbum(int32_t oldAlbumId, const string &newAlbumName, bool useDotCompatibleRule)
 {
@@ -1496,13 +1561,9 @@ static int32_t RenameUserAlbum(int32_t oldAlbumId, const string &newAlbumName, b
     CHECK_AND_PRINT_LOG(
         FileManagerAlbumOperations::RenameFileManagerAlbum(oldAlbumPath, output.newAlbumId, newAlbumName) == E_OK,
         "Check album name failed");
-#ifdef MEDIALIBRARY_LAKE_SUPPORT
-    auto assetsRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    AccurateRefreshBase &refreshBase = *assetsRefresh;
-    ret = LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(refreshBase, fileIdsInAlbum, output.newAlbumId);
-    CHECK_AND_PRINT_LOG(ret == E_OK, "move inner anco asset to new album error");
-#endif
+    HandleLakeAssets(fileIdsInAlbum, output.newAlbumId);
     UpdateAnalysisIndexAfterRename(fileIdsInAlbum);
+    MediaLibraryRdbUtils::UpdateCommonAlbumCover(rdbStore, { std::to_string(output.newAlbumId) }, true);
     ret = NotifyForRenameUserAlbum(albumRefresh, dfxRefreshManager, output.newAlbumId, assetRefresh);
     CHECK_AND_PRINT_LOG(ret == E_OK, "failed to send notification for rename user album");
     return ALBUM_SETNAME_OK;
@@ -1526,10 +1587,10 @@ static bool GetOldAlbumInfo(int32_t albumId, string& oldAlbumName, string& oldAl
         MEDIA_ERR_LOG("Get old album info failed. RdbStore is null");
         return false;
     }
-    const std::string QUERY_ALBUM_INFO =
+    const std::string queryAlbumInfo =
         "SELECT album_name, cover_uri FROM PhotoAlbum WHERE " +
         PhotoAlbumColumns::ALBUM_ID + " = " + to_string(albumId);
-    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(QUERY_ALBUM_INFO);
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryAlbumInfo);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("Get old album info failed. Query album info failed");
         return false;
@@ -1750,9 +1811,9 @@ static int32_t QueryAlbumInfo(int32_t albumId, SetCoverUriAlbumInfo& albumInfo)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_FAIL, "Failed to get rdbStore when query");
-    const std::string QUERY_ALBUM_INFO =
+    const std::string queryAlbumInfo =
         "SELECT dirty FROM PhotoAlbum WHERE album_id = ?";
-    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(QUERY_ALBUM_INFO, { albumId });
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryAlbumInfo, { albumId });
     CHECK_AND_RETURN_RET_LOG(TryToGoToFirstRow(resultSet), E_FAIL, "Get album info failed. Query album info failed");
     albumInfo.albumId = albumId;
     albumInfo.dirty = GetInt32Val(PhotoAlbumColumns::ALBUM_DIRTY, resultSet);
@@ -1864,8 +1925,8 @@ static bool HasSameLpath(const string &lPath, const string &assetId)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "Failed to get rdbStore.");
-    const std::string QUERY_LPATH = "SELECT * FROM PhotoAlbum WHERE lpath = '" + lPath + "'";
-    shared_ptr<NativeRdb::ResultSet> albumResultSet = rdbStore->QuerySql(QUERY_LPATH);
+    const std::string queryLpath = "SELECT * FROM PhotoAlbum WHERE lpath = '" + lPath + "'";
+    shared_ptr<NativeRdb::ResultSet> albumResultSet = rdbStore->QuerySql(queryLpath);
     if (albumResultSet == nullptr || albumResultSet->GoToFirstRow() != NativeRdb::E_OK) {
         return false;
     } else {
@@ -1873,9 +1934,9 @@ static bool HasSameLpath(const string &lPath, const string &assetId)
         int32_t albumId;
         albumResultSet->GetColumnIndex(PhotoAlbumColumns::ALBUM_ID, albumIdIndex);
         CHECK_AND_RETURN_RET(albumResultSet->GetInt(albumIdIndex, albumId) == NativeRdb::E_OK, false);
-        const std::string UPDATE_ALBUM_ID_IN_PHOTOS = "UPDATE Photos Set owner_album_id = " +
+        const std::string updateAlbumIdInPhotos = "UPDATE Photos Set owner_album_id = " +
             to_string(albumId) + " WHERE file_id = " + assetId;
-        int ret = rdbStore->ExecuteSql(UPDATE_ALBUM_ID_IN_PHOTOS);
+        int ret = rdbStore->ExecuteSql(updateAlbumIdInPhotos);
         CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, false, "Update new album is fails");
     }
     return true;
@@ -2085,16 +2146,16 @@ void DealWithHighlightSdTable(const DataSharePredicates &predicates)
         string highlightVideoPath = "/storage/cloud/files/highlight/video/" + to_string(mapAssetDestination);
         MediaFileUtils::DeleteDir(highlightVideoPath);
         MEDIA_INFO_LOG("Delete highlight video path is: %{public}s", highlightVideoPath.c_str());
- 
-        const std::string DELETE_ITEM_FROM_SD_MAP =
+
+        const std::string deleteItemFromSdMap =
             "DELETE FROM tab_analysis_asset_sd_map WHERE map_asset_source = " + assetId;
-        int32_t ret = rdbStore->ExecuteSql(DELETE_ITEM_FROM_SD_MAP);
+        int32_t ret = rdbStore->ExecuteSql(deleteItemFromSdMap);
         CHECK_AND_CONTINUE_ERR_LOG(ret == NativeRdb::E_OK,
             "DELETE highlight video failed, id is: %{public}s", assetId.c_str());
 
-        const std::string DELETE_ITEM_FROM_ALBUM_MAP =
+        const std::string deleteItemFromAlbumMap =
             "DELETE FROM tab_analysis_album_asset_map WHERE map_asset = " + assetId;
-        ret = rdbStore->ExecuteSql(DELETE_ITEM_FROM_ALBUM_MAP);
+        ret = rdbStore->ExecuteSql(deleteItemFromAlbumMap);
         CHECK_AND_CONTINUE_ERR_LOG(ret == NativeRdb::E_OK,
             "DELETE highlight video failed, id is: %{public}s", assetId.c_str());
     }
@@ -4054,6 +4115,295 @@ int32_t MediaLibraryAlbumOperations::AlbumChangeSetHiddenAttribute(int32_t album
         CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret, "Failed to update asset hidden");
     }
 
+    return E_OK;
+}
+
+static int32_t HandleEnableTabCoverRecord(const std::shared_ptr<TransactionOperations> &trans,
+    const DefaultCoverOrderInfo &info, bool isHidden = false)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdbStore failed");
+    CHECK_AND_RETURN_RET_LOG(trans != nullptr, E_HAS_DB_ERROR, "trans is nullptr");
+    std::string querySql = "SELECT COUNT(*) AS Count FROM tab_cover_record ";
+    std::string whereClause = info.albumType == PhotoAlbumType::SYSTEM ?
+        "WHERE album_type = ? AND album_subtype = ?" :
+        "WHERE album_type = ? AND album_subtype = ? AND lpath = ?";
+    querySql += whereClause;
+    vector<ValueObject> checkArgs = info.albumType == PhotoAlbumType::SYSTEM ? vector<ValueObject>{ info.albumType,
+        info.albumSubType } : vector<ValueObject>{ info.albumType, info.albumSubType, info.lpath };
+    auto resultSet = rdbStore->QuerySql(querySql, checkArgs);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Check record failed");
+    int32_t count = 0;
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        count = get<int32_t>(ResultSetUtils::GetValFromColumn("Count", resultSet, TYPE_INT32));
+    }
+    resultSet->Close();
+    if (count > 0) {
+        std::string updateSql = "UPDATE tab_cover_record ";
+        std::string argClause = isHidden ?
+            "SET hidden_cover_order_key = ?, hidden_cover_order_subkey = ?, hidden_cover_order_type = ? " :
+            "SET cover_order_key = ?, cover_order_subkey = ?, cover_order_type = ? ";
+        updateSql += (argClause + whereClause);
+        vector<NativeRdb::ValueObject> updateArgs;
+        updateArgs = info.albumType == PhotoAlbumType::SYSTEM ?
+            vector<ValueObject>{ info.orderKey, info.orderSubKey, info.orderType, info.albumType, info.albumSubType } :
+            vector<ValueObject>{ info.orderKey, info.orderSubKey, info.orderType,
+                info.albumType, info.albumSubType, info.lpath };
+        auto ret = trans->ExecuteSql(updateSql, updateArgs);
+        CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR, "Update failed, ret: %{public}d", ret);
+        return E_OK;
+    }
+    std::string insertSql = "INSERT INTO tab_cover_record ";
+    insertSql += (info.albumType == PhotoAlbumType::SYSTEM ? "(album_type, album_subtype, " :
+        "(album_type, album_subtype, lpath, ");
+    insertSql += (isHidden ? "hidden_cover_order_key, hidden_cover_order_subkey, hidden_cover_order_type) " :
+        "cover_order_key, cover_order_subkey, cover_order_type) ");
+    insertSql += (info.albumType == PhotoAlbumType::SYSTEM ? "VALUES (?, ?, ?, ?, ?);" : "VALUES (?, ?, ?, ?, ?, ?);");
+    vector<NativeRdb::ValueObject> insertArgs;
+    insertArgs = info.albumType == PhotoAlbumType::SYSTEM ?
+        vector<ValueObject>{ info.albumType, info.albumSubType, info.orderKey, info.orderSubKey, info.orderType } :
+        vector<ValueObject>{ info.albumType, info.albumSubType, info.lpath,
+            info.orderKey, info.orderSubKey, info.orderType };
+    auto ret = trans->ExecuteSql(insertSql, insertArgs);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR, "Insert failed, ret: %{public}d", ret);
+    return E_OK;
+}
+
+static int32_t HandleEnablePhotoAlbum(const std::shared_ptr<TransactionOperations> &trans,
+    const DefaultCoverOrderInfo &info, AlbumCoverResult &result, bool isHidden = false)
+{
+    result.count = 0;
+    result.coverUriSource = -1;
+    result.albumId = 0;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdbStore failed");
+    CHECK_AND_RETURN_RET_LOG(trans != nullptr, E_HAS_DB_ERROR, "trans is nullptr");
+    std::string querySql = "SELECT COUNT(*) AS Count FROM PhotoAlbum ";
+    std::string whereClause = info.albumType == PhotoAlbumType::SYSTEM ?
+        "WHERE album_type = ? AND album_subtype = ?" :
+        "WHERE album_type = ? AND album_subtype = ? AND LOWER(lpath) = LOWER(?)";
+    querySql += whereClause;
+    vector<NativeRdb::ValueObject> checkArgs;
+    checkArgs = info.albumType == PhotoAlbumType::SYSTEM ? vector<ValueObject>{ info.albumType, info.albumSubType } :
+        vector<ValueObject>{ info.albumType, info.albumSubType, info.lpath };
+    auto resultSet = rdbStore->QuerySql(querySql, checkArgs);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Check album failed");
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        result.count = get<int32_t>(ResultSetUtils::GetValFromColumn("Count", resultSet, TYPE_INT32));
+    }
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(result.count > 0, E_OK, "Album not found, lpath: %{public}s",
+        DfxUtils::GetSafePath(info.lpath).c_str());
+    std::string updateSql = "UPDATE PhotoAlbum ";
+    std::string argClause = isHidden ?
+        "SET hidden_cover_order_key = ?, hidden_cover_order_subkey = ?, hidden_cover_order_type = ? " :
+        "SET cover_order_key = ?, cover_order_subkey = ?, cover_order_type = ? ";
+    updateSql += (argClause + whereClause);
+    vector<NativeRdb::ValueObject> updateArgs;
+    updateArgs = info.albumType == PhotoAlbumType::SYSTEM ?
+        vector<ValueObject>{ info.orderKey, info.orderSubKey, info.orderType, info.albumType, info.albumSubType } :
+        vector<ValueObject>{ info.orderKey, info.orderSubKey, info.orderType,
+            info.albumType, info.albumSubType, info.lpath };
+    auto ret = trans->ExecuteSql(updateSql, updateArgs);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR, "Update failed, ret: %{public}d", ret);
+    querySql = "SELECT album_id, cover_uri_source FROM PhotoAlbum " + whereClause;
+    resultSet = rdbStore->QuerySql(querySql, checkArgs);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Check album failed");
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        result.coverUriSource =
+            get<int32_t>(ResultSetUtils::GetValFromColumn("cover_uri_source", resultSet, TYPE_INT32));
+        result.albumId = get<int32_t>(ResultSetUtils::GetValFromColumn("album_id", resultSet, TYPE_INT32));
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
+static int32_t HandleUnablePhotoAlbum(const std::shared_ptr<TransactionOperations> &trans,
+    const DefaultCoverOrderInfo &info, AlbumCoverResult &result, bool isHidden = false)
+{
+    result.count = 0;
+    result.coverUriSource = -1;
+    result.albumId = 0;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "get rdbStore failed");
+    CHECK_AND_RETURN_RET_LOG(trans != nullptr, E_HAS_DB_ERROR, "trans is nullptr");
+    std::string querySql = "SELECT COUNT(*) AS Count FROM PhotoAlbum ";
+    std::string whereClause = info.albumType == PhotoAlbumType::SYSTEM ?
+        "WHERE album_type = ? AND album_subtype = ?" :
+        "WHERE album_type = ? AND album_subtype = ? AND LOWER(lpath) = LOWER(?)";
+    querySql += whereClause;
+    vector<NativeRdb::ValueObject> checkArgs;
+    checkArgs = info.albumType == PhotoAlbumType::SYSTEM ? vector<ValueObject>{ info.albumType, info.albumSubType } :
+        vector<ValueObject>{ info.albumType, info.albumSubType, info.lpath };
+    auto resultSet = rdbStore->QuerySql(querySql, checkArgs);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Check album failed");
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        result.count = get<int32_t>(ResultSetUtils::GetValFromColumn("Count", resultSet, TYPE_INT32));
+    }
+    resultSet->Close();
+    CHECK_AND_RETURN_RET_LOG(result.count > 0, E_OK, "Album not found, lpath: %{public}s",
+        DfxUtils::GetSafePath(info.lpath).c_str());
+    std::string updateSql = "UPDATE PhotoAlbum ";
+    std::string argClause = isHidden ?
+        "SET hidden_cover_order_key = '', hidden_cover_order_subkey = '', hidden_cover_order_type = 0 " :
+        "SET cover_order_key = '', cover_order_subkey = '', cover_order_type = 0 ";
+    updateSql += (argClause + whereClause);
+    auto ret = trans->ExecuteSql(updateSql, checkArgs);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR, "Update failed, ret: %{public}d", ret);
+    querySql = "SELECT album_id, cover_uri_source FROM PhotoAlbum " + whereClause;
+    resultSet = rdbStore->QuerySql(querySql, checkArgs);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "Check album failed");
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        result.coverUriSource =
+            get<int32_t>(ResultSetUtils::GetValFromColumn("cover_uri_source", resultSet, TYPE_INT32));
+        result.albumId = get<int32_t>(ResultSetUtils::GetValFromColumn("album_id", resultSet, TYPE_INT32));
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
+static int32_t RefreshAlbumCoverUri(int32_t albumId, const DefaultCoverOrderInfo &info, bool enable,
+    bool isHidden = false)
+{
+    RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
+    ValuesBucket values;
+    UpdateAlbumData data;
+    data.albumId = albumId;
+    data.albumSubtype = info.albumSubType;
+    data.shouldUpdateDateModified = true;
+    if (enable) {
+        if (isHidden) {
+            data.hiddenCoverOrderKey = info.orderKey;
+            data.hiddenCoverOrderSubKey = info.orderSubKey;
+            data.hiddenCoverOrderType = info.orderType;
+        } else {
+            data.coverOrderKey = info.orderKey;
+            data.coverOrderSubKey = info.orderSubKey;
+            data.coverOrderType = info.orderType;
+        }
+    }
+    int32_t ret = MediaLibraryRdbUtils::SetUpdateCoverValues(data, values, isHidden);
+    CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, ret, "Failed to SetUpdateCoverValues.");
+    AlbumAccurateRefresh albumRefresh;
+    int32_t changedRows = albumRefresh.UpdateWithDateTime(values, predicates);
+    CHECK_AND_PRINT_LOG(changedRows > 0, "Update photo album failed: %{public}d", changedRows);
+    albumRefresh.Notify();
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
+    string prefix = isHidden ? PhotoAlbumColumns::HIDDEN_ALBUM_URI_PREFIX : PhotoAlbumColumns::ALBUM_URI_PREFIX;
+    ret = watch->Notify(MediaFileUtils::GetUriByExtrConditions(prefix, to_string(albumId)),
+        NotifyType::NOTIFY_UPDATE);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Notify album update failed");
+    return E_OK;
+}
+
+static void RefreshAlbumCoverUriAsync(AsyncTaskData *data)
+{
+    CHECK_AND_RETURN_LOG(data != nullptr, "data is nullptr");
+    auto *taskData = static_cast<RefreshAlbumCoverTaskData*>(data);
+    RefreshAlbumCoverUri(taskData->albumId_, taskData->info_, taskData->enable_, taskData->isHidden_);
+}
+
+int32_t MediaLibraryAlbumOperations::ModifyAlbumDefaultCoverOrder(
+    const std::vector<DefaultCoverOrderInfo> &coverOrderInfos, bool disable, bool isAsyncRefreshAlbum)
+{
+    CHECK_AND_RETURN_RET_LOG(!coverOrderInfos.empty(), E_INVALID_ARGS, "coverOrderInfos is empty");
+    AlbumCoverResult result;
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    auto asyncWorker = isAsyncRefreshAlbum ? MediaLibraryAsyncWorker::GetInstance() : nullptr;
+    for (const auto &info : coverOrderInfos) {
+        std::function<int32_t(void)> func = [&]()->int32_t {
+            if (!disable) {
+                CHECK_AND_RETURN_RET_LOG(HandleEnableTabCoverRecord(trans, info) == E_OK, E_HAS_DB_ERROR,
+                    "Handle enable tab_cover_record failed.");
+                CHECK_AND_RETURN_RET_LOG(HandleEnablePhotoAlbum(trans, info, result) == E_OK,
+                    E_HAS_DB_ERROR, "Handle enable PhotoAlbum failed.");
+                return E_OK;
+            }
+            vector<NativeRdb::ValueObject> deleteArgs = info.albumType == PhotoAlbumType::SYSTEM ?
+                vector<ValueObject>{ info.albumType, info.albumSubType } :
+                vector<ValueObject>{ info.albumType, info.albumSubType, info.lpath };
+            std::string deleteSql = "DELETE FROM tab_cover_record ";
+            deleteSql += (info.albumType == PhotoAlbumType::SYSTEM ? "WHERE album_type = ? AND album_subtype = ?" :
+                "WHERE album_type = ? AND album_subtype = ? AND lpath = ?");
+            auto ret = trans->ExecuteSql(deleteSql, deleteArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR, "Delete failed, ret: %{public}d", ret);
+            CHECK_AND_RETURN_RET_LOG(HandleUnablePhotoAlbum(trans, info, result) == E_OK,
+                E_HAS_DB_ERROR, "Handle unable PhotoAlbum failed.");
+            return E_OK;
+        };
+        int32_t ret = trans->RetryTrans(func);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RetryTrans failed");
+        CHECK_AND_CONTINUE(result.count > 0 && result.coverUriSource != CoverUriSource::MANUAL_CLOUD_COVER &&
+            result.coverUriSource != CoverUriSource::MANUAL_LOCAL_COVER);
+        if (isAsyncRefreshAlbum) {
+            CHECK_AND_RETURN_RET_LOG(asyncWorker != nullptr, E_HAS_DB_ERROR, "asyncWorker is nullptr");
+            auto *taskData = new (std::nothrow) RefreshAlbumCoverTaskData();
+            CHECK_AND_RETURN_RET_LOG(taskData != nullptr, E_HAS_DB_ERROR, "Failed to alloc taskData");
+            taskData->albumId_ = result.albumId;
+            taskData->info_ = info;
+            taskData->enable_ = !disable;
+            taskData->isHidden_ = false;
+            auto asyncTask = std::make_shared<MediaLibraryAsyncTask>(RefreshAlbumCoverUriAsync, taskData);
+            CHECK_AND_RETURN_RET_LOG(asyncTask != nullptr, E_HAS_DB_ERROR, "Failed to create async task");
+            asyncWorker->AddTask(asyncTask, true);
+            continue;
+        }
+        ret = RefreshAlbumCoverUri(result.albumId, info, !disable);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RefreshAlbumCoverUri failed");
+    }
+    return E_OK;
+}
+
+int32_t MediaLibraryAlbumOperations::ModifyHiddenAlbumDefaultCoverOrder(
+    const std::vector<DefaultCoverOrderInfo> &coverOrderInfos, bool disable, bool isAsyncRefreshAlbum)
+{
+    CHECK_AND_RETURN_RET_LOG(!coverOrderInfos.empty(), E_INVALID_ARGS, "coverOrderInfos is empty");
+    AlbumCoverResult result;
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    auto asyncWorker = isAsyncRefreshAlbum ? MediaLibraryAsyncWorker::GetInstance() : nullptr;
+    for (const auto &info : coverOrderInfos) {
+        std::function<int32_t(void)> func = [&]()->int32_t {
+            if (!disable) {
+                CHECK_AND_RETURN_RET_LOG(HandleEnableTabCoverRecord(trans, info, true) == E_OK, E_HAS_DB_ERROR,
+                    "Handle enable tab_cover_record failed.");
+                CHECK_AND_RETURN_RET_LOG(HandleEnablePhotoAlbum(trans, info, result, true) == E_OK,
+                    E_HAS_DB_ERROR, "Handle enable PhotoAlbum failed.");
+                return E_OK;
+            }
+            vector<NativeRdb::ValueObject> deleteArgs = info.albumType == PhotoAlbumType::SYSTEM ?
+                vector<ValueObject>{ info.albumType, info.albumSubType } :
+                vector<ValueObject>{ info.albumType, info.albumSubType, info.lpath };
+            std::string deleteSql = "DELETE FROM tab_cover_record ";
+            deleteSql += (info.albumType == PhotoAlbumType::SYSTEM ? "WHERE album_type = ? AND album_subtype = ?" :
+                "WHERE album_type = ? AND album_subtype = ? AND lpath = ?");
+            auto ret = trans->ExecuteSql(deleteSql, deleteArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_HAS_DB_ERROR, "Delete failed, ret: %{public}d", ret);
+            CHECK_AND_RETURN_RET_LOG(HandleUnablePhotoAlbum(trans, info, result, true) == E_OK,
+                E_HAS_DB_ERROR, "Handle unable PhotoAlbum failed.");
+            return E_OK;
+        };
+        int32_t ret = trans->RetryTrans(func);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RetryTrans failed");
+        CHECK_AND_CONTINUE(result.count > 0 && result.coverUriSource != CoverUriSource::MANUAL_CLOUD_COVER &&
+            result.coverUriSource != CoverUriSource::MANUAL_LOCAL_COVER);
+        if (isAsyncRefreshAlbum) {
+            CHECK_AND_RETURN_RET_LOG(asyncWorker != nullptr, E_HAS_DB_ERROR, "asyncWorker is nullptr");
+            auto *taskData = new (std::nothrow) RefreshAlbumCoverTaskData();
+            CHECK_AND_RETURN_RET_LOG(taskData != nullptr, E_HAS_DB_ERROR, "Failed to alloc taskData");
+            taskData->albumId_ = result.albumId;
+            taskData->info_ = info;
+            taskData->enable_ = !disable;
+            taskData->isHidden_ = true;
+            auto asyncTask = std::make_shared<MediaLibraryAsyncTask>(RefreshAlbumCoverUriAsync, taskData);
+            CHECK_AND_RETURN_RET_LOG(asyncTask != nullptr, E_HAS_DB_ERROR, "Failed to create async task");
+            asyncWorker->AddTask(asyncTask, true);
+            continue;
+        }
+        ret = RefreshAlbumCoverUri(result.albumId, info, !disable, true);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "RefreshAlbumCoverUri failed");
+    }
     return E_OK;
 }
 } // namespace OHOS::Media

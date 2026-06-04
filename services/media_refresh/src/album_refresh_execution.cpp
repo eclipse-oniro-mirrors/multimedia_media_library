@@ -36,9 +36,11 @@
 #include "dfx_refresh_manager.h"
 #include "dfx_refresh_hander.h"
 #include "media_values_bucket_utils.h"
+#include "result_set_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
+using namespace OHOS::Media;
 
 namespace OHOS {
 namespace Media::AccurateRefresh {
@@ -270,6 +272,12 @@ int32_t AlbumRefreshExecution::GetUpdateValues(ValuesBucket &values, const Album
     data.coverDateTime = albumInfo.coverDateTime_;
     data.coverUriSource = albumInfo.coverUriSource_;
     data.hiddenCoverDateTime = albumInfo.hiddenCoverDateTime_;
+    data.coverOrderKey = albumInfo.coverOrderKey_;
+    data.coverOrderSubKey = albumInfo.coverOrderSubKey_;
+    data.coverOrderType = albumInfo.coverOrderType_;
+    data.hiddenCoverOrderKey = albumInfo.hiddenCoverOrderKey_;
+    data.hiddenCoverOrderSubKey = albumInfo.hiddenCoverOrderSubKey_;
+    data.hiddenCoverOrderType = albumInfo.hiddenCoverOrderType_;
     if (!isHidden && (subtype == PhotoAlbumSubType::USER_GENERIC ||
         (subtype >= PhotoAlbumSubType::SOURCE_START && subtype <= PhotoAlbumSubType::SOURCE_END))
         && isRefreshWithDateModified_) {
@@ -313,6 +321,12 @@ int32_t AlbumRefreshExecution::SetForceSelectCoverValues(ValuesBucket &values, c
     data.coverDateTime = albumInfo.coverDateTime_;
     data.coverUriSource = albumInfo.coverUriSource_;
     data.hiddenCoverDateTime = albumInfo.hiddenCoverDateTime_;
+    data.coverOrderKey = albumInfo.coverOrderKey_;
+    data.coverOrderSubKey = albumInfo.coverOrderSubKey_;
+    data.coverOrderType = albumInfo.coverOrderType_;
+    data.hiddenCoverOrderKey = albumInfo.hiddenCoverOrderKey_;
+    data.hiddenCoverOrderSubKey = albumInfo.hiddenCoverOrderSubKey_;
+    data.hiddenCoverOrderType = albumInfo.hiddenCoverOrderType_;
     if (!isHidden && (subtype == PhotoAlbumSubType::USER_GENERIC ||
         subtype == PhotoAlbumSubType::SOURCE_GENERIC) && isRefreshWithDateModified_) {
         data.shouldUpdateDateModified = true; // 非隐藏全量刷新时，说明相册封面有变化，需要设置
@@ -594,6 +608,26 @@ bool AlbumRefreshExecution::CalCoverSetCover(AlbumChangeInfo &albumInfo, const A
     return true;
 }
 
+static bool HasCoverOrderSetChange(const std::string &orderKey, AlbumChangeInfo &albumInfo, bool isHidden)
+{
+    CHECK_AND_RETURN_RET_INFO_LOG(!orderKey.empty(), false, "[fm] orderKey is empty");
+    bool hasOrderFound = isHidden ?
+        albumInfo.hiddenCoverOrderKey_ == orderKey || albumInfo.hiddenCoverOrderSubKey_ == orderKey :
+        albumInfo.coverOrderKey_ == orderKey || albumInfo.coverOrderSubKey_ == orderKey;
+    CHECK_AND_RETURN_RET_INFO_LOG(hasOrderFound, false, "[fm] no order found");
+
+    if (isHidden) {
+        albumInfo.needForceSelectHiddenCover = true;
+        albumInfo.hiddenCoverUri_ = EMPTY_STR;
+        albumInfo.hiddenCoverDateTime_ = INVALID_INT64_VALUE;
+    } else {
+        albumInfo.needForceSelectCover = true;
+        albumInfo.coverUri_ = EMPTY_STR;
+        albumInfo.coverDateTime_ = INVALID_INT64_VALUE;
+    }
+    return hasOrderFound;
+}
+
 bool AlbumRefreshExecution::CalAlbumCover(AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo,
     int32_t subType)
 {
@@ -601,6 +635,7 @@ bool AlbumRefreshExecution::CalAlbumCover(AlbumChangeInfo &albumInfo, const Albu
         return false;
     }
     bool isRefreshAlbum = false;
+    CHECK_AND_RETURN_RET(!HasCoverOrderSetChange(refreshInfo.deltaAddCover_.orderKey_, albumInfo, false), true);
     // 系统相册、用户、来源资产对比默认为date_taken
     auto dateTimeForAddCover = refreshInfo.deltaAddCover_.dateTakenMs_;
     if (subType == static_cast<int32_t>(PhotoAlbumSubType::VIDEO) ||
@@ -652,6 +687,7 @@ bool AlbumRefreshExecution::CalAlbumCover(AlbumChangeInfo &albumInfo, const Albu
 bool AlbumRefreshExecution::CalAlbumHiddenCover(AlbumChangeInfo &albumInfo, const AlbumRefreshInfo &refreshInfo)
 {
     bool isRefreshHiddenAlbum = false;
+    CHECK_AND_RETURN_RET(!HasCoverOrderSetChange(refreshInfo.deltaAddCover_.orderKey_, albumInfo, true), true);
     auto coverFileId = MediaLibraryDataManagerUtils::GetFileIdNumFromPhotoUri(albumInfo.hiddenCoverUri_);
     if (IsValidCover(refreshInfo.deltaAddHiddenCover_) && refreshInfo.removeHiddenFileIds.size() == 0) {
         // 新增场景

@@ -41,6 +41,7 @@
 #include "medialibrary_notify_new_observer.h"
 #include "report_event.h"
 #include "clone_to_album_context.h"
+#include "default_cover_order_info.h"
 
 #include "task_signal_napi.h"
 namespace OHOS {
@@ -66,6 +67,11 @@ enum ListenerType {
     DEVICE_LISTENER,
     REMOTEFILE_LISTENER,
     ALBUM_LISTENER
+};
+
+enum OrderType {
+    DESC = 0,
+    ASC = 1
 };
 
 enum ReplaceSelectionMode {
@@ -403,6 +409,8 @@ private:
     EXPORT static napi_value GetAssetCompatibleUris(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStartDeepOptimizeSpace(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStopDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessModifyAlbumDefaultCoverOrder(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessModifyHiddenAlbumDefaultCoverOrder(napi_env env, napi_callback_info info);
     
     EXPORT static napi_value SetHidden(napi_env env, napi_callback_info info);
     EXPORT static napi_value PahGetHiddenAlbums(napi_env env, napi_callback_info info);
@@ -721,6 +729,9 @@ struct MediaLibraryAsyncContext : public NapiError {
     int32_t mode;
     std::atomic<bool> isCancelled{false};
     napi_ref taskSignalRef;
+    std::vector<DefaultCoverOrderInfo> coverOrderInfos;
+    bool disableModification = false;
+    bool isAsyncRefreshAlbum = false;
 };
 
 struct MediaLibraryInitContext : public NapiError  {

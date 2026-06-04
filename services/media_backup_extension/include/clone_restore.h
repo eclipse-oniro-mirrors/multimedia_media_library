@@ -249,6 +249,8 @@ private:
     void RestoreAnalysisSelection();
     void RestoreAnalysisDupSim();
     void UpdateTotalScore();
+    void RestoreTabCoverRecord();
+    void RestoreGalleryExecyte();
 
     template<typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,

@@ -1779,6 +1779,12 @@ void MediaLibraryAlbumFusionUtils::BuildAlbumInsertValuesSetName(
     values.Delete(PhotoAlbumColumns::ALBUM_DIRTY);
     values.Delete(PhotoAlbumColumns::CHANGE_TIME);
     values.PutLong(PhotoAlbumColumns::CHANGE_TIME, MediaFileUtils::UTCTimeMilliSeconds());
+    values.Delete(PhotoAlbumColumns::COVER_ORDER_KEY);
+    values.Delete(PhotoAlbumColumns::COVER_ORDER_SUBKEY);
+    values.Delete(PhotoAlbumColumns::COVER_ORDER_TYPE);
+    values.Delete(PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY);
+    values.Delete(PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY);
+    values.Delete(PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE);
 }
 
 static int32_t CopyAlbumMetaData(const std::shared_ptr<MediaLibraryRdbStore> upgradeStore,

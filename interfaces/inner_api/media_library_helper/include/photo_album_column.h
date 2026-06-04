@@ -58,6 +58,12 @@ public:
     static const std::string ALBUM_FILE_HIDDEN EXPORT;
     static const std::string ALBUM_SCENE_ID EXPORT;
     static const std::string ALBUM_SHARE_TYPE EXPORT;
+    static const std::string COVER_ORDER_KEY EXPORT;
+    static const std::string COVER_ORDER_SUBKEY EXPORT;
+    static const std::string COVER_ORDER_TYPE EXPORT;
+    static const std::string HIDDEN_COVER_ORDER_KEY EXPORT;
+    static const std::string HIDDEN_COVER_ORDER_SUBKEY EXPORT;
+    static const std::string HIDDEN_COVER_ORDER_TYPE EXPORT;
 
     // For api9 compatibility
     static const std::string ALBUM_RELATIVE_PATH EXPORT;

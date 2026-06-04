@@ -76,6 +76,14 @@ public:
     bool needForceSelectCover = false;
     bool needForceSelectHiddenCover = false;
 
+    // Album cover order info
+    std::string coverOrderKey_ = EMPTY_STR;
+    std::string coverOrderSubKey_ = EMPTY_STR;
+    int32_t coverOrderType_ = INVALID_INT32_VALUE;
+    std::string hiddenCoverOrderKey_ = EMPTY_STR;
+    std::string hiddenCoverOrderSubKey_ = EMPTY_STR;
+    int32_t hiddenCoverOrderType_ = INVALID_INT32_VALUE;
+
     NativeRdb::ValuesBucket GetUpdateValues(const AlbumChangeInfo &oldAlbumInfo, NotifyType &type);
     std::string ToString(bool isDetail = false) const;
     string GetDataDiff(const AlbumChangeInfo &compare);
@@ -95,6 +103,10 @@ public:
 private:
     std::string GetAlbumDiff(const AlbumChangeInfo &album, const AlbumChangeInfo &compare);
     static void SetPhotoAlbumHidden(AlbumChangeInfo &albumChangeInfo,
+        const shared_ptr<NativeRdb::ResultSet> &resultSet);
+    static void SetPhotoAlbumForCoverOrder(AlbumChangeInfo &albumChangeInfo,
+        const shared_ptr<NativeRdb::ResultSet> &resultSet);
+    static void SetPhotoAlbumExecute(AlbumChangeInfo &albumChangeInfo,
         const shared_ptr<NativeRdb::ResultSet> &resultSet);
     void GetUpdatePhotoAlbumHidden(const AlbumChangeInfo &oldAlbumInfo, NativeRdb::ValuesBucket &values,
         stringstream &ss);

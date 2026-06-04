@@ -255,6 +255,9 @@ int32_t TransactionOperations::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
     NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
     if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
         MediaLibraryRdbStore::AddDefaultInsertPhotoValues(tmpValues);
+    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
     auto [ret, rows] = transaction_->Insert(cmd.GetTableName(), tmpValues);
     rowId = rows;
@@ -340,6 +343,11 @@ int32_t TransactionOperations::BatchInsert(
         for (auto& value : tmpValues) {
             MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
         }
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value) == E_OK,
+                E_HAS_DB_ERROR, "AddCoverOrderValuesFromRecord failed.");
+        }
     }
     auto [ret, rows] = transaction_->BatchInsert(table, tmpValues);
     outRowId = rows;
@@ -364,6 +372,11 @@ int32_t TransactionOperations::BatchInsert(int64_t &changeRows, const std::strin
     if (table == PhotoColumn::PHOTOS_TABLE) {
         for (auto& value : tmpValues) {
             MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
+        }
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value) == E_OK,
+                E_HAS_DB_ERROR, "AddCoverOrderValuesFromRecord failed.");
         }
     }
     auto [ret, rows] = transaction_->BatchInsert(table, tmpValues, resolution);
@@ -390,6 +403,11 @@ int32_t TransactionOperations::BatchInsert(
         for (auto& value : tmpValues) {
             MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
         }
+    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value) == E_OK,
+                E_HAS_DB_ERROR, "AddCoverOrderValuesFromRecord failed.");
+        }
     }
     auto [ret, rows] = transaction_->BatchInsert(cmd.GetTableName(), tmpValues);
     outInsertNum = rows;
@@ -409,6 +427,9 @@ int32_t TransactionOperations::Insert(
     NativeRdb::ValuesBucket tmpValues = values;
     if (tableName == PhotoColumn::PHOTOS_TABLE) {
         MediaLibraryRdbStore::AddDefaultInsertPhotoValues(tmpValues);
+    } else if (tableName == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
     auto [ret, rows] = transaction_->Insert(tableName, tmpValues);
     rowId = rows;
@@ -475,11 +496,19 @@ pair<int32_t, NativeRdb::Results> TransactionOperations::BatchInsert(
         MEDIA_ERR_LOG("transaction_ is null");
         return {E_HAS_DB_ERROR, -1};
     }
-
+    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
     if (table == PhotoColumn::PHOTOS_TABLE) {
         for (auto &value : tmpValues) {
             MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
+        }
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            auto ret = MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value);
+            if (ret != E_OK) {
+                MEDIA_ERR_LOG("AddCoverOrderValuesFromRecord failed");
+                return retWithResults;
+            }
         }
     }
 
