@@ -1073,6 +1073,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/capture_object/yuv_pipeline.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/controller/media_camera_character_controller_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/controller/media_camera_character_permission_policy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_camera_character_service/src/dao/burst_dao.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/dao/multistages_capture_dao.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/deferred_processing/deferred_photo_proc_adapter.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_camera_character_service/src/deferred_processing/deferred_video_proc_adapter.cpp",
