@@ -30,6 +30,7 @@
 #include "openssl/sha.h"
 #include "vision_aesthetics_score_column.h"
 #include "vision_column.h"
+#include "vision_dedup_selection_column.h"
 #include "vision_face_tag_column.h"
 #include "vision_image_face_column.h"
 #include "vision_label_column.h"
@@ -257,6 +258,9 @@ static const std::unordered_set<std::string> FILE_KEY_WHITE_LIST {
     DUPLICATE,
     TOTAL_SCORE_STATUS,
     CAPTION,
+    HIGHLIGHT_FLUSH,
+    GROUP_ID_REP,
+    GROUP_ID_SIM,
 };
 
 bool MediaLibraryCommonUtils::CheckWhiteList(const std::string &express)
