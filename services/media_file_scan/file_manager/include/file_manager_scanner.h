@@ -19,6 +19,7 @@
 
 #include "file_manager_parser.h"
 #include "file_scanner.h"
+#include "keyd_mutex.h"
 
 namespace OHOS::Media {
 

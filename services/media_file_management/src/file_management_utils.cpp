@@ -185,9 +185,12 @@ int32_t FileManagementUtils::QueryMoveAssetInfos(const NativeRdb::RdbPredicates&
         info.burstKey =
             get<std::string>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_BURST_KEY, resultSet, TYPE_STRING));
         info.size = get<int64_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_SIZE, resultSet, TYPE_INT64));
+        if (info.fileId == 0) {
+            MEDIA_WARN_LOG("skip corrupted data");
+            continue;
+        }
         moveAssetMap.emplace(info.fileId, info);
     }
-    CHECK_AND_RETURN_RET_LOG(moveAssetMap.size() > 0, TARGET_FILE_NOT_EXIST, "fail to query asset");
     resultSet->Close();
     return E_OK;
 }
