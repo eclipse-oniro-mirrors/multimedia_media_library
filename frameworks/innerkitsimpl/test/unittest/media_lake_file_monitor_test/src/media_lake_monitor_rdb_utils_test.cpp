@@ -634,7 +634,7 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, UpdateAlbumInfo_ValidAlbumId_ReturnSucces
 {
     MEDIA_INFO_LOG("UpdateAlbumInfo_ValidAlbumId_ReturnSuccess start");
 
-    bool result = MediaFileMonitorRdbUtils::UpdateAlbumInfo(g_rdbStore, TEST_ALBUM_ID_1);
+    bool result = MediaFileMonitorRdbUtils::UpdateAlbumInfo(g_rdbStore, {TEST_ALBUM_ID_1});
 
     EXPECT_TRUE(result);
 
@@ -645,7 +645,7 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, UpdateAlbumInfo_DefaultAlbumId_ReturnSucc
 {
     MEDIA_INFO_LOG("UpdateAlbumInfo_DefaultAlbumId_ReturnSuccess start");
 
-    bool result = MediaFileMonitorRdbUtils::UpdateAlbumInfo(g_rdbStore, -1);
+    bool result = MediaFileMonitorRdbUtils::UpdateAlbumInfo(g_rdbStore);
 
     EXPECT_TRUE(result);
 
@@ -657,7 +657,7 @@ HWTEST_F(MediaLakeMonitorRdbUtilsTest, UpdateAlbumInfo_NullRdbStore_ReturnFalse,
     MEDIA_INFO_LOG("UpdateAlbumInfo_NullRdbStore_ReturnFalse start");
 
     std::shared_ptr<MediaLibraryRdbStore> nullRdbStore;
-    bool result = MediaFileMonitorRdbUtils::UpdateAlbumInfo(nullRdbStore, TEST_ALBUM_ID_1);
+    bool result = MediaFileMonitorRdbUtils::UpdateAlbumInfo(nullRdbStore, {TEST_ALBUM_ID_1});
 
     EXPECT_FALSE(result);
 

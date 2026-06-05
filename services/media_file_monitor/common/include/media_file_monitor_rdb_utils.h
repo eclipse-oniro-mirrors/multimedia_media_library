@@ -70,7 +70,8 @@ public:
         const std::vector<int32_t> &albumIds, const FileSourceType &fileSourceType);
     static bool DeleteEmptyAlbumsByLPath(const std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
         const std::string &lPath);
-    static bool UpdateAlbumInfo(std::shared_ptr<MediaLibraryRdbStore> rdbStore, int32_t albumId = -1);
+    static bool UpdateAlbumInfo(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::vector<int32_t> &albumIds = {});
     static bool DeleteLakeDirByLakePath(const std::string &path, std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
         int32_t *delNum = nullptr);
     static bool DeleteLakeAlbumByLakePath(const std::string &path, std::shared_ptr<MediaLibraryRdbStore> &rdbStore);

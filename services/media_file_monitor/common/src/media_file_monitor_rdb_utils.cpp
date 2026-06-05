@@ -194,12 +194,14 @@ bool MediaFileMonitorRdbUtils::DeleteAssetByStoragePath(
     return true;
 }
 
-bool MediaFileMonitorRdbUtils::UpdateAlbumInfo(std::shared_ptr<MediaLibraryRdbStore> rdbStore, int32_t albumId)
+bool MediaFileMonitorRdbUtils::UpdateAlbumInfo(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+    const std::vector<int32_t> &albumIds)
 {
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
-    std::vector<string> targetAlbumIdList;
-    if (albumId != -1) {
-        targetAlbumIdList = {std::to_string(albumId)};
+    std::vector<std::string> targetAlbumIdList;
+    targetAlbumIdList.reserve(albumIds.size());
+    for (int32_t id : albumIds) {
+        targetAlbumIdList.push_back(std::to_string(id));
     }
     MediaLibraryRdbUtils::UpdateCommonAlbumInternal(rdbStore, targetAlbumIdList, true, true);
     MediaLibraryRdbUtils::UpdateSystemAlbumInternal(rdbStore, {}, true);
@@ -426,7 +428,7 @@ bool MediaFileMonitorRdbUtils::DeleteLakeDirByLakePath(const std::string &path,
         *delNum = static_cast<int32_t>(dataList.size());
     }
     // 7. 刷新相册并发送相册通知
-    UpdateAlbumInfo(rdbStore);
+    UpdateAlbumInfo(rdbStore, albumIds);
     HandleAnalysisAlbum(rdbStore, analysisAlbumIds);
 
     // 8. 删除空相册
