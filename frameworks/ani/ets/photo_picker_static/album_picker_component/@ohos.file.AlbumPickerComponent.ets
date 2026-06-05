@@ -36,6 +36,7 @@ function checkValueRetUndefined<T>(value: Object | undefined | null): T | undefi
   return (value !== undefined && value !== null) ? (value as T) : undefined;
 }
 
+@Observed
 export class AlbumPickerController {
   public data?: Map<string, Object>;
 
