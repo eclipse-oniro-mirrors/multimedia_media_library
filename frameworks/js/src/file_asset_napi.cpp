@@ -4338,6 +4338,7 @@ static shared_ptr<FileAsset> getFileAsset(const std::string fileAssetId, const i
     }
     auto fetchResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
     shared_ptr<FileAsset> newFileAsset = fetchResult->GetFirstObject();
+    CHECK_AND_RETURN_RET_LOG(newFileAsset != nullptr, nullptr, "newFileAsset is nullptr");
     string newFileAssetUri = MediaFileUtils::GetFileAssetUri(newFileAsset->GetPath(), newFileAsset->GetDisplayName(),
         newFileAsset->GetId());
     newFileAsset->SetUri(newFileAssetUri);
