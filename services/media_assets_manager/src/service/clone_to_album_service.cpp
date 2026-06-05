@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <chrono>
 #include <thread>
+#include <unordered_set>
 
 #include "clone_to_album_callback_proxy.h"
 #include "media_log.h"
@@ -116,7 +117,7 @@ static std::string GetThumbnailPathFromOrignalPath(std::string srcPath)
     return thumbnailPath;
 }
 
-int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
+int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo, std::unordered_set<std::string> &occupiedPaths)
 {
     std::string targetPath;
     if (cloneAssetInfo.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)) {
@@ -129,10 +130,15 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
         std::string renamePath;
         std::string renameTitle;
         std::string renameDisplayName;
+        auto conflictChecker = [&occupiedPaths](const std::string &path) {
+            return MediaFileUtils::IsFileExists(path) || occupiedPaths.find(path) != occupiedPaths.end();
+        };
         if (cloneAssetInfo.burstKey.empty()) {
-            MediaFileAccessUtils::HandleSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName);
+            MediaFileAccessUtils::HandleSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName,
+                conflictChecker);
         } else {
-            MediaFileAccessUtils::HandleBurstSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName);
+            MediaFileAccessUtils::HandleBurstSameNameRename(targetPath, renamePath, renameTitle, renameDisplayName,
+                conflictChecker);
         }
         if (targetPath != renamePath && cloneAssetInfo.mode == NOT_SUPPORT_RENAME) {
             MEDIA_ERR_LOG("HandleSameName error");
@@ -141,6 +147,7 @@ int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo)
             cloneAssetInfo.targetFilePath = renamePath;
             cloneAssetInfo.targetFileTitle = renameTitle;
             cloneAssetInfo.targetDisplayName = renameDisplayName;
+            occupiedPaths.insert(renamePath);
         }
     } else {
         cloneAssetInfo.targetDisplayName = cloneAssetInfo.displayName;
@@ -202,6 +209,7 @@ int32_t CloneToAlbumService::QueryBurstAssetInfo(CloneAssetInfo &cloneAssetInfo,
 int32_t CloneToAlbumService::QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBody,
     CloneTaskInfo &assets, uint64_t &displayTotalSize, uint64_t &actualTotalSize)
 {
+    std::unordered_set<std::string> occupiedPaths;
     for (const auto &id : reqBody.assetsArray) {
         auto fileId = std::to_string(MediaLibraryDataManagerUtils::GetFileIdNumFromPhotoUri(id));
         CloneAssetInfo info;
@@ -218,7 +226,7 @@ int32_t CloneToAlbumService::QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBo
         info.albumSubType = reqBody.albumSubType;
         info.albumType = reqBody.albumType;
         info.requestId = reqBody.requestId;
-        ret = CheckFileName(info);
+        ret = CheckFileName(info, occupiedPaths);
         if (ret != E_OK) {
             MEDIA_ERR_LOG("check name error");
             return ret;

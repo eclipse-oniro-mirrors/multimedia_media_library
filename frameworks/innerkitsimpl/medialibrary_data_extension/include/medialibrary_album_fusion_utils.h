@@ -60,6 +60,7 @@ struct TargetAssetInfo {
     std::string targetRealPath = "";
     std::function<void(uint64_t)> progressCallback = nullptr;
     std::string requestId = "";
+    bool supportRename = true;
 };
 
 public:
