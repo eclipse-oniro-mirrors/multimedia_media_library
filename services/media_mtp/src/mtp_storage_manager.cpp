@@ -33,11 +33,16 @@ enum SizeType {
 const std::string PUBLIC_PATH_DATA      = "/storage/media/local/files/Docs";
 const std::string CHINESE_ABBREVIATION  = "zh-Hans";
 const std::string ENGLISH_ABBREVIATION  = "en-Latn-US";
-const std::string INNER_STORAGE_DESC_ZH = "内部存储";
-const std::string INNER_STORAGE_DESC_EN = "Internal storage";
 const std::string EXTER_STORAGE_DESC_ZH = "存储卡";
 const std::string EXTER_STORAGE_DESC_EN = "Memory Card";
 const std::string UNSPECIFIED           = "Unspecified";
+const std::string DESC_PHONE_ZH         = "我的手机";
+const std::string DESC_PHONE_EN         = "My phone";
+const std::string DESC_TABLET_ZH        = "我的平板";
+const std::string DESC_TABLET_EN        = "My tablet";
+const std::string DEVICE_PHONE          = "phone";
+const std::string DEVICE_TABLET         = "tablet";
+const std::string DEVICE_TYPE_KEY       = "const.product.devicetype";
 const std::string LANGUAGE_KEY          = "persist.global.language";
 const std::string DEFAULT_LANGUAGE_KEY  = "const.global.language";
 constexpr int32_t SYSPARA_SIZE          = 64;
@@ -141,6 +146,28 @@ std::string MtpStorageManager::GetSystemLanguage()
     return "";
 }
 
+std::string MtpStorageManager::GetDeviceType()
+{
+    char param[SYSPARA_SIZE] = {0};
+    int status = GetParameter(DEVICE_TYPE_KEY.c_str(), DEVICE_PHONE.c_str(), param, SYSPARA_SIZE);
+    CHECK_AND_RETURN_RET(status <= 0, DEVICE_PHONE);
+    return std::string(param);
+}
+
+std::string MtpStorageManager::GetStorageDescriptionByDeviceType(const std::string &language)
+{
+    const std::string deviceType = GetDeviceType();
+    if (deviceType == DEVICE_PHONE) {
+        return language == CHINESE_ABBREVIATION ? DESC_PHONE_ZH : DESC_PHONE_EN;
+    } else if (deviceType == DEVICE_TABLET) {
+        return language == CHINESE_ABBREVIATION ? DESC_TABLET_ZH : DESC_TABLET_EN;
+    } else {
+        MEDIA_ERR_LOG("language[%{public}s] deviceType[%{public}s] is unknown",
+            language.c_str(), deviceType.c_str());
+        return UNSPECIFIED;
+    }
+}
+
 std::string MtpStorageManager::GetStorageDescription(const uint16_t type)
 {
     std::string language = GetSystemLanguage();
@@ -149,7 +176,7 @@ std::string MtpStorageManager::GetStorageDescription(const uint16_t type)
     }
     switch (type) {
         case MTP_STORAGE_FIXEDRAM:
-            return language == CHINESE_ABBREVIATION ? INNER_STORAGE_DESC_ZH : INNER_STORAGE_DESC_EN;
+            return GetStorageDescriptionByDeviceType(language);
         case MTP_STORAGE_REMOVABLERAM:
             return language == CHINESE_ABBREVIATION ? EXTER_STORAGE_DESC_ZH : EXTER_STORAGE_DESC_EN;
         default:

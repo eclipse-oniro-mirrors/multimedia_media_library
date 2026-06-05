@@ -238,7 +238,7 @@ public:
     static std::string GetMovingOrEnditSourcePath(const std::string &path, const int32_t &subtype,
         const std::shared_ptr<MtpOperationContext> &context);
     static int32_t GetGalleryPropList(const std::shared_ptr<MtpOperationContext> &context,
-        shared_ptr<vector<Property>> &outProps, const std::string &name);
+        shared_ptr<vector<Property>> &outProps, const std::string &name, uint32_t handle = 0);
     static bool IsNumber(const std::string& str);
     static bool IsMtpMovingPhoto(int32_t subtype, int32_t effectMode);
 private:

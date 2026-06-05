@@ -1353,7 +1353,7 @@ int32_t MtpMediaLibrary::GetGalleryObjectPropList(const std::shared_ptr<MtpOpera
     std::shared_ptr<std::vector<Property>> &outProps, const std::string &name)
 {
     MEDIA_DEBUG_LOG("MtpMediaLibrary::%{public}s is called", __func__);
-    return MtpDataUtils::GetGalleryPropList(context, outProps, name);
+    return MtpDataUtils::GetGalleryPropList(context, outProps, name, PTP_IN_MTP_ID);
 }
 
 int32_t MtpMediaLibrary::CopyGalleryPhoto(const std::shared_ptr<MtpOperationContext> &context,
