@@ -22,6 +22,7 @@
 #include "accesstoken_kit.h"
 #include "ani_class_name.h"
 #include "datashare_values_bucket.h"
+#include "dfx_system_photo_keys.h"
 #include "ipc_skeleton.h"
 #include "medialibrary_ani_utils.h"
 #include "media_column.h"
@@ -458,12 +459,23 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         PhotoColumn::PHOTO_HIDDEN_TIME,
         PhotoColumn::ATTACHMENT_SIZE,
+        PhotoColumn::PHOTO_LCD_FILE_SIZE,
+        PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
-    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryAniUtils::IsSystemApp()) {
+    if (MediaLibraryAniUtils::IsSystemApp()) {
+        return E_SUCCESS;
+    }
+
+    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
         AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
         return E_CHECK_SYSTEMAPP_FAIL;
     }
+
+    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
+        ANI_ERR_LOG("Report Third party application failed, key:%{public}s", key.c_str());
+    }
+
     return E_SUCCESS;
 }
 

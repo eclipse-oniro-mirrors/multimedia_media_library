@@ -86,10 +86,15 @@ public:
 
     void SetFilePath(std::vector<FileInfo> &fileInfos, AncoFileTransfer ancoFileTransfer);
     void InitDeduplicationInfo();
+    void InitFileManagerDeduplicationInfo();
     void UpdateFileInfoFromCloneRestoreDb(std::vector<FileInfo> &fileInfos, AncoFileTransfer ancoFileTransfer);
+    void UpdateFileManagerFileInfoFromCloneRestoreDb(std::vector<FileInfo> &fileInfos);
     void QueryLakeFileFailInfo(
         std::unordered_map<std::string, FailedFileInfo> &lakePhotoFailedFiles,
         std::unordered_map<std::string, FailedFileInfo> &lakeVideoFailedFiles);
+    void QueryFileManagerFileFailInfo(
+        std::unordered_map<std::string, FailedFileInfo> &fileManagerPhotoFailedFiles,
+        std::unordered_map<std::string, FailedFileInfo> &fileManagerVideoFailedFiles);
     void SetIsStoragePathExistInDb(std::vector<FileInfo> &fileInfos);
     void SetIsCloudPathExistInDb(std::vector<FileInfo> &fileInfos);
     RestoreError IsFileSizeMatched(const FileInfo &fileInfo, const std::string &storagePath,
@@ -143,6 +148,7 @@ private:
     std::string ToLower(const std::string &str);
     int32_t InitCloneRestoreRdbStore();
     void QueryDeduplicationFileInfo(std::unordered_map<std::string, DeduplicationInfo> &deduplicationMap);
+    void QueryFileManagerDeduplicationFileInfo(std::unordered_map<std::string, DeduplicationInfo> &deduplicationMap);
     bool ApplyDeduplicationFileInfo(FileInfo &fileInfo, const DeduplicationInfo &deduplicationInfo);
 
 private:
@@ -154,6 +160,7 @@ private:
     PhotoAlbumDao photoAlbumDao_;
     std::shared_ptr<NativeRdb::RdbStore> cloneRestoreRdbStore_;
     std::unordered_map<std::string, DeduplicationInfo> deduplicationMap_;
+    std::unordered_map<std::string, DeduplicationInfo> fileManagerDeduplicationMap_;
     int32_t sceneCode_ = DEFAULT_RESTORE_ID;
     std::string taskId_;
 
@@ -170,7 +177,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum');";
     const std::string SQL_CLOUD_PHOTOS_TABLE_COUNT_IN_PHOTO_MAP = "\
         SELECT COUNT(1) AS count \
@@ -184,7 +191,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum');";
     const std::string SQL_PHOTOS_TABLE_QUERY_IN_PHOTO_MAP = "\
         SELECT PhotoAlbum.lpath, \
@@ -199,7 +206,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum') \
         ORDER BY Photos.file_id \
         LIMIT ?, ? ;";
@@ -216,7 +223,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (PhotoAlbum.album_type != 2048 OR PhotoAlbum.album_name != '.hiddenAlbum') \
         ORDER BY Photos.file_id \
         LIMIT ?, ? ;";
@@ -230,7 +237,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (COALESCE(PhotoAlbum.album_type, 0) != 2048 OR COALESCE(PhotoAlbum.album_name, '') != '.hiddenAlbum');";
     const std::string SQL_CLOUD_PHOTOS_TABLE_COUNT_NOT_IN_PHOTO_MAP = "\
         SELECT COUNT(1) AS count \
@@ -242,7 +249,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (COALESCE(PhotoAlbum.album_type, 0) != 2048 OR COALESCE(PhotoAlbum.album_name, '') != '.hiddenAlbum');";
     const std::string SQL_PHOTOS_TABLE_QUERY_NOT_IN_PHOTO_MAP = "\
         SELECT \
@@ -256,7 +263,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (COALESCE(PhotoAlbum.album_type, 0) != 2048 OR COALESCE(PhotoAlbum.album_name, '') != '.hiddenAlbum') \
         ORDER BY Photos.file_id \
         LIMIT ?, ? ;";
@@ -272,7 +279,7 @@ private:
             COALESCE(Photos.clean_flag, 0) = 0 AND \
             COALESCE(Photos.time_pending, 0) = 0 AND \
             COALESCE(Photos.is_temp, 0) = 0 AND \
-            Photos.file_source_type IN (0, 3) AND \
+            Photos.file_source_type IN (0, 1, 3) AND \
             (COALESCE(PhotoAlbum.album_type, 0) != 2048 OR COALESCE(PhotoAlbum.album_name, '') != '.hiddenAlbum') \
         ORDER BY Photos.file_id \
         LIMIT ?, ? ;";
@@ -308,7 +315,7 @@ private:
         SELECT COUNT(1) AS count \
         FROM Photos \
         WHERE position NOT IN (1, 3) AND \
-            file_source_type NOT IN (0, 3) AND \
+            file_source_type NOT IN (0, 1, 3) AND \
             sync_status = 0 AND \
             clean_flag = 0 AND \
             time_pending = 0 AND \
@@ -323,6 +330,16 @@ private:
     const std::string SQL_QUERY_DEDUPLICATION_FILE_INFO = "\
         SELECT path, new_path \
         FROM anco_file_info_deduplication;";
+    const std::string SQL_QUERY_FILE_MANAGER_FILE_FAIL_INFO = "\
+        SELECT path \
+        FROM file_manager_file_info_fail;";
+    const std::string SQL_QUERY_FILE_MANAGER_FILE_FULL_INFO = "\
+        SELECT storage_path, media_type, display_name \
+        FROM Photos \
+        WHERE file_source_type = 1;";
+    const std::string SQL_QUERY_FILE_MANAGER_DEDUPLICATION_FILE_INFO = "\
+        SELECT path, new_path \
+        FROM public_file_info_deduplication;";
 };
 }  // namespace OHOS::Media
 #endif

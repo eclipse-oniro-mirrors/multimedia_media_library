@@ -21,6 +21,7 @@
 
 #include "media_itypes_utils.h"
 #include "media_log.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool GetCheckRecordsReqBody::Unmarshalling(MessageParcel &parcel)
@@ -117,7 +118,7 @@ std::string GetCheckRecordsRespBodyCheckData::ToString() const
        << "\"thmStatus\": " << this->thmStatus << ","
        << "\"syncStatus\": " << this->syncStatus << ","
        << "\"fileSourceType\": " << this->fileSourceType << ","
-       << "\"storagePath\": " << this->storagePath << "\"";
+       << "\"storagePath\": " << MediaFileUtils::DesensitizePath(this->storagePath) << "\"";
     ss << ",[";
     uint32_t index = 0;
     for (const auto &[key, value] : attachment) {

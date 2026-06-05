@@ -18,6 +18,8 @@
 #include "media_lake_clone_event_manager.h"
 
 #include "common_event_support.h"
+#include "preferences.h"
+#include "preferences_helper.h"
 #include "consistency_check_manager.h"
 #include "global_scanner.h"
 #include "iservice_registry.h"
@@ -35,6 +37,9 @@
 namespace OHOS::Media {
 const int32_t BACKUP_SA_ID = 5203;
 const int32_t MIN_TIME_OUT = 4;
+constexpr const char* TASK_PROGRESS_XML = "/data/storage/el2/base/preferences/task_progress.xml";
+constexpr const char* FILE_PROCESS_STATUS_KEY = "file_process_status";
+constexpr const int32_t TASK_STATUS_PHASE_ONE = 1;
 const std::string GLOBAL_SCAN_ROOT_DIR = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
 const std::unordered_map<std::string, uint8_t> BUNDLE_NAME_BIT_MAP = {
     { "com.ohos.medialibrary.medialibrarydata", 0 },
@@ -157,23 +162,33 @@ void MediaLakeCloneEventManager::RegisterLakeFileMonitor()
 
 void MediaLakeCloneEventManager::RunGlobalScanner()
 {
-    int32_t errCode = 0;
-    std::shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
-    if (errCode != E_OK || prefs == nullptr) {
-        MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
-        return;
-    }
-    prefs->PutInt(SCAN_FILEMANAGER_LOAD_TYPE, LoadType::FILEMANAGER_CLONE_FIRST_LOAD);
-    prefs->FlushSync();
     CHECK_AND_RETURN_INFO_LOG(isExecuteGlobalScan_.load(), "LakeClone: no need to run global scan");
     ScannerStatus scannerStatus = GlobalScanner::GetInstance().GetScannerStatus();
     CHECK_AND_RETURN_WARN_LOG(scannerStatus == ScannerStatus::IDLE,
         "LakeClone: Scanner is running, status: %{public}d", static_cast<int32_t>(scannerStatus));
 
     MEDIA_INFO_LOG("LakeClone: Start RunGlobalScanner");
+    int errCode = 0;
+    std::shared_ptr<NativePreferences::Preferences> pref =
+        NativePreferences::PreferencesHelper::GetPreferences(TASK_PROGRESS_XML, errCode);
+    if (errCode == E_OK && pref != nullptr) {
+        pref->PutInt(FILE_PROCESS_STATUS_KEY, TASK_STATUS_PHASE_ONE);
+        pref->Flush();
+        MEDIA_INFO_LOG("Set task status to: %{public}d", TASK_STATUS_PHASE_ONE);
+        std::shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+        if (errCode != E_OK || prefs == nullptr) {
+            MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+            return;
+        }
+        prefs->PutInt(SCAN_FILEMANAGER_LOAD_TYPE, LoadType::FILEMANAGER_CLONE_FIRST_LOAD);
+        prefs->FlushSync();
+    } else {
+        MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+    }
+
     auto scannerFunc = []() {
-        GlobalScanner::GetInstance().RunLakeScan(std::string(LAKE_ROOT_PATH), false, true);
+        GlobalScanner::GetInstance().RunLakeScan(std::string(LAKE_ROOT_PATH), true, true);
     };
     Media::thread myThread("LakeClone", scannerFunc);
     if (myThread.is_invalid()) {

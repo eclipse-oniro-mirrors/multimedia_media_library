@@ -111,6 +111,11 @@ private:
         std::unordered_map<std::string, MediaAlbumPluginRowData> &writeListMap);
     int32_t QueryCreatedAlbums(int32_t size, std::vector<PhotoAlbumPo> &resultList);
     int32_t QueryDeleteAlbums(int32_t size, std::vector<PhotoAlbumPo> &resultList);
+    bool IsCloudCoverDateModifiedUpdated(const std::string &lPath, const std::string &coverCloudIdFromCloud,
+        const std::string &coverCloudIdFromLocal);
+    bool FillAlbumCoverIfNeedUpdate(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void FillAlbumCoverValues(int32_t coverUriSource, const std::string &coverCloudId,
+        NativeRdb::ValuesBucket &values);
 
 private:
     /* album failure records */

@@ -48,6 +48,7 @@ public:
     int32_t UpdateDownloadAsset(const OnDownloadAssetData &assetData,
         const CloudMediaScanService::ScanResult& scanResult);
     int32_t CleanAttachmentByCloudId(const std::vector<std::string> &cloudIdList);
+    int32_t UpdateLcdFileSize(const std::vector<std::string> &cloudIds);
 
 private:
     NativeRdb::AbsRdbPredicates GetDownloadThmsConditions(const int32_t type);

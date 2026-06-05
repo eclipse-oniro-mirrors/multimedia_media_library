@@ -22,6 +22,7 @@
 #include "cloud_lake_info.h"
 #include "media_itypes_utils.h"
 #include "media_log.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 bool OnDownloadAssetReqBody::Unmarshalling(MessageParcel &parcel)
@@ -46,9 +47,9 @@ std::string OnDownloadAssetReqBody::ToString() const
         ss << "{cloudId: " << entry.first
            << ", isUpdate: " << entry.second.isUpdate
            << ", fileSourceType: " << entry.second.fileSourceType
-           << ", storagePath: " << entry.second.storagePath
-           << ", title: " << entry.second.title
-           << ", displayName: " << entry.second.displayName
+           << ", storagePath: " << MediaFileUtils::DesensitizePath(entry.second.storagePath)
+           << ", title: " << MediaFileUtils::DesensitizeName(entry.second.title)
+           << ", displayName: " << MediaFileUtils::DesensitizeName(entry.second.displayName)
            << "}, ";
     }
     ss << "]";

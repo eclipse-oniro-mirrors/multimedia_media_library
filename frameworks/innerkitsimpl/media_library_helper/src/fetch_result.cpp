@@ -121,8 +121,11 @@ static const ResultTypeMap &GetResultTypeMap()
         { PhotoColumn::PHOTO_DATE_ADDED_YEAR, TYPE_STRING },
         { PhotoColumn::PHOTO_HIDDEN_TIME, TYPE_INT64 },
         { PhotoColumn::LOCAL_ASSET_SIZE, TYPE_INT64 },
-        {PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, TYPE_INT64},
+        { PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, TYPE_INT64},
         { PhotoColumn::ATTACHMENT_SIZE, TYPE_INT64 },
+        { PhotoColumn::PHOTO_THUMB_STATUS, TYPE_INT32},
+        { PhotoColumn::PHOTO_LCD_FILE_SIZE, TYPE_INT32},
+
     };
     return RESULT_TYPE_MAP;
 }

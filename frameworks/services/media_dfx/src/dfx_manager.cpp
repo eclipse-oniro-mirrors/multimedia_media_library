@@ -42,6 +42,12 @@
 #include "settings_data_manager.h"
 #include "result_set_utils.h"
 #include "cloud_file_error.h"
+#include "media_column.h"
+#include "photo_album_column.h"
+#include "medialibrary_rdbstore.h"
+#include "net_connect_observer.h"
+#include "net_conn_client.h"
+#include "cloud_media_operation_code.h"
 
 using namespace std;
 
@@ -54,6 +60,11 @@ mutex DfxManager::instanceLock_;
 struct QueryParams {
     MediaType mediaType;
     PhotoPositionType positionType;
+};
+
+struct QueryLcdParams {
+    std::vector<int32_t> thumbState;
+    int32_t isFavorite;
 };
 
 shared_ptr<DfxManager> DfxManager::GetInstance()
@@ -700,6 +711,10 @@ int64_t DfxManager::HandleOneDayReport()
     dfxReporter_->ReportCinematicVideo();
     dfxReporter_->ReportAlibHeifDuplicate();
     dfxReporter_->ReportMediaLibCompatConfig();
+    dfxReporter_->ReportReadLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL));
+    dfxReporter_->ReportReadLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_CLOUD));
+    dfxReporter_->ReportReadLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_HDC));
+    dfxReporter_->ReportVisitLcd(static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_VISIT));
     return MediaFileUtils::UTCTimeSeconds();
 }
 
@@ -1353,6 +1368,116 @@ bool DfxManager::GetMemoryRelease()
 void DfxManager::SetMemoryRelease(bool memoryRelease)
 {
     memoryRelease_ = memoryRelease;
+}
+
+static void AddPhotoLcdCountStats(PhotoLcdStatistics &stats)
+{
+    const std::vector<QueryLcdParams> queryParamsList = {
+        {
+            {static_cast<int32_t>(CloudSync::ThumbState::DOWNLOADED),
+             static_cast<int32_t>(CloudSync::ThumbState::THM_TO_DOWNLOAD)},
+            0
+        },
+        {
+            {static_cast<int32_t>(CloudSync::ThumbState::LCD_TO_DOWNLOAD),
+             static_cast<int32_t>(CloudSync::ThumbState::TO_DOWNLOAD)},
+            0
+        },
+        {{}, 1}
+    };
+
+    int32_t* countPtrs[] = {
+        &stats.localPropertyCount,
+        &stats.cloudPropertyCount,
+        &stats.favoriteCount
+    };
+
+    for (size_t i = 0; i < queryParamsList.size(); i++) {
+        const auto& params = queryParamsList[i];
+        *countPtrs[i] = DfxDatabaseUtils::QueryLcdFromPhotos(params.thumbState, params.isFavorite);
+    }
+}
+
+static void AddPhotoLcdAlbumCoverStats(PhotoLcdStatistics &stats)
+{
+    stats.albumCoverCount = DfxDatabaseUtils::QueryAlbumCoverCount();
+}
+
+static void AddPhotoExtSmartCountStats(PhotoLcdStatistics &stats)
+{
+    stats.smartCount = DfxDatabaseUtils::QueryPhotoExtSmartCount();
+}
+
+void DfxManager::HandleAgingLcdCount()
+{
+    MEDIA_INFO_LOG("HandleAgingLcdCount isSuccess");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    PhotoLcdStatistics stats = {};
+    AddPhotoLcdCountStats(stats);
+    AddPhotoLcdAlbumCoverStats(stats);
+    AddPhotoExtSmartCountStats(stats);
+    dfxAnalyzer_->FlushAgingLcdCount(stats);
+}
+
+void DfxManager::HandleAgingLcdContinue()
+{
+    MEDIA_INFO_LOG("HandlerAgingLcdContinue");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    dfxAnalyzer_->FlushAgingLcdContinue();
+}
+
+void DfxManager::HandleAgingLcdFinish(int64_t hasAgingLcdNumber, int32_t totalSize,
+    int64_t freeSizeOld, int64_t freeSize, int64_t totalTime)
+{
+    MEDIA_INFO_LOG("HandleAgingLcdFinish");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    dfxAnalyzer_->FlushAgingLcdFinish(hasAgingLcdNumber, totalSize, freeSizeOld, freeSize, totalTime);
+    dfxReporter_->ReportAgingLcdInfo();
+}
+
+void DfxManager::HandleReadLcd(bool isSuccess)
+{
+    MEDIA_DEBUG_LOG("HandleReadLcd isSuccess: %{public}d", isSuccess);
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    NetManagerStandard::NetHandle handle;
+    int32_t ret = NetManagerStandard::NetConnClient::GetInstance().GetDefaultNet(handle);
+    CHECK_AND_EXECUTE(ret == 0, dfxAnalyzer_->FlushReadLcdTimes(isSuccess, NetConnStatusType::NO_NETWORK));
+    CHECK_AND_RETURN_LOG(ret == 0, "GetDefaultNet failed");
+    NetManagerStandard::NetAllCapabilities netAllCap;
+    ret = NetManagerStandard::NetConnClient::GetInstance().GetNetCapabilities(handle, netAllCap);
+    CHECK_AND_EXECUTE(ret == 0, dfxAnalyzer_->FlushReadLcdTimes(isSuccess, NetConnStatusType::NO_NETWORK));
+    CHECK_AND_RETURN_LOG(ret == 0, "GetNetCapabilities failed");
+    NetConnStatusType netStatus = NetConnStatusType::NO_NETWORK;
+    const std::set<NetManagerStandard::NetBearType>& types = netAllCap.bearerTypes_;   // 每次流读都去获取网络状态需要评估性能影响。
+    if (types.count(NetManagerStandard::BEARER_CELLULAR)) {
+        netStatus = NetConnStatusType::CELLULAR_CONNECTED;
+    } else if (types.count(NetManagerStandard::BEARER_WIFI)) {
+        netStatus = NetConnStatusType::WIFI_CONNECTED;
+    } else if (types.count(NetManagerStandard::BEARER_ETHERNET)) {
+        netStatus = NetConnStatusType::ETHERNET_CONNECTED;
+    }
+    dfxAnalyzer_->FlushReadLcdTimes(isSuccess, netStatus);
+}
+
+void DfxManager::HandleThumbnailQuality()
+{
+    MEDIA_DEBUG_LOG("HandleThumbnailQuality enter");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    const int32_t southDeviceType = static_cast<int32_t>(SettingsDataManager::GetPhotosSyncSwitchStatus());
+    dfxAnalyzer_->FlushThumbnailQuality(southDeviceType);
+}
+
+void DfxManager::HandleVisitLcd()
+{
+    MEDIA_DEBUG_LOG("HandleVisitLcd enter");
+    CHECK_AND_RETURN_LOG(isInitSuccess_, "DfxManager not init");
+    CHECK_AND_RETURN_LOG(dfxAnalyzer_, "dfxAnalyzer_ is nullptr");
+    dfxAnalyzer_->FlushVisitLcd();
 }
 } // namespace Media
 } // namespace OHOS

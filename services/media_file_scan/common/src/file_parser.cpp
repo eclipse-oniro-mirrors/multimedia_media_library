@@ -830,19 +830,17 @@ int64_t FileParser::GetFileDateAdded(const struct stat &statInfo)
     return MediaFileUtils::UTCTimeMilliSeconds();
 }
 
-void FileParser::SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan)
+void FileParser::SetFileManagerScanFlagBySingle(const std::string &fileIdStr, bool stopScan)
 {
-    for (const auto& fileIdStr : fileIds) {
-        CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
-        int32_t fileId = std::stoi(fileIdStr);
-        std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
-        if (stopScan) {
-            g_fileManagerScanFlag[fileId] = stopScan;
-        } else {
-            auto it = g_fileManagerScanFlag.find(fileId);
-            if (it != g_fileManagerScanFlag.end()) {
-                g_fileManagerScanFlag.erase(it);
-            }
+    CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
+    int32_t fileId = std::stoi(fileIdStr);
+    std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
+    if (stopScan) {
+        g_fileManagerScanFlag[fileId] = stopScan;
+    } else {
+        auto it = g_fileManagerScanFlag.find(fileId);
+        if (it != g_fileManagerScanFlag.end()) {
+            g_fileManagerScanFlag.erase(it);
         }
     }
 }

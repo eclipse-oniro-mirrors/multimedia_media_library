@@ -47,12 +47,6 @@ ohos_shared_library("media_permission_helper") {
     "./src/media_permission_helper.cpp",
   ]
 
-  columns_sources = [
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/base_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_app_uri_permission_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_app_uri_sensitive_column.cpp",
-  ]
-
   media_assets_manager_vo_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/cancel_photo_uri_permission_inner_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/grant_photo_uri_permission_inner_vo.cpp",
@@ -66,12 +60,12 @@ ohos_shared_library("media_permission_helper") {
   public_configs = [ ":media_permission_helper_config" ]
 
   include_dirs += user_ipc_client_include_dirs
-  sources += columns_sources
   sources += media_assets_manager_vo_source
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
   ]
 
   external_deps = [

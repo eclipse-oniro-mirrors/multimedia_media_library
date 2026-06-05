@@ -461,6 +461,14 @@ public:
      */
     EXPORT int32_t UnregisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback = nullptr);
 
+    /**
+     * @brief UpdateAssetVisitCount
+     * @param dataShareHelper datasharehelper example
+     * @param fileIdStr file id to string
+     */
+    EXPORT static void UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper,
+        const string &fileIdStr);
+
 private:
     int32_t ReadMovingPhotoVideo(const string &uri, const string &option);
     static int OpenThumbnail(std::string &uriStr, const std::string &path, const Size &size, bool isAstc);
@@ -468,7 +476,6 @@ private:
     static unique_ptr<PixelMap> DecodeThumbnail(UniqueFd& uniqueFd, const Size& size, DecodeDynamicRange dynamicRange);
     static unique_ptr<PixelMap> GetPixelMapWithoutDecode(UniqueFd &uniqueFd, const Size& size);
     static unique_ptr<PixelMap> DecodeAstc(UniqueFd &uniqueFd);
-    static bool CheckIsCloudFile(const std::string &sandboxPath);
 
     static shared_ptr<DataShare::DataShareHelper> sDataShareHelper_;
     static sptr<IRemoteObject> token_;

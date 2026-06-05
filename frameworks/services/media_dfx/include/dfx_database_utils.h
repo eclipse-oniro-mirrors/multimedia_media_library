@@ -58,6 +58,9 @@ public:
     EXPORT static int32_t QueryAncoPhotosFormatAndCount(AncoCountFormatInfo &reportData);
     EXPORT static std::vector<std::string> QueryAlbumNamesByUploadStatus(const int32_t uploadStatus);
     EXPORT static int32_t QueryAllCompatibleInfo(std::map<std::string, DfxCompatibleInfo>& infoMap);
+    EXPORT static int32_t QueryLcdFromPhotos(std::vector<int32_t> thumbStatus, int32_t isFavorite);
+    EXPORT static int32_t QueryAlbumCoverCount();
+    EXPORT static int32_t QueryPhotoExtSmartCount();
 
 private:
     static int32_t QueryInt(const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,

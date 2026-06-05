@@ -1810,8 +1810,10 @@ int32_t MediaLibraryAlbumOperations::ResetCoverUri(const ValuesBucket &values, c
 
     RdbPredicates newPredicates(PhotoAlbumColumns::TABLE);
     ValuesBucket updateValues;
-    updateValues.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
+    int64_t dateModified = MediaFileUtils::UTCTimeMilliSeconds();
+    updateValues.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, dateModified);
     updateValues.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, CoverUriSource::DEFAULT_COVER);
+    updateValues.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, to_string(dateModified) + ",");
 
     string UPDATE_CONDITION = PhotoAlbumColumns::ALBUM_ID + " = " + albumId + " AND " +
         PhotoAlbumColumns::COVER_URI_SOURCE + " > " + to_string(CoverUriSource::DEFAULT_COVER);
@@ -2707,17 +2709,30 @@ static int32_t UpdateForReduceOneOrder(const int32_t referenceOrder)
 int32_t UpdateForMergeAlbums(const MergeAlbumInfo &updateAlbumInfo, const int32_t currentAlbumId,
     const int32_t targetAlbumId)
 {
-    std::string updateForMergeAlbums = "UPDATE " + ANALYSIS_ALBUM_TABLE + " SET " + GROUP_TAG + " = " +
-        updateAlbumInfo.groupTag + "," + COUNT + " = " + to_string(updateAlbumInfo.count) + "," + IS_ME + " = " +
-        to_string(updateAlbumInfo.isMe) + "," + COVER_URI + " = '" + updateAlbumInfo.coverUri + "'," +
-        USER_DISPLAY_LEVEL + " = " + to_string(updateAlbumInfo.userDisplayLevel) + "," + RANK + " = " +
-        to_string(updateAlbumInfo.rank) + "," + USER_OPERATION + " = " + to_string(updateAlbumInfo.userOperation) +
-        "," + RENAME_OPERATION + " = " + to_string(updateAlbumInfo.renameOperation) + "," + ALBUM_NAME + " = '" +
-        updateAlbumInfo.albumName + "'," + IS_COVER_SATISFIED + " = " + to_string(updateAlbumInfo.isCoverSatisfied) +
-        "," + ALBUM_RELATIONSHIP + " = '" + updateAlbumInfo.relationship + "' , " + EXTRA_INFO + " = '" +
-        updateAlbumInfo.extra_info + "'" +
+    std::vector<NativeRdb::ValueObject> updateBindArgs;
+    std::string updateForMergeAlbums = "UPDATE " + ANALYSIS_ALBUM_TABLE + " SET " + GROUP_TAG + " = ?," +
+        COUNT + " = ?," + IS_ME + " = ?," + COVER_URI + " = ?," +
+        USER_DISPLAY_LEVEL + " = ?," + RANK + " = ?," + USER_OPERATION + " = ?," +
+        RENAME_OPERATION + " = ?," + ALBUM_NAME + " = ?," + IS_COVER_SATISFIED + " = ?," +
+        ALBUM_RELATIONSHIP + " = ?," + EXTRA_INFO + " = ?" +
         " WHERE " + GROUP_TAG + " IN(SELECT " + GROUP_TAG + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " + ALBUM_ID +
-        " = " + to_string(currentAlbumId) + " OR " + ALBUM_ID + " = " + to_string(targetAlbumId) + ")";
+        " = ? OR " + ALBUM_ID + " = ?)";
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.groupTag));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.count));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.isMe));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.coverUri));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.userDisplayLevel));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.rank));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.userOperation));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.renameOperation));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.albumName));
+    updateBindArgs.push_back(NativeRdb::ValueObject(
+        static_cast<int32_t>(updateAlbumInfo.isCoverSatisfied)));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.relationship));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.extra_info));
+    updateBindArgs.push_back(NativeRdb::ValueObject(currentAlbumId));
+    updateBindArgs.push_back(NativeRdb::ValueObject(targetAlbumId));
+
     std::string initAccurateRefreshSql = "SELECT " + ALBUM_ID + ", " + COVER_URI + ", " + IS_COVER_SATISFIED + ", "
         + ALBUM_TYPE + ", " + ALBUM_SUBTYPE + ", " + COUNT + ", " + GROUP_TAG + ", " + ALBUM_NAME + " FROM " +
         ANALYSIS_ALBUM_TABLE + " WHERE " + GROUP_TAG + " IN(SELECT " + GROUP_TAG + " FROM " +
@@ -2728,7 +2743,8 @@ int32_t UpdateForMergeAlbums(const MergeAlbumInfo &updateAlbumInfo, const int32_
     std::vector<NativeRdb::ValueObject> bindArgs;
     ret = albumRefresh.Init(initAccurateRefreshSql, bindArgs);
     CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateForMergeAlbums init failed");
-    ret = albumRefresh.ExecuteSql(updateForMergeAlbums, AccurateRefresh::RdbOperation::RDB_OPERATION_UPDATE);
+    ret = albumRefresh.ExecuteSql(updateForMergeAlbums, updateBindArgs,
+        AccurateRefresh::RdbOperation::RDB_OPERATION_UPDATE);
     CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateForMergeAlbums execute sql failed");
     albumRefresh.Notify();
     return E_OK;

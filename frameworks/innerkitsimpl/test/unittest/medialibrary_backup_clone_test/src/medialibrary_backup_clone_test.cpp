@@ -6023,6 +6023,22 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_create_file_info
     MEDIA_INFO_LOG("End medialibrary_backup_clone_create_file_info_db_test_001");
 }
 
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_create_file_info_db_test_002, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_create_file_info_db_test_002");
+    ClearData();
+
+    restoreService->srcDevFileListCloneConfig_.ancoFileListClone = AncoFileListClone::ANCO_FILE_LIST_CLONE_NONE;
+    restoreService->srcDevFileListCloneConfig_.fileManagerFileListClone =
+        FileManagerFileListClone::FILE_MANAGER_FILE_LIST_CLONE_SUPPORTED;
+    restoreService->sceneCode_ = CLONE_RESTORE_ID;
+    restoreService->taskId_ = "test_task_002";
+    restoreService->CreateCloneFileInfoDb();
+    EXPECT_EQ(restoreService->errorCode_, RestoreError::SUCCESS);
+
+    MEDIA_INFO_LOG("End medialibrary_backup_clone_create_file_info_db_test_002");
+}
+
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_parse_clone_config_test_001, TestSize.Level2)
 {
     MEDIA_INFO_LOG("Start medialibrary_backup_clone_parse_clone_config_test_001");

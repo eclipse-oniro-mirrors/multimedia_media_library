@@ -18,6 +18,7 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_string_utils.h"
+#include <sys/xattr.h>
 
 namespace OHOS::Media {
 const char DOT = '.';
@@ -67,4 +68,14 @@ std::string MediaPathUtils::GetExtension(const std::string &path)
     return extension;
 }
 
+bool MediaPathUtils::CheckIsCloudFile(const std::string &sandboxPath)
+{
+    constexpr size_t MAX_ATTR_NAME = 64;
+    constexpr const char* CLOUD_LOCATION_ATTR = "user.cloud.location";
+    char cloudvalue[MAX_ATTR_NAME] = {'\0'};
+    auto valueLen = getxattr(sandboxPath.c_str(), CLOUD_LOCATION_ATTR, cloudvalue, MAX_ATTR_NAME);
+    CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s", sandboxPath.c_str());
+    constexpr const char FILE_POSITION_CLOUD = '2';
+    return cloudvalue[0] = FILE_POSITION_CLOUD;
+}
 } // namespace OHOS::Media

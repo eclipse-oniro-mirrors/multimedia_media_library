@@ -2652,7 +2652,9 @@ static void MoveFileFileManagerToMedia(const vector<MoveInfo> &idsToMove)
     for (const auto& id : idsToMove) {
         PhotoPositionType position = static_cast<PhotoPositionType>(id.srcObj.GetAssetInfo()->GetPosition());
         if (position == PhotoPositionType::LOCAL || position == PhotoPositionType::LOCAL_AND_CLOUD) {
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, true);
             MediaFileAccessUtils::MoveAsset(id.srcObj, id.srcObj.GetAssetPath(), FileSourceType::MEDIA, true);
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, false);
         }
     }
 }
@@ -2663,7 +2665,9 @@ static void MoveFileFileManagerToFileManager(const vector<MoveInfo> &idsToMove, 
         PhotoPositionType position = static_cast<PhotoPositionType>(id.srcObj.GetAssetInfo()->GetPosition());
         if (position == PhotoPositionType::LOCAL || position == PhotoPositionType::LOCAL_AND_CLOUD) {
             std::string path = targetPath + id.srcObj.GetAssetInfo()->GetDisplayName();
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, true);
             MediaFileAccessUtils::MoveAsset(id.srcObj, path, FileSourceType::FILE_MANAGER, true);
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, false);
         }
     }
 }
@@ -2674,7 +2678,9 @@ static void MoveFileMediaToFileManager(const vector<MoveInfo> &idsToMove, const 
         PhotoPositionType position = static_cast<PhotoPositionType>(id.srcObj.GetAssetInfo()->GetPosition());
         if (position == PhotoPositionType::LOCAL || position == PhotoPositionType::LOCAL_AND_CLOUD) {
             std::string path = targetPath + id.srcObj.GetAssetInfo()->GetDisplayName();
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, true);
             MediaFileAccessUtils::MoveAsset(id.srcObj, path, FileSourceType::FILE_MANAGER, true);
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, false);
         }
     }
 }
@@ -2685,7 +2691,9 @@ static void MoveLakeToFileManager(const vector<MoveInfo> &idsToMove, const strin
         PhotoPositionType position = static_cast<PhotoPositionType>(id.srcObj.GetAssetInfo()->GetPosition());
         if (position == PhotoPositionType::LOCAL || position == PhotoPositionType::LOCAL_AND_CLOUD) {
             std::string path = targetPath + id.srcObj.GetAssetInfo()->GetDisplayName();
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, true);
             MediaFileAccessUtils::MoveAsset(id.srcObj, path, FileSourceType::FILE_MANAGER, true);
+            FileParser::SetFileManagerScanFlagBySingle(id.fileId, false);
         }
     }
 }
@@ -2932,9 +2940,7 @@ int32_t DealWithSystemAlbumMovement(MediaLibraryCommand &cmd)
     std::vector<std::vector<std::string>> fileIdsVector = SplitVector(fileIds, BATCH_SIZE);
     int32_t updateSysRows = 0;
     for (size_t i = 0; i < fileIdsVector.size(); i++) {
-        FileParser::SetFileManagerScanFlag(fileIdsVector[i], true);
         int32_t updateSysRow = UpdateSystemRows(fileIdsVector[i], targetAlbumId);
-        FileParser::SetFileManagerScanFlag(fileIdsVector[i], false);
         CHECK_AND_RETURN_RET_LOG(updateSysRow >= 0, updateSysRow, "fail to update system row");
         updateSysRows += updateSysRow;
     }
