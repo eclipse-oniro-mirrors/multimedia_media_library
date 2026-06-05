@@ -1654,6 +1654,7 @@ void CloudMediaPhotosDao::UpdateAllAlbumsCountForCloud(const std::vector<std::st
     if (albums.empty()) {
         allRefreshAlbum.push_back(to_string(PhotoAlbumSubType::USER_GENERIC));
         allRefreshAlbum.push_back(to_string(PhotoAlbumSubType::SOURCE_GENERIC));
+        allRefreshAlbum.push_back(to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
         UpdateAlbumCountInternal(allRefreshAlbum);
     } else {
         UpdateAlbumCountInternal(ALL_SYSTEM_PHOTO_ALBUM);

@@ -103,6 +103,33 @@ int32_t CustomRestore::Restore(std::string dbPath)
     return result;
 }
 
+int32_t CustomRestore::AsyncRestore(std::string dbPath)
+{
+    MEDIA_DEBUG_LOG("CustomRestore AsyncRestore");
+    if (sDataShareHelper_ == nullptr) {
+        MEDIA_ERR_LOG("sDataShareHelper_ is null.");
+        return E_DATASHARE_IS_NULL;
+    }
+    CHECK_AND_RETURN_RET_LOG(!albumLpath_.empty(), E_INVALID_VALUES, "albumLpath is empty.");
+    CHECK_AND_RETURN_RET_LOG(!keyPath_.empty(), E_INVALID_VALUES, "keyPath is empty.");
+    CHECK_AND_RETURN_RET_LOG(!bundleName_.empty(), E_INVALID_VALUES, "bundleName is empty.");
+    CHECK_AND_RETURN_RET_LOG(!appName_.empty(), E_INVALID_VALUES, "appName is empty.");
+
+    RestoreReqBody reqBody;
+    reqBody.dbPath = dbPath;
+    reqBody.albumLpath = albumLpath_;
+    reqBody.keyPath = keyPath_;
+    reqBody.bundleName = bundleName_;
+    reqBody.appName = appName_;
+    reqBody.appId = appId_;
+    reqBody.isDeduplication = isDeduplication_;
+    int32_t result = IPC::UserInnerIPCClient()
+                         .SetDataShareHelper(sDataShareHelper_)
+                         .Call(static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC), reqBody);
+    MEDIA_DEBUG_LOG("CustomRestore AsyncRestore end. %{public}d", result);
+    return result;
+}
+
 int32_t CustomRestore::StopRestore()
 {
     MEDIA_DEBUG_LOG("CustomRestore StopRestore");

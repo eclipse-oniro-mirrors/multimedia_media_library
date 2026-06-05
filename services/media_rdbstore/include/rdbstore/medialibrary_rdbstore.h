@@ -66,7 +66,8 @@ public:
         const std::vector<std::string> &columns);
     EXPORT static int32_t Delete(const NativeRdb::AbsRdbPredicates &predicates);
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> StepQueryWithoutCheck(
-        const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns);
+        const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,
+        bool isAlbumRefresh = false);
     EXPORT static int32_t UpdateWithDateTime(NativeRdb::ValuesBucket &values,
         const NativeRdb::AbsRdbPredicates &predicates);
     EXPORT static void ReplacePredicatesUriToId(NativeRdb::AbsRdbPredicates &predicates);

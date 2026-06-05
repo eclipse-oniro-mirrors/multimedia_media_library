@@ -59,6 +59,7 @@ namespace OHOS::Media {
 std::shared_ptr<PhotoCustomRestoreOperation> PhotoCustomRestoreOperation::instance_ = nullptr;
 std::mutex PhotoCustomRestoreOperation::objMutex_;
 static const int32_t INVALID_DURATION = -1;
+const int EARLY_NOTIFY_DELAY_MS = 50;
 
 PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::GetInstance()
 {
@@ -67,6 +68,21 @@ PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::GetInstance()
         PhotoCustomRestoreOperation::instance_ = std::make_shared<PhotoCustomRestoreOperation>();
     }
     return *PhotoCustomRestoreOperation::instance_;
+}
+
+PhotoCustomRestoreOperation::~PhotoCustomRestoreOperation()
+{
+    MEDIA_INFO_LOG("[ASYNC] Destructor called. stopping worker");
+
+    stopWorker_.store(true);
+    queueCv_.notify_one();
+
+    if (workerThread_.joinable()) {
+        MEDIA_INFO_LOG("[ASYNC] Destructor: joining worker thread");
+        workerThread_.join();
+    }
+
+    MEDIA_INFO_LOG("[ASYNC] Destructor: worker thread joined. cleanup complete");
 }
 
 PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::Start()
@@ -92,6 +108,89 @@ PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::Start()
     }
     this->isRunning_.store(false);
     return *this;
+}
+
+PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::StartAsync()
+{
+    MEDIA_INFO_LOG("[ASYNC] - StartAsync - workerRunning: %{public}d", workerRunning_.load());
+    std::lock_guard<std::mutex> lock(queueMutex_);
+    if (workerRunning_.load()) {
+        MEDIA_INFO_LOG("[ASYNC] - StartAsync - worker already running, skip. queueSize: %{public}zu",
+            this->taskQueue_.size());
+        return *this;
+    }
+
+    workerRunning_.store(true);
+    stopWorker_.store(false);
+
+    if (workerThread_.joinable()) {
+        workerThread_.join();
+    }
+    workerThread_ = std::thread([this]() {WorkerLoop(); });
+    MEDIA_INFO_LOG("[ASYNC] - StartAsync - worker thread started. queueSize: %{public}zu",
+        this->taskQueue_.size());
+    return *this;
+}
+
+void PhotoCustomRestoreOperation::WorkerLoop()
+{
+    MEDIA_INFO_LOG("[ASYNC] WorkerLoop started. thread entering main loop");
+    CleanTimeoutCustomRestoreTaskDir();
+    int32_t taskCount = 0;
+    bool shouldContinue = true;
+
+    while (shouldContinue) {
+        std::unique_lock<std::mutex> lock(queueMutex_);
+        MEDIA_INFO_LOG("[ASYNC] WorkerLoop: waiting for task. queueSize: %{public}zu, "
+            "tasksProcessed: %{public}d", this->taskQueue_.size(), taskCount);
+
+        queueCv_.wait(lock, [this]() {
+            return !this->taskQueue_.empty() || stopWorker_.load();
+        });
+
+        if (stopWorker_.load() && this->taskQueue_.empty()) {
+            MEDIA_INFO_LOG("[ASYNC] WorkerLoop: stop signal received, exiting. "
+                "tasksProcessed: %{public}d", taskCount);
+            shouldContinue = false;
+            break;
+        }
+
+        RestoreTaskInfo restoreTaskInfo = this->taskQueue_.front();
+        this->taskQueue_.pop();
+        size_t remainingTasks = this->taskQueue_.size();
+        isProcessingTask_.store(true);
+        lock.unlock();
+
+        taskCount++;
+        MEDIA_INFO_LOG("[ASYNC] WorkerLoop: dequeued task #%{public}d. "
+            "keyPath: %{public}s, remainingInQueue: %{public}zu",
+            taskCount, restoreTaskInfo.keyPath.c_str(), remainingTasks);
+
+        if (IsCancelTask(restoreTaskInfo)) {
+            MEDIA_INFO_LOG("[ASYNC] WorkerLoop: task cancelled. keyPath: %{public}s",
+                restoreTaskInfo.keyPath.c_str());
+            CancelTaskFinish(restoreTaskInfo);
+            isProcessingTask_.store(false);
+            continue;
+        }
+
+        MEDIA_INFO_LOG("[ASYNC] WorkerLoop: DoCustomRestore starting. keyPath: %{public}s",
+            restoreTaskInfo.keyPath.c_str());
+
+        DoCustomRestore(restoreTaskInfo);
+        isProcessingTask_.store(false);
+
+        MEDIA_INFO_LOG("[ASYNC] WorkerLoop: DoCustomRestore finished. keyPath: %{public}s",
+            restoreTaskInfo.keyPath.c_str());
+    }
+
+    {
+        std::unique_lock<std::shared_mutex> lockGuard(cancelOprationLock_);
+        cancelKeySet_.clear();
+    }
+
+    workerRunning_.store(false);
+    MEDIA_INFO_LOG("[ASYNC] WorkerLoop finished. totalTasksProcessed: %{public}d", taskCount);
 }
 
 void PhotoCustomRestoreOperation::CancelTask(RestoreTaskInfo restoreTaskInfo)
@@ -145,7 +244,49 @@ void PhotoCustomRestoreOperation::ApplyEfficiencyQuota(int32_t fileNum)
 PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::AddTask(RestoreTaskInfo restoreTaskInfo)
 {
     MEDIA_INFO_LOG("add custom restore task. keyPath: %{public}s", restoreTaskInfo.keyPath.c_str());
+    restoreTaskInfo.uriType = RESTORE_URI_TYPE_PHOTO;
     this->taskQueue_.push(restoreTaskInfo);
+    return *this;
+}
+
+PhotoCustomRestoreOperation &PhotoCustomRestoreOperation::AddTaskAsync(RestoreTaskInfo restoreTaskInfo)
+{
+    MEDIA_INFO_LOG("add async restore task. keyPath: %{public}s", restoreTaskInfo.keyPath.c_str());
+    std::unique_lock<std::mutex> lock(queueMutex_);
+    
+    if (this->taskQueue_.empty() && !isProcessingTask_.load()) {
+        restoreTaskInfo.uriType = RESTORE_URI_TYPE_PHOTO;
+    } else {
+        restoreTaskInfo.uriType = RESTORE_URI_TYPE_EMPTY;
+        restoreTaskInfo.earlyNotifySent = true;
+    }
+
+    MEDIA_INFO_LOG("AddTaskAsync uriType: %{public}d", restoreTaskInfo.uriType);
+
+    this->taskQueue_.push(restoreTaskInfo);
+    lock.unlock();
+    queueCv_.notify_one();
+
+    if (restoreTaskInfo.uriType == RESTORE_URI_TYPE_EMPTY) {
+        std::string keyPath = restoreTaskInfo.keyPath;
+        ffrt::submit([keyPath]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(EARLY_NOTIFY_DELAY_MS));
+            InnerRestoreResult result;
+            result.errCode = 0;
+            result.stage = "onRestore";
+            result.uriType = RESTORE_URI_TYPE_EMPTY;
+            result.uri = "";
+            result.totalNum = 0;
+            result.successNum = 0;
+            result.failedNum = 0;
+            result.sameNum = 0;
+            result.cancelNum = 0;
+            result.progress = 0;
+            MEDIA_INFO_LOG("[ASYNC] - AddTaskAsync - early notify, keyPath: %{public}s", keyPath.c_str());
+            CustomRestoreNotify customRestoreNotify;
+            customRestoreNotify.Notify(keyPath, result);
+        });
+    }
     return *this;
 }
 
@@ -352,7 +493,6 @@ void PhotoCustomRestoreOperation::InitRestoreTask(RestoreTaskInfo &restoreTaskIn
     failNum_.store(0);
     sameNum_.store(0);
     photoCache_.clear();
-    restoreTaskInfo.uriType = RESTORE_URI_TYPE_PHOTO;
     restoreTaskInfo.totalNum = fileNum;
     restoreTaskInfo.beginTime = MediaTimeUtils::UTCTimeSeconds();
     std::thread applyEfficiencyQuotaThread([this, fileNum] { ApplyEfficiencyQuota(fileNum); });
@@ -905,9 +1045,16 @@ int32_t PhotoCustomRestoreOperation::UpdatePhotoAlbum(RestoreTaskInfo &restoreTa
         extrUri);
     if (restoreTaskInfo.uriType == RESTORE_URI_TYPE_PHOTO) {
         restoreTaskInfo.uri = restoreTaskInfo.firstFileUri;
-    } else {
+    } else if (restoreTaskInfo.uriType == RESTORE_URI_TYPE_EMPTY) {
+        restoreTaskInfo.uri = "";
+    } else if (restoreTaskInfo.uriType == RESTORE_URI_TYPE_ALBUM) {
         restoreTaskInfo.uri = PhotoAlbumColumns::ALBUM_URI_PREFIX + to_string(albumId);
+    } else {
+        MEDIA_WARN_LOG("[ASYNC] - UpdatePhotoAlbum - undefined uriType: %{public}d", restoreTaskInfo.uriType);
     }
+ 
+    MEDIA_INFO_LOG("[ASYNC] - UpdatePhotoAlbum - uriType: %{public}d, uri: %{public}s, keyPath: %{public}s",
+        restoreTaskInfo.uriType, restoreTaskInfo.uri.c_str(), restoreTaskInfo.keyPath.c_str());
     restoreTaskInfo.albumId = albumId;
     return E_OK;
 }
@@ -994,6 +1141,12 @@ void PhotoCustomRestoreOperation::SendNotifyMessage(
     MEDIA_DEBUG_LOG(
         "CustomRestoreNotify totalNum:%{public}d successNum:%{public}d failedNum:%{public}d sameNum:%{public}d",
         restoreResult.totalNum, restoreResult.successNum, restoreResult.failedNum, restoreResult.sameNum);
+    
+    if (notifyType == NOTIFY_FIRST && restoreTaskInfo.earlyNotifySent && errCode == E_OK) {
+        MEDIA_INFO_LOG("[ASYNC] - SendNotifyMessage - skip NOTIFY_FIRST (early sent), keyPath: %{public}s",
+            restoreTaskInfo.keyPath.c_str());
+        return;
+    }
     CustomRestoreNotify customRestoreNotify;
     customRestoreNotify.Notify(restoreTaskInfo.keyPath, restoreResult);
 }

@@ -161,6 +161,7 @@ public:
         std::string &path, std::string &sourcePath);
     EXPORT static int32_t CopyVideoFile(const std::string& assetPath, bool toSource);
     EXPORT static int32_t ProcessCustomRestore(MediaLibraryCommand &cmd);
+    EXPORT static int32_t ProcessCustomRestoreAsync(MediaLibraryCommand &cmd);
     EXPORT static int32_t CancelCustomRestore(MediaLibraryCommand &cmd);
     EXPORT static int32_t UpdateSupportedWatermarkType(MediaLibraryCommand &cmd);
     EXPORT static int32_t UpdateAppLink(MediaLibraryCommand &cmd);

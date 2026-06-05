@@ -167,6 +167,7 @@ const std::vector<MediaLibraryBusinessCode> BUSINESS_CODE_LIST = {
     MediaLibraryBusinessCode::INNER_CHECK_AUDIO_URI_PERMISSION,
     MediaLibraryBusinessCode::INNER_GET_URIS_BY_OLD_URIS,
     MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE,
+    MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC,
     MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL,
     MediaLibraryBusinessCode::INNER_GET_RESULT_SET_FROM_PHOTOS,
     MediaLibraryBusinessCode::INNER_BUSINESS_CODE_END

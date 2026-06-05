@@ -181,6 +181,7 @@ public:
     int32_t CloseAsset(const CloseAssetReqBody &req);
     int32_t GetUrisByOldUrisInner(GetUrisByOldUrisInnerDto& getUrisByOldUrisInnerDto);
     int32_t Restore(const RestoreDto &dto);
+    int32_t AsyncRestore(const RestoreDto &dto);
     int32_t StopRestore(const std::string &keyPath);
     int32_t StartDownloadCloudMedia(CloudMediaDownloadType downloadType);
     int32_t PauseDownloadCloudMedia();

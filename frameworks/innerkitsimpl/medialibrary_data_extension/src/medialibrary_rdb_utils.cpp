@@ -331,7 +331,7 @@ static inline shared_ptr<ResultSet> GetAnalysisAlbumBySubtype(const shared_ptr<M
     return rdbStore->Query(predicates, columns);
 }
 
-static string GetQueryFilter(const string &tableName)
+static string GetQueryFilter(const string &tableName, bool isAlbumRefresh)
 {
     MediaLibraryTracer tracer;
     tracer.Start("GetQueryFilter");
@@ -345,7 +345,7 @@ static string GetQueryFilter(const string &tableName)
             PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_CLEAN_FLAG + " = " +
             to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
-        if (OHOS::system::GetParameter(CONST_MEDIA_SECURE_ALBUM, "") == "true") {
+        if (OHOS::system::GetParameter(CONST_MEDIA_SECURE_ALBUM, "") == "true" && !isAlbumRefresh) {
             // Check if the caller has MANAGE_RISK_PHOTOS permission
             AccessTokenID tokenCaller = IPCSkeleton::GetCallingTokenID();
             int res = AccessTokenKit::VerifyAccessToken(tokenCaller, MANAGE_RISK_PHOTOS);
@@ -370,7 +370,7 @@ static string GetQueryFilter(const string &tableName)
     return "";
 }
 
-void MediaLibraryRdbUtils::AddQueryFilter(AbsRdbPredicates &predicates)
+void MediaLibraryRdbUtils::AddQueryFilter(AbsRdbPredicates &predicates, bool isAlbumRefresh)
 {
     /* build all-table vector */
     string tableName = predicates.GetTableName();
@@ -379,7 +379,7 @@ void MediaLibraryRdbUtils::AddQueryFilter(AbsRdbPredicates &predicates)
     /* add filters */
     string filters;
     for (auto &t : joinTables) {
-        string filter = GetQueryFilter(t);
+        string filter = GetQueryFilter(t, isAlbumRefresh);
         if (filter.empty()) {
             continue;
         }
@@ -404,7 +404,7 @@ static shared_ptr<ResultSet> QueryGoToFirst(const shared_ptr<MediaLibraryRdbStor
 {
     MediaLibraryTracer tracer;
     tracer.Start("QueryGoToFirst");
-    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns);
+    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns, true);
     CHECK_AND_RETURN_RET(resultSet != nullptr, nullptr);
 
     MediaLibraryTracer goToFirst;
@@ -1266,7 +1266,7 @@ shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(const shared
     const string columnData = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_FILE_PATH;
     const vector<string> columns = { columnFileId, columnDisplayName, columnData };
 
-    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns);
+    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns, true);
     string sql = RdbSqlUtils::BuildQueryString(predicates, columns);
     CHECK_AND_RETURN_RET(resultSet != nullptr, nullptr);
     int32_t err = resultSet->GoToFirstRow();

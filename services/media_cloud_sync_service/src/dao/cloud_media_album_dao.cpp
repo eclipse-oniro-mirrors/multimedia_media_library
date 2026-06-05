@@ -304,7 +304,8 @@ static void UpdateAlbum(const PhotoAlbumDto &record)
         MediaLibraryRdbUtils::UpdateUserAlbumInternal(rdbStore, albumIds, true);
         MEDIA_INFO_LOG("UpdateUserAlbum Success, AlbumId: %{public}d, CloudId: %{public}s",
             albumId, record.cloudId.c_str());
-    } else if (record.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC)) {
+    } else if (record.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC) ||
+        record.albumSubType == static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)) {
         MediaLibraryRdbUtils::UpdateSourceAlbumInternal(rdbStore, albumIds, true);
         MEDIA_INFO_LOG("UpdateSourceAlbum Success, AlbumId: %{public}d, CloudId: %{public}s",
             albumId, record.cloudId.c_str());
@@ -834,6 +835,8 @@ int32_t CloudMediaAlbumDao::QueryDeleteAlbums(int32_t size, std::vector<PhotoAlb
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::USER_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
         ->EndWrap();
 
     if (!albumModifyFailSet_.empty()) {
@@ -890,6 +893,8 @@ int32_t CloudMediaAlbumDao::GetMetaModifiedAlbum(int32_t size, std::vector<Photo
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::USER_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
         ->EndWrap();
 
     if (!albumModifyFailSet_.empty()) {

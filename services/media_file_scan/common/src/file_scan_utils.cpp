@@ -50,6 +50,14 @@ constexpr int32_t BASE_USER_RANGE = 200000;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
 static const int UUID_STR_LENGTH = 37;
 const int32_t OH_DEFAULT_USER_ID = 100;
+const std::unordered_map<PrefixType, std::string> PREFIX_MAP = {
+    { PrefixType::CLOUD, "/storage/cloud/files" },
+    { PrefixType::LOCAL, "/storage/media/local/files" },
+    { PrefixType::CLOUD_EDIT_DATA, "/storage/cloud/files/.editData" },
+    { PrefixType::LOCAL_EDIT_DATA, "/storage/media/local/files/.editData" },
+    { PrefixType::CLOUD_THUMB, "/storage/cloud/files/.thumbs" },
+};
+
 // LCOV_EXCL_START
 int32_t FileScanUtils::GetFileMetadata(std::unique_ptr<Metadata> &data)
 {

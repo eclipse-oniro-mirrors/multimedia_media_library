@@ -569,6 +569,8 @@ void CloudMediaAlbumService::CheckAlbumManualCover()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::USER_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
         ->EndWrap();
     vector<string> queryColumns = { PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_COVER_URI,
         PhotoAlbumColumns::COVER_URI_SOURCE, PhotoAlbumColumns::COVER_CLOUD_ID, PhotoAlbumColumns::ALBUM_LPATH };

@@ -21,6 +21,7 @@
  
 #include "asset_accurate_refresh.h"
 #include "file_const.h"
+#include "file_scan_utils.h"
 #include "media_file_notify_info.h"
 #include "medialibrary_unistore_manager.h"
 #include "metadata.h"

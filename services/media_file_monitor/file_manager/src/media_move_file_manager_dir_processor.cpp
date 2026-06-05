@@ -22,6 +22,9 @@
 #include "asset_accurate_refresh.h"
 #include "dfx_utils.h"
 #include "file_const.h"
+#if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
+#include "folder_scanner.h"
+#endif
 #include "media_column.h"
 #include "media_file_monitor_rdb_utils.h"
 #include "media_log.h"
@@ -212,7 +215,6 @@ bool CreateAlbumsByLPathReplace(MoveDirData &moveDirData)
             DfxUtils::GetSafePath(newLPathForThisAlbum).c_str(),
             detail.albumName.c_str(), nameForNewAlbum.c_str());
     }
-
     CHECK_AND_RETURN_RET_LOG(!moveDirData.albumIdMap.empty(), false, "albumIdMap is empty after creation");
     CHECK_AND_RETURN_RET_LOG(albumRefresh.NotifyAddAlbums(moveDirData.newAlbumIdStrings) == E_OK, false,
         "AlbumAccurateRefresh NotifyAddAlbums failed");
@@ -235,7 +237,7 @@ bool DeleteAlbumsByIds(const std::vector<int32_t> &albumIds)
 
     AlbumAccurateRefresh albumRefresh;
     int32_t deletedRows = 0;
-    int32_t ret = albumRefresh.Delete(deletedRows, predicates);
+    int32_t ret = albumRefresh.LogicalDeleteReplaceByUpdate(predicates, deletedRows);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, false,
         "DeleteAlbumsByIds failed, ret: %{public}d, deletedRows: %{public}d", ret, deletedRows);
 
@@ -379,6 +381,8 @@ void MediaMoveFileManagerDirProcessor::Process(const MediaNotifyInfo &notifyInfo
     // Recover from trash
     if (notifyInfo.beforePath.find(FILE_MANAGER_TRASH_PATH) == 0) {
         MEDIA_DEBUG_LOG("Recover from trash, skip dir move");
+        FolderScanner fs(notifyInfo);
+        fs.Run();
         return;
     }
 
