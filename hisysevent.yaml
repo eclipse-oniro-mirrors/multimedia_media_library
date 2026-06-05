@@ -307,6 +307,14 @@ MEDIALIB_PHOTO_INFO:
   AUTO_PAUSE_COUNT: { type: INT32, desc: Count of batch download task that status is auto paused }
   SUCC_TOTAL_SIZE: { type: INT64, desc: Total size of batch download task that status is succeed }
   SUCC_TOTAL_TIME: { type: INT64, desc: Total time of batch download task that status is succeed }
+  FILEMANAGER_LOCAL_IMAGE_COUNT: { type: INT32, desc: Count of local images in file manager }
+  FILEMANAGER_LOCAL_VIDEO_COUNT: { type: INT32, desc: Count of local videos in file manager }
+  FILEMANAGER_CLOUD_IMAGE_COUNT: { type: INT32, desc: Count of cloud images in file manager }
+  FILEMANAGER_CLOUD_VIDEO_COUNT: { type: INT32, desc: Count of cloud videos in file manager }
+  FILEMANAGER_SHARED_IMAGE_COUNT: { type: INT32, desc: Count of shared images in file manager }
+  FILEMANAGER_SHARED_VIDEO_COUNT: { type: INT32, desc: Count of shared videos in file manager }
+  FILEMANAGER_ALBUM_COUNT: { type: INT32, desc: Count of albums in file manager }
+  UPLOAD_FILEMANAGER_ALBUM_COUNT: { type: INT32, desc: Count albums uploaded to file manager }
 
 MEDIALIB_AGING_LCD_INFO:
   __BASE: { type: STATISTIC, level: CRITICAL, desc: Aging the statistics of the LCD image once, preserve: true }

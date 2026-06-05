@@ -268,7 +268,15 @@ void DfxReporter::ReportPhotoInfo(const PhotoStatistics& stats)
         "SOURCE_ALBUM_COUNT", stats.sourceAlbumCount,
         "UPLOAD_USER_ALBUM_COUNT", stats.uploadUserAlbumCount,
         "UPLOAD_SOURCE_ALBUM_COUNT", stats.uploadSourceAlbumCount,
-        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount);
+        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount,
+        "FILEMANAGER_LOCAL_IMAGE_COUNT", stats.fileManagerLocalImageCount,
+        "FILEMANAGER_LOCAL_VIDEO_COUNT", stats.fileManagerLocalVideoCount,
+        "FILEMANAGER_CLOUD_IMAGE_COUNT", stats.fileManagerCloudImageCount,
+        "FILEMANAGER_CLOUD_VIDEO_COUNT", stats.fileManagerCloudVideoCount,
+        "FILEMANAGER_SHARED_IMAGE_COUNT", stats.fileManagerSharedImageCount,
+        "FILEMANAGER_SHARED_VIDEO_COUNT", stats.fileManagerSharedVideoCount,
+        "FILEMANAGER_ALBUM_COUNT", stats.fileManagerAlbumCount,
+        "UPLOAD_FILEMANAGER_ALBUM_COUNT", stats.uploadFileManagerAlbumCount);
     if (ret != 0) {
         MEDIA_ERR_LOG("ReportPhotoInfo error:%{public}d", ret);
     }
@@ -964,17 +972,32 @@ int32_t DfxReporter::ReportAncoCountFormatInfo(const AncoCountFormatInfo& report
 {
     int ret = -1;
     if (firstLoad) {
-        ret = HiSysEventWrite(
-            MEDIA_LIBRARY,
-            "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
-            HiviewDFX::HiSysEvent::EventType::STATISTIC,
-            "LOAD_START_TIME", reportData.loadStartTime,
-            "LOAD_END_TIME", reportData.loadEndTime,
-            "ALBUM_COUNT", reportData.albumCount,
-            "IMAGE_COUNT", reportData.imageCount,
-            "VIDEO_COUNT", reportData.videoCount,
-            "ASSET_FORMAT_DISTRIBUTION", reportData.assetFormatDistribution);
-        MEDIA_INFO_LOG("Report AncoFirstLoadInfo ret: %{public}d", ret);
+        if (reportData.loadType == LoadType::LAKE_FIRST_LOAD) {
+            ret = HiSysEventWrite(
+                MEDIA_LIBRARY,
+                "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
+                HiviewDFX::HiSysEvent::EventType::STATISTIC,
+                "LOAD_TYPE", reportData.loadType,
+                "LOAD_START_TIME", reportData.loadStartTime,
+                "LOAD_END_TIME", reportData.loadEndTime,
+                "ALBUM_COUNT", reportData.albumCount,
+                "IMAGE_COUNT", reportData.imageCount,
+                "VIDEO_COUNT", reportData.videoCount,
+                "ASSET_FORMAT_DISTRIBUTION", reportData.assetFormatDistribution);
+            MEDIA_INFO_LOG("Report AncoFirstLoadInfo ret: %{public}d", ret);
+        } else {
+            ret = HiSysEventWrite(
+                MEDIA_LIBRARY,
+                "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
+                HiviewDFX::HiSysEvent::EventType::STATISTIC,
+                "LOAD_TYPE", reportData.loadType,
+                "LOAD_START_TIME", reportData.loadStartTime,
+                "LOAD_END_TIME", reportData.loadEndTime,
+                "ALBUM_COUNT", reportData.albumCount,
+                "IMAGE_COUNT", reportData.imageCount,
+                "VIDEO_COUNT", reportData.videoCount);
+            MEDIA_INFO_LOG("Report FileManagerFirstLoadInfo ret: %{public}d", ret);
+        }
     } else {
         ret = HiSysEventWrite(
             MEDIA_LIBRARY,

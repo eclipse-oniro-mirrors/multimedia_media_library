@@ -153,6 +153,24 @@ int32_t DfxDatabaseUtils::QueryFromPhotos(int32_t mediaType, int32_t position)
     return count;
 }
 
+int32_t DfxDatabaseUtils::QueryFileManagerFromPhotos(int32_t mediaType, int32_t position)
+{
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_TYPE, mediaType);
+    predicates.EqualTo(PhotoColumn::PHOTO_POSITION, position);
+    predicates.And()->EqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
+
+    std::vector<std::string> columns = { "count(1) AS count" };
+    std::string queryColumn = "count";
+
+    int32_t count;
+    int32_t errCode = QueryInt(predicates, columns, queryColumn, count);
+    CHECK_AND_PRINT_LOG(errCode == E_OK, "query photos fail: %{public}d mediaType: %{public}d position: %{public}d",
+        errCode, mediaType, position);
+
+    return count;
+}
+
 AlbumInfo DfxDatabaseUtils::QueryAlbumInfoBySubtype(int32_t albumSubtype)
 {
     AlbumInfo albumInfo;

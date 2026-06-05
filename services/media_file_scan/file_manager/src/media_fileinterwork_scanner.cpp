@@ -180,6 +180,7 @@ int32_t MediaFileInterworkScanner::ExecutePhaseTwo()
 
     ret = MediaFileInterworkUtil::SetScannerTaskStatus(TASK_STATUS_COMPLETED);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "SetScannerTaskStatus failed, ret = %{public}d", ret);
+    MediaFileInterworkUtil::ReportFileManagerFirstLoad();
     MEDIA_INFO_LOG("ExecutePhaseTwo completed successfully");
     return E_OK;
 }
@@ -631,6 +632,8 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
     CHECK_AND_RETURN_RET_LOG(SetRestoreFileAlbumId(destRestoreFiles) == E_OK, E_ERR, "get album failed");
     int32_t result = BatchInsert(destRestoreFiles);
     CHECK_AND_RETURN_RET_LOG(result == E_OK, result, "BatchInsert photos failed");
+    MediaFileInterworkUtil::AddImageAndVideoCount(uniqueNumber.imageTotalNumber, uniqueNumber.videoTotalNumber);
+    MediaFileInterworkUtil::AddAlbumCount(static_cast<int32_t>(albumCache_.size()));
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::SCAN_FILE_BUSSINESS_NAME);
     errCode = BatchUpdateTimePending(destRestoreFiles, assetRefresh);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "BatchUpdateTimePending failed. errCode: %{public}d", errCode);
@@ -747,6 +750,7 @@ void MediaFileInterworkScanner::ScanFileManager()
     if (status == TASK_STATUS_IDLE) {
         status = TASK_STATUS_PHASE_ONE;
         MediaFileInterworkUtil::SetScannerTaskStatus(status);
+        MediaFileInterworkUtil::SetLoadFirstTime();
     }
     taskThread_ = std::thread([this, status]() {
         std::lock_guard<std::mutex> lock(asyncTaskMutex_);

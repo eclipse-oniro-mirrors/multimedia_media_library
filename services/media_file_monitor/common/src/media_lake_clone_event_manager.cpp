@@ -28,6 +28,11 @@
 #include "media_log.h"
 #include "media_thread.h"
 #include "parameters.h"
+#include "preferences.h"
+#include "dfx_anco_manager.h"
+#include "dfx_const.h"
+#include "dfx_reporter.h"
+#include "preferences_helper.h"
 
 namespace OHOS::Media {
 const int32_t BACKUP_SA_ID = 5203;
@@ -170,6 +175,14 @@ void MediaLakeCloneEventManager::RunGlobalScanner()
         pref->PutInt(FILE_PROCESS_STATUS_KEY, TASK_STATUS_PHASE_ONE);
         pref->Flush();
         MEDIA_INFO_LOG("Set task status to: %{public}d", TASK_STATUS_PHASE_ONE);
+        std::shared_ptr<NativePreferences::Preferences> prefs =
+            NativePreferences::PreferencesHelper::GetPreferences(DFX_COMMON_XML, errCode);
+        if (errCode != E_OK || prefs == nullptr) {
+            MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
+            return;
+        }
+        prefs->PutInt(SCAN_FILEMANAGER_LOAD_TYPE, LoadType::FILEMANAGER_CLONE_FIRST_LOAD);
+        prefs->FlushSync();
     } else {
         MEDIA_ERR_LOG("Failed to get preferences, errCode = %{public}d", errCode);
     }

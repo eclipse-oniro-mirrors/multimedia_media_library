@@ -28,6 +28,7 @@
 #include "medialibrary_notify.h"
 #include "media_file_utils.h"
 #include "thumbnail_service.h"
+#include "medialibrary_tracer.h"
 
 using namespace std;
 
@@ -87,6 +88,8 @@ int32_t FileScanner::Run(vector<MediaNotifyInfo> fileInfos)
 
 void FileScanner::RefreshUpdateAssetInfo(FileParser &fileParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::RefreshUpdateAssetInfo");
     auto fileInfo = fileParser.GetFileInfo();
     fileParser.UpdateAssetInfo();
     albumIds_.push_back(to_string(fileInfo.ownerAlbumId));
@@ -100,6 +103,8 @@ void FileScanner::RefreshUpdateAssetInfo(FileParser &fileParser)
 
 void FileScanner::RefreshUpdateAssetAlbumInfo(MediaNotifyInfo &notifyFileInfo, FileParser &fileParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::RefreshUpdateAssetAlbumInfo");
     if (!CheckUpdateFolderParserInfo(notifyFileInfo)) {
         RefreshAssetInfoForSkipFile(fileParser, FileUpdateType::UPDATE_ALBUM);
         MEDIA_WARN_LOG("skip file: %{private}s", notifyFileInfo.afterPath.c_str());
@@ -122,6 +127,8 @@ void FileScanner::RefreshUpdateAssetAlbumInfo(MediaNotifyInfo &notifyFileInfo, F
 
 void FileScanner::GetInsertAssetInfo(MediaNotifyInfo &fileInfo, FileParser &fileParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::GetInsertAssetInfo");
     if (!CheckUpdateFolderParserInfo(fileInfo)) {
         MEDIA_WARN_LOG("skip file: %{private}s", fileInfo.afterPath.c_str());
         return;
@@ -181,6 +188,8 @@ string FileScanner::GetFolder(string file)
 
 void FileScanner::RefreshInsertAssetInfo()
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileScanner::RefreshInsertAssetInfo");
     if (insertFileInfos_.empty()) {
         MEDIA_INFO_LOG("no insert assets");
         return;

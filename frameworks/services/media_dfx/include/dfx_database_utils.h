@@ -41,6 +41,7 @@ struct DfxCompatibleInfo {
 class DfxDatabaseUtils {
 public:
     EXPORT static int32_t QueryFromPhotos(int32_t mediaType, int32_t position);
+    EXPORT static int32_t QueryFileManagerFromPhotos(int32_t mediaType, int32_t position);
     EXPORT static AlbumInfo QueryAlbumInfoBySubtype(int32_t albumSubtype);
     EXPORT static std::vector<PhotoInfo> QueryDirtyCloudPhoto();
     EXPORT static int32_t QueryAnalysisVersion(const std::string &table, const std::string &column);
