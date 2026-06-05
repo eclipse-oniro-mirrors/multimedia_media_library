@@ -52,7 +52,7 @@ export struct AlbumPickerComponent {
   onAlbumClick?: (albumInfo: AlbumInfo) => boolean;
   onEmptyAreaClick?: EmptyAreaClickCallback;
   @Watch('onChanged') albumPickerController?: AlbumPickerController; 
-  private proxy: UIExtensionProxy | undefined;
+  private proxy: SecurityUIExtensionProxy | undefined;
 
   private onChanged(): void {
     if (!this.proxy) {
