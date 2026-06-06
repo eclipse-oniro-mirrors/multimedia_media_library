@@ -32,6 +32,7 @@
 #include "thumbnail_service.h"
 #include "media_string_utils.h"
 #include "medialibrary_photo_operations.h"
+#include "moving_photo_file_utils.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -584,8 +585,27 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
     SetAssetAlbumValues(values);
     SetAssetLocationValues(values);
     SetAssetSubtypeValues(values);
+    SetAssetLivePhoto4dValues(values);
 
     return values;
+}
+
+void FileParser::SetAssetLivePhoto4dValues(NativeRdb::ValuesBucket &values)
+{
+    uint32_t version = 0;
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(fileInfo_.filePath, version);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "get extraData version failed, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("livePhoto4d: Live photo 4d version: %{public}u", version);
+    if (fileInfo_.livePhoto4dStatus == static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8) ||
+        version == LIVE_PHOTO_4D_VERSION) {
+        values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+        if (version != LIVE_PHOTO_4D_VERSION) {
+            ret = MovingPhotoFileUtils::ModifyExtraDataVersion(fileInfo_.filePath,
+                static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
+            CHECK_AND_RETURN_LOG(ret == E_OK, "modify extraData version failed, ret: %{public}d", ret);
+        }
+    }
 }
 
 void FileParser::SetAssetAlbumValues(NativeRdb::ValuesBucket &values)
