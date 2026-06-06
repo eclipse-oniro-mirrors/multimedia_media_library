@@ -3501,7 +3501,7 @@ static int32_t ProcessLivePhotoVideoPath(const string &path, const string &realP
     CHECK_AND_RETURN_RET_LOG(!cacheDir.empty(), E_INVALID_PATH, "Failed to get live photo cache dir");
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir), E_HAS_FS_ERROR,
         "Cannot create dir %{private}s", cacheDir.c_str());
-    string tempVideoPath = cacheDir + "/video_livephoto" + MediaFileUtils::GetExtensionFromPath(path);
+    string tempVideoPath = cacheDir + "/video_livephoto." + MediaFileUtils::GetExtensionFromPath(path);
 
     int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(realPath, "", tempVideoPath, "");
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to convert live photo, ret:%{public}d", ret);
@@ -4139,36 +4139,49 @@ int32_t MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(const std::sh
     return E_OK;
 }
 
+static int32_t RevertLivePhotoFiltersWithoutEditData(const std::string &sourcePath, const std::string &sourceVideoPath,
+    const std::string &storagePath, const std::string &path)
+{
+    int64_t coverPosition = 0;
+    int32_t ret = MovingPhotoFileUtils::GetLivePhotoCoverPosition(sourceVideoPath, storagePath, coverPosition);
+    if (ret != E_OK) {
+        MEDIA_WARN_LOG("Failed to get cover position, use default 0, ret:%{public}d", ret);
+        coverPosition = 0;
+    }
+    string livePhotoPath;
+    CHECK_AND_RETURN_RET_LOG(
+        MovingPhotoFileUtils::ConvertToLivePhoto(sourcePath, sourceVideoPath, "", coverPosition,
+            livePhotoPath) == E_OK,
+        E_HAS_FS_ERROR, "Failed to convert to livePhoto");
+
+    ret = MediaFileAccessUtils::MoveFileInEditScene(livePhotoPath, path);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("failed to move live photo file, ret: %{public}d", ret);
+        CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(livePhotoPath),
+            "failed to delete cache file, errno: %{public}d", errno);
+        return E_HAS_FS_ERROR;
+    }
+    (void)MediaFileUtils::DeleteFile(sourcePath);
+    (void)MediaFileUtils::DeleteFile(sourceVideoPath);
+    return E_OK;
+}
+
 int32_t MediaLibraryPhotoOperations::RevertFiltersWithoutEditData(const std::shared_ptr<FileAsset> &fileAsset,
     const std::string &path, const std::string &sourcePath)
 {
     std::string storagePath = fileAsset->GetStoragePath();
-    bool isLivePhoto = MovingPhotoFileUtils::IsLivePhotoAsset(storagePath);
-    int32_t subtype = static_cast<int32_t>(fileAsset->GetPhotoSubType());
     std::string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourcePath);
+    bool isLivePhoto = MovingPhotoFileUtils::IsLivePhotoAsset(storagePath);
+    int32_t subtype = fileAsset->GetPhotoSubType();
+    int32_t originalSubtype = fileAsset->GetOriginalSubType();
+    bool isRevertMovingPhotoGraffiti = originalSubtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
+        subtype == static_cast<int32_t>(PhotoSubType::DEFAULT);
+    int32_t fileSourceType = fileAsset->GetFileSourceType();
+    bool isLivePhotoSourceType = fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE) ||
+        fileSourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER);
 
-    if (isLivePhoto) {
-        int64_t coverPosition = 0;
-        int32_t ret = MovingPhotoFileUtils::GetLivePhotoCoverPosition(sourceVideoPath, storagePath, coverPosition);
-        if (ret != E_OK) {
-            MEDIA_WARN_LOG("Failed to get cover position, use default 0, ret:%{public}d", ret);
-            coverPosition = 0;
-        }
-        string livePhotoPath;
-        CHECK_AND_RETURN_RET_LOG(
-            MovingPhotoFileUtils::ConvertToLivePhoto(sourcePath, sourceVideoPath, "", coverPosition,
-                livePhotoPath) == E_OK,
-            E_HAS_FS_ERROR, "Failed to convert to livePhoto");
-
-        ret = MediaFileAccessUtils::MoveFileInEditScene(livePhotoPath, path);
-        if (ret != E_OK) {
-            MEDIA_ERR_LOG("failed to move live photo file, ret: %{public}d", ret);
-            CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteFile(livePhotoPath),
-                "failed to delete cache file, errno: %{public}d", errno);
-            return E_HAS_FS_ERROR;
-        }
-        (void)MediaFileUtils::DeleteFile(sourcePath);
-        (void)MediaFileUtils::DeleteFile(sourceVideoPath);
+    if (isLivePhoto || (isRevertMovingPhotoGraffiti && isLivePhotoSourceType)) {
+        return RevertLivePhotoFiltersWithoutEditData(sourcePath, sourceVideoPath, storagePath, path);
     } else {
         if (!storagePath.empty() && MediaFileUtils::IsFileExists(storagePath)) {
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
@@ -4202,8 +4215,8 @@ int32_t MediaLibraryPhotoOperations::RevertFiltersWithEditDataLivePhoto(const st
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir), E_HAS_FS_ERROR,
         "Cannot create dir %{private}s", cacheDir.c_str());
     
-    string tempImagePath = cacheDir + "/image_livephoto" + MediaFileUtils::GetExtensionFromPath(path);
-    string tempVideoPath = cacheDir + "/video_livephoto" + MediaFileUtils::GetExtensionFromPath(path);
+    string tempImagePath = cacheDir + "/image_livephoto." + MediaFileUtils::GetExtensionFromPath(path);
+    string tempVideoPath = cacheDir + "/video_livephoto." + MediaFileUtils::GetExtensionFromPath(path);
     
     int32_t ret = AddFiltersToPhoto(sourcePath, tempImagePath, editData, "", true);
     if (ret != E_OK) {
@@ -4235,9 +4248,16 @@ int32_t MediaLibraryPhotoOperations::RevertFiltersWithEditData(const std::shared
 
     std::string storagePath = fileAsset->GetStoragePath();
     bool isLivePhoto = MovingPhotoFileUtils::IsLivePhotoAsset(storagePath);
-    int32_t subtype = static_cast<int32_t>(fileAsset->GetPhotoSubType());
 
-    if (isLivePhoto) {
+    int32_t subtype = fileAsset->GetPhotoSubType();
+    int32_t originalSubtype = fileAsset->GetOriginalSubType();
+    bool isRevertMovingPhotoGraffiti = originalSubtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
+        subtype == static_cast<int32_t>(PhotoSubType::DEFAULT);
+    int32_t fileSourceType = fileAsset->GetFileSourceType();
+    bool isLivePhotoSourceType = fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE) ||
+        fileSourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER);
+
+    if (isLivePhoto || (isRevertMovingPhotoGraffiti && isLivePhotoSourceType)) {
         return RevertFiltersWithEditDataLivePhoto(fileAsset, path, sourcePath, editData);
     }
     if (MediaLibraryPhotoOperations::AddFiltersToPhoto(sourcePath, path, editData, "", true) != E_OK) {
@@ -4366,7 +4386,7 @@ int32_t MediaLibraryPhotoOperations::RevertLivePhotoAsset(const string &realPath
     } else {
         string cacheDir = MovingPhotoFileUtils::GetLivePhotoCacheDir(imagePath);
         CHECK_AND_RETURN_RET_LOG(!cacheDir.empty(), E_INVALID_PATH, "Failed to get live photo cache dir");
-        string tempImagePath = cacheDir + "/image_livephoto" + MediaFileUtils::GetExtensionFromPath(imagePath);
+        string tempImagePath = cacheDir + "/image_livephoto." + MediaFileUtils::GetExtensionFromPath(imagePath);
 
         string editData;
         CHECK_AND_RETURN_RET_LOG(ReadEditdataFromFile(editDataCameraPath, editData) == E_OK, E_HAS_FS_ERROR,

@@ -46,6 +46,7 @@ const std::string LIVE_PHOTO_VERSION_AND_FRAME_NUM = "VersionAndFrameNum";
 const std::string LOCAL_ROOT_MEDIA_DIR = "/storage/media/local/files/";
 constexpr int32_t HEX_BASE = 16;
 constexpr int64_t AUTO_PLAY_DURATION_MS = 600;
+static const mode_t CHOWN_RO_USR_GRP = 0644;
 
 // LCOV_EXCL_START
 static string GetVersionPositionTag(uint32_t frame, bool hasExtraData,
@@ -735,6 +736,63 @@ bool MovingPhotoFileUtils::IsLivePhotoAsset(const string &realPath)
     return !realPath.empty() && MediaFileUtils::IsFileExists(realPath) && IsLivePhoto(realPath);
 }
 
+static int32_t SendLivePhotoByReadWrite(int32_t srcFd, int32_t destFd, int64_t sizeToSend, off_t srcOffset)
+{
+    if (lseek(srcFd, srcOffset, SEEK_SET) == -1) {
+        MEDIA_ERR_LOG("Failed to lseek srcFd, errno=%{public}d", errno);
+        return E_HAS_FS_ERROR;
+    }
+    constexpr uint32_t bufferSize = 16 * 1024;
+    char buffer[bufferSize];
+    int64_t remaining = sizeToSend;
+    while (remaining > 0) {
+        size_t toRead = static_cast<size_t>(min(static_cast<int64_t>(bufferSize), remaining));
+        ssize_t bytesRead = read(srcFd, buffer, toRead);
+        if (bytesRead < 0) {
+            CHECK_AND_CONTINUE(errno != EINTR);
+            MEDIA_ERR_LOG("Failed to read, errno=%{public}d", errno);
+            return E_HAS_FS_ERROR;
+        }
+        if (bytesRead == 0) {
+            MEDIA_ERR_LOG("Unexpected EOF, remaining=%{public}" PRId64, remaining);
+            return E_HAS_FS_ERROR;
+        }
+        ssize_t totalWritten = 0;
+        while (totalWritten < bytesRead) {
+            ssize_t bytesWritten = write(destFd, buffer + totalWritten, bytesRead - totalWritten);
+            if (bytesWritten < 0) {
+                CHECK_AND_CONTINUE(errno != EINTR);
+                MEDIA_ERR_LOG("Failed to write, errno=%{public}d", errno);
+                return E_HAS_FS_ERROR;
+            }
+            totalWritten += bytesWritten;
+        }
+        remaining -= bytesRead;
+    }
+    return E_OK;
+}
+
+static void RemovePathIfExists(const std::string &path)
+{
+    if (access(path.c_str(), F_OK) != 0) {
+        if (errno == ENOENT) {
+            MEDIA_INFO_LOG("file does not exist, no need to remove: %{public}s, errno: %{public}d",
+                MediaFileUtils::DesensitizePath(path).c_str(), errno);
+            return;
+        } else {
+            MEDIA_ERR_LOG("access failed for path: %{public}s, errno: %{public}d",
+                MediaFileUtils::DesensitizePath(path).c_str(), errno);
+            return;
+        }
+    }
+    if (unlink(path.c_str()) != 0) {
+        MEDIA_ERR_LOG("unlink failed for path: %{public}s, errno: %{public}d",
+            MediaFileUtils::DesensitizePath(path).c_str(), errno);
+        return;
+    }
+    MEDIA_DEBUG_LOG("unlink success for path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+}
+
 static int32_t SendLivePhoto(const int32_t &livePhotoFd, const string &destPath, int64_t sizeToSend, off_t &offset)
 {
     struct stat64 statSrc {};
@@ -753,17 +811,26 @@ static int32_t SendLivePhoto(const int32_t &livePhotoFd, const string &destPath,
         MEDIA_ERR_LOG("file is not real path: %{private}s, errno: %{public}d", destPath.c_str(), errno);
         return E_HAS_FS_ERROR;
     }
-    UniqueFd destFd(open(absDestPath.c_str(), O_WRONLY));
+    RemovePathIfExists(absDestPath);
+    UniqueFd destFd(open(absDestPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, CHOWN_RO_USR_GRP));
     if (destFd.Get() < 0) {
         MEDIA_ERR_LOG("Failed to open dest path:%{private}s, errno:%{public}d", absDestPath.c_str(), errno);
         return destFd.Get();
     }
 
+    off_t originalOffset = offset;
+    int64_t originalSizeToSend = sizeToSend;
     while (sizeToSend > 0) {
         ssize_t sent = sendfile(destFd.Get(), livePhotoFd, &offset, sizeToSend);
         if (sent < 0) {
+            if (errno == EINVAL) {
+                MEDIA_INFO_LOG("sendfile not supported, fallback to read/write");
+                CHECK_AND_RETURN_RET_LOG(ftruncate(destFd.Get(), 0) == 0, E_HAS_FS_ERROR,
+                    "Failed to ftruncate dest file, errno=%{public}d", errno);
+                return SendLivePhotoByReadWrite(livePhotoFd, destFd.Get(), originalSizeToSend, originalOffset);
+            }
             MEDIA_ERR_LOG("Failed to sendfile with errno=%{public}d", errno);
-            return sent;
+            return static_cast<int32_t>(sent);
         }
         sizeToSend -= sent;
     }

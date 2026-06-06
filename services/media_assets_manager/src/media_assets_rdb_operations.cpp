@@ -475,6 +475,7 @@ const static vector<string> EDITED_COLUMN_VECTOR = {
     MediaColumn::MEDIA_DATE_TAKEN,
     PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
     PhotoColumn::PHOTO_STORAGE_PATH,
+    PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
 };
 
 // 图库编辑还原
