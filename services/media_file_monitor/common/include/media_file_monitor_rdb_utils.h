@@ -24,6 +24,12 @@
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
+
+enum class AlbumNotifyType {
+    COMMON_ALBUM,
+    ANALYSIS_ALBUM,
+};
+
 struct LakeMonitorQueryResultData {
     int32_t fileId = -1;
     int32_t albumId = -1;
@@ -79,7 +85,9 @@ public:
         std::unordered_map<int32_t, int32_t> &albumCounts, std::vector<LakeMonitorQueryResultData> &dataList);
     static void DeleteRelatedResource(const std::string &photoPath, const std::string &fileId,
         const std::string &dateTaken);
-    static void NotifyAnalysisAlbum(const std::vector<std::string>& albumIds);
+    static void NotifyAlbums(const std::vector<std::string>& albumIds,
+        AlbumNotifyType albumType = AlbumNotifyType::COMMON_ALBUM,
+        NotifyType notifyType = NotifyType::NOTIFY_UPDATE);
     static bool HandleFileManagerCloudAssets(std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh,
         std::vector<LakeMonitorQueryResultData> dataList);
     static bool DeleteFileManagerDirByFileManagerPath(const std::string &path,

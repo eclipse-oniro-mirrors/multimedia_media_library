@@ -20,11 +20,14 @@
 #include "asset_accurate_refresh.h"
 #include "media_file_utils.h"
 #include "medialibrary_asset_operations.h"
+#include "medialibrary_notify.h"
 #include "moving_photo_file_utils.h"
 #include "userfile_manager_types.h"
 #include "thumbnail_service.h"
+#include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "photo_album_column.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -160,13 +163,22 @@ void FileManagerParser::UpdateTrashedAssetinfo()
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, rowDataBefore.fileId);
 
+    auto watch = MediaLibraryNotify::GetInstance();
+
     if (rowDataBefore.position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) {
         // 处理端云合一图，置位为CLOUD
         HandleUpdateCloudAsset(predicates, PhotoPositionType::CLOUD);
+        CHECK_AND_EXECUTE(watch == nullptr,
+            watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(rowDataBefore.fileId), NotifyType::NOTIFY_UPDATE));
     } else if (rowDataBefore.position == static_cast<int32_t>(PhotoPositionType::LOCAL)) {
         // 处理本地图
         HandleTrashedLocalAndCloudAsset(predicates);
+        CHECK_AND_EXECUTE(watch == nullptr,
+            watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(rowDataBefore.fileId), NotifyType::NOTIFY_REMOVE));
     }
+
+    std::string albumUri = PhotoAlbumColumns::ALBUM_URI_PREFIX + to_string(rowDataBefore.ownerAlbumId);
+    CHECK_AND_EXECUTE(watch == nullptr, watch->Notify(albumUri, NotifyType::NOTIFY_UPDATE));
 }
 
 void FileManagerParser::UpdateRecoverAssetinfo()
@@ -175,14 +187,21 @@ void FileManagerParser::UpdateRecoverAssetinfo()
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, rowDataAfter.fileId);
 
+    auto watch = MediaLibraryNotify::GetInstance();
+
     if (rowDataAfter.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
         // 处理纯云图
         HandleUpdateCloudAsset(predicates, PhotoPositionType::LOCAL_AND_CLOUD);
+        CHECK_AND_EXECUTE(watch == nullptr,
+            watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(rowDataAfter.fileId), NotifyType::NOTIFY_UPDATE));
     } else if (rowDataAfter.position == static_cast<int32_t>(PhotoPositionType::LOCAL)) {
         // 处理本地图
         MEDIA_WARN_LOG("Database has exists the local asset record, fileInfo: %{public}s",
             ToString().c_str());
     }
+
+    std::string albumUri = PhotoAlbumColumns::ALBUM_URI_PREFIX + to_string(rowDataAfter.ownerAlbumId);
+    CHECK_AND_EXECUTE(watch == nullptr, watch->Notify(albumUri, NotifyType::NOTIFY_UPDATE));
 }
 
 void FileManagerParser::HandleUpdateCloudAsset(NativeRdb::AbsRdbPredicates &predicates,
