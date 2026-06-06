@@ -2015,6 +2015,34 @@ int32_t ThumbnailUtils::QueryRegenerateAstcInfos(ThumbRdbOpt &opts, vector<Thumb
         E_ERR, "QueryThumbnailDataInfos failed");
     return E_OK;
 }
+
+size_t ThumbnailUtils::CalcLcdFileSize(const std::string &lcdExPath, const std::string &lcdPath)
+{
+    std::string paths[] = {lcdExPath, lcdPath};
+    for (const auto& path : paths) {
+        size_t lcdFileSize = 0;
+        if (!path.empty() && MediaFileUtils::GetFileSize(path, lcdFileSize)) {
+            return lcdFileSize;
+        }
+    }
+    return 0;
+}
+
+bool ThumbnailUtils::CalcLcdSize(const std::string &lcdPath, std::string &lcdSizeStr)
+{
+    if (lcdPath.empty()) {
+        MEDIA_ERR_LOG("lcdPath is empty");
+        return false;
+    }
+    Size lcdSize = {0, 0};
+    if (!GetThumbSizeByPath(lcdPath, lcdSize) || lcdSize.width <= 0 || lcdSize.height <= 0) {
+        MEDIA_ERR_LOG("failed to get lcd size, lcdPath: %{public}s, width: %{public}d, height: %{public}d",
+            DfxUtils::GetSafePath(lcdPath).c_str(), lcdSize.width, lcdSize.height);
+        return false;
+    }
+    lcdSizeStr = std::to_string(lcdSize.width) + ":" + std::to_string(lcdSize.height);
+    return true;
+}
 // LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

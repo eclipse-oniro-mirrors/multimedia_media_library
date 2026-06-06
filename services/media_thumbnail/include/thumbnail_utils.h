@@ -125,6 +125,8 @@ public:
     EXPORT static void PostProcPictureSource(ThumbnailData &data);
     EXPORT static bool GetLocalThmSize(const ThumbnailData &data, Size& size);
     EXPORT static int32_t QueryRegenerateAstcInfos(ThumbRdbOpt &opts, std::vector<ThumbnailData> &infos);
+    EXPORT static size_t CalcLcdFileSize(const std::string &lcdExPath, const std::string &lcdPath);
+    EXPORT static bool CalcLcdSize(const std::string &lcdPath, std::string &lcdSizeStr);
 
 private:
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryThumbnailSet(ThumbRdbOpt &opts);
