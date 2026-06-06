@@ -38,6 +38,16 @@ struct DfxCompatibleInfo {
     int32_t futureField = 0;
 };
 
+struct DocsScanFolderStats {
+    std::string dirPath;
+    int32_t imageCount = 0;
+    int32_t videoCount = 0;
+    std::string formatDistribution = "{}";
+    std::string sizeDistribution = "[]";
+    int32_t atimeWithin30min = 0;
+    int32_t atimeDiffSec = 0;
+};
+
 class DfxDatabaseUtils {
 public:
     EXPORT static int32_t QueryFromPhotos(int32_t mediaType, int32_t position);
@@ -61,6 +71,13 @@ public:
     EXPORT static int32_t QueryLcdFromPhotos(std::vector<int32_t> thumbStatus, int32_t isFavorite);
     EXPORT static int32_t QueryAlbumCoverCount();
     EXPORT static int32_t QueryPhotoExtSmartCount();
+    EXPORT static int32_t CreateDocsMediaScanTempTable();
+    EXPORT static int32_t InsertDocsScanFolderStats(const DocsScanFolderStats &stats);
+    EXPORT static bool IsDirPathInDocsScanTempTable(const std::string &dirPath);
+    EXPORT static int32_t QueryDocsScanFolderStats(int32_t offset, int32_t limit,
+        std::vector<DocsScanFolderStats> &results);
+    EXPORT static int32_t QueryDocsScanTotalFolderCount(int32_t &count);
+    EXPORT static int32_t DropDocsMediaScanTempTable();
 
 private:
     static int32_t QueryInt(const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,
