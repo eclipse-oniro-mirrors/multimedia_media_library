@@ -899,4 +899,195 @@ HWTEST_F(CloudMediaPhotoAlbumHandlerTest, GetCreatedRecords_Album_Unique_Id, Tes
         }
     }
 }
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_ValidPath, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = std::make_shared<MDKRecord>();
+    record->SetRecordId("test-record-id");
+    std::map<std::string, MDKRecordField> data;
+    data["localPath"] = MDKRecordField(std::string("/Pictures/Camera"));
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_RootPath, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = std::make_shared<MDKRecord>();
+    record->SetRecordId("test-record-id");
+    std::map<std::string, MDKRecordField> data;
+    data["localPath"] = MDKRecordField(std::string("/"));
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_InvalidPath, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = std::make_shared<MDKRecord>();
+    record->SetRecordId("test-record-id");
+    std::map<std::string, MDKRecordField> data;
+    data["localPath"] = MDKRecordField(std::string("Pictures/Camera"));
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_EmptyPath, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = std::make_shared<MDKRecord>();
+    record->SetRecordId("test-record-id");
+    std::map<std::string, MDKRecordField> data;
+    data["localPath"] = MDKRecordField(std::string(""));
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_RelativePath, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = std::make_shared<MDKRecord>();
+    record->SetRecordId("test-record-id");
+    std::map<std::string, MDKRecordField> data;
+    data["localPath"] = MDKRecordField(std::string("./Pictures/Camera"));
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_MissingLocalPath, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = std::make_shared<MDKRecord>();
+    record->SetRecordId("test-record-id");
+    std::map<std::string, MDKRecordField> data;
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_NullRecord, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = nullptr;
+    std::map<std::string, MDKRecordField> data;
+    data["localPath"] = MDKRecordField(std::string("/Pictures/Camera"));
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ValidateLocalPath_DeepPath, TestSize.Level1)
+{
+    CloudAlbumDataConvert albumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> record = std::make_shared<MDKRecord>();
+    record->SetRecordId("test-record-id");
+    std::map<std::string, MDKRecordField> data;
+    data["localPath"] = MDKRecordField(std::string("/storage/emulated/0/DCIM/Camera/Photos"));
+    int32_t ret = albumDataConvert.ValidateLocalPath(record, data);
+    EXPECT_EQ(ret, E_OK);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_ValidLocalPath, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo albumData;
+    albumData.albumType = AlbumType::SOURCE;
+    albumData.cloudId = "";
+    albumData.albumId = 1001;
+    albumData.albumSubtype = 2049;
+    albumData.isInWhiteList = 1;
+    albumData.lpath = "/DCIM/Camera";
+    albumData.dualAlbumName = "";
+    albumData.albumNameEn = "Camera";
+    albumData.albumName = "Camera";
+    albumData.dateModified = static_cast<int64_t>(1737529312000);
+    albumData.dateAdded = static_cast<int64_t>(1737529312000);
+    albumData.bundleName = "com.bundle1";
+    albumData.localLanguage = "";
+    CloudAlbumDataConvert cloudAlbumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> mdkRecord = cloudAlbumDataConvert.ConvertToMdkRecord(albumData);
+    EXPECT_NE(nullptr, mdkRecord);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_InvalidLocalPath, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo albumData;
+    albumData.albumType = AlbumType::SOURCE;
+    albumData.cloudId = "";
+    albumData.albumId = 1002;
+    albumData.albumSubtype = 2049;
+    albumData.isInWhiteList = 1;
+    albumData.lpath = "DCIM/Camera";
+    albumData.dualAlbumName = "";
+    albumData.albumNameEn = "Camera";
+    albumData.albumName = "Camera";
+    albumData.dateModified = static_cast<int64_t>(1737529312000);
+    albumData.dateAdded = static_cast<int64_t>(1737529312000);
+    albumData.bundleName = "com.bundle1";
+    albumData.localLanguage = "";
+    CloudAlbumDataConvert cloudAlbumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> mdkRecord = cloudAlbumDataConvert.ConvertToMdkRecord(albumData);
+    EXPECT_EQ(nullptr, mdkRecord);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_EmptyLocalPath, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo albumData;
+    albumData.albumType = AlbumType::SOURCE;
+    albumData.cloudId = "";
+    albumData.albumId = 1003;
+    albumData.albumSubtype = 2049;
+    albumData.isInWhiteList = 1;
+    albumData.lpath = "";
+    albumData.dualAlbumName = "";
+    albumData.albumNameEn = "Camera";
+    albumData.albumName = "Camera";
+    albumData.dateModified = static_cast<int64_t>(1737529312000);
+    albumData.dateAdded = static_cast<int64_t>(1737529312000);
+    albumData.bundleName = "com.bundle1";
+    albumData.localLanguage = "";
+    CloudAlbumDataConvert cloudAlbumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> mdkRecord = cloudAlbumDataConvert.ConvertToMdkRecord(albumData);
+    EXPECT_EQ(nullptr, mdkRecord);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_NoValidationForUpdate, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo albumData;
+    albumData.albumType = AlbumType::SOURCE;
+    albumData.cloudId = "test-cloud-id";
+    albumData.albumId = 1004;
+    albumData.albumSubtype = 2049;
+    albumData.isInWhiteList = 1;
+    albumData.lpath = "DCIM/Camera";
+    albumData.dualAlbumName = "";
+    albumData.albumNameEn = "Camera";
+    albumData.albumName = "Camera";
+    albumData.dateModified = static_cast<int64_t>(1737529312000);
+    albumData.dateAdded = static_cast<int64_t>(1737529312000);
+    albumData.bundleName = "com.bundle1";
+    albumData.localLanguage = "";
+    CloudAlbumDataConvert cloudAlbumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_METADATA_MODIF};
+    std::shared_ptr<MDKRecord> mdkRecord = cloudAlbumDataConvert.ConvertToMdkRecord(albumData);
+    EXPECT_NE(nullptr, mdkRecord);
+}
+
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_RootLocalPath, TestSize.Level1)
+{
+    CloudMdkRecordPhotoAlbumVo albumData;
+    albumData.albumType = AlbumType::SOURCE;
+    albumData.cloudId = "";
+    albumData.albumId = 1005;
+    albumData.albumSubtype = 2049;
+    albumData.isInWhiteList = 1;
+    albumData.lpath = "/";
+    albumData.dualAlbumName = "";
+    albumData.albumNameEn = "Root";
+    albumData.albumName = "Root";
+    albumData.dateModified = static_cast<int64_t>(1737529312000);
+    albumData.dateAdded = static_cast<int64_t>(1737529312000);
+    albumData.bundleName = "com.bundle1";
+    albumData.localLanguage = "";
+    CloudAlbumDataConvert cloudAlbumDataConvert{CloudAlbumOperationType::PHOTO_ALBUM_CREATE};
+    std::shared_ptr<MDKRecord> mdkRecord = cloudAlbumDataConvert.ConvertToMdkRecord(albumData);
+    EXPECT_NE(nullptr, mdkRecord);
+}
 }  // namespace OHOS::Media::CloudSync
