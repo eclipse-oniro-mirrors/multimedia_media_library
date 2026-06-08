@@ -44,7 +44,7 @@ void MediaFileMoveHandleTest::TearDown() {}
 HWTEST_F(MediaFileMoveHandleTest, Destructor_NoTimer_001, TestSize.Level1)
 {
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = "1";
+    changeInfo->requestId = 1;
     changeInfo->totalSize = 1000;
     {
         FileMoveHandle handle(changeInfo, "test_timer_no_timer");
@@ -66,7 +66,7 @@ HWTEST_F(MediaFileMoveHandleTest, Destructor_NoTimer_001, TestSize.Level1)
 HWTEST_F(MediaFileMoveHandleTest, OnMoveProgressTimer_InvalidRequestId_001, TestSize.Level1)
 {
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = "0"; // invalid
+    changeInfo->requestId = 0; // invalid
     FileMoveHandle handle(changeInfo, "test_timer_invalid_req");
     int32_t ret = handle.OnMoveProgressTimer();
     EXPECT_EQ(ret, E_ERR);
@@ -83,7 +83,7 @@ HWTEST_F(MediaFileMoveHandleTest, OnMoveProgressTimer_InvalidRequestId_001, Test
 HWTEST_F(MediaFileMoveHandleTest, OnMoveProgressTimer_ValidRequestId_002, TestSize.Level1)
 {
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = "100";
+    changeInfo->requestId = 100;
     changeInfo->totalSize = 5000;
     changeInfo->processedSize = 2000;
     FileMoveHandle handle(changeInfo, "test_timer_valid_req");
@@ -103,7 +103,7 @@ HWTEST_F(MediaFileMoveHandleTest, OnMoveProgressTimer_ValidRequestId_002, TestSi
 HWTEST_F(MediaFileMoveHandleTest, CalculateProgress_EmptyTarget_001, TestSize.Level1)
 {
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = "1";
+    changeInfo->requestId = 1;
     changeInfo->totalSize = 10000;
     changeInfo->processedSize = 3000;
     changeInfo->processedCount = 3;
@@ -133,7 +133,7 @@ HWTEST_F(MediaFileMoveHandleTest, CalculateProgress_EmptyTarget_001, TestSize.Le
 HWTEST_F(MediaFileMoveHandleTest, CalculateProgress_EmptyTarget_ZeroRemain_002, TestSize.Level1)
 {
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = "1";
+    changeInfo->requestId = 1;
     changeInfo->totalSize = 5000;
     changeInfo->processedSize = 5000; // all processed
     changeInfo->processedCount = 10;
@@ -172,7 +172,7 @@ HWTEST_F(MediaFileMoveHandleTest, CalculateProgress_WithTarget_003, TestSize.Lev
     }
 
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = "1";
+    changeInfo->requestId = 1;
     changeInfo->totalSize = 10000;
     changeInfo->processedSize = 2000;
     changeInfo->processedCount = 2;
@@ -204,7 +204,7 @@ HWTEST_F(MediaFileMoveHandleTest, CalculateProgress_WithTarget_003, TestSize.Lev
 HWTEST_F(MediaFileMoveHandleTest, CalculateProgress_InvalidTarget_004, TestSize.Level1)
 {
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = "1";
+    changeInfo->requestId = 1;
     changeInfo->totalSize = 10000;
     changeInfo->processedSize = 2000;
 
