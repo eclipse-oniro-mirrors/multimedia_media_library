@@ -107,6 +107,7 @@
 #include "deep_optimize_space_ani_callback.h"
 #include "deep_optimize_space_vo.h"
 #include "media_library_error_code.h"
+#include "modify_album_default_cover_order_vo.h"
 
 namespace OHOS {
 namespace Media {
@@ -158,6 +159,14 @@ static map<string, ListenerType> ListenerTypeMaps = {
     {"albumChange", ALBUM_LISTENER},
     {"deviceChange", DEVICE_LISTENER},
     {"remoteFileChange", REMOTEFILE_LISTENER}
+};
+
+const std::vector<std::pair<std::string, std::string>> VALID_ORDER_COMBINATIONS = {
+    {"date_taken", "display_name"},
+    {"date_added", "display_name"},
+    {"display_name", "date_taken"},
+    {"size", "display_name"},
+    {"hidden_time", "display_name"}
 };
 
 const std::string SUBTYPE = "subType";
@@ -365,6 +374,10 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::ShowAssetsCreationDialog)},
     ani_native_function {"requestPhotoUrisReadPermissionInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::RequestPhotoUrisReadPermission)},
+    ani_native_function {"modifyAlbumDefaultCoverOrderInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::ModifyAlbumDefaultCoverOrder)},
+    ani_native_function {"modifyHiddenAlbumDefaultCoverOrderInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::ModifyHiddenAlbumDefaultCoverOrder)},
 };
 
 const std::array photoViewPickerMethos = {
@@ -8383,6 +8396,185 @@ ani_object MediaLibraryAni::PhotoAccessStopDeepOptimizeSpace(ani_env *env, ani_o
     StopDeepOptimizeSpaceExecute(asyncContext.get());
     tracer.Finish();
     return StopDeepOptimizeSpaceComplete(env, asyncContext.get());
+}
+
+static bool CheckCoverOrderInfo(ani_env *env, const DefaultCoverOrderInfo &info)
+{
+    bool cond = PhotoAlbum::IsSystemAlbum(static_cast<PhotoAlbumType>(info.albumType)) &&
+        ((static_cast<PhotoAlbumSubType>(info.albumSubType) >= PhotoAlbumSubType::SYSTEM_START) &&
+        (static_cast<PhotoAlbumSubType>(info.albumSubType) <= PhotoAlbumSubType::SYSTEM_END));
+    if (!cond && info.lpath.empty()) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Only system album is allowed without lpath.");
+        return false;
+    }
+    bool isValidCombination = false;
+    for (const auto& combo : VALID_ORDER_COMBINATIONS) {
+        if (combo.first == info.orderKey && combo.second == info.orderSubKey) {
+            isValidCombination = true;
+            break;
+        }
+    }
+    if (!isValidCombination) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "orderKey and orderSubKey combination is not valid.");
+        return false;
+    }
+    if (info.orderType != 0 && info.orderType != 1) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "orderType must be DESC or ASC.");
+        return false;
+    }
+    return true;
+}
+
+static ani_status GetIntProperty(ani_env *env, ani_object arg, const std::string &propName,
+    int32_t &propValue)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    ani_int aniInt = 0;
+    CHECK_STATUS_RET(env->Object_GetPropertyByName_Int(arg, propName.c_str(), &aniInt),
+        "Object_GetPropertyByName_Int failed");
+    propValue = static_cast<int32_t>(aniInt);
+    return ANI_OK;
+}
+
+static ani_status ParseCoverOrderInfo(ani_env *env, ani_object coverOrderInfo,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    DefaultCoverOrderInfo info;
+    ani_object albumTypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "albumType", albumTypeAni),
+        "Failed to get albumType");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(albumTypeAni),
+        info.albumType), "Failed to get albumType");
+    ani_object albumSubtypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "albumSubtype", albumSubtypeAni),
+        "Failed to get albumSubtype");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(albumSubtypeAni),
+        info.albumSubType), "Failed to get albumSubtype");
+    if (MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "lpath", info.lpath) != ANI_OK) {
+        info.lpath = "";
+    }
+    ani_object orderKeyAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "orderKey", orderKeyAni),
+        "Failed to get orderKey");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueString(env, static_cast<ani_enum_item>(orderKeyAni),
+        info.orderKey), "Failed to get orderKey");
+    ani_object orderSubKeyAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "orderSubKey", orderSubKeyAni),
+        "Failed to get orderSubKey");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueString(env, static_cast<ani_enum_item>(orderSubKeyAni),
+        info.orderSubKey), "Failed to get orderSubKey");
+    CHECK_STATUS_RET(GetIntProperty(env, coverOrderInfo, "orderType", info.orderType), "Failed to get orderType");
+    if (!CheckCoverOrderInfo(env, info)) {
+        return ANI_ERROR;
+    }
+    context->coverOrderInfos.push_back(move(info));
+    return ANI_OK;
+}
+
+static ani_status ParseArgsModifyAlbumDefaultCoverOrder(ani_env *env, ani_object coverOrderInfos,
+    ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum,
+    std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    ani_boolean isUndefined;
+    env->Reference_IsUndefined(coverOrderInfos, &isUndefined);
+    if (isUndefined) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "coverOrderInfos is undefined");
+        return ANI_INVALID_ARGS;
+    }
+    std::vector<ani_object> aniValues;
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetObjectArray(env, coverOrderInfos, aniValues), "GetObjectArray fail");
+    if (aniValues.empty()) {
+        ANI_ERR_LOG("coverOrderInfos is empty");
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "coverOrderInfos is empty");
+        return ANI_INVALID_ARGS;
+    }
+    for (const auto &aniValue : aniValues) {
+        CHECK_STATUS_RET(ParseCoverOrderInfo(env, aniValue, context), "Parse cover order info failed");
+    }
+    bool disable {false};
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetBool(env, disableModification, disable) == ANI_OK,
+        ANI_INVALID_ARGS, "Failed to get disableModification");
+    context->disableModification = disable;
+    bool isAsync {false};
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetBool(env, isAsyncRefreshAlbum, isAsync) == ANI_OK,
+        ANI_INVALID_ARGS, "Failed to get isAsyncRefreshAlbum");
+    context->isAsyncRefreshAlbum = isAsync;
+    return ANI_OK;
+}
+
+static void ModifyAlbumDefaultCoverOrderExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    CHECK_IF_EQUAL(!context->coverOrderInfos.empty(), "coverOrderInfos is empty");
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyAlbumDefaultCoverOrderExecute");
+
+    ModifyAlbumDefaultCoverOrderReqBody reqBody;
+    reqBody.coverOrderInfos = context->coverOrderInfos;
+    reqBody.disable = context->disableModification;
+    reqBody.isAsyncRefreshAlbum = context->isAsyncRefreshAlbum;
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody);
+    CHECK_AND_RETURN(ret < 0);
+    if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+        context->SaveError(ret);
+    } else {
+        context->error = JS_E_INNER_FAIL;
+    }
+    ANI_ERR_LOG("Failed to modify album default cover order, err: %{public}d", ret);
+    return;
+}
+
+static void ModifyAlbumDefaultCoverOrderCompleteCallback(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    ani_object errorObj {};
+    if (context->error != ERR_DEFAULT) {
+        context->HandleError(env, errorObj);
+    }
+    context.reset();
+}
+
+void MediaLibraryAni::ModifyAlbumDefaultCoverOrder(ani_env *env, ani_object object,
+    ani_object coverOrderInfos, ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyAlbumDefaultCoverOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_IF_EQUAL(asyncContext != nullptr, "asyncContext is nullptr");
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_NULL_PTR_RETURN_VOID(asyncContext->objectInfo, "asyncContext->objectInfo is nullptr");
+    CHECK_IF_EQUAL(ParseArgsModifyAlbumDefaultCoverOrder(env, coverOrderInfos, disableModification, isAsyncRefreshAlbum,
+        asyncContext) == ANI_OK, "Failed to parse modify album default cover order");
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_ALBUM_DEFAULT_COVER_ORDER);
+    SetUserIdFromObjectInfo(asyncContext);
+    ModifyAlbumDefaultCoverOrderExecute(env, asyncContext);
+    ModifyAlbumDefaultCoverOrderCompleteCallback(env, asyncContext);
+}
+
+void MediaLibraryAni::ModifyHiddenAlbumDefaultCoverOrder(ani_env *env, ani_object object,
+    ani_object coverOrderInfos, ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyHiddenAlbumDefaultCoverOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_IF_EQUAL(asyncContext != nullptr, "asyncContext is nullptr");
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_NULL_PTR_RETURN_VOID(asyncContext->objectInfo, "asyncContext->objectInfo is nullptr");
+    CHECK_IF_EQUAL(ParseArgsModifyAlbumDefaultCoverOrder(env, coverOrderInfos, disableModification, isAsyncRefreshAlbum,
+        asyncContext) == ANI_OK, "Failed to parse modify hidden album default cover order");
+    asyncContext->businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER);
+    SetUserIdFromObjectInfo(asyncContext);
+    ModifyAlbumDefaultCoverOrderExecute(env, asyncContext);
+    ModifyAlbumDefaultCoverOrderCompleteCallback(env, asyncContext);
 }
 } // namespace Media
 } // namespace OHOS

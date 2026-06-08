@@ -3279,6 +3279,7 @@ int32_t MediaLibraryPhotoOperations::UpdateFileAsset(MediaLibraryCommand &cmd, b
     SendModifyUserCommentNotify(cmd, fileAsset->GetId(), extraUri);
 
     CreateThumbnailFileScan(fileAsset, extraUri, orientationUpdated, isNeedScan);
+    assetRefresh->RefreshAlbum();
     assetRefresh->Notify();
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");

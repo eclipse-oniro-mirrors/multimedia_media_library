@@ -74,6 +74,12 @@ struct UpdateAlbumData {
     int64_t hiddenCoverDateTime;
     std::string albumName;
     std::string groupTag;
+    std::string coverOrderKey;
+    std::string coverOrderSubKey;
+    int32_t coverOrderType;
+    std::string hiddenCoverOrderKey;
+    std::string hiddenCoverOrderSubKey;
+    int32_t hiddenCoverOrderType;
 };
 
 struct UpdateAllAlbumsData {
@@ -100,6 +106,11 @@ public:
         bool shouldUpdateDateModified = false);
     EXPORT static void UpdateAnalysisAlbumInternal(const std::shared_ptr<MediaLibraryRdbStore>& rdbStore,
         const std::vector<std::string> &userAlbumIds = {});
+
+    // update cover_uri of albums.
+    EXPORT static void UpdateCommonAlbumCover(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::vector<std::string> &albumIds = {}, bool shouldNotify = false,
+        bool shouldUpdateDateModified = false);
 
     // Update hidden_count, hidden_cover of albums.
     // If album id / subtype is specified, only update the specified album. Otherwise update all albums of the type.

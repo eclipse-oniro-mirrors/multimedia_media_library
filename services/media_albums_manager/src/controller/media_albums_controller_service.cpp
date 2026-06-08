@@ -68,6 +68,7 @@
 #include "change_request_set_display_level_vo.h"
 #include "change_request_dismiss_vo.h"
 #include "check_db_availability_vo.h"
+#include "modify_album_default_cover_order_vo.h"
 #include "media_change_info.h"
 #include "notify_register_permission.h"
 #include "medialibrary_client_errno.h"
@@ -262,6 +263,14 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_CHANGE_SET_ALBUM_NAME_BY_FILE),
         &MediaAlbumsControllerService::AlbumChangeSetAlbumNameByFile
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_ALBUM_DEFAULT_COVER_ORDER),
+        &MediaAlbumsControllerService::ModifyAlbumDefaultCoverOrder
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER),
+        &MediaAlbumsControllerService::ModifyHiddenAlbumDefaultCoverOrder
     },
 };
 
@@ -1151,6 +1160,42 @@ int32_t MediaAlbumsControllerService::AlbumChangeSetAlbumNameByFile(MessageParce
     AlbumChangeSetAlbumNameByFileDto dto;
     dto.FromVo(reqBody);
     ret = MediaAlbumsService::GetInstance().AlbumChangeSetAlbumNameByFile(dto);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::ModifyAlbumDefaultCoverOrder(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("ModifyAlbumDefaultCoverOrder start");
+    ModifyAlbumDefaultCoverOrderReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ModifyAlbumDefaultCoverOrder Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    if (reqBody.coverOrderInfos.empty()) {
+        MEDIA_ERR_LOG("coverOrderInfos is empty");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, -EINVAL);
+    }
+    ret = MediaAlbumsService::GetInstance().ModifyAlbumDefaultCoverOrder(reqBody.coverOrderInfos,
+        reqBody.disable, reqBody.isAsyncRefreshAlbum);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::ModifyHiddenAlbumDefaultCoverOrder(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("ModifyHiddenAlbumDefaultCoverOrder start");
+    ModifyAlbumDefaultCoverOrderReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ModifyHiddenAlbumDefaultCoverOrder Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    if (reqBody.coverOrderInfos.empty()) {
+        MEDIA_ERR_LOG("coverOrderInfos is empty");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, -EINVAL);
+    }
+    ret = MediaAlbumsService::GetInstance().ModifyHiddenAlbumDefaultCoverOrder(reqBody.coverOrderInfos,
+        reqBody.disable, reqBody.isAsyncRefreshAlbum);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media

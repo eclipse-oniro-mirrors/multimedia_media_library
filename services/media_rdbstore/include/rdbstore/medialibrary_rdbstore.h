@@ -145,6 +145,7 @@ public:
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
     EXPORT static void AddUpgradeTable(const std::shared_ptr<MediaLibraryRdbStore> store);
     EXPORT static void CheckAndAddColumns(const std::shared_ptr<MediaLibraryRdbStore> store);
+    EXPORT static int32_t AddCoverOrderValuesFromRecord(NativeRdb::ValuesBucket& values);
 
 private:
     EXPORT static const std::string CloudSyncTriggerFunc(const std::vector<std::string> &args);

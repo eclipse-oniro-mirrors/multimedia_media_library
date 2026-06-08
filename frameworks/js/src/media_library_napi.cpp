@@ -138,6 +138,7 @@
 #include "task_signal_napi.h"
 #include "progress_callback_observer.h"
 #include "medialibrary_errno.h"
+#include "modify_album_default_cover_order_vo.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -192,6 +193,14 @@ enum class PhotoPermissionState : int32_t {
     FILE_NOT_EXIST = 1,
     READ_PERMISSION = 2,
     NO_READ_PERMISSION = 3,
+};
+
+const std::vector<std::pair<std::string, std::string>> VALID_ORDER_COMBINATIONS = {
+    {"date_taken", "display_name"},
+    {"date_added", "display_name"},
+    {"display_name", "date_taken"},
+    {"size", "display_name"},
+    {"hidden_time", "display_name"}
 };
 
 static const std::unordered_map<int32_t, std::string> NEED_COMPATIBLE_COLUMN_MAP = {
@@ -608,6 +617,8 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("moveAssetsByPath", MoveAssetsByPath),
             DECLARE_NAPI_FUNCTION("startDeepOptimizeSpace", PhotoAccessStartDeepOptimizeSpace),
             DECLARE_NAPI_FUNCTION("stopDeepOptimizeSpace", PhotoAccessStopDeepOptimizeSpace),
+            DECLARE_NAPI_FUNCTION("modifyAlbumDefaultCoverOrder", PhotoAccessModifyAlbumDefaultCoverOrder),
+            DECLARE_NAPI_FUNCTION("modifyHiddenAlbumDefaultCoverOrder", PhotoAccessModifyHiddenAlbumDefaultCoverOrder),
         }
     };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
@@ -17462,6 +17473,266 @@ napi_value MediaLibraryNapi::PhotoAccessStopDeepOptimizeSpace(napi_env env, napi
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessStopDeepOptimizeSpace",
         JSStopDeepOptimizeSpaceExecute, JSStopDeepOptimizeSpaceCompleteCallback);
+}
+
+static napi_status GetInt32Property(napi_env env, const napi_value arg, const string &propName, int32_t &value)
+{
+    bool present = false;
+    napi_value property = nullptr;
+    CHECK_STATUS_RET(napi_has_named_property(env, arg, propName.c_str(), &present),
+        "Failed to check property name");
+    if (!present) {
+        NAPI_ERR_LOG("No %{public}s specified", propName.c_str());
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "No " + propName + " specified");
+        return napi_invalid_arg;
+    }
+    CHECK_STATUS_RET(napi_get_named_property(env, arg, propName.c_str(), &property), "Failed to get property");
+    CHECK_STATUS_RET(napi_get_value_int32(env, property, &value), "Failed to parse int32 argument value");
+    return napi_ok;
+}
+
+static napi_status GetStringProperty(napi_env env, const napi_value arg, const string &propName, string& value,
+    bool optional = false)
+{
+    bool present = false;
+    napi_value property = nullptr;
+    CHECK_STATUS_RET(napi_has_named_property(env, arg, propName.c_str(), &present),
+        "Failed to check property name");
+    if (!present) {
+        if (optional) {
+            NAPI_INFO_LOG("%{public}s is optional.", propName.c_str());
+            value = "";
+            return napi_ok;
+        }
+        NAPI_ERR_LOG("No %{public}s specified", propName.c_str());
+        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "No " + propName + " specified");
+        return napi_invalid_arg;
+    }
+    CHECK_STATUS_RET(napi_get_named_property(env, arg, propName.c_str(), &property), "Failed to get property");
+    size_t length = 0;
+    CHECK_STATUS_RET(napi_get_value_string_utf8(env, property, nullptr, 0, &length), "Failed to get string length");
+    unique_ptr<char[]> buffer = make_unique<char[]>(length + 1);
+    CHECK_STATUS_RET(napi_get_value_string_utf8(env, property, buffer.get(), length + 1, nullptr),
+        "Failed to parse string argument value");
+    value = string(buffer.get());
+    return napi_ok;
+}
+
+static bool CheckDefaultCoverOrderInfo(napi_env env, const DefaultCoverOrderInfo &info)
+{
+    bool cond = PhotoAlbum::IsSystemAlbum(static_cast<PhotoAlbumType>(info.albumType)) &&
+        ((static_cast<PhotoAlbumSubType>(info.albumSubType) >= PhotoAlbumSubType::SYSTEM_START) &&
+        (static_cast<PhotoAlbumSubType>(info.albumSubType) <= PhotoAlbumSubType::SYSTEM_END));
+    if (!cond && info.lpath.empty()) {
+        NAPI_ERR_LOG("Only system album is allowed without lpath.");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Only system album is allowed without lpath.");
+        return false;
+    }
+    bool isValidCombination = false;
+    for (const auto& combo : VALID_ORDER_COMBINATIONS) {
+        if (combo.first == info.orderKey && combo.second == info.orderSubKey) {
+            isValidCombination = true;
+            break;
+        }
+    }
+    if (!isValidCombination) {
+        NAPI_ERR_LOG("The orderKey and orderSubKey are not in the specified range.");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "The orderKey and orderSubKey are not in the specified range.");
+        return false;
+    }
+    if (info.orderType != OrderType::DESC && info.orderType != OrderType::ASC) {
+        NAPI_ERR_LOG("The orderType must be either descending or ascending.");
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "orderType must be DESC or ASC.");
+        return false;
+    }
+    return true;
+}
+
+static napi_value ParseCoverOrderInfoArray(napi_env env, napi_value arg,
+    std::vector<DefaultCoverOrderInfo>& coverOrderInfos)
+{
+    vector<napi_value> napiValues;
+    napi_valuetype valueType = napi_undefined;
+    CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetNapiValueArray(env, arg, napiValues));
+    CHECK_COND_WITH_MESSAGE(env, !napiValues.empty(), "array is empty");
+    CHECK_ARGS(env, napi_typeof(env, napiValues.front(), &valueType), JS_E_INNER_FAIL);
+    CHECK_COND_WITH_MESSAGE(env, valueType == napi_object, "Invalid argument type");
+    for (const auto &napiValue : napiValues) {
+        DefaultCoverOrderInfo info;
+        CHECK_COND_WITH_MESSAGE(env, GetInt32Property(env, napiValue, "albumType", info.albumType) == napi_ok,
+            "Failed to parse albumType");
+        CHECK_COND_WITH_MESSAGE(env, GetInt32Property(env, napiValue, "albumSubType", info.albumSubType) == napi_ok,
+            "Failed to parse albumSubType");
+        CHECK_COND_WITH_MESSAGE(env, GetStringProperty(env, napiValue, "lpath", info.lpath, true) == napi_ok,
+            "Failed to parse lpath");
+        CHECK_COND_WITH_MESSAGE(env, GetStringProperty(env, napiValue, "orderKey", info.orderKey) == napi_ok,
+            "Failed to parse orderKey");
+        CHECK_COND_WITH_MESSAGE(env, GetStringProperty(env, napiValue, "orderSubKey", info.orderSubKey) == napi_ok,
+            "Failed to parse orderSubKey");
+        CHECK_COND_WITH_MESSAGE(env, GetInt32Property(env, napiValue, "orderType", info.orderType) == napi_ok,
+            "Failed to parse orderType");
+        if (!CheckDefaultCoverOrderInfo(env, info)) {
+            NAPI_ERR_LOG("Failed to check default cover order info.");
+            return nullptr;
+        }
+        coverOrderInfos.push_back(info);
+    }
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_INNER_FAIL);
+    return result;
+}
+
+static napi_value ParseArgsModifyAlbumDefaultCoverOrder(napi_env env, napi_callback_info info,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NAPI_ERR_LOG("This interface can be called only by system apps.");
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    constexpr size_t minArgs = 3;
+    constexpr size_t maxArgs = 3;
+    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        OHOS_INVALID_PARAM_CODE);
+    CHECK_NULLPTR_RET(ParseCoverOrderInfoArray(env, context->argv[PARAM0], context->coverOrderInfos));
+    CHECK_COND_WITH_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamBool(env, context->argv[PARAM1], context->disableModification) == napi_ok,
+        "Failed to get disableModification");
+    CHECK_COND_WITH_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamBool(env, context->argv[PARAM2], context->isAsyncRefreshAlbum) == napi_ok,
+        "Failed to get isAsyncRefreshAlbum");
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_INNER_FAIL);
+    return result;
+}
+
+static void ModifyAlbumDefaultCoverOrderExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyAlbumDefaultCoverOrderExecute");
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    CHECK_IF_EQUAL(!context->coverOrderInfos.empty(), "coverOrderInfos is empty");
+
+    ModifyAlbumDefaultCoverOrderReqBody reqBody;
+    reqBody.coverOrderInfos = context->coverOrderInfos;
+    reqBody.disable = context->disableModification;
+    reqBody.isAsyncRefreshAlbum = context->isAsyncRefreshAlbum;
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody);
+    CHECK_AND_RETURN(ret < 0);
+    if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+        context->SaveError(ret);
+    } else {
+        context->error = JS_E_INNER_FAIL;
+    }
+    NAPI_ERR_LOG("Failed to modify album default cover order, err: %{public}d", ret);
+    return;
+}
+
+static void ModifyAlbumDefaultCoverOrderCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyAlbumDefaultCoverOrderCompleteCallback");
+    MediaLibraryAsyncContext *asyncContext = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(asyncContext, "Async context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+
+    if (asyncContext->error == ERR_DEFAULT) {
+        jsContext->status = true;
+        napi_get_undefined(env, &jsContext->data);
+        napi_get_undefined(env, &jsContext->error);
+    } else {
+        MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, asyncContext->error,
+            "Failed to modify album default cover order");
+        napi_get_undefined(env, &jsContext->data);
+    }
+
+    if (asyncContext->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env,
+            asyncContext->deferred, asyncContext->callbackRef, asyncContext->work, *jsContext);
+    }
+    delete asyncContext;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessModifyAlbumDefaultCoverOrder(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessModifyAlbumDefaultCoverOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    if (!ParseArgsModifyAlbumDefaultCoverOrder(env, info, asyncContext)) {
+        NAPI_ERR_LOG("Failed to parse args");
+        return nullptr;
+    }
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_ALBUM_DEFAULT_COVER_ORDER);
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ModifyAlbumDefaultCoverOrder",
+        ModifyAlbumDefaultCoverOrderExecute, ModifyAlbumDefaultCoverOrderCompleteCallback);
+}
+
+static void ModifyHiddenAlbumDefaultCoverOrderExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyHiddenAlbumDefaultCoverOrderExecute");
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    CHECK_IF_EQUAL(!context->coverOrderInfos.empty(), "coverOrderInfos is empty");
+
+    ModifyAlbumDefaultCoverOrderReqBody reqBody;
+    reqBody.coverOrderInfos = context->coverOrderInfos;
+    reqBody.disable = context->disableModification;
+    reqBody.isAsyncRefreshAlbum = context->isAsyncRefreshAlbum;
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody);
+    CHECK_AND_RETURN(ret < 0);
+    if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+        context->SaveError(ret);
+    } else {
+        context->error = JS_E_INNER_FAIL;
+    }
+    NAPI_ERR_LOG("Failed to modify hidden album default cover order, err: %{public}d", ret);
+    return;
+}
+
+static void ModifyHiddenAlbumDefaultCoverOrderCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyHiddenAlbumDefaultCoverOrderCompleteCallback");
+    MediaLibraryAsyncContext *asyncContext = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(asyncContext, "Async context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+
+    if (asyncContext->error == ERR_DEFAULT) {
+        jsContext->status = true;
+        napi_get_undefined(env, &jsContext->data);
+        napi_get_undefined(env, &jsContext->error);
+    } else {
+        MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, asyncContext->error,
+            "Failed to modify hidden album default cover order");
+        napi_get_undefined(env, &jsContext->data);
+    }
+
+    if (asyncContext->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env,
+            asyncContext->deferred, asyncContext->callbackRef, asyncContext->work, *jsContext);
+    }
+    delete asyncContext;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessModifyHiddenAlbumDefaultCoverOrder(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessModifyHiddenAlbumDefaultCoverOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    if (!ParseArgsModifyAlbumDefaultCoverOrder(env, info, asyncContext)) {
+        NAPI_ERR_LOG("Failed to parse args");
+        return nullptr;
+    }
+    asyncContext->businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER);
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ModifyHiddenAlbumDefaultCoverOrder",
+        ModifyHiddenAlbumDefaultCoverOrderExecute, ModifyHiddenAlbumDefaultCoverOrderCompleteCallback);
 }
 } // namespace Media
 } // namespace OHOS

@@ -99,6 +99,8 @@ public:
     int32_t livephoto4dStatus_ = INVALID_INT32_VALUE;
     int64_t dateModifiedMs_ = INVALID_INT64_VALUE;
     int64_t localAssetSize_ = INVALID_INT64_VALUE;
+    // 相册封面顺序优先以name来判断，size与name为固定组合
+    std::string orderKey_ = EMPTY_STR;
 
     std::string ToString(bool isDetail = false) const;
     bool Marshalling(Parcel &parcel) const override;

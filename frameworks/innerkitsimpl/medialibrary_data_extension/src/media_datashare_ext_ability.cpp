@@ -137,6 +137,7 @@ static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
     OperationObject::VISION_WATERMARK,
     OperationObject::TAB_PHOTOS_EXT_OPERATE,
     OperationObject::VISION_CAPTION,
+    OperationObject::TAB_COVER_RECORD,
 };
 constexpr int64_t MAX_EXECUTE_TIME = 200;
 

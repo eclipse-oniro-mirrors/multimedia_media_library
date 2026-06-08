@@ -24,6 +24,7 @@
 #include <vector>
 #include "ani_error.h"
 #include "datashare_helper.h"
+#include "default_cover_order_info.h"
 #include "fetch_result_ani.h"
 #include "photo_album_ani.h"
 #include "medialibrary_ani_utils.h"
@@ -325,6 +326,10 @@ public:
         ani_object context, ani_object srcFileUris, ani_object appInfo, ani_fn_object result);
     static ani_object StartPhotoPicker(ani_env *env, ani_object object, ani_object context,
         ani_object photoSelectOptions);
+    static void ModifyAlbumDefaultCoverOrder(ani_env *env, ani_object object, ani_object coverOrderInfos,
+        ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum);
+    static void ModifyHiddenAlbumDefaultCoverOrder(ani_env *env, ani_object object, ani_object coverOrderInfos,
+        ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum);
 
 private:
     int32_t GetListenerType(const std::string &str) const;
@@ -498,6 +503,9 @@ struct MediaLibraryAsyncContext : public AniError {
     ani_ref taskSignalRef;
     bool hasDeepOptimizeSpaceCallback = false;
     std::shared_ptr<DeepOptimizeSpaceAniCallbackHolder> deepOptimizeSpaceCallbackHolder;
+    std::vector<DefaultCoverOrderInfo> coverOrderInfos;
+    bool disableModification = false;
+    bool isAsyncRefreshAlbum = false;
 };
 } // namespace Media
 } // namespace OHOS

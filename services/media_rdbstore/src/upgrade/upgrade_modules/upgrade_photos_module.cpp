@@ -56,5 +56,43 @@ static vector<pair<int32_t, int32_t>> AddAttachmentSizeColumn(NativeRdb::RdbStor
     return UpgradeHelper::ExecuteCommands(commands, store, true);
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ATTACHMENT_SIZE_COLUMN, PHOTOS_MODULE_NAME, AddAttachmentSizeColumn);
+
+static vector<pair<int32_t, int32_t>> UpdateIndexsOnPhotos(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_DISPLAY_NAME_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_IN_ALBUM_SIZE_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_IN_ALBUM_SIZE_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_ADDED_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_DATE_TAKEN_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_DISPLAY_NAME_INDEX)
+                           .DropIndex(INDEX_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SORT_MEDIA_TYPE_SIZE_INDEX)
+                           .DropIndex(INDEX_PHOTO_FAVORITE_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_FAVORITE_INDEX)
+                           .DropIndex(INDEX_PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_SHOOTING_MODE_ALBUM_GENERAL_INDEX)
+                           .DropIndex(INDEX_PHOTO_MOVING_PHOTO_ALBUM_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_MOVING_PHOTO_ALBUM_INDEX)
+                           .DropIndex(INDEX_PHOTO_RAW_IMAGE_ALBUM_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_PHOTO_RAW_IMAGE_ALBUM_INDEX)
+                           .DropIndex(INDEX_PHOTO_SCHPT_PHOTO_DATEADDED_INDEX)
+                           .AddRawSql(SQL_UPGRADE_INDEX_SCTHP_PHOTO_DATEADDED)
+                           .DropIndex(INDEX_PHOTO_SCHPT_HIDDEN_TIME_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_SCHPT_HIDDEN_TIME_INDEX)
+                           .AddRawSql(SQL_UPGRADE_CREATE_LPATH_INDEX)
+                           .Build();
+
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_ADD_TAB_COVER_RECORD_AND_INDEX, PHOTOS_MODULE_NAME, UpdateIndexsOnPhotos)
 } // namespace Media
 } // namespace OHOS

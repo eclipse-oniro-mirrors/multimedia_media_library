@@ -2739,6 +2739,19 @@ export namespace photoAccessHelper {
     moveAssetsByPath(assets: string[], target: Album, options?: BatchOperationOptions): Promise<string[]>;
     startDeepOptimizeSpace(callback?: Callback<DeepOptimizeSpaceProgressInfo>): Promise<void>;
     stopDeepOptimizeSpace(): Promise<void>;
+    modifyAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
+      isAsyncRefreshAlbum: boolean): Promise<void>;
+    modifyHiddenAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
+      isAsyncRefreshAlbum: boolean): Promise<void>;
+  }
+
+  export class DefaultCoverOrderInfo {
+    albumType: AlbumType;
+    albumSubtype: AlbumSubtype;
+    lpath?: string;
+    orderKey: PhotoKeys;
+    orderSubKey: PhotoKeys;
+    orderType: int;
   }
 
   interface AppInfo {
@@ -4587,6 +4600,50 @@ export namespace photoAccessHelper {
         });
       });
     }
+
+    modifyAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
+      isAsyncRefreshAlbum: boolean): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.modifyAlbumDefaultCoverOrderInner(coverOrderInfos, disableModification, isAsyncRefreshAlbum);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
+    modifyHiddenAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
+      isAsyncRefreshAlbum: boolean): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.modifyHiddenAlbumDefaultCoverOrderInner(coverOrderInfos, disableModification, isAsyncRefreshAlbum);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
   
     native startThumbnailCreationTask(predicate: dataSharePredicates.DataSharePredicates,
       callback: AsyncCallback<void>): int;
@@ -4675,6 +4732,10 @@ export namespace photoAccessHelper {
     native moveAssetsByPathInner(assets: string[], target: Album, option?: BatchOperationOptions): string[];
     native startDeepOptimizeSpaceInner(callback?: Callback<DeepOptimizeSpaceProgressInfo>): void;
     native stopDeepOptimizeSpaceInner(): void;
+    native modifyAlbumDefaultCoverOrderInner(coverOrderInfos: Array<DefaultCoverOrderInfo>,
+      disableModification: boolean, isAsyncRefreshAlbum: boolean): void;
+    native modifyHiddenAlbumDefaultCoverOrderInner(coverOrderInfos: Array<DefaultCoverOrderInfo>,
+      disableModification: boolean, isAsyncRefreshAlbum: boolean): void;
   }
 
   export interface AssetCompatibleCapability {

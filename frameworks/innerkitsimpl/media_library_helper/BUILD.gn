@@ -65,6 +65,7 @@ ohos_shared_library("media_library") {
     "src/album_order.cpp",
     "src/album_scan_info_column.cpp",
     "src/base_column.cpp",
+    "src/cover_record_columns.cpp",
     "src/custom_records_column.cpp",
     "src/download_resources_column.cpp",
     "src/dir_asset.cpp",

@@ -1088,4 +1088,21 @@ int32_t MediaAlbumsService::AlbumChangeSetAlbumNameByFile(const AlbumChangeSetAl
     return MediaLibraryAlbumOperations::HandleSetAlbumNameRequest(values, predicates, true);
     return E_OK;
 }
+
+int32_t MediaAlbumsService::ModifyAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
+    bool disable, bool isAsyncRefreshAlbum)
+{
+    MEDIA_INFO_LOG("ModifyAlbumDefaultCoverOrder start, disable: %{public}d, isAsyncRefreshAlbum: %{public}d",
+        disable, isAsyncRefreshAlbum);
+    return MediaLibraryAlbumOperations::ModifyAlbumDefaultCoverOrder(coverOrderInfos, disable, isAsyncRefreshAlbum);
+}
+
+int32_t MediaAlbumsService::ModifyHiddenAlbumDefaultCoverOrder(
+    const std::vector<DefaultCoverOrderInfo> &coverOrderInfos, bool disable, bool isAsyncRefreshAlbum)
+{
+    MEDIA_INFO_LOG("ModifyHiddenAlbumDefaultCoverOrder start, disable: %{public}d, isAsyncRefreshAlbum: %{public}d",
+        disable, isAsyncRefreshAlbum);
+    return MediaLibraryAlbumOperations::ModifyHiddenAlbumDefaultCoverOrder(coverOrderInfos,
+        disable, isAsyncRefreshAlbum);
+}
 } // namespace OHOS::Media

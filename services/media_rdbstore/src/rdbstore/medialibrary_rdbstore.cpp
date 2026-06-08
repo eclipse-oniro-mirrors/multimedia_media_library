@@ -86,6 +86,7 @@
 #include "moving_photo_file_utils.h"
 #include "media_file_access_utils.h"
 #include "media_fileinterwork_column.h"
+#include "cover_record_columns.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -180,6 +181,7 @@ const int TRASH_ALBUM_TYPE_VALUES = 2;
 
 const int32_t ARG_COUNT = 2;
 const std::string TRASH_ALBUM_NAME_VALUES = "TrashAlbum";
+const std::string INVALID_STR = "Invalid";
 
 struct UniqueMemberValuesBucket {
     std::string assetMediaType;
@@ -1202,6 +1204,53 @@ void MediaLibraryRdbStore::AddDefaultInsertPhotoValues(ValuesBucket& values)
     PutDefaultDateAddedYearMonthDay(values);
 }
 
+int32_t MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(ValuesBucket& values)
+{
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+        "rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    int32_t albumType = -1;
+    int32_t albumSubtype = 0;
+    string lpath = INVALID_STR;
+    ValueObject value;
+    if (values.GetObject(PhotoAlbumColumns::ALBUM_TYPE, value)) {
+        value.GetInt(albumType);
+    }
+    if (values.GetObject(PhotoAlbumColumns::ALBUM_SUBTYPE, value)) {
+        value.GetInt(albumSubtype);
+    }
+    if (values.GetObject(PhotoAlbumColumns::ALBUM_LPATH, value)) {
+        value.GetString(lpath);
+    }
+    string sql = "SELECT cover_order_key, cover_order_subkey, cover_order_type, hidden_cover_order_key, "
+        "hidden_cover_order_subkey, hidden_cover_order_type FROM tab_cover_record ";
+    sql += albumType == PhotoAlbumType::SYSTEM ? "WHERE album_type = ? AND  album_subtype = ?" :
+        "WHERE album_type = ? AND  album_subtype = ? AND lpath = ?";
+    vector<ValueObject> args;
+    args = albumType == PhotoAlbumType::SYSTEM ? vector<ValueObject>{ albumType, albumSubtype } :
+        vector<ValueObject>{ albumType, albumSubtype, lpath };
+    auto resultSet = MediaLibraryRdbStore::GetRaw()->QuerySql(sql, args);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr.");
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        string coverOrderKey = GetStringVal("cover_order_key", resultSet);
+        string coverOrderSubKey = GetStringVal("cover_order_subkey", resultSet);
+        int32_t coverOrderType = GetInt32Val("cover_order_type", resultSet);
+        string hiddenCoverOrderKey = GetStringVal("hidden_cover_order_key", resultSet);
+        string hiddenCoverOrderSubKey = GetStringVal("hidden_cover_order_subkey", resultSet);
+        int32_t hiddenCoverOrderType = GetInt32Val("hidden_cover_order_type", resultSet);
+        CHECK_AND_EXECUTE(coverOrderKey.empty(), values.PutString("cover_order_key", coverOrderKey));
+        CHECK_AND_EXECUTE(coverOrderSubKey.empty(), values.PutString("cover_order_subkey", coverOrderSubKey));
+        CHECK_AND_EXECUTE(coverOrderType != 0 && coverOrderType != 1,
+            values.PutInt("cover_order_type", coverOrderType));
+        CHECK_AND_EXECUTE(hiddenCoverOrderKey.empty(), values.PutString("hidden_cover_order_key", hiddenCoverOrderKey));
+        CHECK_AND_EXECUTE(hiddenCoverOrderSubKey.empty(),
+            values.PutString("hidden_cover_order_subkey", hiddenCoverOrderSubKey));
+        CHECK_AND_EXECUTE(hiddenCoverOrderType != 0 && hiddenCoverOrderType != 1,
+            values.PutInt("hidden_cover_order_type", hiddenCoverOrderType));
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
 int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
 {
     DfxTimer dfxTimer(DfxType::RDB_INSERT, INVALID_DFX, RDB_TIME_OUT, false);
@@ -1214,6 +1263,9 @@ int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
     NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
     if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
         AddDefaultInsertPhotoValues(tmpValues);
+    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
 
     int32_t ret = ExecSqlWithRetry([&]() {
@@ -1242,6 +1294,11 @@ int32_t MediaLibraryRdbStore::BatchInsert(int64_t &outRowId, const std::string &
         for (auto& value : tmpValues) {
             AddDefaultInsertPhotoValues(value);
         }
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(value) == E_OK, E_HAS_DB_ERROR,
+                "AddCoverOrderValuesFromRecord failed.");
+        }
     }
     int32_t ret = ExecSqlWithRetry([&]() {
         return MediaLibraryRdbStore::GetRaw()->BatchInsert(outRowId, table, tmpValues);
@@ -1269,6 +1326,11 @@ int32_t MediaLibraryRdbStore::BatchInsert(MediaLibraryCommand &cmd, int64_t& out
         for (auto& value : tmpValues) {
             AddDefaultInsertPhotoValues(value);
         }
+    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(value) == E_OK, E_HAS_DB_ERROR,
+                "AddCoverOrderValuesFromRecord failed.");
+        }
     }
     int32_t ret = ExecSqlWithRetry([&]() {
         return MediaLibraryRdbStore::GetRaw()->BatchInsert(outInsertNum, cmd.GetTableName(), tmpValues);
@@ -1289,6 +1351,9 @@ int32_t MediaLibraryRdbStore::InsertInternal(int64_t &outRowId, const std::strin
     NativeRdb::ValuesBucket tmpValues = row;
     if (table == PhotoColumn::PHOTOS_TABLE) {
         AddDefaultInsertPhotoValues(tmpValues);
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
     return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, tmpValues); });
 }
@@ -2367,6 +2432,8 @@ static const vector<string> onCreateSqlStrs = {
     AlbumScanInfoColumn::CREATE_TABLE,
     AlbumScanInfoColumn::CREATE_INDEX_ON_ALBUM_ID_STORAGE_PATH,
     MediaFileInterworkColumn::CREATE_FILE_OPT_TABLE,
+    CoverRecordColumns::CREATE_COVER_RECORD_TABLE,
+    CoverRecordColumns::CREATE_ALBUM_LPATH_INDEX,
 
     // search
     CREATE_SEARCH_TOTAL_TABLE,
@@ -6922,6 +6989,9 @@ int MediaLibraryRdbStore::Insert(int64_t &outRowId, const std::string &table, Va
     NativeRdb::ValuesBucket tmpValues = row;
     if (table == PhotoColumn::PHOTOS_TABLE) {
         AddDefaultInsertPhotoValues(tmpValues);
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
     return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, tmpValues); });
 }
@@ -6953,13 +7023,21 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsert(const string
         return {E_HAS_DB_ERROR, -1};
     }
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
+    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     if (table == PhotoColumn::PHOTOS_TABLE) {
         for (auto& value : tmpValues) {
             AddDefaultInsertPhotoValues(value);
         }
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            auto ret = MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value);
+            if (ret != E_OK) {
+                MEDIA_ERR_LOG("AddCoverOrderValuesFromRecord failed");
+                return retWithResults;
+            }
+        }
     }
 
-    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     int32_t ret = ExecSqlWithRetry([&]() {
         retWithResults = MediaLibraryRdbStore::GetRaw()->BatchInsert(table, tmpValues, { returningField });
         return retWithResults.first;
