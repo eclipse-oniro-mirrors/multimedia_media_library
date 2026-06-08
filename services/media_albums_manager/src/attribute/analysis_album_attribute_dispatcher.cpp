@@ -97,10 +97,11 @@ int32_t AnalysisAlbumAttributeDispatcher::GetAttributeExecute(const std::shared_
     std::vector<std::string> &attributeArray,
     std::vector<std::unordered_map<std::string, std::string>> &queryResults)
 {
-    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INVALID_VALUES, "photoAlbum is nullptr");
+    CHECK_AND_RETURN_RET_LOG(photoAlbum != nullptr, E_INNER_FAIL, "photoAlbum is nullptr");
     for (const auto &attr : attributeArray) {
         const auto *handler = ResolveHandler(attr);
-        CHECK_AND_RETURN_RET_LOG(handler != nullptr && handler->getAttributeExecute != nullptr, E_INVALID_VALUES,
+        CHECK_AND_RETURN_RET_LOG(handler != nullptr && handler->getAttributeExecute != nullptr,
+            E_PARAM_CONVERT_FORMAT,
             "no handler for analysis album attribute: %{public}s", attr.c_str());
         int32_t checkResult = handler->validateTarget(photoAlbum);
         CHECK_AND_RETURN_RET_LOG(checkResult == E_OK, checkResult,
