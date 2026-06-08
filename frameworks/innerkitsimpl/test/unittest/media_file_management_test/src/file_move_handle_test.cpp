@@ -23,7 +23,7 @@
 #include "media_progress_change_info.h"
 
 using namespace testing::ext;
-using namespace Notification;
+using namespace OHOS::Media::Notification;
 
 namespace OHOS {
 namespace Media {
