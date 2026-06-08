@@ -35,6 +35,10 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/utils/",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/background",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/service",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dao",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/callback",
   ]
 
   include_media_cloud_sync_data = [
@@ -64,6 +68,8 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "./src/cloud_media_download_dao_test.cpp",
     "./src/cloud_media_file_info_service_test.cpp",
     "./src/cloud_media_file_manager_service_test.cpp",
+    "./src/clone_to_album_service_test.cpp",
+    "./src/media_assets_recover_service_test.cpp",
   ]
 
   deps = [
@@ -99,6 +105,7 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "dfs_service:cloudsync_kit_inner",
     "dfs_service:libdistributedfileutils_lite",
     "preferences:native_preferences",
+    "e2fsprogs:libext2_uuid",
   ]
 
   cflags = [
