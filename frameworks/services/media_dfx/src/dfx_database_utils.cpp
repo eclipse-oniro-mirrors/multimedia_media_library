@@ -1017,7 +1017,7 @@ int32_t DfxDatabaseUtils::InsertDocsScanFolderStats(const DocsScanFolderStats &s
     values.PutString(DOCS_SCAN_COLUMN_FORMAT_DISTRIBUTION, stats.formatDistribution);
     values.PutString(DOCS_SCAN_COLUMN_SIZE_DISTRIBUTION, stats.sizeDistribution);
     values.PutInt(DOCS_SCAN_COLUMN_ATIME_WITHIN_30MIN, stats.atimeWithin30min);
-    values.PutInt(DOCS_SCAN_COLUMN_ATIME_DIFF_SEC, stats.atimeDiffSec);
+    values.PutLong(DOCS_SCAN_COLUMN_ATIME_DIFF_SEC, stats.atimeDiffSec);
     int64_t outRowId = 0;
     return rdbStore->Insert(outRowId, DOCS_SCAN_TEMP_TABLE, values);
 }
@@ -1029,9 +1029,7 @@ bool DfxDatabaseUtils::IsDirPathInDocsScanTempTable(const std::string &dirPath)
     NativeRdb::RdbPredicates predicates(DOCS_SCAN_TEMP_TABLE);
     predicates.EqualTo(DOCS_SCAN_COLUMN_DIR_PATH, dirPath);
     auto resultSet = rdbStore->Query(predicates, { DOCS_SCAN_COLUMN_ID });
-    if (resultSet == nullptr) {
-        return false;
-    }
+    CHECK_AND_RETURN_RET(resultSet != nullptr, false);
     bool exists = resultSet->GoToNextRow() == NativeRdb::E_OK;
     resultSet->Close();
     return exists;
@@ -1056,7 +1054,7 @@ int32_t DfxDatabaseUtils::QueryDocsScanFolderStats(int32_t offset, int32_t limit
         stats.formatDistribution = GetStringVal(DOCS_SCAN_COLUMN_FORMAT_DISTRIBUTION, resultSet);
         stats.sizeDistribution = GetStringVal(DOCS_SCAN_COLUMN_SIZE_DISTRIBUTION, resultSet);
         stats.atimeWithin30min = GetInt32Val(DOCS_SCAN_COLUMN_ATIME_WITHIN_30MIN, resultSet);
-        stats.atimeDiffSec = GetInt32Val(DOCS_SCAN_COLUMN_ATIME_DIFF_SEC, resultSet);
+        stats.atimeDiffSec = GetInt64Val(DOCS_SCAN_COLUMN_ATIME_DIFF_SEC, resultSet);
         results.push_back(stats);
     }
     resultSet->Close();

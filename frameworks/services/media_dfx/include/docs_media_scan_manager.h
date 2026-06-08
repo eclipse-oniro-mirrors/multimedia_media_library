@@ -19,8 +19,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include <map>
+
 #include "dfx_const.h"
 #include "dfx_database_utils.h"
 #include "preferences.h"
@@ -30,6 +31,22 @@ namespace Media {
 
 class DocsMediaScanManager {
 public:
+    struct FolderStatsCollector {
+        int32_t imageCount = 0;
+        int32_t videoCount = 0;
+        std::unordered_map<std::string, int32_t> formatMap;
+        std::vector<int32_t> sizeDistribution;
+        time_t minAtime = INT64_MAX;
+        time_t maxAtime = 0;
+        FolderStatsCollector();
+    };
+
+    struct DirScanResult {
+        std::vector<std::string> mediaFiles;
+        std::vector<struct stat> mediaStats;
+        std::vector<std::pair<std::string, std::string>> subDirs;
+    };
+
     static DocsMediaScanManager& GetInstance();
     void Execute();
 
@@ -41,7 +58,7 @@ private:
     bool IsBetaVersion();
     bool IsTaskCompleted();
     bool IsTraversalDone();
-    shared_ptr<NativePreferences::Preferences> GetPrefs();
+    std::shared_ptr<NativePreferences::Preferences> GetPrefs();
     void MarkTraversalDone();
     void MarkTaskCompleted();
     int32_t ResetDailyCountIfNeeded();
@@ -50,11 +67,13 @@ private:
 
     bool TraverseAndCollect();
     bool CollectFolderStats(const std::string &fullPath, const std::string &relativePath,
-        const std::vector<std::string> &mediaFiles,
-        const std::vector<struct stat> &mediaStats);
+        const std::vector<std::string> &mediaFiles, const std::vector<struct stat> &mediaStats);
     MediaType GetMediaTypeOfFile(const std::string &filePath);
     bool IsMediaFile(const std::string &filePath);
+    void UpdateFileStats(const std::string &extension, MediaType mediaType, const struct stat &fileStat,
+        DocsMediaScanManager::FolderStatsCollector &collector);
     int32_t GetSizeBucket(off_t fileSize);
+    DocsMediaScanManager::DirScanResult ReadDirectoryEntries(const std::string &path, const std::string &relativePath);
     void ReportPhase();
     void Finalize();
 };

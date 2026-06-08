@@ -45,7 +45,7 @@ struct DocsScanFolderStats {
     std::string formatDistribution = "{}";
     std::string sizeDistribution = "[]";
     int32_t atimeWithin30min = 0;
-    int32_t atimeDiffSec = 0;
+    int64_t atimeDiffSec = 0;
 };
 
 class DfxDatabaseUtils {
