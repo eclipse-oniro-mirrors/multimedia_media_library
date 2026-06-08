@@ -27,8 +27,10 @@
 #endif
 #include "media_column.h"
 #include "media_file_monitor_rdb_utils.h"
+#include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_notify.h"
 #include "medialibrary_rdb_utils.h"
 #include "photo_album_column.h"
 #include "rdb_predicates.h"
@@ -41,6 +43,13 @@ using namespace OHOS::Media::AccurateRefresh;
 
 constexpr int32_t INVALID_ID = -1;
 constexpr int32_t INVALID_COUNT = 0;
+
+inline void NotifyAssetChange(int32_t fileId, NotifyType notifyType)
+{
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_LOG(watch != nullptr, "Can not get MediaLibraryNotify Instance");
+    watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + std::to_string(fileId), notifyType);
+}
 
 struct AlbumDetailInfo {
     int32_t albumId = INVALID_ID;
@@ -218,6 +227,12 @@ bool CreateAlbumsByLPathReplace(MoveDirData &moveDirData)
     CHECK_AND_RETURN_RET_LOG(!moveDirData.albumIdMap.empty(), false, "albumIdMap is empty after creation");
     CHECK_AND_RETURN_RET_LOG(albumRefresh.NotifyAddAlbums(moveDirData.newAlbumIdStrings) == E_OK, false,
         "AlbumAccurateRefresh NotifyAddAlbums failed");
+    
+    // 立即发送新相册新增的旧通知
+    MediaFileMonitorRdbUtils::NotifyAlbums(moveDirData.newAlbumIdStrings,
+        AlbumNotifyType::COMMON_ALBUM, NotifyType::NOTIFY_ADD);
+    MEDIA_INFO_LOG("New albums created and notified, count: %{public}zu", moveDirData.newAlbumIdStrings.size());
+    
     return true;
 }
 
@@ -243,11 +258,16 @@ bool DeleteAlbumsByIds(const std::vector<int32_t> &albumIds)
 
     albumRefresh.Notify();
 
-    MEDIA_INFO_LOG("Deleted %{public}d old albums", deletedRows);
+    // 立即发送旧相册删除的旧通知
+    MediaFileMonitorRdbUtils::NotifyAlbums(albumIdStrings,
+        AlbumNotifyType::COMMON_ALBUM, NotifyType::NOTIFY_REMOVE);
+    MEDIA_INFO_LOG("Deleted %{public}d old albums and notified", deletedRows);
+    
     return true;
 }
 
 bool RefreshAssetsForDirMove(const unordered_map<int32_t, int32_t> &albumIdMap,
+    const std::vector<LakeMonitorQueryResultData> &dataList,
     const std::string &oldPathPrefix, const std::string &newPathPrefix)
 {
     CHECK_AND_RETURN_RET_LOG(!albumIdMap.empty(), false, "albumIdMap is empty");
@@ -279,7 +299,20 @@ bool RefreshAssetsForDirMove(const unordered_map<int32_t, int32_t> &albumIdMap,
     assetRefresh.RefreshAlbum();
     assetRefresh.Notify();
 
-    MEDIA_INFO_LOG("RefreshAssetsForDirMove completed, %{public}zu mappings, "
+    // 立即发送相册内容更新通知
+    auto watch = MediaLibraryNotify::GetInstance();
+    CHECK_AND_RETURN_RET_LOG(watch != nullptr, false, "Can not get MediaLibraryNotify Instance");
+    for (const auto &[oldAlbumId, newAlbumId] : albumIdMap) {
+        watch->Notify(MediaFileUtils::GetUriByExtrConditions(
+            PhotoAlbumColumns::ALBUM_URI_PREFIX, to_string(newAlbumId)), NotifyType::NOTIFY_ALBUM_ADD_ASSET);
+    }
+    
+    // 立即发送资产更新通知（路径和所属相册变化）
+    for (const auto &data : dataList) {
+        NotifyAssetChange(data.fileId, NotifyType::NOTIFY_UPDATE);
+    }
+    
+    MEDIA_INFO_LOG("RefreshAssetsForDirMove completed and notified, %{public}zu mappings, "
         "oldPrefix: %{public}s -> newPrefix: %{public}s",
         albumIdMap.size(),
         DfxUtils::GetSafePath(oldPathPrefix).c_str(), DfxUtils::GetSafePath(newPathPrefix).c_str());
@@ -324,9 +357,10 @@ bool SwapAlbums(MoveDirData &moveDirData)
 
 void NotifyMoveDirResult(const MoveDirData &moveDirData)
 {
+    // 智慧相册通知（资产所属智慧相册内容可能变化）
     if (!moveDirData.analysisAlbumIds.empty()) {
         std::vector<std::string> albumIdsVec(moveDirData.analysisAlbumIds.begin(), moveDirData.analysisAlbumIds.end());
-        MediaFileMonitorRdbUtils::NotifyAnalysisAlbum(albumIdsVec);
+        MediaFileMonitorRdbUtils::NotifyAlbums(albumIdsVec, AlbumNotifyType::ANALYSIS_ALBUM);
     }
 }
 
@@ -356,8 +390,11 @@ bool MoveFileManagerDir(const std::string &oldPath, const std::string &newPath,
     // 新增、删除相册
     CHECK_AND_RETURN_RET_LOG(SwapAlbums(moveDirData), false, "Swap albums failed");
     // 刷新数据库资产（owner_album_id, storage_path, time_pending）
-    CHECK_AND_RETURN_RET_LOG(RefreshAssetsForDirMove(moveDirData.albumIdMap, moveDirData.oldPath, moveDirData.newPath),
+    CHECK_AND_RETURN_RET_LOG(RefreshAssetsForDirMove(moveDirData.albumIdMap, moveDirData.dataList,
+        moveDirData.oldPath, moveDirData.newPath),
         false, "Refresh file_manager assets failed");
+    
+    // 智慧相册通知
     NotifyMoveDirResult(moveDirData);
 
     return true;

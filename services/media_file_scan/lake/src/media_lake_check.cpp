@@ -256,7 +256,7 @@ int32_t DeleteInLakeAssets(int32_t albumId, const std::unordered_set<int32_t>& f
     for (auto fileId : fileIds) {
         NotifyAssetChange(fileId);
     }
-    MediaFileMonitorRdbUtils::NotifyAnalysisAlbum(albumIds);
+    MediaFileMonitorRdbUtils::NotifyAlbums(albumIds, AlbumNotifyType::ANALYSIS_ALBUM);
     return E_OK;
 }
 

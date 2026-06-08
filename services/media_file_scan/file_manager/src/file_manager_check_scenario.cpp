@@ -355,7 +355,7 @@ void FileManagerCheckScenario::UpdateAnalysisAlbumsAndNotify(const PhotoCandidat
     std::vector<std::string> albumIds(
         candidates.affectedAnalysisAlbumIds.begin(), candidates.affectedAnalysisAlbumIds.end());
     MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, albumIds);
-    MediaFileMonitorRdbUtils::NotifyAnalysisAlbum(albumIds);
+    MediaFileMonitorRdbUtils::NotifyAlbums(albumIds, AlbumNotifyType::ANALYSIS_ALBUM);
 }
 
 int32_t FileManagerCheckScenario::RunBackwardAlbum(ScenarioContext &context)
