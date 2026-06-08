@@ -616,6 +616,12 @@ void MtpDataUtils::SetProperty(const std::string &column, const shared_ptr<DataS
     }
 }
 
+static bool IsUseStoragePath(int32_t type)
+{
+    return type == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
+        type == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE);
+}
+
 void MtpDataUtils::GetOneRowPropList(uint32_t handle, const shared_ptr<DataShare::DataShareResultSet> &resultSet,
     const shared_ptr<UInt16List> &properties, shared_ptr<vector<Property>> &outProps)
 {
@@ -624,6 +630,7 @@ void MtpDataUtils::GetOneRowPropList(uint32_t handle, const shared_ptr<DataShare
 
     std::string column;
     ResultSetDataType type;
+    auto parentId = GetInt32Val(PARENT, resultSet);
     for (uint16_t property : *properties) {
         if (PropColumnMap.find(property) != PropColumnMap.end()) {
             auto properType = MtpPacketTool::GetObjectPropTypeByPropCode(property);
@@ -639,9 +646,9 @@ void MtpDataUtils::GetOneRowPropList(uint32_t handle, const shared_ptr<DataShare
                 prop.currentValue->bin_.ui16 = format;
                 MEDIA_INFO_LOG("prop.currentValue->bin_.ui16 %{public}u", format);
             } else if (column.compare(CONST_MEDIA_DATA_DB_SIZE) == 0 &&
-                GetInt32Val(PARENT, resultSet) != PARENT_ROOT_ID) {
+                parentId != PARENT_ROOT_ID && parentId != FILE_MANAGER_IN_PTP_ID) {
                 int32_t type = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
-                string filePath = type == MTP_MEDIA_HO_LAKE ? GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
+                string filePath = IsUseStoragePath(type) ? GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
                     GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
                 struct stat statInfo;
                 CHECK_AND_RETURN_LOG(stat(filePath.c_str(), &statInfo) == 0, "GetOneRowPropList stat failed");
@@ -1064,7 +1071,7 @@ void MtpDataUtils::SetMtpOneDefaultlPropList(uint32_t handle,
 }
 
 int32_t MtpDataUtils::GetGalleryPropList(const std::shared_ptr<MtpOperationContext> &context,
-    std::shared_ptr<std::vector<Property>> &outProps, const std::string &name)
+    std::shared_ptr<std::vector<Property>> &outProps, const std::string &name, uint32_t handle)
 {
     CHECK_AND_RETURN_RET_LOG(context != nullptr, MTP_ERROR_INVALID_OBJECTHANDLE, "context is nullptr");
     CHECK_AND_RETURN_RET_LOG(outProps != nullptr, MTP_ERROR_INVALID_OBJECTHANDLE, "outProps is nullptr");
@@ -1090,7 +1097,7 @@ int32_t MtpDataUtils::GetGalleryPropList(const std::shared_ptr<MtpOperationConte
             Property prop(property, properType);
             CHECK_AND_RETURN_RET_LOG(prop.currentValue != nullptr, MTP_ERROR_INVALID_OBJECTHANDLE, "prop is nullptr");
 
-            prop.handle_ = PTP_IN_MTP_ID;
+            prop.handle_ = handle;
             column = PropColumnMap.at(property);
             if (column.compare(MEDIA_DATA_DB_FORMAT) == 0) {
                 prop.currentValue->bin_.ui16 = MTP_FORMAT_ASSOCIATION_CODE;
@@ -1103,7 +1110,7 @@ int32_t MtpDataUtils::GetGalleryPropList(const std::shared_ptr<MtpOperationConte
             }
             outProps->push_back(prop);
         } else if (PropDefaultMap.find(property) != PropDefaultMap.end()) {
-            SetMtpOneDefaultlPropList(PTP_IN_MTP_ID, property, outProps, DEFAULT_STORAGE_ID);
+            SetMtpOneDefaultlPropList(handle, property, outProps, DEFAULT_STORAGE_ID);
         } else {
             MEDIA_DEBUG_LOG("other property:0x%{public}x", property);
         }
