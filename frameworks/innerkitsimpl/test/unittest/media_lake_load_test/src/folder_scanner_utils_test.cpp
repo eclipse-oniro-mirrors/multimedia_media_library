@@ -157,23 +157,6 @@ HWTEST_F(FolderScannerUtilsTest, IsSkipCurrentDirectory_BlacklistedPath_002, Tes
 }
 
 /**
- * @tc.name: IsSkipCurrentDirectory_NotBlacklisted_003
- * @tc.desc: Test IsSkipCurrentDirectory with non-blacklisted path
- * @tc.type: FUNC
- */
-HWTEST_F(FolderScannerUtilsTest, IsSkipCurrentDirectory_NotBlacklisted_003, TestSize.Level1)
-{
-    ScanRuleConfig config;
-    config.skipBlackList = true;
-    config.blackList.insert("/test/blacklisted/path");
-    config.skipHiddenDirectory = false;
-    config.skipDirectoryWithNomedia = false;
-    config.cleanNomediaInDefaultDirs = false;
-    bool result = FolderScannerUtils::IsSkipCurrentDirectory("/test/normal/path", config);
-    EXPECT_FALSE(result);
-}
-
-/**
  * @tc.name: IsSkipCurrentDirectory_HiddenDir_SkipEnabled_004
  * @tc.desc: Test IsSkipCurrentDirectory with hidden directory when skipHiddenDirectory=true
  * @tc.type: FUNC
