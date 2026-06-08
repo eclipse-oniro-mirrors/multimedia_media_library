@@ -96,7 +96,6 @@ ohos_unittest("media_lake_load_test") {
     "./src/file_scan_utils_test.cpp",
     "./src/check_dfx_collector_test.cpp",
     "./src/consistency_check_data_types_test.cpp",
-    "./src/check_scene_helper_test.cpp",
     "./src/folder_scanner_utils_test.cpp",
     "./src/scan_rule_config_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",

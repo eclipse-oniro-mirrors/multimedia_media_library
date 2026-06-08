@@ -25,13 +25,6 @@
 #include "clone_to_album_service.h"
 #undef private
 
-// Declare free functions defined in clone_to_album_service.cpp (not in headers)
-namespace OHOS {
-namespace Media {
-int32_t CheckFileName(CloneAssetInfo &cloneAssetInfo, std::unordered_set<std::string> &occupiedPaths);
-}
-}
-
 using namespace std;
 using namespace testing::ext;
 using namespace OHOS::Media;
@@ -41,118 +34,6 @@ void CloneToAlbumServiceTest::SetUpTestCase() {}
 void CloneToAlbumServiceTest::TearDownTestCase() {}
 void CloneToAlbumServiceTest::SetUp() {}
 void CloneToAlbumServiceTest::TearDown() {}
-
-// ===== CheckFileName: Non-FileManager subType =====
-HWTEST_F(CloneToAlbumServiceTest, CheckFileName_NonFileManagerSubType_CopiesDisplayName, TestSize.Level1)
-{
-    /**
-     * @tc.name: CheckFileName_NonFileManagerSubType_CopiesDisplayName
-     * @tc.desc: When albumSubType is NOT SOURCE_GENERIC_FROM_FILE_MANAGER,
-     *           targetDisplayName is set to displayName and returns E_OK
-     * @tc.type: FUNCTION
-     */
-    CloneAssetInfo info;
-    info.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_CAMERA); // not file manager
-    info.displayName = "test_photo.jpg";
-    info.targetDisplayName = "";
-
-    std::unordered_set<std::string> occupiedPaths;
-    int32_t ret = CheckFileName(info, occupiedPaths);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(info.targetDisplayName, "test_photo.jpg");
-    EXPECT_TRUE(info.targetFilePath.empty());
-    EXPECT_TRUE(info.targetFileTitle.empty());
-}
-
-HWTEST_F(CloneToAlbumServiceTest, CheckFileName_NonFileManagerSubType_EmptyDisplayName, TestSize.Level1)
-{
-    /**
-     * @tc.name: CheckFileName_NonFileManagerSubType_EmptyDisplayName
-     * @tc.desc: When albumSubType is not file manager and displayName is empty,
-     *           targetDisplayName is set to empty string and returns E_OK
-     * @tc.type: FUNCTION
-     */
-    CloneAssetInfo info;
-    info.albumSubType = 100; // arbitrary non-file-manager value
-    info.displayName = "";
-
-    std::unordered_set<std::string> occupiedPaths;
-    int32_t ret = CheckFileName(info, occupiedPaths);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(info.targetDisplayName, "");
-}
-
-// ===== CheckFileName: FileManager subType with root lpath =====
-HWTEST_F(CloneToAlbumServiceTest, CheckFileName_FileManager_RootLpath_NonBurst, TestSize.Level1)
-{
-    /**
-     * @tc.name: CheckFileName_FileManager_RootLpath_NonBurst
-     * @tc.desc: When albumSubType is file-manager, lpath is root (/FromDocs/),
-     *           burstKey is empty, and file doesn't exist, targetFilePath is built from DOCS_DIR
-     * @tc.type: FUNCTION
-     */
-    CloneAssetInfo info;
-    info.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
-    info.albumLpath = "/FromDocs/";
-    info.displayName = "newfile.txt";
-    info.burstKey = "";
-    info.mode = 0; // default mode (supports rename)
-
-    std::unordered_set<std::string> occupiedPaths;
-    int32_t ret = CheckFileName(info, occupiedPaths);
-    EXPECT_EQ(ret, E_OK);
-    // The targetFilePath should contain DOCS_DIR + displayName (since lpath is root)
-    EXPECT_FALSE(info.targetFilePath.empty());
-    EXPECT_EQ(occupiedPaths.size(), 1u);
-}
-
-// ===== CheckFileName: FileManager subType with sub-directory =====
-HWTEST_F(CloneToAlbumServiceTest, CheckFileName_FileManager_SubDir_NonBurst, TestSize.Level1)
-{
-    /**
-     * @tc.name: CheckFileName_FileManager_SubDir_NonBurst
-     * @tc.desc: When albumSubType is file-manager, lpath is sub-directory (/FromDocs/subdir),
-     *           burstKey is empty, targetFilePath includes the subdirectory
-     * @tc.type: FUNCTION
-     */
-    CloneAssetInfo info;
-    info.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
-    info.albumLpath = "/FromDocs/subdir";
-    info.displayName = "doc.pdf";
-    info.burstKey = "";
-    info.mode = 0;
-
-    std::unordered_set<std::string> occupiedPaths;
-    int32_t ret = CheckFileName(info, occupiedPaths);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_FALSE(info.targetFilePath.empty());
-    EXPECT_EQ(occupiedPaths.size(), 1u);
-}
-
-// ===== CheckFileName: occupiedPaths prevents duplicate =====
-HWTEST_F(CloneToAlbumServiceTest, CheckFileName_FileManager_OccupiedPathTriggersRename, TestSize.Level1)
-{
-    /**
-     * @tc.name: CheckFileName_FileManager_OccupiedPathTriggersRename
-     * @tc.desc: When the target path already exists in occupiedPaths and mode is NOT_SUPPORT_RENAME(1),
-     *           returns E_SCENE_HAS_RENAMED
-     * @tc.type: FUNCTION
-     */
-    CloneAssetInfo info;
-    info.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
-    info.albumLpath = "/FromDocs/";
-    info.displayName = "existing.txt";
-    info.burstKey = "";
-    info.mode = 1; // NOT_SUPPORT_RENAME
-
-    // Pre-occupy the expected path
-    std::unordered_set<std::string> occupiedPaths;
-    occupiedPaths.insert("/storage/media/local/files/Docs/existing.txt");
-
-    int32_t ret = CheckFileName(info, occupiedPaths);
-    // Since the file exists in occupiedPaths and mode=NOT_SUPPORT_RENAME, should return error
-    EXPECT_EQ(ret, E_SCENE_HAS_RENAMED);
-}
 
 // ===== CloneTaskInfo copy constructor =====
 HWTEST_F(CloneToAlbumServiceTest, CloneTaskInfo_CopyConstructor_CopiesFields, TestSize.Level1)

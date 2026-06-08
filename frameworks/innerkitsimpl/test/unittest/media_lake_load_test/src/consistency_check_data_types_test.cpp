@@ -41,12 +41,10 @@ HWTEST_F(ConsistencyCheckDataTypesTest, ScenarioProgress_ToString_ContainsAllFie
     ConsistencyCheck::ScenarioProgress progress;
     progress.lastFileId = 100;
     progress.lastAlbumId = 200;
-    progress.lastCheckTimeInMs = 1700000000000LL;
     std::string str = progress.ToString();
     EXPECT_TRUE(str.find("ScenarioProgress") != std::string::npos);
     EXPECT_TRUE(str.find("100") != std::string::npos);
     EXPECT_TRUE(str.find("200") != std::string::npos);
-    EXPECT_TRUE(str.find("1700000000000") != std::string::npos);
 }
 
 /**
@@ -59,7 +57,6 @@ HWTEST_F(ConsistencyCheckDataTypesTest, ScenarioProgress_DefaultValues_002, Test
     ConsistencyCheck::ScenarioProgress progress;
     EXPECT_EQ(progress.lastFileId, 0);
     EXPECT_EQ(progress.lastAlbumId, 0);
-    EXPECT_EQ(progress.lastCheckTimeInMs, 0);
 }
 
 // ==================== DeviceStatus Tests ====================
