@@ -729,7 +729,7 @@ HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToOnCreateReco
 * 期望结果：
 * 转换成功
 */
-HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_01, TestSize.Level1)
+HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_02, TestSize.Level1)
 {
     CloudMdkRecordPhotoAlbumVo albumData;
     albumData.albumType = 2048;
@@ -737,7 +737,7 @@ HWTEST_F(CloudMediaPhotoAlbumHandlerTest, AlbumDataConvert_ConvertToMdkRecord_01
     albumData.albumId = 1001;
     albumData.albumSubtype = 2049;
     albumData.isInWhiteList = 0;
-    albumData.lpath = "";
+    albumData.lpath = "/DCIM/Camera";
     albumData.dualAlbumName = "";
     albumData.albumNameEn = "album1";
     albumData.dateModified = static_cast<int64_t>(1737529312000);
