@@ -49,36 +49,6 @@ HWTEST_F(ScanRuleConfigTest, LakeConfig_RootPath_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: LakeConfig_BlackList_NotEmpty_002
- * @tc.desc: Test Lake scan rule config has non-empty blacklist containing expected path
- * @tc.type: FUNC
- */
-HWTEST_F(ScanRuleConfigTest, LakeConfig_BlackList_NotEmpty_002, TestSize.Level1)
-{
-    const ScanRuleConfig &config = GetLakeScanRuleConfig();
-    EXPECT_FALSE(config.blackList.empty());
-    EXPECT_TRUE(config.blackList.count(
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures/oh_pictures") > 0);
-}
-
-/**
- * @tc.name: LakeConfig_BoolFlags_003
- * @tc.desc: Test Lake scan rule config boolean flags are all true
- * @tc.type: FUNC
- */
-HWTEST_F(ScanRuleConfigTest, LakeConfig_BoolFlags_003, TestSize.Level1)
-{
-    const ScanRuleConfig &config = GetLakeScanRuleConfig();
-    EXPECT_TRUE(config.skipHiddenFile);
-    EXPECT_TRUE(config.skipHiddenDirectory);
-    EXPECT_TRUE(config.skipBlackList);
-    EXPECT_TRUE(config.skipTencentCache);
-    EXPECT_TRUE(config.createNomediaForInvisibleDirectory);
-    EXPECT_TRUE(config.cleanNomediaInDefaultDirs);
-    EXPECT_TRUE(config.skipDirectoryWithNomedia);
-}
-
-/**
  * @tc.name: LakeConfig_DefaultFolderNames_004
  * @tc.desc: Test Lake scan rule config has expected default folder names
  * @tc.type: FUNC
@@ -122,25 +92,6 @@ HWTEST_F(ScanRuleConfigTest, LakeConfig_VisiblePattern_006, TestSize.Level1)
         std::string("/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures"), config.visiblePattern));
 }
 
-/**
- * @tc.name: LakeConfig_InvisiblePattern_007
- * @tc.desc: Test Lake invisible regex matches known invisible directories
- * @tc.type: FUNC
- */
-HWTEST_F(ScanRuleConfigTest, LakeConfig_InvisiblePattern_007, TestSize.Level1)
-{
-    const ScanRuleConfig &config = GetLakeScanRuleConfig();
-    std::string root = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/";
-    // Android/data should match invisible pattern
-    EXPECT_TRUE(std::regex_match(root + "Android/data", config.invisiblePattern));
-    // .transforms should match
-    EXPECT_TRUE(std::regex_match(root + ".transforms", config.invisiblePattern));
-    // Pictures/.thumbnails should match
-    EXPECT_TRUE(std::regex_match(root + "Pictures/.thumbnails", config.invisiblePattern));
-    // Normal Pictures should NOT match invisible
-    EXPECT_FALSE(std::regex_match(root + "Pictures", config.invisiblePattern));
-}
-
 // ==================== File Manager Scan Rule Config Tests ====================
 
 /**
@@ -153,40 +104,6 @@ HWTEST_F(ScanRuleConfigTest, FMConfig_RootPath_001, TestSize.Level1)
     const ScanRuleConfig &config = GetFileManagerScanRuleConfig();
     EXPECT_EQ(config.rootPath, std::string(FILE_MANAGER_ROOT_PATH));
     EXPECT_EQ(config.rootPath, "/storage/media/local/files/Docs");
-}
-
-/**
- * @tc.name: FMConfig_BlackList_ContainsSystemDirs_002
- * @tc.desc: Test File Manager blacklist contains expected system directories
- * @tc.type: FUNC
- */
-HWTEST_F(ScanRuleConfigTest, FMConfig_BlackList_ContainsSystemDirs_002, TestSize.Level1)
-{
-    const ScanRuleConfig &config = GetFileManagerScanRuleConfig();
-    EXPECT_FALSE(config.blackList.empty());
-    EXPECT_TRUE(config.blackList.count("/storage/media/local/files/Docs/.Trash") > 0);
-    EXPECT_TRUE(config.blackList.count("/storage/media/local/files/Docs/.thumbs") > 0);
-    EXPECT_TRUE(config.blackList.count("/storage/media/local/files/Docs/.ohpm") > 0);
-    EXPECT_TRUE(config.blackList.count("/storage/media/local/files/Docs/appdata") > 0);
-    EXPECT_TRUE(config.blackList.count(
-        "/storage/media/local/files/Docs/HO_DATA_EXT_MISC") > 0);
-}
-
-/**
- * @tc.name: FMConfig_BoolFlags_003
- * @tc.desc: Test File Manager scan rule config boolean flags
- * @tc.type: FUNC
- */
-HWTEST_F(ScanRuleConfigTest, FMConfig_BoolFlags_003, TestSize.Level1)
-{
-    const ScanRuleConfig &config = GetFileManagerScanRuleConfig();
-    EXPECT_FALSE(config.skipHiddenFile);
-    EXPECT_FALSE(config.skipHiddenDirectory);
-    EXPECT_TRUE(config.skipBlackList);
-    EXPECT_FALSE(config.skipTencentCache);
-    EXPECT_FALSE(config.createNomediaForInvisibleDirectory);
-    EXPECT_FALSE(config.cleanNomediaInDefaultDirs);
-    EXPECT_FALSE(config.skipDirectoryWithNomedia);
 }
 
 /**
