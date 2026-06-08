@@ -23,8 +23,6 @@
 #include "medialibrary_db_const.h"
 #include "userfile_manager_types.h"
 
-#define private public
-#define protected public
 #include "media_assets_recover_service.h"
 #undef private
 

@@ -22,8 +22,6 @@
 #include "medialibrary_type_const.h"
 #include "userfile_manager_types.h"
 
-#define private public
-#define protected public
 #include "clone_to_album_service.h"
 #undef private
 
