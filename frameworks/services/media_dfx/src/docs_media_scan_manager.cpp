@@ -35,14 +35,12 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 
-#include <thread> // TODO REMOVE LATER
-
 namespace OHOS {
 namespace Media {
 
 static const std::string KEY_HIVIEW_VERSION_TYPE = "const.logsystem.versiontype";
-static const int32_t DOCS_MEDIA_SCAN_BATCH_SIZE = 20;
-static const int32_t DOCS_MEDIA_SCAN_DAILY_LIMIT = 80;
+static const int32_t DOCS_MEDIA_SCAN_BATCH_SIZE = 10;
+static const int32_t DOCS_MEDIA_SCAN_DAILY_LIMIT = 60;
 static const int32_t DOCS_MEDIA_SCAN_ATIME_THRESHOLD_SEC = 1800; // 30 * 60 seconds
 static const std::string DOCS_MEDIA_SCAN_DONE = "docs_media_scan_done";
 static const std::string DOCS_MEDIA_SCAN_TRAVERSAL_DONE = "docs_media_scan_traversal_done";
@@ -207,14 +205,11 @@ void DocsMediaScanManager::UpdateFileStats(const std::string &extension, MediaTy
 
     collector.sizeDistribution[GetSizeBucket(fileStat.st_size)]++;
 
-    // TODO CHANGE TO DEBUG
     if (fileStat.st_atime < collector.minAtime) {
         collector.minAtime = fileStat.st_atime;
-        MEDIA_DEBUG_LOG("Set minAtime: %{public}" PRId64, static_cast<int64_t>(collector.minAtime));
     }
     if (fileStat.st_atime > collector.maxAtime) {
         collector.maxAtime = fileStat.st_atime;
-        MEDIA_INFO_LOG("Set maxAtime: %{public}" PRId64, static_cast<int64_t>(collector.maxAtime));
     }
 }
 
@@ -284,7 +279,6 @@ DocsMediaScanManager::DirScanResult DocsMediaScanManager::ReadDirectoryEntries(c
         }
     }
     closedir(dir);
-    std::this_thread::sleep_for(std::chrono::seconds(2)); // TODO TEST ONLY
     return result;
 }
 

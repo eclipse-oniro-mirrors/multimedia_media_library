@@ -1074,11 +1074,9 @@ int32_t DfxDatabaseUtils::QueryDocsScanMaxId(int32_t &maxId)
 
 int32_t DfxDatabaseUtils::DropDocsMediaScanTempTable()
 {
-    // TODO TEMP TEST
-    return E_OK;
-    // auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    // CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
-    // return rdbStore->ExecuteSql("DROP TABLE IF EXISTS docs_media_scan_temp");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+    return rdbStore->ExecuteSql("DROP TABLE IF EXISTS docs_media_scan_temp");
 }
 } // namespace Media
 } // namespace OHOS
