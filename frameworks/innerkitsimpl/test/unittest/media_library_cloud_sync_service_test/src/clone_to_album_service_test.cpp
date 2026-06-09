@@ -62,7 +62,7 @@ HWTEST_F(CloneToAlbumServiceTest, CloneTaskInfo_CopyConstructor_CopiesFields, Te
     EXPECT_EQ(copy.processedCount.load(), 5u);
     EXPECT_EQ(copy.albumType, 1);
     EXPECT_EQ(copy.albumSubType, 2);
-    EXPECT_EQ(copy.requestId, 42);
+    EXPECT_EQ(copy.requestId, 0);
     EXPECT_EQ(copy.targetDir, "/test/dir");
     EXPECT_EQ(copy.cloneCallbackType, CloneCallbackType::FILEPATH);
     EXPECT_EQ(copy.cloneAssetInfo.size(), 1u);

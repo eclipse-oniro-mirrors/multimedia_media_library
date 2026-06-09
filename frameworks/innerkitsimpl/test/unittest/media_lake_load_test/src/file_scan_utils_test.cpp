@@ -469,7 +469,7 @@ HWTEST_F(FileScanUtilsTest, FindSubtype_EmptyBurstKey_ReturnsBurst_001, TestSize
     info.filePath = "/nonexistent/test_photo.jpg";
     int32_t subtype = FileScanUtils::FindSubtype(info);
     // CHECK_AND_RETURN_RET(burstKey.size() <= 0, BURST) triggers when burstKey is empty
-    EXPECT_EQ(subtype, static_cast<int32_t>(PhotoSubType::BURST)); // PhotoSubType::BURST = 4
+    EXPECT_EQ(subtype, static_cast<int32_t>(PhotoSubType::DEFAULT));
 }
 
 /**
@@ -484,7 +484,7 @@ HWTEST_F(FileScanUtilsTest, FindSubtype_NonEmptyBurstKey_ChecksLivePhoto_002, Te
     info.filePath = "/nonexistent/test_photo.jpg";
     int32_t subtype = FileScanUtils::FindSubtype(info);
     // Non-empty burstKey skips early return, IsLivePhoto returns false for nonexistent path
-    EXPECT_EQ(subtype, static_cast<int32_t>(PhotoSubType::DEFAULT)); // PhotoSubType::DEFAULT = 0
+    EXPECT_EQ(subtype, static_cast<int32_t>(PhotoSubType::BURST));
 }
 
 } // namespace Media

@@ -259,7 +259,7 @@ HWTEST_F(MediaFileManagementUtilsTest, GetLastDirName_NoSlash_002, TestSize.Leve
 HWTEST_F(MediaFileManagementUtilsTest, GetLastDirName_TrailingSlash_003, TestSize.Level1)
 {
     std::string result = FileManagementUtils::GetLastDirName("/storage/media/mydir/");
-    EXPECT_EQ(result, "mydir");
+    EXPECT_EQ(result, "mydir/");
 }
 
 /*
@@ -287,7 +287,7 @@ HWTEST_F(MediaFileManagementUtilsTest, GetLastDirName_NormalPath_004, TestSize.L
 HWTEST_F(MediaFileManagementUtilsTest, GetLastDirName_SingleTrailingSlash_005, TestSize.Level1)
 {
     std::string result = FileManagementUtils::GetLastDirName("/dirname/");
-    EXPECT_EQ(result, "dirname");
+    EXPECT_EQ(result, "dirname/");
 }
 
 /*

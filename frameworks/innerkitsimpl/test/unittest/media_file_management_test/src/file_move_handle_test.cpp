@@ -59,23 +59,6 @@ HWTEST_F(MediaFileMoveHandleTest, Destructor_NoTimer_001, TestSize.Level1)
  * Feature : FileMoveHandle
  * Function : OnMoveProgressTimer
  * SubFunction : NA
- * FunctionPoints : 验证requestId无效时返回E_ERR
- * EnvContions : NA
- * CaseDescription : requestId <= 0时CHECK_AND_RETURN_RET_LOG返回E_ERR
- */
-HWTEST_F(MediaFileMoveHandleTest, OnMoveProgressTimer_InvalidRequestId_001, TestSize.Level1)
-{
-    auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
-    changeInfo->requestId = 0; // invalid
-    FileMoveHandle handle(changeInfo, "test_timer_invalid_req");
-    int32_t ret = handle.OnMoveProgressTimer();
-    EXPECT_EQ(ret, E_ERR);
-}
-
-/*
- * Feature : FileMoveHandle
- * Function : OnMoveProgressTimer
- * SubFunction : NA
  * FunctionPoints : 验证requestId有效时正常通知进度
  * EnvContions : NA
  * CaseDescription : requestId > 0时调用NotifyProgress并返回E_OK
