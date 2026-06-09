@@ -22,8 +22,6 @@
 #include <nlohmann/json.hpp>
 #include <regex>
 
-// #include "dfx_const.h" // TODO COMMENT IF NECESSARY
-// #include "dfx_database_utils.h"
 #include "dfx_reporter.h"
 #include "file_manager_scan_rule_config.h"
 #include "folder_scanner_utils.h"
@@ -37,7 +35,7 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 
-#include <thread>
+#include <thread> // TODO REMOVE LATER
 
 namespace OHOS {
 namespace Media {
@@ -212,7 +210,7 @@ void DocsMediaScanManager::UpdateFileStats(const std::string &extension, MediaTy
     // TODO CHANGE TO DEBUG
     if (fileStat.st_atime < collector.minAtime) {
         collector.minAtime = fileStat.st_atime;
-        MEDIA_INFO_LOG("Set minAtime: %{public}" PRId64, static_cast<int64_t>(collector.minAtime));
+        MEDIA_DEBUG_LOG("Set minAtime: %{public}" PRId64, static_cast<int64_t>(collector.minAtime));
     }
     if (fileStat.st_atime > collector.maxAtime) {
         collector.maxAtime = fileStat.st_atime;
@@ -286,7 +284,7 @@ DocsMediaScanManager::DirScanResult DocsMediaScanManager::ReadDirectoryEntries(c
         }
     }
     closedir(dir);
-    std::this_thread::sleep_for(std::chrono::seconds(3)); // TODO TEST ONLY
+    std::this_thread::sleep_for(std::chrono::seconds(2)); // TODO TEST ONLY
     return result;
 }
 
