@@ -1035,19 +1035,22 @@ bool DfxDatabaseUtils::IsDirPathInDocsScanTempTable(const std::string &dirPath)
     return exists;
 }
 
-int32_t DfxDatabaseUtils::QueryDocsScanFolderStats(int32_t offset, int32_t limit,
-    std::vector<DocsScanFolderStats> &results)
+std::vector<DocsScanFolderStats> DfxDatabaseUtils::QueryDocsScanFolderStats(int32_t lastId, int32_t limit)
 {
+    std::vector<DocsScanFolderStats> results;
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
-    std::string sql = "SELECT dir_path, image_count, video_count, format_distribution, "
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, results, "rdbStore is nullptr");
+
+    std::string sql = "SELECT id, dir_path, image_count, video_count, format_distribution, "
         "size_distribution, atime_within_30min, atime_diff_sec "
-        "FROM docs_media_scan_temp ORDER BY id ASC LIMIT " +
-        std::to_string(limit) + " OFFSET " + std::to_string(offset);
-    auto resultSet = rdbStore->QuerySql(sql);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_DB_FAIL, "resultSet is nullptr");
+        "FROM docs_media_scan_temp WHERE id > ? ORDER BY id ASC LIMIT ?";
+    std::vector<NativeRdb::ValueObject> params = { lastId, limit };
+    auto resultSet = rdbStore->QuerySql(sql, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, results, "resultSet is nullptr");
+
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         DocsScanFolderStats stats;
+        stats.id = GetInt32Val(DOCS_SCAN_COLUMN_ID, resultSet);
         stats.dirPath = GetStringVal(DOCS_SCAN_COLUMN_DIR_PATH, resultSet);
         stats.imageCount = GetInt32Val(DOCS_SCAN_COLUMN_IMAGE_COUNT, resultSet);
         stats.videoCount = GetInt32Val(DOCS_SCAN_COLUMN_VIDEO_COUNT, resultSet);
@@ -1058,22 +1061,24 @@ int32_t DfxDatabaseUtils::QueryDocsScanFolderStats(int32_t offset, int32_t limit
         results.push_back(stats);
     }
     resultSet->Close();
-    return E_OK;
+    return results;
 }
 
-int32_t DfxDatabaseUtils::QueryDocsScanTotalFolderCount(int32_t &count)
+int32_t DfxDatabaseUtils::QueryDocsScanMaxId(int32_t &maxId)
 {
     NativeRdb::RdbPredicates predicates(DOCS_SCAN_TEMP_TABLE);
-    std::vector<std::string> columns = { "count(1) AS count" };
-    std::string queryColumn = "count";
-    return QueryInt(predicates, columns, queryColumn, count);
+    std::string queryColumn = "max(id)";
+    std::vector<std::string> columns = { queryColumn };
+    return QueryInt(predicates, columns, queryColumn, maxId);
 }
 
 int32_t DfxDatabaseUtils::DropDocsMediaScanTempTable()
 {
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
-    return rdbStore->ExecuteSql("DROP TABLE IF EXISTS docs_media_scan_temp");
+    // TODO TEMP TEST
+    return E_OK;
+    // auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    // CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+    // return rdbStore->ExecuteSql("DROP TABLE IF EXISTS docs_media_scan_temp");
 }
 } // namespace Media
 } // namespace OHOS

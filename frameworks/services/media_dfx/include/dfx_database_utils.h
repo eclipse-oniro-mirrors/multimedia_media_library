@@ -39,6 +39,7 @@ struct DfxCompatibleInfo {
 };
 
 struct DocsScanFolderStats {
+    int32_t id = 0;
     std::string dirPath;
     int32_t imageCount = 0;
     int32_t videoCount = 0;
@@ -74,9 +75,8 @@ public:
     EXPORT static int32_t CreateDocsMediaScanTempTable();
     EXPORT static int32_t InsertDocsScanFolderStats(const DocsScanFolderStats &stats);
     EXPORT static bool IsDirPathInDocsScanTempTable(const std::string &dirPath);
-    EXPORT static int32_t QueryDocsScanFolderStats(int32_t offset, int32_t limit,
-        std::vector<DocsScanFolderStats> &results);
-    EXPORT static int32_t QueryDocsScanTotalFolderCount(int32_t &count);
+    EXPORT static std::vector<DocsScanFolderStats> QueryDocsScanFolderStats(int32_t lastId, int32_t limit);
+    EXPORT static int32_t QueryDocsScanMaxId(int32_t &maxId);
     EXPORT static int32_t DropDocsMediaScanTempTable();
 
 private:

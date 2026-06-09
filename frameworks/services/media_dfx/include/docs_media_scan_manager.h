@@ -22,7 +22,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "dfx_const.h"
 #include "dfx_database_utils.h"
 #include "preferences.h"
 
@@ -47,7 +46,7 @@ public:
         std::vector<std::pair<std::string, std::string>> subDirs;
     };
 
-    static DocsMediaScanManager& GetInstance();
+    static DocsMediaScanManager &GetInstance();
     void Execute();
 
 private:
@@ -63,7 +62,7 @@ private:
     void MarkTaskCompleted();
     int32_t ResetDailyCountIfNeeded();
     bool CheckDailyLimit();
-    void IncrementDailyCount();
+    void IncrementDailyCountAndUpdateLastReportedId(int32_t lastReportedId);
 
     bool TraverseAndCollect();
     bool CollectFolderStats(const std::string &fullPath, const std::string &relativePath,
@@ -73,6 +72,8 @@ private:
     void UpdateFileStats(const std::string &extension, MediaType mediaType, const struct stat &fileStat,
         DocsMediaScanManager::FolderStatsCollector &collector);
     int32_t GetSizeBucket(off_t fileSize);
+    bool ShouldScanDirectory(const std::string &path);
+    bool ShouldScanFile(const std::string &path);
     DocsMediaScanManager::DirScanResult ReadDirectoryEntries(const std::string &path, const std::string &relativePath);
     void ReportPhase();
     void Finalize();

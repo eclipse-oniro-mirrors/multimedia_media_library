@@ -17,17 +17,20 @@
 
 #include "docs_media_scan_manager.h"
 
-#include <chrono>
-#include <dirent.h>
-#include <sys/stat.h>
 #include <algorithm>
+#include <dirent.h>
 #include <nlohmann/json.hpp>
+#include <sys/stat.h>
 
 #include "dfx_const.h"
 #include "dfx_database_utils.h"
 #include "dfx_reporter.h"
+#include "file_manager_scan_rule_config.h"
+#include "folder_scanner_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_string_utils.h"
+#include "media_time_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
 #include "parameters.h"
@@ -38,13 +41,12 @@ namespace OHOS {
 namespace Media {
 
 static const std::string KEY_HIVIEW_VERSION_TYPE = "const.logsystem.versiontype";
-static const std::string DOCS_MEDIA_SCAN_ROOT_DIR = "/storage/media/local/files/Docs";
 static const int32_t DOCS_MEDIA_SCAN_BATCH_SIZE = 20;
 static const int32_t DOCS_MEDIA_SCAN_DAILY_LIMIT = 80;
-static const int32_t DOCS_MEDIA_SCAN_ATIME_THRESHOLD_SEC = 1800;
+static const int32_t DOCS_MEDIA_SCAN_ATIME_THRESHOLD_SEC = 1800; // 30 * 60 seconds
 static const std::string DOCS_MEDIA_SCAN_DONE = "docs_media_scan_done";
 static const std::string DOCS_MEDIA_SCAN_TRAVERSAL_DONE = "docs_media_scan_traversal_done";
-static const std::string DOCS_MEDIA_SCAN_REPORTED_FOLDERS = "docs_media_scan_reported_folders";
+static const std::string DOCS_MEDIA_SCAN_LAST_REPORTED_ID = "docs_media_scan_last_reported_id";
 static const std::string DOCS_MEDIA_SCAN_DAILY_COUNT = "docs_media_scan_daily_count";
 static const std::string DOCS_MEDIA_SCAN_DAILY_DATE = "docs_media_scan_daily_date";
 static const std::string DEFAULT_VERSION_TYPE = "unknown";
@@ -58,6 +60,13 @@ static constexpr off_t SIZE_THRESHOLD_50K = 50 * SIZE_THRESHOLD_1K;
 static constexpr off_t SIZE_THRESHOLD_100K = 100 * SIZE_THRESHOLD_1K;
 static constexpr off_t SIZE_THRESHOLD_500K = 500 * SIZE_THRESHOLD_1K;
 static constexpr off_t SIZE_THRESHOLD_1M = 1024 * SIZE_THRESHOLD_1K;
+static constexpr int32_t SIZE_BUCKET_1K = 0;
+static constexpr int32_t SIZE_BUCKET_10K = 1;
+static constexpr int32_t SIZE_BUCKET_50K = 2;
+static constexpr int32_t SIZE_BUCKET_100K = 3;
+static constexpr int32_t SIZE_BUCKET_500K = 4;
+static constexpr int32_t SIZE_BUCKET_1M = 5;
+static constexpr int32_t SIZE_BUCKET_1M_PLUS = 6;
 static const std::string JSON_KEY_DIR_PATH = "dp";
 static const std::string JSON_KEY_IMAGE_COUNT = "ic";
 static const std::string JSON_KEY_VIDEO_COUNT = "vc";
@@ -70,7 +79,7 @@ static const std::string PARENT_DIR = "..";
 
 DocsMediaScanManager::FolderStatsCollector::FolderStatsCollector() : sizeDistribution(SIZE_BUCKET_COUNT, 0) {}
 
-DocsMediaScanManager& DocsMediaScanManager::GetInstance()
+DocsMediaScanManager &DocsMediaScanManager::GetInstance()
 {
     static DocsMediaScanManager instance;
     return instance;
@@ -135,17 +144,12 @@ int32_t DocsMediaScanManager::ResetDailyCountIfNeeded()
 {
     auto prefs = GetPrefs();
     CHECK_AND_RETURN_RET_LOG(prefs != nullptr, E_FAIL, "prefs is nullptr");
-    auto now = std::chrono::system_clock::now();
-    auto nowTimeT = std::chrono::system_clock::to_time_t(now);
-    struct tm tmStruct;
-    localtime_r(&nowTimeT, &tmStruct);
-    char dateStr[DATE_BUFFER_SIZE] = {0};
-    strftime(dateStr, sizeof(dateStr), DATE_FORMAT.c_str(), &tmStruct);
+    std::string currentDate = MediaTimeUtils::StrCreateTime(DATE_FORMAT, MediaTimeUtils::UTCTimeSeconds());
     std::string storedDate = prefs->GetString(DOCS_MEDIA_SCAN_DAILY_DATE, "");
-    CHECK_AND_RETURN_RET(storedDate != dateStr, E_OK);
-    MEDIA_INFO_LOG("Reset daily count to 0 for %{public}s", dateStr);
+    CHECK_AND_RETURN_RET(storedDate != currentDate, E_OK);
+    MEDIA_INFO_LOG("Reset daily count to 0 for %{public}s", currentDate.c_str());
     prefs->PutInt(DOCS_MEDIA_SCAN_DAILY_COUNT, 0);
-    prefs->PutString(DOCS_MEDIA_SCAN_DAILY_DATE, dateStr);
+    prefs->PutString(DOCS_MEDIA_SCAN_DAILY_DATE, currentDate);
     prefs->FlushSync();
     return E_OK;
 }
@@ -158,14 +162,16 @@ bool DocsMediaScanManager::CheckDailyLimit()
     return dailyCount >= DOCS_MEDIA_SCAN_DAILY_LIMIT;
 }
 
-void DocsMediaScanManager::IncrementDailyCount()
+void DocsMediaScanManager::IncrementDailyCountAndUpdateLastReportedId(int32_t lastReportedId)
 {
     auto prefs = GetPrefs();
     CHECK_AND_RETURN_LOG(prefs != nullptr, "prefs is nullptr");
     int32_t dailyCount = prefs->GetInt(DOCS_MEDIA_SCAN_DAILY_COUNT, 0);
     prefs->PutInt(DOCS_MEDIA_SCAN_DAILY_COUNT, dailyCount + 1);
+    prefs->PutInt(DOCS_MEDIA_SCAN_LAST_REPORTED_ID, lastReportedId);
     prefs->FlushSync();
-    MEDIA_INFO_LOG("Set %{public}s: %{public}d", DOCS_MEDIA_SCAN_DAILY_COUNT.c_str(), dailyCount + 1);
+    MEDIA_INFO_LOG("Set %{public}s: %{public}d, %{public}s: %{public}d", DOCS_MEDIA_SCAN_DAILY_COUNT.c_str(),
+        dailyCount + 1, DOCS_MEDIA_SCAN_LAST_REPORTED_ID.c_str(), lastReportedId);
 }
 
 bool DocsMediaScanManager::IsMediaFile(const std::string &filePath)
@@ -181,26 +187,24 @@ MediaType DocsMediaScanManager::GetMediaTypeOfFile(const std::string &filePath)
         return mediaType;
     }
     mediaType = MediaFileUtils::GetMediaTypeNotSupported(filePath);
-    if (mediaType == MediaType::MEDIA_TYPE_IMAGE || mediaType == MediaType::MEDIA_TYPE_VIDEO) {
-        return mediaType;
-    }
     return mediaType;
 }
 
 void DocsMediaScanManager::UpdateFileStats(const std::string &extension, MediaType mediaType,
     const struct stat &fileStat, DocsMediaScanManager::FolderStatsCollector &collector)
 {
-    if (mediaType == MediaType::MEDIA_TYPE_IMAGE) {
-        collector.imageCount++;
-    } else if (mediaType == MediaType::MEDIA_TYPE_VIDEO) {
-        collector.videoCount++;
-    } else {
-        return;
-    }
+    CHECK_AND_RETURN(mediaType == MediaType::MEDIA_TYPE_IMAGE || mediaType == MediaType::MEDIA_TYPE_VIDEO);
+
+    collector.imageCount += mediaType == MediaType::MEDIA_TYPE_IMAGE;
+    collector.videoCount += mediaType == MediaType::MEDIA_TYPE_VIDEO;
+
     if (!extension.empty()) {
         collector.formatMap[extension]++;
     }
+
     collector.sizeDistribution[GetSizeBucket(fileStat.st_size)]++;
+
+    // TODO CHANGE TO DEBUG
     if (fileStat.st_atime < collector.minAtime) {
         collector.minAtime = fileStat.st_atime;
         MEDIA_INFO_LOG("Set minAtime: %{public}" PRId64, static_cast<int64_t>(collector.minAtime));
@@ -214,24 +218,37 @@ void DocsMediaScanManager::UpdateFileStats(const std::string &extension, MediaTy
 int32_t DocsMediaScanManager::GetSizeBucket(off_t fileSize)
 {
     if (fileSize <= SIZE_THRESHOLD_1K) {
-        return 0;
+        return SIZE_BUCKET_1K;
     }
     if (fileSize <= SIZE_THRESHOLD_10K) {
-        return 1;
+        return SIZE_BUCKET_10K;
     }
     if (fileSize <= SIZE_THRESHOLD_50K) {
-        return 2;
+        return SIZE_BUCKET_50K;
     }
     if (fileSize <= SIZE_THRESHOLD_100K) {
-        return 3;
+        return SIZE_BUCKET_100K;
     }
     if (fileSize <= SIZE_THRESHOLD_500K) {
-        return 4;
+        return SIZE_BUCKET_500K;
     }
     if (fileSize <= SIZE_THRESHOLD_1M) {
-        return 5;
+        return SIZE_BUCKET_1M;
     }
-    return 6;
+    return SIZE_BUCKET_1M_PLUS;
+}
+
+bool DocsMediaScanManager::ShouldScanDirectory(const std::string &path)
+{
+    const auto &ruleConfig = GetFileManagerScanRuleConfig();
+    return FolderScannerUtils::ShouldScanDirectory(path, ruleConfig) &&
+        !FolderScannerUtils::IsSkipCurrentDirectory(path, ruleConfig);
+}
+
+bool DocsMediaScanManager::ShouldScanFile(const std::string &path)
+{
+    const auto &ruleConfig = GetFileManagerScanRuleConfig();
+    return IsMediaFile(path) && !FolderScannerUtils::IsSkipCurrentFile(path, ruleConfig);
 }
 
 DocsMediaScanManager::DirScanResult DocsMediaScanManager::ReadDirectoryEntries(const std::string &path,
@@ -249,23 +266,18 @@ DocsMediaScanManager::DirScanResult DocsMediaScanManager::ReadDirectoryEntries(c
         if (strcmp(entry->d_name, CURRENT_DIR.c_str()) == 0 || strcmp(entry->d_name, PARENT_DIR.c_str()) == 0) {
             continue;
         }
-        std::string fullPath = path + SPLIT_PATH + entry->d_name;
+        std::string fullPath = path + "/" + entry->d_name;
         struct stat statInfo;
         if (lstat(fullPath.c_str(), &statInfo) != 0) {
-            MEDIA_ERR_LOG("Failed to lstat: %{public}s", fullPath.c_str());
+            MEDIA_ERR_LOG("Failed to lstat: %{public}s", MediaFileUtils::DesensitizePath(fullPath).c_str());
             continue;
         }
-        if (S_ISLNK(statInfo.st_mode)) {
-            continue;
-        }
-        if (S_ISDIR(statInfo.st_mode)) {
-            std::string subRelative = relativePath.empty() ? entry->d_name : relativePath + SPLIT_PATH + entry->d_name;
+        if (S_ISDIR(statInfo.st_mode) && ShouldScanDirectory(fullPath)) {
+            std::string subRelative = relativePath.empty() ? entry->d_name : relativePath + "/" + entry->d_name;
             result.subDirs.push_back({fullPath, subRelative});
-        } else if (S_ISREG(statInfo.st_mode)) {
-            if (DocsMediaScanManager::IsMediaFile(fullPath)) {
-                result.mediaFiles.push_back(entry->d_name);
-                result.mediaStats.push_back(statInfo);
-            }
+        } else if (S_ISREG(statInfo.st_mode) && ShouldScanFile(fullPath)) {
+            result.mediaFiles.push_back(entry->d_name);
+            result.mediaStats.push_back(statInfo);
         }
     }
     closedir(dir);
@@ -276,7 +288,7 @@ static DocsScanFolderStats SerializeFolderStats(const std::string &relativePath,
     const DocsMediaScanManager::FolderStatsCollector &collector)
 {
     DocsScanFolderStats stats;
-    stats.dirPath = relativePath;
+    stats.dirPath = relativePath.empty() ? "/" : relativePath;
     stats.imageCount = collector.imageCount;
     stats.videoCount = collector.videoCount;
 
@@ -284,10 +296,10 @@ static DocsScanFolderStats SerializeFolderStats(const std::string &relativePath,
     for (const auto &entry : collector.formatMap) {
         formatJson[entry.first] = entry.second;
     }
-    stats.formatDistribution = formatJson.dump();
+    stats.formatDistribution = formatJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 
     nlohmann::json sizeJson = collector.sizeDistribution;
-    stats.sizeDistribution = sizeJson.dump();
+    stats.sizeDistribution = sizeJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
 
     if (collector.minAtime <= collector.maxAtime) {
         time_t atimeDiff = collector.maxAtime - collector.minAtime;
@@ -302,16 +314,14 @@ bool DocsMediaScanManager::CollectFolderStats(const std::string &fullPath,
     const std::string &relativePath, const std::vector<std::string> &mediaFiles,
     const std::vector<struct stat> &mediaStats)
 {
-    if (DfxDatabaseUtils::IsDirPathInDocsScanTempTable(relativePath)) {
-        return true;
-    }
+    CHECK_AND_RETURN_RET(!mediaFiles.empty(), true);
+    CHECK_AND_RETURN_RET(!DfxDatabaseUtils::IsDirPathInDocsScanTempTable(relativePath), true);
 
     DocsMediaScanManager::FolderStatsCollector collector;
     for (size_t index = 0; index < mediaFiles.size(); index++) {
-        std::string filePath = fullPath + SPLIT_PATH + mediaFiles[index];
+        std::string filePath = fullPath + "/" + mediaFiles[index];
         MediaType mediaType = GetMediaTypeOfFile(filePath);
-        std::string extension = MediaFileUtils::GetExtensionFromPath(filePath);
-        std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+        std::string extension = MediaStringUtils::ToLower(MediaFileUtils::GetExtensionFromPath(filePath));
         UpdateFileStats(extension, mediaType, mediaStats[index], collector);
     }
 
@@ -324,19 +334,17 @@ bool DocsMediaScanManager::CollectFolderStats(const std::string &fullPath,
 bool DocsMediaScanManager::TraverseAndCollect()
 {
     MEDIA_INFO_LOG("Start TraverseAndCollect");
-    DIR *rootDir = opendir(DOCS_MEDIA_SCAN_ROOT_DIR.c_str());
-    if (rootDir == nullptr) {
-        MEDIA_INFO_LOG("Docs root dir not present, marking task as completed");
+    if (!MediaFileUtils::IsFileExists(std::string(FILE_MANAGER_ROOT_PATH))) {
+        MEDIA_INFO_LOG("Docs root dir not exist, marking task as completed");
         MarkTaskCompleted();
         return true;
     }
-    closedir(rootDir);
 
     int32_t ret = DfxDatabaseUtils::CreateDocsMediaScanTempTable();
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, false, "CreateDocsMediaScanTempTable failed: %{public}d", ret);
 
     std::vector<std::pair<std::string, std::string>> dirStack;
-    dirStack.push_back({DOCS_MEDIA_SCAN_ROOT_DIR, ""});
+    dirStack.push_back({std::string(FILE_MANAGER_ROOT_PATH), ""});
 
     while (!dirStack.empty()) {
         if (!MedialibrarySubscriber::IsCurrentStatusOn()) {
@@ -348,14 +356,10 @@ bool DocsMediaScanManager::TraverseAndCollect()
         dirStack.pop_back();
 
         DocsMediaScanManager::DirScanResult result = ReadDirectoryEntries(current.first, current.second);
+        CHECK_AND_PRINT_LOG(CollectFolderStats(current.first, current.second, result.mediaFiles, result.mediaStats),
+            "CollectFolderStats failed, path: %{public}s", MediaFileUtils::DesensitizePath(current.first).c_str());
 
-        if (!result.mediaFiles.empty()) {
-            if (!CollectFolderStats(current.first, current.second, result.mediaFiles, result.mediaStats)) {
-                return false;
-            }
-        }
-
-        for (auto &subDir : result.subDirs) {
+        for (const auto &subDir : result.subDirs) {
             dirStack.push_back(subDir);
         }
     }
@@ -372,10 +376,12 @@ static nlohmann::json BuildBatchJson(const std::vector<DocsScanFolderStats> &bat
         folderObj[JSON_KEY_DIR_PATH] = stats.dirPath;
         folderObj[JSON_KEY_IMAGE_COUNT] = stats.imageCount;
         folderObj[JSON_KEY_VIDEO_COUNT] = stats.videoCount;
-        folderObj[JSON_KEY_FORMAT_DISTRIBUTION] = nlohmann::json::parse(stats.formatDistribution, nullptr, false);
-        folderObj[JSON_KEY_SIZE_DISTRIBUTION] = nlohmann::json::parse(stats.sizeDistribution, nullptr, false);
         folderObj[JSON_KEY_ATIME_WITHIN_30MIN] = stats.atimeWithin30min == 1;
         folderObj[JSON_KEY_ATIME_DIFF_SEC] = stats.atimeDiffSec;
+        nlohmann::json formatJson = nlohmann::json::parse(stats.formatDistribution, nullptr, false);
+        CHECK_AND_EXECUTE(formatJson.is_discarded(), folderObj[JSON_KEY_FORMAT_DISTRIBUTION] = formatJson);
+        nlohmann::json sizeJson = nlohmann::json::parse(stats.sizeDistribution, nullptr, false);
+        CHECK_AND_EXECUTE(sizeJson.is_discarded(), folderObj[JSON_KEY_SIZE_DISTRIBUTION] = sizeJson);
         batchArray.push_back(folderObj);
     }
     return batchArray;
@@ -389,17 +395,18 @@ void DocsMediaScanManager::ReportPhase()
     ResetDailyCountIfNeeded();
 
     MEDIA_INFO_LOG("Start ReportPhase");
-    int32_t totalFolders = 0;
-    int32_t ret = DfxDatabaseUtils::QueryDocsScanTotalFolderCount(totalFolders);
-    CHECK_AND_RETURN_LOG(ret == E_OK, "QueryDocsScanTotalFolderCount failed");
+    int32_t maxId = 0;
+    int32_t ret = DfxDatabaseUtils::QueryDocsScanMaxId(maxId);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "QueryDocsScanMaxId failed");
 
-    int32_t reportedFolders = prefs->GetInt(DOCS_MEDIA_SCAN_REPORTED_FOLDERS, 0);
-    if (reportedFolders >= totalFolders) {
+    int32_t lastReportedId = prefs->GetInt(DOCS_MEDIA_SCAN_LAST_REPORTED_ID, 0);
+    MEDIA_INFO_LOG("Get lastReportedId / maxId: %{public}d / %{public}d, ", lastReportedId, maxId);
+    if (lastReportedId >= maxId) {
         Finalize();
         return;
     }
 
-    while (reportedFolders < totalFolders) {
+    while (lastReportedId < maxId) {
         if (CheckDailyLimit()) {
             MEDIA_INFO_LOG("Daily limit reached, will continue next trigger");
             return;
@@ -409,9 +416,9 @@ void DocsMediaScanManager::ReportPhase()
             return;
         }
 
-        std::vector<DocsScanFolderStats> batch;
-        ret = DfxDatabaseUtils::QueryDocsScanFolderStats(reportedFolders, DOCS_MEDIA_SCAN_BATCH_SIZE, batch);
-        CHECK_AND_RETURN_LOG(ret == E_OK, "QueryDocsScanFolderStats failed");
+        std::vector<DocsScanFolderStats> batch = DfxDatabaseUtils::QueryDocsScanFolderStats(lastReportedId,
+            DOCS_MEDIA_SCAN_BATCH_SIZE);
+        CHECK_AND_RETURN_LOG(!batch.empty(), "QueryDocsScanFolderStats failed");
 
         nlohmann::json batchArray = BuildBatchJson(batch);
         int32_t reportRet = DfxReporter::ReportAncoCountFormatInfoForDirScan(batchArray.dump());
@@ -420,13 +427,11 @@ void DocsMediaScanManager::ReportPhase()
             return;
         }
 
-        IncrementDailyCount();
-        reportedFolders += static_cast<int32_t>(batch.size());
-        prefs->PutInt(DOCS_MEDIA_SCAN_REPORTED_FOLDERS, reportedFolders);
-        prefs->FlushSync();
+        lastReportedId = batch.back().id;
+        IncrementDailyCountAndUpdateLastReportedId(lastReportedId);
     }
 
-    if (reportedFolders >= totalFolders) {
+    if (lastReportedId >= maxId) {
         Finalize();
     }
 }
@@ -447,13 +452,7 @@ void DocsMediaScanManager::Execute()
         return;
     }
     MEDIA_INFO_LOG("Start Execute");
-    if (!IsTraversalDone()) {
-        bool traversalOk = TraverseAndCollect();
-        if (!traversalOk) {
-            return;
-        }
-    }
-
+    CHECK_AND_RETURN(IsTraversalDone() || TraverseAndCollect());
     ReportPhase();
 }
 
