@@ -161,8 +161,8 @@ int32_t CloudMediaDownloadService::OnDownloadLcd(
     if (ret == E_OK && !lcdVector.empty()) {
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_LCD_SUCCESS, lcdVector.size());
     }
-    int32_t out = this->dao_.UpdateLcdFileSize(lcdVector);
-    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSize, out: %{public}d", out);
+    int32_t out = this->dao_.UpdateLcdFileSizeAndLcdSize(lcdVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSizeAndLcdSize, out: %{public}d", out);
     for (auto &thm : lcdVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;
@@ -183,8 +183,8 @@ int32_t CloudMediaDownloadService::OnDownloadThmAndLcd(
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_THUMB_SUCCESS, bothVector.size());
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_LCD_SUCCESS, bothVector.size());
     }
-    int32_t out  = this->dao_.UpdateLcdFileSize(bothVector);
-    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSize, out: %{public}d", out);
+    int32_t out = this->dao_.UpdateLcdFileSizeAndLcdSize(bothVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSizeAndLcdSize, out: %{public}d", out);
     for (auto &thm : bothVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;

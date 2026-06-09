@@ -28,6 +28,7 @@
 #include "media_column.h"
 #include "download_thumbnail_query_dto.h"
 #include "cloud_lake_info.h"
+#include "lcd_file_info_dto.h"
 
 namespace OHOS::Media::CloudSync {
 using namespace OHOS::Media::ORM;
@@ -49,6 +50,7 @@ public:
         const CloudMediaScanService::ScanResult& scanResult);
     int32_t CleanAttachmentByCloudId(const std::vector<std::string> &cloudIdList);
     int32_t UpdateLcdFileSize(const std::vector<std::string> &cloudIds);
+    int32_t UpdateLcdFileSizeAndLcdSize(const std::vector<std::string> &cloudIds);
 
 private:
     NativeRdb::AbsRdbPredicates GetDownloadThmsConditions(const int32_t type);
@@ -59,6 +61,7 @@ private:
         bool isNeedUpdate);
     void FillScanedHeightWidth(NativeRdb::ValuesBucket &values, const CloudMediaScanService::ScanResult &scanResult);
     int32_t HandleAdditionalFileInfo(const OnDownloadAssetData &assetData, NativeRdb::ValuesBucket &values);
+    int32_t QueryLcdFileInfoByCloudIds(const std::vector<std::string> &cloudIds, std::vector<LcdFileInfoDto> &result);
 
 private:
     const std::vector<std::string> DOWNLOAD_THUMBNAIL_COLUMNS = {
