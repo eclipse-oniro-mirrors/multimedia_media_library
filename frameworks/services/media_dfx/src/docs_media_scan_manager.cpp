@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <algorithm>
 #include <nlohmann/json.hpp>
+#include <regex>
 
 #include "dfx_const.h"
 #include "dfx_database_utils.h"
@@ -67,6 +68,9 @@ static const std::string JSON_KEY_ATIME_WITHIN_30MIN = "a30";
 static const std::string JSON_KEY_ATIME_DIFF_SEC = "as";
 static const std::string CURRENT_DIR = ".";
 static const std::string PARENT_DIR = "..";
+static const std::string ANONYMIZED_IP_SUFFIX = ".xxx.xxx.xxx";
+static const std::string ANONYMIZED_ID_CARD_MIDDLE = "********";
+static const std::string ANONYMIZED_ADDRESS_SEGMENT = "***";
 
 struct FolderStatsCollector {
     int32_t imageCount = 0;
@@ -369,12 +373,26 @@ bool DocsMediaScanManager::TraverseAndCollect()
     return true;
 }
 
+static std::string AnonymizePath(const std::string &path)
+{
+    static const std::regex ipRegex(R"((\d{1,3})\.\d{1,3}\.\d{1,3}\.\d{1,3})");
+    static const std::regex idCardRegex(
+        R"((\d{6})(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(\d{3}[\dXx]))");
+    static const std::regex addressRegex(
+        R"([^/]*(?:省|市|区|县|镇|乡|村|路|街|道|巷|号|栋|楼|室|层|单元|小区|花园|广场|中心|大厦)[^/]*)");
+    std::string result = path;
+    result = std::regex_replace(result, ipRegex, "$1" + ANONYMIZED_IP_SUFFIX);
+    result = std::regex_replace(result, idCardRegex, "$1" + ANONYMIZED_ID_CARD_MIDDLE + "$2");
+    result = std::regex_replace(result, addressRegex, ANONYMIZED_ADDRESS_SEGMENT);
+    return result;
+}
+
 static nlohmann::json BuildBatchJson(const std::vector<DocsScanFolderStats> &batch)
 {
     nlohmann::json batchArray = nlohmann::json::array();
     for (auto &stats : batch) {
         nlohmann::json folderObj;
-        folderObj[JSON_KEY_DIR_PATH] = stats.dirPath;
+        folderObj[JSON_KEY_DIR_PATH] = AnonymizePath(stats.dirPath);
         folderObj[JSON_KEY_IMAGE_COUNT] = stats.imageCount;
         folderObj[JSON_KEY_VIDEO_COUNT] = stats.videoCount;
         folderObj[JSON_KEY_FORMAT_DISTRIBUTION] = nlohmann::json::parse(stats.formatDistribution, nullptr, false);
