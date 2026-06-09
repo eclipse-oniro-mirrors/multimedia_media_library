@@ -164,9 +164,9 @@ struct AncoOperationChangeInfo {
 };
 
 enum LoadType : int32_t {
-    LAKE_FIRST_LOAD = 0,
-    FILEMANAGER_FIRST_LOAD = 1,
-    FILEMANAGER_CLONE_FIRST_LOAD = 2,
+    LAKE_FIRST_LOAD = 0, // 湖内首次加载
+    FILEMANAGER_FIRST_LOAD = 1, // 文管首次加载
+    FILEMANAGER_CLONE_FIRST_LOAD = 2, // 克隆后，文管首次加载
     DOCS_MEDIA_SCAN = 3,
 };
 
