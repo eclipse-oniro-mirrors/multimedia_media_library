@@ -100,6 +100,11 @@ void MultiStagesCaptureDfxFirstVisit::Report(const string &photoId, const int32_
     int64_t lastVisitTime = GetInt64Val(PhotoColumn::PHOTO_LAST_VISIT_TIME, resultSet);
     FirstVisitAsyncTaskData *taskData = new (std::nothrow) FirstVisitAsyncTaskData(fileId, photoId, lastVisitTime,
         MediaFileUtils::UTCTimeMilliSeconds());
+    if (taskData == nullptr) {
+        MEDIA_INFO_LOG("failed to create FirstVisitAsyncTaskData");
+        return;
+    }
+
     shared_ptr<MediaLibraryAsyncTask> asyncTask = make_shared<MediaLibraryAsyncTask>(ReportInternal, taskData);
     if (asyncTask == nullptr) {
         MEDIA_INFO_LOG("report first visit failed");

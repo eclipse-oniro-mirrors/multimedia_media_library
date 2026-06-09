@@ -103,7 +103,7 @@ private:
     std::string photoId_;
     std::string path_;
     std::string displayName_;
-    MediaType mediaType_;
+    MediaType mediaType_ = MediaType::MEDIA_TYPE_IMAGE;
     std::string mimeType_;
     int32_t subtype_{-1};
     int32_t burstCoverLevel_{static_cast<int32_t>(BurstCoverLevelType::COVER)};
