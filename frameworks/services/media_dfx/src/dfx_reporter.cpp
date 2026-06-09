@@ -1016,7 +1016,6 @@ int32_t DfxReporter::ReportAncoCountFormatInfo(const AncoCountFormatInfo& report
 
 int32_t DfxReporter::ReportAncoCountFormatInfoForDirScan(const std::string &assetFormatDistribution)
 {
-    MEDIA_INFO_LOG("@test, assetFormatDistribution: %{public}s", assetFormatDistribution.c_str());
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
