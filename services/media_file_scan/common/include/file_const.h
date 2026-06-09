@@ -104,6 +104,7 @@ struct InnerFileInfo {
     int32_t videoMode {-1};
     int64_t localAssetSize {0};
     int64_t coverPosition {0};
+    int32_t livePhoto4dStatus {0};
 };
 
 enum ScanMode : int32_t {

@@ -125,6 +125,7 @@ private:
     void SetAssetCloudEnhancementValues(NativeRdb::ValuesBucket &values);
     void SetAssetLocationValues(NativeRdb::ValuesBucket &values);
     void SetAssetEditValues(NativeRdb::ValuesBucket &values);
+    void SetAssetLivePhoto4dValues(NativeRdb::ValuesBucket &values);
     void PutStringVal(NativeRdb::ValuesBucket &values, const std::string &columnName, const std::string &columnVal);
     int32_t UpdateAssetInDatabase();
     bool ShouldGenerateThumbnail();

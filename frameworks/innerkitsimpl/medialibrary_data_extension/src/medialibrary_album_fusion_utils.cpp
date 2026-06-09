@@ -153,6 +153,8 @@ static unordered_map<string, ResultSetDataType> commonColumnTypeMap = {
     {PhotoColumn::PHOTO_DATE_ADDED_DAY, ResultSetDataType::TYPE_STRING},
     {PhotoColumn::PHOTO_DATE_ADDED_MONTH, ResultSetDataType::TYPE_STRING},
     {PhotoColumn::PHOTO_DATE_ADDED_YEAR, ResultSetDataType::TYPE_STRING},
+    {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, ResultSetDataType::TYPE_INT32},
+    {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, ResultSetDataType::TYPE_STRING},
 };
 
 static unordered_map<string, ResultSetDataType> thumbnailColumnTypeMap = {
