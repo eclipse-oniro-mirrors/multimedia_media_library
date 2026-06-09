@@ -167,6 +167,7 @@ enum LoadType : int32_t {
     LAKE_FIRST_LOAD = 0, // 湖内首次加载
     FILEMANAGER_FIRST_LOAD = 1, // 文管首次加载
     FILEMANAGER_CLONE_FIRST_LOAD = 2, // 克隆后，文管首次加载
+    DOCS_MEDIA_SCAN = 3,
 };
 
 struct AncoCountFormatInfo {
@@ -232,6 +233,7 @@ public:
     static int32_t ReportAncoCheckInfo(const AncoCheckInfo& reportData);
     static int32_t ReportAncoOperationChangeInfo(const AncoOperationChangeInfo& reportData);
     static int32_t ReportAncoCountFormatInfo(const AncoCountFormatInfo& reportData, bool firstLoad = false);
+    static int32_t ReportAncoCountFormatInfoForDirScan(const std::string &assetFormatDistribution);
     int32_t ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info);
     void ReportReadLcd(const int32_t southDeviceType);
     void ReportAgingLcdInfo();

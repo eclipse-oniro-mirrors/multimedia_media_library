@@ -1014,6 +1014,23 @@ int32_t DfxReporter::ReportAncoCountFormatInfo(const AncoCountFormatInfo& report
     return ret;
 }
 
+int32_t DfxReporter::ReportAncoCountFormatInfoForDirScan(const std::string &assetFormatDistribution)
+{
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "ASSET_FORMAT_DISTRIBUTION", assetFormatDistribution,
+        "LOAD_TYPE", LoadType::DOCS_MEDIA_SCAN,
+        "ALBUM_COUNT", 0,
+        "IMAGE_COUNT", 0,
+        "VIDEO_COUNT", 0);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("Report AncoCountFormatInfoForDirScan error: %{public}d", ret);
+    }
+    return ret;
+}
+
 int32_t DfxReporter::ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info)
 {
     int ret = HiSysEventWrite(

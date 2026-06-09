@@ -49,6 +49,15 @@ const std::string OPT_ADD_VALUE = "1";
 const std::string OPT_DEL_VALUE = "2";
 const std::string OPT_UPDATE_VALUE = "3";
 const int32_t BATCH_QUERY_PHOTO_NUMBER = 2000;
+static const std::string DOCS_SCAN_TEMP_TABLE = "docs_media_scan_temp";
+static const std::string DOCS_SCAN_COLUMN_DIR_PATH = "dir_path";
+static const std::string DOCS_SCAN_COLUMN_IMAGE_COUNT = "image_count";
+static const std::string DOCS_SCAN_COLUMN_VIDEO_COUNT = "video_count";
+static const std::string DOCS_SCAN_COLUMN_FORMAT_DISTRIBUTION = "format_distribution";
+static const std::string DOCS_SCAN_COLUMN_SIZE_DISTRIBUTION = "size_distribution";
+static const std::string DOCS_SCAN_COLUMN_ATIME_WITHIN_30MIN = "atime_within_30min";
+static const std::string DOCS_SCAN_COLUMN_ATIME_DIFF_SEC = "atime_diff_sec";
+static const std::string DOCS_SCAN_COLUMN_ID = "id";
 const int32_t FILE_HEIGHT_AND_WIDTH_240 = 240;
 const int32_t FILE_HEIGHT_AND_WIDTH_360 = 360;
 const int32_t FILE_HEIGHT_AND_WIDTH_480 = 480;
@@ -978,6 +987,96 @@ int32_t DfxDatabaseUtils::QueryPhotoExtSmartCount()
     }
     resultSet->Close();
     return count;
+}
+
+int32_t DfxDatabaseUtils::CreateDocsMediaScanTempTable()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+    const std::string CREATE_TABLE_SQL =
+        "CREATE TABLE IF NOT EXISTS docs_media_scan_temp ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "dir_path TEXT NOT NULL UNIQUE, "
+        "image_count INTEGER DEFAULT 0, "
+        "video_count INTEGER DEFAULT 0, "
+        "format_distribution TEXT DEFAULT '{}', "
+        "size_distribution TEXT DEFAULT '[]', "
+        "atime_within_30min INTEGER DEFAULT 0, "
+        "atime_diff_sec INTEGER DEFAULT 0)";
+    return rdbStore->ExecuteSql(CREATE_TABLE_SQL);
+}
+
+int32_t DfxDatabaseUtils::InsertDocsScanFolderStats(const DocsScanFolderStats &stats)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+    NativeRdb::ValuesBucket values;
+    values.PutString(DOCS_SCAN_COLUMN_DIR_PATH, stats.dirPath);
+    values.PutInt(DOCS_SCAN_COLUMN_IMAGE_COUNT, stats.imageCount);
+    values.PutInt(DOCS_SCAN_COLUMN_VIDEO_COUNT, stats.videoCount);
+    values.PutString(DOCS_SCAN_COLUMN_FORMAT_DISTRIBUTION, stats.formatDistribution);
+    values.PutString(DOCS_SCAN_COLUMN_SIZE_DISTRIBUTION, stats.sizeDistribution);
+    values.PutInt(DOCS_SCAN_COLUMN_ATIME_WITHIN_30MIN, stats.atimeWithin30min);
+    values.PutLong(DOCS_SCAN_COLUMN_ATIME_DIFF_SEC, stats.atimeDiffSec);
+    int64_t outRowId = 0;
+    return rdbStore->Insert(outRowId, DOCS_SCAN_TEMP_TABLE, values);
+}
+
+bool DfxDatabaseUtils::IsDirPathInDocsScanTempTable(const std::string &dirPath)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "rdbStore is nullptr");
+    NativeRdb::RdbPredicates predicates(DOCS_SCAN_TEMP_TABLE);
+    predicates.EqualTo(DOCS_SCAN_COLUMN_DIR_PATH, dirPath);
+    auto resultSet = rdbStore->Query(predicates, { DOCS_SCAN_COLUMN_ID });
+    CHECK_AND_RETURN_RET(resultSet != nullptr, false);
+    bool exists = resultSet->GoToNextRow() == NativeRdb::E_OK;
+    resultSet->Close();
+    return exists;
+}
+
+std::vector<DocsScanFolderStats> DfxDatabaseUtils::QueryDocsScanFolderStats(int32_t lastId, int32_t limit)
+{
+    std::vector<DocsScanFolderStats> results;
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, results, "rdbStore is nullptr");
+
+    std::string sql = "SELECT id, dir_path, image_count, video_count, format_distribution, "
+        "size_distribution, atime_within_30min, atime_diff_sec "
+        "FROM docs_media_scan_temp WHERE id > ? ORDER BY id ASC LIMIT ?";
+    std::vector<NativeRdb::ValueObject> params = { lastId, limit };
+    auto resultSet = rdbStore->QuerySql(sql, params);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, results, "resultSet is nullptr");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        DocsScanFolderStats stats;
+        stats.id = GetInt32Val(DOCS_SCAN_COLUMN_ID, resultSet);
+        stats.dirPath = GetStringVal(DOCS_SCAN_COLUMN_DIR_PATH, resultSet);
+        stats.imageCount = GetInt32Val(DOCS_SCAN_COLUMN_IMAGE_COUNT, resultSet);
+        stats.videoCount = GetInt32Val(DOCS_SCAN_COLUMN_VIDEO_COUNT, resultSet);
+        stats.formatDistribution = GetStringVal(DOCS_SCAN_COLUMN_FORMAT_DISTRIBUTION, resultSet);
+        stats.sizeDistribution = GetStringVal(DOCS_SCAN_COLUMN_SIZE_DISTRIBUTION, resultSet);
+        stats.atimeWithin30min = GetInt32Val(DOCS_SCAN_COLUMN_ATIME_WITHIN_30MIN, resultSet);
+        stats.atimeDiffSec = GetInt64Val(DOCS_SCAN_COLUMN_ATIME_DIFF_SEC, resultSet);
+        results.push_back(stats);
+    }
+    resultSet->Close();
+    return results;
+}
+
+int32_t DfxDatabaseUtils::QueryDocsScanMaxId(int32_t &maxId)
+{
+    NativeRdb::RdbPredicates predicates(DOCS_SCAN_TEMP_TABLE);
+    std::string queryColumn = "max(id)";
+    std::vector<std::string> columns = { queryColumn };
+    return QueryInt(predicates, columns, queryColumn, maxId);
+}
+
+int32_t DfxDatabaseUtils::DropDocsMediaScanTempTable()
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+    return rdbStore->ExecuteSql("DROP TABLE IF EXISTS docs_media_scan_temp");
 }
 } // namespace Media
 } // namespace OHOS
