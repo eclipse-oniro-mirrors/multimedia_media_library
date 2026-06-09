@@ -76,9 +76,9 @@ static const std::string JSON_KEY_ATIME_WITHIN_30MIN = "a30";
 static const std::string JSON_KEY_ATIME_DIFF_SEC = "as";
 static const std::string CURRENT_DIR = ".";
 static const std::string PARENT_DIR = "..";
-static const std::string ANONYMIZED_IP_SUFFIX = ".xxx.xxx.xxx";
-static const std::string ANONYMIZED_ID_CARD_MIDDLE = "********";
-static const std::string ANONYMIZED_ADDRESS_SEGMENT = "***";
+static const std::string ANONYMIZED_IP_FORMAT = "$1.[IP]";
+static const std::string ANONYMIZED_ID_CARD_FORMAT = "$1[IDCARD]$2";
+static const std::string ANONYMIZED_ADDRESS_FORMAT = "[ADDR:$2]";
 
 DocsMediaScanManager::FolderStatsCollector::FolderStatsCollector() : sizeDistribution(SIZE_BUCKET_COUNT, 0) {}
 
@@ -378,11 +378,11 @@ static std::string AnonymizePath(const std::string &path)
     static const std::regex idCardRegex(
         R"((\d{6})(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(\d{3}[\dXx]))");
     static const std::regex addressRegex(
-        R"([^/]*(?:省|市|区|县|镇|乡|村|路|街|道|巷|号|栋|楼|室|层|单元|小区|花园|广场|中心|大厦)[^/]*)");
+        R"([^/]*(小区|花园|广场|中心|大厦|单元|省|市|区|县|镇|乡|村|路|街|道|巷|号|栋|楼|室|层)[^/]*)");
     std::string result = path;
-    result = std::regex_replace(result, ipRegex, "$1" + ANONYMIZED_IP_SUFFIX);
-    result = std::regex_replace(result, idCardRegex, "$1" + ANONYMIZED_ID_CARD_MIDDLE + "$2");
-    result = std::regex_replace(result, addressRegex, ANONYMIZED_ADDRESS_SEGMENT);
+    result = std::regex_replace(result, ipRegex, ANONYMIZED_IP_FORMAT);
+    result = std::regex_replace(result, idCardRegex, ANONYMIZED_ID_CARD_FORMAT);
+    result = std::regex_replace(result, addressRegex, ANONYMIZED_ADDRESS_FORMAT);
     return result;
 }
 
