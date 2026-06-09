@@ -20,10 +20,10 @@
 #include <algorithm>
 #include <dirent.h>
 #include <nlohmann/json.hpp>
-#include <sys/stat.h>
+#include <regex>
 
-#include "dfx_const.h"
-#include "dfx_database_utils.h"
+// #include "dfx_const.h" // TODO COMMENT IF NECESSARY
+// #include "dfx_database_utils.h"
 #include "dfx_reporter.h"
 #include "file_manager_scan_rule_config.h"
 #include "folder_scanner_utils.h"
@@ -36,6 +36,8 @@
 #include "parameters.h"
 #include "preferences.h"
 #include "preferences_helper.h"
+
+#include <thread>
 
 namespace OHOS {
 namespace Media {
@@ -76,6 +78,9 @@ static const std::string JSON_KEY_ATIME_WITHIN_30MIN = "a30";
 static const std::string JSON_KEY_ATIME_DIFF_SEC = "as";
 static const std::string CURRENT_DIR = ".";
 static const std::string PARENT_DIR = "..";
+static const std::string ANONYMIZED_IP_SUFFIX = ".xxx.xxx.xxx";
+static const std::string ANONYMIZED_ID_CARD_MIDDLE = "********";
+static const std::string ANONYMIZED_ADDRESS_SEGMENT = "***";
 
 DocsMediaScanManager::FolderStatsCollector::FolderStatsCollector() : sizeDistribution(SIZE_BUCKET_COUNT, 0) {}
 
@@ -281,6 +286,7 @@ DocsMediaScanManager::DirScanResult DocsMediaScanManager::ReadDirectoryEntries(c
         }
     }
     closedir(dir);
+    std::this_thread::sleep_for(std::chrono::seconds(3)); // TODO TEST ONLY
     return result;
 }
 
@@ -368,12 +374,26 @@ bool DocsMediaScanManager::TraverseAndCollect()
     return true;
 }
 
+static std::string AnonymizePath(const std::string &path)
+{
+    static const std::regex ipRegex(R"((\d{1,3})\.\d{1,3}\.\d{1,3}\.\d{1,3})");
+    static const std::regex idCardRegex(
+        R"((\d{6})(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(\d{3}[\dXx]))");
+    static const std::regex addressRegex(
+        R"([^/]*(?:省|市|区|县|镇|乡|村|路|街|道|巷|号|栋|楼|室|层|单元|小区|花园|广场|中心|大厦)[^/]*)");
+    std::string result = path;
+    result = std::regex_replace(result, ipRegex, "$1" + ANONYMIZED_IP_SUFFIX);
+    result = std::regex_replace(result, idCardRegex, "$1" + ANONYMIZED_ID_CARD_MIDDLE + "$2");
+    result = std::regex_replace(result, addressRegex, ANONYMIZED_ADDRESS_SEGMENT);
+    return result;
+}
+
 static nlohmann::json BuildBatchJson(const std::vector<DocsScanFolderStats> &batch)
 {
     nlohmann::json batchArray = nlohmann::json::array();
     for (auto &stats : batch) {
         nlohmann::json folderObj;
-        folderObj[JSON_KEY_DIR_PATH] = stats.dirPath;
+        folderObj[JSON_KEY_DIR_PATH] = AnonymizePath(stats.dirPath);
         folderObj[JSON_KEY_IMAGE_COUNT] = stats.imageCount;
         folderObj[JSON_KEY_VIDEO_COUNT] = stats.videoCount;
         folderObj[JSON_KEY_ATIME_WITHIN_30MIN] = stats.atimeWithin30min == 1;
@@ -400,7 +420,7 @@ void DocsMediaScanManager::ReportPhase()
     CHECK_AND_RETURN_LOG(ret == E_OK, "QueryDocsScanMaxId failed");
 
     int32_t lastReportedId = prefs->GetInt(DOCS_MEDIA_SCAN_LAST_REPORTED_ID, 0);
-    MEDIA_INFO_LOG("Get lastReportedId / maxId: %{public}d / %{public}d, ", lastReportedId, maxId);
+    MEDIA_INFO_LOG("Get lastReportedId / maxId: %{public}d / %{public}d", lastReportedId, maxId);
     if (lastReportedId >= maxId) {
         Finalize();
         return;
@@ -438,8 +458,8 @@ void DocsMediaScanManager::ReportPhase()
 
 void DocsMediaScanManager::Finalize()
 {
+    CHECK_AND_RETURN(DfxDatabaseUtils::DropDocsMediaScanTempTable() == E_OK);
     MarkTaskCompleted();
-    DfxDatabaseUtils::DropDocsMediaScanTempTable();
     MEDIA_INFO_LOG("Docs media scan task completed and finalized");
 }
 
