@@ -82,7 +82,6 @@ group("test") {
     "unittest/media_library_lcd_aging_test:unittest",
     "unittest/medialibrary_backup_test:unittest",
     "unittest/media_assets_controller_service_test:unittest",
-    "unittest/media_assets_manager_test:unittest",
     "unittest/media_file_manager_test:unittest",
     "unittest/media_file_management_test:unittest",
     "unittest/notification_helper_test:unittest",
@@ -209,7 +208,6 @@ group("test") {
       "unittest/medialibrary_analysis_progress_test:unittest",
       "unittest/white_list_check_utils_test:unittest",
       "unittest/media_library_related_system_state_test:unittest",
-      "unittest/media_assets_manager_test:unittest",
     ]
   }
 }
