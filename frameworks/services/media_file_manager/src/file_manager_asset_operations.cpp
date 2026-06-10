@@ -205,7 +205,7 @@ static int32_t UpdateFileManageAssetInfo(AccurateRefreshBase &refresh,
     return E_OK;
 }
 
-static std::string ConvertPath(const std::string &originalPath)
+std::string ConvertPath(const std::string &originalPath)
 {
     const std::string oldPrefix = "/storage/emulated/0/FromDocs/";
     const std::string newPrefix = "/storage/media/local/files/Docs/";
