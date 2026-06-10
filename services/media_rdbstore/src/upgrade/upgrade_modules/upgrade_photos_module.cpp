@@ -51,7 +51,7 @@ REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_NEED_THUMBNAIL, PHOTOS_MODULE_NAME
 static vector<pair<int32_t, int32_t>> AddAttachmentSizeColumn(NativeRdb::RdbStore &store)
 {
     SqlBuilder builder;
-    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_ATTACHMENT_SIZE, "BIGINT DEFAULT -1 NOT NULL")
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_ATTACHMENT_SIZE, "BIGINT DEFAULT 0 NOT NULL")
                            .Build();
     return UpgradeHelper::ExecuteCommands(commands, store, true);
 }

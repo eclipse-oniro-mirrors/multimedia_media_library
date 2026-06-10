@@ -725,6 +725,9 @@ static void HandleManageFile(const MediaAssetCopyInfo &copyInfo,
         values.Delete(MediaColumn::MEDIA_PACKAGE_NAME);
         GetStringValueFromResultSet(resultSet, MediaColumn::MEDIA_PACKAGE_NAME, strPackage);
         values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, strPackage);
+        int64_t attachmentSize = 0;
+        GetLongValueFromResultSet(resultSet, PhotoColumn::ATTACHMENT_SIZE, attachmentSize);
+        values.PutLong(PhotoColumn::ATTACHMENT_SIZE, attachmentSize);
     }
 }
 

@@ -30,6 +30,11 @@ namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 
 class MediaLibraryDataCallBack;
+enum class EditAndAttachmentUpdateType {
+    EDIT_AND_ATTACHMENT_SIZE = 0,
+    EDIT_ONLY,
+    ATTACHMENT_ONLY,
+};
 
 class MediaLibraryRdbStore final : public MediaLibraryUnistore {
 public:
@@ -138,8 +143,11 @@ public:
         const std::vector<NativeRdb::ValueObject> &args = {});
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryMovingPhotoVideoReady(
         const NativeRdb::AbsRdbPredicates &predicaties);
+    EXPORT static void StatEditAndAttachmentSize(const std::string &editDataDir,
+        uint64_t &editDataSize, uint64_t &attachmentSize);
     EXPORT static int32_t UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-        const std::string &photoId, const std::string &editDataDir);
+        const std::string &photoId, const std::string &editDataDir,
+        EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
     EXPORT static void AddDefaultInsertPhotoValues(NativeRdb::ValuesBucket& values);
     EXPORT static int32_t PrepareShootingModeAlbum(NativeRdb::RdbStore &store);
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();

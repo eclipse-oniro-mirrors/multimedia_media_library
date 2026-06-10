@@ -130,7 +130,6 @@ const std::string PIC_EXTENSION_VALUES = DIR_ALL_IMAGE_CONTAINER_TYPE;
 
 const std::string AUDIO_EXTENSION_VALUES = DIR_ALL_AUDIO_CONTAINER_TYPE;
 
-constexpr uint64_t ATTACHMENT_PLACEHOLDER_SIZE = 1024;
 const std::string ATTACHMENT_FILE_EDITDATA = "editdata";
 const std::string ATTACHMENT_FILE_EDITDATA_CAMERA = "editdata_camera";
 const std::string ATTACHMENT_FILE_SOURCE = "source";
@@ -149,14 +148,14 @@ static bool IsAttachmentWhitelistFile(const std::string &fileName)
     return baseName == ATTACHMENT_FILE_SOURCE || baseName == ATTACHMENT_FILE_SOURCE_BACK;
 }
 
-static void StatEditAndAttachmentSize(const std::string &rootPath, uint64_t &editDataSize, uint64_t &attachmentSize)
+void MediaLibraryRdbStore::StatEditAndAttachmentSize(const std::string &rootPath,
+    uint64_t &editDataSize, uint64_t &attachmentSize)
 {
-    attachmentSize = ATTACHMENT_PLACEHOLDER_SIZE;
     size_t editDataSizeCalc = 0;
     size_t attachmentSizeCalc = 0;
     MediaFileUtils::StatDirSize(rootPath, editDataSizeCalc, attachmentSizeCalc, IsAttachmentWhitelistFile);
     editDataSize = editDataSizeCalc;
-    attachmentSize += attachmentSizeCalc;
+    attachmentSize = attachmentSizeCalc;
 }
 
 const std::string RDB_OLD_VERSION = "rdb_old_version";
@@ -967,7 +966,7 @@ namespace {
         {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, "INT NOT NULL DEFAULT 0"},
         {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, "TEXT"},
         {PhotoColumn::LOCAL_ASSET_SIZE, "BIGINT NOT NULL DEFAULT 0"},
-        {PhotoColumn::ATTACHMENT_SIZE, "BIGINT NOT NULL DEFAULT -1"},
+        {PhotoColumn::ATTACHMENT_SIZE, "BIGINT NOT NULL DEFAULT 0"},
     };
 
     constexpr size_t PHOTO_TABLE_COLUMN_COUNT = sizeof(PHOTO_TABLE_COLUMNS) / sizeof(ColumnInfo);
@@ -1018,7 +1017,7 @@ REGISTER_ASYNC_UPGRADE_TASK(VERSION_CREATE_VIDEO_FACE_TAG_ID_INDEX, "Photos", Ad
 
 // 更新单条编辑数据大小
 int32_t MediaLibraryRdbStore::UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-    const std::string &photoId, const std::string &editDataDir)
+    const std::string &photoId, const std::string &editDataDir, EditAndAttachmentUpdateType updateType)
 {
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
 
@@ -1044,13 +1043,18 @@ int32_t MediaLibraryRdbStore::UpdateEditDataSize(std::shared_ptr<MediaLibraryRdb
 
     std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
     std::function<int(void)> updateFunc = [&]() -> int32_t {
-        int32_t ret = trans->ExecuteSql(updatePhotoExtSql, editDataBindArgs);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
-            "Update editdata_size failed, photoId:%{public}s", photoId.c_str());
+        int32_t ret = E_OK;
+        if (updateType != EditAndAttachmentUpdateType::ATTACHMENT_ONLY) {
+            ret = trans->ExecuteSql(updatePhotoExtSql, editDataBindArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+                "Update editdata_size failed, photoId:%{public}s", photoId.c_str());
+        }
 
-        ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
-            "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
+        if (updateType != EditAndAttachmentUpdateType::EDIT_ONLY) {
+            ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+                "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
+        }
         return E_OK;
     };
     int32_t errCode = trans->RetryTrans(updateFunc);

@@ -3344,7 +3344,8 @@ static void Update500EditDataSize(const shared_ptr<MediaLibraryRdbStore> rdbStor
             continue;
         }
 
-        ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, editDataFilePath);
+        ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, editDataFilePath,
+            EditAndAttachmentUpdateType::EDIT_ONLY);
         if (ret == E_OK) {
             successCount++;
         } else {
