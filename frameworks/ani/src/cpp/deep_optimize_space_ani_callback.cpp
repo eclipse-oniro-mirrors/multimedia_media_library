@@ -219,7 +219,7 @@ private:
                 auto it = records_.find(expiredId);
                 if (it != records_.end()) {
                     auto holder = it->second.holder;
-                    records_.erase(it);
+                    it = records_.erase(it);
                     lock.unlock();
                     ANI_WARN_LOG("Deep optimize space ani callback timeout, registryId: %{public}" PRIu64
                         ", lastProgress: %{public}d", expiredId, lastProgress);
