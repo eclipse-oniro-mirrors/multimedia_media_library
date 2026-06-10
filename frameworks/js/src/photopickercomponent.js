@@ -586,7 +586,7 @@ export class PhotoPickerComponent extends ViewPU {
             this.handleSaveCallback(e);
         } else if ('completed' === o) {
  	        this.handleCompletedCallback(e);
- 	    } else if (dataType === 'onBackground') {
+ 	    } else if ('onBackground' === o) {
             console.info('PhotoPickerComponent onReceive: onBackground');
         } else if ('onPhotoBrowserChanged' === o) {
             this.handlePhotoBrowserChange(e);
