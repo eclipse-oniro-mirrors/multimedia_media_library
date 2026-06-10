@@ -112,7 +112,8 @@ private:
     int32_t QueryAssetInfo(const std::string &fileId, CloneAssetInfo &info);
     int32_t DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo, std::function<void(uint64_t)> progressCallback);
     int32_t GetUriFromResult(std::shared_ptr<OHOS::NativeRdb::ResultSet> &resultSet,
-        std::vector<std::string> &resultUris, CloneCallbackType cloneCallbackType);
+        const std::vector<std::string> &resultFileId, std::vector<std::string> &resultUris,
+        CloneCallbackType cloneCallbackType);
 };
 
 } // namespace Media
