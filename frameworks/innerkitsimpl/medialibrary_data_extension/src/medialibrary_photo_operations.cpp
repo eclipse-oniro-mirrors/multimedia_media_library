@@ -7081,7 +7081,7 @@ int32_t MediaLibraryPhotoOperations::SetExtraDataVersion(const int32_t fileId, c
     predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
     std::vector<std::string> columns = {PhotoColumn::PHOTO_ID, PhotoColumn::PHOTO_SUBTYPE,
         PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
-        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, MediaColumn::MEDIA_FILE_PATH};
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH};
     auto resultSet = rdbStore->Query(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "livePhoto4d:failed to query photo.");
     CHECK_AND_RETURN_RET_LOG(resultSet->GoToNextRow() == NativeRdb::E_OK, E_ERR,
@@ -7092,12 +7092,20 @@ int32_t MediaLibraryPhotoOperations::SetExtraDataVersion(const int32_t fileId, c
     bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
     MEDIA_INFO_LOG("livePhoto4d:SetExtraDataVersion isMovingPhoto:%{public}d", isMovingPhoto);
 
-    if (!isMovingPhoto) {
+    if (!isMovingPhoto || MovingPhotoFileUtils::IsGraffiti(subtype, originalSubtype)) {
         MEDIA_ERR_LOG("The asset is not moving photo.");
         return E_ERR;
     }
+
+    // 区分：moving photo && live photo
     auto filePath = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
-    string extraPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
+    auto storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+    if (MovingPhotoFileUtils::IsLivePhotoAsset(storagePath)) {
+        MEDIA_INFO_LOG("live photo begin.");
+        return MovingPhotoFileUtils::ModifyExtraDataVersion(storagePath, version);
+    }
+    MEDIA_INFO_LOG("moving photo begin.");
+    std::string extraPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
     return MovingPhotoFileUtils::ModifyExtraDataVersion(extraPath, version);
 }
 
