@@ -40,7 +40,6 @@ using namespace OHOS::NativeRdb;
 using namespace IPC;
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
-static constexpr int32_t SLEEP_SECONDS = 1;
 
 static int32_t g_userAlbumId;
 static int32_t g_sourceAlbumId;
@@ -88,7 +87,6 @@ void AlbumChangeSetAlbumNameByFileTest::TearDownTestCase(void)
     MediaLibraryUnitTestUtils::CleanTestTables(g_rdbStore, testTables, true);
     MediaLibraryDataManager::GetInstance()->ClearMediaLibraryMgr();
     MEDIA_INFO_LOG("AlbumChangeSetAlbumNameByFileTest TearDownTestCase");
-    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_SECONDS));
 }
 
 void AlbumChangeSetAlbumNameByFileTest::TearDown() {}

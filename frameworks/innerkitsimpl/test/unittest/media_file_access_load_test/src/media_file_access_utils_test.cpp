@@ -72,22 +72,20 @@ const static vector<string> PHOTO_COLUMN_VECTOR = {
     PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
 };
 
-void MediaLibraryMediaFileAccessUtilsTest::CleanInitAssetResource()
+void MediaLibraryMediaFileAccessUtilsTest::CleanAssetResource()
 {
     std::vector<std::string> cleanIds;
     {
         std::lock_guard<std::mutex> lock(Mutex_);
         cleanIds.swap(initAssetFileIds_);
     }
-    CHECK_AND_RETURN_LOG(!cleanIds.empty(), "CleanInitAssetResource no file ids to clean");
+    CHECK_AND_RETURN_LOG(!cleanIds.empty(), "CleanAssetResource no file ids to clean");
 
     std::unordered_set<std::string> cleanupPathSet;
     for (const auto &id : cleanIds) {
         auto fileAsset = MediaLibraryAssetOperations::GetFileAssetFromDb(MediaColumn::MEDIA_ID,
             id, OperationObject::FILESYSTEM_PHOTO, PHOTO_COLUMN_VECTOR);
-        if (fileAsset == nullptr) {
-            continue;
-        }
+        CHECK_AND_CONTINUE(fileAsset != nullptr);
         std::string dataPath = fileAsset->GetPath();
         std::string storagePath = fileAsset->GetStoragePath();
         if (!dataPath.empty()) {
@@ -97,28 +95,31 @@ void MediaLibraryMediaFileAccessUtilsTest::CleanInitAssetResource()
             cleanupPathSet.emplace(storagePath);
         }
     }
-
+    constexpr int32_t MAX_DELETE_ATTEMPTS = 2;
     for (const auto &path : cleanupPathSet) {
-        if (MediaFileUtils::IsFileExists(path) && !MediaFileUtils::DeleteFile(path)) {
-            MEDIA_WARN_LOG("CleanInitAssetResource delete file failed, path: %{public}s, errno: %{public}d",
-                path.c_str(), errno);
+        CHECK_AND_CONTINUE(MediaFileUtils::IsFileExists(path));
+        bool deleteSuccess = false;
+        for (int32_t attempt = 1; attempt <= MAX_DELETE_ATTEMPTS; ++attempt) {
+            if (MediaFileUtils::DeleteFile(path) || !MediaFileUtils::IsFileExists(path)) {
+                deleteSuccess = true;
+                break;
+            }
+            MEDIA_WARN_LOG("CleanAssetResource delete file failed, path: %{public}s, attempt: %{public}d, "
+                "errno: %{public}d", path.c_str(), attempt, errno);
+        }
+        EXPECT_TRUE(deleteSuccess) << "CleanAssetResource failed to delete file after retries, path: " << path;
+        if (!deleteSuccess) {
+            MEDIA_ERR_LOG("CleanAssetResource delete file failed after retries, path: %{public}s", path.c_str());
         }
     }
-
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    if (rdbStore == nullptr) {
-        MEDIA_ERR_LOG("CleanInitAssetResource rdbStore is nullptr");
-    } else {
-        NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-        predicates.In(MediaColumn::MEDIA_ID, cleanIds);
-        int32_t changedRows = 0;
-        int32_t ret = rdbStore->Delete(changedRows, predicates);
-        if (ret != E_OK) {
-            MEDIA_ERR_LOG("CleanInitAssetResource delete db failed, err: %{public}d", ret);
-        } else {
-            MEDIA_INFO_LOG("CleanInitAssetResource delete db success, changedRows: %{public}d", changedRows);
-        }
-    }
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "CleanAssetResource rdbStore is nullptr");
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(MediaColumn::MEDIA_ID, cleanIds);
+    int32_t changedRows = 0;
+    int32_t ret = rdbStore->Delete(changedRows, predicates);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "CleanAssetResource delete db failed, err: %{public}d", ret);
+    MEDIA_INFO_LOG("CleanAssetResource delete db success, changedRows: %{public}d", changedRows);
 }
 
 void MediaLibraryMediaFileAccessUtilsTest::CreateDataHelper(int32_t systemAbilityId)
@@ -145,11 +146,13 @@ void MediaLibraryMediaFileAccessUtilsTest::TearDownTestCase()
 {
     MEDIA_INFO_LOG("MediaLibraryMediaFileAccessUtilsTest TearDownTestCase");
 
-    MediaLibraryMediaFileAccessUtilsTest::CleanInitAssetResource();
+    MediaLibraryMediaFileAccessUtilsTest::CleanAssetResource();
 
-    CHECK_AND_PRINT_LOG(MediaFileUtils::DeleteDir(TEST_FILE_ROOT),
+    bool deleteRet = MediaFileUtils::DeleteDir(TEST_FILE_ROOT);
+    bool isRootCleared = deleteRet || !MediaFileUtils::IsDirExists(TEST_FILE_ROOT);
+    CHECK_AND_PRINT_LOG(isRootCleared,
         "Delete test file root failed, path: %{public}s, errno: %{public}d", TEST_FILE_ROOT.c_str(), errno);
-
+    ASSERT_TRUE(isRootCleared);
     MEDIA_INFO_LOG("TearDownTestCase end");
 }
 
