@@ -548,7 +548,7 @@ bool CloneRestore::BackupPreprocess()
         // mark hdc data in temp database as invalid
         bool ret = InvalidateHdcCloudData(backupRdb);
         if (!ret) {
-            MEDIA_ERR_LOG("fail to delete hdc data");
+            MEDIA_ERR_LOG("fail to delete hdc data.");
             SetErrorCode(RestoreError::BACKUP_INVALIDATE_HDC_CLOUD_DATA_FAILED);
             ErrorInfo errorInfo(RestoreError::BACKUP_INVALIDATE_HDC_CLOUD_DATA_FAILED, 0, "",
                 "CloneBackup clear hdc data failed");
