@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <chrono>
 #include <thread>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "clone_to_album_callback_proxy.h"
@@ -304,12 +305,14 @@ int32_t CloneToAlbumService::DoBurstAssetsClone(const CloneAssetInfo &cloneAsset
 }
 
 int32_t CloneToAlbumService::GetUriFromResult(std::shared_ptr<OHOS::NativeRdb::ResultSet> &resultSet,
-    std::vector<std::string> &resultUris, CloneCallbackType cloneCallbackType)
+    const std::vector<std::string> &resultFileId, std::vector<std::string> &resultUris,
+    CloneCallbackType cloneCallbackType)
 {
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("GetUriFromResult failed");
         return E_SCENE_PARAM_INVALID;
     }
+    std::unordered_map<std::string, std::string> idUriMap;
     while (resultSet->GoToNextRow() == E_OK) {
         string filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
         string fileId = to_string(GetInt32Val(MediaColumn::MEDIA_ID, resultSet));
@@ -322,7 +325,15 @@ int32_t CloneToAlbumService::GetUriFromResult(std::shared_ptr<OHOS::NativeRdb::R
                 newUri = fileStorage.substr(pos + TARGET_DIR.length());
             }
         }
-        resultUris.push_back(newUri);
+        idUriMap[fileId] = newUri;
+    }
+    for (const auto &fileId : resultFileId) {
+        auto iter = idUriMap.find(fileId);
+        if (iter == idUriMap.end()) {
+            MEDIA_WARN_LOG("new file id not found, fileId=%{public}s", fileId.c_str());
+            continue;
+        }
+        resultUris.push_back(iter->second);
     }
     return E_OK;
 }
@@ -364,7 +375,7 @@ int32_t CloneToAlbumService::StartCopy(uint64_t totalSize, uint32_t totalCount, 
     std::vector<std::string> columns = {};
     auto resultSet = rdbStore->Query(predicates, columns);
     std::vector<std::string> resultUris;
-    int32_t result = GetUriFromResult(resultSet, resultUris, cloneTaskInfo.cloneCallbackType);
+    int32_t result = GetUriFromResult(resultSet, resultFileId, resultUris, cloneTaskInfo.cloneCallbackType);
     if (callback != nullptr && cloneTaskInfo.cloneCallbackType == CloneCallbackType::PHOTOASSET) {
         auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
         auto dataShareresult = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
@@ -568,23 +579,17 @@ shared_ptr<NativeRdb::ResultSet> QueryAssetByStoragePaths(const std::vector<stri
     return rdbStore->Query(predicates, {});
 }
 
-static int32_t GetUriByPath(shared_ptr<NativeRdb::ResultSet> &resultSet, const string &filePath, string &fileUri)
+static int32_t BuildPathUriMap(shared_ptr<NativeRdb::ResultSet> &resultSet,
+    std::unordered_map<std::string, std::string> &pathUriMap)
 {
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Empty resultSet.");
-    CHECK_AND_RETURN_RET_LOG(!filePath.empty(), E_ERR, "Empty filePath.");
-    auto ret = resultSet->GoToFirstRow();
-    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_ERR, "Failed to go to first row.");
-    do {
+    while (resultSet->GoToNextRow() == E_OK) {
         string storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
-        if (storagePath != filePath) {
-            continue;
-        }
         int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
         string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
         string filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-        fileUri = MediaFileUri::GetPhotoUri(to_string(fileId), filePath, displayName);
-        break;
-    } while (resultSet->GoToNextRow() == E_OK);
+        pathUriMap[storagePath] = MediaFileUri::GetPhotoUri(to_string(fileId), filePath, displayName);
+    }
     return E_OK;
 }
 
@@ -610,22 +615,26 @@ static int32_t ScanFileForPath(const std::vector<std::string> &filePaths)
     return E_OK;
 }
 
-static int32_t ConvertPathsToUris(const std::vector<std::string> &paths, std::vector<std::string> &assetsUri,
-    shared_ptr<NativeRdb::ResultSet> &resultSet, bool allowEmptyUri, std::vector<std::string> &scanFilePaths)
+static void CollectMissingPaths(const std::vector<std::string> &paths,
+    const std::unordered_map<std::string, std::string> &pathUriMap, std::vector<std::string> &missingPaths)
 {
     for (const auto &assetPath : paths) {
-        string fileUri = "";
-        int32_t ret = GetUriByPath(resultSet, assetPath, fileUri);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to get uri by path.");
-        if (fileUri.empty()) {
-            if (!allowEmptyUri) {
-                MEDIA_ERR_LOG("assetPath is error, %{public}s", assetPath.c_str());
-                return E_ERR;
-            }
-            scanFilePaths.push_back(assetPath);
-            continue;
+        if (pathUriMap.find(assetPath) == pathUriMap.end()) {
+            missingPaths.push_back(assetPath);
         }
-        assetsUri.push_back(fileUri);
+    }
+}
+
+static int32_t ConvertPathsToUris(const std::vector<std::string> &paths,
+    const std::unordered_map<std::string, std::string> &pathUriMap, std::vector<std::string> &assetsUri)
+{
+    for (const auto &assetPath : paths) {
+        auto iter = pathUriMap.find(assetPath);
+        if (iter == pathUriMap.end()) {
+            MEDIA_ERR_LOG("assetPath is error, %{public}s", assetPath.c_str());
+            return E_ERR;
+        }
+        assetsUri.push_back(iter->second);
     }
     return E_OK;
 }
@@ -633,6 +642,7 @@ static int32_t ConvertPathsToUris(const std::vector<std::string> &paths, std::ve
 static int32_t ConvertAssetPathsToUris(std::vector<std::string> &assetsUri, const std::vector<std::string> &assetsArray)
 {
     std::vector<string> assetsPath;
+    assetsPath.reserve(assetsArray.size());
     for (const auto &filePath : assetsArray) {
         string assetPath = TARGET_DIR + filePath;
         if (!PhotoFileUtils::CheckFileManagerRealPath(assetPath)) {
@@ -647,21 +657,29 @@ static int32_t ConvertAssetPathsToUris(std::vector<std::string> &assetsUri, cons
     }
     auto resultSet = QueryAssetByStoragePaths(assetsPath);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Failed to query asset by storage paths.");
+    std::unordered_map<std::string, std::string> pathUriMap;
+    pathUriMap.reserve(assetsPath.size());
+    int32_t ret = BuildPathUriMap(resultSet, pathUriMap);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to build path uri map.");
+    resultSet->Close();
+
     std::vector<string> scanFilePaths;
-    int32_t ret = ConvertPathsToUris(assetsPath, assetsUri, resultSet, true, scanFilePaths);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to convert paths to uris.");
-    resultSet->Close();
-    if (scanFilePaths.empty()) {
-        return E_OK;
+    scanFilePaths.reserve(assetsPath.size());
+    CollectMissingPaths(assetsPath, pathUriMap, scanFilePaths);
+    if (!scanFilePaths.empty()) {
+        ret = ScanFileForPath(scanFilePaths);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to scan file for path.");
+        resultSet = QueryAssetByStoragePaths(scanFilePaths);
+        CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Failed to query asset by storage paths.");
+        ret = BuildPathUriMap(resultSet, pathUriMap);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to build path uri map.");
+        resultSet->Close();
     }
-    ret = ScanFileForPath(scanFilePaths);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to scan file for path.");
-    resultSet = QueryAssetByStoragePaths(scanFilePaths);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "Failed to query asset by storage paths.");
-    std::vector<string> tmpFilePath;
-    ret = ConvertPathsToUris(scanFilePaths, assetsUri, resultSet, false, tmpFilePath);
+
+    assetsUri.reserve(assetsPath.size());
+    // Rebuild URIs strictly in the original request order carried by assetsArray
+    ret = ConvertPathsToUris(assetsPath, pathUriMap, assetsUri);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to convert paths to uris.");
-    resultSet->Close();
     return E_OK;
 }
 
