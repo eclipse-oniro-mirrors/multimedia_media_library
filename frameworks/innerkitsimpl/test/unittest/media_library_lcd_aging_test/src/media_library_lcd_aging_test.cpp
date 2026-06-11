@@ -1397,20 +1397,11 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_006, Test
     std::atomic<bool> shouldStop(false);
 
     system::SetParameter(TEST_CLONE_STATE, "1");
-    int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
-    EXPECT_EQ(ret, E_AGING_INTERRUPT);
-    system::SetParameter(TEST_CLONE_STATE, "0");
-}
-
-HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_CheckLcdAgingStatus_007, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("LcdAgingManager_CheckLcdAgingStatus_007: clone flag causes interrupt");
-    auto& manager = LcdAgingManager::GetInstance();
-    std::atomic<bool> shouldStop(false);
-
     system::SetParameter(TEST_CLONE_FLAG, std::to_string(MediaFileUtils::UTCTimeSeconds()));
     int32_t ret = manager.CheckLcdAgingStatus(shouldStop);
     EXPECT_EQ(ret, E_AGING_INTERRUPT);
+
+    system::SetParameter(TEST_CLONE_STATE, "0");
     system::SetParameter(TEST_CLONE_FLAG, "0");
 }
 
