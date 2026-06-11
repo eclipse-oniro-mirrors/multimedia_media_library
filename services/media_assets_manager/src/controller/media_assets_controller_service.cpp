@@ -15,6 +15,8 @@
 
 #define MLOG_TAG "MediaAssetsControllerService"
 
+#include <functional>
+
 #include "media_assets_controller_service.h"
 #include "media_assets_service.h"
 #include "media_log.h"
@@ -3429,79 +3431,48 @@ int32_t MediaAssetsControllerService::GetTranscodeCheckInfo(MessageParcel &data,
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 
-int32_t MediaAssetsControllerService::CloneToAlbum(MessageParcel &data, MessageParcel &reply)
+static int32_t HandleCloneRequest(MessageParcel &data, MessageParcel &reply, const char *logTag,
+    const std::function<int32_t(CloneToAlbumReqBody &)> &cloneHandler)
 {
-    MEDIA_INFO_LOG("CloneToAlbum start");
+    MEDIA_INFO_LOG("%{public}s start", logTag);
     CloneToAlbumReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneToAlbum Read Request Error: %{public}d", ret);
+        MEDIA_ERR_LOG("%{public}s Read Request Error: %{public}d", logTag, ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
-    ret = this->cloneToAlbumService_.CloneToAlbum(reqBody);
+    ret = cloneHandler(reqBody);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneToAlbum Error: %{public}d", ret);
+        MEDIA_ERR_LOG("%{public}s Error: %{public}d", logTag, ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::CloneToAlbum(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleCloneRequest(data, reply, "CloneToAlbum",
+        [this](CloneToAlbumReqBody &reqBody) { return this->cloneToAlbumService_.CloneToAlbum(reqBody); });
 }
 
 int32_t MediaAssetsControllerService::CloneToDir(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("CloneToDir start");
-    CloneToAlbumReqBody reqBody;
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneToDir Read Request Error: %{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    ret = this->cloneToAlbumService_.CloneToDir(reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneToDir Error: %{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    return HandleCloneRequest(data, reply, "CloneToDir",
+        [this](CloneToAlbumReqBody &reqBody) { return this->cloneToAlbumService_.CloneToDir(reqBody); });
 }
 
 int32_t MediaAssetsControllerService::CloneAssetByPath(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("CloneAssetByPath start");
-    CloneToAlbumReqBody reqBody;
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneAssetByPath Read Request Error: %{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    ret = this->cloneToAlbumService_.CloneAssetByPath(reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneAssetByPath Error: %{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    return HandleCloneRequest(data, reply, "CloneAssetByPath",
+        [this](CloneToAlbumReqBody &reqBody) { return this->cloneToAlbumService_.CloneAssetByPath(reqBody); });
 }
 
 int32_t MediaAssetsControllerService::CloneToAlbumCancel(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("CloneToAlbumCancel start");
-    CloneToAlbumReqBody reqBody;
-    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneToAlbum Read Request Error: %{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-
-    ret = this->cloneToAlbumService_.CloneToAlbumCancel(reqBody);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("CloneToAlbum Error: %{public}d", ret);
-        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
-    }
-    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    return HandleCloneRequest(data, reply, "CloneToAlbumCancel",
+        [this](CloneToAlbumReqBody &reqBody) { return this->cloneToAlbumService_.CloneToAlbumCancel(reqBody); });
 }
 
 int32_t MediaAssetsControllerService::MoveAssetsToDir(MessageParcel &data, MessageParcel &reply)

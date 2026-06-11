@@ -61,6 +61,7 @@ const std::string DOCS_LPATH = "/FromDocs";
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
 const std::string CLONE_FILE_ROOT_LPATH = "/FromDocs/";
 const std::string CLONE_FILE_ROOT_ALBUM = "根目录";
+const std::string  RELATIVE_PATH = "../";
 
 
 shared_ptr<NativeRdb::ResultSet> QueryGetAlbumByAlbumId(const int32_t &albumId)
@@ -111,7 +112,7 @@ static std::string GetThumbnailPathFromOrignalPath(std::string srcPath)
     std::string thumbRelativePath = "/.thumbs/Photo/";
     size_t pos = srcPath.find(photoRelativePath);
     std::string thumbnailPath = "";
-    if (pos != string::npos) {
+    if (pos != std::string::npos) {
         thumbnailPath = srcPath.replace(pos, photoRelativePath.length(), thumbRelativePath);
     }
     return thumbnailPath;
@@ -478,6 +479,10 @@ int32_t ValidateRequestForDir(CloneToAlbumReqBody &reqBody)
     }
     if (reqBody.targetDir.empty()) {
         MEDIA_ERR_LOG("dir targetDir is empty");
+        return E_ERR;
+    }
+    if (reqBody.targetDir.find(RELATIVE_PATH) != std::string::npos) {
+        MEDIA_ERR_LOG("dir targetDir contains invalid relative path");
         return E_ERR;
     }
     if (!reqBody.progressCallback) {
