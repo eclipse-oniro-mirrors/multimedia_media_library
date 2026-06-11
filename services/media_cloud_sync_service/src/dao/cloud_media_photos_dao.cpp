@@ -1022,15 +1022,13 @@ bool CloudMediaPhotosDao::JudgeConflict(
             cloudKeyData.exifRotateValue);
         return false;
     }
-    if (localKeyData.sourceAlbum.empty()) {
-        if (localKeyData.lPath == cloudKeyData.lPath) {
-            return true;
-        } else {
-            MEDIA_INFO_LOG("JudgeConflict sourcePath not equal local lPath: %{public}s, cloud lPath: %{public}s",
-                MediaFileUtils::DesensitizePath(localKeyData.lPath).c_str(),
-                MediaFileUtils::DesensitizePath(cloudKeyData.lPath).c_str());
-            return false;
-        }
+    if (localKeyData.sourceAlbum.empty() || pullData.attributesSrcAlbumIds.empty()) {
+        MEDIA_INFO_LOG("JudgeConflict sourceAlbum empty: %{public}d, attributesSrcAlbumIds empty: %{public}d,"
+            " local lPath: %{public}s, cloud lPath: %{public}s",
+            localKeyData.sourceAlbum.empty(), pullData.attributesSrcAlbumIds.empty(),
+            MediaFileUtils::DesensitizePath(localKeyData.lPath).c_str(),
+            MediaFileUtils::DesensitizePath(cloudKeyData.lPath).c_str());
+        return localKeyData.lPath == cloudKeyData.lPath;
     } else {
         SafeMap<std::string, std::pair<int32_t, std::string>> albumLPathToIdMap = GetAlbumLPathToIdMap();
         std::vector<std::string> albumCloudIds;
