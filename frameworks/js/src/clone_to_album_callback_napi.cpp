@@ -202,26 +202,34 @@ void CloneToAlbumCallbackNapi::TriggerSizeProgressCallback(uint64_t processedSiz
     }
 
     napi_value undefined = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_get_undefined(env_, &undefined), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_get_undefined(env_, &undefined), JS_E_INNER_FAIL,
+        "Failed to get undefined value.");
 
     napi_value callback = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_get_reference_value(env_, sizeProgressListener_, &callback), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_get_reference_value(env_, sizeProgressListener_, &callback),
+        JS_E_INNER_FAIL, "Failed to create reference.");
 
     napi_value progressObj = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_create_object(env_, &progressObj), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_object(env_, &progressObj), JS_E_INNER_FAIL,
+        "Failed to create object.");
 
     napi_value processed = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_create_bigint_uint64(env_, processedSize, &processed), JS_E_INNER_FAIL);
-    CHECK_ARGS_RET_VOID(env_, napi_set_named_property(env_, progressObj, "processed", processed), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_bigint_uint64(env_, processedSize, &processed), JS_E_INNER_FAIL,
+        "Failed to create bigint.");
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_set_named_property(env_, progressObj, "processed", processed),
+        JS_E_INNER_FAIL, "Failed to set property.");
 
     napi_value remain = nullptr;
     uint64_t remainSize = (totalSize > processedSize) ? (totalSize - processedSize) : 0;
-    CHECK_ARGS_RET_VOID(env_, napi_create_bigint_uint64(env_, remainSize, &remain), JS_E_INNER_FAIL);
-    CHECK_ARGS_RET_VOID(env_, napi_set_named_property(env_, progressObj, "remain", remain), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_bigint_uint64(env_, remainSize, &remain), JS_E_INNER_FAIL,
+        "Failed to create bigint.");
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_set_named_property(env_, progressObj, "remain", remain), JS_E_INNER_FAIL,
+        "Failed to set property.");
 
     napi_value returnVal = nullptr;
-    CHECK_ARGS_RET_VOID(env_,
-        napi_call_function(env_, undefined, callback, 1, &progressObj, &returnVal), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_,
+        napi_call_function(env_, undefined, callback, 1, &progressObj, &returnVal), JS_E_INNER_FAIL,
+            "Failed to call function.");
 
     status = napi_close_handle_scope(env_, scope);
     if (status != napi_ok) {
@@ -241,26 +249,34 @@ void CloneToAlbumCallbackNapi::TriggerCountProgressCallback(uint32_t processedCo
     }
 
     napi_value undefined = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_get_undefined(env_, &undefined), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_get_undefined(env_, &undefined), JS_E_INNER_FAIL,
+        "Failed to get undefined value.");
 
     napi_value callback = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_get_reference_value(env_, countProgressListener_, &callback), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_get_reference_value(env_, countProgressListener_, &callback),
+        JS_E_INNER_FAIL, "Failed to create reference.");
 
     napi_value progressObj = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_create_object(env_, &progressObj), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_object(env_, &progressObj), JS_E_INNER_FAIL,
+        "Failed to create object.");
 
     napi_value processed = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_create_uint32(env_, processedCount, &processed), JS_E_INNER_FAIL);
-    CHECK_ARGS_RET_VOID(env_, napi_set_named_property(env_, progressObj, "processed", processed), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_uint32(env_, processedCount, &processed), JS_E_INNER_FAIL,
+        "Failed to create uint32.");
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_set_named_property(env_, progressObj, "processed", processed),
+        JS_E_INNER_FAIL, "Failed to set property.");
 
     napi_value remain = nullptr;
     uint32_t remainCount = (totalCount > processedCount) ? (totalCount - processedCount) : 0;
-    CHECK_ARGS_RET_VOID(env_, napi_create_uint32(env_, remainCount, &remain), JS_E_INNER_FAIL);
-    CHECK_ARGS_RET_VOID(env_, napi_set_named_property(env_, progressObj, "remain", remain), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_uint32(env_, remainCount, &remain), JS_E_INNER_FAIL,
+        "Failed to create uint32.");
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_set_named_property(env_, progressObj, "remain", remain), JS_E_INNER_FAIL,
+        "Failed to set property.");
 
     napi_value returnVal = nullptr;
-    CHECK_ARGS_RET_VOID(env_,
-        napi_call_function(env_, undefined, callback, 1, &progressObj, &returnVal), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_,
+        napi_call_function(env_, undefined, callback, 1, &progressObj, &returnVal), JS_E_INNER_FAIL,
+            "Failed to call function.");
 
     status = napi_close_handle_scope(env_, scope);
     if (status != napi_ok) {
@@ -281,32 +297,41 @@ void CloneToAlbumCallbackNapi::TriggerResultListenerCallback(int32_t code,
     }
 
     napi_value undefined = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_get_undefined(env_, &undefined), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_get_undefined(env_, &undefined), JS_E_INNER_FAIL,
+        "Failed to get undefined value.");
 
     napi_value callback = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_get_reference_value(env_, resultListener_, &callback), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_get_reference_value(env_, resultListener_, &callback), JS_E_INNER_FAIL,
+        "Failed to create reference.");
 
     napi_value resultInfo = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_create_object(env_, &resultInfo), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_object(env_, &resultInfo), JS_E_INNER_FAIL,
+        "Failed to create object.");
     code = MediaLibraryNapiUtils::TransErrorCode("", code);
     napi_value codeVal = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_create_int32(env_, code, &codeVal), JS_E_INNER_FAIL);
-    CHECK_ARGS_RET_VOID(env_, napi_set_named_property(env_, resultInfo, "code", codeVal), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_int32(env_, code, &codeVal), JS_E_INNER_FAIL,
+        "Failed to create int32.");
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_set_named_property(env_, resultInfo, "code", codeVal), JS_E_INNER_FAIL,
+        "Failed to set property.");
 
     napi_value resultArray = nullptr;
-    CHECK_ARGS_RET_VOID(env_, napi_create_array_with_length(env_, resultUris.size(), &resultArray), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_create_array_with_length(env_, resultUris.size(), &resultArray),
+        JS_E_INNER_FAIL, "Failed to create array.");
     for (size_t i = 0; i < resultUris.size(); i++) {
         napi_value uri = nullptr;
-        CHECK_ARGS_RET_VOID(env_, napi_create_string_utf8(env_, resultUris[i].c_str(), NAPI_AUTO_LENGTH, &uri),
-            JS_E_INNER_FAIL);
-        CHECK_ARGS_RET_VOID(env_, napi_set_element(env_, resultArray, i, uri), JS_E_INNER_FAIL);
+        CHECK_ARGS_RET_VOID_WITH_MEG(env_,
+            napi_create_string_utf8(env_, resultUris[i].c_str(), NAPI_AUTO_LENGTH, &uri),
+            JS_E_INNER_FAIL, "Failed to create string.");
+        CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_set_element(env_, resultArray, i, uri), JS_E_INNER_FAIL,
+            "Failed to set element.");
     }
-    CHECK_ARGS_RET_VOID(env_,
-        napi_set_named_property(env_, resultInfo, "result", resultArray), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_, napi_set_named_property(env_, resultInfo, "result", resultArray),
+        JS_E_INNER_FAIL, "Failed to set property.");
 
     napi_value returnVal = nullptr;
-    CHECK_ARGS_RET_VOID(env_,
-        napi_call_function(env_, undefined, callback, 1, &resultInfo, &returnVal), JS_E_INNER_FAIL);
+    CHECK_ARGS_RET_VOID_WITH_MEG(env_,
+        napi_call_function(env_, undefined, callback, 1, &resultInfo, &returnVal), JS_E_INNER_FAIL,
+        "Failed to call function.");
 
     status = napi_close_handle_scope(env_, scope);
     if (status != napi_ok) {
