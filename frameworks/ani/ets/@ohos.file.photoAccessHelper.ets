@@ -1712,6 +1712,12 @@ export namespace photoAccessHelper {
     tokenId?: long;
   }
 
+  export interface CreationSetting {
+    title?: string;
+    fileNameExtension: string;
+    photoType: PhotoType;
+  }
+
   export interface CreateOptions {
     title?: string;
     subtype?: PhotoSubtype;
@@ -2697,6 +2703,8 @@ export namespace photoAccessHelper {
     startAssetAnalysis(type: AnalysisType, assetUris?: Array<string>): Promise<int>;
     createAssetsForAppWithAlbum(source: PhotoCreationSource, albumUri: string, isAuthorized: boolean,
       photoCreationConfigs: Array<PhotoCreationConfig>): Promise<Array<string>>;
+    createAssetsWithAlbum(creationSettings: Array<CreationSetting>, whetherRealTimeThumb: boolean,
+      albumUri?: string): Promise<Array<string>>;
     getAlbumsByIds(albumIds: Array<int>): Promise<Map<int, Album>>;
     updateGalleryFormInfo(info: GalleryFormInfo): Promise<void>;
     onSinglePhotoAlbumChange(album: Album, callback: Callback<AlbumChangeInfos>): void;
@@ -3434,6 +3442,36 @@ export namespace photoAccessHelper {
               resolve(ret as Array<string>);
             }
           }
+        });
+      });
+    }
+
+    createAssetsWithAlbum(creationSettings: Array<CreationSetting>, whetherRealTimeThumb: boolean,
+      albumUri?: string): Promise<Array<string>> {
+      return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString) => {
+        let cb = (): Array<string> | MediaLibraryAniError => {
+          let result: Array<string> | MediaLibraryAniError;
+          try {
+            result = this.createAssetsWithAlbumInner(creationSettings, whetherRealTimeThumb, albumUri);
+          } catch (e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as Array<string>);
+            }
+          }
+        }).catch((err: Any): void => {
+          reject(businessError<string>(-1, "taskpool execute failed: " + err));
         });
       });
     }
@@ -4668,6 +4706,8 @@ export namespace photoAccessHelper {
       photoCreationConfigs: Array<PhotoCreationConfig>): Array<string>;
     native createAssetsForAppWithAlbumInner(source: PhotoCreationSource, albumUri: string, isAuthorized: boolean,
       photoCreationConfigs: Array<PhotoCreationConfig>): Array<string>;
+    native createAssetsWithAlbumInner(creationSettings: Array<CreationSetting>, whetherRealTimeThumb: boolean,
+      albumUri?: string): Array<string>;
     native releaseInner(): void;
     native saveFormInfoInner(info: FormInfo): void;
     native saveGalleryFormInfoInner(info: GalleryFormInfo): void;
