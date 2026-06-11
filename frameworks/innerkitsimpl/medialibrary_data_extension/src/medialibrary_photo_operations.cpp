@@ -3502,7 +3502,7 @@ static int32_t ProcessLivePhotoVideoPath(const string &path, const string &realP
     CHECK_AND_RETURN_RET_LOG(!cacheDir.empty(), E_INVALID_PATH, "Failed to get live photo cache dir");
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir), E_HAS_FS_ERROR,
         "Cannot create dir %{private}s", cacheDir.c_str());
-    string tempVideoPath = cacheDir + "/video_livephoto." + MediaFileUtils::GetExtensionFromPath(path);
+    string tempVideoPath = cacheDir + "/video_livephoto.mp4";
 
     int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(realPath, "", tempVideoPath, "");
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to convert live photo, ret:%{public}d", ret);
@@ -4217,7 +4217,7 @@ int32_t MediaLibraryPhotoOperations::RevertFiltersWithEditDataLivePhoto(const st
         "Cannot create dir %{private}s", cacheDir.c_str());
     
     string tempImagePath = cacheDir + "/image_livephoto." + MediaFileUtils::GetExtensionFromPath(path);
-    string tempVideoPath = cacheDir + "/video_livephoto." + MediaFileUtils::GetExtensionFromPath(path);
+    string tempVideoPath = cacheDir + "/video_livephoto.mp4";
     
     int32_t ret = AddFiltersToPhoto(sourcePath, tempImagePath, editData, "", true);
     if (ret != E_OK) {
@@ -4236,6 +4236,17 @@ int32_t MediaLibraryPhotoOperations::RevertFiltersWithEditDataLivePhoto(const st
             MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(fileAsset, path, sourcePath) == E_OK,
             E_HAS_FS_ERROR, "Failed to do revertAfterAddFiltersFailed");
         return E_OK;
+    }
+    std::string storagePath = fileAsset->GetStoragePath();
+    if (!storagePath.empty() && MediaFileUtils::IsFileExists(storagePath)) {
+        int64_t coverPosition = 0;
+        string livePhotoPath;
+        ret = MovingPhotoFileUtils::GetLivePhotoCoverPosition(tempVideoPath, "", coverPosition);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_FS_ERROR, "Failed to get coverposition");
+        ret = MovingPhotoFileUtils::ConvertToLivePhoto(tempImagePath, tempVideoPath, "", coverPosition, livePhotoPath);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_FS_ERROR, "conver to livePhoto failed");
+        ret = MediaFileAccessUtils::MoveFileInEditScene(livePhotoPath, storagePath);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_FS_ERROR, "move file in edit scene failed");
     }
     return E_OK;
 }
@@ -4261,7 +4272,11 @@ int32_t MediaLibraryPhotoOperations::RevertFiltersWithEditData(const std::shared
     if (isLivePhoto || (isRevertMovingPhotoGraffiti && isLivePhotoSourceType)) {
         return RevertFiltersWithEditDataLivePhoto(fileAsset, path, sourcePath, editData);
     }
-    if (MediaLibraryPhotoOperations::AddFiltersToPhoto(sourcePath, path, editData, "", true) != E_OK) {
+    string tagPath = path;
+    if (!storagePath.empty() && MediaFileUtils::IsFileExists(storagePath)) {
+        tagPath = storagePath;
+    }
+    if (MediaLibraryPhotoOperations::AddFiltersToPhoto(sourcePath, tagPath, editData, "", true) != E_OK) {
         CHECK_AND_RETURN_RET_LOG(
             MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(fileAsset, path, sourcePath) == E_OK,
             E_HAS_FS_ERROR, "Failed to do revertAfterAddFiltersFailed");

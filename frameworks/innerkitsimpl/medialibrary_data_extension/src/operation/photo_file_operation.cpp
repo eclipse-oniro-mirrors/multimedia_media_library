@@ -74,7 +74,8 @@ int32_t PhotoFileOperation::CopyPhoto(const std::shared_ptr<NativeRdb::ResultSet
     sourcePhotoInfo.videoFilePath = this->FindVideoFilePath(sourcePhotoInfo);
     sourcePhotoInfo.editDataFolder = this->FindEditDataFolder(sourcePhotoInfo);
     int fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
-    if (fileSourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER)) {
+    if (fileSourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
+        fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
         sourcePhotoInfo.filePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
     }
     sourcePhotoInfo.isLivePhoto = MovingPhotoFileUtils::IsLivePhotoAsset(sourcePhotoInfo.filePath);
