@@ -124,13 +124,8 @@ bool OwnerAlbumInfoCalculation::UpdateCover(const PhotoAssetChangeData &assetCha
         [&] (const PhotoAssetChangeInfo &compare, const PhotoAssetChangeInfo &current) -> bool {
             return isNewerAsset(compare, current, albumId);
     };
-    function<bool(const std::string &orderKey)> setOrderKey = [&] (const std::string &orderKey) -> bool {
-        addCover.orderKey_ = orderKey;
-        return true;
-    };
     return AlbumAssetHelper::UpdateCover(assetChangeData, isAlbumAsset, isAlbumNewerAsset, addCover, removeFileIds) ||
-        (IsNameChange(assetChangeData, albumId, isAsset) && setOrderKey("diaplay_name")) ||
-        (IsSizeChange(assetChangeData, albumId, isAsset) && setOrderKey("size"));
+        IsNameChange(assetChangeData, albumId, isAsset) || IsSizeChange(assetChangeData, albumId, isAsset);
 }
 
 bool OwnerAlbumInfoCalculation::UpdateCount(const PhotoAssetChangeData &assetChangeData,
