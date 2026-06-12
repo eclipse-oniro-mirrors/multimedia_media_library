@@ -16559,7 +16559,7 @@ static void JSConvertToAssetCompleteCallback(napi_env env, napi_status status, v
             std::unique_ptr<FileAsset> fileAsset = std::move(context->fileAsset);
             std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(fileAsset->GetPath(), fileAsset->GetDisplayName(),
                 fileAsset->GetId());
-            fileAsset->SetUri(fileAssetUri);
+            fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
             CHECK_NULL_PTR_RETURN_VOID(fileAsset, "fileAsset is null.");
             NAPI_INFO_LOG("JSConvertToAssetCompleteCallback sucess path:%{public}s, id:%{public}d, displayName:%{public}s", fileAsset->GetPath().c_str(), fileAsset->GetId(), fileAsset->GetDisplayName().c_str());
             fileAsset->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);

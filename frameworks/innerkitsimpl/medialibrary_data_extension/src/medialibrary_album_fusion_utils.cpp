@@ -1010,8 +1010,11 @@ int32_t MediaLibraryAlbumFusionUtils::CopyLocalSingleFile(const std::shared_ptr<
 }
 
 static int32_t UpdateCopyInfo(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const MediaAssetInfo &assetInfo,
+    const int32_t &cloneCallbackType, shared_ptr<NativeRdb::ResultSet> &resultSet,
     shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("UpdateCopyInfo");
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(assetInfo.newAssetId));
 
@@ -1022,6 +1025,14 @@ static int32_t UpdateCopyInfo(const std::shared_ptr<MediaLibraryRdbStore> rdbSto
     values.PutLong(MediaColumn::MEDIA_DATE_MODIFIED, dateAdded);
     MediaFileUtils::ModifyFile(assetInfo.targetPath, dateAdded / MSEC_TO_SEC);
     RegenerateDateAddedDateParts(values);
+    int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    bool isBurst = (subtype == static_cast<int32_t>(PhotoSubType::BURST));
+    if ((cloneCallbackType == static_cast<int32_t>(CloneCallbackType::URI) ||
+        cloneCallbackType == static_cast<int32_t>(CloneCallbackType::FILEPATH)) && isBurst) {
+        values.PutInt(PhotoColumn::PHOTO_SUBTYPE, 0);
+        values.PutInt(PhotoColumn::PHOTO_BURST_COVER_LEVEL, 1);
+        values.PutNull(PhotoColumn::PHOTO_BURST_KEY);
+    }
     int32_t updateCount = 0;
     int32_t changeRows = -1;
     if (assetRefresh) {
@@ -1113,21 +1124,6 @@ static void BindClonePendingTouchUpdater(MediaLibraryAlbumFusionUtils::TargetAss
     };
 }
 
-static bool UpdateCloneState(const std::shared_ptr<MediaLibraryRdbStore> &upgradeStore,
-    const int32_t assetId, const int32_t ownerAlbumId,
-    const MediaLibraryAlbumFusionUtils::TargetAssetInfo &targetAssetInfo,
-    shared_ptr<AccurateRefresh::AssetAccurateRefresh> &assetRefresh)
-{
-    int32_t err = UpdateCopyInfo(upgradeStore, {assetId, targetAssetInfo.newAssetId, ownerAlbumId,
-	    targetAssetInfo.targetRealPath}, assetRefresh);
-    if (err != E_OK) {
-        MEDIA_ERR_LOG("UpdateCopyInfo fail, assetId: %{public}d, targetAssetInfo.newAssetId: %{public}" PRId64
-            "ownerAlbumId: %{public}d, ret = %{public}d", assetId, targetAssetInfo.newAssetId, ownerAlbumId, err);
-        return false;
-    }
-    return true;
-}
-
 static int32_t CopyCloneThumbnail(shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &targetPath,
     int64_t &newAssetId, const std::shared_ptr<MediaLibraryRdbStore> &upgradeStore)
 {
@@ -1166,9 +1162,12 @@ static int32_t CopyLocalSingleFileSync(shared_ptr<AccurateRefresh::AssetAccurate
         "Failed to copy local file.");
 
     //刷新状态
-    CHECK_AND_RETURN_RET(UpdateCloneState(upgradeStore, prepareResult.assetId, ownerAlbumId,
-        targetAssetInfo, assetRefresh),
-        FinishCloneWithCleanup(upgradeStore, prepareResult.pendingFileId, E_OK));
+    err = UpdateCopyInfo(upgradeStore, {prepareResult.assetId, targetAssetInfo.newAssetId, ownerAlbumId,
+	    targetAssetInfo.targetRealPath}, targetAssetInfo.cloneCallbackType, resultSet, assetRefresh);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, FinishCloneWithCleanup(upgradeStore, prepareResult.pendingFileId, E_OK),
+        "Failed to update copy info, assetId: %{public}d, targetAssetInfo.newAssetId: %{public}" PRId64
+        "ownerAlbumId: %{public}d, ret = %{public}d", prepareResult.assetId, targetAssetInfo.newAssetId,
+        ownerAlbumId, err);
 
     err = CopyCloneThumbnail(resultSet, prepareResult.targetPath, targetAssetInfo.newAssetId, upgradeStore);
     CHECK_AND_RETURN_RET(err == E_OK,
@@ -2866,19 +2865,20 @@ static int32_t CheckAssetsPendingCloning(const std::shared_ptr<NativeRdb::Result
 
 int32_t MediaLibraryAlbumFusionUtils::CheckBatchAssets(const std::shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("resultSet is null or no data");
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("resultSet is null.");
         return E_DB_FAIL;
     }
-    do {
-        CHECK_AND_RETURN_RET_LOG(CheckAssetsPendingCloning(resultSet) == E_OK, E_INNER_FAIL,
-            "CheckAssetsPendingCloning failed");
-    } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t err = CheckAssetsPendingCloning(resultSet);
+        CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "CheckAssetsPendingCloning failed");
+    }
     return E_OK;
 }
 
 int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &cloneAssetInfo,
-    const int32_t targetAlbumId, std::string &newAssetIds, std::function<void(uint64_t)> progressCallback)
+    const int32_t targetAlbumId, std::string &newAssetIds, std::function<void(uint64_t)> progressCallback,
+    int32_t cloneCallbackType)
 {
     MediaLibraryTracer tracer;
     tracer.Start("CloneProgressAsset");
@@ -2888,12 +2888,16 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
     const std::string queryAssetSqlPrefix = "SELECT * FROM Photos WHERE file_id = ";
     const std::string queryAssetSql = queryAssetSqlPrefix + to_string(cloneAssetInfo.fileId);
     std::shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(queryAssetSql);
-    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+    if (resultSet == nullptr) {
         MEDIA_ERR_LOG("CloneSingleAsset query asset meta failed, assetId: %{public}" PRId64, cloneAssetInfo.fileId);
         return E_DB_FAIL;
     }
-    CHECK_AND_RETURN_RET_LOG(CheckBatchAssets(resultSet) == E_OK, E_INNER_FAIL, "CheckBatchAssets failed");
-
+    int32_t err = CheckBatchAssets(resultSet);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "CheckBatchAssets failed");
+    if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("No rows found for assetId: %{public}" PRId64, cloneAssetInfo.fileId);
+        return E_DB_FAIL;
+    }
     auto assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(
         AccurateRefresh::CLONE_SINGLE_ASSET_BUSSINESS_NAME);
     TargetAssetInfo targetAssetInfo;
@@ -2902,10 +2906,11 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
     targetAssetInfo.progressCallback = progressCallback;
     targetAssetInfo.requestId = to_string(cloneAssetInfo.requestId);
     targetAssetInfo.supportRename = cloneAssetInfo.mode != NOT_SUPPORT_RENAME;
-    int32_t err = CopyLocalSingleFileSync(assetRefresh, targetAlbumId, resultSet, targetAssetInfo);
+    targetAssetInfo.cloneCallbackType = cloneCallbackType;
+    err = CopyLocalSingleFileSync(assetRefresh, targetAlbumId, resultSet, targetAssetInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Clone local asset failed, ret = %{public}d, assetId = %{public}" PRId64,
         err, cloneAssetInfo.fileId);
-
+    resultSet->Close();
     RdbPredicates newPredicates(PhotoColumn::PHOTOS_TABLE);
     newPredicates.EqualTo(PhotoColumn::MEDIA_ID, targetAssetInfo.newAssetId);
     vector<string> columns = { PhotoColumn::MEDIA_FILE_PATH };

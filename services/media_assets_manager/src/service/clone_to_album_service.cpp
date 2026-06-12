@@ -268,13 +268,14 @@ bool CheckFreeSpace(int32_t needFreeSize)
 
 int32_t CloneToAlbumService::HandleAssetClone(const CloneAssetInfo &cloneAssetInfo,
     std::string &newFileId, std::atomic<uint64_t> &processedSize,
-    std::atomic<uint32_t> &processedCount, CloneCallbackType &cloneCallbackType)
+    std::atomic<uint32_t> &processedCount, const CloneCallbackType &cloneCallbackType)
 {
     auto progressCb = [&processedSize](uint64_t copiedSize) {
         processedSize.fetch_add(copiedSize);
     };
+    int32_t intCloneCallbackType = static_cast<int32_t>(cloneCallbackType);
     int32_t result = MediaLibraryAlbumFusionUtils::CloneProgressAsset(cloneAssetInfo,
-        cloneAssetInfo.albumId, newFileId, progressCb);
+        cloneAssetInfo.albumId, newFileId, progressCb, intCloneCallbackType);
     if (result != E_OK) {
         MEDIA_INFO_LOG("clone error result %{public}d", result);
         return result;
@@ -283,8 +284,8 @@ int32_t CloneToAlbumService::HandleAssetClone(const CloneAssetInfo &cloneAssetIn
     processedCount.fetch_add(1);
     //如果是连拍
     if (!cloneAssetInfo.burstKey.empty() && cloneCallbackType == CloneCallbackType::PHOTOASSET) {
-    int32_t ret = DoBurstAssetsClone(cloneAssetInfo, progressCb);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed toDoBurstAssetsClone.");
+        int32_t ret = DoBurstAssetsClone(cloneAssetInfo, progressCb);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed toDoBurstAssetsClone.");
     }
     return E_OK;
 }
@@ -295,7 +296,7 @@ int32_t CloneToAlbumService::DoBurstAssetsClone(const CloneAssetInfo &cloneAsset
     for (const auto &asset : cloneAssetInfo.burstCloneAssetList) {
         std::string newFileId = "";
         int32_t result = MediaLibraryAlbumFusionUtils::CloneProgressAsset(asset,
-        asset.albumId, newFileId, progressCallback);
+        asset.albumId, newFileId, progressCallback, static_cast<int32_t>(CloneCallbackType::PHOTOASSET));
         if (result != E_OK) {
             MEDIA_ERR_LOG("clone error result %{public}d", result);
             return result;

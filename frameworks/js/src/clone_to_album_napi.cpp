@@ -241,7 +241,7 @@ static void CompleteCloneToAlbum(napi_env env, napi_status status, void *data)
             CHECK_NULL_PTR_RETURN_VOID(newFileAsset, "newFileAset is null.");
             std::string newFileAssetUri = MediaFileUtils::GetFileAssetUri(newFileAsset->GetPath(),
                 newFileAsset->GetDisplayName(), newFileAsset->GetId());
-            newFileAsset->SetUri(newFileAssetUri);
+            newFileAsset->SetUri(MediaFileUtils::Encode(newFileAssetUri));
             newFileAsset->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);
             napi_value jsFileAsset = FileAssetNapi::CreatePhotoAsset(env, newFileAsset);
             if ((jsFileAsset == nullptr) || (napi_set_element(env, jsFileArray, i, jsFileAsset) != napi_ok)) {
