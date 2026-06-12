@@ -77,7 +77,6 @@ using namespace OHOS::Media::AccurateRefresh;
 // LCOV_EXCL_START
 namespace OHOS::Media {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
-constexpr int32_t THAN_AGR_SIZE = 1;
 constexpr int32_t MERGE_ALBUM_COUNT = 2;
 constexpr int32_t E_INDEX = -1;
 constexpr int32_t PORTRAIT_FIRST_PAGE_MIN_COUNT = 50;
@@ -2015,7 +2014,7 @@ static set<string> GetHiddenUri(const vector<string> &uris)
 {
     MediaLibraryTracer tracer;
     tracer.Start("GetHiddenUri");
-    size_t count = uris.size() - THAN_AGR_SIZE;
+    size_t count = uris.size();
     vector<string> ids;
     unordered_map<string, string> maps;
     for (size_t i = 0; i < count; i++) {
@@ -2058,10 +2057,10 @@ static void HandleLakeAndFileManager(AccurateRefreshBase &refresh, const std::ve
     return;
 }
 
-static void PreparePredicatesForBurstRecovery(RdbPredicates &rdbPredicates)
+static void PreparePredicatesForBurstRecovery(RdbPredicates &rdbPredicates, std::vector<std::string> &fileIds,
+    std::vector<std::string> &uris)
 {
-    std::vector<std::string> fileIds = rdbPredicates.GetWhereArgs();
-    BurstDao::CompleteBurstFileIds(fileIds);
+    BurstDao::CompleteBurstFileIds(fileIds, uris);
     CHECK_AND_PRINT_LOG(!fileIds.empty(), "get burst member photo failed. fileIds is empty.");
 
     rdbPredicates.Clear();
@@ -2073,11 +2072,11 @@ int32_t MediaLibraryAlbumOperations::RecoverPhotoAssets(const DataSharePredicate
     RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
     vector<string> whereArgs = rdbPredicates.GetWhereArgs();
     MediaLibraryRdbStore::ReplacePredicatesUriToId(rdbPredicates);
-    MEDIA_INFO_LOG("Start recover %{public}d assets from trash",
-        static_cast<int32_t>(whereArgs.size()) - THAN_AGR_SIZE);
+    MEDIA_INFO_LOG("Start recover %{public}d assets from trash", static_cast<int32_t>(whereArgs.size()));
 
     // 恢复适配连拍照片
-    PreparePredicatesForBurstRecovery(rdbPredicates);
+    std::vector<std::string> fileIds = rdbPredicates.GetWhereArgs();
+    PreparePredicatesForBurstRecovery(rdbPredicates, fileIds, whereArgs);
     rdbPredicates.GreaterThan(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
 
     MediaLibraryAlbumOperations::DealwithNoAlbumAssets(rdbPredicates.GetWhereArgs());
@@ -2098,14 +2097,13 @@ int32_t MediaLibraryAlbumOperations::RecoverPhotoAssets(const DataSharePredicate
     EnhancementManager::GetInstance().RecoverTrashUpdateInternal(rdbPredicates.GetWhereArgs());
 #endif
     MediaAnalysisHelper::StartMediaAnalysisServiceAsync(
-        static_cast<int32_t>(MediaAnalysisProxy::ActivateServiceType::START_UPDATE_INDEX), whereArgs);
+        static_cast<int32_t>(MediaAnalysisProxy::ActivateServiceType::START_UPDATE_INDEX), fileIds);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Failed to get rdbStore");
     std::set<string> hiddenSet = GetHiddenUri(whereArgs);
     auto watch = MediaLibraryNotify::GetInstance();
     CHECK_AND_RETURN_RET_LOG(watch != nullptr, E_ERR, "Can not get MediaLibraryNotify Instance");
-    CHECK_AND_RETURN_RET_LOG(whereArgs.size() >= THAN_AGR_SIZE, E_ERR, "invalid whereArgs");
-    size_t count = whereArgs.size() - THAN_AGR_SIZE;
+    size_t count = whereArgs.size();
     for (size_t i = 0; i < count; i++) {
         string notifyUri = MediaFileUtils::Encode(whereArgs[i]);
         if (hiddenSet.count(whereArgs[i]) == 1) {

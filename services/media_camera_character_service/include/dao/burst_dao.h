@@ -26,7 +26,7 @@ public:
      * @brief 从输入的fileId列表中，根据连拍规则补全相关的成员fileId
      * @param fileIds 输入的fileId列表（引用传递，会被扩展）
      */
-    static void CompleteBurstFileIds(std::vector<std::string> &fileIds);
+    static void CompleteBurstFileIds(std::vector<std::string> &fileIds, std::vector<std::string> &uris);
 };
 }  // namespace OHOS::Media
 #endif  // SERVICES_CAMERA_SERVICE_INCLUDE_BURST_DAO_H

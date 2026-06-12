@@ -1460,7 +1460,8 @@ static int32_t TrashPhotosDbUpdateAndRefreshAlbum(AccurateRefresh::AssetAccurate
     // 2、AssetRefresh -> Update()
     // 删除适配连拍照片
     if (sceneInfo.hasBurstCover) {
-        BurstDao::CompleteBurstFileIds(fileIds);
+        std::vector<std::string> uris;
+        BurstDao::CompleteBurstFileIds(fileIds, uris);
     }
     CHECK_AND_PRINT_LOG(!fileIds.empty(), "get burst member photo failed. fileIds is empty.");
     rdbPredicate.Clear();
