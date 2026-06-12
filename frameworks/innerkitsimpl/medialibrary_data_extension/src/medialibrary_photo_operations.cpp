@@ -1699,7 +1699,7 @@ static int32_t UpdateIsTempAndDirty(MediaLibraryCommand &cmd, const string &file
     return updateRows;
 }
 
-int32_t MediaLibraryPhotoOperations::CalSingleEditDataSize(const std::string &fileId)
+int32_t MediaLibraryPhotoOperations::CalSingleEditDataSize(const std::string &fileId, EditAndAttachmentUpdateType type)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     if (rdbStore == nullptr) {
@@ -1715,7 +1715,7 @@ int32_t MediaLibraryPhotoOperations::CalSingleEditDataSize(const std::string &fi
                 fileId.c_str(), ret);
             return ret;
         }
-        return MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, filePath);
+        return MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, filePath, type);
     }
 
     return E_OK;
@@ -4683,43 +4683,77 @@ static bool ConvertPhotoPathToThumbnailDirPath(std::string& path)
     return true;
 }
 
+static bool GetThumbnailAndAttachmentSizes(const string &photoPath, const string &photoId,
+    uint64_t &photoThumbnailSize, uint64_t &editDataSize, uint64_t &attachmentSize)
+{
+    string thumbnailDir {photoPath};
+    CHECK_AND_RETURN_RET_LOG(ConvertPhotoPathToThumbnailDirPath(thumbnailDir), false,
+        "Failed to get thumbnail dir path from photo path! file id: %{public}s", photoId.c_str());
+    photoThumbnailSize = GetFolderSize(thumbnailDir);
+
+    string editDataDir;
+    if (MediaLibraryPhotoOperations::ConvertPhotoCloudPathToLocalData(photoPath, editDataDir) != E_OK) {
+        MEDIA_ERR_LOG("Failed to Convert cloue path: %{public}s to local path", photoPath.c_str());
+        return false;
+    }
+    MediaLibraryRdbStore::StatEditAndAttachmentSize(editDataDir, editDataSize, attachmentSize);
+    return true;
+}
+
+static int32_t StoreThumbnailAndAttachmentSizes(const string &photoId,
+    uint64_t photoThumbnailSize, uint64_t editDataSize, uint64_t attachmentSize)
+{
+    string updatePhotoExtSql = "INSERT OR REPLACE INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
+        PhotoExtColumn::PHOTO_ID + ", " +
+        PhotoExtColumn::THUMBNAIL_SIZE + ", " +
+        PhotoExtColumn::EDITDATA_SIZE + ") VALUES (?, ?, ?)";
+    string updatePhotoSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+        " SET " + PhotoColumn::ATTACHMENT_SIZE + " = ?" +
+        " WHERE " + MediaColumn::MEDIA_ID + " = ? ;";
+
+    vector<NativeRdb::ValueObject> editDataBindArgs = {
+        NativeRdb::ValueObject(photoId),
+        NativeRdb::ValueObject(to_string(photoThumbnailSize)),
+        NativeRdb::ValueObject(to_string(editDataSize))
+    };
+    vector<NativeRdb::ValueObject> attachmentBindArgs = {
+        NativeRdb::ValueObject(to_string(attachmentSize)),
+        NativeRdb::ValueObject(photoId)
+    };
+
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> updateFunc = [&]() -> int32_t {
+        int32_t ret = trans->ExecuteSql(updatePhotoExtSql, editDataBindArgs);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+            "Update editdata_size failed, photoId:%{public}s", photoId.c_str());
+
+        ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+            "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
+        return E_OK;
+    };
+    return trans->RetryTrans(updateFunc);
+}
+
 void MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(const string& photoId, const string& photoPath)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is nullptr!");
 
-    string thumbnailDir {photoPath};
-    CHECK_AND_RETURN_LOG(ConvertPhotoPathToThumbnailDirPath(thumbnailDir),
-        "Failed to get thumbnail dir path from photo path! file id: %{public}s", photoId.c_str());
-    uint64_t photoThumbnailSize = GetFolderSize(thumbnailDir);
-
     uint64_t editDataSize = 0;
-    string editDataDir;
-    if (MediaLibraryPhotoOperations::ConvertPhotoCloudPathToLocalData(photoPath, editDataDir) != E_OK) {
-        MEDIA_ERR_LOG("Failed to Convert cloue path: %{public}s to local path", photoPath.c_str());
-        return;
-    }
-    size_t editDataSizeCast = static_cast<size_t>(editDataSize);
-    MediaFileUtils::StatDirSize(editDataDir, editDataSizeCast);
-    editDataSize = editDataSizeCast;
+    uint64_t attachmentSize = 0;
+    uint64_t photoThumbnailSize = 0;
+    CHECK_AND_RETURN_LOG(GetThumbnailAndAttachmentSizes(photoPath, photoId,
+        photoThumbnailSize, editDataSize, attachmentSize), "Failed to calculate sizes");
 
-    string sql = "INSERT OR REPLACE INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
-                 PhotoExtColumn::PHOTO_ID + ", " +
-                 PhotoExtColumn::THUMBNAIL_SIZE + ", " +
-                 PhotoExtColumn::EDITDATA_SIZE + ") VALUES (?, ?, ?)";
-
-    vector<NativeRdb::ValueObject> values = {
-        NativeRdb::ValueObject(photoId),
-        NativeRdb::ValueObject(to_string(photoThumbnailSize)),
-        NativeRdb::ValueObject(to_string(editDataSize))
-    };
-
-    int32_t ret = rdbStore->ExecuteSql(sql, values);
-    CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
-        "Failed to store sizes for photoId: %{public}s", photoId.c_str());
+    int32_t errCode = StoreThumbnailAndAttachmentSizes(photoId,
+        photoThumbnailSize, editDataSize, attachmentSize);
+    CHECK_AND_RETURN_LOG(errCode == E_OK,
+        "StoreThumbnailAndEditSize trans failed, photoId:%{public}s, ret:%{public}d", photoId.c_str(), errCode);
 
     MEDIA_INFO_LOG("Successfully stored thumbnail size: %{public}" PRIu64, photoThumbnailSize);
     MEDIA_INFO_LOG("Edit data size: %{public}" PRIu64, editDataSize);
+    MEDIA_INFO_LOG("Attachment size: %{public}" PRIu64, attachmentSize);
     MEDIA_INFO_LOG("For photo ID: %{public}s", photoId.c_str());
 }
 

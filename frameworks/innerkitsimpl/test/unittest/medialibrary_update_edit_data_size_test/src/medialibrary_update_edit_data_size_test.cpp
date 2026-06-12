@@ -85,7 +85,7 @@ struct InsertPhotoParams {
     bool isTemp;
     std::string path;
     int32_t movingPhotoEffectMode;
-    int64_t attachmentSize = -1;
+    int64_t attachmentSize = 0;
     int32_t syncStatus = 0;
     int32_t cleanFlag = 0;
     int32_t timePending = 0;
@@ -239,7 +239,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, UpdateEditDataSize_test_001, TestSi
     EXPECT_EQ(ret, E_OK);
 
     const int64_t expectedEditDataSize = 10 + 20 + 30 + 40 + 50 + 60 + 70;
-    const int64_t expectedAttachmentSize = 1024 + 10 + 20 + 30 + 40 + 50;
+    const int64_t expectedAttachmentSize = 10 + 20 + 30 + 40 + 50;
     EXPECT_EQ(QueryEditDataSizeByPhotoId(fileId), expectedEditDataSize);
     EXPECT_EQ(QueryAttachmentSizeByPhotoId(fileId), expectedAttachmentSize);
 }
@@ -261,7 +261,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, UpdateEditDataSize_test_002, TestSi
     EXPECT_EQ(ret, E_OK);
 
     const int64_t expectedEditDataSize = 0;
-    const int64_t expectedAttachmentSize = 1024;
+    const int64_t expectedAttachmentSize = 0;
     EXPECT_EQ(QueryEditDataSizeByPhotoId(fileId), expectedEditDataSize);
     EXPECT_EQ(QueryAttachmentSizeByPhotoId(fileId), expectedAttachmentSize);
 }
@@ -286,7 +286,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_FileAssetSetterGette
     auto queriedAsset = MediaLibraryAssetOperations::GetFileAssetFromDb(
         PhotoColumn::MEDIA_ID, std::to_string(fileId), OperationObject::FILESYSTEM_PHOTO, columns);
     ASSERT_NE(queriedAsset, nullptr);
-    const int64_t expectedAttachmentSize = 1024 + 64;
+    const int64_t expectedAttachmentSize = 64;
     EXPECT_EQ(queriedAsset->GetAttachmentSize(), expectedAttachmentSize);
 
     FileAsset fileAsset;
@@ -314,7 +314,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_ResultSetUtilsRead_t
     ASSERT_NE(resultSet, nullptr);
     int64_t attachmentSize = get<int64_t>(
         ResultSetUtils::GetValFromColumn(PhotoColumn::ATTACHMENT_SIZE, resultSet, TYPE_INT64));
-    const int64_t expectedAttachmentSize = 1024 + 100;
+    const int64_t expectedAttachmentSize = 100;
     EXPECT_EQ(attachmentSize, expectedAttachmentSize);
 }
 
@@ -334,7 +334,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, AttachmentSize_FetchResultMapToFile
 
     auto fileAsset = QueryFileAssetById(fileId);
     ASSERT_NE(fileAsset, nullptr);
-    const int64_t expectedAttachmentSize = 1024 + 88;
+    const int64_t expectedAttachmentSize = 88;
     EXPECT_EQ(fileAsset->GetAttachmentSize(), expectedAttachmentSize);
 }
 
@@ -374,12 +374,12 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, QueryAttachmentSizeAssets_test_009,
         static_cast<int32_t>(PhotoPositionType::LOCAL), false,
         "/data/test/QueryAttachmentSizeAssets_test_009/match",
         static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT),
-        -1, 0, 0, 0 });
+        0, 0, 0, 0 });
     int64_t skipId = InsertPhoto(InsertPhotoParams { SIZE_VALUE, SIZE_DEFAULT,
         static_cast<int32_t>(PhotoPositionType::LOCAL), false,
         "/data/test/QueryAttachmentSizeAssets_test_009/skip",
         static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT),
-        -1, 1, 0, 0 });
+        0, 1, 0, 0 });
     ASSERT_GT(matchId, 0);
     ASSERT_GT(skipId, 0);
 
@@ -388,7 +388,7 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, QueryAttachmentSizeAssets_test_009,
         batchSize);
     ASSERT_EQ(assetInfos.size(), 1);
     EXPECT_EQ(assetInfos[0].fileId, matchId);
-    EXPECT_EQ(assetInfos[0].attachmentSize, -1);
+    EXPECT_EQ(assetInfos[0].attachmentSize, 0);
     EXPECT_EQ(batchSize, matchId);
     MEDIA_INFO_LOG("QueryAttachmentSizeAssets_test_009 end");
 }
@@ -404,18 +404,18 @@ HWTEST_F(MediaLibraryUpdateEditDataSizeTest, HandleAttachmentSizeAssets_test10, 
         static_cast<int32_t>(PhotoPositionType::LOCAL), false,
         editDataDir,
         static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT),
-        -1, 0, 0, 0 });
+        0, 0, 0, 0 });
     ASSERT_GT(fileId, 0);
     ASSERT_TRUE(InsertPhotoExt(fileId, 0));
-    ASSERT_EQ(QueryAttachmentSizeByPhotoId(fileId), -1);
+    ASSERT_EQ(QueryAttachmentSizeByPhotoId(fileId), 0);
 
     MAP_OPERATION_FLAG = true;
     std::vector<AttachmentSizeAssetInfo> assetInfos = {
-        { static_cast<int32_t>(fileId), editDataDir, -1 }
+        { static_cast<int32_t>(fileId), editDataDir, 0 }
     };
     AttachmentSizeUpdateOperation::HandleAttachmentSizeAssets(assetInfos);
 
-    const int64_t expectedAttachmentSize = 1024 + 64;
+    const int64_t expectedAttachmentSize = 64;
     EXPECT_EQ(QueryAttachmentSizeByPhotoId(fileId), expectedAttachmentSize);
     MEDIA_INFO_LOG("HandleAttachmentSizeAssets_test10 end");
 }

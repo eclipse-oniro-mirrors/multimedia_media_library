@@ -188,7 +188,8 @@ public:
         const std::string &fileId, std::string &filePath);
     EXPORT static void Update500EditDataSize(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         std::string startFileId, bool &hasMore);
-    EXPORT static int32_t CalSingleEditDataSize(const std::string &fileId);
+    EXPORT static int32_t CalSingleEditDataSize(const std::string &fileId,
+        EditAndAttachmentUpdateType type = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
 
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> HandleIndexOfUri(MediaLibraryCommand &cmd,
         NativeRdb::RdbPredicates &predicates, const std::string &photoId, const std::string &albumId);

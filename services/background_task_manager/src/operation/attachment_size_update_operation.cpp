@@ -44,7 +44,7 @@ const std::string SQL_PHOTOS_TABLE_QUERY_ATTACHMENT_ASSETS = "SELECT"
                                                              "FROM"
                                                              " Photos "
                                                              "WHERE"
-                                                             " attachment_size = -1"
+                                                             " attachment_size = 0"
                                                              " AND sync_status = 0"
                                                              " AND clean_flag = 0"
                                                              " AND time_pending = 0"
@@ -142,10 +142,11 @@ std::vector<AttachmentSizeAssetInfo> AttachmentSizeUpdateOperation::QueryAttachm
 void AttachmentSizeUpdateOperation::HandleAttachmentSizeAssets(const std::vector<AttachmentSizeAssetInfo> &assetInfos)
 {
     for (const AttachmentSizeAssetInfo &assetInfo : assetInfos) {
-        if (assetInfo.attachmentSize >= 0) {
+        if (assetInfo.attachmentSize > 0) {
             continue;
         }
-        int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(std::to_string(assetInfo.fileId));
+        int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(std::to_string(assetInfo.fileId),
+            EditAndAttachmentUpdateType::ATTACHMENT_ONLY);
         if (ret != E_OK) {
             MEDIA_ERR_LOG("CalSingleEditDataSize failed ID: %{public}d (ret code: %{public}d)", assetInfo.fileId, ret);
         }
