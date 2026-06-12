@@ -44,6 +44,7 @@
 #include "media_file_uri.h"
 #include "moving_photo_file_utils.h"
 #include "media_fileinterwork_util.h"
+#include "consistency_check_manager.h"
 
 using namespace std;
 namespace OHOS::Media {
@@ -754,12 +755,13 @@ void MediaFileInterworkScanner::ScanFileManager()
     }
     taskThread_ = std::thread([this, status]() {
         std::lock_guard<std::mutex> lock(asyncTaskMutex_);
+        ConsistencyCheckManager::GetInstance().DisableCheck();
         bool goAhead = false;
         if (status == TASK_STATUS_PHASE_ONE) {
             MEDIA_INFO_LOG("Starting Phase One");
             int32_t ret = ExecutePhaseOne();
             CHECK_AND_PRINT_LOG(ret == E_OK, "Phase One failed, ret = %{public}d", ret);
-            goAhead = true;
+            goAhead = (ret == E_OK);
         }
         if (status == TASK_STATUS_PHASE_TWO || goAhead) {
             MEDIA_INFO_LOG("Starting Phase Two");
@@ -769,6 +771,7 @@ void MediaFileInterworkScanner::ScanFileManager()
         if (status == TASK_STATUS_COMPLETED) {
             MEDIA_INFO_LOG("Task already completed or in invalid state: %{public}d", status);
         }
+        ConsistencyCheckManager::GetInstance().EnableCheck();
         albumCache_.clear();
         isAsyncTaskRunning_.store(false);
     });

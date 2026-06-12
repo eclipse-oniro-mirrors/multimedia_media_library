@@ -78,6 +78,7 @@ bool FileManagerCheckScenario::IsCheckPeriodSatisfied(int64_t requiredPeriodInMs
 void FileManagerCheckScenario::Execute(std::atomic<bool> &isInterrupted)
 {
     MEDIA_INFO_LOG("Start Execute");
+    CHECK_AND_RETURN_LOG(!isInterrupted.load(), "Execute interrupted at entry");
     CheckDfxCollector dfxCollector(CheckScene::FILE_MANAGER);
     dfxCollector.OnCheckStart();
     ConsistencyCheck::ScenarioProgress progress = LoadProgress();
@@ -111,6 +112,7 @@ void FileManagerCheckScenario::Execute(std::atomic<bool> &isInterrupted)
 int32_t FileManagerCheckScenario::RunForward(ScenarioContext &context)
 {
     MEDIA_INFO_LOG("Start RunForward");
+    CHECK_AND_RETURN_RET(!context.isInterrupted.load(), RunningStatus::INTERRUPTED);
     auto &scanner = GlobalScanner::GetInstance();
     CHECK_AND_RETURN_RET(scanner.GetScannerStatus() == ScannerStatus::IDLE, RunningStatus::NOT_STARTED);
 
@@ -122,6 +124,7 @@ int32_t FileManagerCheckScenario::RunForward(ScenarioContext &context)
 int32_t FileManagerCheckScenario::RunBackwardPhoto(ScenarioContext &context)
 {
     MEDIA_INFO_LOG("Start RunBackwardPhoto");
+    CHECK_AND_RETURN_RET(!context.isInterrupted.load(), RunningStatus::INTERRUPTED);
     std::vector<ConsistencyCheck::PhotoRecord> photoRecords;
 
     do {
@@ -361,6 +364,7 @@ void FileManagerCheckScenario::UpdateAnalysisAlbumsAndNotify(const PhotoCandidat
 int32_t FileManagerCheckScenario::RunBackwardAlbum(ScenarioContext &context)
 {
     MEDIA_INFO_LOG("Start RunBackwardAlbum");
+    CHECK_AND_RETURN_RET(!context.isInterrupted.load(), RunningStatus::INTERRUPTED);
     std::vector<ConsistencyCheck::AlbumRecord> albumRecords;
 
     do {

@@ -16,6 +16,9 @@
 
 #include "consistency_check_manager.h"
 
+#include <chrono>
+#include <thread>
+
 #include "cpu_utils.h"
 #include "global_scanner.h"
 #include "media_log.h"
@@ -205,6 +208,14 @@ void ConsistencyCheckManager::ExecuteScene(CheckScene scene)
     CHECK_AND_RETURN_LOG(IsSceneConditionSatisfied(checkScenario, deviceStatus),
         "Condition of %{public}d no longer statisfied, %{public}s",
         static_cast<int32_t>(scene), deviceStatus.ToString().c_str());
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    if (isInterrupted_.load()) {
+        MEDIA_INFO_LOG("Scene %{public}d skipped due to interruption after delay", static_cast<int32_t>(scene));
+        std::lock_guard<std::mutex> lock(mutex_);
+        runningScene_ = CheckScene::IDLE;
+        return;
+    }
 
     MEDIA_INFO_LOG("Execute scene: %{public}d", static_cast<int32_t>(scene));
     CpuUtils::SetSelfThreadAffinity(CpuAffinityType::CPU_IDX_9);

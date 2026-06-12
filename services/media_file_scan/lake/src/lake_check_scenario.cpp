@@ -32,6 +32,7 @@ bool LakeCheckScenario::IsConditionSatisfied(const ConsistencyCheck::DeviceStatu
 void LakeCheckScenario::Execute(std::atomic<bool> &isInterrupted)
 {
     MEDIA_INFO_LOG("Start Execute");
+    CHECK_AND_RETURN_LOG(!isInterrupted.load(), "Execute interrupted at entry");
     CheckDfxCollector dfxCollector(CheckScene::LAKE);
     dfxCollector.OnCheckStart();
     ConsistencyCheck::ScenarioProgress progress;
@@ -57,6 +58,7 @@ void LakeCheckScenario::Execute(std::atomic<bool> &isInterrupted)
 int32_t LakeCheckScenario::RunForward(ScenarioContext &context)
 {
     MEDIA_INFO_LOG("Start RunForward");
+    CHECK_AND_RETURN_RET(!context.isInterrupted.load(), RunningStatus::INTERRUPTED);
     auto &scanner = GlobalScanner::GetInstance();
     if (scanner.GetScannerStatus() != ScannerStatus::IDLE) {
         return RunningStatus::NOT_STARTED;
@@ -70,6 +72,7 @@ int32_t LakeCheckScenario::RunForward(ScenarioContext &context)
 int32_t LakeCheckScenario::RunBackward(ScenarioContext &context)
 {
     MEDIA_INFO_LOG("Start RunBackward");
+    CHECK_AND_RETURN_RET(!context.isInterrupted.load(), RunningStatus::INTERRUPTED);
     int32_t deleteNum = 0;
     bool ret = CheckAndIfNeedDeletePhotoAlbum(
         deleteNum, [this, &context]() -> bool { return context.isInterrupted.load(); });
