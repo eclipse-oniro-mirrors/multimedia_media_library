@@ -807,34 +807,32 @@ HWTEST_F(MediaLibraryLcdAgingTest, GetNeedAgingLcdSize_SingleRecord_test_002, Te
     DeletePhotoDataById(testId);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ZeroTaskSize_test_001, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_EmptyDb_test_001, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("ExecuteAgingLoop_ZeroTaskSize_test_001: test with taskSize=0, not enter while loop, returns E_ERR");
+    MEDIA_INFO_LOG("ExecuteAgingLoop_EmptyDb_test_001: test with empty db");
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
-    const int64_t taskSize = 0;
 
     manager.totalAgingLcdNumber_ = 0;
     manager.hasAgingLcdNumber_ = 0;
 
-    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+    int32_t ret = manager.ExecuteAgingLoop(shouldStop);
 
-    EXPECT_EQ(ret, E_ERR);
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
 }
 
-HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_SmallTaskSize_test_003, TestSize.Level1)
+HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_SmallTotal_test_003, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("ExecuteAgingLoop_SmallTaskSize_test_003: test with small positive taskSize");
+    MEDIA_INFO_LOG("ExecuteAgingLoop_SmallTotal_test_003: test with small totalAgingLcdNumber");
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(false);
-    const int64_t taskSize = 10;
 
     manager.totalAgingLcdNumber_ = 10;
     manager.hasAgingLcdNumber_ = 0;
 
-    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+    int32_t ret = manager.ExecuteAgingLoop(shouldStop);
 
-    EXPECT_TRUE(ret == E_NO_QUERY_DATA);
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
 }
 
 HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ShouldStopImmediate_test_004, TestSize.Level1)
@@ -842,14 +840,13 @@ HWTEST_F(MediaLibraryLcdAgingTest, ExecuteAgingLoop_ShouldStopImmediate_test_004
     MEDIA_INFO_LOG("ExecuteAgingLoop_ShouldStopImmediate_test_004: test with shouldStop=true");
     auto& manager = LcdAgingManager::GetInstance();
     std::atomic<bool> shouldStop(true);
-    const int64_t taskSize = 100;
 
     manager.totalAgingLcdNumber_ = 100;
     manager.hasAgingLcdNumber_ = 0;
 
-    int32_t ret = manager.ExecuteAgingLoop(taskSize, shouldStop);
+    int32_t ret = manager.ExecuteAgingLoop(shouldStop);
 
-    EXPECT_TRUE(ret == E_AGING_STOP);
+    EXPECT_EQ(ret, E_AGING_STOP);
 }
 
 HWTEST_F(MediaLibraryLcdAgingTest, ExecuteSingleBatch_NoTrashedData_test_001, TestSize.Level1)
@@ -1463,5 +1460,123 @@ HWTEST_F(MediaLibraryLcdAgingTest, LcdAgingManager_StopDeepOptimizeSpace_test_00
     worker.shouldStop_.store(false);
 }
 
+HWTEST_F(MediaLibraryLcdAgingTest, CheckLcdAgingTargetReached_EmptyDb_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CheckLcdAgingTargetReached_EmptyDb_test_001: empty db, LCD count below threshold");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    int32_t excessSize = 0;
+    int32_t ret = manager.CheckLcdAgingTargetReached(excessSize);
+
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, CheckLcdAgingTargetReached_SingleRecord_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CheckLcdAgingTargetReached_SingleRecord_test_002: single record below threshold");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    int64_t testId;
+    int32_t ret = InsertNotTrashedPhotoData(testId);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    int32_t excessSize = 0;
+    ret = manager.CheckLcdAgingTargetReached(excessSize);
+
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, CheckLcdAgingTargetReached_LocalPosition_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CheckLcdAgingTargetReached_LocalPosition_test_003: position=1, not counted in LCD");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    PhotoTestData data;
+    data.position = 1;
+    int64_t testId;
+    int32_t ret = InsertPhotoData(testId, data);
+    ASSERT_EQ(ret, NativeRdb::E_OK);
+
+    int32_t excessSize = 0;
+    ret = manager.CheckLcdAgingTargetReached(excessSize);
+
+    EXPECT_EQ(ret, E_NO_QUERY_DATA);
+
+    DeletePhotoDataById(testId);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_CappedAt99_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_CappedAt99_test_001: progress capped at 99 when would exceed");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 100;
+    manager.hasAgingLcdNumber_ = 100;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 99);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_CappedAt99_NearTotal_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_CappedAt99_NearTotal_test_002: progress 99 when 99/100 aged");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 100;
+    manager.hasAgingLcdNumber_ = 99;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 99);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_NoRegression_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_NoRegression_test_003: progress never regresses");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 200;
+    manager.hasAgingLcdNumber_ = 100;
+    manager.lastAgingProgress_ = 60;
+
+    manager.HandleAgingProgress();
+
+    uint32_t progress = manager.lastAgingProgress_;
+    EXPECT_GE(progress, 60);
+    EXPECT_LE(progress, 99);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_LowProgress_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_LowProgress_test_004: normal low progress not capped");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 1000;
+    manager.hasAgingLcdNumber_ = 50;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 5);
+}
+
+HWTEST_F(MediaLibraryLcdAgingTest, HandleAgingProgress_ZeroTotal_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("HandleAgingProgress_ZeroTotal_test_005: totalAgingLcdNumber=0, early return");
+    auto& manager = LcdAgingManager::GetInstance();
+
+    manager.totalAgingLcdNumber_ = 0;
+    manager.hasAgingLcdNumber_ = 50;
+    manager.lastAgingProgress_ = 0;
+
+    manager.HandleAgingProgress();
+
+    EXPECT_EQ(manager.lastAgingProgress_, 0);
+}
 } // namespace Media
 } // namespace OHOS
