@@ -17,6 +17,8 @@
 
 #include "burst_dao.h"
 
+#include "media_file_uri.h"
+#include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_column.h"
@@ -42,14 +44,15 @@ namespace OHOS::Media {
  * AND p.owner_album_id = cover_info.owner_album_id
  * WHERE p.photo_burst_cover_level = 2
  */
-void BurstDao::CompleteBurstFileIds(std::vector<std::string> &fileIds)
+void BurstDao::CompleteBurstFileIds(std::vector<std::string> &fileIds, std::vector<std::string> &uris)
 {
     CHECK_AND_RETURN_LOG(!fileIds.empty(), "CompleteBurstFileIds fileIds is empty");
     
     std::string inClause = CloudMediaCommon::ToStringWithComma(fileIds);
     MEDIA_DEBUG_LOG("input fileIds: %{public}s.", inClause.c_str());
     
-    std::string sql = "SELECT p." + MediaColumn::MEDIA_ID
+    std::string sql = "SELECT p." + MediaColumn::MEDIA_ID + ", p." + MediaColumn::MEDIA_FILE_PATH
+        + ", p." + MediaColumn::MEDIA_TYPE + ", p." + MediaColumn::MEDIA_NAME
         + " FROM " + PhotoColumn::PHOTOS_TABLE + " p "
         + " INNER JOIN ("
         + " SELECT DISTINCT p1." + PhotoColumn::PHOTO_BURST_KEY
@@ -73,9 +76,21 @@ void BurstDao::CompleteBurstFileIds(std::vector<std::string> &fileIds)
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "Failed to query selected files!");
     
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        std::string burstMemberFileId = std::to_string(
-            std::get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32)));
-        fileIds.push_back(burstMemberFileId);
+        int32_t fileId =
+            std::get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32));
+        fileIds.push_back(std::to_string(fileId));
+
+        std::string displayName =
+            std::get<string>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_NAME, resultSet, TYPE_STRING));
+        std::string filePath =
+            std::get<string>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_FILE_PATH, resultSet, TYPE_STRING));
+        int32_t mediaType =
+            std::get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_TYPE, resultSet, TYPE_INT32));
+        auto extrUri = MediaFileUtils::GetUriByExtrConditions(
+            CONST_ML_FILE_URI_PREFIX +
+            MediaFileUri::GetMediaTypeUri(static_cast<MediaType>(mediaType), MEDIA_API_VERSION_V10) + "/",
+            to_string(fileId), MediaFileUtils::GetExtraUri(displayName, filePath));
+        uris.push_back(extrUri);
     }
     resultSet->Close();
 }
