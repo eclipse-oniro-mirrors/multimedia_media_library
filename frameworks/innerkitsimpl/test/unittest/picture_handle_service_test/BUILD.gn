@@ -61,6 +61,7 @@ ohos_unittest("picture_handle_service_test") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "image_framework:image_native",
+    "graphic_surface:surface",
   ]
 
   sanitize = {
