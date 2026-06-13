@@ -39,7 +39,7 @@ namespace OHOS::Media {
 const std::string ROOT_PATH_PREFIX = "/storage/media/local/files/Docs/";
 const std::string ROOT_LPATH = "/FromDocs/";
 
-std::string ReplaceLastSegment(const std::string& path, const std::string& newName)
+static std::string ReplaceLastSegment(const std::string& path, const std::string& newName)
 {
     size_t lastSlash = path.find_last_of('/');
     if (lastSlash != std::string::npos) {
