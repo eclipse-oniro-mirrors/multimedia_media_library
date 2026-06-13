@@ -521,7 +521,7 @@ void PhotosClone::QueryLakeFileFailInfo(
 void PhotosClone::InitDeduplicationInfo()
 {
     int32_t ret = InitCloneRestoreRdbStore();
-    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to init CloneRestoreRdbStor");
+    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to init CloneRestoreRdbStore");
     CHECK_AND_RETURN_LOG(cloneRestoreRdbStore_ != nullptr, "cloneRestoreRdbStore is nullptr");
     QueryDeduplicationFileInfo(deduplicationMap_);
     MEDIA_INFO_LOG("LakeClone: InitDeduplicationInfo completed, deduplicationMap size: %{public}zu",
