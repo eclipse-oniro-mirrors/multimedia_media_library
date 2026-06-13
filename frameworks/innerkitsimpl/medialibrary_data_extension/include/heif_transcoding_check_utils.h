@@ -42,6 +42,7 @@ public:
     EXPORT static void ClearBundleInfoInCache();
     EXPORT static TranscodeMode CheckTranscodeMode(const std::string &bundleName,
         bool isHighPixel, bool isHeifFile);
+    EXPORT static bool IsDUEVersionHigher();
 private:
     static sptr<AppExecFwk::IBundleMgr> GetSysBundleManager();
     static int32_t ParseWhiteList(const nlohmann::json &checkListJson);
