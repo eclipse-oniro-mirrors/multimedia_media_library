@@ -433,7 +433,7 @@ void DocsMediaScanManager::ReportPhase()
         CHECK_AND_RETURN_LOG(!batch.empty(), "QueryDocsScanFolderStats failed");
 
         nlohmann::json batchArray = BuildBatchJson(batch);
-        int32_t reportRet = DfxReporter::ReportAncoCountFormatInfoForDirScan(batchArray.dump());
+        int32_t reportRet = DfxReporter::ReportAncoCountFormatInfoForDirScan(batchArray.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace));
         if (reportRet != 0) {
             MEDIA_ERR_LOG("Report failed, will retry next trigger");
             return;
