@@ -1399,7 +1399,7 @@ static int32_t QueryAllPhoto(bool backup)
 
     std::vector<std::string> columns = { "count(1) AS count" };
     std::string queryColumn = "count";
-    int32_t count;
+    int32_t count = 0;
     int32_t errCode = QueryInt(predicates, columns, queryColumn, count);
     if (errCode != E_OK) {
         MEDIA_ERR_LOG("query local image fail: %{public}d", errCode);
