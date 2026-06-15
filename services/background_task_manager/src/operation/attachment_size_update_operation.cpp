@@ -15,6 +15,7 @@
 
 #include "attachment_size_update_operation.h"
 
+#include "map_operation_flag.h"
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -71,6 +72,33 @@ static int QueryMaxFileId()
     maxFileId = GetInt32Val("Max(file_id)", resultSet);
     resultSet->Close();
     return maxFileId;
+}
+
+static int32_t UpdateSingleAttachmentSizeIfNeeded(int32_t fileId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+
+    if (!MAP_OPERATION_FLAG) {
+        return E_OK;
+    }
+
+    std::string filePath;
+    int32_t ret = MediaLibraryPhotoOperations::GetFilePathById(rdbStore, std::to_string(fileId), filePath);
+    if (ret != E_OK) {
+        MEDIA_WARN_LOG("Skip invalid file ID: %{public}d (error code: %{public}d)", fileId, ret);
+        return ret;
+    }
+
+    uint64_t editDataSize = 0;
+    uint64_t attachmentSize = 0;
+    MediaLibraryRdbStore::StatEditAndAttachmentSize(filePath, editDataSize, attachmentSize);
+    if (attachmentSize == 0) {
+        MEDIA_DEBUG_LOG("No attachment size for file ID: %{public}d, skip update", fileId);
+        return E_OK;
+    }
+
+    return MediaLibraryRdbStore::UpdateAttachmentSize(rdbStore, std::to_string(fileId), attachmentSize);
 }
 
 void AttachmentSizeUpdateOperation::UpdateAttachmentSize()
@@ -145,10 +173,10 @@ void AttachmentSizeUpdateOperation::HandleAttachmentSizeAssets(const std::vector
         if (assetInfo.attachmentSize > 0) {
             continue;
         }
-        int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(std::to_string(assetInfo.fileId),
-            EditAndAttachmentUpdateType::ATTACHMENT_ONLY);
+        int32_t ret = UpdateSingleAttachmentSizeIfNeeded(assetInfo.fileId);
         if (ret != E_OK) {
-            MEDIA_ERR_LOG("CalSingleEditDataSize failed ID: %{public}d (ret code: %{public}d)", assetInfo.fileId, ret);
+            MEDIA_ERR_LOG("UpdateSingleAttachmentSizeIfNeeded failed ID: %{public}d (ret code: %{public}d)",
+                assetInfo.fileId, ret);
         }
     }
 }

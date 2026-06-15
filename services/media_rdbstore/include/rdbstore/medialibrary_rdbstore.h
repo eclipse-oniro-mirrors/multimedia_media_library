@@ -148,6 +148,8 @@ public:
     EXPORT static int32_t UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::string &photoId, const std::string &editDataDir,
         EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
+    EXPORT static int32_t UpdateAttachmentSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::string &photoId, uint64_t attachmentSize);
     EXPORT static void AddDefaultInsertPhotoValues(NativeRdb::ValuesBucket& values);
     EXPORT static int32_t PrepareShootingModeAlbum(NativeRdb::RdbStore &store);
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
