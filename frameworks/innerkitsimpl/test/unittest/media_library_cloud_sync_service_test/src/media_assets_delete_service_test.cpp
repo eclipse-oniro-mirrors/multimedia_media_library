@@ -135,7 +135,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CloudMediaAssetsDeleteLocalAssets_Test, Tes
     MEDIA_INFO_LOG("end CloudMediaAssetsDeleteLocalAssets_Test");
 }
 
-// ===== EraseCloudInfo =====
+// EraseCloudInfo
 HWTEST_F(CloudMediaAssetsDeleteTest, EraseCloudInfo_ResetsAllCloudFields, TestSize.Level1)
 {
     /**
@@ -158,7 +158,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, EraseCloudInfo_ResetsAllCloudFields, TestSi
     EXPECT_FALSE(photo.cloudVersion.has_value());
 }
 
-// ===== ResetFileId =====
+// ResetFileId
 HWTEST_F(CloudMediaAssetsDeleteTest, ResetFileId_ClearsFileId, TestSize.Level1)
 {
     /**
@@ -175,7 +175,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ResetFileId_ClearsFileId, TestSize.Level1)
     EXPECT_FALSE(photo.fileId.has_value());
 }
 
-// ===== ResetVirtualPath =====
+// ResetVirtualPath
 HWTEST_F(CloudMediaAssetsDeleteTest, ResetVirtualPath_ClearsVirtualPath, TestSize.Level1)
 {
     /**
@@ -207,7 +207,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ResetVirtualPath_AlreadyEmpty, TestSize.Lev
     EXPECT_FALSE(photo.virtualPath.has_value());
 }
 
-// ===== SetDateTrashed =====
+// SetDateTrashed
 HWTEST_F(CloudMediaAssetsDeleteTest, SetDateTrashed_SetsCorrectValue, TestSize.Level1)
 {
     /**
@@ -224,7 +224,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, SetDateTrashed_SetsCorrectValue, TestSize.L
     EXPECT_EQ(photo.dateTrashed.value_or(0), 1234567890LL);
 }
 
-// ===== SetPosition =====
+// SetPosition
 HWTEST_F(CloudMediaAssetsDeleteTest, SetPosition_SetsCloud, TestSize.Level1)
 {
     /**
@@ -257,7 +257,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, SetPosition_SetsLocal, TestSize.Level1)
     EXPECT_EQ(photo.position.value_or(0), static_cast<int32_t>(PhotoPositionType::LOCAL));
 }
 
-// ===== SetFilePath =====
+// SetFilePath
 HWTEST_F(CloudMediaAssetsDeleteTest, SetFilePath_SetsDataField, TestSize.Level1)
 {
     /**
@@ -289,7 +289,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, SetFilePath_EmptyPath, TestSize.Level1)
     EXPECT_EQ(photo.data.value_or("x"), "");
 }
 
-// ===== SetFileId =====
+// SetFileId
 HWTEST_F(CloudMediaAssetsDeleteTest, SetFileId_SetsCorrectId, TestSize.Level1)
 {
     /**
@@ -305,7 +305,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, SetFileId_SetsCorrectId, TestSize.Level1)
     EXPECT_EQ(photo.fileId.value_or(0), 99);
 }
 
-// ===== ClearCloudInfo =====
+// ClearCloudInfo
 HWTEST_F(CloudMediaAssetsDeleteTest, ClearCloudInfo_ResetsCloudFields, TestSize.Level1)
 {
     /**
@@ -328,7 +328,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ClearCloudInfo_ResetsCloudFields, TestSize.
     EXPECT_FALSE(photo.cloudVersion.has_value());
 }
 
-// ===== ResetNullableFields =====
+// ResetNullableFields
 HWTEST_F(CloudMediaAssetsDeleteTest, ResetNullableFields_EmptyStringsResetToNullopt, TestSize.Level1)
 {
     /**
@@ -406,7 +406,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ResetNullableFields_MixedLatLon, TestSize.L
     EXPECT_TRUE(photo.longitude.has_value());
 }
 
-// ===== ResetFileSourceType =====
+// ResetFileSourceType
 HWTEST_F(CloudMediaAssetsDeleteTest, ResetFileSourceType_SetsToMedia, TestSize.Level1)
 {
     /**
@@ -423,7 +423,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ResetFileSourceType_SetsToMedia, TestSize.L
     EXPECT_EQ(photo.fileSourceType.value_or(-1), static_cast<int32_t>(FileSourceType::MEDIA));
 }
 
-// ===== SetMdirty =====
+// SetMdirty
 HWTEST_F(CloudMediaAssetsDeleteTest, SetMdirty_SyncedBecomesMdirty, TestSize.Level1)
 {
     /**
@@ -489,7 +489,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, SetMdirty_NewStaysAsNew, TestSize.Level1)
     EXPECT_EQ(photo.dirty.value_or(-1), static_cast<int32_t>(DirtyType::TYPE_NEW));
 }
 
-// ===== GenerateUuid =====
+// GenerateUuid
 HWTEST_F(CloudMediaAssetsDeleteTest, GenerateUuid_ReturnsValidFormat, TestSize.Level1)
 {
     /**
@@ -519,7 +519,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, GenerateUuid_TwoCallsAreDifferent, TestSize
     EXPECT_NE(uuid1, uuid2);
 }
 
-// ===== ResetSouthDeviceType =====
+// ResetSouthDeviceType
 HWTEST_F(CloudMediaAssetsDeleteTest, ResetSouthDeviceType_ClearsField, TestSize.Level1)
 {
     /**
@@ -536,7 +536,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ResetSouthDeviceType_ClearsField, TestSize.
     EXPECT_FALSE(photo.southDeviceType.has_value());
 }
 
-// ===== ResetUniqueId =====
+// ResetUniqueId
 HWTEST_F(CloudMediaAssetsDeleteTest, ResetUniqueId_SetsToMinusOne, TestSize.Level1)
 {
     /**
@@ -568,7 +568,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ResetUniqueId_FromNullopt, TestSize.Level1)
     EXPECT_EQ(photo.uniqueId.value_or(""), "-1");
 }
 
-// ===== ResetTransCode =====
+// ResetTransCode
 HWTEST_F(CloudMediaAssetsDeleteTest, ResetTransCode_RemovesAllTranscodeKeys, TestSize.Level1)
 {
     /**
@@ -608,7 +608,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, ResetTransCode_EmptyAttributesNoOp, TestSiz
     EXPECT_TRUE(photo.attributes.empty());
 }
 
-// ===== StoreThumbnailAndEditSize (single PhotosPo) =====
+// StoreThumbnailAndEditSize (single PhotosPo)
 HWTEST_F(CloudMediaAssetsDeleteTest, StoreThumbnailAndEditSize_InvalidFileId, TestSize.Level1)
 {
     /**
@@ -656,7 +656,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, StoreThumbnailAndEditSize_NoFileId, TestSiz
     EXPECT_EQ(ret, E_INVALID_VALUES);
 }
 
-// ===== StoreThumbnailAndEditSize (with optional) =====
+// StoreThumbnailAndEditSize (with optional)
 HWTEST_F(CloudMediaAssetsDeleteTest, StoreThumbnailAndEditSize_OptionalEmpty, TestSize.Level1)
 {
     /**
@@ -672,7 +672,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, StoreThumbnailAndEditSize_OptionalEmpty, Te
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== BuildMediaFilePath =====
+// BuildMediaFilePath
 HWTEST_F(CloudMediaAssetsDeleteTest, BuildMediaFilePath_EmptyDisplayName, TestSize.Level1)
 {
     /**
@@ -706,7 +706,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, BuildMediaFilePath_NoDisplayName, TestSize.
     EXPECT_EQ(ret, E_FILE_NAME_INVALID);
 }
 
-// ===== Constructor with isCloudPullData =====
+// Constructor with isCloudPullData
 HWTEST_F(CloudMediaAssetsDeleteTest, Constructor_DefaultIsCloudPullDataFalse, TestSize.Level1)
 {
     /**
@@ -729,7 +729,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, Constructor_ExplicitIsCloudPullDataTrue, Te
     EXPECT_TRUE(service.isCloudPullData_);
 }
 
-// ===== CopyAndMoveLocalAssetToTrash precondition checks =====
+// CopyAndMoveLocalAssetToTrash precondition checks
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveLocalAssetToTrash_NullPhotoRefresh, TestSize.Level1)
 {
     /**
@@ -763,7 +763,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveLocalAssetToTrash_NotLocalAndClo
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== CopyAndMoveCloudAssetToTrash precondition checks =====
+// CopyAndMoveCloudAssetToTrash precondition checks
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveCloudAssetToTrash_NullPhotoRefresh, TestSize.Level1)
 {
     /**
@@ -797,7 +797,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveCloudAssetToTrash_NotLocalAndClo
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== CheckAndFindBurstAssets =====
+// CheckAndFindBurstAssets
 HWTEST_F(CloudMediaAssetsDeleteTest, CheckAndFindBurstAssets_NotInTrash, TestSize.Level1)
 {
     /**
@@ -851,7 +851,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CheckAndFindBurstAssets_NoBurstKey, TestSiz
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== DeleteLocalAssetSingle / DeleteCloudAssetSingle precondition =====
+// DeleteLocalAssetSingle / DeleteCloudAssetSingle precondition
 HWTEST_F(CloudMediaAssetsDeleteTest, DeleteLocalAssetSingle_NullPhotoRefresh, TestSize.Level1)
 {
     /**
@@ -884,7 +884,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, DeleteCloudAssetSingle_NullPhotoRefresh, Te
     EXPECT_EQ(ret, E_RDB_STORE_NULL);
 }
 
-// ===== CopyAndMoveMediaLocalAssetToTrash precondition =====
+// CopyAndMoveMediaLocalAssetToTrash precondition
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveMediaLocalAssetToTrash_NotMediaFile, TestSize.Level1)
 {
     /**
@@ -921,7 +921,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveMediaLocalAssetToTrash_AlreadyTr
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CopyAndMoveLakeLocalAssetToTrash precondition =====
+// CopyAndMoveLakeLocalAssetToTrash precondition
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveLakeLocalAssetToTrash_IsMediaFile, TestSize.Level1)
 {
     /**
@@ -940,7 +940,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveLakeLocalAssetToTrash_IsMediaFil
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CopyAndMoveMediaCloudAssetToTrash precondition =====
+// CopyAndMoveMediaCloudAssetToTrash precondition
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveMediaCloudAssetToTrash_NotMediaFile, TestSize.Level1)
 {
     /**
@@ -959,7 +959,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveMediaCloudAssetToTrash_NotMediaF
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CopyAndMoveLakeCloudAssetToTrash precondition =====
+// CopyAndMoveLakeCloudAssetToTrash precondition
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveLakeCloudAssetToTrash_IsMediaFile, TestSize.Level1)
 {
     /**
@@ -978,7 +978,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveLakeCloudAssetToTrash_IsMediaFil
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CopyAndMoveFileManagerCloudAssetToTrash precondition =====
+// CopyAndMoveFileManagerCloudAssetToTrash precondition
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveFileManagerCloudAssetToTrash_NotFileManager, TestSize.Level1)
 {
     /**
@@ -997,7 +997,7 @@ HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveFileManagerCloudAssetToTrash_Not
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CopyAndMoveFileManagerLocalAssetToTrash precondition =====
+// CopyAndMoveFileManagerLocalAssetToTrash precondition
 HWTEST_F(CloudMediaAssetsDeleteTest, CopyAndMoveFileManagerLocalAssetToTrash_NotFileManager, TestSize.Level1)
 {
     /**

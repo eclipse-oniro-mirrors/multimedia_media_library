@@ -43,7 +43,7 @@ using namespace OHOS::NativeRdb;
 namespace OHOS {
 namespace Media {
 
-// ========== FileManager任务完成通知机制 ==========
+// FileManager任务完成通知机制
 // 使用计数器追踪FileManager任务，不依赖队列是否完全空
 static std::condition_variable g_taskCompleteCv;
 static std::mutex g_taskCompleteMutex;
@@ -51,7 +51,7 @@ static std::atomic<int32_t> g_activeTaskCount{0};
 static std::atomic<bool> g_isRestoring{false};
 static std::atomic<bool> g_cancelRestore{false};
 
-// ========== 温度和电量检查实现 ==========
+// 温度和电量检查实现
 // LCOV_EXCL_START
 bool FileManagerThumbnailHelper::CheckTemperatureBatteryConditionForRealtime()
 {
@@ -99,7 +99,7 @@ bool FileManagerThumbnailHelper::CheckTemperatureBatteryRestoreCondition()
     return true;
 }
 
-// ========== SP存储操作实现 ==========
+// SP存储操作实现
 
 void FileManagerThumbnailHelper::SaveThumbnailTaskToSP(const std::string &fileId)
 {
@@ -129,7 +129,7 @@ void FileManagerThumbnailHelper::RemoveThumbnailTaskFromSP(const std::string &fi
     MEDIA_DEBUG_LOG("Removed thumbnail task from SP, fileId: %{public}s", fileId.c_str());
 }
 
-// ========== 任务执行实现 ==========
+// 任务执行实现
 
 int32_t FileManagerThumbnailHelper::CreateThumbnailForFileManager(const ThumbnailInfo &fileInfo,
     std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr)
@@ -219,7 +219,7 @@ void FileManagerThumbnailHelper::FileManagerThumbnailTaskExecutor(std::shared_pt
     NotifyTaskComplete();
 }
 
-// ========== 任务恢复辅助函数实现 ==========
+// 任务恢复辅助函数实现
 
 void FileManagerThumbnailHelper::StartAsyncRestoreTasks(std::shared_ptr<MediaLibraryRdbStore> rdbStorePtr)
 {

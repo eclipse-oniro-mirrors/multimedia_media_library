@@ -31,7 +31,7 @@ void FolderScannerUtilsTest::TearDownTestCase() {}
 void FolderScannerUtilsTest::SetUp() {}
 void FolderScannerUtilsTest::TearDown() {}
 
-// ==================== IsCurrentOrParentDir Tests ====================
+// IsCurrentOrParentDir Tests
 
 /**
  * @tc.name: IsCurrentOrParentDir_Dot_001
@@ -74,7 +74,7 @@ HWTEST_F(FolderScannerUtilsTest, IsCurrentOrParentDir_EmptyString_004, TestSize.
     EXPECT_FALSE(FolderScannerUtils::IsCurrentOrParentDir(""));
 }
 
-// ==================== IsSkipCurrentFile Tests ====================
+// IsSkipCurrentFile Tests
 
 /**
  * @tc.name: IsSkipCurrentFile_HiddenFile_SkipHiddenEnabled_001
@@ -128,7 +128,7 @@ HWTEST_F(FolderScannerUtilsTest, IsSkipCurrentFile_EmptyPath_004, TestSize.Level
     EXPECT_TRUE(result);
 }
 
-// ==================== IsSkipCurrentDirectory Tests ====================
+// IsSkipCurrentDirectory Tests
 
 /**
  * @tc.name: IsSkipCurrentDirectory_EmptyPath_001

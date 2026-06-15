@@ -31,7 +31,7 @@ void CheckDfxCollectorTest::TearDownTestCase() {}
 void CheckDfxCollectorTest::SetUp() {}
 void CheckDfxCollectorTest::TearDown() {}
 
-// ==================== Constructor Tests ====================
+// Constructor Tests
 
 /**
  * @tc.name: Constructor_LakeScene_001
@@ -57,7 +57,7 @@ HWTEST_F(CheckDfxCollectorTest, Constructor_FileManagerScene_002, TestSize.Level
     EXPECT_TRUE(str.find("scene: 3") != std::string::npos); // FILE_MANAGER = 3
 }
 
-// ==================== OnCheckStart / OnCheckEnd Tests ====================
+// OnCheckStart / OnCheckEnd Tests
 
 /**
  * @tc.name: OnCheckStart_SetsTimestamp_001
@@ -89,7 +89,7 @@ HWTEST_F(CheckDfxCollectorTest, OnCheckEnd_SetsTimestamp_002, TestSize.Level1)
     EXPECT_FALSE(str.empty());
 }
 
-// ==================== Counter Accumulation Tests ====================
+// Counter Accumulation Tests
 
 /**
  * @tc.name: OnPhotoAdd_AccumulatesDelta_001
@@ -172,7 +172,7 @@ HWTEST_F(CheckDfxCollectorTest, OnAlbumDelete_AccumulatesDelta_006, TestSize.Lev
     EXPECT_TRUE(str.find("|6,") != std::string::npos);
 }
 
-// ==================== Reset Tests ====================
+// Reset Tests
 
 /**
  * @tc.name: Reset_ClearsAllCounters_001
@@ -194,7 +194,7 @@ HWTEST_F(CheckDfxCollectorTest, Reset_ClearsAllCounters_001, TestSize.Level1)
     EXPECT_TRUE(str.find("album: 0|0|0") != std::string::npos);
 }
 
-// ==================== ToString Tests ====================
+// ToString Tests
 
 /**
  * @tc.name: ToString_ContainsAllFields_001

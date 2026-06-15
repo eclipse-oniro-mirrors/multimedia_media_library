@@ -463,7 +463,7 @@ static inline std::string GetThumbnailPath(const std::string &path, const std::s
     return ROOT_MEDIA_DIR + ".thumbs/" + path.substr(ROOT_MEDIA_DIR.length()) + "/" + key + suffix;
 }
 
-// ============ 新增测试用例 ============
+// 新增测试用例
 HWTEST_F(MediaCleanAllDirtyFilesTaskTest, Mcadft_HandleBothExistStrategy_01, TestSize.Level1)
 {
     MEDIA_INFO_LOG("Mcadft_HandleBothExistStrategy_01 Start");

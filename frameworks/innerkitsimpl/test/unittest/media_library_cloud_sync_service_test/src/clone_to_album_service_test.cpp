@@ -35,7 +35,7 @@ void CloneToAlbumServiceTest::TearDownTestCase() {}
 void CloneToAlbumServiceTest::SetUp() {}
 void CloneToAlbumServiceTest::TearDown() {}
 
-// ===== CloneTaskInfo copy constructor =====
+// CloneTaskInfo copy constructor
 HWTEST_F(CloneToAlbumServiceTest, CloneTaskInfo_CopyConstructor_CopiesFields, TestSize.Level1)
 {
     /**
@@ -70,7 +70,7 @@ HWTEST_F(CloneToAlbumServiceTest, CloneTaskInfo_CopyConstructor_CopiesFields, Te
     EXPECT_EQ(copy.cloneAssetInfo[0].displayName, "test.jpg");
 }
 
-// ===== CloneAssetInfo default values =====
+// CloneAssetInfo default values
 HWTEST_F(CloneToAlbumServiceTest, CloneAssetInfo_DefaultValues, TestSize.Level1)
 {
     /**
@@ -105,7 +105,7 @@ HWTEST_F(CloneToAlbumServiceTest, CloneAssetInfo_DefaultValues, TestSize.Level1)
     EXPECT_TRUE(info.burstCloneAssetList.empty());
 }
 
-// ===== CloneCallbackType enum =====
+// CloneCallbackType enum
 HWTEST_F(CloneToAlbumServiceTest, CloneCallbackType_EnumValues, TestSize.Level1)
 {
     /**

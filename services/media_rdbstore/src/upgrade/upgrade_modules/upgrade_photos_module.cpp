@@ -26,7 +26,7 @@ namespace OHOS {
 namespace Media {
 using namespace std;
 #define PHOTOS_MODULE_NAME "Photos"
-// ==================== ADD Photos Table Upgrade Code HERE  ====================
+// ADD Photos Table Upgrade Code HERE
 
 static vector<pair<int32_t, int32_t>> AddPhotoRiskStatusColumnsAndDeleteCritical(NativeRdb::RdbStore &store)
 {

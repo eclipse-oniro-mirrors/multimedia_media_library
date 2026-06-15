@@ -34,7 +34,7 @@ void ScanRuleConfigTest::TearDownTestCase() {}
 void ScanRuleConfigTest::SetUp() {}
 void ScanRuleConfigTest::TearDown() {}
 
-// ==================== Lake Scan Rule Config Tests ====================
+// Lake Scan Rule Config Tests
 
 /**
  * @tc.name: LakeConfig_RootPath_001
@@ -92,7 +92,7 @@ HWTEST_F(ScanRuleConfigTest, LakeConfig_VisiblePattern_006, TestSize.Level1)
         std::string("/storage/media/local/files/Docs/HO_DATA_EXT_MISC/Pictures"), config.visiblePattern));
 }
 
-// ==================== File Manager Scan Rule Config Tests ====================
+// File Manager Scan Rule Config Tests
 
 /**
  * @tc.name: FMConfig_RootPath_001
@@ -131,7 +131,7 @@ HWTEST_F(ScanRuleConfigTest, FMConfig_RelativePathPattern_005, TestSize.Level1)
         std::string("/storage/media/local/files/Other"), config.relativePathPattern));
 }
 
-// ==================== Constant Tests ====================
+// Constant Tests
 
 /**
  * @tc.name: Constants_RootPathValues_001
