@@ -108,6 +108,8 @@
 #include "deep_optimize_space_vo.h"
 #include "media_library_error_code.h"
 #include "modify_album_default_cover_order_vo.h"
+#include "register_unregister_handler_functions_ani.h"
+#include "check_single_photo_permission_vo.h"
 
 namespace OHOS {
 namespace Media {
@@ -145,6 +147,7 @@ const int32_t URI_FORMAT_ERROR_STATE = 0;
 const int32_t NO_READ_PERMISSION_STATE = 3;
 const int32_t MAX_LPATH_BUNDLENAME_LENGTH = 255;
 constexpr int32_t CONFIRM_BOX_ARRAY_MAX_LENGTH = 100;
+const std::string URI_SEPARATOR = "file:media";
 
 mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
@@ -217,6 +220,7 @@ const std::string TARGET_PAGE = "targetPage";
 const std::string ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE = "ability.want.params.uiExtensionTargetType";
 const int32_t DEFAULT_SESSION_ID = 0;
 const int32_t SLEEP_TIME = 10;
+std::mutex ChangeListenerAni::trashMutex_;
 
 namespace {
 const std::array photoAccessHelperMethos = {
@@ -290,13 +294,13 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessGetSupportedPhotoFormats)},
     ani_native_function {"startAssetAnalysisInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::StartAssetAnalysis)},
-    ani_native_function {"onSinglePhotoAlbumChangeInner", nullptr,
+    ani_native_function {"onSinglePhotoAlbumChange", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::SinglePhotoAlbumChangeOnCallback)},
-    ani_native_function {"offSinglePhotoAlbumChangeInner", nullptr,
+    ani_native_function {"offSinglePhotoAlbumChange", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::SinglePhotoAlbumChangeOffCallback)},
-    ani_native_function {"onSinglePhotoChangeInner", nullptr,
+    ani_native_function {"onSinglePhotoChange", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::SinglePhotoChangeOnCallback)},
-    ani_native_function {"offSinglePhotoChangeInner", nullptr,
+    ani_native_function {"offSinglePhotoChange", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::SinglePhotoChangeOffCallback)},
     ani_native_function {"setPreferredCompatibleModeInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::SetPreferredCompatibleMode)},
@@ -2592,6 +2596,144 @@ ani_object MediaLibraryAni::GetAlbumsByIds(ani_env *env, ani_object object, ani_
     GetAlbumsByIdsExecute(env, asyncContext);
     return GetAlbumsByIdsComplete(env, asyncContext);
 }
+int32_t MediaLibraryAni::AddSingleClientObserver(ani_env *env, ani_ref &ref,
+    std::shared_ptr<MediaOnNotifyNewObserverAni> &observer,
+    const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId)
+{
+    std::lock_guard<std::mutex> lock(ChangeListenerAni::trashMutex_);
+    auto& uriMap = observer->singleClientObserverAnis_[uriType];
+    auto uriIter = uriMap.find(fileIdOrAlbumId);
+    if (uriIter == uriMap.end()) {
+        return HandleNewUriRegistration(env, ref, observer, uriType, fileIdOrAlbumId);
+    }
+    CheckSinglePhotoPermissionReqBody reqBody;
+    reqBody.registerType = static_cast<int32_t>(uriType);
+    reqBody.fileId = fileIdOrAlbumId;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CHECK_SINGLE_PHOTO_CHANGE_PERMISSION);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to check permission, ret: %{public}d", ret);
+    return HandleExistingUriCheck(env, ref, uriIter->second, uriType, fileIdOrAlbumId);
+}
+
+int32_t MediaLibraryAni::HandleNewUriRegistration(ani_env *env, ani_ref &ref,
+    std::shared_ptr<MediaOnNotifyNewObserverAni> &observer,
+    const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId)
+{
+    Notification::NotifyUriType registerUriType = Notification::NotifyUriType::INVALID;
+    std::string registerUri = "";
+
+    if (MediaLibraryNotifyAniUtils::GetSingleNotifyTypeAndUri(uriType, registerUriType, registerUri) != E_OK) {
+        ANI_ERR_LOG("Failed to get registerUriType registerUri");
+        return JS_E_PARAM_INVALID;
+    }
+    std::vector<std::shared_ptr<ClientObserverAni>> newObservers;
+    auto clientObserver = std::make_shared<ClientObserverAni>(uriType, ref);
+
+    if (clientObserver == nullptr) {
+        ANI_ERR_LOG("Failed to create ClientObserverAni");
+        return JS_E_PARAM_INVALID;
+    }
+
+    auto ret = UserFileClient::RegisterObserverExtProvider(Uri(registerUri + URI_SEPARATOR + fileIdOrAlbumId),
+        static_cast<std::shared_ptr<DataShare::DataShareObserver>>(observer), false);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("failed to register observer, ret: %{public}d, uri: %{private}s", ret, fileIdOrAlbumId.c_str());
+        return ret;
+    }
+    newObservers.push_back(clientObserver);
+    observer->singleClientObserverAnis_[uriType][fileIdOrAlbumId] = newObservers;
+    return E_OK;
+}
+
+int32_t MediaLibraryAni::HandleExistingUriCheck(ani_env *env, ani_ref &ref,
+    std::vector<std::shared_ptr<ClientObserverAni>> &existingObservers,
+    const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId)
+{
+    ani_boolean hasRegister = ANI_FALSE;
+
+    for (auto it = existingObservers.begin(); it < existingObservers.end(); it++) {
+        ani_ref onCallback = (*it)->ref_;
+        if (onCallback == nullptr) {
+            ANI_ERR_LOG("onCallback reference is nullptr");
+            return JS_E_PARAM_INVALID;
+        }
+        env->Reference_StrictEquals(ref, onCallback, &hasRegister);
+        if (hasRegister == ANI_TRUE) {
+            ANI_ERR_LOG("clientObserver hasRegister");
+            return JS_E_PARAM_INVALID;
+        }
+    }
+    if (hasRegister != ANI_TRUE) {
+        auto clientObserver = std::make_shared<ClientObserverAni>(uriType, ref);
+        if (clientObserver == nullptr) {
+            ANI_ERR_LOG("Failed to create ClientObserverAni");
+            return JS_E_PARAM_INVALID;
+        }
+        existingObservers.push_back(clientObserver);
+    }
+    return E_OK;
+}
+
+int32_t MediaLibraryAni::RegisterSingleObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
+    const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId)
+{
+    Notification::NotifyUriType registerUriType = Notification::NotifyUriType::INVALID;
+    std::string registerUri = "";
+    if (MediaLibraryNotifyAniUtils::GetSingleNotifyTypeAndUri(uriType, registerUriType, registerUri) != E_OK) {
+        ANI_ERR_LOG("Failed to get registerUriType registerUri");
+        return JS_E_PARAM_INVALID;
+    }
+
+    for (auto it = listObj.newObservers_.begin(); it != listObj.newObservers_.end(); it++) {
+        Notification::NotifyUriType observerUri = (*it)->uriType_;
+        if (observerUri == registerUriType) {
+            return AddSingleClientObserver(env, ref, *it, uriType, fileIdOrAlbumId);
+        }
+    }
+    shared_ptr<MediaOnNotifyNewObserverAni> observer =
+        make_shared<MediaOnNotifyNewObserverAni>(registerUriType, registerUri, env);
+    Uri notifyUri(registerUri);
+    int32_t ret = UserFileClient::RegisterObserverExtProvider(notifyUri,
+        static_cast<shared_ptr<DataShare::DataShareObserver>>(observer), false);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("failed to register observer, ret: %{public}d, uri: %{public}s", ret, registerUri.c_str());
+        return ret;
+    }
+
+    ret = AddSingleClientObserver(env, ref, observer, uriType, fileIdOrAlbumId);
+    if (ret != E_OK) {
+        int32_t retUnreg = UserFileClient::UnregisterObserverExtProvider(notifyUri,
+            static_cast<shared_ptr<DataShare::DataShareObserver>>(observer));
+        if (retUnreg != E_OK) {
+            ANI_ERR_LOG("failed to Unregister observer, retUnreg: %{public}d, uri: %{private}s",
+                retUnreg, registerUri.c_str());
+            return ret;
+        }
+        ANI_ERR_LOG("Failed to add client observer, ret: %{public}d", ret);
+        return ret;
+    }
+    listObj.newObservers_.push_back(observer);
+    RegisterUnregisterHandlerFunctionsAni::SyncUpdateNormalListener(listObj, registerUriType, observer);
+    ANI_INFO_LOG("success to register observer, ret: %{public}d, uri: %{public}s", ret, registerUri.c_str());
+    return ret;
+}
+
+static void HandleSingleRegisterResult(ani_env *env, ani_ref &cbRef, int32_t ret,
+    const std::string &logId, const std::string &logTag)
+{
+    if (ret == E_OK) {
+        ANI_INFO_LOG("%{public}s success for %{public}s: %{public}s",
+            logTag.c_str(), logId.c_str(), logId.c_str());
+    } else if (ret == E_PERMISSION_DENIED) {
+        env->GlobalReference_Delete(cbRef);
+        cbRef = nullptr;
+        AniError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "permission denied");
+    } else {
+        env->GlobalReference_Delete(cbRef);
+        cbRef = nullptr;
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+    }
+}
 
 void MediaLibraryAni::SinglePhotoAlbumChangeOnCallback(ani_env *env, ani_object object, ani_object album,
     ani_object onCallback)
@@ -2600,7 +2742,40 @@ void MediaLibraryAni::SinglePhotoAlbumChangeOnCallback(ani_env *env, ani_object 
     MediaLibraryTracer tracer;
     tracer.Start("SinglePhotoAlbumChangeOnCallback");
     ANI_INFO_LOG("SinglePhotoAlbumChangeOnCallback Start");
-    ANI_INFO_LOG("SinglePhotoAlbumChangeOnCallback End");
+
+    MediaLibraryAni *obj = Unwrap(env, object);
+    if (obj == nullptr) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+        return;
+    }
+
+    PhotoAlbumAni *photoAlbumAni = PhotoAlbumAni::UnwrapPhotoAlbumObject(env, album);
+    if (photoAlbumAni == nullptr) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get photo album from parameter");
+        return;
+    }
+    std::string albumUri = std::to_string(photoAlbumAni->GetPhotoAlbumInstance()->GetAlbumId());
+    if (albumUri.empty()) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get album URI");
+        return;
+    }
+    ANI_INFO_LOG("SinglePhotoAlbumChangeOnCallback got albumUri: %{public}s", albumUri.c_str());
+
+    Notification::NotifyUriType uriType = Notification::NotifyUriType::INVALID;
+    if (MediaLibraryNotifyAniUtils::GetSingleRegisterNotifyType(
+        RegisterNotifyType::SINGLE_PHOTO_ALBUM_CHANGE, uriType) != E_OK) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "The scenario parameter verification fails.");
+        return;
+    }
+    if (!RegisterUnregisterHandlerFunctionsAni::CheckSingleRegisterCount(*obj->listObj_, uriType)) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Registration has reached the limit.");
+        return;
+    }
+    ani_ref cbOnRef {};
+    env->GlobalReference_Create(static_cast<ani_ref>(onCallback), &cbOnRef);
+    int32_t ret = RegisterSingleObserverExecute(env, cbOnRef, *obj->listObj_, uriType, albumUri);
+    HandleSingleRegisterResult(env, cbOnRef, ret, albumUri, "SinglePhotoAlbumChangeOnCallback");
+    tracer.Finish();
 }
 
 void MediaLibraryAni::SinglePhotoAlbumChangeOffCallback(ani_env *env, ani_object object, ani_object album,
@@ -2610,8 +2785,74 @@ void MediaLibraryAni::SinglePhotoAlbumChangeOffCallback(ani_env *env, ani_object
     MediaLibraryTracer tracer;
     tracer.Start("SinglePhotoAlbumChangeOffCallback");
     ANI_INFO_LOG("SinglePhotoAlbumChangeOffCallback Start");
-    ANI_INFO_LOG("SinglePhotoAlbumChangeOffCallback End");
+
+    MediaLibraryAni *obj = Unwrap(env, object);
+    if (obj == nullptr) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+        return;
+    }
+
+    ani_ref albumObj = static_cast<ani_ref>(album);
+    ani_ref callbackObj = static_cast<ani_ref>(offCallback);
+    ani_boolean isAlbumUndefined;
+    ani_boolean isCallbackUndefined;
+    env->Reference_IsUndefined(albumObj, &isAlbumUndefined);
+    env->Reference_IsUndefined(callbackObj, &isCallbackUndefined);
+
+    if (!isCallbackUndefined && isAlbumUndefined) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Input parameter is invalid");
+        return;
+    }
+
+    size_t argCount = (isAlbumUndefined ? 0 : 1) + (isCallbackUndefined ? 0 : 1);
+    Notification::NotifyUriType uriType = Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI;
+    ani_ref cbOffRef = nullptr;
+    if (!isCallbackUndefined) {
+        env->GlobalReference_Create(callbackObj, &cbOffRef);
+    }
+
+    if (obj->listObj_ == nullptr) {
+        ANI_ERR_LOG("ChangeListenerAni is null");
+        if (cbOffRef != nullptr) {
+            env->GlobalReference_Delete(cbOffRef);
+        }
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+        return;
+    }
+
+    UnregisterContext singleContext(env, uriType, "", *obj->listObj_);
+    singleContext.cbRef = cbOffRef;
+    int32_t ret = RegisterUnregisterHandlerFunctionsAni::HandleSingleIdScenario(singleContext,
+        env, albumObj, cbOffRef, argCount);
+    if (ret != E_OK) {
+        AniError::ThrowError(env, MediaLibraryNotifyAniUtils::ConvertToJsError(ret));
+    }
+    if (cbOffRef != nullptr) {
+        env->GlobalReference_Delete(cbOffRef);
+    }
+    tracer.Finish();
 }
+
+static std::string GetFileIdFromAniAsset(ani_env *env, ani_object photoAsset)
+{
+    FileAssetAni *fileAssetAni = FileAssetAni::Unwrap(env, photoAsset);
+    if (fileAssetAni == nullptr) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get photo asset from parameter");
+        return "";
+    }
+    auto fileAsset = fileAssetAni->GetFileAssetInstance();
+    if (fileAsset == nullptr) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get file asset instance");
+        return "";
+    }
+    std::string fileId = std::to_string(fileAsset->GetId());
+    if (fileId.empty() || fileId == "0") {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get fileId from photo asset");
+        return "";
+    }
+    return fileId;
+}
+
 
 void MediaLibraryAni::SinglePhotoChangeOnCallback(ani_env *env, ani_object object, ani_object photoAsset,
     ani_object onCallback)
@@ -2620,17 +2861,89 @@ void MediaLibraryAni::SinglePhotoChangeOnCallback(ani_env *env, ani_object objec
     MediaLibraryTracer tracer;
     tracer.Start("SinglePhotoChangeOnCallback");
     ANI_INFO_LOG("SinglePhotoChangeOnCallback Start");
-    ANI_INFO_LOG("SinglePhotoChangeOnCallback End");
+
+    MediaLibraryAni *obj = Unwrap(env, object);
+    if (obj == nullptr) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+        return;
+    }
+
+    std::string fileId = GetFileIdFromAniAsset(env, photoAsset);
+    if (fileId.empty()) {
+        return;
+    }
+    ANI_INFO_LOG("SinglePhotoChangeOnCallback got fileId: %{public}s", fileId.c_str());
+
+    Notification::NotifyUriType uriType = Notification::NotifyUriType::INVALID;
+    if (MediaLibraryNotifyAniUtils::GetSingleRegisterNotifyType(
+        RegisterNotifyType::SINGLE_PHOTO_CHANGE, uriType) != E_OK) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "The scenario parameter verification fails.");
+        return;
+    }
+    if (!RegisterUnregisterHandlerFunctionsAni::CheckSingleRegisterCount(*obj->listObj_, uriType)) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Registration has reached the limit.");
+        return;
+    }
+
+    ani_ref cbOnRef {};
+    env->GlobalReference_Create(static_cast<ani_ref>(onCallback), &cbOnRef);
+    int32_t ret = RegisterSingleObserverExecute(env, cbOnRef, *obj->listObj_, uriType, fileId);
+    HandleSingleRegisterResult(env, cbOnRef, ret, fileId, "SinglePhotoChangeOnCallback");
+    tracer.Finish();
 }
 
 void MediaLibraryAni::SinglePhotoChangeOffCallback(ani_env *env, ani_object object, ani_object photoAsset,
     ani_object offCallback)
 {
+    ANI_INFO_LOG("enter SinglePhotoChangeOffCallback");
     CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
     MediaLibraryTracer tracer;
     tracer.Start("SinglePhotoChangeOffCallback");
-    ANI_INFO_LOG("SinglePhotoChangeOffCallback Start");
-    ANI_INFO_LOG("SinglePhotoChangeOffCallback End");
+
+    MediaLibraryAni *obj = Unwrap(env, object);
+    if (obj == nullptr) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+        return;
+    }
+
+    ani_ref assetObj = static_cast<ani_ref>(photoAsset);
+    ani_ref callbackObj = static_cast<ani_ref>(offCallback);
+    ani_boolean isAssetUndefined;
+    ani_boolean isCallbackUndefined;
+    env->Reference_IsUndefined(assetObj, &isAssetUndefined);
+    env->Reference_IsUndefined(callbackObj, &isCallbackUndefined);
+
+    if (!isCallbackUndefined && isAssetUndefined) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Input parameter is invalid");
+        return;
+    }
+
+    size_t argCount = (isAssetUndefined ? 0 : 1) + (isCallbackUndefined ? 0 : 1);
+    Notification::NotifyUriType uriType = Notification::NotifyUriType::SINGLE_PHOTO_URI;
+    ani_ref cbOffRef = nullptr;
+    if (!isCallbackUndefined) {
+        env->GlobalReference_Create(callbackObj, &cbOffRef);
+    }
+    if (obj->listObj_ == nullptr) {
+        ANI_ERR_LOG("ChangeListenerAni is null");
+        if (cbOffRef != nullptr) {
+            env->GlobalReference_Delete(cbOffRef);
+        }
+        AniError::ThrowError(env, JS_E_PARAM_INVALID);
+        return;
+    }
+
+    UnregisterContext singleContext(env, uriType, "", *obj->listObj_);
+    singleContext.cbRef = cbOffRef;
+    int32_t ret = RegisterUnregisterHandlerFunctionsAni::HandleSingleIdScenario(singleContext,
+        env, assetObj, cbOffRef, argCount);
+    if (ret != E_OK) {
+        AniError::ThrowError(env, MediaLibraryNotifyAniUtils::ConvertToJsError(ret));
+    }
+    if (cbOffRef != nullptr) {
+        env->GlobalReference_Delete(cbOffRef);
+    }
+    tracer.Finish();
 }
 
 static ani_status ParseArgsQueryMediaDataReady(ani_env *env, ani_string dataKey,
@@ -5966,6 +6279,7 @@ int32_t MediaLibraryAni::RegisterObserverExecute(ani_env *env, ani_ref &ref, Cha
 
     shared_ptr<ClientObserverAni> clientObserver = make_shared<ClientObserverAni>(uriType, ref);
     observer->ClientObserverAnis_[uriType].push_back(clientObserver);
+    RegisterUnregisterHandlerFunctionsAni::SyncUpdateSingleListener(listObj, registerUriType, observer);
     listObj.newObservers_.push_back(observer);
     ANI_INFO_LOG("success to register observer, ret: %{public}d, uri: %{public}s", ret, registerUri.c_str());
     return ret;

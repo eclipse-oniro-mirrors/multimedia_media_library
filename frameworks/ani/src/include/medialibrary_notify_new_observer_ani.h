@@ -61,6 +61,8 @@ public:
     ani_env *env_ = nullptr;
     ani_vm *vm_ = nullptr;
     std::map<Notification::NotifyUriType, std::vector<std::shared_ptr<ClientObserverAni>>> ClientObserverAnis_;
+    std::map<Notification::NotifyUriType, std::map<std::string,
+        std::vector<std::shared_ptr<ClientObserverAni>>>> singleClientObserverAnis_;
     static std::mutex clientObserverAnisMutex_;
 };
 

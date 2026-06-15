@@ -112,6 +112,7 @@ public:
     void GetIdsFromUris(std::list<Uri>& listValue, std::vector<string>& ids, bool isPhoto);
     static string GetTrashAlbumUri();
     static std::string trashAlbumUri_;
+    static std::mutex trashMutex_;
     ani_ref cbOnRef_ = nullptr;
     ani_ref cbOffRef_ = nullptr;
     sptr<AAFwk::IDataAbilityObserver> audioDataObserver_ = nullptr;
@@ -343,6 +344,8 @@ private:
         const Notification::NotifyUriType uriType);
     static int32_t RegisterObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
         const Notification::NotifyUriType uriType);
+    static int32_t RegisterObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
     static int32_t RemoveClientObserver(ani_env *env, ani_ref ref,
         map<Notification::NotifyUriType, vector<shared_ptr<ClientObserverAni>>> &ClientObserverAnis,
         const Notification::NotifyUriType uriType);
@@ -356,6 +359,17 @@ private:
     static int32_t CreateAndRegisterNewAvailabilityObserverAni(ani_env *env, ani_ref ref,
         Notification::NotifyUriType registerUriType, std::string& registerUri, ChangeListenerAni& listObj);
     static int32_t UnregisterAvailabilityObserverExecuteAni(ani_env *env, ChangeListenerAni &listObj);
+    static int32_t AddSingleClientObserver(ani_env *env, ani_ref &ref,
+        std::shared_ptr<MediaOnNotifyNewObserverAni> &observer,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
+    static int32_t HandleNewUriRegistration(ani_env *env, ani_ref &ref,
+        std::shared_ptr<MediaOnNotifyNewObserverAni> &observer,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
+    static int32_t HandleExistingUriCheck(ani_env *env, ani_ref &ref,
+        std::vector<std::shared_ptr<ClientObserverAni>> &existingObservers,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
+    static int32_t RegisterSingleObserverExecute(ani_env *env, ani_ref &ref, ChangeListenerAni &listObj,
+        const Notification::NotifyUriType uriType, const std::string &fileIdOrAlbumId);
 
     ani_env *env_;
     int32_t userId_ = -1;

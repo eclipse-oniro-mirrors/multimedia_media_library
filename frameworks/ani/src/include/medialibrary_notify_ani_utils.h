@@ -63,14 +63,22 @@ public:
     static const std::map<Notification::NotifyUriType, Notification::NotifyUriType> REGISTER_USER_DEFINE_TYPE_MAP;
     static const std::map<Notification::NotifyUriType, std::string> REGISTER_USER_DEFINE_URI_MAP;
 
+    static const std::map<std::string, Notification::NotifyUriType> REGISTER_SINGLE_NOTIFY_TYPE_MAP;
+
+    static const std::map<Notification::NotifyUriType, Notification::NotifyUriType> REGISTER_SINGLE_TYPE_MAP;
+    static const std::map<Notification::NotifyUriType, std::string> REGISTER_SINGLE_URI_MAP;
+
     static int32_t GetAssetManagerNotifyTypeAndUri(const Notification::NotifyUriType type,
         Notification::NotifyUriType &uriType, std::string &uri);
     static int32_t GetUserDefineNotifyTypeAndUri(const Notification::NotifyUriType type,
         Notification::NotifyUriType &uriType, string &uri);
     static int32_t GetRegisterNotifyType(const std::string &type, Notification::NotifyUriType &uriType);
+    static int32_t GetSingleRegisterNotifyType(const std::string &type, Notification::NotifyUriType &uriType);
     static int32_t GetNotifyTypeAndUri(const Notification::NotifyUriType type,
         Notification::NotifyUriType &uriType, std::string &uri);
     static NotifyChangeType GetNotifyChangeType(const Notification::AccurateNotifyType &notifyType);
+    static int32_t GetSingleNotifyTypeAndUri(const Notification::NotifyUriType type,
+        Notification::NotifyUriType &uriType, std::string &uri);
 
     static ani_status CreateAniObject(ani_env* env, const std::string className, ani_object& result);
     static ani_status SetValueInt32(ani_env* env, const char* name, const int32_t intValue, ani_object& result);
@@ -104,6 +112,14 @@ public:
     static ani_object BuildPhotoAssetRecheckChangeInfos(ani_env *env);
     static ani_object BuildAlbumRecheckChangeInfos(ani_env *env);
     static int32_t ConvertToJsError(int32_t innerErr);
+    static ani_object BuildSinglePhotoAssetChangeInfos(ani_env* env,
+        const std::shared_ptr<AccurateRefresh::PhotoAssetChangeData> &changeInfo,
+        const std::shared_ptr<Notification::MediaChangeInfo> &changeInfos);
+    static ani_object BuildSingleAlbumChangeInfos(ani_env* env,
+        const std::shared_ptr<AccurateRefresh::AlbumChangeData> &changeInfo,
+        const std::shared_ptr<Notification::MediaChangeInfo> &changeInfos);
+    static ani_object BuildSinglePhotoAssetRecheckChangeInfos(ani_env *env);
+    static ani_object BuildSingleAlbumRecheckChangeInfos(ani_env *env);
 };
 }
 }
