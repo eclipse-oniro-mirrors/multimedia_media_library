@@ -37,7 +37,7 @@ void FileScanUtilsTest::TearDownTestCase() {}
 void FileScanUtilsTest::SetUp() {}
 void FileScanUtilsTest::TearDown() {}
 
-// ==================== GetFileTitle Tests ====================
+// GetFileTitle Tests
 
 /**
  * @tc.name: GetFileTitle_WithExtension_001
@@ -84,7 +84,7 @@ HWTEST_F(FileScanUtilsTest, GetFileTitle_EmptyString_004, TestSize.Level1)
     EXPECT_EQ(result, "");
 }
 
-// ==================== CreateAssetRealName Tests ====================
+// CreateAssetRealName Tests
 
 /**
  * @tc.name: CreateAssetRealName_ImageType_001
@@ -155,7 +155,7 @@ HWTEST_F(FileScanUtilsTest, CreateAssetRealName_SmallFileId_005, TestSize.Level1
     EXPECT_TRUE(name.find("005") != std::string::npos || name.find("_5.") != std::string::npos);
 }
 
-// ==================== GetReplacedPathByPrefixType Tests ====================
+// GetReplacedPathByPrefixType Tests
 
 /**
  * @tc.name: GetReplacedPathByPrefixType_CloudToLocal_001
@@ -196,7 +196,7 @@ HWTEST_F(FileScanUtilsTest, GetReplacedPathByPrefixType_InvalidSrcPrefix_003, Te
     EXPECT_TRUE(result.empty());
 }
 
-// ==================== FindObjectHash / FindTitlePrefix Tests ====================
+// FindObjectHash / FindTitlePrefix Tests
 
 /**
  * @tc.name: FindObjectHash_FormatCheck_001
@@ -240,7 +240,7 @@ HWTEST_F(FileScanUtilsTest, FindTitlePrefix_WithoutBurstKeyword_002, TestSize.Le
     EXPECT_TRUE(prefix.empty());
 }
 
-// ==================== FindGroupIndex Tests ====================
+// FindGroupIndex Tests
 
 /**
  * @tc.name: FindGroupIndex_IncrementingOccurrence_001
@@ -264,7 +264,7 @@ HWTEST_F(FileScanUtilsTest, FindGroupIndex_IncrementingOccurrence_001, TestSize.
     EXPECT_EQ(idx2, 2);
 }
 
-// ==================== SetBurstKey Tests ====================
+// SetBurstKey Tests
 
 /**
  * @tc.name: SetBurstKey_OtherType_EmptyKey_001
@@ -297,7 +297,7 @@ HWTEST_F(FileScanUtilsTest, SetBurstKey_CoverType_NonEmptyKey_002, TestSize.Leve
     EXPECT_FALSE(info.burstKey.empty());
 }
 
-// ==================== CleanBurstFileName Tests ====================
+// CleanBurstFileName Tests
 
 /**
  * @tc.name: CleanBurstFileName_RemoveDigitsAndCover_001
@@ -343,7 +343,7 @@ HWTEST_F(FileScanUtilsTest, CleanBurstFileName_NoBurst_004, TestSize.Level1)
     EXPECT_EQ(result, "normal_photo.jpg");
 }
 
-// ==================== GarbleFile Tests ====================
+// GarbleFile Tests
 
 /**
  * @tc.name: GarbleFile_WithExtension_001
@@ -382,7 +382,7 @@ HWTEST_F(FileScanUtilsTest, GarbleFile_ShortName_003, TestSize.Level1)
     EXPECT_EQ(result, "*b");
 }
 
-// ==================== GenerateUuid Tests ====================
+// GenerateUuid Tests
 
 /**
  * @tc.name: GenerateUuid_NotEmpty_001
@@ -409,7 +409,7 @@ HWTEST_F(FileScanUtilsTest, GenerateUuid_Unique_002, TestSize.Level1)
     EXPECT_NE(uuid1, uuid2);
 }
 
-// ==================== GetFileIdsFromUris Tests ====================
+// GetFileIdsFromUris Tests
 
 /**
  * @tc.name: GetFileIdsFromUris_EmptyInput_001
@@ -423,7 +423,7 @@ HWTEST_F(FileScanUtilsTest, GetFileIdsFromUris_EmptyInput_001, TestSize.Level1)
     EXPECT_TRUE(result.empty());
 }
 
-// ==================== Enum / Const Tests ====================
+// Enum / Const Tests
 
 /**
  * @tc.name: InnerFileInfo_DefaultValues_001

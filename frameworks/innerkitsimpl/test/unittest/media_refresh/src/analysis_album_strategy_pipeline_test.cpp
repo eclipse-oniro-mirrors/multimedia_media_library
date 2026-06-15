@@ -389,9 +389,7 @@ protected:
     AnalysisAlbumRefreshExecution exe_;
 };
 
-/* ===========================
- * AnalysisAlbumRefreshExecution core: InsertRefreshMapByDelta
- * =========================== */
+// AnalysisAlbumRefreshExecution core: InsertRefreshMapByDelta
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, InsertRefreshMapByDelta_DeltaNegative_001, TestSize.Level2)
 {
@@ -426,9 +424,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, InsertRefreshMapByDelta_InvalidFileI
     EXPECT_TRUE(exe_.assetAlbumRefreshMap_.find(INVALID_ID) == exe_.assetAlbumRefreshMap_.end());
 }
 
-/* ===========================
- * CalculateAlbumChanges: Portrait group visitedGroups + non portrait + shooting mode + group photo + highlight
- * =========================== */
+// CalculateAlbumChanges: Portrait group visitedGroups + non portrait + shooting mode + group photo + highlight
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, CalculateAlbumChanges_PortraitGroupVisited_005, TestSize.Level2)
 {
@@ -508,9 +504,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, CalculateAlbumChanges_MissingAlbumCt
     EXPECT_TRUE(true);
 }
 
-/* ===========================
- * ProcessCoverChanges: group Apply + MergeFromGroup + non portrait Apply
- * =========================== */
+// ProcessCoverChanges: group Apply + MergeFromGroup + non portrait Apply
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, ProcessCoverChanges_GroupAndAlbums_007, TestSize.Level2)
 {
@@ -554,9 +548,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, ProcessCoverChanges_NoNeed_007A, Tes
     EXPECT_TRUE(true);
 }
 
-/* ===========================
- * ConcludeAlbumRefreshValues
- * =========================== */
+// ConcludeAlbumRefreshValues
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, ConcludeAlbumRefreshValues_CountNegativeFix_008, TestSize.Level2)
 {
@@ -603,9 +595,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, ConcludeAlbumRefreshValues_CoverKeep
     EXPECT_TRUE(newCover.empty());
 }
 
-/* ===========================
- * NotifyContext / CheckAlbumNotifyStatus / GenerateAlbumChangeInfo / ProcessAlbumForNotify
- * =========================== */
+// NotifyContext / CheckAlbumNotifyStatus / GenerateAlbumChangeInfo / ProcessAlbumForNotify
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, UpdateNotifyContext_Duplicate_010, TestSize.Level2)
 {
@@ -711,9 +701,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, ProcessAlbumForNotify_RepeatGuard_01
     EXPECT_TRUE(out.empty());
 }
 
-/* ===========================
- * PrepareAlbumChangeInfos / PreparePhotoChangeForNotify
- * =========================== */
+// PrepareAlbumChangeInfos / PreparePhotoChangeForNotify
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, PrepareAlbumChangeInfos_EmptyAlbumIds_018, TestSize.Level2)
 {
@@ -779,9 +767,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, PreparePhotoChangeForNotify_FilterBy
     EXPECT_TRUE(true);
 }
 
-/* ===========================
- * ShootingMode: HandleInfoRelatedShootingModeTypes (cache insert path is guarded; keep it safe)
- * =========================== */
+// ShootingMode: HandleInfoRelatedShootingModeTypes (cache insert path is guarded; keep it safe)
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, HandleInfoRelatedShootingModeTypes_Basic_024, TestSize.Level2)
 {
@@ -800,9 +786,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, HandleInfoRelatedShootingModeTypes_I
     EXPECT_TRUE(affected.empty());
 }
 
-/* ===========================
- * ResetExecutionStatus
- * =========================== */
+// ResetExecutionStatus
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, ResetExecutionStatus_ClearAll_026, TestSize.Level2)
 {
@@ -814,9 +798,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, ResetExecutionStatus_ClearAll_026, T
     EXPECT_TRUE(exe_.albumNotifyCtxMap_.empty());
 }
 
-/* ===========================
- * AlbumEffectiveStrategyBase: PreCheck / IsValidSystemAsset gates + override hook
- * =========================== */
+// AlbumEffectiveStrategyBase: PreCheck / IsValidSystemAsset gates + override hook
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, AlbumEffectiveStrategyBase_PreCheckFail_100, TestSize.Level2)
 {
@@ -863,9 +845,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, AlbumEffectiveStrategyBase_HookRetur
     EXPECT_TRUE(!s.IsEffective(d, base));
 }
 
-/* ===========================
- * CountStrategyBase / DefaultCountStrategy: ADD / REMOVE / UPDATE visibility matrix
- * =========================== */
+// CountStrategyBase / DefaultCountStrategy: ADD / REMOVE / UPDATE visibility matrix
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, DefaultCountStrategy_Add_Visible_200, TestSize.Level2)
 {
@@ -957,9 +937,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, DefaultCountStrategy_Update_I2I_207,
     EXPECT_TRUE(delta == 0);
 }
 
-/* ===========================
- * CoverStrategyBase: RecordPotentialCoverChange / NeedCoverRefresh / isCurrentCoverDeleted / GetPhotoId
- * =========================== */
+// CoverStrategyBase: RecordPotentialCoverChange / NeedCoverRefresh / isCurrentCoverDeleted / GetPhotoId
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, CoverStrategyBase_UpdateDeleteFileId_300, TestSize.Level2)
 {
@@ -1073,9 +1051,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, CoverStrategyBase_GetPhotoId_Invalid
     EXPECT_TRUE(id.empty());
 }
 
-/* ===========================
- * PortraitCoverStrategy: override behavior (only refresh when current cover deleted)
- * =========================== */
+// PortraitCoverStrategy: override behavior (only refresh when current cover deleted)
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, PortraitCoverStrategy_ShouldRefreshCover_WhenDeleted_320, TestSize.Level2)
 {
@@ -1100,9 +1076,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, PortraitCoverStrategy_ShouldRefreshC
     EXPECT_TRUE(!s.ShouldRefreshCover(base, info));
 }
 
-/* ===========================
- * CoverPickerStrategyBase: use FakeCoverPickerStrategy to avoid DB but exercise PickCover()
- * =========================== */
+// CoverPickerStrategyBase: use FakeCoverPickerStrategy to avoid DB but exercise PickCover()
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, CoverPickerStrategyBase_PickCover_OK_400, TestSize.Level2)
 {
@@ -1126,9 +1100,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, CoverPickerStrategyBase_PickCover_Em
     EXPECT_TRUE(info.refreshCover_.empty());
 }
 
-/* ===========================
- * AnalysisAlbumBatchUpdateHelper: BuildCaseSql field rule coverage
- * =========================== */
+// AnalysisAlbumBatchUpdateHelper: BuildCaseSql field rule coverage
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisAlbumBatchUpdateHelper_EmptyItems_500, TestSize.Level2)
 {
@@ -1262,9 +1234,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisAlbumBatchUpdateHelper_Cover
     EXPECT_TRUE(sql.find("is_cover_satisfied") == std::string::npos);
 }
 
-/* ===========================
- * Pipeline: Run / flow masks / step skips / fallback on picker failure
- * =========================== */
+// Pipeline: Run / flow masks / step skips / fallback on picker failure
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisAlbumPipeline_Run_AllSteps_600, TestSize.Level2)
 {
@@ -1358,9 +1328,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisAlbumPipeline_AddStep_Null_6
     EXPECT_TRUE(true);
 }
 
-/* ===========================
- * ImpactAnalyzer: CalcDataChange (effective false path), ok path, ApplyCoverChange
- * =========================== */
+// ImpactAnalyzer: CalcDataChange (effective false path), ok path, ApplyCoverChange
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisAlbumImpactAnalyzer_CalcDataChange_EffectiveFalse_700,
     TestSize.Level2)
@@ -1438,9 +1406,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisAlbumImpactAnalyzer_ApplyCov
     EXPECT_TRUE(changed);
 }
 
-/* ===========================
- * ShootingModeCountStrategy: directly cover HandleDeltaCountResult matrix without depending on DB/types
- * =========================== */
+// ShootingModeCountStrategy: directly cover HandleDeltaCountResult matrix without depending on DB/types
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, ShootingModeCountStrategy_HandleDelta_ADD_TypeMiss_800, TestSize.Level2)
 {
@@ -1517,9 +1483,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, ShootingModeCountStrategy_HandleDelt
     EXPECT_TRUE(out == CountStrategyBase::DELTA_NO_CHANGE);
 }
 
-/* ===========================
- * Registry smoke: ensure analyzers exist for key subtypes (no DB)
- * =========================== */
+// Registry smoke: ensure analyzers exist for key subtypes (no DB)
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisStrategyRegistry_GetAnalyzer_ANY_900, TestSize.Level2)
 {
@@ -1551,9 +1515,7 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, AnalysisStrategyRegistry_GetAnalyzer
     EXPECT_TRUE(a != nullptr);
 }
 
-/* ===========================
- * Extra coverage blocks (increase line count and branch coverage; keep deterministic)
- * =========================== */
+// Extra coverage blocks (increase line count and branch coverage; keep deterministic)
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, Extra_CountStrategy_MultiOps_910, TestSize.Level2)
 {

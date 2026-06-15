@@ -26,7 +26,7 @@ namespace OHOS {
 namespace Media {
 using namespace std;
 #define OTHER_TABLE_MODULE_NAME "OtherTable"
-// ==================== ADD Other Table Upgrade Code HERE  ====================
+// ADD Other Table Upgrade Code HERE
 
 static vector<pair<int32_t, int32_t>> AddExtraInfoColumn(NativeRdb::RdbStore &store)
 {

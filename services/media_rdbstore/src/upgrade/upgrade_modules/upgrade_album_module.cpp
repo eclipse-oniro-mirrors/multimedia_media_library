@@ -29,7 +29,7 @@ namespace Media {
 using namespace std;
 #define ALBUM_MODULE_NAME "Album"
 
-// ==================== ADD Album Table Upgrade Code HERE  ====================
+// ADD Album Table Upgrade Code HERE
 static vector<pair<int32_t, int32_t>> VersionFilterTabAssetAlbumOperation(NativeRdb::RdbStore &store)
 {
     SqlBuilder builder;

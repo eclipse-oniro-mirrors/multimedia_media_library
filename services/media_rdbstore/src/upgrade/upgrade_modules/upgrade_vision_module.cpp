@@ -26,7 +26,7 @@ namespace OHOS {
 namespace Media {
 using namespace std;
 #define VISION_MODULE_NAME "Vision"
-// ==================== ADD Vision Table Upgrade Code HERE  ====================
+// ADD Vision Table Upgrade Code HERE
 
 // VERSION_ADD_VISION_TABLE: 添加分析相关表
 static vector<pair<int32_t, int32_t>> VersionAddVisionTable(NativeRdb::RdbStore& store)

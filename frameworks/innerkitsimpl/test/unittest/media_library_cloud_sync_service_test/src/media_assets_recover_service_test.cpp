@@ -37,7 +37,7 @@ void MediaAssetsRecoverServiceTest::TearDownTestCase() {}
 void MediaAssetsRecoverServiceTest::SetUp() {}
 void MediaAssetsRecoverServiceTest::TearDown() {}
 
-// ===== MoveOutTrashAndMergeWithSameAsset: null photoRefresh =====
+// MoveOutTrashAndMergeWithSameAsset: null photoRefresh
 HWTEST_F(MediaAssetsRecoverServiceTest, MoveOutTrash_NullPhotoRefresh_ReturnsError, TestSize.Level1)
 {
     /**
@@ -54,7 +54,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MoveOutTrash_NullPhotoRefresh_ReturnsErr
     EXPECT_EQ(ret, E_RDB_STORE_NULL);
 }
 
-// ===== RecoverPackageName: null photoRefresh =====
+// RecoverPackageName: null photoRefresh
 HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_NullPhotoRefresh_ReturnsError, TestSize.Level1)
 {
     /**
@@ -70,7 +70,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_NullPhotoRefresh_Retu
     EXPECT_EQ(ret, E_RDB_STORE_NULL);
 }
 
-// ===== RecoverPackageName: empty source packageName =====
+// RecoverPackageName: empty source packageName
 HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_EmptySourcePackage_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -88,7 +88,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_EmptySourcePackage_Re
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== RecoverPackageName: target already has packageName =====
+// RecoverPackageName: target already has packageName
 HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_TargetAlreadyHasPackage_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -106,7 +106,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_TargetAlreadyHasPacka
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== RecoverPackageName: both nullopt packageName =====
+// RecoverPackageName: both nullopt packageName
 HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_BothNullopt_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -122,7 +122,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, RecoverPackageName_BothNullopt_ReturnsOK
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== StoreThumbnailAndEditSize: invalid fileId =====
+// StoreThumbnailAndEditSize: invalid fileId
 HWTEST_F(MediaAssetsRecoverServiceTest, StoreThumbnailAndEditSize_ZeroFileId, TestSize.Level1)
 {
     /**
@@ -139,7 +139,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, StoreThumbnailAndEditSize_ZeroFileId, Te
     EXPECT_EQ(ret, E_INVALID_VALUES);
 }
 
-// ===== StoreThumbnailAndEditSize: empty data =====
+// StoreThumbnailAndEditSize: empty data
 HWTEST_F(MediaAssetsRecoverServiceTest, StoreThumbnailAndEditSize_EmptyData, TestSize.Level1)
 {
     /**
@@ -156,7 +156,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, StoreThumbnailAndEditSize_EmptyData, Tes
     EXPECT_EQ(ret, E_INVALID_VALUES);
 }
 
-// ===== StoreThumbnailAndEditSize: nullopt fileId =====
+// StoreThumbnailAndEditSize: nullopt fileId
 HWTEST_F(MediaAssetsRecoverServiceTest, StoreThumbnailAndEditSize_NulloptFileId, TestSize.Level1)
 {
     /**
@@ -172,7 +172,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, StoreThumbnailAndEditSize_NulloptFileId,
     EXPECT_EQ(ret, E_INVALID_VALUES);
 }
 
-// ===== MergeAssetFile: source is CLOUD → skip =====
+// MergeAssetFile: source is CLOUD → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFile_SourceCloud_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -188,7 +188,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFile_SourceCloud_ReturnsOK, Te
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== MergeAssetFile: target is LOCAL → skip =====
+// MergeAssetFile: target is LOCAL → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFile_TargetLocal_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -205,7 +205,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFile_TargetLocal_ReturnsOK, Te
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== MergeAssetFile: target is LOCAL_AND_CLOUD → skip =====
+// MergeAssetFile: target is LOCAL_AND_CLOUD → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFile_TargetLocalAndCloud_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -222,7 +222,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFile_TargetLocalAndCloud_Retur
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== MergeAssetFileFromMediaToLake: source CLOUD → skip =====
+// MergeAssetFileFromMediaToLake: source CLOUD → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFileMediaToLake_SourceCloud_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -238,7 +238,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFileMediaToLake_SourceCloud_Re
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== MergeAssetFileFromMediaToLake: target not CLOUD → skip =====
+// MergeAssetFileFromMediaToLake: target not CLOUD → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFileMediaToLake_TargetNotCloud_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -255,7 +255,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFileMediaToLake_TargetNotCloud
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== MoveAssetFileFromMediaToLake: not media file → skip =====
+// MoveAssetFileFromMediaToLake: not media file → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MoveAssetFileMediaToLake_NotMediaFile_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -272,7 +272,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MoveAssetFileMediaToLake_NotMediaFile_Re
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== MoveAssetFileFromMediaToLake: empty lake path → skip =====
+// MoveAssetFileFromMediaToLake: empty lake path → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MoveAssetFileMediaToLake_EmptyLakePath_ReturnsOK, TestSize.Level1)
 {
     /**
@@ -289,7 +289,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MoveAssetFileMediaToLake_EmptyLakePath_R
     EXPECT_EQ(ret, E_OK);
 }
 
-// ===== CommonMergeDiffCloudAsset: not cloud assets → skip =====
+// CommonMergeDiffCloudAsset: not cloud assets → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeDiffCloudAsset_NotCloudAsset_ReturnsInvalidMode, TestSize.Level1)
 {
     /**
@@ -307,7 +307,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeDiffCloudAsset_NotCloudAsset_
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CommonMergeSameCloudAsset: not cloud assets → skip =====
+// CommonMergeSameCloudAsset: not cloud assets → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeSameCloudAsset_NotCloudAsset_ReturnsInvalidMode, TestSize.Level1)
 {
     /**
@@ -325,7 +325,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeSameCloudAsset_NotCloudAsset_
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CommonMergeCloudToLocalAsset: source not cloud → skip =====
+// CommonMergeCloudToLocalAsset: source not cloud → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeCloudToLocal_SourceNotCloud_ReturnsInvalidMode, TestSize.Level1)
 {
     /**
@@ -344,7 +344,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeCloudToLocal_SourceNotCloud_R
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== CommonMergeLocalToLocalAsset: source is cloud → skip =====
+// CommonMergeLocalToLocalAsset: source is cloud → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeLocalToLocal_SourceIsCloud_ReturnsInvalidMode, TestSize.Level1)
 {
     /**
@@ -363,7 +363,7 @@ HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeLocalToLocal_SourceIsCloud_Re
     EXPECT_EQ(ret, E_INVALID_MODE);
 }
 
-// ===== MediaAndMediaMergeLocalToCloudAsset: source is cloud → skip =====
+// MediaAndMediaMergeLocalToCloudAsset: source is cloud → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, MediaAndMediaMerge_SourceIsCloud_ReturnsInvalidMode, TestSize.Level1)
 {
     /**

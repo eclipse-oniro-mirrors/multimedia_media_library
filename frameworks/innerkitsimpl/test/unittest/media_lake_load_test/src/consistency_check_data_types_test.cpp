@@ -29,7 +29,7 @@ void ConsistencyCheckDataTypesTest::TearDownTestCase() {}
 void ConsistencyCheckDataTypesTest::SetUp() {}
 void ConsistencyCheckDataTypesTest::TearDown() {}
 
-// ==================== ScenarioProgress Tests ====================
+// ScenarioProgress Tests
 
 /**
  * @tc.name: ScenarioProgress_ToString_ContainsAllFields_001
@@ -59,7 +59,7 @@ HWTEST_F(ConsistencyCheckDataTypesTest, ScenarioProgress_DefaultValues_002, Test
     EXPECT_EQ(progress.lastAlbumId, 0);
 }
 
-// ==================== DeviceStatus Tests ====================
+// DeviceStatus Tests
 
 /**
  * @tc.name: DeviceStatus_ToString_ContainsAllFields_001
@@ -95,7 +95,7 @@ HWTEST_F(ConsistencyCheckDataTypesTest, DeviceStatus_DefaultValues_002, TestSize
     EXPECT_EQ(status.temperature, -1);
 }
 
-// ==================== DfxStats Tests ====================
+// DfxStats Tests
 
 /**
  * @tc.name: DfxStats_ToString_ContainsAllFields_001
@@ -138,7 +138,7 @@ HWTEST_F(ConsistencyCheckDataTypesTest, DfxStats_DefaultValues_002, TestSize.Lev
     EXPECT_EQ(stats.endTimeInMs, 0u);
 }
 
-// ==================== AlbumRecord Tests ====================
+// AlbumRecord Tests
 
 /**
  * @tc.name: AlbumRecord_ToString_ContainsFields_001
@@ -170,7 +170,7 @@ HWTEST_F(ConsistencyCheckDataTypesTest, AlbumRecord_DefaultValues_002, TestSize.
     EXPECT_TRUE(record.lpath.empty());
 }
 
-// ==================== PhotoRecord Tests ====================
+// PhotoRecord Tests
 
 /**
  * @tc.name: PhotoRecord_ToString_ContainsFields_001
