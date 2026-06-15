@@ -27,7 +27,12 @@ namespace Media {
 
 #define EXPORT __attribute__ ((visibility ("default")))
 
-const int32_t HIGH_PIXEL_SIZE = 9 * 1024 * 12 * 1024;
+const int64_t HIGH_PIXEL_SIZE = 9 * 1024 * 12 * 1024;
+
+inline bool IsHighPixel(int32_t width, int32_t height)
+{
+    return (static_cast<int64_t>(width) * static_cast<int64_t>(height)) >= HIGH_PIXEL_SIZE;
+}
 
 enum class TranscodeMode {
     DEFAULT = 0,

@@ -836,7 +836,7 @@ static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeTyp
     int32_t height = fileAsset->GetHeight();
     string mimeType = fileAsset->GetMimeType();
     bool isHeif = (mimeType == "image/heic" || mimeType == "image/heif");
-    bool isHighPixel = (width * height >= HIGH_PIXEL_SIZE);
+    bool isHighPixel = IsHighPixel(width, height);
     if (isHeif) {
         if (isHighPixel) {
             transcodeType = TranscodeType::HIGH_PIXEL_HEIF;

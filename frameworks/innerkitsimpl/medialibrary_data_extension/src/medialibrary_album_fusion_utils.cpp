@@ -70,7 +70,6 @@ const double HIGH_PIXEL_RESIZE_SCALE = 1.4;
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
 constexpr int32_t NOT_SUPPORT_RENAME = 1;
 
-const int32_t HIGH_PIXEL_SIZE = 9 * 1024 * 12 * 1024;
 static const int32_t INVALID_PARAMETER_ERROR = -23800151;
 
 const string SQL_GET_DUPLICATE_PHOTO = "SELECT p.file_id FROM Photos p "

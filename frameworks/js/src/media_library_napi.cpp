@@ -16355,7 +16355,7 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
     bool checkHighPixel, bool checkHeif, vector<string> &result)
 {
     for (auto &item : context->photoAssetInfos) {
-        bool isHighPixel = item.width * item.height >= HIGH_PIXEL_SIZE;
+        bool isHighPixel = IsHighPixel(item.width, item.height);
         size_t atDot = item.uri.find('.');
         if (atDot == std::string::npos) {
             continue;
