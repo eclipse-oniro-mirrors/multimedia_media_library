@@ -67,6 +67,7 @@ declare_args() {
   media_library_facard_enable = true
   media_library_analysis_data_enable = true
   media_library_feature_custom_restore = true
+  media_library_feature_secure_album = false
   media_library_cellular_data_enable = true
   media_library_feature_secure_album = false
   media_library_lake_enable = true

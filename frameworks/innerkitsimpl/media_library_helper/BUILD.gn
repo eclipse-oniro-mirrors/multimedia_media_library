@@ -104,6 +104,7 @@ ohos_shared_library("media_library") {
     "src/smart_album_asset.cpp",
     "src/media_audio_column.cpp",
     "src/media_fileinterwork_column.cpp",
+    "src/media_operation_log_column.cpp",
     "src/media_compatible_info_column.cpp",
     "src/notification_helper.cpp",
     "src/persist_permission_column.cpp",

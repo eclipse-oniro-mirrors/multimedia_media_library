@@ -19,6 +19,9 @@
 #include "default_net_connect_observer.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+#include "critical_label_task_queue.h"
+#endif
 
 using namespace std;
 using namespace OHOS::NetManagerStandard;
@@ -51,6 +54,12 @@ int32_t DefaultNetConnectObserver::NetCapabilitiesChange(sptr<NetHandle> &netHan
         MEDIA_INFO_LOG("DefaultNetConnectObserver other net connected");
         SetNetConnStatus(DefaultNetConnStatus::NO_NETWORK);
     }
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+        auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
+        if (criticalLabelTaskQueue != nullptr) {
+            criticalLabelTaskQueue->NotifyThread();
+        }
+#endif
     return E_OK;
 }
 

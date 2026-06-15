@@ -225,6 +225,11 @@ const std::vector<std::string> E_POLICY_DIRS = {
 
 MediaLibraryDataManager::MediaLibraryDataManager(void)
 {
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+    cloudAuditInstance_ = nullptr;
+    func_ = nullptr;
+    handler_ = nullptr;
+#endif
 }
 
 MediaLibraryDataManager::~MediaLibraryDataManager(void)
@@ -3963,5 +3968,11 @@ int32_t MediaLibraryDataManager::GetAssetCompressVersion()
     MEDIA_INFO_LOG("GetAssetCompressVersion is called, version: %{public}d", compressVersion);
     return compressVersion;
 }
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+WatchSystemService::CloudAuditImpl* MediaLibraryDataManager::GetCloudAuditInstance()
+{
+    return cloudAuditInstance_;
+}
+#endif
 }  // namespace Media
 }  // namespace OHOS

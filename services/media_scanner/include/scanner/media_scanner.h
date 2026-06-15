@@ -174,6 +174,21 @@ public:
 private:
     std::string err_;
 };
+
+struct AssetInfo {
+    std::string truncated_path;
+    std::string original_path;
+    std::string uri;
+    int32_t type {0};
+    int64_t added_time {0};
+};
+ 
+class CriticalLabelRealTimeAsyncTaskData : public AsyncTaskData {
+public:
+    CriticalLabelRealTimeAsyncTaskData() = default;
+    virtual ~CriticalLabelRealTimeAsyncTaskData() override = default;
+    AssetInfo assetInfo;
+};
 } // namespace Media
 } // namespace OHOS
 

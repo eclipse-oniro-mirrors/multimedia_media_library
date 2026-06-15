@@ -76,6 +76,7 @@
 #include "media_audio_column.h"
 #include "media_edit_utils.h"
 #include "media_string_utils.h"
+#include "media_operation_log_column.h"
 #include "media_values_bucket_utils.h"
 #include "media_compatible_info_column.h"
 #include "vision_portrait_nickname_column.h"
@@ -2477,6 +2478,7 @@ static const vector<string> onCreateSqlStrs = {
 
     // tab_analysis_progress
     CREATE_TAB_ANALYSIS_PROGRESS,
+    TabOperationLogColumn::CREATE_TABLE,
     DownloadResourcesColumn::CREATE_TABLE,
     DownloadResourcesColumn::INDEX_DRTR_ID_STATUS,
 

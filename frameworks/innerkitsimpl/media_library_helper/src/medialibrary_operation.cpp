@@ -23,6 +23,7 @@
 #include "media_old_albums_column.h"
 #include "media_facard_photos_column.h"
 #include "medialibrary_db_const.h"
+#include "media_operation_log_column.h"
 #include "ptp_medialibrary_manager_uri.h"
 #include "delete_permanently_operations_uri.h"
 #include "search_column.h"

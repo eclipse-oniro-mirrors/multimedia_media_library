@@ -502,6 +502,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/cloud_sync_observer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/cloud_sync_notify_handler.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/notify_responsibility_chain_factory.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_cloud_sync_notify_handle/src/critical_label_task_queue.cpp",
   ]
 
   media_permission_source = [

@@ -1,17 +1,17 @@
 /*
-* Copyright (C) 2026 Huawei Device Co., Ltd.
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Copyright (C) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #define MLOG_TAG "MediaCriticalLabelTest"
 
@@ -158,6 +158,7 @@ HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_Accept_Test, TestSize.Le
     MEDIA_INFO_LOG("MediaCriticalLabelTask_Accept_Test End");
 }
 
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_QueryPhotosBatch_Test, TestSize.Level1)
 {
     MEDIA_INFO_LOG("MediaCriticalLabelTask_QueryPhotosBatch_Test Start");
@@ -167,10 +168,11 @@ HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_QueryPhotosBatch_Test, T
     }
     auto task = std::make_shared<MediaCriticalLabelTask>();
     EXPECT_NE(g_rdbStore, nullptr);
-    PhotoBatchInfo batchInfo = task->QueryPhotosBatch(g_rdbStore, 0, 200);
+    PhotoBatchInfo batchInfo = task->QueryPhotosBatch(g_rdbStore, 10);
     EXPECT_EQ(batchInfo.size(), insertPhotoNum);
     MEDIA_INFO_LOG("MediaCriticalLabelTask_QueryPhotosBatch_Test End");
 }
+#endif
 
 HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_ConstructPhotoUri_Test, TestSize.Level1)
 {
@@ -254,7 +256,7 @@ HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_LargeBatch_Test, TestSiz
     MEDIA_INFO_LOG("MediaCriticalLabelTask_LargeBatch_Test End");
 }
 
-
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_FilterCriticalType_Test, TestSize.Level1)
 {
     MEDIA_INFO_LOG("MediaCriticalLabelTask_FilterCriticalType_Test Start");
@@ -272,7 +274,7 @@ HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_FilterCriticalType_Test,
     
     auto task = std::make_shared<MediaCriticalLabelTask>();
     EXPECT_NE(g_rdbStore, nullptr);
-    PhotoBatchInfo batchInfo = task->QueryPhotosBatch(g_rdbStore, 0, 200);
+    PhotoBatchInfo batchInfo = task->QueryPhotosBatch(g_rdbStore, 10);
     // Should only return photos with critical_type = 0
     EXPECT_EQ(batchInfo.size(), criticalTypeZeroCount);
     
@@ -281,4 +283,5 @@ HWTEST_F(MediaCriticalLabelTest, MediaCriticalLabelTask_FilterCriticalType_Test,
     task->HandleCriticalLabelProcessing();
     MEDIA_INFO_LOG("MediaCriticalLabelTask_FilterCriticalType_Test End");
 }
+#endif
 }  // namespace OHOS::Media::Background
