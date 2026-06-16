@@ -141,6 +141,8 @@ const int32_t BETA_ISSUE_ID_LENGTH = 10;
 const int32_t MAX_FILE_FD = 1023;
 const size_t MAX_PARCEL_SIZE = 200 * 1024;
 const int32_t MAX_CHECK_PHOTO_PERMISSION_URI_COUNT = 500;
+const int32_t MAX_CREATE_ASSET_LIMIT = 500;
+const std::string REAL_TIME_THUMB = "realTimeThumb";
 const int32_t URI_FORMAT_ERROR_STATE = 0;
 const int32_t NO_READ_PERMISSION_STATE = 3;
 const int32_t MAX_LPATH_BUNDLENAME_LENGTH = 255;
@@ -248,6 +250,8 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperAgentCreateAssetsWithMode)},
     ani_native_function {"createAssetsForAppWithAlbumInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperAgentCreateAssetsWithAlbum)},
+    ani_native_function {"createAssetsWithAlbumInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperCreateAssetsWithAlbum)},
     ani_native_function {"createPhotoAssetInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::CreatePhotoAsset)},
     ani_native_function {"getDataAnalysisProgressInner", nullptr,
@@ -3869,6 +3873,51 @@ static ani_object CreateUri(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &
     return static_cast<ani_object>(retUri);
 }
 
+static ani_object CreateNullableUriArray(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context,
+    ani_object &error)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    ani_object retObj = {};
+    MediaLibraryNotifyAniUtils::AniArrayOperator arrayOperator;
+    ani_status status = MediaLibraryNotifyAniUtils::InitAniArrayOperator(env, arrayOperator);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("InitAniArrayOperator fail");
+        MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+        return retObj;
+    }
+    status = env->Object_New(arrayOperator.cls, arrayOperator.ctorMethod, &retObj,
+        static_cast<ani_int>(context->uriArray.size()));
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Object_New failed, status=%{public}d", status);
+        MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+        return retObj;
+    }
+    int count = 0;
+    for (const auto &uri : context->uriArray) {
+        ani_ref elementRef {};
+        if (uri.empty()) {
+            env->GetNull(&elementRef);
+        } else {
+            ani_string aniString {};
+            status = MediaLibraryAniUtils::ToAniString(env, uri, aniString);
+            if (status != ANI_OK) {
+                ANI_ERR_LOG("ToAniString failed for element[%{public}d]", count);
+                MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+                return retObj;
+            }
+            elementRef = static_cast<ani_ref>(aniString);
+        }
+        status = env->Object_CallMethod_Void(retObj, arrayOperator.setMethod, (ani_int)count, elementRef);
+        if (status != ANI_OK) {
+            ANI_ERR_LOG("$_set failed for element[%{public}d], status=%{public}d", count, status);
+            MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+            return retObj;
+        }
+        count++;
+    }
+    return retObj;
+}
+
 static ani_object CreateUriArray(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context, ani_object &error)
 {
     CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
@@ -3897,7 +3946,11 @@ static ani_object CreateAssetComplete(ani_env *env, unique_ptr<MediaLibraryAsync
     ani_object error = {};
     if (context->error == ERR_DEFAULT) {
         if (context->isCreateByAgent) {
-            resultObj = CreateUriArray(env, context, error);
+            if (context->isNullableUriArray) {
+                resultObj = CreateNullableUriArray(env, context, error);
+            } else {
+                resultObj = CreateUriArray(env, context, error);
+            }
         } else if (context->isCreateByComponent) {
             resultObj = CreateUri(env, context, error);
         } else {
@@ -4638,7 +4691,9 @@ static bool CheckAlbumUri(ani_env *env, OHOS::DataShare::DataShareValuesBucket &
     string queryUri = CONST_PAH_QUERY_PHOTO_ALBUM;
     Uri uri(queryUri);
     DataSharePredicates predicates;
-    vector selectionArgs = {to_string(PhotoAlbumSubType::USER_GENERIC), to_string(PhotoAlbumSubType::SOURCE_GENERIC)};
+    vector selectionArgs = {to_string(PhotoAlbumSubType::USER_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)};
     predicates.In(PhotoAlbumColumns::ALBUM_SUBTYPE, selectionArgs);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, ownerAlbumId);
     int errCode = 0;
@@ -5903,6 +5958,214 @@ ani_object MediaLibraryAni::PhotoAccessHelperAgentCreateAssetsWithAlbum(ani_env 
     }
     PhotoAccessAgentCreateAssetsExecute(env, context);
     return CreateAssetComplete(env, context);
+}
+
+static ani_status ParseCreationSetting(ani_env *env, ani_object creationSetting,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    OHOS::DataShare::DataShareValuesBucket valuesBucket;
+
+    ani_object photoTypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, creationSetting, PHOTO_TYPE, photoTypeAni),
+        "Failed to get %{public}s", PHOTO_TYPE.c_str());
+    int32_t photoType = 0;
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(photoTypeAni), photoType),
+        "Failed to call EnumGetValueInt32 for %{public}s", PHOTO_TYPE.c_str());
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, photoType);
+
+    ani_object titleAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, creationSetting, TITLE, titleAni),
+        "Failed to get %{public}s", TITLE.c_str());
+    if (MediaLibraryAniUtils::IsUndefined(env, titleAni) == ANI_FALSE) {
+        std::string title = "";
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, titleAni, title),
+            "Failed to call GetString for %{public}s", TITLE.c_str());
+        valuesBucket.Put(MediaColumn::MEDIA_TITLE, title);
+    }
+
+    ani_object extensionAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, creationSetting, EXTENSION, extensionAni),
+        "Failed to get %{public}s", EXTENSION.c_str());
+    std::string extension = "";
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, extensionAni, extension),
+        "Failed to call GetString for %{public}s", EXTENSION.c_str());
+    valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
+
+    context->valuesBucketArray.push_back(move(valuesBucket));
+    return ANI_OK;
+}
+
+static ani_status ParseAlbumUri(ani_env *env, ani_string albumUri,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    if (albumUri == nullptr || MediaLibraryAniUtils::IsUndefined(env, albumUri) == ANI_TRUE) {
+        return ANI_OK;
+    }
+    std::string stdAlbumUri;
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, albumUri, stdAlbumUri), "Failed to get albumUri");
+    if (stdAlbumUri.empty()) {
+        return ANI_OK;
+    }
+    context->isContainsAlbumUri = true;
+    MediaFileUri fileUri = MediaFileUri(stdAlbumUri);
+    std::string ownerAlbumId = fileUri.GetUriType() == API10_PHOTOALBUM_URI ?
+        MediaFileUtils::GetIdFromUri(stdAlbumUri) : "";
+    for (auto &valuesBucket : context->valuesBucketArray) {
+        if (!ownerAlbumId.empty()) {
+            valuesBucket.Put(PhotoColumn::PHOTO_OWNER_ALBUM_ID, ownerAlbumId);
+        }
+    }
+    return ANI_OK;
+}
+
+static ani_status ParseArgsCreateAssetsWithAlbum(ani_env *env, ani_object creationSettings,
+    ani_boolean whetherRealTimeThumb, ani_string albumUri, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    context->isCreateByComponent = false;
+    context->isCreateByAgent = true;
+    context->needSystemApp = true;
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+
+    if (MediaLibraryAniUtils::IsUndefined(env, creationSettings) == ANI_TRUE) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "creationSettings is null or undefined");
+        return ANI_ERROR;
+    }
+
+    std::vector<ani_object> aniValues;
+    ani_status getStatus = MediaLibraryAniUtils::GetObjectArray(env, creationSettings, aniValues);
+    if (getStatus != ANI_OK) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "creationSettings is invalid");
+        return ANI_ERROR;
+    }
+    if (aniValues.empty() || aniValues.size() > MAX_CREATE_ASSET_LIMIT) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "creationSettings is empty or exceeds limit");
+        return ANI_ERROR;
+    }
+
+    for (const auto &aniValue : aniValues) {
+        if (ParseCreationSetting(env, aniValue, context) != ANI_OK) {
+            AniError::ThrowError(env, JS_E_PARAM_INVALID, "Parse asset create config failed");
+            return ANI_ERROR;
+        }
+    }
+
+    context->whetherRealTimeThumb = (whetherRealTimeThumb == ANI_TRUE);
+
+    if (ParseAlbumUri(env, albumUri, context) != ANI_OK) {
+        return ANI_ERROR;
+    }
+
+    return ANI_OK;
+}
+
+static int32_t CallPhotoAccessCreateAssetsWithAlbum(unique_ptr<MediaLibraryAsyncContext> &context,
+    const DataShareValuesBucket &valuesBucket, std::string &outUri)
+{
+    bool isValid = false;
+    CreateAssetsWithAlbumReqBody reqBody;
+    reqBody.mediaType = valuesBucket.Get(CONST_MEDIA_DATA_DB_MEDIA_TYPE, isValid);
+    string extension = valuesBucket.Get(CONST_ASSET_EXTENTION, isValid);
+    string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, isValid);
+    string ownerAlbumId = valuesBucket.Get(PhotoColumn::PHOTO_OWNER_ALBUM_ID, isValid);
+    reqBody.title = title;
+    reqBody.extension = extension;
+    reqBody.isRealTimeThumb = context->whetherRealTimeThumb;
+    if (context->isContainsAlbumUri) {
+        reqBody.ownerAlbumId = ownerAlbumId;
+    }
+
+    CreateAssetsWithAlbumRespBody respBody;
+    int32_t errCode = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(context->businessCode, reqBody,
+        respBody);
+    if (errCode != 0) {
+        ANI_ERR_LOG("IPC Call failed, errCode: %{public}d.", errCode);
+        return errCode;
+    }
+    outUri = respBody.outUri;
+    return respBody.fileId;
+}
+
+static int32_t CreateSingleAsset(unique_ptr<MediaLibraryAsyncContext> &context,
+    const DataShareValuesBucket &valuesBucket)
+{
+    string outUri;
+    int index = -EINVAL;
+    if (context->businessCode != 0) {
+        index = CallPhotoAccessCreateAssetsWithAlbum(context, valuesBucket, outUri);
+    }
+    if (index > 0) {
+        context->uriArray.push_back(move(outUri));
+        return ANI_OK;
+    }
+    if (index == E_PERMISSION_DENIED || index == -E_CHECK_SYSTEMAPP_FAIL) {
+        context->SaveError(index);
+        return ANI_ERROR;
+    }
+    context->uriArray.push_back("");
+    return ANI_OK;
+}
+
+static void PhotoAccessCreateAssetsWithAlbumExecute(ani_env *env,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    string uri;
+    GetCreateUri(context, uri);
+    Uri createFileUri(uri);
+    CHECK_IF_EQUAL(!context->valuesBucketArray.empty(),
+        "valuesBucketArray is empty, no assets to create");
+
+    if (context->isContainsAlbumUri) {
+        bool isValid = CheckAlbumUri(env, context->valuesBucketArray[0], context);
+        if (!isValid) {
+            context->isContainsAlbumUri = false;
+        }
+    }
+
+    for (size_t i = 0; i < context->valuesBucketArray.size(); i++) {
+        if (CreateSingleAsset(context, context->valuesBucketArray[i]) != ANI_OK) {
+            return;
+        }
+    }
+}
+
+ani_object MediaLibraryAni::PhotoAccessHelperCreateAssetsWithAlbum(ani_env *env, ani_object object,
+    ani_object creationSettings, ani_boolean whetherRealTimeThumb, ani_string albumUri)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessHelperCreateAssetsWithAlbum");
+
+    unique_ptr<MediaLibraryAsyncContext> context = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    context->businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM);
+    context->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    context->assetType = TYPE_PHOTO;
+    context->isCreateByAgent = true;
+    context->isNullableUriArray = true;
+
+    context->objectInfo = Unwrap(env, object);
+    if (context->objectInfo == nullptr) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return nullptr;
+    }
+
+    if (ParseArgsCreateAssetsWithAlbum(env, creationSettings, whetherRealTimeThumb, albumUri, context) != ANI_OK) {
+        return nullptr;
+    }
+
+    SetUserIdFromObjectInfo(context);
+    PhotoAccessCreateAssetsWithAlbumExecute(env, context);
+
+    ani_object result = CreateAssetComplete(env, context);
+    return result;
 }
 
 

@@ -264,6 +264,8 @@ public:
     static void PhotoAccessUpdateGalleryFormInfo(ani_env *env, ani_object object, ani_object info);
     static ani_object PhotoAccessHelperAgentCreateAssetsWithAlbum(ani_env *env, ani_object object,
     ani_object source, ani_string albumUri, ani_boolean isAuthorized, ani_object photoCreationConfigs);
+    static ani_object PhotoAccessHelperCreateAssetsWithAlbum(ani_env *env, ani_object object,
+    ani_object creationSettings, ani_boolean whetherRealTimeThumb, ani_string albumUri);
     static ani_object GetAlbumsByIds(ani_env *env, ani_object object, ani_object albumIds);
     static void SinglePhotoAlbumChangeOnCallback(ani_env *env, ani_object object, ani_object album,
         ani_object onCallback);
@@ -477,6 +479,8 @@ struct MediaLibraryAsyncContext : public AniError {
     std::vector<std::string> albumIds;
     std::unordered_map<int32_t, unique_ptr<PhotoAlbum>> albumMap;
     bool isContainsAlbumUri = false;
+    bool whetherRealTimeThumb = false;
+    bool isNullableUriArray = false;
     int32_t taskId = -1;
     bool isFullAnalysis = false;
     ani_object callback;
