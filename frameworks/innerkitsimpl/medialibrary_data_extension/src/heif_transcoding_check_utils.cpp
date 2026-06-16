@@ -61,11 +61,15 @@ const string PIXEL_50_WHITELIST = "50-whiteList";
 const string PIXEL_50_DENYLIST = "50-denyList";
 const string PIXEL_200_WHITELIST = "200-whiteList";
 const string PIXEL_200_DENYLIST = "200-denyList";
+const string JSON_VERSION = "version";
 
 const int CONFIG_EVENT_SUBSCRIBE_DELAY_TIME = 300;
 
 using WhiteList = std::unordered_map<std::string, std::string>;
 using DenyList = std::unordered_set<std::string>;
+
+// Forward declaration for version comparison
+bool CompareVersion(const std::string& v1, const std::string& v2);
 
 WhiteList HeifTranscodingCheckUtils::whiteList_;
 DenyList HeifTranscodingCheckUtils::denyList_;
@@ -116,6 +120,45 @@ bool IsFileExists(const std::string &fileName)
     return ((stat(fileName.c_str(), &statInfo)) == 0);
 }
 
+static std::string ReadVersionFromJson(const std::string &jsonPath)
+{
+    string realPath;
+    CHECK_AND_RETURN_RET_LOG(PathToRealPath(jsonPath, realPath),
+        "", "check path failed");
+    std::ifstream file(jsonPath);
+    if (!file.is_open()) {
+        MEDIA_WARN_LOG("Failed to open json file: %{public}s", jsonPath.c_str());
+        return "";
+    }
+    std::stringstream buffer;
+    buffer << file.rdbuf();
+    std::string jStr = buffer.str();
+    file.close();
+    if (jStr.empty() || !nlohmann::json::accept(jStr)) {
+        return "";
+    }
+    nlohmann::json j = nlohmann::json::parse(jStr, nullptr, false);
+    if (j.is_discarded() || !j.contains(JSON_VERSION) || !j[JSON_VERSION].is_string()) {
+        return "";
+    }
+    std::string version = j[JSON_VERSION].get<std::string>();
+    MEDIA_INFO_LOG("Version from %{public}s: %{public}s", jsonPath.c_str(), version.c_str());
+    return version;
+}
+
+bool HeifTranscodingCheckUtils::IsDUEVersionHigher()
+{
+    std::string dueVersion = ReadVersionFromJson(DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME);
+    std::string localVersion = ReadVersionFromJson(HEIF_TRANSCODING_CHECK_LIST_JSON_LOCAL_PATH);
+    if (dueVersion.empty() || localVersion.empty()) {
+        MEDIA_WARN_LOG("Cannot compare versions: due[%{public}s], local[%{public}s]",
+            dueVersion.c_str(), localVersion.c_str());
+        return false;
+    }
+    // CompareVersion(a, b) returns true when a >= b
+    return CompareVersion(dueVersion, localVersion);
+}
+
 sptr<AppExecFwk::IBundleMgr> HeifTranscodingCheckUtils::GetSysBundleManager()
 {
     if (bundleMgr_ != nullptr) {
@@ -155,6 +198,10 @@ static bool CheckListDUE(nlohmann::json& json)
     if (!IsFileExists(DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME)) {
         return false;
     }
+    if (!HeifTranscodingCheckUtils::IsDUEVersionHigher()) {
+        MEDIA_INFO_LOG("DUE version is not higher than local, skip DUE checklist");
+        return false;
+    }
     string realPath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME, realPath),
         false, "check path failed");
@@ -187,7 +234,7 @@ int32_t HeifTranscodingCheckUtils::ParsePixelWhiteListFromFile()
 {
     nlohmann::json dueCheckListJson;
     if (CheckListDUE(dueCheckListJson)) {
-        ParseHighPixelCheckList(dueCheckListJson, DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME);
+            ParseHighPixelCheckList(dueCheckListJson, DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME);
         return E_OK;
     }
     string realPath;
@@ -219,16 +266,21 @@ int32_t HeifTranscodingCheckUtils::ParsePixelWhiteListFromFile()
 int32_t HeifTranscodingCheckUtils::ReadCheckList()
 {
     ParsePixelWhiteListFromFile();
-    std::ifstream jFile;
-    if (IsFileExists(DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME)) {
-        jFile.open(DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME);
-        if (!jFile.is_open()) {
-            MEDIA_WARN_LOG("Failed to open file in DUE install directory, falling back to local path");
-            jFile.open(HEIF_TRANSCODING_CHECK_LIST_JSON_LOCAL_PATH);
-        }
+
+    // Determine which file to use for standard lists based on version comparison
+    std::string checkListPath;
+    if (IsFileExists(DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME) && IsDUEVersionHigher()) {
+        checkListPath = DUE_INSTALL_DIR + HEIF_TRANSCODING_CHECKLIST_NAME;
+        MEDIA_INFO_LOG("Using DUE checklist (higher version)");
     } else {
-        jFile.open(HEIF_TRANSCODING_CHECK_LIST_JSON_LOCAL_PATH);
+        checkListPath = HEIF_TRANSCODING_CHECK_LIST_JSON_LOCAL_PATH;
+        MEDIA_INFO_LOG("Using local checklist");
     }
+
+    std::ifstream jFile;
+    string realPath;
+    CHECK_AND_RETURN_RET_LOG(PathToRealPath(checkListPath, realPath), E_ERR, "check path failed");
+    jFile.open(checkListPath);
     if (!jFile.is_open()) {
         MEDIA_ERR_LOG("Failed to open file, Error: %{public}s", std::strerror(errno));
         return E_FAIL;
