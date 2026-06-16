@@ -230,6 +230,11 @@ static void RepairDateTimeFuzzer()
     PhotoDayMonthYearOperation::RepairDateTime();
 }
 
+static inline void ClearKvStore()
+{
+    Media::MediaLibraryKvStoreManager::GetInstance().CloseAllKvStore();
+}
+
 void SetTables()
 {
     vector<string> createTableSqlList = {
@@ -300,5 +305,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     }
     OHOS::RepairDateTimeFuzzer();
+    OHOS::ClearKvStore();
     return 0;
 }
