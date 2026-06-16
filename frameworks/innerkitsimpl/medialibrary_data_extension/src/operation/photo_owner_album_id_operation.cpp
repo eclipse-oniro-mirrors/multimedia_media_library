@@ -19,7 +19,6 @@
 #include <sstream>
 
 #include "album_accurate_refresh.h"
-#include "album_plugin_config.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "userfile_manager_types.h"
@@ -133,7 +132,8 @@ std::vector<std::string> PhotoOwnerAlbumIdOperation::GetFileIdsWithoutAlbum(
         sourcePath = GetStringVal("source_path", resultSet);
         mediaType = GetInt32Val("media_type", resultSet);
         lPath = this->ParseSourcePathToLPath(sourcePath);
-        containsScreenVideo = containsScreenVideo || (mediaType == MEDIA_TYPE_VIDEO && lPath == LPATH_SCREEN_SHOTS);
+        containsScreenVideo = containsScreenVideo ||
+            (mediaType == MEDIA_TYPE_VIDEO && lPath == AlbumPlugin::LPATH_SCREEN_SHOTS);
         result.emplace_back(fileId);
     }
     return result;
@@ -160,7 +160,8 @@ std::vector<std::string> PhotoOwnerAlbumIdOperation::GetFileIdsWithAlbum(
         fileId = GetStringVal("file_id", resultSet);
         mediaType = GetInt32Val("media_type", resultSet);
         lPath = GetStringVal("lpath", resultSet);
-        containsScreenVideo = containsScreenVideo || (mediaType == MEDIA_TYPE_VIDEO && lPath == LPATH_SCREEN_SHOTS);
+        containsScreenVideo = containsScreenVideo ||
+            (mediaType == MEDIA_TYPE_VIDEO && lPath == AlbumPlugin::LPATH_SCREEN_SHOTS);
         result.emplace_back(fileId);
     }
     return result;
@@ -364,20 +365,27 @@ MediaData PhotoOwnerAlbumIdOperation::GetPhotoAlbum(const std::string &lPath)
  */
 std::string PhotoOwnerAlbumIdOperation::ParseSourcePathToLPath(const std::string &sourcePath)
 {
-    size_t start_pos = sourcePath.find(GALLERT_ROOT_PATH);
-    size_t end_pos = sourcePath.find_last_of("/");
-
-    std::string result = "/Pictures/其它";
-    if (start_pos != std::string::npos && end_pos != std::string::npos) {
-        start_pos += GALLERT_ROOT_PATH.length();
-        result = sourcePath.substr(start_pos, end_pos - start_pos);
-        start_pos = result.find_first_of("/");
-        if (start_pos != std::string::npos) {
-            result = result.substr(start_pos);
-        } else {
-            result = FILE_SEPARATOR;
-        }
+    size_t rootPos = sourcePath.find(GALLERY_ROOT_PATH);
+    size_t lastSlashPos = sourcePath.find_last_of("/");
+    if (rootPos == std::string::npos || lastSlashPos == std::string::npos) {
+        MEDIA_ERR_LOG("Media_Operation: root path not found or no slash in sourcePath.");
+        return LPATH_DEFAULT_OTHER;
     }
+
+    size_t offset = rootPos + GALLERY_ROOT_PATH.length();
+    if (offset >= lastSlashPos || lastSlashPos - offset <= 1) {
+        MEDIA_ERR_LOG("Media_Operation: offset >= lastSlashPos or path too short, offset: %{public}zu, "
+            "lastSlashPos: %{public}zu.", offset, lastSlashPos);
+        return LPATH_DEFAULT_OTHER;
+    }
+
+    std::string segment = sourcePath.substr(offset, lastSlashPos - offset);
+    size_t firstSlashPos = segment.find_first_of("/");
+    if (firstSlashPos == std::string::npos) {
+        MEDIA_ERR_LOG("Media_Operation: no slash found in segment after root path.");
+        return LPATH_DEFAULT_OTHER;
+    }
+    std::string result = segment.substr(firstSlashPos);
     result = result == AlbumPlugin::LPATH_HIDDEN_ALBUM ? AlbumPlugin::LPATH_RECOVER : result;
     return result;
 }
@@ -592,11 +600,11 @@ int32_t PhotoOwnerAlbumIdOperation::FixScreenVideoRelation()
     CHECK_AND_RETURN_RET(!conn, E_OK);
 
     MEDIA_INFO_LOG("Media_Operation: Need to fix screen video relation. size: %{public}zu.", fileIds.size());
-    int32_t err = this->CreateAlbums({LPATH_SCREEN_RECORDS});
+    int32_t err = this->CreateAlbums({AlbumPlugin::LPATH_SCREEN_RECORDS});
     conn = err != E_OK;
     CHECK_AND_RETURN_RET_LOG(!conn, err, "Media_Operation: CreateAlbums failed, err: %{public}d.", err);
 
-    MediaData albumInfo = this->GetPhotoAlbum(LPATH_SCREEN_RECORDS);
+    MediaData albumInfo = this->GetPhotoAlbum(AlbumPlugin::LPATH_SCREEN_RECORDS);
     conn = albumInfo.albumId.empty();
     CHECK_AND_RETURN_RET_LOG(!conn, E_ERR, "Media_Operation: albumInfo is empty.");
 
