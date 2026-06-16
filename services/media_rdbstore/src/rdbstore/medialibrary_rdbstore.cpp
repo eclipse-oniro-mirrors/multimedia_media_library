@@ -1064,6 +1064,33 @@ int32_t MediaLibraryRdbStore::UpdateEditDataSize(std::shared_ptr<MediaLibraryRdb
     return errCode;
 }
 
+int32_t MediaLibraryRdbStore::UpdateAttachmentSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+    const std::string &photoId, uint64_t attachmentSize)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+
+    std::string updatePhotoSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+        " SET " + PhotoColumn::ATTACHMENT_SIZE + " = ?"
+        " WHERE " + MediaColumn::MEDIA_ID + " = ? ;";
+
+    std::vector<ValueObject> attachmentBindArgs = {
+        ValueObject(to_string(attachmentSize)),
+        ValueObject(photoId)
+    };
+
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> updateFunc = [&]() -> int32_t {
+        int32_t ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+            "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
+        return E_OK;
+    };
+
+    int32_t errCode = trans->RetryTrans(updateFunc);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Trans fail!, ret:%{public}d", errCode);
+    return errCode;
+}
+
 static int32_t UpdateLocationKnowledgeIdx(RdbStore& store)
 {
     MEDIA_INFO_LOG("start update location knowledge index");
