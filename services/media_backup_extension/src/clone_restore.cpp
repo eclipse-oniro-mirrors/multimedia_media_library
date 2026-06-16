@@ -2842,10 +2842,15 @@ void CloneRestore::RestoreAnalysisTablesData()
         "caption"
     };
 
+    const std::unordered_set<std::string> timeoutEnabledTables = {
+        "tab_analysis_caption"
+    };
+
     for (size_t index = 0; index < analysisTables.size(); index++) {
         std::string table = analysisTables[index];
         std::string type = totalTypes[index];
-        cloneRestoreAnalysisData_.CloneAnalysisData(table, type, photoInfoMap_, excludedColumns);
+        bool enableTimeout = timeoutEnabledTables.find(table) != timeoutEnabledTables.end();
+        cloneRestoreAnalysisData_.CloneAnalysisData(table, type, photoInfoMap_, excludedColumns, enableTimeout);
     }
 }
 
