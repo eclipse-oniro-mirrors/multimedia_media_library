@@ -29,10 +29,8 @@ ohos_fuzztest("MediaLibraryPhotoDayMonthYearOperationFuzzTest") {
   ]
 
   sources = [
-    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/operation/photo_day_month_year_operation.cpp",
     "./medialibraryphotodaymonthyearoperation_fuzzer.cpp",
     "./mock_medialibrary_subscriber.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/src/medialibrary_rdbstore_utils_fuzzer.cpp",
   ]
 
@@ -40,9 +38,6 @@ ohos_fuzztest("MediaLibraryPhotoDayMonthYearOperationFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
-    "${MEDIALIB_UTILS_PATH}:medialibrary_common_utils",
-    "${MEDIALIB_UTILS_PATH}:permission_utils",
-    "${MEDIALIB_UTILS_PATH}:post_event_utils",
   ]
 
   external_deps = [
