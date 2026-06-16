@@ -235,7 +235,7 @@ void MediaLibraryTranscodeDataAgingOperation::ModifyTransCodeFileExif(const Exif
 
 static bool IsHighPixelPicture(int32_t width, int32_t height)
 {
-    if (width * height >= HIGH_PIXEL_SIZE) {
+    if (IsHighPixel(width, height)) {
         return true;
     }
     return false;
