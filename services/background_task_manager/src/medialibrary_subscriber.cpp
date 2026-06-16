@@ -301,7 +301,7 @@ bool MedialibrarySubscriber::Subscribe(void)
 
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     int32_t retReg = subscriber_->RegisterDefaultNetObserver();
-    CHECK_AND_RETURN_RET_LOG(retReg == E_OK, E_ERR, "failed to RegisterDefaultNetObserver");
+    CHECK_AND_PRINT_LOG(retReg == E_OK, "failed to RegisterDefaultNetObserver");
 #endif
     return ret;
 }
@@ -314,13 +314,16 @@ int32_t MedialibrarySubscriber::RegisterDefaultNetObserver()
         CreateOptions options;
         options.enabled_ = true;
         cloudHelper_ = DataShare::DataShareHelper::Creator(CLOUD_DATASHARE_URI, options);
-        CHECK_AND_RETURN_RET_LOG(cloudHelper_ != nullptr, E_ERR, "cloudHelper_ is null.");
-        std::weak_ptr<MedialibrarySubscriber> subscriberWeakPtr(subscriber_);
-        CloudMediaAssetUnlimitObserver_ = std::make_shared<CloudMediaAssetUnlimitObserver>(subscriberWeakPtr);
-        CHECK_AND_RETURN_RET_LOG(CloudMediaAssetUnlimitObserver_ != nullptr, E_ERR,
-            "CloudMediaAssetUnlimitObserver_ is null.");
-        cloudHelper_->RegisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_, true);
-        MEDIA_INFO_LOG("DefaultNetConnectObserver RegisterDefaultNetObserver");
+        if (cloudHelper_ != nullptr) {
+            std::weak_ptr<MedialibrarySubscriber> subscriberWeakPtr(subscriber_);
+            CloudMediaAssetUnlimitObserver_ = std::make_shared<CloudMediaAssetUnlimitObserver>(subscriberWeakPtr);
+            CHECK_AND_RETURN_RET_LOG(CloudMediaAssetUnlimitObserver_ != nullptr, E_ERR,
+                "CloudMediaAssetUnlimitObserver_ is null.");
+            cloudHelper_->RegisterObserverExt(Uri(CLOUD_URI), CloudMediaAssetUnlimitObserver_, true);
+            MEDIA_INFO_LOG("DefaultNetConnectObserver RegisterDefaultNetObserver");
+        } else {
+            MEDIA_ERR_LOG("cloudHelper_ is null.");
+        }
     }
     if (defaultNetObserver_ == nullptr) { // 补注册
         defaultNetObserver_ = new (std::nothrow) DefaultNetConnectObserver();
