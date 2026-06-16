@@ -636,7 +636,7 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
     if (defaultNetObserver_ == nullptr && subscriber_!= nullptr) { // 补注册
         MEDIA_INFO_LOG("DefaultNetConnectObserver RegisterDefaultNetObserver OnReceiveEvent");
         int32_t retReg = subscriber_->RegisterDefaultNetObserver();
-        CHECK_AND_RETURN_LOG(retReg == E_OK, "failed to RegisterDefaultNetObserver");
+        CHECK_AND_PRINT_LOG(retReg == E_OK, "failed to RegisterDefaultNetObserver");
     }
 #endif
     const AAFwk::Want &want = eventData.GetWant();
