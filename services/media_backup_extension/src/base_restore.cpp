@@ -1194,7 +1194,7 @@ void BaseRestore::MoveMigrateFile(std::vector<FileInfo> &fileInfos, int32_t &fil
         }
 
         MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(to_string(fileInfos[i].fileIdNew),
-            fileInfos[i].cloudPath);
+            fileInfos[i].cloudPath, EditAndAttachmentUpdateType::EDIT_ONLY);
 
         fileMoveCount++;
         videoFileMoveCount += fileInfos[i].fileType == MediaType::MEDIA_TYPE_VIDEO;

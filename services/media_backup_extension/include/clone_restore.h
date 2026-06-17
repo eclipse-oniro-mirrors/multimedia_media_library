@@ -241,6 +241,7 @@ private:
     bool ShouldRestoreFromCloud();
     void UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos);
     void UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &fileInfos);
+    void SetAttachmentSizeForCloudDuplicate(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     void PrevailUUIDForSamePhotos(vector<FileInfo> &fileInfos);
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();

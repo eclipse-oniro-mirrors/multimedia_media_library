@@ -4716,8 +4716,8 @@ static bool GetThumbnailAndAttachmentSizes(const string &photoPath, const string
     return true;
 }
 
-static int32_t StoreThumbnailAndAttachmentSizes(const string &photoId,
-    uint64_t photoThumbnailSize, uint64_t editDataSize, uint64_t attachmentSize)
+static int32_t StoreThumbnailAndAttachmentSizes(const string &photoId, uint64_t photoThumbnailSize,
+    uint64_t editDataSize, uint64_t attachmentSize, EditAndAttachmentUpdateType updateType)
 {
     string updatePhotoExtSql = "INSERT OR REPLACE INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
         PhotoExtColumn::PHOTO_ID + ", " +
@@ -4742,7 +4742,7 @@ static int32_t StoreThumbnailAndAttachmentSizes(const string &photoId,
         int32_t ret = trans->ExecuteSql(updatePhotoExtSql, editDataBindArgs);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
             "Update editdata_size failed, photoId:%{public}s", photoId.c_str());
-
+        CHECK_AND_RETURN_RET(updateType != EditAndAttachmentUpdateType::EDIT_ONLY, E_OK);
         ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
             "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
@@ -4751,7 +4751,8 @@ static int32_t StoreThumbnailAndAttachmentSizes(const string &photoId,
     return trans->RetryTrans(updateFunc);
 }
 
-void MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(const string& photoId, const string& photoPath)
+void MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(const string& photoId, const string& photoPath,
+    EditAndAttachmentUpdateType updateType)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is nullptr!");
@@ -4763,7 +4764,7 @@ void MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(const string& photoI
         photoThumbnailSize, editDataSize, attachmentSize), "Failed to calculate sizes");
 
     int32_t errCode = StoreThumbnailAndAttachmentSizes(photoId,
-        photoThumbnailSize, editDataSize, attachmentSize);
+        photoThumbnailSize, editDataSize, attachmentSize, updateType);
     CHECK_AND_RETURN_LOG(errCode == E_OK,
         "StoreThumbnailAndEditSize trans failed, photoId:%{public}s, ret:%{public}d", photoId.c_str(), errCode);
 
