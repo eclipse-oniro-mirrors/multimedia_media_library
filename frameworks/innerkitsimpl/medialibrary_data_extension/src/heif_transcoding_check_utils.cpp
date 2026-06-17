@@ -34,6 +34,7 @@
 #include "bundle_constants.h"
 #include "transcode_compatible_info_operations.h"
 #include "directory_ex.h"
+#include "permission_whitelist_utils.h"
 
 using std::string;
 using std::unordered_map;
@@ -52,6 +53,7 @@ const string RECEIVE_UPDATE_MESSAGE = "ohos.permission.RECEIVE_UPDATE_MESSAGE";
 const string COTA_EVENT_INFO_TYPE = "type";
 const string COTA_EVENT_INFO_SUBTYPE = "subtype";
 const string COTA_EVENT_INFO_SUBTYPE_VALUE = "heif_transcoding";
+const string CLOUD_EVENT_INFO_TYPE_VALUE = "medialibrary_kit_whitelist";
 const string LIST_STRATEGY = "listStrategy";
 const string LIST_STRATEGY_WHITELIST = "whiteList";
 const string LIST_STRATEGY_DENYLIST = "denyList";
@@ -106,12 +108,18 @@ void HeifTranscodingCheckUtils::CotaUpdateReceiver::OnReceiveEvent(const EventFw
     MEDIA_INFO_LOG("CotaUpdateReceiver: action[%{public}s], type[%{public}s], subType[%{public}s]", action.c_str(),
         type.c_str(), subtype.c_str());
 
-    if (action != COTA_UPDATE_EVENT || type != COTA_EVENT_INFO_SUBTYPE_VALUE) {
+    if (action != COTA_UPDATE_EVENT) {
         MEDIA_ERR_LOG("other action, ignore.");
         return;
     }
 
-    HeifTranscodingCheckUtils::ReadCheckList();
+    if (type == COTA_EVENT_INFO_SUBTYPE_VALUE) {
+        HeifTranscodingCheckUtils::ReadCheckList();
+    } else if (type == CLOUD_EVENT_INFO_TYPE_VALUE) {
+        PermissionWhitelistUtils::OnReceiveEvent();
+    } else {
+        MEDIA_INFO_LOG("unmatched type[%{public}s], ignore.", type.c_str());
+    }
 }
 
 bool IsFileExists(const std::string &fileName)
