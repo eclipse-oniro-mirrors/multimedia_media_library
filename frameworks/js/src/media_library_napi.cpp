@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "ability_manager_client.h"
 #include "accesstoken_kit.h"
 #include "active_analysis_error_utils.h"
 #include "active_analysis_napi_callback.h"
@@ -14438,6 +14439,25 @@ static napi_value StartPickerExtension(napi_env env, napi_callback_info info,
     AppExecFwk::UnwrapWant(env, AsyncContext->argv[ARGS_ONE], request);
     std::string targetType = "photoPicker";
     request.SetParam(ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE, targetType);
+    bool isPreload = request.GetBoolParam("isPreload", false);
+    if (isPreload) {
+        NAPI_INFO_LOG("StartPickerExtension: isPreload mode, start picker process via StartExtensionAbility");
+        AAFwk::Want preloadWant;
+        preloadWant.SetElementName("com.ohos.photos", "RecentPhotoInfoAbility");
+        preloadWant.SetParam(ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE, targetType);
+        int32_t userId = -1;
+        auto startResult = AAFwk::AbilityManagerClient::GetInstance()->StartExtensionAbility(
+            preloadWant, nullptr, userId, AppExecFwk::ExtensionAbilityType::SERVICE);
+        if (startResult != 0) {
+            NAPI_ERR_LOG("StartPickerExtension: preload StartExtensionAbility failed, ret=%{public}d", startResult);
+        }
+        AsyncContext->pickerCallBack = make_shared<PickerCallBack>();
+        AsyncContext->pickerCallBack->ready = true;
+        AsyncContext->pickerCallBack->resultCode = -1;
+        napi_value result = nullptr;
+        CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+        return result;
+    }
     AsyncContext->pickerCallBack = make_shared<PickerCallBack>();
     auto callback = std::make_shared<ModalUICallback>(uiContent, AsyncContext->pickerCallBack.get());
     Ace::ModalUIExtensionCallbacks extensionCallback = {
