@@ -21,6 +21,7 @@
 #include <mutex>
 #include <queue>
 
+#include "cloud_sync_common.h"
 #include "deep_optimize_space_callback.h"
 #include "iremote_object.h"
 #include "lcd_aging_dao.h"
@@ -56,7 +57,7 @@ private:
         const std::atomic<bool> &shouldStop);
 
     int32_t InitAgingTask(int64_t &taskSize);
-    int32_t ExecuteAgingLoop(int64_t taskSize, const std::atomic<bool> &shouldStop);
+    int32_t ExecuteAgingLoop(const std::atomic<bool> &shouldStop);
     int32_t ExecuteSingleBatch(const int32_t batchSize, bool &hasTrashedData, const std::atomic<bool> &shouldStop);
     
     int32_t BatchAgingLcdFileTrashed(const int32_t size, const std::atomic<bool> &shouldStop);
@@ -88,6 +89,9 @@ private:
     void HandleAfterAgingProgress(const int32_t errorCode);
     bool LoadIsActiveLcdAgingFromPrefs();
     void SaveIsActiveLcdAgingToPrefs(bool isActive);
+    int32_t InsertDentryFileWithRetry(const std::vector<FileManagement::CloudSync::DentryFileInfo> &dentryFileInfos,
+        std::vector<std::string> &failCloudIds);
+    int32_t CheckLcdAgingTargetReached(int32_t &excessSize);
 
 private:
     LcdAgingDao lcdAgingDao_;

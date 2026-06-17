@@ -50,6 +50,8 @@ constexpr int32_t E_FINISH = 1;
 constexpr int32_t E_AGING_STOP = 2;
 constexpr int32_t E_AGING_INTERRUPT = 3;
 constexpr uint32_t MAX_PROGRESS = 100;
+// 老化执行中的进度上限, 100%进度仅在老化任务完成后上报
+constexpr uint32_t MAX_RUNNING_PROGRESS = 99;
 const std::string MEDIA_RESTORE_FLAG = "multimedia.medialibrary.restoreFlag";
 const std::string MEDIA_BACKUP_FLAG = "multimedia.medialibrary.backupFlag";
 const std::string CLOUDSYNC_SWITCH_STATUS_KEY = "persist.kernel.cloudsync.switch_status";
@@ -91,7 +93,7 @@ int32_t LcdAgingManager::BatchAgingLcdFileTask(const std::atomic<bool> &shouldSt
         return ret;
     }
 
-    ret = ExecuteAgingLoop(taskSize, shouldStop);
+    ret = ExecuteAgingLoop(shouldStop);
 
     HandleAfterAgingProgress(ret);
     FinishAgingTask();
@@ -114,28 +116,30 @@ int32_t LcdAgingManager::InitAgingTask(int64_t &taskSize)
     return E_OK;
 }
 
-int32_t LcdAgingManager::ExecuteAgingLoop(int64_t taskSize, const std::atomic<bool> &shouldStop)
+int32_t LcdAgingManager::ExecuteAgingLoop(const std::atomic<bool> &shouldStop)
 {
     int32_t ret = E_ERR;
     int32_t cycleNumber = 0;
     bool hasTrashedData = true;
 
-    while (taskSize > 0) {
-        CHECK_AND_BREAK_ERR_LOG(cycleNumber++ <= CYCLE_NUMBER, "cycleNumber exceeds the limit");
+    while (cycleNumber <= CYCLE_NUMBER) {
+        cycleNumber++;
         ret = CheckLcdAgingStatus(shouldStop);
-        CHECK_AND_BREAK(ret == E_OK);
+        CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "Failed to CheckLcdAgingStatus, ret: %{public}d", ret);
 
-        int32_t currentBatchSize = static_cast<int32_t>(taskSize > BATCH_TASK_SIZE ? BATCH_TASK_SIZE : taskSize);
-        ret = ExecuteSingleBatch(currentBatchSize, hasTrashedData, shouldStop);
+        // 重新判断是否已达老化阈值
+        int32_t excessSize = 0;
+        ret = CheckLcdAgingTargetReached(excessSize);
+        CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "Failed to CheckLcdAgingTargetReached, ret: %{public}d", ret);
+
+        ret = ExecuteSingleBatch(excessSize, hasTrashedData, shouldStop);
         CHECK_AND_PRINT_LOG(ret == E_OK, "failed to BatchAgingLcdFile, ret: %{public}d", ret);
 
         bool shouldBreak = (ret == E_NO_QUERY_DATA || ret == E_AGING_STOP || ret == E_AGING_INTERRUPT);
         CHECK_AND_BREAK_INFO_LOG(!shouldBreak, "break aging lcd task, ret: %{public}d", ret);
 
-        taskSize = this->totalAgingLcdNumber_ - this->hasAgingLcdNumber_;
-        MEDIA_INFO_LOG("batch aging lcdFile, currentBatchSize: %{public}d, hasAgingLcdNumber: %{public}" PRId64
-            ", taskSize: %{public}" PRId64 ", cycleNumber: %{public}d",
-            currentBatchSize, this->hasAgingLcdNumber_.load(), taskSize, cycleNumber);
+        MEDIA_INFO_LOG("batch aging lcdFile, hasAgingLcdNumber: %{public}" PRId64 ", totalAgingLcdNumber: %{public}"
+            PRId64 ", cycleNumber: %{public}d", hasAgingLcdNumber_.load(), totalAgingLcdNumber_.load(), cycleNumber);
     }
     return ret;
 }
@@ -246,9 +250,9 @@ int32_t LcdAgingManager::DoBatchAgingLcdFileInternal(const std::vector<LcdAgingF
     std::vector<DentryFileInfo> dentryFileInfos = LcdAgingUtils::ConvertAgingFileToDentryFile(lcdAgingFileInfoList);
     std::vector<std::string> failCloudIds;
     MEDIA_INFO_LOG("Begin to BatchDentryFileInsert");
-    ret = CloudSyncManager::GetInstance().BatchDentryFileInsert(dentryFileInfos, failCloudIds);
+    ret = InsertDentryFileWithRetry(dentryFileInfos, failCloudIds);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("Failed to insert dentry file, ret: %{public}d", ret);
+        MEDIA_ERR_LOG("Failed to insert dentry file after retry, ret: %{public}d", ret);
         failFileIds = std::move(fileIds);
         ret = this->lcdAgingDao_.RevertToLcdDownloadStatus(failFileIds);
         CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to RevertToLcdDownloadStatus, ret: %{public}d", ret);
@@ -334,14 +338,15 @@ int32_t LcdAgingManager::GetNeedAgingLcdSize(int64_t &taskSize)
         "actualAgingSize: %{public}" PRId64, actualAgingSize);
 
     taskSize = std::min(expectAgingSize, actualAgingSize);
-    MEDIA_INFO_LOG("lcdCurrentNumber: %{public}" PRId64 ", actualAgingSize: %{public}" PRId64
-        ", taskSize: %{public}" PRId64, lcdCurrentNumber, actualAgingSize, taskSize);
+    MEDIA_INFO_LOG("lcdCurrentNumber: %{public}" PRId64 ", expectAgingSize: %{public}" PRId64
+        ", actualAgingSize: %{public}" PRId64 ", taskSize: %{public}" PRId64,
+        lcdCurrentNumber, expectAgingSize, actualAgingSize, taskSize);
     return E_OK;
 }
 
 int32_t LcdAgingManager::FinishAgingTask()
 {
-    MEDIA_INFO_LOG("start FinishAgingTask");
+    MEDIA_INFO_LOG("start FinishAgingTask, notAgingFileIds_ size: %{public}zu", this->notAgingFileIds_.size());
     auto dfxManager = DfxManager::GetInstance();
     // 打点上报
     int32_t totalSize = MediaFileUtils::GetTotalSize() / DIVISOR;
@@ -507,7 +512,6 @@ int32_t LcdAgingManager::CheckLcdAgingStatus(const std::atomic<bool> &shouldStop
     bool isBackUp = system::GetParameter(MEDIA_BACKUP_FLAG, "0") != "0";
     bool isRestore = system::GetParameter(MEDIA_RESTORE_FLAG, "0") != "0";
     bool isCloudCleaning = system::GetParameter(CLOUDSYNC_SWITCH_STATUS_KEY, "0") != "0";
-    // wyftodo 正在标记时刻
 
     bool shouldInterrupt = isClone || isBackUp || isRestore || isCloudCleaning;
 
@@ -526,21 +530,28 @@ void LcdAgingManager::HandleAgingProgress()
     
     uint32_t progress = static_cast<uint32_t>(
         (static_cast<double>(this->hasAgingLcdNumber_) / static_cast<double>(this->totalAgingLcdNumber_)) * 100.0);
-    CHECK_AND_EXECUTE(progress <= MAX_PROGRESS, progress = MAX_PROGRESS);
-    CHECK_AND_EXECUTE(progress >= this->lastAgingProgress_, progress = this->lastAgingProgress_);
+    // 老化执行中进度最多为99%, 100%仅在老化完成后上报
+    if (progress > MAX_RUNNING_PROGRESS) {
+        MEDIA_INFO_LOG("progress capped: %{public}u -> %{public}u", progress, MAX_RUNNING_PROGRESS);
+        progress = MAX_RUNNING_PROGRESS;
+    }
+    // 保证进度不倒退
+    if (progress < this->lastAgingProgress_) {
+        MEDIA_INFO_LOG("progress no regression: %{public}u -> %{public}u", progress, this->lastAgingProgress_.load());
+        progress = this->lastAgingProgress_;
+    }
     this->lastAgingProgress_ = progress;
 
-    auto state = (progress == MAX_PROGRESS) ? DeepOptimizeSpaceState::COMPLETED : DeepOptimizeSpaceState::RUNNING;
-    LcdAgingWorker::GetInstance().NotifyProgress(state, progress);
+    // 老化执行中始终为RUNNING状态
+    LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::RUNNING, progress);
 }
 
 void LcdAgingManager::HandleAfterAgingProgress(const int32_t errorCode)
 {
     switch (errorCode) {
         case E_NO_QUERY_DATA:
-            if (this->lastAgingProgress_ < MAX_PROGRESS) {
-                LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::COMPLETED, MAX_PROGRESS);
-            }
+            // 没有可以老化的LCD，上报100%进度
+            LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::COMPLETED, MAX_PROGRESS);
             break;
         case E_AGING_STOP:
             LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::STOPPED, this->lastAgingProgress_);
@@ -549,9 +560,7 @@ void LcdAgingManager::HandleAfterAgingProgress(const int32_t errorCode)
             LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::INTERRUPTED, this->lastAgingProgress_);
             break;
         default:
-            if (this->lastAgingProgress_ < MAX_PROGRESS) {
-                LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::FAILED, this->lastAgingProgress_);
-            }
+            LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::FAILED, this->lastAgingProgress_);
             break;
     }
 }
@@ -609,6 +618,34 @@ int32_t LcdAgingManager::SetIsActiveLcdAging(bool isActive)
     SaveIsActiveLcdAgingToPrefs(isActive);
     isActiveLcdAging_.store(isActive ? 1 : 0);
     MEDIA_INFO_LOG("SetIsActiveLcdAging: %{public}d", isActive ? 1 : 0);
+    return E_OK;
+}
+
+int32_t LcdAgingManager::InsertDentryFileWithRetry(const std::vector<DentryFileInfo> &dentryFileInfos,
+    std::vector<std::string> &failCloudIds)
+{
+    int32_t ret = CloudSyncManager::GetInstance().BatchDentryFileInsert(dentryFileInfos, failCloudIds);
+    CHECK_AND_RETURN_RET(ret != E_OK, E_OK);
+    MEDIA_ERR_LOG("BatchDentryFileInsert failed, retrying, ret: %{public}d", ret);
+    failCloudIds.clear();
+    ret = CloudSyncManager::GetInstance().BatchDentryFileInsert(dentryFileInfos, failCloudIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "BatchDentryFileInsert retry failed, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("BatchDentryFileInsert retry succeeded");
+    return E_OK;
+}
+
+int32_t LcdAgingManager::CheckLcdAgingTargetReached(int32_t &excessSize)
+{
+    excessSize = 0;
+    int64_t lcdCurrentNumber = -1;
+    int32_t ret = lcdAgingDao_.GetCurrentNumberOfLcd(lcdCurrentNumber);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetCurrentNumberOfLcd, ret: %{public}d", ret);
+    if (lcdCurrentNumber <= LcdAgingUtils::GetScaleThresholdOfLcd()) {
+        MEDIA_INFO_LOG("LCD count reached target: %{public}" PRId64, lcdCurrentNumber);
+        return E_NO_QUERY_DATA;
+    }
+    excessSize = static_cast<int32_t>(std::min(
+        BATCH_TASK_SIZE, lcdCurrentNumber - LcdAgingUtils::GetScaleThresholdOfLcd()));
     return E_OK;
 }
 }  // namespace OHOS::Media
