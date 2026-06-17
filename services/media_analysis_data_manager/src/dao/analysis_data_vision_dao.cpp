@@ -370,7 +370,7 @@ int32_t AnalysisDataVisionDao::DeleteFromVisionProfileByFileId(const string &fil
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "rdbStore is null");
     string RESET_STATUS_AND_PROFILE = "\
         UPDATE tab_analysis_total \
-        SET status = 0, similarity = 0, duplicate = 0, total_score = 0 \
+        SET status = 0, similarity = 3, duplicate = 3, total_score = 0 \
         WHERE \
             file_id = ? AND (similarity <> 0 OR duplicate <> 0 OR total_score <> 0);";
     const std::vector<NativeRdb::ValueObject> bindArgs = {fileId};
