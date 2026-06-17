@@ -1182,6 +1182,7 @@ void CloneRestore::UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &file
         MovingPhotoFileUtils::GetLocalAssetSize(fileInfo.effectMode, FileAdapter::GetOriginalFilePath(fileInfo),
             fileInfo.fileSize, localAssetSize);
         values.PutLong(PhotoColumn::LOCAL_ASSET_SIZE, localAssetSize);
+        SetAttachmentSizeForCloudDuplicate(fileInfo, values);
         std::string whereClause = PhotoColumn::MEDIA_ID + " = ?";
         std::vector<std::string> whereArgs = {std::to_string(fileInfo.fileIdNew)};
         int32_t changedRows = 0;
@@ -1828,7 +1829,8 @@ int32_t CloneRestore::MoveAsset(FileInfo &fileInfo)
     // Thumbnail of photos.
     this->MoveThumbnail(fileInfo);
 
-    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(to_string(fileInfo.fileIdNew), fileInfo.cloudPath);
+    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(
+        to_string(fileInfo.fileIdNew), fileInfo.cloudPath, EditAndAttachmentUpdateType::EDIT_ONLY);
     return E_OK;
 }
 
@@ -1913,7 +1915,8 @@ int32_t CloneRestore::MergeDuplicateAsset(FileInfo &fileInfo)
     }
     RemoveMergedDentryForSamePhoto(fileInfo);
 
-    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(to_string(fileInfo.fileIdNew), fileInfo.cloudPath);
+    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(
+        to_string(fileInfo.fileIdNew), fileInfo.cloudPath, EditAndAttachmentUpdateType::EDIT_ONLY);
     return E_OK;
 }
 
@@ -4200,6 +4203,16 @@ void CloneRestore::CloneActiveLcdAgingFromOldDevice()
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING);
     int32_t result = IPC::UserDefineIPCClient().Call(businessCode);
     CHECK_AND_PRINT_LOG(result == E_OK, "CloneIsActiveLcdAging IPC call failed, result: %{public}d", result);
+}
+
+void CloneRestore::SetAttachmentSizeForCloudDuplicate(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
+{
+    if (fileInfo.position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) {
+        int64_t attachmentSize = 0;
+        if (GetIntegralValueFromValMap(fileInfo, PhotoColumn::ATTACHMENT_SIZE, attachmentSize) == E_OK) {
+            values.PutLong(PhotoColumn::ATTACHMENT_SIZE, attachmentSize);
+        }
+    }
 }
 } // namespace Media
 } // namespace OHOS

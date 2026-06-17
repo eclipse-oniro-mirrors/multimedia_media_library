@@ -129,7 +129,8 @@ public:
         const uint8_t *addr, const long bytes);
     EXPORT static void StoreThumbnailSize(const std::string& photoId, const std::string& photoPath);
     EXPORT static void StoreThumbnailSizeAndTime(const std::string& photoId, const std::string& photoPath);
-    EXPORT static void StoreThumbnailAndEditSize(const std::string& photoId, const std::string& photoPath);
+    EXPORT static void StoreThumbnailAndEditSize(const std::string& photoId, const std::string& photoPath,
+        EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
     EXPORT static bool HasDroppedThumbnailSize(const std::string& photoId);
     EXPORT static bool BatchDropThumbnailSize(const std::vector<std::string>& photoIds);
     EXPORT static int32_t ScanFileWithoutAlbumUpdate(MediaLibraryCommand &cmd);

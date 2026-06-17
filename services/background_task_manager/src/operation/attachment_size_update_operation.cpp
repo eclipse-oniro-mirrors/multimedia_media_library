@@ -35,7 +35,7 @@ using namespace OHOS::NativeRdb;
 
 namespace OHOS::Media {
 const std::string ORIGIN_ATTACHMENT_SIZE_ASSETS_NUMBER = "origin_attachment_size_assets_number";
-const std::int32_t ATTACHMENT_SIZE_SCAN_BATCH_SIZE = 50;
+const std::int32_t ATTACHMENT_SIZE_SCAN_BATCH_SIZE = 200;
 const std::string TASK_PROGRESS_XML = "/data/storage/el2/base/preferences/task_progress.xml";
 
 const std::string SQL_PHOTOS_TABLE_QUERY_ATTACHMENT_ASSETS = "SELECT"
@@ -122,10 +122,9 @@ void AttachmentSizeUpdateOperation::UpdateAttachmentSize()
         if (batchSize > 0) {
             curFileId = batchSize;
         } else {
-            MEDIA_WARN_LOG("No valid batch progress, break loop. curFileId: %{public}d, endId: %{public}d, "
+            MEDIA_WARN_LOG("No valid batch progress in current range. curFileId: %{public}d, endId: %{public}d, "
                 "batchSize: %{public}d", curFileId, endId, batchSize);
             curFileId = endId;
-            break;
         }
     }
     prefs->PutInt(ORIGIN_ATTACHMENT_SIZE_ASSETS_NUMBER, curFileId);
