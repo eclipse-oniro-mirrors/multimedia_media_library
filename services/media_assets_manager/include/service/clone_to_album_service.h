@@ -108,7 +108,7 @@ private:
         uint64_t &actualTotalSize);
     int32_t HandleAssetClone(const CloneAssetInfo &asset, std::string &newFileId,
         std::atomic<uint64_t> &processedSize, std::atomic<uint32_t> &processedCount,
-        CloneCallbackType &cloneCallbackType);
+        const CloneCallbackType &cloneCallbackType);
     int32_t QueryAssetInfo(const std::string &fileId, CloneAssetInfo &info);
     int32_t DoBurstAssetsClone(const CloneAssetInfo &cloneAssetInfo, std::function<void(uint64_t)> progressCallback);
     int32_t GetUriFromResult(std::shared_ptr<OHOS::NativeRdb::ResultSet> &resultSet,

@@ -61,6 +61,7 @@ struct TargetAssetInfo {
     std::function<void(uint64_t)> progressCallback = nullptr;
     std::string requestId = "";
     bool supportRename = true;
+    int32_t cloneCallbackType = -1;
 };
 
 public:
@@ -106,7 +107,7 @@ public:
     static void MigratePhotoMapData(const std::shared_ptr<MediaLibraryRdbStore> rdbStore);
     static void BuildTargetFilePath(std::string &targetPath, std::string displayName, int32_t mediaType);
     EXPORT static int32_t CloneProgressAsset(const CloneAssetInfo &cloneAssetInfo, const int32_t targetAlbumId,
-        std::string &newAssetIds, std::function<void(uint64_t)> progressCallback);
+        std::string &newAssetIds, std::function<void(uint64_t)> progressCallback, int32_t cloneCallbackType = -1);
     EXPORT static int32_t CheckBatchAssets(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);
 
 private:
