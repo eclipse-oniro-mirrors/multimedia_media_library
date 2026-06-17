@@ -956,10 +956,14 @@ bool ThumbnailUtils::CacheLcdInfo(ThumbRdbOpt &opts, ThumbnailData &data)
     if (GetLocalThumbSize(data, ThumbnailType::LCD, lcdSize)) {
         SetThumbnailSizeValue(values, lcdSize, PhotoColumn::PHOTO_LCD_SIZE);
     }
-    std::string lcdLocalPath = GetLocalThumbnailPath(data.path, THUMBNAIL_LCD_SUFFIX);
-    size_t lcdFileSize;
-    if (!lcdLocalPath.empty() && MediaFileUtils::GetFileSize(lcdLocalPath, lcdFileSize)) {
-        values.PutLong(PhotoColumn::PHOTO_LCD_FILE_SIZE, static_cast<int64_t>(lcdFileSize));
+    std::string suffixes[] = {THUMBNAIL_LCD_EX_SUFFIX, THUMBNAIL_LCD_SUFFIX};
+    size_t lcdFileSize = 0;
+    for (const auto& suffix : suffixes) {
+        std::string lcdCloudPath = GetThumbnailPath(data.path, suffix);
+        if (!lcdCloudPath.empty() && MediaFileUtils::GetFileSize(lcdCloudPath, lcdFileSize)) {
+            values.PutLong(PhotoColumn::PHOTO_LCD_FILE_SIZE, static_cast<int64_t>(lcdFileSize));
+            break;
+        }
     }
     return true;
 }
