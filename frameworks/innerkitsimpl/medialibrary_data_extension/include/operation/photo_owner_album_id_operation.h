@@ -21,6 +21,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "album_plugin_config.h"
 #include "medialibrary_rdbstore.h"
 
 namespace OHOS::Media {
@@ -96,10 +97,9 @@ private:
 
 private:  // sqls
     const int32_t MEDIA_TYPE_VIDEO = 2;
-    const std::string LPATH_SCREEN_RECORDS = "/Pictures/Screenrecords";
-    const std::string LPATH_SCREEN_SHOTS = "/Pictures/Screenshots";
-    const std::string GALLERT_ROOT_PATH = "/storage/emulated/";
+    const std::string GALLERY_ROOT_PATH = "/storage/emulated/";
     const std::string FILE_SEPARATOR = "/";
+    const std::string LPATH_DEFAULT_OTHER = "/Pictures/其它";
     const std::string SQL_NO_ALBUM_FILE_IDS = "\
         SELECT file_id, \
             media_type, \
