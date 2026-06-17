@@ -62,6 +62,7 @@ struct TargetAssetInfo {
     std::string requestId = "";
     bool supportRename = true;
     int32_t cloneCallbackType = -1;
+    std::string filePath = "";
 };
 
 public:
