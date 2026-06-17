@@ -748,23 +748,28 @@ int32_t ThumbnailGenerateHelper::UpdateLcdFileSizeAndThumbStatus(const std::stri
             break;
         }
     }
+    // 获取LCD宽高比
+    std::string lcdSizeStr;
+    bool hasLcdSize = ThumbnailUtils::CalcLcdSize(GetThumbnailPath(path, THUMBNAIL_LCD_SUFFIX), lcdSizeStr);
 
-    // 构建SQL语句，同时更新thumb_status和lcd_file_size
+    std::vector<NativeRdb::ValueObject> bindArgs = {static_cast<int32_t>(~LCD_TO_DOWNLOAD_MASK)};
+    // 构建SQL语句，同时更新thumb_status、lcd_file_size和lcd_size
     std::string sql = "\
         UPDATE Photos \
             SET thumb_status = thumb_status & ?";
     if (lcdFileSize >= 0) {
         sql += ", lcd_file_size = ?";
+        bindArgs.push_back(lcdFileSize);
+    }
+    if (hasLcdSize) {
+        sql += ", lcd_size = ?";
+        bindArgs.push_back(lcdSizeStr);
     }
     sql += " WHERE file_id IN ({0})";
 
     std::vector<std::string> ids = { id };
     std::vector<std::string> params = {CloudSync::CloudMediaDaoUtils::ToStringWithCommaAndQuote(ids)};
     std::string execSql = CloudMediaCommon::FillParams(sql, params);
-    std::vector<NativeRdb::ValueObject> bindArgs = {static_cast<int32_t>(~LCD_TO_DOWNLOAD_MASK)};
-    if (lcdFileSize >= 0) {
-        bindArgs.push_back(lcdFileSize);
-    }
 
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(MediaColumn::MEDIA_ID, ids);
