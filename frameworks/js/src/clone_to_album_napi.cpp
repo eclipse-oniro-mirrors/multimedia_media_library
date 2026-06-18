@@ -439,7 +439,8 @@ static void CompleteCloneToDir(napi_env env, napi_status status, void *data)
         napi_create_array_with_length(env, fileUris.size(), &jsFileArray);
         for (i = 0; i < fileUris.size(); i++) {
             napi_get_undefined(env, &jsFileAsset);
-            if (napi_create_string_utf8(env, fileUris[i].c_str(), NAPI_AUTO_LENGTH, &jsFileAsset) != napi_ok) {
+            if (napi_create_string_utf8(env,
+                MediaFileUtils::Encode(fileUris[i]).c_str(), NAPI_AUTO_LENGTH, &jsFileAsset) != napi_ok) {
                 NAPI_ERR_LOG("Failed to create file uri string");
                 napi_get_undefined(env, &jsContext->data);
                 MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, ERR_MEM_ALLOCATION,
@@ -564,7 +565,7 @@ static void CompleteCloneAssetsByPath(napi_env env, napi_status status, void *da
         napi_create_array_with_length(env, fileUris.size(), &jsFileArray);
         for (i = 0; i < fileUris.size(); i++) {
             napi_get_undefined(env, &jsFileAsset);
-            napi_create_string_utf8(env, fileUris[i].c_str(), NAPI_AUTO_LENGTH, &jsFileAsset);
+            napi_create_string_utf8(env, MediaFileUtils::Encode(fileUris[i]).c_str(), NAPI_AUTO_LENGTH, &jsFileAsset);
             if (napi_set_element(env, jsFileArray, i, jsFileAsset) != napi_ok) {
                 NAPI_ERR_LOG("Failed to get file asset napi object");
                 napi_get_undefined(env, &jsContext->data);
