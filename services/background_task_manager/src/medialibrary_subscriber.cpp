@@ -91,7 +91,6 @@
 #include "medialibrary_aspect_ratio_operation.h"
 #include "database_adapter.h"
 #include "product_info.h"
-#include "permission_whitelist_utils.h"
 #include "thumbnail_service.h"
 #include "cloud_media_retain_smart_data.h"
 #include "power_mgr_client.h"
@@ -163,9 +162,6 @@ std::mutex uploadDBMutex;
 int64_t g_lastTime = MediaFileUtils::UTCTimeMilliSeconds();
 const int64_t TWELVE_HOUR_MS = static_cast<int64_t>(12 * 3600 * 1000);
 constexpr int32_t SUBSCRIBE_TASK_TIMEOUT_SECOND = 2;
-const string CLOUD_UPDATE_EVENT = "usual.event.DUE_HAP_CFG_UPDATED";
-const string CLOUD_EVENT_INFO_TYPE = "type";
-const string CLOUD_EVENT_INFO_TYPE_VALUE = "medialibrary_kit_whitelist";
 const std::string CLONE_FLAG = "multimedia.medialibrary.cloneFlag";
 const std::string CLONE_STATE = "persist.dataclone.state";
 
@@ -186,8 +182,7 @@ const std::vector<std::string> MedialibrarySubscriber::events_ = {
     EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_START,
     EventFwk::CommonEventSupport::COMMON_EVENT_RESTORE_END,
     EventFwk::CommonEventSupport::COMMON_EVENT_POWER_CONNECTED,
-    EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED,
-    CLOUD_UPDATE_EVENT
+    EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED
 };
 
 const std::map<std::string, StatusEventType> BACKGROUND_OPERATION_STATUS_MAP = {
@@ -674,9 +669,6 @@ void MedialibrarySubscriber::OnReceiveEvent(const EventFwk::CommonEventData &eve
         MediaLakeCloneEventManager::GetInstance().HandleRestoreEvent(want);
     }
     OnReceiveEventSubAction(action);
-    if (action == CLOUD_UPDATE_EVENT && want.GetStringParam(CLOUD_EVENT_INFO_TYPE) == CLOUD_EVENT_INFO_TYPE_VALUE) {
-        PermissionWhitelistUtils::OnReceiveEvent();
-    }
     OnReceiveEventSub(eventData);
     // !! Do not add code here !!
 }
