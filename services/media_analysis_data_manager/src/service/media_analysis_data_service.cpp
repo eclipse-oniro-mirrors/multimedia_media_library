@@ -658,6 +658,7 @@ int32_t MediaAnalysisDataService::PrepareLcd(const std::vector<int64_t> &fileIds
         for (auto fileId : fileIds) {
             results[fileId] = static_cast<int32_t>(PrepareLcdResult::GENERATE_FAILURE);
         }
+        this->lcdAgingDao_.InsertFailedPhotosExt(results);
         return E_ERR;
     }
     std::vector<int64_t> needDownloadFileIds;
@@ -669,6 +670,8 @@ int32_t MediaAnalysisDataService::PrepareLcd(const std::vector<int64_t> &fileIds
     if (!needDownloadFileIds.empty()) {
         successCount += this->lcdAgingDao_.ProcessNeedDownloadFiles(needDownloadFileIds, netBearerBitmap, results);
     }
+    this->lcdAgingDao_.InsertFailedPhotosExt(results);
+
     if (successCount == static_cast<int32_t>(fileIds.size())) {
         return 0;
     } else if (successCount > 0) {

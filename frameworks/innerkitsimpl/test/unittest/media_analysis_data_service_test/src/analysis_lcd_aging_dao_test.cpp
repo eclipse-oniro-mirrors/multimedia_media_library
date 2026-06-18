@@ -43,6 +43,7 @@ static void CleanTestTables()
     std::vector<std::string> dropTableList = {
         PhotoColumn::PHOTOS_TABLE,
         PhotoAlbumColumns::TABLE,
+        PhotoExtColumn::PHOTOS_EXT_TABLE,
     };
     for (auto &dropTable : dropTableList) {
         std::string dropSql = "DROP TABLE IF EXISTS " + dropTable + ";";
@@ -60,6 +61,7 @@ static void SetTables()
     std::vector<std::string> createTableSqlList = {
         PhotoUpgrade::CREATE_PHOTO_TABLE,
         PhotoAlbumColumns::CREATE_TABLE,
+        PhotoExtUpgrade::CREATE_PHOTO_EXT_TABLE,
     };
     for (auto &createTableSql : createTableSqlList) {
         int32_t ret = g_rdbStore->ExecuteSql(createTableSql);
@@ -265,6 +267,129 @@ HWTEST_F(AnalysisLcdAgingDaoTest, MarkNotFoundFiles_Test_001, TestSize.Level1)
     EXPECT_EQ(results[1002], static_cast<int32_t>(PrepareLcdResult::GENERATE_FAILURE));
     EXPECT_TRUE(results.find(1001) == results.end());
     EXPECT_TRUE(results.find(1003) == results.end());
+}
+
+static int32_t QueryPhotosExtCount(const std::vector<int64_t> &fileIds)
+{
+    if (fileIds.empty()) {
+        return 0;
+    }
+    std::string valuesSql;
+    for (auto fileId : fileIds) {
+        if (!valuesSql.empty()) {
+            valuesSql += ", ";
+        }
+        valuesSql += std::to_string(fileId);
+    }
+    std::string sql = "SELECT COUNT(*) AS cnt FROM " + PhotoExtColumn::PHOTOS_EXT_TABLE +
+        " WHERE " + PhotoExtColumn::PHOTO_ID + " IN (" + valuesSql + ")";
+    auto resultSet = g_rdbStore->QuerySql(sql);
+    if (resultSet == nullptr || resultSet->GoToNextRow() != NativeRdb::E_OK) {
+        if (resultSet != nullptr) {
+            resultSet->Close();
+        }
+        return -1;
+    }
+    int32_t count = GetInt32Val("cnt", resultSet);
+    resultSet->Close();
+    return count;
+}
+
+static void InsertPhotosExt(const std::vector<int64_t> &fileIds)
+{
+    for (auto fileId : fileIds) {
+        std::string sql = "INSERT INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE +
+            "(" + PhotoExtColumn::PHOTO_ID + ") VALUES(" + std::to_string(fileId) + ")";
+        g_rdbStore->ExecuteSql(sql);
+    }
+}
+
+// 用例说明：测试results全部为失败结果时批量插入
+// 覆盖场景：results中所有值均为失败（GENERATE_FAILURE/DOWNLOAD_FAILURE/NO_NETWORK）
+// 分支点：entry.second == SUCCESS → continue跳过，全部不走continue，valuesSql拼接3个值
+// 触发条件：results中所有值不为SUCCESS
+// 业务验证：返回E_OK，tab_photos_ext中新增3条记录
+HWTEST_F(AnalysisLcdAgingDaoTest, InsertFailedPhotosExt_Test_001, TestSize.Level1)
+{
+    AnalysisLcdAgingDao dao;
+    unordered_map<uint64_t, int32_t> results = {
+        {2001, static_cast<int32_t>(PrepareLcdResult::GENERATE_FAILURE)},
+        {2002, static_cast<int32_t>(PrepareLcdResult::DOWNLOAD_FAILURE)},
+        {2003, static_cast<int32_t>(PrepareLcdResult::NO_NETWORK)},
+    };
+    int32_t ret = dao.InsertFailedPhotosExt(results);
+    EXPECT_EQ(ret, E_OK);
+    int32_t count = QueryPhotosExtCount({2001, 2002, 2003});
+    EXPECT_EQ(count, 3);
+}
+
+// 用例说明：测试SUCCESS被continue跳过，INSERT OR IGNORE跳过已存在记录
+// 覆盖场景：results中混合成功和失败，tab_photos_ext中部分photo_id已存在
+// 分支点：entry.second == SUCCESS → continue跳过；INSERT OR IGNORE跳过已存在记录
+// 触发条件：部分SUCCESS、部分失败，部分已存在于tab_photos_ext
+// 业务验证：返回E_OK，仅失败的且不存在的fileId被插入
+HWTEST_F(AnalysisLcdAgingDaoTest, InsertFailedPhotosExt_Test_002, TestSize.Level1)
+{
+    InsertPhotosExt({3001});
+    AnalysisLcdAgingDao dao;
+    unordered_map<uint64_t, int32_t> results = {
+        {3001, static_cast<int32_t>(PrepareLcdResult::GENERATE_FAILURE)},
+        {3002, static_cast<int32_t>(PrepareLcdResult::SUCCESS)},
+        {3003, static_cast<int32_t>(PrepareLcdResult::DOWNLOAD_FAILURE)},
+        {3004, static_cast<int32_t>(PrepareLcdResult::NO_NETWORK)},
+    };
+    int32_t ret = dao.InsertFailedPhotosExt(results);
+    EXPECT_EQ(ret, E_OK);
+    int32_t count = QueryPhotosExtCount({3001, 3003, 3004});
+    EXPECT_EQ(count, 3);
+}
+
+// 用例说明：测试全部SUCCESS时valuesSql为空，直接返回
+// 覆盖场景：results中所有值均为SUCCESS
+// 分支点：全部走continue，valuesSql为空，valuesSql.empty()返回E_OK
+// 触发条件：所有results值均为SUCCESS
+// 业务验证：返回E_OK，tab_photos_ext无新增记录
+HWTEST_F(AnalysisLcdAgingDaoTest, InsertFailedPhotosExt_Test_003, TestSize.Level1)
+{
+    AnalysisLcdAgingDao dao;
+    unordered_map<uint64_t, int32_t> results = {
+        {4001, static_cast<int32_t>(PrepareLcdResult::SUCCESS)},
+        {4002, static_cast<int32_t>(PrepareLcdResult::SUCCESS)},
+    };
+    int32_t ret = dao.InsertFailedPhotosExt(results);
+    EXPECT_EQ(ret, E_OK);
+    int32_t count = QueryPhotosExtCount({4001, 4002});
+    EXPECT_EQ(count, 0);
+}
+
+// 用例说明：测试空results时直接返回
+// 覆盖场景：提供空的results
+// 分支点：results.empty() → 不进入循环，valuesSql为空，直接返回E_OK
+// 触发条件：提供空的map
+// 业务验证：返回E_OK，不做任何操作
+HWTEST_F(AnalysisLcdAgingDaoTest, InsertFailedPhotosExt_Test_004, TestSize.Level1)
+{
+    AnalysisLcdAgingDao dao;
+    unordered_map<uint64_t, int32_t> results;
+    int32_t ret = dao.InsertFailedPhotosExt(results);
+    EXPECT_EQ(ret, E_OK);
+}
+
+// 用例说明：测试单条失败记录时插入一条
+// 覆盖场景：results中仅包含一条失败记录
+// 分支点：不走continue，valuesSql拼接1个值，INSERT OR IGNORE插入1条
+// 触发条件：results中仅有一个失败记录
+// 业务验证：只插入该失败的fileId
+HWTEST_F(AnalysisLcdAgingDaoTest, InsertFailedPhotosExt_Test_005, TestSize.Level1)
+{
+    AnalysisLcdAgingDao dao;
+    unordered_map<uint64_t, int32_t> results = {
+        {5001, static_cast<int32_t>(PrepareLcdResult::GENERATE_FAILURE)},
+    };
+    int32_t ret = dao.InsertFailedPhotosExt(results);
+    EXPECT_EQ(ret, E_OK);
+    int32_t count = QueryPhotosExtCount({5001});
+    EXPECT_EQ(count, 1);
 }
 
 } // namespace Media
