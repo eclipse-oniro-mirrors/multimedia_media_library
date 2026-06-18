@@ -209,6 +209,9 @@ int32_t PhotoMapOperations::AddHighlightPhotoAssets(const vector<DataShareValues
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET(rdbStore != nullptr, E_HAS_DB_ERROR);
 
+    int32_t updateHighlight = MediaLibraryRdbUtils::UpdateHighlightPlayInfo(rdbStore, std::to_string(albumId));
+    CHECK_AND_PRINT_LOG(updateHighlight >= 0, "Update highlight playinfo fail");
+
     AccurateRefresh::AnalysisAlbumAccurateRefresh albumRefresh;
     albumRefresh.CustomUpdateAlbumsWithDeltaCount(insertCount, std::vector<string>{to_string(albumId)});
     albumRefresh.NotifyAnalysisAssetChange(photoIds, AccurateRefresh::RDB_OPERATION_ADD_ANALYSIS);
