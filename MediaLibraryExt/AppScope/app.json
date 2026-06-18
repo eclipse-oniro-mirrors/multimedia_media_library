@@ -2,8 +2,8 @@
   "app": {
     "bundleName": "com.ohos.medialibrary.medialibrarydata",
     "vendor": "huawei",
-    "versionCode": 400010283,
-    "versionName": "4.0.10.283",
+    "versionCode": 400010285,
+    "versionName": "4.0.10.285",
     "minAPIVersion": 9,
     "targetAPIVersion": 9,
     "KeepAlive": true,
