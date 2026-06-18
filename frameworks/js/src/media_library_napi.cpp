@@ -17561,8 +17561,8 @@ static napi_value ParseCoverOrderInfoArray(napi_env env, napi_value arg,
         DefaultCoverOrderInfo info;
         CHECK_COND_WITH_MESSAGE(env, GetInt32Property(env, napiValue, "albumType", info.albumType) == napi_ok,
             "Failed to parse albumType");
-        CHECK_COND_WITH_MESSAGE(env, GetInt32Property(env, napiValue, "albumSubType", info.albumSubType) == napi_ok,
-            "Failed to parse albumSubType");
+        CHECK_COND_WITH_MESSAGE(env, GetInt32Property(env, napiValue, "albumSubtype", info.albumSubType) == napi_ok,
+            "Failed to parse albumSubtype");
         CHECK_COND_WITH_MESSAGE(env, GetStringProperty(env, napiValue, "lpath", info.lpath, true) == napi_ok,
             "Failed to parse lpath");
         CHECK_COND_WITH_MESSAGE(env, GetStringProperty(env, napiValue, "orderKey", info.orderKey) == napi_ok,
