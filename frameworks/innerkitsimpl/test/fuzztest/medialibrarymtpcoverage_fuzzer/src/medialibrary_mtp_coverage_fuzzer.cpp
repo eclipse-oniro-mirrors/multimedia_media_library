@@ -354,7 +354,7 @@ static void DatabaseDataInitial()
     albumValues.PutString(PhotoAlbumColumns::ALBUM_NAME, provider->ConsumeBytesAsString(NUM_BYTES));
     g_albumId = 0;
     rdbStore_->Insert(g_albumId, PhotoAlbumColumns::TABLE, albumValues);
-    MEDIA_INFO_LOG("albumId: %{public}lld.", g_albumId);
+    MEDIA_INFO_LOG("albumId: %{public}ld.", g_albumId);
     
     NativeRdb::ValuesBucket photoValues;
     photoValues.PutInt(PhotoColumn::PHOTO_POSITION, FuzzPhotoPosition());

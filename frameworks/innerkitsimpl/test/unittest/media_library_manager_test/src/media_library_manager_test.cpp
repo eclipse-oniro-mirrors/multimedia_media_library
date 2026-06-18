@@ -754,6 +754,15 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_ReadPrivateMovingPhoto_tes
     EXPECT_EQ(mediaLibraryExtendManager->ReadPrivateMovingPhoto(uri, HideSensitiveType::ALL_DESENSITIZE), E_ERR);
 }
 
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test, TestSize.Level1)
+{
+    EXPECT_NE(mediaLibraryExtendManager, nullptr);
+    string columnName = "file_id";
+    string value = "1";
+    vector<string> columns;
+    EXPECT_EQ(mediaLibraryExtendManager->GetResultSetFromDb(columnName, value, columns), nullptr);
+}
+
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_InitMediaLibraryManager_test, TestSize.Level1)
 {
     ASSERT_NE(mediaLibraryManager, nullptr);
@@ -795,6 +804,17 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test_00
     std::shared_ptr<DataShare::DataShareResultSet> res =
         mediaLibraryManager->GetResultSetFromDb(columnName, value, columns);
     EXPECT_EQ(res, nullptr);
+}
+
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_GetResultSetFromDb_test_003, TestSize.Level1)
+{
+    ASSERT_NE(mediaLibraryManager, nullptr);
+    std::shared_ptr<DataShareResultSet> ptr = nullptr;
+    std::string columnName = "file_id_test";
+    std::string value = "test";
+    std::vector<string> columns;
+    ptr = mediaLibraryManager->GetResultSetFromDb(columnName, value, columns);
+    EXPECT_EQ(ptr, nullptr);
 }
 
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CheckResultSet_test, TestSize.Level1)
