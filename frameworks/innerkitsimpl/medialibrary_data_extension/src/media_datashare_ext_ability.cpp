@@ -787,6 +787,8 @@ static void SetOprnObjectWithOperationValue(MediaLibraryCommand &cmd,
         cmd.SetOprnObject(OperationObject::THUMBNAIL);
     } else if (operationValue == CONST_MEDIA_DATA_DB_THUMB_ASTC) {
         cmd.SetOprnObject(OperationObject::THUMBNAIL_ASTC);
+    } else if (operationValue == MEDIA_DATA_DB_KEY_FRAME) {
+        cmd.SetOprnObject(OperationObject::KEY_FRAME);
     }
 }
 
@@ -837,8 +839,9 @@ int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
     CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER) == string::npos,
         command.SetOprnObject(OperationObject::PHOTO_REQUEST_PICTURE_BUFFER));
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(MEDIA_DATA_DB_KEY_FRAME) == string::npos,
-        command.SetOprnObject(OperationObject::KEY_FRAME));
+    MEDIA_DEBUG_LOG("OpenFile before process, oprnObject: %{public}d",
+        static_cast<int32_t>(command.GetOprnObject()));
+
     int32_t ret = MediaLibraryDataManager::GetInstance()->OpenFile(command, unifyMode);
     DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
     return ret;
