@@ -66,6 +66,9 @@ public:
     // 处理需要下载的文件
     int32_t ProcessNeedDownloadFiles(const std::vector<int64_t> &needDownloadFileIds, uint32_t netBearerBitmap,
         std::unordered_map<uint64_t, int32_t> &results);
+
+    // 从results中收集失败的fileIds并插入tab_photos_ext
+    int32_t InsertFailedPhotosExt(const std::unordered_map<uint64_t, int32_t> &results);
 private:
     // SQL查询语句：根据fileIds查询满足老化条件的数据
     static const std::string SQL_QUERY_AGING_LCD_BY_FILE_IDS;

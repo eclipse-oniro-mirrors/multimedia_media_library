@@ -17,6 +17,7 @@
 
 #include "analysis_lcd_aging_dao.h"
 
+#include "analysis_net_connect_observer.h"
 #include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -206,5 +207,30 @@ int32_t AnalysisLcdAgingDao::ProcessNeedDownloadFiles(
     return successCount;
 }
 
+int32_t AnalysisLcdAgingDao::InsertFailedPhotosExt(const std::unordered_map<uint64_t, int32_t> &results)
+{
+    std::string valuesSql;
+    for (const auto &entry : results) {
+        if (entry.second == static_cast<int32_t>(PrepareLcdResult::SUCCESS)) {
+            continue;
+        }
+        if (!valuesSql.empty()) {
+            valuesSql += ", ";
+        }
+        valuesSql += "(" + std::to_string(entry.first) + ")";
+    }
+    if (valuesSql.empty()) {
+        MEDIA_INFO_LOG("no need insert PhotosExt");
+        return E_OK;
+    }
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "InsertFailedPhotosExt Failed to get rdbStore.");
+
+    std::string insertSql = "INSERT OR IGNORE INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
+        PhotoExtColumn::PHOTO_ID + ") VALUES " + valuesSql;
+    int32_t ret = rdbStore->ExecuteSql(insertSql);
+    MEDIA_INFO_LOG("InsertPhotosExt execute, valuesSql=%{public}s, ret=%{public}d", valuesSql.c_str(), ret);
+    return ret;
+}
 } // namespace OHOS::Media::AnalysisData
 // LCOV_EXCL_STOP
