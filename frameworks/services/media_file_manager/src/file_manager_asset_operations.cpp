@@ -32,6 +32,8 @@
 #include "photo_file_utils.h"
 #include "media_duplicate_checker_utils.h"
 #include "moving_photo_file_utils.h"
+#include "file_management_utils.h"
+#include "photo_file_operation.h"
 
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Media::AccurateRefresh;
@@ -57,8 +59,37 @@ static void UpdateModifyTime(const string &path, int64_t localMtime)
     }
 }
 
+static bool MoveAsset(const std::string &srcPath, const std::string &destPath, bool isLocalRename, int64_t dateModified)
+{
+    bool ret = false;
+    if (isLocalRename) {
+        std::string localPath = FileManagementUtils::GetLocalPath(destPath);
+        bool opRet = MediaFileUtils::MoveFile(srcPath, localPath);
+        if (!opRet) {
+            MEDIA_WARN_LOG("MoveFile failed, try CrossPolicy mode.");
+            opRet = MediaFileUtils::MoveFile(srcPath, localPath, true);
+            if (opRet) {
+                MediaFileUtils::ModifyFile(localPath, dateModified / MSEC_TO_SEC);
+            }
+        }
+        if (!opRet) {
+            MEDIA_ERR_LOG("MoveFile failed, srcPath: %{public}s, localPath: %{public}s",
+                DfxUtils::GetSafePath(srcPath).c_str(), DfxUtils::GetSafePath(localPath).c_str());
+            return false;
+        }
+    } else {
+        ret = MediaFileUtils::CopyFileAndDelSrc(srcPath, destPath);
+        if (!ret) {
+            MEDIA_ERR_LOG("CopyFileUtil failed, srcPath: %{public}s, destPath: %{public}s",
+                DfxUtils::GetSafePath(srcPath).c_str(), DfxUtils::GetSafePath(destPath).c_str());
+            return false;
+        }
+    }
+    return true;
+}
+
 int32_t FileManagerAssetOperations::MoveFileManagerAsset(
-    const std::string &srcPath, const std::string &destPath, bool isMovingPhoto)
+    const std::string &srcPath, const std::string &destPath, bool isMovingPhoto, bool isLocalRename)
 {
     MEDIA_INFO_LOG("MoveFileManagerAsset from %{public}s to %{public}s", DfxUtils::GetSafePath(srcPath).c_str(),
         DfxUtils::GetSafePath(destPath).c_str());
@@ -75,10 +106,70 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(
             srcPath, destPath, FileSourceType::FILE_MANAGER, true);
         ret = result.errCode;
     } else {
-        ret = MediaFileUtils::CopyFileAndDelSrc(srcPath, destPath) ? E_OK : E_ERR;
+        ret = MoveAsset(srcPath, destPath, isLocalRename, originalDataModified) ? E_OK : E_ERR;
     }
     if (isDateModifiedValid) {
         UpdateModifyTime(destPath, originalDataModified);
+    }
+    return ret;
+}
+
+int32_t FileManagerAssetOperations::MoveFileManagerAsset(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo)
+{
+    if (photoInfo.fileSourceType != FileSourceType::FILE_MANAGER) {
+        MEDIA_ERR_LOG("fileSourceType is not file manager");
+        return E_ERR;
+    }
+    string filePath = photoInfo.data.value_or("");
+    std::string parentDir = filePath.substr(0, filePath.find_last_of('/'));
+    if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
+        MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
+            DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(filePath).c_str());
+    }
+    int32_t ret = E_ERR;
+    auto subtype = photoInfo.subtype.value_or(0);
+    auto effectMode = photoInfo.movingPhotoEffectMode.value_or(0);
+    auto originalSubtype = photoInfo.originalSubtype.value_or(0);
+    int64_t dateModified = photoInfo.dateModified.value_or(0);
+    auto isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
+    if (isMovingPhoto) {
+        MoveResult result = MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(
+            photoInfo.data.value_or(""), targetPhotoInfo.storagePath.value_or(""),
+            FileSourceType::FILE_MANAGER, true);
+        ret = result.errCode;
+    } else {
+        ret = MoveAsset(photoInfo.data.value_or(""),
+            targetPhotoInfo.storagePath.value_or(""), false, dateModified) ? E_OK : E_ERR;
+        UpdateModifyTime(targetPhotoInfo.storagePath.value_or(""), dateModified);
+    }
+    return ret;
+}
+
+int32_t FileManagerAssetOperations::MoveFileManagerAsset(const PhotosPo &photoInfo)
+{
+    if (photoInfo.fileSourceType != FileSourceType::FILE_MANAGER) {
+        MEDIA_ERR_LOG("fileSourceType is not file manager");
+        return E_ERR;
+    }
+    string filePath = photoInfo.data.value_or("");
+    std::string parentDir = filePath.substr(0, filePath.find_last_of('/'));
+    if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
+        MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
+            DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(filePath).c_str());
+    }
+    int32_t ret = E_ERR;
+    auto subtype = photoInfo.subtype.value_or(0);
+    auto effectMode = photoInfo.movingPhotoEffectMode.value_or(0);
+    auto originalSubtype = photoInfo.originalSubtype.value_or(0);
+    int64_t dateModified = photoInfo.dateModified.value_or(0);
+    auto isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subtype, effectMode, originalSubtype);
+    if (isMovingPhoto) {
+        MoveResult result = MediaFileAccessUtils::ProcessLivePhotoToMovingPhoto(photoInfo.storagePath.value_or(""),
+            photoInfo.data.value_or(""), true);
+        ret = result.errCode;
+    } else {
+        ret = MoveAsset(photoInfo.storagePath.value_or(""),
+            photoInfo.data.value_or(""), true, dateModified) ? E_OK : E_ERR;
     }
     return ret;
 }
@@ -138,14 +229,14 @@ static int32_t ReNameAssetsFromFileManager(AccurateRefreshBase &refresh,
         MoveResult result = MediaFileAccessUtils::ProcessLivePhotoToMovingPhoto(fileManagerPath, mediaPath, true);
         ret = result.errCode;
     } else {
-        ret = FileManagerAssetOperations::MoveFileManagerAsset(fileManagerPath, mediaPath);
+        ret = FileManagerAssetOperations::MoveFileManagerAsset(fileManagerPath, mediaPath, false, true);
     }
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "move asset from %{public}s to %{public}s error, errno: %{public}d",
         DfxUtils::GetSafePath(fileManagerPath).c_str(), DfxUtils::GetSafePath(mediaPath).c_str(), errno);
     return E_OK;
 }
 
-int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(AccurateRefreshBase &refresh,
+int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(AssetAccurateRefresh &refresh,
     const std::vector<std::string> &ids, bool needRefresh)
 {
     MEDIA_INFO_LOG("MoveAssetsFromFileManager enter %{public}zu", ids.size());
@@ -178,6 +269,9 @@ int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(AccurateRefreshBas
         }
     }
     resultSet->Close();
+    if (needRefresh) {
+        refresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
+    }
     return ret;
 }
 
@@ -284,7 +378,7 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
     //移动源文件前需要刷新数据库字段
     UpdateFileManageAssetInfo(refresh, mediaId, tmpInnerFilePath, tmpDisplayName, tmpTitle);
     int32_t ret = FileManagerAssetOperations::MoveFileManagerAsset(outerFilePath, tmpInnerFilePath,
-        IsMovingPhoto(resultSet));
+        IsMovingPhoto(resultSet), false);
     CHECK_AND_PRINT_LOG(ret == E_OK, "move asset %{public}s to %{public}s error, errno: %{public}d.",
         DfxUtils::GetSafePath(outerFilePath).c_str(), DfxUtils::GetSafePath(tmpInnerFilePath).c_str(), errno);
     if (ret == E_OK) {
@@ -295,7 +389,7 @@ static int32_t MoveAssetToFileManage(AccurateRefreshBase &refresh,
     return E_OK;
 }
 
-int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::AccurateRefreshBase &refresh,
+int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::AssetAccurateRefresh &refresh,
     const std::vector<std::string> &ids)
 {
     MEDIA_INFO_LOG("MoveAssetsToFileManage enter %{public}zu", ids.size());
@@ -326,6 +420,7 @@ int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::Acc
         MoveAssetToFileManage(refresh, resultSet);
     }
     resultSet->Close();
+    refresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     return E_OK;
 }
 

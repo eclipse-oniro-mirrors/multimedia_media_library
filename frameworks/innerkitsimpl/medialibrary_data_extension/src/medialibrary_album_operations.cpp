@@ -2046,7 +2046,7 @@ static set<string> GetHiddenUri(const vector<string> &uris)
     return result;
 }
 
-static void HandleLakeAndFileManager(AccurateRefreshBase &refresh, const std::vector<std::string> &ids)
+static void HandleLakeAndFileManager(AssetAccurateRefresh &refresh, const std::vector<std::string> &ids)
 {
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     int32_t ret = LakeFileOperations::MoveAssetsToLake(refresh, ids);
