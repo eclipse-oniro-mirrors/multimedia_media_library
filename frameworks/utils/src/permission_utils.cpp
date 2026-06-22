@@ -474,7 +474,10 @@ void PermissionUtils::CollectPermissionRecord(const AccessTokenID &token, const 
     auto iter = FindMatchingPermissionInfo(infos_, token, perm, type);
     if (iter != infos_.end()) {
         // Use existing permission info
-        if (!UpdatePermissionInfoWithOpenData(*iter, openDataInfo)) {
+        if (UpdatePermissionInfoWithOpenData(*iter, openDataInfo)) {
+            iter->successCount += permGranted;
+            iter->failCount += !permGranted;
+        } else {
             AddToPendingOpenPermissionInfo(token, perm, permGranted, type, openDataInfo);
         }
     } else {
