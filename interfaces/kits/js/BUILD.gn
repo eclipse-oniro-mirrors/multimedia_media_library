@@ -396,6 +396,7 @@ ohos_shared_library("medialibrary_nutils") {
   ]
 
   external_deps = [
+    "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
     "ability_runtime:ability_context_native",
@@ -420,6 +421,7 @@ ohos_shared_library("medialibrary_nutils") {
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
     "e2fsprogs:libext2_uuid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
@@ -438,6 +440,7 @@ ohos_shared_library("medialibrary_nutils") {
     "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
@@ -539,15 +542,20 @@ ohos_shared_library("medialibrary") {
     "ability_runtime:abilitykit_native",
     "ability_runtime:napi_base_context",
     "ability_runtime:napi_common",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "window_manager:libwmutil",
   ]
 
   defines = []
@@ -612,15 +620,20 @@ ohos_shared_library("userfilemanager") {
     "ability_runtime:abilitykit_native",
     "ability_runtime:napi_base_context",
     "ability_runtime:napi_common",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
     "i18n:intl_util",
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "window_manager:libwmutil",
   ]
 
   defines = []
@@ -690,10 +703,12 @@ ohos_shared_library("photoaccesshelpernative") {
     "ability_runtime:abilitykit_native",
     "ability_runtime:napi_base_context",
     "ability_runtime:napi_common",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_blkid",
+    "form_fwk:form_manager",
     "hiappevent:hiappevent_innerapi",
     "hilog:libhilog",
     "i18n:intl_util",
@@ -701,6 +716,9 @@ ohos_shared_library("photoaccesshelpernative") {
     "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
+    "window_manager:libwmutil",
   ]
 
   defines = []
@@ -949,6 +967,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "common_event_service:cesfwk_innerkits",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
+    "form_fwk:form_manager",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "i18n:intl_util",
@@ -960,9 +979,11 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "ipc:ipc_single",
     "ipc:rpc",
     "ipc:ipc_napi",
+    "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "qos_manager:qos",
   ]

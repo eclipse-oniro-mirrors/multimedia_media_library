@@ -36,6 +36,7 @@ ohos_shared_library("media_library_handler") {
   public_configs = [ ":media_library_handler_config" ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "access_token:libaccesstoken_sdk",
     "access_token:libprivacy_sdk",
     "access_token:libtokenid_sdk",

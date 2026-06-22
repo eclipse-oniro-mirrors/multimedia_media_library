@@ -214,6 +214,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "ability_runtime:ability_manager",
     "ability_runtime:abilitykit_native",
     "ability_runtime:app_context",
+    "ability_runtime:dataobs_manager",
     "ability_runtime:napi_base_context",
     "ability_runtime:runtime",
     "ability_runtime:uri_permission_mgr",
@@ -250,6 +251,7 @@ ohos_unittest("media_assets_controller_service_test") {
     "os_account:os_account_innerkits",  # os_account
     "player_framework:media_client",
     "preferences:native_preferences",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "zlib:shared_libz",

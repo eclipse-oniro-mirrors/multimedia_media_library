@@ -105,6 +105,7 @@ ohos_shared_library("media_library_camera_helper") {
   cflags_cc = [ "-Os" ]
 
   external_deps = [
+    "ability_base:configuration",
     "ability_runtime:ability_connect_callback_stub",
     "ability_runtime:app_context",
     "bundle_framework:appexecfwk_core",
@@ -113,6 +114,7 @@ ohos_shared_library("media_library_camera_helper") {
     "icu:shared_icuuc",
     "image_framework:image_native",
     "ipc:ipc_core",
+    "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
     "player_framework:media_client",
     "relational_store:native_rdb",

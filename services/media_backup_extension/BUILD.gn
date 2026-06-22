@@ -153,6 +153,7 @@ ohos_shared_library("mediabackup") {
   ]
 
   external_deps = [
+    "ability_base:configuration",
     "ability_base:zuri",
     "ability_runtime:ability_manager",
     "ability_runtime:app_context",
@@ -183,6 +184,7 @@ ohos_shared_library("mediabackup") {
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
+    "resource_management:global_resmgr",
     "samgr:samgr_proxy",
     "zlib:shared_libz",
     "eventhandler:libeventhandler",

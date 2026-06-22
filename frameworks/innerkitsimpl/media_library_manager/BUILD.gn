@@ -120,6 +120,9 @@ ohos_shared_library("media_library_manager") {
     "image_framework:image_native",
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
+    "napi:ace_napi",
+    "relational_store:native_dataability",
+    "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",
   ]
@@ -215,11 +218,13 @@ ohos_shared_library("media_library_extend_manager") {
   ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "kv_store:distributeddata_inner",
     "os_account:os_account_innerkits",
     "samgr:samgr_proxy",
     "ipc:ipc_core",
@@ -310,6 +315,7 @@ ohos_shared_library("media_library_custom_restore") {
   ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
@@ -317,6 +323,7 @@ ohos_shared_library("media_library_custom_restore") {
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
     "ipc:ipc_core",
+    "kv_store:distributeddata_inner",
     "samgr:samgr_proxy",
   ]
 

@@ -93,6 +93,7 @@ ohos_unittest("medialibrary_custom_restore_test") {
     "ability_runtime:ability_manager",
     "ability_runtime:abilitykit_native",
     "ability_runtime:app_context",
+    "ability_runtime:dataobs_manager",
     "ability_runtime:runtime",
     "access_token:libaccesstoken_sdk",
     "access_token:libnativetoken",

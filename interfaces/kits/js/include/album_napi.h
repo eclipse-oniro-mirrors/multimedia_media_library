@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "ability.h"
-#include "ability_loader.h"
 #include "abs_shared_result_set.h"
 #include "album_asset.h"
 #include "data_ability_helper.h"

@@ -136,6 +136,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",

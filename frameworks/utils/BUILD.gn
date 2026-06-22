@@ -68,6 +68,7 @@ ohos_static_library("permission_utils") {
     "bundle_framework:appexecfwk_core",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
+    "init:libbegetutil",
     "ipc:ipc_core",
     "samgr:samgr_proxy",
   ]
