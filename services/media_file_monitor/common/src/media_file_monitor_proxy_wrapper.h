@@ -51,7 +51,7 @@ public:
     {
         if (fileMonitorProxy_) {
             MEDIA_INFO_LOG("file monitor proxy register, type: 0x%{public}llx", static_cast<unsigned long long>(type_));
-            return fileMonitorProxy_->RegisteRequest(type_, callback);
+            return fileMonitorProxy_->RegisteRequest(type_, callback, false);
         }
 
         MEDIA_ERR_LOG("file monitor proxy unregister");

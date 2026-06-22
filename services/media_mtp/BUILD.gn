@@ -40,6 +40,7 @@ ohos_shared_library("media_mtp") {
     "src/mtp_error_utils.cpp",
     "src/mtp_event.cpp",
     "src/mtp_file_observer.cpp",
+    "src/mtp_ipc_utils.cpp",
     "src/mtp_manager.cpp",
     "src/mtp_media_library.cpp",
     "src/mtp_medialibrary_manager.cpp",
@@ -90,6 +91,21 @@ ohos_shared_library("media_mtp") {
     "src/storage.cpp",
   ]
 
+  media_service_vo_source = [
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/asset_change_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/close_asset_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/create_asset_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/delete_photos_completed_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/album_get_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_move_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/change_request_set_album_name_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/create_album_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/delete_albums_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/query_albums_vo.cpp",
+  ]
+
+  sources += media_service_vo_source
+
   cflags = [ "-fPIC" ]
   cflags += [ "-Wall" ]
 
@@ -108,12 +124,31 @@ ohos_shared_library("media_mtp") {
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+    "${MEDIALIB_COMMON_PATH}/utils/include",
   ]
+
+  user_ipc_client_include_dirs = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dto",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/vo",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/include/dto",
+  ]
+
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
+  include_dirs += include_media_ipc_common
+  include_dirs += user_ipc_client_include_dirs
 
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
+    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 
   external_deps = [
@@ -138,6 +173,7 @@ ohos_shared_library("media_mtp") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "media_foundation:media_foundation",
     "os_account:os_account_innerkits",
     "player_framework:media_client",
     "relational_store:native_rdb",

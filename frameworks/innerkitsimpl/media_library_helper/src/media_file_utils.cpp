@@ -1179,6 +1179,16 @@ int32_t MediaFileUtils::CheckTitleCompatible(const string& title)
     return E_OK;
 }
 
+int32_t MediaFileUtils::CheckTitleAndExtensionSize(const string &title, const string &extension)
+{
+    CHECK_AND_RETURN_RET_LOG(title.length() <= DISPLAYNAME_MAX, -ENAMETOOLONG,
+        "Title length exceeds limit: %{public}zu", title.length());
+    CHECK_AND_RETURN_RET_LOG(title.length() + 1 + extension.length() <= DISPLAYNAME_MAX, -ENAMETOOLONG,
+        "Combined title and extension length exceeds limit: %{public}zu + %{public}zu",
+            title.length(), extension.length());
+    return E_OK;
+}
+
 std::string MediaFileUtils::GetFileAssetUri(const std::string &fileAssetData, const std::string &displayName,
     const int32_t &fileId)
 {
@@ -2588,7 +2598,29 @@ int64_t MediaFileUtils::GetFreeSize()
     return freeSize;
 }
 
+static void AddMatchedSizeIfNeeded(const std::function<bool(const std::string&)> &fileNamePredicate,
+    const std::string &fileName, size_t fileSize, size_t &matchedSize)
+{
+    if (!fileNamePredicate) {
+        return;
+    }
+
+    bool isMatched = fileNamePredicate(fileName);
+    MEDIA_DEBUG_LOG("Matched-size check, matched: %{public}d", isMatched);
+    if (isMatched) {
+        matchedSize += fileSize;
+    }
+}
+
 void MediaFileUtils::StatDirSize(const std::string& rootPath, size_t& totalSize)
+{
+    size_t matchedSize = 0;
+    std::function<bool(const std::string&)> fileNamePredicate;
+    StatDirSize(rootPath, totalSize, matchedSize, fileNamePredicate);
+}
+
+void MediaFileUtils::StatDirSize(const std::string& rootPath, size_t& totalSize, size_t& matchedSize,
+    const std::function<bool(const std::string&)> &fileNamePredicate)
 {
     std::stack<std::string> dirStack;
     dirStack.push(rootPath);
@@ -2624,6 +2656,9 @@ void MediaFileUtils::StatDirSize(const std::string& rootPath, size_t& totalSize)
                 MEDIA_DEBUG_LOG("GetFileSize, file: %{public}s, size: %{public}lld bytes",
                     fullPath.c_str(), static_cast<long long>(fileSize));
                 totalSize += fileSize;
+
+                std::string fileName(entry->d_name);
+                AddMatchedSizeIfNeeded(fileNamePredicate, fileName, fileSize, matchedSize);
             }
         }
 

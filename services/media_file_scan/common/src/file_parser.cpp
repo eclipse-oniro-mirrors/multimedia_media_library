@@ -31,6 +31,8 @@
 #include "result_set_utils.h"
 #include "thumbnail_service.h"
 #include "media_string_utils.h"
+#include "medialibrary_photo_operations.h"
+#include "moving_photo_file_utils.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -395,12 +397,13 @@ FileParser::PhotosRowData FileParser::FindSameFileInDatabase(const std::string &
 int32_t FileParser::IsExistSameFileForCloneRestore(int32_t ownerAlbumId)
 {
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_ERR, "mediaLibraryRdb_ is null.");
+    int pictureFlag = fileInfo_.fileType == MediaType::MEDIA_TYPE_VIDEO ? 0 : 1;
     std::vector<NativeRdb::ValueObject> params = { ownerAlbumId, fileInfo_.displayName,
-        fileInfo_.fileSize, fileInfo_.orientation};
+        fileInfo_.fileSize, pictureFlag, fileInfo_.orientation};
     auto resultSet = mediaLibraryRdb_->QuerySql(SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE, params);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK,
         E_ERR, "Query failed, not exist same file");
-
+    resultSet->Close();
     return E_OK;
 }
 
@@ -422,6 +425,9 @@ int32_t FileParser::UpdateAssetInfo()
     int32_t errCode = UpdateAssetInDatabase();
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode,
         "UpdateAssetInDatabase failed, ret: %{public}d, fileInfo: %{public}s", errCode, ToString().c_str());
+    int32_t ret = MediaLibraryPhotoOperations::CalSingleEditDataSize(std::to_string(fileInfo_.fileId));
+    CHECK_AND_PRINT_LOG(ret == E_OK,
+        "CalSingleEditDataSize failed ID: %{public}d (ret code: %{public}d)", fileInfo_.fileId, ret);
     CHECK_AND_RETURN_RET_INFO_LOG(ShouldGenerateThumbnail(), E_OK,
         "No need to generate thumbnail, fileInfo: %{public}s", ToString().c_str());
     MEDIA_INFO_LOG("Start generate thumbnail of %{public}s", ToString().c_str());
@@ -579,8 +585,27 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
     SetAssetAlbumValues(values);
     SetAssetLocationValues(values);
     SetAssetSubtypeValues(values);
+    SetAssetLivePhoto4dValues(values);
 
     return values;
+}
+
+void FileParser::SetAssetLivePhoto4dValues(NativeRdb::ValuesBucket &values)
+{
+    uint32_t version = 0;
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(fileInfo_.filePath, version);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "get extraData version failed, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("livePhoto4d: Live photo 4d version: %{public}u", version);
+    if (fileInfo_.livePhoto4dStatus == static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8) ||
+        version == LIVE_PHOTO_4D_VERSION) {
+        values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+        if (version != LIVE_PHOTO_4D_VERSION) {
+            ret = MovingPhotoFileUtils::ModifyExtraDataVersion(fileInfo_.filePath,
+                static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
+            CHECK_AND_RETURN_LOG(ret == E_OK, "modify extraData version failed, ret: %{public}d", ret);
+        }
+    }
 }
 
 void FileParser::SetAssetAlbumValues(NativeRdb::ValuesBucket &values)
@@ -825,19 +850,17 @@ int64_t FileParser::GetFileDateAdded(const struct stat &statInfo)
     return MediaFileUtils::UTCTimeMilliSeconds();
 }
 
-void FileParser::SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan)
+void FileParser::SetFileManagerScanFlagBySingle(const std::string &fileIdStr, bool stopScan)
 {
-    for (const auto& fileIdStr : fileIds) {
-        CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
-        int32_t fileId = std::stoi(fileIdStr);
-        std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
-        if (stopScan) {
-            g_fileManagerScanFlag[fileId] = stopScan;
-        } else {
-            auto it = g_fileManagerScanFlag.find(fileId);
-            if (it != g_fileManagerScanFlag.end()) {
-                g_fileManagerScanFlag.erase(it);
-            }
+    CHECK_AND_RETURN_LOG(all_of(fileIdStr.begin(), fileIdStr.end(), ::isdigit), "fileIdStr is not digit.");
+    int32_t fileId = std::stoi(fileIdStr);
+    std::lock_guard<std::mutex> lock(g_fileManagerScanFlagMutex);
+    if (stopScan) {
+        g_fileManagerScanFlag[fileId] = stopScan;
+    } else {
+        auto it = g_fileManagerScanFlag.find(fileId);
+        if (it != g_fileManagerScanFlag.end()) {
+            g_fileManagerScanFlag.erase(it);
         }
     }
 }

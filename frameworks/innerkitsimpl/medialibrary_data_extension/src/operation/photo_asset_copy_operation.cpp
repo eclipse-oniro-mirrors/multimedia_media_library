@@ -88,9 +88,20 @@ void PhotoAssetCopyOperation::CopyPhotoAsset(
     }
     // Find the burst key by the unique display name for the burst photos.
     photoAssetInfo.displayName = displayName;
+    this->photoAssetInfo_.newDisplayName = displayName;
     std::string burstKey = PhotoBurstOperation().SetTargetPhotoInfo(photoAssetInfo).FindBurstKey(rdbStore);
     if (!burstKey.empty()) {
         values.PutString(PhotoColumn::PHOTO_BURST_KEY, burstKey);
     }
+}
+
+/**
+ * @brief Check whether the display name has been renamed.
+ *
+ * @param isRename bool value that will be set to true if the display name has been renamed, false otherwise.
+ */
+bool PhotoAssetCopyOperation::CheckDisplayNameRenamed()
+{
+    return (this->photoAssetInfo_.displayName != this->photoAssetInfo_.newDisplayName);
 }
 }  // namespace OHOS::Media

@@ -100,6 +100,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
   ]
 
   deps = [
@@ -132,6 +133,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
@@ -140,6 +142,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "ffrt:libffrt",
     "preferences:native_preferences",
     "netmanager_base:net_conn_manager_if",
+    "graphic_surface:surface",
   ]
 
   defines = []

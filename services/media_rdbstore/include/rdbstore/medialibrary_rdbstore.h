@@ -30,6 +30,11 @@ namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 
 class MediaLibraryDataCallBack;
+enum class EditAndAttachmentUpdateType {
+    EDIT_AND_ATTACHMENT_SIZE = 0,
+    EDIT_ONLY,
+    ATTACHMENT_ONLY,
+};
 
 class MediaLibraryRdbStore final : public MediaLibraryUnistore {
 public:
@@ -66,7 +71,8 @@ public:
         const std::vector<std::string> &columns);
     EXPORT static int32_t Delete(const NativeRdb::AbsRdbPredicates &predicates);
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> StepQueryWithoutCheck(
-        const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns);
+        const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,
+        bool isAlbumRefresh = false);
     EXPORT static int32_t UpdateWithDateTime(NativeRdb::ValuesBucket &values,
         const NativeRdb::AbsRdbPredicates &predicates);
     EXPORT static void ReplacePredicatesUriToId(NativeRdb::AbsRdbPredicates &predicates);
@@ -137,13 +143,19 @@ public:
         const std::vector<NativeRdb::ValueObject> &args = {});
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryMovingPhotoVideoReady(
         const NativeRdb::AbsRdbPredicates &predicaties);
+    EXPORT static void StatEditAndAttachmentSize(const std::string &editDataDir,
+        uint64_t &editDataSize, uint64_t &attachmentSize);
     EXPORT static int32_t UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-        const std::string &photoId, const std::string &photoPath);
+        const std::string &photoId, const std::string &editDataDir,
+        EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
+    EXPORT static int32_t UpdateAttachmentSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+        const std::string &photoId, uint64_t attachmentSize);
     EXPORT static void AddDefaultInsertPhotoValues(NativeRdb::ValuesBucket& values);
     EXPORT static int32_t PrepareShootingModeAlbum(NativeRdb::RdbStore &store);
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
     EXPORT static void AddUpgradeTable(const std::shared_ptr<MediaLibraryRdbStore> store);
     EXPORT static void CheckAndAddColumns(const std::shared_ptr<MediaLibraryRdbStore> store);
+    EXPORT static int32_t AddCoverOrderValuesFromRecord(NativeRdb::ValuesBucket& values);
 
 private:
     EXPORT static const std::string CloudSyncTriggerFunc(const std::vector<std::string> &args);

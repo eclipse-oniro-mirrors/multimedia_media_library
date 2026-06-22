@@ -74,5 +74,20 @@ public:  // functions of Parcelable.
     bool Unmarshalling(MessageParcel &parcel) override;
     bool Marshalling(MessageParcel &parcel) const override;
 };
+
+class CreateAssetsWithAlbumReqBody : public IPC::IMediaParcelable {
+public:
+    int32_t mediaType{0};
+    std::string title;
+    std::string extension;
+    std::string ownerAlbumId;
+    bool isRealTimeThumb{true};
+
+public:  // functions of Parcelable.
+    bool Unmarshalling(MessageParcel &parcel) override;
+    bool Marshalling(MessageParcel &parcel) const override;
+};
+
+using CreateAssetsWithAlbumRespBody = CreateAssetRespBody;
 } // namespace OHOS::Media
 #endif // OHOS_MEDIA_ASSETS_MANAGER_CREATE_ASSET_VO_H

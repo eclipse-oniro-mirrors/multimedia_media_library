@@ -1,0 +1,97 @@
+# Copyright (C) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+
+group("unittest") {
+  testonly = true
+  deps = [ ":medialibrary_album_cover_order_test" ]
+}
+
+ohos_unittest("medialibrary_album_cover_order_test") {
+  module_out_path = "media_library/medialibrary-album"
+  include_dirs = [
+    "./include",
+    "../get_self_permissions/include",
+    "../medialibrary_unittest_utils/include",
+    "${MEDIALIB_CLOUD_SYNC_PATH}/include",
+    "${MEDIALIB_UTILS_PATH}/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/attribute/nickname",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
+    "${MEDIALIB_THUMBNAIL_PATH}/include",
+  ]
+
+  sources = [
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_album_operations.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/is_removed/portrait_is_removed_service.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_merge_plan.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_relation_resolver.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_repository.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/attribute/nickname/portrait_nickname_service.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dao/medialibrary_analysis_album_operations.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_command.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
+    "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "./src/medialibrary_album_cover_order_test.cpp",
+  ]
+
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+  ]
+
+  external_deps = [
+    "ability_base:zuri",
+    "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:app_context",
+    "ability_runtime:dataobs_manager",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_provider",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
+    "image_framework:image_native",
+    "ipc:ipc_single",
+    "ipc:ipc_napi",
+    "kv_store:distributeddata_inner",
+    "napi:ace_napi",
+    "relational_store:native_rdb",
+    "relational_store:rdb_data_share_adapter",
+    "samgr:samgr_proxy",
+  ]
+
+  defines = []
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.filemanagement_dfs_service)) {
+    defines += [ "CLOUD_SYNC_MANAGER" ]
+    external_deps += [ "dfs_service:cloudsync_kit_inner" ]
+  }
+  defines += [ "MEDIALIBRARY_COMPATIBILITY=1" ]
+
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+}

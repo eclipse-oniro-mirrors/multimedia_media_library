@@ -19,6 +19,7 @@
 
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "multistages_camera_capture_manager.h"
 #include "multistages_photo_capture_manager.h"
 #include "multistages_video_capture_manager.h"
 #include "userfile_manager_types.h"
@@ -66,6 +67,48 @@ int32_t MediaCameraCharacterService::ProcessVideo(const ProcessVideoDto &dto)
 int32_t MediaCameraCharacterService::GetProgressCallback(GetProgressCallbackRespBody &respbody)
 {
     MultiStagesVideoCaptureManager::GetInstance().GetProgressCallback(respbody);
+    return E_OK;
+}
+
+int32_t MediaCameraCharacterService::CreateCameraFileFd(const CreateCameraFileFdDto &dto,
+    CreateCameraFileFdRespBody &respbody)
+{
+    CameraPipelineType type;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(dto.fileId, type);
+    if (pipeline == nullptr) {
+        MEDIA_ERR_LOG("invalid type: %{public}d.", static_cast<int32_t>(type));
+        return E_ERR;
+    }
+
+    int32_t fd = pipeline->CreateCameraFileFd(dto);
+    CHECK_AND_RETURN_RET_LOG(fd >= 0, E_ERR, "invalid fd: %{public}d.", fd);
+    respbody.fd = fd;
+    MEDIA_DEBUG_LOG("respbody: %{public}s.", respbody.ToString().c_str());
+    return E_OK;
+}
+
+int32_t MediaCameraCharacterService::ScanCameraFile(const ScanCameraFileDto &dto)
+{
+    CameraPipelineType type;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(dto.fileId, type);
+    if (pipeline == nullptr) {
+        MEDIA_ERR_LOG("invalid type: %{public}d.", static_cast<int32_t>(type));
+        return E_ERR;
+    }
+
+    return pipeline->CloseCameraFileFd(dto);
+}
+
+int32_t MediaCameraCharacterService::GetDeferredPictureInfo(
+    const GetDeferredPictureInfoDto& dto, GetDeferredPictureInfoRespBody& respbody)
+{
+    CameraPipelineType type = CameraPipelineType::UNDEFINED;
+    auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByPhotoId(dto.photoId, type);
+    if (pipeline == nullptr) {
+        MEDIA_ERR_LOG("failed, photoId: %{public}s.", dto.photoId.c_str());
+        return E_ERR;
+    }
+    pipeline->GetDeferredPictureInfo(respbody);
     return E_OK;
 }
 } // namespace OHOS::Media

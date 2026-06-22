@@ -33,6 +33,7 @@
 #include "pixel_yuv_ext.h"
 #include "userfilemgr_uri.h"
 #include "userfile_client.h"
+#include "media_uri_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -42,7 +43,7 @@ std::shared_ptr<Media::Picture> PictureHandlerClient::RequestPicture(const int32
 {
     ANI_DEBUG_LOG("PictureHandlerClient::RequestPicture fileId: %{public}d", fileId);
     std::string uri = PhotoColumn::PHOTO_REQUEST_PICTURE;
-    MediaFileUtils::UriAppendKeyValue(uri, MediaColumn::MEDIA_ID, std::to_string(fileId));
+    MediaUriUtils::AppendKeyValue(uri, MediaColumn::MEDIA_ID, std::to_string(fileId));
     Uri requestUri(uri);
     int32_t fd = UserFileClient::OpenFile(requestUri, MEDIA_FILEMODE_READONLY);
     if (fd < 0) {
@@ -59,7 +60,7 @@ void PictureHandlerClient::FinishRequestPicture(const int32_t &fileId)
 {
     ANI_DEBUG_LOG("PictureHandlerClient::FinishRequestPicture fileId: %{public}d", fileId);
     std::string uri = CONST_PAH_FINISH_REQUEST_PICTURE;
-    MediaLibraryAniUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
+    MediaUriUtils::AppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri finishRequestPictureUri(uri);
 
     DataShare::DataShareValuesBucket valuesBucket;
@@ -185,7 +186,7 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
         return E_ERR;
     }
     isHighQuality = pictureParcel.ReadBool();
-    std::shared_ptr<PixelMap> pixelMap = PictureHandlerClient::ReadPixelMap(pictureParcel);
+    std::shared_ptr<PixelMap> pixelMap = PictureHandlerClient::ReadPixelMap(pictureParcel, fileId);
     picturePtr = Picture::Create(pixelMap);
     if (picturePtr == nullptr) {
         ANI_ERR_LOG("PictureHandlerService::ReadPicture picturePtr is nullptr!");
@@ -194,12 +195,12 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
     }
 
     ReadExifMetadata(pictureParcel, picturePtr);
-    ReadMaintenanceData(pictureParcel, picturePtr);
+    ReadMaintenanceData(pictureParcel, picturePtr, fileId);
 
     uint32_t auxiliaryPictureSize = ReadAuxiliaryPictureCount(addr, readOffset);
     for (size_t i = 1; i <= auxiliaryPictureSize; i++) {
         ANI_DEBUG_LOG("PictureHandlerClient::ReadPicture read auxiliaryPicture, index:%{public}zu", i);
-        ReadAuxiliaryPicture(pictureParcel, picturePtr);
+        ReadAuxiliaryPicture(pictureParcel, picturePtr, fileId);
     }
     picture.reset(picturePtr.get());
     (void)picturePtr.release();
@@ -207,7 +208,7 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
     return E_OK;
 }
 
-std::shared_ptr<PixelMap> PictureHandlerClient::ReadPixelMap(MessageParcel &data)
+std::shared_ptr<PixelMap> PictureHandlerClient::ReadPixelMap(MessageParcel &data, int32_t fileId)
 {
     ImageInfo imageInfo;
     ReadImageInfo(data, imageInfo);
@@ -237,16 +238,17 @@ std::shared_ptr<PixelMap> PictureHandlerClient::ReadPixelMap(MessageParcel &data
     pixelMap->SetImageYUVInfo(yuvInfo);
 
     ANI_DEBUG_LOG("PictureHandlerClient::ReadPixelMap read surface buffer");
-    ReadSurfaceBuffer(data, pixelMap);
+    ReadSurfaceBuffer(data, pixelMap, fileId);
     return pixelMap;
 }
 
-bool PictureHandlerClient::ReadAuxiliaryPicture(MessageParcel &data, std::unique_ptr<Media::Picture> &picture)
+bool PictureHandlerClient::ReadAuxiliaryPicture(MessageParcel &data, std::unique_ptr<Media::Picture> &picture,
+    int32_t fileId)
 {
     AuxiliaryPictureInfo auxiliaryPictureInfo;
     ReadAuxiliaryPictureInfo(data, auxiliaryPictureInfo);
 
-    std::shared_ptr<PixelMap> pixelMap = ReadPixelMap(data);
+    std::shared_ptr<PixelMap> pixelMap = ReadPixelMap(data, fileId);
     CHECK_COND_RET(pixelMap != nullptr, false, "pixelMap is nullptr");
     std::unique_ptr<AuxiliaryPicture> uptr = AuxiliaryPicture::Create(pixelMap,
         auxiliaryPictureInfo.auxiliaryPictureType, auxiliaryPictureInfo.size);
@@ -353,7 +355,8 @@ bool PictureHandlerClient::ReadYuvDataInfo(MessageParcel &data, YUVDataInfo &inf
     return true;
 }
 
-bool PictureHandlerClient::ReadSurfaceBuffer(MessageParcel &data, std::unique_ptr<PixelMap> &pixelMap)
+bool PictureHandlerClient::ReadSurfaceBuffer(MessageParcel &data, std::unique_ptr<PixelMap> &pixelMap,
+    int32_t fileId)
 {
     CHECK_COND_RET(pixelMap != nullptr, false, "pixelMap is nullptr");
     bool hasBufferHandle = data.ReadBool();
@@ -363,7 +366,7 @@ bool PictureHandlerClient::ReadSurfaceBuffer(MessageParcel &data, std::unique_pt
     }
     sptr<SurfaceBuffer> surfaceBuffer = SurfaceBuffer::Create();
     CHECK_COND_RET(surfaceBuffer != nullptr, false, "surfaceBuffer creation failed");
-    ReadBufferHandle(data, surfaceBuffer);
+    ReadBufferHandle(data, surfaceBuffer, fileId);
     void* nativeBuffer = surfaceBuffer.GetRefPtr();
     OHOS::RefBase *ref = reinterpret_cast<OHOS::RefBase *>(nativeBuffer);
     CHECK_COND_RET(ref != nullptr, false, "ref is nullptr");
@@ -391,7 +394,8 @@ void setHandleFromData(BufferHandle *handle, MessageParcel &data)
     handle->phyAddr = data.ReadUint64();
 }
 
-bool PictureHandlerClient::ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuffer> &surfaceBuffer)
+bool PictureHandlerClient::ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuffer> &surfaceBuffer,
+    int32_t fileId)
 {
     CHECK_COND_RET(surfaceBuffer != nullptr, false, "surfaceBuffer is nullptr");
     uint32_t reserveFds = 0;
@@ -417,14 +421,14 @@ bool PictureHandlerClient::ReadBufferHandle(MessageParcel &data, sptr<SurfaceBuf
     handle->reserveInts = reserveInts;
     setHandleFromData(handle, data);
 
-    int32_t fd = RequestBufferHandlerFd(data.ReadInt32());
+    int32_t fd = RequestBufferHandlerFd(data.ReadInt32(), fileId);
     ANI_DEBUG_LOG("PictureHandlerClient::ReadBufferHandle fd: %{public}d", fd);
     handle->fd = dup(fd);
     close(fd);
     ANI_DEBUG_LOG("PictureHandlerClient::ReadBufferHandle handle->fd: %{public}d", handle->fd);
     if (readReserveFdsRet) {
         for (uint32_t i = 0; i < reserveFds; i++) {
-            int32_t reserveFd = RequestBufferHandlerFd(data.ReadInt32());
+            int32_t reserveFd = RequestBufferHandlerFd(data.ReadInt32(), fileId);
             ANI_DEBUG_LOG("PictureHandlerClient::ReadBufferHandle reserve[%{public}d]: %{public}d", i, reserveFd);
             handle->reserve[i] = dup(reserveFd);
             close(reserveFd);
@@ -454,7 +458,8 @@ bool PictureHandlerClient::ReadExifMetadata(MessageParcel &data, std::unique_ptr
     return true;
 }
 
-bool PictureHandlerClient::ReadMaintenanceData(MessageParcel &data, std::unique_ptr<Media::Picture> &picture)
+bool PictureHandlerClient::ReadMaintenanceData(MessageParcel &data, std::unique_ptr<Media::Picture> &picture,
+    int32_t fileId)
 {
     CHECK_COND_RET(picture != nullptr, false, "picture is nullptr");
     bool hasMaintenanceData = data.ReadBool();
@@ -463,14 +468,15 @@ bool PictureHandlerClient::ReadMaintenanceData(MessageParcel &data, std::unique_
         return true;
     }
     sptr<SurfaceBuffer> surfaceBuffer = SurfaceBuffer::Create();
-    ReadBufferHandle(data, surfaceBuffer);
+    ReadBufferHandle(data, surfaceBuffer, fileId);
     return picture->SetMaintenanceData(surfaceBuffer);
 }
 
-int32_t PictureHandlerClient::RequestBufferHandlerFd(const int32_t &fd)
+int32_t PictureHandlerClient::RequestBufferHandlerFd(int32_t fd, int32_t fileId)
 {
     std::string uri = PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER;
-    MediaFileUtils::UriAppendKeyValue(uri, "fd", std::to_string(fd));
+    MediaUriUtils::AppendKeyValue(uri, "fd", std::to_string(fd));
+    MediaUriUtils::AppendKeyValue(uri, MediaColumn::MEDIA_ID, std::to_string(fileId));
     ANI_DEBUG_LOG("PictureHandlerClient::RequestBufferHandlerFd uri: %{public}s", uri.c_str());
     Uri requestUri(uri);
     return UserFileClient::OpenFile(requestUri, MEDIA_FILEMODE_READONLY);

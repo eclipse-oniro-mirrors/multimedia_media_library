@@ -20,14 +20,10 @@
 #include <thread>
 
 #include "lcd_aging_manager.h"
-#include "lcd_aging_task_priority_manager.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
-#include "medialibrary_subscriber.h"
 
 namespace OHOS::Media {
-constexpr int32_t CYCLE_NUMBER = 100;
-constexpr int32_t E_PAUSE = 2;
 
 LcdAgingWorker& LcdAgingWorker::GetInstance()
 {
@@ -35,29 +31,77 @@ LcdAgingWorker& LcdAgingWorker::GetInstance()
     return instance;
 }
 
-void LcdAgingWorker::StartLcdAgingWorker()
-{
-    bool expected = false;
-    if (!isThreadRunning_.compare_exchange_strong(expected, true)) {
-        MEDIA_INFO_LOG("LCD aging worker is already running");
-        return;
-    }
-    
-    if (workerThread_.joinable()) {
-        workerThread_.join();
-    }
-    
-    workerThread_ = std::thread([this]() { this->HandleLcdAgingTask(); });
-}
-
 LcdAgingWorker::~LcdAgingWorker()
 {
-    isThreadRunning_.store(false);
+    shouldStop_.store(true);
     if (workerThread_.joinable()) {
-        MEDIA_INFO_LOG("Waiting for LCD aging worker thread to finish");
+        MEDIA_INFO_LOG("Waiting for worker thread to finish");
         workerThread_.join();
-        MEDIA_INFO_LOG("LCD aging worker thread finished");
+        MEDIA_INFO_LOG("Worker thread finished");
     }
+    isThreadRunning_.store(false);
+}
+
+void LcdAgingWorker::CleanupInternal()
+{
+    if (clientRemote_ != nullptr && deathRecipient_ != nullptr) {
+        clientRemote_->RemoveDeathRecipient(deathRecipient_);
+    }
+    clientRemote_ = nullptr;
+    deathRecipient_ = nullptr;
+    callbackProxy_ = nullptr;
+    isThreadRunning_.store(false);
+    shouldStop_.store(false);
+}
+
+void LcdAgingWorker::Cleanup()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    CleanupInternal();
+}
+
+int32_t LcdAgingWorker::StartDeepOptimizeSpace(const sptr<IRemoteObject> &clientRemote,
+    const sptr<IRemoteObject> &callbackRemote)
+{
+    CHECK_AND_RETURN_RET_LOG(clientRemote != nullptr, E_ERR, "Client remote is null");
+    
+    bool expected = false;
+    CHECK_AND_RETURN_RET_LOG(isThreadRunning_.compare_exchange_strong(expected, true), E_OPERATION_NOT_SUPPORT,
+        "Task already running");
+    CHECK_AND_EXECUTE(!workerThread_.joinable(), workerThread_.join());
+    
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        clientRemote_ = clientRemote;
+        deathRecipient_ = sptr<ClientDeathRecipient>(new ClientDeathRecipient(this));
+        if (!clientRemote_->AddDeathRecipient(deathRecipient_)) {
+            MEDIA_ERR_LOG("Failed to add death recipient");
+            CleanupInternal();
+            return E_ERR;
+        }
+        
+        if (callbackRemote != nullptr) {
+            callbackProxy_ = iface_cast<IDepOptimizeSpaceCallback>(callbackRemote);
+            if (callbackProxy_ == nullptr) {
+                MEDIA_ERR_LOG("Failed to cast callback proxy");
+                CleanupInternal();
+                return E_ERR;
+            }
+        }
+    }
+    
+    shouldStop_.store(false);
+    workerThread_ = std::thread([this]() { HandleDeepOptimizeTask(); });
+    MEDIA_INFO_LOG("Deep optimize space task started");
+    return E_OK;
+}
+
+int32_t LcdAgingWorker::StopDeepOptimizeSpace()
+{
+    CHECK_AND_RETURN_RET_WARN_LOG(isThreadRunning_.load(), E_OK, "no task running");
+    shouldStop_.store(true);
+    MEDIA_DEBUG_LOG("Stop deep optimize space task");
+    return E_OK;
 }
 
 bool LcdAgingWorker::IsRunning()
@@ -65,24 +109,42 @@ bool LcdAgingWorker::IsRunning()
     return isThreadRunning_.load();
 }
 
-void LcdAgingWorker::HandleLcdAgingTask()
+void LcdAgingWorker::OnClientDied()
 {
-    MEDIA_INFO_LOG("start HandleLcdAgingTask thread");
-    std::string name("LcdAgingTaskThread");
-    pthread_setname_np(pthread_self(), name.c_str());
-
-    int32_t cycleNumber = 0;
-    int32_t ret = E_ERR;
-    while (MedialibrarySubscriber::IsCurrentStatusOn() && cycleNumber++ <= CYCLE_NUMBER) {
-        // 如果等待超时，执行continue
-        CHECK_AND_CONTINUE(LcdAgingTaskPriorityManager::GetInstance().CheckForHighPriorityTasks());
-        MEDIA_DEBUG_LOG("begin BatchAgingLcdFileTask");
-        ret = LcdAgingManager::GetInstance().BatchAgingLcdFileTask();
-        MEDIA_DEBUG_LOG("end BatchAgingLcdFileTask");
-        CHECK_AND_BREAK_ERR_LOG(ret == E_OK || ret == E_PAUSE, "break HandleLcdAgingTask, ret: %{public}d", ret);
+    MEDIA_WARN_LOG("Client died, cleaning up callback");
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callbackProxy_ = nullptr;
     }
-    isThreadRunning_.store(false);
-    LcdAgingTaskPriorityManager::GetInstance().Reset();
-    MEDIA_INFO_LOG("end HandleLcdAgingTask thread, ret: %{public}d, cycleNumber: %{public}d", ret, cycleNumber);
+    shouldStop_.store(true);
 }
+
+void LcdAgingWorker::NotifyProgress(DeepOptimizeSpaceState state, int32_t progress)
+{
+    sptr<IDepOptimizeSpaceCallback> callback;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callback = callbackProxy_;
+    }
+    
+    if (callback != nullptr && isThreadRunning_.load()) {
+        DeepOptimizeSpaceProgress data;
+        data.state = state;
+        data.progress = progress;
+        callback->OnProgressUpdate(data);
+    }
+}
+
+void LcdAgingWorker::HandleDeepOptimizeTask()
+{
+    MEDIA_INFO_LOG("Start HandleDeepOptimizeTask thread");
+    pthread_setname_np(pthread_self(), "DeepOptimizeTask");
+    
+    int32_t ret = LcdAgingManager::GetInstance().BatchAgingLcdFileTask(shouldStop_);
+    MEDIA_INFO_LOG("Execute finished, ret: %{public}d", ret);
+    
+    Cleanup();
+    MEDIA_INFO_LOG("End HandleDeepOptimizeTask thread");
+}
+
 }  // namespace OHOS::Media

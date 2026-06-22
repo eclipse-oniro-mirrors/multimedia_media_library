@@ -121,6 +121,12 @@ int32_t CloudMediaSyncUtils::FillPhotosDto(
     if (values.GetObject(PhotoColumn::PHOTO_RISK_STATUS, valueObject)) {
         valueObject.GetInt(photosDto.photoRiskStatus);
     }
+    if (values.GetObject(PhotoColumn::PHOTO_IS_CRITICAL, valueObject)) {
+        valueObject.GetInt(photosDto.isCritical);
+    } else {
+        MEDIA_WARN_LOG("Failed to get PHOTO_IS_CRITICAL from values");
+        photosDto.isCritical = 0; // Set default value
+    }
 
     return E_OK;
 }

@@ -206,8 +206,10 @@ static constexpr int ADD_ASYNC_TASK_SUCCESS = 0;
 
 const std::vector<std::string> PRESET_ROOT_DIRS = {
     CAMERA_DIR_VALUES, VIDEO_DIR_VALUES, PIC_DIR_VALUES, AUDIO_DIR_VALUES,
-    PHOTO_BUCKET + "/", AUDIO_BUCKET + "/", BACKUP_DATA_DIR_VALUE, EDIT_DATA_DIR_VALUE + "/",
-    BACKUP_SINGLE_DATA_DIR_VALUE, CACHE_DIR_VALUE, CUSTOM_RESTORE_VALUES
+    PHOTO_BUCKET + SLASH_STR, AUDIO_BUCKET + SLASH_STR, BACKUP_DATA_DIR_VALUE, EDIT_DATA_DIR_VALUE + SLASH_STR,
+    BACKUP_SINGLE_DATA_DIR_VALUE, CACHE_DIR_VALUE, CUSTOM_RESTORE_VALUES, CAMERA_CACHE_DIR_VALUES,
+    CAMERA_CACHE_DIR_VALUES + CAMERA_CACHE_ENHANCE_DIR_VALUES + SLASH_STR,
+    CAMERA_CACHE_DIR_VALUES + CAMERA_CACHE_TEMP_DIR_VALUES + SLASH_STR,
 };
 
 const std::vector<std::string> E_POLICY_DIRS = {
@@ -223,6 +225,11 @@ const std::vector<std::string> E_POLICY_DIRS = {
 
 MediaLibraryDataManager::MediaLibraryDataManager(void)
 {
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+    cloudAuditInstance_ = nullptr;
+    func_ = nullptr;
+    handler_ = nullptr;
+#endif
 }
 
 MediaLibraryDataManager::~MediaLibraryDataManager(void)
@@ -3342,7 +3349,8 @@ static void Update500EditDataSize(const shared_ptr<MediaLibraryRdbStore> rdbStor
             continue;
         }
 
-        ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, editDataFilePath);
+        ret = MediaLibraryRdbStore::UpdateEditDataSize(rdbStore, fileId, editDataFilePath,
+            EditAndAttachmentUpdateType::EDIT_ONLY);
         if (ret == E_OK) {
             successCount++;
         } else {
@@ -3894,7 +3902,7 @@ void MediaLibraryDataManager::ScanLakeAsset()
         int64_t startLoadTime = MediaFileUtils::UTCTimeMilliSeconds();
         GlobalScanner::GetInstance().RunLakeScan(LAKE_SCAN_DIR.c_str());
         int64_t endLoadTime = MediaFileUtils::UTCTimeMilliSeconds();
-        AncoDfxManager::GetInstance().ReportFirstLoadInfo(startLoadTime, endLoadTime);
+        AncoDfxManager::GetInstance().ReportFirstLoadInfo(startLoadTime, endLoadTime, LoadType::LAKE_FIRST_LOAD);
         this->SetIsLakeAssetScanned(true);
         MEDIA_INFO_LOG("ScanLakeAsset thread end.");
     });
@@ -3960,5 +3968,11 @@ int32_t MediaLibraryDataManager::GetAssetCompressVersion()
     MEDIA_INFO_LOG("GetAssetCompressVersion is called, version: %{public}d", compressVersion);
     return compressVersion;
 }
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+WatchSystemService::CloudAuditImpl* MediaLibraryDataManager::GetCloudAuditInstance()
+{
+    return cloudAuditInstance_;
+}
+#endif
 }  // namespace Media
 }  // namespace OHOS

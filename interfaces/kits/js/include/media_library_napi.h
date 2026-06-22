@@ -41,6 +41,7 @@
 #include "medialibrary_notify_new_observer.h"
 #include "report_event.h"
 #include "clone_to_album_context.h"
+#include "default_cover_order_info.h"
 
 #include "task_signal_napi.h"
 namespace OHOS {
@@ -68,6 +69,11 @@ enum ListenerType {
     ALBUM_LISTENER
 };
 
+enum OrderType {
+    DESC = 0,
+    ASC = 1
+};
+
 enum ReplaceSelectionMode {
     DEFAULT = 0,
     ADD_DOCS_TO_RELATIVE_PATH,
@@ -86,6 +92,7 @@ struct AnalysisProperty {
 
 struct MediaLibraryAsyncContext;
 class ActiveAnalysisJsCallbackHolder;
+class DeepOptimizeSpaceJsCallbackHolder;
 
 class MediaOnNotifyObserver;
 class ChangeListenerNapi {
@@ -298,6 +305,7 @@ private:
     EXPORT static napi_value CreateAppLinkStateEnum(napi_env env);
     EXPORT static napi_value CreateLivePhoto4dStatusEnum(napi_env env);
     EXPORT static napi_value CreateAvailabilityStatusEnum(napi_env env);
+    EXPORT static napi_value CreateDeepOptimizeStateEnum(napi_env env);
 
     EXPORT static napi_value CreatePhotoKeysEnum(napi_env env);
     EXPORT static napi_value CreateHiddenPhotosDisplayModeEnum(napi_env env);
@@ -348,6 +356,7 @@ private:
     EXPORT static napi_value CreateAssetsHasPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value CreateAssetWithShortTermPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value CreateAssetsForAppWithAlbum(napi_env env, napi_callback_info info);
+    EXPORT static napi_value CreateAssetsWithAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value ShowAssetsCreationDialog(napi_env env, napi_callback_info info);
     EXPORT static napi_value RequestPhotoUrisReadPermission(napi_env env, napi_callback_info info);
     EXPORT static napi_value RequestPhotoUrisReadPermissionEx(napi_env env, napi_callback_info info);
@@ -398,6 +407,10 @@ private:
     EXPORT static napi_value PhotoAccessHelperSetFileCompatibleConfig(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessHelperGetAssetCompatibleConfig(napi_env env, napi_callback_info info);
     EXPORT static napi_value GetAssetCompatibleUris(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessStartDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessStopDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessModifyAlbumDefaultCoverOrder(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessModifyHiddenAlbumDefaultCoverOrder(napi_env env, napi_callback_info info);
     
     EXPORT static napi_value SetHidden(napi_env env, napi_callback_info info);
     EXPORT static napi_value PahGetHiddenAlbums(napi_env env, napi_callback_info info);
@@ -567,6 +580,7 @@ private:
     static thread_local napi_ref sAppLinkStateRef_;
     static thread_local napi_ref sLivePhoto4dStatusEnumRef_;
     static thread_local napi_ref sAvailabilityStatusEnumRef_;
+    static thread_local napi_ref sDeepOptimizeStateRef_;
 
     static std::mutex sOnOffMutex_;
     static std::mutex thumbnailMutex_;
@@ -693,11 +707,14 @@ struct MediaLibraryAsyncContext : public NapiError {
     std::string strParam;
     bool boolResult = false;
     bool supportedHighResolution = false;
+    bool isRealTimeThumb = true;
     std::string path;
     std::vector<int32_t> activeAnalysisTypes;
     std::vector<std::string> activeAnalysisFileIds;
     std::string activeAnalysisParam;
     std::shared_ptr<ActiveAnalysisJsCallbackHolder> activeAnalysisCallbackHolder;
+    std::shared_ptr<DeepOptimizeSpaceJsCallbackHolder> deepOptimizeSpaceCallbackHolder;
+    bool hasDeepOptimizeSpaceCallback = false;
     std::vector<std::string> checkPhotoPermissionUris;
     mutable std::mutex uriPermissionStateMapMutex;
     std::unordered_map<std::string, int32_t> uriPermissionStateMap;
@@ -712,6 +729,9 @@ struct MediaLibraryAsyncContext : public NapiError {
     int32_t mode;
     std::atomic<bool> isCancelled{false};
     napi_ref taskSignalRef;
+    std::vector<DefaultCoverOrderInfo> coverOrderInfos;
+    bool disableModification = false;
+    bool isAsyncRefreshAlbum = false;
 };
 
 struct MediaLibraryInitContext : public NapiError  {

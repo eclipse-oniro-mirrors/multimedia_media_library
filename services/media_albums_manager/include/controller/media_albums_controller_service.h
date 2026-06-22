@@ -61,6 +61,8 @@ public:
     EXPORT int32_t GetAnalysisAlbumAttribute(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumChangeSetHiddenAttribute(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t AlbumChangeSetAlbumNameByFile(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ModifyAlbumDefaultCoverOrder(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ModifyHiddenAlbumDefaultCoverOrder(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAlbumsControllerService() = default;

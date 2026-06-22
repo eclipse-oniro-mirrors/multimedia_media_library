@@ -638,14 +638,5 @@ string MediaFileUri::GetPhotoUri(const std::string &fileId, const std::string &p
     uri = PhotoColumn::PHOTO_URI_PREFIX + fileId + "/" + fileNameWithoutSuffix + "/" +displayName;
     return uri;
 }
-
-bool MediaFileUri::IsPictureUri(const string &uri)
-{
-    if (MediaStringUtils::StartsWith(uri, PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER) ||
-        MediaStringUtils::StartsWith(uri, CONST_PAH_FINISH_REQUEST_PICTURE)) {
-        return true;
-    }
-    return false;
-}
 } // namespace Media
 } // namespace OHOS

@@ -235,6 +235,36 @@ void ClearAllFile()
     system("scanner");
 }
 
+static int32_t CloseAssetByPhotoAccess(const std::string &assetUri)
+{
+    CHECK_AND_RETURN_RET_LOG(sDataShareHelper_ != nullptr, E_FAIL,
+        "CloseAssetByPhotoAccess failed, dataShareHelper is null");
+    DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, assetUri);
+    std::string closeUri = CONST_PAH_CLOSE_PHOTO;
+    MediaFileUtils::UriAppendKeyValue(closeUri, URI_PARAM_API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
+    MediaFileUtils::UriAppendKeyValue(closeUri, MediaColumn::MEDIA_TIME_PENDING, "0");
+    Uri closeAssetUri(closeUri);
+    return sDataShareHelper_->Insert(closeAssetUri, valuesBucket);
+}
+
+static int32_t CloseAssetWithFallback(const std::string &assetUri, int32_t fd)
+{
+    int32_t closeRet = mediaLibraryManager->CloseAsset(assetUri, fd);
+    if (closeRet == E_OK || closeRet == E_SUCCESS || closeRet != E_INVALID_FILEID) {
+        return closeRet;
+    }
+    int32_t pahCloseRet = CloseAssetByPhotoAccess(assetUri);
+    if (pahCloseRet == E_OK || pahCloseRet == E_SUCCESS) {
+        MEDIA_INFO_LOG("CloseAsset fallback to PAH close success, uri=%{public}s", assetUri.c_str());
+        return E_SUCCESS;
+    }
+    MEDIA_WARN_LOG(
+        "CloseAsset fallback to PAH close failed, uri=%{public}s, closeRet=%{public}d, pahCloseRet=%{public}d",
+        assetUri.c_str(), closeRet, pahCloseRet);
+    return closeRet;
+}
+
 static string CreatePhotoAsset(string displayName)
 {
     int32_t resWrite = -1;
@@ -246,7 +276,7 @@ static string CreatePhotoAsset(string displayName)
     } else if (displayName.find(".mp4") != std::string::npos) {
         resWrite = write(destFd, FILE_CONTENT_MP4, sizeof(FILE_CONTENT_MP4));
     }
-    mediaLibraryManager->CloseAsset(uri, destFd);
+    (void)CloseAssetWithFallback(uri, destFd);
     if (resWrite == -1) {
         EXPECT_EQ(false, true);
     }
@@ -403,7 +433,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_test_001, TestSize.Level1)
     ASSERT_GT(destFd, 0);
     int32_t resWrite = write(destFd, FILE_CONTENT_JPG, sizeof(FILE_CONTENT_JPG));
     ASSERT_NE(resWrite, -1);
-    auto ret = mediaLibraryManager->CloseAsset(uri, destFd);
+    auto ret = CloseAssetWithFallback(uri, destFd);
     EXPECT_EQ(ret, E_SUCCESS);
     MEDIA_INFO_LOG("CreateFile:: end Create file: %{public}s", displayName.c_str());
 }

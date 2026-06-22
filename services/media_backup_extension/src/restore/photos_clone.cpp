@@ -375,6 +375,7 @@ int32_t PhotosClone::GetNoNeedMigrateCount()
 void PhotosClone::SetFilePath(std::vector<FileInfo> &fileInfos, AncoFileTransfer ancoFileTransfer)
 {
     UpdateFileInfoFromCloneRestoreDb(fileInfos, ancoFileTransfer);
+    UpdateFileManagerFileInfoFromCloneRestoreDb(fileInfos);
     SetIsStoragePathExistInDb(fileInfos);
     SetIsCloudPathExistInDb(fileInfos);
 }
@@ -385,13 +386,13 @@ void PhotosClone::SetIsStoragePathExistInDb(std::vector<FileInfo> &fileInfos)
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::vector<std::string> storagePaths;
     for (const auto &fileInfo : fileInfos) {
-        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo));
+        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo));
         storagePaths.emplace_back(fileInfo.storagePath);
     }
     std::unordered_set<std::string> existingStoragePaths =
         photosDao_.GetExistingStoragePaths(storagePaths, photosBasicInfo_.maxFileId);
     for (auto &fileInfo : fileInfos) {
-        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo));
+        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo));
         fileInfo.isStoragePathExistInDb = existingStoragePaths.count(fileInfo.storagePath) > 0;
         existCount += fileInfo.isStoragePathExistInDb;
     }
@@ -406,13 +407,13 @@ void PhotosClone::SetIsCloudPathExistInDb(std::vector<FileInfo> &fileInfos)
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::vector<std::string> cloudPaths;
     for (const auto &fileInfo : fileInfos) {
-        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo));
+        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo));
         cloudPaths.emplace_back(fileInfo.oldPath);
     }
     std::unordered_set<std::string> existingCloudPaths =
         photosDao_.GetExistingData(cloudPaths, photosBasicInfo_.maxFileId);
     for (auto &fileInfo : fileInfos) {
-        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo));
+        CHECK_AND_CONTINUE(FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo));
         fileInfo.isCloudPathExistInDb = existingCloudPaths.count(fileInfo.oldPath) > 0;
         existCount += fileInfo.isCloudPathExistInDb;
     }
@@ -518,14 +519,84 @@ void PhotosClone::QueryLakeFileFailInfo(
         lakePhotoFailedFiles.size(), lakeVideoFailedFiles.size());
 }
 
+void PhotosClone::QueryFileManagerFileFailInfo(
+    std::unordered_map<std::string, FailedFileInfo> &fileManagerPhotoFailedFiles,
+    std::unordered_map<std::string, FailedFileInfo> &fileManagerVideoFailedFiles)
+{
+    fileManagerPhotoFailedFiles.clear();
+    fileManagerVideoFailedFiles.clear();
+
+    CHECK_AND_RETURN_LOG(cloneRestoreRdbStore_ != nullptr, "FileManagerClone: cloneRestoreRdbStore is nullptr");
+
+    bool isTableExist = false;
+    CHECK_AND_RETURN_LOG(BackupDatabaseUtils::isTableExist(cloneRestoreRdbStore_,
+        FILE_MANAGER_INFO_FAIL_TABLE, isTableExist), "FileManagerClone: fail to check table exist");
+    CHECK_AND_RETURN_WARN_LOG(isTableExist, "FileManagerClone: FILE_MANAGER_INFO_FAIL_TABLE not exist");
+
+    auto resultSet = cloneRestoreRdbStore_->QuerySql(SQL_QUERY_FILE_MANAGER_FILE_FAIL_INFO);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("FileManagerClone: QueryFileManagerFileFailInfo failed, QuerySql return nullptr");
+        ErrorInfo errorInfo(RestoreError::CLONE_RESTORE_DATABASE_CORRUPTION, 1, "",
+            "QueryFileManagerFileFailInfo failed for table: " + FILE_MANAGER_INFO_FAIL_TABLE);
+        UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportErrorInAudit(errorInfo);
+        return;
+    }
+
+    std::unordered_map<std::string, std::pair<int32_t, std::string>> failPathInfoMap;
+    if (mediaLibraryOriginalRdb_ != nullptr) {
+        auto fileManagerResultSet = mediaLibraryOriginalRdb_->QuerySql(SQL_QUERY_FILE_MANAGER_FILE_FULL_INFO);
+        if (fileManagerResultSet != nullptr) {
+            while (fileManagerResultSet->GoToNextRow() == NativeRdb::E_OK) {
+                std::string storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, fileManagerResultSet);
+                int32_t mediaType = GetInt32Val(MediaColumn::MEDIA_TYPE, fileManagerResultSet);
+                std::string displayName = GetStringVal(MediaColumn::MEDIA_NAME, fileManagerResultSet);
+                failPathInfoMap[storagePath] = {mediaType, displayName};
+            }
+            fileManagerResultSet->Close();
+        }
+    }
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        std::string failPath = GetStringVal(PhotoColumn::CLONE_FILE_INFO_PATH, resultSet);
+        auto it = failPathInfoMap.find(failPath);
+        if (it != failPathInfoMap.end()) {
+            FileInfo fileInfo;
+            fileInfo.displayName = it->second.second;
+            fileInfo.storagePath = failPath;
+
+            FailedFileInfo failedFileInfo(sceneCode_, fileInfo, RestoreError::FILE_MANAGER_TRANSFER_FAILED);
+
+            if (it->second.first == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) {
+                fileManagerPhotoFailedFiles.emplace(failPath, failedFileInfo);
+            } else if (it->second.first == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
+                fileManagerVideoFailedFiles.emplace(failPath, failedFileInfo);
+            }
+        }
+    }
+    resultSet->Close();
+
+    MEDIA_INFO_LOG("FileManagerClone: QueryFileManagerFileFailInfo photoFail: %{public}zu, videoFail: %{public}zu",
+        fileManagerPhotoFailedFiles.size(), fileManagerVideoFailedFiles.size());
+}
+
 void PhotosClone::InitDeduplicationInfo()
 {
     int32_t ret = InitCloneRestoreRdbStore();
-    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to init CloneRestoreRdbStor");
+    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to init CloneRestoreRdbStore");
     CHECK_AND_RETURN_LOG(cloneRestoreRdbStore_ != nullptr, "cloneRestoreRdbStore is nullptr");
     QueryDeduplicationFileInfo(deduplicationMap_);
     MEDIA_INFO_LOG("LakeClone: InitDeduplicationInfo completed, deduplicationMap size: %{public}zu",
         deduplicationMap_.size());
+}
+
+void PhotosClone::InitFileManagerDeduplicationInfo()
+{
+    int32_t ret = InitCloneRestoreRdbStore();
+    CHECK_AND_RETURN_LOG(ret == E_OK, "FileManagerClone: failed to init CloneRestoreRdbStore");
+    CHECK_AND_RETURN_LOG(cloneRestoreRdbStore_ != nullptr, "FileManagerClone: cloneRestoreRdbStore is nullptr");
+    QueryFileManagerDeduplicationFileInfo(fileManagerDeduplicationMap_);
+    MEDIA_INFO_LOG("FileManagerClone: Init completed, fileManagerDeduplicationMap size: %{public}zu",
+        fileManagerDeduplicationMap_.size());
 }
 
 void PhotosClone::UpdateFileInfoFromCloneRestoreDb(std::vector<FileInfo> &fileInfos, AncoFileTransfer ancoFileTransfer)
@@ -537,6 +608,8 @@ void PhotosClone::UpdateFileInfoFromCloneRestoreDb(std::vector<FileInfo> &fileIn
 
     for (auto it = fileInfos.begin(); it != fileInfos.end();) {
         if (!FileAdapter::IsLakeFile(*it)) {
+            it->inode.clear();
+            it->storagePath.clear();
             ++it;
             continue;
         }
@@ -563,6 +636,39 @@ void PhotosClone::UpdateFileInfoFromCloneRestoreDb(std::vector<FileInfo> &fileIn
     MEDIA_INFO_LOG("LakeClone: UpdateFileInfoFromCloneRestoreDb isLakeTransfer:%{public}d, "
         "deduplicationMapSize: %{public}d, matched: %{public}d, success: %{public}d, fail: %{public}d",
         static_cast<int32_t>(ancoFileTransfer), totalCount, matchedCount, successCount, failCount);
+}
+
+void PhotosClone::UpdateFileManagerFileInfoFromCloneRestoreDb(std::vector<FileInfo> &fileInfos)
+{
+    int32_t totalCount = static_cast<int32_t>(fileManagerDeduplicationMap_.size());
+    int32_t matchedCount = 0;
+    int32_t successCount = 0;
+    int32_t failCount = 0;
+
+    for (auto it = fileInfos.begin(); it != fileInfos.end();) {
+        if (!FileAdapter::IsFileManagerFile(*it)) {
+            ++it;
+            continue;
+        }
+        auto dedupIt = fileManagerDeduplicationMap_.find(it->storagePath);
+        if (dedupIt != fileManagerDeduplicationMap_.end()) {
+            matchedCount++;
+            if (ApplyDeduplicationFileInfo(*it, dedupIt->second)) {
+                successCount++;
+                ++it;
+            } else {
+                failCount++;
+                it = fileInfos.erase(it);
+            }
+        } else {
+            it->filePath = it->storagePath;
+            ++it;
+        }
+    }
+
+    MEDIA_INFO_LOG("FileManagerClone: UpdateFileManagerFileInfoFromCloneRestoreDb "
+        "fileManagerDeduplicationMapSize: %{public}d, matched: %{public}d, success: %{public}d, fail: %{public}d",
+        totalCount, matchedCount, successCount, failCount);
 }
 
 int32_t PhotosClone::InitCloneRestoreRdbStore()
@@ -624,6 +730,38 @@ void PhotosClone::QueryDeduplicationFileInfo(std::unordered_map<std::string, Ded
         deduplicationMap.size());
 }
 
+void PhotosClone::QueryFileManagerDeduplicationFileInfo(std::unordered_map<std::string,
+    DeduplicationInfo> &deduplicationMap)
+{
+    deduplicationMap.clear();
+
+    bool isTableExist = false;
+    CHECK_AND_RETURN_LOG(BackupDatabaseUtils::isTableExist(cloneRestoreRdbStore_,
+        FILE_MANAGER_FILE_INFO_DEDUPLICATION_TABLE, isTableExist), "FileManagerClone: fail to check table exist");
+    CHECK_AND_RETURN_WARN_LOG(isTableExist, "FileManagerClone: FILE_MANAGER_FILE_INFO_DEDUPLICATION_TABLE not exist");
+
+    auto resultSet = cloneRestoreRdbStore_->QuerySql(SQL_QUERY_FILE_MANAGER_DEDUPLICATION_FILE_INFO);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("FileManagerClone: QueryFileManagerDeduplicationFileInfo failed, QuerySql return nullptr");
+        ErrorInfo errorInfo(RestoreError::CLONE_RESTORE_DATABASE_CORRUPTION, 1, "",
+            "QueryFileManagerDeduplicationFileInfo failed for table: " + FILE_MANAGER_FILE_INFO_DEDUPLICATION_TABLE);
+        UpgradeRestoreTaskReport(sceneCode_, taskId_).ReportErrorInAudit(errorInfo);
+        return;
+    }
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        DeduplicationInfo deduplicationInfo;
+        std::string tmpPath = GetStringVal(PhotoColumn::CLONE_FILE_INFO_PATH, resultSet);
+        std::string tmpNewPath = GetStringVal(PhotoColumn::CLONE_FILE_INFO_NEW_PATH, resultSet);
+        deduplicationInfo.path = BackupFileUtils::ConvertToStoragePath(tmpPath);
+        deduplicationInfo.newPath = BackupFileUtils::ConvertToStoragePath(tmpNewPath);
+        deduplicationMap[deduplicationInfo.path] = deduplicationInfo;
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("FileManagerClone: QueryFileManagerDeduplicationFileInfo deduplicationMap size: %{public}zu",
+        deduplicationMap.size());
+}
+
 bool PhotosClone::ApplyDeduplicationFileInfo(FileInfo &fileInfo, const DeduplicationInfo &deduplicationInfo)
 {
     if (deduplicationInfo.newPath.empty()) {
@@ -660,7 +798,7 @@ bool PhotosClone::ApplyDeduplicationFileInfo(FileInfo &fileInfo, const Deduplica
 
 bool PhotosClone::ShouldDeleteDuplicateLakeFile(const FileInfo &fileInfo)
 {
-    CHECK_AND_RETURN_RET(FileAdapter::IsLakeFile(fileInfo), true);
+    CHECK_AND_RETURN_RET((FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo)), true);
     // keep source only when target is pure-cloud(position=2) and container original already exists;
     // otherwise always delete.
     bool keepSource = (fileInfo.needMove|| fileInfo.isStoragePathExistInDb);
@@ -669,7 +807,8 @@ bool PhotosClone::ShouldDeleteDuplicateLakeFile(const FileInfo &fileInfo)
 
 bool PhotosClone::IsCloudPathExist(const FileInfo &fileInfo)
 {
-    CHECK_AND_RETURN_RET(FileAdapter::IsLakeFile(fileInfo), MediaFileUtils::IsFileExists(fileInfo.cloudPath));
+    CHECK_AND_RETURN_RET(FileAdapter::IsLakeFile(fileInfo) || FileAdapter::IsFileManagerFile(fileInfo),
+        MediaFileUtils::IsFileExists(fileInfo.cloudPath));
     return fileInfo.isCloudPathExistInDb;
 }
 

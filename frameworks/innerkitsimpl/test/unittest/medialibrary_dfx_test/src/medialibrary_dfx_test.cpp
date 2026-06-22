@@ -25,6 +25,7 @@
 #include "dfx_database_utils.h"
 #include "dfx_manager.h"
 #include "dfx_reporter.h"
+#include "dfx_system_photo_keys.h"
 #include "dfx_utils.h"
 #include "hisysevent.h"
 #include "medialibrary_astc_stat.h"
@@ -1235,6 +1236,28 @@ HWTEST_F(MediaLibraryDfxTest, QueryAlbumNames_dfx_test_002, TestSize.Level0)
     }
     std::vector<std::string> supportedAlbumNames = DfxDatabaseUtils::QueryAlbumNamesByUploadStatus(1);
     EXPECT_EQ(supportedAlbumNames.size(), 2);
+}
+
+HWTEST_F(MediaLibraryDfxTest, DfxSystemPhotoKeys_ReportIfSystemKey_Test_01, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("DfxSystemPhotoKeys_ReportIfSystemKey_Test_01 Start");
+
+    std::vector<std::pair<std::string, int32_t>> testCases{
+        {MediaColumn::MEDIA_NAME, E_SUCCESS},
+        {MediaColumn::MEDIA_HIDDEN, E_INVALID_BUNDLENAME},
+        {MediaColumn::MEDIA_SIZE, E_SUCCESS},
+        {PhotoColumn::PHOTO_HIDDEN_TIME, E_INVALID_BUNDLENAME},
+    };
+
+    for (const auto &testCase : testCases) {
+        std::string photoKey = testCase.first;
+        int32_t expect = testCase.second;
+        int32_t actual = DfxSystemPhotoKeys::ReportIfSystemKey(photoKey);
+        MEDIA_DEBUG_LOG("photoKey: %{public}s, Actual: %{public}d", photoKey.c_str(), actual);
+        EXPECT_EQ(actual, expect);
+    }
+
+    MEDIA_INFO_LOG("DfxSystemPhotoKeys_ReportIfSystemKey_Test_01 end");
 }
 } // namespace Media
 } // namespace OHOS

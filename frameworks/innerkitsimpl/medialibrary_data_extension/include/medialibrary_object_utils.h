@@ -93,6 +93,7 @@ public:
     static void InvalidateThumbnail(const string &id, const string &tableName = CONST_MEDIALIBRARY_TABLE,
         const string &path = "");
     static void TryUpdateAnalysisProp(const std::string str);
+    EXPORT static void ClearBufferFdMap(const int32_t &fileId);
 
 private:
     static int32_t DeleteEmptyDirsRecursively(int32_t dirId);

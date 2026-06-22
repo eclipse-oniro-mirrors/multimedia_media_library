@@ -29,6 +29,7 @@
 #include "media_string_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_manager_notify_observer_manager.h"
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_tracer.h"
 #include "media_app_uri_permission_column.h"
@@ -66,6 +67,8 @@
 #include "js_interface_helper.h"
 #include "get_assets_vo.h"
 #include "moving_photo_file_utils.h"
+#include "media_path_utils.h"
+#include "thumbnail_manager.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
 #include "purgeable_pixelmap_builder.h"
@@ -125,6 +128,106 @@ void MediaLibraryManager::InitMediaLibraryManager()
     if (sDataShareHelper_ == nullptr && token_ != nullptr) {
         sDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
     }
+}
+
+int32_t MediaLibraryManager::RegisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::PHOTO_URI, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::PHOTO_URI, callback);
+}
+
+int32_t MediaLibraryManager::RegisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
+}
+
+int32_t MediaLibraryManager::RegisterSinglePhotoChange(const std::string &assetUri,
+    std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterSingleAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterSinglePhotoChange(const std::string &assetUri,
+    std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterSingleAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
+}
+
+int32_t MediaLibraryManager::RegisterSinglePhotoAlbumChange(const std::string &albumUri,
+    std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterSingleAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterSinglePhotoAlbumChange(const std::string &albumUri,
+    std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterSingleAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
+}
+
+int32_t MediaLibraryManager::RegisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
+}
+
+int32_t MediaLibraryManager::RegisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
+}
+
+int32_t MediaLibraryManager::RegisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
+        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
+}
+
+int32_t MediaLibraryManager::RegisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
+}
+
+int32_t MediaLibraryManager::UnregisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
+        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
 }
 
 string MediaLibraryManager::CreateAsset(const string &displayName)
@@ -532,7 +635,8 @@ static int32_t GetFdFromSandbox(const string &path, string &sandboxPath, bool is
     return open(absFilePath.c_str(), O_RDONLY);
 }
 
-static void UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper, const string &fileIdStr)
+void MediaLibraryManager::UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper,
+    const string &fileIdStr)
 {
     MEDIA_INFO_LOG("UpdateAssetVisitCount fileIdStr :%{public}s", fileIdStr.c_str());
     AddAssetVisitCountReqBody reqBody;
@@ -568,7 +672,7 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
         return dataShareHelper->OpenFile(openUri, "R");
     }
     string sandboxPath = GetSandboxPath(path, size, isAstc);
-    if ((sandboxPath.find("LCD") != std::string::npos) && CheckIsCloudFile(sandboxPath)) {
+    if ((sandboxPath.find("LCD.jpg") != std::string::npos) && MediaPathUtils::CheckIsCloudFile(sandboxPath)) {
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
@@ -1571,17 +1675,6 @@ FetchResult<FileAsset> MediaLibraryManager::GetAssets(const PhotoAlbum &album,
         return fileAsset;
     }
     return FetchResult<FileAsset>(std::move(resultSet));
-}
-
-bool MediaLibraryManager::CheckIsCloudFile(const std::string &sandboxPath)
-{
-    constexpr size_t MAX_ATTR_NAME = 64;
-    constexpr const char* CLOUD_LOCATION_ATTR = "user.cloud.location";
-    char cloudvalue[MAX_ATTR_NAME] = {'\0'};
-    auto valueLen = getxattr(sandboxPath.c_str(), CLOUD_LOCATION_ATTR, cloudvalue, MAX_ATTR_NAME);
-    CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s", sandboxPath.c_str());
-    constexpr const char FILE_POSITION_CLOUD = '2';
-    return cloudvalue[0] == FILE_POSITION_CLOUD;
 }
 
 FetchResult<FileAsset> MediaLibraryManager::GetAssets(const std::vector<std::string> &fetchColumns,

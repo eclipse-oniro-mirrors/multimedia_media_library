@@ -219,12 +219,6 @@ enum class StageVideoTaskStatus : int32_t {
     STAGE_TASK_SUCCESS,
 };
 
-enum class FirstStageModifyType : int32_t {
-    NOT_MODIFIED = 0,
-    EDITED,
-    TRASHED,
-};
-
 enum class BatchDownloadStatusType : int32_t {
     TYPE_WAITING = 0,
     TYPE_DOWNLOADING,
@@ -232,12 +226,6 @@ enum class BatchDownloadStatusType : int32_t {
     TYPE_FAIL,
     TYPE_SUCCESS,
     TYPE_AUTO_PAUSE
-};
-
-enum class BatchDownloadNetWorkPolicyType : int32_t {
-    TYPE_DEFAULT = 0,
-    TYPE_CELLNET,
-    TYPE_WIFI
 };
 
 enum class BatchDownloadAutoPauseReasonType : int32_t {
@@ -315,6 +303,13 @@ const std::string MEDIA_CUSTOM_RESTORE_DIR = ROOT_MEDIA_DIR + "custom_restore/";
 const std::string MEDIA_DATA_DIR = ROOT_MEDIA_DIR + "data/";
 const std::string MEDIA_HIGHLIGHT_DIR = ROOT_MEDIA_DIR + "highlight/";
 const std::string MEDIA_EDIT_DATA_DIR = ROOT_MEDIA_DIR + ".editData/";
+const std::string ROOT_MEDIA_CAMERA_CACHE_DIR = "/storage/cloud/files/cameraCache";
+const std::string PHYSICAL_PATH_PREFIX = "/data/service/el2/";
+const std::string PHYSICAL_PATH_SUFFIX = "/hmdfs/account/files/";
+const std::string MEDIA_CAMERA_CACHE_TMP_DIR = "cameraCache/temp";
+const std::string MEDIA_PHOTO_DIR_REAL_PATH = "Photo";
+const std::string MEDIA_EDITDATA_DIR_REAL_PATH = ".editData/";
+
 const std::string META_RECOVERY_PHOTO_RELATIVE_PATH = "/Photo/";
 const std::string META_RECOVERY_META_RELATIVE_PATH = "/.meta/Photo/";
 const std::string META_RECOVERY_META_FILE_SUFFIX = ".json";
@@ -334,6 +329,9 @@ const std::string DOCS_PATH = "Docs/";
 const int CAMERA_DIRECTORY_TYPE_VALUES = DIR_CAMERA;
 const std::string CAMERA_DIR_VALUES = "Camera/";
 const std::string CAMERA_TYPE_VALUES = std::to_string(MEDIA_TYPE_IMAGE) + "?" + std::to_string(MEDIA_TYPE_VIDEO);
+const std::string CAMERA_CACHE_DIR_VALUES = "cameraCache/";
+const std::string CAMERA_CACHE_ENHANCE_DIR_VALUES = "enhanced";
+const std::string CAMERA_CACHE_TEMP_DIR_VALUES = "temp";
 const int VIDEO_DIRECTORY_TYPE_VALUES = DIR_VIDEO;
 const std::string VIDEO_DIR_VALUES = "Videos/";
 const std::string VIDEO_TYPE_VALUES = std::to_string(MEDIA_TYPE_VIDEO);
@@ -361,10 +359,10 @@ const std::string CLOUD_ENHANCEMENT_WATER_MARK_DIR = "/sys_prod/resource/camera"
 const std::string CACHE_DIR_VALUE = ".cache";
 const std::string HIGHLIGHT_INFO_OLD = ".thumbs/highlight";
 const std::string HIGHLIGHT_INFO_NEW = "highlight";
+const std::string CUSTOM_RESTORE_VALUES = "custom_restore";
 const std::string MEDIA_PHOTO_URI = "file://media/Photo/";
 const std::string HMDFS = "/mnt/hmdfs/";
 const std::string CLOUD_MERGE_VIEW = "/account/cloud_merge_view/files/";
-const std::string CUSTOM_RESTORE_VALUES = "custom_restore";
 
 const int TRASH_ALBUM_ID_VALUES = 2;
 const int FAVOURITE_ALBUM_ID_VALUES = 1;

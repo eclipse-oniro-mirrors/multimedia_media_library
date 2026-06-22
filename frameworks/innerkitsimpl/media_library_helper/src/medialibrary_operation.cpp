@@ -23,6 +23,7 @@
 #include "media_old_albums_column.h"
 #include "media_facard_photos_column.h"
 #include "medialibrary_db_const.h"
+#include "media_operation_log_column.h"
 #include "ptp_medialibrary_manager_uri.h"
 #include "delete_permanently_operations_uri.h"
 #include "search_column.h"
@@ -37,6 +38,7 @@
 #include "smart_album_column.h"
 #include "custom_record_uri.h"
 #include "media_audio_column.h"
+#include "cover_record_columns.h"
 
 namespace OHOS {
 namespace Media {
@@ -99,6 +101,7 @@ const std::map<std::string, OperationObject>& GetOprnObjMap()
         { CONST_ASSET_ALBUM_OPERATION, OperationObject::ASSET_ALBUM_OPERATION},
         { CONST_MEDIA_QUERY_OPRN_MOVING_PHOTO_VIDEO_READY, OperationObject::MOVING_PHOTO_VIDEO_READY },
         { CONST_PAH_MULTISTAGES_VIDEO, OperationObject::PAH_MULTISTAGES_VIDEO },
+        { CONST_TAB_COVER_RECORD, OperationObject::TAB_COVER_RECORD },
 
         // use in Vision
         { CONST_PAH_TAB_PHOTOS_EXT_OPERATE, OperationObject::TAB_PHOTOS_EXT_OPERATE },
@@ -256,6 +259,8 @@ const std::map<OperationObject, std::map<OperationType, std::string>>& GetTableN
             { { OperationType::UNKNOWN_TYPE, PhotoColumn::TAB_ASSET_AND_ALBUM_OPERATION_TABLE } } },
         { OperationObject::TAB_PHOTOS_EXT_OPERATE,
             { { OperationType::UNKNOWN_TYPE, PhotoExtColumn::PHOTOS_EXT_TABLE } } },
+        { OperationObject::TAB_COVER_RECORD,
+            { { OperationType::UNKNOWN_TYPE, CoverRecordColumns::COVER_RECORD_TABLE } }},
 
         // search
         { OperationObject::SEARCH_TOTAL, { { OperationType::UNKNOWN_TYPE, SEARCH_TOTAL_TABLE } } },

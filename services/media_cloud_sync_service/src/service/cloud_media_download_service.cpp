@@ -52,6 +52,7 @@
 #include "userfile_manager_types.h"
 #include "lcd_aging_dao.h"
 #include "lcd_aging_utils.h"
+#include "lcd_aging_manager.h"
 #include "media_file_utils.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
@@ -139,6 +140,8 @@ int32_t CloudMediaDownloadService::OnDownloadThm(
     if (ret == E_OK && !thmVector.empty()) {
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_THUMB_SUCCESS, thmVector.size());
     }
+    int32_t out = this->dao_.UpdateLcdFileSize(thmVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSize, out: %{public}d", out);
     for (auto &thm : thmVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;
@@ -158,6 +161,8 @@ int32_t CloudMediaDownloadService::OnDownloadLcd(
     if (ret == E_OK && !lcdVector.empty()) {
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_LCD_SUCCESS, lcdVector.size());
     }
+    int32_t out = this->dao_.UpdateLcdFileSizeAndLcdSize(lcdVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSizeAndLcdSize, out: %{public}d", out);
     for (auto &thm : lcdVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;
@@ -178,6 +183,8 @@ int32_t CloudMediaDownloadService::OnDownloadThmAndLcd(
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_THUMB_SUCCESS, bothVector.size());
         CloudMediaDfxService::UpdateAttachmentStat(INDEX_LCD_SUCCESS, bothVector.size());
     }
+    int32_t out = this->dao_.UpdateLcdFileSizeAndLcdSize(bothVector);
+    CHECK_AND_PRINT_LOG(out == E_OK, "Failed to UpdateLcdFileSizeAndLcdSize, out: %{public}d", out);
     for (auto &thm : bothVector) {  // collect results
         MediaOperateResultDto mediaResult;
         mediaResult.cloudId = thm;
@@ -294,10 +301,8 @@ std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadAsset(const std::ve
     return photosDtoVec;
 }
 
-OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(const PhotosPo &photosPo,
-    const std::unordered_map<std::string, AdditionFileInfo> &downloadedFileInfos)
+int32_t CloudMediaDownloadService::GetOnDownloadAssetData(const PhotosPo &photosPo, OnDownloadAssetData &assetData)
 {
-    OnDownloadAssetData assetData;
     assetData.err = E_OK;
     assetData.errorMsg = "";
     bool isMovingPhoto = CloudMediaSyncUtils::IsMovingPhoto(photosPo);
@@ -305,10 +310,11 @@ OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(const Phot
     bool isLivePhoto = CloudMediaSyncUtils::IsLivePhoto(photosPo);
     bool isInvalidCover = photosPo.coverPosition.value_or(0) == 0 && photosPo.isRectificationCover.value_or(0) == 0;
     bool isInvalidDuration = photosPo.duration.value_or(0) == 0;
+    const std::string cloudId = photosPo.cloudId.value_or("");
     MEDIA_INFO_LOG("GetOnDownloadAssetData, "
-        "isMovingPhoto: %{public}d, isGraffiti: %{public}d, isLivePhoto: %{public}d",
-        isMovingPhoto, isGraffiti, isLivePhoto);
-    assetData.fixFileType = isMovingPhoto && !isGraffiti && !isLivePhoto;
+        "cloudId: %{public}s, isMovingPhoto: %{public}d, isGraffiti: %{public}d, isLivePhoto: %{public}d",
+        cloudId.c_str(), isMovingPhoto, isGraffiti, isLivePhoto);
+    assetData.fixFileType = assetData.lakeInfo.fileSourceType == 0 && isMovingPhoto && !isGraffiti && !isLivePhoto;
     assetData.needSliceContent = (isMovingPhoto && !isGraffiti) && isLivePhoto;
     assetData.needParseCover = isMovingPhoto && isInvalidCover;
     assetData.needSliceRaw = isMovingPhoto;
@@ -326,9 +332,8 @@ OnDownloadAssetData CloudMediaDownloadService::GetOnDownloadAssetData(const Phot
     this->FindRealLocalPath(assetData.fileInfo.filePath, assetData);
     assetData.needParseDuration = isInvalidDuration &&
         photosPo.subtype.value_or(0) == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
-    assetData.lakeInfo = downloadedFileInfos.at(photosPo.cloudId.value_or(""));
     assetData.cloudId = photosPo.cloudId.value_or("");
-    return assetData;
+    return E_OK;
 }
 
 void CloudMediaDownloadService::UnlinkAsset(OnDownloadAssetData &assetData)
@@ -775,12 +780,11 @@ int32_t CloudMediaDownloadService::GetDownloadNumberOfLcd(int64_t &lcdNumber)
 
 int32_t CloudMediaDownloadService::UpdateLcdNumberCache()
 {
-    int64_t lcdThresholdNumber = -1;
-    int32_t ret = LcdAgingUtils().GetScaleThresholdOfLcd(lcdThresholdNumber);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetScaleThresholdOfLcd, ret: %{public}d", ret);
+    int64_t lcdThresholdNumber = LcdAgingUtils::GetScaleThresholdOfLcd();
+    CHECK_AND_RETURN_RET_LOG(lcdThresholdNumber > 0, E_ERR, "Failed to GetScaleThresholdOfLcd");
 
     int64_t lcdCurrentNumber = -1;
-    ret = LcdAgingDao().GetCurrentNumberOfLcd(lcdCurrentNumber);
+    int32_t ret = LcdAgingDao().GetCurrentNumberOfLcd(lcdCurrentNumber);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetCurrentNumberOfLcd, ret: %{public}d", ret);
 
     this->lcdNumberCache_ = lcdThresholdNumber - lcdCurrentNumber;
@@ -793,9 +797,15 @@ int32_t CloudMediaDownloadService::GetFullSyncDownloadInfo(std::map<std::string,
 {
     int32_t ret = E_OK;
     if (flagsInfo.empty() || flagsInfo.find(DOWNLOAD_LCD) != flagsInfo.end()) {
+        bool isActiveLcdAging = LcdAgingManager::GetInstance().GetIsActiveLcdAging();
         int64_t lcdNumber = -1;
-        ret = GetDownloadNumberOfLcd(lcdNumber);
-        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetDownloadNumberOfLcd, ret: %{public}d", ret);
+        if (isActiveLcdAging) {
+            ret = GetDownloadNumberOfLcd(lcdNumber);
+            CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetDownloadNumberOfLcd, ret: %{public}d", ret);
+        } else {
+            lcdNumberCache_ = 0;
+            lcdNumber = LcdAgingUtils::GetScaleThresholdOfLcd();
+        }
         flagsInfo[DOWNLOAD_LCD] = lcdNumber;
     }
     return ret;
@@ -823,9 +833,12 @@ int32_t CloudMediaDownloadService::OnDownloadAsset(
         photosPoVec.size());
     UpdateVideoMode(photosPoVec);
     OnDownloadAssetData assetData;
+    std::string cloudId;
     for (const auto &photosPo : photosPoVec) {
-        assetData = this->GetOnDownloadAssetData(photosPo, downloadedFileInfos);
+        cloudId = photosPo.cloudId.value_or("");
         assetData.localPhotosPoOp = photosPo;
+        assetData.lakeInfo = CloudMediaSyncUtils::GetMapValue(downloadedFileInfos, cloudId);
+        this->GetOnDownloadAssetData(photosPo, assetData);
         MEDIA_DEBUG_LOG("OnDownloadAsset, photosPo: %{public}s, assetData: %{public}s",
             photosPo.ToString().c_str(),
             assetData.ToString().c_str());
@@ -834,7 +847,7 @@ int32_t CloudMediaDownloadService::OnDownloadAsset(
         UpdateBatchDownloadTask(photosPo);
 #endif
         MediaOperateResultDto mediaResult;
-        mediaResult.cloudId = photosPo.cloudId.value_or("");
+        mediaResult.cloudId = cloudId;
         mediaResult.errorCode = assetData.err;
         mediaResult.errorMsg = assetData.errorMsg;
         result.emplace_back(mediaResult);

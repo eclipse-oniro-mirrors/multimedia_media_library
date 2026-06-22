@@ -58,10 +58,18 @@
 #include "analysis_data_vision_dao.h"
 #endif
 #include "media_file_access_utils.h"
+#include "asset_accurate_refresh.h"
+#include "cloud_media_dao_utils.h"
+#include "accurate_common_data.h"
+#include "medialibrary_unistore_manager.h"
+#include "cloud_media_common.h"
 
 using namespace std;
 using namespace OHOS::DistributedKv;
 using namespace OHOS::NativeRdb;
+const uint32_t THM_TO_DOWNLOAD_MASK = 0x2;
+const uint32_t LCD_TO_DOWNLOAD_MASK = 0x1;
+const std::string ANALYSIS_AP = "media_analysis_service";
 
 namespace OHOS {
 namespace Media {
@@ -702,6 +710,7 @@ void UpdatePhotoLastVisitTimeAsync(ThumbnailData &data, ThumbRdbOpt &opts)
         ThumbnailData data = taskData->thumbnailData_;
         NativeRdb::ValuesBucket values;
         values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
+        values.PutLong(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
         auto ret = ThumbnailRdbUtils::UpdateRdbStoreById(opts, data.id, values);
         CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateRdbStoreById err: %{public}d. id: %{public}s path: %{public}s",
             ret, data.id.c_str(), DfxUtils::GetSafePath(data.path).c_str());
@@ -720,6 +729,84 @@ void GetThumbnailPixelMapPreStep(ThumbnailData& data, ThumbRdbOpt &opts, Thumbna
     ThumbnailUtils::QueryThumbnailDataFromFileId(opts, data.id, data, err);
 }
 
+int32_t ThumbnailGenerateHelper::UpdateLcdFileSizeAndThumbStatus(const std::string &id, const std::string &path)
+{
+    MEDIA_DEBUG_LOG("enter UpdateLcdFileSizeAndThumbStatus, id: %{public}s", id.c_str());
+    CHECK_AND_RETURN_RET_LOG(!id.empty(), E_ERR, "UpdateLcdThumbStatus id is empty.");
+    CHECK_AND_RETURN_RET_LOG(!path.empty(), E_ERR, "UpdateLcdThumbStatus path is empty.");
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> photoRefresh =
+        std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
+    CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+    std::string suffixes[] = {THUMBNAIL_LCD_EX_SUFFIX, THUMBNAIL_LCD_SUFFIX};
+    // 获取LCD文件大小
+    int64_t lcdFileSize = -1;
+    size_t lcdSize = 0;
+    for (const auto& suffix : suffixes) {
+        std::string lcdCloudPath = GetThumbnailPath(path, suffix);
+        if (!lcdCloudPath.empty() && MediaFileUtils::GetFileSize(lcdCloudPath, lcdSize)) {
+            lcdFileSize = static_cast<int64_t>(lcdSize);
+            break;
+        }
+    }
+    // 获取LCD宽高比
+    std::string lcdSizeStr;
+    bool hasLcdSize = ThumbnailUtils::CalcLcdSize(GetThumbnailPath(path, THUMBNAIL_LCD_SUFFIX), lcdSizeStr);
+
+    std::vector<NativeRdb::ValueObject> bindArgs = {static_cast<int32_t>(~LCD_TO_DOWNLOAD_MASK)};
+    // 构建SQL语句，同时更新thumb_status、lcd_file_size和lcd_size
+    std::string sql = "\
+        UPDATE Photos \
+            SET thumb_status = thumb_status & ?";
+    if (lcdFileSize >= 0) {
+        sql += ", lcd_file_size = ?";
+        bindArgs.push_back(lcdFileSize);
+    }
+    if (hasLcdSize) {
+        sql += ", lcd_size = ?";
+        bindArgs.push_back(lcdSizeStr);
+    }
+    sql += " WHERE file_id IN ({0})";
+
+    std::vector<std::string> ids = { id };
+    std::vector<std::string> params = {CloudSync::CloudMediaDaoUtils::ToStringWithCommaAndQuote(ids)};
+    std::string execSql = CloudMediaCommon::FillParams(sql, params);
+
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(MediaColumn::MEDIA_ID, ids);
+    int32_t ret = photoRefresh->Init(predicates);
+    CHECK_AND_RETURN_RET_LOG(
+        ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK, E_ERR, "UpdateLcdThumbStatus Failed to Init photoRefresh.");
+    ret = photoRefresh->ExecuteSql(execSql, bindArgs, AccurateRefresh::RdbOperation::RDB_OPERATION_UPDATE);
+    CHECK_AND_RETURN_RET_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK, E_ERR, "Failed to UpdateLcdThumbStatus.");
+    photoRefresh->RefreshAlbumNoDateModified(static_cast<NotifyAlbumType>(NotifyAlbumType::SYS_ALBUM |
+        NotifyAlbumType::USER_ALBUM | NotifyAlbumType::SOURCE_ALBUM));
+    photoRefresh->Notify();
+    return ret;
+}
+
+static void HandleReadLcdAndThumbnailError(ThumbnailType thumbType, bool isLocalThumbnailAvailable,
+    string absFilePath)
+{
+    DfxManager::GetInstance()->HandleThumbnailError(absFilePath,
+        thumbType == ThumbnailType::LCD ? DfxType::CLOUD_LCD_OPEN : DfxType::CLOUD_DEFAULT_OPEN, -errno);
+    if (thumbType == ThumbnailType::LCD && !isLocalThumbnailAvailable) {
+        DfxManager::GetInstance()->HandleReadLcd(false);
+    }
+}
+
+void ThumbnailGenerateHelper::HandleLocalThumbnailUnavailable(ThumbnailData& data,
+    ThumbRdbOpt &opts, ThumbnailType thumbType)
+{
+    if (thumbType == ThumbnailType::LCD) {
+        int32_t ret = UpdateLcdFileSizeAndThumbStatus(data.id, data.path);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "Fail to UpdateLcdThumbStatus");
+        DfxManager::GetInstance()->HandleReadLcd(true);
+    }
+    CacheStreamReadThumbDbStatus(opts, data, thumbType);
+    ReGenerateAstc(opts, data, thumbType);
+    MediaLibraryPhotoOperations::StoreThumbnailInfoAsync({ {data.id, data.path, thumbType == ThumbnailType::LCD} });
+}
+
 static int32_t ReopenLocalFd(const std::string &absFilePath, int32_t fd)
 {
     close(fd);
@@ -729,8 +816,17 @@ static int32_t ReopenLocalFd(const std::string &absFilePath, int32_t fd)
     return fd;
 }
 
+static void HandleVisitLcd(ThumbnailType thumbType)
+{
+    const std::string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    if (bundleName != ANALYSIS_AP && !bundleName.empty() && thumbType == ThumbnailType::LCD) {
+        DfxManager::GetInstance()->HandleVisitLcd();
+    }
+}
+
 int32_t ThumbnailGenerateHelper::GetThumbnailPixelMap(ThumbnailData& data, ThumbRdbOpt &opts, ThumbnailType thumbType)
 {
+    HandleVisitLcd(thumbType);
     GetThumbnailPixelMapPreStep(data, opts, thumbType);
     string fileName;
     int32_t err = GetAvailableFile(opts, data, thumbType, fileName);
@@ -750,8 +846,7 @@ int32_t ThumbnailGenerateHelper::GetThumbnailPixelMap(ThumbnailData& data, Thumb
     auto fd = open(absFilePath.c_str(), O_RDONLY);
     dfxTimer.End();
     if (fd < 0) {
-        DfxManager::GetInstance()->HandleThumbnailError(absFilePath,
-            thumbType == ThumbnailType::LCD ? DfxType::CLOUD_LCD_OPEN : DfxType::CLOUD_DEFAULT_OPEN, -errno);
+        HandleReadLcdAndThumbnailError(thumbType, isLocalThumbnailAvailable, absFilePath);
         return -errno;
     }
     if (data.isOpeningCloudFile && ThumbnailUtils::IsExCloudThumbnail(data)) {
@@ -763,15 +858,12 @@ int32_t ThumbnailGenerateHelper::GetThumbnailPixelMap(ThumbnailData& data, Thumb
         fd = open(absFilePath.c_str(), O_RDONLY);
         if (fd < 0) {
             MEDIA_ERR_LOG("Rotate thumb failed, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
-            DfxManager::GetInstance()->HandleThumbnailError(absFilePath,
-                thumbType == ThumbnailType::LCD ? DfxType::CLOUD_LCD_OPEN : DfxType::CLOUD_DEFAULT_OPEN, -errno);
+            HandleReadLcdAndThumbnailError(thumbType, isLocalThumbnailAvailable, absFilePath);
             return -errno;
         }
     }
     if (!isLocalThumbnailAvailable) {
-        CacheStreamReadThumbDbStatus(opts, data, thumbType);
-        ReGenerateAstc(opts, data, thumbType);
-        MediaLibraryPhotoOperations::StoreThumbnailInfoAsync({ {data.id, data.path, thumbType == ThumbnailType::LCD} });
+        HandleLocalThumbnailUnavailable(data, opts, thumbType);
         // 流读场景，需要关闭云fd，并重新打开本地fd，防止文件stat大小与实际大小不一致
         return ReopenLocalFd(absFilePath, fd);
     }

@@ -38,6 +38,7 @@
 #include "photo_file_utils.h"
 #include "moving_photo_file_utils.h"
 #include "multistages_video_capture_manager.h"
+#include "display_name_info.h"
 
 namespace OHOS::Media {
 constexpr int32_t CROSS_POLICY_ERR = 18;
@@ -203,7 +204,6 @@ bool MediaFileAccessUtils::IsDirectoryEmpty(const std::string& dirPath)
 void MediaFileAccessUtils::UpdateModifyTime(const std::string &path, int64_t localMtime)
 {
     CHECK_AND_RETURN_LOG(!path.empty(), "empty path");
-    CHECK_AND_RETURN_LOG(PhotoFileUtils::CheckFileManagerRealPath(path), "not file manager path");
 
     struct timeval times[2];
     // set atime
@@ -260,33 +260,31 @@ MoveResult MediaFileAccessUtils::MoveAsset(const AssetOperationInfo &srcObj, con
     }
 }
 
-bool MediaFileAccessUtils::IsAlbumHasSameNameAsset(const AssetOperationInfo &srcObj, const std::string &displayName)
+int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
 {
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "get rdbstore error");
-    std::string sql = "SELECT COUNT(1) AS count FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " +
-                      MediaColumn::MEDIA_NAME + " = ? AND " + MediaColumn::MEDIA_ID + "<>? AND " +
-                      PhotoColumn::PHOTO_OWNER_ALBUM_ID + "= ?;";
-    std::vector<std::string> args = {displayName, srcObj.GetFileId(), srcObj.GetOwnerAlbumId()};
-    auto resultSet = rdbStore->QuerySql(sql, args);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "query database error");
-    if (resultSet->GoToFirstRow() != E_OK) {
-        MEDIA_ERR_LOG("query resultset error");
-        resultSet->Close();
-        return E_ERR;
-    }
-    int32_t count = MediaLibraryRdbStore::GetInt(resultSet, "count");
-    resultSet->Close();
-    MEDIA_INFO_LOG("IsAlbumHasSameNameAsset fileId: %{public}s, count: %{public}d", srcObj.GetFileId().c_str(), count);
-    return count > 0;
+    return HandleSameNameRenameImpl(sameNamePath, renamePath, renameTitle, renameDisplayName,
+        [](const std::string &path) {
+            return MediaFileUtils::IsFileExists(path);
+        });
 }
 
-int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &srcObj, const std::string &sameNamePath,
-    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName)
+int32_t MediaFileAccessUtils::HandleSameNameRename(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
+{
+    return HandleSameNameRenameImpl(sameNamePath, renamePath, renameTitle, renameDisplayName,
+        isPathOccupiedChecker);
+}
+
+int32_t MediaFileAccessUtils::HandleSameNameRenameImpl(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
 {
     MEDIA_DEBUG_LOG("HandleSameNameRename sameNamePath: %{public}s",
         MediaFileUtils::DesensitizePath(sameNamePath).c_str());
     CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
+    CHECK_AND_RETURN_RET_LOG(static_cast<bool>(isPathOccupiedChecker), E_ERR, "empty conflict checker");
     std::string tempPath = sameNamePath;
     std::string tempDisplayName = MediaFileUtils::GetFileName(sameNamePath);
     size_t dotPos = tempDisplayName.rfind('.');
@@ -299,8 +297,7 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &src
     std::string baseName = tempTitle;
 
     uint32_t retryCount = 0;
-    while (retryCount < RENAME_MAX_RETRY_COUNT &&
-            (MediaFileUtils::IsFileExists(tempPath) || IsAlbumHasSameNameAsset(srcObj, tempDisplayName))) {
+    while (retryCount < RENAME_MAX_RETRY_COUNT && isPathOccupiedChecker(tempPath)) {
         ++retryCount;
         tempTitle = baseName + "(" + std::to_string(retryCount) + ")";
         tempDisplayName = tempTitle + fileExtension;
@@ -308,12 +305,51 @@ int32_t MediaFileAccessUtils::HandleSameNameRename(const AssetOperationInfo &src
         MEDIA_DEBUG_LOG("path conflict, try new path: %{public}s", MediaFileUtils::DesensitizePath(tempPath).c_str());
     }
     if (retryCount == RENAME_MAX_RETRY_COUNT) {
-        CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(tempPath) &&
-            !IsAlbumHasSameNameAsset(srcObj, tempDisplayName), E_ERR, "path still conflict after retry");
+        CHECK_AND_RETURN_RET_LOG(!isPathOccupiedChecker(tempPath), E_ERR, "path still conflict after retry");
     }
     renamePath = tempPath;
     renameTitle = tempTitle;
     renameDisplayName = tempDisplayName;
+    return E_OK;
+}
+
+int32_t MediaFileAccessUtils::HandleBurstSameNameRename(const std::string &sameNamePath,
+    std::string &renamePath, std::string &renameTitle, std::string &renameDisplayName,
+    const std::function<bool(const std::string &)> &isPathOccupiedChecker)
+{
+    CHECK_AND_RETURN_RET_LOG(!sameNamePath.empty(), E_ERR, "empty sameNamePath");
+    CHECK_AND_RETURN_RET_LOG(static_cast<bool>(isPathOccupiedChecker), E_ERR, "empty conflict checker");
+    std::string displayName = MediaFileUtils::GetFileName(sameNamePath);
+    std::string parentPath = MediaFileUtils::GetParentPath(sameNamePath);
+    CHECK_AND_RETURN_RET_LOG(!parentPath.empty(), E_ERR, "empty parent path");
+
+    std::string tempPath = sameNamePath;
+    size_t dotPos = displayName.rfind('.');
+    std::string tempTitle = dotPos != std::string::npos ? displayName.substr(0, dotPos) : displayName;
+    uint32_t retryCount = 0;
+    while (retryCount < RENAME_MAX_RETRY_COUNT && isPathOccupiedChecker(tempPath)) {
+        PhotoAssetInfo photoAssetInfo;
+        photoAssetInfo.displayName = displayName;
+        photoAssetInfo.subtype = static_cast<int32_t>(PhotoSubType::BURST);
+        DisplayNameInfo displayNameInfo(photoAssetInfo);
+        std::string newDisplayName = displayNameInfo.Next();
+        CHECK_AND_RETURN_RET_LOG(!newDisplayName.empty(), E_ERR, "Failed to generate new display name");
+        CHECK_AND_RETURN_RET_LOG(newDisplayName != displayName, E_ERR, "DisplayNameInfo::Next() returns same value");
+        displayName = newDisplayName;
+        tempPath = parentPath + FILE_SEPARATOR + displayName;
+        dotPos = displayName.rfind('.');
+        tempTitle = dotPos != std::string::npos ? displayName.substr(0, dotPos) : displayName;
+        ++retryCount;
+    }
+    if (retryCount == RENAME_MAX_RETRY_COUNT) {
+        CHECK_AND_RETURN_RET_LOG(!isPathOccupiedChecker(tempPath), E_ERR, "path still conflict after retry");
+    }
+
+    renamePath = tempPath;
+    renameTitle = tempTitle;
+    renameDisplayName = displayName;
+    MEDIA_INFO_LOG("displayname: %{public}s, renamePath:%{public}s",
+        displayName.c_str(), MediaFileUtils::DesensitizePath(renamePath).c_str());
     return E_OK;
 }
 
@@ -379,13 +415,14 @@ MoveResult MediaFileAccessUtils::MoveNormalAsset(const AssetOperationInfo &srcOb
     result.newDisplayName = MediaPathUtils::GetFileName(destPath);
     result.newTitle = MediaFileUtils::GetTitleFromDisplayName(result.newDisplayName);
     if (NeedCheckSameNameRename(destSourceType)) {
-        result.errCode = MediaFileAccessUtils::HandleSameNameRename(srcObj, destPath, result.newPath, result.newTitle,
+        result.errCode = MediaFileAccessUtils::HandleSameNameRename(destPath, result.newPath, result.newTitle,
             result.newDisplayName);
         CHECK_AND_RETURN_RET_LOG(result.errCode == E_OK, result, "handle same name failed");
         result.isExecuteRename = destPath != result.newPath;
     }
     if (result.isExecuteRename && needRename == RenameMode::NOT_RENAME) {
         result.errCode = E_RENAME;
+        return result;
     } else if (result.isExecuteRename && needRename == RenameMode::RENAME) {
         int32_t ret = UpateMetaDataForRename(srcObj, result);
         result.errCode = (ret == E_OK) ? E_OK : E_RDB;

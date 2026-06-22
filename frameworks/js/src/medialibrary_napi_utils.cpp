@@ -987,7 +987,7 @@ static int32_t TransCommonErrorCode(int error)
 
 int MediaLibraryNapiUtils::TransErrorCode(const string &Name, shared_ptr<DataShare::DataShareResultSet> resultSet)
 {
-    NAPI_ERR_LOG("interface: %{public}s, server return nullptr", Name.c_str());
+    NAPI_ERR_LOG("TransErrorCode, server return nullptr");
     // Query can't return errorcode, so assume nullptr as permission deny
     if (resultSet == nullptr) {
         return JS_ERR_PERMISSION_DENIED;
@@ -997,7 +997,7 @@ int MediaLibraryNapiUtils::TransErrorCode(const string &Name, shared_ptr<DataSha
 
 int MediaLibraryNapiUtils::TransErrorCode(const string &Name, int error)
 {
-    NAPI_ERR_LOG("interface: %{public}s, server errcode:%{public}d ", Name.c_str(), error);
+    NAPI_ERR_LOG("TransErrorCode, server errcode:%{public}d", error);
     // Transfer Server error to napi error code
     if (error <= E_COMMON_START && error >= E_COMMON_END) {
         return TransCommonErrorCode(error);
@@ -1011,7 +1011,7 @@ int MediaLibraryNapiUtils::TransErrorCode(const string &Name, int error)
 
 int MediaLibraryNapiUtils::TransMoveErrorCode(const string &Name, int error)
 {
-    NAPI_ERR_LOG("interface: %{public}s, server errcode:%{public}d ", Name.c_str(), error);
+    NAPI_ERR_LOG("TransMoveErrorCode, server errcode:%{public}d", error);
     if (error <= E_COMMON_START && error >= E_COMMON_END) {
         return TransCommonErrorCode(error);
     } else if (error == E_PERMISSION_DENIED) {
@@ -2614,6 +2614,49 @@ int MediaLibraryNapiUtils::ParseNextRowAlbumObject(std::shared_ptr<RowObject>& r
         rowObj->columnVector_.emplace_back(columnInfo);
     }
     return 0;
+}
+
+bool MediaLibraryNapiUtils::ParseFileIdFromPredicates(const DataShare::DataSharePredicates &predicates, string &fileId)
+{
+    // parse fileId from operationList
+    constexpr int32_t FIELD_IDX = 0;
+    constexpr int32_t VALUE_IDX = 1;
+    constexpr int32_t OPERATION_SIZE = 2;
+    auto operationItems = predicates.GetOperationList();
+    for (DataShare::OperationItem item : operationItems) {
+        if (item.singleParams.size() < OPERATION_SIZE) {
+            continue;
+        }
+        if (!IsNumber(static_cast<string>(item.GetSingle(VALUE_IDX)))) {
+            continue;
+        }
+        if (static_cast<string>(item.GetSingle(FIELD_IDX)) == MediaColumn::MEDIA_ID) {
+            fileId = static_cast<string>(item.GetSingle(VALUE_IDX));
+            return true;
+        }
+    }
+
+    // parse fileId from whereClause
+    const string &clause = predicates.GetWhereClause();
+    const vector<string> &values = predicates.GetWhereArgs();
+    size_t pos = clause.find(MediaColumn::MEDIA_ID);
+    if (pos == string::npos) {
+        MEDIA_ERR_LOG("whereClause not include fileId");
+        return false;
+    }
+    size_t argIndex = 0;
+    constexpr char placeholder = '?';
+    for (size_t i = 0; i < pos; ++i) {
+        if (clause[i] == placeholder) {
+            ++argIndex;
+        }
+    }
+
+    CHECK_AND_RETURN_RET_LOG(argIndex < values.size(), false, "argIndex should less than values size");
+    fileId = values[argIndex];
+    CHECK_AND_RETURN_RET_LOG(IsNumber(fileId), false,
+        "whereArgs fileId=%{public}s is not num", fileId.c_str());
+    return true;
 }
 
 template <class AsyncContext>

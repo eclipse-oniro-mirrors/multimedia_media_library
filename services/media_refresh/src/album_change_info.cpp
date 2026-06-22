@@ -51,7 +51,13 @@ const map<std::string, ResultSetDataType> AlbumChangeInfo::albumInfoColumnTypes_
     { PhotoAlbumColumns::ORDER_SECTION, TYPE_INT32},
     { PhotoAlbumColumns::ALBUM_CLOUD_ID, TYPE_STRING },
     { PhotoAlbumColumns::ALBUM_IS_LOCAL, TYPE_INT32 },
-    { PhotoAlbumColumns::ALBUM_HIDDEN, TYPE_INT32 }
+    { PhotoAlbumColumns::ALBUM_HIDDEN, TYPE_INT32 },
+    { PhotoAlbumColumns::COVER_ORDER_KEY, TYPE_STRING },
+    { PhotoAlbumColumns::COVER_ORDER_SUBKEY, TYPE_STRING },
+    { PhotoAlbumColumns::COVER_ORDER_TYPE, TYPE_INT32 },
+    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY, TYPE_STRING },
+    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY, TYPE_STRING },
+    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE, TYPE_INT32 }
 };
 
 const map<std::string, ResultSetDataType> AlbumChangeInfo::analysisAlbumInfoColumnTypes_ = {
@@ -89,6 +95,13 @@ const std::vector<std::string>& AlbumChangeInfo::GetAlbumInfoColumns()
 const std::vector<std::string>& AlbumChangeInfo::GetAnalysisAlbumInfoColumns()
 {
     return analysisAlbumInfoColumns_;
+}
+
+void AlbumChangeInfo::SetPhotoAlbumExecute(AlbumChangeInfo &albumChangeInfo,
+    const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    SetPhotoAlbumHidden(albumChangeInfo, resultSet);
+    SetPhotoAlbumForCoverOrder(albumChangeInfo, resultSet);
 }
 
 vector<AlbumChangeInfo> AlbumChangeInfo::GetInfoFromResult(const shared_ptr<NativeRdb::ResultSet> &resultSet)
@@ -137,7 +150,7 @@ vector<AlbumChangeInfo> AlbumChangeInfo::GetInfoFromResult(const shared_ptr<Nati
             resultSet, GetDataType(PhotoAlbumColumns::ALBUM_CLOUD_ID)));
         albumChangeInfo.isLocal_ = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_IS_LOCAL,
             resultSet, GetDataType(PhotoAlbumColumns::ALBUM_IS_LOCAL)));
-        SetPhotoAlbumHidden(albumChangeInfo, resultSet);
+        SetPhotoAlbumExecute(albumChangeInfo, resultSet);
         albumChangeInfos.push_back(albumChangeInfo);
     }
 
@@ -178,6 +191,28 @@ void AlbumChangeInfo::SetPhotoAlbumHidden(AlbumChangeInfo &albumChangeInfo,
 {
     albumChangeInfo.hidden_ = get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::ALBUM_HIDDEN,
         resultSet, GetDataType(PhotoAlbumColumns::ALBUM_HIDDEN)));
+}
+
+void AlbumChangeInfo::SetPhotoAlbumForCoverOrder(AlbumChangeInfo &albumChangeInfo,
+    const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    albumChangeInfo.coverOrderKey_ = get<string>(ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::COVER_ORDER_KEY,
+        resultSet, GetDataType(PhotoAlbumColumns::COVER_ORDER_KEY)));
+    albumChangeInfo.coverOrderSubKey_ = get<string>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::COVER_ORDER_SUBKEY,
+        resultSet, GetDataType(PhotoAlbumColumns::COVER_ORDER_SUBKEY)));
+    albumChangeInfo.coverOrderType_ = get<int32_t>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::COVER_ORDER_TYPE,
+        resultSet, GetDataType(PhotoAlbumColumns::COVER_ORDER_TYPE)));
+    albumChangeInfo.hiddenCoverOrderKey_ = get<string>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY,
+        resultSet, GetDataType(PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY)));
+    albumChangeInfo.hiddenCoverOrderSubKey_ = get<string>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY,
+        resultSet, GetDataType(PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY)));
+    albumChangeInfo.hiddenCoverOrderType_ = get<int32_t>(
+        ResultSetUtils::GetValFromColumn(PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE,
+        resultSet, GetDataType(PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE)));
 }
 
 string AlbumChangeInfo::ToString(bool isDetail) const

@@ -37,6 +37,7 @@
 #include "dfx_deprecated_perm_usage.h"
 #include "mediatool_uri.h"
 #include "ipc_skeleton.h"
+#include "media_string_utils.h"
 
 using namespace std;
 // LCOV_EXCL_START
@@ -382,6 +383,18 @@ static void FillV10Perms(const MediaType mediaType, const bool containsRead, con
     }
 }
 
+static OpenDataInfo BuildOpenDataInfo(const MediaLibraryCommand &cmd)
+{
+    int32_t callingUid = IPCSkeleton::GetCallingUid();
+    OpenDataInfo openData;
+    openData.uri = cmd.GetUri().ToString();
+    openData.uid = callingUid;
+    openData.userId = callingUid / PermissionUtils::BASE_USER_RANGE;
+    openData.type = "open";
+    openData.timestamp = MediaFileUtils::UTCTimeMilliSeconds();
+    return openData;
+}
+
 static int32_t CheckOpenFilePermission(MediaLibraryCommand &cmd, PermParam &permParam)
 {
     MEDIA_DEBUG_LOG("uri: %{private}s mode: %{private}s",
@@ -394,16 +407,10 @@ static int32_t CheckOpenFilePermission(MediaLibraryCommand &cmd, PermParam &perm
     const bool containsWrite = ContainsFlag(permParam.openFileNode, 'w');
     vector<string> perms;
     FillV10Perms(mediaType, containsRead, containsWrite, perms);
+    OpenDataInfo openData = BuildOpenDataInfo(cmd);
     if ((cmd.GetOprnObject() == OperationObject::FILESYSTEM_PHOTO) ||
         (cmd.GetOprnObject() == OperationObject::THUMBNAIL) ||
         (cmd.GetOprnObject() == OperationObject::THUMBNAIL_ASTC)) {
-        int32_t callingUid = IPCSkeleton::GetCallingUid();
-        OpenDataInfo openData;
-        openData.uri = cmd.GetUri().ToString();
-        openData.uid = callingUid;
-        openData.userId = callingUid / PermissionUtils::BASE_USER_RANGE;
-        openData.type = "open";
-        openData.timestamp = MediaFileUtils::UTCTimeMilliSeconds();
         if (!PermissionUtils::CheckPhotoCallerPermission(perms, openData)) {
             return E_PERMISSION_DENIED;
         }
@@ -411,6 +418,9 @@ static int32_t CheckOpenFilePermission(MediaLibraryCommand &cmd, PermParam &perm
             return CloudReadPermissionCheck::CheckPureCloudAssets(cmd.GetOprnFileId());
         }
         return E_SUCCESS;
+    }
+    if (MediaStringUtils::StartsWith(cmd.GetUri().ToString(), PhotoColumn::PHOTO_CACHE_URI_PREFIX)) {
+        return PermissionUtils::CheckPhotoCallerPermission(perms, openData) ? E_SUCCESS : E_PERMISSION_DENIED;
     }
     int32_t err = (mediaType == MEDIA_TYPE_FILE) ?
         (PermissionUtils::CheckHasPermission(perms) ? E_SUCCESS : E_PERMISSION_DENIED) :

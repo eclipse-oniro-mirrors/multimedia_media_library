@@ -29,6 +29,7 @@ SaveCameraPhotoDto SaveCameraPhotoDto::Create(const SaveCameraPhotoReqBody &req)
     dto.needScan = req.needScan;
     dto.path = req.path;
     dto.cameraShotKey = req.cameraShotKey;
+    dto.containsAddResource = req.containsAddResource;
     return dto;
 }
 

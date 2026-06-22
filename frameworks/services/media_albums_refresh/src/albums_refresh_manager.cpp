@@ -76,7 +76,7 @@ static shared_ptr<NativeRdb::ResultSet> QueryGoToFirst(
 {
     MediaLibraryTracer tracer;
     tracer.Start("QueryGoToFirst");
-    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns);
+    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns, true);
     CHECK_AND_RETURN_RET(resultSet != nullptr, nullptr);
 
     MediaLibraryTracer goToFirst;

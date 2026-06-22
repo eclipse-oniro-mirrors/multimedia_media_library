@@ -23,21 +23,35 @@
  
 namespace OHOS {
 namespace Media {
-enum class CameraCharacterType : int32_t {
-    IMAGE_START = 0,
-    IMAGE_YUV = 1,
-    IMAGE_NON_YUV = 2,
-    IMAGE_MOVING_PHOTO = 3,
-    IMAGE_BURST = 4,
-    IMAGE_END,      // the end of image
- 
-    VIDEO_START = 100,
-    VIDEO = 101,
-    VIDEO_MOVING_PHOTO = 102,
-    VIDEO_CINEMATIC_PHOTO = 103,
-    VIDEO_END,      // the end of video
+const std::string CAMERA_PIPELINE_TYPE = "CameraPipelineType";
+const std::string EDIT_DATA = "edit_data";
+
+enum class CameraPipelineType : int32_t {
+    UNDEFINED = 0,
+    NEW_IMAGE,
+    IMAGE,
+    YUV,
+    VIDEO,
 };
- 
+
+enum class CameraPathType : int32_t {
+    UNDEFINED = 0,
+    // image
+    EDITED_PATH,          // IMG_xxx.jpg
+
+    // edit_data
+    EDIT_DATA_SOURCE_PATH,          // source.jpg
+    EDIT_DATA_CAMERA_PATH,      // editdata_camera
+
+    // temp path
+    TEMP_LOW_PATH,                      // low_IMG_1773664117_013.jpg
+    TEMP_LOW_FILTERS_PATH,              // low_filters_IMG_1773664117_013.jpg
+    TEMP_LOW_EDIT_DATA_SOURCE_PATH,     // low_source.jpg
+    TEMP_HIGH_PATH,                     // high_IMG_1773664117_013.jpg
+    TEMP_HIGH_FILTERS_PATH,             // high_filters_IMG_1773664117_013.jpg
+    TEMP_HIGH_EDIT_DATA_SOURCE_PATH,    // high_source.jpg
+};
+
 enum class ObserverType : int32_t {
     UNDEFINED = 0,
     REQUEST_IMAGE,

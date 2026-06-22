@@ -241,6 +241,7 @@ private:
     bool ShouldRestoreFromCloud();
     void UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos);
     void UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &fileInfos);
+    void SetAttachmentSizeForCloudDuplicate(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     void PrevailUUIDForSamePhotos(vector<FileInfo> &fileInfos);
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
@@ -249,6 +250,8 @@ private:
     void RestoreAnalysisSelection();
     void RestoreAnalysisDupSim();
     void UpdateTotalScore();
+    void RestoreTabCoverRecord();
+    void RestoreGalleryExecyte();
 
     template<typename T>
     static void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
@@ -259,7 +262,7 @@ private:
         const std::optional<T>& optionalValue, const U& defaultValue);
     bool NeedSkipMergedThumbnailUpdate(const FileInfo &fileInfo);
     void ResolveMergedThumbExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist);
-    bool FillMergedLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillMergedThmLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     std::string GetThumbnailLocalPath(const string path);
     void BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,
         unordered_map<string, CloudPhotoFileExistFlag> &resultExistMap);
@@ -291,10 +294,13 @@ private:
     void UpdateDuplicateNumber(const FileInfo &fileInfo);
     void QueryAndSetLakeFileFailCount();
     void ReportRestoreTaskofLakeFiles();
+    void QueryAndSetFileManagerFileFailCount();
+    void ReportRestoreTaskofFileManagerFiles();
     bool CheckAlbumNameUnique(std::string albumName, const std::vector<string> &repetedAlbumName);
     void UpdateSourceAlbumName(bool &isUinque, vector<AlbumInfo> &albumInfos, vector<string> &repetedAlbumName,
         size_t index);
     void CreateCloneFileInfoDb();
+    void CloneActiveLcdAgingFromOldDevice();
 
 private:
     std::atomic<uint64_t> migrateDatabaseAlbumNumber_{0};

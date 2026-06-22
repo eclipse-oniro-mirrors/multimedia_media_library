@@ -121,7 +121,11 @@ static const ResultTypeMap &GetResultTypeMap()
         { PhotoColumn::PHOTO_DATE_ADDED_YEAR, TYPE_STRING },
         { PhotoColumn::PHOTO_HIDDEN_TIME, TYPE_INT64 },
         { PhotoColumn::LOCAL_ASSET_SIZE, TYPE_INT64 },
-        {PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, TYPE_INT64},
+        { PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, TYPE_INT64},
+        { PhotoColumn::ATTACHMENT_SIZE, TYPE_INT64 },
+        { PhotoColumn::PHOTO_THUMB_STATUS, TYPE_INT32},
+        { PhotoColumn::PHOTO_LCD_FILE_SIZE, TYPE_INT32},
+
     };
     return RESULT_TYPE_MAP;
 }
@@ -658,8 +662,9 @@ void FetchResult<T>::SetAlbumAsset(AlbumAsset *albumData, shared_ptr<NativeRdb::
     albumData->SetResultNapiType(resultNapiType_);
 }
 
+// Helper function to set basic album fields
 template<class T>
-void FetchResult<T>::SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<NativeRdb::ResultSet> &resultSet)
+void FetchResult<T>::SetPhotoAlbumBasicFields(PhotoAlbum* photoAlbumData, shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
     int32_t albumId = get<int32_t>(GetRowValFromColumn(PhotoAlbumColumns::ALBUM_ID, TYPE_INT32, resultSet));
     photoAlbumData->SetAlbumId(albumId);
@@ -678,7 +683,23 @@ void FetchResult<T>::SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<Native
     photoAlbumData->SetHiddenOnly(hiddenOnly_);
     photoAlbumData->SetCoverUriSource(get<int32_t>(GetRowValFromColumn(
         PhotoAlbumColumns::COVER_URI_SOURCE, TYPE_INT32, resultSet)));
+}
 
+template<class T>
+void FetchResult<T>::SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    SetPhotoAlbumBasicFields(photoAlbumData, resultSet);
+    int32_t albumId = photoAlbumData->GetAlbumId();
+    SetPhotoAlbumUriAndCover(photoAlbumData, albumId, resultSet);
+    SetPhotoAlbumCountsAndLocation(photoAlbumData, resultSet);
+    SetPhotoAlbumExtendedFields(photoAlbumData, resultSet);
+}
+
+// Helper function to set album URI and cover information
+template<class T>
+void FetchResult<T>::SetPhotoAlbumUriAndCover(PhotoAlbum* photoAlbumData, int32_t albumId,
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
     string countColumn = hiddenOnly_ ? PhotoAlbumColumns::HIDDEN_COUNT : PhotoAlbumColumns::ALBUM_COUNT;
     string coverColumn = hiddenOnly_ ? PhotoAlbumColumns::HIDDEN_COVER : PhotoAlbumColumns::ALBUM_COVER_URI;
     string albumUriPrefix;
@@ -692,9 +713,13 @@ void FetchResult<T>::SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<Native
     photoAlbumData->SetAlbumUri(albumUriPrefix + to_string(albumId));
     photoAlbumData->SetCount(get<int32_t>(GetRowValFromColumn(countColumn, TYPE_INT32, resultSet)));
     photoAlbumData->SetCoverUri(get<string>(GetRowValFromColumn(coverColumn, TYPE_STRING, resultSet)));
+}
 
-    // Albums of hidden types (except hidden album itself) don't support image count and video count,
-    // return -1 instead
+// Helper function to set album counts and location
+template<class T>
+void FetchResult<T>::SetPhotoAlbumCountsAndLocation(PhotoAlbum* photoAlbumData,
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
     int32_t imageCount = hiddenOnly_ ? -1 :
         get<int32_t>(GetRowValFromColumn(PhotoAlbumColumns::ALBUM_IMAGE_COUNT, TYPE_INT32, resultSet));
     int32_t videoCount = hiddenOnly_ ? -1 :
@@ -702,15 +727,25 @@ void FetchResult<T>::SetPhotoAlbum(PhotoAlbum* photoAlbumData, shared_ptr<Native
     photoAlbumData->SetImageCount(imageCount);
     photoAlbumData->SetVideoCount(videoCount);
 
-    // location album support latitude and longitude
     double latitude = locationOnly_ ? get<double>(GetRowValFromColumn(
         PhotoAlbumColumns::ALBUM_LATITUDE, TYPE_DOUBLE, resultSet)) : 0.0;
-        
     double longitude = locationOnly_ ? get<double>(GetRowValFromColumn(
         PhotoAlbumColumns::ALBUM_LONGITUDE, TYPE_DOUBLE, resultSet)) : 0.0;
-        
     photoAlbumData->SetLatitude(latitude);
     photoAlbumData->SetLongitude(longitude);
+}
+
+// Helper function to set album extended fields
+template<class T>
+void FetchResult<T>::SetPhotoAlbumExtendedFields(PhotoAlbum* photoAlbumData,
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    photoAlbumData->SetCloudId(get<string>(GetRowValFromColumn(
+        PhotoAlbumColumns::ALBUM_CLOUD_ID, TYPE_STRING, resultSet)));
+    photoAlbumData->SetSceneId(get<int32_t>(GetRowValFromColumn(
+        PhotoAlbumColumns::ALBUM_SCENE_ID, TYPE_INT32, resultSet)));
+    photoAlbumData->SetShareType(get<int32_t>(GetRowValFromColumn(
+        PhotoAlbumColumns::ALBUM_SHARE_TYPE, TYPE_INT32, resultSet)));
     photoAlbumData->SetChangeTime(get<int64_t>(GetRowValFromColumn(
         PhotoAlbumColumns::CHANGE_TIME, TYPE_INT64, resultSet)));
     photoAlbumData->SetUploadStatus(get<int32_t>(GetRowValFromColumn(

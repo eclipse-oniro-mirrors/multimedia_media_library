@@ -20,6 +20,7 @@
 #include "file_manager_scanner.h"
 #include "file_scan_utils.h"
 #include "medialibrary_notify.h"
+#include "medialibrary_tracer.h"
 
 using namespace std;
 
@@ -121,6 +122,8 @@ bool FileManagerScanner::IsSkipFileManagerDirectory(const std::string &currentDi
 
 void FileManagerScanner::RefreshTrashedAssetInfo(FileManagerParser &fileManagerParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileManagerScanner::RefreshTrashedAssetInfo");
     auto fileInfo = fileManagerParser.GetFileInfo();
     fileManagerParser.UpdateTrashedAssetinfo();
     MEDIA_INFO_LOG("update album Id: %{public}d", fileInfo.ownerAlbumId);
@@ -128,6 +131,8 @@ void FileManagerScanner::RefreshTrashedAssetInfo(FileManagerParser &fileManagerP
 
 void FileManagerScanner::RefreshNeedReoverAssetInfo(FileManagerParser &fileManagerParser)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("FileManagerScanner::RefreshNeedReoverAssetInfo");
     auto fileInfo = fileManagerParser.GetFileInfo();
     fileManagerParser.UpdateRecoverAssetinfo();
     MEDIA_INFO_LOG("update album Id: %{public}d", fileInfo.ownerAlbumId);

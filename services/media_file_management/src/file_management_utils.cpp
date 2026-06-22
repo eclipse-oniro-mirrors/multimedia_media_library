@@ -32,6 +32,7 @@
 #include "photo_file_utils.h"
 #include "media_uri_utils.h"
 #include "userfile_manager_types.h"
+#include "settings_data_manager.h"
 
 namespace OHOS::Media {
 using namespace AccurateRefresh;
@@ -184,9 +185,12 @@ int32_t FileManagementUtils::QueryMoveAssetInfos(const NativeRdb::RdbPredicates&
         info.burstKey =
             get<std::string>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_BURST_KEY, resultSet, TYPE_STRING));
         info.size = get<int64_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_SIZE, resultSet, TYPE_INT64));
+        if (info.fileId == 0) {
+            MEDIA_WARN_LOG("skip corrupted data");
+            continue;
+        }
         moveAssetMap.emplace(info.fileId, info);
     }
-    CHECK_AND_RETURN_RET_LOG(moveAssetMap.size() > 0, TARGET_FILE_NOT_EXIST, "fail to query asset");
     resultSet->Close();
     return E_OK;
 }
@@ -215,7 +219,7 @@ int64_t FileManagementUtils::InsertFileAlbum(const FileAlbumInfo &fileAlbumInfo)
     NativeRdb::ValuesBucket value;
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     value.PutInt(PhotoAlbumColumns::ALBUM_TYPE, PhotoAlbumType::SOURCE);
-    value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+    value.PutInt(PhotoAlbumColumns::ALBUM_SUBTYPE, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
     value.PutLong(PhotoAlbumColumns::ALBUM_DATE_ADDED, currentTime);
     value.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, currentTime);
     value.PutString(PhotoAlbumColumns::ALBUM_NAME, fileAlbumInfo.albumName);
@@ -225,6 +229,7 @@ int64_t FileManagementUtils::InsertFileAlbum(const FileAlbumInfo &fileAlbumInfo)
     int64_t albumId = 0;
     AlbumAccurateRefresh albumRefresh;
     int32_t ret = albumRefresh.Insert(albumId, PhotoAlbumColumns::TABLE, value);
+    SettingsDataManager::ComfirmUploadStatus();
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK && albumId > 0, E_ERR,
         "Insert photo albums failed, failed lpath is %{public}s", fileAlbumInfo.lpath.c_str());
     MEDIA_INFO_LOG("FolderParser: end insert PhotoAlbum.");

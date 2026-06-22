@@ -17,6 +17,7 @@
 #include "sendable_file_asset_napi.h"
 #include "accesstoken_kit.h"
 #include "access_token.h"
+#include "dfx_system_photo_keys.h"
 #include "exif_rotate_utils.h"
 #include "locale_config.h"
 #include "media_file_utils.h"
@@ -933,12 +934,24 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_DATE_ADDED_MONTH,
         PhotoColumn::PHOTO_DATE_ADDED_DAY,
         PhotoColumn::PHOTO_HIDDEN_TIME,
+        PhotoColumn::PHOTO_LCD_FILE_SIZE,
+        PhotoColumn::PHOTO_THUMB_STATUS,
+        PhotoColumn::PHOTO_RISK_STATUS,
     };
 
-    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !SendableMediaLibraryNapiUtils::IsSystemApp()) {
+    if (SendableMediaLibraryNapiUtils::IsSystemApp()) {
+        return E_SUCCESS;
+    }
+
+    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
         NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
         return E_CHECK_SYSTEMAPP_FAIL;
     }
+
+    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
+        NAPI_ERR_LOG("Report Third party application failed, key:%{public}s", key.c_str());
+    }
+
     return E_SUCCESS;
 }
 

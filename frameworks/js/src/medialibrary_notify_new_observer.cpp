@@ -39,6 +39,10 @@ static const uint32_t MAX_PARCEL_SIZE = 200 * 1024;
 static void ProcessPhotoAssetChanges(NewJsOnChangeCallbackWrapper& callbackWrapper,
     const std::map<std::string, std::vector<std::shared_ptr<ClientObserver>>>& innerMap)
 {
+    if (callbackWrapper.mediaChangeInfo_ == nullptr) {
+        NAPI_ERR_LOG("mediaChangeInfo_ is nullptr");
+        return;
+    }
     std::shared_ptr<AccurateRefresh::PhotoAssetChangeData> photoAssetDataPtr;
     for (auto innerIt = callbackWrapper.mediaChangeInfo_->changeInfos.begin();
         innerIt != callbackWrapper.mediaChangeInfo_->changeInfos.end(); ++innerIt) {
@@ -69,6 +73,10 @@ static void ProcessPhotoAssetChanges(NewJsOnChangeCallbackWrapper& callbackWrapp
 static void ProcessAlbumChanges(NewJsOnChangeCallbackWrapper& callbackWrapper,
     const std::map<std::string, std::vector<std::shared_ptr<ClientObserver>>>& innerMap)
 {
+    if (callbackWrapper.mediaChangeInfo_ == nullptr) {
+        NAPI_ERR_LOG("mediaChangeInfo_ is nullptr");
+        return;
+    }
     std::shared_ptr<AccurateRefresh::AlbumChangeData> albumDataPtr;
     for (auto innerIt = callbackWrapper.mediaChangeInfo_->changeInfos.begin();
         innerIt != callbackWrapper.mediaChangeInfo_->changeInfos.end(); ++innerIt) {
@@ -102,28 +110,51 @@ void MediaOnNotifyNewObserver::ProcessObserverBranches(NewJsOnChangeCallbackWrap
     NAPI_INFO_LOG("begin ProcessObserverBranches");
     callbackWrapper.observerUriType_ = infoUriType;
     callbackWrapper.ChangeListenScene = PhotoChangeListenScene::Other;
+    
     if (singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_URI) != singleClientObservers_.end() &&
         clientObservers_.find(NotifyUriType::PHOTO_URI) != clientObservers_.end() &&
         infoUriType == NotifyUriType::PHOTO_URI) {
         auto outerIt = singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_URI);
+        CHECK_AND_RETURN_LOG(outerIt != singleClientObservers_.end(),
+            "SINGLE_PHOTO_URI not found in singleClientObservers_");
+        
         ProcessPhotoAssetChanges(callbackWrapper, outerIt->second);
-        callbackWrapper.clientObservers_ = clientObservers_[infoUriType];
+        auto clientIt = clientObservers_.find(infoUriType);
+        if (clientIt != clientObservers_.end()) {
+            callbackWrapper.clientObservers_ = clientIt->second;
+        }
         callbackWrapper.ChangeListenScene = PhotoChangeListenScene::BothPhotoAndSinglePhoto;
     } else if (singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_ALBUM_URI) != singleClientObservers_.end() &&
         clientObservers_.find(NotifyUriType::PHOTO_ALBUM_URI) != clientObservers_.end() &&
         infoUriType == NotifyUriType::PHOTO_ALBUM_URI) {
         auto outerIt = singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
+        CHECK_AND_RETURN_LOG(outerIt != singleClientObservers_.end(),
+            "SINGLE_PHOTO_ALBUM_URI not found in singleClientObservers_");
+        
         ProcessAlbumChanges(callbackWrapper, outerIt->second);
-        callbackWrapper.clientObservers_ = clientObservers_[infoUriType];
+        auto clientIt = clientObservers_.find(infoUriType);
+        if (clientIt != clientObservers_.end()) {
+            callbackWrapper.clientObservers_ = clientIt->second;
+        }
         callbackWrapper.ChangeListenScene = PhotoChangeListenScene::BothAlbumAndSingleAlbum;
     } else if (infoUriType == NotifyUriType::SINGLE_PHOTO_URI) {
         auto outerIt = singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_URI);
+        CHECK_AND_RETURN_LOG(outerIt != singleClientObservers_.end(),
+            "SINGLE_PHOTO_URI not found in singleClientObservers_");
+        
         ProcessPhotoAssetChanges(callbackWrapper, outerIt->second);
     } else if (infoUriType == NotifyUriType::SINGLE_PHOTO_ALBUM_URI) {
         auto outerIt = singleClientObservers_.find(NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
+        CHECK_AND_RETURN_LOG(outerIt != singleClientObservers_.end(),
+            "SINGLE_PHOTO_ALBUM_URI not found in singleClientObservers_");
+        
         ProcessAlbumChanges(callbackWrapper, outerIt->second);
     } else {
-        callbackWrapper.clientObservers_ = clientObservers_[infoUriType];
+        auto it = clientObservers_.find(infoUriType);
+        CHECK_AND_RETURN_LOG(it != clientObservers_.end(),
+            "infoUriType %{public}d not found in clientObservers_", static_cast<int32_t>(infoUriType));
+        
+        callbackWrapper.clientObservers_ = it->second;
     }
 }
 
@@ -175,15 +206,17 @@ void MediaOnNotifyNewObserver::OnChange(const ChangeInfo &changeInfo)
     CHECK_AND_RETURN_LOG(changeInfo.data_ != nullptr && changeInfo.size_ > 0,
         "changeInfo.data_ is null or changeInfo.size_ is invalid");
     CHECK_AND_RETURN_LOG(changeInfo.size_ <= MAX_PARCEL_SIZE, "The size of the parcel exceeds the limit.");
+    
     uint8_t *parcelData = static_cast<uint8_t *>(malloc(changeInfo.size_));
     CHECK_AND_RETURN_LOG(parcelData != nullptr, "parcelData malloc failed");
+    
     if (memcpy_s(parcelData, changeInfo.size_, changeInfo.data_, changeInfo.size_) != 0) {
         NAPI_ERR_LOG("parcelData copy parcel data failed");
         free(parcelData);
         return;
     }
+    
     shared_ptr<MessageParcel> parcel = make_shared<MessageParcel>();
-    // parcel析构函数中会free掉parcelData，成功调用ParseFrom后不可进行free(parcelData)
     if (!parcel->ParseFrom(reinterpret_cast<uintptr_t>(parcelData), changeInfo.size_)) {
         NAPI_ERR_LOG("Parse parcelData failed");
         free(parcelData);
@@ -192,12 +225,17 @@ void MediaOnNotifyNewObserver::OnChange(const ChangeInfo &changeInfo)
 
     auto tempParcel = CreateTempParcelFromChangeInfo(changeInfo);
     CHECK_AND_RETURN_LOG(tempParcel != nullptr, "Create temp parcel failed");
+    
     NewJsOnChangeCallbackWrapper callbackWrapper;
+    std::lock_guard<std::mutex> lock(observerMutex_);
     CHECK_AND_RETURN_INFO_LOG(!ProcessDbAvailabilityData(callbackWrapper, tempParcel), "notify db availability");
+    
     callbackWrapper.mediaChangeInfo_ = NotificationUtils::UnmarshalInMultiMode(*parcel);
     CHECK_AND_RETURN_LOG(callbackWrapper.mediaChangeInfo_ != nullptr, "invalid mediaChangeInfo");
     NAPI_INFO_LOG("mediaChangeInfo_ is: %{public}s", callbackWrapper.mediaChangeInfo_->ToString(true).c_str());
+    
     Notification::NotifyUriType infoUriType = callbackWrapper.mediaChangeInfo_->notifyUri;
+    
     if (clientObservers_.find(infoUriType) == clientObservers_.end() &&
         singleClientObservers_.find(infoUriType) == singleClientObservers_.end()) {
         NAPI_ERR_LOG("invalid mediaChangeInfo_->notifyUri: %{public}d", static_cast<int32_t>(infoUriType));
@@ -206,8 +244,10 @@ void MediaOnNotifyNewObserver::OnChange(const ChangeInfo &changeInfo)
         }
         return;
     }
+    
     callbackWrapper.env_ = env_;
     ProcessObserverBranches(callbackWrapper, infoUriType);
+    
     auto worker = ChangeInfoTaskWorker::GetInstance();
     CHECK_AND_RETURN_LOG(worker != nullptr, "Get ChangeInfoTaskWorker instance failed");
     worker->AddTaskInfo(callbackWrapper);
@@ -219,8 +259,20 @@ void MediaOnNotifyNewObserver::OnChange(const ChangeInfo &changeInfo)
 static void isFoReCheckNotification(napi_env env, NewJsOnChangeCallbackWrapper* wrapper, napi_value* result,
     const int32_t resultSize)
 {
+    if (wrapper == nullptr || result == nullptr) {
+        NAPI_ERR_LOG("wrapper or result is nullptr");
+        return;
+    }
     for (const auto& [singleId, observers] : wrapper->singleClientObservers_) {
+        if (observers.empty()) {
+            NAPI_ERR_LOG("observers is empty for singleId %s", singleId.c_str());
+            continue;
+        }
         for (auto& observer : observers) {
+            if (observer == nullptr) {
+                NAPI_ERR_LOG("observer is nullptr for singleId %s", singleId.c_str());
+                continue;
+            }
             napi_value jsCallback = nullptr;
             napi_status status = napi_get_reference_value(env, observer->ref_, &jsCallback);
             if (status != napi_ok) {
@@ -241,42 +293,46 @@ static napi_value ProcessSinglePhotoIdNotifications(napi_env env, napi_handle_sc
     NewJsOnChangeCallbackWrapper* wrapper, const shared_ptr<Notification::MediaChangeInfo> &changeInfo)
 {
     NAPI_DEBUG_LOG("ProcessSinglePhotoIdNotifications");
+    CHECK_AND_RETURN_RET_LOG(wrapper != nullptr, nullptr, "wrapper is nullptr");
+    
     MediaLibraryTracer singlePhotoIdTracer;
     singlePhotoIdTracer.Start("ProcessSinglePhotoIdNotifications");
     napi_value buildResult = nullptr;
     for (const auto& [singlePhotoId, changeData] : wrapper->singleAssetClientChangeInfo_) {
         buildResult = changeData == nullptr ? MediaLibraryNotifyUtils::BuildSinglePhotoAssetRecheckChangeInfos(env) :
             MediaLibraryNotifyUtils::BuildSinglePhotoAssetChangeInfos(env, changeData, changeInfo);
-        if (buildResult == nullptr) {
-            return buildResult;
-        }
+        CHECK_AND_RETURN_RET_LOG(buildResult != nullptr, buildResult,
+            "buildResult is nullptr for singlePhotoId %s", singlePhotoId.c_str());
+
         napi_value result[ARGS_ONE];
         result[PARAM0] = buildResult;
+        
         if (singlePhotoId == "isForReCheck") {
             isFoReCheckNotification(env, wrapper, result, ARGS_ONE);
             return buildResult;
         }
         auto obsIt = wrapper->singleClientObservers_.find(singlePhotoId);
-        if (obsIt == wrapper->singleClientObservers_.end()) {
-            continue ;
-        }
+        CHECK_AND_CONTINUE_ERR_LOG(obsIt != wrapper->singleClientObservers_.end(),
+            "singlePhotoId %s not found in singleClientObservers_", singlePhotoId.c_str());
+        CHECK_AND_CONTINUE_ERR_LOG(!obsIt->second.empty(),
+            "observers is empty for singlePhotoId %s", singlePhotoId.c_str());
         MediaLibraryTracer observerTracer;
         observerTracer.Start("SendJsCallback");
         for (auto& observer : obsIt->second) {
+            CHECK_AND_CONTINUE_ERR_LOG(observer != nullptr,
+                "observer is nullptr for singlePhotoId %s", singlePhotoId.c_str());
+            
             napi_value jsCallback = nullptr;
             napi_status status = napi_get_reference_value(env, observer->ref_, &jsCallback);
-            if (status != napi_ok) {
-                NAPI_ERR_LOG("Get observer ref fail for singlePhotoId %s, status: %{public}d",
-                    singlePhotoId.c_str(), status);
-                continue;
-            }
+            CHECK_AND_CONTINUE_ERR_LOG(status == napi_ok,
+                "Get observer ref fail for singlePhotoId %s, status: %{public}d",
+                singlePhotoId.c_str(), status);
+            
             napi_value retVal = nullptr;
             status = napi_call_function(env, nullptr, jsCallback, ARGS_ONE, result, &retVal);
-            if (status != napi_ok) {
-                NAPI_ERR_LOG("Call JS callback fail for singlePhotoId %s, status: %{public}d",
-                    singlePhotoId.c_str(), status);
-                continue;
-            }
+            CHECK_AND_CONTINUE_ERR_LOG(status == napi_ok,
+                "Call JS callback fail for singlePhotoId %s, status: %{public}d",
+                singlePhotoId.c_str(), status);
         }
     }
     return buildResult;
@@ -286,38 +342,44 @@ static napi_value ProcessSingleAlbumIdNotifications(napi_env env, napi_handle_sc
     NewJsOnChangeCallbackWrapper* wrapper, const shared_ptr<Notification::MediaChangeInfo> &changeInfo)
 {
     NAPI_DEBUG_LOG("ProcessSingleAlbumIdNotifications");
+    CHECK_AND_RETURN_RET_LOG(wrapper != nullptr, nullptr, "wrapper is nullptr");
+    
     napi_value buildResult = nullptr;
     for (const auto& [singleAlbumId, changeData] : wrapper->singleAlbumClientChangeInfo_) {
         buildResult = changeData == nullptr ? MediaLibraryNotifyUtils::BuildSingleAlbumRecheckChangeInfos(env) :
-        MediaLibraryNotifyUtils::BuildSingleAlbumChangeInfos(env, changeData, changeInfo);
-        if (buildResult == nullptr) {
-            return buildResult;
-        }
+            MediaLibraryNotifyUtils::BuildSingleAlbumChangeInfos(env, changeData, changeInfo);
+        CHECK_AND_RETURN_RET_LOG(buildResult != nullptr, buildResult,
+            "buildResult is nullptr for singleAlbumId %s", singleAlbumId.c_str());
+        
         napi_value result[ARGS_ONE];
         result[PARAM0] = buildResult;
         if (singleAlbumId == "isForReCheck") {
             isFoReCheckNotification(env, wrapper, result, ARGS_ONE);
             return buildResult;
         }
+        
         auto obsIt = wrapper->singleClientObservers_.find(singleAlbumId);
-        if (obsIt == wrapper->singleClientObservers_.end()) {
-            continue;
-        }
+        CHECK_AND_CONTINUE_ERR_LOG(obsIt != wrapper->singleClientObservers_.end(),
+            "singleAlbumId %s not found in singleClientObservers_", singleAlbumId.c_str());
+        
+        CHECK_AND_CONTINUE_ERR_LOG(!obsIt->second.empty(),
+            "observers is empty for singleAlbumId %s", singleAlbumId.c_str());
+        
         for (auto& observer : obsIt->second) {
+            CHECK_AND_CONTINUE_ERR_LOG(observer != nullptr,
+                "observer is nullptr for singleAlbumId: %{public}s", singleAlbumId.c_str());
+            
             napi_value jsCallback = nullptr;
             napi_status status = napi_get_reference_value(env, observer->ref_, &jsCallback);
-            if (status != napi_ok) {
-                NAPI_ERR_LOG("Get observer ref fail for singleAlbumId: %{public}s, status: %{public}d",
-                    singleAlbumId.c_str(), status);
-                continue;
-            }
+            CHECK_AND_CONTINUE_ERR_LOG(status == napi_ok,
+                "Get observer ref fail for singleAlbumId: %{public}s, status: %{public}d",
+                singleAlbumId.c_str(), status);
+            
             napi_value retVal = nullptr;
             status = napi_call_function(env, nullptr, jsCallback, ARGS_ONE, result, &retVal);
-            if (status != napi_ok) {
-                NAPI_ERR_LOG("Call JS callback fail for albumIp: %{public}s, status: %{public}d",
-                    singleAlbumId.c_str(), status);
-                continue;
-            }
+            CHECK_AND_CONTINUE_ERR_LOG(status == napi_ok,
+                "Call JS callback fail for albumIp: %{public}s, status: %{public}d",
+                singleAlbumId.c_str(), status);
         }
     }
     return buildResult;
@@ -481,19 +543,24 @@ void MediaOnNotifyNewObserver::OnJsCallbackEvent(std::unique_ptr<NewJsOnChangeCa
     }
 
     napi_env env = jsCallback->env_;
-    NewJsOnChangeCallbackWrapper *event = jsCallback.release();
-    auto task = [event] () {
-        std::shared_ptr<NewJsOnChangeCallbackWrapper> context(
-            static_cast<NewJsOnChangeCallbackWrapper*>(event),
-            [](NewJsOnChangeCallbackWrapper* ptr) {
-                delete ptr;
+    std::shared_ptr<NewJsOnChangeCallbackWrapper> context = std::shared_ptr<NewJsOnChangeCallbackWrapper>(
+        jsCallback.release(), [](NewJsOnChangeCallbackWrapper* ptr) {
+            delete ptr;
         });
-        CHECK_AND_RETURN_LOG(event != nullptr, "event is nullptr");
-        OnChangeNotifyDetail(event);
+    
+    if (context == nullptr) {
+        NAPI_ERR_LOG("context is nullptr");
+        return;
+    }
+    
+    auto task = [context] () {
+        CHECK_AND_RETURN_LOG(context != nullptr, "context is nullptr");
+        OnChangeNotifyDetail(context.get());
     };
-    if (napi_send_event(env, task, napi_eprio_immediate, "MLB_MediaLib_on") != napi_ok) {
-        NAPI_ERR_LOG("failed to execute task");
-        delete event;
+    
+    napi_status status = napi_send_event(env, task, napi_eprio_immediate, "MLB_MediaLib_on");
+    if (status != napi_ok) {
+        NAPI_ERR_LOG("failed to execute task, status: %{public}d", static_cast<int>(status));
     }
 }
 
@@ -510,13 +577,31 @@ shared_ptr<ChangeInfoTaskWorker> ChangeInfoTaskWorker::GetInstance()
 
 ChangeInfoTaskWorker::ChangeInfoTaskWorker() {}
 
-ChangeInfoTaskWorker::~ChangeInfoTaskWorker() {}
+ChangeInfoTaskWorker::~ChangeInfoTaskWorker()
+{
+    StopWorker();
+}
+
+void ChangeInfoTaskWorker::StopWorker()
+{
+    std::lock_guard<std::mutex> lock(workerMutex_);
+    if (isThreadRunning_.load()) {
+        isThreadRunning_.store(false);
+        if (workerThread_.joinable()) {
+            workerThread_.join();
+        }
+    }
+}
 
 void ChangeInfoTaskWorker::StartWorker()
 {
+    std::lock_guard<std::mutex> lock(workerMutex_);
     if (!isThreadRunning_.load()) {
+        if (workerThread_.joinable()) {
+            workerThread_.join();
+        }
         isThreadRunning_.store(true);
-        std::thread([this]() { this->HandleNotifyTaskPeriod(); }).detach();
+        workerThread_ = std::thread([this]() { this->HandleNotifyTaskPeriod(); });
     }
 }
 
@@ -549,7 +634,6 @@ void ChangeInfoTaskWorker::GetTaskInfos()
     }
     NAPI_INFO_LOG("taskInfos_ size: %{public}zu, notifyTaskCount_: %{public}d, notifyTaskInfoSize_: %{public}zu",
         taskInfos_.size(), notifyTaskCount_, notifyTaskInfoSize_);
-    return;
 }
 void ChangeInfoTaskWorker::AddTaskInfo(NewJsOnChangeCallbackWrapper callbackWrapper)
 {
@@ -592,7 +676,8 @@ bool ChangeInfoTaskWorker::IsRunning()
 
 void ChangeInfoTaskWorker::WaitForTask()
 {
-    if (IsTaskInfosEmpty()) {
+    lock_guard<mutex> lock(vectorMutex_);
+    if (taskInfos_.empty()) {
         isThreadRunning_.store(false);
     }
 }
@@ -649,5 +734,7 @@ void ChangeInfoTaskWorker::HandleNotifyTaskPeriod()
     }
     NAPI_INFO_LOG("end changeInfo notify worker");
 }
+
+
 }  // namespace Media
 }  // namespace OHOS

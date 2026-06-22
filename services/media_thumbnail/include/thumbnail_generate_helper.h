@@ -54,6 +54,8 @@ public:
     EXPORT static bool CanLoadLocalLcd(const ThumbnailData &data);
     EXPORT static int32_t RegenerateAstcBackground(ThumbRdbOpt &opts);
     EXPORT static int32_t SyncRegenerateAstcWithLocal(ThumbRdbOpt &opts);
+    EXPORT static int32_t UpdateLcdFileSizeAndThumbStatus(const std::string &id, const std::string &path);
+    EXPORT static void HandleLocalThumbnailUnavailable(ThumbnailData& data, ThumbRdbOpt &opts, ThumbnailType thumbType);
 
 private:
     EXPORT static int32_t GetLcdCount(ThumbRdbOpt &opts, int &outLcdCount);

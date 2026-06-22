@@ -40,26 +40,11 @@ enum class OuterMediaType : int32_t {
     PICTURE = 1,
     VIDEO = 2,
 };
-enum class PrefixType {
-    CLOUD = 0,
-    LOCAL,
-    CLOUD_EDIT_DATA,
-    LOCAL_EDIT_DATA,
-    CLOUD_THUMB,
-};
 
 enum class IsBurstType :int32_t {
     OTHER_TYPE = 0,
     BURST_COVER_TYPE = 1,
     BURST_MEMBER_TYPE = 2,
-};
-
-const std::unordered_map<PrefixType, std::string> PREFIX_MAP = {
-    { PrefixType::CLOUD, "/storage/cloud/files" },
-    { PrefixType::LOCAL, "/storage/media/local/files" },
-    { PrefixType::CLOUD_EDIT_DATA, "/storage/cloud/files/.editData" },
-    { PrefixType::LOCAL_EDIT_DATA, "/storage/media/local/files/.editData" },
-    { PrefixType::CLOUD_THUMB, "/storage/cloud/files/.thumbs" },
 };
 
 enum class FileUpdateType : int32_t {
@@ -119,6 +104,7 @@ struct InnerFileInfo {
     int32_t videoMode {-1};
     int64_t localAssetSize {0};
     int64_t coverPosition {0};
+    int32_t livePhoto4dStatus {0};
 };
 
 enum ScanMode : int32_t {

@@ -555,6 +555,44 @@ int32_t CloudMediaPhotosDao::GetInsertParams(const CloudMediaPullDataDto &pullDa
     return E_OK;
 }
 
+void CloudMediaPhotosDao::ProcessResultSetData(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
+    NativeRdb::ValuesBucket &values, const CloudMediaPullDataDto &pullData)
+{
+    std::string uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
+    int32_t riskStatus = GetInt32Val(PhotoColumn::PHOTO_RISK_STATUS, resultSet);
+    std::string packageName = GetStringVal(MediaColumn::MEDIA_PACKAGE_NAME, resultSet);
+    if ((uniqueId.empty() || uniqueId == "-1") &&
+        (pullData.attributesUniqueId.empty() || pullData.attributesUniqueId == "-1")) {
+        values.Delete(PhotoColumn::UNIQUE_ID);
+        values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
+    } else if (!(uniqueId.empty() || uniqueId == "-1")) {
+        values.Delete(PhotoColumn::UNIQUE_ID);
+        values.PutString(PhotoColumn::UNIQUE_ID, uniqueId);
+    }
+
+    if (riskStatus >= 1) { // If local analyzed prevail local value
+        values.Delete(PhotoColumn::PHOTO_RISK_STATUS);
+        values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, riskStatus);
+    }
+
+    NativeRdb::ValueObject val;
+    if (values.GetObject(PhotoColumn::PHOTO_RISK_STATUS, val) && val.GetInt(riskStatus) == E_OK) {
+        values.Delete(PhotoColumn::PHOTO_IS_CRITICAL);
+        if (riskStatus <= 1) {
+            values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, 0);
+        } else {
+            values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, 1);
+        }
+    } else {
+        MEDIA_WARN_LOG("ProcessResultSetData: Failed to get PHOTO_RISK_STATUS");
+    }
+
+    if (!packageName.empty()) {
+        values.Delete(PhotoColumn::MEDIA_PACKAGE_NAME);
+        values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, packageName);
+    }
+}
+
 void CloudMediaPhotosDao::HandleIncomingCloudConflict(const CloudMediaPullDataDto &pullData,
     NativeRdb::ValuesBucket &values)
 {
@@ -577,27 +615,7 @@ void CloudMediaPhotosDao::HandleIncomingCloudConflict(const CloudMediaPullDataDt
                 values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
             }
         } else if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-            std::string uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
-            int32_t riskStatus = GetInt32Val(PhotoColumn::PHOTO_RISK_STATUS, resultSet);
-            std::string packageName = GetStringVal(MediaColumn::MEDIA_PACKAGE_NAME, resultSet);
-            if ((uniqueId.empty() || uniqueId == "-1") &&
-                (pullData.attributesUniqueId.empty() || pullData.attributesUniqueId == "-1")) {
-                values.Delete(PhotoColumn::UNIQUE_ID);
-                values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
-            } else if (!(uniqueId.empty() || uniqueId == "-1")) {
-                values.Delete(PhotoColumn::UNIQUE_ID);
-                values.PutString(PhotoColumn::UNIQUE_ID, uniqueId);
-            }
-
-            if (riskStatus >= 1) { // If local analyzed prevail local value
-                values.Delete(PhotoColumn::PHOTO_RISK_STATUS);
-                values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, riskStatus);
-            }
-
-            if (!packageName.empty()) {
-                values.Delete(PhotoColumn::MEDIA_PACKAGE_NAME);
-                values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, packageName);
-            }
+            ProcessResultSetData(resultSet, values, pullData);
         }
         resultSet->Close();
     }
@@ -1004,15 +1022,13 @@ bool CloudMediaPhotosDao::JudgeConflict(
             cloudKeyData.exifRotateValue);
         return false;
     }
-    if (localKeyData.sourceAlbum.empty()) {
-        if (localKeyData.lPath == cloudKeyData.lPath) {
-            return true;
-        } else {
-            MEDIA_INFO_LOG("JudgeConflict sourcePath not equal local lPath: %{public}s, cloud lPath: %{public}s",
-                MediaFileUtils::DesensitizePath(localKeyData.lPath).c_str(),
-                MediaFileUtils::DesensitizePath(cloudKeyData.lPath).c_str());
-            return false;
-        }
+    if (localKeyData.sourceAlbum.empty() || pullData.attributesSrcAlbumIds.empty()) {
+        MEDIA_INFO_LOG("JudgeConflict sourceAlbum empty: %{public}d, attributesSrcAlbumIds empty: %{public}d,"
+            " local lPath: %{public}s, cloud lPath: %{public}s",
+            localKeyData.sourceAlbum.empty(), pullData.attributesSrcAlbumIds.empty(),
+            MediaFileUtils::DesensitizePath(localKeyData.lPath).c_str(),
+            MediaFileUtils::DesensitizePath(cloudKeyData.lPath).c_str());
+        return localKeyData.lPath == cloudKeyData.lPath;
     } else {
         SafeMap<std::string, std::pair<int32_t, std::string>> albumLPathToIdMap = GetAlbumLPathToIdMap();
         std::vector<std::string> albumCloudIds;
@@ -1636,6 +1652,7 @@ void CloudMediaPhotosDao::UpdateAllAlbumsCountForCloud(const std::vector<std::st
     if (albums.empty()) {
         allRefreshAlbum.push_back(to_string(PhotoAlbumSubType::USER_GENERIC));
         allRefreshAlbum.push_back(to_string(PhotoAlbumSubType::SOURCE_GENERIC));
+        allRefreshAlbum.push_back(to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
         UpdateAlbumCountInternal(allRefreshAlbum);
     } else {
         UpdateAlbumCountInternal(ALL_SYSTEM_PHOTO_ALBUM);

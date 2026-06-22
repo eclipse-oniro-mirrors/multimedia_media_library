@@ -20,6 +20,7 @@
 #include <sstream>
 
 #include "media_log.h"
+#include "media_file_utils.h"
 
 namespace OHOS::Media::CloudSync {
 static const int32_t MAX_DATA_SIZE = 10000;
@@ -69,8 +70,8 @@ std::string CloudFileDataVo::ToString() const
 {
     std::stringstream ss;
     ss << "{"
-       << "\"fileName\": \"" << this->fileName << "\","
-       << "\"filePath\": \"" << this->filePath << "\","
+       << "\"fileName\": \"" << MediaFileUtils::DesensitizeName(this->fileName) << "\","
+       << "\"filePath\": \"" << MediaFileUtils::DesensitizePath(this->filePath) << "\","
        << "\"size\": " << this->size << "}";
     return ss.str();
 }

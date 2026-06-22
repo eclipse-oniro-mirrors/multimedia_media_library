@@ -59,12 +59,27 @@ bool SystemAlbumInfoCalculation::CalAlbumRefreshInfo(const PhotoAssetChangeData 
     return ret;
 }
 
+bool SystemAlbumInfoCalculation::IsNameChange(const PhotoAssetChangeData &assetChangeData,
+    std::function<bool(PhotoAssetChangeInfo)> isSystemAsset)
+{
+    return isSystemAsset(assetChangeData.infoBeforeChange_) && isSystemAsset(assetChangeData.infoAfterChange_) &&
+        AlbumAssetHelper::IsNameChange(assetChangeData);
+}
+
+bool SystemAlbumInfoCalculation::IsSizeChange(const PhotoAssetChangeData &assetChangeData,
+    std::function<bool(PhotoAssetChangeInfo)> isSystemAsset)
+{
+    return isSystemAsset(assetChangeData.infoBeforeChange_) && isSystemAsset(assetChangeData.infoAfterChange_) &&
+        AlbumAssetHelper::IsSizeChange(assetChangeData);
+}
+
 bool SystemAlbumInfoCalculation::UpdateCover(const PhotoAssetChangeData &assetChangeData,
     std::function<bool(const PhotoAssetChangeInfo&)> isSystemAsset,
     std::function<bool(const PhotoAssetChangeInfo&, const PhotoAssetChangeInfo&)> isNewerAsset,
     PhotoAssetChangeInfo &addCover, unordered_set<int32_t> &removeFileIds)
 {
-    return AlbumAssetHelper::UpdateCover(assetChangeData, isSystemAsset, isNewerAsset, addCover, removeFileIds);
+    return AlbumAssetHelper::UpdateCover(assetChangeData, isSystemAsset, isNewerAsset, addCover, removeFileIds) ||
+        IsNameChange(assetChangeData, isSystemAsset) || IsSizeChange(assetChangeData, isSystemAsset);
 }
 
 bool SystemAlbumInfoCalculation::UpdateCount(const PhotoAssetChangeData &assetChangeData,
@@ -116,7 +131,8 @@ bool SystemAlbumInfoCalculation::UpdateRefreshHiddenInfo(const PhotoAssetChangeD
 bool SystemAlbumInfoCalculation::IsSystemAlbumInfoChange(const PhotoAssetChangeData &assetChangeData,
     std::function<bool(PhotoAssetChangeInfo)> isAlbumAsset)
 {
-    return isAlbumAsset(assetChangeData.infoBeforeChange_) != isAlbumAsset(assetChangeData.infoAfterChange_);
+    return isAlbumAsset(assetChangeData.infoBeforeChange_) != isAlbumAsset(assetChangeData.infoAfterChange_) ||
+        IsNameChange(assetChangeData, isAlbumAsset) || IsSizeChange(assetChangeData, isAlbumAsset);
 }
 } // namespace Media
 } // namespace OHOS

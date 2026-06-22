@@ -18,6 +18,8 @@
 
 #include "gtest/gtest.h"
 
+#include "photo_owner_album_id_operation.h"
+
 namespace OHOS::Media {
 class PhotoOwnerAlbumIdOperationTest : public testing::Test {
 public:
@@ -25,6 +27,9 @@ public:
     static void TearDownTestCase(void);
     void SetUp();
     void TearDown();
+
+protected:
+    PhotoOwnerAlbumIdOperation operation_;
 
 private:
     const int32_t E_ERR = -1;

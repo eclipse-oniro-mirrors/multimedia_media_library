@@ -93,7 +93,6 @@ ohos_unittest("media_lake_file_monitor_test") {
     "./src/media_lake_clone_event_manager_test.cpp",
     "./src/media_lake_monitor_rdb_utils_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_anco_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
@@ -156,6 +155,7 @@ ohos_unittest("media_lake_file_monitor_test") {
     "libexif:libexif",
     "libfuse:libfuse",
     "libxml2:libxml2",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:libaccountkits",  # ohos_account
@@ -175,9 +175,12 @@ ohos_unittest("media_lake_file_monitor_test") {
     "usb_manager:usbsrv_client",
     "window_manager:libdm",
     "zlib:shared_libz",
+    "graphic_surface:surface",
   ]
  
-  defines = []
+  defines = [
+    "MEDIALIBRARY_LAKE_SUPPORT"
+  ]
  
   if (defined(global_parts_info) &&
       defined(global_parts_info.filemanagement_dfs_service)) {

@@ -87,9 +87,6 @@ static const std::string MEDIA_LIBRARY_RECOVERY_FLAG_KEY = "media_library_prefer
 const std::string PARAM_CLONE_SEARCH_STATUS = "persist.multimedia.media_analysis_service.clone_search_status";
 const std::string CLONE_SEARCH_INDEXING = "3";
 
-const std::string LCD_AGING_XML = "/data/storage/el2/base/preferences/lcd_aging.xml";
-const std::string LAST_LCD_AGING_END_TIME = "last_lcd_aging_end_time";
-
 static int32_t GetRestoreModeFromRestoreInfo(const string &restoreInfo)
 {
     int32_t restoreMode = RESTORE_MODE_PROC_ALL_DATA;
@@ -246,7 +243,6 @@ void BaseRestore::StartRestore(const std::string &backupRestoreDir, const std::s
     StopParameterForRestore();
     StopParameterForClone();
     SetMediaAnalysisClearDirtyDataParameter();
-    DelayLcdAgingTime();
 }
 
 int32_t BaseRestore::Init(void)
@@ -1198,7 +1194,7 @@ void BaseRestore::MoveMigrateFile(std::vector<FileInfo> &fileInfos, int32_t &fil
         }
 
         MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(to_string(fileInfos[i].fileIdNew),
-            fileInfos[i].cloudPath);
+            fileInfos[i].cloudPath, EditAndAttachmentUpdateType::EDIT_ONLY);
 
         fileMoveCount++;
         videoFileMoveCount += fileInfos[i].fileType == MediaType::MEDIA_TYPE_VIDEO;
@@ -1744,6 +1740,12 @@ SubCountInfo BaseRestore::GetSubCountInfo(const std::string &type)
     if (type == STAT_TYPE_LAKE_VIDEO) {
         return SubCountInfo(migrateLakeVideoNumber_, migrateLakeVideoDuplicateNumber_, failedFiles);
     }
+    if (type == STAT_TYPE_FILE_MANAGER_PHOTO) {
+        return SubCountInfo(migrateFileManagerPhotoNumber_, migrateFileManagerPhotoDuplicateNumber_, failedFiles);
+    }
+    if (type == STAT_TYPE_FILE_MANAGER_VIDEO) {
+        return SubCountInfo(migrateFileManagerVideoNumber_, migrateFileManagerVideoDuplicateNumber_, failedFiles);
+    }
     return SubCountInfo(0, 0, failedFiles);
 }
 
@@ -1801,6 +1803,8 @@ void BaseRestore::UpdateFailedFileByFileType(int32_t fileType, const FileInfo &f
     if (fileType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) {
         if (FileAdapter::IsLakeFile(fileInfo)) {
             failedFilesMap_[STAT_TYPE_LAKE_PHOTO].emplace(fileInfo.oldPath, failedFileInfo);
+        } else if (FileAdapter::IsFileManagerFile(fileInfo)) {
+            failedFilesMap_[STAT_TYPE_FILE_MANAGER_PHOTO].emplace(fileInfo.oldPath, failedFileInfo);
         } else {
             failedFilesMap_[STAT_TYPE_PHOTO].emplace(fileInfo.oldPath, failedFileInfo);
         }
@@ -1809,6 +1813,8 @@ void BaseRestore::UpdateFailedFileByFileType(int32_t fileType, const FileInfo &f
     if (fileType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO)) {
         if (FileAdapter::IsLakeFile(fileInfo)) {
             failedFilesMap_[STAT_TYPE_LAKE_VIDEO].emplace(fileInfo.oldPath, failedFileInfo);
+        } else if (FileAdapter::IsFileManagerFile(fileInfo)) {
+            failedFilesMap_[STAT_TYPE_FILE_MANAGER_VIDEO].emplace(fileInfo.oldPath, failedFileInfo);
         } else {
             failedFilesMap_[STAT_TYPE_VIDEO].emplace(fileInfo.oldPath, failedFileInfo);
         }
@@ -2539,18 +2545,6 @@ void BaseRestore::SetCloneParameterAndStopSync()
 #ifdef CLOUD_SYNC_MANAGER
     FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync("com.ohos.medialibrary.medialibrarydata");
 #endif
-}
-
-void BaseRestore::DelayLcdAgingTime()
-{
-    int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
-    CHECK_AND_RETURN_LOG(prefs, "Get preferences error: %{public}d", errCode);
-
-    int64_t currentTime = MediaFileUtils::UTCTimeSeconds();
-    prefs->PutLong(LAST_LCD_AGING_END_TIME, currentTime);
-    prefs->FlushSync();
 }
 
 void BaseRestore::NotifyDbStatusForClone()

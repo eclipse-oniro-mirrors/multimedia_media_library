@@ -59,6 +59,18 @@ static const std::string SQL_GENERATE_UUID = "(lower(hex(randomblob(4) ) ) || \
 
 class MedialibrarySubscriber;
 
+#ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+class CloudMediaAssetUnlimitObserver : public DataShare::DataShareObserver {
+public:
+    CloudMediaAssetUnlimitObserver(std::weak_ptr<MedialibrarySubscriber> subscriber) : subscriber_(subscriber) {}
+    ~CloudMediaAssetUnlimitObserver() {}
+    void OnChange(const ChangeInfo &changeInfo) override;
+
+private:
+    std::weak_ptr<MedialibrarySubscriber> subscriber_;
+};
+#endif
+
 class EXPORT MedialibrarySubscriber : public EventFwk::CommonEventSubscriber {
 public:
     class DelayTask {
@@ -86,9 +98,11 @@ public:
     EXPORT static bool IsCurrentStatusOn();
     EXPORT static bool IsCriticalTypeStatusOn();
     EXPORT static bool IsCharging();
+    EXPORT static bool IsBackgroundTaskAllowed();
 private:
     std::shared_ptr<DataShare::DataShareHelper> cloudHelper_;
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
+    std::shared_ptr<CloudMediaAssetUnlimitObserver> CloudMediaAssetUnlimitObserver_;
     OHOS::sptr<OHOS::Media::DefaultNetConnectObserver> defaultNetObserver_;
 #endif
     static const std::vector<std::string> events_;
@@ -168,7 +182,6 @@ private:
     void PreProcessForUpdateStatus();
     bool CheckOnRestoreAndTryResetFlag();
     void UpdateGlobalStatusForBgTask();
-    bool IsBackgroundTaskAllowed();
 #ifdef MEDIALIBRARY_FACARD_SUPPORT
     void InitFaCardAfterDataShareReady(const std::string &action);
 #endif

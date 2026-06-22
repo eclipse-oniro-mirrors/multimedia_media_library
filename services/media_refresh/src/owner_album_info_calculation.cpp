@@ -95,6 +95,22 @@ bool OwnerAlbumInfoCalculation::IsNewerHiddenAsset(const PhotoAssetChangeInfo &c
         && AlbumAssetHelper::IsNewerByHiddenTime(compareAssetInfo, currentAssetInfo);
 }
 
+bool OwnerAlbumInfoCalculation::IsNameChange(const PhotoAssetChangeData &assetChangeData, int32_t albumId,
+    std::function<bool(PhotoAssetChangeInfo, int32_t)> isAlbumAsset)
+{
+    return isAlbumAsset(assetChangeData.infoBeforeChange_, albumId) &&
+        isAlbumAsset(assetChangeData.infoAfterChange_, albumId) &&
+        AlbumAssetHelper::IsNameChange(assetChangeData);
+}
+
+bool OwnerAlbumInfoCalculation::IsSizeChange(const PhotoAssetChangeData &assetChangeData, int32_t albumId,
+    std::function<bool(PhotoAssetChangeInfo, int32_t)> isAlbumAsset)
+{
+    return isAlbumAsset(assetChangeData.infoBeforeChange_, albumId) &&
+        isAlbumAsset(assetChangeData.infoAfterChange_, albumId) &&
+        AlbumAssetHelper::IsSizeChange(assetChangeData);
+}
+
 bool OwnerAlbumInfoCalculation::UpdateCover(const PhotoAssetChangeData &assetChangeData,
     function<bool(const PhotoAssetChangeInfo&, int32_t)> isAsset, int32_t albumId,
     function<bool(const PhotoAssetChangeInfo&, const PhotoAssetChangeInfo&, int32_t)> isNewerAsset,
@@ -108,7 +124,8 @@ bool OwnerAlbumInfoCalculation::UpdateCover(const PhotoAssetChangeData &assetCha
         [&] (const PhotoAssetChangeInfo &compare, const PhotoAssetChangeInfo &current) -> bool {
             return isNewerAsset(compare, current, albumId);
     };
-    return AlbumAssetHelper::UpdateCover(assetChangeData, isAlbumAsset, isAlbumNewerAsset, addCover, removeFileIds);
+    return AlbumAssetHelper::UpdateCover(assetChangeData, isAlbumAsset, isAlbumNewerAsset, addCover, removeFileIds) ||
+        IsNameChange(assetChangeData, albumId, isAsset) || IsSizeChange(assetChangeData, albumId, isAsset);
 }
 
 bool OwnerAlbumInfoCalculation::UpdateCount(const PhotoAssetChangeData &assetChangeData,
@@ -186,7 +203,9 @@ bool OwnerAlbumInfoCalculation::IsOwnerAlbumInfoChange(const PhotoAssetChangeDat
     std::function<bool(PhotoAssetChangeInfo, int32_t)> isAlbumAsset, int32_t albumId)
 {
     return isAlbumAsset(assetChangeData.infoBeforeChange_, albumId) !=
-        isAlbumAsset(assetChangeData.infoAfterChange_, albumId);
+        isAlbumAsset(assetChangeData.infoAfterChange_, albumId) ||
+        IsNameChange(assetChangeData, albumId, isAlbumAsset) ||
+        IsSizeChange(assetChangeData, albumId, isAlbumAsset);
 }
 
 } // namespace Media

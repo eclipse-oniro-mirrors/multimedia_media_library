@@ -42,6 +42,10 @@ const std::unordered_set<std::string> FILE_MANAGER_EXCLUDED_DIR_NAMES = {
     ".Recent",
     ".backup",
     ".Trash",
+    ".VMDocs",
+    ".ohpm",
+    "PCEngine",
+    "appdata",
 };
 
 bool PhotoFileUtils::HasSource(bool hasEditDataCamera,

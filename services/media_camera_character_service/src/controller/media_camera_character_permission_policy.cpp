@@ -43,6 +43,15 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_MAM_CANCEL_PROCESS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFINE_PROCESS_VIDEO), {{}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFINE_GET_PROGRESS_CALLBACK), {{}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_INNER_CREATE_CAMERA_FILE_FD), {{
+        SYSTEMINNERAPI_PERM, READ_PERM, WRITE_PERM
+    }}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_INNER_SCAN_CAMERA_FILE), {{
+        SYSTEMINNERAPI_PERM, READ_PERM, WRITE_PERM
+    }}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::CAMERA_DEFERRED_PICTURE_INFO), {{
+        SYSTEMINNERAPI_PERM, READ_PERM, WRITE_PERM
+    }}},
 };
 
 int32_t MediaCameraCharacterControllerService::GetPermissionPolicy(

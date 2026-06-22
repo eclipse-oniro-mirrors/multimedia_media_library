@@ -177,95 +177,91 @@ static bool CheckAlbumHiddenStatus(int32_t albumId, bool expectedHidden)
     return (fileHidden == (expectedHidden ? 1 : 0));
 }
 
+struct SetHiddenAttributeSuccessCase {
+    const char *caseName;
+    int32_t albumId;
+    int32_t assetId;
+    bool fileHidden;
+    bool inherited;
+    int32_t albumType;
+    int32_t albumSubType;
+    bool expectedAlbumHidden;
+    bool expectedAssetHidden;
+};
+ 	 
+static void RunSetHiddenAttributeSuccessCase(const SetHiddenAttributeSuccessCase &testCase)
+{
+    MEDIA_INFO_LOG("Start %{public}s", testCase.caseName);
+
+    int32_t ret = SetAlbumHiddenAttribute(testCase.albumId, testCase.fileHidden, testCase.inherited,
+        testCase.albumType, testCase.albumSubType);
+    EXPECT_EQ(ret, E_OK);
+
+    EXPECT_TRUE(CheckAlbumHiddenStatus(testCase.albumId, testCase.expectedAlbumHidden));
+    EXPECT_TRUE(CheckAssetHiddenStatus(testCase.assetId, testCase.expectedAssetHidden));
+
+    MEDIA_INFO_LOG("end %{public}s", testCase.caseName);
+}
+
 HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedTrue, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("Start SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedTrue");
-    
-    int32_t ret = SetAlbumHiddenAttribute(g_userAlbumId, true, true,
+    RunSetHiddenAttributeSuccessCase({
+        "SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedTrue",
+        g_userAlbumId, g_userAlbumAssetId, true, true,
         static_cast<int32_t>(PhotoAlbumType::USER),
-        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC));
-    EXPECT_EQ(ret, E_OK);
-    
-    EXPECT_TRUE(CheckAlbumHiddenStatus(g_userAlbumId, true));
-    EXPECT_TRUE(CheckAssetHiddenStatus(g_userAlbumAssetId, true));
-
-    MEDIA_INFO_LOG("end SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedTrue");
+        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC), true, true
+    });
 }
 
 HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedFalse, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("Start SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedFalse");
-    
-    int32_t ret = SetAlbumHiddenAttribute(g_userAlbumId, true, false,
+    RunSetHiddenAttributeSuccessCase({
+        "SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedFalse",
+        g_userAlbumId, g_userAlbumAssetId, true, false,
         static_cast<int32_t>(PhotoAlbumType::USER),
-        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC));
-    EXPECT_EQ(ret, E_OK);
-    
-    EXPECT_TRUE(CheckAlbumHiddenStatus(g_userAlbumId, true));
-    EXPECT_TRUE(CheckAssetHiddenStatus(g_userAlbumAssetId, false));
-
-    MEDIA_INFO_LOG("end SetHiddenAttribute_UserAlbum_HiddenTrue_InheritedFalse");
+        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC), true, false
+    });
 }
 
 HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedTrue, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("Start SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedTrue");
-    
-    int32_t ret = SetAlbumHiddenAttribute(g_userAlbumId, false, true,
+    RunSetHiddenAttributeSuccessCase({
+        "SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedTrue",
+        g_userAlbumId, g_userAlbumAssetId, false, true,
         static_cast<int32_t>(PhotoAlbumType::USER),
-        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC));
-    EXPECT_EQ(ret, E_OK);
-    
-    EXPECT_TRUE(CheckAlbumHiddenStatus(g_userAlbumId, false));
-    EXPECT_TRUE(CheckAssetHiddenStatus(g_userAlbumAssetId, false));
-
-    MEDIA_INFO_LOG("end SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedTrue");
+        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC), false, false
+    });
 }
 
 HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedFalse, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("Start SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedFalse");
-    
-    int32_t ret = SetAlbumHiddenAttribute(g_userAlbumId, false, false,
+    RunSetHiddenAttributeSuccessCase({
+        "SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedFalse",
+        g_userAlbumId, g_userAlbumAssetId, false, false,
         static_cast<int32_t>(PhotoAlbumType::USER),
-        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC));
-    EXPECT_EQ(ret, E_OK);
-    
-    EXPECT_TRUE(CheckAlbumHiddenStatus(g_userAlbumId, false));
-    EXPECT_TRUE(CheckAssetHiddenStatus(g_userAlbumAssetId, false));
-
-    MEDIA_INFO_LOG("end SetHiddenAttribute_UserAlbum_HiddenFalse_InheritedFalse");
+        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC), false, false
+    });
 }
 
 HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_SourceAlbum_HiddenTrue_InheritedTrue, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("Start SetHiddenAttribute_SourceAlbum_HiddenTrue_InheritedTrue");
-    
-    int32_t ret = SetAlbumHiddenAttribute(g_sourceAlbumId, true, true,
+    RunSetHiddenAttributeSuccessCase({
+        "SetHiddenAttribute_SourceAlbum_HiddenTrue_InheritedTrue",
+        g_sourceAlbumId, g_sourceAlbumAssetId, true, true,
         static_cast<int32_t>(PhotoAlbumType::SOURCE),
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
-    EXPECT_EQ(ret, E_OK);
-    
-    EXPECT_TRUE(CheckAlbumHiddenStatus(g_sourceAlbumId, true));
-    EXPECT_TRUE(CheckAssetHiddenStatus(g_sourceAlbumAssetId, true));
-
-    MEDIA_INFO_LOG("end SetHiddenAttribute_SourceAlbum_HiddenTrue_InheritedTrue");
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC), true, true
+    });
 }
 
 HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_FileManagerAlbum_HiddenTrue_InheritedTrue,
     TestSize.Level0)
 {
-    MEDIA_INFO_LOG("Start SetHiddenAttribute_FileManagerAlbum_HiddenTrue_InheritedTrue");
-    
-    int32_t ret = SetAlbumHiddenAttribute(g_fileManagerAlbumId, true, true,
+    RunSetHiddenAttributeSuccessCase({
+        "SetHiddenAttribute_FileManagerAlbum_HiddenTrue_InheritedTrue",
+        g_fileManagerAlbumId, g_fileManagerAlbumAssetId, true, true,
         static_cast<int32_t>(PhotoAlbumType::SOURCE),
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER));
-    EXPECT_EQ(ret, E_OK);
-    
-    EXPECT_TRUE(CheckAlbumHiddenStatus(g_fileManagerAlbumId, true));
-    EXPECT_TRUE(CheckAssetHiddenStatus(g_fileManagerAlbumAssetId, true));
-
-    MEDIA_INFO_LOG("end SetHiddenAttribute_FileManagerAlbum_HiddenTrue_InheritedTrue");
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER), true, true
+    });
 }
 
 HWTEST_F(AlbumChangeSetHiddenAttributeTest, SetHiddenAttribute_InvalidAlbumId, TestSize.Level0)

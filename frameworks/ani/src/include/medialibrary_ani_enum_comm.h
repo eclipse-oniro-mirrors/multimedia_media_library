@@ -147,6 +147,10 @@ const std::vector<std::string> videoEnhancementTypeEnum {
     "QUALITY_ENHANCEMENT_LOCAL", "QUALITY_ENHANCEMENT_CLOUD", "QUALITY_ENHANCEMENT_LOCAL_AND_CLOUD"
 };
 
+const std::vector<std::string> deepOptimizeStateEnum {
+    "RUNNING", "COMPLETED", "FAILED", "STOPPED", "INTERRUPTED"
+};
+
 const std::vector<std::pair<std::string, std::string>> FILE_KEY_ENUM_PROPERTIES = {
     std::make_pair("ID",                        CONST_MEDIA_DATA_DB_ID),
     std::make_pair("RELATIVE_PATH",             CONST_MEDIA_DATA_DB_RELATIVE_PATH),
@@ -267,6 +271,9 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("HIDDEN_TIME",               PhotoColumn::PHOTO_HIDDEN_TIME),
     std::make_pair("LOCAL_ASSET_SIZE",          PhotoColumn::LOCAL_ASSET_SIZE),
     std::make_pair("FILE_HIDDEN",               PhotoColumn::PHOTO_FILE_HIDDEN),
+    std::make_pair("ATTACHMENT_SIZE",           PhotoColumn::ATTACHMENT_SIZE),
+    std::make_pair("LCD_FILE_SIZE",             PhotoColumn::PHOTO_LCD_FILE_SIZE),
+    std::make_pair("THUMB_STATUS",              PhotoColumn::PHOTO_THUMB_STATUS),
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUMKEY_ENUM_PROPERTIES = {

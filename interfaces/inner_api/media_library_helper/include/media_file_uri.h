@@ -107,7 +107,6 @@ public:
     EXPORT static std::string GetPathFromUri(const std::string &uri, bool isPhoto);
     EXPORT static std::string GetPhotoUri(const std::string &fileId, const std::string &path,
         const std::string &displayName);
-    EXPORT static bool IsPictureUri(const std::string &uri);
 };
 } // namespace Media
 } // namespace OHOS

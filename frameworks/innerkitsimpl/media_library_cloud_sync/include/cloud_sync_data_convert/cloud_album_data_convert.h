@@ -70,6 +70,7 @@ public:
 private:
     void ConvertErrorTypeDetails(const MDKRecordOperResult &result, std::vector<CloudErrorDetail> &errorDetails);
     std::string SanitizeAlbumName(const std::string &albumName);
+    int32_t ValidateLocalPath(std::shared_ptr<MDKRecord> record, std::map<std::string, MDKRecordField> &data);
 
 private:
     bool isCloudSpaceFull_{false};

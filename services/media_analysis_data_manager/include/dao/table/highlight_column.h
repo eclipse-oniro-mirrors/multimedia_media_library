@@ -21,7 +21,7 @@
 namespace OHOS {
 namespace Media {
 
-const std::string MEDIA_DATA_DB_HIGHLIGHT = "highlight";
+const std::string MEDIA_DATA_DB_HIGHLIGHT = "highlight/cover";
 const std::string MEDIA_DATA_DB_HIGHLIGHT_ID = "id";
 const std::string MEDIA_DATA_DB_HIGHLIGHT_STATUS = "highlight_status";
 const std::string MEDIA_DATA_DB_VIDEO_TRACKS = "tracks";

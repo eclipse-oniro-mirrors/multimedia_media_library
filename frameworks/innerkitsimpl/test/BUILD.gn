@@ -22,8 +22,11 @@ group("test") {
     "unittest/media_asset_test:unittest",
     "unittest/media_background_task_test:unittest",
     "unittest/media_event_test:unittest",
+    "unittest/media_clone_pending_record_utils_test:unittest",
     "unittest/media_library_asset_helper_capi_test:unittest",
     "unittest/media_library_asset_manager_test:unittest",
+    "unittest/media_library_camera_helper_test:unittest",
+    "unittest/media_library_camera_service_test:unittest",
     "unittest/media_library_manager_test:unittest",
     "unittest/media_library_share_test:unittest",
     "unittest/media_notification_test:unittest",
@@ -53,6 +56,7 @@ group("test") {
     "unittest/medialibrary_smartalbum_map_operations_test:unittest",
     "unittest/medialibrary_smartalbum_operations_test:unittest",
     "unittest/medialibrary_story_test:unittest",
+    "unittest/medialibrary_update_edit_data_size_test:unittest",
     "unittest/medialibrary_uri_sensitive_operations_test:unittest",
     "unittest/medialibrary_uri_test:unittest",
     "unittest/medialibrary_vision_test:unittest",
@@ -79,6 +83,9 @@ group("test") {
     "unittest/medialibrary_backup_test:unittest",
     "unittest/media_assets_controller_service_test:unittest",
     "unittest/media_file_manager_test:unittest",
+    "unittest/media_file_management_test:unittest",
+    "unittest/notification_helper_test:unittest",
+    "unittest/medialibrary_album_cover_order_test:unittest",
   ]
 
   deps_cloud_sync_unittest = [
@@ -127,6 +134,7 @@ group("test") {
       "unittest/cloud_media_retain_smart_data_test:unittest",
       "unittest/media_notification_register_manager_test:unittest",
       "unittest/media_clean_all_dirty_files_task_test:unittest",
+      "unittest/media_camera_cache_clean_task_test:unittest",
     ]
   }
 
@@ -154,6 +162,8 @@ group("test") {
       "unittest/media_event_test:unittest",
       "unittest/media_library_asset_helper_capi_test:unittest",
       "unittest/media_library_asset_manager_test:unittest",
+      "unittest/media_library_camera_helper_test:unittest",
+      "unittest/media_library_camera_service_test:unittest",
       "unittest/media_library_manager_test:unittest",
       "unittest/media_library_share_test:unittest",
       "unittest/media_permission_check_test:unittest",
@@ -178,6 +188,7 @@ group("test") {
       "unittest/medialibrary_search_test:unittest",
       "unittest/medialibrary_shooting_mode_album_test:unittest",
       "unittest/medialibrary_story_test:unittest",
+      "unittest/medialibrary_update_edit_data_size_test:unittest",
       "unittest/medialibrary_uri_sensitive_operations_test:unittest",
       "unittest/medialibrary_uri_test:unittest",
       "unittest/medialibrary_video_mode_test:unittest",
@@ -194,6 +205,7 @@ group("test") {
       "unittest/picture_handle_service_test:unittest",
       "unittest/medialibrary_graph_db_ipc_test:unittest",
       "unittest/media_file_manager_test:unittest",
+      "unittest/media_file_management_test:unittest",
       "unittest/medialibrary_analysis_progress_test:unittest",
       "unittest/white_list_check_utils_test:unittest",
       "unittest/media_library_related_system_state_test:unittest",

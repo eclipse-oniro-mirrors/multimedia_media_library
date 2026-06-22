@@ -72,6 +72,8 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
         {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_FOR_APP_WITH_ALBUM),
         {{SYSTEMAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM),
+        {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CREATE_TMP_DUPLICATE), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYS_TRASH_PHOTOS), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_TRASH_PHOTOS), {{WRITE_PERM}}},
@@ -164,6 +166,7 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_URI_FROM_FILEPATH), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CLOSE_ASSET), {{WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE), {{WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC), {{WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL), {{WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_CANCEL_PROCESS), {{READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_RETAIN_CLOUDMEDIA_ASSET), {{CLOUDFILE_SYNC}}},
@@ -215,7 +218,7 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_TO_ALBUM), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_TO_DIR), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_ASSETS_BY_PATH), {{SYSTEMAPI_PERM, WRITE_PERM}}},
-    {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_CANCEL_CLONE_TASK), {{}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::ALBUM_CANCEL_CLONE_TASK), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::MOVE_ASSETS_TO_DIR),
         {{SYSTEMAPI_PERM, READ_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::MOVE_ASSETS_BY_PATH),
@@ -224,6 +227,9 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
         {{SYSTEMAPI_PERM, READ_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_FILE_MANAGER_ASSET),
         {{SYSTEMINNERAPI_PERM, WRITE_PERM}, {SYSTEMAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE), {{SYSTEMAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE), {{SYSTEMAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING), {{SYSTEMAPI_PERM, WRITE_PERM}}},
 };
 
 static std::unordered_set<uint32_t> mediaAssetsPermissionDbBypass = {

@@ -67,7 +67,7 @@ public:
 private:
     COMPILE_HIDDEN MediaLibraryPeriodWorker();
     COMPILE_HIDDEN void Init();
-    COMPILE_HIDDEN void HandleTask(PeriodTaskType periodTaskType);
+    COMPILE_HIDDEN static void HandleTask(PeriodTaskType periodTaskType);
 
     COMPILE_HIDDEN static std::atomic<bool> stop_;
     COMPILE_HIDDEN static std::shared_ptr<MediaLibraryPeriodWorker> periodWorkerInstance_;

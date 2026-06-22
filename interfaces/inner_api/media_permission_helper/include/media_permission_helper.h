@@ -95,7 +95,8 @@ public:
      */
     // LCOV_EXCL_START
     EXPORT int32_t GrantPhotoUriPermission(uint32_t srcTokenId, uint32_t targetTokenId, const std::vector<string> &uris,
-        const std::vector<PhotoPermissionType> &photoPermissionTypes, HideSensitiveType hideSensitiveTpye);
+        const std::vector<PhotoPermissionType> &photoPermissionTypes,
+        HideSensitiveType hideSensitiveTpye = HideSensitiveType::DEFAULT);
     // LCOV_EXCL_STOP
 
     /**

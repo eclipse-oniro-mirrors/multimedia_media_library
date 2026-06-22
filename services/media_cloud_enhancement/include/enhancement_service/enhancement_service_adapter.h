@@ -25,8 +25,6 @@
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
 #include "media_enhance_constants_c_api.h"
 #include "media_enhance_handles.h"
-#include "media_enhance_client_c_api.h"
-#include "media_enhance_bundle_c_api.h"
 #endif
 // LCOV_EXCL_START
 namespace OHOS {

@@ -1,0 +1,103 @@
+# Copyright (C) 2026 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+ 
+import("//build/test.gni")
+import("//foundation/multimedia/media_library/media_library.gni")
+ 
+group("unittest") {
+  testonly = true
+  deps = [ ":media_library_camera_service_test" ]
+}
+ 
+ohos_unittest("media_library_camera_service_test") {
+  module_out_path = "media_library/media_library_asset"
+  include_dirs = [
+    "./include",
+    "./include/mock",
+    "../medialibrary_unittest_utils/include",
+  ]
+ 
+  sources = [
+    "./src/camera_path_utils_test.cpp",
+    "./src/camera_test_utils.cpp",
+    "./src/image_pipeline_test.cpp",
+    "./src/multistages_camera_capture_manager_test.cpp",
+    "./src/multistages_capture_deferred_photo_proc_session_callback_test.cpp",
+    "./src/new_image_pipeline_test.cpp",
+    "./src/yuv_pipeline_test.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/test/unittest/medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+  ]
+ 
+  deps = [
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:zuri",
+    "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:app_context",
+    "ability_runtime:runtime",
+    "ability_runtime:app_manager",
+    "ability_runtime:extensionkit_native",
+    "ability_runtime:uri_permission_mgr",
+    "access_token:libaccesstoken_sdk",
+    "access_token:libnativetoken_shared",
+    "access_token:libtokensetproc_shared",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "common_event_service:cesfwk_innerkits",
+    "data_share:datashare_common",
+    "data_share:datashare_provider",
+    "hilog:libhilog",
+    "image_framework:image_native",
+    "ipc:ipc_single",
+    "graphic_surface:surface",
+    "kv_store:distributeddata_inner",
+    "napi:ace_napi",
+    "relational_store:native_rdb",
+    "googletest:gtest_main",
+    "googletest:gmock_main",
+    "dfs_service:cloudsync_kit_inner",
+  ]
+ 
+  defines = []
+  cflags = [ "-fno-access-control" ]
+ 
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.multimedia_camera_framework) &&
+      global_parts_info.multimedia_camera_framework) {
+    defines = [ "ABILITY_CAMERA_SUPPORT" ]
+    external_deps += [ "camera_framework:camera_framework" ]
+  }
+ 
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+ 
+  if (is_standard_system) {
+    external_deps += [ "hilog:libhilog" ]
+  } else {
+    external_deps += [ "hilog:libhilog" ]
+  }
+ 
+  resource_config_file =
+      "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"
+}

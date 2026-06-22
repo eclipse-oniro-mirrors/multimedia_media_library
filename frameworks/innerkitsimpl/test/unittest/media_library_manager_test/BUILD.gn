@@ -28,6 +28,7 @@ ohos_unittest("media_library_manager_test") {
     "../medialibrary_unittest_utils/include",
     "${MEDIALIB_COMMON_PATH}/utils/include",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_manager/include",
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
@@ -47,6 +48,7 @@ ohos_unittest("media_library_manager_test") {
     "../medialibrary_unittest_utils/src/medialibrary_mock_tocken.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_library_manager_test.cpp",
+    "./src/media_library_manager_notify_test.cpp",
   ]
 
   deps = [

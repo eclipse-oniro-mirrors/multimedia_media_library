@@ -75,6 +75,16 @@ bool AlbumAssetHelper::IsInvalidAsset(const PhotoAssetChangeInfo &assetInfo)
     return assetInfo.fileId_ == INVALID_INT32_VALUE;
 }
 
+bool AlbumAssetHelper::IsNameChange(const PhotoAssetChangeData &assetChangeData)
+{
+    return assetChangeData.infoBeforeChange_.displayName_ != assetChangeData.infoAfterChange_.displayName_;
+}
+
+bool AlbumAssetHelper::IsSizeChange(const PhotoAssetChangeData &assetChangeData)
+{
+    return assetChangeData.infoBeforeChange_.size_ != assetChangeData.infoAfterChange_.size_;
+}
+
 bool AlbumAssetHelper::UpdateCover(const PhotoAssetChangeData &assetChangeData,
     std::function<bool(const PhotoAssetChangeInfo&)> isAlbumAsset,
     std::function<bool(const PhotoAssetChangeInfo&, const PhotoAssetChangeInfo&)> isNewerAsset,

@@ -110,7 +110,6 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
-    "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
@@ -130,7 +129,7 @@ ohos_unittest("medialibrary_cloud_enhancement_test") {
       global_parts_info.device_cloud_gateway_media_cloud_enhance_service &&
       !factory) {
     defines += [ "ABILITY_CLOUD_ENHANCEMENT_SUPPORT" ]
-    include_dirs += [ "${MEDIALIB_CLOUD_ENHANCEMENT_SERVICE_PATH}/interfaces/inner_api/include/c_api" ]
+    include_dirs += [ "${MEDIALIB_ROOT_SERVICES_PATH}/media_cloud_enhancement/include/common_data" ]
   }
 
   resource_config_file =
@@ -222,7 +221,6 @@ ohos_unittest("medialibrary_cloud_enhancement_get_pair_test") {
     "libexif:libexif",
     "napi:ace_napi",
     "os_account:os_account_innerkits",
-    "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

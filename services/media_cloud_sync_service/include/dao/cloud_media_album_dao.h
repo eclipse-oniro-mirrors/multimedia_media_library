@@ -85,6 +85,8 @@ public:
     int32_t ReportAbnormalLocalRecords();
     void HandleIncomingUniqueId(PhotoAlbumDto &album);
     int32_t UpdateAlbumOrderInfo(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void SetAlbumBasicInfo(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void FillAlbumBaseValues(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
     int32_t GetPhotoAlbum(const std::string &lPath, std::optional<PhotoAlbumPo> &albumInfoOp);
     int32_t GetAlbumCloudAssetCount(const int32_t albumId, int32_t &count);
 
@@ -109,6 +111,11 @@ private:
         std::unordered_map<std::string, MediaAlbumPluginRowData> &writeListMap);
     int32_t QueryCreatedAlbums(int32_t size, std::vector<PhotoAlbumPo> &resultList);
     int32_t QueryDeleteAlbums(int32_t size, std::vector<PhotoAlbumPo> &resultList);
+    bool IsCloudCoverDateModifiedUpdated(const std::string &lPath, const std::string &coverCloudIdFromCloud,
+        const std::string &coverCloudIdFromLocal);
+    bool FillAlbumCoverIfNeedUpdate(const PhotoAlbumDto &record, NativeRdb::ValuesBucket &values);
+    void FillAlbumCoverValues(int32_t coverUriSource, const std::string &coverCloudId,
+        NativeRdb::ValuesBucket &values);
 
 private:
     /* album failure records */

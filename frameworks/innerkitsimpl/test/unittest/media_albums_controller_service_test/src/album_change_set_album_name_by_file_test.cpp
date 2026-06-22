@@ -40,7 +40,6 @@ using namespace OHOS::NativeRdb;
 using namespace IPC;
 
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
-static constexpr int32_t SLEEP_SECONDS = 1;
 
 static int32_t g_userAlbumId;
 static int32_t g_sourceAlbumId;
@@ -88,7 +87,6 @@ void AlbumChangeSetAlbumNameByFileTest::TearDownTestCase(void)
     MediaLibraryUnitTestUtils::CleanTestTables(g_rdbStore, testTables, true);
     MediaLibraryDataManager::GetInstance()->ClearMediaLibraryMgr();
     MEDIA_INFO_LOG("AlbumChangeSetAlbumNameByFileTest TearDownTestCase");
-    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_SECONDS));
 }
 
 void AlbumChangeSetAlbumNameByFileTest::TearDown() {}
@@ -187,12 +185,12 @@ HWTEST_F(AlbumChangeSetAlbumNameByFileTest, SetAlbumNameByFile_FileManagerAlbum_
     string newAlbumName = "NewFileManagerAlbumName";
     int32_t ret = SetAlbumNameByFile(g_fileManagerAlbumId, newAlbumName,
         static_cast<int32_t>(PhotoAlbumType::SOURCE),
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER));
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
     EXPECT_EQ(ret, E_OK);
 
     EXPECT_TRUE(IsAlbumExistByName(newAlbumName,
         static_cast<int32_t>(PhotoAlbumType::SOURCE),
-        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER)));
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)));
 
     MEDIA_INFO_LOG("end SetAlbumNameByFile_FileManagerAlbum_ValidName");
 }

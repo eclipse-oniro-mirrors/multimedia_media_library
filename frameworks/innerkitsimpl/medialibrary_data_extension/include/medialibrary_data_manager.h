@@ -154,7 +154,7 @@ public:
     void* handler_;
     EXPORT WatchSystemService::CloudAuditImpl* GetCloudAuditInstance();
 private:
- 	WatchSystemService::CloudAuditImpl* cloudAuditInstance_;
+    WatchSystemService::CloudAuditImpl* cloudAuditInstance_;
 #endif
 
 private:

@@ -197,6 +197,9 @@ public:
     EXPORT void SetLocalAssetSize(const VariantData &localAssetSize);
     EXPORT int64_t GetLocalAssetSize() const;
 
+    EXPORT void SetNeedThumbnail(const VariantData &needThumbnail);
+    EXPORT int32_t GetNeedThumbnail() const;
+
     EXPORT void Init();
     void InitV2();
 
@@ -296,6 +299,7 @@ private:
     int32_t stageVideoTaskStatus_;
 
     int32_t fileSourceType_;
+    int32_t needThumbnail_ = 1;
 };
 } // namespace Media
 } // namespace OHOS

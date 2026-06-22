@@ -63,9 +63,9 @@ ohos_unittest("medialibrary_cover_position_parser_test") {
     "hilog:libhilog",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
-    "player_framework:media_client",
     "relational_store:native_rdb",
     "dfs_service:cloudsync_kit_inner",
+    "graphic_surface:surface",
   ]
 
   sanitize = {

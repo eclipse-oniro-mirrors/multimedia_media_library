@@ -42,6 +42,7 @@ ohos_unittest("medialibrary_dfx_test") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_manager.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_moving_photo.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_system_photo_keys.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_timer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_worker.cpp",

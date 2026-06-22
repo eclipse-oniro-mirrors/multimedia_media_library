@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 
 #include "cloud_sync_manager.h"
-#include "lcd_aging_task_priority_manager.h"
 #include "lcd_aging_utils.h"
 #include "lcd_aging_worker.h"
 #include "media_file_utils.h"
@@ -29,6 +28,7 @@
 #include "medialibrary_photo_operations.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_tracer.h"
+#include "parameters.h"
 #include "photo_file_utils.h"
 #include "preferences.h"
 #include "preferences_helper.h"
@@ -37,16 +37,27 @@
 #include "ithumbnail_helper.h"
 #include "thumbnail_source_loading.h"
 #include "medialibrary_unistore_manager.h"
+#include "dfx_manager.h"
 
 namespace OHOS::Media {
 const std::string LCD_AGING_XML = "/data/storage/el2/base/preferences/lcd_aging.xml";
 const std::string LAST_LCD_AGING_END_TIME = "last_lcd_aging_end_time";
-constexpr int64_t BATCH_TASK_SIZE = 5000;
-constexpr int32_t BATCH_AGING_SIZE = 200;
-constexpr int32_t CYCLE_NUMBER = 50;
+const std::string IS_ACTIVE_LCD_AGING = "is_active_lcd_aging";
+constexpr int64_t BATCH_TASK_SIZE = 10000;
+constexpr size_t BATCH_AGING_SIZE = 500;
+constexpr int32_t CYCLE_NUMBER = 100;
 constexpr int32_t E_FINISH = 1;
-constexpr int32_t E_PAUSE = 2;
-constexpr int64_t ONE_DAY = 24 * 60 * 60;
+constexpr int32_t E_AGING_STOP = 2;
+constexpr int32_t E_AGING_INTERRUPT = 3;
+constexpr uint32_t MAX_PROGRESS = 100;
+// 老化执行中的进度上限, 100%进度仅在老化任务完成后上报
+constexpr uint32_t MAX_RUNNING_PROGRESS = 99;
+const std::string MEDIA_RESTORE_FLAG = "multimedia.medialibrary.restoreFlag";
+const std::string MEDIA_BACKUP_FLAG = "multimedia.medialibrary.backupFlag";
+const std::string CLOUDSYNC_SWITCH_STATUS_KEY = "persist.kernel.cloudsync.switch_status";
+constexpr int32_t DIVISOR = 1024 * 1024;
+
+constexpr uint32_t DELETE_LCD_FILES_WAIT_SECONDS = 2;
 
 LcdAgingManager& LcdAgingManager::GetInstance()
 {
@@ -56,132 +67,223 @@ LcdAgingManager& LcdAgingManager::GetInstance()
 
 int32_t LcdAgingManager::ReadyAgingLcd()
 {
-    if (this->isInAgingPeriod_.load()) {
-        MEDIA_INFO_LOG("continue to aging lcd");
-        LcdAgingWorker::GetInstance().StartLcdAgingWorker();
-        return E_OK;
-    }
-
-    CHECK_AND_RETURN_RET_LOG(this->IsAgingPeriodSatisfied(), E_ERR, "failed to check lcd aging period");
-    CHECK_AND_RETURN_RET_LOG(this->IsAgingThresholdSatisfied(), E_ERR, "failed to check lcd aging threshold");
+    auto dfxManager = DfxManager::GetInstance();
+    MediaLibraryTracer tracer;
+    tracer.Start("ReadyAgingLcd");
     this->hasAgingLcdNumber_ = 0;
-    this->isInAgingPeriod_.store(true);
-    LcdAgingWorker::GetInstance().StartLcdAgingWorker();
+    this->freeSizeOld_ = MediaFileUtils::GetFreeSize() / DIVISOR;
+    this->startTime_ = MediaFileUtils::UTCTimeSeconds();
+    this->totalAgingLcdNumber_ = 0;
+    this->lastAgingProgress_ = 0;
+    this->notAgingFileIds_.clear();
+    dfxManager->HandleAgingLcdContinue();
     return E_OK;
 }
 
-int32_t LcdAgingManager::BatchAgingLcdFileTask()
+int32_t LcdAgingManager::BatchAgingLcdFileTask(const std::atomic<bool> &shouldStop)
 {
+    MEDIA_INFO_LOG("BatchAgingLcdFileTask begin");
     std::lock_guard<std::mutex> lock(lcdOperationMutex_);
-    CHECK_AND_RETURN_RET_LOG(this->IsLcdAgingStatusOn(), E_PAUSE, "current status is invalid");
 
     int64_t taskSize = -1;
-    int32_t ret = this->GetNeedAgingLcdSize(taskSize);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetNeedAgingLcdSize, ret: %{public}d", ret);
-    CHECK_AND_RETURN_RET(taskSize > 0, FinishAgingTask());
-    CHECK_AND_EXECUTE(taskSize <= BATCH_TASK_SIZE, taskSize = BATCH_TASK_SIZE);
+    int32_t ret = InitAgingTask(taskSize);
+    if (ret != E_OK) {
+        HandleAfterAgingProgress(ret);
+        FinishAgingTask();
+        return ret;
+    }
 
-    ret = E_ERR;
+    ret = ExecuteAgingLoop(shouldStop);
+
+    HandleAfterAgingProgress(ret);
+    FinishAgingTask();
+    MEDIA_INFO_LOG("BatchAgingLcdFileTask end");
+    return E_OK;
+}
+
+int32_t LcdAgingManager::InitAgingTask(int64_t &taskSize)
+{
+    this->ReadyAgingLcd();
+
+    int32_t ret = this->GetNeedAgingLcdSize(taskSize);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Failed to GetNeedAgingLcdSize, ret: %{public}d", ret);
+        return ret;
+    }
+    this->totalAgingLcdNumber_ = taskSize;
+    // 查询taskSize耗时，提前给应用上报一次进度
+    HandleAgingProgress();
+    return E_OK;
+}
+
+int32_t LcdAgingManager::ExecuteAgingLoop(const std::atomic<bool> &shouldStop)
+{
+    int32_t ret = E_ERR;
     int32_t cycleNumber = 0;
+    bool hasTrashedData = true;
+
+    while (cycleNumber <= CYCLE_NUMBER) {
+        cycleNumber++;
+        ret = CheckLcdAgingStatus(shouldStop);
+        CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "Failed to CheckLcdAgingStatus, ret: %{public}d", ret);
+
+        // 重新判断是否已达老化阈值
+        int32_t excessSize = 0;
+        ret = CheckLcdAgingTargetReached(excessSize);
+        CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "Failed to CheckLcdAgingTargetReached, ret: %{public}d", ret);
+
+        ret = ExecuteSingleBatch(excessSize, hasTrashedData, shouldStop);
+        CHECK_AND_PRINT_LOG(ret == E_OK, "failed to BatchAgingLcdFile, ret: %{public}d", ret);
+
+        bool shouldBreak = (ret == E_NO_QUERY_DATA || ret == E_AGING_STOP || ret == E_AGING_INTERRUPT);
+        CHECK_AND_BREAK_INFO_LOG(!shouldBreak, "break aging lcd task, ret: %{public}d", ret);
+
+        MEDIA_INFO_LOG("batch aging lcdFile, hasAgingLcdNumber: %{public}" PRId64 ", totalAgingLcdNumber: %{public}"
+            PRId64 ", cycleNumber: %{public}d", hasAgingLcdNumber_.load(), totalAgingLcdNumber_.load(), cycleNumber);
+    }
+    return ret;
+}
+
+int32_t LcdAgingManager::ExecuteSingleBatch(const int32_t batchSize, bool &hasTrashedData,
+    const std::atomic<bool> &shouldStop)
+{
+    int32_t ret = E_NO_QUERY_DATA;
     const std::vector<BatchAgingLcdFileFunc> batchAgingFuncs = {
         &LcdAgingManager::BatchAgingLcdFileTrashed,
         &LcdAgingManager::BatchAgingLcdFileNotTrashed
     };
 
-    bool hasTrashedData = true;
-    while (taskSize > 0 && cycleNumber++ <= CYCLE_NUMBER) {
-        CHECK_AND_RETURN_RET_LOG(this->IsLcdAgingStatusOn(), E_PAUSE, "current status is invalid");
+    for (size_t i = 0; i < batchAgingFuncs.size(); ++i) {
+        bool isContinue = (i == 0 && !hasTrashedData);
+        CHECK_AND_CONTINUE(!isContinue);
 
-        int32_t currentBatchSize = static_cast<int32_t>(taskSize > BATCH_AGING_SIZE ? BATCH_AGING_SIZE : taskSize);
-        int64_t agingSuccessSize = 0;
-        ret = E_NO_QUERY_DATA;
-
-        for (size_t i = 0; i < batchAgingFuncs.size(); ++i) {
-            bool isContinue = (i == 0 && !hasTrashedData);
-            CHECK_AND_CONTINUE(!isContinue);
-
-            ret = (this->*batchAgingFuncs[i])(currentBatchSize, agingSuccessSize);
-            CHECK_AND_BREAK(ret == E_NO_QUERY_DATA);
-            // when query no data with trashed, hasTrashedData = false
-            if (i == 0) {
-                hasTrashedData = false;
-                MEDIA_INFO_LOG("No more trashed data to age, will try not trashed data next");
-            }
+        ret = (this->*batchAgingFuncs[i])(batchSize, shouldStop);
+        CHECK_AND_BREAK(ret == E_NO_QUERY_DATA);
+        // when query no data with trashed, hasTrashedData = false
+        if (i == 0) {
+            hasTrashedData = false;
+            MEDIA_INFO_LOG("No more trashed data to age, will try not trashed data next");
         }
-        CHECK_AND_PRINT_LOG(ret == E_OK, "failed to BatchAgingLcdFile, ret: %{public}d", ret);
-        CHECK_AND_BREAK_INFO_LOG(ret != E_NO_QUERY_DATA, "break task cause of no query aging lcd data");
-
-        taskSize -= agingSuccessSize;
-        this->hasAgingLcdNumber_ += agingSuccessSize;
-        MEDIA_INFO_LOG("batch aging lcdFile, currentBatchSize: %{public}d, agingSuccessSize: %{public}" PRId64
-            ", hasAgingLcdNumber: %{public}" PRId64 ", taskSize: %{public}" PRId64 ", cycleNumber: %{public}d",
-            currentBatchSize, agingSuccessSize, this->hasAgingLcdNumber_, taskSize, cycleNumber);
     }
-    CHECK_AND_RETURN_RET(ret != E_NO_QUERY_DATA, FinishAgingTask());
-    return E_OK;
+    return ret;
 }
 
-int32_t LcdAgingManager::BatchAgingLcdFileTrashed(const int32_t size, int64_t &agingSuccessSize)
+int32_t LcdAgingManager::BatchAgingLcdFileTrashed(const int32_t size, const std::atomic<bool> &shouldStop)
 {
     MediaLibraryTracer tracer;
     tracer.Start("BatchAgingLcdFileTrashed");
-    std::vector<PhotosPo> lcdAgingPoList;
-    int32_t ret = this->lcdAgingDao_.QueryAgingLcdDataTrashed(size, this->notAgingFileIds_, lcdAgingPoList);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_NO_QUERY_DATA, "Failed to QueryAgingLcdDataTrashed, ret: %{public}d", ret);
-    CHECK_AND_RETURN_RET_LOG(!lcdAgingPoList.empty(), E_NO_QUERY_DATA, "no aging lcd data (trashed)");
-    ret = this->DoBatchAgingLcdFile(lcdAgingPoList, agingSuccessSize);
+    std::vector<LcdAgingFileInfo> lcdAgingFileInfoList;
+    int32_t ret = this->lcdAgingDao_.QueryAgingLcdDataTrashed(size, this->notAgingFileIds_, lcdAgingFileInfoList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to QueryAgingLcdDataTrashed, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(!lcdAgingFileInfoList.empty(), E_NO_QUERY_DATA, "no aging lcd data (trashed)");
+    ret = this->DoBatchAgingLcdFile(lcdAgingFileInfoList, shouldStop);
     CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to DoBatchAgingLcdFile, ret: %{public}d", ret);
     return ret;
 }
 
-int32_t LcdAgingManager::BatchAgingLcdFileNotTrashed(const int32_t size, int64_t &agingSuccessSize)
+int32_t LcdAgingManager::BatchAgingLcdFileNotTrashed(const int32_t size, const std::atomic<bool> &shouldStop)
 {
     MediaLibraryTracer tracer;
     tracer.Start("BatchAgingLcdFileNotTrashed");
-    std::vector<PhotosPo> lcdAgingPoList;
-    int32_t ret = this->lcdAgingDao_.QueryAgingLcdDataNotTrashed(size, this->notAgingFileIds_, lcdAgingPoList);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_NO_QUERY_DATA,
-        "Failed to QueryAgingLcdDataNotTrashed, ret: %{public}d", ret);
-    CHECK_AND_RETURN_RET_LOG(!lcdAgingPoList.empty(), E_NO_QUERY_DATA, "no aging lcd data (not trashed)");
-    ret = this->DoBatchAgingLcdFile(lcdAgingPoList, agingSuccessSize);
+    std::vector<LcdAgingFileInfo> lcdAgingFileInfoList;
+    int32_t ret = this->lcdAgingDao_.QueryAgingLcdDataNotTrashed(size, this->notAgingFileIds_, lcdAgingFileInfoList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to QueryAgingLcdDataNotTrashed, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(!lcdAgingFileInfoList.empty(), E_NO_QUERY_DATA, "no aging lcd data (not trashed)");
+    ret = this->DoBatchAgingLcdFile(lcdAgingFileInfoList, shouldStop);
     CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to DoBatchAgingLcdFile, ret: %{public}d", ret);
     return ret;
 }
 
-int32_t LcdAgingManager::DoBatchAgingLcdFile(const std::vector<PhotosPo> &lcdAgingPoList, int64_t &agingSuccessSize)
+int32_t LcdAgingManager::DoBatchAgingLcdFile(const std::vector<LcdAgingFileInfo> &lcdAgingFileInfoList,
+    const std::atomic<bool> &shouldStop)
 {
     MediaLibraryTracer tracer;
     tracer.Start("DoBatchAgingLcdFile");
-    agingSuccessSize = 0;
-    std::vector<LcdAgingFileInfo> agingFileInfos = this->GetLcdAgingFileInfo(lcdAgingPoList);
-    CHECK_AND_RETURN_RET_LOG(!agingFileInfos.empty(), E_ERR, "agingFileInfos is empty");
+    CHECK_AND_RETURN_RET_LOG(!lcdAgingFileInfoList.empty(), E_ERR, "lcdAgingFileInfoList is empty");
 
-    std::vector<std::string> fileIds = this->GetFileIdFromAgingFiles(agingFileInfos);
+    size_t totalSize = lcdAgingFileInfoList.size();
+    int32_t ret = E_OK;
+
+    for (size_t offset = 0; offset < totalSize; offset += BATCH_AGING_SIZE) {
+        ret = CheckLcdAgingStatus(shouldStop);
+        CHECK_AND_RETURN_RET(ret == E_OK, ret);
+
+        size_t batchSize = std::min(BATCH_AGING_SIZE, totalSize - offset);
+
+        std::vector<LcdAgingFileInfo> batch(
+            lcdAgingFileInfoList.begin() + offset,
+            lcdAgingFileInfoList.begin() + offset + batchSize
+        );
+
+        int64_t batchSuccessSize = 0;
+        std::vector<std::string> failFileIds;
+        ret = this->DoBatchAgingLcdFileInternal(batch, batchSuccessSize, failFileIds);
+        if (!failFileIds.empty()) {
+            this->notAgingFileIds_.insert(this->notAgingFileIds_.end(), failFileIds.begin(), failFileIds.end());
+        }
+        CHECK_AND_CONTINUE_ERR_LOG(ret == E_OK, "Failed to DoBatchAgingLcdFileInternal, ret: %{public}d", ret);
+
+        this->hasAgingLcdNumber_ += batchSuccessSize;
+        HandleAgingProgress();
+
+        MEDIA_INFO_LOG("DoBatchAgingLcdFile progress: %{public}zu/%{public}zu, batchSuccessSize: %{public}" PRId64,
+            offset + batchSize, totalSize, batchSuccessSize);
+    }
+
+    return E_OK;
+}
+
+int32_t LcdAgingManager::DoBatchAgingLcdFileInternal(const std::vector<LcdAgingFileInfo> &lcdAgingFileInfoList,
+    int64_t &agingSuccessSize, std::vector<std::string> &failFileIds)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("DoBatchAgingLcdFileInternal");
+    agingSuccessSize = 0;
+    CHECK_AND_RETURN_RET_LOG(!lcdAgingFileInfoList.empty(), E_ERR, "lcdAgingFileInfoList is empty");
+
+    std::vector<std::string> fileIds = this->GetFileIdFromAgingFiles(lcdAgingFileInfoList);
     int32_t ret = this->lcdAgingDao_.SetLcdNotDownloadStatus(fileIds);
     CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to SetLcdNotDownloadStatus, ret: %{public}d", ret);
-    ret = this->lcdAgingDao_.UpdateLcdFileSize(agingFileInfos);
+    ret = this->lcdAgingDao_.UpdateLcdFileSize(lcdAgingFileInfoList);
     CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to UpdateLcdFileSize, ret: %{public}d", ret);
 
-    std::vector<DentryFileInfo> dentryFileInfos = LcdAgingUtils().ConvertAgingFileToDentryFile(agingFileInfos);
+    std::vector<DentryFileInfo> dentryFileInfos = LcdAgingUtils::ConvertAgingFileToDentryFile(lcdAgingFileInfoList);
     std::vector<std::string> failCloudIds;
     MEDIA_INFO_LOG("Begin to BatchDentryFileInsert");
-    ret = CloudSyncManager::GetInstance().BatchDentryFileInsert(dentryFileInfos, failCloudIds);
+    ret = InsertDentryFileWithRetry(dentryFileInfos, failCloudIds);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("Failed to insert dentry file, ret: %{public}d", ret);
-        ret = this->lcdAgingDao_.RevertToLcdDownloadStatus(fileIds);
+        MEDIA_ERR_LOG("Failed to insert dentry file after retry, ret: %{public}d", ret);
+        failFileIds = std::move(fileIds);
+        ret = this->lcdAgingDao_.RevertToLcdDownloadStatus(failFileIds);
         CHECK_AND_PRINT_LOG(ret == E_OK, "Failed to RevertToLcdDownloadStatus, ret: %{public}d", ret);
         return E_ERR;
     }
     MEDIA_INFO_LOG("End to BatchDentryFileInsert");
 
-    std::vector<std::string> failFileIds;
-    this->DeleteLocalLcdFiles(agingFileInfos, failCloudIds, failFileIds);
+    failFileIds = this->GetFailedFileIds(lcdAgingFileInfoList, failCloudIds);
     if (!failFileIds.empty()) {
         this->lcdAgingDao_.RevertToLcdDownloadStatus(failFileIds);
-        this->notAgingFileIds_.insert(this->notAgingFileIds_.end(), failFileIds.begin(), failFileIds.end());
     }
     agingSuccessSize = static_cast<int64_t>(dentryFileInfos.size()) - static_cast<int64_t>(failCloudIds.size());
+    CHECK_AND_EXECUTE(agingSuccessSize >= 0, agingSuccessSize = 0);
+
+    // 异步删除本地LCD文件
+    this->AsyncDeleteLcdFiles(lcdAgingFileInfoList, failFileIds);
     return E_OK;
+}
+
+std::vector<std::string> LcdAgingManager::GetFailedFileIds(const std::vector<LcdAgingFileInfo> &agingFileInfos,
+    const std::vector<std::string> &failCloudIds)
+{
+    std::vector<std::string> failFileIds;
+    for (auto &agingFileInfo : agingFileInfos) {
+        if (std::find(failCloudIds.begin(), failCloudIds.end(), agingFileInfo.cloudId) != failCloudIds.end()) {
+            failFileIds.emplace_back(std::to_string(agingFileInfo.fileId));
+            MEDIA_ERR_LOG("Failed to insert dentry, cloudId: %{public}s, fileId: %{public}d",
+                agingFileInfo.cloudId.c_str(), agingFileInfo.fileId);
+        }
+    }
+    return failFileIds;
 }
 
 std::vector<std::string> LcdAgingManager::GetFileIdFromAgingFiles(const std::vector<LcdAgingFileInfo> &agingFileInfos)
@@ -191,24 +293,6 @@ std::vector<std::string> LcdAgingManager::GetFileIdFromAgingFiles(const std::vec
         fileIds.emplace_back(std::to_string(agingFileInfo.fileId));
     }
     return fileIds;
-}
-
-void LcdAgingManager::DeleteLocalLcdFiles(const std::vector<LcdAgingFileInfo> &agingFileInfos,
-    const std::vector<std::string> &failCloudIds, std::vector<std::string> &failFileIds)
-{
-    MediaLibraryTracer tracer;
-    tracer.Start("DeleteLocalLcdFiles");
-    for (auto &agingFileInfo : agingFileInfos) {
-        if (std::find(failCloudIds.begin(), failCloudIds.end(), agingFileInfo.cloudId) != failCloudIds.end()) {
-            failFileIds.emplace_back(std::to_string(agingFileInfo.fileId));
-            MEDIA_ERR_LOG("Failed to insert dentry, cloudId: %{public}s, fileId: %{public}d",
-                agingFileInfo.cloudId.c_str(), agingFileInfo.fileId);
-            continue;
-        }
-        CHECK_AND_EXECUTE(!agingFileInfo.hasExThumbnail, this->DeleteLocalFile(agingFileInfo.localLcdExPath));
-        this->DeleteLocalFile(agingFileInfo.localLcdPath);
-        MediaLibraryPhotoOperations::StoreThumbnailSize(std::to_string(agingFileInfo.fileId), agingFileInfo.path);
-    }
 }
 
 int32_t LcdAgingManager::DeleteLocalFile(const std::string &localPath)
@@ -227,17 +311,6 @@ int32_t LcdAgingManager::DeleteLocalFile(const std::string &localPath)
     return E_OK;
 }
 
-int64_t LcdAgingManager::GetLastLcdAgingEndTime()
-{
-    int64_t lastLcdAgingEndTime = 0;
-    int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
-    CHECK_AND_RETURN_RET_LOG(prefs, lastLcdAgingEndTime, "Get preferences error: %{public}d", errCode);
-    lastLcdAgingEndTime = prefs->GetLong(LAST_LCD_AGING_END_TIME, 0);
-    return lastLcdAgingEndTime;
-}
-
 void LcdAgingManager::UpdateLastLcdAgingEndTime(const int64_t lastLcdAgingEndTime)
 {
     int32_t errCode;
@@ -248,91 +321,46 @@ void LcdAgingManager::UpdateLastLcdAgingEndTime(const int64_t lastLcdAgingEndTim
     prefs->FlushSync();
 }
 
-std::vector<LcdAgingFileInfo> LcdAgingManager::GetLcdAgingFileInfo(const std::vector<PhotosPo> &photos)
-{
-    MediaLibraryTracer tracer;
-    tracer.Start("GetLcdAgingFileInfo");
-    std::vector<LcdAgingFileInfo> agingFileList;
-    for (const auto &photo : photos) {
-        LcdAgingFileInfo agingFileInfo;
-        CHECK_AND_CONTINUE_ERR_LOG(photo.data.has_value(),
-            "photo.data is invalid, fileId: %{public}d", photo.fileId.value_or(0));
-        agingFileInfo.fileId = photo.fileId.value_or(0);
-        agingFileInfo.cloudId = photo.cloudId.value_or("");
-        agingFileInfo.path = photo.data.value_or("");
-        agingFileInfo.mediaType = photo.mediaType.value_or(0);
-        agingFileInfo.orientation = photo.orientation.value_or(0);
-        agingFileInfo.exifRotate = photo.exifRotate.value_or(0);
-        agingFileInfo.thumbnailReady = photo.thumbnailReady.value_or(0);
-        agingFileInfo.dateModified = photo.dateModified.value_or(0);
-        agingFileInfo.hasExThumbnail = LcdAgingUtils().HasExThumbnail(agingFileInfo);
-        agingFileInfo.localLcdPath = PhotoFileUtils::GetLocalLcdPath(agingFileInfo.path);
-        agingFileInfo.localLcdExPath = agingFileInfo.hasExThumbnail ?
-            PhotoFileUtils::GetLocalLcdExPath(agingFileInfo.path) : "";
-        if (!this->CheckLocalLcd(agingFileInfo)) {
-            this->notAgingFileIds_.emplace_back(std::to_string(photo.fileId.value_or(0)));
-            continue;
-        }
-        CHECK_AND_EXECUTE(photo.lcdFileSize.value_or(0) > 0, agingFileInfo.needFixLcdFileSize = true);
-        agingFileList.push_back(agingFileInfo);
-    }
-    return agingFileList;
-}
-
-bool LcdAgingManager::CheckLocalLcd(LcdAgingFileInfo &agingFileInfo)
-{
-    std::string localLcdPath = agingFileInfo.hasExThumbnail ? agingFileInfo.localLcdExPath : agingFileInfo.localLcdPath;
-    MEDIA_DEBUG_LOG("CheckLocalLcd, path: %{public}s", localLcdPath.c_str());
-    struct stat statInfo = { 0 };
-    bool isValid = !localLcdPath.empty();
-    isValid = isValid && (stat(localLcdPath.c_str(), &statInfo) == E_SUCCESS);
-    CHECK_AND_RETURN_RET_LOG(isValid, false,
-        "local lcd not exist, path: %{public}s", MediaFileUtils::DesensitizePath(localLcdPath).c_str());
-    agingFileInfo.lcdFileSize = statInfo.st_size;
-    RegenerateAstcWithLocal(agingFileInfo);
-    return true;
-}
-
-int32_t LcdAgingManager::RegenerateAstcWithLocal(const LcdAgingFileInfo &agingFileInfo)
-{
-    bool isValid = agingFileInfo.thumbnailReady == static_cast<int64_t>(ThumbnailReady::THUMB_NEED_REGENERATE_ASTC);
-    CHECK_AND_RETURN_RET(isValid, E_ERR);
-    std::string astcPath = GetThumbnailPath(agingFileInfo.path, THUMBNAIL_THUMB_ASTC_SUFFIX);
-    CHECK_AND_RETURN_RET_LOG(!astcPath.empty(), E_ERR, "astcPath is empty, fileId: %{public}d", agingFileInfo.fileId);
-    isValid = !MediaFileUtils::IsFileExists(astcPath);
-    CHECK_AND_RETURN_RET(isValid, E_ERR);
-    auto thumbnailService = ThumbnailService::GetInstance();
-    CHECK_AND_RETURN_RET_LOG(thumbnailService != nullptr, E_ERR, "thumbnailService is null");
-    MEDIA_INFO_LOG("begin to sync regenerate astc with local, fileId: %{public}d", agingFileInfo.fileId);
-    return thumbnailService->SyncRegenerateAstcWithLocal(std::to_string(agingFileInfo.fileId));
-}
-
 int32_t LcdAgingManager::GetNeedAgingLcdSize(int64_t &taskSize)
 {
-    int64_t lcdThresholdNumber = -1;
-    int32_t ret = LcdAgingUtils().GetScaleThresholdOfLcd(lcdThresholdNumber);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetScaleThresholdOfLcd, ret: %{public}d", ret);
-
     int64_t lcdCurrentNumber = -1;
-    ret = lcdAgingDao_.GetCurrentNumberOfLcd(lcdCurrentNumber);
+    int32_t ret = lcdAgingDao_.GetCurrentNumberOfLcd(lcdCurrentNumber);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetCurrentNumberOfLcd, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_LOG(lcdCurrentNumber >= LcdAgingUtils::GetMaxThresholdOfLcd(), E_NO_QUERY_DATA,
+        "lcdCurrentNumber: %{public}" PRId64, lcdCurrentNumber);
 
-    taskSize = lcdCurrentNumber - lcdThresholdNumber;
-    CHECK_AND_PRINT_LOG(taskSize > 0,
-        "no need aging lcd, lcdThresholdNumber: %{public}" PRId64 ", lcdCurrentNumber: %{public}" PRId64,
-        lcdThresholdNumber, lcdCurrentNumber);
+    int64_t expectAgingSize = lcdCurrentNumber - LcdAgingUtils::GetScaleThresholdOfLcd();
+    CHECK_AND_RETURN_RET_LOG(expectAgingSize > 0, E_NO_QUERY_DATA,
+        "expectAgingSize: %{public}" PRId64, expectAgingSize);
+
+    int64_t actualAgingSize = lcdAgingDao_.GetAgingLcdCount();
+    CHECK_AND_RETURN_RET_LOG(actualAgingSize > 0, E_NO_QUERY_DATA,
+        "actualAgingSize: %{public}" PRId64, actualAgingSize);
+
+    taskSize = std::min(expectAgingSize, actualAgingSize);
+    MEDIA_INFO_LOG("lcdCurrentNumber: %{public}" PRId64 ", expectAgingSize: %{public}" PRId64
+        ", actualAgingSize: %{public}" PRId64 ", taskSize: %{public}" PRId64,
+        lcdCurrentNumber, expectAgingSize, actualAgingSize, taskSize);
     return E_OK;
 }
 
 int32_t LcdAgingManager::FinishAgingTask()
 {
-    MEDIA_INFO_LOG("start FinishAgingTask");
-    this->isInAgingPeriod_.store(false);
-    this->UpdateLastLcdAgingEndTime(MediaFileUtils::UTCTimeSeconds());
+    MEDIA_INFO_LOG("start FinishAgingTask, notAgingFileIds_ size: %{public}zu", this->notAgingFileIds_.size());
+    auto dfxManager = DfxManager::GetInstance();
     // 打点上报
+    int32_t totalSize = MediaFileUtils::GetTotalSize() / DIVISOR;
+    int64_t freeSize = MediaFileUtils::GetFreeSize() / DIVISOR;
+    int64_t totalTime = MediaFileUtils::UTCTimeSeconds() - this->startTime_;
+    CHECK_AND_PRINT_LOG(totalTime > 0, "Get Lcdaging totalTime error");
+    dfxManager->HandleAgingLcdFinish(this->hasAgingLcdNumber_, totalSize,
+        this->freeSizeOld_, freeSize, totalTime);
 
     // 清理缓存
     this->hasAgingLcdNumber_ = 0;
+    this->totalAgingLcdNumber_ = 0;
+    this->lastAgingProgress_ = 0;
+    this->freeSizeOld_ = 0;
     this->notAgingFileIds_.clear();
     MEDIA_INFO_LOG("end FinishAgingTask");
     return E_FINISH;
@@ -342,51 +370,6 @@ void LcdAgingManager::DelayLcdAgingTime()
 {
     int64_t currentTime = MediaFileUtils::UTCTimeSeconds();
     this->UpdateLastLcdAgingEndTime(currentTime);
-}
-
-bool LcdAgingManager::IsLcdAgingStatusOn()
-{
-    bool isStatusOn = MedialibrarySubscriber::IsCurrentStatusOn() &&
-        !LcdAgingTaskPriorityManager::GetInstance().HasHighPriorityTasks() &&
-        MediaLibraryAstcStat::GetInstance().IsBackupGroundTaskEmpty();
-    return isStatusOn;
-}
-
-void LcdAgingManager::ClearNotAgingFileIds()
-{
-    this->notAgingFileIds_.clear();
-}
-
-bool LcdAgingManager::IsAgingPeriodSatisfied()
-{
-    int64_t lastLcdAgingEndTime = this->GetLastLcdAgingEndTime();
-    int64_t currentTime = MediaFileUtils::UTCTimeSeconds();
-    if (lastLcdAgingEndTime < 0 || lastLcdAgingEndTime - currentTime > ONE_DAY) {
-        MEDIA_ERR_LOG("invalid lastLcdAgingEndTime: %{public}" PRId64, lastLcdAgingEndTime);
-        lastLcdAgingEndTime = lastLcdAgingEndTime < 0 ? 0 : currentTime;
-        this->UpdateLastLcdAgingEndTime(lastLcdAgingEndTime);
-    }
-    bool isValid = (currentTime - lastLcdAgingEndTime) >= ONE_DAY;
-    CHECK_AND_RETURN_RET_LOG(isValid, false,
-        "lastLcdAgingEndTime: %{public}" PRId64 ", currentTime: %{public}" PRId64, lastLcdAgingEndTime, currentTime);
-    MEDIA_INFO_LOG("aging period satisfied, lastLcdAgingEndTime: %{public}" PRId64, lastLcdAgingEndTime);
-    return true;
-}
-
-bool LcdAgingManager::IsAgingThresholdSatisfied()
-{
-    int64_t maxLcdNumber = -1;
-    int32_t ret = LcdAgingUtils().GetMaxThresholdOfLcd(maxLcdNumber);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, false, "Failed to GetMaxThresholdOfLcd, ret: %{public}d", ret);
-    int64_t currentLcdNumber = -1;
-    ret = this->lcdAgingDao_.GetCurrentNumberOfLcd(currentLcdNumber);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, false, "Failed to GetCurrentNumberOfLcd, ret: %{public}d", ret);
-    bool isValid = currentLcdNumber > maxLcdNumber;
-    CHECK_AND_RETURN_RET_LOG(isValid, false, "no need aging lcd, currentLcdNumber: %{public}" PRId64
-        ", maxLcdNumber: %{public}" PRId64, currentLcdNumber, maxLcdNumber);
-    MEDIA_INFO_LOG("aging threshold satisfied, currentLcdNumber: %{public}" PRId64 ", maxLcdNumber: %{public}" PRId64,
-        currentLcdNumber, maxLcdNumber);
-    return true;
 }
 
 int32_t LcdAgingManager::GenerateLcdWithLocal(const LcdAgingFileInfo &agingFileInfo)
@@ -426,5 +409,243 @@ ThumbnailData LcdAgingManager::ConvertLcdAgingFileInfoToThumbnailData
 std::mutex& LcdAgingManager::GetLcdOperationMutex()
 {
     return lcdOperationMutex_;
+}
+
+void LcdAgingManager::AsyncDeleteLcdFiles(const std::vector<LcdAgingFileInfo> &lcdAgingFileInfoList,
+    const std::vector<std::string> &failFileIds)
+{
+    bool needStartWorker = false;
+    {
+        std::lock_guard<std::mutex> lock(deleteLcdFilesTaskMutex_);
+        deleteLcdFilesTaskQueue_.push({lcdAgingFileInfoList, failFileIds});
+        if (!isDeleteLcdFilesWorkerRunning_) {
+            isDeleteLcdFilesWorkerRunning_ = true;
+            needStartWorker = true;
+        }
+    }
+    if (needStartWorker) {
+        std::thread([this]() { ProcessDeleteLcdFilesTasks(); }).detach();
+    } else {
+        deleteLcdFilesTaskCv_.notify_one();
+    }
+}
+
+void LcdAgingManager::ProcessDeleteLcdFilesTasks()
+{
+    MEDIA_INFO_LOG("Start ProcessDeleteLcdFilesTasks thread");
+    while (isDeleteLcdFilesWorkerRunning_) {
+        DeleteLcdFilesTask task;
+        {
+            std::unique_lock<std::mutex> lock(deleteLcdFilesTaskMutex_);
+            if (deleteLcdFilesTaskQueue_.empty()) {
+                deleteLcdFilesTaskCv_.wait_for(lock, std::chrono::seconds(DELETE_LCD_FILES_WAIT_SECONDS));
+                if (deleteLcdFilesTaskQueue_.empty()) {
+                    isDeleteLcdFilesWorkerRunning_ = false;
+                    MEDIA_INFO_LOG("DeleteLcdFiles worker exiting, queue empty for %{public}u seconds",
+                        DELETE_LCD_FILES_WAIT_SECONDS);
+                    return;
+                }
+            }
+            task = std::move(deleteLcdFilesTaskQueue_.front());
+            deleteLcdFilesTaskQueue_.pop();
+        }
+        ExecuteDeleteLcdFiles(task);
+    }
+    MEDIA_INFO_LOG("End ProcessDeleteLcdFilesTasks thread");
+}
+
+void LcdAgingManager::ExecuteDeleteLcdFiles(const DeleteLcdFilesTask &task)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("AsyncDeleteLocalLcdFiles");
+    std::vector<std::pair<std::string, std::string>> thumbnailSizeUpdateList;
+    for (const auto &agingFileInfo : task.agingFileInfos) {
+        bool isValid = std::find(task.failFileIds.begin(), task.failFileIds.end(),
+            std::to_string(agingFileInfo.fileId)) == task.failFileIds.end();
+        CHECK_AND_CONTINUE(isValid);
+
+        CHECK_AND_EXECUTE(!agingFileInfo.hasExThumbnail,
+            DeleteLocalFile(agingFileInfo.localLcdExPath));
+        DeleteLocalFile(agingFileInfo.localLcdPath);
+        thumbnailSizeUpdateList.emplace_back(std::to_string(agingFileInfo.fileId), agingFileInfo.path);
+    }
+    CHECK_AND_EXECUTE(thumbnailSizeUpdateList.empty(),
+        MediaLibraryPhotoOperations::BatchStoreThumbnailSize(thumbnailSizeUpdateList));
+    MEDIA_INFO_LOG("AsyncDeleteLocalLcdFiles completed, count: %{public}zu", task.agingFileInfos.size());
+}
+
+int32_t LcdAgingManager::StartDeepOptimizeSpace(const sptr<IRemoteObject> &clientRemote,
+    const sptr<IRemoteObject> &callbackRemote)
+{
+    CHECK_AND_RETURN_RET_LOG(clientRemote != nullptr, E_ERR, "Client remote is null");
+    int32_t ret = CheckLcdAgingStatus(false);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_OPERATION_NOT_SUPPORT, "CheckLcdAgingStatus, ret: %{public}d", ret);
+
+    // 持久化主动老化LCD标记
+    SetIsActiveLcdAging(true);
+    
+    ret = LcdAgingWorker::GetInstance().StartDeepOptimizeSpace(clientRemote, callbackRemote);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Failed to start worker, ret: %{public}d", ret);
+        return ret;
+    }
+
+    MEDIA_INFO_LOG("Deep optimize space task started successfully");
+    return E_OK;
+}
+
+int32_t LcdAgingManager::StopDeepOptimizeSpace()
+{
+    MEDIA_INFO_LOG("Stopping deep optimize space task");
+    int32_t ret = LcdAgingWorker::GetInstance().StopDeepOptimizeSpace();
+    MEDIA_INFO_LOG("Task stopped, ret: %{public}d", ret);
+    return ret;
+}
+
+int32_t LcdAgingManager::CheckLcdAgingStatus(const std::atomic<bool> &shouldStop)
+{
+    if (shouldStop.load()) {
+        MEDIA_INFO_LOG("shouldStop");
+        return E_AGING_STOP;
+    }
+    bool isClone = !MedialibrarySubscriber::IsBackgroundTaskAllowed();
+    bool isBackUp = system::GetParameter(MEDIA_BACKUP_FLAG, "0") != "0";
+    bool isRestore = system::GetParameter(MEDIA_RESTORE_FLAG, "0") != "0";
+    bool isCloudCleaning = system::GetParameter(CLOUDSYNC_SWITCH_STATUS_KEY, "0") != "0";
+
+    bool shouldInterrupt = isClone || isBackUp || isRestore || isCloudCleaning;
+
+    if (shouldInterrupt) {
+        MEDIA_INFO_LOG("shouldInterrupt, status: %{public}d, %{public}d, %{public}d, %{public}d,",
+            isClone, isBackUp, isRestore, isCloudCleaning);
+        return E_AGING_INTERRUPT;
+    }
+    return E_OK;
+}
+
+void LcdAgingManager::HandleAgingProgress()
+{
+    CHECK_AND_RETURN_LOG(this->totalAgingLcdNumber_ > 0,
+        "invalid totalAgingLcdNumber: %{public}" PRId64, this->totalAgingLcdNumber_.load());
+    
+    uint32_t progress = static_cast<uint32_t>(
+        (static_cast<double>(this->hasAgingLcdNumber_) / static_cast<double>(this->totalAgingLcdNumber_)) * 100.0);
+    // 老化执行中进度最多为99%, 100%仅在老化完成后上报
+    if (progress > MAX_RUNNING_PROGRESS) {
+        MEDIA_INFO_LOG("progress capped: %{public}u -> %{public}u", progress, MAX_RUNNING_PROGRESS);
+        progress = MAX_RUNNING_PROGRESS;
+    }
+    // 保证进度不倒退
+    if (progress < this->lastAgingProgress_) {
+        MEDIA_INFO_LOG("progress no regression: %{public}u -> %{public}u", progress, this->lastAgingProgress_.load());
+        progress = this->lastAgingProgress_;
+    }
+    this->lastAgingProgress_ = progress;
+
+    // 老化执行中始终为RUNNING状态
+    LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::RUNNING, progress);
+}
+
+void LcdAgingManager::HandleAfterAgingProgress(const int32_t errorCode)
+{
+    switch (errorCode) {
+        case E_NO_QUERY_DATA:
+            // 没有可以老化的LCD，上报100%进度
+            LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::COMPLETED, MAX_PROGRESS);
+            break;
+        case E_AGING_STOP:
+            LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::STOPPED, this->lastAgingProgress_);
+            break;
+        case E_AGING_INTERRUPT:
+            LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::INTERRUPTED, this->lastAgingProgress_);
+            break;
+        default:
+            LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::FAILED, this->lastAgingProgress_);
+            break;
+    }
+}
+
+int32_t LcdAgingManager::AnalysisRemoveCloudLcd(const std::vector<int64_t> &fileIds)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("AnalysisRemoveCloudLcd");
+    CHECK_AND_RETURN_RET_INFO_LOG(this->GetIsActiveLcdAging(), E_OK, "isActiveLcdAging is false");
+    std::vector<LcdAgingFileInfo> lcdAgingFileInfoList;
+    int32_t ret = this->lcdAgingDao_.QueryAgingLcdDataByFileIds(fileIds, lcdAgingFileInfoList);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to query aging LCD data, ret: %{public}d", ret);
+    CHECK_AND_RETURN_RET_INFO_LOG(!lcdAgingFileInfoList.empty(), E_OK, "no Remove Cloud LCD data found");
+    int64_t agingSuccessSize = 0;
+    std::vector<std::string> failFileIds;
+    ret = this->DoBatchAgingLcdFileInternal(lcdAgingFileInfoList, agingSuccessSize, failFileIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to DoBatchAgingLcdFileInternal, ret: %{public}d", ret);
+    return E_OK;
+}
+
+bool LcdAgingManager::LoadIsActiveLcdAgingFromPrefs()
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
+    CHECK_AND_RETURN_RET_LOG(prefs != nullptr, false, "Get preferences error: %{public}d", errCode);
+    return prefs->GetBool(IS_ACTIVE_LCD_AGING, false);
+}
+
+void LcdAgingManager::SaveIsActiveLcdAgingToPrefs(bool isActive)
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(LCD_AGING_XML, errCode);
+    CHECK_AND_RETURN_LOG(prefs != nullptr, "Get preferences error: %{public}d", errCode);
+    prefs->PutBool(IS_ACTIVE_LCD_AGING, isActive);
+    prefs->FlushSync();
+    MEDIA_INFO_LOG("SaveIsActiveLcdAgingToPrefs: %{public}d", isActive);
+}
+
+bool LcdAgingManager::GetIsActiveLcdAging()
+{
+    int32_t value = isActiveLcdAging_.load();
+    if (value == -1) {
+        value = LoadIsActiveLcdAgingFromPrefs() ? 1 : 0;
+        isActiveLcdAging_.store(value);
+        MEDIA_INFO_LOG("GetIsActiveLcdAging first load: %{public}d", value);
+    }
+    MEDIA_DEBUG_LOG("get isActiveLcdAging_: %{public}d", value);
+    return value == 1;
+}
+
+int32_t LcdAgingManager::SetIsActiveLcdAging(bool isActive)
+{
+    SaveIsActiveLcdAgingToPrefs(isActive);
+    isActiveLcdAging_.store(isActive ? 1 : 0);
+    MEDIA_INFO_LOG("SetIsActiveLcdAging: %{public}d", isActive ? 1 : 0);
+    return E_OK;
+}
+
+int32_t LcdAgingManager::InsertDentryFileWithRetry(const std::vector<DentryFileInfo> &dentryFileInfos,
+    std::vector<std::string> &failCloudIds)
+{
+    int32_t ret = CloudSyncManager::GetInstance().BatchDentryFileInsert(dentryFileInfos, failCloudIds);
+    CHECK_AND_RETURN_RET(ret != E_OK, E_OK);
+    MEDIA_ERR_LOG("BatchDentryFileInsert failed, retrying, ret: %{public}d", ret);
+    failCloudIds.clear();
+    ret = CloudSyncManager::GetInstance().BatchDentryFileInsert(dentryFileInfos, failCloudIds);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "BatchDentryFileInsert retry failed, ret: %{public}d", ret);
+    MEDIA_INFO_LOG("BatchDentryFileInsert retry succeeded");
+    return E_OK;
+}
+
+int32_t LcdAgingManager::CheckLcdAgingTargetReached(int32_t &excessSize)
+{
+    excessSize = 0;
+    int64_t lcdCurrentNumber = -1;
+    int32_t ret = lcdAgingDao_.GetCurrentNumberOfLcd(lcdCurrentNumber);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "Failed to GetCurrentNumberOfLcd, ret: %{public}d", ret);
+    if (lcdCurrentNumber <= LcdAgingUtils::GetScaleThresholdOfLcd()) {
+        MEDIA_INFO_LOG("LCD count reached target: %{public}" PRId64, lcdCurrentNumber);
+        return E_NO_QUERY_DATA;
+    }
+    excessSize = static_cast<int32_t>(std::min(
+        BATCH_TASK_SIZE, lcdCurrentNumber - LcdAgingUtils::GetScaleThresholdOfLcd()));
+    return E_OK;
 }
 }  // namespace OHOS::Media

@@ -543,11 +543,6 @@ int32_t MediaAssetsService::StartBatchDownloadCloudResources(StartBatchDownloadC
     return 0;
 }
 
-int32_t MediaAssetsService::SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody)
-{
-    return 0;
-}
-
 int32_t MediaAssetsService::ResumeBatchDownloadCloudResources(ResumeBatchDownloadCloudResourcesReqBody &reqBody)
 {
     return 0;
@@ -571,12 +566,6 @@ int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesStatus(
 
 int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesCount(
     GetBatchDownloadCloudResourcesCountReqBody &reqBody, GetBatchDownloadCloudResourcesCountRespBody &respBody)
-{
-    return 0;
-}
-
-int32_t MediaAssetsService::GetCloudMediaBatchDownloadResourcesSize(
-    GetBatchDownloadCloudResourcesSizeReqBody &reqBody, GetBatchDownloadCloudResourcesSizeRespBody &respBody)
 {
     return 0;
 }

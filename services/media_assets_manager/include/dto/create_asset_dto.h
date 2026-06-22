@@ -35,6 +35,7 @@ public:
     std::string packageName;
     std::string appId;
     std::string ownerAlbumId;
+    bool isRealTimeThumb{true};
 
     int32_t fileId{0};
     std::string outUri;
@@ -43,6 +44,7 @@ public:
     CreateAssetDto(const CreateAssetReqBody &reqBody);
     CreateAssetDto(const CreateAssetForAppReqBody &reqBody);
     CreateAssetDto(const CreateFileMgrAssetReqBody &reqBody);
+    CreateAssetDto(const CreateAssetsWithAlbumReqBody &reqBody);
     CreateAssetRespBody GetRespBody();
 };
 }  // namespace OHOS::Media

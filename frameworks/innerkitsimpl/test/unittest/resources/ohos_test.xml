@@ -527,6 +527,16 @@
             <option name="shell" value="rm -rf /data/local/tmp/assets_share_resources"/>
         </cleaner>
     </target>
+    <target name="media_library_camera_service_test">
+        <preparer>
+            <option name="shell" value="rm -rf /data/local/tmp/medialibrary_camera_test"/>
+            <option name="shell" value="mkdir -p /data/local/tmp/medialibrary_camera_test"/>
+            <option name="push" value="camera_service/test_jpeg.jpg -> /data/local/tmp" src="res"/>
+        </preparer>
+        <cleaner>
+            <option name="shell" value="rm -rf /data/local/tmp/"/>
+        </cleaner>
+    </target>
     <target name="media_library_share_tlv_test">
         <preparer>
             <option name="shell" value="rm -rf /data/local/tmp/assets_share_resources"/>
@@ -574,6 +584,19 @@
         </preparer>
         <cleaner>
             <option name="shell" value="rm -rf /data/local/tmp/file_access_utils"/>
+        </cleaner>
+    </target>
+    <target name="media_lake_load_test">
+        <preparer>
+            <option name="shell" value="rm -rf /data/test/media_lake_load_test_data"/>
+            <option name="shell" value="mkdir -p /data/test/media_lake_load_test_data"/>
+            <option name="push" value="thumbnail_testfile/CreateImageThumbnailTest_001.jpg -> /data/test/media_lake_load_test_data/" src="res"/>
+            <option name="shell" value="mv /data/test/media_lake_load_test_data/CreateImageThumbnailTest_001.jpg /data/test/media_lake_load_test_data/test.jpg"/>
+            <option name="push" value="thumbnail_testfile/CreateVideoThumbnailTest_001.mp4 -> /data/test/media_lake_load_test_data/" src="res"/>
+            <option name="shell" value="mv /data/test/media_lake_load_test_data/CreateVideoThumbnailTest_001.mp4 /data/test/media_lake_load_test_data/test.mp4"/>
+        </preparer>
+        <cleaner>
+            <option name="shell" value="rm -rf /data/test/media_lake_load_test_data"/>
         </cleaner>
     </target>
 </configuration>

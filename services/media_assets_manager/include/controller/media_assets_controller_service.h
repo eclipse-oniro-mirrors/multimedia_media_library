@@ -69,6 +69,7 @@ public:
     EXPORT int32_t PublicCreateAssetForApp(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SystemCreateAssetForApp(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CreateAssetForAppWithAlbum(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CreateAssetWithAlbum(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetAssetTitle(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetAssetPending(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetAssetsFavorite(MessageParcel &data, MessageParcel &reply);
@@ -89,13 +90,11 @@ public:
     EXPORT int32_t RetainCloudMediaAsset(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetCloudMediaAssetStatus(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StartBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t SetNetworkPolicyForBatchDownload(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t ResumeBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t PauseBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CancelBatchDownloadCloudResources(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesStatus(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesCount(MessageParcel &data, MessageParcel &reply);
-    EXPORT int32_t GetCloudMediaBatchDownloadResourcesSize(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetEditData(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t RequestEditData(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t IsEdited(MessageParcel &data, MessageParcel &reply);
@@ -129,6 +128,7 @@ public:
     EXPORT int32_t CheckUriPermissionInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetUrisByOldUrisInner(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t Restore(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t AsyncRestore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StopRestore(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CancelRequest(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t HeifTranscodingCheck(MessageParcel &data, MessageParcel &reply);
@@ -164,6 +164,9 @@ public:
     EXPORT int32_t MoveAssetsToDir(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t MoveAssetsByPath(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CreateFileManagerAsset(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t StartDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t StopDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CloneIsActiveLcdAging(MessageParcel &data, MessageParcel &reply);
     
 public:
     virtual ~MediaAssetsControllerService() = default;

@@ -77,7 +77,6 @@ ohos_unittest("media_library_camera_helper_test") {
   }
 
   defines = []
-  defines += [ "MEDIA_NATIVE_SA_APP_TEST" ]
 
   resource_config_file =
       "${MEDIALIB_INNERKITS_PATH}/test/unittest/resources/ohos_test.xml"

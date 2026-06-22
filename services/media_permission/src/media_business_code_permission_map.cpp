@@ -60,6 +60,7 @@ std::unordered_set<uint32_t> PermissionCheck::deprecatedWritePermissionSet = {
     static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_FOR_APP),
     static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_FOR_APP_WITH_MODE),
     static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_FOR_APP_WITH_ALBUM),
+    static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM),
     static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_PUBLIC_SET_TITLE),
     static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_SET_PENDING),
     static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_SET_FAVORITE),
@@ -96,6 +97,7 @@ std::unordered_set<uint32_t> PermissionCheck::deprecatedWritePermissionSet = {
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_ASSET),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CLOSE_ASSET),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE),
+    static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_ASYNC),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CUSTOM_RESTORE_CANCEL),
     static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_CREATE_FILE_MANAGER_ASSET),
 

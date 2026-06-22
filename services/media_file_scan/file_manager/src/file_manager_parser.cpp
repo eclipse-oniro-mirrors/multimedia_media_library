@@ -20,11 +20,14 @@
 #include "asset_accurate_refresh.h"
 #include "media_file_utils.h"
 #include "medialibrary_asset_operations.h"
+#include "medialibrary_notify.h"
 #include "moving_photo_file_utils.h"
 #include "userfile_manager_types.h"
 #include "thumbnail_service.h"
+#include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "photo_album_column.h"
 
 using namespace OHOS::NativeRdb;
 namespace OHOS::Media {
@@ -92,11 +95,14 @@ void FileManagerParser::SetCloudPath()
         MEDIA_ERR_LOG("File [%{public}s] has exists cloudPath", fileInfo_.cloudPath.c_str());
         return;
     }
-    std::string extension = MediaFileUtils::GetExtensionFromPath(fileInfo_.displayName);
     std::string cloudPath;
-    int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(fileInfo_.fileType, nullptr);
-    int32_t errCode =
-        MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, fileInfo_.fileType, extension, cloudPath);
+    std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> tryCreatePath = [&]()->int {
+        int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(fileInfo_.fileType, trans);
+        return MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, fileInfo_.fileType,
+            MediaFileUtils::GetExtensionFromPath(fileInfo_.displayName), cloudPath);
+    };
+    int32_t errCode = trans->RetryTrans(tryCreatePath);
     if (errCode != E_OK) {
         MEDIA_ERR_LOG("FileParser: File Manager CreateAssetPathById failed, errCode: %{public}d, fileInfo: %{public}s",
             errCode, ToString().c_str());
@@ -114,9 +120,13 @@ FileUpdateType FileManagerParser::GetTrashAssetUpdateType()
     bool isRecover = notifyInfo_.beforePath.find(FILE_MANAGER_TRASH_PATH) == 0 &&
         notifyInfo_.afterPath.find(FILE_MANAGER_TRASH_PATH) != 0;
     if (isTrash && rowDataBefore.IsExist()) {
+        SetByPhotosRowData(rowDataBefore);
         updateType_ = FileUpdateType::TRASH;
-    } else if (isRecover) {
-        updateType_ = rowDataAfter.IsExist() ? FileUpdateType::RECOVER : FileUpdateType::INSERT;
+    } else if (isRecover && rowDataAfter.IsExist()) {
+        SetByPhotosRowData(rowDataAfter);
+        updateType_ = FileUpdateType::RECOVER;
+    } else if (isRecover && !rowDataAfter.IsExist()) {
+        updateType_ = FileUpdateType::INSERT;
     } else {
         updateType_ = FileUpdateType::NO_CHANGE;
     }
@@ -153,13 +163,22 @@ void FileManagerParser::UpdateTrashedAssetinfo()
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, rowDataBefore.fileId);
 
+    auto watch = MediaLibraryNotify::GetInstance();
+
     if (rowDataBefore.position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD)) {
         // 处理端云合一图，置位为CLOUD
         HandleUpdateCloudAsset(predicates, PhotoPositionType::CLOUD);
+        CHECK_AND_EXECUTE(watch == nullptr,
+            watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(rowDataBefore.fileId), NotifyType::NOTIFY_UPDATE));
     } else if (rowDataBefore.position == static_cast<int32_t>(PhotoPositionType::LOCAL)) {
         // 处理本地图
         HandleTrashedLocalAndCloudAsset(predicates);
+        CHECK_AND_EXECUTE(watch == nullptr,
+            watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(rowDataBefore.fileId), NotifyType::NOTIFY_REMOVE));
     }
+
+    std::string albumUri = PhotoAlbumColumns::ALBUM_URI_PREFIX + to_string(rowDataBefore.ownerAlbumId);
+    CHECK_AND_EXECUTE(watch == nullptr, watch->Notify(albumUri, NotifyType::NOTIFY_UPDATE));
 }
 
 void FileManagerParser::UpdateRecoverAssetinfo()
@@ -168,14 +187,21 @@ void FileManagerParser::UpdateRecoverAssetinfo()
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, rowDataAfter.fileId);
 
+    auto watch = MediaLibraryNotify::GetInstance();
+
     if (rowDataAfter.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
         // 处理纯云图
         HandleUpdateCloudAsset(predicates, PhotoPositionType::LOCAL_AND_CLOUD);
+        CHECK_AND_EXECUTE(watch == nullptr,
+            watch->Notify(PhotoColumn::PHOTO_URI_PREFIX + to_string(rowDataAfter.fileId), NotifyType::NOTIFY_UPDATE));
     } else if (rowDataAfter.position == static_cast<int32_t>(PhotoPositionType::LOCAL)) {
         // 处理本地图
         MEDIA_WARN_LOG("Database has exists the local asset record, fileInfo: %{public}s",
             ToString().c_str());
     }
+
+    std::string albumUri = PhotoAlbumColumns::ALBUM_URI_PREFIX + to_string(rowDataAfter.ownerAlbumId);
+    CHECK_AND_EXECUTE(watch == nullptr, watch->Notify(albumUri, NotifyType::NOTIFY_UPDATE));
 }
 
 void FileManagerParser::HandleUpdateCloudAsset(NativeRdb::AbsRdbPredicates &predicates,
@@ -197,9 +223,7 @@ int32_t FileManagerParser::GenerateThumbnailForFileManager(const ThumbnailInfo &
 {
     MEDIA_INFO_LOG("GenerateThumbnailForFileManager called, fileId: %{public}d", info.fileId);
 
-    // 调用ThumbnailService的接口
-    std::string fileIdStr = to_string(info.fileId);
-    return ThumbnailService::GetInstance()->CreateThumbnailForFileManager(fileIdStr, info.path);
+    return ThumbnailService::GetInstance()->CreateThumbnailForFileManager(info);
 }
 
 // FileManager新增多文件缩略图生成接口（支持功耗管控）

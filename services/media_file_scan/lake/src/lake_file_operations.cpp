@@ -179,7 +179,7 @@ static int32_t CreateParentDir(int32_t &targetAlbumId, std::string &parentDir)
     std::string innerLakeLpath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
     int32_t albumSubtype = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet);
     resultSet->Close();
-    CHECK_AND_RETURN_RET(albumSubtype != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER, E_ERR);
+    CHECK_AND_RETURN_RET(albumSubtype != PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER, E_ERR);
     std::string pathPreFix(IN_LAKE_MOUNT_OUTLAKE_PATH_PREFIEX);
     // 若lpath不存在，新建目录
     const std::string prefix = "/";
@@ -268,6 +268,10 @@ const std::unordered_set<std::string> FILE_MANAGER_EXCLUDED_DIR_NAMES = {
     ".Recent",
     ".backup",
     ".Trash",
+    ".VMDocs",
+    ".ohpm",
+    "PCEngine",
+    "appdata",
 };
 
 static bool CheckSubDirForFileManager(const std::string &path, size_t startPos)

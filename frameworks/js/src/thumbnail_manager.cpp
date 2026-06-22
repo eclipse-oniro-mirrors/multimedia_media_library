@@ -42,12 +42,18 @@
 #include "uv.h"
 #include "userfile_client.h"
 #include "highlight_column.h"
+#include "media_path_utils.h"
+#include "media_log.h"
+#include "media_file_utils.h"
+#include "media_library_manager.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
 #include "purgeable_pixelmap_builder.h"
 #endif
 
 using namespace std;
+const std::string MULTI_USER_URI_FLAG = "user=";
+const std::string MEDIALIBRARY_DATA_URI = "datashare:///media";
 const int UUID_STR_LENGTH = 37;
 constexpr int32_t MAX_THUMBNAIL_FILE_SIZE = 10 * 1024 * 1024; // 缩略图文件最大不超过10MB
 
@@ -56,6 +62,8 @@ namespace Media {
 shared_ptr<ThumbnailManager> ThumbnailManager::instance_ = nullptr;
 mutex ThumbnailManager::mutex_;
 bool ThumbnailManager::init_ = false;
+shared_ptr<DataShare::DataShareHelper> ThumbnailManager::sDataShareHelper_ = nullptr;
+sptr<IRemoteObject> ThumbnailManager::token_ = nullptr;
 
 ThumbnailRequest::ThumbnailRequest(const RequestPhotoParams &params, napi_env env,
     napi_ref callback) : callback_(env, callback), requestPhotoType(params.type), uri_(params.uri),
@@ -291,6 +299,10 @@ static int OpenThumbnail(const string &path, ThumbnailType type)
 {
     if (!path.empty()) {
         string sandboxPath = GetSandboxPath(path, type);
+        if (sandboxPath.find(THUMBNAIL_LCD_SUFFIX) != std::string::npos &&
+            MediaPathUtils::CheckIsCloudFile(sandboxPath)) {
+            return E_ERR;
+        }
         int fd = -1;
         if (!sandboxPath.empty()) {
             fd = open(sandboxPath.c_str(), O_RDONLY);
@@ -476,6 +488,18 @@ static int32_t GetKeyFramePixelMapFromServer(const string &uriStr, const string 
     return UserFileClient::OpenFile(openUri, "R");
 }
 
+static void GetMultiUserAccess(std::string &str, std::string &userId)
+{
+    size_t pos = str.find(MULTI_USER_URI_FLAG);
+    if (pos != std::string::npos) {
+        pos += MULTI_USER_URI_FLAG.length();
+        size_t end = str.find_first_of("&?", pos);
+        CHECK_AND_EXECUTE(end != std::string::npos, end = str.length());
+        userId = str.substr(pos, end - pos);
+        MEDIA_ERR_LOG("QueryThumbnailDataBuffer for other user is %{public}s", userId.c_str());
+    }
+}
+
 bool ThumbnailManager::QueryThumbnailDataBuffer(const string &uriStr, const int &type, const string &path,
     std::vector<uint8_t> &buffer)
 {
@@ -494,12 +518,24 @@ bool ThumbnailManager::QueryThumbnailDataBuffer(const string &uriStr, const int 
     Size size;
     size.width = DEFAULT_THUMB_SIZE;
     size.height = DEFAULT_THUMB_SIZE;
+    bool readFromServer = false;
     if (uniqueFd.Get() == E_ERR) {
         uniqueFd = UniqueFd(GetArrayBufferFromServer(uriStr, path, type));
         if (uniqueFd.Get() < 0) {
             NAPI_ERR_LOG("QueryThumbData is null, errCode is %{public}d", uniqueFd.Get());
             return false;
         }
+        readFromServer = true;
+    }
+    std::string str = uriStr;
+    std::string userId = "";
+    GetMultiUserAccess(str, userId);
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        userId != "" ? DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI + "?" +
+        MULTI_USER_URI_FLAG + userId) : sDataShareHelper_;
+    CHECK_AND_PRINT_LOG(dataShareHelper != nullptr, "Failed to query thumbnailData, dataShareHelper is nullptr");
+    if (thumbnailType == ThumbnailType::LCD && !readFromServer && dataShareHelper != nullptr) {
+        MediaLibraryManager::UpdateAssetVisitCount(dataShareHelper, MediaFileUtils::GetIdFromUri(uriStr));
     }
     tracer.Finish();
     return DecodeThumbnailDataBuffer(uniqueFd, buffer);
@@ -523,6 +559,16 @@ unique_ptr<PixelMap> ThumbnailManager::QueryThumbnail(const string &uriStr, cons
             return nullptr;
         }
         return DecodeThumbnail(uniqueFd, size);
+    }
+    std::string str = uriStr;
+    std::string userId = "";
+    GetMultiUserAccess(str, userId);
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        userId != "" ? DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI + "?" +
+        MULTI_USER_URI_FLAG + userId) : sDataShareHelper_;
+    CHECK_AND_PRINT_LOG(dataShareHelper != nullptr, "Failed to query thumbnail, dataShareHelper is nullptr");
+    if (thumbType == ThumbnailType::LCD && dataShareHelper != nullptr) {
+        MediaLibraryManager::UpdateAssetVisitCount(dataShareHelper, MediaFileUtils::GetIdFromUri(uriStr));
     }
     tracer.Finish();
     if (thumbType == ThumbnailType::MTH || thumbType == ThumbnailType::YEAR) {

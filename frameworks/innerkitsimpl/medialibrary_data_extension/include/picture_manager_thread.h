@@ -44,7 +44,7 @@ public:
 
     State State() const;
     EXPORT void Start();
-    void Stop();
+    EXPORT void Stop();
     void Pause();
     void Resume();
     EXPORT void InsertPictureData(const std::string& imageId, sptr<PicturePair>& picturePair, PictureType pictureType);

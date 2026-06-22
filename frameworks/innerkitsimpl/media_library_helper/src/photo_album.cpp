@@ -309,7 +309,9 @@ bool PhotoAlbum::IsTrashAlbum(const PhotoAlbumType albumType, const PhotoAlbumSu
 
 bool PhotoAlbum::IsSourceAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType)
 {
-    return (albumType == PhotoAlbumType::SOURCE) && (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC);
+    return (albumType == PhotoAlbumType::SOURCE) &&
+           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC ||
+               albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
 }
 
 bool PhotoAlbum::IsPetAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType)
@@ -336,9 +338,10 @@ bool PhotoAlbum::CheckPhotoAlbumType(const PhotoAlbumType albumType)
 bool PhotoAlbum::CheckPhotoAlbumSubType(const PhotoAlbumSubType albumSubType)
 {
     return (albumSubType == PhotoAlbumSubType::USER_GENERIC) || (albumSubType == PhotoAlbumSubType::ANY) ||
-        ((albumSubType >= PhotoAlbumSubType::SYSTEM_START) && (albumSubType <= PhotoAlbumSubType::SYSTEM_END)) ||
-        ((albumSubType >= PhotoAlbumSubType::ANALYSIS_START) && (albumSubType <= PhotoAlbumSubType::ANALYSIS_END)) ||
-        (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC);
+           ((albumSubType >= PhotoAlbumSubType::SYSTEM_START) && (albumSubType <= PhotoAlbumSubType::SYSTEM_END)) ||
+           ((albumSubType >= PhotoAlbumSubType::ANALYSIS_START) && (albumSubType <= PhotoAlbumSubType::ANALYSIS_END)) ||
+           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC) ||
+           (albumSubType == PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
 }
 
 bool PhotoAlbum::IsHighlightAlbum(const PhotoAlbumType albumType, const PhotoAlbumSubType albumSubType)
@@ -407,6 +410,36 @@ void PhotoAlbum::SetHidden(const int32_t hidden)
 int32_t PhotoAlbum::GetHidden() const
 {
     return hidden_;
+}
+
+void PhotoAlbum::SetCloudId(const std::string &cloudId)
+{
+    cloudId_ = cloudId;
+}
+
+const std::string& PhotoAlbum::GetCloudId() const
+{
+    return cloudId_;
+}
+
+void PhotoAlbum::SetSceneId(const int32_t sceneId)
+{
+    sceneId_ = sceneId;
+}
+
+int32_t PhotoAlbum::GetSceneId() const
+{
+    return sceneId_;
+}
+
+void PhotoAlbum::SetShareType(const int32_t shareType)
+{
+    shareType_ = shareType;
+}
+
+int32_t PhotoAlbum::GetShareType() const
+{
+    return shareType_;
 }
 
 void PhotoAlbum::SetFileHidden(bool fileHidden)

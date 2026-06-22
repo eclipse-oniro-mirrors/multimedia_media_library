@@ -203,7 +203,6 @@ protected:
     void StopParameterForRestore();
     void RestoreSearchIndex();
     void SetCloneParameterAndStopSync();
-    void DelayLcdAgingTime();
 
 protected:
     std::atomic<uint64_t> migrateDatabaseNumber_{0};
@@ -237,6 +236,12 @@ protected:
     std::atomic<uint64_t> migrateLakeVideoDuplicateNumber_{0};
     std::atomic<uint64_t> migrateLakePhotoFailNumber_{0};
     std::atomic<uint64_t> migrateLakeVideoFailNumber_{0};
+    std::atomic<uint64_t> migrateFileManagerPhotoNumber_{0};
+    std::atomic<uint64_t> migrateFileManagerVideoNumber_{0};
+    std::atomic<uint64_t> migrateFileManagerPhotoDuplicateNumber_{0};
+    std::atomic<uint64_t> migrateFileManagerVideoDuplicateNumber_{0};
+    std::atomic<uint64_t> migrateFileManagerPhotoFailNumber_{0};
+    std::atomic<uint64_t> migrateFileManagerVideoFailNumber_{0};
     std::atomic<uint64_t> migratePortraitPhotoNumber_{0};
     std::atomic<uint64_t> migratePortraitFaceNumber_{0};
     std::atomic<uint64_t> migratePortraitAlbumNumber_{0};

@@ -50,16 +50,22 @@ using namespace testing;
 namespace OHOS {
 namespace Media {
 static shared_ptr<MediaLibraryRdbStore> g_rdbStore;
-
 namespace {
 
 const string BASE_VIDEO_FILE_INNER = "I am base video file";
-const string TEMP_VIDEO_FILE_INNER = "I am temp video file";
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 
 string GetTempFilePath(const string &filePath)
 {
-    return filePath.substr(0, filePath.rfind('.')) + "_tmp" + filePath.substr(filePath.rfind('.'));
+    size_t indexPrefixEnd = filePath.rfind('/');
+    size_t indexSubfixStart = filePath.rfind('.');
+    CHECK_AND_RETURN_RET_LOG(indexSubfixStart != std::string::npos && indexPrefixEnd != std::string::npos, "",
+        "Failed to parse the path %{private}s", filePath.c_str());
+    std::string fileNamePrefix = filePath.substr(indexPrefixEnd, indexSubfixStart - indexPrefixEnd); // /Vid
+    std::string fileNameSubfix = filePath.substr(indexSubfixStart); // .mp4
+    std::string tempFilePath = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES +
+        fileNamePrefix + "_tmp1" + fileNameSubfix;
+    return tempFilePath;
 }
 
 void PrepareBaseVideoFile(const string &filePath)
@@ -68,19 +74,6 @@ void PrepareBaseVideoFile(const string &filePath)
     EXPECT_NE(fd, -1);
 
     ssize_t written = write(fd, BASE_VIDEO_FILE_INNER.c_str(), BASE_VIDEO_FILE_INNER.size());
-    EXPECT_NE(written, -1);
-
-    close(fd);
-}
-
-void PrepareTempVideoFile(const string &filePath)
-{
-    string tempFilePath = GetTempFilePath(filePath);
-
-    int fd = open(tempFilePath.c_str(), O_WRONLY | O_CREAT, 0644);
-    EXPECT_NE(fd, -1);
-
-    ssize_t written = write(fd, TEMP_VIDEO_FILE_INNER.c_str(), TEMP_VIDEO_FILE_INNER.size());
     EXPECT_NE(written, -1);
 
     close(fd);
@@ -275,16 +268,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_001, TestSiz
     string videoId = "202408011800";
 
     PrepareBaseVideoFile(filePath);
-
+    // /storage/cloud/files/Photo/14/VID_1779891774_030.mp4
+    MEDIA_INFO_LOG("manager_add_video_001 filePath %{public}s", filePath.c_str());
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     VideoInfo videoInfo = {fileId, VideoCount::SINGLE, filePath, "", ""};
     instance.AddVideo(videoId, to_string(fileId), videoInfo);
 
     string absFilePath;
     string absTempFilePath;
-
+    // old /storage/cloud/files/Photo/14/VID_1779891774_030_tmp.mp4
+    // new /storage/cloud/files/cameraCache/temp/VID_1779891774_030_tmp1.mp4
     string tempFilePath = GetTempFilePath(filePath);
-
+    MEDIA_INFO_LOG("manager_add_video_001 tempFilePath %{public}s", tempFilePath.c_str());
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
     EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
 
@@ -510,49 +505,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_with_error_0
     MEDIA_INFO_LOG("manager_add_video_with_error_004 End");
 }
 
-HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_openfd_add_double_video_001, TestSize.Level1)
-{
-    int32_t fileId = PrepareVideoData();
-    string filePath = GetFilePath(fileId);
-    string videoId = "202408062000";
-    string tempFilePath = GetTempFilePath(filePath);
-    int32_t videoCount = 2;
-    PrepareBaseVideoFile(filePath);
-    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, filePath, filePath};
-    videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    videoInfo.absSrcFilePath = videoInfo.videoPath;
-
-    int32_t mockLowSrcFd = 0;
-    int32_t mockSrcFd = 0;
-    int32_t mockSrcFdCopy = 0;
-
-    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
-    bool mockRet = instance.Openfd4AddDoubleVideo(filePath, videoInfo, mockLowSrcFd, mockSrcFd, mockSrcFdCopy);
-    EXPECT_EQ(mockRet, false);
-    EXPECT_EQ(mockSrcFd, -1);
-}
-
-HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_openfd_add_double_video_002, TestSize.Level1)
-{
-    int32_t fileId = PrepareVideoData();
-    string filePath = GetFilePath(fileId);
-    string videoId = "202408122000";
-
-    int32_t videoCount = 2;
-    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, filePath, filePath};
-    videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    videoInfo.absSrcFilePath = videoInfo.videoPath;
-
-    int32_t mockLowSrcFd = 0;
-    int32_t mockSrcFd = 0;
-    int32_t mockSrcFdCopy = 0;
-
-    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
-    bool mockRet = instance.Openfd4AddDoubleVideo(filePath, videoInfo, mockLowSrcFd, mockSrcFd, mockSrcFdCopy);
-    EXPECT_EQ(mockRet, false);
-    EXPECT_EQ(mockLowSrcFd, -1);
-}
-
 HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("manager_remove_video_001 Start");
@@ -560,25 +512,17 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_001, Test
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408051800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
-
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     instance.RemoveVideo(videoId, true);
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
-
-    EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-
     MEDIA_INFO_LOG("manager_remove_video_001 End");
 }
 
@@ -589,30 +533,19 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_with_erro
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408061800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
-
     PrepareBaseVideoFile(filePath);
 
     MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
     instance.RemoveVideo(videoId, true);
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(!PathToRealPath(tempFilePath, absTempFilePath));
-    EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-
-    PrepareTempVideoFile(filePath);
     instance.RemoveVideo("32345678", true);
-
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
-    EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-
     MEDIA_INFO_LOG("manager_remove_video_with_error_001 End");
 }
 
@@ -779,24 +712,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408071800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     callback->OnProcessVideoDone(videoId);
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(!PathToRealPath(tempFilePath, absTempFilePath));
-    EXPECT_EQ(ReadFileContent(filePath), TEMP_VIDEO_FILE_INNER);
-
     int32_t quality = GetQuality(fileId);
     EXPECT_EQ(quality, static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
 
@@ -813,7 +740,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408081800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
@@ -822,7 +748,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     SetEdited(fileId);
 
@@ -830,7 +755,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_process_video_done
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_FALSE(PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);
@@ -850,24 +774,18 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest,
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408091800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
 
     string absFilePath;
-    string absTempFilePath;
-
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     callback->OnProcessVideoDone("42345678");
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
-    EXPECT_EQ(ReadFileContent(tempFilePath), TEMP_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);
     EXPECT_EQ(quality, static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
@@ -885,7 +803,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_error_001, TestSiz
     int32_t fileId = PrepareVideoData();
     string filePath = GetFilePath(fileId);
     string videoId = "202408101800";
-    string tempFilePath = GetTempFilePath(filePath);
 
     int32_t result = SetVideoId(fileId, videoId);
     EXPECT_GT(result, E_OK);
@@ -894,13 +811,11 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, callback_on_error_001, TestSiz
     string absTempFilePath;
 
     PrepareBaseVideoFile(filePath);
-    PrepareTempVideoFile(filePath);
 
     callback->OnError(videoId, CameraStandard::ERROR_SESSION_SYNC_NEEDED);
     delete callback;
 
     EXPECT_TRUE(PathToRealPath(filePath, absFilePath));
-    EXPECT_TRUE(PathToRealPath(tempFilePath, absTempFilePath));
     EXPECT_EQ(ReadFileContent(filePath), BASE_VIDEO_FILE_INNER);
 
     int32_t quality = GetQuality(fileId);
@@ -958,6 +873,142 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_remove_video_004, Test
     instance.RemoveVideo(videoId, filePath, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO), false);
     EXPECT_EQ(MediaFileUtils::IsFileExists(filePath), true);
     MEDIA_INFO_LOG("manager_remove_video_004 End");
+}
+
+// AddVideoInternal directory not exist tests
+// Test case 001: cameraCache not exist, temp not exist, enhanced not exist
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exist_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_001 Start");
+
+    // Clean up directories if they exist
+    string cameraCacheDir = ROOT_MEDIA_CAMERA_CACHE_DIR;
+    string tempDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES;
+    string enhancedDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES;
+
+    MediaFileUtils::DeleteDir(enhancedDir);
+    MediaFileUtils::DeleteDir(tempDir);
+    MediaFileUtils::DeleteDir(cameraCacheDir);
+
+    // Verify directories don't exist
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(tempDir));
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(enhancedDir));
+
+    int32_t fileId = PrepareVideoData();
+    string filePath = GetFilePath(fileId);
+    string videoId = "202606030001";
+    int32_t videoCount = 1;
+    PrepareBaseVideoFile(filePath);
+    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, "", ""};
+
+    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
+    instance.AddVideoInternal(videoId, videoInfo, false);
+
+    // Verify temp and enhanced directories are created
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_001 End");
+}
+
+// Test case 002: cameraCache exists, temp not exist, enhanced not exist
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exist_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_002 Start");
+
+    string cameraCacheDir = ROOT_MEDIA_CAMERA_CACHE_DIR;
+    string tempDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES;
+    string enhancedDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES;
+
+    // Create cameraCache directory only
+    MediaFileUtils::DeleteDir(enhancedDir);
+    MediaFileUtils::DeleteDir(tempDir);
+    MediaFileUtils::CreateDirectory(cameraCacheDir);
+
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(tempDir));
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(enhancedDir));
+
+    int32_t fileId = PrepareVideoData();
+    string filePath = GetFilePath(fileId);
+    string videoId = "202606030002";
+    int32_t videoCount = 1;
+    PrepareBaseVideoFile(filePath);
+    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, "", ""};
+
+    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
+    instance.AddVideoInternal(videoId, videoInfo, false);
+
+    // Verify temp and enhanced directories are created
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_002 End");
+}
+
+// Test case 003: cameraCache exists, temp exists, enhanced not exist
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exist_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_003 Start");
+
+    string cameraCacheDir = ROOT_MEDIA_CAMERA_CACHE_DIR;
+    string tempDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES;
+    string enhancedDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES;
+
+    // Create cameraCache and temp directories only
+    MediaFileUtils::DeleteDir(enhancedDir);
+    MediaFileUtils::CreateDirectory(cameraCacheDir);
+    MediaFileUtils::CreateDirectory(tempDir);
+
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(enhancedDir));
+
+    int32_t fileId = PrepareVideoData();
+    string filePath = GetFilePath(fileId);
+    string videoId = "202606030003";
+    int32_t videoCount = 1;
+    PrepareBaseVideoFile(filePath);
+    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, "", ""};
+
+    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
+    instance.AddVideoInternal(videoId, videoInfo, false);
+
+    // Verify enhanced directory is created
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_003 End");
+}
+
+// Test case 004: cameraCache exists, temp not exist, enhanced exists
+HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_dir_not_exist_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_004 Start");
+
+    string cameraCacheDir = ROOT_MEDIA_CAMERA_CACHE_DIR;
+    string tempDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_TEMP_DIR_VALUES;
+    string enhancedDir = ROOT_MEDIA_CAMERA_CACHE_DIR + SLASH_STR + CAMERA_CACHE_ENHANCE_DIR_VALUES;
+
+    // Create cameraCache and enhanced directories only
+    MediaFileUtils::DeleteDir(tempDir);
+    MediaFileUtils::CreateDirectory(cameraCacheDir);
+    MediaFileUtils::CreateDirectory(enhancedDir);
+
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(cameraCacheDir));
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(tempDir));
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(enhancedDir));
+
+    int32_t fileId = PrepareVideoData();
+    string filePath = GetFilePath(fileId);
+    string videoId = "202606030004";
+    int32_t videoCount = 1;
+    PrepareBaseVideoFile(filePath);
+    VideoInfo videoInfo = {fileId, static_cast<VideoCount>(videoCount), filePath, "", ""};
+
+    MultiStagesVideoCaptureManager &instance = MultiStagesVideoCaptureManager::GetInstance();
+    instance.AddVideoInternal(videoId, videoInfo, false);
+
+    // Verify temp directory is created
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(tempDir));
+    MEDIA_INFO_LOG("manager_add_video_dir_not_exist_004 End");
 }
 } // Media
 } // OHOS

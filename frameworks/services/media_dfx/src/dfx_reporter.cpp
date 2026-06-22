@@ -31,6 +31,7 @@
 #include "medialibrary_bundle_manager.h"
 #include "medialibrary_inotify.h"
 #include "medialibrary_astc_stat.h"
+#include "media_column.h"
 using namespace std;
 namespace OHOS {
 namespace Media {
@@ -267,7 +268,15 @@ void DfxReporter::ReportPhotoInfo(const PhotoStatistics& stats)
         "SOURCE_ALBUM_COUNT", stats.sourceAlbumCount,
         "UPLOAD_USER_ALBUM_COUNT", stats.uploadUserAlbumCount,
         "UPLOAD_SOURCE_ALBUM_COUNT", stats.uploadSourceAlbumCount,
-        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount);
+        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount,
+        "FILEMANAGER_LOCAL_IMAGE_COUNT", stats.fileManagerLocalImageCount,
+        "FILEMANAGER_LOCAL_VIDEO_COUNT", stats.fileManagerLocalVideoCount,
+        "FILEMANAGER_CLOUD_IMAGE_COUNT", stats.fileManagerCloudImageCount,
+        "FILEMANAGER_CLOUD_VIDEO_COUNT", stats.fileManagerCloudVideoCount,
+        "FILEMANAGER_SHARED_IMAGE_COUNT", stats.fileManagerSharedImageCount,
+        "FILEMANAGER_SHARED_VIDEO_COUNT", stats.fileManagerSharedVideoCount,
+        "FILEMANAGER_ALBUM_COUNT", stats.fileManagerAlbumCount,
+        "UPLOAD_FILEMANAGER_ALBUM_COUNT", stats.uploadFileManagerAlbumCount);
     if (ret != 0) {
         MEDIA_ERR_LOG("ReportPhotoInfo error:%{public}d", ret);
     }
@@ -963,17 +972,32 @@ int32_t DfxReporter::ReportAncoCountFormatInfo(const AncoCountFormatInfo& report
 {
     int ret = -1;
     if (firstLoad) {
-        ret = HiSysEventWrite(
-            MEDIA_LIBRARY,
-            "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
-            HiviewDFX::HiSysEvent::EventType::STATISTIC,
-            "LOAD_START_TIME", reportData.loadStartTime,
-            "LOAD_END_TIME", reportData.loadEndTime,
-            "ALBUM_COUNT", reportData.albumCount,
-            "IMAGE_COUNT", reportData.imageCount,
-            "VIDEO_COUNT", reportData.videoCount,
-            "ASSET_FORMAT_DISTRIBUTION", reportData.assetFormatDistribution);
-        MEDIA_INFO_LOG("Report AncoFirstLoadInfo ret: %{public}d", ret);
+        if (reportData.loadType == LoadType::LAKE_FIRST_LOAD) {
+            ret = HiSysEventWrite(
+                MEDIA_LIBRARY,
+                "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
+                HiviewDFX::HiSysEvent::EventType::STATISTIC,
+                "LOAD_TYPE", reportData.loadType,
+                "LOAD_START_TIME", reportData.loadStartTime,
+                "LOAD_END_TIME", reportData.loadEndTime,
+                "ALBUM_COUNT", reportData.albumCount,
+                "IMAGE_COUNT", reportData.imageCount,
+                "VIDEO_COUNT", reportData.videoCount,
+                "ASSET_FORMAT_DISTRIBUTION", reportData.assetFormatDistribution);
+            MEDIA_INFO_LOG("Report AncoFirstLoadInfo ret: %{public}d", ret);
+        } else {
+            ret = HiSysEventWrite(
+                MEDIA_LIBRARY,
+                "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
+                HiviewDFX::HiSysEvent::EventType::STATISTIC,
+                "LOAD_TYPE", reportData.loadType,
+                "LOAD_START_TIME", reportData.loadStartTime,
+                "LOAD_END_TIME", reportData.loadEndTime,
+                "ALBUM_COUNT", reportData.albumCount,
+                "IMAGE_COUNT", reportData.imageCount,
+                "VIDEO_COUNT", reportData.videoCount);
+            MEDIA_INFO_LOG("Report FileManagerFirstLoadInfo ret: %{public}d", ret);
+        }
     } else {
         ret = HiSysEventWrite(
             MEDIA_LIBRARY,
@@ -990,6 +1014,23 @@ int32_t DfxReporter::ReportAncoCountFormatInfo(const AncoCountFormatInfo& report
     return ret;
 }
 
+int32_t DfxReporter::ReportAncoCountFormatInfoForDirScan(const std::string &assetFormatDistribution)
+{
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_ANCO_COUNT_FORMAT_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "ASSET_FORMAT_DISTRIBUTION", assetFormatDistribution,
+        "LOAD_TYPE", LoadType::DOCS_MEDIA_SCAN,
+        "ALBUM_COUNT", 0,
+        "IMAGE_COUNT", 0,
+        "VIDEO_COUNT", 0);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("Report AncoCountFormatInfoForDirScan error: %{public}d", ret);
+    }
+    return ret;
+}
+
 int32_t DfxReporter::ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info)
 {
     int ret = HiSysEventWrite(
@@ -1001,6 +1042,157 @@ int32_t DfxReporter::ReportThmInodeCleanInfo(const ThmInodeCleanInfo &info)
         "XATTR_INFO", info.xattrInfo);
     CHECK_AND_RETURN_RET_LOG(ret == 0, ret, "ReportThmInodeCleanInfo error:%{public}d", ret);
     return ret;
+}
+
+void DfxReporter::ReportAgingLcdInfo()
+{
+    MEDIA_INFO_LOG("ReportAgingLcdInfo start");
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(AGING_LCD_INFO, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
+    int64_t lcdAgingTotalTime = prefs->GetInt(LCD_AGING_TOTAL_TIME, 0);
+    int32_t cloudOnlyNums = prefs->GetInt(CLOUD_LCD_NUM, 0);
+    int32_t localOnlyNums = prefs->GetInt(LOCAL_LCD_NUM, 0);
+    int32_t localCloudNums = prefs->GetInt(LOCAL_AND_CLOUD_LCD_NUM, 0);
+    int32_t albumCoverNums = prefs->GetInt(ALBUM_COVER_NUM, 0);
+    int32_t favoriteNums = prefs->GetInt(FAVORITE_LCD_NUM, 0);
+    int32_t smartNums = prefs->GetInt(SMART_NUM, 0);
+    int64_t agingLcdNums = prefs->GetInt(AGING_LCD_NUM, 0);
+    int32_t agingContinueNums = prefs->GetInt(AGING_CONTINUE_NUM, 0);
+    int64_t flashTotalSize = prefs->GetInt(FLASH_TOTAL_SIZE, 0);
+    int64_t flashFreeSize = prefs->GetInt(FLASH_FREE_SIZE, 0);
+    int64_t flashFreeSizeOld = prefs->GetInt(FLASH_FREE_SIZE_OLD, 0);
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_AGING_LCD_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "CYCLE_AGING_TIME", lcdAgingTotalTime,
+        "CLOUD_ONLY_NUM", cloudOnlyNums,
+        "LOCAL_ONLY_NUM", localOnlyNums,
+        "LOCAL_CLOUD_NUM", localCloudNums,
+        "ALBUM_COVER_COUNT", albumCoverNums,
+        "FAVORITE_COUNT", favoriteNums,
+        "SMART_COUNT", smartNums,
+        "AGING_LCD_NUM", agingLcdNums,
+        "TIMES_PER_CYCLE", agingContinueNums,
+        "FLASH_TOTAL_SIZE", flashTotalSize,
+        "FLASH_BEFORE_SIZE", flashFreeSizeOld,
+        "FLASH_AFTER_SIZE", flashFreeSize);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("Report aging lcd info error:%{public}d", ret);
+    }
+    prefs->Clear();
+    prefs->FlushSync();
+}
+
+static void GetReadLcdPrefs(shared_ptr<NativePreferences::Preferences> prefs, std::string typeKey,
+    int32_t southDeviceType)
+{
+    int32_t lowQualityNums = prefs->GetInt(typeKey, 0);
+    int32_t successTimes = prefs->GetInt(SUCCESS_NUM, 0);
+    int32_t failedTimes = prefs->GetInt(FAIL_NUM, 0);
+    int32_t mobileRdSuccessCounts = prefs->GetInt(MOBILE_RD_SUCCESS_NUM, 0);
+    int32_t mobileRdFailCounts = prefs->GetInt(MOBILE_RD_FAIL_NUM, 0);
+    int32_t wifiRdSuccessCounts = prefs->GetInt(WIFI_RD_SUCCESS_NUM, 0);
+    int32_t wifiRdFailCounts = prefs->GetInt(WIFI_RD_FAIL_NUM, 0);
+    int32_t otherRdSuccessCounts = prefs->GetInt(OTHER_RD_SUCCESS_NUM, 0);
+    int32_t otherRdFailCounts = prefs->GetInt(OTHER_RD_FAIL_NUM, 0);
+    int32_t ethernetRdSuccessCounts = prefs->GetInt(ETHERNET_RD_SUCCESS_NUM, 0);
+    int32_t ethernetRdFailCounts = prefs->GetInt(ETHERNET_RD_FAIL_NUM, 0);
+    int32_t systemAppRdCounts = prefs->GetInt(SYSTEM_APP_RD_NUM, 0);
+    int32_t nonSystemAppRdCounts = prefs->GetInt(NON_SYSTEM_APP_RD_NUM, 0);
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_READ_LCD_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "SOUTH_DEVICE_TYPE", southDeviceType,
+        "SUCCESS_NUM", successTimes,
+        "FAIL_NUM", failedTimes,
+        "MOBILE_RD_SUC_NUM", mobileRdSuccessCounts,
+        "MOBILE_RD_FAI_NUM", mobileRdFailCounts,
+        "WIFI_RD_SUC_NUM", wifiRdSuccessCounts,
+        "WIFI_RD_FAI_NUM", wifiRdFailCounts,
+        "ETHERNET_RD_SUC_NUM", ethernetRdSuccessCounts,
+        "ETHERNET_RD_FAI_NUM", ethernetRdFailCounts,
+        "OTHER_RD_SUC_NUM", otherRdSuccessCounts,
+        "OTHER_RD_FAI_NUM", otherRdFailCounts,
+        "SYSTEM_APP_RD_NUM", systemAppRdCounts,
+        "NON_SYSTEM_APP_RD_NUM", nonSystemAppRdCounts,
+        "THUMBNAIL_LOW_QUALITY_NUM", lowQualityNums);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("Report read lcd times error:%{public}d", ret);
+    }
+}
+
+void DfxReporter::ReportReadLcd(const int32_t southDeviceType)
+{
+    MEDIA_INFO_LOG("ReportReadLcd start");
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
+    std::string typeKey;
+    switch (southDeviceType) {
+        case static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_NULL):
+            typeKey = THUMBNAIL_LOW_QUALITY_NUM_NULL;
+            break;
+        case static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_CLOUD):
+            typeKey = THUMBNAIL_LOW_QUALITY_NUM_CLOUD;
+            break;
+        case static_cast<int32_t>(SouthDeviceType::SOUTH_DEVICE_HDC):
+            typeKey = THUMBNAIL_LOW_QUALITY_NUM_HDC;
+            break;
+        default:
+            MEDIA_ERR_LOG("Invalid southDeviceType: %{public}d", southDeviceType);
+            return;
+    }
+    GetReadLcdPrefs(prefs, typeKey, southDeviceType);
+    prefs->FlushSync();
+}
+
+void DfxReporter::ReportVisitLcd(const int32_t southDeviceType)
+{
+    MEDIA_INFO_LOG("ReportVisitLcd start");
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(READ_LCD_INFO, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
+ 
+    int32_t systemAppVisitCounts = prefs->GetInt(SYSTEM_APP_VISIT_NUM, 0);
+    int32_t nonSystemAppVisitCounts = prefs->GetInt(NON_SYSTEM_APP_VISIT_NUM, 0);
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_READ_LCD_INFO",
+        HiviewDFX::HiSysEvent::EventType::STATISTIC,
+        "SOUTH_DEVICE_TYPE", southDeviceType,
+        "SUCCESS_NUM", 0,
+        "FAIL_NUM", 0,
+        "MOBILE_RD_SUC_NUM", 0,
+        "MOBILE_RD_FAI_NUM", 0,
+        "WIFI_RD_SUC_NUM", 0,
+        "WIFI_RD_FAI_NUM", 0,
+        "ETHERNET_RD_SUC_NUM", 0,
+        "ETHERNET_RD_FAI_NUM", 0,
+        "OTHER_RD_SUC_NUM", 0,
+        "OTHER_RD_FAI_NUM", 0,
+        "SYSTEM_APP_RD_NUM", systemAppVisitCounts,
+        "NON_SYSTEM_APP_RD_NUM", nonSystemAppVisitCounts,
+        "THUMBNAIL_LOW_QUALITY_NUM", 0);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("Report visit lcd error:%{public}d", ret);
+    }
+    prefs->Clear();
+    prefs->FlushSync();
 }
 } // namespace Media
 } // namespace OHOS

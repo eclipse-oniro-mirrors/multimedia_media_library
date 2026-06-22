@@ -27,13 +27,11 @@
 #include "rdb_store.h"
 #include "download_resources_column.h"
 #include "start_batch_download_cloud_resources_vo.h"
-#include "set_network_policy_batch_download_vo.h"
 #include "resume_batch_download_cloud_resources_vo.h"
 #include "pause_batch_download_cloud_resources_vo.h"
 #include "cancel_batch_download_cloud_resources_vo.h"
 #include "get_batch_download_cloud_resources_status_vo.h"
 #include "get_batch_download_cloud_resources_count_vo.h"
-#include "get_batch_download_cloud_resources_size_vo.h"
 #include "batch_download_resources_task_dao.h"
 #include "cloud_media_retain_smart_data.h"
 
@@ -76,7 +74,6 @@ public:
         int64_t &insertCount, std::vector<DownloadResourcesTaskPo> &newTaskPos, int32_t taskSeq);
     EXPORT int32_t StartBatchDownloadCloudResources(StartBatchDownloadCloudResourcesReqBody &reqBody,
         StartBatchDownloadCloudResourcesRespBody &respBody);
-    EXPORT int32_t SetNetworkPolicyForBatchDownload(SetNetworkPolicyForBatchDownloadReqBody &reqBody);
     EXPORT int32_t ResumeBatchDownloadCloudResources(ResumeBatchDownloadCloudResourcesReqBody &reqBody);
     EXPORT int32_t PauseBatchDownloadCloudResources(PauseBatchDownloadCloudResourcesReqBody &reqBody);
     EXPORT int32_t CancelBatchDownloadCloudResources(CancelBatchDownloadCloudResourcesReqBody &reqBody);
@@ -84,13 +81,10 @@ public:
     GetBatchDownloadCloudResourcesStatusReqBody &reqBody, GetBatchDownloadCloudResourcesStatusRespBody &respBody);
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesCount(
         GetBatchDownloadCloudResourcesCountReqBody &reqBody, GetBatchDownloadCloudResourcesCountRespBody &respBody);
-    EXPORT int32_t GetCloudMediaBatchDownloadResourcesSize(
-        GetBatchDownloadCloudResourcesSizeReqBody &reqBody, GetBatchDownloadCloudResourcesSizeRespBody &respBody);
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_DOWNLOAD
     EXPORT void CleanDownloadTasksTable();
 #endif
     EXPORT static int32_t DeleteEditdata(const std::string &path);
-
 private:
     CloudMediaAssetManager() {}
     ~CloudMediaAssetManager() {}

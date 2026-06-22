@@ -92,6 +92,8 @@ void Metadata::InitV2()
         &Metadata::SetFileSourceType);
     memberFuncMap_[PhotoColumn::PHOTO_VIDEO_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetVideoMode);
+    memberFuncMap_[PhotoColumn::PHOTO_NEED_THUMBNAIL] = make_pair(ResultSetDataType::TYPE_INT32,
+        &Metadata::SetNeedThumbnail);
 }
 
 void Metadata::Init()
@@ -706,6 +708,16 @@ void Metadata::SetLocalAssetSize(const VariantData &localAssetSize)
 int64_t Metadata::GetLocalAssetSize() const
 {
     return localAssetSize_;
+}
+
+void Metadata::SetNeedThumbnail(const VariantData &needThumbnail)
+{
+    needThumbnail_ = std::get<int32_t>(needThumbnail);
+}
+
+int32_t Metadata::GetNeedThumbnail() const
+{
+    return needThumbnail_;
 }
 // LCOV_EXCL_STOP
 } // namespace Media

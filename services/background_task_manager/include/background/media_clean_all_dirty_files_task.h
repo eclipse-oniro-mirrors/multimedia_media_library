@@ -148,6 +148,7 @@ private:
     bool ExistEditFlagInDBByPath(const std::string &path);
     int32_t UpdateNoneEditTimeByPath(std::string &path, int64_t editTime,
         int32_t editDataExist);
+    bool IsJpgImageFile(const std::string &fileName);
 
     std::mutex filesCacheSetMtx_;
     std::mutex fileIdsCacheSetMtx_;

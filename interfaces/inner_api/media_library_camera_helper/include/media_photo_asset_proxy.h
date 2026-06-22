@@ -27,7 +27,6 @@
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
-using LowQualityMemoryNumHandler = std::function<void(int32_t)>;
 struct PhotoAssetProxyCallerInfo {
     uint32_t callingUid;
     int32_t userId;
@@ -47,6 +46,23 @@ struct PhotoAssetProxyCallerInfo {
     }
 };
 
+struct CameraPresetPara {
+    CameraShotType cameraShotType;
+    SaveImageType saveImageType;
+    SaveVideoType saveVideoType;
+
+    std::string ToString() const
+    {
+        std::stringstream ss;
+        ss << "{"
+           << "\"cameraShotType\": \"" << std::to_string(static_cast<int32_t>(this->cameraShotType)) << "\","
+           << "\"saveImageType\": \"" << std::to_string(static_cast<int32_t>(this->saveImageType)) << "\","
+           << "\"saveVideoType\": \"" << std::to_string(static_cast<int32_t>(this->saveVideoType))
+           << "}";
+        return ss.str();
+    }
+};
+
 class VideoAttrs : public RefBase {
 public:
     VideoAttrs() {}
@@ -58,47 +74,55 @@ public:
 class PhotoAssetProxy {
 public:
     PhotoAssetProxy();
-    PhotoAssetProxy(std::shared_ptr<DataShare::DataShareHelper> dataShareHelper,
+    PhotoAssetProxy(const std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
         const PhotoAssetProxyCallerInfo &callerInfo, CameraShotType cameraShotType, int32_t videoCount);
+    PhotoAssetProxy(const std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
+        const PhotoAssetProxyCallerInfo &callerInfo, const CameraPresetPara &presetPara);
     ~PhotoAssetProxy();
 
     EXPORT std::string GetPhotoAssetUri();
     EXPORT void AddPhotoProxy(const sptr<PhotoProxy> &photoProxy);
+
+    // 当前该接口不适配: yuv、先录后编
+    EXPORT void AddPhotoProxy(const sptr<PhotoProxy> &editPhotoProxy, const sptr<PhotoProxy> &srcPhotoProxy,
+        const std::string &editData);
     EXPORT int32_t GetVideoFd(VideoType videoType);
     EXPORT void NotifyVideoSaveFinished(VideoType videoType);
     EXPORT void UpdatePhotoProxy(const sptr<PhotoProxy> &photoProxy);
-// LCOV_EXCL_START
-    EXPORT void RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func);
-    EXPORT void UnregisterPhotoStateCallback();
-// LCOV_EXCL_STOP
 
 private:
-    void CreatePhotoAsset(const sptr<PhotoProxy> &photoProxy);
+    void CreatePhotoAsset(const sptr<PhotoProxy>& photoProxy, const std::string& editData, const int32_t pipelineType);
+    bool InitAssetValues(const sptr<PhotoProxy> &photoProxy, DataShare::DataShareValuesBucket &values);
+    void UpdateValuesForExtInfo(const sptr<PhotoProxy> &photoProxy, DataShare::DataShareValuesBucket &values);
+
     static int SaveImage(int fd, const std::string &uri, const std::string &photoId, void *output, size_t writeSize);
     static int PackAndSaveImage(int fd, const std::string &uri, const sptr<PhotoProxy> &photoProxy);
-    DataShare::DataShareValuesBucket HandleAssetValues(const sptr<PhotoProxy> &photoProxy,
-        const std::string &displayName, const MediaType &mediaType);
     static int32_t AddProcessImage(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
         const sptr<PhotoProxy> &photoProxy, int32_t fileId, int32_t subType, const std::string &packageName);
     static int32_t AddProcessVideo(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
         const sptr<PhotoProxy> &photoProxy, int32_t fileId, int32_t VideoCount);
-    static int SaveLowQualityPhoto(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
-    const sptr<PhotoProxy> &photoProxy, int32_t fileId, int32_t subType);
-    static void DealWithLowQualityPhoto(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper, int fd,
-        const std::string &uri, const sptr<PhotoProxy> &photoProxy);
+
+     // imgae落盘
+    void SaveFileForImage(const sptr<PhotoProxy> &editPhotoProxy, const sptr<PhotoProxy> &srcPhotoProxy);
+    void DealWithLowQualityPhoto(int fd, const sptr<PhotoProxy> &photoProxy, const int32_t pathType);
+    int32_t CloseFd(const int32_t fd, const int32_t pathType);
+
     static void SetShootingModeAndGpsInfo(const uint8_t *data, uint32_t size,
         const sptr<PhotoProxy> &photoProxy, int fd);
     static std::string LocationValueToString(double value);
 
-    static void SetPhotoIdForAsset(const sptr<PhotoProxy> &photoProxy, DataShare::DataShareValuesBucket &values);
-    static std::string GetPhotoIdForAsset(const sptr<PhotoProxy> &photoProxy);
-    static int32_t RegisterLowQualityMemoryNumObserver(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper);
-    static int32_t UnregisterLowQualityMemoryNumObserver(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper);
+    // tool
+    int32_t CreateFileFdForCamera(const int32_t pathType);
+    void ScanCameraFile(const int32_t pathType);
+    static void GetPhotoIdForAsset(const sptr<PhotoProxy> &photoProxy, const PhotoSubType& type, std::string& photoId);
 
+private:
     sptr<PhotoProxy> photoProxy_;
     int32_t fileId_ {0};
     std::string uri_;
     CameraShotType cameraShotType_ = CameraShotType::IMAGE;
+    SaveImageType saveImageType_ = SaveImageType::UNDEFINED;
+    SaveVideoType saveVideoType_ = SaveVideoType::UNDEFINED;
     uint32_t callingUid_ {0};
     int32_t userId_ {0};
     int32_t videoCount_ {1};

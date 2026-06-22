@@ -85,7 +85,7 @@ static void ParseTaskSignalListener(napi_env env, napi_value options, MediaLibra
     CHECK_NULL_PTR_RETURN_VOID(ctx->cloneCtx.callback, "callback is null");
 
     auto cancelCallback = [ctx]() {
-        NAPI_INFO_LOG("TaskSignal cancel callback triggered, %{pbulic}d", ctx->cloneCtx.requestId);
+        NAPI_INFO_LOG("TaskSignal cancel callback triggered, %{public}d", ctx->cloneCtx.requestId);
         if (ctx != nullptr && ctx->cloneCtx.callback != nullptr) {
             ctx->cloneCtx.callback->SetCancelled(ctx->cloneCtx.requestId);
         }
@@ -198,6 +198,28 @@ static void ExecuteCloneToAlbum(napi_env env, void *data)
     NAPI_INFO_LOG("ExecuteCloneToAlbum end error:%{public}d", ctx->cloneCtx.callback->GetErrorCode());
 }
 
+static std::vector<std::shared_ptr<FileAsset>> GetFileAssetFormResult(
+    std::shared_ptr<DataShare::DataShareResultSet> resultSet)
+{
+    if (resultSet == nullptr) {
+        NAPI_ERR_LOG("resultSet error is null");
+        return {};
+    }
+    auto fetchResult = make_unique<FetchResult<FileAsset>>(resultSet);
+    if (fetchResult == nullptr) {
+        NAPI_ERR_LOG("fetchResult error is null");
+        return {};
+    }
+    std::vector<std::shared_ptr<FileAsset>> newFileAssets;
+    auto file = fetchResult->GetFirstObject();
+    while (file != nullptr) {
+        auto newFileAsset = std::shared_ptr<FileAsset>(std::move(file));
+        newFileAssets.push_back(newFileAsset);
+        file = fetchResult->GetNextObject();
+    }
+    return newFileAssets;
+}
+
 static void CompleteCloneToAlbum(napi_env env, napi_status status, void *data)
 {
     NAPI_INFO_LOG("CompleteCloneToAlbum start");
@@ -210,20 +232,16 @@ static void CompleteCloneToAlbum(napi_env env, napi_status status, void *data)
     napi_value jsFileArray = nullptr;
     size_t i = 0;
     auto cloneErrCode = context->cloneCtx.callback->GetErrorCode();
-    auto resultSet = context->cloneCtx.callback->GetResultSet();
-    auto fetchResult = make_unique<FetchResult<FileAsset>>(resultSet);
-    std::vector<std::shared_ptr<FileAsset>> newFileAssets;
-    auto file = fetchResult->GetFirstObject();
-    while (file != nullptr) {
-        auto newFileAsset = std::shared_ptr<FileAsset>(std::move(file));
-        newFileAssets.push_back(newFileAsset);
-        file = fetchResult->GetNextObject();
-    }
+    std::vector<std::shared_ptr<FileAsset>> newFileAssets =
+        GetFileAssetFormResult(context->cloneCtx.callback->GetResultSet());
     napi_create_array_with_length(env, newFileAssets.size(), &jsFileArray);
     if (cloneErrCode == ERR_DEFAULT) {
         for (i = 0; i < newFileAssets.size(); i++) {
             std::shared_ptr<FileAsset> newFileAsset = newFileAssets.at(i);
             CHECK_NULL_PTR_RETURN_VOID(newFileAsset, "newFileAset is null.");
+            std::string newFileAssetUri = MediaFileUtils::GetFileAssetUri(newFileAsset->GetPath(),
+                newFileAsset->GetDisplayName(), newFileAsset->GetId());
+            newFileAsset->SetUri(MediaFileUtils::Encode(newFileAssetUri));
             newFileAsset->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);
             napi_value jsFileAsset = FileAssetNapi::CreatePhotoAsset(env, newFileAsset);
             if ((jsFileAsset == nullptr) || (napi_set_element(env, jsFileArray, i, jsFileAsset) != napi_ok)) {
@@ -250,12 +268,44 @@ static void CompleteCloneToAlbum(napi_env env, napi_status status, void *data)
     CleanupReferences(env, context);
 }
 
+napi_value GetNapiValueArray(napi_env env, napi_value arg, vector<napi_value> &values)
+{
+    bool isArray = false;
+    CHECK_ARGS(env, napi_is_array(env, arg, &isArray), JS_E_PARAM_INVALID);
+    if (!isArray) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check array type");
+        return nullptr;
+    }
+
+    uint32_t len = 0;
+    CHECK_ARGS(env, napi_get_array_length(env, arg, &len), JS_E_PARAM_INVALID);
+    if (len == 0) {
+        napi_value result = nullptr;
+        CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_PARAM_INVALID);
+        return result;
+    }
+
+    for (uint32_t i = 0; i < len; i++) {
+        napi_value value = nullptr;
+        CHECK_ARGS(env, napi_get_element(env, arg, i, &value), JS_E_PARAM_INVALID);
+        if (value == nullptr) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to get element");
+            return nullptr;
+        }
+        values.push_back(value);
+    }
+
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_E_PARAM_INVALID);
+    return result;
+}
+
 static napi_value ParseFileAssetArray(napi_env env, napi_value arg, std::vector<std::string>& assetArray)
 {
     vector<napi_value> napiValues;
     napi_valuetype valueType = napi_undefined;
     FileAssetNapi *obj = nullptr;
-    CHECK_NULLPTR_RET(MediaLibraryNapiUtils::GetNapiValueArray(env, arg, napiValues));
+    CHECK_NULLPTR_RET(GetNapiValueArray(env, arg, napiValues));
     for (const auto &napiValue : napiValues) {
         CHECK_ARGS(env, napi_typeof(env, napiValue, &valueType), JS_E_PARAM_INVALID);
         CHECK_COND_WITH_ERR_MESSAGE(env, valueType == napi_object, JS_E_PARAM_INVALID, "Invalid argument type");
@@ -389,7 +439,14 @@ static void CompleteCloneToDir(napi_env env, napi_status status, void *data)
         napi_create_array_with_length(env, fileUris.size(), &jsFileArray);
         for (i = 0; i < fileUris.size(); i++) {
             napi_get_undefined(env, &jsFileAsset);
-            napi_create_string_utf8(env, fileUris[i].c_str(), NAPI_AUTO_LENGTH, &jsFileAsset);
+            if (napi_create_string_utf8(env,
+                MediaFileUtils::Encode(fileUris[i]).c_str(), NAPI_AUTO_LENGTH, &jsFileAsset) != napi_ok) {
+                NAPI_ERR_LOG("Failed to create file uri string");
+                napi_get_undefined(env, &jsContext->data);
+                MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, ERR_MEM_ALLOCATION,
+                    "Failed to create js object");
+                break;
+            }
             if (napi_set_element(env, jsFileArray, i, jsFileAsset) != napi_ok) {
                 NAPI_ERR_LOG("Failed to get file asset napi object");
                 napi_get_undefined(env, &jsContext->data);
@@ -508,7 +565,7 @@ static void CompleteCloneAssetsByPath(napi_env env, napi_status status, void *da
         napi_create_array_with_length(env, fileUris.size(), &jsFileArray);
         for (i = 0; i < fileUris.size(); i++) {
             napi_get_undefined(env, &jsFileAsset);
-            napi_create_string_utf8(env, fileUris[i].c_str(), NAPI_AUTO_LENGTH, &jsFileAsset);
+            napi_create_string_utf8(env, MediaFileUtils::Encode(fileUris[i]).c_str(), NAPI_AUTO_LENGTH, &jsFileAsset);
             if (napi_set_element(env, jsFileArray, i, jsFileAsset) != napi_ok) {
                 NAPI_ERR_LOG("Failed to get file asset napi object");
                 napi_get_undefined(env, &jsContext->data);

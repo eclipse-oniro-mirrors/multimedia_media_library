@@ -77,7 +77,7 @@ public:
     EXPORT static void RemovePhotoInProgress(const std::string &photoId, bool isRestorable);
     static void UpdatePhotoInProgress(const std::string &photoId);
     static bool ClearPhotoInProcessRequestCount(const std::string &photoId);
-    static bool IsPhotoInProcess(const std::string &photoId);
+    EXPORT static bool IsPhotoInProcess(const std::string &photoId);
     static int32_t UpdatePhotoInProcessRequestCount(const std::string &photoId, RequestType requestType,
         const std::string& bundleName);
     static std::string GetProcessingPhotoId(int32_t fileId);

@@ -127,7 +127,7 @@ HWTEST_F(CloudMediaSyncServiceDaoTest, CloudMediaAlbumDao_HandleLPathAndAlbumTyp
     int32_t ret = albumDao.HandleLPathAndAlbumType(record);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(record.albumType, PhotoAlbumType::SOURCE);
-    EXPECT_EQ(record.albumSubType, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER);
+    EXPECT_EQ(record.albumSubType, PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
 }
 
 HWTEST_F(CloudMediaSyncServiceDaoTest, CloudMediaAlbumDao_ReplaceCoverUriCondition_Test_001, TestSize.Level1)

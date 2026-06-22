@@ -956,7 +956,15 @@ bool ThumbnailUtils::CacheLcdInfo(ThumbRdbOpt &opts, ThumbnailData &data)
     if (GetLocalThumbSize(data, ThumbnailType::LCD, lcdSize)) {
         SetThumbnailSizeValue(values, lcdSize, PhotoColumn::PHOTO_LCD_SIZE);
     }
-
+    std::string suffixes[] = {THUMBNAIL_LCD_EX_SUFFIX, THUMBNAIL_LCD_SUFFIX};
+    size_t lcdFileSize = 0;
+    for (const auto& suffix : suffixes) {
+        std::string lcdCloudPath = GetThumbnailPath(data.path, suffix);
+        if (!lcdCloudPath.empty() && MediaFileUtils::GetFileSize(lcdCloudPath, lcdFileSize)) {
+            values.PutLong(PhotoColumn::PHOTO_LCD_FILE_SIZE, static_cast<int64_t>(lcdFileSize));
+            break;
+        }
+    }
     return true;
 }
 
@@ -2010,6 +2018,34 @@ int32_t ThumbnailUtils::QueryRegenerateAstcInfos(ThumbRdbOpt &opts, vector<Thumb
     CHECK_AND_RETURN_RET_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfos(opts.store, rdbPredicates, column, infos),
         E_ERR, "QueryThumbnailDataInfos failed");
     return E_OK;
+}
+
+size_t ThumbnailUtils::CalcLcdFileSize(const std::string &lcdExPath, const std::string &lcdPath)
+{
+    std::string paths[] = {lcdExPath, lcdPath};
+    for (const auto& path : paths) {
+        size_t lcdFileSize = 0;
+        if (!path.empty() && MediaFileUtils::GetFileSize(path, lcdFileSize)) {
+            return lcdFileSize;
+        }
+    }
+    return 0;
+}
+
+bool ThumbnailUtils::CalcLcdSize(const std::string &lcdPath, std::string &lcdSizeStr)
+{
+    if (lcdPath.empty()) {
+        MEDIA_ERR_LOG("lcdPath is empty");
+        return false;
+    }
+    Size lcdSize = {0, 0};
+    if (!GetThumbSizeByPath(lcdPath, lcdSize) || lcdSize.width <= 0 || lcdSize.height <= 0) {
+        MEDIA_ERR_LOG("failed to get lcd size, lcdPath: %{public}s, width: %{public}d, height: %{public}d",
+            DfxUtils::GetSafePath(lcdPath).c_str(), lcdSize.width, lcdSize.height);
+        return false;
+    }
+    lcdSizeStr = std::to_string(lcdSize.width) + ":" + std::to_string(lcdSize.height);
+    return true;
 }
 // LCOV_EXCL_STOP
 } // namespace Media

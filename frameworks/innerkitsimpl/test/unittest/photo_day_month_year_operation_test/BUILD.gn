@@ -38,7 +38,6 @@ ohos_unittest("photo_day_month_year_operation_test") {
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/photo_day_month_year_operation_test.cpp",
     "./src/mock_medialibrary_subscriber.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/media_upgrade.cpp",
   ]
 
   deps = [
@@ -66,7 +65,6 @@ ohos_unittest("photo_day_month_year_operation_test") {
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
-    "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

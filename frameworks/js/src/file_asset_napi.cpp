@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 
 #include "accesstoken_kit.h"
+#include "dfx_system_photo_keys.h"
 #include "exif_rotate_utils.h"
 #include "fetch_result.h"
 #include "file_uri.h"
@@ -3109,12 +3110,25 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::UNIQUE_ID,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         PhotoColumn::PHOTO_HIDDEN_TIME,
+        PhotoColumn::PHOTO_RISK_STATUS,
+        PhotoColumn::ATTACHMENT_SIZE,
+        PhotoColumn::PHOTO_LCD_FILE_SIZE,
+        PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
-    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end() && !MediaLibraryNapiUtils::IsSystemApp()) {
+    if (MediaLibraryNapiUtils::IsSystemApp()) {
+        return E_SUCCESS;
+    }
+
+    if (SYSTEM_API_KEYS.find(key) != SYSTEM_API_KEYS.end()) {
         NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This key can only be used by system apps");
         return E_CHECK_SYSTEMAPP_FAIL;
     }
+
+    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
+        NAPI_ERR_LOG("Report Third party application failed, key:%{public}s", key.c_str());
+    }
+
     return E_SUCCESS;
 }
 
@@ -4325,6 +4339,7 @@ static shared_ptr<FileAsset> getFileAsset(const std::string fileAssetId, const i
     }
     auto fetchResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
     shared_ptr<FileAsset> newFileAsset = fetchResult->GetFirstObject();
+    CHECK_AND_RETURN_RET_LOG(newFileAsset != nullptr, nullptr, "newFileAsset is nullptr");
     string newFileAssetUri = MediaFileUtils::GetFileAssetUri(newFileAsset->GetPath(), newFileAsset->GetDisplayName(),
         newFileAsset->GetId());
     newFileAsset->SetUri(newFileAssetUri);

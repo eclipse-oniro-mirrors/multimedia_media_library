@@ -155,6 +155,11 @@ bool PhotosPo::ShouldHandleAsLakeFile() const
     return !this->storagePath.value_or("").empty();
 }
 
+bool PhotosPo::ShouldHandleAsFileManager() const
+{
+    return this->fileSourceType.value_or(0) == static_cast<int32_t>(FileSourceType::FILE_MANAGER);
+}
+
 std::string PhotosPo::BuildFileUri() const
 {
     std::string filePath = this->data.value_or("");

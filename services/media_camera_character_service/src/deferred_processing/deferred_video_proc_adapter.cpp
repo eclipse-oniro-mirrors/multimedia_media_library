@@ -32,7 +32,6 @@ using namespace OHOS::CameraStandard;
 
 namespace OHOS {
 namespace Media {
-const int32_t MIN_FDS_LENGTH = 4;
 
 enum FdIndex {
     LOW_SRC_FD_INDEX = 0,  // 低源文件描述符索引
@@ -83,40 +82,25 @@ void DeferredVideoProcessingAdapter::EndSynchronize()
 #endif
 }
 
-void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId,
-    int32_t srcFd, int32_t dstFd)
+void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId, const std::string &srcPath,
+    const std::string &sharedTemp1Path, const std::string &sharedTemp2Path)
 {
 #ifdef ABILITY_CAMERA_SUPPORT
     MEDIA_INFO_LOG("SingleSrcFd, videoId: %{public}s", videoId.c_str());
     CHECK_AND_RETURN_LOG(deferredVideoProcSession_ != nullptr,
         "AddVideo deferredVideoProcSession_ is nullptr");
-    CHECK_AND_RETURN_LOG(srcFd >= 0, "AddVideo srcFd is %{public}d", srcFd);
-    CHECK_AND_RETURN_LOG(dstFd >= 0, "AddVideo dstFd is %{public}d", dstFd);
-    auto src = sptr<IPCFileDescriptor>::MakeSptr(srcFd);
-    auto dst = sptr<IPCFileDescriptor>::MakeSptr(dstFd);
-    deferredVideoProcSession_->AddVideo(videoId, src, dst);
+    deferredVideoProcSession_->AddVideo(videoId, srcPath, sharedTemp1Path, sharedTemp2Path);
 #endif
 }
 
-void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId, const std::vector<int32_t> &fds)
+void DeferredVideoProcessingAdapter::AddVideo(const std::string &videoId, const std::string &srcPath,
+    const std::string &sharedTemp1Path, const std::string &sharedTemp2Path, const std::string &moviePath)
 {
 #ifdef ABILITY_CAMERA_SUPPORT
     MEDIA_INFO_LOG("DoubleSrcFd, videoId: %{public}s", videoId.c_str());
     CHECK_AND_RETURN_LOG(deferredVideoProcSession_ != nullptr,
         "AddVideo deferredVideoProcSession_ is nullptr");
-    CHECK_AND_RETURN_LOG(fds.size() >= MIN_FDS_LENGTH, "AddVideo fds size < MIN_FDS_LENGTH");
-    CHECK_AND_RETURN_LOG(fds[LOW_SRC_FD_INDEX] >= 0, "AddVideo lowSrcFd is %{public}d", fds[LOW_SRC_FD_INDEX]);
-    CHECK_AND_RETURN_LOG(fds[DST_FD_INDEX] >= 0, "AddVideo dstFd is %{public}d", fds[DST_FD_INDEX]);
-    CHECK_AND_RETURN_LOG(fds[SRC_FD_INDEX] >= 0, "AddVideo srcFd is %{public}d", fds[SRC_FD_INDEX]);
-    CHECK_AND_RETURN_LOG(fds[SRC_FD_COPY_INDEX] >= 0, "AddVideo srcFdCopy is %{public}d", fds[SRC_FD_COPY_INDEX]);
-
-    std::vector<sptr<IPCFileDescriptor>> ipcFds;
-    for (int32_t fd : fds) {
-        auto ipcFd = sptr<IPCFileDescriptor>::MakeSptr(fd);
-        ipcFds.emplace_back(ipcFd);
-    }
-
-    deferredVideoProcSession_->AddVideo(videoId, ipcFds);
+    deferredVideoProcSession_->AddVideo(videoId, srcPath, sharedTemp1Path, sharedTemp2Path, moviePath);
 #endif
 }
 

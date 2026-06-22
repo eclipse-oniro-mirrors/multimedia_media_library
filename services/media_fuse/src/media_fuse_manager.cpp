@@ -521,7 +521,7 @@ static bool IsHighPixelPicture(const string &fileId)
         width = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_WIDTH);
         height = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_HEIGHT);
     }
-    if (width * height >= HIGH_PIXEL_SIZE) {
+    if (IsHighPixel(width, height)) {
         return true;
     }
     return false;

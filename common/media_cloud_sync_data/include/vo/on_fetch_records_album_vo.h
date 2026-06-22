@@ -44,6 +44,8 @@ public:
         int32_t coverUriSource;
         std::string coverCloudId;
         std::string uniqueId;
+        int32_t sceneId;
+        int32_t shareType;
 
     public:  // functions of Parcelable.
         virtual ~AlbumReqData() = default;

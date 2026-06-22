@@ -41,6 +41,7 @@ public:
     static int32_t CheckPublicCreateAssetForApp(const CreateAssetForAppReqBody &reqBody);
     static int32_t CheckSystemCreateAssetForApp(const CreateAssetForAppReqBody &reqBody);
     static int32_t CheckCreateAssetForAppWithAlbum(const CreateAssetForAppReqBody &reqBody);
+    static int32_t CheckCreateAssetWithAlbum(const CreateAssetsWithAlbumReqBody &reqBody);
     static int32_t CheckCreatePhotoAlbum(const CreateAlbumReqBody &reqBody);
     static int32_t CheckSetAssetTitle(const ModifyAssetsReqBody &reqBody);
     static int32_t CheckSetAssetPending(const ModifyAssetsReqBody &reqBody);

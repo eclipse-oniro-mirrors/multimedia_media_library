@@ -53,6 +53,14 @@ const string PhotoAlbumColumns::UPLOAD_STATUS = "upload_status";
 const string PhotoAlbumColumns::ALBUM_HIDDEN = "hidden";
 const string PhotoAlbumColumns::UNIQUE_ID = "unique_id";
 const string PhotoAlbumColumns::ALBUM_FILE_HIDDEN = "file_hidden";
+const string PhotoAlbumColumns::ALBUM_SCENE_ID = "scene_id";
+const string PhotoAlbumColumns::ALBUM_SHARE_TYPE = "share_type";
+const string PhotoAlbumColumns::COVER_ORDER_KEY = "cover_order_key";
+const string PhotoAlbumColumns::COVER_ORDER_SUBKEY = "cover_order_subkey";
+const string PhotoAlbumColumns::COVER_ORDER_TYPE = "cover_order_type";
+const string PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY = "hidden_cover_order_key";
+const string PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY = "hidden_cover_order_subkey";
+const string PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE = "hidden_cover_order_type";
 
 // For api9 compatibility
 const string PhotoAlbumColumns::ALBUM_RELATIVE_PATH = "relative_path";
@@ -205,7 +213,15 @@ const string PhotoAlbumColumns::CREATE_TABLE = CreateTable() +
     ALBUM_HIDDEN + " INT NOT NULL DEFAULT 0, " +
     CHANGE_TIME + " BIGINT NOT NULL DEFAULT 0, " +
     UNIQUE_ID + " TEXT DEFAULT NULL, " +
-    ALBUM_FILE_HIDDEN + " INT NOT NULL DEFAULT 0" +
+    ALBUM_FILE_HIDDEN + " INT NOT NULL DEFAULT 0, " +
+    ALBUM_SCENE_ID + " INT DEFAULT 0, " +
+    ALBUM_SHARE_TYPE + " INT DEFAULT 0, " +
+    COVER_ORDER_KEY + " TEXT DEFAULT NULL, " +
+    COVER_ORDER_SUBKEY + " TEXT DEFAULT NULL, " +
+    COVER_ORDER_TYPE + " INT NOT NULL DEFAULT 0, " +
+    HIDDEN_COVER_ORDER_KEY + " TEXT DEFAULT NULL, " +
+    HIDDEN_COVER_ORDER_SUBKEY + " TEXT DEFAULT NULL, " +
+    HIDDEN_COVER_ORDER_TYPE + " INT NOT NULL DEFAULT 0 " +
     ")";
 
 // Create indexes
@@ -262,6 +278,11 @@ bool PhotoAlbumColumns::IsPhotoAlbumColumn(const string &columnName)
         PhotoAlbumColumns::ALBUM_RELATIVE_PATH, CONTAINS_HIDDEN, HIDDEN_COUNT, HIDDEN_COVER, ALBUM_LPATH,
         PhotoAlbumColumns::COVER_URI_SOURCE, PhotoAlbumColumns::UPLOAD_STATUS,
         PhotoAlbumColumns::ALBUM_HIDDEN, PhotoAlbumColumns::CHANGE_TIME,
+        PhotoAlbumColumns::UNIQUE_ID, PhotoAlbumColumns::ALBUM_SHARE_TYPE,
+        PhotoAlbumColumns::ALBUM_CLOUD_ID, PhotoAlbumColumns::ALBUM_SCENE_ID,
+        PhotoAlbumColumns::COVER_ORDER_KEY, PhotoAlbumColumns::COVER_ORDER_SUBKEY,
+        PhotoAlbumColumns::COVER_ORDER_TYPE, PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY,
+        PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY, PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE,
     };
     return PHOTO_ALBUM_COLUMNS.find(columnName) != PHOTO_ALBUM_COLUMNS.end();
 }

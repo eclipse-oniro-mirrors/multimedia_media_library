@@ -81,14 +81,6 @@ public:
         std::vector<std::string> &fileIds, const int32_t status, const bool isUpdateTimeStamp);
     EXPORT int32_t HandleDuplicateAddTask(std::vector<DownloadResourcesTaskPo> &taskPos);
     EXPORT int32_t HandleAddExistedDownloadTasks(std::vector<std::string> &fileIds);
-    EXPORT int32_t HandleAddExistedDownloadTasksSeq(std::vector<std::string> &fileIds, int32_t seq);
-
-    // set networkPolicy
-    EXPORT int32_t UpdateNetworkPolicyDownloadTasks(std::vector<std::string> &fileIds,
-        BatchDownloadNetWorkPolicyType networkPolicy);
-    EXPORT int32_t UpdateAllDownloadResourcesNetworkPolicy(BatchDownloadNetWorkPolicyType networkPolicy);
-    EXPORT int32_t UpdateStatusAllFailAndAutoPauseToWaiting();
-    EXPORT int32_t UpdateStatusFailAndAutoPauseToWaiting(const std::vector<std::string> &fileIds);
 
     // resume
     EXPORT int32_t UpdateResumeDownloadResourcesInfo(const std::vector<std::string> &fileIds);
@@ -97,8 +89,6 @@ public:
     EXPORT int32_t UpdateStatusPauseToDownloading(const std::vector<std::string> &fileIds);
 
     EXPORT int32_t UpdateResumeAllDownloadResourcesInfo();
-    EXPORT int32_t UpdateAutoPauseAllDownloadByNetWorkPolicy();
-    EXPORT int32_t UpdateAutoPauseForFileIdByNetWorkPolicy(const std::vector<std::string> &fileIds);
     EXPORT int32_t UpdateAllStatusFailedToWaiting();
     EXPORT int32_t UpdateAllStatusPauseToWaiting();
     EXPORT int32_t UpdateAllStatusPauseToDownloading();
@@ -120,8 +110,6 @@ public:
         NativeRdb::RdbPredicates &predicates, std::vector<DownloadResourcesTaskPo> &downloadResourcesTasks);
     EXPORT int32_t QueryCloudMediaBatchDownloadResourcesCount(
         NativeRdb::RdbPredicates &predicates, int32_t &count);
-    EXPORT int32_t QueryCloudMediaBatchDownloadResourcesSize(
-        NativeRdb::RdbPredicates &predicates, int64_t &size, int64_t &count);
 };
 } // namespace Media
 } // namespace OHOS

@@ -307,3 +307,43 @@ MEDIALIB_PHOTO_INFO:
   AUTO_PAUSE_COUNT: { type: INT32, desc: Count of batch download task that status is auto paused }
   SUCC_TOTAL_SIZE: { type: INT64, desc: Total size of batch download task that status is succeed }
   SUCC_TOTAL_TIME: { type: INT64, desc: Total time of batch download task that status is succeed }
+  FILEMANAGER_LOCAL_IMAGE_COUNT: { type: INT32, desc: Count of local images in file manager }
+  FILEMANAGER_LOCAL_VIDEO_COUNT: { type: INT32, desc: Count of local videos in file manager }
+  FILEMANAGER_CLOUD_IMAGE_COUNT: { type: INT32, desc: Count of cloud images in file manager }
+  FILEMANAGER_CLOUD_VIDEO_COUNT: { type: INT32, desc: Count of cloud videos in file manager }
+  FILEMANAGER_SHARED_IMAGE_COUNT: { type: INT32, desc: Count of shared images in file manager }
+  FILEMANAGER_SHARED_VIDEO_COUNT: { type: INT32, desc: Count of shared videos in file manager }
+  FILEMANAGER_ALBUM_COUNT: { type: INT32, desc: Count of albums in file manager }
+  UPLOAD_FILEMANAGER_ALBUM_COUNT: { type: INT32, desc: Count albums uploaded to file manager }
+
+MEDIALIB_AGING_LCD_INFO:
+  __BASE: { type: STATISTIC, level: CRITICAL, desc: Aging the statistics of the LCD image once, preserve: true }
+  CYCLE_AGING_TIME: { type: INT64, desc: Total time required for aging the LCD image once }
+  CLOUD_ONLY_NUM: { type: INT32, desc: Number of pure cloud images }
+  LOCAL_ONLY_NUM: { type: INT32, desc: Number of local images }
+  LOCAL_CLOUD_NUM: { type: INT32, desc: Number of graphs that exist both on the local and cloud }
+  ALBUM_COVER_COUNT: { type: INT32, desc: Common album cover }
+  FAVORITE_COUNT: { type: INT32, desc: Favorite image }
+  SMART_COUNT: { type: INT32, desc: Smart image }
+  AGING_LCD_NUM: { type: INT64, desc: Number of aged LCD images }
+  TIMES_PER_CYCLE: { type: INT32, desc: Number of aging times in a period }
+  FLASH_TOTAL_SIZE: { type: INT64, desc: Total flash memory space }
+  FLASH_BEFORE_SIZE: { type: INT64, desc: Remaining flash space before aging }
+  FLASH_AFTER_SIZE: { type: INT64, desc: Remaining flash space after aging }
+
+MEDIALIB_READ_LCD_INFO:
+  __BASE: { type: STATISTIC, level: CRITICAL, desc: Statistic on dotting during LCD image reading in flow mode, preserve: true }
+  SUCCESS_NUM: { type: INT32, desc: Number of successful stream reads }
+  FAIL_NUM: { type: INT32, desc: Number of failed stream read operations }
+  MOBILE_RD_SUC_NUM: { type: INT32, desc: Number of successful mobile network read requests }
+  MOBILE_RD_FAI_NUM: { type: INT32, desc: Number of failed mobile network read requests }
+  WIFI_RD_SUC_NUM: { type: INT32, desc: Number of times that the Wifi network is successfully read }
+  WIFI_RD_FAI_NUM: { type: INT32, desc: Number of failures to read the Wifi network }
+  ETHERNET_RD_SUC_NUM: { type: INT32, desc: Number of times that Ethernet data is successfully read }
+  ETHERNET_RD_FAI_NUM: { type: INT32, desc: Number of Ethernet read failures }
+  OTHER_RD_SUC_NUM: { type: INT32, desc: Number of successful read operations without network access }
+  OTHER_RD_FAI_NUM: { type: INT32, desc: Number of read failures without network access }
+  SYSTEM_APP_RD_NUM: { type: INT32, desc: Number of times system applications are read }
+  NON_SYSTEM_APP_RD_NUM: { type: INT32, desc: Number of times no system applications are read }
+  SOUTH_DEVICE_TYPE: { type: INT32, desc: Southbound device }
+  THUMBNAIL_LOW_QUALITY_NUM: { type: INT32, desc: Number of images whose short side is less than 350 pixels }

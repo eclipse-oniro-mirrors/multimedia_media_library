@@ -219,14 +219,20 @@ const std::string STAT_KEY_COMPATIBLE_DIR_MAPPING = "compatibleDirMapping";
 const std::string STAT_TYPE_LAKE_PHOTO = "ancoPhoto";
 const std::string STAT_TYPE_LAKE_VIDEO = "ancoVideo";
 const std::string STAT_TYPE_LAKE_TOTAL_SIZE = "ancoTotalSize";
+const std::string STAT_TYPE_FILE_MANAGER_PHOTO = "fileManagerPhoto";
+const std::string STAT_TYPE_FILE_MANAGER_VIDEO = "fileManagerVideo";
+const std::string STAT_TYPE_FILE_MANAGER_TOTAL_SIZE = "fileManagerTotalSize";
+
 const std::string CLONE_FILE_INFO_DB = "clone_file_info.db";
 const std::string CLONE_FILE_INFO_RESTORE_DB = "clone_file_info_restore.db";
 const std::string LAKE_FILE_INFO_TABLE = "anco_file_info";
 const std::string LAKE_FILE_INFO_FAIL_TABLE = "anco_file_info_fail";
 const std::string LAKE_FILE_INFO_DEDUPLICATION_TABLE = "anco_file_info_deduplication";
 const std::string FILE_MANAGER_INFO_TABLE = "file_manager_file_info";
+const std::string FILE_MANAGER_INFO_FAIL_TABLE = "public_file_info_fail";
+const std::string FILE_MANAGER_FILE_INFO_DEDUPLICATION_TABLE = "public_file_info_deduplication";
 const std::vector<std::string> STAT_TYPES = { STAT_TYPE_PHOTO, STAT_TYPE_VIDEO, STAT_TYPE_AUDIO,
-    STAT_TYPE_LAKE_PHOTO, STAT_TYPE_LAKE_VIDEO };
+    STAT_TYPE_LAKE_PHOTO, STAT_TYPE_LAKE_VIDEO, STAT_TYPE_FILE_MANAGER_PHOTO, STAT_TYPE_FILE_MANAGER_VIDEO };
 const std::vector<std::string> STAT_PROGRESS_TYPES = { STAT_TYPE_PHOTO_VIDEO, STAT_TYPE_AUDIO, STAT_TYPE_UPDATE,
     STAT_TYPE_THUMBNAIL, STAT_TYPE_OTHER, STAT_TYPE_ONGOING };
 
@@ -343,6 +349,7 @@ enum RestoreError {
     CLONE_RESTORE_DATABASE_CORRUPTION,
     DEDUPLICATION_FILE_SIZE_MISMATCH,
     ANCO_TRANSFER_FAILED,
+    FILE_MANAGER_TRANSFER_FAILED,
 };
 
 enum class PhotoRelatedType {
@@ -404,6 +411,7 @@ const std::unordered_map<int32_t, std::string> RESTORE_ERROR_MAP = {
     { RestoreError::CLONE_RESTORE_DATABASE_CORRUPTION, "CLONE_RESTORE_DATABASE_CORRUPTION" },
     { RestoreError::DEDUPLICATION_FILE_SIZE_MISMATCH, "DEDUPLICATION_FILE_SIZE_MISMATCH" },
     { RestoreError::ANCO_TRANSFER_FAILED, "ANCO_TRANSFER_FAILED" },
+    { RestoreError::FILE_MANAGER_TRANSFER_FAILED, "FILE_MANAGER_TRANSFER_FAILED" },
 };
 
 const std::unordered_map<PrefixType, std::string> PREFIX_MAP = {

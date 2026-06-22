@@ -78,6 +78,10 @@ const std::vector<std::string> SKIP_SCAN_DIR = {
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::RECENT_DIR,
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::BACKUP_DIR,
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::TRASH_DIR_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::VM_DOCS_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::OHPM_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::PCE_ENGINE_DIR,
+    MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::APPDATA_DIR,
 };
 
 MediaFileInterworkScanner* MediaFileInterworkScanner::GetInstance()
@@ -176,6 +180,7 @@ int32_t MediaFileInterworkScanner::ExecutePhaseTwo()
 
     ret = MediaFileInterworkUtil::SetScannerTaskStatus(TASK_STATUS_COMPLETED);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "SetScannerTaskStatus failed, ret = %{public}d", ret);
+    MediaFileInterworkUtil::ReportFileManagerFirstLoad();
     MEDIA_INFO_LOG("ExecutePhaseTwo completed successfully");
     return E_OK;
 }
@@ -465,6 +470,11 @@ vector<FileInfo> MediaFileInterworkScanner::GetFileInfos(
 {
     vector<FileInfo> restoreFiles;
     for (const auto &filePath : filePathVector) {
+        if (!MediaFileUtils::IsFileExists(filePath)) {
+            MEDIA_ERR_LOG("File [%{public}s] not exist, skip restore.",
+                MediaFileUtils::DesensitizePath(filePath).c_str());
+            continue;
+        }
         FileInfo fileInfo;
         fileInfo.fileName = MediaFileUtils::GetFileName(filePath);
         fileInfo.displayName = fileInfo.fileName;
@@ -613,6 +623,7 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
     std::vector<string> filesToInsert = GetPhotosNotExists(rdbStore, files);
     UniqueNumber uniqueNumber;
     vector<FileInfo> restoreFiles = GetFileInfos(filesToInsert, uniqueNumber);
+    CHECK_AND_RETURN_RET_INFO_LOG(!restoreFiles.empty(), E_OK, "no need to restore");
     int32_t errCode = UpdateUniqueNumber(uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "UpdateUniqueNumber failed. errCode: %{public}d", errCode);
 
@@ -621,6 +632,8 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
     CHECK_AND_RETURN_RET_LOG(SetRestoreFileAlbumId(destRestoreFiles) == E_OK, E_ERR, "get album failed");
     int32_t result = BatchInsert(destRestoreFiles);
     CHECK_AND_RETURN_RET_LOG(result == E_OK, result, "BatchInsert photos failed");
+    MediaFileInterworkUtil::AddImageAndVideoCount(uniqueNumber.imageTotalNumber, uniqueNumber.videoTotalNumber);
+    MediaFileInterworkUtil::AddAlbumCount(static_cast<int32_t>(albumCache_.size()));
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::SCAN_FILE_BUSSINESS_NAME);
     errCode = BatchUpdateTimePending(destRestoreFiles, assetRefresh);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "BatchUpdateTimePending failed. errCode: %{public}d", errCode);
@@ -737,6 +750,7 @@ void MediaFileInterworkScanner::ScanFileManager()
     if (status == TASK_STATUS_IDLE) {
         status = TASK_STATUS_PHASE_ONE;
         MediaFileInterworkUtil::SetScannerTaskStatus(status);
+        MediaFileInterworkUtil::SetLoadFirstTime();
     }
     taskThread_ = std::thread([this, status]() {
         std::lock_guard<std::mutex> lock(asyncTaskMutex_);

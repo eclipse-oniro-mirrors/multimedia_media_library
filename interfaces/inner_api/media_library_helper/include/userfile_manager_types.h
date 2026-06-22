@@ -137,8 +137,8 @@ enum PhotoAlbumSubType : int32_t {
     SYSTEM_END = CLOUD_ENHANCEMENT,
     SOURCE_START = 2049,
     SOURCE_GENERIC = SOURCE_START,
-    SOURCE_GENERIC_FROM_FILEMANAGER = 2050,
-    SOURCE_END = SOURCE_GENERIC_FROM_FILEMANAGER,
+    SOURCE_GENERIC_FROM_FILE_MANAGER = 2050,
+    SOURCE_END = SOURCE_GENERIC_FROM_FILE_MANAGER,
     ANALYSIS_START = 4097,
     CLASSIFY = ANALYSIS_START,
     GEOGRAPHY_LOCATION = 4099,
@@ -295,6 +295,24 @@ enum CoverUriSource : int32_t {
     MANUAL_CLOUD_COVER = 1,
     MANUAL_LOCAL_COVER = 2,
     MANUAL_WAIT_PULL_COVER = 3,
+};
+
+enum class DeferredEffects : int32_t {
+    DEFAULT = 0,
+    BLUR,
+    SNAP,
+    BLUR_SNAP,
+    REMOTE,
+    BLUR_REMOTE,
+    SNAP_REMOTE,
+    BLUR_SNAP_REMOTE
+};
+
+enum class DeferredEffectsStatus : int32_t {
+    ASSET_NOT_SUPPORT = -1,
+    ASSET_SUPPORT = 0,
+    USER_DEFINE_STATUS_START = 1,
+    USER_DEFINE_STATUS_END = std::numeric_limits<int32_t>::max()
 };
 
 enum OrderStyleType : int32_t {

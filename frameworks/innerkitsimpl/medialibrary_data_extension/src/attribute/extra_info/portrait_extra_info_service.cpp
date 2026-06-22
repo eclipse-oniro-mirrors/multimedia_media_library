@@ -30,7 +30,7 @@ int32_t PortraitExtraInfoService::SetOperate(const std::string &albumId,
 {
     PortraitExtraInfoRepository repository(rdbStore);
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is nullptr");
-    CHECK_AND_RETURN_RET_LOG(repository.Exists(albumId), E_INVALID_VALUES, "portrait album not found");
+    CHECK_AND_RETURN_RET_LOG(repository.Exists(albumId), E_HAS_DB_ERROR, "portrait album not found");
     CHECK_AND_RETURN_RET_LOG(!extraInfos.empty(), E_INVALID_VALUES, "extraInfos is empty");
     const std::string extraInfo = extraInfos[0];
     return repository.UpdateExtraInfo(albumId, extraInfo);
@@ -41,7 +41,7 @@ int32_t PortraitExtraInfoService::GetOperate(const int32_t &albumId, std::string
 {
     PortraitExtraInfoRepository repository(rdbStore);
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INNER_FAIL, "rdbStore is nullptr");
-    CHECK_AND_RETURN_RET_LOG(repository.Exists(std::to_string(albumId)), E_INVALID_VALUES, "portrait album not found");
+    CHECK_AND_RETURN_RET_LOG(repository.Exists(std::to_string(albumId)), E_INNER_FAIL, "portrait album not found");
     return repository.GetExtraInfo(albumId, extraInfo);
 }
 } // namespace OHOS::Media

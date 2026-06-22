@@ -20,6 +20,7 @@
 #include "user_define_ipc_client.h"
 #include "medialibrary_business_code.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_client_errno.h"
 
 namespace OHOS::Media {
 thread_local napi_ref TaskSignalNapi::sTaskSignalConstructor_ = nullptr;
@@ -125,7 +126,7 @@ napi_value TaskSignalNapi::Cancel(napi_env env, napi_callback_info info)
 
     if (taskSignal != nullptr && taskSignal->cancelCallback_ != nullptr) {
         if (taskSignal->isCancelled_.exchange(true)) {
-            NAPI_INFO_LOG("TaskSignal already cancelled");
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "TaskSignal already cancelled");
             return result;
         }
         std::lock_guard<std::mutex> lock(taskSignal->callbackMutex_);

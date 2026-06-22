@@ -355,7 +355,7 @@ void FileManagerCheckScenario::UpdateAnalysisAlbumsAndNotify(const PhotoCandidat
     std::vector<std::string> albumIds(
         candidates.affectedAnalysisAlbumIds.begin(), candidates.affectedAnalysisAlbumIds.end());
     MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, albumIds);
-    MediaFileMonitorRdbUtils::NotifyAnalysisAlbum(albumIds);
+    MediaFileMonitorRdbUtils::NotifyAlbums(albumIds, AlbumNotifyType::ANALYSIS_ALBUM);
 }
 
 int32_t FileManagerCheckScenario::RunBackwardAlbum(ScenarioContext &context)
@@ -385,7 +385,7 @@ std::vector<ConsistencyCheck::AlbumRecord> FileManagerCheckScenario::GetAlbumRec
                            "album_id > ? AND album_subtype = ? AND NOT EXISTS (SELECT 1 FROM Photos WHERE "
                            "owner_album_id = album_id) ORDER BY album_id LIMIT ?";
     std::vector<NativeRdb::ValueObject> args = {context.progress.lastAlbumId,
-        PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILEMANAGER, BATCH_SIZE};
+        PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER, BATCH_SIZE};
     auto resultSet = rdbStore->QueryByStep(querySql, args);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, albumRecords, "GetAlbumRecords failed. resultSet is nullptr");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {

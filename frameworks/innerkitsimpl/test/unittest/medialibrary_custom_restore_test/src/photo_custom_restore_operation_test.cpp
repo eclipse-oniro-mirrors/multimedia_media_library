@@ -2096,5 +2096,501 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_HandlePhotoSource
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_HandlePhotoSourceRestore_Test_002 End");
 }
+
+/*
+ * Async Worker Thread Tests
+ */
+
+// Test: AddTaskAsync queues task with mutex protection
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_AddTaskAsync_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_Test_001 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    // Clear queue
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    RestoreTaskInfo restoreTaskInfo;
+    restoreTaskInfo.keyPath = "async_test_001";
+    operatorObj.AddTaskAsync(restoreTaskInfo);
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 1);
+    EXPECT_EQ(operatorObj.taskQueue_.front().keyPath, "async_test_001");
+    // Clean up
+    operatorObj.taskQueue_.pop();
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_Test_001 End");
+}
+
+// Test: Is a single task added?
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_AddTaskAsync_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_Test_002 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    RestoreTaskInfo task;
+    task.keyPath = "task";
+    operatorObj.AddTaskAsync(task);
+    EXPECT_FALSE(operatorObj.taskQueue_.empty());
+    EXPECT_EQ(operatorObj.taskQueue_.front().keyPath, "task");
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 1);
+    MEDIA_INFO_LOG("Photo_Custom_Async_Restore_Operation_Test_002 End");
+}
+
+// Test: AddTaskAsync queues multiple tasks in order
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_AddTaskAsync_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_Test_003 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    RestoreTaskInfo task1;
+    task1.keyPath = "async_task_1";
+    RestoreTaskInfo task2;
+    task2.keyPath = "async_task_2";
+    RestoreTaskInfo task3;
+    task3.keyPath = "async_task_3";
+    operatorObj.AddTaskAsync(task1);
+    operatorObj.AddTaskAsync(task2);
+    operatorObj.AddTaskAsync(task3);
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 3);
+    EXPECT_EQ(operatorObj.taskQueue_.front().keyPath, "async_task_1");
+    // Clean up
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_Test_003 End");
+}
+
+// Test: Are multiple tasks added?
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_AddTaskAsync_Test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_Test_004 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    RestoreTaskInfo task1;
+    task1.keyPath = "task1";
+    RestoreTaskInfo task2;
+    task2.keyPath = "task2";
+    RestoreTaskInfo task3;
+    task3.keyPath = "task3";
+    operatorObj.AddTaskAsync(task1);
+    operatorObj.AddTaskAsync(task2);
+    operatorObj.AddTaskAsync(task3);
+    EXPECT_FALSE(operatorObj.taskQueue_.empty());
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 3);
+    EXPECT_EQ(operatorObj.taskQueue_.front().keyPath, "task1");
+    operatorObj.taskQueue_.pop();
+    EXPECT_EQ(operatorObj.taskQueue_.front().keyPath, "task2");
+    operatorObj.taskQueue_.pop();
+    EXPECT_EQ(operatorObj.taskQueue_.front().keyPath, "task3");
+    operatorObj.taskQueue_.pop();
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_Test_004 End");
+}
+
+// Test: StartAsync spawns worker thread
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_StartAsync_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_001 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.stopWorker_.store(false);
+    RestoreTaskInfo restoreTaskInfo;
+    restoreTaskInfo.keyPath = "start_async_test";
+    operatorObj.AddTaskAsync(restoreTaskInfo);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    // Wait briefly for worker to process
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Stop worker
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    operatorObj.workerRunning_.store(false);
+    EXPECT_EQ(operatorObj.taskQueue_.empty(), true);
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_001 End");
+}
+
+// Test: StartAsync skips when worker already running
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_StartAsync_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_002 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    operatorObj.workerRunning_.store(true);
+    operatorObj.StartAsync();
+    // Should have returned early without spawning new thread
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    operatorObj.workerRunning_.store(false);
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_002 End");
+}
+
+// Test: Does the flag correctly change from true to false?
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_StartAsync_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_003 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    EXPECT_EQ(operatorObj.workerRunning_.load(), false);
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_003 End");
+}
+
+//StartAsync restart
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_StartAsync_Test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_004 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    EXPECT_FALSE(operatorObj.workerThread_.joinable());
+    EXPECT_FALSE(operatorObj.workerRunning_.load());
+    
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    
+    RestoreTaskInfo task;
+    task.keyPath = "task";
+    operatorObj.AddTaskAsync(task);
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    int retry = 0;
+    while (!operatorObj.taskQueue_.empty() && retry < 50) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        retry++;
+    }
+    EXPECT_TRUE(operatorObj.taskQueue_.empty());
+
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    EXPECT_EQ(operatorObj.workerRunning_.load(), false);
+    MEDIA_INFO_LOG("Photo_Custom_Async_Restore_Operation_Test_004 End");
+}
+
+// Test: When called repeatedly
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_StartAsync_Test_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_005 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    EXPECT_EQ(operatorObj.workerRunning_.load(), false);
+    MEDIA_INFO_LOG("Photo_Custom_Restore_StartAsync_Test_005 End");
+}
+
+// Test: Destructor stops worker thread gracefully
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Destructor_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_Destructor_Test_001 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.stopWorker_.store(false);
+    // Start worker with no tasks - it will wait on cv
+    RestoreTaskInfo restoreTaskInfo;
+    restoreTaskInfo.keyPath = "destructor_test";
+    operatorObj.AddTaskAsync(restoreTaskInfo);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Simulate destructor behavior
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    EXPECT_EQ(operatorObj.workerRunning_.load(), false);
+    MEDIA_INFO_LOG("Photo_Custom_Restore_Destructor_Test_001 End");
+}
+
+// Test: Multiple tasks processed by worker in order
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_WorkerLoop_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_001 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.stopWorker_.store(false);
+    // Queue 3 tasks then start
+    RestoreTaskInfo task1;
+    task1.keyPath = "worker_task_1";
+    RestoreTaskInfo task2;
+    task2.keyPath = "worker_task_2";
+    RestoreTaskInfo task3;
+    task3.keyPath = "worker_task_3";
+    operatorObj.AddTaskAsync(task1);
+    operatorObj.AddTaskAsync(task2);
+    operatorObj.AddTaskAsync(task3);
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 3);
+    operatorObj.StartAsync();
+    // Wait for worker to process all tasks
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    // Stop worker
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    EXPECT_EQ(operatorObj.taskQueue_.empty(), true);
+    EXPECT_EQ(operatorObj.workerRunning_.load(), false);
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_001 End");
+}
+
+// Test: When multiple tasks arrive, are they dequeued and removed by the worker
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_WorkerLoop_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_002 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    RestoreTaskInfo task1;
+    task1.keyPath = "task_before_start1";
+    operatorObj.AddTaskAsync(task1);
+    RestoreTaskInfo task2;
+    task2.keyPath = "task_before_start2";
+    operatorObj.AddTaskAsync(task2);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    int retry = 0;
+    while (!operatorObj.taskQueue_.empty() && retry < 50) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        retry++;
+    }
+    EXPECT_TRUE(operatorObj.taskQueue_.empty());
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 0);
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_002 End");
+}
+
+// Test: Does the worker take and remove a single task from the queue?
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_WorkerLoop_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_003 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    RestoreTaskInfo task;
+    task.keyPath = "task_before_start";
+    operatorObj.AddTaskAsync(task);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    int retry = 0;
+    while (!operatorObj.taskQueue_.empty() && retry < 50) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        retry++;
+    }
+    EXPECT_TRUE(operatorObj.taskQueue_.empty());
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 0);
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_003 End");
+}
+
+// Test: If a task is added while the worker is running, is it picked up and removed?
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_WorkerLoop_Test_004, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_004 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    RestoreTaskInfo task;
+    task.keyPath = "task_after_start";
+    operatorObj.AddTaskAsync(task);
+    int retry = 0;
+    while (!operatorObj.taskQueue_.empty() && retry < 50) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        retry++;
+    }
+    EXPECT_TRUE(operatorObj.taskQueue_.empty());
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 0);
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_004 End");
+}
+
+// Test: If multiple tasks are added while the worker is running, are they picked up?
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_WorkerLoop_Test_005, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_005 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.StartAsync();
+    EXPECT_EQ(operatorObj.workerRunning_.load(), true);
+    RestoreTaskInfo task1;
+    task1.keyPath = "task1_after_start";
+    operatorObj.AddTaskAsync(task1);
+    RestoreTaskInfo task2;
+    task2.keyPath = "task2_after_start";
+    operatorObj.AddTaskAsync(task2);
+    int retry = 0;
+    while (!operatorObj.taskQueue_.empty() && retry < 50) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        retry++;
+    }
+    EXPECT_TRUE(operatorObj.taskQueue_.empty());
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 0);
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    MEDIA_INFO_LOG("Photo_Custom_Restore_WorkerLoop_Test_005 End");
+}
+
+// Test: AddTaskAsync with cancelled task
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_AsyncCancel_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AsyncCancel_Test_001 Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    operatorObj.workerRunning_.store(false);
+    operatorObj.stopWorker_.store(false);
+    // Queue a task and cancel it
+    RestoreTaskInfo task;
+    task.keyPath = "cancel_async_test";
+    operatorObj.AddTaskAsync(task);
+    operatorObj.cancelKeySet_.insert("cancel_async_test");
+    operatorObj.StartAsync();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Stop worker
+    operatorObj.stopWorker_.store(true);
+    operatorObj.queueCv_.notify_one();
+    if (operatorObj.workerThread_.joinable()) {
+        operatorObj.workerThread_.join();
+    }
+    EXPECT_EQ(operatorObj.taskQueue_.empty(), true);
+    operatorObj.workerRunning_.store(false);
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AsyncCancel_Test_001 End");
+}
+
+// Test: AddTaskAsync with empty sourceDir
+HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_AddTaskAsync_EmptySourceDir_Test, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_EmptySourceDir_Test Start");
+    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation::GetInstance();
+    while (!operatorObj.taskQueue_.empty()) {
+        operatorObj.taskQueue_.pop();
+    }
+    RestoreTaskInfo task;
+    task.keyPath = "empty_sourcedir_test";
+    task.sourceDir = "";  // empty sourceDir - should skip GetDirFiles
+    operatorObj.AddTaskAsync(task);
+    EXPECT_EQ(operatorObj.taskQueue_.size(), 1);
+    operatorObj.taskQueue_.pop();
+    MEDIA_INFO_LOG("Photo_Custom_Restore_AddTaskAsync_EmptySourceDir_Test End");
+}
 } // namespace Media
 } // namespace OHOS

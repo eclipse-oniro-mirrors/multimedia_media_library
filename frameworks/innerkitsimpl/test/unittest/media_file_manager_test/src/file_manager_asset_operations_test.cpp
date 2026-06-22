@@ -39,11 +39,15 @@ static const string SQL_INSERT_PHOTO = "INSERT INTO " + PhotoColumn::PHOTOS_TABL
 
 static int32_t ClearTable(const string &table)
 {
-    RdbPredicates predicates(table);
-
-    int32_t rows = 0;
-    int32_t err = g_rdbStore->Delete(rows, predicates);
-    if (err != E_OK) {
+    string sql = "DELETE FROM " + table;
+    int32_t err = g_rdbStore->ExecuteSql(sql);
+    if (err != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Failed to clear table, err: %{public}d", err);
+        return E_HAS_DB_ERROR;
+    }
+    sql = "UPDATE sqlite_sequence SET seq = 0 WHERE name = '" + table + "'";
+    err = g_rdbStore->ExecuteSql(sql);
+    if (err != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Failed to clear table, err: %{public}d", err);
         return E_HAS_DB_ERROR;
     }
@@ -89,7 +93,8 @@ HWTEST_F(FileManagerAssetOperationsTest, MoveAssetsFromFileManager_test_001, Tes
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('/storage/cloud/files/Photo/16/IMG_1501924305_000.jpg', 0, "
         "'/storage/media/local/files/Docs/Download/mediatool/1.jpg')");
     std::vector<std::string> ids = {"1", "2", "3", "4", "5", "6", "7", "8"};
-    int32_t ret = FileManagerAssetOperations::MoveAssetsFromFileManager(ids);
+    AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::UPDATE_TRASHED_ASSETONALBUM_BUSSINESS_NAME);
+    int32_t ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, ids, true);
     EXPECT_EQ(ret, E_OK);
 
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('/storage/cloud/files/Photo/1/IMG_1501924305_001.jpg', 1, "
@@ -97,7 +102,7 @@ HWTEST_F(FileManagerAssetOperationsTest, MoveAssetsFromFileManager_test_001, Tes
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('', 1, "
         "'/storage/media/local/files/Docs/Download/mediatool/3.jpg')");
     g_rdbStore->ExecuteSql(SQL_INSERT_PHOTO + " VALUES('/storage/cloud/files/Photo/2/IMG_1501924305_002.jpg', 1, '')");
-    ret = FileManagerAssetOperations::MoveAssetsFromFileManager(ids);
+    ret = FileManagerAssetOperations::MoveAssetsFromFileManager(assetRefresh, ids, true);
     EXPECT_NE(ret, E_OK);
 
     MEDIA_INFO_LOG("MoveAssetsFromFileManager_test_001 end");

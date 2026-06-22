@@ -85,6 +85,17 @@
 #include "acquire_debug_database_vo.h"
 #include "release_debug_database_vo.h"
 #include "compatible_info_vo.h"
+#include "ability_context.h"
+#include "application_context.h"
+#include "modal_ui_extension_config.h"
+#include "ani_base_context.h"
+#include "ui_content.h"
+#include "ui_extension_context.h"
+#include "ani_common_want.h"
+#include "short_term_callback_ani.h"
+#include "confirm_callback_ani.h"
+#include "modal_ui_callback_ani.h"
+#include "request_photo_uris_read_permission_callback_ani.h"
 #include "check_photo_uris_read_permission_vo.h"
 #include "check_db_availability_vo.h"
 #include "get_albumid_by_lpath_vo.h"
@@ -93,6 +104,10 @@
 #include "photo_album_ani.h"
 #include "change_request_move_assets_to_dir_vo.h"
 #include "change_request_move_assets_by_path_vo.h"
+#include "deep_optimize_space_ani_callback.h"
+#include "deep_optimize_space_vo.h"
+#include "media_library_error_code.h"
+#include "modify_album_default_cover_order_vo.h"
 
 namespace OHOS {
 namespace Media {
@@ -102,6 +117,7 @@ using DataShareResultSet = OHOS::DataShare::DataShareResultSet;
 using DataShareValuesBucket = OHOS::DataShare::DataShareValuesBucket;
 
 
+thread_local unique_ptr<ChangeListenerAni> g_listObj = nullptr;
 static SafeMap<int32_t, std::shared_ptr<ThumbnailBatchGenerateObserver>> thumbnailGenerateObserverMap;
 static SafeMap<int32_t, std::shared_ptr<ThumbnailGenerateHandler>> thumbnailGenerateHandlerMap;
 static std::atomic<int32_t> requestIdCounter_ = 0;
@@ -125,9 +141,12 @@ const int32_t BETA_ISSUE_ID_LENGTH = 10;
 const int32_t MAX_FILE_FD = 1023;
 const size_t MAX_PARCEL_SIZE = 200 * 1024;
 const int32_t MAX_CHECK_PHOTO_PERMISSION_URI_COUNT = 500;
+const int32_t MAX_CREATE_ASSET_LIMIT = 500;
+const std::string REAL_TIME_THUMB = "realTimeThumb";
 const int32_t URI_FORMAT_ERROR_STATE = 0;
 const int32_t NO_READ_PERMISSION_STATE = 3;
 const int32_t MAX_LPATH_BUNDLENAME_LENGTH = 255;
+constexpr int32_t CONFIRM_BOX_ARRAY_MAX_LENGTH = 100;
 
 mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
@@ -142,6 +161,14 @@ static map<string, ListenerType> ListenerTypeMaps = {
     {"albumChange", ALBUM_LISTENER},
     {"deviceChange", DEVICE_LISTENER},
     {"remoteFileChange", REMOTEFILE_LISTENER}
+};
+
+const std::vector<std::pair<std::string, std::string>> VALID_ORDER_COMBINATIONS = {
+    {"date_taken", "display_name"},
+    {"date_added", "display_name"},
+    {"display_name", "date_taken"},
+    {"size", "display_name"},
+    {"hidden_time", "display_name"}
 };
 
 const std::string SUBTYPE = "subType";
@@ -173,6 +200,25 @@ const int32_t ALBUM_ORDER_INDEX = 0;
 const int32_t ORDER_SECTION_INDEX = 1;
 const int32_t ORDER_TYPE_INDEX = 2;
 const int32_t ORDER_STATUS_INDEX = 3;
+const std::string SHORT_TERM_TAG = "shortTerm";
+const std::string SHORT_TERM_TITLE = "title";
+const std::string SHORT_TERM_EXTENSION = "extension";
+const std::string SHORT_TERM_PHOTO_TYPE = "photoType";
+const std::string SHORT_TERM_PHOTO_SUB_TYPE = "photoSubType";
+const std::string CONFIRM_BOX_PACKAGE_NAME = "com.ohos.photos";
+const std::string CONFIRM_BOX_EXT_ABILITY_NAME = "SaveUIExtensionAbility";
+const std::string CONFIRM_BOX_EXT_DEFAULT_ALBUM_NAME_ABILITY_NAME = "DefaultAlbumNameUIExtensionAbility";
+const std::string CONFIRM_BOX_EXTENSION_TYPE = "ability.want.params.uiExtensionType";
+const std::string CONFIRM_BOX_REQUEST_TYPE = "sysDialog/common";
+const std::string CONFIRM_BOX_SRC_FILE_URIS = "ability.params.stream";
+const std::string CONFIRM_BOX_TITLE_ARRAY = "titleArray";
+const std::string CONFIRM_BOX_EXTENSION_ARRAY = "extensionArray";
+const std::string CONFIRM_BOX_PHOTO_TYPE_ARRAY = "photoTypeArray";
+const std::string CONFIRM_BOX_PHOTO_SUB_TYPE_ARRAY = "photoSubTypeArray";
+const std::string TARGET_PAGE = "targetPage";
+const std::string ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE = "ability.want.params.uiExtensionTargetType";
+const int32_t DEFAULT_SESSION_ID = 0;
+const int32_t SLEEP_TIME = 10;
 
 namespace {
 const std::array photoAccessHelperMethos = {
@@ -204,6 +250,8 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperAgentCreateAssetsWithMode)},
     ani_native_function {"createAssetsForAppWithAlbumInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperAgentCreateAssetsWithAlbum)},
+    ani_native_function {"createAssetsWithAlbumInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessHelperCreateAssetsWithAlbum)},
     ani_native_function {"createPhotoAssetInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::CreatePhotoAsset)},
     ani_native_function {"getDataAnalysisProgressInner", nullptr,
@@ -316,7 +364,31 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::MoveAssetsToDir)},
     ani_native_function {"moveAssetsByPathInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::MoveAssetsByPath)},
+    ani_native_function {"startDeepOptimizeSpaceInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessStartDeepOptimizeSpace)},
+    ani_native_function {"stopDeepOptimizeSpaceInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessStopDeepOptimizeSpace)},
+    ani_native_function {"checkShortTermPermissionInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::CheckShortTermPermission)},
+    ani_native_function {"createAssetsHasPermissionInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::CreateAssetsHasPermission)},
+    ani_native_function {"createAssetWithShortTermPermissionInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::CreateAssetWithShortTermPermission)},
+    ani_native_function {"showAssetsCreationDialogInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::ShowAssetsCreationDialog)},
+    ani_native_function {"requestPhotoUrisReadPermissionInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::RequestPhotoUrisReadPermission)},
+    ani_native_function {"modifyAlbumDefaultCoverOrderInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::ModifyAlbumDefaultCoverOrder)},
+    ani_native_function {"modifyHiddenAlbumDefaultCoverOrderInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::ModifyHiddenAlbumDefaultCoverOrder)},
 };
+
+const std::array photoViewPickerMethos = {
+    ani_native_function {"startPhotoPickerInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::StartPhotoPicker)},
+};
+
 } // namespace
 
 static void SetUserIdFromObjectInfo(unique_ptr<MediaLibraryAsyncContext> &asyncContext)
@@ -848,6 +920,25 @@ ani_status MediaLibraryAni::UserFileMgrInit(ani_env *env)
     };
 
     status = env->Class_BindNativeMethods(cls, methods.data(), methods.size());
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
+        return status;
+    }
+    return ANI_OK;
+}
+
+ani_status MediaLibraryAni::PhotoViewPickerInit(ani_env *env)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    static const char *className = PAH_ANI_CLASS_PHOTO_VIEW_PICKER.c_str();
+    ani_class cls;
+    ani_status status = env->FindClass(className, &cls);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to find class: %{public}s", className);
+        return status;
+    }
+
+    status = env->Class_BindNativeMethods(cls, photoViewPickerMethos.data(), photoViewPickerMethos.size());
     if (status != ANI_OK) {
         ANI_ERR_LOG("Failed to bind native methods to: %{public}s", className);
         return status;
@@ -1765,6 +1856,12 @@ ani_object MediaLibraryAni::Constructor(ani_env *env, ani_class clazz, ani_objec
         nativeHandle->listObj_ = std::make_unique<ChangeListenerAni>(vm);
     }
 
+    if (g_listObj == nullptr) {
+        ani_vm *vm = nullptr;
+        CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
+        g_listObj = std::make_unique<ChangeListenerAni>(vm);
+    }
+
     bool isAsync = false;
     CheckWhetherAsync(env, userIdObject, isAsync);
     if (!InitUserFileClient(env, context, isAsync)) {
@@ -1804,6 +1901,12 @@ ani_object MediaLibraryAni::Constructor(ani_env *env, ani_class clazz, ani_objec
         ani_vm *vm = nullptr;
         CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
         nativeHandle->listObj_ = std::make_unique<ChangeListenerAni>(vm);
+    }
+
+    if (g_listObj == nullptr) {
+        ani_vm *vm = nullptr;
+        CHECK_COND_RET(env->GetVM(&vm) == ANI_OK, result, "GetVM failed");
+        g_listObj = std::make_unique<ChangeListenerAni>(vm);
     }
 
     bool isAsync = true;
@@ -1973,6 +2076,9 @@ static void AddDefaultColumnsForNonAnalysisAlbums(unique_ptr<MediaLibraryAsyncCo
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_VIDEO_COUNT);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_LPATH);
         context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_DATE_ADDED);
+        context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SCENE_ID);
+        context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_SHARE_TYPE);
+        context->fetchColumn.push_back(PhotoAlbumColumns::ALBUM_CLOUD_ID);
     }
 }
 
@@ -3767,6 +3873,51 @@ static ani_object CreateUri(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &
     return static_cast<ani_object>(retUri);
 }
 
+static ani_object CreateNullableUriArray(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context,
+    ani_object &error)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    ani_object retObj = {};
+    MediaLibraryNotifyAniUtils::AniArrayOperator arrayOperator;
+    ani_status status = MediaLibraryNotifyAniUtils::InitAniArrayOperator(env, arrayOperator);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("InitAniArrayOperator fail");
+        MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+        return retObj;
+    }
+    status = env->Object_New(arrayOperator.cls, arrayOperator.ctorMethod, &retObj,
+        static_cast<ani_int>(context->uriArray.size()));
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Object_New failed, status=%{public}d", status);
+        MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+        return retObj;
+    }
+    int count = 0;
+    for (const auto &uri : context->uriArray) {
+        ani_ref elementRef {};
+        if (uri.empty()) {
+            env->GetNull(&elementRef);
+        } else {
+            ani_string aniString {};
+            status = MediaLibraryAniUtils::ToAniString(env, uri, aniString);
+            if (status != ANI_OK) {
+                ANI_ERR_LOG("ToAniString failed for element[%{public}d]", count);
+                MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+                return retObj;
+            }
+            elementRef = static_cast<ani_ref>(aniString);
+        }
+        status = env->Object_CallMethod_Void(retObj, arrayOperator.setMethod, (ani_int)count, elementRef);
+        if (status != ANI_OK) {
+            ANI_ERR_LOG("$_set failed for element[%{public}d], status=%{public}d", count, status);
+            MediaLibraryAniUtils::CreateAniErrorObject(env, error, JS_INNER_FAIL, "System inner fail");
+            return retObj;
+        }
+        count++;
+    }
+    return retObj;
+}
+
 static ani_object CreateUriArray(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context, ani_object &error)
 {
     CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
@@ -3795,7 +3946,11 @@ static ani_object CreateAssetComplete(ani_env *env, unique_ptr<MediaLibraryAsync
     ani_object error = {};
     if (context->error == ERR_DEFAULT) {
         if (context->isCreateByAgent) {
-            resultObj = CreateUriArray(env, context, error);
+            if (context->isNullableUriArray) {
+                resultObj = CreateNullableUriArray(env, context, error);
+            } else {
+                resultObj = CreateUriArray(env, context, error);
+            }
         } else if (context->isCreateByComponent) {
             resultObj = CreateUri(env, context, error);
         } else {
@@ -4387,8 +4542,10 @@ static ani_status ParseBundleInfo(ani_env *env, ani_object appInfo, BundleInfo &
         "Failed to get appName");
     CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, appInfo, CONFIRM_BOX_APP_ID, bundleInfo.appId),
         "Failed to get appId");
-    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, appInfo, TOKEN_ID, bundleInfo.tokenId),
+    uint64_t tokenId_val{0};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, appInfo, TOKEN_ID, tokenId_val),
         "Failed to get appId");
+    bundleInfo.tokenId = static_cast<int32_t>(tokenId_val);
     return ANI_OK;
 }
 
@@ -4454,6 +4611,49 @@ static ani_status ParseCreateConfig(ani_env *env, ani_object photoCreationConfig
     return ANI_OK;
 }
 
+static ani_status ParseCreateConfig(ani_env *env, ani_object photoCreationConfig, PhotoCreationConfig &config)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+
+    ani_object photoTypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, photoCreationConfig, PHOTO_TYPE, photoTypeAni),
+        "Failed to get %{public}s", PHOTO_TYPE.c_str());
+    int32_t photoType = 0;
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(photoTypeAni), photoType),
+        "Failed to call EnumGetValueInt32 for %{public}s", PHOTO_TYPE.c_str());
+    config.photoType = photoType;
+
+    ani_object subTypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, photoCreationConfig, PHOTO_SUB_TYPE, subTypeAni),
+        "Failed to get %{public}s", PHOTO_SUB_TYPE.c_str());
+    if (MediaLibraryAniUtils::IsUndefined(env, subTypeAni) == ANI_FALSE) {
+        int32_t subType = 0;
+        CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(subTypeAni), subType),
+            "Failed to call EnumGetValueInt32 for %{public}s", PHOTO_SUB_TYPE.c_str());
+        config.subtype = subType;
+    }
+
+    ani_object titleAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, photoCreationConfig, TITLE, titleAni),
+        "Failed to get %{public}s", TITLE.c_str());
+    if (MediaLibraryAniUtils::IsUndefined(env, titleAni) == ANI_FALSE) {
+        std::string title = "";
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, titleAni, title),
+            "Failed to call GetString for %{public}s", TITLE.c_str());
+        config.title = title;
+    }
+
+    ani_object extensionAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, photoCreationConfig, EXTENSION, extensionAni),
+        "Failed to get %{public}s", EXTENSION.c_str());
+    std::string extension = "";
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, extensionAni, extension),
+        "Failed to call GetString for %{public}s", EXTENSION.c_str());
+    config.fileNameExtension = extension;
+
+    return ANI_OK;
+}
+
 static ani_status ParseArgsAgentCreateAssets(ani_env *env, ani_object appInfo, ani_object photoCreationConfigs,
     unique_ptr<MediaLibraryAsyncContext> &context)
 {
@@ -4491,7 +4691,9 @@ static bool CheckAlbumUri(ani_env *env, OHOS::DataShare::DataShareValuesBucket &
     string queryUri = CONST_PAH_QUERY_PHOTO_ALBUM;
     Uri uri(queryUri);
     DataSharePredicates predicates;
-    vector selectionArgs = {to_string(PhotoAlbumSubType::USER_GENERIC), to_string(PhotoAlbumSubType::SOURCE_GENERIC)};
+    vector selectionArgs = {to_string(PhotoAlbumSubType::USER_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC),
+        to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER)};
     predicates.In(PhotoAlbumColumns::ALBUM_SUBTYPE, selectionArgs);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, ownerAlbumId);
     int errCode = 0;
@@ -5758,6 +5960,214 @@ ani_object MediaLibraryAni::PhotoAccessHelperAgentCreateAssetsWithAlbum(ani_env 
     return CreateAssetComplete(env, context);
 }
 
+static ani_status ParseCreationSetting(ani_env *env, ani_object creationSetting,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    OHOS::DataShare::DataShareValuesBucket valuesBucket;
+
+    ani_object photoTypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, creationSetting, PHOTO_TYPE, photoTypeAni),
+        "Failed to get %{public}s", PHOTO_TYPE.c_str());
+    int32_t photoType = 0;
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(photoTypeAni), photoType),
+        "Failed to call EnumGetValueInt32 for %{public}s", PHOTO_TYPE.c_str());
+    valuesBucket.Put(CONST_MEDIA_DATA_DB_MEDIA_TYPE, photoType);
+
+    ani_object titleAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, creationSetting, TITLE, titleAni),
+        "Failed to get %{public}s", TITLE.c_str());
+    if (MediaLibraryAniUtils::IsUndefined(env, titleAni) == ANI_FALSE) {
+        std::string title = "";
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, titleAni, title),
+            "Failed to call GetString for %{public}s", TITLE.c_str());
+        valuesBucket.Put(MediaColumn::MEDIA_TITLE, title);
+    }
+
+    ani_object extensionAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, creationSetting, EXTENSION, extensionAni),
+        "Failed to get %{public}s", EXTENSION.c_str());
+    std::string extension = "";
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, extensionAni, extension),
+        "Failed to call GetString for %{public}s", EXTENSION.c_str());
+    valuesBucket.Put(CONST_ASSET_EXTENTION, extension);
+
+    context->valuesBucketArray.push_back(move(valuesBucket));
+    return ANI_OK;
+}
+
+static ani_status ParseAlbumUri(ani_env *env, ani_string albumUri,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    if (albumUri == nullptr || MediaLibraryAniUtils::IsUndefined(env, albumUri) == ANI_TRUE) {
+        return ANI_OK;
+    }
+    std::string stdAlbumUri;
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetString(env, albumUri, stdAlbumUri), "Failed to get albumUri");
+    if (stdAlbumUri.empty()) {
+        return ANI_OK;
+    }
+    context->isContainsAlbumUri = true;
+    MediaFileUri fileUri = MediaFileUri(stdAlbumUri);
+    std::string ownerAlbumId = fileUri.GetUriType() == API10_PHOTOALBUM_URI ?
+        MediaFileUtils::GetIdFromUri(stdAlbumUri) : "";
+    for (auto &valuesBucket : context->valuesBucketArray) {
+        if (!ownerAlbumId.empty()) {
+            valuesBucket.Put(PhotoColumn::PHOTO_OWNER_ALBUM_ID, ownerAlbumId);
+        }
+    }
+    return ANI_OK;
+}
+
+static ani_status ParseArgsCreateAssetsWithAlbum(ani_env *env, ani_object creationSettings,
+    ani_boolean whetherRealTimeThumb, ani_string albumUri, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    context->isCreateByComponent = false;
+    context->isCreateByAgent = true;
+    context->needSystemApp = true;
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+
+    if (MediaLibraryAniUtils::IsUndefined(env, creationSettings) == ANI_TRUE) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "creationSettings is null or undefined");
+        return ANI_ERROR;
+    }
+
+    std::vector<ani_object> aniValues;
+    ani_status getStatus = MediaLibraryAniUtils::GetObjectArray(env, creationSettings, aniValues);
+    if (getStatus != ANI_OK) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "creationSettings is invalid");
+        return ANI_ERROR;
+    }
+    if (aniValues.empty() || aniValues.size() > MAX_CREATE_ASSET_LIMIT) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "creationSettings is empty or exceeds limit");
+        return ANI_ERROR;
+    }
+
+    for (const auto &aniValue : aniValues) {
+        if (ParseCreationSetting(env, aniValue, context) != ANI_OK) {
+            AniError::ThrowError(env, JS_E_PARAM_INVALID, "Parse asset create config failed");
+            return ANI_ERROR;
+        }
+    }
+
+    context->whetherRealTimeThumb = (whetherRealTimeThumb == ANI_TRUE);
+
+    if (ParseAlbumUri(env, albumUri, context) != ANI_OK) {
+        return ANI_ERROR;
+    }
+
+    return ANI_OK;
+}
+
+static int32_t CallPhotoAccessCreateAssetsWithAlbum(unique_ptr<MediaLibraryAsyncContext> &context,
+    const DataShareValuesBucket &valuesBucket, std::string &outUri)
+{
+    bool isValid = false;
+    CreateAssetsWithAlbumReqBody reqBody;
+    reqBody.mediaType = valuesBucket.Get(CONST_MEDIA_DATA_DB_MEDIA_TYPE, isValid);
+    string extension = valuesBucket.Get(CONST_ASSET_EXTENTION, isValid);
+    string title = valuesBucket.Get(MediaColumn::MEDIA_TITLE, isValid);
+    string ownerAlbumId = valuesBucket.Get(PhotoColumn::PHOTO_OWNER_ALBUM_ID, isValid);
+    reqBody.title = title;
+    reqBody.extension = extension;
+    reqBody.isRealTimeThumb = context->whetherRealTimeThumb;
+    if (context->isContainsAlbumUri) {
+        reqBody.ownerAlbumId = ownerAlbumId;
+    }
+
+    CreateAssetsWithAlbumRespBody respBody;
+    int32_t errCode = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(context->businessCode, reqBody,
+        respBody);
+    if (errCode != 0) {
+        ANI_ERR_LOG("IPC Call failed, errCode: %{public}d.", errCode);
+        return errCode;
+    }
+    outUri = respBody.outUri;
+    return respBody.fileId;
+}
+
+static int32_t CreateSingleAsset(unique_ptr<MediaLibraryAsyncContext> &context,
+    const DataShareValuesBucket &valuesBucket)
+{
+    string outUri;
+    int index = -EINVAL;
+    if (context->businessCode != 0) {
+        index = CallPhotoAccessCreateAssetsWithAlbum(context, valuesBucket, outUri);
+    }
+    if (index > 0) {
+        context->uriArray.push_back(move(outUri));
+        return ANI_OK;
+    }
+    if (index == E_PERMISSION_DENIED || index == -E_CHECK_SYSTEMAPP_FAIL) {
+        context->SaveError(index);
+        return ANI_ERROR;
+    }
+    context->uriArray.push_back("");
+    return ANI_OK;
+}
+
+static void PhotoAccessCreateAssetsWithAlbumExecute(ani_env *env,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    string uri;
+    GetCreateUri(context, uri);
+    Uri createFileUri(uri);
+    CHECK_IF_EQUAL(!context->valuesBucketArray.empty(),
+        "valuesBucketArray is empty, no assets to create");
+
+    if (context->isContainsAlbumUri) {
+        bool isValid = CheckAlbumUri(env, context->valuesBucketArray[0], context);
+        if (!isValid) {
+            context->isContainsAlbumUri = false;
+        }
+    }
+
+    for (size_t i = 0; i < context->valuesBucketArray.size(); i++) {
+        if (CreateSingleAsset(context, context->valuesBucketArray[i]) != ANI_OK) {
+            return;
+        }
+    }
+}
+
+ani_object MediaLibraryAni::PhotoAccessHelperCreateAssetsWithAlbum(ani_env *env, ani_object object,
+    ani_object creationSettings, ani_boolean whetherRealTimeThumb, ani_string albumUri)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessHelperCreateAssetsWithAlbum");
+
+    unique_ptr<MediaLibraryAsyncContext> context = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    context->businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_CREATE_ASSET_WITH_ALBUM);
+    context->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    context->assetType = TYPE_PHOTO;
+    context->isCreateByAgent = true;
+    context->isNullableUriArray = true;
+
+    context->objectInfo = Unwrap(env, object);
+    if (context->objectInfo == nullptr) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return nullptr;
+    }
+
+    if (ParseArgsCreateAssetsWithAlbum(env, creationSettings, whetherRealTimeThumb, albumUri, context) != ANI_OK) {
+        return nullptr;
+    }
+
+    SetUserIdFromObjectInfo(context);
+    PhotoAccessCreateAssetsWithAlbumExecute(env, context);
+
+    ani_object result = CreateAssetComplete(env, context);
+    return result;
+}
+
 
 int32_t MediaLibraryAni::AddClientObserver(ani_env *env, ani_ref &ref,
     std::map<Notification::NotifyUriType, std::vector<std::shared_ptr<ClientObserverAni>>> &clientObservers,
@@ -5987,9 +6397,8 @@ void MediaLibraryAni::AvailabilityRegisterCallback(ani_env *env, ani_object obje
     tracer.Start("PhotoAccessOnMedialibraryAvailability");
 
     CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
-    MediaLibraryAni *obj = Unwrap(env, object);
-    if (obj == nullptr || obj->listObj_ == nullptr) {
-        ANI_ERR_LOG("obj or listObj_ is nullptr");
+    if (g_listObj == nullptr) {
+        ANI_ERR_LOG("g_listObj is nullptr");
         AniError::ThrowError(env, JS_E_INNER_FAIL);
         return;
     }
@@ -6001,7 +6410,7 @@ void MediaLibraryAni::AvailabilityRegisterCallback(ani_env *env, ani_object obje
         return;
     }
 
-    int32_t ret = RegisterAvailabilityObserverExecuteAni(env, cbOnRef, *obj->listObj_);
+    int32_t ret = RegisterAvailabilityObserverExecuteAni(env, cbOnRef, *g_listObj);
     if (ret != E_OK) {
         ANI_ERR_LOG("RegisterAvailabilityObserverExecuteAni failed, ret: %{public}d", ret);
         env->GlobalReference_Delete(cbOnRef);
@@ -6028,9 +6437,8 @@ void MediaLibraryAni::AvailabilityUnregisterCallback(ani_env *env, ani_object ob
     tracer.Start("PhotoAccessOffMedialibraryAvailability");
 
     CHECK_NULL_PTR_RETURN_VOID(env, "env is nullptr");
-    MediaLibraryAni *obj = Unwrap(env, object);
-    if (obj == nullptr || obj->listObj_ == nullptr) {
-        ANI_INFO_LOG("obj or listObj_ is nullptr");
+    if (g_listObj == nullptr) {
+        ANI_INFO_LOG("g_listObj is nullptr");
         tracer.Finish();
         return;
     }
@@ -6047,7 +6455,7 @@ void MediaLibraryAni::AvailabilityUnregisterCallback(ani_env *env, ani_object ob
         return;
     }
 
-    int32_t ret = UnregisterAvailabilityObserverExecuteAni(env, *obj->listObj_);
+    int32_t ret = UnregisterAvailabilityObserverExecuteAni(env, *g_listObj);
     if (ret != E_OK) {
         ANI_ERR_LOG("UnregisterAvailabilityObserverExecuteAni failed, ret: %{public}d", ret);
         AniError::ThrowError(env, MediaLibraryNotifyAniUtils::ConvertToJsError(ret));
@@ -7094,7 +7502,7 @@ ani_object MediaLibraryAni::GetAlbumIdByBundleName(ani_env *env, ani_object obje
 }
 
 static ani_status ParseArgsGetAssetCompatibleUris(ani_env *env, ani_string bundleName, ani_object assets,
-    ani_int compatibleFlags, unique_ptr<MediaLibraryAsyncContext> &context)
+    ani_object compatibleFlags, unique_ptr<MediaLibraryAsyncContext> &context)
 {
     CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
     CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
@@ -7125,11 +7533,19 @@ static ani_status ParseArgsGetAssetCompatibleUris(ani_env *env, ani_string bundl
         context->photoAssetInfos.push_back(info);
     }
 
-    context->compatibleFlags = compatibleFlags;
-    constexpr int32_t VALID_FLAGS_MASK = 0x3;
-    if ((context->compatibleFlags & ~VALID_FLAGS_MASK) != 0) {
-        ANI_ERR_LOG("invalid compatibleFlags: %{public}d", context->compatibleFlags);
-        return ANI_ERROR;
+    if (MediaLibraryAniUtils::IsUndefined(env, compatibleFlags) == ANI_FALSE) {
+        int32_t flag;
+        CHECK_STATUS_RET(MediaLibraryAniUtils::GetInt32(env, compatibleFlags, flag),
+            "Failed to parse compatibleFlags");
+        context->compatibleFlags = flag;
+        constexpr uint32_t VALID_FLAGS_MASK = 0x3;
+        uint32_t flags = static_cast<uint32_t>(context->compatibleFlags);
+        if ((flags & ~VALID_FLAGS_MASK) != 0) {
+            ANI_ERR_LOG("invalid compatibleFlags: %{public}d", context->compatibleFlags);
+            return ANI_ERROR;
+        }
+    } else {
+        context->compatibleFlags = THIRD_ENUM;
     }
     return ANI_OK;
 }
@@ -7160,14 +7576,14 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
     bool checkHighPixel, bool checkHeif, vector<string> &result)
 {
     for (auto &item : context->photoAssetInfos) {
-        bool isHighPixel = item.width * item.height >= HIGH_PIXEL_SIZE;
+        bool isHighPixel = IsHighPixel(item.width, item.height);
         size_t atDot = item.uri.find('.');
         if (atDot == std::string::npos) {
             continue;
         }
         std::string ext = item.uri.substr(atDot + 1);
         bool isHeifFile = (ext == "heif" || ext == "heic");
-        if (context->compatibleFlags == 0 || context->compatibleFlags == THIRD_ENUM) {
+        if (context->compatibleFlags == THIRD_ENUM) {
             CompatibleInfo compatibleinfo;
             compatibleinfo.bundleName = context->bundleName;
             compatibleinfo.highResolution = context->supportedHighResolution;
@@ -7199,6 +7615,10 @@ static void HandleCheckTranscodeUri(MediaLibraryAsyncContext *context,
 static vector<string> CheckTranscodeUriAni(MediaLibraryAsyncContext *context)
 {
     vector<string> result;
+    uint32_t flags = static_cast<uint32_t>(context->compatibleFlags);
+    if (flags == 0) {
+        return result;
+    }
     bool checkHighPixel = (context->compatibleFlags & 0x1) != 0;
     bool checkHeif = (context->compatibleFlags & 0x2) != 0;
     if (context->preferredCompatibleMode ==
@@ -7215,10 +7635,14 @@ static vector<string> CheckTranscodeUriAni(MediaLibraryAsyncContext *context)
             }
             std::string ext = item.uri.substr(atDot + 1);
             bool isHeifFile = (ext == "heif" || ext == "heic");
-            if (!isHighPixel && !isHeifFile) {
+            if (checkHighPixel && isHighPixel) {
+                result.push_back(item.uri);
                 continue;
             }
-            result.push_back(item.uri);
+            if (checkHeif && isHeifFile) {
+                result.push_back(item.uri);
+                continue;
+            }
         }
         return result;
     }
@@ -7248,7 +7672,7 @@ static ani_object GetAssetCompatibleUrisComplete(ani_env *env, unique_ptr<MediaL
 }
 
 ani_object MediaLibraryAni::GetAssetCompatibleUris(ani_env *env, ani_object object,
-    ani_string bundleName, ani_object assets, ani_int compatibleFlags)
+    ani_string bundleName, ani_object assets, ani_object compatibleFlags)
 {
     ANI_DEBUG_LOG("GetAssetCompatibleUris start");
     CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
@@ -7482,6 +7906,938 @@ ani_object MediaLibraryAni::MoveAssetsByPath(ani_env *env, ani_object object, an
     SetUserIdFromObjectInfo(asyncContext);
     MoveAssetsByPathExecute(env, asyncContext);
     return MoveAssetsByPathComplete(env, asyncContext);
+}
+
+// createAssetWithShortTermPermission
+ani_boolean MediaLibraryAni::CheckShortTermPermission(ani_env *env, ani_object object)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    Security::AccessToken::AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
+    int res = Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenCaller, PERM_SHORT_TERM_WRITE_IMAGEVIDEO);
+    ani_boolean hasPermission = (res == Security::AccessToken::PermissionState::PERMISSION_GRANTED)? true : false;
+    return hasPermission;
+}
+
+ani_object MediaLibraryAni::CreateAssetsHasPermission(ani_env *env, ani_object object)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("CreateAssetsHasPermission");
+
+    ani_object returnObj = nullptr;
+    unique_ptr<MediaLibraryAsyncContext> context = make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(context != nullptr, returnObj, "context is nullptr");
+    context->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_PUBLIC_CREATE_ASSET_FOR_APP);
+    context->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    context->assetType = TYPE_PHOTO;
+    context->isCreateByComponent = false;
+    context->isCreateByAgent = true;
+    context->objectInfo = Unwrap(env, object);
+    CHECK_COND_RET(context->objectInfo != nullptr, returnObj, "objectInfo is nullptr");
+    context->userId = context->objectInfo->GetUserId();
+
+    PhotoAccessAgentCreateAssetsExecute(env, context);
+    return CreateAssetComplete(env, context);
+}
+
+static bool InitShortTermRequest(OHOS::AAFwk::Want &want, shared_ptr<ShortTermCallback> &callback,
+                                 const InitShortTermRequestParams &params)
+{
+    want.SetElementName(CONFIRM_BOX_PACKAGE_NAME, CONFIRM_BOX_EXT_ABILITY_NAME);
+    want.SetParam(CONFIRM_BOX_EXTENSION_TYPE, CONFIRM_BOX_REQUEST_TYPE);
+
+    CHECK_COND_RET(callback != nullptr, false, "ShortTermCallback is nullptr");
+    BundleInfo bundleInfo;
+    PhotoCreationConfig config;
+    CHECK_COND_RET(ParseBundleInfo(params.env, params.appInfo, bundleInfo), false, "ParseBundleInfo fail");
+    CHECK_COND_RET(ParseCreateConfig(params.env,
+        params.photoCreationConfigs, config), false, "Parse asset create config failed");
+
+    want.SetParam(SHORT_TERM_TAG, true);
+    want.SetParam(SHORT_TERM_TITLE, config.title);
+    want.SetParam(SHORT_TERM_EXTENSION, config.fileNameExtension);
+    want.SetParam(SHORT_TERM_PHOTO_TYPE, config.photoType);
+    want.SetParam(SHORT_TERM_PHOTO_SUB_TYPE, config.subtype);
+
+    want.SetParam(CONFIRM_BOX_BUNDLE_NAME, bundleInfo.bundleName);
+    want.SetParam(CONFIRM_BOX_APP_NAME, bundleInfo.packageName);
+    want.SetParam(CONFIRM_BOX_APP_ID, bundleInfo.appId);
+
+    callback->SetFunc(params.resultcb);
+    return true;
+}
+
+ani_object MediaLibraryAni::CreateAssetWithShortTermPermission(ani_env *env, ani_object object,
+    ani_object context, ani_object photoCreationConfig, ani_object appInfo, ani_fn_object resultcb)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    auto stageModeContext = OHOS::AbilityRuntime::GetStageModeContext(env, context);
+    CHECK_COND_WITH_MESSAGE(env, stageModeContext != nullptr, "stageModeContext is null");
+    shared_ptr<OHOS::AbilityRuntime::AbilityContext> abilityContext =
+        OHOS::AbilityRuntime::Context::ConvertTo<OHOS::AbilityRuntime::AbilityContext>(stageModeContext);
+    CHECK_COND_WITH_MESSAGE(env, abilityContext != nullptr, "abilityContext is null");
+    auto uiContent = abilityContext->GetUIContent();
+    CHECK_COND_WITH_MESSAGE(env, uiContent != nullptr, "uiContent is null");
+
+    OHOS::AAFwk::Want want;
+    shared_ptr<ShortTermCallback> callback = make_shared<ShortTermCallback>(env, uiContent);
+    InitShortTermRequestParams shortTermParams { env, photoCreationConfig, appInfo, resultcb };
+    CHECK_COND_WITH_MESSAGE(env,
+        InitShortTermRequest(want, callback, shortTermParams) == true,
+        "InitShortTermRequest fail");
+    OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
+        ([callback](auto arg) { callback->OnRelease(arg); }),
+        ([callback](auto arg1, auto arg2) { callback->OnResult(arg1, arg2); }),
+        ([callback](auto arg) { callback->OnReceive(arg); }),
+        ([callback](auto arg1, auto arg2, auto arg3) { callback->OnError(arg1, arg2, arg3); }),
+    };
+
+    OHOS::Ace::ModalUIExtensionConfig config;
+    config.isProhibitBack = true;
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, extensionCallback, config);
+    CHECK_COND_WITH_MESSAGE(env, sessionId != DEFAULT_SESSION_ID, "get sessionId fail");
+    callback->SetSessionId(sessionId);
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------------------------------------------
+// showAssetsCreationDialog
+static bool ParseAndSetFileUriArray(ani_env *env, OHOS::AAFwk::Want &want, ani_object &arrayUris)
+{
+    vector<string> srcFileUris;
+    if (ANI_OK != MediaLibraryAniUtils::GetStringArray(env, arrayUris, srcFileUris)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to get assetUriArray");
+        return false;
+    }
+
+    uint32_t len = srcFileUris.size();
+    if (len > CONFIRM_BOX_ARRAY_MAX_LENGTH) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Array size over 100.");
+        return false;
+    }
+
+    want.SetParam(CONFIRM_BOX_SRC_FILE_URIS, srcFileUris);
+    return true;
+}
+
+static bool ParseAndSetConfigArray(ani_env *env, OHOS::AAFwk::Want &want, ani_object photoCreationConfigs)
+{
+    std::vector<ani_object> aniValues;
+    if (ANI_OK != MediaLibraryAniUtils::GetObjectArray(env, photoCreationConfigs, aniValues)) {
+        ANI_ERR_LOG("GetObjectArray fail");
+        return false;
+    }
+    if (aniValues.empty()) {
+        ANI_INFO_LOG("photoCreationConfigs is empty");
+        return false;
+    }
+
+    vector<string> titleList;
+    vector<string> extensionList;
+    vector<int32_t> photoTypeList;
+    vector<int32_t> photoSubTypeList;
+
+    for (const auto &aniValue : aniValues) {
+        PhotoCreationConfig config;
+        if (ANI_OK != ParseCreateConfig(env, aniValue, config)) {
+            ANI_ERR_LOG("Parse asset create config failed");
+            return false;
+        }
+        titleList.emplace_back(config.title);
+        extensionList.emplace_back(config.fileNameExtension);
+        photoTypeList.emplace_back(config.photoType);
+        photoSubTypeList.emplace_back(config.subtype);
+    }
+
+    want.SetParam(CONFIRM_BOX_TITLE_ARRAY, titleList);
+    want.SetParam(CONFIRM_BOX_EXTENSION_ARRAY, extensionList);
+    want.SetParam(CONFIRM_BOX_PHOTO_TYPE_ARRAY, photoTypeList);
+    want.SetParam(CONFIRM_BOX_PHOTO_SUB_TYPE_ARRAY, photoSubTypeList);
+
+    return true;
+}
+
+static bool InitConfirmRequest(OHOS::AAFwk::Want &want, shared_ptr<ConfirmCallback> &callback,
+                               const InitConfirmRequestParams &params)
+{
+    want.SetElementName(CONFIRM_BOX_PACKAGE_NAME, CONFIRM_BOX_EXT_ABILITY_NAME);
+    want.SetParam(CONFIRM_BOX_EXTENSION_TYPE, CONFIRM_BOX_REQUEST_TYPE);
+    want.AddFlags(OHOS::AAFwk::Want::FLAG_AUTH_READ_URI_PERMISSION);
+
+    // second param: Array<string>
+    if (!ParseAndSetFileUriArray(params.env, want, params.srcFileUris)) {
+        ANI_ERR_LOG("ParseAndSetFileUriArray fail");
+        return false;
+    }
+
+    // third param: Array<PhotoCreationConfig>
+    if (!ParseAndSetConfigArray(params.env, want, params.photoCreationConfigs)) {
+        ANI_ERR_LOG("ParseAndSetConfigArray fail");
+        return false;
+    }
+
+    BundleInfo bundleInfo;
+    if (ParseBundleInfo(params.env, params.appInfo, bundleInfo) != ANI_OK) {
+        ANI_ERR_LOG("ParseBundleInfo fail");
+        return false;
+    }
+
+    want.SetParam(CONFIRM_BOX_BUNDLE_NAME, bundleInfo.bundleName);
+    want.SetParam(CONFIRM_BOX_APP_NAME, bundleInfo.packageName);
+    want.SetParam(CONFIRM_BOX_APP_ID, bundleInfo.appId);
+
+    callback->SetFunc(params.resultcb);
+
+    return true;
+}
+
+ani_object MediaLibraryAni::ShowAssetsCreationDialog(ani_env *env, ani_object object,
+    ani_object context, ani_object srcFileUris, ani_object photoCreationConfigs,
+    ani_object appInfo, ani_fn_object resultcb)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+
+    auto stageModeContext = AbilityRuntime::GetStageModeContext(env, context);
+    CHECK_COND_WITH_MESSAGE(env, stageModeContext != nullptr, "context is nullptr");
+    shared_ptr<AbilityRuntime::AbilityContext> abilityContext =
+        AbilityRuntime::Context::ConvertTo<AbilityRuntime::AbilityContext>(stageModeContext);
+    CHECK_COND_WITH_MESSAGE(env, abilityContext != nullptr, "abilityContext is nullptr");
+    auto uiContent = abilityContext->GetUIContent();
+    CHECK_COND_WITH_MESSAGE(env, uiContent != nullptr, "uiContent is nullptr");
+
+    OHOS::AAFwk::Want want;
+    auto callback = std::make_shared<ConfirmCallback>(env, uiContent);
+    InitConfirmRequestParams confirmParams { env, srcFileUris, photoCreationConfigs, appInfo, resultcb };
+    CHECK_COND_WITH_MESSAGE(env, InitConfirmRequest(want, callback, confirmParams), "Parse input fail.");
+    // regist callback and config
+    OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
+        [callback](int32_t releaseCode) {
+            callback->OnRelease(releaseCode);
+        },
+        [callback](int32_t resultCode, const AAFwk::Want &result) {
+            callback->OnResult(resultCode, result);
+        },
+        [callback](const AAFwk::WantParams &receive) {
+            callback->OnReceive(receive);
+        },
+        [callback](int32_t code, const std::string &name, const std::string &message) {
+            callback->OnError(code, name, name);
+        },
+    };
+    OHOS::Ace::ModalUIExtensionConfig config;
+    config.isProhibitBack = true;
+
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, extensionCallback, config);
+    CHECK_COND_WITH_MESSAGE(env, sessionId != DEFAULT_SESSION_ID, "CreateModalUIExtension fail");
+    ANI_INFO_LOG("SessionId is %{public}d.", sessionId);
+    callback->SetSessionId(sessionId);
+    return nullptr;
+}
+
+//--------------------------------------------------------------------------------------------------------------
+// requestPhotoUrisReadPermission
+static bool InitRequestPhotoUrisReadPermissionRequest(OHOS::AAFwk::Want &want,
+    shared_ptr<RequestPhotoUrisReadPermissionCallback> &callback,
+    const InitRequestPhotoUrisReadPermissionParams &params)
+{
+    std::string targetType = "photoPicker";
+    want.SetParam(ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE, targetType);
+    std::string requestPhotoUrisTag = "requestPhotoUrisPage";
+    want.SetParam(TARGET_PAGE, requestPhotoUrisTag);
+     // second param: Array<string>
+    if (!ParseAndSetFileUriArray(params.env, want, params.arrayUris)) {
+        ANI_ERR_LOG("FileUriArray check failed.");
+        return false;
+    }
+    string appName;
+    if (MediaLibraryAniUtils::GetString(params.env, params.appNameAni, appName) != ANI_OK) {
+        ANI_ERR_LOG("Failed to get appName");
+        return false;
+    };
+    want.SetParam(CONFIRM_BOX_APP_NAME, appName);
+    callback->SetFunc(params.resultcb);
+    return true;
+}
+
+ani_object MediaLibraryAni::RequestPhotoUrisReadPermission(ani_env *env, ani_object object,
+    ani_object context, ani_object arrayUris, ani_object appName, ani_fn_object resultcb)
+{
+    ANI_INFO_LOG("RequestPhotoUrisReadPermission enter");
+    Ace::UIContent *uiContent = nullptr;
+    auto stageModeContext = OHOS::AbilityRuntime::GetStageModeContext(env, context);
+    CHECK_COND_WITH_MESSAGE(env, stageModeContext != nullptr, "stageModeContext is null.");
+
+    shared_ptr<OHOS::AbilityRuntime::AbilityContext> abilityContext =
+        OHOS::AbilityRuntime::Context::ConvertTo<OHOS::AbilityRuntime::AbilityContext>(stageModeContext);
+    if (abilityContext == nullptr) {
+        auto uiExtensionContext =
+            AbilityRuntime::Context::ConvertTo<AbilityRuntime::UIExtensionContext>(stageModeContext);
+        CHECK_COND_WITH_MESSAGE(env, uiExtensionContext != nullptr,
+            "Fail to convert to abilityContext or uiExtensionContext.");
+        uiContent = uiExtensionContext->GetUIContent();
+    } else {
+        // get uiContent from abilityContext
+        uiContent = abilityContext->GetUIContent();
+    }
+    CHECK_COND_WITH_MESSAGE(env, uiContent != nullptr, "uiContent is null.");
+
+    // set want
+    OHOS::AAFwk::Want want;
+    shared_ptr<RequestPhotoUrisReadPermissionCallback> callback =
+        make_shared<RequestPhotoUrisReadPermissionCallback>(env, uiContent);
+    InitRequestPhotoUrisReadPermissionParams requestParams { env, arrayUris, appName, resultcb };
+    CHECK_COND_WITH_MESSAGE(env,
+        InitRequestPhotoUrisReadPermissionRequest(want, callback, requestParams),
+        "Parse RequestPhotoUrisReadPermission input fail.");
+
+    // regist callback and config
+    OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
+        ([callback](auto arg) { callback->OnRelease(arg); }),
+        ([callback](auto arg1, auto arg2) { callback->OnResult(arg1, arg2); }),
+        ([callback](auto arg) { callback->OnReceive(arg); }),
+        ([callback](auto arg1, auto arg2, auto arg3) { callback->OnError(arg1, arg2, arg3); }),
+    };
+    OHOS::Ace::ModalUIExtensionConfig config;
+    config.isProhibitBack = true;
+
+    int32_t sessionId = uiContent->CreateModalUIExtension(want, extensionCallback, config);
+    CHECK_COND_WITH_MESSAGE(env, sessionId != DEFAULT_SESSION_ID, "CreateModalUIExtension fail");
+    callback->SetSessionId(sessionId);
+    ANI_INFO_LOG("set SetSessionId ok finish.");
+    return nullptr;
+}
+
+//startpicker
+//--------------------------------------------------------------------------------------------------------------+
+static bool IsPcPicker(ani_env* env, ani_object photoSelectOptions)
+{
+    bool isPcPicker = false;
+    CHECK_COND_RET(env != nullptr, false, "env is nullptr");
+    ani_boolean aniBoolean;
+    if (env->Object_GetPropertyByName_Boolean(photoSelectOptions, "isPc", &aniBoolean) != ANI_OK) {
+        ANI_ERR_LOG("Object_GetPropertyByName_Boolean failed.");
+        return false;
+    }
+    if (MediaLibraryAniUtils::GetBool(env, aniBoolean, isPcPicker) != ANI_OK) {
+        ANI_ERR_LOG("GetBool failed.");
+        return false;
+    }
+    return isPcPicker;
+}
+
+Ace::UIContent *GetSubWindowUIContent(ani_env *env, ani_object photoSelectOptions)
+{
+    std::string subWindowName;
+    CHECK_COND_RET(MediaLibraryAniUtils::GetProperty(env, photoSelectOptions, "subWindowName", subWindowName) == ANI_OK,
+        nullptr, "failed to get named property of subWindowName");
+    auto currentWindow = Rosen::Window::Find(subWindowName);
+    if (currentWindow == nullptr) {
+        ANI_ERR_LOG("GetSubWindowUIContent failed to find context by subWindow name");
+        return nullptr;
+    }
+    return currentWindow->GetUIContent();
+}
+
+Ace::UIContent *GetUIContent(ani_env* env, ani_object context, ani_object photoSelectOptions)
+{
+    ANI_INFO_LOG("GetUIContent start");
+    if (!IsPcPicker(env, photoSelectOptions)) {
+        ANI_INFO_LOG("GetUIContent is not from PcPicker");
+        Ace::UIContent *uiContent = GetSubWindowUIContent(env, photoSelectOptions);
+        if (uiContent != nullptr) {
+            ANI_INFO_LOG("GetSubWindowUIContent success");
+            return uiContent;
+        }
+    }
+
+    ani_boolean isStageMode = false;
+    ani_status status = AbilityRuntime::IsStageContext(env, context, isStageMode);
+    if (status != ANI_OK || !isStageMode) {
+        ANI_ERR_LOG("is not StageMode context, status: %{public}d, isStageMode: %{public}d",
+            status, static_cast<int32_t>(isStageMode));
+        return nullptr;
+    }
+    auto stageModeContext = AbilityRuntime::GetStageModeContext(env, context);
+    if (stageModeContext == nullptr) {
+        ANI_ERR_LOG("Failed to get native stage context instance");
+        return nullptr;
+    }
+    auto abilityContext = AbilityRuntime::Context::ConvertTo<AbilityRuntime::AbilityContext>(stageModeContext);
+    if (abilityContext == nullptr) {
+        auto uiExtensionContext =
+            AbilityRuntime::Context::ConvertTo<AbilityRuntime::UIExtensionContext>(stageModeContext);
+        if (uiExtensionContext == nullptr) {
+            ANI_ERR_LOG("Fail to convert to abilityContext or uiExtensionContext");
+            return nullptr;
+        }
+        return uiExtensionContext->GetUIContent();
+    }
+    return abilityContext->GetUIContent();
+}
+
+static ani_object StartPickerExtension(ani_env* env, ani_object context,
+    ani_object photoSelectOptions, unique_ptr<MediaLibraryAsyncContext> &AsyncContext)
+{
+    ANI_INFO_LOG("StartPickerExtension start");
+    Ace::UIContent *uiContent = GetUIContent(env, context, photoSelectOptions);
+    if (uiContent == nullptr) {
+        ANI_ERR_LOG("get uiContent failed");
+        return nullptr;
+    }
+    AAFwk::Want request;
+    AppExecFwk::UnwrapWant(env, photoSelectOptions, request);
+    std::string targetType = "photoPicker";
+    request.SetParam(ABILITY_WANT_PARAMS_UIEXTENSIONTARGETTYPE, targetType);
+    AsyncContext->pickerCallBack = make_shared<PickerCallBack>();
+    auto callback = std::make_shared<ModalUICallback>(uiContent, AsyncContext->pickerCallBack.get());
+    Ace::ModalUIExtensionCallbacks extensionCallback = {
+        ([callback](auto arg) { callback->OnRelease(arg); }),
+        ([callback](auto arg1, auto arg2) { callback->OnResultForModal(arg1, arg2); }),
+        ([callback](auto arg) { callback->OnReceive(arg); }),
+        ([callback](auto arg1, auto arg2, auto arg3) { callback->OnError(arg1, arg2, arg3); }),
+        std::bind(&ModalUICallback::OnDestroy, callback),
+    };
+    Ace::ModalUIExtensionConfig config;
+    config.isProhibitBack = true;
+    int sessionId = uiContent->CreateModalUIExtension(request, extensionCallback, config);
+    if (sessionId == 0) {
+        ANI_ERR_LOG("create modalUIExtension failed");
+        return nullptr;
+    }
+    callback->SetSessionId(sessionId);
+    ani_object result = nullptr;
+    if (MediaLibraryAniUtils::ToAniBooleanObject(env, true, result) != ANI_OK) {
+        ANI_ERR_LOG("ToAniBooleanObject failed");
+        return nullptr;
+    }
+    return result;
+}
+
+static ani_object ParseArgsStartPhotoPicker(ani_env *env, ani_object context,
+    ani_object photoSelectOptions, unique_ptr<MediaLibraryAsyncContext> &asyncContext)
+{
+    ANI_INFO_LOG("ParseArgsStartPhotoPicker start");
+
+    CHECK_NULLPTR_RET(StartPickerExtension(env, context, photoSelectOptions, asyncContext));
+
+    return nullptr;
+}
+
+static void StartPhotoPickerExecute(ani_env *env, std::unique_ptr<MediaLibraryAsyncContext> &asyncContext)
+{
+    while (!asyncContext->pickerCallBack->ready) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(SLEEP_TIME));
+    }
+}
+
+static ani_status ToAniPhotoSelectResult(ani_env *env, PhotoSelectResult photoSelectResult, ani_object &retObj)
+{
+    static const std::string className = "@ohos.file.photoAccessHelper.PhotoSelectResult";
+    ani_class cls {};
+    ani_status status = env->FindClass(className.c_str(), &cls);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Can't find class %{public}s", className.c_str());
+        return status;
+    }
+    CHECK_STATUS_RET(env->FindClass(className.c_str(), &cls),
+        "Can't find class %{public}s", className.c_str());
+    ani_method method {};
+    CHECK_STATUS_RET(env->Class_FindMethod(cls, "<ctor>", nullptr, &method),
+        "Can't find method <ctor> in %{public}s", className.c_str());
+    CHECK_STATUS_RET(env->Object_New(cls, method, &retObj),
+        "Call method <ctor> fail");
+
+    ani_object aniuris;
+    CHECK_STATUS_RET(MediaLibraryAniUtils::ToAniStringArray(env, photoSelectResult.photoUris, aniuris),
+        "Call ToAniStringArray fail");
+    CHECK_STATUS_RET(env->Object_SetPropertyByName_Ref(retObj, "photoUris", aniuris),
+        "Call Object_SetPropertyByName_Ref fail");
+
+    ani_boolean aniIsOriginalPhoto = photoSelectResult.isOriginalPhoto ? ANI_TRUE : ANI_FALSE;
+    CHECK_STATUS_RET(env->Object_SetPropertyByName_Boolean(retObj, "isOriginalPhoto", aniIsOriginalPhoto),
+        "Call Object_SetPropertyByName_Boolean fail");
+
+    return ANI_OK;
+}
+
+static ani_object StartPhotoPickerAsyncCallbackComplete(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StartPhotoPickerAsyncCallbackComplete");
+    ANI_INFO_LOG("StartPhotoPickerAsyncCallbackComplete start");
+
+    ani_object errorObj {};
+    ani_object retObj {};
+    PhotoSelectResult photoSelsectResult;
+    int32_t resultCode = context->pickerCallBack->resultCode;
+    if (resultCode != ERR_DEFAULT) {
+        ANI_ERR_LOG("resultCode is %{public}d", resultCode);
+        context->HandleError(env, errorObj);
+    } else {
+        photoSelsectResult.isOriginalPhoto = context->pickerCallBack->isOrigin;
+        photoSelsectResult.photoUris = context->pickerCallBack->uris;
+        CHECK_COND_RET(ToAniPhotoSelectResult(env, photoSelsectResult, retObj) == ANI_OK,
+            nullptr, "Call ToAniPhotoSelectResult fail");
+    }
+    context.reset();
+    return retObj;
+}
+
+ani_object MediaLibraryAni::StartPhotoPicker(ani_env *env, ani_object object, ani_object context,
+    ani_object photoSelectOptions)
+{
+    ANI_INFO_LOG("StartPhotoPicker start");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    ParseArgsStartPhotoPicker(env, context, photoSelectOptions, asyncContext);
+    asyncContext->objectInfo = Unwrap(env, object);
+    SetUserIdFromObjectInfo(asyncContext);
+    StartPhotoPickerExecute(env, asyncContext);
+    return StartPhotoPickerAsyncCallbackComplete(env, asyncContext);
+}
+
+static ani_status ParseArgsStartDeepOptimizeSpace(ani_env *env, ani_object object,
+    ani_fn_object callback, std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+
+    context->objectInfo = MediaLibraryAni::Unwrap(env, object);
+    CHECK_COND_RET(context->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
+
+    ani_boolean isUndefined = ANI_FALSE;
+    if (env->Reference_IsUndefined(static_cast<ani_ref>(callback), &isUndefined) != ANI_OK || isUndefined == ANI_TRUE) {
+        ANI_INFO_LOG("No callback provided for startDeepOptimizeSpace");
+        context->hasDeepOptimizeSpaceCallback = false;
+        return ANI_OK;
+    }
+
+    context->hasDeepOptimizeSpaceCallback = true;
+    ani_status status = DeepOptimizeSpaceAniCallbackHolder::Create(env, callback,
+        context->deepOptimizeSpaceCallbackHolder);
+    if (status != ANI_OK || context->deepOptimizeSpaceCallbackHolder == nullptr) {
+        ANI_ERR_LOG("Failed to create deep optimize space ani callback holder");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to create deep optimize space callback");
+        return ANI_ERROR;
+    }
+
+    ANI_INFO_LOG("Created deep optimize space ani callback holder");
+    return ANI_OK;
+}
+
+static void ReleaseStartDeepOptimizeSpaceAniCallback(MediaLibraryAsyncContext *context, uint64_t callbackRegistryId)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    if (callbackRegistryId == 0) {
+        ANI_INFO_LOG("No callback registry, skip release");
+        return;
+    }
+    DeepOptimizeSpaceAniCallbackRegistry::Unregister(callbackRegistryId);
+    CHECK_NULL_PTR_RETURN_VOID(context->deepOptimizeSpaceCallbackHolder.get(),
+        "Deep optimize space ani callback holder is null");
+    context->deepOptimizeSpaceCallbackHolder->Release();
+}
+
+static bool PrepareStartDeepOptimizeSpaceAniCallback(MediaLibraryAsyncContext *context,
+    StartDeepOptimizeSpaceReqBody &reqBody, uint64_t &callbackRegistryId)
+{
+    sptr<DeepOptimizeSpaceCallbackStub> clientStub = nullptr;
+
+    if (context->hasDeepOptimizeSpaceCallback) {
+        if (context->deepOptimizeSpaceCallbackHolder.get() == nullptr) {
+            ANI_ERR_LOG("Deep optimize space ani callback holder is null");
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+
+        clientStub = sptr<DeepOptimizeSpaceCallbackStub>(new (std::nothrow) DeepOptimizeSpaceAniCallbackStub(
+            context->deepOptimizeSpaceCallbackHolder));
+        if (clientStub == nullptr) {
+            ANI_ERR_LOG("Failed to create deep optimize space ani client stub");
+            context->deepOptimizeSpaceCallbackHolder->Release();
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+        reqBody.callbackRemote = clientStub->AsObject();
+        ANI_INFO_LOG("Created ani callback stub, hasCallback: true");
+    } else {
+        clientStub = sptr<DeepOptimizeSpaceCallbackStub>(new (std::nothrow) DeepOptimizeSpaceDummyAniCallbackStub());
+        if (clientStub == nullptr) {
+            ANI_ERR_LOG("Failed to create dummy ani client stub");
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+        reqBody.callbackRemote = nullptr;
+        ANI_INFO_LOG("Created dummy ani stub for death monitoring, hasCallback: false");
+    }
+
+    reqBody.clientRemote = clientStub->AsObject();
+    ANI_INFO_LOG("Prepared deep optimize space ani client remote, clientStubValid: %{public}d, "
+        "clientRemoteValid: %{public}d", clientStub != nullptr, reqBody.clientRemote != nullptr);
+
+    if (context->hasDeepOptimizeSpaceCallback) {
+        callbackRegistryId = DeepOptimizeSpaceAniCallbackRegistry::Register(
+            context->deepOptimizeSpaceCallbackHolder, clientStub, reqBody.callbackRemote);
+        if (callbackRegistryId == 0) {
+            ANI_ERR_LOG("Failed to register deep optimize space ani callback lifecycle record");
+            context->deepOptimizeSpaceCallbackHolder->Release();
+            context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+            return false;
+        }
+    } else {
+        callbackRegistryId = 0;
+    }
+
+    return true;
+}
+
+static void StartDeepOptimizeSpaceExecute(MediaLibraryAsyncContext *context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StartDeepOptimizeSpaceExecute");
+
+    StartDeepOptimizeSpaceReqBody reqBody;
+    uint64_t callbackRegistryId = 0;
+    if (!PrepareStartDeepOptimizeSpaceAniCallback(context, reqBody, callbackRegistryId)) {
+        return;
+    }
+
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::START_DEEP_OPTIMIZE_SPACE), reqBody);
+    ANI_INFO_LOG("Deep optimize space IPC returned, ret: %{public}d, hasCallback: %{public}d",
+        ret, context->hasDeepOptimizeSpaceCallback);
+    if (ret != E_OK) {
+        ReleaseStartDeepOptimizeSpaceAniCallback(context, callbackRegistryId);
+        if (ret == E_ERR) {
+            context->error = JS_E_INNER_FAIL;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->retVal = E_OK;
+}
+
+static ani_object StartDeepOptimizeSpaceComplete(ani_env *env, MediaLibraryAsyncContext *context)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StartDeepOptimizeSpaceComplete");
+
+    ani_object result {};
+    if (context->error != ERR_DEFAULT) {
+        ANI_ERR_LOG("Start deep optimize space failed, error: %{public}d", context->error);
+        if (context->error == JS_E_OPR_TYPE_NOT_SUPPORT) {
+            AniError::ThrowError(env, context->error, "Unsupported operation type, Possible causes: "
+                "1. Restarted repeatedly; 2. system is busy. Please try again later");
+        } else if (context->error == JS_E_INNER_FAIL) {
+            AniError::ThrowError(env, context->error,
+                "Internal system error. It is recommended to retry and check the logs. Possible causes: "
+                "1. Database corrupted; 2. The file system is abnormal; 3. The IPC request timed out");
+        } else {
+            ani_object errorObj {};
+            context->HandleError(env, errorObj);
+        }
+        return nullptr;
+    }
+
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetUndefinedObject(env, result) == ANI_OK,
+        nullptr, "Failed to create undefined result");
+
+    tracer.Finish();
+    return result;
+}
+
+ani_object MediaLibraryAni::PhotoAccessStartDeepOptimizeSpace(ani_env *env, ani_object object,
+    ani_fn_object callback)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessStartDeepOptimizeSpace");
+
+    std::unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsStartDeepOptimizeSpace(env, object, callback, asyncContext) == ANI_OK,
+        nullptr, "Failed to parse args for startDeepOptimizeSpace");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    StartDeepOptimizeSpaceExecute(asyncContext.get());
+    tracer.Finish();
+    return StartDeepOptimizeSpaceComplete(env, asyncContext.get());
+}
+
+static ani_status ParseArgsStopDeepOptimizeSpace(ani_env *env, ani_object object,
+    std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+
+    context->objectInfo = MediaLibraryAni::Unwrap(env, object);
+    CHECK_COND_RET(context->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
+    return ANI_OK;
+}
+
+static void StopDeepOptimizeSpaceExecute(MediaLibraryAsyncContext *context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StopDeepOptimizeSpaceExecute");
+
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_DEEP_OPTIMIZE_SPACE));
+    ANI_INFO_LOG("Stop deep optimize space IPC returned, ret: %{public}d", ret);
+    if (ret != E_OK) {
+        if (ret == E_ERR) {
+            context->error = JS_E_INNER_FAIL;
+            return;
+        }
+        context->SaveError(ret);
+        return;
+    }
+    context->retVal = E_OK;
+}
+
+static ani_object StopDeepOptimizeSpaceComplete(ani_env *env, MediaLibraryAsyncContext *context)
+{
+    CHECK_COND_RET(context != nullptr, nullptr, "context is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("StopDeepOptimizeSpaceComplete");
+
+    ani_object result {};
+    if (context->error != ERR_DEFAULT) {
+        ANI_ERR_LOG("Stop deep optimize space failed, error: %{public}d", context->error);
+        if (context->error == JS_E_INNER_FAIL) {
+            AniError::ThrowError(env, context->error,
+                "Internal system error. It is recommended to retry and check the logs. Possible causes: "
+                "1. Database corrupted; 2. The file system is abnormal; 3. The IPC request timed out");
+        } else {
+            ani_object errorObj {};
+            context->HandleError(env, errorObj);
+        }
+        return nullptr;
+    }
+
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetUndefinedObject(env, result) == ANI_OK,
+        nullptr, "Failed to create undefined result");
+
+    tracer.Finish();
+    return result;
+}
+
+ani_object MediaLibraryAni::PhotoAccessStopDeepOptimizeSpace(ani_env *env, ani_object object)
+{
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessStopDeepOptimizeSpace");
+
+    std::unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->assetType = TYPE_PHOTO;
+
+    CHECK_COND_WITH_RET_MESSAGE(env, ParseArgsStopDeepOptimizeSpace(env, object, asyncContext) == ANI_OK,
+        nullptr, "Failed to parse args for stopDeepOptimizeSpace");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    StopDeepOptimizeSpaceExecute(asyncContext.get());
+    tracer.Finish();
+    return StopDeepOptimizeSpaceComplete(env, asyncContext.get());
+}
+
+static bool CheckCoverOrderInfo(ani_env *env, const DefaultCoverOrderInfo &info)
+{
+    bool cond = PhotoAlbum::IsSystemAlbum(static_cast<PhotoAlbumType>(info.albumType)) &&
+        ((static_cast<PhotoAlbumSubType>(info.albumSubType) >= PhotoAlbumSubType::SYSTEM_START) &&
+        (static_cast<PhotoAlbumSubType>(info.albumSubType) <= PhotoAlbumSubType::SYSTEM_END));
+    if (!cond && info.lpath.empty()) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "Only system album is allowed without lpath.");
+        return false;
+    }
+    bool isValidCombination = false;
+    for (const auto& combo : VALID_ORDER_COMBINATIONS) {
+        if (combo.first == info.orderKey && combo.second == info.orderSubKey) {
+            isValidCombination = true;
+            break;
+        }
+    }
+    if (!isValidCombination) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "orderKey and orderSubKey combination is not valid.");
+        return false;
+    }
+    if (info.orderType != 0 && info.orderType != 1) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "orderType must be DESC or ASC.");
+        return false;
+    }
+    return true;
+}
+
+static ani_status GetIntProperty(ani_env *env, ani_object arg, const std::string &propName,
+    int32_t &propValue)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    ani_int aniInt = 0;
+    CHECK_STATUS_RET(env->Object_GetPropertyByName_Int(arg, propName.c_str(), &aniInt),
+        "Object_GetPropertyByName_Int failed");
+    propValue = static_cast<int32_t>(aniInt);
+    return ANI_OK;
+}
+
+static ani_status ParseCoverOrderInfo(ani_env *env, ani_object coverOrderInfo,
+    unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    DefaultCoverOrderInfo info;
+    ani_object albumTypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "albumType", albumTypeAni),
+        "Failed to get albumType");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(albumTypeAni),
+        info.albumType), "Failed to get albumType");
+    ani_object albumSubtypeAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "albumSubtype", albumSubtypeAni),
+        "Failed to get albumSubtype");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueInt32(env, static_cast<ani_enum_item>(albumSubtypeAni),
+        info.albumSubType), "Failed to get albumSubtype");
+    if (MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "lpath", info.lpath) != ANI_OK) {
+        info.lpath = "";
+    }
+    ani_object orderKeyAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "orderKey", orderKeyAni),
+        "Failed to get orderKey");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueString(env, static_cast<ani_enum_item>(orderKeyAni),
+        info.orderKey), "Failed to get orderKey");
+    ani_object orderSubKeyAni {};
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, coverOrderInfo, "orderSubKey", orderSubKeyAni),
+        "Failed to get orderSubKey");
+    CHECK_STATUS_RET(MediaLibraryEnumAni::EnumGetValueString(env, static_cast<ani_enum_item>(orderSubKeyAni),
+        info.orderSubKey), "Failed to get orderSubKey");
+    CHECK_STATUS_RET(GetIntProperty(env, coverOrderInfo, "orderType", info.orderType), "Failed to get orderType");
+    if (!CheckCoverOrderInfo(env, info)) {
+        return ANI_ERROR;
+    }
+    context->coverOrderInfos.push_back(move(info));
+    return ANI_OK;
+}
+
+static ani_status ParseArgsModifyAlbumDefaultCoverOrder(ani_env *env, ani_object coverOrderInfos,
+    ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum,
+    std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is nullptr");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is nullptr");
+    ani_boolean isUndefined;
+    env->Reference_IsUndefined(coverOrderInfos, &isUndefined);
+    if (isUndefined) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "coverOrderInfos is undefined");
+        return ANI_INVALID_ARGS;
+    }
+    std::vector<ani_object> aniValues;
+    CHECK_STATUS_RET(MediaLibraryAniUtils::GetObjectArray(env, coverOrderInfos, aniValues), "GetObjectArray fail");
+    if (aniValues.empty()) {
+        ANI_ERR_LOG("coverOrderInfos is empty");
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "coverOrderInfos is empty");
+        return ANI_INVALID_ARGS;
+    }
+    for (const auto &aniValue : aniValues) {
+        CHECK_STATUS_RET(ParseCoverOrderInfo(env, aniValue, context), "Parse cover order info failed");
+    }
+    bool disable {false};
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetBool(env, disableModification, disable) == ANI_OK,
+        ANI_INVALID_ARGS, "Failed to get disableModification");
+    context->disableModification = disable;
+    bool isAsync {false};
+    CHECK_COND_WITH_RET_MESSAGE(env, MediaLibraryAniUtils::GetBool(env, isAsyncRefreshAlbum, isAsync) == ANI_OK,
+        ANI_INVALID_ARGS, "Failed to get isAsyncRefreshAlbum");
+    context->isAsyncRefreshAlbum = isAsync;
+    return ANI_OK;
+}
+
+static void ModifyAlbumDefaultCoverOrderExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    CHECK_IF_EQUAL(!context->coverOrderInfos.empty(), "coverOrderInfos is empty");
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyAlbumDefaultCoverOrderExecute");
+
+    ModifyAlbumDefaultCoverOrderReqBody reqBody;
+    reqBody.coverOrderInfos = context->coverOrderInfos;
+    reqBody.disable = context->disableModification;
+    reqBody.isAsyncRefreshAlbum = context->isAsyncRefreshAlbum;
+    int32_t ret = IPC::UserDefineIPCClient().Call(context->businessCode, reqBody);
+    CHECK_AND_RETURN(ret < 0);
+    if (ret == E_PERMISSION_DENIED || ret == -E_CHECK_SYSTEMAPP_FAIL) {
+        context->SaveError(ret);
+    } else {
+        context->error = JS_E_INNER_FAIL;
+    }
+    ANI_ERR_LOG("Failed to modify album default cover order, err: %{public}d", ret);
+    return;
+}
+
+static void ModifyAlbumDefaultCoverOrderCompleteCallback(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is nullptr");
+    ani_object errorObj {};
+    if (context->error != ERR_DEFAULT) {
+        context->HandleError(env, errorObj);
+    }
+    context.reset();
+}
+
+void MediaLibraryAni::ModifyAlbumDefaultCoverOrder(ani_env *env, ani_object object,
+    ani_object coverOrderInfos, ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyAlbumDefaultCoverOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_IF_EQUAL(asyncContext != nullptr, "asyncContext is nullptr");
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_NULL_PTR_RETURN_VOID(asyncContext->objectInfo, "asyncContext->objectInfo is nullptr");
+    CHECK_IF_EQUAL(ParseArgsModifyAlbumDefaultCoverOrder(env, coverOrderInfos, disableModification, isAsyncRefreshAlbum,
+        asyncContext) == ANI_OK, "Failed to parse modify album default cover order");
+    asyncContext->businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_ALBUM_DEFAULT_COVER_ORDER);
+    SetUserIdFromObjectInfo(asyncContext);
+    ModifyAlbumDefaultCoverOrderExecute(env, asyncContext);
+    ModifyAlbumDefaultCoverOrderCompleteCallback(env, asyncContext);
+}
+
+void MediaLibraryAni::ModifyHiddenAlbumDefaultCoverOrder(ani_env *env, ani_object object,
+    ani_object coverOrderInfos, ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ModifyHiddenAlbumDefaultCoverOrder");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_IF_EQUAL(asyncContext != nullptr, "asyncContext is nullptr");
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_NULL_PTR_RETURN_VOID(asyncContext->objectInfo, "asyncContext->objectInfo is nullptr");
+    CHECK_IF_EQUAL(ParseArgsModifyAlbumDefaultCoverOrder(env, coverOrderInfos, disableModification, isAsyncRefreshAlbum,
+        asyncContext) == ANI_OK, "Failed to parse modify hidden album default cover order");
+    asyncContext->businessCode =
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER);
+    SetUserIdFromObjectInfo(asyncContext);
+    ModifyAlbumDefaultCoverOrderExecute(env, asyncContext);
+    ModifyAlbumDefaultCoverOrderCompleteCallback(env, asyncContext);
 }
 } // namespace Media
 } // namespace OHOS

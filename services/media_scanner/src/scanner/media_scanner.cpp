@@ -55,6 +55,7 @@ namespace Media {
 using namespace std;
 using namespace OHOS::AppExecFwk;
 using namespace OHOS::DataShare;
+static const std::string CONST_MEDIA_SECURE_ALBUM = "const.media.secure_album";
 
 MediaScannerObj::MediaScannerObj(const std::string &path, const std::shared_ptr<IMediaScannerCallback> &callback,
     MediaScannerObj::ScanType type, MediaLibraryApi api) : type_(type), callback_(callback), api_(api)
@@ -289,38 +290,71 @@ static void UpdateAndNotifyShootingModeAlbumOfAsset(std::unique_ptr<Metadata>& d
     }
 }
 
+static void HandleRealTimeCriticalLabelForAsset(AsyncTaskData *data)
+{
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+    auto *taskData = static_cast<CriticalLabelRealTimeAsyncTaskData*>(data);
+    CHECK_AND_RETURN_LOG(taskData != nullptr, "taskData is nullptr!");
+    TTLPriorityQueue::AssetParams params;
+    auto realTimePriority = 2;
+    auto realTimeId = 0;
+    params.truncated_path = taskData->assetInfo.truncated_path;
+    params.id = realTimeId;
+    params.priority = realTimePriority;
+    params.type = taskData->assetInfo.type;
+    params.original_path = taskData->assetInfo.original_path;
+    params.uri = taskData->assetInfo.uri;
+    params.added_time = taskData->assetInfo.added_time;
+    auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
+    CHECK_AND_RETURN_LOG(criticalLabelTaskQueue != nullptr, "criticalLabelTaskQueue is nullptr");
+    auto ret = criticalLabelTaskQueue->AddElement(params);
+    if (ret) {
+        MEDIA_DEBUG_LOG("realtime addElement, added to queue with displayName: %{public}s",
+            params.truncated_path.c_str());
+    } else {
+        MEDIA_DEBUG_LOG("realtime addElement, skipped adding queue, displayName: %{public}s",
+            params.truncated_path.c_str());
+    }
+#endif
+}
+
 void MediaScannerObj::FillAssetInfoWatch()
 {
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
-    if (OHOS::system::GetParameter(CONST_MEDIA_SECURE_ALBUM, "") == "true"
-            && WatchSystemHandler::GetAllowNetworkSwitch()) {
-        MEDIA_INFO_LOG("FillAssetInfoWatch Start");
-        CHECK_AND_RETURN_LOG(data_ != nullptr, "FillAssetInfoWatch data_ is nullptr");
-                TTLPriorityQueue::AssetParams params;
-        int32_t priority = 2;
-        params.display_name = data_->GetFileName();
-        params.id = 0;
-        params.priority = priority;
-        params.type = data_->GetFileMediaType();
-        params.uri =  MediaFileUtils::GetFileAssetUri(data_->GetFilePath(), data_->GetFileName(),
-            data_->GetFileId());
-        params.added_time = data_->GetFileDateAdded();
+    if (OHOS::system::GetParameter(CONST_MEDIA_SECURE_ALBUM, "") == "true") {
         auto instance = MedialibraryRelatedSystemStateManager::GetInstance();
         CHECK_AND_RETURN_LOG(instance != nullptr, "MedialibraryRelatedSystemStateManager instance is nullptr");
         bool isNetworkSufficient = instance->IsNetAvailableInOnlyWifiCondition()
                 || (instance->IsNetValidatedAtRealTime() && instance->IsCellularNetConnected());
-        if (isNetworkSufficient) {
-            auto criticalLabelTaskQueue = TTLPriorityQueue::GetInstance();
-            CHECK_AND_RETURN_LOG(criticalLabelTaskQueue != nullptr, "criticalLabelTaskQueue is nullptr");
-            auto ret = criticalLabelTaskQueue->AddElement(params);
-            if (ret) {
-                MEDIA_DEBUG_LOG("realtime addElement, added to queue with displayName: %{public}s",
-                    MediaFileUtils::DesensitizeName(params.display_name).c_str());
-            } else {
-                MEDIA_DEBUG_LOG("realtime addElement, skipped adding queue, displayName: %{public}s",
-                    MediaFileUtils::DesensitizeName(params.display_name).c_str());
-            }
+        if (isNetworkSufficient == false) {
+            MEDIA_DEBUG_LOG("Handle realTime task, network is not sufficient");
+            return;
         }
+        if (WatchSystemHandler::GetAllowNetworkSwitch() == false) {
+            MEDIA_DEBUG_LOG("Handle realTime task, allowNetworkSwich is Off");
+            return;
+        }
+        MEDIA_INFO_LOG("FillAssetInfoWatch Start");
+        CHECK_AND_RETURN_LOG(data_ != nullptr, "FillAssetInfoWatch data_ is nullptr");
+        auto *taskData = new (std::nothrow) CriticalLabelRealTimeAsyncTaskData();
+        CHECK_AND_RETURN_LOG(taskData != nullptr, "FillAssetInfoWatch taskData is nullptr");
+
+        std::string truncatedPath = "";
+        WatchSystemHandler::ParseAssetName(data_->GetFilePath(), truncatedPath);
+        taskData->assetInfo.truncated_path = truncatedPath;
+        taskData->assetInfo.original_path = data_->GetFilePath();
+        taskData->assetInfo.type = data_->GetFileMediaType();
+        taskData->assetInfo.uri =  MediaFileUtils::GetFileAssetUri(data_->GetFilePath(), data_->GetFileName(),
+            data_->GetFileId());
+        taskData->assetInfo.added_time = data_->GetFileDateAdded();
+
+        auto asyncWorker = MediaLibraryAsyncWorker::GetInstance();
+        CHECK_AND_RETURN_LOG(asyncWorker != nullptr, "Failed to get async worker instance!");
+        std::shared_ptr<MediaLibraryAsyncTask> updateCriticalLabelForRealTimeTask =
+            make_shared<MediaLibraryAsyncTask>(HandleRealTimeCriticalLabelForAsset, taskData);
+        CHECK_AND_RETURN_LOG(updateCriticalLabelForRealTimeTask != nullptr,
+            "Failed to create async task for updateCriticalLabelForRealTimeTask !");
+        asyncWorker->AddTask(updateCriticalLabelForRealTimeTask, false);
     }
 #endif
 }
@@ -680,6 +714,7 @@ int32_t MediaScannerObj::ScanFileInternal()
     }
 
     bool isShareScene = data_->GetForAdd() && data_->GetOwnerPackage() == "com.huawei.hmos.instantshare";
+    int32_t needThumbRet = HandleNeedThumbnail();
     err = Commit();
     if (err != E_OK) {
         MEDIA_ERR_LOG("failed to commit err %{public}d", err);
@@ -689,6 +724,9 @@ int32_t MediaScannerObj::ScanFileInternal()
         return err;
     }
 
+    if (needThumbRet == E_NO_THUMB) {
+        return E_NO_THUMB;
+    }
     return isShareScene ? E_NO_THUMB : E_OK;
 }
 
@@ -1065,6 +1103,20 @@ int32_t MediaScannerObj::SetError()
 {
     int32_t ret = mediaScannerDb_->RecordError(errorPath_);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "record err fail %{public}d", ret);
+    return E_OK;
+}
+
+int32_t MediaScannerObj::HandleNeedThumbnail()
+{
+    if (data_ == nullptr) {
+        MEDIA_ERR_LOG("data_ is nullptr in HandleNeedThumbnail");
+        return E_OK;
+    }
+    int32_t needThumbnail = data_->GetNeedThumbnail();
+    if (needThumbnail == 0) {
+        data_->SetNeedThumbnail(1);
+        return E_NO_THUMB;
+    }
     return E_OK;
 }
 } // namespace Media

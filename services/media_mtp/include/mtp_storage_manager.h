@@ -43,6 +43,8 @@ public:
     std::vector<std::shared_ptr<Storage>> GetStorages();
     std::string GetSystemLanguage();
     std::string GetStorageDescription(const uint16_t type);
+    std::string GetDeviceType();
+    std::string GetStorageDescriptionByDeviceType(const std::string &language);
 private:
     std::vector<std::shared_ptr<Storage>> storages;
 };

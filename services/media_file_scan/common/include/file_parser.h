@@ -21,6 +21,7 @@
  
 #include "asset_accurate_refresh.h"
 #include "file_const.h"
+#include "file_scan_utils.h"
 #include "media_file_notify_info.h"
 #include "medialibrary_unistore_manager.h"
 #include "metadata.h"
@@ -52,8 +53,7 @@ public:
     static int32_t GenerateSingleThumbnail(const ThumbnailInfo &info);
     int32_t IsExistSameFileForCloneRestore(int32_t ownerAlbumId);
     static std::string GetThumbnailUri(const ThumbnailInfo &info);
-    static void SetFileManagerScanFlag(const std::vector<std::string> &fileIds, bool stopScan);
-    
+    static void SetFileManagerScanFlagBySingle(const std::string &fileIdStr, bool stopScan);
     virtual bool IsFileValidAsset();
     virtual FileUpdateType GetFileUpdateType() = 0;
 
@@ -125,6 +125,7 @@ private:
     void SetAssetCloudEnhancementValues(NativeRdb::ValuesBucket &values);
     void SetAssetLocationValues(NativeRdb::ValuesBucket &values);
     void SetAssetEditValues(NativeRdb::ValuesBucket &values);
+    void SetAssetLivePhoto4dValues(NativeRdb::ValuesBucket &values);
     void PutStringVal(NativeRdb::ValuesBucket &values, const std::string &columnName, const std::string &columnVal);
     int32_t UpdateAssetInDatabase();
     bool ShouldGenerateThumbnail();
@@ -153,7 +154,8 @@ private:
     const std::string SQL_PHOTOS_FIND_SAME_FILE_FOR_CLONE_RESTORE = "\
         SELECT file_id \
         FROM Photos \
-        WHERE owner_album_id = ? AND display_name = ? AND size = ? AND orientation = ? \
+        WHERE owner_album_id = ? AND display_name = ? AND size = ? \
+        AND (1 <> ? OR orientation = ?) \
         LIMIT 1;";
 
 protected:

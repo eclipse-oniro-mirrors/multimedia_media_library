@@ -58,9 +58,11 @@ public:
     void GetMaxIds();
     void CloneAnalysisData(const std::string &table, const std::string &type,
         const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap,
-        const std::unordered_set<std::string> &excludedColumns);
+        const std::unordered_set<std::string> &excludedColumns,
+        bool enableTimeout = false);
 
 private:
+    int64_t GetShouldEndTime(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
     std::string ToUpper(const std::string &str)
     {
         std::string upperStr;
@@ -84,6 +86,8 @@ private:
     int32_t successCnt_{0};
     int32_t failCnt_{0};
     int32_t duplicateCnt_{0};
+    std::atomic<int32_t> exitCode_{-1};
+    bool enableTimeout_{false};
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb_;
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb_;
     std::string totalTableName_;

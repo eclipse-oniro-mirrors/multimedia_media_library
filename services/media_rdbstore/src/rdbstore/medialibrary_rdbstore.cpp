@@ -76,6 +76,7 @@
 #include "media_audio_column.h"
 #include "media_edit_utils.h"
 #include "media_string_utils.h"
+#include "media_operation_log_column.h"
 #include "media_values_bucket_utils.h"
 #include "media_compatible_info_column.h"
 #include "vision_portrait_nickname_column.h"
@@ -86,6 +87,7 @@
 #include "moving_photo_file_utils.h"
 #include "media_file_access_utils.h"
 #include "media_fileinterwork_column.h"
+#include "cover_record_columns.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -129,6 +131,34 @@ const std::string PIC_EXTENSION_VALUES = DIR_ALL_IMAGE_CONTAINER_TYPE;
 
 const std::string AUDIO_EXTENSION_VALUES = DIR_ALL_AUDIO_CONTAINER_TYPE;
 
+const std::string ATTACHMENT_FILE_EDITDATA = "editdata";
+const std::string ATTACHMENT_FILE_EDITDATA_CAMERA = "editdata_camera";
+const std::string ATTACHMENT_FILE_SOURCE = "source";
+const std::string ATTACHMENT_FILE_SOURCE_BACK = "source_back";
+
+static bool IsAttachmentWhitelistFile(const std::string &fileName)
+{
+    MEDIA_DEBUG_LOG("Checking file: %{public}s", MediaFileUtils::DesensitizeName(fileName).c_str());
+    if (fileName == ATTACHMENT_FILE_EDITDATA || fileName == ATTACHMENT_FILE_EDITDATA_CAMERA) {
+        return true;
+    }
+
+    // Match source/source_back by base name and allow any extension (e.g. source.jpg/source.mp4).
+    size_t dotPos = fileName.find('.');
+    std::string baseName = (dotPos == std::string::npos) ? fileName : fileName.substr(0, dotPos);
+    return baseName == ATTACHMENT_FILE_SOURCE || baseName == ATTACHMENT_FILE_SOURCE_BACK;
+}
+
+void MediaLibraryRdbStore::StatEditAndAttachmentSize(const std::string &rootPath,
+    uint64_t &editDataSize, uint64_t &attachmentSize)
+{
+    size_t editDataSizeCalc = 0;
+    size_t attachmentSizeCalc = 0;
+    MediaFileUtils::StatDirSize(rootPath, editDataSizeCalc, attachmentSizeCalc, IsAttachmentWhitelistFile);
+    editDataSize = editDataSizeCalc;
+    attachmentSize = attachmentSizeCalc;
+}
+
 const std::string RDB_OLD_VERSION = "rdb_old_version";
 
 const std::string SLAVE = "slave";
@@ -151,6 +181,7 @@ const int TRASH_ALBUM_TYPE_VALUES = 2;
 
 const int32_t ARG_COUNT = 2;
 const std::string TRASH_ALBUM_NAME_VALUES = "TrashAlbum";
+const std::string INVALID_STR = "Invalid";
 
 struct UniqueMemberValuesBucket {
     std::string assetMediaType;
@@ -936,6 +967,7 @@ namespace {
         {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, "INT NOT NULL DEFAULT 0"},
         {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, "TEXT"},
         {PhotoColumn::LOCAL_ASSET_SIZE, "BIGINT NOT NULL DEFAULT 0"},
+        {PhotoColumn::ATTACHMENT_SIZE, "BIGINT NOT NULL DEFAULT 0"},
     };
 
     constexpr size_t PHOTO_TABLE_COLUMN_COUNT = sizeof(PHOTO_TABLE_COLUMNS) / sizeof(ColumnInfo);
@@ -986,20 +1018,77 @@ REGISTER_ASYNC_UPGRADE_TASK(VERSION_CREATE_VIDEO_FACE_TAG_ID_INDEX, "Photos", Ad
 
 // 更新单条编辑数据大小
 int32_t MediaLibraryRdbStore::UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-    const std::string &photoId, const std::string &editDataDir)
+    const std::string &photoId, const std::string &editDataDir, EditAndAttachmentUpdateType updateType)
 {
-    size_t size = 0;
-    MediaFileUtils::StatDirSize(editDataDir, size);
-    std::string sql = "UPDATE " + PhotoExtColumn::PHOTOS_EXT_TABLE + " "
-                    "SET " + PhotoExtColumn::EDITDATA_SIZE + " = " + std::to_string(size) + " "
-                    "WHERE " + PhotoExtColumn::PHOTO_ID + " = '" + photoId + "'";
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
 
-    int32_t ret = rdbStore->ExecuteSql(sql);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("Execute SQL failed: %{public}d", ret);
-        return E_DB_FAIL;
-    }
-    return E_OK;
+    uint64_t editDataSize = 0;
+    uint64_t attachmentSize = 0;
+    StatEditAndAttachmentSize(editDataDir, editDataSize, attachmentSize);
+
+    std::string updatePhotoExtSql = "UPDATE " + PhotoExtColumn::PHOTOS_EXT_TABLE + " "
+        "SET " + PhotoExtColumn::EDITDATA_SIZE + " = ? "
+        "WHERE " + PhotoExtColumn::PHOTO_ID + " = ? ;";
+    std::string updatePhotoSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+        " SET " + PhotoColumn::ATTACHMENT_SIZE + " = ?"
+        " WHERE " + MediaColumn::MEDIA_ID + " = ? ;";
+
+    std::vector<ValueObject> editDataBindArgs = {
+        ValueObject(to_string(editDataSize)),
+        ValueObject(photoId)
+    };
+    std::vector<ValueObject> attachmentBindArgs = {
+        ValueObject(to_string(attachmentSize)),
+        ValueObject(photoId)
+    };
+
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> updateFunc = [&]() -> int32_t {
+        int32_t ret = E_OK;
+        if (updateType != EditAndAttachmentUpdateType::ATTACHMENT_ONLY) {
+            ret = trans->ExecuteSql(updatePhotoExtSql, editDataBindArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+                "Update editdata_size failed, photoId:%{public}s", photoId.c_str());
+        }
+
+        if (updateType != EditAndAttachmentUpdateType::EDIT_ONLY) {
+            ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
+            CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+                "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
+        }
+        return E_OK;
+    };
+    int32_t errCode = trans->RetryTrans(updateFunc);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Trans fail!, ret:%{public}d", errCode);
+    MEDIA_DEBUG_LOG("end update edit data size and attachment size");
+    return errCode;
+}
+
+int32_t MediaLibraryRdbStore::UpdateAttachmentSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+    const std::string &photoId, uint64_t attachmentSize)
+{
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+
+    std::string updatePhotoSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
+        " SET " + PhotoColumn::ATTACHMENT_SIZE + " = ?"
+        " WHERE " + MediaColumn::MEDIA_ID + " = ? ;";
+
+    std::vector<ValueObject> attachmentBindArgs = {
+        ValueObject(to_string(attachmentSize)),
+        ValueObject(photoId)
+    };
+
+    std::shared_ptr<TransactionOperations> trans = std::make_shared<TransactionOperations>(__func__);
+    std::function<int(void)> updateFunc = [&]() -> int32_t {
+        int32_t ret = trans->ExecuteSql(updatePhotoSql, attachmentBindArgs);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_DB_FAIL,
+            "Update attachment_size failed, photoId:%{public}s", photoId.c_str());
+        return E_OK;
+    };
+
+    int32_t errCode = trans->RetryTrans(updateFunc);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Trans fail!, ret:%{public}d", errCode);
+    return errCode;
 }
 
 static int32_t UpdateLocationKnowledgeIdx(RdbStore& store)
@@ -1147,6 +1236,53 @@ void MediaLibraryRdbStore::AddDefaultInsertPhotoValues(ValuesBucket& values)
     PutDefaultDateAddedYearMonthDay(values);
 }
 
+int32_t MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(ValuesBucket& values)
+{
+    CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
+        "rdbStore_ is nullptr. Maybe it didn't init successfully.");
+    int32_t albumType = -1;
+    int32_t albumSubtype = 0;
+    string lpath = INVALID_STR;
+    ValueObject value;
+    if (values.GetObject(PhotoAlbumColumns::ALBUM_TYPE, value)) {
+        value.GetInt(albumType);
+    }
+    if (values.GetObject(PhotoAlbumColumns::ALBUM_SUBTYPE, value)) {
+        value.GetInt(albumSubtype);
+    }
+    if (values.GetObject(PhotoAlbumColumns::ALBUM_LPATH, value)) {
+        value.GetString(lpath);
+    }
+    string sql = "SELECT cover_order_key, cover_order_subkey, cover_order_type, hidden_cover_order_key, "
+        "hidden_cover_order_subkey, hidden_cover_order_type FROM tab_cover_record ";
+    sql += albumType == PhotoAlbumType::SYSTEM ? "WHERE album_type = ? AND  album_subtype = ?" :
+        "WHERE album_type = ? AND  album_subtype = ? AND lpath = ?";
+    vector<ValueObject> args;
+    args = albumType == PhotoAlbumType::SYSTEM ? vector<ValueObject>{ albumType, albumSubtype } :
+        vector<ValueObject>{ albumType, albumSubtype, lpath };
+    auto resultSet = MediaLibraryRdbStore::GetRaw()->QuerySql(sql, args);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_HAS_DB_ERROR, "resultSet is nullptr.");
+    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        string coverOrderKey = GetStringVal("cover_order_key", resultSet);
+        string coverOrderSubKey = GetStringVal("cover_order_subkey", resultSet);
+        int32_t coverOrderType = GetInt32Val("cover_order_type", resultSet);
+        string hiddenCoverOrderKey = GetStringVal("hidden_cover_order_key", resultSet);
+        string hiddenCoverOrderSubKey = GetStringVal("hidden_cover_order_subkey", resultSet);
+        int32_t hiddenCoverOrderType = GetInt32Val("hidden_cover_order_type", resultSet);
+        CHECK_AND_EXECUTE(coverOrderKey.empty(), values.PutString("cover_order_key", coverOrderKey));
+        CHECK_AND_EXECUTE(coverOrderSubKey.empty(), values.PutString("cover_order_subkey", coverOrderSubKey));
+        CHECK_AND_EXECUTE(coverOrderType != 0 && coverOrderType != 1,
+            values.PutInt("cover_order_type", coverOrderType));
+        CHECK_AND_EXECUTE(hiddenCoverOrderKey.empty(), values.PutString("hidden_cover_order_key", hiddenCoverOrderKey));
+        CHECK_AND_EXECUTE(hiddenCoverOrderSubKey.empty(),
+            values.PutString("hidden_cover_order_subkey", hiddenCoverOrderSubKey));
+        CHECK_AND_EXECUTE(hiddenCoverOrderType != 0 && hiddenCoverOrderType != 1,
+            values.PutInt("hidden_cover_order_type", hiddenCoverOrderType));
+    }
+    resultSet->Close();
+    return E_OK;
+}
+
 int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
 {
     DfxTimer dfxTimer(DfxType::RDB_INSERT, INVALID_DFX, RDB_TIME_OUT, false);
@@ -1159,6 +1295,9 @@ int32_t MediaLibraryRdbStore::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
     NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
     if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
         AddDefaultInsertPhotoValues(tmpValues);
+    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
 
     int32_t ret = ExecSqlWithRetry([&]() {
@@ -1187,6 +1326,11 @@ int32_t MediaLibraryRdbStore::BatchInsert(int64_t &outRowId, const std::string &
         for (auto& value : tmpValues) {
             AddDefaultInsertPhotoValues(value);
         }
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(value) == E_OK, E_HAS_DB_ERROR,
+                "AddCoverOrderValuesFromRecord failed.");
+        }
     }
     int32_t ret = ExecSqlWithRetry([&]() {
         return MediaLibraryRdbStore::GetRaw()->BatchInsert(outRowId, table, tmpValues);
@@ -1214,6 +1358,11 @@ int32_t MediaLibraryRdbStore::BatchInsert(MediaLibraryCommand &cmd, int64_t& out
         for (auto& value : tmpValues) {
             AddDefaultInsertPhotoValues(value);
         }
+    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(value) == E_OK, E_HAS_DB_ERROR,
+                "AddCoverOrderValuesFromRecord failed.");
+        }
     }
     int32_t ret = ExecSqlWithRetry([&]() {
         return MediaLibraryRdbStore::GetRaw()->BatchInsert(outInsertNum, cmd.GetTableName(), tmpValues);
@@ -1234,6 +1383,9 @@ int32_t MediaLibraryRdbStore::InsertInternal(int64_t &outRowId, const std::strin
     NativeRdb::ValuesBucket tmpValues = row;
     if (table == PhotoColumn::PHOTOS_TABLE) {
         AddDefaultInsertPhotoValues(tmpValues);
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
     return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, tmpValues); });
 }
@@ -1575,7 +1727,7 @@ void MediaLibraryRdbStore::BuildQuerySql(const AbsRdbPredicates &predicates, con
 }
 
 shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::StepQueryWithoutCheck(const AbsRdbPredicates &predicates,
-    const vector<string> &columns)
+    const vector<string> &columns, bool isAlbumRefresh)
 {
     if (!MediaLibraryRdbStore::CheckRdbStore()) {
         MEDIA_ERR_LOG("rdbStore_ is nullptr");
@@ -1587,7 +1739,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryRdbStore::StepQueryWithoutCheck(con
         return nullptr;
     }
 
-    MediaLibraryRdbUtils::AddQueryFilter(const_cast<AbsRdbPredicates &>(predicates));
+    MediaLibraryRdbUtils::AddQueryFilter(const_cast<AbsRdbPredicates &>(predicates), isAlbumRefresh);
     DfxTimer dfxTimer(RDB_QUERY, INVALID_DFX, RDB_TIME_OUT, false);
     MediaLibraryTracer tracer;
     tracer.Start("StepQueryWithoutCheck");
@@ -2312,6 +2464,8 @@ static const vector<string> onCreateSqlStrs = {
     AlbumScanInfoColumn::CREATE_TABLE,
     AlbumScanInfoColumn::CREATE_INDEX_ON_ALBUM_ID_STORAGE_PATH,
     MediaFileInterworkColumn::CREATE_FILE_OPT_TABLE,
+    CoverRecordColumns::CREATE_COVER_RECORD_TABLE,
+    CoverRecordColumns::CREATE_ALBUM_LPATH_INDEX,
 
     // search
     CREATE_SEARCH_TOTAL_TABLE,
@@ -2351,6 +2505,7 @@ static const vector<string> onCreateSqlStrs = {
 
     // tab_analysis_progress
     CREATE_TAB_ANALYSIS_PROGRESS,
+    TabOperationLogColumn::CREATE_TABLE,
     DownloadResourcesColumn::CREATE_TABLE,
     DownloadResourcesColumn::INDEX_DRTR_ID_STATUS,
 
@@ -3756,6 +3911,19 @@ int32_t AddMultiStagesCaptureColumns(RdbStore &store)
     return ExecSqls(sqls, store);
 }
 REGISTER_SYNC_UPGRADE_TASK(VERSION_ADD_MULTISTAGES_CAPTURE, "Photos", AddMultiStagesCaptureColumns);
+
+static void AddAlbumSceneIdAndShareTypeColumns(RdbStore &store, int32_t version)
+{
+    const vector<string> sqls = {
+        "ALTER TABLE " + PhotoAlbumColumns::TABLE + " ADD COLUMN " +
+            PhotoAlbumColumns::ALBUM_SCENE_ID + " INT DEFAULT 0",
+        "ALTER TABLE " + PhotoAlbumColumns::TABLE + " ADD COLUMN " +
+            PhotoAlbumColumns::ALBUM_SHARE_TYPE + " INT DEFAULT 0",
+    };
+    MEDIA_INFO_LOG("Add scene_id and share_type columns for PhotoAlbum start");
+    ExecSqlsWithDfx(sqls, store, version);
+    MEDIA_INFO_LOG("Add scene_id and share_type columns for PhotoAlbum end");
+}
 
 static int32_t CreateBackupInfoTable(RdbStore& store)
 {
@@ -6698,6 +6866,20 @@ static int32_t AddLakeTriggerFilterForFileManager(RdbStore &store)
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_LAKE_TRIGGER_FILTER_FOR_FILE_MANAGER,
     "Photos", AddLakeTriggerFilterForFileManager);
 
+static int32_t AddLcdFileSize(RdbStore &store)
+{
+    const vector<string> sqls = {
+        "ALTER TABLE " + PHOTOS_TABLE + " ADD COLUMN " +
+            PhotoColumn::PHOTO_LCD_FILE_SIZE + " INT NOT NULL DEFAULT 0 "
+    };
+    MEDIA_INFO_LOG("Add lcd aging columns start");
+    int32_t ret = ExecSqlsWithDfx(sqls, store, VERSION_ADD_PHOTO_LCD_FILE_SIZE);
+    MEDIA_INFO_LOG("Add lcd aging columns end");
+    return ret;
+}
+REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_PHOTO_LCD_FILE_SIZE,
+    "Photos", AddLcdFileSize);
+
 int32_t MediaLibraryDataCallBack::OnUpgrade(RdbStore &store, int32_t oldVersion, int32_t newVersion)
 {
     MediaLibraryTracer tracer;
@@ -6840,6 +7022,9 @@ int MediaLibraryRdbStore::Insert(int64_t &outRowId, const std::string &table, Va
     NativeRdb::ValuesBucket tmpValues = row;
     if (table == PhotoColumn::PHOTOS_TABLE) {
         AddDefaultInsertPhotoValues(tmpValues);
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        CHECK_AND_RETURN_RET_LOG(AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
+            "AddCoverOrderValuesFromRecord failed.");
     }
     return ExecSqlWithRetry([&]() { return MediaLibraryRdbStore::GetRaw()->Insert(outRowId, table, tmpValues); });
 }
@@ -6871,13 +7056,21 @@ pair<int32_t, NativeRdb::Results> MediaLibraryRdbStore::BatchInsert(const string
         return {E_HAS_DB_ERROR, -1};
     }
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
+    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     if (table == PhotoColumn::PHOTOS_TABLE) {
         for (auto& value : tmpValues) {
             AddDefaultInsertPhotoValues(value);
         }
+    } else if (table == PhotoAlbumColumns::TABLE) {
+        for (auto& value : tmpValues) {
+            auto ret = MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value);
+            if (ret != E_OK) {
+                MEDIA_ERR_LOG("AddCoverOrderValuesFromRecord failed");
+                return retWithResults;
+            }
+        }
     }
 
-    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
     int32_t ret = ExecSqlWithRetry([&]() {
         retWithResults = MediaLibraryRdbStore::GetRaw()->BatchInsert(table, tmpValues, { returningField });
         return retWithResults.first;

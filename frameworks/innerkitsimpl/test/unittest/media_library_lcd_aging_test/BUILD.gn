@@ -33,11 +33,9 @@ ohos_unittest("media_library_lcd_aging_test") {
 
   sources = [
     "./src/media_library_lcd_aging_test.cpp",
-    "./src/lcd_aging_task_priority_manager_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_task_priority_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
@@ -68,11 +66,13 @@ ohos_unittest("media_library_lcd_aging_test") {
     "file_api:filemgmt_libn",
     "hilog:libhilog",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
+    "graphic_surface:surface",
   ]
 
   sanitize = {
