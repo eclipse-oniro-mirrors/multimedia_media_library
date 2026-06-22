@@ -2855,5 +2855,14 @@ std::string MediaFileUtils::GenerateUUID()
     uuid_unparse(uuid, str);
     return std::string(str);
 }
+
+string MediaFileUtils::RemoveExtension(const string &path)
+{
+    size_t splitIndex = path.find_last_of('.');
+    size_t lastSlashIndex = path.find_last_of('/');
+    bool cond = (splitIndex == string::npos || (lastSlashIndex != string::npos && lastSlashIndex > splitIndex));
+    CHECK_AND_RETURN_RET(!cond, "");
+    return path.substr(0, splitIndex);
+}
 } // namespace OHOS::Media
 // LCOV_EXCL_STOP

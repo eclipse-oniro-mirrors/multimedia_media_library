@@ -170,6 +170,7 @@ public:
     EXPORT static std::string GetHighlightVideoPath(const std::string &uri);
     EXPORT static std::string GetTableNameByDisplayName(const std::string &displayName);
     EXPORT static bool GetDateModified(const std::string &path, int64_t &dateModified);
+    EXPORT static std::string RemoveExtension(const std::string &path);
 #ifdef MEDIALIBRARY_COMPATIBILITY
     EXPORT static std::string GetTableFromVirtualUri(const std::string &uri);
 #endif

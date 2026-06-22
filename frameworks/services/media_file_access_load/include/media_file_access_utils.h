@@ -81,8 +81,8 @@ public:
 
     EXPORT static MoveResult ProcessLivePhotoToMovingPhoto(const std::string &srcPath,
         const std::string &destPath, bool deleteSrc);
-    EXPORT static MoveResult ProcessMovingPhotoToLivePhoto(const std::string &srcPath,
-        const std::string &destPath, FileSourceType destSourceType, bool deleteSrc);
+    EXPORT static MoveResult ProcessMovingPhotoToLivePhoto(const std::string &srcPath, const std::string &destPath,
+        FileSourceType destSourceType, bool deleteSrc, std::shared_ptr<AssetAccurateRefresh> assetRefresh = nullptr);
 
 private:
     struct AssetPathConvertInfo {

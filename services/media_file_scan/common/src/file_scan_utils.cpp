@@ -286,11 +286,11 @@ std::string FileScanUtils::GetAssetRealPath(const std::string &path)
     auto resultSet = MediaLibraryRdbStore::Query(rdbPredicate, columns);
     if (resultSet == nullptr) {
         MEDIA_ERR_LOG("Failed to get resultSet");
-        return "";
+        return path;
     }
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Failed to GoToFirstRow");
-        return "";
+        return path;
     }
     // 湖内资产删除隐藏后移动到湖外
     if (MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE) == static_cast<int32_t>(MEDIA)) {

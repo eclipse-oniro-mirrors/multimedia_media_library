@@ -36,6 +36,7 @@
 #include "media_string_utils.h"
 #include "media_edit_utils.h"
 #include "photo_file_utils.h"
+#include "moving_photo_file_utils.h"
 
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Media::AccurateRefresh;
@@ -291,6 +292,56 @@ static bool CheckFileManagerRealPath(const std::string &path)
     return CheckSubDirForFileManager(path, startPos);
 }
 
+static std::string ConvertToLivePhoto(shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &srcPath)
+{
+    int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+    int32_t originalSubType = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
+    bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subType, effectMode, originalSubType);
+    if (isMovingPhoto) {
+        string movingPhotoImagePath =  MediaFileUtils::RemoveExtension(srcPath) + "." +
+            MediaFileUtils::GetExtensionFromPath(srcPath);
+        string movingPhotoVideoPath =  MediaFileUtils::GetMovingPhotoVideoPath(srcPath);
+        int64_t coverPosition = 0;
+        int32_t ret = MovingPhotoFileUtils::GetLivePhotoCoverPosition(movingPhotoVideoPath, "", coverPosition);
+        if (ret != E_OK) {
+            MEDIA_WARN_LOG("Failed to get cover position, use default 0, ret:%{public}d", ret);
+            coverPosition = 0;
+        }
+        string livePhotoPath;
+        ret = MovingPhotoFileUtils::ConvertToLivePhoto(
+            movingPhotoImagePath, movingPhotoVideoPath, "", coverPosition, livePhotoPath);
+        if (ret != E_OK) {
+            MEDIA_INFO_LOG("convert to moving photo failed, srcPath:%{public}s",
+                DfxUtils::GetSafePath(srcPath).c_str());
+            return srcPath;
+        }
+        return livePhotoPath;
+    } else {
+        return srcPath;
+    }
+}
+
+static void DeleteTempImageAndVideo(shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    std::string srcPath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+    int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+    int32_t originalSubType = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
+    bool isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(subType, effectMode, originalSubType);
+    if (isMovingPhoto) {
+        string movingPhotoImagePath =  MediaFileUtils::RemoveExtension(srcPath) + "." +
+            MediaFileUtils::GetExtensionFromPath(srcPath);
+        string movingPhotoVideoPath =  MediaFileUtils::GetMovingPhotoVideoPath(srcPath);
+        if (!MediaFileUtils::DeleteFile(movingPhotoImagePath)) {
+            MEDIA_ERR_LOG("failed to delete movingPhotoImagePath file, errno: %{public}d", errno);
+        }
+        if (!MediaFileUtils::DeleteFile(movingPhotoVideoPath)) {
+            MEDIA_ERR_LOG("failed to delete movingPhotoVideoPath file, errno: %{public}d", errno);
+        }
+    }
+}
+
 static int32_t MoveAssetToLake(AccurateRefreshBase &refresh,
     shared_ptr<NativeRdb::ResultSet> &resultSet, std::vector<MoveAssetsToLakeUpdateData> &updateDatas)
 {
@@ -325,10 +376,11 @@ static int32_t MoveAssetToLake(AccurateRefreshBase &refresh,
     updateData.title = tmpTitle;
     updateData.displayName = tmpDisplayName;
     updateData.storagePath = tmpInnerLakePath;
-    int32_t ret = LakeFileOperations::MoveLakeFile(outerLakePath, tmpInnerLakePath);
+    string livePhotoPath = ConvertToLivePhoto(resultSet, outerLakePath);
+    int32_t ret = LakeFileOperations::MoveLakeFile(livePhotoPath, tmpInnerLakePath);
     CHECK_AND_PRINT_LOG(ret == E_OK,
         "move asset %{public}s to %{public}s error, errno: %{public}d.",
-        DfxUtils::GetSafePath(outerLakePath).c_str(),
+        DfxUtils::GetSafePath(livePhotoPath).c_str(),
         DfxUtils::GetSafePath(tmpInnerLakePath).c_str(),
         errno);
     if (ret == E_OK) {
@@ -336,6 +388,7 @@ static int32_t MoveAssetToLake(AccurateRefreshBase &refresh,
         if (tmpInnerLakePath.compare(innerLakePath) != E_OK) {
             UpdateLakeAssetInfo(refresh, mediaId, tmpInnerLakePath, tmpDisplayName, tmpTitle);
         }
+        DeleteTempImageAndVideo(resultSet);
     }
     return E_OK;
 }
@@ -443,7 +496,6 @@ int32_t LakeFileOperations::MoveInnerLakeAssetsToNewAlbum(
 
 int32_t LakeFileOperations::MoveAssetsToLake(AccurateRefreshBase &refresh, const std::vector<std::string> &ids)
 {
-    MEDIA_DEBUG_LOG("MoveAssetsToLake enter %{public}zu", ids.size());
     CHECK_AND_RETURN_RET_LOG(!ids.empty(), E_INVALID_ARGUMENTS, "move asset param error");
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.In(MediaColumn::MEDIA_ID, ids);
@@ -463,7 +515,8 @@ int32_t LakeFileOperations::MoveAssetsToLake(AccurateRefreshBase &refresh, const
     predicates.EqualTo(MediaColumn::MEDIA_HIDDEN, 0);
     auto resultSet = MediaLibraryRdbStore::Query(predicates,
         { MediaColumn::MEDIA_ID, MediaColumn::MEDIA_TITLE, MediaColumn::MEDIA_NAME,
-            MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_SOURCE_PATH });
+            MediaColumn::MEDIA_FILE_PATH, PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_SOURCE_PATH,
+            PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, MediaColumn::MEDIA_FILE_PATH });
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB, "query storage path error");
     int32_t rowCount = -1;
     int32_t ret = resultSet->GetRowCount(rowCount);
@@ -501,6 +554,22 @@ static int32_t UpdateFileSourceType(const std::vector<std::string> &updateIds, c
         "update file source type error ret: %{public}d, change rows: %{public}d",
         ret,
         changedRows);
+    return E_OK;
+}
+
+static int32_t ConvertToMovingPhoto(const std::string &srcPath)
+{
+    bool isLivePhoto = MovingPhotoFileUtils::IsLivePhotoAsset(srcPath);
+    if (isLivePhoto) {
+        string movingPhotoImagePath =  MediaFileUtils::RemoveExtension(srcPath) + "." +
+            MediaFileUtils::GetExtensionFromPath(srcPath);
+        string movingPhotoVideoPath =  MediaFileUtils::GetMovingPhotoVideoPath(srcPath);
+        auto ret = MovingPhotoFileUtils::ConvertToMovingPhoto(srcPath, movingPhotoImagePath, movingPhotoVideoPath, "");
+        if (ret != E_OK) {
+            MEDIA_INFO_LOG("convert to moving photo failed, srcPath:%{public}s",
+                DfxUtils::GetSafePath(srcPath).c_str());
+        }
+    }
     return E_OK;
 }
 
@@ -546,6 +615,7 @@ int32_t LakeFileOperations::MoveAssetsFromLake(const std::vector<std::string> &i
         ret = MoveLakeFile(innerLakePath, outerLakePath);
         CHECK_AND_PRINT_LOG(ret == E_OK, "move asset %{public}s to %{public}s error, errno: %{public}d",
             DfxUtils::GetSafePath(innerLakePath).c_str(), DfxUtils::GetSafePath(outerLakePath).c_str(), errno);
+        ConvertToMovingPhoto(outerLakePath);
         if (ret == E_OK) {
             updateIds.emplace_back(to_string(mediaId));
         }
