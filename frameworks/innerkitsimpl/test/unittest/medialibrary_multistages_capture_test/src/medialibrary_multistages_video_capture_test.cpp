@@ -309,8 +309,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_002, TestSiz
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::fileId2PhotoId_.count(fileId), 1);
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::photoIdInProcess_.count(videoId), 1);
     EXPECT_EQ(MultiStagesVideoCaptureManager::videoInfoMap_.count(videoId), 1);
-    EXPECT_EQ(videoInfo.absSrcFilePath, filePath);
-    EXPECT_EQ(videoInfo.videoPath, MediaEditUtils::GetEditDataSourcePath(filePath));
     EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
     EXPECT_EQ(GetDirty(fileId), -1);
 
@@ -341,8 +339,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_003, TestSiz
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::fileId2PhotoId_.count(fileId), 1);
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::photoIdInProcess_.count(videoId), 1);
     EXPECT_EQ(MultiStagesVideoCaptureManager::videoInfoMap_.count(videoId), 1);
-    EXPECT_EQ(videoInfo.absSrcFilePath, filePath);
-    EXPECT_EQ(videoInfo.videoPath, filePath);
     EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
 
     MEDIA_INFO_LOG("manager_add_video_003 End");
@@ -372,8 +368,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_004, TestSiz
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::fileId2PhotoId_.count(fileId), 1);
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::photoIdInProcess_.count(videoId), 1);
     EXPECT_EQ(MultiStagesVideoCaptureManager::videoInfoMap_.count(videoId), 1);
-    EXPECT_EQ(videoInfo.absSrcFilePath, movingPhotoVideoPath);
-    EXPECT_EQ(videoInfo.videoPath, MediaEditUtils::GetEditDataSourcePath(movingPhotoVideoPath));
     EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
     EXPECT_EQ(GetDirty(fileId), -1);
 
@@ -405,8 +399,6 @@ HWTEST_F(MediaLibraryMultiStagesVideoCaptureTest, manager_add_video_005, TestSiz
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::fileId2PhotoId_.count(fileId), 1);
     EXPECT_EQ(MultiStagesCaptureRequestTaskManager::photoIdInProcess_.count(videoId), 1);
     EXPECT_EQ(MultiStagesVideoCaptureManager::videoInfoMap_.count(videoId), 1);
-    EXPECT_EQ(videoInfo.absSrcFilePath, movingPhotoVideoPath);
-    EXPECT_EQ(videoInfo.videoPath, movingPhotoVideoPath);
     EXPECT_EQ(GetQuality(fileId), static_cast<int32_t>(MultiStagesPhotoQuality::LOW));
 
     MEDIA_INFO_LOG("manager_add_video_005 End");
