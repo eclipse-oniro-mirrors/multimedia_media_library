@@ -280,7 +280,10 @@ bool ThumbnailUtils::CompressImage(const shared_ptr<PixelMap> &pixelMap, vector<
         .format = isAstc ? THUMBASTC_FORMAT : THUMBNAIL_FORMAT,
         .quality = static_cast<uint8_t>(isAstc ? ThumbnailQuality::ASTC_LOW_QUALITY : quality),
         .numberHint = NUMBER_HINT_1,
-        .desiredDynamicRange = forceSdr ? EncodeDynamicRange::SDR :EncodeDynamicRange::AUTO
+        .desiredDynamicRange = forceSdr ? EncodeDynamicRange::SDR :EncodeDynamicRange::AUTO,
+        .astcPackingOption = {
+            .enableAstcClEncode = isAstc
+        }
     };
     data.resize(max(pixelMap->GetByteCount(), MIN_COMPRESS_BUF_SIZE));
 
