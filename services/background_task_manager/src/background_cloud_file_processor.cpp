@@ -587,6 +587,8 @@ void BackgroundCloudFileProcessor::HandleSuccessCallback(const DownloadProgressO
         to_string(downloadId_).c_str());
 
     downloadResult_[progress.path] = DownloadStatus::SUCCESS;
+    // 已成功下载的图片，不可再次下载
+    UpdateDownloadCnt(progress.path, DOWNLOAD_FAIL_MAX_TIMES);
     MEDIA_INFO_LOG("download success, uri: %{public}s.", MediaFileUtils::DesensitizePath(progress.path).c_str());
 }
 
