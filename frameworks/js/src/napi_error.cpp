@@ -151,15 +151,21 @@ void NapiError::SaveMoveError(int32_t ret)
         error = MediaLibraryNapiUtils::TransMoveErrorCode(apiName, ret);
         if (error == JS_E_PARAM_INVALID) {
             if (ret == E_PATH_NOT_SUPPORT) {
-                errorMsg = "Path not support";
+                errorMsg = "Path not supported.";
             } else if (ret == E_FILE_NOT_EXIST) {
-                errorMsg = "File not exist";
+                errorMsg = "File does not exist.";
             } else if (ret == E_RENAME) {
-                errorMsg = "The file with the same name already exists";
-            } else if (ret == E_MEDIA_TYPE) {
-                errorMsg = "This file type is not supported.";
+                errorMsg = "File with the same name already exists.";
+            } else if (ret == E_MEDIA_TYPE_INVAILD) {
+                errorMsg = "File type is not supported.";
             } else if (ret == E_CANCEL_TASK) {
-                errorMsg = "Task has been canceled";
+                errorMsg = "Task has been canceled.";
+            } else if (ret == E_TARGET_ALBUM_INVAILD) {
+                errorMsg = "Target album does not exist.";
+            } else if (ret == E_FILE_HIDDEN_OR_TRASHED) {
+                errorMsg = "File has been hidden or trashed.";
+            } else if (ret == E_FILE_IS_PENDING_STATU) {
+                errorMsg = "File is in pending status.";
             }
         }
     }

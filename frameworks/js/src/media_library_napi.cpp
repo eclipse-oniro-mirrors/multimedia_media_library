@@ -16802,8 +16802,11 @@ static void OnMoveTaskFinished(napi_env env, void *data, RespBodyType respBody)
     std::unordered_map<int32_t, int32_t> errorCodeMap = { {E_PATH_NOT_SUPPORT, 1},
                                                           {E_FILE_NOT_EXIST, 2},
                                                           {E_RENAME, 3},
-                                                          {E_MEDIA_TYPE, 4},
-                                                          {E_CANCEL_TASK, 5}};
+                                                          {E_MEDIA_TYPE_INVAILD, 4},
+                                                          {E_CANCEL_TASK, 5},
+                                                          {E_TARGET_ALBUM_INVAILD, 6},
+                                                          {E_FILE_HIDDEN_OR_TRASHED, 7},
+                                                          {E_FILE_IS_PENDING_STATU, 8}};
     auto *context = static_cast<MediaLibraryAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
     if (context->onResultProcess != nullptr) {

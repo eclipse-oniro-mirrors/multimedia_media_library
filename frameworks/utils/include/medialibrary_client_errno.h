@@ -92,8 +92,11 @@ const std::unordered_map<int, int> transMove2JsError = {
     { E_PATH_NOT_SUPPORT,     JS_E_PARAM_INVALID},
     { E_FILE_NOT_EXIST,       JS_E_PARAM_INVALID},
     { E_INVALID_PARAM,        JS_E_PARAM_INVALID},
-    { E_MEDIA_TYPE,           JS_E_PARAM_INVALID},
+    { E_MEDIA_TYPE_INVAILD,   JS_E_PARAM_INVALID},
     { E_CANCEL_TASK,          JS_E_PARAM_INVALID},
+    { E_TARGET_ALBUM_INVAILD, JS_E_PARAM_INVALID},
+    { E_FILE_HIDDEN_OR_TRASHED, JS_E_PARAM_INVALID},
+    { E_FILE_IS_PENDING_STATU, JS_E_PARAM_INVALID},
     { E_RDB,                  JS_E_INNER_FAIL},
     { E_ERR,                  JS_E_INNER_FAIL},
 };
