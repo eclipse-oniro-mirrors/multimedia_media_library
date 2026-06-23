@@ -15,6 +15,8 @@
 #ifndef MEDIA_ASSET_CHANGE_REQUES_IMPL_H
 #define MEDIA_ASSET_CHANGE_REQUES_IMPL_H
 
+#include <vector>
+
 #include "avmetadatahelper.h"
 #include "datashare_helper.h"
 #include "ffi_remote_data.h"
@@ -88,10 +90,10 @@ public:
     std::string GetMovingPhotoVideoPath() const;
     std::string GetFileRealPath() const;
     AddResourceMode GetAddResourceMode() const;
-    void* GetDataBuffer() const;
+    const uint8_t* GetDataBuffer() const;
     size_t GetDataBufferSize() const;
     AddResourceMode GetMovingPhotoVideoMode() const;
-    void* GetMovingPhotoVideoBuffer() const;
+    const uint8_t* GetMovingPhotoVideoBuffer() const;
     size_t GetMovingPhotoVideoSize() const;
     void RecordChangeOperation(AssetChangeOperation changeOperation);
     uint32_t FetchAddCacheFileId();
@@ -143,13 +145,11 @@ private:
     OHOS::DataShare::DataShareValuesBucket creationValuesBucket_;
     std::string realPath_;
     std::string cacheFileName_;
-    void* dataBuffer_ = nullptr;
-    size_t dataBufferSize_ = 0;
+    std::vector<uint8_t> dataBufferOwned_;
     AddResourceMode addResourceMode_ = AddResourceMode::DATA_BUFFER;
     std::string movingPhotoVideoRealPath_;
     std::string cacheMovingPhotoVideoName_;
-    void* movingPhotoVideoDataBuffer_ = nullptr;
-    size_t movingPhotoVideoBufferSize_ = 0;
+    std::vector<uint8_t> movingPhotoVideoDataBufferOwned_;
     AddResourceMode movingPhotoVideoResourceMode_ = AddResourceMode::DATA_BUFFER;
     std::vector<ResourceType> addResourceTypes_; // support adding resource multiple times
     std::vector<AssetChangeOperation> assetChangeOperations_;
