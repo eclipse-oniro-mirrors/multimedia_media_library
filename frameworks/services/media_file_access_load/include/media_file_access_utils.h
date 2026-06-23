@@ -91,6 +91,7 @@ private:
         FileSourceType sourceType {FileSourceType::MEDIA};
         PhotoSubType subType {PhotoSubType::DEFAULT};
         BurstCoverLevelType burstCoverLevel {BurstCoverLevelType::DEFAULT};
+        int32_t position {static_cast<int32_t>(PhotoPositionType::LOCAL)};
     };
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     static bool IsZeroBucketPath(const std::string &path);
