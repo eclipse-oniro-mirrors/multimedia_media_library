@@ -17,12 +17,14 @@ import { Component, Row, Column, Builder, SecurityUIExtensionComponent, Security
 import { PickerColorMode } from '@ohos.file.PhotoPickerComponent';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { RecordData } from '@ohos.base';
+import { Observed, Watch } from '@ohos.arkui.stateManagement';
 
 export type EmptyAreaClickCallback = () => void;
 
 export class AlbumPickerOptions {
   public themeColorMode?: PickerColorMode;
   public filterType?: photoAccessHelper.PhotoViewMIMETypes;
+  public fontSize?: int | string;
 }
 
 export class AlbumInfo {
@@ -34,11 +36,35 @@ function checkValueRetUndefined<T>(value: Object | undefined | null): T | undefi
   return (value !== undefined && value !== null) ? (value as T) : undefined;
 }
 
+@Observed
+export class AlbumPickerController {
+  public data?: Map<string, Object>;
+
+  public setFontSize(fontSize: int | string): void {
+    this.data = new Map<string, Object>([
+      ['SET_FONT_SIZE', fontSize]
+    ])
+  }
+}
+
 @Component
 export struct AlbumPickerComponent {
   albumPickerOptions?: AlbumPickerOptions | undefined;
   onAlbumClick?: (albumInfo: AlbumInfo) => boolean;
   onEmptyAreaClick?: EmptyAreaClickCallback;
+  @Watch('onChanged') albumPickerController?: AlbumPickerController; 
+  private proxy: SecurityUIExtensionProxy | undefined;
+
+  private onChanged(): void {
+    if (!this.proxy) {
+      return;
+    }
+    let data: Map<string, Object> | undefined = this.albumPickerController?.data;
+    if (data?.has('SET_FONT_SIZE')) {
+      this.proxy?.send({ 'fontSize': data?.get('SET_FONT_SIZE') as number | string });
+      console.info('AlbumPickerComponent onChanged: SET_FONT_SIZE');
+    }
+  }
 
   private handleOnReceive(wantParam: Record<string, RecordData>): void {
     console.info('AlbumPickerComponent handleOnReceive: ' + JSON.stringify(wantParam));
@@ -70,6 +96,7 @@ export struct AlbumPickerComponent {
             'targetPage': 'albumPage',
             'themeColorMode': this.albumPickerOptions?.themeColorMode,
             'filterType': this.albumPickerOptions?.filterType,
+            'fontSize': this.albumPickerOptions?.fontSize,
           } as Record<string, RecordData>
         })
         .height('100%')

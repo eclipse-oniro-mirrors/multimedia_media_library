@@ -4544,8 +4544,8 @@ static ani_status ParseBundleInfo(ani_env *env, ani_object appInfo, BundleInfo &
         "Failed to get appId");
     uint64_t tokenId_val{0};
     CHECK_STATUS_RET(MediaLibraryAniUtils::GetProperty(env, appInfo, TOKEN_ID, tokenId_val),
-        "Failed to get appId");
-    bundleInfo.tokenId = static_cast<int32_t>(tokenId_val);
+        "Failed to get tokenId");
+    bundleInfo.tokenId = static_cast<uint32_t>(tokenId_val);
     return ANI_OK;
 }
 
