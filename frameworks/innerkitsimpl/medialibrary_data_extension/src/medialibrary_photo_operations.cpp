@@ -158,6 +158,8 @@ const std::string EXTENSION_HEIF = ".heic";
 
 const std::string LAKE_PATH_PREFIX = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
 
+const std::string EDITDATA_CAMERA = "/editdata_camera";
+
 const std::unordered_map<ImageFileType, std::string> IMAGE_FILE_TYPE_MAP = {
     {JPEG, MIME_TYPE_JPEG},
     {HEIF, MIME_TYPE_HEIF},
@@ -5261,11 +5263,60 @@ int32_t MediaLibraryPhotoOperations::CopyVideoFile(const string& assetPath, bool
     return E_OK;
 }
 
+static std::string GetAlternateEditDataCameraPath(const std::string& filePath)
+{
+    string parentPath = MediaEditUtils::GetEditDataDir(filePath);
+    if (parentPath.empty()) {
+        return "";
+    }
+    size_t dotPos = parentPath.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        return "";
+    }
+    std::string basePath = parentPath.substr(0, dotPos);
+    std::string extension = parentPath.substr(dotPos);
+    std::string extLower = extension;
+    std::transform(extLower.begin(), extLower.end(), extLower.begin(), ::tolower);
+
+    if (extLower == EXTENSION_JPEG) {
+        return basePath + EXTENSION_HEIF + EDITDATA_CAMERA;
+    } else if (extLower == EXTENSION_HEIF) {
+        return basePath + EXTENSION_JPEG + EDITDATA_CAMERA;
+    }
+    return "";
+}
+
+static std::string GetAlternateAssetPath(const std::string& filePath)
+{
+    size_t dotPos = filePath.find_last_of('.');
+    if (dotPos == std::string::npos) {
+        return "";
+    }
+    std::string basePath = filePath.substr(0, dotPos);
+    std::string extension = filePath.substr(dotPos);
+    std::string extLower = extension;
+    std::transform(extLower.begin(), extLower.end(), extLower.begin(), ::tolower);
+ 
+    if (extLower == EXTENSION_JPEG) {
+        return basePath + EXTENSION_HEIF;
+    } else if (extLower == EXTENSION_HEIF) {
+        return basePath + EXTENSION_JPEG;
+    }
+    return "";
+}
+
 int32_t MediaLibraryPhotoOperations::AddFiltersToVideoExecute(const std::string &assetPath,
     bool isSaveVideo, bool isNeedScan, const std::string &outputVideoPath, int32_t fileId)
 {
+    std::string newAssetPath = assetPath;
+    if (!MediaFileUtils::IsFileExists(newAssetPath)) {
+        newAssetPath = GetAlternateAssetPath(newAssetPath);
+    }
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(assetPath);
-    if ((MediaFileUtils::IsFileExists(editDataCameraPath))) {
+    if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
+        editDataCameraPath = GetAlternateEditDataCameraPath(assetPath);
+    }
+    if (MediaFileUtils::IsFileExists(editDataCameraPath)) {
         string editData;
         CHECK_AND_RETURN_RET_LOG(ReadEditdataFromFile(editDataCameraPath, editData) == E_OK, E_HAS_FS_ERROR,
             "Failed to read editData, path = %{public}s", editDataCameraPath.c_str());
@@ -5276,26 +5327,26 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToVideoExecute(const std::string 
         if (isFiltersFieldEmpty && isSaveVideo) {
             HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MovingPhoto video only supports filter now.",
                 MLOG_TAG, __FUNCTION__, __LINE__);
-            CHECK_AND_RETURN_RET_LOG(SaveTempMovingPhotoVideo(assetPath) == E_OK, E_HAS_FS_ERROR,
-                "Failed to save temp movingphoto video, path = %{public}s", assetPath.c_str());
-            return CopyVideoFile(assetPath, true);
+            CHECK_AND_RETURN_RET_LOG(SaveTempMovingPhotoVideo(newAssetPath) == E_OK, E_HAS_FS_ERROR,
+                "Failed to save temp movingphoto video, path = %{public}s", newAssetPath.c_str());
+            return CopyVideoFile(newAssetPath, true);
         } else if (isFiltersFieldEmpty && !isSaveVideo) {
-            return CopyVideoFile(assetPath, false);
+            return CopyVideoFile(newAssetPath, false);
         }
         HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
             "AddFiltersToVideoExecute after EraseStickerField, editData = %{public}s",
             MLOG_TAG, __FUNCTION__, __LINE__, editData.c_str());
-        CHECK_AND_RETURN_RET_LOG(SaveSourceVideoFile(assetPath, true) == E_OK, E_HAS_FS_ERROR,
-            "Failed to save source video, path = %{public}s", assetPath.c_str());
-        VideoCompositionCallbackImpl::AddCompositionTask(assetPath, editData, isNeedScan, outputVideoPath, fileId);
+        CHECK_AND_RETURN_RET_LOG(SaveSourceVideoFile(newAssetPath, true) == E_OK, E_HAS_FS_ERROR,
+            "Failed to save source video, path = %{public}s", newAssetPath.c_str());
+        VideoCompositionCallbackImpl::AddCompositionTask(newAssetPath, editData, isNeedScan, outputVideoPath, fileId);
     } else {
-        int32_t ret = SaveTempMovingPhotoVideo(assetPath);
+        int32_t ret = SaveTempMovingPhotoVideo(newAssetPath);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret,
-            "Failed to save temp video, path = %{private}s", assetPath.c_str());
+            "Failed to save temp video, path = %{private}s", newAssetPath.c_str());
 
         ScanConfig config = ScanConfigBuilder()
             .UseCameraShotPreset(true, ScanQuality::DEFAULT)
-            .SetFilePath(assetPath)
+            .SetFilePath(newAssetPath)
             .SetFileId(fileId)
             .SetNeedGenerateThumbnail(false)
             .Build();
