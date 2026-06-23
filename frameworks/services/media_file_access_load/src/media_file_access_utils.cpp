@@ -85,6 +85,10 @@ std::string MediaFileAccessUtils::GetAssetRealPath(const std::string &path)
 #endif
     auto fileAsset = GetFileAssetFromDb(MediaColumn::MEDIA_FILE_PATH, path);
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, path, "get file asset from db failed");
+    if (fileAsset->GetPosition() == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        MEDIA_DEBUG_LOG("cloud asset, return data path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
+        return path;
+    }
     CHECK_AND_RETURN_RET(fileAsset->GetFileSourceType() == static_cast<int32_t>(FILE_MANAGER), path);
     CHECK_AND_RETURN_RET(!CheckBurstMemberDataExist(static_cast<PhotoSubType>(fileAsset->GetPhotoSubType()),
         static_cast<BurstCoverLevelType>(fileAsset->GetBurstCoverLevel()), path), path);
@@ -106,6 +110,7 @@ std::string MediaFileAccessUtils::GetAssetRealPathById(const std::string &fileId
     info.sourceType = static_cast<FileSourceType>(fileAsset->GetFileSourceType());
     info.subType = static_cast<PhotoSubType>(fileAsset->GetPhotoSubType());
     info.burstCoverLevel = static_cast<BurstCoverLevelType>(fileAsset->GetBurstCoverLevel());
+    info.position = fileAsset->GetPosition();
     return GetAssetRealPath(info);
 }
 
@@ -118,6 +123,11 @@ std::string MediaFileAccessUtils::GetAssetRealPath(const AssetPathConvertInfo &i
         return info.storagePath;
     }
 #endif
+    if (info.position == static_cast<int32_t>(PhotoPositionType::CLOUD)) {
+        MEDIA_DEBUG_LOG("cloud asset, return data path: %{public}s",
+            MediaFileUtils::DesensitizePath(info.assetPath).c_str());
+        return info.assetPath;
+    }
     CHECK_AND_RETURN_RET(info.sourceType == FileSourceType::FILE_MANAGER, info.assetPath);
     CHECK_AND_RETURN_RET(!CheckBurstMemberDataExist(info.subType, info.burstCoverLevel, info.assetPath),
         info.assetPath);
@@ -234,6 +244,10 @@ std::string MediaFileAccessUtils::GetAssetRealPath(const AssetOperationInfo &obj
     info.sourceType = obj.GetFileSourceType();
     info.subType = obj.GetSubType();
     info.burstCoverLevel = obj.GetBurstCoverLevel();
+    auto assetInfo = obj.GetAssetInfo();
+    CHECK_AND_PRINT_LOG(assetInfo != nullptr, "assetInfo is nullptr");
+    info.position = (assetInfo != nullptr) ? assetInfo->GetPosition()
+        : static_cast<int32_t>(PhotoPositionType::LOCAL);
     return GetAssetRealPath(info);
 }
 
