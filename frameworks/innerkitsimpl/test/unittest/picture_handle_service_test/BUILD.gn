@@ -21,7 +21,7 @@ group("unittest") {
 }
 
 ohos_unittest("picture_handle_service_test") {
-  module_out_path = "media_library/picture_handle_service"
+  module_out_path = "media_library/media_library_asset"
 
   include_dirs = [
     "./include",
