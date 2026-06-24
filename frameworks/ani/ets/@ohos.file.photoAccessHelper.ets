@@ -4192,50 +4192,6 @@ export class ContextRecoveryInfo {
       });
     }
 
-    onSinglePhotoAlbumChange(album: Album, callback: Callback<AlbumChangeInfos>): void {
-      let cb = (): MediaLibraryAniError | undefined => {
-        try {
-          this.onSinglePhotoAlbumChangeInner(album, callback);
-          return undefined;
-        } catch(e) {
-          return e as MediaLibraryAniError;
-        }
-      }
-    }
-	
-	  offSinglePhotoAlbumChange(album?: Album, callback?: Callback<AlbumChangeInfos>): void {
-      let cb = (): MediaLibraryAniError | undefined => {
-        try {
-          this.offSinglePhotoAlbumChangeInner(album, callback);
-          return undefined;
-        } catch(e) {
-          return e as MediaLibraryAniError;
-        }
-      }
-    }
-	
-	  onSinglePhotoChange(asset: PhotoAsset, callback: Callback<PhotoAssetChangeInfos>): void {
-      let cb = (): MediaLibraryAniError | undefined => {
-        try {
-          this.onSinglePhotoChangeInner(asset, callback);
-          return undefined;
-        } catch(e) {
-          return e as MediaLibraryAniError;
-        }
-      }
-    }
-
-	  offSinglePhotoChange(asset?: PhotoAsset, callback?: Callback<PhotoAssetChangeInfos>): void {
-      let cb = (): MediaLibraryAniError | undefined => {
-        try {
-          this.offSinglePhotoChangeInner(asset, callback);
-          return undefined;
-        } catch(e) {
-          return e as MediaLibraryAniError;
-        }
-      }
-    }
-
     getPhotoAlbums(options?: FetchOptions): Promise<FetchResult<Album>> {
       return new Promise<FetchResult<Album>>((resolve: (v: FetchResult<Album>) => void, reject: RejectString) => {
         let cb = (): FetchResult<Album> | MediaLibraryAniError => {
@@ -4740,10 +4696,10 @@ export class ContextRecoveryInfo {
     native startAssetAnalysisInner(type: AnalysisType, assetUris?: Array<string>): int;
     native acquireDebugDatabaseInner(betaIssueId: string, betaScenario: string): Map<string, string>;
     native releaseDebugDatabaseInner(betaIssueId: string, dbFd: int): void;
-    native onSinglePhotoAlbumChangeInner(album: Album, callback: Callback<AlbumChangeInfos>): void;
-    native offSinglePhotoAlbumChangeInner(album?: Album, callback?: Callback<AlbumChangeInfos>): void;
-    native onSinglePhotoChangeInner(asset: PhotoAsset, callback: Callback<PhotoAssetChangeInfos>): void;
-    native offSinglePhotoChangeInner(asset?: PhotoAsset, callback?: Callback<PhotoAssetChangeInfos>): void;
+    native onSinglePhotoAlbumChange(album: Album, callback: Callback<AlbumChangeInfos>): void;
+    native offSinglePhotoAlbumChange(album?: Album, callback?: Callback<AlbumChangeInfos>): void;
+    native onSinglePhotoChange(asset: PhotoAsset, callback: Callback<PhotoAssetChangeInfos>): void;
+    native offSinglePhotoChange(asset?: PhotoAsset, callback?: Callback<PhotoAssetChangeInfos>): void;
     native onPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;
     native offPhotoChange(callback?: Callback<PhotoAssetChangeInfos>): void;
     native onHiddenPhotoChange(callback: Callback<PhotoAssetChangeInfos>): void;

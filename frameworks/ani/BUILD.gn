@@ -116,6 +116,7 @@ ohos_shared_library("medialibrary_ani_utils") {
     "src/cpp/photo_proxy_ani.cpp",
     "src/cpp/picture_handle_client.cpp",
     "src/cpp/request_photo_uris_read_permission_callback_ani.cpp",
+    "src/cpp/register_unregister_handler_functions_ani.cpp",
     "src/cpp/short_term_callback_ani.cpp",
     "src/cpp/thumbnail_manager_ani.cpp",
     "src/cpp/userfile_client.cpp",
@@ -168,6 +169,7 @@ ohos_shared_library("medialibrary_ani_utils") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/change_request_move_assets_to_dir_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/change_request_move_assets_by_path_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/deep_optimize_space_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_single_photo_permission_vo.cpp"
   ]
 
   media_album_service_vo_source = [
