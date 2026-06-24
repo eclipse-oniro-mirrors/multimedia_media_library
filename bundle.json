@@ -109,7 +109,8 @@
           "ets_frontend",
           "json",
           "drivekit_native",
-          "bounds_checking_function"
+          "bounds_checking_function",
+          "form_fwk"
         ]
       },
       "build": {

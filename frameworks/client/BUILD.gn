@@ -41,8 +41,10 @@ ohos_shared_library("media_library_client") {
   ]
 
   external_deps = [
+    "ability_base:configuration",
     "ability_base:zuri",
     "ability_runtime:app_context",
+    "ability_runtime:dataobs_manager",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "data_share:datashare_common",

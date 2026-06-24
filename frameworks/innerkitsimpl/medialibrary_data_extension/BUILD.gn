@@ -1363,6 +1363,7 @@ ohos_shared_library("medialibrary_data_extension") {
 
   external_deps = [
     "ability_base:base",
+    "ability_base:configuration",
     "ability_base:want",
     "ability_base:zuri",
     "ability_runtime:ability_manager",
@@ -1410,8 +1411,10 @@ ohos_shared_library("medialibrary_data_extension") {
     "preferences:native_preferences",
     "qos_manager:concurrent_task_client",
     "qos_manager:qos",
+    "relational_store:native_dataability",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
+    "resource_management:global_resmgr",
     "resource_schedule_service:ressched_client",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",

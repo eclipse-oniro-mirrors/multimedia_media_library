@@ -142,6 +142,7 @@ ohos_shared_library("media_library") {
     "access_token:libprivacy_sdk",
     "access_token:libtokenid_sdk",
     "bounds_checking_function:libsec_shared",
+    "bundle_framework:appexecfwk_core",
     "app_file_service:sandbox_helper_native",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",

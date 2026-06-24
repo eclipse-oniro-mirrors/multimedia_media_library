@@ -173,6 +173,7 @@ ohos_shared_library("media_mtp") {
     "init:libbeget_proxy",
     "init:libbegetutil",
     "ipc:ipc_core",
+    "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
     "os_account:os_account_innerkits",
     "player_framework:media_client",

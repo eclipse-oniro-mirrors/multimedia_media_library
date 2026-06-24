@@ -72,6 +72,7 @@ ohos_fuzztest("MediaLibraryCloudMediaSyncDataConvertFuzzTest") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "dfs_service:cloudsync_kit_inner",
+    "form_fwk:form_manager",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
@@ -85,5 +86,6 @@ ohos_fuzztest("MediaLibraryCloudMediaSyncDataConvertFuzzTest") {
     "relational_store:rdb_data_share_adapter",
     "access_token:libtokenid_sdk",
     "dfs_service:cloudfile_kit",
+    "window_manager:libwmutil",
   ]
 }

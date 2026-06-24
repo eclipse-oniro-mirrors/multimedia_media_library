@@ -148,6 +148,7 @@ ohos_fuzztest("MediaLibraryCloudMediaControllerFuzzTest") {
     "dfs_service:libdistributedfileutils_lite",
     "e2fsprogs:libext2_uuid",
     "ffrt:libffrt",
+    "form_fwk:form_manager",
     "hilog:libhilog",
     "hitrace:hitrace_meter",
     "image_framework:image_native",
@@ -163,6 +164,7 @@ ohos_fuzztest("MediaLibraryCloudMediaControllerFuzzTest") {
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudfile_kit",
     "graphic_surface:surface",
+    "window_manager:libwmutil",
   ]
 
   if (defined(global_parts_info) &&
