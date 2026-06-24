@@ -130,7 +130,10 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
 {
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
+    } else {
+        videoInfo.videoPath = videoInfo.filePath;
     }
+    MEDIA_INFO_LOG("AddSingleVideo videoPath = %{private}s", videoInfo.videoPath.c_str());
     std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
@@ -152,27 +155,26 @@ void MultiStagesVideoCaptureManager::AddSingleVideo(const std::string &videoId,
         fileNamePrefix + "_tmp2" + fileNameSubfix;
     MediaFileUtils::CreateFile(sharedTemp1CloudView);
     MediaFileUtils::CreateFile(sharedTemp2CloudView);
-    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath);
+    std::string editDirOriginPath = physicalPathToFileDir + MEDIA_EDITDATA_DIR_REAL_PATH +
+        videoInfo.filePath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
+    std::vector<std::string> srcPath = {editDirOriginPath, srcPhysicalPath};
+    deferredProcSession_->AddVideo(videoId, srcPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
 }
 
 void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     VideoInfo &videoInfo, bool isMovingPhoto)
 {
-    std::string effectVideoPath = videoInfo.videoPath;
+    videoInfo.videoPath = videoInfo.filePath;
     CHECK_AND_RETURN_LOG(videoInfo.videoPath.size() >= MEDIA_EDIT_DATA_DIR.size(),
         "videoPath is too short, video Path: %{private}s", videoInfo.videoPath.c_str());
     CHECK_AND_RETURN_LOG(videoInfo.videoPath.substr(0, ROOT_MEDIA_DIR.length()) == ROOT_MEDIA_DIR,
         "Invalid video path %{private}s does not begin with ROOT_MEDIA_DIR", videoInfo.videoPath.c_str());
     // 原始视频
-    videoInfo.videoPath = MEDIA_EDIT_DATA_DIR + videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    CHECK_AND_RETURN_LOG(PathToRealPath(videoInfo.videoPath, videoInfo.absSrcFilePath),
-        "file is not real path, file path: %{private}s", videoInfo.videoPath.c_str());
     if (isMovingPhoto) {
         videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
-    } else {
-        videoInfo.videoPath = effectVideoPath;
     }
+    MEDIA_INFO_LOG("AddDoubleVideo videoPath = %{private}s", videoInfo.videoPath.c_str());
     std::string physicalPathToFileDir = PHYSICAL_PATH_PREFIX + std::to_string(getuid() / BASE_USER_RANGE) +
         PHYSICAL_PATH_SUFFIX;
     size_t indexPrefixEnd = videoInfo.videoPath.rfind('/');
@@ -193,8 +195,9 @@ void MultiStagesVideoCaptureManager::AddDoubleVideo(const std::string &videoId,
     MediaFileUtils::CreateFile(sharedTemp1CloudView);
     MediaFileUtils::CreateFile(sharedTemp2CloudView);
     std::string moviePathRealPath = physicalPathToFileDir + MEDIA_EDITDATA_DIR_REAL_PATH +
-        videoInfo.videoPath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
-    deferredProcSession_->AddVideo(videoId, srcPhysicalPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath,
+        videoInfo.filePath.substr(ROOT_MEDIA_DIR.length()) + "/source.mp4";
+    std::vector<std::string> srcPath = {srcPhysicalPath};
+    deferredProcSession_->AddVideo(videoId, srcPath, sharedTemp1PhysicalPath, sharedTemp2PhysicalPath,
         moviePathRealPath);
     MultiStagesCaptureDfxTotalTime::GetInstance().AddStartTime(videoId);
     DfxManager::GetInstance()->HandleCinematicVideoAddStartTime(CinematicWaitType::PROCESS_CINEMATIC, videoId);
@@ -220,15 +223,7 @@ void MultiStagesVideoCaptureManager::AddVideoInternal(const std::string &videoId
     }
     MultiStagesCaptureRequestTaskManager::AddPhotoInProgress(videoInfo.fileId, videoId, isTrashed);
 #ifdef ABILITY_CAMERA_SUPPORT
-    videoInfo.videoPath = videoInfo.filePath;
-    if (isMovingPhoto) {
-        videoInfo.videoPath = MovingPhotoFileUtils::GetSourceMovingPhotoVideoPath(videoInfo.filePath);
-        if (!MediaFileUtils::IsFileExists(videoInfo.videoPath)) {
-            videoInfo.videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(videoInfo.filePath);
-        }
-    }
-    CHECK_AND_RETURN_LOG(PathToRealPath(videoInfo.videoPath, videoInfo.absSrcFilePath),
-        "file is not real path, file path: %{private}s", videoInfo.videoPath.c_str());
+    MEDIA_INFO_LOG("AddVideoInternal videoPath = %{public}s", videoInfo.videoPath.c_str());
     AddVideoInfo(videoId, videoInfo);
     switch (videoInfo.videoCount) {
         case VideoCount::SINGLE:

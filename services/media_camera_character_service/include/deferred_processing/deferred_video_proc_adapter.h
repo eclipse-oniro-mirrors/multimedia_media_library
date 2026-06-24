@@ -17,6 +17,7 @@
 #define FRAMEWORKS_SERVICES_MEDIA_MULTI_STAGES_CAPTURE_DEFERRED_VIDEO_PROC_ADAPTER_H
 
 #include <string>
+#include <vector>
 
 #ifdef ABILITY_CAMERA_SUPPORT
 #include "deferred_proc_session/deferred_video_proc_session.h"
@@ -36,9 +37,9 @@ public:
 
     EXPORT virtual void BeginSynchronize();
     EXPORT virtual void EndSynchronize();
-    void AddVideo(const std::string &videoId, const std::string &srcPath,
+    void AddVideo(const std::string &videoId, const std::vector<std::string> &srcPath,
         const std::string &sharedTemp1Path, const std::string &sharedTemp2Path, const std::string &moviePath);
-    void AddVideo(const std::string &videoId, const std::string &srcPath,
+    void AddVideo(const std::string &videoId, const std::vector<std::string> &srcPath,
         const std::string &sharedTemp1Path, const std::string &sharedTemp2Path);
     EXPORT virtual void RemoveVideo(const std::string &videoId, const bool isRestorable = true);
     EXPORT void RestoreVideo(const std::string &videoId);
