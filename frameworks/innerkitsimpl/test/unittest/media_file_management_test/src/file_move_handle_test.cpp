@@ -46,13 +46,9 @@ HWTEST_F(MediaFileMoveHandleTest, Destructor_NoTimer_001, TestSize.Level1)
     auto changeInfo = std::make_shared<MediaProgressChangeInfo>();
     changeInfo->requestId = 1;
     changeInfo->totalSize = 1000;
-    {
-        FileMoveHandle handle(changeInfo, "test_timer_no_timer");
-        // progressTimerId_ defaults to 0, so destructor won't call EndProgressTimer
-        EXPECT_EQ(handle.progressTimerId_, static_cast<uint32_t>(0));
-    }
-    // If we reach here without crash, the test passes
-    EXPECT_TRUE(true);
+    FileMoveHandle handle(changeInfo, "test_timer_no_timer");
+    // progressTimerId_ defaults to 0, so destructor won't call EndProgressTimer
+    EXPECT_EQ(handle.progressTimerId_, static_cast<uint32_t>(0));
 }
 
 /*
