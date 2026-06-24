@@ -21,6 +21,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_napi_log.h"
 #include "medialibrary_tracer.h"
+#include "media_library_napi.h"
 
 using namespace std;
 
@@ -227,26 +228,30 @@ void MediaOnNotifyNewObserver::OnChange(const ChangeInfo &changeInfo)
     CHECK_AND_RETURN_LOG(tempParcel != nullptr, "Create temp parcel failed");
     
     NewJsOnChangeCallbackWrapper callbackWrapper;
-    std::lock_guard<std::mutex> lock(observerMutex_);
-    CHECK_AND_RETURN_INFO_LOG(!ProcessDbAvailabilityData(callbackWrapper, tempParcel), "notify db availability");
-    
-    callbackWrapper.mediaChangeInfo_ = NotificationUtils::UnmarshalInMultiMode(*parcel);
-    CHECK_AND_RETURN_LOG(callbackWrapper.mediaChangeInfo_ != nullptr, "invalid mediaChangeInfo");
-    NAPI_INFO_LOG("mediaChangeInfo_ is: %{public}s", callbackWrapper.mediaChangeInfo_->ToString(true).c_str());
-    
-    Notification::NotifyUriType infoUriType = callbackWrapper.mediaChangeInfo_->notifyUri;
-    
-    if (clientObservers_.find(infoUriType) == clientObservers_.end() &&
-        singleClientObservers_.find(infoUriType) == singleClientObservers_.end()) {
-        NAPI_ERR_LOG("invalid mediaChangeInfo_->notifyUri: %{public}d", static_cast<int32_t>(infoUriType));
-        for (const auto& pair : clientObservers_) {
-            NAPI_ERR_LOG("invalid clientObservers_ infoUriType: %{public}d", static_cast<int32_t>(pair.first));
+    {
+        std::lock_guard<std::mutex> lock(ChangeListenerNapi::trashMutex_);
+        if (ProcessDbAvailabilityData(callbackWrapper, tempParcel)) {
+            return;
         }
-        return;
+        
+        callbackWrapper.mediaChangeInfo_ = NotificationUtils::UnmarshalInMultiMode(*parcel);
+        CHECK_AND_RETURN_LOG(callbackWrapper.mediaChangeInfo_ != nullptr, "invalid mediaChangeInfo");
+        NAPI_INFO_LOG("mediaChangeInfo_ is: %{public}s", callbackWrapper.mediaChangeInfo_->ToString(true).c_str());
+        
+        Notification::NotifyUriType infoUriType = callbackWrapper.mediaChangeInfo_->notifyUri;
+        
+        if (clientObservers_.find(infoUriType) == clientObservers_.end() &&
+            singleClientObservers_.find(infoUriType) == singleClientObservers_.end()) {
+            NAPI_ERR_LOG("invalid mediaChangeInfo_->notifyUri: %{public}d", static_cast<int32_t>(infoUriType));
+            for (const auto& pair : clientObservers_) {
+                NAPI_ERR_LOG("invalid clientObservers_ infoUriType: %{public}d", static_cast<int32_t>(pair.first));
+            }
+            return;
+        }
+        
+        callbackWrapper.env_ = env_;
+        ProcessObserverBranches(callbackWrapper, infoUriType);
     }
-    
-    callbackWrapper.env_ = env_;
-    ProcessObserverBranches(callbackWrapper, infoUriType);
     
     auto worker = ChangeInfoTaskWorker::GetInstance();
     CHECK_AND_RETURN_LOG(worker != nullptr, "Get ChangeInfoTaskWorker instance failed");
@@ -702,18 +707,21 @@ void ChangeInfoTaskWorker::HandleTimeoutNotifyTask()
 
 void ChangeInfoTaskWorker::HandleNotifyTask()
 {
-    lock_guard<mutex> lock(vectorMutex_);
-    if (notifyTaskCount_ > START_NOTIFY_TASK_COUNT) {
-        NAPI_DEBUG_LOG("taskInfos_ size: %{public}zu, notifyTaskCount_: %{public}d, notifyTaskInfoSize_: %{public}zu",
-            taskInfos_.size(), notifyTaskCount_, notifyTaskInfoSize_);
-        return;
+    NewJsOnChangeCallbackWrapper callbackWrapper;
+    {
+        lock_guard<mutex> lock(vectorMutex_);
+        if (notifyTaskCount_ > START_NOTIFY_TASK_COUNT) {
+            NAPI_DEBUG_LOG("taskInfos_ size: %{public}zu, notifyTaskCount_: %{public}d, notifyTaskInfoSize_: "
+                "%{public}zu", taskInfos_.size(), notifyTaskCount_, notifyTaskInfoSize_);
+            return;
+        }
+        if (taskInfos_.empty()) {
+            NAPI_INFO_LOG("taskInfos_ is empty");
+            return;
+        }
+        callbackWrapper = taskInfos_.front();
+        taskInfos_.erase(taskInfos_.begin());
     }
-    if (taskInfos_.empty()) {
-        NAPI_INFO_LOG("taskInfos_ is empty");
-        return;
-    }
-    NewJsOnChangeCallbackWrapper callbackWrapper = taskInfos_.front();
-    taskInfos_.erase(taskInfos_.begin());
     MediaOnNotifyNewObserver::ReadyForCallbackEvent(callbackWrapper);
 }
 

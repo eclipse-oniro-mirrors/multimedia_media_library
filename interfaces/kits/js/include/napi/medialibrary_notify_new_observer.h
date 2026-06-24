@@ -91,7 +91,6 @@ public:
     std::map<Notification::NotifyUriType, std::vector<std::shared_ptr<ClientObserver>>> clientObservers_;
     std::map<Notification::NotifyUriType, std::map<std::string,
         std::vector<std::shared_ptr<ClientObserver>>>> singleClientObservers_;
-    std::mutex observerMutex_;
 };
 
 class ChangeInfoTaskWorker {
