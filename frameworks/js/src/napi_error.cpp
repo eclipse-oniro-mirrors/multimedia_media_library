@@ -204,7 +204,7 @@ void NapiError::ThrowError(napi_env env, int32_t err, const char *funcName, int3
         if (err == JS_INNER_FAIL) {
             std::string specificMsg = GetSpecificErrorMessage(err, funcName);
             if (!specificMsg.empty()) {
-                message = specificMsg;
+                message = message + ", " + specificMsg;
             }
         }
     }
