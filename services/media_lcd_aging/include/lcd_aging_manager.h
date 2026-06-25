@@ -21,6 +21,8 @@
 #include <mutex>
 #include <queue>
 
+#include <timer.h>
+
 #include "cloud_sync_common.h"
 #include "deep_optimize_space_callback.h"
 #include "iremote_object.h"
@@ -49,7 +51,7 @@ public:
 
 private:
     LcdAgingManager() {}
-    ~LcdAgingManager() {}
+    ~LcdAgingManager();
     LcdAgingManager(const LcdAgingManager &manager) = delete;
     const LcdAgingManager &operator=(const LcdAgingManager &manager) = delete;
 
@@ -93,6 +95,9 @@ private:
         std::vector<std::string> &failCloudIds);
     int32_t CheckLcdAgingTargetReached(int32_t &excessSize);
 
+    void StartCallbackTimer();
+    void StopCallbackTimer();
+
 private:
     LcdAgingDao lcdAgingDao_;
     std::mutex lcdOperationMutex_;
@@ -109,6 +114,10 @@ private:
     std::atomic<bool> isDeleteLcdFilesWorkerRunning_ {false};
     int64_t freeSizeOld_{0};
     int64_t startTime_{0};
+
+    std::mutex progressMutex_;
+    Utils::Timer callbackTimer_{"DeepOptCallback"};
+    uint32_t callbackTimerId_{0};
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_LCD_AGING_MANAGER_H
