@@ -282,7 +282,7 @@ bool ThumbnailUtils::CompressImage(const shared_ptr<PixelMap> &pixelMap, vector<
         .numberHint = NUMBER_HINT_1,
         .desiredDynamicRange = forceSdr ? EncodeDynamicRange::SDR :EncodeDynamicRange::AUTO,
         .astcPackingOption = {
-            .enableAstcClEncode = isAstc
+            .enableGPUEncode = isAstc
         }
     };
     data.resize(max(pixelMap->GetByteCount(), MIN_COMPRESS_BUF_SIZE));
