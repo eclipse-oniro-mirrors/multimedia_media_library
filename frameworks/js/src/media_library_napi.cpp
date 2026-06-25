@@ -226,6 +226,8 @@ const std::string REQUEST_PHOTO_URIS_READPERMISSIONEX = "requestPhotoUrisReadPer
 const std::string LANGUAGE_ZH = "zh-Hans";
 const std::string LANGUAGE_EN = "en-Latn-US";
 const std::string LANGUAGE_ZH_TR = "zh-Hant";
+const std::string URI_TYPE = "uriType";
+const std::string TYPE_PHOTOS = "1";
 
 thread_local napi_ref MediaLibraryNapi::sConstructor_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sMediaTypeEnumRef_ = nullptr;
@@ -8214,6 +8216,22 @@ static bool EasterEgg(MediaLibraryAsyncContext* context)
     return true;
 }
 
+static int GetAssetsIPCCall(MediaLibraryAsyncContext* context, GetAssetsRespBody &respBody)
+{
+    GetAssetsReqBody reqBody;
+    reqBody.predicates = context->predicates;
+    reqBody.columns = context->fetchColumn;
+    reqBody.burstKey = context->burstKey;
+    auto client = IPC::UserDefineIPCClient().SetUserId(context->userId);
+    string fileId;
+    if (MediaLibraryNapiUtils::ParseFileIdFromPredicates(reqBody.predicates, fileId)) {
+        unordered_map<string, string> headerMap{{MediaColumn::MEDIA_ID, fileId}, {URI_TYPE, TYPE_PHOTOS}};
+        client.SetHeader(headerMap);
+    }
+    NAPI_INFO_LOG("@test GetAssetsIPCCall, fileId: %{public}s", fileId.c_str());
+    return client.Call(context->businessCode, reqBody, respBody);
+}
+
 static void PhotoAccessGetAssetsExecute(napi_env env, void *data)
 {
     MediaLibraryTracer tracer;
@@ -8236,14 +8254,8 @@ static void PhotoAccessGetAssetsExecute(napi_env env, void *data)
             NAPI_ERR_LOG("QueryAccessibleViaSandBox failed, resultSet is nullptr");
         }
     } else {
-        GetAssetsReqBody reqBody;
-        reqBody.predicates = context->predicates;
-        reqBody.columns = context->fetchColumn;
-        reqBody.burstKey = context->burstKey;
         GetAssetsRespBody respBody;
-        errCode = IPC::UserDefineIPCClient()
-                      .SetUserId(context->userId)
-                      .Call(context->businessCode, reqBody, respBody);
+        errCode = GetAssetsIPCCall(context, respBody);
         if (errCode == E_OK) {
             resultSet = respBody.resultSet;
         } else if (respBody.resultSet == nullptr && !context->uri.empty() && errCode == E_PERMISSION_DENIED) {
