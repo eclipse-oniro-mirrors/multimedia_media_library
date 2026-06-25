@@ -515,8 +515,8 @@ static MoveResult HandleRemoveVideo(const std::string &srcPath)
     return result;
 }
 
-MoveResult MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(const std::string &srcPath,
-    const std::string &destPath, FileSourceType destSourceType, bool deleteSrc)
+MoveResult MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(const std::string &srcPath, const std::string &destPath,
+    FileSourceType destSourceType, bool deleteSrc, std::shared_ptr<AssetAccurateRefresh> assetRefresh)
 {
     MoveResult result;
     std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(srcPath);
@@ -537,7 +537,12 @@ MoveResult MediaFileAccessUtils::ProcessMovingPhotoToLivePhoto(const std::string
         return result;
     }
 
-    AssetOperationInfo srcpath = AssetOperationInfo::CreateFromPath(livePhotoPath);
+    AssetOperationInfo srcpath = AssetOperationInfo::CreateFromPath(srcPath);
+    if (assetRefresh == nullptr) {
+        assetRefresh = make_shared<AssetAccurateRefresh>();
+    }
+    srcpath.SetAssetRefresh(assetRefresh);
+    srcpath.SetStoragePath(livePhotoPath);
     result = MediaFileAccessUtils::MoveNormalAsset(srcpath, destPath, destSourceType, deleteSrc);
     if (result.errCode != E_OK) {
         MEDIA_ERR_LOG("failed to move live photo file, ret: %{public}d", ret);
@@ -572,7 +577,7 @@ MoveResult MediaFileAccessUtils::MoveMovingPhotoAsset(const AssetOperationInfo &
     if (isSrcLivePhoto) {
         return ProcessLivePhotoToMovingPhoto(srcPath, destPath, deleteSrc);
     } else {
-        return ProcessMovingPhotoToLivePhoto(srcPath, destPath, destSourceType, deleteSrc);
+        return ProcessMovingPhotoToLivePhoto(srcPath, destPath, destSourceType, deleteSrc, srcObj.GetAssetRefresh());
     }
 
     result.errCode = E_OK;

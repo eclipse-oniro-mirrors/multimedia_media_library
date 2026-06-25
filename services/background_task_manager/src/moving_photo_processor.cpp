@@ -243,6 +243,11 @@ shared_ptr<NativeRdb::ResultSet> MovingPhotoProcessor::QueryMovingPhoto()
         ->Or()
         ->IsNull(PhotoColumn::PHOTO_QUALITY)
         ->EndWrap()
+        ->And()
+        ->NotEqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::FILE_MANAGER))
+        ->And()
+        ->NotEqualTo(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE))
+        ->EndWrap()
         ->Limit(MOVING_PHOTO_PROCESS_NUM);
     return MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
 }
