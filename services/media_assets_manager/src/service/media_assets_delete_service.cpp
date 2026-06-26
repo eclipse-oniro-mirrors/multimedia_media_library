@@ -836,7 +836,9 @@ int32_t MediaAssetsDeleteService::DeleteLocalAssetSingle(const PhotosPo &photoIn
         ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
         CHECK_AND_BREAK(ret != E_OK);
     }
-    this->StoreThumbnailAndEditSize(photoInfo, targetPhotoInfoOp);
+    StoreThumbnailAndEditSizeConfig config;
+    config.sourceUpdateType = EditAndAttachmentUpdateType::EDIT_ONLY;
+    this->StoreThumbnailAndEditSize(photoInfo, targetPhotoInfoOp, config);
     return E_OK;
 }
 
@@ -964,28 +966,32 @@ int32_t MediaAssetsDeleteService::DeleteCloudAssetSingle(const PhotosPo &photoIn
         ret = (this->*(deleteFunc))(photoInfo, targetPhotoInfoOp, photoRefresh);
         CHECK_AND_BREAK(ret != E_OK);
     }
-    this->StoreThumbnailAndEditSize(photoInfo, targetPhotoInfoOp);
+    StoreThumbnailAndEditSizeConfig config;
+    config.targetUpdateType = EditAndAttachmentUpdateType::EDIT_ONLY;
+    this->StoreThumbnailAndEditSize(photoInfo, targetPhotoInfoOp, config);
     return E_OK;
 }
 
 int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(
-    const PhotosPo &photoInfo, const std::optional<PhotosPo> &targetPhotoInfoOp)
+    const PhotosPo &photoInfo, const std::optional<PhotosPo> &targetPhotoInfoOp,
+    const StoreThumbnailAndEditSizeConfig &config)
 {
     bool isValid = targetPhotoInfoOp.has_value();
     CHECK_AND_RETURN_RET(isValid, E_OK);
     PhotosPo targetPhotoInfo = targetPhotoInfoOp.value();
-    this->StoreThumbnailAndEditSize(photoInfo);
-    this->StoreThumbnailAndEditSize(targetPhotoInfo);
+    this->StoreThumbnailAndEditSize(photoInfo, config.sourceUpdateType);
+    this->StoreThumbnailAndEditSize(targetPhotoInfo, config.targetUpdateType);
     return E_OK;
 }
 
-int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(const PhotosPo &photoInfo)
+int32_t MediaAssetsDeleteService::StoreThumbnailAndEditSize(const PhotosPo &photoInfo,
+    EditAndAttachmentUpdateType updateType)
 {
     int32_t fileId = photoInfo.fileId.value_or(0);
     std::string data = photoInfo.data.value_or("");
     bool isValid = fileId > 0 && !data.empty();
     CHECK_AND_RETURN_RET(isValid, E_INVALID_VALUES);
-    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
+    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data, updateType);
     return E_OK;
 }
 

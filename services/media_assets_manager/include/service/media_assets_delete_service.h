@@ -25,6 +25,12 @@
 
 namespace OHOS::Media::Common {
 using namespace OHOS::Media::ORM;
+
+struct StoreThumbnailAndEditSizeConfig {
+    EditAndAttachmentUpdateType sourceUpdateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE;
+    EditAndAttachmentUpdateType targetUpdateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE;
+};
+
 class EXPORT MediaAssetsDeleteService {
 public: // constructors
     MediaAssetsDeleteService() = default;
@@ -110,8 +116,10 @@ private:
         const PhotosPo &photoInfo, std::optional<PhotosPo> &coverAssetOp, std::vector<PhotosPo> &burstAssets);
     int32_t DeleteCloudBurstAssets(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
-    int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo, const std::optional<PhotosPo> &targetPhotoInfoOp);
-    int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo);
+    int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo, const std::optional<PhotosPo> &targetPhotoInfoOp,
+        const StoreThumbnailAndEditSizeConfig &config = {});
+    int32_t StoreThumbnailAndEditSize(const PhotosPo &photoInfo,
+        EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
     int32_t GenerateThumbnail(const PhotosPo &targetPhotosPo);
     int32_t MoveOrGenerateLocalThumbnail(const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo);
     int32_t ResetSouthDeviceType(PhotosPo &photoInfo);
