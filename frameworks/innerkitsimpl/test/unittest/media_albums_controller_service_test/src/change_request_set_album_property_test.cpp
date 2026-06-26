@@ -29,7 +29,6 @@
 
 #include "user_define_ipc_client.h"
 #include "medialibrary_rdbstore.h"
-#include "medialibrary_mock_tocken.h"
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_data_manager.h"
@@ -103,8 +102,6 @@ private:
 void ChangeRequestSetAlbumPropertyTest::SetUpTestCase(void)
 {
     MediaLibraryUnitTestUtils::Init();
-    EXPECT_EQ(MediaLibraryMockTokenUtils::GrantPermissionByTest(IPCSkeleton::GetSelfTokenID(),
-        PERM_ACCESS_MEDIALIB_THUMB_DB, 0), E_OK);
     g_rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(g_rdbStore, nullptr);
     MediaLibraryUnitTestUtils::CreateTestTables(g_rdbStore, createTableSqlLists);
@@ -121,6 +118,10 @@ void ChangeRequestSetAlbumPropertyTest::TearDownTestCase(void)
 
 void ChangeRequestSetAlbumPropertyTest::SetUp()
 {
+    uint64_t tokenId = 0;
+    PermissionUtilsUnitTest::SetAccessTokenPermission("ChangeRequestSetAlbumPropertyTest",
+        { PERM_READ_IMAGEVIDEO, PERM_WRITE_IMAGEVIDEO, PERM_ACCESS_MEDIALIB_THUMB_DB }, tokenId);
+    ASSERT_NE(tokenId, 0);
     MediaLibraryUnitTestUtils::CleanTestTables(g_rdbStore, testTables);
     MEDIA_INFO_LOG("ChangeRequestSetAlbumPropertyTest SetUp");
 }
@@ -153,12 +154,13 @@ static int32_t ServiceCreateAlbum(const std::string &albumName)
 
 int32_t CreatePortraitAlbum(string albumName)
 {
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SMART);
     valuesBucket.Put(ALBUM_SUBTYPE, PhotoAlbumSubType::PORTRAIT);
     valuesBucket.Put(ALBUM_NAME, albumName);
+    valuesBucket.Put(GROUP_TAG, albumName);
     valuesBucket.Put(COUNT, 0);
     valuesBucket.Put(DATE_MODIFIED, 0);
     return MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
@@ -166,12 +168,13 @@ int32_t CreatePortraitAlbum(string albumName)
 
 int32_t CreateGroupAlbum(string albumName)
 {
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SMART);
     valuesBucket.Put(ALBUM_SUBTYPE, PhotoAlbumSubType::GROUP_PHOTO);
     valuesBucket.Put(ALBUM_NAME, albumName);
+    valuesBucket.Put(GROUP_TAG, albumName);
     valuesBucket.Put(COUNT, 0);
     valuesBucket.Put(DATE_MODIFIED, 0);
     return MediaLibraryDataManager::GetInstance()->Insert(cmd, valuesBucket);
@@ -179,7 +182,7 @@ int32_t CreateGroupAlbum(string albumName)
 
 int32_t CreateHighLightAlbum(string albumName)
 {
-    Uri analysisAlbumUri(PAH_INSERT_ANA_PHOTO_ALBUM);
+    Uri analysisAlbumUri(CONST_PAH_INSERT_ANA_PHOTO_ALBUM);
     MediaLibraryCommand cmd(analysisAlbumUri);
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(ALBUM_TYPE, PhotoAlbumType::SMART);
@@ -257,6 +260,26 @@ static int32_t ServiceOperateAlbumAttribute(const ChangeRequestOperateAlbumAttri
     MessageParcel reply;
     auto service = make_shared<MediaAlbumsControllerService>();
     service->ChangeRequestOperateAlbumAttribute(data, reply);
+
+    IPC::MediaRespVo<MediaEmptyObjVo> respVo;
+    if (!respVo.Unmarshalling(reply)) {
+        MEDIA_ERR_LOG("respVo.Unmarshalling failed");
+        return -1;
+    }
+    return respVo.GetErrCode();
+}
+
+static int32_t ServiceChangeRequestDismiss(const ChangeRequesDismissReqBody &reqBody)
+{
+    MessageParcel data;
+    if (!reqBody.Marshalling(data)) {
+        MEDIA_ERR_LOG("reqBody.Marshalling failed");
+        return -1;
+    }
+
+    MessageParcel reply;
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
+    service->ChangeRequestDismiss(data, reply);
 
     IPC::MediaRespVo<MediaEmptyObjVo> respVo;
     if (!respVo.Unmarshalling(reply)) {
@@ -393,8 +416,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_003, TestSize.
 HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_004, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start SetAlbumProperty_Test_004");
-    CreateGroupAlbum("3");
-    string albumId = "3";
+    string albumId = to_string(CreateGroupAlbum("3"));
     string coverUri = "file://media/Photo/3";
     ChangeRequestSetCoverUriReqBody reqBody;
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
@@ -548,36 +570,25 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_007, TestSize.
 HWTEST_F(ChangeRequestSetAlbumPropertyTest, SetAlbumProperty_Test_008, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start SetAlbumProperty_Test_008");
+    int32_t portraitAlbumId = CreatePortraitAlbum("portrait_album_dismiss");
+    ASSERT_GT(portraitAlbumId, 0);
+
     ChangeRequesDismissReqBody reqBody;
-    reqBody.albumId = "1";
+    reqBody.albumId = to_string(portraitAlbumId);
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::HIGHLIGHT);
+    EXPECT_EQ(ServiceChangeRequestDismiss(reqBody), E_INVALID_VALUES);
+
     reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+    EXPECT_EQ(ServiceChangeRequestDismiss(reqBody), E_OK);
+    EXPECT_EQ(QueryIsRemovedByAlbumId(portraitAlbumId), 1);
 
-    MessageParcel data;
-    bool result = reqBody.Marshalling(data);
-    ASSERT_NE(result, false);
-
-    MessageParcel reply;
-    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
-    service->ChangeRequestDismiss(data, reply);
-
-    IPC::MediaRespVo<MediaEmptyObjVo> respVo;
-    result = respVo.Unmarshalling(reply);
-    ASSERT_NE(result, false);
-
-    int32_t errCode = respVo.GetErrCode();
-    EXPECT_EQ(errCode, E_INVALID_VALUES);
-
+    int32_t groupAlbumId = CreateGroupAlbum("group_album_dismiss");
+    ASSERT_GT(groupAlbumId, 0);
+    reqBody.albumId = to_string(groupAlbumId);
     reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::GROUP_PHOTO);
-    result = reqBody.Marshalling(data);
-    ASSERT_NE(result, false);
-    service->ChangeRequestDismiss(data, reply);
-
-    result = respVo.Unmarshalling(reply);
-    ASSERT_NE(result, false);
-
-    errCode = respVo.GetErrCode();
-    EXPECT_EQ(errCode, E_OK);
+    EXPECT_EQ(ServiceChangeRequestDismiss(reqBody), E_OK);
+    EXPECT_EQ(QueryIsRemovedByAlbumId(groupAlbumId), 1);
 
     MEDIA_INFO_LOG("End SetAlbumProperty_Test_008");
 }
@@ -745,7 +756,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_E
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
     reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
 
-    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OPERATION_NOT_SUPPORT);
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_EmptyValues_001");
 }
 
@@ -874,7 +885,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_I
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
     reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
 
-    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OPERATION_NOT_SUPPORT);
 
     int32_t finalIsRemoved = QueryIsRemovedByAlbumId(albumId);
     EXPECT_EQ(finalIsRemoved, 0);
@@ -1048,7 +1059,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_E
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
     reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
 
-    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OPERATION_NOT_SUPPORT);
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_EmptyValues_001");
 }
 
@@ -1066,7 +1077,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_E
     reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
     reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
 
-    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OPERATION_NOT_SUPPORT);
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_ExtraInfo_001");
 }
 
