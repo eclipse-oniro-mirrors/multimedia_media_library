@@ -69,6 +69,7 @@
 #include "moving_photo_file_utils.h"
 #include "media_path_utils.h"
 #include "thumbnail_manager.h"
+#include "batch_update_metadata_modified_vo.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
 #include "purgeable_pixelmap_builder.h"
@@ -1709,6 +1710,36 @@ FetchResult<FileAsset> MediaLibraryManager::GetAssets(const std::vector<std::str
         return fileAsset;
     }
     return FetchResult<FileAsset>(std::move(resultSet));
+}
+
+void MediaLibraryManager::BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds)
+{
+    MEDIA_INFO_LOG("BatchUpdateMetaDataModified fileIds size: %{public}zu", fileIds.size());
+    CHECK_AND_RETURN_LOG(!fileIds.empty(), "fileIds is empty");
+    
+    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    CHECK_AND_RETURN_LOG(dataShareHelper != nullptr, "dataShareHelper is nullptr");
+
+    constexpr size_t BATCH_SIZE = 500;
+    size_t totalSize = fileIds.size();
+    size_t batchCount = (totalSize + BATCH_SIZE - 1) / BATCH_SIZE;
+    
+    for (size_t batchIndex = 0; batchIndex < batchCount; batchIndex++) {
+        size_t startIndex = batchIndex * BATCH_SIZE;
+        size_t endIndex = std::min(startIndex + BATCH_SIZE, totalSize);
+        
+        std::vector<std::string> batchIds(fileIds.begin() + startIndex, fileIds.begin() + endIndex);
+        
+        BatchUpdateMetaDataModifiedReqBody reqBody;
+        reqBody.fileIds = batchIds;
+        uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED);
+        int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+        if (errCode < 0) {
+            MEDIA_ERR_LOG("BatchUpdateMetaDataModified batch %{public}zu failed, errCode: %{public}d", 
+                batchIndex, errCode);
+        }
+    }
 }
 } // namespace Media
 } // namespace OHOS

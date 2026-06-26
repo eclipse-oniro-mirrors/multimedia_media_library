@@ -2324,5 +2324,129 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_file_manager_test_001, Tes
     mediaLibraryManager->CloseAsset(uri, srcFd);
 }
 #endif
+
+/**
+ * @tc.number    : MediaLibraryManager_BatchUpdateMetaDataModified_test_001
+ * @tc.name      : Batch update metadata modified with empty fileIds
+ * @tc.desc      : Test BatchUpdateMetaDataModified with empty vector, metadata_modified should not change
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_BatchUpdateMetaDataModified_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_001 enter");
+    ASSERT_NE(mediaLibraryManager, nullptr);
+    
+    string displayName = "test_batch_empty.jpg";
+    string uri = CreatePhotoAsset(displayName);
+    ASSERT_NE(uri, "");
+    
+    std::string fileId = MediaFileUtils::GetIdFromUri(uri);
+    ASSERT_NE(fileId, "");
+    
+    DataSharePredicates predicates;
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns;
+    columns.push_back(PhotoColumn::PHOTO_META_DATE_MODIFIED);
+    FetchResult<FileAsset> assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    unique_ptr<FileAsset> fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t beforeModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    std::vector<std::string> fileIds;
+    mediaLibraryManager->BatchUpdateMetaDataModified(fileIds);
+    
+    assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t afterModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    EXPECT_EQ(beforeModified, afterModified);
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_001 exit");
+}
+
+/**
+ * @tc.number    : MediaLibraryManager_BatchUpdateMetaDataModified_test_002
+ * @tc.name      : Batch update metadata modified with valid fileIds
+ * @tc.desc      : Test BatchUpdateMetaDataModified with valid file ids, metadata_modified should change
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_BatchUpdateMetaDataModified_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_002 enter");
+    ASSERT_NE(mediaLibraryManager, nullptr);
+    
+    string displayName = "test_batch_valid.jpg";
+    string uri = CreatePhotoAsset(displayName);
+    ASSERT_NE(uri, "");
+    
+    std::string fileId = MediaFileUtils::GetIdFromUri(uri);
+    ASSERT_NE(fileId, "");
+    
+    DataSharePredicates predicates;
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns;
+    columns.push_back(PhotoColumn::PHOTO_META_DATE_MODIFIED);
+    FetchResult<FileAsset> assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    unique_ptr<FileAsset> fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t beforeModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    std::vector<std::string> fileIds;
+    fileIds.push_back(fileId);
+    mediaLibraryManager->BatchUpdateMetaDataModified(fileIds);
+    
+    assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t afterModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    EXPECT_NE(beforeModified, afterModified);
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_002 exit");
+}
+
+/**
+ * @tc.number    : MediaLibraryManager_BatchUpdateMetaDataModified_test_003
+ * @tc.name      : Batch update metadata modified with invalid fileIds
+ * @tc.desc      : Test BatchUpdateMetaDataModified with invalid file ids, metadata_modified should not change
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_BatchUpdateMetaDataModified_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_003 enter");
+    ASSERT_NE(mediaLibraryManager, nullptr);
+    
+    string displayName = "test_batch_invalid.jpg";
+    string uri = CreatePhotoAsset(displayName);
+    ASSERT_NE(uri, "");
+    
+    std::string fileId = MediaFileUtils::GetIdFromUri(uri);
+    ASSERT_NE(fileId, "");
+    
+    DataSharePredicates predicates;
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns;
+    columns.push_back(PhotoColumn::PHOTO_META_DATE_MODIFIED);
+    FetchResult<FileAsset> assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    unique_ptr<FileAsset> fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t beforeModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    std::vector<std::string> fileIds;
+    fileIds.push_back("-1");
+    fileIds.push_back("0");
+    fileIds.push_back("invalid_id");
+    mediaLibraryManager->BatchUpdateMetaDataModified(fileIds);
+    
+    assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t afterModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    EXPECT_EQ(beforeModified, afterModified);
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_003 exit");
+}
 } // namespace Media
 } // namespace OHOS

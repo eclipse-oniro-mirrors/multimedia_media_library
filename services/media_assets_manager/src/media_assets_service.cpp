@@ -2805,4 +2805,12 @@ int32_t MediaAssetsService::CreateFileManagerAsset(CreateAssetDto& dto)
     dto.outUri = cmd.GetResult();
     return E_OK;
 }
+
+int32_t MediaAssetsService::BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds)
+{
+    MEDIA_INFO_LOG("BatchUpdateMetaDataModified enter, fileIds size: %{public}zu", fileIds.size());
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_INVALID_VALUES, "fileIds is empty");
+    
+    return rdbOperation_.BatchUpdateMetaDataModified(fileIds);
+}
 } // namespace OHOS::Media
