@@ -4198,7 +4198,7 @@ static void PhotoAccessHelperOpenCallbackComplete(napi_env env, napi_status stat
         NAPI_ERR_LOG("FileAsset is nullptr");
         delete context;
         return;
- 	}
+    }
     NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", context->fd,
         MediaFileUtils::DesensitizePath(context->objectPtr->GetUri()).c_str());
 
