@@ -38,6 +38,12 @@ namespace OHOS::Media {
 using namespace AccurateRefresh;
 const std::string PHOTO_CLOUD_PATH_URI = "/storage/cloud/files/";
 const std::string PHOTO_MEDIA_PATH_URI = "/storage/media/local/files/";
+const std::vector<string> PHOTO_QUERY_COLUMN = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_TYPE,
+    MediaColumn::MEDIA_TITLE, PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::PHOTO_POSITION, MediaColumn::MEDIA_FILE_PATH,
+    PhotoColumn::PHOTO_STORAGE_PATH, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::MEDIA_NAME,
+    PhotoColumn::PHOTO_BURST_KEY, MediaColumn::MEDIA_SIZE, MediaColumn::MEDIA_DATE_TRASHED, MediaColumn::MEDIA_HIDDEN,
+    PhotoColumn::PHOTO_DIRTY, PhotoColumn::PHOTO_IS_TEMP, MediaColumn::MEDIA_TIME_PENDING,
+};
 
 int32_t FileManagementUtils::GetRelativeDir(std::string& target, std::string& relativePath)
 {
@@ -147,21 +153,7 @@ int64_t FileManagementUtils::CalculateTotalSize(const std::vector<std::string> &
 int32_t FileManagementUtils::QueryMoveAssetInfos(const NativeRdb::RdbPredicates& predicate,
     std::map<int32_t, FileAssetsInfo> &moveAssetMap)
 {
-    vector<string> fetchColumn = {
-        MediaColumn::MEDIA_ID,
-        MediaColumn::MEDIA_TYPE,
-        MediaColumn::MEDIA_TITLE,
-        PhotoColumn::PHOTO_SUBTYPE,
-        PhotoColumn::PHOTO_POSITION,
-        MediaColumn::MEDIA_FILE_PATH,
-        PhotoColumn::PHOTO_STORAGE_PATH,
-        PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
-        PhotoColumn::MEDIA_NAME,
-        PhotoColumn::PHOTO_BURST_KEY,
-        MediaColumn::MEDIA_SIZE,
-    };
-
-    shared_ptr<NativeRdb::ResultSet> resultSet = MediaLibraryRdbStore::QueryWithFilter(predicate, fetchColumn);
+    shared_ptr<NativeRdb::ResultSet> resultSet = MediaLibraryRdbStore::QueryWithFilter(predicate, PHOTO_QUERY_COLUMN);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RDB_QUERY_NO_RES, "fail to query asset");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         FileAssetsInfo info;
@@ -185,6 +177,16 @@ int32_t FileManagementUtils::QueryMoveAssetInfos(const NativeRdb::RdbPredicates&
         info.burstKey =
             get<std::string>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_BURST_KEY, resultSet, TYPE_STRING));
         info.size = get<int64_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_SIZE, resultSet, TYPE_INT64));
+        info.dateTrashed =
+            get<int64_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_DATE_TRASHED, resultSet, TYPE_INT64));
+        info.hidden =
+            get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_HIDDEN, resultSet, TYPE_INT32));
+        info.dirty =
+            get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_DIRTY, resultSet, TYPE_INT32));
+        info.isTemp =
+            get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_TEMP, resultSet, TYPE_INT32));
+        info.timePending =
+            get<int64_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_TIME_PENDING, resultSet, TYPE_INT64));
         if (info.fileId == 0) {
             MEDIA_WARN_LOG("skip corrupted data");
             continue;
@@ -245,11 +247,10 @@ int32_t FileManagementUtils::UpdateBurstNumber(std::shared_ptr<AssetAccurateRefr
     predicates.EqualTo(PhotoColumn::PHOTO_BURST_KEY, info.burstKey);
     predicates.And()->EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL, static_cast<int32_t>(BurstCoverLevelType::MEMBER));
     predicates.And()->EqualTo(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::BURST));
-    value.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, info.fileSourceType);
     value.PutInt(PhotoColumn::PHOTO_OWNER_ALBUM_ID, info.ownerAlbumId);
     int32_t changedRows = refresh->UpdateWithDateTime(value, predicates);
     CHECK_AND_RETURN_RET_LOG(changedRows > 0, E_HAS_DB_ERROR,
-        "Failed to update file size, changeRows = %{public}d", changedRows);
+        "Failed to update burst number, changeRows = %{public}d", changedRows);
     return E_OK;
 }
 
