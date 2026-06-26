@@ -142,10 +142,8 @@ public:
     void UpdateAnalysisAlbumsCountForCloud();
 
 private:
-    void HandleIncomingCloudConflict(const CloudMediaPullDataDto &pullData,
-        NativeRdb::ValuesBucket &values);
-    void ProcessResultSetData(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
-        NativeRdb::ValuesBucket &values, const CloudMediaPullDataDto &pullData);
+    void HandleWatchRelatedFields(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
+    void HandleWatchRelatedFieldsForUpdate(const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values);
     void UpdateAllAlbumsCountForCloud(const std::vector<std::string> &albums);
     void UpdateAlbumCountInternal(const std::vector<std::string> &subtypes);
     void GetSourceAlbumFromPath(const CloudMediaPullDataDto &pullData, int32_t &albumId, std::set<int32_t> &cloudMapIds,

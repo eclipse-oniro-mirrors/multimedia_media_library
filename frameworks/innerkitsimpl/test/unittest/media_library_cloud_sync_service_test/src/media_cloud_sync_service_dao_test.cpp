@@ -1884,4 +1884,219 @@ HWTEST_F(CloudMediaSyncServiceDaoTest, BatchInsert_Test_004, TestSize.Level1)
         PhotoColumn::PHOTOS_TABLE, initialBatchValues);
     EXPECT_EQ(ret, E_OK);
 }
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFields_Test_001, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.attributesUniqueId = "";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFields(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), true);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFields_Test_002, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.attributesUniqueId = "-1";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFields(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), true);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFields_Test_003, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.attributesUniqueId = "valid_unique_id";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFields(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), false);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFields_Test_004, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "local_unique_id";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFields(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), true);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_001, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), false);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_002, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.attributesUniqueId = "";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), true);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_003, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.attributesUniqueId = "";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "-1";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), true);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_004, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.attributesUniqueId = "";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "valid_local_unique_id";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    std::string uniqueId;
+    EXPECT_EQ(values.GetObject(PhotoColumn::UNIQUE_ID, val), true);
+    EXPECT_EQ(val.GetString(uniqueId), E_OK);
+    EXPECT_EQ(uniqueId, "valid_local_unique_id");
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_005, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "local_unique_id";
+    pullData.localPhotosPoOp.value().photoRiskStatus = 2;
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    int32_t riskStatus;
+    EXPECT_EQ(values.GetObject(PhotoColumn::PHOTO_RISK_STATUS, val), true);
+    EXPECT_EQ(val.GetInt(riskStatus), E_OK);
+    EXPECT_EQ(riskStatus, 2);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_006, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "local_unique_id";
+    pullData.localPhotosPoOp.value().photoRiskStatus = 1;
+    
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, 1);
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    int32_t isCritical;
+    EXPECT_EQ(values.GetObject(PhotoColumn::PHOTO_IS_CRITICAL, val), true);
+    EXPECT_EQ(val.GetInt(isCritical), E_OK);
+    EXPECT_EQ(isCritical, 0);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_007, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "local_unique_id";
+    pullData.localPhotosPoOp.value().photoRiskStatus = 2;
+    
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, 2);
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    int32_t isCritical;
+    EXPECT_EQ(values.GetObject(PhotoColumn::PHOTO_IS_CRITICAL, val), true);
+    EXPECT_EQ(val.GetInt(isCritical), E_OK);
+    EXPECT_EQ(isCritical, 1);
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_008, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "local_unique_id";
+    pullData.localPhotosPoOp.value().packageName = "test_package";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    std::string packageName;
+    EXPECT_EQ(values.GetObject(MediaColumn::MEDIA_PACKAGE_NAME, val), true);
+    EXPECT_EQ(val.GetString(packageName), E_OK);
+    EXPECT_EQ(packageName, "test_package");
+}
+
+HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFieldsForUpdate_Test_009, TestSize.Level1)
+{
+    CloudMediaPhotosDao photosDao;
+    CloudMediaPullDataDto pullData;
+    pullData.cloudId = "test_cloud_id";
+    pullData.localPhotosPoOp = PhotosPo();
+    pullData.localPhotosPoOp.value().uniqueId = "local_unique_id";
+    pullData.localPhotosPoOp.value().packageName = "";
+    
+    NativeRdb::ValuesBucket values;
+    photosDao.HandleWatchRelatedFieldsForUpdate(pullData, values);
+    
+    NativeRdb::ValueObject val;
+    EXPECT_EQ(values.GetObject(MediaColumn::MEDIA_PACKAGE_NAME, val), false);
+}
 } // namespace OHOS::Media::CloudSync
