@@ -347,3 +347,17 @@ MEDIALIB_READ_LCD_INFO:
   NON_SYSTEM_APP_RD_NUM: { type: INT32, desc: Number of times no system applications are read }
   SOUTH_DEVICE_TYPE: { type: INT32, desc: Southbound device }
   THUMBNAIL_LOW_QUALITY_NUM: { type: INT32, desc: Number of images whose short side is less than 350 pixels }
+
+PHOTO_MONTH_STATISTIC:
+  __BASE: { type: STATISTIC, level: CRITICAL, desc: Statistical analysis of the monthly usage of user media library data, preserve: true }
+  ORIGIN_PHOTO_COUNT: { type: INT64, desc: The total number of no record files in origin photo dir }
+  ORIGIN_PHOTO_SIZE: { type: INT64, desc: The total size of no record files in origin photo dir }
+  THUMBS_COUNT: { type: INT64, desc: The total number of no record files in thumbs photo dir }
+  THUMBS_SIZE: { type: INT64, desc: The total size of no record files in thumbs photo dir }
+  EDIT_PHOTO_COUNT: { type: INT64, desc: The total number of no record files in edit photo dir }
+  EDIT_PHOTO_SIZE: { type: INT64, desc: The total size of no record files in edit photo dir }
+  PENDING_PHOTO_COUNT: { type: INT64, desc: The total number of pending assets in db records }
+  PENDING_PHOTO_SIZE: { type: INT64, desc: The total size of pending assets in db records }
+  PENDING_PHYSICAL_PHOTO_SIZE: { type: INT64, desc: The total size of pending assets in physical path }
+  TOTAL_COUNT: { type: INT64, desc: The total number of no record files and pending files }
+  TOTAL_SIZE: { type: INT64, desc: The total size of no record files and physical pending files }

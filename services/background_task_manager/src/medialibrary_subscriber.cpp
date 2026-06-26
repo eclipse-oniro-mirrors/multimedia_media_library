@@ -116,7 +116,7 @@ shared_ptr<MedialibrarySubscriber> MedialibrarySubscriber::subscriber_ = nullptr
 std::future<bool> MedialibrarySubscriber::subscribeAsyncTask_;
 std::mutex MedialibrarySubscriber::subscribeLock_;
 std::mutex MedialibrarySubscriber::subscribeAsyncTaskLock_;
-
+const int32_t OH_DEFAULT_USER_ID = 100;
 // The task can be performed when the battery level reaches the value
 const int32_t PROPER_DEVICE_BATTERY_CAPACITY = 50;
 const int32_t PROPER_DEVICE_BATTERY_CAPACITY_THUMBNAIL = 20;
@@ -616,6 +616,18 @@ void MedialibrarySubscriber::UpdateCloudMediaAssetDownloadStatus(const AAFwk::Wa
 bool MedialibrarySubscriber::IsCurrentStatusOn()
 {
     return currentStatus_;
+}
+
+bool MedialibrarySubscriber::IsMainUser()
+{
+    const int32_t INVALID_UID = -1;
+    const int32_t BASE_USER_RANGE = 200000;
+    int uid = IPCSkeleton::GetCallingUid();
+    if (uid <= INVALID_UID) {
+        MEDIA_ERR_LOG("Get INVALID_UID UID %{public}d", uid);
+    }
+    int32_t userId = uid / BASE_USER_RANGE;
+    return userId == OH_DEFAULT_USER_ID;
 }
 
 bool MedialibrarySubscriber::IsCriticalTypeStatusOn()
