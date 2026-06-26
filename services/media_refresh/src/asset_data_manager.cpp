@@ -372,18 +372,23 @@ void AssetDataManager::PostInsertBeforeData(PhotoAssetChangeData &changeData, Pe
     multiThreadAssetIds_.insert(changeData.infoBeforeChange_.fileId_);
 }
 
-void AssetDataManager::PostInsertAfterData(PhotoAssetChangeData &changeData, PendingInfo &pendingInfo, bool isAdd)
+void AssetDataManager::PostInsertAfterData(PhotoAssetChangeData &changeData, PendingInfo &pendingInfo, bool isAdd,
+    int fileIdBeforeRemove)
 {
     UpdatePendingInfo(changeData, pendingInfo);
-    if (changeData.infoAfterChange_.fileId_ == INVALID_INT32_VALUE) {
+    int fileId =
+        changeData.infoAfterChange_.fileId_ == INVALID_INT32_VALUE && fileIdBeforeRemove != INVALID_INT32_VALUE ?
+        fileIdBeforeRemove : changeData.infoAfterChange_.fileId_;
+    if (fileId == INVALID_INT32_VALUE) {
         MEDIA_ERR_LOG("invalid fileId");
         return;
     }
-    if (MultiThreadAssetChangeInfoMgr::GetInstance().CheckInsertAfterInfo(changeData.infoAfterChange_, isAdd)) {
-        multiThreadAssetIds_.insert(changeData.infoAfterChange_.fileId_);
+    if (MultiThreadAssetChangeInfoMgr::GetInstance().CheckInsertAfterInfo(changeData.infoAfterChange_, isAdd,
+        fileIdBeforeRemove)) {
+        multiThreadAssetIds_.insert(fileId);
         changeData.isMultiOperation_ = true;
     } else {
-        multiThreadAssetIds_.erase(changeData.infoAfterChange_.fileId_);
+        multiThreadAssetIds_.erase(fileId);
     }
 }
 
