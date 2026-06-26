@@ -27,8 +27,8 @@
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaPhotosAlbumHiddenService::UpdateEmptyAlbumHidden()
 {
-    auto assetRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
-    CHECK_AND_RETURN_RET_LOG(assetRefresh != nullptr, E_RDB_STORE_NULL,
+    auto albumRefresh = std::make_shared<AccurateRefresh::AlbumAccurateRefresh>();
+    CHECK_AND_RETURN_RET_LOG(albumRefresh != nullptr, E_RDB_STORE_NULL,
         "UpdateEmptyAlbumHidden get store failed.");
     NativeRdb::ValuesBucket value;
     value.PutInt(PhotoAlbumColumns::ALBUM_HIDDEN, 1);
@@ -37,11 +37,10 @@ int32_t CloudMediaPhotosAlbumHiddenService::UpdateEmptyAlbumHidden()
     rdbPredicates.NotEqualTo(PhotoAlbumColumns::HIDDEN_COUNT, "0");
     rdbPredicates.NotEqualTo(PhotoAlbumColumns::ALBUM_HIDDEN, "1");
     int32_t changedRows = 0;
-    int32_t err = assetRefresh->Update(changedRows, value, rdbPredicates);
+    int32_t err = albumRefresh->Update(changedRows, value, rdbPredicates);
     CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, err,
         "UpdateEmptyAlbumHidden failed, err: %{public}d", err);
-    assetRefresh->RefreshAlbum();
-    assetRefresh->Notify();
+    albumRefresh->Notify();
     MEDIA_INFO_LOG("UpdateEmptyAlbumHidden success, changedRows: %{public}d", changedRows);
     return err;
 }
