@@ -1014,7 +1014,10 @@ export class PickerController {
     return new Promise((resolve, reject) => {
       if (e !== undefined) {
         this.data = new Map([['UPDATE_CONFIG', updateConfig]]);
-        console.info('PhotoPickerComponent UPDATE_CONFIG ' + JSON.stringify(updateConfig));
+        const bundleInfo = bundleManager.getBundleInfoForSelfSync(
+          bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION
+        );
+        console.info('PhotoPickerComponent UPDATE_CONFIG bundleName: ' + bundleInfo.name + ', config: ' + JSON.stringify(updateConfig));
       }
       resolve();
     });
