@@ -23,6 +23,7 @@
 #include "unique_fd.h"
 #include "media_library_extend_manager.h"
 #include "userfile_manager_types.h"
+#include <mutex>
 
 namespace OHOS {
 namespace Media {
@@ -476,9 +477,13 @@ private:
     static unique_ptr<PixelMap> DecodeThumbnail(UniqueFd& uniqueFd, const Size& size, DecodeDynamicRange dynamicRange);
     static unique_ptr<PixelMap> GetPixelMapWithoutDecode(UniqueFd &uniqueFd, const Size& size);
     static unique_ptr<PixelMap> DecodeAstc(UniqueFd &uniqueFd);
+    shared_ptr<DataShare::DataShareHelper> GetDataShareHelper();
 
     static shared_ptr<DataShare::DataShareHelper> sDataShareHelper_;
     static sptr<IRemoteObject> token_;
+    static int32_t userId_;
+    static shared_ptr<DataShare::DataShareHelper> currentDataShareHelper_;
+    std::mutex mutex_;
 };
 } // namespace Media
 } // namespace OHOS
