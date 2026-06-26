@@ -67,7 +67,6 @@
 #include "ability_manager_client.h"
 #include "resource_type.h"
 #include "dfx_manager.h"
-#include "docs_media_scan_manager.h"
 #include "medialibrary_update_dirty_data_task_data.h"
 #include "moving_photo_processor.h"
 #include "permission_utils.h"
@@ -1253,7 +1252,6 @@ void MedialibrarySubscriber::DoBackgroundOperationStepTwo()
     BackgroundCloudFileProcessor::RepairMimeType();
 #endif
     AttachmentSizeUpdateOperation::UpdateAttachmentSize();
-    DocsMediaScanManager::GetInstance().Execute();
 }
 
 static void PauseBackgroundDownloadCloudMedia()
