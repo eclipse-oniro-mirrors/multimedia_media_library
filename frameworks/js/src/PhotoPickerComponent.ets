@@ -53,6 +53,11 @@ interface MimeTypeFilter {
   filterType: number
 }
 
+interface BrowserProps {
+  isPhotoBrowserShow: boolean;
+  isMovingPhotoBadgeShownValid: boolean;
+}
+
 @Component
 export struct PhotoPickerComponent {
   pickerOptions?: PickerOptions | undefined;
@@ -85,6 +90,19 @@ export struct PhotoPickerComponent {
   @State revokeIndex = 0;
   isPickerKilled = false;
   private proxy: UIExtensionProxy | undefined;
+  private isPhotoBrowserShow: boolean = false;
+  private isMovingPhotoBadgeShownValid: boolean = false;
+  private browserPropsInitialized: boolean = this.setBrowserProps();
+
+  private setBrowserProps(): boolean {
+    this.pickerController.browserPropsRegistry = (): BrowserProps => {
+      return {
+        isPhotoBrowserShow: this.isPhotoBrowserShow,
+        isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
+      };
+    };
+    return true;
+  }
   pickerController.onEnterPhotoBrowser = () => {
     return false;
   }
@@ -607,14 +625,10 @@ export struct PhotoPickerComponent {
         this.onExitPhotoBrowser(photoBrowserInfo);
       }
     }
-    this.pickerController.isPhotoBrowserShowCallback = () => {
-      if (isEnter) {
-        this.pickerController.isPhotoBrowserShow = true;
-        return true;
-      } esle {
-        this.pickerController.isPhotoBrowserShow = false;
-        return false;
-      }
+    if (isEnter) {
+      this.isPhotoBrowserShow = true;
+    } else {
+      this.isPhotoBrowserShow = false;
     }
     console.info('PhotoPickerComponent onReceive: onPhotoBrowserStateChanged = ' + isEnter);
   }
@@ -664,9 +678,9 @@ export struct PhotoPickerComponent {
         return undefined;
     }
     if (isMovingPhotoBadgeShown === true) {
-        this.pickerController.isMovingPhotoBadgeShownValid = true;
+      this.isMovingPhotoBadgeShownValid = true;
     } else {
-        this.pickerController.isMovingPhotoBadgeShownValid = false;
+      this.isMovingPhotoBadgeShownValid = false;
     }
     return isMovingPhotoBadgeShown;
   }
@@ -905,8 +919,7 @@ export class PickerController {
   saveCallbackMap: Map<number, Object> = new Map<number, Object>();
   createCallbackMap: Map<number, Object> = new Map<number, Object>();
   saveCallbackPromises: Map<number, Object> = new Map<number, Object>();
-  isPhotoBrowserShow: boolean = false;
-  isMovingPhotoBadgeShownValid: boolean = false;
+  browserPropsRegistry?: () => BrowserProps;
   completedPromises: Map<number, Object> = new Map<number, Object>();
 
   setData(type: DataType, data: Object) {
@@ -979,9 +992,15 @@ export class PickerController {
       if (e !== MovingPhotoBadgeStateType.ADD_DATA && e !== MovingPhotoBadgeStateType.DELETE_DATA) {
           throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
       }
-      console.info('SET_MOVINGPHOTO_STATE, this.isPhotoBrowserShow : ' + JSON.stringify(this.isPhotoBrowserShow) +
-        ', this.isMovingPhotoBadgeShownValid=' + this.isMovingPhotoBadgeShownValid);
-      if (!this.isPhotoBrowserShow || this.isMovingPhotoBadgeShownValid) {
+
+      const browserProps: BrowserProps = this.browserPropsRegistry ? this.browserPropsRegistry() : {
+        isPhotoBrowserShow: false,
+        isMovingPhotoBadgeShownValid: false
+      };
+
+      console.info('SET_MOVINGPHOTO_STATE, browserProps.isPhotoBrowserShow : ' + JSON.stringify(browserProps.isPhotoBrowserShow) +
+        ', browserProps.isMovingPhotoBadgeShownValid=' + browserProps.isMovingPhotoBadgeShownValid);
+      if (!browserProps.isPhotoBrowserShow || browserProps.isMovingPhotoBadgeShownValid) {
           throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
       }
       if (e !== undefined) {
