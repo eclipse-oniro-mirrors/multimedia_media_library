@@ -447,14 +447,14 @@ AddResourceMode MediaAssetChangeRequestImpl::GetAddResourceMode() const
     return addResourceMode_;
 }
 
-void* MediaAssetChangeRequestImpl::GetDataBuffer() const
+const uint8_t* MediaAssetChangeRequestImpl::GetDataBuffer() const
 {
-    return dataBuffer_;
+    return dataBufferOwned_.data();
 }
 
 size_t MediaAssetChangeRequestImpl::GetDataBufferSize() const
 {
-    return dataBufferSize_;
+    return dataBufferOwned_.size();
 }
 
 AddResourceMode MediaAssetChangeRequestImpl::GetMovingPhotoVideoMode() const
@@ -462,14 +462,14 @@ AddResourceMode MediaAssetChangeRequestImpl::GetMovingPhotoVideoMode() const
     return movingPhotoVideoResourceMode_;
 }
 
-void* MediaAssetChangeRequestImpl::GetMovingPhotoVideoBuffer() const
+const uint8_t* MediaAssetChangeRequestImpl::GetMovingPhotoVideoBuffer() const
 {
-    return movingPhotoVideoDataBuffer_;
+    return movingPhotoVideoDataBufferOwned_.data();
 }
 
 size_t MediaAssetChangeRequestImpl::GetMovingPhotoVideoSize() const
 {
-    return movingPhotoVideoBufferSize_;
+    return movingPhotoVideoDataBufferOwned_.size();
 }
 
 sptr<PhotoProxy> MediaAssetChangeRequestImpl::GetPhotoProxyObj()
@@ -792,10 +792,10 @@ int32_t MediaAssetChangeRequestImpl::CopyFileToMediaLibrary(const UniqueFd& dest
 int32_t MediaAssetChangeRequestImpl::CopyDataBufferToMediaLibrary(const UniqueFd& destFd, bool isMovingPhotoVideo)
 {
     size_t offset = 0;
-    size_t length = isMovingPhotoVideo ? movingPhotoVideoBufferSize_ : dataBufferSize_;
-    void* dataBuffer = isMovingPhotoVideo ? movingPhotoVideoDataBuffer_ : dataBuffer_;
+    size_t length = isMovingPhotoVideo ? movingPhotoVideoDataBufferOwned_.size() : dataBufferOwned_.size();
+    const uint8_t* dataBuffer = isMovingPhotoVideo ? movingPhotoVideoDataBufferOwned_.data() : dataBufferOwned_.data();
     while (offset < length) {
-        ssize_t written = write(destFd.Get(), (char*)dataBuffer + offset, length - offset);
+        ssize_t written = write(destFd.Get(), dataBuffer + offset, length - offset);
         if (written < 0) {
             LOGE("Failed to copy data buffer, return %{public}d", static_cast<int>(written));
             return written;
@@ -1015,9 +1015,8 @@ int32_t MediaAssetChangeRequestImpl::AddMovingPhotoVideoResource(std::string fil
 
 int32_t MediaAssetChangeRequestImpl::AddMovingPhotoVideoResource(uint8_t* dataBuffer, size_t dataBufferSize)
 {
-    movingPhotoVideoDataBuffer_ = dataBuffer;
-    movingPhotoVideoBufferSize_ = dataBufferSize;
-    if (!CheckMovingPhotoVideo(movingPhotoVideoDataBuffer_, movingPhotoVideoBufferSize_)) {
+    movingPhotoVideoDataBufferOwned_.assign(dataBuffer, dataBuffer + dataBufferSize);
+    if (!CheckMovingPhotoVideo(movingPhotoVideoDataBufferOwned_.data(), movingPhotoVideoDataBufferOwned_.size())) {
         LOGE("Failed to check video resource of moving photo");
         return OHOS_INVALID_PARAM_CODE;
     }
@@ -1074,8 +1073,7 @@ int32_t MediaAssetChangeRequestImpl::CJAddResource(int32_t resourceType, uint8_t
         LOGE("Failed to check resourceType");
         return OHOS_INVALID_PARAM_CODE;
     }
-    dataBuffer_ = dataBuffer;
-    dataBufferSize_ = dataBufferSize;
+    dataBufferOwned_.assign(dataBuffer, dataBuffer + dataBufferSize);
     addResourceMode_ = AddResourceMode::DATA_BUFFER;
     RecordChangeOperation(AssetChangeOperation::ADD_RESOURCE);
     addResourceTypes_.push_back(GetResourceType(resourceType));
@@ -1274,9 +1272,10 @@ static bool WriteCacheByArrayBuffer(
 {
     size_t offset = 0;
     size_t length = isMovingPhotoVideo ? changeRequest->GetMovingPhotoVideoSize() : changeRequest->GetDataBufferSize();
-    void* dataBuffer = isMovingPhotoVideo ? changeRequest->GetMovingPhotoVideoBuffer() : changeRequest->GetDataBuffer();
+    const uint8_t* dataBuffer = isMovingPhotoVideo ?
+        changeRequest->GetMovingPhotoVideoBuffer() : changeRequest->GetDataBuffer();
     while (offset < length) {
-        ssize_t written = write(destFd.Get(), (char*)dataBuffer + offset, length - offset);
+        ssize_t written = write(destFd.Get(), dataBuffer + offset, length - offset);
         if (written < 0) {
             LOGE("Failed to write data buffer to cache file, return %{public}d", static_cast<int>(written));
             return false;
