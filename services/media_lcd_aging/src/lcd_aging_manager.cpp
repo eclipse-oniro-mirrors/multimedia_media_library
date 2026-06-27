@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 
 #include "cloud_sync_manager.h"
+#include "common_timer_errors.h"
 #include "lcd_aging_utils.h"
 #include "lcd_aging_worker.h"
 #include "media_file_utils.h"
@@ -52,6 +53,7 @@ constexpr int32_t E_AGING_INTERRUPT = 3;
 constexpr uint32_t MAX_PROGRESS = 100;
 // 老化执行中的进度上限, 100%进度仅在老化任务完成后上报
 constexpr uint32_t MAX_RUNNING_PROGRESS = 99;
+constexpr uint32_t CALLBACK_TIMER_INTERVAL_MS = 5000;
 const std::string MEDIA_RESTORE_FLAG = "multimedia.medialibrary.restoreFlag";
 const std::string MEDIA_BACKUP_FLAG = "multimedia.medialibrary.backupFlag";
 const std::string CLOUDSYNC_SWITCH_STATUS_KEY = "persist.kernel.cloudsync.switch_status";
@@ -63,6 +65,11 @@ LcdAgingManager& LcdAgingManager::GetInstance()
 {
     static LcdAgingManager instance;
     return instance;
+}
+
+LcdAgingManager::~LcdAgingManager()
+{
+    StopCallbackTimer();
 }
 
 int32_t LcdAgingManager::ReadyAgingLcd()
@@ -85,9 +92,11 @@ int32_t LcdAgingManager::BatchAgingLcdFileTask(const std::atomic<bool> &shouldSt
     MEDIA_INFO_LOG("BatchAgingLcdFileTask begin");
     std::lock_guard<std::mutex> lock(lcdOperationMutex_);
 
+    StartCallbackTimer();
     int64_t taskSize = -1;
     int32_t ret = InitAgingTask(taskSize);
     if (ret != E_OK) {
+        StopCallbackTimer();
         HandleAfterAgingProgress(ret);
         FinishAgingTask();
         return ret;
@@ -95,6 +104,7 @@ int32_t LcdAgingManager::BatchAgingLcdFileTask(const std::atomic<bool> &shouldSt
 
     ret = ExecuteAgingLoop(shouldStop);
 
+    StopCallbackTimer();
     HandleAfterAgingProgress(ret);
     FinishAgingTask();
     MEDIA_INFO_LOG("BatchAgingLcdFileTask end");
@@ -525,8 +535,12 @@ int32_t LcdAgingManager::CheckLcdAgingStatus(const std::atomic<bool> &shouldStop
 
 void LcdAgingManager::HandleAgingProgress()
 {
-    CHECK_AND_RETURN_LOG(this->totalAgingLcdNumber_ > 0,
-        "invalid totalAgingLcdNumber: %{public}" PRId64, this->totalAgingLcdNumber_.load());
+    std::lock_guard<std::mutex> lock(progressMutex_);
+    if (this->totalAgingLcdNumber_ <= 0) {
+        MEDIA_WARN_LOG("totalAgingLcdNumber: %{public}" PRId64, this->totalAgingLcdNumber_.load());
+        LcdAgingWorker::GetInstance().NotifyProgress(DeepOptimizeSpaceState::RUNNING, 0);
+        return;
+    }
     
     uint32_t progress = static_cast<uint32_t>(
         (static_cast<double>(this->hasAgingLcdNumber_) / static_cast<double>(this->totalAgingLcdNumber_)) * 100.0);
@@ -647,5 +661,34 @@ int32_t LcdAgingManager::CheckLcdAgingTargetReached(int32_t &excessSize)
     excessSize = static_cast<int32_t>(std::min(
         BATCH_TASK_SIZE, lcdCurrentNumber - LcdAgingUtils::GetScaleThresholdOfLcd()));
     return E_OK;
+}
+
+void LcdAgingManager::StartCallbackTimer()
+{
+    if (callbackTimerId_ != 0) {
+        MEDIA_WARN_LOG("Callback timer already running, unregister and restart");
+        callbackTimer_.Unregister(callbackTimerId_);
+        callbackTimer_.Shutdown();
+        callbackTimerId_ = 0;
+    }
+    uint32_t ret = callbackTimer_.Setup();
+    CHECK_AND_RETURN_LOG(ret == Utils::TIMER_ERR_OK, "Callback timer setup failed, ret: %{public}u", ret);
+
+    Utils::Timer::TimerCallback callback = [this]() {
+        this->HandleAgingProgress();
+    };
+    callbackTimerId_ = callbackTimer_.Register(callback, CALLBACK_TIMER_INTERVAL_MS);
+    if (callbackTimerId_ == 0) {
+        MEDIA_ERR_LOG("Callback timer register failed");
+        callbackTimer_.Shutdown();
+    }
+}
+
+void LcdAgingManager::StopCallbackTimer()
+{
+    CHECK_AND_RETURN_LOG(callbackTimerId_ != 0, "callbackTimerId_ is 0");
+    callbackTimer_.Unregister(callbackTimerId_);
+    callbackTimer_.Shutdown();
+    callbackTimerId_ = 0;
 }
 }  // namespace OHOS::Media
