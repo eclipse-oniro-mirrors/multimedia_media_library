@@ -409,7 +409,7 @@ void DocsMediaScanManager::ReportPhase()
     MEDIA_INFO_LOG("Start ReportPhase");
     int32_t maxId = 0;
     int32_t ret = DfxDatabaseUtils::QueryDocsScanMaxId(maxId);
-    CHECK_AND_RETURN_LOG(ret == E_OK, "QueryDocsScanMaxId failed");
+    CHECK_AND_PRINT_LOG(ret == E_OK, "QueryDocsScanMaxId failed, ret: %{public}d", ret);
 
     int32_t lastReportedId = prefs->GetInt(DOCS_MEDIA_SCAN_LAST_REPORTED_ID, 0);
     MEDIA_INFO_LOG("Get lastReportedId / maxId: %{public}d / %{public}d", lastReportedId, maxId);
