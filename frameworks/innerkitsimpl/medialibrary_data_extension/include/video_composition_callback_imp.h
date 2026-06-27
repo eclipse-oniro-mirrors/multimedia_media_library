@@ -39,11 +39,12 @@ public:
     virtual ~VideoCompositionCallbackImpl() = default;
 
 struct Task {
+        Task() = default;
         string sourceVideoPath_;
         string videoPath_;
         string editData_;
         string assetPath_;
-        bool isNeedScan_;
+        bool isNeedScan_{false};
         string outputVideoPath_;
         int32_t fileId_{0};
         Task(string& sourceVideoPath, string& videoPath, string& editData,
