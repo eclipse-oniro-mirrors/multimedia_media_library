@@ -38,6 +38,7 @@ ohos_unittest("media_library_lcd_aging_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_service.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
   ]
 

@@ -110,6 +110,8 @@
 #include "modify_album_default_cover_order_vo.h"
 #include "register_unregister_handler_functions_ani.h"
 #include "check_single_photo_permission_vo.h"
+#include "query_deep_optimizable_space_vo.h"
+#include "query_deep_optimize_space_vo.h"
 
 namespace OHOS {
 namespace Media {
@@ -386,6 +388,10 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::ModifyAlbumDefaultCoverOrder)},
     ani_native_function {"modifyHiddenAlbumDefaultCoverOrderInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::ModifyHiddenAlbumDefaultCoverOrder)},
+    ani_native_function {"canPerformDeepOptimizeSpaceInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::CanPerformDeepOptimizeSpace)},
+    ani_native_function {"getDeepOptimizeSpaceInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::GetDeepOptimizeSpace)},
 };
 
 const std::array photoViewPickerMethos = {
@@ -9152,6 +9158,136 @@ void MediaLibraryAni::ModifyHiddenAlbumDefaultCoverOrder(ani_env *env, ani_objec
     SetUserIdFromObjectInfo(asyncContext);
     ModifyAlbumDefaultCoverOrderExecute(env, asyncContext);
     ModifyAlbumDefaultCoverOrderCompleteCallback(env, asyncContext);
+}
+
+static void CanPerformDeepOptimizeSpaceExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CanPerformDeepOptimizeSpaceExecute");
+ 	 
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    IPC::MediaEmptyObjVo reqBody;
+    QueryDeepOptimizeSpaceRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_DEEP_OPTIMIZE_SPACE), reqBody, respBody);
+    if (ret != 0) {
+        ANI_ERR_LOG("UserDefineIPCClient().Call failed, ret: %{public}d", ret);
+        if (ret == E_PERMISSION_DENIED) {
+            context->error = OHOS_PERMISSION_DENIED_CODE;
+            return;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        return;
+    }
+    context->canDeepOptimize = respBody.result;
+}
+
+static ani_object CanPerformDeepOptimizeSpaceComplete(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CanPerformDeepOptimizeSpaceComplete");
+
+    if (context->error != ERR_DEFAULT) {
+        ANI_ERR_LOG("CanPerformDeepOptimizeSpace failed, error: %{public}d", context->error);
+        return nullptr;
+    }
+
+    ani_object result = nullptr;
+    ani_status status = MediaLibraryAniUtils::ToAniBooleanObject(env, context->canDeepOptimize, result);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to create result value");
+        return nullptr;
+    }
+    return result;
+}
+
+ani_object MediaLibraryAni::CanPerformDeepOptimizeSpace(ani_env *env, ani_object object)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CanPerformDeepOptimizeSpace");
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    CHECK_COND_RET(object != nullptr, nullptr, "object is nullptr");
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_RET(asyncContext->objectInfo != nullptr, nullptr, "objectInfo is nullptr");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    CanPerformDeepOptimizeSpaceExecute(env, asyncContext);
+    return CanPerformDeepOptimizeSpaceComplete(env, asyncContext);
+}
+
+static void GetDeepOptimizeSpaceExecute(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetDeepOptimizeSpaceExecute");
+
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    IPC::MediaEmptyObjVo reqBody;
+    QueryDeepOptimizableSpaceRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::GET_DEEP_OPTIMIZE_SPACE), reqBody, respBody);
+    if (ret != 0) {
+        ANI_ERR_LOG("UserDefineIPCClient().Call failed, ret: %{public}d", ret);
+        if (ret == E_PERMISSION_DENIED) {
+            context->error = OHOS_PERMISSION_DENIED_CODE;
+            return;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        return;
+    }
+    context->lcdOptimizableSize = respBody.space;
+}
+
+static ani_object GetDeepOptimizeSpaceComplete(ani_env *env, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetDeepOptimizeSpaceComplete");
+
+    if (context->error != ERR_DEFAULT) {
+        ANI_ERR_LOG("GetDeepOptimizeSpaceComplete failed, error: %{public}d", context->error);
+        return nullptr;
+    }
+
+    ani_object result = nullptr;
+    ani_status status = MediaLibraryAniUtils::ToAniLongObject(env, context->lcdOptimizableSize, result);
+    if (status != ANI_OK) {
+        ANI_ERR_LOG("Failed to create result value");
+        return nullptr;
+    }
+    return result;
+}
+
+ani_object MediaLibraryAni::GetDeepOptimizeSpace(ani_env *env, ani_object object)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetDeepOptimizeSpace");
+    CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
+    CHECK_COND_RET(object != nullptr, nullptr, "object is nullptr");
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = std::make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_RET(asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+
+    asyncContext->objectInfo = Unwrap(env, object);
+    CHECK_COND_RET(asyncContext->objectInfo != nullptr, nullptr, "objectInfo is nullptr");
+
+    SetUserIdFromObjectInfo(asyncContext);
+    GetDeepOptimizeSpaceExecute(env, asyncContext);
+    return GetDeepOptimizeSpaceComplete(env, asyncContext);
 }
 } // namespace Media
 } // namespace OHOS

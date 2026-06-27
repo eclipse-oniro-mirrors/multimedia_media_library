@@ -333,6 +333,8 @@ public:
         ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum);
     static void ModifyHiddenAlbumDefaultCoverOrder(ani_env *env, ani_object object, ani_object coverOrderInfos,
         ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum);
+    static ani_object CanPerformDeepOptimizeSpace(ani_env *env, ani_object object);
+    static ani_object GetDeepOptimizeSpace(ani_env *env, ani_object object);
 
 private:
     int32_t GetListenerType(const std::string &str) const;
@@ -524,6 +526,8 @@ struct MediaLibraryAsyncContext : public AniError {
     std::vector<DefaultCoverOrderInfo> coverOrderInfos;
     bool disableModification = false;
     bool isAsyncRefreshAlbum = false;
+    bool canDeepOptimize = false;
+    int64_t lcdOptimizableSize = 0;
 };
 } // namespace Media
 } // namespace OHOS

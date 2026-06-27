@@ -67,6 +67,7 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "user_define_ipc_client.h"
+#include "lcd_aging_service.h"
 
 using namespace std;
 namespace OHOS {
@@ -653,8 +654,7 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
     }
     garbagePath_ = backupRestoreDir_ + "/storage/media/local/files";
     int32_t errorCode = Init(backupRestoreDir, upgradePath, true);
-    MEDIA_INFO_LOG("the isAccountValid_ is %{public}d,"
-        " the isSrcDstSwitchStatusMatch_ is %{public}d",
+    MEDIA_INFO_LOG("the isAccountValid_ is %{public}d, the isSrcDstSwitchStatusMatch_ is %{public}d",
         isAccountValid_, isSrcDstSwitchStatusMatch_);
     if (errorCode == E_OK) {
         RestoreGallery();
@@ -673,6 +673,7 @@ void CloneRestore::StartRestore(const string &backupRestoreDir, const string &up
     SetMediaAnalysisClearDirtyDataParameter();
     CloneActiveLcdAgingFromOldDevice();
     CloseAllKvStore();
+    LcdAgingService::GetInstance().MarkRecentLcdPhotos(mediaLibraryRdb_);
     MEDIA_INFO_LOG("End clone restore");
 }
 

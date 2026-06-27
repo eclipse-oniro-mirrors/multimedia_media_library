@@ -142,6 +142,7 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "lcd_aging_service.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -987,6 +988,15 @@ static int32_t AddFileManagerRelatedIndex(RdbStore& store)
     return ret;
 }
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_FILE_MANAGER_RELATED, "Album", AddFileManagerRelatedIndex);
+
+static int32_t UpdateTabPhotosExt(RdbStore& store)
+{
+    MEDIA_INFO_LOG("start update tab_photos_ext");
+    LcdAgingService::GetInstance().MarkRecentLcdPhotos(MediaLibraryRdbStore::GetRaw());
+    MEDIA_INFO_LOG("end update tab_photos_ext");
+    return NativeRdb::E_OK;
+}
+REGISTER_ASYNC_UPGRADE_TASK(VERSION_UPDATE_TAB_PHOTOS_EXT, "Photos", UpdateTabPhotosExt);
 
 static void MultiStagesInitOperation()
 {

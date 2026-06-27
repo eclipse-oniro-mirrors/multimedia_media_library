@@ -47,6 +47,7 @@
 #include "media_values_bucket_utils.h"
 #include "medialibrary_notify_new.h"
 #include "settings_data_manager.h"
+#include "lcd_aging_service.h"
 
 #ifdef CLOUD_SYNC_MANAGER
 #include "cloud_sync_manager.h"
@@ -243,6 +244,9 @@ void BaseRestore::StartRestore(const std::string &backupRestoreDir, const std::s
     StopParameterForRestore();
     StopParameterForClone();
     SetMediaAnalysisClearDirtyDataParameter();
+    if (sceneCode_ == UPGRADE_RESTORE_ID || sceneCode_ == DUAL_FRAME_CLONE_RESTORE_ID) {
+        LcdAgingService::GetInstance().MarkRecentLcdPhotos(mediaLibraryRdb_);
+    }
 }
 
 int32_t BaseRestore::Init(void)
