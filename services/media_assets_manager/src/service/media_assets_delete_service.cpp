@@ -598,11 +598,11 @@ int32_t MediaAssetsDeleteService::CopyAndMoveLakeLocalAssetToTrash(const PhotosP
     bool isValid = (!photoInfo.ShouldHandleAsMediaFile() && !photoInfo.ShouldHandleAsFileManager());
     isValid = isValid && photoInfo.dateTrashed.value_or(0) == 0;
     CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
-    PhotosPo targetPhotoInfo;
-    int32_t opRet = this->CreateLocalAssetWithLakeFile(photoInfo, targetPhotoInfo, photoRefresh);
     // Reset the storage position of the LOCAL_AND_CLOUD asset record to CLOUD asset record (cloud only).
     int32_t ret = this->mediaAssetsDao_.ResetPositionToCloudOnly(photoRefresh, photoInfo.fileId.value_or(-1));
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePosition fail, ret: %{public}d", ret);
+    PhotosPo targetPhotoInfo;
+    int32_t opRet = this->CreateLocalAssetWithLakeFile(photoInfo, targetPhotoInfo, photoRefresh);
     MEDIA_INFO_LOG("CopyAndMoveLakeLocalAssetToTrash completed, create asset ret: %{public}d, "
                    "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
         opRet,
