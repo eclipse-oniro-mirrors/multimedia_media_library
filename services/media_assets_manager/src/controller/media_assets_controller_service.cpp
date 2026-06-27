@@ -124,6 +124,10 @@
 #include "progress_observer_manager.h"
 #include "lcd_aging_manager.h"
 #include "deep_optimize_space_vo.h"
+#include "query_deep_optimize_space_vo.h"
+#include "query_deep_optimizable_space_vo.h"
+#include "lcd_aging_service.h"
+#include "media_empty_obj_vo.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -735,6 +739,14 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING),
         &MediaAssetsControllerService::CloneIsActiveLcdAging
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_DEEP_OPTIMIZE_SPACE),
+        &MediaAssetsControllerService::QueryDeepOptimizeSpace
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::GET_DEEP_OPTIMIZE_SPACE),
+        &MediaAssetsControllerService::GetDeepOptimizeSpace
     },
 };
 
@@ -3612,5 +3624,55 @@ int32_t MediaAssetsControllerService::CloneIsActiveLcdAging(MessageParcel &data,
     DfxTimer dfxTimer(operationCode, timeout, true);
     int32_t ret = LcdAgingManager::GetInstance().SetIsActiveLcdAging(true);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::QueryDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter QueryDeepOptimizeSpace");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_DEEP_OPTIMIZE_SPACE);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+
+    IPC::MediaEmptyObjVo reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryDeepOptimizeSpace Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    bool result = false;
+    ret = LcdAgingService::GetInstance().HandleCanPerformDeepOptimizeSpace(result);
+    if (ret != E_OK) {
+        MEDIA_INFO_LOG("QueryDeepOptimizeSpace failed, ret: %{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    QueryDeepOptimizeSpaceRespBody respBody;
+    respBody.result = result;
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
+}
+
+int32_t MediaAssetsControllerService::GetDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("Enter GetDeepOptimizeSpace");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::GET_DEEP_OPTIMIZE_SPACE);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+
+    IPC::MediaEmptyObjVo reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GetDeepOptimizeSpace Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    int64_t space = 0;
+    ret = LcdAgingService::GetInstance().HandleGetDeepOptimizableSpace(space);
+    if (ret != E_OK) {
+        MEDIA_INFO_LOG("GetDeepOptimizeSpace failed, ret: %{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    QueryDeepOptimizableSpaceRespBody respBody;
+    respBody.space = space;
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
 }
 } // namespace OHOS::Media

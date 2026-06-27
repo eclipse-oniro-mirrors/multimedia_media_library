@@ -55,6 +55,7 @@ ohos_shared_library("mediabackup") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/include",
   ]
 
   include_common_utils_dirs = [ "${MEDIALIB_COMMON_PATH}/utils/include" ]
@@ -66,6 +67,11 @@ ohos_shared_library("mediabackup") {
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/event_handler/album_plugin_table_event_handler.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_service.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
     "./src/analysis_album/beauty_score_clone.cpp",
     "./src/analysis_album/portrait_nickname_clone.cpp",
     "./src/analysis_album/search_index_clone.cpp",
@@ -188,6 +194,7 @@ ohos_shared_library("mediabackup") {
     "samgr:samgr_proxy",
     "zlib:shared_libz",
     "eventhandler:libeventhandler",
+    "netmanager_base:net_conn_manager_if",
   ]
 
   defines = []

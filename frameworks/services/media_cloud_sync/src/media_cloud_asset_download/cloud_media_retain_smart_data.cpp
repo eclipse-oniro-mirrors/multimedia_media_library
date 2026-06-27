@@ -31,6 +31,7 @@
 #include "sys_utils.h"
 #include "medialibrary_notify.h"
 #include "photo_album_column.h"
+#include "lcd_aging_service.h"
 
 // LCOV_EXCL_START
 namespace OHOS::Media {
@@ -401,6 +402,7 @@ int32_t DoUpdateSmartDataAlbum()
             watch->Notify(PhotoAlbumColumns::ANALYSIS_ALBUM_URI_PREFIX, NotifyType::NOTIFY_UPDATE);
         }
         MEDIA_INFO_LOG("DoUpdateSmartDataAlbum thread end");
+        LcdAgingService::GetInstance().MarkRecentLcdPhotos(MediaLibraryRdbStore::GetRaw());
     }).detach();
 
     MEDIA_INFO_LOG("Successfully scheduled UpdateSmartDataAlbumAsync task.");

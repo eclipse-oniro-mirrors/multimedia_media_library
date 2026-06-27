@@ -139,6 +139,9 @@
 #include "progress_callback_observer.h"
 #include "medialibrary_errno.h"
 #include "modify_album_default_cover_order_vo.h"
+#include "query_deep_optimize_space_vo.h"
+#include "query_deep_optimizable_space_vo.h"
+#include "media_empty_obj_vo.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -619,6 +622,8 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("stopDeepOptimizeSpace", PhotoAccessStopDeepOptimizeSpace),
             DECLARE_NAPI_FUNCTION("modifyAlbumDefaultCoverOrder", PhotoAccessModifyAlbumDefaultCoverOrder),
             DECLARE_NAPI_FUNCTION("modifyHiddenAlbumDefaultCoverOrder", PhotoAccessModifyHiddenAlbumDefaultCoverOrder),
+            DECLARE_NAPI_FUNCTION("canPerformDeepOptimizeSpace", CanPerformDeepOptimizeSpace),
+            DECLARE_NAPI_FUNCTION("getDeepOptimizeSpace", GetDeepOptimizeSpace),
         }
     };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
@@ -17736,6 +17741,160 @@ napi_value MediaLibraryNapi::PhotoAccessModifyHiddenAlbumDefaultCoverOrder(napi_
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ModifyHiddenAlbumDefaultCoverOrder",
         ModifyHiddenAlbumDefaultCoverOrderExecute, ModifyHiddenAlbumDefaultCoverOrderCompleteCallback);
+}
+
+static void CanPerformDeepOptimizeSpaceExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CanPerformDeepOptimizeSpaceExecute");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    IPC::MediaEmptyObjVo reqBody;
+    QueryDeepOptimizeSpaceRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_DEEP_OPTIMIZE_SPACE), reqBody, respBody);
+    if (ret != 0) {
+        NAPI_ERR_LOG("UserDefineIPCClient().Call failed, ret: %{public}d", ret);
+        if (ret == E_PERMISSION_DENIED) {
+            context->error = OHOS_PERMISSION_DENIED_CODE;
+            return;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        return;
+    }
+    context->canDeepOptimize = respBody.result;
+}
+
+static void CanPerformDeepOptimizeSpaceCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CanPerformDeepOptimizeSpaceCompleteCallback");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID_WITH_MEG(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_FAIL,
+        "Failed to initialize error field");
+    CHECK_ARGS_RET_VOID_WITH_MEG(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL,
+        "Failed to initialize data field");
+    if (status != napi_ok || context->error != ERR_DEFAULT) {
+        NAPI_ERR_LOG("CanPerformDeepOptimizeSpace failed, status: %{public}d, error: %{public}d",
+            status, context->error);
+        context->HandleError(env, jsContext->error);
+    } else {
+        napi_status napiStatus = napi_get_boolean(env, context->canDeepOptimize, &jsContext->data);
+        if (napiStatus == napi_ok) {
+            jsContext->status = true;
+        } else {
+            NAPI_ERR_LOG("Failed to create result value");
+            context->error = JS_E_INNER_FAIL;
+            context->HandleError(env, jsContext->error);
+        }
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+ 	 
+napi_value MediaLibraryNapi::CanPerformDeepOptimizeSpace(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CanPerformDeepOptimizeSpace");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+
+    if(!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "CanPerformDeepOptimizeSpace",
+        CanPerformDeepOptimizeSpaceExecute, CanPerformDeepOptimizeSpaceCompleteCallback);
+}
+
+static void GetDeepOptimizeSpaceExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetDeepOptimizeSpaceExecute");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    IPC::MediaEmptyObjVo reqBody;
+    QueryDeepOptimizableSpaceRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::GET_DEEP_OPTIMIZE_SPACE), reqBody, respBody);
+    if (ret != 0) {
+        NAPI_ERR_LOG("UserDefineIPCClient().Call failed, ret: %{public}d", ret);
+        if (ret == E_PERMISSION_DENIED) {
+            context->error = OHOS_PERMISSION_DENIED_CODE;
+            return;
+        } else {
+            context->error = JS_E_INNER_FAIL;
+        }
+        return;
+    }
+    context->lcdOptimizableSize = respBody.space;
+}
+
+static void GetDeepOptimizeSpaceCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetDeepOptimizeSpaceCompleteCallback");
+
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID_WITH_MEG(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_FAIL,
+        "Failed to initialize error field");
+    CHECK_ARGS_RET_VOID_WITH_MEG(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_FAIL,
+        "Failed to initialize data field");
+    if (status != napi_ok || context->error != ERR_DEFAULT) {
+        NAPI_ERR_LOG("GetDeepOptimizeSpace failed, status: %{public}d, error: %{public}d",
+            status, context->error);
+        context->HandleError(env, jsContext->error);
+    } else {
+        napi_status napiStatus = napi_create_int64(env, context->lcdOptimizableSize, &jsContext->data);
+        if (napiStatus == napi_ok) {
+            jsContext->status = true;
+        } else {
+            NAPI_ERR_LOG("Failed to create result value");
+            context->error = JS_E_INNER_FAIL;
+            context->HandleError(env, jsContext->error);
+        }
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+ 	 
+napi_value MediaLibraryNapi::GetDeepOptimizeSpace(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("GetDeepOptimizeSpace");
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+
+    if(!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "GetDeepOptimizeSpace",
+        GetDeepOptimizeSpaceExecute, GetDeepOptimizeSpaceCompleteCallback);
 }
 } // namespace Media
 } // namespace OHOS
