@@ -64,8 +64,8 @@ const int32_t ALBUM_FUSION_UPGRADE_SUCCESS = 1;
 const int32_t ALBUM_FUSION_UPGRADE_FAIL = 0;
 const int32_t ALBUM_FUSION_BATCH_COUNT = 200;
 const int32_t HIGH_PIXEL_SCALE = 2;
-const int32_t HIGH_PIXEL_START_SIZE = 6 * 1024 * 8 * 1024;
-const int32_t HIGH_PIXEL_STOP_SIZE = 4 * 1024 * 6 * 1024;
+const int64_t HIGH_PIXEL_START_SIZE = 6 * 1024 * 8 * 1024;
+const int64_t HIGH_PIXEL_STOP_SIZE = 4 * 1024 * 6 * 1024;
 const double HIGH_PIXEL_RESIZE_SCALE = 1.4;
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
 constexpr int32_t NOT_SUPPORT_RENAME = 1;
@@ -2493,7 +2493,7 @@ static int32_t UpdateTranscodeTime(int32_t fileId)
 
 static bool IsHighPixelPicture(int32_t width, int32_t height)
 {
-    if (width * height >= HIGH_PIXEL_START_SIZE) {
+    if (static_cast<int64_t>(width) * static_cast<int64_t>(height) >= HIGH_PIXEL_START_SIZE) {
         return true;
     }
     return false;
@@ -2510,7 +2510,7 @@ static bool GetDesireSize(int32_t &width, int32_t &height)
         height /= HIGH_PIXEL_SCALE;
     }
 
-    if (width * height > HIGH_PIXEL_STOP_SIZE) {
+    if (static_cast<int64_t>(width) * static_cast<int64_t>(height) > HIGH_PIXEL_STOP_SIZE) {
         width /= HIGH_PIXEL_RESIZE_SCALE;
         height /= HIGH_PIXEL_RESIZE_SCALE;
     }
