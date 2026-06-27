@@ -16,6 +16,9 @@
 
 #include "consistency_check_manager.h"
 
+#include <chrono>
+#include <thread>
+
 #include "cpu_utils.h"
 #include "global_scanner.h"
 #include "media_log.h"
@@ -29,6 +32,7 @@
 
 namespace OHOS::Media {
 const std::vector<CheckScene> SUPPORTED_SCENES = {CheckScene::LAKE, CheckScene::FILE_MANAGER};
+constexpr int32_t WAIT_SECONDS = 3;
 
 ConsistencyCheckManager &ConsistencyCheckManager::GetInstance()
 {
@@ -189,6 +193,17 @@ void ConsistencyCheckManager::WorkerMain()
             isInterrupted_.store(false);
             MEDIA_INFO_LOG("Set runningScene_: %{public}d, pendingScenes_ size: %{public}zu, isInterrupted_: "
                 "%{public}d", static_cast<int32_t>(runningScene_), pendingScenes_.size(), isInterrupted_.load());
+        }
+        MEDIA_INFO_LOG("Start delay %{public}ds", WAIT_SECONDS);
+        std::this_thread::sleep_for(std::chrono::seconds(WAIT_SECONDS));
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            if (!checkEnabled_ || isInterrupted_.load()) {
+                MEDIA_INFO_LOG("Scene %{public}d skipped due to interruption after delay", static_cast<int32_t>(scene));
+                runningScene_ = CheckScene::IDLE;
+                workerRunning_ = false;
+                return;
+            }
         }
         ExecuteScene(scene);
     }
