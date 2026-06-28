@@ -36,6 +36,7 @@
 #include "revert_to_original_vo.h"
 #include "revert_to_original_dto.h"
 #include "media_file_utils.h"
+#include "batch_update_metadata_modified_vo.h"
 #include "cloud_enhancement_vo.h"
 #include "cloud_enhancement_dto.h"
 #include "start_download_cloud_media_vo.h"
@@ -747,6 +748,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::GET_DEEP_OPTIMIZE_SPACE),
         &MediaAssetsControllerService::GetDeepOptimizeSpace
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED),
+        &MediaAssetsControllerService::BatchUpdateMetaDataModified
     },
 };
 
@@ -3674,5 +3679,23 @@ int32_t MediaAssetsControllerService::GetDeepOptimizeSpace(MessageParcel &data, 
     QueryDeepOptimizableSpaceRespBody respBody;
     respBody.space = space;
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody);
+}
+
+int32_t MediaAssetsControllerService::BatchUpdateMetaDataModified(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("BatchUpdateMetaDataModified start");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    
+    BatchUpdateMetaDataModifiedReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("BatchUpdateMetaDataModified Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    
+    ret = MediaAssetsService::GetInstance().BatchUpdateMetaDataModified(reqBody.fileIds);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media

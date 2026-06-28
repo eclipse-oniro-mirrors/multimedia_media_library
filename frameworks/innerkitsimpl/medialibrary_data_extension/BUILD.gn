@@ -673,6 +673,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/adapted_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/log_cinematic_access_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/add_visit_count_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/batch_update_metadata_modified_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_result_set_from_db_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_result_set_from_photos_extend_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_moving_photo_date_modified_vo.cpp",

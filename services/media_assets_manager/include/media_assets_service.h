@@ -237,11 +237,12 @@ public:
     int32_t CancelTask(const int32_t &requestId);
     bool EarseTaskCancelFlag(const int32_t &requestId);
     bool RegisterTaskCancelFlag(int32_t requestId, std::shared_ptr<std::atomic<bool>> cancelFlag);
-    int32_t ScanMoveAssets(const std::vector<std::string> &allAssetPath,
+int32_t ScanMoveAssets(const std::vector<std::string> &allAssetPath,
         std::map<int32_t, FileAssetsInfo> &recordedInfos, ChangeRequestMoveAssetsByPathDto &dto);
     int32_t CreateFileManagerAsset(CreateAssetDto& dto);
+    int32_t BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
 
-private:
+ private:
     int32_t SubmitMetadataChanged(const int32_t fileId);
     MediaAssetsRdbOperations rdbOperation_;
     std::mutex progressMutex_;

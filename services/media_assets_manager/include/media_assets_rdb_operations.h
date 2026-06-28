@@ -75,8 +75,9 @@ public:
     int32_t UpdateTmpCompatibleDup(int32_t fileId, size_t size, bool validate = true);
     std::shared_ptr<DataShare::DataShareResultSet> GetUrisByOldUrisInner(MediaLibraryCommand &cmd,
         const DataShare::DataSharePredicates &predicates, const std::vector<std::string> &columns);
-    std::shared_ptr<DataShare::DataShareResultSet> QueryAssetByStoragePath(const std::string &path);
-private:
+std::shared_ptr<DataShare::DataShareResultSet> QueryAssetByStoragePath(const std::string &path);
+    int32_t BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
+ private:
     static std::shared_ptr<FileAsset> GetFileAssetFromDb(const std::string &column, const std::string &value,
         OperationObject oprnObject, const std::vector<std::string> &columns = {}, const std::string &networkId = "");
     static std::mutex facardMutex_;

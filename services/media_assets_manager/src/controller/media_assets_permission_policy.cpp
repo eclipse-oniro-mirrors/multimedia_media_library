@@ -232,6 +232,8 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_IS_ACTIVE_LCD_AGING), {{SYSTEMAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_DEEP_OPTIMIZE_SPACE), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_DEEP_OPTIMIZE_SPACE), {{SYSTEMAPI_PERM, READ_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED),
+        {{SYSTEMINNERAPI_PERM, WRITE_PERM}}},
 };
 
 static std::unordered_set<uint32_t> mediaAssetsPermissionDbBypass = {
