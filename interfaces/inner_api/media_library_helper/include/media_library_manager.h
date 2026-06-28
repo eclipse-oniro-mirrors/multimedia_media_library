@@ -469,6 +469,12 @@ public:
     EXPORT static void UpdateAssetVisitCount(shared_ptr<DataShare::DataShareHelper> dataShareHelper,
         const string &fileIdStr);
 
+    /**
+     * @brief BatchUpdateMetaDataModified
+     * @param fileIds file ids
+     */
+    EXPORT void BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
+
 private:
     int32_t ReadMovingPhotoVideo(const string &uri, const string &option);
     static int OpenThumbnail(std::string &uriStr, const std::string &path, const Size &size, bool isAstc);

@@ -45,6 +45,7 @@
 #include "medialibrary_uripermission_operations.h"
 #include "medialibrary_transcode_data_aging_operation.h"
 #include "medialibrary_data_manager_utils.h"
+#include "media_file_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -610,5 +611,30 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsRdbOperations::QueryAs
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     shared_ptr<DataShareResultSet> dataShareResultSet = make_shared<DataShareResultSet>(resultSetBridge);
     return dataShareResultSet;
+}
+
+int32_t MediaAssetsRdbOperations::BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds)
+{
+    MEDIA_INFO_LOG("BatchUpdateMetaDataModified enter, fileIds size: %{public}zu", fileIds.size());
+    CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), E_INVALID_VALUES, "fileIds is empty");
+    
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "Failed to get rdbStore.");
+    
+    NativeRdb::ValuesBucket values;
+    values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
+    
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(MediaColumn::MEDIA_ID, fileIds);
+    
+    int32_t updatedRows = 0;
+    int32_t ret = rdbStore->Update(updatedRows, values, predicates);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("BatchUpdateMetaDataModified failed, ret: %{public}d", ret);
+        return E_DB_FAIL;
+    }
+    
+    MEDIA_INFO_LOG("BatchUpdateMetaDataModified completed, updatedRows: %{public}d", updatedRows);
+    return E_OK;
 }
 } // namespace OHOS::Media

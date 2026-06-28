@@ -2324,5 +2324,46 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_file_manager_test_001, Tes
     mediaLibraryManager->CloseAsset(uri, srcFd);
 }
 #endif
+
+/**
+ * @tc.number    : MediaLibraryManager_BatchUpdateMetaDataModified_test_001
+ * @tc.name      : Batch update metadata modified with valid fileIds
+ * @tc.desc      : Test BatchUpdateMetaDataModified with valid file ids, metadata_modified should change
+ */
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_BatchUpdateMetaDataModified_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_001 enter");
+    ASSERT_NE(mediaLibraryManager, nullptr);
+    
+    string displayName = "test_batch_valid.jpg";
+    string uri = CreatePhotoAsset(displayName);
+    ASSERT_NE(uri, "");
+    
+    std::string fileId = MediaFileUtils::GetIdFromUri(uri);
+    ASSERT_NE(fileId, "");
+    
+    DataSharePredicates predicates;
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    vector<string> columns;
+    columns.push_back(PhotoColumn::PHOTO_META_DATE_MODIFIED);
+    FetchResult<FileAsset> assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    unique_ptr<FileAsset> fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t beforeModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    std::vector<std::string> fileIds;
+    fileIds.push_back(fileId);
+    mediaLibraryManager->BatchUpdateMetaDataModified(fileIds);
+    
+    assetsFetchResult = mediaLibraryManager->GetAssets(columns, &predicates);
+    ASSERT_GT(assetsFetchResult.GetCount(), 0);
+    fileAsset = assetsFetchResult.GetFirstObject();
+    ASSERT_NE(fileAsset, nullptr);
+    int64_t afterModified = std::get<int64_t>(fileAsset->GetMemberValue(PhotoColumn::PHOTO_META_DATE_MODIFIED));
+    
+    EXPECT_NE(beforeModified, afterModified);
+    MEDIA_INFO_LOG("MediaLibraryManager_BatchUpdateMetaDataModified_test_001 exit");
+}
 } // namespace Media
 } // namespace OHOS

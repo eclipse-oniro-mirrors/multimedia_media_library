@@ -86,6 +86,7 @@ ohos_shared_library("media_library_manager") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/retain_cloud_media_asset_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/trash_photos_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/get_assets_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/batch_update_metadata_modified_vo.cpp",
   ]
 
   include_dirs += user_ipc_client_include_dirs
