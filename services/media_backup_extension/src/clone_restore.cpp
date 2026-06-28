@@ -1195,20 +1195,6 @@ void CloneRestore::UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &file
     }
 }
 
-static int32_t GetThumbStatusByExistFlag(bool isLcdExist, bool isThmExist)
-{
-    if (isLcdExist && isThmExist) {
-        return RESTORE_THUMBNAIL_STATUS_ALL;
-    }
-    if (!isLcdExist && isThmExist) {
-        return RESTORE_THUMBNAIL_STATUS_NOT_LCD;
-    }
-    if (isLcdExist && !isThmExist) {
-        return RESTORE_THUMBNAIL_STATUS_NOT_THUMB;
-    }
-    return RESTORE_THUMBNAIL_STATUS_NOT_ALL;
-}
-
 static bool IsOriginAssetExistsForDentry(const FileInfo &fileInfo)
 {
     if (fileInfo.fileSourceType == FileSourceType::MEDIA) {

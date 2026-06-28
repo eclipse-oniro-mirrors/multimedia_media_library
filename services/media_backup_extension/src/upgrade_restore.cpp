@@ -1102,6 +1102,7 @@ NativeRdb::ValuesBucket UpgradeRestore::GetInsertValue(const FileInfo &fileInfo,
         values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(restoreConfig_.photoPositionType));
         values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, static_cast<int32_t>(restoreConfig_.southDeviceType));
         values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_SYNCED));
+        values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, RESTORE_THUMBNAIL_STATUS_NOT_ALL);
     } else {
         values.PutInt(PhotoColumn::PHOTO_DIRTY, this->photosRestore_.FindDirty(fileInfo));
     }

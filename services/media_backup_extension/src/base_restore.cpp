@@ -1240,6 +1240,7 @@ void BaseRestore::MoveMigrateCloudFile(std::vector<FileInfo> &fileInfos, int32_t
         HandleFailData(fileInfos, dentryFailedLCD, DENTRY_INFO_LCD));
     CHECK_AND_EXECUTE(BatchCreateDentryFile(THMNotFound, dentryFailedThumb, DENTRY_INFO_THM) != E_OK,
         HandleFailData(fileInfos, dentryFailedThumb, DENTRY_INFO_THM));
+    BatchUpdateThumbStatusByFileExistence(fileInfos);
     fileMoveCount = SetVisiblePhoto(fileInfos);
     successCloudMetaNumber_ += fileMoveCount;
     migrateFileNumber_ += fileMoveCount;
@@ -2556,6 +2557,71 @@ void BaseRestore::NotifyDbStatusForClone()
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::NOTIFY_CLONE_STATUS);
     int32_t result = IPC::UserDefineIPCClient().Call(businessCode);
     MEDIA_INFO_LOG("CheckDbAvailability ret:%{public}d", result);
+}
+
+int32_t BaseRestore::GetThumbStatusByExistFlag(bool isLcdExist, bool isThmExist)
+{
+    if (isLcdExist && isThmExist) {
+        return RESTORE_THUMBNAIL_STATUS_ALL;
+    }
+    if (!isLcdExist && isThmExist) {
+        return RESTORE_THUMBNAIL_STATUS_NOT_LCD;
+    }
+    if (isLcdExist && !isThmExist) {
+        return RESTORE_THUMBNAIL_STATUS_NOT_THUMB;
+    }
+    return RESTORE_THUMBNAIL_STATUS_NOT_ALL;
+}
+
+void BaseRestore::CheckThumbnailFileExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist)
+{
+    std::string thumbnailDir = GetThumbnailLocalPath(fileInfo.cloudPath);
+    bool hasExThumbnail = HasExThumbnail(fileInfo);
+    isLcdExist = hasExThumbnail
+        ? MediaFileUtils::IsFileExists(thumbnailDir + THM_SAVE_WITHOUT_ROTATE_PATH + "/LCD.jpg")
+        : MediaFileUtils::IsFileExists(thumbnailDir + "/LCD.jpg");
+    isThmExist = hasExThumbnail
+        ? MediaFileUtils::IsFileExists(thumbnailDir + THM_SAVE_WITHOUT_ROTATE_PATH + "/THM.jpg")
+        : MediaFileUtils::IsFileExists(thumbnailDir + "/THM.jpg");
+}
+
+void BaseRestore::BatchUpdateThumbStatusByFileExistence(std::vector<FileInfo> &fileInfos)
+{
+    std::unordered_map<int32_t, std::vector<int32_t>> statusGroupMap;
+
+    for (size_t i = 0; i < fileInfos.size(); i++) {
+        bool isValid = (fileInfos[i].needMove && fileInfos[i].needVisible && fileInfos[i].fileIdNew > 0);
+        CHECK_AND_CONTINUE(isValid);
+
+        bool isLcdExist = false;
+        bool isThmExist = false;
+        CheckThumbnailFileExistence(fileInfos[i], isLcdExist, isThmExist);
+        int32_t thumbStatus = GetThumbStatusByExistFlag(isLcdExist, isThmExist);
+        CHECK_AND_CONTINUE(thumbStatus != RESTORE_THUMBNAIL_STATUS_NOT_ALL);
+        statusGroupMap[thumbStatus].push_back(fileInfos[i].fileIdNew);
+    }
+    CHECK_AND_RETURN_LOG(!statusGroupMap.empty(), "statusGroupMap is empty");
+
+    for (auto &entry : statusGroupMap) {
+        NativeRdb::ValuesBucket updateBucket;
+        updateBucket.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, entry.first);
+
+        std::string whereClause = PhotoColumn::MEDIA_ID + " IN (";
+        for (size_t i = 0; i < entry.second.size(); i++) {
+            if (i != 0) whereClause += ",";
+            whereClause += std::to_string(entry.second[i]);
+        }
+        whereClause += ")";
+
+        std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
+            make_unique<NativeRdb::AbsRdbPredicates>(PhotoColumn::PHOTOS_TABLE);
+        predicates->SetWhereClause(whereClause);
+
+        int32_t updatedRows = 0;
+        int32_t ret = BackupDatabaseUtils::Update(mediaLibraryRdb_, updatedRows, updateBucket, predicates);
+        MEDIA_INFO_LOG("Update thumbStatus=%{public}d, count=%{public}zu, updatedRows=%{public}d, ret=%{public}d",
+            entry.first, entry.second.size(), updatedRows, ret);
+    }
 }
 } // namespace Media
 } // namespace OHOS
