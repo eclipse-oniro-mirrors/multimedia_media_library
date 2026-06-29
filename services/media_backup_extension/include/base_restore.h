@@ -203,6 +203,9 @@ protected:
     void StopParameterForRestore();
     void RestoreSearchIndex();
     void SetCloneParameterAndStopSync();
+    void BatchUpdateThumbStatusByFileExistence(std::vector<FileInfo> &fileInfos);
+    int32_t GetThumbStatusByExistFlag(bool isLcdExist, bool isThmExist);
+    void CheckThumbnailFileExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist);
 
 protected:
     std::atomic<uint64_t> migrateDatabaseNumber_{0};
