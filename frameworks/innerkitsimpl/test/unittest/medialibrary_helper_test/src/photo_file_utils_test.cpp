@@ -168,5 +168,49 @@ HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ConstructDateAddedDateParts,
     EXPECT_NE(parts.day, "");
     MEDIA_INFO_LOG("PhotoFileUtils_ConstructDateAddedDateParts End");
 }
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Valid_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251225",
+        1766644004000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251224",
+        1766644004000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251226",
+        1766661664000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251225", 1766661664000), true);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251224", 1766661664000), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Empty_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("", "202512", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "",
+        1766644004000), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Invalid_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("abcd", "202512", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("202", "202512", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "20251", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251226", 1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2024", "202412", "20241225", 1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2026", "202601", "20260101", 1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20251227", 1766661664000), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, PhotoFileUtils_ValidateDateAddedYearMonthDay_Mismatch_001, TestSize.Level1)
+{
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202412", "20251225",
+        1766644004000), false);
+    EXPECT_EQ(PhotoFileUtils::ValidateDateAddedYearMonthDay("2025", "202512", "20241225",
+        1766644004000), false);
+}
 } // namespace Media
 } // namespace OHOS

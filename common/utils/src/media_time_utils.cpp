@@ -15,6 +15,8 @@
 
 #include "media_time_utils.h"
 
+#include <mutex>
+
 #include "media_log.h"
 
 namespace OHOS::Media {
@@ -84,5 +86,61 @@ std::string MediaTimeUtils::StrCreateTimeByMilliseconds(const std::string &forma
         MEDIA_ERR_LOG("Time value is negative: %{public}lld", static_cast<long long>(time));
     }
     return strTime;
+}
+
+bool MediaTimeUtils::TimeStampToUtcDate(int64_t timestamp, int& year, int& month, int& day)
+{
+    std::time_t time = static_cast<std::time_t>(timestamp);
+    std::tm tmTime{};
+    {
+        static std::mutex gmtimeMutex;
+        std::lock_guard<std::mutex> lock(gmtimeMutex);
+
+        const std::tm* tmPointer = std::gmtime(&time);
+        if (tmPointer == nullptr) {
+            MEDIA_ERR_LOG("gmtime error: %{public}d", errno);
+            return false;
+        }
+        tmTime = *tmPointer;
+    }
+    constexpr int utcYearBase = 1900;
+    constexpr int utcMonthBase = 1;
+    year = tmTime.tm_year + utcYearBase;
+    month = tmTime.tm_mon + utcMonthBase;
+    day = tmTime.tm_mday;
+    return true;
+}
+
+bool MediaTimeUtils::IsPlausibleDateTime(int year, int month, int day, int64_t timestamp)
+{
+    const int64_t timeStampSeconds = timestamp / MSEC_TO_SEC;
+    constexpr int64_t lowerBoundOffset = -12 * 3600; // -12h in seconds
+    constexpr int64_t upperBoundOffset = 14 * 3600;  // +14h in seconds
+
+    int yearLowerBound{};
+    int monthLowerBound{};
+    int dayLowerBound{};
+    int yearUpperBound{};
+    int monthUpperBound{};
+    int dayUpperBound{};
+    if (!TimeStampToUtcDate(timeStampSeconds + lowerBoundOffset, yearLowerBound, monthLowerBound, dayLowerBound)) {
+        return false;
+    }
+    if (!TimeStampToUtcDate(timeStampSeconds + upperBoundOffset, yearUpperBound, monthUpperBound, dayUpperBound)) {
+        return false;
+    }
+
+    auto timeLowerOrEqualTo =
+        [](int lowerYear, int lowerMonth, int lowerDay, int upperYear, int upperMonth, int upperDay) {
+            if (lowerYear != upperYear) {
+                return lowerYear < upperYear;
+            }
+            if (lowerMonth != upperMonth) {
+                return lowerMonth < upperMonth;
+            }
+            return lowerDay <= upperDay;
+        };
+    return timeLowerOrEqualTo(yearLowerBound, monthLowerBound, dayLowerBound, year, month, day) &&
+        timeLowerOrEqualTo(year, month, day, yearUpperBound, monthUpperBound, dayUpperBound);
 }
 } // namespace OHOS::Media
