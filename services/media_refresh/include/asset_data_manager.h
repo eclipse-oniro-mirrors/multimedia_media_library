@@ -61,7 +61,8 @@ private:
     std::vector<PhotoAssetChangeInfo> GetInfosByPredicates(const NativeRdb::AbsRdbPredicates &predicates) override;
     std::vector<PhotoAssetChangeInfo> GetInfosByResult(const std::shared_ptr<NativeRdb::ResultSet> &resultSet) override;
     void PostInsertBeforeData(PhotoAssetChangeData &changeData, PendingInfo &pendingInfo) override;
-    void PostInsertAfterData(PhotoAssetChangeData &changeData, PendingInfo &pendingInfo, bool isAdd = false) override;
+    void PostInsertAfterData(PhotoAssetChangeData &changeData, PendingInfo &pendingInfo, bool isAdd = false,
+        int fileIdBeforeRemove = INVALID_INT32_VALUE) override;
     bool CheckUpdateDataForMultiThread(PhotoAssetChangeData &changeData) override;
     void UpdatePendingInfo(PhotoAssetChangeData &changeData, PendingInfo &pendingInfo);
     int32_t SetAlbumIdsByPredicates(const NativeRdb::AbsRdbPredicates &predicates) override;

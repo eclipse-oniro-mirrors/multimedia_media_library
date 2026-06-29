@@ -196,7 +196,7 @@ int32_t AccurateRefreshDataManager<ChangeInfo, ChangeData>::UpdateModifiedDatasF
         changeData.isDelete_ = true;
         changeData.version_ = timestamp;
         changeData.infoAfterChange_ = ChangeInfo();
-        PostInsertAfterData(changeData, pendingInfo);
+        PostInsertAfterData(changeData, pendingInfo, false, key);
         ACCURATE_INFO("[remove] info: %{public}s", changeData.infoBeforeChange_.ToString(true).c_str());
     }
     return ACCURATE_REFRESH_RET_OK;

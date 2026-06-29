@@ -78,7 +78,8 @@ private:
     // before数据插入后处理
     virtual void PostInsertBeforeData(ChangeData &changeData, PendingInfo &pendingInfo) {}
     // after数据插入后处理
-    virtual void PostInsertAfterData(ChangeData &changeData, PendingInfo &pendingInfo, bool isAdd = false) {}
+    virtual void PostInsertAfterData(ChangeData &changeData, PendingInfo &pendingInfo, bool isAdd = false,
+        int fileIdBeforeRemove = INVALID_INT32_VALUE) {}
     // 资产数据在更新相册时，可能需要刷新，解决多线程问题
     virtual bool CheckUpdateDataForMultiThread(ChangeData &changeData) { return false; }
     virtual int32_t SetAlbumIdsByPredicates(const NativeRdb::AbsRdbPredicates &predicates) = 0;

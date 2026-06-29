@@ -43,7 +43,8 @@ public:
     bool CheckInsertBeforeInfo(PhotoAssetChangeInfo& info);
 
     // 插入修改后数据，多次插入返回true
-    bool CheckInsertAfterInfo(PhotoAssetChangeInfo& info, bool isAdd = false);
+    bool CheckInsertAfterInfo(PhotoAssetChangeInfo& info, bool isAdd = false,
+        int fileIdBeforeRemove = INVALID_INT32_VALUE);
 
     std::pair<PhotoAssetChangeInfo, PhotoAssetChangeInfo> GetAssetChangeData(int32_t fileId);
 
