@@ -153,6 +153,9 @@ export class PhotoPickerComponent extends ViewPU {
         this.onScrollStopAtStart = void 0;
         this.onScrollStopAtEnd = void 0;
         this.onPinchGridSwitched = void 0;
+        this.isPhotoBrowserShow = false,
+        this.isMovingPhotoBadgeShownValid = false,
+        this.setBrowserProps(o);
         this.__pickerController = new SynchedPropertyNesedObjectPU(o.pickerController, this, 'pickerController');
         this.proxy = void 0;
         this.dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
@@ -199,6 +202,15 @@ export class PhotoPickerComponent extends ViewPU {
         if (cooperation_multi_name.includes(displayName)) {
             this.dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_HOST_DPI;
             console.info(`dpiFollowStrategy = ${this.dpiFollowStrategy}`);
+        }
+    }
+
+    setBrowserProps(o) {
+        o.pickerController.browserPropsRegistry = () => {
+            return {
+                isPhotoBrowserShow: this.isPhotoBrowserShow,
+                isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
+            }
         }
     }
 
@@ -742,10 +754,10 @@ export class PhotoPickerComponent extends ViewPU {
         t.animatorParams.curve = e.curve;
         o ? this.onEnterPhotoBrowser && this.onEnterPhotoBrowser(t) : this.onExitPhotoBrowser && this.onExitPhotoBrowser(t);
         if (o) {	 
-             this.pickerController.isPhotoBrowserShow = true;	 
-         } else {	 
-             this.pickerController.isPhotoBrowserShow = false;	 
-         }
+            this.isPhotoBrowserShow = true;
+        } else {	 
+            this.isPhotoBrowserShow = false;
+        }
         console.info('PhotoPickerComponent onReceive: onPhotoBrowserStateChanged = ' + o);
     }
 
@@ -824,7 +836,7 @@ export class PhotoPickerComponent extends ViewPU {
         
         return autoPlayScenes;
     }
-    
+
     parseAppAlbumFilters(appAlbumFilters) {
         if (!appAlbumFilters) {
             return undefined;
@@ -843,10 +855,10 @@ export class PhotoPickerComponent extends ViewPU {
             return undefined;
         }
         if (isMovingPhotoBadgeShown === true) {	 
-             this.pickerController.isMovingPhotoBadgeShownValid = true;	 
-         } else {	 
-             this.pickerController.isMovingPhotoBadgeShownValid = false;	 
-         }
+            this.isMovingPhotoBadgeShownValid = true;
+        } else {	 
+            this.isMovingPhotoBadgeShownValid = false;
+        }
         return isMovingPhotoBadgeShown;
     }
 
@@ -1010,8 +1022,6 @@ let PickerController = class {
         this.saveCallbackMap = new Map();
         this.createCallbackMap = new Map();
         this.saveCallbackPromises = new Map();
-        this.isPhotoBrowserShow = false;
-        this.isMovingPhotoBadgeShownValid = false;
         this.completedPromises = new Map();
     }
     setData(e, o) {
@@ -1092,9 +1102,11 @@ let PickerController = class {
         if (e !== MovingPhotoBadgeStateType.ADD_DATA && e !== MovingPhotoBadgeStateType.DELETE_DATA) {
             throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
         }
-        console.info('SET_MOVINGPHOTO_STATE, this.isPhotoBrowserShow : ' + JSON.stringify(this.isPhotoBrowserShow) +
-         ', this.isMovingPhotoBadgeShownValid=' + this.isMovingPhotoBadgeShownValid);
-        if (!this.isPhotoBrowserShow || this.isMovingPhotoBadgeShownValid) {
+
+        const props = this.browserPropsRegistry() ? this.browserPropsRegistry() : { isPhotoBrowserShow: false, isMovingPhotoBadgeShownValid: false };
+        console.info('SET_MOVINGPHOTO_STATE, this.isPhotoBrowserShow : ' + JSON.stringify(props.isPhotoBrowserShow) +
+         ', this.isMovingPhotoBadgeShownValid=' + props.isMovingPhotoBadgeShownValid);
+        if (!props.isPhotoBrowserShow || props.isMovingPhotoBadgeShownValid) {
             throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
         }
         if (e !== undefined) {
