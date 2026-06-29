@@ -1073,8 +1073,10 @@ int32_t BaseRestore::BatchCreateDentryFile(std::vector<FileInfo> &fileInfos, std
         MEDIA_INFO_LOG("dentryInfos empty.");
         return E_OK;
     }
+    MEDIA_INFO_LOG("Begin to BatchDentryFileInsert");
     int32_t ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().BatchDentryFileInsert(
         dentryInfos, failCloudIds);
+    MEDIA_INFO_LOG("End to BatchDentryFileInsert");
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "BatchDentryFileInsert failed, ret: %{public}d.", ret);
     CHECK_AND_PRINT_LOG(failCloudIds.empty(), "failCloudIds size: %{public}zu, first one: %{public}s",
         failCloudIds.size(), failCloudIds[0].c_str());
