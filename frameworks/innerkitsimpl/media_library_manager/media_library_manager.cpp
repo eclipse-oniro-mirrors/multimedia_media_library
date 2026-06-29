@@ -23,10 +23,12 @@
 #include "accesstoken_kit.h"
 #include "directory_ex.h"
 #include "iservice_registry.h"
+#include "os_account_manager.h"
 #include "media_asset_rdbstore.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_string_utils.h"
+#include "media_uri_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_manager_notify_observer_manager.h"
@@ -83,11 +85,14 @@ namespace OHOS {
 namespace Media {
 shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::sDataShareHelper_ = nullptr;
 sptr<IRemoteObject> MediaLibraryManager::token_ = nullptr;
+shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::currentDataShareHelper_ = nullptr;
+int32_t MediaLibraryManager::userId_ = -1;
 constexpr int32_t DEFAULT_THUMBNAIL_SIZE = 256;
 constexpr int32_t MAX_DEFAULT_THUMBNAIL_SIZE = 768;
 constexpr int32_t DEFAULT_MONTH_THUMBNAIL_SIZE = 128;
 constexpr int32_t DEFAULT_YEAR_THUMBNAIL_SIZE = 64;
 constexpr int32_t URI_MAX_SIZE = 1000;
+constexpr int32_t DEFAULT_USER_ID = 100;
 
 const std::string PENDING_STATUS_INNER = "pending";
 const std::string MULTI_USER_URI_FLAG = "user=";
@@ -131,104 +136,141 @@ void MediaLibraryManager::InitMediaLibraryManager()
     }
 }
 
+static int32_t GetCurrentAccountId()
+{
+    int32_t activeUserId = DEFAULT_USER_ID;
+    ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
+    if (ret != ERR_OK) {
+        MEDIA_ERR_LOG("fail to get activeUser:%{public}d", ret);
+    }
+    return activeUserId;
+}
+
+shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::GetDataShareHelper()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    int32_t activeUser = GetCurrentAccountId();
+    if (currentDataShareHelper_ == nullptr || activeUser != userId_) {
+        MEDIA_INFO_LOG("GetDataShareHelper userid has changed, userId_: %{public}d -> activeUser: %{public}d", userId_,
+            activeUser);
+        if (token_ == nullptr) {
+            token_ = InitToken();
+        }
+        if (token_ == nullptr) {
+            MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
+            return nullptr;
+        }
+        Uri uri = Uri(MEDIALIBRARY_DATA_URI);
+        std::string multiUri = MediaUriUtils::GetMultiUri(uri, activeUser).ToString();
+        currentDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, multiUri);
+        if (currentDataShareHelper_ != nullptr) {
+            userId_ = activeUser;
+        } else {
+            MEDIA_ERR_LOG(
+                "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
+        }
+    }
+    return currentDataShareHelper_;
+}
+
 int32_t MediaLibraryManager::RegisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::PHOTO_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterSinglePhotoChange(const std::string &assetUri,
     std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterSingleAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterSinglePhotoChange(const std::string &assetUri,
     std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterSingleAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_URI, assetUri, callback);
 }
 
 int32_t MediaLibraryManager::RegisterSinglePhotoAlbumChange(const std::string &albumUri,
     std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterSingleAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterSinglePhotoAlbumChange(const std::string &albumUri,
     std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterSingleAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI, albumUri, callback);
 }
 
 int32_t MediaLibraryManager::RegisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterTrashedPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterTrashedAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::TRASH_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterHiddenPhotoChange(std::shared_ptr<PhotoAssetChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAssetCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_PHOTO_URI, callback);
 }
 
 int32_t MediaLibraryManager::RegisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().RegisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
 }
 
 int32_t MediaLibraryManager::UnregisterHiddenAlbumChange(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     return MediaLibraryManagerNotifyObserverManager::GetInstance().UnregisterAlbumCallback(
-        sDataShareHelper_, Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
+        GetDataShareHelper(), Notification::NotifyUriType::HIDDEN_ALBUM_URI, callback);
 }
 
 string MediaLibraryManager::CreateAsset(const string &displayName)
