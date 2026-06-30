@@ -4194,6 +4194,14 @@ static void PhotoAccessHelperOpenCallbackComplete(napi_env env, napi_status stat
     auto context = static_cast<FileAssetAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
 
+    if (context->objectPtr == nullptr) {
+        NAPI_ERR_LOG("FileAsset is nullptr");
+        delete context;
+        return;
+    }
+    NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", context->fd,
+        MediaFileUtils::DesensitizePath(context->objectPtr->GetUri()).c_str());
+
     unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
     jsContext->status = false;
 
@@ -4313,12 +4321,19 @@ static void PhotoAccessHelperCloseCallbackComplete(napi_env env, napi_status sta
 napi_value FileAssetNapi::PhotoAccessHelperClose(napi_env env, napi_callback_info info)
 {
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
+    if (asyncContext == nullptr) {
+        NAPI_ERR_LOG("Async context is null");
+        return nullptr;
+    }
+
     CHECK_NULLPTR_RET(ParseArgsPhotoAccessHelperClose(env, info, asyncContext));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
         NapiError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+    NAPI_INFO_LOG("FileAssetAsyncContext fd: %{public}d, uri: %{public}s", asyncContext->fd,
+        MediaFileUtils::DesensitizePath(asyncContext->objectPtr->GetUri()).c_str());
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperClose",
         PhotoAccessHelperCloseExecute, PhotoAccessHelperCloseCallbackComplete);
