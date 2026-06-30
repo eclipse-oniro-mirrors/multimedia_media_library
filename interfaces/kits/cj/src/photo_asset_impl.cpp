@@ -111,7 +111,7 @@ static int32_t CheckSystemApiKeys(const string &key)
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
-    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
+    if (DfxSystemPhotoKeys::ReportIfSystemKey("cj", key) != E_SUCCESS) {
         LOGE("Report Third party application failed, key:%{public}s", key.c_str());
     }
 

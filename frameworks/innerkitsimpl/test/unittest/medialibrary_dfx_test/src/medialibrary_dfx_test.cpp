@@ -1252,7 +1252,7 @@ HWTEST_F(MediaLibraryDfxTest, DfxSystemPhotoKeys_ReportIfSystemKey_Test_01, Test
     for (const auto &testCase : testCases) {
         std::string photoKey = testCase.first;
         int32_t expect = testCase.second;
-        int32_t actual = DfxSystemPhotoKeys::ReportIfSystemKey(photoKey);
+        int32_t actual = DfxSystemPhotoKeys::ReportIfSystemKey("napi", photoKey);
         MEDIA_DEBUG_LOG("photoKey: %{public}s, Actual: %{public}d", photoKey.c_str(), actual);
         EXPECT_EQ(actual, expect);
     }
