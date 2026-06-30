@@ -93,7 +93,7 @@ int32_t DfxSystemPhotoKeys::ReportIfSystemKey(const std::string &interface, cons
         return E_SUCCESS;
     }
 
-    std::string dedupKey = interface + "/" + key;
+    std::string dedupKey = key + "/" + interface;
     int32_t count = 0;
     if (reportedKeyMap_.Find(dedupKey, count)) {
         reportedKeyMap_.Erase(dedupKey);
