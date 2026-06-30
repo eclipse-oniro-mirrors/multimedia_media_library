@@ -31,7 +31,7 @@
 #endif
 
 namespace OHOS::Media {
-const std::vector<CheckScene> SUPPORTED_SCENES = {CheckScene::LAKE, CheckScene::FILE_MANAGER};
+const std::vector<CheckScene> SUPPORTED_SCENES = {CheckScene::LAKE};
 constexpr int32_t WAIT_SECONDS = 3;
 
 ConsistencyCheckManager &ConsistencyCheckManager::GetInstance()
