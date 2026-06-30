@@ -33,6 +33,7 @@ constexpr uint64_t GetCareAboutMsgType()
     msgTypes ^= FileMonitorService::MSG_TYPE_FOLDER_SANBOX_2;
     msgTypes ^= FileMonitorService::MSG_TYPE_IS_TF_DATA;
     msgTypes ^= FileMonitorService::MSG_TYPE_IS_MEDIA_DATA_NO;
+    msgTypes ^= FileMonitorService::MSG_TYPE_IS_HO_DATA_NO;
     return msgTypes;
 }
 
