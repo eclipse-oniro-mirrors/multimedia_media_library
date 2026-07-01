@@ -75,6 +75,7 @@ const std::unordered_set<std::string> SYSTEM_PHOTO_KEYS = {
     PhotoColumn::PHOTO_DIRTY,
     MediaColumn::MEDIA_OWNER_PACKAGE,
     PhotoColumn::ATTACHMENT_SIZE,
+    PhotoColumn::PHOTO_FILE_HIDDEN,
 };
 
 std::string DfxSystemPhotoKeys::GetBundleName()
