@@ -380,12 +380,12 @@ napi_value MediaLibraryNotifyUtils::BuildPhotoAssetChangeInfo(napi_env env,
     SetValueString(env, "uri", photoAssetChangeInfo.uri_.c_str(), result);
     SetValueInt32(env, "mediaType", photoAssetChangeInfo.mediaType_, result);
     SetValueString(env, "albumUri", photoAssetChangeInfo.ownerAlbumUri_.c_str(), result);
+    SetValueBool(env, "isFavorite", photoAssetChangeInfo.isFavorite_, result);
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         return result;
     }
     SetValueInt32(env, "fileId", photoAssetChangeInfo.fileId_, result);
     SetValueString(env, "dateDay", photoAssetChangeInfo.dateDay_.c_str(), result);
-    SetValueBool(env, "isFavorite", photoAssetChangeInfo.isFavorite_, result);
     SetValueBool(env, "isHidden", photoAssetChangeInfo.isHidden_, result);
     SetValueInt32(env, "strongAssociation", photoAssetChangeInfo.strongAssociation_, result);
     SetValueInt32(env, "thumbnailVisible", photoAssetChangeInfo.thumbnailVisible_, result);

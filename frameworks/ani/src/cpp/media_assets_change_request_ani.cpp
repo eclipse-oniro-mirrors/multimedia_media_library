@@ -49,10 +49,6 @@ MediaAssetsChangeRequestAni::~MediaAssetsChangeRequestAni()
 void MediaAssetsChangeRequestAni::SetFavorite([[maybe_unused]] ani_env *env, [[maybe_unused]] ani_object object,
     ani_boolean isFavorite)
 {
-    if (!MediaLibraryAniUtils::IsSystemApp()) {
-        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-        return;
-    }
     auto asyncContext = std::make_unique<MediaAssetsChangeRequestAniContext>();
     CHECK_NULL_PTR_RETURN_VOID(asyncContext, "Failed to create asyncContext");
     asyncContext->objectInfo = Unwrap(env, object);

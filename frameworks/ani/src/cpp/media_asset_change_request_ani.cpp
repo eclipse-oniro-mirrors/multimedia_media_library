@@ -2973,11 +2973,6 @@ ani_object MediaAssetChangeRequestAni::DeleteAssetsPermanentlyWithUri(ani_env *e
 
 ani_object MediaAssetChangeRequestAni::SetFavorite(ani_env *env, ani_object object, ani_boolean favoriteState)
 {
-    if (!MediaLibraryAniUtils::IsSystemApp()) {
-        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
-        return nullptr;
-    }
-
     auto context = make_unique<MediaAssetChangeRequestAniContext>();
     CHECK_COND_WITH_MESSAGE(env, context != nullptr, "Failed to create asyncContext");
     bool isFavorite = static_cast<bool>(favoriteState);
