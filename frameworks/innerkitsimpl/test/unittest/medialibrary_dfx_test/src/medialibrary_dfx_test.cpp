@@ -1241,22 +1241,25 @@ HWTEST_F(MediaLibraryDfxTest, QueryAlbumNames_dfx_test_002, TestSize.Level0)
 HWTEST_F(MediaLibraryDfxTest, DfxSystemPhotoKeys_ReportIfSystemKey_Test_01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("DfxSystemPhotoKeys_ReportIfSystemKey_Test_01 Start");
+    DfxSystemPhotoKeys::reportedKeyMap_.EnsureInsert(PhotoColumn::PHOTO_DIRTY + "/napi", 1);
 
     std::vector<std::pair<std::string, int32_t>> testCases{
         {MediaColumn::MEDIA_NAME, E_SUCCESS},
         {MediaColumn::MEDIA_HIDDEN, E_INVALID_BUNDLENAME},
         {MediaColumn::MEDIA_SIZE, E_SUCCESS},
         {PhotoColumn::PHOTO_HIDDEN_TIME, E_INVALID_BUNDLENAME},
+        {PhotoColumn::PHOTO_DIRTY, E_SUCCESS},
     };
 
     for (const auto &testCase : testCases) {
         std::string photoKey = testCase.first;
         int32_t expect = testCase.second;
         int32_t actual = DfxSystemPhotoKeys::ReportIfSystemKey("napi", photoKey);
-        MEDIA_DEBUG_LOG("photoKey: %{public}s, Actual: %{public}d", photoKey.c_str(), actual);
+        MEDIA_INFO_LOG("photoKey: %{public}s, Actual: %{public}d", photoKey.c_str(), actual);
         EXPECT_EQ(actual, expect);
     }
 
+    DfxSystemPhotoKeys::reportedKeyMap_.Clear();
     MEDIA_INFO_LOG("DfxSystemPhotoKeys_ReportIfSystemKey_Test_01 end");
 }
 } // namespace Media

@@ -80,10 +80,7 @@ const std::unordered_set<std::string> SYSTEM_PHOTO_KEYS = {
 std::string DfxSystemPhotoKeys::GetBundleName()
 {
     auto context = AbilityRuntime::Context::GetApplicationContext();
-    if (context == nullptr) {
-        MEDIA_ERR_LOG("GetApplicationContext is nullptr");
-        return "";
-    }
+    CHECK_AND_RETURN_RET_LOG(context != nullptr, "", "GetApplicationContext is nullptr");
     return context->GetBundleName();
 }
 
@@ -96,16 +93,13 @@ int32_t DfxSystemPhotoKeys::ReportIfSystemKey(const std::string &interface, cons
     std::string dedupKey = key + "/" + interface;
     int32_t count = 0;
     if (reportedKeyMap_.Find(dedupKey, count)) {
-        reportedKeyMap_.Erase(dedupKey);
         reportedKeyMap_.EnsureInsert(dedupKey, count + 1);
         return E_SUCCESS;
     }
 
     std::string bundleName = GetBundleName();
-    if (bundleName.empty()) {
-        MEDIA_ERR_LOG("bundleName is empty, key: %{public}s", key.c_str());
-        return E_INVALID_BUNDLENAME;
-    }
+    CHECK_AND_RETURN_RET_LOG(!bundleName.empty(), E_INVALID_BUNDLENAME, "bundleName is empty, key: %{public}s",
+        key.c_str());
 
     std::string readUri = "spk://" + dedupKey;
     int32_t ret = HiSysEventWrite(MEDIA_LIBRARY,
@@ -115,10 +109,7 @@ int32_t DfxSystemPhotoKeys::ReportIfSystemKey(const std::string &interface, cons
         bundleName,
         "READ_URI",
         readUri);
-    if (ret != 0) {
-        MEDIA_ERR_LOG("Report Third party application error:%{public}d", ret);
-        return E_ERR;
-    }
+    CHECK_AND_RETURN_RET_LOG(ret == 0, E_ERR, "Report Third party application error:%{public}d", ret);
 
     reportedKeyMap_.EnsureInsert(dedupKey, 1);
     return E_SUCCESS;
