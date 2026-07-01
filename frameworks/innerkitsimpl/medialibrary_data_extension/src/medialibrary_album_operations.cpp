@@ -3042,9 +3042,9 @@ static int32_t UpdateMergeAlbumsInfo(const vector<MergeAlbumInfo> &mergeAlbumInf
     }
     updateAlbumInfo.count = GetMergeAlbumCount(mergeAlbumInfo[0].albumId, mergeAlbumInfo[1].albumId);
     updateAlbumInfo.groupTag = "'" + mergeAlbumInfo[0].groupTag + "|" + mergeAlbumInfo[1].groupTag + "'";
-    updateAlbumInfo.isMe = (mergeAlbumInfo[0].isMe == 1 || mergeAlbumInfo[1].isMe == 1) ? 1 : 0;
     updateAlbumInfo.userOperation = 1;
     CHECK_AND_RETURN_RET(GetMergedAlbumInfo(mergeAlbumInfo, updateAlbumInfo) == E_OK, E_HAS_DB_ERROR);
+    updateAlbumInfo.isMe = updateAlbumInfo.relationship == ME_RELATIONSHIP ? IS_ME_ALBUM : 0;
     updateAlbumInfo.renameOperation =
         (mergeAlbumInfo[0].albumName != "" || mergeAlbumInfo[1].albumName != "") ? 1 : 0;
     CHECK_AND_EXECUTE(updateAlbumInfo.userDisplayLevel == FAVORITE_PAGE, updateAlbumInfo.rank = 0);
