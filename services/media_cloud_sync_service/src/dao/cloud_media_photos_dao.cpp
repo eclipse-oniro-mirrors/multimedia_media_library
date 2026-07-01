@@ -511,7 +511,7 @@ int32_t CloudMediaPhotosDao::ConflictDataMerge(const CloudMediaPullDataDto &pull
         values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(Media::DirtyType::TYPE_SDIRTY));
     }
     string whereClause = PhotoColumn::MEDIA_FILE_PATH + " = ? AND position = 1";
-    HandleIncomingCloudConflict(pullData, values);
+    HandleWatchRelatedFields(pullData, values);
     int32_t ret = this->UpdateProxy(
         updateRows, PhotoColumn::PHOTOS_TABLE, values, whereClause, {filePath}, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_RDB, "ConflictDataMerge failed, ret: %{public}d, filePath: %{public}s",
@@ -549,18 +549,23 @@ int32_t CloudMediaPhotosDao::GetInsertParams(const CloudMediaPullDataDto &pullDa
     values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, static_cast<int32_t>(ThumbState::TO_DOWNLOAD));
     values.PutString(PhotoColumn::PHOTO_CLOUD_ID, pullData.cloudId);
     values.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
-    HandleIncomingCloudConflict(pullData, values);
+    HandleWatchRelatedFields(pullData, values);
     HandleShootingMode(pullData.cloudId, values, recordAnalysisAlbumMaps);
     insertFiles.push_back(values);
     return E_OK;
 }
 
-void CloudMediaPhotosDao::ProcessResultSetData(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
-    NativeRdb::ValuesBucket &values, const CloudMediaPullDataDto &pullData)
+void CloudMediaPhotosDao::HandleWatchRelatedFieldsForUpdate(
+    const CloudMediaPullDataDto &pullData, NativeRdb::ValuesBucket &values)
 {
-    std::string uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
-    int32_t riskStatus = GetInt32Val(PhotoColumn::PHOTO_RISK_STATUS, resultSet);
-    std::string packageName = GetStringVal(MediaColumn::MEDIA_PACKAGE_NAME, resultSet);
+    const bool isValid = pullData.localPhotosPoOp.has_value();
+    CHECK_AND_RETURN_LOG(isValid, "localPhotosPoOp has no value");
+    const PhotosPo &photoInfo = pullData.localPhotosPoOp.value();
+
+    const std::string uniqueId = photoInfo.uniqueId.value_or("");
+    int32_t riskStatus = photoInfo.photoRiskStatus.value_or(static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED));
+    const std::string packageName = photoInfo.packageName.value_or("");
+
     if ((uniqueId.empty() || uniqueId == "-1") &&
         (pullData.attributesUniqueId.empty() || pullData.attributesUniqueId == "-1")) {
         values.Delete(PhotoColumn::UNIQUE_ID);
@@ -584,7 +589,7 @@ void CloudMediaPhotosDao::ProcessResultSetData(const std::shared_ptr<NativeRdb::
             values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, 1);
         }
     } else {
-        MEDIA_WARN_LOG("ProcessResultSetData: Failed to get PHOTO_RISK_STATUS");
+        MEDIA_WARN_LOG("Failed to get PHOTO_RISK_STATUS");
     }
 
     if (!packageName.empty()) {
@@ -593,31 +598,17 @@ void CloudMediaPhotosDao::ProcessResultSetData(const std::shared_ptr<NativeRdb::
     }
 }
 
-void CloudMediaPhotosDao::HandleIncomingCloudConflict(const CloudMediaPullDataDto &pullData,
+void CloudMediaPhotosDao::HandleWatchRelatedFields(const CloudMediaPullDataDto &pullData,
     NativeRdb::ValuesBucket &values)
 {
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    if (rdbStore == nullptr) {
-        MEDIA_WARN_LOG("Failed to get rdbStore.");
-        return;
-    }
-    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::MEDIA_NAME, pullData.basicDisplayName);
-    vector<string> queryColums = {
-        PhotoColumn::UNIQUE_ID, PhotoColumn::PHOTO_RISK_STATUS, MediaColumn::MEDIA_PACKAGE_NAME
-    };
-    auto resultSet = rdbStore->Query(predicates, queryColums);
-    if (resultSet != nullptr) {
-        int rowCount = 0;
-        if ((resultSet->GetRowCount(rowCount) != NativeRdb::E_OK) || (rowCount == 0)) {
-            if (pullData.attributesUniqueId.empty() || pullData.attributesUniqueId == "-1") {
-                values.Delete(PhotoColumn::UNIQUE_ID);
-                values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
-            }
-        } else if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-            ProcessResultSetData(resultSet, values, pullData);
+    const bool hasLocalRecord = pullData.localPhotosPoOp.has_value();
+    if (!hasLocalRecord) {
+        if (pullData.attributesUniqueId.empty() || pullData.attributesUniqueId == "-1") {
+            values.Delete(PhotoColumn::UNIQUE_ID);
+            values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
         }
-        resultSet->Close();
+    } else {
+        HandleWatchRelatedFieldsForUpdate(pullData, values);
     }
 }
 
