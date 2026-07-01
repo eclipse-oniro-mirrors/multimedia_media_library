@@ -633,7 +633,7 @@ int32_t MtpMedialibraryManager::GetHandles(const shared_ptr<MtpOperationContext>
     FileCountInfo fileCountInfo;
     errCode = HaveMovingPhotesHandle(resultSet, outHandles, context->parent, fileCountInfo);
     CountPhotosNumber(context, fileCountInfo);
-    resultSet->Close();
+    CHECK_AND_EXECUTE(resultSet == nullptr, resultSet->Close());
     return MtpErrorUtils::SolveGetHandlesError(errCode);
 }
 
@@ -887,6 +887,8 @@ bool MtpMedialibraryManager::CompressImage(std::unique_ptr<PixelMap> &pixelMap, 
         .numberHint = SIZE_ONE
     };
     CHECK_AND_RETURN_RET_LOG(pixelMap != nullptr, MTP_ERROR_NO_THUMBNAIL_PRESENT, "pixelMap is nullptr");
+    CHECK_AND_RETURN_RET_LOG(pixelMap->GetByteCount() < MAX_THUMBNAIL_SIZE, false,
+        "ByteCount is larger than MAX_THUMBNAIL_SIZE");
     data.resize(pixelMap->GetByteCount());
     ImagePacker imagePacker;
     uint32_t errorCode = imagePacker.StartPacking(data.data(), data.size(), option);

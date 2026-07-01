@@ -231,8 +231,13 @@ string VideoRingtoneProcessor::GetUrisByOldUrisInner(const string &oldUris, int3
 
     auto mediaIdOpt = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, TabOldPhotosColumn::MEDIA_ID);
     auto newUrisOpt = BackupDatabaseUtils::GetOptionalValue<string>(resultSet, TabOldPhotosColumn::MEDIA_FILE_PATH);
+    if (!newUrisOpt.has_value()) {
+        MEDIA_ERR_LOG("newUrisOpt is empty");
+        resultSet->Close();
+        return "";
+    }
     mediaId = mediaIdOpt.value_or(0);
-    string newUris = newUrisOpt.value_or("");
+    string newUris = *newUrisOpt;
     resultSet->Close();
     return newUris;
 }
