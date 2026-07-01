@@ -30,6 +30,7 @@
 #include "dfx_utils.h"
 #include "medialibrary_album_operations.h"
 #include "medialibrary_photo_operations.h"
+#include "file_manager_asset_operations.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsRecoverService::BatchMoveOutTrashAndMergeWithSameAsset(
@@ -242,6 +243,9 @@ int32_t MediaAssetsRecoverService::MoveAssetFileFromMediaToLake(
 {
     std::string mediaPath = photoInfo.data.value_or("");
     std::string lakePath = targetPhotoInfo.storagePath.value_or("");
+    if (targetPhotoInfo.ShouldHandleAsMediaFile()) {
+        return MoveAssetFileFromMediaToFileManager(photoInfo, targetPhotoInfo);
+    }
     bool isValid = photoInfo.ShouldHandleAsMediaFile();
     isValid = isValid && !lakePath.empty();
     CHECK_AND_RETURN_RET_LOG(isValid, E_OK, "No need to move file, target is not in lake.");
@@ -437,5 +441,19 @@ int32_t MediaAssetsRecoverService::StoreThumbnailAndEditSize(const PhotosPo &pho
     CHECK_AND_RETURN_RET(isValid, E_INVALID_VALUES);
     MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(std::to_string(fileId), data);
     return E_OK;
+}
+
+int32_t MediaAssetsRecoverService::MoveAssetFileFromMediaToFileManager(
+    const PhotosPo &photoInfo, const PhotosPo &targetPhotoInfo)
+{
+    int32_t ret = FileManagerAssetOperations::MoveFileManagerAsset(photoInfo, targetPhotoInfo);
+    MEDIA_INFO_LOG(
+        "MoveAssetFileFromMediaToFileManager, ret: %{public}d, storagePath: %{public}s,\
+        data: %{public}s, errno: %{public}d",
+        ret,
+        DfxUtils::GetSafePath(photoInfo.data.value_or("")).c_str(),
+        DfxUtils::GetSafePath(targetPhotoInfo.storagePath.value_or("")).c_str(),
+        errno);
+    return ret;
 }
 }  // namespace OHOS::Media::Common

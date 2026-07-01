@@ -78,6 +78,8 @@ private:
     int32_t MoveAssetFileOutOfLake(const PhotosPo &photoInfo);
     int32_t CreateLocalAssetWithLakeFile(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+    int32_t CreateLocalAssetWithFileManager(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo,
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t CopyAndMoveMediaLocalAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
         std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t CopyAndMoveLakeLocalAssetToTrash(const PhotosPo &photoInfo, std::optional<PhotosPo> &targetPhotoInfoOp,
@@ -127,6 +129,7 @@ private:
     int32_t GetDentryFileInfo(const PhotosPo &photoInfo, FileManagement::CloudSync::DentryFileInfo &dentryInfo) const;
     int32_t ResetUniqueId(PhotosPo &photoInfo);
     int32_t ResetTransCode(PhotosPo &photoInfo);
+    int32_t ResetStoragePath(PhotosPo &photoInfo);
 
 private:
     MediaAssetsDao mediaAssetsDao_;

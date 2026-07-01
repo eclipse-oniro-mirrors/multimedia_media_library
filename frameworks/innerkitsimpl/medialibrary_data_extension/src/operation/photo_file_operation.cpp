@@ -38,6 +38,7 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "file_manager_asset_operations.h"
 
 namespace OHOS::Media {
 // LCOV_EXCL_START

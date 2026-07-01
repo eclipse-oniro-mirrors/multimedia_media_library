@@ -37,6 +37,7 @@
 #include "lake_file_operations.h"
 #include "file_scan_utils.h"
 #endif
+#include "file_manager_asset_operations.h"
 
 namespace OHOS::Media::Common {
 int32_t MediaAssetsDeleteService::DeleteLocalAssets(const std::vector<std::string> &fileIds)
@@ -115,11 +116,8 @@ int32_t MediaAssetsDeleteService::CopyAndMoveFileManagerLocalAssetToTrash(const 
     isValid = isValid && photoInfo.dateTrashed.value_or(0) == 0;
     CHECK_AND_RETURN_RET(isValid, E_INVALID_MODE);
     PhotosPo targetPhotoInfo;
-    int32_t opRet = this->CreateLocalAssetWithLakeFile(photoInfo, targetPhotoInfo, photoRefresh);
-    // Reset the storage position of the LOCAL_AND_CLOUD asset record to CLOUD asset record (cloud only).
-    int32_t ret = this->mediaAssetsDao_.ResetFileManagerPositionToCloudOnly(photoRefresh,
-        photoInfo.fileId.value_or(-1));
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "UpdatePosition fail, ret: %{public}d", ret);
+    int32_t opRet = this->CreateLocalAssetWithFileManager(photoInfo, targetPhotoInfo, photoRefresh);
+    CHECK_AND_RETURN_RET_LOG(opRet == E_OK, opRet, "CreateLocalAssetWithFileManager fail, ret: %{public}d", opRet);
     MEDIA_INFO_LOG("CopyAndMoveFileManagerLocalAssetToTrash completed, create asset ret: %{public}d, "
                    "sourceFileId: %{public}d, targetFileId: %{public}d, cloudId: %{public}s",
         opRet,
@@ -433,6 +431,9 @@ int32_t MediaAssetsDeleteService::CreateLocalTrashedPhotosPo(const PhotosPo &pho
     this->ResetSouthDeviceType(targetPhotoInfo);  // Reset south_device_type to default: SOUTH_DEVICE_NULL(0).
     this->ResetUniqueId(targetPhotoInfo);
     this->ResetTransCode(targetPhotoInfo);
+    if (photoInfo.ShouldHandleAsFileManager()) {
+        this->ResetStoragePath(targetPhotoInfo);
+    }
     return E_OK;
 }
 
@@ -561,6 +562,31 @@ int32_t MediaAssetsDeleteService::CreateLocalAssetWithLakeFile(const PhotosPo &p
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "MoveAssetFileOutOfLake fail, ret: %{public}d", ret);
     ret = this->MoveLocalAssetFile(photoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateLocalAssetFile fail, ret: %{public}d", ret);
+    // Create the new asset record in the database.
+    ret = this->CreateNewAssetInfoAndReturnFileId(targetPhotoInfo, photoRefresh);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateNewAssetInfoAndReturnFileId fail, ret: %{public}d", ret);
+    this->MoveOrGenerateLocalThumbnail(photoInfo, targetPhotoInfo);
+    return ret;
+}
+
+int32_t MediaAssetsDeleteService::CreateLocalAssetWithFileManager(const PhotosPo &photoInfo, PhotosPo &targetPhotoInfo,
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    int32_t ret = this->CreateLocalTrashedPhotosPo(photoInfo, targetPhotoInfo);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateLocalTrashedPhotosPo fail, ret: %{public}d", ret);
+
+    // 原图更新为纯云资产，删除本地文件路径
+    // Reset the storage position of the LOCAL_AND_CLOUD asset record to CLOUD asset record (cloud only).
+    ret = this->mediaAssetsDao_.ResetFileManagerPositionToCloudOnly(photoRefresh,
+        photoInfo.fileId.value_or(-1));
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "ResetFileManagerPositionToCloudOnly fail, ret: %{public}d", ret);
+
+    ret = this->MoveLocalAssetFile(photoInfo, targetPhotoInfo);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "MoveLocalAssetFile fail, ret: %{public}d", ret);
+
+    if (targetPhotoInfo.fileSourceType == FileSourceType::MEDIA && targetPhotoInfo.storagePath.value_or("") != "") {
+        targetPhotoInfo.storagePath = "";
+    }
     // Create the new asset record in the database.
     ret = this->CreateNewAssetInfoAndReturnFileId(targetPhotoInfo, photoRefresh);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "CreateNewAssetInfoAndReturnFileId fail, ret: %{public}d", ret);
@@ -1074,6 +1100,12 @@ int32_t MediaAssetsDeleteService::ResetTransCode(PhotosPo &photoInfo)
     if (photoInfo.attributes.find(PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE) != photoInfo.attributes.end()) {
         photoInfo.attributes.erase(PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE);
     }
+    return E_OK;
+}
+
+int32_t MediaAssetsDeleteService::ResetStoragePath(PhotosPo &photoInfo)
+{
+    photoInfo.storagePath.reset();
     return E_OK;
 }
 }  // namespace OHOS::Media::Common
