@@ -29,6 +29,7 @@
 #ifdef MEDIA_LIBRARY_MEMOSPACE_SERVICE_SUPPORT
 #include "hdc_device_id.h"
 #endif
+#include "medialibrary_tracer.h"
 
 namespace OHOS::Media {
 inline static const std::string SETTING_DATA_QUERY_URI = "datashareproxy://";
@@ -39,6 +40,7 @@ inline static const std::string PHOTOS_USER_PROPERTY_INIT_URI =
 inline static const std::string PHOTOS_SYNC_SWITCH_KEY = "photos_sync_options";
 inline static const std::string PHOTOS_USER_PROPERTY_URI =
     "datashare:///com.huawei.hmos.photos.provider.userPropertySettings";
+inline static const std::string USER_SETTINGS_ENABLE = "photos_user_property_settings_enable";
 inline static const std::string PHOTOS_SYNC_SWITCH_USER_KEY = "photos_sync_options_user";
 inline static const std::string ALL_PHOTOS_ALBUM_UPLOAD_USER = "photos_all_album_upload_user";
 inline static const std::string ALL_PHOTOS_ALBUM_UPLOAD = "photos_all_album_upload";
@@ -110,39 +112,11 @@ static SwitchStatus StringToSwitchStatus(const std::string& value)
     return STRING_SWITCH_STATUS_MAP.at(value);
 }
 
-std::optional<SwitchStatus> SettingsDataManager::GetPhotosSyncSwitchUserStatus()
-{
-    std::string value;
-    auto ret = QueryParamInSettingData(PHOTOS_SYNC_SWITCH_USER_KEY, value);
-    if (ret == E_OK) {
-        return std::optional<SwitchStatus>(StringToSwitchStatus(value));
-    }
-    return std::nullopt;
-}
-
-SwitchStatus SettingsDataManager::GetPhotosSyncSwitchStatus()
-{
-    auto status = GetPhotosSyncSwitchUserStatus();
-    if (status.has_value()) {
-        return status.value();
-    }
-
-    MEDIA_INFO_LOG("query user sync switch failed, notify photos init");
-    int32_t notifyRet = NotifyPhotosSyncSwitchInitByUpdate();
-    if (notifyRet == E_OK) {
-        status = GetPhotosSyncSwitchUserStatus();
-        if (status.has_value()) {
-            return status.value();
-        }
-        MEDIA_WARN_LOG("query user sync switch after init still failed");
-    } else {
-        MEDIA_WARN_LOG("notify photos init by datashare update failed, ret: %{public}d", notifyRet);
-    }
-    return GetPhotosSyncSwitchDeviceStatus();
-}
-
 static int32_t QueryParamInDeviceSettingData(const std::string &key, std::string &value)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("SettingsDataManager::QueryParamInDeviceSettingData");
+
     MediaSettingDataHelper dataShareHelper;
     if (!dataShareHelper) {
         MEDIA_ERR_LOG("failed to init dataShareHelper");
@@ -217,31 +191,26 @@ SwitchStatus SettingsDataManager::GetPhotosSyncSwitchDeviceStatus()
 {
     std::string value;
     auto ret = QueryParamInDeviceSettingData(PHOTOS_SYNC_SWITCH_KEY, value);
-    if (ret != E_OK) {
-        return SwitchStatus::NONE;
-    }
+    MEDIA_DEBUG_LOG("settingsData, ret: %{public}d, key: %{public}s, value: %{public}s",
+        ret,
+        PHOTOS_SYNC_SWITCH_KEY.c_str(),
+        value.c_str());
     return StringToSwitchStatus(value);
 }
 
 int32_t SettingsDataManager::NotifyPhotosSyncSwitchInitByUpdate()
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("SettingsDataManager::NotifyPhotosSyncSwitchInitByUpdate");
+
     auto samgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
-    if (samgr == nullptr) {
-        MEDIA_ERR_LOG("Samgr is nullptr");
-        return E_DB_FAIL;
-    }
+    CHECK_AND_RETURN_RET_LOG(samgr != nullptr, E_DB_FAIL, "Failed to get SystemAbilityManagerClient");
 
     auto object = samgr->GetSystemAbility(PHOTOS_STORAGE_MANAGER_ID);
-    if (object == nullptr) {
-        MEDIA_ERR_LOG("GetSystemAbility failed");
-        return E_DB_FAIL;
-    }
+    CHECK_AND_RETURN_RET_LOG(object != nullptr, E_DB_FAIL, "Failed to get system ability");
 
     auto dataShareHelper = DataShare::DataShareHelper::Creator(object, PHOTOS_USER_PROPERTY_URI);
-    if (dataShareHelper == nullptr) {
-        MEDIA_ERR_LOG("dataShareHelper = nullptr");
-        return E_DB_FAIL;
-    }
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_DB_FAIL, "Failed to create dataShareHelper");
 
     DataShare::DataSharePredicates predicates;
     DataShare::DataShareValuesBucket valuesBucket;
@@ -252,16 +221,17 @@ int32_t SettingsDataManager::NotifyPhotosSyncSwitchInitByUpdate()
     dataShareHelper->Release();
     CHECK_AND_RETURN_RET_LOG(ret.first == DataShare::E_OK, ret.first,
         "notify photos init failed, err: %{public}d", ret.first);
+    MEDIA_DEBUG_LOG("notify photos init completed, ret: %{public}d, second: %{public}d", ret.first, ret.second);
     return E_OK;
 }
 
 int32_t SettingsDataManager::QueryParamInSettingData(const std::string &key, std::string &value)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("SettingsDataManager::QueryParamInSettingData::" + key);
+
     MediaSettingDataHelper dataShareHelper;
-    if (!dataShareHelper) {
-        MEDIA_ERR_LOG("failed to init dataShareHelper");
-        return E_DB_FAIL;
-    }
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper, E_DB_FAIL, "failed to init dataShareHelper");
 
     MEDIA_DEBUG_LOG("Query key: %{public}s", key.c_str());
     DataShare::DataSharePredicates predicates;
@@ -282,7 +252,8 @@ int32_t SettingsDataManager::QueryParamInSettingData(const std::string &key, std
     CHECK_AND_RETURN_RET_LOG(ret == DataShare::E_OK, ret, "GetColumnIndex failed, err: %{public}d", ret);
     ret = resultSet->GetString(columnIndex, value);
     CHECK_AND_RETURN_RET_LOG(ret == DataShare::E_OK, ret, "GetString failed, err: %{public}d", ret);
-    MEDIA_DEBUG_LOG("Query success, value: %{public}s", value.c_str());
+    MEDIA_DEBUG_LOG(
+        "QueryParamInSettingData completed, key: %{public}s, value: %{public}s", key.c_str(), value.c_str());
     return E_OK;
 }
 
@@ -313,31 +284,6 @@ static AlbumUploadSwitchStatus StringToAlbumUploadSwitchStatus(const std::string
     CHECK_AND_RETURN_RET_LOG(STRING_ALBUM_UPLOAD_MAP.count(value), AlbumUploadSwitchStatus::NONE,
         "invalid AlbumUploadSwitchStatus: %{public}s", value.c_str());
     return STRING_ALBUM_UPLOAD_MAP.at(value);
-}
-
-AlbumUploadSwitchStatus SettingsDataManager::GetAllAlbumUploadStatus()
-{
-    std::string value;
-    auto ret = QueryParamInSettingData(ALL_PHOTOS_ALBUM_UPLOAD_USER, value);
-    if (ret != E_OK) {
-        MEDIA_INFO_LOG("query album upload user key failed, notify photos init");
-        int32_t notifyRet = NotifyPhotosSyncSwitchInitByUpdate();
-        if (notifyRet == E_OK) {
-            ret = QueryParamInSettingData(ALL_PHOTOS_ALBUM_UPLOAD_USER, value);
-            if (ret == E_OK) {
-                return StringToAlbumUploadSwitchStatus(value);
-            }
-            MEDIA_WARN_LOG("query album upload user key after init still failed");
-        } else {
-            MEDIA_WARN_LOG("notify photos init by datashare update failed, ret: %{public}d", notifyRet);
-        }
-        MEDIA_WARN_LOG("fallback to query album upload device key");
-        ret = QueryParamInDeviceSettingData(ALL_PHOTOS_ALBUM_UPLOAD, value);
-        if (ret != E_OK) {
-            return AlbumUploadSwitchStatus::NONE;
-        }
-    }
-    return StringToAlbumUploadSwitchStatus(value);
 }
 
 int32_t SettingsDataManager::UpdateParamInSettingData(const std::string &key, const std::string &value)
@@ -428,5 +374,81 @@ void SettingsDataManager::ComfirmUploadStatus()
         MEDIA_INFO_LOG("Off upload switch");
         UpdateOrInsertAllPhotosAlbumUpload();
     }
+}
+
+int32_t SettingsDataManager::CheckAndInitUserSettings()
+{
+    std::string configValue;
+    auto ret = QueryParamInSettingData(USER_SETTINGS_ENABLE, configValue);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_IPC_ERR, "Query user settings enable failed, ret: %{public}d", ret);
+    MEDIA_DEBUG_LOG("settingsData, ret: %{public}d, key: %{public}s, value: %{public}s",
+        ret,
+        USER_SETTINGS_ENABLE.c_str(),
+        configValue.c_str());
+
+    // 1 means user settings has been initialized, the other means not initialized, need to init by notify.
+    const std::string CONFIG_EXISTS = "1";
+    const bool isUserSettingsEnable = (configValue == CONFIG_EXISTS);
+    CHECK_AND_EXECUTE(isUserSettingsEnable, NotifyPhotosSyncSwitchInitByUpdate());
+    return E_OK;
+}
+
+SwitchStatus SettingsDataManager::GetPhotosSyncSwitchUserStatus()
+{
+    CheckAndInitUserSettings();
+
+    std::string value;
+    auto ret = QueryParamInSettingData(PHOTOS_SYNC_SWITCH_USER_KEY, value);
+    MEDIA_DEBUG_LOG("settingsData, ret: %{public}d, key: %{public}s, value: %{public}s",
+        ret,
+        PHOTOS_SYNC_SWITCH_USER_KEY.c_str(),
+        value.c_str());
+    return StringToSwitchStatus(value);
+}
+
+SwitchStatus SettingsDataManager::GetPhotosSyncSwitchStatus()
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("SettingsDataManager::GetPhotosSyncSwitchStatus");
+
+    SwitchStatus userStatus = GetPhotosSyncSwitchUserStatus();
+    CHECK_AND_RETURN_RET(userStatus == SwitchStatus::NONE, userStatus);
+
+    return GetPhotosSyncSwitchDeviceStatus();
+}
+
+AlbumUploadSwitchStatus SettingsDataManager::GetAllAlbumUploadUserStatus()
+{
+    CheckAndInitUserSettings();
+
+    std::string value;
+    auto ret = QueryParamInSettingData(ALL_PHOTOS_ALBUM_UPLOAD_USER, value);
+    MEDIA_DEBUG_LOG("settingsData, ret: %{public}d, key: %{public}s, value: %{public}s",
+        ret,
+        ALL_PHOTOS_ALBUM_UPLOAD_USER.c_str(),
+        value.c_str());
+    return StringToAlbumUploadSwitchStatus(value);
+}
+
+AlbumUploadSwitchStatus SettingsDataManager::GetAllAlbumUploadDeviceStatus()
+{
+    std::string value;
+    auto ret = QueryParamInDeviceSettingData(ALL_PHOTOS_ALBUM_UPLOAD, value);
+    MEDIA_DEBUG_LOG("settingsData, ret: %{public}d, key: %{public}s, value: %{public}s",
+        ret,
+        ALL_PHOTOS_ALBUM_UPLOAD.c_str(),
+        value.c_str());
+    return StringToAlbumUploadSwitchStatus(value);
+}
+
+AlbumUploadSwitchStatus SettingsDataManager::GetAllAlbumUploadStatus()
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("SettingsDataManager::GetAllAlbumUploadStatus");
+
+    AlbumUploadSwitchStatus userStatus = GetAllAlbumUploadUserStatus();
+    CHECK_AND_RETURN_RET(userStatus == AlbumUploadSwitchStatus::NONE, userStatus);
+
+    return GetAllAlbumUploadDeviceStatus();
 }
 } // namespace OHOS::Media
