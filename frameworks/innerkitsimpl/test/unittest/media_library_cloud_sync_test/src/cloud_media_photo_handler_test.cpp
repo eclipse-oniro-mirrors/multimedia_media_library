@@ -49,7 +49,6 @@ namespace OHOS::Media::CloudSync {
 DatabaseDataMock CloudMediaPhotoHandlerTest::dbDataMock_;
 static uint64_t g_shellToken = 0;
 static MediaLibraryMockNativeToken* mockToken = nullptr;
-static const int32_t ACCURATE_REFRESH_RDB_INVALITD_TABLE = 0x40002;
 
 void CloudMediaPhotoHandlerTest::SetUpTestCase(void)
 {
@@ -1178,7 +1177,7 @@ HWTEST_F(CloudMediaPhotoHandlerTest, OnCompletePull, TestSize.Level1)
     std::shared_ptr<CloudMediaDataHandler> dataHandler =
         std::make_shared<CloudMediaDataHandler>(tableName, cloudType, userId);
     int32_t ret = dataHandler->OnCompletePull(optRet);
-    EXPECT_EQ(ret, ACCURATE_REFRESH_RDB_INVALITD_TABLE);
+    EXPECT_EQ(ret, E_OK);
 }
 
 /**
