@@ -4892,7 +4892,7 @@ export class ContextRecoveryInfo {
           let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
             worker.start();
             const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
-            let result = await job;
+            let result = job.Await();
             worker.join();
             if (result instanceof MediaLibraryAniError) {
               reject(businessError<string>(result.code.toInt(), result.message));
@@ -4944,7 +4944,7 @@ export class ContextRecoveryInfo {
         let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
           worker.start();
           const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
-          let result = await job;
+          let result = job.Await();
           worker.join();
           if (result instanceof MediaLibraryAniError) {
             callback(businessError(result.code.toInt(), result.message), undefined);
@@ -4993,7 +4993,7 @@ export class ContextRecoveryInfo {
         let funcAsync = async (context: Context, option: PhotoSelectOptions) => {
           worker.start();
           const job = worker.run<PhotoSelectResult | MediaLibraryAniError>(func, context, option);
-          let result = await job;
+          let result = job.Await();
           worker.join();
           if (result instanceof MediaLibraryAniError) {
             callback(businessError(result.code.toInt(), result.message), undefined);
