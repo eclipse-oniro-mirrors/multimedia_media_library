@@ -312,6 +312,51 @@ int32_t Acl::RecursiveEnableAcl(const std::string& path, const char* aclAttrName
     return result;
 }
 
+int32_t Acl::RecursiveEnableAclExcludeDir(const std::string& path, const char* aclAttrName, const uint16_t& permission,
+    uint32_t groupId, const std::string& excludeDir)
+{
+    DIR* fileDir;
+    struct dirent* dirEntry;
+    struct stat st;
+    std::list<std::string> dirPathList{path};
+    int32_t result = E_OK;
+    while (!dirPathList.empty()) {
+        std::string dir = dirPathList.back();
+        dirPathList.pop_back();
+        if ((fileDir = opendir(dir.c_str())) == nullptr) {
+            MEDIA_ERR_LOG("dir not exist: %{private}s, error: %{public}s", dir.c_str(), strerror(errno));
+            result = E_ERR;
+            continue;
+        }
+        while ((dirEntry = readdir(fileDir)) != nullptr) {
+            if ((strcmp(dirEntry->d_name, ".") == 0) || (strcmp(dirEntry->d_name, "..") == 0)) {
+                continue;
+            }
+            std::string fileName = dir + "/" + dirEntry->d_name;
+            if (fileName == excludeDir) {
+                continue;
+            }
+            if (stat(fileName.c_str(), &st) != 0) {
+                MEDIA_ERR_LOG("getting file: %{private}s stat fail, error: %{public}s",
+                    fileName.c_str(), strerror(errno));
+                result = E_ERR;
+                continue;
+            }
+            if (st.st_mode & S_IFDIR) {
+                dirPathList.push_front(fileName);
+            }
+            if (EnableAcl(fileName, aclAttrName, permission, groupId) != E_OK) {
+                MEDIA_ERR_LOG("Failed to set the acl permission for the %{private}s", fileName.c_str());
+                result = E_ERR;
+            } else {
+                MEDIA_INFO_LOG("acl set succeed %{private}s", fileName.c_str());
+            }
+        }
+        closedir(fileDir);
+    }
+    return result;
+}
+
 int32_t Acl::EnableAcl(const std::string& path, const char* aclAttrName, const uint16_t& permission, uint32_t groupId)
 {
     AclXattrEntry entry = {};
@@ -331,8 +376,18 @@ int32_t Acl::AclSetDatabase()
         MEDIA_ERR_LOG("Failed to set the acl permission for the DB dir");
         return E_ERR;
     }
-    if (RecursiveEnableAcl(CONST_MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::WRITE |
-        ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP) != E_OK) {
+    if (EnableAcl(RDB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
+        MEDIA_DB_ACL_GROUP) != E_OK) {
+        MEDIA_ERR_LOG("Failed to set the acl permission for the rdb dir");
+        return E_ERR;
+    }
+    if (RecursiveEnableAcl(RDB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ | ACL_PERM::Value::EXECUTE,
+        MEDIA_DB_ACL_GROUP) != E_OK) {
+        MEDIA_ERR_LOG("Failed to set the acl permission for the rdb sub dir");
+        return E_ERR;
+    }
+    if (RecursiveEnableAclExcludeDir(CONST_MEDIA_DB_DIR, ACL_XATTR_ACCESS, ACL_PERM::Value::READ |
+        ACL_PERM::Value::WRITE | ACL_PERM::Value::EXECUTE, MEDIA_DB_ACL_GROUP, RDB_DIR) != E_OK) {
         MEDIA_ERR_LOG("Failed to set the acl permission for the DB sub dir");
         return E_ERR;
     }
