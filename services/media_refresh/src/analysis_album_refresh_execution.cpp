@@ -253,7 +253,7 @@ void AnalysisAlbumRefreshExecution::ProcessCoverChanges()
 
     // Step 6-2：其它相册计算封面
     for (auto &[albumId, actx] : albumCtxMap_) {
-        CHECK_AND_CONTINUE_INFO_LOG(actx.refreshInfo.HasValidRefreshInfo(),
+        CHECK_AND_CONTINUE_DEBUG_LOG(actx.refreshInfo.HasValidRefreshInfo(),
             "No need to process cover albumId: %{public}d", actx.baseInfo.albumId);
 
         bool isPortrait =
@@ -509,7 +509,7 @@ AlbumChangeInfo AnalysisAlbumRefreshExecution::GenerateAlbumChangeInfoBeforeChan
 AlbumChangeInfo AnalysisAlbumRefreshExecution::GenerateAlbumChangeInfoAfterChange(int32_t albumId)
 {
     AlbumChangeInfo info;
-    CHECK_AND_RETURN_RET_LOG(CheckAlbumNotifyStatus(albumId), info, "Check failed");
+    CHECK_AND_RETURN_RET_DEBUG_LOG(CheckAlbumNotifyStatus(albumId), info, "Check failed");
 
     auto &ctx = albumCtxMap_[albumId];
     UpdateAlbumData &baseInfo = ctx.baseInfo;
@@ -532,7 +532,7 @@ bool AnalysisAlbumRefreshExecution::CheckAlbumNotifyStatus(int32_t albumId)
         "No valid album detail recorded, albumId: %{public}d", albumId);
 
     auto notifyMapIter = albumNotifyCtxMap_.find(albumId);
-    CHECK_AND_RETURN_RET_LOG(notifyMapIter != albumNotifyCtxMap_.end(), false,
+    CHECK_AND_RETURN_RET_DEBUG_LOG(notifyMapIter != albumNotifyCtxMap_.end(), false,
         "No valid notify detail recorded, albumId: %{public}d", albumId);
 
     CHECK_AND_RETURN_RET_LOG(notifyMapIter->second.needNotify, false,
@@ -562,7 +562,7 @@ void AnalysisAlbumRefreshExecution::ProcessAlbumForNotify(int32_t albumId, vecto
         "No valid album detail recorded, albumId: %{public}d", albumId);
 
     auto notifyMapIter = albumNotifyCtxMap_.find(albumId);
-    CHECK_AND_RETURN_INFO_LOG(notifyMapIter != albumNotifyCtxMap_.end(),
+    CHECK_AND_RETURN_DEBUG_LOG(notifyMapIter != albumNotifyCtxMap_.end(),
         "No valid notify detail recorded, albumId: %{public}d", albumId);
 
     CHECK_AND_RETURN(!notifyMapIter->second.hasNotified);

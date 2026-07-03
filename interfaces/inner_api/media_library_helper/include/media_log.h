@@ -68,6 +68,14 @@
         }                                              \
     } while (0)
 
+#define CHECK_AND_RETURN_DEBUG_LOG(cond, fmt, ...)     \
+    do {                                               \
+        if (!(cond)) {                                 \
+            MEDIA_DEBUG_LOG(fmt, ##__VA_ARGS__);       \
+            return;                                    \
+        }                                              \
+    } while (0)
+
 #define CHECK_AND_RETURN_RET_INFO_LOG(cond, ret, fmt, ...) \
     do {                                               \
         if (!(cond)) {                                 \
@@ -115,6 +123,14 @@
     do {                                               \
         if (!(cond)) {                                 \
             MEDIA_WARN_LOG(fmt, ##__VA_ARGS__);        \
+            return ret;                                \
+        }                                              \
+    } while (0)
+
+#define CHECK_AND_RETURN_RET_DEBUG_LOG(cond, ret, fmt, ...) \
+    do {                                               \
+        if (!(cond)) {                                 \
+            MEDIA_DEBUG_LOG(fmt, ##__VA_ARGS__);       \
             return ret;                                \
         }                                              \
     } while (0)

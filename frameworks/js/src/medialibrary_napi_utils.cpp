@@ -583,7 +583,6 @@ bool MediaLibraryNapiUtils::IsPredicateValid(shared_ptr<DataShareAbsPredicates> 
     const FetchOptionType &fetchOptType)
 {
     constexpr int32_t FIELD_IDX = 0;
-    PrintPredicateSafe(predicate);
     auto &items = predicate->GetOperationList();
     for (auto &item : items) {
         if (API23_PLUS_OPERATIONS.find(static_cast<DataShare::OperationType>(item.operation)) ==
@@ -642,8 +641,11 @@ napi_status MediaLibraryNapiUtils::GetPredicate(napi_env env, const napi_value a
             return napi_invalid_arg;
         }
         shared_ptr<DataShareAbsPredicates> predicate = jsProxy->GetInstance();
-        CHECK_COND_RET(IsPredicateValid(predicate, fetchOptType), napi_invalid_arg,
-            "IsPredicateValid: invalid predicate");
+        if (!IsPredicateValid(predicate, fetchOptType)) {
+            PrintPredicateSafe(predicate);
+            NAPI_ERR_LOG("IsPredicateValid: invalid predicate");
+            return napi_invalid_arg;
+        }
         CHECK_COND_RET(HandleSpecialPredicate(context, predicate, fetchOptType, move(operations)) == TRUE,
             napi_invalid_arg, "invalid predicate");
         CHECK_COND_RET(GetLocationPredicate(context, predicate) == TRUE, napi_invalid_arg, "invalid predicate");

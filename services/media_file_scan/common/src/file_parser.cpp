@@ -89,7 +89,6 @@ FileParser::FileParser(const std::string &path, const FileSourceType &sourceType
 {
     path_ = path;
     mediaLibraryRdb_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    MEDIA_INFO_LOG("FileParser: The info is %{public}s", PrintInfo(fileInfo_).c_str());
 }
 
 FileParser::FileParser(const MediaNotifyInfo &notifyInfo, const FileSourceType &sourceType, ScanMode scanMode)
@@ -102,7 +101,6 @@ FileParser::FileParser(const MediaNotifyInfo &notifyInfo, const FileSourceType &
         FileScanUtils::GarbleFilePath(notifyInfo.afterPath).c_str());
     path_ = notifyInfo.afterPath;
     mediaLibraryRdb_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    MEDIA_INFO_LOG("FileParser: The info is %{public}s", PrintInfo(fileInfo_).c_str());
 }
 
 bool IsImageOrVideoType(int32_t fileType)
