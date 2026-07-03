@@ -260,13 +260,12 @@ void PhotoStorageOperation::GetTotalEditdataSize(std::shared_ptr<MediaLibraryRdb
 }
 
 void PhotoStorageOperation::GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-    LocalPhotoSizeResult &localPhotoSizeResult, int64_t totalExtSize)
+    LocalPhotoSizeResult &localPhotoSizeResult)
 {
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "RdbStore is null");
 
     std::string sql = this->SQL_DB_STORAGE_QUERY;
-    std::vector<NativeRdb::ValueObject> params = {totalExtSize};
-    auto statsResult = rdbStore->QuerySql(sql, params);
+    auto statsResult = rdbStore->QuerySql(sql);
     int32_t mediaType = MediaType::MEDIA_TYPE_DEFAULT;
     while (statsResult && (statsResult->GoToNextRow() == NativeRdb::E_OK)) {
         statsResult->GetInt(0, mediaType);
