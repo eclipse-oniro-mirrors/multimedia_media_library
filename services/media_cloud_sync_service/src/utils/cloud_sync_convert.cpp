@@ -730,13 +730,14 @@ int32_t CloudSyncConvert::CompensateDateAddedYearMonthDay(
     if (itDay != data.stringfields.end()) {
         dateAddedDay = itDay->second;
     }
-    if (dateAddedYear.empty() || dateAddedMonth.empty() || dateAddedDay.empty()) {
-        int64_t dateAdded = 0;
-        MediaValuesBucketUtils::GetLong(values, MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    int64_t dateAdded = 0;
+    MediaValuesBucketUtils::GetLong(values, MediaColumn::MEDIA_DATE_ADDED, dateAdded);
+    if (!PhotoFileUtils::ValidateDateAddedYearMonthDay(dateAddedYear, dateAddedMonth, dateAddedDay, dateAdded)) {
         DateParts parts = PhotoFileUtils::ConstructDateAddedDateParts(dateAdded);
         dateAddedYear = parts.year;
         dateAddedMonth = parts.month;
         dateAddedDay = parts.day;
+        values.Put(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
     }
     values.Put(PhotoColumn::PHOTO_DATE_ADDED_YEAR, dateAddedYear);
     values.Put(PhotoColumn::PHOTO_DATE_ADDED_MONTH, dateAddedMonth);

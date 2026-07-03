@@ -339,5 +339,41 @@ HWTEST_F(MediaTimeUtilsUnitTest, StrCreateTimeByMilliseconds_MillisecondPrecisio
     std::string result2 = MediaTimeUtils::StrCreateTimeByMilliseconds(format, time2);
     EXPECT_EQ(result1, result2);
 }
+
+HWTEST_F(MediaTimeUtilsUnitTest, TimeStampToUtcDate_Normal_Test_001, TestSize.Level1)
+{
+    int year{}, month{}, day{};
+    EXPECT_EQ(MediaTimeUtils::TimeStampToUtcDate(1766644004, year, month, day), true);
+    EXPECT_EQ(year, 2025);
+    EXPECT_EQ(month, 12);
+    EXPECT_EQ(day, 25);
+}
+
+HWTEST_F(MediaTimeUtilsUnitTest, TimeStampToUtcDate_Epoch_Test_001, TestSize.Level1)
+{
+    int year{}, month{}, day{};
+    EXPECT_EQ(MediaTimeUtils::TimeStampToUtcDate(0, year, month, day), true);
+    EXPECT_EQ(year, 1970);
+    EXPECT_EQ(month, 1);
+    EXPECT_EQ(day, 1);
+}
+
+HWTEST_F(MediaTimeUtilsUnitTest, IsPlausibleDateTime_WithinRange_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 26, 1766661664000), true);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 25, 1766661664000), true);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 24, 1766661664000), true);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 24, 1766644004000), true);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 25, 1766644004000), true);
+}
+
+HWTEST_F(MediaTimeUtilsUnitTest, IsPlausibleDateTime_OutOfRange_Test_001, TestSize.Level1)
+{
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 26, 1766644004000), false);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 23, 1766644004000), false);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2024, 12, 25, 1766644004000), false);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2026, 1, 1, 1766644004000), false);
+    EXPECT_EQ(MediaTimeUtils::IsPlausibleDateTime(2025, 12, 27, 1766661664000), false);
+}
 } // namespace Media
 } // namespace OHOS
