@@ -163,6 +163,7 @@ void AlbumsRefreshManagerTest::SetUpTestCase(void)
         MEDIA_ERR_LOG("Start MediaLibraryPhotoOperationsTest failed, can not get g_rdbStore");
         exit(1);
     }
+    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_FIVE_SECONDS));
     SetAllTestTables();
     ClearAllTableData();
     MEDIA_INFO_LOG("SetUpTestCase");
