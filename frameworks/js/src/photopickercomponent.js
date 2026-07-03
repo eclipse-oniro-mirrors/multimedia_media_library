@@ -1131,10 +1131,13 @@ let PickerController = class {
  	    });
  	}
 
-    async updatePickerOptions(e) {
+     async updatePickerOptions(e) {
         if (e !== undefined) {
             this.data = new Map([['UPDATE_CONFIG', e]]);
-            console.info('PhotoPickerComponent UPDATE_CONFIG ' + JSON.stringify(e));
+            const bundleInfo = bundleManager.getBundleInfoForSelfSync(
+                bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION
+            );
+            console.info('PhotoPickerComponent UPDATE_CONFIG bundleName: ' + bundleInfo.name + ', config: ' + JSON.stringify(e));
         }
     }
     
