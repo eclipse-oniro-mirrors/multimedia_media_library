@@ -354,7 +354,7 @@ static void DatabaseDataInitial()
     albumValues.PutString(PhotoAlbumColumns::ALBUM_NAME, provider->ConsumeBytesAsString(NUM_BYTES));
     g_albumId = 0;
     rdbStore_->Insert(g_albumId, PhotoAlbumColumns::TABLE, albumValues);
-    MEDIA_INFO_LOG("albumId: %{public}lld.", g_albumId);
+    MEDIA_INFO_LOG("albumId: %{public}" PRId64, g_albumId);
     
     NativeRdb::ValuesBucket photoValues;
     photoValues.PutInt(PhotoColumn::PHOTO_POSITION, FuzzPhotoPosition());
@@ -374,7 +374,7 @@ static void DatabaseDataInitial()
     photoValues.PutString(PhotoColumn::PHOTO_IS_TEMP, to_string(false));
     g_fileId = 0;
     rdbStore_->Insert(g_fileId, PhotoColumn::PHOTOS_TABLE, photoValues);
-    MEDIA_INFO_LOG("fileId: %{public}lld.", g_fileId);
+    MEDIA_INFO_LOG("fileId: %{public}" PRId64, g_fileId);
 }
 
 static void DatabaseDataClear()
@@ -388,7 +388,7 @@ static void DatabaseDataClear()
     int32_t deletedRows = -1;
     int32_t ret = rdbStore_->Delete(deletedRows, PhotoAlbumColumns::TABLE, whereClause, whereArgs);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("DeleteAlbumAsset by albumId %{public}lld Failed %{public}d", g_albumId, ret);
+        MEDIA_ERR_LOG("DeleteAlbumAsset by [albumId %{public}" PRId64 " ]Failed %{public}d", g_albumId, ret);
     }
 
     whereClause = MediaColumn::MEDIA_ID + " = ? ";
@@ -396,7 +396,7 @@ static void DatabaseDataClear()
     deletedRows = -1;
     ret = rdbStore_->Delete(deletedRows, PhotoColumn::PHOTOS_TABLE, whereClause, whereArgs);
     if (ret != E_OK) {
-        MEDIA_ERR_LOG("DeletePhotoAsset by fileId %{public}lld Failed %{public}d", g_fileId, ret);
+        MEDIA_ERR_LOG("DeletePhotoAsset by [fileId %{public}" PRId64 " ]Failed %{public}d", g_fileId, ret);
     }
 }
 
