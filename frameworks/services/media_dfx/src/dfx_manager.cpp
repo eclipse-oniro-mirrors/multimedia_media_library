@@ -819,7 +819,7 @@ static void GetPhotoAndPhotoExtSizes(QuerySizeAndResolution &queryInfo)
     int64_t totalExtSize = cacheSize + highlightSize + totalThumbnailSizeResult.totalThumbnailSize +
         totalEditdataSizeRusult.totalEditdataSize;
     LocalPhotoSizeResult localPhotoSizeResult = {};
-    photoStorageOperation.GetLocalPhotoSize(rdbStore, localPhotoSizeResult, totalExtSize);
+    photoStorageOperation.GetLocalPhotoSize(rdbStore, localPhotoSizeResult);
 
     int64_t totalSize = localPhotoSizeResult.localImageSize + localPhotoSizeResult.localVideoSize + totalExtSize;
 

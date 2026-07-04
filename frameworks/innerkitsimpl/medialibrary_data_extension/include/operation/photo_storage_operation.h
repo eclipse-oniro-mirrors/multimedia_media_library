@@ -56,8 +56,7 @@ public:
 
     void GetTotalEditdataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         TotalEditdataSizeResult &totalEditdataSizeResult);
-    void GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore, LocalPhotoSizeResult &localPhotoSizeResult,
-        int64_t totalExtSize);
+    void GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore, LocalPhotoSizeResult &localPhotoSizeResult);
 
 private:
     int64_t GetHighlightSize();
