@@ -3588,7 +3588,8 @@ void CloneRestore::StartBackup()
 void CloneRestore::InheritManualCover()
 {
     std::string querySql = "SELECT album_id, cover_uri, cover_uri_source, cover_cloud_id"
-        " FROM PhotoAlbum WHERE cover_uri_source > 0";
+        " FROM PhotoAlbum WHERE cover_uri_source > 0 AND album_type != " +
+        std::to_string(PhotoAlbumType::SYSTEM);
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "Query resultSql is null.");
 
