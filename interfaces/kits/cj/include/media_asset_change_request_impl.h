@@ -80,7 +80,7 @@ class MediaAssetChangeRequestImpl : public OHOS::FFI::FFIData, public MediaChang
     DECL_TYPE(MediaAssetChangeRequestImpl, OHOS::FFI::FFIData)
 public:
     MediaAssetChangeRequestImpl() = default;
-    ~MediaAssetChangeRequestImpl() override = default;
+    ~MediaAssetChangeRequestImpl() override;
 
     std::shared_ptr<FileAsset> GetFileAssetInstance() const;
     bool Contains(AssetChangeOperation changeOperation) const;
@@ -137,6 +137,8 @@ private:
     int32_t CopyDataBufferToMediaLibrary(const UniqueFd& destFd, bool isMovingPhotoVideo = false);
     int32_t CopyMovingPhotoVideo(const std::string& assetUri);
     void SetNewFileAsset(int32_t id, const std::string& uri);
+    int32_t SubmitCacheForCreation(Uri& submitCacheUri, std::string& assetUri);
+    int32_t SubmitCacheForUpdate(Uri& submitCacheUri, bool isSetEffectMode);
 
     sptr<PhotoProxy> photoProxy_ = nullptr;
     static std::atomic<uint32_t> cacheFileId_;
