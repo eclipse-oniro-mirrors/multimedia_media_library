@@ -2485,6 +2485,7 @@ static const vector<string> onCreateSqlStrs = {
     PhotoUpgrade::CREATE_PHOTO_DISPLAYNAME_INDEX,
     AppUriPermissionColumn::CREATE_APP_URI_PERMISSION_TABLE,
     AppUriPermissionColumn::CREATE_URI_URITYPE_TOKENID_INDEX,
+    AppUriPermissionColumn::CREATE_URI_PERMISSION_FILE_TOKEN_INDEX,
     PersistPermissionColumn::CREATE_PERSIST_PERMISSION_TABLE,
     TriggerDeletePhotoClearAppUriPermission(),
     TriggerDeleteAudioClearAppUriPermission(),
@@ -6879,6 +6880,18 @@ static int32_t AddLcdFileSize(RdbStore &store)
 }
 REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_PHOTO_LCD_FILE_SIZE,
     "Photos", AddLcdFileSize);
+
+static int32_t CreateUriPermissionFileTokenIndex(RdbStore &store)
+{
+    static const vector<string> executeSqlStrs = {
+        AppUriPermissionColumn::CREATE_URI_PERMISSION_FILE_TOKEN_INDEX
+    };
+    MEDIA_INFO_LOG("Start create idx_uri_permission_file_token in update");
+    return ExecSqlsWithDfx(executeSqlStrs, store, VERSION_ADD_URI_PERMISSION_FILE_TOKEN_INDEX);
+}
+REGISTER_ASYNC_UPGRADE_TASK(VERSION_ADD_URI_PERMISSION_FILE_TOKEN_INDEX, "UriPermission",
+    CreateUriPermissionFileTokenIndex);
+
 
 int32_t MediaLibraryDataCallBack::OnUpgrade(RdbStore &store, int32_t oldVersion, int32_t newVersion)
 {

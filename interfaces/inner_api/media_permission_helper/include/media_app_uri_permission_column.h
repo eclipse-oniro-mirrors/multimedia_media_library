@@ -58,6 +58,7 @@ public:
 
     // index
     static const std::string URI_URITYPE_APPID_INDEX EXPORT;
+    static const std::string URI_PERMISSION_FILE_TOKEN_INDEX EXPORT;
 
     // table name
     static const std::string APP_URI_PERMISSION_TABLE EXPORT;
@@ -69,6 +70,7 @@ public:
     static const std::string CREATE_APP_URI_PERMISSION_TABLE EXPORT;
     static const std::string CREATE_URI_URITYPE_APPID_INDEX EXPORT;
     static const std::string CREATE_URI_URITYPE_TOKENID_INDEX EXPORT;
+    static const std::string CREATE_URI_PERMISSION_FILE_TOKEN_INDEX EXPORT;
 
     // all columns
     static const std::set<std::string> ALL_COLUMNS EXPORT;
