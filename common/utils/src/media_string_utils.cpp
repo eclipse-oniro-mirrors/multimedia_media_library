@@ -45,32 +45,6 @@ bool MediaStringUtils::EndsWith(const std::string &str, const std::string &suffi
     return str.rfind(suffix) == str.length() - suffix.length();
 }
 
-std::string MediaStringUtils::FillParams(const std::string &content, const std::vector<std::string> &bindArgs)
-{
-    std::stringstream os;
-    std::string flag;
-    const std::string leftBrace = "{";
-    const std::string rightBrace = "}";
-    std::string val;
-    std::string result = content;
-    for (size_t i = 0; i < bindArgs.size(); i++) {
-        flag = leftBrace + std::to_string(i) + rightBrace;
-        val = bindArgs[i];
-        // Dead loop check: the value should not be replaced by the flag itself.
-        CHECK_AND_CONTINUE(val.find(flag) == std::string::npos);
-        size_t pos = result.find(flag);
-        while (pos != std::string::npos) {
-            os.str("");
-            os << result.substr(0, pos) << bindArgs[i];
-            os << (pos + flag.length() <= result.length() ? result.substr(pos + flag.length()) : "");
-            result = os.str();
-            os.str("");
-            pos = result.find(flag);
-        }
-    }
-    return result;
-}
-
 std::string MediaStringUtils::ToLower(const std::string &str)
 {
     std::string lowerStr = str;
@@ -103,5 +77,31 @@ bool MediaStringUtils::EqualToIgnoreCase(const std::string &strA, const std::str
         return false;
     }
     return std::equal(strA.begin(), strA.end(), strB.begin(), CaseInsensitiveCharCompare);
+}
+
+std::string MediaStringUtils::FillParams(const std::string &content, const std::vector<std::string> &bindArgs)
+{
+    std::stringstream os;
+    std::string flag;
+    const std::string leftBrace = "{";
+    const std::string rightBrace = "}";
+    std::string val;
+    std::string result = content;
+    for (size_t i = 0; i < bindArgs.size(); i++) {
+        flag = leftBrace + std::to_string(i) + rightBrace;
+        val = bindArgs[i];
+        // Dead loop check: the value should not be replaced by the flag itself.
+        CHECK_AND_CONTINUE(val.find(flag) == std::string::npos);
+        size_t pos = result.find(flag);
+        while (pos != std::string::npos) {
+            os.str("");
+            os << result.substr(0, pos) << bindArgs[i];
+            os << (pos + flag.length() <= result.length() ? result.substr(pos + flag.length()) : "");
+            result = os.str();
+            os.str("");
+            pos = result.find(flag);
+        }
+    }
+    return result;
 }
 } // namespace OHOS::Media
