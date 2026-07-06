@@ -35,7 +35,6 @@
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "userfile_manager_types.h"
-#include "file_manager_asset_operations.h"
 
 namespace OHOS::Media::Background {
 namespace {

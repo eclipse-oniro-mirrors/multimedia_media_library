@@ -2790,7 +2790,7 @@ bool MediaLibraryAssetOperations::CleanupMediaAssets(const std::vector<std::stri
     const std::vector<int32_t> &subtypes, const std::vector<int32_t> &effectModes)
 {
     CHECK_AND_RETURN_RET_LOG(ids.size() == paths.size() && paths.size() == dateTakens.size() &&
-        dateTakens.size() == subTypes.size() && subTypes.size() == effectModes.size(), false, "Not same size");
+        dateTakens.size() == subtypes.size() && subtypes.size() == effectModes.size(), false, "Not same size");
     for (size_t i = 0; i < paths.size(); i++) {
         string path = paths[i];
         int32_t subtype = subtypes[i];

@@ -32,10 +32,10 @@ public:
     EXPORT static bool ConvertToInt(const std::string &number, int &value);
     EXPORT static bool StartsWith(const std::string &str, const std::string &prefix);
     EXPORT static bool EndsWith(const std::string &str, const std::string &suffix);
-    EXPORT static std::string FillParams(const std::string &content, const std::vector<std::string> &bindArgs);
     EXPORT static std::string ToLower(const std::string &str);
     EXPORT static bool StartsWithIgnoreCase(const std::string &str, const std::string &prefix);
     EXPORT static bool EqualToIgnoreCase(const std::string &strA, const std::string &strB);
+    EXPORT static std::string FillParams(const std::string &content, const std::vector<std::string> &bindArgs);
 };
 } // namespace OHOS::Media
 

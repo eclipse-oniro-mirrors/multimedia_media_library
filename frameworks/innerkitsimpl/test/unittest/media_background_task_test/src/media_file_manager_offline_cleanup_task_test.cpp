@@ -35,6 +35,8 @@ namespace OHOS::Media::Background {
 namespace {
 constexpr int32_t SLEEP_SECONDS = 1;
 constexpr int32_t TEST_MEDIA_TYPE_IMAGE = 1;
+constexpr int32_t TEST_VALUE = 100;
+constexpr int32_t TEST_LIMIT = 10;
 constexpr int64_t TEST_DATE = 1700000000;
 
 std::shared_ptr<MediaLibraryRdbStore> g_rdbStore;
@@ -94,8 +96,8 @@ int32_t InsertPhoto(const std::string &displayName, int32_t ownerAlbumId, const 
     values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, 0);
     values.PutInt(MediaColumn::MEDIA_HIDDEN, 0);
     values.PutInt(MediaColumn::MEDIA_TIME_PENDING, options.timePending);
-    values.PutInt(PhotoColumn::PHOTO_HEIGHT, 100);
-    values.PutInt(PhotoColumn::PHOTO_WIDTH, 100);
+    values.PutInt(PhotoColumn::PHOTO_HEIGHT, TEST_VALUE);
+    values.PutInt(PhotoColumn::PHOTO_WIDTH, TEST_VALUE);
     values.PutLong(PhotoColumn::PHOTO_EDIT_TIME, 0);
     values.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, "1");
     values.PutInt(PhotoColumn::PHOTO_OWNER_ALBUM_ID, ownerAlbumId);
@@ -230,7 +232,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryLegacyAlbumPhotos_ShouldRe
     InsertPhoto("normal_active", normalAlbumId, "/storage/emulated/0/Pictures/c.jpg");
 
     MediaFileManagerOfflineCleanupDao dao;
-    auto photos = dao.QueryLegacyAlbumPhotos(0, 10);
+    auto photos = dao.QueryLegacyAlbumPhotos(0, TEST_LIMIT);
 
     ASSERT_EQ(photos.size(), 1);
     EXPECT_EQ(photos[0].fileId, expectedFileId);
@@ -253,7 +255,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryEmptyLegacyAlbums_ShouldSk
     InsertPhoto("legacy_ref", referencedLegacyAlbumId, "/storage/emulated/0/FromDocs/ReferencedDocs/a.jpg");
 
     MediaFileManagerOfflineCleanupDao dao;
-    auto albums = dao.QueryEmptyLegacyAlbums(0, 10);
+    auto albums = dao.QueryEmptyLegacyAlbums(0, TEST_LIMIT);
 
     ASSERT_EQ(albums.size(), 1);
     EXPECT_EQ(albums[0].albumId, emptyLegacyAlbumId);
@@ -343,7 +345,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryPendingDeletedPhotos_Shoul
         static_cast<int32_t>(FileSourceType::MEDIA), static_cast<int32_t>(PhotoPositionType::LOCAL) });
 
     MediaFileManagerOfflineCleanupDao dao;
-    auto photos = dao.QueryPendingDeletedPhotos(0, 10);
+    auto photos = dao.QueryPendingDeletedPhotos(0, TEST_LIMIT);
 
     ASSERT_EQ(photos.size(), 1);
     EXPECT_EQ(photos[0].fileId, fileId);
