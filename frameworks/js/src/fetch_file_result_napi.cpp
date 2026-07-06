@@ -445,6 +445,51 @@ static bool CheckIfFFRNapiNotEmpty(FetchFileResultNapi* obj)
     return true;
 }
 
+void GetCountFromObject(FetchFileResultNapi* obj, int32_t &count)
+{
+    switch (obj->GetFetchResType()) {
+        case FetchResType::TYPE_FILE:
+            CHECK_NULL_PTR_RETURN_VOID(obj, "obj is nullptr");
+            CHECK_NULL_PTR_RETURN_VOID(obj->GetFetchFileResultObject(),
+                "GetFetchFileResultObject is nullptr");
+            count = obj->GetFetchFileResultObject()->GetCount();
+            break;
+        case FetchResType::TYPE_ALBUM:
+            CHECK_NULL_PTR_RETURN_VOID(obj, "obj is nullptr");
+            CHECK_NULL_PTR_RETURN_VOID(obj->GetFetchAlbumResultObject(),
+                "GetFetchAlbumResultObject is nullptr");
+            count = obj->GetFetchAlbumResultObject()->GetCount();
+            break;
+        case FetchResType::TYPE_PHOTOALBUM:
+            CHECK_NULL_PTR_RETURN_VOID(obj, "obj is nullptr");
+            CHECK_NULL_PTR_RETURN_VOID(obj->GetFetchPhotoAlbumResultObject(),
+                "GetFetchPhotoAlbumResultObject is nullptr");
+            count = obj->GetFetchPhotoAlbumResultObject()->GetCount();
+            break;
+        case FetchResType::TYPE_SMARTALBUM:
+            CHECK_NULL_PTR_RETURN_VOID(obj, "obj is nullptr");
+            CHECK_NULL_PTR_RETURN_VOID(obj->GetFetchSmartAlbumResultObject(),
+                "GetFetchSmartAlbumResultObject is nullptr");
+            count = obj->GetFetchSmartAlbumResultObject()->GetCount();
+            break;
+        case FetchResType::TYPE_CUSTOMRECORD:
+            CHECK_NULL_PTR_RETURN_VOID(obj, "obj is nullptr");
+            CHECK_NULL_PTR_RETURN_VOID(obj->GetFetchCustomRecordResultObject(),
+                "GetFetchCustomRecordResultObject is nullptr");
+            count = obj->GetFetchCustomRecordResultObject()->GetCount();
+            break;
+        case FetchResType::TYPE_ALBUMORDER:
+            CHECK_NULL_PTR_RETURN_VOID(obj, "obj is nullptr");
+            CHECK_NULL_PTR_RETURN_VOID(obj->GetFetchAlbumOrderResultObject(),
+                "GetFetchAlbumOrderResultObject is nullptr");
+            count = obj->GetFetchAlbumOrderResultObject()->GetCount();
+            break;
+        default:
+            NAPI_ERR_LOG("unsupported FetchResType");
+            break;
+    }
+}
+
 napi_value FetchFileResultNapi::JSGetCount(napi_env env, napi_callback_info info)
 {
     napi_status status;
@@ -465,29 +510,7 @@ napi_value FetchFileResultNapi::JSGetCount(napi_env env, napi_callback_info info
 
     status = napi_unwrap(env, thisVar, reinterpret_cast<void **>(&obj));
     if ((status == napi_ok) && CheckIfFFRNapiNotEmpty(obj)) {
-        switch (obj->GetFetchResType()) {
-            case FetchResType::TYPE_FILE:
-                count = obj->GetFetchFileResultObject()->GetCount();
-                break;
-            case FetchResType::TYPE_ALBUM:
-                count = obj->GetFetchAlbumResultObject()->GetCount();
-                break;
-            case FetchResType::TYPE_PHOTOALBUM:
-                count = obj->GetFetchPhotoAlbumResultObject()->GetCount();
-                break;
-            case FetchResType::TYPE_SMARTALBUM:
-                count = obj->GetFetchSmartAlbumResultObject()->GetCount();
-                break;
-            case FetchResType::TYPE_CUSTOMRECORD:
-                count = obj->GetFetchCustomRecordResultObject()->GetCount();
-                break;
-            case FetchResType::TYPE_ALBUMORDER:
-                count = obj->GetFetchAlbumOrderResultObject()->GetCount();
-                break;
-            default:
-                NAPI_ERR_LOG("unsupported FetchResType");
-                break;
-        }
+        GetCountFromObject(obj, count);
         if (count < 0) {
             NapiError::ThrowError(env, JS_INNER_FAIL, "Failed to get count");
             return nullptr;
@@ -1034,33 +1057,6 @@ napi_value FetchFileResultNapi::JSGetAllObject(napi_env env, napi_callback_info 
     }
 
     return result;
-}
-
-void GetCountFromObject(FetchFileResultNapi* obj, int32_t &count)
-{
-    switch (obj->GetFetchResType()) {
-        case FetchResType::TYPE_FILE:
-            count = obj->GetFetchFileResultObject()->GetCount();
-            break;
-        case FetchResType::TYPE_ALBUM:
-            count = obj->GetFetchAlbumResultObject()->GetCount();
-            break;
-        case FetchResType::TYPE_PHOTOALBUM:
-            count = obj->GetFetchPhotoAlbumResultObject()->GetCount();
-            break;
-        case FetchResType::TYPE_SMARTALBUM:
-            count = obj->GetFetchSmartAlbumResultObject()->GetCount();
-            break;
-        case FetchResType::TYPE_CUSTOMRECORD:
-            count = obj->GetFetchCustomRecordResultObject()->GetCount();
-            break;
-        case FetchResType::TYPE_ALBUMORDER:
-            count = obj->GetFetchAlbumOrderResultObject()->GetCount();
-            break;
-        default:
-            NAPI_ERR_LOG("unsupported FetchResType");
-            break;
-    }
 }
 
 napi_value FetchFileResultNapi::ProcessValidContext(
