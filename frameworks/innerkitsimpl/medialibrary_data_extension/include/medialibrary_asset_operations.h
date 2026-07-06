@@ -136,6 +136,9 @@ public:
     EXPORT static void SaveDeletedFile(const std::vector<std::string> &ids,
         const std::vector<std::string> &paths, const std::string &table, const std::vector<std::string> &dateTakens,
         std::vector<int32_t> &subTypes);
+    EXPORT static bool CleanupMediaAssets(const std::vector<std::string> &ids,
+        const std::vector<std::string> &paths, const std::vector<std::string> &dateTakens,
+        const std::vector<int32_t> &subtypes, const std::vector<int32_t> &effectModes);
     EXPORT static void TaskDataFileProcess(const std::vector<std::string> &ids,
         const std::vector<std::string> &paths, const std::string &table, const std::vector<std::string> &dateTakens,
         std::vector<int32_t> &subTypes);

@@ -32,13 +32,19 @@ ohos_unittest("media_background_task_test") {
   sources = [
     "./src/media_burst_key_duplicate_task_test.cpp",
     "./src/media_clear_invalid_user_comment_task_test.cpp",
+    "./src/media_file_manager_offline_cleanup_task_test.cpp",
     "./src/media_lcd_size_task_test.cpp",
     "./src/media_live_photo_4d_status_task_test.cpp",
     "./src/media_thumbnail_acl_task_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/media_update_local_asset_size_task_test.cpp",
     "./src/media_share_dirty_data_task_test.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/hi_audit.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/zip_util.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_file_manager_offline_cleanup_dao.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_file_manager_offline_cleanup_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_lcd_size_task.cpp",
+    "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",

@@ -196,7 +196,8 @@ enum ResultSetDataType {
 
 enum class CleanType : int32_t {
     TYPE_NOT_CLEAN = 0,
-    TYPE_NEED_CLEAN
+    TYPE_NEED_CLEAN,
+    TYPE_OFFLINE_CLEAN = 2,  // For file manager offline cleanup use
 };
 
 enum class CloudType : int32_t {
@@ -372,6 +373,7 @@ const std::string FAVOURTIE_ALBUM_NAME_VALUES = "FavoritAlbum";
 static constexpr int UNCREATE_FILE_TIMEPENDING = -1;
 static constexpr int UNCLOSE_FILE_TIMEPENDING = -2;
 static constexpr int UNOPEN_FILE_COMPONENT_TIMEPENDING = -3;
+static constexpr int TIME_PENDING_OFFLINE_CLEANUP = -4;  // For file manager offline cleanup use
 
 const int32_t DEFAULT_FILE_ID = 0;
 const int32_t DEFAULT_SHARE_COUNT = 0;
