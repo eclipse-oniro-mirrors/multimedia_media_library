@@ -67,7 +67,7 @@ napi_value TaskSignalNapi::TaskSignalConstructor(napi_env env, napi_callback_inf
         return nullptr;
     }
 
-    auto *taskSignal = new TaskSignalNapi();
+    auto *taskSignal = new(std::nothrow) TaskSignalNapi();
     if (taskSignal == nullptr) {
         NAPI_ERR_LOG("Failed to create TaskSignalNapi");
         return nullptr;
