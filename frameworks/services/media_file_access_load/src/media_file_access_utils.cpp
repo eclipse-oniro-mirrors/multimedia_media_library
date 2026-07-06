@@ -78,7 +78,7 @@ bool MediaFileAccessUtils::NeedConvertPath(const std::string& path)
 std::string MediaFileAccessUtils::GetAssetRealPath(const std::string &path)
 {
     MEDIA_DEBUG_LOG("GetAssetRealPath from path: %{public}s", MediaFileUtils::DesensitizePath(path).c_str());
-    CHECK_AND_RETURN_RET_INFO_LOG(NeedConvertPath(path), path, "no need to convert, path: %{public}s",
+    CHECK_AND_RETURN_RET_DEBUG_LOG(NeedConvertPath(path), path, "no need to convert, path: %{public}s",
         MediaFileUtils::DesensitizePath(path).c_str());
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     CHECK_AND_RETURN_RET(!IsZeroBucketPath(path), FileScanUtils::GetAssetRealPath(path));
