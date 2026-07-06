@@ -78,6 +78,7 @@ protected:
         std::string storagePath;
         std::string ownerPackage;
         std::string packageName;
+        std::string detailTime;
         std::string dateYear;
         std::string dateMonth;
         std::string dateDay;
@@ -102,6 +103,7 @@ protected:
     bool IsStoragePathChanged(const PhotosRowData &rowData);
     PhotosRowData FindSameFile();
     void SetByPhotosRowData(const PhotosRowData &rowData);
+    void SetDateTakenFields(const PhotosRowData &rowData);
     PhotosRowData FindSameFileByStoragePath(const std::string &storagePath);
     // 从 Metadata 设置 subtype，子类可重写以修改行为
     virtual void SetSubtypeFromMetadata(std::unique_ptr<Metadata> &data) = 0;
@@ -145,7 +147,7 @@ private:
     const std::string SQL_PHOTOS_FIND_SAME_FILE_BY_STORAGE_PATH = "\
         SELECT file_id, size, date_modified, mime_type, media_type, inode, storage_path, file_source_type, \
         owner_album_id, owner_package, package_name, date_taken, data, sync_status, edit_time, subtype, position, \
-        date_year, date_month, date_day \
+        date_year, date_month, date_day, detail_time \
         FROM Photos \
         WHERE LOWER(storage_path) = LOWER(?) AND \
         (file_source_type = ? OR (file_source_type = ? AND position IN (?, ?) AND date_trashed = ? AND hidden = ?)) \

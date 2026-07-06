@@ -388,6 +388,7 @@ FileParser::PhotosRowData FileParser::FindSameFileInDatabase(const std::string &
     rowData.position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
     rowData.dateYear = GetInt32Val(PhotoColumn::PHOTO_DATE_YEAR, resultSet);
     rowData.dateMonth = GetInt32Val(PhotoColumn::PHOTO_DATE_MONTH, resultSet);
+    rowData.detailTime = GetStringVal(PhotoColumn::PHOTO_DETAIL_TIME, resultSet);
     rowData.dateDay = GetInt32Val(PhotoColumn::PHOTO_DATE_DAY, resultSet);
     resultSet->Close();
     MEDIA_INFO_LOG("FileParser: rowData: %{public}s", rowData.ToString().c_str());
@@ -472,21 +473,18 @@ void FileParser::SetByPhotosRowData(const PhotosRowData &rowData)
     if (rowData.subtype == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)) {
         fileInfo_.subtype = rowData.subtype;
     }
-    if (rowData.dateTaken > 0) {
-        fileInfo_.dateTaken = rowData.dateTaken;
+    if (rowData.dateTaken > 0 && rowData.dateTaken < fileInfo_.dateTaken) {
+        SetDateTakenFields(rowData);
     }
-    if (rowData.dateTaken > 0) {
-        fileInfo_.dateTaken = rowData.dateTaken;
-    }
-    if (!rowData.dateYear.empty()) {
-        fileInfo_.dateYear = rowData.dateYear;
-    }
-    if (!rowData.dateMonth.empty()) {
-        fileInfo_.dateMonth = rowData.dateMonth;
-    }
-    if (!rowData.dateDay.empty()) {
-        fileInfo_.dateDay = rowData.dateDay;
-    }
+}
+
+void FileParser::SetDateTakenFields(const PhotosRowData &rowData)
+{
+    fileInfo_.dateTaken = rowData.dateTaken;
+    fileInfo_.dateYear = rowData.dateYear;
+    fileInfo_.dateMonth = rowData.dateMonth;
+    fileInfo_.dateDay = rowData.dateDay;
+    fileInfo_.detailTime = rowData.detailTime;
 }
 
 NativeRdb::ValuesBucket FileParser::GetAssetInsertValues()
@@ -516,6 +514,7 @@ NativeRdb::ValuesBucket FileParser::GetAssetUpdateValues()
     values.Put(PhotoColumn::PHOTO_DATE_YEAR, fileInfo_.dateYear);
     values.Put(PhotoColumn::PHOTO_DATE_MONTH, fileInfo_.dateMonth);
     values.Put(PhotoColumn::PHOTO_DATE_DAY, fileInfo_.dateDay);
+    values.Put(PhotoColumn::PHOTO_DETAIL_TIME, fileInfo_.detailTime);
     return values;
 }
 
