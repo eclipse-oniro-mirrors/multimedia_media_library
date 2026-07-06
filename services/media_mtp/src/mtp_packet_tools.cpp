@@ -941,6 +941,10 @@ bool MtpPacketTool::CanDump()
 
 void MtpPacketTool::DumpPacket(const std::vector<uint8_t> &outBuffer)
 {
+    if (!MtpPacketTool::CanDump()) {
+        MEDIA_DEBUG_LOG("MtpPacketTool::CanDump return false");
+        return;
+    }
     CHECK_AND_RETURN_LOG(outBuffer.size() >= OFFSET_6, "MtpPacketTool::DumpPacket, size incorrect");
     int offset = 0;
     uint32_t containerLength = MtpPacketTool::GetUInt32(outBuffer[offset], outBuffer[offset + OFFSET_1],
@@ -1030,7 +1034,7 @@ void MtpPacketTool::DumpShow(const std::unique_ptr<char[]> &hexBuf, int hexBufSi
         return;
     }
 
-    MEDIA_INFO_LOG("%{public}-60s %{public}s", hexBuf.get(), txtBuf.get());
+    MEDIA_DEBUG_LOG("%-60s %s", hexBuf.get(), txtBuf.get());
 }
 } // namespace Media
 } // namespace OHOS
