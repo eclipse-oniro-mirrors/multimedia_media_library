@@ -92,7 +92,7 @@ struct DatabaseAuditLog : public AuditLog {
 class HiAudit : public NoCopyable {
 public:
     EXPORT static HiAudit& GetInstance();
-    EXPORT void Write(const AuditLog& auditLog);
+    EXPORT void Write(const AuditLog& auditLog, bool isPrintLog = true);
     void WriteForCloudDownload(const std::string& bundleName, const int32_t& downloadType, const std::string& status);
     void WriteForCloudSyncAlbum(const std::string& albumName, const std::string& cloudId, const int32_t albumType,
         const int32_t albumSubType, const std::string& bundleName);

@@ -64,6 +64,9 @@ public:
     EXPORT std::string ToStringWithComma(const std::vector<std::string> &fileIds) const;
     EXPORT std::string ToStringWithCommaAndQuote(const std::vector<std::string> &fileIds) const;
     EXPORT std::string FillParams(const std::string &sql, const std::vector<std::string> &bindArgs);
+    EXPORT std::string ParseSourcePathToLPath(const std::string &sourcePath);
+    EXPORT void GetAlbumTypeAndSubType(const std::string &lPath, int32_t &albumType, int32_t &albumSubType);
+    EXPORT int32_t CreateAlbumAndGetId(const MediaData &albumInfo);
 
 private:
     std::string ToStringWithComma(const std::vector<NativeRdb::ValueObject> &bindArgs) const;
@@ -78,7 +81,6 @@ private:
         const std::vector<std::string> &fileIds, std::unordered_set<std::string> &lPathSet);
     MediaData GetPhotoAlbum(const std::string &lPath);
     std::unordered_map<std::string, MediaData> GetPhotoAlbums(const std::unordered_set<std::string> &lPathSet);
-    std::string ParseSourcePathToLPath(const std::string &sourcePath);
     MediaData BuildAlbumInfoByLPath(const std::string &lPath);
     MediaData BuildAlbumInfoByLPath(const std::string &lPath, const int32_t albumType, const int32_t albumSubType);
     int32_t CreateAlbums(const std::unordered_set<std::string> &lPathSet);

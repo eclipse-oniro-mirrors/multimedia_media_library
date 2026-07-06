@@ -2785,6 +2785,41 @@ void MediaLibraryAssetOperations::ClearDeletedFile(const std::vector<std::string
     prefs->FlushSync();
 }
 
+bool MediaLibraryAssetOperations::CleanupMediaAssets(const std::vector<std::string> &ids,
+    const std::vector<std::string> &paths, const std::vector<std::string> &dateTakens,
+    const std::vector<int32_t> &subtypes, const std::vector<int32_t> &effectModes)
+{
+    CHECK_AND_RETURN_RET_LOG(ids.size() == paths.size() && paths.size() == dateTakens.size() &&
+        dateTakens.size() == subTypes.size() && subTypes.size() == effectModes.size(), false, "Not same size");
+    for (size_t i = 0; i < paths.size(); i++) {
+        string path = paths[i];
+        int32_t subtype = subtypes[i];
+        int32_t effectMode = effectModes[i];
+        CHECK_AND_PRINT_LOG(!MediaFileUtils::IsFileExists(path) || MediaFileUtils::DeleteFile(path),
+            "Failed to delete file, errno: %{public}d, path: %{public}s",
+            errno, MediaFileUtils::DesensitizePath(path).c_str());
+#ifdef META_RECOVERY_SUPPORT
+        MediaLibraryMetaRecovery::DeleteMetaDataByPath(path);
+#endif
+        MediaLibraryPhotoOperations::DeleteRevertMessage(path);
+        if (subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
+            effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+            std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(path);
+            CHECK_AND_PRINT_LOG(!MediaFileUtils::IsFileExists(videoPath) || MediaFileUtils::DeleteFile(videoPath),
+                "Failed to delete file, errno: %{public}d, path: %{public}s",
+                errno, MediaFileUtils::DesensitizePath(videoPath).c_str());
+            std::string livePhotoCachePath = MovingPhotoFileUtils::GetLivePhotoCachePath(path);
+            CHECK_AND_PRINT_LOG(
+                !MediaFileUtils::IsFileExists(livePhotoCachePath) || MediaFileUtils::DeleteFile(livePhotoCachePath),
+                "Failed to delete file, errno: %{public}d, path: %{public}s",
+                errno, MediaFileUtils::DesensitizePath(livePhotoCachePath).c_str());
+        }
+    }
+    ThumbnailService::GetInstance()->BatchDeleteThumbnailDirAndAstc(PhotoColumn::PHOTOS_TABLE, ids, paths, dateTakens);
+    MediaLibraryAssetOperations::ClearDeletedFile(ids, PhotoColumn::PHOTOS_TABLE);
+    return true;
+}
+
 void MediaLibraryAssetOperations::TaskDataFileProcess(const std::vector<std::string> &ids,
     const std::vector<std::string> &paths, const std::string &table, const std::vector<std::string> &dateTakens,
     std::vector<int32_t> &subTypes)

@@ -73,8 +73,35 @@ std::string MediaStringUtils::FillParams(const std::string &content, const std::
 
 std::string MediaStringUtils::ToLower(const std::string &str)
 {
-    std::string strLower = str;
-    std::transform(strLower.begin(), strLower.end(), strLower.begin(), ::tolower);
-    return strLower;
+    std::string lowerStr = str;
+    std::transform(lowerStr.begin(), lowerStr.end(), lowerStr.begin(), [](unsigned char c) { return std::tolower(c); });
+    return lowerStr;
+}
+
+inline char ToLowerAscii(char c)
+{
+    return (c >= 'A' && c <= 'Z') ?
+        static_cast<char>(static_cast<int32_t>(c) + (static_cast<int32_t>('a') - static_cast<int32_t>('A'))) : c;
+}
+
+inline bool CaseInsensitiveCharCompare(char a, char b)
+{
+    return ToLowerAscii(a) == ToLowerAscii(b);
+}
+
+bool MediaStringUtils::StartsWithIgnoreCase(const std::string &str, const std::string &prefix)
+{
+    if (str.size() < prefix.size()) {
+        return false;
+    }
+    return std::equal(prefix.begin(), prefix.end(), str.begin(), CaseInsensitiveCharCompare);
+}
+
+bool MediaStringUtils::EqualToIgnoreCase(const std::string &strA, const std::string &strB)
+{
+    if (strA.size() != strB.size()) {
+        return false;
+    }
+    return std::equal(strA.begin(), strA.end(), strB.begin(), CaseInsensitiveCharCompare);
 }
 } // namespace OHOS::Media

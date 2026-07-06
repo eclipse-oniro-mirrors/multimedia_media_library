@@ -34,6 +34,8 @@ public:
     EXPORT static bool EndsWith(const std::string &str, const std::string &suffix);
     EXPORT static std::string FillParams(const std::string &content, const std::vector<std::string> &bindArgs);
     EXPORT static std::string ToLower(const std::string &str);
+    EXPORT static bool StartsWithIgnoreCase(const std::string &str, const std::string &prefix);
+    EXPORT static bool EqualToIgnoreCase(const std::string &strA, const std::string &strB);
 };
 } // namespace OHOS::Media
 
