@@ -18,6 +18,7 @@
 #include "media_lake_clone_event_manager.h"
 
 #include "common_event_support.h"
+#include "media_time_utils.h"
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "consistency_check_manager.h"
@@ -188,7 +189,8 @@ void MediaLakeCloneEventManager::RunGlobalScanner()
     }
 
     auto scannerFunc = []() {
-        GlobalScanner::GetInstance().RunLakeScan(std::string(LAKE_ROOT_PATH), true, true);
+        GlobalScanner::GetInstance().SetCloneScanInfo(true, MediaTimeUtils::UTCTimeMilliSeconds());
+        GlobalScanner::GetInstance().RunLakeScan(std::string(LAKE_ROOT_PATH), true);
     };
     Media::thread myThread("LakeClone", scannerFunc);
     if (myThread.is_invalid()) {

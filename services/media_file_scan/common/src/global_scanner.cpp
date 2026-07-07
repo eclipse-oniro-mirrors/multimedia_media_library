@@ -18,12 +18,15 @@
 
 #include <filesystem>
 #include <iostream>
+#include <cinttypes>
+#include <sys/stat.h>
 
 #include "check_dfx_collector.h"
 #include "check_scene_helper.h"
 #include "i_scan_policy.h"
 #include "file_scanner.h"
 #include "file_scan_utils.h"
+#include "media_time_utils.h"
 #include "folder_scanner.h"
 #include "folder_scanner_utils.h"
 #include "medialibrary_rdb_utils.h"
@@ -51,35 +54,33 @@ GlobalScanner& GlobalScanner::GetInstance()
     return instance;
 }
 
-void GlobalScanner::RunLakeScan(const std::string &path, bool isFirstScanner, bool isLakeCloneRestoring)
+void GlobalScanner::RunLakeScan(const std::string &path, bool isFirstScanner)
 {
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     LakeScanPolicy policy;
     CheckDfxCollector dfxCollector(CheckScene::LAKE);
-    Run(path, policy, dfxCollector, isFirstScanner, isLakeCloneRestoring);
+    Run(path, policy, dfxCollector, isFirstScanner);
 #endif
 }
 
-void GlobalScanner::RunLakeScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner,
-    bool isLakeCloneRestoring)
+void GlobalScanner::RunLakeScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner)
 {
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     LakeScanPolicy policy;
-    Run(path, policy, dfxCollector, isFirstScanner, isLakeCloneRestoring);
+    Run(path, policy, dfxCollector, isFirstScanner);
 #endif
 }
 
-void GlobalScanner::RunFileManagerScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner,
-    bool isLakeCloneRestoring)
+void GlobalScanner::RunFileManagerScan(const std::string &path, CheckDfxCollector &dfxCollector, bool isFirstScanner)
 {
 #ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
     FileManagerScanPolicy policy;
-    Run(path, policy, dfxCollector, isFirstScanner, isLakeCloneRestoring);
+    Run(path, policy, dfxCollector, isFirstScanner);
 #endif
 }
 
 void GlobalScanner::Run(const std::string &path, IScanPolicy &policy, CheckDfxCollector &dfxCollector,
-    bool isFirstScanner, bool isLakeCloneRestoring)
+    bool isFirstScanner)
 {
     CHECK_AND_RETURN_LOG(!IsForceScanning(), "Global scan is prohibited during the Restore process");
     {
@@ -92,21 +93,21 @@ void GlobalScanner::Run(const std::string &path, IScanPolicy &policy, CheckDfxCo
         scannerStatus_ = isFirstScanner ? ScannerStatus::GLOBAL_SCAN : ScannerStatus::CHECK_SCAN;
         isNotInterruptScanner_ = true;
         InitTemperatureCondition();
-        deleteCountForCloneRestore_.store(0);
     }
     MEDIA_INFO_LOG("global scan start, isFirstScanner: %{public}d, scannerStatus: %{public}d, "
         "isLakeCloneRestoring: %{public}d", isFirstScanner, static_cast<int32_t>(scannerStatus_),
-        static_cast<int32_t>(isLakeCloneRestoring));
-    int32_t ret = WalkFileTree(path, policy, dfxCollector, isLakeCloneRestoring);
+        static_cast<int32_t>(isLakeCloneRestoring_.load()));
+    int32_t ret = WalkFileTree(path, policy, dfxCollector);
     CHECK_AND_RETURN_LOG(!IsForceScanning(), "WalkFileTree is prohibited during the Restore process");
     ProcessIncrementScanTask(true, policy);
+    SetCloneScanInfo(false, 0);
     CHECK_AND_RETURN_LOG(ret == ERR_SUCCESS, "An exception occurred while walking the file tree");
     policy.OnScanFinished(isFirstScanner);
-    MEDIA_INFO_LOG("global scan end, isFirstScanner: %{public}d", isFirstScanner);
+    MEDIA_INFO_LOG("global scan end, isFirstScanner: %{public}d, deleteCountForCloneRestore_: %{public}d",
+        isFirstScanner, deleteCountForCloneRestore_.load());
 }
 
-int32_t GlobalScanner::WalkFileTree(const std::string &path, IScanPolicy &policy, CheckDfxCollector &dfxCollector,
-    bool isLakeCloneRestoring)
+int32_t GlobalScanner::WalkFileTree(const std::string &path, IScanPolicy &policy, CheckDfxCollector &dfxCollector)
 {
     std::error_code errorCode;
     bool isDirectory = fs::exists(path, errorCode) && fs::is_directory(path, errorCode);
@@ -137,7 +138,7 @@ int32_t GlobalScanner::WalkFileTree(const std::string &path, IScanPolicy &policy
             FileScanUtils::GarbleFilePath(currentDir).c_str());
 
         FolderScanner folderScanner(currentDir, ScanMode::FULL);
-        int32_t ret = folderScanner.ScanCurrentDirectory(dirQueue, isLakeCloneRestoring);
+        int32_t ret = folderScanner.ScanCurrentDirectory(dirQueue);
 
         CHECK_AND_RETURN_RET_WARN_LOG(!IsForceScanning(), ERR_SUCCESS,
             "Global scan is due to the Restore process stopping at dir[%{public}s] scanning",
@@ -187,12 +188,21 @@ int32_t GlobalScanner::ProcessIncrementScanTask(bool isGlobalScanEnd, IScanPolic
 
 bool GlobalScanner::IsGlobalScanning(const std::vector<MediaNotifyInfo> &notifyInfos, const ScanTaskType &type)
 {
+    std::vector<MediaNotifyInfo> filteredInfos;
+    for (const auto &notifyInfo : notifyInfos) {
+        if (IsCloneRestoringFile(notifyInfo.afterPath)) {
+            MEDIA_INFO_LOG("LakeClone: skip clone restoring file: %{public}s",
+                FileScanUtils::GarbleFilePath(notifyInfo.afterPath).c_str());
+            continue;
+        }
+        filteredInfos.push_back(notifyInfo);
+    }
     std::lock_guard<std::mutex> lock(scanMutex_);
     if (scannerStatus_ == ScannerStatus::IDLE) {
         return false;
     }
 
-    for (const auto &notifyInfo : notifyInfos) {
+    for (const auto &notifyInfo : filteredInfos) {
         scanTaskQueue_.push({notifyInfo, type});
     }
     return true;
@@ -302,6 +312,33 @@ void GlobalScanner::InitTemperatureCondition()
     isHighTemperature_ = newTemperatureLevel > properDeviceTemperatureLevel40 ? true : false;
 #endif
     MEDIA_INFO_LOG("Init global scanner temperature condition: %{public}d", isHighTemperature_.load());
+}
+
+void GlobalScanner::SetCloneScanInfo(bool isLakeCloneRestoring, int64_t cloneEndTime)
+{
+    isLakeCloneRestoring_.store(isLakeCloneRestoring);
+    cloneEndTime_.store(cloneEndTime);
+    deleteCountForCloneRestore_.store(0);
+    MEDIA_INFO_LOG("LakeClone: isLakeCloneRestoring: %{public}d, cloneEndTime: %{public}" PRId64
+        "deleteCountForCloneRestore: %{public}d", static_cast<int32_t>(isLakeCloneRestoring),
+        cloneEndTime, deleteCountForCloneRestore_.load());
+}
+
+bool GlobalScanner::IsLakeCloneRestoring()
+{
+    return isLakeCloneRestoring_.load();
+}
+
+bool GlobalScanner::IsCloneRestoringFile(const std::string &filePath)
+{
+    CHECK_AND_RETURN_RET(IsLakeCloneRestoring(), false);
+    int64_t cloneEndTime = cloneEndTime_.load();
+    CHECK_AND_RETURN_RET(cloneEndTime != 0, false);
+    struct stat fileStat;
+    CHECK_AND_RETURN_RET_WARN_LOG(stat(filePath.c_str(), &fileStat) == 0, false, "Failed to stat %{public}s",
+        FileScanUtils::GarbleFilePath(filePath).c_str());
+
+    return MediaTimeUtils::Timespec2Millisecond(fileStat.st_atim) < cloneEndTime;
 }
 // LCOV_EXCL_STOP
 }

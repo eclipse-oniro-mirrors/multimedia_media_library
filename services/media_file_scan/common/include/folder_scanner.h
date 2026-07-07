@@ -42,7 +42,7 @@ public:
     EXPORT virtual ~FolderScanner();
 
     int32_t Run();
-    int32_t ScanCurrentDirectory(queue<std::string> &subDirQueue, bool isLakeCloneRestoring = false);
+    int32_t ScanCurrentDirectory(queue<std::string> &subDirQueue);
 
     int32_t GetAlbumId();
     void GetFileIds(std::vector<int32_t> &fileIds);
@@ -59,7 +59,7 @@ private:
     int32_t HandleNeedUpdateAssets(FileParser &fileParser);
     int32_t HandleParentFolderByType(FolderOperationType type);
     int32_t HandleFiles(std::string &currentFilePath,
-        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh, bool isLakeCloneRestoring = false);
+        std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh);
     void UpdateAndNotifyAlbumInfos(bool isNeedUpdateSystemAlbum);
     int32_t BatchInsertAssets(const string &tableName, std::vector<NativeRdb::ValuesBucket> &values);
     void CheckSetFileScannerSkip(FolderOperationType type);
