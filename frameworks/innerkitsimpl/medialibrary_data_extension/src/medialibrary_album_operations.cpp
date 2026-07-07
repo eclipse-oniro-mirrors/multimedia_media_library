@@ -2090,12 +2090,12 @@ int32_t MediaLibraryAlbumOperations::RecoverPhotoAssets(const DataSharePredicate
     int32_t changedRows = assetRefresh.UpdateWithDateTime(rdbValues, rdbPredicates);
     MEDIA_DEBUG_LOG("RecoverPhotoAssets changeRow: %{public}d.", changedRows);
     CHECK_AND_RETURN_RET(changedRows >= 0, changedRows);
-    assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     HandleLakeAndFileManager(assetRefresh, rdbPredicates.GetWhereArgs());
     // set cloud enhancement to available
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
     EnhancementManager::GetInstance().RecoverTrashUpdateInternal(rdbPredicates.GetWhereArgs());
 #endif
+    assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     MediaAnalysisHelper::StartMediaAnalysisServiceAsync(
         static_cast<int32_t>(MediaAnalysisProxy::ActivateServiceType::START_UPDATE_INDEX), fileIds);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
