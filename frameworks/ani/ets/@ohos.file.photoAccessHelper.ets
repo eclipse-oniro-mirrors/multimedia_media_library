@@ -166,6 +166,45 @@ export namespace photoAccessHelper {
     ANALYSIS_PET_FACE
   }
 
+  export enum AnalysisToolType {
+    ANALYSIS_BASE_TOOL_TYPE = 0,
+    IMAGE_RETRIEVAL_TOOL_TYPE = 1,
+    NEGATIVE_FILTER_TOOL_TYPE = 2,
+    FACE_RECOGNITION_TOOL_TYPE = 3,
+    BATCH_SIMILARITY_SELECTION_TOOL_TYPE = 4,
+    BALANCED_SELECTION_TOOL_TYPE = 5,
+    COVER_GRID_SELECTION_TOOL_TYPE = 6,
+    HIGHLIGHT_TOOL_TYPE = 7,
+    SEARCH_TOOL_TYPE = 8,
+    SELECTION_TOOL_TYPE = 9,
+    PORTRAIT_ALBUM_TOOL_TYPE = 10,
+    CLASSIFY_ALBUM_TOOL_TYPE = 11,
+    SIMILARITY_CLEANING_TOOL_TYPE = 12,
+    EDIT_RECOMMENDATION_TOOL_TYPE = 13,
+    AI_SEARCH_TOOL_TYPE = 14
+  }
+
+  export interface AnalysisToolResult {
+    errCode: int;
+    result?: string;
+  }
+
+  class AnalysisToolResultHandle implements AnalysisToolResult {
+    constructor() {}
+    errCode: int = 0;
+    result?: string;
+  }
+
+  export interface ToolInvokeConfig {
+    type: AnalysisToolType;
+    param?: string;
+  }
+
+  export interface ToolCancelConfig {
+    taskId: string;
+    param?: string;
+  }
+
   export enum RecommendationType {
     QR_OR_BAR_CODE = 1,
     QR_CODE = 2,
@@ -2713,6 +2752,8 @@ export class ContextRecoveryInfo {
     removeGalleryFormInfo(info: GalleryFormInfo): Promise<void>;
     getSupportedPhotoFormats(photoType: PhotoType): Promise<Array<string>>;
     startAssetAnalysis(type: AnalysisType, assetUris?: Array<string>): Promise<int>;
+    invokeAnalysisTool(config: ToolInvokeConfig, callback: Callback<AnalysisToolResult>): Promise<string>;
+    cancelAnalysisTool(config: ToolCancelConfig): Promise<void>;
     createAssetsForAppWithAlbum(source: PhotoCreationSource, albumUri: string, isAuthorized: boolean,
       photoCreationConfigs: Array<PhotoCreationConfig>): Promise<Array<string>>;
     createAssetsWithAlbum(creationSettings: Array<CreationSetting>, whetherRealTimeThumb: boolean,
@@ -3857,6 +3898,49 @@ export class ContextRecoveryInfo {
       });
     }
 
+    invokeAnalysisTool(config: ToolInvokeConfig, callback: Callback<AnalysisToolResult>): Promise<string> {
+      return new Promise<string>((resolve: (v: string) => void, reject: RejectString) => {
+        let cb = (): string | MediaLibraryAniError => {
+          let result: string | MediaLibraryAniError;
+          try {
+            result = this.invokeAnalysisToolInner(config, callback);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            resolve(ret as string);
+          }
+        });
+      });
+    }
+
+    cancelAnalysisTool(config: ToolCancelConfig): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.cancelAnalysisToolInner(config);
+            return undefined;
+          } catch(e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
+          }
+        });
+      });
+    }
+
     checkIsPhotoCreationConfigValid(config: PhotoCreationConfig): boolean {
       if (!config) {
         console.error('photoAccessHelper invalid, config is null.');
@@ -4694,6 +4778,8 @@ export class ContextRecoveryInfo {
     native updateGalleryFormInfoInner(info: GalleryFormInfo): void;
     native getSupportedPhotoFormatsInner(photoType: PhotoType): Array<string>;
     native startAssetAnalysisInner(type: AnalysisType, assetUris?: Array<string>): int;
+    native invokeAnalysisToolInner(config: ToolInvokeConfig, callback: Callback<AnalysisToolResult>): string;
+    native cancelAnalysisToolInner(config: ToolCancelConfig): void;
     native acquireDebugDatabaseInner(betaIssueId: string, betaScenario: string): Map<string, string>;
     native releaseDebugDatabaseInner(betaIssueId: string, dbFd: int): void;
     native onSinglePhotoAlbumChange(album: Album, callback: Callback<AlbumChangeInfos>): void;

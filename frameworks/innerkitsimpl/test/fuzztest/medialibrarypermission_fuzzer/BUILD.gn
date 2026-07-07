@@ -41,6 +41,7 @@ ohos_fuzztest("MediaLibraryPermissionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_system_innerapi_permission_check.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_write_permission_check.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_access_medialib_thumb_db_permission_check.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_permission/src/media_analysis_permission_check.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_deprecated_perm_usage.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_permission/src/pemission_common.cpp",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/src/medialibrary_rdbstore_utils_fuzzer.cpp",

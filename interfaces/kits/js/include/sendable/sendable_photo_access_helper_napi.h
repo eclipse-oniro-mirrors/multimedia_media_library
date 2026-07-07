@@ -104,6 +104,7 @@ private:
     static thread_local napi_ref sNotifyType_;
     static thread_local napi_ref sDefaultChangeUriRef_;
     static thread_local napi_ref sAnalysisType_;
+    static thread_local napi_ref sAnalysisToolTypeEnumRef_;
     static thread_local napi_ref sRequestPhotoTypeEnumRef_;
     static thread_local napi_ref sResourceTypeEnumRef_;
     static thread_local napi_ref sSourceModeEnumRef_;

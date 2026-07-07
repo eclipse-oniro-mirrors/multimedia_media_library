@@ -395,6 +395,8 @@ private:
     EXPORT static napi_value PhotoAccessStartAssetAnalysis(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStartActiveAnalysis(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessStopActiveAnalysis(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessInvokeAnalysisTool(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessCancelAnalysisTool(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetPhotoAlbumsWithoutSubtype(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessGetPhotoAlbumOrder(napi_env env, napi_callback_info info);
     EXPORT static napi_value PhotoAccessSetPhotoAlbumOrder(napi_env env, napi_callback_info info);
@@ -441,6 +443,7 @@ private:
     EXPORT static napi_value CreateAlbumAttributeEnum(napi_env env);
     EXPORT static napi_value CreateAlbumOperationTypeEnum(napi_env env);
     EXPORT static napi_value CreateAnalysisTypeEnum(napi_env env);
+    EXPORT static napi_value CreateAnalysisToolTypeEnum(napi_env env);
     EXPORT static napi_value CreateRequestPhotoTypeEnum(napi_env env);
     EXPORT static napi_value CreateResourceTypeEnum(napi_env env);
     EXPORT static napi_value CreateAuthorizationModeEnum(napi_env env);
@@ -557,6 +560,7 @@ private:
     static thread_local napi_ref sDeliveryModeEnumRef_;
     static thread_local napi_ref sSourceModeEnumRef_;
     static thread_local napi_ref sCompatibleModeEnumRef_;
+    static thread_local napi_ref sAnalysisToolTypeEnumRef_;
     static thread_local napi_ref sPreferredCompatibleModeEnumRef_;
     static thread_local napi_ref sHighlightAlbumInfoType_;
     static thread_local napi_ref sHighlightUserActionType_;
@@ -717,6 +721,9 @@ struct MediaLibraryAsyncContext : public NapiError {
     std::shared_ptr<ActiveAnalysisJsCallbackHolder> activeAnalysisCallbackHolder;
     std::shared_ptr<DeepOptimizeSpaceJsCallbackHolder> deepOptimizeSpaceCallbackHolder;
     bool hasDeepOptimizeSpaceCallback = false;
+    int32_t analysisToolType = 0;
+    std::string analysisToolParam;
+    std::string analysisToolTaskId;
     std::vector<std::string> checkPhotoPermissionUris;
     mutable std::mutex uriPermissionStateMapMutex;
     std::unordered_map<std::string, int32_t> uriPermissionStateMap;

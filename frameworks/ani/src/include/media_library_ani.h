@@ -35,6 +35,7 @@
 #include "medialibrary_notify_callback_wrapper_ani.h"
 #include "medialibrary_notify_new_observer_ani.h"
 #include "deep_optimize_space_ani_callback.h"
+#include "analysis_tool_ani_callback_holder.h"
 
 namespace OHOS {
 namespace Media {
@@ -260,6 +261,9 @@ public:
         ani_string photoUri, ani_string albumUri, ani_object options);
     static ani_object PhotoAccessGetSupportedPhotoFormats(ani_env *env, ani_object object, ani_enum_item photoTypeAni);
     static ani_int StartAssetAnalysis(ani_env *env, ani_object object, ani_enum_item type, ani_object assetUris);
+    static ani_string InvokeAnalysisTool(ani_env *env, ani_object object, ani_object config,
+        ani_fn_object callback);
+    static void CancelAnalysisTool(ani_env *env, ani_object object, ani_object config);
     static void PhotoAccessRemoveFormInfo(ani_env *env, ani_object object, ani_object info);
     static void PhotoAccessRemoveGalleryFormInfo(ani_env *env, ani_object object, ani_object info);
     static void PhotoAccessUpdateGalleryFormInfo(ani_env *env, ani_object object, ani_object info);
@@ -449,6 +453,10 @@ struct MediaLibraryAsyncContext : public AniError {
     std::string extendArgs;
     std::string analysisProgress;
     int32_t analysisType = AnalysisType::ANALYSIS_INVALID;
+    int32_t analysisToolType = 0;
+    std::string analysisToolParam;
+    std::string analysisToolTaskId;
+    std::shared_ptr<AnalysisToolAniCallbackHolder> analysisToolAniCallbackHolder;
     std::unique_ptr<FetchResult<FileAsset>> fetchFileResult;
     std::unique_ptr<FetchResult<AlbumAsset>> fetchAlbumResult;
     std::unique_ptr<FetchResult<PhotoAlbum>> fetchPhotoAlbumResult;

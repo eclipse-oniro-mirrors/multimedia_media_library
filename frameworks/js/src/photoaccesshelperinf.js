@@ -1521,6 +1521,7 @@ export default {
   AlbumOperationType: photoAccessHelper.AlbumOperationType,
   HiddenPhotosDisplayMode: photoAccessHelper.HiddenPhotosDisplayMode,
   AnalysisType: photoAccessHelper.AnalysisType,
+  AnalysisToolType: photoAccessHelper.AnalysisToolType,
   HighlightAlbumInfoType: photoAccessHelper.HighlightAlbumInfoType,
   HighlightUserActionType: photoAccessHelper.HighlightUserActionType,
   HighlightAlbumChangeAttribute: photoAccessHelper.HighlightAlbumChangeAttribute,

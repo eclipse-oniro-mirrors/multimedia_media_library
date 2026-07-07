@@ -23,10 +23,13 @@
 #include <new>
 #include <unordered_map>
 #include <unordered_set>
+#include <uuid.h>
 
 #include "accesstoken_kit.h"
 #include "active_analysis_error_utils.h"
 #include "active_analysis_napi_callback.h"
+#include "invoke_analysis_tool_vo.h"
+#include "cancel_analysis_tool_vo.h"
 #include "album_order_napi.h"
 #include "confirm_callback.h"
 #include "deep_optimize_space_napi_callback.h"
@@ -173,6 +176,7 @@ const size_t MAX_TAB_OLD_PHOTOS_URI_COUNT = 100;
 const size_t MAX_TAB_OLD_ALBUMS_URI_COUNT = 100;
 const int32_t BETA_ISSUE_ID_LENGTH = 10;
 const int32_t MAX_FILE_FD = 1023;
+const std::string CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
 const std::string TARGET_DIR = "/storage/media/local/files";
 const int32_t MAX_ASSETS_NUMBER = 200;
 const std::string DOCS_DIR = "/Docs/";
@@ -320,6 +324,7 @@ thread_local napi_ref MediaLibraryNapi::sDeliveryModeEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sPreferredCompatibleModeEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sSourceModeEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sCompatibleModeEnumRef_ = nullptr;
+thread_local napi_ref MediaLibraryNapi::sAnalysisToolTypeEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sPositionTypeEnumRef_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sPhotoSubType_ = nullptr;
 thread_local napi_ref MediaLibraryNapi::sPhotoPermissionType_ = nullptr;
@@ -587,6 +592,8 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("startAssetAnalysis", PhotoAccessStartAssetAnalysis),
             DECLARE_NAPI_FUNCTION("startAssetAnalysisAsync", PhotoAccessStartActiveAnalysis),
             DECLARE_NAPI_FUNCTION("stopAssetAnalysis", PhotoAccessStopActiveAnalysis),
+            DECLARE_NAPI_FUNCTION("invokeAnalysisTool", PhotoAccessInvokeAnalysisTool),
+            DECLARE_NAPI_FUNCTION("cancelAnalysisTool", PhotoAccessCancelAnalysisTool),
             DECLARE_NAPI_FUNCTION("query", PhotoAccessQuery),
             DECLARE_NAPI_FUNCTION("on", PhotoAccessRegisterCallback),
             DECLARE_NAPI_FUNCTION("off", PhotoAccessUnregisterCallback),
@@ -655,6 +662,7 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
         DECLARE_NAPI_PROPERTY("AlbumOperationType", CreateAlbumOperationTypeEnum(env)),
         DECLARE_NAPI_PROPERTY("HiddenPhotosDisplayMode", CreateHiddenPhotosDisplayModeEnum(env)),
         DECLARE_NAPI_PROPERTY("AnalysisType", CreateAnalysisTypeEnum(env)),
+        DECLARE_NAPI_PROPERTY("AnalysisToolType", CreateAnalysisToolTypeEnum(env)),
         DECLARE_NAPI_PROPERTY("RequestPhotoType", CreateRequestPhotoTypeEnum(env)),
         DECLARE_NAPI_PROPERTY("ResourceType", CreateResourceTypeEnum(env)),
         DECLARE_NAPI_PROPERTY("DeliveryMode", CreateDeliveryModeEnum(env)),
@@ -9558,6 +9566,10 @@ napi_value MediaLibraryNapi::CreateCompatibleModeEnum(napi_env env)
     return CreateNumberEnumProperty(env, compatibleModeEnum, sCompatibleModeEnumRef_);
 }
 
+napi_value MediaLibraryNapi::CreateAnalysisToolTypeEnum(napi_env env)
+{
+    return CreateNumberEnumProperty(env, analysisToolTypeEnum, sAnalysisToolTypeEnumRef_);
+}
 napi_value MediaLibraryNapi::CreatePreferredCompatibleModeEnum(napi_env env)
 {
     return CreateNumberEnumProperty(env, preferredCompatibleModeEnum, sPreferredCompatibleModeEnumRef_);
@@ -17741,6 +17753,379 @@ napi_value MediaLibraryNapi::PhotoAccessModifyHiddenAlbumDefaultCoverOrder(napi_
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "ModifyHiddenAlbumDefaultCoverOrder",
         ModifyHiddenAlbumDefaultCoverOrderExecute, ModifyHiddenAlbumDefaultCoverOrderCompleteCallback);
+}
+
+namespace {
+const std::string ANALYSIS_TOOL_CONFIG_TYPE = "type";
+const std::string ANALYSIS_TOOL_CONFIG_PARAM = "param";
+const std::string ANALYSIS_TOOL_STOP_TASK_ID = "taskId";
+constexpr size_t UUID_STR_LENGTH = 37;
+constexpr int32_t ANALYSIS_TOOL_TYPE_BEGIN = 0;
+constexpr int32_t ANALYSIS_TOOL_TYPE_END = 14;
+constexpr size_t MAX_ANALYSIS_TOOL_PARAM_LENGTH = 16 * 1024;
+static std::string GenerateAnalysisToolTaskId()
+{
+    uuid_t uuid;
+    uuid_generate(uuid);
+    char str[UUID_STR_LENGTH] = {};
+    uuid_unparse(uuid, str);
+    return str;
+}
+} // namespace
+
+static napi_value ParseArgsInvokeAnalysisTool(
+    napi_env env, napi_callback_info info, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    constexpr size_t minArgs = ARGS_TWO;
+    constexpr size_t maxArgs = ARGS_TWO;
+    napi_value thisVar = nullptr;
+    context->argc = maxArgs;
+    CHECK_COND_WITH_ERR_MESSAGE(env, napi_get_cb_info(env, info, &context->argc, &(context->argv[ARGS_ZERO]),
+        &thisVar, nullptr) == napi_ok, JS_E_PARAM_INVALID, "Failed to get cb info");
+    CHECK_COND_WITH_ERR_MESSAGE(env, context->argc >= minArgs && context->argc <= maxArgs, JS_E_PARAM_INVALID,
+        "Number of args is invalid");
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        napi_unwrap(env, thisVar, reinterpret_cast<void **>(&context->objectInfo)) == napi_ok,
+        JS_E_PARAM_INVALID, "Failed to unwrap thisVar");
+    CHECK_COND_WITH_ERR_MESSAGE(env, context->objectInfo != nullptr, JS_E_PARAM_INVALID,
+        "Failed to get object info");
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL,"This interface can be called only by system apps");
+        return nullptr;
+    }
+    // Parse config (argv[0]): { type: AnalysisToolType, param?: string }
+    napi_value configArg = context->argv[ARGS_ZERO];
+    napi_valuetype configType = napi_undefined;
+    CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, configArg, &configType) == napi_ok,
+        JS_E_PARAM_INVALID, "config type check failed");
+    CHECK_COND_WITH_ERR_MESSAGE(env, configType == napi_object, JS_E_PARAM_INVALID, "config must be object");
+        napi_value typeValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg, ANALYSIS_TOOL_CONFIG_TYPE.c_str());
+    CHECK_COND_WITH_ERR_MESSAGE(env, typeValue != nullptr, JS_E_PARAM_INVALID, "type is required");
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        MediaLibraryNapiUtils::GetInt32(env, typeValue, context->analysisToolType) == napi_ok,
+    JS_E_PARAM_INVALID, "type invalid");
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        context->analysisToolType >= ANALYSIS_TOOL_TYPE_BEGIN && context->analysisToolType <= ANALYSIS_TOOL_TYPE_END,
+        JS_E_PARAM_INVALID, "type out of range");
+    if (MediaLibraryNapiUtils::IsExistsByPropertyName(env, configArg, ANALYSIS_TOOL_CONFIG_PARAM.c_str())) {
+        napi_value paramValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg,
+            ANALYSIS_TOOL_CONFIG_PARAM.c_str());
+        CHECK_COND_WITH_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
+        CHECK_COND_WITH_ERR_MESSAGE(env,
+            MediaLibraryNapiUtils::GetParamStringPathMax(env, paramValue,context->analysisToolParam) == napi_ok,
+        JS_E_PARAM_INVALID, "param invalid");
+        CHECK_COND_WITH_ERR_MESSAGE(env, context->analysisToolParam.size() <=MAX_ANALYSIS_TOOL_PARAM_LENGTH,
+        JS_E_PARAM_INVALID, "param too long");
+    }
+    //Parse callback (argv[1]): Callback<AnalysisToolResult
+    CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::CheckJSArgsTypeAsFunc(env, context->argv[ARGS_ONE]),
+        JS_E_PARAM_INVALID, "callback invalid");
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        ActiveAnalysisJsCallbackHolder::Create(env, context->argv[ARGS_ONE], context->activeAnalysisCallbackHolder)
+            == napi_ok, JS_E_INNER_FAIL, "Failed to create analysiis tool callback");
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+    return result;
+}
+
+static napi_value ParseArgsCancelAnalysisTool(
+napi_env env, napi_callback_info info, unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    constexpr size_t minArgs = ARGS_ONE;
+    constexpr size_t maxArgs = ARGS_ONE;
+    napi_value thisVar = nullptr;
+    context->argc = maxArgs;
+    CHECK_COND_WITH_ERR_MESSAGE(env, napi_get_cb_info(env, info, &context->argc,&(context->argv[ARGS_ZERO]),
+        &thisVar, nullptr) == napi_ok, JS_E_PARAM_INVALID, "Failed to get cb info");
+    CHECK_COND_WITH_ERR_MESSAGE(env, context->argc >= minArgs && context->argc <= maxArgs, JS_E_PARAM_INVALID,
+        "Number of args is invalid");
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        napi_unwrap(env, thisVar, reinterpret_cast<void **>(&context->objectInfo)) == napi_ok,
+        JS_E_PARAM_INVALID, "Failed to unwrap thisVar");
+    CHECK_COND_WITH_ERR_MESSAGE(env, context->objectInfo != nullptr, JS_E_PARAM_INVALID,
+        "Failed to get object info");
+    if(!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    CHECK_COND_WITH_ERR_MESSAGE(env, CheckNapiCallerPermission(PERM_WRITE_IMAGEVIDEO),
+        OHOS_PERMISSION_DENIED_CODE, "Have no write imagevideo permission");
+    // Parse config (argv[0]): { taskId: string, param?:string
+    napi_value configArg = context->argv[ARGS_ZERO];
+    napi_valuetype configType = napi_undefined;
+    CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, configArg, &configType) == napi_ok,
+        JS_E_PARAM_INVALID, "config type check failed");
+    CHECK_COND_WITH_ERR_MESSAGE(env, configType == napi_object, JS_E_PARAM_INVALID, "config must be object");
+
+    napi_value taskIdValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg,
+        ANALYSIS_TOOL_STOP_TASK_ID.c_str());
+    CHECK_COND_WITH_ERR_MESSAGE(env, taskIdValue != nullptr,JS_E_PARAM_INVALID, "taskid is required");
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        MediaLibraryNapiUtils::GetParamStringPathMax(env, taskIdValue, context->analysisToolTaskId) == napi_ok,
+        OHOS_INVALID_PARAM_CODE, "taskId invalid");
+    CHECK_COND_WITH_ERR_MESSAGE(env, !context->analysisToolTaskId.empty(), JS_E_PARAM_INVALID, "taskid is empty");
+
+    if (MediaLibraryNapiUtils::IsExistsByPropertyName(env, configArg, ANALYSIS_TOOL_CONFIG_PARAM.c_str())) {
+        napi_value paramValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg,
+            ANALYSIS_TOOL_CONFIG_PARAM.c_str());
+        CHECK_COND_WITH_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
+        CHECK_COND_WITH_ERR_MESSAGE(env,
+            MediaLibraryNapiUtils::GetParamStringPathMax(env, paramValue, context->analysisToolParam) == napi_ok,
+            JS_E_PARAM_INVALID, "param invalid");
+        CHECK_COND_WITH_ERR_MESSAGE(env, context->analysisToolParam.size() <= MAX_ANALYSIS_TOOL_PARAM_LENGTH,
+            JS_E_PARAM_INVALID, "param too long");
+    }
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result),JS_INNER_FAIL);
+    return result;
+}
+
+static void ReleaseInvokeAnalysisToolCallback(MediaLibraryAsyncContext *context, uint64_t callbackRegistryId)
+{
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    ActiveAnalysisJsCallbackRegistry::Unregister(callbackRegistryId);
+    CHECK_NULL_PTR_RETURN_VOID(context->activeAnalysisCallbackHolder.get(), "Active analysis callback holder is null");
+    context->activeAnalysisCallbackHolder->Release();
+}
+
+static bool PrepareInvokeAnalysisToolCallback(MediaLibraryAsyncContext *context,
+InvokeAnalysisToolReqBody &reqBody, uint64_t &callbackRegistryId)
+{
+    context->activeAnalysisCallbackHolder->MarkAsToolCallback();
+    sptr<ActiveAnalysisJsCallbackStub> callbackStub =
+        sptr<ActiveAnalysisJsCallbackStub>(new (std::nothrow)ActiveAnalysisJsCallbackStub(
+        context->activeAnalysisCallbackHolder));
+    if (callbackStub == nullptr) {
+        NAPI_ERR_LOG("Failed to create analysis tool callback stub");
+        context->activeAnalysisCallbackHolder->Release();
+        context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+        return false;
+    }
+    reqBody.callbackRemote = callbackStub->AsObject();
+    NAPI_INFO_LOG("Prepared analysis tool callback remote, calllbackStubValid: %{public}d, "
+        "callbackRemoteValid: %{public}d", callbackStub != nullptr, (reqBody.callbackRemote != nullptr));
+    callbackRegistryId = ActiveAnalysisJsCallbackRegistry::Register(
+        context->activeAnalysisCallbackHolder, callbackStub, reqBody.callbackRemote);
+    if(callbackRegistryId != 0) {
+        return true;
+    }
+    NAPI_ERR_LOG("Failed to register analysis tool callback lifecycle record");
+    context->activeAnalysisCallbackHolder->Release();
+    context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+    return false;
+}
+
+static InvokeAnalysisToolReqBody BuildInvokeAnalysisToolReqBody(MediaLibraryAsyncContext *context)
+{
+    InvokeAnalysisToolReqBody reqBody;
+    reqBody.type = context->analysisToolType;
+    reqBody.param = context->analysisToolParam;
+    reqBody.taskId = context->analysisToolTaskId;
+    NAPI_INFO_LOG("Invoke analysis tool execute, type: %{public}d, paramSize: %{public}zu,"
+        "taskId: %{public}s, holderValid: %{public}d", reqBody.type, reqBody.param.size(),
+        reqBody.taskId.c_str(), context->activeAnalysisCallbackHolder != nullptr);
+    return reqBody;
+}
+
+static bool HandleInvokeAnalysisToolResponse(MediaLibraryAsyncContext *context, uint64_t callbackRegistryId,
+    int32_t ret, const InvokeAnalysisToolRespBody &respBody)
+{
+    if (ret != E_OK) {
+        ReleaseInvokeAnalysisToolCallback(context, callbackRegistryId);
+        if (ret == E_INVALID_ARGUMENTS) {
+            context->error = JS_E_PARAM_INVALID;
+            context->SaveError(JS_E_PARAM_INVALID);
+            return false;
+        }
+        context->retVal = ret;
+        context->SaveError(ret);
+        return false;
+    }
+    context->retVal = NormalizeActiveAnalysisErrorCode(respBody.result);
+    if (context->retVal != E_OK) {
+        ReleaseInvokeAnalysisToolCallback(context, callbackRegistryId);
+        context->SaveError(respBody.result);
+        return false;
+    }
+    //taskId 由NAPI层本地生成(GenerateAnalysisToolTaskid),不依赖SA回传
+    //确保返回给JS的taskId与Registry注册的 callbackRemot保持一致
+    if (respBody.saRemote == nullptr) {
+        NAPI_ERR_LOG("Invoke analysis tool saRemote is nullptr");
+        context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+        ReleaseInvokeAnalysisToolCallback(context, callbackRegistryId);
+        return false;
+    }
+    switch (context->activeAnalysisCallbackHolder->BindSaRemote(respBody.saRemote)) {
+        case ActiveAnalysisSaBindResult::BOUND:
+            NAPI_INFO_LOG("Invoke analysis tool bound sa remote death recipient");
+            return true;
+        case ActiveAnalysisSaBindResult::ALREADY_COMPLETED:
+            NAPI_WARN_LOG("Invoke analysis tool result arrived before SA binding");
+            return true;
+        case ActiveAnalysisSaBindResult::INVALID_REMOTE:
+            NAPI_ERR_LOG("Invoke analysis tool saRemote is invalid during bind");
+            break;
+        case ActiveAnalysisSaBindResult::ADD_DEATH_RECIPIENT_FAILED:
+            NAPI_ERR_LOG("Failed to add invoke analysis tool sa death recipient");
+            break;
+        case ActiveAnalysisSaBindResult::HOLDER_RELEASED:
+            NAPI_ERR_LOG("Invoke analysis tool callback holder released before SA binding");
+            break;
+        default:
+            NAPI_ERR_LOG("Unknown invoke analysis tool SA bind result");
+            break;
+    }
+    context->retVal = MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+    ReleaseInvokeAnalysisToolCallback(context, callbackRegistryId);
+    return false;
+}
+
+static CancelAnalysisToolReqBody BuildCancelAnalysisToolReqBody(MediaLibraryAsyncContext *context)
+{
+    CancelAnalysisToolReqBody reqBody;
+    reqBody.taskId = context->analysisToolTaskId;
+    reqBody.param = context->analysisToolParam;
+    return reqBody;
+}
+
+static int32_t NormalizeAnalysisToolErrorCode(int32_t code)
+{
+    if (code == 0) {
+        return E_OK;
+    }
+    if (code == E_INVALID_ARGUMENTS || code == JS_E_PARAM_INVALID) {
+        return MEDIA_LIBRARY_INVALID_PARAMETER_ERROR;
+    }
+    if (code == E_PERMISSION_DENIED || code == JS_ERR_PERMISSION_DENIED) {
+        return OHOS_PERMISSION_DENIED_CODE;
+    }
+    if (code == -E_CHECK_SYSTEMAPP_FAIL) {
+        return E_CHECK_SYSTEMAPP_FAIL;
+    }
+    if (code == OHOS_PERMISSION_DENIED_CODE || code == E_CHECK_SYSTEMAPP_FAIL ||
+        code == MEDIA_LIBRARY_INVALID_PARAMETER_ERROR || code == MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR) {
+        return code;
+    }
+    return NormalizeActiveAnalysisPromiseErrorCode(
+    MediaLibraryNapiUtils::TransErrorCode("PhotoAcceessCancelAnalysisTool", code));
+}
+
+static void ThrowAnalysisToolError(napi_env env, int32_t normalizedCode)
+{
+    NapiError::ThrowError(env, normalizedCode, GetActiveAnalysisPromiseErrorMessage(normalizedCode));
+}
+
+static void JSInvokeAnalysisToolExecute(napi_env env,void *data)
+{
+    (void)env;
+    MediaLibraryTracer tracer;
+    tracer.Start("JSInvokeAnalysisToolExecute");
+    NAPI_INFO_LOG("JSInvokeAnalysisToolExecute start");
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context isnull");
+    CHECK_NULL_PTR_RETURN_VOID(context->activeAnalysisCallbackHolder.get(), "Analysis tool callback holder is null");
+    context->analysisToolTaskId = GenerateAnalysisToolTaskId();
+    InvokeAnalysisToolReqBody reqBody = BuildInvokeAnalysisToolReqBody(context);
+    uint64_t callbackRegistryId = 0;
+    if (!PrepareInvokeAnalysisToolCallback(context, reqBody, callbackRegistryId)) {
+        return;
+    }
+
+    InvokeAnalysisToolRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(context->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::INVOKE_ANALYSIS_TOOL), reqBody, respBody);
+    NAPI_INFO_LOG("Invoke analysis tool IPC returned, ret: %{public}d, resp.result: %{public}d,"
+        "taskId: %{public}s", ret, respBody.result, respBody.taskId.c_str());
+    if (!HandleInvokeAnalysisToolResponse(context, callbackRegistryId, ret, respBody)) {
+        return;
+    }
+}
+
+static void JSInvokeAnalysisToolCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSInvokeAnalysisToolCompleteCallback");
+    auto *context = static_cast<MediaLibraryAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+
+    if (status == napi_ok && context->error == ERR_DEFAULT && context->retVal == E_OK) {
+        CHECK_ARGS_RET_VOID(env,
+            napi_create_string_utf8(env, context->analysisToolTaskId.c_str(), NAPI_AUTO_LENGTH, &jsContext->data),
+            JS_INNER_FAIL);
+        jsContext->status = true;
+    } else {
+        CHECK_ARGS_RET_VOID(env,
+            napi_create_string_utf8(env, "", NAPI_AUTO_LENGTH,&jsContext->data), JS_INNER_FAIL);
+        int32_t rawErrorCode = context->error != ERR_DEFAULT ? context->error : MediaLibraryNapiUtils::TransErrorCode("PhotoAccessInvokeAnalysisTool",context->retVal);
+        int32_t jsErrorCode = NormalizeActiveAnalysisPromiseErrorCode(rawErrorCode);
+        std::string errorMessage = GetActiveAnalysisPromiseErrorMessage(jsErrorCode);
+        MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, jsErrorCode, errorMessage);
+    }
+    NAPI_INFO_LOG("JSInvokeAnalysisToolCompleteCallback finish,status: %{public}d, error: %{public}d, "
+        "retVal: %{public}d, taskId: %{public}s", static_cast<int32_t>(status), context->error,
+        context->retVal, context->analysisToolTaskId.c_str());
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessInvokeAnalysisTool(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessInvokeAnalysisTool");
+    NAPI_INFO_LOG("PhotoAccessInvokeAnalysisTool start");
+    if (!CheckNapiCallerPermission(CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION)) {
+        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+            "Permission denied: " + CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION + " required.");
+        return nullptr;
+    }
+
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    CHECK_NULLPTR_RET(ParseArgsInvokeAnalysisTool(env, info, asyncContext));
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessInvokeAnalysisTool",
+        JSInvokeAnalysisToolExecute, JSInvokeAnalysisToolCompleteCallback);
+}
+
+napi_value MediaLibraryNapi::PhotoAccessCancelAnalysisTool(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessCancelAnalysisTool");
+    NAPI_INFO_LOG("PhotoAccessCancelAnalysisTool start");
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_undefined(env, &result), JS_INNER_FAIL);
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    if (!CheckNapiCallerPermission(CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION)) {
+        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+            "Permission denied: " + CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION + " required.");
+        return nullptr;
+    }
+    CHECK_NULLPTR_RET(ParseArgsCancelAnalysisTool(env, info, asyncContext));
+    SetUserIdFromObjectInfo(asyncContext);
+    CancelAnalysisToolReqBody reqBody = BuildCancelAnalysisToolReqBody(asyncContext.get());
+    CancelAnalysisToolRespBody respBody;
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(asyncContext->userId).Call(
+        static_cast<uint32_t>(MediaLibraryBusinessCode::CANCEL_ANALYSIS_TOOL), reqBody, respBody);
+    NAPI_INFO_LOG("PhotoAccessCancelAnalysisTool ret:%{public}d", ret);
+    if (ret != E_OK) {
+        ThrowAnalysisToolError(env, ret);
+        return result;
+    }
+    int32_t cancelResult = NormalizeAnalysisToolErrorCode(respBody.result);
+    NAPI_INFO_LOG("PhotoAccessCancelAnalysisTool cancelResult:%{public}d", cancelResult);
+    if (cancelResult != E_OK) {
+        ThrowAnalysisToolError(env, cancelResult);
+    }
+    return result;
 }
 
 static void CanPerformDeepOptimizeSpaceExecute(napi_env env, void *data)
