@@ -269,9 +269,6 @@ int32_t FileManagerAssetOperations::MoveAssetsFromFileManager(AssetAccurateRefre
         }
     }
     resultSet->Close();
-    if (needRefresh) {
-        refresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
-    }
     return ret;
 }
 
@@ -420,7 +417,6 @@ int32_t FileManagerAssetOperations::MoveAssetsToFileManager(AccurateRefresh::Ass
         MoveAssetToFileManage(refresh, resultSet);
     }
     resultSet->Close();
-    refresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     return E_OK;
 }
 

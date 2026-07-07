@@ -2145,7 +2145,6 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
     }
     int32_t changedRows = assetRefresh.UpdateWithDateTime(values, predicates);
     CHECK_AND_RETURN_RET(changedRows >= 0, changedRows);
-    assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     if (hiddenState == 0) {
         int32_t ret = LakeFileOperations::MoveAssetsToLake(assetRefresh, predicates.GetWhereArgs());
@@ -2159,6 +2158,7 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
         CHECK_AND_PRINT_LOG(ret == E_OK, "hide photo inner file manager error");
     }
 #endif
+    assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     MediaAnalysisHelper::StartMediaAnalysisServiceAsync(
         static_cast<int32_t>(MediaAnalysisProxy::ActivateServiceType::START_UPDATE_INDEX), notifyUris);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
