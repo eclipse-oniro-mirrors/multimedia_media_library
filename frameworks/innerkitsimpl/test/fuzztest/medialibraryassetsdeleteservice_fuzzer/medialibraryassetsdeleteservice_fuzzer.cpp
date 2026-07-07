@@ -191,7 +191,7 @@ static void MediaAssetsDeleteServiceFuzzer()
 {
     MEDIA_INFO_LOG("MediaAssetsDeleteServiceFuzzer start");
     DeleteLocalAssetsFuzzer();
-    DeleteLocalAssetSingleFuzzer();
+    DeleteCloudAssetsFuzzer();
     DeleteCloudAssetSingleFuzzer();
     MEDIA_INFO_LOG("MediaAssetsDeleteServiceFuzzer end");
 }
