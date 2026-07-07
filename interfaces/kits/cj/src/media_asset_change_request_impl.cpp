@@ -47,9 +47,26 @@ static const std::array<int, 4> ORIENTATION_ARRAY = { 0, 90, 180, 270 };
 
 int32_t MediaDataSource::ReadData(const std::shared_ptr<AVSharedMemory>& mem, uint32_t length)
 {
+    if (mem == nullptr || mem->GetBase() == nullptr || buffer_ == nullptr) {
+        LOGE("mem, mem->GetBase() or buffer_ is nullptr");
+        return SOURCE_ERROR_IO;
+    }
+
     if (readPos_ >= size_) {
         LOGE("Failed to check read position");
         return SOURCE_ERROR_EOF;
+    }
+
+    uint64_t newPos = static_cast<uint64_t>(readPos_) + static_cast<uint64_t>(length);
+    if (newPos > static_cast<uint64_t>(size_)) {
+        LOGE("Source buffer overflow, readPos_=%{public}" PRId64 ", length=%{public}u, size_=%{public}" PRId64,
+            readPos_, length, size_);
+        return SOURCE_ERROR_EOF;
+    }
+
+    if (static_cast<size_t>(mem->GetSize()) < length) {
+        LOGE("mem buffer size %{public}d is less than required %{public}u", mem->GetSize(), length);
+        return SOURCE_ERROR_IO;
     }
 
     if (memcpy_s(mem->GetBase(), mem->GetSize(), (char*)buffer_ + readPos_, length) != E_OK) {
@@ -88,9 +105,30 @@ std::shared_ptr<FileAsset> MediaAssetChangeRequestImpl::GetFileAssetInstance() c
     return fileAsset_;
 }
 
+static void DeleteCache(const std::string& cacheFileName)
+{
+    if (cacheFileName.empty()) {
+        return;
+    }
+    std::string uri = PhotoColumn::PHOTO_CACHE_URI_PREFIX + cacheFileName;
+    MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
+    Uri deleteCacheUri(uri);
+    DataShare::DataSharePredicates predicates;
+    int32_t ret = UserFileClient::Delete(deleteCacheUri, predicates);
+    if (ret < 0) {
+        LOGE("Failed to delete cache: %{private}s, error: %{public}d", cacheFileName.c_str(), ret);
+    }
+}
+
 MediaAssetChangeRequestImpl::MediaAssetChangeRequestImpl(std::shared_ptr<FileAsset> fileAssetPtr)
 {
     fileAsset_ = fileAssetPtr;
+}
+
+MediaAssetChangeRequestImpl::~MediaAssetChangeRequestImpl()
+{
+    DeleteCache(cacheFileName_);
+    DeleteCache(cacheMovingPhotoVideoName_);
 }
 
 static bool ParseFileUri(const std::string& fileUriStr, MediaType mediaType, std::string& realPath)
@@ -570,7 +608,7 @@ int32_t MediaAssetChangeRequestImpl::CopyToMediaLibrary(bool isCreation, AddReso
     }
 
     Uri uri(assetUri);
-    UniqueFd destFd(UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITEONLY));
+    UniqueFd destFd(UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITETRUNCATE));
     if (destFd.Get() < 0) {
         LOGE("Failed to open %{private}s with error: %{public}d", assetUri.c_str(), destFd.Get());
         return destFd.Get();
@@ -1178,6 +1216,40 @@ static bool SendToCacheFile(
     return true;
 }
 
+int32_t MediaAssetChangeRequestImpl::SubmitCacheForCreation(Uri& submitCacheUri, std::string& assetUri)
+{
+    bool isValid = false;
+    std::string displayName = creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
+    if (!isValid || MediaFileUtils::CheckDisplayName(displayName) != E_OK) {
+        LOGE("Failed to check displayName");
+        return E_FAIL;
+    }
+    creationValuesBucket_.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
+    if (IsMovingPhoto()) {
+        creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+    }
+    return UserFileClient::InsertExt(submitCacheUri, creationValuesBucket_, assetUri);
+}
+
+int32_t MediaAssetChangeRequestImpl::SubmitCacheForUpdate(Uri& submitCacheUri, bool isSetEffectMode)
+{
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
+    int32_t ret = PutMediaAssetEditData(valuesBucket);
+    if (ret != E_OK) {
+        LOGE("Failed to put editData");
+        return E_FAIL;
+    }
+    if (IsMovingPhoto() || isSetEffectMode) {
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+    }
+    if (isSetEffectMode) {
+        valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
+    }
+    return UserFileClient::Insert(submitCacheUri, valuesBucket);
+}
+
 int32_t MediaAssetChangeRequestImpl::SubmitCache(bool isCreation, bool isSetEffectMode)
 {
     if (fileAsset_ == nullptr) {
@@ -1191,42 +1263,15 @@ int32_t MediaAssetChangeRequestImpl::SubmitCache(bool isCreation, bool isSetEffe
     MediaLibraryNapiUtils::UriAppendKeyValue(uri, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri submitCacheUri(uri);
     std::string assetUri;
-    int32_t ret;
-    if (isCreation) {
-        bool isValid = false;
-        std::string displayName = creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
-        if (!isValid || MediaFileUtils::CheckDisplayName(displayName) != E_OK) {
-            LOGE("Failed to check displayName");
-            return E_FAIL;
-        }
-        creationValuesBucket_.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
-        if (IsMovingPhoto()) {
-            creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
-        ret = UserFileClient::InsertExt(submitCacheUri, creationValuesBucket_, assetUri);
-    } else {
-        DataShare::DataShareValuesBucket valuesBucket;
-        valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
-        valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
-        ret = PutMediaAssetEditData(valuesBucket);
-        if (ret != E_OK) {
-            LOGE("Failed to put editData");
-            return E_FAIL;
-        }
-        if (IsMovingPhoto()) {
-            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
-        if (isSetEffectMode) {
-            valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
-            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
-        ret = UserFileClient::Insert(submitCacheUri, valuesBucket);
-    }
+    int32_t ret = isCreation ? SubmitCacheForCreation(submitCacheUri, assetUri)
+                             : SubmitCacheForUpdate(submitCacheUri, isSetEffectMode);
     if (ret > 0 && isCreation) {
         SetNewFileAsset(ret, assetUri);
     }
-    cacheFileName_.clear();
-    cacheMovingPhotoVideoName_.clear();
+    if (ret >= 0) {
+        cacheFileName_.clear();
+        cacheMovingPhotoVideoName_.clear();
+    }
     return ret;
 }
 
