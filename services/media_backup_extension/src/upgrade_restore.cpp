@@ -81,7 +81,6 @@ int32_t UpgradeRestore::Init(const std::string &backupRestoreDir, const std::str
         // gallery db may include both internal & external, set flag to differentiate, default false
         shouldIncludeSd_ = BackupFileUtils::ShouldIncludeSd(filePath_);
         backupDatabaseHelper_.Init(sceneCode_, shouldIncludeSd_, filePath_);
-        SetCloneParameterAndStopSync();
     } else {
         filePath_ = upgradeFilePath;
         galleryDbPath_ = backupRestoreDir + "/" + galleryAppName_ + "/ce/databases/gallery.db";
@@ -106,6 +105,7 @@ int32_t UpgradeRestore::Init(const std::string &backupRestoreDir, const std::str
         }
         backupDatabaseHelper_.AddDb(BackupDatabaseHelper::DbType::EXTERNAL, externalRdb_);
     }
+    SetCloneParameterAndStopSync();
     MEDIA_INFO_LOG("Shoud include Sd: %{public}d", static_cast<int32_t>(shouldIncludeSd_));
     return InitDbAndXml(photosPreferencesPath, isUpgrade);
 }
