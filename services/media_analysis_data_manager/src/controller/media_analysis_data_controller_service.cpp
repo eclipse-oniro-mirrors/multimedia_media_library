@@ -52,7 +52,7 @@
 #include "change_request_set_default_cover_uri_vo.h"
 #include "prepare_lcd_vo.h"
 #include "remove_cloud_lcd_vo.h"
- 
+// LCOV_EXCL_START
 namespace OHOS::Media::AnalysisData {
 using namespace std;
 bool MediaAnalysisDataControllerService::Accept(uint32_t code)
@@ -675,3 +675,4 @@ int32_t MediaAnalysisDataControllerService::RemoveCloudLcd(MessageParcel &data, 
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media::AnalysisData
+// LCOV_EXCL_STOP
