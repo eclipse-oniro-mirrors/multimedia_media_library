@@ -2100,6 +2100,13 @@ void CloneRestore::SetTimeInfo(const FileInfo &info, NativeRdb::ValuesBucket &va
     values.Put(PhotoColumn::PHOTO_DATE_YEAR, dateYear);
     values.Put(PhotoColumn::PHOTO_DATE_MONTH, dateMonth);
     values.Put(PhotoColumn::PHOTO_DATE_DAY, dateDay);
+
+    if (dateTaken != info.dateTaken || detailTime != info.detailTime) {
+        MEDIA_DEBUG_LOG("time info changed: dateTaken=%{public}" PRId64 "->%{public}" PRId64
+            ", detailTime=%{public}s->%{public}s, displayName=%{public}s",
+            info.dateTaken, dateTaken, info.detailTime.c_str(), detailTime.c_str(),
+            MediaFileUtils::DesensitizeName(info.displayName).c_str());
+    }
 }
 
 NativeRdb::ValuesBucket CloneRestore::GetInsertValue(const FileInfo &fileInfo, const string &newPath,
