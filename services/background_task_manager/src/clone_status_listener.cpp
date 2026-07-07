@@ -98,8 +98,6 @@ void CloneStatusListener::HandleDeathRecipient()
         std::lock_guard<std::mutex> lock(deathRecipientMutex_);
         backupSaRemoteObject_ = nullptr;
     }
-    bool retFlag = system::SetParameter(CLONE_FLAG, "0");
-    CHECK_AND_PRINT_LOG(retFlag, "Failed to set parameter cloneFlag, retFlag:%{public}d", retFlag);
     MEDIA_INFO_LOG("CloneStatusListener : End handle death recipient");
 }
  
