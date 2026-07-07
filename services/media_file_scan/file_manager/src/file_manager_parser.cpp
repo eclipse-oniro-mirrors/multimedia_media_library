@@ -139,9 +139,11 @@ FileUpdateType FileManagerParser::GetTrashAssetUpdateType()
 void FileManagerParser::SetSubtypeFromMetadata(std::unique_ptr<Metadata> &data)
 {
     // FileManager 对 subtype 不做限制，保留所有类型
-    if (fileInfo_.subtype != static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
-        fileInfo_.subtype = data->GetPhotoSubType();
+    if (MovingPhotoFileUtils::IsLivePhoto(data->GetFilePath())) {
+        fileInfo_.subtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
+        return;
     }
+    fileInfo_.subtype = data->GetPhotoSubType();
 }
 
 void FileManagerParser::HandleTrashedLocalAndCloudAsset(NativeRdb::AbsRdbPredicates &predicates)
