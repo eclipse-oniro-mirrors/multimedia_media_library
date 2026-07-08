@@ -479,7 +479,8 @@ int32_t DfxReporter::ReportCloudSyncThumbGenerationStatus(const int32_t& downloa
     int64_t now = MediaFileUtils::UTCTimeSeconds();
     int64_t cost = now - start;
     time_t startTime = start + ONE_HOUR * 8;
-    std::string astcStartTime = asctime(gmtime(&startTime));
+    struct tm *tmPtr = gmtime(&startTime);
+    std::string astcStartTime = tmPtr != nullptr ? asctime(tmPtr) : "";
     float total = static_cast<float>(totalDownload);
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
