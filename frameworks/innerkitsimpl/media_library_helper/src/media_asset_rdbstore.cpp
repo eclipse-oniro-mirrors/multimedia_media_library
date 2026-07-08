@@ -167,6 +167,7 @@ int32_t MediaAssetRdbStore::TryGetRdbStore(bool isIgnoreSELinux)
     config.SetArea(context->GetArea());
     config.SetSecurityLevel(SecurityLevel::S3);
     config.SetRoleType(RoleType::VISITOR);
+    config.SetReadOnly(true);
     config.SetScalarFunction("cloud_sync_func", 0, CloudSyncTriggerFunc);
     config.SetScalarFunction("is_caller_self_func", 0, IsCallerSelfFunc);
     config.SetScalarFunction("photo_album_notify_func", ARG_COUNT, PhotoAlbumNotifyFunc);
