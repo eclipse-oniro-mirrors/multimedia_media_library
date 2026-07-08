@@ -2675,6 +2675,8 @@ int32_t DoMoveFilesByPath(const std::vector<FileAssetsInfo> &moveAssetInfos, std
         if (handle != nullptr) {
             handle->targetPath_ = localTargetPath;
         }
+        CHECK_AND_RETURN_RET_LOG(all_of(dto.targetAlbumId.begin(), dto.targetAlbumId.end(), ::isdigit),
+            E_INVALID_PARAM, "albumId is not digit.");
         updateInfo.fileId = info.fileId;
         updateInfo.fileSourceType = info.fileSourceType;
         updateInfo.ownerAlbumId = std::stoi(dto.targetAlbumId.c_str());
