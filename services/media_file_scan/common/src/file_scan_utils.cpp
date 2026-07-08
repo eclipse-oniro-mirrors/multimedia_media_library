@@ -261,9 +261,6 @@ void FileScanUtils::SetBurstKey(InnerFileInfo &fileInfo)
 int32_t FileScanUtils::FindSubtype(const InnerFileInfo &fileInfo)
 {
     CHECK_AND_RETURN_RET(fileInfo.burstKey.size() <= 0, static_cast<int32_t>(PhotoSubType::BURST));
-    if (MovingPhotoFileUtils::IsLivePhoto(fileInfo.filePath)) {
-        return static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
-    }
     return static_cast<int32_t>(PhotoSubType::DEFAULT);
 }
 
