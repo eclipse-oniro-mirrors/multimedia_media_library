@@ -824,14 +824,29 @@ int32_t MediaAssetsService::CancelPhotoUriPermissionInner(
     return errCode;
 }
 
-static bool IsSupportHighResolution(const string& bundleName)
+static bool IsSupportHighResolution(const string& bundleName, const uint64_t tokenId)
 {
     CompatibleInfo compatibleInfo;
     TranscodeCompatibleInfoOperation::QueryCompatibleInfo(bundleName, compatibleInfo);
-    if (compatibleInfo.highResolution == 1) {
+    if (compatibleInfo.highResolution != -1) {
+        return compatibleInfo.highResolution;
+    }
+    if(PermissionUtils::IsSystemAppByCache(tokenId)) {
         return true;
     }
-    return false;
+    return HeifTranscodingCheckUtils::CanSupportedHighPixelPicture(bundleName, tokenId);
+}
+
+static bool IsSupportHeif(const string& bundleName)
+{
+    CompatibleInfo compatibleInfo;
+    TranscodeCompatibleInfoOperation::QueryCompatibleInfo(bundleName, compatibleInfo);
+    auto mimeTypes = compatibleInfo.encodings;
+    if (find(mimeTypes.begin(), mimeTypes.end(), HEIF_MIME_TYPE) != mimeTypes.end() ||
+        find(mimeTypes.begin(), mimeTypes.end(), HEIC_MIME_TYPE) != mimeTypes.end()) {
+        return true;
+    }
+    return !HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(bundleName);
 }
 
 int32_t MediaAssetsService::GetPhotoUriPersistPermission(uint32_t tokenId,
@@ -867,11 +882,12 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(Get
 
     string clientBundle;
     MediaLibraryBundleManager::GetInstance()->GetBundleNameByTokenId(dto.tokenId, clientBundle);
-    if (!dto.columns.empty() && !PermissionUtils::IsSystemAppByCache(dto.tokenId) &&
-        !HeifTranscodingCheckUtils::CanSupportedHighPixelPicture(clientBundle, HighPixelType::PIXEL_200) &&
-        !IsSupportHighResolution(clientBundle)) {
-        MEDIA_INFO_LOG("CanSupportedHighPixelPicture");
+    if (!dto.columns.empty() &&
+        (!IsSupportHighResolution(clientBundle, dto.tokenId) ||
+        !IsSupportHeif(clientBundle))) {
+        MEDIA_INFO_LOG("need do transcode");
         dto.columns.push_back(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
+        dto.columns.push_back(PhotoColumn::PHOTO_TRANSCODE_TIME);
     }
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, dto.columns);
     CHECK_AND_RETURN_RET_LOG(resultSet, nullptr, "Failed to query assets");

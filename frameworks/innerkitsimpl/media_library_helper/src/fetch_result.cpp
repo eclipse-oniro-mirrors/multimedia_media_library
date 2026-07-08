@@ -507,6 +507,24 @@ void FetchResult<T>::SetAssetUri(FileAsset *fileAsset)
     fileAsset->SetUri(move(uri));
 }
 
+static void SetTranscodeInfo(FileAsset *fileAsset, vector<string> &columnNames)
+{
+    auto transcodeTime =  fileAsset->GetTransCodeTime();
+    if (transcodeTime != 0) {
+        std::string displayName = fileAsset->GetDisplayName();
+        std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
+        if (!title.empty()) {
+            fileAsset->SetDisplayName(title + ".jpg");
+        }
+
+        std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
+            fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
+        fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
+        fileAsset->SetMimeType("image/jpeg");
+        fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
+    }
+}
+
 template<class T>
 void FetchResult<T>::SetFileAsset(FileAsset *fileAsset, shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
@@ -547,6 +565,7 @@ void FetchResult<T>::SetFileAsset(FileAsset *fileAsset, shared_ptr<NativeRdb::Re
         fileAsset->SetCount(count);
     }
     SetAssetUri(fileAsset);
+    SetTranscodeInfo(fileAsset, columnNames);
 }
 
 template<class T>

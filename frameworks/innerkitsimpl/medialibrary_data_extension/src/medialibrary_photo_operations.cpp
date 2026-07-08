@@ -812,7 +812,7 @@ int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string
     GetType(uri, type);
     MEDIA_DEBUG_LOG("After spliting, uri is %{public}s, type is %{public}d", uri.c_str(), type);
     bool noNeedWatchNotify = cmd.GetQuerySetParam(CONST_MEDIA_WHETHER_NEED_WATCH_NOTIFY) == CONST_NO_NEED_WATCH_NOTIFY;
-    int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(fileAsset, mode, isHeif);
+    int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(fileAsset, mode, isHeif, uriString);
     int32_t ret = E_ERR;
     if (uriString.find(PhotoColumn::PHOTO_URI_PREFIX) != string::npos) {
         ret = OpenAsset(fileAsset, mode, MediaLibraryApi::API_10, isMovingPhotoVideo, type, noNeedWatchNotify);

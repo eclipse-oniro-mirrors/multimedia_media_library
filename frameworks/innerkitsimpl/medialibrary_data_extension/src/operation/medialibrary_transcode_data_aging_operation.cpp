@@ -262,8 +262,13 @@ static bool NeedTranscodeHighPixelPicture(int32_t width, int32_t height)
     return false;
 }
 
+static bool IsUriTranscoded(const std::string &realUri, const std::string &inputUri)
+{
+    return MediaFileUtils::GetExtensionFromPath(realUri) != MediaFileUtils::GetExtensionFromPath(inputUri);
+}
+
 int32_t MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(std::shared_ptr<FileAsset> &fileAsset,
-    const std::string &mode, const bool isHeif)
+    const std::string &mode, const bool isHeif, const string &inputUri)
 {
     CHECK_AND_RETURN_RET_INFO_LOG(IPCSkeleton::GetCallingUid() != SHARE_UID, E_INNER_FAIL, "share support heif");
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INNER_FAIL, "fileAsset is nullptr");
@@ -284,7 +289,13 @@ int32_t MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(std:
         "Get edit data dir path failed, fileAsset uri: %{public}s", fileAsset->GetUri().c_str());
     string newPath = path + "/transcode.jpg";
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists((newPath)), E_INNER_FAIL, "transcode.jpg is not exist");
-
+    
+    if (IsUriTranscoded(fileAsset->GetUri(), inputUri)) {
+        MEDIA_INFO_LOG("fileAsset uri is transcoded, fileAsset uri: %{public}s", inputUri.c_str());
+        fileAsset->SetPath(newPath);
+        return E_OK;
+    }
+    
     auto transcodeMode = HeifTranscodingCheckUtils::CheckTranscodeMode(clientBundle, isHighPixel, isHeifType);
     CHECK_AND_RETURN_RET_INFO_LOG(transcodeMode != TranscodeMode::CURRENT,
         E_INNER_FAIL, "CheckTranscodeMode is CURRENT, bundleName: %{public}s", clientBundle.c_str());

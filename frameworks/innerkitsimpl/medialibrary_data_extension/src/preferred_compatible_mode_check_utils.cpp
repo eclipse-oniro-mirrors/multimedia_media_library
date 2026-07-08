@@ -69,5 +69,26 @@ TranscodeMode PreferredCompatibleModeCheckUtils::CheckTranscodeMode(
     MEDIA_INFO_LOG("[transcode] encodings is not set, continue");
     return transcodeMode;
 }
+
+bool PreferredCompatibleModeCheckUtils::IsHighPixelPicture(int32_t width, int32_t height)
+{
+    return static_cast<int64_t>(width) * static_cast<int64_t>(height) >= HIGH_PIXEL_START_SIZE;
+}
+
+bool PreferredCompatibleModeCheckUtils::GetDesireSize(int32_t &width, int32_t &height)
+{
+    if (width <= 0 || height <= 0) {
+        return false;
+    }
+    while (IsHighPixelPicture(width, height)) {
+        width /= HIGH_PIXEL_SCALE;
+        height /= HIGH_PIXEL_SCALE;
+    }
+    if (static_cast<int64_t>(width) * static_cast<int64_t>(height) > HIGH_PIXEL_STOP_SIZE) {
+        width = static_cast<int32_t>(width / HIGH_PIXEL_RESIZE_SCALE);
+        height = static_cast<int32_t>(height / HIGH_PIXEL_RESIZE_SCALE);
+    }
+    return true;
+}
 } // namespace Media
 } // namespace OHOS

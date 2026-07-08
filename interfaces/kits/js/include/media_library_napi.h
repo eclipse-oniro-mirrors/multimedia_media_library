@@ -478,6 +478,7 @@ private:
     EXPORT static napi_value PhotoAccessReleaseDebugDatabase(napi_env env, napi_callback_info info);
     EXPORT static napi_value CanPerformDeepOptimizeSpace(napi_env env, napi_callback_info info);
     EXPORT static napi_value GetDeepOptimizeSpace(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessTransAssetToCompatibleAsset(napi_env env, napi_callback_info info);
 
     int32_t GetListenerType(const std::string &str) const;
     void RegisterChange(napi_env env, const std::string &type, ChangeListenerNapi &listObj);
