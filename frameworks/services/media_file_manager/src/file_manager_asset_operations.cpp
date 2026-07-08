@@ -95,7 +95,7 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(
         DfxUtils::GetSafePath(destPath).c_str());
     int64_t originalDataModified = 0;
     bool isDateModifiedValid = MediaFileUtils::GetDateModified(srcPath, originalDataModified);
-    std::string parentDir = destPath.substr(0, destPath.find_last_of('/'));
+    std::string parentDir = MediaFileUtils::GetParentPath(destPath);
     if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
             DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(destPath).c_str());
@@ -121,7 +121,7 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(const PhotosPo &photoIn
         return E_ERR;
     }
     string filePath = photoInfo.data.value_or("");
-    std::string parentDir = filePath.substr(0, filePath.find_last_of('/'));
+    std::string parentDir = MediaFileUtils::GetParentPath(filePath);
     if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
             DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(filePath).c_str());
@@ -152,7 +152,7 @@ int32_t FileManagerAssetOperations::MoveFileManagerAsset(const PhotosPo &photoIn
         return E_ERR;
     }
     string filePath = photoInfo.data.value_or("");
-    std::string parentDir = filePath.substr(0, filePath.find_last_of('/'));
+    std::string parentDir = MediaFileUtils::GetParentPath(filePath);
     if (!MediaFileUtils::IsFileExists(parentDir) && !MediaFileUtils::CreateDirectory(parentDir)) {
         MEDIA_ERR_LOG("create dir %{private}s error, the file path is %{public}s",
             DfxUtils::GetSafePath(parentDir).c_str(), DfxUtils::GetSafePath(filePath).c_str());

@@ -297,7 +297,11 @@ int32_t MediaAssetsService::AssetChangeSetDisplayNameByFile(const std::string &u
     cmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
     int32_t ret = MediaLibraryPhotoOperations::UpdateFileAsset(cmd, true);
     CHECK_AND_RETURN_RET_LOG(ret >= 0, ret, "MediaLibraryPhotoOperations::UpdateFileAsset failed");
-    return UpdateExistedTasksTitle(stoi(fileId));
+    if (!MediaLibraryDataManagerUtils::IsNumber(fileId)) {
+        MEDIA_ERR_LOG("fileId is not a number, fileId: %{public}s", fileId.c_str());
+        return E_ERR;
+    }
+    return UpdateExistedTasksTitle(atoi(fileId.c_str()));
 }
 
 int32_t MediaAssetsService::AssetChangeSetUserComment(const int32_t fileId, const std::string &userComment)

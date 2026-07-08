@@ -23,6 +23,7 @@
 #include <thread>
 #include <sys/stat.h>
 
+#include "directory_ex.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -110,7 +111,13 @@ static nlohmann::json LoadJsonFile(const std::string &jsonPath, bool &isLoad)
         jsonPath == DUE_INSTALL_DIR + MEDIA_KIT_WHITE_LIST_NAME);
     CHECK_AND_RETURN_RET_LOG(isJsonPathValid, {}, "invalid whitelist json path");
 
-    std::ifstream jFile(jsonPath);
+    std::string absJsonPath;
+    CHECK_AND_RETURN_RET_LOG(PathToRealPath(jsonPath, absJsonPath), {},
+        "failed to get real path: %{public}s", MediaFileUtils::DesensitizePath(jsonPath).c_str());
+    CHECK_AND_RETURN_RET_LOG(!absJsonPath.empty(), {}, "real path is empty: %{public}s",
+        MediaFileUtils::DesensitizePath(jsonPath).c_str());
+
+    std::ifstream jFile(absJsonPath);
     CHECK_AND_RETURN_RET_LOG(jFile.is_open(), {}, "Failed to open file, Error: %{public}s", std::strerror(errno));
 
     std::stringstream buffer;
@@ -174,6 +181,8 @@ int32_t PermissionWhitelistUtils::LoadWhiteList()
 int32_t PermissionWhitelistUtils::ParseWhiteList(const nlohmann::json &higherVerFile)
 {
     std::unordered_map<std::string, int> tmpWhiteList;
+    CHECK_AND_RETURN_RET_LOG(higherVerFile.contains(LIST_APPLICATIONS),
+        E_FAIL, "Missing %{public}s in whiteList config", LIST_APPLICATIONS.c_str());
     for (const auto &app : higherVerFile[LIST_APPLICATIONS]) {
         CHECK_AND_CONTINUE_ERR_LOG((app.contains(LIST_APPIDENTIFIER) && app.contains(LIST_ALLOW_API_VERSION)),
             "Missing appIdentifier or allowedApiVersion");

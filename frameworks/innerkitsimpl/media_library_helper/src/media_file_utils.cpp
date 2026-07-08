@@ -632,6 +632,17 @@ static int32_t CheckFilePathAndGetFd(const string &filePath)
     return open(absFilePath.c_str(), O_RDONLY);
 }
 
+static int32_t CheckDestPathAndGetFd(const string &destPath)
+{
+    auto normalizedPath = std::filesystem::absolute(destPath).lexically_normal();
+    if (normalizedPath.empty()) {
+        MEDIA_ERR_LOG("Failed to normalize dest path:%{public}s",
+            MediaFileUtils::DesensitizePath(destPath).c_str());
+        return -1;
+    }
+    return open(normalizedPath.c_str(), O_WRONLY | O_CREAT, CHOWN_RO_USR_GRP);
+}
+
 bool MediaFileUtils::CheckCancelCopy(const std::string &requestId)
 {
     std::lock_guard<std::mutex> lock(cancelMutex_);
@@ -651,7 +662,7 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
     int32_t errCode = E_INNER_FAIL;
     int32_t source = CheckFilePathAndGetFd(filePath);
     CHECK_AND_RETURN_RET_LOG(source != -1, errCode, "Open failed:%{public}d", errno);
-    int32_t dest = open(newPath.c_str(), O_WRONLY | O_CREAT, CHOWN_RO_USR_GRP);
+    int32_t dest = CheckDestPathAndGetFd(newPath);
     if (dest == -1) {
         MEDIA_ERR_LOG("Open failed for destination file %{public}d", errno);
         close(source);
@@ -676,11 +687,9 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
             }
             size -= static_cast<int64_t>(sent);
             if (progressCallback) {
-                progressCallback(sent);
+                progressCallback(static_cast<uint64_t>(sent));
             }
-            if (sent == 0) {
-                break;
-            }
+            CHECK_AND_BREAK(sent != 0);
         }
 
         if (size == 0) {

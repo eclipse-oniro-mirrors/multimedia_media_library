@@ -194,10 +194,9 @@ void CloneToAlbumCallbackNapi::TriggerSizeProgressCallback(uint64_t processedSiz
 {
     MediaLibraryTracer tracer;
     tracer.Start("TriggerSizeProgressCallback");
-    napi_handle_scope scope = nullptr;
-    napi_status status = napi_open_handle_scope(env_, &scope);
-    if (status != napi_ok || scope == nullptr) {
-        MEDIA_ERR_LOG("Failed to open handle scope, status: %{public}d.", status);
+    NapiScopeHandler scopeHandler(env_);
+    if (!scopeHandler.IsValid()) {
+        MEDIA_ERR_LOG("Failed to open handle scope.");
         return;
     }
 
@@ -230,21 +229,15 @@ void CloneToAlbumCallbackNapi::TriggerSizeProgressCallback(uint64_t processedSiz
     CHECK_ARGS_RET_VOID_WITH_MEG(env_,
         napi_call_function(env_, undefined, callback, 1, &progressObj, &returnVal), JS_E_INNER_FAIL,
             "Failed to call function.");
-
-    status = napi_close_handle_scope(env_, scope);
-    if (status != napi_ok) {
-        MEDIA_ERR_LOG("Failed to close scope, status: %{public}d.", status);
-    }
 }
 
 void CloneToAlbumCallbackNapi::TriggerCountProgressCallback(uint32_t processedCount, uint32_t totalCount)
 {
     MediaLibraryTracer tracer;
     tracer.Start("TriggerCountProgressCallback");
-    napi_handle_scope scope = nullptr;
-    napi_status status = napi_open_handle_scope(env_, &scope);
-    if (status != napi_ok || scope == nullptr) {
-        MEDIA_ERR_LOG("Failed to open handle scope, status: %{public}d.", status);
+    NapiScopeHandler scopeHandler(env_);
+    if (!scopeHandler.IsValid()) {
+        MEDIA_ERR_LOG("Failed to open handle scope.");
         return;
     }
 
@@ -277,11 +270,6 @@ void CloneToAlbumCallbackNapi::TriggerCountProgressCallback(uint32_t processedCo
     CHECK_ARGS_RET_VOID_WITH_MEG(env_,
         napi_call_function(env_, undefined, callback, 1, &progressObj, &returnVal), JS_E_INNER_FAIL,
             "Failed to call function.");
-
-    status = napi_close_handle_scope(env_, scope);
-    if (status != napi_ok) {
-        MEDIA_ERR_LOG("Failed to close scope, status: %{public}d.", status);
-    }
 }
 
 void CloneToAlbumCallbackNapi::TriggerResultListenerCallback(int32_t code,
@@ -289,10 +277,9 @@ void CloneToAlbumCallbackNapi::TriggerResultListenerCallback(int32_t code,
 {
     MediaLibraryTracer tracer;
     tracer.Start("TriggerResultListenerCallback");
-    napi_handle_scope scope = nullptr;
-    napi_status status = napi_open_handle_scope(env_, &scope);
-    if (status != napi_ok || scope == nullptr) {
-        MEDIA_ERR_LOG("Failed to open handle scope, status: %{public}d.", status);
+    NapiScopeHandler scopeHandler(env_);
+    if (!scopeHandler.IsValid()) {
+        MEDIA_ERR_LOG("Failed to open handle scope.");
         return;
     }
 
@@ -332,11 +319,6 @@ void CloneToAlbumCallbackNapi::TriggerResultListenerCallback(int32_t code,
     CHECK_ARGS_RET_VOID_WITH_MEG(env_,
         napi_call_function(env_, undefined, callback, 1, &resultInfo, &returnVal), JS_E_INNER_FAIL,
         "Failed to call function.");
-
-    status = napi_close_handle_scope(env_, scope);
-    if (status != napi_ok) {
-        MEDIA_ERR_LOG("Failed to close scope, status: %{public}d.", status);
-    }
 }
 
 } // namespace Media
