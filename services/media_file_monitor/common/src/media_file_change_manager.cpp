@@ -16,11 +16,17 @@
 
 #define MLOG_TAG "FileChangeManager"
 
+#include <mutex>
+#include <chrono>
+#include <thread>
+
 #include "media_file_change_manager.h"
 #include "media_file_monitor_proxy_wrapper.h"
 #include "media_file_change_processor.h"
 
 namespace OHOS::Media {
+constexpr int32_t MAX_RETRY_COUNT = 3;
+constexpr int32_t RETRY_INTERVAL_MS = 500;
 
 constexpr uint64_t GetCareAboutMsgType()
 {
@@ -70,7 +76,18 @@ MediaFileChangeManager::~MediaFileChangeManager()
 
 std::shared_ptr<MediaFileChangeManager> MediaFileChangeManager::GetInstance()
 {
-    static auto instance = MediaFileChangeManager::Create();
+    static std::shared_ptr<MediaFileChangeManager> instance;
+    static std::once_flag flag;
+    std::call_once(flag, [&] {
+        for (int32_t retry = 0; retry < MAX_RETRY_COUNT; retry++) {
+            instance = MediaFileChangeManager::Create();
+            if (instance != nullptr) {
+                break;
+            }
+            MEDIA_WARN_LOG("MediaFileChangeManager init failed, retry: %{public}d", retry + 1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(RETRY_INTERVAL_MS));
+        }
+    });
     return instance;
 }
 
