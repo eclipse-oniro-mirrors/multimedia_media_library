@@ -193,11 +193,11 @@ int32_t CloneToAlbumService::QueryBurstAssetInfo(CloneAssetInfo &cloneAssetInfo,
         actualTotalSize += static_cast<uint64_t>(burstCloneAssetInfo.size);
         std::string editDataPath = MediaEditUtils::GetEditDataPath(burstCloneAssetInfo.filePath);
         if (stat(editDataPath.c_str(), &editStatInfo) == E_OK) {
-            actualTotalSize += editStatInfo.st_size;
+            actualTotalSize += static_cast<uint64_t>(editStatInfo.st_size);
         }
         std::string thumbnailPath = GetThumbnailPathFromOrignalPath(burstCloneAssetInfo.filePath);
         if (stat(thumbnailPath.c_str(), &thumStatInfo) == E_OK) {
-            actualTotalSize += thumStatInfo.st_size;
+            actualTotalSize += static_cast<uint64_t>(thumStatInfo.st_size);
         }
         displayTotalSize += static_cast<uint64_t>(burstCloneAssetInfo.size);
         burstCloneAssetInfo.albumId = cloneAssetInfo.albumId;
@@ -237,11 +237,11 @@ int32_t CloneToAlbumService::QueryAllAssetsInfo(const CloneToAlbumReqBody &reqBo
         displayTotalSize += static_cast<uint64_t>(info.size);
         std::string editDataPath = MediaEditUtils::GetEditDataPath(info.filePath);
         if (stat(editDataPath.c_str(), &editStatInfo) == E_OK) {
-            actualTotalSize += editStatInfo.st_size;
+            actualTotalSize += static_cast<uint64_t>(editStatInfo.st_size);
         }
         std::string thumbnailPath = GetThumbnailPathFromOrignalPath(info.filePath);
         if (stat(thumbnailPath.c_str(), &thumStatInfo) == E_OK) {
-            actualTotalSize += thumStatInfo.st_size;
+            actualTotalSize += static_cast<uint64_t>(thumStatInfo.st_size);
         }
         if (!info.burstKey.empty()) {
             ret = QueryBurstAssetInfo(info, displayTotalSize, actualTotalSize);

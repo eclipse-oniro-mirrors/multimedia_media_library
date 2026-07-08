@@ -104,7 +104,7 @@ bool CloneGroupPhotoAlbum::GetFileIdsByGroupTag(CloneGroupPhotoAlbum::GroupAlbum
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         info.fileIdVec.emplace_back(std::to_string(GetInt32Val(MediaColumn::MEDIA_ID, resultSet)));
     }
-    info.fileIdCount = info.fileIdVec.size();
+    info.fileIdCount = static_cast<int32_t>(info.fileIdVec.size());
     resultSet->Close();
     CHECK_AND_RETURN_RET_LOG(info.fileIdCount > 0, false, "mediaLibraryRdb do not find any fileId.");
     return true;
@@ -213,7 +213,7 @@ void CloneGroupPhotoAlbum::ModifyGroupVersion(const std::map<int32_t, std::vecto
     bool isFirst = true;
     for (const auto& album : groupPhotoMap) {
         string fileIds = BackupDatabaseUtils::JoinValues(album.second, ",");
-        currentBatchSize += album.second.size();
+        currentBatchSize += static_cast<int32_t>(album.second.size());
         if (!isFirst) {
             updateSql += ",";
         }
@@ -252,7 +252,7 @@ void CloneGroupPhotoAlbum::InsertAnalysisPhotoMap(const std::map<int32_t, std::v
         }
         sql += valueStr + ")";
         isFirst = false;
-        currentBatchSize += albumIdIt.second.size();
+        currentBatchSize += static_cast<int32_t>(albumIdIt.second.size());
         if (currentBatchSize >= BATCH_SIZE) {
             int32_t ret = BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, sql);
             CHECK_AND_RETURN_LOG(ret >= 0, "execute insert AnalysisPhotoMap failed, ret=%{public}d", ret);
@@ -348,7 +348,7 @@ void CloneGroupPhotoAlbum::RestoreGroupPhotoAlbum(const std::unordered_map<int32
             std::to_string(partOne).c_str(), std::to_string(shouldEndTime).c_str(), (partOne - start));
         result = GetGroupPhotoAlbumInfo(offset, retSize);
         offset = groupAlbumMaxId_;
-        count += result.size();
+        count += static_cast<int32_t>(result.size());
         firstBatch = false;
         CHECK_AND_CONTINUE_ERR_LOG(result.size() != 0, "Query resultSql is null.");
         std::vector<NativeRdb::ValuesBucket> values;
