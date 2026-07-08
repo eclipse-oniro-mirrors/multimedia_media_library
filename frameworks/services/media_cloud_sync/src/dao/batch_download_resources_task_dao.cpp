@@ -34,6 +34,7 @@
 #include "medialibrary_errno.h"
 #include "rdb_predicates.h"
 #include "cloud_media_common.h"
+#include "medialibrary_rdb_transaction.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -116,29 +117,36 @@ int32_t BatchDownloadResourcesTaskDao::BatchInsert(int64_t &insertCount, const s
     int32_t ret = NativeRdb::E_OK;
     insertCount = 0;
     uint32_t tryCount = 0;
-    if (initialBatchValues.size() == 0) {
-        return ret;
-    }
+    CHECK_AND_RETURN_RET(initialBatchValues.size() != 0, ret);
     while (tryCount < TRY_TIMES) {
-        for (auto val = initialBatchValues.begin(); val != initialBatchValues.end();) {
-            {
-                int64_t rowId = 0;
-                ret = rdbStore->Insert(rowId, table, *val);
-                MEDIA_DEBUG_LOG("batch insert RowId %{public}" PRId64, rowId);
-            }
+        TransactionOperations transaction("BatchDownloadResourcesTaskDao::BatchInsert");
+        ret = transaction.Start();
+        if (ret != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("batch insert failed to start transaction, ret = %{public}d", ret);
+            tryCount++;
+            continue;
+        }
+        int64_t batchInsertCount = 0;
+        ret = transaction.BatchInsert(batchInsertCount, table, initialBatchValues);
+        if (ret == NativeRdb::E_OK) {
+            ret = transaction.Commit();
             if (ret == NativeRdb::E_OK) {
-                succeedValues.push_back(*val);
-                val = initialBatchValues.erase(val);
-                insertCount++;
+                insertCount += batchInsertCount;
+                succeedValues.insert(succeedValues.end(), initialBatchValues.begin(), initialBatchValues.end());
+                initialBatchValues.clear();
+                break;
             } else {
-                val++;
+                MEDIA_ERR_LOG("batch insert failed to commit transaction, ret = %{public}d, rollback and retry", ret);
+                transaction.Rollback();
+                tryCount++;
             }
+        } else {
+            MEDIA_ERR_LOG("batch insert failed, ret = %{public}d, retry time is tryCount %{public}d", ret, tryCount);
+            transaction.Rollback();
+            tryCount++;
         }
         if (initialBatchValues.empty()) {
             break;
-        } else {
-            MEDIA_INFO_LOG("batch insert fail try next time, retry time is tryCount %{public}d", tryCount);
-            tryCount++;
         }
     }
     if (!initialBatchValues.empty()) {
