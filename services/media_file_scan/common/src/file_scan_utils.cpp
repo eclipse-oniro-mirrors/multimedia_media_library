@@ -386,11 +386,7 @@ bool FileScanUtils::CoverLakeFile(const string &filePath, const string &newPath)
     if (fstat(source, &fst) == E_SUCCESS) {
         // Copy file content
         if (sendfile(dest, source, nullptr, fst.st_size) != E_ERR) {
-            // Copy ownership and mode of source file
-            if (fchown(dest, fst.st_uid, fst.st_gid) == E_SUCCESS &&
-                fchmod(dest, fst.st_mode) == E_SUCCESS) {
-                errCode = true;
-            }
+            errCode = true;
         }
     }
 
