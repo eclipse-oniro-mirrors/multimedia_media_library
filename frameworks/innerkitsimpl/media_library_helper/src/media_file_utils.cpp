@@ -62,7 +62,6 @@ using namespace std;
 // LCOV_EXCL_START
 namespace OHOS::Media {
 static const mode_t CHOWN_RWX_USR_GRP = 02771;
-static const mode_t CHOWN_RW_USR_GRP = 0660;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
 constexpr size_t DISPLAYNAME_MAX = 255;
 constexpr int32_t HAS_APPLINK_MIN = 0;
@@ -427,16 +426,8 @@ bool MediaFileUtils::CreateFile(const string &filePath)
         MEDIA_ERR_LOG("Output file path could not be created");
         return state;
     }
-
-    if (chmod(normalizedDstPath.c_str(), CHOWN_RW_USR_GRP) == E_SUCCESS) {
-        state = true;
-    } else {
-        MEDIA_ERR_LOG("Failed to change permissions, error: %{public}d", errno);
-    }
-
     file.close();
-
-    return state;
+    return true;
 }
 
 bool MediaFileUtils::DeleteFile(const string &fileName)
@@ -669,7 +660,7 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
     if (fstat(source, &fst) == E_SUCCESS) {
         off_t offset = 0;
         int64_t size = static_cast<int64_t>(fst.st_size);
-        size_t sent = 0;
+        ssize_t sent = 0;
         while (size >= 0) {
             sent = sendfile(dest, source, &offset, BUFFER_SIZE);
             if (sent == -1) {
@@ -693,11 +684,7 @@ int32_t MediaFileUtils::SegmentedCopyFileUtile(const string &filePath, const str
         }
 
         if (size == 0) {
-            // Copy ownership and mode of source file
-            if (fchown(dest, fst.st_uid, fst.st_gid) == E_SUCCESS &&
-                fchmod(dest, fst.st_mode) == E_SUCCESS) {
-                errCode = E_OK;
-            }
+            errCode = E_OK;
         }
     }
     close(source);
@@ -762,10 +749,7 @@ bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath)
         "Failed to copy content by sendfile");
 
     if (copied == total_size) {
-        if (fchown(destFd.Get(), fst.st_uid, fst.st_gid) == E_SUCCESS &&
-            fchmod(destFd.Get(), fst.st_mode) == E_SUCCESS) {
-            errCode = true;
-        }
+        errCode = true;
     }
 
     return errCode;
@@ -873,10 +857,7 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
     bool errCode = false;
     struct stat fst{};
     if (fstat(srcFd.Get(), &fst) == E_SUCCESS) {
-        // Copy ownership and mode of source file
-        if (fchown(dstFd.Get(), fst.st_uid, fst.st_gid) == E_SUCCESS && fchmod(dstFd.Get(), fst.st_mode) == E_SUCCESS) {
-            errCode = true;
-        }
+        errCode = true;
     }
 
     return errCode;
