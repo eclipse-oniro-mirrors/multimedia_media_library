@@ -3110,6 +3110,8 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::ATTACHMENT_SIZE,
         PhotoColumn::PHOTO_LCD_FILE_SIZE,
         PhotoColumn::PHOTO_THUMB_STATUS,
+        PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
+        PhotoColumn::PHOTO_TRANSCODE_TIME,
     };
 
     if (MediaLibraryNapiUtils::IsSystemApp()) {

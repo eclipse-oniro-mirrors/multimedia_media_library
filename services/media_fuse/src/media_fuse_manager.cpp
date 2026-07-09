@@ -574,7 +574,8 @@ static bool IsUriTranscoded(const string &realUri, const string &inputUri)
 static int32_t GetTranscodeUri(string &filePath, const string &mode,
     const int uid, TranscodeType& transcodeType, const string &uri)
 {
-    string fileId = MediaFileUtils::GetIdFromUri(filePath);
+    string fileId;
+    GetFileIdFromUri(fileId, uri);
     string bundleName;
     PermissionUtils::GetClientBundle(uid, bundleName);
     CHECK_AND_RETURN_RET_LOG(mode == MEDIA_FILEMODE_READONLY, E_INNER_FAIL,
@@ -595,9 +596,10 @@ static int32_t GetTranscodeUri(string &filePath, const string &mode,
     string tempPath = path + "/transcode.jpg";
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists((tempPath)), E_INNER_FAIL, "transcode.jpg is not exist");
 
-    if (IsUriTranscoded(tempPath, uri)) {
+    if (IsUriTranscoded(filePath, uri)) {
         MEDIA_INFO_LOG("fileAsset uri is transcoded, fileAsset uri: %{public}s", uri.c_str());
         filePath = tempPath;
+        SetTranscodeType(isHighPixel, isHeif, transcodeType);
         return E_OK;
     }
 

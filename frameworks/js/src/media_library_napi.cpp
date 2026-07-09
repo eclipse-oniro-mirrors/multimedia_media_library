@@ -17959,12 +17959,12 @@ napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env
         napi_get_element(env, argv[PARAM0], i, &element);
         napi_valuetype valueType = napi_undefined;
         CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, element, &valueType) == napi_ok
-            && valueType == napi_object, JS_E_PARAM_INVALID, "asset must be an object");
+            && valueType == napi_object, JS_E_INNER_FAIL, "asset must be an object");
         FileAssetNapi *obj = nullptr;
         CHECK_COND_WITH_ERR_MESSAGE(env, napi_unwrap(env, element, reinterpret_cast<void **>(&obj)) == napi_ok
-            && obj != nullptr, JS_E_PARAM_INVALID, "Failed to get asset napi object");
+            && obj != nullptr, JS_E_INNER_FAIL, "Failed to get asset napi object");
         auto fileAsset = obj->GetFileAssetInstance();
-        CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID, "FileAsset instance is null");
+        CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_INNER_FAIL, "FileAsset instance is null");
 
         // 5. Modify FileAsset in place to compatible (jpg) mode
         DoTransAssetSingleExecute(fileAsset);
