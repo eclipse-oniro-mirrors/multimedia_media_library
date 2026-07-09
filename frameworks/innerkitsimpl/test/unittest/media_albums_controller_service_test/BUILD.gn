@@ -198,7 +198,6 @@ ohos_unittest("media_albums_controller_service_test") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
-    "napi:ace_napi",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
     "relational_store:native_dataability",

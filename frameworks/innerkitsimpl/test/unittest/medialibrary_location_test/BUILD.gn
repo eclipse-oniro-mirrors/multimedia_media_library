@@ -58,7 +58,6 @@ ohos_unittest("medialibrary_location_unittest") {
     "i18n:intl_util",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
   ]
 

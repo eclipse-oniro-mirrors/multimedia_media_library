@@ -61,7 +61,6 @@ ohos_unittest("media_library_related_system_state_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "preferences:native_preferences",
     "relational_store:native_rdb",

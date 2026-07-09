@@ -82,7 +82,6 @@ ohos_unittest("media_clean_all_dirty_files_task_test") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "preferences:native_preferences",
     "relational_store:native_rdb",

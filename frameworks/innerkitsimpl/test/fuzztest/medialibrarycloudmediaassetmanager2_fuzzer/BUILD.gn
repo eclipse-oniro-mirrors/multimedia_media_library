@@ -59,7 +59,6 @@ ohos_fuzztest("MediaLibraryCloudMediaAssetManager2FuzzTest") {
     "image_framework:image_native",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "preferences:native_preferences",
     "relational_store:native_rdb",

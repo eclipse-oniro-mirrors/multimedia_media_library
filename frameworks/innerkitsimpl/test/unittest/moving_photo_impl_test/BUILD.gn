@@ -88,7 +88,6 @@ ohos_unittest("moving_photo_impl_test") {
     "image_framework:ohimage",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
     "relational_store:native_rdb",

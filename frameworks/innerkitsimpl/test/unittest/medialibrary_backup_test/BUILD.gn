@@ -182,7 +182,6 @@ ohos_unittest("medialibrary_backup_test") {
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
     "player_framework:media_client",

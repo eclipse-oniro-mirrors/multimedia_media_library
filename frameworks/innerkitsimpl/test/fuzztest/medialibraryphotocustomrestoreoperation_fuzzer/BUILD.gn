@@ -84,7 +84,6 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",

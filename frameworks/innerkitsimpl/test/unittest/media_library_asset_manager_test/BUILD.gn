@@ -99,7 +99,6 @@ ohos_unittest("media_library_asset_manager_test") {
     "image_framework:image_native",
     "image_framework:image",
     "ipc:ipc_core",
-    "napi:ace_napi",
     "relational_store:native_appdatafwk",
     "relational_store:native_dataability",
     "relational_store:native_rdb",

@@ -80,7 +80,6 @@ ohos_fuzztest("MediaLibraryPermissionFuzzTest") {
     "ipc:ipc_single",
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

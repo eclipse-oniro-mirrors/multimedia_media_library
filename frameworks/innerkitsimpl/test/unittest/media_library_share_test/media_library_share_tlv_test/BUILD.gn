@@ -80,7 +80,6 @@ ohos_unittest("media_library_share_tlv_test") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "player_framework:media_client",
     "preferences:native_preferences",

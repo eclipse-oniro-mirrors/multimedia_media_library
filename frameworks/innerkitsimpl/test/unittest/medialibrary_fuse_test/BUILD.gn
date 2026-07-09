@@ -86,7 +86,6 @@ ohos_unittest("medialibrary_fuse_test") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "libfuse:libfuse",
-    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "relational_store:native_appdatafwk",
     "relational_store:native_rdb",

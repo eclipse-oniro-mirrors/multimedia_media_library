@@ -69,7 +69,6 @@ ohos_unittest("media_library_camera_service_test") {
     "ipc:ipc_single",
     "graphic_surface:surface",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "googletest:gtest_main",
     "googletest:gmock_main",

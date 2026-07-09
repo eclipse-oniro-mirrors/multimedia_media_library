@@ -160,7 +160,6 @@ ohos_unittest("media_lake_load_test") {
     "libexif:libexif",
     "libfuse:libfuse",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
     "player_framework:media_client",

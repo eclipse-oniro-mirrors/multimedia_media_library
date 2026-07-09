@@ -182,8 +182,10 @@ ohos_shared_library("mediabackup") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "libxml2:libxml2",
+    "libuv:uv",
     "media_foundation:media_foundation",
     "napi:ace_napi",
+    "node:node_header_notice",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
     "player_framework:media_client",

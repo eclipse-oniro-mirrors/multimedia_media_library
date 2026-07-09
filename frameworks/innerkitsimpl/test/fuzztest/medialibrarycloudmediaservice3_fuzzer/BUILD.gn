@@ -59,7 +59,6 @@ ohos_fuzztest("MediaLibraryCloudMediaService3FuzzTest") {
     "image_framework:image_native",
     "ipc:ipc_napi",
     "ipc:ipc_single",
-    "napi:ace_napi",
     "os_account:os_account_innerkits",
     "preferences:native_preferences",
     "relational_store:native_rdb",

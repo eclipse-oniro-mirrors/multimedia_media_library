@@ -85,7 +85,6 @@ ohos_unittest("media_permission_unittest") {
     "hisysevent:libhisysevent",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

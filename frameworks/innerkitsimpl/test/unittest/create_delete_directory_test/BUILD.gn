@@ -69,7 +69,6 @@ ohos_unittest("create_delete_directory_test") {
     "init:libbegetutil",
     "ipc:ipc_core",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]

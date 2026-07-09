@@ -84,6 +84,7 @@ ohos_shared_library("native_media_asset_manager") {
     "hilog:libhilog",
     "image_framework:ohimage",
     "napi:ace_napi",
+    "node:node_header_notice",
     "resource_management:librawfile",
     "ipc:ipc_core",
     "ipc:ipc_single",

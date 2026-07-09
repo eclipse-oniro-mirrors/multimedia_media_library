@@ -134,7 +134,6 @@ ohos_unittest("media_analysis_data_service_test") {
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_dataability",
     "relational_store:native_rdb",
