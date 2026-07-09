@@ -129,6 +129,7 @@ private:
     static std::future<bool> subscribeAsyncTask_;
     static std::mutex subscribeLock_;
     static std::mutex subscribeAsyncTaskLock_;
+    static std::shared_mutex backgroundTaskMutex_;
 
     DelayTask backgroundDelayTask_{"backgroundTask"};
     DelayTask thumbnailBgDelayTask_{"thumbnailBgTask"};
