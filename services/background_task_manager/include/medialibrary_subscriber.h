@@ -18,6 +18,7 @@
 #include <atomic>
 #include <future>
 #include <thread>
+#include <shared_mutex>
 
 #include "common_event_manager.h"
 #include "common_event_subscribe_info.h"
