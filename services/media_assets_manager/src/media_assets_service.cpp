@@ -831,7 +831,7 @@ static bool IsSupportHighResolution(const string& bundleName, const uint64_t tok
     if (compatibleInfo.highResolution != -1) {
         return compatibleInfo.highResolution;
     }
-    if(PermissionUtils::IsSystemAppByCache(tokenId)) {
+    if (PermissionUtils::IsSystemAppByCache(tokenId)) {
         return true;
     }
     return HeifTranscodingCheckUtils::CanSupportedHighPixelPicture(bundleName, tokenId);

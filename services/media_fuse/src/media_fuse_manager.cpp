@@ -571,9 +571,10 @@ static bool IsUriTranscoded(const string &realUri, const string &inputUri)
     return MediaFileUtils::GetExtensionFromPath(realUri) != MediaFileUtils::GetExtensionFromPath(inputUri);
 }
 
-static int32_t GetTranscodeUri(string &filePath, const string &fileId, const string &mode,
+static int32_t GetTranscodeUri(string &filePath, const string &mode,
     const int uid, TranscodeType& transcodeType, const string &uri)
 {
+    string fileId = MediaFileUtils::GetIdFromUri(filePath);
     string bundleName;
     PermissionUtils::GetClientBundle(uid, bundleName);
     CHECK_AND_RETURN_RET_LOG(mode == MEDIA_FILEMODE_READONLY, E_INNER_FAIL,
@@ -594,8 +595,7 @@ static int32_t GetTranscodeUri(string &filePath, const string &fileId, const str
     string tempPath = path + "/transcode.jpg";
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists((tempPath)), E_INNER_FAIL, "transcode.jpg is not exist");
 
-    if (IsUriTranscoded(tempPath, uri))
-    {
+    if (IsUriTranscoded(tempPath, uri)) {
         MEDIA_INFO_LOG("fileAsset uri is transcoded, fileAsset uri: %{public}s", uri.c_str());
         filePath = tempPath;
         return E_OK;
@@ -661,7 +661,7 @@ int32_t MediaFuseManager::DoGetAttr(const char *path, struct stat *stbuf)
         CHECK_AND_RETURN_RET_LOG(permGranted > 0, E_PERMISSION_DENIED, "permission denied");
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(target), FILE_FAIL, "file is not exist.");
         TranscodeType type;
-        GetTranscodeUri(target, fileId, MEDIA_FILEMODE_READONLY, ctx->uid, type, path);
+        GetTranscodeUri(target, MEDIA_FILEMODE_READONLY, ctx->uid, type, path);
         ret = lstat(target.c_str(), stbuf);
         if (ret == E_SUCCESS && cloudAssetTimeQueryParams.position == PHOTO_POSITION_TYPE_CLOUD) {
             stbuf->st_atim.tv_sec = cloudAssetTimeQueryParams.accesstime;
@@ -816,7 +816,7 @@ static int32_t OpenFile(const string &filePath, const string &fileId, const stri
     }
     TranscodeType transcodeType = TranscodeType::DEFAULT;
     string path = filePath;
-    int32_t err = GetTranscodeUri(path, fileId, mode, uid, transcodeType, uri);
+    int32_t err = GetTranscodeUri(path, mode, uid, transcodeType, uri);
     int32_t ret = MediaPrivacyManager(path, mode, fileId, appId, bundleName, uid, tokenCaller).Open();
     if (err == 0 && ret >= 0) {
         MEDIA_INFO_LOG("libc open transcode file success");

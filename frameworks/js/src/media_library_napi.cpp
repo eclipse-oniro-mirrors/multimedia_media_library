@@ -17898,6 +17898,34 @@ napi_value MediaLibraryNapi::GetDeepOptimizeSpace(napi_env env, napi_callback_in
         GetDeepOptimizeSpaceExecute, GetDeepOptimizeSpaceCompleteCallback);
 }
 
+static void DoTransAssetSingleExecute(shared_ptr<FileAsset> fileAsset)
+{
+    // 5a. Replace displayname extension to jpg
+    std::string displayName = fileAsset->GetDisplayName();
+    std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
+    if (!title.empty()) {
+        fileAsset->SetDisplayName(title + ".jpg");
+    }
+    // 5b. Reconstruct URI with new displayname
+    std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
+        fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
+    fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
+    // 5c. Set mimetype to image/jpeg
+    fileAsset->SetMimeType("image/jpeg");
+    // 5d. Set suffix to jpg
+    fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
+    // 5e. Replace size with PHOTO_TRANS_CODE_FILE_SIZE and calculate width/height
+    int64_t transCodeFileSize = fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
+    if (transCodeFileSize != 0) {
+        fileAsset->SetSize(transCodeFileSize);
+        int32_t width = fileAsset->GetWidth();
+        int32_t height = fileAsset->GetHeight();
+        PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
+        fileAsset->SetWidth(width);
+        fileAsset->SetHeight(height);
+    }
+}
+
 napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env, napi_callback_info info)
 {
     MediaLibraryTracer tracer;
@@ -17939,35 +17967,7 @@ napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env
         CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID, "FileAsset instance is null");
 
         // 5. Modify FileAsset in place to compatible (jpg) mode
-
-        // 5a. Replace displayname extension to jpg
-        std::string displayName = fileAsset->GetDisplayName();
-        std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
-        if (!title.empty()) {
-            fileAsset->SetDisplayName(title + ".jpg");
-        }
-
-        // 5b. Reconstruct URI with new displayname
-        std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
-            fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
-        fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
-
-        // 5c. Set mimetype to image/jpeg
-        fileAsset->SetMimeType("image/jpeg");
-
-        // 5d. Set suffix to jpg
-        fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
-
-        // 5e. Replace size with PHOTO_TRANS_CODE_FILE_SIZE and calculate width/height
-        int64_t transCodeFileSize = fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
-        if (transCodeFileSize != 0) {
-            fileAsset->SetSize(transCodeFileSize);
-            int32_t width = fileAsset->GetWidth();
-            int32_t height = fileAsset->GetHeight();
-            PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
-            fileAsset->SetWidth(width);
-            fileAsset->SetHeight(height);
-        }
+        DoTransAssetSingleExecute(fileAsset);
     }
 
     // 6. Return the original array directly

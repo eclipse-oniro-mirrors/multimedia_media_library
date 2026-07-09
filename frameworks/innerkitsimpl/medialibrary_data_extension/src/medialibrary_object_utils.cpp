@@ -881,7 +881,8 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
         return E_IS_PENDING_ERROR;
     }
     bool isHeif = cmd.GetQuerySetParam(CONST_PHOTO_TRANSCODE_OPERATION) == CONST_OPRN_TRANSCODE_HEIF;
-    int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(fileAsset, mode, isHeif, uriString);
+    int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(
+        fileAsset, mode, isHeif, uriString);
     string path = MediaFileUtils::UpdatePath(fileAsset->GetPath(), fileAsset->GetUri());
     string fileId = MediaFileUtils::GetIdFromUri(fileAsset->GetUri());
     int32_t fd = OpenAsset(path, mode, fileId, type);
