@@ -36,7 +36,6 @@
 #include "photo_album_impl.h"
 #include "photo_asset_impl.h"
 #include "values_bucket.h"
-#include "uv.h"
 
 namespace OHOS {
 namespace Media {

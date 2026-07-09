@@ -16,7 +16,6 @@
 #define DELETE_CALLBACK_H
 
 #include <string>
-#include <uv.h>
 
 #include "want.h"
 #ifdef HAS_ACE_ENGINE_PART
