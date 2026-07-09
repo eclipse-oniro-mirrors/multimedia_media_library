@@ -59,7 +59,6 @@ ohos_fuzztest("MediaLibraryUriSensitiveOperationsFuzzTest") {
     "image_framework:image_native",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudsync_kit_inner",

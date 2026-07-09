@@ -61,7 +61,6 @@ ohos_unittest("medialibrary_astc_phase_test") {
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "dfs_service:cloudsync_kit_inner",
   ]

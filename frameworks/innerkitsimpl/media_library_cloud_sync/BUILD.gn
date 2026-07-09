@@ -129,7 +129,6 @@ ohos_shared_library("media_library_cloud_sync") {
     "ipc:ipc_napi",
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",

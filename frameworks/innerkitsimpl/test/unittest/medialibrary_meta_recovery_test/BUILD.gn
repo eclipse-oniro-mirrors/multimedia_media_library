@@ -69,7 +69,6 @@ ohos_unittest("medialibrary_meta_recovery_unittest") {
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "dfs_service:cloudsync_kit_inner",
     "hisysevent:libhisysevent",
@@ -127,7 +126,6 @@ ohos_unittest("medialibrary_meta_recovery_json_test") {
     "image_framework:image_native",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "googletest:gtest_main",
   ]

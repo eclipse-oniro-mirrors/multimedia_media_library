@@ -78,7 +78,6 @@ ohos_unittest("media_library_file_access_utils_test") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "os_account:os_account_innerkits",
     "preferences:native_preferences",

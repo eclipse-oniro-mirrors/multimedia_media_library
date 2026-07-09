@@ -76,7 +76,6 @@ ohos_unittest("height_width_correct_operation_test") {
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "samgr:samgr_proxy",

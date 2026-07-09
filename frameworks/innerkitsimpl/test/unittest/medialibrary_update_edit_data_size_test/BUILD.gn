@@ -79,8 +79,6 @@ ohos_unittest("medialibrary_update_edit_data_size_test") {
     "ipc:ipc_core",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
-    "napi:ace_napi",
     "netmanager_base:net_conn_manager_if",
     "player_framework:media_client",
     "preferences:native_preferences",

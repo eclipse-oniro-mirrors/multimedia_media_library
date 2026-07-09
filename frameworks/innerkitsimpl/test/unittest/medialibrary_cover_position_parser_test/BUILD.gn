@@ -62,7 +62,6 @@ ohos_unittest("medialibrary_cover_position_parser_test") {
     "ffrt:libffrt",
     "hilog:libhilog",
     "kv_store:distributeddata_inner",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "dfs_service:cloudsync_kit_inner",
     "graphic_surface:surface",

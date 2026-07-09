@@ -79,7 +79,6 @@ ohos_executable("mediatool") {
     "init:libbegetutil",
     "ipc:ipc_napi",
     "ipc:ipc_single",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "samgr:samgr_proxy",
   ]

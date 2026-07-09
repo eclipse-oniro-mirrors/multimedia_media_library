@@ -89,7 +89,6 @@ ohos_fuzztest("MediaLibraryCloudMediaAlbumDaoFuzzTest") {
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
-    "napi:ace_napi",
     "player_framework:media_client",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",

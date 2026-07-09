@@ -48,8 +48,10 @@ ohos_unittest("medialibrary_object_test") {
     "data_share:datashare_provider",
     "image_framework:image_native",
     "ipc:ipc_single",
+    "libuv:uv",
     "kv_store:distributeddata_inner",
     "napi:ace_napi",
+    "node:node_header_notice",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]

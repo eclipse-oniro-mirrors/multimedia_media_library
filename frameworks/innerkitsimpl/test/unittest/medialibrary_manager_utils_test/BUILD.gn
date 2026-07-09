@@ -52,7 +52,6 @@ ohos_unittest("medialibrary_manager_utils_test") {
     "data_share:datashare_common",
     "data_share:datashare_provider",
     "ipc:ipc_single",
-    "napi:ace_napi",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
   ]
