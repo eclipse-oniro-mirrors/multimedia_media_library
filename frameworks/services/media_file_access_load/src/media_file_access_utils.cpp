@@ -167,6 +167,8 @@ int32_t MediaFileAccessUtils::MoveFileInEditScene(const std::string &oldPath, co
     CHECK_AND_RETURN_RET_LOG(!newPath.empty(), E_ERR, "empty destPath");
     std::string srcPath = GetAssetRealPath(oldPath);
     std::string destPath = GetAssetRealPath(newPath);
+    CHECK_AND_RETURN_RET_LOG(!srcPath.empty(), E_ERR, "empty srcPath after path resolution");
+    CHECK_AND_RETURN_RET_LOG(!destPath.empty(), E_ERR, "empty destPath after path resolution");
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     bool hasLakePath = IsZeroBucketPath(oldPath) || IsZeroBucketPath(newPath);
     CHECK_AND_RETURN_RET(!hasLakePath, FileScanUtils::MoveFileInEditScene(srcPath, destPath));
@@ -375,6 +377,7 @@ bool MediaFileAccessUtils::NeedCheckSameNameRename(FileSourceType destSourceType
 int32_t MediaFileAccessUtils::MoveFileCrossPolicy(const std::string &srcPath, const std::string &destPath,
     bool deleteSrc)
 {
+    CHECK_AND_RETURN_RET_LOG(!srcPath.empty(), E_ERR, "Empty srcPath");
     CHECK_AND_RETURN_RET_LOG(!destPath.empty(), E_ERR, "Empty destPath");
     MEDIA_INFO_LOG("MoveFile src: %{public}s, dest: %{public}s", MediaFileUtils::DesensitizePath(srcPath).c_str(),
         MediaFileUtils::DesensitizePath(destPath).c_str());
@@ -614,6 +617,9 @@ bool MediaFileAccessUtils::DeleteAsset(const AssetOperationInfo &obj)
 {
     CHECK_AND_RETURN_RET_LOG(obj.IsValid(), false, "obj is not valid");
     std::string assetPath = GetAssetRealPath(obj);
+    CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), false, "assetPath is empty after resolution");
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileValid(assetPath), false,
+        "asset file invalid or not exist: %{public}s", DfxUtils::GetSafePath(assetPath).c_str());
     return (remove(assetPath.c_str()) == E_SUCCESS);
 }
 } // namespace OHOS::Media
