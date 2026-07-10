@@ -20,7 +20,7 @@
 
 #include "application_context.h"
 #include "backup_adapters.h"
-#include "backup_dfx_utils.h"
+#include "backup_audit_utils.h"
 #include "backup_file_utils.h"
 #include "backup_log_utils.h"
 #include "clone_restore_classify.h"
@@ -1981,6 +1981,7 @@ void CloneRestore::GetCloudThumbnailInsertValue(const FileInfo &fileInfo, Native
     values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, 0);
     values.PutInt(PhotoColumn::PHOTO_THUMBNAIL_VISIBLE, RESTORE_THUMBNAIL_VISIBLE_FALSE);
     values.PutInt(PhotoColumn::PHOTO_LCD_VISIT_TIME, 0);
+    BackupAuditUtils::RecordCloudIdEmptyAudit(fileInfo, "CloneRestore", sceneCode_, taskId_);
 }
 
 void CloneRestore::PrepareShootingModeVal(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)

@@ -44,6 +44,7 @@ ohos_shared_library("mediabackup") {
     "./include/restore",
     "./include/report",
     "./include/video_ringtone_processor",
+    "./include/utils",
     "${MEDIALIB_CLOUD_SYNC_PATH}/include",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
@@ -141,6 +142,7 @@ ohos_shared_library("mediabackup") {
     "./src/restore/tab_old_photos_restore.cpp",
     "./src/video_ringtone_processor/video_ringtone_processor.cpp",
     "./src/upgrade_restore.cpp",
+    "./src/utils/backup_audit_utils.cpp",
   ]
 
   source_ipc_client = [

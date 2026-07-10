@@ -40,6 +40,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/dup_sim",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/group_photo_album",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/video_ringtone_processor",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/utils",
 
   ]
 
@@ -113,6 +114,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_album.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_base.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/pet_album_utils.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
 
   ]
 
