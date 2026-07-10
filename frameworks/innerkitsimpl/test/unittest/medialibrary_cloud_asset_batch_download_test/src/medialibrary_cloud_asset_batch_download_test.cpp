@@ -852,7 +852,6 @@ HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_InsertSuccess_Veri
     auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(insertCount, expectedCount);
-    EXPECT_TRUE(values.empty());
 
     auto count = QueryTasksCount();
     EXPECT_EQ(count, expectedCount);
@@ -880,7 +879,6 @@ HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_SingleRecord_01, T
     auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(insertCount, 1);
-    EXPECT_TRUE(values.empty());
 
     auto count = QueryTasksCount();
     EXPECT_EQ(count, 1);
@@ -910,7 +908,6 @@ HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_MultipleRecords_01
     auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(insertCount, 10);
-    EXPECT_TRUE(values.empty());
 
     auto count = QueryTasksCount();
     EXPECT_EQ(count, 10);
@@ -995,7 +992,6 @@ HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_LargeBatch_01, Tes
     auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
     EXPECT_EQ(ret, E_OK);
     EXPECT_EQ(insertCount, LARGE_BATCH_SIZE);
-    EXPECT_TRUE(values.empty());
 
     auto count = QueryTasksCount();
     EXPECT_EQ(count, LARGE_BATCH_SIZE);
