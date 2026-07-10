@@ -17,6 +17,8 @@
 
 #include "dfx_system_photo_keys.h"
 
+#include <thread>
+
 #include "application_context.h"
 #include "hisysevent.h"
 #include "media_log.h"
@@ -107,17 +109,20 @@ int32_t DfxSystemPhotoKeys::ReportIfSystemKey(const std::string &interface, cons
     CHECK_AND_RETURN_RET_LOG(!bundleName.empty(), E_INVALID_BUNDLENAME, "bundleName is empty, key: %{public}s",
         key.c_str());
 
-    std::string readUri = "spk://" + dedupKey;
-    int32_t ret = HiSysEventWrite(MEDIA_LIBRARY,
-        "MEDIALIB_DEPRECATED_API_USAGE",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "CALLER_APP_PACKAGE",
-        bundleName,
-        "READ_URI",
-        readUri);
-    CHECK_AND_RETURN_RET_LOG(ret == 0, E_ERR, "Report Third party application error:%{public}d", ret);
-
     reportedKeyMap_.EnsureInsert(dedupKey, 1);
+
+    std::string readUri = "spk://" + dedupKey;
+    std::thread([bundleName, readUri]() {
+        int32_t ret = HiSysEventWrite(MEDIA_LIBRARY,
+            "MEDIALIB_DEPRECATED_API_USAGE",
+            HiviewDFX::HiSysEvent::EventType::STATISTIC,
+            "CALLER_APP_PACKAGE",
+            bundleName,
+            "READ_URI",
+            readUri);
+        CHECK_AND_RETURN_RET_LOG(ret == 0, E_ERR, "Report Third party application error:%{public}d", ret);
+    }).detach();
+
     return E_SUCCESS;
 }
 }  // namespace Media
