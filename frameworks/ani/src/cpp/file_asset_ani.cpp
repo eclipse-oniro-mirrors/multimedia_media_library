@@ -473,9 +473,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
-    if (DfxSystemPhotoKeys::ReportIfSystemKey("ani", key) != E_SUCCESS) {
-        ANI_ERR_LOG("Report Third party application failed, key:%{public}s", key.c_str());
-    }
+    DfxSystemPhotoKeys::ReportIfSystemKey("ani", key);
 
     return E_SUCCESS;
 }

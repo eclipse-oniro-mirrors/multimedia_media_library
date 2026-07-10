@@ -3125,9 +3125,7 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
-    if (DfxSystemPhotoKeys::ReportIfSystemKey("napi", key) != E_SUCCESS) {
-        NAPI_ERR_LOG("Report Third party application failed, key:%{public}s", key.c_str());
-    }
+    DfxSystemPhotoKeys::ReportIfSystemKey("napi", key);
 
     return E_SUCCESS;
 }

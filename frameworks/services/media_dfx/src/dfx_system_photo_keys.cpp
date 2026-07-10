@@ -106,8 +106,8 @@ int32_t DfxSystemPhotoKeys::ReportIfSystemKey(const std::string &interface, cons
     }
 
     std::string bundleName = GetBundleName();
-    CHECK_AND_RETURN_RET_LOG(!bundleName.empty(), E_INVALID_BUNDLENAME, "bundleName is empty, key: %{public}s",
-        key.c_str());
+    CHECK_AND_RETURN_RET_LOG(!bundleName.empty(), E_INVALID_BUNDLENAME, "bundleName is empty, bundleName: %{public}s, "
+        "key: %{public}s", bundleName.c_str(), key.c_str());
 
     reportedKeyMap_.EnsureInsert(dedupKey, 1);
 
@@ -120,7 +120,8 @@ int32_t DfxSystemPhotoKeys::ReportIfSystemKey(const std::string &interface, cons
             bundleName,
             "READ_URI",
             readUri);
-        CHECK_AND_RETURN_RET_LOG(ret == 0, E_ERR, "Report Third party application error:%{public}d", ret);
+        CHECK_AND_PRINT_LOG(ret == 0, "HiSysEventWrite error: %{public}d, bundleName: %{public}s, key: %{public}s",
+            ret, bundleName.c_str(), key.c_str());
     }).detach();
 
     return E_SUCCESS;
