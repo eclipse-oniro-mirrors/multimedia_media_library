@@ -85,6 +85,11 @@ std::string DfxSystemPhotoKeys::GetBundleName()
     return context->GetBundleName();
 }
 
+bool DfxSystemPhotoKeys::IsKeyOfInterest(const std::set<std::string> &inputSet, const std::string &key)
+{
+    return inputSet.find(key) != inputSet.end() || SYSTEM_PHOTO_KEYS.find(key) != SYSTEM_PHOTO_KEYS.end();
+}
+
 int32_t DfxSystemPhotoKeys::ReportIfSystemKey(const std::string &interface, const std::string &key)
 {
     if (SYSTEM_PHOTO_KEYS.find(key) == SYSTEM_PHOTO_KEYS.end()) {

@@ -3116,7 +3116,7 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
-    if (MediaLibraryNapiUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryNapiUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 

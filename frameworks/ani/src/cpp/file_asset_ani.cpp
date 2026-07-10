@@ -464,7 +464,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
-    if (MediaLibraryAniUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryAniUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 

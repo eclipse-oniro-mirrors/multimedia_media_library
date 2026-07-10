@@ -939,7 +939,7 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_RISK_STATUS,
     };
 
-    if (SendableMediaLibraryNapiUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || SendableMediaLibraryNapiUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 

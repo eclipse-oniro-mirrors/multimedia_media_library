@@ -102,7 +102,7 @@ static int32_t CheckSystemApiKeys(const string &key)
         PhotoColumn::PHOTO_RISK_STATUS,
     };
 
-    if (MediaLibraryNapiUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryNapiUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 
