@@ -683,8 +683,6 @@ int32_t CloudSyncConvert::ExtractCompatibleValue(const CloudMediaPullDataDto &da
     // attributes HashMap
     CompensateAttributesHashMap(data, values);
     CompensateInt64FieldsHashMap(data, values);
-    // file info
-    CompensateFileInfo(data, values);
     return E_OK;
 }
 
@@ -774,15 +772,5 @@ int32_t CloudSyncConvert::CompensatePhotoLcdSize(const CloudMediaPullDataDto &da
     CHECK_AND_RETURN_RET(!lcdSize.empty(), E_CLOUDSYNC_INVAL_ARG);
     values.Put(PhotoColumn::PHOTO_LCD_SIZE, lcdSize);
     return E_OK;
-}
-
-void CloudSyncConvert::CompensateFileInfo(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
-{
-    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, data.attributesFileSourceType);
-    if (data.attributesStoragePath.empty()) {
-        values.PutNull(PhotoColumn::PHOTO_STORAGE_PATH);
-    } else {
-        values.PutString(PhotoColumn::PHOTO_STORAGE_PATH, data.attributesStoragePath);
-    }
 }
 }  // namespace OHOS::Media::CloudSync

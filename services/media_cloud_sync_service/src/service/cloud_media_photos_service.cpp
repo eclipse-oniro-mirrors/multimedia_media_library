@@ -230,8 +230,6 @@ int32_t CloudMediaPhotosService::PullUpdate(CloudMediaPullDataDto &pullData, std
     }
     // Move to recycle bin or Move out of recycle bin.
     this->PullRecycleUpdate(pullData, photoRefresh);
-    // fix file info for pullData with the latest local data, in case PullRecycleUpdate modified the local data.
-    this->fileManagerService_.FixFileInfo(pullData);
     // UpdateRecordToDatabase更新成功，stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT]会增加
     int32_t updateCount = stats[StatsIndex::FILE_MODIFY_RECORDS_COUNT];
     ret = this->photosDao_.UpdateRecordToDatabase(pullData, isLocal, mtimeChanged, refreshAlbums, stats, photoRefresh);
@@ -308,8 +306,6 @@ int32_t CloudMediaPhotosService::DoDataMerge(CloudMediaPullDataDto &pullData, co
     // fetch local data, to make sure the local data is consistent with the cloud data in the following merge process.
     CHECK_AND_EXECUTE(pullData.localPhotosPoOp.has_value(),
                       this->commonDao_.QueryPhotoByFilePath(localKeyData.filePath, pullData.localPhotosPoOp));
-    // fix file info for pullData with the latest local data.
-    this->fileManagerService_.FixFileInfo(pullData);
     int32_t ret = this->photosDao_.ConflictDataMerge(
         pullData, localKeyData.filePath, cloudStd, cloudMapIds, refreshAlbums, photoRefresh);
     if (ret != E_OK) {
@@ -324,9 +320,6 @@ int32_t CloudMediaPhotosService::DoDataMerge(CloudMediaPullDataDto &pullData, co
         MediaGallerySyncNotify::GetInstance().TryNotify(notifyUri,
             static_cast<ChangeType>(ExtraChangeType::PHOTO_TIME_UPDATE),
             to_string(pullData.attributesFileId));
-    }
-    if (cloudStd) { // 云信息覆盖本地信息，需要维护本地文件存储位置
-        this->fileManagerService_.RelocateFile(pullData);
     }
     return E_OK;
 }
@@ -417,10 +410,6 @@ int32_t CloudMediaPhotosService::PullInsert(
 
     int32_t ret;
     std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
-    // fix file info for all pull data, to make sure the following process have the complete and correct file info.
-    std::for_each(allPullDatas.begin(), allPullDatas.end(), [this](CloudMediaPullDataDto &pullData) {
-        this->fileManagerService_.FixFileInfo(pullData);
-    });
     PullRecordsConflictProc(allPullDatas, refreshAlbums, stats, failedRecords, photoRefresh);
 
     assetCompareDao_.SetRdbStore(MediaLibraryUnistoreManager::GetInstance().GetRdbStore());
@@ -580,8 +569,6 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
     for (auto &cloudId : cloudIds) {
         CloudMediaPullDataDto pullData = cloudIdRelativeMap.at(cloudId);
         std::string dateAdded = pullData.localDateAdded;
-        // fix file info for each pullData, to make sure the following process have the complete and correct file info.
-        this->fileManagerService_.FixFileInfo(pullData);
         MEDIA_INFO_LOG("pullData: %{public}s", pullData.ToString().c_str());
         // 下行机已经有数据并且不是被删除
         if (pullData.localPath.empty() && !pullData.basicIsDelete) {
@@ -1595,15 +1582,6 @@ int32_t CloudMediaPhotosService::HandleInvalidCloudResource(
 int32_t CloudMediaPhotosService::PullUpdateEndWithNoFdirty(
     CloudMediaPullDataDto &pullData, std::vector<PhotosDto> &fdirtyData)
 {
-    int32_t ret = this->fileManagerService_.RelocateFile(pullData);
-    // 如果移动文件失败且已经被设置为纯云资产，则调用 ClearLocalData 清理本地数据，避免文件路径不一致导致的各种问题
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("Relocate file failed, cloudId: %{public}s, ret: %{public}d.", pullData.cloudId.c_str(), ret);
-        // reload local photo info after RelocateFile, to make sure the following process have the latest local data.
-        this->commonDao_.QueryPhotoByCloudId(pullData.cloudId, pullData.localPhotosPoOp);
-        this->ClearLocalData(pullData, fdirtyData);
-        return E_OK;
-    }
     // 处理元数据变更
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
     CloudLakeFileHandler::HandleMetaChanged(pullData.localFileId);

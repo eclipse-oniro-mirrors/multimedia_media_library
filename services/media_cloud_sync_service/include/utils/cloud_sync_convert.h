@@ -103,7 +103,6 @@ public:
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateInt64FieldsHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
-    static void CompensateFileInfo(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
 };
 
 }  // namespace OHOS::Media::CloudSync
