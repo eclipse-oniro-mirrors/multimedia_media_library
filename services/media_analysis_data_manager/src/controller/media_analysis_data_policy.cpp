@@ -21,7 +21,7 @@
 #include "media_analysis_data_controller_service.h"
 #include "media_permission_policy_type.h"
 #include "medialibrary_business_code.h"
- 
+// LCOV_EXCL_START
 using namespace std;
  
 namespace OHOS::Media::AnalysisData {
@@ -78,3 +78,4 @@ int32_t MediaAnalysisDataControllerService::GetPermissionPolicy(
 }
  
 } // namespace OHOS::Media::AnalysisData
+// LCOV_EXCL_STOP
