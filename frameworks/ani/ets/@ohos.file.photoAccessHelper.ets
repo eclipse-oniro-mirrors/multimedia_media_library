@@ -2755,6 +2755,7 @@ export class ContextRecoveryInfo {
     getAlbumIdByLpath(lpath: string): Promise<int>;
     getAlbumIdByBundleName(bundleName: string): Promise<int>;
     getAssetCompatibleUris(bundleName: string, assets: Array<PhotoAsset>, compatibleFlags?: int): Promise<string[]>;
+    convertAssetToCompatibleAsset(assets: Array<PhotoAsset>): Promise<void>;
     moveAssetsToDir(assets: string[], target: string, option?: BatchOperationOptions): Promise<string[]>;
     moveAssetsByPath(assets: string[], target: Album, options?: BatchOperationOptions): Promise<string[]>;
     startDeepOptimizeSpace(callback?: Callback<DeepOptimizeSpaceProgressInfo>): Promise<void>;
@@ -4459,6 +4460,7 @@ export class ContextRecoveryInfo {
       });
     });
   }
+
     getAssetCompatibleUris(bundleName: string, assets: Array<PhotoAsset>, compatibleFlags?: int): Promise<string[]> {
       return new Promise<string[]>((resolve: (v: string[]) => void, reject: RejectString) => {
         let cb = (): string[] | MediaLibraryAniError => {
@@ -4480,6 +4482,27 @@ export class ContextRecoveryInfo {
             } else {
               resolve(ret as string[]);
             }
+          }
+        });
+      });
+    }
+
+    convertAssetToCompatibleAsset(assets: Array<PhotoAsset>): Promise<void> {
+      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+        let cb = (): MediaLibraryAniError | undefined => {
+          try {
+            this.convertAssetToCompatibleAssetInner(assets);
+            return undefined;
+          } catch (e) {
+            return e as MediaLibraryAniError;
+          }
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (isNullish(ret)) {
+            resolve(undefined);
+          } else {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError(err.code as int, err.message));
           }
         });
       });
@@ -4735,6 +4758,7 @@ export class ContextRecoveryInfo {
     native getAlbumIdByLpathInner(lpath: string): int;
     native getAlbumIdByBundleNameInner(bundleName: string): int;
     native getAssetCompatibleUrisInner(bundleName: string, assets: Array<PhotoAsset>, compatibleFlags?: int): string[];
+    native convertAssetToCompatibleAssetInner(assets: Array<PhotoAsset>): void;
     native convertToAssetInner(path: string): PhotoAsset;
     native moveAssetsToDirInner(assets: string[], targetDir: string, options?: BatchOperationOptions): string[];
     native moveAssetsByPathInner(assets: string[], target: Album, option?: BatchOperationOptions): string[];

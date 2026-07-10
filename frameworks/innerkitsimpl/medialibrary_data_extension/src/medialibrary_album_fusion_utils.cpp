@@ -47,6 +47,7 @@
 #include "asset_operation_info.h"
 #include "media_file_access_utils.h"
 #include "media_clone_pending_record_utils.h"
+#include "preferred_compatible_mode_check_utils.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -63,10 +64,6 @@ const std::string ALBUM_FUSION_UPGRADE_STATUS_FLAG = "persist.multimedia.mediali
 const int32_t ALBUM_FUSION_UPGRADE_SUCCESS = 1;
 const int32_t ALBUM_FUSION_UPGRADE_FAIL = 0;
 const int32_t ALBUM_FUSION_BATCH_COUNT = 200;
-const int32_t HIGH_PIXEL_SCALE = 2;
-const int64_t HIGH_PIXEL_START_SIZE = 6 * 1024 * 8 * 1024;
-const int64_t HIGH_PIXEL_STOP_SIZE = 4 * 1024 * 6 * 1024;
-const double HIGH_PIXEL_RESIZE_SCALE = 1.4;
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
 constexpr int32_t NOT_SUPPORT_RENAME = 1;
 
@@ -2491,40 +2488,13 @@ static int32_t UpdateTranscodeTime(int32_t fileId)
     return E_OK;
 }
 
-static bool IsHighPixelPicture(int32_t width, int32_t height)
-{
-    if (static_cast<int64_t>(width) * static_cast<int64_t>(height) >= HIGH_PIXEL_START_SIZE) {
-        return true;
-    }
-    return false;
-}
-
-static bool GetDesireSize(int32_t &width, int32_t &height)
-{
-    if (width <= 0 || height <= 0) {
-        return false;
-    }
-
-    while (IsHighPixelPicture(width, height)) {
-        width /= HIGH_PIXEL_SCALE;
-        height /= HIGH_PIXEL_SCALE;
-    }
-
-    if (static_cast<int64_t>(width) * static_cast<int64_t>(height) > HIGH_PIXEL_STOP_SIZE) {
-        width /= HIGH_PIXEL_RESIZE_SCALE;
-        height /= HIGH_PIXEL_RESIZE_SCALE;
-    }
-    
-    return true;
-}
-
 static void SetTranscodeType(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, TranscodeType &transcodeType)
 {
     int32_t width = GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet);
     int32_t height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
     std::string mimeType = GetStringVal(PhotoColumn::MEDIA_MIME_TYPE, resultSet);
     bool isHeif = (mimeType == "image/heic" || mimeType == "image/heif");
-    bool isHighPixel = IsHighPixelPicture(width, height);
+    bool isHighPixel = PreferredCompatibleModeCheckUtils::IsHighPixelPicture(width, height);
     if (isHeif) {
         if (isHighPixel) {
             transcodeType = TranscodeType::HIGH_PIXEL_HEIF;
@@ -2555,10 +2525,10 @@ static int32_t CheckTmpCompatibleDup(const std::shared_ptr<NativeRdb::ResultSet>
     height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
     std::string mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
     CHECK_AND_RETURN_RET_LOG(mimeType == "image/heic" || mimeType == "image/heif" ||
-        IsHighPixelPicture(width, height), E_PARAM_CONVERT_FORMAT,
+        PreferredCompatibleModeCheckUtils::IsHighPixelPicture(width, height), E_PARAM_CONVERT_FORMAT,
         "mimeType is invalid, mimeType: %{public}s", mimeType.c_str());
 
-    GetDesireSize(width, height);
+    PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
 
     int32_t position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
     CHECK_AND_RETURN_RET_LOG(position != static_cast<int32_t>(PhotoPositionType::CLOUD), E_PARAM_CONVERT_FORMAT,

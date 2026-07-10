@@ -392,6 +392,8 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::CanPerformDeepOptimizeSpace)},
     ani_native_function {"getDeepOptimizeSpaceInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::GetDeepOptimizeSpace)},
+    ani_native_function {"convertAssetToCompatibleAssetInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::ConvertAssetToCompatibleAsset)},
 };
 
 const std::array photoViewPickerMethos = {
@@ -9288,6 +9290,65 @@ ani_object MediaLibraryAni::GetDeepOptimizeSpace(ani_env *env, ani_object object
     SetUserIdFromObjectInfo(asyncContext);
     GetDeepOptimizeSpaceExecute(env, asyncContext);
     return GetDeepOptimizeSpaceComplete(env, asyncContext);
+}
+
+static void DoTransAssetSingleExecute(shared_ptr<FileAsset> fileAsset)
+{
+    std::string displayName = fileAsset->GetDisplayName();
+    std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
+    if (!title.empty()) {
+        fileAsset->SetDisplayName(title + ".jpg");
+    }
+    std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
+        fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
+    fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
+    fileAsset->SetMimeType("image/jpeg");
+    fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
+    int64_t transCodeFileSize = fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
+    if (transCodeFileSize != 0) {
+        fileAsset->SetSize(transCodeFileSize);
+        int32_t width = fileAsset->GetWidth();
+        int32_t height = fileAsset->GetHeight();
+        PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
+        fileAsset->SetWidth(width);
+        fileAsset->SetHeight(height);
+    }
+}
+ 
+void MediaLibraryAni::ConvertAssetToCompatibleAsset(ani_env *env, ani_object object, ani_object assets)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("ConvertAssetToCompatibleAsset");
+    ANI_INFO_LOG("ConvertAssetToCompatibleAsset enter");
+ 
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system app");
+        return;
+    }
+ 
+    std::vector<ani_object> aniValues;
+    if (ANI_OK != MediaLibraryAniUtils::GetObjectArray(env, assets, aniValues)) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "assets must be a non-empty array");
+        return;
+    }
+    if (aniValues.empty()) {
+        AniError::ThrowError(env, JS_E_PARAM_INVALID, "assets array is empty");
+        return;
+    }
+ 
+    for (const auto &item : aniValues) {
+        FileAssetAni *fileAssetAni = FileAssetAni::Unwrap(env, item);
+        if (fileAssetAni == nullptr) {
+            AniError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to unwrap asset");
+            return;
+        }
+        auto fileAsset = fileAssetAni->GetFileAssetInstance();
+        if (fileAsset == nullptr) {
+            AniError::ThrowError(env, JS_E_PARAM_INVALID, "FileAsset instance is null");
+            return;
+        }
+        DoTransAssetSingleExecute(fileAsset);
+    }
 }
 } // namespace Media
 } // namespace OHOS

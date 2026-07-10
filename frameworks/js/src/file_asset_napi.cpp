@@ -64,6 +64,7 @@
 #include "is_edited_vo.h"
 #include "get_edit_data_vo.h"
 #include "convert_format_vo.h"
+#include "preferred_compatible_mode_check_utils.h"
 #include "qos.h"
 
 using OHOS::HiviewDFX::HiLog;
@@ -107,11 +108,6 @@ constexpr int32_t NOT_HIDDEN = 0;
 
 constexpr int32_t USER_COMMENT_MAX_LEN = 420;
 constexpr int64_t SECONDS_LEVEL_LIMIT = 1e10;
-
-const int64_t HIGH_PIXEL_START_SIZE = 6 * 1024 * 8 * 1024;
-const int64_t HIGH_PIXEL_STOP_SIZE = 4 * 1024 * 6 * 1024;
-const double HIGH_PIXEL_RESIZE_SCALE = 1.4;
-const int32_t HIGH_PIXEL_SCALE = 2;
 
 using CompleteCallback = napi_async_complete_callback;
 
@@ -3114,6 +3110,8 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::ATTACHMENT_SIZE,
         PhotoColumn::PHOTO_LCD_FILE_SIZE,
         PhotoColumn::PHOTO_THUMB_STATUS,
+        PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
+        PhotoColumn::PHOTO_TRANSCODE_TIME,
     };
 
     if (MediaLibraryNapiUtils::IsSystemApp()) {
@@ -3130,33 +3128,6 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
     }
 
     return E_SUCCESS;
-}
-
-static bool IsHighPixelPicture(int32_t width, int32_t height)
-{
-    if (static_cast<int64_t>(width) * static_cast<int64_t>(height) >= HIGH_PIXEL_START_SIZE) {
-        return true;
-    }
-    return false;
-}
-
-static bool GetDesireSize(int32_t &width, int32_t &height)
-{
-    if (width <= 0 || height <= 0) {
-        return false;
-    }
-
-    while (IsHighPixelPicture(width, height)) {
-        width /= HIGH_PIXEL_SCALE;
-        height /= HIGH_PIXEL_SCALE;
-    }
-
-    if (static_cast<int64_t>(width) * static_cast<int64_t>(height) > HIGH_PIXEL_STOP_SIZE) {
-        width /= HIGH_PIXEL_RESIZE_SCALE;
-        height /= HIGH_PIXEL_RESIZE_SCALE;
-    }
-    
-    return true;
 }
 
 bool FileAssetNapi::IsSpecialKey(const string &key)
@@ -3195,24 +3166,24 @@ napi_value FileAssetNapi::HandleGettingSpecialKey(napi_env env, const string &ke
         napi_create_int32(env, videoMode, &jsResult);
     } else if (key == PhotoColumn::PHOTO_WIDTH) {
         int32_t width = fileAssetPtr->GetWidth();
-        if (fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE) != 0) {
+        if (fileAssetPtr->GetTransCodeTime() != 0) {
             int32_t height = fileAssetPtr->GetHeight();
-            GetDesireSize(width, height);
+            PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
             napi_create_int32(env, width, &jsResult);
         } else {
             napi_create_int32(env, width, &jsResult);
         }
     } else if (key == PhotoColumn::PHOTO_HEIGHT) {
         int32_t height = fileAssetPtr->GetHeight();
-        if (fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE) != 0) {
+        if (fileAssetPtr->GetTransCodeTime() != 0) {
             int32_t width = fileAssetPtr->GetWidth();
-            GetDesireSize(width, height);
+            PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
             napi_create_int32(env, height, &jsResult);
         } else {
             napi_create_int32(env, height, &jsResult);
         }
     } else if (key == PhotoColumn::MEDIA_SIZE) {
-        if (fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE) != 0) {
+        if (fileAssetPtr->GetTransCodeTime() != 0) {
             napi_create_int64(env,
                 fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE), &jsResult);
         } else {
