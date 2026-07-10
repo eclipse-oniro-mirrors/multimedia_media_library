@@ -1509,7 +1509,6 @@ int32_t CloudMediaPhotosDao::UpdateFdirtyVersion(
 int32_t CloudMediaPhotosDao::OnDeleteRecordsAsset(
     const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
-    MEDIA_INFO_LOG("OnDeleteRecordsAsset");
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "OnDeleteRecordsAsset Failed to get rdbStore.");
     string whereClause = PhotoColumn::PHOTO_CLOUD_ID + " = ?";
     std::vector<std::string> whereArgs = {record.dkRecordId};
@@ -1585,7 +1584,6 @@ int32_t CloudMediaPhotosDao::DeleteFileNotExistPhoto(
 
 int32_t CloudMediaPhotosDao::UpdatePhotoVisible()
 {
-    MEDIA_INFO_LOG("enter UpdatePhotoVisible");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "UpdatePhotoVisible get store failed.");
     int updateRows;
@@ -1597,9 +1595,7 @@ int32_t CloudMediaPhotosDao::UpdatePhotoVisible()
         values,
         whereClause,
         {std::to_string(static_cast<int32_t>(SyncStatusType::TYPE_DOWNLOAD))});
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("UpdatePhotoVisible failed, ret=%{public}d", ret);
-    }
+    MEDIA_INFO_LOG("UpdatePhotoVisible completed, ret: %{public}d, updateRows: %{public}d", ret, updateRows);
     return ret;
 }
 

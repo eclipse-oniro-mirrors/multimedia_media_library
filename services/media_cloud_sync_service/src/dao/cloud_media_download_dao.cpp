@@ -108,7 +108,6 @@ int32_t CloudMediaDownloadDao::GetDownloadThms(const DownloadThumbnailQueryDto &
 
 int32_t CloudMediaDownloadDao::GetDownloadAsset(const std::vector<int32_t> &fileIds, std::vector<PhotosPo> &photos)
 {
-    MEDIA_INFO_LOG("enter GetDownloadAsset");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "GetDownloadAsset Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates queryPredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
@@ -125,7 +124,6 @@ int32_t CloudMediaDownloadDao::GetDownloadAsset(const std::vector<int32_t> &file
 
 int32_t CloudMediaDownloadDao::UpdateDownloadThm(const std::vector<std::string> &cloudIds)
 {
-    MEDIA_INFO_LOG("enter UpdateDownloadThm");
     CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_OK, "UpdateDownloadThm cloudIds is empty.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -148,7 +146,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadThm(const std::vector<std::string> 
 
 int32_t CloudMediaDownloadDao::UpdateDownloadLcd(const std::vector<std::string> &cloudIds)
 {
-    MEDIA_INFO_LOG("enter UpdateDownloadLcd");
     CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_OK, "UpdateDownloadLcd cloudIds is empty.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -170,7 +167,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadLcd(const std::vector<std::string> 
 
 int32_t CloudMediaDownloadDao::UpdateDownloadThmAndLcd(const std::vector<std::string> &cloudIds)
 {
-    MEDIA_INFO_LOG("enter UpdateDownloadThmAndLcd");
     CHECK_AND_RETURN_RET_LOG(!cloudIds.empty(), E_OK, "UpdateDownloadThmAndLcd cloudIds is empty.");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
@@ -253,7 +249,6 @@ int32_t CloudMediaDownloadDao::UpdateDownloadAssetExifRotateFix(
 
 int32_t CloudMediaDownloadDao::UpdateTransCodeInfo(const std::string &path)
 {
-    MEDIA_INFO_LOG("enter UpdateTransCodeInfo");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);

@@ -37,7 +37,6 @@
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaDownloadControllerService::GetDownloadThms(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter GetDownloadThms");
     GetDownloadThmReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret), "ReadRequestBody failed");
@@ -85,7 +84,6 @@ int32_t CloudMediaDownloadControllerService::GetDownloadThmNum(MessageParcel &da
 
 int32_t CloudMediaDownloadControllerService::GetDownloadThmsByUri(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter GetDownloadThmsByUri");
     GetDownloadThmsByUriReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -114,7 +112,6 @@ int32_t CloudMediaDownloadControllerService::GetDownloadThmsByUri(MessageParcel 
 
 int32_t CloudMediaDownloadControllerService::OnDownloadThms(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter OnDownloadThms");
     OnDownloadThmsReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -141,7 +138,6 @@ int32_t CloudMediaDownloadControllerService::OnDownloadThms(MessageParcel &data,
 
 int32_t CloudMediaDownloadControllerService::GetDownloadAsset(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter CloudMediaDataControllerService::GetDownloadAsset");
     GetDownloadAssetReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
