@@ -16,8 +16,6 @@
 #ifndef OHOS_MEDIA_BACKGROUND_MEDIA_FILE_MANAGER_OFFLINE_CLEANUP_TASK_H
 #define OHOS_MEDIA_BACKGROUND_MEDIA_FILE_MANAGER_OFFLINE_CLEANUP_TASK_H
 
-#include <cstddef>
-#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -44,7 +42,7 @@ private:
 
         std::string ToString() const
         {
-            return tag + "[" + std::to_string(startId) + ", " + std::to_string(endId) + ", " +
+            return tag + "[" + std::to_string(startId) + "_" + std::to_string(endId) + "_" +
                 std::to_string(count) + "]";
         }
     };
@@ -72,7 +70,7 @@ private:
     void MigratePhotoAlbumRelations();
     void CleanupLegacyAlbums();
     void ReportCleanupResult();
-    void WriteDeleteAuditLog(const OfflineCleanupPhotoRecord &photo, int32_t totalCount);
+    void WritePhotoDeleteAuditLog(const OfflineCleanupPhotoRecord &photo, int32_t totalCount);
     void WriteAlbumDeleteAuditLog(const OfflineCleanupAlbumRecord &album, int32_t totalCount);
     void LogBatchResult(const char *stage, int32_t startCursor, int32_t endCursor,
         size_t scannedCount, int64_t processedCount) const;
