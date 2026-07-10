@@ -98,9 +98,6 @@
 #include "lcd_aging_worker.h"
 #include "lcd_download_task.h"
 #include "consistency_check_manager.h"
-#ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
-#include "media_fileinterwork_scanner.h"
-#endif
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 #include "watch_system_handler.h"
 #include "critical_label_task_queue.h"
@@ -1251,9 +1248,6 @@ void MedialibrarySubscriber::DoBackgroundOperationStepTwo()
     DfxManager::GetInstance()->HandleOneWeekMissions();
     PhotoDayMonthYearOperation::RepairDateTime();
     MediaLibraryAspectRatioOperation::UpdateAspectRatioValue();
-#ifdef MEDIALIBRARY_FILE_MGR_SUPPORT
-    MediaFileInterworkScanner::GetInstance()->ScanFileManager();
-#endif
     backgroundTaskFactory_.Execute();
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
     CloudEnhancementChecker::RecognizeCloudEnhancementPhotosByDisplayName();
