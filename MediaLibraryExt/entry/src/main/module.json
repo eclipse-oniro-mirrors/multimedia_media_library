@@ -29,6 +29,10 @@
       {
         "name": "SupportAncoClone",
         "value": "3"
+      },
+      {
+        "name": "ohos.ability.loadNativeLibraryForApplication",
+        "value": "true"
       }
     ],
     "abilities": [
