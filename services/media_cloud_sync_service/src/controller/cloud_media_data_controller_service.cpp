@@ -54,7 +54,6 @@ int32_t CloudMediaDataControllerService::UpdateDirty(MessageParcel &data, Messag
 
 int32_t CloudMediaDataControllerService::UpdatePosition(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter UpdatePositionForCloudCheck");
     UpdatePositionReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -67,7 +66,6 @@ int32_t CloudMediaDataControllerService::UpdatePosition(MessageParcel &data, Mes
 
 int32_t CloudMediaDataControllerService::UpdatePosWithType(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter UpdatePosWithTypeForCloudCheck");
     UpdatePositionReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -80,7 +78,6 @@ int32_t CloudMediaDataControllerService::UpdatePosWithType(MessageParcel &data, 
 
 int32_t CloudMediaDataControllerService::UpdateFileSourceType(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter UpdateFileSourceType");
     UpdatePositionReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
@@ -93,7 +90,6 @@ int32_t CloudMediaDataControllerService::UpdateFileSourceType(MessageParcel &dat
 
 int32_t CloudMediaDataControllerService::UpdateSyncStatus(MessageParcel &data, MessageParcel &reply)
 {
-    MEDIA_INFO_LOG("enter UpdateSyncStatus");
     UpdateSyncStatusReqBody reqBody;
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
