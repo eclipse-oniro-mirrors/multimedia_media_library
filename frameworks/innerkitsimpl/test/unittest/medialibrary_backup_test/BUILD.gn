@@ -51,6 +51,7 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/group_photo_album",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/video_ringtone_processor",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/utils",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/include",
     "../medialibrary_unittest_utils/include",
   ]
@@ -107,6 +108,7 @@ ohos_unittest("medialibrary_backup_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/restore/tab_old_photos_restore.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/video_ringtone_processor/video_ringtone_processor.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/upgrade_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/external_source.cpp",
     "./src/gallery_source.cpp",

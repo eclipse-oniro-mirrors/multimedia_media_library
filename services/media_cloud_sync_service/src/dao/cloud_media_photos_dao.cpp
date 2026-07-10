@@ -32,6 +32,7 @@
 #include "scanner_utils.h"
 #include "media_gallery_sync_notify.h"
 #include "cloud_media_dao_utils.h"
+#include "cloud_media_dfx_utils.h"
 #include "media_file_utils.h"
 #include "cloud_media_context.h"
 #include "photos_field_iterator.h"
@@ -520,6 +521,7 @@ int32_t CloudMediaPhotosDao::ConflictDataMerge(const CloudMediaPullDataDto &pull
         "ret: %{public}d, updateRows: %{public}d,"
         "filePath: %{public}s, cloudStd: %{public}d, needFix: %{public}d, pullData: %{public}s",
         ret, updateRows, filePath.c_str(), cloudStd, needFix, pullData.ToString().c_str());
+    CloudMediaDfxUtils::RecordCloudIdEmptyAudit(pullData, "ConflictDataMerge");
     return E_OK;
 }
 
@@ -552,6 +554,7 @@ int32_t CloudMediaPhotosDao::GetInsertParams(const CloudMediaPullDataDto &pullDa
     HandleWatchRelatedFields(pullData, values);
     HandleShootingMode(pullData.cloudId, values, recordAnalysisAlbumMaps);
     insertFiles.push_back(values);
+    CloudMediaDfxUtils::RecordCloudIdEmptyAudit(pullData, "GetInsertParams");
     return E_OK;
 }
 
@@ -1411,6 +1414,7 @@ int32_t CloudMediaPhotosDao::UpdatePhotoCreatedRecord(
         ret,
         changedRows,
         record.cloudId.c_str());
+    CloudMediaDfxUtils::RecordCloudIdEmptyAudit(record, "UpdatePhotoCreatedRecord");
     return ret;
 }
 
@@ -1539,6 +1543,7 @@ int32_t CloudMediaPhotosDao::OnCopyPhotoRecord(
         MEDIA_ERR_LOG("OnCopyPhotoRecord update synced err %{public}d", ret);
         return ret;
     }
+    CloudMediaDfxUtils::RecordCloudIdEmptyAudit(record, "OnCopyPhotoRecord");
     return ret;
 }
 
@@ -1742,6 +1747,7 @@ int32_t CloudMediaPhotosDao::UpdateFailRecordsCloudId(
         ret,
         changedRows,
         record.cloudId.c_str());
+    CloudMediaDfxUtils::RecordCloudIdEmptyAudit(record, "UpdateFailRecordsCloudId");
     return ret;
 }
 

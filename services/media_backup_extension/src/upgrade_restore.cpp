@@ -21,6 +21,7 @@
 #include "backup_database_utils.h"
 #include "backup_file_utils.h"
 #include "backup_log_utils.h"
+#include "backup_audit_utils.h"
 #include "database_report.h"
 #include "exif_rotate_utils.h"
 #include "gallery_db_upgrade.h"
@@ -1103,6 +1104,7 @@ NativeRdb::ValuesBucket UpgradeRestore::GetInsertValue(const FileInfo &fileInfo,
         values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, static_cast<int32_t>(restoreConfig_.southDeviceType));
         values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_SYNCED));
         values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, RESTORE_THUMBNAIL_STATUS_NOT_ALL);
+        BackupAuditUtils::RecordCloudIdEmptyAudit(fileInfo, "UpgradeRestore", sceneCode_, taskId_);
     } else {
         values.PutInt(PhotoColumn::PHOTO_DIRTY, this->photosRestore_.FindDirty(fileInfo));
     }

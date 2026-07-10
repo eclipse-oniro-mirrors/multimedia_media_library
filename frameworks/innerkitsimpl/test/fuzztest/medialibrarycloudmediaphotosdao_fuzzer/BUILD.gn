@@ -43,6 +43,7 @@ ohos_fuzztest("MediaLibraryCloudMediaPhotosDaoFuzzTest") {
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/dto/photos_dto.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_media_file_utils.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_media_dao_utils.cpp",
+    "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_media_dfx_utils.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_media_sync_utils.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/cloud_sync_convert.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/utils/media_gallery_sync_notify.cpp",

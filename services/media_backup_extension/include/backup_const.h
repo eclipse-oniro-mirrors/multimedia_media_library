@@ -350,6 +350,7 @@ enum RestoreError {
     DEDUPLICATION_FILE_SIZE_MISMATCH,
     ANCO_TRANSFER_FAILED,
     FILE_MANAGER_TRANSFER_FAILED,
+    PHOTOS_CLOUD_ID_EMPTY,
 };
 
 enum class PhotoRelatedType {
@@ -412,6 +413,7 @@ const std::unordered_map<int32_t, std::string> RESTORE_ERROR_MAP = {
     { RestoreError::DEDUPLICATION_FILE_SIZE_MISMATCH, "DEDUPLICATION_FILE_SIZE_MISMATCH" },
     { RestoreError::ANCO_TRANSFER_FAILED, "ANCO_TRANSFER_FAILED" },
     { RestoreError::FILE_MANAGER_TRANSFER_FAILED, "FILE_MANAGER_TRANSFER_FAILED" },
+    { RestoreError::PHOTOS_CLOUD_ID_EMPTY, "PHOTOS_CLOUD_ID_EMPTY" },
 };
 
 const std::unordered_map<PrefixType, std::string> PREFIX_MAP = {
