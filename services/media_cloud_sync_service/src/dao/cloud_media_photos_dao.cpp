@@ -26,7 +26,6 @@
 #include "photos_po_writer.h"
 #include "photo_album_po_writer.h"
 #include "cloud_sync_convert.h"
-#include "photo_map_column.h"
 #include "medialibrary_rdb_transaction.h"
 #include "medialibrary_rdb_utils.h"
 #include "scanner_utils.h"

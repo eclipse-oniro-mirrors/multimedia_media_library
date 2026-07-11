@@ -53,7 +53,6 @@
 #include "lcd_aging_dao.h"
 #include "lcd_aging_utils.h"
 #include "lcd_aging_manager.h"
-#include "media_file_utils.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif

@@ -85,15 +85,5 @@ struct KeyData {
     std::string lPath;
     int64_t dateTrashed;
 };
-
-//联调临时代码
-enum class PrintfFieldType {
-    PFIELD_TYPE_NULL = 0,
-    PFIELD_TYPE_INT32,      // int32_t
-    PFIELD_TYPE_INT64,      // int64_t
-    PFIELD_TYPE_DOUBLE,     // double
-    PFIELD_TYPE_STRING,     // std::string
-    PFIELD_TYPE_BOOL,       // bool
-};
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_DAO_CONST_H

@@ -34,16 +34,6 @@ void CloudMediaDfxService::UpdateAttachmentStat(uint32_t index, uint64_t diff)
     DfxManager::GetInstance()->HandleUpdateAttachmentStat(index, diff);
 }
 
-void CloudMediaDfxService::UpdateAlbumStat(uint32_t index, uint64_t diff)
-{
-    DfxManager::GetInstance()->HandleUpdateAlbumStat(index, diff);
-}
-
-void CloudMediaDfxService::UpdateUploadMetaStat(uint32_t index, uint64_t diff)
-{
-    DfxManager::GetInstance()->HandleUpdateUploadMetaStat(index, diff);
-}
-
 void CloudMediaDfxService::UpdateUploadDetailError(int32_t error)
 {
     DfxManager::GetInstance()->HandleUpdateUploadDetailError(error);

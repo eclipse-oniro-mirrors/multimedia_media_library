@@ -66,8 +66,6 @@ ohos_unittest("media_library_cloud_sync_service_test") {
     "./src/cloud_media_photos_rename_service_test.cpp",
     "./src/cloud_media_attachment_utils_test.cpp",
     "./src/cloud_media_download_dao_test.cpp",
-    "./src/cloud_media_file_info_service_test.cpp",
-    "./src/cloud_media_file_manager_service_test.cpp",
     "./src/clone_to_album_service_test.cpp",
     "./src/media_assets_recover_service_test.cpp",
   ]

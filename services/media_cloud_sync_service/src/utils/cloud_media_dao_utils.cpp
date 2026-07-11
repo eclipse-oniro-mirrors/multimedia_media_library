@@ -25,7 +25,6 @@
 #include "medialibrary_unistore_manager.h"
 #include "photos_po.h"
 #include "photo_file_utils.h"
-#include "cloud_lake_utils.h"
 
 namespace OHOS::Media::CloudSync {
 

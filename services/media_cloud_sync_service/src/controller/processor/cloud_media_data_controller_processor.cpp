@@ -24,24 +24,6 @@
 #include "photos_dto.h"
 
 namespace OHOS::Media::CloudSync {
-PhotosDto CloudMediaDataControllerProcessor::ConvertPhotosVoToPhotosDto(const PhotosVo &photosVo)
-{
-    PhotosDto photosDto;
-    photosDto.cloudId = photosVo.cloudId;
-    photosDto.size = photosVo.size;
-    photosDto.data = photosVo.path;
-    photosDto.displayName = photosVo.fileName;
-    photosDto.mediaType = photosVo.type;  // == 1 ? MediaType::MEDIA_TYPE_IMAGE : MediaType::MEDIA_TYPE_VIDEO;
-    for (auto &nodePair : photosVo.attachment) {
-        CloudFileDataDto fileDataDto;
-        fileDataDto.fileName = nodePair.second.fileName;
-        fileDataDto.path = nodePair.second.filePath;
-        fileDataDto.size = nodePair.second.size;
-        photosDto.attachment[nodePair.first] = fileDataDto;
-    }
-    return photosDto;
-}
-
 PhotosVo CloudMediaDataControllerProcessor::ConvertPhotosDtoToPhotosVo(const PhotosDto &photosDto)
 {
     MEDIA_DEBUG_LOG("ConvertPhotosDtoToPhotosVo, photosDto: %{public}s.", photosDto.ToString().c_str());

@@ -19,11 +19,9 @@
 #include "cloud_media_sync_utils.h"
 #include "cloud_media_operation_code.h"
 #include "medialibrary_unistore_manager.h"
-#include "moving_photo_file_utils.h"
 #include "result_set.h"
 #include "result_set_utils.h"
 #include "thumbnail_const.h"
-#include "userfile_manager_types.h"
 #include "result_set_reader.h"
 #include "photos_po_writer.h"
 #include "photo_album_po_writer.h"
@@ -513,11 +511,6 @@ int32_t CloudMediaAlbumDao::IsEmptyAlbum(std::shared_ptr<MediaLibraryRdbStore> r
         return E_ERR;
     }
     MEDIA_INFO_LOG("IsEmptyAlbum true");
-    return E_OK;
-}
-
-int32_t CloudMediaAlbumDao::GetCopyAlbum(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList)
-{
     return E_OK;
 }
 
@@ -1046,21 +1039,6 @@ void CloudMediaAlbumDao::InsertAlbumCreateFailedRecord(const std::string &cloudI
 {
     MEDIA_WARN_LOG("albumCreateFailSet_ add cloudId: %{public}s", cloudId.c_str());
     albumCreateFailSet_.push_back(cloudId);
-}
-
-void CloudMediaAlbumDao::RemoveAlbumModifyFailedRecord(const std::string &cloudId)
-{
-    std::remove(albumModifyFailSet_.begin(), albumModifyFailSet_.end(), cloudId);
-}
-
-void CloudMediaAlbumDao::RemoveAlbumInsertFailedRecord(const std::string &cloudId)
-{
-    std::remove(albumInsertFailSet_.begin(), albumInsertFailSet_.end(), cloudId);
-}
-
-void CloudMediaAlbumDao::RemoveAlbumCreateFailedRecord(const std::string &cloudId)
-{
-    std::remove(albumCreateFailSet_.begin(), albumCreateFailSet_.end(), cloudId);
 }
 
 int32_t CloudMediaAlbumDao::ClearAlbumFailedRecords()
