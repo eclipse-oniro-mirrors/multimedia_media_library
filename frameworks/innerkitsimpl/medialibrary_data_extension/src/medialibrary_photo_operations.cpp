@@ -4315,7 +4315,7 @@ void MediaLibraryPhotoOperations::DeleteRevertMessage(const string &path)
     string editDirPath = MediaEditUtils::GetEditDataDir(path);
     CHECK_AND_RETURN_LOG(!editDirPath.empty(), "Can not get edit data dir path from path %{private}s", path.c_str());
 
-    CHECK_AND_RETURN_LOG(MediaFileUtils::IsDirectory(editDirPath), "Edit dir path is not exist.");
+    CHECK_AND_RETURN(MediaFileUtils::IsFileExists(editDirPath) && MediaFileUtils::IsDirectory(editDirPath));
 
     CHECK_AND_RETURN_LOG(MediaFileUtils::DeleteDir(editDirPath),
         "Failed to delete %{private}s dir, filePath is %{private}s", editDirPath.c_str(), path.c_str());

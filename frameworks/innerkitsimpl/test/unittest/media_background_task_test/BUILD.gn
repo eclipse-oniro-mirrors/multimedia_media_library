@@ -44,6 +44,7 @@ ohos_unittest("media_background_task_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_file_manager_offline_cleanup_dao.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_file_manager_offline_cleanup_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_lcd_size_task.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_scan_utils.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
   ]
   deps = [
@@ -76,6 +77,7 @@ ohos_unittest("media_background_task_test") {
     "data_share:datashare_consumer",
     "data_share:datashare_provider",
     "dfs_service:cloudsync_kit_inner",
+    "e2fsprogs:libext2_uuid",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "file_api:filemgmt_libn",
@@ -86,7 +88,10 @@ ohos_unittest("media_background_task_test") {
     "ipc:ipc_core",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "media_foundation:media_foundation",
     "netmanager_base:net_conn_manager_if",
+    "os_account:os_account_innerkits",
+    "player_framework:media_client",
     "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
