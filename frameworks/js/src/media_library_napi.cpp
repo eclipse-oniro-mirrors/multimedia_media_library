@@ -17898,65 +17898,30 @@ napi_value MediaLibraryNapi::GetDeepOptimizeSpace(napi_env env, napi_callback_in
         GetDeepOptimizeSpaceExecute, GetDeepOptimizeSpaceCompleteCallback);
 }
 
-static void DoTransAssetSingleExecute(shared_ptr<FileAsset> fileAsset)
+static napi_value ParseArgsTransAssetToCompatibleAsset(napi_env env, napi_callback_info info,
+    unique_ptr<MediaLibraryAsyncContext> &context)
 {
-    // 5a. Replace displayname extension to jpg
-    std::string displayName = fileAsset->GetDisplayName();
-    std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
-    if (!title.empty()) {
-        fileAsset->SetDisplayName(title + ".jpg");
-    }
-    // 5b. Reconstruct URI with new displayname
-    std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
-        fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
-    fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
-    // 5c. Set mimetype to image/jpeg
-    fileAsset->SetMimeType("image/jpeg");
-    // 5d. Set suffix to jpg
-    fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
-    // 5e. Replace size with PHOTO_TRANS_CODE_FILE_SIZE and calculate width/height
-    int64_t transCodeFileSize = fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
-    if (transCodeFileSize != 0) {
-        fileAsset->SetSize(transCodeFileSize);
-        int32_t width = fileAsset->GetWidth();
-        int32_t height = fileAsset->GetHeight();
-        PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
-        fileAsset->SetWidth(width);
-        fileAsset->SetHeight(height);
-    }
-}
-
-napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env, napi_callback_info info)
-{
-    MediaLibraryTracer tracer;
-    tracer.Start("PhotoAccessTransAssetToCompatibleAsset");
-    NAPI_INFO_LOG("PhotoAccessTransAssetToCompatibleAsset enter");
-
-    // 1. System app check -> 202
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
         return nullptr;
     }
 
-    // 2. Parse arguments: get JS array
-    size_t argc = ARGS_ONE;
-    napi_value argv[ARGS_ONE] = {0};
-    napi_value thisVar = nullptr;
-    CHECK_ARGS(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr), JS_E_PARAM_INVALID);
+    constexpr size_t minArgs = ARGS_ONE;
+    constexpr size_t maxArgs = ARGS_ONE;
+    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_E_PARAM_INVALID);
 
-    // 3. Validate parameter: must be an array -> 23800151
     bool isArray = false;
-    CHECK_COND_WITH_ERR_MESSAGE(env, napi_is_array(env, argv[PARAM0], &isArray) == napi_ok && isArray,
+    CHECK_COND_WITH_ERR_MESSAGE(env, napi_is_array(env, context->argv[PARAM0], &isArray) == napi_ok && isArray,
         JS_E_PARAM_INVALID, "assets must be an array");
 
     uint32_t arrayLen = 0;
-    napi_get_array_length(env, argv[PARAM0], &arrayLen);
+    CHECK_ARGS(env, napi_get_array_length(env, context->argv[PARAM0], &arrayLen), JS_E_PARAM_INVALID);
     CHECK_COND_WITH_ERR_MESSAGE(env, arrayLen > 0, JS_E_PARAM_INVALID, "assets array is empty");
 
-    // 4. Iterate array, unwrap each PhotoAsset and modify in place
     for (uint32_t i = 0; i < arrayLen; i++) {
         napi_value element = nullptr;
-        napi_get_element(env, argv[PARAM0], i, &element);
+        CHECK_ARGS(env, napi_get_element(env, context->argv[PARAM0], i, &element), JS_E_PARAM_INVALID);
         napi_valuetype valueType = napi_undefined;
         CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, element, &valueType) == napi_ok
             && valueType == napi_object, JS_E_PARAM_INVALID, "asset must be an object");
@@ -17965,13 +17930,97 @@ napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env
             && obj != nullptr, JS_E_PARAM_INVALID, "Failed to get asset napi object");
         auto fileAsset = obj->GetFileAssetInstance();
         CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID, "FileAsset instance is null");
-
-        // 5. Modify FileAsset in place to compatible (jpg) mode
-        DoTransAssetSingleExecute(fileAsset);
+        context->transAssetPtrs.push_back(fileAsset);
     }
 
-    // 6. Return the original array directly
-    return argv[PARAM0];
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+    return result;
+}
+
+static void JSTransAssetToCompatibleAssetExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSTransAssetToCompatibleAssetExecute");
+
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    for (const auto &fileAsset : context->transAssetPtrs) {
+        // 5a. Replace displayname extension to jpg
+        std::string displayName = fileAsset->GetDisplayName();
+        std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
+        if (!title.empty()) {
+            fileAsset->SetDisplayName(title + ".jpg");
+        }
+        // 5b. Reconstruct URI with new displayname
+        std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
+            fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
+        fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
+        // 5c. Set mimetype to image/jpeg
+        fileAsset->SetMimeType("image/jpeg");
+        // 5d. Set suffix to jpg
+        fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
+        // 5e. Replace size with PHOTO_TRANS_CODE_FILE_SIZE and calculate width/height
+        int64_t transCodeFileSize = fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
+        if (transCodeFileSize != 0) {
+            fileAsset->SetSize(transCodeFileSize);
+            int32_t width = fileAsset->GetWidth();
+            int32_t height = fileAsset->GetHeight();
+            PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
+            fileAsset->SetWidth(width);
+            fileAsset->SetHeight(height);
+        }
+    }
+    context->retVal = E_OK;
+}
+
+static void JSTransAssetToCompatibleAssetCompleteCallback(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSTransAssetToCompatibleAssetCompleteCallback");
+
+    auto *context = static_cast<MediaLibraryAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+
+    if (context->error == ERR_DEFAULT) {
+        jsContext->status = true;
+        napi_value jsArray = nullptr;
+        napi_create_array(env, &jsArray);
+        for (size_t i = 0; i < context->transAssetPtrs.size(); i++) {
+            napi_value jsAsset = FileAssetNapi::CreatePhotoAsset(env, context->transAssetPtrs[i]);
+            napi_set_element(env, jsArray, static_cast<uint32_t>(i), jsAsset);
+        }
+        jsContext->data = jsArray;
+        napi_get_undefined(env, &jsContext->error);
+    } else {
+        napi_get_undefined(env, &jsContext->data);
+        context->HandleError(env, jsContext->error);
+    }
+
+    if (context->work != nullptr) {
+        tracer.Finish();
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessTransAssetToCompatibleAsset");
+    NAPI_INFO_LOG("PhotoAccessTransAssetToCompatibleAsset enter");
+
+    unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
+    CHECK_NULLPTR_RET(ParseArgsTransAssetToCompatibleAsset(env, info, asyncContext));
+
+    SetUserIdFromObjectInfo(asyncContext);
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "TransAssetToCompatibleAsset",
+        JSTransAssetToCompatibleAssetExecute, JSTransAssetToCompatibleAssetCompleteCallback);
 }
 } // namespace Media
 } // namespace OHOS
