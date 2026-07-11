@@ -358,7 +358,7 @@ int32_t UriSensitiveOperations::QuerySensitiveType(const uint32_t &tokenId, cons
         return AppUriSensitiveColumn::SENSITIVE_DEFAULT;
     }
     resultSet->GoToFirstRow();
-    return MediaLibraryRdbStore::GetInt(resultSet, AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE);
+    return GetInt32Val(AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE, resultSet);
 }
 
 bool UriSensitiveOperations::QueryForceSensitive(const uint32_t &tokenId,
@@ -383,7 +383,7 @@ bool UriSensitiveOperations::QueryForceSensitive(const uint32_t &tokenId,
         return false;
     }
     resultSet->GoToFirstRow();
-    return MediaLibraryRdbStore::GetInt(resultSet, AppUriSensitiveColumn::IS_FORCE_SENSITIVE) > 0;
+    return GetInt32Val(AppUriSensitiveColumn::IS_FORCE_SENSITIVE, resultSet) > 0;
 }
 }
 }

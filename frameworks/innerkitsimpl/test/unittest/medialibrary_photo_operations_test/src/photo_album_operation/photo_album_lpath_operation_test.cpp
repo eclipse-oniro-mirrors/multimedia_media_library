@@ -24,8 +24,10 @@
 #include "media_log.h"
 
 using namespace testing::ext;
+using namespace std;
 
 namespace OHOS::Media {
+
 void PhotoAlbumLPathOperationTest::SetUpTestCase(void)
 {
     MEDIA_INFO_LOG("SetUpTestCase");

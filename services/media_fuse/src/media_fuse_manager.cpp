@@ -362,12 +362,12 @@ static int32_t GetPathFromFileId(string &filePath, const string &fileId)
     }
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
-        int32_t sourceType = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
+        int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
         filePath = (sourceType == FileSourceType::MEDIA_HO_LAKE || sourceType == FileSourceType::FILE_MANAGER) ?
-            MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_STORAGE_PATH) :
-            MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
+            GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
+            GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
 #else
-        filePath = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
+        filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
 #endif
     }
     return E_SUCCESS;
@@ -400,18 +400,18 @@ static int32_t GetPathFromFileIdForGetAttr(string &filePath, const string &fileI
     CHECK_AND_RETURN_RET_LOG(!cond, E_ERR, "Failed to get filePath");
 
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        int32_t sourceType = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
+        int32_t sourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
         filePath = (sourceType == FileSourceType::MEDIA_HO_LAKE || sourceType == FileSourceType::FILE_MANAGER) ?
-            MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_STORAGE_PATH) :
-            MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
-        cloudAssetTimeQueryParams.position = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_POSITION);
+            GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) :
+            GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+        cloudAssetTimeQueryParams.position = GetInt32Val(PhotoColumn::PHOTO_POSITION, resultSet);
         cloudAssetTimeQueryParams.accesstime = GetInt64Val(PhotoColumn::PHOTO_LAST_VISIT_TIME, resultSet);
         cloudAssetTimeQueryParams.changeTime = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
         pathValidationParams.storageName =
-            GetStorageNameFromFilePath(MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH));
-        pathValidationParams.displayName = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_NAME);
+            GetStorageNameFromFilePath(GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet));
+        pathValidationParams.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
         pathValidationParams.fileSourceType = sourceType;
-        pathValidationParams.ownerAlbumId = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_OWNER_ALBUM_ID);
+        pathValidationParams.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
     }
     resultSet->Close();
     return E_SUCCESS;
@@ -490,8 +490,8 @@ static int32_t GetCompatibleModeFromFileId(int32_t &compatibleMode, std::string 
         return E_ERR;
     }
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        mimeType = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_MIME_TYPE);
-        compatibleMode = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE);
+        mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
+        compatibleMode = GetInt32Val(PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, resultSet);
     }
     return E_SUCCESS;
 }
@@ -518,8 +518,8 @@ static bool IsHighPixelPicture(const string &fileId)
     int32_t width = 0;
     int32_t height = 0;
     if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        width = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_WIDTH);
-        height = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_HEIGHT);
+        width = GetInt32Val(PhotoColumn::PHOTO_WIDTH, resultSet);
+        height = GetInt32Val(PhotoColumn::PHOTO_HEIGHT, resultSet);
     }
     if (IsHighPixel(width, height)) {
         return true;
@@ -734,7 +734,7 @@ static int32_t DbCheckPermission(const string &filePath, const string &mode, con
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_PERMISSION_DENIED, "Failed to get permission type");
     vector<int32_t> permissionTypes;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        int32_t permissionType = MediaLibraryRdbStore::GetInt(resultSet, FIELD_PERMISSION_TYPE);
+        int32_t permissionType = GetInt32Val(FIELD_PERMISSION_TYPE, resultSet);
         permissionTypes.push_back(permissionType);
         MEDIA_INFO_LOG("get permissionType %{public}d", permissionType);
     }

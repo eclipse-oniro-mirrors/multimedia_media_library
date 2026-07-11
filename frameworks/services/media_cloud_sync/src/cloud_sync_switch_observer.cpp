@@ -25,6 +25,8 @@
 
 namespace OHOS {
 namespace Media {
+using namespace std;
+
 const std::string QUERY_URI = "datashareproxy://";
 DataShare::CreateOptions options;
 constexpr int32_t SYNC_INTERVAL = 20000;

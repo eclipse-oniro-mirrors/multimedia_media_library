@@ -259,7 +259,7 @@ int MediaLibraryAppUriSensitiveOperations::UpdateSensitiveType(shared_ptr<Native
     ValuesBucket updateVB;
     updateVB.PutInt(AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE, sensitiveTypeParam);
     updateVB.PutLong(AppUriSensitiveColumn::DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-    int32_t idDB = MediaLibraryRdbStore::GetInt(resultSetDB, AppUriSensitiveColumn::ID);
+    int32_t idDB = GetInt32Val(AppUriSensitiveColumn::ID, resultSetDB);
 
     RdbPredicates updateRdbPredicates(AppUriSensitiveColumn::APP_URI_SENSITIVE_TABLE);
     updateRdbPredicates.EqualTo(AppUriSensitiveColumn::ID, idDB);
@@ -290,7 +290,7 @@ int MediaLibraryAppUriSensitiveOperations::UpdateSensitiveTypeAndForceHideSensit
     if (hasSetForce && isForce > 0) {
         updateVB.PutInt(AppUriSensitiveColumn::IS_FORCE_SENSITIVE, 1);
     }
-    int32_t idDB = MediaLibraryRdbStore::GetInt(resultSetDB, AppUriSensitiveColumn::ID);
+    int32_t idDB = GetInt32Val(AppUriSensitiveColumn::ID, resultSetDB);
 
     RdbPredicates updateRdbPredicates(AppUriSensitiveColumn::APP_URI_SENSITIVE_TABLE);
     updateRdbPredicates.EqualTo(AppUriSensitiveColumn::ID, idDB);

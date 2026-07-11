@@ -500,9 +500,8 @@ static MoveResult HandleRemoveVideo(const std::string &srcPath)
     std::vector<std::string> args = { GetCloudPath(srcPath) };
     auto resultSet = rdbStore->QuerySql(sql, args);
     if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        std::string photoId = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_ID);
-        int32_t stageVideoTaskStatus = MediaLibraryRdbStore::GetInt(resultSet,
-            PhotoColumn::STAGE_VIDEO_TASK_STATUS);
+        std::string photoId = GetStringVal(PhotoColumn::PHOTO_ID, resultSet);
+        int32_t stageVideoTaskStatus = GetInt32Val(PhotoColumn::STAGE_VIDEO_TASK_STATUS, resultSet);
         resultSet->Close();
         if (!photoId.empty() && stageVideoTaskStatus ==
             static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) {

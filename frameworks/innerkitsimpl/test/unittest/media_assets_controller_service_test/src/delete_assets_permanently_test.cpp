@@ -71,7 +71,7 @@ static int32_t GetAssetId(const std::string &title)
     }
     int32_t assetId = 0;
     if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        assetId = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::MEDIA_ID);
+        assetId = GetInt32Val(PhotoColumn::MEDIA_ID, resultSet);
         MEDIA_INFO_LOG("resultSet: assetId:%{public}d", assetId);
     }
     resultSet->Close();

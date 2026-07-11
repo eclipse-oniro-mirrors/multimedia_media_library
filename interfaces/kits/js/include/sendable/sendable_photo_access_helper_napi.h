@@ -42,18 +42,10 @@ namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 static const std::string SENDABLE_PHOTOACCESSHELPER_NAPI_CLASS_NAME = "SendablePhotoAccessHelper";
 
-enum SendableReplaceSelectionMode {
-    SENDABLE_DEFAULT = 0,
-    SENDABLE_ADD_DOCS_TO_RELATIVE_PATH,
-};
-
 class SendablePhotoAccessHelper {
 public:
     EXPORT static napi_value Init(napi_env env, napi_value exports);
 
-    static void ReplaceSelection(std::string &selection, std::vector<std::string> &selectionArgs,
-        const std::string &key, const std::string &keyInstead, const int32_t mode =
-            SendableReplaceSelectionMode::SENDABLE_DEFAULT);
     static void OnThumbnailGenerated(napi_env env, napi_value cb, void *context, void *data);
     int32_t GetUserId();
     void SetUserId(const int32_t &userId);

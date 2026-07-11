@@ -399,9 +399,9 @@ void MediaLibraryAudioOperations::MoveToMusic()
     }
     int32_t num = 0;
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        string path = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::MEDIA_FILE_PATH);
+        string path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
         string localPath = path.replace(0, CLOUD_AUDIO_DIR.length(), LOCAL_AUDIO_DIR);
-        string displayName = MediaLibraryRdbStore::GetString(resultSet, AudioColumn::MEDIA_NAME);
+        string displayName = GetStringVal(AudioColumn::MEDIA_NAME, resultSet);
         if (!MediaFileUtils::ModifyAsset(localPath, MUSIC_DIR + displayName)) {
             num++;
         } else {

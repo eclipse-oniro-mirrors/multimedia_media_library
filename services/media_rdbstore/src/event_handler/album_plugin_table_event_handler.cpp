@@ -42,7 +42,7 @@ bool AlbumPluginTableEventHandler::IsTableCreated(NativeRdb::RdbStore &store, co
         MEDIA_ERR_LOG("go to first row failed");
         return 0;
     }
-    int32_t count = get<int32_t>(ResultSetUtils::GetValFromColumn("count", resultSet, TYPE_INT32));
+    int32_t count = std::get<int32_t>(ResultSetUtils::GetValFromColumn("count", resultSet, TYPE_INT32));
     if (count < 0) {
         MEDIA_ERR_LOG(
             "Check sqlite_master count error, tableName: %{public}s, count is %{public}d", tableName.c_str(), count);

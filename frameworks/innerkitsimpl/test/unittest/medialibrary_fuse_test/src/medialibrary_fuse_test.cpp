@@ -457,16 +457,6 @@ int TestInsert(DataShareValuesBucket &dataShareValue)
     return ret;
 }
 
-int32_t MediaLibraryRdbStore::GetInt(const shared_ptr<NativeRdb::ResultSet> &resultSet, const string &column)
-{
-    return get<int32_t>(ResultSetUtils::GetValFromColumn(column, resultSet, TYPE_INT32));
-}
-
-string MediaLibraryRdbStore::GetString(const shared_ptr<NativeRdb::ResultSet> &resultSet, const string &column)
-{
-    return get<string>(ResultSetUtils::GetValFromColumn(column, resultSet, TYPE_STRING));
-}
-
 string PermissionUtils::GetAppIdByBundleName(const string &bundleName, int32_t uid)
 {
     string appid = "fuse_test_appid_000";

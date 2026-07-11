@@ -30,7 +30,7 @@
 
 using namespace testing::ext;
 using namespace OHOS::NativeRdb;
-
+using namespace std;
 namespace OHOS {
 namespace Media {
 

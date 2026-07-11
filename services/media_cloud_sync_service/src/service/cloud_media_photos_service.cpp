@@ -50,7 +50,7 @@
 #include "file_scan_utils.h"
 #include "cloud_lake_file_handler.h"
 #endif
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "cloud_media_retain_smart_data.h"
 #include "cloud_media_context.h"
 #include "cloud_media_asset_retain_compare_dao.h"

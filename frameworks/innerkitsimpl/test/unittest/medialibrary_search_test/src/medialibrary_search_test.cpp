@@ -32,6 +32,8 @@ using namespace testing::ext;
 namespace OHOS {
 namespace Media {
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
+const std::string URI_SEARCH_INDEX = MEDIALIBRARY_DATA_URI + "/" + SEARCH_TOTAL_TABLE;
+
 void CleanSearchData()
 {
     DataShare::DataSharePredicates predicates;

@@ -193,6 +193,62 @@ static unordered_map<string, ResultSetDataType> albumColumnTypeMap = {
     {PhotoAlbumColumns::ALBUM_HIDDEN, ResultSetDataType::TYPE_INT32},
 };
 
+const std::string CREATE_TEMP_UPGRADE_PHOTO_MAP_TABLE =
+    "CREATE TABLE IF NOT EXISTS temp_upgrade_photo_map AS SELECT MIN(map_album) AS map_album, map_asset FROM PhotoMap "
+    "INNER JOIN Photos ON PhotoMap.map_asset=Photos.file_id where COALESCE(owner_album_id, 0) = 0 GROUP BY map_asset;";
+
+const std::string QUERY_MATCHED_COUNT =
+    "SELECT COUNT(1) from temp_upgrade_photo_map";
+ 
+const std::string QUERY_SUCCESS_MATCHED_COUNT =
+    "SELECT COUNT(1) from Photos where owner_album_id != 0";
+
+const std::string CREATE_UNIQUE_TEMP_UPGRADE_INDEX_ON_MAP_ASSET =
+    "CREATE INDEX IF NOT EXISTS unique_temp_upgrade_index_on_map_asset ON temp_upgrade_photo_map (map_asset);";
+ 
+const std::string CREATE_UNIQUE_TEMP_UPGRADE_INDEX_ON_PHOTO_MAP =
+    "CREATE UNIQUE INDEX IF NOT EXISTS unique_temp_upgrade_index_on_photo_map ON "
+    "temp_upgrade_photo_map (map_album, map_asset);";
+
+const std::string UPDATE_ALBUM_ASSET_MAPPING_CONSISTENCY_DATA_SQL =
+    "UPDATE Photos SET owner_album_id =(SELECT map_album FROM temp_upgrade_photo_map WHERE file_id=map_asset "
+    "UNION SELECT 0 AS map_album ORDER BY map_album DESC LIMIT 1) WHERE COALESCE(owner_album_id, 0)=0;";
+
+const std::string DELETE_MATCHED_RELATIONSHIP_IN_PHOTOMAP_SQL =
+    "UPDATE PhotoMap SET dirty = '4' WHERE EXISTS (SELECT 1 FROM temp_upgrade_photo_map "
+    " WHERE PhotoMap.map_album=temp_upgrade_photo_map.map_album AND "
+    " PhotoMap.map_asset=temp_upgrade_photo_map.map_asset);";
+
+const std::string DROP_TEMP_UPGRADE_PHOTO_MAP_TABLE =
+    "DROP TABLE IF EXISTS temp_upgrade_photo_map;";
+
+const std::string QUERY_NOT_MATCHED_DATA_IN_PHOTOMAP_BY_PAGE =
+    "SELECT " + PhotoMap::ASSET_ID + ", " + PhotoMap::ALBUM_ID + " FROM " + PhotoMap::TABLE +
+    " WHERE dirty <>4 and dirty<>6 LIMIT 0, 200";
+
+const std::string QUERY_NEW_NOT_MATCHED_DATA_IN_PHOTOMAP_BY_PAGE =
+    "SELECT " + PhotoMap::ASSET_ID + ", " + PhotoMap::ALBUM_ID + " FROM " + PhotoMap::TABLE +
+    " WHERE dirty <>4 LIMIT 0, 200";
+
+const std::string QUERY_NOT_MATCHED_COUNT_IN_PHOTOMAP =
+    "SELECT count(1) FROM PhotoMap WHERE dirty <>4 and dirty<>6";
+
+const std::string QUERY_NEW_NOT_MATCHED_COUNT_IN_PHOTOMAP =
+    "SELECT count(1) FROM PhotoMap WHERE dirty <>4";
+
+const std::string SELECT_HIDDEN_ALBUM_ID =
+    "(SELECT " + PhotoAlbumColumns::ALBUM_ID + " FROM " + PhotoAlbumColumns::TABLE + " WHERE " +
+        PhotoAlbumColumns::ALBUM_NAME + " = '.hiddenAlbum' AND " + PhotoAlbumColumns::ALBUM_DIRTY +
+        " <> 4 AND " + PhotoAlbumColumns::ALBUM_TYPE + " = '2048')";
+
+const std::string SELECT_ALL_HIDDEN_ALBUM_ASSET_ID =
+    "(SELECT " + PhotoMap::ASSET_ID + " FROM " + PhotoMap::TABLE + " WHERE " +
+        PhotoMap::ALBUM_ID + " = " + SELECT_HIDDEN_ALBUM_ID + ")";
+
+const std::string DROP_UNWANTED_ALBUM_RELATIONSHIP_FOR_HIDDEN_ALBUM_ASSET =
+    "UPDATE " + PhotoMap::TABLE + " SET " + PhotoMap::DIRTY + " = 4 " +
+        "WHERE " + PhotoMap::ASSET_ID + " in " + SELECT_ALL_HIDDEN_ALBUM_ASSET_ID +
+        " AND " + PhotoMap::ALBUM_ID + " <> " + SELECT_HIDDEN_ALBUM_ID;
 std::mutex MediaLibraryAlbumFusionUtils::cloudAlbumAndDataMutex_;
 std::atomic<bool> MediaLibraryAlbumFusionUtils::isNeedRefreshAlbum = false;
 // LCOV_EXCL_START
@@ -1900,7 +1956,7 @@ static bool IsDeleteOtherAlbum(int32_t oldAlbumId)
         resultSet->Close();
         return false;
     }
-    std::string deletedAlbumLPath = MediaLibraryRdbStore::GetString(resultSet, PhotoAlbumColumns::ALBUM_LPATH);
+    std::string deletedAlbumLPath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
     resultSet->Close();
     if (deletedAlbumLPath == "/Pictures/其它") {
         return true;

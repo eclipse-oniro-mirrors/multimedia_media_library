@@ -25,7 +25,6 @@
 namespace OHOS {
 namespace Media {
 // uri
-const std::string URI_SEARCH_INDEX = MEDIALIBRARY_DATA_URI + "/" + SEARCH_TOTAL_TABLE;
 const std::string UPDATE_INDEX = "update_index";
 
 // create search table
