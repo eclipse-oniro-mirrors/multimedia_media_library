@@ -335,7 +335,7 @@ public:
         ani_boolean disableModification, ani_boolean isAsyncRefreshAlbum);
     static ani_object CanPerformDeepOptimizeSpace(ani_env *env, ani_object object);
     static ani_object GetDeepOptimizeSpace(ani_env *env, ani_object object);
-    static void ConvertAssetToCompatibleAsset(ani_env *env, ani_object object, ani_object assets);
+    static ani_object ConvertAssetToCompatibleAsset(ani_env *env, ani_object object, ani_object assets);
 
 private:
     int32_t GetListenerType(const std::string &str) const;

@@ -2755,7 +2755,7 @@ export class ContextRecoveryInfo {
     getAlbumIdByLpath(lpath: string): Promise<int>;
     getAlbumIdByBundleName(bundleName: string): Promise<int>;
     getAssetCompatibleUris(bundleName: string, assets: Array<PhotoAsset>, compatibleFlags?: int): Promise<string[]>;
-    convertAssetToCompatibleAsset(assets: Array<PhotoAsset>): Promise<void>;
+    convertAssetToCompatibleAsset(assets: Array<PhotoAsset>): Promise<Array<PhotoAsset>>;
     moveAssetsToDir(assets: string[], target: string, option?: BatchOperationOptions): Promise<string[]>;
     moveAssetsByPath(assets: string[], target: Album, options?: BatchOperationOptions): Promise<string[]>;
     startDeepOptimizeSpace(callback?: Callback<DeepOptimizeSpaceProgressInfo>): Promise<void>;
@@ -4487,22 +4487,27 @@ export class ContextRecoveryInfo {
       });
     }
 
-    convertAssetToCompatibleAsset(assets: Array<PhotoAsset>): Promise<void> {
-      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
-        let cb = (): MediaLibraryAniError | undefined => {
+    convertAssetToCompatibleAsset(assets: Array<PhotoAsset>): Promise<Array<PhotoAsset>> {
+      return new Promise<Array<PhotoAsset>>((resolve: (v: Array<PhotoAsset>) => void, reject: RejectString) => {
+        let cb = (): Array<PhotoAsset> | MediaLibraryAniError => {
+          let result: Array<PhotoAsset> | MediaLibraryAniError;
           try {
-            this.convertAssetToCompatibleAssetInner(assets);
-            return undefined;
+            result = this.convertAssetToCompatibleAssetInner(assets);
           } catch (e) {
-            return e as MediaLibraryAniError;
+            result = e as MediaLibraryAniError;
           }
+          return result;
         };
         taskpool.execute(cb).then((ret: Any): void => {
-          if (isNullish(ret)) {
-            resolve(undefined);
-          } else {
+          if (ret instanceof MediaLibraryAniError) {
             let err = ret as MediaLibraryAniError;
-            reject(businessError(err.code as int, err.message));
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as Array<PhotoAsset>);
+            }
           }
         });
       });
@@ -4758,7 +4763,7 @@ export class ContextRecoveryInfo {
     native getAlbumIdByLpathInner(lpath: string): int;
     native getAlbumIdByBundleNameInner(bundleName: string): int;
     native getAssetCompatibleUrisInner(bundleName: string, assets: Array<PhotoAsset>, compatibleFlags?: int): string[];
-    native convertAssetToCompatibleAssetInner(assets: Array<PhotoAsset>): void;
+    native convertAssetToCompatibleAssetInner(assets: Array<PhotoAsset>): Array<PhotoAsset>;
     native convertToAssetInner(path: string): PhotoAsset;
     native moveAssetsToDirInner(assets: string[], targetDir: string, options?: BatchOperationOptions): string[];
     native moveAssetsByPathInner(assets: string[], target: Album, option?: BatchOperationOptions): string[];

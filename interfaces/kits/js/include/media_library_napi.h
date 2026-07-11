@@ -723,6 +723,7 @@ struct MediaLibraryAsyncContext : public NapiError {
     std::unordered_map<std::string, int32_t> uriPermissionStateMap;
     ChangeListenerNapi* availabilityListObj = nullptr;
     std::vector<PhotoAssetInfo> photoAssetInfos;
+    std::vector<shared_ptr<FileAsset>> transAssetPtrs;
     int32_t compatibleFlags = 0;
     CloneToAlbumContext cloneCtx;
     std::string targetDir;

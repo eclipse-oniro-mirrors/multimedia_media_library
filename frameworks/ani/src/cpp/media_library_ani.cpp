@@ -9315,40 +9315,42 @@ static void DoTransAssetSingleExecute(shared_ptr<FileAsset> fileAsset)
     }
 }
  
-void MediaLibraryAni::ConvertAssetToCompatibleAsset(ani_env *env, ani_object object, ani_object assets)
+ani_object MediaLibraryAni::ConvertAssetToCompatibleAsset(ani_env *env, ani_object object, ani_object assets)
 {
     MediaLibraryTracer tracer;
     tracer.Start("ConvertAssetToCompatibleAsset");
     ANI_INFO_LOG("ConvertAssetToCompatibleAsset enter");
- 
+
     if (!MediaLibraryAniUtils::IsSystemApp()) {
         AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system app");
-        return;
+        return nullptr;
     }
- 
+
     std::vector<ani_object> aniValues;
     if (ANI_OK != MediaLibraryAniUtils::GetObjectArray(env, assets, aniValues)) {
         AniError::ThrowError(env, JS_E_PARAM_INVALID, "assets must be a non-empty array");
-        return;
+        return nullptr;
     }
     if (aniValues.empty()) {
         AniError::ThrowError(env, JS_E_PARAM_INVALID, "assets array is empty");
-        return;
+        return nullptr;
     }
- 
+
     for (const auto &item : aniValues) {
         FileAssetAni *fileAssetAni = FileAssetAni::Unwrap(env, item);
         if (fileAssetAni == nullptr) {
             AniError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to unwrap asset");
-            return;
+            return nullptr;
         }
         auto fileAsset = fileAssetAni->GetFileAssetInstance();
         if (fileAsset == nullptr) {
             AniError::ThrowError(env, JS_E_PARAM_INVALID, "FileAsset instance is null");
-            return;
+            return nullptr;
         }
         DoTransAssetSingleExecute(fileAsset);
     }
+
+    return assets;
 }
 } // namespace Media
 } // namespace OHOS
