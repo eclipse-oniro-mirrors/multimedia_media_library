@@ -181,11 +181,14 @@ int32_t PermissionWhitelistUtils::LoadWhiteList()
 int32_t PermissionWhitelistUtils::ParseWhiteList(const nlohmann::json &higherVerFile)
 {
     std::unordered_map<std::string, int> tmpWhiteList;
-    CHECK_AND_RETURN_RET_LOG(higherVerFile.contains(LIST_APPLICATIONS),
-        E_FAIL, "Missing %{public}s in whiteList config", LIST_APPLICATIONS.c_str());
+    CHECK_AND_RETURN_RET_LOG((higherVerFile.contains(LIST_APPLICATIONS) &&
+        higherVerFile[LIST_APPLICATIONS].is_array()),
+        E_FAIL, "Invalid or missing %{public}s in whiteList config", LIST_APPLICATIONS.c_str());
     for (const auto &app : higherVerFile[LIST_APPLICATIONS]) {
-        CHECK_AND_CONTINUE_ERR_LOG((app.contains(LIST_APPIDENTIFIER) && app.contains(LIST_ALLOW_API_VERSION)),
-            "Missing appIdentifier or allowedApiVersion");
+        CHECK_AND_CONTINUE_ERR_LOG((app.contains(LIST_APPIDENTIFIER) &&
+            app[LIST_APPIDENTIFIER].is_string()), "Invalid or missing appIdentifier");
+        CHECK_AND_CONTINUE_ERR_LOG((app.contains(LIST_ALLOW_API_VERSION) &&
+            app[LIST_ALLOW_API_VERSION].is_number_integer()), "Invalid or missing allowedApiVersion");
 
         std::string appIdentifier = app[LIST_APPIDENTIFIER].get<std::string>();
         int allowedApiVersion = app[LIST_ALLOW_API_VERSION].get<int>();
