@@ -220,7 +220,6 @@ static void CloudMediaAlbumDaoFuzzer()
 
     vector<PhotoAlbumPo> cloudRecordPoList;
     int32_t limitSize = DEFAULT_VALUE;
-    cloudMediaAlbumDao->GetCopyAlbum(limitSize, cloudRecordPoList);
     cloudMediaAlbumDao->GetDeletedRecordsAlbum(limitSize, cloudRecordPoList);
     cloudMediaAlbumDao->GetMetaModifiedAlbum(limitSize, cloudRecordPoList);
     cloudMediaAlbumDao->GetCreatedRecords(limitSize, cloudRecordPoList);
@@ -252,9 +251,6 @@ static void InsertAndRemoveAlbumFailedRecoredFuzzer()
     cloudMediaAlbumDao->InsertAlbumModifyFailedRecord(cloudId);
     cloudMediaAlbumDao->InsertAlbumInsertFailedRecord(cloudId);
     cloudMediaAlbumDao->InsertAlbumCreateFailedRecord(cloudId);
-    cloudMediaAlbumDao->RemoveAlbumModifyFailedRecord(cloudId);
-    cloudMediaAlbumDao->RemoveAlbumInsertFailedRecord(cloudId);
-    cloudMediaAlbumDao->RemoveAlbumCreateFailedRecord(cloudId);
     cloudMediaAlbumDao->ClearAlbumFailedRecords();
 }
 

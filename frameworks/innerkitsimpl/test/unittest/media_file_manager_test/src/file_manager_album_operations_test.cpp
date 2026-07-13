@@ -31,7 +31,7 @@ void FileManagerAlbumOperationsTest::TearDownTestCase() {}
 void FileManagerAlbumOperationsTest::SetUp() {}
 void FileManagerAlbumOperationsTest::TearDown() {}
 
-// ==================== RenameFileManagerAlbum Parameter Validation Tests ====================
+// RenameFileManagerAlbum Parameter Validation Tests
 
 /**
  * @tc.name: RenameFileManagerAlbum_InvalidAlbumId_001
@@ -77,7 +77,7 @@ HWTEST_F(FileManagerAlbumOperationsTest, RenameFileManagerAlbum_EmptyOldPath_004
     EXPECT_EQ(ret, E_ERR);
 }
 
-// ==================== MoveAssetsToFileManagerUpdateData Tests ====================
+// MoveAssetsToFileManagerUpdateData Tests
 
 /**
  * @tc.name: MoveAssetsToFileManagerUpdateData_DefaultValues_001

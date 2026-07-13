@@ -2131,19 +2131,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumConvertRecordPoToVo_Test, TestSiz
     processor->ConvertRecordPoToVo(record);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, DataControllerProcessorVoToDto_Test, TestSize.Level1)
-{
-    PhotosVo photosVo;
-    CloudFileDataVo dataVo;
-    photosVo.cloudId = "test";
-    photosVo.attachment["001"] = dataVo;
-    auto processor = std::make_shared<CloudMediaDataControllerProcessor>();
-    ASSERT_TRUE(processor);
-
-    PhotosDto dto = processor->ConvertPhotosVoToPhotosDto(photosVo);
-    EXPECT_EQ(dto.cloudId, "test");
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, DataControllerProcessorDoToVo_Test, TestSize.Level1)
 {
     PhotosDto dto;

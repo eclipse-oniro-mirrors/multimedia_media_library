@@ -21,7 +21,6 @@
 #include "photo_map_column.h"
 #include "media_log.h"
 #include "medialibrary_rdbstore.h"
-#include "cloud_media_operation_code.h"
 #include "medialibrary_unistore_manager.h"
 #include "result_set.h"
 #include "result_set_utils.h"

@@ -721,32 +721,6 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDfxService_UpdateAttachmentStat_Te
     service->UpdateAttachmentStat(index, diff);
 }
 
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDfxService_UpdateAlbumStat_Test_001, TestSize.Level1)
-{
-    auto service = std::make_shared<CloudMediaDfxService>();
-    ASSERT_NE(service, nullptr);
-    uint32_t index = 1;
-    uint64_t diff = 10;
-    service->UpdateAlbumStat(index, diff);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDfxService_UpdateUploadMetaStat_Test_001, TestSize.Level1)
-{
-    auto service = std::make_shared<CloudMediaDfxService>();
-    ASSERT_NE(service, nullptr);
-    uint32_t index = 1;
-    uint64_t diff = 10;
-    service->UpdateUploadMetaStat(index, diff);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDfxService_UpdateUploadDetailError_Test_001, TestSize.Level1)
-{
-    auto service = std::make_shared<CloudMediaDfxService>();
-    ASSERT_NE(service, nullptr);
-    int32_t error = -1;
-    service->UpdateUploadDetailError(error);
-}
-
 HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDfxService_SyncEnd_Test_001, TestSize.Level1)
 {
     auto service = std::make_shared<CloudMediaDfxService>();

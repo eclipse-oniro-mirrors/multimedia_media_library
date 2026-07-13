@@ -70,13 +70,9 @@ public:
     int32_t IsEmptyAlbum(std::shared_ptr<MediaLibraryRdbStore> rdbStore, const std::string &cloudId);
     int32_t OnMdirtyAlbumRecords(const std::string &cloudId);
     int32_t OnDeleteAlbumRecords(const std::string &cloudId);
-    int32_t GetCopyAlbum(int32_t size, std::vector<PhotoAlbumPo> &cloudRecordPoList);
     void InsertAlbumInsertFailedRecord(const std::string &lPath);
     void InsertAlbumCreateFailedRecord(const std::string &cloudId);
     void InsertAlbumModifyFailedRecord(const std::string &cloudId);
-    void RemoveAlbumInsertFailedRecord(const std::string &cloudId);
-    void RemoveAlbumCreateFailedRecord(const std::string &cloudId);
-    void RemoveAlbumModifyFailedRecord(const std::string &cloudId);
     int32_t ClearAlbumFailedRecords();
     bool IsCoverIdExist(const std::string &cloudId);
     bool IsNeedPullCoverByDateModified(const std::string &lPath, const std::string &coverCloudId);

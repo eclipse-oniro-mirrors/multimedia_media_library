@@ -281,7 +281,6 @@ static void CloudMediaDataControllerProcessorFuzzer()
         MEDIA_ERR_LOG("cloudMediaDataControllerProcessor is nullptr");
         return;
     }
-    cloudMediaDataControllerProcessor->ConvertPhotosVoToPhotosDto(photosVo);
     cloudMediaDataControllerProcessor->ConvertPhotosDtoToPhotosVo(photosDto);
     cloudMediaDataControllerProcessor->GetMediaOperateResult(mediaOperateResultDto);
     cloudMediaDataControllerProcessor->GetAgingFileQueryDto(reqBody, queryDto);
