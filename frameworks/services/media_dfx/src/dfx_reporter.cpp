@@ -480,7 +480,8 @@ int32_t DfxReporter::ReportCloudSyncThumbGenerationStatus(const int32_t& downloa
     int64_t cost = now - start;
     time_t startTime = start + ONE_HOUR * 8;
     struct tm *tmPtr = gmtime(&startTime);
-    std::string astcStartTime = tmPtr != nullptr ? asctime(tmPtr) : "";
+    char *timeStr = tmPtr != nullptr ? asctime(tmPtr) : nullptr;
+    std::string astcStartTime = timeStr != nullptr ? timeStr : "";
     float total = static_cast<float>(totalDownload);
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
