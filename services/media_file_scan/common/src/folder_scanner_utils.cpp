@@ -125,7 +125,7 @@ std::string ExtractRelativePath(const std::string &path, const ScanRuleConfig &r
     std::smatch matcher;
     CHECK_AND_RETURN_RET(std::regex_search(dirPath, matcher, ruleConfig.relativePathPattern), "");
     size_t lastSlash = dirPath.find_last_of('/');
-    size_t matchEnd = matcher.position(0) + matcher.length(0);
+    size_t matchEnd = static_cast<size_t>(matcher.position(0)) + static_cast<size_t>(matcher.length(0));
     if (lastSlash == std::string::npos || lastSlash < matchEnd) {
         return "/";
     }
