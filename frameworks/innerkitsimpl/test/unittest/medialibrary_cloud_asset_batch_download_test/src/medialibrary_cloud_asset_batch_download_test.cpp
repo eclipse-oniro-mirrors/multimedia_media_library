@@ -51,6 +51,7 @@
 #define private public
 #define protected public
 #include "cloud_media_asset_manager.h"
+#include "medialibrary_unistore_manager.h"
 #undef protected
 #undef private
 #include "rdb_predicates.h"
@@ -798,5 +799,203 @@ HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchDownloadDaoTest_UpdateAll
     int32_t ret = dao.UpdateAllStatusPauseToDownloading();
     EXPECT_EQ(ret, E_OK);
     MEDIA_INFO_LOG("End BatchDownloadDaoTest_UpdateAllStatusPauseToDownloading_01");
+}
+
+// ===== BatchInsert branch coverage tests =====
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_EmptyValues_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_EmptyValues_01");
+    vector<NativeRdb::ValuesBucket> emptyValues;
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, emptyValues);
+    EXPECT_EQ(ret, NativeRdb::E_OK);
+    EXPECT_EQ(insertCount, 0);
+    EXPECT_TRUE(emptyValues.empty());
+    MEDIA_INFO_LOG("End BatchInsert_EmptyValues_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_RdbStoreNull_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_RdbStoreNull_01");
+    auto originalRdbStorePtr = MediaLibraryUnistoreManager::GetInstance().rdbStorePtr_;
+    MediaLibraryUnistoreManager::GetInstance().rdbStorePtr_ = nullptr;
+
+    vector<NativeRdb::ValuesBucket> values = GenTaskValues();
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
+    EXPECT_EQ(ret, E_RDB_STORE_NULL);
+    EXPECT_EQ(insertCount, 0);
+
+    MediaLibraryUnistoreManager::GetInstance().rdbStorePtr_ = originalRdbStorePtr;
+    MEDIA_INFO_LOG("End BatchInsert_RdbStoreNull_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_InvalidTable_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_InvalidTable_01");
+    PrepareInsertPhotos();
+    vector<NativeRdb::ValuesBucket> values = GenTaskValues();
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, "non_existent_table", values);
+    EXPECT_NE(ret, E_OK);
+    MEDIA_INFO_LOG("End BatchInsert_InvalidTable_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_InsertSuccess_VerifyInsertCount_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_InsertSuccess_VerifyInsertCount_01");
+    PrepareInsertPhotos();
+    vector<NativeRdb::ValuesBucket> values = GenTaskValues();
+    size_t expectedCount = values.size();
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(insertCount, expectedCount);
+
+    auto count = QueryTasksCount();
+    EXPECT_EQ(count, expectedCount);
+    MEDIA_INFO_LOG("End BatchInsert_InsertSuccess_VerifyInsertCount_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_SingleRecord_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_SingleRecord_01");
+    PrepareInsertPhotos();
+    vector<NativeRdb::ValuesBucket> values;
+    NativeRdb::ValuesBucket singleValue;
+    singleValue.PutInt(DownloadResourcesColumn::MEDIA_ID, 1);
+    singleValue.PutString(DownloadResourcesColumn::MEDIA_NAME, "test_single.jpg");
+    singleValue.PutLong(DownloadResourcesColumn::MEDIA_SIZE, 1000);
+    singleValue.PutString(DownloadResourcesColumn::MEDIA_URI, "file://media/Photo/1/test/test_single.jpg");
+    singleValue.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, GetTimestamp());
+    singleValue.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, 0);
+    singleValue.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, 0);
+    singleValue.PutInt(DownloadResourcesColumn::MEDIA_PERCENT, -1);
+    singleValue.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, 0);
+    values.push_back(singleValue);
+
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(insertCount, 1);
+
+    auto count = QueryTasksCount();
+    EXPECT_EQ(count, 1);
+    MEDIA_INFO_LOG("End BatchInsert_SingleRecord_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_MultipleRecords_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_MultipleRecords_01");
+    PrepareInsertPhotos();
+    vector<NativeRdb::ValuesBucket> values;
+    for (int i = 0; i < 10; i++) {
+        NativeRdb::ValuesBucket value;
+        value.PutInt(DownloadResourcesColumn::MEDIA_ID, i + 1);
+        value.PutString(DownloadResourcesColumn::MEDIA_NAME, "test_" + to_string(i) + ".jpg");
+        value.PutLong(DownloadResourcesColumn::MEDIA_SIZE, 1000 + i * 100);
+        value.PutString(DownloadResourcesColumn::MEDIA_URI, "file://media/Photo/1/test/test_" + to_string(i) + ".jpg");
+        value.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, GetTimestamp());
+        value.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, 0);
+        value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, 0);
+        value.PutInt(DownloadResourcesColumn::MEDIA_PERCENT, -1);
+        value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, 0);
+        values.push_back(value);
+    }
+
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(insertCount, 10);
+
+    auto count = QueryTasksCount();
+    EXPECT_EQ(count, 10);
+    MEDIA_INFO_LOG("End BatchInsert_MultipleRecords_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_VerifyDataIntegrity_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_VerifyDataIntegrity_01");
+    PrepareInsertPhotos();
+    vector<NativeRdb::ValuesBucket> values = GenTaskValues();
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
+    EXPECT_EQ(ret, E_OK);
+
+    NativeRdb::AbsRdbPredicates predicates(DownloadResourcesColumn::TABLE);
+    auto resultSet = g_rdbStore->Query(predicates, {DownloadResourcesColumn::MEDIA_ID,
+        DownloadResourcesColumn::MEDIA_NAME, DownloadResourcesColumn::MEDIA_SIZE,
+        DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS});
+    ASSERT_NE(resultSet, nullptr);
+    int32_t count = 0;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t fileId = GetInt32Val(DownloadResourcesColumn::MEDIA_ID, resultSet);
+        EXPECT_GT(fileId, 0);
+        count++;
+    }
+    resultSet->Close();
+    EXPECT_EQ(count, validUrisData_.size());
+    MEDIA_INFO_LOG("End BatchInsert_VerifyDataIntegrity_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_WithDifferentStatus_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_WithDifferentStatus_01");
+    PrepareInsertPhotos();
+    vector<NativeRdb::ValuesBucket> values;
+    for (int i = 0; i < 5; i++) {
+        NativeRdb::ValuesBucket value;
+        value.PutInt(DownloadResourcesColumn::MEDIA_ID, i + 1);
+        value.PutString(DownloadResourcesColumn::MEDIA_NAME, "test_" + to_string(i) + ".jpg");
+        value.PutLong(DownloadResourcesColumn::MEDIA_SIZE, 1000);
+        value.PutString(DownloadResourcesColumn::MEDIA_URI, "file://media/Photo/1/test/test_" + to_string(i) + ".jpg");
+        value.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, GetTimestamp());
+        value.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, 0);
+        value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, i);
+        value.PutInt(DownloadResourcesColumn::MEDIA_PERCENT, i == 0 ? -1 : i * 10);
+        value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, 0);
+        values.push_back(value);
+    }
+
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(insertCount, 5);
+
+    auto count = QueryTasksCount();
+    EXPECT_EQ(count, 5);
+    MEDIA_INFO_LOG("End BatchInsert_WithDifferentStatus_01");
+}
+
+HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_LargeBatch_01, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Start BatchInsert_LargeBatch_01");
+    PrepareInsertPhotos();
+    vector<NativeRdb::ValuesBucket> values;
+    const int LARGE_BATCH_SIZE = 100;
+    for (int i = 0; i < LARGE_BATCH_SIZE; i++) {
+        NativeRdb::ValuesBucket value;
+        value.PutInt(DownloadResourcesColumn::MEDIA_ID, i + 1);
+        value.PutString(DownloadResourcesColumn::MEDIA_NAME, "test_large_" + to_string(i) + ".jpg");
+        value.PutLong(DownloadResourcesColumn::MEDIA_SIZE, 1000);
+        value.PutString(DownloadResourcesColumn::MEDIA_URI, "file://media/Photo/1/test/test_large_" +
+            to_string(i) + ".jpg");
+        value.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, GetTimestamp());
+        value.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, 0);
+        value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, 0);
+        value.PutInt(DownloadResourcesColumn::MEDIA_PERCENT, -1);
+        value.PutInt(DownloadResourcesColumn::MEDIA_AUTO_PAUSE_REASON, 0);
+        values.push_back(value);
+    }
+
+    int64_t insertCount = 0;
+    auto ret = dao.BatchInsert(insertCount, DownloadResourcesColumn::TABLE, values);
+    EXPECT_EQ(ret, E_OK);
+    EXPECT_EQ(insertCount, LARGE_BATCH_SIZE);
+
+    auto count = QueryTasksCount();
+    EXPECT_EQ(count, LARGE_BATCH_SIZE);
+    MEDIA_INFO_LOG("End BatchInsert_LargeBatch_01");
 }
 }
