@@ -979,7 +979,8 @@ HWTEST_F(MediaLibraryCloudAssetBatchDownloadTest, BatchInsert_LargeBatch_01, Tes
         value.PutInt(DownloadResourcesColumn::MEDIA_ID, i + 1);
         value.PutString(DownloadResourcesColumn::MEDIA_NAME, "test_large_" + to_string(i) + ".jpg");
         value.PutLong(DownloadResourcesColumn::MEDIA_SIZE, 1000);
-        value.PutString(DownloadResourcesColumn::MEDIA_URI, "file://media/Photo/1/test/test_large_" + to_string(i) + ".jpg");
+        value.PutString(DownloadResourcesColumn::MEDIA_URI, "file://media/Photo/1/test/test_large_" +
+            to_string(i) + ".jpg");
         value.PutLong(DownloadResourcesColumn::MEDIA_DATE_ADDED, GetTimestamp());
         value.PutLong(DownloadResourcesColumn::MEDIA_DATE_FINISH, 0);
         value.PutInt(DownloadResourcesColumn::MEDIA_DOWNLOAD_STATUS, 0);
