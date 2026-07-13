@@ -276,8 +276,7 @@ int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<Nati
         MEDIA_ERR_LOG("resultSetDB is null in UpdatePermissionType");
         return ERROR;
     }
-    int32_t permissionTypeDB =
-        MediaLibraryRdbStore::GetInt(resultSetDB, AppUriPermissionColumn::PERMISSION_TYPE);
+    int32_t permissionTypeDB = GetInt32Val(AppUriPermissionColumn::PERMISSION_TYPE, resultSetDB);
     if (!CanOverride(permissionTypeParam, permissionTypeDB)) {
         return ALREADY_EXIST;
     }
@@ -286,7 +285,7 @@ int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<Nati
     ValuesBucket updateVB;
     updateVB.PutInt(AppUriPermissionColumn::PERMISSION_TYPE, permissionTypeParam);
     updateVB.PutLong(AppUriPermissionColumn::DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-    int32_t idDB = MediaLibraryRdbStore::GetInt(resultSetDB, AppUriPermissionColumn::ID);
+    int32_t idDB = GetInt32Val(AppUriPermissionColumn::ID, resultSetDB);
 
     RdbPredicates updateRdbPredicates(AppUriPermissionColumn::APP_URI_PERMISSION_TABLE);
     updateRdbPredicates.EqualTo(AppUriPermissionColumn::ID, idDB);

@@ -22,7 +22,6 @@
 #include "media_column.h"
 #include "media_file_utils.h"
 #include "media_log.h"
-#include "medialibrary_album_compatibility_fusion_sql.h"
 #include "medialibrary_errno.h"
 #include "photo_map_column.h"
 #include "source_album.h"

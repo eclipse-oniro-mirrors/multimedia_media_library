@@ -490,9 +490,9 @@ int32_t MediaLibraryNotify::GetAlbumIdBySubType(const PhotoAlbumSubType subType)
 
 static void GetNotifyUri(shared_ptr<NativeRdb::ResultSet> &resultSet, vector<string> &notifyUris)
 {
-    int32_t fileId = MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::MEDIA_ID);
-    string path = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::MEDIA_FILE_PATH);
-    string displayName = MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::MEDIA_NAME);
+    int32_t fileId = GetInt32Val(PhotoColumn::MEDIA_ID, resultSet);
+    string path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
+    string displayName = GetStringVal(PhotoColumn::MEDIA_NAME, resultSet);
     string notifyUri = MediaFileUtils::GetUriByExtrConditions(PhotoColumn::PHOTO_URI_PREFIX, to_string(fileId),
         MediaFileUtils::GetExtraUri(displayName, path));
     notifyUris.push_back(notifyUri);

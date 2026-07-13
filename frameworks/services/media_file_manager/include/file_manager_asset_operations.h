@@ -18,6 +18,7 @@
 
 #include "asset_accurate_refresh.h"
 #include "photos_po.h"
+#include "file_asset.h"
 
 namespace OHOS::Media {
 using namespace OHOS::Media::ORM;

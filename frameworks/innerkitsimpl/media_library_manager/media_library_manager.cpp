@@ -72,6 +72,7 @@
 #include "media_path_utils.h"
 #include "thumbnail_manager.h"
 #include "batch_update_metadata_modified_vo.h"
+#include "fetch_result.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
 #include "purgeable_pixelmap_builder.h"

@@ -28,12 +28,14 @@
 #include "mtp_file_observer.h"
 #include "mtp_packet_tools.h"
 #include "mtp_storage_manager.h"
+#include "medialibrary_db_const.h"
 #include "post_proc.h"
 #include "image_packer.h"
 #include "avmetadatahelper.h"
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
+using namespace std;
 namespace {
 using ReadLock = std::shared_lock<std::shared_mutex>;
 using WriteLock = std::lock_guard<std::shared_mutex>;

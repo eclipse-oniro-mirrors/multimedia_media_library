@@ -23,6 +23,7 @@
 #include "deferred_video_proc_session.h"
 #include "medialibrary_async_worker.h"
 #include "result_set_utils.h"
+#include "file_asset.h"
 
 namespace OHOS {
 namespace Media {

@@ -23,7 +23,7 @@
 #include "photo_album_dao.h"
 #include "backup_const.h"
 #include "media_log.h"
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "userfile_manager_types.h"
 
 #include <sys/stat.h>

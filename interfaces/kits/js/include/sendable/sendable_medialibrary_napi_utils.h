@@ -99,40 +99,28 @@ public:
         return TIME_TYPE_MAP;
     }
 
-    static napi_status GetUInt32(napi_env env, napi_value arg, uint32_t &value);
     static napi_status GetInt32(napi_env env, napi_value arg, int32_t &value);
     static napi_status GetParamBool(napi_env env, napi_value arg, bool &result);
     static napi_status GetParamFunction(napi_env env, napi_value arg, napi_ref &callbackRef);
-    static napi_status GetParamStringWithLength(napi_env env, napi_value arg, int32_t maxLen,
-        std::string &str);
     static napi_status GetParamStringPathMax(napi_env env, napi_value arg, std::string &str);
     static napi_status GetProperty(napi_env env, const napi_value arg, const std::string &propName,
         std::string &propValue);
     static napi_status GetArrayProperty(napi_env env, napi_value arg, const std::string &propName,
         std::vector<std::string> &array);
     static napi_status GetStringArray(napi_env env, napi_value arg, std::vector<std::string> &array);
-    static MediaType GetMediaTypeFromUri(const std::string &uri);
     template <class AsyncContext>
     static napi_status GetPredicate(napi_env env, const napi_value arg, const std::string &propName,
         AsyncContext &context, const FetchOptionType &fetchOptType,
         std::vector<DataShare::OperationItem> operations = {});
-    template <class AsyncContext>
-    static napi_status ParseAlbumFetchOptCallback(napi_env env, napi_callback_info info, AsyncContext &context);
     template <class AsyncContext>
     static bool HandleSpecialPredicate(AsyncContext &context,
         std::shared_ptr<DataShare::DataShareAbsPredicates> &predicate, const FetchOptionType &fetchOptType,
         std::vector<DataShare::OperationItem> operations = {});
     static bool IsPredicateValid(shared_ptr<DataShare::DataShareAbsPredicates> &predicate,
         const FetchOptionType &fetchOptType);
-    template <class AsyncContext>
-    static void UpdateMediaTypeSelections(AsyncContext *context);
 
     template <class AsyncContext>
     static napi_status AsyncContextSetObjectInfo(napi_env env, napi_callback_info info, AsyncContext &asyncContext,
-        const size_t minArgs, const size_t maxArgs);
-
-    template <class AsyncContext>
-    static napi_status AsyncContextGetArgs(napi_env env, napi_callback_info info, AsyncContext &asyncContext,
         const size_t minArgs, const size_t maxArgs);
 
     template <class AsyncContext>
@@ -145,10 +133,6 @@ public:
 
     template <class AsyncContext>
     static napi_status GetParamCallback(napi_env env, AsyncContext &context);
-
-    template <class AsyncContext>
-    static napi_status ParseAssetFetchOptCallback(napi_env env, napi_callback_info info,
-        AsyncContext &context);
 
     template <class AsyncContext>
     static napi_status ParseArgsBoolCallBack(napi_env env, napi_callback_info info, AsyncContext &context, bool &param);
@@ -167,19 +151,9 @@ public:
     template <class AsyncContext>
     static napi_status ParseArgsOnlyCallBack(napi_env env, napi_callback_info info, AsyncContext &context);
 
-    static AssetType GetAssetType(MediaType type);
-
-    static void AppendFetchOptionSelection(std::string &selection, const std::string &newCondition);
-
     template <class AsyncContext>
     static bool GetLocationPredicate(AsyncContext &context,
         std::shared_ptr<DataShare::DataShareAbsPredicates> &predicate);
-
-    static int TransErrorCode(const std::string &Name, std::shared_ptr<DataShare::DataShareResultSet> resultSet);
-
-    static int TransErrorCode(const std::string &Name, int error);
-
-    static void HandleError(napi_env env, int error, napi_value &errorObj, const std::string &Name);
 
     static void CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
         const std::string errMsg);
@@ -194,16 +168,6 @@ public:
     static napi_value NapiCreateAsyncWork(napi_env env, std::unique_ptr<AsyncContext> &asyncContext,
         const std::string &resourceName,  void (*execute)(napi_env, void *),
         void (*complete)(napi_env, napi_status, void *));
-
-    static std::tuple<bool, std::unique_ptr<char[]>, size_t> ToUTF8String(napi_env env, napi_value value);
-
-    static bool IsExistsByPropertyName(napi_env env, napi_value jsObject, const char *propertyName);
-
-    static napi_value GetPropertyValueByName(napi_env env, napi_value jsObject, const char *propertyName);
-
-    static bool CheckJSArgsTypeAsFunc(napi_env env, napi_value arg);
-
-    static bool IsArrayForNapiValue(napi_env env, napi_value param, uint32_t &arraySize);
 
     static napi_status HasCallback(napi_env env, const size_t argc, const napi_value argv[],
         bool &isCallback);
@@ -233,21 +197,11 @@ public:
     static bool IsFeaturedSinglePortraitAlbum(std::string albumName, DataShare::DataSharePredicates &predicates);
     static bool IsSystemApp();
 
-    static napi_value GetNapiValueArray(napi_env env, napi_value arg, std::vector<napi_value> &values);
-    static napi_value GetStringArray(
-        napi_env env, std::vector<napi_value> &napiValues, std::vector<std::string> &values);
     static napi_value GetNextRowObject(napi_env env, std::shared_ptr<NativeRdb::ResultSet> &resultSet);
     static napi_value CreateValueByIndex(napi_env env, int32_t index, std::string name,
         std::shared_ptr<NativeRdb::ResultSet> &resultSet, const std::shared_ptr<FileAsset> &asset);
     static void handleTimeInfo(napi_env env, const std::string& name, napi_value result,
         int32_t index, const std::shared_ptr<NativeRdb::ResultSet>& resultSet);
-
-    template <class AsyncContext>
-    static napi_status ParsePredicates(napi_env env,
-        const napi_value arg, AsyncContext &context, const FetchOptionType &fetchOptType);
-
-private:
-    static napi_status hasFetchOpt(napi_env env, const napi_value arg, bool &hasFetchOpt);
 };
 
 class SendableNapiScopeHandler {

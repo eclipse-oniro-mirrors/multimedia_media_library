@@ -21,7 +21,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "album_plugin_config.h"
 #include "medialibrary_rdbstore.h"
 
 namespace OHOS::Media {

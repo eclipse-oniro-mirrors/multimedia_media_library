@@ -329,8 +329,8 @@ void CleanupTestAssets()
     std::vector<int32_t> fileIds;
     if (resultSet != nullptr) {
         while (resultSet->GoToNextRow() == E_OK) {
-            int32_t fileId = MediaLibraryRdbStore::GetInt(resultSet, MediaColumn::MEDIA_ID);
-            std::string path = MediaLibraryRdbStore::GetString(resultSet, MediaColumn::MEDIA_FILE_PATH);
+            int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+            std::string path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
             fileIds.push_back(fileId);
             RetryDeletePath(path);
             RetryDeleteAssetRow(fileId);

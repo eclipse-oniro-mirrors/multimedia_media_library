@@ -193,7 +193,7 @@ void MediaCriticalLabelTask::HandleCriticalLabelProcessing()
     }
 
     taskData->batchInfo = batchInfo;
-    shared_ptr<MediaLibraryAsyncTask> criticalLabelAsyncTask = make_shared<MediaLibraryAsyncTask>(
+    std::shared_ptr<MediaLibraryAsyncTask> criticalLabelAsyncTask = std::make_shared<MediaLibraryAsyncTask>(
         SendToAnlyze, taskData);
 
     if (criticalLabelAsyncTask != nullptr) {

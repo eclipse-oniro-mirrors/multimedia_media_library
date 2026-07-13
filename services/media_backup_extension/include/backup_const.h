@@ -101,18 +101,15 @@ const std::string RESTORE_AUDIO_CLOUD_DIR = "/storage/cloud/files/Audio";
 const std::string RESTORE_THUMB_CLOUD_DIR = "/storage/cloud/files/.thumbs/Photo";
 const std::string RESTORE_THUMB_DENTRY_DIR = "/storage/media/cloud/files/.thumbs/Photo";
 const std::string RESTORE_LOCAL_DIR = "/storage/media/local/files/Photo";
-const std::string RESTORE_AUDIO_LOCAL_DIR = "/storage/media/local/files/Audio";
 const std::string RESTORE_MUSIC_LOCAL_DIR = "/storage/media/local/files/Docs/UpdateBackup/";
 const std::string UPGRADE_FILE_DIR = "/storage/media/local/files/data";
 const std::string GARBLE_DUAL_FRAME_CLONE_DIR = "/storage/media/local/files/.backup/restore/storage/emulated";
 const std::string OTHER_CLONE_PATH = "/storage/media/local/files/.backup/restore/";
 const std::string GARBLE = "***";
-const std::string GALLERT_IMPORT = "/Pictures/cloud/Imports";
 const std::string GALLERT_HIDDEN_ALBUM = "/Pictures/hiddenAlbum";
 const std::string GALLERY_INTERNAL_ROOT_PATH = "/storage/emulated/";
 const std::string GALLERY_EXTERNAL_ROOT_PATH = "/storage/";
 const std::string RESTORE_FAILED_FILES_PATH = "/storage/media/local/files/Docs/Documents/restore_failed_files";
-const std::string PHOTO_FILTER_SELECTED_SIZE = "filter_selected_size";
 const std::string RESTORE_SANDBOX_DIR = "/data/storage/el2/base/.backup/restore";
 const std::string CLONE_RESTORE_BACKUP_DIR = "/storage/media/local/files/.backup/";
 
@@ -165,7 +162,6 @@ const std::string EXTERNAL_FILE_DATA = "_data";
 const std::string EXTERNAL_TITLE = "title";
 const std::string EXTERNAL_DISPLAY_NAME = "_display_name";
 const std::string EXTERNAL_FILE_SIZE = "_size";
-const std::string EXTERNAL_DURATION = "duration";
 const std::string EXTERNAL_MEDIA_TYPE = "media_type";
 const std::string EXTERNAL_DATE_TAKEN = "datetaken";
 
@@ -242,11 +238,8 @@ const std::string AUDIO_DB_NAME = "audio_MediaInfo.db";
 const std::string PHOTO_SD_DB_NAME = "photo_sd_Cache.db";
 const std::string VIDEO_SD_DB_NAME = "video_sd_Cache.db";
 
-const std::string GALLERY_ALBUM = "gallery_album";
 const std::string GALLERY_ALBUM_NAME = "albumName";
-const std::string GALLERY_ALBUM_BUCKETID = "relativeBucketId";
 const std::string GALLERY_ALBUM_IPATH = "lPath";
-const std::string GALLERY_NICK_NAME = "nick_name";
 
 /**
  * If the value of thumbnail_ready is greater than or equal to 3, the THM is generated successfully.
@@ -875,8 +868,6 @@ const std::string LOCAL_PHOTOS_WHERE_CLAUSE = " (local_media_id != -1) AND (rela
 const std::string ALL_PHOTOS_WHERE_CLAUSE = "(relative_bucket_id IS NULL OR \
     relative_bucket_id NOT IN (SELECT DISTINCT relative_bucket_id FROM garbage_album WHERE type = 1)) AND _size > 0 \
     AND _data NOT LIKE '/storage/emulated/0/Pictures/cloud/Imports%' ";
-
-const std::string ALL_PHOTOS_ORDER_BY = " ORDER BY _id ASC ";
 
 const std::string EXCLUDE_SD = " COALESCE(storage_id, 0) IN (0, 65537) ";
 

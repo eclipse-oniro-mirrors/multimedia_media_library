@@ -24,7 +24,7 @@
 #include "media_log.h"
 #include "moving_photo_file_utils.h"
 #include "photo_album_dao.h"
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "backup_file_utils.h"
 #include "mimetype_utils.h"
 

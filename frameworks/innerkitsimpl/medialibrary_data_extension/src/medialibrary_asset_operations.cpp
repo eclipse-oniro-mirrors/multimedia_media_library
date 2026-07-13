@@ -2908,7 +2908,7 @@ void HandlePhotosResultSet(const shared_ptr<NativeRdb::ResultSet> &resultSet, De
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         filesParams.ids.push_back(
             to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32))));
-        if (MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE)
+        if (GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet)
             == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
             filesParams.paths.push_back(get<string>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_STORAGE_PATH,
                 resultSet, TYPE_STRING)));

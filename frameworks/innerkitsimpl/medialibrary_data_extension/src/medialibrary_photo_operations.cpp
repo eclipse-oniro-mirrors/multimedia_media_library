@@ -17,7 +17,7 @@
 
 #include <grp.h>
 #include <unordered_set>
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "directory_ex.h"
 #include "duplicate_photo_operation.h"
 #include "file_utils.h"

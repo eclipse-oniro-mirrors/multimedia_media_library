@@ -27,6 +27,7 @@
 #include "result_set_utils.h"
 #include "medialibrary_command.h"
 #include "user_define_notify_info.h"
+#include "file_asset.h"
 
 namespace OHOS {
 namespace Media {

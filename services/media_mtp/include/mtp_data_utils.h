@@ -231,14 +231,14 @@ public:
     // MTP
     static int32_t GetMtpPropList(const std::shared_ptr<std::unordered_map<uint32_t, std::string>> &handles,
         const std::unordered_map<std::string, uint32_t> &pathHandles,
-        const std::shared_ptr<MtpOperationContext> &context, shared_ptr<vector<Property>> &outPropValue);
+        const std::shared_ptr<MtpOperationContext> &context, std::shared_ptr<std::vector<Property>> &outPropValue);
     static int32_t GetMtpPropValue(const std::string &path,
         const uint32_t property, const uint16_t format, PropertyValue &outPropValue);
     static uint32_t GetMtpFormatByPath(const std::string &path, uint16_t &outFormat);
     static std::string GetMovingOrEnditSourcePath(const std::string &path, const int32_t &subtype,
         const std::shared_ptr<MtpOperationContext> &context);
     static int32_t GetGalleryPropList(const std::shared_ptr<MtpOperationContext> &context,
-        shared_ptr<vector<Property>> &outProps, const std::string &name, uint32_t handle = 0);
+        std::shared_ptr<std::vector<Property>> &outProps, const std::string &name, uint32_t handle = 0);
     static bool IsNumber(const std::string& str);
     static bool IsMtpMovingPhoto(int32_t subtype, int32_t effectMode);
 private:
@@ -259,7 +259,7 @@ private:
         const std::shared_ptr<DataShare::DataShareResultSet> &resultSet, ResultSetDataType &type, Property &prop);
     // MTP
     static void GetMtpOneRowProp(const std::shared_ptr<UInt16List> &properties, const uint32_t parentId,
-        std::unordered_map<uint32_t, std::string>::iterator it, shared_ptr<vector<Property>> &outProps,
+        std::unordered_map<uint32_t, std::string>::iterator it, std::shared_ptr<std::vector<Property>> &outProps,
         int32_t storageId);
     static void SetMtpProperty(const std::string &column, const std::string &path,
         ResultSetDataType &type, Property &prop);
@@ -267,8 +267,8 @@ private:
         uint16_t property, std::shared_ptr<std::vector<Property>> &outProps, int32_t storageId);
     static void SetPtpProperty(const std::string &column, const std::string &path, const MovingType &movingType,
         Property &prop);
-    static void GetMovingOrEnditOneRowPropList(const shared_ptr<UInt16List> &properties, const std::string &path,
-        const std::shared_ptr<MtpOperationContext> &context, shared_ptr<vector<Property>> &outProps,
+    static void GetMovingOrEnditOneRowPropList(const std::shared_ptr<UInt16List> &properties, const std::string &path,
+        const std::shared_ptr<MtpOperationContext> &context, std::shared_ptr<std::vector<Property>> &outProps,
         const MovingType &movingType);
     static int32_t GetPropValueForVideoOfMovingPhoto(const std::string &path,
         const uint32_t property, PropertyValue &outPropValue);

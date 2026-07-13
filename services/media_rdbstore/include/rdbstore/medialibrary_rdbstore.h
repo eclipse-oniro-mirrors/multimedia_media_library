@@ -80,9 +80,6 @@ public:
         const std::vector<std::string> &columns, const std::string &id);
     static std::shared_ptr<NativeRdb::ResultSet> GetIndexOfUriForPhotos(const NativeRdb::AbsRdbPredicates &predicates,
         const std::vector<std::string> &columns, const std::string &id);
-    EXPORT static int32_t GetInt(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &column);
-    EXPORT static std::string GetString(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
-        const std::string &column);
     EXPORT static bool ResetAnalysisTables();
     EXPORT static bool ResetSearchTables();
     EXPORT static int32_t UpdateLastVisitTime(const std::string &id);

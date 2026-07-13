@@ -308,7 +308,6 @@ const std::string ROOT_MEDIA_CAMERA_CACHE_DIR = "/storage/cloud/files/cameraCach
 const std::string PHYSICAL_PATH_PREFIX = "/data/service/el2/";
 const std::string PHYSICAL_PATH_SUFFIX = "/hmdfs/account/files/";
 const std::string MEDIA_CAMERA_CACHE_TMP_DIR = "cameraCache/temp";
-const std::string MEDIA_PHOTO_DIR_REAL_PATH = "Photo";
 const std::string MEDIA_EDITDATA_DIR_REAL_PATH = ".editData/";
 
 const std::string META_RECOVERY_PHOTO_RELATIVE_PATH = "/Photo/";
@@ -323,8 +322,6 @@ const int32_t KEY_FRAME_THM = 2;
 const int32_t KEY_FRAME_THM_ASTC = 3;
 const std::string HIGHLIGHT_CONFIG = "/data/storage/el2/base/preferences/highlight.xml";
 const std::string HIGHLIGHT_DIRECTORY_SIZE = "highlight_directory_size";
-
-const std::string SKIPLIST_FILE_PATH = "/data/SkipScanFile.txt";
 
 const std::string DOCS_PATH = "Docs/";
 const int CAMERA_DIRECTORY_TYPE_VALUES = DIR_CAMERA;

@@ -29,6 +29,7 @@
 #include "medialibrary_data_manager_utils.h"
 #include "medialibrary_unistore_manager.h"
 #include "photo_file_utils.h"
+#include "album_plugin_base.h"
 
 namespace OHOS::Media {
 using MediaData = PhotoOwnerAlbumIdOperation::MediaData;

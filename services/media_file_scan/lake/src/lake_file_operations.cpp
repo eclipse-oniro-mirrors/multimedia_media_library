@@ -99,7 +99,7 @@ static bool IsAlbumHasSameNameAsset(const int32_t &fileId, const std::string &di
     auto resultSet = rdbStore->QuerySql(sql, args);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "query database error");
     CHECK_AND_RETURN_RET_LOG(resultSet->GoToFirstRow() == E_OK, false, "query resultset error");
-    int32_t count = MediaLibraryRdbStore::GetInt(resultSet, "count");
+    int32_t count = GetInt32Val("count", resultSet);
     MEDIA_INFO_LOG("IsAlbumHasSameNameAsset fileId: %{public}d, count: %{public}d", fileId, count);
     return count > 0;
 }

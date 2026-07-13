@@ -28,6 +28,7 @@
 #include "thumbnail_source_loading.h"
 
 using namespace OHOS::NativeRdb;
+using namespace std;
 
 namespace OHOS::Media::Background {
 

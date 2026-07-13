@@ -290,10 +290,10 @@ std::string FileScanUtils::GetAssetRealPath(const std::string &path)
         return path;
     }
     // 湖内资产删除隐藏后移动到湖外
-    if (MediaLibraryRdbStore::GetInt(resultSet, PhotoColumn::PHOTO_FILE_SOURCE_TYPE) == static_cast<int32_t>(MEDIA)) {
+    if (GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet) == static_cast<int32_t>(MEDIA)) {
         return path;
     }
-    return MediaLibraryRdbStore::GetString(resultSet, PhotoColumn::PHOTO_STORAGE_PATH);
+    return GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
 }
 
 int32_t FileScanUtils::OpenFile(const string &filePath, int flags)

@@ -87,6 +87,7 @@
 #include "moving_photo_file_utils.h"
 #include "media_file_access_utils.h"
 #include "media_fileinterwork_column.h"
+#include "medialibrary_album_compatibility_fusion_sql.h"
 #include "cover_record_columns.h"
 
 using namespace std;
@@ -1856,16 +1857,6 @@ void MediaLibraryRdbStore::ReplacePredicatesUriToId(AbsRdbPredicates &predicates
     }
 
     predicates.SetWhereArgs(whereIdArgs);
-}
-
-int32_t MediaLibraryRdbStore::GetInt(const shared_ptr<ResultSet> &resultSet, const string &column)
-{
-    return get<int32_t>(ResultSetUtils::GetValFromColumn(column, resultSet, TYPE_INT32));
-}
-
-string MediaLibraryRdbStore::GetString(const shared_ptr<ResultSet> &resultSet, const string &column)
-{
-    return get<string>(ResultSetUtils::GetValFromColumn(column, resultSet, TYPE_STRING));
 }
 
 inline void BuildInsertSystemAlbumSql(const ValuesBucket &values, const AbsRdbPredicates &predicates,
@@ -5487,8 +5478,8 @@ static int32_t AddOwnerAlbumIdAndRefractorTrigger(RdbStore &store)
             PhotoColumn::PHOTO_SOURCE_PATH + " TEXT",
         "DROP TABLE IF EXISTS album_plugin ",
         DROP_PHOTO_ALBUM_CLEAR_MAP_SQL,
-        DROP_INSERT_PHOTO_INSERT_SOURCE_ALBUM_SQL,
-        DROP_INSERT_PHOTO_UPDATE_SOURCE_ALBUM_SQL,
+        DROP_INSERT_PHOTO_INSERT_SOURCE_ALBUM,
+        DROP_INSERT_PHOTO_UPDATE_SOURCE_ALBUM,
         DROP_INSERT_SOURCE_PHOTO_CREATE_SOURCE_ALBUM_TRIGGER,
         DROP_INSERT_SOURCE_PHOTO_UPDATE_ALBUM_ID_TRIGGER,
         "DROP TRIGGER IF EXISTS photos_mdirty_trigger",

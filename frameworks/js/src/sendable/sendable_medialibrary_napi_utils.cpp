@@ -45,15 +45,6 @@ using SendablePAHAsyncContext = SendablePhotoAccessHelperAsyncContext;
 using SendablePANAsyncContext = SendablePhotoAlbumNapiAsyncContext;
 using SendableFAAsyncContext = SendableFileAssetAsyncContext;
 
-napi_status SendableMediaLibraryNapiUtils::GetUInt32(napi_env env, napi_value arg, uint32_t &value)
-{
-    napi_valuetype valueType = napi_undefined;
-    CHECK_STATUS_RET(napi_typeof(env, arg, &valueType), "Failed to get type");
-    CHECK_COND_RET(valueType == napi_number, napi_number_expected, "Type is not as expected number");
-    CHECK_STATUS_RET(napi_get_value_uint32(env, arg, &value), "Failed to get uint32 value");
-    return napi_ok;
-}
-
 napi_status SendableMediaLibraryNapiUtils::GetInt32(napi_env env, napi_value arg, int32_t &value)
 {
     napi_valuetype valueType = napi_undefined;
@@ -91,13 +82,6 @@ static napi_status GetParamStr(napi_env env, napi_value arg, const size_t size, 
     CHECK_COND_RET(valueType == napi_string, napi_string_expected, "Type is not as expected string");
     CHECK_STATUS_RET(napi_get_value_string_utf8(env, arg, buffer.get(), size, &res), "Failed to get string value");
     result = string(buffer.get());
-    return napi_ok;
-}
-
-napi_status SendableMediaLibraryNapiUtils::GetParamStringWithLength(napi_env env, napi_value arg, int32_t maxLen,
-    string &result)
-{
-    CHECK_STATUS_RET(GetParamStr(env, arg, maxLen, result), "Failed to get string parameter");
     return napi_ok;
 }
 
@@ -163,34 +147,6 @@ napi_status SendableMediaLibraryNapiUtils::HasCallback(napi_env env, const size_
     CHECK_STATUS_RET(napi_typeof(env, argv[argc - 1], &valueType), "Failed to get type");
     isCallback = (valueType == napi_function);
     return napi_ok;
-}
-
-napi_status SendableMediaLibraryNapiUtils::hasFetchOpt(napi_env env, const napi_value arg, bool &hasFetchOpt)
-{
-    hasFetchOpt = false;
-    napi_valuetype valueType = napi_undefined;
-    CHECK_STATUS_RET(napi_typeof(env, arg, &valueType), "Failed to get type");
-    if (valueType != napi_object) {
-        hasFetchOpt = false;
-        return napi_ok;
-    }
-    CHECK_STATUS_RET(napi_has_named_property(env, arg, "selections", &hasFetchOpt),
-        "Failed to get property selections");
-    return napi_ok;
-}
-
-MediaType SendableMediaLibraryNapiUtils::GetMediaTypeFromUri(const string &uri)
-{
-    if (uri.find(CONST_MEDIALIBRARY_IMAGE_URI) != string::npos) {
-        return MediaType::MEDIA_TYPE_IMAGE;
-    } else if (uri.find(CONST_MEDIALIBRARY_VIDEO_URI) != string::npos) {
-        return MediaType::MEDIA_TYPE_VIDEO;
-    } else if (uri.find(CONST_MEDIALIBRARY_AUDIO_URI) != string::npos) {
-        return MediaType::MEDIA_TYPE_AUDIO;
-    } else if (uri.find(CONST_MEDIALIBRARY_FILE_URI) != string::npos) {
-        return MediaType::MEDIA_TYPE_FILE;
-    }
-    return MediaType::MEDIA_TYPE_ALL;
 }
 
 static bool HandleSpecialDateTypePredicate(const OperationItem &item,
@@ -488,51 +444,6 @@ napi_status SendableMediaLibraryNapiUtils::GetPredicate(napi_env env, const napi
 }
 
 template <class AsyncContext>
-napi_status SendableMediaLibraryNapiUtils::ParseAssetFetchOptCallback(napi_env env, napi_callback_info info,
-    AsyncContext &context)
-{
-    constexpr size_t minArgs = ARGS_ONE;
-    constexpr size_t maxArgs = ARGS_TWO;
-    CHECK_STATUS_RET(AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
-        "Failed to get object info");
-    CHECK_STATUS_RET(GetFetchOption(env, context->argv[PARAM0], ASSET_FETCH_OPT, context),
-        "Failed to get fetch option");
-    return napi_ok;
-}
-
-template <class AsyncContext>
-napi_status SendableMediaLibraryNapiUtils::ParseAlbumFetchOptCallback(napi_env env, napi_callback_info info,
-    AsyncContext &context)
-{
-    constexpr size_t minArgs = ARGS_ONE;
-    constexpr size_t maxArgs = ARGS_TWO;
-    CHECK_STATUS_RET(AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
-        "Failed to get object info");
-    // Parse the argument into fetchOption if any
-    CHECK_STATUS_RET(GetPredicate(env, context->argv[PARAM0], "predicates", context, ALBUM_FETCH_OPT),
-        "invalid predicate");
-    context->predicates.And()->NotEqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::HIDDEN));
-    return napi_ok;
-}
-
-template <class AsyncContext>
-void SendableMediaLibraryNapiUtils::UpdateMediaTypeSelections(AsyncContext *context)
-{
-    constexpr int FIRST_MEDIA_TYPE = 0;
-    constexpr int SECOND_MEDIA_TYPE = 1;
-    if ((context->mediaTypes.size() != ARGS_ONE) && (context->mediaTypes.size() != ARGS_TWO)) {
-        return;
-    }
-    DataShare::DataSharePredicates &predicates = context->predicates;
-    predicates.BeginWrap();
-    predicates.EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[FIRST_MEDIA_TYPE]);
-    if (context->mediaTypes.size() == ARGS_TWO) {
-        predicates.Or()->EqualTo(CONST_MEDIA_DATA_DB_MEDIA_TYPE, (int)context->mediaTypes[SECOND_MEDIA_TYPE]);
-    }
-    predicates.EndWrap();
-}
-
-template <class AsyncContext>
 napi_status SendableMediaLibraryNapiUtils::AsyncContextSetObjectInfo(napi_env env, napi_callback_info info,
     AsyncContext &asyncContext, const size_t minArgs, const size_t maxArgs)
 {
@@ -549,22 +460,6 @@ napi_status SendableMediaLibraryNapiUtils::AsyncContextSetObjectInfo(napi_env en
         "Failed to unwrap thisVar");
     CHECK_COND_RET(asyncContext->objectInfo != nullptr, napi_invalid_arg, "Failed to get object info");
     CHECK_STATUS_RET(GetParamCallback(env, asyncContext), "Failed to get callback param!");
-    return napi_ok;
-}
-
-template <class AsyncContext>
-napi_status SendableMediaLibraryNapiUtils::AsyncContextGetArgs(napi_env env, napi_callback_info info,
-    AsyncContext &asyncContext, const size_t minArgs, const size_t maxArgs)
-{
-    asyncContext->argc = maxArgs;
-    CHECK_STATUS_RET(napi_get_cb_info(env, info, &asyncContext->argc, &(asyncContext->argv[ARGS_ZERO]), nullptr,
-        nullptr), "Failed to get cb info");
-    CHECK_COND_RET(asyncContext->argc >= minArgs && asyncContext->argc <= maxArgs, napi_invalid_arg,
-        "Number of args is invalid");
-    if (minArgs > 0) {
-        CHECK_COND_RET(asyncContext->argv[ARGS_ZERO] != nullptr, napi_invalid_arg, "Argument list is empty");
-    }
-    CHECK_STATUS_RET(GetParamCallback(env, asyncContext), "Failed to get callback param");
     return napi_ok;
 }
 
@@ -645,83 +540,6 @@ napi_status SendableMediaLibraryNapiUtils::ParseArgsOnlyCallBack(napi_env env, n
     CHECK_STATUS_RET(AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
         "Failed to get object info");
     return napi_ok;
-}
-
-AssetType SendableMediaLibraryNapiUtils::GetAssetType(MediaType type)
-{
-    AssetType result;
-
-    switch (type) {
-        case MEDIA_TYPE_AUDIO:
-            result = ASSET_AUDIO;
-            break;
-        case MEDIA_TYPE_VIDEO:
-            result = ASSET_VIDEO;
-            break;
-        case MEDIA_TYPE_IMAGE:
-            result = ASSET_IMAGE;
-            break;
-        case MEDIA_TYPE_MEDIA:
-            result = ASSET_MEDIA;
-            break;
-        default:
-            result = ASSET_NONE;
-            break;
-    }
-
-    return result;
-}
-
-void SendableMediaLibraryNapiUtils::AppendFetchOptionSelection(string &selection, const string &newCondition)
-{
-    if (!newCondition.empty()) {
-        if (!selection.empty()) {
-            selection = "(" + selection + ") AND " + newCondition;
-        } else {
-            selection = newCondition;
-        }
-    }
-}
-
-int SendableMediaLibraryNapiUtils::TransErrorCode(const string &Name,
-    shared_ptr<DataShare::DataShareResultSet> resultSet)
-{
-    NAPI_ERR_LOG("interface: %{public}s, server return nullptr", Name.c_str());
-    // Query can't return errorcode, so assume nullptr as permission deny
-    if (resultSet == nullptr) {
-        return JS_ERR_PERMISSION_DENIED;
-    }
-    return ERR_DEFAULT;
-}
-
-int SendableMediaLibraryNapiUtils::TransErrorCode(const string &Name, int error)
-{
-    NAPI_ERR_LOG("interface: %{public}s, server errcode:%{public}d ", Name.c_str(), error);
-    // Transfer Server error to napi error code
-    if (error <= E_COMMON_START && error >= E_COMMON_END) {
-        error = (error == -E_CHECK_SYSTEMAPP_FAIL) ? E_CHECK_SYSTEMAPP_FAIL : JS_INNER_FAIL;
-    } else if (trans2JsError.count(error)) {
-        error = trans2JsError.at(error);
-    }
-    return error;
-}
-
-void SendableMediaLibraryNapiUtils::HandleError(napi_env env, int error, napi_value &errorObj, const string &Name)
-{
-    if (error == ERR_DEFAULT) {
-        return;
-    }
-
-    string errMsg = "System inner fail";
-    int originalError = error;
-    if (jsErrMap.count(error) > 0) {
-        errMsg = jsErrMap.at(error);
-    } else {
-        error = JS_INNER_FAIL;
-    }
-    CreateNapiErrorObject(env, errorObj, error, errMsg);
-    errMsg = Name + " " + errMsg;
-    NAPI_ERR_LOG("Error: %{public}s, js errcode:%{public}d ", errMsg.c_str(), originalError);
 }
 
 void SendableMediaLibraryNapiUtils::CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
@@ -812,71 +630,6 @@ napi_value SendableMediaLibraryNapiUtils::NapiCreateAsyncWork(napi_env env, uniq
     asyncContext.release();
 
     return result;
-}
-
-tuple<bool, unique_ptr<char[]>, size_t> SendableMediaLibraryNapiUtils::ToUTF8String(napi_env env, napi_value value)
-{
-    size_t strLen = 0;
-    napi_status status = napi_get_value_string_utf8(env, value, nullptr, -1, &strLen);
-    if (status != napi_ok) {
-        NAPI_ERR_LOG("ToUTF8String get fail, %{public}d", status);
-        return { false, nullptr, 0 };
-    }
-
-    size_t bufLen = strLen + 1;
-    unique_ptr<char[]> str = make_unique<char[]>(bufLen);
-    if (str == nullptr) {
-        NAPI_ERR_LOG("ToUTF8String get memory fail");
-        return { false, nullptr, 0 };
-    }
-    status = napi_get_value_string_utf8(env, value, str.get(), bufLen, &strLen);
-    return make_tuple(status == napi_ok, move(str), strLen);
-}
-
-bool SendableMediaLibraryNapiUtils::IsExistsByPropertyName(napi_env env, napi_value jsObject, const char *propertyName)
-{
-    bool result = false;
-    if (napi_has_named_property(env, jsObject, propertyName, &result) == napi_ok) {
-        return result;
-    } else {
-        NAPI_ERR_LOG("IsExistsByPropertyName not exist %{public}s", propertyName);
-        return false;
-    }
-}
-
-napi_value SendableMediaLibraryNapiUtils::GetPropertyValueByName(napi_env env, napi_value jsObject,
-    const char *propertyName)
-{
-    napi_value value = nullptr;
-    if (IsExistsByPropertyName(env, jsObject, propertyName) == false) {
-        NAPI_ERR_LOG("GetPropertyValueByName not exist %{public}s", propertyName);
-        return nullptr;
-    }
-    if (napi_get_named_property(env, jsObject, propertyName, &value) != napi_ok) {
-        NAPI_ERR_LOG("GetPropertyValueByName get fail %{public}s", propertyName);
-        return nullptr;
-    }
-    return value;
-}
-
-bool SendableMediaLibraryNapiUtils::CheckJSArgsTypeAsFunc(napi_env env, napi_value arg)
-{
-    napi_valuetype valueType = napi_undefined;
-    napi_typeof(env, arg, &valueType);
-    return (valueType == napi_function);
-}
-
-bool SendableMediaLibraryNapiUtils::IsArrayForNapiValue(napi_env env, napi_value param, uint32_t &arraySize)
-{
-    bool isArray = false;
-    arraySize = 0;
-    if ((napi_is_array(env, param, &isArray) != napi_ok) || (isArray == false)) {
-        return false;
-    }
-    if (napi_get_array_length(env, param, &arraySize) != napi_ok) {
-        return false;
-    }
-    return true;
 }
 
 napi_value SendableMediaLibraryNapiUtils::GetInt32Arg(napi_env env, napi_value arg, int32_t &value)
@@ -1373,74 +1126,6 @@ bool SendableNapiScopeHandler::IsValid()
     return isValid_;
 }
 
-napi_value SendableMediaLibraryNapiUtils::GetNapiValueArray(napi_env env, napi_value arg, vector<napi_value> &values)
-{
-    bool isArray = false;
-    CHECK_ARGS(env, napi_is_array(env, arg, &isArray), OHOS_INVALID_PARAM_CODE);
-    if (!isArray) {
-        NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check array type");
-        return nullptr;
-    }
-
-    uint32_t len = 0;
-    CHECK_ARGS(env, napi_get_array_length(env, arg, &len), JS_INNER_FAIL);
-    if (len == 0) {
-        napi_value result = nullptr;
-        CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
-        return result;
-    }
-
-    for (uint32_t i = 0; i < len; i++) {
-        napi_value value = nullptr;
-        CHECK_ARGS(env, napi_get_element(env, arg, i, &value), JS_INNER_FAIL);
-        if (value == nullptr) {
-            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to get element");
-            return nullptr;
-        }
-        values.push_back(value);
-    }
-
-    napi_value result = nullptr;
-    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
-    return result;
-}
-
-napi_value SendableMediaLibraryNapiUtils::GetStringArray(napi_env env, vector<napi_value> &napiValues,
-    vector<string> &values)
-{
-    napi_valuetype valueType = napi_undefined;
-    unique_ptr<char[]> buffer = make_unique<char[]>(PATH_MAX);
-    for (const auto &napiValue : napiValues) {
-        CHECK_ARGS(env, napi_typeof(env, napiValue, &valueType), JS_ERR_PARAMETER_INVALID);
-        CHECK_COND(env, valueType == napi_string, JS_ERR_PARAMETER_INVALID);
-
-        size_t res = 0;
-        CHECK_ARGS(
-            env, napi_get_value_string_utf8(env, napiValue, buffer.get(), PATH_MAX, &res), JS_ERR_PARAMETER_INVALID);
-        values.emplace_back(buffer.get());
-    }
-    napi_value ret = nullptr;
-    CHECK_ARGS(env, napi_get_boolean(env, true, &ret), JS_INNER_FAIL);
-    return ret;
-}
-
-template <class AsyncContext>
-napi_status SendableMediaLibraryNapiUtils::ParsePredicates(napi_env env, const napi_value arg,
-    AsyncContext &context, const FetchOptionType &fetchOptType)
-{
-    JSProxy::JSProxy<DataShareAbsPredicates> *jsProxy = nullptr;
-    napi_unwrap(env, arg, reinterpret_cast<void **>(&jsProxy));
-    if (jsProxy == nullptr) {
-        NAPI_ERR_LOG("jsProxy is invalid");
-        return napi_invalid_arg;
-    }
-    shared_ptr<DataShareAbsPredicates> predicate = jsProxy->GetInstance();
-    CHECK_COND_RET(HandleSpecialPredicate(context, predicate, fetchOptType) == TRUE,
-        napi_invalid_arg, "invalid predicate");
-    CHECK_COND_RET(GetLocationPredicate(context, predicate) == TRUE, napi_invalid_arg, "invalid predicate");
-    return napi_ok;
-}
-
 template bool SendableMediaLibraryNapiUtils::HandleSpecialPredicate<unique_ptr<SendablePAHAsyncContext>>(
     unique_ptr<SendablePAHAsyncContext> &context, shared_ptr<DataShareAbsPredicates> &predicate,
     const FetchOptionType &fetchOptType, vector<OperationItem> operations);
@@ -1517,10 +1202,5 @@ template napi_status SendableMediaLibraryNapiUtils::ParseArgsNumberCallback<uniq
 
 template napi_status SendableMediaLibraryNapiUtils::ParseArgsOnlyCallBack<unique_ptr<SendableFAAsyncContext>>(
     napi_env env, napi_callback_info info, unique_ptr<SendableFAAsyncContext> &context);
-
-template napi_status SendableMediaLibraryNapiUtils::ParsePredicates<unique_ptr<SendablePAHAsyncContext>>(
-    napi_env env, const napi_value arg, unique_ptr<SendablePAHAsyncContext> &context,
-    const FetchOptionType &fetchOptType);
-
 } // namespace Media
 } // namespace OHOS

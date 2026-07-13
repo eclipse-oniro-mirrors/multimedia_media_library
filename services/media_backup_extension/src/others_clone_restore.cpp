@@ -22,7 +22,7 @@
 #include <regex>
 #include <charconv>
 
-#include "album_plugin_config.h"
+#include "album_plugin_base.h"
 #include "backup_const_column.h"
 #include "backup_database_utils.h"
 #include "backup_file_utils.h"

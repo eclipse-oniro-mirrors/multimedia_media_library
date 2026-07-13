@@ -33,6 +33,7 @@
 #include "ptp_special_handles.h"
 #include "mediatool_uri.h"
 #include "album_operation_uri.h"
+#include "fetch_result.h"
 
 using namespace std;
 
