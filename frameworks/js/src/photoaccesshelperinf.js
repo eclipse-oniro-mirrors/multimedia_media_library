@@ -50,7 +50,7 @@ const GET_BUNDLE_INFO_FAIL = 'Failed to get bundle info';
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 
 const SECONDS_OF_ONE_DAY = 24 * 60 * 60;
-const DELAY_MILLSECONDS = 33;
+const RECENT_PHOTO_INFO_DELAY_TIME = 70;
 const RETRY_COUNTER = 10;
 const RPC_TOKEN_RECENT_PHOTO_INFO = 'rpcRecentPhotoInfoServiceAbility';
 const RPC_MSGID_RECENT_PHOTO_INFO = 1;
@@ -593,8 +593,8 @@ function getPhotoPickerComponentDefaultAlbumName() {
   }
 }
 
-async function delayFunc() {
-  return new Promise(resolve => setTimeout(resolve, DELAY_MILLSECONDS));
+async function delayFunc(time) {
+  return new Promise(resolve => setTimeout(resolve, time));
 }
 
 function convertMIMETypeToFilterType(e) {
@@ -688,12 +688,9 @@ async function rpcGetRecentPhotoInfoGetProxy() {
   try {
     let connectId = context.connectServiceExtensionAbility(want, connect);
     let retryConter = RETRY_COUNTER;
-    while (proxy === undefined) {
+    while (proxy === undefined && retryConter > 0) {
       retryConter -= 1;
-      if (retryConter < 0) {
-        break;
-      }
-      await delayFunc();
+      await delayFunc(RECENT_PHOTO_INFO_DELAY_TIME);
     }
   } catch (error) {
     console.error('rpcGetRecentPhotoInfo Error: ' + error);
@@ -736,7 +733,7 @@ async function rpcGetRecentPhotoInfo(recentPhotoOption) {
 async function getRecentPhotoInfoOk(recentPhotoOption) {
   try {
     console.info('getRecentPhotoInfoOk enter');
-    let photoInfo = rpcGetRecentPhotoInfo(recentPhotoOption);
+    const photoInfo = await rpcGetRecentPhotoInfo(recentPhotoOption);
     if (!photoInfo) {
       photoInfo = { dateTaken: -1, identifier: '-1' };
     }
@@ -744,9 +741,7 @@ async function getRecentPhotoInfoOk(recentPhotoOption) {
       photoInfo.identifier = '0';
     }
     console.info('recentPhotoInfo result: ' + photoInfo.identifier);
-    return new Promise((resolve, reject) => {
-      resolve(photoInfo);
-    });
+    return photoInfo;
   } catch (error) {
     return errorResult(new BusinessError(ERROR_MSG_INNER_FAIL, error.code), null);
   }
