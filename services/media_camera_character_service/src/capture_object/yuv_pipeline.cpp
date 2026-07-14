@@ -498,6 +498,7 @@ bool YuvPipeline::CheckCanSaveDirectlyInternal(const std::shared_ptr<FileAsset> 
     auto assetInfo = GetAssetInfo();
     MultiStagesPhotoCaptureManager::GetInstance().DealHighQualityPicture(assetInfo.GetPhotoId(), assetInfo.GetFileId(),
         std::move(yuv_.picture));
+    MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(assetInfo.GetPhotoId(), false);
 
     // 场景1: 二阶段优先于一阶段返回
     // 场景2: 三方应用不会调用 SaveCameraPhoto 接口
