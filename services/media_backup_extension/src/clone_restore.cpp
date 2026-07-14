@@ -1875,7 +1875,7 @@ int32_t CloneRestore::MergeDuplicateAsset(FileInfo &fileInfo)
         fileInfo.cloudPath);
     bool needImportOrigin = !MediaFileUtils::IsFileExists(localPath);
     bool needImportMovingVideo = false;
-    if (fileInfo.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
+    if (fileInfo.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
         fileInfo.effectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         std::string localVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(localPath);
         needImportMovingVideo = !MediaFileUtils::IsFileExists(localVideoPath);
