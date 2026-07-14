@@ -1005,6 +1005,7 @@ static bool CheckFileOpenStatus(FileAssetContext *context, int fd)
     } else {
         fileAssetPtr->RemoveOpenStatus(fd);
         if (ret == OPEN_TYPE_READONLY) {
+            close(fd);
             return false;
         } else {
             return true;
@@ -1022,6 +1023,7 @@ static void PhotoAccessHelperCloseExecute(ani_env *env, unique_ptr<FileAssetCont
         ANI_ERR_LOG("CheckFileOpenStatus failed");
         return;
     }
+    UniqueFd uniFd(mediaFd);
     string closeUri;
     if (context->objectPtr->GetMediaType() == MEDIA_TYPE_IMAGE ||
         context->objectPtr->GetMediaType() == MEDIA_TYPE_VIDEO) {

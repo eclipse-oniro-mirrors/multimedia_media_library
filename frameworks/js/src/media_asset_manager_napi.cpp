@@ -2090,7 +2090,7 @@ void MediaAssetManagerNapi::WriteDataToDestPath(WriteData &writeData, napi_value
     if (writeData.compatibleMode == CompatibleMode::COMPATIBLE_FORMAT_MODE) {
         isTranscoderMap_.Insert(requestId, true);
         MediaCallTranscode::RegisterCallback(NotifyOnProgress);
-        MediaCallTranscode::CallTranscodeHandle(writeData.env, uniqueSrcFd.Get(), uniqueDestFd.Get(), resultNapiValue,
+        MediaCallTranscode::CallTranscodeHandle(writeData.env, uniqueSrcFd, uniqueDestFd, resultNapiValue,
             statSrc.st_size, requestId);
     } else {
         SendFile(writeData.env, uniqueSrcFd.Get(), uniqueDestFd.Get(), resultNapiValue, statSrc.st_size);

@@ -2103,9 +2103,9 @@ int32_t MediaAssetChangeRequestNapi::CopyMovingPhotoVideo(const string& assetUri
     string videoUri = assetUri;
     MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri uri(videoUri);
-    int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITEONLY);
+    int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITETRUNCATE);
     if (videoFd < 0) {
-        NAPI_ERR_LOG("Failed to open video of moving photo with write-only mode");
+        NAPI_ERR_LOG("Failed to open video of moving photo with write-truncate mode");
         return videoFd;
     }
 
