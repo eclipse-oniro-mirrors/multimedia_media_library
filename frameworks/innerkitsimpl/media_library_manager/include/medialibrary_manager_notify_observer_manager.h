@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "datashare_helper.h"
@@ -55,12 +56,13 @@ public:
         Notification::NotifyUriType uriType, const std::string &albumUri = "",
         const std::shared_ptr<PhotoAlbumChangeCallback> &callback = nullptr);
 
-    void NotifyChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo);
+    void NotifyChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, int32_t userId);
 
 private:
     struct NotifyObserverRecord {
         Notification::NotifyUriType uriType = Notification::NotifyUriType::INVALID;
         std::string registerUri;
+        int32_t userId = -1;
         std::shared_ptr<MediaLibraryManagerNotifyObserver> observer;
         std::vector<std::shared_ptr<PhotoAssetChangeCallback>> assetCallbacks;
         std::vector<std::shared_ptr<PhotoAlbumChangeCallback>> albumCallbacks;
@@ -87,14 +89,16 @@ private:
 
     bool IsRecordEmpty(const NotifyObserverRecord &record) const;
     void DispatchAssetChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo,
-        Notification::NotifyUriType uriType);
+        Notification::NotifyUriType uriType, int32_t userId);
     void DispatchAlbumChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo,
-        Notification::NotifyUriType uriType);
-    void DispatchSingleAssetChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo);
-    void DispatchSingleAlbumChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo);
+        Notification::NotifyUriType uriType, int32_t userId);
+    void DispatchSingleAssetChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, int32_t userId);
+    void DispatchSingleAlbumChange(const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, int32_t userId);
+
+    using ObserverRecordKey = std::pair<int32_t, Notification::NotifyUriType>;
 
     std::mutex mutex_;
-    std::map<Notification::NotifyUriType, NotifyObserverRecord> observerRecords_;
+    std::map<ObserverRecordKey, NotifyObserverRecord> observerRecords_;
 };
 } // namespace Media
 } // namespace OHOS

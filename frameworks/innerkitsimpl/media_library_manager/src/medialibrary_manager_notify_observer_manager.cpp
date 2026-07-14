@@ -26,6 +26,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_manager_notify_observer.h"
 #include "medialibrary_manager_notify_utils.h"
+#include "os_account_manager.h"
 #include "user_inner_ipc_client.h"
 #include "media_file_utils.h"
 
@@ -33,6 +34,7 @@ namespace OHOS {
 namespace Media {
 namespace {
 const std::string URI_SEPARATOR = "file:media";
+const int32_t DEFAULT_USER_ID = 100;
 
 template<typename CallbackType>
 bool HasCallback(const std::vector<std::shared_ptr<CallbackType>> &callbacks,
@@ -69,6 +71,16 @@ void LogForwardingChangeInfo(const char *dispatchName,
         changeInfo->changeInfos.size(),
         changeInfo->ToString(true).c_str());
 }
+
+int32_t GetCurrentAccountId()
+{
+    int32_t activeUserId = DEFAULT_USER_ID;
+    ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
+    if (ret != ERR_OK) {
+        MEDIA_ERR_LOG("fail to get activeUser:%{public}d", ret);
+    }
+    return activeUserId;
+}
 }
 
 MediaLibraryManagerNotifyObserverManager &MediaLibraryManagerNotifyObserverManager::GetInstance()
@@ -90,7 +102,7 @@ int32_t MediaLibraryManagerNotifyObserverManager::RegisterBaseObserverWithLockHe
     if (record.observer != nullptr) {
         return E_OK;
     }
-    auto observer = std::make_shared<MediaLibraryManagerNotifyObserver>(uriType);
+    auto observer = std::make_shared<MediaLibraryManagerNotifyObserver>(uriType, record.userId);
     int32_t ret = dataShareHelper->RegisterObserverExtProvider(Uri(registerUri), observer, false);
     ret = MediaLibraryManagerNotifyUtils::ConvertProviderError(ret);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "register observer failed, ret: %{public}d", ret);
@@ -158,15 +170,18 @@ int32_t MediaLibraryManagerNotifyObserverManager::RegisterAssetCallback(
     std::string registerUri;
     int32_t ret = MediaLibraryManagerNotifyUtils::GetNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = observerRecords_.find(registerUriType);
+    ObserverRecordKey key(userId, registerUriType);
+    auto iter = observerRecords_.find(key);
     CHECK_AND_RETURN_RET_LOG(!(iter != observerRecords_.end() && HasCallback(iter->second.assetCallbacks, callback)),
         E_INVALID_ARGUMENTS, "callback is already registered");
-    auto &record = observerRecords_[registerUriType];
+    auto &record = observerRecords_[key];
+    record.userId = userId;
     ret = RegisterBaseObserverWithLockHeld(dataShareHelper, registerUriType, registerUri, record);
     if (ret != E_OK) {
-        observerRecords_.erase(registerUriType);
+        observerRecords_.erase(key);
         return ret;
     }
     record.assetCallbacks.push_back(callback);
@@ -182,9 +197,11 @@ int32_t MediaLibraryManagerNotifyObserverManager::UnregisterAssetCallback(
     std::string registerUri;
     int32_t ret = MediaLibraryManagerNotifyUtils::GetNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = observerRecords_.find(registerUriType);
+    ObserverRecordKey key(userId, registerUriType);
+    auto iter = observerRecords_.find(key);
     CHECK_AND_RETURN_RET_LOG(iter != observerRecords_.end(), E_INVALID_ARGUMENTS, "observer is not registered");
     auto &record = iter->second;
     if (callback == nullptr) {
@@ -218,15 +235,18 @@ int32_t MediaLibraryManagerNotifyObserverManager::RegisterAlbumCallback(
     std::string registerUri;
     int32_t ret = MediaLibraryManagerNotifyUtils::GetNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = observerRecords_.find(registerUriType);
+    ObserverRecordKey key(userId, registerUriType);
+    auto iter = observerRecords_.find(key);
     CHECK_AND_RETURN_RET_LOG(!(iter != observerRecords_.end() && HasCallback(iter->second.albumCallbacks, callback)),
         E_INVALID_ARGUMENTS, "callback is already registered");
-    auto &record = observerRecords_[registerUriType];
+    auto &record = observerRecords_[key];
+    record.userId = userId;
     ret = RegisterBaseObserverWithLockHeld(dataShareHelper, registerUriType, registerUri, record);
     if (ret != E_OK) {
-        observerRecords_.erase(registerUriType);
+        observerRecords_.erase(key);
         return ret;
     }
     record.albumCallbacks.push_back(callback);
@@ -242,9 +262,11 @@ int32_t MediaLibraryManagerNotifyObserverManager::UnregisterAlbumCallback(
     std::string registerUri;
     int32_t ret = MediaLibraryManagerNotifyUtils::GetNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = observerRecords_.find(registerUriType);
+    ObserverRecordKey key(userId, registerUriType);
+    auto iter = observerRecords_.find(key);
     CHECK_AND_RETURN_RET_LOG(iter != observerRecords_.end(), E_INVALID_ARGUMENTS, "observer is not registered");
     auto &record = iter->second;
     if (callback == nullptr) {
@@ -281,13 +303,16 @@ int32_t MediaLibraryManagerNotifyObserverManager::RegisterSingleAssetCallback(
     std::string registerUri;
     ret = MediaLibraryManagerNotifyUtils::GetSingleNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto &record = observerRecords_[registerUriType];
+    ObserverRecordKey key(userId, registerUriType);
+    auto &record = observerRecords_[key];
+    record.userId = userId;
     bool isNewBaseObserver = record.observer == nullptr;
     ret = RegisterBaseObserverWithLockHeld(dataShareHelper, registerUriType, registerUri, record);
     if (ret != E_OK) {
-        observerRecords_.erase(registerUriType);
+        observerRecords_.erase(key);
         return ret;
     }
     auto idIter = record.singleAssetCallbacks.find(singleId);
@@ -304,7 +329,7 @@ int32_t MediaLibraryManagerNotifyObserverManager::RegisterSingleAssetCallback(
     if (ret != E_OK) {
         if (isNewBaseObserver) {
             UnregisterBaseObserverWithLockHeld(dataShareHelper, record);
-            observerRecords_.erase(registerUriType);
+            observerRecords_.erase(key);
         }
         return ret;
     }
@@ -323,9 +348,11 @@ int32_t MediaLibraryManagerNotifyObserverManager::UnregisterSingleAssetCallback(
     std::string registerUri;
     int32_t ret = MediaLibraryManagerNotifyUtils::GetSingleNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = observerRecords_.find(registerUriType);
+    ObserverRecordKey key(userId, registerUriType);
+    auto iter = observerRecords_.find(key);
     CHECK_AND_RETURN_RET_LOG(iter != observerRecords_.end(), E_INVALID_ARGUMENTS, "observer is not registered");
     auto &record = iter->second;
     if (assetUri.empty()) {
@@ -377,13 +404,16 @@ int32_t MediaLibraryManagerNotifyObserverManager::RegisterSingleAlbumCallback(
     std::string registerUri;
     ret = MediaLibraryManagerNotifyUtils::GetSingleNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto &record = observerRecords_[registerUriType];
+    ObserverRecordKey key(userId, registerUriType);
+    auto &record = observerRecords_[key];
+    record.userId = userId;
     bool isNewBaseObserver = record.observer == nullptr;
     ret = RegisterBaseObserverWithLockHeld(dataShareHelper, registerUriType, registerUri, record);
     if (ret != E_OK) {
-        observerRecords_.erase(registerUriType);
+        observerRecords_.erase(key);
         return ret;
     }
     auto idIter = record.singleAlbumCallbacks.find(singleId);
@@ -398,7 +428,7 @@ int32_t MediaLibraryManagerNotifyObserverManager::RegisterSingleAlbumCallback(
     if (ret != E_OK) {
         if (isNewBaseObserver) {
             UnregisterBaseObserverWithLockHeld(dataShareHelper, record);
-            observerRecords_.erase(registerUriType);
+            observerRecords_.erase(key);
         }
         return ret;
     }
@@ -417,9 +447,11 @@ int32_t MediaLibraryManagerNotifyObserverManager::UnregisterSingleAlbumCallback(
     std::string registerUri;
     int32_t ret = MediaLibraryManagerNotifyUtils::GetSingleNotifyTypeAndUri(uriType, registerUriType, registerUri);
     CHECK_AND_RETURN_RET(ret == E_OK, ret);
+    int32_t userId = GetCurrentAccountId();
 
     std::lock_guard<std::mutex> lock(mutex_);
-    auto iter = observerRecords_.find(registerUriType);
+    ObserverRecordKey key(userId, registerUriType);
+    auto iter = observerRecords_.find(key);
     CHECK_AND_RETURN_RET_LOG(iter != observerRecords_.end(), E_INVALID_ARGUMENTS, "observer is not registered");
     auto &record = iter->second;
     if (albumUri.empty()) {
@@ -459,14 +491,16 @@ int32_t MediaLibraryManagerNotifyObserverManager::UnregisterSingleAlbumCallback(
 }
 
 void MediaLibraryManagerNotifyObserverManager::DispatchAssetChange(
-    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, Notification::NotifyUriType uriType)
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo,
+    Notification::NotifyUriType uriType,
+    int32_t userId)
 {
     LogForwardingChangeInfo("DispatchAssetChange", changeInfo, uriType);
     auto infos = MediaLibraryManagerNotifyUtils::BuildPhotoAssetChangeInfos(changeInfo, uriType);
     std::vector<std::shared_ptr<PhotoAssetChangeCallback>> callbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto iter = observerRecords_.find(uriType);
+        auto iter = observerRecords_.find(ObserverRecordKey(userId, uriType));
         if (iter != observerRecords_.end()) {
             callbacks = iter->second.assetCallbacks;
         }
@@ -478,14 +512,16 @@ void MediaLibraryManagerNotifyObserverManager::DispatchAssetChange(
 }
 
 void MediaLibraryManagerNotifyObserverManager::DispatchAlbumChange(
-    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, Notification::NotifyUriType uriType)
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo,
+    Notification::NotifyUriType uriType,
+    int32_t userId)
 {
     LogForwardingChangeInfo("DispatchAlbumChange", changeInfo, uriType);
     auto infos = MediaLibraryManagerNotifyUtils::BuildAlbumChangeInfos(changeInfo);
     std::vector<std::shared_ptr<PhotoAlbumChangeCallback>> callbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto iter = observerRecords_.find(uriType);
+        auto iter = observerRecords_.find(ObserverRecordKey(userId, uriType));
         if (iter != observerRecords_.end()) {
             callbacks = iter->second.albumCallbacks;
         }
@@ -497,13 +533,13 @@ void MediaLibraryManagerNotifyObserverManager::DispatchAlbumChange(
 }
 
 void MediaLibraryManagerNotifyObserverManager::DispatchSingleAssetChange(
-    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo)
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, int32_t userId)
 {
     LogForwardingChangeInfo("DispatchSingleAssetChange", changeInfo, Notification::NotifyUriType::SINGLE_PHOTO_URI);
     std::map<std::string, std::vector<std::shared_ptr<PhotoAssetChangeCallback>>> singleCallbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto iter = observerRecords_.find(Notification::NotifyUriType::SINGLE_PHOTO_URI);
+        auto iter = observerRecords_.find(ObserverRecordKey(userId, Notification::NotifyUriType::SINGLE_PHOTO_URI));
         CHECK_AND_RETURN(iter != observerRecords_.end());
         singleCallbacks = iter->second.singleAssetCallbacks;
     }
@@ -536,14 +572,15 @@ void MediaLibraryManagerNotifyObserverManager::DispatchSingleAssetChange(
 }
 
 void MediaLibraryManagerNotifyObserverManager::DispatchSingleAlbumChange(
-    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo)
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, int32_t userId)
 {
     LogForwardingChangeInfo("DispatchSingleAlbumChange", changeInfo,
         Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
     std::map<std::string, std::vector<std::shared_ptr<PhotoAlbumChangeCallback>>> singleCallbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto iter = observerRecords_.find(Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI);
+        auto iter = observerRecords_.find(
+            ObserverRecordKey(userId, Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI));
         CHECK_AND_RETURN(iter != observerRecords_.end());
         singleCallbacks = iter->second.singleAlbumCallbacks;
     }
@@ -576,35 +613,35 @@ void MediaLibraryManagerNotifyObserverManager::DispatchSingleAlbumChange(
 }
 
 void MediaLibraryManagerNotifyObserverManager::NotifyChange(
-    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo)
+    const std::shared_ptr<Notification::MediaChangeInfo> &changeInfo, int32_t userId)
 {
     CHECK_AND_RETURN(changeInfo != nullptr);
     switch (changeInfo->notifyUri) {
         case Notification::NotifyUriType::PHOTO_URI:
-            DispatchAssetChange(changeInfo, Notification::NotifyUriType::PHOTO_URI);
-            DispatchSingleAssetChange(changeInfo);
+            DispatchAssetChange(changeInfo, Notification::NotifyUriType::PHOTO_URI, userId);
+            DispatchSingleAssetChange(changeInfo, userId);
             break;
         case Notification::NotifyUriType::HIDDEN_PHOTO_URI:
-            DispatchAssetChange(changeInfo, Notification::NotifyUriType::HIDDEN_PHOTO_URI);
+            DispatchAssetChange(changeInfo, Notification::NotifyUriType::HIDDEN_PHOTO_URI, userId);
             break;
         case Notification::NotifyUriType::TRASH_PHOTO_URI:
-            DispatchAssetChange(changeInfo, Notification::NotifyUriType::TRASH_PHOTO_URI);
+            DispatchAssetChange(changeInfo, Notification::NotifyUriType::TRASH_PHOTO_URI, userId);
             break;
         case Notification::NotifyUriType::SINGLE_PHOTO_URI:
-            DispatchSingleAssetChange(changeInfo);
+            DispatchSingleAssetChange(changeInfo, userId);
             break;
         case Notification::NotifyUriType::PHOTO_ALBUM_URI:
-            DispatchAlbumChange(changeInfo, Notification::NotifyUriType::PHOTO_ALBUM_URI);
-            DispatchSingleAlbumChange(changeInfo);
+            DispatchAlbumChange(changeInfo, Notification::NotifyUriType::PHOTO_ALBUM_URI, userId);
+            DispatchSingleAlbumChange(changeInfo, userId);
             break;
         case Notification::NotifyUriType::HIDDEN_ALBUM_URI:
-            DispatchAlbumChange(changeInfo, Notification::NotifyUriType::HIDDEN_ALBUM_URI);
+            DispatchAlbumChange(changeInfo, Notification::NotifyUriType::HIDDEN_ALBUM_URI, userId);
             break;
         case Notification::NotifyUriType::TRASH_ALBUM_URI:
-            DispatchAlbumChange(changeInfo, Notification::NotifyUriType::TRASH_ALBUM_URI);
+            DispatchAlbumChange(changeInfo, Notification::NotifyUriType::TRASH_ALBUM_URI, userId);
             break;
         case Notification::NotifyUriType::SINGLE_PHOTO_ALBUM_URI:
-            DispatchSingleAlbumChange(changeInfo);
+            DispatchSingleAlbumChange(changeInfo, userId);
             break;
         default:
             MEDIA_WARN_LOG("unsupported notify uri type: %{public}d", static_cast<int32_t>(changeInfo->notifyUri));

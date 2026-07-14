@@ -34,7 +34,8 @@ constexpr uint32_t MAX_PARCEL_SIZE = 200 * 1024;
 
 void MediaLibraryManagerNotifyObserver::OnChange(const ChangeInfo &changeInfo)
 {
-    MEDIA_DEBUG_LOG("MediaLibraryManagerNotifyObserver OnChange, uriType: %{public}d", static_cast<int32_t>(uriType_));
+    MEDIA_DEBUG_LOG("MediaLibraryManagerNotifyObserver OnChange, uriType: %{public}d, userId: %{public}d",
+        static_cast<int32_t>(uriType_), userId_);
     CHECK_AND_RETURN_LOG(changeInfo.data_ != nullptr && changeInfo.size_ > 0,
         "changeInfo data is null or size is invalid");
     CHECK_AND_RETURN_LOG(changeInfo.size_ <= MAX_PARCEL_SIZE, "changeInfo parcel size exceeds limit");
@@ -57,7 +58,7 @@ void MediaLibraryManagerNotifyObserver::OnChange(const ChangeInfo &changeInfo)
 
     auto mediaChangeInfo = std::make_shared<Notification::MediaChangeInfo>();
     CHECK_AND_RETURN_LOG(mediaChangeInfo->ReadFromParcelInMultiMode(*parcel), "unmarshal mediaChangeInfo failed");
-    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(mediaChangeInfo);
+    MediaLibraryManagerNotifyObserverManager::GetInstance().NotifyChange(mediaChangeInfo, userId_);
 }
 } // namespace Media
 } // namespace OHOS
