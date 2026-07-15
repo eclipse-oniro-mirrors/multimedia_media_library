@@ -464,7 +464,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::PHOTO_THUMB_STATUS,
     };
 
-    if (MediaLibraryAniUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryAniUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 
@@ -473,9 +473,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
-    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
-        ANI_ERR_LOG("Report Third party application failed, key:%{public}s", key.c_str());
-    }
+    DfxSystemPhotoKeys::ReportIfSystemKey("ani", key);
 
     return E_SUCCESS;
 }

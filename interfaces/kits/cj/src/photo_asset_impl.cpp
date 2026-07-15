@@ -102,7 +102,7 @@ static int32_t CheckSystemApiKeys(const string &key)
         PhotoColumn::PHOTO_RISK_STATUS,
     };
 
-    if (MediaLibraryNapiUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || MediaLibraryNapiUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 
@@ -111,9 +111,7 @@ static int32_t CheckSystemApiKeys(const string &key)
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
-    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
-        LOGE("Report Third party application failed, key:%{public}s", key.c_str());
-    }
+    DfxSystemPhotoKeys::ReportIfSystemKey("cj", key);
 
     return E_SUCCESS;
 }

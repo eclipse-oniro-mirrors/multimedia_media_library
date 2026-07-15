@@ -939,7 +939,7 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_RISK_STATUS,
     };
 
-    if (SendableMediaLibraryNapiUtils::IsSystemApp()) {
+    if (!DfxSystemPhotoKeys::IsKeyOfInterest(SYSTEM_API_KEYS, key) || SendableMediaLibraryNapiUtils::IsSystemApp()) {
         return E_SUCCESS;
     }
 
@@ -948,9 +948,7 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         return E_CHECK_SYSTEMAPP_FAIL;
     }
 
-    if (DfxSystemPhotoKeys::ReportIfSystemKey(key) != E_SUCCESS) {
-        NAPI_ERR_LOG("Report Third party application failed, key:%{public}s", key.c_str());
-    }
+    DfxSystemPhotoKeys::ReportIfSystemKey("sendable", key);
 
     return E_SUCCESS;
 }

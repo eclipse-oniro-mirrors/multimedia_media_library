@@ -16,16 +16,22 @@
 #ifndef OHOS_MEDIA_DFX_SYSTEM_PHOTO_KEYS_H
 #define OHOS_MEDIA_DFX_SYSTEM_PHOTO_KEYS_H
 
+#include <safe_map.h>
+#include <set>
 #include <string>
 
 namespace OHOS {
 namespace Media {
+#define EXPORT __attribute__ ((visibility ("default")))
+// This class is only for client-side (NAPI/ANI/CJ) use. Do not call from server-side.
 class DfxSystemPhotoKeys {
 public:
-    __attribute__((visibility("default"))) static int32_t ReportIfSystemKey(const std::string &key);
+    EXPORT static int32_t ReportIfSystemKey(const std::string &interface, const std::string &key);
+    EXPORT static bool IsKeyOfInterest(const std::set<std::string> &inputSet, const std::string &key);
 
 private:
     static std::string GetBundleName();
+    static SafeMap<std::string, int32_t> reportedKeyMap_;
 };
 }  // namespace Media
 }  // namespace OHOS
