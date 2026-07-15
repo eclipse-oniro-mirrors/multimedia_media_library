@@ -93,6 +93,17 @@ static vector<pair<int32_t, int32_t>> UpdateIndexsOnPhotos(NativeRdb::RdbStore &
 
     return UpgradeHelper::ExecuteCommands(commands, store, true);
 }
+
 REGISTER_ASYNC_UPGRADE_MODULE_TASK(VERSION_ADD_TAB_COVER_RECORD_AND_INDEX, PHOTOS_MODULE_NAME, UpdateIndexsOnPhotos)
+
+static vector<pair<int32_t, int32_t>> AddPhotoCompressionQualityColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_COMPRESSION_QUALITY, "INT DEFAULT -1").Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_PHOTO_COMPRESSION_QUALITY, PHOTOS_MODULE_NAME,
+    AddPhotoCompressionQualityColumn);
+
 } // namespace Media
 } // namespace OHOS

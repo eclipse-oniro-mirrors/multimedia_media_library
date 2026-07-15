@@ -239,6 +239,7 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[PhotoColumn::UNIQUE_ID] = MDKRecordField(upLoadRecord.uniqueId);
     map[MediaColumn::MEDIA_PACKAGE_NAME] = MDKRecordField(upLoadRecord.packageName);
     map[PhotoColumn::PHOTO_RISK_STATUS] = MDKRecordField(upLoadRecord.photoRiskStatus);
+    map[PhotoColumn::COMPRESSION_QUALITY] = MDKRecordField(upLoadRecord.compressionQuality);
     HandleAttributesHashMap(map, upLoadRecord);
     int32_t ret = HandleThumbSize(map, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleThumbSize err: %{public}d", ret);
@@ -999,6 +1000,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.uniqueId = data.GetUniqueId().value_or("");
     onFetchPhotoVo.packageName = data.GetPackageName().value_or("");
     onFetchPhotoVo.photoRiskStatus = data.GetPhotoRiskStatus().value_or(0);
+    onFetchPhotoVo.compressionQuality = data.GetCompressionQuality().value_or(-1);
 }
 
 void CloudFileDataConvert::ConvertSourceAlbumIds(const MDKRecord &mdkRecord, OnFetchPhotosVo &onFetchPhotoVo)

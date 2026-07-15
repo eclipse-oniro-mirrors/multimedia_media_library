@@ -196,6 +196,7 @@ public:
     static const std::string PHOTO_FILE_HIDDEN EXPORT;
     static const std::string PHOTO_NEED_THUMBNAIL EXPORT;
     static const std::string PHOTO_LCD_FILE_SIZE EXPORT;
+    static const std::string COMPRESSION_QUALITY EXPORT;
 
     // Photo-only default fetch columns
     static const std::set<std::string> DEFAULT_FETCH_COLUMNS EXPORT;

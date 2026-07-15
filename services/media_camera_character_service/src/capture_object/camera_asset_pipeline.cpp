@@ -584,6 +584,11 @@ std::string CameraAssetPipeline::CreateUri()
     return uri;
 }
 
+int32_t CameraAssetPipeline::GetCompressionQuality()
+{
+    return assetInfo_.GetCompressionQuality();
+}
+
 // 相机定制化inner接口
 void CameraAssetPipeline::GetDeferredPictureInfo(GetDeferredPictureInfoRespBody& respbody)
 {

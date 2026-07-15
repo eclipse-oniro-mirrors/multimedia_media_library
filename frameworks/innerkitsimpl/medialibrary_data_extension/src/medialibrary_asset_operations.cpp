@@ -216,6 +216,7 @@ const std::unordered_map<std::string, int> FILEASSET_MEMBER_MAP = {
     {PhotoColumn::UNIQUE_ID, MEMBER_TYPE_STRING},
     {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, MEMBER_TYPE_INT32},
     { PhotoColumn::ATTACHMENT_SIZE, MEMBER_TYPE_INT64 },
+    { PhotoColumn::COMPRESSION_QUALITY, MEMBER_TYPE_INT32 },
 };
 
 const std::unordered_map<std::string, int>& GetFileAssetMemberMap()
@@ -1168,6 +1169,7 @@ static void FillAssetInfo(MediaLibraryCommand &cmd, const FileAsset &fileAsset)
         assetInfo.PutString(PhotoColumn::PHOTO_MEDIA_SUFFIX, extension);
         assetInfo.PutInt(PhotoColumn::PHOTO_SUBTYPE, fileAsset.GetPhotoSubType());
         assetInfo.PutString(PhotoColumn::CAMERA_SHOT_KEY, fileAsset.GetCameraShotKey());
+        assetInfo.PutInt(PhotoColumn::COMPRESSION_QUALITY, fileAsset.GetCompressionQuality());
         HandlePhotoInfo(cmd, assetInfo, fileAsset);
         if (fileAsset.GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::BURST)) {
             HandleBurstPhoto(cmd, assetInfo, displayName);

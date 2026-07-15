@@ -226,6 +226,7 @@ const std::vector<std::string> MEDIA_CLOUD_SYNC_COLUMNS = {
     /* keep cloud_id at the last, so RecordToValueBucket can skip it*/
     MediaColumn::MEDIA_ID,
     PhotoColumn::PHOTO_CLOUD_ID,
+    PhotoColumn::COMPRESSION_QUALITY,
 };
 
 const std::vector<std::string> ALBUM_LOCAL_QUERY_COLUMNS = {

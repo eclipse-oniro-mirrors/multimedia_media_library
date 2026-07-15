@@ -22,6 +22,7 @@
 #define COLUMN_CRITICAL_TYPE "critical_type"
 #define COLUMN_PHOTO_NEED_THUMBNAIL "need_thumbnail"
 #define COLUMN_ATTACHMENT_SIZE "attachment_size"
+#define COLUMN_COMPRESSION_QUALITY "compression_quality"
 // index name shoule be added here
 #define INDEX_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX "idx_photo_sort_in_album_date_added"
 #define INDEX_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX "idx_photo_sort_in_album_date_taken"

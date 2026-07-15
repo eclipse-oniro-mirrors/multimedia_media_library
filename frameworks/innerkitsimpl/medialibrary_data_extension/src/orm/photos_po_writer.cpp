@@ -856,4 +856,18 @@ bool PhotosPoWriter::GetLocalAssetSize(std::string &val)
     val = std::to_string(this->photosPo_.localAssetSize.value());
     return true;
 }
+
+void PhotosPoWriter::SetCompressionQuality(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.compressionQuality = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetCompressionQuality(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.compressionQuality.has_value(), false);
+    val = std::to_string(this->photosPo_.compressionQuality.value());
+    return true;
+}
 }  // namespace OHOS::Media::ORM

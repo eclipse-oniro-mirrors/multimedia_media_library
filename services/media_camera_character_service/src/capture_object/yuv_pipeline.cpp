@@ -60,15 +60,18 @@ enum ImageFileType : int32_t {
 const std::string MIME_TYPE_JPEG = "image/jpeg";
 const std::string EXTENSION_JPEG = "jpg";
 
-const std::string MIME_TYPE_HEIF = "image/heic";
+const std::string MIME_TYPE_HEIC = "image/heic";
 const std::string EXTENSION_HEIF = "heic";
+const std::string MIME_TYPE_HEIF = "image/heif";
+const uint8_t PACKOPTION_QUALITY = 90;
+const uint8_t PACKOPTION_QUALITY_HEIF = 95;
 
 // <ImageFileType, vector<mimeType, extension>>
 const int32_t MIMETYPE_INDEX = 0;
 const int32_t EXTENSION_INDEX = 1;
 static const std::unordered_map<ImageFileType, std::vector<std::string>> IMAGE_FILE_TYPE_MAP = {
     {ImageFileType::JPEG, { MIME_TYPE_JPEG, EXTENSION_JPEG }},
-    {ImageFileType::HEIF, { MIME_TYPE_HEIF, EXTENSION_HEIF }},
+    {ImageFileType::HEIF, { MIME_TYPE_HEIC, EXTENSION_HEIF }},
 };
 
 constexpr int32_t ORIENTATION_0 = 1;
@@ -385,9 +388,20 @@ int32_t YuvPipeline::SaveTwoPictureForFirstStage(const std::string& filePath, co
     return E_OK;
 }
 
+static int32_t UpdateCompressionQuality(const std::string& mimeType)
+{
+    int32_t compressionQuality = PACKOPTION_QUALITY;
+    std::string format = (mimeType == MIME_TYPE_HEIC) ? MIME_TYPE_HEIF : mimeType;
+    if (format == MIME_TYPE_HEIF) {
+        compressionQuality = PACKOPTION_QUALITY_HEIF;
+    }
+    return compressionQuality;
+}
+
 bool YuvPipeline::UpdateExtValuesForStageInternal(const SaveCameraPhotoDto &dto, ValuesBucket &values,
     CameraAssetInfo& modifyAssetInfo)
 {
+    values.Put(PhotoColumn::COMPRESSION_QUALITY, UpdateCompressionQuality(tempData_.modifyMimeType));
     if (!tempData_.isModified) {
         MEDIA_WARN_LOG("no need UpdateExtValuesForStageInternal, yuv save type: %{public}d.", dto.imageFileType);
         return false;

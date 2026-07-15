@@ -325,8 +325,11 @@ void MultiStagesPhotoCaptureManager::AddImageInternal(int32_t fileId, const stri
 
     CameraPipelineType type = CameraPipelineType::UNDEFINED;
     auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(fileId, type);
+    int32_t compressionQuality = -1;
     if (pipeline != nullptr) {
         pipeline->SetActiveType(CameraInfoActiveType::SecondStage);
+        compressionQuality = pipeline->GetCompressionQuality();
+        MEDIA_INFO_LOG("compressionQuality: %{public}d", compressionQuality);
     }
 
 #ifdef ABILITY_CAMERA_SUPPORT

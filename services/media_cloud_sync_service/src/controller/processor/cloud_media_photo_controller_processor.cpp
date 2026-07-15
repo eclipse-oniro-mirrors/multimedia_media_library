@@ -177,6 +177,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.uniqueId = record.uniqueId.value_or("");
     photosVo.packageName = record.packageName.value_or("");
     photosVo.photoRiskStatus = record.photoRiskStatus.value_or(0);
+    photosVo.compressionQuality = record.compressionQuality.value_or(-1);
     return true;
 }
 
@@ -280,6 +281,7 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     // Safe Album: risk status for children's watch
     data.attributesRiskStatus = photosVo.photoRiskStatus;
     data.attributesIsCritical = photosVo.isCritical;
+    data.compressionQuality = photosVo.compressionQuality;
     return true;
 }
 

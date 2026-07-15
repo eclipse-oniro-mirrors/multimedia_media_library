@@ -126,7 +126,7 @@ static const ResultTypeMap &GetResultTypeMap()
         { PhotoColumn::ATTACHMENT_SIZE, TYPE_INT64 },
         { PhotoColumn::PHOTO_THUMB_STATUS, TYPE_INT32},
         { PhotoColumn::PHOTO_LCD_FILE_SIZE, TYPE_INT32},
-
+        { PhotoColumn::COMPRESSION_QUALITY, TYPE_INT32},
     };
     return RESULT_TYPE_MAP;
 }

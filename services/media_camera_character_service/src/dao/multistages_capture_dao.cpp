@@ -279,6 +279,7 @@ std::vector<std::shared_ptr<FileAsset>> MultiStagesCaptureDao::QueryForSessionSy
         MediaColumn::MEDIA_OWNER_PACKAGE,
         MediaColumn::MEDIA_DATE_TRASHED,
         PhotoColumn::PHOTO_DEFERRED_PROC_TYPE,
+        PhotoColumn::COMPRESSION_QUALITY,
     };
 
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY);
@@ -335,6 +336,7 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::RecoverPipelineByFileId(int32_
         MediaColumn::MEDIA_TYPE,
         MediaColumn::MEDIA_MIME_TYPE,
         PhotoColumn::PHOTO_SUBTYPE,
+        PhotoColumn::COMPRESSION_QUALITY,
     };
 
     // 1.获取数据
@@ -363,6 +365,7 @@ std::shared_ptr<FileAsset> MultiStagesCaptureDao::RecoverPipelineByPhotoId(const
         MediaColumn::MEDIA_TYPE,
         MediaColumn::MEDIA_MIME_TYPE,
         PhotoColumn::PHOTO_SUBTYPE,
+        PhotoColumn::COMPRESSION_QUALITY,
     };
 
     // 1.获取数据

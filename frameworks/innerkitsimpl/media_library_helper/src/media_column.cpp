@@ -235,6 +235,8 @@ const std::string PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR = "livephot
 const std::string PhotoColumn::LOCAL_ASSET_SIZE = "local_asset_size";
 const std::string PhotoColumn::PHOTO_NEED_THUMBNAIL = "need_thumbnail";
 const std::string PhotoColumn::ATTACHMENT_SIZE = "attachment_size";
+const std::string PhotoColumn::COMPRESSION_QUALITY = "compression_quality";
+
 
 const std::string PhotoColumn::LCD_ASPECT_RATIO = "lcd_aspect_ratio";
 const std::string PhotoColumn::PHOTO_LCD_FILE_SIZE = "lcd_file_size";
@@ -270,7 +272,7 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::UNIQUE_ID, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::LOCAL_ASSET_SIZE,
     PhotoColumn::PHOTO_FILE_HIDDEN, PhotoColumn::PHOTO_NEED_THUMBNAIL, PhotoColumn::ATTACHMENT_SIZE,
-    PhotoColumn::PHOTO_LCD_FILE_SIZE,
+    PhotoColumn::PHOTO_LCD_FILE_SIZE, PhotoColumn::COMPRESSION_QUALITY,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)

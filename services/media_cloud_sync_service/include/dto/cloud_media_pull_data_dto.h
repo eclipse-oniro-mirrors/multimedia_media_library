@@ -131,6 +131,7 @@ public:
     std::string localDisplayName;
     std::map<std::string, std::string> stringfields;
     std::map<std::string, int64_t> int64fields;
+    int32_t compressionQuality{-1}; /* compression_quality */
 
 public:  // basic function
     std::string ToString() const;

@@ -55,6 +55,7 @@ bool CloudMdkRecordPhotosVo::MarshallingBasicInfo(Parcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(supportedWatermarkType), false, "supportedWatermarkType");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(strongAssociation), false, "strongAssociation");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(compressionQuality), false, "compressionQuality");
     return true;
 }
 bool CloudMdkRecordPhotosVo::MarshallingAttributesInfo(MessageParcel &parcel) const
@@ -126,6 +127,7 @@ bool CloudMdkRecordPhotosVo::ReadBasicInfo(Parcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(movingPhotoEffectMode), false, "movingPhotoEffectMode");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(supportedWatermarkType), false, "supportedWatermarkType");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(strongAssociation), false, "strongAssociation");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(compressionQuality), false, "compressionQuality");
     return true;
 }
 bool CloudMdkRecordPhotosVo::ReadAttributesInfo(MessageParcel &parcel)
@@ -259,7 +261,8 @@ void CloudMdkRecordPhotosVo::GetAttributesInfo(std::stringstream &ss) const
        << "\"mimeType\": " << mimeType << ","
        << "\"uniqueId\": " << uniqueId << ","
        << "\"packageName\": " << packageName << ","
-       << "\"photoRiskStatus\": " << photoRiskStatus << ",";
+       << "\"photoRiskStatus\": " << photoRiskStatus << ","
+       << "\"compressionQuality\": " << compressionQuality;
 }
 
 void CloudMdkRecordPhotosVo::GetRemoveAlbumInfo(std::stringstream &ss) const

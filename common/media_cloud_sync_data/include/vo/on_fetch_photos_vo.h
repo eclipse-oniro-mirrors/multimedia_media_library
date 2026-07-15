@@ -95,6 +95,7 @@ public:
     // Safe Album: risk status for children's watch
     int32_t photoRiskStatus{0};
     int32_t isCritical{0};
+    int32_t compressionQuality{-1};
 
 public:  // functions of Parcelable.
     virtual ~OnFetchPhotosVo() = default;

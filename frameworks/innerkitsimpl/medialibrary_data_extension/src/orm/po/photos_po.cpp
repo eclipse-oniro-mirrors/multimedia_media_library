@@ -54,7 +54,8 @@ void PhotosPo::GetPropertiesInfo(std::stringstream &ss) const
        << "\"dateMonth\": \"" << dateMonth.value_or("") << "\", "
        << "\"dateDay\": \"" << dateDay.value_or("") << "\", "
        << "\"detailTime\": \"" << detailTime.value_or("") << "\", "
-       << "\"editTime\": " << editTime.value_or(0) << ", ";
+       << "\"editTime\": " << editTime.value_or(0) << "\", "
+       << "\"compressionQuality\": " << compressionQuality.value_or(-1) << ", ";
 }
 
 void PhotosPo::GetAttributesInfo(std::stringstream &ss) const
