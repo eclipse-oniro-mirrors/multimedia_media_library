@@ -168,7 +168,7 @@ HWTEST_F(PhotosCloneTest, FindAlbumInfo_Scenario_3_Hidden_Test, TestSize.Level0)
     fileInfo.sourcePath = "/storage/emulated/0/DCIM/Camera/SVID_20241029_225550_1.mp4";
     PhotoAlbumDao::PhotoAlbumRowData albumRowData = PhotosClone().FindAlbumInfo(fileInfo);
     EXPECT_EQ(albumRowData.albumId, 0);
-    EXPECT_EQ(albumRowData.lPath, "/DCIM/Camera");
+    EXPECT_EQ(albumRowData.lPath, "/Pictures/其它");
 }
 
 HWTEST_F(PhotosCloneTest, FindAlbumInfo_Scenario_3_Hidden_LPATH_EMPTY_Test, TestSize.Level0)
@@ -192,7 +192,7 @@ HWTEST_F(PhotosCloneTest, FindAlbumInfo_Scenario_3_Hidden_Screenshots_Video_Test
     fileInfo.sourcePath = "/storage/emulated/0/Pictures/Screenshots/SVID_20240805_113052_1.mp4";
     PhotoAlbumDao::PhotoAlbumRowData albumRowData = PhotosClone().FindAlbumInfo(fileInfo);
     EXPECT_EQ(albumRowData.albumId, 0);
-    EXPECT_EQ(albumRowData.lPath, "/Pictures/Screenrecords");
+    EXPECT_EQ(albumRowData.lPath, "/Pictures/其它");
 }
 
 HWTEST_F(PhotosCloneTest, FindAlbumInfo_Scenario_3_TRASHED_Test, TestSize.Level0)
@@ -204,7 +204,7 @@ HWTEST_F(PhotosCloneTest, FindAlbumInfo_Scenario_3_TRASHED_Test, TestSize.Level0
     fileInfo.sourcePath = "/storage/emulated/0/DCIM/Camera/SVID_20241029_225550_1.mp4";
     PhotoAlbumDao::PhotoAlbumRowData albumRowData = PhotosClone().FindAlbumInfo(fileInfo);
     EXPECT_EQ(albumRowData.albumId, 0);
-    EXPECT_EQ(albumRowData.lPath, "/DCIM/Camera");
+    EXPECT_EQ(albumRowData.lPath, "/Pictures/其它");
 }
 
 HWTEST_F(PhotosCloneTest, FindAlbumInfo_Scenario_3_TRASHED_LPATH_EMPTY_Test, TestSize.Level0)
@@ -216,7 +216,7 @@ HWTEST_F(PhotosCloneTest, FindAlbumInfo_Scenario_3_TRASHED_LPATH_EMPTY_Test, Tes
     fileInfo.sourcePath = "/storage/emulated/0/DCIM/Camera/SVID_20241029_225550_1.mp4";
     PhotoAlbumDao::PhotoAlbumRowData albumRowData = PhotosClone().FindAlbumInfo(fileInfo);
     EXPECT_EQ(albumRowData.albumId, 0);
-    EXPECT_EQ(albumRowData.lPath, "/DCIM/Camera");
+    EXPECT_EQ(albumRowData.lPath, "/Pictures/其它");
 }
 
 HWTEST_F(PhotosCloneTest, GetPhotosRowCountInPhotoMap_Test, TestSize.Level0)
@@ -260,8 +260,7 @@ HWTEST_F(PhotosCloneTest, FindlPath_Test, TestSize.Level0)
     fileInfo.recycledTime = 1;
     fileInfo.sourcePath = "/storage/emulated/0/DCIM/Camera/SVID_20241029_225550_1.mp4";
     std::string lPath = PhotosClone().FindlPath(fileInfo);
-    EXPECT_FALSE(lPath.empty());
-    EXPECT_EQ(lPath, "/DCIM/Camera");
+    EXPECT_EQ(lPath, "/Pictures/其它");
     MEDIA_INFO_LOG("FindlPath_Test end");
 }
 

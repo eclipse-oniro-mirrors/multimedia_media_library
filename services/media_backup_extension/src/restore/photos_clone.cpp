@@ -176,11 +176,9 @@ PhotoAlbumDao::PhotoAlbumRowData PhotosClone::FindAlbumInfo(const FileInfo &file
 {
     PhotoAlbumDao::PhotoAlbumRowData albumInfo;
     std::string lPath = fileInfo.lPath;
-    // Scenario 2, WHEN FileInfo is in hidden album, THEN override lPath to the folder in sourcePath.
     // Scenario 3, WHEN FileInfo is not belongs to any album, THEN override lPath to the folder in sourcePath.
     // Note, sourcePath is a sign of the possible scenaio that the file is not in any album.
-    bool islPathMiss = !fileInfo.sourcePath.empty() && (fileInfo.hidden == 1 || fileInfo.recycledTime != 0);
-    islPathMiss = islPathMiss || fileInfo.lPath.empty();
+    const bool islPathMiss = fileInfo.lPath.empty() && !fileInfo.sourcePath.empty();
     if (islPathMiss) {
         lPath = this->photoAlbumDao_.ParseSourcePathToLPath(fileInfo.sourcePath);
         MEDIA_INFO_LOG("Media_Restore: fix lPath of album.fileInfo.lPath: %{public}s, "
