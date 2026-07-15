@@ -112,6 +112,7 @@ shared_ptr<MedialibrarySubscriber> MedialibrarySubscriber::subscriber_ = nullptr
 std::future<bool> MedialibrarySubscriber::subscribeAsyncTask_;
 std::mutex MedialibrarySubscriber::subscribeLock_;
 std::mutex MedialibrarySubscriber::subscribeAsyncTaskLock_;
+std::shared_mutex MedialibrarySubscriber::backgroundTaskMutex_;
 const int32_t OH_DEFAULT_USER_ID = 100;
 // The task can be performed when the battery level reaches the value
 const int32_t PROPER_DEVICE_BATTERY_CAPACITY = 50;
@@ -524,7 +525,10 @@ void MedialibrarySubscriber::WalCheckPointAsync()
     if (!isScreenOff_ || !isCharging_) {
         return;
     }
-    std::thread(MediaLibraryRdbStore::WalCheckPoint).detach();
+    std::thread([] {
+        std::unique_lock<std::shared_mutex> lock(MedialibrarySubscriber::backgroundTaskMutex_);
+        MediaLibraryRdbStore::WalCheckPoint();
+    }).detach();
 }
 
 bool MedialibrarySubscriber::GetPowerConnected()
@@ -1174,6 +1178,7 @@ void MedialibrarySubscriber::DoFillUUIDOfPhotoAndAlbums()
 
 void MedialibrarySubscriber::DoBackgroundOperation()
 {
+    std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
     bool cond = (!backgroundDelayTask_.IsDelayTaskTimeOut() || !currentStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoBackgroundOperation are not met, will return.");
     PeriodicAnalyzePhotosData();
@@ -1373,6 +1378,7 @@ bool MedialibrarySubscriber::UpdateCheckCriticalTypeStatus()
 
 void MedialibrarySubscriber::DoThumbnailBgOperation()
 {
+    std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
     bool cond = (!thumbnailBgDelayTask_.IsDelayTaskTimeOut() || !thumbnailBgGenerationStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoThumbnailBgOperation are not met, will return.");
 

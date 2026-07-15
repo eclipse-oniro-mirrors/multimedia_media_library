@@ -18,6 +18,7 @@
 #include <atomic>
 #include <future>
 #include <thread>
+#include <shared_mutex>
 
 #include "common_event_manager.h"
 #include "common_event_subscribe_info.h"
@@ -129,6 +130,7 @@ private:
     static std::future<bool> subscribeAsyncTask_;
     static std::mutex subscribeLock_;
     static std::mutex subscribeAsyncTaskLock_;
+    static std::shared_mutex backgroundTaskMutex_;
 
     DelayTask backgroundDelayTask_{"backgroundTask"};
     DelayTask thumbnailBgDelayTask_{"thumbnailBgTask"};
