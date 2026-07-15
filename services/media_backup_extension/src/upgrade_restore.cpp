@@ -810,7 +810,7 @@ void UpgradeRestore::HandleRestData(void)
         MediaFileUtils::DeleteDir(photoData);
     }
     if (MediaFileUtils::IsFileExists(mediaData)) {
-        MEDIA_DEBUG_LOG("Start to delete media data");
+        MEDIA_DEBUG_LOG("Start to delete media data.");
         MediaFileUtils::DeleteDir(mediaData);
     }
     BackupFileUtils::DeleteSdDatabase(filePath_);
