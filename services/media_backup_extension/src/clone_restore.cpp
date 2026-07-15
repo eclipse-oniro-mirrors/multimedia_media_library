@@ -519,7 +519,7 @@ bool CloneRestore::BackupPreprocess()
     ParseDstDeviceBackupInfo();
     if (!dstDeviceBackupInfo_.hdcEnabled && (!srcCloneRestoreConfigInfo_.isValid ||
         srcCloneRestoreConfigInfo_.switchStatus == SwitchStatus::HDC)) {
-        MEDIA_INFO_LOG("dst device does not support hdc while current hdc sync is on.");
+        MEDIA_INFO_LOG("dst device does not support hdc while current hdc sync is on");
         MEDIA_INFO_LOG("Start BackupDb");
 
         // create temp DB path
@@ -536,7 +536,7 @@ bool CloneRestore::BackupPreprocess()
         CHECK_AND_RETURN_RET_LOG(errCode == 0, false, "rdb backup fail: %{public}d", errCode);
         MEDIA_INFO_LOG("End BackupDb");
         auto context = AbilityRuntime::Context::GetApplicationContext();
-        CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "Failed to get context!");
+        CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "Failed to get context");
 
         // initialize backup database connection
         std::shared_ptr<NativeRdb::RdbStore> backupRdb;
@@ -548,7 +548,7 @@ bool CloneRestore::BackupPreprocess()
         // mark hdc data in temp database as invalid
         bool ret = InvalidateHdcCloudData(backupRdb);
         if (!ret) {
-            MEDIA_ERR_LOG("fail to delete hdc data.");
+            MEDIA_ERR_LOG("fail to delete hdc data");
             SetErrorCode(RestoreError::BACKUP_INVALIDATE_HDC_CLOUD_DATA_FAILED);
             ErrorInfo errorInfo(RestoreError::BACKUP_INVALIDATE_HDC_CLOUD_DATA_FAILED, 0, "",
                 "CloneBackup clear hdc data failed");
