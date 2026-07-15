@@ -16,6 +16,7 @@
 
 #include "lcd_aging_manager.h"
 
+#include <dlfcn.h>
 #include <sys/stat.h>
 
 #include "cloud_sync_manager.h"
@@ -25,6 +26,7 @@
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_astc_stat.h"
+#include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_photo_operations.h"
 #include "medialibrary_subscriber.h"
@@ -101,6 +103,9 @@ int32_t LcdAgingManager::BatchAgingLcdFileTask(const std::atomic<bool> &shouldSt
         FinishAgingTask();
         return ret;
     }
+
+    std::thread applyEfficiencyQuotaThread([this, taskSize] { ApplyEfficiencyQuota(taskSize); });
+    applyEfficiencyQuotaThread.detach();
 
     ret = ExecuteAgingLoop(shouldStop);
 
@@ -690,5 +695,36 @@ void LcdAgingManager::StopCallbackTimer()
     callbackTimer_.Unregister(callbackTimerId_);
     callbackTimer_.Shutdown();
     callbackTimerId_ = 0;
+}
+
+void LcdAgingManager::ApplyEfficiencyQuota(int64_t fileNum)
+{
+#ifdef EFFICIENCY_MANAGER_ENABLE
+    constexpr int64_t LCD_AGING_BASE_QUOTA = 6;
+    constexpr int64_t LCD_AGING_BASE_FILE_NUM = 10000;
+    constexpr int32_t MODULE_POWER_OVERUSED = 8;
+    const std::string ABNORMAL_MANAGER_LIB = "libabnormal_mgr.z.so";`
+    int64_t quota = fileNum * LCD_AGING_BASE_QUOTA / LCD_AGING_BASE_FILE_NUM;
+    if (quota == 0) {
+        MEDIA_WARN_LOG("quota is zero, skip apply efficiency quota.");
+        return;
+    }
+    string module = CONST_BUNDLE_NAME;
+    string reason = "LCD Aging";
+    MEDIA_DEBUG_LOG("ApplyEfficiencyQuota. quota: %{public}" PRId64, quota);
+    void *resourceQuotaMgrHandle = dlopen(ABNORMAL_MANAGER_LIB.c_str(), RTLD_NOW);
+    CHECK_AND_RETURN_LOG(resourceQuotaMgrHandle, "Not find resource_quota_manager lib.");
+
+    using HandleQuotaFunc = bool (*)(const std::string &, uint32_t, int64_t, const std::string &);
+    auto handleQuotaFunc =
+        reinterpret_cast<HandleQuotaFunc>(dlsym(resourceQuotaMgrHandle, "ApplyAbnormalControlQuota"));
+    if (!handleQuotaFunc) {
+        MEDIA_ERR_LOG("Not find ApplyAbnormalControlQuota func.");
+        dlclose(resourceQuotaMgrHandle);
+        return;
+    }
+    CHECK_AND_PRINT_LOG(handleQuotaFunc(module, MODULE_POWER_OVERUSED, quota, reason), "Do handleQuotaFunc failed.");
+    dlclose(resourceQuotaMgrHandle);
+#endif
 }
 }  // namespace OHOS::Media

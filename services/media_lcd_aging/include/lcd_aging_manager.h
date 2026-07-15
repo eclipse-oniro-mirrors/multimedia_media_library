@@ -97,6 +97,7 @@ private:
 
     void StartCallbackTimer();
     void StopCallbackTimer();
+    void ApplyEfficiencyQuota(int64_t fileNum);
 
 private:
     LcdAgingDao lcdAgingDao_;
