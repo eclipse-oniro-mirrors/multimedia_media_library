@@ -400,6 +400,7 @@ static void HandleSpecialPredicateProcessUri(AsyncContext &context, const FetchO
     }
     context->networkId = fileUri.GetNetworkId();
     string field = (fetchOptType == ALBUM_FETCH_OPT) ? PhotoAlbumColumns::ALBUM_ID : CONST_MEDIA_DATA_DB_ID;
+    context->uriMap[fileUri.GetFileId()] = uri;
     operations.push_back({ item.operation, { field, fileUri.GetFileId() } });
 }
 

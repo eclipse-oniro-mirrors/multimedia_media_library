@@ -568,6 +568,9 @@ static void SetTranscodeType(bool isHighPixel, bool isHeif, TranscodeType& trans
 
 static bool IsUriTranscoded(const string &realUri, const string &inputUri)
 {
+    if (inputUri.empty()) {
+        return false;
+    }
     return MediaFileUtils::GetExtensionFromPath(realUri) != MediaFileUtils::GetExtensionFromPath(inputUri);
 }
 

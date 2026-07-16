@@ -77,6 +77,9 @@ bool PreferredCompatibleModeCheckUtils::IsHighPixelPicture(int32_t width, int32_
 
 bool PreferredCompatibleModeCheckUtils::GetDesireSize(int32_t &width, int32_t &height)
 {
+    if (!IsHighPixel(width, height)) {
+        return false;
+    }
     if (width <= 0 || height <= 0) {
         return false;
     }

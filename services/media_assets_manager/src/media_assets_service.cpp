@@ -828,31 +828,6 @@ int32_t MediaAssetsService::CancelPhotoUriPermissionInner(
     return errCode;
 }
 
-static bool IsSupportHighResolution(const string& bundleName, const uint64_t tokenId)
-{
-    CompatibleInfo compatibleInfo;
-    TranscodeCompatibleInfoOperation::QueryCompatibleInfo(bundleName, compatibleInfo);
-    if (compatibleInfo.highResolution != -1) {
-        return compatibleInfo.highResolution;
-    }
-    if (PermissionUtils::IsSystemAppByCache(tokenId)) {
-        return true;
-    }
-    return HeifTranscodingCheckUtils::CanSupportedHighPixelPicture(bundleName, HighPixelType::PIXEL_200);
-}
-
-static bool IsSupportHeif(const string& bundleName)
-{
-    CompatibleInfo compatibleInfo;
-    TranscodeCompatibleInfoOperation::QueryCompatibleInfo(bundleName, compatibleInfo);
-    auto mimeTypes = compatibleInfo.encodings;
-    if (find(mimeTypes.begin(), mimeTypes.end(), HEIF_MIME_TYPE) != mimeTypes.end() ||
-        find(mimeTypes.begin(), mimeTypes.end(), HEIC_MIME_TYPE) != mimeTypes.end()) {
-        return true;
-    }
-    return !HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(bundleName);
-}
-
 int32_t MediaAssetsService::GetPhotoUriPersistPermission(uint32_t tokenId,
     std::vector<int32_t> &permissionTypes)
 {
@@ -884,12 +859,7 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(Get
     }
     MediaLibraryRdbUtils::AddQueryIndex(rdbPredicate, dto.columns);
 
-    string clientBundle;
-    MediaLibraryBundleManager::GetInstance()->GetBundleNameByTokenId(dto.tokenId, clientBundle);
-    if (!dto.columns.empty() &&
-        (!IsSupportHighResolution(clientBundle, dto.tokenId) ||
-        !IsSupportHeif(clientBundle))) {
-        MEDIA_INFO_LOG("need do transcode");
+    if (!dto.columns.empty()) {
         dto.columns.push_back(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
         dto.columns.push_back(PhotoColumn::PHOTO_TRANSCODE_TIME);
     }

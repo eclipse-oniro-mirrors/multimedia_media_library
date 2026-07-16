@@ -22,6 +22,7 @@
 #include "medialibrary_tracer.h"
 #include "photo_album_column.h"
 #include "result_set_utils.h"
+#include "preferred_compatible_mode_check_utils.h"
 
 using namespace std;
 
@@ -508,21 +509,57 @@ void FetchResult<T>::SetAssetUri(FileAsset *fileAsset)
     fileAsset->SetUri(move(uri));
 }
 
-static void SetTranscodeInfo(FileAsset *fileAsset, vector<string> &columnNames)
+static bool isHeif(const string &displayName)
+{
+    size_t pos = displayName.find('.');
+    if (pos == std::string::npos || pos == displayName.length() - 1) {
+        return false;
+    }
+ 
+    auto type = displayName.substr(pos + 1);
+    if (type == "heif" || type == "heic") {
+        return true;
+    }
+    return false;
+}
+ 
+static bool IsUriTranscoded(const string &realUri, const string &inputUri)
+{
+    if (inputUri.empty()) {
+        return false;
+    }
+    return MediaFileUtils::GetExtensionFromPath(realUri) != MediaFileUtils::GetExtensionFromPath(inputUri);
+}
+ 
+template<class T>
+void FetchResult<T>::SetTranscodeInfo(FileAsset *fileAsset)
 {
     auto transcodeTime =  fileAsset->GetTransCodeTime();
-    if (transcodeTime != 0) {
+    auto transcodeSize =  fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
+    bool cond = transcodeTime != 0 && transcodeSize != 0 &&
+        (IsUriTranscoded(fileAsset->GetDisplayName(), uriMap[to_string(fileAsset->GetId())]) ||
+        (supportedHeif != 1 && isHeif(fileAsset->GetDisplayName())) ||
+        (supportedHighResolution != 1 && IsHighPixel(fileAsset->GetWidth(), fileAsset->GetHeight())));
+    if (cond) {
         std::string displayName = fileAsset->GetDisplayName();
         std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
         if (!title.empty()) {
             fileAsset->SetDisplayName(title + ".jpg");
         }
-
+ 
         std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
             fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
         fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
         fileAsset->SetMimeType("image/jpeg");
         fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
+        fileAsset->SetSize(fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE));
+        int32_t width = fileAsset->GetWidth();
+        int32_t height = fileAsset->GetHeight();
+        if (IsHighPixel(width, height)) {
+            PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
+            fileAsset->SetWidth(width);
+            fileAsset->SetHeight(height);
+        }
     }
 }
 
@@ -566,7 +603,7 @@ void FetchResult<T>::SetFileAsset(FileAsset *fileAsset, shared_ptr<NativeRdb::Re
         fileAsset->SetCount(count);
     }
     SetAssetUri(fileAsset);
-    SetTranscodeInfo(fileAsset, columnNames);
+    SetTranscodeInfo(fileAsset);
 }
 
 template<class T>
