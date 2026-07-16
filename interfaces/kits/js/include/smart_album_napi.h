@@ -113,6 +113,7 @@ struct SmartAlbumNapiAsyncContext : public NapiError {
     std::vector<std::string> selectionArgs;
     std::string order;
     std::string uri;
+    std::map<std::string, std::string> uriMap;
     std::string networkId;
     std::unique_ptr<FetchResult<FileAsset>> fetchResult;
     std::vector<int32_t> assetIds;

@@ -3133,9 +3133,6 @@ bool FileAssetNapi::IsSpecialKey(const string &key)
     static const set<string> SPECIAL_KEY = {
         PENDING_STATUS,
         PhotoColumn::PHOTO_EXIF_ROTATE,
-        PhotoColumn::PHOTO_WIDTH,
-        PhotoColumn::PHOTO_HEIGHT,
-        PhotoColumn::MEDIA_SIZE
     };
 
     if (SPECIAL_KEY.find(key) != SPECIAL_KEY.end()) {
@@ -3162,31 +3159,6 @@ napi_value FileAssetNapi::HandleGettingSpecialKey(napi_env env, const string &ke
         int32_t value = fileAssetPtr->GetVideoMode();
         int32_t videoMode = value == -1 ? static_cast<int32_t>(VideoMode::NOT_LOG_VIDEO) : value;
         napi_create_int32(env, videoMode, &jsResult);
-    } else if (key == PhotoColumn::PHOTO_WIDTH) {
-        int32_t width = fileAssetPtr->GetWidth();
-        if (fileAssetPtr->GetTransCodeTime() != 0) {
-            int32_t height = fileAssetPtr->GetHeight();
-            PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
-            napi_create_int32(env, width, &jsResult);
-        } else {
-            napi_create_int32(env, width, &jsResult);
-        }
-    } else if (key == PhotoColumn::PHOTO_HEIGHT) {
-        int32_t height = fileAssetPtr->GetHeight();
-        if (fileAssetPtr->GetTransCodeTime() != 0) {
-            int32_t width = fileAssetPtr->GetWidth();
-            PreferredCompatibleModeCheckUtils::GetDesireSize(width, height);
-            napi_create_int32(env, height, &jsResult);
-        } else {
-            napi_create_int32(env, height, &jsResult);
-        }
-    } else if (key == PhotoColumn::MEDIA_SIZE) {
-        if (fileAssetPtr->GetTransCodeTime() != 0) {
-            napi_create_int64(env,
-                fileAssetPtr->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE), &jsResult);
-        } else {
-            napi_create_int64(env, fileAssetPtr->GetSize(), &jsResult);
-        }
     }
 
     return jsResult;

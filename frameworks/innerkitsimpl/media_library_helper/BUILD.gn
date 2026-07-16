@@ -113,6 +113,7 @@ ohos_shared_library("media_library") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_kv_db/src/medialibrary_kvstore_manager.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/preferred_compatible_mode_check_utils.cpp",
   ]
 
   public_configs = [ ":media_library_config" ]

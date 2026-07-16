@@ -264,6 +264,9 @@ static bool NeedTranscodeHighPixelPicture(int32_t width, int32_t height)
 
 static bool IsUriTranscoded(std::shared_ptr<FileAsset> &fileAsset, const string &inputUri, const string &newPath)
 {
+    if (inputUri.empty()) {
+        return false;
+    }
     if (MediaFileUtils::GetExtensionFromPath(fileAsset->GetPath()) !=
         MediaFileUtils::GetExtensionFromPath(inputUri)) {
         fileAsset->SetPath(newPath);

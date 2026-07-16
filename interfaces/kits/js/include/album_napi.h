@@ -112,6 +112,7 @@ struct AlbumNapiAsyncContext : public NapiError {
     std::unique_ptr<FetchResult<FileAsset>> fetchResult;
     std::string networkId;
     std::string uri;
+    std::map<std::string, std::string> uriMap;
 
     size_t argc;
     napi_value argv[NAPI_ARGC_MAX];
