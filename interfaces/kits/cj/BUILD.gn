@@ -138,8 +138,8 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
       integer_overflow = true
       ubsan = true
       boundary_sanitize = true
-      stack_protector_ret = true
     }
+    branch_protector_ret = "pac_ret"
   }
 
   if (ability_runtime_graphics) {
