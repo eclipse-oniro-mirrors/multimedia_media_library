@@ -502,9 +502,7 @@ static void SetTranscodeInfo(FetchFileResultAsyncContext* context)
         context->objectPtr->fetchFileResult_->supportedHighResolution == -1)) {
         GetTranscodeCheckInfoReqBody reqBody;
         GetTranscodeCheckInfoRespBody respBody;
-        AppExecFwk::BundleInfo bundleInfo;
-        UserFileClient::GetBundleInfo(bundleInfo);
-        reqBody.bundleName = bundleInfo.name;
+        reqBody.bundleName = UserFileClient::GetBundleName();
         int32_t ret = IPC::UserDefineIPCClient().Call(
             static_cast<uint32_t>(MediaLibraryBusinessCode::GET_TRANSCODE_CHECK_INFO), reqBody, respBody);
         if (ret != 0) {
