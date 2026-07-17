@@ -34,6 +34,7 @@ struct DeleteBehaviorData {
     std::map<std::string, std::string> displayNames;
     std::map<std::string, std::string> albumNames;
     std::map<std::string, std::string> ownerAlbumIds;
+    std::map<std::string, int32_t> mediaTypes;
 };
 
 enum class MultiStagesCaptureVideoStatus {

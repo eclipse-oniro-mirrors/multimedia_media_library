@@ -178,6 +178,15 @@ static string GetDisplayName(const string &coverId, const std::map<std::string, 
     return DfxUtils::GetSafeDiaplayNameWhenChinese(displayName);
 }
 
+static int32_t GetMediaType(const string &coverId, const std::map<std::string, int32_t> &mediaTypes)
+{
+    auto it = std::find_if(mediaTypes.begin(), mediaTypes.end(),
+        [&](const std::pair<std::string, int32_t> &mediaType) {
+            return mediaType.first == coverId;
+        });
+    return it == mediaTypes.end() ? -1 : it->second;
+}
+
 static string GetAlbumName(const string &coverId, const DeleteBehaviorData &deleteBehaviorData)
 {
     auto itIds = std::find_if(deleteBehaviorData.ownerAlbumIds.begin(), deleteBehaviorData.ownerAlbumIds.end(),
@@ -223,8 +232,9 @@ static void LogDelete(DfxData *data)
             string coverId = MediaFileUri::GetPhotoId(uri);
             string displayName = GetDisplayName(coverId, taskData->deleteBehaviorData_.displayNames);
             string albumName = GetAlbumName(coverId, taskData->deleteBehaviorData_);
+            std::string mediaType = MediaTypeToString(GetMediaType(coverId, taskData->deleteBehaviorData_.mediaTypes));
             AuditLog auditLog = { true, "USER BEHAVIOR", "DELETE", "io", 1, "running", "ok",
-                id, type, size, (halfUri.substr(pathPos + 1)).c_str(), displayName, albumName };
+                id, type, size, (halfUri.substr(pathPos + 1)).c_str(), displayName, albumName, mediaType };
             HiAudit::GetInstance().Write(auditLog);
             dfxReporter->ReportDeleteBehavior(id, type, halfUri.substr(pathPos + 1));
         }

@@ -92,7 +92,7 @@ int32_t CloudMediaPhotosService::PullDelete(const CloudMediaPullDataDto &data, s
         return ret;
     }
     this->RefreshAnalysisAlbum(cloudId);
-    ret = this->photosDao_.DeleteLocalByCloudId(cloudId, photoRefresh);
+    ret = this->photosDao_.DeleteLocalByCloudId(data, photoRefresh);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("delete in rdb failed, ret:%{public}d", ret);
         ret = this->photosDao_.SetRetry(cloudId);

@@ -425,6 +425,7 @@ void MediaFileManagerOfflineCleanupTask::WritePhotoDeleteAuditLog(const OfflineC
     AuditLog auditLog = {false, "FM_OFFLINE", "DELETE", "PHOTO", 1, "success", "ok"};
     auditLog.id = std::to_string(photo.fileId);
     auditLog.type = photo.mediaType;
+    auditLog.mediaType = MediaTypeToString(photo.mediaType);
     auditLog.size = totalCount;
     auditLog.path = FileScanUtils::GarbleFilePath(photo.storagePath);
     HiAudit::GetInstance().Write(auditLog, false);

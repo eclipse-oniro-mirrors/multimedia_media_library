@@ -1699,23 +1699,29 @@ int32_t CloudMediaPhotosDao::SetRetry(const std::string &cloudId)
 }
 
 int32_t CloudMediaPhotosDao::DeleteLocalByCloudId(
-    const std::string &cloudId, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+    const CloudMediaPullDataDto &data, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "DeleteLocalByCloudId get store failed.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::PHOTO_CLOUD_ID, cloudId);
+    predicates.EqualTo(PhotoColumn::PHOTO_CLOUD_ID, data.cloudId);
 
     int32_t deletedRows = DEFAULT_VALUE;
     int32_t ret = photoRefresh->Delete(deletedRows, predicates);
     CHECK_AND_RETURN_RET_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK && deletedRows > 0,
- 
         E_CLOUDSYNC_RDB_DELETE_FAILED,
         "Failed to DeleteLocalByCloudId, ret: %{public}d, deletedRows: %{public}d.",
         ret,
         deletedRows);
     AuditLog auditLog = { true, "USER BEHAVIOR", "DELETE", "io", 1, "running", "ok" };
     auditLog.size = deletedRows;
-    auditLog.id = cloudId;
+    auditLog.id = data.cloudId;
+    if (data.basicFileType < 0) {
+        auditLog.mediaType = "UNKNOWN";
+    } else if (data.basicFileType == FILE_TYPE_VIDEO) {
+        auditLog.mediaType = MediaTypeToString(static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO));
+    } else {
+        auditLog.mediaType = MediaTypeToString(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE));
+    }
     HiAudit::GetInstance().Write(auditLog);
     return ret;
 }
