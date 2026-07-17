@@ -738,6 +738,17 @@ bool MDKRecordPhotosData::hasProperties()
     return !this->properties_.empty();
 }
 
+std::optional<int32_t> MDKRecordPhotosData::GetCompressionQuality() const
+{
+    return this->recordReader_.GetIntValue(this->attributes_, PhotoColumn::COMPRESSION_QUALITY);
+}
+
+MDKRecordPhotosData &MDKRecordPhotosData::SetCompressionQuality(const int32_t compressionQuality)
+{
+    this->attributes_[PhotoColumn::COMPRESSION_QUALITY] = MDKRecordField(compressionQuality);
+    return *this;
+}
+
 std::optional<std::string> MDKRecordPhotosData::GetAttributeFieldValue(const std::string &fieldName) const
 {
     return this->recordReader_.GetStringValue(this->attributes_, fieldName);

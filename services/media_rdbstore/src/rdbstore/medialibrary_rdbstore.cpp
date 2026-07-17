@@ -969,6 +969,7 @@ namespace {
         {PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, "TEXT"},
         {PhotoColumn::LOCAL_ASSET_SIZE, "BIGINT NOT NULL DEFAULT 0"},
         {PhotoColumn::ATTACHMENT_SIZE, "BIGINT NOT NULL DEFAULT 0"},
+        {PhotoColumn::COMPRESSION_QUALITY, "INT NOT NULL DEFAULT -1"},
     };
 
     constexpr size_t PHOTO_TABLE_COLUMN_COUNT = sizeof(PHOTO_TABLE_COLUMNS) / sizeof(ColumnInfo);

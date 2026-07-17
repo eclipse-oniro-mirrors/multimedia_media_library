@@ -91,6 +91,7 @@ bool OnFetchPhotosVo::MarshallingAttributesInfo(Parcel &parcel) const
     // Safe Album: risk status for children's watch
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->photoRiskStatus), false, "photoRiskStatus");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->isCritical), false, "isCritical");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->compressionQuality), false, "compressionQuality");
     return true;
 }
 
@@ -161,6 +162,7 @@ bool OnFetchPhotosVo::ReadAttributesInfo(Parcel &parcel)
     // Safe Album: risk status for children's watch
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->photoRiskStatus), false, "photoRiskStatus");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->isCritical), false, "isCritical");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->compressionQuality), false, "compressionQuality");
     return true;
 }
 
@@ -254,7 +256,8 @@ void OnFetchPhotosVo::GetAttributesInfo(std::stringstream &ss) const
        << "\"uniqueId\": \"" << uniqueId << "\","
        << "\"packageName\": \"" << packageName << "\","
        << "\"photoRiskStatus\": \"" << photoRiskStatus << "\","
-       << "\"isCritical\": \"" << isCritical << "\",";
+       << "\"isCritical\": \"" << isCritical << "\","
+       << "\"compressionQuality\": \"" << compressionQuality << "\"";
     return;
 }
 

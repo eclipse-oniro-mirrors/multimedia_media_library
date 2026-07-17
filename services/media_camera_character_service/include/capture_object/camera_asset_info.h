@@ -64,6 +64,9 @@ public:
     const std::string& GetMimeType() const;
     void SetMimeType(const std::string& mimeType);
 
+    int32_t GetCompressionQuality() const;
+    void SetCompressionQuality(const int32_t &compressionQuality);
+
     MediaType GetMediaType() const;
 
     // subtype 不可修改（仅特殊情况：动态照片降格）
@@ -107,6 +110,7 @@ private:
     std::string mimeType_;
     int32_t subtype_{-1};
     int32_t burstCoverLevel_{static_cast<int32_t>(BurstCoverLevelType::COVER)};
+    int32_t compressionQuality_{-1};
 
     // file data
     std::string editData_;

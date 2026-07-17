@@ -99,6 +99,7 @@ public:
     static void HandleDateAddedYearMonthDay(int64_t originalDateAdded, int64_t dateAdded,
         NativeRdb::ValuesBucket &values);
     static int32_t CompensatePhotoLcdSize(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateCompressionQuality(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
 
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);

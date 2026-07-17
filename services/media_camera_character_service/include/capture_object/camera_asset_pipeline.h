@@ -61,6 +61,7 @@ public:
     EXPORT bool IsLifeFinished();
     EXPORT void SaveCameraPhotoFinished();
     EXPORT void OnProcessFinished();
+    EXPORT int32_t GetCompressionQuality();
 
     // 相机定制化inner接口
     EXPORT void GetDeferredPictureInfo(GetDeferredPictureInfoRespBody& respbody);

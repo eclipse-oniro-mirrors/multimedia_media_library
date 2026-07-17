@@ -522,6 +522,17 @@ void FileAsset::SetResultNapiType(const ResultNapiType type)
     resultNapiType_ = type;
 }
 
+int32_t FileAsset::GetCompressionQuality() const
+{
+    return GetInt32Member(PhotoColumn::COMPRESSION_QUALITY);
+}
+
+void FileAsset::SetCompressionQuality(int32_t compressionQuality)
+{
+    std::unique_lock<std::shared_mutex> sharedLock(memberMapMutex_);
+    member_[PhotoColumn::COMPRESSION_QUALITY] = compressionQuality;
+}
+
 int32_t FileAsset::GetPhotoSubType() const
 {
     return GetInt32Member(PhotoColumn::PHOTO_SUBTYPE);

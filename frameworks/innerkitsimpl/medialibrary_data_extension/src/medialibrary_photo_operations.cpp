@@ -886,6 +886,17 @@ static void SetPhotoSubTypeFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsse
     fileAsset.SetBurstCoverLevel(burstCoverLevel);
 }
 
+static void SetCompressionQualityFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsset)
+{
+    int32_t compressionQuality = -1;
+    ValueObject value;
+    if (cmd.GetValueBucket().GetObject(PhotoColumn::COMPRESSION_QUALITY, value)) {
+        value.GetInt(compressionQuality);
+    }
+    MEDIA_DEBUG_LOG("SetCompressionQualityFromCmd, compressionQuality:%{public}d", compressionQuality);
+    fileAsset.SetCompressionQuality(compressionQuality);
+}
+
 static inline void SetCameraShotKeyFromCmd(MediaLibraryCommand &cmd, FileAsset &fileAsset)
 {
     string cameraShotKey;
@@ -1050,6 +1061,7 @@ void MediaLibraryPhotoOperations::SetFileAssetFromCmd(FileAsset &fileAsset, Medi
     SetPhotoSubTypeFromCmd(cmd, fileAsset);
     SetCameraShotKeyFromCmd(cmd, fileAsset);
     SetCallingPackageName(cmd, fileAsset);
+    SetCompressionQualityFromCmd(cmd, fileAsset);
 }
 
 static void CreateCameraPipeline(MediaLibraryCommand &cmd, const FileAsset& fileAsset,

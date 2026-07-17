@@ -85,6 +85,7 @@ public:
     std::string uniqueId;
     std::string packageName;
     int32_t photoRiskStatus;
+    int32_t compressionQuality;
 
     // Photo Album
     std::string albumCloudId;

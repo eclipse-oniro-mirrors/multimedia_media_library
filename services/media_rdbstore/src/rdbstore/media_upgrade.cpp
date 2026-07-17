@@ -139,7 +139,8 @@ const std::string PhotoUpgrade::CREATE_PHOTO_TABLE = "CREATE TABLE IF NOT EXISTS
     PhotoColumn::PHOTO_FILE_HIDDEN + " INT NOT NULL DEFAULT 0, " +
     PhotoColumn::PHOTO_NEED_THUMBNAIL + " INT NOT NULL DEFAULT 1 , " +
     PhotoColumn::ATTACHMENT_SIZE + " BIGINT NOT NULL DEFAULT 0, " +
-    PhotoColumn::PHOTO_LCD_FILE_SIZE + " INT NOT NULL DEFAULT 0 " +
+    PhotoColumn::PHOTO_LCD_FILE_SIZE + " INT NOT NULL DEFAULT 0, " +
+    PhotoColumn::COMPRESSION_QUALITY + " INT NOT NULL DEFAULT -1 " +
     ") ";
 
 const std::string PhotoUpgrade::CREATE_CLOUD_ID_INDEX = BaseColumn::CreateIndex() +

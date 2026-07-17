@@ -96,7 +96,7 @@ public:
     std::optional<int32_t> southDeviceType;           // PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE
     std::optional<int32_t> lcdFileSize;
     std::optional<int64_t> localAssetSize;            // PhotoColumn::LOCAL_ASSET_SIZE;
-
+    std::optional<int32_t> compressionQuality;        // PhotoColumn::COMPRESSION_QUALITY;
     /* keep cloud_id at the last; so RecordToValueBucket can skip it*/
     std::optional<int32_t> fileId;       //  MediaColumn::MEDIA_ID;
     std::optional<std::string> cloudId;  // PhotoColumn::PHOTO_CLOUD_ID

@@ -48,6 +48,7 @@ const std::string CALLING_TOKENID = "tokenId";
 const std::string IS_CAPTURE = "is_capture";
 const double TIMER_MULTIPLIER = 60.0;
 const std::string MEDIA_FILEMODE_READWRITE = "rw";
+constexpr int32_t MAX_QUALITY = 100;
 
 const std::unordered_map<CameraShotType, PhotoSubType> CAMERASHOT_TO_SUBTYPE_MAP = {
     {CameraShotType::MOVING_PHOTO, PhotoSubType::MOVING_PHOTO},
@@ -166,6 +167,7 @@ void PhotoAssetProxy::UpdateValuesForExtInfo(const sptr<PhotoProxy> &photoProxy,
     }
 
     values.Put(PhotoColumn::PHOTO_QUALITY, static_cast<int32_t>(photoProxy->GetPhotoQuality()));
+    values.Put(PhotoColumn::COMPRESSION_QUALITY, std::clamp(photoProxy->GetCompressionQuality(), 0, MAX_QUALITY));
 }
 
 bool PhotoAssetProxy::InitAssetValues(const sptr<PhotoProxy> &photoProxy, DataShare::DataShareValuesBucket &values)

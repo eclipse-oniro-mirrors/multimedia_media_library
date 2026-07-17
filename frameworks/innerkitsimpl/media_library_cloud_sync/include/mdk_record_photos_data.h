@@ -173,6 +173,8 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetFileSourceType(int32_t fileSourceType);
     std::optional<std::string> GetStoragePath() const;
     MDKRecordPhotosData &SetStoragePath(const std::string &storagePath);
+    std::optional<int32_t> GetCompressionQuality() const;
+    MDKRecordPhotosData &SetCompressionQuality(const int32_t compressionQuality);
     std::optional<std::string> GetUniqueId() const;
     MDKRecordPhotosData &SetUniqueId(const std::string &uniqueId);
     std::optional<std::string> GetPackageName() const;

@@ -99,13 +99,19 @@ public:
         return 0;
     }
 
+    virtual int32_t GetCompressionQuality()
+    {
+        return 0;
+    }
+
     std::string ToString()
     {
         std::stringstream ss;
         ss << "{"
            << "\"photoId\": \"" << this->GetPhotoId() << "\","
            << "\"burstKey\": \"" << this->GetBurstKey() << "\","
-           << "\"ceAvailable\": \"" << std::to_string(this->GetCloudImageEnhanceFlag())
+           << "\"ceAvailable\": \"" << std::to_string(this->GetCloudImageEnhanceFlag()) << "\","
+           << "\"compressionQuality\": \"" << this->GetCompressionQuality() << "\","
            << "}";
         return ss.str();
     }

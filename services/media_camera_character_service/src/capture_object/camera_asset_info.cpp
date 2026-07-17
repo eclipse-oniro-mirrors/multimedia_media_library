@@ -40,6 +40,7 @@ CameraAssetInfo::CameraAssetInfo(const FileAsset& fileAsset)
     }
 
     subtype_ = fileAsset.GetPhotoSubType();
+    compressionQuality_ = fileAsset.GetCompressionQuality();
     MEDIA_INFO_LOG("construct CameraAssetInfo: %{public}s.", ToString().c_str());
 }
 
@@ -189,6 +190,16 @@ void CameraAssetInfo::SetSecondStageFinished(bool isSecondStageFinished)
     isSecondStageFinished_ = isSecondStageFinished;
 }
 
+int32_t CameraAssetInfo::GetCompressionQuality() const
+{
+    return compressionQuality_;
+}
+
+void CameraAssetInfo::SetCompressionQuality(const int32_t &compressionQuality)
+{
+    compressionQuality_ = compressionQuality;
+}
+
 std::string CameraAssetInfo::ToString() const
 {
     std::stringstream ss;
@@ -197,7 +208,8 @@ std::string CameraAssetInfo::ToString() const
        << "\"photoId\": \"" << photoId_ << "\", "
        << "\"mimeType\": \"" << mimeType_ << "\", "
        << "\"subtype\": \"" << std::to_string(subtype_) << "\", "
-       << "\"burstCoverLevel\": \"" << std::to_string(burstCoverLevel_)
+       << "\"burstCoverLevel\": \"" << std::to_string(burstCoverLevel_) << "\", "
+       << "\"compressionQuality\": \"" << compressionQuality_
        << "}";
     return ss.str();
 }

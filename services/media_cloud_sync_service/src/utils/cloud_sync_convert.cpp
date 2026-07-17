@@ -590,6 +590,16 @@ int32_t CloudSyncConvert::CompensateBasicBurstCoverLevel(
     return E_OK;
 }
 
+int32_t CloudSyncConvert::CompensateCompressionQuality(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t compressionQuality = data.compressionQuality;
+    CHECK_AND_RETURN_RET_WARN_LOG(
+        compressionQuality != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes: compressionQuality.");
+    values.PutInt(PhotoColumn::COMPRESSION_QUALITY, compressionQuality);
+    return E_OK;
+}
+
 int32_t CloudSyncConvert::CompensateUniqueId(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
@@ -655,6 +665,7 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     // Safe Album: risk status for children's watch
     CompensateAttRiskStatus(data, values);
     CompensateAttIsCritical(data, values);
+    CompensateCompressionQuality(data, values);
     return E_OK;
 }
 

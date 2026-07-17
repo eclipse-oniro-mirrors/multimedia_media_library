@@ -133,6 +133,9 @@ public:
     EXPORT void SetVisitCount(int32_t visitCount);
     EXPORT int32_t GetLcdVisitCount() const;
     EXPORT void SetLcdVisitCount(int32_t lcdVisitCount);
+    EXPORT int32_t GetCompressionQuality() const;
+    EXPORT void SetCompressionQuality(int32_t compressionQuality);
+
     EXPORT bool IsFavorite() const;
     EXPORT void SetFavorite(bool isFavorite);
     EXPORT bool IsRecentShow() const;
