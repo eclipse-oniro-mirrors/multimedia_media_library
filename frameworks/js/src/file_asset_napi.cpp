@@ -35,6 +35,7 @@
 #include "medialibrary_client_errno.h"
 #include "medialibrary_napi_enum_comm.h"
 #include "medialibrary_tracer.h"
+#include "permission_utils.h"
 #include "sandbox_helper.h"
 #include "thumbnail_utils.h"
 #include "vision_aesthetics_score_column.h"
@@ -119,6 +120,13 @@ public:
     std::shared_ptr<FileAsset> fileAsset = nullptr;
     ~TransferFileAsset() = default;
 };
+
+static bool HasReadCloudPermission()
+{
+    AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
+    int result = AccessTokenKit::VerifyAccessToken(tokenCaller, PERM_READ_CLOUD_IMAGEVIDEO);
+    return result == PermissionState::PERMISSION_GRANTED;
+}
 
 FileAssetNapi::FileAssetNapi()
     : env_(nullptr) {}
@@ -252,6 +260,7 @@ napi_value FileAssetNapi::PhotoAccessHelperInit(napi_env env, napi_value exports
             DECLARE_NAPI_FUNCTION("getThumbnailData", PhotoAccessHelperGetThumbnailData),
             DECLARE_NAPI_FUNCTION("getKeyFrameThumbnail", PhotoAccessHelperGetKeyFrameThumbnail),
             DECLARE_NAPI_FUNCTION("getReadOnlyFd", JSGetReadOnlyFd),
+            DECLARE_NAPI_FUNCTION("getReadOnlyFdWithCached", JSGetReadOnlyFdWithCached),
             DECLARE_NAPI_FUNCTION("setHidden", PhotoAccessHelperSetHidden),
             DECLARE_NAPI_FUNCTION("setPending", PhotoAccessHelperSetPending),
             DECLARE_NAPI_FUNCTION("getExif", JSGetExif),
@@ -3664,6 +3673,69 @@ napi_value FileAssetNapi::JSGetReadOnlyFd(napi_env env, napi_callback_info info)
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetPhotoAssets", UserFileMgrOpenExecute,
         UserFileMgrOpenCallbackComplete);
+}
+
+static void UserFileMgrOpenWithCachedExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("JSOpenWithCachedExecute");
+
+    FileAssetAsyncContext *context = static_cast<FileAssetAsyncContext*>(data);
+    bool isValid = false;
+    string mode = context->valuesBucket.Get(MEDIA_FILEMODE, isValid);
+    if (!isValid) {
+        context->SaveError(JS_E_PARAM_INVALID);
+        return;
+    }
+    string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
+    if (!isValid) {
+        context->SaveError(JS_E_PARAM_INVALID);
+        return ;
+    }
+
+    MediaFileUtils::UriAppendKeyValue(fileUri, MediaColumn::MEDIA_TIME_PENDING,
+        to_string(context->objectPtr->GetTimePending()));
+    MediaFileUtils::UriAppendKeyValue(fileUri, "fdWithCached", "1");
+    Uri openFileUri(fileUri);
+    int32_t retVal = UserFileClient::OpenFile(openFileUri, mode);
+    if (retVal <= 0) {
+        context->SaveError(JS_E_INNER_OPEN_FILE_FAIL);
+        NAPI_ERR_LOG("file system exception, ret: %{public}d", retVal);
+    } else {
+        context->fd = retVal;
+        if (mode.find('w') != string::npos) {
+            context->objectPtr->SetOpenStatus(retVal, OPEN_TYPE_WRITE);
+        } else {
+            context->objectPtr->SetOpenStatus(retVal, OPEN_TYPE_READONLY);
+        }
+        if (context->objectPtr->GetTimePending() == UNCREATE_FILE_TIMEPENDING) {
+            context->objectPtr->SetTimePending(UNCLOSE_FILE_TIMEPENDING);
+        }
+    }
+}
+
+napi_value FileAssetNapi::JSGetReadOnlyFdWithCached(napi_env env, napi_callback_info info)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system apps with read cloud permission");
+        return nullptr;
+    }
+    if (!HasReadCloudPermission()) {
+        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "Have no read cloud permission");
+        return nullptr;
+    }
+
+    unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
+    CHECK_NULLPTR_RET(ParseArgsUserFileMgrOpen(env, info, asyncContext, true));
+    if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "PhotoAsset asset does not exist");
+        return nullptr;
+    }
+    asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetReadOnlyFdWithCached",
+        UserFileMgrOpenWithCachedExecute, UserFileMgrOpenCallbackComplete);
 }
 
 static napi_value ParseArgsUserFileMgrClose(napi_env env, napi_callback_info info,

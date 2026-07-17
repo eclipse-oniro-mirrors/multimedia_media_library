@@ -16,6 +16,9 @@
 
 #include "media_datashare_ext_ability.h"
 
+#include <sys/resource.h>
+#include <sys/ioctl.h>
+
 #include "app_mgr_client.h"
 #include "cloud_media_asset_manager.h"
 #include "cloud_sync_utils.h"
@@ -83,6 +86,8 @@ namespace OHOS {
 namespace AbilityRuntime {
 using namespace OHOS::AppExecFwk;
 using DataObsMgrClient = OHOS::AAFwk::DataObsMgrClient;
+#define HMDFS_IOC_SET_KEEP_CACHE _IOW(0xF2, 0x82, int32_t)
+
 const std::string PERM_CLOUD_SYNC_MANAGER = "ohos.permission.CLOUDFILE_SYNC_MANAGER";
 constexpr const char *MTP_DISABLE = "persist.edm.mtp_server_disable";
 static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
@@ -803,25 +808,19 @@ static void SetOprnObjectWithUriQueryKeys(MediaLibraryCommand &cmd)
     SetOprnObjectWithOperationValue(cmd, queryKeys);
 }
 
-int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
+Media::MediaLibraryCommand MediaDataShareExtAbility::CreateOpenFileCommand(const Uri &uri)
 {
 #ifdef MEDIALIBRARY_COMPATIBILITY
     string realUriStr = MediaFileUtils::GetRealUriFromVirtualUri(uri.ToString());
     Uri realUri(realUriStr);
-    MediaLibraryCommand command(realUri, Media::OperationType::OPEN);
-
+    return MediaLibraryCommand(realUri, Media::OperationType::OPEN);
 #else
-    MediaLibraryCommand command(uri, Media::OperationType::OPEN);
+    return MediaLibraryCommand(uri, Media::OperationType::OPEN);
 #endif
+}
 
-    string unifyMode = mode;
-    transform(unifyMode.begin(), unifyMode.end(), unifyMode.begin(), ::tolower);
-    int err = CheckPermissionForOpenFile(uri, command, unifyMode);
-    CHECK_AND_RETURN_RET_LOG(err >= 0, err, "permission deny: %{public}d", err);
-    int32_t object = static_cast<int32_t>(command.GetOprnObject());
-    int32_t type = static_cast<int32_t>(command.GetOprnType());
-    DfxTimer dfxTimer(type, object, OPEN_FILE_TIME_OUT, true);
-
+void MediaDataShareExtAbility::SetOperationObjectFromUri(Media::MediaLibraryCommand &command)
+{
     SetOprnObjectWithUriQueryKeys(command);
 
     CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_CACHE_URI_PREFIX) == string::npos,
@@ -841,10 +840,52 @@ int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
 
     MEDIA_DEBUG_LOG("OpenFile before process, oprnObject: %{public}d",
         static_cast<int32_t>(command.GetOprnObject()));
+}
 
-    int32_t ret = MediaLibraryDataManager::GetInstance()->OpenFile(command, unifyMode);
+void MediaDataShareExtAbility::HandleHmdfsCachePersist(int32_t fd, Media::MediaLibraryCommand &command)
+{
+    if (command.GetUri().ToString().find("fdWithCached") != string::npos) {
+        if (command.GetQuerySetParam("fdWithCached") != "1") {
+            return;
+        }
+        MEDIA_DEBUG_LOG("find fdWithCached");
+        int32_t keep = 1;
+        int32_t ret = ioctl(fd, HMDFS_IOC_SET_KEEP_CACHE, &keep);
+        if (ret < 0) {
+            MEDIA_INFO_LOG("failed to send persist, fd: %{public}d, ret: %{public}d, persist: %{public}d,"
+                "erron: %{public}d", fd, ret, keep, errno);
+        } else {
+            MEDIA_DEBUG_LOG("persist send success, fd: %{public}d, persist: %{public}d", fd, keep);
+        }
+    }
+}
+
+int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
+{
+    MediaLibraryCommand command = CreateOpenFileCommand(uri);
+
+    string unifyMode = mode;
+    transform(unifyMode.begin(), unifyMode.end(), unifyMode.begin(), ::tolower);
+    MediaLibraryTracer tracer;
+    tracer.Start("ExtAbility::CheckPermissionForOpenFile");
+    int err = CheckPermissionForOpenFile(uri, command, unifyMode);
+    tracer.Finish();
+    if (err < 0) {
+        MEDIA_ERR_LOG("permission deny: %{public}d", err);
+        return err;
+    }
+
+    int32_t object = static_cast<int32_t>(command.GetOprnObject());
+    int32_t type = static_cast<int32_t>(command.GetOprnType());
+    DfxTimer dfxTimer(type, object, OPEN_FILE_TIME_OUT, true);
+
+    SetOperationObjectFromUri(command);
+
+    int32_t fd = MediaLibraryDataManager::GetInstance()->OpenFile(command, unifyMode);
+    MEDIA_DEBUG_LOG("send persist, fd: %{public}d, url: %{public}s", fd, command.GetUri().ToString().c_str());
+    HandleHmdfsCachePersist(fd, command);
     DfxManager::GetInstance()->SetLastIPCTime(MediaFileUtils::UTCTimeMilliSeconds());
-    return ret;
+    return fd;
 }
 
 //LCOV_EXCL_START

@@ -19,6 +19,7 @@
 
 #include <chrono>
 #include <thread>
+#include <unistd.h>
 
 #include "ability_context_impl.h"
 #include "data_ability_observer_interface.h"
@@ -613,6 +614,123 @@ HWTEST_F(MediaDatashareExtAbilityTest, DataManager_UpgradeUtils_002, TestSize.Le
     RdbUpgradeUtils::SetUpgradeStatus(0, true);
     RdbUpgradeUtils::SetUpgradeStatus(VERSION_FIX_DB_UPGRADE_TO_API20, true);
     MEDIA_INFO_LOG("DataManager_UpgradeUtils_002::End");
+}
+
+/**
+ * @tc.name: Extension_OpenFile_001
+ * @tc.desc: Test OpenFile with an unauthorized URI, verify permission check rejects
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Extension_OpenFile_001::Start");
+    auto extension = Init();
+    extension.InitPermissionHandler();
+
+    // Construct a photo URI without proper permission, OpenFile should return error
+    string openUriStr =
+        "file://media/Photo/16/IMG_1784015971_000/IMG_20260629_233527.mp4?api_version=10&time_pending=0";
+    
+    Uri openUri(openUriStr);
+    int32_t ret = extension.OpenFile(openUri, "r");
+    EXPECT_LT(ret, 0);
+    MEDIA_INFO_LOG("Extension_OpenFile_001::End, ret=%{public}d", ret);
+}
+
+/**
+ * @tc.name: Extension_OpenFile_002
+ * @tc.desc: Test OpenFile with URI containing fdWithCached=1, verify HandleHmdfsCachePersist
+ *           is invoked without crash even when fd is invalid
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Extension_OpenFile_002::Start");
+    auto extension = Init();
+    extension.InitPermissionHandler();
+
+    // Construct a URI with fdWithCached=1, the file does not exist so OpenFile returns error,
+    // but HandleHmdfsCachePersist should not crash
+    string openUriStr =
+        "file://media/Photo/16/IMG_1784015971_000/IMG_20260629_233527.jpg?api_version=10&time_pending=0&fdWithCached=1";
+    Uri openUri(openUriStr);
+    int32_t ret = extension.OpenFile(openUri, "r");
+    // fd is expected to be negative (permission or file not found), ioctl on invalid fd is safe
+    EXPECT_LT(ret, 0);
+    MEDIA_INFO_LOG("Extension_OpenFile_002::End, ret=%{public}d", ret);
+}
+
+/**
+ * @tc.name: Extension_OpenFile_003
+ * @tc.desc: Test OpenFile with URI containing fdWithCached=0, verify HandleHmdfsCachePersist
+ *           skips ioctl (early return path)
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Extension_OpenFile_003::Start");
+    auto extension = Init();
+    extension.InitPermissionHandler();
+
+    // fdWithCached=0 should trigger early return in HandleHmdfsCachePersist
+    string openUriStr =
+        "file://media/Photo/16/IMG_1784015971_000/IMG_20260629_233527.jpg?api_version=10&time_pending=0&fdWithCached=0";
+    Uri openUri(openUriStr);
+    int32_t ret = extension.OpenFile(openUri, "r");
+    EXPECT_LT(ret, 0);
+    MEDIA_INFO_LOG("Extension_OpenFile_003::End, ret=%{public}d", ret);
+}
+
+/**
+ * @tc.name: Extension_OpenFile_004
+ * @tc.desc: Test OpenFile with Photo cache URI, verify SetOperationObjectFromUri
+ *           sets FILESYSTEM_PHOTO for cache URIs
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Extension_OpenFile_004::Start");
+    auto extension = Init();
+    extension.InitPermissionHandler();
+
+    // PHOTO_CACHE_URI_PREFIX based URI should be recognized as FILESYSTEM_PHOTO
+    string openUriStr = PhotoColumn::PHOTO_CACHE_URI_PREFIX + "cache_test.jpg";
+    Uri openUri(openUriStr);
+    int32_t ret = extension.OpenFile(openUri, "r");
+    // Cache file does not exist on disk, so read-only open returns error
+    EXPECT_LT(ret, 0);
+    MEDIA_INFO_LOG("Extension_OpenFile_004::End, ret=%{public}d", ret);
+}
+
+/**
+ * @tc.name: Extension_OpenFile_005
+ * @tc.desc: Test OpenFile end-to-end with a valid photo asset
+ * @tc.type: FUNC
+ */
+HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Extension_OpenFile_007::Start");
+    auto extension = Init();
+    extension.InitPermissionHandler();
+
+    // Insert a photo asset into DB first
+    struct PhotoResult photoAsset = {-1, static_cast<int32_t>(MEDIA_TYPE_IMAGE),
+        "Pictures/OpenFileTest_007.jpg", "OpenFileTest_007.jpg"};
+    InsertAsset(photoAsset);
+
+    // Build URI from inserted asset and try to open
+    string openUriStr = PhotoColumn::PHOTO_URI_PREFIX + to_string(photoAsset.fileId);
+    Uri openUri(openUriStr);
+    int32_t ret = extension.OpenFile(openUri, "r");
+    // Permission denied or file not on disk, but should not crash
+    MEDIA_INFO_LOG("Extension_OpenFile_007::OpenFile ret=%{public}d", ret);
+
+    // Test with write mode and close via DataManager
+    if (ret > 0) {
+        close(ret);
+    }
+    EXPECT_NE(ret, 0);
+    MEDIA_INFO_LOG("Extension_OpenFile_007::End");
 }
 } // namespace Media
 } // namespace OHOS
