@@ -148,7 +148,6 @@ void CloudBackupRestore::SetValueFromMetaData(FileInfo &fileInfo, NativeRdb::Val
     value.PutString(PhotoColumn::PHOTO_ALL_EXIF, data->GetAllExif());
     value.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, data->GetShootingMode());
     value.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, data->GetShootingModeTag());
-    value.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, data->GetLastVisitTime());
     value.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, data->GetFrontCamera());
     value.PutInt(PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE, data->GetDynamicRangeType());
     value.PutInt(PhotoColumn::PHOTO_HDR_MODE, data->GetHdrMode());
