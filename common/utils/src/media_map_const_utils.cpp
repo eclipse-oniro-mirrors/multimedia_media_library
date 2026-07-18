@@ -15,6 +15,8 @@
 
 #include "media_map_const_utils.h"
 
+#include "userfile_manager_types.h"
+
 namespace OHOS::Media {
 static const std::unordered_map<std::string, std::vector<std::string>> MEDIA_MIME_TYPE_MAP = {
     { "application/epub+zip", { "epub" } },
@@ -166,4 +168,26 @@ const std::unordered_map<std::string, std::vector<std::string>>& MediaMapConstUt
     return MEDIA_MIME_TYPE_MAP;
 }
 
+const std::string MediaMapConstUtils::MediaTypeToString(const int32_t mediaType)
+{
+    static const std::unordered_map<int32_t, std::string> mediaTypeMap = {
+        { MediaType::MEDIA_TYPE_FILE, "FILE" },
+        { MediaType::MEDIA_TYPE_IMAGE, "IMAGE" },
+        { MediaType::MEDIA_TYPE_VIDEO, "VIDEO" },
+        { MediaType::MEDIA_TYPE_AUDIO, "AUDIO" },
+        { MediaType::MEDIA_TYPE_MEDIA, "MEDIA" },
+        { MediaType::MEDIA_TYPE_ALBUM_LIST, "ALBUM_LIST" },
+        { MediaType::MEDIA_TYPE_ALBUM_LIST_INFO, "ALBUM_LIST_INFO" },
+        { MediaType::MEDIA_TYPE_ALBUM, "ALBUM" },
+        { MediaType::MEDIA_TYPE_SMARTALBUM, "SMARTALBUM" },
+        { MediaType::MEDIA_TYPE_DEVICE, "DEVICE" },
+        { MediaType::MEDIA_TYPE_REMOTEFILE, "REMOTEFILE" },
+        { MediaType::MEDIA_TYPE_NOFILE, "NOFILE" },
+        { MediaType::MEDIA_TYPE_PHOTO, "PHOTO" },
+        { MediaType::MEDIA_TYPE_ALL, "ALL" },
+        { MediaType::MEDIA_TYPE_DEFAULT, "DEFAULT" },
+    };
+    auto it = mediaTypeMap.find(mediaType);
+    return it == mediaTypeMap.end() ? "UNKNOWN" : it->second;
+}
 } // namespace OHOS::Media

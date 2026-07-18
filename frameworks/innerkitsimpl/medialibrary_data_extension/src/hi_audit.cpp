@@ -26,6 +26,7 @@
 
 #include "dfx_utils.h"
 #include "media_log.h"
+#include "media_map_const_utils.h"
 #include "zip_util.h"
 
 namespace OHOS::Media {
@@ -123,6 +124,17 @@ void HiAudit::Write(const AuditLog& auditLog, bool isPrintLog)
     }
     writeLog = writeLog + "\n";
     WriteToFile(writeLog);
+}
+
+void HiAudit::WriteForDelete(const int32_t deletedRows, const std::string &cloudId, const int32_t operationType,
+    const int32_t mediaType)
+{
+    AuditLog auditLog = {true, "CLOUD SYNC", "DELETE", "io", 1, "success", "ok"};
+    auditLog.size = deletedRows;
+    auditLog.id = cloudId;
+    auditLog.type = operationType;
+    auditLog.mediaType = MediaMapConstUtils::MediaTypeToString(mediaType);
+    Write(auditLog);
 }
 
 void HiAudit::GetWriteFilePath()

@@ -15,10 +15,8 @@
 #ifndef OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H
 #define OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H
 
-#include <cstdint>
 #include <limits>
 #include <string>
-#include <unordered_map>
 
 namespace OHOS {
 namespace Media {
@@ -341,32 +339,6 @@ enum ThumbnailVisibility: int32_t {
     INVISIBLE = 0,
     VISIBLE = 1
 };
-
-// Returns the human-readable name of a MediaType (the enum member name without
-// the MEDIA_TYPE_ prefix), used for the audit mediaType column. Out-of-range
-// values become "UNKNOWN". MEDIA_TYPE_PHOTO and MEDIA_TYPE_IMAGE stay distinct.
-inline std::string MediaTypeToString(int32_t mediaType)
-{
-    static const std::unordered_map<int32_t, std::string> mediaTypeMap = {
-        {MEDIA_TYPE_FILE, "FILE"},
-        {MEDIA_TYPE_IMAGE, "IMAGE"},
-        {MEDIA_TYPE_VIDEO, "VIDEO"},
-        {MEDIA_TYPE_AUDIO, "AUDIO"},
-        {MEDIA_TYPE_MEDIA, "MEDIA"},
-        {MEDIA_TYPE_ALBUM_LIST, "ALBUM_LIST"},
-        {MEDIA_TYPE_ALBUM_LIST_INFO, "ALBUM_LIST_INFO"},
-        {MEDIA_TYPE_ALBUM, "ALBUM"},
-        {MEDIA_TYPE_SMARTALBUM, "SMARTALBUM"},
-        {MEDIA_TYPE_DEVICE, "DEVICE"},
-        {MEDIA_TYPE_REMOTEFILE, "REMOTEFILE"},
-        {MEDIA_TYPE_NOFILE, "NOFILE"},
-        {MEDIA_TYPE_PHOTO, "PHOTO"},
-        {MEDIA_TYPE_ALL, "ALL"},
-        {MEDIA_TYPE_DEFAULT, "DEFAULT"},
-    };
-    auto it = mediaTypeMap.find(mediaType);
-    return it == mediaTypeMap.end() ? "UNKNOWN" : it->second;
-}
 
 } // namespace Media
 } // namespace OHOS

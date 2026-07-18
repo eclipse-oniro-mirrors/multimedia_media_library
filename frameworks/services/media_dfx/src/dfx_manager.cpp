@@ -48,6 +48,7 @@
 #include "net_connect_observer.h"
 #include "net_conn_client.h"
 #include "cloud_media_operation_code.h"
+#include "media_map_const_utils.h"
 
 using namespace std;
 
@@ -232,7 +233,8 @@ static void LogDelete(DfxData *data)
             string coverId = MediaFileUri::GetPhotoId(uri);
             string displayName = GetDisplayName(coverId, taskData->deleteBehaviorData_.displayNames);
             string albumName = GetAlbumName(coverId, taskData->deleteBehaviorData_);
-            std::string mediaType = MediaTypeToString(GetMediaType(coverId, taskData->deleteBehaviorData_.mediaTypes));
+            std::string mediaType =
+                MediaMapConstUtils::MediaTypeToString(GetMediaType(coverId, taskData->deleteBehaviorData_.mediaTypes));
             AuditLog auditLog = { true, "USER BEHAVIOR", "DELETE", "io", 1, "running", "ok",
                 id, type, size, (halfUri.substr(pathPos + 1)).c_str(), displayName, albumName, mediaType };
             HiAudit::GetInstance().Write(auditLog);

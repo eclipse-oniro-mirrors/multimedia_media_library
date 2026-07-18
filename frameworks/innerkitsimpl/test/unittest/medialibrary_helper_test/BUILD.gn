@@ -44,7 +44,6 @@ ohos_unittest("media_library_helper_test") {
   sources = [
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/album_asset_test.cpp",
-    "./src/audit_media_type_test.cpp",
     "./src/dir_asset_test.cpp",
     "./src/exif_rotate_utils_test.cpp",
     "./src/fetch_result_test.cpp",

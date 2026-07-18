@@ -34,11 +34,12 @@
 #include "cloud_media_dfx_utils.h"
 #include "media_file_utils.h"
 #include "cloud_media_context.h"
-#include "photos_field_iterator.h"
 #include "hi_audit.h"
+#include "photos_field_iterator.h"
 #include "photo_owner_album_id_operation.h"
 #include "photo_album_upload_status_operation.h"
 #include "media_string_utils.h"
+#include "media_map_const_utils.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
 #include "file_scan_utils.h"
 #endif
@@ -1712,17 +1713,8 @@ int32_t CloudMediaPhotosDao::DeleteLocalByCloudId(
         "Failed to DeleteLocalByCloudId, ret: %{public}d, deletedRows: %{public}d.",
         ret,
         deletedRows);
-    AuditLog auditLog = { true, "USER BEHAVIOR", "DELETE", "io", 1, "running", "ok" };
-    auditLog.size = deletedRows;
-    auditLog.id = data.cloudId;
-    if (data.basicFileType < 0) {
-        auditLog.mediaType = "UNKNOWN";
-    } else if (data.basicFileType == FILE_TYPE_VIDEO) {
-        auditLog.mediaType = MediaTypeToString(static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO));
-    } else {
-        auditLog.mediaType = MediaTypeToString(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE));
-    }
-    HiAudit::GetInstance().Write(auditLog);
+    HiAudit::GetInstance().WriteForDelete(deletedRows, data.cloudId,
+        static_cast<int32_t>(DfxType::ALBUM_DELETE_ASSETS), data.localMediaType);
     return ret;
 }
  
