@@ -3441,8 +3441,7 @@ int32_t MediaLibraryAssetOperations::DeleteNormalPhotoPermanently(shared_ptr<Fil
 {
     MediaLibraryTracer tracer;
     tracer.Start("DeleteNormalPhotoPermanently");
-    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_HAS_DB_ERROR,
-        "Photo Asset is nullptr");
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_HAS_DB_ERROR, "Photo Asset is nullptr");
     string filePath = fileAsset->GetPath();
     string displayName = fileAsset->GetDisplayName();
     MEDIA_INFO_LOG("Delete Photo displayName is %{public}s", MediaFileUtils::DesensitizeName(displayName).c_str());
