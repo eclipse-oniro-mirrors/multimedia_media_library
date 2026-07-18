@@ -29,14 +29,15 @@ public:
     void Init(int32_t sceneCode, const std::string &taskId, std::string restoreInfo,
         std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
         std::shared_ptr<NativeRdb::RdbStore> mediaRdb, bool isCloudRestoreSatisfied);
-    void Restore(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
+    void Restore(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isReverse = false);
+    bool IsExistPortraitDataInOldDb();
 
 private:
-    int32_t RestoreGroupPhotoAlbumInfo();
+    int32_t RestoreGroupPhotoAlbumInfo(bool isReverse);
     int32_t RestoreMaps();
 
     std::vector<GroupPhotoAlbumDfx> QueryGroupPhotoAlbumInOldDb(int32_t& offset, int32_t& rowCount);
-    int32_t QueryGroupPhotoAlbumTbl(const std::vector<std::string>& commonColumns);
+    int32_t QueryGroupPhotoAlbumTbl(const std::vector<std::string>& commonColumns, bool isReverse);
     std::unordered_set<std::string> QueryAllGroupTag();
     int32_t InsertGroupPhotoAlbum();
     void UpdateMapInsertValues(std::vector<NativeRdb::ValuesBucket> &values);
@@ -50,7 +51,6 @@ private:
         std::optional<int32_t> &order);
     void ParseMapInsertValues(std::vector<NativeRdb::ValuesBucket> &values,
         std::shared_ptr<NativeRdb::ResultSet> resultSet);
-    bool IsExistPortraitDataInOldDb();
 
     void RecordOldGroupPhotoAlbumDfx();
     void LogGroupPhotoCloneDfx();

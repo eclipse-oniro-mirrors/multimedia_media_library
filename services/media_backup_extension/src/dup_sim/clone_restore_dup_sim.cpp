@@ -626,13 +626,13 @@ void CloneRestoreDupSim::PreprocessSourceTotalTable()
 {
     MEDIA_INFO_LOG("PreprocessSourceTotalTable: Set similarity and duplicate to 1 if > 0 in source database");
 
-    // Update similarity field: set to 1 if > 0 and <> 3
+    // Update similarity field: set to 1 if similarity > 0 and similarity <> 3
     std::string updateSimilaritySql = "UPDATE " + VISION_TOTAL_TABLE + " SET " + SIMILARITY + " = 1 WHERE " +
                                       SIMILARITY + " > 0 AND " + SIMILARITY + " <> 3";
     int32_t ret1 = BackupDatabaseUtils::ExecuteSQL(mediaRdb_, updateSimilaritySql);
     MEDIA_INFO_LOG("PreprocessSourceTotalTable: similarity updated, ret=%{public}d", ret1);
 
-    // Update duplicate field: set to 1 if > 0 and <> 3
+    // Update duplicate field: set to 1 if duplicate > 0 and duplicate <> 3
     std::string updateDuplicateSql = "UPDATE " + VISION_TOTAL_TABLE + " SET " + DUPLICATE + " = 1 WHERE " +
                                      DUPLICATE + " > 0 AND " + DUPLICATE + " <> 3";
     int32_t ret2 = BackupDatabaseUtils::ExecuteSQL(mediaRdb_, updateDuplicateSql);

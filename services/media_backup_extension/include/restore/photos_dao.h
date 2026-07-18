@@ -36,6 +36,8 @@ public:
         int32_t position {0};
         int32_t subtype {0};
         int32_t fileSourceType {0};
+        std::string lPath;        // From PhotoAlbum.lpath via JOIN; empty when asset has no album.
+        std::string storagePath;  // From Photos.storage_path; used to detect FileManager/Lake assets.
         bool IsValid()
         {
             return !cleanFlag && !data.empty() && fileId != 0;
@@ -68,10 +70,11 @@ public:
     std::unordered_set<std::string> GetExistingStoragePaths(const std::vector<std::string> &storagePaths,
         int32_t maxFileId);
     std::unordered_set<std::string> GetExistingData(const std::vector<std::string> &data, int32_t maxFileId);
-    std::shared_ptr<NativeRdb::ResultSet> QueryCloneFileInfo(const std::vector<int32_t> &fileSourceTypes);
-    int32_t InsertCloneFileInfo(std::shared_ptr<NativeRdb::RdbStore> rdbStore,
-        std::shared_ptr<NativeRdb::ResultSet> resultSet, AncoFileListClone ancoFileListClone,
-        FileManagerFileListClone fileManagerFileListClone);
+    int32_t GetCloneFileInfoCount(const std::vector<int32_t> &fileSourceTypes);
+    std::shared_ptr<NativeRdb::ResultSet> QueryCloneFileInfoBatch(const std::vector<int32_t> &fileSourceTypes,
+        int32_t offset);
+    int32_t BatchInsertCloneFileInfo(std::shared_ptr<NativeRdb::RdbStore> rdbStore,
+        std::shared_ptr<NativeRdb::ResultSet> resultSet);
     int32_t GetCloneFileInfo(std::shared_ptr<NativeRdb::RdbStore> rdbStore, AncoFileListClone ancoFileListClone,
         FileManagerFileListClone fileManagerFileListClone);
 
@@ -103,12 +106,17 @@ private:
         SELECT \
             p.file_id, \
             p.data, \
+            p.display_name, \
+            p.size, \
+            p.orientation, \
             p.clean_flag, \
             p.position, \
-            p.file_source_type \
+            p.file_source_type, \
+            p.storage_path, \
+            a.lpath \
         FROM \
         ( \
-            SELECT album_id \
+            SELECT album_id, lpath \
             FROM PhotoAlbum \
             WHERE LOWER(lpath) = LOWER(?) \
         ) \
@@ -118,12 +126,14 @@ private:
             SELECT \
                 file_id, \
                 data, \
+                display_name, \
                 clean_flag, \
                 position, \
                 file_source_type, \
                 size, \
                 orientation, \
-                owner_album_id \
+                owner_album_id, \
+                storage_path \
             FROM Photos \
             WHERE file_id <= ? AND \
                 display_name = ? AND \
@@ -138,9 +148,14 @@ private:
         SELECT \
             P.file_id, \
             P.data, \
+            P.display_name, \
+            P.size, \
+            P.orientation, \
             P.clean_flag, \
             P.position, \
-            P.file_source_type \
+            P.file_source_type, \
+            P.storage_path, \
+            '' AS lpath \
         FROM Photos AS P \
         WHERE file_id <= ? AND \
             display_name = ? AND \
@@ -158,18 +173,26 @@ private:
             P.orientation, \
             P.clean_flag, \
             P.position, \
-            P.file_source_type \
+            P.file_source_type, \
+            P.storage_path, \
+            COALESCE(A.lpath, '') AS lpath \
         FROM Photos AS P \
-        WHERE file_id <= ? AND \
-            cloud_id = ? \
+            LEFT JOIN PhotoAlbum AS A ON P.owner_album_id = A.album_id \
+        WHERE P.file_id <= ? AND \
+            P.cloud_id = ? \
         LIMIT 1;";
     const std::string SQL_PHOTOS_FIND_SAME_FILE_BY_SOURCE_PATH = "\
         SELECT \
-            file_id, \
-            data, \
-            clean_flag, \
-            position, \
-            file_source_type \
+            MISS.file_id, \
+            MISS.data, \
+            MISS.display_name, \
+            MISS.size, \
+            MISS.orientation, \
+            MISS.clean_flag, \
+            MISS.position, \
+            MISS.file_source_type, \
+            MISS.storage_path, \
+            '' AS lpath \
         FROM \
         ( \
             SELECT file_id, \
@@ -181,7 +204,8 @@ private:
                 size, \
                 orientation, \
                 date_trashed, \
-                source_path \
+                source_path, \
+                storage_path \
             FROM Photos \
                 LEFT JOIN PhotoAlbum \
                 ON Photos.owner_album_id = PhotoAlbum.album_id \
@@ -221,12 +245,13 @@ private:
     const std::string SQL_AUDIOS_GET_AUDIO_COUNT =
         "SELECT count(1) as count FROM Audios WHERE media_type IN ({0})";
     const std::string SQL_PHOTOS_GET_EXISTING_STORAGE_PATHS =
-        "SELECT storage_path FROM Photos WHERE file_id <= ? AND file_source_type IN (?, ?) AND storage_path IN ({0})";
+        "SELECT storage_path FROM Photos WHERE file_id <= ? AND file_source_type = ? AND storage_path IN ({0})";
     const std::string SQL_PHOTOS_GET_EXISTING_DATA = "SELECT data FROM Photos WHERE file_id <= ? AND data IN ({0})";
-    const std::string SQL_GET_CLONE_FILE_INFO = "\
+    const std::string SQL_GET_CLONE_FILE_INFO_COUNT = "\
+        SELECT count(1) AS count FROM Photos WHERE file_source_type IN ({0})";
+    const std::string SQL_GET_CLONE_FILE_INFO_BATCH = "\
         SELECT file_id, storage_path, display_name, media_type, size, date_modified, file_source_type \
-        FROM Photos \
-        WHERE file_source_type IN ({0})";
+        FROM Photos WHERE file_source_type IN ({0}) LIMIT ?, ?";
 };
 }  // namespace OHOS::Media
 #endif  // OHOS_MEDIA_PHOTOS_DAO

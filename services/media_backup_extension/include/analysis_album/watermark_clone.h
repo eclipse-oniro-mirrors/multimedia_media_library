@@ -41,9 +41,11 @@ public:
     WaterMarkClone(
         const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
         const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
-        const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap);
+        const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap,
+        const std::unordered_map<int32_t, int32_t>* reverseDupMap = nullptr);
 
     bool Clone();
+    bool ReverseClone();
 
     int64_t GetMigratedWaterCount() const { return migrateWaterMarkNum_; }
     int64_t GetTotalTimeCost() const { return migrateWaterMarkTotalTimeCost_; }
@@ -66,6 +68,19 @@ private:
 
     bool ShouldClone(const std::string& fileIdOldInClause, int64_t start);
 
+    // Reverse clone methods
+    bool QueryAndInsertSourceRecords();
+    std::vector<int32_t> QuerySourceFileIds();
+    std::vector<AnalysisWaterMarkTbl> QuerySourceWaterMark(const std::vector<int32_t>& sourceFileIds,
+        const std::vector<std::string>& commonColumns);
+    void ProcessWaterMarkTblsForReverse(std::vector<AnalysisWaterMarkTbl>& waterMarkTbls);
+    bool InsertOrUpdateDestWaterMark(const std::vector<AnalysisWaterMarkTbl>& waterMarkTbls);
+    bool ProcessWaterMarkRecord(const AnalysisWaterMarkTbl& tbl, int32_t fileIdNew,
+        const std::unordered_set<int32_t>& existingDestFileIds);
+    std::unordered_set<int32_t> QueryExistingDestFileIds(const std::vector<int32_t>& destFileIds);
+    bool UpdateDestWaterMarkFileId(int32_t oldFileId, int32_t newFileId);
+    bool InsertNewDestWaterMark(const std::vector<AnalysisWaterMarkTbl>& waterMarkTbls);
+
     template<typename T>
     void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
         const std::optional<T>& optionalValue)
@@ -87,6 +102,7 @@ private:
     std::shared_ptr<NativeRdb::RdbStore> sourceRdb_;
     std::shared_ptr<NativeRdb::RdbStore> destRdb_;
     const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap_;
+    const std::unordered_map<int32_t, int32_t>* reverseDupMap_;
 
     int64_t migrateWaterMarkNum_ = 0;
     int64_t migrateWaterMarkTotalTimeCost_ = 0;

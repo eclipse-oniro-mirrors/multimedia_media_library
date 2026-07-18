@@ -425,8 +425,6 @@ void HighlightRestore::UpdateAlbumCovers(const std::unordered_map<int32_t, Photo
 
         auto it = photoInfoMap.find(albumInfo.coverId);
         if (it == photoInfoMap.end()) {
-            MEDIA_ERR_LOG("album %{public}s coverId %{public}d not found in photoInfoMap, skip.",
-                MediaFileUtils::DesensitizeName(albumInfo.albumName).c_str(), albumInfo.coverId);
             continue;
         }
 

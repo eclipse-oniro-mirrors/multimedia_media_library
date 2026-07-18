@@ -45,7 +45,7 @@ static std::string GetDUALBundleName(bool bLower = false)
 
 const std::string SCREEN_SHOT_AND_RECORDER = "截屏录屏";
 const std::string VIDEO_SCREEN_RECORDER_NAME = "屏幕录制";
-const std::string VIDEO_SCREEN_RECORDER = "com."+ GetDUALBundleName(true) +".ohos.screenrecorder";
+const std::string VIDEO_SCREEN_RECORDER = "com."+ GetDUALBundleName(true) +".hmos.screenrecorder";
 } // namespace Media
 } // namespace OHOS
 

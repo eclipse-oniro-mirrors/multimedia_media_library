@@ -89,6 +89,7 @@ public:
     static int32_t IsCloneCloudSpaceSyncSwitchOn(int32_t sceneCode);
     static bool GetAccountValid(const int32_t sceneCode, const std::string &restoreInfo);
     static std::string ConvertToStoragePath(const std::string& input);
+    static void DeleteCloneFileInfoDb();
 
 private:
     static const std::string IMAGE_FORMAT;

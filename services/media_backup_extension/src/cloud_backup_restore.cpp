@@ -148,7 +148,9 @@ void CloudBackupRestore::SetValueFromMetaData(FileInfo &fileInfo, NativeRdb::Val
     value.PutString(PhotoColumn::PHOTO_ALL_EXIF, data->GetAllExif());
     value.PutString(PhotoColumn::PHOTO_SHOOTING_MODE, data->GetShootingMode());
     value.PutString(PhotoColumn::PHOTO_SHOOTING_MODE_TAG, data->GetShootingModeTag());
+    value.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, data->GetLastVisitTime());
     value.PutString(PhotoColumn::PHOTO_FRONT_CAMERA, data->GetFrontCamera());
+    value.PutString(PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME, data->GetXtStyleTemplateName());
     value.PutInt(PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE, data->GetDynamicRangeType());
     value.PutInt(PhotoColumn::PHOTO_HDR_MODE, data->GetHdrMode());
     value.PutString(PhotoColumn::PHOTO_USER_COMMENT, data->GetUserComment());
@@ -157,8 +159,9 @@ void CloudBackupRestore::SetValueFromMetaData(FileInfo &fileInfo, NativeRdb::Val
     // [special type]live photo
     SetCoverPosition(fileInfo, value);
     SetMovingPhotoDuration(fileInfo, value);
-    Set3DgsSubtype(fileInfo, value, data);
     BaseRestore::InsertVideoMode(data, value);
+
+    SetShootingModeSubtype(fileInfo, value, data);
 }
 
 void CloudBackupRestore::SetSize(const std::unique_ptr<Metadata> &data, FileInfo &info,

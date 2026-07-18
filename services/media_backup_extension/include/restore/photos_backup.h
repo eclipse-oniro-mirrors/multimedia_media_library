@@ -36,9 +36,6 @@ public:
         int32_t lakePhotoCount{0};
         int32_t lakeVideoCount{0};
         size_t lakeTotalSize{0};
-        int32_t fileManagerPhotoCount{0};
-        int32_t fileManagerVideoCount{0};
-        size_t fileManagerTotalSize{0};
         std::string ToString() const;
     };
 
@@ -50,10 +47,8 @@ public:
 private:
     std::string GetBackupInfoOfMediaFile();
     std::string GetBackupInfoOfLakeFile();
-    std::string GetBackupInfoOfFileManagerFile();
     size_t GetBackupTotalSizeOfMediaFile();
     size_t GetBackupTotalSizeOfLakeFile();
-    size_t GetBackupTotalSizeOfFileManagerFile();
 
     int32_t sceneCode_ {-1};
     std::string taskId_;

@@ -71,7 +71,7 @@ bool SearchIndexClone::Clone()
         EXCLUDED_ANALYSIS_SEARCH_IDX_COLS.end());
     std::vector<std::string> commonColumn = BackupDatabaseUtils::GetCommonColumnInfos(sourceRdb_, destRdb_,
         ANALYSIS_SEARCH_INDEX_TABLE);
-    std::vector<std::string> commonColumns = BackupDatabaseUtils::filterColumns(commonColumn, exclusions);
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::FilterExcludedColumns(commonColumn, exclusions);
     CHECK_AND_RETURN_RET_LOG(!commonColumns.empty(),
         false, "No common columns found for search index table after exclusion.");
 
@@ -99,6 +99,22 @@ bool SearchIndexClone::Clone()
 
     totalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
     MEDIA_INFO_LOG("SearchIndexClone::Clone completed. Migrated %{public}lld records. "
+        "Total time: %{public}lld ms", (long long)migratedCount_, (long long)totalTimeCost_);
+    return true;
+}
+
+bool SearchIndexClone::ReverseClone()
+{
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+
+    if (!QueryAndInsertSourceRecords()) {
+        MEDIA_ERR_LOG("ReverseClone: Failed to query and insert source records");
+        totalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
+        return false;
+    }
+
+    totalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
+    MEDIA_INFO_LOG("SearchIndexClone::ReverseClone completed. Migrated %{public}lld records. "
         "Total time: %{public}lld ms", (long long)migratedCount_, (long long)totalTimeCost_);
     return true;
 }
@@ -344,6 +360,218 @@ int32_t SearchIndexClone::BatchInsertWithRetry(const std::string &tableName,
     errCode = trans.RetryTrans(func, true);
     CHECK_AND_PRINT_LOG(errCode == E_OK, "BatchInsertWithRetry: tans finish fail!, ret:%{public}d", errCode);
     return errCode;
+}
+
+bool SearchIndexClone::QueryAndInsertSourceRecords()
+{
+    std::vector<int32_t> sourceFileIds = QuerySourceFileIds();
+    if (sourceFileIds.empty()) {
+        MEDIA_INFO_LOG("ReverseClone: No source file IDs found to clone");
+        return true;
+    }
+
+    std::vector<AnalysisSearchIndexTbl> sourceSearchIndex = QuerySourceSearchIndex(sourceFileIds);
+    if (sourceSearchIndex.empty()) {
+        MEDIA_INFO_LOG("ReverseClone: No source search index records found");
+        return true;
+    }
+
+    return InsertOrUpdateDestSearchIndex(sourceSearchIndex);
+}
+
+std::vector<int32_t> SearchIndexClone::QuerySourceFileIds()
+{
+    std::vector<int32_t> fileIds;
+    fileIds.reserve(photoInfoMap_.size());
+
+    for (const auto& [sourceFileId, photoInfo] : photoInfoMap_) {
+        fileIds.push_back(sourceFileId);
+    }
+
+    return fileIds;
+}
+
+std::vector<AnalysisSearchIndexTbl> SearchIndexClone::QuerySourceSearchIndex(const std::vector<int32_t>& fileIds)
+{
+    std::vector<AnalysisSearchIndexTbl> result;
+    if (fileIds.empty()) {
+        return result;
+    }
+
+    std::vector<std::string> exclusions(EXCLUDED_ANALYSIS_SEARCH_IDX_COLS.begin(),
+        EXCLUDED_ANALYSIS_SEARCH_IDX_COLS.end());
+    std::vector<std::string> commonColumn = BackupDatabaseUtils::GetCommonColumnInfos(sourceRdb_, destRdb_,
+        ANALYSIS_SEARCH_INDEX_TABLE);
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::FilterExcludedColumns(commonColumn, exclusions);
+    CHECK_AND_RETURN_RET_LOG(!commonColumns.empty(), result,
+        "No common columns found for search index table after exclusion.");
+
+    for (size_t i = 0; i < fileIds.size(); i += SQL_BATCH_SIZE) {
+        auto batch_begin = fileIds.begin() + i;
+        auto batch_end = (i + SQL_BATCH_SIZE < fileIds.size()) ?
+            (fileIds.begin() + i + SQL_BATCH_SIZE) : fileIds.end();
+        std::vector<int32_t> batchFileIds(batch_begin, batch_end);
+
+        if (batchFileIds.empty()) {
+            continue;
+        }
+
+        std::string fileIdClause = "(" + BackupDatabaseUtils::JoinValues<int>(batchFileIds, ", ") + ")";
+        std::string inClause = BackupDatabaseUtils::JoinValues<std::string>(commonColumns, ", ");
+        std::string querySql = "SELECT " + inClause + " FROM " + ANALYSIS_SEARCH_INDEX_TABLE;
+        querySql += " WHERE " + SEARCH_IDX_COL_FILE_ID + " IN " + fileIdClause;
+
+        auto resultSet = BackupDatabaseUtils::GetQueryResultSet(sourceRdb_, querySql);
+        CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, result, "Query resultSql for search index is null.");
+
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            AnalysisSearchIndexTbl analysisSearchIndexTbl;
+            ParseAnalysisSearchIndexResultSet(resultSet, analysisSearchIndexTbl);
+            result.emplace_back(analysisSearchIndexTbl);
+        }
+
+        resultSet->Close();
+    }
+
+    return result;
+}
+
+bool SearchIndexClone::InsertOrUpdateDestSearchIndex(const std::vector<AnalysisSearchIndexTbl>& searchIndexTbls)
+{
+    if (searchIndexTbls.empty()) {
+        return true;
+    }
+
+    std::vector<int32_t> fileIds;
+    fileIds.reserve(searchIndexTbls.size());
+    for (const auto& tbl : searchIndexTbls) {
+        if (tbl.fileId.has_value()) {
+            fileIds.push_back(tbl.fileId.value());
+        }
+    }
+
+    if (fileIds.empty()) {
+        return true;
+    }
+
+    std::unordered_set<int32_t> existingFileIds = QueryExistingDestFileIds(fileIds);
+
+    std::vector<AnalysisSearchIndexTbl> toUpdate;
+    std::vector<AnalysisSearchIndexTbl> toInsert;
+    toUpdate.reserve(searchIndexTbls.size());
+    toInsert.reserve(searchIndexTbls.size());
+
+    for (const auto& tbl : searchIndexTbls) {
+        if (!tbl.fileId.has_value()) {
+            continue;
+        }
+        const int32_t fileId = tbl.fileId.value();
+        if (existingFileIds.count(fileId) > 0) {
+            toUpdate.push_back(tbl);
+        } else {
+            toInsert.push_back(tbl);
+        }
+    }
+
+    bool updateSuccess = true;
+    if (!toUpdate.empty()) {
+        updateSuccess = UpdateDestSearchIndex(toUpdate);
+    }
+
+    bool insertSuccess = true;
+    if (!toInsert.empty()) {
+        insertSuccess = InsertNewDestSearchIndex(toInsert);
+    }
+
+    return updateSuccess && insertSuccess;
+}
+
+std::unordered_set<int32_t> SearchIndexClone::QueryExistingDestFileIds(const std::vector<int32_t>& fileIds)
+{
+    std::unordered_set<int32_t> existingIds;
+
+    for (size_t i = 0; i < fileIds.size(); i += SQL_BATCH_SIZE) {
+        auto batch_begin = fileIds.begin() + i;
+        auto batch_end = (i + SQL_BATCH_SIZE < fileIds.size()) ?
+            (fileIds.begin() + i + SQL_BATCH_SIZE) : fileIds.end();
+        std::vector<int32_t> batchFileIds(batch_begin, batch_end);
+
+        if (batchFileIds.empty()) {
+            continue;
+        }
+
+        const std::string fileIdList = BackupDatabaseUtils::JoinValues(batchFileIds, ", ");
+        const std::string querySql = "SELECT " + SEARCH_IDX_COL_FILE_ID +
+            " FROM " + ANALYSIS_SEARCH_INDEX_TABLE +
+            " WHERE " + SEARCH_IDX_COL_FILE_ID + " IN (" + fileIdList + ")" +
+            " AND " + SEARCH_IDX_COL_ID + " <= " + std::to_string(maxSearchId_);
+
+        auto resultSet = BackupDatabaseUtils::GetQueryResultSet(destRdb_, querySql);
+        CHECK_AND_RETURN_RET(resultSet != nullptr, existingIds);
+
+        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            int32_t fileId = 0;
+            if (resultSet->GetInt(0, fileId) == NativeRdb::E_OK) {
+                existingIds.insert(fileId);
+            }
+        }
+        resultSet->Close();
+    }
+
+    return existingIds;
+}
+
+bool SearchIndexClone::UpdateDestSearchIndex(const std::vector<AnalysisSearchIndexTbl>& searchIndexTbls)
+{
+    if (searchIndexTbls.empty()) {
+        return true;
+    }
+
+    int32_t updatedCount = 0;
+    TransactionOperations trans{ __func__ };
+    trans.SetBackupRdbStore(destRdb_);
+
+    std::function<int(void)> func = [&]()->int {
+        for (const auto& tbl : searchIndexTbls) {
+            if (!tbl.fileId.has_value()) {
+                continue;
+            }
+
+            NativeRdb::ValuesBucket values = GetInsertSearchIndexValue(tbl);
+            const std::string whereClause = SEARCH_IDX_COL_FILE_ID + " = " +
+                std::to_string(tbl.fileId.value()) +
+                " AND " + SEARCH_IDX_COL_ID + " <= " + std::to_string(maxSearchId_);
+
+            int32_t changedRows = 0;
+            int32_t errCode = destRdb_->Update(changedRows, ANALYSIS_SEARCH_INDEX_TABLE, values, whereClause);
+            if (errCode == E_OK) {
+                updatedCount += changedRows;
+            }
+        }
+        return E_OK;
+    };
+
+    int32_t errCode = trans.RetryTrans(func, true);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false, "Failed to update search index records");
+
+    migratedCount_ += updatedCount;
+    MEDIA_INFO_LOG("ReverseClone: Updated %{public}d search index records", updatedCount);
+    return true;
+}
+
+bool SearchIndexClone::InsertNewDestSearchIndex(const std::vector<AnalysisSearchIndexTbl>& searchIndexTbls)
+{
+    if (searchIndexTbls.empty()) {
+        return true;
+    }
+
+    std::vector<AnalysisSearchIndexTbl> tblsToInsert = searchIndexTbls;
+    int32_t insertedRowNum = InsertSearchIndexByTable(tblsToInsert);
+    CHECK_AND_RETURN_RET_LOG(insertedRowNum != E_ERR, false, "Failed to insert search index batch");
+
+    migratedCount_ += insertedRowNum;
+    MEDIA_INFO_LOG("ReverseClone: Inserted %{public}d new search index records", insertedRowNum);
+    return true;
 }
 // LCOV_EXCL_STOP
 } // namespace OHOS::Media

@@ -27,14 +27,14 @@ namespace OHOS::Media {
 void BackupAuditUtils::RecordCloudIdEmptyAudit(const FileInfo &fileInfo, const std::string &scenario,
     int32_t sceneCode, const std::string &taskId)
 {
-    CHECK_AND_RETURN(fileInfo.uniqueId.empty());
+    CHECK_AND_RETURN(fileInfo.cloudUniqueId.empty());
 
     MEDIA_ERR_LOG("cloud_id is Empty, fileId: %{public}s, displayName: %{public}s",
         std::to_string(fileInfo.fileIdOld).c_str(),
         MediaFileUtils::DesensitizeName(fileInfo.displayName).c_str());
     
-    std::string extendInfo = scenario + ", fileId: " + std::to_string(fileInfo.fileIdOld) +
-        ", displayName: " + MediaFileUtils::DesensitizeName(fileInfo.displayName) +
+    std::string extendInfo = scenario + ", fileId: " + std::to_string(fileInfo.fileIdOld) + 
+        ", displayName: " + MediaFileUtils::DesensitizeName(fileInfo.displayName) + 
         ", filePath: " + MediaFileUtils::DesensitizePath(fileInfo.filePath);
     ErrorInfo errorInfo(RestoreError::PHOTOS_CLOUD_ID_EMPTY, 1, "", extendInfo);
     UpgradeRestoreTaskReport(sceneCode, taskId).ReportErrorInAudit(errorInfo);

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <cstdint>
 #define MLOG_TAG "MediaLibraryCloneRestoreWatermarkTbl"
 
 #include "watermark_clone.h"
@@ -36,8 +37,9 @@ namespace OHOS::Media {
 WaterMarkClone::WaterMarkClone(
     const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
     const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
-    const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap)
-    : sourceRdb_(sourceRdb), destRdb_(destRdb), photoInfoMap_(photoInfoMap)
+    const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap,
+    const std::unordered_map<int32_t, int32_t>* reverseDupMap)
+    : sourceRdb_(sourceRdb), destRdb_(destRdb), photoInfoMap_(photoInfoMap), reverseDupMap_(reverseDupMap)
 {
 }
 
@@ -47,7 +49,7 @@ bool WaterMarkClone::Clone()
 
     if (photoInfoMap_.empty()) {
         migrateWaterMarkTotalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
-        MEDIA_INFO_LOG("photoInfoMap_ is empty, no watermark entries to clone Total time:  %{public}lld ms",
+        MEDIA_INFO_LOG("photoInfoMap_ is empty, no watermark entries to clone Total time: %{public}lld ms",
             (long long)migrateWaterMarkTotalTimeCost_);
         return true;
     }
@@ -61,7 +63,7 @@ bool WaterMarkClone::Clone()
 
     std::string fileIdOldInClause = "(" + BackupDatabaseUtils::JoinValues<int32_t>(oldFileIds, ", ") + ")";
     CHECK_AND_RETURN_RET_LOG(ShouldClone(fileIdOldInClause, start), true,
-        "sourceRdb_ does not need to be cloned, timeCost: %{public}lld ms", (long long)migrateWaterMarkTotalTimeCost_);
+        "sourceRdb does not need to be cloned, timeCost: %{public}lld ms", (long long)migrateWaterMarkTotalTimeCost_);
 
     std::vector<std::string> commonColumns = BackupDatabaseUtils::GetCommonColumnInfos(sourceRdb_, destRdb_,
         ANALYSIS_WATERMARK_TABLE);
@@ -84,7 +86,6 @@ bool WaterMarkClone::Clone()
 
         CHECK_AND_CONTINUE_ERR_LOG(!analysisWaterMarkTbls.empty(),
             "Query returned empty result for batch starting at index %{public}zu", i);
-
         ProcessWaterMarkTbls(analysisWaterMarkTbls);
         BatchInsertWaterMark(analysisWaterMarkTbls);
     }
@@ -115,22 +116,22 @@ void WaterMarkClone::ProcessWaterMarkTbls(std::vector<AnalysisWaterMarkTbl>& wat
     CHECK_AND_RETURN_LOG(!waterMarkTbls.empty(), "watermark tbls empty");
 
     auto newEnd = std::remove_if(waterMarkTbls.begin(), waterMarkTbls.end(),
-        [this] (const AnalysisWaterMarkTbl& tbl) {
-            if (!tbl.fileId.has_value()|| tbl.fileId.value() <= 0) {
+        [this](const AnalysisWaterMarkTbl& tbl) {
+            if (!tbl.fileId.has_value() || tbl.fileId.value() <= 0) {
                 return true;
             }
-            return photoInfoMap_.find(tbl.fileId.value()) == photoInfoMap_.end();
+            return photoInfoMap_.find(tbl.fileId.value())  == photoInfoMap_.end();
         });
 
     for (auto it = waterMarkTbls.begin(); it != newEnd; it++) {
-        int32_t oldId = it->fileId.value();
-        int32_t newId = photoInfoMap_.at(oldId).fileIdNew;
-        if (newId <= 0) {
-            it->fileId.reset();
-            continue;
+            int32_t oldId = it->fileId.value();
+            int32_t newId = photoInfoMap_.at(oldId).fileIdNew;
+            if (newId <= 0) {
+                it->fileId.reset();
+                continue;
+            }
+            it->fileId = photoInfoMap_.at(oldId).fileIdNew;
         }
-        it->fileId = photoInfoMap_.at(oldId).fileIdNew;
-    }
 
     waterMarkTbls.erase(newEnd, waterMarkTbls.end());
 }
@@ -229,5 +230,237 @@ int32_t WaterMarkClone::BatchInsertWithRetry(const std::string& tableName,
     errCode = trans.RetryTrans(func, true);
     CHECK_AND_PRINT_LOG(errCode == E_OK, "BatchInsertWithRetry: tans finish fail!, ret:%{public}d", errCode);
     return errCode;
+}
+
+bool WaterMarkClone::ReverseClone()
+{
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+
+    if (photoInfoMap_.empty()) {
+        migrateWaterMarkTotalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
+        MEDIA_INFO_LOG("photoInfoMap_ is empty, no watermark entries to reverse clone Total time: %{public}lld ms",
+            (long long)migrateWaterMarkTotalTimeCost_);
+        return true;
+    }
+
+    migrateWaterMarkNum_ = 0;
+    bool success = QueryAndInsertSourceRecords();
+
+    migrateWaterMarkTotalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
+    MEDIA_INFO_LOG("WaterMarkClone::ReverseClone completed. Migrated %{public}lld records."
+        "Total time: %{public}lld ms", (long long)migrateWaterMarkNum_, (long long)migrateWaterMarkTotalTimeCost_);
+    return success;
+}
+
+bool WaterMarkClone::QueryAndInsertSourceRecords()
+{
+    std::vector<int32_t> sourceFileIds = QuerySourceFileIds();
+    CHECK_AND_RETURN_RET_LOG(!sourceFileIds.empty(), true, "No source watermark records found");
+
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::GetCommonColumnInfos(sourceRdb_, destRdb_,
+        ANALYSIS_WATERMARK_TABLE);
+    CHECK_AND_RETURN_RET_LOG(!commonColumns.empty(), false, "No common columns found for watermark table");
+
+    std::vector<AnalysisWaterMarkTbl> allWaterMarkTbls;
+    const size_t batchSize = QUERY_COUNT;
+
+    for (size_t i = 0; i < sourceFileIds.size(); i += batchSize) {
+        auto batch_begin = sourceFileIds.begin() + i;
+        auto batch_end = ((i + batchSize < sourceFileIds.size()) ?
+            (sourceFileIds.begin() + i + batchSize) : sourceFileIds.end());
+        std::vector<int32_t> batchFileIds(batch_begin, batch_end);
+
+        CHECK_AND_CONTINUE(!batchFileIds.empty());
+
+        std::vector<AnalysisWaterMarkTbl> batchWaterMarkTbls = QuerySourceWaterMark(batchFileIds, commonColumns);
+        if (!batchWaterMarkTbls.empty()) {
+            allWaterMarkTbls.insert(allWaterMarkTbls.end(), batchWaterMarkTbls.begin(), batchWaterMarkTbls.end());
+        }
+    }
+
+    CHECK_AND_RETURN_RET_LOG(!allWaterMarkTbls.empty(), true, "No watermark records to process");
+
+    ProcessWaterMarkTblsForReverse(allWaterMarkTbls);
+    return InsertOrUpdateDestWaterMark(allWaterMarkTbls);
+}
+
+std::vector<int32_t> WaterMarkClone::QuerySourceFileIds()
+{
+    std::vector<int32_t> sourceFileIds;
+    sourceFileIds.reserve(photoInfoMap_.size());
+
+    for (const auto& [sourceFileId, photoInfo] : photoInfoMap_) {
+        sourceFileIds.push_back(sourceFileId);
+    }
+
+    return sourceFileIds;
+}
+
+std::vector<AnalysisWaterMarkTbl> WaterMarkClone::QuerySourceWaterMark(const std::vector<int32_t>& sourceFileIds,
+    const std::vector<std::string>& commonColumns)
+{
+    std::vector<AnalysisWaterMarkTbl> result;
+
+    std::string fileIdClause = "(" + BackupDatabaseUtils::JoinValues<int32_t>(sourceFileIds, ", ") + ")";
+    std::string inClause = BackupDatabaseUtils::JoinValues<std::string>(commonColumns, ", ");
+    std::string querySql = "SELECT " + inClause + " FROM tab_analysis_watermark WHERE file_id IN " + fileIdClause;
+
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(sourceRdb_, querySql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, result, "Query resultSql for watermark is null.");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        AnalysisWaterMarkTbl analysisWaterMarkTbl;
+        ParseAnalysisWaterMarkResultSet(resultSet, analysisWaterMarkTbl);
+        result.emplace_back(analysisWaterMarkTbl);
+    }
+
+    resultSet->Close();
+    return result;
+}
+
+void WaterMarkClone::ProcessWaterMarkTblsForReverse(std::vector<AnalysisWaterMarkTbl>& waterMarkTbls)
+{
+    CHECK_AND_RETURN_LOG(!waterMarkTbls.empty(), "watermark tbls empty");
+
+    auto newEnd = std::remove_if(waterMarkTbls.begin(), waterMarkTbls.end(),
+        [this](const AnalysisWaterMarkTbl& tbl) {
+            if (!tbl.fileId.has_value() || tbl.fileId.value() <= 0) {
+                return true;
+            }
+            return photoInfoMap_.find(tbl.fileId.value()) == photoInfoMap_.end();
+        });
+
+    for (auto it = waterMarkTbls.begin(); it != newEnd; it++) {
+        int32_t oldId = it->fileId.value();
+        int32_t newId = photoInfoMap_.at(oldId).fileIdNew;
+        if (newId <= 0) {
+            it->fileId.reset();
+            continue;
+        }
+        it->fileId = photoInfoMap_.at(oldId).fileIdNew;
+    }
+
+    waterMarkTbls.erase(newEnd, waterMarkTbls.end());
+}
+
+bool WaterMarkClone::InsertOrUpdateDestWaterMark(const std::vector<AnalysisWaterMarkTbl>& waterMarkTbls)
+{
+    std::vector<int32_t> destFileIds;
+    destFileIds.reserve(waterMarkTbls.size());
+
+    for (const auto& tbl : waterMarkTbls) {
+        if (tbl.fileId.has_value()) {
+            destFileIds.push_back(tbl.fileId.value());
+        }
+    }
+
+    CHECK_AND_RETURN_RET_LOG(!destFileIds.empty(), true, "No valid fileIds to process");
+
+    std::unordered_set<int32_t> existingDestFileIds = QueryExistingDestFileIds(destFileIds);
+    std::vector<AnalysisWaterMarkTbl> toInsert;
+    toInsert.reserve(waterMarkTbls.size());
+
+    for (const auto& tbl : waterMarkTbls) {
+        if (!tbl.fileId.has_value()) {
+            continue;
+        }
+
+        int32_t fileIdNew = tbl.fileId.value();
+        bool shouldInsert = ProcessWaterMarkRecord(tbl, fileIdNew, existingDestFileIds);
+        if (shouldInsert) {
+            toInsert.push_back(tbl);
+        }
+    }
+
+    if (!toInsert.empty()) {
+        return InsertNewDestWaterMark(toInsert);
+    }
+
+    return true;
+}
+
+bool WaterMarkClone::ProcessWaterMarkRecord(const AnalysisWaterMarkTbl& tbl, int32_t fileIdNew,
+    const std::unordered_set<int32_t>& existingDestFileIds)
+{
+    if (reverseDupMap_ == nullptr) {
+        return true;
+    }
+
+    auto it = reverseDupMap_->find(fileIdNew);
+    if (it == reverseDupMap_->end()) {
+        return true;
+    }
+
+    int32_t dupFileId = it->second;
+    if (existingDestFileIds.find(dupFileId) == existingDestFileIds.end()) {
+        return true;
+    }
+
+    if (!UpdateDestWaterMarkFileId(dupFileId, fileIdNew)) {
+        MEDIA_ERR_LOG("Failed to update watermark file_id from %{public}d to %{public}d",
+            dupFileId, fileIdNew);
+    } else {
+        migrateWaterMarkNum_++;
+    }
+
+    return false;
+}
+
+std::unordered_set<int32_t> WaterMarkClone::QueryExistingDestFileIds(const std::vector<int32_t>& destFileIds)
+{
+    std::unordered_set<int32_t> existingFileIds;
+
+    std::string fileIdClause = "(" + BackupDatabaseUtils::JoinValues<int32_t>(destFileIds, ", ") + ")";
+    std::string querySql = "SELECT DISTINCT file_id FROM tab_analysis_watermark WHERE file_id IN " + fileIdClause;
+
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(destRdb_, querySql);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, existingFileIds, "Query resultSql for existing fileIds is null.");
+
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t fileId = 0;
+        if (resultSet->GetInt(0, fileId) == NativeRdb::E_OK && fileId > 0) {
+            existingFileIds.insert(fileId);
+        }
+    }
+
+    resultSet->Close();
+    return existingFileIds;
+}
+
+bool WaterMarkClone::UpdateDestWaterMarkFileId(int32_t oldFileId, int32_t newFileId)
+{
+    int32_t errCode = E_ERR;
+    TransactionOperations trans{ __func__ };
+    trans.SetBackupRdbStore(destRdb_);
+    std::function<int(void)> func = [&]()->int {
+        std::string updateSql = "UPDATE tab_analysis_watermark SET file_id = " + std::to_string(newFileId) +
+            " WHERE file_id = " + std::to_string(oldFileId);
+        errCode = destRdb_->ExecuteSql(updateSql);
+        CHECK_AND_PRINT_LOG(errCode == E_OK, "Update watermark file_id failed, errCode: %{public}d", errCode);
+        return errCode;
+    };
+    errCode = trans.RetryTrans(func, true);
+    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, false,
+        "UpdateDestWaterMarkFileId: transaction failed!, ret:%{public}d", errCode);
+    return true;
+}
+
+bool WaterMarkClone::InsertNewDestWaterMark(const std::vector<AnalysisWaterMarkTbl>& waterMarkTbls)
+{
+    std::vector<NativeRdb::ValuesBucket> valuesBuckets;
+    valuesBuckets.reserve(waterMarkTbls.size());
+
+    for (const auto& waterMarkTbl : waterMarkTbls) {
+        valuesBuckets.push_back(CreateValuesBucketFromWaterMarkTbl(waterMarkTbl));
+    }
+
+    CHECK_AND_RETURN_RET_LOG(!valuesBuckets.empty(), true, "No valid watermark data to insert");
+
+    int64_t rowNum = 0;
+    int32_t ret = BatchInsertWithRetry(ANALYSIS_WATERMARK_TABLE, valuesBuckets, rowNum);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, false, "Failed to batch insert watermark records");
+
+    migrateWaterMarkNum_ += rowNum;
+    return true;
 }
 }

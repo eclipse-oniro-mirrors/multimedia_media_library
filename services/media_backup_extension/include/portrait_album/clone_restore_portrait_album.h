@@ -33,8 +33,8 @@ public:
         const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isCloudRestoreSatisfied,
         std::unordered_map<int32_t, uint32_t>* scoreMaskMap = nullptr);
     void Preprocess();
-    void Restore();
-    void RestoreFromGalleryPortraitAlbum();
+    void Restore(bool isReverse);
+    void RestoreFromGalleryPortraitAlbum(bool isReverse);
     void RestorePortraitClusteringInfo();
     void RestoreImageFaceInfo();
     void UpdateAnalysisTotalTblNoFaceStatus();
@@ -42,6 +42,10 @@ public:
     int32_t RestoreMaps();
     const std::unordered_map<int32_t, uint32_t>& GetScoreMaskMap() const { return scoreMaskMap_; }
     void UpdateScoreMask(int32_t fileId, uint32_t mask);
+    bool RefreshTotalAlbumNumber();
+    void ClearProfileFaceScore(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
+    void ClearTotalScoreBit2(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb);
+    void DeleteExistingGdbPortraitData();
 
 protected:
     std::atomic<uint64_t> migratePortraitAlbumNumber_{0};
@@ -59,7 +63,8 @@ private:
     void DeleteExistingCluseringInfo();
     void DeleteExistingImageFaceInfos();
     void LogPortraitCloneDfx();
-    vector<AnalysisAlbumTbl> QueryPortraitAlbumTbl(int32_t offset, const std::vector<std::string>& commonColumns);
+    vector<AnalysisAlbumTbl> QueryPortraitAlbumTbl(int32_t offset, const std::vector<std::string>& commonColumns,
+        bool isReverse);
     std::unordered_set<std::string> QueryAllPortraitAlbum();
     void InsertPortraitAlbum(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl);
     int32_t InsertPortraitAlbumByTable(std::vector<AnalysisAlbumTbl> &portraitAlbumTbl);

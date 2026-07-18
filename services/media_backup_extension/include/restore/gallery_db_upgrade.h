@@ -38,11 +38,11 @@ private:
     int32_t AddStoryChosenOfGalleryMedia(NativeRdb::RdbStore &store);
     int32_t CreateRelativeAlbumOfGalleryAlbum(NativeRdb::RdbStore &store);
     int32_t AddRelativeBucketIdColumn(NativeRdb::RdbStore &store);
+    int32_t AddUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store);
+    int32_t AddHdcUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store);
     int32_t AddUserDisplayLevelIntoMergeTag(NativeRdb::RdbStore &store);
     int32_t AddHdcUniqueIdIntoGalleryMedia(NativeRdb::RdbStore &store);
     int32_t AddColumnsOfTOcrResult(NativeRdb::RdbStore &store);
-    int32_t AddUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store);
-    int32_t AddHdcUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store);
     int32_t AddDirtyIntoGalleryAlbum(NativeRdb::RdbStore &store);
 
 private:

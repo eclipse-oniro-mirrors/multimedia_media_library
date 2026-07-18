@@ -106,8 +106,9 @@ protected:
     bool HasExThumbnail(const FileInfo &info) override;
     void BackupRelease() override;
     bool IsCloudRestoreSatisfied() override;
+    int32_t PreprocessBeforeClone(const string &backupRestoreDir, const string &upgradePath);
 
-private:
+protected:
     void RestorePhoto(void) override;
     void RestorePhotoForCloud(void);
     void HandleRestData(void) override;
@@ -115,6 +116,8 @@ private:
     std::vector<FileInfo> QueryCloudFileInfos(int32_t offset, int32_t isRelatedToPhotoMap = 0);
     bool ParseResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &info,
         std::string dbName = "") override;
+    bool ParseReverseResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &info,
+        std::string dbName = "");
     bool ParseResultSetForAudio(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &info) override;
     void AnalyzeSource() override;
     void RestoreAlbum(void);
@@ -172,7 +175,7 @@ private:
     void RestoreMusic();
     std::vector<FileInfo> QueryFileInfos(const std::string &tableName, int32_t offset);
     bool ParseResultSet(const std::string &tableName, const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
-        FileInfo &fileInfo);
+        FileInfo &fileInfo, bool isReverse = false);
     void InsertAudio(std::vector<FileInfo> &fileInfos);
     int32_t QueryTotalNumberByMediaType(std::shared_ptr<NativeRdb::RdbStore> rdbStore, const std::string &tableName,
         MediaType mediaType);
@@ -227,11 +230,13 @@ private:
     void RestorePortraitNickNameData();
     void RestoreAnalysisClassify();
     void RestoreAnalysisPortrait();
-    void RestoreAnalysisPet();
     void RestoreAnalysisGeo();
-    void RestoreGroupPhoto();
-    void PopulateAnalysisAlbumIdMap();
+    void PopulateAnalysisAlbumIdMap(const std::vector<int32_t>& subtypes);
+    std::string BuildSourceQuerySql(const std::vector<int32_t>& subtypes) const;
+    std::optional<int32_t> FindMatchingAlbum(int32_t albumType, int32_t albumSubtype,
+        const std::string& albumName, const std::string& tagId) const;
     void StoreHighlightAlbumMappings(CloneRestoreHighlight& cloneRestoreHighlight);
+    void RestoreGroupPhoto();
     void RestoreBeautyScoreData();
     void RestoreVideoFaceData();
     void PrepareShootingModeVal(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
@@ -240,14 +245,15 @@ private:
     void SetAggregateBitThird();
     bool ShouldRestoreFromCloud();
     void UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos);
+    void PrevailUUIDForSamePhotos(vector<FileInfo> &fileInfos);
     void UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &fileInfos);
     void SetAttachmentSizeForCloudDuplicate(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
-    void PrevailUUIDForSamePhotos(vector<FileInfo> &fileInfos);
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
     int64_t CorrectTimestamp(int64_t originalTime);
     void UpdatePackageNameForSamePhotos(vector<FileInfo> &fileInfos);
     void RestoreAnalysisSelection();
+    void UpdatePhotoMapAssetDateTaken();
     void RestoreAnalysisDupSim();
     void UpdateTotalScore();
     void RestoreTabCoverRecord();
@@ -294,15 +300,14 @@ private:
     void UpdateDuplicateNumber(const FileInfo &fileInfo);
     void QueryAndSetLakeFileFailCount();
     void ReportRestoreTaskofLakeFiles();
-    void QueryAndSetFileManagerFileFailCount();
-    void ReportRestoreTaskofFileManagerFiles();
     bool CheckAlbumNameUnique(std::string albumName, const std::vector<string> &repetedAlbumName);
     void UpdateSourceAlbumName(bool &isUinque, vector<AlbumInfo> &albumInfos, vector<string> &repetedAlbumName,
         size_t index);
-    void CreateCloneFileInfoDb();
+    void RestoreAiRetouchData(void);
     void CloneActiveLcdAgingFromOldDevice();
+    void CreateCloneFileInfoDb();
 
-private:
+protected:
     std::atomic<uint64_t> migrateDatabaseAlbumNumber_{0};
     std::atomic<uint64_t> migrateDatabaseMapNumber_{0};
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb_;
@@ -335,6 +340,7 @@ private:
     CloneRestoreAnalysisData cloneRestoreAnalysisData_;
     int64_t maxSearchId_ {0};
     int64_t maxBeautyFileId_ {0};
+    int64_t maxTotalFileId_ {0};
     std::unordered_map<int32_t, PhotoInfo> photoInfoMap_;
     std::unordered_set<std::string> existNewAddColumnSet_;
     bool isSrcDstSwitchStatusMatch_ {false};
@@ -345,6 +351,8 @@ private:
     DstDevFileTransferConfig dstDevFileTransferConfig_;
     RestorePhotosAlbumHidden restorePhotosAlbumHidden_;
     std::unordered_map<int32_t, uint32_t> scoreMaskMap_;
+    int32_t preprocessErrorCode_ {E_OK};
+    int32_t oldDbVersion_ {0}; // 旧机数据库的版本号
 
 private:
     const std::string SQL_QUERY_CLASSIFY_ALBUM_EXIST = " \

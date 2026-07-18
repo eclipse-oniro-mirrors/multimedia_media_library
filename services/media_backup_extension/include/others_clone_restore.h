@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 
 #include "base_restore.h"
+#include "burst_key_generator.h"
 #include "photos_restore.h"
 
 namespace OHOS {
@@ -103,6 +104,8 @@ private:
     void CloneInfoPushBack(std::vector<CloneDbInfo> &pushInfos, std::vector<CloneDbInfo> &popInfos);
     void HandleInsertBatch(int32_t offset);
     PhotoAlbumDao::PhotoAlbumRowData FindAlbumInfo(FileInfo &fileInfo);
+    void CloneIosBurstPhoto(FileInfo &fileInfo, int32_t sceneCode);
+    void PutBurstKey(NativeRdb::ValuesBucket &values, const FileInfo &fileInfo);
     bool IsPrivateAccount();
 
     static std::string ParseSourcePathToLPath(int32_t sceneCode, const std::string &filePath, int32_t fileType);
@@ -122,6 +125,7 @@ private:
     std::unordered_map<std::string, CloneDbInfo*> photoDbMap_;
     std::unordered_map<std::string, CloneDbInfo*> audioDbMap_;
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb_;
+    BurstKeyGenerator burstKeyGenerator_;
     PhotoAlbumDao photoAlbumDao_;
     PhotoAlbumRestore photoAlbumRestore_;
     PhotosRestore photosRestore_;

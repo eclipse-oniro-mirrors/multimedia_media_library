@@ -37,11 +37,12 @@ namespace OHOS::Media {
 VideoFaceClone::VideoFaceClone(
     const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
     const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
-    const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap
-    )
+    const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap,
+    bool isReverse)
     : sourceRdb_(sourceRdb),
       destRdb_(destRdb),
-      photoInfoMap_(photoInfoMap)
+      photoInfoMap_(photoInfoMap),
+      isReverse_(isReverse)
 {
 }
 
@@ -56,6 +57,10 @@ bool VideoFaceClone::CloneVideoFaceInfo()
     for (const auto& pair : photoInfoMap_) {
         oldFileIds.push_back(pair.first);
         newFileIds.push_back(pair.second.fileIdNew);
+    }
+
+    if (isReverse_) {
+        ResetAnalysisVideoTotalStatus();
     }
 
     if (oldFileIds.empty()) {
@@ -78,7 +83,7 @@ bool VideoFaceClone::CloneVideoFaceInfo()
     }
     std::vector<std::string> commonColumn = BackupDatabaseUtils::GetCommonColumnInfos(sourceRdb_, destRdb_,
         VISION_VIDEO_FACE_TABLE);
-    std::vector<std::string> commonColumns = BackupDatabaseUtils::filterColumns(commonColumn,
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::FilterExcludedColumns(commonColumn,
         EXCLUDED_VIDEO_FACE_COLUMNS);
     CHECK_AND_RETURN_RET_LOG(!commonColumns.empty(),
         false, "No common columns found for video face table after exclusion.");
@@ -86,16 +91,13 @@ bool VideoFaceClone::CloneVideoFaceInfo()
     DeleteExistingVideoFaceData(newFileIds);
     for (int32_t offset = 0; offset < totalNumber; offset += QUERY_COUNT) {
         std::vector<VideoFaceTbl> videoFaceTbls = QueryVideoFaceTbl(offset, fileIdOldInClause, commonColumns);
-
-        if (videoFaceTbls.empty()) {
-            MEDIA_WARN_LOG("Query returned empty result for offset %{public}d", offset);
-            continue;
-        }
+        CHECK_AND_CONTINUE_ERR_LOG(!videoFaceTbls.empty(), "Query returned empty result for offset %{public}d", offset);
         std::vector<VideoFaceTbl> processedVideoFaces = ProcessVideoFaceTbls(videoFaceTbls);
         BatchInsertVideoFaces(processedVideoFaces);
     }
     StartCloneAnalysisVideoTotalTab(oldFileIds, newFileIds);
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    migrateVideoFaceTotalTimeCost_ += end - start;
     MEDIA_INFO_LOG("VideoFaceClone::CloneVideoFaceInfo completed. Migrated %{public}lld records. "
         "Total time: %{public}lld ms", (long long)migrateVideoFaceNum_, (long long)migrateVideoFaceTotalTimeCost_);
     return true;
@@ -275,7 +277,11 @@ void VideoFaceClone::StartCloneAnalysisVideoTotalTab(const std::vector<int32_t> 
     const std::vector<int32_t> &newFileIds)
 {
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
-    BackupDatabaseUtils::ClearAnalysisVideoTotalTable(destRdb_);
+    if (isReverse_) {
+        BackupDatabaseUtils::ClearAnalysisVideoTotalTable(sourceRdb_);
+    } else {
+        BackupDatabaseUtils::ClearAnalysisVideoTotalTable(destRdb_);
+    }
     bool isTableExist = false;
     CHECK_AND_RETURN_LOG(BackupDatabaseUtils::isTableExist(sourceRdb_, VISION_VIDEO_TOTAL_TABLE, isTableExist),
         "fail to check whether tableName exists");
@@ -407,5 +413,14 @@ bool VideoFaceClone::CopyAnalysisVideoTotalTab(const std::string &tableName, con
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("CopyAnalysisVideoTotalTab Cost %{public}lld", (long long)(end - start));
     return true;
+}
+
+void VideoFaceClone::ResetAnalysisVideoTotalStatus()
+{
+    std::string updateSql = "UPDATE tab_analysis_video_total SET status = 0";
+
+    int32_t errCode = BackupDatabaseUtils::ExecuteSQL(destRdb_, updateSql);
+    CHECK_AND_PRINT_LOG(errCode >= 0,
+        "ResetAnalysisVideoTotalStatus: failed to reset status, errCode: %{public}d", errCode);
 }
 } // namespace OHOS::Media

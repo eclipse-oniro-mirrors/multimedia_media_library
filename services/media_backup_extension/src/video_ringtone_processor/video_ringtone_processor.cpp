@@ -35,7 +35,7 @@
 
 namespace OHOS {
 namespace Media {
-
+// LCOV_EXCL_START
 static const string SETTINGS_DATA_URI_BASE =
     "datashare:///com.ohos.settingsdata/entry/settingsdata/USER_SETTINGSDATA_";
 static const string SETTINGS_DATA_FIELD_KEY = "KEYWORD";
@@ -48,7 +48,7 @@ static const std::string VIDEO_EXTENSION_MP4 = "mp4";
 static const std::string RINGTONE_LIBRARY_BUNDLE_NAME = "com.ohos.ringtonelibrary.ringtonelibrarydata";
 static const int TYPE_PHOTOS = 1;
 const int PERMISSION_PERSIST_READ = 1;
-constexpr int BASE_USER_RANGE = 200000;
+constexpr uint32_t BASE_USER_RANGE = 200000;
 static std::vector<string> SETTINGS_COLUMNS = {SETTINGS_DATA_FIELD_VAL};
 
 VideoRingtoneProcessor::~VideoRingtoneProcessor()
@@ -266,5 +266,6 @@ int32_t VideoRingtoneProcessor::SetPermissionForFile(const std::string& appId, u
     MEDIA_INFO_LOG("SetPermissionForFile success, tokenId=%{private}u, mediaId=%{public}d", tokenId, mediaId);
     return E_OK;
 }
+// LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS

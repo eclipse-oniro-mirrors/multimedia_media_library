@@ -1,0 +1,10 @@
+{
+  global:
+    CheckAndStartResume;
+    extern "C++" {
+      OHOS::Media::ReverseCloneRestore*;
+      OHOS::Media::CloneRestore*;
+    };
+  local:
+    *;
+};

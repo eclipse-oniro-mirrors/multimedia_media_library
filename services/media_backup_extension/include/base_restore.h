@@ -56,7 +56,7 @@ public:
     void Release(ReleaseScene releaseScene);
     void InsertVideoMode(std::unique_ptr<Metadata> &metadata, NativeRdb::ValuesBucket &value);
     void SetIsRestore(bool isRestore);
-    void NotifyDbStatusForClone();
+    void NotifyDbStatusForClone(int32_t reverseCloneStatus = 0);
 
     std::string restoreInfo_;
 
@@ -178,7 +178,7 @@ protected:
         std::vector<FileInfo>& fileInfos);
     int32_t RemoveDentryFileWithConflict(const FileInfo &fileInfo);
     int32_t DeleteOriginDentryByCloudPath(const std::string &cloudPath);
-    int32_t DeleteThumbDentryByCloudPath(const std::string &cloudPath);
+    int32_t DeleteThumbDentryByCloudPath(const FileInfo &fileInfo);
     int32_t GetRestoreMode();
     uint64_t GetNotFoundNumber();
     virtual bool IsCloudRestoreSatisfied();
@@ -187,7 +187,7 @@ protected:
         FileInfo &fileInfo);
     void SetCoverPosition(const FileInfo &fileInfo, NativeRdb::ValuesBucket &value);
     void SetMovingPhotoDuration(const FileInfo &fileInfo, NativeRdb::ValuesBucket &value);
-    void Set3DgsSubtype(FileInfo &info, NativeRdb::ValuesBucket &value,
+    void SetShootingModeSubtype(FileInfo &info, NativeRdb::ValuesBucket &value,
         std::unique_ptr<Metadata> &data);
     void AddToPhotoInfoMap(std::vector<FileInfo> &fileInfos);
     void InsertDateTime(NativeRdb::ValuesBucket &value, FileInfo &fileInfo);
@@ -203,9 +203,11 @@ protected:
     void StopParameterForRestore();
     void RestoreSearchIndex();
     void SetCloneParameterAndStopSync();
+    void HandleExtraDataVersion(const uint32_t version, NativeRdb::ValuesBucket &value);
     void BatchUpdateThumbStatusByFileExistence(std::vector<FileInfo> &fileInfos);
     int32_t GetThumbStatusByExistFlag(bool isLcdExist, bool isThmExist);
     void CheckThumbnailFileExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist);
+    void InitMigrateNums();
 
 protected:
     std::atomic<uint64_t> migrateDatabaseNumber_{0};
@@ -239,12 +241,6 @@ protected:
     std::atomic<uint64_t> migrateLakeVideoDuplicateNumber_{0};
     std::atomic<uint64_t> migrateLakePhotoFailNumber_{0};
     std::atomic<uint64_t> migrateLakeVideoFailNumber_{0};
-    std::atomic<uint64_t> migrateFileManagerPhotoNumber_{0};
-    std::atomic<uint64_t> migrateFileManagerVideoNumber_{0};
-    std::atomic<uint64_t> migrateFileManagerPhotoDuplicateNumber_{0};
-    std::atomic<uint64_t> migrateFileManagerVideoDuplicateNumber_{0};
-    std::atomic<uint64_t> migrateFileManagerPhotoFailNumber_{0};
-    std::atomic<uint64_t> migrateFileManagerVideoFailNumber_{0};
     std::atomic<uint64_t> migratePortraitPhotoNumber_{0};
     std::atomic<uint64_t> migratePortraitFaceNumber_{0};
     std::atomic<uint64_t> migratePortraitAlbumNumber_{0};
@@ -291,6 +287,7 @@ protected:
     std::unordered_map<int32_t, PhotoInfo> photoInfoMap_;
     bool isRestore_ = false;
     std::vector<std::string> dirMappingList_ = {};
+    ReverseRestoreReportInfo reverseRestoreReportInfo_;
 };
 } // namespace Media
 } // namespace OHOS

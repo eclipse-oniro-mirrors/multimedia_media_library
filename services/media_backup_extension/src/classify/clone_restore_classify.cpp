@@ -26,45 +26,6 @@
 #include "upgrade_restore_task_report.h"
 
 namespace OHOS::Media {
-const int32_t PAGE_SIZE = 200;
-
-const uint32_t BIT1 = 1u << 1;  // 图像意义分
-const uint32_t BIT20 = 1u << 20;  // 刷新状态标记
-
-const string ID = "id";
-const string FILE_ID = "file_id";
-const string CATEGORY_ID = "category_id";
-const string SUB_LABEL = "sub_label";
-const string PROB = "prob";
-const string FEATURE = "feature";
-const string SIM_RESULT = "sim_result";
-const string LABEL_VERSION = "label_version";
-const string SALIENCY_SUB_PROB = "saliency_sub_prob";
-const string ANALYSIS_VERSION = "analysis_version";
-const string CAPTION_RESULT = "caption_result";
-const string CAPTION_VERSION = "caption_version";
-const string SIGNIFICANCE_SCORE = "significance_score";
-const string SIGNIFICANCE_SCORE_VERSION = "significance_score_version";
-
-const string CONFIDENCE_PROBABILITY = "confidence_probability";
-const string SUB_CATEGORY = "sub_category";
-const string SUB_CONFIDENCE_PROB = "sub_confidence_prob";
-const string SUB_LABEL_PROB = "sub_label_prob";
-const string SUB_LABEL_TYPE = "sub_label_type";
-const string TRACKS = "tracks";
-const string VIDEO_PART_FEATURE = "video_part_feature";
-const string FILTER_TAG = "filter_tag";
-const string ALGO_VERSION = "algo_version";
-const string TRIGGER_GENERATE_THUMBNAIL = "trigger_generate_thumbnail";
-
-const string ANALYSIS_LABEL_TABLE = "tab_analysis_label";
-const string ANALYSIS_VIDEO_TABLE = "tab_analysis_video_label";
-const string FIELD_TYPE_INT = "INT";
-
-const int32_t CLASSIFY_STATUS_SUCCESS = 1;
-const int32_t CLASSIFY_TYPE = 4097;
-const int32_t FRONT_CAMERA = 1;
-
 const unordered_map<string, unordered_set<string>> COMPARED_COLUMNS_MAP = {
     { "tab_analysis_label",
         {
@@ -341,9 +302,14 @@ std::unordered_set<int32_t> CloneRestoreClassify::GetExistingFileIds(const std::
     std::stringstream querySql;
     std::string placeHolders;
     std::vector<NativeRdb::ValueObject> params;
-    cloneRestoreAnalysisTotal_.SetPlaceHoldersAndParamsByFileIdNew(placeHolders, params);
+    GetCloneRestoreAnalysisTotal().SetPlaceHoldersAndParamsByFileIdNew(placeHolders, params);
     querySql << "SELECT file_id FROM " + tableName + " WHERE " + FILE_ID + " IN (" << placeHolders << ")";
-
+    MEDIA_DEBUG_LOG("GetExistingFileIds querySql %{public}s", querySql.str().c_str());
+    std::string placeHolderParams = "";
+    for (auto &param : params) {
+        placeHolderParams += std::to_string(static_cast<int32_t>(param)) + ",";
+    }
+    MEDIA_DEBUG_LOG("GetExistingFileIds placeHolderParams: %{public}s", placeHolderParams.c_str());
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, querySql.str(), params);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, existingFileIds, "Query resultSql is null.");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {

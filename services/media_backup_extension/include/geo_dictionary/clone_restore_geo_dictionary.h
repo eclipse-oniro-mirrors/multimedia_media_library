@@ -27,6 +27,7 @@ public:
     void Init(int32_t sceneCode, const std::string &taskId,
         std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, std::shared_ptr<NativeRdb::RdbStore> mediaRdb);
     void RestoreAlbums();
+    void ReverseRestoreAlbums();
     void ReportGeoRestoreTask();
 
     template<typename T>
@@ -45,7 +46,7 @@ private:
     };
 
     void GetGeoDictionaryInfos();
-    void InsertIntoGeoDictionaryAlbums();
+    void InsertIntoGeoDictionaryAlbums(bool removeDuplicate);
 
     bool CheckTableColumns(const std::string& tableName, std::unordered_map<std::string, std::string>& columns);
     void GetGeoDictionaryInfo(GeoDictionaryCloneInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet);

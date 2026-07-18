@@ -24,6 +24,7 @@
 
 #include "backup_const_column.h"
 #include "backup_database_utils.h"
+#include "classify_restore_const.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -42,10 +43,18 @@ namespace {
 TabOldAlbumsClone::TabOldAlbumsClone(
     const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
     const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
-    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>>& tableAlbumIdMap)
-    : sourceRdb_(sourceRdb), destRdb_(destRdb), tableAlbumIdMap_(tableAlbumIdMap)
+    const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>>& tableAlbumIdMap,
+    bool isReverse)
+    : sourceRdb_(sourceRdb), destRdb_(destRdb), tableAlbumIdMap_(tableAlbumIdMap), isReverse_(isReverse)
 {
     MEDIA_INFO_LOG("TabOldAlbumsClone constructor");
+}
+
+void TabOldAlbumsClone::InitDatabase(const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
+    const std::shared_ptr<NativeRdb::RdbStore>& destRdb)
+{
+    sourceRdb_ = sourceRdb;
+    destRdb_ = destRdb;
 }
 
 int32_t TabOldAlbumsClone::CloneAlbums(const std::vector<std::string> &sourceTables)
@@ -61,11 +70,7 @@ int32_t TabOldAlbumsClone::CloneAlbums(const std::vector<std::string> &sourceTab
     }
 
     MEDIA_INFO_LOG("Starting album cloning from %{public}zu source tables", sourceTables.size());
-
-    // Get the clone sequence once for this entire operation
-    int32_t cloneSequence = GetNextCloneSequence();
-    MEDIA_INFO_LOG("Using clone sequence %{public}d for all albums in this clone operation", cloneSequence);
-
+    
     // Clean up the tab_old_albums table before cloning
     int32_t cleanupResult = CleanupTable();
     if (cleanupResult != NativeRdb::E_OK) {
@@ -74,7 +79,7 @@ int32_t TabOldAlbumsClone::CloneAlbums(const std::vector<std::string> &sourceTab
 
     int32_t finalResult = NativeRdb::E_OK;
     for (const auto &sourceTable : sourceTables) {
-        int32_t result = CloneAlbumsFromTable(sourceTable, cloneSequence);
+        int32_t result = CloneAlbumsFromTable(sourceTable, cloneSequence_);
         if (result != NativeRdb::E_OK) {
             MEDIA_ERR_LOG("Failed to clone albums from table: %{public}s, error: %{public}d", sourceTable.c_str(),
                 result);
@@ -110,7 +115,8 @@ int32_t TabOldAlbumsClone::CloneAlbumsFromTable(const std::string &sourceTable, 
             break;
         }
 
-        std::vector<AlbumMapTbl> processedAlbums = ProcessAlbumMapTbls(albumMapTbls, sourceTable, cloneSequence);
+        std::vector<AlbumMapTbl> processedAlbums =
+            isReverse_ ? albumMapTbls : ProcessAlbumMapTbls(albumMapTbls, sourceTable, cloneSequence);
         if (processedAlbums.empty()) {
             MEDIA_WARN_LOG("No albums to process after mapping for table %{public}s", sourceTable.c_str());
             // If no albums were processed but we got data, we've reached the end
@@ -171,7 +177,9 @@ int32_t TabOldAlbumsClone::GetNextCloneSequence()
     }
 
     int32_t maxSequence = GetInt32Val(ALBUM_CLONE_SEQUENCE_COL, resultSet);
-    return maxSequence + INITIAL_CLONE_SEQUENCE;
+    cloneSequence_ = maxSequence + INITIAL_CLONE_SEQUENCE;
+    MEDIA_INFO_LOG("Using clone sequence %{public}d for all albums in this clone operation", cloneSequence_);
+    return cloneSequence_;
 }
 
 int32_t TabOldAlbumsClone::CleanupTable()
@@ -282,6 +290,9 @@ void TabOldAlbumsClone::ParseAlbumResultSet(
     albumMapTbl.albumType = albumType;
     albumMapTbl.albumSubtype = albumSubtype;
     albumMapTbl.oldAlbumId = albumId;
+    if (isReverse_) {
+        albumMapTbl.cloneSequence = cloneSequence_;
+    }
 }
 
 std::vector<AlbumMapTbl> TabOldAlbumsClone::ProcessAlbumMapTbls(
@@ -364,5 +375,71 @@ std::optional<int32_t> TabOldAlbumsClone::GetNewAlbumId(const std::string& sourc
     }
 
     return albumIt->second; // Return the new album ID
+}
+
+int32_t TabOldAlbumsClone::CloneAlbumsFromAnalysisAlbum()
+{
+    MEDIA_INFO_LOG("Starting to clone albums from AnalysisAlbum to tab_old_albums");
+    return CloneAlbumsFromTable(ANALYSIS_ALBUM_TABLE, cloneSequence_);
+}
+
+int32_t TabOldAlbumsClone::CloneAlbumsFromPhotoAlbum()
+{
+    MEDIA_INFO_LOG("Starting to clone albums from PhotoAlbum to tab_old_albums");
+    return CloneAlbumsFromTable(PhotoAlbumColumns::TABLE, cloneSequence_);
+}
+
+int32_t TabOldAlbumsClone::UpdateAlbumIdsByMappingWithSubtype()
+{
+    if (destRdb_ == nullptr) {
+        MEDIA_ERR_LOG("Destination RdbStore is null");
+        return E_INVALID_ARGUMENTS;
+    }
+
+    auto tableIt = tableAlbumIdMap_.find(PhotoAlbumColumns::TABLE);
+    if (tableIt == tableAlbumIdMap_.end() || tableIt->second.empty()) {
+        MEDIA_INFO_LOG("PhotoAlbum mapping not found or empty, skip update");
+        return NativeRdb::E_OK;
+    }
+
+    const auto& photoAlbumMap = tableIt->second;
+
+    std::ostringstream caseSql;
+    std::ostringstream whereSql;
+    bool first = true;
+    caseSql << "CASE " << ALBUM_ID_COL;
+
+    for (const auto& [oldAlbumId, newAlbumId] : photoAlbumMap) {
+        if (oldAlbumId == newAlbumId) {
+            continue;
+        }
+
+        caseSql << " WHEN " << oldAlbumId << " THEN " << newAlbumId;
+        if (!first) {
+            whereSql << " OR ";
+        }
+        whereSql << ALBUM_ID_COL << " = " << oldAlbumId;
+        first = false;
+    }
+    caseSql << " END";
+
+    if (first) {
+        MEDIA_INFO_LOG("No different album IDs found in mapping, skip update");
+        return NativeRdb::E_OK;
+    }
+
+    std::string updateQuery = "UPDATE tab_old_albums SET album_id = " +
+        caseSql.str() + " WHERE (" + whereSql.str() + ") AND album_type <> 4096;";
+
+    MEDIA_INFO_LOG("Executing batch update query for tab_old_albums with subtype filter");
+
+    int32_t result = destRdb_->ExecuteSql(updateQuery);
+    if (result != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Failed to update album_ids in tab_old_albums: %{public}d", result);
+        return result;
+    }
+
+    MEDIA_INFO_LOG("Successfully updated album_ids in tab_old_albums with subtype filter");
+    return NativeRdb::E_OK;
 }
 } // namespace Media

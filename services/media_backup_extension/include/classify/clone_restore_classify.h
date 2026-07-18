@@ -21,6 +21,7 @@
 #include "backup_const.h"
 #include "clone_restore_analysis_total.h"
 #include "rdb_store.h"
+#include "classify_restore_const.h"
 
 namespace OHOS::Media {
 class CloneRestoreClassify {
@@ -43,41 +44,6 @@ private:
         ALL = 0,
         IMAGE,
         VIDEO
-    };
-    struct ClassifyCloneInfo {
-        std::optional<int32_t> id;
-        std::optional<int32_t> fileIdOld;
-        std::optional<int32_t> fileIdNew;
-        std::optional<int32_t> categoryId;
-        std::optional<std::string> subLabel;
-        std::optional<double> prob;
-        std::optional<std::vector<uint8_t>> feature;
-        std::optional<std::string> simResult;
-        std::optional<std::string> labelVersion;
-        std::optional<std::string> saliencySubProb;
-        std::optional<std::string> analysisVersion;
-        std::optional<std::string> captionResult;
-        std::optional<std::string> captionVersion;
-        std::optional<int32_t> significanceScore;
-        std::optional<std::string> significanceScoreVersion;
-    };
-    struct ClassifyVideoCloneInfo {
-        std::optional<int32_t> id;
-        std::optional<int32_t> fileIdOld;
-        std::optional<int32_t> fileIdNew;
-        std::optional<std::string> categoryId;
-        std::optional<std::string> confidenceProbability;
-        std::optional<std::string> subCategory;
-        std::optional<std::string> subConfidenceProb;
-        std::optional<std::string> subLabel;
-        std::optional<std::string> subLabelProb;
-        std::optional<std::string> subLabelType;
-        std::optional<std::string> tracks;
-        std::optional<std::vector<uint8_t>> videoPartFeature;
-        std::optional<std::string> filterTag;
-        std::optional<std::string> algoVersion;
-        std::optional<std::string> analysisVersion;
-        std::optional<int32_t> triggerGenerateThumbnail;
     };
 
     void RestoreByVersion(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);

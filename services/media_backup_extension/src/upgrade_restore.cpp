@@ -25,13 +25,14 @@
 #include "database_report.h"
 #include "exif_rotate_utils.h"
 #include "gallery_db_upgrade.h"
+#include "group_photo_album_restore.h"
 #include "upgrade_restore_task_report.h"
 #include "vision_album_column.h"
 #include "vision_face_tag_column.h"
 #include "vision_image_face_column.h"
 #include "vision_photo_map_column.h"
 #include "portrait_album_utils.h"
-#include "group_photo_album_restore.h"
+#include "media_column.h"
 #include "media_string_utils.h"
 #include "video_ringtone_processor.h"
 // LCOV_EXCL_START
@@ -117,7 +118,7 @@ RestoreConfigInfo UpgradeRestore::GetCurrentDeviceRestoreConfigInfo()
     restoreConfig.restoreSwitchType = SettingsDataManager::GetPhotosSyncSwitchStatus();
     if (restoreConfig.restoreSwitchType == SwitchStatus::NONE) {
         int32_t isCloudSyncSwitchOn = BackupFileUtils::IsCloneCloudSyncSwitchOn(sceneCode_);
-        MEDIA_WARN_LOG("fail to query photo sync switch status, isCloudSyncSwitchOn:%{public}d",
+        MEDIA_WARN_LOG("fail to query photo sync switch status, isCloudSyncSwitchOn:%{public}d.",
             isCloudSyncSwitchOn);
         restoreConfig.restoreSwitchType = (isCloudSyncSwitchOn == CheckSwitchType::SUCCESS_ON ||
             isCloudSyncSwitchOn == CheckSwitchType::UPGRADE_FAILED_ON) ?
@@ -180,8 +181,8 @@ int UpgradeRestore::StringToInt(const std::string& str)
     }
     int base = 0;
     size_t num = 0;
-    int sign = 1;
-    size_t len = static_cast<ssize_t>(str.length());
+    int sign = 1; // positive one
+    size_t len = str.length();
     while (num < len && str[num] == ' ') {
         num++;
     }
@@ -367,6 +368,8 @@ void UpgradeRestore::RestoreSmartAlbums()
     int64_t startRestoreHighlight = MediaFileUtils::UTCTimeMilliSeconds();
     RestoreHighlightAlbums();
     int64_t endRestoreHighlight = MediaFileUtils::UTCTimeMilliSeconds();
+    classifyRestore_.RestoreClassify(photoInfoMap_);
+    int64_t endRestoreClassify = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t startGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t endGroupPhoto = startGroupPhoto;
     if (isNeedCloneGroupAlbum_) {
@@ -374,12 +377,10 @@ void UpgradeRestore::RestoreSmartAlbums()
         cloneGroupPhotoAlbum.RestoreGroupPhotoAlbum(photoInfoMap_);
         endGroupPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     }
-    classifyRestore_.RestoreClassify(photoInfoMap_);
-    int64_t endRestoreClassify = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("TimeCost: RestoreGeo cost: %{public}" PRId64 ", RestoreHighlight cost: %{public}" PRId64
-        " GroupPhoto cost: %{public}" PRId64 ", RestoreClassify cost: %{public}" PRId64,
+        " RestoreClassify cost: %{public}" PRId64 ", GroupPhoto cost: %{public}" PRId64,
         startRestoreHighlight - startRestoreGeo, endRestoreHighlight - startRestoreHighlight,
-        endGroupPhoto - startGroupPhoto, endRestoreClassify - endGroupPhoto);
+        endRestoreClassify - endRestoreHighlight, endGroupPhoto - startGroupPhoto);
     MEDIA_INFO_LOG("RestoreSmartAlbums end");
 }
 
@@ -487,7 +488,6 @@ void UpgradeRestore::RestorePhoto()
     }
     RestoreSmartAlbums();
     ReportPortraitStat(sceneCode_);
-
     int32_t restoreMode = BaseRestore::GetRestoreMode();
     UpgradeRestoreTaskReport()
         .SetSceneCode(sceneCode_)
@@ -992,7 +992,7 @@ bool UpgradeRestore::ParseResultSetFromGallery(const std::shared_ptr<NativeRdb::
     info.filePath = GetStringVal(GALLERY_FILE_DATA, resultSet);
     info.albumId = GetStringVal(GALLERY_ALBUM_ID, resultSet);
     info.orientation = GetInt32Val(GALLERY_ORIENTATION, resultSet);
-    info.uniqueId = restoreConfig_.restoreSwitchType == SwitchStatus::CLOUD ?
+    info.cloudUniqueId = restoreConfig_.restoreSwitchType == SwitchStatus::CLOUD ?
         GetStringVal(GALLERY_UNIQUE_ID, resultSet) :
             restoreConfig_.restoreSwitchType == SwitchStatus::HDC ?
                  GetStringVal(GALLERY_HDC_UNIQUE_ID, resultSet) : "";
@@ -1001,7 +1001,7 @@ bool UpgradeRestore::ParseResultSetFromGallery(const std::shared_ptr<NativeRdb::
     info.dateTaken = info.showDateToken;
     bool isSuccess = ParseResultSet(resultSet, info, GALLERY_DB_NAME);
     CHECK_AND_RETURN_RET_LOG(isSuccess, isSuccess, "ParseResultSetFromGallery fail");
-    info.burstKey = burstKeyGenerator_.FindBurstKey(info);
+    info.burstKey = burstKeyGenerator_.FindBurstKey(info, sceneCode_);
     // Pre-Fetch: sourcePath, lPath
     info.sourcePath = GetStringVal(GALLERY_MEDIA_SOURCE_PATH, resultSet);
     info.lPath = GetStringVal(GALLERY_ALBUM_IPATH, resultSet);
@@ -1099,7 +1099,7 @@ NativeRdb::ValuesBucket UpgradeRestore::GetInsertValue(const FileInfo &fileInfo,
     values.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_BACKUP));
     // for cloud clone
     if (fileInfo.localMediaId == -1) {
-        values.PutString(PhotoColumn::PHOTO_CLOUD_ID, fileInfo.uniqueId);
+        values.PutString(PhotoColumn::PHOTO_CLOUD_ID, fileInfo.cloudUniqueId);
         values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(restoreConfig_.photoPositionType));
         values.PutInt(PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, static_cast<int32_t>(restoreConfig_.southDeviceType));
         values.PutInt(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyTypes::TYPE_SYNCED));
@@ -1107,6 +1107,7 @@ NativeRdb::ValuesBucket UpgradeRestore::GetInsertValue(const FileInfo &fileInfo,
         BackupAuditUtils::RecordCloudIdEmptyAudit(fileInfo, "UpgradeRestore", sceneCode_, taskId_);
     } else {
         values.PutInt(PhotoColumn::PHOTO_DIRTY, this->photosRestore_.FindDirty(fileInfo));
+        values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, RESTORE_THUMBNAIL_STATUS_ALL);
     }
     return values;
 }
@@ -1191,6 +1192,7 @@ int32_t UpgradeRestore::QueryPortraitAlbumTotalNumber()
 
 void UpgradeRestore::QueryPortraitAlbumRelationship()
 {
+    MEDIA_INFO_LOG("QueryPortraitAlbumRelationship start");
     std::string querySql = "SELECT t.group_tag, t.tag_name, t.relationship, count(DISTINCT t.hash) as show_count, "
             "MAX(t.scale_width * t.scale_height + t.beauty_score * 1000 + (CASE WHEN t.total_face == 1 "
             "THEN 1000 ELSE 0 END) + t.is_cover * 10000) max_score "
@@ -1220,7 +1222,7 @@ void UpgradeRestore::QueryPortraitAlbumRelationship()
             oldGroupTag.c_str(), oldRelationshipId.c_str(), portraitAlbumRelationship_[oldGroupTag].c_str());
     }
     resultSet->Close();
-    MEDIA_DEBUG_LOG("QueryPortraitAlbumRelationship end");
+    MEDIA_INFO_LOG("QueryPortraitAlbumRelationship end");
 }
 
 vector<PortraitAlbumInfo> UpgradeRestore::QueryPortraitAlbumInfos(int32_t offset,
@@ -1714,7 +1716,8 @@ std::string UpgradeRestore::CheckGalleryDbIntegrity()
         dbSize = std::to_string(statInfo.st_size);
     }
     int64_t dbIntegrityCheckTime = MediaFileUtils::UTCTimeMilliSeconds();
-    dbIntegrityCheck = BackupDatabaseUtils::CheckDbIntegrity(galleryRdb_, sceneCode_, "GALLERY_DB_CORRUPTION");
+    dbIntegrityCheck = BackupDatabaseUtils::CheckDbIntegrity(galleryRdb_, sceneCode_, "GALLERY_DB_CORRUPTION",
+        &reverseRestoreReportInfo_);
     dbIntegrityCheckTime = MediaFileUtils::UTCTimeMilliSeconds() - dbIntegrityCheckTime;
     UpgradeRestoreTaskReport()
         .SetSceneCode(this->sceneCode_)
@@ -1871,7 +1874,7 @@ void UpgradeRestore::UpdatePhotoAlbumCoverUri(vector<AlbumCoverInfo>& albumCover
             albumCoverInfo.albumId = photoAlbumRowData.albumId;
         }
         int32_t changeRows = 0;
-        std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
+        std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates = 
             make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
         predicates->BeginWrap()
         ->EqualTo(PhotoAlbumColumns::ALBUM_ID, albumCoverInfo.albumId)

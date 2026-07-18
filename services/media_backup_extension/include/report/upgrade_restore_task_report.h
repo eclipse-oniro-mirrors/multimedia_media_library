@@ -59,6 +59,7 @@ public:
     UpgradeRestoreTaskReport &ReportFileListCloneConfig(AncoFileListClone ancoFileListClone,
         FileManagerFileListClone fileManagerFileListClone);
     UpgradeRestoreTaskReport &ReportFileTransferConfig(AncoFileTransfer ancoFileTransfer);
+    UpgradeRestoreTaskReport &ReportReverse(const ReverseRestoreReportInfo &reportInfo);
 
 private:
     int32_t PostInfoDfx(const MediaRestoreResultInfo &info);

@@ -98,6 +98,8 @@ bool CloneGroupPhotoAlbum::GetFileIdsByGroupTag(CloneGroupPhotoAlbum::GroupAlbum
         tagIdVector.insert(tagIdVector.end(), tagIt.second.begin(), tagIt.second.end());
         querySql += firstSql;
     }
+    querySql +=
+        " AND EXISTS (SELECT 1 FROM Photos WHERE file_id = tab_analysis_image_face.file_id AND media_type != 2) ";
     querySql += groupSql;
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaLibraryRdb_, querySql, tagIdVector);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "Query resultSql is null.");
@@ -236,7 +238,6 @@ void CloneGroupPhotoAlbum::ModifyGroupVersion(const std::map<int32_t, std::vecto
 void CloneGroupPhotoAlbum::InsertAnalysisPhotoMap(const std::map<int32_t, std::vector<string>> &groupPhotoMap)
 {
     std::string baseSql = "INSERT OR REPLACE INTO AnalysisPhotoMap (map_album, map_asset) VALUES ";
-
     int32_t currentBatchSize = 0;
     string sql = baseSql;
     bool isFirst = true;

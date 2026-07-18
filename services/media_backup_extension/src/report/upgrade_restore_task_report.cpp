@@ -167,12 +167,47 @@ UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportTimeCost(const uint64_
                                             .SetSceneCode(this->sceneCode_)
                                             .SetTaskId(this->taskId_)
                                             .Load(type, errorCode, errorInfo);
-    resultInfo.duplicateCount = static_cast<int64_t>(duplicateCount);
-    resultInfo.failedCount = static_cast<int64_t>(failCount);
-    resultInfo.successCount = static_cast<int64_t>(successCount);
+    resultInfo.duplicateCount = static_cast<int>(duplicateCount);
+    resultInfo.failedCount = static_cast<int>(failCount);
+    resultInfo.successCount = static_cast<int>(successCount);
     MEDIA_INFO_LOG("[%{public}s]: %{public}s, successCount: %{public}d, duplicateCount: %{public}d, "
         "failCount: %{public}d", type.c_str(), errorCode.c_str(), resultInfo.successCount, resultInfo.duplicateCount,
         resultInfo.failedCount);
+    PostInfoDfx(resultInfo);
+    PostInfoAuditLog(resultInfo);
+    return *this;
+}
+
+UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportReverse(const ReverseRestoreReportInfo &reportInfo)
+{
+    std::string type = "Reverse";
+    std::string errorCode = "";
+    std::string errorInfo = "";
+    MediaRestoreResultInfo resultInfo = UpgradeRestoreGalleryMediaTask()
+                                            .SetSceneCode(this->sceneCode_)
+                                            .SetTaskId(this->taskId_)
+                                            .Load(type, errorCode, errorInfo);
+    resultInfo.successCount = reportInfo.successCount;
+    resultInfo.duplicateCount = reportInfo.duplicateCount;
+    resultInfo.failedCount = reportInfo.failedCount;
+    resultInfo.restoreDirection = reportInfo.restoreDirection;
+    resultInfo.restoreCountInfo = reportInfo.restoreCountInfo;
+    resultInfo.restoreDatabaseVersion = reportInfo.restoreDatabaseVersion;
+    resultInfo.restoreDatabaseContains = reportInfo.restoreDatabaseContains;
+    resultInfo.databaseUpgradeResult = reportInfo.databaseUpgradeResult;
+    resultInfo.databaseUpgradeResultInfo = reportInfo.databaseUpgradeResultInfo;
+    resultInfo.dataReplaceResult = reportInfo.dataReplaceResult;
+    resultInfo.perfectRestoreTime = reportInfo.perfectRestoreTime;
+    resultInfo.quickCheckResult = reportInfo.quickCheckResult;
+    resultInfo.reverseChangeErrorInfo = reportInfo.reverseChangeErrorInfo;
+    resultInfo.reverseErrorInfo = reportInfo.reverseErrorInfo;
+    resultInfo.absorbNewBasicDataErrorInfo = reportInfo.absorbNewBasicDataErrorInfo;
+    resultInfo.absorbNewSmartDataErrorInfo = reportInfo.absorbNewSmartDataErrorInfo;
+    resultInfo.beforeTransformTimeCost = reportInfo.beforeTransformTimeCost;
+    resultInfo.afterTransformTimeCost = reportInfo.afterTransformTimeCost;
+    resultInfo.cloneRestoreInfo = reportInfo.cloneRestoreInfo;
+    resultInfo.cloneRestoreCount = reportInfo.cloneRestoreCount;
+    resultInfo.databaseHandleErrorTime = reportInfo.databaseHandleErrorTime;
     PostInfoDfx(resultInfo);
     PostInfoAuditLog(resultInfo);
     return *this;
@@ -187,8 +222,8 @@ UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportFileListCloneConfig(
     AncoFileListClone ancoFileListClone, FileManagerFileListClone fileManagerFileListClone)
 {
     std::ostringstream oss;
-    oss << "ancoFileListClone=" << static_cast<int32_t>(ancoFileListClone)
-        << ",fileManagerFileListClone=" << static_cast<int32_t>(fileManagerFileListClone);
+    oss << "ancoFileListClone =" << static_cast<int32_t>(ancoFileListClone)
+        << ",fileManagerFileListClone =" << static_cast<int32_t>(fileManagerFileListClone);
     std::string extend = oss.str();
     MEDIA_INFO_LOG("[FileListCloneConfig] %{public}s", extend.c_str());
     BackupHiAuditHelper().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_)
@@ -210,24 +245,33 @@ int32_t UpgradeRestoreTaskReport::PostInfoDfx(const MediaRestoreResultInfo &info
     int32_t ret = HiSysEventWrite(MEDIA_LIBRARY,
         "MEDIALIB_BACKUP_RESTORE_RESULT",
         HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "SCENE_CODE",
-        info.sceneCode,
-        "TASK_ID",
-        info.taskId,
-        "ERROR_CODE",
-        info.errorCode,
-        "ERROR_INFO",
-        info.errorInfo,
-        "TYPE",
-        info.type,
-        "BACKUP_INFO",
-        info.backupInfo,
-        "DUPLICATE_COUNT",
-        info.duplicateCount,
-        "FAILED_COUNT",
-        info.failedCount,
-        "SUCCESS_COUNT",
-        info.successCount);
+        "SCENE_CODE", info.sceneCode,
+        "TASK_ID", info.taskId,
+        "ERROR_CODE", info.errorCode,
+        "ERROR_INFO", info.errorInfo,
+        "TYPE", info.type,
+        "BACKUP_INFO", info.backupInfo,
+        "DUPLICATE_COUNT", info.duplicateCount,
+        "FAILED_COUNT", info.failedCount,
+        "SUCCESS_COUNT", info.successCount,
+        "RESTORE_DIRECTION", info.restoreDirection,
+        "RESTORE_COUNT_INFO", info.restoreCountInfo,
+        "RESTORE_DATABASE_VERSION", info.restoreDatabaseVersion,
+        "RESTORE_DATABASE_CONTAINS", info.restoreDatabaseContains,
+        "DATABASE_UPGRADE_RESULT", info.databaseUpgradeResult,
+        "DATA_REPLACE_RESULT", info.dataReplaceResult,
+        "DATABASE_UPGRADE_RESULT_INFO", info.databaseUpgradeResultInfo,
+        "PERFECT_RESTORE_TIME", info.perfectRestoreTime,
+        "QUICK_CHECK_RESULT", info.quickCheckResult,
+        "REVERSE_CHANGE_ERROR_INFO", info.reverseChangeErrorInfo,
+        "REVERSE_ERROR_INFO", info.reverseErrorInfo,
+        "ABSORB_NEW_BASICDATA_ERROR_INFO", info.absorbNewBasicDataErrorInfo,
+        "ABSORB_NEW_SMARTDATA_ERROR_INFO", info.absorbNewSmartDataErrorInfo,
+        "BEFORE_TRANSFORM_TIMECOST", info.beforeTransformTimeCost,
+        "AFTER_TRANSFORM_TIMECOST", info.afterTransformTimeCost,
+        "CLONE_RESTORE_INFO", info.cloneRestoreInfo,
+        "CLONE_RESTORE_COUNT", info.cloneRestoreCount,
+        "DATABASE_HANDLE_ERROR_TIME", info.databaseHandleErrorTime);
     if (ret != 0) {
         MEDIA_ERR_LOG("PostInfoDfx error:%{public}d", ret);
     }

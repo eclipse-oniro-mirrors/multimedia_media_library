@@ -84,7 +84,7 @@ private:
     template<typename T, typename U>
     void PutWithDefault(NativeRdb::ValuesBucket& values, const std::string& columnName,
         const std::optional<T>& optionalValue, const U& defaultValue);
- 
+    int32_t CleanupTable();
 private:
     std::shared_ptr<NativeRdb::RdbStore> sourceRdb_;
     std::shared_ptr<NativeRdb::RdbStore> destRdb_;

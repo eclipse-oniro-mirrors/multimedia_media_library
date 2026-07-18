@@ -25,20 +25,6 @@
 
 namespace OHOS::Media {
 using IdSetPair = std::pair<std::unordered_set<int32_t>, std::unordered_set<int32_t>>;
-struct AnalysisSearchIndexTbl {
-    std::optional<int64_t> id;
-    std::optional<int32_t> fileId;
-    std::optional<std::string> data;
-    std::optional<std::string> displayName;
-    std::optional<double> latitude;
-    std::optional<double> longitude;
-    std::optional<int64_t> dateModified;
-    std::optional<int32_t> photoStatus;
-    std::optional<int32_t> cvStatus;
-    std::optional<int32_t> geoStatus;
-    std::optional<int32_t> version;
-    std::optional<std::string> systemLanguage;
-};
 
 class SearchIndexClone {
 public:
@@ -49,6 +35,7 @@ public:
         int64_t maxSearchId);
 
     bool Clone();
+    bool ReverseClone();
 
     int64_t GetMigratedCount() const { return migratedCount_; }
     int64_t GetTotalTimeCost() const { return totalTimeCost_; }
@@ -78,6 +65,14 @@ private:
 
     int32_t BatchInsertWithRetry(const std::string &tableName,
         std::vector<NativeRdb::ValuesBucket> &values, int64_t &rowNum);
+
+    bool QueryAndInsertSourceRecords();
+    std::vector<int32_t> QuerySourceFileIds();
+    std::vector<AnalysisSearchIndexTbl> QuerySourceSearchIndex(const std::vector<int32_t>& fileIds);
+    bool InsertOrUpdateDestSearchIndex(const std::vector<AnalysisSearchIndexTbl>& searchIndexTbls);
+    std::unordered_set<int32_t> QueryExistingDestFileIds(const std::vector<int32_t>& fileIds);
+    bool UpdateDestSearchIndex(const std::vector<AnalysisSearchIndexTbl>& searchIndexTbls);
+    bool InsertNewDestSearchIndex(const std::vector<AnalysisSearchIndexTbl>& searchIndexTbls);
 
     template<typename T>
     void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,

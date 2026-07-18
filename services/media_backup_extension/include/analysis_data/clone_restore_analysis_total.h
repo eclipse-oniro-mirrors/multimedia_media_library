@@ -26,7 +26,8 @@ namespace OHOS::Media {
 class CloneRestoreAnalysisTotal {
 public:
     void Init(const std::string &type, int32_t pageSize, std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
-        std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, const std::string &totalTableName = "tab_analysis_total");
+        std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
+        const std::string &totalTableName = "tab_analysis_total");
     int32_t GetTotalNumber();
     void GetInfos(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
     void SetPlaceHoldersAndParamsByFileIdOld(std::string &placeHolders, std::vector<NativeRdb::ValueObject> &params);

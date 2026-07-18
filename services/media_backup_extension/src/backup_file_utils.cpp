@@ -22,6 +22,7 @@
 #include <sys/types.h>
 #include <regex>
 
+#include "rdb_helper.h"
 #include "backup_const_column.h"
 #include "datashare_helper.h"
 #include "scanner_utils.h"
@@ -61,7 +62,11 @@ const std::string BackupFileUtils::THM_FILE_NAME = "THM.jpg";
 const uint8_t BackupFileUtils::IMAGE_QUALITY = 90;
 const uint32_t BackupFileUtils::IMAGE_NUMBER_HINT = 1;
 const int32_t BackupFileUtils::IMAGE_MIN_BUF_SIZE = 8192;
-static const std::string CLOUD_BASE_URI = "datashareproxy://generic.cloudstorage";
+#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
+    static const std::string CLOUD_BASE_URI = "datashareproxy://com.huawei.hmos.clouddrive/wearable";
+#else 
+    static const std::string CLOUD_BASE_URI = "datashareproxy://com.huawei.hmos.clouddrive";
+#endif 
 static const std::string CLOUD_SYNC_SWITCH_URI = CLOUD_BASE_URI + "/sync_switch";
 static const std::string MOBILE_NETWORK_STATUS_ON = "1";
 const std::string ROOT_LAKE_DIR = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC/";
@@ -124,7 +129,7 @@ bool FileAccessHelper::ConvertCurrentPath(string &curPath, string &resultPath)
             iter.increment(ec);
             continue;
         }
-        const auto &entry = *iter;
+        const auto& entry = *iter;
         string entryPath = entry.path();
         transform(entryPath.begin(), entryPath.end(), entryPath.begin(), ::tolower);
         if (entryPath == curPath) {
@@ -151,7 +156,6 @@ int32_t BackupFileUtils::FillMetadata(std::unique_ptr<Metadata> &data)
         err = MetadataExtractor::ExtractImageMetadata(data);
     } else {
         err = MetadataExtractor::ExtractAVMetadata(data, Scene::AV_META_SCENE_CLONE);
-        MEDIA_INFO_LOG("Extract av metadata end");
     }
     if (err != E_OK) {
         MEDIA_ERR_LOG("failed to extension data");
@@ -861,7 +865,7 @@ int32_t BackupFileUtils::IsCloneCloudSpaceSyncSwitchOn(int32_t sceneCode)
     CHECK_AND_RETURN_RET_LOG(cloudHelper != nullptr, CheckSwitchType::CLOUD_HELPER_NULL, "cloudHelper is null");
 
     DataShare::DataSharePredicates predicates;
-    predicates.EqualTo("bundleName", "generic.cloudstorage");
+    predicates.EqualTo("bundleName", "com.huawei.hmos.photos");
     Uri cloudUri(CLOUD_SYNC_SWITCH_URI);
     vector<string> columns = { "isSwitchOn" };
     shared_ptr<DataShare::DataShareResultSet> resultSet = cloudHelper->Query(cloudUri, predicates, columns);
@@ -959,13 +963,31 @@ void BackupFileUtils::RestoreInvalidHDCCloudDataPos()
 
 std::string BackupFileUtils::ConvertToStoragePath(const std::string& input)
 {
-    CHECK_AND_RETURN_RET_LOG(!input.empty(), input, "LakeClone: ConvertToStoragePath input is empty");
+    CHECK_AND_RETURN_RET_LOG(!input.empty(), input, "LakeClone: ConvertToStoragePath input is empty!");
     const std::regex RESTORE_PATH_PREFIX_REGEX(R"(^/mnt/data/\d+/HO_MEDIA/)");
     if (std::regex_search(input, RESTORE_PATH_PREFIX_REGEX)) {
         return std::regex_replace(input, RESTORE_PATH_PREFIX_REGEX, ROOT_LAKE_DIR);
     }
 
     return input;
+}
+
+void BackupFileUtils::DeleteCloneFileInfoDb()
+{
+    const std::string dbPath = CLONE_RESTORE_BACKUP_DIR + CLONE_FILE_INFO_DB;
+    CHECK_AND_RETURN_LOG(MediaFileUtils::IsFileExists(dbPath), "LakeClone: db not exists, skip delete!");
+
+    MEDIA_INFO_LOG("LakeClone: deleting CloneFileInfoDb, path: %{private}s", dbPath.c_str());
+    int32_t deleteRet = NativeRdb::RdbHelper::DeleteRdbStore(dbPath);
+    CHECK_AND_RETURN_INFO_LOG(deleteRet != NativeRdb::E_OK, "LakeClone: DeleteRdbStore success");
+    
+    MEDIA_WARN_LOG("LakeClone: DeleteRdbStore fail, need to delete db manually");
+    MediaFileUtils::DeleteFileOrFolder(dbPath, true);
+    const vector<std::string> fileExtension = {"-compare", "-dwr", "-shm", "-wal"};
+    for (const auto &ext : fileExtension) {
+        std::string tempFile = dbPath + ext;
+        MediaFileUtils::DeleteFileOrFolder(tempFile, true);
+    }
 }
 } // namespace Media
 } // namespace OHOS

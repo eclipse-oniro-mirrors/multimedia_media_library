@@ -59,7 +59,8 @@ public:
     VideoFaceClone(
         const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
         const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
-        const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap);
+        const std::unordered_map<int32_t, PhotoInfo>& photoInfoMap,
+        bool isReverse = false);
 
     bool CloneVideoFaceInfo();
 
@@ -86,6 +87,7 @@ private:
     void WriteDataToAnaVideoTotalTabSub(std::vector<CloneVideoInfo> &updateDataList);
     void StartCloneAnalysisVideoTotalTab(const std::vector<int32_t> &oldFileIds,
         const std::vector<int32_t> &newFileIds);
+    void ResetAnalysisVideoTotalStatus();
 
     template<typename T>
     void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,
@@ -114,6 +116,7 @@ private:
     int64_t migrateVideoFaceNum_ = 0;
     int64_t migrateVideoFaceFileNumber_ = 0;
     int64_t migrateVideoFaceTotalTimeCost_ = 0;
+    bool isReverse_ {false};
 };
 } // namespace Media
 } // namespace OHOS

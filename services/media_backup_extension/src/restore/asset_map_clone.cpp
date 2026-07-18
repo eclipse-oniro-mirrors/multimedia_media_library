@@ -53,6 +53,11 @@ bool AssetMapClone::CloneAssetMapInfo()
  
     std::optional<int32_t> lastCloneSequenceOpt = GetLastCloneSequence();
     nextCloneSequence_ = lastCloneSequenceOpt.value_or(0) + 1;
+    // Clean up the tab_old_photos table before cloning
+    int32_t cleanupResult = CleanupTable();
+    if (cleanupResult != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Failed to clean up tab_old_photos table: %{public}d", cleanupResult);
+    }
     CloneAssetMapInBatches(oldFileIds);
  
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
@@ -222,5 +227,23 @@ int32_t AssetMapClone::BatchInsertWithRetry(const std::string &tableName,
     errCode = trans.RetryTrans(func, true);
     CHECK_AND_PRINT_LOG(errCode == E_OK, "BatchInsertWithRetry: tans finish fail!, ret:%{public}d", errCode);
     return errCode;
+}
+
+int32_t AssetMapClone::CleanupTable()
+{
+    if (destRdb_ == nullptr) {
+        MEDIA_ERR_LOG("Destination RdbStore is null");
+        return E_INVALID_ARGUMENTS;
+    }
+
+    std::string deleteQuery = "DELETE FROM " + TAB_CLONED_OLD_PHOTOS_TABLE;
+    int32_t result = destRdb_->ExecuteSql(deleteQuery);
+    if (result != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Failed to clean up tab_cloned_old_photos table: %{public}d", result);
+        return result;
+    }
+
+    MEDIA_INFO_LOG("Successfully cleaned up tab_old_photos table");
+    return NativeRdb::E_OK;
 }
 } // namespace OHOS::Media

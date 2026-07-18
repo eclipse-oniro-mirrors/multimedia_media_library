@@ -41,7 +41,8 @@ public:
     TabOldAlbumsClone(
         const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
         const std::shared_ptr<NativeRdb::RdbStore>& destRdb,
-        const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>>& tableAlbumIdMap);
+        const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>>& tableAlbumIdMap,
+        bool isReverse = false);
     ~TabOldAlbumsClone() = default;
 
     /**
@@ -51,6 +52,33 @@ public:
      */
     int32_t CloneAlbums(const std::vector<std::string> &sourceTables);
 
+    /**
+     * @brief Get the next global clone sequence for the current clone operation
+     * @return int32_t Next clone sequence number
+     */
+    int32_t GetNextCloneSequence();
+
+    void InitDatabase(const std::shared_ptr<NativeRdb::RdbStore>& sourceRdb,
+        const std::shared_ptr<NativeRdb::RdbStore>& destRdb);
+
+    /**
+     * @brief Clone all albums from AnalysisAlbum to tab_old_albums
+     * @return int32_t Returns 0 on success, error code on failure
+     */
+    int32_t CloneAlbumsFromAnalysisAlbum();
+
+    /**
+     * @brief Clone all albums from PhotoAlbum to tab_old_albums
+     * @return int32_t Returns 0 on success, error code on failure
+     */
+    int32_t CloneAlbumsFromPhotoAlbum();
+
+    /**
+     * @brief Update album_id in tab_old_albums based on PhotoAlbum mapping with subtype filter
+     * @return int32_t Returns 0 on success, error code on failure
+     */
+    int32_t UpdateAlbumIdsByMappingWithSubtype();
+
 private:
     /**
      * @brief Clone albums from a specific source table
@@ -59,12 +87,6 @@ private:
      * @return int32_t Returns 0 on success, error code on failure
      */
     int32_t CloneAlbumsFromTable(const std::string &sourceTable, int32_t cloneSequence);
-
-    /**
-     * @brief Get the next global clone sequence for the current clone operation
-     * @return int32_t Next clone sequence number
-     */
-    int32_t GetNextCloneSequence();
 
     /**
      * @brief Clean up the tab_old_albums table by deleting all rows
@@ -127,9 +149,18 @@ private:
      */
     std::optional<int32_t> GetNewAlbumId(const std::string& sourceTable, int32_t oldAlbumId);
 
+    /**
+     * @brief Update album_id in tab_old_albums based on PhotoAlbum mapping
+     * @param photoAlbumMap Mapping of old album IDs to new album IDs
+     * @return int32_t Returns 0 on success, error code on failure
+     */
+    int32_t UpdateAlbumIdsByMapping(const std::unordered_map<int32_t, int32_t>& photoAlbumMap);
+
     std::shared_ptr<NativeRdb::RdbStore> sourceRdb_;
     std::shared_ptr<NativeRdb::RdbStore> destRdb_;
     const std::unordered_map<std::string, std::unordered_map<int32_t, int32_t>>& tableAlbumIdMap_;
+    int32_t cloneSequence_ {0};
+    bool isReverse_ {false};
 };
 } // namespace Media
 } // namespace OHOS
