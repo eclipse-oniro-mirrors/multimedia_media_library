@@ -20,8 +20,10 @@
 #include "media_file_manager_offline_cleanup_task.h"
 
 #include "media_column.h"
+#include "media_file_utils.h"
 #include "media_log.h"
 #include "media_upgrade.h"
+#include "medialibrary_subscriber.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_unistore_manager.h"
 #include "medialibrary_unittest_utils.h"
@@ -151,6 +153,23 @@ bool QueryPhotoCountByFileId(int32_t fileId, int32_t &count)
     MEDIA_INFO_LOG("fileId: %{public}d, count: %{public}d", fileId, count);
     return true;
 }
+
+bool QueryPhotoOwnerAlbumId(int32_t fileId, int32_t &ownerAlbumId)
+{
+    ownerAlbumId = 0;
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+    auto resultSet = g_rdbStore->Query(predicates, {PhotoColumn::PHOTO_OWNER_ALBUM_ID});
+    if (resultSet == nullptr) {
+        return false;
+    }
+    if (resultSet->GoToFirstRow() == E_OK) {
+        ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("fileId: %{public}d, ownerAlbumId: %{public}d", fileId, ownerAlbumId);
+    return true;
+}
 }  // namespace
 
 void MediaFileManagerOfflineCleanupTaskTest::SetUpTestCase(void)
@@ -175,6 +194,7 @@ void MediaFileManagerOfflineCleanupTaskTest::SetUp()
 
 void MediaFileManagerOfflineCleanupTaskTest::TearDown()
 {
+    MedialibrarySubscriber::currentStatus_ = false;
 }
 
 HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ResolveTargetAlbumName_IgnoreLegacyConflict_001, TestSize.Level1)
@@ -316,6 +336,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ResetRunState_ShouldClearStatis
     task.statistics_.cloudOnlyConverted.count = 5;
     task.statistics_.albumRelationsMigrated.count = 6;
     task.statistics_.legacyAlbumsDeleted.count = 7;
+    task.statistics_.convertedAlbumsDeleted.count = 8;
 
     task.ResetRunState();
 
@@ -327,6 +348,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ResetRunState_ShouldClearStatis
     EXPECT_EQ(task.statistics_.cloudOnlyConverted.count, 0);
     EXPECT_EQ(task.statistics_.albumRelationsMigrated.count, 0);
     EXPECT_EQ(task.statistics_.legacyAlbumsDeleted.count, 0);
+    EXPECT_EQ(task.statistics_.convertedAlbumsDeleted.count, 0);
 }
 
 HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryPendingDeletedPhotos_ShouldReturnAuditFields_009,
@@ -386,5 +408,186 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, DeleteOfflineCleanupPhotos_Shou
     EXPECT_EQ(deletableCount, 0);
     EXPECT_EQ(revertedCount, 1);
     EXPECT_EQ(dirtyMismatchCount, 1);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryLocalDeleteCandidates_ShouldReturnOwnerAlbumId_011,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("QueryLocalDeleteCandidates_ShouldReturnOwnerAlbumId_011 start");
+    int32_t albumId = InsertAlbum("OwnerAlbum", "/FromDocs/OwnerAlbum",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
+    int32_t fileId = InsertPhoto("owner_photo", albumId,
+        "/storage/emulated/0/FromDocs/OwnerAlbum/owner_photo.jpg");
+
+    MediaFileManagerOfflineCleanupDao dao;
+    auto photos = dao.QueryLocalDeleteCandidates(0, TEST_LIMIT);
+
+    ASSERT_EQ(photos.size(), static_cast<size_t>(1));
+    EXPECT_EQ(photos[0].fileId, fileId);
+    EXPECT_EQ(photos[0].ownerAlbumId, albumId);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryLegacyAlbumPhotos_ShouldReturnFileSourceType_012,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("QueryLegacyAlbumPhotos_ShouldReturnFileSourceType_012 start");
+    int32_t legacyAlbumId = InsertAlbum("FmAlbum", "/FromDocs/FmAlbum",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
+    int32_t fmFileId = InsertPhoto("fm_photo", legacyAlbumId,
+        "/storage/emulated/0/FromDocs/FmAlbum/fm_photo.jpg");
+    int32_t mediaFileId = InsertPhoto("media_photo", legacyAlbumId,
+        "/storage/emulated/0/FromDocs/FmAlbum/media_photo.jpg", {
+        static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN), 0,
+        static_cast<int32_t>(FileSourceType::MEDIA), static_cast<int32_t>(PhotoPositionType::LOCAL) });
+
+    MediaFileManagerOfflineCleanupDao dao;
+    auto photos = dao.QueryLegacyAlbumPhotos(0, TEST_LIMIT);
+
+    ASSERT_EQ(photos.size(), static_cast<size_t>(2));
+    EXPECT_EQ(photos[0].fileId, fmFileId);
+    EXPECT_EQ(photos[0].fileSourceType, static_cast<int32_t>(FileSourceType::FILE_MANAGER));
+    EXPECT_EQ(photos[1].fileId, mediaFileId);
+    EXPECT_EQ(photos[1].fileSourceType, static_cast<int32_t>(FileSourceType::MEDIA));
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ShouldMarkForDeletion_PureResidueIsMarked_013, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ShouldMarkForDeletion_PureResidueIsMarked_013 start");
+    MediaFileManagerOfflineCleanupTask task;
+    OfflineCleanupPhotoRecord photo;
+    photo.fileId = 1;
+    photo.storagePath = "/storage/emulated/0/nonexistent_storage_path.jpg";
+    photo.data = "/storage/media/local/files/Photo/nonexistent_data_path.jpg";
+
+    EXPECT_TRUE(task.ShouldMarkForDeletion(photo));
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ShouldMarkForDeletion_SkipsWhenSandboxCopyExists_014,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ShouldMarkForDeletion_SkipsWhenSandboxCopyExists_014 start");
+    const std::string dataPath = "/data/local/tmp/offline_cleanup_sandbox_copy.jpg";
+    ASSERT_TRUE(MediaLibraryUnitTestUtils::CreateFileFS(dataPath));
+    ASSERT_TRUE(MediaFileUtils::IsFileExists(dataPath));
+
+    MediaFileManagerOfflineCleanupTask task;
+    OfflineCleanupPhotoRecord photo;
+    photo.fileId = 1;
+    photo.storagePath = "/storage/emulated/0/nonexistent_storage_path.jpg";
+    photo.data = dataPath;
+
+    EXPECT_FALSE(task.ShouldMarkForDeletion(photo));
+
+    MediaFileUtils::DeleteFile(dataPath);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, MigratePhotoAlbumRelations_SkipsFileManagerAssets_015,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("MigratePhotoAlbumRelations_SkipsFileManagerAssets_015 start");
+    MedialibrarySubscriber::currentStatus_ = true;
+    int32_t legacyAlbumId = InsertAlbum("FmMigrate", "/FromDocs/FmMigrate",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER));
+    InsertAlbum("FmMigrate", "/FmMigrate",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
+    int32_t fileId = InsertPhoto("fm_skip_photo", legacyAlbumId,
+        "/storage/emulated/0/FromDocs/FmMigrate/fm_skip_photo.jpg");
+
+    MediaFileManagerOfflineCleanupTask task;
+    task.ResetAllCursors();
+    task.MigratePhotoAlbumRelations();
+
+    int32_t ownerAlbumId = 0;
+    ASSERT_TRUE(QueryPhotoOwnerAlbumId(fileId, ownerAlbumId));
+    EXPECT_EQ(ownerAlbumId, legacyAlbumId);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, LogicalDeleteEmptyConvertedAlbums_DeletesAnySubtype_016,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("LogicalDeleteEmptyConvertedAlbums_DeletesAnySubtype_016 start");
+    int32_t sourceAlbumId = InsertAlbum("ConvertedSource", "/ConvertedSource",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
+    int32_t userAlbumId = InsertAlbum("ConvertedUser", "/ConvertedUser",
+        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC),
+        static_cast<int32_t>(DirtyType::TYPE_SYNCED),
+        static_cast<int32_t>(PhotoAlbumType::USER));
+
+    MediaFileManagerOfflineCleanupDao dao;
+    AccurateRefresh::AlbumAccurateRefresh albumRefresh;
+    int32_t deletedCount = -1;
+    ASSERT_TRUE(dao.LogicalDeleteEmptyConvertedAlbums({sourceAlbumId, userAlbumId}, albumRefresh, deletedCount));
+    EXPECT_EQ(deletedCount, 2);
+
+    int32_t sourceDirty = 0;
+    ASSERT_TRUE(QueryAlbumDirty(sourceAlbumId, sourceDirty));
+    EXPECT_EQ(sourceDirty, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    int32_t userDirty = 0;
+    ASSERT_TRUE(QueryAlbumDirty(userAlbumId, userDirty));
+    EXPECT_EQ(userDirty, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryEmptyConvertedAlbums_ReturnsOnlyEmptyNonDeleted_017,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("QueryEmptyConvertedAlbums_ReturnsOnlyEmptyNonDeleted_017 start");
+    int32_t emptyA = InsertAlbum("ConvA", "/ConvA",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
+    int32_t nonEmptyB = InsertAlbum("ConvB", "/ConvB",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
+    int32_t emptyC = InsertAlbum("ConvC", "/ConvC",
+        static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC),
+        static_cast<int32_t>(DirtyType::TYPE_SYNCED),
+        static_cast<int32_t>(PhotoAlbumType::USER));
+    int32_t deletedD = InsertAlbum("ConvD", "/ConvD",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC),
+        static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    InsertPhoto("ref_photo", nonEmptyB, "/storage/emulated/0/ConvB/ref_photo.jpg");
+
+    MediaFileManagerOfflineCleanupDao dao;
+    auto albums = dao.QueryEmptyConvertedAlbums({emptyA, nonEmptyB, emptyC, deletedD});
+
+    ASSERT_EQ(albums.size(), static_cast<size_t>(2));
+    EXPECT_EQ(albums[0].albumId, emptyA);
+    EXPECT_EQ(albums[1].albumId, emptyC);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, CleanupConvertedAlbums_DeletesEmptyCachedAlbums_018,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CleanupConvertedAlbums_DeletesEmptyCachedAlbums_018 start");
+    MedialibrarySubscriber::currentStatus_ = true;
+    int32_t emptyAlbumId = InsertAlbum("ConvEmpty", "/ConvEmpty",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
+    int32_t nonEmptyAlbumId = InsertAlbum("ConvNonEmpty", "/ConvNonEmpty",
+        static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC));
+    InsertPhoto("keep_photo", nonEmptyAlbumId, "/storage/emulated/0/ConvNonEmpty/keep_photo.jpg");
+
+    MediaFileManagerOfflineCleanupTask task;
+    task.convertedAlbumIdCache_.insert(emptyAlbumId);
+    task.convertedAlbumIdCache_.insert(nonEmptyAlbumId);
+    task.CleanupConvertedAlbums();
+
+    int32_t emptyDirty = 0;
+    ASSERT_TRUE(QueryAlbumDirty(emptyAlbumId, emptyDirty));
+    EXPECT_EQ(emptyDirty, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    int32_t nonEmptyDirty = 0;
+    ASSERT_TRUE(QueryAlbumDirty(nonEmptyAlbumId, nonEmptyDirty));
+    EXPECT_NE(nonEmptyDirty, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    EXPECT_EQ(task.statistics_.convertedAlbumsDeleted.count, 1);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ResetRunState_PreservesConvertedAlbumCache_019, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ResetRunState_PreservesConvertedAlbumCache_019 start");
+    MediaFileManagerOfflineCleanupTask task;
+    task.convertedAlbumIdCache_.insert(11);
+    task.convertedAlbumIdCache_.insert(22);
+    task.statistics_.convertedAlbumsDeleted.count = 5;
+
+    task.ResetRunState();
+
+    EXPECT_EQ(task.convertedAlbumIdCache_.size(), static_cast<size_t>(2));
+    EXPECT_EQ(task.statistics_.convertedAlbumsDeleted.count, 0);
 }
 }
