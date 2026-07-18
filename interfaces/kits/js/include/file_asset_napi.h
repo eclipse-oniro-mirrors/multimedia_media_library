@@ -132,6 +132,7 @@ private:
     EXPORT static napi_value UserFileMgrFavorite(napi_env env, napi_callback_info info);
     EXPORT static napi_value UserFileMgrGetThumbnail(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetReadOnlyFd(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSGetReadOnlyFdWithCached(napi_env env, napi_callback_info info);
     EXPORT static napi_value UserFileMgrSetHidden(napi_env env, napi_callback_info info);
     EXPORT static napi_value UserFileMgrSetPending(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSGetExif(napi_env env, napi_callback_info info);

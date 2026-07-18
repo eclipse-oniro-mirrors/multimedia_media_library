@@ -69,6 +69,7 @@ constexpr int32_t JS_E_INIT_FAIL = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 107);
 constexpr int32_t JS_E_PARAM_INVALID = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 151);
 constexpr int32_t JS_E_OPR_TYPE_NOT_SUPPORT = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 201);
 constexpr int32_t JS_E_INNER_FAIL = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 301);
+constexpr int32_t JS_E_INNER_OPEN_FILE_FAIL = UFM_JS_ERR(MEDIA_LIBRARY_ERR_CODE, 302);
 // trans server errorCode to js Error code
 const std::unordered_map<int, int> trans2JsError = {
     { E_PERMISSION_DENIED,    JS_ERR_PERMISSION_DENIED },
