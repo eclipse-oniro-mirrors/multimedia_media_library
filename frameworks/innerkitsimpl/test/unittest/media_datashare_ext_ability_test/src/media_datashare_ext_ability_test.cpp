@@ -726,10 +726,7 @@ HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_005, TestSize.Level1)
     MEDIA_INFO_LOG("Extension_OpenFile_007::OpenFile ret=%{public}d", ret);
 
     // Test with write mode and close via DataManager
-    if (ret > 0) {
-        close(ret);
-    }
-    EXPECT_NE(ret, 0);
+    EXPECT_LT(ret, 0);
     MEDIA_INFO_LOG("Extension_OpenFile_007::End");
 }
 } // namespace Media
