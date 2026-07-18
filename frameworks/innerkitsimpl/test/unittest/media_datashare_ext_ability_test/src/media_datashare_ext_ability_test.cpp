@@ -709,13 +709,13 @@ HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_004, TestSize.Level1)
  */
 HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_005, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("Extension_OpenFile_007::Start");
+    MEDIA_INFO_LOG("Extension_OpenFile_005::Start");
     auto extension = Init();
     extension.InitPermissionHandler();
 
     // Insert a photo asset into DB first
     struct PhotoResult photoAsset = {-1, static_cast<int32_t>(MEDIA_TYPE_IMAGE),
-        "Pictures/OpenFileTest_007.jpg", "OpenFileTest_007.jpg"};
+        "Pictures/OpenFileTest_005.jpg", "OpenFileTest_005.jpg"};
     InsertAsset(photoAsset);
 
     // Build URI from inserted asset and try to open
@@ -723,11 +723,11 @@ HWTEST_F(MediaDatashareExtAbilityTest, Extension_OpenFile_005, TestSize.Level1)
     Uri openUri(openUriStr);
     int32_t ret = extension.OpenFile(openUri, "r");
     // Permission denied or file not on disk, but should not crash
-    MEDIA_INFO_LOG("Extension_OpenFile_007::OpenFile ret=%{public}d", ret);
+    MEDIA_INFO_LOG("Extension_OpenFile_005::OpenFile ret=%{public}d", ret);
 
     // Test with write mode and close via DataManager
     EXPECT_LT(ret, 0);
-    MEDIA_INFO_LOG("Extension_OpenFile_007::End");
+    MEDIA_INFO_LOG("Extension_OpenFile_005::End");
 }
 } // namespace Media
 } // namespace OHOS
