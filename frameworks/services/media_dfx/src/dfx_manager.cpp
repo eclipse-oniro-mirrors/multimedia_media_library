@@ -236,7 +236,7 @@ static void LogDelete(DfxData *data)
             std::string mediaType =
                 MediaMapConstUtils::MediaTypeToString(GetMediaType(coverId, taskData->deleteBehaviorData_.mediaTypes));
             AuditLog auditLog = { true, "USER BEHAVIOR", "DELETE", "io", 1, "running", "ok",
-                id, type, size, (halfUri.substr(pathPos + 1)).c_str(), displayName, albumName, mediaType };
+                id, type, size, halfUri.substr(pathPos + 1), displayName, albumName, mediaType };
             HiAudit::GetInstance().Write(auditLog);
             dfxReporter->ReportDeleteBehavior(id, type, halfUri.substr(pathPos + 1));
         }

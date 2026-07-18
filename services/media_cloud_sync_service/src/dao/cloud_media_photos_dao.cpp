@@ -39,10 +39,10 @@
 #include "photo_owner_album_id_operation.h"
 #include "photo_album_upload_status_operation.h"
 #include "media_string_utils.h"
-#include "media_map_const_utils.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
 #include "file_scan_utils.h"
 #endif
+#include "dfx_const.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
