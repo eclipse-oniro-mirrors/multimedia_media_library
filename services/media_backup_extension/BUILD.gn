@@ -243,10 +243,6 @@ ohos_shared_library("mediabackup") {
     external_deps += [ "dfs_service:cloudsync_kit_inner" ]
   }
 
-  if (media_library_reverse_clone_restore_enable) {
-    defines += [ "REVERSE_RESTORE_SUPPORT" ]
-  }
-
   sanitize = {
     cfi = true
     cfi_cross_dso = true
