@@ -696,10 +696,6 @@ void CacheStreamReadThumbDbStatus(ThumbRdbOpt& opts, ThumbnailData& data, Thumbn
         default:
             break;
     }
-    if (thumbType == ThumbnailType::LCD && opts.table == PhotoColumn::PHOTOS_TABLE &&
-        !MediaLibraryBundleManager::GetInstance()->GetClientBundleName().empty()) {
-        values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
-    }
 }
 
 void UpdatePhotoLastVisitTimeAsync(ThumbnailData &data, ThumbRdbOpt &opts)
@@ -709,7 +705,6 @@ void UpdatePhotoLastVisitTimeAsync(ThumbnailData &data, ThumbRdbOpt &opts)
         ThumbRdbOpt opts = taskData->opts_;
         ThumbnailData data = taskData->thumbnailData_;
         NativeRdb::ValuesBucket values;
-        values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
         values.PutLong(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
         auto ret = ThumbnailRdbUtils::UpdateRdbStoreById(opts, data.id, values);
         CHECK_AND_PRINT_LOG(ret == E_OK, "UpdateRdbStoreById err: %{public}d. id: %{public}s path: %{public}s",

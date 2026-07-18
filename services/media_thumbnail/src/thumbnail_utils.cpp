@@ -952,7 +952,6 @@ bool ThumbnailUtils::CacheLcdInfo(ThumbRdbOpt &opts, ThumbnailData &data)
 
     ValuesBucket& values = data.rdbUpdateCache;
 
-    values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
     values.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME, static_cast<int64_t>(LcdReady::GENERATE_LCD_COMPLETED));
 
     Size lcdSize;
@@ -1024,9 +1023,6 @@ bool ThumbnailUtils::CleanThumbnailInfo(ThumbRdbOpt &opts, bool withThumb, bool 
         values.PutInt(CONST_MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_SYNCED));
         if (opts.table == CONST_MEDIALIBRARY_TABLE) {
             values.PutNull(CONST_MEDIA_DATA_DB_LCD);
-        }
-        if (opts.table == PhotoColumn::PHOTOS_TABLE) {
-            values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, 0);
         }
     }
     int changedRows;
