@@ -107,6 +107,13 @@ public:
     int32_t maxAnalysisAlbumId_{0};
     std::unordered_map<int32_t, PhotoInfo> photoInfoMap_;
     bool isCloudRestoreSatisfied_{false};
+protected:
+    std::shared_ptr<NativeRdb::RdbStore> sourceRdb_;
+    std::shared_ptr<NativeRdb::RdbStore> targetRdb_;
+    std::vector<PortraitMapInfo> portraitMapInfos_;
+    std::vector<GroupPhotoMapInfo> groupPhotoMapInfos_;
+    std::vector<FaceTagTbl> faceTagInfos_;
+    std::vector<ImageFaceTbl> imageFaceInfos_;
 };
 } // OHOS::Media
 #endif

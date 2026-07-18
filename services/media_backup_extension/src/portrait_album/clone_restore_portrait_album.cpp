@@ -23,6 +23,10 @@
 #include "media_file_utils.h"
 #include "backup_const_column.h"
 #include "upgrade_restore_task_report.h"
+#include "medialibrary_gdbstore.h"
+#include "medialibrary_gdbstore_manager.h"
+#include "vision_total_column.h"
+#include "application_context.h"
 
 using namespace std;
 namespace OHOS::Media {
@@ -48,18 +52,24 @@ void CloneRestorePortrait::Init(int32_t sceneCode, const std::string &taskId,
     this->externalScoreMaskMap_ = scoreMaskMap;
 }
 
-void CloneRestorePortrait::Preprocess()
+bool CloneRestorePortrait::RefreshTotalAlbumNumber()
 {
-    MEDIA_INFO_LOG("Preprocess");
-    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
-
-    CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, "rdbStore is nullptr.");
     std::string querySql = "SELECT count(1) AS count FROM " + ANALYSIS_ALBUM_TABLE + " WHERE ";
     std::string whereClause = "(" + SMARTALBUM_DB_ALBUM_TYPE + " = " + std::to_string(SMART) + " AND " +
         "album_subtype" + " = " + std::to_string(PORTRAIT) + ")";
     AppendExtraWhereClause(whereClause);
     querySql += whereClause;
     totalPortraitAlbumNumber_ = BackupDatabaseUtils::QueryInt(mediaRdb_, querySql, CUSTOM_COUNT);
+    return totalPortraitAlbumNumber_ > 0;
+}
+
+void CloneRestorePortrait::Preprocess()
+{
+    MEDIA_INFO_LOG("Preprocess");
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+
+    CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, "rdbStore is nullptr.");
+    RefreshTotalAlbumNumber();
     MEDIA_INFO_LOG("QueryPortraitAlbum totalNumber = %{public}d", totalPortraitAlbumNumber_);
     CHECK_AND_EXECUTE(!(totalPortraitAlbumNumber_ > 0), DeleteExistingPortraitInfos());
     
@@ -73,6 +83,36 @@ void CloneRestorePortrait::DeleteExistingPortraitInfos()
     DeleteExistingImageFaceInfos();
     DeleteExistingPortraitAlbums();
     DeleteExistingCluseringInfo();
+    DeleteExistingGdbPortraitData();
+}
+
+void CloneRestorePortrait::DeleteExistingGdbPortraitData()
+{
+    MEDIA_INFO_LOG("DeleteExistingGdbPortraitData");
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+
+    auto context = AbilityRuntime::Context::GetApplicationContext();
+    CHECK_AND_RETURN_LOG(context != nullptr, "Failed to get application context when init gdb store");
+    MediaLibraryGdbStore::SetDatabaseDir(context->GetDatabaseDir());
+
+    std::shared_ptr<MediaLibraryGdbStore> gdbStore = MediaLibraryGdbStoreManager::GetInstance().GetGdbStore();
+    if (gdbStore == nullptr) {
+        MEDIA_ERR_LOG("gdbStore is nullptr");
+        return;
+    }
+    int32_t errCode = gdbStore->Init();
+    if (errCode != E_OK) {
+        MEDIA_ERR_LOG("Gdb store init failed, errCode is %{public}d", errCode);
+        return;
+    }
+    std::string deletePersonGql = "MATCH (person:Q215627) DETACH DELETE person;";
+    gdbStore->ExecuteWriteGql(deletePersonGql);
+    std::string updateGdbSql = "UPDATE " + VISION_TOTAL_TABLE + " SET " + GRAPH_DB + "= (" + GRAPH_DB + "| " +
+        GDB_NEED_UPDATE + ") WHERE " + GRAPH_DB + "!= 0;";
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateGdbSql);
+
+    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("DeleteExistingGdbPortraitData cost %{public}lld", (long long)(end - start));
 }
 
 void CloneRestorePortrait::DeleteExistingPortraitAlbums()
@@ -102,7 +142,7 @@ void CloneRestorePortrait::DeleteExistingCluseringInfo()
     MEDIA_INFO_LOG("DeleteExistingClusteringInfo cost %{public}lld", (long long)(end - start));
 }
 
-static void ClearProfileFaceScore(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb)
+void CloneRestorePortrait::ClearProfileFaceScore(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb)
 {
     MEDIA_INFO_LOG("Clear tab_analysis_profile face_score and face_score_version");
     std::string clearProfileFaceScoreSql =
@@ -110,7 +150,7 @@ static void ClearProfileFaceScore(std::shared_ptr<NativeRdb::RdbStore> mediaLibr
     BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb, clearProfileFaceScoreSql);
 }
 
-static void ClearTotalScoreBit2(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb)
+void CloneRestorePortrait::ClearTotalScoreBit2(std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb)
 {
     MEDIA_INFO_LOG("Clear tab_analysis_total total_score bit2");
     std::string clearTotalScoreBit2Sql = "UPDATE tab_analysis_total SET total_score = total_score & ~4";
@@ -197,13 +237,13 @@ void CloneRestorePortrait::DeleteExistingImageFaceInfos()
     MEDIA_INFO_LOG("DeleteExistingImageFaceInfo cost %{public}lld", (long long)(end - start));
 }
 
-void CloneRestorePortrait::Restore()
+void CloneRestorePortrait::Restore(bool isReverse)
 {
     MEDIA_INFO_LOG("Start Restore");
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
 
     CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr && mediaLibraryRdb_ != nullptr, "rdbStore is nullptr.");
-    RestoreFromGalleryPortraitAlbum();
+    RestoreFromGalleryPortraitAlbum(isReverse);
     RestorePortraitClusteringInfo();
     RestoreImageFaceInfo();
     BackupDatabaseUtils::UpdateFaceAnalysisTblStatus(mediaLibraryRdb_);
@@ -229,7 +269,7 @@ void CloneRestorePortrait::RestoreAnalysisTotalFaceStatus()
     MEDIA_INFO_LOG("TimeCost: UpdateDatabase: %{public}" PRId64, end - start);
 }
 
-void CloneRestorePortrait::RestoreFromGalleryPortraitAlbum()
+void CloneRestorePortrait::RestoreFromGalleryPortraitAlbum(bool isReverse)
 {
     MEDIA_INFO_LOG("RestoreFromGalleryPortraitAlbum");
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
@@ -238,11 +278,11 @@ void CloneRestorePortrait::RestoreFromGalleryPortraitAlbum()
     GetMaxAlbumId();
     std::vector<std::string> commonColumn = BackupDatabaseUtils::GetCommonColumnInfos(mediaRdb_, mediaLibraryRdb_,
         ANALYSIS_ALBUM_TABLE);
-    std::vector<std::string> commonColumns = BackupDatabaseUtils::filterColumns(commonColumn,
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::FilterExcludedColumns(commonColumn,
         EXCLUDED_PORTRAIT_COLUMNS);
 
     for (int32_t offset = 0; offset < totalPortraitAlbumNumber_; offset += QUERY_COUNT) {
-        std::vector<AnalysisAlbumTbl> portraitAlbumTbl = QueryPortraitAlbumTbl(offset, commonColumns);
+        std::vector<AnalysisAlbumTbl> portraitAlbumTbl = QueryPortraitAlbumTbl(offset, commonColumns, isReverse);
         for (const auto& album : portraitAlbumTbl) {
             if (album.tagId.has_value() && album.coverUri.has_value()) {
                 coverUriInfo_.emplace_back(album.tagId.value(),
@@ -389,7 +429,7 @@ std::unordered_set<std::string> CloneRestorePortrait::QueryAllPortraitAlbum()
 }
 
 vector<AnalysisAlbumTbl> CloneRestorePortrait::QueryPortraitAlbumTbl(int32_t offset,
-    const std::vector<std::string>& commonColumns)
+    const std::vector<std::string>& commonColumns, bool isReverse)
 {
     vector<AnalysisAlbumTbl> result;
     result.reserve(QUERY_COUNT);
@@ -414,7 +454,8 @@ vector<AnalysisAlbumTbl> CloneRestorePortrait::QueryPortraitAlbumTbl(int32_t off
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         AnalysisAlbumTbl portraitAlbumTbl;
         ParseAlbumResultSet(resultSet, portraitAlbumTbl);
-        portraitAlbumTbl.albumIdNew = std::make_optional<int32_t>(albumIdNow++);
+        portraitAlbumTbl.albumIdNew = isReverse ? portraitAlbumTbl.albumIdOld :
+            std::make_optional<int32_t>(albumIdNow++);
         result.emplace_back(portraitAlbumTbl);
     }
     resultSet->Close();
@@ -509,7 +550,7 @@ void CloneRestorePortrait::RestorePortraitClusteringInfo()
 
     std::vector<std::string> commonColumn = BackupDatabaseUtils::GetCommonColumnInfos(mediaRdb_, mediaLibraryRdb_,
         VISION_FACE_TAG_TABLE);
-    std::vector<std::string> commonColumns = BackupDatabaseUtils::filterColumns(commonColumn,
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::FilterExcludedColumns(commonColumn,
         EXCLUDED_FACE_TAG_COLUMNS);
     BackupDatabaseUtils::LeftJoinValues<string>(commonColumns, "vft.");
     std::string inClause = BackupDatabaseUtils::JoinValues<string>(commonColumns, ", ");
@@ -634,7 +675,7 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
 
     std::vector<std::string> commonColumn = BackupDatabaseUtils::GetCommonColumnInfos(mediaRdb_, mediaLibraryRdb_,
         VISION_IMAGE_FACE_TABLE);
-    std::vector<std::string> commonColumns = BackupDatabaseUtils::filterColumns(commonColumn,
+    std::vector<std::string> commonColumns = BackupDatabaseUtils::FilterExcludedColumns(commonColumn,
         EXCLUDED_IMAGE_FACE_COLUMNS);
 
     BackupDatabaseUtils::DeleteExistingImageFaceData(mediaLibraryRdb_, uniqueFileIdPairs);

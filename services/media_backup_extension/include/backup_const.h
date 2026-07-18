@@ -93,6 +93,38 @@ struct DstDevFileTransferConfig {
     AncoFileTransfer ancoFileTransfer = AncoFileTransfer::ANCO_FILE_TRANSFER_NONE;
 };
 
+struct ReverseRestoreReportInfo {
+    std::string restoreDirection = "FORWARD";
+    std::string restoreCountInfo;
+    std::string restoreDatabaseVersion;
+    std::string databaseUpgradeResultInfo;
+    std::string reverseChangeErrorInfo;
+    std::string reverseErrorInfo;
+    std::string absorbNewBasicDataErrorInfo;
+    std::string absorbNewSmartDataErrorInfo;
+    std::string beforeTransformTimeCost;
+    std::string afterTransformTimeCost;
+    std::string cloneRestoreInfo;
+    std::string cloneRestoreCount;
+    std::string quickCheckResult = "UNCHECK";
+    int32_t restoreDatabaseContains {0};
+    int32_t databaseUpgradeResult {0};
+    int32_t dataReplaceResult {0};
+    int64_t perfectRestoreTime {0};
+    int64_t databaseHandleErrorTime{0};
+    int32_t duplicateCount{0};
+    int32_t failedCount{0};
+    int32_t successCount{0};
+    int32_t duplicateLakeVideoCount{0};
+    int32_t duplicateLakeImageCount{0};
+    int32_t duplicateVideoCount{0};
+    int32_t duplicateImageCount{0};
+    int32_t migrateCount{0};
+    int32_t migrateLakeImageCount{0};
+    int32_t migrateLakeVideoCount{0};
+    int32_t migratedNonHoLakeVideoCount{0};
+};
+
 const std::string RESTORE_FILES_CLOUD_DIR = "/storage/cloud/files/";
 const std::string RESTORE_FILES_LOCAL_DIR = "/storage/media/local/files/";
 const std::string RESTORE_CLOUD_DIR = "/storage/cloud/files/Photo";
@@ -112,6 +144,8 @@ const std::string GALLERY_EXTERNAL_ROOT_PATH = "/storage/";
 const std::string RESTORE_FAILED_FILES_PATH = "/storage/media/local/files/Docs/Documents/restore_failed_files";
 const std::string RESTORE_SANDBOX_DIR = "/data/storage/el2/base/.backup/restore";
 const std::string CLONE_RESTORE_BACKUP_DIR = "/storage/media/local/files/.backup/";
+#define CLONE_RESTORE_PREFERENCE_PATH "/data/storage/el2/base/preferences/"
+const std::string FROMDOCS_LPATH_PREFIX = "/FromDocs";
 
 // DB field for update scene
 const std::string GALLERY_ID = "_id";
@@ -215,20 +249,14 @@ const std::string STAT_KEY_COMPATIBLE_DIR_MAPPING = "compatibleDirMapping";
 const std::string STAT_TYPE_LAKE_PHOTO = "ancoPhoto";
 const std::string STAT_TYPE_LAKE_VIDEO = "ancoVideo";
 const std::string STAT_TYPE_LAKE_TOTAL_SIZE = "ancoTotalSize";
-const std::string STAT_TYPE_FILE_MANAGER_PHOTO = "fileManagerPhoto";
-const std::string STAT_TYPE_FILE_MANAGER_VIDEO = "fileManagerVideo";
-const std::string STAT_TYPE_FILE_MANAGER_TOTAL_SIZE = "fileManagerTotalSize";
-
 const std::string CLONE_FILE_INFO_DB = "clone_file_info.db";
 const std::string CLONE_FILE_INFO_RESTORE_DB = "clone_file_info_restore.db";
 const std::string LAKE_FILE_INFO_TABLE = "anco_file_info";
 const std::string LAKE_FILE_INFO_FAIL_TABLE = "anco_file_info_fail";
 const std::string LAKE_FILE_INFO_DEDUPLICATION_TABLE = "anco_file_info_deduplication";
 const std::string FILE_MANAGER_INFO_TABLE = "file_manager_file_info";
-const std::string FILE_MANAGER_INFO_FAIL_TABLE = "public_file_info_fail";
-const std::string FILE_MANAGER_FILE_INFO_DEDUPLICATION_TABLE = "public_file_info_deduplication";
 const std::vector<std::string> STAT_TYPES = { STAT_TYPE_PHOTO, STAT_TYPE_VIDEO, STAT_TYPE_AUDIO,
-    STAT_TYPE_LAKE_PHOTO, STAT_TYPE_LAKE_VIDEO, STAT_TYPE_FILE_MANAGER_PHOTO, STAT_TYPE_FILE_MANAGER_VIDEO };
+    STAT_TYPE_LAKE_PHOTO, STAT_TYPE_LAKE_VIDEO };
 const std::vector<std::string> STAT_PROGRESS_TYPES = { STAT_TYPE_PHOTO_VIDEO, STAT_TYPE_AUDIO, STAT_TYPE_UPDATE,
     STAT_TYPE_THUMBNAIL, STAT_TYPE_OTHER, STAT_TYPE_ONGOING };
 
@@ -237,6 +265,8 @@ const std::string EXTERNAL_DB_NAME = "external.db";
 const std::string AUDIO_DB_NAME = "audio_MediaInfo.db";
 const std::string PHOTO_SD_DB_NAME = "photo_sd_Cache.db";
 const std::string VIDEO_SD_DB_NAME = "video_sd_Cache.db";
+#define MEDIA_DB_UPGRADE_EVENTS_XML "rdb_upgrade_events.xml"
+#define MEDIA_DB_UPGRADE_VERSION_XML "rdb_config.xml"
 
 const std::string GALLERY_ALBUM_NAME = "albumName";
 const std::string GALLERY_ALBUM_IPATH = "lPath";
@@ -342,7 +372,6 @@ enum RestoreError {
     CLONE_RESTORE_DATABASE_CORRUPTION,
     DEDUPLICATION_FILE_SIZE_MISMATCH,
     ANCO_TRANSFER_FAILED,
-    FILE_MANAGER_TRANSFER_FAILED,
     PHOTOS_CLOUD_ID_EMPTY,
 };
 
@@ -404,8 +433,7 @@ const std::unordered_map<int32_t, std::string> RESTORE_ERROR_MAP = {
     { RestoreError::OPEN_CLONE_RESTORE_DATABASE_FAILED, "OPEN_CLONE_RESTORE_DATABASE_FAILED" },
     { RestoreError::CLONE_RESTORE_DATABASE_CORRUPTION, "CLONE_RESTORE_DATABASE_CORRUPTION" },
     { RestoreError::DEDUPLICATION_FILE_SIZE_MISMATCH, "DEDUPLICATION_FILE_SIZE_MISMATCH" },
-    { RestoreError::ANCO_TRANSFER_FAILED, "ANCO_TRANSFER_FAILED" },
-    { RestoreError::FILE_MANAGER_TRANSFER_FAILED, "FILE_MANAGER_TRANSFER_FAILED" },
+    { RestoreError::ANCO_TRANSFER_FAILED, "ANCO_TRANSFER_FAILED" },  
     { RestoreError::PHOTOS_CLOUD_ID_EMPTY, "PHOTOS_CLOUD_ID_EMPTY" },
 };
 
@@ -434,6 +462,40 @@ struct PhotoInfo {
     std::string cloudPath;
 };
 
+struct ReversePhotoInfo {
+    int32_t fileIdOld {-1};
+    int32_t fileIdNew {-1};
+    int32_t mediaType {0};
+};
+
+struct PortraitMapInfo {
+    std::optional<int32_t> mapAlbum;
+    std::optional<int32_t> mapAsset;
+    std::optional<int32_t> orderPosition;
+};
+
+struct GroupPhotoMapInfo {
+    std::optional<int32_t> mapAlbum;
+    std::optional<int32_t> mapAsset;
+    std::optional<int32_t> orderPosition;
+};
+
+
+struct AnalysisSearchIndexTbl {
+    std::optional<int64_t> id;
+    std::optional<int32_t> fileId;
+    std::optional<std::string> data;
+    std::optional<std::string> displayName;
+    std::optional<double> latitude;
+    std::optional<double> longitude;
+    std::optional<int64_t> dateModified;
+    std::optional<int32_t> photoStatus;
+    std::optional<int32_t> cvStatus;
+    std::optional<int32_t> geoStatus;
+    std::optional<int32_t> version;
+    std::optional<std::string> systemLanguage;
+};
+
 struct FileInfo {
     std::string filePath;
     std::string displayName;
@@ -450,7 +512,7 @@ struct FileInfo {
     std::string detailTime;
     std::string syncStatus{0};
     std::string albumId;
-    std::string uniqueId;
+    std::string cloudUniqueId;
     std::string localThumbPath;
     std::string localBigThumbPath;
     std::string resolution;
@@ -459,6 +521,7 @@ struct FileInfo {
     int32_t thumbType {-1};
     int32_t fileIdOld {-1};
     int32_t fileIdNew {-1};
+    int32_t deletedSrcdbFileId{0};  // 记录在反向吸收中被删除的srcdb file_id
     int64_t fileSize {0};
     int64_t duration {0};
     int64_t recycledTime {0};
@@ -547,6 +610,7 @@ struct FileInfo {
     bool hasMergedOriginAsset {false};
     bool hasMergedLcdThumbnail {false};
     bool hasMergedThmThumbnail {false};
+    bool needMergeThumbnail {false};
 };
 
 struct AlbumInfo {
@@ -561,6 +625,7 @@ struct AlbumInfo {
     std::unordered_map<std::string, std::variant<int32_t, int64_t, double, std::string>> valMap;
     int64_t dateModified {0};
     int32_t uploadStatus {0};
+    int32_t deletedSrcdbAlbumId {0};  // 记录被删除的旧机相册 ID（用于判重时更新 tableAlbumIdMap_）
 };
 
 struct GalleryAlbumInfo {
@@ -685,13 +750,6 @@ struct PortraitAlbumDfx {
     std::optional<int32_t> count;
 };
 
-struct PetAlbumDfx {
-    std::optional<std::string> albumName;
-    std::optional<std::string> coverUri;
-    std::optional<std::string> tagId;
-    std::optional<int32_t> count;
-};
-
 struct GroupPhotoAlbumDfx {
     std::optional<std::string> albumName;
     std::optional<std::string> coverUri;
@@ -782,41 +840,6 @@ struct AlbumCoverInfo {
     std::string coverCloudId = "";
 };
 
-struct PetFaceTbl {
-    std::optional<int32_t> id;
-    std::optional<int32_t> fileId;
-    std::optional<int32_t> petId;
-    std::optional<double> prob;
-    std::optional<int32_t> petLabel;
-    std::optional<int32_t> petTotalFaces;
-    std::optional<std::string> features;
-    std::optional<std::string> petTagId;
-    std::optional<double> scaleX;
-    std::optional<double> scaleY;
-    std::optional<double> scaleWidth;
-    std::optional<double> scaleHeight;
-    std::optional<std::string> headVersion;
-    std::optional<std::string> petFeaturesVersion;
-    std::optional<std::string> tagVersion;
-    std::optional<std::string> analysisVersion;
-    std::optional<double> jointBeautyBounderX;
-    std::optional<double> jointBeautyBounderY;
-    std::optional<double> jointBeautyBounderWidth;
-    std::optional<double> jointBeautyBounderHeight;
-    std::optional<int64_t> dateModified;
-};
-
-struct PetTagTbl {
-    std::optional<int32_t> id;
-    std::optional<std::string> tagId;
-    std::optional<int32_t> petLabel;
-    std::optional<std::string> centerFeatures;
-    std::optional<std::string> tagVersion;
-    std::optional<int32_t> count;
-    std::optional<int64_t> dateModified;
-    std::optional<std::string> analysisVersion;
-};
-
 using NeedQueryMap = std::unordered_map<PhotoRelatedType, std::unordered_set<std::string>>;
 
 // sql for external
@@ -886,8 +909,6 @@ const std::vector<std::string> EXCLUDED_FACE_TAG_COLUMNS = {"id", "user_operatio
     "user_display_level", "tag_order", "is_me", "cover_uri", "count", "date_modify", "album_type", "is_removed"};
 const std::vector<std::string> EXCLUDED_IMAGE_FACE_COLUMNS = {"id"};
 const std::vector<std::string> EXCLUDED_VIDEO_FACE_COLUMNS = {"id"};
-const std::vector<std::string> EXCLUDED_PET_FACE_COLUMNS = {"id"};
-const std::vector<std::string> EXCLUDED_PET_TAG_COLUMNS = {"id"};
 const std::vector<std::string> EXCLUDED_BEAUTY_SCORE_COLUMNS = {"id"};
 const std::string SQL_SELECT_ERROR_BURST_PHOTOS  = "COALESCE(burst_key, '') <> '' and NOT EXISTS ( \
         SELECT 1 FROM Photos p1 WHERE p1.burst_key = photos.burst_key AND p1.burst_cover_level = 1)";

@@ -163,6 +163,7 @@ PhotoAlbumDao::PhotoAlbumRowData PhotoAlbumDao::GetPhotoAlbum(const std::string 
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, albumRowData, "Media_Restore: can not find the PhotoAlbum info by"
         " lPath [%{public}s] in PhotoAlbum table.", lPath.c_str());
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        resultSet->Close();
         MEDIA_ERR_LOG("Media_Restore: can not find the PhotoAlbum info by"
             " lPath [%{public}s] in PhotoAlbum table.", lPath.c_str());
         return albumRowData;

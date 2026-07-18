@@ -47,22 +47,37 @@ std::string BurstKeyGenerator::FindTitlePrefix(const FileInfo &fileInfo)
  */
 std::string BurstKeyGenerator::FindGroupHash(const FileInfo &fileInfo)
 {
-    return fileInfo.relativeBucketId + "#" + FindTitlePrefix(fileInfo) + "#" + std::to_string(FindGroupIndex(fileInfo));
+    return fileInfo.relativeBucketId + "#" + FindTitlePrefix(fileInfo) + "#" +
+        std::to_string(FindGroupIndex(fileInfo));
+}
+
+/**
+ * @brief find IOS group hash based on fileInfo.ownerAlbumId, fileInfo.burstKey and groupIndex
+ *
+ * @param fileInfo row data from IOS file
+ * @param sceneCode clone sceneCode
+ * @return std::string hash to identify a group of burst photo
+ */
+std::string BurstKeyGenerator::FindIosGroupHash(const FileInfo &fileInfo, int32_t sceneCode)
+{
+    return  std::to_string(fileInfo.ownerAlbumId) + "#" + fileInfo.burstKey + "#" +
+        std::to_string(FindGroupIndex(fileInfo, sceneCode));
 }
 
 /**
  * @brief find groupIndex based on objectHash
  *
- * @param fileInfo row data from gallery.db # gallery_media
+ * @param fileInfo row data from gallery.db or IOS file
+ * @param sceneCode clone sceneCode
  * @return int32_t groupIndex to identify which group the fileInfo belongs to
  */
-int32_t BurstKeyGenerator::FindGroupIndex(const FileInfo &fileInfo)
+int32_t BurstKeyGenerator::FindGroupIndex(const FileInfo &fileInfo, int32_t sceneCode)
 {
     // the photo do not in recycle bin.
-    if (fileInfo.recycleFlag == 0) {
+    if (sceneCode != I_PHONE_CLONE_RESTORE && fileInfo.recycleFlag == 0) {
         return 0;
     }
-    std::string objectHash = FindObjectHash(fileInfo);
+    std::string objectHash = FindObjectHash(fileInfo, sceneCode);
     auto it = objectHashMap_.find(objectHash);
     int32_t groupIndex = 1;
     if (it != objectHashMap_.end()) {
@@ -75,18 +90,22 @@ int32_t BurstKeyGenerator::FindGroupIndex(const FileInfo &fileInfo)
 /**
  * @brief find objectHash based on fileInfo.relativeBucketId, fileInfo.title and fileInfo.hashCode
  *
- * @param fileInfo row data from gallery.db # gallery_media
+ * @param fileInfo row data from gallery.db or IOS file
+ * @param sceneCode clone sceneCode
  * @return std::string objectHash to identify fileInfo
  */
-std::string BurstKeyGenerator::FindObjectHash(const FileInfo &fileInfo)
+std::string BurstKeyGenerator::FindObjectHash(const FileInfo &fileInfo, int32_t sceneCode)
 {
+    if (sceneCode == I_PHONE_CLONE_RESTORE) {
+        return std::to_string(fileInfo.ownerAlbumId) + "#" + fileInfo.burstKey + "#" + fileInfo.displayName;
+    }
     return fileInfo.relativeBucketId + "#" + FindTitlePrefix(fileInfo) + "#" + fileInfo.hashCode;
 }
 
 /**
- * @brief generate a uuid, like xxxxxxxx-xxxx-xxxx-xxxxxxxx-xxxx
+ * @brief generate a uuid without '-'
  *
- * @return std::string uuid with 36 characters
+ * @return std::string uuid with 32 characters
  */
 std::string BurstKeyGenerator::GenerateUuid()
 {
@@ -100,23 +119,25 @@ std::string BurstKeyGenerator::GenerateUuid()
 /**
  * @brief find burstKey for burst photo in Album and Recycle-Bin
  *
- * @param fileInfo row data from gallery.db # gallery_media
+ * @param fileInfo row data from gallery.db or IOS file
+ * @param sceneCode clone sceneCode
  * @return std::string burstKey to identify burst photo group
  */
-std::string BurstKeyGenerator::FindBurstKey(const FileInfo &fileInfo)
+std::string BurstKeyGenerator::FindBurstKey(const FileInfo &fileInfo, int32_t sceneCode)
 {
     // isBurst, 1=burst cover photo, 2=burst photo, 0=others
     if (fileInfo.isBurst != BURST_COVER_TYPE && fileInfo.isBurst != BURST_MEMBER_TYPE) {
         return "";
     }
     std::unique_lock<std::mutex> lock(this->burstKeyLock_);
-    std::string groupHash = FindGroupHash(fileInfo);
+    std::string groupHash = (sceneCode == I_PHONE_CLONE_RESTORE) ?
+        FindIosGroupHash(fileInfo, sceneCode) : FindGroupHash(fileInfo);
     auto it = groupHashMap_.find(groupHash);
     if (it == groupHashMap_.end()) {
         groupHashMap_[groupHash] = GenerateUuid();
     }
     MEDIA_DEBUG_LOG("Media_Restore: burst photo, objectHash: %{public}s, groupHash: %{public}s, burstKey: %{public}s",
-        FindObjectHash(fileInfo).c_str(),
+        FindObjectHash(fileInfo, sceneCode).c_str(),
         groupHash.c_str(),
         groupHashMap_[groupHash].c_str());
     return groupHashMap_[groupHash];

@@ -41,6 +41,9 @@
 #include "os_account_manager.h"
 #include "upgrade_restore_task_report.h"
 #include "media_string_utils.h"
+#include "medialibrary_restore.h"
+#include "restore_map_code_utils.h"
+#include "photo_map_code_operation.h"
 
 namespace OHOS {
 namespace Media {
@@ -397,6 +400,16 @@ int32_t OthersCloneRestore::Init(
     return E_OK;
 }
 
+void OthersCloneRestore::PutBurstKey(NativeRdb::ValuesBucket &values, const FileInfo &fileInfo)
+{
+    std::string burstKey = this->photosRestore_.FindBurstKey(fileInfo);
+    if (burstKey != "") {
+        values.PutString(PhotoColumn::PHOTO_BURST_KEY, burstKey);
+    } else {
+        values.PutNull(PhotoColumn::PHOTO_BURST_KEY);
+    }
+}
+
 NativeRdb::ValuesBucket OthersCloneRestore::GetInsertValue(const FileInfo &fileInfo, const std::string &newPath,
     int32_t sourceType)
 {
@@ -408,7 +421,9 @@ NativeRdb::ValuesBucket OthersCloneRestore::GetInsertValue(const FileInfo &fileI
     // use owner_album_id to mark the album id which the photo is in.
     values.PutInt(PhotoColumn::PHOTO_OWNER_ALBUM_ID, fileInfo.ownerAlbumId);
     // only SOURCE album has package_name and owner_package.
-    values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, fileInfo.packageName);
+    if (!fileInfo.packageName.empty()) {
+        values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, fileInfo.packageName);
+    }
     values.PutString(MediaColumn::MEDIA_OWNER_PACKAGE, fileInfo.bundleName);
     values.PutInt(PhotoColumn::PHOTO_STRONG_ASSOCIATION, fileInfo.strongAssociation);
     if (fileInfo.dateTaken > 0) {
@@ -421,12 +436,10 @@ NativeRdb::ValuesBucket OthersCloneRestore::GetInsertValue(const FileInfo &fileI
     values.PutInt(MediaColumn::MEDIA_HIDDEN, fileInfo.hidden);
     values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, fileInfo.dateTrashed);
     values.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_BACKUP));
-    if (fileInfo.burstKey.size() > 0) {
-        values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::BURST));
-        values.PutInt(PhotoColumn::PHOTO_BURST_COVER_LEVEL, this->photosRestore_.FindBurstCoverLevel(fileInfo));
-        values.PutString(PhotoColumn::PHOTO_BURST_KEY, this->photosRestore_.FindBurstKey(fileInfo));
-    }
+    values.PutInt(PhotoColumn::PHOTO_SUBTYPE,  this->photosRestore_.FindSubtype(fileInfo));
+    values.PutInt(PhotoColumn::PHOTO_BURST_COVER_LEVEL, this->photosRestore_.FindBurstCoverLevel(fileInfo));
     values.PutInt(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, fileInfo.compositeDisplayStatus);
+    PutBurstKey(values, fileInfo);
     return values;
 }
 
@@ -566,11 +579,12 @@ int32_t CheckBurstAndGetKey(const std::string &displayName, std::string &burstKe
     return static_cast<int32_t>(BurstCoverLevelType::MEMBER);
 }
 
-void CloneIosBurstPhoto(FileInfo &fileInfo)
+void OthersCloneRestore::CloneIosBurstPhoto(FileInfo &fileInfo, int32_t sceneCode)
 {
     std::string burstKey = fileInfo.burstKey;
     fileInfo.isBurst = CheckBurstAndGetKey(fileInfo.displayName, burstKey);
     fileInfo.burstKey = burstKey;
+    fileInfo.burstKey = burstKeyGenerator_.FindBurstKey(fileInfo, sceneCode);
 }
 
 void OthersCloneRestore::SetFileInfosInCurrentDir(const std::string &file, struct stat &statInfo)
@@ -590,7 +604,7 @@ void OthersCloneRestore::SetFileInfosInCurrentDir(const std::string &file, struc
     tmpInfo.fileSize = statInfo.st_size;
     tmpInfo.dateModified = MediaFileUtils::Timespec2Millisecond(statInfo.st_mtim);
     if (sceneCode_ == I_PHONE_CLONE_RESTORE) {
-        CloneIosBurstPhoto(tmpInfo);
+        CloneIosBurstPhoto(tmpInfo, sceneCode_);
     }
     if (tmpInfo.fileType == MediaType::MEDIA_TYPE_IMAGE) {
         size_t enhancedPos = file.rfind("_enhanced");
@@ -905,6 +919,7 @@ void OthersCloneRestore::RestorePhoto()
     unsigned long pageSize = 200;
     vector<FileInfo> insertInfos;
     int32_t totalNumber = static_cast<int32_t>(photoInfos_.size());
+    PhotoMapCodeOperation::SetMapCodeReadyStatus(MAP_CODE_IS_NOT_READY);
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_CLONE_THREAD_NUM);
     for (int32_t offset = 0; offset < totalNumber; offset += QUERY_NUMBER) {
         ffrt::submit([this, offset]() {
@@ -913,6 +928,9 @@ void OthersCloneRestore::RestorePhoto()
     }
     ffrt::wait();
     ProcessBurstPhotos(this->photosRestore_.GetMaxFileId());
+    if (RestoreMapCodeUtils::GetNotReadyPhotoCount(mediaLibraryRdb_) == 0) {
+        PhotoMapCodeOperation::SetMapCodeReadyStatus(MAP_CODE_IS_READY);
+    }
 }
 
 void OthersCloneRestore::InsertPhoto(std::vector<FileInfo> &fileInfos)
@@ -941,6 +959,13 @@ void OthersCloneRestore::InsertPhoto(std::vector<FileInfo> &fileInfos)
         (long)(startInsert - start), (long)rowNum, (long)(startMove - startInsert),
         (long)fileMoveCount, (long)(fileMoveCount - videoFileMoveCount),
         (long)videoFileMoveCount, (long)(startUpdate - startMove), (long)(end - startUpdate));
+
+    int64_t startMapCode = MediaFileUtils::UTCTimeMilliSeconds();
+    int32_t mapErrCode = RestoreMapCodeUtils::FileInfosToMapCode(mediaLibraryRdb_, fileInfos);
+    int64_t endMapCode = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG(
+        "OthersCloneRestore::InsertPhoto FileInfosToMapCode mapErrCode %{public}d photoRowNum %{public}" PRId64
+        ", mapCode restore cost %{public}" PRId64 ".", mapErrCode, rowNum, endMapCode - startMapCode);
 }
 
 bool OthersCloneRestore::NeedBatchQueryPhotoForPortrait(const std::vector<FileInfo> &fileInfos,

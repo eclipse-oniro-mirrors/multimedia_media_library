@@ -87,7 +87,7 @@ void CloneRestorePortraitBase::ParseAlbumResultSet(const std::shared_ptr<NativeR
     analysisAlbumTbl.isCoverSatisfied = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet,
         ANALYSIS_COL_IS_COVER_SATISFIED);
     analysisAlbumTbl.editOperation = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet,
- 	    ANALYSIS_COL_EDIT_OPERATION);
+        ANALYSIS_COL_EDIT_OPERATION);
     analysisAlbumTbl.relationship = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
         ANALYSIS_COL_RELATIONSHIP);
     analysisAlbumTbl.extraInfo = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet,
@@ -233,8 +233,7 @@ bool CloneRestorePortraitBase::GetFileInfoByFileId(int32_t fileId,
     const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, PhotoInfo& outPhotoInfo)
 {
     auto it = std::find_if(photoInfoMap.begin(), photoInfoMap.end(),
-        [fileId](const auto& entry)
-        {
+        [fileId](const auto& entry) {
             return entry.second.fileIdNew == fileId;
         });
     if (it != photoInfoMap.end()) {

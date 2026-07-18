@@ -28,12 +28,15 @@ public:
     void Init(int32_t sceneCode, const std::string &taskId, std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
         std::shared_ptr<NativeRdb::RdbStore> mediaRdb, const std::string &backupRestoreDir);
     void RestoreAlbums(CloneRestoreHighlight &cloneHighlight);
+    void DeleteExistingCVAnalysisInfos();
 
 private:
     void RestoreAssetSdMap(CloneRestoreHighlight &cloneHighlight);
     void RestoreAlbumAssetMap(CloneRestoreHighlight &cloneHighlight);
     void InsertIntoAssetSdMap(std::vector<NativeRdb::ValuesBucket> &values);
     void InsertIntoAlbumAssetMap(std::vector<NativeRdb::ValuesBucket> &values);
+    void DeleteExistingAssetSdMap();
+    void DeleteExistingAlbumAssetMap();
     void MoveAnalysisAssets(const std::string &srcPath, const std::string &dstPath);
     int32_t BatchInsertWithRetry(const std::string &tableName,
         const std::vector<NativeRdb::ValuesBucket> &values, int64_t &rowNum);

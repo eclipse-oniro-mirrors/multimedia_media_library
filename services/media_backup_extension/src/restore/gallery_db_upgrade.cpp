@@ -50,11 +50,11 @@ int32_t GalleryDbUpgrade::OnUpgrade(NativeRdb::RdbStore &store)
     this->AddStoryChosenOfGalleryMedia(store);
     this->CreateRelativeAlbumOfGalleryAlbum(store);
     this->AddRelativeBucketIdColumn(store);
+    this->AddUploadStatusIntoGalleryAlbum(store);
+    this->AddHdcUploadStatusIntoGalleryAlbum(store);
     this->AddUserDisplayLevelIntoMergeTag(store);
     this->AddHdcUniqueIdIntoGalleryMedia(store);
     this->AddColumnsOfTOcrResult(store);
-    this->AddUploadStatusIntoGalleryAlbum(store);
-    this->AddHdcUploadStatusIntoGalleryAlbum(store);
     this->AddDirtyIntoGalleryAlbum(store);
     return NativeRdb::E_OK;
 }
@@ -211,23 +211,61 @@ int32_t GalleryDbUpgrade::AddRelativeBucketIdColumn(NativeRdb::RdbStore &store)
 
     std::string prefix = "/gallery/album/entity/preferential/*/%";
     size_t prefixLen = prefix.size();
-    std::string updateSql = "UPDATE gallery_cover_cache SET relative_bucket_id = SUBSTR(column_value, " +
-        std::to_string(prefixLen) + ") where column_name = 'relative_bucket_id' AND from_user = 1 AND "
-        "column_value LIKE'" + prefix + "'";
+    std::string updateSql = "UPDATE gallery_cover_cache SET relative_bucket_id = SUBSTR(column_value, " + 
+        std::to_string(prefixLen) +
+        ") where column_name = 'relative_bucket_id' AND from_user = 1 AND column_value LIKE'" +
+        prefix + "'";
     ret = store.ExecuteSql(updateSql);
     CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "update gallery_cover_cache Album failed,"
         "ret=%{public}d, sql=%{public}s", ret, sql.c_str());
     
     prefix = "/gallery/album/entity/common/1/%";
     prefixLen = prefix.size();
-    updateSql = "UPDATE gallery_cover_cache SET relative_bucket_id = SUBSTR(column_value, " +
+    updateSql = "UPDATE gallery_cover_cache SET relative_bucket_id = SUBSTR(column_value, " + 
         std::to_string(prefixLen) +
-        ") where column_name = 'relative_bucket_id' AND from_user = 1 AND column_value LIKE'" + prefix + "'";
+        ") where column_name = 'relative_bucket_id' AND from_user = 1 AND column_value LIKE'" +
+        prefix + "'";
     ret = store.ExecuteSql(updateSql);
     CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK, "update gallery_cover_cache Album failed,"
         "ret=%{public}d, sql=%{public}s", ret, sql.c_str());
 
     MEDIA_INFO_LOG("Add and update relative_bucket_id column for gallery_cover_cache table success");
+    return ret;
+}
+
+/**
+ * @brief Upgrade gallery_album table in gallery.db.
+ */
+int32_t GalleryDbUpgrade::AddUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store)
+{
+    bool cond = this->dbUpgradeUtils_.IsColumnExists(store, "gallery_album", "uploadStatus");
+    CHECK_AND_RETURN_RET(!cond, NativeRdb::E_OK);
+    std::string sql = this->SQL_GALLERY_ALBUM_TABLE_ADD_UPLOAD_STATUS_COLUMN;
+    int32_t ret = store.ExecuteSql(sql);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
+        "Media_Restore: GalleryDbUpgrade::AddUploadStatusIntoGalleryAlbum failed,"
+        "ret=%{public}d, sql=%{public}s",
+        ret,
+        sql.c_str());
+    MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddUploadStatusIntoGalleryAlbum success");
+    return ret;
+}
+
+/**
+ * @brief Upgrade gallery_album table in gallery.db.
+ */
+int32_t GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store)
+{
+    bool cond = this->dbUpgradeUtils_.IsColumnExists(store, "gallery_album", "hdcUploadStatus");
+    CHECK_AND_RETURN_RET(!cond, NativeRdb::E_OK);
+    std::string sql = this->SQL_GALLERY_ALBUM_TABLE_ADD_HDC_UPLOAD_STATUS_COLUMN;
+    int32_t ret = store.ExecuteSql(sql);
+    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
+        "Media_Restore: GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum failed,"
+        "ret=%{public}d, sql=%{public}s",
+        ret,
+        sql.c_str());
+    MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum success");
     return ret;
 }
 
@@ -317,42 +355,6 @@ int32_t GalleryDbUpgrade::AddColumnsOfTOcrResult(NativeRdb::RdbStore &store)
         MEDIA_INFO_LOG("AddColumnsOfTOcrResult copy width height end");
     }
     return NativeRdb::E_OK;
-}
-
-/**
- * @brief Upgrade gallery_album table in gallery.db.
- */
-int32_t GalleryDbUpgrade::AddUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store)
-{
-    bool cond = this->dbUpgradeUtils_.IsColumnExists(store, "gallery_album", "uploadStatus");
-    CHECK_AND_RETURN_RET(!cond, NativeRdb::E_OK);
-    std::string sql = this->SQL_GALLERY_ALBUM_TABLE_ADD_UPLOAD_STATUS_COLUMN;
-    int32_t ret = store.ExecuteSql(sql);
-    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
-        "Media_Restore: GalleryDbUpgrade::AddUploadStatusIntoGalleryAlbum failed,"
-        "ret=%{public}d, sql=%{public}s",
-        ret,
-        sql.c_str());
-    MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddUploadStatusIntoGalleryAlbum success");
-    return ret;
-}
-
-/**
- * @brief Upgrade gallery_album table in gallery.db.
- */
-int32_t GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum(NativeRdb::RdbStore &store)
-{
-    bool cond = this->dbUpgradeUtils_.IsColumnExists(store, "gallery_album", "hdcUploadStatus");
-    CHECK_AND_RETURN_RET(!cond, NativeRdb::E_OK);
-    std::string sql = this->SQL_GALLERY_ALBUM_TABLE_ADD_HDC_UPLOAD_STATUS_COLUMN;
-    int32_t ret = store.ExecuteSql(sql);
-    CHECK_AND_PRINT_LOG(ret == NativeRdb::E_OK,
-        "Media_Restore: GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum failed,"
-        "ret=%{public}d, sql=%{public}s",
-        ret,
-        sql.c_str());
-    MEDIA_INFO_LOG("Media_Restore: GalleryDbUpgrade::AddHdcUploadStatusIntoGalleryAlbum success");
-    return ret;
 }
 
 /**

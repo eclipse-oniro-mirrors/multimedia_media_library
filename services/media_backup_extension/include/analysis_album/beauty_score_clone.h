@@ -26,33 +26,11 @@
 
 #include "backup_const.h"
 #include "rdb_store.h"
+#include "beauty_score_clone_base.h"
 
 
 namespace OHOS {
 namespace Media {
-struct BeautyScoreTbl {
-    std::optional<int32_t> id;
-    std::optional<int32_t> fileId;
-    std::optional<int32_t> aestheticsScore;
-    std::optional<std::string> aestheticsVersion;
-    std::optional<double> prob;
-    std::optional<std::string> analysisVersion;
-    std::optional<int32_t> selectedFlag;
-    std::optional<std::string> selectedAlgoVersion;
-    std::optional<int32_t> selectedStatus;
-    std::optional<int32_t> negativeFlag;
-    std::optional<std::string> negativeAlgoVersion;
-    std::optional<std::string> aestheticsAllVersion;
-    std::optional<int32_t> aestheticsScoreAll;
-    std::optional<int32_t> isFilteredHard;
-    std::optional<double> clarityScoreAll;
-    std::optional<double> saturationScoreAll;
-    std::optional<double> luminanceScoreAll;
-    std::optional<double> semanticsScore;
-    std::optional<int32_t> isBlackWhiteStripe;
-    std::optional<int32_t> isBlurry;
-    std::optional<int32_t> isMosaic;
-};
 
 class BeautyScoreClone {
 public:
@@ -64,6 +42,7 @@ public:
         std::unordered_map<int32_t, uint32_t>* scoreMaskMap = nullptr);
 
     bool CloneBeautyScoreInfo();
+    bool ReverseCloneBeautyScoreInfo();
 
     int64_t GetMigratedScoreCount() const { return migrateScoreNum_; }
     int64_t GetMigratedFileCount() const { return migrateScoreFileNumber_; }
@@ -105,6 +84,17 @@ private:
     void UpdateAnalysisTotalTblBeautyScoreAll(std::shared_ptr<NativeRdb::RdbStore> newRdbStore,
         std::shared_ptr<NativeRdb::RdbStore> oldRdbStore, const std::vector<int32_t>& fileIdNew,
         const std::vector<int32_t>& fileIdOld);
+
+    bool QueryAndInsertSourceBeautyScores();
+    std::vector<int32_t> QuerySourceFileIds();
+    std::vector<BeautyScoreTbl> QuerySourceBeautyScores(const std::vector<int32_t>& fileIds,
+        const std::vector<std::string>& commonColumns);
+    bool InsertOrUpdateDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
+    std::unordered_set<int32_t> QueryExistingDestFileIds(const std::vector<int32_t>& fileIds);
+    bool UpdateDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
+    bool InsertNewDestBeautyScores(const std::vector<BeautyScoreTbl>& beautyScoreTbls);
+    int32_t BatchUpdateWithRetry(const std::string& tableName,
+        const std::vector<std::pair<NativeRdb::ValuesBucket, std::string>>& updates);
 
     template<typename T>
     void PutIfPresent(NativeRdb::ValuesBucket& values, const std::string& columnName,

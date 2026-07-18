@@ -23,78 +23,11 @@
 #include "media_log.h"
 #include "result_set_utils.h"
 #include "upgrade_restore_task_report.h"
+#include "location_column.h"
+#include "vision_column_comm.h"
 
 namespace OHOS::Media {
-const int32_t PAGE_SIZE = 200;
-
-const string LATITUDE = "latitude";
-const string LONGITUDE = "longitude";
-const string LOCATION_KEY = "location_key";
-const string CITY_ID = "city_id";
-const string LANGUAGE = "language";
-const string COUNTRY = "country";
-const string ADMIN_AREA = "admin_area";
-const string SUB_ADMIN_AREA = "sub_admin_area";
-const string LOCALITY = "locality";
-const string SUB_LOCALITY = "sub_locality";
-const string THOROUGHFARE = "thoroughfare";
-const string SUB_THOROUGHFARE = "sub_thoroughfare";
-const string FEATURE_NAME = "feature_name";
-const string CITY_NAME = "city_name";
-const string ADDRESS_DESCRIPTION = "address_description";
-const string AOI = "aoi";
-const string POI = "poi";
-const string FIRST_AOI = "first_aoi";
-const string FIRST_POI = "first_poi";
-const string LOCATION_VERSION = "location_version";
-const string FIRST_AOI_CATEGORY = "first_aoi_category";
-const string FIRST_POI_CATEGORY = "first_poi_category";
-const string LOCATION_TYPE = "location_type";
-const string FILE_ID = "file_id";
-
-const string GEO = "geo";
-const string GEO_KNOWLEDGE_TABLE = "tab_analysis_geo_knowledge";
-const string INTEGER = "INTEGER";
-const int32_t GEO_STATUS_SUCCESS = 1;
-
-const unordered_map<string, unordered_set<string>> COMPARED_COLUMNS_MAP = {
-    { "tab_analysis_geo_knowledge",
-        {
-            "latitude",
-            "longitude",
-            "location_key",
-            "city_id",
-            "language",
-            "country",
-            "admin_area",
-            "sub_admin_area",
-            "locality",
-            "sub_locality",
-            "thoroughfare",
-            "sub_thoroughfare",
-            "feature_name",
-            "city_name",
-            "address_description",
-            "aoi",
-            "poi",
-            "first_aoi",
-            "first_poi",
-            "location_version",
-            "first_aoi_category",
-            "first_poi_category",
-            "file_id",
-            "location_type"
-        }
-    }
-};
-
-template<typename Key, typename Value>
-Value GetValueFromMap(const unordered_map<Key, Value> &map, const Key &key, const Value &defaultValue = Value())
-{
-    auto it = map.find(key);
-    CHECK_AND_RETURN_RET(it != map.end(), defaultValue);
-    return it->second;
-}
+const std::string INTEGER = "INTEGER";
 
 void CloneRestoreGeo::Init(int32_t sceneCode, const std::string &taskId,
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, std::shared_ptr<NativeRdb::RdbStore> mediaRdb)
@@ -278,104 +211,30 @@ void CloneRestoreGeo::InsertIntoTable(std::vector<GeoCloneInfo> &infos)
 
 void CloneRestoreGeo::GetInfo(GeoCloneInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet)
 {
-    info.latitude = BackupDatabaseUtils::GetOptionalValue<double>(resultSet, LATITUDE);
-    info.longitude = BackupDatabaseUtils::GetOptionalValue<double>(resultSet, LONGITUDE);
-    info.locationKey = BackupDatabaseUtils::GetOptionalValue<int64_t>(resultSet, LOCATION_KEY);
-    info.cityId = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, CITY_ID);
-    info.language = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, LANGUAGE);
-    info.country = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, COUNTRY);
-    info.adminArea = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, ADMIN_AREA);
-    info.subAdminArea = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, SUB_ADMIN_AREA);
-    info.locality = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, LOCALITY);
-    info.subLocality = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, SUB_LOCALITY);
-    info.thoroughfare = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, THOROUGHFARE);
-    info.subThoroughfare = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, SUB_THOROUGHFARE);
-    info.featureName = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, FEATURE_NAME);
-    info.cityName = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, CITY_NAME);
-    info.addressDescription = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, ADDRESS_DESCRIPTION);
-    info.aoi = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, AOI);
-    info.poi = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, POI);
-    info.firstAoi = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, FIRST_AOI);
-    info.firstPoi = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, FIRST_POI);
-    info.locationVersion = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, LOCATION_VERSION);
-    info.firstAoiCategory = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, FIRST_AOI_CATEGORY);
-    info.firstPoiCategory = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, FIRST_POI_CATEGORY);
-    info.fileIdOld = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, FILE_ID);
-    info.locationType = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, LOCATION_TYPE);
+    GetGeoInfoFromResultSet(info, resultSet);
 }
 
 void CloneRestoreGeo::GetMapInsertValue(NativeRdb::ValuesBucket &value, GeoCloneInfo info,
     const std::unordered_set<std::string> &intersection)
 {
-    PutIfInIntersection(value, LATITUDE, info.latitude, intersection);
-    PutIfInIntersection(value, LONGITUDE, info.longitude, intersection);
-    PutIfInIntersection(value, LOCATION_KEY, info.locationKey, intersection);
-    PutIfInIntersection(value, CITY_ID, info.cityId, intersection);
-    PutIfInIntersection(value, LANGUAGE, info.language, intersection);
-    PutIfInIntersection(value, COUNTRY, info.country, intersection);
-    PutIfInIntersection(value, ADMIN_AREA, info.adminArea, intersection);
-    PutIfInIntersection(value, SUB_ADMIN_AREA, info.subAdminArea, intersection);
-    PutIfInIntersection(value, LOCALITY, info.locality, intersection);
-    PutIfInIntersection(value, SUB_LOCALITY, info.subLocality, intersection);
-    PutIfInIntersection(value, THOROUGHFARE, info.thoroughfare, intersection);
-    PutIfInIntersection(value, SUB_THOROUGHFARE, info.subThoroughfare, intersection);
-    PutIfInIntersection(value, FEATURE_NAME, info.featureName, intersection);
-    PutIfInIntersection(value, CITY_NAME, info.cityName, intersection);
-    PutIfInIntersection(value, ADDRESS_DESCRIPTION, info.addressDescription, intersection);
-    PutIfInIntersection(value, AOI, info.aoi, intersection);
-    PutIfInIntersection(value, POI, info.poi, intersection);
-    PutIfInIntersection(value, FIRST_AOI, info.firstAoi, intersection);
-    PutIfInIntersection(value, FIRST_POI, info.firstPoi, intersection);
-    PutIfInIntersection(value, LOCATION_VERSION, info.locationVersion, intersection);
-    PutIfInIntersection(value, FIRST_AOI_CATEGORY, info.firstAoiCategory, intersection);
-    PutIfInIntersection(value, FIRST_POI_CATEGORY, info.firstPoiCategory, intersection);
-    PutIfInIntersection(value, FILE_ID, info.fileIdNew, intersection);
-    PutIfInIntersection(value, LOCATION_TYPE, info.locationType, intersection);
+    GetGeoInsertValue(value, info, intersection);
 }
 
 bool CloneRestoreGeo::CheckTableColumns(const std::string& tableName,
     std::unordered_map<std::string, std::string>& columns)
 {
-    std::unordered_map<std::string, std::string> srcColumnInfoMap =
-        BackupDatabaseUtils::GetColumnInfoMap(mediaRdb_, tableName);
-    for (auto it = columns.begin(); it != columns.end(); ++it) {
-        CHECK_AND_CONTINUE(srcColumnInfoMap.find(it->first) == srcColumnInfoMap.end());
-        return false;
-    }
-    return true;
+    return CloneRestoreGeoBase::CheckTableColumns(tableName, columns, mediaRdb_);
 }
 
 std::unordered_set<std::string> CloneRestoreGeo::GetCommonColumns(const string &tableName)
 {
-    std::unordered_map<std::string, std::string> srcColumnInfoMap =
-        BackupDatabaseUtils::GetColumnInfoMap(mediaRdb_, tableName);
-    std::unordered_map<std::string, std::string> dstColumnInfoMap =
-        BackupDatabaseUtils::GetColumnInfoMap(mediaLibraryRdb_, tableName);
-    std::unordered_set<std::string> result;
-    auto comparedColumns = GetValueFromMap(COMPARED_COLUMNS_MAP, tableName);
-    for (auto it = dstColumnInfoMap.begin(); it != dstColumnInfoMap.end(); ++it) {
-        bool cond = srcColumnInfoMap.find(it->first) != srcColumnInfoMap.end() && comparedColumns.count(it->first) > 0;
-        CHECK_AND_EXECUTE(!cond, result.insert(it->first));
-    }
-    return result;
+    return CloneRestoreGeoBase::GetCommonColumns(tableName, mediaRdb_, mediaLibraryRdb_);
 }
 
 int32_t CloneRestoreGeo::BatchInsertWithRetry(const std::string &tableName,
     std::vector<NativeRdb::ValuesBucket> &values, int64_t &rowNum)
 {
-    CHECK_AND_RETURN_RET(!values.empty(), E_OK);
-    int32_t errCode = E_ERR;
-    TransactionOperations trans{ __func__ };
-    trans.SetBackupRdbStore(mediaLibraryRdb_);
-    std::function<int(void)> func = [&]()->int {
-        errCode = trans.BatchInsert(rowNum, tableName, values);
-        CHECK_AND_PRINT_LOG(errCode == E_OK, "InsertSql failed, errCode: %{public}d, rowNum: %{public}ld.",
-            errCode, (long)rowNum);
-        return errCode;
-    };
-    errCode = trans.RetryTrans(func, true);
-    CHECK_AND_PRINT_LOG(errCode == E_OK, "BatchInsertWithRetry: tans finish fail!, ret:%{public}d", errCode);
-    return errCode;
+    return CloneRestoreGeoBase::BatchInsertWithRetry(tableName, values, rowNum, mediaLibraryRdb_);
 }
 
 void CloneRestoreGeo::ReportRestoreTask()

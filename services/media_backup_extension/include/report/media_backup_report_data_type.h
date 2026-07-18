@@ -64,9 +64,27 @@ public:
     std::string errorInfo;
     std::string type;
     std::string backupInfo;
-    int duplicateCount;
-    int failedCount;
-    int successCount;
+    int duplicateCount{0};
+    int failedCount{0};
+    int successCount{0};
+    std::string restoreDirection = "FORWARD";
+    std::string restoreCountInfo;
+    std::string restoreDatabaseVersion;
+    std::string databaseUpgradeResultInfo;
+    std::string quickCheckResult = "UNCHECK";
+    std::string reverseChangeErrorInfo;
+    std::string reverseErrorInfo;
+    std::string absorbNewBasicDataErrorInfo;
+    std::string absorbNewSmartDataErrorInfo;
+    std::string beforeTransformTimeCost;
+    std::string afterTransformTimeCost;
+    std::string cloneRestoreInfo;
+    std::string cloneRestoreCount;
+    int64_t databaseHandleErrorTime{0};
+    int32_t restoreDatabaseContains{0};
+    int32_t databaseUpgradeResult{0};
+    int32_t dataReplaceResult{0};
+    int64_t perfectRestoreTime{0};
 
 public:
     std::string ToString() const
@@ -325,7 +343,7 @@ public:
     int32_t GetLakeType()
     {
         return this->lakeType_;
-    }
+    } 
     SearchCondition &SetLakeType(int32_t lakeType)
     {
         this->lakeType_ = lakeType;

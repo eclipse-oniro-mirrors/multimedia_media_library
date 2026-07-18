@@ -70,7 +70,18 @@ void CloneRestoreGeoDictionary::RestoreAlbums()
     CHECK_AND_RETURN_LOG(!cond, "rdbStore is nullptr");
     MEDIA_INFO_LOG("restore geo dictionary albums start.");
     GetGeoDictionaryInfos();
-    InsertIntoGeoDictionaryAlbums();
+    InsertIntoGeoDictionaryAlbums(true);
+    MEDIA_INFO_LOG("Restore geo dictionary albums end.");
+}
+
+void CloneRestoreGeoDictionary::ReverseRestoreAlbums()
+{
+    bool cond = (mediaRdb_ == nullptr || mediaLibraryRdb_ == nullptr);
+    CHECK_AND_RETURN_LOG(!cond, "rdbStore is nullptr");
+    MEDIA_INFO_LOG("restore geo dictionary albums start.");
+    GetGeoDictionaryInfos();
+    InsertIntoGeoDictionaryAlbums(false);
+    MEDIA_INFO_LOG("Restore geo dictionary albums end.");
 }
 
 void CloneRestoreGeoDictionary::GetGeoDictionaryInfos()
@@ -108,9 +119,11 @@ void CloneRestoreGeoDictionary::GetGeoDictionaryInfos()
     MEDIA_INFO_LOG("query tab_analysis_geo_dictionary nums: %{public}zu", geoDictionaryInfos_.size());
 }
 
-void CloneRestoreGeoDictionary::InsertIntoGeoDictionaryAlbums()
+void CloneRestoreGeoDictionary::InsertIntoGeoDictionaryAlbums(bool removeDuplicate)
 {
-    GeoDictionaryDeduplicate();
+    if (removeDuplicate) {
+        GeoDictionaryDeduplicate();
+    }
     std::unordered_set<std::string> intersection = GetCommonColumns(GEO_DICTIONARY_TABLE);
     size_t offset = 0;
     do {

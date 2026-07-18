@@ -28,6 +28,8 @@
 #include "ocr_restore.h"
 #include "restore_photos_album_hidden.h"
 #include "photos_restore.h"
+#include "tab_old_photos_restore.h"
+
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
@@ -171,6 +173,7 @@ protected:
     bool shouldIncludeSd_{false};
     PhotoAlbumRestore photoAlbumRestore_;
     PhotosRestore photosRestore_;
+    TabOldPhotosRestore tabOldPhotosRestore_;
     BackupDatabaseHelper backupDatabaseHelper_;
     ClassifyRestore classifyRestore_;
     std::vector<int> galleryFailedOffsets_;

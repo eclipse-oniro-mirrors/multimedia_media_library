@@ -48,13 +48,12 @@ const unordered_map<string, ResultSetDataType> COLUMN_TYPE_MAP = {
 
 void CloneRestoreAnalysisData::Init(int32_t sceneCode, const std::string &taskId,
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
-    std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, const std::string &totalTableName)
+    std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb)
 {
     sceneCode_ = sceneCode;
     taskId_ = taskId;
     mediaRdb_ = mediaRdb;
     mediaLibraryRdb_ = mediaLibraryRdb;
-    totalTableName_ = totalTableName;
 }
 
 std::unordered_map<std::string, std::string> CloneRestoreAnalysisData::GetTableCommonColumns(
@@ -412,7 +411,7 @@ void CloneRestoreAnalysisData::CloneAnalysisData(const std::string &table, const
     enableTimeout_ = enableTimeout;
 
     CloneRestoreAnalysisTotal cloneRestoreAnalysisTotal;
-    cloneRestoreAnalysisTotal.Init(analysisType_, PAGE_SIZE, mediaRdb_, mediaLibraryRdb_, totalTableName_);
+    cloneRestoreAnalysisTotal.Init(analysisType_, PAGE_SIZE, mediaRdb_, mediaLibraryRdb_);
     cloneRestoreAnalysisTotal_ = cloneRestoreAnalysisTotal;
     
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();

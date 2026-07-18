@@ -26,7 +26,6 @@ static constexpr char MEDIA_LIBRARY[] = "MEDIALIBRARY";
 const std::string KEY_ALBUM_COUNT = "ALBUM_COUNT";
 const std::string KEY_PHOTO_COUNT = "PHOTO_COUNT";
 const std::string KEY_FACE_COUNT = "FACE_COUNT";
-const std::string KEY_PET_COUNT = "PET_COUNT";
 const std::string KEY_TOTAL_TIME_COST = "TOTAL_TIME_COST";
 
 void BackupDfxUtils::PostPortraitStat(uint32_t albumCount, uint64_t photoCount, uint64_t faceCount,
@@ -41,20 +40,6 @@ void BackupDfxUtils::PostPortraitStat(uint32_t albumCount, uint64_t photoCount, 
         KEY_FACE_COUNT, faceCount,
         KEY_TOTAL_TIME_COST, totalTimeCost);
     CHECK_AND_PRINT_LOG(ret==0, "PostPortraitStat error:%{public}d", ret);
-}
-
-void BackupDfxUtils::PostPetStat(uint32_t albumCount, uint64_t photoCount, uint64_t petCount,
-    uint64_t totalTimeCost)
-{
-    int32_t ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_BACKUP_PET_STAT",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        KEY_ALBUM_COUNT, albumCount,
-        KEY_PHOTO_COUNT, photoCount,
-        KEY_PET_COUNT, petCount,
-        KEY_TOTAL_TIME_COST, totalTimeCost);
-    CHECK_AND_PRINT_LOG(ret==0, "PostPetStat error:%{public}d", ret);
 }
 } // namespace Media
 } // namespace OHOS

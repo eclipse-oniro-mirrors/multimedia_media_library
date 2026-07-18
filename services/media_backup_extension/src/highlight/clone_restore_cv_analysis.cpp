@@ -57,10 +57,10 @@ void CloneRestoreCVAnalysis::Init(int32_t sceneCode, const std::string &taskId,
     mediaLibraryRdb_ = mediaLibraryRdb;
     mediaRdb_ = mediaRdb;
 
-    assetPath_ = backupRestoreDir + "/storage/media/local/files/highlight/video/";
+    assetPath_ = backupRestoreDir + "video/";
     isHighlightVideoDirExist_ = MediaFileUtils::IsDirectory(assetPath_);
     MEDIA_INFO_LOG("/highlight/video/ source dir %{public}s.", isHighlightVideoDirExist_ ? "exist" : "don't exist");
-    garblePath_ = backupRestoreDir + GARBLE_DST_PATH;
+    garblePath_ = GARBLE_DST_PATH;
 }
 
 void CloneRestoreCVAnalysis::RestoreAlbums(CloneRestoreHighlight &cloneHighlight)
@@ -85,6 +85,33 @@ void CloneRestoreCVAnalysis::RestoreAlbums(CloneRestoreHighlight &cloneHighlight
     restoreTimeCost_ += endTime - startRestoreAssetSdTime;
     cloneHighlight.UpdateRestoreTimeCost(restoreTimeCost_);
     ReportCloneRestoreCVAnalysisTask();
+}
+
+void CloneRestoreCVAnalysis::DeleteExistingCVAnalysisInfos()
+{
+    MEDIA_INFO_LOG("DeleteExistingCVAnalysisInfos");
+    DeleteExistingAssetSdMap();
+    DeleteExistingAlbumAssetMap();
+}
+
+void CloneRestoreCVAnalysis::DeleteExistingAssetSdMap()
+{
+    MEDIA_INFO_LOG("DeleteExistingAssetSdMap");
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    std::string deleteAssetSdMapSql = "DELETE FROM tab_analysis_asset_sd_map";
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, deleteAssetSdMapSql);
+    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("DeleteExistingAssetSdMap cost %{public}lld", (long long)(end - start));
+}
+
+void CloneRestoreCVAnalysis::DeleteExistingAlbumAssetMap()
+{
+    MEDIA_INFO_LOG("DeleteExistingAlbumAssetMap");
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+    std::string deleteAlbumAssetMapSql = "DELETE FROM tab_analysis_album_asset_map";
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, deleteAlbumAssetMapSql);
+    int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
+    MEDIA_INFO_LOG("DeleteExistingAlbumAssetMap cost %{public}lld", (long long)(end - start));
 }
 
 void CloneRestoreCVAnalysis::RestoreAssetSdMap(CloneRestoreHighlight &cloneHighlight)

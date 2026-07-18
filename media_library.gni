@@ -58,7 +58,7 @@ declare_args() {
   }
 
   media_library_feature_mtp = true
-  media_library_feature_back_up = true
+  media_library_feature_back_up = false
   media_library_feature_cloud_enhancement = true
   media_library_feature_device_manager = false
   media_library_feature_hicollie_enable = false

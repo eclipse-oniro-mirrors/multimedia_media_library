@@ -179,7 +179,8 @@ private:
             CASE \
                 WHEN INPUT.is_local = 0 THEN NULL \
                 ELSE INPUT.is_local \
-            END AS is_local \
+            END AS is_local, \
+            INPUT.unique_id \
         FROM \
         ( \
             SELECT \

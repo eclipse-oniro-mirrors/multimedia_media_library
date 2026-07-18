@@ -74,7 +74,6 @@ group("media_library_fuzztest") {
     "medialibrarythumbnail3_fuzzer:MediaLibraryThumbnail3FuzzTest",
     "medialibraryuripermissionoperations_fuzzer:MediaLibraryUriPermissionOperationsFuzzTest",
     "medialibraryurisensitiveoperations_fuzzer:MediaLibraryUriSensitiveOperationsFuzzTest",
-    "medialibrarybackupextension_fuzzer:MediaLibraryBackupExtensionFuzzTest",
   ]
 
   deps_cloud_sync_fuzztest = [

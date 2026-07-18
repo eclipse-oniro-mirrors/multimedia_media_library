@@ -26,6 +26,7 @@ group("media_backup_package") {
 }
 
 ohos_shared_library("mediabackup") {
+  version_script = "libmediabackup.map"
   include_dirs = [
     "./include",
     "./include/analysis_album",
@@ -37,49 +38,71 @@ ohos_shared_library("mediabackup") {
     "./include/highlight",
     "./include/log",
     "./include/ocr",
-    "./include/pet_album",
     "./include/portrait_album",
     "./include/selection",
     "./include/dup_sim",
     "./include/restore",
     "./include/report",
+    "./include/reverse_clone_restore",
     "./include/video_ringtone_processor",
     "./include/utils",
     "${MEDIALIB_CLOUD_SYNC_PATH}/include",
+    "${MEDIALIB_CLOUD_SYNC_PATH}/include/dao",
+    "${MEDIALIB_CLOUD_SYNC_PATH}/include/media_cloud_asset_download",
+    "${MEDIALIB_INTERFACES_PATH}/inner_api/native/cloud_sync",
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/config",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/event_handler",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/orm/po",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/include",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/include",
-    "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore",
+    "${MEDIALIB_SERVICES_PATH}/media_kv_db/include",
+    "${MEDIALIB_SERVICES_PATH}/media_scanner/src/scanner/include",
+    "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include",
   ]
 
   include_common_utils_dirs = [ "${MEDIALIB_COMMON_PATH}/utils/include" ]
 
   include_dirs += include_common_utils_dirs
 
+  reverse_restore_sources = [
+    "./src/reverse_clone_restore/reverse_clone_restore.cpp",
+    "./src/reverse_clone_restore/photo_count_strategy.cpp",
+    "./src/reverse_clone_restore/photo_count_context.cpp",
+    "./src/reverse_clone_restore/cloud_data_cleaner.cpp",
+    "./src/reverse_clone_restore/file_id_migrator.cpp",
+    "./src/reverse_clone_restore/album_asset_absorb.cpp",
+    "./src/reverse_clone_restore/table_data_adapter.cpp",
+    "./src/reverse_clone_restore/db_integrity_checker.cpp",
+    "./src/classify/clone_restore_classify_base.cpp",
+    "./src/classify/clone_reverse_restore_classify.cpp",
+    "./src/geo_knowledge/clone_restore_geo_base.cpp",
+    "./src/geo_knowledge/clone_reverse_restore_geo.cpp",
+    "./src/analysis_album/beauty_score_clone_base.cpp",
+    "./src/reverse_clone_restore/shooting_mode_album_clone.cpp",
+  ]
+
   sources = [
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_status_notify_vo.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/event_handler/album_plugin_table_event_handler.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_service.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
     "./src/analysis_album/beauty_score_clone.cpp",
     "./src/analysis_album/portrait_nickname_clone.cpp",
     "./src/analysis_album/search_index_clone.cpp",
     "./src/analysis_album/video_face_clone.cpp",
+    "./src/analysis_album/ai_retouch_clone.cpp",
     "./src/analysis_album/watermark_clone.cpp",
-    "./src/analysis_data/clone_restore_analysis_data.cpp",
     "./src/analysis_data/clone_restore_analysis_total.cpp",
+    "./src/analysis_data/clone_restore_analysis_data.cpp",
     "./src/backup_database_helper.cpp",
     "./src/backup_database_utils.cpp",
     "./src/backup_dfx_utils.cpp",
@@ -107,9 +130,6 @@ ohos_shared_library("mediabackup") {
     "./src/native_module_ohos_medialibrary_backup.cpp",
     "./src/ocr/ocr_restore.cpp",
     "./src/others_clone_restore.cpp",
-    "./src/pet_album/clone_restore_pet_album.cpp",
-    "./src/pet_album/clone_restore_pet_base.cpp",
-    "./src/pet_album/pet_album_utils.cpp",
     "./src/portrait_album/clone_restore_portrait_album.cpp",
     "./src/portrait_album/clone_restore_portrait_base.cpp",
     "./src/portrait_album/portrait_album_utils.cpp",
@@ -138,16 +158,32 @@ ohos_shared_library("mediabackup") {
     "./src/restore/photos_data_handler.cpp",
     "./src/restore/photos_restore.cpp",
     "./src/restore/restore_photos_album_hidden.cpp",
+    "./src/reverse_clone_restore/anco_reverse_clone_adapter.cpp",
+    "./src/reverse_clone_restore/reverse_clone_candidate_resolver.cpp",
+    "./src/reverse_clone_restore/reverse_clone_kvstore_executor.cpp",
+    "./src/reverse_clone_restore/reverse_clone_resource_executor.cpp",
+    "./src/reverse_clone_restore/reverse_clone_resource_inherit_helper.cpp",
+    "./src/reverse_clone_restore/reverse_clone_resource_inherit_service.cpp",
+    "./src/reverse_clone_restore/reverse_clone_resource_plan_builder.cpp",
     "./src/restore/tab_old_albums_clone.cpp",
     "./src/restore/tab_old_photos_restore.cpp",
     "./src/video_ringtone_processor/video_ringtone_processor.cpp",
     "./src/upgrade_restore.cpp",
+    "./src/restore_map_code_utils.cpp",
+    "./src/reverse_clone_reliability_marker.cpp",
+    "./src/reverse_clone_restore_resume.cpp",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/operation/photo_map_code_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_dao.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_manager.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_worker.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_lcd_aging/src/lcd_aging_service.cpp",
     "./src/utils/backup_audit_utils.cpp",
   ]
 
-  source_ipc_client = [
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp",
-  ]
+  sources += reverse_restore_sources
+
+  source_ipc_client = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp" ]
 
   sources += source_ipc_client
 
@@ -167,10 +203,8 @@ ohos_shared_library("mediabackup") {
     "ability_runtime:app_context",
     "ability_runtime:napi_base_context",
     "ability_runtime:runtime",
-    "background_task_mgr:bgtaskmgr_innerkits",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
-    "ipc:ipc_napi",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "e2fsprogs:libext2_uuid",
@@ -183,10 +217,11 @@ ohos_shared_library("mediabackup") {
     "ipc:ipc_single",
     "ipc:ipc_napi",
     "kv_store:distributeddata_inner",
-    "libxml2:libxml2",
     "libuv:uv",
+    "libxml2:libxml2",
     "media_foundation:media_foundation",
     "napi:ace_napi",
+    "netmanager_base:net_conn_manager_if",
     "node:node_header_notice",
     "os_account:libaccountkits",  # ohos_account
     "os_account:os_account_innerkits",  # os_account
@@ -197,7 +232,6 @@ ohos_shared_library("mediabackup") {
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
     "zlib:shared_libz",
-    "eventhandler:libeventhandler",
     "netmanager_base:net_conn_manager_if",
   ]
 

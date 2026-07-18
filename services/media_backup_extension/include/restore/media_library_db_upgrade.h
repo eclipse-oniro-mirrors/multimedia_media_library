@@ -30,6 +30,7 @@ public:
     bool CheckClassifyAlbumExist(const std::string &newAlbumName, NativeRdb::RdbStore &store,
         bool &isSetAggregateBit);
     void SetAggregateBit(const int32_t &bitPosition);
+    void AggregateClassifyAlbum(NativeRdb::RdbStore &store);
 
 private:
     int32_t UpgradeAlbumPlugin(NativeRdb::RdbStore &store);
@@ -38,13 +39,10 @@ private:
     int32_t UpgradePhotoMap(NativeRdb::RdbStore &store);
     int32_t MergeAlbumFromOldBundleNameToNewBundleName(NativeRdb::RdbStore &store);
     int32_t UpgradePhotosBelongsToAlbum(NativeRdb::RdbStore &store);
-    void AggregateClassifyAlbum(NativeRdb::RdbStore &store);
     int32_t UpgradePhotoAlbumAddUploadStatusColumn(NativeRdb::RdbStore &store);
-
 private:
     int32_t AddPhotosChangeTime(NativeRdb::RdbStore &store);
     int32_t AddPhotoAlbumChangeTime(NativeRdb::RdbStore &store);
-    int32_t AddPhotosEffectModeColumn(NativeRdb::RdbStore &store);
     int32_t AddOwnerAlbumIdColumn(NativeRdb::RdbStore &store);
     int32_t AddFileSourceTypeColumn(NativeRdb::RdbStore &store);
     int32_t AddlPathColumn(NativeRdb::RdbStore &store);
@@ -55,6 +53,7 @@ private:
         NativeRdb::RdbStore &store, bool &isSetAggregateBitSecond);
     void ProcessOcrClassifyAlbum(const std::string &newAlbumName, const std::vector<std::string> &ocrText,
         NativeRdb::RdbStore &store);
+    int32_t AddPhotosEffectMode(NativeRdb::RdbStore &store);
 
 private:
     DbUpgradeUtils dbUpgradeUtils_;
@@ -141,19 +140,18 @@ private:
     /* Clear the cache table. */
     const std::string SQL_TEMP_ALBUM_BUNDLE_NAME_DELETE = "\
         DROP TABLE IF EXISTS temp_album_bundle_name;";
-
     /* Cache the mapping of old to new bundle names */
-    const std::string SQL_TEMP_ALBUM_BUNDLE_NAME_CREATE =
-        "CREATE TABLE IF NOT EXISTS temp_album_bundle_name ("
-        "bundle_name_old TEXT,"
-        "bundle_name_new TEXT"
-        ");";
-
-    const std::string SQL_TEMP_ALBUM_BUNDLE_NAME_INSERT =
-        "INSERT INTO temp_album_bundle_name (bundle_name_old, bundle_name_new) VALUES "
-        "('com.huawei.ohos.screenrecorder', 'com.huawei.hmos.screenrecorder'),"
-        "('com.huawei.ohos.screenshot', 'com.huawei.hmos.screenshot');";
-
+    const std::string SQL_TEMP_ALBUM_BUNDLE_NAME_CREATE = "\
+        CREATE TABLE IF NOT EXISTS temp_album_bundle_name \
+        AS \
+        SELECT \
+            'com.huawei.ohos.screenrecorder' AS bundle_name_old, \
+            'com.huawei.hmos.screenrecorder' AS bundle_name_new \
+        UNION \
+        SELECT \
+            'com.huawei.ohos.screenshot' AS bundle_name_old, \
+            'com.huawei.hmos.screenshot' AS bundle_name_new \
+        ;";
     /* Create the Album if it doesn't exist */
     const std::string SQL_PHOTO_ALBUM_INSERT_NEW_ALBUM = "\
         INSERT INTO PhotoAlbum( \
@@ -254,7 +252,6 @@ private:
     const std::vector<std::string> SQL_MERGE_ALBUM_FROM_OLD_BUNDLE_NAME_TO_NEW_BUNDLE_NAME = {
         SQL_TEMP_ALBUM_BUNDLE_NAME_DELETE,
         SQL_TEMP_ALBUM_BUNDLE_NAME_CREATE,
-        SQL_TEMP_ALBUM_BUNDLE_NAME_INSERT,
         SQL_PHOTO_ALBUM_INSERT_NEW_ALBUM,
         SQL_PHOTO_MAP_INSERT_NEW_ALBUM,
         SQL_PHOTO_MAP_DELETE_OLD_ALBUM,
@@ -373,6 +370,8 @@ private:
             AND (";
     const std::string SQL_PHOTO_ALBUM_TABLE_ADD_UPDATE_STATUS_COLUMN =
         "ALTER TABLE PhotoAlbum ADD COLUMN upload_status INT DEFAULT 1 NOT NULL;";
+    const std::string SQL_PHOTO_TABLE_ADD_EFFECT_MODE =
+        "ALTER TABLE Photos ADD COLUMN moving_photo_effect_mode INT DEFAULT 0 NOT NULL;";
     const std::vector<std::string> SQL_PHOTOS_CHANGE_TIME = {
         "ALTER TABLE Photos ADD COLUMN change_time BIGINT DEFAULT 0 NOT NULL;",
         "UPDATE Photos SET change_time = date_modified;"
@@ -381,8 +380,6 @@ private:
         "ALTER TABLE PhotoAlbum ADD COLUMN change_time BIGINT DEFAULT 0 NOT NULL;",
         "UPDATE PhotoAlbum SET change_time = date_modified;"
     };
-    const std::string SQL_PHOTOS_TABLE_ADD_EFFECT_MODE =
-        "ALTER TABLE Photos ADD COLUMN moving_photo_effect_mode INT DEFAULT 0 NOT NULL;";
 };
 }  // namespace DataTransfer
 }  // namespace OHOS::Media

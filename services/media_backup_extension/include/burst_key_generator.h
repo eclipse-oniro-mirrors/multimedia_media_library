@@ -23,13 +23,14 @@
 namespace OHOS::Media {
 class BurstKeyGenerator {
 public:
-    std::string FindBurstKey(const FileInfo &fileInfo);
+    std::string FindBurstKey(const FileInfo &fileInfo, int32_t sceneCode);
 
 private:
     std::string FindTitlePrefix(const FileInfo &fileInfo);
     std::string FindGroupHash(const FileInfo &fileInfo);
-    int32_t FindGroupIndex(const FileInfo &fileInfo);
-    std::string FindObjectHash(const FileInfo &fileInfo);
+    std::string FindIosGroupHash(const FileInfo &fileInfo, int32_t sceneCode);
+    int32_t FindGroupIndex(const FileInfo &fileInfo, int32_t sceneCode = 0);
+    std::string FindObjectHash(const FileInfo &fileInfo, int32_t sceneCode = 0);
     std::string GenerateUuid();
     std::string ToString(const FileInfo &fileInfo);
 

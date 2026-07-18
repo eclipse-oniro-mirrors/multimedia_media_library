@@ -42,8 +42,8 @@ int32_t CloneRestoreAnalysisTotal::GetTotalNumber()
 void CloneRestoreAnalysisTotal::GetInfos(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
 {
     analysisTotalInfos_.clear();
-    std::string querySql = "SELECT file_id, " + type_ + " FROM " +
-        totalTableName_ + " WHERE file_id > ? ORDER BY file_id LIMIT ?";
+    std::string querySql = "SELECT file_id, " + type_ + " FROM " + totalTableName_ +
+        " WHERE file_id > ? ORDER BY file_id LIMIT ?";
     std::vector<NativeRdb::ValueObject> params = { lastId_, pageSize_ };
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, querySql, params);
     CHECK_AND_RETURN(resultSet != nullptr);
