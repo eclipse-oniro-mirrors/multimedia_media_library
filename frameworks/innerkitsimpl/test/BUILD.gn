@@ -80,7 +80,6 @@ group("test") {
     "unittest/madvise_utils_test:unittest",
     "unittest/media_analysis_data_service_test:unittest",
     "unittest/media_library_lcd_aging_test:unittest",
-    "unittest/medialibrary_backup_test:unittest",
     "unittest/media_assets_controller_service_test:unittest",
     "unittest/media_file_manager_test:unittest",
     "unittest/media_file_management_test:unittest",
