@@ -62,6 +62,7 @@ enum class AssetChangeOperation {
     SET_MOVING_PHOTO_VERSION,
     SET_HIDDEN_ATTRIBUTE,
     SET_DISPLAY_NAME_BY_FILE,
+    SET_CAMERA_EDIT_DATA
 };
 
 enum class AddResourceMode {
@@ -148,6 +149,7 @@ private:
     EXPORT static napi_value CreateAssetRequestFromRealPath(napi_env env, const std::string& realPath);
     EXPORT static napi_value JSDeleteAssets(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetEditData(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSSetCameraEditData(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetFavorite(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetHidden(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetTitle(napi_env env, napi_callback_info info);
@@ -179,7 +181,7 @@ private:
     EXPORT static napi_value JSSetHiddenAttribute(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSSetTitleByFile(napi_env env, napi_callback_info info);
 
-    bool CheckChangeOperations(napi_env env);
+    bool CheckChangeOperations(napi_env env, unique_ptr<MediaAssetChangeRequestAsyncContext>& context);
     bool CheckMovingPhotoWriteOperation();
     bool CheckEffectModeWriteOperation();
     int32_t CopyFileToMediaLibrary(const UniqueFd& destFd, bool isMovingPhotoVideo = false);
@@ -231,6 +233,7 @@ struct MediaAssetChangeRequestAsyncContext : public NapiError {
     std::string realPath;
     int32_t fd;
     int32_t userId_ = -1;
+    bool isCameraEditData {false};
 };
 } // namespace Media
 } // namespace OHOS

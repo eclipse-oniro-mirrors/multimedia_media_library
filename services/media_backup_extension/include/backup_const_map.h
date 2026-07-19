@@ -17,7 +17,6 @@
 #define OHOS_MEDIA_BACKUP_CONST_MAP_H
 
 #include <string>
-#include <unordered_map>
 
 namespace OHOS {
 namespace Media {
@@ -42,10 +41,6 @@ static std::string GetDUALBundleName(bool bLower = false)
     }
     return dualBundleName;
 }
-
-const std::string SCREEN_SHOT_AND_RECORDER = "截屏录屏";
-const std::string VIDEO_SCREEN_RECORDER_NAME = "屏幕录制";
-const std::string VIDEO_SCREEN_RECORDER = "com."+ GetDUALBundleName(true) +".hmos.screenrecorder";
 } // namespace Media
 } // namespace OHOS
 

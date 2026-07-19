@@ -28,6 +28,7 @@
 #include "media_file_utils.h"
 #include "medialibrary_appstate_observer.h"
 #include "datashare_predicates_objects.h"
+#include "media_values_bucket_utils.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -67,7 +68,7 @@ int32_t MediaLibraryAppUriPermissionOperations::HandleInsertOperation(MediaLibra
     MEDIA_INFO_LOG("insert appUriPermission begin");
     // permissionType from param
     int permissionTypeParam = -1;
-    if (!GetIntFromValuesBucket(cmd.GetValueBucket(), AppUriPermissionColumn::PERMISSION_TYPE,
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), AppUriPermissionColumn::PERMISSION_TYPE,
         permissionTypeParam)) {
         return ERROR;
     }
@@ -76,7 +77,7 @@ int32_t MediaLibraryAppUriPermissionOperations::HandleInsertOperation(MediaLibra
     }
     // parse fileId
     int fileId = -1;
-    if (!GetIntFromValuesBucket(cmd.GetValueBucket(), AppUriPermissionColumn::FILE_ID, fileId)) {
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), AppUriPermissionColumn::FILE_ID, fileId)) {
         return ERROR;
     }
     if (!IsPhotoExist(fileId)) {
@@ -229,14 +230,14 @@ std::shared_ptr<OHOS::NativeRdb::ResultSet> MediaLibraryAppUriPermissionOperatio
     }
     // parse fileId
     int fileId = -1;
-    if (!GetIntFromValuesBucket(valueBucket, AppUriPermissionColumn::FILE_ID, fileId)) {
+    if (!MediaValuesBucketUtils::GetInt(valueBucket, AppUriPermissionColumn::FILE_ID, fileId)) {
         resultFlag = ERROR;
         return nullptr;
     }
 
     // parse uriType
     int uriType = -1;
-    if (!GetIntFromValuesBucket(valueBucket, AppUriPermissionColumn::URI_TYPE, uriType)) {
+    if (!MediaValuesBucketUtils::GetInt(valueBucket, AppUriPermissionColumn::URI_TYPE, uriType)) {
         resultFlag = ERROR;
         return nullptr;
     }
@@ -254,19 +255,6 @@ std::shared_ptr<OHOS::NativeRdb::ResultSet> MediaLibraryAppUriPermissionOperatio
     shared_ptr<NativeRdb::ResultSet> resultSet = QueryOperation(permissionPredicates, fetchColumns);
     resultFlag = (resultSet == nullptr ? NO_DATA_EXIST : ALREADY_EXIST);
     return resultSet;
-}
-
-bool MediaLibraryAppUriPermissionOperations::GetIntFromValuesBucket(
-    OHOS::NativeRdb::ValuesBucket &valueBucket, const std::string &column, int &result)
-{
-    ValueObject valueObject;
-    bool ret = valueBucket.GetObject(column, valueObject);
-    if (!ret) {
-        MEDIA_ERR_LOG("valueBucket param without %{public}s", column.c_str());
-        return false;
-    }
-    result = valueObject;
-    return true;
 }
 
 int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<NativeRdb::ResultSet> &resultSetDB,

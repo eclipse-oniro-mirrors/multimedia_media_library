@@ -160,6 +160,7 @@ napi_value MediaAssetChangeRequestNapi::Init(napi_env env, napi_value exports)
             DECLARE_NAPI_STATIC_FUNCTION("deleteAssets", JSDeleteAssets),
             DECLARE_NAPI_FUNCTION("getAsset", JSGetAsset),
             DECLARE_NAPI_FUNCTION("setEditData", JSSetEditData),
+            DECLARE_NAPI_FUNCTION("setCameraEditData", JSSetCameraEditData),
             DECLARE_NAPI_FUNCTION("setFavorite", JSSetFavorite),
             DECLARE_NAPI_FUNCTION("setHidden", JSSetHidden),
             DECLARE_NAPI_FUNCTION("setTitle", JSSetTitle),
@@ -447,7 +448,8 @@ bool MediaAssetChangeRequestNapi::CheckSetLivePhoto4dStatus(
     return true;
 }
 
-bool MediaAssetChangeRequestNapi::CheckChangeOperations(napi_env env)
+bool MediaAssetChangeRequestNapi::CheckChangeOperations(napi_env env,
+    unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
 {
     if (assetChangeOperations_.empty()) {
         NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "None request to apply");
@@ -456,12 +458,14 @@ bool MediaAssetChangeRequestNapi::CheckChangeOperations(napi_env env)
 
     bool isCreateFromScratch = Contains(AssetChangeOperation::CREATE_FROM_SCRATCH);
     bool isCreateFromUri = Contains(AssetChangeOperation::CREATE_FROM_URI);
-    bool containsEdit = Contains(AssetChangeOperation::SET_EDIT_DATA);
+    bool containsEdit = Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     bool containsGetHandler = Contains(AssetChangeOperation::GET_WRITE_CACHE_HANDLER);
     bool containsAddResource = Contains(AssetChangeOperation::ADD_RESOURCE);
     bool containsAddResourceForPicker = Contains(AssetChangeOperation::ADD_RESOURCE_FOR_PICKER);
     bool isSaveCameraPhoto = Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO);
     bool containsSetLivePhoto4dStatus = Contains(AssetChangeOperation::SET_LIVEPHOTO_4D_STATUS);
+    context->isCameraEditData = Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     if ((isCreateFromScratch || containsEdit) && !containsGetHandler && !containsAddResource &&
         !containsAddResourceForPicker && !isSaveCameraPhoto && !containsSetLivePhoto4dStatus) {
         NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Cannot create or edit asset without data to write");
@@ -1169,6 +1173,42 @@ napi_value MediaAssetChangeRequestNapi::JSSetEditData(napi_env env, napi_callbac
     RETURN_NAPI_UNDEFINED(env);
 }
 
+napi_value MediaAssetChangeRequestNapi::JSSetCameraEditData(napi_env env, napi_callback_info info)
+{
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
+    CHECK_PARAMETER_WITH_MESSAGE(env,
+        MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, asyncContext, ARGS_ONE, ARGS_ONE) == napi_ok,
+        "Failed to get object info");
+
+    auto changeRequest = asyncContext->objectInfo;
+    napi_value arg = asyncContext->argv[PARAM0];
+    napi_valuetype valueType;
+    MediaAssetEditDataNapi* editDataNapi;
+    CHECK_ARGS(env, napi_typeof(env, arg, &valueType), MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR);
+    CHECK_PARAMETER_WITH_MESSAGE(env, valueType == napi_object, "Invalid argument type");
+    CHECK_ARGS(env, napi_unwrap(env, arg, reinterpret_cast<void**>(&editDataNapi)),
+        MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR);
+    CHECK_PARAMETER_WITH_MESSAGE(env, editDataNapi != nullptr, "Failed to get MediaAssetEditDataNapi object");
+
+    shared_ptr<MediaAssetEditData> editData = editDataNapi->GetMediaAssetEditData();
+    CHECK_PARAMETER_WITH_MESSAGE(env, editData != nullptr, "editData is null");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editData->GetCompatibleFormat().empty(), "Invalid compatibleFormat");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editData->GetFormatVersion().empty(), "Invalid formatVersion");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editData->GetData().empty(), "Invalid data");
+    changeRequest->editData_ = editData;
+    changeRequest->RecordChangeOperation(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
+    if (changeRequest->Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO) &&
+        !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
+        changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
+    }
+    RETURN_NAPI_UNDEFINED(env);
+}
+
 napi_value MediaAssetChangeRequestNapi::JSSetFavorite(napi_env env, napi_callback_info info)
 {
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
@@ -1570,7 +1610,8 @@ napi_value MediaAssetChangeRequestNapi::JSSaveCameraPhoto(napi_env env, napi_cal
     }
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
-    if (changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) &&
+    if ((changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        changeRequest->Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA)) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
     }
@@ -3059,6 +3100,7 @@ static bool AddFiltersExecute(MediaAssetChangeRequestAsyncContext &context)
 
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset->GetId());
+    valuesBucket.Put(CONST_IS_CAMERA_EDIT_DATA, context.isCameraEditData);
     int ret = context.objectInfo->PutMediaAssetEditData(valuesBucket);
     CHECK_COND_RET(ret == E_OK, false, "Failed to put editData");
     AssetChangeReqBody reqBody;
@@ -3315,7 +3357,8 @@ static void ApplyAssetChangeRequestExecute(napi_env env, void* data)
             valid = iter->second(*context);
             tracer.Finish();
         } else if (changeOperation == AssetChangeOperation::CREATE_FROM_SCRATCH ||
-                   changeOperation == AssetChangeOperation::SET_EDIT_DATA) {
+            changeOperation == AssetChangeOperation::SET_EDIT_DATA ||
+            changeOperation == AssetChangeOperation::SET_CAMERA_EDIT_DATA) {
             // Perform CREATE_FROM_SCRATCH and SET_EDIT_DATA during GET_WRITE_CACHE_HANDLER or ADD_RESOURCE.
             valid = true;
         } else {
@@ -3369,7 +3412,8 @@ napi_value MediaAssetChangeRequestNapi::ApplyChanges(napi_env env, napi_callback
     asyncContext->objectInfo = this;
     CHECK_COND_WITH_MESSAGE(env, napi_create_reference(env, asyncContext->argv[PARAM0], NAPI_INIT_REF_COUNT,
         &asyncContext->objectInfoRef) == napi_ok, "Failed to create objectInfo reference");
-    CHECK_COND_WITH_MESSAGE(env, CheckChangeOperations(env), "Failed to check asset change request operations");
+    CHECK_COND_WITH_MESSAGE(env, CheckChangeOperations(env, asyncContext),
+        "Failed to check asset change request operations");
     CHECK_COND_WITH_MESSAGE(env, CheckSetLivePhoto4dStatus(env, asyncContext),
         "livePhoto4d:Failed to check asset set live photo 4d status request operations");
     asyncContext->assetChangeOperations = assetChangeOperations_;

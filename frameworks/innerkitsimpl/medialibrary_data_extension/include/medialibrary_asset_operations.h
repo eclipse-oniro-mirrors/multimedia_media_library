@@ -116,10 +116,6 @@ public:
     EXPORT static int32_t QueryTotalAlbum(std::vector<std::shared_ptr<PhotoAlbum>> &PhotoAlbumVector);
     EXPORT static std::shared_ptr<FileAsset> QuerySinglePhoto(int32_t rowId);
     EXPORT static std::vector<std::string> QueryPhotosTableColumnInfo();
-    EXPORT static bool GetInt32FromValuesBucket(const NativeRdb::ValuesBucket &values, const std::string &column,
-        int32_t &value);
-    EXPORT static bool GetStringFromValuesBucket(const NativeRdb::ValuesBucket &values, const std::string &column,
-        std::string &value);
     static std::shared_ptr<FileAsset> GetAssetFromResultSet(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
         const std::vector<std::string> &columns);
     EXPORT static std::shared_ptr<FileAsset> GetFileAssetFromDb(const std::string &column, const std::string &value,

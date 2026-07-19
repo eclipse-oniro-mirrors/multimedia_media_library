@@ -46,6 +46,14 @@
         }                                                                                       \
     } while (0)
 
+#define CHECK_PARAMETER_WITH_MESSAGE(env, cond, msg)                 \
+    do {                                                            \
+        if (!(cond)) {                                    \
+            AniError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, __FUNCTION__, __LINE__, msg); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_COND_WITH_RET_MESSAGE(env, cond, ret, msg)                                        \
     do {                                                                                        \
         if (!(cond)) {                                                                          \

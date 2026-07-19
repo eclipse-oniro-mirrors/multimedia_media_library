@@ -21,6 +21,7 @@
 #include "thumbnail_const.h"
 #include "hi_audit.h"
 #include "media_audio_column.h"
+#include "media_values_bucket_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -113,7 +114,7 @@ int32_t MediaLibraryAudioOperations::Close(MediaLibraryCommand &cmd)
 {
     const ValuesBucket &values = cmd.GetValueBucket();
     string uriString;
-    if (!GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_URI, uriString)) {
+    if (!MediaValuesBucketUtils::GetString(values, CONST_MEDIA_DATA_DB_URI, uriString)) {
         return E_INVALID_VALUES;
     }
     string pendingStatus = cmd.GetQuerySetParam(MediaColumn::MEDIA_TIME_PENDING);
@@ -126,7 +127,7 @@ int32_t MediaLibraryAudioOperations::Close(MediaLibraryCommand &cmd)
 
     int32_t isSync = 0;
     int32_t errCode = 0;
-    if (GetInt32FromValuesBucket(cmd.GetValueBucket(), CLOSE_CREATE_THUMB_STATUS, isSync) &&
+    if (MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), CLOSE_CREATE_THUMB_STATUS, isSync) &&
         isSync == CREATE_THUMB_SYNC_STATUS) {
         errCode = CloseAsset(fileAsset, true);
     } else {
@@ -141,18 +142,18 @@ int32_t MediaLibraryAudioOperations::CreateV9(MediaLibraryCommand& cmd)
     ValuesBucket &values = cmd.GetValueBucket();
 
     string displayName;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, AudioColumn::MEDIA_NAME, displayName),
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, AudioColumn::MEDIA_NAME, displayName),
         E_HAS_DB_ERROR);
     fileAsset.SetDisplayName(displayName);
 
     string relativePath;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, AudioColumn::MEDIA_RELATIVE_PATH, relativePath),
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, AudioColumn::MEDIA_RELATIVE_PATH, relativePath),
         E_HAS_DB_ERROR);
     fileAsset.SetRelativePath(relativePath);
     MediaFileUtils::FormatRelativePath(relativePath);
 
     int32_t mediaType = 0;
-    CHECK_AND_RETURN_RET(GetInt32FromValuesBucket(values, AudioColumn::MEDIA_TYPE, mediaType),
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetInt(values, AudioColumn::MEDIA_TYPE, mediaType),
         E_HAS_DB_ERROR);
     if (mediaType != MediaType::MEDIA_TYPE_AUDIO) {
         return E_CHECK_MEDIATYPE_FAIL;
@@ -199,16 +200,17 @@ int32_t MediaLibraryAudioOperations::CreateV10(MediaLibraryCommand &cmd)
     string extention;
     bool isContains = false;
     bool isNeedGrant = false;
-    if (GetStringFromValuesBucket(values, AudioColumn::MEDIA_NAME, displayName)) {
+    if (MediaValuesBucketUtils::GetString(values, AudioColumn::MEDIA_NAME, displayName)) {
         fileAsset.SetDisplayName(displayName);
         fileAsset.SetTimePending(UNCREATE_FILE_TIMEPENDING);
         isContains = true;
     } else {
-        CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_ASSET_EXTENTION, extention), E_HAS_DB_ERROR);
+        CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, CONST_ASSET_EXTENTION, extention),
+            E_HAS_DB_ERROR);
         isNeedGrant = true;
         fileAsset.SetTimePending(UNOPEN_FILE_COMPONENT_TIMEPENDING);
         string title;
-        if (GetStringFromValuesBucket(values, AudioColumn::MEDIA_TITLE, title)) {
+        if (MediaValuesBucketUtils::GetString(values, AudioColumn::MEDIA_TITLE, title)) {
             displayName = title + "." + extention;
             fileAsset.SetDisplayName(displayName);
             isContains = true;
@@ -216,7 +218,7 @@ int32_t MediaLibraryAudioOperations::CreateV10(MediaLibraryCommand &cmd)
     }
 
     int32_t mediaType = 0;
-    CHECK_AND_RETURN_RET(GetInt32FromValuesBucket(values, AudioColumn::MEDIA_TYPE, mediaType), E_HAS_DB_ERROR);
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetInt(values, AudioColumn::MEDIA_TYPE, mediaType), E_HAS_DB_ERROR);
     CHECK_AND_RETURN_RET(mediaType == MediaType::MEDIA_TYPE_AUDIO, E_CHECK_MEDIATYPE_FAIL);
     fileAsset.SetMediaType(MediaType::MEDIA_TYPE_AUDIO);
 

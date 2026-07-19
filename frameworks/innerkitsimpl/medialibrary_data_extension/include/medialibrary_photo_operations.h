@@ -246,8 +246,6 @@ private:
     static int32_t SaveEditDataCamera(MediaLibraryCommand &cmd, const std::string &assetPath,
         std::string &editData);
     static int32_t SaveSourceAndEditData(const std::shared_ptr<FileAsset> &fileAsset, const std::string &editData);
-    static int32_t AddFiltersExecute(MediaLibraryCommand& cmd, const std::shared_ptr<FileAsset>& fileAsset,
-        const std::string &cachePath);
     static int32_t SaveCameraPhotoWithFilters(MediaLibraryCommand& cmd, const shared_ptr<FileAsset>& fileAsset);
     static int32_t SubmitEditCacheExecute(MediaLibraryCommand &cmd,
         const std::shared_ptr<FileAsset> &fileAsset, const std::string &cachePath, bool isWriteGpsAdvanced);
