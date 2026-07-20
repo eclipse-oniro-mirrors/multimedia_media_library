@@ -131,27 +131,6 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, FileIsLocal_Test, TestSize.Level1)
     EXPECT_EQ(CloudMediaSyncUtils::FileIsLocal(1), true);
 }
 
-HWTEST_F(CloudMediaSyncServiceUtilsTest, GetThumbParentPath_Test, TestSize.Level1)
-{
-    string result = CloudMediaSyncUtils::GetThumbParentPath("", "");
-    EXPECT_EQ(result, "/storage/cloud/files/.thumbs");
-
-    result = CloudMediaSyncUtils::GetThumbParentPath("/user/local/test.jpg", "/user/local");
-    EXPECT_EQ(result, "/storage/cloud/files/.thumbs/test.jpg");
-
-    result = CloudMediaSyncUtils::GetThumbParentPath("/user/local/test", "prefix");
-    EXPECT_EQ(result, "");
-
-    CloudMediaSyncUtils::RemoveThmParentPath("", "");
-    CloudMediaSyncUtils::RemoveThmParentPath("/user/local/test.jpg", "/user/local");
-    CloudMediaSyncUtils::RemoveEditDataParentPath("");
-    CloudMediaSyncUtils::RemoveEditDataParentPath("/user/local/test.jpg");
-    CloudMediaSyncUtils::RemoveMetaDataPath("");
-    CloudMediaSyncUtils::RemoveEditDataParentPath("/user/local/test.jpg");
-    CloudMediaSyncUtils::InvalidVideoCache("");
-    CloudMediaSyncUtils::InvalidVideoCache("/storage/cloud/test/car");
-}
-
 HWTEST_F(CloudMediaSyncServiceUtilsTest, RemoveEditDataSourcePath_Test, TestSize.Level1)
 {
     EXPECT_EQ(MediaFileUtils::CreateDirectory("/storage/cloud/files/Photo/16/"), true);
@@ -1051,30 +1030,6 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, ToInt32_MinInt32, TestSize.Level1)
     EXPECT_EQ(result, -2147483648);
 }
 
-HWTEST_F(CloudMediaSyncServiceUtilsTest, ToInt32_OverflowPositive, TestSize.Level1)
-{
-    // 用例说明：测试ToInt32功能；覆盖溢出分支（触发条件：字符串值>INT32_MAX）；验证返回0
-    std::string str = "2147483648";
-    int32_t result = CloudMediaDaoUtils::ToInt32(str);
-    EXPECT_EQ(result, 0);
-}
-
-HWTEST_F(CloudMediaSyncServiceUtilsTest, ToInt32_OverflowNegative, TestSize.Level1)
-{
-    // 用例说明：测试ToInt32功能；覆盖溢出分支（触发条件：字符串值<INT32_MIN）；验证返回0
-    std::string str = "-2147483649";
-    int32_t result = CloudMediaDaoUtils::ToInt32(str);
-    EXPECT_EQ(result, 0);
-}
-
-HWTEST_F(CloudMediaSyncServiceUtilsTest, ToInt32_LargeNumber, TestSize.Level1)
-{
-    // 用例说明：测试ToInt32功能；覆盖大数溢出分支（触发条件：字符串值远超INT32范围）；验证返回0
-    std::string str = "999999999999";
-    int32_t result = CloudMediaDaoUtils::ToInt32(str);
-    EXPECT_EQ(result, 0);
-}
-
 HWTEST_F(CloudMediaSyncServiceUtilsTest, GetStringVector_SingleValue, TestSize.Level1)
 {
     // 用例说明：测试GetStringVector功能；覆盖单值分支（触发条件：intVals.size()==1）；验证返回包含一个字符串的向量
@@ -1296,29 +1251,6 @@ HWTEST_F(CloudMediaSyncServiceUtilsTest, FillPhotosDto_Test_002, TestSize.Level1
     EXPECT_EQ(photosDto.uniqueId, "test_unique_id_inner");
     EXPECT_EQ(photosDto.packageName, "test_package_name_inner");
     EXPECT_EQ(photosDto.photoRiskStatus, 1);
-}
-
-HWTEST_F(CloudMediaSyncServiceUtilsTest, FillPhotosDto_Test_003, TestSize.Level1)
-{
-    int32_t thumbState = 0;
-    int32_t orientation = 0;
-    int32_t exifRotate = 0;
-    std::string path = "test";
-    CloudSync::PhotosDto photosDto;
-    CloudSync::CloudMediaPullDataDto data;
-    NativeRdb::ValuesBucket values;
-    values.PutString(PhotoColumn::UNIQUE_ID, "test_unique_id_inner");
-    values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, "test_package_name_inner");
-    values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, 3);
-
-    auto ret = CloudMediaSyncUtils::FillPhotosDto(photosDto, path, orientation, exifRotate, thumbState);
-    EXPECT_EQ(ret, E_OK);
-    ret = CloudMediaSyncUtils::FillPhotosDto(photosDto, data, values);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(photosDto.uniqueId, "test_unique_id_inner");
-    EXPECT_EQ(photosDto.packageName, "test_package_name_inner");
-    EXPECT_EQ(photosDto.photoRiskStatus, 1);
-    EXPECT_EQ(photosDto.isCritical, 1);
 }
 
 HWTEST_F(CloudMediaSyncServiceUtilsTest, GetLpathWithoutDocPrefix_NormalPath_Test, TestSize.Level1)

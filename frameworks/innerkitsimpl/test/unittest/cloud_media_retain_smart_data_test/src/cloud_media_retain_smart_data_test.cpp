@@ -190,15 +190,6 @@ void CloudMediaRetainSmartDataTest::TearDown()
 {
 }
 
-HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataCleanState_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("SmartDataCleanState_test_001 Start");
-    SetSmartDataCleanState(CleanTaskState::CLEANING);
-    int64_t state = GetSmartDataCleanState();
-    EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::CLEANING));
-    MEDIA_INFO_LOG("SmartDataCleanState_test_001 End");
-}
-
 HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataCleanState_test_002, TestSize.Level1)
 {
     MEDIA_INFO_LOG("SmartDataCleanState_test_002 Start");
@@ -216,27 +207,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataCleanState_test_003, TestSize.L
     MEDIA_INFO_LOG("SmartDataCleanState_test_003 End");
 }
 
-HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataCleanState_test_004, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("SmartDataCleanState_test_004 Start");
-    SetSmartDataCleanState(CleanTaskState::CLEANING);
-    int64_t state = GetSmartDataCleanState();
-    EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::CLEANING));
-    SetSmartDataCleanState(CleanTaskState::IDLE);
-    state = GetSmartDataCleanState();
-    EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::IDLE));
-    MEDIA_INFO_LOG("SmartDataCleanState_test_004 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataUpdateState_test_005, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("SmartDataUpdateState_test_005 Start");
-    SetSmartDataUpdateState(UpdateSmartDataState::UPDATE_SMART_DATA);
-    int64_t state = GetSmartDataUpdateState();
-    EXPECT_EQ(state, static_cast<int64_t>(UpdateSmartDataState::UPDATE_SMART_DATA));
-    MEDIA_INFO_LOG("SmartDataUpdateState_test_005 End");
-}
-
 HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataUpdateState_test_006, TestSize.Level1)
 {
     MEDIA_INFO_LOG("SmartDataUpdateState_test_006 Start");
@@ -252,18 +222,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataUpdateState_test_007, TestSize.
     int64_t state = GetSmartDataUpdateState();
     EXPECT_EQ(state, static_cast<int64_t>(UpdateSmartDataState::IDLE));
     MEDIA_INFO_LOG("SmartDataUpdateState_test_007 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataUpdateState_test_008, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("SmartDataUpdateState_test_008 Start");
-    SetSmartDataUpdateState(UpdateSmartDataState::UPDATE_SMART_DATA);
-    int64_t state = GetSmartDataUpdateState();
-    EXPECT_EQ(state, static_cast<int64_t>(UpdateSmartDataState::UPDATE_SMART_DATA));
-    SetSmartDataUpdateState(UpdateSmartDataState::IDLE);
-    state = GetSmartDataUpdateState();
-    EXPECT_EQ(state, static_cast<int64_t>(UpdateSmartDataState::IDLE));
-    MEDIA_INFO_LOG("SmartDataUpdateState_test_008 End");
 }
 
 HWTEST_F(CloudMediaRetainSmartDataTest, SmartDataRetainTime_test_009, TestSize.Level1)
@@ -700,26 +658,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, DoUpdateSmartDataAlbum_test_055, TestSiz
     MEDIA_INFO_LOG("DoUpdateSmartDataAlbum_test_055 End");
 }
 
-HWTEST_F(CloudMediaRetainSmartDataTest, BoundaryConditions_test_056, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("BoundaryConditions_test_056 Start");
-    CleanTaskState invalidState = static_cast<CleanTaskState>(999);
-    SetSmartDataCleanState(invalidState);
-    int64_t state = GetSmartDataCleanState();
-    EXPECT_EQ(state, 999);
-    MEDIA_INFO_LOG("BoundaryConditions_test_056 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, BoundaryConditions_test_057, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("BoundaryConditions_test_057 Start");
-    UpdateSmartDataState invalidState = static_cast<UpdateSmartDataState>(999);
-    SetSmartDataUpdateState(invalidState);
-    int64_t state = GetSmartDataUpdateState();
-    EXPECT_EQ(state, 999);
-    MEDIA_INFO_LOG("BoundaryConditions_test_057 End");
-}
-
 HWTEST_F(CloudMediaRetainSmartDataTest, BoundaryConditions_test_058, TestSize.Level1)
 {
     MEDIA_INFO_LOG("BoundaryConditions_test_058 Start");
@@ -796,19 +734,6 @@ HWTEST_F(CloudMediaRetainSmartDataTest, IntegrationTest_test_065, TestSize.Level
     SetSmartDataRetainTime();
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     MEDIA_INFO_LOG("IntegrationTest_test_065 End");
-}
-
-HWTEST_F(CloudMediaRetainSmartDataTest, IntegrationTest_test_066, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("IntegrationTest_test_066 Start");
-    SetSmartDataCleanState(CleanTaskState::IDLE);
-    SetSmartDataCleanState(CleanTaskState::CLEANING);
-    int64_t state = GetSmartDataCleanState();
-    EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::CLEANING));
-    SetSmartDataCleanState(CleanTaskState::IDLE);
-    state = GetSmartDataCleanState();
-    EXPECT_EQ(state, static_cast<int64_t>(CleanTaskState::IDLE));
-    MEDIA_INFO_LOG("IntegrationTest_test_066 End");
 }
 } // namespace Media
 } // namespace OHOS

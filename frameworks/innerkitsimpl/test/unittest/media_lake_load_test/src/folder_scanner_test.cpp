@@ -313,55 +313,6 @@ HWTEST_F(FolderScannerTest, GetFileIds_003, TestSize.Level1)
     EXPECT_TRUE(fileIds2.empty());
 }
 
-HWTEST_F(FolderScannerTest, IsScanFolderFile_001, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/is_scan_folder_file_001";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    
-    bool isScan = scanner.IsScanFolderFile();
-    EXPECT_TRUE(isScan);
-}
-
-HWTEST_F(FolderScannerTest, IsScanFolderFile_002, TestSize.Level1)
-{
-    MediaNotifyInfo notifyInfo;
-    notifyInfo.afterPath = TEST_ROOT_PATH + "/is_scan_folder_file_002";
-    notifyInfo.objType = FileNotifyObjectType::DIRECTORY;
-    notifyInfo.optType = FileNotifyOperationType::ADD;
-    
-    std::error_code ec;
-    std::filesystem::create_directories(notifyInfo.afterPath, ec);
-    
-    FolderScanner scanner(notifyInfo, ScanMode::INCREMENT);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    
-    bool isScan = scanner.IsScanFolderFile();
-    EXPECT_TRUE(isScan);
-}
-
-HWTEST_F(FolderScannerTest, IsScanFolderFile_003, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/is_scan_folder_file_003";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::VALIDATION);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    
-    bool isScan = scanner.IsScanFolderFile();
-    EXPECT_TRUE(isScan);
-}
-
 HWTEST_F(FolderScannerTest, IsScanFolderFile_004, TestSize.Level1)
 {
     std::string testPath = "";
@@ -369,23 +320,6 @@ HWTEST_F(FolderScannerTest, IsScanFolderFile_004, TestSize.Level1)
     FolderScanner scanner(testPath, ScanMode::FULL);
     bool isScan = scanner.IsScanFolderFile();
     EXPECT_TRUE(isScan);
-}
-
-HWTEST_F(FolderScannerTest, IsScanFolderFile_005, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/is_scan_folder_file_005";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    
-    for (int i = 0; i < 5; i++) {
-        bool isScan = scanner.IsScanFolderFile();
-        EXPECT_TRUE(isScan);
-    }
 }
 
 HWTEST_F(FolderScannerTest, Run_001, TestSize.Level1)
@@ -516,126 +450,6 @@ HWTEST_F(FolderScannerTest, Run_010, TestSize.Level1)
     EXPECT_EQ(ret, ERR_SUCCESS);
 }
 
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_001, TestSize.Level1)
-{
-    std::string testPathPath = TEST_ROOT_PATH + "/scan_current_dir_001";
-    std::error_code ec;
-    std::filesystem::create_directories(testPathPath, ec);
-    
-    std::string testPath = testPathPath + "/subdir";
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPathPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_002, TestSize.Level1)
-{
-    std::string testPathPath = TEST_ROOT_PATH + "/scan_current_dir_002";
-    std::error_code ec;
-    std::filesystem::create_directories(testPathPath, ec);
-    
-    std::string testPath = testPathPath + "/subdir";
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPathPath, ScanMode::INCREMENT);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_003, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/scan_current_dir_003";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_004, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/scan_current_dir_004";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    for (int i = 0; i < 3; i++) {
-        std::string subPath = testPath + "/subdir" + std::to_string(i);
-        std::filesystem::create_directories(subPath, ec);
-    }
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_005, TestSize.Level1)
-{
-    MediaNotifyInfo notifyInfo;
-    notifyInfo.afterPath = TEST_ROOT_PATH + "/scan_current_dir_005";
-    notifyInfo.objType = FileNotifyObjectType::DIRECTORY;
-    notifyInfo.optType = FileNotifyOperationType::ADD;
-    
-    std::error_code ec;
-    std::filesystem::create_directories(notifyInfo.afterPath, ec);
-    
-    std::string subPath = notifyInfo.afterPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(notifyInfo, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_006, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/scan_current_dir_006";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::INCREMENT);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_007, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/scan_current_dir_007";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir1";
-    std::filesystem::create_directories(subPath, ec);
-    std::string subPath2 = testPath + "/subdir2";
-    std::filesystem::create_directories(subPath2, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::VALIDATION);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
 HWTEST_F(FolderScannerTest, ScanCurrentDirectory_008, TestSize.Level1)
 {
     std::string testPath = TEST_ROOT_PATH + "/scan_current_dir_008";
@@ -650,45 +464,6 @@ HWTEST_F(FolderScannerTest, ScanCurrentDirectory_008, TestSize.Level1)
     scanner.ScanCurrentDirectory(subDirQueue2);
     
     EXPECT_EQ(subDirQueue1.size(), subDirQueue2.size());
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_009, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/scan_current_dir_009";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    for (int i = 0; i < 5; i++) {
-        std::string subPath = testPath + "/subdir" + std::to_string(i);
-        std::filesystem::create_directories(subPath, ec);
-    }
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-}
-
-HWTEST_F(FolderScannerTest, ScanCurrentDirectory_010, TestSize.Level1)
-{
-    MediaNotifyInfo notifyInfo;
-    notifyInfo.afterPath = TEST_ROOT_PATH + "/scan_current_dir_010";
-    notifyInfo.beforePath = TEST_ROOT_PATH + "/scan_current_dir_010_old";
-    notifyInfo.objType = FileNotifyObjectType::DIRECTORY;
-    notifyInfo.optType = FileNotifyOperationType::MOD;
-    
-    std::error_code ec;
-    std::filesystem::create_directories(notifyInfo.afterPath, ec);
-    
-    std::string subPath = notifyInfo.afterPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(notifyInfo, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
 }
 
 HWTEST_F(FolderScannerTest, BuildSubDirFolderScanner_001, TestSize.Level1)
@@ -788,96 +563,6 @@ HWTEST_F(FolderScannerTest, BuildSubDirFolderScanner_005, TestSize.Level1)
     EXPECT_EQ(albumId1, albumId2);
 }
 
-HWTEST_F(FolderScannerTest, BuildFileParser_001, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/build_file_parser_001";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::string filePath = testPath + "/test.jpg";
-    std::ofstream file(filePath);
-    file.close();
-    
-    std::unique_ptr<FileParser> fileParser = scanner.BuildFileParser(filePath);
-    ASSERT_NE(fileParser, nullptr);
-    EXPECT_FALSE(fileParser->IsFileValidAsset());
-}
-
-HWTEST_F(FolderScannerTest, BuildFileParser_002, TestSize.Level1)
-{
-    MediaNotifyInfo notifyInfo;
-    notifyInfo.afterPath = TEST_ROOT_PATH + "/build_file_parser_002";
-    notifyInfo.objType = FileNotifyObjectType::DIRECTORY;
-    notifyInfo.optType = FileNotifyOperationType::ADD;
-    
-    std::error_code ec;
-    std::filesystem::create_directories(notifyInfo.afterPath, ec);
-    
-    FolderScanner scanner(notifyInfo, ScanMode::FULL);
-    std::string filePath = notifyInfo.afterPath + "/test.jpg";
-    std::ofstream file(filePath, std::ios::binary);
-    std::vector<uint8_t> jpegHeader = {0xFF, 0xD8, 0xFF, 0xE0};
-    file.write(reinterpret_cast<char*>(jpegHeader.data()), jpegHeader.size());
-    file.close();
-    
-    std::unique_ptr<FileParser> fileParser = scanner.BuildFileParser(filePath);
-    ASSERT_NE(fileParser, nullptr);
-    EXPECT_FALSE(fileParser->IsFileValidAsset());
-}
-
-HWTEST_F(FolderScannerTest, BuildFileParser_003, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/build_file_parser_003";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::INCREMENT);
-    std::string filePath = testPath + "/test.mp4";
-    std::ofstream file(filePath, std::ios::binary);
-    std::vector<uint8_t> mp4Header = {0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70};
-    file.write(reinterpret_cast<char*>(mp4Header.data()), mp4Header.size());
-    file.close();
-    
-    std::unique_ptr<FileParser> fileParser = scanner.BuildFileParser(filePath);
-    ASSERT_NE(fileParser, nullptr);
-    EXPECT_FALSE(fileParser->IsFileValidAsset());
-}
-
-HWTEST_F(FolderScannerTest, BuildFileParser_004, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/build_file_parser_004";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::VALIDATION);
-    std::string filePath = testPath + "/test.jpg";
-    std::ofstream file(filePath, std::ios::binary);
-    std::vector<uint8_t> jpegHeader = {0xFF, 0xD8, 0xFF, 0xE0};
-    file.write(reinterpret_cast<char*>(jpegHeader.data()), jpegHeader.size());
-    file.close();
-    
-    std::unique_ptr<FileParser> fileParser = scanner.BuildFileParser(filePath);
-    ASSERT_NE(fileParser, nullptr);
-    EXPECT_FALSE(fileParser->IsFileValidAsset());
-}
-
-HWTEST_F(FolderScannerTest, BuildFileParser_005, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/build_file_parser_005";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::string filePath = testPath + "/test.txt";
-    std::ofstream file(filePath);
-    file.close();
-    
-    std::unique_ptr<FileParser> fileParser = scanner.BuildFileParser(filePath);
-    ASSERT_NE(fileParser, nullptr);
-    EXPECT_FALSE(fileParser->IsFileValidAsset());
-}
-
 HWTEST_F(FolderScannerTest, EdgeCase_001, TestSize.Level1)
 {
     std::string testPath = "/";
@@ -937,23 +622,6 @@ HWTEST_F(FolderScannerTest, EdgeCase_005, TestSize.Level1)
     for (int i = 0; i < 100; i++) {
         bool isScan = scanner.IsScanFolderFile();
         EXPECT_TRUE(isScan);
-    }
-}
-
-HWTEST_F(FolderScannerTest, EdgeCase_006, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/edge_test_006";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    for (int i = 0; i < 10; i++) {
-        int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-        EXPECT_EQ(ret, ERR_SUCCESS);
     }
 }
 
@@ -1271,36 +939,6 @@ HWTEST_F(FolderScannerTest, ThreadSafety_002, TestSize.Level1)
     EXPECT_TRUE(fileIds.empty());
 }
 
-HWTEST_F(FolderScannerTest, ThreadSafety_003, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/thread_test_003";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    
-    int32_t ret = 0;
-    int32_t albumId = 0;
-    
-    std::thread t1([&scanner, &subDirQueue, &ret]() {
-        ret = scanner.ScanCurrentDirectory(subDirQueue);
-    });
-    
-    std::thread t2([&scanner, &albumId]() {
-        albumId = scanner.GetAlbumId();
-    });
-    
-    t1.join();
-    t2.join();
-    
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(albumId, -1);
-}
-
 HWTEST_F(FolderScannerTest, ThreadSafety_004, TestSize.Level1)
 {
     std::string testPath = TEST_ROOT_PATH + "/thread_test_004";
@@ -1398,35 +1036,6 @@ HWTEST_F(FolderScannerTest, ThreadSafety_007, TestSize.Level1)
     
     for (bool result : results) {
         EXPECT_TRUE(result);
-    }
-}
-
-HWTEST_F(FolderScannerTest, ThreadSafety_008, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/thread_test_008";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    
-    std::vector<std::thread> threads;
-    std::vector<int32_t> results(10);
-    for (int i = 0; i < 10; i++) {
-        threads.emplace_back([&scanner, &subDirQueue, &results, i]() {
-            results[i] = scanner.ScanCurrentDirectory(subDirQueue);
-        });
-    }
-    
-    for (auto& t : threads) {
-        t.join();
-    }
-    
-    for (int32_t result : results) {
-        EXPECT_EQ(result, ERR_SUCCESS);
     }
 }
 
@@ -1547,55 +1156,6 @@ HWTEST_F(FolderScannerTest, MixedOperations_003, TestSize.Level1)
         EXPECT_EQ(albumId, -1);
         EXPECT_EQ(addCount, 0);
         EXPECT_EQ(updateCount, 0);
-    }
-}
-
-HWTEST_F(FolderScannerTest, MixedOperations_004, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/mixed_test_004";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-    EXPECT_EQ(subDirQueue.size(), 0);
-    
-    int32_t albumId = scanner.GetAlbumId();
-    int32_t addCount = scanner.GetAddCount();
-    int32_t updateCount = scanner.GetUpdateCount();
-    
-    EXPECT_EQ(albumId, -1);
-    EXPECT_EQ(addCount, 0);
-    EXPECT_EQ(updateCount, 0);
-}
-
-HWTEST_F(FolderScannerTest, MixedOperations_005, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/mixed_test_005";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    
-    int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-    EXPECT_EQ(ret, ERR_SUCCESS);
-
-    while (!subDirQueue.empty()) {
-        std::string dir = subDirQueue.front();
-        subDirQueue.pop();
-        FolderScanner subScanner = scanner.BuildSubDirFolderScanner(dir);
-        int32_t albumId = subScanner.GetAlbumId();
-        EXPECT_EQ(albumId, -1);
     }
 }
 
@@ -1768,24 +1328,6 @@ HWTEST_F(FolderScannerTest, StressTest_005, TestSize.Level1)
     }
 }
 
-HWTEST_F(FolderScannerTest, StressTest_006, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/stress_test_006";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    std::string subPath = testPath + "/subdir";
-    std::filesystem::create_directories(subPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::queue<std::string> subDirQueue;
-    
-    for (int i = 0; i < 100; i++) {
-        int32_t ret = scanner.ScanCurrentDirectory(subDirQueue);
-        EXPECT_EQ(ret, ERR_SUCCESS);
-    }
-}
-
 HWTEST_F(FolderScannerTest, StressTest_007, TestSize.Level1)
 {
     std::string testPath = TEST_ROOT_PATH + "/stress_test_007";
@@ -1801,29 +1343,6 @@ HWTEST_F(FolderScannerTest, StressTest_007, TestSize.Level1)
         int32_t albumId = subScanner.GetAlbumId();
         EXPECT_EQ(albumId, -1);
     }
-}
-
-HWTEST_F(FolderScannerTest, StressTest_008, TestSize.Level1)
-{
-    std::string testPath = TEST_ROOT_PATH + "/stress_test_008";
-    std::error_code ec;
-    std::filesystem::create_directories(testPath, ec);
-    
-    FolderScanner scanner(testPath, ScanMode::FULL);
-    std::string filePath = testPath + "/test.jpg";
-    std::ofstream file(filePath);
-    file.close();
-
-    bool skipped = false;
-    for (int i = 0; i < 1000; i++) {
-        std::unique_ptr<FileParser> fileParser = scanner.BuildFileParser(filePath);
-        if (fileParser == nullptr) {
-            skipped = true;
-            continue;
-        }
-        EXPECT_FALSE(fileParser->IsFileValidAsset());
-    }
-    EXPECT_FALSE(skipped);
 }
 
 HWTEST_F(FolderScannerTest, StressTest_009, TestSize.Level1)

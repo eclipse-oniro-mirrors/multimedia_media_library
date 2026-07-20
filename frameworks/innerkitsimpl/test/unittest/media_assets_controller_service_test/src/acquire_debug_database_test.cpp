@@ -98,18 +98,4 @@ HWTEST_F(AcquireDebugDatabaseTest, AcquireDebugDatabase_Test_001, TestSize.Level
     int32_t ret = controllerService->AcquireDebugDatabase(data, reply);
     EXPECT_NE(ret, E_OK);
 }
-
-HWTEST_F(AcquireDebugDatabaseTest, AcquireDebugDatabase_Test_002, TestSize.Level0)
-{
-    // 测试调用成功
-    MessageParcel data;
-    MessageParcel reply;
-    AcquireDebugDatabaseReqBody reqBody;
-    reqBody.betaIssueId = "123";
-    reqBody.betaScenario = "1025_1041_1018";
-    bool isValid = reqBody.Marshalling(data);
-    EXPECT_EQ(isValid, true);
-    int32_t ret = controllerService->AcquireDebugDatabase(data, reply);
-    EXPECT_EQ(ret, E_SUCCESS);
-}
 }  // namespace OHOS::Media

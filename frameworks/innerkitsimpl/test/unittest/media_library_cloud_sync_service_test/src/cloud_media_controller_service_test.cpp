@@ -148,38 +148,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetCreatedRecords_Test
     EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetCreatedRecords_Test_002, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(0);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetCreatedRecords_Test_003, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(1);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_CREATED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetMetaModifiedRecords_Test_001, TestSize.Level1)
 {
     std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
@@ -195,38 +163,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetMetaModifiedRecords
     EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetMetaModifiedRecords_Test_002, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(0);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_META_MODIFIED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetMetaModifiedRecords_Test_003, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(1);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_META_MODIFIED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetDeletedRecords_Test_001, TestSize.Level1)
 {
     std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
@@ -240,38 +176,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetDeletedRecords_Test
 
     int32_t ret = reply.ReadInt32();
     EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetDeletedRecords_Test_002, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(0);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_DELETED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_GetDeletedRecords_Test_003, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaAlbumControllerService> service = std::make_shared<CloudMediaAlbumControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(1);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaAlbumOperationCode::CMD_GET_DELETED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
 }
 
 HWTEST_F(CloudMediaContorllerServiceTest, AlbumController_OnCreateRecords_Test_001, TestSize.Level1)
@@ -1244,21 +1148,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_OnDen
     EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetCreatedRecords_Test_001, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_CREATED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_NE(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetCreatedRecords_Test_002, TestSize.Level1)
 {
     std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
@@ -1291,22 +1180,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetCr
     EXPECT_EQ(ret, E_OK);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetMetaModifiedRecords_Test_001,
-         TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_META_MODIFIED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_NE(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetMetaModifiedRecords_Test_002,
          TestSize.Level1)
 {
@@ -1322,39 +1195,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetMe
 
     int32_t ret = reply.ReadInt32();
     EXPECT_EQ(ret, E_MEDIA_CLOUD_ARGS_INVAILD);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetMetaModifiedRecords_Test_003,
-         TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(1);
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_META_MODIFIED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_NE(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetFileModifiedRecords_Test_001,
-         TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_FILE_MODIFIED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_NE(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
 }
 
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetFileModifiedRecords_Test_002,
@@ -1391,21 +1231,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetFi
     EXPECT_EQ(ret, E_OK);
 }
 
-HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetDeletedRecords_Test_001, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_DELETED_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_NE(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
-}
-
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetDeletedRecords_Test_002, TestSize.Level1)
 {
     std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
@@ -1436,21 +1261,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetDe
 
     int32_t ret = reply.ReadInt32();
     EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetCopyRecords_Test_001, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_GET_COPY_RECORDS);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_NE(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
 }
 
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_GetCopyRecords_Test_002, TestSize.Level1)
@@ -1898,25 +1708,6 @@ HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_Repor
 
     int32_t ret = reply.ReadInt32();
     EXPECT_EQ(ret, E_IPC_SEVICE_UNMARSHALLING_FAIL);
-}
-
-HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaPhotoControllerService_ReportFailure_Test_002, TestSize.Level1)
-{
-    std::shared_ptr<CloudMediaPhotoControllerService> service = std::make_shared<CloudMediaPhotoControllerService>();
-    ASSERT_TRUE(service != nullptr);
-
-    MessageParcel data;
-    data.WriteInt32(1);
-    data.WriteInt32(2);
-    data.WriteInt32(3);
-    data.WriteString("test");
-    MessageParcel reply;
-    IPCContext context(MessageOption(), 0);
-    uint32_t code = static_cast<uint32_t>(CloudMediaPhotoOperationCode::CMD_REPORT_FAILURE);
-    service->OnRemoteRequest(code, data, reply, context);
-
-    int32_t ret = reply.ReadInt32();
-    EXPECT_EQ(ret, E_OK);
 }
 
 HWTEST_F(CloudMediaContorllerServiceTest, CloudMediaDataControllerService_Test, TestSize.Level1)

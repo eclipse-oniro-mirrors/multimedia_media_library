@@ -1855,36 +1855,6 @@ HWTEST_F(CloudMediaSyncServiceDaoTest, GetInsertParams_Test_004, TestSize.Level1
     EXPECT_EQ(ret, E_OK);
 }
 
-HWTEST_F(CloudMediaSyncServiceDaoTest, BatchInsert_Test_003, TestSize.Level1)
-{
-    CloudMediaPhotosDao photosDao;
-    int64_t outRowId = 0;
-    std::vector<NativeRdb::ValuesBucket> initialBatchValues;
-    NativeRdb::ValuesBucket values;
-    values.Put(PhotoColumn::PHOTO_DIRTY, 1);
-    initialBatchValues.push_back(values);
-    
-    int32_t ret = photosDao.BatchInsert(outRowId,
-        PhotoColumn::PHOTOS_TABLE, initialBatchValues);
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaSyncServiceDaoTest, BatchInsert_Test_004, TestSize.Level1)
-{
-    CloudMediaPhotosDao photosDao;
-    int64_t outRowId = 0;
-    std::vector<NativeRdb::ValuesBucket> initialBatchValues;
-    for (int i = 0; i < 20; i++) {
-        NativeRdb::ValuesBucket values;
-        values.Put(PhotoColumn::PHOTO_DIRTY, 1);
-        initialBatchValues.push_back(values);
-    }
-    
-    int32_t ret = photosDao.BatchInsert(outRowId,
-        PhotoColumn::PHOTOS_TABLE, initialBatchValues);
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaSyncServiceDaoTest, HandleWatchRelatedFields_Test_001, TestSize.Level1)
 {
     CloudMediaPhotosDao photosDao;

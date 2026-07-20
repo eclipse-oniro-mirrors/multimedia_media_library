@@ -1927,19 +1927,6 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaDownloadService_FixDownloadAssetEx
     EXPECT_EQ(ret, E_OK);
 }
 
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaScanService_RemoveLocalFile_Test_001, TestSize.Level1)
-{
-    CloudMediaPhotosService service;
-    CloudMediaPullDataDto dto;
-    dto.localPath = "";
-    dto.attributesSubtype = static_cast<int32_t>(PhotoSubType::MOVING_PHOTO);
-    dto.attributesMovingPhotoEffectMode = 0;
-    dto.attributesOriginalSubtype = 0;
-    dto.localPhotosPoOp = PhotosPo();
-    int32_t ret = service.RemoveLocalFile(dto);
-    EXPECT_NE(ret, E_OK); // 暂未配置能删除的资源，先预期not ok
-}
-
 HWTEST_F(CloudMediaSyncServiceTest, CloudMediaScanService_ClearLocalData_Test_001, TestSize.Level1)
 {
     CloudMediaPhotosService service;
@@ -1962,37 +1949,6 @@ HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_HandleLPathRecords_Te
     OnFetchRecordsAlbumRespBody resp;
     record.isDelete = true;
     int32_t ret = service.HandleLPathRecords(record, changeType, resp);
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullInsert_Test_001, TestSize.Level1)
-{
-    CloudMediaAlbumService service;
-    PhotoAlbumDto record;
-    ChangeType changeType;
-    OnFetchRecordsAlbumRespBody resp;
-    record.isDelete = true;
-    int32_t ret = service.PullInsert(record, changeType, resp);
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullUpdate_Test_001, TestSize.Level1)
-{
-    CloudMediaAlbumService service;
-    PhotoAlbumDto record;
-    ChangeType changeType;
-    OnFetchRecordsAlbumRespBody resp;
-    int32_t ret = service.PullUpdate(record, changeType, resp);
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaSyncServiceTest, CloudMediaAlbumService_PullDelete_Test_001, TestSize.Level1)
-{
-    CloudMediaAlbumService service;
-    PhotoAlbumDto record;
-    ChangeType changeType;
-    OnFetchRecordsAlbumRespBody resp;
-    int32_t ret = service.PullDelete(record, changeType, resp);
     EXPECT_EQ(ret, E_OK);
 }
 

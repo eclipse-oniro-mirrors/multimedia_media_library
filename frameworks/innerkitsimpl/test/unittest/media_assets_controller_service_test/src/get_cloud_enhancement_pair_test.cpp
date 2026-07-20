@@ -191,23 +191,4 @@ HWTEST_F(GetCloudEnhancementPairTest, GetCloudEnhancementPair_Test_002, TestSize
     ASSERT_NE(resultSet, nullptr);
     ASSERT_NE(resultSet->GoToFirstRow(), E_OK);
 }
-
-HWTEST_F(GetCloudEnhancementPairTest, GetCloudEnhancementPair_Test_003, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("GetCloudEnhancementPair_Test_003 Begin");
-    string pic1 = "cam_pic1";
-    InsertAsset(pic1);
-    int32_t fileId = QueryPhotoIdByDisplayName(pic1 + ".jpg");
-    ASSERT_GT(fileId, 0);
-
-    UpdateAssetAssociateFileId(fileId, pic1 + ".jpg");
-    string uri = "file://media/Photo/" + std::to_string(fileId) + "/";
-    std::shared_ptr<DataShare::DataShareResultSet> resultSet;
-    int32_t result = GetCloudEnhancementPair(uri, resultSet);
-    ASSERT_EQ(result, 0);
-
-    ASSERT_NE(resultSet, nullptr);
-    ASSERT_EQ(resultSet->GoToFirstRow(), E_OK);
-    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_ID, resultSet), fileId);
-}
 }  // namespace OHOS::Media

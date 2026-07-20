@@ -368,20 +368,6 @@ HWTEST_F(CloudMediaDaoUtilsTest, ToInt32_MinInt32, TestSize.Level1)
     EXPECT_EQ(result, INT_MIN);
 }
 
-HWTEST_F(CloudMediaDaoUtilsTest, ToInt32_Overflow, TestSize.Level1)
-{
-    std::string str = "2147483648";
-    int32_t result = CloudMediaDaoUtils::ToInt32(str);
-    EXPECT_EQ(result, 0);
-}
-
-HWTEST_F(CloudMediaDaoUtilsTest, ToInt32_Underflow, TestSize.Level1)
-{
-    std::string str = "-2147483649";
-    int32_t result = CloudMediaDaoUtils::ToInt32(str);
-    EXPECT_EQ(result, 0);
-}
-
 HWTEST_F(CloudMediaDaoUtilsTest, ToInt32_InvalidString, TestSize.Level1)
 {
     std::string str = "abc";

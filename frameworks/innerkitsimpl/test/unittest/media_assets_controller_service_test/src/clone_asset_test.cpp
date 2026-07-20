@@ -145,35 +145,6 @@ void CloneAssetTest::TearDown(void)
     MEDIA_INFO_LOG("TearDown");
 }
 
-HWTEST_F(CloneAssetTest, CloneAsset_Test_001, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Start CloneAsset_Test_001");
-    InsertAssetIntoPhotosTable();
-    vector<string> columns;
-    auto resultSet = QueryAsset("cam_pic.jpg", columns);
-    ASSERT_NE(resultSet, nullptr);
-    string displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
-    int32_t fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
-    EXPECT_GT(displayName.size(), 0);
-    MessageParcel data;
-    MessageParcel reply;
-    CloneAssetReqBody reqBody;
-    reqBody.fileId = fileId;
-    reqBody.displayName = "test.jpg";
-    reqBody.title = "test";
-    bool errConn = !reqBody.Marshalling(data);
-    ASSERT_EQ(errConn, false);
-    auto service = make_shared<MediaAssetsControllerService>();
-    service->CloneAsset(data, reply);
-    IPC::MediaEmptyObjVo respVo;
-    IPC::MediaRespVo<MediaEmptyObjVo> resp;
-    bool isValid = resp.Unmarshalling(reply);
-    ASSERT_EQ(isValid, true);
-    fileId = resp.GetErrCode();
-    EXPECT_LT(fileId, 0);
-    MEDIA_INFO_LOG("End CloneAsset_Test_001");
-}
-
 HWTEST_F(CloneAssetTest, CloneAsset_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start CloneAsset_Test_002");

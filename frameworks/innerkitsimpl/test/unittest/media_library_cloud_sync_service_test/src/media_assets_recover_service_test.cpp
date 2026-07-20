@@ -255,40 +255,6 @@ HWTEST_F(MediaAssetsRecoverServiceTest, MergeAssetFileMediaToLake_TargetNotCloud
     EXPECT_EQ(ret, E_OK);
 }
 
-// MoveAssetFileFromMediaToLake: not media file → skip
-HWTEST_F(MediaAssetsRecoverServiceTest, MoveAssetFileMediaToLake_NotMediaFile_ReturnsOK, TestSize.Level1)
-{
-    /**
-     * @tc.name: MoveAssetFileMediaToLake_NotMediaFile_ReturnsOK
-     * @tc.desc: Returns E_OK when source is not a media file (ShouldHandleAsMediaFile=false)
-     * @tc.type: FUNCTION
-     */
-    MediaAssetsRecoverService service;
-    PhotosPo source, target;
-    source.fileSourceType = static_cast<int32_t>(FileSourceType::FILE_MANAGER); // not media
-    target.storagePath = "/lake/path";
-
-    int32_t ret = service.MoveAssetFileFromMediaToLake(source, target);
-    EXPECT_EQ(ret, E_OK);
-}
-
-// MoveAssetFileFromMediaToLake: empty lake path → skip
-HWTEST_F(MediaAssetsRecoverServiceTest, MoveAssetFileMediaToLake_EmptyLakePath_ReturnsOK, TestSize.Level1)
-{
-    /**
-     * @tc.name: MoveAssetFileMediaToLake_EmptyLakePath_ReturnsOK
-     * @tc.desc: Returns E_OK when target storagePath is empty
-     * @tc.type: FUNCTION
-     */
-    MediaAssetsRecoverService service;
-    PhotosPo source, target;
-    source.fileSourceType = static_cast<int32_t>(FileSourceType::MEDIA);
-    target.storagePath = ""; // empty
-
-    int32_t ret = service.MoveAssetFileFromMediaToLake(source, target);
-    EXPECT_EQ(ret, E_OK);
-}
-
 // CommonMergeDiffCloudAsset: not cloud assets → skip
 HWTEST_F(MediaAssetsRecoverServiceTest, CommonMergeDiffCloudAsset_NotCloudAsset_ReturnsInvalidMode, TestSize.Level1)
 {

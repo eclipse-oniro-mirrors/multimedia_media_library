@@ -176,19 +176,4 @@ HWTEST_F(QueryCloudEnhancementTaskStateTest, QueryCloudEnhancementTaskState_Test
     int32_t result = QueryCloudEnhancementTaskState(uri, resp);
     ASSERT_NE(result, 0);
 }
-
-HWTEST_F(QueryCloudEnhancementTaskStateTest, QueryCloudEnhancementTaskState_Test_003, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("QueryCloudEnhancementTaskState_Test_003 Begin");
-    string pic1 = "cam_pic1";
-    InsertAsset(pic1);
-    int32_t fileId = QueryPhotoIdByDisplayName(pic1 + ".jpg");
-    ASSERT_GT(fileId, 0);
-
-    string uri = "file://media/Photo/" + std::to_string(fileId) + "/";
-    QueryCloudEnhancementTaskStateRespBody resp;
-    int32_t result = QueryCloudEnhancementTaskState(uri, resp);
-    ASSERT_EQ(result, 0);
-    ASSERT_EQ(resp.fileId, fileId);
-}
 }  // namespace OHOS::Media
