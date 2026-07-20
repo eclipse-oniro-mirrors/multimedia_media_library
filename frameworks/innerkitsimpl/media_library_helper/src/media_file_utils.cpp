@@ -92,7 +92,8 @@ const std::vector<std::string> SET_LISTEN_DIR = {
 };
 const std::string KVSTORE_FILE_ID_TEMPLATE = "0000000000";
 const std::string KVSTORE_DATE_KEY_TEMPLATE = "0000000000000";
-const std::string MAX_INTEGER = "2147483648";
+const std::string MAX_INTEGER = "2147483647";
+const std::string MIN_INTEGER = "-2147483648";
 const std::string DEFAULT_IMAGE_NAME = "IMG_";
 const std::string DEFAULT_VIDEO_NAME = "VID_";
 const std::string DEFAULT_AUDIO_NAME = "AUD_";
@@ -2714,30 +2715,52 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
-bool MediaFileUtils::IsValidInteger(const std::string &value)
-{
-    MEDIA_DEBUG_LOG("KeyWord is:%{public}s", value.c_str());
-    std::string unsignedStr = value;
-    while (unsignedStr.size() > 0 && unsignedStr[0] == '-') {
-        unsignedStr = unsignedStr.substr(1);
+bool IsValidInteger(const string &value) {
+    if (value.empty()) {
+        MEDIA_ERR_LOG("KeyWord is empty!");
+        return false;
     }
-    for (size_t i = 0; i < unsignedStr.size(); i++) {
-        if (!std::isdigit(unsignedStr[i])) {
-            MEDIA_INFO_LOG("KeyWord invalid char of:%{public}c", unsignedStr[i]);
-            unsignedStr = unsignedStr.substr(0, i);
-            break;
+
+    size_t start = 0;
+    bool isNegative = false;
+    if (value[0] == '-') {
+        start = 1;
+        isNegative = true;
+        if (value.size() == 1) { // 只有一个负号
+            MEDIA_ERR_LOG("KeyWord is just a minus sign!");
+            return false;
         }
     }
-    if (unsignedStr.size() == 0) {
-        MEDIA_ERR_LOG("KeyWord Invalid argument");
+
+    // 检查剩余字符是否都是数字
+    if (!all_of(value.begin() + start, value.end(), ::isdigit)) {
+        MEDIA_ERR_LOG("KeyWord contains non-digit characters!");
         return false;
-    } else if (unsignedStr.size() < INTEGER_MAX_LENGTH) {
+    }
+
+    size_t length = value.size() - start;
+    if (length > INTEGER_MAX_LENGTH) {
+        MEDIA_ERR_LOG("KeyWord is out of length!");
+        return false;
+    } else if (length < INTEGER_MAX_LENGTH) {
         return true;
-    } else if (unsignedStr.size() == INTEGER_MAX_LENGTH) {
-        return unsignedStr < MAX_INTEGER;
     } else {
-        MEDIA_ERR_LOG("KeyWord is out length!");
-        return false;
+        // 比较数值是否超过最大值或最小值
+        string maxIntStr = MAX_INTEGER;
+        string minIntStr = MIN_INTEGER;
+        if (isNegative) {
+            // 比较是否大于等于最小值
+            if (value.size() != minIntStr.size()) {
+                return false;
+            }
+            return value >= minIntStr;
+        } else {
+            // 比较是否小于等于最大值
+            if (value.size() != maxIntStr.size()) {
+                return false;
+            }
+            return value <= maxIntStr;
+        }
     }
 }
 
