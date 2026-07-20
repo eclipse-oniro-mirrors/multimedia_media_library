@@ -78,6 +78,7 @@
 #include "media_file_access_utils.h"
 #endif
 #include "file_const.h"
+#include "media_values_bucket_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -2268,7 +2269,7 @@ int32_t MediaLibraryAssetOperations::SetPendingFalse(const shared_ptr<FileAsset>
 int32_t MediaLibraryAssetOperations::SetPendingStatus(MediaLibraryCommand &cmd)
 {
     int32_t pendingStatus = 0;
-    if (!GetInt32FromValuesBucket(cmd.GetValueBucket(), MediaColumn::MEDIA_TIME_PENDING, pendingStatus)) {
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), MediaColumn::MEDIA_TIME_PENDING, pendingStatus)) {
         return E_INVALID_VALUES;
     }
 
@@ -2328,18 +2329,6 @@ int32_t MediaLibraryAssetOperations::GrantUriPermission(const string &uri, const
     return E_OK;
 }
 
-bool MediaLibraryAssetOperations::GetInt32FromValuesBucket(const NativeRdb::ValuesBucket &values,
-    const std::string &column, int32_t &value)
-{
-    ValueObject valueObject;
-    if (values.GetObject(column, valueObject)) {
-        valueObject.GetInt(value);
-    } else {
-        return false;
-    }
-    return true;
-}
-
 std::string MediaLibraryAssetOperations::CreateExtUriForV10Asset(FileAsset &fileAsset)
 {
     const std::string &filePath = fileAsset.GetPath();
@@ -2355,18 +2344,6 @@ std::string MediaLibraryAssetOperations::CreateExtUriForV10Asset(FileAsset &file
     string extrUri = MediaFileUtils::GetExtraUri(displayName, filePath);
     return MediaFileUtils::GetUriByExtrConditions(CONST_ML_FILE_URI_PREFIX + MediaFileUri::GetMediaTypeUri(mediaType,
         MEDIA_API_VERSION_V10) + "/", to_string(fileAsset.GetId()), extrUri);
-}
-
-bool MediaLibraryAssetOperations::GetStringFromValuesBucket(const NativeRdb::ValuesBucket &values,
-    const std::string &column, string &value)
-{
-    ValueObject valueObject;
-    if (values.GetObject(column, valueObject)) {
-        valueObject.GetString(value);
-    } else {
-        return false;
-    }
-    return true;
 }
 
 int32_t MediaLibraryAssetOperations::CreateAssetUniqueId(int32_t type,

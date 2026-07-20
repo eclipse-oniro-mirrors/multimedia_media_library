@@ -66,14 +66,7 @@ private:
      */
     static std::shared_ptr<OHOS::NativeRdb::ResultSet> QueryNewData(
         OHOS::NativeRdb::ValuesBucket &valueBucket, int &resultFlag);
-    /**
-     * get the value of the int type corresponding to {@code column} from {@code valueBucket}.
-     * @param result target value
-     * @return true: Successfully obtained the value.
-     *         false: failed to get the value.
-     */
-    static bool GetIntFromValuesBucket(OHOS::NativeRdb::ValuesBucket &valueBucket,
-        const std::string &column, int &result);
+
     /**
      * @param resultSetDB must contain id value.
      * @param valueBucketParam must contain permissionType value.

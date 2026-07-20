@@ -508,6 +508,7 @@ const std::map<std::string, std::string> DATE_TRANSITION_MAP = {
 #define CONST_COMPATIBLE_FORMAT "compatible_format"
 #define CONST_FORMAT_VERSION "format_version"
 #define CONST_APP_ID "app_id"
+#define CONST_IS_CAMERA_EDIT_DATA "is_camera_edit_data"
 
 // write cache
 #define CONST_CACHE_FILE_NAME "cache_file_name"

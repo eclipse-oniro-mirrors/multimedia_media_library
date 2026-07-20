@@ -50,6 +50,7 @@ enum class AssetChangeOperation {
     SET_DISPLAY_NAME,
     SET_HIDDEN_ATTRIBUTE,
     SET_DISPLAY_NAME_BY_FILE,
+    SET_CAMERA_EDIT_DATA,
 };
 
 enum class AddResourceMode {
@@ -114,6 +115,7 @@ public:
         ani_object assets);
 
     static ani_object SetEditData(ani_env *env, ani_object aniObject, ani_object editData);
+    static ani_object SetCameraEditData(ani_env *env, ani_object aniObject, ani_object editData);
     static ani_object SetFavorite(ani_env *env, ani_object object, ani_boolean favoriteState);
     static ani_object SetHidden(ani_env *env, ani_object object, ani_boolean hiddenState);
     static ani_object SetHiddenAttribute(ani_env *env, ani_object object, ani_boolean fileHiddenState);
@@ -146,7 +148,7 @@ public:
     bool CheckMovingPhotoResource(ResourceType resourceType) const;
     bool CheckEffectModeWriteOperation();
     bool CheckMovingPhotoWriteOperation();
-    bool CheckChangeOperations(ani_env *env);
+    bool CheckChangeOperations(ani_env *env, std::unique_ptr<MediaAssetChangeRequestAniContext> &context);
     int32_t CreateAssetBySecurityComponent(std::string &assetUri);
     int32_t CopyToMediaLibrary(bool isCreation, AddResourceMode mode);
     int32_t PutMediaAssetEditData(DataShare::DataShareValuesBucket &valuesBucket);
@@ -225,6 +227,7 @@ struct MediaAssetChangeRequestAniContext : public AniError {
     int32_t fd;
     int32_t userId_ = -1;
     std::vector<std::string> fileIds;
+    bool isCameraEditData {false};
 };
 } // namespace Media
 } // namespace OHOS

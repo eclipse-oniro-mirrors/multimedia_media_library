@@ -28,6 +28,7 @@
 #include "media_file_utils.h"
 #include "medialibrary_appstate_observer.h"
 #include "datashare_predicates_objects.h"
+#include "media_values_bucket_utils.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -59,7 +60,7 @@ int32_t MediaLibraryAppUriSensitiveOperations::HandleInsertOperation(MediaLibrar
     MEDIA_INFO_LOG("insert appUriSensitive begin");
     // sensitiveType from param
     int sensitiveTypeParam = -1;
-    if (!GetIntFromValuesBucket(cmd.GetValueBucket(), AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE,
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE,
         sensitiveTypeParam)) {
         return ERROR;
     }
@@ -92,7 +93,7 @@ int32_t MediaLibraryAppUriSensitiveOperations::HandleInsertOperation(MediaLibrar
         MediaFileUtils::UTCTimeMilliSeconds());
     
     int permissionTypeParam = -1;
-    if (!GetIntFromValuesBucket(cmd.GetValueBucket(), AppUriPermissionColumn::PERMISSION_TYPE,
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), AppUriPermissionColumn::PERMISSION_TYPE,
         permissionTypeParam)) {
         return ERROR;
     }
@@ -117,7 +118,7 @@ bool MediaLibraryAppUriSensitiveOperations::BeForceSensitive(MediaLibraryCommand
     for (auto it = values.begin(); it != values.end(); it++) {
         ValuesBucket value = RdbUtils::ToValuesBucket(*it);
         int beForce = -1;
-        if (!GetIntFromValuesBucket(value, AppUriSensitiveColumn::IS_FORCE_SENSITIVE,
+        if (!MediaValuesBucketUtils::GetInt(value, AppUriSensitiveColumn::IS_FORCE_SENSITIVE,
             beForce)) {
             continue;
         }
@@ -143,7 +144,7 @@ int32_t MediaLibraryAppUriSensitiveOperations::BatchInsert(
         }
         // sensitiveType from param
         int sensitiveTypeParam = -1;
-        if (!GetIntFromValuesBucket(value, AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE,
+        if (!MediaValuesBucketUtils::GetInt(value, AppUriSensitiveColumn::HIDE_SENSITIVE_TYPE,
             sensitiveTypeParam)) {
             return ERROR;
         }
@@ -211,14 +212,14 @@ std::shared_ptr<OHOS::NativeRdb::ResultSet> MediaLibraryAppUriSensitiveOperation
 
     // parse fileId
     int fileId = -1;
-    if (!GetIntFromValuesBucket(valueBucket, AppUriSensitiveColumn::FILE_ID, fileId)) {
+    if (!MediaValuesBucketUtils::GetInt(valueBucket, AppUriSensitiveColumn::FILE_ID, fileId)) {
         resultFlag = ERROR;
         return nullptr;
     }
 
     // parse uriType
     int uriType = -1;
-    if (!GetIntFromValuesBucket(valueBucket, AppUriSensitiveColumn::URI_TYPE, uriType)) {
+    if (!MediaValuesBucketUtils::GetInt(valueBucket, AppUriSensitiveColumn::URI_TYPE, uriType)) {
         resultFlag = ERROR;
         return nullptr;
     }
@@ -234,19 +235,6 @@ std::shared_ptr<OHOS::NativeRdb::ResultSet> MediaLibraryAppUriSensitiveOperation
     shared_ptr<NativeRdb::ResultSet> resultSet = QueryOperation(sensitivePredicates, fetchColumns);
     resultFlag = (resultSet == nullptr ? NO_DATA_EXIST : ALREADY_EXIST);
     return resultSet;
-}
-
-bool MediaLibraryAppUriSensitiveOperations::GetIntFromValuesBucket(
-    OHOS::NativeRdb::ValuesBucket &valueBucket, const std::string &column, int &result)
-{
-    ValueObject valueObject;
-    bool ret = valueBucket.GetObject(column, valueObject);
-    if (!ret) {
-        MEDIA_ERR_LOG("valueBucket param without %{public}s", column.c_str());
-        return false;
-    }
-    result = valueObject;
-    return true;
 }
 
 int MediaLibraryAppUriSensitiveOperations::UpdateSensitiveType(shared_ptr<NativeRdb::ResultSet> &resultSetDB,
@@ -278,7 +266,7 @@ int MediaLibraryAppUriSensitiveOperations::UpdateSensitiveTypeAndForceHideSensit
 {
     // get force value
     int isForce = -1;
-    bool hasSetForce = GetIntFromValuesBucket(valueBucket, AppUriSensitiveColumn::IS_FORCE_SENSITIVE,
+    bool hasSetForce = MediaValuesBucketUtils::GetInt(valueBucket, AppUriSensitiveColumn::IS_FORCE_SENSITIVE,
         isForce);
     // delete the temporary Sensitive when the app dies
     MedialibraryAppStateObserverManager::GetInstance().SubscribeAppState();

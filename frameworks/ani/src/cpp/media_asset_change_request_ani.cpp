@@ -53,6 +53,7 @@
 #include "add_image_vo.h"
 #include <charconv>
 #include "moving_photo_file_utils.h"
+#include "media_library_error_code.h"
 
 namespace OHOS::Media {
 namespace {
@@ -84,6 +85,8 @@ const std::array mediaAssetChangeMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetEffectMode)},
     ani_native_function {"setEditData", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetEditData)},
+    ani_native_function {"setCameraEditData", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetCameraEditData)},
     ani_native_function {"setLocation", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetLocation)},
     ani_native_function {"setTitle", nullptr,
@@ -595,7 +598,8 @@ bool MediaAssetChangeRequestAni::CheckMovingPhotoWriteOperation()
     return addResourceTimes == 2 && isImageExist && isVideoExist; // must add resource 2 times with image and video
 }
 
-bool MediaAssetChangeRequestAni::CheckChangeOperations(ani_env *env)
+bool MediaAssetChangeRequestAni::CheckChangeOperations(ani_env *env,
+    std::unique_ptr<MediaAssetChangeRequestAniContext> &context)
 {
     if (assetChangeOperations_.empty()) {
         AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "None request to apply");
@@ -604,10 +608,12 @@ bool MediaAssetChangeRequestAni::CheckChangeOperations(ani_env *env)
 
     bool isCreateFromScratch = Contains(AssetChangeOperation::CREATE_FROM_SCRATCH);
     bool isCreateFromUri = Contains(AssetChangeOperation::CREATE_FROM_URI);
-    bool containsEdit = Contains(AssetChangeOperation::SET_EDIT_DATA);
+    bool containsEdit = Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     bool containsGetHandler = Contains(AssetChangeOperation::GET_WRITE_CACHE_HANDLER);
     bool containsAddResource = Contains(AssetChangeOperation::ADD_RESOURCE);
     bool isSaveCameraPhoto = Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO);
+    context->isCameraEditData = Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     if ((isCreateFromScratch || containsEdit) && !containsGetHandler && !containsAddResource && !isSaveCameraPhoto) {
         AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Cannot create or edit asset without data to write");
         return false;
@@ -1178,6 +1184,35 @@ ani_object MediaAssetChangeRequestAni::SetEditData(ani_env *env, ani_object aniO
     CHECK_COND_WITH_MESSAGE(env, !editDataInner->GetData().empty(), "Invalid data");
     changeRequest->editData_ = editDataInner;
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_EDIT_DATA);
+    if (changeRequest->Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO) &&
+        !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
+        changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
+    }
+    return ReturnAniUndefined(env);
+}
+
+ani_object MediaAssetChangeRequestAni::SetCameraEditData(ani_env *env, ani_object aniObject, ani_object editData)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    auto aniContext = make_unique<MediaAssetChangeRequestAniContext>();
+    CHECK_PARAMETER_WITH_MESSAGE(env, aniContext != nullptr, "aniContext is null");
+    aniContext->objectInfo = Unwrap(env, aniObject);
+    auto changeRequest = aniContext->objectInfo;
+    ANI_CHECK_RETURN_RET_LOG(changeRequest != nullptr, nullptr, "changeRequest is null");
+    MediaAssetEditDataAni* editDataAni = MediaAssetEditDataAni::Unwrap(env, editData);
+    CHECK_PARAMETER_WITH_MESSAGE(env, editDataAni != nullptr, "Failed to get MediaAssetChangeRequestAni object");
+
+    shared_ptr<MediaAssetEditData> editDataInner = editDataAni->GetMediaAssetEditData();
+    CHECK_PARAMETER_WITH_MESSAGE(env, editDataInner != nullptr, "editData is null");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editDataInner->GetCompatibleFormat().empty(), "Invalid compatibleFormat");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editDataInner->GetFormatVersion().empty(), "Invalid formatVersion");
+    CHECK_PARAMETER_WITH_MESSAGE(env, !editDataInner->GetData().empty(), "Invalid data");
+    changeRequest->editData_ = editDataInner;
+    changeRequest->RecordChangeOperation(AssetChangeOperation::SET_CAMERA_EDIT_DATA);
     if (changeRequest->Contains(AssetChangeOperation::SAVE_CAMERA_PHOTO) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
@@ -2485,6 +2520,7 @@ static bool AddFiltersExecute(MediaAssetChangeRequestAniContext &context)
 
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset->GetId());
+    valuesBucket.Put(CONST_IS_CAMERA_EDIT_DATA, context.isCameraEditData);
     int ret = changeRequest->PutMediaAssetEditData(valuesBucket);
     CHECK_COND_RET(ret == E_OK, false, "Failed to put editData");
     AssetChangeReqBody reqBody;
@@ -2550,7 +2586,8 @@ static void ApplyAssetChangeRequestExecute(std::unique_ptr<MediaAssetChangeReque
             valid = iter->second(*context);
             tracer.Finish();
         } else if (changeOperation == AssetChangeOperation::CREATE_FROM_SCRATCH ||
-                   changeOperation == AssetChangeOperation::SET_EDIT_DATA) {
+            changeOperation == AssetChangeOperation::SET_EDIT_DATA ||
+            changeOperation == AssetChangeOperation::SET_CAMERA_EDIT_DATA) {
             // Perform CREATE_FROM_SCRATCH and SET_EDIT_DATA during GET_WRITE_CACHE_HANDLER or ADD_RESOURCE.
             valid = true;
         } else {
@@ -2573,7 +2610,7 @@ ani_status MediaAssetChangeRequestAni::ApplyChanges(ani_env *env)
     CHECK_COND_WITH_RET_MESSAGE(env, aniContext != nullptr, ANI_INVALID_ARGS, "aniContext is nullptr");
     aniContext->objectInfo = this;
     CHECK_COND_WITH_RET_MESSAGE(env, aniContext->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
-    CHECK_COND_WITH_RET_MESSAGE(env, CheckChangeOperations(env), ANI_INVALID_ARGS,
+    CHECK_COND_WITH_RET_MESSAGE(env, CheckChangeOperations(env, aniContext), ANI_INVALID_ARGS,
         "Failed to check asset change request operations");
     aniContext->assetChangeOperations = assetChangeOperations_;
     aniContext->addResourceTypes = addResourceTypes_;
@@ -2625,7 +2662,8 @@ ani_object MediaAssetChangeRequestAni::SaveCameraPhoto(ani_env *env, ani_object 
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is null");
 
-    if (changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) &&
+    if ((changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        changeRequest->Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA)) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
     }
@@ -2648,7 +2686,8 @@ ani_object MediaAssetChangeRequestAni::SaveCameraPhotoByImageFileType(ani_env *e
     auto fileAsset = changeRequest->GetFileAssetInstance();
     CHECK_COND_WITH_MESSAGE(env, fileAsset != nullptr, "fileAsset is null");
 
-    if (changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) &&
+    if ((changeRequest->Contains(AssetChangeOperation::SET_EDIT_DATA) ||
+        changeRequest->Contains(AssetChangeOperation::SET_CAMERA_EDIT_DATA)) &&
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
     }

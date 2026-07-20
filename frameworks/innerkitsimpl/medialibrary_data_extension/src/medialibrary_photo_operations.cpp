@@ -94,6 +94,7 @@
 #include "photo_file_utils.h"
 #include "file_parser.h"
 #include "scan_config_builder.h"
+#include "media_values_bucket_utils.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -129,6 +130,8 @@ const std::string SPECIAL_EDIT_COMPATIBLE_FORMAT = "system";
 const std::string SPECIAL_EDIT_FORMAT_VERSION = "1.0";
 const std::string SPECIAL_EDIT_EDIT_DATA = "";
 const std::string SPECIAL_EDIT_APP_ID = "com.ohos.photos";
+const std::string DEBUG_CAMERA_EDIT_DATA = "persist.multimedia.debug_camera_edit_data";
+const std::string DEFAULT_CAMERA_EDIT_DATA_VALUE = "0";
 static const string IS_ORIGINAL_IMAGE_RESOURCE = "is_original_image_resource";
 static const string ORIGINAL_IMAGE_RESOURCE = "1";
 const bool PROCESS_TRANSCODE_SIZE = false;
@@ -835,7 +838,8 @@ int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
 {
     const ValuesBucket &values = cmd.GetValueBucket();
     string uriString;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_URI, uriString), E_INVALID_VALUES);
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, CONST_MEDIA_DATA_DB_URI, uriString),
+        E_INVALID_VALUES);
     string pendingStatus = cmd.GetQuerySetParam(MediaColumn::MEDIA_TIME_PENDING);
 
     shared_ptr<FileAsset> fileAsset = GetFileAssetByUri(uriString, true, PHOTO_COLUMN_VECTOR, pendingStatus);
@@ -846,7 +850,7 @@ int32_t MediaLibraryPhotoOperations::Close(MediaLibraryCommand &cmd)
 
     int32_t isSync = 0;
     int32_t errCode = 0;
-    if (GetInt32FromValuesBucket(cmd.GetValueBucket(), CLOSE_CREATE_THUMB_STATUS, isSync) &&
+    if (MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), CLOSE_CREATE_THUMB_STATUS, isSync) &&
         isSync == CREATE_THUMB_SYNC_STATUS) {
         errCode = CloseAsset(fileAsset, true);
     } else {
@@ -938,18 +942,18 @@ int32_t MediaLibraryPhotoOperations::CreateV9(MediaLibraryCommand& cmd)
     ValuesBucket &values = cmd.GetValueBucket();
 
     string displayName;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, PhotoColumn::MEDIA_NAME, displayName),
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, PhotoColumn::MEDIA_NAME, displayName),
         E_HAS_DB_ERROR);
     fileAsset.SetDisplayName(displayName);
 
     string relativePath;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, PhotoColumn::MEDIA_RELATIVE_PATH, relativePath),
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, PhotoColumn::MEDIA_RELATIVE_PATH, relativePath),
         E_HAS_DB_ERROR);
     fileAsset.SetRelativePath(relativePath);
     MediaFileUtils::FormatRelativePath(relativePath);
 
     int32_t mediaType = 0;
-    CHECK_AND_RETURN_RET(GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_TYPE, mediaType),
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_TYPE, mediaType),
         E_HAS_DB_ERROR);
     fileAsset.SetMediaType(static_cast<MediaType>(mediaType));
 
@@ -997,7 +1001,7 @@ void MediaLibraryPhotoOperations::SolvePhotoAlbumInCreate(MediaLibraryCommand &c
 {
     ValuesBucket &values = cmd.GetValueBucket();
     string albumUri;
-    GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_ALBUM_ID, albumUri);
+    MediaValuesBucketUtils::GetString(values, CONST_MEDIA_DATA_DB_ALBUM_ID, albumUri);
     if (!albumUri.empty()) {
         PhotosAddAsset(stoi(MediaFileUtils::GetIdFromUri(albumUri)), to_string(fileAsset.GetId()),
             MediaFileUtils::GetExtraUri(fileAsset.GetDisplayName(), fileAsset.GetPath()));
@@ -1087,23 +1091,24 @@ int32_t MediaLibraryPhotoOperations::HandleCreateV10(MediaLibraryCommand &cmd)
     string extention;
     bool isContains = false;
     bool isNeedGrant = false;
-    if (GetStringFromValuesBucket(values, PhotoColumn::MEDIA_NAME, displayName)) {
+    if (MediaValuesBucketUtils::GetString(values, PhotoColumn::MEDIA_NAME, displayName)) {
         SetAssetDisplayName(displayName, fileAsset, isContains);
         fileAsset.SetTimePending(UNCREATE_FILE_TIMEPENDING);
     } else {
-        CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_ASSET_EXTENTION, extention), E_HAS_DB_ERROR);
+        CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, CONST_ASSET_EXTENTION, extention),
+            E_HAS_DB_ERROR);
         isNeedGrant = true;
         fileAsset.SetTimePending(UNOPEN_FILE_COMPONENT_TIMEPENDING);
         string title;
-        if (GetStringFromValuesBucket(values, PhotoColumn::MEDIA_TITLE, title)) {
+        if (MediaValuesBucketUtils::GetString(values, PhotoColumn::MEDIA_TITLE, title)) {
             displayName = title + "." + extention;
             SetAssetDisplayName(displayName, fileAsset, isContains);
         }
     }
     int32_t mediaType = 0;
-    CHECK_AND_RETURN_RET(GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_TYPE, mediaType), E_HAS_DB_ERROR);
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_TYPE, mediaType), E_HAS_DB_ERROR);
     int32_t fileSourceType = 0;
-    GetInt32FromValuesBucket(values, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, fileSourceType);
+    MediaValuesBucketUtils::GetInt(values, PhotoColumn::PHOTO_FILE_SOURCE_TYPE, fileSourceType);
     SetFileAssetFromCmd(fileAsset, cmd, mediaType, fileSourceType);
     ProcessAlbumIdInCreate(fileAsset, cmd);
     int32_t errCode = CheckWithType(isContains, displayName, extention, mediaType);
@@ -1132,7 +1137,7 @@ int32_t MediaLibraryPhotoOperations::CreateV10(MediaLibraryCommand &cmd)
 {
     ValuesBucket &values = cmd.GetValueBucket();
     string photoId;
-    GetStringFromValuesBucket(values, PhotoColumn::PHOTO_ID, photoId);
+    MediaValuesBucketUtils::GetString(values, PhotoColumn::PHOTO_ID, photoId);
     MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CREATE_ASSET);
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddAssetTime(photoId, AddAssetTimeStat::START);
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(photoId, AddCaptureTimeStat::START);
@@ -1628,14 +1633,12 @@ static void UpdateValuesBucketForExt(MediaLibraryCommand &cmd, ValuesBucket &val
 {
     ValuesBucket &cmdValues = cmd.GetValueBucket();
     int32_t supportedWatermarkType = 0;
-    if (MediaLibraryAssetOperations::GetInt32FromValuesBucket(cmdValues,
-        PhotoColumn::SUPPORTED_WATERMARK_TYPE, supportedWatermarkType)) {
+    if (MediaValuesBucketUtils::GetInt(cmdValues, PhotoColumn::SUPPORTED_WATERMARK_TYPE, supportedWatermarkType)) {
         values.Put(PhotoColumn::SUPPORTED_WATERMARK_TYPE, supportedWatermarkType);
     }
 
     std::string cameraShotKey;
-    if (MediaLibraryAssetOperations::GetStringFromValuesBucket(cmdValues,
-        PhotoColumn::CAMERA_SHOT_KEY, cameraShotKey)) {
+    if (MediaValuesBucketUtils::GetString(cmdValues, PhotoColumn::CAMERA_SHOT_KEY, cameraShotKey)) {
         values.Put(PhotoColumn::CAMERA_SHOT_KEY, cameraShotKey);
     }
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
@@ -3862,12 +3865,12 @@ int32_t MediaLibraryPhotoOperations::CommitEditInsert(MediaLibraryCommand &cmd)
     const ValuesBucket &values = cmd.GetValueBucket();
     string editData;
     int32_t id = 0;
-    if (!GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, id)) {
+    if (!MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, id)) {
         MEDIA_ERR_LOG("Failed to get fileId");
         PhotoEditingRecord::GetInstance()->EndCommitEdit(id);
         return E_INVALID_VALUES;
     }
-    if (!GetStringFromValuesBucket(values, CONST_EDIT_DATA, editData)) {
+    if (!MediaValuesBucketUtils::GetString(values, CONST_EDIT_DATA, editData)) {
         MEDIA_ERR_LOG("Failed to get editdata");
         PhotoEditingRecord::GetInstance()->EndCommitEdit(id);
         return E_INVALID_VALUES;
@@ -3945,7 +3948,7 @@ int32_t MediaLibraryPhotoOperations::RevertToOrigin(MediaLibraryCommand &cmd)
 {
     const ValuesBucket &values = cmd.GetValueBucket();
     int32_t fileId = 0;
-    CHECK_AND_RETURN_RET_LOG(GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, fileId), E_INVALID_VALUES,
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, fileId), E_INVALID_VALUES,
         "Failed to get fileId");
 
     shared_ptr<FileAsset> fileAsset = GetFileAssetFromDb(PhotoColumn::MEDIA_ID, to_string(fileId),
@@ -4349,7 +4352,7 @@ bool MediaLibraryPhotoOperations::IsNeedRevertEffectMode(MediaLibraryCommand& cm
         return false;
     }
 
-    if (!GetInt32FromValuesBucket(cmd.GetValueBucket(), PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode) ||
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode) ||
         (effectMode != static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT) &&
         effectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY))) {
         return false;
@@ -4360,8 +4363,7 @@ bool MediaLibraryPhotoOperations::IsNeedRevertEffectMode(MediaLibraryCommand& cm
 void MediaLibraryPhotoOperations::ProcessEditedEffectMode(MediaLibraryCommand& cmd)
 {
     int32_t effectMode = 0;
-    if (!GetInt32FromValuesBucket(
-        cmd.GetValueBucket(), PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode) ||
+    if (!MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode) ||
         effectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         return;
     }
@@ -4568,7 +4570,7 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(MediaLibraryCommand &cmd, con
     string realPath = MediaFileAccessUtils::GetAssetRealPath(moveCacheFileInfo.destPath);
     if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
         string cacheMovingPhotoVideoName;
-        GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
+        MediaValuesBucketUtils::GetString(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
             cacheMovingPhotoVideoName);
         string cacheDir = GetAssetCacheDir();
         string cacheVideoPath = cacheDir + "/" + cacheMovingPhotoVideoName;
@@ -4599,8 +4601,8 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(MediaLibraryCommand &cmd, con
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckMovingPhotoImage(moveCacheFileInfo.cachePath), E_INVALID_MOVING_PHOTO,
         "Failed to check image of moving photo");
     string cacheMovingPhotoVideoName;
-    if (GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
-                                  cacheMovingPhotoVideoName) && !cacheMovingPhotoVideoName.empty()) {
+    if (MediaValuesBucketUtils::GetString(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
+        cacheMovingPhotoVideoName) && !cacheMovingPhotoVideoName.empty()) {
         string cacheVideoPath = GetAssetCacheDir() + "/" + cacheMovingPhotoVideoName;
         CHECK_AND_RETURN_RET_LOG(MovingPhotoFileUtils::CheckMovingPhotoVideo(cacheVideoPath), E_INVALID_MOVING_PHOTO,
             "Failed to check video of moving photo");
@@ -4635,8 +4637,8 @@ int32_t MediaLibraryPhotoOperations::MoveCacheFile(MediaLibraryCommand &cmd, con
 bool MediaLibraryPhotoOperations::CheckCacheCmd(MediaLibraryCommand& cmd, int32_t subtype, const string& displayName)
 {
     string cacheFileName;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_FILE_NAME, cacheFileName),
-        false, "Failed to get cache file name");
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(cmd.GetValueBucket(), CONST_CACHE_FILE_NAME,
+        cacheFileName), false, "Failed to get cache file name");
     string cacheMimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(cacheFileName));
     string assetMimeType = MimeTypeUtils::GetMimeTypeFromExtension(MediaFileUtils::GetExtensionFromPath(displayName));
 
@@ -4647,10 +4649,10 @@ bool MediaLibraryPhotoOperations::CheckCacheCmd(MediaLibraryCommand& cmd, int32_
     }
 
     int32_t id = 0;
-    bool isCreation = !GetInt32FromValuesBucket(cmd.GetValueBucket(), PhotoColumn::MEDIA_ID, id);
+    bool isCreation = !MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), PhotoColumn::MEDIA_ID, id);
     if (subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) && isCreation) {
         string movingPhotoVideoName;
-        bool containsVideo = GetStringFromValuesBucket(cmd.GetValueBucket(),
+        bool containsVideo = MediaValuesBucketUtils::GetString(cmd.GetValueBucket(),
             CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, movingPhotoVideoName);
         CHECK_AND_RETURN_RET_LOG(containsVideo, false, "Failed to get video when creating moving photo");
 
@@ -4667,9 +4669,10 @@ int32_t MediaLibraryPhotoOperations::ParseMediaAssetEditData(MediaLibraryCommand
     string formatVersion;
     string data;
     const ValuesBucket& values = cmd.GetValueBucket();
-    bool containsCompatibleFormat = GetStringFromValuesBucket(values, CONST_COMPATIBLE_FORMAT, compatibleFormat);
-    bool containsFormatVersion = GetStringFromValuesBucket(values, CONST_FORMAT_VERSION, formatVersion);
-    bool containsData = GetStringFromValuesBucket(values, CONST_EDIT_DATA, data);
+    bool containsCompatibleFormat =
+        MediaValuesBucketUtils::GetString(values, CONST_COMPATIBLE_FORMAT, compatibleFormat);
+    bool containsFormatVersion = MediaValuesBucketUtils::GetString(values, CONST_FORMAT_VERSION, formatVersion);
+    bool containsData = MediaValuesBucketUtils::GetString(values, CONST_EDIT_DATA, data);
     bool notContainsEditData = !containsCompatibleFormat && !containsFormatVersion && !containsData;
     bool containsEditData = containsCompatibleFormat && containsFormatVersion && containsData;
     if (!containsEditData && !notContainsEditData) {
@@ -4795,7 +4798,7 @@ void MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(const string& photoI
 bool MediaLibraryPhotoOperations::IsSetEffectMode(MediaLibraryCommand &cmd)
 {
     int32_t effectMode;
-    return GetInt32FromValuesBucket(cmd.GetValueBucket(), PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode);
+    return MediaValuesBucketUtils::GetInt(cmd.GetValueBucket(), PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode);
 }
 
 bool MediaLibraryPhotoOperations::IsContainsData(MediaLibraryCommand &cmd)
@@ -4804,16 +4807,33 @@ bool MediaLibraryPhotoOperations::IsContainsData(MediaLibraryCommand &cmd)
     string formatVersion;
     string data;
     const ValuesBucket& values = cmd.GetValueBucket();
-    bool containsCompatibleFormat = GetStringFromValuesBucket(values, CONST_COMPATIBLE_FORMAT, compatibleFormat);
-    bool containsFormatVersion = GetStringFromValuesBucket(values, CONST_FORMAT_VERSION, formatVersion);
-    bool containsData = GetStringFromValuesBucket(values, CONST_EDIT_DATA, data);
+    bool containsCompatibleFormat = MediaValuesBucketUtils::GetString(values, CONST_COMPATIBLE_FORMAT,
+        compatibleFormat);
+    bool containsFormatVersion = MediaValuesBucketUtils::GetString(values, CONST_FORMAT_VERSION, formatVersion);
+    bool containsData = MediaValuesBucketUtils::GetString(values, CONST_EDIT_DATA, data);
     return containsCompatibleFormat && containsFormatVersion && containsData;
 }
 
 bool MediaLibraryPhotoOperations::IsCameraEditData(MediaLibraryCommand &cmd)
 {
-    string bundleName = cmd.GetBundleName();
-    return IsContainsData(cmd) && (count(CAMERA_BUNDLE_NAMES.begin(), CAMERA_BUNDLE_NAMES.end(), bundleName) > 0);
+    string compatibleFormat;
+    string formatVersion;
+    string data;
+    const ValuesBucket& values = cmd.GetValueBucket();
+    bool containsCompatibleFormat = MediaValuesBucketUtils::GetString(values, CONST_COMPATIBLE_FORMAT,
+        compatibleFormat);
+    bool containsFormatVersion = MediaValuesBucketUtils::GetString(values, CONST_FORMAT_VERSION, formatVersion);
+    bool containsData = MediaValuesBucketUtils::GetString(values, CONST_EDIT_DATA, data);
+    bool isCameraEditDataMode = false;
+    if (OHOS::system::GetParameter(DEBUG_CAMERA_EDIT_DATA, DEFAULT_CAMERA_EDIT_DATA_VALUE) ==
+        DEFAULT_CAMERA_EDIT_DATA_VALUE) {
+        string bundleName = cmd.GetBundleName();
+        isCameraEditDataMode = count(CAMERA_BUNDLE_NAMES.begin(), CAMERA_BUNDLE_NAMES.end(), bundleName) > 0;
+    } else {
+        MediaValuesBucketUtils::GetBool(values, CONST_IS_CAMERA_EDIT_DATA, isCameraEditDataMode);
+    }
+    
+    return containsCompatibleFormat && containsFormatVersion && containsData && isCameraEditDataMode;
 }
 
 int32_t MediaLibraryPhotoOperations::ReadEditdataFromFile(const std::string &editDataPath, std::string &editData)
@@ -4849,7 +4869,7 @@ int32_t MediaLibraryPhotoOperations::SaveEditDataCamera(MediaLibraryCommand &cmd
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::WriteStrToFile(editDataCameraPath, editDataStr), E_HAS_FS_ERROR,
         "Failed to write editdata:%{private}s", editDataCameraPath.c_str());
     const ValuesBucket& values = cmd.GetValueBucket();
-    GetStringFromValuesBucket(values, CONST_EDIT_DATA, editData);
+    MediaValuesBucketUtils::GetString(values, CONST_EDIT_DATA, editData);
     MEDIA_DEBUG_LOG("SaveEditDataCamera yuv, editDataStr: %{public}s.", editDataStr.c_str());
     return ret;
 }
@@ -4912,7 +4932,7 @@ std::shared_ptr<FileAsset> MediaLibraryPhotoOperations::GetFileAsset(MediaLibrar
 {
     const ValuesBucket& values = cmd.GetValueBucket();
     int32_t id = 0;
-    GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, id);
+    MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, id);
     vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME,
         PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MEDIA_TIME_PENDING, PhotoColumn::MEDIA_DATE_TRASHED,
         PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE };
@@ -4970,7 +4990,7 @@ int32_t MediaLibraryPhotoOperations::FinishRequestPicture(MediaLibraryCommand &c
 {
     const ValuesBucket& values = cmd.GetValueBucket();
     int32_t fileId = 0;
-    GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, fileId);
+    MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, fileId);
 
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(fileId));
@@ -4998,7 +5018,7 @@ int64_t MediaLibraryPhotoOperations::CloneSingleAsset(MediaLibraryCommand &cmd)
         "Failed to get media id from values bucket.");
     valueObject.GetInt(fileId);
     string title;
-    GetStringFromValuesBucket(values, MediaColumn::MEDIA_TITLE, title);
+    MediaValuesBucketUtils::GetString(values, MediaColumn::MEDIA_TITLE, title);
     return MediaLibraryAlbumFusionUtils::CloneSingleAsset(static_cast<int64_t>(fileId), title);
 }
 
@@ -5006,7 +5026,7 @@ bool MediaLibraryPhotoOperations::AddFiltersForPipeline(MediaLibraryCommand& cmd
 {
     const ValuesBucket& values = cmd.GetValueBucket();
     int32_t fileId = 0;
-    GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, fileId);
+    MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, fileId);
 
     CameraPipelineType type = CameraPipelineType::UNDEFINED;
     auto pipeline = MultistagesCameraCaptureManager::GetInstance().GetPipelineByFileId(fileId, type);
@@ -5022,11 +5042,11 @@ int32_t MediaLibraryPhotoOperations::AddFilters(MediaLibraryCommand& cmd)
     // moving photo video save and add filters
     const ValuesBucket& values = cmd.GetValueBucket();
     int32_t videoType = ORIGIN_VIDEO;
-    GetInt32FromValuesBucket(values, CONST_VIDEO_TYPE_KEYWORD, videoType);
+    MediaValuesBucketUtils::GetInt(values, CONST_VIDEO_TYPE_KEYWORD, videoType);
     string videoSaveFinishedUri;
-    if (GetStringFromValuesBucket(values, CONST_NOTIFY_VIDEO_SAVE_FINISHED, videoSaveFinishedUri)) {
+    if (MediaValuesBucketUtils::GetString(values, CONST_NOTIFY_VIDEO_SAVE_FINISHED, videoSaveFinishedUri)) {
         int32_t id = -1;
-        CHECK_AND_RETURN_RET_LOG(GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, id),
+        CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, id),
             E_INVALID_VALUES, "Failed to get fileId");
         vector<string> columns = { videoSaveFinishedUri };
 
@@ -5177,44 +5197,6 @@ int32_t MediaLibraryPhotoOperations::SavePicture(const int32_t &fileType, const 
     bool cond = (photoExtInfo.oldFilePath != "" && size > 0);
     CHECK_AND_EXECUTE(!cond, DeleteAbnormalFile(assetPath, fileId, photoExtInfo.oldFilePath));
     return E_OK;
-}
-
-int32_t MediaLibraryPhotoOperations::AddFiltersExecute(MediaLibraryCommand& cmd,
-    const shared_ptr<FileAsset>& fileAsset, const string& cachePath)
-{
-    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
-    int32_t fileId = fileAsset->GetId();
-    string assetPath = fileAsset->GetFilePath();
-    CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_INVALID_VALUES, "Failed to get asset path");
-    string editDataDirPath = MediaEditUtils::GetEditDataDir(assetPath);
-    CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_INVALID_URI, "Can not get editdara dir path");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
-        "Can not create dir %{private}s", editDataDirPath.c_str());
-    string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
-    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Can not get edit source path");
-
-    if (cachePath.empty()) {
-        // Photo目录照片复制到.editdata目录的source.jpg
-        MediaFileUtils::CopyFileUtil(assetPath, sourcePath);
-    } else {
-        // cache移动到source.jpg
-        int32_t subtype = fileAsset->GetPhotoSubType();
-        MoveCacheFile(cmd, MoveCacheFileInfo(subtype, cachePath, sourcePath));
-    }
-
-    // 保存editdata_camera文件
-    string editData;
-    SaveEditDataCamera(cmd, assetPath, editData);
-    // 生成水印
-    int32_t ret = AddFiltersToPhoto(sourcePath, assetPath, editData);
-    if (ret == E_OK) {
-        MediaLibraryObjectUtils::ScanFileAsync(assetPath, to_string(fileAsset->GetId()), MediaLibraryApi::API_10);
-    }
-    std::shared_ptr<Media::Picture> picture;
-    std::string photoId;
-    bool isHighQualityPicture = false;
-    CHECK_AND_RETURN_RET(GetPicture(fileId, picture, true, photoId, isHighQualityPicture) != E_OK, E_OK);
-    return ret;
 }
 
 int32_t MediaLibraryPhotoOperations::SaveCameraPhotoWithFilters(MediaLibraryCommand& cmd,
@@ -5510,8 +5492,6 @@ int32_t MediaLibraryPhotoOperations::SubmitCacheExecute(MediaLibraryCommand& cmd
             effectMode);
         CHECK_AND_RETURN_RET(fileAsset != nullptr, E_INVALID_VALUES);
         return HandleSubmitEditCache(cmd, fileAsset, isWriteGpsAdvanced, moveCacheFileInfo, id);
-    } else if (IsCameraEditData(cmd)) {
-        AddFiltersExecute(cmd, fileAsset, cachePath);
     } else {
         MoveCacheFileInfo moveCacheFileInfo(subtype, cachePath, assetPath, isSourceImageExist, isOriginalImageResource,
             effectMode);
@@ -5622,7 +5602,8 @@ int32_t MediaLibraryPhotoOperations::SubmitEditMovingPhotoExecute(MediaLibraryCo
     }
 
     string cacheMovingPhotoVideoName;
-    GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName);
+    MediaValuesBucketUtils::GetString(cmd.GetValueBucket(), CONST_CACHE_MOVING_PHOTO_VIDEO_NAME,
+        cacheMovingPhotoVideoName);
     if (cacheMovingPhotoVideoName.empty()) {
         string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
         CHECK_AND_RETURN_RET_LOG(!videoPath.empty(), E_INVALID_PATH, "Can not get video path");
@@ -5649,8 +5630,8 @@ int32_t MediaLibraryPhotoOperations::GetMovingPhotoCachePath(MediaLibraryCommand
     string imageCacheName;
     string videoCacheName;
     const ValuesBucket& values = cmd.GetValueBucket();
-    GetStringFromValuesBucket(values, CONST_CACHE_FILE_NAME, imageCacheName);
-    GetStringFromValuesBucket(values, CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, videoCacheName);
+    MediaValuesBucketUtils::GetString(values, CONST_CACHE_FILE_NAME, imageCacheName);
+    MediaValuesBucketUtils::GetString(values, CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, videoCacheName);
     CHECK_AND_RETURN_RET_LOG(!imageCacheName.empty() || !videoCacheName.empty(),
         E_INVALID_VALUES, "Failed to check cache file of moving photo");
 
@@ -5763,9 +5744,10 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
     int32_t id = -1;
     int32_t effectMode = -1;
     const ValuesBucket& values = cmd.GetValueBucket();
-    CHECK_AND_RETURN_RET_LOG(GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, id) && id > 0,
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, id) && id > 0,
         E_INVALID_VALUES, "Failed to get file id");
-    CHECK_AND_RETURN_RET_LOG(GetInt32FromValuesBucket(values, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode) &&
+    CHECK_AND_RETURN_RET_LOG(
+        MediaValuesBucketUtils::GetInt(values, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode) &&
         MediaFileUtils::CheckMovingPhotoEffectMode(effectMode), E_INVALID_VALUES,
         "Failed to check effect mode: %{public}d", effectMode);
     vector<string> columns = { PhotoColumn::MEDIA_FILE_PATH, PhotoColumn::MEDIA_NAME, PhotoColumn::PHOTO_SUBTYPE,
@@ -5808,22 +5790,22 @@ int32_t MediaLibraryPhotoOperations::SubmitCache(MediaLibraryCommand& cmd)
 
     const ValuesBucket& values = cmd.GetValueBucket();
     string fileName;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, CONST_CACHE_FILE_NAME, fileName),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, CONST_CACHE_FILE_NAME, fileName),
         E_INVALID_VALUES, "Failed to get fileName");
     string cacheDir = GetAssetCacheDir();
     string cachePath = cacheDir + "/" + fileName;
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(cachePath), E_NO_SUCH_FILE,
         "cachePath: %{private}s does not exist!", cachePath.c_str());
     string movingPhotoVideoName;
-    if (GetStringFromValuesBucket(values, CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, movingPhotoVideoName)) {
+    if (MediaValuesBucketUtils::GetString(values, CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, movingPhotoVideoName)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(cacheDir + "/" + movingPhotoVideoName),
             E_NO_SUCH_FILE, "cahce moving video path: %{private}s does not exist!", cachePath.c_str());
     }
 
     int32_t id = 0;
-    if (!GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, id)) {
+    if (!MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, id)) {
         string displayName;
-        CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, PhotoColumn::MEDIA_NAME, displayName),
+        CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, PhotoColumn::MEDIA_NAME, displayName),
             E_INVALID_VALUES, "Failed to get displayName");
         CHECK_AND_RETURN_RET_LOG(
             MediaFileUtils::GetExtensionFromPath(displayName) == MediaFileUtils::GetExtensionFromPath(fileName),
@@ -6219,7 +6201,8 @@ int32_t MediaLibraryPhotoOperations::ScanFileWithoutAlbumUpdate(MediaLibraryComm
     }
     const ValuesBucket &values = cmd.GetValueBucket();
     string uriString;
-    CHECK_AND_RETURN_RET(GetStringFromValuesBucket(values, CONST_MEDIA_DATA_DB_URI, uriString), E_INVALID_VALUES);
+    CHECK_AND_RETURN_RET(MediaValuesBucketUtils::GetString(values, CONST_MEDIA_DATA_DB_URI, uriString),
+        E_INVALID_VALUES);
 
     string path = MediaFileUri::GetPathFromUri(uriString, true);
     string fileIdStr = MediaFileUri::GetPhotoId(uriString);
@@ -6297,7 +6280,7 @@ int32_t MediaLibraryPhotoOperations::UpdateOwnerAlbumId(MediaLibraryCommand &cmd
     const ValuesBucket &values = cmd.GetValueBucket();
     int32_t targetAlbumId = 0;
     CHECK_AND_RETURN_RET(
-        GetInt32FromValuesBucket(values, PhotoColumn::PHOTO_OWNER_ALBUM_ID, targetAlbumId), E_HAS_DB_ERROR);
+        MediaValuesBucketUtils::GetInt(values, PhotoColumn::PHOTO_OWNER_ALBUM_ID, targetAlbumId), E_HAS_DB_ERROR);
     AccurateRefresh::AssetAccurateRefresh assetRefresh(AccurateRefresh::UPDATE_OWNER_ALBUMID_BUSSINESS_NAME);
     int32_t rowId = -1;
     assetRefresh.Update(cmd, rowId);
@@ -6318,23 +6301,23 @@ int32_t MediaLibraryPhotoOperations::ProcessCustomRestore(MediaLibraryCommand& c
     string appName;
     string appId;
     string dbPath;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "albumLpath", albumLpath),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "albumLpath", albumLpath),
         E_INVALID_VALUES, "Failed to get albumLpath: %{public}s", albumLpath.c_str());
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "keyPath", keyPath),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "keyPath", keyPath),
         E_INVALID_VALUES, "Failed to get keyPath: %{public}s", keyPath.c_str());
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     string dir = CUSTOM_RESTORE_DIR + "/" + keyPath;
     CHECK_AND_RETURN_RET_LOG(
         MediaFileUtils::IsFileExists(dir), E_NO_SUCH_FILE, "sourceDir: %{public}s does not exist!", dir.c_str());
 #endif
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "isDeduplication", isDeduplication),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "isDeduplication", isDeduplication),
         E_INVALID_VALUES, "Failed to get isDeduplication: %{public}s", isDeduplication.c_str());
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "bundleName", bundleName),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "bundleName", bundleName),
         E_INVALID_VALUES, "Failed to get bundleName: %{public}s", bundleName.c_str());
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "appName", appName),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "appName", appName),
         E_INVALID_VALUES, "Failed to get appName: %{public}s", appName.c_str());
-    GetStringFromValuesBucket(values, "appId", appId);
-    GetStringFromValuesBucket(values, "dbPath", dbPath);
+    MediaValuesBucketUtils::GetString(values, "appId", appId);
+    MediaValuesBucketUtils::GetString(values, "dbPath", dbPath);
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     RestoreTaskInfo restoreTaskInfo = {.dbPath = dbPath,
         .albumLpath = albumLpath,
@@ -6360,24 +6343,24 @@ int32_t MediaLibraryPhotoOperations::ProcessCustomRestoreAsync(MediaLibraryComma
     string appName;
     string appId;
     string dbPath;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "albumLpath", albumLpath),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "albumLpath", albumLpath),
         E_INVALID_VALUES, "Failed to get albumLpath: %{public}s", albumLpath.c_str());
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "keyPath", keyPath),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "keyPath", keyPath),
         E_INVALID_VALUES, "Failed to get keyPath: %{public}s", keyPath.c_str());
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     string dir = CUSTOM_RESTORE_DIR + "/" + keyPath;
     CHECK_AND_RETURN_RET_LOG(
         MediaFileUtils::IsFileExists(dir), E_NO_SUCH_FILE, "sourceDir: %{public}s does not exist!", dir.c_str());
 #endif
-    GetStringFromValuesBucket(values, "isDeduplication", isDeduplication);
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "isDeduplication", isDeduplication),
+    MediaValuesBucketUtils::GetString(values, "isDeduplication", isDeduplication);
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "isDeduplication", isDeduplication),
         E_INVALID_VALUES, "Failed to get isDeduplication: %{public}s", isDeduplication.c_str());
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "bundleName", bundleName),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "bundleName", bundleName),
         E_INVALID_VALUES, "Failed to get bundleName: %{public}s", bundleName.c_str());
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "appName", appName),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "appName", appName),
         E_INVALID_VALUES, "Failed to get appName: %{public}s", appName.c_str());
-    GetStringFromValuesBucket(values, "appId", appId);
-    GetStringFromValuesBucket(values, "dbPath", dbPath);
+    MediaValuesBucketUtils::GetString(values, "appId", appId);
+    MediaValuesBucketUtils::GetString(values, "dbPath", dbPath);
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     RestoreTaskInfo restoreTaskInfo = {.dbPath = dbPath,
         .albumLpath = albumLpath,
@@ -6397,7 +6380,7 @@ int32_t MediaLibraryPhotoOperations::CancelCustomRestore(MediaLibraryCommand& cm
 {
     const ValuesBucket& values = cmd.GetValueBucket();
     string keyPath;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, "keyPath", keyPath),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, "keyPath", keyPath),
         E_INVALID_VALUES, "Failed to get keyPath: %{public}s", keyPath.c_str());
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
     RestoreTaskInfo restoreTaskInfo = {.keyPath = keyPath};
@@ -6602,7 +6585,7 @@ int32_t MediaLibraryPhotoOperations::LSMediaFiles(MediaLibraryCommand& cmd)
 {
     const ValuesBucket& values = cmd.GetValueBucket();
     string dirPath;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, MediaColumn::MEDIA_FILE_PATH, dirPath),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, MediaColumn::MEDIA_FILE_PATH, dirPath),
         E_INVALID_VALUES, "Failed to get dirPath value");
     string realPath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(dirPath, realPath),
@@ -7307,8 +7290,8 @@ int32_t MediaLibraryPhotoOperations::SubmitExistFileDBRecordExecute(MediaLibrary
     CHECK_AND_RETURN_RET_LOG(checkResult == E_OK, E_FILE_OPER_FAIL,
         "Failed to ValidateAndExtractFileAssetParams, errCode: %{public}d", checkResult);
     // override path
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_IMPORT_CACHE_FILE_PATH, assetPath),
-                             E_FAIL, "Failed to get cache asset path");
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(cmd.GetValueBucket(), CONST_IMPORT_CACHE_FILE_PATH,
+        assetPath), E_FAIL, "Failed to get cache asset path");
 
     std::string val = cmd.GetQuerySetParam(SET_LOCATION_KEY);
     bool isWriteGpsAdvanced = val == SET_LOCATION_VALUE;
@@ -7336,19 +7319,19 @@ int32_t MediaLibraryPhotoOperations::SubmitExistFileDBRecord(MediaLibraryCommand
     }
     const ValuesBucket& values = cmd.GetValueBucket();
     string fileName;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, CONST_CACHE_FILE_NAME, fileName),
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, CONST_CACHE_FILE_NAME, fileName),
         E_INVALID_VALUES, "Failed to get fileName");
     string assetPath;
-    CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(cmd.GetValueBucket(), CONST_IMPORT_CACHE_FILE_PATH, assetPath),
-        E_FAIL, "Failed to get cache asset path");
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(cmd.GetValueBucket(), CONST_IMPORT_CACHE_FILE_PATH,
+        assetPath), E_FAIL, "Failed to get cache asset path");
     int32_t fileIdDB = -1;
     int32_t ret = GetFileIdByPathFromDB(assetPath, fileIdDB);
     CHECK_AND_RETURN_RET_LOG(fileIdDB <= 0 && ret == E_OK, E_FAIL, "Already have asset record %{public}d", ret);
 
     int32_t id = 0;
-    if (fileIdDB <= 0 && !GetInt32FromValuesBucket(values, PhotoColumn::MEDIA_ID, id)) {
+    if (fileIdDB <= 0 && !MediaValuesBucketUtils::GetInt(values, PhotoColumn::MEDIA_ID, id)) {
         string displayName;
-        CHECK_AND_RETURN_RET_LOG(GetStringFromValuesBucket(values, PhotoColumn::MEDIA_NAME, displayName),
+        CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetString(values, PhotoColumn::MEDIA_NAME, displayName),
             E_INVALID_VALUES, "Failed to get displayName");
         CHECK_AND_RETURN_RET_LOG(
             MediaFileUtils::GetExtensionFromPath(displayName) == MediaFileUtils::GetExtensionFromPath(fileName),
@@ -7564,7 +7547,7 @@ void MediaLibraryPhotoOperations::ProcessAlbumIdInCreate(FileAsset &fileAsset, M
     MEDIA_DEBUG_LOG("ProcessAlbumIdInCreate start");
     std::string albumId;
     ValuesBucket &values = cmd.GetValueBucket();
-    GetStringFromValuesBucket(values, PhotoColumn::PHOTO_OWNER_ALBUM_ID, albumId);
+    MediaValuesBucketUtils::GetString(values, PhotoColumn::PHOTO_OWNER_ALBUM_ID, albumId);
     CHECK_AND_RETURN_LOG(!albumId.empty(), "AlbumId is empty");
 
     PhotoAlbumType type;
