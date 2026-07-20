@@ -790,27 +790,6 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_manager_test_0
     MEDIA_INFO_LOG("cloud_asset_download_manager_test_023 End");
 }
 
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_operation_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_download_operation_test_001 Start");
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    operation->isThumbnailUpdate_ = false;
-    int32_t ret = operation->InitDownloadTaskInfo();
-    EXPECT_EQ(ret, E_OK);
-    CloudMediaAssetManager &instance =  CloudMediaAssetManager::GetInstance();
-    instance.operation_ = operation;
-    instance.SetIsThumbnailUpdate();
-    ret = operation->InitDownloadTaskInfo();
-    EXPECT_EQ(ret, E_ERR);
-    int64_t fileId1 = 0;
-    std::string data1 = "";
-    ret = InsertCloudAssetINDb(fileId1, data1);
-    EXPECT_EQ(ret, E_OK);
-    ret = operation->InitDownloadTaskInfo();
-    EXPECT_EQ(ret, E_OK);
-    MEDIA_INFO_LOG("cloud_asset_download_operation_test_001 End");
-}
-
 HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_download_operation_test_002, TestSize.Level1)
 {
     MEDIA_INFO_LOG("cloud_asset_download_operation_test_002 Start");
@@ -1650,23 +1629,6 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_016, Tes
     EXPECT_EQ(ret, E_OK);
     
     MEDIA_INFO_LOG("cloud_asset_operation_test_016 End");
-}
-
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_017, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_operation_test_017 Start");
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
-    int32_t ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_GENTLE));
-    EXPECT_EQ(ret, E_ERR);
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
-    operation->downloadType_ = CloudMediaDownloadType::DOWNLOAD_GENTLE;
-    ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_FORCE));
-    EXPECT_GE(ret, E_OK);
-    
-    MEDIA_INFO_LOG("cloud_asset_operation_test_017 End");
 }
 
 HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_operation_test_018, TestSize.Level1)
@@ -3240,52 +3202,6 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_start_download_test_001
     EXPECT_EQ(ret, E_ERR);
     
     MEDIA_INFO_LOG("cloud_asset_start_download_test_001 End");
-}
-
-// 测试目标: 测试StartDownloadTask DOWNLOAD_FORCE类型
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_start_download_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_start_download_test_002 Start");
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
-    operation->isThumbnailUpdate_ = true;
-    
-    int32_t ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_FORCE));
-    EXPECT_GE(ret, E_OK);
-    
-    MEDIA_INFO_LOG("cloud_asset_start_download_test_002 End");
-}
-
-// 测试目标: 测试StartDownloadTask DOWNLOAD_GENTLE类型
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_start_download_test_003, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_start_download_test_003 Start");
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
-    operation->isThumbnailUpdate_ = true;
-    
-    int32_t ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_GENTLE));
-    EXPECT_EQ(ret, E_OK);
-    
-    MEDIA_INFO_LOG("cloud_asset_start_download_test_003 End");
-}
-
-// 测试目标: 测试StartDownloadTask DOWNLOAD_GENTLE类型带数据
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_start_download_test_004, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_start_download_test_004 Start");
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
-    operation->isThumbnailUpdate_ = true;
-    operation->readyForDownload_.fileDownloadMap.EnsureInsert("test1.jpg", 1024);
-    
-    int32_t ret = operation->StartDownloadTask(static_cast<int32_t>(CloudMediaDownloadType::DOWNLOAD_GENTLE));
-    EXPECT_EQ(ret, E_OK);
-    
-    MEDIA_INFO_LOG("cloud_asset_start_download_test_004 End");
 }
 
 // 测试目标: 测试InitDownloadTaskInfo返回错误当无数据

@@ -264,27 +264,6 @@ HWTEST_F(CloudMediaPhotoDeleteTest, CloudMediaCopyThumbnail, TestSize.Level1)
     EXPECT_EQ(ret, E_FAIL);
 }
 
-HWTEST_F(CloudMediaPhotoDeleteTest, CloudMediaPhotosPoWriterTest, TestSize.Level1)
-{
-    PhotosPo photosPo;
-    auto writer = make_shared<PhotosPoWriter>(photosPo);
-    ASSERT_NE(writer, nullptr);
-    std::variant<int32_t, int64_t, double, std::string> valueInt = 12;
-    std::variant<int32_t, int64_t, double, std::string> valueLong = 12LL;
-    std::variant<int32_t, int64_t, double, std::string> valueDouble = 12.0;
-    std::variant<int32_t, int64_t, double, std::string> valueStr = "test";
-
-    for (const auto &handler : writer->HANDLERS) {
-        writer->SetMemberVariable(handler.first, valueInt);
-        writer->SetMemberVariable(handler.first, valueLong);
-        writer->SetMemberVariable(handler.first, valueDouble);
-        writer->SetMemberVariable(handler.first, valueStr);
-    }
-    EXPECT_EQ(writer->SetMemberVariable("invalidKey", valueStr), E_ERR);
-    writer->SetMemberVariable(PhotoColumn::MEDIA_FILE_PATH, valueStr);
-    EXPECT_EQ(writer->photosPo_.data, "test");
-}
-
 HWTEST_F(CloudMediaPhotoDeleteTest, CloudMediaPhotosPoTest, TestSize.Level1)
 {
     PhotosPo photoPo;

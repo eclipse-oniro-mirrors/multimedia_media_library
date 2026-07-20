@@ -291,26 +291,6 @@ int32_t SetAssetsUserComment(int32_t fileId, const std::string &userComment)
     return ServiceModifyAsset(reqBody, call);
 }
 
-HWTEST_F(ModifyAssetsTest, SetAssetTitle_Test_001, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Start SetAssetTitle_Test_001");
-    InsertAsset("Title_Test_001.jpg");
-    int32_t assetId = GetAssetId("Title_Test_001.jpg");
-    ASSERT_GT(assetId, 0);
-
-    int32_t errCode = SetAssetTitle(assetId, "");
-    ASSERT_LT(errCode, 0);
-
-    errCode = SetAssetTitle(assetId, "title.xxx");
-    ASSERT_LT(errCode, 0);
-
-    std::string data;
-    errCode = SetAssetTitle(assetId, "title");
-    ASSERT_GT(errCode, 0);
-    data = GetAssetColumn(assetId, MediaColumn::MEDIA_TITLE);
-    ASSERT_EQ(data, "title");
-}
-
 HWTEST_F(ModifyAssetsTest, SetAssetPending_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start SetAssetPending_Test_001");

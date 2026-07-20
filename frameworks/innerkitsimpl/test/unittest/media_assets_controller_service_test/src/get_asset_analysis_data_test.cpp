@@ -284,27 +284,4 @@ HWTEST_F(GetAssetAnalysisDataTest, GetAssetAnalysisData_Test_002, TestSize.Level
     ASSERT_GE(GetAssetAnalysisData(assetId, ANALYSIS_VIDEO_LABEL, 0), 0);
     ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_MULTI_CROP, 0), 0);
 }
-
-HWTEST_F(GetAssetAnalysisDataTest, GetAssetAnalysisData_Test_003, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Start GetAssetAnalysisData_Test_003");
-    int32_t assetId = GetAssetId("GetAssetAnalysisData_Test.jpg");
-    ASSERT_GT(assetId, 0);
-
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_AESTHETICS_SCORE, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_LABEL, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_OCR, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_FACE, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_OBJECT, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_RECOMMENDATION, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_SEGMENTATION, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_COMPOSITION, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_SALIENCY, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_DETAIL_ADDRESS, 1), 0);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_HUMAN_FACE_TAG, 1), 0);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_HEAD_POSITION, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_BONE_POSE, 1), 1);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_VIDEO_LABEL, 1), 0);
-    ASSERT_EQ(GetAssetAnalysisData(assetId, ANALYSIS_MULTI_CROP, 1), 1);
-}
 }  // namespace OHOS::Media

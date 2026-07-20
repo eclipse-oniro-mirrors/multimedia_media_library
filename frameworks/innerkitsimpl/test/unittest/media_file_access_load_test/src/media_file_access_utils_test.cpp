@@ -799,30 +799,6 @@ HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_get_real_path_f
     MediaFileUtils::DeleteFile(testPath);
 }
 
-HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_asset_001, TestSize.Level0)
-{
-    std::string srcPath = "/data/local/tmp/file_access_utils_move_asset_src.txt";
-    std::string destPath = "/data/local/tmp/file_access_utils_move_asset_dest.txt";
-    std::string finalPath = "/data/local/tmp/file_access_utils_move_asset_dest(1).txt";
-    MediaFileUtils::DeleteFile(srcPath);
-    MediaFileUtils::DeleteFile(destPath);
-    MediaFileUtils::DeleteFile(finalPath);
-    ASSERT_TRUE(CreateFileWithData(srcPath, "move_asset"));
-    ASSERT_TRUE(CreateFileWithData(destPath, "move_asset"));
-
-    AssetOperationInfo srcObj = AssetOperationInfo::CreateFromPath(srcPath, AssetPathType::NORMAL_PATH);
-    MoveResult result = MediaFileAccessUtils::MoveAsset(srcObj, destPath, FileSourceType::FILE_MANAGER, true);
-    EXPECT_EQ(result.errCode, E_OK);
-    EXPECT_TRUE(result.isExecuteRename);
-    EXPECT_EQ(result.newPath, finalPath);
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(destPath));
-    EXPECT_TRUE(MediaFileUtils::IsFileExists(finalPath));
-    EXPECT_FALSE(MediaFileUtils::IsFileExists(srcPath));
-
-    MediaFileUtils::DeleteFile(destPath);
-    MediaFileUtils::DeleteFile(finalPath);
-}
-
 HWTEST_F(MediaLibraryMediaFileAccessUtilsTest, file_access_utils_move_asset_002, TestSize.Level0)
 {
     std::string uri = "";

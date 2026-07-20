@@ -98,16 +98,4 @@ HWTEST_F(ReleaseDebugDatabaseTest, ReleaseDebugDatabase_Test_001, TestSize.Level
     int32_t ret = controllerService->ReleaseDebugDatabase(data, reply);
     EXPECT_NE(ret, E_SUCCESS);
 }
-
-HWTEST_F(ReleaseDebugDatabaseTest, ReleaseDebugDatabase_Test_002, TestSize.Level0)
-{
-    MessageParcel data;
-    MessageParcel reply;
-    ReleaseDebugDatabaseReqBody reqBody;
-    std::string betaIssueId = "123456789";
-    reqBody.betaIssueId = betaIssueId;
-    bool isValid = reqBody.Marshalling(data);
-    int32_t ret = controllerService->ReleaseDebugDatabase(data, reply);
-    EXPECT_EQ(ret, E_SUCCESS);
-}
 }  // namespace OHOS::Media

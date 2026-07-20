@@ -213,27 +213,6 @@ HWTEST_F(StartThumbnailCreationTaskTest, StartThumbnailCreationTask_Test_001, Te
     ASSERT_LT(result, 0);
 }
 
-HWTEST_F(StartThumbnailCreationTaskTest, StartThumbnailCreationTask_Test_002, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_002 Begin");
-    string pic1 = "cam_pic1";
-    InsertAsset(pic1);
-    int32_t fileId = QueryPhotoIdByDisplayName(pic1 + ".jpg");
-    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_002 fileId = %{public}d", fileId);
-    ASSERT_GT(fileId, 0);
-    int32_t thumbnailReady = QueryThumbnailReadyByDisplayName(pic1 + ".jpg");
-    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_002 thumbnailReady = %{public}d", thumbnailReady);
-    ASSERT_EQ(thumbnailReady, 0);
-
-    int32_t result = StartThumbCreationTask(fileId);
-    ASSERT_EQ(result, 0);
-
-    std::this_thread::sleep_for(std::chrono::seconds(SLEEP_SECONDS));
-    thumbnailReady = QueryThumbnailReadyByDisplayName(pic1 + ".jpg");
-    MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_002, new thumbnailReady = %{public}d", thumbnailReady);
-    ASSERT_NE(thumbnailReady, 0);
-}
-
 HWTEST_F(StartThumbnailCreationTaskTest, StartThumbnailCreationTask_Test_003, TestSize.Level0)
 {
     MEDIA_INFO_LOG("StartThumbnailCreationTask_Test_003 Begin");

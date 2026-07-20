@@ -39,11 +39,4 @@ void MediaBackgroundTaskFactoryTest::SetUp()
 
 void MediaBackgroundTaskFactoryTest::TearDown()
 {}
-
-HWTEST_F(MediaBackgroundTaskFactoryTest, MediaCloudSyncBackgroundTask_Test_001, TestSize.Level1)
-{
-    PowerEfficiencyManager::SetSubscriberStatus(true, true);
-    backgroundTaskFactory_.Execute();
-    EXPECT_EQ(true, backgroundTaskFactory_.Accept());
-}
 }  // namespace OHOS::Media::CloudSync

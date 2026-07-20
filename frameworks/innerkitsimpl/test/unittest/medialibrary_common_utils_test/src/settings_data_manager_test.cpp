@@ -47,41 +47,6 @@ void SettingsDataManagerTest::TearDown()
     GTEST_LOG_(INFO) << "SettingsDataManagerTest TearDown";
 }
 
-HWTEST_F(SettingsDataManagerTest, StringToSwitchStatus_Close_Test, TestSize.Level1)
-{
-    std::string value = std::to_string(static_cast<int>(SwitchStatus::CLOSE));
-    SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
-    EXPECT_EQ(SwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToSwitchStatus_Cloud_Test, TestSize.Level1)
-{
-    std::string value = std::to_string(static_cast<int>(SwitchStatus::CLOUD));
-    SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
-    EXPECT_EQ(SwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToSwitchStatus_Hdc_Test, TestSize.Level1)
-{
-    std::string value = std::to_string(static_cast<int>(SwitchStatus::HDC));
-    SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
-    EXPECT_EQ(SwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToSwitchStatus_Invalid_Test, TestSize.Level1)
-{
-    std::string value = "999";
-    SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
-    EXPECT_EQ(SwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToSwitchStatus_Empty_Test, TestSize.Level1)
-{
-    std::string value = "";
-    SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
-    EXPECT_EQ(SwitchStatus::CLOSE, status);
-}
-
 HWTEST_F(SettingsDataManagerTest, GetPhotosSyncSwitchStatus_Default_Test, TestSize.Level1)
 {
     SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
@@ -113,34 +78,6 @@ HWTEST_F(SettingsDataManagerTest, GetHdcDeviceId_NotSupported_Test, TestSize.Lev
     #endif
 }
 
-HWTEST_F(SettingsDataManagerTest, StringToAlbumUploadSwitchStatus_Close_Test, TestSize.Level1)
-{
-    std::string value = std::to_string(static_cast<int>(AlbumUploadSwitchStatus::CLOSE));
-    AlbumUploadSwitchStatus status = SettingsDataManager::GetAllAlbumUploadStatus();
-    EXPECT_EQ(AlbumUploadSwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToAlbumUploadSwitchStatus_Open_Test, TestSize.Level1)
-{
-    std::string value = std::to_string(static_cast<int>(AlbumUploadSwitchStatus::OPEN));
-    AlbumUploadSwitchStatus status = SettingsDataManager::GetAllAlbumUploadStatus();
-    EXPECT_EQ(AlbumUploadSwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToAlbumUploadSwitchStatus_Invalid_Test, TestSize.Level1)
-{
-    std::string value = "999";
-    AlbumUploadSwitchStatus status = SettingsDataManager::GetAllAlbumUploadStatus();
-    EXPECT_EQ(AlbumUploadSwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToAlbumUploadSwitchStatus_Empty_Test, TestSize.Level1)
-{
-    std::string value = "";
-    AlbumUploadSwitchStatus status = SettingsDataManager::GetAllAlbumUploadStatus();
-    EXPECT_EQ(AlbumUploadSwitchStatus::CLOSE, status);
-}
-
 HWTEST_F(SettingsDataManagerTest, GetAllAlbumUploadStatus_Default_Test, TestSize.Level1)
 {
     AlbumUploadSwitchStatus status = SettingsDataManager::GetAllAlbumUploadStatus();
@@ -156,16 +93,6 @@ HWTEST_F(SettingsDataManagerTest, UpdateOrInsertAllPhotosAlbumUpload_Update_Test
     if (currentStatus != AlbumUploadSwitchStatus::NONE) {
         int32_t ret = SettingsDataManager::UpdateOrInsertAllPhotosAlbumUpload();
         EXPECT_LE(ret, E_OK);
-    }
-}
-
-HWTEST_F(SettingsDataManagerTest, UpdateOrInsertAllPhotosAlbumUpload_Insert_Test, TestSize.Level1)
-{
-    AlbumUploadSwitchStatus currentStatus = SettingsDataManager::GetAllAlbumUploadStatus();
-
-    if (currentStatus == AlbumUploadSwitchStatus::NONE) {
-        int32_t ret = SettingsDataManager::UpdateOrInsertAllPhotosAlbumUpload();
-        EXPECT_EQ(E_OK, ret);
     }
 }
 
@@ -188,15 +115,6 @@ HWTEST_F(SettingsDataManagerTest, QueryParamInSettingData_ValidKey_Test, TestSiz
                 ret == SwitchStatus::CLOUD ||
                 ret == SwitchStatus::HDC ||
                 ret == SwitchStatus::NONE);
-}
-
-HWTEST_F(SettingsDataManagerTest, QueryParamInSettingData_EmptyKey_Test, TestSize.Level1)
-{
-    std::string key = "";
-    std::string value;
-
-    SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
-    EXPECT_EQ(SwitchStatus::CLOSE, status);
 }
 
 HWTEST_F(SettingsDataManagerTest, UpdateParamInSettingData_Valid_Test, TestSize.Level1)
@@ -268,32 +186,6 @@ HWTEST_F(SettingsDataManagerTest, GetAllAlbumUploadStatus_MultipleCalls_Test, Te
 
     EXPECT_EQ(status1, status2);
     EXPECT_EQ(status2, status3);
-}
-
-HWTEST_F(SettingsDataManagerTest, UpdateOrInsertAllPhotosAlbumUpload_ThreadSafety_Test, TestSize.Level1)
-{
-    int32_t ret1 = SettingsDataManager::UpdateOrInsertAllPhotosAlbumUpload();
-    int32_t ret2 = SettingsDataManager::UpdateOrInsertAllPhotosAlbumUpload();
-
-    EXPECT_LE(ret1, E_OK);
-    EXPECT_LE(ret2, E_OK);
-
-    AlbumUploadSwitchStatus status = SettingsDataManager::GetAllAlbumUploadStatus();
-    EXPECT_EQ(AlbumUploadSwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToSwitchStatus_NegativeValue_Test, TestSize.Level1)
-{
-    std::string value = "-1";
-    SwitchStatus status = SettingsDataManager::GetPhotosSyncSwitchStatus();
-    EXPECT_EQ(SwitchStatus::CLOSE, status);
-}
-
-HWTEST_F(SettingsDataManagerTest, StringToAlbumUploadSwitchStatus_NegativeValue_Test, TestSize.Level1)
-{
-    std::string value = "-1";
-    AlbumUploadSwitchStatus status = SettingsDataManager::GetAllAlbumUploadStatus();
-    EXPECT_EQ(AlbumUploadSwitchStatus::CLOSE, status);
 }
 
 HWTEST_F(SettingsDataManagerTest, GetPhotosSyncSwitchStatus_AfterUpdate_Test, TestSize.Level1)

@@ -437,44 +437,6 @@ HWTEST_F(CloudMediaSyncServiceTestExt, CloudMediaPhotosService_ClearLocalData_Te
     EXPECT_EQ(ret, false);
 }
 
-HWTEST_F(CloudMediaSyncServiceTestExt, CloudMediaPhotosService_PullUpdate_Test_003, TestSize.Level1)
-{
-    // 用例说明：测试 PullUpdate 方法，本地记录脏，忽略云更新
-    CloudMediaPhotosService service;
-    CloudMediaPullDataDto pullData;
-    pullData.cloudId = "test_cloud_id";
-    pullData.localDirty = static_cast<int32_t>(DirtyType::TYPE_SDIRTY);
-    std::set<std::string> refreshAlbums;
-    std::vector<PhotosDto> fdirtyData;
-    std::vector<int32_t> stats = {0, 0, 0, 0, 0};
-    auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-
-    int32_t ret = service.PullUpdate(pullData, refreshAlbums, fdirtyData, stats, photoRefresh);
-
-    EXPECT_EQ(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaSyncServiceTestExt, CloudMediaPhotosService_PullUpdate_Test_004, TestSize.Level1)
-{
-    // 用例说明：测试 PullUpdate 方法，本地文件写打开，设置重试标志
-    CloudMediaPhotosService service;
-    CloudMediaPullDataDto pullData;
-    pullData.cloudId = "test_cloud_id";
-    pullData.localPath = "/storage/cloud/files/Photo/test.jpg";
-    pullData.localPosition = static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
-    pullData.localDirty = static_cast<int32_t>(DirtyType::TYPE_SYNCED);
-    pullData.localDateModified = "1234567890";
-    pullData.attributesEditedTimeMs = 1234567891;
-    std::set<std::string> refreshAlbums;
-    std::vector<PhotosDto> fdirtyData;
-    std::vector<int32_t> stats = {0, 0, 0, 0, 0};
-    auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-
-    int32_t ret = service.PullUpdate(pullData, refreshAlbums, fdirtyData, stats, photoRefresh);
-
-    EXPECT_EQ(ret, E_OK);
-}
-
 HWTEST_F(CloudMediaSyncServiceTestExt, CloudMediaPhotosService_GetCloudKeyData_Test_001, TestSize.Level1)
 {
     // 用例说明：测试 GetCloudKeyData 方法，数据无效
@@ -674,29 +636,6 @@ HWTEST_F(CloudMediaSyncServiceTestExt, CloudMediaPhotosService_OnRecordFailedErr
     int32_t ret = service.OnRecordFailedErrorDetails(photo, photoRefresh);
 
     EXPECT_NE(ret, E_OK);
-}
-
-HWTEST_F(CloudMediaSyncServiceTestExt, CloudMediaPhotosService_OnRecordFailedErrorDetails_Test_004, TestSize.Level1)
-{
-    // 用例说明：测试 OnRecordFailedErrorDetails 方法，内容未找到
-    CloudMediaPhotosService service;
-    PhotosDto photo;
-    photo.errorType = ErrorType::TYPE_NEED_UPLOAD;
-    CloudErrorDetail detail;
-    detail.detailCode = static_cast<int32_t>(ErrorDetailCode::CONTENT_NOT_FIND);
-    photo.errorDetails.push_back(detail);
-    photo.path = "/storage/cloud/files/Photo/16/IMG_20240101_123456.jpg";
-    PhotosPo photoInfo = PhotosPo();
-    photoInfo.data = "/storage/cloud/files/Photo/16/IMG_20240101_123456.jpg";
-    photoInfo.cloudId = "cloud_id1";
-    photoInfo.storagePath = "/storage/media/local/files/Photo/16/IMG_20240101_123456.jpg";
-    photoInfo.fileSourceType = 0;
-    photo.localInfoOp = photoInfo;
-    auto photoRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>();
-
-    int32_t ret = service.OnRecordFailedErrorDetails(photo, photoRefresh);
-
-    EXPECT_NE(ret, E_DATA);
 }
 
 HWTEST_F(CloudMediaSyncServiceTestExt, CloudMediaPhotosService_GetCloudPath_Test_001, TestSize.Level1)

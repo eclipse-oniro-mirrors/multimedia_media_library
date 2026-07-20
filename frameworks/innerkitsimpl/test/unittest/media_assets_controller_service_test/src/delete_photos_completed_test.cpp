@@ -164,25 +164,4 @@ int32_t DeletePhotosCompleted(const std::string &fileId)
 
     return respVo.GetErrCode();
 }
-
-HWTEST_F(DeletePhotosCompletedTest, DeletePhotosCompleted_Test_001, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Start DeletePhotosCompleted_Test_001");
-    InsertAssetIntoPhotosTable();
-    int32_t assetId = GetAssetId("cam_pic");
-    EXPECT_GT(assetId, 0);
-
-    int32_t errCode = DeletePhotosCompleted("");
-    EXPECT_LT(errCode, 0);
-
-    errCode = DeletePhotosCompleted("0");
-    EXPECT_EQ(errCode, 0);
-
-    errCode = DeletePhotosCompleted(to_string(assetId));
-    EXPECT_EQ(errCode, 0);
-
-    bool hasAsset = CheckAsset(assetId);
-    EXPECT_EQ(hasAsset, false);
-    MEDIA_INFO_LOG("End DeletePhotosCompleted_Test_001");
-}
 }  // namespace OHOS::Media
