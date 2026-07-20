@@ -121,10 +121,10 @@ public:
     ~TransferFileAsset() = default;
 };
 
-static bool HasReadCloudPermission()
+static bool HasReadPermission()
 {
     AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
-    int result = AccessTokenKit::VerifyAccessToken(tokenCaller, PERM_READ_CLOUD_IMAGEVIDEO);
+    int result = AccessTokenKit::VerifyAccessToken(tokenCaller, PERM_READ_IMAGEVIDEO);
     return result == PermissionState::PERMISSION_GRANTED;
 }
 
@@ -3675,6 +3675,45 @@ napi_value FileAssetNapi::JSGetReadOnlyFd(napi_env env, napi_callback_info info)
         UserFileMgrOpenCallbackComplete);
 }
 
+static napi_value ParseArgsUserFileMgrWithCachedOpen(napi_env env, napi_callback_info info,
+    unique_ptr<FileAssetAsyncContext> &context, bool isReadOnly)
+{
+    if (!isReadOnly && !MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    size_t minArgs = ARGS_ZERO;
+    size_t maxArgs = ARGS_ONE;
+    if (!isReadOnly) {
+        minArgs++;
+        maxArgs++;
+    }
+    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
+        JS_E_PARAM_INVALID);
+    auto fileUri = context->objectInfo->GetFileUri();
+    MediaLibraryNapiUtils::UriAppendKeyValue(fileUri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
+    context->valuesBucket.Put(CONST_MEDIA_DATA_DB_URI, fileUri);
+
+    if (isReadOnly) {
+        context->valuesBucket.Put(MEDIA_FILEMODE, MEDIA_FILEMODE_READONLY);
+    } else {
+        string mode;
+        CHECK_ARGS(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, context->argv[PARAM0], mode),
+            JS_E_PARAM_INVALID);
+        transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
+        if (!MediaFileUtils::CheckMode(mode)) {
+            NapiError::ThrowError(env, JS_E_PARAM_INVALID);
+            return nullptr;
+        }
+        context->valuesBucket.Put(MEDIA_FILEMODE, mode);
+    }
+
+    napi_value result = nullptr;
+    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+    return result;
+}
+
 static void UserFileMgrOpenWithCachedExecute(napi_env env, void *data)
 {
     MediaLibraryTracer tracer;
@@ -3718,16 +3757,16 @@ napi_value FileAssetNapi::JSGetReadOnlyFdWithCached(napi_env env, napi_callback_
 {
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL,
-            "This interface can be called only by system apps with read cloud permission");
+            "This interface can be called only by system apps with read permission");
         return nullptr;
     }
-    if (!HasReadCloudPermission()) {
-        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "Have no read cloud permission");
+    if (!HasReadPermission()) {
+        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "Have no read permission");
         return nullptr;
     }
 
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
-    CHECK_NULLPTR_RET(ParseArgsUserFileMgrOpen(env, info, asyncContext, true));
+    CHECK_NULLPTR_RET(ParseArgsUserFileMgrWithCachedOpen(env, info, asyncContext, true));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "PhotoAsset asset does not exist");
         return nullptr;
