@@ -3414,7 +3414,7 @@ static napi_value ParseArgsDeleteLocalAssetsPermanently(
             "Exceeded the maximum batch output quantity, cannot be deleted.");
         return nullptr;
     }
-    vector<string> deleteIds;
+    context->fileIds.clear();
     for (const auto& napiValue : napiValues) {
         if (valueType == napi_string) {
             size_t str_length = 0;
@@ -3426,15 +3426,15 @@ static napi_value ParseArgsDeleteLocalAssetsPermanently(
                 "Failed to copy string");
             int32_t fileId = MediaLibraryNapiUtils::GetFileIdFromPhotoUri(std::string(uriBuffer.data()));
             CHECK_ARGS_WITH_MESSAGE(env, fileId >= 0, "Invalid URI format or empty fileId");
-            deleteIds.push_back(std::to_string(fileId));
+            context->fileIds.push_back(std::to_string(fileId));
         } else {
             FileAssetNapi* obj = nullptr;
             CHECK_ARGS(env, napi_unwrap(env, napiValue, reinterpret_cast<void**>(&obj)), JS_INNER_FAIL);
             CHECK_COND_WITH_MESSAGE(env, obj != nullptr, "Failed to get photo napi object");
-            deleteIds.push_back(to_string(obj->GetFileId()));
+            context->fileIds.push_back(to_string(obj->GetFileId()));
         }
     }
-    context->fileIds = deleteIds;
+    MEDIA_INFO_LOG("DeleteLocalAssetsPermanently fileIds size: %{public}zu", context->fileIds.size());
     RETURN_NAPI_TRUE(env);
 }
 
@@ -3483,7 +3483,7 @@ static void DeleteLocalAssetsPermanentlyCallback(napi_env env, napi_status statu
 
 napi_value MediaAssetChangeRequestNapi::JSDeleteLocalAssetsPermanently(napi_env env, napi_callback_info info)
 {
-    NAPI_DEBUG_LOG("enter JSDeleteLocalAssetsPermanently.");
+    NAPI_INFO_LOG("enter JSDeleteLocalAssetsPermanently.");
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteLocalAssetsPermanently(env, info, asyncContext),
         "Failed to parse args");
@@ -3494,7 +3494,7 @@ napi_value MediaAssetChangeRequestNapi::JSDeleteLocalAssetsPermanently(napi_env 
 
 napi_value MediaAssetChangeRequestNapi::JSDeleteLocalAssetsPermanentlyWithUri(napi_env env, napi_callback_info info)
 {
-    NAPI_DEBUG_LOG("enter JSDeleteLocalAssetsPermanentlyWithUri.");
+    NAPI_INFO_LOG("enter JSDeleteLocalAssetsPermanentlyWithUri.");
     auto asyncContext = make_unique<MediaAssetChangeRequestAsyncContext>();
     CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteLocalAssetsPermanently(env, info, asyncContext, true),
         "Failed to parse args");

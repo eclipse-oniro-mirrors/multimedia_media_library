@@ -258,6 +258,7 @@ int32_t ParameterUtils::CheckDeletePhotosCompleted(const std::vector<std::string
 {
     CHECK_AND_RETURN_RET_LOG(!fileIds.empty(), -EINVAL, "fileIds is empty");
     auto size = fileIds.size();
+    MEDIA_INFO_LOG("The count of fileIds is %{public}zu", fileIds.size());
     CHECK_AND_RETURN_RET_LOG(size <= MAX_DELETE_PHOTOS_COMPLETED_SIZE, -EINVAL, "Invalid fileIds size");
 
     return E_OK;
