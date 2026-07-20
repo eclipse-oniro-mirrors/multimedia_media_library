@@ -51,6 +51,7 @@ struct AnalysisAlbumInfo {
     std::optional<std::string> relationship;
     std::optional<int32_t> editOperation;
     std::optional<std::string> extraInfo;
+    std::optional<std::string> friendId;
 
     std::string GarbleCoverUri(const std::string coverUri) const
     {

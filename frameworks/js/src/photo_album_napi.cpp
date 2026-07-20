@@ -2355,8 +2355,9 @@ napi_value PhotoAlbumNapi::JSAnalysisAlbumGetAttribute(napi_env env, napi_callba
     CHECK_COND_WITH_ERR_MESSAGE(env, !HasDuplicate(attributeArray), JS_E_PARAM_INVALID,
         "Duplicate attributes found");
     for (const auto& attribute : attributeArray) {
-        CHECK_COND_WITH_ERR_MESSAGE(env, attribute == ANALYSIS_ALBUM_ATTR_EXTRA_INFO, JS_E_PARAM_INVALID,
-            "Invalid attribute: " + attribute);
+        CHECK_COND_WITH_ERR_MESSAGE(env,
+            attribute == ANALYSIS_ALBUM_ATTR_EXTRA_INFO || attribute == ANALYSIS_ALBUM_ATTR_FRIEND_ID,
+            JS_E_PARAM_INVALID, "Invalid attribute: " + attribute);
     }
     asyncContext->attributeArray = std::move(attributeArray);
 

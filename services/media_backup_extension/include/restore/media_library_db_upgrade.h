@@ -40,6 +40,8 @@ private:
     int32_t MergeAlbumFromOldBundleNameToNewBundleName(NativeRdb::RdbStore &store);
     int32_t UpgradePhotosBelongsToAlbum(NativeRdb::RdbStore &store);
     int32_t UpgradePhotoAlbumAddUploadStatusColumn(NativeRdb::RdbStore &store);
+    int32_t UpgradeAnalysisAlbumExtraInfo(NativeRdb::RdbStore &store);
+    int32_t UpgradeAnalysisAlbumFriendId(NativeRdb::RdbStore &store);
 private:
     int32_t AddPhotosChangeTime(NativeRdb::RdbStore &store);
     int32_t AddPhotoAlbumChangeTime(NativeRdb::RdbStore &store);

@@ -391,12 +391,14 @@ static bool CheckOperateAttributePermissionForCall(napi_env env)
         NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
         return false;
     }
-    if (!CheckAlbumChangeRequestCallerPermission(PERM_ACCESS_MEDIALIB_THUMB_DB)) {
-        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
-            "Permission denied : ohos.permission.ACCESS_MEDIALIB_THUMB_DB required.");
-        return false;
+    if (CheckAlbumChangeRequestCallerPermission(PERM_ACCESS_MEDIALIB_THUMB_DB) ||
+        CheckAlbumChangeRequestCallerPermission(PERM_WRITE_IMAGEVIDEO)) {
+        return true;
     }
-    return true;
+    NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+        "Permission denied : ohos.permission.ACCESS_MEDIALIB_THUMB_DB or "
+        "ohos.permission.WRITE_IMAGEVIDEO required.");
+    return false;
 }
 
 const std::unordered_set<AlbumChangeOperation> VALID_CREATE_OPERATIONS = {
@@ -1380,6 +1382,14 @@ void MediaAlbumChangeRequestNapi::SetExtraInfoOperationData(AnalysisAlbumOperati
     albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_EXTRA_INFO);
 }
 
+void MediaAlbumChangeRequestNapi::SetFriendIdOperationData(AnalysisAlbumOperation &operation)
+{
+    analysisAlbumOperationData_.attr = operation.attr;
+    analysisAlbumOperationData_.type = operation.type;
+    analysisAlbumOperationData_.values = operation.values;
+    albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_FRIEND_ID);
+}
+
 static bool ParseAnalysisAlbumOperation(napi_env env, napi_value arg, AnalysisAlbumOperation &operation)
 {
     napi_valuetype valueType = napi_undefined;
@@ -1440,6 +1450,8 @@ napi_value MediaAlbumChangeRequestNapi::JSOperateAttribute(napi_env env, napi_ca
         asyncContext->objectInfo->SetIsRemovedOperationData(operation);
     } else if (operation.attr == ANALYSIS_ALBUM_ATTR_EXTRA_INFO) {
         asyncContext->objectInfo->SetExtraInfoOperationData(operation);
+    } else if (operation.attr == ANALYSIS_ALBUM_ATTR_FRIEND_ID) {
+        asyncContext->objectInfo->SetFriendIdOperationData(operation);
     } else {
         NAPI_WARN_LOG("Unknown operation attr.");
     }
@@ -2312,6 +2324,14 @@ static bool UpdateExtraInfoExecute(MediaAlbumChangeRequestAsyncContext& context)
         changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
 }
 
+static bool UpdateFriendIdExecute(MediaAlbumChangeRequestAsyncContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    return ExecuteOperateAttributeOperation(context, changeRequest->GetOperationDataAttr(),
+        changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
+}
+
 static bool SetCoverUriExecute(MediaAlbumChangeRequestAsyncContext& context)
 {
     MediaLibraryTracer tracer;
@@ -2509,6 +2529,7 @@ static const unordered_map<AlbumChangeOperation,
     { AlbumChangeOperation::RESET_COVER_URI, ResetCoverUriExecute },
     { AlbumChangeOperation::UPDATE_IS_REMOVED, UpdateIsRemovedExecute },
     { AlbumChangeOperation::UPDATE_EXTRA_INFO, UpdateExtraInfoExecute },
+    { AlbumChangeOperation::UPDATE_FRIEND_ID, UpdateFriendIdExecute },
 };
 
 static bool SetAlbumPropertyExecute(
@@ -2713,7 +2734,8 @@ static void ApplyAlbumChangeRequestExecute(napi_env env, void* data)
                    changeOperation == AlbumChangeOperation::SET_DISPLAY_LEVEL ||
                    changeOperation == AlbumChangeOperation::DISMISS ||
                    changeOperation == AlbumChangeOperation::RESET_COVER_URI ||
-                   changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO) {
+                   changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO ||
+                   changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID) {
             valid = SetAlbumPropertyExecute(*context, changeOperation);
         } else {
             NAPI_ERR_LOG("Invalid album change operation: %{public}d", changeOperation);

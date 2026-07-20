@@ -37,5 +37,15 @@ static vector<pair<int32_t, int32_t>> AddExtraInfoColumn(NativeRdb::RdbStore &st
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_EXTRA_INFO,
     OTHER_TABLE_MODULE_NAME, AddExtraInfoColumn);
+
+static vector<pair<int32_t, int32_t>> AddFriendIdColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_ANALYSIS_ALBUM, COLUMN_FRIEND_ID, "TEXT")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_FRIEND_ID,
+    OTHER_TABLE_MODULE_NAME, AddFriendIdColumn);
 }
 }

@@ -22,6 +22,7 @@
 #include "portrait_is_removed_handler.h"
 #include "media_log.h"
 #include "portrait_extra_info_handler.h"
+#include "portrait_friend_id_handler.h"
 
 namespace OHOS::Media {
 namespace {
@@ -57,6 +58,13 @@ const AnalysisAlbumAttributeHandlerEntry PORTRAIT_EXTRA_INFO_HANDLER = {
     PortraitExtraInfoHandler::GetAttributeExecute,
 };
 
+const AnalysisAlbumAttributeHandlerEntry PORTRAIT_FRIEND_ID_HANDLER = {
+    &ANALYSIS_ALBUM_FRIEND_ID_SPEC,
+    PortraitFriendIdHandler::ValidateTarget,
+    PortraitFriendIdHandler::Execute,
+    PortraitFriendIdHandler::GetAttributeExecute,
+};
+
 const AnalysisAlbumAttributeHandlerEntry *ResolveHandler(const std::string &attr)
 {
     if (attr == PORTRAIT_NICK_NAME_HANDLER.spec->attr) {
@@ -65,6 +73,8 @@ const AnalysisAlbumAttributeHandlerEntry *ResolveHandler(const std::string &attr
         return &PORTRAIT_IS_REMOVED_HANDLER;
     } else if (attr == PORTRAIT_EXTRA_INFO_HANDLER.spec->attr) {
         return &PORTRAIT_EXTRA_INFO_HANDLER;
+    } else if (attr == PORTRAIT_FRIEND_ID_HANDLER.spec->attr) {
+        return &PORTRAIT_FRIEND_ID_HANDLER;
     }
     return nullptr;
 }

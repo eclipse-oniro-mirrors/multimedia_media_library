@@ -60,6 +60,7 @@ enum class AlbumChangeOperation {
     REMOVE_NICK_NAME,
     UPDATE_IS_REMOVED,
     UPDATE_EXTRA_INFO,
+    UPDATE_FRIEND_ID,
 	SET_HIDDEN_ATTRIBUTE,
     SET_ALBUM_NAME_BY_FILE,
 };
@@ -120,6 +121,7 @@ public:
     void SetIsRemovedOperationData(AnalysisAlbumOperation &operation);
     bool SetNickNameOperationData(const std::string &type, const std::vector<std::string> &values);
     void SetExtraInfoOperationData(AnalysisAlbumOperation &operations);
+    void SetFriendIdOperationData(AnalysisAlbumOperation &operations);
     void ClearMoveMap();
     napi_value ApplyChanges(napi_env env, napi_callback_info info) override;
     bool hiddenInherited_ = false;

@@ -44,7 +44,6 @@ constexpr int32_t ALBUM_IS_NOT_ME = 0;
 constexpr int32_t ALBUM_IS_REMOVED = 1;
 constexpr int32_t SINGLE_FACE = 1;
 constexpr int32_t QUERY_GROUP_PHOTO_ALBUM_RELATED_TO_ME = 1;
-constexpr int32_t QUERY_GROUP_PHOTO_ALBUM_REMOVED = 1;
 constexpr int32_t GROUP_ALBUM_RENAMED = 2;
 constexpr int32_t ALBUM_TO_RENAME_FOR_ANALYSIS = 3;
 constexpr int32_t DISPLAY_LEVEL_NUMBER = 1;
@@ -74,9 +73,10 @@ static int32_t ExecSqls(const vector<string> &sqls, const shared_ptr<MediaLibrar
     return err;
 }
 
-static int32_t GetArgsValueByName(const string &valueName, const string &whereClause, const vector<string> &whereArgs)
+static int32_t GetArgsValueByName(const string &valueName, const string &whereClause,
+    const vector<string> &whereArgs, size_t itemPos = 0)
 {
-    size_t pos = whereClause.find(valueName);
+    size_t pos = whereClause.find(valueName, itemPos);
     if (pos == string::npos) {
         MEDIA_ERR_LOG("whereClause is invalid");
         return E_INDEX;
@@ -89,6 +89,10 @@ static int32_t GetArgsValueByName(const string &valueName, const string &whereCl
     }
     if (argsIndex > whereArgs.size() - 1) {
         MEDIA_ERR_LOG("whereArgs is invalid");
+        return E_INDEX;
+    }
+    if (!MediaFileUtils::IsValidInteger(whereArgs[argsIndex])) {
+        MEDIA_ERR_LOG("whereArgs is not a valid integer");
         return E_INDEX;
     }
     return atoi(whereArgs[argsIndex].c_str());
@@ -325,6 +329,35 @@ int32_t CheckHighlightAttributeValue(const int32_t &key, const std::string &valu
     return E_OK;
 }
 
+void AppendGroupAlbumIsRemovedClause(std::string &clause, const string &whereClause, const vector<string> &whereArgs)
+{
+    size_t pos = 0;
+    string isRemovedClause = "";
+    size_t itemPos = whereClause.find(IS_REMOVED_EQ, pos);
+    while (itemPos != string::npos) {
+        int32_t value = GetArgsValueByName(IS_REMOVED_EQ, whereClause, whereArgs, itemPos);
+        if (value == E_INDEX) {
+            pos = itemPos + IS_REMOVED_EQ.size();
+            continue;
+        }
+        isRemovedClause += isRemovedClause == "" ? "" : " OR ";
+        isRemovedClause += IS_REMOVED + " = " + to_string(value);
+        pos = itemPos + IS_REMOVED_EQ.size();
+        itemPos = whereClause.find(IS_REMOVED_EQ, pos);
+    }
+
+    if (whereClause.find(IS_REMOVED_IS_NULL) != string::npos) {
+        isRemovedClause += isRemovedClause == "" ? "" : " OR ";
+        isRemovedClause += IS_REMOVED + " IS NULL";
+    }
+
+    if (isRemovedClause != "") {
+        clause += " AND (" + isRemovedClause + ")";
+    } else {
+        clause += " AND (" + IS_REMOVED + " <> " + to_string(ALBUM_IS_REMOVED) + " OR " + IS_REMOVED + " IS NULL)";
+    }
+}
+
 std::shared_ptr<NativeRdb::ResultSet> MediaLibraryAnalysisAlbumOperations::QueryGroupPhotoAlbum(
     MediaLibraryCommand &cmd, const std::vector<std::string> &columns)
 {
@@ -344,14 +377,7 @@ std::shared_ptr<NativeRdb::ResultSet> MediaLibraryAnalysisAlbumOperations::Query
             clause += " AND " + IS_ME + " = " + to_string(ALBUM_IS_ME);
         }
     }
-    if (whereClause.find(IS_REMOVED_EQ) != string::npos) {
-        int32_t value = GetArgsValueByName(IS_REMOVED_EQ, whereClause, whereArgs);
-        if (value == QUERY_GROUP_PHOTO_ALBUM_REMOVED) {
-            clause += " AND " + IS_REMOVED + " = " + to_string(ALBUM_IS_REMOVED);
-        }
-    } else {
-        clause += " AND " + IS_REMOVED + " <> " + to_string(ALBUM_IS_REMOVED) + " OR " + IS_REMOVED + " IS NULL)";
-    }
+    AppendGroupAlbumIsRemovedClause(clause, whereClause, whereArgs);
     if (whereClause.find(USER_DISPLAY_LEVEL) != string::npos) {
         std::string userDisplayLevelClause = GetUserDisplayLevelClause(whereClause);
         if (userDisplayLevelClause != "") {

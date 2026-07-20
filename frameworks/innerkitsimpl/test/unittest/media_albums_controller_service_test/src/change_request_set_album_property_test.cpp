@@ -1123,4 +1123,179 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_D
     EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), JS_INNER_FAIL);
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_DbPermissionDenied_ExtraInfo_001");
 }
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_UnsupportedType_FriendId_001,
+    TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_UnsupportedType_FriendId_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_unsupported_type_friendid");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_ADD;
+    reqBody.values = { "friend_circle_001" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OPERATION_NOT_SUPPORT);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_UnsupportedType_FriendId_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_EmptyFriendId_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_EmptyFriendId_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_empty_friend_id");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = { "" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_EmptyFriendId_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_EmptyValues_FriendId_001,
+    TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_EmptyValues_FriendId_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_empty_values_friendid");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = {};
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OPERATION_NOT_SUPPORT);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_EmptyValues_FriendId_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_FriendId_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_FriendId_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_friend_id");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = { "friend_circle_001", "friend_circle_002" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OPERATION_NOT_SUPPORT);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_FriendId_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_FriendIdTooLong_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_FriendIdTooLong_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_friend_id_too_long");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = { string(ANALYSIS_ALBUM_MAX_VALUE_LENGTH + 1, 'f') };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_INVALID_VALUES);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_FriendIdTooLong_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_NonPortraitAlbum_FriendId_001,
+    TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_NonPortraitAlbum_FriendId_001");
+    int32_t albumId = CreateGroupAlbum("group_album_friend_id_not_supported");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = { "friend_circle_001" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::GROUP_PHOTO);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_PARAM_CONVERT_FORMAT);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_NonPortraitAlbum_FriendId_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_DbPermissionDenied_FriendId_001,
+    TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_DbPermissionDenied_FriendId_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_db_permission_denied_friendid");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = { "friend_circle_001" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+
+    SelfTokenGuard tokenGuard;
+    uint64_t tokenId = 0;
+    PermissionUtilsUnitTest::SetAccessTokenPermission("OperateAttributeDbPermissionDenied",
+        { PERM_WRITE_IMAGEVIDEO }, tokenId);
+    ASSERT_NE(tokenId, 0);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), JS_INNER_FAIL);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_DbPermissionDenied_FriendId_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_FriendIdNormal_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_FriendIdNormal_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_friend_id_normal");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = { "friend_circle_001" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_FriendIdNormal_001");
+}
+
+HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_FriendIdOverwrite_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start ChangeRequestOperateAlbumAttribute_FriendIdOverwrite_001");
+    int32_t albumId = CreatePortraitAlbum("portrait_album_friend_id_overwrite");
+    ASSERT_GT(albumId, 0);
+
+    ChangeRequestOperateAlbumAttributeReqBody reqBody;
+    reqBody.albumId = to_string(albumId);
+    reqBody.attr = ANALYSIS_ALBUM_ATTR_FRIEND_ID;
+    reqBody.type = ANALYSIS_ALBUM_OP_UPDATE;
+    reqBody.values = { "friend_circle_001" };
+    reqBody.albumType = static_cast<int32_t>(PhotoAlbumType::SMART);
+    reqBody.albumSubType = static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
+
+    reqBody.values = { "friend_circle_002" };
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
+
+    MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_FriendIdOverwrite_001");
+}
 }  // namespace OHOS::Media

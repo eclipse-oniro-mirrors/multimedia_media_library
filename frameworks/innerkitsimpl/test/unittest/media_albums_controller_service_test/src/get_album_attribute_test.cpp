@@ -188,4 +188,80 @@ HWTEST_F(GetAlbumAttributeTest, GetExtraInfoTest_Test_002, TestSize.Level0)
     ASSERT_LT(resp.GetErrCode(), 0);
     MEDIA_INFO_LOG("end GetExtraInfoTest_Test_002");
 }
+
+static const string SQL_CREATE_ALBUM_WITH_FRIEND_ID = "INSERT INTO " + ANALYSIS_ALBUM_TABLE + "(" +
+    PhotoAlbumColumns::ALBUM_ID + ", " + PhotoAlbumColumns::ALBUM_TYPE + ", " +
+    PhotoAlbumColumns::ALBUM_SUBTYPE + ", " + PhotoAlbumColumns::ALBUM_NAME + ", " +
+    PhotoAlbumColumns::ALBUM_COUNT + ", " + FRIEND_ID + ")";
+
+static void CreateAnalysisAlbumWithFriendId(const std::string &albumName)
+{
+    int32_t count = g_rdbStore->ExecuteSql("SELECT COUNT(*) FROM " + ANALYSIS_ALBUM_TABLE);
+    int32_t albumId = count + 1;
+    g_rdbStore->ExecuteSql(SQL_CREATE_ALBUM_WITH_FRIEND_ID + "VALUES (" + to_string(albumId) +
+        ", 4096, 4102, '"+ albumName + "', 2, 'friend_circle_001')");
+}
+
+static void GetFriendIdPrepare(int32_t& albumId)
+{
+    CreateAnalysisAlbumWithFriendId(g_albumName);
+    vector<string> columns;
+    auto resultSet = QueryAsset(ANALYSIS_ALBUM_TABLE, PhotoAlbumColumns::ALBUM_NAME, g_albumName, columns);
+    if (resultSet == nullptr) {
+        return;
+    }
+
+    albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+    if (albumId <= 0) {
+        return;
+    }
+}
+
+HWTEST_F(GetAlbumAttributeTest, GetFriendIdTest_Test_001, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start GetFriendIdTest_Test_001");
+    int32_t albumId = -1;
+    GetFriendIdPrepare(albumId);
+    EXPECT_GT(albumId, 0);
+
+    std::vector<std::string> attributeArray = { FRIEND_ID };
+    int32_t ret = GetAttribute(albumId, PhotoAlbumType::SMART, PhotoAlbumSubType::HIGHLIGHT, attributeArray);
+    EXPECT_EQ(ret, E_PARAM_CONVERT_FORMAT);
+
+    ret = GetAttribute(albumId, PhotoAlbumType::USER, PhotoAlbumSubType::PORTRAIT, attributeArray);
+    EXPECT_EQ(ret, E_PARAM_CONVERT_FORMAT);
+
+    ret = GetAttribute(albumId, PhotoAlbumType::SMART, PhotoAlbumSubType::PORTRAIT, attributeArray);
+    EXPECT_EQ(ret, E_OK);
+
+    MEDIA_INFO_LOG("end GetFriendIdTest_Test_001");
+}
+
+HWTEST_F(GetAlbumAttributeTest, GetFriendIdTest_Test_002, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start GetFriendIdTest_Test_002");
+    int32_t albumId = -1;
+    GetFriendIdPrepare(albumId);
+    EXPECT_GT(albumId, 0);
+
+    std::vector<std::string> attributeArray = { FRIEND_ID, EXTRA_INFO };
+    int32_t ret = GetAttribute(albumId, PhotoAlbumType::SMART, PhotoAlbumSubType::PORTRAIT, attributeArray);
+    EXPECT_EQ(ret, E_OK);
+
+    MEDIA_INFO_LOG("end GetFriendIdTest_Test_002");
+}
+
+HWTEST_F(GetAlbumAttributeTest, GetFriendIdTest_Test_003, TestSize.Level0)
+{
+    MEDIA_INFO_LOG("Start GetFriendIdTest_Test_003");
+    int32_t albumId = -1;
+    GetFriendIdPrepare(albumId);
+    EXPECT_GT(albumId, 0);
+
+    std::vector<std::string> attributeArray = { "invalid_attr" };
+    int32_t ret = GetAttribute(albumId, PhotoAlbumType::SMART, PhotoAlbumSubType::PORTRAIT, attributeArray);
+    EXPECT_LT(ret, 0);
+
+    MEDIA_INFO_LOG("end GetFriendIdTest_Test_003");
+}
 }  // namespace OHOS::Media

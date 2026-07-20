@@ -93,6 +93,7 @@ const std::string ANALYSIS_COL_IS_LOCAL = "is_local";
 const std::string ANALYSIS_COL_IS_COVER_SATISFIED = "is_cover_satisfied";
 const std::string ANALYSIS_COL_RELATIONSHIP = "relationship";
 const std::string ANALYSIS_COL_EXTRA_INFO = "extra_info";
+const std::string ANALYSIS_COL_FRIEND_ID = "friend_id";
 
 /* FaceTag TBL COL_NAME */
 const std::string FACE_TAG_COL_ID = "id";

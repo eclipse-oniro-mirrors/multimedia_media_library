@@ -19,6 +19,7 @@
 #define TABLE_ANALYSIS_ALBUM "AnalysisAlbum"
 // column name should be added here
 #define COLUMN_EXTRA_INFO "extra_info"
+#define COLUMN_FRIEND_ID "friend_id"
 
 // sqls only execute in upgrade progress should be added here
 
