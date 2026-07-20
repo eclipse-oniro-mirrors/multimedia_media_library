@@ -29,6 +29,7 @@
 #include "medialibrary_type_const.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_map_const_utils.h"
 #include "media_path_utils.h"
 #include "media_string_utils.h"
 #include "photo_owner_album_id_operation.h"
@@ -427,6 +428,7 @@ void MediaFileManagerOfflineCleanupTask::WritePhotoDeleteAuditLog(const OfflineC
     auditLog.type = photo.mediaType;
     auditLog.size = totalCount;
     auditLog.path = FileScanUtils::GarbleFilePath(photo.storagePath);
+    auditLog.mediaType = MediaMapConstUtils::MediaMapConstUtils::MediaTypeToString(photo.mediaType);
     HiAudit::GetInstance().Write(auditLog, false);
 }
 

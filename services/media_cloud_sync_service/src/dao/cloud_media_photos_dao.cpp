@@ -34,14 +34,15 @@
 #include "cloud_media_dfx_utils.h"
 #include "media_file_utils.h"
 #include "cloud_media_context.h"
-#include "photos_field_iterator.h"
 #include "hi_audit.h"
+#include "photos_field_iterator.h"
 #include "photo_owner_album_id_operation.h"
 #include "photo_album_upload_status_operation.h"
 #include "media_string_utils.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
 #include "file_scan_utils.h"
 #endif
+#include "dfx_const.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
@@ -1699,24 +1700,21 @@ int32_t CloudMediaPhotosDao::SetRetry(const std::string &cloudId)
 }
 
 int32_t CloudMediaPhotosDao::DeleteLocalByCloudId(
-    const std::string &cloudId, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+    const CloudMediaPullDataDto &data, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
 {
     CHECK_AND_RETURN_RET_LOG(photoRefresh != nullptr, E_RDB_STORE_NULL, "DeleteLocalByCloudId get store failed.");
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
-    predicates.EqualTo(PhotoColumn::PHOTO_CLOUD_ID, cloudId);
+    predicates.EqualTo(PhotoColumn::PHOTO_CLOUD_ID, data.cloudId);
 
     int32_t deletedRows = DEFAULT_VALUE;
     int32_t ret = photoRefresh->Delete(deletedRows, predicates);
     CHECK_AND_RETURN_RET_LOG(ret == AccurateRefresh::ACCURATE_REFRESH_RET_OK && deletedRows > 0,
- 
         E_CLOUDSYNC_RDB_DELETE_FAILED,
         "Failed to DeleteLocalByCloudId, ret: %{public}d, deletedRows: %{public}d.",
         ret,
         deletedRows);
-    AuditLog auditLog = { true, "USER BEHAVIOR", "DELETE", "io", 1, "running", "ok" };
-    auditLog.size = deletedRows;
-    auditLog.id = cloudId;
-    HiAudit::GetInstance().Write(auditLog);
+    HiAudit::GetInstance().WriteForDelete(deletedRows, data.cloudId,
+        static_cast<int32_t>(DfxType::ALBUM_DELETE_ASSETS), data.localMediaType);
     return ret;
 }
  

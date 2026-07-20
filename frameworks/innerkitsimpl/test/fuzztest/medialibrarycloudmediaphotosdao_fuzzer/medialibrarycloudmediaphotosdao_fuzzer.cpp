@@ -579,7 +579,8 @@ static void DeleteLocalByCloudIdFuzzer()
     auto photoRefresh = std::make_shared<AccurateRefresh::AssetAccurateRefresh>();
     std::string cloudId = provider->ConsumeBytesAsString(NUM_BYTES);
     InsertDeleteAsset(cloudId);
-    cloudMediaPhotosDao->DeleteLocalByCloudId(cloudId, photoRefresh);
+    CloudMediaPullDataDto data = FuzzCloudMediaPullDataDto(cloudId);
+    cloudMediaPhotosDao->DeleteLocalByCloudId(data, photoRefresh);
 }
 
 static void UpdateFailRecordsCloudIdFuzzer()

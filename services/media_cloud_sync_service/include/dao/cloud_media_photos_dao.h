@@ -113,7 +113,7 @@ public:
     int32_t UpdatePhotoVisible();
     int32_t SetRetry(const std::string &cloudId);
     int32_t DeleteLocalByCloudId(
-        const std::string &cloudId, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
+        const CloudMediaPullDataDto &data, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     int32_t UpdateFailRecordsCloudId(
         const PhotosDto &record, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh);
     void UpdateMediaAnalysisHdcData();

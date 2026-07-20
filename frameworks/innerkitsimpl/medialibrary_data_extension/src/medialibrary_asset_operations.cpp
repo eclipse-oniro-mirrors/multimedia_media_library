@@ -107,6 +107,7 @@ struct DeletedFilesParams {
     map<string, string> displayNames;
     map<string, string> albumNames;
     map<string, string> ownerAlbumIds;
+    map<string, int32_t> mediaTypes;
     bool containsHidden = false;
 };
 
@@ -2908,8 +2909,9 @@ void HandleAudiosResultSet(const shared_ptr<NativeRdb::ResultSet> &resultSet, De
 void HandlePhotosResultSet(const shared_ptr<NativeRdb::ResultSet> &resultSet, DeletedFilesParams &filesParams)
 {
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        filesParams.ids.push_back(
-            to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32))));
+        string fileId = to_string(get<int32_t>(
+            ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32)));
+        filesParams.ids.push_back(fileId);
         if (GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet)
             == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
             filesParams.paths.push_back(get<string>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_STORAGE_PATH,
@@ -2924,13 +2926,13 @@ void HandlePhotosResultSet(const shared_ptr<NativeRdb::ResultSet> &resultSet, De
             get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_SUBTYPE, resultSet, TYPE_INT32)));
         filesParams.isTemps.push_back(
             get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_IS_TEMP, resultSet, TYPE_INT32)));
-        filesParams.displayNames.insert({
-            to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32))),
+        filesParams.displayNames.insert({fileId,
             get<string>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_NAME, resultSet, TYPE_STRING))});
-        filesParams.ownerAlbumIds.insert({
-            to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32))),
+        filesParams.ownerAlbumIds.insert({fileId,
             to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet,
                 TYPE_INT32)))});
+        filesParams.mediaTypes.insert({fileId,
+            get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_TYPE, resultSet, TYPE_INT32))});
         MultiStagesCaptureManager::RemovePhotosWithResultSet(resultSet, false);
         if (filesParams.containsHidden) {
             continue;
@@ -3376,7 +3378,8 @@ int32_t MediaLibraryAssetOperations::DeleteFromDisk(AbsRdbPredicates &predicates
         fileParams.subTypes, predicates.GetTableName(), deletedRows, bundleName, fileParams.containsHidden);
     CHECK_AND_RETURN_RET_LOG(taskData != nullptr, E_ERR, "Failed to alloc async data for Delete From Disk!");
     notifyOld(notifyUris, fileParams.isTemps);
-    DeleteBehaviorData dataInfo {fileParams.displayNames, fileParams.albumNames, fileParams.ownerAlbumIds};
+    DeleteBehaviorData dataInfo {fileParams.displayNames, fileParams.albumNames, fileParams.ownerAlbumIds,
+        fileParams.mediaTypes};
     DfxManager::GetInstance()->HandleDeleteBehavior(DfxType::ALBUM_DELETE_ASSETS, deletedRows, notifyUris, bundleName,
         dataInfo);
     auto deleteFilesTask = make_shared<MediaLibraryAsyncTask>(DeleteFiles, taskData);
@@ -3440,8 +3443,7 @@ int32_t MediaLibraryAssetOperations::DeleteNormalPhotoPermanently(shared_ptr<Fil
 {
     MediaLibraryTracer tracer;
     tracer.Start("DeleteNormalPhotoPermanently");
-    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_HAS_DB_ERROR,
-        "Photo Asset is nullptr");
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_HAS_DB_ERROR, "Photo Asset is nullptr");
     string filePath = fileAsset->GetPath();
     string displayName = fileAsset->GetDisplayName();
     MEDIA_INFO_LOG("Delete Photo displayName is %{public}s", MediaFileUtils::DesensitizeName(displayName).c_str());
@@ -3478,9 +3480,10 @@ int32_t MediaLibraryAssetOperations::DeleteNormalPhotoPermanently(shared_ptr<Fil
     if (dfxManager != nullptr) {
         DeletedFilesParams fileParams;
         fileParams.ownerAlbumIds.insert({to_string(fileId), to_string(fileAsset->GetOwnerAlbumId())});
+        fileParams.mediaTypes.insert({to_string(fileId), static_cast<int32_t>(fileAsset->GetMediaType())});
         GetAlbumNamesById(fileParams);
         DeleteBehaviorData dataInfo {{{to_string(fileId), displayName}},
-            fileParams.albumNames, fileParams.ownerAlbumIds };
+            fileParams.albumNames, fileParams.ownerAlbumIds, fileParams.mediaTypes };
         dfxManager->HandleDeleteBehavior(DfxType::DELETE_LOCAL_ASSETS_PERMANENTLY, deleteRows,
             notifyDeleteUris, "", dataInfo);
     }

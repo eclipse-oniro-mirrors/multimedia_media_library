@@ -183,6 +183,7 @@ struct DeleteBehaviorParams {
     map<string, string> displayNames;
     map<string, string> albumNames;
     map<string, string> ownerAlbumIds;
+    map<string, int32_t> mediaTypes;
 };
 
 struct TrashSceneInfo {
@@ -1321,16 +1322,18 @@ static void GetFilesParams(const vector<string> &notifyUris, DeleteBehaviorParam
     MediaLibraryCommand queryAlbumMapCmd(OperationObject::PAH_PHOTO, OperationType::QUERY);
     queryAlbumMapCmd.GetAbsRdbPredicates()->In(MediaColumn::MEDIA_ID, photoIdList);
     auto resultSet = uniStore->Query(queryAlbumMapCmd, {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_NAME,
-        PhotoColumn::PHOTO_OWNER_ALBUM_ID});
+        PhotoColumn::PHOTO_OWNER_ALBUM_ID, MediaColumn::MEDIA_TYPE});
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "Failed to query resultSet");
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-        filesParams.displayNames.insert({
-            to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32))),
+        string fileId = to_string(get<int32_t>(
+            ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32)));
+        filesParams.displayNames.insert({fileId,
             get<string>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_NAME, resultSet, TYPE_STRING))});
-        filesParams.ownerAlbumIds.insert({
-            to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_ID, resultSet, TYPE_INT32))),
+        filesParams.ownerAlbumIds.insert({fileId,
             to_string(get<int32_t>(ResultSetUtils::GetValFromColumn(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet,
                 TYPE_INT32)))});
+        filesParams.mediaTypes.insert({fileId,
+            get<int32_t>(ResultSetUtils::GetValFromColumn(MediaColumn::MEDIA_TYPE, resultSet, TYPE_INT32))});
     }
     resultSet->Close();
 }
@@ -1344,7 +1347,8 @@ static void DeleteBehaviorAsync(AsyncTaskData *data)
     DeleteBehaviorParams filesParams;
     GetFilesParams(taskData->notifyUris_, filesParams);
     GetAlbumNamesById(filesParams);
-    DeleteBehaviorData dataInfo {filesParams.displayNames, filesParams.albumNames, filesParams.ownerAlbumIds};
+    DeleteBehaviorData dataInfo {filesParams.displayNames, filesParams.albumNames, filesParams.ownerAlbumIds,
+        filesParams.mediaTypes};
     DfxManager::GetInstance()->HandleDeleteBehavior(DfxType::TRASH_PHOTO,
         taskData->updatedRows_, taskData->notifyUris_, taskData->bundleName_, dataInfo);
 }

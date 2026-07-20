@@ -40,18 +40,20 @@ struct AuditLog {
     std::string path;
     std::string displayName;
     std::string albumName;
+    std::string mediaType;
 
     const std::string TitleString() const
     {
         return "happenTime, packageName, isForeground, cause, isUserBehavior, operationType, operationScenario, "
-            "operationStatus, operationCount, extend, id, type, size, path, displayName, albumName\n";
+            "operationStatus, operationCount, extend, id, type, size, path, displayName, albumName, mediaType\n";
     }
 
     const std::string ToString() const
     {
         return cause + ", " + std::to_string(isUserBehavior) + ", " + operationType + ", " + operationScenario +
             ", " + operationStatus + ", " + std::to_string(operationCount) + ", " + extend + ", " + id + ", " +
-            std::to_string(type) + ", " + std::to_string(size) + ", " + path + ", " + displayName + ", " + albumName;
+            std::to_string(type) + ", " + std::to_string(size) + ", " + path + ", " + displayName + ", " + albumName +
+            ", " + mediaType;
     }
 };
 
@@ -93,6 +95,8 @@ class HiAudit : public NoCopyable {
 public:
     EXPORT static HiAudit& GetInstance();
     EXPORT void Write(const AuditLog& auditLog, bool isPrintLog = true);
+    void WriteForDelete(const int32_t deletedRows, const std::string &cloudId, const int32_t operationType,
+        const int32_t mediaType);
     void WriteForCloudDownload(const std::string& bundleName, const int32_t& downloadType, const std::string& status);
     void WriteForCloudSyncAlbum(const std::string& albumName, const std::string& cloudId, const int32_t albumType,
         const int32_t albumSubType, const std::string& bundleName);
