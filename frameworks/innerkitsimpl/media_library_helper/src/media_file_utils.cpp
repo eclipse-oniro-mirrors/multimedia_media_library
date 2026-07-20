@@ -2754,7 +2754,8 @@ bool MediaFileUtils::IsValidInteger(const std::string &value)
             if (value.size() != minIntStr.size()) {
                 return false;
             }
-            return value >= minIntStr;
+            // 注意：对于负数，字典序比较和数值比较方向相反
+            return value <= minIntStr;
         } else {
             // 比较是否小于等于最大值
             if (value.size() != maxIntStr.size()) {
