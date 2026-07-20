@@ -2715,7 +2715,8 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
-bool IsValidInteger(const string &value) {
+bool MediaFileUtils::IsValidInteger(const std::string &value)
+{
     if (value.empty()) {
         MEDIA_ERR_LOG("KeyWord is empty!");
         return false;
