@@ -1413,54 +1413,11 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CreateAlbum_test_001, Test
 /**
  * @tc.number    : MediaLibraryManager_CreateAlbum_test_002
  * @tc.name      : Create album
- * @tc.desc      : Create album fail when album is already exists
+ * @tc.desc      : Create album fail when albumName is invalid
  */
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CreateAlbum_test_002, TestSize.Level1)
 {
     MEDIA_INFO_LOG("MediaLibraryManager_CreateAlbum_test_002 enter");
-    DataSharePredicates predicates;
-    vector<string> columnsAlbum;
-    string albumName = "testAlbum";
-    int32_t albumId = -1;
-    bool isAlbumExist = false;
-    unique_ptr<PhotoAlbum> album = make_unique<PhotoAlbum>();
-    int32_t albumCountBefore = 0;
-    FetchResult<PhotoAlbum> albumsFetchResult;
-    ASSERT_NE(mediaLibraryManager, nullptr);
-    while (!isAlbumExist) {
-        albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
-        albumCountBefore = albumsFetchResult.GetCount();
-        for (int i = 0; i < albumCountBefore; i++) {
-            album = albumsFetchResult.GetObjectAtPosition(i);
-            if (album->GetAlbumName() == albumName) {
-                isAlbumExist = true;
-                albumId = album->GetAlbumId();
-                break;
-            }
-        }
-        if (!isAlbumExist) {
-            int32_t id = mediaLibraryManager->CreateAlbum(albumName);
-            EXPECT_GT(id, 0);
-        }
-    }
-    int32_t errCode = mediaLibraryManager->CreateAlbum(albumName);
-    ASSERT_EQ(errCode, -1);
-    albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
-    vector<unique_ptr<PhotoAlbum>> albumsVector;
-    albumsVector.push_back(move(album));
-    int32_t ret = mediaLibraryManager->DeleteAlbums(albumsVector);
-    EXPECT_GE(ret, 0);
-    MEDIA_INFO_LOG("MediaLibraryManager_CreateAlbum_test_002 exit");
-}
-
-/**
- * @tc.number    : MediaLibraryManager_CreateAlbum_test_003
- * @tc.name      : Create album
- * @tc.desc      : Create album fail when albumName is invalid
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CreateAlbum_test_003, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("MediaLibraryManager_CreateAlbum_test_003 enter");
     DataSharePredicates predicates;
     vector<string> columnsAlbum;
     ASSERT_NE(mediaLibraryManager, nullptr);
@@ -1478,7 +1435,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CreateAlbum_test_003, Test
     ASSERT_EQ(errCode, E_FAIL);
     albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
     ASSERT_EQ(albumsFetchResult.GetCount(), albumCountBefore);
-    MEDIA_INFO_LOG("MediaLibraryManager_CreateAlbum_test_003 exit");
+    MEDIA_INFO_LOG("MediaLibraryManager_CreateAlbum_test_002 exit");
 }
 
 /**
