@@ -5199,6 +5199,42 @@ int32_t MediaLibraryPhotoOperations::SavePicture(const int32_t &fileType, const 
     return E_OK;
 }
 
+int32_t MediaLibraryPhotoOperations::AddFiltersExecute(MediaLibraryCommand& cmd,
+    const shared_ptr<FileAsset>& fileAsset, const string& cachePath)
+{
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_VALUES, "fileAsset is nullptr");
+    int32_t fileId = fileAsset->GetId();
+    string assetPath = fileAsset->GetFilePath();
+    CHECK_AND_RETURN_RET_LOG(!assetPath.empty(), E_INVALID_VALUES, "Failed to get asset path");
+    string editDataDirPath = MediaEditUtils::GetEditDataDir(assetPath);
+    CHECK_AND_RETURN_RET_LOG(!editDataDirPath.empty(), E_INVALID_URI, "Can not get editdara dir path");
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(editDataDirPath), E_HAS_FS_ERROR,
+        "Can not create dir %{private}s", editDataDirPath.c_str());
+    string sourcePath = MediaEditUtils::GetEditDataSourcePath(assetPath);
+    CHECK_AND_RETURN_RET_LOG(!sourcePath.empty(), E_INVALID_URI, "Can not get edit source path");
+    if (cachePath.empty()) {
+        // Photo目录照片复制到.editdata目录的source.jpg
+        MediaFileUtils::CopyFileUtil(assetPath, sourcePath);
+    } else {
+        // cache移动到source.jpg
+        int32_t subtype = fileAsset->GetPhotoSubType();
+        MoveCacheFile(cmd, MoveCacheFileInfo(subtype, cachePath, sourcePath));
+    }
+    // 保存editdata_camera文件
+    string editData;
+    SaveEditDataCamera(cmd, assetPath, editData);
+    // 生成水印
+    int32_t ret = AddFiltersToPhoto(sourcePath, assetPath, editData);
+    if (ret == E_OK) {
+        MediaLibraryObjectUtils::ScanFileAsync(assetPath, to_string(fileAsset->GetId()), MediaLibraryApi::API_10);
+    }
+    std::shared_ptr<Media::Picture> picture;
+    std::string photoId;
+    bool isHighQualityPicture = false;
+    CHECK_AND_RETURN_RET(GetPicture(fileId, picture, true, photoId, isHighQualityPicture) != E_OK, E_OK);
+    return ret;
+}
+
 int32_t MediaLibraryPhotoOperations::SaveCameraPhotoWithFilters(MediaLibraryCommand& cmd,
     const shared_ptr<FileAsset>& fileAsset)
 {
@@ -5492,6 +5528,8 @@ int32_t MediaLibraryPhotoOperations::SubmitCacheExecute(MediaLibraryCommand& cmd
             effectMode);
         CHECK_AND_RETURN_RET(fileAsset != nullptr, E_INVALID_VALUES);
         return HandleSubmitEditCache(cmd, fileAsset, isWriteGpsAdvanced, moveCacheFileInfo, id);
+    } else if (IsCameraEditData(cmd)) {
+        AddFiltersExecute(cmd, fileAsset, cachePath);
     } else {
         MoveCacheFileInfo moveCacheFileInfo(subtype, cachePath, assetPath, isSourceImageExist, isOriginalImageResource,
             effectMode);
