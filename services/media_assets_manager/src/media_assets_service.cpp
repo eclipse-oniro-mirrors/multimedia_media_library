@@ -197,6 +197,7 @@ int32_t MediaAssetsService::DeletePhotos(const std::vector<std::string> &uris)
 int32_t MediaAssetsService::DeletePhotosCompleted(const std::vector<std::string> &fileIds)
 {
     DataShare::DataSharePredicates predicates;
+    MEDIA_INFO_LOG("The count of delete fileIds is %{public}zu", fileIds.size());
     predicates.In(PhotoColumn::MEDIA_ID, fileIds);
     return MediaLibraryAlbumOperations::DeletePhotoAssetsCompleted(predicates, false);
 }

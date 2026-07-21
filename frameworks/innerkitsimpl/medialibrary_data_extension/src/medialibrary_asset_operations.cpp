@@ -3688,6 +3688,28 @@ static void GetAnalysisAlbumIdsOfAssets(const vector<shared_ptr<FileAsset>> file
     MEDIA_INFO_LOG("Number of Analysis Album is %{public}zu", albumIds.size());
 }
 
+static void GetFileAssetsForPermanentDeletion(AbsRdbPredicates &predicates,
+    vector<shared_ptr<FileAsset>> &fileAssetVector)
+{
+    vector<string> columns = {
+        PhotoColumn::PHOTO_CLOUD_ID, MediaColumn::MEDIA_SIZE, MediaColumn::MEDIA_DATE_MODIFIED,
+        MediaColumn::MEDIA_FILE_PATH, MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_ID,
+        PhotoColumn::PHOTO_POSITION, PhotoColumn::PHOTO_BURST_KEY, MediaColumn::MEDIA_TYPE,
+        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
+        PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_STORAGE_PATH,
+    };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "resultSet is nullptr");
+    auto errCode = GetAssetVectorFromResultSet(resultSet, columns, fileAssetVector);
+    if (errCode != E_OK) {
+        MEDIA_ERR_LOG("GetAssetVectorFromResultSet failed, errCode: %{public}d", errCode);
+    }
+    MEDIA_INFO_LOG("fileAssetVector size is %{public}zu, predicates args size is %{public}zu",
+        fileAssetVector.size(), predicates.GetWhereArgs().size());
+    resultSet->Close();
+}
+
 int32_t MediaLibraryAssetOperations::DeletePermanently(AbsRdbPredicates &predicates, const bool isAging,
     std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh)
 {
@@ -3695,7 +3717,7 @@ int32_t MediaLibraryAssetOperations::DeletePermanently(AbsRdbPredicates &predica
         assetRefresh = make_shared<AccurateRefresh::AssetAccurateRefresh>(
             AccurateRefresh::DELETE_PHOTOS_COMPLETED_BUSSINESS_NAME);
     }
-    MEDIA_DEBUG_LOG("DeletePermanently begin");
+    MEDIA_INFO_LOG("DeletePermanently begin");
     MediaLibraryTracer tracer;
     tracer.Start("DeletePermanently");
     MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
@@ -3706,22 +3728,10 @@ int32_t MediaLibraryAssetOperations::DeletePermanently(AbsRdbPredicates &predica
         MediaLibraryNotify::GetNotifyUris(predicates, agingNotifyUris);
     }
 
-    vector<string> columns = {
-        PhotoColumn::PHOTO_CLOUD_ID, MediaColumn::MEDIA_SIZE, MediaColumn::MEDIA_DATE_MODIFIED,
-        MediaColumn::MEDIA_FILE_PATH, MediaColumn::MEDIA_NAME, MediaColumn::MEDIA_ID,
-        PhotoColumn::PHOTO_POSITION, PhotoColumn::PHOTO_BURST_KEY, MediaColumn::MEDIA_TYPE,
-        PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
-        PhotoColumn::PHOTO_EDIT_TIME, PhotoColumn::PHOTO_OWNER_ALBUM_ID, PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE,
-        PhotoColumn::PHOTO_FILE_SOURCE_TYPE, PhotoColumn::PHOTO_STORAGE_PATH,
-    };
-    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     vector<shared_ptr<FileAsset>> fileAssetVector;
     vector<shared_ptr<FileAsset>> subFileAssetVector;
     std::set<int32_t> changedAlbumIds;
-    GetAssetVectorFromResultSet(resultSet, columns, fileAssetVector);
-    if (resultSet != nullptr) {
-        resultSet->Close();
-    }
+    GetFileAssetsForPermanentDeletion(predicates, fileAssetVector);
     set<string> analysisAlbumIds;
     GetAnalysisAlbumIdsOfAssets(fileAssetVector, analysisAlbumIds);
     for (auto& fileAssetPtr : fileAssetVector) {
