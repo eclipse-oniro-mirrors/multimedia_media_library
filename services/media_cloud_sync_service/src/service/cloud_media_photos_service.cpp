@@ -460,7 +460,7 @@ void CloudMediaPhotosService::NotifyPhotoInserted(const std::vector<NativeRdb::V
                 continue;
             }
             obj.GetString(cloudId);
-            MEDIA_INFO_LOG("NotifyPhotoInserted CloudId %{public}s", cloudId.c_str());
+            MEDIA_DEBUG_LOG("NotifyPhotoInserted CloudId %{public}s", cloudId.c_str());
             MediaGallerySyncNotify::GetInstance().AddNotify(
                 PhotoColumn::PHOTO_GALLERY_CLOUD_URI_PREFIX + cloudId, ChangeType::INSERT, cloudId);
             cloudIds.emplace(cloudId);
