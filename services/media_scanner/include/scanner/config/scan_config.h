@@ -104,8 +104,6 @@ public:
     MediaLibraryApi GetApiVersion() const;
     ScanExecutionMode GetExecutionMode() const;
  
- 
- 
     // 公共变量 - 业务相关
  
     bool GetForceScan() const;
@@ -120,7 +118,6 @@ public:
  
     // 公共变量 - 扫描策略
     ScanStrategyType GetStrategyType() const;
- 
  
     ConflictPolicy GetConflictPolicy() const;
     ScanQuality GetQuality() const;
@@ -159,8 +156,6 @@ private:
     // 公共变量 - 执行模式
     void SetExecutionMode(ScanExecutionMode executionMode);
  
- 
- 
     // 公共变量 - 业务相关
  
     void SetForceScan(bool force);
@@ -176,7 +171,6 @@ private:
  
     // 公共变量 - 扫描策略
     void SetStrategyType(ScanStrategyType type);
- 
  
     void SetConflictPolicy(ConflictPolicy policy);
     void SetQuality(ScanQuality q);
@@ -221,8 +215,6 @@ private:
  
     // 公共变量 - 扫描策略
     ScanStrategyType strategyType_ = ScanStrategyType::DEFAULT_SCAN;
- 
- 
     ConflictPolicy conflictPolicy_ = ConflictPolicy::DEFAULT;
     ScanQuality quality_ = ScanQuality::DEFAULT;
  

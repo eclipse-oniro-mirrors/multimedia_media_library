@@ -14,11 +14,9 @@
  */
  
 #include "batch_scan_strategy_test.h"
- 
-#define private public
+
 #include "batch_scan_strategy.h"
 #include "batch_scanner_obj.h"
-#undef private
  
 #include "media_log.h"
 #include "medialibrary_errno.h"

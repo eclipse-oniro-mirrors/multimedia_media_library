@@ -15,9 +15,7 @@
  
 #include "metadata_get_value_test.h"
  
-#define private public
 #include "metadata.h"
-#undef private
  
 #include "media_column.h"
 #include "media_log.h"

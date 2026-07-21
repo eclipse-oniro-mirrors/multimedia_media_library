@@ -14,11 +14,9 @@
  */
  
 #include "media_scanner_manager_batch_test.h"
- 
-#define private public
+
 #include "media_scanner_manager.h"
 #include "enhanced_scan_executor.h"
-#undef private
  
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -327,7 +325,6 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_SetsExecutionMode_test, 
     EXPECT_EQ(config.GetExecutionMode(), ScanExecutionMode::ASYNC);
  
     // ExecuteBatchScan内部会做：
-    // auto finalConfig = ScanConfigBuilder(config).SetExecutionMode(executionMode).Build();
     auto syncConfig = ScanConfigBuilder(config).SetExecutionMode(ScanExecutionMode::SYNC).Build();
     EXPECT_EQ(syncConfig.GetExecutionMode(), ScanExecutionMode::SYNC);
  

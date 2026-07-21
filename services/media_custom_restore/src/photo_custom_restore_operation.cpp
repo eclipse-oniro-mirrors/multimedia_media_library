@@ -561,8 +561,7 @@ vector<RestoreFileInfo> PhotoCustomRestoreOperation::scanfile(const unordered_ma
         restoreTaskInfo.packageName,
         restoreTaskInfo.bundleName,
         restoreTaskInfo.appId,
-        isFirst
-        ).Build();
+        isFirst).Build();
     int32_t errCode = MediaScannerManager::GetInstance()->ScanSync(scanConfig);
     sameFileNum = scanConfig.GetOutSameFileNum();
     return scanConfig.GetOutFileInfos();

@@ -14,10 +14,8 @@
  */
  
 #include "batch_scanner_obj_test.h"
- 
-#define private public
+
 #include "batch_scanner_obj.h"
-#undef private
  
 #include "media_column.h"
 #include "media_log.h"

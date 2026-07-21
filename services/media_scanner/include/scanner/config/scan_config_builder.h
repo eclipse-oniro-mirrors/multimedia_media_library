@@ -29,11 +29,8 @@ public:
     explicit ScanConfigBuilder(const ScanConfig& config);
     ~ScanConfigBuilder() = default;
 
-// 公共变量 - 执行模式
+    // 公共变量 - 执行模式
     ScanConfigBuilder& SetExecutionMode(ScanExecutionMode executionMode);
- 
- 
- 
     // 公共变量 - 业务相关
  
     ScanConfigBuilder& SetForceScan(bool force = true);
@@ -48,8 +45,6 @@ public:
  
     // 公共变量 - 扫描策略
     ScanConfigBuilder& SetStrategyType(ScanStrategyType type);
- 
- 
     ScanConfigBuilder& SetConflictPolicy(ConflictPolicy policy);
     ScanConfigBuilder& SetQuality(ScanQuality quality);
  
@@ -86,7 +81,6 @@ public:
         const std::string& appId = "",
         bool isFirstBatch = true);
  
-
     // 通用业务的批量配置
     ScanConfigBuilder& UseCameraShotPreset(bool isMovingPhoto, ScanQuality quality = ScanQuality::DEFAULT);
     ScanConfigBuilder& UseThumbnailCallbackPreset(bool isCreateThumbSync, bool isInvalidateThumb,

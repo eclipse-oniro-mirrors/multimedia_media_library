@@ -296,7 +296,7 @@ NativeRdb::ValueObject Metadata::GetValue(const std::string &column) const
         } else {
             return NativeRdb::ValueObject((this->*fn)());
         }
-    }, it->second.second);
+        }, it->second.second);
 }
 
 void Metadata::SetFileId(const VariantData &id)
