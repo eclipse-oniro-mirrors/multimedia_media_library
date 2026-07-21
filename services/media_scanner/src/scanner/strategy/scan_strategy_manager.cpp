@@ -18,6 +18,7 @@
 #include "scan_strategy_manager.h"
 
 #include "default_scan_strategy.h"
+#include "batch_scan_strategy.h"
 #include "media_log.h"
 
 namespace OHOS {
