@@ -113,12 +113,12 @@ public:
     bool GetNeedGenerateThumbnail() const;
     const std::shared_ptr<IMediaScannerCallback>& GetCallback() const;
     bool GetCreateThumbSync() const;
+    bool GetInvalidateThumb() const;
     const std::shared_ptr<Picture>& GetOriginalPicture() const;
     const std::shared_ptr<IMediaScannerCallback>& GetUpdateDirtyCallback() const;
  
     // 公共变量 - 扫描策略
     ScanStrategyType GetStrategyType() const;
- 
     ConflictPolicy GetConflictPolicy() const;
     ScanQuality GetQuality() const;
  
@@ -171,7 +171,6 @@ private:
  
     // 公共变量 - 扫描策略
     void SetStrategyType(ScanStrategyType type);
- 
     void SetConflictPolicy(ConflictPolicy policy);
     void SetQuality(ScanQuality q);
  
