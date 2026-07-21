@@ -181,8 +181,6 @@ void Metadata::InitValueFuncMap()
         MetadataGetter{&Metadata::GetPhotoQuality});
     valueFuncMap_[PhotoColumn::PHOTO_DIRTY] = make_pair(ResultSetDataType::TYPE_INT32,
         MetadataGetter{&Metadata::GetDirty});
-    valueFuncMap_[PhotoColumn::IS_STYLE_PHOTO] = make_pair(ResultSetDataType::TYPE_INT32,
-        MetadataGetter{&Metadata::GetIsStylePhoto});
     valueFuncMap_[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = make_pair(ResultSetDataType::TYPE_INT32,
         MetadataGetter{&Metadata::GetBurstCoverLevel});
     valueFuncMap_[PhotoColumn::STAGE_VIDEO_TASK_STATUS] = make_pair(ResultSetDataType::TYPE_INT32,
@@ -240,9 +238,6 @@ void Metadata::InitValueFuncMapV2()
         MetadataGetter{GetterStringVal{&Metadata::GetFrontCamera}});
     valueFuncMap_[PhotoColumn::PHOTO_DETAIL_TIME] = make_pair(ResultSetDataType::TYPE_STRING,
         MetadataGetter{GetterStringVal{&Metadata::GetDetailTime}});
-    valueFuncMap_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = make_pair(ResultSetDataType::TYPE_STRING,
-        MetadataGetter{GetterStringVal{&Metadata::GetXtStyleTemplateName}});
-    
     InitValueFuncMapV3();
 }
 
