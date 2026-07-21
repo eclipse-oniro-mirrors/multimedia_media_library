@@ -38,7 +38,7 @@ public:
         CHECK_AND_RETURN_RET_LOG(PreCheckDataInput(data), false, "Invalid data input, operation: %{public}d",
             static_cast<int32_t>(data.operation_));
 
-        CHECK_AND_RETURN_RET_LOG(IsValidSystemAsset(data.infoBeforeChange_) ||
+        CHECK_AND_RETURN_RET_DEBUG_LOG(IsValidSystemAsset(data.infoBeforeChange_) ||
             IsValidSystemAsset(data.infoAfterChange_), false, "No info in data is valid");
 
         return IsEffectiveForCurrentStrategy(data, baseInfo);
