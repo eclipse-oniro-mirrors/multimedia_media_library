@@ -100,7 +100,7 @@ int32_t CloudFileDataConvert::GetFileSize(const std::string &path, const std::st
             err,
             "get thumb size failed errno : " + std::to_string(errno) + ", path " +
                 ReportUtils::GetAnonyString(thumbnailPath)});
-        MEDIA_INFO_LOG("get thumb size failed errno :%{public}d, %{public}s", errno,
+        MEDIA_DEBUG_LOG("get thumb size failed errno :%{public}d, %{public}s", errno,
             MediaFileUtils::DesensitizePath(thumbnailPath).c_str());
     } else {
         fileSize = fileStat.st_size;

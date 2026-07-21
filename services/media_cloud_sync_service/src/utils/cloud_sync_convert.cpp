@@ -604,7 +604,7 @@ int32_t CloudSyncConvert::CompensateUniqueId(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     std::string uniqueId = data.attributesUniqueId;
-    CHECK_AND_RETURN_RET_WARN_LOG(!uniqueId.empty(), E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes::unique_id.");
+    CHECK_AND_RETURN_RET(!uniqueId.empty(), E_CLOUDSYNC_INVAL_ARG);
     values.PutString(PhotoColumn::UNIQUE_ID, uniqueId);
     return E_OK;
 }
@@ -613,7 +613,7 @@ int32_t CloudSyncConvert::CompensatePackageName(
     const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
 {
     std::string packageName = data.attributesPackageName;
-    CHECK_AND_RETURN_RET_WARN_LOG(!packageName.empty(), E_CLOUDSYNC_INVAL_ARG, "Cannot find attributes:package_name.");
+    CHECK_AND_RETURN_RET(!packageName.empty(), E_CLOUDSYNC_INVAL_ARG);
     values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, packageName);
     return E_OK;
 }
