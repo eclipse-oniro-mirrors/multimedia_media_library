@@ -129,7 +129,6 @@ private:
     bool IsCancelTask(RestoreTaskInfo &restoreTaskInfo);
     void CancelTaskFinish(RestoreTaskInfo &restoreTaskInfo);
     void ApplyEfficiencyQuota(int32_t fileNum);
-    bool IsDuplication(RestoreTaskInfo &restoreTaskInfo, FileInfo &fileInfo);
     int32_t InitPhotoCache(RestoreTaskInfo &restoreTaskInfo);
     void QueryAlbumId(RestoreTaskInfo &restoreTaskInfo);
     void ReportCustomRestoreTask(RestoreTaskInfo &restoreTaskInfo);
@@ -138,7 +137,6 @@ private:
     int32_t GetAlbumInfoBySubType(int32_t subType, string &albumUri, int32_t &albumId);
     unordered_map<string, TimeInfo> QueryMediaInfo(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     unordered_map<string, TimeInfo> GetTimeInfoMap(RestoreTaskInfo &restoreTaskInfo);
-    void SetTimeInfo(const std::unique_ptr<Metadata> &data, FileInfo &info, NativeRdb::ValuesBucket &value);
 
     int32_t HandleTlvSingleRestore(const std::unordered_map<TlvTag, std::string> &editFileMap,
         const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo, bool isFirst,

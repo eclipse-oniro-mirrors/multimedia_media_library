@@ -148,6 +148,7 @@ const std::string PhotoColumn::DEFERRED_EFFECT_STATUS = "deferred_effect_status"
 const std::string PhotoColumn::PHOTO_FILE_INODE = "inode";
 const std::string PhotoColumn::PHOTO_STORAGE_PATH = "storage_path";
 
+const std::string PhotoColumn::IS_STYLE_PHOTO = "is_style_photo";
 const std::string PhotoColumn::PHOTO_CLOUD_ID_INDEX = "cloud_id_index";
 const std::string PhotoColumn::PHOTO_DATE_YEAR_INDEX = "date_year_index";
 const std::string PhotoColumn::PHOTO_DATE_MONTH_INDEX = "date_month_index";
