@@ -2619,6 +2619,21 @@ static int32_t GetTranscodeFileInfo(const std::shared_ptr<NativeRdb::ResultSet> 
     return E_OK;
 }
 
+static void SetMovingPhotoSize(size_t &size, const std::shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    string path = GetStringVal(PhotoColumn::MEDIA_FILE_PATH, resultSet);
+    if (subType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
+        string movingPhotoVideoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(path);
+        string movingPhotoExtraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(path);
+        size_t videoSize = 0;
+        size_t extraDataSize = 0;
+        (void)MediaFileUtils::GetFileSize(movingPhotoVideoPath, videoSize);
+        (void)MediaFileUtils::GetFileSize(movingPhotoExtraDataPath, extraDataSize);
+        size = size + videoSize + extraDataSize;
+    }
+}
+
 int32_t MediaLibraryAlbumFusionUtils::CreateTmpCompatibleDup(int32_t fileId, const std::string &path, size_t &size,
     int32_t &dupExist, TranscodeType& transcodeType)
 {
@@ -2635,7 +2650,7 @@ int32_t MediaLibraryAlbumFusionUtils::CreateTmpCompatibleDup(int32_t fileId, con
 
     const std::string querySql = R"(SELECT exist_compatible_duplicate, position, is_temp, time_pending, hidden,
         data, storage_path, file_source_type,
-        date_trashed, date_deleted, mime_type, height, width FROM Photos WHERE file_id = ?)";
+        date_trashed, date_deleted, mime_type, height, width, subtype FROM Photos WHERE file_id = ?)";
     std::vector<NativeRdb::ValueObject> params = { fileId };
     shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(querySql, params);
     dupExist = 0;
@@ -2652,7 +2667,9 @@ int32_t MediaLibraryAlbumFusionUtils::CreateTmpCompatibleDup(int32_t fileId, con
         return err;
     }
     if (err == E_OK) {
-        return PhotoFileOperation().CreateTmpCompatibleDup(srcInfo, size, width, height, transcodeType);
+        int32_t ret = PhotoFileOperation().CreateTmpCompatibleDup(srcInfo, size, width, height, transcodeType);
+        SetMovingPhotoSize(size, resultSet);
+        return ret;
     }
     MEDIA_ERR_LOG("CheckTmpCompatibleDup fail %{public}d", err);
     dfxManager->HandleTranscodeFailed(INNER_FAILED, transcodeType);

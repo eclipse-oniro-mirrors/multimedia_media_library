@@ -17949,22 +17949,22 @@ static void JSTransAssetToCompatibleAssetExecute(napi_env env, void *data)
 
     for (const auto &fileAsset : context->transAssetPtrs) {
         // 5a. Replace displayname extension to jpg
-        std::string displayName = fileAsset->GetDisplayName();
-        std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
-        if (!title.empty()) {
-            fileAsset->SetDisplayName(title + ".jpg");
-        }
-        // 5b. Reconstruct URI with new displayname
-        std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
-            fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
-        fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
-        // 5c. Set mimetype to image/jpeg
-        fileAsset->SetMimeType("image/jpeg");
-        // 5d. Set suffix to jpg
-        fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
-        // 5e. Replace size with PHOTO_TRANS_CODE_FILE_SIZE and calculate width/height
         int64_t transCodeFileSize = fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
         if (transCodeFileSize != 0) {
+            std::string displayName = fileAsset->GetDisplayName();
+            std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
+            if (!title.empty()) {
+                fileAsset->SetDisplayName(title + ".jpg");
+            }
+            // 5b. Reconstruct URI with new displayname
+            std::string fileAssetUri = MediaFileUtils::GetFileAssetUri(
+                fileAsset->GetPath(), fileAsset->GetDisplayName(), fileAsset->GetId());
+            fileAsset->SetUri(MediaFileUtils::Encode(fileAssetUri));
+            // 5c. Set mimetype to image/jpeg
+            fileAsset->SetMimeType("image/jpeg");
+            // 5d. Set suffix to jpg
+            fileAsset->SetMemberValue(PhotoColumn::PHOTO_MEDIA_SUFFIX, std::string("jpg"));
+            // 5e. Replace size with PHOTO_TRANS_CODE_FILE_SIZE and calculate width/height
             fileAsset->SetSize(transCodeFileSize);
             int32_t width = fileAsset->GetWidth();
             int32_t height = fileAsset->GetHeight();
