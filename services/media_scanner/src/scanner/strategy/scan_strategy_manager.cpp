@@ -32,6 +32,7 @@ ScanStrategyManager& ScanStrategyManager::GetInstance()
 ScanStrategyManager::ScanStrategyManager()
 {
     RegisterDefaultStrategies();
+    RegisterBatchStrategies();
     MEDIA_INFO_LOG("ScanStrategyManager created");
 }
 
@@ -47,6 +48,14 @@ void ScanStrategyManager::RegisterDefaultStrategies()
     RegisterStrategy(defaultStrategy);
     
     MEDIA_INFO_LOG("DefaultScanStrategy registered");
+}
+
+void ScanStrategyManager::RegisterBatchStrategies()
+{
+    auto batchStrategy = std::make_shared<BatchScanStrategy>();
+    RegisterStrategy(batchStrategy);
+    
+    MEDIA_INFO_LOG("batchStrategy registered");
 }
 
 void ScanStrategyManager::RegisterStrategy(const std::shared_ptr<IScanStrategy>& strategy)

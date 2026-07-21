@@ -34,6 +34,9 @@ ohos_unittest("medialibrary_custom_restore_test") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/operation",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
   ]
 
   include_media_ipc_common = [
@@ -69,6 +72,8 @@ ohos_unittest("medialibrary_custom_restore_test") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/asset_compress_version_manager.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/medialibrary_json_operation.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/batch_restore_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/batch_scanner_obj.cpp",
   ]
 
   deps = [

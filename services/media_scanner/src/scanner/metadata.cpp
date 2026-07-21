@@ -143,6 +143,160 @@ void Metadata::Init()
     memberFuncMap_[PhotoColumn::MOVING_PHOTO_EFFECT_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetMovingPhotoEffectMode);
     InitV2();
+    InitValueFuncMap();
+}
+
+void Metadata::InitValueFuncMap()
+{
+    // int32_t getters
+    valueFuncMap_[PhotoColumn::PHOTO_ORIENTATION] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetOrientation});
+    valueFuncMap_[PhotoColumn::PHOTO_EXIF_ROTATE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetExifRotate});
+    valueFuncMap_[MediaColumn::MEDIA_DURATION] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetFileDuration});
+    valueFuncMap_[PhotoColumn::PHOTO_HEIGHT] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetFileHeight});
+    valueFuncMap_[PhotoColumn::PHOTO_WIDTH] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetFileWidth});
+    valueFuncMap_[PhotoColumn::PHOTO_DYNAMIC_RANGE_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetDynamicRangeType});
+    valueFuncMap_[PhotoColumn::PHOTO_HDR_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetHdrMode});
+    valueFuncMap_[PhotoColumn::PHOTO_VIDEO_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetVideoMode});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_ID] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetFileId});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_PARENT_ID] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetParentId});
+    valueFuncMap_[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetAlbumId});
+    valueFuncMap_[PhotoColumn::PHOTO_SUBTYPE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetPhotoSubType});
+    valueFuncMap_[PhotoColumn::MOVING_PHOTO_EFFECT_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetMovingPhotoEffectMode});
+    valueFuncMap_[PhotoColumn::PHOTO_IS_TEMP] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetIsTemp});
+    valueFuncMap_[PhotoColumn::PHOTO_QUALITY] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetPhotoQuality});
+    valueFuncMap_[PhotoColumn::PHOTO_DIRTY] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetDirty});
+    valueFuncMap_[PhotoColumn::IS_STYLE_PHOTO] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetIsStylePhoto});
+    valueFuncMap_[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetBurstCoverLevel});
+    valueFuncMap_[PhotoColumn::STAGE_VIDEO_TASK_STATUS] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetStageVideoTaskStatus});
+    valueFuncMap_[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetFileSourceType});
+    valueFuncMap_[PhotoColumn::PHOTO_NEED_THUMBNAIL] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{&Metadata::GetNeedThumbnail});
+ 
+    InitValueFuncMapV2();
+}
+
+void Metadata::InitValueFuncMapV2()
+{
+    // string getters (by const ref)
+    valueFuncMap_[MediaColumn::MEDIA_MIME_TYPE] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetFileMimeType}});
+    valueFuncMap_[PhotoColumn::PHOTO_MEDIA_SUFFIX] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetFileExtension}});
+    valueFuncMap_[PhotoColumn::PHOTO_ALL_EXIF] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetAllExif}});
+    valueFuncMap_[PhotoColumn::PHOTO_SHOOTING_MODE] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetShootingMode}});
+    valueFuncMap_[PhotoColumn::PHOTO_SHOOTING_MODE_TAG] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetShootingModeTag}});
+    valueFuncMap_[PhotoColumn::PHOTO_USER_COMMENT] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetUserComment}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_URI] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetUri}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_RELATIVE_PATH] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetRelativePath}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_NAME] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetFileName}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_TITLE] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetFileTitle}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_ARTIST] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetFileArtist}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_AUDIO_ALBUM] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetAlbum}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_BUCKET_NAME] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetAlbumName}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_RECYCLE_PATH] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetRecyclePath}});
+    valueFuncMap_[PhotoColumn::PHOTO_DATE_YEAR] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetDateYear}});
+    valueFuncMap_[PhotoColumn::PHOTO_DATE_MONTH] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetDateMonth}});
+    valueFuncMap_[PhotoColumn::PHOTO_DATE_DAY] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetDateDay}});
+    valueFuncMap_[PhotoColumn::MEDIA_OWNER_PACKAGE] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringConstVal{&Metadata::GetOwnerPackage}});
+ 
+    // string getters (by value)
+    valueFuncMap_[PhotoColumn::PHOTO_FRONT_CAMERA] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringVal{&Metadata::GetFrontCamera}});
+    valueFuncMap_[PhotoColumn::PHOTO_DETAIL_TIME] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringVal{&Metadata::GetDetailTime}});
+    valueFuncMap_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringVal{&Metadata::GetXtStyleTemplateName}});
+    
+    InitValueFuncMapV3();
+}
+
+void Metadata::InitValueFuncMapV3()
+{
+    // int64_t getters
+    valueFuncMap_[MediaColumn::MEDIA_SIZE] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetFileSize}});
+    valueFuncMap_[PhotoColumn::LOCAL_ASSET_SIZE] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetLocalAssetSize}});
+    valueFuncMap_[PhotoColumn::PHOTO_LAST_VISIT_TIME] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetLastVisitTime}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_DATE_ADDED] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetFileDateAdded}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_DATE_MODIFIED] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetFileDateModified}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_DATE_TAKEN] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetDateTaken}});
+    valueFuncMap_[CONST_MEDIA_DATA_DB_TIME_PENDING] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetTimePending}});
+    valueFuncMap_[PhotoColumn::PHOTO_COVER_POSITION] = make_pair(ResultSetDataType::TYPE_INT64,
+        MetadataGetter{GetterInt64{&Metadata::GetCoverPosition}});
+
+    // string getters (by const ref) - path fields
+    valueFuncMap_[CONST_MEDIA_DATA_DB_FILE_PATH] = make_pair(ResultSetDataType::TYPE_STRING,
+        MetadataGetter{GetterStringRef{&Metadata::GetFilePath}});
+ 
+    // double getters
+    valueFuncMap_[PhotoColumn::PHOTO_ASPECT_RATIO] = make_pair(ResultSetDataType::TYPE_DOUBLE,
+        MetadataGetter{GetterDouble{&Metadata::GetFileAspectRatio}});
+    valueFuncMap_[PhotoColumn::PHOTO_LONGITUDE] = make_pair(ResultSetDataType::TYPE_DOUBLE,
+        MetadataGetter{GetterDouble{&Metadata::GetLongitude}});
+    valueFuncMap_[PhotoColumn::PHOTO_LATITUDE] = make_pair(ResultSetDataType::TYPE_DOUBLE,
+        MetadataGetter{GetterDouble{&Metadata::GetLatitude}});
+ 
+    // MediaType getter (converts to int32_t in GetValue)
+    valueFuncMap_[CONST_MEDIA_DATA_DB_MEDIA_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
+        MetadataGetter{GetterMediaType{&Metadata::GetFileMediaType}});
+}
+
+NativeRdb::ValueObject Metadata::GetValue(const std::string &column) const
+{
+    auto it = valueFuncMap_.find(column);
+    if (it == valueFuncMap_.end()) {
+        return NativeRdb::ValueObject{};
+    }
+    return std::visit([this](auto &&fn) -> NativeRdb::ValueObject {
+        using T = std::decay_t<decltype(fn)>;
+        if constexpr (std::is_same_v<T, GetterMediaType>) {
+            return NativeRdb::ValueObject(static_cast<int32_t>((this->*fn)()));
+        } else {
+            return NativeRdb::ValueObject((this->*fn)());
+        }
+    }, it->second.second);
 }
 
 void Metadata::SetFileId(const VariantData &id)

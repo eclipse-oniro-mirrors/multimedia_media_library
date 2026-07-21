@@ -202,9 +202,25 @@ public:
 
     EXPORT void Init();
     void InitV2();
+    void InitValueFuncMap();
+    void InitValueFuncMapV2();
+    void InitValueFuncMapV3();
 
     using MetadataFnPtr = void (Metadata::*)(const VariantData &);
     EXPORT std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataFnPtr>> memberFuncMap_;
+
+    // Reverse mapping: column → (dataType, getter) for Metadata → ValuesBucket direction
+    using GetterInt32 = int32_t (Metadata::*)() const;
+    using GetterInt64 = int64_t (Metadata::*)() const;
+    using GetterStringRef = const std::string &(Metadata::*)() const;
+    using GetterStringVal = std::string (Metadata::*)() const;
+    using GetterStringConstVal = const std::string (Metadata::*)() const;
+    using GetterDouble = double (Metadata::*)() const;
+    using GetterMediaType = MediaType (Metadata::*)() const;
+    using MetadataGetter = std::variant<GetterInt32, GetterInt64, GetterStringRef, GetterStringVal,
+        GetterStringConstVal, GetterDouble, GetterMediaType>;
+    EXPORT std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataGetter>> valueFuncMap_;
+    EXPORT NativeRdb::ValueObject GetValue(const std::string &column) const;
 
 private:
     int32_t id_;

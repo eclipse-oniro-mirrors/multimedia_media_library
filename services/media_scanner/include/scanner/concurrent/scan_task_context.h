@@ -23,7 +23,10 @@ namespace Media {
 struct ScanTaskContext {
     ScanConfig config;
 
-    explicit ScanTaskContext(const ScanConfig& config) : config(config) {}
+    explicit ScanTaskContext(const ScanConfig& scanConfig)
+        : config(scanConfig) {}
+ 
+    bool IsBatchScan() const { return config.GetStrategyType() == ScanStrategyType::BATCH_SCAN; }
 };
 } // namespace Media
 } // namespace OHOS

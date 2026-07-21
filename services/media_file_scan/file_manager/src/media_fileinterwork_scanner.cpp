@@ -296,7 +296,7 @@ int32_t MediaFileInterworkScanner::GetFileMetadata(std::unique_ptr<Metadata> &da
     return E_OK;
 }
 
-int32_t MediaFileInterworkScanner::FillMetadata(const FileInfo &fileInfo, std::unique_ptr<Metadata> &data)
+int32_t MediaFileInterworkScanner::FillMetadata(const RestoreFileInfo &fileInfo, std::unique_ptr<Metadata> &data)
 {
     data->SetFilePath(fileInfo.originFilePath);
     data->SetFileName(fileInfo.fileName);
@@ -316,7 +316,7 @@ int32_t MediaFileInterworkScanner::FillMetadata(const FileInfo &fileInfo, std::u
 }
 
 void MediaFileInterworkScanner::SetTimeInfo(
-    const std::unique_ptr<Metadata> &data, FileInfo &info, NativeRdb::ValuesBucket &value)
+    const std::unique_ptr<Metadata> &data, RestoreFileInfo &info, NativeRdb::ValuesBucket &value)
 {
     int64_t dateAdded =
         PhotoFileUtils::NormalizeTimestamp(data->GetFileDateAdded(), MediaFileUtils::UTCTimeMilliSeconds());
@@ -348,7 +348,7 @@ void MediaFileInterworkScanner::SetTimeInfo(
     value.Put(PhotoColumn::PHOTO_DATE_DAY, dateDay);
 }
 
-static void FillFileInfo(FileInfo& fileInfo, const std::unique_ptr<Metadata>& data)
+static void FillFileInfo(RestoreFileInfo& fileInfo, const std::unique_ptr<Metadata>& data)
 {
     fileInfo.size = data->GetFileSize();
     fileInfo.orientation = data->GetOrientation();
@@ -362,7 +362,7 @@ static void FillFileInfo(FileInfo& fileInfo, const std::unique_ptr<Metadata>& da
     }
 }
 
-NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(FileInfo &fileInfo)
+NativeRdb::ValuesBucket MediaFileInterworkScanner::GetInsertValue(RestoreFileInfo &fileInfo)
 {
     NativeRdb::ValuesBucket value;
     value.PutString(PhotoColumn::PHOTO_STORAGE_PATH, fileInfo.originFilePath);
@@ -422,10 +422,10 @@ int32_t MediaFileInterworkScanner::UpdateUniqueNumber(UniqueNumber &uniqueNumber
     return E_OK;
 }
 
-vector<FileInfo> MediaFileInterworkScanner::SetDestinationPath(
-    vector<FileInfo> &restoreFiles, UniqueNumber &uniqueNumber)
+vector<RestoreFileInfo> MediaFileInterworkScanner::SetDestinationPath(
+    vector<RestoreFileInfo> &restoreFiles, UniqueNumber &uniqueNumber)
 {
-    vector<FileInfo> newRestoreFiles;
+    vector<RestoreFileInfo> newRestoreFiles;
     for (auto &fileInfo : restoreFiles) {
         string mediaDirPath = "Photo/";
         int32_t mediaType = fileInfo.mediaType;
@@ -466,17 +466,17 @@ vector<FileInfo> MediaFileInterworkScanner::SetDestinationPath(
     return newRestoreFiles;
 }
 
-vector<FileInfo> MediaFileInterworkScanner::GetFileInfos(
+vector<RestoreFileInfo> MediaFileInterworkScanner::GetFileInfos(
     const vector<string> &filePathVector, UniqueNumber &uniqueNumber)
 {
-    vector<FileInfo> restoreFiles;
+    vector<RestoreFileInfo> restoreFiles;
     for (const auto &filePath : filePathVector) {
         if (!MediaFileUtils::IsFileExists(filePath)) {
             MEDIA_ERR_LOG("File [%{public}s] not exist, skip restore.",
                 MediaFileUtils::DesensitizePath(filePath).c_str());
             continue;
         }
-        FileInfo fileInfo;
+        RestoreFileInfo fileInfo;
         fileInfo.fileName = MediaFileUtils::GetFileName(filePath);
         fileInfo.displayName = fileInfo.fileName;
         fileInfo.originFilePath = filePath;
@@ -530,9 +530,9 @@ std::vector<string> MediaFileInterworkScanner::GetPhotosNotExists(
     return filesPath;
 }
 
-int32_t MediaFileInterworkScanner::SetRestoreFileAlbumId(std::vector<FileInfo> &destRestoreFiles)
+int32_t MediaFileInterworkScanner::SetRestoreFileAlbumId(std::vector<RestoreFileInfo> &destRestoreFiles)
 {
-    for (FileInfo &fileInfo : destRestoreFiles) {
+    for (RestoreFileInfo &fileInfo : destRestoreFiles) {
         string albumPath = MediaFileUtils::GetParentPath(fileInfo.originFilePath);
         string lPath;
         int32_t ret = MediaFileInterworkUtil::GetFileAlbumLPath(albumPath, lPath);
@@ -563,7 +563,7 @@ static void NotifyAnalysisAlbum(const vector<string>& changedAlbumIds)
     }
 }
 
-static void UpdateAndNotifyShootingModeAlbumIfNeeded(const vector<FileInfo>& fileInfos)
+static void UpdateAndNotifyShootingModeAlbumIfNeeded(const vector<RestoreFileInfo>& fileInfos)
 {
     set<ShootingModeAlbumType> albumTypesSet;
     for (const auto &fileInfo : fileInfos) {
@@ -590,7 +590,7 @@ static void UpdateAndNotifyShootingModeAlbumIfNeeded(const vector<FileInfo>& fil
     }
 }
 
-int32_t MediaFileInterworkScanner::BatchUpdateTimePending(const vector<FileInfo> &restoreFiles,
+int32_t MediaFileInterworkScanner::BatchUpdateTimePending(const vector<RestoreFileInfo> &restoreFiles,
     AccurateRefresh::AssetAccurateRefresh &assetRefresh)
 {
     // 构建包含所有文件路径的参数列表
@@ -623,12 +623,12 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is nullptr");
     std::vector<string> filesToInsert = GetPhotosNotExists(rdbStore, files);
     UniqueNumber uniqueNumber;
-    vector<FileInfo> restoreFiles = GetFileInfos(filesToInsert, uniqueNumber);
+    vector<RestoreFileInfo> restoreFiles = GetFileInfos(filesToInsert, uniqueNumber);
     CHECK_AND_RETURN_RET_INFO_LOG(!restoreFiles.empty(), E_OK, "no need to restore");
     int32_t errCode = UpdateUniqueNumber(uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "UpdateUniqueNumber failed. errCode: %{public}d", errCode);
 
-    vector<FileInfo> destRestoreFiles = SetDestinationPath(restoreFiles, uniqueNumber);
+    vector<RestoreFileInfo> destRestoreFiles = SetDestinationPath(restoreFiles, uniqueNumber);
     CHECK_AND_RETURN_RET_LOG(destRestoreFiles.size() > 0, E_ERR, "restore file number is zero.");
     CHECK_AND_RETURN_RET_LOG(SetRestoreFileAlbumId(destRestoreFiles) == E_OK, E_ERR, "get album failed");
     int32_t result = BatchInsert(destRestoreFiles);
@@ -645,7 +645,7 @@ int32_t MediaFileInterworkScanner::HandlePhotosRestore(const std::vector<string>
     return E_OK;
 }
 
-int32_t MediaFileInterworkScanner::BatchInsert(std::vector<FileInfo> &files)
+int32_t MediaFileInterworkScanner::BatchInsert(std::vector<RestoreFileInfo> &files)
 {
     std::vector<NativeRdb::ValuesBucket> values;
     for (auto& fileInfo : files) {

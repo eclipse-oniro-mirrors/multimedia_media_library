@@ -23,6 +23,7 @@
 #include "medialibrary_errno.h"
 #include "media_scanner_db.h"
 #include "scan_config_builder.h"
+#include "scan_task_context.h"
 
 namespace OHOS {
 namespace Media {
@@ -217,6 +218,10 @@ void MediaScannerManager::ErrorRecord(const std::string &path)
 
 int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
 {
+    MEDIA_INFO_LOG("ScanSync, strategyType %{public}d", static_cast<int>(config.GetStrategyType()));
+    if (config.GetStrategyType() == ScanStrategyType::BATCH_SCAN) {
+        return ExecuteBatchScan(config, ScanExecutionMode::SYNC);
+    }
     MEDIA_INFO_LOG("scan file sync, path %{public}s, fileId %{public}d",
         MediaFileUtils::DesensitizePath(config.GetFilePath()).c_str(), config.GetFileId());
 
@@ -297,6 +302,34 @@ std::shared_ptr<ScanTaskContext> MediaScannerManager::PrepareValidatedContext(co
 
     return std::make_shared<ScanTaskContext>(finalConfig);
 }
+
+// LCOV_EXCL_START
+int32_t MediaScannerManager::ExecuteBatchScan(const ScanConfig &config, ScanExecutionMode executionMode)
+{
+    if (config.GetFilePaths().empty()) {
+        MEDIA_ERR_LOG("ExecuteBatchScan: invalid config");
+        return E_INVALID_ARGUMENTS;
+    }
+ 
+    MEDIA_INFO_LOG("ExecuteBatchScan begin, file count: %{public}d",
+        static_cast<int32_t>(config.GetFilePaths().size()));
+ 
+    if (enhancedExecutor_ == nullptr) {
+        MEDIA_ERR_LOG("enhancedExecutor is null");
+        return E_ERR;
+    }
+    auto finalConfig = ScanConfigBuilder(config)
+        .SetExecutionMode(executionMode)
+        .Build();
+ 
+    auto context = std::make_shared<ScanTaskContext>(finalConfig);
+    // batchScanInfo is auto-populated via ScanTaskContext constructor from config.GetBatchScanInfo()
+ 
+    // Directly execute synchronously (bypass Submit/deduplicator)
+    enhancedExecutor_->StartSync(context);
+    return E_OK;
+}
+// LCOV_EXCL_STOP
 
 } // namespace Media
 } // namespace OHOS

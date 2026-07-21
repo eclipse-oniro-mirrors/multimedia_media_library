@@ -44,6 +44,7 @@ const std::string LIVE_PHOTO_VIDEO_INFO_METADATA = "VideoInfoMetadata";
 const std::string LIVE_PHOTO_SIGHT_TREMBLE_META_DATA = "SightTrembleMetadata";
 const std::string LIVE_PHOTO_VERSION_AND_FRAME_NUM = "VersionAndFrameNum";
 const std::string LOCAL_ROOT_MEDIA_DIR = "/storage/media/local/files/";
+const std::string TMP = ".tmp";
 constexpr int32_t HEX_BASE = 16;
 constexpr int64_t AUTO_PLAY_DURATION_MS = 600;
 static const mode_t CHOWN_RO_USR_GRP = 0644;
@@ -1347,6 +1348,9 @@ string MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(const string &imagePath,
         return "";
     }
     if (MediaStringUtils::StartsWith(imagePath, ROOT_MEDIA_DIR)) {
+        if (imagePath.find("custom_restore") != std::string::npos) {
+            return imagePath + TMP;
+        }
         return MediaPathUtils::AppendUserId(MEDIA_EXTRA_DATA_DIR, userId) + imagePath.substr(ROOT_MEDIA_DIR.length());
     } else if (MediaStringUtils::StartsWith(imagePath, LOCAL_ROOT_MEDIA_DIR)) {
         return MediaPathUtils::AppendUserId(MEDIA_EXTRA_DATA_DIR, userId) +

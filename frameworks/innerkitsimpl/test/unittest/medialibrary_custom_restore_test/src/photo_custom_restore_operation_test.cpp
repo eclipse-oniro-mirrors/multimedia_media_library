@@ -21,6 +21,9 @@
 #include "photo_custom_restore_operation.h"
 #undef private
 
+#include "batch_restore_utils.h"
+#include "batch_scanner_obj.h"
+#include "scan_config.h"
 #include "custom_restore_const.h"
 #include "custom_restore_source_test.h"
 #include "directory_ex.h"
@@ -312,7 +315,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_01
     RestoreTaskInfo restoreTaskInfo;
     restoreTaskInfo.keyPath = "restoreTaskInfo";
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     auto result = operatorObj.UpdatePhotoAlbum(restoreTaskInfo, fileInfo);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_018 End");
@@ -324,7 +327,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_01
     RestoreTaskInfo restoreTaskInfo;
     restoreTaskInfo.keyPath = "restoreTaskInfo";
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     auto result = operatorObj.UpdatePhotoAlbum(restoreTaskInfo, fileInfo);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_019 End");
@@ -359,9 +362,9 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_02
     RestoreTaskInfo restoreTaskInfo;
     restoreTaskInfo.keyPath = "restoreTaskInfo";
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> files = {};
+    vector<RestoreFileInfo> files = {};
     UniqueNumber uniqueNumber;
-    vector<FileInfo> result = operatorObj.SetDestinationPath(files, uniqueNumber);
+    vector<RestoreFileInfo> result = operatorObj.SetDestinationPath(files, uniqueNumber);
     EXPECT_EQ(result.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_023 End");
 }
@@ -393,14 +396,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_02
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_026, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_026 Start");
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.keyPath = "restoreTaskInfo";
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> files = {};
-    int32_t code = 0;
-    const unordered_map<string, TimeInfo> timeInfoMap = operatorObj.GetTimeInfoMap(restoreTaskInfo);
-    vector<FileInfo> result = operatorObj.BatchInsert(timeInfoMap, restoreTaskInfo, files, code, true);
-    EXPECT_EQ(result.size(), 0);
+    auto batchScanInfo = std::make_shared<BatchScanInfo>();
+    batchScanInfo->fileInfos = {};
+    batchScanInfo->isFirstBatch = true;
+    BatchScannerObj scannerObj(batchScanInfo);
+    int32_t result = scannerObj.Execute();
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_026 End");
 }
 
@@ -418,11 +420,11 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_02
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_028, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_028 Start");
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.keyPath = "restoreTaskInfo";
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
-    bool result = operatorObj.IsDuplication(restoreTaskInfo, fileInfo);
+    BatchScanInfo config;
+    config.isDeduplication = false;
+    RestoreFileInfo fileInfo;
+    unordered_set<string> photoCache;
+    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_028 End");
 }
@@ -465,7 +467,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
     UniqueNumber uniqueNumber;
     vector<string> files = { "test", "test2", "test3", "test4" };
-    vector<FileInfo> result = operatorObj.GetFileInfos(files, uniqueNumber);
+    vector<RestoreFileInfo> result = operatorObj.GetFileInfos(files, uniqueNumber);
     EXPECT_EQ(result.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_033 End");
 }
@@ -473,29 +475,22 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_034, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_034 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.keyPath = "restoreTaskInfo";
-    FileInfo fileInfo;
-    const unordered_map<string, TimeInfo> timeInfoMap = operatorObj.GetTimeInfoMap(restoreTaskInfo);
-    NativeRdb::ValuesBucket result = operatorObj.GetInsertValue(timeInfoMap, restoreTaskInfo, fileInfo);
-    EXPECT_EQ(result.IsEmpty(), false);
+    RestoreFileInfo fileInfo;
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    NativeRdb::ValuesBucket values;
+    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    // Empty metadata produces default time values, ValuesBucket should not be empty
+    EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_034 End");
 }
 
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_036, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_036 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
-    data->SetFilePath(fileInfo.originFilePath);
-    data->SetFileName(fileInfo.fileName);
-    data->SetFileMediaType(fileInfo.mediaType);
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.keyPath = "restoreTaskInfo";
-    const unordered_map<string, TimeInfo> timeInfoMap = operatorObj.GetTimeInfoMap(restoreTaskInfo);
-    int32_t result = operatorObj.FillMetadata(timeInfoMap, fileInfo, data);
+    unordered_map<string, TimeInfo> timeInfoMap;
+    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_036 End");
 }
@@ -503,13 +498,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_037, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_037 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
-    data->SetFilePath(fileInfo.originFilePath);
-    data->SetFileName(fileInfo.fileName);
-    data->SetFileMediaType(fileInfo.mediaType);
-    int32_t result = operatorObj.GetFileMetadata(data);
+    data->SetFilePath("");
+    data->SetFileName("nonexistent.jpg");
+    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_037 End");
 }
@@ -518,8 +510,8 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_038 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
-    vector<FileInfo> fileInfos;
+    RestoreFileInfo fileInfo;
+    vector<RestoreFileInfo> fileInfos;
     operatorObj.RenameFiles(fileInfos);
     fileInfos.push_back(fileInfo);
     operatorObj.RenameFiles(fileInfos);
@@ -541,14 +533,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_040, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_040 Start");
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.keyPath = "restoreTaskInfo";
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> files = {};
-    int32_t code = 0;
-    const unordered_map<string, TimeInfo> timeInfoMap = operatorObj.GetTimeInfoMap(restoreTaskInfo);
-    vector<FileInfo> result = operatorObj.BatchInsert(timeInfoMap, restoreTaskInfo, files, code, false);
-    EXPECT_EQ(result.size(), 0);
+    auto batchScanInfo = std::make_shared<BatchScanInfo>();
+    batchScanInfo->fileInfos = {};
+    batchScanInfo->isFirstBatch = false;
+    BatchScannerObj scannerObj(batchScanInfo);
+    int32_t result = scannerObj.Execute();
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_040 End");
 }
 
@@ -559,7 +550,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_UpdatePhotoAlbum_
     restoreTaskInfo.keyPath = "restoreTaskInfo";
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
 
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     auto ret = operatorObj.UpdatePhotoAlbum(restoreTaskInfo, fileInfo);
     EXPECT_EQ(ret, E_HAS_DB_ERROR);
     MEDIA_INFO_LOG("Photo_Custom_Restore_UpdatePhotoAlbum_Test End");
@@ -624,12 +615,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_InitPhotoCache_Te
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Test, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test Start");
-    RestoreTaskInfo restoreTaskInfo;
-    FileInfo fileInfo;
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    EXPECT_EQ(PhotoCustomRestoreOperation::instance_ != nullptr, true);
-    const unordered_map<string, TimeInfo> timeInfoMap = operatorObj.GetTimeInfoMap(restoreTaskInfo);
-    auto values = operatorObj.GetInsertValue(timeInfoMap, restoreTaskInfo, fileInfo);
+    RestoreFileInfo fileInfo;
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    NativeRdb::ValuesBucket values;
+    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
     EXPECT_NE(values.IsEmpty(), true);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test End");
 }
@@ -961,16 +950,16 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetTimeInfoMap_Te
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_001 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.isDeduplication = false;
-    restoreTaskInfo.albumId = 0;
-    FileInfo fileInfo;
+    BatchScanInfo config;
+    config.isDeduplication = false;
+    config.albumId = 0;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = operatorObj.IsDuplication(restoreTaskInfo, fileInfo);
+    unordered_set<string> photoCache;
+    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_001 End");
 }
@@ -978,18 +967,18 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_002 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.isDeduplication = true;
-    restoreTaskInfo.albumId = 1;
-    restoreTaskInfo.hasPhotoCache = true;
-    FileInfo fileInfo;
+    BatchScanInfo config;
+    config.isDeduplication = true;
+    config.albumId = 1;
+    config.hasPhotoCache = true;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    operatorObj.photoCache_.insert("test.jpg_1024_1_0");
-    bool result = operatorObj.IsDuplication(restoreTaskInfo, fileInfo);
+    unordered_set<string> photoCache;
+    photoCache.insert("test.jpg_1024_1_0");
+    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
     EXPECT_EQ(result, true);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_002 End");
 }
@@ -997,18 +986,18 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Test_003, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_003 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.isDeduplication = true;
-    restoreTaskInfo.albumId = 1;
-    restoreTaskInfo.hasPhotoCache = true;
-    FileInfo fileInfo;
+    BatchScanInfo config;
+    config.isDeduplication = true;
+    config.albumId = 1;
+    config.hasPhotoCache = true;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test2.jpg";
     fileInfo.size = 2048;
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    operatorObj.photoCache_.insert("test.jpg_1024_1_0");
-    bool result = operatorObj.IsDuplication(restoreTaskInfo, fileInfo);
+    unordered_set<string> photoCache;
+    photoCache.insert("test.jpg_1024_1_0");
+    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_003 End");
 }
@@ -1032,7 +1021,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileInfos_Test
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
     vector<string> filePathVector;
     UniqueNumber uniqueNumber;
-    vector<FileInfo> result = operatorObj.GetFileInfos(filePathVector, uniqueNumber);
+    vector<RestoreFileInfo> result = operatorObj.GetFileInfos(filePathVector, uniqueNumber);
     EXPECT_EQ(result.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileInfos_Test_001 End");
 }
@@ -1043,7 +1032,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileInfos_Test
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
     vector<string> filePathVector = {"/storage/media/local/files/test.txt"};
     UniqueNumber uniqueNumber;
-    vector<FileInfo> result = operatorObj.GetFileInfos(filePathVector, uniqueNumber);
+    vector<RestoreFileInfo> result = operatorObj.GetFileInfos(filePathVector, uniqueNumber);
     EXPECT_EQ(result.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileInfos_Test_003 End");
 }
@@ -1052,9 +1041,9 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_SetDestinationPat
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_SetDestinationPath_Test_001 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> restoreFiles;
+    vector<RestoreFileInfo> restoreFiles;
     UniqueNumber uniqueNumber;
-    vector<FileInfo> result = operatorObj.SetDestinationPath(restoreFiles, uniqueNumber);
+    vector<RestoreFileInfo> result = operatorObj.SetDestinationPath(restoreFiles, uniqueNumber);
     EXPECT_EQ(result.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_SetDestinationPath_Test_001 End");
 }
@@ -1063,7 +1052,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_RenameFiles_Test_001 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> restoreFiles;
+    vector<RestoreFileInfo> restoreFiles;
     int32_t result = operatorObj.RenameFiles(restoreFiles);
     EXPECT_EQ(result, 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_RenameFiles_Test_001 End");
@@ -1073,8 +1062,8 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_RenameFiles_Test_002 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> restoreFiles;
-    FileInfo fileInfo;
+    vector<RestoreFileInfo> restoreFiles;
+    RestoreFileInfo fileInfo;
     fileInfo.originFilePath = "/storage/media/local/files/test.jpg";
     fileInfo.filePath = "/storage/media/local/files/Photo/1/test.jpg";
     fileInfo.isLivePhoto = false;
@@ -1088,8 +1077,8 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_RenameFiles_Test_003 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> restoreFiles;
-    FileInfo fileInfo;
+    vector<RestoreFileInfo> restoreFiles;
+    RestoreFileInfo fileInfo;
     fileInfo.originFilePath = "/storage/media/local/files/live_photo.jpg";
     fileInfo.filePath = "/storage/media/local/files/Photo/1/live_photo.jpg";
     fileInfo.isLivePhoto = true;
@@ -1102,32 +1091,29 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_001 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.bundleName = "test.bundle";
-    restoreTaskInfo.packageName = "test.package";
-    restoreTaskInfo.appId = "test.app";
-    vector<FileInfo> restoreFiles;
-    int32_t sameFileNum = 0;
-    unordered_map<string, TimeInfo> timeInfoMap;
-    vector<FileInfo> result = operatorObj.BatchInsert(timeInfoMap, restoreTaskInfo, restoreFiles, sameFileNum, true);
-    EXPECT_EQ(result.size(), 0);
+    auto batchScanInfo = std::make_shared<BatchScanInfo>();
+    batchScanInfo->bundleName = "test.bundle";
+    batchScanInfo->packageName = "test.package";
+    batchScanInfo->appId = "test.app";
+    batchScanInfo->isFirstBatch = true;
+    BatchScannerObj scannerObj(batchScanInfo);
+    int32_t result = scannerObj.Execute();
+    EXPECT_EQ(result, E_OK);
+    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_001 End");
 }
 
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.bundleName = "test.bundle";
-    restoreTaskInfo.packageName = "test.package";
-    restoreTaskInfo.appId = "test.app";
-    restoreTaskInfo.isDeduplication = true;
-    restoreTaskInfo.albumId = 1;
-    restoreTaskInfo.hasPhotoCache = true;
-    vector<FileInfo> restoreFiles;
-    FileInfo fileInfo;
+    auto batchScanInfo = std::make_shared<BatchScanInfo>();
+    batchScanInfo->bundleName = "test.bundle";
+    batchScanInfo->packageName = "test.package";
+    batchScanInfo->appId = "test.app";
+    batchScanInfo->isDeduplication = true;
+    batchScanInfo->albumId = 1;
+    batchScanInfo->hasPhotoCache = true;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.displayName = "test.jpg";
     fileInfo.originFilePath = "/storage/media/local/files/test.jpg";
@@ -1135,12 +1121,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.size = 1024;
     fileInfo.orientation = 0;
-    restoreFiles.push_back(fileInfo);
-    operatorObj.photoCache_.insert("test.jpg_1024_1_0");
-    int32_t sameFileNum = 0;
-    unordered_map<string, TimeInfo> timeInfoMap;
-    vector<FileInfo> result = operatorObj.BatchInsert(timeInfoMap, restoreTaskInfo, restoreFiles, sameFileNum, false);
-    EXPECT_EQ(result.size(), 0);
+    batchScanInfo->fileInfos.push_back(fileInfo);
+    batchScanInfo->photoCache.insert("test.jpg_1024_1_0");
+    batchScanInfo->isFirstBatch = false;
+    BatchScannerObj scannerObj(batchScanInfo);
+    int32_t result = scannerObj.Execute();
+    // File is duplicate, no successful insert
+    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 End");
 }
 
@@ -1264,7 +1251,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_UpdatePhotoAlbum_
     RestoreTaskInfo restoreTaskInfo;
     restoreTaskInfo.bundleName = "test.bundle";
     restoreTaskInfo.packageName = "test.package";
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.displayName = "test.jpg";
     fileInfo.filePath = "/storage/media/local/files/Photo/1/test.jpg";
@@ -1289,77 +1276,64 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_UpdateUniqueNumbe
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_001 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.bundleName = "test.bundle";
-    restoreTaskInfo.packageName = "test.package";
-    restoreTaskInfo.appId = "test.app";
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.displayName = "test.jpg";
     fileInfo.originFilePath = "/storage/media/local/files/test.jpg";
     fileInfo.filePath = "/storage/media/local/files/Photo/1/test.jpg";
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.isLivePhoto = false;
-    unordered_map<string, TimeInfo> timeInfoMap;
-    NativeRdb::ValuesBucket result = operatorObj.GetInsertValue(timeInfoMap, restoreTaskInfo, fileInfo);
-    EXPECT_EQ(result.IsEmpty(), false);
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    NativeRdb::ValuesBucket values;
+    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_001 End");
 }
 
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_002 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.bundleName = "test.bundle";
-    restoreTaskInfo.packageName = "test.package";
-    restoreTaskInfo.appId = "test.app";
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.mp4";
     fileInfo.displayName = "test.mp4";
     fileInfo.originFilePath = "/storage/media/local/files/test.mp4";
     fileInfo.filePath = "/storage/media/local/files/Photo/1/test.mp4";
     fileInfo.mediaType = MediaType::MEDIA_TYPE_VIDEO;
     fileInfo.isLivePhoto = false;
-    unordered_map<string, TimeInfo> timeInfoMap;
-    NativeRdb::ValuesBucket result = operatorObj.GetInsertValue(timeInfoMap, restoreTaskInfo, fileInfo);
-    EXPECT_EQ(result.IsEmpty(), false);
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    NativeRdb::ValuesBucket values;
+    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_002 End");
 }
 
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Test_003, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_003 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.bundleName = "test.bundle";
-    restoreTaskInfo.packageName = "test.package";
-    restoreTaskInfo.appId = "test.app";
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "live_photo.jpg";
     fileInfo.displayName = "live_photo.jpg";
     fileInfo.originFilePath = "/storage/media/local/files/live_photo.jpg";
     fileInfo.filePath = "/storage/media/local/files/Photo/1/live_photo.jpg";
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.isLivePhoto = true;
-    unordered_map<string, TimeInfo> timeInfoMap;
-    NativeRdb::ValuesBucket result = operatorObj.GetInsertValue(timeInfoMap, restoreTaskInfo, fileInfo);
-    EXPECT_EQ(result.IsEmpty(), false);
+    unique_ptr<Metadata> data = make_unique<Metadata>();
+    NativeRdb::ValuesBucket values;
+    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_003 End");
 }
 
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_001 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.originFilePath = "/storage/media/local/files/test.jpg";
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     unordered_map<string, TimeInfo> timeInfoMap;
-    int32_t result = operatorObj.FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_001 End");
 }
@@ -1367,8 +1341,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_002 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.originFilePath = "/storage/media/local/files/test/test.jpg";
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
@@ -1377,7 +1350,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
     timeInfoMap["test.jpg"] = {MediaFileUtils::UTCTimeMilliSeconds(),
                                 MediaFileUtils::UTCTimeMilliSeconds(),
                                 "2024-01-01 12:00:00"};
-    int32_t result = operatorObj.FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_002 End");
 }
@@ -1385,11 +1358,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileMetadata_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_001 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFilePath("/storage/media/local/files/nonexistent.jpg");
     data->SetFileName("nonexistent.jpg");
-    int32_t result = operatorObj.GetFileMetadata(data);
+    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_001 End");
 }
@@ -1813,13 +1785,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_RenameFiles_Test_004 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> restoreFiles;
-    FileInfo fileInfo1;
+    vector<RestoreFileInfo> restoreFiles;
+    RestoreFileInfo fileInfo1;
     fileInfo1.originFilePath = "/storage/media/local/files/test.jpg";
     fileInfo1.filePath = "/storage/media/local/files/Photo/1/test.jpg";
     fileInfo1.isLivePhoto = false;
     restoreFiles.push_back(fileInfo1);
-    FileInfo fileInfo2;
+    RestoreFileInfo fileInfo2;
     fileInfo2.originFilePath = "/storage/media/local/files/test2.jpg";
     fileInfo2.filePath = "/storage/media/local/files/Photo/2/test2.jpg";
     fileInfo2.isLivePhoto = false;
@@ -1833,13 +1805,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_RenameFiles_Test_005 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> restoreFiles;
-    FileInfo fileInfo1;
+    vector<RestoreFileInfo> restoreFiles;
+    RestoreFileInfo fileInfo1;
     fileInfo1.originFilePath = "/storage/media/local/files/live_photo1.jpg";
     fileInfo1.filePath = "/storage/media/local/files/Photo/1/live_photo1.jpg";
     fileInfo1.isLivePhoto = true;
     restoreFiles.push_back(fileInfo1);
-    FileInfo fileInfo2;
+    RestoreFileInfo fileInfo2;
     fileInfo2.originFilePath = "/storage/media/local/files/live_photo2.jpg";
     fileInfo2.filePath = "/storage/media/local/files/Photo/2/live_photo2.jpg";
     fileInfo2.isLivePhoto = true;
@@ -1853,13 +1825,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_RenameFiles_Test_006 Start");
     PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    vector<FileInfo> restoreFiles;
-    FileInfo fileInfo1;
+    vector<RestoreFileInfo> restoreFiles;
+    RestoreFileInfo fileInfo1;
     fileInfo1.originFilePath = "/storage/media/local/files/test.jpg";
     fileInfo1.filePath = "/storage/media/local/files/Photo/1/test.jpg";
     fileInfo1.isLivePhoto = false;
     restoreFiles.push_back(fileInfo1);
-    FileInfo fileInfo2;
+    RestoreFileInfo fileInfo2;
     fileInfo2.originFilePath = "/storage/media/local/files/live_photo.jpg";
     fileInfo2.filePath = "/storage/media/local/files/Photo/2/live_photo.jpg";
     fileInfo2.isLivePhoto = true;
@@ -1872,8 +1844,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test_003, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_003 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.mp4";
     fileInfo.originFilePath = "/storage/media/local/files/test.mp4";
     fileInfo.mediaType = MediaType::MEDIA_TYPE_VIDEO;
@@ -1882,7 +1853,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
     timeInfoMap["test.mp4"] = {MediaFileUtils::UTCTimeMilliSeconds(),
                                 MediaFileUtils::UTCTimeMilliSeconds(),
                                 "2024-01-01 12:00:00"};
-    int32_t result = operatorObj.FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_003 End");
 }
@@ -1890,11 +1861,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileMetadata_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_002 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFilePath("/storage/media/local/files/test/nonexistent.jpg");
     data->SetFileName("nonexistent.jpg");
-    int32_t result = operatorObj.GetFileMetadata(data);
+    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_002 End");
 }
@@ -1902,11 +1872,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileMetadata_T
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileMetadata_Test_003, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_003 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFilePath("/storage/media/local/files/nonexistent.mp4");
     data->SetFileName("nonexistent.mp4");
-    int32_t result = operatorObj.GetFileMetadata(data);
+    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_003 End");
 }
@@ -1942,7 +1911,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_UpdatePhotoAlbum_
     RestoreTaskInfo restoreTaskInfo;
     restoreTaskInfo.bundleName = "test.bundle";
     restoreTaskInfo.packageName = "test.package";
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.mp4";
     fileInfo.displayName = "test.mp4";
     fileInfo.filePath = "/storage/media/local/files/Photo/1/test.mp4";
@@ -1959,7 +1928,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_UpdatePhotoAlbum_
     RestoreTaskInfo restoreTaskInfo;
     restoreTaskInfo.bundleName = "test2.bundle";
     restoreTaskInfo.packageName = "test2.package";
-    FileInfo fileInfo;
+    RestoreFileInfo fileInfo;
     fileInfo.fileName = "test2.jpg";
     fileInfo.displayName = "test2.jpg";
     fileInfo.filePath = "/storage/media/local/files/Photo/2/test2.jpg";

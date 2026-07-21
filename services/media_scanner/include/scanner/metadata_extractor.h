@@ -32,7 +32,8 @@ namespace Media {
 class MetadataExtractor {
 public:
     EXPORT static int32_t ExtractAVLogMetadata(std::shared_ptr<Meta> &meta);
-    EXPORT static int32_t Extract(std::unique_ptr<Metadata> &data, bool isCameraShotMovingPhoto = false);
+    EXPORT static int32_t Extract(std::unique_ptr<Metadata> &data,
+        bool isCameraShotMovingPhoto = false, int32_t scene = 0);
     EXPORT static int32_t ExtractAVMetadata(std::unique_ptr<Metadata> &data, int32_t scene = 0);
     EXPORT static int32_t ExtractImageMetadata(std::unique_ptr<Metadata> &data);
     static int32_t ExtractImageExif(std::unique_ptr<ImageSource> &imageSource, std::unique_ptr<Metadata> &data);

@@ -175,6 +175,13 @@ void EnhancedScanExecutor::HandleTaskCompletion(const std::shared_ptr<ScanTaskCo
         return;
     }
 
+    // Batch tasks never went through deduplicator, skip cleanup
+    if (task->IsBatchScan()) {
+        MEDIA_INFO_LOG("batch task completed, globalTask count: %{public}zu",
+            globalTaskQueue_.size());
+        return;
+    }
+
     int32_t fileId = task->config.GetFileId();
 
     deduplicator_->UnmarkAsScanning(task);

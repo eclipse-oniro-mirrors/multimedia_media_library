@@ -24,20 +24,20 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "scanner_utils.h"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 
 bool ScanConfig::Validate(std::string& realPath) const
 {
-    if (filePath_.empty()) {
+    if (!HasSingleScanInfo() || GetFilePath().empty()) {
         MEDIA_ERR_LOG("ScanConfig::Validate: filePath is empty");
         return false;
     }
 
-    if (!PathToRealPath(filePath_, realPath)) {
+    if (!PathToRealPath(GetFilePath(), realPath)) {
         MEDIA_ERR_LOG("ScanConfig::Validate: failed to get real path %{public}s, errno %{public}d",
-            MediaFileUtils::DesensitizePath(filePath_).c_str(), errno);
+            MediaFileUtils::DesensitizePath(GetFilePath()).c_str(), errno);
         return false;
     }
 
@@ -52,15 +52,15 @@ bool ScanConfig::Validate(std::string& realPath) const
 
 ScanConfig ScanConfig::Merge(const ScanConfig& other, ScanExecutionMode executionMode) const
 {
-    if (fileId_ <= 0 || other.GetFileId() <= 0 || fileId_ != other.GetFileId()) {
+    if (GetFileId() <= 0 || other.GetFileId() <= 0 || GetFileId() != other.GetFileId()) {
         MEDIA_WARN_LOG("Merge: fileId invalid or mismatch (this=%{public}d, other=%{public}d)",
-            fileId_, other.GetFileId());
+            GetFileId(), other.GetFileId());
     }
 
     ScanConfig merged;
 
-    merged.SetFileId(fileId_);
-    merged.SetFilePath(!other.GetFilePath().empty() ? other.GetFilePath() : filePath_);
+    merged.SetFileId(GetFileId());
+    merged.SetFilePath(!other.GetFilePath().empty() ? other.GetFilePath() : GetFilePath());
 
     merged.SetIsMovingPhoto(GetIsMovingPhoto() || other.GetIsMovingPhoto());
     merged.SetForceScan(true);
@@ -94,7 +94,7 @@ ScanConfig ScanConfig::Merge(const ScanConfig& other, ScanExecutionMode executio
     }
 
     merged.SetExecutionMode(executionMode);
-    
+
     return merged;
 }
 
@@ -105,10 +105,12 @@ std::string ScanConfig::ToString() const
        << "\"strategyType\": " << static_cast<int>(strategyType_) << ", "
        << "\"conflictPolicy\": " << static_cast<int>(conflictPolicy_) << ", "
        << "\"executionMode\": " << static_cast<int>(executionMode_) << ", "
-       << "\"fileId\": " << fileId_ << ", "
-       << "\"isMovingPhoto\": " << (isMovingPhoto_ ? "true" : "false") << ", "
+       << "\"fileId\": " << GetFileId() << ", "
+       << "\"isMovingPhoto\": " << (GetIsMovingPhoto() ? "true" : "false") << ", "
        << "\"isSkipAlbumUpdate\": " << (isSkipAlbumUpdate_ ? "true" : "false") << ", "
-       << "\"needGenerateThumbnail\": " << (needGenerateThumbnail_ ? "true" : "false")
+       << "\"needGenerateThumbnail\": " << (needGenerateThumbnail_ ? "true" : "false") << ", "
+       << "\"hasSingleScanInfo\": " << (HasSingleScanInfo() ? "true" : "false") << ", "
+       << "\"hasBatchScanInfo\": " << (HasBatchScanInfo() ? "true" : "false")
        << "}";
     return ss.str();
 }
@@ -123,34 +125,49 @@ void ScanConfig::SetExecutionMode(ScanExecutionMode executionMode)
     executionMode_ = executionMode;
 }
 
+bool ScanConfig::HasSingleScanInfo() const
+{
+    return singleScanInfo_ != nullptr;
+}
+
 const std::string& ScanConfig::GetFilePath() const
 {
-    return filePath_;
+    static const std::string emptyPath;
+    return singleScanInfo_ ? singleScanInfo_->filePath_ : emptyPath;
 }
 
 void ScanConfig::SetFilePath(const std::string& path)
 {
-    filePath_ = path;
+    if (!singleScanInfo_) {
+        singleScanInfo_ = std::make_shared<SingleScanInfo>();
+    }
+    singleScanInfo_->filePath_ = path;
 }
 
 int32_t ScanConfig::GetFileId() const
 {
-    return fileId_;
+    return singleScanInfo_ ? singleScanInfo_->fileId_ : 0;
 }
 
 void ScanConfig::SetFileId(int32_t id)
 {
-    fileId_ = id;
+    if (!singleScanInfo_) {
+        singleScanInfo_ = std::make_shared<SingleScanInfo>();
+    }
+    singleScanInfo_->fileId_ = id;
 }
 
 bool ScanConfig::GetIsMovingPhoto() const
 {
-    return isMovingPhoto_;
+    return singleScanInfo_ ? singleScanInfo_->isMovingPhoto_ : false;
 }
 
 void ScanConfig::SetIsMovingPhoto(bool isMoving)
 {
-    isMovingPhoto_ = isMoving;
+    if (!singleScanInfo_) {
+        singleScanInfo_ = std::make_shared<SingleScanInfo>();
+    }
+    singleScanInfo_->isMovingPhoto_ = isMoving;
 }
 
 bool ScanConfig::GetForceScan() const
@@ -243,6 +260,215 @@ void ScanConfig::SetStrategyType(ScanStrategyType type)
     strategyType_ = type;
 }
 
+bool ScanConfig::HasBatchScanInfo() const
+{
+    return batchScanInfo_ != nullptr;
+}
+
+const std::shared_ptr<BatchScanInfo>& ScanConfig::GetBatchScanInfo() const
+{
+    return batchScanInfo_;
+}
+
+void ScanConfig::SetBatchScanInfo(const std::shared_ptr<BatchScanInfo>& info)
+{
+    batchScanInfo_ = info;
+}
+
+// 多文件扫描信息 - 输入字段
+
+const std::vector<std::string>& ScanConfig::GetFilePaths() const
+{
+    static const std::vector<std::string> empty;
+    return batchScanInfo_ ? batchScanInfo_->filePaths : empty;
+}
+
+void ScanConfig::SetFilePaths(const std::vector<std::string>& paths)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->filePaths = paths;
+}
+
+const std::vector<RestoreFileInfo>& ScanConfig::GetFileInfos() const
+{
+    static const std::vector<RestoreFileInfo> empty;
+    return batchScanInfo_ ? batchScanInfo_->fileInfos : empty;
+}
+
+void ScanConfig::SetFileInfos(const std::vector<RestoreFileInfo>& fileInfos)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->fileInfos = fileInfos;
+}
+
+const std::unordered_map<std::string, TimeInfo>& ScanConfig::GetTimeInfoMap() const
+{
+    static const std::unordered_map<std::string, TimeInfo> empty;
+    return batchScanInfo_ ? batchScanInfo_->timeInfoMap : empty;
+}
+
+void ScanConfig::SetTimeInfoMap(const std::unordered_map<std::string, TimeInfo>& timeInfoMap)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->timeInfoMap = timeInfoMap;
+}
+
+int32_t ScanConfig::GetAlbumId() const
+{
+    return batchScanInfo_ ? batchScanInfo_->albumId : 0;
+}
+
+void ScanConfig::SetAlbumId(int32_t albumId)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->albumId = albumId;
+}
+
+bool ScanConfig::GetIsDeduplication() const
+{
+    return batchScanInfo_ ? batchScanInfo_->isDeduplication : false;
+}
+
+void ScanConfig::SetIsDeduplication(bool isDeduplication)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->isDeduplication = isDeduplication;
+}
+
+bool ScanConfig::GetHasPhotoCache() const
+{
+    return batchScanInfo_ ? batchScanInfo_->hasPhotoCache : false;
+}
+
+void ScanConfig::SetHasPhotoCache(bool hasPhotoCache)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->hasPhotoCache = hasPhotoCache;
+}
+
+const std::unordered_set<std::string>& ScanConfig::GetPhotoCache() const
+{
+    static const std::unordered_set<std::string> empty;
+    return batchScanInfo_ ? batchScanInfo_->photoCache : empty;
+}
+
+void ScanConfig::SetPhotoCache(const std::unordered_set<std::string>& photoCache)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->photoCache = photoCache;
+}
+
+const std::string& ScanConfig::GetPackageName() const
+{
+    static const std::string empty;
+    return batchScanInfo_ ? batchScanInfo_->packageName : empty;
+}
+
+void ScanConfig::SetPackageName(const std::string& packageName)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->packageName = packageName;
+}
+
+const std::string& ScanConfig::GetBundleName() const
+{
+    static const std::string empty;
+    return batchScanInfo_ ? batchScanInfo_->bundleName : empty;
+}
+
+void ScanConfig::SetBundleName(const std::string& bundleName)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->bundleName = bundleName;
+}
+
+const std::string& ScanConfig::GetAppId() const
+{
+    static const std::string empty;
+    return batchScanInfo_ ? batchScanInfo_->appId : empty;
+}
+
+void ScanConfig::SetAppId(const std::string& appId)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->appId = appId;
+}
+
+bool ScanConfig::GetIsFirstBatch() const
+{
+    return batchScanInfo_ ? batchScanInfo_->isFirstBatch : true;
+}
+
+void ScanConfig::SetIsFirstBatch(bool isFirstBatch)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->isFirstBatch = isFirstBatch;
+}
+
+// 多文件扫描信息 - 输出字段
+
+const std::vector<RestoreFileInfo>& ScanConfig::GetOutFileInfos() const
+{
+    static const std::vector<RestoreFileInfo> empty;
+    return batchScanInfo_ ? batchScanInfo_->outFileInfos : empty;
+}
+
+void ScanConfig::SetOutFileInfos(const std::vector<RestoreFileInfo>& outFileInfos)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->outFileInfos = outFileInfos;
+}
+
+int32_t ScanConfig::GetOutSameFileNum() const
+{
+    return batchScanInfo_ ? batchScanInfo_->outSameFileNum : 0;
+}
+
+void ScanConfig::SetOutSameFileNum(int32_t outSameFileNum)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->outSameFileNum = outSameFileNum;
+}
+
+int32_t ScanConfig::GetOutSuccessFileNum() const
+{
+    return batchScanInfo_ ? batchScanInfo_->outSuccessFileNum : 0;
+}
+
+void ScanConfig::SetOutSuccessFileNum(int32_t outSuccessFileNum)
+{
+    if (!batchScanInfo_) {
+        batchScanInfo_ = std::make_shared<BatchScanInfo>();
+    }
+    batchScanInfo_->outSuccessFileNum = outSuccessFileNum;
+}
+
 ConflictPolicy ScanConfig::GetConflictPolicy() const
 {
     return conflictPolicy_;
@@ -270,3 +496,4 @@ MediaLibraryApi ScanConfig::GetApiVersion() const
 
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP
