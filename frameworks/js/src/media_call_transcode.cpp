@@ -29,18 +29,17 @@ static std::mutex transCoderMapMutex_;
 static std::map<std::string, std::shared_ptr<TransCoder>> transCoderMap_;
 static const int32_t INFO_TYPE_ERROR = 2;
 
-void MediaCallTranscode::CallTranscodeHandle(napi_env env, int srcFd, int destFd,
+void MediaCallTranscode::CallTranscodeHandle(napi_env env, UniqueFd &uniqueSrcFd, UniqueFd &uniqueDestFd,
     napi_value &result, off_t &size, std::string requestId)
 {
     NAPI_INFO_LOG("CallTranscodeHandle start");
-    bool ret = DoTranscode(srcFd, destFd, size, requestId, 0);
+    bool ret = DoTranscode(uniqueSrcFd, uniqueDestFd, size, requestId, 0);
     napi_get_boolean(env, ret, &result);
 }
 
-bool MediaCallTranscode::DoTranscode(int srcFd, int destFd, int64_t &size, std::string requestId, int64_t offset)
+bool MediaCallTranscode::DoTranscode(UniqueFd &uniqueSrcFd, UniqueFd &uniqueDestFd, int64_t &size,
+    std::string requestId, int64_t offset)
 {
-    UniqueFd uniqueSrcFd(srcFd);
-    UniqueFd uniqueDestFd(destFd);
     auto transCoder = TransCoderFactory::CreateTransCoder();
     if (transCoder == nullptr) {
         NAPI_ERR_LOG("Failed to create TransCoder");

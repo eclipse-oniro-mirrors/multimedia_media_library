@@ -176,13 +176,29 @@ static const std::string TYPE_PHOTOS = "1";
 
 int32_t MediaDataSource::ReadData(const shared_ptr<AVSharedMemory> &mem, uint32_t length)
 {
-    CHECK_COND_RET(mem != nullptr, SOURCE_ERROR_EOF, "mem is nullptr");
+    if (mem == nullptr || mem->GetBase() == nullptr) {
+        ANI_ERR_LOG("mem or mem->GetBase() is nullptr");
+        return SOURCE_ERROR_IO;
+    }
+
     if (readPos_ >= size_) {
         ANI_ERR_LOG("Failed to check read position");
         return SOURCE_ERROR_EOF;
     }
 
-    if (memcpy_s(mem->GetBase(), mem->GetSize(), (char*)buffer_ + readPos_, length) != E_OK) {
+    uint64_t newPos = static_cast<uint64_t>(readPos_) + static_cast<uint64_t>(length);
+    if (newPos > static_cast<uint64_t>(size_)) {
+        ANI_ERR_LOG("Source buffer overflow, readPos_=%{public}" PRId64 ", length=%{public}u, size_=%{public}" PRId64,
+            readPos_, length, size_);
+        return SOURCE_ERROR_EOF;
+    }
+
+    if (static_cast<size_t>(mem->GetSize()) < length) {
+        ANI_ERR_LOG("mem buffer size %{public}d is less than required %{public}u", mem->GetSize(), length);
+        return SOURCE_ERROR_IO;
+    }
+
+    if (memcpy_s(mem->GetBase(), mem->GetSize(), static_cast<const char*>(buffer_) + readPos_, length) != E_OK) {
         ANI_ERR_LOG("Failed to copy buffer to mem");
         return SOURCE_ERROR_IO;
     }
@@ -1546,9 +1562,9 @@ int32_t MediaAssetChangeRequestAni::CopyMovingPhotoVideo(const string &assetUri)
     string videoUri = assetUri;
     MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_OPEN_MOVING_PHOTO_VIDEO);
     Uri uri(videoUri);
-    int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITEONLY);
+    int videoFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITETRUNCATE);
     if (videoFd < 0) {
-        ANI_ERR_LOG("Failed to open video of moving photo with write-only mode");
+        ANI_ERR_LOG("Failed to open video of moving photo with write-truncate mode");
         return videoFd;
     }
 

@@ -63,6 +63,21 @@ MediaAssetChangeRequestImpl::MediaAssetChangeRequestImpl(std::shared_ptr<MediaAs
     dataBufferSize_ = 0;
 }
 
+static void DeleteCache(const string& cacheFileName)
+{
+    if (cacheFileName.empty()) {
+        return;
+    }
+    string uri = PhotoColumn::PHOTO_CACHE_URI_PREFIX + cacheFileName;
+    MediaFileUtils::UriAppendKeyValue(uri, API_VERSION, to_string(MEDIA_API_VERSION_V10));
+    Uri deleteCacheUri(uri);
+    OHOS::DataShare::DataSharePredicates predicates;
+    int32_t ret = UserFileClient::Delete(deleteCacheUri, predicates);
+    if (ret < 0) {
+        MEDIA_ERR_LOG("Failed to delete cache: %{private}s, error: %{public}d", cacheFileName.c_str(), ret);
+    }
+}
+
 MediaAssetChangeRequestImpl::~MediaAssetChangeRequestImpl()
 {
     mediaAsset_ = nullptr;
@@ -78,6 +93,8 @@ MediaAssetChangeRequestImpl::~MediaAssetChangeRequestImpl()
 
     addResourceTypes_.clear();
     assetChangeOperations_.clear();
+    DeleteCache(cacheFileName_);
+    DeleteCache(cacheMovingPhotoVideoName_);
 }
 
 MediaLibrary_ErrorCode MediaAssetChangeRequestImpl::GetWriteCacheHandler(int32_t* fd)
@@ -432,7 +449,7 @@ int32_t MediaAssetChangeRequestImpl::CopyToMediaLibrary(AddResourceMode mode)
     CHECK_AND_RETURN_RET_LOG(!IsMovingPhoto(), E_ERR, "not support edit moving photo with buffer or uri");
 
     Uri uri(assetUri);
-    OHOS::UniqueFd destFd(UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITEONLY));
+    OHOS::UniqueFd destFd(UserFileClient::OpenFile(uri, MEDIA_FILEMODE_WRITETRUNCATE));
     CHECK_AND_RETURN_RET_LOG(destFd.Get() >= 0, destFd.Get(),
         "Failed to open %{public}s with error: %{public}d", assetUri.c_str(), destFd.Get());
 
