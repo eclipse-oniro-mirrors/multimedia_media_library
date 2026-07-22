@@ -103,6 +103,10 @@
     {
       "name": "permission_manage_media_shared_resource",
       "value": "Allow mediaLibrary to manage media shared resource"
+    },
+    {
+      "name": "permission_access_medialib_sandbox",
+      "value": "Allow mediaLibrary to mount the media library sandbox within appspawn"
     }
   ]
 }
