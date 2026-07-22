@@ -127,7 +127,8 @@ const std::unordered_map<int, std::string> jsErrMap = {
     { JS_E_PARAM_INVALID,       "invalid parameter" },
     { JS_E_INNER_FAIL,          "medialibrary inner fail" },
     { JS_E_INPUT_INVALID,       "invalid input parameter" },
-    { JS_E_OPR_TYPE_NOT_SUPPORT, "operation type not support"}
+    { JS_E_OPR_TYPE_NOT_SUPPORT, "operation type not support"},
+    { JS_E_INNER_OPEN_FILE_FAIL, "medialibrary openfile fail" }
 };
 
 const std::unordered_map<int32_t, int32_t> ClientErrTable {
