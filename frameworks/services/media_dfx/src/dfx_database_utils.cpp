@@ -611,11 +611,11 @@ int32_t DfxDatabaseUtils::QueryPhotoErrorCount()
         while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
             string filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
             if (!PhotoFileUtils::IsThumbnailExists(filePath)) {
-                MEDIA_ERR_LOG("Invali date thumbnail, file path: %{private}s", filePath.c_str());
+                MEDIA_DEBUG_LOG("Invalidate thumbnail, file path: %{private}s", filePath.c_str());
                 continue;
             }
             if (!MediaFileUtils::IsFileExists(filePath)) {
-                MEDIA_ERR_LOG("File not exists, file path: %{private}s", filePath.c_str());
+                MEDIA_DEBUG_LOG("File not exists, file path: %{private}s", filePath.c_str());
                 photoCount++;
             }
         }
