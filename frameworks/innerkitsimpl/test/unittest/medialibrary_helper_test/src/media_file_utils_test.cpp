@@ -2741,5 +2741,65 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsFileExistsWithExtRetry_Tes
 
     EXPECT_EQ(MediaFileUtils::IsFileExistsWithExtRetry(noExtPath), false);
 }
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_001, TestSize.Level1)
+{
+    // 正常正整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("123"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_002, TestSize.Level1)
+{
+    // 正常负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-123"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_003, TestSize.Level1)
+{
+    // 零
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("0"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_004, TestSize.Level1)
+{
+    // 边界值 - 最大正整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("2147483647"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_005, TestSize.Level1)
+{
+    // 边界值 - 最小负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-2147483648"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_006, TestSize.Level1)
+{
+    // 空字符串
+    EXPECT_EQ(MediaFileUtils::IsValidInteger(""), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_007, TestSize.Level1)
+{
+    // 只有负号
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_008, TestSize.Level1)
+{
+    // 非数字字符
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("12a3"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_009, TestSize.Level1)
+{
+    // 超出范围 - 大于最大正整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("2147483648"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_010, TestSize.Level1)
+{
+    // 超出范围 - 小于最小负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-2147483649"), false);
+}
 } // namespace Media
 } // namespace OHOS

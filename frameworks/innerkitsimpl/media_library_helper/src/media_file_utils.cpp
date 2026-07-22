@@ -77,7 +77,6 @@ constexpr unsigned short MAX_RECURSION_DEPTH = 4;
 constexpr size_t DEFAULT_TIME_SIZE = 32;
 constexpr int32_t CROSS_POLICY_ERR = 18;
 const int32_t HMFS_MONITOR_FL = 2;
-const int32_t INTEGER_MAX_LENGTH = 10;
 const std::string LISTENING_BASE_PATH = "/storage/media/local/files/";
 const std::string PHOTO_DIR = "Photo";
 const std::string AUDIO_DIR = "Audio";
@@ -92,7 +91,6 @@ const std::vector<std::string> SET_LISTEN_DIR = {
 };
 const std::string KVSTORE_FILE_ID_TEMPLATE = "0000000000";
 const std::string KVSTORE_DATE_KEY_TEMPLATE = "0000000000000";
-const std::string MAX_INTEGER = "2147483648";
 const std::string DEFAULT_IMAGE_NAME = "IMG_";
 const std::string DEFAULT_VIDEO_NAME = "VID_";
 const std::string DEFAULT_AUDIO_NAME = "AUD_";
@@ -1340,7 +1338,7 @@ int32_t MediaFileUtils::CheckTitle(const string &title)
         MEDIA_ERR_LOG("Title is empty.");
         return -EINVAL;
     }
-    
+
     static const string titleRegexCheck = R"([\\/:*?"<>|])";
     if (RegexCheck(title, titleRegexCheck)) {
         MEDIA_ERR_LOG("Failed to check title regex: %{private}s", title.c_str());
@@ -2716,29 +2714,8 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
 
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
-    MEDIA_DEBUG_LOG("KeyWord is:%{public}s", value.c_str());
-    std::string unsignedStr = value;
-    while (unsignedStr.size() > 0 && unsignedStr[0] == '-') {
-        unsignedStr = unsignedStr.substr(1);
-    }
-    for (size_t i = 0; i < unsignedStr.size(); i++) {
-        if (!std::isdigit(unsignedStr[i])) {
-            MEDIA_INFO_LOG("KeyWord invalid char of:%{public}c", unsignedStr[i]);
-            unsignedStr = unsignedStr.substr(0, i);
-            break;
-        }
-    }
-    if (unsignedStr.size() == 0) {
-        MEDIA_ERR_LOG("KeyWord Invalid argument");
-        return false;
-    } else if (unsignedStr.size() < INTEGER_MAX_LENGTH) {
-        return true;
-    } else if (unsignedStr.size() == INTEGER_MAX_LENGTH) {
-        return unsignedStr < MAX_INTEGER;
-    } else {
-        MEDIA_ERR_LOG("KeyWord is out length!");
-        return false;
-    }
+    int convetValue = 0;
+    return MediaStringUtils::ConvertToInt(value, convetValue);
 }
 
 static int64_t GetRoundSize(int64_t size)

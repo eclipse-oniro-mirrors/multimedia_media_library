@@ -87,6 +87,7 @@ bool HeifTranscodingCheckUtils::isUseWhiteList200_ = true;
 sptr<AppExecFwk::IBundleMgr> HeifTranscodingCheckUtils::bundleMgr_ = nullptr;
 mutex HeifTranscodingCheckUtils::bundleMgrMutex_;
 std::shared_ptr<EventFwk::CommonEventSubscriber> HeifTranscodingCheckUtils::cotaUpdateSubscriber_{};
+std::shared_mutex HeifTranscodingCheckUtils::checkListMutex_;
 class HeifTranscodingCheckUtils::CotaUpdateReceiver : public EventFwk::CommonEventSubscriber {
 public:
     explicit CotaUpdateReceiver(const EventFwk::CommonEventSubscribeInfo &subscribeInfo);
@@ -94,6 +95,7 @@ public:
     void OnReceiveEvent(const EventFwk::CommonEventData &data) override;
 };
 
+// LCOV_EXCL_START
 HeifTranscodingCheckUtils::CotaUpdateReceiver::CotaUpdateReceiver(
     const EventFwk::CommonEventSubscribeInfo &subscribeInfo)
     : EventFwk::CommonEventSubscriber(subscribeInfo)
@@ -133,7 +135,7 @@ static std::string ReadVersionFromJson(const std::string &jsonPath)
     string realPath;
     CHECK_AND_RETURN_RET_LOG(PathToRealPath(jsonPath, realPath),
         "", "check path failed");
-    std::ifstream file(jsonPath);
+    std::ifstream file(realPath);
     if (!file.is_open()) {
         MEDIA_WARN_LOG("Failed to open json file: %{public}s", jsonPath.c_str());
         return "";
@@ -327,6 +329,7 @@ int32_t HeifTranscodingCheckUtils::ReadCheckList()
 
 void HeifTranscodingCheckUtils::ClearCheckList()
 {
+    std::unique_lock<std::shared_mutex> lock(checkListMutex_);
     whiteList_.clear();
     denyList_.clear();
     isUseWhiteList_ = false;
@@ -409,6 +412,7 @@ int32_t HeifTranscodingCheckUtils::ParseWhiteList(const nlohmann::json &checkLis
         MEDIA_ERR_LOG("Invalid or missing 'whiteList' in json");
         return E_FAIL;
     }
+    std::unique_lock<std::shared_mutex> lock(checkListMutex_);
     for (const auto &item : checkListJson[LIST_STRATEGY_WHITELIST]) {
         if (item.is_string()) {
             std::string str = item.get<std::string>();
@@ -443,6 +447,7 @@ int32_t HeifTranscodingCheckUtils::ParseDenyList(const nlohmann::json &checkList
         MEDIA_ERR_LOG("Invalid or missing 'denyList' in json");
         return E_FAIL;
     }
+    std::unique_lock<std::shared_mutex> lock(checkListMutex_);
     for (const auto &item : checkListJson[LIST_STRATEGY_DENYLIST]) {
         if (item.is_string()) {
             std::string str = item.get<std::string>();
@@ -490,6 +495,7 @@ int32_t HeifTranscodingCheckUtils::ParseHighPixelCheckList(const nlohmann::json 
 {
     MEDIA_INFO_LOG("ParseHighPixelCheckList from path: %{public}s", path.c_str());
 
+    std::unique_lock<std::shared_mutex> lock(checkListMutex_);
     whiteList50_.clear();
     denyList50_.clear();
     isUseWhiteList50_ = true;
@@ -551,6 +557,7 @@ void HeifTranscodingCheckUtils::ClearBundleInfoInCache()
 
 bool HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(const std::string &bundleName)
 {
+    std::shared_lock<std::shared_mutex> lock(checkListMutex_);
     if (isUseWhiteList_) {
         auto it = whiteList_.find(bundleName);
         if (it == whiteList_.end()) {
@@ -563,6 +570,7 @@ bool HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(const std::strin
             return isSupport;
         }
         AppExecFwk::BundleInfo bundleInfo;
+        CHECK_AND_RETURN_RET_LOG(GetSysBundleManager() != nullptr, false, "bundleMgr is null");
         ErrCode state = GetSysBundleManager()->GetBundleInfoV9(
             bundleName, static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
             bundleInfo, OHOS::AppExecFwk::Constants::START_USERID);
@@ -593,6 +601,7 @@ bool HeifTranscodingCheckUtils::CanSupportedCompatibleDuplicate(const std::strin
 bool HeifTranscodingCheckUtils::CheckHighPixelWhiteList(const std::string &bundleName,
     const HighPixelType &pixelType, const WhiteList* whiteList)
 {
+    std::shared_lock<std::shared_mutex> lock(checkListMutex_);
     auto it = whiteList->find(bundleName);
     if (it == whiteList->end()) {
         MEDIA_INFO_LOG("Bundle %{public}s is not in %{public}d pixel white list", bundleName.c_str(),
@@ -606,6 +615,7 @@ bool HeifTranscodingCheckUtils::CheckHighPixelWhiteList(const std::string &bundl
         return isSupport;
     }
     AppExecFwk::BundleInfo bundleInfo;
+    CHECK_AND_RETURN_RET_LOG(GetSysBundleManager() != nullptr, false, "bundleMgr is null");
     ErrCode state = GetSysBundleManager()->GetBundleInfoV9(
         bundleName, static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
         bundleInfo, OHOS::AppExecFwk::Constants::START_USERID);
@@ -630,6 +640,7 @@ bool HeifTranscodingCheckUtils::CheckHighPixelWhiteList(const std::string &bundl
 bool HeifTranscodingCheckUtils::CheckHighPixelBlackList(const std::string &bundleName,
     const HighPixelType &pixelType, const WhiteList* denyList)
 {
+    std::shared_lock<std::shared_mutex> lock(checkListMutex_);
     auto it = denyList->find(bundleName);
     if (it != denyList->end()) {
         bool isSupport = false;
@@ -639,6 +650,7 @@ bool HeifTranscodingCheckUtils::CheckHighPixelBlackList(const std::string &bundl
             return isSupport;
         }
         AppExecFwk::BundleInfo bundleInfo;
+        CHECK_AND_RETURN_RET_LOG(GetSysBundleManager() != nullptr, false, "bundleMgr is null");
         ErrCode state = GetSysBundleManager()->GetBundleInfoV9(
             bundleName, static_cast<int32_t>(AppExecFwk::GetBundleInfoFlag::GET_BUNDLE_INFO_WITH_APPLICATION),
             bundleInfo, OHOS::AppExecFwk::Constants::START_USERID);
@@ -672,6 +684,7 @@ bool HeifTranscodingCheckUtils::CheckHighPixelBlackList(const std::string &bundl
 bool HeifTranscodingCheckUtils::CanSupportedHighPixelPicture(const std::string &bundleName,
     const HighPixelType &pixelType)
 {
+    std::shared_lock<std::shared_mutex> lock(checkListMutex_);
     bool isUseWhiteList = false;
     WhiteList* whiteList = nullptr;
     WhiteList* denyList = nullptr;
@@ -695,5 +708,6 @@ bool HeifTranscodingCheckUtils::CanSupportedHighPixelPicture(const std::string &
         return CheckHighPixelBlackList(bundleName, pixelType, denyList);
     }
 }
+// LCOV_EXCL_STOP
 }
 }
