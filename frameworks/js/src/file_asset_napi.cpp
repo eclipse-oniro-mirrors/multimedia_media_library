@@ -3753,6 +3753,34 @@ static void UserFileMgrOpenWithCachedExecute(napi_env env, void *data)
     }
 }
 
+static void UserFileMgrOpenCallbackWithCachedComplete(napi_env env, napi_status status, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("UserFileMgrOpenCallbackComplete");
+
+    auto *context = static_cast<FileAssetAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_E_INNER_OPEN_FILE_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_E_INNER_OPEN_FILE_FAIL);
+    if (context->error == ERR_DEFAULT) {
+        CHECK_ARGS_RET_VOID(env, napi_create_int32(env, context->fd, &jsContext->data), JS_E_INNER_OPEN_FILE_FAIL);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error);
+    }
+
+    tracer.Finish();
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
 napi_value FileAssetNapi::JSGetReadOnlyFdWithCached(napi_env env, napi_callback_info info)
 {
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
@@ -3774,7 +3802,7 @@ napi_value FileAssetNapi::JSGetReadOnlyFdWithCached(napi_env env, napi_callback_
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSGetReadOnlyFdWithCached",
-        UserFileMgrOpenWithCachedExecute, UserFileMgrOpenCallbackComplete);
+        UserFileMgrOpenWithCachedExecute, UserFileMgrOpenCallbackWithCachedComplete);
 }
 
 static napi_value ParseArgsUserFileMgrClose(napi_env env, napi_callback_info info,
