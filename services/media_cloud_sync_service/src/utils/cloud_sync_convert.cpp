@@ -526,9 +526,9 @@ int32_t CloudSyncConvert::CompensateBasicFixLivePhoto(
 {
     int32_t fileType = data.basicFileType;
     CHECK_AND_RETURN_RET_WARN_LOG(fileType != -1, E_CLOUDSYNC_INVAL_ARG, "Cannot find basic::fileType.");
-    if (fileType == FILE_TYPE_LIVEPHOTO) {
-        values.Delete(PhotoColumn::PHOTO_SUBTYPE);
-        values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    if (fileType == FILE_TYPE_LIVEPHOTO &&
+        data.attributesMovingPhotoEffectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+        values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
     return E_OK;
 }
