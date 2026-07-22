@@ -792,6 +792,11 @@ bool IThumbnailHelper::GenThumbnail(ThumbRdbOpt &opts, ThumbnailData &data, cons
         "source is nullptr when generate type: %{public}s", TYPE_NAME_MAP.at(type).c_str());
 
     if (type == ThumbnailType::THUMB || type == ThumbnailType::THUMB_ASTC) {
+        if (type == ThumbnailType::THUMB_ASTC) {
+            CHECK_AND_RETURN_RET_LOG(
+                ThumbnailImageFrameWorkUtils::ConvertPixelMapToSdrAndFormatRGBA8888(pixelMap), false,
+                "Failed to convert pixelMap to sdr and RGBA_8888");
+        }
         if (!ThumbnailUtils::CompressImage(pixelMap, type == ThumbnailType::THUMB ? data.thumbnail : data.thumbAstc,
             type == ThumbnailType::THUMB_ASTC)) {
             MEDIA_ERR_LOG("CompressImage faild id %{public}s", opts.row.c_str());
@@ -854,6 +859,8 @@ bool IThumbnailHelper::GenMonthAndYearAstcData(ThumbnailData &data, const Thumbn
         MEDIA_ERR_LOG("ApplyColorSpace to p3 failed");
     }
 #endif
+    CHECK_AND_RETURN_RET_LOG(ThumbnailImageFrameWorkUtils::ConvertPixelMapToSdrAndFormatRGBA8888(pixelMap), false,
+        "Failed to convert pixelMap to sdr and RGBA_8888, id: %{public}s", data.id.c_str());
     if (!ThumbnailUtils::CompressImage(pixelMap,
         (type == ThumbnailType::MTH_ASTC) ? data.monthAstc : data.yearAstc, true)) {
         MEDIA_ERR_LOG("CompressImage to astc failed");
@@ -984,10 +991,6 @@ bool IThumbnailHelper::IsCreateThumbnailSuccess(ThumbRdbOpt &opts, ThumbnailData
         MEDIA_ERR_LOG("DoCreateThumbnail failed, try to load source failed, id: %{public}s", data.id.c_str());
         return false;
     }
-    auto pixelMap = data.source.GetPixelMap();
-    CHECK_AND_RETURN_RET_LOG(ThumbnailImageFrameWorkUtils::ConvertPixelMapToSdrAndFormatRGBA8888(pixelMap), false,
-        "Failed to convert pixelMap to sdr and RGBA_8888, id: %{public}s", data.id.c_str());
-
     CHECK_AND_RETURN_RET(GenThumbnail(opts, data, ThumbnailType::THUMB), false);
     if (opts.table == AudioColumn::AUDIOS_TABLE) {
         MEDIA_DEBUG_LOG("AUDIOS_TABLE, no need to create all thumbnail");
