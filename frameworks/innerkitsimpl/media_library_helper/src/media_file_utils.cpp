@@ -77,7 +77,6 @@ constexpr unsigned short MAX_RECURSION_DEPTH = 4;
 constexpr size_t DEFAULT_TIME_SIZE = 32;
 constexpr int32_t CROSS_POLICY_ERR = 18;
 const int32_t HMFS_MONITOR_FL = 2;
-const int32_t INTEGER_MAX_LENGTH = 10;
 const std::string LISTENING_BASE_PATH = "/storage/media/local/files/";
 const std::string PHOTO_DIR = "Photo";
 const std::string AUDIO_DIR = "Audio";
@@ -92,8 +91,6 @@ const std::vector<std::string> SET_LISTEN_DIR = {
 };
 const std::string KVSTORE_FILE_ID_TEMPLATE = "0000000000";
 const std::string KVSTORE_DATE_KEY_TEMPLATE = "0000000000000";
-const std::string MAX_INTEGER = "2147483647";
-const std::string MIN_INTEGER = "-2147483648";
 const std::string DEFAULT_IMAGE_NAME = "IMG_";
 const std::string DEFAULT_VIDEO_NAME = "VID_";
 const std::string DEFAULT_AUDIO_NAME = "AUD_";
@@ -1341,7 +1338,7 @@ int32_t MediaFileUtils::CheckTitle(const string &title)
         MEDIA_ERR_LOG("Title is empty.");
         return -EINVAL;
     }
-    
+
     static const string titleRegexCheck = R"([\\/:*?"<>|])";
     if (RegexCheck(title, titleRegexCheck)) {
         MEDIA_ERR_LOG("Failed to check title regex: %{private}s", title.c_str());
@@ -2717,53 +2714,8 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
 
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
-    if (value.empty()) {
-        MEDIA_ERR_LOG("KeyWord is empty!");
-        return false;
-    }
-
-    size_t start = 0;
-    bool isNegative = false;
-    if (value[0] == '-') {
-        start = 1;
-        isNegative = true;
-        if (value.size() == 1) { // 只有一个负号
-            MEDIA_ERR_LOG("KeyWord is just a minus sign!");
-            return false;
-        }
-    }
-
-    // 检查剩余字符是否都是数字
-    if (!all_of(value.begin() + start, value.end(), ::isdigit)) {
-        MEDIA_ERR_LOG("KeyWord contains non-digit characters!");
-        return false;
-    }
-
-    size_t length = value.size() - start;
-    if (length > INTEGER_MAX_LENGTH) {
-        MEDIA_ERR_LOG("KeyWord is out of length!");
-        return false;
-    } else if (length < INTEGER_MAX_LENGTH) {
-        return true;
-    } else {
-        // 比较数值是否超过最大值或最小值
-        string maxIntStr = MAX_INTEGER;
-        string minIntStr = MIN_INTEGER;
-        if (isNegative) {
-            // 比较是否大于等于最小值
-            if (value.size() != minIntStr.size()) {
-                return false;
-            }
-            // 注意：对于负数，字典序比较和数值比较方向相反
-            return value <= minIntStr;
-        } else {
-            // 比较是否小于等于最大值
-            if (value.size() != maxIntStr.size()) {
-                return false;
-            }
-            return value <= maxIntStr;
-        }
-    }
+    int convetValue = 0;
+    return MediaStringUtils::ConvertToInt(value, convetValue);
 }
 
 static int64_t GetRoundSize(int64_t size)
