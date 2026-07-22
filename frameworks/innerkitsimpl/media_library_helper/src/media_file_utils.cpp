@@ -67,6 +67,8 @@ constexpr size_t DISPLAYNAME_MAX = 255;
 constexpr int32_t HAS_APPLINK_MIN = 0;
 constexpr int32_t HAS_APPLINK_MAX = 2;
 constexpr int32_t APPLINK_STATE_MIN = 0;
+static const string JPG_EXT = ".jpg";
+static const string HEIC_EXT = ".heic";
 constexpr int32_t APPLINK_STATE_MAX = 2;
 constexpr size_t APPLINK_MAX = 512;
 const int32_t OPEN_FDS = 64;
@@ -297,6 +299,34 @@ bool MediaFileUtils::IsFileExists(const string &fileName)
     struct stat statInfo {};
 
     return ((stat(fileName.c_str(), &statInfo)) == E_SUCCESS);
+}
+
+bool MediaFileUtils::IsFileExistsWithExtRetry(const string &fileName)
+{
+    if (IsFileExists(fileName)) {
+        return true;
+    }
+
+    string fallbackPath;
+    if (fileName.rfind(JPG_EXT) != string::npos) {
+        fallbackPath = SwapExtensionInPath(fileName, JPG_EXT, HEIC_EXT);
+    } else if (fileName.rfind(HEIC_EXT) != string::npos) {
+        fallbackPath = SwapExtensionInPath(fileName, HEIC_EXT, JPG_EXT);
+    }
+
+    CHECK_AND_RETURN_RET_LOG(!fallbackPath.empty(), false,
+        "IsFileExistsWithExtRetry first attempt failed, fallbackPath is empty");
+
+    MEDIA_INFO_LOG("IsFileExistsWithExtRetry first attempt failed, try fallback path %{public}s",
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    if (!fallbackPath.empty() && fallbackPath != fileName && IsFileExists(fallbackPath)) {
+        return true;
+    }
+    MEDIA_INFO_LOG("IsFileExistsWithExtRetry both original and fallback paths not found, "
+        "original=%{public}s, fallback=%{public}s",
+        MediaFileUtils::DesensitizePath(fileName).c_str(),
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    return false;
 }
 
 bool MediaFileUtils::IsFileValid(const string &fileName)
@@ -601,6 +631,69 @@ bool MediaFileUtils::MoveFile(const string &oldPath, const string &newPath, bool
         errRet = CopyFileAndDelSrc(oldPath, newPath);
     }
     return errRet;
+}
+
+bool MediaFileUtils::MoveFileWithExtRetry(const string &srcPath, const string &destPath)
+{
+    bool ret = MoveFile(srcPath, destPath, true);
+    if (!ret && errno == ENOENT && IsFileExists(srcPath)) {
+        string fallbackDestPath = destPath;
+        if (destPath.find(JPG_EXT) != string::npos) {
+            fallbackDestPath = MediaFileUtils::SwapExtensionInPath(destPath, JPG_EXT, HEIC_EXT);
+        } else if (destPath.find(HEIC_EXT) != string::npos) {
+            fallbackDestPath = MediaFileUtils::SwapExtensionInPath(destPath, HEIC_EXT, JPG_EXT);
+        }
+        MEDIA_INFO_LOG("MoveFileWithExtRetry retry with fallback destPath: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackDestPath).c_str());
+        ret = MoveFile(srcPath, fallbackDestPath, true);
+        CHECK_AND_PRINT_LOG(ret, "MoveFileWithExtRetry both attempts failed, destPath: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackDestPath).c_str());
+    }
+    return ret;
+}
+
+int32_t MediaFileUtils::OpenFileWithExtRetry(const std::string &filePath, std::string &absFilePath)
+{
+    if (PathToRealPath(filePath, absFilePath)) {
+        int32_t fd = open(absFilePath.c_str(), O_RDONLY);
+        if (fd != E_ERR) {
+            return fd;
+        }
+    }
+
+    if (errno != ENOENT) {
+        return E_ERR;
+    }
+
+    MEDIA_INFO_LOG("OpenFileWithExtRetry first attempt failed, try fallback for %{public}s, errno: %{public}d",
+        MediaFileUtils::DesensitizePath(filePath).c_str(), errno);
+    string fallbackPath = filePath;
+    if (filePath.find(JPG_EXT) != string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
+    } else if (filePath.find(HEIC_EXT) != string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
+    }
+
+    if (!IsFileExists(fallbackPath)) {
+        MEDIA_ERR_LOG("OpenFileWithExtRetry fallback path not exists: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        return E_ERR;
+    }
+
+    string absFallbackPath;
+    if (PathToRealPath(fallbackPath, absFallbackPath)) {
+        int32_t fd = open(absFallbackPath.c_str(), O_RDONLY);
+        if (fd != E_ERR) {
+            absFilePath = absFallbackPath;
+            MEDIA_INFO_LOG("OpenFileWithExtRetry fallback succeeded, path: %{public}s",
+                MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+            return fd;
+        }
+    }
+    MEDIA_ERR_LOG("OpenFileWithExtRetry both attempts failed, original: %{public}s, fallback: %{public}s",
+        MediaFileUtils::DesensitizePath(filePath).c_str(),
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    return E_ERR;
 }
 
 int32_t MediaFileUtils::CloneToAlbumCancel(const std::string &requestId)
@@ -940,12 +1033,57 @@ bool MediaFileUtils::CopyFileSafe(const string &filePath, const string &newPath)
     string newTempPath = newPath + "_" + std::to_string(MediaFileUtils::UTCTimeMilliSeconds());
     if (!CopyFileUtil(filePath, newTempPath)) {
         MEDIA_ERR_LOG("copy file errno: %{public}d", errno);
-        if (!DeleteFile(newTempPath)) {
-            MEDIA_ERR_LOG("del temp file errno: %{public}d", errno);
-        }
+        DeleteFile(newTempPath);
         return false;
     }
-    return rename(newTempPath.c_str(), newPath.c_str()) == E_OK;
+    if (rename(newTempPath.c_str(), newPath.c_str()) == E_OK) {
+        return true;
+    }
+    MEDIA_ERR_LOG("CopyFileSafe rename failed, errno: %{public}d", errno);
+    DeleteFile(newTempPath);
+    return false;
+}
+
+bool MediaFileUtils::CopyFileSafeWithExtRetry(const string &filePath, const string &newPath, bool retryExtOnSrcPath)
+{
+    if (CopyFileSafe(filePath, newPath)) {
+        return true;
+    }
+
+    if (errno != ENOENT) {
+        return false;
+    }
+
+    string fallbackFilePath = filePath;
+    string fallbackNewPath = newPath;
+    if (retryExtOnSrcPath) {
+        if (filePath.find(JPG_EXT) != string::npos) {
+            fallbackFilePath = SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
+        } else if (filePath.find(HEIC_EXT) != string::npos) {
+            fallbackFilePath = SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
+        }
+        if (!IsFileExists(fallbackFilePath)) {
+            MEDIA_ERR_LOG("CopyFileSafeWithExtRetry fallback source not exists: %{public}s",
+                DesensitizePath(fallbackFilePath).c_str());
+            return false;
+        }
+    } else {
+        if (newPath.find(JPG_EXT) != string::npos) {
+            fallbackNewPath = SwapExtensionInPath(newPath, JPG_EXT, HEIC_EXT);
+        } else if (newPath.find(HEIC_EXT) != string::npos) {
+            fallbackNewPath = SwapExtensionInPath(newPath, HEIC_EXT, JPG_EXT);
+        }
+        if (!IsFileExists(filePath)) {
+            MEDIA_ERR_LOG("CopyFileSafeWithExtRetry source not exists: %{public}s",
+                DesensitizePath(filePath).c_str());
+            return false;
+        }
+    }
+
+    MEDIA_INFO_LOG("CopyFileSafeWithExtRetry retry with fallback src=%{public}s, dst=%{public}s",
+        DesensitizePath(fallbackFilePath).c_str(), DesensitizePath(fallbackNewPath).c_str());
+
+    return CopyFileSafe(fallbackFilePath, fallbackNewPath);
 }
 
 void MediaFileUtils::SetDeletionRecord(int fd, const string &fileName)
@@ -1077,6 +1215,57 @@ bool MediaFileUtils::ReadStrFromFile(const std::string &filePath, std::string &f
     }
     file.close();
     return true;
+}
+
+std::string MediaFileUtils::SwapExtensionInPath(const std::string &filePath, const std::string &fromExt,
+    const std::string &toExt)
+{
+    std::string result = filePath;
+    size_t pos = result.rfind(fromExt);
+    if (pos != std::string::npos) {
+        result.replace(pos, fromExt.length(), toExt);
+    }
+    return result;
+}
+
+bool MediaFileUtils::ReadStrFromFileWithExtRetry(const std::string &filePath, std::string &fileContent)
+{
+    if (ReadStrFromFile(filePath, fileContent)) {
+        return true;
+    }
+
+    if (errno != ENOENT) {
+        return false;
+    }
+
+    MEDIA_INFO_LOG("ReadStrFromFileWithExtRetry first attempt failed, try fallback path for %{public}s",
+        MediaFileUtils::DesensitizePath(filePath).c_str());
+    std::string fallbackPath;
+    if (filePath.find(JPG_EXT) != std::string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, JPG_EXT, HEIC_EXT);
+    } else if (filePath.find(HEIC_EXT) != std::string::npos) {
+        fallbackPath = MediaFileUtils::SwapExtensionInPath(filePath, HEIC_EXT, JPG_EXT);
+    } else {
+        MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry no jpg/heic extension found in path %{public}s",
+            MediaFileUtils::DesensitizePath(filePath).c_str());
+        return false;
+    }
+
+    if (!IsFileExists(fallbackPath)) {
+        MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry fallback path not exists: %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        return false;
+    }
+
+    if (ReadStrFromFile(fallbackPath, fileContent)) {
+        MEDIA_INFO_LOG("ReadStrFromFileWithExtRetry fallback succeeded with path %{public}s",
+            MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+        return true;
+    }
+    MEDIA_ERR_LOG("ReadStrFromFileWithExtRetry both original and fallback paths failed, original=%{public}s, "
+        "fallback=%{public}s", MediaFileUtils::DesensitizePath(filePath).c_str(),
+        MediaFileUtils::DesensitizePath(fallbackPath).c_str());
+    return false;
 }
 
 bool MediaFileUtils::CopyFile(int32_t rfd, int32_t wfd)

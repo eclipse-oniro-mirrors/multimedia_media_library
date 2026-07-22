@@ -317,5 +317,74 @@ HWTEST_F(VideoCompositionCallbackImplTest, VideoComposition_Test_EraseWatermarkT
     MEDIA_INFO_LOG("end VideoComposition_Test_EraseWatermarkTag");
 }
 
+/**
+ * @tc.name: HandleAddFiltersError_ExtRetry
+ * @tc.desc: 验证并发rename后CopyFileSafeWithExtRetry通过fallback(filePath swap)成功复制源视频
+ *           [覆盖分支] retryExtOnSrcPath=true，原路径(.jpg)失败，fallback swap .jpg->.heic后成功
+ *           [触发条件] 创建.heic目录下源视频文件写入内容，用.jpg路径调用CopyFileSafeWithExtRetry(true)
+ *           [业务验证] 函数返回true，目标文件内容与源文件内容一致
+ */
+HWTEST_F(VideoCompositionCallbackImplTest, VideoComposition_Test_HandleAddFiltersError_ExtRetry, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("start VideoComposition_Test_HandleAddFiltersError_ExtRetry");
+    string heicSrcDir = "/data/test/IMG_0010.heic";
+    string jpgDstDir = "/data/test/handle_err_dst";
+    string heicSrcFile = heicSrcDir + "/source.mp4";
+    string dstFile = jpgDstDir + "/video.mp4";
+    string testContent = "video_content_for_handle_error";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicSrcDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(heicSrcFile), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(heicSrcFile, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDstDir), true);
+
+    string jpgSrcDir = "/data/test/IMG_0010.jpg";
+    string jpgSrcFile = jpgSrcDir + "/source.mp4";
+    EXPECT_EQ(MediaFileUtils::CopyFileSafeWithExtRetry(jpgSrcFile, dstFile, true), true);
+
+    string dstContent;
+    EXPECT_EQ(MediaFileUtils::ReadStrFromFile(dstFile, dstContent), true);
+    EXPECT_EQ(dstContent, testContent);
+
+    MediaFileUtils::DeleteDir(heicSrcDir);
+    MediaFileUtils::DeleteDir(jpgDstDir);
+    MEDIA_INFO_LOG("end VideoComposition_Test_HandleAddFiltersError_ExtRetry");
+}
+
+/**
+ * @tc.name: CallStartComposite_ExtRetry
+ * @tc.desc: 验证并发rename后OpenFileWithExtRetry通过fallback(filePath swap)成功打开源视频
+ *           [覆盖分支] 原路径(.heic)PathToRealPath失败，fallback swap .heic->.jpg后成功打开文件
+ *           [触发条件] 创建.jpg目录下源视频文件，用.heic路径调用CallStartComposite
+ *           [业务验证] CallStartComposite不返回E_HAS_FS_ERROR
+ */
+HWTEST_F(VideoCompositionCallbackImplTest, VideoComposition_Test_CallStartComposite_ExtRetry, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("start VideoComposition_Test_CallStartComposite_ExtRetry");
+    string jpgDir = "/data/test/IMG_0011.jpg";
+    string heicDir = "/data/test/IMG_0011.heic";
+    string jpgVideoPath = jpgDir + "/source.mp4";
+    string testContent = "composite_test_video";
+
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(jpgDir), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(jpgVideoPath), true);
+    EXPECT_EQ(MediaFileUtils::WriteStrToFile(jpgVideoPath, testContent), true);
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(heicDir), true);
+
+    string heicVideoPath = heicDir + "/source.mp4";
+    string videoPath = "/data/test/composite_output/video.mp4";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory("/data/test/composite_output"), true);
+
+    auto imp = make_shared<VideoCompositionCallbackImpl>();
+    ASSERT_NE(imp, nullptr);
+    auto ret = imp->CallStartComposite(heicVideoPath, videoPath, EDITDATA_FILTER, "", false);
+    EXPECT_NE(ret, E_HAS_FS_ERROR);
+
+    MediaFileUtils::DeleteDir("/data/test/IMG_0011.jpg");
+    MediaFileUtils::DeleteDir("/data/test/IMG_0011.heic");
+    MediaFileUtils::DeleteDir("/data/test/composite_output");
+    MEDIA_INFO_LOG("end VideoComposition_Test_CallStartComposite_ExtRetry");
+}
+
 } // namespace Media
 } // namespace OHOS

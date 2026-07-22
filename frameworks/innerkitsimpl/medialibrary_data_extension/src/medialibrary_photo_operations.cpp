@@ -4839,7 +4839,7 @@ bool MediaLibraryPhotoOperations::IsCameraEditData(MediaLibraryCommand &cmd)
 int32_t MediaLibraryPhotoOperations::ReadEditdataFromFile(const std::string &editDataPath, std::string &editData)
 {
     string editDataStr;
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::ReadStrFromFile(editDataPath, editDataStr), E_HAS_FS_ERROR,
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::ReadStrFromFileWithExtRetry(editDataPath, editDataStr), E_HAS_FS_ERROR,
         "Can not read editdata from %{private}s", editDataPath.c_str());
     if (!nlohmann::json::accept(editDataStr)) {
         MEDIA_WARN_LOG("Failed to verify the editData format, editData is: %{private}s", editDataStr.c_str());
@@ -5283,8 +5283,8 @@ int32_t MediaLibraryPhotoOperations::CopyVideoFile(const string& assetPath, bool
     string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
     string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourceImagePath);
     if (toSource) {
-        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileSafe(videoPath, sourceVideoPath), E_HAS_FS_ERROR,
-            "Copy videoPath to sourceVideoPath, path:%{private}s", videoPath.c_str());
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileSafeWithExtRetry(videoPath, sourceVideoPath, false),
+            E_HAS_FS_ERROR, "Copy videoPath to sourceVideoPath, path:%{private}s", videoPath.c_str());
     } else {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileSafe(sourceVideoPath, videoPath), E_HAS_FS_ERROR,
             "Copy sourceVideoPath to videoPath, path:%{private}s", sourceVideoPath.c_str());
@@ -5350,7 +5350,7 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToVideoExecute(const std::string 
     if (!MediaFileUtils::IsFileExists(editDataCameraPath)) {
         editDataCameraPath = GetAlternateEditDataCameraPath(assetPath);
     }
-    if (MediaFileUtils::IsFileExists(editDataCameraPath)) {
+    if (MediaFileUtils::IsFileExistsWithExtRetry(editDataCameraPath)) {
         string editData;
         CHECK_AND_RETURN_RET_LOG(ReadEditdataFromFile(editDataCameraPath, editData) == E_OK, E_HAS_FS_ERROR,
             "Failed to read editData, path = %{public}s", editDataCameraPath.c_str());
@@ -5593,9 +5593,10 @@ int32_t MediaLibraryPhotoOperations::SaveSourceVideoFile(const string& assetPath
     string videoPath = isTemp ? MediaFileUtils::GetTempMovingPhotoVideoPath(assetPath)
         : MediaFileUtils::GetMovingPhotoVideoPath(assetPath);
     CHECK_AND_RETURN_RET_LOG(!videoPath.empty(), E_INVALID_PATH, "Can not get video path");
-    if (!MediaFileUtils::IsFileExists(sourceVideoPath)) {
-        CHECK_AND_RETURN_RET_LOG(Move(videoPath, sourceVideoPath) == E_SUCCESS, E_HAS_FS_ERROR,
-            "Can not move %{private}s to %{private}s", videoPath.c_str(), sourceVideoPath.c_str());
+    if (!MediaFileUtils::IsFileExistsWithExtRetry(sourceVideoPath)) {
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::MoveFileWithExtRetry(videoPath, sourceVideoPath),
+            E_HAS_FS_ERROR, "Can not move %{private}s to %{private}s",
+            videoPath.c_str(), sourceVideoPath.c_str());
     }
     return E_OK;
 }

@@ -94,6 +94,7 @@ EXPORT const std::unordered_set<int32_t> PORTRAIT_PAGE_MODE = {
 class MediaFileUtils {
 public:
     EXPORT static bool IsFileExists(const std::string &fileName);
+    EXPORT static bool IsFileExistsWithExtRetry(const std::string &fileName);
     EXPORT static bool IsFileValid(const std::string &fileName);
     EXPORT static bool IsDirEmpty(const std::string &path);
     EXPORT static bool CreateFile(const std::string &filePath);
@@ -106,6 +107,8 @@ public:
     EXPORT static bool IsDirectory(const std::string &dirName, std::shared_ptr<int> errCodePtr = nullptr);
     EXPORT static bool MoveFile(const std::string &oldPath, const std::string &newPath,
         bool isSupportCrossPolicy = false);
+    EXPORT static bool MoveFileWithExtRetry(const std::string &srcPath, const std::string &destPath);
+    EXPORT static int32_t OpenFileWithExtRetry(const std::string &filePath, std::string &absFilePath);
     EXPORT static bool CopyDirAndDelSrc(const std::string &srcPath, const std::string &destPath,
         unsigned short curRecursionDepth = 0);
     EXPORT static bool CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile);
@@ -113,8 +116,13 @@ public:
     EXPORT static int32_t SegmentedCopyFileUtile(const std::string &filePath, const std::string &newPath,
         std::function<void(uint64_t)> progressCallback, const std::string &requestId);
     EXPORT static bool CopyFileSafe(const std::string &filePath, const std::string &newPath);
+    EXPORT static bool CopyFileSafeWithExtRetry(const std::string &filePath, const std::string &newPath,
+        bool retryExtOnSrcPath);
     EXPORT static bool WriteStrToFile(const std::string &filePath, const std::string &str);
+    EXPORT static std::string SwapExtensionInPath(const std::string &filePath, const std::string &fromExt,
+        const std::string &toExt);
     EXPORT static bool ReadStrFromFile(const std::string &filePath, std::string &fileContent);
+    EXPORT static bool ReadStrFromFileWithExtRetry(const std::string &filePath, std::string &fileContent);
     EXPORT static bool CopyFile(int32_t rfd, int32_t wfd);
     EXPORT static bool RenameDir(const std::string &oldPath, const std::string &newPath);
     EXPORT static bool CreateDirectory(const std::string &dirPath, std::shared_ptr<int> errCodePtr = nullptr);

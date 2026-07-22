@@ -88,11 +88,7 @@ static bool HandleAddFiltersError(const std::string &sourceVideoPath, const std:
         MEDIA_ERR_LOG("HandleAddFiltersError videoPath already exists");
         return true;
     }
-    if (!MediaFileUtils::IsFileExists(sourceVideoPath)) {
-        MEDIA_ERR_LOG("HandleAddFiltersError sourceVideoPath not exists");
-        return false;
-    }
-    return MediaFileUtils::CopyFileUtil(sourceVideoPath, videoPath);
+    return MediaFileUtils::CopyFileSafeWithExtRetry(sourceVideoPath, videoPath, true);
 }
 
 static int32_t ProcessLivePhotoRevert(const string& assetPath, const string& videoPath,
@@ -211,10 +207,9 @@ int32_t VideoCompositionCallbackImpl::CallStartComposite(const std::string& sour
     tmpPath = MediaFileAccessUtils::GetAssetRealPath(sourceVideoPath);
 #endif
     string absSourceVideoPath;
-    CHECK_AND_RETURN_RET_LOG(PathToRealPath(tmpPath, absSourceVideoPath), E_HAS_FS_ERROR,
-        "file is not real path, file path: %{private}s, errno: %{public}d", tmpPath.c_str(), errno);
-    int32_t inputFileFd = open(tmpPath.c_str(), O_RDONLY);
-    CHECK_AND_RETURN_RET_LOG(inputFileFd != -1, E_ERR, "Open failed for inputFileFd file, errno: %{public}d", errno);
+    int32_t inputFileFd = MediaFileUtils::OpenFileWithExtRetry(tmpPath, absSourceVideoPath);
+    CHECK_AND_RETURN_RET_LOG(inputFileFd >= 0, E_HAS_FS_ERROR,
+        "OpenFileWithExtRetry failed for source video file, errno: %{public}d", errno);
     if (CheckDirPathReal(videoPath) != E_OK) {
         MEDIA_ERR_LOG("dirFile is not real path, file path: %{private}s, errno: %{public}d", videoPath.c_str(), errno);
         close(inputFileFd);
