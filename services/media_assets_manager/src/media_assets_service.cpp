@@ -86,6 +86,7 @@
 #include "media_progress_change_info.h"
 #include "medialibrary_db_const.h"
 #include "media_file_uri.h"
+#include "medialibrary_rdb_operations.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -1862,7 +1863,7 @@ int32_t MediaAssetsService::RequestEditData(const RequestEditDataDto &dto, Reque
     NativeRdb::RdbPredicates rdbPredicate =
         RdbDataShareAdapter::RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
 
-    auto resultSet = MediaLibraryRdbStore::QueryEditDataExists(rdbPredicate);
+    auto resultSet = MediaLibraryRdbOperations::QueryEditDataExists(rdbPredicate);
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     respBody.resultSet = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
     return E_OK;
@@ -1873,7 +1874,7 @@ int32_t MediaAssetsService::GetEditData(const GetEditDataDto &dto, GetEditDataRe
     NativeRdb::RdbPredicates rdbPredicate =
         RdbDataShareAdapter::RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
 
-    auto resultSet = MediaLibraryRdbStore::QueryEditDataExists(rdbPredicate);
+    auto resultSet = MediaLibraryRdbOperations::QueryEditDataExists(rdbPredicate);
     auto resultSetBridge = RdbDataShareAdapter::RdbUtils::ToResultSetBridge(resultSet);
     respBody.resultSet = make_shared<DataShare::DataShareResultSet>(resultSetBridge);
     return E_OK;

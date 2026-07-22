@@ -14,20 +14,22 @@
  */
 
 #include "medialibrary_rdb_transaction.h"
+
 #include "medialibrary_restore.h"
+#include "medialibrary_tracer.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "photo_album_column.h"
 #include "photo_map_column.h"
+#include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdbstore.h"
 #include "cloud_sync_helper.h"
+#include "rdb_table_strategy_manager.h"
 #include "values_buckets.h"
 
 namespace OHOS::Media {
 using namespace std;
 using namespace OHOS::NativeRdb;
-constexpr int32_t E_HAS_DB_ERROR = -222;
-constexpr int32_t E_OK = 0;
 constexpr int32_t RETRY_TRANS_MAX_TIMES = 2;
 constexpr int32_t RETRY_TRANS_MAX_TIMES_FOR_BACKUP = 10;
 
@@ -205,25 +207,10 @@ int32_t TransactionOperations::Rollback()
 
 int32_t TransactionOperations::ExecuteSql(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction is null");
-        return E_HAS_DB_ERROR;
-    }
-    auto [ret, value] = transaction_->Execute(sql, args);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->ExecuteSql failed, ret = %{public}d", ret);
-        MediaLibraryRestore::GetInstance().CheckRestore(ret);
-        return E_HAS_DB_ERROR;
-    }
-    return ret;
-}
-
-int32_t TransactionOperations::Execute(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args)
-{
     CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction is null");
     auto [ret, value] = transaction_->Execute(sql, args);
     if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->Execute failed, ret = %{public}d", ret);
+        MEDIA_ERR_LOG("rdbStore_->ExecuteSql failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return E_HAS_DB_ERROR;
     }
@@ -247,41 +234,24 @@ int32_t TransactionOperations::ExecuteForLastInsertedRowId(
 
 int32_t TransactionOperations::Insert(MediaLibraryCommand &cmd, int64_t &rowId)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction is null");
-        return E_HAS_DB_ERROR;
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->InsertCmd");
 
-    NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
-    if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
-        MediaLibraryRdbStore::AddDefaultInsertPhotoValues(tmpValues);
-    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
-        CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
-            "AddCoverOrderValuesFromRecord failed.");
-    }
-    auto [ret, rows] = transaction_->Insert(cmd.GetTableName(), tmpValues);
-    rowId = rows;
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("rdbStore_->Insert failed, ret = %{public}d", ret);
-        MediaLibraryRestore::GetInstance().CheckRestore(ret);
-        return E_HAS_DB_ERROR;
-    }
-    isOperate_ = true;
-    MEDIA_DEBUG_LOG("rdbStore_->Insert end, rowId = %d, ret = %{public}d", (int)rowId, ret);
-    return ret;
+    return InsertInternal(rowId, cmd.GetTableName(), cmd.GetValueBucket());
 }
 
-int32_t TransactionOperations::Update(NativeRdb::ValuesBucket &values, const NativeRdb::AbsRdbPredicates &predicates)
+int32_t TransactionOperations::UpdateWithDateTime(NativeRdb::ValuesBucket &values,
+    const NativeRdb::AbsRdbPredicates &predicates)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction is null");
-        return E_HAS_DB_ERROR;
-    }
-    if (predicates.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
-        values.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-        values.PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
-    }
-    auto [err, changedRows] = transaction_->Update(values, predicates);
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->UpdateWithDateTime");
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
+    NativeRdb::ValuesBucket tmpValues = values;
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    RdbTableStrategyManager::GetInstance().ExtendUpdateValues(predicates.GetTableName(), tmpValues, config);
+    auto [err, changedRows] = transaction_->Update(tmpValues, predicates);
     if (err != E_OK) {
         MEDIA_ERR_LOG("Failed to execute update, err: %{public}d", err);
         MediaLibraryRestore::GetInstance().CheckRestore(err);
@@ -293,10 +263,9 @@ int32_t TransactionOperations::Update(NativeRdb::ValuesBucket &values, const Nat
 int32_t TransactionOperations::Update(
     int32_t &changedRows, NativeRdb::ValuesBucket &values, const NativeRdb::AbsRdbPredicates &predicates)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction is null");
-        return E_HAS_DB_ERROR;
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->UpdateByPredicates");
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
     auto [err, rows] = transaction_->Update(values, predicates);
     changedRows = rows;
     if (err != E_OK) {
@@ -309,16 +278,18 @@ int32_t TransactionOperations::Update(
 
 int32_t TransactionOperations::Update(MediaLibraryCommand &cmd, int32_t &changedRows)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->UpdateCmd");
     CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
-    if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
-        cmd.GetValueBucket().PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-        cmd.GetValueBucket().PutLong(PhotoColumn::PHOTO_LAST_VISIT_TIME, MediaFileUtils::UTCTimeMilliSeconds());
-    }
+
+    NativeRdb::ValuesBucket tmpValues = cmd.GetValueBucket();
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    RdbTableStrategyManager::GetInstance().ExtendUpdateValues(cmd.GetTableName(), tmpValues, config);
 
     int32_t ret = E_HAS_DB_ERROR;
-    auto res = transaction_->Update(cmd.GetTableName(),
-        cmd.GetValueBucket(),
-        cmd.GetAbsRdbPredicates()->GetWhereClause(),
+    auto res = transaction_->Update(cmd.GetTableName(), tmpValues, cmd.GetAbsRdbPredicates()->GetWhereClause(),
         cmd.GetAbsRdbPredicates()->GetBindArgs());
     ret = res.first;
     changedRows = res.second;
@@ -334,51 +305,30 @@ int32_t TransactionOperations::Update(MediaLibraryCommand &cmd, int32_t &changed
 int32_t TransactionOperations::BatchInsert(
     int64_t &outRowId, const std::string &table, const std::vector<NativeRdb::ValuesBucket> &values)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction_ is null");
-        return E_HAS_DB_ERROR;
-    }
-    std::vector<NativeRdb::ValuesBucket> tmpValues = values;
-    if (table == PhotoColumn::PHOTOS_TABLE) {
-        for (auto& value : tmpValues) {
-            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
-        }
-    } else if (table == PhotoAlbumColumns::TABLE) {
-        for (auto& value : tmpValues) {
-            CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value) == E_OK,
-                E_HAS_DB_ERROR, "AddCoverOrderValuesFromRecord failed.");
-        }
-    }
-    auto [ret, rows] = transaction_->BatchInsert(table, tmpValues);
-    outRowId = rows;
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("transaction_->BatchInsert failed, ret = %{public}d", ret);
-        MediaLibraryRestore::GetInstance().CheckRestore(ret);
-        return E_HAS_DB_ERROR;
-    }
-    MEDIA_DEBUG_LOG("transaction_->BatchInsert end, rowId = %d, ret = %{public}d", (int)outRowId, ret);
-    return ret;
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->BatchInsertRowId");
+
+    return BatchInsertInternal(outRowId, table, values);
 }
 
 int32_t TransactionOperations::BatchInsert(int64_t &changeRows, const std::string &table,
     const std::vector<NativeRdb::ValuesBucket> &values, NativeRdb::ConflictResolution resolution)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction_ is null");
-        return E_HAS_DB_ERROR;
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->BatchInsertResolution");
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
 
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
-    if (table == PhotoColumn::PHOTOS_TABLE) {
-        for (auto& value : tmpValues) {
-            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
-        }
-    } else if (table == PhotoAlbumColumns::TABLE) {
-        for (auto& value : tmpValues) {
-            CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value) == E_OK,
-                E_HAS_DB_ERROR, "AddCoverOrderValuesFromRecord failed.");
-        }
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    int32_t strategyRet =
+        RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *rdbStore_.get(), config);
+    if (strategyRet != E_OK) {
+        MEDIA_ERR_LOG("Failed to ExtendBatchInsertValues, ret: %{public}d.", strategyRet);
+        return strategyRet;
     }
+
     auto [ret, rows] = transaction_->BatchInsert(table, tmpValues, resolution);
     changeRows = rows;
     if (ret != NativeRdb::E_OK) {
@@ -394,81 +344,95 @@ int32_t TransactionOperations::BatchInsert(int64_t &changeRows, const std::strin
 int32_t TransactionOperations::BatchInsert(
     MediaLibraryCommand &cmd, int64_t &outInsertNum, const std::vector<ValuesBucket> &values)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction_ is null");
-        return E_HAS_DB_ERROR;
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->BatchInsertCmd");
+    
+    return BatchInsertInternal(outInsertNum, cmd.GetTableName(), values);
+}
+
+int32_t TransactionOperations::BatchInsertInternal(int64_t &outRowId, const std::string &table,
+    const std::vector<NativeRdb::ValuesBucket> &values)
+{
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
+
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
-    if (cmd.GetTableName() == PhotoColumn::PHOTOS_TABLE) {
-        for (auto& value : tmpValues) {
-            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
-        }
-    } else if (cmd.GetTableName() == PhotoAlbumColumns::TABLE) {
-        for (auto& value : tmpValues) {
-            CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value) == E_OK,
-                E_HAS_DB_ERROR, "AddCoverOrderValuesFromRecord failed.");
-        }
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    int32_t strategyRet =
+        RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *rdbStore_.get(), config);
+    if (strategyRet != E_OK) {
+        MEDIA_ERR_LOG("Failed to ExtendBatchInsertValues, ret: %{public}d.", strategyRet);
+        return strategyRet;
     }
-    auto [ret, rows] = transaction_->BatchInsert(cmd.GetTableName(), tmpValues);
-    outInsertNum = rows;
+
+    auto [ret, rows] = transaction_->BatchInsert(table, tmpValues);
+    outRowId = rows;
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("transaction_->BatchInsert failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return E_HAS_DB_ERROR;
     }
-    MEDIA_DEBUG_LOG("rdbStore_->BatchInsert end, rowId = %d, ret = %{public}d", (int)outInsertNum, ret);
+    MEDIA_DEBUG_LOG("transaction_->BatchInsert end, rowId = %{public}" PRId64 ", ret = %{public}d", outRowId, ret);
     return ret;
 }
 
 int32_t TransactionOperations::Insert(
     int64_t &rowId, const std::string tableName, const NativeRdb::ValuesBucket &values)
 {
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->InsertRowId");
+
+    return InsertInternal(rowId, tableName, values);
+}
+
+int32_t TransactionOperations::InsertInternal(int64_t &outRowId, const std::string &table,
+    const NativeRdb::ValuesBucket &row)
+{
     CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
-    NativeRdb::ValuesBucket tmpValues = values;
-    if (tableName == PhotoColumn::PHOTOS_TABLE) {
-        MediaLibraryRdbStore::AddDefaultInsertPhotoValues(tmpValues);
-    } else if (tableName == PhotoAlbumColumns::TABLE) {
-        CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(tmpValues) == E_OK, E_HAS_DB_ERROR,
-            "AddCoverOrderValuesFromRecord failed.");
+
+    NativeRdb::ValuesBucket tmpValues = row;
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    int32_t strategyRet =
+        RdbTableStrategyManager::GetInstance().ExtendInsertValues(table, tmpValues, *rdbStore_.get(), config);
+    if (strategyRet != E_OK) {
+        MEDIA_ERR_LOG("Failed to ExtendInsertValues, ret: %{public}d.", strategyRet);
+        return strategyRet;
     }
-    auto [ret, rows] = transaction_->Insert(tableName, tmpValues);
-    rowId = rows;
+
+    auto [ret, rows] = transaction_->Insert(table, tmpValues);
+    outRowId = rows;
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("transaction_->Insert failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
         return E_HAS_DB_ERROR;
     }
     isOperate_ = true;
-    MEDIA_DEBUG_LOG("transaction_->Insert end, rowId = %d, ret = %{public}d", (int)rowId, ret);
+    MEDIA_DEBUG_LOG("transaction_->Insert end, rowId = %{public}" PRId64 ", ret = %{public}d", outRowId, ret);
     return ret;
 }
 
-static int32_t DoDeleteFromPredicates(
-    const AbsRdbPredicates &predicates, int32_t &deletedRows, std::shared_ptr<OHOS::NativeRdb::Transaction> transaction)
+int32_t TransactionOperations::DeleteInternal(const AbsRdbPredicates &predicates, int32_t &deletedRows)
 {
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
+
     int32_t ret = NativeRdb::E_ERROR;
     string tableName = predicates.GetTableName();
     ValuesBucket valuesBucket;
-    if (tableName == CONST_MEDIALIBRARY_TABLE || tableName == PhotoColumn::PHOTOS_TABLE) {
-        valuesBucket.PutInt(CONST_MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
-        valuesBucket.PutInt(CONST_MEDIA_DATA_DB_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
-        valuesBucket.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-        auto res = transaction->Update(valuesBucket, predicates);
+
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    TableStrategyErrno err = RdbTableStrategyManager::GetInstance().ExtendDeleteValues(tableName, valuesBucket, config);
+    if (err != TableStrategyErrno::NO_SUCH_STRATEGY) {
+        auto res = transaction_->Update(valuesBucket, predicates);
         ret = res.first;
         deletedRows = res.second;
         MEDIA_INFO_LOG("delete photos permanently, ret: %{public}d", ret);
-    } else if (tableName == PhotoAlbumColumns::TABLE) {
-        valuesBucket.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
-        auto res = transaction->Update(valuesBucket, predicates);
-        ret = res.first;
-        deletedRows = res.second;
-    } else if (tableName == PhotoMap::TABLE) {
-        valuesBucket.PutInt(PhotoMap::DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
-        auto res = transaction->Update(valuesBucket, predicates);
-        ret = res.first;
-        deletedRows = res.second;
     } else {
-        auto res = transaction->Delete(predicates);
+        auto res = transaction_->Delete(predicates);
         ret = res.first;
         deletedRows = res.second;
     }
@@ -477,9 +441,10 @@ static int32_t DoDeleteFromPredicates(
 
 int32_t TransactionOperations::Delete(MediaLibraryCommand &cmd, int32_t &deletedRows)
 {
-    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, E_HAS_DB_ERROR, "transaction_ is null");
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->DeleteByCmd");
     /* local delete */
-    int32_t ret = DoDeleteFromPredicates(*(cmd.GetAbsRdbPredicates()), deletedRows, transaction_);
+    int32_t ret = DeleteInternal(*(cmd.GetAbsRdbPredicates()), deletedRows);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->Delete failed, ret = %{public}d", ret);
         MediaLibraryRestore::GetInstance().CheckRestore(ret);
@@ -488,86 +453,83 @@ int32_t TransactionOperations::Delete(MediaLibraryCommand &cmd, int32_t &deleted
     return ret;
 }
 
-pair<int32_t, NativeRdb::Results> TransactionOperations::BatchInsert(
+pair<int32_t, NativeRdb::Results> TransactionOperations::BatchInsertWithReturn(
     const string &table, const vector<ValuesBucket> &values, const string &returningField,
     NativeRdb::ConflictResolution resolution)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction_ is null");
-        return {E_HAS_DB_ERROR, -1};
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->BatchInsertWithReturn");
     pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, retWithResults, "transaction_ is null");
+
     std::vector<NativeRdb::ValuesBucket> tmpValues = values;
-    if (table == PhotoColumn::PHOTOS_TABLE) {
-        for (auto &value : tmpValues) {
-            MediaLibraryRdbStore::AddDefaultInsertPhotoValues(value);
-        }
-    } else if (table == PhotoAlbumColumns::TABLE) {
-        for (auto& value : tmpValues) {
-            auto ret = MediaLibraryRdbStore::AddCoverOrderValuesFromRecord(value);
-            if (ret != E_OK) {
-                MEDIA_ERR_LOG("AddCoverOrderValuesFromRecord failed");
-                return retWithResults;
-            }
-        }
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    int32_t strategyRet =
+        RdbTableStrategyManager::GetInstance().ExtendBatchInsertValues(table, tmpValues, *rdbStore_.get(), config);
+    if (strategyRet != E_OK) {
+        MEDIA_ERR_LOG("Failed to ExtendBatchInsertValues, ret: %{public}d.", strategyRet);
+        return retWithResults;
     }
 
     ValuesBuckets refRows {std::move(tmpValues)};
 
-    pair<int32_t, NativeRdb::Results> result = transaction_->BatchInsert(table, refRows, { returningField },
+    retWithResults = transaction_->BatchInsert(table, refRows, { returningField },
         resolution);
-    SetIsOperate(result);
-    return result;
+    SetIsOperate(retWithResults);
+    return retWithResults;
 }
 
-pair<int32_t, NativeRdb::Results> TransactionOperations::Update(
+pair<int32_t, NativeRdb::Results> TransactionOperations::UpdateWithReturn(
     const ValuesBucket &values, const AbsRdbPredicates &predicates, const string &returningField)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction_ is null");
-        return {E_HAS_DB_ERROR, -1};
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->UpdateWithReturn");
+    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, retWithResults, "transaction_ is null");
 
-    pair<int32_t, NativeRdb::Results> result = transaction_->Update(values, predicates, { returningField });
-    SetIsOperate(result);
-    return result;
+    retWithResults = transaction_->Update(values, predicates, { returningField });
+    SetIsOperate(retWithResults);
+    return retWithResults;
 }
 
-pair<int32_t, NativeRdb::Results> TransactionOperations::Delete(const AbsRdbPredicates &predicates,
+pair<int32_t, NativeRdb::Results> TransactionOperations::DeleteWithReturn(const AbsRdbPredicates &predicates,
     const string &returningField)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction_ is null");
-        return {E_HAS_DB_ERROR, -1};
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->DeleteWithReturn");
+    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, retWithResults, "transaction_ is null");
 
-    pair<int32_t, NativeRdb::Results> result = transaction_->Delete(predicates, { returningField });
-    SetIsOperate(result);
-    return result;
+    retWithResults = transaction_->Delete(predicates, { returningField });
+    SetIsOperate(retWithResults);
+    return retWithResults;
 }
 
-pair<int32_t, NativeRdb::Results> TransactionOperations::Execute(const string &sql,
+pair<int32_t, NativeRdb::Results> TransactionOperations::ExecuteWithReturn(const string &sql,
     const vector<ValueObject> &args, const string &returningField)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction is null");
-        return {E_HAS_DB_ERROR, -1};
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->ExecuteWithReturn");
+    pair<int32_t, NativeRdb::Results> retWithResults = {E_HAS_DB_ERROR, -1};
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, retWithResults, "transaction_ is null");
+
     string execSql = sql;
     execSql.append(" returning ").append(returningField);
     MEDIA_INFO_LOG("AccurateRefresh, sql:%{public}s", execSql.c_str());
-    pair<int32_t, NativeRdb::Results> result = transaction_->ExecuteExt(execSql, args);
-    SetIsOperate(result);
-    return result;
+    retWithResults = transaction_->ExecuteExt(execSql, args);
+    SetIsOperate(retWithResults);
+    return retWithResults;
 }
 
 shared_ptr<ResultSet> TransactionOperations::QueryByStep(const AbsRdbPredicates &predicates,
     const vector<string> &columns)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction is null");
-        return nullptr;
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->QueryByStep by predicates");
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, nullptr, "transaction_ is null");
+
     auto resultSet = transaction_->QueryByStep(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "resultSet is null.");
     return resultSet;
@@ -575,10 +537,10 @@ shared_ptr<ResultSet> TransactionOperations::QueryByStep(const AbsRdbPredicates 
 
 shared_ptr<ResultSet> TransactionOperations::QueryByStep(const string &sql, const vector<ValueObject> &args)
 {
-    if (transaction_ == nullptr) {
-        MEDIA_ERR_LOG("transaction is null");
-        return nullptr;
-    }
+    MediaLibraryTracer tracer;
+    tracer.Start("transaction->QueryByStep by sql");
+    CHECK_AND_RETURN_RET_LOG(transaction_ != nullptr, nullptr, "transaction_ is null");
+
     auto resultSet = transaction_->QueryByStep(sql, args);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, nullptr, "resultSet is null.");
     return resultSet;

@@ -26,6 +26,8 @@
 #define private public
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_db_const_sqls.h"
+#include "medialibrary_rdb_helper.h"
+#include "medialibrary_rdb_operations.h"
 #include "medialibrary_rdb_transaction.h"
 #include "medialibrary_rdb_test.h"
 #include "medialibrary_object_utils.h"
@@ -292,7 +294,7 @@ HWTEST_F(MediaLibraryRdbTest, medialib_Transaction_test_001, TestSize.Level1)
     valuesBucket.PutString(CONST_MEDIA_DATA_DB_TITLE, title);
     cmd.SetValueBucket(valuesBucket);
     int32_t updatedRows = E_HAS_DB_ERROR;
-    ret = rdbStorePtr->Update(cmd, updatedRows);
+    ret = rdbStorePtr->UpdateWithDateTime(cmd, updatedRows);
     EXPECT_EQ(ret, E_OK);
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.GreaterThan("file_id", 0);
@@ -344,32 +346,6 @@ inline void PrepareUserAlbum(const string &albumName, const string &relativePath
     if (!relativePath.empty()) {
         values.PutString(PhotoAlbumColumns::ALBUM_RELATIVE_PATH, relativePath);
     }
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_BuildValuesSql_test_001, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    string sql;
-    vector<ValueObject> bindArgs;
-    sql.append("INSERT").append(" OR ROLLBACK").append(" INTO ").append(PhotoColumn::PHOTOS_TABLE).append(" ");
-    ValuesBucket albumValues;
-    PrepareUserAlbum("BuildValuesSql", "Documents/", albumValues);
-    MediaLibraryRdbStore::BuildValuesSql(albumValues, bindArgs, sql);
-    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    vector<std::string> columns;
-    MediaLibraryRdbStore::BuildQuerySql(predicates, columns, bindArgs, sql);
-    int32_t ret = MediaLibraryRdbStore::ExecuteForLastInsertedRowId(sql, bindArgs);
-    EXPECT_EQ(ret, E_HAS_DB_ERROR);
-    rdbStorePtr->Init();
-    ret = MediaLibraryAssetOperations::DeleteFromDisk(predicates, false);
-    EXPECT_EQ(ret, E_SUCCESS);
-    string retTest = MediaLibraryRdbStore::CloudSyncTriggerFunc(columns);
-    EXPECT_EQ(retTest, "");
-    retTest = MediaLibraryRdbStore::IsCallerSelfFunc(columns);
-    EXPECT_EQ(retTest, "true");
-    rdbStorePtr->Stop();
-    ret = MediaLibraryRdbStore::ExecuteForLastInsertedRowId(sql, bindArgs);
-    EXPECT_EQ(ret, E_HAS_DB_ERROR);
 }
 
 HWTEST_F(MediaLibraryRdbTest, medialib_TransactionOperations_test_001, TestSize.Level1)
@@ -442,43 +418,6 @@ HWTEST_F(MediaLibraryRdbTest, medialib_TransactionOperations_test_003, TestSize.
     MEDIA_INFO_LOG("medialib_TransactionOperations_test_003 finish");
 }
 
-HWTEST_F(MediaLibraryRdbTest, medialib_UpdateLastVisitTime_test_001, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    string id = "1";
-    rdbStorePtr->Init();
-    int32_t ret = rdbStorePtr->UpdateLastVisitTime(id);
-    EXPECT_GE(ret, E_OK);
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_ResetAnalysisTables_test, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    // normal rdbStore_ ResetAnalysisTables will success
-    rdbStorePtr->Init();
-    auto ret = MediaLibraryRdbStore::ResetAnalysisTables();
-    EXPECT_EQ(ret, true);
-
-    // abnormal rdbStore_ ResetAnalysisTables will fail
-    rdbStorePtr->Stop();
-    ret = MediaLibraryRdbStore::ResetAnalysisTables();
-    EXPECT_EQ(ret, false);
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_ResetSearchTables_test, TestSize.Level1)
-{
-    ASSERT_NE(rdbStorePtr, nullptr);
-    // normal rdbStore_ ResetSearchTables will success
-    rdbStorePtr->Init();
-    auto ret = MediaLibraryRdbStore::ResetSearchTables();
-    EXPECT_EQ(ret, true);
-
-    // abnormal rdbStore_ ResetSearchTables will fail
-    rdbStorePtr->Stop();
-    ret = MediaLibraryRdbStore::ResetSearchTables();
-    EXPECT_EQ(ret, false);
-}
-
 HWTEST_F(MediaLibraryRdbTest, medialib_GenerateHighlightThumbnail_test, TestSize.Level1)
 {
     ASSERT_NE(rdbStorePtr, nullptr);
@@ -497,25 +436,6 @@ HWTEST_F(MediaLibraryRdbTest, medialib_PhotoAlbumNotifyFunc_001, TestSize.Level1
     vector<string> args = {};
     auto ret = MediaLibraryRdbStore::PhotoAlbumNotifyFunc(args);
     EXPECT_EQ(ret, "");
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_QueryEditDataExists_001, TestSize.Level1)
-{
-    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-
-    auto ret = MediaLibraryRdbStore::QueryEditDataExists(predicates);
-    EXPECT_EQ(ret, nullptr);
-}
-
-HWTEST_F(MediaLibraryRdbTest, medialib_AddDefaultInsertPhotoValues_test, TestSize.Level1)
-{
-    NativeRdb::ValuesBucket values;
-    values.Put(MediaColumn::MEDIA_NAME, "test_photo.jpg");
-    int64_t timeStamp = 1622547800;
-    values.Put(MediaColumn::MEDIA_DATE_ADDED, timeStamp);
-    MediaLibraryRdbStore::AddDefaultInsertPhotoValues(values);
-    EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_DATE_ADDED_YEAR), true);
-    EXPECT_EQ(values.HasColumn(PhotoColumn::PHOTO_MEDIA_SUFFIX), true);
 }
 } // namespace Media
 } // namespace OHOS

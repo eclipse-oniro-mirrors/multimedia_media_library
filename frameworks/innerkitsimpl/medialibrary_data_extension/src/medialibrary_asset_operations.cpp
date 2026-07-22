@@ -79,6 +79,7 @@
 #endif
 #include "file_const.h"
 #include "media_values_bucket_utils.h"
+#include "medialibrary_rdb_helper.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -3315,7 +3316,7 @@ int32_t MediaLibraryAssetOperations::DeleteFromDisk(AbsRdbPredicates &predicates
     tracer.Start("DeleteFromDisk");
     MEDIA_INFO_LOG("DeleteFromDisk start");
     vector<string> whereArgs = predicates.GetWhereArgs();
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     vector<string> agingNotifyUris;
 
     // Query asset uris for notify before delete.
@@ -3698,7 +3699,7 @@ int32_t MediaLibraryAssetOperations::DeletePermanently(AbsRdbPredicates &predica
     MEDIA_DEBUG_LOG("DeletePermanently begin");
     MediaLibraryTracer tracer;
     tracer.Start("DeletePermanently");
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     vector<string> agingNotifyUris;
 
     // Query asset uris for notify before delete.

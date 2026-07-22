@@ -217,6 +217,8 @@ config("media_data_extension_public_config") {
   include_upgrade = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/upgrade",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/upgrade/upgrade_sqls",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/utils",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/include/rdbstore/strategies",
   ]
 
   include_old_notification =
@@ -922,6 +924,13 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/upgrade/upgrade_modules/upgrade_photos_module.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/upgrade/upgrade_modules/upgrade_vision_module.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/upgrade/upgrade_modules/upgrade_album_module.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/utils/medialibrary_rdb_helper.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/utils/medialibrary_rdb_operations.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/files_table_strategy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/photo_album_table_strategy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/photo_map_table_strategy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/photos_table_strategy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_rdbstore/src/rdbstore/strategies/rdb_table_strategy_manager.cpp",
   ]
 
   sources = [

@@ -29,6 +29,7 @@
 #include "medialibrary_data_manager.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_type_const.h"
@@ -194,7 +195,7 @@ HWTEST_F(ShootingModeAlbumTest, photoalbum_create_ShootingMode_album_001, TestSi
 {
     MEDIA_INFO_LOG("photoalbum_create_album_001 enter");
     ASSERT_NE(g_rdbStore, nullptr);
-    auto ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    auto ret = MediaLibraryRdbHelper::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
     EXPECT_EQ(ret, E_OK);
     DoCheckShootingAlbumData(PORTRAIT_ALBUM);
     DoCheckShootingAlbumData(WIDE_APERTURE_ALBUM);
@@ -234,14 +235,14 @@ HWTEST_F(ShootingModeAlbumTest, photoalbum_create_ShootingMode_album_002, TestSi
 {
     MEDIA_INFO_LOG("photoalbum_create_ShootingMode_album_002 enter");
     ASSERT_NE(g_rdbStore, nullptr);
-    auto ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    auto ret = MediaLibraryRdbHelper::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
     EXPECT_EQ(ret, E_OK);
     TestAlbumInfo albumInfoBefore;
     int32_t rowCountBefore = -1;
     GetShootingModeAlbumInfo(CINEMATIC_VIDEO_ALBUM, albumInfoBefore, rowCountBefore);
     EXPECT_GT(albumInfoBefore.albumId, 0);
     EXPECT_GT(rowCountBefore, 0);
-    ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    ret = MediaLibraryRdbHelper::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
     EXPECT_EQ(ret, E_OK);
     TestAlbumInfo albumInfoAfter;
     int32_t rowCountAfter = -1;
@@ -527,7 +528,7 @@ HWTEST_F(ShootingModeAlbumTest, UpdateAnalysisAlbumInternal_Test_001, TestSize.L
 {
     MEDIA_INFO_LOG("UpdateAnalysisAlbumInternal_Test_001 enter");
     ASSERT_NE(g_rdbStore, nullptr);
-    int32_t ret = MediaLibraryRdbStore::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
+    int32_t ret = MediaLibraryRdbHelper::PrepareShootingModeAlbum(*g_rdbStore->GetRaw().get());
     ASSERT_EQ(ret, E_OK);
     TestFileInfo fileInfoWithLargeDateTaken = { .dateTaken = 1744362716123, .displayName = "large_datetaken.jpg" };
     TestFileInfo fileInfoWithSmallDateTaken = { .dateTaken = 1744362716000, .displayName = "small_datetaken.jpg" };

@@ -32,6 +32,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
 #include "medialibrary_photo_operations.h"
+#include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdb_transaction.h"
 #include "medialibrary_rdb_utils.h"
 #include "medialibrary_rdbstore.h"
@@ -499,8 +500,8 @@ static std::string GetBackupPortraitCoverUri(const shared_ptr<MediaLibraryRdbSto
     const string columnDisplayName = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_NAME;
     const string columnData = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_FILE_PATH;
     const vector<string> columns = { columnFileId, columnDisplayName, columnData };
-    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns, true);
-    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, "", "StepQueryWithoutCheck failed");
+    auto resultSet = rdbStore->QueryByStepWithoutCount(predicates, columns, true);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, "", "QueryByStepWithoutCount failed");
     int32_t err = resultSet->GoToFirstRow();
     CHECK_AND_RETURN_RET_LOG(err == E_OK, "", "GoToFirstRow failed");
     string filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
@@ -724,7 +725,7 @@ int32_t DoDismissAssets(int32_t subtype, const string &albumId, const vector<str
 int32_t PhotoMapOperations::DismissAssets(NativeRdb::RdbPredicates &predicates)
 {
     vector<string> whereArgsUri = predicates.GetWhereArgs();
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     
     const vector<string> &whereArgsId = predicates.GetWhereArgs();
     if (whereArgsId.size() == 0 || whereArgsUri.size() == 0) {
@@ -772,7 +773,7 @@ int32_t PhotoMapOperations::RemovePhotoAssets(RdbPredicates &predicates)
     std::vector<std::string> uriWhereArgs = predicates.GetWhereArgs();
     int32_t deleteRow = 0;
     CHECK_AND_RETURN_RET_LOG(!uriWhereArgs.empty(), deleteRow, "Remove photo assets failed: args is empty");
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     std::vector<std::string> idWhereArgs = predicates.GetWhereArgs();
     CHECK_AND_RETURN_RET_LOG(!idWhereArgs.empty(), E_OK, "Remove photo assets failed: id args is empty");
     std::string strAlbumId = idWhereArgs[0];

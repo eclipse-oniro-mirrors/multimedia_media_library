@@ -21,6 +21,7 @@
 #include "file_const.h"
 #endif
 #include "dfx_reporter.h"
+#include "medialibrary_rdb_operations.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
@@ -419,7 +420,7 @@ int32_t DfxDatabaseUtils::QueryAnalysisVersion(const std::string &table, const s
 int32_t DfxDatabaseUtils::QueryDbVersion()
 {
     int64_t dbVersion = 0;
-    MediaLibraryRdbStore::QueryPragma("user_version", dbVersion);
+    MediaLibraryRdbOperations::QueryPragma("user_version", dbVersion);
     return static_cast<int32_t> (dbVersion);
 }
 
