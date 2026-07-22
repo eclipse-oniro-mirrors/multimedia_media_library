@@ -3723,12 +3723,12 @@ static void UserFileMgrOpenWithCachedExecute(napi_env env, void *data)
     bool isValid = false;
     string mode = context->valuesBucket.Get(MEDIA_FILEMODE, isValid);
     if (!isValid) {
-        context->SaveError(JS_E_PARAM_INVALID);
+        context->SaveError(-EINVAL);
         return;
     }
     string fileUri = context->valuesBucket.Get(CONST_MEDIA_DATA_DB_URI, isValid);
     if (!isValid) {
-        context->SaveError(JS_E_PARAM_INVALID);
+        context->SaveError(-EINVAL);
         return ;
     }
 
@@ -3738,7 +3738,7 @@ static void UserFileMgrOpenWithCachedExecute(napi_env env, void *data)
     Uri openFileUri(fileUri);
     int32_t retVal = UserFileClient::OpenFile(openFileUri, mode);
     if (retVal <= 0) {
-        context->SaveError(JS_E_INNER_OPEN_FILE_FAIL);
+        context->SaveError(E_FILE_OPEN_FAIL);
         NAPI_ERR_LOG("file system exception, ret: %{public}d", retVal);
     } else {
         context->fd = retVal;
