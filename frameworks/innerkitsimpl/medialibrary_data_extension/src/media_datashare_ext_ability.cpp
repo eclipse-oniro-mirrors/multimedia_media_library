@@ -35,6 +35,7 @@
 #include "dfx_timer.h"
 #include "dfx_deprecated_perm_usage.h"
 #include "medialibrary_subscriber.h"
+#include "media_library_monitor.h"
 #include "medialibrary_uripermission_operations.h"
 #include "heif_transcoding_check_utils.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
@@ -301,8 +302,6 @@ void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)
         return;
     }
     dataManager->SetOwner(static_pointer_cast<MediaDataShareExtAbility>(shared_from_this()));
-
-    // Start media fuse daemon
     MediaFuseManager::GetInstance().Start();
 
     DfxManager::GetInstance();
@@ -320,6 +319,7 @@ void MediaDataShareExtAbility::OnStart(const AAFwk::Want &want)
     CloudMediaAssetManager::GetInstance().RestartForceRetainCloudAssets();
     dataManager->RestoreInvalidHDCCloudDataPos();
     PhotoAlbumUploadStatusOperation::JudgeUploadAlbumEnable();
+    Monitor::MediaLibraryMonitor::GetInstance().Start();
 }
 
 void MediaDataShareExtAbility::OnStop()
@@ -335,6 +335,7 @@ void MediaDataShareExtAbility::OnStop()
     MediaMtpManager::GetInstance().Stop();
 #endif
     MedialibraryAppStateObserverManager::GetInstance().UnSubscribeAppState();
+    Monitor::MediaLibraryMonitor::GetInstance().Stop();
     MEDIA_INFO_LOG("%{public}s end.", __func__);
 }
 
