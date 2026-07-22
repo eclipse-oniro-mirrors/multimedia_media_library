@@ -145,9 +145,10 @@ void VideoCompositionCallbackImpl::onResult(VEFResult result, VEFError errorCode
     close(outputFileFd_);
     editorMap_.erase(inputFileFd_);
     if (errorCode != VEFError::ERR_OK) {
-        mutex_.lock();
-        --curWorkerNum_;
-        mutex_.unlock();
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            --curWorkerNum_;
+        }
         MEDIA_ERR_LOG("VideoCompositionCallbackImpl onResult error:%{public}d", (int32_t)errorCode);
         // Video Composite failed save sourceVideo to photo directory
         CHECK_AND_PRINT_LOG(HandleAddFiltersError(sourceVideoPath_, videoPath_),
@@ -163,19 +164,25 @@ void VideoCompositionCallbackImpl::onResult(VEFResult result, VEFError errorCode
     string realPath = MediaFileAccessUtils::GetAssetRealPath(assetPath_);
     ProcessLivePhotoRevert(assetPath_, videoPath_, realPath, isNeedScan_, fileId_);
 
-    mutex_.lock();
-    if (waitQueue_.empty()) {
-        --curWorkerNum_;
-        mutex_.unlock();
-    } else {
-        Task task = std::move(waitQueue_.front());
-        waitQueue_.pop();
-        mutex_.unlock();
+    Task task;
+    bool hasTask = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (waitQueue_.empty()) {
+            --curWorkerNum_;
+        } else {
+            task = std::move(waitQueue_.front());
+            waitQueue_.pop();
+            hasTask = true;
+        }
+    }
+    if (hasTask) {
         if (CallStartComposite(task.sourceVideoPath_, task.videoPath_, task.editData_,
                                task.assetPath_, task.isNeedScan_, task.outputVideoPath_, task.fileId_) != E_OK) {
-            mutex_.lock();
-            --curWorkerNum_;
-            mutex_.unlock();
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                --curWorkerNum_;
+            }
             MEDIA_ERR_LOG("Failed to CallStartComposite, path:%{private}s", task.videoPath_.c_str());
             CHECK_AND_RETURN_LOG(HandleAddFiltersError(task.sourceVideoPath_, task.videoPath_),
                 "Copy sourceVideoPath to videoPath, path:%{private}s", task.sourceVideoPath_.c_str());
@@ -261,24 +268,29 @@ void VideoCompositionCallbackImpl::AddCompositionTask(const std::string& assetPa
         : outputVideoPath;
     string sourceVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(sourceImagePath);
 
-    mutex_.lock();
-    if (curWorkerNum_ < MAX_CONCURRENT_NUM) {
-        ++curWorkerNum_;
-        mutex_.unlock();
+    bool canStart = false;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (curWorkerNum_ < MAX_CONCURRENT_NUM) {
+            ++curWorkerNum_;
+            canStart = true;
+        } else {
+            MEDIA_WARN_LOG("Failed to CallStartComposite, curWorkerNum over MAX_CONCURRENT_NUM");
+            Task newWaitTask{sourceVideoPath, videoPath, editData, assetPath, isNeedScan, outputVideoPath, fileId};
+            waitQueue_.push(std::move(newWaitTask));
+        }
+    }
+    if (canStart) {
         if (CallStartComposite(
             sourceVideoPath, videoPath, editData, assetPath, isNeedScan, outputVideoPath, fileId) != E_OK) {
-            mutex_.lock();
-            --curWorkerNum_;
-            mutex_.unlock();
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                --curWorkerNum_;
+            }
             MEDIA_ERR_LOG("Failed to CallStartComposite, path:%{private}s", videoPath.c_str());
             CHECK_AND_RETURN_LOG(HandleAddFiltersError(sourceVideoPath, videoPath),
                 "Copy sourceVideoPath to videoPath, path:%{private}s", sourceVideoPath.c_str());
         }
-    } else {
-        MEDIA_WARN_LOG("Failed to CallStartComposite, curWorkerNum over MAX_CONCURRENT_NUM");
-        Task newWaitTask{sourceVideoPath, videoPath, editData, assetPath, isNeedScan, outputVideoPath, fileId};
-        waitQueue_.push(std::move(newWaitTask));
-        mutex_.unlock();
     }
 }
 
