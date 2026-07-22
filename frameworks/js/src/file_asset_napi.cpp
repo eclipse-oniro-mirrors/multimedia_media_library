@@ -3756,7 +3756,7 @@ static void UserFileMgrOpenWithCachedExecute(napi_env env, void *data)
 static void UserFileMgrOpenCallbackWithCachedComplete(napi_env env, napi_status status, void *data)
 {
     MediaLibraryTracer tracer;
-    tracer.Start("UserFileMgrOpenCallbackComplete");
+    tracer.Start("UserFileMgrOpenCallbackWithCachedComplete");
 
     auto *context = static_cast<FileAssetAsyncContext *>(data);
     CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
