@@ -2500,7 +2500,8 @@ int32_t MediaLibraryAlbumFusionUtils::TransferMisMatchScreenRecord(
         "UPDATE Photos SET owner_album_id = "
         "(SELECT album_id FROM PhotoAlbum WHERE bundle_name ='com.huawei.hmos.screenrecorder' AND dirty <>4) "
         "WHERE owner_album_id = (SELECT album_id FROM PhotoAlbum WHERE "
-        "bundle_name ='com.huawei.hmos.screenshot' AND dirty <>'4' limit 1) AND media_type =2";
+        "bundle_name ='com.huawei.hmos.screenshot' AND dirty <>'4' limit 1) "
+        "AND media_type =2 AND file_source_type = 0";
     int32_t err = upgradeStore->ExecuteSql(TRANSFER_MISS_MATCH_ASSET);
     CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, err,
         "Fatal error! Failed to exec: %{public}s", TRANSFER_MISS_MATCH_ASSET.c_str());
@@ -2519,7 +2520,7 @@ int32_t MediaLibraryAlbumFusionUtils::HandleMisMatchScreenRecord(
     const std::string QUERY_MISS_MATCHED_RECORDS =
         "SELECT file_id FROM Photos WHERE owner_album_id = "
         "(SELECT album_id FROM PhotoAlbum WHERE bundle_name ='com.huawei.hmos.screenshot' AND dirty <>4) "
-        " AND media_type =2";
+        " AND media_type =2 AND file_source_type = 0";
     shared_ptr<NativeRdb::ResultSet> resultSet = upgradeStore->QuerySql(QUERY_MISS_MATCHED_RECORDS);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_INFO_LOG("No miss matched screen record");
