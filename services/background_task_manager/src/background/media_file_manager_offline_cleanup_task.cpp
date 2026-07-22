@@ -40,11 +40,12 @@
 namespace OHOS::Media::Background {
 namespace {
 constexpr char OFFLINE_CLEANUP_PREFERENCES[] = "/data/storage/el2/base/preferences/task_progress.xml";
-constexpr int32_t OFFLINE_CLEANUP_VERSION = 1;
+constexpr int32_t OFFLINE_CLEANUP_VERSION = 2;
 constexpr int32_t BATCH_SIZE = 100;
 constexpr int32_t SUBTYPE_BURST = static_cast<int32_t>(PhotoSubType::BURST);
 constexpr int32_t BURST_COVER = static_cast<int32_t>(BurstCoverLevelType::COVER);
 constexpr int32_t ALBUM_DIRTY_DELETED = static_cast<int32_t>(DirtyType::TYPE_DELETED);
+constexpr int32_t FILE_MANAGER_SOURCE_TYPE = static_cast<int32_t>(FileSourceType::FILE_MANAGER);
 constexpr int32_t MAX_ALBUM_NAME_SEQUENCE = 1000;
 
 const std::string KEY_TASK_VERSION = "fm_offline_cleanup_version";
@@ -141,6 +142,9 @@ void MediaFileManagerOfflineCleanupTask::Execute()
     CleanupLegacyAlbums();
     CHECK_AND_RETURN(Accept());
 
+    CleanupConvertedAlbums();
+    CHECK_AND_RETURN(Accept());
+
     ReportCleanupResult();
 }
 
@@ -157,6 +161,7 @@ void MediaFileManagerOfflineCleanupTask::PrepareProgress()
 {
     CHECK_AND_RETURN(GetSavedTaskVersion() != OFFLINE_CLEANUP_VERSION);
     ResetAllCursors();
+    convertedAlbumIdCache_.clear();
     SaveTaskVersion(OFFLINE_CLEANUP_VERSION);
 }
 
@@ -174,6 +179,7 @@ void MediaFileManagerOfflineCleanupTask::ProcessLocalPhotosToDelete()
         std::vector<int32_t> fileIdsToMark;
         for (const auto &photo : photos) {
             CHECK_AND_CONTINUE(ShouldMarkForDeletion(photo));
+            convertedAlbumIdCache_.insert(photo.ownerAlbumId);
             fileIdsToMark.emplace_back(photo.fileId);
         }
         int32_t processedCount = 0;
@@ -323,6 +329,8 @@ void MediaFileManagerOfflineCleanupTask::MigratePhotoAlbumRelations()
         const int32_t batchLastId = photos.back().fileId;
         int64_t processedCount = 0;
         for (const auto &photo : photos) {
+            CHECK_AND_CONTINUE_INFO_LOG(photo.fileSourceType != FILE_MANAGER_SOURCE_TYPE,
+                "Skip file manager asset, %{public}s", photo.ToString().c_str());
             OfflineCleanupAlbumRecord sourceAlbum;
             sourceAlbum.albumId = photo.ownerAlbumId;
             sourceAlbum.albumSubtype = photo.albumSubtype;
@@ -377,6 +385,36 @@ void MediaFileManagerOfflineCleanupTask::CleanupLegacyAlbums()
     }
 }
 
+void MediaFileManagerOfflineCleanupTask::CleanupConvertedAlbums()
+{
+    auto &result = statistics_.convertedAlbumsDeleted;
+    result.startId = 0;
+    result.endId = 0;
+    std::vector<int32_t> cachedIds(convertedAlbumIdCache_.begin(), convertedAlbumIdCache_.end());
+    for (size_t offset = 0; offset < cachedIds.size() && Accept(); offset += BATCH_SIZE) {
+        const size_t end = std::min(offset + BATCH_SIZE, cachedIds.size());
+        std::vector<int32_t> batch(cachedIds.begin() + offset, cachedIds.begin() + end);
+        auto albums = cleanupDao_.QueryEmptyConvertedAlbums(batch);
+        CHECK_AND_CONTINUE(!albums.empty());
+        std::vector<int32_t> albumIds;
+        for (const auto &album : albums) {
+            albumIds.emplace_back(album.albumId);
+        }
+        int32_t deletedCount = 0;
+        CHECK_AND_RETURN_LOG(cleanupDao_.LogicalDeleteEmptyConvertedAlbums(albumIds, albumRefresh_, deletedCount),
+            "Cleanup converted albums failed");
+        result.count += deletedCount;
+        result.endId = albums.back().albumId;
+        albumRefresh_.Notify();
+        for (const auto &album : albums) {
+            WriteAlbumDeleteAuditLog(album, deletedCount);
+            convertedAlbumIdCache_.erase(album.albumId);
+        }
+        LogBatchResult("delete_converted_albums", static_cast<int32_t>(offset), static_cast<int32_t>(end),
+            albums.size(), deletedCount);
+    }
+}
+
 void MediaFileManagerOfflineCleanupTask::ReportCleanupResult()
 {
     const int64_t remainLegacyPhotos = cleanupDao_.CountLegacyPhotos();
@@ -386,17 +424,19 @@ void MediaFileManagerOfflineCleanupTask::ReportCleanupResult()
         ", deletedPhotos=%{public}" PRId64 ", burstConverted=%{public}" PRId64
         ", localCloudConverted=%{public}" PRId64 ", cloudOnlyConverted=%{public}" PRId64
         ", albumRelationsMigrated=%{public}" PRId64 ", legacyAlbumsDeleted=%{public}" PRId64
+        ", convertedAlbumsDeleted=%{public}" PRId64
         ", remainLegacyPhotos=%{public}" PRId64 ", remainTombstone=%{public}" PRId64
         ", remainLegacyAlbums=%{public}" PRId64,
         statistics_.markedForDeletion.count, statistics_.deletedPhotos.count, statistics_.burstConverted.count,
         statistics_.localCloudConverted.count, statistics_.cloudOnlyConverted.count,
         statistics_.albumRelationsMigrated.count, statistics_.legacyAlbumsDeleted.count,
+        statistics_.convertedAlbumsDeleted.count,
         remainLegacyPhotos, remainTombstone, remainLegacyAlbums);
 
     const int64_t totalCount = statistics_.markedForDeletion.count + statistics_.deletedPhotos.count +
         statistics_.burstConverted.count + statistics_.localCloudConverted.count +
         statistics_.cloudOnlyConverted.count + statistics_.albumRelationsMigrated.count +
-        statistics_.legacyAlbumsDeleted.count;
+        statistics_.legacyAlbumsDeleted.count + statistics_.convertedAlbumsDeleted.count;
     CHECK_AND_RETURN(totalCount > 0);
     const std::vector<std::string> results = {
         statistics_.markedForDeletion.ToString(),
@@ -406,6 +446,7 @@ void MediaFileManagerOfflineCleanupTask::ReportCleanupResult()
         statistics_.cloudOnlyConverted.ToString(),
         statistics_.albumRelationsMigrated.ToString(),
         statistics_.legacyAlbumsDeleted.ToString(),
+        statistics_.convertedAlbumsDeleted.ToString(),
     };
     std::ostringstream ss;
     ss << "\"STAT:";
@@ -455,8 +496,9 @@ bool MediaFileManagerOfflineCleanupTask::ShouldMarkForDeletion(const OfflineClea
 {
     CHECK_AND_RETURN_RET_LOG(!photo.storagePath.empty(), false,
         "File storagePath empty, %{public}s", photo.ToString().c_str());
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(photo.storagePath), false,
-        "File not exist, path: %{public}s", photo.ToString().c_str());
+    CHECK_AND_RETURN_RET_INFO_LOG(MediaFileUtils::IsFileExists(photo.storagePath) ||
+        !MediaFileUtils::IsFileExists(photo.data), false,
+        "Skip to preserve the sandbox file, path: %{public}s", photo.ToString().c_str());
     CHECK_AND_RETURN_RET_INFO_LOG(!cleanupDao_.ExistMediaBurstMember(photo), false,
         "Skip burst cover, path: %{public}s", photo.ToString().c_str());
     return true;
