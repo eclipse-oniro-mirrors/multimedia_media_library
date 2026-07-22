@@ -62,6 +62,7 @@ enum class AlbumChangeOperation {
     REMOVE_NICK_NAME,
     UPDATE_IS_REMOVED,
     UPDATE_EXTRA_INFO,
+    UPDATE_FRIEND_ID,
     SET_HIDDEN_ATTRIBUTE,
     SET_ALBUM_NAME_BY_FILE,
 };
@@ -112,6 +113,7 @@ public:
     bool SetNickNameOperationData(const std::string &type, const std::vector<std::string> &values);
     void SetIsRemovedOperationData(AnalysisAlbumOperation &operation);
     void SetExtraInfoOperationData(AnalysisAlbumOperation &operation);
+    void SetFriendIdOperationData(AnalysisAlbumOperation &operation);
     static ani_object GetAlbum(ani_env *env, ani_object object);
     static ani_object CreateAlbumRequest(ani_env *env, ani_object object, ani_object aniContext,
         ani_string aniName);

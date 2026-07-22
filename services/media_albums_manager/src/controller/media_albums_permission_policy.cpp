@@ -126,4 +126,11 @@ int32_t MediaAlbumsControllerService::CheckOperateAttributeThumbDbPermission(int
     return E_OK;
 }
 
+int32_t MediaAlbumsControllerService::CheckOperateAttributeWriteImageVideoPermission(int32_t deniedCode)
+{
+    CHECK_AND_RETURN_RET_LOG(PermissionUtils::CheckCallerPermission(PERM_WRITE_IMAGEVIDEO), deniedCode,
+        "operate album attribute write image video permission denied");
+    return E_OK;
+}
+
 } // namespace OHOS::Media

@@ -54,7 +54,8 @@ struct MergeAlbumInfo {
     std::string tagId;
     std::vector<string> repeatedAlbumIds;
     std::string relationship;
-    std::string extra_info;
+    std::string extraInfo;
+    std::string friendId;
 };
 
 struct SetCoverUriAlbumInfo {
@@ -116,6 +117,8 @@ public:
         const std::string &albumId, const std::string &operation, const std::vector<std::string> &nickNames);
     static int32_t OperatePortraitAlbumExtraInfo(
         const std::string &albumId, const std::vector<std::string> &extraInfos);
+    static int32_t OperatePortraitAlbumFriendId(
+        const std::string &albumId, const std::vector<std::string> &friendIds);
     static int32_t OperatePortraitAlbumIsRemoved(const string &albumId, const string &value);
     static int32_t SetHighlightAlbumName(const NativeRdb::ValuesBucket &values,
         const DataShare::DataSharePredicates &predicates);
@@ -154,6 +157,7 @@ public:
         const vector<NativeRdb::RdbPredicates> &predicatesArray);
     static int32_t CreatePortraitAlbum(const string &albumName);
     static int32_t GetPortraitAlbumExtraInfo(const int32_t &albumId, string &extraInfo);
+    static int32_t GetPortraitAlbumFriendId(const int32_t &albumId, string &friendId);
     static int32_t AlbumChangeSetHiddenAttribute(int32_t albumId, bool fileHidden, bool inherited);
     // ReuseId: if > 0, try to reuse the deleted album id; Otherwise query for an existing id;
     // Gatekeep that no duplicate lpath will be created.

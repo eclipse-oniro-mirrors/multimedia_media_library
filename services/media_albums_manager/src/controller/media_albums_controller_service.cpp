@@ -394,8 +394,10 @@ int32_t MediaAlbumsControllerService::ChangeRequestOperateAlbumAttribute(Message
     ret = CheckAlbumAttributeRequest(reqBody);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
         "ChangeRequestOperateAlbumAttribute params is invalid");
-    ret = CheckOperateAttributeThumbDbPermission(JS_INNER_FAIL);
-    CHECK_AND_RETURN_RET_LOG(ret == E_OK, IPC::UserDefineIPC().WriteResponseBody(reply, ret),
+    int32_t checkThumbDbRet = CheckOperateAttributeThumbDbPermission(JS_INNER_FAIL);
+    int32_t checkWriteImageVideoRet = CheckOperateAttributeWriteImageVideoPermission(JS_INNER_FAIL);
+    CHECK_AND_RETURN_RET_LOG(checkThumbDbRet == E_OK || checkWriteImageVideoRet == E_OK,
+        IPC::UserDefineIPC().WriteResponseBody(reply, JS_INNER_FAIL),
         "ChangeRequestOperateAlbumAttribute permission denied");
     ChangeRequestOperateAlbumAttributeDto dto;
     dto.FromVo(reqBody);

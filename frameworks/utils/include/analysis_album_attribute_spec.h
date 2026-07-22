@@ -58,6 +58,16 @@ inline const AnalysisAlbumAttributeSpec ANALYSIS_ALBUM_EXTRA_INFO_SPEC = {
     true,
 };
 
+inline const AnalysisAlbumAttributeSpec ANALYSIS_ALBUM_FRIEND_ID_SPEC = {
+    ANALYSIS_ALBUM_ATTR_FRIEND_ID,
+    { ANALYSIS_ALBUM_OP_UPDATE },
+    ANALYSIS_ALBUM_MAX_FRIEND_ID_COUNT,
+    false,
+    {},
+    true,
+    true,
+};
+
 inline const AnalysisAlbumAttributeSpec *FindAnalysisAlbumAttributeSpec(const std::string &attr)
 {
     if (attr == ANALYSIS_ALBUM_ATTR_NICK_NAME) {
@@ -66,6 +76,8 @@ inline const AnalysisAlbumAttributeSpec *FindAnalysisAlbumAttributeSpec(const st
         return &ANALYSIS_ALBUM_IS_REMOVED_SPEC;
     } else if (attr == ANALYSIS_ALBUM_ATTR_EXTRA_INFO) {
         return &ANALYSIS_ALBUM_EXTRA_INFO_SPEC;
+    } else if (attr == ANALYSIS_ALBUM_ATTR_FRIEND_ID) {
+        return &ANALYSIS_ALBUM_FRIEND_ID_SPEC;
     }
     return nullptr;
 }

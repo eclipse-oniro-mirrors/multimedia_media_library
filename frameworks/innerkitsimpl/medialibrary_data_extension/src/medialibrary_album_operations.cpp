@@ -65,6 +65,8 @@
 #include "photo_album_upload_status_operation.h"
 #include "media_string_utils.h"
 #include "portrait_extra_info_service.h"
+#include "portrait_friend_id_service.h"
+#include "vision_album_column.h"
 #include "file_manager_asset_operations.h"
 #include "file_manager_album_operations.h"
 #include "media_duplicate_checker_utils.h"
@@ -980,9 +982,10 @@ int32_t GetStringValueFromResultSet(shared_ptr<ResultSet> resultSet, const strin
     return E_OK;
 }
 
-void GetDisplayLevelAlbumPredicates(const int32_t value, DataShare::DataSharePredicates &predicates)
+void GetDisplayLevelAlbumPredicates(const int32_t value, DataShare::DataSharePredicates &predicates,
+    const string preClause = "")
 {
-    string whereClause;
+    string whereClause = preClause != "" ? " (" + preClause + ") AND " : "";
     string whereClauseRelatedMe = "(SELECT " + MAP_ALBUM + " FROM " + ANALYSIS_PHOTO_MAP_TABLE +
             " WHERE " + MAP_ASSET + " IN ( SELECT " + MediaColumn::MEDIA_ID + " FROM " + PhotoColumn::PHOTOS_TABLE +
             " WHERE " + MediaColumn::MEDIA_ID + " IN (SELECT " + MAP_ASSET + " FROM " + ANALYSIS_PHOTO_MAP_TABLE +
@@ -1006,7 +1009,7 @@ void GetDisplayLevelAlbumPredicates(const int32_t value, DataShare::DataSharePre
         string whereClauseSatifyCount = COUNT + " >= " + to_string(minFirstPageCount);
         string whereClauseWhenDisplayNull = "(" + whereClauseIsMe + ") OR (" + relatedMeFirstPage + ") OR (" +
                                             whereClauseSatifyCount + ") OR (" + whereClauseAlbumName + ")";
-        whereClause = ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND ((" + whereClauseDisplay + ") OR ((" +
+        whereClause += ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND ((" + whereClauseDisplay + ") OR ((" +
                       whereClauseDisplayNull + ") AND (" + whereClauseWhenDisplayNull + "))) GROUP BY " +
                       GROUP_TAG + " ORDER BY CASE WHEN " + IS_ME + " != 0 THEN 0 ELSE 1 END, CASE WHEN " +
                       RENAME_OPERATION + " != 0 THEN 0 ELSE 1 END, " + COUNT + " DESC";
@@ -1018,13 +1021,13 @@ void GetDisplayLevelAlbumPredicates(const int32_t value, DataShare::DataSharePre
         string whereClauseWhenDisplayNull = "(" + whereClauseIsNotMe + ") AND (" + whereClauseSatifyCount +
                                             ") AND NOT (" + whereClauseAlbumName + ") AND (" + ALBUM_ID + " NOT IN " +
                                             whereClauseRelatedMe + ")";
-        whereClause = ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND ((" + whereClauseDisplay + ") OR ((" +
+        whereClause += ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND ((" + whereClauseDisplay + ") OR ((" +
                       whereClauseDisplayNull + ") AND (" + whereClauseWhenDisplayNull + "))) GROUP BY " +
                       GROUP_TAG + " ORDER BY CASE WHEN " + IS_ME + " != 0 THEN 0 ELSE 1 END, CASE WHEN " +
                       RENAME_OPERATION + " != 0 THEN 0 ELSE 1 END, " + COUNT + " DESC";
     } else if (value == FAVORITE_PAGE) {
-        whereClause = ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND (" + USER_DISPLAY_LEVEL + " = 3 )GROUP BY " +
-            GROUP_TAG + " ORDER BY " + RANK;
+        whereClause += ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND (" +
+            USER_DISPLAY_LEVEL + " = 3 )GROUP BY " + GROUP_TAG + " ORDER BY " + RANK;
     } else {
         MEDIA_ERR_LOG("The display level is invalid");
         whereClause = "";
@@ -1032,9 +1035,10 @@ void GetDisplayLevelAlbumPredicates(const int32_t value, DataShare::DataSharePre
     predicates.SetWhereClause(whereClause);
 }
 
-int32_t GetPortraitSubtype(const string &subtypeName, const string &whereClause, const vector<string> &whereArgs)
+int32_t GetPortraitSubtype(const string &subtypeName, const string &whereClause, const vector<string> &whereArgs,
+    size_t itemPos = 0)
 {
-    size_t pos = whereClause.find(subtypeName);
+    size_t pos = whereClause.find(subtypeName, itemPos);
     if (pos == string::npos) {
         MEDIA_ERR_LOG("whereClause is invalid");
         return E_INDEX;
@@ -1047,6 +1051,10 @@ int32_t GetPortraitSubtype(const string &subtypeName, const string &whereClause,
     }
     if (argsIndex > whereArgs.size() - 1) {
         MEDIA_ERR_LOG("whereArgs is invalid");
+        return E_INDEX;
+    }
+    if (!MediaFileUtils::IsValidInteger(whereArgs[argsIndex])) {
+        MEDIA_ERR_LOG("whereArgs is not a valid integer");
         return E_INDEX;
     }
     return atoi(whereArgs[argsIndex].c_str());
@@ -1091,21 +1099,22 @@ bool IsSupportQueryIsMe()
     return true;
 }
 
-void GetIsMeAlbumPredicates(const int32_t value, DataShare::DataSharePredicates &predicates)
+void GetIsMeAlbumPredicates(const int32_t value, DataShare::DataSharePredicates &predicates,
+    const string preClause = "")
 {
-    string selection;
+    string selection = preClause != "" ? " (" + preClause + ") AND " : "";
     if (value == QUERY_PROB_IS_ME_VALUE) {
         if (!IsSupportQueryIsMe()) {
             MEDIA_ERR_LOG("Not support to query isMe");
             return;
         }
-        selection = ANALYSIS_ALBUM_TABLE + "." + ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) +
+        selection += ANALYSIS_ALBUM_TABLE + "." + ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) +
             " GROUP BY " + ANALYSIS_ALBUM_TABLE + "." + GROUP_TAG + " HAVING SUM(CASE WHEN " +
             PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_FRONT_CAMERA + " = 1 THEN 1 ELSE " +
             " 0 END) > 0 " + " ORDER BY SUM(CASE WHEN " + PhotoColumn::PHOTOS_TABLE + "." +
             PhotoColumn::PHOTO_FRONT_CAMERA + " = 1 THEN 1 ELSE 0 END) DESC ";
     } else if (value == QUERY_IS_ME_VALUE) {
-        selection = ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND " + IS_ME + " = 1 GROUP BY " + GROUP_TAG;
+        selection += ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND " + IS_ME + " = 1 GROUP BY " + GROUP_TAG;
     } else {
         MEDIA_ERR_LOG("The value is not support for query is me");
         return;
@@ -1113,13 +1122,15 @@ void GetIsMeAlbumPredicates(const int32_t value, DataShare::DataSharePredicates 
     predicates.SetWhereClause(selection);
 }
 
-void GetAlbumNameNotNullPredicates(int32_t value, DataShare::DataSharePredicates &predicates)
+void GetAlbumNameNotNullPredicates(int32_t value, DataShare::DataSharePredicates &predicates,
+    const string preClause = "")
 {
+    string selection = preClause != "" ? " (" + preClause + ") AND " : "";
     if (value != ALBUM_NAME_NOT_NULL_ENABLED) {
         MEDIA_ERR_LOG("The value is not support for query not null");
         return;
     }
-    string selection = ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND " + PhotoAlbumColumns::ALBUM_NAME +
+    selection += ALBUM_SUBTYPE + " = " + to_string(PORTRAIT) + " AND " + PhotoAlbumColumns::ALBUM_NAME +
         " IS NOT NULL GROUP BY " + GROUP_TAG;
     predicates.SetWhereClause(selection);
 }
@@ -1150,6 +1161,96 @@ static void ApplyLimitOffsetFromAbs(NativeRdb::RdbPredicates &rdbPredicates,
     }
 }
 
+static string GetPortraitAlbumIsRemovedClause(const string &whereClause, const vector<string> &whereArgs)
+{
+    size_t pos = 0;
+    string isRemovedClause = "";
+
+    size_t itemPos = whereClause.find(IS_REMOVED_EQ, pos);
+    while (itemPos != string::npos) {
+        int32_t value = GetPortraitSubtype(IS_REMOVED_EQ, whereClause, whereArgs, itemPos);
+        if (value == E_INDEX) {
+            pos = itemPos + IS_REMOVED_EQ.size();
+            continue;
+        }
+        isRemovedClause += isRemovedClause == "" ? "" : " OR ";
+        isRemovedClause += IS_REMOVED + " = " + to_string(value);
+        pos = itemPos + IS_REMOVED_EQ.size();
+        itemPos = whereClause.find(IS_REMOVED_EQ, pos);
+    }
+
+    if (whereClause.find(IS_REMOVED_IS_NULL) != string::npos) {
+        isRemovedClause += isRemovedClause == "" ? "" : " OR ";
+        isRemovedClause += IS_REMOVED + " IS NULL";
+    }
+
+    return isRemovedClause;
+}
+
+static string GetPortraitAlbumFriendIdClause(const string &whereClause,
+    const vector<string> &whereArgs, string preClause = "")
+{
+    size_t pos = 0;
+    string friendIdClause = "";
+
+    size_t itemPos = whereClause.find(FRIEND_ID_EQ, pos);
+    while (itemPos != string::npos) {
+        int32_t value = GetPortraitSubtype(FRIEND_ID_EQ, whereClause, whereArgs, itemPos);
+        if (value == E_INDEX) {
+            pos = itemPos + FRIEND_ID_EQ.size();
+            continue;
+        }
+        friendIdClause += friendIdClause == "" ? "" : " OR ";
+        friendIdClause += FRIEND_ID + " = " + to_string(value);
+        pos = itemPos + FRIEND_ID_EQ.size();
+        itemPos = whereClause.find(FRIEND_ID_EQ, pos);
+    }
+
+    if (whereClause.find(FRIEND_ID_IS_NULL) != string::npos) {
+        friendIdClause += friendIdClause == "" ? "" : " OR ";
+        friendIdClause += FRIEND_ID + " IS NULL";
+    }
+
+    if (!preClause.empty() && !friendIdClause.empty()) {
+        preClause += friendIdClause == "" ? "" : " AND ";
+    } else if (!friendIdClause.empty()) {
+        preClause = friendIdClause;
+    }
+    return preClause;
+}
+
+static string GetPortraitAlbumExtraInfoClause(const string &whereClause,
+    const vector<string> &whereArgs, string preClause = "")
+{
+    size_t pos = 0;
+    string extraInfoClause = "";
+
+    size_t itemPos = whereClause.find(EXTRA_INFO_EQ, pos);
+    while (itemPos != string::npos) {
+        int32_t value = GetPortraitSubtype(EXTRA_INFO_EQ, whereClause, whereArgs, itemPos);
+        if (value == E_INDEX) {
+            pos = itemPos + EXTRA_INFO_EQ.size();
+            continue;
+        }
+        extraInfoClause += extraInfoClause == "" ? "" : " OR ";
+        extraInfoClause += EXTRA_INFO + " = " + to_string(value);
+        pos = itemPos + EXTRA_INFO_EQ.size();
+        itemPos = whereClause.find(EXTRA_INFO_EQ, pos);
+    }
+
+    if (whereClause.find(EXTRA_INFO_IS_NULL) != string::npos) {
+        extraInfoClause += extraInfoClause == "" ? "" : " OR ";
+        extraInfoClause += EXTRA_INFO + " IS NULL";
+    }
+
+    if (!preClause.empty() && !extraInfoClause.empty()) {
+        preClause += extraInfoClause == "" ? "" : " AND ";
+    } else if (!extraInfoClause.empty()) {
+        preClause = extraInfoClause;
+    }
+    return preClause;
+}
+
 std::shared_ptr<NativeRdb::ResultSet> MediaLibraryAlbumOperations::QueryPortraitAlbum(MediaLibraryCommand &cmd,
     const std::vector<std::string> &columns)
 {
@@ -1157,22 +1258,25 @@ std::shared_ptr<NativeRdb::ResultSet> MediaLibraryAlbumOperations::QueryPortrait
     auto whereClause = predicates->GetWhereClause();
     auto whereArgs = predicates->GetWhereArgs();
     DataShare::DataSharePredicates predicatesPortrait;
+    std::string preClause = GetPortraitAlbumIsRemovedClause(whereClause, whereArgs);
+    preClause = GetPortraitAlbumExtraInfoClause(whereClause, whereArgs, preClause);
+    preClause = GetPortraitAlbumFriendIdClause(whereClause, whereArgs, preClause);
     if (whereClause.find(USER_DISPLAY_LEVEL) != string::npos) {
         int32_t value = GetPortraitSubtype(USER_DISPLAY_LEVEL, whereClause, whereArgs);
         if (value == E_INDEX) {
             return nullptr;
         }
-        GetDisplayLevelAlbumPredicates(value, predicatesPortrait);
+        GetDisplayLevelAlbumPredicates(value, predicatesPortrait, preClause);
     } else if (whereClause.find(IS_ME) != string::npos) {
         int32_t value = GetPortraitSubtype(IS_ME, whereClause, whereArgs);
         bool cond = (value == E_INDEX || (value != QUERY_PROB_IS_ME_VALUE && value != QUERY_IS_ME_VALUE));
         CHECK_AND_RETURN_RET(!cond, nullptr);
-        GetIsMeAlbumPredicates(value, predicatesPortrait);
+        GetIsMeAlbumPredicates(value, predicatesPortrait, preClause);
     } else if (whereClause.find(ALBUM_NAME_NOT_NULL) != string::npos) {
         int32_t value = GetPortraitSubtype(ALBUM_NAME_NOT_NULL, whereClause, whereArgs);
         bool cond = (value == E_INDEX || value != ALBUM_NAME_NOT_NULL_ENABLED);
         CHECK_AND_RETURN_RET(!cond, nullptr);
-        GetAlbumNameNotNullPredicates(value, predicatesPortrait);
+        GetAlbumNameNotNullPredicates(value, predicatesPortrait, preClause);
     } else {
         MEDIA_INFO_LOG("QueryPortraitAlbum whereClause is error");
         return nullptr;
@@ -2788,7 +2892,7 @@ int32_t UpdateForMergeAlbums(const MergeAlbumInfo &updateAlbumInfo, const int32_
         COUNT + " = ?," + IS_ME + " = ?," + COVER_URI + " = ?," +
         USER_DISPLAY_LEVEL + " = ?," + RANK + " = ?," + USER_OPERATION + " = ?," +
         RENAME_OPERATION + " = ?," + ALBUM_NAME + " = ?," + IS_COVER_SATISFIED + " = ?," +
-        ALBUM_RELATIONSHIP + " = ?," + EXTRA_INFO + " = ?" +
+        ALBUM_RELATIONSHIP + " = ?," + EXTRA_INFO + " = ?," + FRIEND_ID + " = ?" +
         " WHERE " + GROUP_TAG + " IN(SELECT " + GROUP_TAG + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " + ALBUM_ID +
         " = ? OR " + ALBUM_ID + " = ?)";
     updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.groupTag));
@@ -2803,7 +2907,8 @@ int32_t UpdateForMergeAlbums(const MergeAlbumInfo &updateAlbumInfo, const int32_
     updateBindArgs.push_back(NativeRdb::ValueObject(
         static_cast<int32_t>(updateAlbumInfo.isCoverSatisfied)));
     updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.relationship));
-    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.extra_info));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.extraInfo));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.friendId));
     updateBindArgs.push_back(NativeRdb::ValueObject(currentAlbumId));
     updateBindArgs.push_back(NativeRdb::ValueObject(targetAlbumId));
 
@@ -2835,7 +2940,8 @@ int32_t GetMergeAlbumsInfo(vector<MergeAlbumInfo> &mergeAlbumInfo, const int32_t
     const std::string queryAlbumInfo = "SELECT " + ALBUM_ID + "," + GROUP_TAG + "," + COUNT + "," + IS_ME + "," +
         COVER_URI + "," + USER_DISPLAY_LEVEL + "," + RANK + "," + USER_OPERATION + "," + RENAME_OPERATION + "," +
         ALBUM_NAME + "," + IS_COVER_SATISFIED + "," + ALBUM_TYPE + "," + ALBUM_SUBTYPE + "," +
-        ALBUM_RELATIONSHIP + "," + EXTRA_INFO + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " + ALBUM_ID + " = " +
+        ALBUM_RELATIONSHIP + "," + EXTRA_INFO + "," + FRIEND_ID + " FROM " + ANALYSIS_ALBUM_TABLE +
+        " WHERE " + ALBUM_ID + " = " +
         to_string(currentAlbumId) + " OR " + ALBUM_ID + " = " + to_string(targetAlbumId);
 
     auto resultSet = uniStore->QuerySql(queryAlbumInfo);
@@ -2860,7 +2966,8 @@ int32_t GetMergeAlbumsInfo(vector<MergeAlbumInfo> &mergeAlbumInfo, const int32_t
             GetIntValueFromResultSet(resultSet, ALBUM_TYPE, albumInfo.albumType) != E_OK ||
             GetIntValueFromResultSet(resultSet, ALBUM_SUBTYPE, albumInfo.albumSubtype) != E_OK ||
             GetStringValueFromResultSet(resultSet, ALBUM_RELATIONSHIP, albumInfo.relationship) != E_OK ||
-            GetStringValueFromResultSet(resultSet, EXTRA_INFO, albumInfo.extra_info) != E_OK) {
+            GetStringValueFromResultSet(resultSet, EXTRA_INFO, albumInfo.extraInfo) != E_OK ||
+            GetStringValueFromResultSet(resultSet, FRIEND_ID, albumInfo.friendId) != E_OK) {
                 MEDIA_ERR_LOG("Failed to get values from result set");
                 return E_HAS_DB_ERROR;
             }
@@ -3012,25 +3119,25 @@ static int32_t GetMergedAlbumInfo(const vector<MergeAlbumInfo> &mergeAlbumInfo,
         resultSet->Close();
     }
     CHECK_AND_RETURN_RET_LOG(albumId != -1, E_HAS_DB_ERROR, "selectAlbumId invalid");
-    updateAlbumInfo.albumName =
-        mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[0].albumName : mergeAlbumInfo[1].albumName;
-    updateAlbumInfo.relationship =
-        mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[0].relationship : mergeAlbumInfo[1].relationship;
-    updateAlbumInfo.userDisplayLevel =
-        mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[0].userDisplayLevel : mergeAlbumInfo[1].userDisplayLevel;
+    // mergeAlbumInfo count check in MergeAlbums, size is 2, so we can use index 0 and 1 directly
+    const auto& currentAlbumInfo = mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[0] : mergeAlbumInfo[1];
+    const auto& targetAlbumInfo = mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[1] : mergeAlbumInfo[0];
+    updateAlbumInfo.albumName = currentAlbumInfo.albumName;
+    updateAlbumInfo.relationship = currentAlbumInfo.relationship;
+    updateAlbumInfo.userDisplayLevel = currentAlbumInfo.userDisplayLevel;
     if (updateAlbumInfo.albumName == "") {
-        updateAlbumInfo.albumName =
-            mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[1].albumName : mergeAlbumInfo[0].albumName;
+        updateAlbumInfo.albumName = targetAlbumInfo.albumName;
     }
     if (updateAlbumInfo.relationship == "") {
-        updateAlbumInfo.relationship =
-            mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[1].relationship : mergeAlbumInfo[0].relationship;
+        updateAlbumInfo.relationship = targetAlbumInfo.relationship;
     }
-    updateAlbumInfo.extra_info =
-        mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[0].extra_info : mergeAlbumInfo[1].extra_info;
-    if (updateAlbumInfo.extra_info == "") {
-        updateAlbumInfo.extra_info =
-            mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[1].extra_info : mergeAlbumInfo[0].extra_info;
+    updateAlbumInfo.extraInfo = currentAlbumInfo.extraInfo;
+    if (updateAlbumInfo.extraInfo == "") {
+        updateAlbumInfo.extraInfo = targetAlbumInfo.extraInfo;
+    }
+    updateAlbumInfo.friendId = currentAlbumInfo.friendId;
+    if (updateAlbumInfo.friendId == "") {
+        updateAlbumInfo.friendId = targetAlbumInfo.friendId;
     }
     return E_OK;
 }
@@ -3859,6 +3966,22 @@ int32_t MediaLibraryAlbumOperations::GetPortraitAlbumExtraInfo(
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INNER_FAIL, "Failed to get rdbStore.");
     return PortraitExtraInfoService::GetOperate(albumId, extraInfo, rdbStore);
+}
+
+int32_t MediaLibraryAlbumOperations::OperatePortraitAlbumFriendId(
+    const string &albumId, const vector<string> &friendIds)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Failed to get rdbStore.");
+    return PortraitFriendIdService::SetOperate(albumId, friendIds, rdbStore);
+}
+
+int32_t MediaLibraryAlbumOperations::GetPortraitAlbumFriendId(
+    const int32_t &albumId, string &friendId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INNER_FAIL, "Failed to get rdbStore.");
+    return PortraitFriendIdService::GetOperate(albumId, friendId, rdbStore);
 }
 
 static bool GetArgsSetUserAlbumName(const ValuesBucket& values,

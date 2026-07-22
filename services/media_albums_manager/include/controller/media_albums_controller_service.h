@@ -74,6 +74,7 @@ public:
 
 private:
     static int32_t CheckOperateAttributeThumbDbPermission(int32_t deniedCode);
+    static int32_t CheckOperateAttributeWriteImageVideoPermission(int32_t deniedCode);
 };
 } // namespace OHOS::Media
 #endif  // OHOS_MEDIA_ALBUMS_CONTROLLER_SERVICE_H
