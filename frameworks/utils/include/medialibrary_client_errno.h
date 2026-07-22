@@ -84,6 +84,7 @@ const std::unordered_map<int, int> trans2JsError = {
     { -ENAMETOOLONG,          JS_E_NAMETOOLONG },
     { -EINVAL,                JS_ERR_PARAMETER_INVALID },
     { -ENOMEM,                JS_ERR_NO_MEM },
+    { E_FILE_OPEN_FAIL,       JS_E_INNER_OPEN_FILE_FAIL },
 };
 
 const std::unordered_map<int, int> transMove2JsError = {
