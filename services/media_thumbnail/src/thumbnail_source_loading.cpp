@@ -126,7 +126,9 @@ const std::unordered_map<SourceState, SourceState> SourceLoader::CLOUD_THM_OR_LC
 
 std::string GetLocalThumbnailPath(const std::string &path, const std::string &key)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    if (path.length() <= ROOT_MEDIA_DIR.length() ||
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
+        MEDIA_ERR_LOG("Path:%{public}s is invalid", DfxUtils::GetSafePath(path).c_str());
         return "";
     }
     std::string suffix = (key == "") ? "" : "/" + key + ".jpg";

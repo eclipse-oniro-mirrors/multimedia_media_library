@@ -236,7 +236,8 @@ std::string GetGenThumbSceneName(const GenThumbScene &scene);
 
 static inline std::string GetThumbnailPath(const std::string &path, const std::string &key)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    if (path.length() <= ROOT_MEDIA_DIR.length() ||
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";
@@ -246,7 +247,8 @@ static inline std::string GetThumbnailPath(const std::string &path, const std::s
 static inline std::string GetThumbnailPathHighlight(const std::string &path, const std::string &key,
     const std::string &timeStamp)
 {
-    if (path.length() < ROOT_MEDIA_DIR.length()) {
+    if (path.length() <= ROOT_MEDIA_DIR.length() ||
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";

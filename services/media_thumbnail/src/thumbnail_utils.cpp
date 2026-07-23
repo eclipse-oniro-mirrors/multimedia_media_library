@@ -17,6 +17,7 @@
 
 #include "thumbnail_utils.h"
 
+#include <charconv>
 #include <fcntl.h>
 #include <malloc.h>
 
@@ -1191,6 +1192,7 @@ static int SaveFile(const string &fileName, uint8_t *output, int writeSize)
 int ThumbnailUtils::SaveFileCreateDir(const string &path, const string &suffix, string &fileName)
 {
     fileName = GetThumbnailPath(path, suffix);
+    CHECK_AND_RETURN_RET_LOG(!fileName.empty(), E_ERR, "Get thumbnail path failed");
     string dir = MediaFileUtils::GetParentPath(fileName);
     if (!MediaFileUtils::CreateDirectory(dir)) {
         MEDIA_ERR_LOG("Fail to create directory, fileName: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
@@ -1380,7 +1382,8 @@ bool ThumbnailUtils::DeleteAllThumbFilesAndAstc(ThumbRdbOpt &opts, ThumbnailData
     values.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME, 0);
     int32_t err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
         vector<string> { data.id });
-    CHECK_AND_WARN_LOG(err == NativeRdb::E_OK, "RdbStore Update Failed Before Delete Thumbnail! %{public}d", err);
+    CHECK_AND_RETURN_RET_LOG(err == NativeRdb::E_OK, false,
+        "RdbStore Update Failed Before Delete Thumbnail! %{public}d", err);
     MEDIA_INFO_LOG("Start DeleteAllThumbFilesAndAstc, table:%{public}s, id: %{public}s, dateKey:%{public}s, "
         "path:%{public}s", opts.table.c_str(), data.id.c_str(), data.dateTaken.c_str(),
         DfxUtils::GetSafePath(data.path).c_str());
@@ -1761,8 +1764,11 @@ void ThumbnailUtils::RecordStartGenerateStats(ThumbnailData::GenerateStats &stat
 
 void ThumbnailUtils::RecordCostTimeAndReport(ThumbnailData::GenerateStats &stats)
 {
+    // 缩略图生成耗时不会超过1s，使用int64_t 转 int32_t 不会溢出
     stats.totalCost = static_cast<int32_t>(MediaFileUtils::UTCTimeMilliSeconds() - stats.startTime);
-    DfxManager::GetInstance()->HandleThumbnailGeneration(stats);
+    auto spDfxManager = DfxManager::GetInstance();
+    CHECK_AND_RETURN_LOG(spDfxManager != nullptr, "spDfxManager is nullptr");
+    spDfxManager->HandleThumbnailGeneration(stats);
 }
 
 bool ThumbnailUtils::GetLocalThumbSize(const ThumbnailData &data, const ThumbnailType& type, Size& size)
@@ -1849,7 +1855,12 @@ bool ThumbnailUtils::ConvertStrToInt32(const std::string &str, int32_t &ret)
         MEDIA_ERR_LOG("convert failed, input is not number, str = %{public}s", str.c_str());
         return false;
     }
-    int64_t numberValue = std::stoll(str);
+    int64_t numberValue = 0;
+    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), numberValue);
+    if (ec != std::errc() || ptr != str.data() + str.size()) {
+        MEDIA_ERR_LOG("convert failed, invalid or out of range, str = %{public}s", str.c_str());
+        return false;
+    }
     if (numberValue < INT32_MIN || numberValue > INT32_MAX) {
         MEDIA_ERR_LOG("convert failed, Input is out of range, str = %{public}s", str.c_str());
         return false;
