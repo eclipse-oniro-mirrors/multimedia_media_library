@@ -206,7 +206,7 @@ bool GenDecodeOpts(const Size &sourceSize, const Size &targetSize, DecodeOptions
         MEDIA_ERR_LOG("Failed to generate decodeOpts, scale size contains zero");
         return false;
     }
-    decodeOpts.desiredPixelFormat = PixelFormat::RGBA_8888;
+    decodeOpts.desiredPixelFormat = PixelFormat::NV21; // 使用Nv21格式通路
     if (NeedAutoResize(targetSize)) {
         decodeOpts.desiredSize = targetSize;
         return true;
