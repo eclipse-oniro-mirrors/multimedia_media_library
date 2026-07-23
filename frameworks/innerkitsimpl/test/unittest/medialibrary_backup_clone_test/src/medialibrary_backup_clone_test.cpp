@@ -2522,13 +2522,15 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_insert_cloud_pho
     std::vector<FileInfo> fileInfos = {fileInfo};
     restoreService->InsertCloudPhoto(CLONE_RESTORE_ID, fileInfos, 0);
     EXPECT_EQ(restoreService->migrateCloudSuccessNumber_, 1);
+    restoreService->migrateCloudSuccessNumber_ = 0;
+    restoreService->migrateDatabaseNumber_ = 0;
 }
 
 HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_photo_batch_test, TestSize.Level2)
 {
     MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_photo_batch_test");
     restoreService->RestorePhotoBatch(0, 0);
-    EXPECT_EQ(restoreService->migrateDatabaseNumber_, 1);
+    EXPECT_EQ(restoreService->migrateDatabaseNumber_, 0);
     restoreService->RestorePhotoBatch(0, 1);
     EXPECT_EQ(restoreService->migrateDatabaseNumber_, 0);
 }
@@ -2537,7 +2539,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_batch_fo
 {
     MEDIA_INFO_LOG("Start medialibrary_backup_clone_restore_batch_for_cloud_test");
     restoreService->RestoreBatchForCloud(0, 0);
-    EXPECT_EQ(restoreService->migrateDatabaseNumber_, 1);
+    EXPECT_EQ(restoreService->migrateDatabaseNumber_, 0);
     restoreService->RestoreBatchForCloud(0, 1);
     EXPECT_EQ(restoreService->migrateDatabaseNumber_, 0);
 }
@@ -4236,6 +4238,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_tab_old_
     
     // Step 6: Perform cloning operation
     TabOldAlbumsClone tabOldAlbumsClone(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), tableAlbumIdMap);
+    tabOldAlbumsClone.GetNextCloneSequence();
     vector<string> sourceTables = {PhotoAlbumColumns::TABLE, ANALYSIS_ALBUM_TABLE };
 
     int32_t cloneResult = tabOldAlbumsClone.CloneAlbums(sourceTables);
@@ -4298,6 +4301,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_clone_se
     tableAlbumIdMap[PhotoAlbumColumns::TABLE][301] = 1000;
 
     TabOldAlbumsClone tabOldAlbumsClone2(cloneSource.cloneStorePtr_, g_rdbStore->GetRaw(), tableAlbumIdMap);
+    tabOldAlbumsClone2.GetNextCloneSequence();
     int32_t cloneResult = tabOldAlbumsClone2.CloneAlbums({PhotoAlbumColumns::TABLE});
     ASSERT_EQ(cloneResult, E_OK) << "Clone operation failed";
 
@@ -5672,10 +5676,12 @@ void InitTestDatabases(std::shared_ptr<NativeRdb::RdbStore> &mediaLibraryRdb,
         "DROP TABLE IF EXISTS tab_analysis_face_tag;",
         "DROP TABLE IF EXISTS AnalysisPhotoMap;",
         "DROP TABLE IF EXISTS AnalysisAlbum;",
+        "DROP TABLE IF EXISTS " + PhotoColumn::PHOTOS_TABLE + ";",
         CREATE_TAB_IMAGE_FACE,
         CREATE_TAB_FACE_TAG,
         CREATE_ANALYSIS_ALBUM_MAP,
         CREATE_ANALYSIS_ALBUM_FOR_ONCREATE,
+        PhotoUpgrade::CREATE_PHOTO_TABLE,
     };
 
     ExecuteSqls(mediaLibraryRdb, mediaSqls);
@@ -5722,9 +5728,15 @@ void PrepareTestData(std::shared_ptr<NativeRdb::RdbStore> &mediaLibraryRdb,
             "INSERT INTO tab_analysis_image_face (file_id, tag_id, total_faces) VALUES (1004, 'tag_lisi', 5)"
         };
 
+        std::vector<std::string> photosInserts = {
+            "INSERT OR REPLACE INTO Photos (file_id, media_type) VALUES (1001, 1)",
+            "INSERT OR REPLACE INTO Photos (file_id, media_type) VALUES (1002, 1)",
+        };
+
     ExecuteSqls(galleryRdb, mergeTagInserts);
     ExecuteSqls(mediaLibraryRdb, faceTagInserts);
     ExecuteSqls(mediaLibraryRdb, imageFaceInserts);
+    ExecuteSqls(mediaLibraryRdb, photosInserts);
 }
 
 /*
@@ -5737,7 +5749,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_group_photo_albu
     MEDIA_INFO_LOG("medialibrary_backup_clone_group_photo_album_restore_test002 start");
     CloneSource cloneSource;
     vector<string> tableList = { VISION_IMAGE_FACE_TABLE, VISION_FACE_TAG_TABLE, ANALYSIS_PHOTO_MAP_TABLE,
-        ANALYSIS_ALBUM_TABLE};
+        ANALYSIS_ALBUM_TABLE, PhotoColumn::PHOTOS_TABLE };
     Init(cloneSource, TEST_BACKUP_DB_PATH, tableList);
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb = cloneSource.cloneStorePtr_;
     std::shared_ptr<NativeRdb::RdbStore> galleryRdb = g_rdbStore->GetRaw();
