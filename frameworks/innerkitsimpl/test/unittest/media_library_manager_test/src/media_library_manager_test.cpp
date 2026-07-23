@@ -1441,105 +1441,11 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_CreateAlbum_test_002, Test
 /**
  * @tc.number    : MediaLibraryManager_DeleteAlbums_test_001
  * @tc.name      : Delete albums
- * @tc.desc      : Delete one album success
+ * @tc.desc      : Delete album fail when album is system album
  */
 HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_001 enter");
-    DataSharePredicates predicates;
-    vector<string> columnsAlbum;
-    vector<unique_ptr<PhotoAlbum>> albums;
-    FetchResult<PhotoAlbum> albumsFetchResult;
-    int32_t albumCountBefore = 0;
-    string albumName = "testAlbum";
-    bool isAlbumExist = false;
-    unique_ptr<PhotoAlbum> album = make_unique<PhotoAlbum>();
-    int32_t albumId = -1;
-    ASSERT_NE(mediaLibraryManager, nullptr);
-    while (!isAlbumExist) {
-        albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
-        albumCountBefore = albumsFetchResult.GetCount();
-        for (int i = 0; i < albumsFetchResult.GetCount(); i++) {
-            album = albumsFetchResult.GetObjectAtPosition(i);
-            ASSERT_NE(album, nullptr);
-            if (album->GetAlbumName() == albumName) {
-                isAlbumExist = true;
-                albumId = album->GetAlbumId();
-                albums.push_back(move(album));
-                break;
-            }
-        }
-        if (!isAlbumExist) {
-            int32_t id = mediaLibraryManager->CreateAlbum(albumName);
-            EXPECT_GT(id, 0);
-        }
-    }
-    int32_t ret = mediaLibraryManager->DeleteAlbums(albums);
-    ASSERT_EQ(ret, 1);
-    albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
-    ASSERT_EQ(albumsFetchResult.GetCount(), albumCountBefore - 1);
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbum_test_001 exit");
-}
-
-/**
- * @tc.number    : MediaLibraryManager_DeleteAlbums_test_002
- * @tc.name      : Delete albums
- * @tc.desc      : Delete album fail when albumId is invalid
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_002 enter");
-    DataSharePredicates predicates;
-    vector<string> columnsAlbum;
-    vector<unique_ptr<PhotoAlbum>> albums;
-    FetchResult<PhotoAlbum> albumsFetchResult;
-    int32_t albumCountBefore = 0;
-    string albumName = "testAlbum";
-    bool isAlbumExist = false;
-    unique_ptr<PhotoAlbum> album = make_unique<PhotoAlbum>();
-    int32_t albumId = -1;
-    ASSERT_NE(mediaLibraryManager, nullptr);
-    while (!isAlbumExist) {
-        albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
-        albumCountBefore = albumsFetchResult.GetCount();
-        for (int i = 0; i < albumsFetchResult.GetCount(); i++) {
-            album = albumsFetchResult.GetObjectAtPosition(i);
-            if (album->GetAlbumName() == albumName) {
-                isAlbumExist = true;
-                albumId = album->GetAlbumId();
-                break;
-            }
-        }
-        if (!isAlbumExist) {
-            int32_t id = mediaLibraryManager->CreateAlbum(albumName);
-            EXPECT_GT(id, 0);
-        }
-    }
-    while (albumId++) {
-        predicates.EqualTo(PhotoAlbumColumns::ALBUM_ID, albumId);
-        albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
-        if (albumsFetchResult.GetCount() == 0) {
-            break;
-        }
-    }
-    album->SetAlbumId(albumId);
-    albums.push_back(move(album));
-    int32_t errCode = mediaLibraryManager->DeleteAlbums(albums);
-    ASSERT_EQ(errCode, E_INVALID_URI);
-    DataSharePredicates emptyPredicate;
-    albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &emptyPredicate);
-    ASSERT_EQ(albumsFetchResult.GetCount(), albumCountBefore);
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_002 exit");
-}
-
-/**
- * @tc.number    : MediaLibraryManager_DeleteAlbums_test_003
- * @tc.name      : Delete albums
- * @tc.desc      : Delete album fail when album is system album
- */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_003, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_003 enter");
     DataSharePredicates predicates;
     vector<string> columnsAlbum;
     vector<unique_ptr<PhotoAlbum>> albums;
@@ -1560,17 +1466,17 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_003, Tes
     ASSERT_EQ(ret, E_FAIL);
     albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
     ASSERT_EQ(albumsFetchResult.GetCount(), albumCountBefore);
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_003 exit");
+    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_001 exit");
 }
 
 /**
- * @tc.number    : MediaLibraryManager_DeleteAlbums_test_004
+ * @tc.number    : MediaLibraryManager_DeleteAlbums_test_002
  * @tc.name      : Delete albums
  * @tc.desc      : Delete albums success
  */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_004, TestSize.Level1)
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_002, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_004 enter");
+    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_002 enter");
     vector<string> albumNames = {"testAlbum1", "testAlbum2", "testAlbum3"};
     ASSERT_NE(mediaLibraryManager, nullptr);
     vector<string> columnsAlbum;
@@ -1596,17 +1502,17 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_004, Tes
     ASSERT_EQ(ret, albums.size());
     albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &emptyPredicates);
     EXPECT_EQ(albumsFetchResult.GetCount(), albumCount);
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_004 exit");
+    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_002 exit");
 }
 
 /**
- * @tc.number    : MediaLibraryManager_DeleteAlbums_test_005
+ * @tc.number    : MediaLibraryManager_DeleteAlbums_test_003
  * @tc.name      : Delete albums
  * @tc.desc      : Delete albums fail with unexistent album
  */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_005, TestSize.Level1)
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_003, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_005 enter");
+    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_003 enter");
     vector<string> albumNames = {"testAlbum1", "testAlbum2", "testAlbum3"};
     ASSERT_NE(mediaLibraryManager, nullptr);
     vector<string> columnsAlbum;
@@ -1640,17 +1546,17 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_005, Tes
     ASSERT_EQ(ret, E_INVALID_URI);
     albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &emptyPredicates);
     EXPECT_EQ(albumsFetchResult.GetCount(), albumCount + albums.size() - 1);
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_005 exit");
+    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_003 exit");
 }
 
 /**
- * @tc.number    : MediaLibraryManager_DeleteAlbums_test_006
+ * @tc.number    : MediaLibraryManager_DeleteAlbums_test_004
  * @tc.name      : Delete albums
  * @tc.desc      : Delete albums fail with system album
  */
-HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_006, TestSize.Level1)
+HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_004, TestSize.Level1)
 {
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_006 enter");
+    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_004 enter");
     DataSharePredicates predicates;
     vector<string> columnsAlbum;
     vector<unique_ptr<PhotoAlbum>> albums;
@@ -1680,7 +1586,7 @@ HWTEST_F(MediaLibraryManagerTest, MediaLibraryManager_DeleteAlbums_test_006, Tes
     ASSERT_EQ(ret, E_FAIL);
     albumsFetchResult = mediaLibraryManager->GetAlbums(columnsAlbum, &predicates);
     ASSERT_EQ(albumsFetchResult.GetCount(), albumCountBefore + 1);
-    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_006 exit");
+    MEDIA_INFO_LOG("MediaLibraryManager_DeleteAlbums_test_004 exit");
 }
 
 /**
