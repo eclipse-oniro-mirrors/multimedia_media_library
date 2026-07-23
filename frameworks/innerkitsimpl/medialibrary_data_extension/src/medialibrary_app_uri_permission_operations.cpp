@@ -281,7 +281,7 @@ int MediaLibraryAppUriPermissionOperations::UpdatePermissionType(shared_ptr<Nati
     if (trans == nullptr) {
         updateRows = MediaLibraryRdbStore::UpdateWithDateTime(updateVB, updateRdbPredicates);
     } else {
-        updateRows = trans->Update(updateVB, updateRdbPredicates);
+        updateRows = trans->UpdateWithDateTime(updateVB, updateRdbPredicates);
     }
     if (updateRows < 1) {
         MEDIA_ERR_LOG("upgrade permissionType error,idDB=%{public}d", idDB);

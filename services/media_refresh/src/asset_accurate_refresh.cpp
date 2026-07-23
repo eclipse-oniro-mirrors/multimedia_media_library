@@ -29,6 +29,7 @@
 #include "medialibrary_tracer.h"
 #include "dfx_refresh_manager.h"
 #include "dfx_refresh_hander.h"
+#include "rdb_table_strategy_manager.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -256,9 +257,10 @@ int32_t AssetAccurateRefresh::DeleteCommon(function<int32_t(ValuesBucket &)> upd
     MediaLibraryTracer tracer;
     tracer.Start("AssetAccurateRefresh::DeleteCommon");
     ValuesBucket valuesBucket;
-    valuesBucket.PutInt(CONST_MEDIA_DATA_DB_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
-    valuesBucket.PutInt(CONST_MEDIA_DATA_DB_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_UPLOAD));
-    valuesBucket.PutLong(PhotoColumn::PHOTO_META_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    RdbTableStrategyManager::GetInstance().ExtendDeleteValues(PhotoColumn::PHOTOS_TABLE, valuesBucket, config);
     auto ret = updateExe(valuesBucket);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->Delete failed, ret = %{public}d", ret);

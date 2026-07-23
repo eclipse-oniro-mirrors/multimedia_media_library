@@ -26,6 +26,9 @@ using namespace std;
 
 namespace OHOS {
 namespace Media {
+const std::string RDB_OLD_VERSION = "rdb_old_version";
+int32_t oldVersion_ = -1;
+
 static unordered_map<int32_t, string> UPGRADE_VALUE_MAP = {
     { VERSION_FIX_DB_UPGRADE_TO_API20, "VERSION_FIX_DB_UPGRADE_TO_API20" },
     { VERSION_UPDATE_PHOTO_ALBUM_DATEMODIFIED_TIGGER, "VERSION_UPDATE_PHOTO_ALBUM_DATEMODIFIED_TIGGER" },
@@ -224,6 +227,25 @@ void RdbUpgradeUtils::ReportUpgradeDfxMessages(int64_t startTime, int32_t srcVer
     reportData.exceptionVersions = exceptionVersions.substr(0, UPGRADE_EXCEPTION_VERSIONS_STR_LIMIT);
     DfxManager::GetInstance()->HandleUpgradeFault(reportData);
     UPGRADE_DFX_MESSAGES.clear();
+}
+
+void RdbUpgradeUtils::SetOldVersion(int32_t oldVersion)
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(RDB_CONFIG, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    prefs->PutInt(RDB_OLD_VERSION, oldVersion);
+    prefs->FlushSync();
+}
+
+int32_t RdbUpgradeUtils::GetOldVersion()
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(RDB_CONFIG, errCode);
+    CHECK_AND_RETURN_RET_LOG(prefs, oldVersion_, "get preferences error: %{public}d", errCode);
+    return prefs->GetInt(RDB_OLD_VERSION, oldVersion_);
 }
 } // namespace Media
 } // namespace OHOS

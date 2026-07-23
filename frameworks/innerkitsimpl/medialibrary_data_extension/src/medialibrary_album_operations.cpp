@@ -70,6 +70,7 @@
 #include "file_manager_asset_operations.h"
 #include "file_manager_album_operations.h"
 #include "media_duplicate_checker_utils.h"
+#include "medialibrary_rdb_helper.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -490,12 +491,12 @@ int DoCreatePhotoAlbum(const string &albumName, const string &relativePath, cons
     vector<ValueObject> bindArgs;
     sql.append("INSERT").append(" OR ROLLBACK").append(" INTO ").append(PhotoAlbumColumns::TABLE).append(" ");
 
-    MediaLibraryRdbStore::BuildValuesSql(albumValues, bindArgs, sql);
+    MediaLibraryRdbHelper::BuildValuesSql(albumValues, bindArgs, sql);
 
     RdbPredicates wherePredicates(PhotoAlbumColumns::TABLE);
     PrepareWhere(albumName, relativePath, wherePredicates);
     sql.append(" WHERE NOT EXISTS (");
-    MediaLibraryRdbStore::BuildQuerySql(wherePredicates, { PhotoAlbumColumns::ALBUM_ID }, bindArgs, sql);
+    MediaLibraryRdbHelper::BuildQuerySql(wherePredicates, { PhotoAlbumColumns::ALBUM_ID }, bindArgs, sql);
     sql.append(")");
     MEDIA_DEBUG_LOG("DoCreatePhotoAlbum InsertSql: %{private}s", sql.c_str());
 
@@ -2175,7 +2176,7 @@ int32_t MediaLibraryAlbumOperations::RecoverPhotoAssets(const DataSharePredicate
 {
     RdbPredicates rdbPredicates = RdbUtils::ToPredicates(predicates, PhotoColumn::PHOTOS_TABLE);
     vector<string> whereArgs = rdbPredicates.GetWhereArgs();
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(rdbPredicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(rdbPredicates);
     MEDIA_INFO_LOG("Start recover %{public}d assets from trash", static_cast<int32_t>(whereArgs.size()));
 
     // 恢复适配连拍照片

@@ -25,6 +25,7 @@ ohos_unittest("medialibrary_rdb_test") {
   include_dirs = [
     "./include",
     "./include/event_handler",
+    "./include/rdbstore",
     "../medialibrary_unittest_utils/include",
     "../get_self_permissions/include",
     "${MEDIALIB_CLOUD_SYNC_PATH}/include",
@@ -50,13 +51,20 @@ ohos_unittest("medialibrary_rdb_test") {
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/event_handler/table_event_handler_on_create_test.cpp",
     "./src/event_handler/table_event_handler_on_upgrade_test.cpp",
+    "./src/rdbstore/medialibrary_rdbstore_delete_test.cpp",
+    "./src/rdbstore/medialibrary_rdbstore_insert_test.cpp",
+    "./src/rdbstore/medialibrary_rdbstore_query_test.cpp",
+    "./src/rdbstore/medialibrary_rdbstore_update_test.cpp",
     "./src/media_datashare_stub_impl_test.cpp",
     "./src/medialibrary_dir_operations_test.cpp",
+    "./src/medialibrary_rdb_helper_test.cpp",
+    "./src/medialibrary_rdb_operations_test.cpp",
     "./src/medialibrary_rdb_test.cpp",
     "./src/medialibrary_subscriber_test.cpp",
     "./src/moving_photo_processor_test.cpp",
     "./src/medialibrary_rdb_upgrade_test.cpp"
   ]
+
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",

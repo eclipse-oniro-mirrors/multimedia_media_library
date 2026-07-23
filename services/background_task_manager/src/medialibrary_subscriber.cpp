@@ -102,6 +102,7 @@
 #include "watch_system_handler.h"
 #include "critical_label_task_queue.h"
 #endif
+#include "medialibrary_rdb_operations.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::NetManagerStandard;
@@ -527,7 +528,7 @@ void MedialibrarySubscriber::WalCheckPointAsync()
     }
     std::thread([] {
         std::unique_lock<std::shared_mutex> lock(MedialibrarySubscriber::backgroundTaskMutex_);
-        MediaLibraryRdbStore::WalCheckPoint();
+        MediaLibraryRdbOperations::WalCheckPoint();
     }).detach();
 }
 

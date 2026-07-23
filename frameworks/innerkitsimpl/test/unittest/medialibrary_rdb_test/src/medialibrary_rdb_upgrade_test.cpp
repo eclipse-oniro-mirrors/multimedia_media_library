@@ -58,9 +58,9 @@ HWTEST_F(MediaLibraryRdbUpgradeTest, medialib_OnUpGrade_test_001, TestSize.Level
 
     std::shared_ptr<MediaLibraryRdbStore> rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     ASSERT_NE(rdbStore, nullptr);
-    ret = callback.OnUpgrade(*(rdbStore->GetRaw().get()), rdbStore->GetOldVersion(), 1);
+    ret = callback.OnUpgrade(*(rdbStore->GetRaw().get()), RdbUpgradeUtils::GetOldVersion(), 1);
     EXPECT_EQ(ret, E_OK);
-    ret = callback.OnUpgrade(*(rdbStore->GetRaw().get()), rdbStore->GetOldVersion(), MEDIA_RDB_VERSION);
+    ret = callback.OnUpgrade(*(rdbStore->GetRaw().get()), RdbUpgradeUtils::GetOldVersion(), MEDIA_RDB_VERSION);
     EXPECT_EQ(ret, E_OK);
     MediaLibraryUnistoreManager::GetInstance().Stop();
     MEDIA_INFO_LOG("end medialib_OnUpGrade_test_001");

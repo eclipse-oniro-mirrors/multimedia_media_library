@@ -54,7 +54,7 @@ int32_t UriSensitiveOperations::UpdateOperation(MediaLibraryCommand &cmd,
     if (trans == nullptr) {
         updateRows = MediaLibraryRdbStore::UpdateWithDateTime(cmd.GetValueBucket(), rdbPredicate);
     } else {
-        updateRows = trans->Update(cmd.GetValueBucket(), rdbPredicate);
+        updateRows = trans->UpdateWithDateTime(cmd.GetValueBucket(), rdbPredicate);
     }
     CHECK_AND_RETURN_RET_LOG(updateRows >= 0, E_HAS_DB_ERROR,
         "UriSensitive Update db failed, errCode = %{public}d", updateRows);

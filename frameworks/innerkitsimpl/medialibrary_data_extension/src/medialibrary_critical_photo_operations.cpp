@@ -17,9 +17,9 @@
 #include "medialibrary_errno.h"
 #include "asset_accurate_refresh.h"
 #include "refresh_business_name.h"
+#include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unistore_manager.h"
-
 #include "medialibrary_rdb_utils.h"
 #include "rdb_utils.h"
 
@@ -109,7 +109,7 @@ int32_t MediaLibraryCriticalPhotoOperations::SetPhotoCritical(MediaLibraryComman
         PhotoColumn::PHOTOS_TABLE);
     vector<string> notifyUris = predicates.GetWhereArgs();
     MEDIA_INFO_LOG("SetPhotoCritical %{public}zu Photos, isCritical: %{public}d", notifyUris.size(), isCriticalInt);
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
 
     NativeRdb::ValuesBucket values;
     values.Put(PhotoColumn::PHOTO_RISK_STATUS, photoRiskStatus);

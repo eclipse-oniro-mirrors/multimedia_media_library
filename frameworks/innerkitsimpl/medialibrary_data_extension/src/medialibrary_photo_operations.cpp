@@ -95,6 +95,8 @@
 #include "file_parser.h"
 #include "scan_config_builder.h"
 #include "media_values_bucket_utils.h"
+#include "medialibrary_rdb_helper.h"
+#include "medialibrary_rdb_operations.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -395,7 +397,7 @@ static shared_ptr<NativeRdb::ResultSet> HandleAlbumIndexOfUri(MediaLibraryComman
     columns.push_back(MediaColumn::MEDIA_ID);
     RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     CHECK_AND_RETURN_RET_LOG(GetPredicatesByAlbumId(albumId, predicates) == E_SUCCESS, nullptr, "invalid album uri");
-    return MediaLibraryRdbStore::GetIndexOfUri(predicates, columns, photoId);
+    return MediaLibraryRdbOperations::GetIndexOfUri(predicates, columns, photoId);
 }
 
 shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::HandleIndexOfUri(
@@ -410,7 +412,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::HandleIndexOfUri(
     predicates.And()->EqualTo(
         PhotoColumn::PHOTO_CLEAN_FLAG, std::to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
     CHECK_AND_RETURN_RET_LOG(AppendValidOrderClause(cmd, predicates, photoId), nullptr, "invalid orderby");
-    return MediaLibraryRdbStore::GetIndexOfUriForPhotos(predicates, columns, photoId);
+    return MediaLibraryRdbOperations::GetIndexOfUriForPhotos(predicates, columns, photoId);
 }
 
 static int32_t QueryAnalysisAlbumById(const string &albumId, PhotoAlbumSubType &subType, string &albumName)
@@ -452,7 +454,7 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::HandleAnalysisInde
     vector<string> columns;
     columns.push_back(orderClause);
     columns.push_back(MediaColumn::MEDIA_ID);
-    return MediaLibraryRdbStore::GetIndexOfUri(predicates, columns, photoId);
+    return MediaLibraryRdbOperations::GetIndexOfUri(predicates, columns, photoId);
 }
 
 shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::Query(
@@ -481,9 +483,9 @@ shared_ptr<NativeRdb::ResultSet> MediaLibraryPhotoOperations::Query(
     CHECK_AND_RETURN_RET(cmd.GetOprnType() != OperationType::UPDATE_SEARCH_INDEX,
         MediaLibraryRdbStore::Query(predicates, columns));
     CHECK_AND_RETURN_RET(cmd.GetOprnType() != OperationType::EDIT_DATA_EXISTS,
-        MediaLibraryRdbStore::QueryEditDataExists(predicates));
+        MediaLibraryRdbOperations::QueryEditDataExists(predicates));
     CHECK_AND_RETURN_RET(cmd.GetOprnType() != OperationType::MOVING_PHOTO_VIDEO_READY,
-        MediaLibraryRdbStore::QueryMovingPhotoVideoReady(predicates));
+        MediaLibraryRdbOperations::QueryMovingPhotoVideoReady(predicates));
     MediaLibraryRdbUtils::AddQueryIndex(predicates, columns);
     return MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
 }
@@ -695,7 +697,7 @@ static void UpdateLastVisitTime(MediaLibraryCommand &cmd, const string &id)
         return;
     }
     std::thread([=] {
-        int32_t changedRows = MediaLibraryRdbStore::UpdateLastVisitTime(id);
+        int32_t changedRows = MediaLibraryRdbOperations::UpdateLastVisitTime(id);
         if (changedRows <= 0) {
             MEDIA_ERR_LOG("update lastVisitTime Failed, changedRows = %{public}d.", changedRows);
         }
@@ -1506,7 +1508,7 @@ int32_t MediaLibraryPhotoOperations::TrashPhotos(MediaLibraryCommand &cmd)
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(cmd.GetDataSharePred(),
         PhotoColumn::PHOTOS_TABLE);
     vector<string> notifyUris = rdbPredicate.GetWhereArgs();
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(rdbPredicate);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(rdbPredicate);
     std::shared_ptr<AlbumData> albumData = std::make_shared<AlbumData>();
     vector<string> fileIds = rdbPredicate.GetWhereArgs();
     MEDIA_INFO_LOG("Start trash %{public}zu photos", fileIds.size());
@@ -1597,7 +1599,7 @@ int32_t MediaLibraryPhotoOperations::DiscardCameraPhoto(MediaLibraryCommand &cmd
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(cmd.GetDataSharePred(),
         PhotoColumn::PHOTOS_TABLE);
     vector<string> notifyUris = rdbPredicate.GetWhereArgs();
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(rdbPredicate);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(rdbPredicate);
     ret = MediaLibraryAssetOperations::DeleteFromDisk(rdbPredicate, false, true);
     MEDIA_INFO_LOG("MultistagesCapture discard end, ret: %{public}d.", ret);
     return ret;
@@ -2152,7 +2154,7 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
 
     vector<string> notifyUris = predicates.GetWhereArgs();
     MEDIA_INFO_LOG("Hide %{public}zu Photos, hiddenState: %{public}d", notifyUris.size(), hiddenState);
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     if (hiddenState != 0) {
         MediaLibraryPhotoOperations::UpdateSourcePath(predicates.GetWhereArgs());
         HandleLivePhoto4dStatus(predicates.GetWhereArgs(), assetRefresh);
@@ -2234,7 +2236,7 @@ static int32_t BatchSetFavorite(MediaLibraryCommand& cmd)
 
     RdbPredicates predicates = RdbUtils::ToPredicates(cmd.GetDataSharePred(), PhotoColumn::PHOTOS_TABLE);
     vector<string> notifyUris = predicates.GetWhereArgs();
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     ValuesBucket values;
     values.Put(PhotoColumn::MEDIA_IS_FAV, favoriteState);
     int32_t updatedRows = assetRefresh.UpdateWithDateTime(values, predicates);
@@ -2286,7 +2288,7 @@ int32_t MediaLibraryPhotoOperations::BatchSetUserComment(MediaLibraryCommand& cm
     vector<shared_ptr<FileAsset>> fileAssetVector;
     vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH,
         PhotoColumn::MEDIA_TYPE, PhotoColumn::MEDIA_NAME };
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(*(cmd.GetAbsRdbPredicates()));
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(*(cmd.GetAbsRdbPredicates()));
 
     int32_t errCode = GetFileAssetVectorFromDb(*(cmd.GetAbsRdbPredicates()),
         OperationObject::FILESYSTEM_PHOTO, fileAssetVector, columns);
@@ -2985,7 +2987,7 @@ int32_t MediaLibraryPhotoOperations::BatchSetOwnerAlbumId(MediaLibraryCommand &c
     vector<shared_ptr<FileAsset>> fileAssetVector;
     vector<string> columns = { PhotoColumn::MEDIA_ID, PhotoColumn::MEDIA_FILE_PATH,
         PhotoColumn::MEDIA_TYPE, PhotoColumn::MEDIA_NAME };
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(*(cmd.GetAbsRdbPredicates()));
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(*(cmd.GetAbsRdbPredicates()));
 
     // Check if move from system album
     bool isSystemAlbum = false;
@@ -3075,7 +3077,7 @@ int32_t MediaLibraryPhotoOperations::BatchSetRecentShow(MediaLibraryCommand &cmd
 
     RdbPredicates predicates = RdbUtils::ToPredicates(cmd.GetDataSharePred(), PhotoColumn::PHOTOS_TABLE);
     vector<string> notifyUris = predicates.GetWhereArgs();
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     ValuesBucket values;
     values.Put(PhotoColumn::PHOTO_IS_RECENT_SHOW, recentShowState);
     int32_t updatedRows = rdbStore->UpdateWithDateTime(values, predicates);
@@ -6297,7 +6299,7 @@ int32_t MediaLibraryPhotoOperations::DegenerateMovingPhoto(MediaLibraryCommand &
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Failed to get rdbStore");
     RdbPredicates predicates = RdbUtils::ToPredicates(cmd.GetDataSharePred(), PhotoColumn::PHOTOS_TABLE);
-    MediaLibraryRdbStore::ReplacePredicatesUriToId(predicates);
+    MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     ValuesBucket values;
     values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     int32_t updatedRows = rdbStore->UpdateWithDateTime(values, predicates);

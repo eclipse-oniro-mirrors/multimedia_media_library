@@ -42,9 +42,6 @@
 #include "album_accurate_refresh_manager.h"
 #include "refresh_business_name.h"
 #include "accurate_common_data.h"
-#include "ipc_skeleton.h"
-#include "accesstoken_kit.h"
-#include "parameters.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
 #include "lake_file_operations.h"
 #endif
@@ -55,7 +52,6 @@
 namespace OHOS::Media {
 using namespace std;
 using namespace NativeRdb;
-using namespace OHOS::Security::AccessToken;
 // LCOV_EXCL_START
 constexpr int32_t E_EMPTY_ALBUM_ID = 1;
 constexpr int32_t INVALID_INT32_VALUE = -1;
@@ -172,7 +168,6 @@ atomic<bool> MediaLibraryRdbUtils::isInRefreshTask = false;
 
 const string ANALYSIS_REFRESH_BUSINESS_TYPE = "ANALYSIS_ALBUM_REFRESH";
 const std::string MEDIA_COLUMN_COUNT_DISTINCT_FILE_ID = "count(distinct file_id)";
-static const std::string CONST_MEDIA_SECURE_ALBUM = "const.media.secure_album";
 
 static inline string GetStringValFromColumn(const shared_ptr<ResultSet> &resultSet, const int index)
 {
@@ -337,80 +332,12 @@ static inline shared_ptr<ResultSet> GetAnalysisAlbumBySubtype(const shared_ptr<M
     return rdbStore->Query(predicates, columns);
 }
 
-static string GetQueryFilter(const string &tableName, bool isAlbumRefresh)
-{
-    MediaLibraryTracer tracer;
-    tracer.Start("GetQueryFilter");
-    if (tableName == CONST_MEDIALIBRARY_TABLE) {
-        return string(CONST_MEDIALIBRARY_TABLE) + "." + CONST_MEDIA_DATA_DB_SYNC_STATUS + " = " +
-            to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
-    }
-    if (tableName == PhotoColumn::PHOTOS_TABLE) {
-        std::string filter = PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SYNC_STATUS + " = " +
-            to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)) + " AND " +
-            PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_CLEAN_FLAG + " = " +
-            to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
-#ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
-        if (OHOS::system::GetParameter(CONST_MEDIA_SECURE_ALBUM, "") == "true" && !isAlbumRefresh) {
-            // Check if the caller has MANAGE_RISK_PHOTOS permission
-            AccessTokenID tokenCaller = IPCSkeleton::GetCallingTokenID();
-            int res = AccessTokenKit::VerifyAccessToken(tokenCaller, MANAGE_RISK_PHOTOS);
-            if (res != PermissionState::PERMISSION_GRANTED) {
-                filter += " AND " + PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_IS_CRITICAL + " = 0";
-                MEDIA_DEBUG_LOG("MANAGE_RISK_PHOTOS permission denied, filter: %{public}s", filter.c_str());
-            } else {
-                MEDIA_DEBUG_LOG("MANAGE_RISK_PHOTOS permission granted, filter: %{public}s", filter.c_str());
-            }
-        }
-#endif
-        return filter;
-    }
-    if (tableName == PhotoAlbumColumns::TABLE) {
-        return PhotoAlbumColumns::TABLE + "." + PhotoAlbumColumns::ALBUM_DIRTY + " != " +
-            to_string(static_cast<int32_t>(DirtyTypes::TYPE_DELETED));
-    }
-    if (tableName == PhotoMap::TABLE) {
-        return PhotoMap::TABLE + "." + PhotoMap::DIRTY + " != " + to_string(static_cast<int32_t>(
-            DirtyTypes::TYPE_DELETED));
-    }
-    return "";
-}
-
-void MediaLibraryRdbUtils::AddQueryFilter(AbsRdbPredicates &predicates, bool isAlbumRefresh)
-{
-    /* build all-table vector */
-    string tableName = predicates.GetTableName();
-    vector<string> joinTables = predicates.GetJoinTableNames();
-    joinTables.push_back(tableName);
-    /* add filters */
-    string filters;
-    for (auto &t : joinTables) {
-        string filter = GetQueryFilter(t, isAlbumRefresh);
-        if (filter.empty()) {
-            continue;
-        }
-        if (filters.empty()) {
-            filters += filter;
-        } else {
-            filters += " AND " + filter;
-        }
-    }
-    if (filters.empty()) {
-        return;
-    }
-
-    /* rebuild */
-    string queryCondition = predicates.GetWhereClause();
-    queryCondition = queryCondition.empty() ? filters : filters + " AND " + queryCondition;
-    predicates.SetWhereClause(queryCondition);
-}
-
 static shared_ptr<ResultSet> QueryGoToFirst(const shared_ptr<MediaLibraryRdbStore>& rdbStore,
     const RdbPredicates &predicates, const vector<string> &columns)
 {
     MediaLibraryTracer tracer;
     tracer.Start("QueryGoToFirst");
-    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns, true);
+    auto resultSet = rdbStore->QueryByStepWithoutCount(predicates, columns, true);
     CHECK_AND_RETURN_RET(resultSet != nullptr, nullptr);
 
     MediaLibraryTracer goToFirst;
@@ -1272,7 +1199,7 @@ shared_ptr<ResultSet> MediaLibraryRdbUtils::QueryPortraitAlbumCover(const shared
     const string columnData = PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_FILE_PATH;
     const vector<string> columns = { columnFileId, columnDisplayName, columnData };
 
-    auto resultSet = rdbStore->StepQueryWithoutCheck(predicates, columns, true);
+    auto resultSet = rdbStore->QueryByStepWithoutCount(predicates, columns, true);
     string sql = RdbSqlUtils::BuildQueryString(predicates, columns);
     CHECK_AND_RETURN_RET(resultSet != nullptr, nullptr);
     int32_t err = resultSet->GoToFirstRow();

@@ -159,8 +159,6 @@ public:
         bool hiddenState, std::vector<std::string>& columns);
     EXPORT static std::string GetCover(const std::shared_ptr<NativeRdb::ResultSet> &resultSet);
 
-    static void AddQueryFilter(NativeRdb::AbsRdbPredicates &predicates, bool isAlbumRefresh = false);
-
     EXPORT static void UpdateAnalysisAlbumByFile(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::vector<std::string> &fileIds, const std::vector<int> &albumTypes);
 

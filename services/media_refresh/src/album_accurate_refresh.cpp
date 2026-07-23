@@ -26,6 +26,7 @@
 #include "accurate_debug_log.h"
 #include "medialibrary_tracer.h"
 #include "dfx_refresh_hander.h"
+#include "rdb_table_strategy_manager.h"
 #include "result_set_utils.h"
 #include "medialibrary_type_const.h"
 #include "medialibrary_unistore_manager.h"
@@ -163,7 +164,10 @@ int32_t AlbumAccurateRefresh::DeleteCommon(function<int32_t(ValuesBucket&)> upda
     MediaLibraryTracer tracer;
     tracer.Start("AlbumAccurateRefresh::DeleteCommon");
     ValuesBucket valuesBucket;
-    valuesBucket.PutInt(PhotoAlbumColumns::ALBUM_DIRTY, static_cast<int32_t>(DirtyType::TYPE_DELETED));
+    TableStrategyConfig config = {
+        .enableDefault = true,
+    };
+    RdbTableStrategyManager::GetInstance().ExtendDeleteValues(PhotoAlbumColumns::TABLE, valuesBucket, config);
     auto ret = updateExe(valuesBucket);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("rdbStore_->Delete failed, ret = %{public}d", ret);

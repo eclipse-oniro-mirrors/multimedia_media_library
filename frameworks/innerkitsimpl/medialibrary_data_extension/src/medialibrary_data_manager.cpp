@@ -1013,7 +1013,7 @@ void MediaLibraryDataManager::HandleUpgradeRdbAsync(bool isInMediaLibraryOnStart
 
         auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
         CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr!");
-        int32_t oldVersion = rdbStore->GetOldVersion();
+        int32_t oldVersion = RdbUpgradeUtils::GetOldVersion();
         int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
         if (oldVersion != -1 && oldVersion < MEDIA_RDB_VERSION) {
             // 使用新的数据库异步升级框架
@@ -1023,7 +1023,7 @@ void MediaLibraryDataManager::HandleUpgradeRdbAsync(bool isInMediaLibraryOnStart
         }
         // !! Do not add index here !!
         MediaLibraryRdbStore::AddUpgradeTable(rdbStore);
-        MediaLibraryRdbStore::CheckAndAddColumns(rdbStore);
+        MediaLibraryRdbStore::CheckAndAddPhotoAlbumColumns(rdbStore);
         MediaLibraryRdbStore::CheckAndAddPhotoTableColumns(rdbStore);
         MediaLibraryRdbStore::AddUpgradeIndex(rdbStore);
         RdbUpgradeUtils::ReportUpgradeDfxMessages(startTime, oldVersion, MEDIA_RDB_VERSION,

@@ -139,7 +139,7 @@ int32_t MediaAssetsRdbOperations::SaveFormInfo(const string& formId, const strin
     value.PutString(FormMap::FORMMAP_FORM_ID, formId);
     int64_t outRowId = -1;
     lock_guard<mutex> lock(facardMutex_);
-    int32_t errCode = MediaLibraryRdbStore::InsertInternal(outRowId, FormMap::FORM_MAP_TABLE, value);
+    int32_t errCode = MediaLibraryRdbStore::Insert(outRowId, FormMap::FORM_MAP_TABLE, value);
     bool cond = (errCode != NativeRdb::E_OK || outRowId < 0);
     CHECK_AND_RETURN_RET_LOG(!cond, E_HAS_DB_ERROR, "Insert into db failed, errCode = %{public}d", errCode);
     return static_cast<int32_t>(outRowId);

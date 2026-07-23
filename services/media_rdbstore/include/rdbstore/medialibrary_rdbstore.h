@@ -45,101 +45,99 @@ public:
     EXPORT int32_t Init(const NativeRdb::RdbStoreConfig &config, int version, NativeRdb::RdbOpenCallback &openCallback);
     EXPORT virtual void Stop() override;
     EXPORT static bool CheckRdbStore();
+    EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
+
+    // Insert
     EXPORT virtual int32_t Insert(MediaLibraryCommand &cmd, int64_t &rowId) override;
+    EXPORT static int Insert(int64_t &outRowId, const std::string &table, NativeRdb::ValuesBucket &row);
+
+    // BatchInsert
     EXPORT virtual int32_t BatchInsert(MediaLibraryCommand &cmd, int64_t& outInsertNum,
         std::vector<NativeRdb::ValuesBucket>& values) override;
+    EXPORT static int32_t BatchInsert(int64_t &outRowId, const std::string &table,
+        std::vector<NativeRdb::ValuesBucket> &values);
+    EXPORT static std::pair<int32_t, NativeRdb::Results> BatchInsertWithReturn(const std::string &table,
+        std::vector<NativeRdb::ValuesBucket> &values, const std::string &returningField);
+
+    // Delete(软删)
     EXPORT virtual int32_t Delete(MediaLibraryCommand &cmd, int32_t &deletedRows) override;
+    EXPORT static int32_t Delete(const NativeRdb::AbsRdbPredicates &predicates);
+    // Delete(硬删)
+    EXPORT int Delete(int &deletedRows, const std::string &table, const std::string &whereClause,
+        const std::vector<std::string> &args);
+    EXPORT int Delete(int &deletedRows, const NativeRdb::AbsRdbPredicates &predicates);
+    EXPORT std::pair<int32_t, NativeRdb::Results> DeleteWithReturn(const NativeRdb::AbsRdbPredicates &predicates,
+        const std::string &returningField);
+
+    // UpdateWithDateTime
     EXPORT virtual int32_t Update(MediaLibraryCommand &cmd, int32_t &changedRows) override;
+    EXPORT static int32_t UpdateWithDateTime(NativeRdb::ValuesBucket &values,
+        const NativeRdb::AbsRdbPredicates &predicates);
+    // Update
+    EXPORT int Update(int &changedRows, const std::string &table, const NativeRdb::ValuesBucket &row,
+        const std::string &whereClause, const std::vector<std::string> &args);
+    EXPORT int Update(int &changedRows, const NativeRdb::ValuesBucket &row,
+        const NativeRdb::AbsRdbPredicates &predicates);
+    EXPORT std::pair<int32_t, NativeRdb::Results> UpdateWithReturn(const NativeRdb::ValuesBucket &row,
+        const NativeRdb::AbsRdbPredicates &predicates, const std::string &returningField);
+
+    // QueryWithFilter
     EXPORT std::shared_ptr<NativeRdb::ResultSet> Query(MediaLibraryCommand &cmd,
         const std::vector<std::string> &columns) override;
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> Query(const NativeRdb::AbsRdbPredicates &predicates,
         const std::vector<std::string> &columns);
-
-    EXPORT int32_t ExecuteSql(const std::string &sql) override;
-    EXPORT std::shared_ptr<NativeRdb::ResultSet> QuerySql(const std::string &sql,
-        const std::vector<std::string> &selectionArgs = std::vector<std::string>()) override;
-
-    EXPORT static int32_t BatchInsert(int64_t &outRowId, const std::string &table,
-        std::vector<NativeRdb::ValuesBucket> &values);
-    EXPORT static void BuildValuesSql(const NativeRdb::ValuesBucket &values,
-        std::vector<NativeRdb::ValueObject> &bindArgs, std::string &sql);
-    EXPORT static void BuildQuerySql(const NativeRdb::AbsRdbPredicates &predicates,
-        const std::vector<std::string> &columns, std::vector<NativeRdb::ValueObject> &bindArgs, std::string &sql);
-    EXPORT static int32_t ExecuteForLastInsertedRowId(const std::string &sql,
-        const std::vector<NativeRdb::ValueObject> &bindArgs);
     EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryWithFilter(const NativeRdb::AbsRdbPredicates &predicates,
         const std::vector<std::string> &columns);
-    EXPORT static int32_t Delete(const NativeRdb::AbsRdbPredicates &predicates);
-    EXPORT static std::shared_ptr<NativeRdb::ResultSet> StepQueryWithoutCheck(
+    EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryByStepWithoutCount(
         const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,
         bool isAlbumRefresh = false);
-    EXPORT static int32_t UpdateWithDateTime(NativeRdb::ValuesBucket &values,
-        const NativeRdb::AbsRdbPredicates &predicates);
-    EXPORT static void ReplacePredicatesUriToId(NativeRdb::AbsRdbPredicates &predicates);
-    static std::shared_ptr<NativeRdb::ResultSet> GetIndexOfUri(const NativeRdb::AbsRdbPredicates &predicates,
-        const std::vector<std::string> &columns, const std::string &id);
-    static std::shared_ptr<NativeRdb::ResultSet> GetIndexOfUriForPhotos(const NativeRdb::AbsRdbPredicates &predicates,
-        const std::vector<std::string> &columns, const std::string &id);
-    EXPORT static bool ResetAnalysisTables();
-    EXPORT static bool ResetSearchTables();
-    EXPORT static int32_t UpdateLastVisitTime(const std::string &id);
-    EXPORT static bool HasColumnInTable(NativeRdb::RdbStore &store, const std::string &columnName,
-        const std::string &tableName);
-    static void AddColumnIfNotExists(NativeRdb::RdbStore &store, const std::string &columnName,
-        const std::string &columnType, const std::string &tableName);
-    EXPORT static int32_t QueryPragma(const std::string &key, int64_t &value);
-    EXPORT static void SetOldVersion(int32_t oldVersion);
-    EXPORT static int32_t GetOldVersion();
-    EXPORT static int32_t ReconstructMediaLibraryStorageFormat(const std::shared_ptr<MediaLibraryRdbStore> store);
-    EXPORT static void CheckAndAddPhotoTableColumns(const std::shared_ptr<MediaLibraryRdbStore> store);
-    EXPORT static void AddUpgradeIndex(const std::shared_ptr<MediaLibraryRdbStore> store);
-    EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryEditDataExists(
-        const NativeRdb::AbsRdbPredicates &predicates);
-    EXPORT static int32_t InsertInternal(int64_t &outRowId, const std::string &table, NativeRdb::ValuesBucket &row);
-    EXPORT int Update(int &changedRows, const std::string &table, const NativeRdb::ValuesBucket &row,
-        const std::string &whereClause, const std::vector<std::string> &args);
-    EXPORT std::string ObtainDistributedTableName(const std::string &device, const std::string &table, int &errCode);
+
+    // Query
+    EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const NativeRdb::AbsRdbPredicates &predicates,
+        const std::vector<std::string> &columns = {});
+    EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const std::string &sql,
+        const std::vector<NativeRdb::ValueObject> &args = {});
+
+    // ExecuteSql
+    EXPORT int32_t ExecuteSql(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args = {}) override;
+    EXPORT std::pair<int32_t, NativeRdb::Results> ExecuteSqlWithReturn(const std::string &sql,
+        const std::vector<NativeRdb::ValueObject> &args, const std::string &returningField);
+
+    EXPORT int ExecuteForChangedRowCount(int64_t &outValue, const std::string &sql,
+        const std::vector<NativeRdb::ValueObject> &args = {});
+    EXPORT static int32_t ExecuteForLastInsertedRowId(const std::string &sql,
+        const std::vector<NativeRdb::ValueObject> &bindArgs);
+
+    // QuerySql
+    EXPORT std::shared_ptr<NativeRdb::ResultSet> QuerySql(const std::string &sql,
+        const std::vector<std::string> &selectionArgs = std::vector<std::string>()) override;
+    EXPORT std::shared_ptr<NativeRdb::AbsSharedResultSet> QuerySql(const std::string &sql,
+        const std::vector<NativeRdb::ValueObject> &args);
+
+    // BackUp
     EXPORT int Backup(const std::string &databasePath, const std::vector<uint8_t> &encryptKey = {});
     EXPORT int Backup(const std::string &databasePath, bool integrityCheck,
         const std::vector<uint8_t> &encryptKey = {});
+    EXPORT int InterruptBackup();
+
+    // Restore
+    EXPORT int Restore(const std::string &backupPath, const std::vector<uint8_t> &newKey = {});
+    EXPORT bool IsSlaveDiffFromMaster() const;
+
+    // Distrubute db
     EXPORT int Sync(const DistributedRdb::SyncOption &option, const NativeRdb::AbsRdbPredicates &predicate,
         const DistributedRdb::AsyncBrief &async);
-    EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const std::string &sql,
-        const std::vector<NativeRdb::ValueObject> &args = {});
-    EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const NativeRdb::AbsRdbPredicates &predicates,
-        const std::vector<std::string> &columns = {});
-    EXPORT int Update(int &changedRows, const NativeRdb::ValuesBucket &row,
-        const NativeRdb::AbsRdbPredicates &predicates);
-    EXPORT int Insert(int64_t &outRowId, const std::string &table, NativeRdb::ValuesBucket &row);
-    EXPORT int Delete(int &deletedRows, const std::string &table, const std::string &whereClause,
-        const std::vector<std::string> &args);
-    EXPORT int Delete(int &deletedRows, const NativeRdb::AbsRdbPredicates &predicates);
-    EXPORT std::shared_ptr<NativeRdb::AbsSharedResultSet> QuerySql(const std::string &sql,
-        const std::vector<NativeRdb::ValueObject> &args);
-    EXPORT int InterruptBackup();
-    EXPORT bool IsSlaveDiffFromMaster() const;
-    EXPORT int Restore(const std::string &backupPath, const std::vector<uint8_t> &newKey = {});
-    static int32_t DoDeleteFromPredicates(const NativeRdb::AbsRdbPredicates &predicates, int32_t &deletedRows);
+    EXPORT std::string ObtainDistributedTableName(const std::string &device, const std::string &table, int &errCode);
+
+    // Do not casually add non-atomic capabilities to MediaLibraryRdbStore !!!
+
+    // 升级utils（无法拆分）, 慎重添加新能力 !!!
     int32_t DataCallBackOnCreate();
-    EXPORT int32_t ExecuteSql(std::string &sql, const std::vector<NativeRdb::ValueObject> &args)
-    {
-        return MediaLibraryRdbStore::GetRaw()->ExecuteSql(sql, args);
-    }
-
-    EXPORT static std::pair<int32_t, NativeRdb::Results> BatchInsert(const std::string &table,
-        std::vector<NativeRdb::ValuesBucket> &values, const std::string &returningField);
-    EXPORT std::pair<int32_t, NativeRdb::Results> Update(const NativeRdb::ValuesBucket &row,
-        const NativeRdb::AbsRdbPredicates &predicates, const std::string &returningField);
-    EXPORT std::pair<int32_t, NativeRdb::Results> Delete(const NativeRdb::AbsRdbPredicates &predicates,
-        const std::string &returningField);
-    EXPORT std::pair<int32_t, NativeRdb::Results> Execute(const std::string &sql,
-        const std::vector<NativeRdb::ValueObject> &args, const std::string &returningField);
-
-    static void WalCheckPoint();
-    EXPORT int ExecuteForChangedRowCount(int64_t &outValue, const std::string &sql,
-        const std::vector<NativeRdb::ValueObject> &args = {});
-    EXPORT static std::shared_ptr<NativeRdb::ResultSet> QueryMovingPhotoVideoReady(
-        const NativeRdb::AbsRdbPredicates &predicaties);
+    EXPORT static void AddUpgradeTable(const std::shared_ptr<MediaLibraryRdbStore> store);
+    EXPORT static void AddUpgradeIndex(const std::shared_ptr<MediaLibraryRdbStore> store);
+    EXPORT static void CheckAndAddPhotoAlbumColumns(const std::shared_ptr<MediaLibraryRdbStore> store);
+    EXPORT static void CheckAndAddPhotoTableColumns(const std::shared_ptr<MediaLibraryRdbStore> store);
+    EXPORT static int32_t ReconstructMediaLibraryStorageFormat(const std::shared_ptr<MediaLibraryRdbStore> store);
     EXPORT static void StatEditAndAttachmentSize(const std::string &editDataDir,
         uint64_t &editDataSize, uint64_t &attachmentSize);
     EXPORT static int32_t UpdateEditDataSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
@@ -147,25 +145,28 @@ public:
         EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
     EXPORT static int32_t UpdateAttachmentSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         const std::string &photoId, uint64_t attachmentSize);
-    EXPORT static void AddDefaultInsertPhotoValues(NativeRdb::ValuesBucket& values);
-    EXPORT static int32_t PrepareShootingModeAlbum(NativeRdb::RdbStore &store);
-    EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
-    EXPORT static void AddUpgradeTable(const std::shared_ptr<MediaLibraryRdbStore> store);
-    EXPORT static void CheckAndAddColumns(const std::shared_ptr<MediaLibraryRdbStore> store);
-    EXPORT static int32_t AddCoverOrderValuesFromRecord(NativeRdb::ValuesBucket& values);
 
 private:
+    // Insert
+    static int32_t InsertInternal(int64_t &outRowId, const std::string &table, const NativeRdb::ValuesBucket &row);
+    // BatchInsert
+    static int32_t BatchInsertInternal(int64_t &outRowId, const std::string &table,
+        const std::vector<NativeRdb::ValuesBucket> &values);
+    // Delete
+    static int32_t DeleteInternal(const NativeRdb::AbsRdbPredicates &predicates, int32_t &deletedRows);
+    // Query
+    static std::shared_ptr<NativeRdb::ResultSet> QueryInternal(const NativeRdb::AbsRdbPredicates &predicates,
+        const std::vector<std::string> &columns, bool preCount, bool isAlbumRefresh = false);
+
     EXPORT static const std::string CloudSyncTriggerFunc(const std::vector<std::string> &args);
     EXPORT static const std::string IsCallerSelfFunc(const std::vector<std::string> &args);
     EXPORT static const std::string RegexReplaceFunc(const std::vector<std::string> &args);
-    static int32_t BatchInsertCommon(int64_t &outRowCount, const std::string &table,
-        std::vector<NativeRdb::ValuesBucket> &values, std::function<int32_t()> execBatchInsert);
+
     friend class TransactionOperations;
     static std::shared_ptr<NativeRdb::RdbStore> rdbStore_;
     EXPORT static const std::string BeginGenerateHighlightThumbnail(const std::vector<std::string>& args);
     EXPORT static const std::string PhotoAlbumNotifyFunc(const std::vector<std::string>& args);
     static std::mutex reconstructLock_;
-    static std::mutex walCheckPointMutex_;
     NativeRdb::RdbStoreConfig config_ {""};
 };
 
