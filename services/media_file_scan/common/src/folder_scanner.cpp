@@ -119,7 +119,7 @@ FolderScanner FolderScanner::BuildSubDirFolderScanner(const std::string &current
     return FolderScanner("", scanMode_);
 }
 
-int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue, bool isLakeCloneRestoring)
+int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue)
 {
     MEDIA_DEBUG_LOG("ScanCurrentDirectory enter dir: %{public}s", FileScanUtils::GarbleFilePath(rootPath_).c_str());
     CHECK_AND_RETURN_RET(!IsIncrementScanConflict(), ERR_SUCCESS);
@@ -164,7 +164,7 @@ int32_t FolderScanner::ScanCurrentDirectory(queue<std::string> &subDirQueue, boo
                 MEDIA_INFO_LOG("Skip file path: %{public}s", FileScanUtils::GarbleFilePath(currentFilePath).c_str());
                 continue;
             }
-            CHECK_AND_PRINT_LOG(HandleFiles(currentFilePath, assetRefresh, isLakeCloneRestoring) == ERR_SUCCESS,
+            CHECK_AND_PRINT_LOG(HandleFiles(currentFilePath, assetRefresh) == ERR_SUCCESS,
                 "Failed to handle file %{public}s ", FileScanUtils::GarbleFilePath(currentFilePath).c_str());
         }
     }
@@ -254,7 +254,7 @@ int32_t FolderScanner::HandleParentFolderByType(FolderOperationType type)
 }
 
 int32_t FolderScanner::HandleFiles(std::string &currentFilePath,
-    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh, bool isLakeCloneRestoring)
+    std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh)
 {
     std::unique_ptr<FileParser> fileParser = BuildFileParser(currentFilePath);
     CHECK_AND_RETURN_RET_LOG(fileParser != nullptr && fileParser->IsFileValidAsset(), ERR_FAIL,
@@ -266,7 +266,7 @@ int32_t FolderScanner::HandleFiles(std::string &currentFilePath,
 
     MEDIA_INFO_LOG("HandleFiles, type[%{public}d], albumId[%{public}d]", type, albumInfos_.albumId);
     FileUpdateType updateType = fileParser->GetFileUpdateType();
-    if (updateType == FileUpdateType::INSERT && isLakeCloneRestoring) {
+    if (updateType == FileUpdateType::INSERT && GlobalScanner::GetInstance().IsLakeCloneRestoring()) {
         int32_t isDeleteForCloneRestore = fileParser->IsExistSameFileForCloneRestore(albumInfos_.albumId);
         CHECK_AND_EXECUTE(isDeleteForCloneRestore != E_OK, updateType = FileUpdateType::DELETE);
     }

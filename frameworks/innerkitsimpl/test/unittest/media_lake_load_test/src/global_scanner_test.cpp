@@ -19,6 +19,8 @@
 #include "global_scanner_test.h"
 
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <memory>
 #include <thread>
 #include <chrono>
@@ -1621,6 +1623,5 @@ HWTEST_F(GlobalScannerTest, MixedOperations_009, TestSize.Level1)
     ScannerStatus status = scanner.GetScannerStatus();
     EXPECT_EQ(status, ScannerStatus::IDLE);
 }
-
 } // namespace Media
 } // namespace OHOS
