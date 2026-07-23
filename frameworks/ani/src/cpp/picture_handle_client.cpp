@@ -149,6 +149,24 @@ uint32_t ReadAuxiliaryPictureCount(const uint8_t* addr, uint32_t& offset)
     return count;
 }
 
+int32_t CheckDataOverflow(uint32_t readOffset, uint32_t dataSize, uint32_t msgLen, void *addr)
+{
+    if (readOffset > UINT32_MAX - dataSize) {
+        ANI_ERR_LOG("Data size overflow: readOffset %{public}u + dataSize %{public}u would overflow",
+            readOffset, dataSize);
+        munmap(addr, msgLen);
+        return E_ERR;
+    }
+
+    if (readOffset + dataSize > msgLen) {
+        ANI_ERR_LOG("Data size overflow");
+        munmap(addr, msgLen);
+        return E_ERR;
+    }
+
+    return E_OK;
+}
+
 int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &fileId,
     std::shared_ptr<Media::Picture> &picture, bool &isHighQuality)
 {
@@ -173,9 +191,7 @@ int32_t PictureHandlerClient::ReadPicture(const int32_t &fd, const int32_t &file
         return E_NO_SUCH_FILE;
     }
 
-    if (readOffset + dataSize > msgLen) {
-        ANI_ERR_LOG("Data size overflow");
-        munmap(addr, msgLen);
+    if (CheckDataOverflow(readOffset, dataSize, msgLen, addr) != E_OK) {
         return E_ERR;
     }
 
@@ -454,6 +470,7 @@ bool PictureHandlerClient::ReadExifMetadata(MessageParcel &data, std::unique_ptr
     }
     ExifMetadata *exifMetadataPtr = ExifMetadata::Unmarshalling(data);
     auto exifMetadata = std::shared_ptr<ExifMetadata>(exifMetadataPtr);
+    CHECK_COND_RET(exifMetadataPtr != nullptr, false, "exifMetadataPtr is nullptr");
     picture->SetExifMetadata(exifMetadata);
     return true;
 }
