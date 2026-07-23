@@ -470,7 +470,7 @@ bool PictureHandlerClient::ReadExifMetadata(MessageParcel &data, std::unique_ptr
     }
     ExifMetadata *exifMetadataPtr = ExifMetadata::Unmarshalling(data);
     auto exifMetadata = std::shared_ptr<ExifMetadata>(exifMetadataPtr);
-    CHECK_AND_RETURN_RET(exifMetadataPtr != nullptr, false);
+    CHECK_COND_RET(exifMetadataPtr != nullptr, false, "exifMetadataPtr is nullptr");
     picture->SetExifMetadata(exifMetadata);
     return true;
 }
