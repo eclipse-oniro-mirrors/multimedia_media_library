@@ -442,11 +442,11 @@ int32_t UserFileClient::GetUserId()
 
 sptr<AppExecFwk::IBundleMgr> UserFileClient::GetSysBundleManager()
 {
+    lock_guard<mutex> lock(bundleMgrMutex_);
     if (bundleMgr_ != nullptr) {
         return bundleMgr_;
     }
 
-    lock_guard<mutex> lock(bundleMgrMutex_);
     auto systemAbilityMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
     if (systemAbilityMgr == nullptr) {
         NAPI_ERR_LOG("Failed to get SystemAbilityManager.");
@@ -459,13 +459,13 @@ sptr<AppExecFwk::IBundleMgr> UserFileClient::GetSysBundleManager()
         return nullptr;
     }
 
-    auto bundleMgr = iface_cast<AppExecFwk::IBundleMgr>(bundleObj);
-    if (bundleMgr == nullptr) {
+    bundleMgr_ = iface_cast<AppExecFwk::IBundleMgr>(bundleObj);
+    if (bundleMgr_ == nullptr) {
         NAPI_ERR_LOG("Failed to iface_cast");
         return nullptr;
     }
 
-    return bundleMgr;
+    return bundleMgr_;
 }
 
 string UserFileClient::GetBundleName()
