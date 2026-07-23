@@ -792,6 +792,39 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideoDuratio
     EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(11000), false);
 }
 
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckDurationFalse_ValidExtension_Test_001,
+    TestSize.Level1)
+{
+    string dirPath = "/data/test/mp4_check_duration_dir";
+    string filePath = dirPath + "/VID_test.mp4";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
+    EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath, false), true);
+    MediaFileUtils::DeleteDir(dirPath);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckDurationTrue_ValidExtension_Test_001,
+    TestSize.Level1)
+{
+    string dirPath = "/data/test/mp4_check_duration_dir";
+    string filePath = dirPath + "/VID_test.mp4";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
+    EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath), false);
+    MediaFileUtils::DeleteDir(dirPath);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoVideo_CheckDurationFalse_InvalidExtension_Test_001,
+    TestSize.Level1)
+{
+    string dirPath = "/data/test/mp4_check_duration_dir";
+    string filePath = dirPath + "/VID_test.avi";
+    EXPECT_EQ(MediaFileUtils::CreateDirectory(dirPath), true);
+    EXPECT_EQ(MediaFileUtils::CreateFile(filePath), true);
+    EXPECT_EQ(MovingPhotoFileUtils::CheckMovingPhotoVideo(filePath, false), false);
+    MediaFileUtils::DeleteDir(dirPath);
+}
+
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_CheckMovingPhotoEffectMode_Test_001, TestSize.Level1)
 {
     EXPECT_EQ(MediaFileUtils::CheckMovingPhotoEffectMode(-10), false);
