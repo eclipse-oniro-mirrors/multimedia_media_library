@@ -301,6 +301,17 @@
           ],
           "when": "always"
         }
+      },
+      {
+        "name": "ohos.permission.ACCESS_MEDIALIB_SANDBOX",
+        "reason": "$string:permission_access_medialib_sandbox",
+        "usedScene":{
+          "abilities":[
+            "MainAbility",
+            "DataShareExtAbility"
+          ],
+          "when": "always"
+        }
       }
     ],
     "proxyDatas": [
