@@ -37,8 +37,13 @@ namespace Media {
 bool ThumbnailUriUtils::ParseFileUri(const string &uriString, string &outFileId, string &outNetworkId,
     string &outTableName)
 {
-    outFileId = MediaFileUtils::GetIdFromUri(uriString);
-    outNetworkId = MediaFileUtils::GetNetworkIdFromUri(uriString);
+    MediaFileUri uri(uriString);
+    if (!uri.IsValid()) {
+        MEDIA_ERR_LOG("invalid uri, uri is %{private}s", uriString.c_str());
+        return false;
+    }
+    outFileId = uri.GetFileId();
+    outNetworkId = uri.GetNetworkId();
     outTableName = GetTableFromUri(uriString);
     return true;
 }
@@ -93,7 +98,7 @@ bool ThumbnailUriUtils::ParseKeyFrameThumbnailInfo(const string &uriString, stri
     outFileId = uri.GetFileId();
     auto &queryKey = uri.GetQueryKeys();
 
-    if (queryKey.count(THUMBNAIL_OPERN_KEYWORD) == 0 &&
+    if (queryKey.count(THUMBNAIL_OPERN_KEYWORD) == 0 ||
         queryKey[THUMBNAIL_OPERN_KEYWORD] != MEDIA_DATA_DB_KEY_FRAME) {
         MEDIA_ERR_LOG("The key_word in uri id not key_frame!");
         return false;
@@ -182,7 +187,7 @@ string ThumbnailUriUtils::GetDateModifiedFromUri(const string &uri)
     string pairString = uri.substr(index + 1);
     size_t startIndex = pairString.find('=');
     size_t endIndex = pairString.find('&');
-    if (startIndex == std::string::npos || endIndex == std::string::npos || endIndex - startIndex - 1 <= 0) {
+    if (startIndex == std::string::npos || endIndex == std::string::npos || endIndex <= startIndex) {
         MEDIA_ERR_LOG("GetDateModifiedFromUri failed to parse pairString: %{private}s", pairString.c_str());
         return "";
     }
