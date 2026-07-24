@@ -26,6 +26,7 @@
 #include "medialibrary_errno.h"
 #include "media_log.h"
 #include "media_compatible_info_column.h"
+#include "result_set_utils.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
