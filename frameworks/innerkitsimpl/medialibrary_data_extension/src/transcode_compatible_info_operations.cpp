@@ -100,7 +100,6 @@ int32_t TranscodeCompatibleInfoOperation::InsertCompatibleInfo(CompatibleInfo& c
     int32_t ret = rdbStore->ExecuteSql(sql, values);
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_DB_FAIL,
         "Insert compatibleInfo failed, ret : %{public}d", ret);
-    
     {
         lock_guard<mutex> lock(compatibleInfoCacheMutex_);
         compatibleInfoCache_.erase(compatibleInfo.bundleName);
