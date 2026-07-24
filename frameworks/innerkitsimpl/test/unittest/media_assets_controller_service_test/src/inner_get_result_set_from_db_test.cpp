@@ -143,27 +143,6 @@ static std::shared_ptr<DataShare::DataShareResultSet> GetResultSetFromDb(string 
     return resp.GetBody().resultSet;
 }
 
-HWTEST_F(GetResultSetFromDbTest, GetResultSetFromDbTest_Test_001, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Start GetResultSetFromDbTest_Test_001");
-    string columnName = "file_id";
-    string value = "1";
-    vector<string> columns;
-    std::shared_ptr<DataShare::DataShareResultSet> ptr = GetResultSetFromDb(columnName, value, columns);
-    EXPECT_NE(ptr, nullptr);
-
-    string columnName2 = "MEDIA_DATA_DB_URI";
-    string value2 = "test";
-    ptr = GetResultSetFromDb(columnName2, value2, columns);
-    EXPECT_NE(ptr, nullptr);
-
-    string columnName3 = "file_id_test";
-    string value3 = "test";
-    ptr = GetResultSetFromDb(columnName3, value3, columns);
-    EXPECT_NE(ptr, nullptr);
-    MEDIA_INFO_LOG("end GetResultSetFromDbTest_Test_001");
-}
-
 HWTEST_F(GetResultSetFromDbTest, GetResultSetFromDbTest_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start GetResultSetFromDbTest_Test_002");

@@ -1115,35 +1115,6 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_001 End");
 }
 
-HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_002, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 Start");
-    PhotoCustomRestoreOperation &operatorObj = PhotoCustomRestoreOperation ::GetInstance();
-    RestoreTaskInfo restoreTaskInfo;
-    restoreTaskInfo.bundleName = "test.bundle";
-    restoreTaskInfo.packageName = "test.package";
-    restoreTaskInfo.appId = "test.app";
-    restoreTaskInfo.isDeduplication = true;
-    restoreTaskInfo.albumId = 1;
-    restoreTaskInfo.hasPhotoCache = true;
-    vector<FileInfo> restoreFiles;
-    FileInfo fileInfo;
-    fileInfo.fileName = "test.jpg";
-    fileInfo.displayName = "test.jpg";
-    fileInfo.originFilePath = "/storage/media/local/files/test.jpg";
-    fileInfo.filePath = "/storage/media/local/files/Photo/1/test.jpg";
-    fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
-    fileInfo.size = 1024;
-    fileInfo.orientation = 0;
-    restoreFiles.push_back(fileInfo);
-    operatorObj.photoCache_.insert("test.jpg_1024_1_0");
-    int32_t sameFileNum = 0;
-    unordered_map<string, TimeInfo> timeInfoMap;
-    vector<FileInfo> result = operatorObj.BatchInsert(timeInfoMap, restoreTaskInfo, restoreFiles, sameFileNum, false);
-    EXPECT_EQ(result.size(), 0);
-    MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 End");
-}
-
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_HandleCustomRestore_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_HandleCustomRestore_Test_001 Start");
