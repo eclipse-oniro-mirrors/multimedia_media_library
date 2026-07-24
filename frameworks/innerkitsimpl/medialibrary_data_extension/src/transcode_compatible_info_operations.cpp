@@ -100,6 +100,10 @@ int32_t TranscodeCompatibleInfoOperation::InsertCompatibleInfo(CompatibleInfo& c
     CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, E_DB_FAIL,
         "Insert compatibleInfo failed, ret : %{public}d", ret);
     
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.erase(compatibleInfo.bundleName);
+    }
     MEDIA_INFO_LOG("Insert compatibleInfo success");
     return E_OK;
 }
@@ -166,7 +170,10 @@ int32_t TranscodeCompatibleInfoOperation::UpsertCompatibleInfo(const std::string
     compatibleInfo.bundleName = bundleName;
     compatibleInfo.highResolution = highResolution;
     compatibleInfo.encodings = encodings;
-    compatibleInfoCache_.erase(bundleName);
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.erase(bundleName);
+    }
     MEDIA_INFO_LOG("Upsert compatibleInfo success");
     return E_OK;
 }
@@ -200,7 +207,10 @@ int32_t TranscodeCompatibleInfoOperation::UpsertPreferredCompatibleMode(const st
     CompatibleInfo compatibleInfo;
     compatibleInfo.bundleName = bundleName;
     compatibleInfo.preferredCompatibleMode = preferredCompatibleMode;
-    compatibleInfoCache_.erase(bundleName);
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.erase(bundleName);
+    }
     MEDIA_INFO_LOG("Upsert preferredCompatibleMode success");
     return E_OK;
 }
@@ -225,11 +235,14 @@ int32_t TranscodeCompatibleInfoOperation::DeleteCompatibleInfo(const std::string
 int32_t TranscodeCompatibleInfoOperation::QueryCompatibleInfo(
     const std::string &bundleName, CompatibleInfo& compatibleInfo)
 {
-    auto it = compatibleInfoCache_.find(bundleName);
-    if (it != compatibleInfoCache_.end()) {
-        compatibleInfo = it->second;
-        MEDIA_INFO_LOG("Query compatibleInfo success");
-        return E_OK;
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        auto it = compatibleInfoCache_.find(bundleName);
+        if (it != compatibleInfoCache_.end()) {
+            compatibleInfo = it->second;
+            MEDIA_INFO_LOG("Query compatibleInfo success");
+            return E_OK;
+        }
     }
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "rdbStore is null");
@@ -256,26 +269,17 @@ int32_t TranscodeCompatibleInfoOperation::QueryCompatibleInfo(
         return E_OK;
     }
 
-    int index;
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::BUNDLE_NAME, index);
-    resultSet->GetString(index, compatibleInfo.bundleName);
-    
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::HIGH_RESOLUTION, index);
-    int32_t highResolution;
-    resultSet->GetInt(index, highResolution);
-    compatibleInfo.highResolution = highResolution;
-
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::ENCODINGS, index);
-    string encodingsStr;
-    resultSet->GetString(index, encodingsStr);
-    compatibleInfo.encodings = StringToVector(encodingsStr);
-
-    resultSet->GetColumnIndex(TabCompatibleInfoColumn::PREFERRED_COMPATIBLE_MODE, index);
-    int32_t preferredCompatibleMode = static_cast<int32_t>(PreferredCompatibleMode::DEFAULT);
-    resultSet->GetInt(index, preferredCompatibleMode);
-    compatibleInfo.preferredCompatibleMode = static_cast<PreferredCompatibleMode>(preferredCompatibleMode);
+    compatibleInfo.bundleName = GetStringVal(TabCompatibleInfoColumn::BUNDLE_NAME, resultSet);
+    compatibleInfo.highResolution = GetInt32Val(TabCompatibleInfoColumn::HIGH_RESOLUTION, resultSet);
+    compatibleInfo.encodings = StringToVector(GetStringVal(TabCompatibleInfoColumn::ENCODINGS, resultSet));
+    compatibleInfo.preferredCompatibleMode =
+        static_cast<PreferredCompatibleMode>(GetInt32Val(TabCompatibleInfoColumn::PREFERRED_COMPATIBLE_MODE,
+            resultSet));
     resultSet->Close();
-    compatibleInfoCache_.emplace(compatibleInfo.bundleName, compatibleInfo);
+    {
+        lock_guard<mutex> lock(compatibleInfoCacheMutex_);
+        compatibleInfoCache_.emplace(compatibleInfo.bundleName, compatibleInfo);
+    }
     MEDIA_INFO_LOG("Query compatibleInfo success");
 
     return E_OK;
