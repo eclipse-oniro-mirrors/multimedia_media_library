@@ -71,7 +71,7 @@ AnalysisAlbumImpactAnalyzer* AnalysisStrategyRegistry::GetAnalyzer(int32_t subty
     auto& analyzerMap = Impl();
     auto it = analyzerMap.find(subtype);
     CHECK_AND_RETURN_RET(it == analyzerMap.end(), it->second.get());
-    MEDIA_WARN_LOG("Subtype: %{public}d not registered, fallback to ANY", subtype);
+    MEDIA_DEBUG_LOG("Subtype: %{public}d not registered, fallback to ANY", subtype);
     it = analyzerMap.find(DEFAULT_SUBTYPE);
     CHECK_AND_RETURN_RET(it == analyzerMap.end(), it->second.get());
     analyzerMap.emplace(DEFAULT_SUBTYPE, CreateDefaultAnalyzer());

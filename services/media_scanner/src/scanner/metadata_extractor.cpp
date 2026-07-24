@@ -785,7 +785,7 @@ int32_t MetadataExtractor::ExtractAVLogMetadata(std::shared_ptr<Meta> &meta)
     if (iterCus != customInfo.end()) {
         videoMode = static_cast<int32_t>(VideoMode::LOG_VIDEO);
     }
-    MEDIA_INFO_LOG("ExtractAVLogMetadata videoMode=%{public}d", videoMode);
+    MEDIA_DEBUG_LOG("ExtractAVLogMetadata videoMode=%{public}d", videoMode);
     return videoMode;
 }
 

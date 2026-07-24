@@ -22,11 +22,11 @@ namespace OHOS::Media {
 int32_t PhotoVideoModeOperation::BatchUpdatePhotosVideoMode(std::shared_ptr<MediaLibraryRdbStore> &rdbStore,
                                                             const std::vector<std::string> &logFileIds)
 {
-    MEDIA_INFO_LOG("logFileIds size = %{public}d", static_cast<int32_t>(logFileIds.size()));
     if (logFileIds.empty()) {
-        MEDIA_INFO_LOG("BatchUpdatePhotosVideoMode has no data need to update.");
+        MEDIA_DEBUG_LOG("BatchUpdatePhotosVideoMode has no data need to update.");
         return E_OK;
     }
+    MEDIA_INFO_LOG("logFileIds size = %{public}d", static_cast<int32_t>(logFileIds.size()));
     NativeRdb::ValuesBucket updateLogPostBucket;
     updateLogPostBucket.Put(PhotoColumn::PHOTO_VIDEO_MODE, static_cast<int32_t>(VideoMode::LOG_VIDEO));
     NativeRdb::AbsRdbPredicates updateLogPredicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
