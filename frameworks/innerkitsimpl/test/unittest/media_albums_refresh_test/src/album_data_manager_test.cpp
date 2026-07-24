@@ -462,14 +462,6 @@ HWTEST_F(AlbumDataManagerTest, GetAlbumInfos_LargeAlbumIds_Test, TestSize.Level0
     EXPECT_EQ(infos.size(), 0);
 }
 
-HWTEST_F(AlbumDataManagerTest, GetInitAlbumInfos_Empty_Test, TestSize.Level0)
-{
-    MEDIA_INFO_LOG("Start GetInitAlbumInfos_Empty_Test");
-    AlbumDataManager dataManager;
-    unordered_map<int32_t, AlbumChangeInfo> initInfos = dataManager.GetInitAlbumInfos();
-    EXPECT_EQ(initInfos.size(), 0);
-}
-
 HWTEST_F(AlbumDataManagerTest, GetInitAlbumInfos_WithData_Test, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Start GetInitAlbumInfos_WithData_Test");

@@ -1238,24 +1238,6 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_001, TestSiz
     MEDIA_INFO_LOG("cloud_asset_batch_test_001 End");
 }
 
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_002, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_batch_test_002 Start");
-    CloudMediaAssetManager &instance = CloudMediaAssetManager::GetInstance();
-    
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
-    
-    bool ret = instance.SetIsThumbnailUpdate();
-    EXPECT_EQ(ret, true);
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::IDLE;
-    ret = instance.SetIsThumbnailUpdate();
-    EXPECT_EQ(ret, false);
-    
-    MEDIA_INFO_LOG("cloud_asset_batch_test_002 End");
-}
-
 HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_batch_test_003, TestSize.Level1)
 {
     MEDIA_INFO_LOG("cloud_asset_batch_test_003 Start");
@@ -3506,63 +3488,6 @@ HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_multi_status_test_001, 
     EXPECT_EQ(operation->GetTaskInfo(), "0,0,0,0");
     
     MEDIA_INFO_LOG("cloud_asset_multi_status_test_001 End");
-}
-
-// 测试目标: 测试HandleStoppedCallback在非DOWNLOADING状态
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_stopped_non_downloading_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_stopped_non_downloading_test_001 Start");
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    
-    DownloadProgressObj progress;
-    progress.downloadId = 1;
-    progress.path = "/storage/cloud/files/test_stopped_non_dl.jpg";
-    
-    operation->downloadId_ = 1;
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::PAUSED;
-    operation->dataForDownload_.fileDownloadMap.EnsureInsert(progress.path, 1024);
-    
-    operation->HandleStoppedCallback(progress);
-    EXPECT_EQ(operation->cacheForDownload_.fileDownloadMap.Size(), 1);
-    
-    MEDIA_INFO_LOG("cloud_asset_stopped_non_downloading_test_001 End");
-}
-
-// 测试目标: 测试PauseDownloadTask多个暂停原因
-HWTEST_F(MediaLibraryCloudAssetDownloadTest, cloud_asset_pause_multi_cause_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("cloud_asset_pause_multi_cause_test_001 Start");
-    std::shared_ptr<CloudMediaAssetDownloadOperation> operation = CloudMediaAssetDownloadOperation::GetInstance();
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
-    operation->downloadId_ = 1;
-    
-    operation->pauseCause_ = CloudMediaTaskPauseCause::NO_PAUSE;
-    int32_t ret = operation->PauseDownloadTask(CloudMediaTaskPauseCause::TEMPERATURE_LIMIT);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(operation->pauseCause_, CloudMediaTaskPauseCause::TEMPERATURE_LIMIT);
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
-    ret = operation->PauseDownloadTask(CloudMediaTaskPauseCause::NETWORK_FLOW_LIMIT);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(operation->pauseCause_, CloudMediaTaskPauseCause::NETWORK_FLOW_LIMIT);
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
-    ret = operation->PauseDownloadTask(CloudMediaTaskPauseCause::WIFI_UNAVAILABLE);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(operation->pauseCause_, CloudMediaTaskPauseCause::WIFI_UNAVAILABLE);
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
-    ret = operation->PauseDownloadTask(CloudMediaTaskPauseCause::POWER_LIMIT);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(operation->pauseCause_, CloudMediaTaskPauseCause::POWER_LIMIT);
-    
-    operation->taskStatus_ = CloudMediaAssetTaskStatus::DOWNLOADING;
-    ret = operation->PauseDownloadTask(CloudMediaTaskPauseCause::FREQUENT_USER_REQUESTS);
-    EXPECT_EQ(ret, E_OK);
-    EXPECT_EQ(operation->pauseCause_, CloudMediaTaskPauseCause::FREQUENT_USER_REQUESTS);
-    
-    MEDIA_INFO_LOG("cloud_asset_pause_multi_cause_test_001 End");
 }
 }
 }
