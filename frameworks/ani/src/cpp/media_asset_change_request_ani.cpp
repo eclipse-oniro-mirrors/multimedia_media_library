@@ -1317,8 +1317,14 @@ ani_object MediaAssetChangeRequestAni::AddMovingPhotoVideoResourceByFileUri(ani_
     CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is null");
 
     CHECK_COND(env, ParseFileUri(env, fileUri, MediaType::MEDIA_TYPE_VIDEO, aniContext), OHOS_INVALID_PARAM_CODE);
-    if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(aniContext->realPath)) {
+    if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(aniContext->realPath, false)) {
         AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check video resource of moving photo");
+        return nullptr;
+    }
+    int32_t duration = MovingPhotoFileUtils::GetMovingPhotoVideoDuration(aniContext->realPath);
+    if (!MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(duration)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
         return nullptr;
     }
     changeRequest->movingPhotoVideoRealPath_ = aniContext->realPath;
@@ -1348,7 +1354,8 @@ ani_object MediaAssetChangeRequestAni::AddMovingPhotoVideoResourceByArrayBuffer(
         "Failed to check size of data buffer");
     if (!CheckMovingPhotoVideo(changeRequest->movingPhotoVideoDataBuffer_,
         changeRequest->movingPhotoVideoBufferSize_)) {
-        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check video resource of moving photo");
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
         return nullptr;
     }
     changeRequest->movingPhotoVideoResourceMode_ = AddResourceMode::DATA_BUFFER;

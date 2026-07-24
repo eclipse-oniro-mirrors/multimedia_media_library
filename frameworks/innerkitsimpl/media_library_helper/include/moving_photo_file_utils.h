@@ -92,7 +92,7 @@ public:
         std::vector<std::string> &cloudPathList);
     EXPORT static int32_t ModifyExtraDataVersion(const std::string& extraPath, uint32_t newVersion);
     EXPORT static int32_t GetExtraDataVersion(const std::string& extraPath, uint32_t& version);
-    EXPORT static bool CheckMovingPhotoVideo(const std::string &path);
+    EXPORT static bool CheckMovingPhotoVideo(const std::string &path, bool checkDuration = true);
     EXPORT static bool CheckMovingPhotoVideo(const UniqueFd &uniqueFd);
     EXPORT static int32_t GetMovingPhotoVideoDuration(const std::string &path);
     EXPORT static int32_t GetMovingPhotoVideoDuration(const UniqueFd &uniqueFd);

@@ -1867,8 +1867,14 @@ napi_value MediaAssetChangeRequestNapi::AddMovingPhotoVideoResource(napi_env env
     CHECK_COND_WITH_MESSAGE(env, napi_typeof(env, value, &valueType) == napi_ok, "Failed to get napi type");
     if (valueType == napi_string) { // addResource by file uri
         CHECK_COND(env, ParseFileUri(env, value, MediaType::MEDIA_TYPE_VIDEO, asyncContext), OHOS_INVALID_PARAM_CODE);
-        if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(asyncContext->realPath)) {
+        if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(asyncContext->realPath, false)) {
             NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check video resource of moving photo");
+            return nullptr;
+        }
+        int32_t duration = MovingPhotoFileUtils::GetMovingPhotoVideoDuration(asyncContext->realPath);
+        if (!MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(duration)) {
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
             return nullptr;
         }
         changeRequest->movingPhotoVideoRealPath_ = asyncContext->realPath;
@@ -1885,7 +1891,8 @@ napi_value MediaAssetChangeRequestNapi::AddMovingPhotoVideoResource(napi_env env
             "Failed to check size of data buffer");
         if (!CheckMovingPhotoVideo(changeRequest->movingPhotoVideoDataBuffer_,
             changeRequest->movingPhotoVideoBufferSize_)) {
-            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "Failed to check video resource of moving photo");
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
             return nullptr;
         }
         changeRequest->movingPhotoVideoResourceMode_ = AddResourceMode::DATA_BUFFER;
@@ -1915,8 +1922,14 @@ napi_value MediaAssetChangeRequestNapi::AddMovingPhotoVideoResourceForPicker(nap
 
     // addResource by file uri
     CHECK_COND(env, ParseFileUri(env, value, MediaType::MEDIA_TYPE_VIDEO, asyncContext), JS_E_PARAM_INVALID);
-    if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(asyncContext->realPath)) {
+    if (!MovingPhotoFileUtils::CheckMovingPhotoVideo(asyncContext->realPath, false)) {
         NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Failed to check video resource of moving photo");
+        return nullptr;
+    }
+    int32_t duration = MovingPhotoFileUtils::GetMovingPhotoVideoDuration(asyncContext->realPath);
+    if (!MovingPhotoFileUtils::CheckMovingPhotoVideoDuration(duration)) {
+        NapiError::ThrowError(env, JS_E_PARAM_INVALID,
+            "Failed to check video resource of moving photo, moving photo video duration must be >0 and ≤10s");
         return nullptr;
     }
     changeRequest->movingPhotoVideoRealPath_ = asyncContext->realPath;

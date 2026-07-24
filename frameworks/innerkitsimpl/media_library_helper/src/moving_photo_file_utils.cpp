@@ -1606,7 +1606,7 @@ int32_t MovingPhotoFileUtils::GetMovingPhotoVideoDuration(const UniqueFd &unique
     return duration;
 }
 
-bool MovingPhotoFileUtils::CheckMovingPhotoVideo(const string &path)
+bool MovingPhotoFileUtils::CheckMovingPhotoVideo(const string &path, bool checkDuration)
 {
     string absFilePath;
     if (!PathToRealPath(path, absFilePath)) {
@@ -1625,10 +1625,12 @@ bool MovingPhotoFileUtils::CheckMovingPhotoVideo(const string &path)
         return false;
     }
 
-    int32_t duration = GetMovingPhotoVideoDuration(path);
-    if (!CheckMovingPhotoVideoDuration(duration)) {
-        MEDIA_ERR_LOG("Failed to check duration of moving photo video: %{public}d ms", duration);
-        return false;
+    if (checkDuration) {
+        int32_t duration = GetMovingPhotoVideoDuration(path);
+        if (!CheckMovingPhotoVideoDuration(duration)) {
+            MEDIA_ERR_LOG("Failed to check duration of moving photo video: %{public}d ms", duration);
+            return false;
+        }
     }
     return true;
 }
