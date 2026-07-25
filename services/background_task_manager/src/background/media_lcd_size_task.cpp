@@ -197,14 +197,14 @@ void MediaLcdSizeTask::HandleLcdSize()
         std::vector<LcdAssetInfo> lcdAssetInfos;
         ret = QueryLcdAssets(startFileId, lcdAssetInfos);
         CHECK_AND_BREAK_ERR_LOG(ret == E_OK, "failed to QueryLcdAssets, ret: %{public}d", ret);
-        startFileId = lcdAssetInfos.back().fileId;
-        SetCursorStatus(startFileId);
         if (lcdAssetInfos.empty()) {
             MEDIA_INFO_LOG("No more lcd assets to process, mark task as completed");
             SetCursorStatus(CURSOR_COMPLETED);
             cursor = CURSOR_COMPLETED;
             break;
         }
+        startFileId = lcdAssetInfos.back().fileId;
+        SetCursorStatus(startFileId);
 
         std::vector<std::string> needUpdateFileIds;
         for (auto &assetInfo : lcdAssetInfos) {
