@@ -272,7 +272,8 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::UNIQUE_ID, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::LOCAL_ASSET_SIZE,
     PhotoColumn::PHOTO_FILE_HIDDEN, PhotoColumn::PHOTO_NEED_THUMBNAIL, PhotoColumn::ATTACHMENT_SIZE,
-    PhotoColumn::PHOTO_LCD_FILE_SIZE, PhotoColumn::COMPRESSION_QUALITY,
+    PhotoColumn::PHOTO_LCD_FILE_SIZE, PhotoColumn::COMPRESSION_QUALITY, PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
+    PhotoColumn::PHOTO_TRANSCODE_TIME,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)
