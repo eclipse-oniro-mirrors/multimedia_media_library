@@ -39,7 +39,7 @@
 
 #undef MLOG_TAG
 #define MLOG_TAG "NotificationHelper"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 namespace NotificationHelper {
@@ -104,6 +104,7 @@ static int32_t CheckUnregisterPermissionOnly()
 
 // Static members
 std::mutex NotificationHelper::callbackMutex_;
+std::mutex NotificationHelper::observerMutex_;
 std::vector<std::weak_ptr<PhotoAlbumChangeCallback>> NotificationHelper::callbacks_;
 std::shared_ptr<DataShare::DataShareHelper> NotificationHelper::dataShareHelper_;
 std::shared_ptr<DataShare::DataShareObserver> NotificationHelper::internalObserver_;
@@ -209,11 +210,12 @@ private:
             const auto& albumData = std::get<AccurateRefresh::AlbumChangeData>(item);
             changeInfos.albumChangeDatas.push_back(ConvertChangeData(albumData));
         }
+
         MEDIA_INFO_LOG("DispatchMediaChangeInfo: albumChangeDatas built, count:%{public}zu",
             changeInfos.albumChangeDatas.size());
         std::lock_guard<std::mutex> lock(NotificationHelper::callbackMutex_);
         NotificationHelper::NotifyAllCallbacks(changeInfos);
-}
+    }
 };
 
 void NotificationHelper::NotifyAllCallbacks(const AlbumChangeInfos& changeInfos)
@@ -251,15 +253,17 @@ void NotificationHelper::NotifyAllCallbacks(const AlbumChangeInfos& changeInfos)
 
 bool NotificationHelper::StartObserverIfNeeded()
 {
-    MEDIA_INFO_LOG("StartObserverIfNeeded enter: pid:%{public}d, internalObserver_:%{public}s, "
-        "dataShareHelper_:%{public}s, callbacks:%{public}zu",
-        getpid(),
-        (internalObserver_ == nullptr ? "null" : "non-null"),
-        (dataShareHelper_ == nullptr ? "null" : "non-null"),
-        callbacks_.size());
-    if (internalObserver_ != nullptr) {
-        MEDIA_INFO_LOG("StartObserverIfNeeded: observer already set, skipping setup");
-        return true;
+    {
+        std::lock_guard<std::mutex> lock(observerMutex_);
+        if (internalObserver_ != nullptr) {
+            MEDIA_INFO_LOG("StartObserverIfNeeded: observer already set, skipping setup");
+            return true;
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        MEDIA_INFO_LOG("StartObserverIfNeeded enter: pid:%{public}d, callbacks:%{public}zu",
+            getpid(), callbacks_.size());
     }
 
     // Use the common Creator(token, uri) pattern used across MediaLibrary clients.
@@ -272,61 +276,103 @@ bool NotificationHelper::StartObserverIfNeeded()
 
     // Creating DataShareHelper may fail during early boot / ability not ready.
     // Add minimal retry to reduce flakiness and add high-signal logs for joint debugging.
-    constexpr int32_t maxCreateRetry = 3;
-    constexpr long long retryDelayMs = 200;
-    for (int32_t i = 0; i < maxCreateRetry; ++i) {
-        dataShareHelper_ = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
-        if (dataShareHelper_ != nullptr) {
+    std::shared_ptr<DataShare::DataShareHelper> helper;
+    constexpr int32_t MAX_CREATE_RETRY = 3;
+    for (int32_t i = 0; i < MAX_CREATE_RETRY; ++i) {
+        helper = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
+        if (helper != nullptr) {
             MEDIA_INFO_LOG("StartObserverIfNeeded: DataShareHelper created on attempt %{public}d/%{public}d",
-                i + 1, maxCreateRetry);
+                i + 1, MAX_CREATE_RETRY);
             break;
         }
         MEDIA_ERR_LOG("Failed to create DataShareHelper (attempt %{public}d/%{public}d), uri:%{public}s",
-            i + 1, maxCreateRetry, MEDIALIBRARY_DATA_URI.c_str());
-        std::this_thread::sleep_for(std::chrono::milliseconds(retryDelayMs));
+            i + 1, MAX_CREATE_RETRY, MEDIALIBRARY_DATA_URI.c_str());
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
-    if (dataShareHelper_ == nullptr) {
+    if (helper == nullptr) {
         MEDIA_ERR_LOG("StartObserverIfNeeded: DataShareHelper still NULL after %{public}d attempts; "
             "observer will NOT be registered. Future notifications will not be delivered to this client!",
-            maxCreateRetry);
+            MAX_CREATE_RETRY);
         return false;
     }
 
-    internalObserver_ = std::make_shared<InternalAlbumObserver>();
-    // DataShareExtAbility expects notify keys like "photoAlbumChange" (mapped to NotifyUriType::PHOTO_ALBUM_URI).
-    // Using query URIs like file://media/PhotoAlbum/ will not receive MediaLibraryNotifyNew notifications.
-    static const std::string photoAlbumChangeKey = "photoAlbumChange";
-    // Note: RegisterObserverExt returns void in this API, so we can't get a ret code here.
-    dataShareHelper_->RegisterObserverExtProvider(Uri(photoAlbumChangeKey), internalObserver_, false);
-    MEDIA_INFO_LOG("StartObserverIfNeeded: observer registered, key:%{public}s, "
-        "observer:%{public}s, helper:%{public}s",
-        photoAlbumChangeKey.c_str(),
-        (internalObserver_ == nullptr ? "null" : "non-null"),
-        (dataShareHelper_ == nullptr ? "null" : "non-null"));
+    auto observer = std::make_shared<InternalAlbumObserver>();
+    static const std::string PHOTO_ALBUM_CHANGE_KEY = "photoAlbumChange";
+    helper->RegisterObserverExtProvider(Uri(PHOTO_ALBUM_CHANGE_KEY), observer, false);
+    MEDIA_INFO_LOG("StartObserverIfNeeded: observer registered, key:%{public}s",
+        PHOTO_ALBUM_CHANGE_KEY.c_str());
+
+    {
+        std::lock_guard<std::mutex> lock(observerMutex_);
+        dataShareHelper_ = std::move(helper);
+        internalObserver_ = std::move(observer);
+    }
     return true;
 }
 
 void NotificationHelper::StopObserverIfNeeded()
 {
-    MEDIA_INFO_LOG("StopObserverIfNeeded enter: pid:%{public}d, internalObserver_:%{public}s, "
-        "dataShareHelper_:%{public}s, callbacks:%{public}zu",
-        getpid(),
-        (internalObserver_ == nullptr ? "null" : "non-null"),
-        (dataShareHelper_ == nullptr ? "null" : "non-null"),
-        callbacks_.size());
-    if (internalObserver_ == nullptr || !callbacks_.empty()) {
-        MEDIA_INFO_LOG("StopObserverIfNeeded: nothing to tear down");
-        return;
+    std::shared_ptr<DataShare::DataShareHelper> helper;
+    std::shared_ptr<DataShare::DataShareObserver> observer;
+    {
+        std::lock_guard<std::mutex> lock(observerMutex_);
+        if (internalObserver_ == nullptr) {
+            return;
+        }
+        helper = dataShareHelper_;
+        observer = internalObserver_;
+        internalObserver_ = nullptr;
+        dataShareHelper_ = nullptr;
     }
-
-    if (dataShareHelper_ != nullptr) {
-        static const std::string photoAlbumChangeKey = "photoAlbumChange";
-        dataShareHelper_->UnregisterObserverExtProvider(Uri(photoAlbumChangeKey), internalObserver_);
-        MEDIA_INFO_LOG("Internal album observer unregistered for %{public}s", photoAlbumChangeKey.c_str());
+    if (helper != nullptr && observer != nullptr) {
+        static const std::string PHOTO_ALBUM_CHANGE_KEY = "photoAlbumChange";
+        helper->UnregisterObserverExtProvider(Uri(PHOTO_ALBUM_CHANGE_KEY), observer);
+        MEDIA_INFO_LOG("Internal album observer unregistered for %{public}s", PHOTO_ALBUM_CHANGE_KEY.c_str());
     }
-    internalObserver_ = nullptr;
-    dataShareHelper_ = nullptr;
     MEDIA_INFO_LOG("StopObserverIfNeeded: observer/helper cleared");
+}
+
+bool NotificationHelper::AddCallbackIfNew(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    std::lock_guard<std::mutex> lock(callbackMutex_);
+    auto it = callbacks_.begin();
+    while (it != callbacks_.end()) {
+        auto existing = it->lock();
+        if (existing == nullptr) {
+            it = callbacks_.erase(it);
+            continue;
+        }
+        if (existing.get() == callback.get()) {
+            MEDIA_INFO_LOG("Same callback already registered, skipping duplicate. "
+                "callbacks:%{public}zu", callbacks_.size());
+            return false;
+        }
+        ++it;
+    }
+    callbacks_.push_back(std::weak_ptr<PhotoAlbumChangeCallback>(callback));
+    MEDIA_INFO_LOG("Callback added, callback count: %{public}zu", callbacks_.size());
+    return true;
+}
+
+void NotificationHelper::RemoveCallbackFromList(std::shared_ptr<PhotoAlbumChangeCallback> callback)
+{
+    std::lock_guard<std::mutex> lock(callbackMutex_);
+    auto it = callbacks_.begin();
+    while (it != callbacks_.end()) {
+        auto existing = it->lock();
+        if (existing == nullptr || existing.get() == callback.get()) {
+            it = callbacks_.erase(it);
+            continue;
+        }
+        ++it;
+    }
+}
+
+void NotificationHelper::GetObserverState(bool &observerSet, bool &helperSet)
+{
+    std::lock_guard<std::mutex> obsLock(observerMutex_);
+    observerSet = (internalObserver_ != nullptr);
+    helperSet = (dataShareHelper_ != nullptr);
 }
 
 int32_t NotificationHelper::RegisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
@@ -338,57 +384,34 @@ int32_t NotificationHelper::RegisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbu
     int32_t precheck = CheckRegisterPreconditions();
     CHECK_AND_RETURN_RET_LOG(precheck == NOTIFY_OK, precheck,
         "RegisterPhotoAlbumCallback precheck failed, ret:%{public}d", precheck);
-    bool added = false;
-    {
-        std::lock_guard<std::mutex> lock(callbackMutex_);
-        auto it = callbacks_.begin();
-        while (it != callbacks_.end()) {
-            auto existing = it->lock();
-            if (existing == nullptr) {
-                it = callbacks_.erase(it);
-                continue;
-            }
-            if (existing.get() == callback.get()) {
-                MEDIA_INFO_LOG("Same callback already registered, skipping duplicate. "
-                    "callbacks:%{public}zu", callbacks_.size());
-                return NOTIFY_OK;
-            }
-            ++it;
-        }
-        callbacks_.push_back(std::weak_ptr<PhotoAlbumChangeCallback>(callback));
-        added = true;
-        MEDIA_INFO_LOG("RegisterPhotoAlbumCallback success, callback count: %{public}zu", callbacks_.size());
-    }
+
+    bool added = AddCallbackIfNew(callback);
     // Do not hold callbackMutex_ while creating DataShareHelper / sleeping in retry.
     if (added && !StartObserverIfNeeded()) {
-        std::lock_guard<std::mutex> lock(callbackMutex_);
-        auto it = callbacks_.begin();
-        while (it != callbacks_.end()) {
-            auto existing = it->lock();
-            if (existing == nullptr || existing.get() == callback.get()) {
-                it = callbacks_.erase(it);
-                continue;
-            }
-            ++it;
-        }
+        RemoveCallbackFromList(callback);
+        bool observerSet = false;
+        bool helperSet = false;
+        GetObserverState(observerSet, helperSet);
         MEDIA_ERR_LOG("RegisterPhotoAlbumCallback failed: observer setup failed, "
             "callback removed, observerSet:%{public}s, helperSet:%{public}s",
-            (internalObserver_ == nullptr ? "false" : "true"), (dataShareHelper_ == nullptr ? "false" : "true"));
+            (observerSet ? "true" : "false"), (helperSet ? "true" : "false"));
         return NOTIFY_ERR_IPC_TIMEOUT;
     }
+    bool observerSet = false;
+    bool helperSet = false;
+    GetObserverState(observerSet, helperSet);
     MEDIA_INFO_LOG("RegisterPhotoAlbumCallback return: observerSet:%{public}s, helperSet:%{public}s",
-        (internalObserver_ == nullptr ? "false" : "true"), (dataShareHelper_ == nullptr ? "false" : "true"));
+        (observerSet ? "true" : "false"), (helperSet ? "true" : "false"));
     return NOTIFY_OK;
 }
 
 int32_t NotificationHelper::unRegisterPhotoAlbumCallback(std::shared_ptr<PhotoAlbumChangeCallback> callback)
 {
     MEDIA_INFO_LOG("unRegisterPhotoAlbumCallback start, pid:%{public}d, tid:%{public}d, "
-        "callbackPtr:%{public}s, callbacks:%{public}zu",
+        "callbackPtr:%{public}s",
         getpid(),
         static_cast<int32_t>(gettid()),
-        (callback == nullptr ? "null" : "non-null"),
-        callbacks_.size());
+        (callback == nullptr ? "null" : "non-null"));
     CHECK_AND_RETURN_RET_LOG(callback != nullptr, NOTIFY_ERR_UNREGISTER_REPEAT, "callback is nullptr");
     int32_t precheck = CheckUnregisterPermissionOnly();
     CHECK_AND_RETURN_RET_LOG(precheck == NOTIFY_OK, precheck,
@@ -416,12 +439,16 @@ int32_t NotificationHelper::unRegisterPhotoAlbumCallback(std::shared_ptr<PhotoAl
         return NOTIFY_ERR_UNREGISTER_REPEAT;
     }
     MEDIA_INFO_LOG("unRegisterPhotoAlbumCallback success, remaining callbacks: %{public}zu", callbacks_.size());
-
-    StopObserverIfNeeded();
-
+    bool shouldStop = callbacks_.empty();
+    // Release callbackMutex_ before StopObserverIfNeeded which acquires observerMutex_,
+    // to avoid holding callbackMutex_ during UnregisterObserverExtProvider.
+    if (shouldStop) {
+        StopObserverIfNeeded();
+    }
     return NOTIFY_OK;
 }
 
 } // namespace NotificationHelper
 } // namespace Media
 } // namespace OHOS
+// LCOV_EXCL_STOP
