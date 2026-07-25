@@ -55,7 +55,7 @@ const std::set<std::string> MediaColumn::MEDIA_COLUMNS = {
     MEDIA_DATE_DELETED, MEDIA_HIDDEN, MEDIA_PARENT_ID, MEDIA_RELATIVE_PATH, MEDIA_VIRTUAL_PATH
 };
 const std::set<std::string> MediaColumn::DEFAULT_FETCH_COLUMNS = {
-    MEDIA_ID, MEDIA_FILE_PATH, MEDIA_NAME, MEDIA_TYPE, PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
+    MEDIA_ID, MEDIA_FILE_PATH, MEDIA_NAME, MEDIA_TYPE,
 };
 
 const std::string PhotoColumn::PHOTO_DIRTY = "dirty";
@@ -243,7 +243,7 @@ const std::string PhotoColumn::PHOTO_LCD_FILE_SIZE = "lcd_file_size";
 
 
 const std::set<std::string> PhotoColumn::DEFAULT_FETCH_COLUMNS = {
-    PHOTO_SUBTYPE, PHOTO_BURST_KEY,
+    PHOTO_SUBTYPE, PHOTO_BURST_KEY, PHOTO_TRANS_CODE_FILE_SIZE,
 };
 
 const std::string PhotoColumn::CLONE_FILE_INFO_PATH = "path";
