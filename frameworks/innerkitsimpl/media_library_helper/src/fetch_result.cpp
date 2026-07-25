@@ -534,9 +534,8 @@ static bool IsUriTranscoded(const string &realUri, const string &inputUri)
 template<class T>
 void FetchResult<T>::SetTranscodeInfo(FileAsset *fileAsset)
 {
-    auto transcodeTime =  fileAsset->GetTransCodeTime();
     auto transcodeSize =  fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
-    bool cond = transcodeTime != 0 && transcodeSize != 0 &&
+    bool cond = transcodeSize != 0 &&
         (IsUriTranscoded(fileAsset->GetDisplayName(), uriMap[to_string(fileAsset->GetId())]) ||
         (supportedHeif != 1 && isHeif(fileAsset->GetDisplayName())) ||
         (supportedHighResolution != 1 && IsHighPixel(fileAsset->GetWidth(), fileAsset->GetHeight())));
