@@ -35,6 +35,7 @@ using namespace OHOS::Media;
 const string TranscodeCompatibleInfoOperation::ENCODINGS_SEPARATOR = ",";
 constexpr int32_t INVALID_HIGH_RESOLUTION = -1;
 std::unordered_map<std::string, CompatibleInfo> TranscodeCompatibleInfoOperation::compatibleInfoCache_ = {};
+std::mutex TranscodeCompatibleInfoOperation::compatibleInfoCacheMutex_;
 
 string TranscodeCompatibleInfoOperation::VectorToString(const std::vector<std::string> &vec)
 {
