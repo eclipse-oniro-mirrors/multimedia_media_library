@@ -208,9 +208,7 @@ bool ThumbnailUtils::GenTargetPixelmap(ThumbnailData &data, const Size &desiredS
 
     float widthScale = (1.0f * desiredSize.width) / pixelMap->GetWidth();
     float heightScale = (1.0f * desiredSize.height) / pixelMap->GetHeight();
-    if (abs(widthScale - 1.0f) > FLOAT_EPSILON || abs(heightScale - 1.0f) > FLOAT_EPSILON) {
-        pixelMap->scale(widthScale, heightScale);
-    }
+    pixelMap->scale(widthScale, heightScale);
     return true;
 }
 
@@ -1735,6 +1733,8 @@ bool ThumbnailUtils::ScaleThumbnailFromSource(ThumbnailData &data, const bool is
         return false;
     }
 
+    CHECK_AND_RETURN_RET_LOG(ThumbnailImageFrameWorkUtils::ConvertPixelMapToSdrAndFormatRGBA8888(dataSource), false,
+        "Failed to convert pixelMap to sdr and RGBA_8888, isSourceEx: %{public}d", isSourceEx);
     if (isSourceEx) {
         data.source.SetPixelMapEx(dataSource);
     } else {
