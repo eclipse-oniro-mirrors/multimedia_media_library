@@ -39,6 +39,8 @@ public:
         UPDATE_MEDIA_INDEX_FOR_CLOUD = 45,
         START_ACTIVE_ANALYSIS = 46,
         STOP_ACTIVE_ANALYSIS = 47,
+        INVOKE_ANALYSIS_TOOL = 50,
+        CANCEL_ANALYSIS_TOOL = 51,
     };
 public:
     DECLARE_INTERFACE_DESCRIPTOR(u"Multimedia.MediaAnalyseService.API");

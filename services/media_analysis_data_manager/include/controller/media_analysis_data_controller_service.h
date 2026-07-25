@@ -38,6 +38,8 @@ public:
     EXPORT int32_t StartAssetAnalysis(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StartActiveAnalysis(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t StopActiveAnalysis(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t InvokeAnalysisTool(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CancelAnalysisTool(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetOrderPosition(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetOrderPosition(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetRelationship(MessageParcel &data, MessageParcel &reply);
@@ -83,6 +85,14 @@ private:
         {
             static_cast<uint32_t>(MediaLibraryBusinessCode::STOP_ACTIVE_ANALYSIS),
             &MediaAnalysisDataControllerService::StopActiveAnalysis
+        },
+        {
+            static_cast<uint32_t>(MediaLibraryBusinessCode::INVOKE_ANALYSIS_TOOL),
+            &MediaAnalysisDataControllerService::InvokeAnalysisTool
+        },
+        {
+            static_cast<uint32_t>(MediaLibraryBusinessCode::CANCEL_ANALYSIS_TOOL),
+            &MediaAnalysisDataControllerService::CancelAnalysisTool
         },
         {
             static_cast<uint32_t>(MediaLibraryBusinessCode::CHANGE_REQUEST_SET_ORDER_POSITION),

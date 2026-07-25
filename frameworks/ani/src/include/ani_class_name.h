@@ -100,6 +100,8 @@ static const std::string PAH_ANI_CLASS_PHOTO_ASSET_CUSTOM_RECORD_HANDLE =
     PAH_CLASS_SPACE + "PhotoAssetCustomRecordHandle";
 static const std::string PAH_ANI_CLASS_ALBUM_ATTRIBUTE_INFO_HANDLER =
     PAH_CLASS_SPACE + "AlbumAttributeInfoHandler";
+static const std::string PAH_ANI_CLASS_ANALYSIS_TOOL_RESULT_HANDLE =
+    PAH_CLASS_SPACE + "AnalysisToolResultHandle";
 } // namespace Media
 } // namespace OHOS
 #endif  // FRAMEWORKS_ANI_SRC_INCLUDE_ANI_CLASSNAME_H

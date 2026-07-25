@@ -19,6 +19,7 @@
  
 #include "analysis_album_accurate_refresh.h"
 #include "active_analysis_manager.h"
+#include "analysis_tool_manager.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "rdb_utils.h"
@@ -263,6 +264,28 @@ int32_t MediaAnalysisDataService::StopActiveAnalysis(const StopActiveAnalysisDto
 {
     int32_t resultCode = E_OK;
     int32_t ret = ActiveAnalysisManager::GetInstance().CancelTask(dto, resultCode);
+    respBody.result = resultCode;
+    return ret;
+}
+
+int32_t MediaAnalysisDataService::InvokeAnalysisTool(const InvokeAnalysisToolDto &dto,
+    InvokeAnalysisToolRespBody &respBody)
+{
+    int32_t resultCode = E_OK;
+    sptr<IRemoteObject> saRemote;
+    std::string taskId;
+    int32_t ret = AnalysisToolManager::GetInstance().SubmitTask(dto, resultCode, saRemote, taskId);
+    respBody.result = resultCode;
+    respBody.taskId = taskId;
+    respBody.saRemote = saRemote;
+    return ret;
+}
+
+int32_t MediaAnalysisDataService::CancelAnalysisTool(const CancelAnalysisToolDto &dto,
+    CancelAnalysisToolRespBody &respBody)
+{
+    int32_t resultCode = E_OK;
+    int32_t ret = AnalysisToolManager::GetInstance().CancelTask(dto, resultCode);
     respBody.result = resultCode;
     return ret;
 }

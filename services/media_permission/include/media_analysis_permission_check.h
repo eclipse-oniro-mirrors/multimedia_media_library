@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,21 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef OHOS_MEDIALIBRARY_PERMISSION_POLICY_TYPE_H
-#define OHOS_MEDIALIBRARY_PERMISSION_POLICY_TYPE_H
+#ifndef OHOS_MEDIALIBRARY_ANALYSIS_PERMISSION_CHECK_H
+#define OHOS_MEDIALIBRARY_ANALYSIS_PERMISSION_CHECK_H
+
+#include "media_permission_check.h"
 
 namespace OHOS::Media {
-enum PermissionType {
-    SYSTEMAPI_PERM,
-    PRIVATE_PERM,
-    READ_PERM,
-    WRITE_PERM,
-    CLOUDFILE_SYNC,
-    CLOUD_READ,
-    CLOUD_WRITE,
-    SYSTEMINNERAPI_PERM,
-    ACCESS_MEDIALIB_THUMB_DB_PERM,
-    ANALYSIS_PERM,
+class AnalysisPermissionCheck : public PermissionCheck {
+public:
+    int32_t CheckPermission(uint32_t businessCode, const PermissionHeaderReq &data) override;
 };
 } // namespace OHOS::Media
-#endif  // OHOS_MEDIALIBRARY_PERMISSION_POLICY_TYPE_H
+#endif  // OHOS_MEDIALIBRARY_ANALYSIS_PERMISSION_CHECK_H

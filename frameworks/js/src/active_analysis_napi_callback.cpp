@@ -36,6 +36,8 @@
 namespace OHOS::Media {
 namespace {
 const std::string ACTIVE_ANALYSIS_RESULT_FIELD = "result";
+const std::string ANALYSIS_TOOL_CODE_FIELD = "code";
+const std::string ANALYSIS_TOOL_RESULT_FIELD = "result";
 constexpr size_t MAX_ACTIVE_ANALYSIS_CALLBACK_RECORDS = 512;
 constexpr int64_t ACTIVE_ANALYSIS_CALLBACK_TIMEOUT_MINUTES = 10;
 constexpr auto ACTIVE_ANALYSIS_CALLBACK_TIMEOUT =
@@ -51,6 +53,9 @@ struct ActiveAnalysisRegistryRecord {
 
 struct ActiveAnalysisJsCallbackData {
     int32_t result = 0;
+    bool isToolResult = false;
+    int32_t toolCode = 0;
+    std::string toolResult;
 };
 
 struct ThreadSafeFunctionReleaser {
@@ -250,6 +255,40 @@ private:
     WatcherState watcherState_ = WatcherState::IDLE;
 };
 
+static bool BuildToolCallbackArg(napi_env env, napi_value callbackArg,
+    const ActiveAnalysisJsCallbackData &callbackData)
+{
+    napi_value codeValue = nullptr;
+    napi_status status = napi_create_int32(env, callbackData.toolCode, &codeValue);
+    if (status != napi_ok) {
+        NAPI_ERR_LOG("Failed to create tool callback code value, status: %{public}d",
+            static_cast<int32_t>(status));
+        return false;
+    }
+    status = napi_set_named_property(env, callbackArg, ANALYSIS_TOOL_CODE_FIELD.c_str(), codeValue);
+    if (status != napi_ok) {
+        NAPI_ERR_LOG("Failed to set tool callback code property, status: %{public}d",
+            static_cast<int32_t>(status));
+        return false;
+    }
+    if (!callbackData.toolResult.empty()) {
+        napi_value resultValue = nullptr;
+        status = napi_create_string_utf8(env, callbackData.toolResult.c_str(), NAPI_AUTO_LENGTH, &resultValue);
+        if (status != napi_ok) {
+            NAPI_ERR_LOG("Failed to create tool callback result value, status: %{public}d",
+                static_cast<int32_t>(status));
+            return false;
+        }
+        status = napi_set_named_property(env, callbackArg, ANALYSIS_TOOL_RESULT_FIELD.c_str(), resultValue);
+        if (status != napi_ok) {
+            NAPI_ERR_LOG("Failed to set tool callback result property, status: %{public}d",
+                static_cast<int32_t>(status));
+            return false;
+        }
+    }
+    return true;
+}
+
 static void CallJsActiveAnalysisCallback(napi_env env, napi_value jsCallback, void *context, void *data)
 {
     (void)context;
@@ -262,7 +301,6 @@ static void CallJsActiveAnalysisCallback(napi_env env, napi_value jsCallback, vo
     }
 
     napi_value callbackArg = nullptr;
-    napi_value resultValue = nullptr;
     napi_value result = nullptr;
     napi_status status = napi_create_object(env, &callbackArg);
     if (status != napi_ok) {
@@ -270,18 +308,28 @@ static void CallJsActiveAnalysisCallback(napi_env env, napi_value jsCallback, vo
             static_cast<int32_t>(status));
         return;
     }
-    status = napi_create_int32(env, callbackData->result, &resultValue);
-    if (status != napi_ok) {
-        NAPI_ERR_LOG("Failed to create active analysis callback result value, status: %{public}d",
-            static_cast<int32_t>(status));
-        return;
+
+    if (callbackData->isToolResult) {
+        if (!BuildToolCallbackArg(env, callbackArg, *callbackData)) {
+            return;
+        }
+    } else {
+        // Active analysis result: { result:number
+        napi_value resultValue = nullptr;
+        status = napi_create_int32(env, callbackData->result, &resultValue);
+        if (status != napi_ok) {
+            NAPI_ERR_LOG("Failed to create active analysis callback result value, status: %{public}d",
+                static_cast<int32_t>(status));
+            return;
+        }
+        status = napi_set_named_property(env, callbackArg, ACTIVE_ANALYSIS_RESULT_FIELD.c_str(), resultValue);
+        if (status != napi_ok) {
+            NAPI_ERR_LOG("Failed to set active analysis callback result property, status: %{public}d",
+                static_cast<int32_t>(status));
+            return;
+        }
     }
-    status = napi_set_named_property(env, callbackArg, ACTIVE_ANALYSIS_RESULT_FIELD.c_str(), resultValue);
-    if (status != napi_ok) {
-        NAPI_ERR_LOG("Failed to set active analysis callback result property, status: %{public}d",
-            static_cast<int32_t>(status));
-        return;
-    }
+
     status = napi_call_function(env, nullptr, jsCallback, 1, &callbackArg, &result);
     if (status != napi_ok) {
         NAPI_ERR_LOG("Failed to invoke active analysis JS callback, status: %{public}d",
@@ -388,6 +436,7 @@ int32_t ActiveAnalysisJsCallbackHolder::NotifyResult(int32_t result, const char 
         return MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
     }
     callbackData->result = normalizedResult;
+    callbackData->isToolResult = false;
     napi_status status = napi_call_threadsafe_function(threadSafeFunc, callbackData, napi_tsfn_blocking);
     if (status != napi_ok) {
         NAPI_ERR_LOG("napi_call_threadsafe_function failed, status: %{public}d, source: %{public}s,"
@@ -403,6 +452,53 @@ int32_t ActiveAnalysisJsCallbackHolder::NotifyResult(int32_t result, const char 
     return E_OK;
 }
 
+int32_t ActiveAnalysisJsCallbackHolder::NotifyToolResult(int32_t code, const std::string &result,
+    const char *source)
+{
+    NAPI_INFO_LOG("NotifyToolResult, code: %{public}d, result: %{public}s", code, result.c_str());
+    napi_threadsafe_function threadSafeFunc = nullptr;
+    uint64_t registryId = 0;
+    int32_t prepareRet = PrepareNotifyResult(source, threadSafeFunc, registryId);
+    if (prepareRet != E_OK && threadSafeFunc == nullptr) {
+        Release();
+        CleanupRegistry();
+        return prepareRet;
+    }
+    if (threadSafeFunc == nullptr) {
+        return E_OK;
+    }
+    int32_t normalizedCode = NormalizeActiveAnalysisErrorCode(code);
+    auto *callbackData = new (std::nothrow) ActiveAnalysisJsCallbackData();
+    if (callbackData == nullptr) {
+        NAPI_ERR_LOG("Failed to allocate analysis tool callback: data, source: %{public}s,"
+            " registryId: %{public}" PRIu64, source, registryId);
+        Release();
+        CleanupRegistry();
+        return MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+    }
+    callbackData->isToolResult = true;
+    callbackData->toolCode = normalizedCode;
+    callbackData->toolResult = result;
+    napi_status status = napi_call_threadsafe_function(threadSafeFunc, callbackData, napi_tsfn_blocking);
+    if (status != napi_ok) {
+        NAPI_ERR_LOG("napi_call_threadsafe_function failed, status: %{public}d, source: %{public}s,"
+            " registryId: %{public}" PRIu64, static_cast<int32_t>(status), source, registryId);
+        delete callbackData;
+        Release();
+        CleanupRegistry();
+        return MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+    }
+    MarkResultPostedToJs();
+    Release();
+    CleanupRegistry();
+    return E_OK;
+}
+
+void ActiveAnalysisJsCallbackHolder::MarkAsToolCallback()
+{
+    isToolCallback_ = true;
+}
+
 void ActiveAnalysisJsCallbackHolder::HandleSaDied()
 {
     {
@@ -416,7 +512,11 @@ void ActiveAnalysisJsCallbackHolder::HandleSaDied()
     }
     NAPI_WARN_LOG("Active analysis SA died before media library received callback result, registryId: %{public}" PRIu64,
         registryId_.load());
-    (void)NotifyResult(MEDIA_LIBRARY_ACTIVE_ANALYSIS_OTHER_ERROR, "sa_died");
+    if (isToolCallback_) {
+        (void)NotifyToolResult(MEDIA_LIBRARY_ACTIVE_ANALYSIS_OTHER_ERROR, "sa_died", "sa_died");
+    } else {
+        (void)NotifyResult(MEDIA_LIBRARY_ACTIVE_ANALYSIS_OTHER_ERROR, "sa_died");
+    }
 }
 
 ActiveAnalysisSaBindResult ActiveAnalysisJsCallbackHolder::BindSaRemote(const sptr<IRemoteObject> &saRemote)
@@ -498,6 +598,16 @@ int32_t ActiveAnalysisJsCallbackStub::OnAnalysisFinished(const ActiveAnalysisCal
         return E_OK;
     }
     return holder_->NotifyResult(result.result, "service_callback");
+}
+
+int32_t ActiveAnalysisJsCallbackStub::OnToolFinished(const AnalysisToolCallbackResult &result)
+{
+    NAPI_INFO_LOG("[tool] code: %{public}d, result: %{public}s", result.code, result.result.c_str());
+    if (holder_ == nullptr) {
+        NAPI_WARN_LOG("Analysis tool callback stub holder is null, code: %{public}d", result.code);
+        return E_OK;
+    }
+    return holder_->NotifyToolResult(result.code, result.result, "service_callback");
 }
 
 uint64_t ActiveAnalysisJsCallbackRegistry::Register(const std::shared_ptr<ActiveAnalysisJsCallbackHolder> &holder,

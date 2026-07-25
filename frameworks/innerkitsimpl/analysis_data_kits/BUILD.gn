@@ -54,6 +54,8 @@ ohos_shared_library("analysis_data_kits") {
     "./vo/set_subtitle_vo.cpp",
     "./vo/prepare_lcd_vo.cpp",
     "./vo/remove_cloud_lcd_vo.cpp",
+    "./vo/invoke_analysis_tool_vo.cpp",
+    "./vo/cancel_analysis_tool_vo.cpp",
   ]
  
   include_dirs = [

@@ -18,6 +18,7 @@
 #include "if_system_ability_manager.h"
 #include "system_ability_definition.h"
 #include "iservice_registry.h"
+#include "media_library_error_code.h"
 
 namespace OHOS {
 namespace Media {
@@ -80,8 +81,36 @@ bool MediaAnalysisProxy::SendTransactCmd(int32_t code, MessageParcel &data, Mess
         saMgr->UnloadSystemAbility(SAID);
         return false;
     }
-    MEDIA_INFO_LOG("send request success, code: %{public}d", code);
+    MEDIA_INFO_LOG("send request success, result: %{public}d, code: %{public}d", result, code);
     return true;
+}
+
+int32_t MediaAnalysisProxy::SendToolTransactCmd(int32_t code, MessageParcel &data, MessageParcel &reply,
+    MessageOption &option)
+{
+    auto saMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (saMgr == nullptr) {
+        MEDIA_ERR_LOG("Get samgr failed, samgr is nullptr, code: %{public}d", code);
+        return MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+    }
+    auto remoteObject = GetRemoteObject(code);
+    if (remoteObject == nullptr) {
+        MEDIA_ERR_LOG("Failed to get remote object, code: %{public}d", code);
+        return MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR;
+    }
+    int32_t result = remoteObject->SendRequest(code, data, reply, option);
+    if (result != NO_ERROR) {
+        MEDIA_ERR_LOG("receive error transact result: %{public}d, code: %{public}d, SA will be unloaded", result, code);
+        return result;
+    }
+    int32_t replyResult = reply.ReadInt32();
+    if (replyResult != 0) {
+        MEDIA_ERR_LOG("replyResult: %{public}d, code: %{public}d, SA return failed", replyResult, code);
+        return replyResult;
+    }
+    MEDIA_INFO_LOG("send request success, result: %{public}d, replyResult: %{public}d, code: %{public}d",
+        result, replyResult, code);
+    return result;
 }
 } // namespace Media
 } // namespace OHOS

@@ -45,6 +45,7 @@ ohos_unittest("media_analysis_data_service_test") {
 
   sources = [
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/service/active_analysis_manager.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/service/analysis_tool_manager.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/service/media_analysis_data_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dao/medialibrary_analysis_album_operations.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/src/dto/change_request_set_order_position_dto.cpp",
@@ -79,6 +80,7 @@ ohos_unittest("media_analysis_data_service_test") {
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
     "./src/active_analysis_manager_test.cpp",
+    "./src/analysis_tool_manager_test.cpp",
     "./src/media_analysis_data_service_test.cpp",
     "./src/analysis_lcd_aging_dao_test.cpp",
     "./src/lcd_download_operation_test.cpp",

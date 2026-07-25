@@ -21,6 +21,7 @@
 #include <mutex>
 #include <thread>
 #include <unistd.h>
+#include <uuid.h>
 #include "access_token.h"
 #include "accesstoken_kit.h"
 #include "album_operation_uri.h"
@@ -84,6 +85,9 @@
 #include "media_string_utils.h"
 #include "acquire_debug_database_vo.h"
 #include "release_debug_database_vo.h"
+#include "invoke_analysis_tool_vo.h"
+#include "cancel_analysis_tool_vo.h"
+#include "analysis_tool_ani_callback.h"
 #include "compatible_info_vo.h"
 #include "ability_context.h"
 #include "application_context.h"
@@ -152,6 +156,9 @@ const int32_t NO_READ_PERMISSION_STATE = 3;
 const int32_t MAX_LPATH_BUNDLENAME_LENGTH = 255;
 constexpr int32_t CONFIRM_BOX_ARRAY_MAX_LENGTH = 100;
 const std::string URI_SEPARATOR = "file:media";
+constexpr int32_t ANALYSIS_TOOL_TYPE_ANI_BEGIN = 0;
+constexpr int32_t ANALYSIS_TOOL_TYPE_ANI_END = 14;
+const int32_t UUID_STR_LENGTH = 37;
 
 mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
@@ -300,6 +307,10 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessGetSupportedPhotoFormats)},
     ani_native_function {"startAssetAnalysisInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::StartAssetAnalysis)},
+    ani_native_function {"invokeAnalysisToolInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::InvokeAnalysisTool)},
+    ani_native_function {"cancelAnalysisToolInner", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::CancelAnalysisTool)},
     ani_native_function {"onSinglePhotoAlbumChange", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::SinglePhotoAlbumChangeOnCallback)},
     ani_native_function {"offSinglePhotoAlbumChange", nullptr,
@@ -6139,6 +6150,221 @@ ani_int MediaLibraryAni::StartAssetAnalysis(ani_env *env, ani_object object, ani
     }
     PhotoAccessStartAssetAnalysisExecute(env, asyncContext);
     return PhotoAccessStartAssetAnalysisComplete(env, asyncContext);
+}
+
+static std::string GenerateAnalysisToolAniTaskId()
+{
+    uuid_t uuid;
+    uuid_generate(uuid);
+    char str[UUID_STR_LENGTH] = {};
+    uuid_unparse(uuid, str);
+    return std::string(str);
+}
+
+static ani_status ParseArgsInvokeAnalysisToolAni(ani_env *env, ani_object config,
+    ani_fn_object callback, std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    CHECK_COND_RET(env != nullptr, ANI_ERROR, "env is null");
+    CHECK_COND_RET(context != nullptr, ANI_ERROR, "context is null");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ANI_ERROR;
+    }
+
+    ani_object typeObj = nullptr;
+    ani_status status = MediaLibraryAniUtils::GetProperty(env, config, "type", typeObj);
+    CHECK_COND_WITH_RET_MESSAGE(env, status == ANI_OK && typeObj != nullptr, ANI_INVALID_ARGS,
+        "config.type is required");
+    auto result = MediaLibraryEnumAni::EnumGetValueInt32(env, reinterpret_cast<ani_enum_item>(typeObj),
+        context->analysisToolType);
+    CHECK_COND_WITH_RET_MESSAGE(env, result == ANI_OK, ANI_INVALID_ARGS, "EnumGetValueInt32 failed");
+    CHECK_COND_WITH_RET_MESSAGE(env,
+        context->analysisToolType >= ANALYSIS_TOOL_TYPE_ANI_BEGIN &&
+        context->analysisToolType <= ANALYSIS_TOOL_TYPE_ANI_END, ANI_INVALID_ARGS,
+        "analysisToolType invalid: " + std::to_string(context->analysisToolType));
+    std::string param;
+    if (MediaLibraryAniUtils::GetProperty(env, config, "param", param) == ANI_OK && !param.empty()) {
+        context->analysisToolParam = param;
+    }
+    if (callback == nullptr) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "callback is required");
+        return ANI_INVALID_ARGS;
+    }
+    if (AnalysisToolAniCallbackHolder::Create(env, callback, context->analysisToolAniCallbackHolder) != ANI_OK) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "Failed to create analysis tool callback");
+        return ANI_INVALID_ARGS;
+    }
+    return ANI_OK;
+}
+
+static void InvokeAnalysisToolCleanup(std::unique_ptr<MediaLibraryAsyncContext> &context,
+    uint64_t callbackRegistryId, int32_t errorCode, const std::string &errMsg)
+{
+    ANI_ERR_LOG("%{public}s", errMsg.c_str());
+    if (context->analysisToolAniCallbackHolder) {
+        context->analysisToolAniCallbackHolder->Release();
+    }
+    if (callbackRegistryId != 0) {
+        AnalysisToolAniCallbackRegistry::Unregister(callbackRegistryId);
+    }
+    context->SaveError(errorCode);
+}
+
+static bool InvokeAnalysisToolSetupStub(std::unique_ptr<MediaLibraryAsyncContext> &context,
+    InvokeAnalysisToolReqBody &reqBody, uint64_t &callbackRegistryId)
+{
+    sptr<AnalysisToolAniCallbackStub> callbackStub(
+        new (std::nothrow) AnalysisToolAniCallbackStub(context->analysisToolAniCallbackHolder));
+    if (callbackStub == nullptr) {
+        InvokeAnalysisToolCleanup(context, 0, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR,
+            "Failed to create analysis tool ani callback stub");
+        return false;
+    }
+    reqBody.callbackRemote = callbackStub->AsObject();
+    callbackRegistryId = AnalysisToolAniCallbackRegistry::Register(
+        context->analysisToolAniCallbackHolder, callbackStub, reqBody.callbackRemote);
+    if (callbackRegistryId == 0) {
+        InvokeAnalysisToolCleanup(context, 0, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR,
+            "Failed to register analysis tool ani callback lifecycle record");
+        return false;
+    }
+    return true;
+}
+
+void PhotoAccessInvokeAnalysisToolExecute(ani_env *env,
+    std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessInvokeAnalysisToolExecute");
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    CHECK_NULL_PTR_RETURN_VOID(context->analysisToolAniCallbackHolder.get(),
+        "Analysis tool ani callback holder is null");
+    context->analysisToolTaskId = GenerateAnalysisToolAniTaskId();
+    InvokeAnalysisToolReqBody reqBody;
+    reqBody.type = context->analysisToolType;
+    reqBody.param = context->analysisToolParam;
+    reqBody.taskId = context->analysisToolTaskId;
+
+    uint64_t callbackRegistryId = 0;
+    if (!InvokeAnalysisToolSetupStub(context, reqBody, callbackRegistryId)) {
+        return;
+    }
+    InvokeAnalysisToolRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INVOKE_ANALYSIS_TOOL);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret != E_OK) {
+        InvokeAnalysisToolCleanup(context, callbackRegistryId, ret,
+            "Invoke analysis tool IPC failed, ret: " + std::to_string(ret));
+        return;
+    }
+    if (respBody.result != E_OK) {
+        InvokeAnalysisToolCleanup(context, callbackRegistryId, respBody.result,
+            "Invoke analysis tool resultCode: " + std::to_string(respBody.result));
+        return;
+    }
+    if (respBody.saRemote == nullptr) {
+        InvokeAnalysisToolCleanup(context, callbackRegistryId, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR,
+            "Invoke analysis tool saRemote is nullptr");
+        return;
+    }
+    auto bindResult = context->analysisToolAniCallbackHolder->BindSaRemote(respBody.saRemote);
+    if (bindResult != AnalysisToolAniSaBindResult::BOUND) {
+        InvokeAnalysisToolCleanup(context, callbackRegistryId, MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR,
+            "Invoke analysis tool BindSaRemote failed, result: " +
+            std::to_string(static_cast<int32_t>(bindResult)));
+        return;
+    }
+    ANI_INFO_LOG("Invoke analysis tool success, taskId: %{public}s", context->analysisToolTaskId.c_str());
+}
+
+ani_string PhotoAccessInvokeAnalysisToolComplete(ani_env *env,
+    std::unique_ptr<MediaLibraryAsyncContext> &context)
+{
+    ani_string result = nullptr;
+    ani_object error = {};
+    CHECK_COND_RET(context != nullptr, result, "Async context is null");
+    if (context->error == ERR_DEFAULT) {
+        MediaLibraryAniUtils::ToAniString(env, context->analysisToolTaskId, result);
+    } else {
+        context->HandleError(env, error);
+    }
+    return result;
+}
+
+static bool CheckAniCallerPermission(const std::string &permission)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CheckAniCallerPermission");
+    OHOS::Security::AccessToken::AccessTokenID tokenCaller = IPCSkeleton::GetSelfTokenID();
+    int res = Security::AccessToken::AccessTokenKit::VerifyAccessToken(tokenCaller, permission);
+    if (res != Security::AccessToken::PermissionState::PERMISSION_GRANTED) {
+        ANI_ERR_LOG("Permission denied: %{public}s", permission.c_str());
+        return false;
+    }
+    return true;
+}
+
+ani_string MediaLibraryAni::InvokeAnalysisTool(ani_env *env, ani_object object, ani_object config,
+    ani_fn_object callback)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("InvokeAnalysisTool");
+    static const std::string PERMISSION_NAME = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
+    if (!CheckAniCallerPermission(PERMISSION_NAME)) {
+        AniError::ThrowError(env, JS_ERR_PERMISSION_DENIED, "Permission denied: " + PERMISSION_NAME + " required.");
+        return nullptr;
+    }
+
+    auto asyncContext = std::make_unique<MediaLibraryAsyncContext>();
+    CHECK_COND_WITH_RET_MESSAGE(env, asyncContext != nullptr, nullptr, "asyncContext is nullptr");
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    asyncContext->objectInfo = Unwrap(env, object);
+    if (asyncContext->objectInfo == nullptr) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID);
+        return nullptr;
+    }
+    if (ParseArgsInvokeAnalysisToolAni(env, config, callback, asyncContext) != ANI_OK) {
+        return nullptr;
+    }
+    PhotoAccessInvokeAnalysisToolExecute(env, asyncContext);
+    return PhotoAccessInvokeAnalysisToolComplete(env, asyncContext);
+}
+
+void MediaLibraryAni::CancelAnalysisTool(ani_env *env, ani_object object, ani_object config)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("CancelAnalysisTool");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return;
+    }
+    static const std::string PERMISSION_NAME = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
+    if (!CheckAniCallerPermission(PERMISSION_NAME)) {
+        AniError::ThrowError(env, JS_ERR_PERMISSION_DENIED, "Permission denied: " + PERMISSION_NAME + " required.");
+        return;
+    }
+    CancelAnalysisToolReqBody reqBody;
+    if (MediaLibraryAniUtils::GetProperty(env, config, "taskId", reqBody.taskId) != ANI_OK ||
+        reqBody.taskId.empty()) {
+        AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "taskId is required");
+        return;
+    }
+    std::string param;
+    if (MediaLibraryAniUtils::GetProperty(env, config, "param", param) == ANI_OK && !param.empty()) {
+        reqBody.param = param;
+    }
+    CancelAnalysisToolRespBody respBody;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CANCEL_ANALYSIS_TOOL);
+    int32_t ret = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (ret != E_OK) {
+        ANI_ERR_LOG("Cancel analysis tool failed, ret: %{public}d", ret);
+        AniError::ThrowError(env, MediaLibraryAniUtils::TransErrorCode("CancelAnalysisTool", ret));
+        return;
+    }
+    if (respBody.result != 0) {
+        ANI_ERR_LOG("Cancel analysis tool result error: %{public}d", respBody.result);
+        AniError::ThrowError(env, MediaLibraryAniUtils::TransErrorCode("CancelAnalysisTool", respBody.result));
+    }
 }
 
 ani_object MediaLibraryAni::PhotoAccessGetSharedPhotoAssets([[maybe_unused]] ani_env *env,
