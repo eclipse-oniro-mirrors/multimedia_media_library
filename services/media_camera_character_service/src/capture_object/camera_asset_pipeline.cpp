@@ -253,6 +253,7 @@ int32_t CameraAssetPipeline::DoAccurateRefresh(const SaveCameraPhotoDto &dto,
 
     int32_t updateRows = 0;
     if (dto.discardHighQualityPhoto) {
+        MEDIA_INFO_LOG("third-party app save photo");
         MultiStagesPhotoCaptureManager::GetInstance().CancelProcessRequest(assetInfo_.GetPhotoId());
         MultiStagesPhotoCaptureManager::GetInstance().RemoveImage(assetInfo_.GetPhotoId(), false);
 
@@ -387,12 +388,6 @@ int32_t CameraAssetPipeline::HandleSaveCameraPhoto(const SaveCameraPhotoDto &dto
     CheckSaveImageForYuv();
 
     // 4.扫描业务
-    if (dto.containsAddResource) {
-        HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
-            "MultistagesCapture Success, no need scanfile, assetInfo: %{public}s, ret: %{public}d.",
-            MLOG_TAG, __FUNCTION__, __LINE__, assetInfo_.ToString().c_str(), ret);
-        return ret;
-    }
     ScanFileForStageInternal();
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "MultistagesCapture Success, assetInfo: %{public}s, ret: %{public}d.",

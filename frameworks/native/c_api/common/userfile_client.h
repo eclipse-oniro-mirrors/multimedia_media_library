@@ -26,10 +26,10 @@ class UserFileClient {
 public:
     UserFileClient() {}
     virtual ~UserFileClient() {}
-    static bool IsValid();
+    static bool IsValid(const int32_t userId = -1);
 
     static void Init();
-    static void Init(const sptr<IRemoteObject> &token, bool isSetHelper = false);
+    static void Init(const sptr<IRemoteObject> &token, bool isSetHelper = false, const int32_t userId = -1);
     static std::shared_ptr<DataShare::DataShareResultSet> Query(Uri &uri,
         const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns, int &errCode);
     static int Insert(Uri &uri, const DataShare::DataShareValuesBucket &value);
@@ -39,9 +39,15 @@ public:
     static int Update(Uri &uri, const DataShare::DataSharePredicates &predicates,
         const DataShare::DataShareValuesBucket &value);
     static void Clear();
+    static int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    static int32_t UserDefineFunc(const int32_t &userId, MessageParcel &data, MessageParcel &reply,
+        MessageOption &option);
+    static void SetUserId(const int32_t userId);
+    static int32_t GetUserId();
 
 private:
     static inline std::shared_ptr<DataShare::DataShareHelper> sDataShareHelper_ = nullptr;
+    static int32_t userId_;
 };
 }
 }

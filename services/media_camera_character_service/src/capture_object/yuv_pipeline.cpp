@@ -190,6 +190,18 @@ static int32_t UpdataExtension(const CameraAssetInfo& assetInfo, const SaveCamer
     return E_OK;
 }
 
+static void HandleContainsAddResource(const CameraAssetInfo& assetInfo)
+{
+    MEDIA_WARN_LOG("HandleContainsAddResource enter.");
+    auto pictureManagerThread = PictureManagerThread::GetInstance();
+    if (pictureManagerThread != nullptr) {
+        pictureManagerThread->DeleteDataWithImageId(assetInfo.GetPhotoId(), PictureType::LOW_QUALITY_PICTURE);
+        pictureManagerThread->DeleteDataWithImageId(assetInfo.GetPhotoId(), PictureType::HIGH_QUALITY_PICTURE);
+    }
+
+    MultistagesCaptureNotify::NotifyLowQualityMemoryCount();
+}
+
 // 一阶段落盘
 void YuvPipeline::SaveImageForStageInternal(const SaveCameraPhotoDto& dto)
 {
@@ -199,7 +211,13 @@ void YuvPipeline::SaveImageForStageInternal(const SaveCameraPhotoDto& dto)
 
     auto assetInfo = GetAssetInfo();
 
-    // 确认: 是否要更新路径
+    // 1.addResource 共用时, 清理 picture
+    if (dto.containsAddResource) {
+        HandleContainsAddResource(assetInfo);
+        return;
+    }
+
+    // 2.是否更新路径
     int32_t ret = UpdataExtension(assetInfo, dto, tempData_);
     if (tempData_.isModified && ret == E_OK) {
         // 更新editData路径, 避免水印信息找不到
