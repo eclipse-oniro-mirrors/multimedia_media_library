@@ -118,6 +118,7 @@ ohos_shared_library("cj_photoaccesshelper_ffi") {
     "media_foundation:media_foundation",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
     "player_framework:media_client",
     "relational_store:native_dataability",
     "relational_store:native_rdb",

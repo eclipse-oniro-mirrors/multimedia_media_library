@@ -87,6 +87,7 @@ ohos_fuzztest("MediaLibraryCloudMediaMdkRecordAlbumDataFuzzTest") {
     "ipc:ipc_single",
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
+    "node:node_header_notice",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "access_token:libtokenid_sdk",

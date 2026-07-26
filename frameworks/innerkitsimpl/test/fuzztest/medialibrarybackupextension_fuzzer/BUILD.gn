@@ -158,6 +158,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "jsoncpp:jsoncpp",
     "kv_store:distributeddata_inner",
     "media_foundation:media_foundation",
+    "node:node_header_notice",
     "preferences:native_preferences",
     "player_framework:media_client",
     "relational_store:native_rdb",

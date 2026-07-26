@@ -105,6 +105,7 @@ ohos_fuzztest("MediaLibraryCloudMediaPhotosDaoFuzzTest") {
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudfile_kit",
     "netmanager_base:net_conn_manager_if",
+    "node:node_header_notice",
     "graphic_surface:surface",
     "window_manager:libwmutil",
   ]
