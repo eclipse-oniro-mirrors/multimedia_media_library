@@ -68,6 +68,7 @@ ohos_fuzztest("MediaLibraryCloudMediaVoFuzzTest") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "kv_store:distributeddata_inner",
+    "node:node_header_notice",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "dfs_service:cloudfile_kit",

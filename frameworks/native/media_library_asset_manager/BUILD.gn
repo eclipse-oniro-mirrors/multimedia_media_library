@@ -106,6 +106,7 @@ ohos_shared_library("media_library_asset_manager") {
     "image_framework:picture",
     "libexif:libexif",
     "ipc:ipc_core",
+    "node:node_header_notice",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "resource_management:librawfile",
