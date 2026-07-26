@@ -2965,6 +2965,7 @@ static bool SaveCameraPhotoExecute(MediaAssetChangeRequestAsyncContext &context)
     reqBody.path = fileAsset->GetUri();
     reqBody.photoSubType = fileAsset->GetPhotoSubType();
     reqBody.imageFileType = objInfo->GetImageFileType();
+    reqBody.containsAddResource = containsAddResource;
     bool iscontainsSetSupportedWatermarkType =
         std::find(changeOpreations.begin(),
             changeOpreations.end(),

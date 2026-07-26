@@ -21,6 +21,7 @@
 
 #include "oh_media_asset.h"
 #include "media_log.h"
+#include "medialibrary_business_code.h"
 #include "medialibrary_errno.h"
 #include "media_file_utils.h"
 #include "media_column.h"
@@ -34,10 +35,15 @@
 #include "permission_utils.h"
 #include "userfile_client.h"
 #include "userfilemgr_uri.h"
+#include "save_camera_photo_vo.h"
+#include "user_define_ipc_client.h"
 
 using namespace std;
 using namespace OHOS::Media;
 using namespace OHOS::Security::AccessToken;
+
+static const std::string URI_TYPE = "uriType";
+static const std::string TYPE_PHOTOS = "1";
 
 atomic<uint32_t> MediaAssetChangeRequestImpl::cacheFileId_(0);
 const string MOVING_PHOTO_VIDEO_EXTENSION = "mp4";
@@ -368,38 +374,35 @@ bool MediaAssetChangeRequestImpl::SaveCameraPhotoExecute()
     MEDIA_INFO_LOG("SaveCameraPhotoExecute begin.");
     bool containsAddResource = find(assetChangeOperations_.begin(), assetChangeOperations_.end(),
         AssetChangeOperation::ADD_RESOURCE) != assetChangeOperations_.end();
-    std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
+    SaveCameraPhotoReqBody reqBody;
     if (containsAddResource && !PermissionUtils::IsSystemApp()) {
         // remove high quality photo
         MEDIA_INFO_LOG("discard high quality photo because add resource by third app");
         DiscardHighQualityPhoto();
 
         // set dirty flag when third-party hap calling addResource to save camera photo
-        MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_DIRTY,
-            to_string(static_cast<int32_t>(DirtyType::TYPE_NEW)));
+        reqBody.discardHighQualityPhoto = true;
     }
 
     // The watermark will trigger the scan. If the watermark is turned on, there is no need to trigger the scan again.
-    bool needScan = std::find(assetChangeOperations_.begin(), assetChangeOperations_.end(),
+    reqBody.needScan = std::find(assetChangeOperations_.begin(), assetChangeOperations_.end(),
         AssetChangeOperation::ADD_FILTERS) == assetChangeOperations_.end();
 
     auto fileAsset = mediaAsset_->GetFileAssetInstance();
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, false, "fileAsset is nullptr");
+    reqBody.fileId = fileAsset->GetId();
+    reqBody.mediaType = static_cast<int32_t>(fileAsset->GetMediaType());
+    reqBody.path = fileAsset->GetUri();
+    reqBody.photoSubType = fileAsset->GetPhotoSubType();
+    reqBody.imageFileType = imageFileType_;
+    reqBody.containsAddResource = containsAddResource;
 
-    MediaFileUtils::UriAppendKeyValue(uriStr, API_VERSION, to_string(MEDIA_API_VERSION_V10));
-    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, to_string(needScan));
-    MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_FILE_PATH, fileAsset->GetUri());
-    MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::MEDIA_ID, to_string(fileAsset->GetId()));
-    MediaFileUtils::UriAppendKeyValue(uriStr, PhotoColumn::PHOTO_SUBTYPE, to_string(fileAsset->GetPhotoSubType()));
-    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_IMAGE_FILE_TYPE, to_string(static_cast<int32_t>(imageFileType_)));
-    MediaFileUtils::UriAppendKeyValue(uriStr, CONST_CONTAIN_ADD_RESOURCE, to_string(containsAddResource));
-    Uri uri(uriStr);
-    OHOS::DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(PhotoColumn::PHOTO_IS_TEMP, false);
-    OHOS::DataShare::DataSharePredicates predicates;
-    int32_t changedRows = UserFileClient::Update(uri, predicates, valuesBucket);
-    CHECK_AND_RETURN_RET_LOG(changedRows >= 0, false, "save camera photo fail, err: %{public}d", changedRows);
-
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SAVE_CAMERA_PHOTO);
+    std::unordered_map<std::string, std::string> headerMap{
+        {MediaColumn::MEDIA_ID, to_string(fileAsset->GetId())}, {URI_TYPE, TYPE_PHOTOS}};
+    int32_t ret = IPC::UserDefineIPCClient().SetHeader(headerMap).Call(businessCode, reqBody);
+    CHECK_AND_RETURN_RET_LOG(ret >= 0, false, "save camera photo fail, err: %{public}d", ret);
+    
     return true;
 }
 

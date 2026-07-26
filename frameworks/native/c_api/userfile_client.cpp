@@ -30,8 +30,8 @@ static const int STORAGE_MANAGER_MANAGER_ID = 5003;
 
 namespace OHOS {
 namespace Media {
-
-bool UserFileClient::IsValid()
+int32_t UserFileClient::userId_ = -1;
+bool UserFileClient::IsValid(const int32_t userId)
 {
     return sDataShareHelper_ != nullptr;
 }
@@ -56,7 +56,7 @@ void UserFileClient::Init()
     }
 }
 
-void UserFileClient::Init(const sptr<IRemoteObject> &token, bool isSetHelper)
+void UserFileClient::Init(const sptr<IRemoteObject> &token, bool isSetHelper, const int32_t userId)
 {
     if (sDataShareHelper_ == nullptr) {
         sDataShareHelper_ = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
@@ -136,10 +136,38 @@ int UserFileClient::Update(Uri &uri, const DataSharePredicates &predicates,
     return sDataShareHelper_->Update(uri, predicates, value);
 }
 
+int32_t UserFileClient::UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option)
+{
+    if (!IsValid()) {
+        MEDIA_ERR_LOG("UserDefineFunc fail, helper null");
+        return E_FAIL;
+    }
+    return sDataShareHelper_->UserDefineFunc(data, reply, option);
+}
+
+int32_t UserFileClient::UserDefineFunc(const int32_t &userId, MessageParcel &data, MessageParcel &reply,
+    MessageOption &option)
+{
+    if (!IsValid()) {
+        MEDIA_ERR_LOG("UserDefineFunc fail, helper null");
+        return E_FAIL;
+    }
+    return sDataShareHelper_->UserDefineFunc(data, reply, option);
+}
+
 void UserFileClient::Clear()
 {
     sDataShareHelper_ = nullptr;
 }
 
+void UserFileClient::SetUserId(const int32_t userId)
+{
+    userId_ = userId;
+}
+
+int32_t UserFileClient::GetUserId()
+{
+    return userId_;
+}
 }
 }
