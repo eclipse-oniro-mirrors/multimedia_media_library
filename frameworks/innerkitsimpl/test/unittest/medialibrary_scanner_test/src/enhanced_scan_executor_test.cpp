@@ -39,10 +39,10 @@ void EnhancedScanExecutorTest::TearDown()
 std::shared_ptr<ScanTaskContext> EnhancedScanExecutorTest::CreateTask(int32_t fileId, ScanExecutionMode executionMode)
 {
     auto config = ScanConfigBuilder()
-        .SetFileId(fileId)
-        .SetFilePath("/test/path")
         .SetExecutionMode(executionMode)
         .Build();
+    config.GetDefaultScanInfo().SetFileId(fileId);
+    config.GetDefaultScanInfo().SetFilePath("/test/path");
     return std::make_shared<ScanTaskContext>(config);
 }
 
