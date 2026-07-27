@@ -13,21 +13,44 @@
  * limitations under the License.
  */
 
-#ifndef SCAN_TASK_CONTEXT_H
-#define SCAN_TASK_CONTEXT_H
+#define MLOG_TAG "DefaultScanInfo"
 
-#include "scan_config.h"
+#include "default_scan_info.h"
 
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
-struct ScanTaskContext {
-    ScanConfig config;
 
-    explicit ScanTaskContext(const ScanConfig& scanConfig)
-        : config(scanConfig) {}
- 
-    bool IsCustomRestoreScan() const { return config.GetStrategyType() == ScanStrategyType::CUSTOM_RESTORE_SCAN; }
-};
+const std::string& DefaultScanInfo::GetFilePath() const
+{
+    return filePath_;
+}
+
+void DefaultScanInfo::SetFilePath(const std::string& path)
+{
+    filePath_ = path;
+}
+
+int32_t DefaultScanInfo::GetFileId() const
+{
+    return fileId_;
+}
+
+void DefaultScanInfo::SetFileId(int32_t id)
+{
+    fileId_ = id;
+}
+
+bool DefaultScanInfo::GetIsMovingPhoto() const
+{
+    return isMovingPhoto_;
+}
+
+void DefaultScanInfo::SetIsMovingPhoto(bool isMoving)
+{
+    isMovingPhoto_ = isMoving;
+}
+
 } // namespace Media
 } // namespace OHOS
-#endif // SCAN_TASK_CONTEXT_H
+// LCOV_EXCL_STOP

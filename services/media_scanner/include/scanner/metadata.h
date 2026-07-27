@@ -202,9 +202,6 @@ public:
 
     EXPORT void Init();
     void InitV2();
-    void InitValueFuncMap();
-    void InitValueFuncMapV2();
-    void InitValueFuncMapV3();
 
     using MetadataFnPtr = void (Metadata::*)(const VariantData &);
     EXPORT std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataFnPtr>> memberFuncMap_;
@@ -219,7 +216,7 @@ public:
     using GetterMediaType = MediaType (Metadata::*)() const;
     using MetadataGetter = std::variant<GetterInt32, GetterInt64, GetterStringRef, GetterStringVal,
         GetterStringConstVal, GetterDouble, GetterMediaType>;
-    EXPORT std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataGetter>> valueFuncMap_;
+    static const std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataGetter>> valueFuncMap_;
     EXPORT NativeRdb::ValueObject GetValue(const std::string &column) const;
 
 private:

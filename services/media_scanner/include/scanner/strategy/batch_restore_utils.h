@@ -21,8 +21,8 @@
 #include <vector>
  
 #include "batch_restore_types.h"
+#include "custom_restore_info.h"
 #include "metadata.h"
-#include "scan_config.h"
 #include "values_bucket.h"
  
 namespace OHOS {
@@ -32,8 +32,7 @@ class BatchRestoreUtils {
 public:
     static std::vector<RestoreFileInfo> GetFileInfos(const std::vector<std::string> &filePathVector,
         UniqueNumber &uniqueNumber);
-    static bool IsDuplication(const BatchScanInfo &config,
-        const std::unordered_set<std::string> &photoCache, RestoreFileInfo &fileInfo);
+    static bool IsDuplication(const CustomRestoreInfo &info, RestoreFileInfo &fileInfo);
     static int32_t FillMetadata(const std::unordered_map<std::string, TimeInfo> &timeInfoMap,
         const RestoreFileInfo &fileInfo, std::unique_ptr<Metadata> &data);
     static int32_t GetFileMetadata(std::unique_ptr<Metadata> &data);

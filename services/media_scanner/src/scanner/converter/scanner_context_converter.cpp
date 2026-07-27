@@ -23,7 +23,8 @@ namespace OHOS {
 namespace Media {
 MediaScannerObj::ScanType ScannerContextConverter::DetermineScanType(const ScanTaskContext& context)
 {
-    if (context.config.GetIsMovingPhoto()) {
+    const auto& info = context.config.GetDefaultScanInfo();
+    if (info.GetIsMovingPhoto()) {
         return MediaScannerObj::ScanType::CAMERA_SHOT_MOVING_PHOTO;
     }
 
@@ -33,21 +34,22 @@ MediaScannerObj::ScanType ScannerContextConverter::DetermineScanType(const ScanT
 std::unique_ptr<MediaScannerObj> ScannerContextConverter::Convert(const ScanTaskContext& context)
 {
     MediaScannerObj::ScanType scanType = DetermineScanType(context);
+    const auto& info = context.config.GetDefaultScanInfo();
 
     auto scannerObj = std::make_unique<MediaScannerObj>(
-        context.config.GetFilePath(),
+        info.GetFilePath(),
         context.config.GetCallback(),
         scanType,
         context.config.GetApiVersion()
     );
 
-    if (context.config.GetFileId() != 0) {
-        scannerObj->SetFileId(context.config.GetFileId());
+    if (info.GetFileId() != 0) {
+        scannerObj->SetFileId(info.GetFileId());
     }
 
     scannerObj->SetForceScan(context.config.GetForceScan());
     scannerObj->SetIsSkipAlbumUpdate(context.config.GetSkipAlbumUpdate());
-    scannerObj->SetCameraShotMovingPhoto(context.config.GetIsMovingPhoto());
+    scannerObj->SetCameraShotMovingPhoto(info.GetIsMovingPhoto());
 
     MEDIA_INFO_LOG("ScannerContextConverter::Convert: %{public}s", context.config.ToString().c_str());
 

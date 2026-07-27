@@ -27,11 +27,15 @@ ScanConfigBuilder::ScanConfigBuilder(const ScanConfig& config)
     config_ = config;
 }
 
+// 公共变量 - 执行模式
+
 ScanConfigBuilder& ScanConfigBuilder::SetExecutionMode(ScanExecutionMode executionMode)
 {
     config_.SetExecutionMode(executionMode);
     return *this;
 }
+
+// 公共变量 - 业务相关
 
 ScanConfigBuilder& ScanConfigBuilder::SetForceScan(bool force)
 {
@@ -44,6 +48,8 @@ ScanConfigBuilder& ScanConfigBuilder::SetSkipAlbumUpdate(bool skip)
     config_.SetSkipAlbumUpdate(skip);
     return *this;
 }
+
+// 公共变量 - 缩略图相关
 
 ScanConfigBuilder& ScanConfigBuilder::SetNeedGenerateThumbnail(bool need)
 {
@@ -76,6 +82,15 @@ ScanConfigBuilder& ScanConfigBuilder::SetOriginalPicture(const std::shared_ptr<P
     return *this;
 }
 
+ScanConfigBuilder& ScanConfigBuilder::SetUpdateDirtyCallback(
+    const std::shared_ptr<IMediaScannerCallback>& updateDirtyCallback)
+{
+    config_.SetUpdateDirtyCallback(updateDirtyCallback);
+    return *this;
+}
+
+// 公共变量 - 扫描策略
+
 ScanConfigBuilder& ScanConfigBuilder::SetStrategyType(ScanStrategyType type)
 {
     config_.SetStrategyType(type);
@@ -94,131 +109,33 @@ ScanConfigBuilder& ScanConfigBuilder::SetQuality(ScanQuality quality)
     return *this;
 }
 
-ScanConfigBuilder& ScanConfigBuilder::SetFilePath(const std::string& path)
+// Info 设置
+
+ScanConfigBuilder& ScanConfigBuilder::SetDefaultScanInfo(const DefaultScanInfo& info)
 {
-    config_.SetFilePath(path);
+    config_.GetDefaultScanInfo() = info;
     return *this;
 }
 
-ScanConfigBuilder& ScanConfigBuilder::SetFileId(int32_t fileId)
+ScanConfigBuilder& ScanConfigBuilder::SetCustomRestoreInfo(const CustomRestoreInfo& info)
 {
-    config_.SetFileId(fileId);
+    config_.GetCustomRestoreInfo() = info;
     return *this;
 }
 
-ScanConfigBuilder& ScanConfigBuilder::SetIsMovingPhoto(bool isMoving)
+// 预设方法
+
+ScanConfigBuilder& ScanConfigBuilder::UseCustomRestorePreset(const CustomRestoreInfo& info)
 {
-    config_.SetIsMovingPhoto(isMoving);
+    config_.GetCustomRestoreInfo() = info;
+    config_.SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN);
     return *this;
 }
 
-ScanConfigBuilder& ScanConfigBuilder::SetBatchScanInfo(const std::shared_ptr<BatchScanInfo>& multiScanInfo)
-{
-    config_.SetBatchScanInfo(multiScanInfo);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetFilePaths(const std::vector<std::string>& paths)
-{
-    config_.SetFilePaths(paths);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetFileInfos(const std::vector<RestoreFileInfo>& fileInfos)
-{
-    config_.SetFileInfos(fileInfos);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetTimeInfoMap(const std::unordered_map<std::string, TimeInfo>& timeInfoMap)
-{
-    config_.SetTimeInfoMap(timeInfoMap);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetAlbumId(int32_t albumId)
-{
-    config_.SetAlbumId(albumId);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetIsDeduplication(bool isDeduplication)
-{
-    config_.SetIsDeduplication(isDeduplication);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetHasPhotoCache(bool hasPhotoCache)
-{
-    config_.SetHasPhotoCache(hasPhotoCache);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetPhotoCache(const std::unordered_set<std::string>& photoCache)
-{
-    config_.SetPhotoCache(photoCache);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetPackageName(const std::string& packageName)
-{
-    config_.SetPackageName(packageName);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetBundleName(const std::string& bundleName)
-{
-    config_.SetBundleName(bundleName);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetAppId(const std::string& appId)
-{
-    config_.SetAppId(appId);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::SetIsFirstBatch(bool isFirstBatch)
-{
-    config_.SetIsFirstBatch(isFirstBatch);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::UseCustomRestorePreset(
-    const std::vector<std::string>& filePaths,
-    const std::vector<RestoreFileInfo>& fileInfos,
-    const std::unordered_map<std::string, TimeInfo>& timeInfoMap,
-    int32_t albumId,
-    bool isDeduplication,
-    bool hasPhotoCache,
-    const std::unordered_set<std::string>& photoCache,
-    const std::string& packageName,
-    const std::string& bundleName,
-    const std::string& appId,
-    bool isFirstBatch)
-{
-    auto info = std::make_shared<BatchScanInfo>();
-    info->filePaths = filePaths;
-    info->fileInfos = fileInfos;
-    info->timeInfoMap = timeInfoMap;
-    info->albumId = albumId;
-    info->isDeduplication = isDeduplication;
-    info->hasPhotoCache = hasPhotoCache;
-    info->photoCache = photoCache;
-    info->packageName = packageName;
-    info->bundleName = bundleName;
-    info->appId = appId;
-    info->isFirstBatch = isFirstBatch;
-    config_.SetBatchScanInfo(info);
-    config_.SetStrategyType(ScanStrategyType::BATCH_SCAN);
-    return *this;
-}
-
-ScanConfigBuilder& ScanConfigBuilder::UseCameraShotPreset(bool isMovingPhoto, ScanQuality quality)
+ScanConfigBuilder& ScanConfigBuilder::UseCameraShotPreset(ScanQuality quality)
 {
     config_.SetStrategyType(ScanStrategyType::DEFAULT_SCAN);
     config_.SetConflictPolicy(ConflictPolicy::QUALITY_PRIORITY);
-    config_.SetIsMovingPhoto(isMovingPhoto);
     config_.SetQuality(quality);
     return *this;
 }

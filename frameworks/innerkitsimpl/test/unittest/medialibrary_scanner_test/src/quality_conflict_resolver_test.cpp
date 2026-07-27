@@ -36,11 +36,11 @@ void QualityConflictResolverTest::TearDown()
 std::shared_ptr<ScanTaskContext> QualityConflictResolverTest::CreateTask(ScanQuality quality)
 {
     auto config = ScanConfigBuilder()
-        .SetFileId(1)
-        .SetFilePath("/test/path")
         .SetQuality(quality)
         .SetConflictPolicy(ConflictPolicy::QUALITY_PRIORITY)
         .Build();
+    config.GetDefaultScanInfo().SetFileId(1);
+    config.GetDefaultScanInfo().SetFilePath("/test/path");
     return std::make_shared<ScanTaskContext>(config);
 }
 
@@ -118,10 +118,10 @@ HWTEST_F(QualityConflictResolverTest, QualityConflictResolver_IsStrategyEnabled_
     EXPECT_FALSE(resolver_->IsStrategyEnabled(nullptr));
 
     auto config = ScanConfigBuilder()
-        .SetFileId(1)
-        .SetFilePath("/test")
         .SetConflictPolicy(ConflictPolicy::DEFAULT)
         .Build();
+    config.GetDefaultScanInfo().SetFileId(1);
+    config.GetDefaultScanInfo().SetFilePath("/test");
     auto taskOtherPolicy = std::make_shared<ScanTaskContext>(config);
     EXPECT_FALSE(resolver_->IsStrategyEnabled(taskOtherPolicy));
     MEDIA_INFO_LOG("end QualityConflictResolver_IsStrategyEnabled_test01");

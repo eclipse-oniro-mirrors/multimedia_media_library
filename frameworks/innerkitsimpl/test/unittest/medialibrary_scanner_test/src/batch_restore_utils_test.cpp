@@ -40,17 +40,16 @@ void BatchRestoreUtilsTest::TearDown() {}
 HWTEST_F(BatchRestoreUtilsTest, IsDuplication_NoDedup_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_NoDedup_test01");
-    BatchScanInfo config;
-    config.isDeduplication = false;
-    config.albumId = 1;
-    config.hasPhotoCache = false;
-    unordered_set<string> photoCache;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(false);
+    config.SetAlbumId(1);
+    config.SetHasPhotoCache(false);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_NoDedup_test01");
 }
@@ -62,17 +61,16 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_NoDedup_test01, TestSize.Level0)
 HWTEST_F(BatchRestoreUtilsTest, IsDuplication_AlbumIdZero_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_AlbumIdZero_test02");
-    BatchScanInfo config;
-    config.isDeduplication = true;
-    config.albumId = 0;
-    config.hasPhotoCache = false;
-    unordered_set<string> photoCache;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(true);
+    config.SetAlbumId(0);
+    config.SetHasPhotoCache(false);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_AlbumIdZero_test02");
 }
@@ -84,18 +82,19 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_AlbumIdZero_test02, TestSize.Level
 HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheHit_test03, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheHit_test03");
-    BatchScanInfo config;
-    config.isDeduplication = true;
-    config.albumId = 1;
-    config.hasPhotoCache = true;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(true);
+    config.SetAlbumId(1);
+    config.SetHasPhotoCache(true);
     unordered_set<string> photoCache;
     photoCache.insert("test.jpg_1024_1_0");
+    config.SetPhotoCache(photoCache);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_TRUE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheHit_test03");
 }
@@ -107,18 +106,17 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheHit_test03, TestSize.Lev
 HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheMiss_test04, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheMiss_test04");
-    BatchScanInfo config;
-    config.isDeduplication = true;
-    config.albumId = 1;
-    config.hasPhotoCache = true;
-    unordered_set<string> photoCache;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(true);
+    config.SetAlbumId(1);
+    config.SetHasPhotoCache(true);
     // photoCache is empty, no match
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     // Without RDB store, the RDB query branch returns false
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheMiss_test04");
@@ -131,19 +129,20 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheMiss_test04, TestSize.Le
 HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheKeyFormat_test05, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheKeyFormat_test05");
-    BatchScanInfo config;
-    config.isDeduplication = true;
-    config.albumId = 1;
-    config.hasPhotoCache = true;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(true);
+    config.SetAlbumId(1);
+    config.SetHasPhotoCache(true);
     unordered_set<string> photoCache;
     // Key format: fileName_size_mediaType_orientation
     photoCache.insert("photo.png_2048_1_90");
+    config.SetPhotoCache(photoCache);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "photo.png";
     fileInfo.size = 2048;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 90;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_TRUE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheKeyFormat_test05");
 }
@@ -155,18 +154,19 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheKeyFormat_test05, TestSi
 HWTEST_F(BatchRestoreUtilsTest, IsDuplication_EarlyReturnBoth_test06, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_EarlyReturnBoth_test06");
-    BatchScanInfo config;
-    config.isDeduplication = false;
-    config.albumId = 0;
-    config.hasPhotoCache = true;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(false);
+    config.SetAlbumId(0);
+    config.SetHasPhotoCache(true);
     unordered_set<string> photoCache;
     photoCache.insert("test.jpg_1024_1_0");
+    config.SetPhotoCache(photoCache);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_EarlyReturnBoth_test06");
 }
@@ -178,17 +178,16 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_EarlyReturnBoth_test06, TestSize.L
 HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheEmpty_test07, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheEmpty_test07");
-    BatchScanInfo config;
-    config.isDeduplication = true;
-    config.albumId = 1;
-    config.hasPhotoCache = true;
-    unordered_set<string> photoCache; // empty
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(true);
+    config.SetAlbumId(1);
+    config.SetHasPhotoCache(true);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     // No photoCache hit, RDB query will fail without store
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheEmpty_test07");

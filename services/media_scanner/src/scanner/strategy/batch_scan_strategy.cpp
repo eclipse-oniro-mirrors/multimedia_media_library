@@ -27,7 +27,7 @@ namespace OHOS::Media {
  
 ScanStrategyType BatchScanStrategy::GetStrategyType() const
 {
-    return ScanStrategyType::BATCH_SCAN;
+    return ScanStrategyType::CUSTOM_RESTORE_SCAN;
 }
  
 bool BatchScanStrategy::ValidateBatchContext(const std::shared_ptr<ScanTaskContext> &context)
@@ -36,12 +36,8 @@ bool BatchScanStrategy::ValidateBatchContext(const std::shared_ptr<ScanTaskConte
         MEDIA_ERR_LOG("ValidateBatchContext: context is nullptr");
         return false;
     }
-    if (context->config.GetFilePaths().empty()) {
+    if (context->config.GetCustomRestoreInfo().GetFilePaths().empty()) {
         MEDIA_ERR_LOG("ValidateBatchContext: filePaths is empty");
-        return false;
-    }
-    if (!context->config.HasBatchScanInfo()) {
-        MEDIA_ERR_LOG("ValidateBatchContext: batchScanInfo is null");
         return false;
     }
     return true;
@@ -65,8 +61,7 @@ int32_t BatchScanStrategy::Scan(const std::shared_ptr<ScanTaskContext> &context)
 std::unique_ptr<BatchScannerObj> BatchScanStrategy::CreateScannerObj(
     const std::shared_ptr<ScanTaskContext> &context)
 {
-    auto batchScanInfo = context->config.GetBatchScanInfo();
-    return std::make_unique<BatchScannerObj>(std::move(batchScanInfo));
+    return std::make_unique<BatchScannerObj>(context->config.GetCustomRestoreInfo());
 }
  
 } // namespace OHOS::Media

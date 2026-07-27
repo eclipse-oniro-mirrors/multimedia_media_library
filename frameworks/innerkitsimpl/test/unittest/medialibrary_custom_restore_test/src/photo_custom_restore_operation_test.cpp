@@ -396,13 +396,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_02
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_026, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_026 Start");
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->fileInfos = {};
-    batchScanInfo->isFirstBatch = true;
-    BatchScannerObj scannerObj(batchScanInfo);
+    CustomRestoreInfo customInfo;
+    customInfo.SetFileInfos({});
+    customInfo.SetIsFirstBatch(true);
+    BatchScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     EXPECT_EQ(result, E_OK);
-    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
+    EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_026 End");
 }
 
@@ -420,11 +420,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_02
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_028, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_028 Start");
-    BatchScanInfo config;
-    config.isDeduplication = false;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(false);
     RestoreFileInfo fileInfo;
-    unordered_set<string> photoCache;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_028 End");
 }
@@ -533,13 +532,13 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_040, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_040 Start");
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->fileInfos = {};
-    batchScanInfo->isFirstBatch = false;
-    BatchScannerObj scannerObj(batchScanInfo);
+    CustomRestoreInfo customInfo;
+    customInfo.SetFileInfos({});
+    customInfo.SetIsFirstBatch(false);
+    BatchScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     EXPECT_EQ(result, E_OK);
-    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
+    EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_040 End");
 }
 
@@ -950,16 +949,15 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetTimeInfoMap_Te
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_001 Start");
-    BatchScanInfo config;
-    config.isDeduplication = false;
-    config.albumId = 0;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(false);
+    config.SetAlbumId(0);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    unordered_set<string> photoCache;
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_001 End");
 }
@@ -967,10 +965,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_002 Start");
-    BatchScanInfo config;
-    config.isDeduplication = true;
-    config.albumId = 1;
-    config.hasPhotoCache = true;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(true);
+    config.SetAlbumId(1);
+    config.SetHasPhotoCache(true);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.size = 1024;
@@ -978,7 +976,8 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
     fileInfo.orientation = 0;
     unordered_set<string> photoCache;
     photoCache.insert("test.jpg_1024_1_0");
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    config.SetPhotoCache(photoCache);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, true);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_002 End");
 }
@@ -986,10 +985,10 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Test_003, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_003 Start");
-    BatchScanInfo config;
-    config.isDeduplication = true;
-    config.albumId = 1;
-    config.hasPhotoCache = true;
+    CustomRestoreInfo config;
+    config.SetIsDeduplication(true);
+    config.SetAlbumId(1);
+    config.SetHasPhotoCache(true);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test2.jpg";
     fileInfo.size = 2048;
@@ -997,7 +996,8 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
     fileInfo.orientation = 0;
     unordered_set<string> photoCache;
     photoCache.insert("test.jpg_1024_1_0");
-    bool result = BatchRestoreUtils::IsDuplication(config, photoCache, fileInfo);
+    config.SetPhotoCache(photoCache);
+    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_003 End");
 }
@@ -1091,28 +1091,28 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_RenameFiles_Test_
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_001 Start");
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->bundleName = "test.bundle";
-    batchScanInfo->packageName = "test.package";
-    batchScanInfo->appId = "test.app";
-    batchScanInfo->isFirstBatch = true;
-    BatchScannerObj scannerObj(batchScanInfo);
+    CustomRestoreInfo customInfo;
+    customInfo.SetBundleName("test.bundle");
+    customInfo.SetPackageName("test.package");
+    customInfo.SetAppId("test.app");
+    customInfo.SetIsFirstBatch(true);
+    BatchScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     EXPECT_EQ(result, E_OK);
-    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
+    EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_001 End");
 }
 
 HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_002, TestSize.Level0)
 {
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 Start");
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->bundleName = "test.bundle";
-    batchScanInfo->packageName = "test.package";
-    batchScanInfo->appId = "test.app";
-    batchScanInfo->isDeduplication = true;
-    batchScanInfo->albumId = 1;
-    batchScanInfo->hasPhotoCache = true;
+    CustomRestoreInfo customInfo;
+    customInfo.SetBundleName("test.bundle");
+    customInfo.SetPackageName("test.package");
+    customInfo.SetAppId("test.app");
+    customInfo.SetIsDeduplication(true);
+    customInfo.SetAlbumId(1);
+    customInfo.SetHasPhotoCache(true);
     RestoreFileInfo fileInfo;
     fileInfo.fileName = "test.jpg";
     fileInfo.displayName = "test.jpg";
@@ -1121,13 +1121,15 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.size = 1024;
     fileInfo.orientation = 0;
-    batchScanInfo->fileInfos.push_back(fileInfo);
-    batchScanInfo->photoCache.insert("test.jpg_1024_1_0");
-    batchScanInfo->isFirstBatch = false;
-    BatchScannerObj scannerObj(batchScanInfo);
+    customInfo.GetFileInfos().push_back(fileInfo);
+    unordered_set<string> photoCache;
+    photoCache.insert("test.jpg_1024_1_0");
+    customInfo.SetPhotoCache(photoCache);
+    customInfo.SetIsFirstBatch(false);
+    BatchScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     // File is duplicate, no successful insert
-    EXPECT_EQ(batchScanInfo->outFileInfos.size(), 0);
+    EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
     MEDIA_INFO_LOG("Photo_Custom_Restore_BatchInsert_Test_002 End");
 }
 

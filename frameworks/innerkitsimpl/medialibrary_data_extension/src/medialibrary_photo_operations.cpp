@@ -5343,11 +5343,12 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToVideoExecute(const std::string 
             "Failed to save temp video, path = %{private}s", newAssetPath.c_str());
 
         ScanConfig config = ScanConfigBuilder()
-            .UseCameraShotPreset(true, ScanQuality::DEFAULT)
-            .SetFilePath(newAssetPath)
-            .SetFileId(fileId)
+            .UseCameraShotPreset(ScanQuality::DEFAULT)
             .SetNeedGenerateThumbnail(false)
             .Build();
+        config.GetDefaultScanInfo().SetIsMovingPhoto(true);
+        config.GetDefaultScanInfo().SetFilePath(newAssetPath);
+        config.GetDefaultScanInfo().SetFileId(fileId);
         MediaLibraryObjectUtils::ScanFileAsync(config);
     }
 

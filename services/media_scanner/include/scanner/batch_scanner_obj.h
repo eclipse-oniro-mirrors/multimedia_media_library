@@ -20,17 +20,16 @@
 #include <vector>
  
 #include "batch_restore_types.h"
+#include "custom_restore_info.h"
 #include "metadata.h"
 #include "values_bucket.h"
  
 namespace OHOS {
 namespace Media {
  
-struct BatchScanInfo;
- 
 class BatchScannerObj {
 public:
-    explicit BatchScannerObj(std::shared_ptr<BatchScanInfo> batchScanInfo);
+    explicit BatchScannerObj(CustomRestoreInfo& info);
     ~BatchScannerObj() = default;
  
     int32_t Execute();
@@ -52,7 +51,7 @@ private:
     };
  
     std::vector<BatchScanItem> items_;
-    std::shared_ptr<BatchScanInfo> batchScanInfo_;
+    CustomRestoreInfo& customRestoreInfo_;
 };
  
 } // namespace Media

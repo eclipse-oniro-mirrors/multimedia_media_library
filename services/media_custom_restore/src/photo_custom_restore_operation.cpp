@@ -550,21 +550,23 @@ vector<RestoreFileInfo> PhotoCustomRestoreOperation::scanfile(const unordered_ma
     RestoreTaskInfo &restoreTaskInfo, const vector<string> &filePathVector,
     vector<RestoreFileInfo> &restoreFiles, int32_t &sameFileNum, bool isFirst)
 {
-    auto scanConfig = ScanConfigBuilder().UseCustomRestorePreset(
-        filePathVector,
-        restoreFiles,
-        timeInfoMap,
-        restoreTaskInfo.albumId,
-        restoreTaskInfo.isDeduplication,
-        restoreTaskInfo.hasPhotoCache,
-        photoCache_,
-        restoreTaskInfo.packageName,
-        restoreTaskInfo.bundleName,
-        restoreTaskInfo.appId,
-        isFirst).Build();
+    CustomRestoreInfo info;
+    info.SetFilePaths(filePathVector);
+    info.SetFileInfos(restoreFiles);
+    info.SetTimeInfoMap(timeInfoMap);
+    info.SetAlbumId(restoreTaskInfo.albumId);
+    info.SetIsDeduplication(restoreTaskInfo.isDeduplication);
+    info.SetHasPhotoCache(restoreTaskInfo.hasPhotoCache);
+    info.SetPhotoCache(photoCache_);
+    info.SetPackageName(restoreTaskInfo.packageName);
+    info.SetBundleName(restoreTaskInfo.bundleName);
+    info.SetAppId(restoreTaskInfo.appId);
+    info.SetIsFirstBatch(isFirst);
+
+    auto scanConfig = ScanConfigBuilder().UseCustomRestorePreset(info).Build();
     int32_t errCode = MediaScannerManager::GetInstance()->ScanSync(scanConfig);
-    sameFileNum = scanConfig.GetOutSameFileNum();
-    return scanConfig.GetOutFileInfos();
+    sameFileNum = scanConfig.GetCustomRestoreInfo().GetOutSameFileNum();
+    return scanConfig.GetCustomRestoreInfo().GetOutFileInfos();
 }
 
 int32_t PhotoCustomRestoreOperation::HandleCustomRestore(const unordered_map<string, TimeInfo> &timeInfoMap,

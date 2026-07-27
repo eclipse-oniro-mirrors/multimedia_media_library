@@ -26,7 +26,6 @@
 #include "medialibrary_rdb_transaction.h"
 #include "medialibrary_unistore_manager.h"
 #include "photo_album_column.h"
-#include "scan_config.h"
  
 // LCOV_EXCL_START
 namespace OHOS::Media {
@@ -56,15 +55,15 @@ static const std::vector<std::string> directFields = {
     PhotoColumn::PHOTO_VIDEO_MODE,
 };
  
-BatchScannerObj::BatchScannerObj(std::shared_ptr<BatchScanInfo> batchScanInfo)
-    : batchScanInfo_(std::move(batchScanInfo))
+BatchScannerObj::BatchScannerObj(CustomRestoreInfo& info)
+    : customRestoreInfo_(info)
 {
 }
  
 int32_t BatchScannerObj::Execute()
 {
     MEDIA_INFO_LOG("BatchScannerObj::Execute begin, file count: %{public}d",
-        static_cast<int32_t>(batchScanInfo_->fileInfos.size()));
+        static_cast<int32_t>(customRestoreInfo_.GetFileInfos().size()));
  
     // Step 1: Resolve metadata for all files
     int32_t err = ResolveMetadata();
@@ -91,8 +90,8 @@ int32_t BatchScannerObj::Execute()
 // Step 1: Data parsing - extract metadata from files
 int32_t BatchScannerObj::ResolveMetadata()
 {
-    const auto &fileInfos = batchScanInfo_->fileInfos;
-    const auto &timeInfoMap = batchScanInfo_->timeInfoMap;
+    const auto &fileInfos = customRestoreInfo_.GetFileInfos();
+    const auto &timeInfoMap = customRestoreInfo_.GetTimeInfoMap();
     int32_t resolveCount = 0;
  
     items_.reserve(fileInfos.size());
@@ -134,7 +133,7 @@ int32_t BatchScannerObj::Deduplicate()
             item.fileInfo.orientation = item.metadata->GetOrientation();
         }
  
-        if (BatchRestoreUtils::IsDuplication(*batchScanInfo_, batchScanInfo_->photoCache, item.fileInfo)) {
+        if (BatchRestoreUtils::IsDuplication(customRestoreInfo_, item.fileInfo)) {
             item.isDuplicate = true;
             dupCount++;
             // Update unique_id for duplicate
@@ -179,9 +178,9 @@ int32_t BatchScannerObj::ConvertToValues()
         item.values.Put(MediaColumn::MEDIA_FILE_PATH, item.fileInfo.filePath);
         item.values.Put(MediaColumn::MEDIA_TITLE, item.fileInfo.title);
         item.values.Put(MediaColumn::MEDIA_NAME, item.fileInfo.displayName);
-        item.values.Put(MediaColumn::MEDIA_PACKAGE_NAME, batchScanInfo_->packageName);
-        item.values.Put(MediaColumn::MEDIA_OWNER_PACKAGE, batchScanInfo_->bundleName);
-        item.values.Put(MediaColumn::MEDIA_OWNER_APPID, batchScanInfo_->appId);
+        item.values.Put(MediaColumn::MEDIA_PACKAGE_NAME, customRestoreInfo_.GetPackageName());
+        item.values.Put(MediaColumn::MEDIA_OWNER_PACKAGE, customRestoreInfo_.GetBundleName());
+        item.values.Put(MediaColumn::MEDIA_OWNER_APPID, customRestoreInfo_.GetAppId());
  
         // Fields with special logic
         if (item.fileInfo.mediaType == MediaType::MEDIA_TYPE_IMAGE ||
@@ -231,7 +230,7 @@ int32_t BatchScannerObj::Insert()
             "BatchInsert failed, errCode: %{public}d, rowNum: %{public}" PRId64, errCode, rowNum);
         return errCode;
     };
-    errCode = trans.RetryTrans(func, !batchScanInfo_->isFirstBatch);
+    errCode = trans.RetryTrans(func, !customRestoreInfo_.GetIsFirstBatch());
     if (errCode != E_OK) {
         MEDIA_ERR_LOG("Insert: RetryTrans fail, ret:%{public}d", errCode);
         // Mark all insert items as failed
@@ -245,7 +244,7 @@ int32_t BatchScannerObj::Insert()
     return E_OK;
 }
  
-// Step 5: Post-process - back-fill fileInfo and write results back to BatchScanInfo
+// Step 5: Post-process - back-fill fileInfo and write results back to CustomRestoreInfo
 void BatchScannerObj::PostProcess()
 {
     std::vector<RestoreFileInfo> outFileInfos;
@@ -274,9 +273,9 @@ void BatchScannerObj::PostProcess()
         successFileNum++;
     }
  
-    batchScanInfo_->outFileInfos = std::move(outFileInfos);
-    batchScanInfo_->outSameFileNum = sameFileNum;
-    batchScanInfo_->outSuccessFileNum = successFileNum;
+    customRestoreInfo_.SetOutFileInfos(std::move(outFileInfos));
+    customRestoreInfo_.SetOutSameFileNum(sameFileNum);
+    customRestoreInfo_.SetOutSuccessFileNum(successFileNum);
  
     MEDIA_INFO_LOG("PostProcess done, success: %{public}d, duplicate: %{public}d",
         successFileNum, sameFileNum);

@@ -65,6 +65,8 @@ ohos_unittest("medialibrary_scanner_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/metadata.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/scan_config.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/scan_config_builder.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/default_scan_info.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/custom_restore_info.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",

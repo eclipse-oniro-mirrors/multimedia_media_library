@@ -69,7 +69,7 @@ void EnhancedScanExecutor::StartSync(const std::shared_ptr<ScanTaskContext>& tas
     ExecuteTask(task);
     HandleTaskCompletion(task);
 
-    MEDIA_INFO_LOG("completed (fileId %{public}d)", task->config.GetFileId());
+    MEDIA_INFO_LOG("completed (fileId %{public}d)", task->config.GetDefaultScanInfo().GetFileId());
 }
 
 void EnhancedScanExecutor::StartAsync()
@@ -122,7 +122,7 @@ void EnhancedScanExecutor::ClearAllTasks()
 
             if (task != nullptr && task->config.GetCallback() != nullptr) {
                 task->config.GetCallback()->OnScanFinished(
-                    E_STOP, "", task->config.GetFilePath()
+                    E_STOP, "", task->config.GetDefaultScanInfo().GetFilePath()
                 );
             }
         }
@@ -150,7 +150,7 @@ void EnhancedScanExecutor::ExecuteTask(const std::shared_ptr<ScanTaskContext>& t
     }
 
     MEDIA_INFO_LOG("start (fileId %{public}d, path %{private}s)",
-        task->config.GetFileId(), task->config.GetFilePath().c_str());
+        task->config.GetDefaultScanInfo().GetFileId(), task->config.GetDefaultScanInfo().GetFilePath().c_str());
 
     auto strategy = ScanStrategyManager::GetInstance().SelectStrategy(task->config.GetStrategyType());
     if (strategy == nullptr) {
@@ -158,14 +158,14 @@ void EnhancedScanExecutor::ExecuteTask(const std::shared_ptr<ScanTaskContext>& t
             static_cast<int>(task->config.GetStrategyType()));
 
         if (task->config.GetCallback()) {
-            task->config.GetCallback()->OnScanFinished(E_ERR, "", task->config.GetFilePath());
+            task->config.GetCallback()->OnScanFinished(E_ERR, "", task->config.GetDefaultScanInfo().GetFilePath());
         }
         return;
     }
 
     strategy->Scan(task);
 
-    MEDIA_INFO_LOG("completed (fileId %{public}d)", task->config.GetFileId());
+    MEDIA_INFO_LOG("completed (fileId %{public}d)", task->config.GetDefaultScanInfo().GetFileId());
 }
 
 void EnhancedScanExecutor::HandleTaskCompletion(const std::shared_ptr<ScanTaskContext>& task)
@@ -176,13 +176,13 @@ void EnhancedScanExecutor::HandleTaskCompletion(const std::shared_ptr<ScanTaskCo
     }
 
     // Batch tasks never went through deduplicator, skip cleanup
-    if (task->IsBatchScan()) {
+    if (task->IsCustomRestoreScan()) {
         MEDIA_INFO_LOG("batch task completed, globalTask count: %{public}zu",
             globalTaskQueue_.size());
         return;
     }
 
-    int32_t fileId = task->config.GetFileId();
+    int32_t fileId = task->config.GetDefaultScanInfo().GetFileId();
 
     deduplicator_->UnmarkAsScanning(task);
 
@@ -216,7 +216,7 @@ void EnhancedScanExecutor::ScheduleNextAsyncTask(const std::shared_ptr<ScanTaskC
 {
     auto nextTask = deduplicator_->GetNextWaitingTask(task);
     if (nextTask == nullptr) {
-        MEDIA_INFO_LOG("no waiting task for fileId %{public}d", task->config.GetFileId());
+        MEDIA_INFO_LOG("no waiting task for fileId %{public}d", task->config.GetDefaultScanInfo().GetFileId());
         return;
     }
 

@@ -268,18 +268,17 @@ HWTEST_F(MetadataGetValueTest, GetValue_DetailTime_test15, TestSize.Level0)
 }
  
 /**
- * @tc.name: InitValueFuncMap_Size_test01
+ * @tc.name: ValueFuncMap_Size_test01
  * @tc.desc: 验证 valueFuncMap_ 条目数量符合预期
  */
-HWTEST_F(MetadataGetValueTest, InitValueFuncMap_Size_test01, TestSize.Level0)
+HWTEST_F(MetadataGetValueTest, ValueFuncMap_Size_test01, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter InitValueFuncMap_Size_test01");
-    Metadata data;
-    // InitValueFuncMap is called in constructor via Init()
+    MEDIA_INFO_LOG("enter ValueFuncMap_Size_test01");
+    // valueFuncMap_ is a static const member, initialized at file scope
     // Count entries: 22 int32 + 8 int64 + 18 string(ref) + 3 string(val) + 1 string(const val)
     // + 1 string(ref path) + 3 double + 1 mediatype = 57
-    EXPECT_GE(data.valueFuncMap_.size(), 50u);
-    MEDIA_INFO_LOG("end InitValueFuncMap_Size_test01, size: %{public}zu", data.valueFuncMap_.size());
+    EXPECT_GE(Metadata::valueFuncMap_.size(), 50u);
+    MEDIA_INFO_LOG("end ValueFuncMap_Size_test01, size: %{public}zu", Metadata::valueFuncMap_.size());
 }
  
 } // namespace Media

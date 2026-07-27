@@ -37,21 +37,20 @@ using namespace std;
 // LCOV_EXCL_START
 namespace OHOS::Media {
  
-bool BatchRestoreUtils::IsDuplication(const BatchScanInfo &config,
-    const unordered_set<string> &photoCache, RestoreFileInfo &fileInfo)
+bool BatchRestoreUtils::IsDuplication(const CustomRestoreInfo &info, RestoreFileInfo &fileInfo)
 {
-    bool cond = (!config.isDeduplication || config.albumId == 0);
+    bool cond = (!info.GetIsDeduplication() || info.GetAlbumId() == 0);
     CHECK_AND_RETURN_RET(!cond, false);
     int32_t mediaType = fileInfo.mediaType;
-    if (config.hasPhotoCache) {
+    if (info.GetHasPhotoCache()) {
         string photoId = fileInfo.fileName + "_" + to_string(fileInfo.size) + "_" + to_string(mediaType) + "_" +
                          to_string(fileInfo.orientation);
-        return photoCache.count(photoId) > 0;
+        return info.GetPhotoCache().count(photoId) > 0;
     }
- 
+
     const string querySql =
         "SELECT COUNT(1) as count FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " + PhotoColumn::PHOTO_OWNER_ALBUM_ID +
-        "=" + to_string(config.albumId) + " AND " + MediaColumn::MEDIA_NAME + "='" + fileInfo.fileName +
+        "=" + to_string(info.GetAlbumId()) + " AND " + MediaColumn::MEDIA_NAME + "='" + fileInfo.fileName +
         "' AND " + MediaColumn::MEDIA_SIZE + "=" + to_string(fileInfo.size) + " AND " + MediaColumn::MEDIA_TYPE + "=" +
         to_string(mediaType) + " AND " + PhotoColumn::PHOTO_ORIENTATION + "=" + to_string(fileInfo.orientation) + ";";
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();

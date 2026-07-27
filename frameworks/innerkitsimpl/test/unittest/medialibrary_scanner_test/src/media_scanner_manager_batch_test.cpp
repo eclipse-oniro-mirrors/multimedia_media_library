@@ -33,11 +33,11 @@ void MediaScannerManagerBatchTest::SetUp() {}
  
 void MediaScannerManagerBatchTest::TearDown() {}
  
-// ==================== ScanSync + BATCH_SCAN 路由测试 ====================
+// ==================== ScanSync + CUSTOM_RESTORE_SCAN 路由测试 ====================
  
 /**
  * @tc.name: ScanSync_BatchScan_EmptyFilePaths_test
- * @tc.desc: ScanSync传入BATCH_SCAN但filePaths为空，返回E_INVALID_ARGUMENTS
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN但filePaths为空，返回E_INVALID_ARGUMENTS
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePaths_test, TestSize.Level0)
 {
@@ -46,7 +46,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePaths_test, T
     ASSERT_NE(manager, nullptr);
  
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
         .Build();
  
     int32_t result = manager->ScanSync(config);
@@ -56,7 +56,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePaths_test, T
  
 /**
  * @tc.name: ScanSync_BatchScan_EnhancedExecutorNull_test
- * @tc.desc: ScanSync传入BATCH_SCAN，enhancedExecutor为空时返回E_ERR
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，enhancedExecutor为空时返回E_ERR
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EnhancedExecutorNull_test, TestSize.Level0)
 {
@@ -68,9 +68,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EnhancedExecutorNull_t
     manager->enhancedExecutor_ = nullptr;
  
     std::vector<std::string> paths = {"/test/file.jpg"};
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     int32_t result = manager->ScanSync(config);
@@ -82,7 +84,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EnhancedExecutorNull_t
  
 /**
  * @tc.name: ScanSync_BatchScan_ValidConfig_test
- * @tc.desc: ScanSync传入BATCH_SCAN，有效配置走ExecuteBatchScan路径
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，有效配置走ExecuteBatchScan路径
  *          关键验证：不走PrepareValidatedContext路径（不会返回E_INVALID_PATH）
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ValidConfig_test, TestSize.Level0)
@@ -93,24 +95,22 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ValidConfig_test, Test
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
  
     std::vector<std::string> paths = {"/test/file.jpg"};
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->filePaths = paths;
- 
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
-        .SetBatchScanInfo(batchScanInfo)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     int32_t result = manager->ScanSync(config);
-    // 关键验证：BATCH_SCAN不走Validate(realPath)，不会返回E_INVALID_PATH
+    // 关键验证：CUSTOM_RESTORE_SCAN不走Validate(realPath)，不会返回E_INVALID_PATH
     EXPECT_NE(result, E_INVALID_PATH);
     MEDIA_INFO_LOG("end ScanSync_BatchScan_ValidConfig_test, result: %{public}d", result);
 }
  
 /**
  * @tc.name: ScanSync_BatchScan_MultipleFilePaths_test
- * @tc.desc: ScanSync传入BATCH_SCAN，多个文件路径走ExecuteBatchScan路径
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，多个文件路径走ExecuteBatchScan路径
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_MultipleFilePaths_test, TestSize.Level0)
 {
@@ -120,15 +120,13 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_MultipleFilePaths_test
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
  
     std::vector<std::string> paths = {"/test/a.jpg", "/test/b.mp4", "/test/c.png"};
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->filePaths = paths;
-    batchScanInfo->albumId = 5;
-    batchScanInfo->isDeduplication = true;
- 
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
+    customInfo.SetAlbumId(5);
+    customInfo.SetIsDeduplication(true);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
-        .SetBatchScanInfo(batchScanInfo)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     int32_t result = manager->ScanSync(config);
@@ -139,7 +137,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_MultipleFilePaths_test
  
 /**
  * @tc.name: ScanSync_BatchScan_WithUseCustomRestorePreset_test
- * @tc.desc: ScanSync传入通过UseCustomRestorePreset构建的BATCH_SCAN配置
+ * @tc.desc: ScanSync传入通过UseCustomRestorePreset构建的CUSTOM_RESTORE_SCAN配置
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_WithUseCustomRestorePreset_test, TestSize.Level0)
 {
@@ -155,21 +153,24 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_WithUseCustomRestorePr
     std::unordered_map<std::string, TimeInfo> timeMap;
     timeMap["photo1.jpg"] = TimeInfo{.dateAdded = 1000, .dateTaken = 2000, .detailTime = "2026-01-01"};
  
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
+    customInfo.SetFileInfos(fileInfos);
+    customInfo.SetTimeInfoMap(timeMap);
+    customInfo.SetAlbumId(10);
+    customInfo.SetIsDeduplication(true);
+    customInfo.SetHasPhotoCache(true);
+    customInfo.SetPhotoCache({"photo1.jpg_100_1_0"});
+    customInfo.SetPackageName("com.test.pkg");
+    customInfo.SetBundleName("com.test.bundle");
+    customInfo.SetAppId("appId123");
+    customInfo.SetIsFirstBatch(false);
     auto config = ScanConfigBuilder()
-        .UseCustomRestorePreset(
-            paths, fileInfos, timeMap,
-            10,       // albumId
-            true,     // isDeduplication
-            true,     // hasPhotoCache
-            {"photo1.jpg_100_1_0"},
-            "com.test.pkg",
-            "com.test.bundle",
-            "appId123",
-            false)    // isFirstBatch
+        .UseCustomRestorePreset(customInfo)
         .Build();
  
-    // UseCustomRestorePreset sets BATCH_SCAN automatically
-    EXPECT_EQ(config.GetStrategyType(), ScanStrategyType::BATCH_SCAN);
+    // UseCustomRestorePreset sets CUSTOM_RESTORE_SCAN automatically
+    EXPECT_EQ(config.GetStrategyType(), ScanStrategyType::CUSTOM_RESTORE_SCAN);
  
     int32_t result = manager->ScanSync(config);
     EXPECT_NE(result, E_INVALID_PATH);
@@ -191,9 +192,9 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_DefaultScan_InvalidPath_test, Te
  
     auto config = ScanConfigBuilder()
         .SetStrategyType(ScanStrategyType::DEFAULT_SCAN)
-        .SetFilePath("/nonexistent/path.jpg")
-        .SetFileId(1)
         .Build();
+    config.GetDefaultScanInfo().SetFilePath("/nonexistent/path.jpg");
+    config.GetDefaultScanInfo().SetFileId(1);
  
     int32_t result = manager->ScanSync(config);
     // DEFAULT_SCAN走PrepareValidatedContext，无效路径返回E_INVALID_PATH
@@ -222,8 +223,8 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_DefaultScan_NoSingleScanInfo_tes
  
 /**
  * @tc.name: ScanSync_RouteComparison_BatchVsDefault_test
- * @tc.desc: 对比BATCH_SCAN和DEFAULT_SCAN的路由差异
- *          BATCH_SCAN + 无效文件路径 → 不返回E_INVALID_PATH
+ * @tc.desc: 对比CUSTOM_RESTORE_SCAN和DEFAULT_SCAN的路由差异
+ *          CUSTOM_RESTORE_SCAN + 无效文件路径 → 不返回E_INVALID_PATH
  *          DEFAULT_SCAN + 无效文件路径 → 返回E_INVALID_PATH
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_RouteComparison_BatchVsDefault_test, TestSize.Level0)
@@ -233,20 +234,22 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_RouteComparison_BatchVsDefault_t
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
  
-    // BATCH_SCAN + 无效路径：不走Validate，返回非E_INVALID_PATH
+    // CUSTOM_RESTORE_SCAN + 无效路径：不走Validate，返回非E_INVALID_PATH
     std::vector<std::string> paths = {"/nonexistent/file.jpg"};
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto batchConfig = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
     int32_t batchResult = manager->ScanSync(batchConfig);
  
     // DEFAULT_SCAN + 无效路径：走Validate，返回E_INVALID_PATH
     auto defaultConfig = ScanConfigBuilder()
         .SetStrategyType(ScanStrategyType::DEFAULT_SCAN)
-        .SetFilePath("/nonexistent/file.jpg")
-        .SetFileId(1)
         .Build();
+    defaultConfig.GetDefaultScanInfo().SetFilePath("/nonexistent/file.jpg");
+    defaultConfig.GetDefaultScanInfo().SetFileId(1);
     int32_t defaultResult = manager->ScanSync(defaultConfig);
  
     // 关键路由差异验证
@@ -269,7 +272,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_EmptyFilePaths_test, Tes
     ASSERT_NE(manager, nullptr);
  
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
         .Build();
  
     int32_t result = manager->ExecuteBatchScan(config, ScanExecutionMode::SYNC);
@@ -291,9 +294,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_NullExecutor_test, TestS
     manager->enhancedExecutor_ = nullptr;
  
     std::vector<std::string> paths = {"/test/file.jpg"};
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     int32_t result = manager->ExecuteBatchScan(config, ScanExecutionMode::SYNC);
@@ -312,13 +317,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_SetsExecutionMode_test, 
     MEDIA_INFO_LOG("enter ExecuteBatchScan_SetsExecutionMode_test");
     // 验证ExecuteBatchScan内部通过ScanConfigBuilder设置executionMode
     std::vector<std::string> paths = {"/test/file.jpg"};
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->filePaths = paths;
- 
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
-        .SetBatchScanInfo(batchScanInfo)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     // 初始executionMode为ASYNC（默认值）
@@ -345,13 +348,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_ValidConfig_test, TestSi
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
  
     std::vector<std::string> paths = {"/test/file.jpg"};
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->filePaths = paths;
- 
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
-        .SetBatchScanInfo(batchScanInfo)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     int32_t result = manager->ExecuteBatchScan(config, ScanExecutionMode::SYNC);
@@ -360,11 +361,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_ValidConfig_test, TestSi
     MEDIA_INFO_LOG("end ExecuteBatchScan_ValidConfig_test, result: %{public}d", result);
 }
  
-// ==================== ScanSync BATCH_SCAN 边界场景 ====================
+// ==================== ScanSync CUSTOM_RESTORE_SCAN 边界场景 ====================
  
 /**
  * @tc.name: ScanSync_BatchScan_OnlyFilePathsNoExplicitBatchScanInfo_test
- * @tc.desc: ScanSync传入BATCH_SCAN只有filePaths（SetFilePaths会自动创建BatchScanInfo）
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN只有filePaths（通过SetCustomRestoreInfo设置）
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_OnlyFilePathsNoExplicitBatchScanInfo_test, TestSize.Level0)
 {
@@ -374,14 +375,15 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_OnlyFilePathsNoExplici
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
  
     std::vector<std::string> paths = {"/test/photo.jpg"};
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
-    // SetFilePaths 会自动创建 BatchScanInfo
-    EXPECT_TRUE(config.HasBatchScanInfo());
-    EXPECT_EQ(config.GetFilePaths().size(), 1u);
+    // SetCustomRestoreInfo 设置了 filePaths
+    EXPECT_EQ(config.GetCustomRestoreInfo().GetFilePaths().size(), 1u);
  
     int32_t result = manager->ScanSync(config);
     EXPECT_NE(result, E_INVALID_ARGUMENTS);
@@ -396,15 +398,14 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ContextPreservation_te
 {
     MEDIA_INFO_LOG("enter ScanSync_BatchScan_ContextPreservation_test");
     std::vector<std::string> paths = {"/test/a.jpg", "/test/b.jpg"};
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->filePaths = paths;
-    batchScanInfo->albumId = 42;
-    batchScanInfo->isDeduplication = true;
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
+    customInfo.SetAlbumId(42);
+    customInfo.SetIsDeduplication(true);
  
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
-        .SetBatchScanInfo(batchScanInfo)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .SetExecutionMode(ScanExecutionMode::SYNC)
         .Build();
  
@@ -414,18 +415,18 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ContextPreservation_te
         .Build();
     auto context = std::make_shared<ScanTaskContext>(finalConfig);
  
-    EXPECT_EQ(context->config.GetStrategyType(), ScanStrategyType::BATCH_SCAN);
-    EXPECT_EQ(context->config.GetFilePaths().size(), 2u);
-    EXPECT_EQ(context->config.GetAlbumId(), 42);
-    EXPECT_TRUE(context->config.GetIsDeduplication());
+    EXPECT_EQ(context->config.GetStrategyType(), ScanStrategyType::CUSTOM_RESTORE_SCAN);
+    EXPECT_EQ(context->config.GetCustomRestoreInfo().GetFilePaths().size(), 2u);
+    EXPECT_EQ(context->config.GetCustomRestoreInfo().GetAlbumId(), 42);
+    EXPECT_TRUE(context->config.GetCustomRestoreInfo().GetIsDeduplication());
     EXPECT_EQ(context->config.GetExecutionMode(), ScanExecutionMode::SYNC);
-    EXPECT_TRUE(context->IsBatchScan());
+    EXPECT_TRUE(context->IsCustomRestoreScan());
     MEDIA_INFO_LOG("end ScanSync_BatchScan_ContextPreservation_test");
 }
  
 /**
  * @tc.name: ScanSync_BatchScan_EmptyFilePathsVector_test
- * @tc.desc: ScanSync传入BATCH_SCAN但filePaths为空vector返回E_INVALID_ARGUMENTS
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN但filePaths为空vector返回E_INVALID_ARGUMENTS
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePathsVector_test, TestSize.Level0)
 {
@@ -434,9 +435,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePathsVector_t
     ASSERT_NE(manager, nullptr);
  
     std::vector<std::string> emptyPaths;
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(emptyPaths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(emptyPaths)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     int32_t result = manager->ScanSync(config);
@@ -446,7 +449,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePathsVector_t
  
 /**
  * @tc.name: ScanSync_BatchScan_AsyncExecutionMode_test
- * @tc.desc: ScanSync传入BATCH_SCAN + ASYNC执行模式
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN + ASYNC执行模式
  *          ExecuteBatchScan内部会设置executionMode为参数值
  */
 HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_AsyncExecutionMode_test, TestSize.Level0)
@@ -457,13 +460,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_AsyncExecutionMode_tes
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
  
     std::vector<std::string> paths = {"/test/async_file.jpg"};
-    auto batchScanInfo = std::make_shared<BatchScanInfo>();
-    batchScanInfo->filePaths = paths;
- 
+    CustomRestoreInfo customInfo;
+    customInfo.SetFilePaths(paths);
     auto config = ScanConfigBuilder()
-        .SetStrategyType(ScanStrategyType::BATCH_SCAN)
-        .SetFilePaths(paths)
-        .SetBatchScanInfo(batchScanInfo)
+        .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
+        .SetCustomRestoreInfo(customInfo)
         .Build();
  
     // ScanSync always passes ScanExecutionMode::SYNC to ExecuteBatchScan
