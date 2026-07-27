@@ -158,6 +158,10 @@ private:
     // 初始化表处理配置
     void InitTableProcessConfig();
 
+    // 将新机的unique_number叠加到旧机的UniqueNumber表上
+    void AddUniqueNumberFromNewDevice(
+        std::shared_ptr<NativeRdb::RdbStore> destRdb, std::shared_ptr<NativeRdb::RdbStore> sourceRdb);
+
     // 根据类型获取表列表
     std::vector<std::string> GetTablesByType(TableProcessType type);
 

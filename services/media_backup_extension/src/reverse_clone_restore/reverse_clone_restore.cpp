@@ -1005,8 +1005,7 @@ ReverseCloneRestore::ReverseCloneRestore()
 int32_t ReverseCloneRestore::Init(const string &backupRestoreDir, const string &upgradePath, bool isUpgrade)
 {
     MEDIA_INFO_LOG("ReverseCloneRestore INIT");
-    CloneRestore::Init(backupRestoreDir, upgradePath, isUpgrade);
-    return E_OK;
+    return CloneRestore::Init(backupRestoreDir, upgradePath, isUpgrade);
 }
 
 void InsertForAncoProcess()
@@ -4454,10 +4453,6 @@ void ReverseCloneRestore::UpdateDatabase()
     ExecuteAnalyzeInDatabase(mediaLibraryRdb_);
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     MediaLibraryRdbUtils::UpdateAllAlbums(rdbStore);
-    MEDIA_INFO_LOG("Start update unique number");
-    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, imageNumber_, CONST_IMAGE_ASSET_TYPE);
-    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, videoNumber_, CONST_VIDEO_ASSET_TYPE);
-    BackupDatabaseUtils::UpdateUniqueNumber(mediaLibraryRdb_, audioNumber_, CONST_AUDIO_ASSET_TYPE);
     MEDIA_INFO_LOG("Start notify");
     NotifyAlbum();
     updateProcessStatus_ = ProcessStatus::STOP;
