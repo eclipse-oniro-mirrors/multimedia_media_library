@@ -25,6 +25,7 @@
 #include "medialibrary_db_const.h"
 #include "userfile_manager_types.h"
 #include "result_set_utils.h"
+#include "parameters.h"
 
 using namespace OHOS::FileManagement::CloudSync;
 
@@ -82,6 +83,11 @@ int64_t PhotoStorageOperation::GetDataSize()
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetDataSize");
     size_t totalSize = 0;
+    static const std::string nextFlag = "persist.update.hmos_to_next_flag";
+    if (OHOS::system::GetParameter(nextFlag, "") == "1") {
+        MEDIA_INFO_LOG("Media_Storage: in Upgrade");
+        return static_cast<int64_t>(totalSize);
+    }
     MediaFileUtils::StatDirSize(MEDIA_DATA_DIR, totalSize);
     MEDIA_INFO_LOG("Media_Storage: DataSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
     return static_cast<int64_t>(totalSize);
