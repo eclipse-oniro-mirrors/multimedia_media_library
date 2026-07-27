@@ -159,6 +159,7 @@ const std::string URI_SEPARATOR = "file:media";
 constexpr int32_t ANALYSIS_TOOL_TYPE_ANI_BEGIN = 0;
 constexpr int32_t ANALYSIS_TOOL_TYPE_ANI_END = 14;
 const int32_t UUID_STR_LENGTH = 37;
+const std::string CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
 
 mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
@@ -6309,9 +6310,9 @@ ani_string MediaLibraryAni::InvokeAnalysisTool(ani_env *env, ani_object object, 
 {
     MediaLibraryTracer tracer;
     tracer.Start("InvokeAnalysisTool");
-    static const std::string PERMISSION_NAME = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
-    if (!CheckAniCallerPermission(PERMISSION_NAME)) {
-        AniError::ThrowError(env, JS_ERR_PERMISSION_DENIED, "Permission denied: " + PERMISSION_NAME + " required.");
+    if (!CheckAniCallerPermission(CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION)) {
+        AniError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+            "Permission denied: " + CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION + " required.");
         return nullptr;
     }
 
@@ -6338,9 +6339,9 @@ void MediaLibraryAni::CancelAnalysisTool(ani_env *env, ani_object object, ani_ob
         AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
         return;
     }
-    static const std::string PERMISSION_NAME = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
-    if (!CheckAniCallerPermission(PERMISSION_NAME)) {
-        AniError::ThrowError(env, JS_ERR_PERMISSION_DENIED, "Permission denied: " + PERMISSION_NAME + " required.");
+    if (!CheckAniCallerPermission(CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION)) {
+        AniError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+            "Permission denied: " + CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION + " required.");
         return;
     }
     CancelAnalysisToolReqBody reqBody;
