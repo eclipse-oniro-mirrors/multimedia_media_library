@@ -9990,6 +9990,7 @@ static void JSDeletePhotoAlbumsCompleteCallback(napi_env env, napi_status status
 
 napi_value MediaLibraryNapi::DeletePhotoAlbums(napi_env env, napi_callback_info info)
 {
+    MEDIA_INFO_LOG(" enter DeletePhotoAlbums");
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     asyncContext->resultNapiType = ResultNapiType::TYPE_USERFILE_MGR;
     CHECK_NULLPTR_RET(ParseArgsDeletePhotoAlbums(env, info, asyncContext));
@@ -10001,6 +10002,7 @@ napi_value MediaLibraryNapi::DeletePhotoAlbums(napi_env env, napi_callback_info 
 
 napi_value MediaLibraryNapi::PhotoAccessDeletePhotoAlbums(napi_env env, napi_callback_info info)
 {
+    MEDIA_INFO_LOG(" enter PhotoAccessDeletePhotoAlbums");
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
     CHECK_NULLPTR_RET(ParseArgsDeletePhotoAlbums(env, info, asyncContext));

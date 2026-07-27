@@ -704,6 +704,7 @@ static void DeleteAlbumsCompleteCallback(napi_env env, napi_status status, void*
 napi_value MediaAlbumChangeRequestNapi::JSDeleteAlbums(napi_env env, napi_callback_info info)
 {
     auto asyncContext = make_unique<MediaAlbumChangeRequestAsyncContext>();
+    MEDIA_INFO_LOG("enter JSDeleteAlbums");
     CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteAlbums(env, info, asyncContext), "Failed to parse args");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(
         env, asyncContext, "ChangeRequestDeleteAlbums", DeleteAlbumsExecute, DeleteAlbumsCompleteCallback);
@@ -712,6 +713,7 @@ napi_value MediaAlbumChangeRequestNapi::JSDeleteAlbums(napi_env env, napi_callba
 napi_value MediaAlbumChangeRequestNapi::JSDeleteAlbumsWithUri(napi_env env, napi_callback_info info)
 {
     auto asyncContext = make_unique<MediaAlbumChangeRequestAsyncContext>();
+    MEDIA_INFO_LOG("enter JSDeleteAlbumsWithUri");
     CHECK_COND_WITH_MESSAGE(env, ParseArgsDeleteAlbums(env, info, asyncContext), "Failed to parse args");
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(
         env, asyncContext, "ChangeRequestDeleteAlbums", DeleteAlbumsExecute, DeleteAlbumsCompleteCallback);

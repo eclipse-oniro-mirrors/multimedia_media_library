@@ -35,6 +35,7 @@ const std::string BRAND_NAME_UPPER_FIRST = std::string() + static_cast<char>(CHA
     static_cast<char>(CHAR_LOWCASE_U) + static_cast<char>(CHAR_LOWCASE_A) +
     static_cast<char>(CHAR_LOWCASE_W) + static_cast<char>(CHAR_LOWCASE_E) +
     static_cast<char>(CHAR_LOWCASE_I);
+const std::string LPATH_FILE_MANAGER_DOWNLOAD = "/FromDocs/Download";
 const std::string LPATH_SCREEN_SHOTS = "/Pictures/Screenshots";
 const std::string LPATH_SCREEN_RECORDS = "/Pictures/Screenrecords";
 const std::string LPATH_HIDDEN_ALBUM = "/Pictures/hiddenAlbum";

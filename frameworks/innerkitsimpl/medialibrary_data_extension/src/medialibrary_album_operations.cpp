@@ -118,7 +118,8 @@ const vector<string> NOT_CHANGEABLE_ALBUM = {
     AlbumPlugin::LPATH_SCREEN_RECORDS,
     AlbumPlugin::LPATH_SCREEN_SHOTS,
     AlbumPlugin::LPATH_HIDDEN_ALBUM,
-    AlbumPlugin::LPATH_CAMERA
+    AlbumPlugin::LPATH_CAMERA,
+    AlbumPlugin::LPATH_FILE_MANAGER_DOWNLOAD
 };
 const std::string MINUS_5_SOMETHING = "-5_";
 
