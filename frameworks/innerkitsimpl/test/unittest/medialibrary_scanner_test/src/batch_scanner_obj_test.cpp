@@ -12,9 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#define private public
-
 #include "batch_scanner_obj_test.h"
 
 #include "batch_scanner_obj.h"

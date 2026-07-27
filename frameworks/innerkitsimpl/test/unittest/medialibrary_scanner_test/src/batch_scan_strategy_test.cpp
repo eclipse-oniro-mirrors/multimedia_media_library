@@ -12,9 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#define private public
-
 #include "batch_scan_strategy_test.h"
 
 #include "batch_scan_strategy.h"

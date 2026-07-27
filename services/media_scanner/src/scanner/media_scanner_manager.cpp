@@ -224,7 +224,7 @@ int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
     }
     MEDIA_INFO_LOG("scan file sync, path %{public}s, fileId %{public}d",
         MediaFileUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
-                config.GetDefaultScanInfo().GetFileId());
+        config.GetDefaultScanInfo().GetFileId());
 
     auto context = PrepareValidatedContext(config, ScanExecutionMode::SYNC);
     if (context == nullptr) {

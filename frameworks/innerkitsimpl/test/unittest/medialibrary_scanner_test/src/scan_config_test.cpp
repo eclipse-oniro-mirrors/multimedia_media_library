@@ -225,7 +225,8 @@ HWTEST_F(ScanConfigTest, ScanConfigBuilder_FromConfig_test01, TestSize.Level0)
     EXPECT_EQ(copiedConfig.GetInvalidateThumb(), originalConfig.GetInvalidateThumb());
     EXPECT_EQ(copiedConfig.GetForceScan(), originalConfig.GetForceScan());
     EXPECT_EQ(copiedConfig.GetSkipAlbumUpdate(), originalConfig.GetSkipAlbumUpdate());
-    EXPECT_EQ(copiedConfig.GetDefaultScanInfo().GetIsMovingPhoto(), originalConfig.GetDefaultScanInfo().GetIsMovingPhoto());
+    EXPECT_EQ(copiedConfig.GetDefaultScanInfo().GetIsMovingPhoto(),
+        originalConfig.GetDefaultScanInfo().GetIsMovingPhoto());
     EXPECT_EQ(copiedConfig.GetExecutionMode(), originalConfig.GetExecutionMode());
     EXPECT_EQ(copiedConfig.GetQuality(), originalConfig.GetQuality());
     EXPECT_EQ(copiedConfig.GetConflictPolicy(), originalConfig.GetConflictPolicy());

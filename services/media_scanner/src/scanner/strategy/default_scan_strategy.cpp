@@ -45,7 +45,7 @@ int32_t DefaultScanStrategy::Scan(const std::shared_ptr<ScanTaskContext>& contex
 
     MEDIA_INFO_LOG("validated (fileId %{public}d, path %{private}s)",
         context->config.GetDefaultScanInfo().GetFileId(),
-                context->config.GetDefaultScanInfo().GetFilePath().c_str());
+        context->config.GetDefaultScanInfo().GetFilePath().c_str());
 
     auto scanner = CreateScanner(context);
     if (scanner == nullptr) {
