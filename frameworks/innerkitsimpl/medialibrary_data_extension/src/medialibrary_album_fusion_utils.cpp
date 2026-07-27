@@ -66,6 +66,8 @@ const int32_t ALBUM_FUSION_UPGRADE_FAIL = 0;
 const int32_t ALBUM_FUSION_BATCH_COUNT = 200;
 constexpr int32_t DOCS_LPATH_LENGTH = 9;
 constexpr int32_t NOT_SUPPORT_RENAME = 1;
+const std::string MIME_TYPE_JPEG = "image/jpeg";
+const int32_t DEFAULT_JPG_QUALITY = 90;
 
 static const int32_t INVALID_PARAMETER_ERROR = -23800151;
 
@@ -2617,6 +2619,9 @@ static int32_t GetTranscodeFileInfo(const std::shared_ptr<NativeRdb::ResultSet> 
     auto cond = (fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE) ||
         fileSourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER));
     srcInfo.filePath = cond ? GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet) : srcInfo.data;
+    int32_t quality = GetInt32Val(PhotoColumn::COMPRESSION_QUALITY, resultSet);
+    string mime_type = GetStringVal(PhotoColumn::MEDIA_MIME_TYPE, resultSet);
+    srcInfo.quality = (mime_type == MIME_TYPE_JPEG && quality != -1) ? quality : DEFAULT_JPG_QUALITY;
     return E_OK;
 }
 
@@ -2650,8 +2655,8 @@ int32_t MediaLibraryAlbumFusionUtils::CreateTmpCompatibleDup(int32_t fileId, con
     }
 
     const std::string querySql = R"(SELECT exist_compatible_duplicate, position, is_temp, time_pending, hidden,
-        data, storage_path, file_source_type,
-        date_trashed, date_deleted, mime_type, height, width, subtype FROM Photos WHERE file_id = ?)";
+        data, storage_path, file_source_type, date_trashed, date_deleted, mime_type,
+        height, width, subtype, compression_quality FROM Photos WHERE file_id = ?)";
     std::vector<NativeRdb::ValueObject> params = { fileId };
     shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(querySql, params);
     dupExist = 0;
