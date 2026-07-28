@@ -403,7 +403,36 @@ int32_t MediaAssetChangeRequestImpl::CJDeleteAssets(int64_t contextId, std::vect
         DeleteAssetsExecute(predicates, valuesBucket);
     }
 #ifdef HAS_ACE_ENGINE_PART
-    return DeleteAssetsWithDialog(contextId, uris);
+    if (!HasWritePermission()) {
+        return OHOS_PERMISSION_DENIED_CODE;
+    }
+    if (uris.size() > MAX_DELETE_NUMBER) {
+        LOGE("No more than 300 assets can be deleted at one time");
+        return OHOS_INVALID_PARAM_CODE;
+    }
+    auto cjAbilityContext = FFI::FFIData::GetData<AbilityRuntime::CJAbilityContext>(contextId);
+    if (cjAbilityContext == nullptr || cjAbilityContext->GetAbilityContext() == nullptr) {
+        LOGE("Failed to get native stage context instance");
+        return JS_INNER_FAIL;
+    }
+    auto abilityContext = cjAbilityContext->GetAbilityContext();
+    auto abilityInfo = abilityContext->GetAbilityInfo();
+    std::string appName;
+    abilityContext->GetResourceManager()->GetStringById(abilityInfo->labelId, appName);
+    auto uiContent = abilityContext->GetUIContent();
+    if (uiContent == nullptr) {
+        return JS_INNER_FAIL;
+    }
+    auto callback = std::make_shared<DeleteCallback>(uiContent);
+    OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
+        [callback](int32_t releaseCode) { callback->OnRelease(releaseCode); },
+        [callback](int32_t resultCode, const AAFwk::Want& result) { callback->OnResult(resultCode, result); },
+        [callback](const OHOS::AAFwk::WantParams& request) { callback->OnReceive(request); },
+        [callback](int32_t code, const std::string& name, const std::string& message) {
+            callback->OnError(code, name, message);
+        },
+    };
+    return SetSessionId(appName, uris, uiContent, callback, extensionCallback);
 #else
     LOGE("ace_engine is not support");
     return JS_INNER_FAIL;
@@ -1430,13 +1459,16 @@ static int SavePhotoProxyImage(const UniqueFd& destFd, sptr<PhotoProxy> photoPro
     NAPI_INFO_LOG("pack pixelMap success, packedSize: %{public}" PRId64, packedSize);
 
     int ret = write(destFd, buffer, packedSize);
+    delete[] buffer;
     if (ret < 0) {
         LOGE("Failed to write photo proxy to cache file, return %{public}d", ret);
-        delete[] buffer;
         return ret;
     }
-    delete[] buffer;
-    return ret;
+    if (ret != static_cast<int>(packedSize)) {
+        LOGE("Failed to write complete photo proxy, written=%{public}d, expected=%{public}" PRId64, ret, packedSize);
+        return E_ERR;
+    }
+    return E_OK;
 }
 
 static bool AddPhotoProxyResourceExecute(MediaAssetChangeRequestImpl* changeRequest, const UniqueFd& destFd)
