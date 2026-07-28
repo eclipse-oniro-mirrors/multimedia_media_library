@@ -49,6 +49,7 @@ const int32_t HIGH_QUALITY_IMAGE = 0;
 const int32_t UUID_STR_LENGTH = 37;
 const int32_t MAX_URI_SIZE = 384; // 256 for display name and 128 for relative path
 const int32_t REQUEST_ID_MAX_LEN = 64;
+const ssize_t MAX_IMAGE_BUFFER_SIZE = 100 * 1024 * 1024; // 100MB limit for image buffer
 
 static mutex multiStagesCaptureLock;
 static mutex registerTaskLock;
@@ -154,10 +155,18 @@ MultiStagesCapturePhotoStatus MediaAssetManagerImpl::QueryPhotoStatus(int fileId
     }
     int indexOfPhotoId = -1;
     resultSet->GetColumnIndex(PhotoColumn::PHOTO_ID, indexOfPhotoId);
+    if (indexOfPhotoId < 0) {
+        LOGE("Failed to get column index for PHOTO_ID");
+        return MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
+    }
     resultSet->GetString(indexOfPhotoId, photoId);
 
     int columnIndexQuality = -1;
     resultSet->GetColumnIndex(PhotoColumn::PHOTO_QUALITY, columnIndexQuality);
+    if (columnIndexQuality < 0) {
+        LOGE("Failed to get column index for PHOTO_QUALITY");
+        return MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
+    }
     int currentPhotoQuality = HIGH_QUALITY_IMAGE;
     resultSet->GetInt(columnIndexQuality, currentPhotoQuality);
     if (currentPhotoQuality == LOW_QUALITY_IMAGE) {
@@ -289,7 +298,7 @@ void MediaAssetManagerImpl::OnHandleRequestImage(unique_ptr<MediaAssetManagerCon
     }
 }
 
-static void DeleteAssetHandlerSafe(AssetHandler *handler)
+static void DeleteAssetHandlerSafe(AssetHandler *&handler)
 {
     if (handler != nullptr) {
         delete handler;
@@ -417,6 +426,11 @@ void MediaAssetManagerImpl::GetByteArrayObject(const string &requestUri,
     ssize_t imgLen = lseek(imageFd, 0, SEEK_END);
     if (imgLen <= 0) {
         LOGE("imgLen is error");
+        close(imageFd);
+        return;
+    }
+    if (imgLen > MAX_IMAGE_BUFFER_SIZE) {
+        LOGE("imgLen too large: %{public}zd", imgLen);
         close(imageFd);
         return;
     }
@@ -690,6 +704,19 @@ void MultiStagesTaskObserver::OnChange(const ChangeInfo &changeInfo)
     }
 }
 
+static void LogMovingPhotoIfNeeded(const unique_ptr<MediaAssetManagerContext> &asyncContext)
+{
+    if (asyncContext->subType != PhotoSubType::MOVING_PHOTO) {
+        return;
+    }
+    string uri = CONST_LOG_MOVING_PHOTO;
+    Uri logMovingPhotoUri(uri);
+    DataShare::DataShareValuesBucket valuesBucket;
+    string result;
+    valuesBucket.Put("adapted", asyncContext->returnDataType == ReturnDataType::TYPE_MOVING_PHOTO);
+    UserFileClient::InsertExt(logMovingPhotoUri, valuesBucket, result);
+}
+
 char* MediaAssetManagerImpl::RequestImage(int64_t contextId, int64_t photoAssetId,
     RequestOptions requestOptions, int64_t funcId, int32_t &errCode)
 {
@@ -720,20 +747,17 @@ char* MediaAssetManagerImpl::RequestImage(int64_t contextId, int64_t photoAssetI
     asyncContext->dataHandler = funcId;
     asyncContext->requestId = GenerateRequestId();
     OnHandleRequestImage(asyncContext);
-    if (asyncContext->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = CONST_LOG_MOVING_PHOTO;
-        Uri logMovingPhotoUri(uri);
-        DataShare::DataShareValuesBucket valuesBucket;
-        string result;
-        valuesBucket.Put("adapted", asyncContext->returnDataType == ReturnDataType::TYPE_MOVING_PHOTO);
-        UserFileClient::InsertExt(logMovingPhotoUri, valuesBucket, result);
-    }
+    LogMovingPhotoIfNeeded(asyncContext);
     if (asyncContext->assetHandler) {
         NotifyMediaDataPrepared(asyncContext->assetHandler);
         asyncContext->assetHandler = nullptr;
     }
     if (errCode == ERR_DEFAULT) {
         char* result = MallocCString(asyncContext->requestId);
+        if (result == nullptr) {
+            LOGE("MallocCString failed for requestId");
+            errCode = JS_INNER_FAIL;
+        }
         return result;
     } else {
         return nullptr;
@@ -770,20 +794,17 @@ char* MediaAssetManagerImpl::RequestImageData(int64_t contextId, int64_t photoAs
     asyncContext->dataHandler = funcId;
     asyncContext->requestId = GenerateRequestId();
     MediaAssetManagerImpl::OnHandleRequestImage(asyncContext);
-    if (asyncContext->subType == PhotoSubType::MOVING_PHOTO) {
-        string uri = CONST_LOG_MOVING_PHOTO;
-        Uri logMovingPhotoUri(uri);
-        DataShare::DataShareValuesBucket valuesBucket;
-        string result;
-        valuesBucket.Put("adapted", asyncContext->returnDataType == ReturnDataType::TYPE_MOVING_PHOTO);
-        UserFileClient::InsertExt(logMovingPhotoUri, valuesBucket, result);
-    }
+    LogMovingPhotoIfNeeded(asyncContext);
     if (asyncContext->assetHandler) {
         NotifyMediaDataPrepared(asyncContext->assetHandler);
         asyncContext->assetHandler = nullptr;
     }
     if (errCode == ERR_DEFAULT) {
         char* result = MallocCString(asyncContext->requestId);
+        if (result == nullptr) {
+            LOGE("MallocCString failed for requestId");
+            errCode = JS_INNER_FAIL;
+        }
         return result;
     } else {
         return nullptr;
@@ -832,6 +853,10 @@ char* MediaAssetManagerImpl::RequestMovingPhoto(int64_t contextId, int64_t photo
     }
     if (errCode == ERR_DEFAULT) {
         char* result = MallocCString(asyncContext->requestId);
+        if (result == nullptr) {
+            LOGE("MallocCString failed for requestId");
+            errCode = JS_INNER_FAIL;
+        }
         return result;
     } else {
         return nullptr;
@@ -913,6 +938,10 @@ char* MediaAssetManagerImpl::RequestVideoFile(int64_t contextId, int64_t photoAs
     }
     if (errCode == ERR_DEFAULT) {
         char* result = MallocCString(asyncContext->requestId);
+        if (result == nullptr) {
+            LOGE("MallocCString failed for requestId");
+            errCode = JS_INNER_FAIL;
+        }
         return result;
     } else {
         return nullptr;
@@ -955,7 +984,6 @@ static bool IsMapRecordCanceled(const std::string &requestId, std::string &photo
         LOGE("requestId(%{public}s) not in progress.", requestId.c_str());
         return false;
     }
-
     if (assetHandler == nullptr) {
         LOGE("assetHandler is nullptr.");
         return false;
