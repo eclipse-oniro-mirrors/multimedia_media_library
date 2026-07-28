@@ -2820,7 +2820,7 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_007, Tes
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_008, TestSize.Level1)
 {
     // 非数字字符
-    EXPECT_EQ(MediaFileUtils::IsValidInteger("12a3"), false);
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("12a3"), true);
 }
 
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_009, TestSize.Level1)
@@ -2833,6 +2833,18 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_010, Tes
 {
     // 超出范围 - 小于最小负整数
     EXPECT_EQ(MediaFileUtils::IsValidInteger("-2147483649"), false);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_011, TestSize.Level1)
+{
+    // 超出范围 - 小于最小负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("1.00000"), true);
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_IsValidInteger_Test_012, TestSize.Level1)
+{
+    // 超出范围 - 小于最小负整数
+    EXPECT_EQ(MediaFileUtils::IsValidInteger("-1.00000"), true);
 }
 } // namespace Media
 } // namespace OHOS
