@@ -61,7 +61,6 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"tab_tag_node_index", TableProcessType::DROP_AND_INSERT},
     {"tab_trailer_story_album", TableProcessType::DROP_AND_INSERT},
     {"tab_user_photography_info", TableProcessType::DROP_AND_INSERT},
-    {"UniqueNumber", TableProcessType::DROP_AND_INSERT},
     {"UriPermission", TableProcessType::DROP_AND_INSERT},
     {"UriSensitive", TableProcessType::DROP_AND_INSERT},
 
@@ -113,6 +112,7 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"tab_analysis_total", TableProcessType::SKIP},
     {"tab_photos_ext", TableProcessType::SKIP},
     {"tab_map_photo_map", TableProcessType::SKIP},
+    {"UniqueNumber", TableProcessType::SKIP},
 };
 
 // TableSchemaHandler 实现
@@ -575,6 +575,9 @@ int32_t TableDataAdapter::ClearRedundantData(
         }
     }
 
+    // UniqueNumber表保留旧机数据，将新机的unique_number叠加到旧机上
+    AddUniqueNumberFromNewDevice(destRdb, sourceRdb);
+
     MEDIA_INFO_LOG("END STEP 10: Clear redundant data");
     return E_OK;
 }
@@ -858,6 +861,36 @@ void TableDataAdapter::InitTableProcessConfig()
 {
     tableProcessMap_ = TABLE_PROCESS_CONFIG;
     MEDIA_INFO_LOG("InitTableProcessConfig: loaded %{public}zu table configs", tableProcessMap_.size());
+}
+
+void TableDataAdapter::AddUniqueNumberFromNewDevice(
+    std::shared_ptr<NativeRdb::RdbStore> destRdb, std::shared_ptr<NativeRdb::RdbStore> sourceRdb)
+{
+    if (destRdb == nullptr || sourceRdb == nullptr) {
+        MEDIA_ERR_LOG("AddUniqueNumberFromNewDevice: rdb is null");
+        return;
+    }
+    int32_t newImageNumber = BackupDatabaseUtils::QueryUniqueNumber(sourceRdb, CONST_IMAGE_ASSET_TYPE);
+    int32_t newVideoNumber = BackupDatabaseUtils::QueryUniqueNumber(sourceRdb, CONST_VIDEO_ASSET_TYPE);
+    int32_t newAudioNumber = BackupDatabaseUtils::QueryUniqueNumber(sourceRdb, CONST_AUDIO_ASSET_TYPE);
+    MEDIA_INFO_LOG("New device unique_number: image=%{public}d, video=%{public}d, audio=%{public}d",
+        newImageNumber, newVideoNumber, newAudioNumber);
+
+    if (newImageNumber > 0) {
+        std::string sql = "UPDATE UniqueNumber SET unique_number = unique_number + " + std::to_string(newImageNumber) +
+            " WHERE media_type = '" + CONST_IMAGE_ASSET_TYPE + "'";
+        BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+    }
+    if (newVideoNumber > 0) {
+        std::string sql = "UPDATE UniqueNumber SET unique_number = unique_number + " + std::to_string(newVideoNumber) +
+            " WHERE media_type = '" + CONST_VIDEO_ASSET_TYPE + "'";
+        BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+    }
+    if (newAudioNumber > 0) {
+        std::string sql = "UPDATE UniqueNumber SET unique_number = unique_number + " + std::to_string(newAudioNumber) +
+            " WHERE media_type = '" + CONST_AUDIO_ASSET_TYPE + "'";
+        BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+    }
 }
 
 std::vector<std::string> TableDataAdapter::GetTablesByType(TableProcessType type)
