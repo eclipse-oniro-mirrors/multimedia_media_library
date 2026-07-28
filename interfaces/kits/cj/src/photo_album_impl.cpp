@@ -241,6 +241,10 @@ void PhotoAlbumImpl::CommitModify(int32_t &errCode)
     DataSharePredicates predicates;
     DataShareValuesBucket valuesBucket;
     ParseArgsCommitModify(photoAlbumPtr, predicates, valuesBucket, errCode);
+    if (errCode != E_SUCCESS) {
+        LOGE("ParseArgsCommitModify failed, err: %{public}d", errCode);
+        return;
+    }
     string commitModifyUri = CONST_PAH_UPDATE_PHOTO_ALBUM;
     Uri uri(commitModifyUri);
     int changedRows = UserFileClient::Update(uri, predicates, valuesBucket);

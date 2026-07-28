@@ -27,6 +27,7 @@
 #include "file_uri.h"
 #include "image_packer.h"
 #include "media_file_utils.h"
+#include "media_asset_base_capi.h"
 #include "permission_utils.h"
 #include "userfile_manager_types.h"
 #include "moving_photo_file_utils.h"
@@ -49,6 +50,11 @@ int32_t MediaDataSource::ReadData(const std::shared_ptr<AVSharedMemory>& mem, ui
 {
     if (mem == nullptr || mem->GetBase() == nullptr || buffer_ == nullptr) {
         LOGE("mem, mem->GetBase() or buffer_ is nullptr");
+        return SOURCE_ERROR_IO;
+    }
+
+    if (readPos_ < 0) {
+        LOGE("Invalid read position, readPos_=%{public}" PRId64, readPos_);
         return SOURCE_ERROR_IO;
     }
 
@@ -79,12 +85,20 @@ int32_t MediaDataSource::ReadData(const std::shared_ptr<AVSharedMemory>& mem, ui
 
 int32_t MediaDataSource::ReadAt(const std::shared_ptr<AVSharedMemory>& mem, uint32_t length, int64_t pos)
 {
+    if (pos < 0) {
+        LOGE("Invalid pos: %{public}" PRId64, pos);
+        return SOURCE_ERROR_IO;
+    }
     readPos_ = pos;
     return ReadData(mem, length);
 }
 
 int32_t MediaDataSource::ReadAt(int64_t pos, uint32_t length, const std::shared_ptr<AVSharedMemory>& mem)
 {
+    if (pos < 0) {
+        LOGE("Invalid pos: %{public}" PRId64, pos);
+        return SOURCE_ERROR_IO;
+    }
     readPos_ = pos;
     return ReadData(mem, length);
 }
@@ -163,7 +177,7 @@ static bool CheckMovingPhotoCreationArgs(DataShare::DataShareValuesBucket values
     return isValid && MediaFileUtils::CheckMovingPhotoExtension(MediaFileUtils::GetExtensionFromPath(displayName));
 }
 
-static bool CheckCreateOption(DataShare::DataShareValuesBucket valuesBucket, bool isSystemApi)
+static bool CheckCreateOption(DataShare::DataShareValuesBucket& valuesBucket, bool isSystemApi)
 {
     bool isValid = false;
     int32_t subType = valuesBucket.Get(PhotoColumn::PHOTO_SUBTYPE, isValid);
@@ -257,7 +271,7 @@ static int32_t ParseArgsDeleteAssets(int64_t contextId, std::vector<std::string>
         return OHOS_INVALID_PARAM_CODE;
     }
     for (const auto& uri : uris) {
-        if (uri.find(PhotoColumn::PHOTO_URI_PREFIX) == std::string::npos) {
+        if (uri.rfind(PhotoColumn::PHOTO_URI_PREFIX, 0) != 0) {
             return JS_E_URI;
         }
     }
@@ -284,6 +298,10 @@ static bool HasWritePermission()
 static bool InitDeleteRequest(std::string& appName, std::vector<std::string>& uris, OHOS::AAFwk::Want& request,
     std::shared_ptr<DeleteCallback>& callback)
 {
+    if (callback == nullptr) {
+        LOGE("callback is nullptr");
+        return false;
+    }
     request.SetElementName(DELETE_UI_PACKAGE_NAME, DELETE_UI_EXT_ABILITY_NAME);
     request.SetParam(DELETE_UI_EXTENSION_TYPE, DELETE_UI_REQUEST_TYPE);
 
@@ -328,19 +346,9 @@ static int32_t SetSessionId(std::string &appName, std::vector<std::string> &uris
     return 0;
 }
 
-int32_t MediaAssetChangeRequestImpl::CJDeleteAssets(int64_t contextId, std::vector<std::string> uris)
-{
-    if (ParseArgsDeleteAssets(contextId, uris) != 0) {
-        return OHOS_INVALID_PARAM_CODE;
-    }
-    OHOS::DataShare::DataSharePredicates predicates;
-    OHOS::DataShare::DataShareValuesBucket valuesBucket;
-    predicates.In(PhotoColumn::MEDIA_ID, uris);
-    valuesBucket.Put(PhotoColumn::MEDIA_DATE_TRASHED, MediaFileUtils::UTCTimeSeconds());
-    if (MediaLibraryNapiUtils::IsSystemApp()) {
-        DeleteAssetsExecute(predicates, valuesBucket);
-    }
 #ifdef HAS_ACE_ENGINE_PART
+static int32_t DeleteAssetsWithDialog(int64_t contextId, std::vector<std::string> &uris)
+{
     if (!HasWritePermission()) {
         return OHOS_PERMISSION_DENIED_CODE;
     }
@@ -355,8 +363,17 @@ int32_t MediaAssetChangeRequestImpl::CJDeleteAssets(int64_t contextId, std::vect
     }
     auto abilityContext = cjAbilityContext->GetAbilityContext();
     auto abilityInfo = abilityContext->GetAbilityInfo();
+    if (abilityInfo == nullptr) {
+        LOGE("abilityInfo is nullptr");
+        return JS_INNER_FAIL;
+    }
     std::string appName;
-    abilityContext->GetResourceManager()->GetStringById(abilityInfo->labelId, appName);
+    auto resourceManager = abilityContext->GetResourceManager();
+    if (resourceManager == nullptr) {
+        LOGE("resourceManager is nullptr");
+        return JS_INNER_FAIL;
+    }
+    resourceManager->GetStringById(abilityInfo->labelId, appName);
     auto uiContent = abilityContext->GetUIContent();
     if (uiContent == nullptr) {
         return JS_INNER_FAIL;
@@ -371,6 +388,23 @@ int32_t MediaAssetChangeRequestImpl::CJDeleteAssets(int64_t contextId, std::vect
         },
     };
     return SetSessionId(appName, uris, uiContent, callback, extensionCallback);
+}
+#endif
+
+int32_t MediaAssetChangeRequestImpl::CJDeleteAssets(int64_t contextId, std::vector<std::string> uris)
+{
+    if (ParseArgsDeleteAssets(contextId, uris) != 0) {
+        return OHOS_INVALID_PARAM_CODE;
+    }
+    OHOS::DataShare::DataSharePredicates predicates;
+    OHOS::DataShare::DataShareValuesBucket valuesBucket;
+    predicates.In(PhotoColumn::MEDIA_ID, uris);
+    valuesBucket.Put(PhotoColumn::MEDIA_DATE_TRASHED, MediaFileUtils::UTCTimeSeconds());
+    if (MediaLibraryNapiUtils::IsSystemApp()) {
+        DeleteAssetsExecute(predicates, valuesBucket);
+    }
+#ifdef HAS_ACE_ENGINE_PART
+    return DeleteAssetsWithDialog(contextId, uris);
 #else
     LOGE("ace_engine is not support");
     return JS_INNER_FAIL;
@@ -581,6 +615,10 @@ int32_t MediaAssetChangeRequestImpl::CopyToMediaLibrary(bool isCreation, AddReso
         LOGE("Failed to check fileAsset_");
         return E_FAIL;
     }
+    if (mode != AddResourceMode::FILE_URI && mode != AddResourceMode::DATA_BUFFER) {
+        LOGE("Invalid mode: %{public}d", mode);
+        return E_INVALID_VALUES;
+    }
     int32_t ret = E_ERR;
     int32_t id = 0;
     std::string assetUri;
@@ -618,9 +656,6 @@ int32_t MediaAssetChangeRequestImpl::CopyToMediaLibrary(bool isCreation, AddReso
         ret = CopyFileToMediaLibrary(destFd);
     } else if (mode == AddResourceMode::DATA_BUFFER) {
         ret = CopyDataBufferToMediaLibrary(destFd);
-    } else {
-        LOGE("Invalid mode: %{public}d", mode);
-        return E_INVALID_VALUES;
     }
 
     if (ret == E_OK && isCreation) {
@@ -796,6 +831,11 @@ static int32_t SendFile(const UniqueFd& srcFd, const UniqueFd& destFd)
                 destFd.Get());
             return sent;
         }
+        if (sent == 0) {
+            LOGE("sendfile returned 0, source may be truncated (TOCTOU). offset=%{public}" PRId64
+                 ", fileSize=%{public}" PRId64, static_cast<int64_t>(offset), static_cast<int64_t>(fileSize));
+            return E_ERR;
+        }
     }
 
     return E_OK;
@@ -837,6 +877,10 @@ int32_t MediaAssetChangeRequestImpl::CopyDataBufferToMediaLibrary(const UniqueFd
         if (written < 0) {
             LOGE("Failed to copy data buffer, return %{public}d", static_cast<int>(written));
             return written;
+        }
+        if (written == 0) {
+            LOGE("write returned 0, cannot make progress, offset=%{public}zu, length=%{public}zu", offset, length);
+            return E_ERR;
         }
         offset += static_cast<size_t>(written);
     }
@@ -1053,6 +1097,10 @@ int32_t MediaAssetChangeRequestImpl::AddMovingPhotoVideoResource(std::string fil
 
 int32_t MediaAssetChangeRequestImpl::AddMovingPhotoVideoResource(uint8_t* dataBuffer, size_t dataBufferSize)
 {
+    if (dataBuffer == nullptr || dataBufferSize == 0) {
+        LOGE("dataBuffer is nullptr or dataBufferSize is 0");
+        return OHOS_INVALID_PARAM_CODE;
+    }
     movingPhotoVideoDataBufferOwned_.assign(dataBuffer, dataBuffer + dataBufferSize);
     if (!CheckMovingPhotoVideo(movingPhotoVideoDataBufferOwned_.data(), movingPhotoVideoDataBufferOwned_.size())) {
         LOGE("Failed to check video resource of moving photo");
@@ -1193,6 +1241,10 @@ static bool WriteBySecurityComponent(MediaAssetChangeRequestImpl* changeRequest)
 static bool SendToCacheFile(
     MediaAssetChangeRequestImpl* changeRequest, const UniqueFd& destFd, bool isMovingPhotoVideo = false)
 {
+    if (changeRequest == nullptr) {
+        LOGE("changeRequest is nullptr");
+        return false;
+    }
     std::string realPath =
         isMovingPhotoVideo ? changeRequest->GetMovingPhotoVideoPath() : changeRequest->GetFileRealPath();
 
@@ -1277,6 +1329,10 @@ int32_t MediaAssetChangeRequestImpl::SubmitCache(bool isCreation, bool isSetEffe
 
 static bool SubmitCacheExecute(MediaAssetChangeRequestImpl* changeRequest)
 {
+    if (changeRequest == nullptr) {
+        LOGE("changeRequest is nullptr");
+        return false;
+    }
     bool isCreation = IsCreation(changeRequest);
     bool isSetEffectMode = IsSetEffectMode(changeRequest);
     int32_t ret = changeRequest->SubmitCache(isCreation, isSetEffectMode);
@@ -1289,6 +1345,10 @@ static bool SubmitCacheExecute(MediaAssetChangeRequestImpl* changeRequest)
 
 static bool CreateFromFileUriExecute(MediaAssetChangeRequestImpl* changeRequest)
 {
+    if (changeRequest == nullptr) {
+        LOGE("changeRequest is nullptr");
+        return false;
+    }
     if (!HasWritePermission()) {
         return WriteBySecurityComponent(changeRequest);
     }
@@ -1325,6 +1385,10 @@ static bool WriteCacheByArrayBuffer(
             LOGE("Failed to write data buffer to cache file, return %{public}d", static_cast<int>(written));
             return false;
         }
+        if (written == 0) {
+            LOGE("write returned 0, cannot make progress, offset=%{public}zu, length=%{public}zu", offset, length);
+            return false;
+        }
         offset += static_cast<size_t>(written);
     }
     return true;
@@ -1332,6 +1396,10 @@ static bool WriteCacheByArrayBuffer(
 
 static int SavePhotoProxyImage(const UniqueFd& destFd, sptr<PhotoProxy> photoProxyPtr)
 {
+    if (photoProxyPtr == nullptr) {
+        LOGE("photoProxyPtr is nullptr");
+        return E_ERR;
+    }
     void* imageAddr = photoProxyPtr->GetFileDataAddr();
     size_t imageSize = photoProxyPtr->GetFileSize();
     if (imageAddr == nullptr || imageSize == 0) {
@@ -1353,6 +1421,10 @@ static int SavePhotoProxyImage(const UniqueFd& destFd, sptr<PhotoProxy> photoPro
 
     // encode rgba to jpeg
     auto buffer = new (std::nothrow) uint8_t[pixelSize];
+    if (buffer == nullptr) {
+        LOGE("packet pixelMap failed: buffer allocation failed");
+        return E_ERR;
+    }
     int64_t packedSize = 0L;
     Media::ImagePacker imagePacker;
     Media::PackOption packOption;
@@ -1360,10 +1432,6 @@ static int SavePhotoProxyImage(const UniqueFd& destFd, sptr<PhotoProxy> photoPro
     imagePacker.StartPacking(buffer, pixelSize, packOption);
     imagePacker.AddImage(*pixelMap);
     imagePacker.FinalizePacking(packedSize);
-    if (buffer == nullptr) {
-        LOGE("packet pixelMap failed");
-        return E_ERR;
-    }
     NAPI_INFO_LOG("pack pixelMap success, packedSize: %{public}" PRId64, packedSize);
 
     int ret = write(destFd, buffer, packedSize);
@@ -1383,15 +1451,24 @@ static bool AddPhotoProxyResourceExecute(MediaAssetChangeRequestImpl* changeRequ
     Uri updateAssetUri(uri);
 
     auto fileAsset = changeRequest->GetFileAssetInstance();
+    if (fileAsset == nullptr) {
+        LOGE("fileAsset is nullptr");
+        return false;
+    }
+    auto photoProxy = changeRequest->GetPhotoProxyObj();
+    if (photoProxy == nullptr) {
+        LOGE("photoProxy is nullptr");
+        return false;
+    }
     DataShare::DataSharePredicates predicates;
     predicates.SetWhereClause(PhotoColumn::MEDIA_ID + " = ? ");
     predicates.SetWhereArgs({ std::to_string(fileAsset->GetId()) });
 
     DataShare::DataShareValuesBucket valuesBucket;
-    valuesBucket.Put(PhotoColumn::PHOTO_ID, changeRequest->GetPhotoProxyObj()->GetPhotoId());
-    NAPI_INFO_LOG("photoId: %{public}s", changeRequest->GetPhotoProxyObj()->GetPhotoId().c_str());
+    valuesBucket.Put(PhotoColumn::PHOTO_ID, photoProxy->GetPhotoId());
+    NAPI_INFO_LOG("photoId: %{public}s", photoProxy->GetPhotoId().c_str());
     valuesBucket.Put(PhotoColumn::PHOTO_DEFERRED_PROC_TYPE,
-        static_cast<int32_t>(changeRequest->GetPhotoProxyObj()->GetDeferredProcType()));
+        static_cast<int32_t>(photoProxy->GetDeferredProcType()));
     valuesBucket.Put(MediaColumn::MEDIA_ID, fileAsset->GetId());
     int32_t changedRows = UserFileClient::Update(updateAssetUri, predicates, valuesBucket);
     if (changedRows < 0) {
@@ -1399,7 +1476,7 @@ static bool AddPhotoProxyResourceExecute(MediaAssetChangeRequestImpl* changeRequ
         return false;
     }
 
-    int err = SavePhotoProxyImage(destFd, changeRequest->GetPhotoProxyObj());
+    int err = SavePhotoProxyImage(destFd, photoProxy);
     changeRequest->ReleasePhotoProxyObj();
     if (err < 0) {
         LOGE("Failed to saveImage , err: %{public}d", err);
@@ -1507,21 +1584,38 @@ static bool SetTitleExecute(MediaAssetChangeRequestImpl* changeRequest)
 
 static void DiscardHighQualityPhoto(MediaAssetChangeRequestImpl* changeRequest)
 {
+    if (changeRequest == nullptr) {
+        LOGE("changeRequest is nullptr");
+        return;
+    }
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    if (fileAsset == nullptr) {
+        LOGE("fileAsset is nullptr");
+        return;
+    }
     std::string uriStr = CONST_PAH_REMOVE_MSC_TASK;
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     Uri uri(uriStr);
     DataShare::DataSharePredicates predicates;
     int errCode = 0;
-    auto fileAsset = changeRequest->GetFileAssetInstance();
     std::vector<std::string> columns { std::to_string(fileAsset->GetId()) };
     UserFileClient::Query(uri, predicates, columns, errCode);
 }
 
 static bool SaveCameraPhotoExecute(MediaAssetChangeRequestImpl* changeRequest)
 {
+    if (changeRequest == nullptr) {
+        LOGE("changeRequest is nullptr");
+        return false;
+    }
     auto changeOpreations = changeRequest->GetAssetChangeOperations();
     bool containsAddResource = std::find(changeOpreations.begin(), changeOpreations.end(),
         AssetChangeOperation::ADD_RESOURCE) != changeOpreations.end();
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    if (fileAsset == nullptr) {
+        LOGE("fileAsset is nullptr");
+        return false;
+    }
     if (containsAddResource && !MediaLibraryNapiUtils::IsSystemApp()) {
         // remove high quality photo
         LOGI("discard high quality photo because add resource by third app");
@@ -1532,11 +1626,6 @@ static bool SaveCameraPhotoExecute(MediaAssetChangeRequestImpl* changeRequest)
     bool needScan = std::find(changeOpreations.begin(), changeOpreations.end(),
         AssetChangeOperation::ADD_FILTERS) == changeOpreations.end();
 
-    auto fileAsset = changeRequest->GetFileAssetInstance();
-    if (fileAsset == nullptr) {
-        LOGE("fileAsset is nullptr");
-        return false;
-    }
     std::string uriStr = CONST_PAH_SAVE_CAMERA_PHOTO;
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, API_VERSION, std::to_string(MEDIA_API_VERSION_V10));
     MediaLibraryNapiUtils::UriAppendKeyValue(uriStr, CONST_MEDIA_OPERN_KEYWORD, std::to_string(needScan));
@@ -1552,13 +1641,17 @@ static bool SaveCameraPhotoExecute(MediaAssetChangeRequestImpl* changeRequest)
     DataShare::DataSharePredicates predicates;
     auto ret = UserFileClient::Update(uri, predicates, valuesBucket);
     if (ret < 0) {
-        LOGE("save camera photo fail");
+        LOGE("save camera photo fail, err: %{public}d", ret);
     }
     return true;
 }
 
 static bool AddFiltersExecute(MediaAssetChangeRequestImpl* changeRequest)
 {
+    if (changeRequest == nullptr) {
+        LOGE("changeRequest is nullptr");
+        return false;
+    }
     auto fileAsset = changeRequest->GetFileAssetInstance();
     if (fileAsset == nullptr) {
         LOGE("Failed to check fileAsset");
