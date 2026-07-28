@@ -27,7 +27,6 @@
 #include "file_uri.h"
 #include "image_packer.h"
 #include "media_file_utils.h"
-#include "media_asset_base_capi.h"
 #include "permission_utils.h"
 #include "userfile_manager_types.h"
 #include "moving_photo_file_utils.h"
