@@ -2715,10 +2715,32 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
+// 接口已有使用 "1.000"形式 不可替换 除-2147483648 stoi不会抛错场景，等同于ConvertToInt不完全消费场景.
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
-    int convetValue = 0;
-    return MediaStringUtils::ConvertToInt(value, convetValue);
+    MEDIA_DEBUG_LOG("KeyWord is:%{public}s", value.c_str());
+    std::string unsignedStr = value;
+    while (unsignedStr.size() > 0 && unsignedStr[0] == '-') {
+        unsignedStr = unsignedStr.substr(1);
+    }
+    for (size_t i = 0; i < unsignedStr.size(); i++) {
+        if (!std::isdigit(unsignedStr[i])) {
+            MEDIA_INFO_LOG("KeyWord invalid char of:%{public}c", unsignedStr[i]);
+            unsignedStr = unsignedStr.substr(0, i);
+            break;
+        }
+    }
+    if (unsignedStr.size() == 0) {
+        MEDIA_ERR_LOG("KeyWord Invalid argument!");
+        return false;
+    } else if (unsignedStr.size() < INTEGER_MAX_LENGTH) {
+        return true;
+    } else if (unsignedStr.size() == INTEGER_MAX_LENGTH) {
+        return unsignedStr < MAX_INTEGER;
+    } else {
+        MEDIA_ERR_LOG("KeyWord is out length!");
+        return false;
+    }
 }
 
 static int64_t GetRoundSize(int64_t size)
