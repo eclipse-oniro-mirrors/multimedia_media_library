@@ -878,7 +878,8 @@ static std::unique_ptr<Picture> DecodeAsset(int32_t fd, int32_t width, int32_t h
     return picturePtr;
 }
 
-static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType, int32_t dstFd)
+static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType,
+    int32_t dstFd, int32_t quality)
 {
     CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "picturePtr is nullptr");
     MediaLibraryTracer tracer;
@@ -889,6 +890,8 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
     packOption.format = mimeType;
     packOption.desiredDynamicRange = EncodeDynamicRange::AUTO;
     packOption.needsPackProperties = true;
+    packOption.quality = quality;
+    MEDIA_DEBUG_LOG("quality : %{public}d", quality);
 
     int32_t ret = imagePacker.StartPacking(dstFd, packOption);
     CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, false, "StartPacking failed, ret: %{public}d", ret);
@@ -900,13 +903,13 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
 }
 
 static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::string &extension,
-    int32_t width, int32_t height)
+    TmpCompatibleDupInfo info)
 {
-    std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd, width, height);
+    std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd, info.width, info.height);
     CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "DecodeAsset failed");
 
     std::string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
-    if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd)) {
+    if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd, info.quality)) {
         MEDIA_ERR_LOG("EncodeAsset mimeType: %{public}s failed", mimeType.c_str());
         return false;
     }
@@ -915,7 +918,7 @@ static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::strin
 }
 
 bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::string &dstFile,
-    const std::string &extension, int32_t width, int32_t height)
+    const std::string &extension, TmpCompatibleDupInfo info)
 {
     MEDIA_DEBUG_LOG("ConvertFormatCopy srcFile: %{private}s, dstFile: %{private}s, extension: %{private}s",
         srcFile.c_str(), dstFile.c_str(), extension.c_str());
@@ -948,7 +951,7 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
         return false;
     }
 
-    if (!DecodeEncodeSaveAsset(srcFd.Get(), dstFd.Get(), extension, width, height)) {
+    if (!DecodeEncodeSaveAsset(srcFd.Get(), dstFd.Get(), extension, info)) {
         MEDIA_ERR_LOG("DecodeEncodeSaveAsset failed");
         DeleteFile(normalizedDstPath);
         return false;

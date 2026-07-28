@@ -85,6 +85,14 @@ EXPORT const std::unordered_set<int32_t> PORTRAIT_PAGE_MODE = {
     PortraitPages::UNFAVORITE_PAGE
 };
 
+struct TmpCompatibleDupInfo {
+    int32_t width{0};
+    int32_t height{0};
+    int32_t quality{90};
+ 
+    TmpCompatibleDupInfo() = default;
+};
+
 /**
  * @brief Utility class for file operations
  *
@@ -235,7 +243,7 @@ public:
     EXPORT static std::string GetReplacedPathByPrefix(const std::string srcPrefix, const std::string dstPrefix,
         const std::string &path);
     EXPORT static bool ConvertFormatCopy(const std::string &srcFile, const std::string &dstFile,
-        const std::string &extension, int32_t width = 0, int32_t height = 0);
+        const std::string &extension, TmpCompatibleDupInfo info = TmpCompatibleDupInfo());
     EXPORT static bool ConvertFormatExtraDataDirectory(const std::string &srcDir, const std::string &dstDir,
         const std::string &extension);
     EXPORT static int64_t GetFileModificationTime(const std::string &path);
