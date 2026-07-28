@@ -49,7 +49,6 @@ const int32_t HIGH_QUALITY_IMAGE = 0;
 const int32_t UUID_STR_LENGTH = 37;
 const int32_t MAX_URI_SIZE = 384; // 256 for display name and 128 for relative path
 const int32_t REQUEST_ID_MAX_LEN = 64;
-const int64_t MAX_IMAGE_BUFFER_SIZE = 100 * 1024 * 1024; // 100MB limit for image buffer
 
 static mutex multiStagesCaptureLock;
 static mutex registerTaskLock;
@@ -426,11 +425,6 @@ void MediaAssetManagerImpl::GetByteArrayObject(const string &requestUri,
     ssize_t imgLen = lseek(imageFd, 0, SEEK_END);
     if (imgLen <= 0) {
         LOGE("imgLen is error");
-        close(imageFd);
-        return;
-    }
-    if (imgLen > MAX_IMAGE_BUFFER_SIZE) {
-        LOGE("imgLen too large: %{public}zd", imgLen);
         close(imageFd);
         return;
     }
