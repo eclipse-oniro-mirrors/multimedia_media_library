@@ -1210,10 +1210,8 @@ int32_t UpdateTargetRow(const ReverseCloneResourcePlan &plan, const ReverseClone
 } // namespace
 
 int32_t ReverseCloneResourceExecutor::Execute(const ReverseCloneResourcePlan &plan,
-    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-    ReverseRestoreReportInfo &reportInfo) const
+    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const
 {
-    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     if (plan.decision != ReverseCloneResourceDecision::INHERIT || !plan.HasResourceAction()) {
         return E_OK;
     }
@@ -1244,9 +1242,6 @@ int32_t ReverseCloneResourceExecutor::Execute(const ReverseCloneResourcePlan &pl
     UpdatePhotoExtSizes(executePlan, paths, targetRdb);
     DeleteAbsorbedCloudDentry(executePlan, session.Result());
     session.CleanTransferredSourcePaths();
-    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
-    reportInfo.afterTransformTimeCost.append(" absorb origin&thumbnail: ")
-        .append(std::to_string(endTime - startTime) + ";");
     return E_OK;
 }
 // LCOV_EXCL_STOP

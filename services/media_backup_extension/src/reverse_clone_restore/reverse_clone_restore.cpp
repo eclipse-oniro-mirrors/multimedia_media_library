@@ -2504,6 +2504,9 @@ void ReverseCloneRestore::ActiveFullDonation()
 
 void ReverseCloneRestore::AppendErrorInfo(const std::string &errorInfo)
 {
+    if (errorInfo.empty()) {
+        return;
+    }
     if (!reverseRestoreReportInfo_.absorbNewBasicDataErrorInfo.empty()) {
         reverseRestoreReportInfo_.absorbNewBasicDataErrorInfo += "; ";
     }
@@ -3721,41 +3724,68 @@ void ReverseCloneRestore::InitializeDuplicateAssetMapForPhotos()
 void ReverseCloneRestore::SubmitAbsorbNewPhotosTasks(int32_t totalNumber, int32_t maxSourceDbFileId,
     int32_t maxDestDbFileId, bool isCloud)
 {
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
     int32_t batchCount = 0;
+    std::vector<std::string> localErrorInfos;
+    localErrorInfos.reverse(totalNumber / CLONE_QUERY_COUNT + 1);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
+        localErrorInfos.emplace_back();
+        size_t errorInfoIdx = localErrorInfos.size() - 1;
         MEDIA_INFO_LOG("AbsorbNewPhotos: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
-            [this, offset, maxSourceDbFileId, maxDestDbFileId]() {
-                AbsorbNewPhotosBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
+                AbsorbNewPhotosBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_,
+                    errorInfo);
             },
             {&offset},
             {},
             ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
     }
     ffrt::wait();
+    CollectLocalErrorInfos(localErrorInfos);
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    reverseRestoreReportInfo_.afterTransformTimeCost.append(" absorb origin&thumbnail: ")
+        .append(std::to_string(endTime - startTime) + ";");
 }
 
 void ReverseCloneRestore::SubmitAbsorbNewPhotosForCloudTasks(int32_t totalNumber, int32_t maxSourceDbFileId,
     int32_t maxDestDbFileId)
 {
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
     int32_t batchCount = 0;
+    std::vector<std::string> localErrorInfos;
+    localErrorInfos.reverse(totalNumber / CLONE_QUERY_COUNT + 1);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
+        localErrorInfos.emplace_back();
+        size_t errorInfoIdx = localErrorInfos.size() - 1;
         MEDIA_INFO_LOG("AbsorbNewPhotosForCloud: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
-            [this, offset, maxSourceDbFileId, maxDestDbFileId]() {
-                AbsorbNewPhotosForCloudBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
+                AbsorbNewPhotosForCloudBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_,
+                    errorInfo);
             },
             {&offset},
             {},
             ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
     }
     ffrt::wait();
+    CollectLocalErrorInfos(localErrorInfos);
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    reverseRestoreReportInfo_.afterTransformTimeCost.append(" absorb origin&thumbnail forCloud: ")
+        .append(std::to_string(endTime - startTime) + ";");
+}
+
+void ReverseCloneRestore::CollectLocalErrorInfos(const std::vector<std::string> &localErrorInfos)
+{
+    for (auto &errorInfo : localErrorInfos) {
+        AppendErrorInfo(errorInfo);
+    }
 }
 
 void ReverseCloneRestore::InitializeTableAlbumIdMapForReverse()
@@ -3895,7 +3925,7 @@ void ReverseCloneRestore::EnsureCommittedFailedAssetsOrigin(const ReverseClonePh
     MEDIA_WARN_LOG("Reverse absorb committed failed assets ensure origin, stage=%{public}s, "
         "failedFileIds=%{public}zu, resourcePlans=%{public}zu", stage.c_str(), failedFileIds.size(),
         failedBatch.resourcePlans.size());
-    resourceInheritHelper_.FinalizeBatch(failedBatch, destRdb_, reverseRestoreReportInfo_);
+    resourceInheritHelper_.FinalizeBatch(failedBatch, destRdb_);
 }
 
 void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stage, int32_t offset,
@@ -3927,7 +3957,8 @@ void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stag
 }
 
 void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelatedToPhotoMap,
-    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId)
+    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId,
+    std::string &localErrorInfo)
 {
     MEDIA_INFO_LOG(
         "AbsorbNewPhotosBatch: start, offset=%{public}d, isRelatedToPhotoMap=%{public}d, minDestDbFileId=%{public}d",
@@ -3947,13 +3978,15 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId, destRdb_, albumAssetAbsorb_,
         batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: PrepareBatch failed");
-        AppendErrorInfo("PrepareLocalBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "PrepareLocalBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("PrepareLocalBatch", offset, &batch);
         return;
     }
     if (!ResolveDataConflictsAfterDuplicate(batch, dataConflictFailedFileIds)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: ResolveDataConflictsAfterDuplicate failed");
-        AppendErrorInfo("ResolveLocalDataConflict failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "ResolveLocalDataConflict failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("ResolveLocalDataConflict", offset, &batch);
         return;
     }
@@ -3961,7 +3994,8 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     int64_t photoRowNum = 0;
     if (!resourceInheritHelper_.CommitPhotosBatch(batch, destRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: CommitPhotosBatch failed");
-        AppendErrorInfo("CommitLocalBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "CommitLocalBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("CommitLocalBatch", offset, &batch);
         return;
     }
@@ -3969,15 +4003,11 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     BuildReversePhotoInfoMap(batch.validFileInfos);
 
     migrateDatabaseNumber_ += photoRowNum;
-    reverseRestoreReportInfo_.duplicateCount += duplicateCount.total;
-    reverseRestoreReportInfo_.duplicateLakeVideoCount += duplicateCount.hoLakeVideo;
-    reverseRestoreReportInfo_.duplicateLakeImageCount += duplicateCount.hoLakeImage;
-    reverseRestoreReportInfo_.duplicateVideoCount += duplicateCount.nonHoLakeVideo;
-    reverseRestoreReportInfo_.duplicateImageCount += duplicateCount.nonHoLakeImage;
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: committed %{public}ld photos", photoRowNum);
 
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
-    resourceInheritHelper_.FinalizeBatch(batch, destRdb_, reverseRestoreReportInfo_);
+    resourceInheritHelper_.FinalizeBatch(batch, destRdb_);
+    MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveLocalDataConflict");
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
@@ -3995,8 +4025,10 @@ void ReverseCloneRestore::ProcessNewPhotosFailedOffsets(int32_t isRelatedToPhoto
     size_t vectorLen = photosFailedOffsets_.size();
     needReportFailed_ = true;
     for (size_t offset = 0; offset < vectorLen; offset++) {
+        std::string localErrorInfo;
         AbsorbNewPhotosBatch(photosFailedOffsets_[offset], isRelatedToPhotoMap,
-            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_, localErrorInfo);
+        AppendErrorInfo(localErrorInfo);
     }
     photosFailedOffsets_.clear();
     MEDIA_INFO_LOG("ProcessNewPhotosFailedOffsets: end, processed %{public}zu failed batches", vectorLen);
@@ -4461,7 +4493,8 @@ void ReverseCloneRestore::UpdateDatabase()
 }
 
 void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t isRelatedToPhotoMap,
-    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId)
+    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId,
+    std::string &localErrorInfo)
 {
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: start, offset=%{public}d, isRelatedToPhotoMap=%{public}d, "
                    "minDestDbFileId=%{public}d", offset, isRelatedToPhotoMap, minDestDbFileId);
@@ -4480,13 +4513,15 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId, destRdb_, albumAssetAbsorb_,
         batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: PrepareBatch failed");
-        AppendErrorInfo("PrepareCloudBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "PrepareCloudBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("PrepareCloudBatch", offset, &batch);
         return;
     }
     if (!ResolveDataConflictsAfterDuplicate(batch, dataConflictFailedFileIds)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: ResolveDataConflictsAfterDuplicate failed");
-        AppendErrorInfo("ResolveCloudDataConflict failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "ResolveCloudDataConflict failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("ResolveCloudDataConflict", offset, &batch);
         return;
     }
@@ -4494,7 +4529,8 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     int64_t photoRowNum = 0;
     if (!resourceInheritHelper_.CommitPhotosBatch(batch, destRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: CommitPhotosBatch failed");
-        AppendErrorInfo("CommitCloudBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "CommitCloudBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("CommitCloudBatch", offset, &batch);
         return;
     }
@@ -4502,15 +4538,11 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     BuildReversePhotoInfoMap(batch.validFileInfos);
 
     migrateDatabaseNumber_ += photoRowNum;
-    reverseRestoreReportInfo_.duplicateCount += duplicateCount.total;
-    reverseRestoreReportInfo_.duplicateLakeVideoCount += duplicateCount.hoLakeVideo;
-    reverseRestoreReportInfo_.duplicateLakeImageCount += duplicateCount.hoLakeImage;
-    reverseRestoreReportInfo_.duplicateVideoCount += duplicateCount.nonHoLakeVideo;
-    reverseRestoreReportInfo_.duplicateImageCount += duplicateCount.nonHoLakeImage;
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: committed %{public}ld cloud photos", photoRowNum);
 
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
-    resourceInheritHelper_.FinalizeBatch(batch, destRdb_, reverseRestoreReportInfo_);
+    resourceInheritHelper_.FinalizeBatch(batch, destRdb_);
+    MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveCloudDataConflict");
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
@@ -4528,8 +4560,10 @@ void ReverseCloneRestore::ProcessNewPhotosForCloudFailedOffsets(int32_t isRelate
     size_t vectorLen = photosFailedOffsets_.size();
     needReportFailed_ = true;
     for (size_t offset = 0; offset < vectorLen; offset++) {
+        std::string localErrorInfo;
         AbsorbNewPhotosForCloudBatch(photosFailedOffsets_[offset], isRelatedToPhotoMap,
-            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_, localErrorInfo);
+        AppendErrorInfo(localErrorInfo);
     }
     photosFailedOffsets_.clear();
     MEDIA_INFO_LOG("ProcessNewPhotosForCloudFailedOffsets: end, processed %{public}zu failed batches", vectorLen);
@@ -4660,6 +4694,15 @@ int32_t ReverseCloneRestore::GetAllCloudPhotosRowCount()
     int32_t count = GetInt32Val("count", resultSet);
     resultSet->Close();
     return count;
+}
+
+void ReverseCloneRestore::MergeAbsorbNewPhotosReport(const AlbumAssetAbsorb::DuplicateCount &duplicateCount)
+{
+    reverseRestoreReportInfo_.duplicateCount.fetch_add(duplicateCount.total, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateLakeVideoCount.fetch_add(duplicateCount.hoLakeVideo, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateLakeImageCount.fetch_add(duplicateCount.hoLakeImage, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateVideoCount.fetch_add(duplicateCount.nonHoLakeVideo, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateImageCount.fetch_add(duplicateCount.nonHoLakeImage, std::memory_order_relaxed);
 }
 
 ReverseCloneRestore::~ReverseCloneRestore()
