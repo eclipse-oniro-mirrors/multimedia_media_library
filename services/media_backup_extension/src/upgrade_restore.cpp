@@ -19,6 +19,7 @@
 
 #include "backup_const_column.h"
 #include "backup_database_utils.h"
+#include "cloud_media_sync_const.h"
 #include "backup_file_utils.h"
 #include "backup_log_utils.h"
 #include "backup_audit_utils.h"
@@ -978,7 +979,9 @@ bool UpgradeRestore::ParseResultSet(const std::shared_ptr<NativeRdb::ResultSet> 
 bool UpgradeRestore::ParseResultSetFromGallery(const std::shared_ptr<NativeRdb::ResultSet> &resultSet, FileInfo &info)
 {
     info.localMediaId = GetInt32Val(GALLERY_LOCAL_MEDIA_ID, resultSet);
-    info.hidden = (info.localMediaId == GALLERY_HIDDEN_ID) ? 1 : 0;
+    info.albumId = GetStringVal(GALLERY_ALBUM_ID, resultSet);
+    info.hidden = (info.localMediaId == GALLERY_HIDDEN_ID ||
+        (info.localMediaId == -1 && info.albumId == CloudSync::DEFAULT_HIDE_ALBUM_CLOUDID)) ? 1 : 0;
     info.recycledTime = GetInt64Val(GALLERY_RECYCLED_TIME, resultSet);
     info.showDateToken = GetInt64Val(GALLERY_SHOW_DATE_TOKEN, resultSet);
     // fetch relative_bucket_id, recycleFlag, is_hw_burst, hash field to generate burst_key
@@ -990,7 +993,6 @@ bool UpgradeRestore::ParseResultSetFromGallery(const std::shared_ptr<NativeRdb::
     info.photoQuality = GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet);
     info.thumbType = GetInt32Val(GALLERY_THUMB_TYPE, resultSet);
     info.filePath = GetStringVal(GALLERY_FILE_DATA, resultSet);
-    info.albumId = GetStringVal(GALLERY_ALBUM_ID, resultSet);
     info.orientation = GetInt32Val(GALLERY_ORIENTATION, resultSet);
     info.cloudUniqueId = restoreConfig_.restoreSwitchType == SwitchStatus::CLOUD ?
         GetStringVal(GALLERY_UNIQUE_ID, resultSet) :

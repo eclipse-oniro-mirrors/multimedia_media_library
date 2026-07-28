@@ -879,18 +879,27 @@ void TableDataAdapter::AddUniqueNumberFromNewDevice(
     if (newImageNumber > 0) {
         std::string sql = "UPDATE UniqueNumber SET unique_number = unique_number + " + std::to_string(newImageNumber) +
             " WHERE media_type = '" + CONST_IMAGE_ASSET_TYPE + "'";
-        BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+        int32_t imageRet = BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+        MEDIA_INFO_LOG("AddUniqueNumberFromNewDevice image SQL ret=%{public}d", imageRet);
     }
     if (newVideoNumber > 0) {
         std::string sql = "UPDATE UniqueNumber SET unique_number = unique_number + " + std::to_string(newVideoNumber) +
             " WHERE media_type = '" + CONST_VIDEO_ASSET_TYPE + "'";
-        BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+        int32_t videoRet = BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+        MEDIA_INFO_LOG("AddUniqueNumberFromNewDevice video SQL ret=%{public}d", videoRet);
     }
     if (newAudioNumber > 0) {
         std::string sql = "UPDATE UniqueNumber SET unique_number = unique_number + " + std::to_string(newAudioNumber) +
             " WHERE media_type = '" + CONST_AUDIO_ASSET_TYPE + "'";
-        BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+        int32_t audioRet = BackupDatabaseUtils::ExecuteSQL(destRdb, sql);
+        MEDIA_INFO_LOG("AddUniqueNumberFromNewDevice audio SQL ret=%{public}d", audioRet);
     }
+
+    int32_t resultImageNumber = BackupDatabaseUtils::QueryUniqueNumber(destRdb, CONST_IMAGE_ASSET_TYPE);
+    int32_t resultVideoNumber = BackupDatabaseUtils::QueryUniqueNumber(destRdb, CONST_VIDEO_ASSET_TYPE);
+    int32_t resultAudioNumber = BackupDatabaseUtils::QueryUniqueNumber(destRdb, CONST_AUDIO_ASSET_TYPE);
+    MEDIA_INFO_LOG("AddUniqueNumberFromNewDevice result: image=%{public}d, video=%{public}d, audio=%{public}d",
+        resultImageNumber, resultVideoNumber, resultAudioNumber);
 }
 
 std::vector<std::string> TableDataAdapter::GetTablesByType(TableProcessType type)
