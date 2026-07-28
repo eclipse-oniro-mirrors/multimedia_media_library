@@ -2715,7 +2715,7 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
-// 接口已有使用 "1.000"形式 不可替换 除-2147483648 stoi不会抛错场景，等同于ConvertToInt不完全消费场景.
+// 接口已有使用 "1.000" 形式 函数不可替换, 除-2147483648 stoi不会抛错场景， 返回值等同于ConvertToInt不完全消费场景.
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
     MEDIA_DEBUG_LOG("KeyWord is:%{public}s", value.c_str());
