@@ -635,6 +635,9 @@ int32_t MediaAssetChangeRequestImpl::CopyToMediaLibrary(bool isCreation, AddReso
         ret = CopyFileToMediaLibrary(destFd);
     } else if (mode == AddResourceMode::DATA_BUFFER) {
         ret = CopyDataBufferToMediaLibrary(destFd);
+    } else {
+        LOGE("Invalid mode: %{public}d", mode);
+        return E_INVALID_VALUES;
     }
 
     if (ret == E_OK && isCreation) {
