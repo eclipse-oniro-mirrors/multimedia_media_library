@@ -345,51 +345,6 @@ static int32_t SetSessionId(std::string &appName, std::vector<std::string> &uris
     return 0;
 }
 
-#ifdef HAS_ACE_ENGINE_PART
-static int32_t DeleteAssetsWithDialog(int64_t contextId, std::vector<std::string> &uris)
-{
-    if (!HasWritePermission()) {
-        return OHOS_PERMISSION_DENIED_CODE;
-    }
-    if (uris.size() > MAX_DELETE_NUMBER) {
-        LOGE("No more than 300 assets can be deleted at one time");
-        return OHOS_INVALID_PARAM_CODE;
-    }
-    auto cjAbilityContext = FFI::FFIData::GetData<AbilityRuntime::CJAbilityContext>(contextId);
-    if (cjAbilityContext == nullptr || cjAbilityContext->GetAbilityContext() == nullptr) {
-        LOGE("Failed to get native stage context instance");
-        return JS_INNER_FAIL;
-    }
-    auto abilityContext = cjAbilityContext->GetAbilityContext();
-    auto abilityInfo = abilityContext->GetAbilityInfo();
-    if (abilityInfo == nullptr) {
-        LOGE("abilityInfo is nullptr");
-        return JS_INNER_FAIL;
-    }
-    std::string appName;
-    auto resourceManager = abilityContext->GetResourceManager();
-    if (resourceManager == nullptr) {
-        LOGE("resourceManager is nullptr");
-        return JS_INNER_FAIL;
-    }
-    resourceManager->GetStringById(abilityInfo->labelId, appName);
-    auto uiContent = abilityContext->GetUIContent();
-    if (uiContent == nullptr) {
-        return JS_INNER_FAIL;
-    }
-    auto callback = std::make_shared<DeleteCallback>(uiContent);
-    OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
-        [callback](int32_t releaseCode) { callback->OnRelease(releaseCode); },
-        [callback](int32_t resultCode, const AAFwk::Want& result) { callback->OnResult(resultCode, result); },
-        [callback](const OHOS::AAFwk::WantParams& request) { callback->OnReceive(request); },
-        [callback](int32_t code, const std::string& name, const std::string& message) {
-            callback->OnError(code, name, message);
-        },
-    };
-    return SetSessionId(appName, uris, uiContent, callback, extensionCallback);
-}
-#endif
-
 int32_t MediaAssetChangeRequestImpl::CJDeleteAssets(int64_t contextId, std::vector<std::string> uris)
 {
     if (ParseArgsDeleteAssets(contextId, uris) != 0) {
