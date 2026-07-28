@@ -614,10 +614,6 @@ int32_t MediaAssetChangeRequestImpl::CopyToMediaLibrary(bool isCreation, AddReso
         LOGE("Failed to check fileAsset_");
         return E_FAIL;
     }
-    if (mode != AddResourceMode::FILE_URI && mode != AddResourceMode::DATA_BUFFER) {
-        LOGE("Invalid mode: %{public}d", mode);
-        return E_INVALID_VALUES;
-    }
     int32_t ret = E_ERR;
     int32_t id = 0;
     std::string assetUri;
