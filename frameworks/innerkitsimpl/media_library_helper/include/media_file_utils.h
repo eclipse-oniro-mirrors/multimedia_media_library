@@ -158,6 +158,8 @@ public:
     EXPORT static std::string UpdatePath(const std::string &path, const std::string &uri);
     EXPORT static MediaType GetMediaType(const std::string &filePath);
     EXPORT static MediaType GetMediaTypeNotSupported(const std::string &filePath);
+    // 判断文件名后缀是否属于支持编解码的图片/视频扩展名集合
+    EXPORT static bool IsSupportedMediaExtension(const std::string &displayName);
     EXPORT static std::string SplitByChar(const std::string &str, const char split);
     EXPORT static std::string GetExtensionFromPath(const std::string &path);
     EXPORT static int32_t OpenFile(const std::string &path, const std::string &mode,

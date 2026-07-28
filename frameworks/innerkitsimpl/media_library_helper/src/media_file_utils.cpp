@@ -89,6 +89,16 @@ const std::string TMP_SUFFIX = "tmp";
 const std::vector<std::string> SET_LISTEN_DIR = {
     PHOTO_DIR, AUDIO_DIR, THUMBS_DIR, EDIT_DATA_DIR, THUMBS_PHOTO_DIR, EDIT_DATA_PHOTO_DIR
 };
+
+// 受支持的图片和视频文件扩展名
+const std::vector<std::string> SUPPORTED_MEDIA_EXTENSIONS = {
+    // photo
+    ".arw", ".avif", ".bm", ".bmp", ".cr2", ".crw", ".cur", ".dng", ".gif", ".heic", ".heifs",
+    ".heif", ".hif", ".ico", ".jpe", ".jpeg", ".jpg", ".nef", ".nrw", ".pef", ".png", ".raf",
+    ".rw2", ".srw", ".svg", ".tif", ".tiff", ".wbmp", ".webp",
+    // video
+    ".3g2", ".3gp", ".avi", ".flv", ".m4v", ".mkv", ".mp4", ".rm", ".rmvb", ".wmv"
+};
 const std::string KVSTORE_FILE_ID_TEMPLATE = "0000000000";
 const std::string KVSTORE_DATE_KEY_TEMPLATE = "0000000000000";
 const std::string DEFAULT_IMAGE_NAME = "IMG_";
@@ -1785,6 +1795,17 @@ MediaType MediaFileUtils::GetMediaTypeNotSupported(const string &filePath)
     string extention = GetExtensionFromPath(filePath);
     string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extention, MEDIA_EXTRA_MIME_TYPE_MAP);
     return MimeTypeUtils::GetMediaTypeFromMimeType(mimeType);
+}
+
+bool MediaFileUtils::IsSupportedMediaExtension(const std::string &displayName)
+{
+    size_t pos = displayName.find_last_of('.');
+    CHECK_AND_RETURN_RET_LOG(pos != std::string::npos, false, "Invalid file path: %{public}s",
+        displayName.c_str());
+    std::string extension = displayName.substr(pos);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+    return std::find(SUPPORTED_MEDIA_EXTENSIONS.begin(), SUPPORTED_MEDIA_EXTENSIONS.end(),
+        extension) != SUPPORTED_MEDIA_EXTENSIONS.end();
 }
 
 string MediaFileUtils::SplitByChar(const string &str, const char split)
