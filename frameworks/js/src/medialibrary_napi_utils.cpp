@@ -1051,13 +1051,43 @@ void MediaLibraryNapiUtils::HandleError(
     NAPI_ERR_LOG("Error: %{public}s, js errcode:%{public}d ", errMsg.c_str(), originalError);
 }
 
+void MediaLibraryNapiUtils::HandleErrorWithIntCode(
+    napi_env env, napi_value &errorObj, const AsyncErrorInfo &errInfo)
+{
+    if (errInfo.error == ERR_DEFAULT) {
+        return;
+    }
+
+    string errMsg = errInfo.errorMsg;
+    int error = errInfo.error;
+    int originalError = error;
+    if (errMsg.empty()) {
+        errMsg = "System inner fail";
+        if (jsErrMap.count(error) > 0) {
+            errMsg = jsErrMap.at(error);
+        } else {
+            error = JS_INNER_FAIL;
+            if (errInfo.realErr != 0 && jsErrMap.count(errInfo.realErr) > 0) {
+                errMsg = jsErrMap.at(errInfo.realErr);
+            }
+        }
+    }
+    CreateNapiErrorObject(env, errorObj, error, errMsg, true);
+    errMsg = errInfo.apiName + " " + errMsg;
+    NAPI_ERR_LOG("Error: %{public}s, js errcode:%{public}d ", errMsg.c_str(), originalError);
+}
+
 void MediaLibraryNapiUtils::CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
-    const string errMsg)
+    const string errMsg, bool isIntCode)
 {
     napi_status statusError;
     napi_value napiErrorCode = nullptr;
     napi_value napiErrorMsg = nullptr;
-    statusError = napi_create_string_utf8(env, to_string(errCode).c_str(), NAPI_AUTO_LENGTH, &napiErrorCode);
+    if (isIntCode) {
+        statusError = napi_create_int32(env, errCode, &napiErrorCode);
+    } else {
+        statusError = napi_create_string_utf8(env, to_string(errCode).c_str(), NAPI_AUTO_LENGTH, &napiErrorCode);
+    }
     if (statusError == napi_ok) {
         statusError = napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &napiErrorMsg);
         if (statusError == napi_ok) {
