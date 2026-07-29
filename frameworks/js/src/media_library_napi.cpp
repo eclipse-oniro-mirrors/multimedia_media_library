@@ -17787,10 +17787,8 @@ static napi_value ParseArgsInvokeAnalysisTool(
     CHECK_COND_WITH_ERR_MESSAGE(env, context->argc >= minArgs && context->argc <= maxArgs, JS_E_PARAM_INVALID,
         "Number of args is invalid");
     CHECK_COND_WITH_ERR_MESSAGE(env,
-        napi_unwrap(env, thisVar, reinterpret_cast<void **>(&context->objectInfo)) == napi_ok,
-        JS_E_PARAM_INVALID, "Failed to unwrap thisVar");
-    CHECK_COND_WITH_ERR_MESSAGE(env, context->objectInfo != nullptr, JS_E_PARAM_INVALID,
-        "Failed to get object info");
+        napi_unwrap(env, thisVar, reinterpret_cast<void **>(&context->objectInfo)) == napi_ok
+        && context->objectInfo != nullptr, JS_E_PARAM_INVALID, "Failed to get object info");
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
         NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL,"This interface can be called only by system apps");
         return nullptr;
@@ -17814,10 +17812,9 @@ static napi_value ParseArgsInvokeAnalysisTool(
             ANALYSIS_TOOL_CONFIG_PARAM.c_str());
         CHECK_COND_WITH_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
         CHECK_COND_WITH_ERR_MESSAGE(env,
-            MediaLibraryNapiUtils::GetParamStringPathMax(env, paramValue,context->analysisToolParam) == napi_ok,
-        JS_E_PARAM_INVALID, "param invalid");
-        CHECK_COND_WITH_ERR_MESSAGE(env, context->analysisToolParam.size() <=MAX_ANALYSIS_TOOL_PARAM_LENGTH,
-        JS_E_PARAM_INVALID, "param too long");
+            MediaLibraryNapiUtils::GetParamStringStrict(env, paramValue,
+            MAX_ANALYSIS_TOOL_PARAM_LENGTH, context->analysisToolParam) == napi_ok,
+        	JS_E_PARAM_INVALID, "param invalid or too long");
     }
     //Parse callback (argv[1]): Callback<AnalysisToolResult
     CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::CheckJSArgsTypeAsFunc(env, context->argv[ARGS_ONE]),
@@ -17872,10 +17869,9 @@ napi_env env, napi_callback_info info, unique_ptr<MediaLibraryAsyncContext> &con
             ANALYSIS_TOOL_CONFIG_PARAM.c_str());
         CHECK_COND_WITH_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
         CHECK_COND_WITH_ERR_MESSAGE(env,
-            MediaLibraryNapiUtils::GetParamStringPathMax(env, paramValue, context->analysisToolParam) == napi_ok,
-            JS_E_PARAM_INVALID, "param invalid");
-        CHECK_COND_WITH_ERR_MESSAGE(env, context->analysisToolParam.size() <= MAX_ANALYSIS_TOOL_PARAM_LENGTH,
-            JS_E_PARAM_INVALID, "param too long");
+            MediaLibraryNapiUtils::GetParamStringStrict(env, paramValue,
+            MAX_ANALYSIS_TOOL_PARAM_LENGTH, context->analysisToolParam) == napi_ok,
+            JS_E_PARAM_INVALID, "param invalid or too long");
     }
     napi_value result = nullptr;
     CHECK_ARGS(env, napi_get_boolean(env, true, &result),JS_INNER_FAIL);

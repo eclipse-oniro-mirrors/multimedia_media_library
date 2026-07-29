@@ -330,7 +330,7 @@ void AnalysisToolAniCallbackHolder::CallAniCallback(int32_t code, const std::str
 
     ani_fn_object aniCallback = static_cast<ani_fn_object>(callbackRef_);
     if (aniCallback == nullptr) {
-        ANI_ERR_LOG("CallAniCallback null callbackRef, callbackRef_=%{public}p", callbackRef_);
+        ANI_ERR_LOG("CallAniCallback null callbackRef");
         return;
     }
 
@@ -338,8 +338,7 @@ void AnalysisToolAniCallbackHolder::CallAniCallback(int32_t code, const std::str
     ani_ref returnVal;
     ani_status status = env->FunctionalObject_Call(aniCallback, 1, args.data(), &returnVal);
     if (status != ANI_OK) {
-        ANI_ERR_LOG("CallAniCallback fail status=%{public}d code=%{public}d callback=%{public}p obj=%{public}p",
-            status, code, aniCallback, retObj);
+        ANI_ERR_LOG("CallAniCallback fail status=%{public}d code=%{public}d", status, code);
         return;
     }
     ANI_INFO_LOG("[tool] CallAniCallback success code=%{public}d", code);

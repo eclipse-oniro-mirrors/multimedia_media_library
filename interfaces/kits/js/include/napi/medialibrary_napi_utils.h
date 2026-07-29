@@ -418,6 +418,8 @@ public:
     static napi_status GetParamStringWithLength(napi_env env, napi_value arg, int32_t maxLen,
         std::string &str);
     static napi_status GetParamStringPathMax(napi_env env, napi_value arg, std::string &str);
+    static napi_status GetParamStringStrict(napi_env env, napi_value arg, size_t maxLen,
+        std::string &str);
     static napi_status GetProperty(napi_env env, const napi_value arg, const std::string &propName,
         std::string &propValue);
     static napi_status GetArrayProperty(napi_env env, napi_value arg, const std::string &propName,
