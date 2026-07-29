@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <charconv>
 #include <cstdint>
 #define MLOG_TAG "FileUtils"
 
@@ -2736,10 +2737,15 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
+// 需要兼容1.000, -2147483648等场景， 目前实现为ConvertToInt不完全消费场景.
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
     int convetValue = 0;
-    return MediaStringUtils::ConvertToInt(value, convetValue);
+    if (value.empty()) {
+        return false;
+    }
+    auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), convetValue);
+    return ec == std::errc{};
 }
 
 static int64_t GetRoundSize(int64_t size)
