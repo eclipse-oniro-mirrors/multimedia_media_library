@@ -270,7 +270,7 @@ static int32_t ParseArgsDeleteAssets(int64_t contextId, std::vector<std::string>
         return OHOS_INVALID_PARAM_CODE;
     }
     for (const auto& uri : uris) {
-        if (uri.rfind(PhotoColumn::PHOTO_URI_PREFIX, 0) != 0) {
+        if (uri.find(PhotoColumn::PHOTO_URI_PREFIX) == std::string::npos) {
             return JS_E_URI;
         }
     }
