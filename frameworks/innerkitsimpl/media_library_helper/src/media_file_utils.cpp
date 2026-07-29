@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <charconv>
 #include <cstdint>
 #define MLOG_TAG "FileUtils"
 
@@ -2715,32 +2716,15 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
-// 接口已有使用 "1.000" 形式 函数不可替换, 除-2147483648 stoi不会抛错场景， 返回值等同于ConvertToInt不完全消费场景.
+// 需要兼容1.000, -2147483648等场景， 目前实现为ConvertToInt不完全消费场景.
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
-    MEDIA_DEBUG_LOG("KeyWord is:%{public}s", value.c_str());
-    std::string unsignedStr = value;
-    while (unsignedStr.size() > 0 && unsignedStr[0] == '-') {
-        unsignedStr = unsignedStr.substr(1);
-    }
-    for (size_t i = 0; i < unsignedStr.size(); i++) {
-        if (!std::isdigit(unsignedStr[i])) {
-            MEDIA_INFO_LOG("KeyWord invalid char of:%{public}c", unsignedStr[i]);
-            unsignedStr = unsignedStr.substr(0, i);
-            break;
-        }
-    }
-    if (unsignedStr.size() == 0) {
-        MEDIA_ERR_LOG("KeyWord Invalid argument!");
-        return false;
-    } else if (unsignedStr.size() < INTEGER_MAX_LENGTH) {
-        return true;
-    } else if (unsignedStr.size() == INTEGER_MAX_LENGTH) {
-        return unsignedStr < MAX_INTEGER;
-    } else {
-        MEDIA_ERR_LOG("KeyWord is out length!");
+    int convetValue = 0;
+    if (value.empty()) {
         return false;
     }
+    auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), convetValue);
+    return ec == std::errc{};
 }
 
 static int64_t GetRoundSize(int64_t size)
