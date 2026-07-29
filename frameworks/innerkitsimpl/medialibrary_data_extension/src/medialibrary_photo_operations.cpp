@@ -3722,6 +3722,7 @@ static int32_t UpdateEffectMode(int32_t fileId, int32_t effectMode)
     updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode);
     if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
+        updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     } else {
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
@@ -3982,6 +3983,8 @@ int32_t MediaLibraryPhotoOperations::UpdateMovingPhotoSubtype(int32_t fileId, in
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
     if (currentPhotoSubType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    } else {
+        updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     }
     updateCmd.SetValueBucket(updateValues);
     int32_t updateRows = -1;
@@ -5615,6 +5618,7 @@ int32_t UpdateEffectModeWhenGraffiti(int32_t fileId)
     int32_t updatedRows = -1;
     updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
     updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     updateValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
     updateCmd.SetValueBucket(updateValues);
