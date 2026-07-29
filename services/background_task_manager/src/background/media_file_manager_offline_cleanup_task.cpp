@@ -27,6 +27,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_type_const.h"
+#include "media_file_access_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
 #include "media_map_const_utils.h"
@@ -40,7 +41,7 @@
 namespace OHOS::Media::Background {
 namespace {
 constexpr char OFFLINE_CLEANUP_PREFERENCES[] = "/data/storage/el2/base/preferences/task_progress.xml";
-constexpr int32_t OFFLINE_CLEANUP_VERSION = 2;
+constexpr int32_t OFFLINE_CLEANUP_VERSION = 3;
 constexpr int32_t BATCH_SIZE = 100;
 constexpr int32_t SUBTYPE_BURST = static_cast<int32_t>(PhotoSubType::BURST);
 constexpr int32_t BURST_COVER = static_cast<int32_t>(BurstCoverLevelType::COVER);
@@ -178,6 +179,7 @@ void MediaFileManagerOfflineCleanupTask::ProcessLocalPhotosToDelete()
         const int32_t batchLastId = photos.back().fileId;
         std::vector<int32_t> fileIdsToMark;
         for (const auto &photo : photos) {
+            CorrectSandboxAnomaly(photo);
             CHECK_AND_CONTINUE(ShouldMarkForDeletion(photo));
             convertedAlbumIdCache_.insert(photo.ownerAlbumId);
             fileIdsToMark.emplace_back(photo.fileId);
@@ -424,19 +426,20 @@ void MediaFileManagerOfflineCleanupTask::ReportCleanupResult()
         ", deletedPhotos=%{public}" PRId64 ", burstConverted=%{public}" PRId64
         ", localCloudConverted=%{public}" PRId64 ", cloudOnlyConverted=%{public}" PRId64
         ", albumRelationsMigrated=%{public}" PRId64 ", legacyAlbumsDeleted=%{public}" PRId64
-        ", convertedAlbumsDeleted=%{public}" PRId64
+        ", convertedAlbumsDeleted=%{public}" PRId64 ", sandboxAnomalyCorrected=%{public}" PRId64
         ", remainLegacyPhotos=%{public}" PRId64 ", remainTombstone=%{public}" PRId64
         ", remainLegacyAlbums=%{public}" PRId64,
         statistics_.markedForDeletion.count, statistics_.deletedPhotos.count, statistics_.burstConverted.count,
         statistics_.localCloudConverted.count, statistics_.cloudOnlyConverted.count,
         statistics_.albumRelationsMigrated.count, statistics_.legacyAlbumsDeleted.count,
-        statistics_.convertedAlbumsDeleted.count,
+        statistics_.convertedAlbumsDeleted.count, statistics_.sandboxAnomalyCorrected.count,
         remainLegacyPhotos, remainTombstone, remainLegacyAlbums);
 
     const int64_t totalCount = statistics_.markedForDeletion.count + statistics_.deletedPhotos.count +
         statistics_.burstConverted.count + statistics_.localCloudConverted.count +
         statistics_.cloudOnlyConverted.count + statistics_.albumRelationsMigrated.count +
-        statistics_.legacyAlbumsDeleted.count + statistics_.convertedAlbumsDeleted.count;
+        statistics_.legacyAlbumsDeleted.count + statistics_.convertedAlbumsDeleted.count +
+        statistics_.sandboxAnomalyCorrected.count;
     CHECK_AND_RETURN(totalCount > 0);
     const std::vector<std::string> results = {
         statistics_.markedForDeletion.ToString(),
@@ -447,6 +450,7 @@ void MediaFileManagerOfflineCleanupTask::ReportCleanupResult()
         statistics_.albumRelationsMigrated.ToString(),
         statistics_.legacyAlbumsDeleted.ToString(),
         statistics_.convertedAlbumsDeleted.ToString(),
+        statistics_.sandboxAnomalyCorrected.ToString(),
     };
     std::ostringstream ss;
     ss << "\"STAT:";
@@ -492,12 +496,34 @@ void MediaFileManagerOfflineCleanupTask::LogBatchResult(const char *stage, int32
         stage, startCursor, endCursor, scannedCount, processedCount);
 }
 
+bool MediaFileManagerOfflineCleanupTask::MediaLibraryCopyExists(const std::string &data)
+{
+    size_t size = 0;
+    return MediaFileUtils::IsFileExists(data) && MediaFileUtils::GetFileSize(data, size) && size > 0;
+}
+
+bool MediaFileManagerOfflineCleanupTask::CorrectSandboxAnomaly(const OfflineCleanupPhotoRecord &photo)
+{
+    if (MediaFileUtils::IsFileExists(photo.storagePath) || !MediaLibraryCopyExists(photo.data)) {
+        return true;
+    }
+    CHECK_AND_RETURN_RET_LOG(MediaFileAccessUtils::MoveFileCrossPolicy(photo.data, photo.storagePath, false) == E_OK,
+        false, "Copy failed, %{public}s", photo.ToString().c_str());
+    ++statistics_.sandboxAnomalyCorrected.count;
+    MEDIA_INFO_LOG("Moved data from %{public}s to %{public}s", FileScanUtils::GarbleFilePath(photo.data).c_str(),
+        FileScanUtils::GarbleFilePath(photo.storagePath).c_str());
+    // Note: delete only when the src file exists after move (copy)
+    CHECK_AND_RETURN_RET_LOG(!MediaFileUtils::IsFileExists(photo.data) || MediaFileUtils::DeleteFile(photo.data), false,
+        "Delete src failed, %{public}s", FileScanUtils::GarbleFilePath(photo.data).c_str());
+    return true;
+}
+
 bool MediaFileManagerOfflineCleanupTask::ShouldMarkForDeletion(const OfflineCleanupPhotoRecord &photo)
 {
     CHECK_AND_RETURN_RET_LOG(!photo.storagePath.empty(), false,
         "File storagePath empty, %{public}s", photo.ToString().c_str());
     CHECK_AND_RETURN_RET_INFO_LOG(MediaFileUtils::IsFileExists(photo.storagePath) ||
-        !MediaFileUtils::IsFileExists(photo.data), false,
+        !MediaLibraryCopyExists(photo.data), false,
         "Skip to preserve the sandbox file, path: %{public}s", photo.ToString().c_str());
     CHECK_AND_RETURN_RET_INFO_LOG(!cleanupDao_.ExistMediaBurstMember(photo), false,
         "Skip burst cover, path: %{public}s", photo.ToString().c_str());

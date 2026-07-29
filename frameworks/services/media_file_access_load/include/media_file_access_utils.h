@@ -84,6 +84,9 @@ public:
     EXPORT static MoveResult ProcessMovingPhotoToLivePhoto(const std::string &srcPath, const std::string &destPath,
         FileSourceType destSourceType, bool deleteSrc, std::shared_ptr<AssetAccurateRefresh> assetRefresh = nullptr);
 
+    EXPORT static int32_t MoveFileCrossPolicy(const std::string &srcPath, const std::string &destPath,
+        bool deleteSrc = false);
+
 private:
     struct AssetPathConvertInfo {
         std::string assetPath;
@@ -99,9 +102,6 @@ private:
     static bool NeedConvertPath(const std::string& path);
 
     static bool NeedCheckSameNameRename(FileSourceType destSourceType);
-
-    static int32_t MoveFileCrossPolicy(const std::string &srcPath, const std::string &destPath,
-        bool deleteSrc = false);
 
     static MoveResult MoveNormalAsset(const AssetOperationInfo &srcObj, const std::string &destPath,
         FileSourceType destSourceType, bool deleteSrc = false, RenameMode needRename = RenameMode::RENAME);
