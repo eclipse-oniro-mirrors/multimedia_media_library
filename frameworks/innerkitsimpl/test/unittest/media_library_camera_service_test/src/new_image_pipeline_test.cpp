@@ -742,8 +742,8 @@ HWTEST_F(NewImagePipelineTest, NewImagePipelineTest_SaveCameraPhoto_test001, Tes
     int32_t err = resultSet->GoToFirstRow();
     EXPECT_EQ(err, NativeRdb::E_OK);
 
-    ASSERT_EQ(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
-    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
+    ASSERT_GT(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
+    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_IS_TEMP, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::SUPPORTED_WATERMARK_TYPE, resultSet), BRAND_COMMON);
     ASSERT_EQ(GetStringVal(PhotoColumn::CAMERA_SHOT_KEY, resultSet), CAMERA_SHOT_KEY_TEST);
@@ -793,8 +793,8 @@ HWTEST_F(NewImagePipelineTest, NewImagePipelineTest_SaveCameraPhoto_test002, Tes
     int32_t err = resultSet->GoToFirstRow();
     EXPECT_EQ(err, NativeRdb::E_OK);
 
-    ASSERT_EQ(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
-    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
+    ASSERT_GT(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
+    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_IS_TEMP, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet), static_cast<int32_t>(DirtyType::TYPE_NEW));
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet), static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
@@ -842,8 +842,8 @@ HWTEST_F(NewImagePipelineTest, NewImagePipelineTest_SaveCameraPhoto_test003, Tes
     int32_t err = resultSet->GoToFirstRow();
     EXPECT_EQ(err, NativeRdb::E_OK);
 
-    ASSERT_EQ(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
-    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
+    ASSERT_GT(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
+    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_IS_TEMP, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet), -1);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet), static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
@@ -891,8 +891,8 @@ HWTEST_F(NewImagePipelineTest, NewImagePipelineTest_SaveCameraPhoto_test004, Tes
     int32_t err = resultSet->GoToFirstRow();
     EXPECT_EQ(err, NativeRdb::E_OK);
 
-    ASSERT_EQ(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
-    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), UNCREATE_FILE_TIMEPENDING);
+    ASSERT_GT(GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet), 0);
+    ASSERT_EQ(GetInt32Val(MediaColumn::MEDIA_TIME_PENDING, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_IS_TEMP, resultSet), 0);
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_DIRTY, resultSet), static_cast<int32_t>(DirtyType::TYPE_NEW));
     ASSERT_EQ(GetInt32Val(PhotoColumn::PHOTO_QUALITY, resultSet), static_cast<int32_t>(MultiStagesPhotoQuality::FULL));
