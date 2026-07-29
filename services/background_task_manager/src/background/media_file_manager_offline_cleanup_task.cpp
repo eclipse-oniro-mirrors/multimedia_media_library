@@ -473,7 +473,7 @@ void MediaFileManagerOfflineCleanupTask::WritePhotoDeleteAuditLog(const OfflineC
     auditLog.type = photo.mediaType;
     auditLog.size = totalCount;
     auditLog.path = FileScanUtils::GarbleFilePath(photo.storagePath);
-    auditLog.mediaType = MediaMapConstUtils::MediaMapConstUtils::MediaTypeToString(photo.mediaType);
+    auditLog.mediaType = MediaMapConstUtils::MediaTypeToString(photo.mediaType);
     HiAudit::GetInstance().Write(auditLog, false);
 }
 
