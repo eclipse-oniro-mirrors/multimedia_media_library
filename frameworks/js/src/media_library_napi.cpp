@@ -18284,43 +18284,63 @@ napi_value MediaLibraryNapi::GetDeepOptimizeSpace(napi_env env, napi_callback_in
         GetDeepOptimizeSpaceExecute, GetDeepOptimizeSpaceCompleteCallback);
 }
 
+static bool UnwrapAssetElement(napi_env env, napi_value element, shared_ptr<FileAsset> &outAsset)
+{
+    napi_valuetype valueType = napi_undefined;
+    if (!(napi_typeof(env, element, &valueType) == napi_ok && valueType == napi_object)) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "asset must be an object");
+        return false;
+    }
+    FileAssetNapi *obj = nullptr;
+    if (!(napi_unwrap(env, element, reinterpret_cast<void **>(&obj)) == napi_ok && obj != nullptr)) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "Failed to get asset napi object");
+        return false;
+    }
+    outAsset = obj->GetFileAssetInstance();
+    if (outAsset == nullptr) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "FileAsset instance is null");
+        return false;
+    }
+    return true;
+}
+
 static napi_value ParseArgsTransAssetToCompatibleAsset(napi_env env, napi_callback_info info,
     unique_ptr<MediaLibraryAsyncContext> &context)
 {
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    if (MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, ARGS_ONE, ARGS_ONE) != napi_ok) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID);
         return nullptr;
     }
 
-    constexpr size_t minArgs = ARGS_ONE;
-    constexpr size_t maxArgs = ARGS_ONE;
-    CHECK_ARGS(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs),
-        JS_E_PARAM_INVALID);
-
     bool isArray = false;
-    CHECK_COND_WITH_ERR_MESSAGE(env, napi_is_array(env, context->argv[PARAM0], &isArray) == napi_ok && isArray,
-        JS_E_PARAM_INVALID, "assets must be an array");
+    if (!(napi_is_array(env, context->argv[PARAM0], &isArray) == napi_ok && isArray)) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "assets must be an array");
+        return nullptr;
+    }
 
     uint32_t arrayLen = 0;
-    CHECK_ARGS(env, napi_get_array_length(env, context->argv[PARAM0], &arrayLen), JS_E_PARAM_INVALID);
-    CHECK_COND_WITH_ERR_MESSAGE(env, arrayLen > 0, JS_E_PARAM_INVALID, "assets array is empty");
+    napi_get_array_length(env, context->argv[PARAM0], &arrayLen);
+    if (arrayLen == 0) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "assets array is empty");
+        return nullptr;
+    }
 
     for (uint32_t i = 0; i < arrayLen; i++) {
         napi_value element = nullptr;
-        CHECK_ARGS(env, napi_get_element(env, context->argv[PARAM0], i, &element), JS_E_PARAM_INVALID);
-        napi_valuetype valueType = napi_undefined;
-        CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, element, &valueType) == napi_ok
-            && valueType == napi_object, JS_E_PARAM_INVALID, "asset must be an object");
-        FileAssetNapi *obj = nullptr;
-        CHECK_COND_WITH_ERR_MESSAGE(env, napi_unwrap(env, element, reinterpret_cast<void **>(&obj)) == napi_ok
-            && obj != nullptr, JS_E_PARAM_INVALID, "Failed to get asset napi object");
-        auto fileAsset = obj->GetFileAssetInstance();
-        CHECK_COND_WITH_ERR_MESSAGE(env, fileAsset != nullptr, JS_E_PARAM_INVALID, "FileAsset instance is null");
+        napi_get_element(env, context->argv[PARAM0], i, &element);
+        shared_ptr<FileAsset> fileAsset;
+        if (element == nullptr || !UnwrapAssetElement(env, element, fileAsset)) {
+            return nullptr;
+        }
         context->transAssetPtrs.push_back(fileAsset);
     }
 
     napi_value result = nullptr;
-    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+    napi_get_boolean(env, true, &result);
     return result;
 }
 
@@ -18384,7 +18404,7 @@ static void JSTransAssetToCompatibleAssetCompleteCallback(napi_env env, napi_sta
         napi_get_undefined(env, &jsContext->error);
     } else {
         napi_get_undefined(env, &jsContext->data);
-        context->HandleError(env, jsContext->error);
+        context->HandleError(env, jsContext->error, true);
     }
 
     if (context->work != nullptr) {
