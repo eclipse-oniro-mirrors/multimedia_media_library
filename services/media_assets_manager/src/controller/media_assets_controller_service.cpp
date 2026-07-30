@@ -37,6 +37,7 @@
 #include "revert_to_original_dto.h"
 #include "media_file_utils.h"
 #include "batch_update_metadata_modified_vo.h"
+#include "set_photo_critical_vo.h"
 #include "cloud_enhancement_vo.h"
 #include "cloud_enhancement_dto.h"
 #include "start_download_cloud_media_vo.h"
@@ -752,6 +753,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED),
         &MediaAssetsControllerService::BatchUpdateMetaDataModified
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL),
+        &MediaAssetsControllerService::SetPhotoCritical
     },
 };
 
@@ -3696,6 +3701,24 @@ int32_t MediaAssetsControllerService::BatchUpdateMetaDataModified(MessageParcel 
     }
     
     ret = MediaAssetsService::GetInstance().BatchUpdateMetaDataModified(reqBody.fileIds);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::SetPhotoCritical(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("SetPhotoCritical start");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+ 
+    SetPhotoCriticalReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("SetPhotoCritical Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+ 
+    ret = MediaAssetsService::GetInstance().SetPhotoCritical(reqBody.fileId, reqBody.photoRiskStatus);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media
