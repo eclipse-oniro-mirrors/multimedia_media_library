@@ -17,6 +17,7 @@
 
 #include "file_manager_folder_parser.h"
 
+#include "dir_scan_anomaly_helper.h"
 #include "file_manager_scanner.h"
 #include "file_scan_utils.h"
 #include "medialibrary_notify.h"
@@ -36,6 +37,8 @@ void FileManagerScanner::HandleFiles(MediaNotifyInfo& fileInfo)
 {
     FileManagerParser fileManagerParser(fileInfo, scanMode_);
     auto updateType = fileManagerParser.GetFileUpdateType();
+    CHECK_AND_EXECUTE(MediaFileUtils::IsFileExists(fileInfo.afterPath),
+        DirScanAnomalyHelper::AddAnomalyDir(MediaFileUtils::GetParentPath(fileInfo.afterPath)));
     if (!fileManagerParser.IsFileValidAsset()) {
         RefreshAssetInfoForSkipFile(fileManagerParser, updateType);
         MEDIA_WARN_LOG("invalid file manager file");

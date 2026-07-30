@@ -23,6 +23,7 @@
 #include "medialibrary_errno.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
+#include "media_string_utils.h"
 #include "media_log.h"
 #include "mimetype_utils.h"
 #include "metadata_extractor.h"
@@ -579,6 +580,21 @@ void FileScanUtils::UpdateAndNotifyAnalysisAlbum(const std::vector<std::string>&
         MediaLibraryRdbUtils::UpdateAnalysisAlbumInternal(rdbStore, albumIds);
         NotifyAnalysisAlbum(albumIds);
     }
+}
+
+bool FileScanUtils::IsPathUnderRoot(const std::string &path, const std::string &rootPath)
+{
+    if (rootPath.empty()) {
+        return false;
+    }
+    if (!MediaStringUtils::StartsWithIgnoreCase(path, rootPath)) {
+        return false;
+    }
+    size_t rootLen = rootPath.length();
+    if (rootPath.back() == '/') {
+        return true;
+    }
+    return path.length() == rootLen || path[rootLen] == '/';
 }
 // LCOV_EXCL_STOP
 }
