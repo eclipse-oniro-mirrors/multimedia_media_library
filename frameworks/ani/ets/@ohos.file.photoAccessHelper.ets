@@ -22,6 +22,9 @@ import { CustomColors } from '@ohos.arkui.theme';
 import bundleManager from '@ohos.bundle.bundleManager';
 import deviceinfo from '@ohos.deviceInfo';
 import { UIContext } from '@ohos.arkui.UIContext';
+import rpc from '@ohos.rpc';
+import Want from '@ohos.app.ability.Want';
+import common from '@ohos.app.ability.common';
 
 class SizeImpl implements image.Size {
   height: int = 0;
@@ -33,7 +36,40 @@ const MAX_DELETE_NUMBER = 300;
 const MIN_DELETE_NUMBER = 1;
 const MAX_CONFIRM_NUMBER = 100;
 const MIN_CONFIRM_NUMBER = 1;
+const SECONDS_OF_ONE_DAY = 86400;
+const RETRY_COUNTER = 10;
+const RECENT_PHOTO_INFO_DELAY_TIME = 70;
+const RPC_TOKEN_RECENT_PHOTO_INFO = 'rpcRecentPhotoInfoServiceAbility';
+const RPC_MSGID_RECENT_PHOTO_INFO = 1;
+const RECENT_PHOTO_INFO_BUNDLE_NAME = 'com.ohos.photos';
+const RECENT_PHOTO_INFO_ABILITY_NAME = 'RecentPhotoInfoAbility';
 type RejectString = (e: BusinessError<string>) => void;
+
+function delayFunc(time: int): Promise<void> {
+  return new Promise<void>((resolve: (value: void | PromiseLike<void>) => void,
+    reject: (reason: Error) => void ) => {
+    setTimeout((): void => {
+      resolve(undefined);
+    }, time);
+  });
+}
+
+function convertRecentMIMETypeToFilterType(mimeType: photoAccessHelper.PhotoViewMIMETypes | undefined): string {
+  if (mimeType === undefined) {
+    return 'FILTER_MEDIA_TYPE_ALL';
+  }
+  let type: photoAccessHelper.PhotoViewMIMETypes = mimeType;
+  switch (type) {
+    case photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE:
+      return 'FILTER_MEDIA_TYPE_IMAGE';
+    case photoAccessHelper.PhotoViewMIMETypes.VIDEO_TYPE:
+      return 'FILTER_MEDIA_TYPE_VIDEO';
+    case photoAccessHelper.PhotoViewMIMETypes.MOVING_PHOTO_IMAGE_TYPE:
+      return 'FILTER_MEDIA_TYPE_IMAGE_MOVING_PHOTO';
+    default:
+      return 'FILTER_MEDIA_TYPE_ALL';
+  }
+}
 
 function businessError<T = void>(c: int, d?: string): BusinessError<T> {
   let err: BusinessError<T> = new BusinessError<T>();
@@ -216,7 +252,12 @@ export namespace photoAccessHelper {
     DRIVER_LICENSE = 8,
     DRIVING_LICENSE = 9,
     FEATURED_SINGLE_PORTRAIT = 10,
-    COLOR_STYLE_PHOTO = 12
+    COLOR_STYLE_PHOTO = 12,
+    CAT = 13,
+    DOG = 14,
+    ARCHITECTURE = 15,
+    LANDSCAPE = 16,
+    GAUSSIAN_SPLAT_3D = 17
   }
 
   export enum DeliveryMode {
@@ -2788,9 +2829,15 @@ export class ContextRecoveryInfo {
     setAssetCompatibleCapability(config: AssetCompatibleCapability): Promise<void>;
     getAssetCompatibleCapability(bundleName: string): Promise<AssetCompatibleCapability>;
     createAssetWithShortTermPermission(phCreationConfig: PhotoCreationConfig): Promise<string>;
+    createAssetWithShortTermPermissionEx(creationSetting: CreationSetting): Promise<string>;
     showAssetsCreationDialog(srcFileUris: Array<string>,
       photoCreationConfigs: Array<PhotoCreationConfig>): Promise<Array<string>>;
+    showAssetsCreationDialogEx(srcFileUris: Array<string>,
+      creationSettings: Array<CreationSetting>): Promise<Array<string>>;
+    showSingleAssetCreationDialogEx(srcFileUri: string, creationSetting: CreationSetting,
+      isImageFullyDisplayed: boolean): Promise<string>;
     requestPhotoUrisReadPermission(srcFileUris: Array<string>): Promise<Array<string>>;
+ 	  getRecentPhotoInfo(options?: RecentPhotoOptions): Promise<RecentPhotoInfo>;
     onMediaLibraryAvailability(callback: Callback<MediaLibraryAvailability>): void;
     offMediaLibraryAvailability(callback?: Callback<MediaLibraryAvailability>): void;
     getAlbumIdByLpath(lpath: string): Promise<int>;
@@ -2802,9 +2849,9 @@ export class ContextRecoveryInfo {
     startDeepOptimizeSpace(callback?: Callback<DeepOptimizeSpaceProgressInfo>): Promise<void>;
     stopDeepOptimizeSpace(): Promise<void>;
     modifyAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
-      isAsyncRefreshAlbum: boolean): Promise<void>;
+       isAsyncRefreshAlbum: boolean): Promise<void>;
     modifyHiddenAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
-      isAsyncRefreshAlbum: boolean): Promise<void>;
+       isAsyncRefreshAlbum: boolean): Promise<void>;
   }
 
   export class DefaultCoverOrderInfo {
@@ -4090,6 +4137,16 @@ export class ContextRecoveryInfo {
     return this.createAssetWithShortTermPermissionExecute(phCreationConfig);
   }
 
+  // Mirrors dynamic: createAssetWithShortTermPermissionEx is an alias of createAssetWithShortTermPermission.
+  createAssetWithShortTermPermissionEx(creationSetting: CreationSetting): Promise<string> {
+    let config: PhotoCreationConfig = {
+      title: creationSetting.title,
+      fileNameExtension: creationSetting.fileNameExtension,
+      photoType: creationSetting.photoType
+    };
+    return this.createAssetWithShortTermPermission(config);
+  }
+
   checkArrayAndSize<T>(array: Array<T>, minSize: int , maxSize:int): boolean {
     // check whether input is array
     if (!Array.isArray(array)) {
@@ -4150,7 +4207,7 @@ export class ContextRecoveryInfo {
   }
 
   async showAssetsCreationDialogParamsExecute(srcFileUris: Array<string>,
-    photoCreationConfigs: Array<PhotoCreationConfig>): Promise<Array<string>> {
+    photoCreationConfigs: Array<PhotoCreationConfig>, isImageFullyDisplayed: boolean): Promise<Array<string>> {
     let appInfo = await this.getPickerAppInfo();
     if (appInfo === null) {
       return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString)  => {
@@ -4160,7 +4217,7 @@ export class ContextRecoveryInfo {
     try {
       return new Promise<Array<string>>((resolve: (v: Array<string>) => void, reject: RejectString) => {
         this.showAssetsCreationDialogInner(g_PickerContext!, srcFileUris,
-          photoCreationConfigs, appInfo!, (retVal:Array<string>) => {
+          photoCreationConfigs, appInfo!, isImageFullyDisplayed, (retVal:Array<string>) => {
             this.showAssetsCreationDialogArrayResult(retVal, reject, resolve);
           }
       );
@@ -4179,7 +4236,40 @@ export class ContextRecoveryInfo {
         reject(businessError<string>(401, "Param Invalid"));
       });
     }
-    return this.showAssetsCreationDialogParamsExecute(srcFileUris, photoCreationConfigs);
+    return this.showAssetsCreationDialogParamsExecute(srcFileUris, photoCreationConfigs, false);
+  }
+
+  // Mirrors dynamic: showAssetsCreationDialogEx wraps showAssetsCreationDialog (isImageFullyDisplayed defaults to false).
+  showAssetsCreationDialogEx(srcFileUris: Array<string>,
+    creationSettings: Array<CreationSetting>): Promise<Array<string>> {
+    let configs: Array<PhotoCreationConfig> = creationSettings.map(
+      (setting: CreationSetting): PhotoCreationConfig => {
+        return {
+          title: setting.title,
+          fileNameExtension: setting.fileNameExtension,
+          photoType: setting.photoType
+        };
+      });
+    return this.showAssetsCreationDialog(srcFileUris, configs);
+  }
+
+  // Mirrors dynamic: showSingleAssetCreationDialogEx wraps showAssetsCreationDialog for a single asset (forwarding
+  // isImageFullyDisplayed) and returns uris[0].
+  async showSingleAssetCreationDialogEx(srcFileUri: string, creationSetting: CreationSetting,
+    isImageFullyDisplayed: boolean): Promise<string> {
+    let config: PhotoCreationConfig = {
+      title: creationSetting.title,
+      fileNameExtension: creationSetting.fileNameExtension,
+      photoType: creationSetting.photoType
+    };
+    if (!this.checkConfirmBoxParams([srcFileUri], [config])) {
+      return new Promise<string>((resolve: (v: string) => void, reject: RejectString) => {
+        reject(businessError<string>(401, "Param Invalid"));
+      });
+    }
+    let uris: Array<string> =
+      await this.showAssetsCreationDialogParamsExecute([srcFileUri], [config], isImageFullyDisplayed);
+    return (uris && uris.length > 0) ? uris[0] : '';
   }
 
   async requestPhotoUrisReadPermission(srcFileUris: Array<string>): Promise<Array<string>> {
@@ -4230,6 +4320,113 @@ export class ContextRecoveryInfo {
     }
   }
 
+  private checkIsRecentPhotoOptionValid(option: RecentPhotoOptions): boolean {
+    if (option.period === undefined || option.period === null) {
+      option.period = SECONDS_OF_ONE_DAY;
+    }
+    if (option.period! <= 0 || option.period! > SECONDS_OF_ONE_DAY) {
+      option.period = SECONDS_OF_ONE_DAY;
+    }
+    if (option.MIMEType === undefined || option.MIMEType === null) {
+      option.MIMEType = PhotoViewMIMETypes.IMAGE_VIDEO_TYPE;
+    }
+    if (option.photoSource === undefined || option.photoSource === null) {
+      option.photoSource = PhotoSource.ALL;
+    }
+    return true;
+  }
+
+  private async rpcGetRecentPhotoInfoGetProxy(): Promise<rpc.IRemoteObject | undefined> {
+    let proxy: rpc.IRemoteObject | undefined = undefined;
+    let want: Want = {
+      bundleName: RECENT_PHOTO_INFO_BUNDLE_NAME,
+      abilityName: RECENT_PHOTO_INFO_ABILITY_NAME
+    };
+    let connect: common.ConnectOptions = {
+      onConnect: (elementName, remoteProxy: rpc.IRemoteObject) => {
+        proxy = remoteProxy;
+        console.info('photoAccessHelper rpc onConnect');
+      },
+      onDisconnect: (elementName) => {
+        console.info('photoAccessHelper rpc onDisconnect');
+      },
+      onFailed: () => {
+        console.info('photoAccessHelper rpc onFailed');
+      }
+    };
+    if (g_PickerContext === undefined) {
+      console.error('photoAccessHelper g_PickerContext undefined');
+      return undefined;
+    }
+    try {
+      let abilityContext = g_PickerContext as common.UIAbilityContext;
+      abilityContext.connectServiceExtensionAbility(want, connect);
+      let retryCounter: int = RETRY_COUNTER;
+      while (proxy === undefined && retryCounter > 0) {
+        retryCounter -= 1;
+        await delayFunc(RECENT_PHOTO_INFO_DELAY_TIME);
+      }
+    } catch (error) {
+      console.error('photoAccessHelper rpcGetRecentPhotoInfo connect error');
+    }
+    return proxy;
+  }
+
+  private async rpcGetRecentPhotoInfo(option: RecentPhotoOptions): Promise<RecentPhotoInfo | undefined> {
+    let proxy = await this.rpcGetRecentPhotoInfoGetProxy();
+    if (proxy === undefined) {
+      console.error('photoAccessHelper rpcGetRecentPhotoInfo proxy undefined');
+      return undefined;
+    }
+    let messageOption = new rpc.MessageOption();
+    let data = rpc.MessageSequence.create();
+    let reply = rpc.MessageSequence.create();
+    try {
+      data.writeInterfaceToken(RPC_TOKEN_RECENT_PHOTO_INFO);
+      data.writeInt(option.period!);
+      data.writeString(convertRecentMIMETypeToFilterType(option.MIMEType));
+      data.writeInt(option.photoSource!.valueOf());
+      let result = await proxy.sendMessageRequest(RPC_MSGID_RECENT_PHOTO_INFO, data, reply, messageOption);
+      if (result.errCode !== 0) {
+        console.error('photoAccessHelper sendMessageRequest failed');
+        return undefined;
+      }
+      let info = new RecentPhotoInfo();
+      info.dateTaken = result.reply.readLong();
+      info.identifier = result.reply.readString();
+      return info;
+    } catch (err) {
+      console.error('photoAccessHelper rpcGetRecentPhotoInfo error');
+      return undefined;
+    } finally {
+      data.reclaim();
+      reply.reclaim();
+    }
+  }
+
+  private async getRecentPhotoInfoOk(option: RecentPhotoOptions): Promise<RecentPhotoInfo> {
+    let photoInfo = await this.rpcGetRecentPhotoInfo(option);
+    if (photoInfo === undefined) {
+      photoInfo = new RecentPhotoInfo();
+      photoInfo.dateTaken = -1;
+      photoInfo.identifier = '-1';
+    }
+    if (photoInfo.dateTaken === 0) {
+      photoInfo.identifier = '0';
+    }
+    return photoInfo;
+  }
+
+  getRecentPhotoInfo(options?: RecentPhotoOptions): Promise<RecentPhotoInfo> {
+    let option: RecentPhotoOptions = options ? options! : new RecentPhotoOptions();
+    if (!this.checkIsRecentPhotoOptionValid(option)) {
+      return new Promise<RecentPhotoInfo>((resolve: (v: RecentPhotoInfo) => void, reject: RejectString) => {
+        reject(businessError<string>(401, 'Param invalid'));
+      });
+    }
+    return this.getRecentPhotoInfoOk(option);
+  }
+
     acquireDebugDatabase(betaIssueId: string, betaScenario: string): Promise<Map<string, string>> {
       return new Promise<Map<string, string>>((resolve: (v: Map<string, string>) => void, reject: RejectString) => {
         let cb = (): Map<string, string> | MediaLibraryAniError => {
@@ -4255,7 +4452,7 @@ export class ContextRecoveryInfo {
         });
       });
     }
-
+ 
     releaseDebugDatabase(betaIssueId: string, dbFd: int): Promise<void> {
       return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
         let cb = (): MediaLibraryAniError | undefined => {
@@ -4519,26 +4716,26 @@ export class ContextRecoveryInfo {
       });
     }
 
-  getAlbumIdByBundleName(bundleName: string): Promise<int> {
-    return new Promise<int>((resolve: (v: int) => void, reject: RejectString) => {
-      let cb = (): int | MediaLibraryAniError => {
-        let result: int | MediaLibraryAniError;
-        try {
-          result = this.getAlbumIdByBundleNameInner(bundleName);
-        } catch(e) {
-          result = e as MediaLibraryAniError;
-        }
-        return result;
-      };
-      taskpool.execute(cb).then((ret: Any): void => {
-        if (ret instanceof MediaLibraryAniError) {
-          let err = ret as MediaLibraryAniError;
-          reject(businessError<string>(err.code as int, err.message));
-        } else {
-          if (isNullish(ret)) {
-            reject(businessError<string>(-1, "Operation failed"));
+    getAlbumIdByBundleName(bundleName: string): Promise<int> {
+      return new Promise<int>((resolve: (v: int) => void, reject: RejectString) => {
+        let cb = (): int | MediaLibraryAniError => {
+          let result: int | MediaLibraryAniError;
+          try {
+            result = this.getAlbumIdByBundleNameInner(bundleName);
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
           } else {
-            resolve(ret as int);
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as int);
           }
         }
       });
@@ -4719,50 +4916,50 @@ export class ContextRecoveryInfo {
       });
     }
 
-    modifyAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
-      isAsyncRefreshAlbum: boolean): Promise<void> {
-      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
-        let cb = (): MediaLibraryAniError | undefined => {
-          try {
-            this.modifyAlbumDefaultCoverOrderInner(coverOrderInfos, disableModification, isAsyncRefreshAlbum);
-            return undefined;
-          } catch(e) {
-            return e as MediaLibraryAniError;
-          }
-        };
-        taskpool.execute(cb).then((ret: Any): void => {
-          if (isNullish(ret)) {
-            resolve(undefined);
-          } else {
-            let err = ret as MediaLibraryAniError;
-            reject(businessError(err.code as int, err.message));
-          }
-        });
+  modifyAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
+    isAsyncRefreshAlbum: boolean): Promise<void> {
+    return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+      let cb = (): MediaLibraryAniError | undefined => {
+        try {
+          this.modifyAlbumDefaultCoverOrderInner(coverOrderInfos, disableModification, isAsyncRefreshAlbum);
+          return undefined;
+        } catch(e) {
+          return e as MediaLibraryAniError;
+        }
+      };
+      taskpool.execute(cb).then((ret: Any): void => {
+        if (isNullish(ret)) {
+          resolve(undefined);
+        } else {
+          let err = ret as MediaLibraryAniError;
+          reject(businessError(err.code as int, err.message));
+        }
       });
-    }
+    });
+  }
 
-    modifyHiddenAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
-      isAsyncRefreshAlbum: boolean): Promise<void> {
-      return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
-        let cb = (): MediaLibraryAniError | undefined => {
-          try {
-            this.modifyHiddenAlbumDefaultCoverOrderInner(coverOrderInfos, disableModification, isAsyncRefreshAlbum);
-            return undefined;
-          } catch(e) {
-            return e as MediaLibraryAniError;
-          }
-        };
-        taskpool.execute(cb).then((ret: Any): void => {
-          if (isNullish(ret)) {
-            resolve(undefined);
-          } else {
-            let err = ret as MediaLibraryAniError;
-            reject(businessError(err.code as int, err.message));
-          }
-        });
+  modifyHiddenAlbumDefaultCoverOrder(coverOrderInfos: Array<DefaultCoverOrderInfo>, disableModification: boolean,
+    isAsyncRefreshAlbum: boolean): Promise<void> {
+    return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError<void>) => void): void => {
+      let cb = (): MediaLibraryAniError | undefined => {
+        try {
+          this.modifyHiddenAlbumDefaultCoverOrderInner(coverOrderInfos, disableModification, isAsyncRefreshAlbum);
+          return undefined;
+        } catch(e) {
+          return e as MediaLibraryAniError;
+        }
+      };
+      taskpool.execute(cb).then((ret: Any): void => {
+        if (isNullish(ret)) {
+          resolve(undefined);
+        } else {
+          let err = ret as MediaLibraryAniError;
+          reject(businessError(err.code as int, err.message));
+        }
       });
-    }
-  
+    });
+  }
+
     native startThumbnailCreationTask(predicate: dataSharePredicates.DataSharePredicates,
       callback: AsyncCallback<void>): int;
     native startCreateThumbnailTask(predicate: dataSharePredicates.DataSharePredicates): int;
@@ -4840,7 +5037,7 @@ export class ContextRecoveryInfo {
     native createAssetWithShortTermPermissionInner(context: Context, phCreationConfig: PhotoCreationConfig,
       appInfo: AppInfo, result: (retVal: string) => void): string;
     native showAssetsCreationDialogInner(context: Context, srcFileUris: Array<string>,
-      photoCreationConfigs: Array<PhotoCreationConfig>, appInfo: AppInfo,
+      photoCreationConfigs: Array<PhotoCreationConfig>, appInfo: AppInfo, isImageFullyDisplayed: boolean,
       result: (retVal: Array<string>) => void): Array<string>;
     native requestPhotoUrisReadPermissionInner(context: Context, srcFileUris: Array<string>, appName: string,
       result: (retVal: Array<string>) => void): Array<string>;
@@ -4940,6 +5137,25 @@ export class ContextRecoveryInfo {
     mimeTypeFilter: MimeTypeFilter | undefined;
     fileSizeFilter: FileSizeFilter | undefined;
     videoDurationFilter: VideoDurationFilter | undefined;
+    combinedMediaTypeFilter: Array<string> | undefined;
+    photoViewMimeTypeFileSizeFilters: Array<PhotoViewMimeTypeFileSizeFilter> | undefined;
+    isMovingPhotoBadgeShown: boolean | undefined;
+    assetFilter: Array<OperationItem> | undefined;
+    autoPlayScenes: Array<AutoPlayScene> | undefined;
+    gridPinchMode: GridPinchMode | undefined;
+    globalMovingPhotoState: MovingPhotoBadgeStateType | undefined;
+    showDateOnScrollbar: boolean | undefined;
+    assetCompatibleCapability: AssetCompatibleCapability | undefined;
+    preferredCompatibleMode: PreferredCompatibleMode | undefined;
+    contextRecoveryInfo: ContextRecoveryInfo | undefined;
+    isDestroyedWithNavigation: boolean | undefined;
+    maxPhotoSelectNumber: int | undefined;
+    maxVideoSelectNumber: int | undefined;
+    isReturnToPhotoBrowserEnabled: boolean | undefined;
+    isSelectionNumberVisible: boolean | undefined;
+    isSelectionOrderAdjustable: boolean | undefined;
+    recommendationTypeList: Array<RecommendationType> | undefined;
+    defaultRecommendationType: RecommendationType | undefined;
   }
 
   export class PhotoSelectOptions extends BaseSelectOptions {
@@ -4959,6 +5175,67 @@ export class ContextRecoveryInfo {
 
   export interface TextContextInfo {
     text?: string;
+  }
+
+  export class PhotoViewMimeTypeFileSizeFilter {
+    photoViewMimeType: PhotoViewMIMETypes;
+    sizeFilter: FileSizeFilter;
+  }
+
+  export type OperationValueType = long | double | string | boolean;
+
+  export enum OperationType {
+    EQUAL_TO = 1,
+    NOT_EQUAL_TO = 2,
+    GREATER_THAN = 3,
+    LESS_THAN = 4,
+    GREATER_THAN_OR_EQUAL_TO = 5,
+    LESS_THAN_OR_EQUAL_TO = 6,
+    AND = 7,
+    OR = 8,
+    IN = 9,
+    NOT_IN = 10,
+    BEGIN_WRAP = 11,
+    END_WRAP = 12,
+    BETWEEN = 13,
+    NOT_BETWEEN = 14
+  }
+
+  export class OperationItem {
+    operationType: OperationType;
+    field?: PhotoKeys;
+    value?: Array<OperationValueType>;
+  }
+
+  export class RequestReadPermissionResult {
+    authorizedUris?: Array<string>;
+    invalidUris?: Array<string>;
+  }
+
+  export enum GridPinchModeType {
+    FULL_FUNCTION_GRID = 0
+  }
+
+  export class GridPinchMode {
+    gridPinchModeType?: GridPinchModeType;
+    defaultGridLevel?: GridLevel;
+  }
+
+  export class RecentPhotoOptions {
+    period?: int;
+    MIMEType?: PhotoViewMIMETypes;
+    photoSource?: PhotoSource;
+  }
+
+  export class RecentPhotoInfo {
+    dateTaken?: long;
+    identifier?: string;
+  }
+
+  export enum PhotoSource {
+    ALL = 0,
+    CAMERA = 1,
+    SCREENSHOT = 2
   }
 
   export class PhotoSelectResult {
@@ -5153,6 +5430,11 @@ export class ContextRecoveryInfo {
     SPACIOUS = 0,
     STANDARD = 1,
     COMPACT = 2
+  }
+
+  export enum VideoMode {
+    DEFAULT = 0,
+    LOG_VIDEO = 1
   }
 
   export class MediaAssetEditData {
@@ -5890,26 +6172,26 @@ export class ContextRecoveryInfo {
     }
 
     isVideoReady(): Promise<boolean> {
-       return new Promise<boolean>((resolve: (v: boolean) => void, reject: RejectString) => {
-         let cb = (): boolean | MediaLibraryAniError => {
-           let result: boolean | MediaLibraryAniError;
-           try {
-             result = this.isVideoReadyInner();
-           } catch(e) {
-             result = e as MediaLibraryAniError;
-           }
-           return result;
-         };
-         taskpool.execute(cb).then((ret: Any): void => {
-           if (ret instanceof MediaLibraryAniError) {
-             let err = ret as MediaLibraryAniError;
-             reject(businessError<string>(err.code as int, err.message));
-           } else {
-             if (isNullish(ret)) {
-               reject(businessError<string>(-1, "Operation failed"));
-             } else {
-               resolve(ret as boolean);
-             }
+      return new Promise<boolean>((resolve: (v: boolean) => void, reject: RejectString) => {
+        let cb = (): boolean | MediaLibraryAniError => {
+          let result: boolean | MediaLibraryAniError;
+          try {
+            result = this.isVideoReadyInner();
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            if (isNullish(ret)) {
+              reject(businessError<string>(-1, "Operation failed"));
+            } else {
+              resolve(ret as boolean);
+            }
           }
         });
       });

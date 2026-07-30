@@ -398,6 +398,7 @@ struct InitConfirmRequestParams {
     ani_object &srcFileUris;
     ani_object photoCreationConfigs;
     ani_object appInfo;
+    bool isImageFullyDisplayed;
     ani_fn_object resultcb;
 };
 
