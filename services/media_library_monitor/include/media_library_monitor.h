@@ -60,7 +60,7 @@ private:
     uint64_t lastPrintedPssKb_ = 0;
     bool hasLastPrinted_ = false;
 
-    static constexpr int64_t MONITOR_INTERVAL_MS = 100;
+    static constexpr int64_t MONITOR_INTERVAL_MS = 10 * 1000; // 100ms检查一次性能恶化严重（可达100%），改为10s检查一次
     static constexpr uint64_t PRINT_THRESHOLD_KB = 1024;
     static constexpr const char* SMAPS_ROLLUP_PATH = "/proc/self/smaps_rollup";
 };
