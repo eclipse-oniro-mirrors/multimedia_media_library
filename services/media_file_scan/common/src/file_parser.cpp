@@ -582,7 +582,8 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
     SetAssetAlbumValues(values);
     SetAssetLocationValues(values);
     SetAssetSubtypeValues(values);
-    SetAssetLivePhoto4dValues(values);
+    CHECK_AND_EXECUTE(fileInfo_.subtype != static_cast<int32_t>(PhotoSubType::MOVING_PHOTO),
+        SetAssetLivePhoto4dValues(values));
 
     return values;
 }
