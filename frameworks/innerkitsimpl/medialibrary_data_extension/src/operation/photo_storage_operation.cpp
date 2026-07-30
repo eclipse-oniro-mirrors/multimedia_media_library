@@ -83,7 +83,7 @@ int64_t PhotoStorageOperation::GetDataSize()
     MediaLibraryTracer tracer;
     tracer.Start("PhotoStorageOperation::GetDataSize");
     static const std::string nextFlag = "persist.update.hmos_to_next_flag";
-    CHECK_AND_RETURN_RET_LOG(OHOS::system::GetParameter(nextFlag, "") != "1",
+    CHECK_AND_RETURN_RET_INFO_LOG(OHOS::system::GetParameter(nextFlag, "") != "1",
         0L, "Media_Storage: in Upgrade");
     size_t totalSize = 0;
     MediaFileUtils::StatDirSize(MEDIA_DATA_DIR, totalSize);
