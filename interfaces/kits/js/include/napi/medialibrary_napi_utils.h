@@ -234,6 +234,13 @@ namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
 
+struct AsyncErrorInfo {
+    int error;
+    int32_t realErr = 0;
+    std::string apiName;
+    std::string errorMsg;
+};
+
 /* Constants for array index */
 const int32_t PARAM0 = 0;
 const int32_t PARAM1 = 1;
@@ -513,8 +520,11 @@ public:
         napi_env env, int error, napi_value &errorObj, const std::string &Name, int32_t realErr = 0,
         const std::string &errMsg = "");
 
+    static void HandleErrorWithIntCode(
+        napi_env env, napi_value &errorObj, const AsyncErrorInfo &errInfo);
+
     static void CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
-        const std::string errMsg);
+        const std::string errMsg, bool isIntCode = false);
 
     static void InvokeJSAsyncMethodWithoutWork(napi_env env, napi_deferred deferred, napi_ref callbackRef,
         const JSAsyncContextOutput &asyncContext);

@@ -172,10 +172,36 @@ void NapiError::SaveMoveError(int32_t ret)
     NAPI_ERR_LOG("SaveMoveErr errCode:%{public}d error:%{public}d", ret, error);
 }
 
-void NapiError::HandleError(napi_env env, napi_value &errorObj)
+void NapiError::HandleError(napi_env env, napi_value &errorObj, bool isIntCode)
 {
     // deal with context->error
-    MediaLibraryNapiUtils::HandleError(env, error, errorObj, apiName, realErr, errorMsg);
+    if (isIntCode) {
+        AsyncErrorInfo errInfo = { error, realErr, apiName, errorMsg };
+        MediaLibraryNapiUtils::HandleErrorWithIntCode(env, errorObj, errInfo);
+    } else {
+        MediaLibraryNapiUtils::HandleError(env, error, errorObj, apiName, realErr, errorMsg);
+    }
+}
+
+void NapiError::ThrowErrorWithIntCode(napi_env env, int32_t errCode, const std::string &errMsg)
+{
+    string message = errMsg;
+    if (message.empty()) {
+        message = "operation not support";
+        if (jsErrMap.count(errCode) > 0) {
+            message = jsErrMap.at(errCode);
+        }
+    }
+
+    NAPI_DEBUG_LOG("ThrowError errCode:%{public}d errMsg:%{public}s", errCode, message.c_str());
+    napi_value napiMessage = nullptr;
+    napi_value code = nullptr;
+    napi_value result = nullptr;
+    napi_create_string_utf8(env, message.c_str(), NAPI_AUTO_LENGTH, &napiMessage);
+    napi_create_error(env, nullptr, napiMessage, &result);
+    napi_create_int32(env, errCode, &code);
+    napi_set_named_property(env, result, "code", code);
+    NAPI_CALL_RETURN_VOID(env, napi_throw(env, result));
 }
 
 void NapiError::ThrowError(napi_env env, int32_t err, const std::string &errMsg)

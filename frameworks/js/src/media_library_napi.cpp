@@ -6048,10 +6048,12 @@ static napi_value ParseArgsCheckPhotoUrisReadPermission(napi_env env, napi_callb
 {
     constexpr size_t minArgs = ARGS_ONE;
     constexpr size_t maxArgs = ARGS_ONE;
-    NAPI_ASSERT(env, MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs) == napi_ok,
-        "Failed to get object info");
+    if (MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs) != napi_ok) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "Failed to get object info");
+        return nullptr;
+    }
     if (ParseCheckPhotoUrisReadPermissionArgs(env, context.get()) != napi_ok) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID);
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID);
         return nullptr;
     }
 
@@ -6139,12 +6141,12 @@ static void CheckPhotoUrisReadPermissionComplete(napi_env env, napi_status statu
     napi_get_undefined(env, &jsContext->data);
 
     if (context->error != ERR_DEFAULT) {
-        context->HandleError(env, jsContext->error);
+        context->HandleError(env, jsContext->error, true);
     } else {
         napi_value resultMap = CreatePhotoUriPermissionStateMap(env, context);
         if (resultMap == nullptr) {
             MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, ERR_INVALID_OUTPUT,
-                "Failed to create js object for uri permission state map");
+                "Failed to create js object for uri permission state map", true);
         } else {
             jsContext->data = resultMap;
             jsContext->status = true;
@@ -12806,33 +12808,33 @@ napi_value MediaLibraryNapi::AvailabilityRegisterCallback(napi_env env, napi_cal
     GET_JS_ARGS(env, info, argc, argv, thisVar);
 
     if (argc != ARGS_ONE) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "requires one parameter.");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "requires one parameter.");
         return nullptr;
     }
 
     napi_valuetype valueType = napi_undefined;
     if (napi_typeof(env, argv[PARAM0], &valueType) != napi_ok || valueType != napi_function) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "callback must be a function.");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "callback must be a function.");
         return nullptr;
     }
 
     if (g_listObj == nullptr) {
         NAPI_ERR_LOG("g_listObj is nullptr");
-        NapiError::ThrowError(env, JS_E_INNER_FAIL , "global list object is null.");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_INNER_FAIL , "global list object is null.");
         return nullptr;
     }
 
     const int32_t refCount = 1;
     napi_ref cbRef = nullptr;
     if (napi_create_reference(env, argv[PARAM0], refCount, &cbRef) != napi_ok) {
-        NapiError::ThrowError(env, JS_E_INNER_FAIL , "create reference failed.");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_INNER_FAIL , "create reference failed.");
         return nullptr;
     }
 
     int32_t ret = RegisterAvailabilityObserverExecute(env, cbRef, *g_listObj);
     if (ret != E_OK) {
         napi_delete_reference(env, cbRef);
-        NapiError::ThrowError(env, MediaLibraryNotifyUtils::ConvertToJsError(ret));
+        NapiError::ThrowErrorWithIntCode(env, MediaLibraryNotifyUtils::ConvertToJsError(ret));
         return nullptr;
     }
     NAPI_INFO_LOG("registercallck success");
@@ -12867,14 +12869,14 @@ napi_value MediaLibraryNapi::AvailabilityUnregisterCallback(napi_env env, napi_c
     GET_JS_ARGS(env, info, argc, args, thisVar);
 
     if (argc > ARGS_ONE) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "At most 1 optional callback parameter is allowed.");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "At most 1 optional callback parameter is allowed.");
         return undefinedResult;
     }
 
     if (argc == ARGS_ONE) {
-    napi_valuetype valueType = napi_undefined;
+        napi_valuetype valueType = napi_undefined;
         if (napi_typeof(env, args[PARAM0], &valueType) != napi_ok || valueType != napi_function) {
-            NapiError::ThrowError(env, JS_E_PARAM_INVALID, "Optional callback must be a function.");
+            NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "Optional callback must be a function.");
             return undefinedResult;
         }
     }
@@ -12886,13 +12888,13 @@ napi_value MediaLibraryNapi::AvailabilityUnregisterCallback(napi_env env, napi_c
     NAPI_INFO_LOG("CheckDbAvailability ret:%{public}d", result);
     if (result < 0) {
         NAPI_ERR_LOG("CheckDbAvailability fail, result: %{public}d.", result);
-        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "No parameters required.");
+        NapiError::ThrowErrorWithIntCode(env, OHOS_PERMISSION_DENIED_CODE, "No parameters required.");
         return undefinedResult;
     }
 
     int32_t ret = UnregisterAvailabilityObserverExecute(env, *g_listObj);
     if (ret != E_OK) {
-        NapiError::ThrowError(env, MediaLibraryNotifyUtils::ConvertToJsError(ret));
+        NapiError::ThrowErrorWithIntCode(env, MediaLibraryNotifyUtils::ConvertToJsError(ret));
         return undefinedResult;
     }
 

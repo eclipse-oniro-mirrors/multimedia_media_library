@@ -36,10 +36,11 @@ struct NapiError {
     EXPORT void SaveRealErr(int32_t ret);
     EXPORT void SaveSceneErr(int32_t ret);
     EXPORT void SaveMoveError(int32_t ret);
-    EXPORT void HandleError(napi_env env, napi_value &errorObj);
+    EXPORT void HandleError(napi_env env, napi_value &errorObj, bool isIntCode = false);
     EXPORT static void ThrowError(napi_env env, int32_t err, const std::string &errMsg = "");
     EXPORT static void ThrowError(napi_env env, int32_t err, const char *func, int32_t line,
         const std::string &errMsg = "");
+    EXPORT static void ThrowErrorWithIntCode(napi_env env, int32_t errCode, const std::string &errMsg = "");
 };
 } // namespace Media
 } // namespace OHOS
