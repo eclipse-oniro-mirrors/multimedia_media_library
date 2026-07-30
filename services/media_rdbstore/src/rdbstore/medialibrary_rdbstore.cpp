@@ -6738,7 +6738,7 @@ int MediaLibraryRdbStore::Restore(const std::string &backupPath, const std::vect
     CHECK_AND_RETURN_RET_LOG(MediaLibraryRdbStore::CheckRdbStore(), E_HAS_DB_ERROR,
         "Pointer rdbStore_ is nullptr. Maybe it didn't init successfully.");
     return MediaLibraryRdbHelper::ExecSqlWithRetry([&]() {
-        return MediaLibraryRdbStore::GetRaw()->Restore(backupPath, newKey);
+        return MediaLibraryRdbStore::GetRaw()->ForceRestore(backupPath, newKey);
     });
 }
 
