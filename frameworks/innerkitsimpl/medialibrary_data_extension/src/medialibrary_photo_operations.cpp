@@ -6152,6 +6152,32 @@ void MediaLibraryPhotoOperations::StoreThumbnailSize(const string& photoId, cons
         "Failed to execute sql, photoId is %{public}s, error code is %{public}d", photoId.c_str(), ret);
 }
 
+void MediaLibraryPhotoOperations::StorePhotoExtWithLcdStatus(const string& photoId,
+    const string& photoPath, int32_t lcdUsingStatus)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Medialibrary rdbStore is nullptr!");
+
+    uint64_t editDataSize = 0;
+    uint64_t attachmentSize = 0;
+    uint64_t photoThumbnailSize = 0;
+    CHECK_AND_RETURN_LOG(GetThumbnailAndAttachmentSizes(photoPath, photoId,
+        photoThumbnailSize, editDataSize, attachmentSize), "Failed to calculate sizes");
+
+    string sql = "INSERT INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
+        PhotoExtColumn::PHOTO_ID + ", " + PhotoExtColumn::THUMBNAIL_SIZE + ", " +
+        PhotoExtColumn::EDITDATA_SIZE + ", " + PhotoExtColumn::LCD_USING_STATUS +
+        ") VALUES (" + photoId + ", " + to_string(photoThumbnailSize) + ", " +
+        to_string(editDataSize) + ", " + to_string(lcdUsingStatus) + ")" +
+        " ON CONFLICT(" + PhotoExtColumn::PHOTO_ID + ")" + " DO UPDATE SET " +
+        PhotoExtColumn::THUMBNAIL_SIZE + " = " + to_string(photoThumbnailSize) + ", " +
+        PhotoExtColumn::EDITDATA_SIZE + " = " + to_string(editDataSize) + ", " +
+        PhotoExtColumn::LCD_USING_STATUS + " = " + to_string(lcdUsingStatus);
+    int32_t ret = rdbStore->ExecuteSql(sql);
+    CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
+        "Failed to execute sql, photoId is %{public}s, error code is %{public}d", photoId.c_str(), ret);
+}
+
 void MediaLibraryPhotoOperations::StoreThumbnailSizeAndTime(const string& photoId, const string& photoPath)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();

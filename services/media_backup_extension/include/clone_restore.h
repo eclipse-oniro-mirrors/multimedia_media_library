@@ -100,6 +100,7 @@ public:
 protected:
     void MoveMigrateCloudFile(std::vector<FileInfo> &fileInfos, int32_t &fileMoveCount, int32_t &videoFileMoveCount,
         int32_t sceneCode) override;
+    void MergeCloudDuplicateThumbnail(FileInfo &fileInfo);
     void GetCloudPhotoFileExistFlag(const FileInfo &fileInfo, CloudPhotoFileExistFlag &resultExistFlag);
     void CloudPhotoFilesVerify(const std::vector<FileInfo> &fileInfos, std::vector<FileInfo> &LCDNotFound,
         std::vector<FileInfo> &THMNotFound, unordered_map<string, CloudPhotoFileExistFlag> &resultExistMap);
@@ -150,6 +151,7 @@ protected:
     void GetQueryWhereClause(const std::string &tableName,
         const std::unordered_map<std::string, std::string> &columnInfoMap);
     void BatchQueryPhoto(std::vector<FileInfo> &fileInfos);
+    void PreQueryLcdUsingStatus(std::vector<FileInfo> &fileInfos);
     void UpdateAlbumOrderColumns(AlbumInfo &albumInfo, const string &tableName);
     void UpdateSystemAlbumColumns(const string &tableName);
     void PopulateSystemAlbumIdMap();
