@@ -18288,6 +18288,26 @@ napi_value MediaLibraryNapi::GetDeepOptimizeSpace(napi_env env, napi_callback_in
         GetDeepOptimizeSpaceExecute, GetDeepOptimizeSpaceCompleteCallback);
 }
 
+static bool UnwrapAssetElement(napi_env env, napi_value element, shared_ptr<FileAsset> &outAsset)
+{
+    napi_valuetype valueType = napi_undefined;
+    if (!(napi_typeof(env, element, &valueType) == napi_ok && valueType == napi_object)) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "asset must be an object");
+        return false;
+    }
+    FileAssetNapi *obj = nullptr;
+    if (!(napi_unwrap(env, element, reinterpret_cast<void **>(&obj)) == napi_ok && obj != nullptr)) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "Failed to get asset napi object");
+        return false;
+    }
+    outAsset = obj->GetFileAssetInstance();
+    if (outAsset == nullptr) {
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "FileAsset instance is null");
+        return false;
+    }
+    return true;
+}
+
 static napi_value ParseArgsTransAssetToCompatibleAsset(napi_env env, napi_callback_info info,
     unique_ptr<MediaLibraryAsyncContext> &context)
 {
@@ -18295,10 +18315,7 @@ static napi_value ParseArgsTransAssetToCompatibleAsset(napi_env env, napi_callba
         NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
         return nullptr;
     }
-
-    constexpr size_t minArgs = ARGS_ONE;
-    constexpr size_t maxArgs = ARGS_ONE;
-    if (MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, minArgs, maxArgs) != napi_ok) {
+    if (MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, context, ARGS_ONE, ARGS_ONE) != napi_ok) {
         NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID);
         return nullptr;
     }
@@ -18310,44 +18327,24 @@ static napi_value ParseArgsTransAssetToCompatibleAsset(napi_env env, napi_callba
     }
 
     uint32_t arrayLen = 0;
-    if (napi_get_array_length(env, context->argv[PARAM0], &arrayLen) != napi_ok) {
-        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID);
-        return nullptr;
-    }
-    if (!(arrayLen > 0)) {
+    napi_get_array_length(env, context->argv[PARAM0], &arrayLen);
+    if (arrayLen == 0) {
         NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "assets array is empty");
         return nullptr;
     }
 
     for (uint32_t i = 0; i < arrayLen; i++) {
         napi_value element = nullptr;
-        if (napi_get_element(env, context->argv[PARAM0], i, &element) != napi_ok) {
-            NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID);
-            return nullptr;
-        }
-        napi_valuetype valueType = napi_undefined;
-        if (!(napi_typeof(env, element, &valueType) == napi_ok && valueType == napi_object)) {
-            NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "asset must be an object");
-            return nullptr;
-        }
-        FileAssetNapi *obj = nullptr;
-        if (!(napi_unwrap(env, element, reinterpret_cast<void **>(&obj)) == napi_ok && obj != nullptr)) {
-            NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "Failed to get asset napi object");
-            return nullptr;
-        }
-        auto fileAsset = obj->GetFileAssetInstance();
-        if (!(fileAsset != nullptr)) {
-            NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "FileAsset instance is null");
+        napi_get_element(env, context->argv[PARAM0], i, &element);
+        shared_ptr<FileAsset> fileAsset;
+        if (element == nullptr || !UnwrapAssetElement(env, element, fileAsset)) {
             return nullptr;
         }
         context->transAssetPtrs.push_back(fileAsset);
     }
 
     napi_value result = nullptr;
-    if (napi_get_boolean(env, true, &result) != napi_ok) {
-        NapiError::ThrowErrorWithIntCode(env, JS_INNER_FAIL);
-        return nullptr;
-    }
+    napi_get_boolean(env, true, &result);
     return result;
 }
 
