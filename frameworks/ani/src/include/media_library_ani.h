@@ -328,7 +328,7 @@ public:
         ani_object context, ani_object photoCreationConfigs, ani_object appInfo, ani_fn_object result);
     static ani_object ShowAssetsCreationDialog(ani_env *env, ani_object object,
         ani_object context, ani_object srcFileUris, ani_object photoCreationConfigs, ani_object appInfo,
-        ani_fn_object result);
+        ani_boolean isImageFullyDisplayed, ani_fn_object result);
     static ani_object RequestPhotoUrisReadPermission(ani_env *env, ani_object object,
         ani_object context, ani_object srcFileUris, ani_object appInfo, ani_fn_object result);
     static ani_object StartPhotoPicker(ani_env *env, ani_object object, ani_object context,
