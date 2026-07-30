@@ -117,7 +117,7 @@ bool MediaLibraryMonitor::ReadSmapsRollup(ProcessMemoryInfo& info)
             info.privateCleanKb = val;
         } else if (key == "Private_Dirty") {
             info.privateDirtyKb = val;
-        } else if (key == "Swap_Pss") {
+        } else if (key == "SwapPss") {
             info.swapPssKb = val;
         }
     }
