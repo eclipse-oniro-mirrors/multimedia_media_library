@@ -160,6 +160,7 @@ constexpr int32_t ANALYSIS_TOOL_TYPE_ANI_BEGIN = 0;
 constexpr int32_t ANALYSIS_TOOL_TYPE_ANI_END = 14;
 const int32_t UUID_STR_LENGTH = 37;
 const std::string CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION = "ohos.permission.CONTROL_IMAGEVIDEO_ANALYSIS";
+constexpr size_t MAX_ANALYSIS_TOOL_PARAM_LENGTH = 16 * 1024;
 
 mutex MediaLibraryAni::sUserFileClientMutex_;
 mutex MediaLibraryAni::sOnOffMutex_;
@@ -6185,6 +6186,10 @@ static ani_status ParseArgsInvokeAnalysisToolAni(ani_env *env, ani_object config
         "analysisToolType invalid: " + std::to_string(context->analysisToolType));
     std::string param;
     if (MediaLibraryAniUtils::GetProperty(env, config, "param", param) == ANI_OK && !param.empty()) {
+        if (param.size() > MAX_ANALYSIS_TOOL_PARAM_LENGTH) {
+            AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "param too long");
+            return ANI_INVALID_ARGS;
+        }
         context->analysisToolParam = param;
     }
     if (callback == nullptr) {
@@ -6352,6 +6357,10 @@ void MediaLibraryAni::CancelAnalysisTool(ani_env *env, ani_object object, ani_ob
     }
     std::string param;
     if (MediaLibraryAniUtils::GetProperty(env, config, "param", param) == ANI_OK && !param.empty()) {
+        if (param.size() > MAX_ANALYSIS_TOOL_PARAM_LENGTH) {
+            AniError::ThrowError(env, JS_ERR_PARAMETER_INVALID, "param too long");
+            return;
+        }
         reqBody.param = param;
     }
     CancelAnalysisToolRespBody respBody;

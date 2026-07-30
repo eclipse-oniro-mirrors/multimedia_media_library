@@ -191,6 +191,23 @@ napi_status MediaLibraryNapiUtils::GetParamStringPathMax(napi_env env, napi_valu
     return napi_ok;
 }
 
+napi_status MediaLibraryNapiUtils::GetParamStringStrict(napi_env env, napi_value arg, size_t maxLen, string &result)
+{
+    napi_valuetype valueType = napi_undefined;
+    CHECK_STATUS_RET(napi_typeof(env, arg, &valueType), "Failed to get type");
+    CHECK_COND_RET(valueType == napi_string, napi_string_expected, "Type is not as expected string");
+    size_t actualLen = 0;
+    CHECK_STATUS_RET(napi_get_value_string_utf8(env, arg, nullptr, 0, &actualLen),
+        "Failed to get string length");
+    CHECK_COND_RET(actualLen <= maxLen, napi_string_expected, "String exceeds max length");
+    unique_ptr<char[]> buffer = make_unique<char[]>(actualLen + 1);
+    CHECK_COND_RET(buffer != nullptr, napi_invalid_arg, "Failed to alloc buffer for parameter");
+    CHECK_STATUS_RET(napi_get_value_string_utf8(env, arg, buffer.get(), actualLen + 1, &actualLen),
+        "Failed to get string value");
+    result = string(buffer.get());
+    return napi_ok;
+}
+
 napi_status MediaLibraryNapiUtils::GetProperty(napi_env env, const napi_value arg, const string &propName,
     string &propValue)
 {

@@ -36,7 +36,7 @@
 namespace OHOS::Media {
 namespace {
 const std::string ACTIVE_ANALYSIS_RESULT_FIELD = "result";
-const std::string ANALYSIS_TOOL_CODE_FIELD = "code";
+const std::string ANALYSIS_TOOL_CODE_FIELD = "errCode";
 const std::string ANALYSIS_TOOL_RESULT_FIELD = "result";
 constexpr size_t MAX_ACTIVE_ANALYSIS_CALLBACK_RECORDS = 512;
 constexpr int64_t ACTIVE_ANALYSIS_CALLBACK_TIMEOUT_MINUTES = 10;
