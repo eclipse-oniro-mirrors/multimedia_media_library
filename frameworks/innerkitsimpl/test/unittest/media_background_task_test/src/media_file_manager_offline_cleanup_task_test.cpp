@@ -468,6 +468,7 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ShouldMarkForDeletion_SkipsWhen
     MEDIA_INFO_LOG("ShouldMarkForDeletion_SkipsWhenSandboxCopyExists_014 start");
     const std::string dataPath = "/data/local/tmp/offline_cleanup_sandbox_copy.jpg";
     ASSERT_TRUE(MediaLibraryUnitTestUtils::CreateFileFS(dataPath));
+    ASSERT_TRUE(MediaFileUtils::WriteStrToFile(dataPath, "sandbox_copy_content"));
     ASSERT_TRUE(MediaFileUtils::IsFileExists(dataPath));
 
     MediaFileManagerOfflineCleanupTask task;
@@ -589,5 +590,53 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ResetRunState_PreservesConverte
 
     EXPECT_EQ(task.convertedAlbumIdCache_.size(), static_cast<size_t>(2));
     EXPECT_EQ(task.statistics_.convertedAlbumsDeleted.count, 0);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ShouldMarkForDeletion_ProceedsWhenDataIsSpuriousStub_020,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("ShouldMarkForDeletion_ProceedsWhenDataIsSpuriousStub_020 start");
+    const std::string dataPath = "/data/local/tmp/offline_cleanup_spurious_stub.jpg";
+    ASSERT_TRUE(MediaLibraryUnitTestUtils::CreateFileFS(dataPath));
+    size_t stubSize = 0;
+    ASSERT_TRUE(MediaFileUtils::GetFileSize(dataPath, stubSize));
+    ASSERT_EQ(stubSize, 0);
+
+    MediaFileManagerOfflineCleanupTask task;
+    OfflineCleanupPhotoRecord photo;
+    photo.fileId = 1;
+    photo.storagePath = "/storage/emulated/0/nonexistent_storage_path.jpg";
+    photo.data = dataPath;
+
+    EXPECT_TRUE(task.ShouldMarkForDeletion(photo));
+
+    MediaFileUtils::DeleteFile(dataPath);
+}
+
+HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, CorrectSandboxAnomaly_MovesDisplacedCopyToStoragePath_021,
+    TestSize.Level1)
+{
+    MEDIA_INFO_LOG("CorrectSandboxAnomaly_MovesDisplacedCopyToStoragePath_021 start");
+    const std::string dataPath = "/data/local/tmp/offline_cleanup_anomaly_data.jpg";
+    const std::string storagePath = "/data/local/tmp/offline_cleanup_anomaly_storage.jpg";
+    ASSERT_TRUE(MediaLibraryUnitTestUtils::CreateFileFS(dataPath));
+    ASSERT_TRUE(MediaFileUtils::WriteStrToFile(dataPath, "displaced_copy_content"));
+    ASSERT_FALSE(MediaFileUtils::IsFileExists(storagePath));
+
+    MediaFileManagerOfflineCleanupTask task;
+    OfflineCleanupPhotoRecord photo;
+    photo.fileId = 1;
+    photo.storagePath = storagePath;
+    photo.data = dataPath;
+
+    EXPECT_TRUE(task.CorrectSandboxAnomaly(photo));
+    EXPECT_TRUE(MediaFileUtils::IsFileExists(storagePath));
+    EXPECT_FALSE(MediaFileUtils::IsFileExists(dataPath));
+    size_t movedSize = 0;
+    ASSERT_TRUE(MediaFileUtils::GetFileSize(storagePath, movedSize));
+    EXPECT_GT(movedSize, 0);
+
+    MediaFileUtils::DeleteFile(storagePath);
+    MediaFileUtils::DeleteFile(dataPath);
 }
 }
