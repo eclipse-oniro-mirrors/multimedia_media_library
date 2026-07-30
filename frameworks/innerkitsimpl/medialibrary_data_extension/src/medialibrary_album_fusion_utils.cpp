@@ -1160,7 +1160,13 @@ static int32_t PrepareCloneTargetAndPending(ClonePrepareContext &context, CloneP
         result.targetPath, context.targetAssetInfo.displayName, mediaType);
 
     MediaAssetCopyInfo copyInfo(result.targetPath, false, context.ownerAlbumId, context.targetAssetInfo.displayName,
-        false, false, true, true, true, context.targetAssetInfo.targetRealPath, context.targetAssetInfo.supportRename);
+        false, false, true, true, false, context.targetAssetInfo.targetRealPath, context.targetAssetInfo.supportRename);
+    if (context.targetAssetInfo.cloneCallbackType >= static_cast<int32_t>(CloneCallbackType::URI) &&
+        context.targetAssetInfo.cloneCallbackType <= static_cast<int32_t>(CloneCallbackType::FILEPATH)) {
+        copyInfo.isCopyFileManger = true;
+    }
+    MEDIA_DEBUG_LOG("Clone callback type is %{public}d, isCopyFileManger is %{public}d",
+        context.targetAssetInfo.cloneCallbackType, copyInfo.isCopyFileManger);
     int32_t err = InsertAssetCopy(context.assetRefresh, context.upgradeStore,
         copyInfo, context.resultSet, context.targetAssetInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Failed to copy asset db.");
