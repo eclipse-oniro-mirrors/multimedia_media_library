@@ -1088,7 +1088,6 @@ napi_value SendableFetchFileResultNapi::JSGetPositionObject(napi_env env, napi_c
             asyncContext.release();
         }
     } else {
-        NAPI_ERR_LOG("JSGetPositionObject obj == nullptr, status: %{public}d", status);
         NAPI_ASSERT(env, false, "JSGetPositionObject obj == nullptr");
     }
 
