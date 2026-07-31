@@ -927,6 +927,11 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/js/include/sendable",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include",
+    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper/include",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
@@ -952,6 +957,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "${MEDIALIB_JS_PATH}/src/sendable/sendable_photo_access_helper_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/sendable/sendable_photo_album_napi.cpp",
     "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/compatible_info_vo.cpp",
   ]
 
   deps = [
