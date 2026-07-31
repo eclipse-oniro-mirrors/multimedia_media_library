@@ -57,7 +57,8 @@ bool g_isDelayTask;
 std::mutex addPhotoPermissionRecordLock_;
 std::thread delayTask_;
 std::mutex pendingOpenDataInfosLock_;
-constexpr int URI_NUMBER_THRESHOLD = 50; // Max uri number for a single report of permission infos
+constexpr size_t URI_NUMBER_THRESHOLD = 50;
+constexpr size_t EXTRA_SIZE_LIMIT = 10000;
 
 sptr<AppExecFwk::IBundleMgr> PermissionUtils::bundleMgr_ = nullptr;
 mutex PermissionUtils::bundleMgrMutex_;
@@ -405,24 +406,29 @@ static bool ParseExtraJson(const std::string &extra, nlohmann::json &extraJson)
     return true;
 }
 
-static bool UpdatePermissionInfoWithOpenData(AddPermParamInfo &info, const OpenDataInfo &openDataInfo)
+static bool DumpExtraWithSizeCheck(const nlohmann::json &extraJson, std::string &extra)
 {
-    if (openDataInfo.uri.empty()) {
-        // Nothing to update
-        return true;
+    std::string newExtra = extraJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    if (newExtra.size() > EXTRA_SIZE_LIMIT) {
+        MEDIA_DEBUG_LOG("Extra size %{public}zu exceeds limit %{public}zu", newExtra.size(), EXTRA_SIZE_LIMIT);
+        return false;
     }
+    extra = newExtra;
+    return true;
+}
 
-    if (info.extra.empty()) {
-        nlohmann::json newItem;
-        newItem["type"] = openDataInfo.type;
-        newItem["uid"] = openDataInfo.uid;
-        newItem["userId"] = openDataInfo.userId;
-        newItem["uris"] = nlohmann::json::array(
-            { BuildUriItem(openDataInfo.uri, openDataInfo.timestamp) });
-        info.extra = newItem.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
-        return true;
-    }
+static bool CreateNewExtraForOpenData(AddPermParamInfo &info, const OpenDataInfo &openDataInfo)
+{
+    nlohmann::json newItem;
+    newItem["type"] = openDataInfo.type;
+    newItem["uid"] = openDataInfo.uid;
+    newItem["userId"] = openDataInfo.userId;
+    newItem["uris"] = nlohmann::json::array({ BuildUriItem(openDataInfo.uri, openDataInfo.timestamp) });
+    return DumpExtraWithSizeCheck(newItem, info.extra);
+}
 
+static bool AppendUriToExistingExtra(AddPermParamInfo &info, const OpenDataInfo &openDataInfo)
+{
     nlohmann::json extraJson = nlohmann::json::object();
     if (!ParseExtraJson(info.extra, extraJson) || !extraJson.is_object()) {
         return false;
@@ -436,24 +442,33 @@ static bool UpdatePermissionInfoWithOpenData(AddPermParamInfo &info, const OpenD
         userIdIt == extraJson.end() || !userIdIt->is_number_integer()) {
         return false;
     }
+    if (typeIt->get_ref<const std::string&>() != openDataInfo.type ||
+        uidIt->get<int32_t>() != openDataInfo.uid ||
+        userIdIt->get<int32_t>() != openDataInfo.userId) {
+        return false;
+    }
+    auto urisIt = extraJson.find("uris");
+    if (urisIt == extraJson.end() || !urisIt->is_array()) {
+        extraJson["uris"] = nlohmann::json::array();
+        urisIt = extraJson.find("uris");
+    }
+    if (urisIt->size() >= URI_NUMBER_THRESHOLD) {
+        MEDIA_DEBUG_LOG("Uri size %{public}zu exceeds limit %{public}zu", urisIt->size(), URI_NUMBER_THRESHOLD);
+        return false;
+    }
+    urisIt->push_back(BuildUriItem(openDataInfo.uri, openDataInfo.timestamp));
+    return DumpExtraWithSizeCheck(extraJson, info.extra);
+}
 
-    if (typeIt->get_ref<const std::string&>() == openDataInfo.type &&
-        uidIt->get<int32_t>() == openDataInfo.uid &&
-        userIdIt->get<int32_t>() == openDataInfo.userId) {
-        auto urisIt = extraJson.find("uris");
-        if (urisIt == extraJson.end() || !urisIt->is_array()) {
-            extraJson["uris"] = nlohmann::json::array();
-            urisIt = extraJson.find("uris");
-        }
-        if (urisIt->size() >= URI_NUMBER_THRESHOLD) {
-            return false;
-        }
-        urisIt->push_back(BuildUriItem(openDataInfo.uri, openDataInfo.timestamp));
-        info.extra = extraJson.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+static bool UpdatePermissionInfoWithOpenData(AddPermParamInfo &info, const OpenDataInfo &openDataInfo)
+{
+    if (openDataInfo.uri.empty()) {
         return true;
     }
-    // Can not update this permission info
-    return false;
+    if (info.extra.empty()) {
+        return CreateNewExtraForOpenData(info, openDataInfo);
+    }
+    return AppendUriToExistingExtra(info, openDataInfo);
 }
 
 void PermissionUtils::CollectPermissionRecord(const AccessTokenID &token, const string &perm,
@@ -489,8 +504,11 @@ void PermissionUtils::CollectPermissionRecord(const AccessTokenID &token, const 
         info.failCount = !permGranted;
         info.type = type;
 
-        UpdatePermissionInfoWithOpenData(info, openDataInfo);
-        infos_.push_back(info);
+        if (UpdatePermissionInfoWithOpenData(info, openDataInfo)) {
+            infos_.push_back(info);
+        } else {
+            MEDIA_ERR_LOG("Failed to update permission info with open data with a single uri, skip this record");
+        }
     }
 }
 
