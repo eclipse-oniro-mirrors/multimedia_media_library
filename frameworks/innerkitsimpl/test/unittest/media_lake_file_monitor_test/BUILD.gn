@@ -66,6 +66,7 @@ ohos_unittest("media_lake_file_monitor_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/global_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_manager_scan_rule_config.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/lake_scan_rule_config.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/dir_scan_anomaly_helper.cpp",
   ]
   media_file_monitor_source = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/common/src/file_monitor_wrapper.cpp",
