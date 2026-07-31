@@ -957,6 +957,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     "${MEDIALIB_JS_PATH}/src/sendable/sendable_photo_access_helper_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/sendable/sendable_photo_album_napi.cpp",
     "${MEDIALIB_UTILS_PATH}/src/js_interface_helper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/compatible_info_vo.cpp",
   ]
 
   deps = [
