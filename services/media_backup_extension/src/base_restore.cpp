@@ -2132,6 +2132,10 @@ SubProcessInfo BaseRestore::GetSubProcessInfo(const std::string &type)
         total = ongoingTotalNumber_; // make sure progressInfo changes as process goes on
     }
     uint64_t processed = success + duplicate + failed;
+    if (processed > total) {
+        processed = total;
+        MEDIA_INFO_LOG("processed bigger than total");
+    }
     return SubProcessInfo(processed, total);
 }
 
