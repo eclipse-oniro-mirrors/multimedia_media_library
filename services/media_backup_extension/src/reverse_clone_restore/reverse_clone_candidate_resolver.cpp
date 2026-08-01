@@ -45,6 +45,9 @@ const std::string SQL_SELECT_REVERSE_CLONE_ROW = "\
         COALESCE(P.thumb_size, '') AS thumb_size, \
         P.lcd_file_size, \
         P.thumb_status, \
+        P.composite_display_status, \
+        P.ce_available, \
+        COALESCE(E.lcd_using_status, 0) AS lcd_using_status, \
         P.subtype, \
         P.moving_photo_effect_mode, \
         P.clean_flag, \
@@ -54,7 +57,9 @@ const std::string SQL_SELECT_REVERSE_CLONE_ROW = "\
         COALESCE(P.inode, '') AS inode \
     FROM Photos AS P \
     LEFT JOIN tab_cloned_old_photos AS C \
-    ON C.file_id = P.file_id ";
+    ON C.file_id = P.file_id \
+    LEFT JOIN tab_photos_ext AS E \
+    ON E.photo_id = P.file_id ";
 
 const std::string SQL_FIND_BY_FILE_ID = SQL_SELECT_REVERSE_CLONE_ROW + "\
     WHERE P.file_id = ? \
@@ -127,6 +132,10 @@ ReverseCloneCandidate ReverseCloneCandidateResolver::QueryByFileId(
     candidate.donor.thumbSize = GetStringVal(PhotoColumn::PHOTO_THUMB_SIZE, resultSet);
     candidate.donor.lcdFileSize = GetInt64Val(PhotoColumn::PHOTO_LCD_FILE_SIZE, resultSet);
     candidate.donor.thumbStatus = GetInt32Val(PhotoColumn::PHOTO_THUMB_STATUS, resultSet);
+    candidate.donor.compositeDisplayStatus =
+        GetInt32Val(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, resultSet);
+    candidate.donor.ceAvailable = GetInt32Val(PhotoColumn::PHOTO_CE_AVAILABLE, resultSet);
+    candidate.donor.lcdUsingStatus = GetInt32Val(PhotoExtColumn::LCD_USING_STATUS, resultSet);
     candidate.donor.subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
     candidate.donor.effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
     int32_t cleanFlag = GetInt32Val(PhotoColumn::PHOTO_CLEAN_FLAG, resultSet);

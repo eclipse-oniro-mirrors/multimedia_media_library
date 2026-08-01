@@ -258,10 +258,13 @@ static const std::string SQL_QUERY_CLASSIFY_ALBUM_EXIST_REVERSE = " \
 const std::string ReverseCloneRestore::SQL_PHOTOS_TABLE_QUERY_ALL = "\
     SELECT \
         PhotoAlbum.lpath, \
-        Photos.* \
+        Photos.*, \
+        COALESCE(PhotoExt.lcd_using_status, 0) AS lcd_using_status \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
         ON Photos.owner_album_id=PhotoAlbum.album_id \
+        LEFT JOIN tab_photos_ext AS PhotoExt \
+        ON PhotoExt.photo_id=Photos.file_id \
     WHERE position IN (1, 3) AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
         COALESCE(Photos.sync_status, 0) = 0 \
@@ -271,10 +274,13 @@ const std::string ReverseCloneRestore::SQL_PHOTOS_TABLE_QUERY_ALL = "\
 const std::string ReverseCloneRestore::SQL_CLOUD_PHOTOS_TABLE_QUERY_ALL = "\
     SELECT \
         PhotoAlbum.lpath, \
-        Photos.* \
+        Photos.*, \
+        COALESCE(PhotoExt.lcd_using_status, 0) AS lcd_using_status \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
         ON Photos.owner_album_id=PhotoAlbum.album_id \
+        LEFT JOIN tab_photos_ext AS PhotoExt \
+        ON PhotoExt.photo_id=Photos.file_id \
     WHERE position = 2 AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
         COALESCE(Photos.sync_status, 0) = 0 \
@@ -3386,12 +3392,7 @@ void ReverseCloneRestore::UpdatePhotosSpecialFields()
                                         PhotoColumn::PHOTO_METADATA_FLAGS + " = 0";
     BackupDatabaseUtils::ExecuteSQL(destRdb_, updateMetadataFlagsSql, {});
 
-    // 4. 更新 PHOTO_CE_AVAILABLE：统一设置为默认值 0
-    std::string updateCeAvailableSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
-                                      PhotoColumn::PHOTO_CE_AVAILABLE + " = 0";
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateCeAvailableSql, {});
-
-    // 5. 更新所有 Photos 表中的 change_time 为当前时间
+    // 4. 更新所有 Photos 表中的 change_time 为当前时间
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::string updateChangeTimeSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
                                       " SET " + PhotoColumn::PHOTO_CHANGE_TIME + " = " +
@@ -4641,7 +4642,10 @@ vector<FileInfo> ReverseCloneRestore::QueryFileInfos(int32_t offset, int32_t isR
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         FileInfo fileInfo;
         fileInfo.isRelatedToPhotoMap = isRelatedToPhotoMap;
-        CHECK_AND_EXECUTE(!ParseReverseResultSet(resultSet, fileInfo), result.emplace_back(fileInfo));
+        if (ParseReverseResultSet(resultSet, fileInfo)) {
+            fileInfo.lcdUsingStatus = GetInt32Val(PhotoExtColumn::LCD_USING_STATUS, resultSet);
+            result.emplace_back(fileInfo);
+        }
     }
     resultSet->Close();
 
@@ -4664,6 +4668,7 @@ vector<FileInfo> ReverseCloneRestore::QueryCloudFileInfos(int32_t offset, int32_
         FileInfo fileInfo;
         fileInfo.isRelatedToPhotoMap = isRelatedToPhotoMap;
         if (ParseReverseResultSet(resultSet, fileInfo)) {
+            fileInfo.lcdUsingStatus = GetInt32Val(PhotoExtColumn::LCD_USING_STATUS, resultSet);
             result.emplace_back(fileInfo);
             RemoveInvalidLocalFiles(fileInfo);
         }

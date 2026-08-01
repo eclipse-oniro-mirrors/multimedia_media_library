@@ -134,6 +134,8 @@ ReverseCloneAssetResource ReverseCloneResourcePlanBuilder::ToResource(const File
     resource.dateTaken = fileInfo.dateTaken;
     resource.thumbnailReady = fileInfo.thumbnailReady;
     resource.lcdVisitTime = fileInfo.lcdVisitTime;
+    resource.lcdUsingStatus = fileInfo.lcdUsingStatus;
+    resource.compositeDisplayStatus = fileInfo.compositeDisplayStatus;
     resource.position = fileInfo.position;
     int64_t int64Value = 0;
     if (GetInt64FromValMap(fileInfo, PhotoColumn::PHOTO_EDIT_TIME, int64Value)) {
@@ -150,6 +152,9 @@ ReverseCloneAssetResource ReverseCloneResourcePlanBuilder::ToResource(const File
     }
     if (GetInt64FromValMap(fileInfo, PhotoColumn::PHOTO_THUMB_STATUS, int64Value)) {
         resource.thumbStatus = static_cast<int32_t>(int64Value);
+    }
+    if (GetInt64FromValMap(fileInfo, PhotoColumn::PHOTO_CE_AVAILABLE, int64Value)) {
+        resource.ceAvailable = static_cast<int32_t>(int64Value);
     }
     GetStringFromValMap(fileInfo, PhotoColumn::PHOTO_LCD_SIZE, resource.lcdSize);
     GetStringFromValMap(fileInfo, PhotoColumn::PHOTO_THUMB_SIZE, resource.thumbSize);
