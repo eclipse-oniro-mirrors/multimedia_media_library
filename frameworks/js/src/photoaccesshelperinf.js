@@ -1018,6 +1018,12 @@ const SingleSelectionMode = {
   BROWSER_AND_SELECT_MODE: 2,
 };
 
+const PickerColorMode = {
+  AUTO: 0,
+  LIGHT: 1,
+  DARK: 2,
+};
+
 const PreferredCompatibleMode = {
   DEFAULT: 0,
   CURRENT: 1,
@@ -1156,6 +1162,7 @@ function parsePhotoPickerSelectOption(args) {
     config.parameters.assetFilter = option.assetFilter;
     config.parameters.isDestroyedWithNavigation = option.isDestroyedWithNavigation;
     config.parameters.isReturnToPhotoBrowserEnabled = option.isReturnToPhotoBrowserEnabled;
+    config.parameters.pickerColorMode = option.pickerColorMode;
     config.parameters.autoPlayScenes = parseAutoPlayScenes(option.autoPlayScenes);
     config.parameters.gridPinchMode = option.gridPinchMode;
     config.parameters.showDateOnScrollbar = option.showDateOnScrollbar;
@@ -1417,6 +1424,7 @@ function PhotoSelectOptions() {
   this.userId = -1;
   this.isDestroyedWithNavigation = false;
   this.isReturnToPhotoBrowserEnabled = false;
+  this.pickerColorMode = PickerColorMode.AUTO;
   this.isSelectionNumberVisible = false;
   this.isSelectionOrderAdjustable = false;
 }
