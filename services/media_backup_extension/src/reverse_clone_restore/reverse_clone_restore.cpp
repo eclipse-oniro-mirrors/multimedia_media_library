@@ -3176,13 +3176,17 @@ void ReverseCloneRestore::SetMigrateNumbers()
 {
     migrateLakePhotoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateLakeImageCount;
     migrateLakeVideoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateLakeVideoCount;
-    migrateLakePhotoNumber_ = reverseRestoreReportInfo_.migrateLakeImageCount - migrateLakePhotoDuplicateNumber_;
-    migrateLakeVideoNumber_ = reverseRestoreReportInfo_.migrateLakeVideoCount - migrateLakeVideoDuplicateNumber_;
+    migrateLakePhotoNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migrateLakeImageCount) -
+        migrateLakePhotoDuplicateNumber_;
+    migrateLakeVideoNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migrateLakeVideoCount) -
+        migrateLakeVideoDuplicateNumber_;
     migratePhotoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateImageCount;
     migrateVideoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateVideoCount;
-    migrateFileNumber_ = reverseRestoreReportInfo_.migrateCount - reverseRestoreReportInfo_.duplicateCount -
+    migrateFileNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migrateCount) -
+        static_cast<uint64_t>(reverseRestoreReportInfo_.duplicateCount) -
         migrateLakePhotoNumber_ - migrateLakeVideoNumber_;
-    migrateVideoFileNumber_ = reverseRestoreReportInfo_.migratedNonHoLakeVideoCount - migrateVideoDuplicateNumber_;
+    migrateVideoFileNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migratedNonHoLakeVideoCount) -
+        migrateVideoDuplicateNumber_;
 
     MEDIA_INFO_LOG("SetMigrateNumbers: migrateLakePhotoDuplicateNumber_=%{public}lld, "
                    "migrateLakeVideoDuplicateNumber_=%{public}lld, "
