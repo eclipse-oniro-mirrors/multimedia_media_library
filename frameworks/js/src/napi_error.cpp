@@ -204,6 +204,35 @@ void NapiError::ThrowErrorWithIntCode(napi_env env, int32_t errCode, const std::
     NAPI_CALL_RETURN_VOID(env, napi_throw(env, result));
 }
 
+void NapiError::ThrowErrorWithIntCode(napi_env env, int32_t errCode, const char *funcName, int32_t line,
+    const std::string &errMsg)
+{
+    string message = errMsg;
+    if (errCode == JS_E_INNER_FAIL) {
+        std::string combineMsg = jsErrMap.count(errCode) > 0 ? jsErrMap.at(errCode) : "operation not support";
+        if (!message.empty()) {
+            message = combineMsg + ":" + message;
+        }
+    }
+    if (message.empty()) {
+        message = "operation not support";
+        if (jsErrMap.count(errCode) > 0) {
+            message = jsErrMap.at(errCode);
+        }
+
+        if (errCode == JS_INNER_FAIL) {
+            std::string specificMsg = GetSpecificErrorMessage(errCode, funcName);
+            if (!specificMsg.empty()) {
+                message = message + ", " + specificMsg;
+            }
+        }
+    }
+
+    NAPI_ERR_LOG("{%{public}s:%d} ThrowError errCode:%{public}d errMsg:%{public}s", funcName, line,
+        errCode, message.c_str());
+    ThrowErrorWithIntCode(env, errCode, message);
+}
+
 void NapiError::ThrowError(napi_env env, int32_t err, const std::string &errMsg)
 {
     string message = errMsg;

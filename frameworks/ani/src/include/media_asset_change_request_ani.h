@@ -79,6 +79,14 @@ private:
 
 struct MediaAssetChangeRequestAniContext;
 
+struct SubmitCacheConfig {
+    bool isCreation;
+    bool isSetEffectMode;
+    bool isWriteGpsAdvanced;
+    int32_t userId {-1};
+    bool isCameraEditData {false};
+};
+
 class MediaAssetChangeRequestAni : public MediaChangeRequestAni {
 public:
     explicit MediaAssetChangeRequestAni(FileAssetAni *fileAssetAni);
@@ -181,8 +189,8 @@ public:
     void SetIsWriteGpsAdvanced(bool val);
     bool GetIsWriteGpsAdvanced();
     void PutStringToCreationValue(const std::string &columnName, const std::string &val);
-
-    int32_t SubmitCache(bool isCreation, bool isSetEffectMode, bool isWriteGpsAdvanced, const int32_t userId = -1);
+    DataShare::DataShareValuesBucket GetSubmitCacheValuesBucket(SubmitCacheConfig submitCacheConfig);
+    int32_t SubmitCache(SubmitCacheConfig submitCacheConfig);
     int32_t SubmitCacheWithCreation(
         std::string &uri, std::string &assetUri, bool isSetEffectMode, const int32_t userId);
     int32_t SubmitCacheWithoutCreation(std::string &uri, bool isSetEffectMode, bool isWriteGpsAdvanced,
