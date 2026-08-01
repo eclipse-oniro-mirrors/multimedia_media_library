@@ -108,8 +108,8 @@ std::vector<OfflineCleanupPhotoRecord> MediaFileManagerOfflineCleanupDao::QueryL
 {
     const std::string sql =
         "SELECT file_id, media_type, data, source_path, storage_path, position, subtype, burst_cover_level, "
-        "burst_key FROM Photos WHERE file_id > ? AND file_source_type = ? AND position = ? AND sync_status = 0 "
-        "AND clean_flag = 0 AND time_pending = 0 AND is_temp = 0 ORDER BY file_id LIMIT ?";
+        "burst_key, owner_album_id FROM Photos WHERE file_id > ? AND file_source_type = ? AND position = ? "
+        "AND sync_status = 0 AND clean_flag = 0 AND time_pending = 0 AND is_temp = 0 ORDER BY file_id LIMIT ?";
     return QueryPhotoRecords(sql, {lastFileId, FILE_MANAGER_SOURCE_TYPE, POSITION_LOCAL, limit},
         [](OfflineCleanupPhotoRecord &record, const std::shared_ptr<ResultSet> &resultSet) {
             record.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
@@ -121,6 +121,7 @@ std::vector<OfflineCleanupPhotoRecord> MediaFileManagerOfflineCleanupDao::QueryL
             record.subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
             record.burstCoverLevel = GetInt32Val(PhotoColumn::PHOTO_BURST_COVER_LEVEL, resultSet);
             record.burstKey = GetStringVal(PhotoColumn::PHOTO_BURST_KEY, resultSet);
+            record.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
         });
 }
 
@@ -210,13 +211,15 @@ std::vector<OfflineCleanupPhotoRecord> MediaFileManagerOfflineCleanupDao::QueryL
     int32_t lastFileId, int32_t limit)
 {
     const std::string sql =
-        "SELECT p.file_id, p.owner_album_id, p.source_path, p.display_name, a.album_name, a.album_subtype, a.lpath "
-        "FROM Photos p LEFT JOIN PhotoAlbum a ON p.owner_album_id = a.album_id WHERE p.file_id > ? "
+        "SELECT p.file_id, p.file_source_type, p.owner_album_id, p.source_path, p.display_name, "
+        "a.album_name, a.album_subtype, a.lpath FROM Photos p LEFT JOIN PhotoAlbum a "
+        "ON p.owner_album_id = a.album_id WHERE p.file_id > ? "
         "AND (a.album_subtype = ? OR p.source_path LIKE ?) AND p.time_pending = 0 AND p.clean_flag = 0 "
         "ORDER BY p.file_id LIMIT ?";
     return QueryPhotoRecords(sql, {lastFileId, LEGACY_ALBUM_SUBTYPE, LEGACY_SOURCE_PREFIX_PATTERN, limit},
         [](OfflineCleanupPhotoRecord &record, const std::shared_ptr<ResultSet> &resultSet) {
             record.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+            record.fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
             record.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
             record.sourcePath = GetStringVal(PhotoColumn::PHOTO_SOURCE_PATH, resultSet);
             record.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
@@ -234,6 +237,32 @@ std::vector<OfflineCleanupAlbumRecord> MediaFileManagerOfflineCleanupDao::QueryE
         "WHERE a.album_id > ? AND a.album_subtype = ? AND a.dirty != ? AND NOT EXISTS "
         "(SELECT 1 FROM Photos p WHERE p.owner_album_id = a.album_id) ORDER BY a.album_id LIMIT ?";
     return QueryAlbumRecords(sql, {lastAlbumId, LEGACY_ALBUM_SUBTYPE, ALBUM_DIRTY_DELETED, limit},
+        [](OfflineCleanupAlbumRecord &record, const std::shared_ptr<ResultSet> &resultSet) {
+            record.albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+            record.albumSubtype = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet);
+            record.dirty = GetInt32Val(PhotoAlbumColumns::ALBUM_DIRTY, resultSet);
+            record.albumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
+            record.lpath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);
+        });
+}
+
+std::vector<OfflineCleanupAlbumRecord> MediaFileManagerOfflineCleanupDao::QueryEmptyConvertedAlbums(
+    const std::vector<int32_t> &albumIds)
+{
+    CHECK_AND_RETURN_RET(!albumIds.empty(), {});
+    std::stringstream placeholders;
+    std::vector<ValueObject> args;
+    args.reserve(albumIds.size() + 1);
+    for (size_t i = 0; i < albumIds.size(); ++i) {
+        placeholders << (i > 0 ? ",?" : "?");
+        args.emplace_back(albumIds[i]);
+    }
+    args.emplace_back(ALBUM_DIRTY_DELETED);
+    const std::string sql =
+        "SELECT a.album_id, a.album_subtype, a.dirty, a.album_name, a.lpath FROM PhotoAlbum a "
+        "WHERE a.album_id IN (" + placeholders.str() + ") AND a.dirty != ? AND NOT EXISTS "
+        "(SELECT 1 FROM Photos p WHERE p.owner_album_id = a.album_id) ORDER BY a.album_id";
+    return QueryAlbumRecords(sql, args,
         [](OfflineCleanupAlbumRecord &record, const std::shared_ptr<ResultSet> &resultSet) {
             record.albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
             record.albumSubtype = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet);
@@ -432,6 +461,24 @@ bool MediaFileManagerOfflineCleanupDao::LogicalDeleteEmptyLegacyAlbums(const std
     const int32_t ret = albumRefresh.LogicalDeleteReplaceByUpdate(predicates, deletedRows);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, false,
         "LogicalDeleteEmptyLegacyAlbums failed, ret: %{public}d, deletedRows: %{public}d", ret, deletedRows);
+    deletedCount += deletedRows;
+    return true;
+}
+
+bool MediaFileManagerOfflineCleanupDao::LogicalDeleteEmptyConvertedAlbums(const std::vector<int32_t> &albumIds,
+    AlbumRefresh &albumRefresh, int32_t &deletedCount)
+{
+    deletedCount = 0;
+    std::vector<std::string> idArgs;
+    for (int32_t albumId : albumIds) {
+        idArgs.emplace_back(std::to_string(albumId));
+    }
+    AbsRdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.In(PhotoAlbumColumns::ALBUM_ID, idArgs);
+    int32_t deletedRows = 0;
+    const int32_t ret = albumRefresh.LogicalDeleteReplaceByUpdate(predicates, deletedRows);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, false,
+        "LogicalDeleteEmptyConvertedAlbums failed, ret: %{public}d, deletedRows: %{public}d", ret, deletedRows);
     deletedCount += deletedRows;
     return true;
 }

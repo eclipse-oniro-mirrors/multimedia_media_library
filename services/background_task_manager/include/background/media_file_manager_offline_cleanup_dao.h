@@ -70,6 +70,7 @@ public:
     std::vector<OfflineCleanupPhotoRecord> QueryCloudOnlyPhotos(int32_t lastFileId, int32_t limit);
     std::vector<OfflineCleanupPhotoRecord> QueryLegacyAlbumPhotos(int32_t lastFileId, int32_t limit);
     std::vector<OfflineCleanupAlbumRecord> QueryEmptyLegacyAlbums(int32_t lastAlbumId, int32_t limit);
+    std::vector<OfflineCleanupAlbumRecord> QueryEmptyConvertedAlbums(const std::vector<int32_t> &albumIds);
 
     bool MarkPhotosForOfflineCleanup(const std::vector<int32_t> &fileIds,
         AccurateRefresh::AssetAccurateRefresh &assetRefresh, int32_t &changedRows);
@@ -91,6 +92,8 @@ public:
     bool UpdatePhotoAlbumRelation(int32_t fileId, int32_t oldAlbumId, int32_t targetAlbumId,
         const std::string &targetSourcePath, AccurateRefresh::AssetAccurateRefresh &assetRefresh);
     bool LogicalDeleteEmptyLegacyAlbums(const std::vector<int32_t> &albumIds,
+        AccurateRefresh::AlbumAccurateRefresh &albumRefresh, int32_t &deletedCount);
+    bool LogicalDeleteEmptyConvertedAlbums(const std::vector<int32_t> &albumIds,
         AccurateRefresh::AlbumAccurateRefresh &albumRefresh, int32_t &deletedCount);
 
     int64_t CountLegacyPhotos();

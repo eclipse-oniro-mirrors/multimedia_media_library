@@ -18,6 +18,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "album_accurate_refresh.h"
 #include "asset_accurate_refresh.h"
@@ -55,6 +56,7 @@ private:
         CleanupResult cloudOnlyConverted{"cloudOnly"};
         CleanupResult albumRelationsMigrated{"migrateAlbum"};
         CleanupResult legacyAlbumsDeleted{"deleteAlbum"};
+        CleanupResult convertedAlbumsDeleted{"deleteConvertedAlbum"};
     };
 
     void ResetRunState();
@@ -69,6 +71,7 @@ private:
 
     void MigratePhotoAlbumRelations();
     void CleanupLegacyAlbums();
+    void CleanupConvertedAlbums();
     void ReportCleanupResult();
     void WritePhotoDeleteAuditLog(const OfflineCleanupPhotoRecord &photo, int32_t totalCount);
     void WriteAlbumDeleteAuditLog(const OfflineCleanupAlbumRecord &album, int32_t totalCount);
@@ -93,6 +96,7 @@ private:
     void RefreshAssets();
 
     std::unordered_map<std::string, int32_t> targetAlbumIdCache_;
+    std::unordered_set<int32_t> convertedAlbumIdCache_;
     CleanupStatistics statistics_;
 
     MediaFileManagerOfflineCleanupDao cleanupDao_;
