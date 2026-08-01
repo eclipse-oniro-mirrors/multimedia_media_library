@@ -16,10 +16,8 @@
 #ifndef OHOS_MEDIA_BACKGROUND_MEDIA_FILE_MANAGER_OFFLINE_CLEANUP_TASK_H
 #define OHOS_MEDIA_BACKGROUND_MEDIA_FILE_MANAGER_OFFLINE_CLEANUP_TASK_H
 
-#include <cstdint>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "album_accurate_refresh.h"
 #include "asset_accurate_refresh.h"
@@ -36,14 +34,27 @@ public:
     void Execute() override;
 
 private:
+    struct CleanupResult {
+        std::string tag;
+        int32_t startId{0};
+        int32_t endId{0};
+        int64_t count{0};
+
+        std::string ToString() const
+        {
+            return tag + "[" + std::to_string(startId) + "_" + std::to_string(endId) + "_" +
+                std::to_string(count) + "]";
+        }
+    };
+
     struct CleanupStatistics {
-        int64_t markedForDeletion{0};
-        int64_t deletedPhotos{0};
-        int64_t burstConverted{0};
-        int64_t localCloudConverted{0};
-        int64_t cloudOnlyConverted{0};
-        int64_t albumRelationsMigrated{0};
-        int64_t legacyAlbumsDeleted{0};
+        CleanupResult markedForDeletion{"mark"};
+        CleanupResult deletedPhotos{"delete"};
+        CleanupResult burstConverted{"burst"};
+        CleanupResult localCloudConverted{"localCloud"};
+        CleanupResult cloudOnlyConverted{"cloudOnly"};
+        CleanupResult albumRelationsMigrated{"migrateAlbum"};
+        CleanupResult legacyAlbumsDeleted{"deleteAlbum"};
     };
 
     void ResetRunState();
@@ -59,7 +70,8 @@ private:
     void MigratePhotoAlbumRelations();
     void CleanupLegacyAlbums();
     void ReportCleanupResult();
-    void WriteDeleteAuditLog(const OfflineCleanupPhotoRecord &photo, int32_t totalCount);
+    void WritePhotoDeleteAuditLog(const OfflineCleanupPhotoRecord &photo, int32_t totalCount);
+    void WriteAlbumDeleteAuditLog(const OfflineCleanupAlbumRecord &album, int32_t totalCount);
     void LogBatchResult(const char *stage, int32_t startCursor, int32_t endCursor,
         size_t scannedCount, int64_t processedCount) const;
 

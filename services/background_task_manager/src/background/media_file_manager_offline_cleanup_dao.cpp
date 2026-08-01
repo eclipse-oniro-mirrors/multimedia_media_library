@@ -19,7 +19,7 @@
 
 #include <sstream>
 
-#include "dfx_utils.h"
+#include "file_scan_utils.h"
 #include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_type_const.h"
@@ -89,7 +89,7 @@ std::string OfflineCleanupPhotoRecord::ToString() const
     std::stringstream ss;
     ss << "Photo["
         << fileId << ", "
-        << DfxUtils::GetSafePath(storagePath) << "]";
+        << FileScanUtils::GarbleFilePath(storagePath) << "]";
     return ss.str();
 }
 
@@ -99,7 +99,7 @@ std::string OfflineCleanupAlbumRecord::ToString() const
     ss << "Album["
         << albumId << ", "
         << albumSubtype << ", "
-        << "lpath: " << DfxUtils::GetSafeUri(lpath) << "]";
+        << "lpath: " << FileScanUtils::GarbleFilePath(lpath) << "]";
     return ss.str();
 }
 
@@ -210,7 +210,7 @@ std::vector<OfflineCleanupPhotoRecord> MediaFileManagerOfflineCleanupDao::QueryL
     int32_t lastFileId, int32_t limit)
 {
     const std::string sql =
-        "SELECT p.file_id, p.owner_album_id, p.source_path, a.album_name, a.album_subtype, a.lpath "
+        "SELECT p.file_id, p.owner_album_id, p.source_path, p.display_name, a.album_name, a.album_subtype, a.lpath "
         "FROM Photos p LEFT JOIN PhotoAlbum a ON p.owner_album_id = a.album_id WHERE p.file_id > ? "
         "AND (a.album_subtype = ? OR p.source_path LIKE ?) AND p.time_pending = 0 AND p.clean_flag = 0 "
         "ORDER BY p.file_id LIMIT ?";
@@ -219,6 +219,7 @@ std::vector<OfflineCleanupPhotoRecord> MediaFileManagerOfflineCleanupDao::QueryL
             record.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
             record.ownerAlbumId = GetInt32Val(PhotoColumn::PHOTO_OWNER_ALBUM_ID, resultSet);
             record.sourcePath = GetStringVal(PhotoColumn::PHOTO_SOURCE_PATH, resultSet);
+            record.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
             record.albumName = GetStringVal(PhotoAlbumColumns::ALBUM_NAME, resultSet);
             record.albumSubtype = GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet);
             record.albumLpath = GetStringVal(PhotoAlbumColumns::ALBUM_LPATH, resultSet);

@@ -309,24 +309,24 @@ HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, ResetRunState_ShouldClearStatis
     MEDIA_INFO_LOG("ResetRunState_ShouldClearStatisticsAndCache_008 start");
     MediaFileManagerOfflineCleanupTask task;
     task.targetAlbumIdCache_["/pictures/test"] = 1;
-    task.statistics_.markedForDeletion = 1;
-    task.statistics_.deletedPhotos = 2;
-    task.statistics_.burstConverted = 3;
-    task.statistics_.localCloudConverted = 4;
-    task.statistics_.cloudOnlyConverted = 5;
-    task.statistics_.albumRelationsMigrated = 6;
-    task.statistics_.legacyAlbumsDeleted = 7;
+    task.statistics_.markedForDeletion.count = 1;
+    task.statistics_.deletedPhotos.count = 2;
+    task.statistics_.burstConverted.count = 3;
+    task.statistics_.localCloudConverted.count = 4;
+    task.statistics_.cloudOnlyConverted.count = 5;
+    task.statistics_.albumRelationsMigrated.count = 6;
+    task.statistics_.legacyAlbumsDeleted.count = 7;
 
     task.ResetRunState();
 
     EXPECT_TRUE(task.targetAlbumIdCache_.empty());
-    EXPECT_EQ(task.statistics_.markedForDeletion, 0);
-    EXPECT_EQ(task.statistics_.deletedPhotos, 0);
-    EXPECT_EQ(task.statistics_.burstConverted, 0);
-    EXPECT_EQ(task.statistics_.localCloudConverted, 0);
-    EXPECT_EQ(task.statistics_.cloudOnlyConverted, 0);
-    EXPECT_EQ(task.statistics_.albumRelationsMigrated, 0);
-    EXPECT_EQ(task.statistics_.legacyAlbumsDeleted, 0);
+    EXPECT_EQ(task.statistics_.markedForDeletion.count, 0);
+    EXPECT_EQ(task.statistics_.deletedPhotos.count, 0);
+    EXPECT_EQ(task.statistics_.burstConverted.count, 0);
+    EXPECT_EQ(task.statistics_.localCloudConverted.count, 0);
+    EXPECT_EQ(task.statistics_.cloudOnlyConverted.count, 0);
+    EXPECT_EQ(task.statistics_.albumRelationsMigrated.count, 0);
+    EXPECT_EQ(task.statistics_.legacyAlbumsDeleted.count, 0);
 }
 
 HWTEST_F(MediaFileManagerOfflineCleanupTaskTest, QueryPendingDeletedPhotos_ShouldReturnAuditFields_009,
