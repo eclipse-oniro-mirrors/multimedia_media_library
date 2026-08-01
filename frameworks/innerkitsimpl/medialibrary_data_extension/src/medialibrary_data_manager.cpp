@@ -1595,6 +1595,22 @@ int32_t MediaLibraryDataManager::DeleteInRdbPredicatesMore(MediaLibraryCommand &
     return DeleteInRdbPredicatesAnalysis(cmd, rdbPredicate);
 }
 
+static void DealWithAnalysisAssetSdMap(NativeRdb::RdbPredicates &rdbPredicate)
+{
+    vector<string> columns = { MAP_ASSET_SOURCE, MAP_ASSET_DESTINATION };
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(rdbPredicate, columns);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("query analysis asset sd map failed");
+        return;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t mapAssetDestination = GetInt32Val(MAP_ASSET_DESTINATION, resultSet);
+        string highlightVideoPath = "/storage/cloud/files/highlight/video/" + to_string(mapAssetDestination);
+        bool deleteRet = MediaFileUtils::DeleteDir(highlightVideoPath);
+        MEDIA_INFO_LOG("Delete highlight, destination: %{public}d, ret: %{public}d", mapAssetDestination, deleteRet);
+    }
+}
+
 int32_t MediaLibraryDataManager::DeleteInRdbPredicatesAnalysis(MediaLibraryCommand &cmd,
     NativeRdb::RdbPredicates &rdbPredicate)
 {
@@ -1616,6 +1632,11 @@ int32_t MediaLibraryDataManager::DeleteInRdbPredicatesAnalysis(MediaLibraryComma
         case OperationObject::STORY_PLAY:
         case OperationObject::USER_PHOTOGRAPHY:
         case OperationObject::ANALYSIS_PROGRESS:
+        case OperationObject::ANALYSIS_ALBUM_ASSET_MAP:
+            return MediaLibraryStoryOperations::DeleteOperation(cmd);
+
+        case OperationObject::ANALYSIS_ASSET_SD_MAP:
+            DealWithAnalysisAssetSdMap(rdbPredicate);
             return MediaLibraryStoryOperations::DeleteOperation(cmd);
 
         case OperationObject::SEARCH_TOTAL:
