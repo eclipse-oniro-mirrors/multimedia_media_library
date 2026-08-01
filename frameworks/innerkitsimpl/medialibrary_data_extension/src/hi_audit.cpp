@@ -109,16 +109,15 @@ std::string HiAudit::GetFormattedTimestampEndWithMilli()
     return ss.str();
 }
 
-void HiAudit::Write(const AuditLog& auditLog)
+void HiAudit::Write(const AuditLog& auditLog, bool isPrintLog)
 {
-    MEDIA_INFO_LOG("write");
     std::lock_guard<std::mutex> lock(mutex_);
     if (writeLogSize_ == 0) {
         WriteToFile(auditLog.TitleString() + "\n");
     }
     std::string writeLog = GetFormattedTimestampEndWithMilli() + ", " +
         HIAUDIT_CONFIG.logName + ", NO, " + auditLog.ToString();
-    MEDIA_INFO_LOG("write %{public}s.", writeLog.c_str());
+    CHECK_AND_PRINT_INFO_LOG(!isPrintLog, "write %{public}s.", writeLog.c_str());
     if (writeLog.length() > HIAUDIT_CONFIG.logSize) {
         writeLog = writeLog.substr(0, HIAUDIT_CONFIG.logSize);
     }
