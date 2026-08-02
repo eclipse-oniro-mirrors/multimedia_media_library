@@ -537,8 +537,8 @@ void FetchResult<T>::SetTranscodeInfo(FileAsset *fileAsset)
     auto transcodeSize =  fileAsset->GetInt64Member(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
     bool cond = transcodeSize != 0 &&
         (IsUriTranscoded(fileAsset->GetDisplayName(), uriMap[to_string(fileAsset->GetId())]) ||
-        (supportedHeif != 1 && isHeif(fileAsset->GetDisplayName())) ||
-        (supportedHighResolution != 1 && IsHighPixel(fileAsset->GetWidth(), fileAsset->GetHeight())));
+        (supportedHeif == 0 && isHeif(fileAsset->GetDisplayName())) ||
+        (supportedHighResolution == 0 && IsHighPixel(fileAsset->GetWidth(), fileAsset->GetHeight())));
     if (cond) {
         std::string displayName = fileAsset->GetDisplayName();
         std::string title = MediaFileUtils::GetTitleFromDisplayName(displayName);
