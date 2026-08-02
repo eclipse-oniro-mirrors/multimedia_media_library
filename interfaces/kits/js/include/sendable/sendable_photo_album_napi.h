@@ -104,6 +104,7 @@ struct SendablePhotoAlbumNapiAsyncContext : public NapiError {
     std::vector<DataShare::DataShareValuesBucket> valuesBuckets;
     std::string networkId;
     std::string uri;
+    std::map<std::string, std::string> uriMap;
     std::string faceTag;
     std::unique_ptr<FetchResult<FileAsset>> fetchResult;
     ResultNapiType resultNapiType;
