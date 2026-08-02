@@ -4837,7 +4837,7 @@ bool MediaLibraryPhotoOperations::IsCameraEditData(MediaLibraryCommand &cmd)
     } else {
         MediaValuesBucketUtils::GetBool(values, CONST_IS_CAMERA_EDIT_DATA, isCameraEditDataMode);
     }
-    
+    MEDIA_INFO_LOG("IsCameraEditData: %{public}d", isCameraEditDataMode);
     return containsCompatibleFormat && containsFormatVersion && containsData && isCameraEditDataMode;
 }
 
@@ -5517,7 +5517,7 @@ int32_t MediaLibraryPhotoOperations::SubmitCacheExecute(MediaLibraryCommand& cmd
     // 检查source.jpg是否存在，存在就是编辑过，不存在没编辑过
     bool isSourceImageExist = MediaFileUtils::IsFileExists(editDataSourceImagePath);
     MEDIA_INFO_LOG("MediaLibraryPhotoOperations SubmitCacheExecute isSourceImageExist %{public}d, \
-        isOriginalImageResource %{public}d", isSourceImageExist, isOriginalImageResource);
+        isOriginalImageResource %{public}d, isEdit %{public}d", isSourceImageExist, isOriginalImageResource, isEdit);
  
     // addsource type=6 处理,直接move替换原图
     if (isOriginalImageResource) {
@@ -5527,13 +5527,15 @@ int32_t MediaLibraryPhotoOperations::SubmitCacheExecute(MediaLibraryCommand& cmd
         return errCode;
     }
     // 原始逻辑
-    if (isEdit) {
+    if (isEdit && !IsCameraEditData(cmd)) {
+        // 转正后的资产设置CameraEditData无效
         CHECK_AND_RETURN_RET(PhotoEditingRecord::GetInstance()->StartCommitEdit(id), E_IS_IN_REVERT);
         MoveCacheFileInfo moveCacheFileInfo(0, cachePath, "", isSourceImageExist, isOriginalImageResource,
             effectMode);
         CHECK_AND_RETURN_RET(fileAsset != nullptr, E_INVALID_VALUES);
         return HandleSubmitEditCache(cmd, fileAsset, isWriteGpsAdvanced, moveCacheFileInfo, id);
-    } else if (IsCameraEditData(cmd)) {
+    } else if (!isEdit && IsCameraEditData(cmd)) {
+        // 未转正资产才支持设置水印
         AddFiltersExecute(cmd, fileAsset, cachePath);
     } else {
         MoveCacheFileInfo moveCacheFileInfo(subtype, cachePath, assetPath, isSourceImageExist, isOriginalImageResource,

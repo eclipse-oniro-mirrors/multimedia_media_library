@@ -41,6 +41,8 @@ struct NapiError {
     EXPORT static void ThrowError(napi_env env, int32_t err, const char *func, int32_t line,
         const std::string &errMsg = "");
     EXPORT static void ThrowErrorWithIntCode(napi_env env, int32_t errCode, const std::string &errMsg = "");
+    EXPORT static void ThrowErrorWithIntCode(napi_env env, int32_t errCode, const char *funcName, int32_t line,
+        const std::string &errMsg = "");
 };
 } // namespace Media
 } // namespace OHOS

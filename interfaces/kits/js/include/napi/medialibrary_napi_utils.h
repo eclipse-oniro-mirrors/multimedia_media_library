@@ -56,7 +56,7 @@
 #define CHECK_PARAMETER_WITH_MESSAGE(env, cond, msg)                 \
     do {                                                            \
         if (!(cond)) {                                    \
-            NapiError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, __FUNCTION__, __LINE__, msg); \
+            NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, msg); \
             return nullptr;                                          \
         }                                                           \
     } while (0)
@@ -168,6 +168,14 @@
         if ((cond) != napi_ok) {                                    \
             NapiError::ThrowError(env, err, __FUNCTION__, __LINE__); \
             return retVal;                                          \
+        }                                                           \
+    } while (0)
+
+#define CHECK_ARGS_WITH_CODE(env, cond, err)                     \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                          \
         }                                                           \
     } while (0)
 
