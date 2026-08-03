@@ -155,7 +155,7 @@ export class PhotoPickerComponent extends ViewPU {
         this.onPinchGridSwitched = void 0;
         this.isPhotoBrowserShow = false,
         this.isMovingPhotoBadgeShownValid = false,
-        this.setBrowserProps(o);
+        this.setPhotoStateProps(o);
         this.__pickerController = new SynchedPropertyNesedObjectPU(o.pickerController, this, 'pickerController');
         this.proxy = void 0;
         this.dpiFollowStrategy = SecurityDpiFollowStrategy.FOLLOW_UI_EXTENSION_ABILITY_DPI;
@@ -205,13 +205,13 @@ export class PhotoPickerComponent extends ViewPU {
         }
     }
 
-    setBrowserProps(o) {
-        o.pickerController.browserPropsRegistry = () => {
+    setPhotoStateProps(o) {
+        o.pickerController.getMovingPhotoState = () => {
             return {
                 isPhotoBrowserShow: this.isPhotoBrowserShow,
                 isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
-            }
-        }
+            };
+        };
     }
 
     updateStateVars(e) {
@@ -1103,7 +1103,7 @@ let PickerController = class {
             throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
         }
 
-        const props = this.browserPropsRegistry() ? this.browserPropsRegistry() : { isPhotoBrowserShow: false, isMovingPhotoBadgeShownValid: false };
+        const props = this.getMovingPhotoState();
         console.info('SET_MOVINGPHOTO_STATE, this.isPhotoBrowserShow : ' + JSON.stringify(props.isPhotoBrowserShow) +
          ', this.isMovingPhotoBadgeShownValid=' + props.isMovingPhotoBadgeShownValid);
         if (!props.isPhotoBrowserShow || props.isMovingPhotoBadgeShownValid) {
