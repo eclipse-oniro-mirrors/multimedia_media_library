@@ -1455,6 +1455,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "window_manager:libdm",
     "zlib:shared_libz",
     "graphic_surface:surface",
+    "graphic_2d:color_manager",
   ]
 
   if (media_library_cellular_data_enable) {
