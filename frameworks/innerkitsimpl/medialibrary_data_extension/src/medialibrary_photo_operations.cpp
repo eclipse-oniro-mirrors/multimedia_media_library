@@ -3534,6 +3534,24 @@ static int32_t ProcessLivePhotoVideoPath(const string &path, const string &realP
     return E_OK;
 }
 
+int32_t ProcessLivePhotoExtradataPath(const string &path, const string &realPath, string &movingPhotoExtradataPath)
+{
+    if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
+        string cacheDir = MovingPhotoFileUtils::GetLivePhotoCacheDir(path);
+        CHECK_AND_RETURN_RET_LOG(!cacheDir.empty(), E_INVALID_PATH, "Failed to get live photo cache dir");
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir), E_HAS_FS_ERROR,
+            "Cannot create dir %{private}s", cacheDir.c_str());
+        string tempExtradataPath = cacheDir + "/extradata_livephoto";
+
+        int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(realPath, "", "", tempExtradataPath);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to convert live photo, ret:%{public}d", ret);
+        movingPhotoExtradataPath = tempExtradataPath;
+    } else {
+        movingPhotoExtradataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(path);
+    }
+    return E_OK;
+}
+
 int32_t MediaLibraryPhotoOperations::RequestEditSource(MediaLibraryCommand &cmd)
 {
     string uriString = cmd.GetUriStringWithoutSegment();
@@ -3565,16 +3583,19 @@ int32_t MediaLibraryPhotoOperations::RequestEditSource(MediaLibraryCommand &cmd)
         movingPhotoVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(path);
     }
 
+    string realPath = MediaFileAccessUtils::GetAssetRealPath(path);
+
     if (isMovingPhotoMetadataRequest) {
-        return OpenFileWithPrivacy(
-            MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(path), MEDIA_FILEMODE_READONLY, id);
+        string livePhotoExtradataPath = "";
+        int32_t ret = ProcessLivePhotoExtradataPath(path, realPath, livePhotoExtradataPath);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to process livephoto extra path, ret:%{public}d", ret);
+        return OpenFileWithPrivacy(livePhotoExtradataPath, MEDIA_FILEMODE_READONLY, id);
     }
 
     string sourcePath = isMovingPhotoVideoRequest ?
         MediaFileUtils::GetMovingPhotoVideoPath(MediaEditUtils::GetEditDataSourcePath(path)) :
         MediaEditUtils::GetEditDataSourcePath(path);
 
-    string realPath = MediaFileAccessUtils::GetAssetRealPath(path);
     if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
         int32_t ret = ProcessLivePhotoVideoPath(path, realPath, movingPhotoVideoPath);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to process livephoto video path, ret:%{public}d", ret);
@@ -3711,8 +3732,46 @@ static int32_t RevertMetadata(int32_t fileId, int64_t time, int32_t effectMode, 
     return E_OK;
 }
 
-static int32_t UpdateEffectMode(int32_t fileId, int32_t effectMode)
+static void HandleSetLivePhoto4dStatusValuesBucket(MediaLibraryCommand &cmd, const shared_ptr<FileAsset> &fileAsset,
+    int32_t effectMode)
 {
+    ValuesBucket& updateValues = cmd.GetValueBucket();
+    int32_t livePhoto4dStatus = fileAsset->GetLivePhoto4dStatus();
+    string filePath = fileAsset->GetFilePath();
+    std::string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
+    if (extraDataPath.empty()) {
+        MEDIA_INFO_LOG("livePhoto4d:get extraDataPath path failed");
+        return;
+    }
+
+    uint32_t version = 0;
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(extraDataPath, version);
+    if (ret != E_OK) {
+        MEDIA_INFO_LOG("livePhoto4d:get extraData version failed");
+        return;
+    }
+    if (livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D) ||
+        version == LIVE_PHOTO_4D_VERSION) {
+        MEDIA_INFO_LOG("livePhoto4d:no need to update live photo 4d status.");
+        return;
+    }
+    updateValues.PutString(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, "");
+    if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+        updateValues.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
+    } else {
+        updateValues.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+    }
+}
+
+static int32_t UpdateEffectMode(const shared_ptr<FileAsset> &fileAsset, int32_t effectMode)
+{
+    if (fileAsset == nullptr) {
+        MEDIA_ERR_LOG("FileAsset is nullptr");
+        return E_ERR;
+    }
+    int32_t fileId = fileAsset->GetId();
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Failed to get rdbStore when updating effect mode");
 
@@ -3726,6 +3785,7 @@ static int32_t UpdateEffectMode(int32_t fileId, int32_t effectMode)
     } else {
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
+    HandleSetLivePhoto4dStatusValuesBucket(updateCmd, fileAsset, effectMode);
     updateCmd.SetValueBucket(updateValues);
 
     int32_t updateRows = -1;
@@ -4457,6 +4517,19 @@ int32_t MediaLibraryPhotoOperations::RevertLivePhotoAsset(const string &realPath
     return E_OK;
 }
 
+int32_t MediaLibraryPhotoOperations::HandleRevertLivePhotoAsset(const shared_ptr<FileAsset> &fileAsset,
+    const string &realPath, const string &imagePath,
+    const string &sourceImagePath, const string &sourceVideoPath)
+{
+    int32_t errCode = MediaLibraryPhotoOperations::RevertLivePhotoAsset(realPath, imagePath, sourceImagePath,
+        sourceVideoPath);
+    if (fileAsset->GetLivePhoto4dStatus() == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+        MediaLibraryPhotoOperations::SetExtraDataVersion(fileAsset->GetId(),
+            static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
+    }
+    return errCode;
+}
+
 int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     MediaLibraryCommand& cmd, const shared_ptr<FileAsset>& fileAsset, bool& isNeedScan)
 {
@@ -4494,7 +4567,7 @@ int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(imagePath);
     int32_t errCode = E_OK;
     if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
-        return RevertLivePhotoAsset(realPath, imagePath, sourceImagePath, sourceVideoPath);
+        return HandleRevertLivePhotoAsset(fileAsset, realPath, imagePath, sourceImagePath, sourceVideoPath);
     } else {
         errCode = Move(sourceVideoPath, videoPath);
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_HAS_FS_ERROR,
@@ -5818,9 +5891,19 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to save source moving photo");
     }
 
-    errCode = ProcessLivePhotoConversion(assetPath, assetVideoPath, imageCachePath, videoCachePath, realPath);
-    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to process live photo conversion");
-    CHECK_AND_RETURN_RET_LOG(UpdateEffectMode(id, effectMode) == E_OK, errCode, "Failed to update effect mode");
+    if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
+        errCode = ProcessLivePhotoConversion(assetPath, assetVideoPath, imageCachePath, videoCachePath, realPath);
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to processlive photo conversion");
+        ThumbnailService::GetInstance()->HasInvalidateThumbnail(to_string(id), PhotoColumn::PHOTOS_TABLE);
+        if (fileAsset->GetLivePhoto4dStatus() == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+            int32_t ret = MediaLibraryPhotoOperations::SetExtraDataVersion(id,
+                static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
+        }
+    } else {
+        CHECK_AND_RETURN_RET_LOG(Move(imageCachePath, assetPath) == E_OK, E_HAS_FS_ERROR, "Failed to move image");
+        CHECK_AND_RETURN_RET_LOG(Move(videoCachePath, assetVideoPath) == E_OK, E_HAS_FS_ERROR, "Failed to move video");
+    }
+    CHECK_AND_RETURN_RET_LOG(UpdateEffectMode(fileAsset, effectMode) == E_OK, errCode, "Failed to update effect mode");
     ScanFile(assetPath, true, true, true);
     MEDIA_INFO_LOG("SubmitEffectModeExecute success.");
     return E_OK;
