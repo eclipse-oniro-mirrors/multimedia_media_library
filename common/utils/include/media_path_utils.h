@@ -36,6 +36,7 @@ public:
     EXPORT static std::string AppendUserId(const std::string& path, int32_t userId);
     EXPORT static bool CheckPhotoPath(const std::string& photoPath);
     EXPORT static bool CheckIsCloudFile(const std::string &sandboxPath);
+    EXPORT static std::string ConvertCloudPathToLocalPath(const std::string &cloudPath);
 };
 } // namespace OHOS::Media
 

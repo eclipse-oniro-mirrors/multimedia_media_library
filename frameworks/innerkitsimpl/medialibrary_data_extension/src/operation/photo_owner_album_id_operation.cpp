@@ -395,20 +395,9 @@ std::string PhotoOwnerAlbumIdOperation::ParseSourcePathToLPath(const std::string
  */
 MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(const std::string &lPath)
 {
-    int32_t albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
-    int32_t albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC);
-
-    std::string target = "/Pictures/Users/";
-    std::transform(target.begin(), target.end(), target.begin(), ::tolower);
-    std::string lPathLower = lPath;
-    std::transform(lPathLower.begin(), lPathLower.end(), lPathLower.begin(), ::tolower);
-    if (lPathLower.find(target) == 0) {
-        albumType = static_cast<int32_t>(PhotoAlbumType::USER);
-        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
-    }
-    if (PhotoFileUtils::CheckFileManagerLPath(lPath)) {
-        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
-    }
+    int32_t albumType = -1;
+    int32_t albumSubType = -1;
+    GetAlbumTypeAndSubType(lPath, albumType, albumSubType);
     return this->BuildAlbumInfoByLPath(lPath, albumType, albumSubType);
 }
 
@@ -641,5 +630,33 @@ int32_t PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath(const std::string &so
     CHECK_AND_RETURN_RET_LOG(albumId > 0, E_ERR, "Media_Operation: failed to get albumInfo.");
     MEDIA_INFO_LOG("Media_Operation: success to build and get album, albumId: %{public}d", albumId);
     return albumId;
+}
+
+void PhotoOwnerAlbumIdOperation::GetAlbumTypeAndSubType(const std::string &lPath, int32_t &albumType,
+    int32_t &albumSubType)
+{
+    albumType = static_cast<int32_t>(PhotoAlbumType::SOURCE);
+    albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC);
+    std::string target = "/Pictures/Users/";
+    std::transform(target.begin(), target.end(), target.begin(), ::tolower);
+    std::string lPathLower = lPath;
+    std::transform(lPathLower.begin(), lPathLower.end(), lPathLower.begin(), ::tolower);
+    if (lPathLower.find(target) == 0) {
+        albumType = static_cast<int32_t>(PhotoAlbumType::USER);
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::USER_GENERIC);
+    }
+    if (PhotoFileUtils::CheckFileManagerLPath(lPath)) {
+        albumSubType = static_cast<int32_t>(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER);
+    }
+}
+
+int32_t PhotoOwnerAlbumIdOperation::CreateAlbumAndGetId(const MediaData &albumInfo)
+{
+    CHECK_AND_RETURN_RET_LOG(!albumInfo.lPath.empty(), E_ERR, "Media_Operation: album lPath is empty.");
+    int32_t err = this->CreateAlbum(albumInfo);
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR,
+        "Media_Operation: CreateAlbum failed, err: %{public}d, albumInfo: %{public}s.",
+        err, this->ToString(albumInfo).c_str());
+    return this->GetPhotoAlbumId(albumInfo.lPath);
 }
 }  // namespace OHOS::Media
