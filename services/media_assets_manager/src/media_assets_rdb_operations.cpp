@@ -637,4 +637,30 @@ int32_t MediaAssetsRdbOperations::BatchUpdateMetaDataModified(const std::vector<
     MEDIA_INFO_LOG("BatchUpdateMetaDataModified completed, updatedRows: %{public}d", updatedRows);
     return E_OK;
 }
+
+int32_t MediaAssetsRdbOperations::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus)
+{
+    MEDIA_INFO_LOG("SetPhotoCritical enter, fileId: %{public}d, photoRiskStatus: %{public}d",
+        fileId, photoRiskStatus);
+    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "invalid fileId");
+ 
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "Failed to get rdbStore.");
+ 
+    NativeRdb::ValuesBucket values;
+    values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, photoRiskStatus);
+ 
+    NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
+ 
+    int32_t updatedRows = 0;
+    int32_t ret = rdbStore->Update(updatedRows, values, predicates);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("SetPhotoCritical failed, ret: %{public}d", ret);
+        return E_DB_FAIL;
+    }
+ 
+    MEDIA_INFO_LOG("SetPhotoCritical completed, updatedRows: %{public}d", updatedRows);
+    return E_OK;
+}
 } // namespace OHOS::Media
