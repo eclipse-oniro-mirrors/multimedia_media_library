@@ -1162,7 +1162,7 @@ static int32_t PrepareCloneTargetAndPending(ClonePrepareContext &context, CloneP
     MediaAssetCopyInfo copyInfo(result.targetPath, false, context.ownerAlbumId, context.targetAssetInfo.displayName,
         false, false, true, true, false, context.targetAssetInfo.targetRealPath, context.targetAssetInfo.supportRename);
     if (context.targetAssetInfo.cloneCallbackType >= static_cast<int32_t>(CloneCallbackType::URI) &&
-        context.targetAssetInfo.cloneCallbackType <= static_cast<int32_t>(CloneCallbackType::FILEPATH)) {
+        context.targetAssetInfo.cloneCallbackType <= static_cast<int32_t>(CloneCallbackType::PHOTOASSET)) {
         copyInfo.isCopyFileManger = true;
     }
     MEDIA_DEBUG_LOG("Clone callback type is %{public}d, isCopyFileManger is %{public}d",
