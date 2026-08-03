@@ -611,6 +611,7 @@ struct FileInfo {
     bool hasMergedLcdThumbnail {false};
     bool hasMergedThmThumbnail {false};
     bool needMergeThumbnail {false};
+    int32_t lcdUsingStatusOld {0};
 };
 
 struct AlbumInfo {

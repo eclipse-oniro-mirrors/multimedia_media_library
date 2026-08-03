@@ -1093,18 +1093,7 @@ void CloneRestore::MoveMigrateCloudFile(std::vector<FileInfo> &fileInfos, int32_
     unordered_map<string, CloudPhotoFileExistFlag> resultExistMap;
     for (size_t i = 0; i < fileInfos.size(); i++) {
         if (fileInfos[i].needMergeThumbnail) {
-            if (MergeDuplicateThumbnail(fileInfos[i]) != E_OK) {
-                MEDIA_ERR_LOG("singleClone NeedMergeThumbnail: MergeDuplicateThumbnail failed,"
-                    " id:%{public}d, path:%{public}s",
-                    fileInfos[i].fileIdNew,
-                    MediaFileUtils::DesensitizePath(fileInfos[i].cloudPath).c_str());
-            }
-            RemoveMergedDentryForSamePhoto(fileInfos[i]);
-            if ((fileInfos[i].hasMergedLcdThumbnail || fileInfos[i].hasMergedThmThumbnail) &&
-                MediaFileUtils::IsFileExists(GetThumbnailLocalPath(fileInfos[i].cloudPath))) {
-                MediaLibraryPhotoOperations::StoreThumbnailSize(to_string(fileInfos[i].fileIdNew),
-                    fileInfos[i].cloudPath);
-            }
+            MergeCloudDuplicateThumbnail(fileInfos[i]);
             continue;
         }
         CHECK_AND_CONTINUE(fileInfos[i].needMove);
@@ -1144,6 +1133,26 @@ void CloneRestore::MoveMigrateCloudFile(std::vector<FileInfo> &fileInfos, int32_
     migrateFileNumber_ += fileMoveCount;
     migrateVideoFileNumber_ += videoFileMoveCount;
     MEDIA_INFO_LOG("singleClone MoveMigrateCloudFile end");
+}
+
+void CloneRestore::MergeCloudDuplicateThumbnail(FileInfo &fileInfo)
+{
+    if (MergeDuplicateThumbnail(fileInfo) != E_OK) {
+        MEDIA_ERR_LOG("singleClone NeedMergeThumbnail: MergeDuplicateThumbnail failed,"
+            " id:%{public}d, path:%{public}s",
+            fileInfo.fileIdNew, MediaFileUtils::DesensitizePath(fileInfo.cloudPath).c_str());
+    }
+    RemoveMergedDentryForSamePhoto(fileInfo);
+    bool cond = (fileInfo.hasMergedLcdThumbnail || fileInfo.hasMergedThmThumbnail) &&
+        MediaFileUtils::IsFileExists(GetThumbnailLocalPath(fileInfo.cloudPath));
+    CHECK_AND_RETURN(cond);
+    if (!fileInfo.hasMergedLcdThumbnail) {
+        MediaLibraryPhotoOperations::StoreThumbnailSize(
+            to_string(fileInfo.fileIdNew), fileInfo.cloudPath);
+        return;
+    }
+    MediaLibraryPhotoOperations::StorePhotoExtWithLcdStatus(
+        to_string(fileInfo.fileIdNew), fileInfo.cloudPath, fileInfo.lcdUsingStatusOld);
 }
 
 bool CloneRestore::CheckDestDbHasRiskStatusColumn()
@@ -1442,6 +1451,7 @@ int CloneRestore::InsertPhoto(vector<FileInfo> &fileInfos)
 
     int64_t startInsertRelated = MediaFileUtils::UTCTimeMilliSeconds();
     InsertPhotoRelated(fileInfos, SourceType::PHOTOS);
+    PreQueryLcdUsingStatus(fileInfos);
 
     int64_t startMove = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t fileMoveCount = 0;
@@ -1876,8 +1886,8 @@ int32_t CloneRestore::MoveAsset(FileInfo &fileInfo)
     // Thumbnail of photos.
     this->MoveThumbnail(fileInfo);
 
-    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(
-        to_string(fileInfo.fileIdNew), fileInfo.cloudPath, EditAndAttachmentUpdateType::EDIT_ONLY);
+    MediaLibraryPhotoOperations::StorePhotoExtWithLcdStatus(
+        to_string(fileInfo.fileIdNew), fileInfo.cloudPath, fileInfo.lcdUsingStatusOld);
     return E_OK;
 }
 
@@ -1962,8 +1972,13 @@ int32_t CloneRestore::MergeDuplicateAsset(FileInfo &fileInfo)
     }
     RemoveMergedDentryForSamePhoto(fileInfo);
 
-    MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(
-        to_string(fileInfo.fileIdNew), fileInfo.cloudPath, EditAndAttachmentUpdateType::EDIT_ONLY);
+    if (!fileInfo.hasMergedLcdThumbnail) {
+        MediaLibraryPhotoOperations::StoreThumbnailAndEditSize(
+            to_string(fileInfo.fileIdNew), fileInfo.cloudPath, EditAndAttachmentUpdateType::EDIT_ONLY);
+        return E_OK;
+    }
+    MediaLibraryPhotoOperations::StorePhotoExtWithLcdStatus(
+        to_string(fileInfo.fileIdNew), fileInfo.cloudPath, fileInfo.lcdUsingStatusOld);
     return E_OK;
 }
 
@@ -2454,6 +2469,35 @@ void CloneRestore::BatchQueryPhoto(vector<FileInfo> &fileInfos)
     }
     resultSet->Close();
     BackupDatabaseUtils::UpdateAssociateFileId(mediaLibraryRdb_, fileInfos);
+}
+
+void CloneRestore::PreQueryLcdUsingStatus(std::vector<FileInfo> &fileInfos)
+{
+    std::string selection;
+    std::unordered_map<int32_t, FileInfo *> fileInfoMap;
+    for (auto &fileInfo : fileInfos) {
+        if (fileInfo.fileIdOld > 0) {
+            BackupDatabaseUtils::UpdateSelection(selection, std::to_string(fileInfo.fileIdOld));
+            fileInfoMap[fileInfo.fileIdOld] = &fileInfo;
+        }
+    }
+    if (selection.empty()) {
+        return;
+    }
+    std::string querySql = "SELECT " + PhotoExtColumn::PHOTO_ID + ", " + PhotoExtColumn::LCD_USING_STATUS +
+        " FROM " + PhotoExtColumn::PHOTOS_EXT_TABLE +
+        " WHERE " + PhotoExtColumn::PHOTO_ID + " IN (" + selection + ")";
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "PreQueryLcdUsingStatus query failed");
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t photoId = GetInt32Val(PhotoExtColumn::PHOTO_ID, resultSet);
+        int32_t status = GetInt32Val(PhotoExtColumn::LCD_USING_STATUS, resultSet);
+        auto it = fileInfoMap.find(photoId);
+        if (it != fileInfoMap.end()) {
+            it->second->lcdUsingStatusOld = status;
+        }
+    }
+    resultSet->Close();
 }
 
 void CloneRestore::UpdateAlbumOrderColumns(AlbumInfo &albumInfo, const string &tableName)
@@ -3397,6 +3441,7 @@ int CloneRestore::InsertCloudPhoto(int32_t sceneCode, std::vector<FileInfo> &fil
 
     int64_t startInsertRelated = MediaFileUtils::UTCTimeMilliSeconds();
     InsertPhotoRelated(fileInfos, SourceType::PHOTOS);
+    PreQueryLcdUsingStatus(fileInfos);
 
     // create dentry file for cloud origin, save failed cloud id
     std::vector<std::string> dentryFailedOrigin;
@@ -3786,8 +3831,8 @@ void CloneRestore::BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,
         if (!MediaFileUtils::IsFileExists(dirPath)) {
             continue;
         }
-        MediaLibraryPhotoOperations::StoreThumbnailSize(to_string(fileInfos[i].fileIdNew),
-            fileInfos[i].cloudPath);
+        MediaLibraryPhotoOperations::StorePhotoExtWithLcdStatus(to_string(fileInfos[i].fileIdNew),
+            fileInfos[i].cloudPath, fileInfos[i].lcdUsingStatusOld);
     }
 }
 
