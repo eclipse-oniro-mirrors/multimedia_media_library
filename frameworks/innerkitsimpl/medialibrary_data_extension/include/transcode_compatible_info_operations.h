@@ -18,6 +18,7 @@
 
 #include <vector>
 #include <string>
+#include <safe_map.h>
 
 #include "datashare_values_bucket.h"
 #include "medialibrary_command.h"
@@ -46,7 +47,7 @@ private:
 
     static const std::string ENCODINGS_SEPARATOR;
     static std::mutex compatibleInfoCacheMutex_;
-    static std::unordered_map<std::string, CompatibleInfo> compatibleInfoCache_;
+    static SafeMap<std::string, CompatibleInfo> compatibleInfoCache_;
 };
 }
 #endif
