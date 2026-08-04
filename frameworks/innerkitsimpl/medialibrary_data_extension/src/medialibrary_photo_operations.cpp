@@ -6130,7 +6130,7 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToPicture(std::shared_ptr<Media::
     size_t lastSlash = outputPath.rfind('/');
     CHECK_AND_RETURN_RET_LOG(lastSlash != string::npos && outputPath.size() > (lastSlash + 1), E_INVALID_VALUES,
         "Failed to check outputPath: %{public}s", outputPath.c_str());
-    int32_t ret = MediaChangeEffect::TakeEffectForPicture(inPicture, editdata);
+    int32_t ret = MediaChangeEffect::TakeEffectCloudEnhanceForPicture(inPicture, editdata);
     return E_OK;
 }
 
