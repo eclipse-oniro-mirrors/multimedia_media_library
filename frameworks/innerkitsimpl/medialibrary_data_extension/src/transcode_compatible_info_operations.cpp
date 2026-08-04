@@ -33,8 +33,8 @@ using namespace OHOS::NativeRdb;
 using namespace OHOS::Media;
 
 const string TranscodeCompatibleInfoOperation::ENCODINGS_SEPARATOR = ",";
+OHOS::SafeMap<std::string, CompatibleInfo> TranscodeCompatibleInfoOperation::compatibleInfoCache_;
 constexpr int32_t INVALID_HIGH_RESOLUTION = -1;
-std::unordered_map<std::string, CompatibleInfo> TranscodeCompatibleInfoOperation::compatibleInfoCache_ = {};
 std::mutex TranscodeCompatibleInfoOperation::compatibleInfoCacheMutex_;
 
 string TranscodeCompatibleInfoOperation::VectorToString(const std::vector<std::string> &vec)
@@ -103,7 +103,7 @@ int32_t TranscodeCompatibleInfoOperation::InsertCompatibleInfo(CompatibleInfo& c
         "Insert compatibleInfo failed, ret : %{public}d", ret);
     {
         lock_guard<mutex> lock(compatibleInfoCacheMutex_);
-        compatibleInfoCache_.erase(compatibleInfo.bundleName);
+        compatibleInfoCache_.Erase(compatibleInfo.bundleName);
     }
     MEDIA_INFO_LOG("Insert compatibleInfo success");
     return E_OK;
@@ -173,7 +173,7 @@ int32_t TranscodeCompatibleInfoOperation::UpsertCompatibleInfo(const std::string
     compatibleInfo.encodings = encodings;
     {
         lock_guard<mutex> lock(compatibleInfoCacheMutex_);
-        compatibleInfoCache_.erase(bundleName);
+        compatibleInfoCache_.Erase(bundleName);
     }
     MEDIA_INFO_LOG("Upsert compatibleInfo success");
     return E_OK;
@@ -210,7 +210,7 @@ int32_t TranscodeCompatibleInfoOperation::UpsertPreferredCompatibleMode(const st
     compatibleInfo.preferredCompatibleMode = preferredCompatibleMode;
     {
         lock_guard<mutex> lock(compatibleInfoCacheMutex_);
-        compatibleInfoCache_.erase(bundleName);
+        compatibleInfoCache_.Erase(bundleName);
     }
     MEDIA_INFO_LOG("Upsert preferredCompatibleMode success");
     return E_OK;
@@ -238,9 +238,9 @@ int32_t TranscodeCompatibleInfoOperation::QueryCompatibleInfo(
 {
     {
         lock_guard<mutex> lock(compatibleInfoCacheMutex_);
-        auto it = compatibleInfoCache_.find(bundleName);
-        if (it != compatibleInfoCache_.end()) {
-            compatibleInfo = it->second;
+        CompatibleInfo info;
+        if (compatibleInfoCache_.Find(bundleName, info)) {
+            compatibleInfo = info;
             MEDIA_INFO_LOG("Query compatibleInfo success");
             return E_OK;
         }
@@ -279,7 +279,7 @@ int32_t TranscodeCompatibleInfoOperation::QueryCompatibleInfo(
     resultSet->Close();
     {
         lock_guard<mutex> lock(compatibleInfoCacheMutex_);
-        compatibleInfoCache_.emplace(compatibleInfo.bundleName, compatibleInfo);
+        compatibleInfoCache_.EnsureInsert(compatibleInfo.bundleName, compatibleInfo);
     }
     MEDIA_INFO_LOG("Query compatibleInfo success");
 
