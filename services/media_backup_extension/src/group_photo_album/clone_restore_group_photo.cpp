@@ -221,7 +221,8 @@ int32_t CloneRestoreGroupPhoto::QueryGroupPhotoAlbumTbl(const std::vector<std::s
         " WHERE ";
     std::string whereClause = "(" +
         SMARTALBUM_DB_ALBUM_TYPE + " = " + std::to_string(SMART) + " AND " +
-        "album_subtype" + " = " + std::to_string(GROUP_PHOTO) + ")";
+        "album_subtype" + " = " + std::to_string(GROUP_PHOTO) + " AND (" + ANALYSIS_COL_IS_REMOVED +
+        " != 1 OR " + ANALYSIS_COL_IS_REMOVED + " IS NULL))";
     AppendExtraWhereClause(whereClause);
     querySql += whereClause;
     GetMaxAlbumId();
@@ -282,7 +283,8 @@ int32_t CloneRestoreGroupPhoto::RestoreGroupPhotoAlbumInfo(bool isReverse)
 
     std::string querySql =  "SELECT count(1) AS count FROM " + ANALYSIS_ALBUM_TABLE + " WHERE ";
     std::string whereClause = "(" + ANALYSIS_COL_ALBUM_TYPE + " = " + std::to_string(SMART) + " AND " +
-        ANALYSIS_COL_ALBUM_SUBTYPE + " = " + std::to_string(GROUP_PHOTO) + ")";
+        ANALYSIS_COL_ALBUM_SUBTYPE + " = " + std::to_string(GROUP_PHOTO) + " AND (" + ANALYSIS_COL_IS_REMOVED +
+        " != 1 OR " + ANALYSIS_COL_IS_REMOVED + " IS NULL))";
     AppendExtraWhereClause(whereClause);
     querySql += whereClause;
     int32_t totalNumber = BackupDatabaseUtils::QueryInt(mediaRdb_, querySql, CUSTOM_COUNT);
@@ -348,7 +350,7 @@ void CloneRestoreGroupPhoto::UpdateMapInsertValues(std::vector<NativeRdb::Values
 {
     const std::string QUERY_SQL = "SELECT map.rowid, map.* FROM AnalysisPhotoMap AS map "
         " INNER JOIN AnalysisAlbum AS a ON map.map_album = a.album_id "
-        " WHERE a.album_subtype = 4103 "
+        " WHERE a.album_subtype = 4103 AND (a.is_removed != 1 OR a.is_removed IS NULL) "
         " AND map.rowid > ? ORDER BY map.rowid LIMIT ? ";
     std::vector<NativeRdb::ValueObject> params = { lastIdOfMap_, PAGE_SIZE };
     auto resultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, QUERY_SQL, params);
