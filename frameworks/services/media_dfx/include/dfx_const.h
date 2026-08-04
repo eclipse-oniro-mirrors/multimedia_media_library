@@ -240,6 +240,7 @@ struct PhotoRecordInfo {
     int32_t abnormalLpathCount;
     int32_t photoWaitUploadCloudCount;
     int32_t photoWaitUploadHdcCount;
+    int32_t abnormalDateTakenCount; // date_taken异常总数（未来时间/秒级误写/零值/负值）
 };
 
 struct AdaptationToMovingPhotoInfo {
