@@ -307,6 +307,9 @@ const std::string ReverseCloneRestore::SQL_CLOUD_PHOTOS_TABLE_COUNT_ALL = "\
 
 namespace {
 const std::string REVERSE_RESTORE_RESOURCE_ROOT = "/storage/media/local/files/reverse_restore";
+const std::string REVERSE_RESTORE_MERGE_ROOT = "/storage/cloud/files/reverse_restore";
+const std::string MEDIA_LOCAL_FILES_ROOT = "/storage/media/local/files";
+const std::string MEDIA_MERGE_FILES_ROOT = "/storage/cloud/files";
 const std::string LAKE_STORAGE_ROOT = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
 constexpr int32_t DATA_CONFLICT_UNIQUE_ID_COUNT = 3;
 const std::string ACTIVE_DELETE_DISPLAY_NAME = "cloud_media_asset_deleted";
@@ -365,6 +368,26 @@ bool IsPathUnderDirectory(const std::string &path, const std::string &directory)
         return false;
     }
     return directory.back() == '/' || path[directory.length()] == '/';
+}
+
+bool IsPathExists(const std::string &path)
+{
+    struct stat st;
+    return (stat(path.c_str(), &st) == 0);
+}
+
+std::string GetAssetMoveBackingPath(const std::string &path)
+{
+    // A merge-view path may exist only because of a cloud dentry; asset swaps operate on local backing data.
+    if (path == MEDIA_MERGE_FILES_ROOT || IsPathUnderDirectory(path, MEDIA_MERGE_FILES_ROOT)) {
+        return MEDIA_LOCAL_FILES_ROOT + path.substr(MEDIA_MERGE_FILES_ROOT.length());
+    }
+    return path;
+}
+
+bool IsAssetMovePathExists(const std::string &path)
+{
+    return IsPathExists(GetAssetMoveBackingPath(path));
 }
 
 bool HasLakeStoragePath(const FileInfo &fileInfo)
@@ -1039,11 +1062,6 @@ bool ReverseCloneRestore::ShouldUseReverseCloneRestore()
     return context.NeedReverseRestore(reverseRestoreReportInfo_);
 }
 
-static bool IsPathExists(const std::string& path) {
-    struct stat st;
-    return (stat(path.c_str(), &st) == 0);
-}
-
 static bool AddFileSize(int64_t &totalSize, int64_t fileSize)
 {
     if (fileSize < 0 || totalSize > std::numeric_limits<int64_t>::max() - fileSize) {
@@ -1447,9 +1465,9 @@ void ReverseCloneRestore::CleanReverseRestoreTempFiles()
         DeleteDbFileGroup("/data/storage/el2/database/rdb/media_library_source.db");
     }
 
-    if (IsPathExists(REVERSE_RESTORE_RESOURCE_ROOT)) {
+    if (IsAssetMovePathExists(REVERSE_RESTORE_MERGE_ROOT)) {
         MEDIA_INFO_LOG("CleanReverseRestoreTempFiles: deleting reverse restore resource dir");
-        SafeDeleteDir(REVERSE_RESTORE_RESOURCE_ROOT);
+        SafeDeleteDir(REVERSE_RESTORE_MERGE_ROOT);
     }
 
     // 删除资产移动状态XML文件
@@ -1810,8 +1828,9 @@ bool ReverseCloneRestore::PrepareForResume()
 
 bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveState &move)
 {
-    move.hadSrc = IsPathExists(move.src);
-    move.hadDst = IsPathExists(move.dst);
+    const std::string dstBackingPath = GetAssetMoveBackingPath(move.dst);
+    move.hadSrc = IsAssetMovePathExists(move.src);
+    move.hadDst = IsAssetMovePathExists(dstBackingPath);
     if (!move.hadSrc && !move.hadDst) {
         MEDIA_INFO_LOG("ReplaceDirWithBackup: both not exist, skip");
         return true;
@@ -1823,12 +1842,12 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
         return false;
     }
     std::string parentDir = move.backup.substr(0, lastSlashPos);
-    if (!IsPathExists(parentDir) && mkdir(parentDir.c_str(), 0755) != 0 && errno != EEXIST) {
+    if (!IsAssetMovePathExists(parentDir) && mkdir(parentDir.c_str(), 0755) != 0 && errno != EEXIST) {
         MEDIA_ERR_LOG("ReplaceDirWithBackup: create backup parent failed, dir=%{public}s, errno=%{public}d",
             parentDir.c_str(), errno);
         return false;
     }
-    if (IsPathExists(move.backup)) {
+    if (IsAssetMovePathExists(move.backup)) {
         MEDIA_WARN_LOG("ReplaceDirWithBackup: backup dir already exists, deleting it: %{public}s",
             move.backup.c_str());
         if (!MediaFileUtils::DeleteFileOrFolder(move.backup, false)) {
@@ -1852,11 +1871,11 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
     }
 
     if (move.hadSrc) {
-        if (rename(move.src.c_str(), move.dst.c_str()) != 0) {
+        if (rename(move.src.c_str(), dstBackingPath.c_str()) != 0) {
             int savedErrno = errno;
             MEDIA_WARN_LOG("ReplaceDirWithBackup: rename src %{public}s to dst %{public}s failed, errno=%{public}d",
-                move.src.c_str(), move.dst.c_str(), savedErrno);
-            DiagnoseRenameFailure(move.src, move.dst, savedErrno);
+                move.src.c_str(), dstBackingPath.c_str(), savedErrno);
+            DiagnoseRenameFailure(move.src, dstBackingPath, savedErrno);
             if (move.hadDst && !RollbackAssetMove(move)) {
                 MEDIA_ERR_LOG("ReplaceDirWithBackup: rollback current asset dir failed, src=%{public}s",
                     move.src.c_str());
@@ -1865,7 +1884,7 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
             return false;
         }
         MEDIA_INFO_LOG("ReplaceDirWithBackup: moved src %{public}s -> %{public}s", move.src.c_str(),
-            move.dst.c_str());
+            dstBackingPath.c_str());
         move.movedSrc = true;
     }
     return true;
@@ -1873,41 +1892,42 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
 
 bool ReverseCloneRestore::RollbackAssetMove(const AssetMoveState &move)
 {
+    const std::string dstBackingPath = GetAssetMoveBackingPath(move.dst);
     bool ret = true;
     if (move.movedSrc) {
-        if (IsPathExists(move.src)) {
+        if (IsAssetMovePathExists(move.src)) {
             MEDIA_INFO_LOG("RollbackAssetMove: source already restored, src=%{public}s", move.src.c_str());
-        } else if (IsPathExists(move.dst)) {
-            if (rename(move.dst.c_str(), move.src.c_str()) != 0) {
+        } else if (IsAssetMovePathExists(dstBackingPath)) {
+            if (rename(dstBackingPath.c_str(), move.src.c_str()) != 0) {
                 int savedErrno = errno;
                 MEDIA_ERR_LOG("RollbackAssetMove: restore source %{public}s from dst %{public}s failed, "
-                    "errno=%{public}d", move.src.c_str(), move.dst.c_str(), savedErrno);
-                DiagnoseRenameFailure(move.dst, move.src, savedErrno);
+                    "errno=%{public}d", move.src.c_str(), dstBackingPath.c_str(), savedErrno);
+                DiagnoseRenameFailure(dstBackingPath, move.src, savedErrno);
                 ret = false;
             } else {
                 MEDIA_INFO_LOG("RollbackAssetMove: restored source %{public}s from dst %{public}s",
-                    move.src.c_str(), move.dst.c_str());
+                    move.src.c_str(), dstBackingPath.c_str());
             }
         } else {
             MEDIA_ERR_LOG("RollbackAssetMove: source and dst are both missing, src=%{public}s, dst=%{public}s",
                 move.src.c_str(), move.dst.c_str());
             ret = false;
         }
-    } else if (move.hadSrc && !IsPathExists(move.src)) {
+    } else if (move.hadSrc && !IsAssetMovePathExists(move.src)) {
         MEDIA_ERR_LOG("RollbackAssetMove: source missing after failed move, src=%{public}s", move.src.c_str());
         ret = false;
     }
 
     CHECK_AND_RETURN_RET(move.backedUpDst, ret);
 
-    if (!IsPathExists(move.backup)) {
-        CHECK_AND_RETURN_RET_LOG(!IsPathExists(move.dst), ret,
+    if (!IsAssetMovePathExists(move.backup)) {
+        CHECK_AND_RETURN_RET_LOG(!IsAssetMovePathExists(move.dst), ret,
             "RollbackAssetMove: backup already restored, dst=%{public}s", move.dst.c_str());
         MEDIA_ERR_LOG("RollbackAssetMove: backup and dst are both missing, backup=%{public}s, dst=%{public}s",
             move.backup.c_str(), move.dst.c_str());
         return false;
     }
-    if (IsPathExists(move.dst)) {
+    if (IsAssetMovePathExists(move.dst)) {
         MEDIA_ERR_LOG("RollbackAssetMove: dst still exists before restoring backup, dst=%{public}s",
             move.dst.c_str());
         return false;
@@ -1967,23 +1987,23 @@ std::vector<ReverseCloneRestore::AssetMoveState> ReverseCloneRestore::GenerateAs
     const std::string& backupRoot, const std::string& reverseRestoreBase)
 {
     std::vector<AssetMoveState> moves = {
-        { backupRoot + "/storage/media/local/files/Photo",     "/storage/media/local/files/Photo",
+        { backupRoot + "/storage/media/local/files/Photo",     "/storage/cloud/files/Photo",
           reverseRestoreBase + "/Photo" },
-        { backupRoot + "/storage/media/local/files/Camera",    "/storage/media/local/files/Camera",
+        { backupRoot + "/storage/media/local/files/Camera",    "/storage/cloud/files/Camera",
           reverseRestoreBase + "/Camera" },
-        { backupRoot + "/storage/media/local/files/Pictures",  "/storage/media/local/files/Pictures",
+        { backupRoot + "/storage/media/local/files/Pictures",  "/storage/cloud/files/Pictures",
           reverseRestoreBase + "/Pictures" },
-        { backupRoot + "/storage/media/local/files/Videos",    "/storage/media/local/files/Videos",
+        { backupRoot + "/storage/media/local/files/Videos",    "/storage/cloud/files/Videos",
           reverseRestoreBase + "/Videos" },
-        { backupRoot + "/storage/media/local/files/.editData", "/storage/media/local/files/.editData",
+        { backupRoot + "/storage/media/local/files/.editData", "/storage/cloud/files/.editData",
           reverseRestoreBase + "/.editData" },
-        { backupRoot + "/storage/media/local/files/Audio",     "/storage/media/local/files/Audio",
+        { backupRoot + "/storage/media/local/files/Audio",     "/storage/cloud/files/Audio",
           reverseRestoreBase + "/Audio" },
-        { backupRoot + "/storage/media/local/files/Audios",    "/storage/media/local/files/Audios",
+        { backupRoot + "/storage/media/local/files/Audios",    "/storage/cloud/files/Audios",
           reverseRestoreBase + "/Audios" },
-        { backupRoot + "/storage/media/local/files/.thumbs",   "/storage/media/local/files/.thumbs",
+        { backupRoot + "/storage/media/local/files/.thumbs",   "/storage/cloud/files/.thumbs",
           reverseRestoreBase + "/.thumbs" },
-        { backupRoot + "/storage/media/local/files/highlight", "/storage/media/local/files/highlight",
+        { backupRoot + "/storage/media/local/files/highlight", "/storage/cloud/files/highlight",
           reverseRestoreBase + "/highlight" },
     };
     return moves;
@@ -1992,9 +2012,9 @@ std::vector<ReverseCloneRestore::AssetMoveState> ReverseCloneRestore::GenerateAs
 bool ReverseCloneRestore::MoveAssets(const std::string& backupRoot)
 {
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    const std::string reverseRestoreBase = REVERSE_RESTORE_RESOURCE_ROOT;
-    if (!IsPathExists(reverseRestoreBase)) {
-        if (mkdir(reverseRestoreBase.c_str(), 0755) != 0 && errno != EEXIST) {
+    const std::string reverseRestoreBase = REVERSE_RESTORE_MERGE_ROOT;
+    if (!IsAssetMovePathExists(REVERSE_RESTORE_MERGE_ROOT)) {
+        if (mkdir(REVERSE_RESTORE_MERGE_ROOT.c_str(), 0755) != 0 && errno != EEXIST) {
             MEDIA_ERR_LOG("MoveAssets: create reverse_restore dir failed");
             return false;
         }
