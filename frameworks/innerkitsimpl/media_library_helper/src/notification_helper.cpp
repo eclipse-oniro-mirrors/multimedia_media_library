@@ -287,7 +287,7 @@ bool NotificationHelper::StartObserverIfNeeded()
         }
         MEDIA_ERR_LOG("Failed to create DataShareHelper (attempt %{public}d/%{public}d), uri:%{public}s",
             i + 1, MAX_CREATE_RETRY, MEDIALIBRARY_DATA_URI.c_str());
-        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // 200 milliseconds
     }
     if (helper == nullptr) {
         MEDIA_ERR_LOG("StartObserverIfNeeded: DataShareHelper still NULL after %{public}d attempts; "
