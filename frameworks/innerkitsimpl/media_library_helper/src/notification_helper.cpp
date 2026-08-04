@@ -277,30 +277,30 @@ bool NotificationHelper::StartObserverIfNeeded()
     // Creating DataShareHelper may fail during early boot / ability not ready.
     // Add minimal retry to reduce flakiness and add high-signal logs for joint debugging.
     std::shared_ptr<DataShare::DataShareHelper> helper;
-    constexpr int32_t MAX_CREATE_RETRY = 3;
-    for (int32_t i = 0; i < MAX_CREATE_RETRY; ++i) {
+    constexpr int32_t maxCreateRetry = 3;
+    for (int32_t i = 0; i < maxCreateRetry; ++i) {
         helper = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
         if (helper != nullptr) {
             MEDIA_INFO_LOG("StartObserverIfNeeded: DataShareHelper created on attempt %{public}d/%{public}d",
-                i + 1, MAX_CREATE_RETRY);
+                i + 1, maxCreateRetry);
             break;
         }
         MEDIA_ERR_LOG("Failed to create DataShareHelper (attempt %{public}d/%{public}d), uri:%{public}s",
-            i + 1, MAX_CREATE_RETRY, MEDIALIBRARY_DATA_URI.c_str());
+            i + 1, maxCreateRetry, MEDIALIBRARY_DATA_URI.c_str());
         std::this_thread::sleep_for(std::chrono::milliseconds(200)); // 200 milliseconds
     }
     if (helper == nullptr) {
         MEDIA_ERR_LOG("StartObserverIfNeeded: DataShareHelper still NULL after %{public}d attempts; "
             "observer will NOT be registered. Future notifications will not be delivered to this client!",
-            MAX_CREATE_RETRY);
+            maxCreateRetry);
         return false;
     }
 
     auto observer = std::make_shared<InternalAlbumObserver>();
-    static const std::string PHOTO_ALBUM_CHANGE_KEY = "photoAlbumChange";
-    helper->RegisterObserverExtProvider(Uri(PHOTO_ALBUM_CHANGE_KEY), observer, false);
+    static const std::string photoAlbumChangeKey = "photoAlbumChange";
+    helper->RegisterObserverExtProvider(Uri(photoAlbumChangeKey), observer, false);
     MEDIA_INFO_LOG("StartObserverIfNeeded: observer registered, key:%{public}s",
-        PHOTO_ALBUM_CHANGE_KEY.c_str());
+        photoAlbumChangeKey.c_str());
 
     {
         std::lock_guard<std::mutex> lock(observerMutex_);
@@ -325,9 +325,9 @@ void NotificationHelper::StopObserverIfNeeded()
         dataShareHelper_ = nullptr;
     }
     if (helper != nullptr && observer != nullptr) {
-        static const std::string PHOTO_ALBUM_CHANGE_KEY = "photoAlbumChange";
-        helper->UnregisterObserverExtProvider(Uri(PHOTO_ALBUM_CHANGE_KEY), observer);
-        MEDIA_INFO_LOG("Internal album observer unregistered for %{public}s", PHOTO_ALBUM_CHANGE_KEY.c_str());
+        static const std::string photoAlbumChangeKey = "photoAlbumChange";
+        helper->UnregisterObserverExtProvider(Uri(photoAlbumChangeKey), observer);
+        MEDIA_INFO_LOG("Internal album observer unregistered for %{public}s", photoAlbumChangeKey.c_str());
     }
     MEDIA_INFO_LOG("StopObserverIfNeeded: observer/helper cleared");
 }
