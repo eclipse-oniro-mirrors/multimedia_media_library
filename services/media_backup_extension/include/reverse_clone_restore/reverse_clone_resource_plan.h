@@ -75,6 +75,9 @@ struct ReverseCloneAssetResource {
     std::string thumbSize;
     int64_t lcdFileSize {0};
     int32_t thumbStatus {RESTORE_THUMBNAIL_STATUS_NOT_ALL};
+    int32_t compositeDisplayStatus {0};
+    int32_t ceAvailable {0};
+    int32_t lcdUsingStatus {0};
     int32_t position {static_cast<int32_t>(PhotoPositionType::LOCAL)};
     bool isPureCloud {false};
 

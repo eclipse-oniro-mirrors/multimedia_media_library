@@ -547,6 +547,7 @@ struct FileInfo {
     int64_t firstUpdateTime {0};
     int64_t thumbnailReady {0};
     int32_t lcdVisitTime {0};
+    int32_t lcdUsingStatus {0};
     int32_t strongAssociation {0};
     int32_t position {1};
     int32_t cloudVersion {0};
