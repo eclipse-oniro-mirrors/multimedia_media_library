@@ -18,7 +18,6 @@
 
 #include "napi/native_api.h"
 #include <string>
-#include "unique_fd.h"
 
 namespace OHOS {
 namespace Media {
@@ -26,10 +25,9 @@ class MediaCallTranscode {
 public:
     MediaCallTranscode() = default;
     ~MediaCallTranscode() = default;
-    static void CallTranscodeHandle(napi_env env, UniqueFd &uniqueSrcFd, UniqueFd &uniqueDestFd,
+    static void CallTranscodeHandle(napi_env env, int srcFd, int destFd,
         napi_value &result, off_t &size, std::string requestId);
-    static bool DoTranscode(UniqueFd &uniqueSrcFd, UniqueFd &uniqueDestFd, int64_t &size, std::string requestId,
-        int64_t offset);
+    static bool DoTranscode(int srcFd, int destFd, int64_t &size, std::string requestId, int64_t offset);
     static void CallTranscodeRelease(const std::string &requestId);
     using CallbackType = std::function<void(int, int, std::string)>;
     static void RegisterCallback(const CallbackType &cb);
