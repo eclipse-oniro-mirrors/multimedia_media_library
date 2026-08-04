@@ -1003,7 +1003,10 @@ void CloneRestore::MoveMigrateFile(std::vector<FileInfo> &fileInfos, int64_t &fi
             ErrorInfo errorInfo(RestoreError::MOVE_FAILED, 1, std::to_string(errCode),
                 BackupLogUtils::FileInfoToString(sceneCode_, fileInfos[i]));
             UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
-            moveFailedData.push_back(fileInfos[i].cloudPath);
+            // isNew=false 表示新机本就持有该资产（重复资产），旧机原图迁失败时不应删除
+            if (fileInfos[i].isNew) {
+                moveFailedData.push_back(fileInfos[i].cloudPath);
+            }
             continue;
         }
         fileMoveCount++;
@@ -1682,7 +1685,7 @@ int32_t CloneRestore::MovePicture(FileInfo &fileInfo)
     return E_OK;
 }
 
-int32_t CloneRestore::MoveMovingPhotoVideo(FileInfo &fileInfo)
+int32_t CloneRestore::MoveMovingPhotoVideo(FileInfo &fileInfo, bool isFromMergeDuplicate)
 {
     CHECK_AND_RETURN_RET(fileInfo.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
         fileInfo.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY), E_OK);
@@ -1690,9 +1693,18 @@ int32_t CloneRestore::MoveMovingPhotoVideo(FileInfo &fileInfo)
     std::string localPath = BackupFileUtils::GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL,
         fileInfo.cloudPath);
     std::string srcLocalVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(fileInfo.filePath);
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(srcLocalVideoPath), E_OK,
+    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsFileExists(srcLocalVideoPath), isFromMergeDuplicate ? E_FAIL : E_OK,
         "video of moving photo does not exist: %{private}s", srcLocalVideoPath.c_str());
     std::string localVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(localPath);
+    size_t srcVideoSize = 0;
+    MediaFileUtils::GetFileSize(srcLocalVideoPath, srcVideoSize);
+    constexpr size_t SIZE_1KB = 1 * 1024;
+    CHECK_AND_RETURN_RET_LOG(srcVideoSize != 0, E_FAIL,
+        "Moving photo video size is invalid, id:%{public}d, size:%{public}zu, path:%{private}s",
+        fileInfo.fileIdNew, srcVideoSize, srcLocalVideoPath.c_str());
+    CHECK_AND_WARN_LOG(srcVideoSize >= SIZE_1KB,
+        "Moving photo video size is too small, id:%{public}d, size:%{public}zu, path:%{private}s",
+        fileInfo.fileIdNew, srcVideoSize, srcLocalVideoPath.c_str());
     int32_t opVideoRet = E_FAIL;
     if (deleteOriginalFile) {
         opVideoRet = this->MoveFile(srcLocalVideoPath, localVideoPath);
@@ -1878,7 +1890,7 @@ int32_t CloneRestore::MoveAsset(FileInfo &fileInfo)
     int32_t optRet = this->MovePicture(fileInfo);
     CHECK_AND_RETURN_RET(optRet == E_OK, E_FAIL);
     // Video files of moving photo.
-    optRet = this->MoveMovingPhotoVideo(fileInfo);
+    optRet = this->MoveMovingPhotoVideo(fileInfo, false);
     CHECK_AND_RETURN_RET(optRet == E_OK, E_FAIL);
     // Edit Data.
     optRet = this->MoveEditedData(fileInfo);
@@ -1944,26 +1956,33 @@ int32_t CloneRestore::MergeDuplicateAsset(FileInfo &fileInfo)
     string localPath = BackupFileUtils::GetReplacedPathByPrefixType(PrefixType::CLOUD, PrefixType::LOCAL,
         fileInfo.cloudPath);
     bool needImportOrigin = !MediaFileUtils::IsFileExists(localPath);
+    std::string localVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(localPath);
     bool needImportMovingVideo = false;
     if (fileInfo.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
         fileInfo.effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
-        std::string localVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(localPath);
         needImportMovingVideo = !MediaFileUtils::IsFileExists(localVideoPath);
     }
     string dstEditDataPath = BackupFileUtils::GetReplacedPathByPrefixType(
         PrefixType::CLOUD, PrefixType::LOCAL_EDIT_DATA, fileInfo.cloudPath);
 
+    if (needImportMovingVideo) {
+        int32_t optRet = this->MoveMovingPhotoVideo(fileInfo, true);
+        CHECK_AND_RETURN_RET_LOG(optRet == E_OK, E_FAIL, "Move moving photo video failed, skip this photo");
+    }
     if (needImportOrigin) {
         int32_t optRet = this->MovePicture(fileInfo);
-        CHECK_AND_RETURN_RET(optRet == E_OK, E_FAIL);
+        if (optRet != E_OK) {
+            if (needImportMovingVideo && MediaFileUtils::IsFileExists(localVideoPath)) {
+                bool delRet = MediaFileUtils::DeleteFile(localVideoPath);
+                MEDIA_ERR_LOG("Rollback moving photo video, id:%{public}d, ret:%{public}d, path:%{private}s",
+                    fileInfo.fileIdNew, static_cast<int32_t>(delRet), localVideoPath.c_str());
+            }
+            return E_FAIL;
+        }
         fileInfo.hasMergedOriginAsset = true;
         fileInfo.needUpdatePositionToLocalAndCloud =
             fileInfo.position == static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD);
         optRet = this->MoveEditedData(fileInfo);
-        CHECK_AND_RETURN_RET(optRet == E_OK, E_FAIL);
-    }
-    if (needImportMovingVideo) {
-        int32_t optRet = this->MoveMovingPhotoVideo(fileInfo);
         CHECK_AND_RETURN_RET(optRet == E_OK, E_FAIL);
     }
 
