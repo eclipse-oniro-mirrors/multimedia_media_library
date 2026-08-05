@@ -1013,6 +1013,12 @@ const SingleSelectionMode = {
   BROWSER_AND_SELECT_MODE: 2,
 };
 
+const PickerColorMode = {
+  AUTO: 0,
+  LIGHT: 1,
+  DARK: 2,
+};
+
 const PreferredCompatibleMode = {
   DEFAULT: 0,
   CURRENT: 1,
@@ -1103,6 +1109,51 @@ function getErr(errCode) {
   return { code: errCode, message: ERRCODE_MAP.get(errCode) };
 }
 
+function setPickerOptionParams(params, option) {
+  if (option.maxSelectNumber && option.maxSelectNumber > 0) {
+    let select = (option.maxSelectNumber === 1) ? 'singleselect' : 'multipleselect';
+    params.uri = select;
+    params.maxSelectCount = option.maxSelectNumber;
+  }
+  if (option.MIMEType && PHOTO_VIEW_MIME_TYPE_MAP.has(option.MIMEType)) {
+    params.filterMediaType = PHOTO_VIEW_MIME_TYPE_MAP.get(option.MIMEType);
+  }
+  params.maxPhotoSelectNumber = option.maxPhotoSelectNumber;
+  params.maxVideoSelectNumber = option.maxVideoSelectNumber;
+  params.isSearchSupported = option.isSearchSupported === undefined || option.isSearchSupported;
+  params.isPhotoTakingSupported = option.isPhotoTakingSupported === undefined || option.isPhotoTakingSupported;
+  params.isEditSupported = option.isEditSupported === undefined || option.isEditSupported;
+  params.recommendationOptions = option.recommendationOptions;
+  params.assetCompatibleCapability = option.assetCompatibleCapability;
+  params.preferredCompatibleMode = option.preferredCompatibleMode;
+  params.preselectedUris = option.preselectedUris;
+  params.isPreviewForSingleSelectionSupported = option.isPreviewForSingleSelectionSupported;
+  params.singleSelectionMode = option.singleSelectionMode;
+  params.isOriginalSupported = option.isOriginalSupported;
+  params.contextRecoveryInfo = option.contextRecoveryInfo;
+  params.subWindowName = option.subWindowName;
+  params.globalMovingPhotoState = option.globalMovingPhotoState;
+  params.themeColor = option.themeColor;
+  params.completeButtonText = option.completeButtonText;
+  params.userId = option.userId;
+  params.mimeTypeFilter = parseMimeTypeFilter(option.mimeTypeFilter);
+  params.fileSizeFilter = option.fileSizeFilter;
+  params.videoDurationFilter = option.videoDurationFilter;
+  params.photoViewMimeTypeFileSizeFilters = option.photoViewMimeTypeFileSizeFilters;
+  params.combinedMediaTypeFilter = option.combinedMediaTypeFilter;
+  params.isPc = deviceinfo.deviceType === '2in1';
+  params.isMovingPhotoBadgeShown = option.isMovingPhotoBadgeShown;
+  params.assetFilter = option.assetFilter;
+  params.isDestroyedWithNavigation = option.isDestroyedWithNavigation;
+  params.isReturnToPhotoBrowserEnabled = option.isReturnToPhotoBrowserEnabled;
+  params.pickerColorMode = option.pickerColorMode;
+  params.autoPlayScenes = parseAutoPlayScenes(option.autoPlayScenes);
+  params.gridPinchMode = option.gridPinchMode;
+  params.showDateOnScrollbar = option.showDateOnScrollbar;
+  params.isSelectionNumberVisible = option.isSelectionNumberVisible;
+  params.isSelectionOrderAdjustable = option.isSelectionOrderAdjustable;
+}
+
 function parsePhotoPickerSelectOption(args) {
   let config = {
     action: 'ohos.want.action.photoPicker',
@@ -1114,48 +1165,7 @@ function parsePhotoPickerSelectOption(args) {
 
   if (args.length > ARGS_ZERO && typeof args[ARGS_ZERO] === 'object') {
     let option = args[ARGS_ZERO];
-    if (option.maxSelectNumber && option.maxSelectNumber > 0) {
-      let select = (option.maxSelectNumber === 1) ? 'singleselect' : 'multipleselect';
-      config.type = select;
-      config.parameters.uri = select;
-      config.parameters.maxSelectCount = option.maxSelectNumber;
-    }
-    if (option.MIMEType && PHOTO_VIEW_MIME_TYPE_MAP.has(option.MIMEType)) {
-      config.parameters.filterMediaType = PHOTO_VIEW_MIME_TYPE_MAP.get(option.MIMEType);
-    }
-    config.parameters.maxPhotoSelectNumber = option.maxPhotoSelectNumber;
-    config.parameters.maxVideoSelectNumber = option.maxVideoSelectNumber;
-    config.parameters.isSearchSupported = option.isSearchSupported === undefined || option.isSearchSupported;
-    config.parameters.isPhotoTakingSupported = option.isPhotoTakingSupported === undefined || option.isPhotoTakingSupported;
-    config.parameters.isEditSupported = option.isEditSupported === undefined || option.isEditSupported;
-    config.parameters.recommendationOptions = option.recommendationOptions;
-    config.parameters.assetCompatibleCapability = option.assetCompatibleCapability;
-    config.parameters.preferredCompatibleMode = option.preferredCompatibleMode;
-    config.parameters.preselectedUris = option.preselectedUris;
-    config.parameters.isPreviewForSingleSelectionSupported = option.isPreviewForSingleSelectionSupported;
-    config.parameters.singleSelectionMode = option.singleSelectionMode;
-    config.parameters.isOriginalSupported = option.isOriginalSupported;
-    config.parameters.contextRecoveryInfo = option.contextRecoveryInfo;
-    config.parameters.subWindowName = option.subWindowName;
-    config.parameters.globalMovingPhotoState = option.globalMovingPhotoState;
-    config.parameters.themeColor = option.themeColor;
-    config.parameters.completeButtonText = option.completeButtonText;
-    config.parameters.userId = option.userId;
-    config.parameters.mimeTypeFilter = parseMimeTypeFilter(option.mimeTypeFilter);
-    config.parameters.fileSizeFilter = option.fileSizeFilter;
-    config.parameters.videoDurationFilter = option.videoDurationFilter;
-    config.parameters.photoViewMimeTypeFileSizeFilters = option.photoViewMimeTypeFileSizeFilters;
-    config.parameters.combinedMediaTypeFilter = option.combinedMediaTypeFilter;
-    config.parameters.isPc = deviceinfo.deviceType === '2in1';
-    config.parameters.isMovingPhotoBadgeShown = option.isMovingPhotoBadgeShown;
-    config.parameters.assetFilter = option.assetFilter;
-    config.parameters.isDestroyedWithNavigation = option.isDestroyedWithNavigation;
-    config.parameters.isReturnToPhotoBrowserEnabled = option.isReturnToPhotoBrowserEnabled;
-    config.parameters.autoPlayScenes = parseAutoPlayScenes(option.autoPlayScenes);
-    config.parameters.gridPinchMode = option.gridPinchMode;
-    config.parameters.showDateOnScrollbar = option.showDateOnScrollbar;
-    config.parameters.isSelectionNumberVisible = option.isSelectionNumberVisible;
-    config.parameters.isSelectionOrderAdjustable = option.isSelectionOrderAdjustable;
+    setPickerOptionParams(config.parameters, option);
   }
 
   return config;
@@ -1412,6 +1422,7 @@ function PhotoSelectOptions() {
   this.userId = -1;
   this.isDestroyedWithNavigation = false;
   this.isReturnToPhotoBrowserEnabled = false;
+  this.pickerColorMode = PickerColorMode.AUTO;
   this.isSelectionNumberVisible = false;
   this.isSelectionOrderAdjustable = false;
 }
