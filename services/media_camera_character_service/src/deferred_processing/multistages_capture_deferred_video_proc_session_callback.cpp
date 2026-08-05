@@ -173,6 +173,12 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::OnProcessVideoDone(cons
         MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_VIDEO_DONE);
         NotifyIfTempFile(fileAsset);
     }
+    ReportDoneAndCleanup(videoId, dfxCaptureMediaType);
+}
+
+void MultiStagesCaptureDeferredVideoProcSessionCallback::ReportDoneAndCleanup(
+    const std::string &videoId, int32_t dfxCaptureMediaType)
+{
     MultiStagesVideoCaptureManager::GetInstance().ClearCinematicProgressMap(videoId);
     MultiStagesCaptureDfxTotalTime::GetInstance().Report(videoId, dfxCaptureMediaType);
     MultiStagesCaptureDfxResult::Report(videoId,

@@ -48,6 +48,7 @@ private:
         const CameraStandard::DpsErrorCode errorCode, const std::shared_ptr<FileAsset> &fileAsset);
     static void HandleVideoProcInterrupted(const std::string& videoId, const CameraStandard::DpsErrorCode errorCode,
         const std::shared_ptr<FileAsset> &fileAsset);
+    static void ReportDoneAndCleanup(const std::string &videoId, int32_t dfxCaptureMediaType);
     class VideoFaileProcTaskData : public AsyncTaskData {
     public:
         VideoFaileProcTaskData(const std::string& videoId, const CameraStandard::DpsErrorCode errorCode)
