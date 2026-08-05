@@ -25,7 +25,7 @@
 #include "dfx_reporter.h"
 #include "iservice_registry.h"
 #include "media_cloud_permission_check.h"
-#include "media_fuse_high_daemon.h"
+#include "media_fuse_daemon.h"
 #include "media_fuse_hdc_operations.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
@@ -203,7 +203,7 @@ void MediaFuseManager::Start()
 
     UMountFuse();
 
-    CHECK_AND_RETURN_INFO_LOG(fuseHighDaemon_ == nullptr, "Fuse daemon already started");
+    CHECK_AND_RETURN_INFO_LOG(fuseDaemon_ == nullptr, "Fuse daemon already started");
 
     /* init current device is in linux or not */
     isInLinux_ = CheckDeviceInLinux();
@@ -217,9 +217,9 @@ void MediaFuseManager::Start()
     }
 
     MEDIA_INFO_LOG("Mount fuse successfully, mountpoint = %{public}s", mountpoint.c_str());
-    fuseHighDaemon_ = std::make_shared<MediaFuseHighDaemon>(mountpoint);
-    CHECK_AND_RETURN_LOG(fuseHighDaemon_ != nullptr, "Create fuse low level daemon failed");
-    ret = fuseHighDaemon_->StartFuse();
+    fuseDaemon_ = std::make_shared<MediaFuseDaemon>(mountpoint);
+    CHECK_AND_RETURN_LOG(fuseDaemon_ != nullptr, "Create fuse daemon failed");
+    ret = fuseDaemon_->StartFuse();
     if (ret != E_OK) {
         DfxReporter::ReportStartResult(DfxType::START_FUSE_DAEMON_FAIL, ret, startTime);
         MEDIA_INFO_LOG("Start fuse daemon failed");
@@ -230,7 +230,7 @@ void MediaFuseManager::Start()
 void MediaFuseManager::Stop()
 {
     UMountFuse();
-    fuseHighDaemon_ = nullptr;
+    fuseDaemon_ = nullptr;
     MEDIA_INFO_LOG("Stop finished successfully");
 }
 
@@ -1175,14 +1175,5 @@ int32_t MediaFuseManager::DoHdcReadDir(const char *path, void *buf, fuse_fill_di
     return -EINVAL;
 }
 
-void MediaFuseManager::SetUid(uid_t uid)
-{
-    uid_.store(uid);
-}
-
-uid_t MediaFuseManager::GetUid()
-{
-    return uid_.load();
-}
 } // namespace Media
 } // namespace OHOS
