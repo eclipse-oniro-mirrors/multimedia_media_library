@@ -1224,6 +1224,7 @@ void CloneRestore::UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &file
             values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, FileSourceType::MEDIA_HO_LAKE);
         }
         SetAttachmentSizeForCloudDuplicate(fileInfo, values);
+        values.PutInt(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, fileInfo.compositeDisplayStatus);
         std::string whereClause = PhotoColumn::MEDIA_ID + " = ?";
         std::vector<std::string> whereArgs = {std::to_string(fileInfo.fileIdNew)};
         int32_t changedRows = 0;
