@@ -18,8 +18,11 @@
 // table name need to be added here
 #define TABLE_TAB_ANALYSIS_LABEL "tab_analysis_label"
 #define TABLE_TAB_ANALYSIS_TOTAL "tab_analysis_total"
+#define TABLE_TAB_ANALYSIS_OCR "tab_analysis_ocr"
 // column name should be added here
 #define COLUMN_ANALYSIS_CAPTION "caption"
+#define COLUMN_OCR_TIME "ocr_time"
+#define COLUMN_OCR_SUBTYPE "ocr_subtype"
 // trigger name should be added here
 #define TRIGGER_ANALYSIS_UPDATE_SEARCH_TRIGGER "analysis_update_search_trigger"
 

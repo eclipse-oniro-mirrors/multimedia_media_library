@@ -59,5 +59,16 @@ static vector<pair<int32_t, int32_t>> VersionAddCaptionTable(NativeRdb::RdbStore
     return UpgradeHelper::ExecuteCommands(commands, store);
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_CAPTION_TABLE, VISION_MODULE_NAME, VersionAddCaptionTable)
+
+static vector<pair<int32_t, int32_t>> AddOcrTimeSubtype(NativeRdb::RdbStore &store)
+{
+    // add column
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_OCR_TIME, "BIGINT NOT NULL DEFAULT 0")
+                        .AddColumn(TABLE_TAB_ANALYSIS_OCR, COLUMN_OCR_SUBTYPE, "TEXT")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_OCR_TIME_SUBTYPE, VISION_MODULE_NAME, AddOcrTimeSubtype)
 }
 }
