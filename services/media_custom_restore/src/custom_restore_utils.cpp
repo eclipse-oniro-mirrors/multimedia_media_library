@@ -75,74 +75,84 @@ bool CustomRestoreUtils::IsDuplicateInCache(const CustomRestoreInfo &info, const
     return info.GetPhotoCache().count(photoId) > 0;
 }
  
+string CustomRestoreUtils::MakeDuplicateKey(const string &name, int64_t size,
+    int32_t type, int32_t orient)
+{
+    return name + "_" + to_string(size) + "_" + to_string(type) + "_" + to_string(orient);
+}
+
 unordered_set<string> CustomRestoreUtils::BatchQueryDuplicates(const CustomRestoreInfo &info,
     const vector<RestoreFileInfo> &fileInfos)
 {
     unordered_set<string> dupKeys;
-    bool cond = (!info.GetIsDeduplication() || info.GetAlbumId() == 0);
-    if (cond) {
+    if (!info.GetIsDeduplication() || info.GetAlbumId() == 0) {
         return dupKeys;
     }
- 
     if (info.GetHasPhotoCache()) {
         for (const auto &fileInfo : fileInfos) {
             if (IsDuplicateInCache(info, fileInfo)) {
-                string key = fileInfo.fileName + "_" + to_string(fileInfo.size) + "_" +
-                             to_string(fileInfo.mediaType) + "_" + to_string(fileInfo.orientation);
-                dupKeys.insert(key);
+                dupKeys.insert(MakeDuplicateKey(fileInfo.fileName, fileInfo.size,
+                    fileInfo.mediaType, fileInfo.orientation));
             }
         }
         return dupKeys;
     }
- 
-    // Batch DB query: build parameterized SQL with OR clauses
     if (fileInfos.empty()) {
         return dupKeys;
     }
-    string sql = "SELECT " + MediaColumn::MEDIA_NAME + ", " + MediaColumn::MEDIA_SIZE + ", " +
-                 MediaColumn::MEDIA_TYPE + ", " + PhotoColumn::PHOTO_ORIENTATION +
-                 " FROM " + PhotoColumn::PHOTOS_TABLE +
-                 " WHERE " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "=?";
+
+    string sql;
     vector<NativeRdb::ValueObject> params;
+    BuildDuplicateQuerySql(info, fileInfos, sql, params);
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (rdbStore == nullptr) {
+        MEDIA_ERR_LOG("BatchQueryDuplicates: get rdb store fail!");
+        return dupKeys;
+    }
+    auto resultSet = rdbStore->QuerySql(sql, params);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("BatchQueryDuplicates: query failed!");
+        return dupKeys;
+    }
+    CollectDuplicateKeys(resultSet, dupKeys);
+    resultSet->Close();
+    return dupKeys;
+}
+
+void CustomRestoreUtils::BuildDuplicateQuerySql(const CustomRestoreInfo &info,
+    const vector<RestoreFileInfo> &fileInfos, string &sql,
+    vector<NativeRdb::ValueObject> &params)
+{
+    sql = "SELECT " + MediaColumn::MEDIA_NAME + ", " + MediaColumn::MEDIA_SIZE + ", " +
+          MediaColumn::MEDIA_TYPE + ", " + PhotoColumn::PHOTO_ORIENTATION +
+          " FROM " + PhotoColumn::PHOTOS_TABLE +
+          " WHERE " + PhotoColumn::PHOTO_OWNER_ALBUM_ID + "=?";
     params.emplace_back(info.GetAlbumId());
- 
+
     for (size_t i = 0; i < fileInfos.size(); i++) {
-        if (i == 0) {
-            sql += " AND (";
-        } else {
-            sql += " OR ";
-        }
-        sql += "(" + MediaColumn::MEDIA_NAME + "=? AND " + MediaColumn::MEDIA_SIZE + "=? AND " +
-               MediaColumn::MEDIA_TYPE + "=? AND " + PhotoColumn::PHOTO_ORIENTATION + "=?)";
+        sql += (i == 0 ? " AND (" : " OR ");
+        sql += "(" + MediaColumn::MEDIA_NAME + "=? AND " + MediaColumn::MEDIA_SIZE +
+               "=? AND " + MediaColumn::MEDIA_TYPE + "=? AND " +
+               PhotoColumn::PHOTO_ORIENTATION + "=?)";
         params.emplace_back(fileInfos[i].fileName);
         params.emplace_back(static_cast<int64_t>(fileInfos[i].size));
         params.emplace_back(fileInfos[i].mediaType);
         params.emplace_back(fileInfos[i].orientation);
     }
     sql += ")";
- 
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    if (rdbStore == nullptr) {
-        MEDIA_ERR_LOG("BatchQueryDuplicates: get rdb store fail!");
-        return dupKeys;
-    }
- 
-    auto resultSet = rdbStore->QuerySql(sql, params);
-    if (resultSet == nullptr) {
-        MEDIA_ERR_LOG("BatchQueryDuplicates: query failed!");
-        return dupKeys;
-    }
- 
+}
+
+void CustomRestoreUtils::CollectDuplicateKeys(const shared_ptr<NativeRdb::ResultSet> &resultSet,
+    unordered_set<string> &dupKeys)
+{
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         string name = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
         int64_t size = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);
         int32_t type = GetInt32Val(MediaColumn::MEDIA_TYPE, resultSet);
         int32_t orient = GetInt32Val(PhotoColumn::PHOTO_ORIENTATION, resultSet);
-        string key = name + "_" + to_string(size) + "_" + to_string(type) + "_" + to_string(orient);
-        dupKeys.insert(key);
+        dupKeys.insert(MakeDuplicateKey(name, size, type, orient));
     }
-    resultSet->Close();
-    return dupKeys;
 }
  
 int32_t CustomRestoreUtils::FillMetadata(const unordered_map<string, TimeInfo> &timeInfoMap,

@@ -25,6 +25,8 @@
 namespace OHOS {
 namespace NativeRdb {
 class ValuesBucket;
+class ResultSet;
+class ValueObject;
 }
 namespace Media {
  
@@ -45,6 +47,15 @@ public:
         const RestoreFileInfo &fileInfo, std::unique_ptr<Metadata> &data);
     static int32_t GetFileMetadata(std::unique_ptr<Metadata> &data);
     static void SetTimeInfo(const std::unique_ptr<Metadata> &data, NativeRdb::ValuesBucket &value);
+
+private:
+    static std::string MakeDuplicateKey(const std::string &name, int64_t size,
+        int32_t type, int32_t orient);
+    static void BuildDuplicateQuerySql(const CustomRestoreInfo &info,
+        const std::vector<RestoreFileInfo> &fileInfos, std::string &sql,
+        std::vector<NativeRdb::ValueObject> &params);
+    static void CollectDuplicateKeys(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
+        std::unordered_set<std::string> &dupKeys);
 };
  
 } // namespace Media

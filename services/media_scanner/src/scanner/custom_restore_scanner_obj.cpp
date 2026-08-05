@@ -148,28 +148,34 @@ int32_t CustomRestoreScannerObj::Deduplicate()
     // Batch UPDATE unique_id for duplicates in one transaction
     if (!dupUpdatePairs.empty()) {
         TransactionOperations trans{__func__};
-        std::function<int(void)> updateFunc = [&]() -> int {
-            auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-            if (rdbStore == nullptr) {
-                return E_ERR;
-            }
-            const std::string updateSql =
-                "UPDATE Photos SET unique_id = ? WHERE data = ? AND "
-                "(unique_id IS NULL OR unique_id = '' OR unique_id = '-1') AND (media_type = ? OR media_type = ?)";
-            for (const auto &[filePath, uuid] : dupUpdatePairs) {
-                std::vector<NativeRdb::ValueObject> params = {uuid, filePath,
-                    MediaType::MEDIA_TYPE_IMAGE, MediaType::MEDIA_TYPE_VIDEO};
-                if (rdbStore->ExecuteSql(updateSql, params) != NativeRdb::E_OK) {
-                    MEDIA_ERR_LOG("Update failed for path:%{public}s.", filePath.c_str());
-                }
-            }
-            return E_OK;
+        auto updateFunc = [this, &dupUpdatePairs]() -> int {
+            return ExecuteDuplicateUpdates(dupUpdatePairs);
         };
         trans.RetryTrans(updateFunc, !customRestoreInfo_.GetIsFirstBatch());
     }
 
     MEDIA_INFO_LOG("Deduplicate done, total: %{public}d, duplicate: %{public}d",
         static_cast<int32_t>(items_.size()), dupCount);
+    return E_OK;
+}
+
+int32_t CustomRestoreScannerObj::ExecuteDuplicateUpdates(
+    const std::vector<std::pair<std::string, std::string>>& dupUpdatePairs)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (rdbStore == nullptr) {
+        return E_ERR;
+    }
+    const std::string updateSql =
+        "UPDATE Photos SET unique_id = ? WHERE data = ? AND "
+        "(unique_id IS NULL OR unique_id = '' OR unique_id = '-1') AND (media_type = ? OR media_type = ?)";
+    for (const auto &[filePath, uuid] : dupUpdatePairs) {
+        std::vector<NativeRdb::ValueObject> params = {uuid, filePath,
+            MediaType::MEDIA_TYPE_IMAGE, MediaType::MEDIA_TYPE_VIDEO};
+        if (rdbStore->ExecuteSql(updateSql, params) != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("Update failed for path:%{public}s.", filePath.c_str());
+        }
+    }
     return E_OK;
 }
 

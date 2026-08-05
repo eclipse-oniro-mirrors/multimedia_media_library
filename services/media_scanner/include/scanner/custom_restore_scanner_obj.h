@@ -28,14 +28,10 @@ namespace OHOS {
 namespace Media {
  
 class CustomRestoreScannerObj {
- 
- 
 public:
     explicit CustomRestoreScannerObj(CustomRestoreInfo& info);
     ~CustomRestoreScannerObj() = default;
- 
     int32_t Execute();
- 
 private:
     // Pipeline steps
     int32_t ResolveMetadata();
@@ -43,6 +39,8 @@ private:
     int32_t ConvertToValues();
     int32_t Insert();
     void PostProcess();
+    int32_t ExecuteDuplicateUpdates(
+        const std::vector<std::pair<std::string, std::string>>& dupUpdatePairs);
  
     // Intermediate item for pipeline
     struct CustomRestoreItem {
