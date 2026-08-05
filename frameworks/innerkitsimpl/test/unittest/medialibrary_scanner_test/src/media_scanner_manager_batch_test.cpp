@@ -255,7 +255,7 @@ HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_RouteComparison_CustomRe
     // 关键路由差异验证
     EXPECT_NE(customRestoreResult, E_INVALID_PATH);
     EXPECT_EQ(defaultResult, E_INVALID_PATH);
-    MEDIA_INFO_LOG("end ScanSync_RouteComparison_CustomRestoreVsDefault_test, customRestore: %{public}d, default: %{public}d",
+    MEDIA_INFO_LOG("end ScanSync_RouteComparison, customRestore: %{public}d, default: %{public}d",
         customRestoreResult, defaultResult);
 }
  
@@ -367,7 +367,8 @@ HWTEST_F(MediaScannerManagerCustomRestoreTest, ExecuteCustomRestore_ValidConfig_
  * @tc.name: ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test
  * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN只有filePaths（通过SetCustomRestoreInfo设置）
  */
-HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest,
+    ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test");
     auto manager = MediaScannerManager::GetInstance();
@@ -387,7 +388,8 @@ HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_OnlyFilePa
  
     int32_t result = manager->ScanSync(config);
     EXPECT_NE(result, E_INVALID_ARGUMENTS);
-    MEDIA_INFO_LOG("end ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test, result: %{public}d", result);
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test, result: %{public}d",
+        result);
 }
  
 /**
