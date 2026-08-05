@@ -57,7 +57,7 @@ public:
 private:
     MediaScannerManager();
     std::shared_ptr<ScanTaskContext> PrepareValidatedContext(const ScanConfig &config, ScanExecutionMode executionMode);
-    EXPORT int32_t ExecuteBatchScan(const ScanConfig &config, ScanExecutionMode executionMode);
+    EXPORT int32_t ExecuteCustomRestore(const ScanConfig &config, ScanExecutionMode executionMode);
 
     static std::shared_ptr<MediaScannerManager> instance_;
     static std::mutex instanceMutex_;

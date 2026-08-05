@@ -74,6 +74,9 @@ int32_t MediaScannerManager::ScanFile(const std::string &path, const std::shared
         isCameraShotMovingPhoto ? MediaScannerObj::CAMERA_SHOT_MOVING_PHOTO : MediaScannerObj::FILE;
     std::unique_ptr<MediaScannerObj> scanner =
         std::make_unique<MediaScannerObj>(realPath, callback, scanType, api);
+    if (isCameraShotMovingPhoto) {
+        scanner->SetForceScan(true);
+    }
     executor_.Commit(move(scanner));
 
     return E_OK;
@@ -220,7 +223,7 @@ int32_t MediaScannerManager::ScanSync(const ScanConfig &config)
 {
     MEDIA_INFO_LOG("ScanSync, strategyType %{public}d", static_cast<int>(config.GetStrategyType()));
     if (config.GetStrategyType() == ScanStrategyType::CUSTOM_RESTORE_SCAN) {
-        return ExecuteBatchScan(config, ScanExecutionMode::SYNC);
+        return ExecuteCustomRestore(config, ScanExecutionMode::SYNC);
     }
     MEDIA_INFO_LOG("scan file sync, path %{public}s, fileId %{public}d",
         MediaFileUtils::DesensitizePath(config.GetDefaultScanInfo().GetFilePath()).c_str(),
@@ -297,23 +300,25 @@ std::shared_ptr<ScanTaskContext> MediaScannerManager::PrepareValidatedContext(co
         return nullptr;
     }
 
+    auto defaultScanInfo = config.GetDefaultScanInfo();
+    defaultScanInfo.SetFilePath(realPath);
     auto finalConfig = ScanConfigBuilder(config)
+        .SetDefaultScanInfo(defaultScanInfo)
         .SetExecutionMode(executionMode)
         .Build();
-    finalConfig.GetDefaultScanInfo().SetFilePath(realPath);
 
     return std::make_shared<ScanTaskContext>(finalConfig);
 }
 
 // LCOV_EXCL_START
-int32_t MediaScannerManager::ExecuteBatchScan(const ScanConfig &config, ScanExecutionMode executionMode)
+int32_t MediaScannerManager::ExecuteCustomRestore(const ScanConfig &config, ScanExecutionMode executionMode)
 {
     if (config.GetCustomRestoreInfo().GetFilePaths().empty()) {
-        MEDIA_ERR_LOG("ExecuteBatchScan: invalid config");
+        MEDIA_ERR_LOG("ExecuteCustomRestore: invalid config");
         return E_INVALID_ARGUMENTS;
     }
  
-    MEDIA_INFO_LOG("ExecuteBatchScan begin, file count: %{public}d",
+    MEDIA_INFO_LOG("ExecuteCustomRestore begin, file count: %{public}d",
         static_cast<int32_t>(config.GetCustomRestoreInfo().GetFilePaths().size()));
  
     if (enhancedExecutor_ == nullptr) {

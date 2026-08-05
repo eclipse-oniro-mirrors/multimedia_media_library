@@ -13,13 +13,17 @@
  * limitations under the License.
  */
  
-#include "batch_restore_utils_test.h"
+#include "scanner_utils_custom_restore_test.h"
  
 #include <sys/stat.h>
  
+#include "custom_restore_utils.h"
+#include "custom_restore_info.h"
+#include "custom_restore_types.h"
 #include "media_column.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
+#include "metadata.h"
 #include "photo_album_column.h"
  
 using namespace testing;
@@ -28,8 +32,8 @@ using namespace testing::ext;
 namespace OHOS {
 namespace Media {
  
-void BatchRestoreUtilsTest::SetUp() {}
-void BatchRestoreUtilsTest::TearDown() {}
+void ScannerUtilsCustomRestoreTest::SetUp() {}
+void ScannerUtilsCustomRestoreTest::TearDown() {}
  
 // ==================== IsDuplication pure logic tests ====================
  
@@ -37,7 +41,7 @@ void BatchRestoreUtilsTest::TearDown() {}
  * @tc.name: IsDuplication_NoDedup_test01
  * @tc.desc: isDeduplication=false → 返回 false
  */
-HWTEST_F(BatchRestoreUtilsTest, IsDuplication_NoDedup_test01, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, IsDuplication_NoDedup_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_NoDedup_test01");
     CustomRestoreInfo config;
@@ -49,7 +53,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_NoDedup_test01, TestSize.Level0)
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_NoDedup_test01");
 }
@@ -58,7 +62,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_NoDedup_test01, TestSize.Level0)
  * @tc.name: IsDuplication_AlbumIdZero_test02
  * @tc.desc: albumId=0 → 返回 false（早期返回）
  */
-HWTEST_F(BatchRestoreUtilsTest, IsDuplication_AlbumIdZero_test02, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, IsDuplication_AlbumIdZero_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_AlbumIdZero_test02");
     CustomRestoreInfo config;
@@ -70,7 +74,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_AlbumIdZero_test02, TestSize.Level
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_AlbumIdZero_test02");
 }
@@ -79,7 +83,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_AlbumIdZero_test02, TestSize.Level
  * @tc.name: IsDuplication_PhotoCacheHit_test03
  * @tc.desc: photoCache 包含匹配 key → 返回 true
  */
-HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheHit_test03, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, IsDuplication_PhotoCacheHit_test03, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheHit_test03");
     CustomRestoreInfo config;
@@ -94,7 +98,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheHit_test03, TestSize.Lev
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_TRUE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheHit_test03");
 }
@@ -103,7 +107,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheHit_test03, TestSize.Lev
  * @tc.name: IsDuplication_PhotoCacheMiss_test04
  * @tc.desc: photoCache 不含 key → 返回 false (走RDB查询分支，无RDB则返回false)
  */
-HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheMiss_test04, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, IsDuplication_PhotoCacheMiss_test04, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheMiss_test04");
     CustomRestoreInfo config;
@@ -116,7 +120,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheMiss_test04, TestSize.Le
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     // Without RDB store, the RDB query branch returns false
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheMiss_test04");
@@ -126,7 +130,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheMiss_test04, TestSize.Le
  * @tc.name: IsDuplication_PhotoCacheKeyFormat_test05
  * @tc.desc: 验证 key 格式 "fileName_size_mediaType_orientation"
  */
-HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheKeyFormat_test05, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, IsDuplication_PhotoCacheKeyFormat_test05, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheKeyFormat_test05");
     CustomRestoreInfo config;
@@ -142,7 +146,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheKeyFormat_test05, TestSi
     fileInfo.size = 2048;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 90;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_TRUE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheKeyFormat_test05");
 }
@@ -151,7 +155,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheKeyFormat_test05, TestSi
  * @tc.name: IsDuplication_EarlyReturnBoth_test06
  * @tc.desc: isDeduplication=false && albumId=0 → false
  */
-HWTEST_F(BatchRestoreUtilsTest, IsDuplication_EarlyReturnBoth_test06, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, IsDuplication_EarlyReturnBoth_test06, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_EarlyReturnBoth_test06");
     CustomRestoreInfo config;
@@ -166,7 +170,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_EarlyReturnBoth_test06, TestSize.L
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_EarlyReturnBoth_test06");
 }
@@ -175,7 +179,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_EarlyReturnBoth_test06, TestSize.L
  * @tc.name: IsDuplication_PhotoCacheEmpty_test07
  * @tc.desc: hasPhotoCache=true 但 photoCache 为空 → false (走RDB分支)
  */
-HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheEmpty_test07, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, IsDuplication_PhotoCacheEmpty_test07, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter IsDuplication_PhotoCacheEmpty_test07");
     CustomRestoreInfo config;
@@ -187,7 +191,7 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheEmpty_test07, TestSize.L
     fileInfo.size = 1024;
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     // No photoCache hit, RDB query will fail without store
     EXPECT_FALSE(result);
     MEDIA_INFO_LOG("end IsDuplication_PhotoCacheEmpty_test07");
@@ -199,13 +203,13 @@ HWTEST_F(BatchRestoreUtilsTest, IsDuplication_PhotoCacheEmpty_test07, TestSize.L
  * @tc.name: GetFileMetadata_NonExistentPath_test01
  * @tc.desc: 不存在的路径 → 返回 E_FAIL
  */
-HWTEST_F(BatchRestoreUtilsTest, GetFileMetadata_NonExistentPath_test01, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, GetFileMetadata_NonExistentPath_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter GetFileMetadata_NonExistentPath_test01");
     auto data = make_unique<Metadata>();
     data->SetFilePath("/nonexistent/path/file.jpg");
     data->SetFileName("file.jpg");
-    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
+    int32_t result = CustomRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("end GetFileMetadata_NonExistentPath_test01");
 }
@@ -214,10 +218,10 @@ HWTEST_F(BatchRestoreUtilsTest, GetFileMetadata_NonExistentPath_test01, TestSize
  * @tc.name: GetFileMetadata_ExistingFile_test02
  * @tc.desc: 创建临时文件 → size>0, dateModified>0
  */
-HWTEST_F(BatchRestoreUtilsTest, GetFileMetadata_ExistingFile_test02, TestSize.Level1)
+HWTEST_F(ScannerUtilsCustomRestoreTest, GetFileMetadata_ExistingFile_test02, TestSize.Level1)
 {
     MEDIA_INFO_LOG("enter GetFileMetadata_ExistingFile_test02");
-    const string tmpPath = "/data/local/tmp/batch_restore_utils_test_file.jpg";
+    const string tmpPath = "/data/local/tmp/scanner_utils_custom_restore_test_file.jpg";
     // Create a temp file
     FILE *f = fopen(tmpPath.c_str(), "w");
     ASSERT_NE(f, nullptr);
@@ -226,8 +230,8 @@ HWTEST_F(BatchRestoreUtilsTest, GetFileMetadata_ExistingFile_test02, TestSize.Le
  
     auto data = make_unique<Metadata>();
     data->SetFilePath(tmpPath);
-    data->SetFileName("batch_restore_utils_test_file.jpg");
-    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
+    data->SetFileName("scanner_utils_custom_restore_test_file.jpg");
+    int32_t result = CustomRestoreUtils::GetFileMetadata(data);
     EXPECT_EQ(result, E_OK);
     EXPECT_GT(data->GetFileSize(), 0);
     EXPECT_GT(data->GetFileDateModified(), 0);
@@ -243,7 +247,7 @@ HWTEST_F(BatchRestoreUtilsTest, GetFileMetadata_ExistingFile_test02, TestSize.Le
  * @tc.name: FillMetadata_SetsBasicFields_test01
  * @tc.desc: 设置 path/name/type 后调用，验证 Metadata 基本字段
  */
-HWTEST_F(BatchRestoreUtilsTest, FillMetadata_SetsBasicFields_test01, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, FillMetadata_SetsBasicFields_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter FillMetadata_SetsBasicFields_test01");
     unordered_map<string, TimeInfo> timeInfoMap;
@@ -253,7 +257,7 @@ HWTEST_F(BatchRestoreUtilsTest, FillMetadata_SetsBasicFields_test01, TestSize.Le
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     auto data = make_unique<Metadata>();
     // Will fail on stat() for nonexistent file
-    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = CustomRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     // But basic fields should be set before stat()
     EXPECT_EQ(data->GetFilePath(), "/nonexistent/file.jpg");
@@ -265,7 +269,7 @@ HWTEST_F(BatchRestoreUtilsTest, FillMetadata_SetsBasicFields_test01, TestSize.Le
  * @tc.name: FillMetadata_LivePhotoSubtype_test02
  * @tc.desc: isLivePhoto=true → PhotoSubType=MOVING_PHOTO
  */
-HWTEST_F(BatchRestoreUtilsTest, FillMetadata_LivePhotoSubtype_test02, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, FillMetadata_LivePhotoSubtype_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter FillMetadata_LivePhotoSubtype_test02");
     unordered_map<string, TimeInfo> timeInfoMap;
@@ -276,7 +280,7 @@ HWTEST_F(BatchRestoreUtilsTest, FillMetadata_LivePhotoSubtype_test02, TestSize.L
     fileInfo.isLivePhoto = true;
     auto data = make_unique<Metadata>();
     // Will fail on stat(), but subtype should be set before that
-    BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
+    CustomRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_EQ(data->GetPhotoSubType(), static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     MEDIA_INFO_LOG("end FillMetadata_LivePhotoSubtype_test02");
 }
@@ -285,7 +289,7 @@ HWTEST_F(BatchRestoreUtilsTest, FillMetadata_LivePhotoSubtype_test02, TestSize.L
  * @tc.name: FillMetadata_TimeInfoMapLookup_test03
  * @tc.desc: timeInfoMap 有条目 → dateAdded/dateTaken 被设置
  */
-HWTEST_F(BatchRestoreUtilsTest, FillMetadata_TimeInfoMapLookup_test03, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, FillMetadata_TimeInfoMapLookup_test03, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter FillMetadata_TimeInfoMapLookup_test03");
     unordered_map<string, TimeInfo> timeInfoMap;
@@ -301,7 +305,7 @@ HWTEST_F(BatchRestoreUtilsTest, FillMetadata_TimeInfoMapLookup_test03, TestSize.
     fileInfo.mediaType = MEDIA_TYPE_IMAGE;
     auto data = make_unique<Metadata>();
     // Will fail on stat(), but timeInfo should be set before that
-    BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
+    CustomRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_EQ(data->GetFileDateAdded(), 1718400000000LL);
     EXPECT_EQ(data->GetDateTaken(), 1718400010000LL);
     EXPECT_EQ(data->GetDetailTime(), "2025:06:15 10:30:00");
@@ -314,7 +318,7 @@ HWTEST_F(BatchRestoreUtilsTest, FillMetadata_TimeInfoMapLookup_test03, TestSize.
  * @tc.name: SetTimeInfo_NormalTimestamps_test01
  * @tc.desc: 三时间戳有效 → values 包含所有时间列
  */
-HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_NormalTimestamps_test01, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, SetTimeInfo_NormalTimestamps_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter SetTimeInfo_NormalTimestamps_test01");
     auto data = make_unique<Metadata>();
@@ -325,7 +329,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_NormalTimestamps_test01, TestSize.Le
  
     RestoreFileInfo info;
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, info, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
  
     EXPECT_FALSE(values.IsEmpty());
     // Verify all time columns exist
@@ -343,7 +347,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_NormalTimestamps_test01, TestSize.Le
  * @tc.name: SetTimeInfo_ZeroDateAdded_test02
  * @tc.desc: dateAdded=0 → 回退到 dateModified
  */
-HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ZeroDateAdded_test02, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, SetTimeInfo_ZeroDateAdded_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter SetTimeInfo_ZeroDateAdded_test02");
     auto data = make_unique<Metadata>();
@@ -354,7 +358,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ZeroDateAdded_test02, TestSize.Level
  
     RestoreFileInfo info;
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, info, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
  
     EXPECT_TRUE(values.HasColumn(MediaColumn::MEDIA_DATE_ADDED));
     // dateAdded should fallback to dateModified
@@ -370,7 +374,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ZeroDateAdded_test02, TestSize.Level
  * @tc.name: SetTimeInfo_ZeroDateTaken_test03
  * @tc.desc: dateTaken=0 → 回退到 min(dateAdded, dateModified)
  */
-HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ZeroDateTaken_test03, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, SetTimeInfo_ZeroDateTaken_test03, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter SetTimeInfo_ZeroDateTaken_test03");
     auto data = make_unique<Metadata>();
@@ -381,7 +385,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ZeroDateTaken_test03, TestSize.Level
  
     RestoreFileInfo info;
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, info, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
  
     EXPECT_TRUE(values.HasColumn(MediaColumn::MEDIA_DATE_TAKEN));
     NativeRdb::ValueObject dateTakenObj;
@@ -397,7 +401,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ZeroDateTaken_test03, TestSize.Level
  * @tc.name: SetTimeInfo_InvalidDetailTime_test04
  * @tc.desc: detailTime 超出范围 → 从 dateTaken 重新生成
  */
-HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_InvalidDetailTime_test04, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, SetTimeInfo_InvalidDetailTime_test04, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter SetTimeInfo_InvalidDetailTime_test04");
     auto data = make_unique<Metadata>();
@@ -408,7 +412,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_InvalidDetailTime_test04, TestSize.L
  
     RestoreFileInfo info;
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, info, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
  
     EXPECT_TRUE(values.HasColumn(PhotoColumn::PHOTO_DETAIL_TIME));
     NativeRdb::ValueObject detailTimeObj;
@@ -425,7 +429,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_InvalidDetailTime_test04, TestSize.L
  * @tc.name: SetTimeInfo_ValidDetailTime_test05
  * @tc.desc: detailTime 有效 → 使用 normalizeDetailTime
  */
-HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ValidDetailTime_test05, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, SetTimeInfo_ValidDetailTime_test05, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter SetTimeInfo_ValidDetailTime_test05");
     auto data = make_unique<Metadata>();
@@ -436,7 +440,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ValidDetailTime_test05, TestSize.Lev
  
     RestoreFileInfo info;
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, info, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
  
     EXPECT_TRUE(values.HasColumn(PhotoColumn::PHOTO_DETAIL_TIME));
     NativeRdb::ValueObject detailTimeObj;
@@ -451,7 +455,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_ValidDetailTime_test05, TestSize.Lev
  * @tc.name: SetTimeInfo_YearMonthDayExtracted_test06
  * @tc.desc: 验证 year/month/day 从 detailTime 提取
  */
-HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_YearMonthDayExtracted_test06, TestSize.Level0)
+HWTEST_F(ScannerUtilsCustomRestoreTest, SetTimeInfo_YearMonthDayExtracted_test06, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter SetTimeInfo_YearMonthDayExtracted_test06");
     auto data = make_unique<Metadata>();
@@ -462,7 +466,7 @@ HWTEST_F(BatchRestoreUtilsTest, SetTimeInfo_YearMonthDayExtracted_test06, TestSi
  
     RestoreFileInfo info;
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, info, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
  
     EXPECT_TRUE(values.HasColumn(PhotoColumn::PHOTO_DATE_YEAR));
     EXPECT_TRUE(values.HasColumn(PhotoColumn::PHOTO_DATE_MONTH));

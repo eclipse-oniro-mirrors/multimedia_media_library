@@ -149,10 +149,10 @@ public:
     EXPORT int32_t GetMovingPhotoEffectMode() const;
 
     EXPORT void SetFrontCamera(const VariantData &forntcamera);
-    EXPORT std::string GetFrontCamera() const;
+    EXPORT const std::string &GetFrontCamera() const;
     
     void SetMovingPhotoImagePath(const VariantData &imagePath);
-    EXPORT std::string GetMovingPhotoImagePath() const;
+    EXPORT const std::string &GetMovingPhotoImagePath() const;
 
     EXPORT void SetDynamicRangeType(const VariantData &type);
     EXPORT int32_t GetDynamicRangeType() const;
@@ -176,14 +176,14 @@ public:
     EXPORT int32_t GetDirty() const;
 
     EXPORT void SetDetailTime(const VariantData &detailTime);
-    EXPORT std::string GetDetailTime() const;
+    EXPORT const std::string &GetDetailTime() const;
 
     EXPORT void SetForAdd(bool forAdd);
     EXPORT bool GetForAdd() const;
     EXPORT void SetTableName(const std::string &tableName);
     EXPORT std::string GetTableName();
     void SetOwnerPackage(const VariantData &ownerPackage);
-    const std::string GetOwnerPackage() const;
+    const std::string &GetOwnerPackage() const;
 
     void SetBurstCoverLevel(const VariantData &burstCoverLevel);
     int32_t GetBurstCoverLevel() const;
@@ -207,15 +207,10 @@ public:
     EXPORT std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataFnPtr>> memberFuncMap_;
 
     // Reverse mapping: column → (dataType, getter) for Metadata → ValuesBucket direction
-    using GetterInt32 = int32_t (Metadata::*)() const;
-    using GetterInt64 = int64_t (Metadata::*)() const;
-    using GetterStringRef = const std::string &(Metadata::*)() const;
-    using GetterStringVal = std::string (Metadata::*)() const;
-    using GetterStringConstVal = const std::string (Metadata::*)() const;
-    using GetterDouble = double (Metadata::*)() const;
-    using GetterMediaType = MediaType (Metadata::*)() const;
-    using MetadataGetter = std::variant<GetterInt32, GetterInt64, GetterStringRef, GetterStringVal,
-        GetterStringConstVal, GetterDouble, GetterMediaType>;
+    template<typename R>
+    using Getter = R (Metadata::*)() const;
+    using MetadataGetter = std::variant<Getter<int32_t>, Getter<int64_t>,
+        Getter<const std::string&>, Getter<double>, Getter<MediaType>>;
     static const std::unordered_map<std::string, std::pair<ResultSetDataType, MetadataGetter>> valueFuncMap_;
     EXPORT NativeRdb::ValueObject GetValue(const std::string &column) const;
 

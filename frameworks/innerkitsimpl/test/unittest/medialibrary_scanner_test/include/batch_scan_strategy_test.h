@@ -13,15 +13,15 @@
  * limitations under the License.
  */
  
-#ifndef BATCH_SCAN_STRATEGY_TEST_H
-#define BATCH_SCAN_STRATEGY_TEST_H
+#ifndef CUSTOM_RESTORE_STRATEGY_TEST_H
+#define CUSTOM_RESTORE_STRATEGY_TEST_H
  
 #include <gtest/gtest.h>
  
 namespace OHOS {
 namespace Media {
  
-class BatchScanStrategyTest : public testing::Test {
+class CustomRestoreStrategyTest : public testing::Test {
 public:
     void SetUp() override;
     void TearDown() override;
@@ -30,4 +30,4 @@ public:
 } // namespace Media
 } // namespace OHOS
  
-#endif // BATCH_SCAN_STRATEGY_TEST_H
+#endif // CUSTOM_RESTORE_STRATEGY_TEST_H

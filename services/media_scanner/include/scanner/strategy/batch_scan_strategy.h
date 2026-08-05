@@ -13,8 +13,8 @@
  * limitations under the License.
  */
  
-#ifndef BATCH_SCAN_STRATEGY_H
-#define BATCH_SCAN_STRATEGY_H
+#ifndef CUSTOM_RESTORE_STRATEGY_H
+#define CUSTOM_RESTORE_STRATEGY_H
  
 #include <memory>
  
@@ -25,20 +25,20 @@ namespace Media {
  
 #define EXPORT __attribute__ ((visibility ("default")))
  
-class BatchScannerObj;
+class CustomRestoreScannerObj;
 struct ScanTaskContext;
  
-class EXPORT BatchScanStrategy : public IScanStrategy {
+class EXPORT CustomRestoreStrategy : public IScanStrategy {
 public:
     int32_t Scan(const std::shared_ptr<ScanTaskContext> &context) override;
     ScanStrategyType GetStrategyType() const override;
  
 private:
-    bool ValidateBatchContext(const std::shared_ptr<ScanTaskContext> &context);
-    std::unique_ptr<BatchScannerObj> CreateScannerObj(const std::shared_ptr<ScanTaskContext> &context);
+    bool ValidateCustomRestoreContext(const std::shared_ptr<ScanTaskContext> &context);
+    std::unique_ptr<CustomRestoreScannerObj> CreateScannerObj(const std::shared_ptr<ScanTaskContext> &context);
 };
  
 } // namespace Media
 } // namespace OHOS
  
-#endif // BATCH_SCAN_STRATEGY_H
+#endif // CUSTOM_RESTORE_STRATEGY_H

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
  
-#include "media_scanner_manager_batch_test.h"
-
+#include "media_scanner_manager_custom_restore_test.h"
+ 
 #include "media_scanner_manager.h"
 #include "enhanced_scan_executor.h"
  
@@ -29,19 +29,19 @@ using namespace testing::ext;
 namespace OHOS {
 namespace Media {
  
-void MediaScannerManagerBatchTest::SetUp() {}
+void MediaScannerManagerCustomRestoreTest::SetUp() {}
  
-void MediaScannerManagerBatchTest::TearDown() {}
+void MediaScannerManagerCustomRestoreTest::TearDown() {}
  
 // ==================== ScanSync + CUSTOM_RESTORE_SCAN 路由测试 ====================
  
 /**
- * @tc.name: ScanSync_BatchScan_EmptyFilePaths_test
+ * @tc.name: ScanSync_CustomRestore_EmptyFilePaths_test
  * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN但filePaths为空，返回E_INVALID_ARGUMENTS
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePaths_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_EmptyFilePaths_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_EmptyFilePaths_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_EmptyFilePaths_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
  
@@ -51,16 +51,16 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePaths_test, T
  
     int32_t result = manager->ScanSync(config);
     EXPECT_EQ(result, E_INVALID_ARGUMENTS);
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_EmptyFilePaths_test");
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_EmptyFilePaths_test");
 }
  
 /**
- * @tc.name: ScanSync_BatchScan_EnhancedExecutorNull_test
+ * @tc.name: ScanSync_CustomRestore_EnhancedExecutorNull_test
  * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，enhancedExecutor为空时返回E_ERR
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EnhancedExecutorNull_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_EnhancedExecutorNull_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_EnhancedExecutorNull_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_EnhancedExecutorNull_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
  
@@ -79,17 +79,17 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EnhancedExecutorNull_t
     EXPECT_EQ(result, E_ERR);
  
     manager->enhancedExecutor_ = savedExecutor;
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_EnhancedExecutorNull_test");
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_EnhancedExecutorNull_test");
 }
  
 /**
- * @tc.name: ScanSync_BatchScan_ValidConfig_test
- * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，有效配置走ExecuteBatchScan路径
+ * @tc.name: ScanSync_CustomRestore_ValidConfig_test
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，有效配置走ExecuteCustomRestore路径
  *          关键验证：不走PrepareValidatedContext路径（不会返回E_INVALID_PATH）
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ValidConfig_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_ValidConfig_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_ValidConfig_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_ValidConfig_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
@@ -105,16 +105,16 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ValidConfig_test, Test
     int32_t result = manager->ScanSync(config);
     // 关键验证：CUSTOM_RESTORE_SCAN不走Validate(realPath)，不会返回E_INVALID_PATH
     EXPECT_NE(result, E_INVALID_PATH);
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_ValidConfig_test, result: %{public}d", result);
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_ValidConfig_test, result: %{public}d", result);
 }
  
 /**
- * @tc.name: ScanSync_BatchScan_MultipleFilePaths_test
- * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，多个文件路径走ExecuteBatchScan路径
+ * @tc.name: ScanSync_CustomRestore_MultipleFilePaths_test
+ * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN，多个文件路径走ExecuteCustomRestore路径
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_MultipleFilePaths_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_MultipleFilePaths_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_MultipleFilePaths_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_MultipleFilePaths_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
@@ -132,16 +132,16 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_MultipleFilePaths_test
     int32_t result = manager->ScanSync(config);
     EXPECT_NE(result, E_INVALID_PATH);
     EXPECT_NE(result, E_INVALID_ARGUMENTS);
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_MultipleFilePaths_test, result: %{public}d", result);
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_MultipleFilePaths_test, result: %{public}d", result);
 }
  
 /**
- * @tc.name: ScanSync_BatchScan_WithUseCustomRestorePreset_test
+ * @tc.name: ScanSync_CustomRestore_WithUseCustomRestorePreset_test
  * @tc.desc: ScanSync传入通过UseCustomRestorePreset构建的CUSTOM_RESTORE_SCAN配置
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_WithUseCustomRestorePreset_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_WithUseCustomRestorePreset_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_WithUseCustomRestorePreset_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_WithUseCustomRestorePreset_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
@@ -175,7 +175,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_WithUseCustomRestorePr
     int32_t result = manager->ScanSync(config);
     EXPECT_NE(result, E_INVALID_PATH);
     EXPECT_NE(result, E_INVALID_ARGUMENTS);
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_WithUseCustomRestorePreset_test, result: %{public}d", result);
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_WithUseCustomRestorePreset_test, result: %{public}d", result);
 }
  
 // ==================== ScanSync + DEFAULT_SCAN 对比测试 ====================
@@ -184,7 +184,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_WithUseCustomRestorePr
  * @tc.name: ScanSync_DefaultScan_InvalidPath_test
  * @tc.desc: ScanSync传入DEFAULT_SCAN且无效路径，走PrepareValidatedContext返回E_INVALID_PATH
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_DefaultScan_InvalidPath_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_DefaultScan_InvalidPath_test, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter ScanSync_DefaultScan_InvalidPath_test");
     auto manager = MediaScannerManager::GetInstance();
@@ -206,7 +206,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_DefaultScan_InvalidPath_test, Te
  * @tc.name: ScanSync_DefaultScan_NoSingleScanInfo_test
  * @tc.desc: ScanSync传入DEFAULT_SCAN但无SingleScanInfo，返回E_INVALID_PATH
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_DefaultScan_NoSingleScanInfo_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_DefaultScan_NoSingleScanInfo_test, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter ScanSync_DefaultScan_NoSingleScanInfo_test");
     auto manager = MediaScannerManager::GetInstance();
@@ -222,14 +222,14 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_DefaultScan_NoSingleScanInfo_tes
 }
  
 /**
- * @tc.name: ScanSync_RouteComparison_BatchVsDefault_test
+ * @tc.name: ScanSync_RouteComparison_CustomRestoreVsDefault_test
  * @tc.desc: 对比CUSTOM_RESTORE_SCAN和DEFAULT_SCAN的路由差异
  *          CUSTOM_RESTORE_SCAN + 无效文件路径 → 不返回E_INVALID_PATH
  *          DEFAULT_SCAN + 无效文件路径 → 返回E_INVALID_PATH
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_RouteComparison_BatchVsDefault_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_RouteComparison_CustomRestoreVsDefault_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_RouteComparison_BatchVsDefault_test");
+    MEDIA_INFO_LOG("enter ScanSync_RouteComparison_CustomRestoreVsDefault_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
@@ -238,11 +238,11 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_RouteComparison_BatchVsDefault_t
     std::vector<std::string> paths = {"/nonexistent/file.jpg"};
     CustomRestoreInfo customInfo;
     customInfo.SetFilePaths(paths);
-    auto batchConfig = ScanConfigBuilder()
+    auto customRestoreConfig = ScanConfigBuilder()
         .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
         .SetCustomRestoreInfo(customInfo)
         .Build();
-    int32_t batchResult = manager->ScanSync(batchConfig);
+    int32_t customRestoreResult = manager->ScanSync(customRestoreConfig);
  
     // DEFAULT_SCAN + 无效路径：走Validate，返回E_INVALID_PATH
     auto defaultConfig = ScanConfigBuilder()
@@ -253,21 +253,21 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_RouteComparison_BatchVsDefault_t
     int32_t defaultResult = manager->ScanSync(defaultConfig);
  
     // 关键路由差异验证
-    EXPECT_NE(batchResult, E_INVALID_PATH);
+    EXPECT_NE(customRestoreResult, E_INVALID_PATH);
     EXPECT_EQ(defaultResult, E_INVALID_PATH);
-    MEDIA_INFO_LOG("end ScanSync_RouteComparison_BatchVsDefault_test, batch: %{public}d, default: %{public}d",
-        batchResult, defaultResult);
+    MEDIA_INFO_LOG("end ScanSync_RouteComparison_CustomRestoreVsDefault_test, customRestore: %{public}d, default: %{public}d",
+        customRestoreResult, defaultResult);
 }
  
-// ==================== ExecuteBatchScan 直接测试 ====================
+// ==================== ExecuteCustomRestore 直接测试 ====================
  
 /**
- * @tc.name: ExecuteBatchScan_EmptyFilePaths_test
- * @tc.desc: ExecuteBatchScan在filePaths为空时返回E_INVALID_ARGUMENTS
+ * @tc.name: ExecuteCustomRestore_EmptyFilePaths_test
+ * @tc.desc: ExecuteCustomRestore在filePaths为空时返回E_INVALID_ARGUMENTS
  */
-HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_EmptyFilePaths_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ExecuteCustomRestore_EmptyFilePaths_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ExecuteBatchScan_EmptyFilePaths_test");
+    MEDIA_INFO_LOG("enter ExecuteCustomRestore_EmptyFilePaths_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
  
@@ -275,18 +275,18 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_EmptyFilePaths_test, Tes
         .SetStrategyType(ScanStrategyType::CUSTOM_RESTORE_SCAN)
         .Build();
  
-    int32_t result = manager->ExecuteBatchScan(config, ScanExecutionMode::SYNC);
+    int32_t result = manager->ExecuteCustomRestore(config, ScanExecutionMode::SYNC);
     EXPECT_EQ(result, E_INVALID_ARGUMENTS);
-    MEDIA_INFO_LOG("end ExecuteBatchScan_EmptyFilePaths_test");
+    MEDIA_INFO_LOG("end ExecuteCustomRestore_EmptyFilePaths_test");
 }
  
 /**
- * @tc.name: ExecuteBatchScan_NullExecutor_test
- * @tc.desc: ExecuteBatchScan在enhancedExecutor为空时返回E_ERR
+ * @tc.name: ExecuteCustomRestore_NullExecutor_test
+ * @tc.desc: ExecuteCustomRestore在enhancedExecutor为空时返回E_ERR
  */
-HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_NullExecutor_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ExecuteCustomRestore_NullExecutor_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ExecuteBatchScan_NullExecutor_test");
+    MEDIA_INFO_LOG("enter ExecuteCustomRestore_NullExecutor_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
  
@@ -301,21 +301,21 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_NullExecutor_test, TestS
         .SetCustomRestoreInfo(customInfo)
         .Build();
  
-    int32_t result = manager->ExecuteBatchScan(config, ScanExecutionMode::SYNC);
+    int32_t result = manager->ExecuteCustomRestore(config, ScanExecutionMode::SYNC);
     EXPECT_EQ(result, E_ERR);
  
     manager->enhancedExecutor_ = savedExecutor;
-    MEDIA_INFO_LOG("end ExecuteBatchScan_NullExecutor_test");
+    MEDIA_INFO_LOG("end ExecuteCustomRestore_NullExecutor_test");
 }
  
 /**
- * @tc.name: ExecuteBatchScan_SetsExecutionMode_test
- * @tc.desc: ExecuteBatchScan构建的finalConfig设置了正确的executionMode
+ * @tc.name: ExecuteCustomRestore_SetsExecutionMode_test
+ * @tc.desc: ExecuteCustomRestore构建的finalConfig设置了正确的executionMode
  */
-HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_SetsExecutionMode_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ExecuteCustomRestore_SetsExecutionMode_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ExecuteBatchScan_SetsExecutionMode_test");
-    // 验证ExecuteBatchScan内部通过ScanConfigBuilder设置executionMode
+    MEDIA_INFO_LOG("enter ExecuteCustomRestore_SetsExecutionMode_test");
+    // 验证ExecuteCustomRestore内部通过ScanConfigBuilder设置executionMode
     std::vector<std::string> paths = {"/test/file.jpg"};
     CustomRestoreInfo customInfo;
     customInfo.SetFilePaths(paths);
@@ -327,22 +327,22 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_SetsExecutionMode_test, 
     // 初始executionMode为ASYNC（默认值）
     EXPECT_EQ(config.GetExecutionMode(), ScanExecutionMode::ASYNC);
  
-    // ExecuteBatchScan内部会做：
+    // ExecuteCustomRestore内部会做：
     auto syncConfig = ScanConfigBuilder(config).SetExecutionMode(ScanExecutionMode::SYNC).Build();
     EXPECT_EQ(syncConfig.GetExecutionMode(), ScanExecutionMode::SYNC);
  
     auto asyncConfig = ScanConfigBuilder(config).SetExecutionMode(ScanExecutionMode::ASYNC).Build();
     EXPECT_EQ(asyncConfig.GetExecutionMode(), ScanExecutionMode::ASYNC);
-    MEDIA_INFO_LOG("end ExecuteBatchScan_SetsExecutionMode_test");
+    MEDIA_INFO_LOG("end ExecuteCustomRestore_SetsExecutionMode_test");
 }
  
 /**
- * @tc.name: ExecuteBatchScan_ValidConfig_test
- * @tc.desc: ExecuteBatchScan传入有效配置，enhancedExecutor非空时正常执行
+ * @tc.name: ExecuteCustomRestore_ValidConfig_test
+ * @tc.desc: ExecuteCustomRestore传入有效配置，enhancedExecutor非空时正常执行
  */
-HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_ValidConfig_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ExecuteCustomRestore_ValidConfig_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ExecuteBatchScan_ValidConfig_test");
+    MEDIA_INFO_LOG("enter ExecuteCustomRestore_ValidConfig_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
@@ -355,21 +355,21 @@ HWTEST_F(MediaScannerManagerBatchTest, ExecuteBatchScan_ValidConfig_test, TestSi
         .SetCustomRestoreInfo(customInfo)
         .Build();
  
-    int32_t result = manager->ExecuteBatchScan(config, ScanExecutionMode::SYNC);
+    int32_t result = manager->ExecuteCustomRestore(config, ScanExecutionMode::SYNC);
     EXPECT_NE(result, E_INVALID_ARGUMENTS);
     EXPECT_NE(result, E_ERR);
-    MEDIA_INFO_LOG("end ExecuteBatchScan_ValidConfig_test, result: %{public}d", result);
+    MEDIA_INFO_LOG("end ExecuteCustomRestore_ValidConfig_test, result: %{public}d", result);
 }
  
 // ==================== ScanSync CUSTOM_RESTORE_SCAN 边界场景 ====================
  
 /**
- * @tc.name: ScanSync_BatchScan_OnlyFilePathsNoExplicitBatchScanInfo_test
+ * @tc.name: ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test
  * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN只有filePaths（通过SetCustomRestoreInfo设置）
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_OnlyFilePathsNoExplicitBatchScanInfo_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_OnlyFilePathsNoExplicitBatchScanInfo_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
@@ -387,16 +387,16 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_OnlyFilePathsNoExplici
  
     int32_t result = manager->ScanSync(config);
     EXPECT_NE(result, E_INVALID_ARGUMENTS);
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_OnlyFilePathsNoExplicitBatchScanInfo_test, result: %{public}d", result);
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_OnlyFilePathsNoExplicitCustomRestoreInfo_test, result: %{public}d", result);
 }
  
 /**
- * @tc.name: ScanSync_BatchScan_ContextPreservation_test
- * @tc.desc: 验证ExecuteBatchScan构建的context保留了原始config的关键字段
+ * @tc.name: ScanSync_CustomRestore_ContextPreservation_test
+ * @tc.desc: 验证ExecuteCustomRestore构建的context保留了原始config的关键字段
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ContextPreservation_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_ContextPreservation_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_ContextPreservation_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_ContextPreservation_test");
     std::vector<std::string> paths = {"/test/a.jpg", "/test/b.jpg"};
     CustomRestoreInfo customInfo;
     customInfo.SetFilePaths(paths);
@@ -409,7 +409,7 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ContextPreservation_te
         .SetExecutionMode(ScanExecutionMode::SYNC)
         .Build();
  
-    // 模拟ExecuteBatchScan的内部流程
+    // 模拟ExecuteCustomRestore的内部流程
     auto finalConfig = ScanConfigBuilder(config)
         .SetExecutionMode(ScanExecutionMode::SYNC)
         .Build();
@@ -421,16 +421,16 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_ContextPreservation_te
     EXPECT_TRUE(context->config.GetCustomRestoreInfo().GetIsDeduplication());
     EXPECT_EQ(context->config.GetExecutionMode(), ScanExecutionMode::SYNC);
     EXPECT_TRUE(context->IsCustomRestoreScan());
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_ContextPreservation_test");
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_ContextPreservation_test");
 }
  
 /**
- * @tc.name: ScanSync_BatchScan_EmptyFilePathsVector_test
+ * @tc.name: ScanSync_CustomRestore_EmptyFilePathsVector_test
  * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN但filePaths为空vector返回E_INVALID_ARGUMENTS
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePathsVector_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_EmptyFilePathsVector_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_EmptyFilePathsVector_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_EmptyFilePathsVector_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
  
@@ -444,17 +444,17 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_EmptyFilePathsVector_t
  
     int32_t result = manager->ScanSync(config);
     EXPECT_EQ(result, E_INVALID_ARGUMENTS);
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_EmptyFilePathsVector_test");
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_EmptyFilePathsVector_test");
 }
  
 /**
- * @tc.name: ScanSync_BatchScan_AsyncExecutionMode_test
+ * @tc.name: ScanSync_CustomRestore_AsyncExecutionMode_test
  * @tc.desc: ScanSync传入CUSTOM_RESTORE_SCAN + ASYNC执行模式
- *          ExecuteBatchScan内部会设置executionMode为参数值
+ *          ExecuteCustomRestore内部会设置executionMode为参数值
  */
-HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_AsyncExecutionMode_test, TestSize.Level0)
+HWTEST_F(MediaScannerManagerCustomRestoreTest, ScanSync_CustomRestore_AsyncExecutionMode_test, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ScanSync_BatchScan_AsyncExecutionMode_test");
+    MEDIA_INFO_LOG("enter ScanSync_CustomRestore_AsyncExecutionMode_test");
     auto manager = MediaScannerManager::GetInstance();
     ASSERT_NE(manager, nullptr);
     ASSERT_NE(manager->enhancedExecutor_, nullptr);
@@ -467,12 +467,12 @@ HWTEST_F(MediaScannerManagerBatchTest, ScanSync_BatchScan_AsyncExecutionMode_tes
         .SetCustomRestoreInfo(customInfo)
         .Build();
  
-    // ScanSync always passes ScanExecutionMode::SYNC to ExecuteBatchScan
-    // But we can verify ExecuteBatchScan directly with ASYNC
-    int32_t result = manager->ExecuteBatchScan(config, ScanExecutionMode::ASYNC);
+    // ScanSync always passes ScanExecutionMode::SYNC to ExecuteCustomRestore
+    // But we can verify ExecuteCustomRestore directly with ASYNC
+    int32_t result = manager->ExecuteCustomRestore(config, ScanExecutionMode::ASYNC);
     EXPECT_NE(result, E_INVALID_ARGUMENTS);
     EXPECT_NE(result, E_ERR);
-    MEDIA_INFO_LOG("end ScanSync_BatchScan_AsyncExecutionMode_test, result: %{public}d", result);
+    MEDIA_INFO_LOG("end ScanSync_CustomRestore_AsyncExecutionMode_test, result: %{public}d", result);
 }
  
 } // namespace Media

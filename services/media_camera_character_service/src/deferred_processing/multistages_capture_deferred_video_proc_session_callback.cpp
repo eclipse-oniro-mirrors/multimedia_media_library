@@ -164,11 +164,14 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::OnProcessVideoDone(cons
     int32_t fileId = fileAsset->GetId();
     UpdateVideoQuality(fileId, fileAsset, true);
 
-    ScanConfig config = ScanConfigBuilder().UseCameraShotPreset(ScanQuality::DEFAULT)
-                                           .Build();
-    config.GetDefaultScanInfo().SetIsMovingPhoto(isMovingPhoto);
-    config.GetDefaultScanInfo().SetFilePath(fileAsset->GetFilePath());
-    config.GetDefaultScanInfo().SetFileId(fileAsset->GetId());
+    DefaultScanInfo scanInfo;
+    scanInfo.SetIsMovingPhoto(isMovingPhoto);
+    scanInfo.SetFilePath(fileAsset->GetFilePath());
+    scanInfo.SetFileId(fileAsset->GetId());
+    ScanConfig config = ScanConfigBuilder()
+        .UseCameraShotPreset(ScanQuality::DEFAULT)
+        .SetDefaultScanInfo(scanInfo)
+        .Build();
     MediaLibraryObjectUtils::ScanFileAsync(config);
 
     CheckEditSize(fileAsset);

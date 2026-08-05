@@ -1669,5 +1669,26 @@ void MovingPhotoFileUtils::GetLocalAssetSize(const int32_t movingPhotoEffectMode
         localAssetSize = static_cast<int64_t>(statInfo.st_size);
     }
 }
+
+bool MovingPhotoFileUtils::DecomposeLivePhoto(const string &filePath)
+{
+    if (!IsLivePhoto(filePath)) {
+        return false;
+    }
+    string videoPath = GetMovingPhotoVideoPath(filePath);
+    string extraDataPath = GetMovingPhotoExtraDataPath(filePath);
+    string extraPathDir = GetMovingPhotoExtraDataDir(filePath);
+    if (!MediaFileUtils::IsFileExists(extraPathDir) && !MediaFileUtils::CreateDirectory(extraPathDir)) {
+        MEDIA_WARN_LOG("Failed to create local extra data dir");
+    }
+    int32_t ret = ConvertToMovingPhoto(filePath, filePath, videoPath, extraDataPath);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Failed to convert live photo, ret:%{public}d", ret);
+        (void)MediaFileUtils::DeleteFile(filePath);
+        (void)MediaFileUtils::DeleteFile(videoPath);
+        (void)MediaFileUtils::DeleteDir(extraPathDir);
+    }
+    return true;
+}
 // LCOV_EXCL_STOP
 } // namespace OHOS::Media

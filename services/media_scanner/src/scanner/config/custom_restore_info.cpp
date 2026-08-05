@@ -38,11 +38,6 @@ const std::vector<RestoreFileInfo>& CustomRestoreInfo::GetFileInfos() const
     return fileInfos;
 }
 
-std::vector<RestoreFileInfo>& CustomRestoreInfo::GetFileInfos()
-{
-    return fileInfos;
-}
-
 void CustomRestoreInfo::SetFileInfos(const std::vector<RestoreFileInfo>& fileInfos)
 {
     this->fileInfos = fileInfos;

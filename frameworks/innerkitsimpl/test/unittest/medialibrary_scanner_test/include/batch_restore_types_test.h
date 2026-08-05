@@ -13,17 +13,17 @@
  * limitations under the License.
  */
  
-#ifndef BATCH_RESTORE_TYPES_TEST_H
-#define BATCH_RESTORE_TYPES_TEST_H
+#ifndef CUSTOM_RESTORE_TYPES_TEST_H
+#define CUSTOM_RESTORE_TYPES_TEST_H
  
 #include <gtest/gtest.h>
  
-#include "batch_restore_types.h"
+#include "custom_restore_types.h"
  
 namespace OHOS {
 namespace Media {
  
-class BatchRestoreTypesTest : public testing::Test {
+class CustomRestoreTypesTest : public testing::Test {
 public:
     void SetUp() override;
     void TearDown() override;
@@ -32,4 +32,4 @@ public:
 } // namespace Media
 } // namespace OHOS
  
-#endif // BATCH_RESTORE_TYPES_TEST_H
+#endif // CUSTOM_RESTORE_TYPES_TEST_H

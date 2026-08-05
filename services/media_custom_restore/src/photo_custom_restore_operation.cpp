@@ -1370,22 +1370,7 @@ vector<RestoreFileInfo> PhotoCustomRestoreOperation::GetFileInfos(
         fileInfo.extension = ScannerUtils::GetFileExtension(fileInfo.fileName);
         fileInfo.title = ScannerUtils::GetFileTitle(fileInfo.fileName);
         fileInfo.mediaType = MediaFileUtils::GetMediaType(fileInfo.fileName);
-        if (MovingPhotoFileUtils::IsLivePhoto(filePath)) {
-            fileInfo.isLivePhoto = true;
-            string videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(filePath);
-            string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
-            string extraPathDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(filePath);
-            if (!MediaFileUtils::IsFileExists(extraPathDir) && !MediaFileUtils::CreateDirectory(extraPathDir)) {
-                MEDIA_WARN_LOG("Failed to create local extra data dir");
-            }
-            int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(filePath, filePath, videoPath, extraDataPath);
-            if (ret != E_OK) {
-                MEDIA_ERR_LOG("Failed to convert live photo, ret:%{public}d", ret);
-                (void)MediaFileUtils::DeleteFile(filePath);
-                (void)MediaFileUtils::DeleteFile(videoPath);
-                (void)MediaFileUtils::DeleteDir(extraPathDir);
-            }
-        }
+        fileInfo.isLivePhoto = MovingPhotoFileUtils::DecomposeLivePhoto(filePath);
 
         if (fileInfo.mediaType == MediaType::MEDIA_TYPE_FILE) {
             fileInfo.mediaType = MediaFileUtils::GetMediaTypeNotSupported(fileInfo.fileName);
@@ -1451,7 +1436,7 @@ int32_t PhotoCustomRestoreOperation::MoveLivePhoto(const string &originFilePath,
     string originVideoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(originFilePath);
     string originExtraPathDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(originFilePath);
     string originExtraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(originFilePath);
-
+ 
     string videoPath = MovingPhotoFileUtils::GetMovingPhotoVideoPath(filePath);
     string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
     string extraPathDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(filePath);
@@ -1460,32 +1445,18 @@ int32_t PhotoCustomRestoreOperation::MoveLivePhoto(const string &originFilePath,
         return E_HAS_FS_ERROR;
     }
 
-    int32_t ret = MoveFile(originFilePath, filePath);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("MoveLivePhoto: move image failed, ret:%{public}d", ret);
+    int32_t retPhoto = MoveFile(originFilePath, filePath);
+    int32_t retVideo = MoveFile(originVideoPath, videoPath);
+    int32_t retExtraData = MoveFile(originExtraDataPath, extraDataPath);
+    if (retPhoto != E_OK || retVideo != E_OK || retExtraData != E_OK) {
+        MEDIA_ERR_LOG("MoveLivePhoto failed");
         MediaFileUtils::DeleteFile(filePath);
         MediaFileUtils::DeleteFile(videoPath);
         MediaFileUtils::DeleteFile(extraDataPath);
-        return ret;
-    }
-    ret = MoveFile(originVideoPath, videoPath);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("MoveLivePhoto: move video failed, ret:%{public}d", ret);
-        MediaFileUtils::DeleteFile(filePath);
-        MediaFileUtils::DeleteFile(videoPath);
-        MediaFileUtils::DeleteFile(extraDataPath);
-        return ret;
-    }
-    ret = MoveFile(originExtraDataPath, extraDataPath);
-    if (ret != E_OK) {
-        MEDIA_ERR_LOG("MoveLivePhoto: move extra data failed, ret:%{public}d", ret);
-        MediaFileUtils::DeleteFile(filePath);
-        MediaFileUtils::DeleteFile(videoPath);
-        MediaFileUtils::DeleteFile(extraDataPath);
-        return ret;
+        MediaFileUtils::DeleteDir(originExtraPathDir);
+        return E_ERR;
     }
     MediaFileUtils::DeleteDir(originExtraPathDir);
-
     return E_OK;
 }
 

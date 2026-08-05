@@ -131,12 +131,15 @@ static int32_t ProcessLivePhotoRevert(const string& assetPath, const string& vid
         MediaFileUtils::DeleteFile(videoPath);
     } else {
         if (isNeedScan && MediaFileUtils::IsFileExists(assetPath)) {
-            ScanConfig config = ScanConfigBuilder().UseCameraShotPreset(ScanQuality::DEFAULT)
-                                                   .SetNeedGenerateThumbnail(false)
-                                                   .Build();
-            config.GetDefaultScanInfo().SetIsMovingPhoto(true);
-            config.GetDefaultScanInfo().SetFilePath(assetPath);
-            config.GetDefaultScanInfo().SetFileId(fileId);
+            DefaultScanInfo scanInfo;
+            scanInfo.SetIsMovingPhoto(true);
+            scanInfo.SetFilePath(assetPath);
+            scanInfo.SetFileId(fileId);
+            ScanConfig config = ScanConfigBuilder()
+                .UseCameraShotPreset(ScanQuality::DEFAULT)
+                .SetNeedGenerateThumbnail(false)
+                .SetDefaultScanInfo(scanInfo)
+                .Build();
 
             MediaLibraryObjectUtils::ScanFileAsync(config);
         }

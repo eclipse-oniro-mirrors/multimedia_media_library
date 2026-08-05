@@ -527,12 +527,15 @@ int32_t MultiStagesVideoCaptureManager::SaveCameraVideo(const SaveCameraPhotoDto
     int32_t ret = UpdateIsTempAndDirty(dto, fileAsset->GetPhotoSubType());
     CHECK_AND_RETURN_RET_LOG(!(fileAsset->GetPath().empty()), E_ERR, "path is empty.");
 
+    DefaultScanInfo scanInfo;
+    scanInfo.SetIsMovingPhoto(false);
+    scanInfo.SetFilePath(fileAsset->GetPath());
+    scanInfo.SetFileId(dto.fileId);
     ScanConfig config = ScanConfigBuilder()
         .UseCameraShotPreset(ScanQuality::DEFAULT)
+        .SetNeedGenerateThumbnail(true)
+        .SetDefaultScanInfo(scanInfo)
         .Build();
-    config.GetDefaultScanInfo().SetIsMovingPhoto(false);
-    config.GetDefaultScanInfo().SetFilePath(fileAsset->GetPath());
-    config.GetDefaultScanInfo().SetFileId(dto.fileId);
     MediaLibraryAssetOperations::ScanFile(config);
 
     MultiStagesCaptureDfxCaptureTimes::GetInstance().AddCaptureTimes(CaptureMessageType::CAPTURE_VIDEO_TIMES_SUCCESS);

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
  
-#ifndef BATCH_SCANNER_OBJ_H
-#define BATCH_SCANNER_OBJ_H
+#ifndef CUSTOM_RESTORE_SCANNER_OBJ_H
+#define CUSTOM_RESTORE_SCANNER_OBJ_H
  
 #include <memory>
 #include <vector>
  
-#include "batch_restore_types.h"
+#include "custom_restore_types.h"
 #include "custom_restore_info.h"
 #include "metadata.h"
 #include "values_bucket.h"
@@ -27,10 +27,12 @@
 namespace OHOS {
 namespace Media {
  
-class BatchScannerObj {
+class CustomRestoreScannerObj {
+ 
+ 
 public:
-    explicit BatchScannerObj(CustomRestoreInfo& info);
-    ~BatchScannerObj() = default;
+    explicit CustomRestoreScannerObj(CustomRestoreInfo& info);
+    ~CustomRestoreScannerObj() = default;
  
     int32_t Execute();
  
@@ -43,18 +45,18 @@ private:
     void PostProcess();
  
     // Intermediate item for pipeline
-    struct BatchScanItem {
+    struct CustomRestoreItem {
         RestoreFileInfo fileInfo;
         std::unique_ptr<Metadata> metadata;
         NativeRdb::ValuesBucket values;
         bool isDuplicate = false;
     };
  
-    std::vector<BatchScanItem> items_;
+    std::vector<CustomRestoreItem> items_;
     CustomRestoreInfo& customRestoreInfo_;
 };
  
 } // namespace Media
 } // namespace OHOS
  
-#endif // BATCH_SCANNER_OBJ_H
+#endif // CUSTOM_RESTORE_SCANNER_OBJ_H

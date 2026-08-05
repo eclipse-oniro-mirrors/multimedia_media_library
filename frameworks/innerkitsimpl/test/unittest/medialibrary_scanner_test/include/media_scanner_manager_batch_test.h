@@ -13,8 +13,8 @@
  * limitations under the License.
  */
  
-#ifndef MEDIA_SCANNER_MANAGER_BATCH_TEST_H
-#define MEDIA_SCANNER_MANAGER_BATCH_TEST_H
+#ifndef MEDIA_SCANNER_MANAGER_CUSTOM_RESTORE_TEST_H
+#define MEDIA_SCANNER_MANAGER_CUSTOM_RESTORE_TEST_H
  
 #include <gtest/gtest.h>
 #include <memory>
@@ -22,7 +22,7 @@
 namespace OHOS {
 namespace Media {
  
-class MediaScannerManagerBatchTest : public testing::Test {
+class MediaScannerManagerCustomRestoreTest : public testing::Test {
 public:
     void SetUp() override;
     void TearDown() override;
@@ -31,4 +31,4 @@ public:
 } // namespace Media
 } // namespace OHOS
  
-#endif // MEDIA_SCANNER_MANAGER_BATCH_TEST_H
+#endif // MEDIA_SCANNER_MANAGER_CUSTOM_RESTORE_TEST_H

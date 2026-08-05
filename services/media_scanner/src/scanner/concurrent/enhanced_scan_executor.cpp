@@ -224,7 +224,7 @@ void EnhancedScanExecutor::ScheduleNextAsyncTask(const std::shared_ptr<ScanTaskC
         std::lock_guard<std::mutex> lock(queueMutex_);
         globalTaskQueue_.push(nextTask);
     }
-
+    
     if (task->config.GetExecutionMode() == ScanExecutionMode::SYNC) {
         StartAsync();
     }

@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,17 +14,17 @@
  * limitations under the License.
  */
  
-#ifndef BATCH_RESTORE_UTILS_TEST_H
-#define BATCH_RESTORE_UTILS_TEST_H
+#ifndef SCANNER_UTILS_CUSTOM_RESTORE_TEST_H
+#define SCANNER_UTILS_CUSTOM_RESTORE_TEST_H
  
 #include <gtest/gtest.h>
  
-#include "batch_restore_utils.h"
+#include "scanner_utils.h"
  
 namespace OHOS {
 namespace Media {
  
-class BatchRestoreUtilsTest : public testing::Test {
+class ScannerUtilsCustomRestoreTest : public testing::Test {
 public:
     void SetUp() override;
     void TearDown() override;
@@ -32,4 +33,4 @@ public:
 } // namespace Media
 } // namespace OHOS
  
-#endif // BATCH_RESTORE_UTILS_TEST_H
+#endif // SCANNER_UTILS_CUSTOM_RESTORE_TEST_H

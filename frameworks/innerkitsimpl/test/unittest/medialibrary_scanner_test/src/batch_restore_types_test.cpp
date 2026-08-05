@@ -13,7 +13,7 @@
  * limitations under the License.
  */
  
-#include "batch_restore_types_test.h"
+#include "custom_restore_types_test.h"
  
 #include "media_log.h"
  
@@ -23,14 +23,14 @@ using namespace testing::ext;
 namespace OHOS {
 namespace Media {
  
-void BatchRestoreTypesTest::SetUp() {}
-void BatchRestoreTypesTest::TearDown() {}
+void CustomRestoreTypesTest::SetUp() {}
+void CustomRestoreTypesTest::TearDown() {}
  
 /**
  * @tc.name: RestoreFileInfo_DefaultValues_test01
  * @tc.desc: 默认构造验证所有字段默认值
  */
-HWTEST_F(BatchRestoreTypesTest, RestoreFileInfo_DefaultValues_test01, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, RestoreFileInfo_DefaultValues_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter RestoreFileInfo_DefaultValues_test01");
     RestoreFileInfo info;
@@ -58,7 +58,7 @@ HWTEST_F(BatchRestoreTypesTest, RestoreFileInfo_DefaultValues_test01, TestSize.L
  * @tc.name: RestoreFileInfo_AllFieldsSet_test02
  * @tc.desc: 设置所有字段为非默认值并验证回读
  */
-HWTEST_F(BatchRestoreTypesTest, RestoreFileInfo_AllFieldsSet_test02, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, RestoreFileInfo_AllFieldsSet_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter RestoreFileInfo_AllFieldsSet_test02");
     RestoreFileInfo info;
@@ -104,7 +104,7 @@ HWTEST_F(BatchRestoreTypesTest, RestoreFileInfo_AllFieldsSet_test02, TestSize.Le
  * @tc.name: UniqueNumber_DefaultValues_test01
  * @tc.desc: 默认构造验证4个int32_t全为0
  */
-HWTEST_F(BatchRestoreTypesTest, UniqueNumber_DefaultValues_test01, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, UniqueNumber_DefaultValues_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter UniqueNumber_DefaultValues_test01");
     UniqueNumber num;
@@ -119,7 +119,7 @@ HWTEST_F(BatchRestoreTypesTest, UniqueNumber_DefaultValues_test01, TestSize.Leve
  * @tc.name: UniqueNumber_OperatorPlus_test02
  * @tc.desc: 两个不同值相加，各字段独立求和
  */
-HWTEST_F(BatchRestoreTypesTest, UniqueNumber_OperatorPlus_test02, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, UniqueNumber_OperatorPlus_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter UniqueNumber_OperatorPlus_test02");
     UniqueNumber a;
@@ -146,7 +146,7 @@ HWTEST_F(BatchRestoreTypesTest, UniqueNumber_OperatorPlus_test02, TestSize.Level
  * @tc.name: UniqueNumber_OperatorPlusZero_test03
  * @tc.desc: 加全零对象，值不变
  */
-HWTEST_F(BatchRestoreTypesTest, UniqueNumber_OperatorPlusZero_test03, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, UniqueNumber_OperatorPlusZero_test03, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter UniqueNumber_OperatorPlusZero_test03");
     UniqueNumber a;
@@ -168,7 +168,7 @@ HWTEST_F(BatchRestoreTypesTest, UniqueNumber_OperatorPlusZero_test03, TestSize.L
  * @tc.name: UniqueNumber_Clear_test04
  * @tc.desc: 填入值后clear()，全部归零
  */
-HWTEST_F(BatchRestoreTypesTest, UniqueNumber_Clear_test04, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, UniqueNumber_Clear_test04, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter UniqueNumber_Clear_test04");
     UniqueNumber num;
@@ -188,7 +188,7 @@ HWTEST_F(BatchRestoreTypesTest, UniqueNumber_Clear_test04, TestSize.Level0)
  * @tc.name: UniqueNumber_ClearIdempotent_test05
  * @tc.desc: 对已清零对象再clear()，仍全零
  */
-HWTEST_F(BatchRestoreTypesTest, UniqueNumber_ClearIdempotent_test05, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, UniqueNumber_ClearIdempotent_test05, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter UniqueNumber_ClearIdempotent_test05");
     UniqueNumber num;
@@ -206,7 +206,7 @@ HWTEST_F(BatchRestoreTypesTest, UniqueNumber_ClearIdempotent_test05, TestSize.Le
  * @tc.name: TimeInfo_DefaultValues_test01
  * @tc.desc: 默认构造验证dateAdded=0, dateTaken=0, detailTime空
  */
-HWTEST_F(BatchRestoreTypesTest, TimeInfo_DefaultValues_test01, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, TimeInfo_DefaultValues_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter TimeInfo_DefaultValues_test01");
     TimeInfo info;
@@ -220,7 +220,7 @@ HWTEST_F(BatchRestoreTypesTest, TimeInfo_DefaultValues_test01, TestSize.Level0)
  * @tc.name: TimeInfo_SetValues_test02
  * @tc.desc: 设置已知值并验证回读
  */
-HWTEST_F(BatchRestoreTypesTest, TimeInfo_SetValues_test02, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, TimeInfo_SetValues_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter TimeInfo_SetValues_test02");
     TimeInfo info;
@@ -237,7 +237,7 @@ HWTEST_F(BatchRestoreTypesTest, TimeInfo_SetValues_test02, TestSize.Level0)
  * @tc.name: TimeInfo_CopySemantics_test03
  * @tc.desc: 拷贝构造验证字段匹配
  */
-HWTEST_F(BatchRestoreTypesTest, TimeInfo_CopySemantics_test03, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, TimeInfo_CopySemantics_test03, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter TimeInfo_CopySemantics_test03");
     TimeInfo original;
@@ -256,7 +256,7 @@ HWTEST_F(BatchRestoreTypesTest, TimeInfo_CopySemantics_test03, TestSize.Level0)
  * @tc.name: RestoreFileInfo_CopySemantics_test04
  * @tc.desc: 拷贝构造RestoreFileInfo验证所有字段匹配
  */
-HWTEST_F(BatchRestoreTypesTest, RestoreFileInfo_CopySemantics_test04, TestSize.Level0)
+HWTEST_F(CustomRestoreTypesTest, RestoreFileInfo_CopySemantics_test04, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter RestoreFileInfo_CopySemantics_test04");
     RestoreFileInfo original;

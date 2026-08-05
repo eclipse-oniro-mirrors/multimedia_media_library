@@ -12,14 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef SCAN_CONFIG_BUILDER_H
 #define SCAN_CONFIG_BUILDER_H
-
+ 
 #include <memory>
-
 #include "scan_config.h"
-
+ 
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -57,6 +56,7 @@ public:
     // 预设方法
     ScanConfigBuilder& UseCustomRestorePreset(const CustomRestoreInfo& info);
     ScanConfigBuilder& UseCameraShotPreset(ScanQuality quality = ScanQuality::DEFAULT);
+
     ScanConfigBuilder& UseThumbnailCallbackPreset(bool isCreateThumbSync, bool isInvalidateThumb,
         std::shared_ptr<Media::Picture> picture = nullptr,
         std::shared_ptr<IMediaScannerCallback> updateDirtyCallback = nullptr);
@@ -66,8 +66,8 @@ public:
 private:
     ScanConfig config_;
 };
-
+ 
 } // namespace Media
 } // namespace OHOS
-
+ 
 #endif // SCAN_CONFIG_BUILDER_H

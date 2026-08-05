@@ -21,8 +21,8 @@
 #include "photo_custom_restore_operation.h"
 #undef private
 
-#include "batch_restore_utils.h"
-#include "batch_scanner_obj.h"
+#include "custom_restore_utils.h"
+#include "custom_restore_scanner_obj.h"
 #include "scan_config.h"
 #include "custom_restore_const.h"
 #include "custom_restore_source_test.h"
@@ -399,7 +399,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_02
     CustomRestoreInfo customInfo;
     customInfo.SetFileInfos({});
     customInfo.SetIsFirstBatch(true);
-    BatchScannerObj scannerObj(customInfo);
+    CustomRestoreScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     EXPECT_EQ(result, E_OK);
     EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
@@ -423,7 +423,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_02
     CustomRestoreInfo config;
     config.SetIsDeduplication(false);
     RestoreFileInfo fileInfo;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_028 End");
 }
@@ -477,7 +477,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
     RestoreFileInfo fileInfo;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
     // Empty metadata produces default time values, ValuesBucket should not be empty
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_034 End");
@@ -489,7 +489,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
     RestoreFileInfo fileInfo;
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
     unordered_map<string, TimeInfo> timeInfoMap;
-    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = CustomRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_036 End");
 }
@@ -500,7 +500,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
     std::unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFilePath("");
     data->SetFileName("nonexistent.jpg");
-    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
+    int32_t result = CustomRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_037 End");
 }
@@ -535,7 +535,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_04
     CustomRestoreInfo customInfo;
     customInfo.SetFileInfos({});
     customInfo.SetIsFirstBatch(false);
-    BatchScannerObj scannerObj(customInfo);
+    CustomRestoreScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     EXPECT_EQ(result, E_OK);
     EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
@@ -617,7 +617,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     RestoreFileInfo fileInfo;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
     EXPECT_NE(values.IsEmpty(), true);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test End");
 }
@@ -957,7 +957,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
     fileInfo.size = 1024;
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.orientation = 0;
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_001 End");
 }
@@ -977,7 +977,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
     unordered_set<string> photoCache;
     photoCache.insert("test.jpg_1024_1_0");
     config.SetPhotoCache(photoCache);
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, true);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_002 End");
 }
@@ -997,7 +997,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_IsDuplication_Tes
     unordered_set<string> photoCache;
     photoCache.insert("test.jpg_1024_1_0");
     config.SetPhotoCache(photoCache);
-    bool result = BatchRestoreUtils::IsDuplication(config, fileInfo);
+    bool result = CustomRestoreUtils::IsDuplication(config, fileInfo);
     EXPECT_EQ(result, false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_IsDuplication_Test_003 End");
 }
@@ -1096,7 +1096,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_
     customInfo.SetPackageName("test.package");
     customInfo.SetAppId("test.app");
     customInfo.SetIsFirstBatch(true);
-    BatchScannerObj scannerObj(customInfo);
+    CustomRestoreScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     EXPECT_EQ(result, E_OK);
     EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
@@ -1126,7 +1126,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_
     photoCache.insert("test.jpg_1024_1_0");
     customInfo.SetPhotoCache(photoCache);
     customInfo.SetIsFirstBatch(false);
-    BatchScannerObj scannerObj(customInfo);
+    CustomRestoreScannerObj scannerObj(customInfo);
     int32_t result = scannerObj.Execute();
     // File is duplicate, no successful insert
     EXPECT_EQ(customInfo.GetOutFileInfos().size(), 0);
@@ -1287,7 +1287,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     fileInfo.isLivePhoto = false;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_001 End");
 }
@@ -1304,7 +1304,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     fileInfo.isLivePhoto = false;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_002 End");
 }
@@ -1321,7 +1321,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     fileInfo.isLivePhoto = true;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    BatchRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_003 End");
 }
@@ -1335,7 +1335,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     unordered_map<string, TimeInfo> timeInfoMap;
-    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = CustomRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_001 End");
 }
@@ -1352,7 +1352,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
     timeInfoMap["test.jpg"] = {MediaFileUtils::UTCTimeMilliSeconds(),
                                 MediaFileUtils::UTCTimeMilliSeconds(),
                                 "2024-01-01 12:00:00"};
-    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = CustomRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_002 End");
 }
@@ -1363,7 +1363,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileMetadata_T
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFilePath("/storage/media/local/files/nonexistent.jpg");
     data->SetFileName("nonexistent.jpg");
-    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
+    int32_t result = CustomRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_001 End");
 }
@@ -1855,7 +1855,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_FillMetadata_Test
     timeInfoMap["test.mp4"] = {MediaFileUtils::UTCTimeMilliSeconds(),
                                 MediaFileUtils::UTCTimeMilliSeconds(),
                                 "2024-01-01 12:00:00"};
-    int32_t result = BatchRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
+    int32_t result = CustomRestoreUtils::FillMetadata(timeInfoMap, fileInfo, data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_FillMetadata_Test_003 End");
 }
@@ -1866,7 +1866,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileMetadata_T
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFilePath("/storage/media/local/files/test/nonexistent.jpg");
     data->SetFileName("nonexistent.jpg");
-    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
+    int32_t result = CustomRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_002 End");
 }
@@ -1877,7 +1877,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetFileMetadata_T
     unique_ptr<Metadata> data = make_unique<Metadata>();
     data->SetFilePath("/storage/media/local/files/nonexistent.mp4");
     data->SetFileName("nonexistent.mp4");
-    int32_t result = BatchRestoreUtils::GetFileMetadata(data);
+    int32_t result = CustomRestoreUtils::GetFileMetadata(data);
     EXPECT_NE(result, E_OK);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetFileMetadata_Test_003 End");
 }

@@ -39,7 +39,7 @@ private:
     ~ScanStrategyManager();
 
     void RegisterDefaultStrategies();
-    void RegisterBatchStrategies();
+    void RegisterCustomRestoreStrategies();
 
     std::unordered_map<ScanStrategyType, std::shared_ptr<IScanStrategy>> strategies_;
 

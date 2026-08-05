@@ -12,139 +12,139 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "batch_scan_strategy_test.h"
-
-#include "batch_scan_strategy.h"
-#include "batch_scanner_obj.h"
-
+ 
+#include "custom_restore_strategy_test.h"
+ 
+#include "custom_restore_strategy.h"
+#include "custom_restore_scanner_obj.h"
+ 
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "scan_config.h"
 #include "scan_config_builder.h"
 #include "scan_task_context.h"
-
+ 
 using namespace testing;
 using namespace testing::ext;
-
+ 
 namespace OHOS {
 namespace Media {
-
-void BatchScanStrategyTest::SetUp() {}
-void BatchScanStrategyTest::TearDown() {}
-
+ 
+void CustomRestoreStrategyTest::SetUp() {}
+void CustomRestoreStrategyTest::TearDown() {}
+ 
 /**
  * @tc.name: GetStrategyType_test01
  * @tc.desc: 返回 CUSTOM_RESTORE_SCAN
  */
-HWTEST_F(BatchScanStrategyTest, GetStrategyType_test01, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, GetStrategyType_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter GetStrategyType_test01");
-    BatchScanStrategy strategy;
+    CustomRestoreStrategy strategy;
     EXPECT_EQ(strategy.GetStrategyType(), ScanStrategyType::CUSTOM_RESTORE_SCAN);
     MEDIA_INFO_LOG("end GetStrategyType_test01");
 }
-
+ 
 /**
- * @tc.name: ValidateBatchContext_NullContext_test01
+ * @tc.name: ValidateCustomRestoreContext_NullContext_test01
  * @tc.desc: nullptr → false
  */
-HWTEST_F(BatchScanStrategyTest, ValidateBatchContext_NullContext_test01, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, ValidateCustomRestoreContext_NullContext_test01, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ValidateBatchContext_NullContext_test01");
-    BatchScanStrategy strategy;
-    bool result = strategy.ValidateBatchContext(nullptr);
+    MEDIA_INFO_LOG("enter ValidateCustomRestoreContext_NullContext_test01");
+    CustomRestoreStrategy strategy;
+    bool result = strategy.ValidateCustomRestoreContext(nullptr);
     EXPECT_FALSE(result);
-    MEDIA_INFO_LOG("end ValidateBatchContext_NullContext_test01");
+    MEDIA_INFO_LOG("end ValidateCustomRestoreContext_NullContext_test01");
 }
-
+ 
 /**
- * @tc.name: ValidateBatchContext_EmptyFilePaths_test02
+ * @tc.name: ValidateCustomRestoreContext_EmptyFilePaths_test02
  * @tc.desc: 空 filePaths → false
  */
-HWTEST_F(BatchScanStrategyTest, ValidateBatchContext_EmptyFilePaths_test02, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, ValidateCustomRestoreContext_EmptyFilePaths_test02, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ValidateBatchContext_EmptyFilePaths_test02");
-    BatchScanStrategy strategy;
+    MEDIA_INFO_LOG("enter ValidateCustomRestoreContext_EmptyFilePaths_test02");
+    CustomRestoreStrategy strategy;
     auto config = ScanConfigBuilder().Build();
     auto context = std::make_shared<ScanTaskContext>(config);
-    bool result = strategy.ValidateBatchContext(context);
+    bool result = strategy.ValidateCustomRestoreContext(context);
     EXPECT_FALSE(result);
-    MEDIA_INFO_LOG("end ValidateBatchContext_EmptyFilePaths_test02");
+    MEDIA_INFO_LOG("end ValidateCustomRestoreContext_EmptyFilePaths_test02");
 }
-
+ 
 /**
- * @tc.name: ValidateBatchContext_DefaultScanInfoFilePathSet_test03
+ * @tc.name: ValidateCustomRestoreContext_DefaultScanInfoFilePathSet_test03
  * @tc.desc: DefaultScanInfo 的 filePath 已设置但 CustomRestoreInfo 的 filePaths 为空 → false
  */
-HWTEST_F(BatchScanStrategyTest, ValidateBatchContext_DefaultScanInfoFilePathSet_test03, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, ValidateCustomRestoreContext_DefaultScanInfoFilePathSet_test03, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ValidateBatchContext_DefaultScanInfoFilePathSet_test03");
-    BatchScanStrategy strategy;
+    CustomRestoreStrategy strategy;
     DefaultScanInfo defaultInfo;
     defaultInfo.SetFileId(1);
     defaultInfo.SetFilePath("/test/path");
     auto config = ScanConfigBuilder().SetDefaultScanInfo(defaultInfo).Build();
     auto context = std::make_shared<ScanTaskContext>(config);
-    bool result = strategy.ValidateBatchContext(context);
+    bool result = strategy.ValidateCustomRestoreContext(context);
     EXPECT_FALSE(result);
-    MEDIA_INFO_LOG("end ValidateBatchContext_DefaultScanInfoFilePathSet_test03");
+    MEDIA_INFO_LOG("end ValidateCustomRestoreContext_DefaultScanInfoFilePathSet_test03");
 }
-
+ 
 /**
- * @tc.name: ValidateBatchContext_ValidContext_test04
+ * @tc.name: ValidateCustomRestoreContext_ValidContext_test04
  * @tc.desc: 有效上下文 → true
  */
-HWTEST_F(BatchScanStrategyTest, ValidateBatchContext_ValidContext_test04, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, ValidateCustomRestoreContext_ValidContext_test04, TestSize.Level0)
 {
-    MEDIA_INFO_LOG("enter ValidateBatchContext_ValidContext_test04");
-    BatchScanStrategy strategy;
+    MEDIA_INFO_LOG("enter ValidateCustomRestoreContext_ValidContext_test04");
+    CustomRestoreStrategy strategy;
     CustomRestoreInfo customInfo;
     customInfo.SetFilePaths({"/test/path1.jpg"});
     auto config = ScanConfigBuilder()
         .SetCustomRestoreInfo(customInfo)
         .Build();
     auto context = std::make_shared<ScanTaskContext>(config);
-    bool result = strategy.ValidateBatchContext(context);
+    bool result = strategy.ValidateCustomRestoreContext(context);
     EXPECT_TRUE(result);
-    MEDIA_INFO_LOG("end ValidateBatchContext_ValidContext_test04");
+    MEDIA_INFO_LOG("end ValidateCustomRestoreContext_ValidContext_test04");
 }
-
+ 
 /**
  * @tc.name: Scan_NullContext_test01
  * @tc.desc: Scan(nullptr) → E_ERR
  */
-HWTEST_F(BatchScanStrategyTest, Scan_NullContext_test01, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, Scan_NullContext_test01, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter Scan_NullContext_test01");
-    BatchScanStrategy strategy;
+    CustomRestoreStrategy strategy;
     int32_t result = strategy.Scan(nullptr);
     EXPECT_EQ(result, E_ERR);
     MEDIA_INFO_LOG("end Scan_NullContext_test01");
 }
-
+ 
 /**
  * @tc.name: Scan_EmptyFilePaths_test02
  * @tc.desc: 空 filePaths → E_ERR
  */
-HWTEST_F(BatchScanStrategyTest, Scan_EmptyFilePaths_test02, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, Scan_EmptyFilePaths_test02, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter Scan_EmptyFilePaths_test02");
-    BatchScanStrategy strategy;
+    CustomRestoreStrategy strategy;
     auto config = ScanConfigBuilder().Build();
     auto context = std::make_shared<ScanTaskContext>(config);
     int32_t result = strategy.Scan(context);
     EXPECT_EQ(result, E_ERR);
     MEDIA_INFO_LOG("end Scan_EmptyFilePaths_test02");
 }
-
-/**
+ 
+ /**
  * @tc.name: Scan_DefaultScanInfoFilePathSet_test03
  * @tc.desc: DefaultScanInfo 的 filePath 已设置但 CustomRestoreInfo 的 filePaths 为空 → E_ERR
  */
-HWTEST_F(BatchScanStrategyTest, Scan_DefaultScanInfoFilePathSet_test03, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, Scan_DefaultScanInfoFilePathSet_test03, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter Scan_DefaultScanInfoFilePathSet_test03");
-    BatchScanStrategy strategy;
+    CustomRestoreStrategy strategy;
     DefaultScanInfo defaultInfo;
     defaultInfo.SetFileId(1);
     defaultInfo.SetFilePath("/test");
@@ -154,15 +154,15 @@ HWTEST_F(BatchScanStrategyTest, Scan_DefaultScanInfoFilePathSet_test03, TestSize
     EXPECT_EQ(result, E_ERR);
     MEDIA_INFO_LOG("end Scan_DefaultScanInfoFilePathSet_test03");
 }
-
+ 
 /**
  * @tc.name: Scan_CreateScannerObj_test04
- * @tc.desc: CreateScannerObj 返回非空 BatchScannerObj
+ * @tc.desc: CreateScannerObj 返回非空 CustomRestoreScannerObj
  */
-HWTEST_F(BatchScanStrategyTest, Scan_CreateScannerObj_test04, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, Scan_CreateScannerObj_test04, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter Scan_CreateScannerObj_test04");
-    BatchScanStrategy strategy;
+    CustomRestoreStrategy strategy;
     CustomRestoreInfo customInfo;
     customInfo.SetFilePaths({"/test/file.jpg"});
     auto config = ScanConfigBuilder()
@@ -173,15 +173,15 @@ HWTEST_F(BatchScanStrategyTest, Scan_CreateScannerObj_test04, TestSize.Level0)
     EXPECT_NE(scannerObj, nullptr);
     MEDIA_INFO_LOG("end Scan_CreateScannerObj_test04");
 }
-
-/**
+ 
+ /**
  * @tc.name: Scan_ValidContextReturnsExecuteResult_test05
  * @tc.desc: 空文件列表的 CustomRestoreInfo → Execute 返回 E_OK
  */
-HWTEST_F(BatchScanStrategyTest, Scan_ValidContextReturnsExecuteResult_test05, TestSize.Level0)
+HWTEST_F(CustomRestoreStrategyTest, Scan_ValidContextReturnsExecuteResult_test05, TestSize.Level0)
 {
     MEDIA_INFO_LOG("enter Scan_ValidContextReturnsExecuteResult_test05");
-    BatchScanStrategy strategy;
+    CustomRestoreStrategy strategy;
     CustomRestoreInfo customInfo;
     customInfo.SetFilePaths({"/test/file.jpg"});
     auto config = ScanConfigBuilder()
@@ -192,6 +192,6 @@ HWTEST_F(BatchScanStrategyTest, Scan_ValidContextReturnsExecuteResult_test05, Te
     EXPECT_TRUE(result == E_OK);
     MEDIA_INFO_LOG("end Scan_ValidContextReturnsExecuteResult_test05, result: %{public}d", result);
 }
-
+ 
 } // namespace Media
 } // namespace OHOS

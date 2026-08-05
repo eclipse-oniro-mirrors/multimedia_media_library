@@ -35,6 +35,8 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "${MEDIALIB_TEST_PATH}/fuzztest/common/include",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
   ]
 
   sources = [

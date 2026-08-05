@@ -40,7 +40,6 @@ public:
     const std::vector<std::string>& GetFilePaths() const;
     void SetFilePaths(const std::vector<std::string>& paths);
     const std::vector<RestoreFileInfo>& GetFileInfos() const;
-    std::vector<RestoreFileInfo>& GetFileInfos();
     void SetFileInfos(const std::vector<RestoreFileInfo>& fileInfos);
     const std::unordered_map<std::string, TimeInfo>& GetTimeInfoMap() const;
     void SetTimeInfoMap(const std::unordered_map<std::string, TimeInfo>& timeInfoMap);
@@ -63,7 +62,7 @@ public:
 
     // 输出字段
     const std::vector<RestoreFileInfo>& GetOutFileInfos() const;
-    void SetOutFileInfos(std::vector<RestoreFileInfo> outFileInfos);
+    void SetOutFileInfos(std::vector<RestoreFileInfo> &&outFileInfos);
     int32_t GetOutSameFileNum() const;
     void SetOutSameFileNum(int32_t outSameFileNum);
     int32_t GetOutSuccessFileNum() const;

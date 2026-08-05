@@ -79,6 +79,7 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/internal",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/converter",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
   ]
 
   include_dfx = [ "${MEDIALIB_SERVICES_PATH}/media_dfx/include" ]
@@ -438,9 +439,11 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/converter/scanner_context_converter.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/default_scan_strategy.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/scan_strategy_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/batch_scan_strategy.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/batch_scanner_obj.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/batch_restore_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/custom_restore_strategy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/custom_restore_scanner_obj.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/default_scan_info.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/custom_restore_info.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/custom_restore_utils.cpp",
   ]
 
   media_fuse_source = [

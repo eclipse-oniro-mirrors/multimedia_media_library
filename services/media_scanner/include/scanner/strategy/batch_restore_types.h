@@ -13,8 +13,8 @@
  * limitations under the License.
  */
  
-#ifndef BATCH_RESTORE_TYPES_H
-#define BATCH_RESTORE_TYPES_H
+#ifndef CUSTOM_RESTORE_TYPES_H
+#define CUSTOM_RESTORE_TYPES_H
  
 #include <string>
 #include <vector>
@@ -78,4 +78,4 @@ struct TimeInfo {
 } // namespace Media
 } // namespace OHOS
  
-#endif // BATCH_RESTORE_TYPES_H
+#endif // CUSTOM_RESTORE_TYPES_H
