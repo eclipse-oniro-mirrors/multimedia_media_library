@@ -26,7 +26,7 @@
 #include "medialibrary_rdb_utils.h"
 #include "metadata.h"
 #include "tlv_util.h"
-#include "batch_restore_types.h"
+#include "custom_restore_types.h"
 // LCOV_EXCL_START
 namespace OHOS::Media {
 struct RestoreTaskInfo {

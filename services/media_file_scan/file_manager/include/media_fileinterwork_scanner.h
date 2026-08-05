@@ -21,7 +21,7 @@
 #include "asset_accurate_refresh.h"
 #include "metadata.h"
 #include "medialibrary_rdbstore.h"
-#include "batch_restore_types.h"
+#include "custom_restore_types.h"
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "photo_custom_restore_operation.h"
 #endif

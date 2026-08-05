@@ -18,7 +18,7 @@
 #include "scan_strategy_manager.h"
 
 #include "default_scan_strategy.h"
-#include "batch_scan_strategy.h"
+#include "custom_restore_strategy.h"
 #include "media_log.h"
 
 namespace OHOS {
@@ -53,10 +53,10 @@ void ScanStrategyManager::RegisterDefaultStrategies()
 
 void ScanStrategyManager::RegisterCustomRestoreStrategies()
 {
-    auto batchStrategy = std::make_shared<BatchScanStrategy>();
-    RegisterStrategy(batchStrategy);
-    
-    MEDIA_DEBUG_LOG("batchStrategy registered");
+    auto customRestoreStrategy = std::make_shared<CustomRestoreStrategy>();
+    RegisterStrategy(customRestoreStrategy);
+
+    MEDIA_DEBUG_LOG("CustomRestoreStrategy registered");
 }
 
 void ScanStrategyManager::RegisterStrategy(const std::shared_ptr<IScanStrategy>& strategy)

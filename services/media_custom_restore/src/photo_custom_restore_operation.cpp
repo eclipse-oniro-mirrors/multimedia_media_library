@@ -53,7 +53,7 @@
 #include "media_edit_utils.h"
 #include "media_share_dirty_data_cleaner.h"
 #include "media_time_utils.h"
-#include "batch_restore_utils.h"
+#include "custom_restore_utils.h"
 #include "scan_config.h"
 #include "scan_config_builder.h"
 #include "media_scanner_manager.h"

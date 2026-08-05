@@ -18,7 +18,7 @@
  
 #include <gtest/gtest.h>
  
-#include "batch_restore_types.h"
+#include "custom_restore_types.h"
 #include "metadata.h"
 #include "scan_config.h"
 #include "values_bucket.h"

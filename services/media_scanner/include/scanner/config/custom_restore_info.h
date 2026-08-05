@@ -22,7 +22,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "batch_restore_types.h"
+#include "custom_restore_types.h"
 #include "userfile_manager_types.h"
 
 namespace OHOS {
