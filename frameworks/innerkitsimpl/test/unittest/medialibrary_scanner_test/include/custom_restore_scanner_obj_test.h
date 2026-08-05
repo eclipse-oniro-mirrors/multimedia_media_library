@@ -13,8 +13,8 @@
  * limitations under the License.
  */
  
-#ifndef BATCH_SCANNER_OBJ_TEST_H
-#define BATCH_SCANNER_OBJ_TEST_H
+#ifndef CUSTOM_RESTORE_SCANNER_OBJ_TEST_H
+#define CUSTOM_RESTORE_SCANNER_OBJ_TEST_H
  
 #include <gtest/gtest.h>
  
@@ -26,7 +26,7 @@
 namespace OHOS {
 namespace Media {
  
-class BatchScannerObjTest : public testing::Test {
+class CustomRestoreScannerObjTest : public testing::Test {
 public:
     void SetUp() override;
     void TearDown() override;
@@ -35,4 +35,4 @@ public:
 } // namespace Media
 } // namespace OHOS
  
-#endif // BATCH_SCANNER_OBJ_TEST_H
+#endif // CUSTOM_RESTORE_SCANNER_OBJ_TEST_H
