@@ -204,7 +204,7 @@ async function createPhotoDeleteRequestParamsOk(uriList, asyncCallback) {
       return photoAccessHelper.createDeleteRequest(getContext(this), appName, uriList, result => {
         if (result.result === REQUEST_CODE_SUCCESS) {
           asyncCallback();
-        } else if (result.result == PERMISSION_DENIED) {
+        } else if (result.result === PERMISSION_DENIED) {
           asyncCallback(new BusinessError(ERROR_MSG_USER_DENY));
         } else {
           asyncCallback(new BusinessError(ERROR_MSG_INNER_FAIL, result.result));
@@ -215,7 +215,7 @@ async function createPhotoDeleteRequestParamsOk(uriList, asyncCallback) {
         photoAccessHelper.createDeleteRequest(getContext(this), appName, uriList, result => {
           if (result.result === REQUEST_CODE_SUCCESS) {
             resolve();
-          } else if (result.result == PERMISSION_DENIED) {
+          } else if (result.result === PERMISSION_DENIED) {
             reject(new BusinessError(ERROR_MSG_USER_DENY));
           } else {
             reject(new BusinessError(ERROR_MSG_INNER_FAIL, result.result));
@@ -945,14 +945,14 @@ const OperationType = {
   END_WRAP : 12,
   BETWEEN : 13,
   NOT_BETWEEN : 14
-}
+};
 
 const ValidSupportedMimeType = {
   
   JPEG: 'image/jpeg',
   
   HEIF: 'image/heic'
-}
+};
 
 const PickerFilterPhotoKeys = {
   
@@ -999,7 +999,7 @@ const PickerFilterPhotoKeys = {
   ASPECT_RATIO: 'aspect_ratio',
 
   DATE_TAKEN_MS: 'date_taken_ms',
-}
+};
 
 const PhotoSource = {
   ALL: 0,
@@ -1072,13 +1072,13 @@ const PHOTO_VIEW_MIME_TYPE_MAP = new Map([
 
 const GridPinchModeType = {
   FULL_FUNCTION_GRID: 0,
-}
+};
  	 
 const GridLevel = {
   SPACIOUS: 0,
   STANDARD: 1,
   COMPACT: 2,
-}
+};
 
 function checkArguments(args) {
   let checkArgumentsResult = undefined;
