@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-if (!("finalizeConstruction" in ViewPU.prototype)) {
-    Reflect.set(ViewPU.prototype, "finalizeConstruction", () => { });
+if (!('finalizeConstruction' in ViewPU.prototype)) {
+    Reflect.set(ViewPU.prototype, 'finalizeConstruction', () => { });
 }
 
 const photoAccessHelper = requireNapi('file.photoAccessHelper');
@@ -167,7 +167,7 @@ export class RecentPhotoOptions {
 export class RecentPhotoInfo {
 }
 
-export var PhotoSource;
+export let PhotoSource;
 (function (m2) {
     m2[m2.ALL = 0] = 'ALL';
     m2[m2.CAMERA = 1] = 'CAMERA';
