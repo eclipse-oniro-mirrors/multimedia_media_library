@@ -25,6 +25,7 @@ namespace OHOS {
 namespace Media {
 
 static MediaCallTranscode::CallbackType callback_;
+static std::mutex callbackMutex_;
 static std::mutex transCoderMapMutex_;
 static std::map<std::string, std::shared_ptr<TransCoder>> transCoderMap_;
 static const int32_t INFO_TYPE_ERROR = 2;
@@ -44,10 +45,6 @@ bool MediaCallTranscode::DoTranscode(UniqueFd &uniqueSrcFd, UniqueFd &uniqueDest
     if (transCoder == nullptr) {
         NAPI_ERR_LOG("Failed to create TransCoder");
         return false;
-    }
-    {
-        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
-        transCoderMap_.insert(std::pair<std::string, std::shared_ptr<TransCoder>>(requestId, transCoder));
     }
     auto transCoderCb = std::make_shared<OHOS::Media::MediaAssetManagerCallback>();
     if (transCoderCb == nullptr) {
@@ -77,11 +74,17 @@ bool MediaCallTranscode::DoTranscode(UniqueFd &uniqueSrcFd, UniqueFd &uniqueDest
     }
     if (transCoder->Prepare() != E_OK) {
         NAPI_ERR_LOG("Failed to prepare TransCoder");
+        transCoder->Release();
         return false;
     }
     if (transCoder->Start() != E_OK) {
         NAPI_ERR_LOG("Failed to TransCoder Start");
+        transCoder->Release();
         return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
+        transCoderMap_.insert(std::pair<std::string, std::shared_ptr<TransCoder>>(requestId, transCoder));
     }
     NAPI_INFO_LOG("DoTranscode success requestId:%{public}s", requestId.c_str());
     return true;
@@ -89,39 +92,56 @@ bool MediaCallTranscode::DoTranscode(UniqueFd &uniqueSrcFd, UniqueFd &uniqueDest
 
 void MediaCallTranscode::CallTranscodeRelease(const std::string& requestId)
 {
-    std::lock_guard<std::mutex> lock(transCoderMapMutex_);
-    auto tcm = transCoderMap_.find(requestId);
-    if (tcm == transCoderMap_.end()) {
-        return;
+    std::shared_ptr<TransCoder> transCoder;
+    {
+        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
+        auto tcm = transCoderMap_.find(requestId);
+        if (tcm == transCoderMap_.end()) {
+            return;
+        }
+        transCoder = tcm->second;
+        transCoderMap_.erase(tcm);
     }
-    tcm->second->Release();
-    transCoderMap_.erase(tcm);
+    transCoder->Release();
 }
 
 void MediaCallTranscode::RegisterCallback(const CallbackType &cb)
 {
+    std::lock_guard<std::mutex> lock(callbackMutex_);
     callback_ = cb;
 }
 
 void MediaAssetManagerCallback::OnInfo(int32_t type, int32_t extra)
 {
     NAPI_INFO_LOG("MediaAssetManagerCallback OnInfo type:%{public}d extra:%{public}d", type, extra);
-    if (callback_) {
-        callback_(type, extra, requestId_);
+    MediaCallTranscode::CallbackType cb;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        cb = callback_;
+    }
+    if (cb) {
+        cb(type, extra, requestId_);
     }
 }
 
 void MediaAssetManagerCallback::OnError(int32_t errCode, const std::string &errorMsg)
 {
-    std::lock_guard<std::mutex> lock(transCoderMapMutex_);
-    auto tcm = transCoderMap_.find(requestId_);
-    if (tcm != transCoderMap_.end()) {
-        transCoderMap_.erase(tcm);
+    {
+        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
+        auto tcm = transCoderMap_.find(requestId_);
+        if (tcm != transCoderMap_.end()) {
+            transCoderMap_.erase(tcm);
+        }
     }
-    NAPI_ERR_LOG("MediaAssetManagerCallback OnInfo errorMsg:%{public}s", errorMsg.c_str());
+    NAPI_ERR_LOG("MediaAssetManagerCallback OnError errorMsg:%{public}s", errorMsg.c_str());
     int32_t type = INFO_TYPE_ERROR;
-    if (callback_) {
-        callback_(type, 0, requestId_);
+    MediaCallTranscode::CallbackType cb;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        cb = callback_;
+    }
+    if (cb) {
+        cb(type, 0, requestId_);
     }
 }
 
