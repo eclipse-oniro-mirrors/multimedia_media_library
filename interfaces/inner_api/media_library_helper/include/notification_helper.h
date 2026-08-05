@@ -21,7 +21,7 @@
 #include "userfile_manager_types.h"
 #include "album_change_info.h"
 #include "datashare_helper.h"
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 namespace NotificationHelper {
@@ -100,8 +100,12 @@ private:
     static void NotifyAllCallbacks(const AlbumChangeInfos& changeInfos);
     static bool StartObserverIfNeeded();
     static void StopObserverIfNeeded();
+    static bool AddCallbackIfNew(std::shared_ptr<PhotoAlbumChangeCallback> callback);
+    static void RemoveCallbackFromList(std::shared_ptr<PhotoAlbumChangeCallback> callback);
+    static void GetObserverState(bool &observerSet, bool &helperSet);
 
     static std::mutex callbackMutex_;
+    static std::mutex observerMutex_;
     static std::vector<std::weak_ptr<PhotoAlbumChangeCallback>> callbacks_;
     static std::shared_ptr<DataShare::DataShareHelper> dataShareHelper_;
     static std::shared_ptr<DataShare::DataShareObserver> internalObserver_;
@@ -110,5 +114,5 @@ private:
 } // namespace NotificationHelper
 } // namespace Media
 } // namespace OHOS
-
+// LCOV_EXCL_STOP
 #endif // INTERFACES_INNERKITS_NATIVE_INCLUDE_NOTIFICATION_HELPER_H
