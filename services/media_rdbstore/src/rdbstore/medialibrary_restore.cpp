@@ -106,7 +106,7 @@ void MediaLibraryRestore::StopCloudSync()
     MediaLibraryTracer tracer;
     tracer.Start("MediaLibraryRestore::StopCloudSync");
     int32_t ret = FileManagement::CloudSync::CloudSyncManager::GetInstance().StopSync(CONST_BUNDLE_NAME, true);
-    CHECK_AND_RETURN_LOG(ret == E_OK, "StopCloudSync fail, errcode = %{public}d", ret);
+    CHECK_AND_RETURN_LOG(ret == PARAMETER_E_OK, "StopCloudSync fail, errcode = %{public}d", ret);
     std::this_thread::sleep_for(std::chrono::seconds(WAIT_SECONDS));
     MEDIA_INFO_LOG("StopCloudSync wait done, start backup");
 }
