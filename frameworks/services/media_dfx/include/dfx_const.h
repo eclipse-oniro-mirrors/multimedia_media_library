@@ -294,8 +294,8 @@ struct MultishotInfo {
     int32_t supportedDeferredEffectsNum;
     int32_t updateOriImageResourceTimes;
  
-    MultishotInfo():
-        deferredEffectsStatusTimes(0),
+    MultishotInfo()
+        : deferredEffectsStatusTimes(0),
         multishotNum(0),
         supportedDeferredEffectsNum(0),
         updateOriImageResourceTimes(0) {}
