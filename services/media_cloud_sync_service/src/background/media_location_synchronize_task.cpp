@@ -123,7 +123,7 @@ void RepairPhotoLocation(int32_t &repairRecord, bool &terminate, std::vector<Pho
             continue;
         }
         if (position == static_cast<int32_t>(PhotoPositionType::CLOUD) &&
-            !MedialibraryRelatedSystemStateManager::GetInstance()->IsWifiConnected()) {
+            !MedialibraryRelatedSystemStateManager::GetInstance()->IsNetAvailableInOnlyWifiCondition()) {
             MEDIA_INFO_LOG("Break repair cause wifi not connect");
             terminate = true;
             break;
