@@ -1919,13 +1919,10 @@ bool ReverseCloneRestore::RollbackAssetMove(const AssetMoveState &move)
     CHECK_AND_RETURN_RET(move.backedUpDst, ret);
 
     if (!IsAssetMovePathExists(move.backup)) {
-        if (IsPathExists(move.dstLocal)) {
-            MEDIA_INFO_LOG("RollbackAssetMove: backup already restored, dstLocal=%{public}s",
-                move.dstLocal.c_str());
-            return ret;
-        }
+        CHECK_AND_RETURN_RET_LOG(!IsPathExists(move.dstLocal), ret,
+            "RollbackAssetMove: backup already restored, dst=%{public}s", move.dstLocal.c_str());
         MEDIA_ERR_LOG("RollbackAssetMove: backup and dst are both missing, backup=%{public}s, dst=%{public}s",
-            move.backup.c_str(), move.dstLocal.c_str());
+            move.backup.c_str(), move.dstMerge.c_str());
         return false;
     }
     if (IsPathExists(move.dstLocal)) {

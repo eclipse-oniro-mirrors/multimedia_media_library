@@ -48,7 +48,6 @@ struct ReverseClonePhotoBatchContext {
     std::unordered_map<int32_t, ReverseCloneResourcePlan> resourcePlans;
     std::vector<ReverseCloneResourcePlan> duplicatePlans;
     std::unordered_map<int32_t, int32_t> duplicateDonorMap;
-    std::unordered_map<int32_t, ReverseCloneAssetResource> duplicateDonorResources;
     std::vector<ReverseCloneKvStoreTask> kvStoreTasks;
     std::vector<NativeRdb::ValuesBucket> values;
     std::vector<ReverseStaleTargetResource> staleTargetResources;
@@ -92,10 +91,9 @@ public:
             return false;
         }
         LogDuplicateCheckInputs(batch.validFileInfos, maxDestDbFileId);
-        // Resolve duplicate donors before reserving them for this batch.
+        // Build one resource plan per absorbed asset and reserve all matching donors.
         albumAssetAbsorb.CheckAndRemoveDuplicatePhotos(destRdb, batch.validFileInfos, maxDestDbFileId, minDestDbFileId,
-            batch.duplicatePlans, originalPureCloudFileIds_, duplicateCount, batch.duplicateDonorMap,
-            batch.duplicateDonorResources);
+            batch.duplicatePlans, originalPureCloudFileIds_, duplicateCount, batch.duplicateDonorMap);
         LogDuplicateCheckResults(batch.validFileInfos, batch.duplicatePlans, "after_check");
         ReserveDuplicateDonors(batch);
         LogDuplicateCheckResults(batch.validFileInfos, batch.duplicatePlans, "after_reserve");
@@ -110,9 +108,14 @@ public:
             auto planIt = batch.resourcePlans.find(fileInfo.fileIdOld);
             if (planIt != batch.resourcePlans.end() &&
                 planIt->second.matchType == ReverseCloneMatchType::SOURCE_ASSET) {
-                planIt->second.replaceExistingTarget = true;
-                MEDIA_INFO_LOG("RevRes source fallback replaces existing target, absorbedFileId=%{public}d, "
-                    "donorFileId=%{public}d", fileInfo.fileIdOld, fileInfo.deletedSrcdbFileId);
+                batch.staleTargetResources.emplace_back(ReverseStaleTargetResource {
+                    .fileId = fileInfo.fileIdOld,
+                    .cloudPath = fileInfo.cloudPath,
+                    .origin = true,
+                    .movingPhotoVideo = true,
+                    .editData = true,
+                    .thumbnail = true,
+                });
             }
         }
         batch.kvStoreTasks = BuildDuplicateKvStoreTasks(batch.duplicatePlans);
@@ -173,6 +176,11 @@ private:
         const std::vector<int32_t> &deletedDonorFileIds) const;
     void DeleteDuplicateDonorDerivedRows(const ReverseClonePhotoBatchContext &batch,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
+    std::vector<ReverseCloneAssetResource> QueryDuplicateDonorResources(
+        const ReverseClonePhotoBatchContext &batch,
+        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
+    void CleanupDuplicateDonorResourcesAfterAbsorb(const ReverseClonePhotoBatchContext &batch,
+        const std::vector<ReverseCloneAssetResource> &donorResources) const;
     void MarkCloudRestoreSatisfied(ReverseClonePhotoBatchContext &batch) const;
     std::vector<ReverseCloneKvStoreTask> BuildDuplicateKvStoreTasks(
         const std::vector<ReverseCloneResourcePlan> &duplicatePlans) const;
@@ -189,8 +197,8 @@ private:
     std::vector<FileIdOffsetRule> fileIdOffsetRules_;
     std::unordered_set<int32_t> originalPureCloudFileIds_;
     std::unordered_set<int32_t> reservedDuplicateDonorFileIds_;
-    std::mutex duplicateMutex_;
     std::vector<ReverseCloneKvStoreTask> pendingKvStoreTasks_;
+    std::mutex duplicateMutex_;
     std::mutex kvStoreMutex_;
 };
 } // namespace OHOS::Media
