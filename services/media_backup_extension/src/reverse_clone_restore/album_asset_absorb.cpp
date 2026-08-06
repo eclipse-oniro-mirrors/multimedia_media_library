@@ -33,6 +33,7 @@
 #include <sstream>
 #include <mutex>
 #include <unordered_set>
+#include <utility>
 
 namespace OHOS {
 namespace Media {
@@ -63,7 +64,8 @@ const std::string SQL_FIND_SAME_FILE_WITH_CLOUD_ID = R"(
         P.data,
         P.clean_flag,
         P.position,
-        P.file_source_type
+        P.file_source_type,
+        COALESCE(P.storage_path, '') AS storage_path
     FROM Photos AS P
     WHERE file_id >= ? AND
         file_id <= ? AND
@@ -76,7 +78,8 @@ const std::string SQL_FIND_SAME_FILE_IN_ALBUM = R"(
         p.data,
         p.clean_flag,
         p.position,
-        p.file_source_type
+        p.file_source_type,
+        COALESCE(p.storage_path, '') AS storage_path
     FROM
         (
             SELECT album_id
@@ -92,6 +95,7 @@ const std::string SQL_FIND_SAME_FILE_IN_ALBUM = R"(
                 clean_flag,
                 position,
                 file_source_type,
+                storage_path,
                 size,
                 orientation,
                 owner_album_id
@@ -112,7 +116,8 @@ const std::string SQL_FIND_SAME_FILE_WITHOUT_ALBUM = R"(
         P.data,
         P.clean_flag,
         P.position,
-        P.file_source_type
+        P.file_source_type,
+        COALESCE(P.storage_path, '') AS storage_path
     FROM Photos AS P
     WHERE file_id >= ? AND
         file_id <= ? AND
@@ -128,7 +133,8 @@ const std::string SQL_FIND_SAME_FILE_BY_SOURCE_PATH = R"(
         data,
         clean_flag,
         position,
-        file_source_type
+        file_source_type,
+        storage_path
     FROM
         (
             SELECT file_id,
@@ -136,6 +142,7 @@ const std::string SQL_FIND_SAME_FILE_BY_SOURCE_PATH = R"(
                 clean_flag,
                 position,
                 file_source_type,
+                COALESCE(Photos.storage_path, '') AS storage_path,
                 display_name,
                 size,
                 orientation,
@@ -188,17 +195,24 @@ int32_t AlbumAssetAbsorb::QueryMaxFileId(const shared_ptr<NativeRdb::RdbStore> &
     return maxFileId;
 }
 
-static vector<int32_t> ReadFileIds(const shared_ptr<NativeRdb::ResultSet> &resultSet)
+static vector<int32_t> ReadFileIds(const shared_ptr<NativeRdb::ResultSet> &resultSet,
+    unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources)
 {
     vector<int32_t> fileIds;
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         return fileIds;
     }
     do {
-        int32_t fileId = 0;
-        resultSet->GetInt(0, fileId);
-        if (fileId > 0) {
-            fileIds.emplace_back(fileId);
+        ReverseCloneAssetResource donor;
+        resultSet->GetInt(0, donor.fileId);
+        resultSet->GetString(1, donor.cloudPath);
+        resultSet->GetInt(4, donor.fileSourceType);
+        resultSet->GetString(5, donor.storagePath);
+        if (donor.fileId > 0) {
+            fileIds.emplace_back(donor.fileId);
+            if (duplicateDonorResources != nullptr) {
+                duplicateDonorResources->emplace(donor.fileId, std::move(donor));
+            }
         }
     } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
     return fileIds;
@@ -211,7 +225,8 @@ static vector<int32_t> ReadFileIds(const shared_ptr<NativeRdb::ResultSet> &resul
  */
 vector<int32_t> AlbumAssetAbsorb::FindSameFileWithCloudId(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-    int32_t maxFileId, int32_t minDestDbFileId)
+    int32_t maxFileId, int32_t minDestDbFileId,
+    unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources)
 {
     if (fileInfo.cloudUniqueId.empty() || maxFileId <= 0) {
         return {};
@@ -220,7 +235,7 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileWithCloudId(
     const vector<NativeRdb::ValueObject> params = {minDestDbFileId, maxFileId, fileInfo.cloudUniqueId};
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_WITH_CLOUD_ID, params);
     CHECK_AND_RETURN_RET(resultSet != nullptr, {});
-    vector<int32_t> fileIds = ReadFileIds(resultSet);
+    vector<int32_t> fileIds = ReadFileIds(resultSet, duplicateDonorResources);
     resultSet->Close();
     return fileIds;
 }
@@ -230,7 +245,8 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileWithCloudId(
  */
 vector<int32_t> AlbumAssetAbsorb::FindSameFileInAlbum(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-    int32_t maxFileId, int32_t minDestDbFileId)
+    int32_t maxFileId, int32_t minDestDbFileId,
+    unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources)
 {
     if (fileInfo.lPath.empty() || maxFileId <= 0) {
         return {};
@@ -244,7 +260,7 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileInAlbum(
 
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_IN_ALBUM, params);
     CHECK_AND_RETURN_RET(resultSet != nullptr, {});
-    vector<int32_t> fileIds = ReadFileIds(resultSet);
+    vector<int32_t> fileIds = ReadFileIds(resultSet, duplicateDonorResources);
     resultSet->Close();
     return fileIds;
 }
@@ -254,7 +270,8 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileInAlbum(
  */
 vector<int32_t> AlbumAssetAbsorb::FindSameFileWithoutAlbum(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-    int32_t maxFileId, int32_t minDestDbFileId)
+    int32_t maxFileId, int32_t minDestDbFileId,
+    unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources)
 {
     if (maxFileId <= 0) {
         return {};
@@ -267,7 +284,7 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileWithoutAlbum(
 
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_WITHOUT_ALBUM, params);
     CHECK_AND_RETURN_RET(resultSet != nullptr, {});
-    vector<int32_t> fileIds = ReadFileIds(resultSet);
+    vector<int32_t> fileIds = ReadFileIds(resultSet, duplicateDonorResources);
     resultSet->Close();
     return fileIds;
 }
@@ -277,7 +294,8 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileWithoutAlbum(
  */
 vector<int32_t> AlbumAssetAbsorb::FindSameFileBySourcePath(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-    int32_t maxFileId, int32_t minDestDbFileId)
+    int32_t maxFileId, int32_t minDestDbFileId,
+    unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources)
 {
     if (fileInfo.lPath.empty() || maxFileId <= 0) {
         return {};
@@ -296,7 +314,7 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileBySourcePath(
 
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_BY_SOURCE_PATH, params);
     CHECK_AND_RETURN_RET(resultSet != nullptr, {});
-    vector<int32_t> fileIds = ReadFileIds(resultSet);
+    vector<int32_t> fileIds = ReadFileIds(resultSet, duplicateDonorResources);
     resultSet->Close();
     return fileIds;
 }
@@ -309,35 +327,42 @@ vector<int32_t> AlbumAssetAbsorb::FindSameFileBySourcePath(
  */
 vector<int32_t> AlbumAssetAbsorb::FindSameFile(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-    int32_t maxFileId, int32_t minDestDbFileId)
+    int32_t maxFileId, int32_t minDestDbFileId,
+    unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources)
 {
     // 1. 优先根据 cloud_id 判重（云照片）
     if (!fileInfo.cloudUniqueId.empty()) {
-        vector<int32_t> fileIds = FindSameFileWithCloudId(destRdb, fileInfo, maxFileId, minDestDbFileId);
+        vector<int32_t> fileIds = FindSameFileWithCloudId(
+            destRdb, fileInfo, maxFileId, minDestDbFileId, duplicateDonorResources);
         if (!fileIds.empty()) {
-            MEDIA_INFO_LOG("FindSameFile: found duplicate by cloud_id, candidates=%{public}zu", fileIds.size());
+            MEDIA_INFO_LOG("FindSameFile: found duplicate by cloud_id, candidates=%{public}zu",
+                fileIds.size());
             return fileIds;
         }
     }
 
     // 2. 如果 lPath 为空，使用 FindSameFileWithoutAlbum
     if (fileInfo.lPath.empty()) {
-        vector<int32_t> fileIds = FindSameFileWithoutAlbum(destRdb, fileInfo, maxFileId, minDestDbFileId);
+        vector<int32_t> fileIds = FindSameFileWithoutAlbum(
+            destRdb, fileInfo, maxFileId, minDestDbFileId, duplicateDonorResources);
         if (!fileIds.empty()) {
-            MEDIA_INFO_LOG("FindSameFile: found duplicate without album, candidates=%{public}zu", fileIds.size());
+            MEDIA_INFO_LOG("FindSameFile: found duplicate without album, candidates=%{public}zu",
+                fileIds.size());
         }
         return fileIds;
     }
 
     // 3. 先根据 lPath + displayName + size + orientation 判重（在相册中）
-    vector<int32_t> fileIds = FindSameFileInAlbum(destRdb, fileInfo, maxFileId, minDestDbFileId);
+    vector<int32_t> fileIds = FindSameFileInAlbum(
+        destRdb, fileInfo, maxFileId, minDestDbFileId, duplicateDonorResources);
     if (!fileIds.empty()) {
         MEDIA_INFO_LOG("FindSameFile: found duplicate in album, candidates=%{public}zu", fileIds.size());
         return fileIds;
     }
 
     // 4. 再根据 sourcePath + displayName + size + orientation 判重（不在相册中）
-    fileIds = FindSameFileBySourcePath(destRdb, fileInfo, maxFileId, minDestDbFileId);
+    fileIds = FindSameFileBySourcePath(
+        destRdb, fileInfo, maxFileId, minDestDbFileId, duplicateDonorResources);
     if (!fileIds.empty()) {
         MEDIA_INFO_LOG("FindSameFile: found duplicate by source_path, candidates=%{public}zu", fileIds.size());
     }
@@ -367,8 +392,7 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
     vector<FileInfo> &fileInfos, int32_t maxFileId, int32_t minDestDbFileId,
     vector<ReverseCloneResourcePlan> &resourcePlans, const unordered_set<int32_t> &originalPureCloudFileIds,
     DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap,
-    vector<ReverseCloneResourcePlan> &duplicateDonorPlans,
-    unordered_map<int32_t, int32_t> &primaryDonorMap)
+    unordered_map<int32_t, ReverseCloneAssetResource> &duplicateDonorResources)
 {
     if (fileInfos.empty()) {
         return;
@@ -386,36 +410,37 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     ReverseCloneResourceInheritService resourceInheritService;
     for (auto &fileInfo : fileInfos) {
-        vector<int32_t> duplicateFileIds = FindSameFile(destRdb, fileInfo, maxFileId, minDestDbFileId);
+        unordered_map<int32_t, ReverseCloneAssetResource> donorResources;
+        vector<int32_t> duplicateFileIds =
+            FindSameFile(destRdb, fileInfo, maxFileId, minDestDbFileId, &donorResources);
         if (duplicateFileIds.empty()) {
             continue;
         }
-        int32_t primaryDonorId = duplicateFileIds.front();
-        size_t donorPlanStart = duplicateDonorPlans.size();
+        int32_t donorFileId = duplicateFileIds.front();
         for (int32_t duplicateFileId : duplicateFileIds) {
-            duplicateDonorMap.emplace(duplicateFileId, fileInfo.fileIdOld);
+            if (duplicateDonorMap.emplace(duplicateFileId, fileInfo.fileIdOld).second) {
+                auto donorIt = donorResources.find(duplicateFileId);
+                if (donorIt != donorResources.end()) {
+                    duplicateDonorResources.emplace(duplicateFileId, std::move(donorIt->second));
+                }
+            }
         }
-        for (int32_t duplicateFileId : duplicateFileIds) {
-            ReverseCloneResourcePlan plan = resourceInheritService.BuildDuplicatePlanByFileId(
-                fileInfo, duplicateFileId, destRdb, originalPureCloudFileIds);
-            if (plan.donor.fileId <= 0) {
-                MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: build duplicate resource plan failed, "
-                    "fileId=%{public}d", duplicateFileId);
-                continue;
-            }
-            duplicateDonorPlans.emplace_back(plan);
-            if (duplicateFileId == primaryDonorId) {
-                resourcePlans.emplace_back(plan);
-                SolveDuplicate(duplicateCount, plan);
-            }
+        ReverseCloneResourcePlan plan = resourceInheritService.BuildDuplicatePlanByFileId(
+            fileInfo, donorFileId, destRdb, originalPureCloudFileIds);
+        if (plan.donor.fileId > 0) {
+            resourcePlans.emplace_back(plan);
+            SolveDuplicate(duplicateCount, plan);
+        } else {
+            MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: build duplicate resource plan failed, "
+                "donorFileId=%{public}d, absorbedFileId=%{public}d, use source resources",
+                donorFileId, fileInfo.fileIdOld);
         }
 
-        fileInfo.deletedSrcdbFileId = primaryDonorId;
-        primaryDonorMap[fileInfo.fileIdOld] = primaryDonorId;
+        fileInfo.deletedSrcdbFileId = donorFileId;
         duplicateCount.total++;
         MEDIA_INFO_LOG("CheckAndRemoveDuplicatePhotos: duplicate photo found, absorbedFileId=%{public}d, "
-            "primaryDonorFileId=%{public}d, candidates=%{public}zu, planCount=%{public}zu",
-            fileInfo.fileIdOld, primaryDonorId, duplicateFileIds.size(), duplicateDonorPlans.size() - donorPlanStart);
+            "resourceDonorFileId=%{public}d, candidates=%{public}zu, planBuilt=%{public}d",
+            fileInfo.fileIdOld, donorFileId, duplicateFileIds.size(), plan.donor.fileId > 0);
     }
 
     int64_t cost = MediaFileUtils::UTCTimeMilliSeconds() - start;

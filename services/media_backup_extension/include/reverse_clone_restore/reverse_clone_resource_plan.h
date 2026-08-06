@@ -135,6 +135,8 @@ struct ReverseCloneResourcePlan {
     bool inheritThumbnail {false};
     bool cloudRestoreSatisfied {false};
     bool lakeTargetRenamed {false};
+    // A duplicate donor was removed, but its inheritance plan was unavailable; source data owns the target.
+    bool replaceExistingTarget {false};
 
     bool HasResourceAction() const
     {

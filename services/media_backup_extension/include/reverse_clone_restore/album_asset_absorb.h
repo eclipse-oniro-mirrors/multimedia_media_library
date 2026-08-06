@@ -71,8 +71,7 @@ public:
         vector<FileInfo> &fileInfos, int32_t maxFileId, int32_t minDestDbFileId,
         vector<ReverseCloneResourcePlan> &resourcePlans, const unordered_set<int32_t> &originalPureCloudFileIds,
         DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap,
-        vector<ReverseCloneResourcePlan> &duplicateDonorPlans,
-        unordered_map<int32_t, int32_t> &primaryDonorMap);
+        unordered_map<int32_t, ReverseCloneAssetResource> &duplicateDonorResources);
 
     // 判重辅助方法（与原克隆逻辑保持一致）
 
@@ -89,7 +88,8 @@ public:
      * @return 按优先级排序的重复file_id候选列表
      */
     vector<int32_t> FindSameFile(const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-        int32_t maxFileId, int32_t minDestDbFileId);
+        int32_t maxFileId, int32_t minDestDbFileId,
+        unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources = nullptr);
 
     /**
      * 根据 cloud_id 查找重复照片（云照片优先）
@@ -102,7 +102,8 @@ public:
      */
     vector<int32_t> FindSameFileWithCloudId(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-        int32_t maxFileId, int32_t minDestDbFileId);
+        int32_t maxFileId, int32_t minDestDbFileId,
+        unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources = nullptr);
 
     /**
      * 根据 lPath + display_name + size + orientation 查找重复照片（在相册中）
@@ -115,7 +116,8 @@ public:
      */
     vector<int32_t> FindSameFileInAlbum(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-        int32_t maxFileId, int32_t minDestDbFileId);
+        int32_t maxFileId, int32_t minDestDbFileId,
+        unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources = nullptr);
 
     /**
      * 根据 display_name + size + orientation 查找重复照片（不在相册中）
@@ -128,7 +130,8 @@ public:
      */
     vector<int32_t> FindSameFileWithoutAlbum(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-        int32_t maxFileId, int32_t minDestDbFileId);
+        int32_t maxFileId, int32_t minDestDbFileId,
+        unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources = nullptr);
 
     /**
      * 根据 source_path + display_name + size + orientation 查找重复照片（隐藏/回收站）
@@ -141,7 +144,8 @@ public:
      */
     vector<int32_t> FindSameFileBySourcePath(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
-        int32_t maxFileId, int32_t minDestDbFileId);
+        int32_t maxFileId, int32_t minDestDbFileId,
+        unordered_map<int32_t, ReverseCloneAssetResource> *duplicateDonorResources = nullptr);
 
     /**
      * 更新duplicateAssetMap_：记录判重照片的旧机file_id到新机file_id的映射

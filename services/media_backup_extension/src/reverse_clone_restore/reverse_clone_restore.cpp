@@ -4046,9 +4046,10 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
         &duplicateAssetMapMutex_);
     {
         std::lock_guard<std::mutex> lock(duplicateAssetMapMutex_);
-        // Keep only the donor actually used for resource/history inheritance.
-        for (const auto &[absorbedFileId, donorFileId] : batch.primaryDonorMap) {
-            reverseDupMap_[absorbedFileId] = donorFileId;
+        for (const auto &fileInfo : batch.validFileInfos) {
+            if (fileInfo.deletedSrcdbFileId > 0) {
+                reverseDupMap_[fileInfo.fileIdOld] = fileInfo.deletedSrcdbFileId;
+            }
         }
     }
 
@@ -4588,9 +4589,10 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
         &duplicateAssetMapMutex_);
     {
         std::lock_guard<std::mutex> lock(duplicateAssetMapMutex_);
-        // Keep only the donor actually used for resource/history inheritance.
-        for (const auto &[absorbedFileId, donorFileId] : batch.primaryDonorMap) {
-            reverseDupMap_[absorbedFileId] = donorFileId;
+        for (const auto &fileInfo : batch.validFileInfos) {
+            if (fileInfo.deletedSrcdbFileId > 0) {
+                reverseDupMap_[fileInfo.fileIdOld] = fileInfo.deletedSrcdbFileId;
+            }
         }
     }
 
