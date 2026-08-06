@@ -68,7 +68,7 @@ const std::string SQL_FIND_SAME_FILE_WITH_CLOUD_ID = R"(
     WHERE file_id >= ? AND
         file_id <= ? AND
         cloud_id = ?
-    LIMIT 1;)";
+    ORDER BY file_id ASC;)";
 
 const std::string SQL_FIND_SAME_FILE_IN_ALBUM = R"(
     SELECT
@@ -104,8 +104,7 @@ const std::string SQL_FIND_SAME_FILE_IN_ALBUM = R"(
         )
         AS p
     ON a.album_id = p.owner_album_id
-    ORDER BY p.clean_flag ASC
-    LIMIT 1;)";
+    ORDER BY p.clean_flag ASC, p.file_id ASC;)";
 
 const std::string SQL_FIND_SAME_FILE_WITHOUT_ALBUM = R"(
     SELECT
@@ -121,8 +120,7 @@ const std::string SQL_FIND_SAME_FILE_WITHOUT_ALBUM = R"(
         size = ? AND
         (owner_album_id IS NULL OR owner_album_id = 0) AND
         (1 <> ? OR orientation = ?)
-    ORDER BY clean_flag ASC
-    LIMIT 1;)";
+    ORDER BY clean_flag ASC, file_id ASC;)";
 
 const std::string SQL_FIND_SAME_FILE_BY_SOURCE_PATH = R"(
     SELECT
@@ -171,8 +169,7 @@ const std::string SQL_FIND_SAME_FILE_BY_SOURCE_PATH = R"(
         MISS.size = INPUT.size AND
         (1 <> INPUT.picture_flag OR MISS.orientation = INPUT.orientation) AND
         LOWER(MISS.source_path) = LOWER(INPUT.source_path)
-    ORDER BY MISS.clean_flag ASC
-    LIMIT 1;)";
+    ORDER BY MISS.clean_flag ASC, MISS.file_id ASC;)";
 
 // 辅助函数
 // LCOV_EXCL_START
@@ -191,40 +188,52 @@ int32_t AlbumAssetAbsorb::QueryMaxFileId(const shared_ptr<NativeRdb::RdbStore> &
     return maxFileId;
 }
 
+static vector<int32_t> ReadFileIds(const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    vector<int32_t> fileIds;
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        return fileIds;
+    }
+    do {
+        int32_t fileId = 0;
+        resultSet->GetInt(0, fileId);
+        if (fileId > 0) {
+            fileIds.emplace_back(fileId);
+        }
+    } while (resultSet->GoToNextRow() == NativeRdb::E_OK);
+    return fileIds;
+}
+
 // 判重辅助方法（与原克隆逻辑保持一致）
 
 /**
  * @brief 根据 cloud_id 查找重复照片（云照片优先）
  */
-int32_t AlbumAssetAbsorb::FindSameFileWithCloudId(
+vector<int32_t> AlbumAssetAbsorb::FindSameFileWithCloudId(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
     int32_t maxFileId, int32_t minDestDbFileId)
 {
     if (fileInfo.cloudUniqueId.empty() || maxFileId <= 0) {
-        return 0;
+        return {};
     }
 
     const vector<NativeRdb::ValueObject> params = {minDestDbFileId, maxFileId, fileInfo.cloudUniqueId};
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_WITH_CLOUD_ID, params);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, 0);
-
-    int32_t fileId = 0;
-    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        resultSet->GetInt(0, fileId);
-    }
+    CHECK_AND_RETURN_RET(resultSet != nullptr, {});
+    vector<int32_t> fileIds = ReadFileIds(resultSet);
     resultSet->Close();
-    return fileId;
+    return fileIds;
 }
 
 /**
  * @brief 根据 lPath + display_name + size + orientation 查找重复照片（在相册中）
  */
-int32_t AlbumAssetAbsorb::FindSameFileInAlbum(
+vector<int32_t> AlbumAssetAbsorb::FindSameFileInAlbum(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
     int32_t maxFileId, int32_t minDestDbFileId)
 {
     if (fileInfo.lPath.empty() || maxFileId <= 0) {
-        return 0;
+        return {};
     }
 
     // pictureFlag: 0 for video, 1 for photo; Only search for photo in this case.
@@ -234,25 +243,21 @@ int32_t AlbumAssetAbsorb::FindSameFileInAlbum(
                                                    fileInfo.orientation};
 
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_IN_ALBUM, params);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, 0);
-
-    int32_t fileId = 0;
-    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        resultSet->GetInt(0, fileId);
-    }
+    CHECK_AND_RETURN_RET(resultSet != nullptr, {});
+    vector<int32_t> fileIds = ReadFileIds(resultSet);
     resultSet->Close();
-    return fileId;
+    return fileIds;
 }
 
 /**
  * @brief 根据 display_name + size + orientation 查找重复照片（不在相册中）
  */
-int32_t AlbumAssetAbsorb::FindSameFileWithoutAlbum(
+vector<int32_t> AlbumAssetAbsorb::FindSameFileWithoutAlbum(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
     int32_t maxFileId, int32_t minDestDbFileId)
 {
     if (maxFileId <= 0) {
-        return 0;
+        return {};
     }
 
     // pictureFlag: 0 for video, 1 for photo; Only search for photo in this case.
@@ -261,25 +266,21 @@ int32_t AlbumAssetAbsorb::FindSameFileWithoutAlbum(
         minDestDbFileId, maxFileId, fileInfo.displayName, fileInfo.fileSize, pictureFlag, fileInfo.orientation};
 
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_WITHOUT_ALBUM, params);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, 0);
-
-    int32_t fileId = 0;
-    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        resultSet->GetInt(0, fileId);
-    }
+    CHECK_AND_RETURN_RET(resultSet != nullptr, {});
+    vector<int32_t> fileIds = ReadFileIds(resultSet);
     resultSet->Close();
-    return fileId;
+    return fileIds;
 }
 
 /**
  * @brief 根据 source_path + display_name + size + orientation 查找重复照片（隐藏/回收站）
  */
-int32_t AlbumAssetAbsorb::FindSameFileBySourcePath(
+vector<int32_t> AlbumAssetAbsorb::FindSameFileBySourcePath(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
     int32_t maxFileId, int32_t minDestDbFileId)
 {
     if (fileInfo.lPath.empty() || maxFileId <= 0) {
-        return 0;
+        return {};
     }
 
     // pictureFlag: 0 for video, 1 for photo; Only search for photo in this case.
@@ -294,14 +295,10 @@ int32_t AlbumAssetAbsorb::FindSameFileBySourcePath(
                                                    fileInfo.orientation};
 
     auto resultSet = BackupDatabaseUtils::QuerySql(destRdb, SQL_FIND_SAME_FILE_BY_SOURCE_PATH, params);
-    CHECK_AND_RETURN_RET(resultSet != nullptr, 0);
-
-    int32_t fileId = 0;
-    if (resultSet->GoToFirstRow() == NativeRdb::E_OK) {
-        resultSet->GetInt(0, fileId);
-    }
+    CHECK_AND_RETURN_RET(resultSet != nullptr, {});
+    vector<int32_t> fileIds = ReadFileIds(resultSet);
     resultSet->Close();
-    return fileId;
+    return fileIds;
 }
 
 /**
@@ -310,44 +307,41 @@ int32_t AlbumAssetAbsorb::FindSameFileBySourcePath(
  *         displayName + size + orientation (owner_album_id IS NULL) >
  *         source_path + displayName + size + orientation
  */
-int32_t AlbumAssetAbsorb::FindSameFile(
+vector<int32_t> AlbumAssetAbsorb::FindSameFile(
     const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
     int32_t maxFileId, int32_t minDestDbFileId)
 {
-    int32_t duplicateFileId = 0;
-
     // 1. 优先根据 cloud_id 判重（云照片）
     if (!fileInfo.cloudUniqueId.empty()) {
-        duplicateFileId = FindSameFileWithCloudId(destRdb, fileInfo, maxFileId, minDestDbFileId);
-        if (duplicateFileId > 0) {
-            MEDIA_INFO_LOG("FindSameFile: found duplicate by cloud_id, fileId=%{public}d", duplicateFileId);
-            return duplicateFileId;
+        vector<int32_t> fileIds = FindSameFileWithCloudId(destRdb, fileInfo, maxFileId, minDestDbFileId);
+        if (!fileIds.empty()) {
+            MEDIA_INFO_LOG("FindSameFile: found duplicate by cloud_id, candidates=%{public}zu", fileIds.size());
+            return fileIds;
         }
     }
 
     // 2. 如果 lPath 为空，使用 FindSameFileWithoutAlbum
     if (fileInfo.lPath.empty()) {
-        duplicateFileId = FindSameFileWithoutAlbum(destRdb, fileInfo, maxFileId, minDestDbFileId);
-        if (duplicateFileId > 0) {
-            MEDIA_INFO_LOG("FindSameFile: found duplicate without album, fileId=%{public}d", duplicateFileId);
+        vector<int32_t> fileIds = FindSameFileWithoutAlbum(destRdb, fileInfo, maxFileId, minDestDbFileId);
+        if (!fileIds.empty()) {
+            MEDIA_INFO_LOG("FindSameFile: found duplicate without album, candidates=%{public}zu", fileIds.size());
         }
-        return duplicateFileId;
+        return fileIds;
     }
 
     // 3. 先根据 lPath + displayName + size + orientation 判重（在相册中）
-    duplicateFileId = FindSameFileInAlbum(destRdb, fileInfo, maxFileId, minDestDbFileId);
-    if (duplicateFileId > 0) {
-        MEDIA_INFO_LOG("FindSameFile: found duplicate in album, fileId=%{public}d", duplicateFileId);
-        return duplicateFileId;
+    vector<int32_t> fileIds = FindSameFileInAlbum(destRdb, fileInfo, maxFileId, minDestDbFileId);
+    if (!fileIds.empty()) {
+        MEDIA_INFO_LOG("FindSameFile: found duplicate in album, candidates=%{public}zu", fileIds.size());
+        return fileIds;
     }
 
     // 4. 再根据 sourcePath + displayName + size + orientation 判重（不在相册中）
-    duplicateFileId = FindSameFileBySourcePath(destRdb, fileInfo, maxFileId, minDestDbFileId);
-    if (duplicateFileId > 0) {
-        MEDIA_INFO_LOG("FindSameFile: found duplicate by source_path, fileId=%{public}d", duplicateFileId);
+    fileIds = FindSameFileBySourcePath(destRdb, fileInfo, maxFileId, minDestDbFileId);
+    if (!fileIds.empty()) {
+        MEDIA_INFO_LOG("FindSameFile: found duplicate by source_path, candidates=%{public}zu", fileIds.size());
     }
-
-    return duplicateFileId;
+    return fileIds;
 }
 
 static void SolveDuplicate(AlbumAssetAbsorb::DuplicateCount &duplicateCount, ReverseCloneResourcePlan &plan)
@@ -372,7 +366,7 @@ static void SolveDuplicate(AlbumAssetAbsorb::DuplicateCount &duplicateCount, Rev
 void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb::RdbStore> &destRdb,
     vector<FileInfo> &fileInfos, int32_t maxFileId, int32_t minDestDbFileId,
     vector<ReverseCloneResourcePlan> &resourcePlans, const unordered_set<int32_t> &originalPureCloudFileIds,
-    DuplicateCount &duplicateCount)
+    DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap)
 {
     if (fileInfos.empty()) {
         return;
@@ -390,28 +384,39 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     ReverseCloneResourceInheritService resourceInheritService;
     for (auto &fileInfo : fileInfos) {
-        int32_t duplicateFileId = FindSameFile(destRdb, fileInfo, maxFileId, minDestDbFileId);
-        if (duplicateFileId <= 0) {
+        vector<int32_t> duplicateFileIds = FindSameFile(destRdb, fileInfo, maxFileId, minDestDbFileId);
+        if (duplicateFileIds.empty()) {
             continue;
         }
+        for (int32_t duplicateFileId : duplicateFileIds) {
+            duplicateDonorMap.emplace(duplicateFileId, fileInfo.fileIdOld);
+        }
 
-        ReverseCloneResourcePlan plan =
-            resourceInheritService.BuildDuplicatePlanByFileId(
+        // All candidates will be deleted; one valid donor is enough to provide inherited resources.
+        fileInfo.deletedSrcdbFileId = duplicateFileIds.front();
+        bool planBuilt = false;
+        for (int32_t duplicateFileId : duplicateFileIds) {
+            ReverseCloneResourcePlan plan = resourceInheritService.BuildDuplicatePlanByFileId(
                 fileInfo, duplicateFileId, destRdb, originalPureCloudFileIds);
-        if (plan.donor.fileId <= 0) {
-            MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: build duplicate resource plan failed, fileId=%{public}d",
-                duplicateFileId);
-            continue;
+            if (plan.donor.fileId <= 0) {
+                MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: build duplicate resource plan failed, "
+                    "fileId=%{public}d", duplicateFileId);
+                continue;
+            }
+            SolveDuplicate(duplicateCount, plan);
+            fileInfo.deletedSrcdbFileId = duplicateFileId;
+            resourcePlans.emplace_back(plan);
+            planBuilt = true;
+            break;
         }
-        SolveDuplicate(duplicateCount, plan);
-        MEDIA_INFO_LOG("CheckAndRemoveDuplicatePhotos: duplicate photo found, displayName=%{public}s, "
-                       "size=%{public}ld, orientation=%{public}d, srcdbFileId=%{public}d",
-            fileInfo.displayName.c_str(), fileInfo.fileSize, fileInfo.orientation, duplicateFileId);
-
-        // Mark the donor for post-insert deletion; do not delete before the absorbed row is inserted.
-        fileInfo.deletedSrcdbFileId = duplicateFileId;
-        resourcePlans.emplace_back(plan);
         duplicateCount.total++;
+        MEDIA_INFO_LOG("CheckAndRemoveDuplicatePhotos: duplicate photo found, absorbedFileId=%{public}d, "
+            "primaryDonorFileId=%{public}d, donorCount=%{public}zu, planBuilt=%{public}d",
+            fileInfo.fileIdOld, fileInfo.deletedSrcdbFileId, duplicateFileIds.size(), planBuilt);
+        if (!planBuilt) {
+            MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: no donor resource plan built, "
+                "absorbedFileId=%{public}d, donorCount=%{public}zu", fileInfo.fileIdOld, duplicateFileIds.size());
+        }
     }
 
     int64_t cost = MediaFileUtils::UTCTimeMilliSeconds() - start;
@@ -420,26 +425,20 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
 }
 
 void AlbumAssetAbsorb::UpdateDuplicateAssetMapForDuplicates(
-    vector<FileInfo> &fileInfos, unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex)
+    const unordered_map<int32_t, int32_t> &duplicateDonorMap,
+    unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex)
 {
     // 加锁保护（如果提供了互斥锁）
     if (mutex != nullptr) {
         mutex->lock();
     }
 
-    for (const auto &fileInfo : fileInfos) {
-        // 只处理有删除记录的照片
-        if (fileInfo.deletedSrcdbFileId <= 0) {
-            continue;
-        }
-
-        // 记录映射：被删除的旧机file_id -> 新机file_id
-        duplicateAssetMap[fileInfo.deletedSrcdbFileId] = fileInfo.fileIdOld;
+    for (const auto &[donorFileId, absorbedFileId] : duplicateDonorMap) {
+        duplicateAssetMap[donorFileId] = absorbedFileId;
 
         MEDIA_INFO_LOG(
             "UpdateDuplicateAssetMapForDuplicates: added mapping, oldFileId=%{public}d -> newFileId=%{public}d",
-            fileInfo.deletedSrcdbFileId,
-            fileInfo.fileIdOld);
+            donorFileId, absorbedFileId);
     }
 
     MEDIA_INFO_LOG("UpdateDuplicateAssetMapForDuplicates: updated duplicateAssetMap_");

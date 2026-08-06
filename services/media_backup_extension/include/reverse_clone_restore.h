@@ -106,7 +106,8 @@ public:
     // 资产移动状态结构体（用于断点续传）
     struct AssetMoveState {
         std::string src;
-        std::string dst;
+        std::string dstLocal;
+        std::string dstMerge;
         std::string backup;
         bool hadSrc {false};
         bool hadDst {false};

@@ -1828,9 +1828,8 @@ bool ReverseCloneRestore::PrepareForResume()
 
 bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveState &move)
 {
-    const std::string dstBackingPath = GetAssetMoveBackingPath(move.dst);
-    move.hadSrc = IsAssetMovePathExists(move.src);
-    move.hadDst = IsAssetMovePathExists(dstBackingPath);
+    move.hadSrc = IsPathExists(move.src);
+    move.hadDst = IsPathExists(move.dstLocal);
     if (!move.hadSrc && !move.hadDst) {
         MEDIA_INFO_LOG("ReplaceDirWithBackup: both not exist, skip");
         return true;
@@ -1858,24 +1857,24 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
     }
 
     if (move.hadDst) {
-        if (rename(move.dst.c_str(), move.backup.c_str()) != 0) {
+        if (rename(move.dstMerge.c_str(), move.backup.c_str()) != 0) {
             int savedErrno = errno;
             MEDIA_WARN_LOG("ReplaceDirWithBackup: rename dst %{public}s to backup %{public}s failed, errno=%{public}d",
-                move.dst.c_str(), move.backup.c_str(), savedErrno);
-            DiagnoseRenameFailure(move.dst, move.backup, savedErrno);
+                move.dstMerge.c_str(), move.backup.c_str(), savedErrno);
+            DiagnoseRenameFailure(move.dstMerge, move.backup, savedErrno);
             return false;
         }
-        MEDIA_INFO_LOG("ReplaceDirWithBackup: backed up dst %{public}s -> %{public}s", move.dst.c_str(),
+        MEDIA_INFO_LOG("ReplaceDirWithBackup: backed up dst %{public}s -> %{public}s", move.dstMerge.c_str(),
             move.backup.c_str());
         move.backedUpDst = true;
     }
 
     if (move.hadSrc) {
-        if (rename(move.src.c_str(), dstBackingPath.c_str()) != 0) {
+        if (rename(move.src.c_str(), move.dstLocal.c_str()) != 0) {
             int savedErrno = errno;
             MEDIA_WARN_LOG("ReplaceDirWithBackup: rename src %{public}s to dst %{public}s failed, errno=%{public}d",
-                move.src.c_str(), dstBackingPath.c_str(), savedErrno);
-            DiagnoseRenameFailure(move.src, dstBackingPath, savedErrno);
+                move.src.c_str(), move.dstLocal.c_str(), savedErrno);
+            DiagnoseRenameFailure(move.src, move.dstLocal, savedErrno);
             if (move.hadDst && !RollbackAssetMove(move)) {
                 MEDIA_ERR_LOG("ReplaceDirWithBackup: rollback current asset dir failed, src=%{public}s",
                     move.src.c_str());
@@ -1884,7 +1883,7 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
             return false;
         }
         MEDIA_INFO_LOG("ReplaceDirWithBackup: moved src %{public}s -> %{public}s", move.src.c_str(),
-            dstBackingPath.c_str());
+            move.dstLocal.c_str());
         move.movedSrc = true;
     }
     return true;
@@ -1892,28 +1891,27 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
 
 bool ReverseCloneRestore::RollbackAssetMove(const AssetMoveState &move)
 {
-    const std::string dstBackingPath = GetAssetMoveBackingPath(move.dst);
     bool ret = true;
     if (move.movedSrc) {
-        if (IsAssetMovePathExists(move.src)) {
+        if (IsPathExists(move.src)) {
             MEDIA_INFO_LOG("RollbackAssetMove: source already restored, src=%{public}s", move.src.c_str());
-        } else if (IsAssetMovePathExists(dstBackingPath)) {
-            if (rename(dstBackingPath.c_str(), move.src.c_str()) != 0) {
+        } else if (IsPathExists(move.dstLocal)) {
+            if (rename(move.dstLocal.c_str(), move.src.c_str()) != 0) {
                 int savedErrno = errno;
                 MEDIA_ERR_LOG("RollbackAssetMove: restore source %{public}s from dst %{public}s failed, "
-                    "errno=%{public}d", move.src.c_str(), dstBackingPath.c_str(), savedErrno);
-                DiagnoseRenameFailure(dstBackingPath, move.src, savedErrno);
+                    "errno=%{public}d", move.src.c_str(), move.dstLocal.c_str(), savedErrno);
+                DiagnoseRenameFailure(move.dstLocal, move.src, savedErrno);
                 ret = false;
             } else {
                 MEDIA_INFO_LOG("RollbackAssetMove: restored source %{public}s from dst %{public}s",
-                    move.src.c_str(), dstBackingPath.c_str());
+                    move.src.c_str(), move.dstLocal.c_str());
             }
         } else {
             MEDIA_ERR_LOG("RollbackAssetMove: source and dst are both missing, src=%{public}s, dst=%{public}s",
-                move.src.c_str(), move.dst.c_str());
+                move.src.c_str(), move.dstLocal.c_str());
             ret = false;
         }
-    } else if (move.hadSrc && !IsAssetMovePathExists(move.src)) {
+    } else if (move.hadSrc && !IsPathExists(move.src)) {
         MEDIA_ERR_LOG("RollbackAssetMove: source missing after failed move, src=%{public}s", move.src.c_str());
         ret = false;
     }
@@ -1921,26 +1919,26 @@ bool ReverseCloneRestore::RollbackAssetMove(const AssetMoveState &move)
     CHECK_AND_RETURN_RET(move.backedUpDst, ret);
 
     if (!IsAssetMovePathExists(move.backup)) {
-        CHECK_AND_RETURN_RET_LOG(!IsAssetMovePathExists(move.dst), ret,
-            "RollbackAssetMove: backup already restored, dst=%{public}s", move.dst.c_str());
+        CHECK_AND_RETURN_RET_LOG(!IsPathExists(move.dstLocal), ret,
+            "RollbackAssetMove: backup already restored, dst=%{public}s", move.dstLocal.c_str());
         MEDIA_ERR_LOG("RollbackAssetMove: backup and dst are both missing, backup=%{public}s, dst=%{public}s",
-            move.backup.c_str(), move.dst.c_str());
+            move.backup.c_str(), move.dstMerge.c_str());
         return false;
     }
-    if (IsAssetMovePathExists(move.dst)) {
+    if (IsPathExists(move.dstLocal)) {
         MEDIA_ERR_LOG("RollbackAssetMove: dst still exists before restoring backup, dst=%{public}s",
-            move.dst.c_str());
+            move.dstLocal.c_str());
         return false;
     }
-    if (rename(move.backup.c_str(), move.dst.c_str()) != 0) {
+    if (rename(move.backup.c_str(), move.dstMerge.c_str()) != 0) {
         int savedErrno = errno;
         MEDIA_ERR_LOG("RollbackAssetMove: restore backup %{public}s to dst %{public}s failed, errno=%{public}d",
-            move.backup.c_str(), move.dst.c_str(), savedErrno);
-        DiagnoseRenameFailure(move.backup, move.dst, savedErrno);
+            move.backup.c_str(), move.dstMerge.c_str(), savedErrno);
+        DiagnoseRenameFailure(move.backup, move.dstMerge, savedErrno);
         return false;
     }
     MEDIA_INFO_LOG("RollbackAssetMove: restored backup %{public}s to dst %{public}s", move.backup.c_str(),
-        move.dst.c_str());
+        move.dstMerge.c_str());
     return ret;
 }
 
@@ -1974,7 +1972,7 @@ bool ReverseCloneRestore::SaveAssetMoveToXml(const AssetMoveState &move, int ind
 
     // 使用序列化的字符串存储
     std::string key = ASSET_MOVE_KEY_PREFIX + std::to_string(index);
-    std::string value = move.src + "|" + move.dst + "|" + move.backup + "|" +
+    std::string value = move.src + "|" + move.dstLocal + "|" + move.dstMerge + "|" + move.backup + "|" +
                        std::to_string(move.hadSrc) + "|" + std::to_string(move.hadDst) + "|" +
                        std::to_string(move.movedSrc) + "|" + std::to_string(move.backedUpDst);
 
@@ -1987,24 +1985,24 @@ std::vector<ReverseCloneRestore::AssetMoveState> ReverseCloneRestore::GenerateAs
     const std::string& backupRoot, const std::string& reverseRestoreBase)
 {
     std::vector<AssetMoveState> moves = {
-        { backupRoot + "/storage/media/local/files/Photo",     "/storage/cloud/files/Photo",
-          reverseRestoreBase + "/Photo" },
-        { backupRoot + "/storage/media/local/files/Camera",    "/storage/cloud/files/Camera",
-          reverseRestoreBase + "/Camera" },
-        { backupRoot + "/storage/media/local/files/Pictures",  "/storage/cloud/files/Pictures",
-          reverseRestoreBase + "/Pictures" },
-        { backupRoot + "/storage/media/local/files/Videos",    "/storage/cloud/files/Videos",
-          reverseRestoreBase + "/Videos" },
-        { backupRoot + "/storage/media/local/files/.editData", "/storage/cloud/files/.editData",
-          reverseRestoreBase + "/.editData" },
-        { backupRoot + "/storage/media/local/files/Audio",     "/storage/cloud/files/Audio",
-          reverseRestoreBase + "/Audio" },
-        { backupRoot + "/storage/media/local/files/Audios",    "/storage/cloud/files/Audios",
-          reverseRestoreBase + "/Audios" },
-        { backupRoot + "/storage/media/local/files/.thumbs",   "/storage/cloud/files/.thumbs",
-          reverseRestoreBase + "/.thumbs" },
-        { backupRoot + "/storage/media/local/files/highlight", "/storage/cloud/files/highlight",
-          reverseRestoreBase + "/highlight" },
+        { backupRoot + "/storage/media/local/files/Photo",     "/storage/media/local/files/Photo",
+          "/storage/cloud/files/Photo",     reverseRestoreBase + "/Photo" },
+        { backupRoot + "/storage/media/local/files/Camera",    "/storage/media/local/files/Camera",
+          "/storage/cloud/files/Camera",    reverseRestoreBase + "/Camera" },
+        { backupRoot + "/storage/media/local/files/Pictures",  "/storage/media/local/files/Pictures",
+          "/storage/cloud/files/Pictures",  reverseRestoreBase + "/Pictures" },
+        { backupRoot + "/storage/media/local/files/Videos",    "/storage/media/local/files/Videos",
+          "/storage/cloud/files/Videos",    reverseRestoreBase + "/Videos" },
+        { backupRoot + "/storage/media/local/files/.editData", "/storage/media/local/files/.editData",
+          "/storage/cloud/files/.editData", reverseRestoreBase + "/.editData" },
+        { backupRoot + "/storage/media/local/files/Audio",     "/storage/media/local/files/Audio",
+          "/storage/cloud/files/Audio",     reverseRestoreBase + "/Audio" },
+        { backupRoot + "/storage/media/local/files/Audios",    "/storage/media/local/files/Audios",
+          "/storage/cloud/files/Audios",    reverseRestoreBase + "/Audios" },
+        { backupRoot + "/storage/media/local/files/.thumbs",   "/storage/media/local/files/.thumbs",
+          "/storage/cloud/files/.thumbs",   reverseRestoreBase + "/.thumbs" },
+        { backupRoot + "/storage/media/local/files/highlight", "/storage/media/local/files/highlight",
+          "/storage/cloud/files/highlight", reverseRestoreBase + "/highlight" },
     };
     return moves;
 }
@@ -2028,8 +2026,8 @@ bool ReverseCloneRestore::MoveAssets(const std::string& backupRoot)
     completedAssetMoves_.clear();
     std::vector<AssetMoveState> moves = GenerateAssetMoveStates(backupRoot, reverseRestoreBase);
     for (const auto& m : moves) {
-        MEDIA_INFO_LOG("MoveAssets: src=%{public}s, dst=%{public}s, backup=%{public}s", m.src.c_str(), m.dst.c_str(),
-            m.backup.c_str());
+        MEDIA_INFO_LOG("MoveAssets: src=%{public}s, dstLocal=%{public}s, dstMerge=%{public}s, backup=%{public}s",
+            m.src.c_str(), m.dstLocal.c_str(), m.dstMerge.c_str(), m.backup.c_str());
         AssetMoveState move = m;
         if (!ReplaceDirWithBackup(move)) {
             MEDIA_ERR_LOG("MoveAssets: failed for src=%{public}s", m.src.c_str());
@@ -4036,7 +4034,7 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveLocalDataConflict");
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
-    albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.validFileInfos, duplicateAssetMap_,
+    albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_);
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
@@ -4571,7 +4569,7 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveCloudDataConflict");
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
-    albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.validFileInfos, duplicateAssetMap_,
+    albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_);
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
