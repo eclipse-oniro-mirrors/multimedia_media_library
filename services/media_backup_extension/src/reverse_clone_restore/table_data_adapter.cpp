@@ -27,24 +27,15 @@ namespace Media {
 // 表处理类型配置
 static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CONFIG = {
     // DROP_AND_INSERT: 直接drop再create，并继承新机的数据
+    {"AlbumScanInfo", TableProcessType::DROP_AND_INSERT},
     {"album_plugin", TableProcessType::DROP_AND_INSERT},
-    {"Audios", TableProcessType::DROP_AND_INSERT},
-    {"BundlePermission", TableProcessType::DROP_AND_INSERT},
-    {"CategorySmartAlbumMap", TableProcessType::DROP_AND_INSERT},
-    {"Device", TableProcessType::DROP_AND_INSERT},
     {"download_resources_task_records", TableProcessType::DROP_AND_INSERT},
-    {"Error", TableProcessType::DROP_AND_INSERT},
-    {"Files", TableProcessType::DROP_AND_INSERT},
     {"FormMap", TableProcessType::DROP_AND_INSERT},
     {"LakeAlbum", TableProcessType::DROP_AND_INSERT},
-    {"MediaTypeDirectory", TableProcessType::DROP_AND_INSERT},
     {"OrderBackAlbum", TableProcessType::DROP_AND_INSERT},
-    {"PhotoMap", TableProcessType::DROP_AND_INSERT},
+    {"Persist_Permision", TableProcessType::DROP_AND_INSERT},
     {"RefreshAlbum", TableProcessType::DROP_AND_INSERT},
-    {"RemoteThumbnailMap", TableProcessType::DROP_AND_INSERT},
     {"selected_node_asset_map", TableProcessType::DROP_AND_INSERT},
-    {"SmartAlbum", TableProcessType::DROP_AND_INSERT},
-    {"SmartMap", TableProcessType::DROP_AND_INSERT},
     {"tab_analysis_highlight_events", TableProcessType::DROP_AND_INSERT},
     {"tab_analysis_pet_face", TableProcessType::DROP_AND_INSERT},
     {"tab_analysis_pet_tag", TableProcessType::DROP_AND_INSERT},
@@ -63,10 +54,14 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"tab_user_photography_info", TableProcessType::DROP_AND_INSERT},
     {"UriPermission", TableProcessType::DROP_AND_INSERT},
     {"UriSensitive", TableProcessType::DROP_AND_INSERT},
+    {"tab_compatible_info", TableProcessType::DROP_AND_INSERT},
+    {"tab_file_opt", TableProcessType::DROP_AND_INSERT},
+    {"tab_operation_log", TableProcessType::DROP_AND_INSERT},
 
     // DROP_AND_CREATE: 仅drop再create，不继承新机的数据（创建空表）
     {"tab_old_albums", TableProcessType::DROP_AND_CREATE},
     {"tab_cloned_old_photos", TableProcessType::DROP_AND_CREATE},
+    {"tab_cover_record", TableProcessType::DROP_AND_CREATE},
 
     // DROP_ONLY: 仅删除表，不重建
     {"ddms_data_search_aux_config", TableProcessType::DROP_ONLY},
@@ -74,6 +69,17 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"PhotosAlbumBackupForSaveAnalysisData", TableProcessType::DROP_ONLY},
 
     // SKIP: 跳过，不用处理的表
+    {"Audios", TableProcessType::SKIP},
+    {"BundlePermission", TableProcessType::SKIP},
+    {"CategorySmartAlbumMap", TableProcessType::SKIP},
+    {"Device", TableProcessType::SKIP},
+    {"Error", TableProcessType::SKIP},
+    {"Files", TableProcessType::SKIP},
+    {"MediaTypeDirectory", TableProcessType::SKIP},
+    {"PhotoMap", TableProcessType::SKIP},
+    {"RemoteThumbnailMap", TableProcessType::SKIP},
+    {"SmartAlbum", TableProcessType::SKIP},
+    {"SmartMap", TableProcessType::SKIP},
     {"AnalysisAlbum", TableProcessType::SKIP},
     {"AnalysisPhotoMap", TableProcessType::SKIP},
     {"ConfigInfo", TableProcessType::SKIP},

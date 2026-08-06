@@ -77,6 +77,7 @@ struct ReverseCloneAssetResource {
     int32_t thumbStatus {RESTORE_THUMBNAIL_STATUS_NOT_ALL};
     int32_t position {static_cast<int32_t>(PhotoPositionType::LOCAL)};
     bool isPureCloud {false};
+    std::string uniqueId;
 
     bool HasResourcePath() const
     {

@@ -144,6 +144,8 @@ private:
         const std::vector<FileInfo> &fileInfos, std::vector<int32_t> &deletedDonorFileIds) const;
     int32_t InsertAbsorbedPhotosInTransaction(TransactionOperations &trans, const ReverseClonePhotoBatchContext &batch,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows) const;
+    int32_t ApplyUniqueIdPriorityForDuplicates(TransactionOperations &trans,
+        const ReverseClonePhotoBatchContext &batch) const;
     bool CommitPhotosInTransaction(ReverseClonePhotoBatchContext &batch,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows,
         std::vector<int32_t> &deletedDonorFileIds);
