@@ -56,7 +56,6 @@ ohos_unittest("medialibrary_scanner_test") {
     "./src/scan_config_test.cpp",
     "./src/custom_restore_types_test.cpp",
     "./src/metadata_get_value_test.cpp",
-    "./src/scanner_utils_custom_restore_test.cpp",
     "./src/custom_restore_strategy_test.cpp",
     "./src/custom_restore_scanner_obj_test.cpp",
     "./src/media_scanner_manager_custom_restore_test.cpp",
