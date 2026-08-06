@@ -1675,6 +1675,8 @@ static void SetUpdateSearchIndexForClone()
     MEDIA_INFO_LOG("Update search index update for clone operation");
     bool enableOldPath =
         system::GetBoolParameter("persist.multimedia.media_analysis_service.search_oldpath_enable", true);
+    CHECK_AND_EXECUTE(enableOldPath, MediaAnalysisHelper::StartArkdataSearchFullNotification(
+        IMediaAnalysisService::ActivateServiceType::ARKDATA_SEARCH_FULL));
     CHECK_AND_RETURN_INFO_LOG(enableOldPath, "search_oldpath_enable is false, skip");
     bool retFlag = system::SetParameter(PARAM_CLONE_SEARCH_STATUS, CLONE_SEARCH_INDEXING);
     CHECK_AND_PRINT_LOG(retFlag, "Failed to set %{public}s to %{public}s",
