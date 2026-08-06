@@ -63,10 +63,8 @@ Metadata::Metadata()
     isTemp_(FILE_IS_TEMP_DEFAULT),
     frontcamera_(FILE_FRONT_CAMERA_DEFAULT),
     detailTime_(FILE_DETAIL_TIME_DEFAULT),
-    isStylePhoto_(FILE_IS_STYLE_PHOTO_DEFAULT),
     burstCoverLevel_(BURST_COVER_LEVEL_DEFAULT),
     stageVideoTaskStatus_(STAGE_VIDEO_TASK_STATUS),
-    xtStyleTemplateName_(FILE_XT_STYLE_TEMPLATE_NAME_DEFAULT),
     fileSourceType_(FILE_FILE_SOURCE_TYPE_DEFAULT)
 {
     Init();
@@ -87,14 +85,10 @@ void Metadata::InitV2()
         &Metadata::SetDetailTime);
     memberFuncMap_[PhotoColumn::PHOTO_OWNER_ALBUM_ID] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetAlbumId);
-    memberFuncMap_[PhotoColumn::IS_STYLE_PHOTO] = make_pair(ResultSetDataType::TYPE_INT32,
-        &Metadata::SetIsStylePhoto);
     memberFuncMap_[PhotoColumn::PHOTO_BURST_COVER_LEVEL] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetBurstCoverLevel);
     memberFuncMap_[PhotoColumn::STAGE_VIDEO_TASK_STATUS] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetStageVideoTaskStatus);
-    memberFuncMap_[PhotoColumn::PHOTO_XT_STYLE_TEMPLATE_NAME] = make_pair(ResultSetDataType::TYPE_STRING,
-        &Metadata::SetXtStyleTemplateName);
     memberFuncMap_[PhotoColumn::PHOTO_FILE_SOURCE_TYPE] = make_pair(ResultSetDataType::TYPE_INT32,
         &Metadata::SetFileSourceType);
     memberFuncMap_[PhotoColumn::PHOTO_VIDEO_MODE] = make_pair(ResultSetDataType::TYPE_INT32,
@@ -601,16 +595,6 @@ const string &Metadata::GetAllExif() const
     return allExif_;
 }
 
-void Metadata::SetIsStylePhoto(const VariantData &isStylePhoto)
-{
-    isStylePhoto_ = std::get<int32_t>(isStylePhoto);
-}
-
-int32_t Metadata::GetIsStylePhoto() const
-{
-    return isStylePhoto_;
-}
-
 void Metadata::SetDateYear(const VariantData &dateYear)
 {
     dateYear_ = get<string>(dateYear);
@@ -809,16 +793,6 @@ void Metadata::SetFrontCamera(const VariantData &frontcamera)
 const std::string &Metadata::GetFrontCamera() const
 {
     return frontcamera_;
-}
-
-void Metadata::SetXtStyleTemplateName(const VariantData &xtStyleTemplateName)
-{
-    xtStyleTemplateName_ = std::get<string>(xtStyleTemplateName);
-}
-
-const std::string &Metadata::GetXtStyleTemplateName() const
-{
-    return xtStyleTemplateName_;
 }
 
 void Metadata::SetDetailTime(const VariantData &detailTime)
