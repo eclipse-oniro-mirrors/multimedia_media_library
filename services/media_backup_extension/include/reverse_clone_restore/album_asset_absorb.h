@@ -70,7 +70,9 @@ public:
     void CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb::RdbStore> &destRdb,
         vector<FileInfo> &fileInfos, int32_t maxFileId, int32_t minDestDbFileId,
         vector<ReverseCloneResourcePlan> &resourcePlans, const unordered_set<int32_t> &originalPureCloudFileIds,
-        DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap);
+        DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap,
+        vector<ReverseCloneResourcePlan> &duplicateDonorPlans,
+        unordered_map<int32_t, int32_t> &primaryDonorMap);
 
     // 判重辅助方法（与原克隆逻辑保持一致）
 

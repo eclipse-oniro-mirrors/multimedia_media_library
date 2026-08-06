@@ -46,8 +46,11 @@ struct ReverseStaleTargetResource {
 struct ReverseClonePhotoBatchContext {
     std::vector<FileInfo> validFileInfos;
     std::unordered_map<int32_t, ReverseCloneResourcePlan> resourcePlans;
+    // One primary plan is used for resource inheritance; all donor plans are retained for cleanup.
     std::vector<ReverseCloneResourcePlan> duplicatePlans;
+    std::vector<ReverseCloneResourcePlan> duplicateDonorPlans;
     std::unordered_map<int32_t, int32_t> duplicateDonorMap;
+    std::unordered_map<int32_t, int32_t> primaryDonorMap;
     std::vector<ReverseCloneKvStoreTask> kvStoreTasks;
     std::vector<NativeRdb::ValuesBucket> values;
     std::vector<ReverseStaleTargetResource> staleTargetResources;
@@ -67,6 +70,7 @@ public:
     bool CommitPhotosBatch(ReverseClonePhotoBatchContext &batch,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows);
     void ForceAbsorbSourceResourcesOnCommitFailed(const ReverseClonePhotoBatchContext &batch) const;
+    void ReleaseDuplicateDonorReservations(const ReverseClonePhotoBatchContext &batch);
     void AppendKvStoreTasks(const std::vector<ReverseCloneKvStoreTask> &tasks);
     void ExecuteKvStoreTasks(const std::vector<ReverseCloneKvStoreTask> &tasks, const std::string &backupRoot);
     void ExecutePendingKvStoreTasks(const std::string &backupRoot);
@@ -90,10 +94,13 @@ public:
             return false;
         }
         LogDuplicateCheckInputs(batch.validFileInfos, maxDestDbFileId);
-        // Build one resource plan per absorbed asset and collect all matching donors for deletion.
+        // Resolve duplicate donors before reserving them for this batch.
         albumAssetAbsorb.CheckAndRemoveDuplicatePhotos(destRdb, batch.validFileInfos, maxDestDbFileId, minDestDbFileId,
-            batch.duplicatePlans, originalPureCloudFileIds_, duplicateCount, batch.duplicateDonorMap);
+            batch.duplicatePlans, originalPureCloudFileIds_, duplicateCount, batch.duplicateDonorMap,
+            batch.duplicateDonorPlans, batch.primaryDonorMap);
         LogDuplicateCheckResults(batch.validFileInfos, batch.duplicatePlans, "after_check");
+        ReserveDuplicateDonors(batch);
+        LogDuplicateCheckResults(batch.validFileInfos, batch.duplicatePlans, "after_reserve");
 
         ReverseCloneResourceInheritService resourceInheritService;
         MarkCloudRestoreSatisfied(batch);
@@ -151,8 +158,11 @@ private:
         const std::vector<ReverseCloneResourcePlan> &duplicatePlans, const char *stage) const;
     void LogDataConflictsBeforeInsert(const ReverseClonePhotoBatchContext &batch,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
+    void ReserveDuplicateDonors(ReverseClonePhotoBatchContext &batch);
     void DeletePhotoExtRows(const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
         const std::vector<int32_t> &deletedDonorFileIds) const;
+    void DeleteDuplicateDonorDerivedRows(const ReverseClonePhotoBatchContext &batch,
+        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
     void MarkCloudRestoreSatisfied(ReverseClonePhotoBatchContext &batch) const;
     std::vector<ReverseCloneKvStoreTask> BuildDuplicateKvStoreTasks(
         const std::vector<ReverseCloneResourcePlan> &duplicatePlans) const;
@@ -168,6 +178,8 @@ private:
 
     std::vector<FileIdOffsetRule> fileIdOffsetRules_;
     std::unordered_set<int32_t> originalPureCloudFileIds_;
+    std::unordered_set<int32_t> reservedDuplicateDonorFileIds_;
+    std::mutex duplicateMutex_;
     std::vector<ReverseCloneKvStoreTask> pendingKvStoreTasks_;
     std::mutex kvStoreMutex_;
 };

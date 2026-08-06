@@ -1919,10 +1919,13 @@ bool ReverseCloneRestore::RollbackAssetMove(const AssetMoveState &move)
     CHECK_AND_RETURN_RET(move.backedUpDst, ret);
 
     if (!IsAssetMovePathExists(move.backup)) {
-        CHECK_AND_RETURN_RET_LOG(!IsPathExists(move.dstLocal), ret,
-            "RollbackAssetMove: backup already restored, dst=%{public}s", move.dstLocal.c_str());
+        if (IsPathExists(move.dstLocal)) {
+            MEDIA_INFO_LOG("RollbackAssetMove: backup already restored, dstLocal=%{public}s",
+                move.dstLocal.c_str());
+            return ret;
+        }
         MEDIA_ERR_LOG("RollbackAssetMove: backup and dst are both missing, backup=%{public}s, dst=%{public}s",
-            move.backup.c_str(), move.dstMerge.c_str());
+            move.backup.c_str(), move.dstLocal.c_str());
         return false;
     }
     if (IsPathExists(move.dstLocal)) {
@@ -2931,10 +2934,6 @@ void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
     mediaRdb_ = nullptr;
     mediaLibraryRdb_ = nullptr;
 
-    reverseDupMap_.clear();
-    for (const auto &entry : duplicateAssetMap_) {
-        reverseDupMap_[entry.second] = entry.first;
-    }
     MEDIA_INFO_LOG("StartRestore: reverseDupMap_ size=%{public}zu (includes local+cloud photos)",
         reverseDupMap_.size());
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
@@ -3710,6 +3709,7 @@ bool ReverseCloneRestore::PrepareAbsorbPhotosCommonInfo(int32_t &maxSourceDbFile
 void ReverseCloneRestore::InitializeDuplicateAssetMapForPhotos()
 {
     duplicateAssetMap_.clear();
+    reverseDupMap_.clear();
     minDestDbFileId_ = INT32_MAX;
     std::string queryAllFileIdsSql = "SELECT file_id FROM " + std::string(PhotoColumn::PHOTOS_TABLE);
     auto fileIdResultSet = BackupDatabaseUtils::QuerySql(destRdb_, queryAllFileIdsSql, {});
@@ -3954,6 +3954,9 @@ void ReverseCloneRestore::EnsureCommittedFailedAssetsOrigin(const ReverseClonePh
 void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stage, int32_t offset,
     const ReverseClonePhotoBatchContext *batch)
 {
+    if (batch != nullptr) {
+        resourceInheritHelper_.ReleaseDuplicateDonorReservations(*batch);
+    }
     if (!needReportFailed_) {
         AddToPhotosFailedOffsets(offset);
         return;
@@ -4036,6 +4039,13 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_);
+    {
+        std::lock_guard<std::mutex> lock(duplicateAssetMapMutex_);
+        // Keep only the donor actually used for resource/history inheritance.
+        for (const auto &[absorbedFileId, donorFileId] : batch.primaryDonorMap) {
+            reverseDupMap_[absorbedFileId] = donorFileId;
+        }
+    }
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: end, offset=%{public}d", offset);
@@ -4571,6 +4581,13 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_);
+    {
+        std::lock_guard<std::mutex> lock(duplicateAssetMapMutex_);
+        // Keep only the donor actually used for resource/history inheritance.
+        for (const auto &[absorbedFileId, donorFileId] : batch.primaryDonorMap) {
+            reverseDupMap_[absorbedFileId] = donorFileId;
+        }
+    }
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: end, offset=%{public}d", offset);

@@ -366,7 +366,9 @@ static void SolveDuplicate(AlbumAssetAbsorb::DuplicateCount &duplicateCount, Rev
 void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb::RdbStore> &destRdb,
     vector<FileInfo> &fileInfos, int32_t maxFileId, int32_t minDestDbFileId,
     vector<ReverseCloneResourcePlan> &resourcePlans, const unordered_set<int32_t> &originalPureCloudFileIds,
-    DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap)
+    DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap,
+    vector<ReverseCloneResourcePlan> &duplicateDonorPlans,
+    unordered_map<int32_t, int32_t> &primaryDonorMap)
 {
     if (fileInfos.empty()) {
         return;
@@ -388,13 +390,11 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
         if (duplicateFileIds.empty()) {
             continue;
         }
+        int32_t primaryDonorId = duplicateFileIds.front();
+        size_t donorPlanStart = duplicateDonorPlans.size();
         for (int32_t duplicateFileId : duplicateFileIds) {
             duplicateDonorMap.emplace(duplicateFileId, fileInfo.fileIdOld);
         }
-
-        // All candidates will be deleted; one valid donor is enough to provide inherited resources.
-        fileInfo.deletedSrcdbFileId = duplicateFileIds.front();
-        bool planBuilt = false;
         for (int32_t duplicateFileId : duplicateFileIds) {
             ReverseCloneResourcePlan plan = resourceInheritService.BuildDuplicatePlanByFileId(
                 fileInfo, duplicateFileId, destRdb, originalPureCloudFileIds);
@@ -403,20 +403,19 @@ void AlbumAssetAbsorb::CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb:
                     "fileId=%{public}d", duplicateFileId);
                 continue;
             }
-            SolveDuplicate(duplicateCount, plan);
-            fileInfo.deletedSrcdbFileId = duplicateFileId;
-            resourcePlans.emplace_back(plan);
-            planBuilt = true;
-            break;
+            duplicateDonorPlans.emplace_back(plan);
+            if (duplicateFileId == primaryDonorId) {
+                resourcePlans.emplace_back(plan);
+                SolveDuplicate(duplicateCount, plan);
+            }
         }
+
+        fileInfo.deletedSrcdbFileId = primaryDonorId;
+        primaryDonorMap[fileInfo.fileIdOld] = primaryDonorId;
         duplicateCount.total++;
         MEDIA_INFO_LOG("CheckAndRemoveDuplicatePhotos: duplicate photo found, absorbedFileId=%{public}d, "
-            "primaryDonorFileId=%{public}d, donorCount=%{public}zu, planBuilt=%{public}d",
-            fileInfo.fileIdOld, fileInfo.deletedSrcdbFileId, duplicateFileIds.size(), planBuilt);
-        if (!planBuilt) {
-            MEDIA_WARN_LOG("CheckAndRemoveDuplicatePhotos: no donor resource plan built, "
-                "absorbedFileId=%{public}d, donorCount=%{public}zu", fileInfo.fileIdOld, duplicateFileIds.size());
-        }
+            "primaryDonorFileId=%{public}d, candidates=%{public}zu, planCount=%{public}zu",
+            fileInfo.fileIdOld, primaryDonorId, duplicateFileIds.size(), duplicateDonorPlans.size() - donorPlanStart);
     }
 
     int64_t cost = MediaFileUtils::UTCTimeMilliSeconds() - start;
