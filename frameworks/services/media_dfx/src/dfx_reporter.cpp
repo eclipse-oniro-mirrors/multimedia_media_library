@@ -807,7 +807,7 @@ void DfxReporter::ReportMediaLibCompatConfig()
     for (const auto& pair : infoMap) {
         string bundleName = pair.first;
         const DfxCompatibleInfo& dbInfo = pair.second;
-        string dbValueStr = to_string(dbInfo.compat) + ":" + to_string(dbInfo.highResolution) + ":" + dbInfo.encodings;
+        string dbValueStr = to_string(dbInfo.futureField) + ":" + to_string(dbInfo.highResolution) + ":" + dbInfo.encodings;
         string xmlValueStr = prefs->GetString(bundleName, "");
         if (dbValueStr != xmlValueStr) {
             changedInfos.push_back(pair);
@@ -820,7 +820,7 @@ void DfxReporter::ReportMediaLibCompatConfig()
             "MEDIALIB_COMPATIBEL_CONFIG",
             HiviewDFX::HiSysEvent::EventType::STATISTIC,
             "BUNDLE_NAME", infoPair.first,
-            "COMPAT_CONFIG", infoPair.second.compat,
+            "COMPAT_CONFIG", infoPair.second.futureField,
             "HIGH_RESOLUTION_CONFIG", infoPair.second.highResolution,
             "ENCODING_CONFIG", infoPair.second.encodings);
         if (ret != 0) {
@@ -833,7 +833,7 @@ void DfxReporter::ReportMediaLibCompatConfig()
     }
     prefs->Clear();
     for (const auto& pair : infoMap) {
-        string dbValueStr = to_string(pair.second.compat) + ":" +
+        string dbValueStr = to_string(pair.second.futureField) + ":" +
             to_string(pair.second.highResolution) + ":" + pair.second.encodings;
         prefs->PutString(pair.first, dbValueStr);
     }
