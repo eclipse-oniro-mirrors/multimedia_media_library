@@ -22,6 +22,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include "color_space.h"
 #include "ashmem.h"
 #include "exif_metadata.h"
 #include "image_type.h"
