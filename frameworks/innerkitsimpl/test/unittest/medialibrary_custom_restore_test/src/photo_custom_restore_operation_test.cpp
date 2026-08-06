@@ -477,7 +477,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_Operation_Test_03
     RestoreFileInfo fileInfo;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
     // Empty metadata produces default time values, ValuesBucket should not be empty
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_Operation_Test_034 End");
@@ -617,7 +617,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     RestoreFileInfo fileInfo;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
     EXPECT_NE(values.IsEmpty(), true);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test End");
 }
@@ -1121,7 +1121,9 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_BatchInsert_Test_
     fileInfo.mediaType = MediaType::MEDIA_TYPE_IMAGE;
     fileInfo.size = 1024;
     fileInfo.orientation = 0;
-    customInfo.GetFileInfos().push_back(fileInfo);
+    std::vector<RestoreFileInfo> fileInfos;
+    fileInfos.push_back(fileInfo);
+    customInfo.SetFileInfos(fileInfos);
     unordered_set<string> photoCache;
     photoCache.insert("test.jpg_1024_1_0");
     customInfo.SetPhotoCache(photoCache);
@@ -1287,7 +1289,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     fileInfo.isLivePhoto = false;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_001 End");
 }
@@ -1304,7 +1306,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     fileInfo.isLivePhoto = false;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_002 End");
 }
@@ -1321,7 +1323,7 @@ HWTEST_F(PhotoCustomRestoreOperationTest, Photo_Custom_Restore_GetInsertValue_Te
     fileInfo.isLivePhoto = true;
     unique_ptr<Metadata> data = make_unique<Metadata>();
     NativeRdb::ValuesBucket values;
-    CustomRestoreUtils::SetTimeInfo(data, fileInfo, values);
+    CustomRestoreUtils::SetTimeInfo(data, values);
     EXPECT_EQ(values.IsEmpty(), false);
     MEDIA_INFO_LOG("Photo_Custom_Restore_GetInsertValue_Test_003 End");
 }
