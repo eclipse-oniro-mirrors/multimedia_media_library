@@ -807,7 +807,8 @@ void DfxReporter::ReportMediaLibCompatConfig()
     for (const auto& pair : infoMap) {
         string bundleName = pair.first;
         const DfxCompatibleInfo& dbInfo = pair.second;
-        string dbValueStr = to_string(dbInfo.futureField) + ":" + to_string(dbInfo.highResolution) + ":" + dbInfo.encodings;
+        string dbValueStr = to_string(dbInfo.futureField) + ":" + to_string(dbInfo.highResolution) + ":"
+            + dbInfo.encodings;
         string xmlValueStr = prefs->GetString(bundleName, "");
         if (dbValueStr != xmlValueStr) {
             changedInfos.push_back(pair);
