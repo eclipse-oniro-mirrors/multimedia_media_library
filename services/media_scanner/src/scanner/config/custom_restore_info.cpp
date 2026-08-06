@@ -140,7 +140,7 @@ const std::vector<RestoreFileInfo>& CustomRestoreInfo::GetOutFileInfos() const
     return *outFileInfos;
 }
 
-void CustomRestoreInfo::SetOutFileInfos(std::vector<RestoreFileInfo> outFileInfos)
+void CustomRestoreInfo::SetOutFileInfos(std::vector<RestoreFileInfo> &&outFileInfos)
 {
     *this->outFileInfos = std::move(outFileInfos);
 }

@@ -148,7 +148,7 @@ int32_t CustomRestoreScannerObj::Deduplicate()
     // Batch UPDATE unique_id for duplicates in one transaction
     if (!dupUpdatePairs.empty()) {
         TransactionOperations trans{__func__};
-        auto updateFunc = [this, &dupUpdatePairs]() -> int {
+        std::function<int(void)> updateFunc = [this, &dupUpdatePairs]() -> int {
             return ExecuteDuplicateUpdates(dupUpdatePairs);
         };
         trans.RetryTrans(updateFunc, !customRestoreInfo_.GetIsFirstBatch());
