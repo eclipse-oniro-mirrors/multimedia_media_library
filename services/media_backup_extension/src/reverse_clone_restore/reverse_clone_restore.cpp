@@ -3409,7 +3409,12 @@ void ReverseCloneRestore::UpdatePhotosSpecialFields()
                                         PhotoColumn::PHOTO_METADATA_FLAGS + " = 0";
     BackupDatabaseUtils::ExecuteSQL(destRdb_, updateMetadataFlagsSql, {});
 
-    // 4. 更新所有 Photos 表中的 change_time 为当前时间
+    // 4. 旧机保留的 Photos 行不继承 ce_available；新机 absorbed 行插入时保留自身值。
+    std::string updateCeAvailableSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
+        PhotoColumn::PHOTO_CE_AVAILABLE + " = 0";
+    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateCeAvailableSql, {});
+
+    // 5. 更新所有 Photos 表中的 change_time 为当前时间
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::string updateChangeTimeSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
                                       " SET " + PhotoColumn::PHOTO_CHANGE_TIME + " = " +
