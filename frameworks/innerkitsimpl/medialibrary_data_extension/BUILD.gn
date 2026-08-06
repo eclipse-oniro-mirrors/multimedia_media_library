@@ -446,11 +446,9 @@ ohos_shared_library("medialibrary_data_extension") {
   ]
 
   media_fuse_source = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_daemon.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_hdc_operations.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_high_daemon.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_low_daemon.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_manager.cpp",
-    "${MEDIALIB_NEW_SERVICES_PATH}/media_fuse/src/media_fuse_node.cpp",
   ]
 
   media_thumbnail_source = [

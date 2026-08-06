@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_MEDIA_FUSE_HIGH_DAEMON_H
-#define OHOS_MEDIA_FUSE_HIGH_DAEMON_H
+#ifndef OHOS_MEDIA_FUSE_DAEMON_H
+#define OHOS_MEDIA_FUSE_DAEMON_H
 
 #include <string>
 
 // LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
-class MediaFuseHighDaemon {
+class MediaFuseDaemon {
 public:
-    explicit MediaFuseHighDaemon(const std::string &mountpoint)
+    explicit MediaFuseDaemon(const std::string &mountpoint)
         : mountpoint_(mountpoint) {}
-    ~MediaFuseHighDaemon() = default;
+    ~MediaFuseDaemon() = default;
 
     int32_t StartFuse();
 
@@ -39,5 +39,4 @@ private:
 } // namespace Media
 } // namespace OHOS
 // LCOV_EXCL_STOP
-#endif // OHOS_MEDIA_FUSE_HIGH_DAEMON_H
-
+#endif // OHOS_MEDIA_FUSE_DAEMON_H
