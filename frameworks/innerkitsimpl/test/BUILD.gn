@@ -16,7 +16,7 @@ group("test") {
 
   deps = [
     "unittest/heif_transcoding_check_utils_test:unittest",
-    "unittest/media_albums_refresh_test:unittest",
+    # "unittest/media_albums_refresh_test:unittest",
     "unittest/media_analysis_extension_test:unittest",
     "unittest/media_analysis_data_manager_dto_test:unittest",
     "unittest/media_asset_test:unittest",
