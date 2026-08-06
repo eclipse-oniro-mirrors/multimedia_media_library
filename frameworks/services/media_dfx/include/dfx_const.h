@@ -279,8 +279,8 @@ struct CinematicVideoInfo {
     std::unordered_map<std::string, TimeRange> cancelWaitTimeMap;
     std::unordered_map<std::string, TimeRange> processWaitTimeMap;
 
-    CinematicVideoInfo() :
-        accessTimesLow(0),
+    CinematicVideoInfo()
+        : accessTimesLow(0),
         accessTimesHigh(0),
         uriAccessTimesLow(0),
         uriAccessTimesHigh(0),
