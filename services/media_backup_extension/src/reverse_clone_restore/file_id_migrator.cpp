@@ -150,11 +150,9 @@ bool FileIdMigrator::UpdateSqliteSequenceForPhotos(std::shared_ptr<RdbStore> db)
 
     // 获取所有表中的最大 file_id
     int64_t maxFileId = GetMaxFileIdFromAllTables(db);
-    if (maxFileId <= 0) {
-        MEDIA_WARN_LOG("FileIdMigrator: maxFileId is invalid (%{public}lld), skip update",
-                       static_cast<long long>(maxFileId));
-        return false;
-    }
+    CHECK_AND_RETURN_RET_WARN_LOG(maxFileId > 0, false,
+        "FileIdMigrator: maxFileId is invalid (%{public}lld), skip update",
+        static_cast<long long>(maxFileId));
 
     // 更新 sqlite_sequence 表中 Photos 表的 seq 值
     std::string updateSeqSql = "UPDATE sqlite_sequence SET seq = ? WHERE name = 'Photos';";
@@ -169,9 +167,38 @@ bool FileIdMigrator::UpdateSqliteSequenceForPhotos(std::shared_ptr<RdbStore> db)
         return false;
     }
 
-    MEDIA_INFO_LOG("FileIdMigrator: updated sqlite_sequence.Photos seq to %{public}lld",
-                   static_cast<long long>(maxFileId));
-    MEDIA_INFO_LOG("FileIdMigrator::UpdateSqliteSequenceForPhotos end");
+    MEDIA_INFO_LOG(
+        "FileIdMigrator: UpdateSqliteSequenceForPhotos end, updated sqlite_sequence.Photos seq to %{public}lld",
+        static_cast<long long>(maxFileId));
+    return true;
+}
+
+bool FileIdMigrator::UpdateSqliteSequenceForAlbums(std::shared_ptr<RdbStore> db)
+{
+    MEDIA_INFO_LOG("FileIdMigrator::UpdateSqliteSequenceForAlbums start");
+
+    // 获取所有表中的最大 album_id
+    int64_t maxAlbumId = GetMaxAlbumIdFromAllTables(db);
+    CHECK_AND_RETURN_RET_WARN_LOG(maxAlbumId > 0, false,
+        "FileIdMigrator: maxAlbumId is invalid (%{public}lld), skip update",
+        static_cast<long long>(maxAlbumId));
+
+    // 更新 sqlite_sequence 表中 PhotoAlbum 表的 seq 值
+    std::string updateSeqSql = "UPDATE sqlite_sequence SET seq = ? WHERE name = 'PhotoAlbum';";
+    std::vector<ValueObject> updateSeqArgs;
+    updateSeqArgs.emplace_back(ValueObject(maxAlbumId));
+
+    int32_t ret = db->ExecuteSql(updateSeqSql, updateSeqArgs);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG(
+            "FileIdMigrator: update sqlite_sequence.PhotoAlbum seq failed, maxAlbumId=%{public}lld, ret=%{public}d",
+            static_cast<long long>(maxAlbumId), ret);
+        return false;
+    }
+
+    MEDIA_INFO_LOG(
+        "FileIdMigrator: UpdateSqliteSequenceForAlbums end, updated sqlite_sequence.PhotoAlbum seq to %{public}lld",
+        static_cast<long long>(maxAlbumId));
     return true;
 }
 

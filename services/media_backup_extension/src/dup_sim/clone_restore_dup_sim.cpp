@@ -51,7 +51,7 @@ const int64_t SINGLE_OVER_THRESHOLD_DATA_TIME = 216000;  // 216秒 (每1万条�
 
 static int32_t GetNewFileId(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, int32_t oldFileId);
 static bool UpdateGroupId(DedupInfo &mappedInfo, const std::optional<int32_t> &groupId,
-    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isRep);
 
 void CloneRestoreDupSim::Init(int32_t sceneCode, const std::string &taskId,
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb, std::shared_ptr<NativeRdb::RdbStore> mediaRdb,
@@ -438,16 +438,16 @@ static int32_t GetNewFileId(const std::unordered_map<int32_t, PhotoInfo> &photoI
 }
 
 static bool UpdateGroupId(DedupInfo &mappedInfo, const std::optional<int32_t> &groupId,
-    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap, bool isRep)
 {
     if (!groupId.has_value()) {
         return true;  // groupId为空，视为成功
     }
     int32_t newGroupId = GetNewFileId(photoInfoMap, groupId.value());
     if (newGroupId != -1) {
-        if (groupId == mappedInfo.groupIdRep) {
+        if (isRep) {
             mappedInfo.groupIdRep = newGroupId;
-        } else if (groupId == mappedInfo.groupIdSim) {
+        } else {
             mappedInfo.groupIdSim = newGroupId;
         }
         return true;  // 映射成功
@@ -485,8 +485,8 @@ void CloneRestoreDupSim::BatchInsertDedupData(
         // 检查groupId映射
         DedupInfo mappedInfo = info;
         mappedInfo.fileId = newFileId;
-        bool groupRepSuccess = UpdateGroupId(mappedInfo, info.groupIdRep, photoInfoMap_);
-        bool groupSimSuccess = UpdateGroupId(mappedInfo, info.groupIdSim, photoInfoMap_);
+        bool groupRepSuccess = UpdateGroupId(mappedInfo, info.groupIdRep, photoInfoMap_, true);
+        bool groupSimSuccess = UpdateGroupId(mappedInfo, info.groupIdSim, photoInfoMap_, false);
         // 如果任何一个groupId映射失败，跳过这条数据
         if (!groupRepSuccess || !groupSimSuccess) {
             skipGroupMapping++;

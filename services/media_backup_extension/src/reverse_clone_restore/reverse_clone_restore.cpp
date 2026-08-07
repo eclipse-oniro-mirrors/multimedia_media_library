@@ -3142,6 +3142,7 @@ void ReverseCloneRestore::FinishReverseRestore()
     startTime = MediaFileUtils::UTCTimeMilliSeconds();
     HandleRestData();
     FileIdMigrator::UpdateSqliteSequenceForPhotos(destRdb_);
+    FileIdMigrator::UpdateSqliteSequenceForAlbums(destRdb_);
     SetMediaAnalysisClearDirtyDataParameter();
     CloneActiveLcdAgingFromOldDevice();
     CloseAllKvStore();
