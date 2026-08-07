@@ -77,6 +77,14 @@ public:
     static bool UpdateSqliteSequenceForPhotos(std::shared_ptr<NativeRdb::RdbStore> db);
 
     /**
+     * @brief 更新 sqlite_sequence 表中 PhotoAlbum 表的 seq 值
+     *        将 sqlite_sequence.PhotoAlbum 的 seq 更新为 GetMaxAlbumIdFromAllTables(db) 的结果
+     * @param db 数据库句柄
+     * @return true 成功，false 失败
+     */
+    static bool UpdateSqliteSequenceForAlbums(std::shared_ptr<NativeRdb::RdbStore> db);
+
+    /**
      * @brief 批量更新人脸识别表中的 file_id
      * @param db 数据库句柄
      * @param fileIdMap file_id 映射表 {old_file_id: new_file_id}
