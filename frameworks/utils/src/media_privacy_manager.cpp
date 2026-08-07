@@ -48,6 +48,7 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "cloud_dentry_helper.h"
 
 using namespace std;
 using PrivacyRanges = vector<pair<uint32_t, uint32_t>>;
@@ -478,6 +479,9 @@ int32_t MediaPrivacyManager::Open()
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
     path_ = MediaFileAccessUtils::GetAssetRealPath(path_);
 #endif
+    if (!MediaFileUtils::IsFileExists(path_) && !fileId_.empty()) {
+        OHOS::Media::CloudDentryHelper::CreateDentryForOrigin(fileId_, path_);
+    }
     int err = GetPrivacyRanges();
     if (err < 0) {
         MEDIA_ERR_LOG("GetPrivacyRanges failed");

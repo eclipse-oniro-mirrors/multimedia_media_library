@@ -34,6 +34,7 @@ ohos_unittest("media_background_task_test") {
     "./src/media_clear_invalid_user_comment_task_test.cpp",
     "./src/media_file_manager_offline_cleanup_task_test.cpp",
     "./src/media_lcd_size_task_test.cpp",
+    "./src/media_cloud_dentry_batch_task_test.cpp",
     "./src/media_live_photo_4d_status_task_test.cpp",
     "./src/media_thumbnail_acl_task_test.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",

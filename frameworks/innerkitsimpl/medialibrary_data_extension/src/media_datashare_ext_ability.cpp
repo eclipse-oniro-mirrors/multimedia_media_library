@@ -214,6 +214,52 @@ void MediaDataShareExtAbility::OnStartSub(const AAFwk::Want &want)
     CloneStatusListener::GetInstance()->RegisterCloneStatusChangeListener();
 }
 
+bool MediaDataShareExtAbility::InvokeReverseCloneRestoreResume()
+{
+    const std::string markerXml = "/data/storage/el2/base/preferences/reverse_restore_marker.xml";
+    int errCode = 0;
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(markerXml, errCode);
+    if (preferences == nullptr || errCode != 0) {
+        MEDIA_INFO_LOG("Reverse clone restore marker file does not exist, skip resume");
+        SettingsDataManager::ClearReverseRestoreStatus();
+        return true;
+    }
+    const std::string KEY_STAGE = "stage";
+    int stage = preferences->GetInt(KEY_STAGE, -1);
+    if (stage == -1) {
+        MEDIA_INFO_LOG("Reverse clone restore marker stage does not exist, skip resume");
+        SettingsDataManager::ClearReverseRestoreStatus();
+        return true;
+    }
+    std::thread([&] {
+        MEDIA_INFO_LOG("enter InvokeReverseCloneRestoreResume async.");
+        void* handle = dlopen(MEDIA_BACKUP_LIB.c_str(), RTLD_NOW | RTLD_NODELETE);
+        if (!handle) {
+            MEDIA_ERR_LOG("Failed to open %{public}s", MEDIA_BACKUP_LIB.c_str());
+            return;
+        }
+
+        using CheckAndStartResumeFuncType = void (*)();
+        auto checkAndStartResumeFunc = reinterpret_cast<CheckAndStartResumeFuncType>(
+            dlsym(handle, CHECK_AND_START_RESUME_FUNC_NAME.c_str()));
+        if (!checkAndStartResumeFunc) {
+            MEDIA_ERR_LOG("Failed to find %{public}s, %{public}s", CHECK_AND_START_RESUME_FUNC_NAME.c_str(), dlerror());
+            dlclose(handle);
+            return;
+        }
+
+        MEDIA_INFO_LOG("Calling ReverseCloneRestoreResume::CheckAndStartResume via dlopen");
+        checkAndStartResumeFunc();
+        int32_t errCode = MediaLibraryDataManager::GetInstance()->InitReverseMediaLibraryRdbStore();
+        if (errCode != E_OK) {
+            MEDIA_INFO_LOG("CheckAndStartResume InitReverseMediaLibraryRdbStore failed");
+        }
+        dlclose(handle);
+    }).detach();
+
+    return true;
+}
+
 static bool CheckUnlockScene(int64_t startTime)
 {
     MediaLibraryTracer tracer;
