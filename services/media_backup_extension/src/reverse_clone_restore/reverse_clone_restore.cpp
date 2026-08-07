@@ -86,6 +86,7 @@
 
 namespace OHOS {
 namespace Media {
+constexpr int32_t MAX_ALBUM_NAME_SEQUENCE = 1000;
 
 // --- rename failure diagnostic helpers ---
 struct DirCloser {
@@ -4392,7 +4393,13 @@ std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDupli
         PhotoAlbumColumns::STYLE2_ALBUMS_ORDER,
         PhotoAlbumColumns::STYLE2_ORDER_SECTION,
         PhotoAlbumColumns::STYLE2_ORDER_TYPE,
-        PhotoAlbumColumns::STYLE2_ORDER_STATUS
+        PhotoAlbumColumns::STYLE2_ORDER_STATUS,
+        PhotoAlbumColumns::COVER_ORDER_KEY,
+        PhotoAlbumColumns::COVER_ORDER_SUBKEY,
+        PhotoAlbumColumns::COVER_ORDER_TYPE,
+        PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY,
+        PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY,
+        PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE
     };
 
     // 如果 destRdb 有自定义封面（cover_uri_source > 0），则保留 destRdb 的封面字段
@@ -4427,7 +4434,68 @@ int32_t ReverseCloneRestore::CheckDuplicateAlbumInDest(const std::string &lPath)
     return destAlbumId;
 }
 
-bool ReverseCloneRestore::ProcessSourceAndUserAlbum(AlbumInfo &albumInfo, int32_t &insertedCount, int32_t &updatedCount)
+int32_t ReverseCloneRestore::CheckDuplicateAlbumNameInDest(const std::string &albumName)
+{
+    string destQuerySql = "SELECT " + PhotoAlbumColumns::ALBUM_ID + " FROM " + PhotoAlbumColumns::TABLE + " WHERE " +
+                          PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::SOURCE) + " AND " +
+                          "LOWER(" + PhotoAlbumColumns::ALBUM_NAME + ") = LOWER(?)";
+    auto destResultSet = BackupDatabaseUtils::QuerySql(destRdb_, destQuerySql, {albumName});
+    if (destResultSet == nullptr) {
+        MEDIA_ERR_LOG("Failed to query destRdb for duplicate album name");
+        return -1;
+    }
+
+    int32_t destAlbumId = -1;
+    if (destResultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        destAlbumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, destResultSet);
+    }
+    destResultSet->Close();
+    return destAlbumId;
+}
+
+bool ReverseCloneRestore::CheckSourceAlbumNameUnique(const std::string& albumName)
+{
+    int32_t destAlbumId = CheckDuplicateAlbumNameInDest(albumName);
+    return destAlbumId == -1;
+}
+
+std::string ReverseCloneRestore::FindUniqueSourceAlbumName(const std::string& albumName)
+{
+    int32_t sequence = 1;
+    while (sequence < MAX_ALBUM_NAME_SEQUENCE) {
+        std::string candidate = albumName + " " + std::to_string(sequence);
+        if (CheckSourceAlbumNameUnique(candidate)) {
+            MEDIA_INFO_LOG("FindUniqueSourceAlbumName: found unique name: %{public}s", candidate.c_str());
+            return candidate;
+        }
+        sequence++;
+    }
+    MEDIA_WARN_LOG("FindUniqueSourceAlbumName: failed to find unique name for %{public}s, using last candidate",
+                   albumName.c_str());
+    return albumName + " " + std::to_string(sequence);
+}
+
+void ReverseCloneRestore::RenameSourceAlbum(int32_t destAlbumId, const std::string& oldName, const std::string& lPath)
+{
+    std::string newName = FindUniqueSourceAlbumName(oldName);
+    MEDIA_INFO_LOG("RenameSourceAlbum: renaming dest album id=%{public}d from '%{public}s' to '%{public}s', "
+                   "lPath=%{public}s",
+                   destAlbumId, oldName.c_str(), newName.c_str(), lPath.c_str());
+
+    NativeRdb::ValuesBucket values;
+    values.PutString(PhotoAlbumColumns::ALBUM_NAME, newName);
+    unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
+        make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
+    predicates->EqualTo(PhotoAlbumColumns::ALBUM_ID, destAlbumId);
+    int32_t updatedRows = 0;
+    int32_t ret = BackupDatabaseUtils::Update(destRdb_, updatedRows, values, predicates);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("RenameSourceAlbum: failed to rename album id=%{public}d, ret=%{public}d", destAlbumId, ret);
+    }
+}
+
+bool ReverseCloneRestore::ProcessSourceAndUserAlbum(AlbumInfo &albumInfo, int32_t &insertedCount, int32_t &updatedCount,
+    int32_t &renamedCount)
 {
     int32_t sourceAlbumId = albumInfo.albumIdOld;
     string lPath = albumInfo.lPath;
@@ -4453,7 +4521,16 @@ bool ReverseCloneRestore::ProcessSourceAndUserAlbum(AlbumInfo &albumInfo, int32_
             updatedCount++;
         }
     } else if (destAlbumId == -1) {
-        // lPath 不一致：直接从 sourceRdb 插入新相册，完整保留整行信息
+        // lPath 不重复：检查 SOURCE 类型相册是否存在同名但不同 lPath 的情况
+        if (albumInfo.albumType == PhotoAlbumType::SOURCE && !albumInfo.albumName.empty()) {
+            int32_t nameDuplicateId = CheckDuplicateAlbumNameInDest(albumInfo.albumName);
+            if (nameDuplicateId != -1) {
+                // destRdb 中存在同名 SOURCE 相册但 lPath 不同，重命名 destRdb 的相册
+                RenameSourceAlbum(nameDuplicateId, albumInfo.albumName, lPath);
+                renamedCount++;
+            }
+        }
+        // 从 sourceRdb 插入新相册，完整保留整行信息（sourceRdb 保持原名）
         if (!InsertNewAlbum("InsertSourceAndUserAlbumsWithDuplicateCheck", sourceAlbumId, albumInfo)) {
             AppendErrorInfo("Souce/UserAlbum failed: " +
                             to_string(sourceAlbumId));
@@ -4468,7 +4545,7 @@ void ReverseCloneRestore::InsertSourceAndUserAlbumsWithDuplicateCheck()
 {
     MEDIA_INFO_LOG("InsertSourceAndUserAlbumsWithDuplicateCheck: Starting to process SOURCE and USER albums");
 
-    // 从 sourceRdb 查询所有 type=2048 (SOURCE) 和 type=0 (USER) 的相册
+    // 从 源数据库 查询所有 type=2048 (SOURCE) 和 type=0 (USER) 的相册
     string querySql = "SELECT * FROM " + PhotoAlbumColumns::TABLE + " WHERE " + PhotoAlbumColumns::ALBUM_TYPE + " = " +
                       to_string(PhotoAlbumType::SOURCE) + " OR " + PhotoAlbumColumns::ALBUM_TYPE + " = " +
                       to_string(PhotoAlbumType::USER);
@@ -4481,13 +4558,14 @@ void ReverseCloneRestore::InsertSourceAndUserAlbumsWithDuplicateCheck()
 
     int32_t insertedCount = 0;
     int32_t updatedCount = 0;
+    int32_t renamedCount = 0;
 
     while (sourceResultSet->GoToNextRow() == NativeRdb::E_OK) {
         AlbumInfo albumInfo;
         if (!ParseAlbumResultSet(PhotoAlbumColumns::TABLE, sourceResultSet, albumInfo)) {
             continue;
         }
-        ProcessSourceAndUserAlbum(albumInfo, insertedCount, updatedCount);
+        ProcessSourceAndUserAlbum(albumInfo, insertedCount, updatedCount, renamedCount);
     }
     sourceResultSet->Close();
 
@@ -4496,8 +4574,8 @@ void ReverseCloneRestore::InsertSourceAndUserAlbumsWithDuplicateCheck()
 
     migrateDatabaseAlbumNumber_ += insertedCount;
     MEDIA_INFO_LOG("InsertSourceAndUserAlbumsWithDuplicateCheck: Completed, inserted=%{public}d, "
-                   "updated=%{public}d SOURCE and USER albums",
-                   insertedCount, updatedCount);
+                   "updated=%{public}d, renamed=%{public}d SOURCE and USER albums",
+                   insertedCount, updatedCount, renamedCount);
 }
 
 void ReverseCloneRestore::UpdateDatabase()

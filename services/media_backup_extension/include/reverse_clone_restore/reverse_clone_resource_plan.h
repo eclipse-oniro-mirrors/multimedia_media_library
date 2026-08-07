@@ -80,6 +80,7 @@ struct ReverseCloneAssetResource {
     int32_t lcdUsingStatus {0};
     int32_t position {static_cast<int32_t>(PhotoPositionType::LOCAL)};
     bool isPureCloud {false};
+    std::string uniqueId;
 
     bool HasResourcePath() const
     {

@@ -815,6 +815,53 @@ int32_t ReverseCloneResourceInheritHelper::InsertAbsorbedPhotosInTransaction(Tra
     return ret;
 }
 
+int32_t ReverseCloneResourceInheritHelper::ApplyUniqueIdPriorityForDuplicates(TransactionOperations &trans,
+    const ReverseClonePhotoBatchContext &batch) const
+{
+    if (batch.duplicatePlans.empty()) {
+        return NativeRdb::E_OK;
+    }
+    // Build donorFileId -> donorUniqueId map
+    std::unordered_map<int32_t, std::string> donorUniqueIdMap;
+    for (const auto &plan : batch.duplicatePlans) {
+        if (plan.donor.fileId > 0 && !plan.donor.uniqueId.empty() && plan.donor.uniqueId != "-1") {
+            donorUniqueIdMap[plan.donor.fileId] = plan.donor.uniqueId;
+        }
+    }
+    if (donorUniqueIdMap.empty()) {
+        return NativeRdb::E_OK;
+    }
+
+    const std::string updateSql = "UPDATE " + std::string(PhotoColumn::PHOTOS_TABLE) + " SET " +
+        std::string(PhotoColumn::UNIQUE_ID) + " = ? WHERE " +
+        std::string(MediaColumn::MEDIA_ID) + " = ?";
+    int32_t updateCount = 0;
+    for (const auto &fileInfo : batch.validFileInfos) {
+        if (fileInfo.deletedSrcdbFileId <= 0) {
+            continue;
+        }
+        // Source unique_id valid -> keep source (priority)
+        bool sourceValid = !fileInfo.uuid.empty() && fileInfo.uuid != "-1";
+        if (sourceValid) {
+            continue;
+        }
+        // Source invalid -> fallback to donor
+        auto it = donorUniqueIdMap.find(fileInfo.deletedSrcdbFileId);
+        if (it == donorUniqueIdMap.end()) {
+            continue;
+        }
+        int32_t ret = trans.ExecuteSql(updateSql, {it->second, std::to_string(fileInfo.fileIdOld)});
+        if (ret != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("ApplyUniqueIdPriorityForDuplicates: update failed, fileId=%{public}d, ret=%{public}d",
+                fileInfo.fileIdOld, ret);
+            continue;
+        }
+        updateCount++;
+    }
+    MEDIA_INFO_LOG("ApplyUniqueIdPriorityForDuplicates: updated %{public}d rows", updateCount);
+    return NativeRdb::E_OK;
+}
+
 bool ReverseCloneResourceInheritHelper::CommitPhotosInTransaction(ReverseClonePhotoBatchContext &batch,
     const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows,
     std::vector<int32_t> &deletedDonorFileIds)
@@ -835,6 +882,8 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosInTransaction(ReverseClonePh
             return ret;
         }
         ret = InsertAbsorbedPhotosInTransaction(trans, batch, targetRdb, insertedRows);
+        CHECK_AND_RETURN_RET(ret == NativeRdb::E_OK, ret);
+        ret = ApplyUniqueIdPriorityForDuplicates(trans, batch);
         CHECK_AND_RETURN_RET(ret == NativeRdb::E_OK, ret);
         return RestoreProtectedAssetReferences(trans, referenceUpdates);
     };

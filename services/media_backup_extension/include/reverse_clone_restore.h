@@ -395,7 +395,6 @@ private:
     void UpdateDuplicateSourceAlbum(int32_t sourceAlbumId, int32_t destAlbumId, const std::string& albumName,
         const std::string& lPath);
     void BuildSourceAlbumValuesBucket(NativeRdb::ValuesBucket& values, const AlbumInfo& albumInfo);
-    bool CheckSourceAlbumNameUnique(const std::string& albumName);
     std::string FindUniqueSourceAlbumName(const std::string& albumName);
     void RenameSourceAlbum(int32_t destAlbumId, const std::string& oldName, const std::string& lPath);
     void ProcessDuplicateSourceAlbum(int32_t sourceAlbumId, int32_t destAlbumId, const std::string& albumName,
@@ -409,7 +408,10 @@ private:
     std::unordered_set<std::string> BuildExcludeColumnsForDuplicateAlbum(int32_t destAlbumId);
     std::string EnsureAlbumLPath(const std::string& lPath, const std::string& sourcePath);
     int32_t CheckDuplicateAlbumInDest(const std::string& lPath);
-    bool ProcessSourceAndUserAlbum(AlbumInfo& albumInfo, int32_t& insertedCount, int32_t& updatedCount);
+    int32_t CheckDuplicateAlbumNameInDest(const std::string& albumName);
+    bool CheckSourceAlbumNameUnique(const std::string& albumName);
+    bool ProcessSourceAndUserAlbum(AlbumInfo& albumInfo, int32_t& insertedCount, int32_t& updatedCount,
+        int32_t& renamedCount);
 
     // 通用方法：插入新相册（用于 SYSTEM、SOURCE、USER 相册）
     bool InsertNewAlbum(const std::string& logTag, int32_t sourceAlbumId, const AlbumInfo& albumInfo);

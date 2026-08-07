@@ -54,7 +54,8 @@ const std::string SQL_SELECT_REVERSE_CLONE_ROW = "\
         P.position, \
         P.file_source_type, \
         COALESCE(P.storage_path, '') AS storage_path, \
-        COALESCE(P.inode, '') AS inode \
+        COALESCE(P.inode, '') AS inode, \
+        P.unique_id \
     FROM Photos AS P \
     LEFT JOIN tab_cloned_old_photos AS C \
     ON C.file_id = P.file_id \
@@ -146,6 +147,7 @@ ReverseCloneCandidate ReverseCloneCandidateResolver::QueryByFileId(
     candidate.donor.inode = GetStringVal(PhotoColumn::PHOTO_FILE_INODE, resultSet);
     candidate.donor.isPureCloud = IsOriginalPureCloudFileId(candidate.donor.fileId) ||
         (cleanFlag == 1 && position == static_cast<int32_t>(PhotoPositionType::CLOUD));
+    candidate.donor.uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
     resultSet->Close();
     return candidate;
 }

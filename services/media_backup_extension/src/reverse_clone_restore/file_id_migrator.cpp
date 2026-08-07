@@ -546,7 +546,8 @@ bool FileIdMigrator::UpdatePhotoAlbumAlbumId(std::shared_ptr<RdbStore> db,
 bool FileIdMigrator::UpdatePhotosOwnerAlbumId(std::shared_ptr<RdbStore> db,
                                               int64_t newMaxExtended, int64_t oldMax)
 {
-    std::string sql = "UPDATE Photos SET owner_album_id = owner_album_id + ? WHERE owner_album_id <= ?;";
+    std::string sql =
+        "UPDATE Photos SET owner_album_id = owner_album_id + ? WHERE owner_album_id > 0 AND owner_album_id <= ?;";
     std::vector<ValueObject> args;
     args.emplace_back(ValueObject(oldMax));
     args.emplace_back(ValueObject(newMaxExtended));
