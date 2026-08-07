@@ -930,17 +930,17 @@ void ReverseCloneResourceInheritHelper::DeleteDuplicateDonorDerivedRows(
 }
 
 std::vector<ReverseCloneAssetResource> ReverseCloneResourceInheritHelper::QueryDuplicateDonorResources(
-    const ReverseClonePhotoBatchContext &batch,
+    const std::unordered_map<int32_t, int32_t> &duplicateDonorMap,
     const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const
 {
     std::vector<ReverseCloneAssetResource> resources;
-    if (targetRdb == nullptr || batch.duplicateDonorMap.empty()) {
+    if (targetRdb == nullptr || duplicateDonorMap.empty()) {
         return resources;
     }
 
     std::vector<std::string> donorIds;
-    donorIds.reserve(batch.duplicateDonorMap.size());
-    for (const auto &[donorFileId, absorbedFileId] : batch.duplicateDonorMap) {
+    donorIds.reserve(duplicateDonorMap.size());
+    for (const auto &[donorFileId, absorbedFileId] : duplicateDonorMap) {
         CHECK_AND_CONTINUE(donorFileId > 0 && absorbedFileId > 0);
         donorIds.emplace_back(std::to_string(donorFileId));
     }
@@ -988,7 +988,12 @@ void ReverseCloneResourceInheritHelper::CleanupDuplicateDonorResourcesAfterAbsor
             continue;
         }
         auto planIt = batch.resourcePlans.find(donorIt->second);
-        if (planIt == batch.resourcePlans.end() || IsDonorUsedForInheritance(planIt->second, donor.fileId)) {
+        if (planIt == batch.resourcePlans.end()) {
+            MEDIA_ERR_LOG("RevRes duplicate donor resource has no plan, donorFileId=%{public}d, "
+                "absorbedFileId=%{public}d", donor.fileId, donorIt->second);
+            continue;
+        }
+        if (IsDonorUsedForInheritance(planIt->second, donor.fileId)) {
             skippedCount++;
             continue;
         }
@@ -1007,7 +1012,8 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosBatch(ReverseClonePhotoBatch
         MEDIA_ERR_LOG("CommitPhotosBatch: targetRdb is null");
         return false;
     }
-    std::vector<ReverseCloneAssetResource> donorResources = QueryDuplicateDonorResources(batch, targetRdb);
+    std::vector<ReverseCloneAssetResource> donorResources =
+        QueryDuplicateDonorResources(batch.duplicateDonorMap, targetRdb);
     std::vector<int32_t> deletedDonorFileIds;
     if (!CommitPhotosInTransaction(batch, targetRdb, insertedRows, deletedDonorFileIds)) {
         ReleaseDuplicateDonorReservations(batch);

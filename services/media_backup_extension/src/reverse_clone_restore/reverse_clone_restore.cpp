@@ -3856,6 +3856,15 @@ void ReverseCloneRestore::BuildReversePhotoInfoMap(const vector<FileInfo>& fileI
     }
 }
 
+void ReverseCloneRestore::UpdateReverseDupMap(const std::vector<FileInfo> &fileInfos)
+{
+    std::lock_guard<std::mutex> lock(duplicateAssetMapMutex_);
+    for (const auto &fileInfo : fileInfos) {
+        CHECK_AND_CONTINUE(fileInfo.deletedSrcdbFileId > 0);
+        reverseDupMap_[fileInfo.fileIdOld] = fileInfo.deletedSrcdbFileId;
+    }
+}
+
 static void InsertMapCodes(
     int64_t photoRowNum, vector<FileInfo> fileInfos, std::shared_ptr<NativeRdb::RdbStore> &destRdb)
 {
@@ -4041,14 +4050,7 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_);
-    {
-        std::lock_guard<std::mutex> lock(duplicateAssetMapMutex_);
-        for (const auto &fileInfo : batch.validFileInfos) {
-            if (fileInfo.deletedSrcdbFileId > 0) {
-                reverseDupMap_[fileInfo.fileIdOld] = fileInfo.deletedSrcdbFileId;
-            }
-        }
-    }
+    UpdateReverseDupMap(batch.validFileInfos);
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: end, offset=%{public}d", offset);
@@ -4584,14 +4586,7 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
     albumAssetAbsorb_.UpdateDuplicateAssetMapForDuplicates(batch.duplicateDonorMap, duplicateAssetMap_,
         &duplicateAssetMapMutex_);
-    {
-        std::lock_guard<std::mutex> lock(duplicateAssetMapMutex_);
-        for (const auto &fileInfo : batch.validFileInfos) {
-            if (fileInfo.deletedSrcdbFileId > 0) {
-                reverseDupMap_[fileInfo.fileIdOld] = fileInfo.deletedSrcdbFileId;
-            }
-        }
-    }
+    UpdateReverseDupMap(batch.validFileInfos);
 
     InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: end, offset=%{public}d", offset);

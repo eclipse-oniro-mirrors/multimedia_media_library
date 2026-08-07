@@ -177,7 +177,7 @@ private:
     void DeleteDuplicateDonorDerivedRows(const ReverseClonePhotoBatchContext &batch,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
     std::vector<ReverseCloneAssetResource> QueryDuplicateDonorResources(
-        const ReverseClonePhotoBatchContext &batch,
+        const std::unordered_map<int32_t, int32_t> &duplicateDonorMap,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
     void CleanupDuplicateDonorResourcesAfterAbsorb(const ReverseClonePhotoBatchContext &batch,
         const std::vector<ReverseCloneAssetResource> &donorResources) const;

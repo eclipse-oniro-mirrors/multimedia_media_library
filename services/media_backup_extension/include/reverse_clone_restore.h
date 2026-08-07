@@ -427,6 +427,7 @@ private:
     // AbsorbNewPhotos 和 AbsorbNewPhotosForCloud 的公共方法
     bool PrepareAbsorbPhotosCommonInfo(int32_t &maxSourceDbFileId, int32_t &maxDestDbFileId);
     void InitializeDuplicateAssetMapForPhotos();
+    void UpdateReverseDupMap(const std::vector<FileInfo> &fileInfos);
     void SubmitAbsorbNewPhotosTasks(int32_t totalNumber, int32_t maxSourceDbFileId, int32_t maxDestDbFileId,
         bool isCloud);
     void SubmitAbsorbNewPhotosForCloudTasks(int32_t totalNumber, int32_t maxSourceDbFileId,
