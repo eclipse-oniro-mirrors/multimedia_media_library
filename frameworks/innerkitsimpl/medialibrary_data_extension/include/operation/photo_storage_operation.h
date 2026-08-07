@@ -49,7 +49,6 @@ public:
     int64_t GetMediaVideoSize();
     int64_t GetCustomSize();
     int64_t GetMetaSize();
-    int64_t GetDataSize();
     int64_t GetHighlightSizeFromPreferences();
     void GetTotalThumbnailSize(std::shared_ptr<MediaLibraryRdbStore> rdbStore,
         TotalThumbnailSizeResult &totalThumbnailSizeResult);
