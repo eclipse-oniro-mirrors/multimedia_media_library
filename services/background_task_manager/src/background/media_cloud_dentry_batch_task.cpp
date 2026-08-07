@@ -136,7 +136,7 @@ bool MediaCloudDentryBatchTask::NeedCreateDentryForPhoto(const PhotosPo &photosP
     if (lcdPath.empty() || access(lcdPath.c_str(), F_OK) != 0) {
         std::string lcdFileType = hasExThumbnail ? DENTRY_INFO_LCD_EX : DENTRY_INFO_LCD;
         CheckAndAddDentry(photosPo, "LCD", lcdFileType, dentryLcd_);
-    } 
+    }
     ThumbnailType thmType = hasExThumbnail ? ThumbnailType::THUMB_EX : ThumbnailType::THUMB;
     std::string thmPath = ThumbnailFileUtils::GetLocalThumbnailFilePath(filePath, thmType);
     if (thmPath.empty() || access(thmPath.c_str(), F_OK) != 0) {
