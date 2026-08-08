@@ -117,6 +117,7 @@ int64_t FileIdMigrator::GetMaxAlbumIdFromAllTables(std::shared_ptr<RdbStore> db)
 
     std::vector<Query> queries = {
         {"SELECT MAX(album_id) FROM PhotoAlbum", "PhotoAlbum.album_id", {}},
+        {"SELECT MAX(owner_album_id) FROM Photos WHERE owner_album_id > 0", "Photos.owner_album_id", {}},
         {"SELECT seq FROM sqlite_sequence WHERE name = ?", "sqlite_sequence.PhotoAlbum", {ValueObject("PhotoAlbum")}}};
 
     for (const auto &query : queries) {
@@ -243,7 +244,7 @@ bool FileIdMigrator::MigrateFileIds(std::shared_ptr<RdbStore> oldDb,
         static_cast<long long>(newMax), static_cast<long long>(oldMax), static_cast<long long>(newMaxExtended_));
 
     // 步骤 3: 更新 Photos 表自身的 file_id
-    oldMax = fmax(newMax, oldMax);
+    oldMax = fmax(fmax(newMax, oldMax), newMaxExtended_);
     if (!UpdatePhotosFileId(oldDb, newMaxExtended_, oldMax)) {
         MEDIA_ERR_LOG("FileIdMigrator: UpdatePhotosFileId failed");
         return false;
@@ -308,15 +309,6 @@ bool FileIdMigrator::UpdatePhotosFileId(std::shared_ptr<RdbStore> db,
     args.emplace_back(ValueObject(oldMax));
     args.emplace_back(ValueObject(newMaxExtended));
     if (!ExecuteSql(db, sql, args)) {
-        return false;
-    }
-
-    // 插入并删除空数据以触发 sqlite_sequence 更新
-    int64_t targetId = oldMax + newMaxExtended + 1;
-    MEDIA_INFO_LOG("FileIdMigrator: InsertAndDeleteEmptyRecord for Photos, targetId=%{public}lld",
-                   static_cast<long long>(targetId));
-    if (!InsertAndDeleteEmptyRecord(db, "Photos", "file_id", targetId)) {
-        MEDIA_ERR_LOG("FileIdMigrator: insert/delete empty record for Photos failed");
         return false;
     }
 
@@ -386,20 +378,6 @@ bool FileIdMigrator::UpdateDirectFileIdTables(std::shared_ptr<RdbStore> db,
             MEDIA_ERR_LOG("FileIdMigrator: update %{public}s.%{public}s failed",
                           upd.table.c_str(), upd.column.c_str());
             return false;  // 表存在但更新失败，立即终止
-        }
-
-        // 对有自增主键的表，插入并删除空数据以触发 sqlite_sequence 更新
-        if (upd.table == "Photos" || upd.table == "tab_analysis_total" ||
-            upd.table == "tab_analysis_search_index" || upd.table == "tab_analysis_ocr" ||
-            upd.table == "tab_analysis_label") {
-            int64_t targetId = oldMax + newMaxExtended + 1;
-            MEDIA_INFO_LOG("FileIdMigrator: InsertAndDeleteEmptyRecord for %{public}s, targetId=%{public}lld",
-                           upd.table.c_str(), static_cast<long long>(targetId));
-            if (!InsertAndDeleteEmptyRecord(db, upd.table, upd.column, targetId)) {
-                MEDIA_ERR_LOG("FileIdMigrator: insert/delete empty record for %{public}s failed",
-                              upd.table.c_str());
-                return false;
-            }
         }
     }
     return true;
@@ -559,13 +537,6 @@ bool FileIdMigrator::UpdatePhotoAlbumAlbumId(std::shared_ptr<RdbStore> db,
         return false;
     }
 
-    // 插入并删除空数据以触发 sqlite_sequence 更新
-    int64_t targetId = oldMax + newMaxExtended + 1;
-    if (!InsertAndDeleteEmptyRecord(db, "PhotoAlbum", "album_id", targetId)) {
-        MEDIA_ERR_LOG("FileIdMigrator: insert/delete empty record for PhotoAlbum failed");
-        return false;
-    }
-
     const std::string dropTrigger = "DROP TRIGGER IF EXISTS photo_album_id_update_trigger;";
     return ExecuteSql(db, dropTrigger, triggerArgs);
 }
@@ -601,54 +572,6 @@ bool FileIdMigrator::ExecuteSql(std::shared_ptr<RdbStore> db, const std::string 
         MEDIA_ERR_LOG("FileIdMigrator: ExecuteSql failed, ret=%{public}d, sql=%{public}s", ret, sql.c_str());
         return false;
     }
-    return true;
-}
-
-bool FileIdMigrator::InsertAndDeleteEmptyRecord(std::shared_ptr<RdbStore> db, const std::string &table,
-                                                const std::string &idColumn, int64_t idValue)
-{
-    std::string insertSql;
-    std::vector<ValueObject> insertArgs;
-
-    // 根据表名选择合适的插入方式
-    if (table == "Photos") {
-        // Photos 表：data 是必需字段，其他都有默认值
-        insertSql = "INSERT INTO " + table + " (data) VALUES ('');";
-        insertArgs.clear();
-    } else if (table == "PhotoAlbum") {
-        // PhotoAlbum 表：所有字段都有默认值
-        insertSql = "INSERT INTO " + table + " DEFAULT VALUES;";
-        insertArgs.clear();
-    } else {
-        // 其他分析表：file_id 是 UNIQUE 字段，其他字段都有默认值
-        insertSql = "INSERT INTO " + table + " (" + idColumn + ") VALUES (?);";
-        insertArgs.emplace_back(ValueObject(idValue));
-    }
-
-    if (!ExecuteSql(db, insertSql, insertArgs)) {
-        MEDIA_ERR_LOG("FileIdMigrator: insert empty record into %{public}s failed", table.c_str());
-        return false;
-    }
-
-    // 删除刚插入的数据
-    std::string deleteSql;
-    std::vector<ValueObject> deleteArgs;
-
-    if (table == "Photos" || table == "PhotoAlbum" || table == "tab_analysis_total" ||
-        table == "tab_analysis_search_index" || table == "tab_analysis_ocr" || table == "tab_analysis_label") {
-        // 自增主键表，删除最后插入的记录
-        deleteSql = "DELETE FROM " + table + " WHERE rowid = (SELECT MAX(rowid) FROM " + table + ");";
-        deleteArgs.clear();
-    } else {
-        deleteSql = "DELETE FROM " + table + " WHERE " + idColumn + " = ?;";
-        deleteArgs.emplace_back(ValueObject(idValue));
-    }
-
-    if (!ExecuteSql(db, deleteSql, deleteArgs)) {
-        MEDIA_ERR_LOG("FileIdMigrator: delete empty record from %{public}s failed", table.c_str());
-        return false;
-    }
-
     return true;
 }
 
@@ -886,10 +809,10 @@ bool FileIdMigrator::UpdateAllSmartAlbumTables(std::shared_ptr<RdbStore> db,
     int64_t newMaxExtended, int64_t oldMax)
 {
     std::vector<DirectUpdate> updates = {
-        {"AnalysisAlbum", "album_id", "album_id > 0 AND album_id <= ?", true},
-        {"AnalysisPhotoMap", "map_album", "map_album > 0 AND map_album <= ?", false},
-        {"tab_highlight_album", "album_id", "album_id > 0 AND album_id <= ?", false},
-        {"tab_highlight_album", "ai_album_id", "ai_album_id > 0 AND ai_album_id <= ?", false},
+        {"AnalysisAlbum", "album_id", "album_id > 0 AND album_id <= ?"},
+        {"AnalysisPhotoMap", "map_album", "map_album > 0 AND map_album <= ?"},
+        {"tab_highlight_album", "album_id", "album_id > 0 AND album_id <= ?"},
+        {"tab_highlight_album", "ai_album_id", "ai_album_id > 0 AND ai_album_id <= ?"},
     };
 
     for (const auto &upd : updates) {
@@ -919,17 +842,6 @@ bool FileIdMigrator::UpdateSmartAlbumTable(std::shared_ptr<RdbStore> db,
         MEDIA_ERR_LOG("FileIdMigrator: update %{public}s.%{public}s failed",
                       upd.table.c_str(), upd.column.c_str());
         return false;
-    }
-
-    if (upd.needSequenceUpdate) {
-        int64_t targetId = oldMax + newMaxExtended + 1;
-        MEDIA_INFO_LOG("FileIdMigrator: InsertAndDeleteEmptyRecord for %{public}s, targetId=%{public}lld",
-                       upd.table.c_str(), static_cast<long long>(targetId));
-        if (!InsertAndDeleteEmptyRecord(db, upd.table, upd.column, targetId)) {
-            MEDIA_ERR_LOG("FileIdMigrator: insert/delete empty record for %{public}s failed",
-                          upd.table.c_str());
-            return false;
-        }
     }
 
     return true;

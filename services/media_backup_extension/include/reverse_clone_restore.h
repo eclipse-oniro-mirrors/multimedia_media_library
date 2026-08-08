@@ -159,7 +159,6 @@ protected:
     void HandleRestData() override;
 
     bool PerformInitialMigration(std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore);
-    bool PerformSecondaryMigration();
     bool WaitForMainCloseDataBase();
 
     int32_t ClearRedundantData();

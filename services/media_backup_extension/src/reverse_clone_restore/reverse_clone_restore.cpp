@@ -1330,9 +1330,15 @@ bool ReverseCloneRestore::BackupAndRenameNewDb()
         MEDIA_ERR_LOG("BackupAndRenameNewDb: backup failed, err=%{public}d", err);
         return false;
     }
-
-    CHECK_AND_RETURN_RET_LOG(WaitForMainCloseDataBase(), false,
-        "BackupAndRenameNewDb main process close database failed");
+    // 查medialibraryRdb最大file_id，和newmaxextended比较，若超过预留量则回滚
+    int64_t currentMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(mediaLibraryRdb_);
+    if (currentMaxFileId > newMaxExtended_) {
+        MEDIA_ERR_LOG("BackupAndRenameNewDb: currentMaxFileId=%{public}lld >= newMaxExtended_=%{public}lld, rollback",
+            static_cast<long long>(currentMaxFileId), static_cast<long long>(newMaxExtended_));
+        reverseRestoreReportInfo_.reverseChangeErrorInfo = "currentMaxFileId exceeds reserved range";
+        return false;
+    }
+    CHECK_AND_RETURN_RET_LOG(WaitForMainCloseDataBase(), false, "BackupAndRenameNewDb main process close db failed");
 
     // 3. 重命名新 db 主文件到 source
     if (!MoveDbFileGroup(newDbPath, newDbSourcePath, false)) {
@@ -2819,13 +2825,6 @@ bool ReverseCloneRestore::SwitchReverseDbAndAssets(const string &backupRestorePa
         return false;
     }
 
-    if (!PerformSecondaryMigration()) {
-        MEDIA_ERR_LOG("PerformSecondaryMigration failed, abort restore");
-        reverseRestoreReportInfo_.reverseChangeErrorInfo = "PerformSecondaryMigration failed";
-        FallbackToForwardRestore(backupRestorePath, upgradePath, false);   // 完整回退后回到正向克隆
-        return false;
-    }
-
     int32_t ancoRet = RepairFinalAncoAssetsAfterSecondaryMigration();
     if (ancoRet != E_OK) {
         reverseRestoreReportInfo_.reverseChangeErrorInfo = "RepairFinalAncoAssetsAfterSecondaryMigration failed";
@@ -3282,8 +3281,9 @@ bool ReverseCloneRestore::PerformInitialMigration(std::shared_ptr<NativeRdb::Rdb
         newDbStore.reset();
         return false;
     }
-
-    // 记录第一次迁移后新 db 的最大 ID，供后续二次迁移比较
+    FileIdMigrator::UpdateSqliteSequenceForPhotos(destRdb_);
+    FileIdMigrator::UpdateSqliteSequenceForAlbums(destRdb_);
+    // 记录第一次迁移后新 db 的最大 ID
     initialNewMaxFileId_ = FileIdMigrator::GetMaxFileIdFromAllTables(newDbStore);
     initialNewMaxAlbumId_ = FileIdMigrator::GetMaxAlbumIdFromAllTables(newDbStore);
     newMaxExtended_ = migrator.GetNewMaxExtended();
@@ -3297,58 +3297,6 @@ bool ReverseCloneRestore::PerformInitialMigration(std::shared_ptr<NativeRdb::Rdb
     newDbStore.reset();
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.beforeTransformTimeCost.append(" FirstMigration: ")
-        .append(std::to_string(endTime - startTime) + ";");
-    return true;
-}
-
-bool ReverseCloneRestore::PerformSecondaryMigration()
-{
-    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    if (sourceRdb_ == nullptr || destRdb_ == nullptr) {
-        MEDIA_ERR_LOG("PerformSecondaryMigration: sourceRdb_ or destRdb_ is null");
-        return false;
-    }
-
-    // 检查转正后备份的新 db (sourceRdb_) 是否产生了更大的 ID
-    int64_t currentNewMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(sourceRdb_);
-    int64_t currentNewMaxAlbumId = FileIdMigrator::GetMaxAlbumIdFromAllTables(sourceRdb_);
-
-    bool needReMigrate = false;
-    if (currentNewMaxFileId > initialNewMaxFileId_) {
-        MEDIA_INFO_LOG("PerformSecondaryMigration: new max file_id increased from %{public}lld to %{public}lld",
-                       static_cast<long long>(initialNewMaxFileId_),
-                       static_cast<long long>(currentNewMaxFileId));
-        needReMigrate = true;
-    }
-    if (currentNewMaxAlbumId > initialNewMaxAlbumId_) {
-        MEDIA_INFO_LOG("PerformSecondaryMigration: new max album_id increased from %{public}lld to %{public}lld",
-                       static_cast<long long>(initialNewMaxAlbumId_),
-                       static_cast<long long>(currentNewMaxAlbumId));
-        needReMigrate = true;
-    }
-
-    if (!needReMigrate) {
-        MEDIA_INFO_LOG("PerformSecondaryMigration: no change in max IDs, skip");
-        return true;
-    }
-
-    // 有新增数据，再次执行完整迁移 (此时 oldDb = 已转正的旧 db, newDb = 备份的新 db)
-    int64_t oldMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(destRdb_);
-    int64_t newMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(sourceRdb_);
-    if (oldMaxFileId > 0 && newMaxFileId > 0) {
-        resourceInheritHelper_.AddFileIdOffsetRule(oldMaxFileId, newMaxFileId);
-    }
-    FileIdMigrator migrator;
-    if (!migrator.Migrate(destRdb_, sourceRdb_)) {
-        MEDIA_ERR_LOG("PerformSecondaryMigration: second migration failed");
-        return false;
-    }
-
-    newMaxExtended_ = migrator.GetNewMaxExtended();
-    MEDIA_INFO_LOG("PerformSecondaryMigration: second migration success, newMaxExtended=%{public}lld",
-                   static_cast<long long>(newMaxExtended_));
-    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
-    reverseRestoreReportInfo_.beforeTransformTimeCost.append(" SecondMigration: ")
         .append(std::to_string(endTime - startTime) + ";");
     return true;
 }
@@ -3381,11 +3329,6 @@ void ReverseCloneRestore::UpdatePhotosSpecialFields()
                                         PhotoColumn::PHOTO_METADATA_FLAGS + " = 0";
     BackupDatabaseUtils::ExecuteSQL(destRdb_, updateMetadataFlagsSql, {});
 
-    // 4. 更新 PHOTO_CE_AVAILABLE：统一设置为默认值 0
-    std::string updateCeAvailableSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
-                                      PhotoColumn::PHOTO_CE_AVAILABLE + " = 0";
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateCeAvailableSql, {});
-
     // 5. 更新所有 Photos 表中的 change_time 为当前时间
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::string updateChangeTimeSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
@@ -3401,10 +3344,12 @@ void ReverseCloneRestore::UpdateChangeTime()
     MEDIA_INFO_LOG("ReverseCloneRestore: UpdateChangeTime called");
     CHECK_AND_RETURN_LOG(destRdb_ != nullptr, "destRdb_ is null");
 
-    // 更新所有 PhotoAlbum 表中的 change_time 为当前时间
+    // 更新所有 PhotoAlbum 表中的 change_time 和 date_modified 为当前时间
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::string updateChangeTimeSql = "UPDATE " + PhotoAlbumColumns::TABLE +
                                       " SET " + PhotoAlbumColumns::CHANGE_TIME + " = " +
+                                      std::to_string(currentTime) +
+                                      ", " + PhotoAlbumColumns::ALBUM_DATE_MODIFIED + " = " +
                                       std::to_string(currentTime) +
                                       " WHERE " + PhotoAlbumColumns::ALBUM_TYPE + " <> 1024";
     BackupDatabaseUtils::ExecuteSQL(destRdb_, updateChangeTimeSql);
@@ -4167,15 +4112,6 @@ NativeRdb::ValuesBucket ReverseCloneRestore::BuildAlbumValuesBucket(const AlbumI
     values.PutString(PhotoAlbumColumns::ALBUM_LPATH, albumInfo.lPath);
     values.PutString(PhotoAlbumColumns::ALBUM_BUNDLE_NAME, albumInfo.albumBundleName);
 
-    // dateModified
-    if (destAlbumId != -1) {
-        // 更新场景（destAlbumId != -1）：使用当前时间戳
-        values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, MediaFileUtils::UTCTimeMilliSeconds());
-    } else {
-        // 插入新相册场景（destAlbumId == -1）：直接使用原始 dateModified
-        values.PutLong(PhotoAlbumColumns::ALBUM_DATE_MODIFIED, albumInfo.dateModified);
-    }
-
     // upload_status（如果不在排除列表中）
     if (excludeColumns.find(PhotoAlbumColumns::UPLOAD_STATUS) == excludeColumns.end()) {
         values.PutInt(PhotoAlbumColumns::UPLOAD_STATUS, albumInfo.uploadStatus);
@@ -4330,20 +4266,13 @@ std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDupli
     // 构建基础 excludeColumns
     std::unordered_set<std::string> excludeColumns = {
         PhotoAlbumColumns::UPLOAD_STATUS,
-        PhotoAlbumColumns::ALBUMS_ORDER,
         PhotoAlbumColumns::ORDER_SECTION,
         PhotoAlbumColumns::ORDER_TYPE,
         PhotoAlbumColumns::ORDER_STATUS,
         PhotoAlbumColumns::STYLE2_ALBUMS_ORDER,
         PhotoAlbumColumns::STYLE2_ORDER_SECTION,
         PhotoAlbumColumns::STYLE2_ORDER_TYPE,
-        PhotoAlbumColumns::STYLE2_ORDER_STATUS,
-        PhotoAlbumColumns::COVER_ORDER_KEY,
-        PhotoAlbumColumns::COVER_ORDER_SUBKEY,
-        PhotoAlbumColumns::COVER_ORDER_TYPE,
-        PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY,
-        PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY,
-        PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE
+        PhotoAlbumColumns::STYLE2_ORDER_STATUS
     };
 
     // 如果 destRdb 有自定义封面（cover_uri_source > 0），则保留 destRdb 的封面字段
@@ -4384,12 +4313,12 @@ int32_t ReverseCloneRestore::CheckDuplicateAlbumNameInDest(const std::string &al
                           PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::SOURCE) + " AND " +
                           "LOWER(" + PhotoAlbumColumns::ALBUM_NAME + ") = LOWER(?)";
     auto destResultSet = BackupDatabaseUtils::QuerySql(destRdb_, destQuerySql, {albumName});
+    int32_t destAlbumId = -1;
     if (destResultSet == nullptr) {
         MEDIA_ERR_LOG("Failed to query destRdb for duplicate album name");
-        return -1;
+        return destAlbumId;
     }
 
-    int32_t destAlbumId = -1;
     if (destResultSet->GoToFirstRow() == NativeRdb::E_OK) {
         destAlbumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, destResultSet);
     }
@@ -4400,7 +4329,7 @@ int32_t ReverseCloneRestore::CheckDuplicateAlbumNameInDest(const std::string &al
 bool ReverseCloneRestore::CheckSourceAlbumNameUnique(const std::string& albumName)
 {
     int32_t destAlbumId = CheckDuplicateAlbumNameInDest(albumName);
-    return destAlbumId == -1;
+    return destAlbumId < 0;
 }
 
 std::string ReverseCloneRestore::FindUniqueSourceAlbumName(const std::string& albumName)

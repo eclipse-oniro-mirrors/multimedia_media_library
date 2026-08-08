@@ -32,18 +32,17 @@ namespace Media {
  * | 6 | BackupAndRenameNewDb | 备份新DB并重命名为source
  * | 7 | MoveAssets | 交换媒体文件目录
  * | 8 | FinalizeDatabaseSwap | 数据库转正（处理后的旧DB接管主库）
- * | 9 | PerformSecondaryMigration | 第二次ID偏移（检查并迁移新增数据
- * | 10 | AbsorbNewData | 吸收新机数据（相册、照片、云图
- * | 11 | ReverseRestoreAnalysisData | 智慧数据恢复
- * | 12 | HandleRestData | 清理收尾（关库、设置参数、清理临时文件）
+ * | 9 | AbsorbNewData | 吸收新机数据（相册、照片、云图
+ * | 10 | ReverseRestoreAnalysisData | 智慧数据恢复
+ * | 11 | HandleRestData | 清理收尾（关库、设置参数、清理临时文件）
  */
 enum class ReverseCloneRestoreStage {
     NOT_STARTED = 0,           // 未开始
     EARLY_STAGE = 1,           // 早期阶段（步骤1-5）
-    DB_SWITCHED = 2,           // 数据库已切换（步骤6-9完成）
-    ABSORBING_DATA = 3,        // 正在吸收新机数据（步骤10）
-    ANALYSIS_RESTORE = 4,      // 智慧数据恢复（步骤11）
-    FINISHING = 5,             // 收尾阶段（步骤12）
+    DB_SWITCHED = 2,           // 数据库已切换（步骤6-8完成）
+    ABSORBING_DATA = 3,        // 正在吸收新机数据（步骤9）
+    ANALYSIS_RESTORE = 4,      // 智慧数据恢复（步骤10）
+    FINISHING = 5,             // 收尾阶段（步骤11）
     COMPLETED = 6              // 已完成
 };
 
