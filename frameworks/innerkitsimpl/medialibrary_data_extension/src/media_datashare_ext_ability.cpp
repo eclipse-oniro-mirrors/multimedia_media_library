@@ -147,6 +147,9 @@ static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
 };
 constexpr int64_t MAX_EXECUTE_TIME = 200;
 
+static const std::string MEDIA_BACKUP_LIB = "libmediabackup.z.so";
+static const std::string CHECK_AND_START_RESUME_FUNC_NAME = "CheckAndStartResume";
+
 MediaDataShareExtAbility* MediaDataShareExtAbility::Create(const unique_ptr<Runtime>& runtime)
 {
     return new MediaDataShareExtAbility(static_cast<Runtime&>(*runtime));
@@ -221,14 +224,12 @@ bool MediaDataShareExtAbility::InvokeReverseCloneRestoreResume()
     auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(markerXml, errCode);
     if (preferences == nullptr || errCode != 0) {
         MEDIA_INFO_LOG("Reverse clone restore marker file does not exist, skip resume");
-        SettingsDataManager::ClearReverseRestoreStatus();
         return true;
     }
     const std::string KEY_STAGE = "stage";
     int stage = preferences->GetInt(KEY_STAGE, -1);
     if (stage == -1) {
         MEDIA_INFO_LOG("Reverse clone restore marker stage does not exist, skip resume");
-        SettingsDataManager::ClearReverseRestoreStatus();
         return true;
     }
     std::thread([&] {
@@ -250,10 +251,6 @@ bool MediaDataShareExtAbility::InvokeReverseCloneRestoreResume()
 
         MEDIA_INFO_LOG("Calling ReverseCloneRestoreResume::CheckAndStartResume via dlopen");
         checkAndStartResumeFunc();
-        int32_t errCode = MediaLibraryDataManager::GetInstance()->InitReverseMediaLibraryRdbStore();
-        if (errCode != E_OK) {
-            MEDIA_INFO_LOG("CheckAndStartResume InitReverseMediaLibraryRdbStore failed");
-        }
         dlclose(handle);
     }).detach();
 
