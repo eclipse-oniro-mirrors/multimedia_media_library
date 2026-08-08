@@ -40,6 +40,7 @@
 #include "media_fix_lcd_file_size_task.h"
 #include "dirty_file_report_task.h"
 #include "media_file_manager_offline_cleanup_task.h"
+#include "media_migrate_live_photo_4d_pair_task.h"
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
@@ -67,6 +68,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<MediaFixLcdFileSizeTask>(),
         std::make_shared<DirtyFileReportTask>(),
         std::make_shared<MediaFileManagerOfflineCleanupTask>(),
+        std::make_shared<MediaMigrateLivePhoto4dPairTask>(),
     };
 }
 

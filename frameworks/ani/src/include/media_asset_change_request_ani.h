@@ -51,6 +51,7 @@ enum class AssetChangeOperation {
     SET_HIDDEN_ATTRIBUTE,
     SET_DISPLAY_NAME_BY_FILE,
     SET_CAMERA_EDIT_DATA,
+    SET_LIVEPHOTO_4D_STATUS,
 };
 
 enum class AddResourceMode {
@@ -149,6 +150,9 @@ public:
         ani_enum_item watermarkTypeAni);
     static ani_object SetVideoEnhancementAttr(ani_env *env, ani_object aniObject,
         ani_enum_item videoEnhancementType, ani_string photoId);
+    static ani_object SetLivePhoto4dStatus(ani_env *env, ani_object object, ani_int livePhoto4dStatus,
+        ani_string livePhoto4dLatestPair);
+    bool CheckSetLivePhoto4dStatus(ani_env *env);
     void RecordChangeOperation(AssetChangeOperation changeOperation);
     bool Contains(AssetChangeOperation changeOperation) const;
     bool ContainsResource(ResourceType resourceType) const;

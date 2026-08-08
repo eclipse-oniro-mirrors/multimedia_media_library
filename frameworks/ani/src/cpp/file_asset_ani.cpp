@@ -68,6 +68,7 @@
 #include "is_edited_vo.h"
 #include "get_edit_data_vo.h"
 #include "convert_format_vo.h"
+#include "generate_unique_id_vo.h"
 #include "interop_js/arkts_esvalue.h"
 #include "interop_js/arkts_interop_js_api.h"
 #include "transfer_utils.h"
@@ -126,6 +127,8 @@ const std::array fileAssetAniMethods = {
         reinterpret_cast<void *>(FileAssetAni::GetExif)},
     ani_native_function {"setPendingSync", nullptr,
         reinterpret_cast<void *>(FileAssetAni::PhotoAccessHelperSetPending)},
+    ani_native_function {"generateUniqueIdSync", nullptr,
+        reinterpret_cast<void *>(FileAssetAni::PhotoAccessHelperGenerateUniqueIdSync)},
 };
 std::array staticMethods = {
     ani_native_function {"transferToDynamicPhotoAsset", nullptr,
@@ -457,6 +460,7 @@ static int32_t CheckSystemApiKeys(ani_env *env, const string &key)
         PhotoColumn::PHOTO_DATE_ADDED_DAY,
         PhotoColumn::UNIQUE_ID,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
         PhotoColumn::PHOTO_HIDDEN_TIME,
         PhotoColumn::PHOTO_RISK_STATUS,
         PhotoColumn::ATTACHMENT_SIZE,
@@ -2938,6 +2942,42 @@ ani_status FileAssetAni::PhotoAccessHelperSetPending(ani_env *env, ani_object ob
 
     PhotoAccessHelperSetPendingExecute(env, context);
     return PhotoAccessHelperSetPendingComplete(env, context);
+}
+
+ani_string FileAssetAni::PhotoAccessHelperGenerateUniqueIdSync(ani_env *env, ani_object object)
+{
+    ani_string aniString {};
+    CHECK_COND_RET(env != nullptr, aniString, "env is nullptr");
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return aniString;
+    }
+    auto fileAssetAni = Unwrap(env, object);
+    if (fileAssetAni == nullptr || fileAssetAni->fileAssetPtr == nullptr) {
+        ANI_ERR_LOG("fileAssetAni is nullptr");
+        return aniString;
+    }
+    auto fileAssetPtr = fileAssetAni->GetFileAssetInstance();
+    if (fileAssetPtr == nullptr) {
+        ANI_ERR_LOG("fileAssetPtr is nullptr");
+        return aniString;
+    }
+    GenerateUniqueIdReqBody reqBody;
+    GenerateUniqueIdRespBody respBody;
+    reqBody.fileId = fileAssetPtr->GetId();
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID);
+    int32_t errCode = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (errCode == E_GET_ASSET_FAIL) {
+        AniError::ThrowError(env, JS_E_ASSET_NOT_EXIST, "Asset not exist");
+        return aniString;
+    }
+    if (errCode != E_OK) {
+        AniError::ThrowError(env, JS_E_INNER_FAIL, "Failed to generateUniqueId");
+        return aniString;
+    }
+    fileAssetPtr->SetUniqueId(respBody.uniqueId);
+    MediaLibraryAniUtils::ToAniString(env, respBody.uniqueId, aniString);
+    return aniString;
 }
 
 FileAssetAni* GetNativeFileAssetAni(ani_env *env, ani_object object)

@@ -54,6 +54,9 @@
 #include <charconv>
 #include "moving_photo_file_utils.h"
 #include "media_library_error_code.h"
+#include "validate_latest_pair_vo.h"
+#include "media_asset_rdbstore.h"
+#include "userfilemgr_uri.h"
 
 namespace OHOS::Media {
 namespace {
@@ -111,6 +114,8 @@ const std::array mediaAssetChangeMethods = {
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetHiddenAttribute)},
     ani_native_function {"setTitleByFile", nullptr,
         reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetTitleByFile)},
+    ani_native_function {"setLivePhoto4dStatus", nullptr,
+        reinterpret_cast<void *>(MediaAssetChangeRequestAni::SetLivePhoto4dStatus)},
 };
 
 std::array staticMethods = {
@@ -2575,6 +2580,136 @@ static bool AddFiltersExecute(MediaAssetChangeRequestAniContext &context)
     return true;
 }
 
+static int32_t ValidateLatestPairAssetExistsIPC(const string &uniqueId, int32_t userId, bool &assetExists)
+{
+    ValidateLatestPairReqBody reqBody;
+    ValidateLatestPairRespBody respBody;
+    reqBody.uniqueId = uniqueId;
+    uint32_t businessCode = static_cast<uint32_t>(
+        MediaLibraryBusinessCode::PAH_VALIDATE_LIVEPHOTO_4D_LATEST_PAIR);
+    std::unordered_map<std::string, std::string> headerMap{
+        {PhotoColumn::UNIQUE_ID, uniqueId}, {URI_TYPE, TYPE_PHOTOS}};
+    int32_t err = IPC::UserDefineIPCClient().SetUserId(userId).SetHeader(headerMap).Call(businessCode,
+        reqBody, respBody);
+    if (err != E_OK) {
+        ANI_ERR_LOG("ValidateLatestPair IPC failed, err:%{public}d", err);
+        return E_ERR;
+    }
+    assetExists = respBody.assetExists;
+    return E_OK;
+}
+
+static bool ValidateLatestPairAssetExists(const string &latestPair, int32_t userId = -1)
+{
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(PhotoColumn::UNIQUE_ID, latestPair);
+    std::vector<std::string> columns { MediaColumn::MEDIA_ID };
+    Uri uri(CONST_PAH_QUERY_PHOTO);
+    OperationObject object = OperationObject::UNKNOWN_OBJECT;
+    if (!MediaAssetRdbStore::GetInstance()->IsQueryAccessibleViaSandBox(uri, object, predicates) || userId != -1) {
+        bool assetExists = false;
+        int32_t ret = ValidateLatestPairAssetExistsIPC(latestPair, userId, assetExists);
+        return ret == E_OK && assetExists;
+    }
+    int errCode = 0;
+    auto resultSet = UserFileClient::Query(uri, predicates, columns, errCode, userId);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
+        ANI_ERR_LOG("ValidateLatestPair: asset not found for uniqueId");
+        return false;
+    }
+    return true;
+}
+
+static bool CheckLivePhoto4dEffectParams(ani_env *env, FileAsset *fileAsset,
+    bool containsAddResource, int32_t subtype)
+{
+    if (!containsAddResource || subtype != static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:set asset to live photo 4d, must be combined with the add moving photo");
+        return false;
+    }
+    string latestPair = fileAsset->GetLivePhoto4dLatestPair();
+    if (latestPair.empty()) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair cannot be empty when setting effect type");
+        return false;
+    }
+    if (!MediaFileUtils::IsValidUuid(latestPair)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair is not a valid uuid");
+        return false;
+    }
+    int32_t userId = fileAsset->GetUserId();
+    if (!ValidateLatestPairAssetExists(latestPair, userId)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair must have corresponding asset");
+        return false;
+    }
+    return true;
+}
+
+bool MediaAssetChangeRequestAni::CheckSetLivePhoto4dStatus(ani_env *env)
+{
+    if (!Contains(AssetChangeOperation::SET_LIVEPHOTO_4D_STATUS)) {
+        return true;
+    }
+    auto fileAsset = GetFileAssetInstance();
+    if (fileAsset == nullptr) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "fileAsset is null");
+        return false;
+    }
+    int32_t livePhoto4dStatus = fileAsset->GetLivePhoto4dStatus();
+    if (!MediaFileUtils::CheckLivePhoto4dStatus(livePhoto4dStatus)) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE, "livePhoto4d:invalid live photo 4d status");
+        return false;
+    }
+    if (MediaFileUtils::IsLivePhoto4dEffect(livePhoto4dStatus)) {
+        bool containsAddResource = Contains(AssetChangeOperation::ADD_RESOURCE);
+        int32_t subtype = 0;
+        bool isValid = false;
+        if (containsAddResource) {
+            subtype = creationValuesBucket_.Get(PhotoColumn::PHOTO_SUBTYPE, isValid);
+        }
+        return CheckLivePhoto4dEffectParams(env, fileAsset.get(), containsAddResource, subtype);
+    }
+    string latestPair = fileAsset->GetLivePhoto4dLatestPair();
+    if (!latestPair.empty()) {
+        AniError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+            "livePhoto4d:livephoto_4d_latest_pair must be empty when setting non-effect type");
+        return false;
+    }
+    return true;
+}
+
+static bool SetLivePhoto4dStatusExecute(MediaAssetChangeRequestAniContext &context)
+{
+    ANI_INFO_LOG("livePhoto4d:enter SetLivePhoto4dStatusExecute");
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "livePhoto4d:changeRequest is nullptr");
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    CHECK_COND_RET(fileAsset != nullptr, false, "livePhoto4d:fileAsset is nullptr");
+    AssetChangeReqBody reqBody;
+    reqBody.fileId = fileAsset->GetId();
+    reqBody.livePhoto4dStatus = fileAsset->GetLivePhoto4dStatus();
+    reqBody.livePhoto4dLatestPair = fileAsset->GetLivePhoto4dLatestPair();
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_LIVEPHOTO_4D_STATUS);
+    std::unordered_map<std::string, std::string> headerMap{
+        {MediaColumn::MEDIA_ID, to_string(fileAsset->GetId())}, {URI_TYPE, TYPE_PHOTOS}};
+    int32_t changedRows =
+        IPC::UserDefineIPCClient().SetUserId(context.userId_).SetHeader(headerMap).Call(businessCode, reqBody);
+    if (changedRows < 0) {
+        if (changedRows == -1) {
+            context.error = OHOS_INVALID_PARAM_CODE;
+        } else {
+            context.error = JS_E_INNER_FAIL;
+        }
+        ANI_ERR_LOG("livePhoto4d:Failed to update livephoto_4d_status of asset, err: %{public}d", changedRows);
+        return false;
+    }
+    return true;
+}
+
 static const unordered_map<AssetChangeOperation, bool (*)(MediaAssetChangeRequestAniContext&)> EXECUTE_MAP = {
     { AssetChangeOperation::CREATE_FROM_URI, CreateFromFileUriExecute },
     { AssetChangeOperation::ADD_RESOURCE, AddResourceExecute },
@@ -2594,6 +2729,7 @@ static const unordered_map<AssetChangeOperation, bool (*)(MediaAssetChangeReques
     { AssetChangeOperation::ADD_FILTERS, AddFiltersExecute },
     { AssetChangeOperation::SET_HIDDEN_ATTRIBUTE, SetHiddenAttributeExecute },
     { AssetChangeOperation::SET_DISPLAY_NAME_BY_FILE, SetDisplayNameByFileExecute },
+    { AssetChangeOperation::SET_LIVEPHOTO_4D_STATUS, SetLivePhoto4dStatusExecute },
 };
 
 static void ApplyAssetChangeRequestExecute(std::unique_ptr<MediaAssetChangeRequestAniContext> &context)
@@ -2650,6 +2786,8 @@ ani_status MediaAssetChangeRequestAni::ApplyChanges(ani_env *env)
     CHECK_COND_WITH_RET_MESSAGE(env, aniContext->objectInfo != nullptr, ANI_INVALID_ARGS, "objectInfo is nullptr");
     CHECK_COND_WITH_RET_MESSAGE(env, CheckChangeOperations(env, aniContext), ANI_INVALID_ARGS,
         "Failed to check asset change request operations");
+    CHECK_COND_WITH_RET_MESSAGE(env, CheckSetLivePhoto4dStatus(env), ANI_INVALID_ARGS,
+        "Failed to check asset set live photo 4d status request operations");
     aniContext->assetChangeOperations = assetChangeOperations_;
     aniContext->addResourceTypes = addResourceTypes_;
     assetChangeOperations_.clear();
@@ -3078,6 +3216,27 @@ ani_object MediaAssetChangeRequestAni::SetHidden(ani_env *env, ani_object object
     CHECK_COND(env, changeRequest->GetFileAssetInstance() != nullptr, JS_INNER_FAIL);
     changeRequest->GetFileAssetInstance()->SetHidden(isHidden);
     changeRequest->RecordChangeOperation(AssetChangeOperation::SET_HIDDEN);
+    return ReturnAniUndefined(env);
+}
+
+ani_object MediaAssetChangeRequestAni::SetLivePhoto4dStatus(
+    ani_env *env, ani_object object, ani_int livePhoto4dStatus, ani_string livePhoto4dLatestPair)
+{
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return ReturnAniUndefined(env);
+    }
+    auto changeRequest = MediaAssetChangeRequestAni::Unwrap(env, object);
+    CHECK_COND_WITH_MESSAGE(env, changeRequest != nullptr, "changeRequest is nullptr");
+    auto fileAsset = changeRequest->GetFileAssetInstance();
+    CHECK_COND(env, fileAsset != nullptr, JS_INNER_FAIL);
+    fileAsset->SetLivePhoto4dStatus(static_cast<int32_t>(livePhoto4dStatus));
+    std::string latestPair;
+    MediaLibraryAniUtils::GetString(env, livePhoto4dLatestPair, latestPair);
+    if (!latestPair.empty()) {
+        fileAsset->SetLivePhoto4dLatestPair(latestPair);
+    }
+    changeRequest->RecordChangeOperation(AssetChangeOperation::SET_LIVEPHOTO_4D_STATUS);
     return ReturnAniUndefined(env);
 }
 

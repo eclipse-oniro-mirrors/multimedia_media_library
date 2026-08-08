@@ -231,7 +231,8 @@ const std::vector<std::string> appLinkStateEnum {
 };
 
 const std::vector<std::string> livePhoto4dStatusTypeEnum {
-    "UNIDENTIFIED", "UNSUPPORTED", "SUPPORTED", "USED", "FOURD_LIVEPHOTO"
+    "UNIDENTIFIED", "UNSUPPORTED", "SUPPORTED", "USED", "FOURD_LIVEPHOTO",
+    "LEFT_ROTATE", "UP_ROTATE", "ZOOM_OUT", "HITCHCOCK", "GRAMMY"
 };
 
 const std::vector<std::string> deepOptimizeStateEnum {
@@ -365,6 +366,7 @@ const std::vector<std::pair<std::string, std::string>> IMAGEVIDEOKEY_ENUM_PROPER
     std::make_pair("DATE_ADDED_DAY",            PhotoColumn::PHOTO_DATE_ADDED_DAY),
     std::make_pair("UNIQUE_ID",                 PhotoColumn::UNIQUE_ID),
     std::make_pair("LIVEPHOTO_4D_STATUS",       PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS),
+    std::make_pair("LIVEPHOTO_4D_LATEST_PAIR",  PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR),
     std::make_pair("HIDDEN_TIME",               PhotoColumn::PHOTO_HIDDEN_TIME),
     std::make_pair("LOCAL_ASSET_SIZE",          PhotoColumn::LOCAL_ASSET_SIZE),
     std::make_pair("FILE_HIDDEN",               PhotoColumn::PHOTO_FILE_HIDDEN),

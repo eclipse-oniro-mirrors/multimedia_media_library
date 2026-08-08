@@ -130,6 +130,8 @@
 #include "query_deep_optimizable_space_vo.h"
 #include "lcd_aging_service.h"
 #include "media_empty_obj_vo.h"
+#include "generate_unique_id_vo.h"
+#include "validate_latest_pair_vo.h"
 
 namespace OHOS::Media {
 using namespace std;
@@ -757,6 +759,14 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL),
         &MediaAssetsControllerService::SetPhotoCritical
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID),
+        &MediaAssetsControllerService::GenerateUniqueId
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_VALIDATE_LIVEPHOTO_4D_LATEST_PAIR),
+        &MediaAssetsControllerService::ValidateLatestPair
     },
 };
 
@@ -3721,5 +3731,43 @@ int32_t MediaAssetsControllerService::SetPhotoCritical(MessageParcel &data, Mess
     ret = MediaAssetsService::GetInstance().SetPhotoCritical(reqBody.fileId, reqBody.photoRiskStatus,
         reqBody.isCritical);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAssetsControllerService::GenerateUniqueId(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("GenerateUniqueId start");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+
+    GenerateUniqueIdReqBody reqBody;
+    GenerateUniqueIdRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("GenerateUniqueId Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaAssetsService::GetInstance().GenerateUniqueId(reqBody.fileId, respBody);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAssetsControllerService::ValidateLatestPair(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("ValidateLatestPair start");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_VALIDATE_LIVEPHOTO_4D_LATEST_PAIR);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+
+    ValidateLatestPairReqBody reqBody;
+    ValidateLatestPairRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ValidateLatestPair Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    ret = MediaAssetsService::GetInstance().ValidateLatestPair(reqBody.uniqueId, respBody.assetExists);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 } // namespace OHOS::Media

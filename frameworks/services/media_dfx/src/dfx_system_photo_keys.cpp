@@ -68,6 +68,7 @@ const std::unordered_set<std::string> SYSTEM_PHOTO_KEYS = {
     PhotoColumn::PHOTO_DATE_ADDED_MONTH,
     PhotoColumn::PHOTO_DATE_ADDED_DAY,
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+    PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
     PhotoColumn::UNIQUE_ID,
     PhotoColumn::PHOTO_THUMB_STATUS,
     PhotoColumn::PHOTO_HIDDEN_TIME,

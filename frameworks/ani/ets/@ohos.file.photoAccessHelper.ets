@@ -1683,6 +1683,48 @@ export class ContextRecoveryInfo {
       });
     }
 
+    generateUniqueId(callback: AsyncCallback<string>): void {
+      let cb = (): string | MediaLibraryAniError => {
+        let result: string | MediaLibraryAniError;
+        try {
+          result = this.generateUniqueIdSync();
+        } catch(e) {
+          result = e as MediaLibraryAniError;
+        }
+        return result;
+      };
+      taskpool.execute(cb).then((ret: Any): void => {
+        if (ret instanceof MediaLibraryAniError) {
+          let err = ret as MediaLibraryAniError;
+          callback(businessError(err.code as int, err.message), undefined);
+        } else {
+          callback(businessError(0), ret as string);
+        }
+      });
+    }
+
+    generateUniqueId(): Promise<string> {
+      return new Promise<string>((resolve: (v: string) => void, reject: RejectString): void => {
+        let cb = (): string | MediaLibraryAniError => {
+          let result: string | MediaLibraryAniError;
+          try {
+            result = this.generateUniqueIdSync();
+          } catch(e) {
+            result = e as MediaLibraryAniError;
+          }
+          return result;
+        };
+        taskpool.execute(cb).then((ret: Any): void => {
+          if (ret instanceof MediaLibraryAniError) {
+            let err = ret as MediaLibraryAniError;
+            reject(businessError<string>(err.code as int, err.message));
+          } else {
+            resolve(ret as string);
+          }
+        });
+      });
+    }
+
     native commitModifySync(): void;
     native openSync(mode: string): number;
     native closeSync(fd: number): void;
@@ -1705,6 +1747,7 @@ export class ContextRecoveryInfo {
     native getThumbnailDataSync(type: ThumbnailType): ArrayBuffer;
     native getExifSync(): string;
     native setPendingSync(pendingState: boolean): void;
+    native generateUniqueIdSync(): string;
   }
 
   export enum PhotoKeys {
@@ -5640,6 +5683,8 @@ export class ContextRecoveryInfo {
     native discardCameraPhoto(): void;
 
     native setEffectMode(mode: MovingPhotoEffectMode): void;
+
+    native setLivePhoto4dStatus(livePhoto4dStatus: int, livePhoto4dLatestPair?: string): void;
 
     native setOrientation(orientation: int): void;
 

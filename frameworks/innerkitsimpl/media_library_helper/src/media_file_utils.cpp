@@ -3012,15 +3012,21 @@ int32_t MediaFileUtils::FindNormalPhotoAttachments(const std::string &cloudPath,
 bool MediaFileUtils::CheckLivePhoto4dStatus(int32_t livePhoto4dStatus)
 {
     return livePhoto4dStatus >= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED) &&
-        livePhoto4dStatus <= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D);
+        livePhoto4dStatus <= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY);
+}
+
+bool MediaFileUtils::IsLivePhoto4dEffect(int32_t livePhoto4dStatus)
+{
+    return livePhoto4dStatus >= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D) &&
+        livePhoto4dStatus <= static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY);
 }
 
 bool MediaFileUtils::IsValidUuid(const std::string& uuidStr)
 {
     // UUID格式: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
     // 8-4-4-4-12 格式的十六进制字符串
-    if (uuidStr.empty()) {
-        return true;
+    if (uuidStr.empty() || uuidStr == "-1") {
+        return false;
     }
     std::regex uuid_regex(
         "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",

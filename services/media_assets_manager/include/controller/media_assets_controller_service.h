@@ -171,6 +171,8 @@ public:
     EXPORT int32_t GetDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t BatchUpdateMetaDataModified(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetPhotoCritical(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t GenerateUniqueId(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t ValidateLatestPair(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAssetsControllerService() = default;

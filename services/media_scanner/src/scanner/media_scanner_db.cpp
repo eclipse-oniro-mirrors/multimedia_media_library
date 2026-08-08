@@ -172,25 +172,46 @@ static void HandleDetailTimeAndYearMonthDay(const Metadata &metadata, ValuesBuck
 
 static void HandleSetLivePhoto4dStatus(const Metadata &metadata, ValuesBucket &outValues)
 {
-    int64_t coverposition = metadata.GetCoverPosition();
     string filePath = metadata.GetFilePath();
     string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
-    // 如果修改封面针
+    if (extraDataPath.empty()) {
+        MEDIA_INFO_LOG("livephoto4d:get extraDataPath failed");
+        return;
+    }
+
     uint32_t version = 0;
     MovingPhotoFileUtils::GetExtraDataVersion(extraDataPath, version);
-    if (version != LIVE_PHOTO_4D_VERSION && coverposition > 0) {
-        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-        CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Failed to get rdbStore.");
-        int32_t fileId = metadata.GetFileId();
-        string sql = " SELECT " + PhotoColumn::PHOTO_SUBTYPE + "," + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS +
-            " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " + PhotoColumn::PHOTO_SUBTYPE + " = 3 AND " +
-            PhotoColumn::MEDIA_ID + " = " + to_string(fileId);
-        shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
-        CHECK_AND_RETURN_LOG(resultSet != nullptr, "livePhoto4d:failed to query photo.");
-        while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
-            outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
-                static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
-        }
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Failed to get rdbStore.");
+    int32_t fileId = metadata.GetFileId();
+    string sql = " SELECT " + PhotoColumn::UNIQUE_ID + "," + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS +
+        " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " +
+        PhotoColumn::MEDIA_TYPE + " = " + to_string(static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE)) + " AND " +
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS + " < " +
+        to_string(static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) + " AND " +
+        PhotoColumn::PHOTO_EDIT_TIME + " != 0 AND " + PhotoColumn::MEDIA_ID + " = " + to_string(fileId);
+    shared_ptr<NativeRdb::ResultSet> resultSet = rdbStore->QuerySql(sql);
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "livephoto4d:failed to query photo.");
+    if (resultSet->GoToNextRow() != NativeRdb::E_OK) {
+        return;
+    }
+
+    if (version == LIVE_PHOTO_4D_VERSION) {
+        MEDIA_INFO_LOG("livephoto4d:set to LIVEPHOTO_4D, fileId:%{public}d", fileId);
+        outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+        return;
+    }
+
+    string uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
+    MEDIA_INFO_LOG("livephoto4d:reset status to 0, fileId:%{public}d", fileId);
+    outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+    if (!uniqueId.empty()) {
+        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '' WHERE " +
+            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '" + uniqueId + "'";
+        rdbStore->ExecuteSql(updateSql);
     }
 }
 

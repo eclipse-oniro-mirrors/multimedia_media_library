@@ -92,6 +92,7 @@
 #include "album_change_set_album_name_by_file_dto.h"
 #include "asset_cancel_task_dto.h"
 #include "file_management_utils.h"
+#include "generate_unique_id_vo.h"
 
 namespace OHOS::Media {
 #define EXPORT __attribute__ ((visibility ("default")))
@@ -242,6 +243,8 @@ int32_t ScanMoveAssets(const std::vector<std::string> &allAssetPath,
     int32_t CreateFileManagerAsset(CreateAssetDto& dto);
     int32_t BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
     int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);
+    int32_t GenerateUniqueId(int32_t fileId, GenerateUniqueIdRespBody &respBody);
+    int32_t ValidateLatestPair(const std::string &uniqueId, bool &assetExists);
 
  private:
     int32_t SubmitMetadataChanged(const int32_t fileId);

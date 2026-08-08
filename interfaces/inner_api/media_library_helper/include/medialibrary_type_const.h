@@ -242,7 +242,12 @@ enum class LivePhoto4dStatusType : int32_t {
     TYPE_UNSUPPORTED,
     TYPE_SUPPORTED,
     TYPE_USED,
-    TYPE_LIVEPHOTO_4D
+    TYPE_LIVEPHOTO_4D,
+    TYPE_LEFT_ROTATE,
+    TYPE_UP_ROTATE,
+    TYPE_ZOOM_OUT,
+    TYPE_HITCHCOCK,
+    TYPE_GRAMMY
 };
 
 struct ColumnSchema {
