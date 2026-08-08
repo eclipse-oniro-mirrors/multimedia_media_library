@@ -347,9 +347,9 @@ int64_t DirtyFileReportTask::QueryPendingPhysicalSize()
         int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
         int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
         int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
-        if (MovingPhotoFileUtils::IsMovingPhoto(subType, effectMode, originalSubtype)) {
-            std::string videoPath = MediaFileUtils::GetLocalPath(
-                MediaFileUtils::GetMovingPhotoVideoPath(cloudPath));
+        if (MovingPhotoFileUtils::IsMovingPhoto(subType, effectMode, originalSubtype) &&
+            !MovingPhotoFileUtils::IsGraffiti(subType, originalSubtype)) {
+            std::string videoPath = MediaFileUtils::GetLocalPath(MediaFileUtils::GetMovingPhotoVideoPath(cloudPath));
             if (MediaFileUtils::GetFileSize(videoPath, fileSize)) {
                 physicalSize += static_cast<int64_t>(fileSize);
                 MEDIA_WARN_LOG("Dirty pending moving photo video: %{public}s",
