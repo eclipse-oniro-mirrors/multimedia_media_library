@@ -314,8 +314,8 @@ int64_t DirtyFileReportTask::QueryPendingPhysicalSize()
         "QueryPendingPhysicalSize: RdbStore is null");
 
     int64_t thresholdMs = MediaFileUtils::UTCTimeMilliSeconds() - THREE_DAY_MS;
-    std::string sql = "SELECT " + MediaColumn::MEDIA_FILE_PATH + ", " + PhotoColumn::PHOTO_SUBTYPE + ", "
-        + PhotoColumn::MOVING_PHOTO_EFFECT_MODE + ", " + PhotoColumn::PHOTO_ORIGINAL_SUBTYPE +
+    std::string sql = "SELECT " + MediaColumn::MEDIA_FILE_PATH + ", " + PhotoColumn::PHOTO_SUBTYPE + ", " +
+        PhotoColumn::MOVING_PHOTO_EFFECT_MODE + ", " + PhotoColumn::PHOTO_ORIGINAL_SUBTYPE +
         " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " + MediaColumn::MEDIA_TIME_PENDING + " != 0 AND " +
         MediaColumn::MEDIA_DATE_ADDED + " < ?";
     auto resultSet = rdbStore->QuerySql(sql, { thresholdMs });
