@@ -112,13 +112,13 @@ struct ReverseRestoreReportInfo {
     int32_t dataReplaceResult {0};
     int64_t perfectRestoreTime {0};
     int64_t databaseHandleErrorTime{0};
-    int32_t duplicateCount{0};
+    std::atomic<int32_t> duplicateCount{0};
     int32_t failedCount{0};
     int32_t successCount{0};
-    int32_t duplicateLakeVideoCount{0};
-    int32_t duplicateLakeImageCount{0};
-    int32_t duplicateVideoCount{0};
-    int32_t duplicateImageCount{0};
+    std::atomic<int32_t> duplicateLakeVideoCount{0};
+    std::atomic<int32_t> duplicateLakeImageCount{0};
+    std::atomic<int32_t> duplicateVideoCount{0};
+    std::atomic<int32_t> duplicateImageCount{0};
     int32_t migrateCount{0};
     int32_t migrateLakeImageCount{0};
     int32_t migrateLakeVideoCount{0};
@@ -547,6 +547,7 @@ struct FileInfo {
     int64_t firstUpdateTime {0};
     int64_t thumbnailReady {0};
     int32_t lcdVisitTime {0};
+    int32_t lcdUsingStatus {0};
     int32_t strongAssociation {0};
     int32_t position {1};
     int32_t cloudVersion {0};
@@ -611,6 +612,7 @@ struct FileInfo {
     bool hasMergedLcdThumbnail {false};
     bool hasMergedThmThumbnail {false};
     bool needMergeThumbnail {false};
+    int32_t lcdUsingStatusOld {0};
 };
 
 struct AlbumInfo {

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#define MLOG_TAG "MediaFuseHighDaemon"
-#include "media_fuse_high_daemon.h"
+#define MLOG_TAG "MediaFuseDaemon"
+#include "media_fuse_daemon.h"
 
 #include <fcntl.h>
 #define FUSE_USE_VERSION FUSE_MAKE_VERSION(3, 17)
@@ -210,7 +210,7 @@ static int ReleaseDir(const char *path, struct fuse_file_info *fi)
     return E_ERR;
 }
 
-static const struct fuse_operations high_ops = {
+static const struct fuse_operations fuseOperations = {
     .getattr    = GetAttr,
     .open       = Open,
     .read       = Read,
@@ -223,7 +223,7 @@ static const struct fuse_operations high_ops = {
     .create     = Create,
 };
 
-int32_t MediaFuseHighDaemon::StartFuse()
+int32_t MediaFuseDaemon::StartFuse()
 {
     int ret = E_OK;
 
@@ -238,7 +238,7 @@ int32_t MediaFuseHighDaemon::StartFuse()
     return ret;
 }
 
-void MediaFuseHighDaemon::DaemonThread()
+void MediaFuseDaemon::DaemonThread()
 {
     struct fuse_args args = FUSE_ARGS_INIT(0, nullptr);
     struct fuse *fuse_default = nullptr;
@@ -254,7 +254,7 @@ void MediaFuseHighDaemon::DaemonThread()
             free(str);
         });
 
-        fuse_default = fuse_new(&args, &high_ops, sizeof(high_ops), nullptr);
+        fuse_default = fuse_new(&args, &fuseOperations, sizeof(fuseOperations), nullptr);
         CHECK_AND_BREAK_ERR_LOG(fuse_default != nullptr, "fuse_new failed");
         CHECK_AND_BREAK_ERR_LOG(fuse_mount(fuse_default, mountpoint_.c_str()) == 0,
             "fuse_mount failed, mountpoint_ = %{private}s", mountpoint_.c_str());

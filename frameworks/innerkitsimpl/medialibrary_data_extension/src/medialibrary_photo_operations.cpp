@@ -3534,6 +3534,24 @@ static int32_t ProcessLivePhotoVideoPath(const string &path, const string &realP
     return E_OK;
 }
 
+int32_t ProcessLivePhotoExtradataPath(const string &path, const string &realPath, string &movingPhotoExtradataPath)
+{
+    if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
+        string cacheDir = MovingPhotoFileUtils::GetLivePhotoCacheDir(path);
+        CHECK_AND_RETURN_RET_LOG(!cacheDir.empty(), E_INVALID_PATH, "Failed to get live photo cache dir");
+        CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateDirectory(cacheDir), E_HAS_FS_ERROR,
+            "Cannot create dir %{private}s", cacheDir.c_str());
+        string tempExtradataPath = cacheDir + "/extradata_livephoto";
+
+        int32_t ret = MovingPhotoFileUtils::ConvertToMovingPhoto(realPath, "", "", tempExtradataPath);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to convert live photo, ret:%{public}d", ret);
+        movingPhotoExtradataPath = tempExtradataPath;
+    } else {
+        movingPhotoExtradataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(path);
+    }
+    return E_OK;
+}
+
 int32_t MediaLibraryPhotoOperations::RequestEditSource(MediaLibraryCommand &cmd)
 {
     string uriString = cmd.GetUriStringWithoutSegment();
@@ -3565,16 +3583,19 @@ int32_t MediaLibraryPhotoOperations::RequestEditSource(MediaLibraryCommand &cmd)
         movingPhotoVideoPath = MediaFileUtils::GetMovingPhotoVideoPath(path);
     }
 
+    string realPath = MediaFileAccessUtils::GetAssetRealPath(path);
+
     if (isMovingPhotoMetadataRequest) {
-        return OpenFileWithPrivacy(
-            MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(path), MEDIA_FILEMODE_READONLY, id);
+        string livePhotoExtradataPath = "";
+        int32_t ret = ProcessLivePhotoExtradataPath(path, realPath, livePhotoExtradataPath);
+        CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to process livephoto extra path, ret:%{public}d", ret);
+        return OpenFileWithPrivacy(livePhotoExtradataPath, MEDIA_FILEMODE_READONLY, id);
     }
 
     string sourcePath = isMovingPhotoVideoRequest ?
         MediaFileUtils::GetMovingPhotoVideoPath(MediaEditUtils::GetEditDataSourcePath(path)) :
         MediaEditUtils::GetEditDataSourcePath(path);
 
-    string realPath = MediaFileAccessUtils::GetAssetRealPath(path);
     if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
         int32_t ret = ProcessLivePhotoVideoPath(path, realPath, movingPhotoVideoPath);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "Failed to process livephoto video path, ret:%{public}d", ret);
@@ -3711,20 +3732,60 @@ static int32_t RevertMetadata(int32_t fileId, int64_t time, int32_t effectMode, 
     return E_OK;
 }
 
-static int32_t UpdateEffectMode(int32_t fileId, int32_t effectMode)
+static void HandleSetLivePhoto4dStatusValuesBucket(MediaLibraryCommand &cmd, const shared_ptr<FileAsset> &fileAsset,
+    int32_t effectMode)
 {
+    ValuesBucket& updateValues = cmd.GetValueBucket();
+    int32_t livePhoto4dStatus = fileAsset->GetLivePhoto4dStatus();
+    string filePath = fileAsset->GetFilePath();
+    std::string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
+    if (extraDataPath.empty()) {
+        MEDIA_INFO_LOG("livePhoto4d:get extraDataPath path failed");
+        return;
+    }
+
+    uint32_t version = 0;
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(extraDataPath, version);
+    if (ret != E_OK) {
+        MEDIA_INFO_LOG("livePhoto4d:get extraData version failed");
+        return;
+    }
+    if (livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D) ||
+        version == LIVE_PHOTO_4D_VERSION) {
+        MEDIA_INFO_LOG("livePhoto4d:no need to update live photo 4d status.");
+        return;
+    }
+    updateValues.PutString(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, "");
+    if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+        updateValues.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
+    } else {
+        updateValues.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+            static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+    }
+}
+
+static int32_t UpdateEffectMode(const shared_ptr<FileAsset> &fileAsset, int32_t effectMode)
+{
+    if (fileAsset == nullptr) {
+        MEDIA_ERR_LOG("FileAsset is nullptr");
+        return E_ERR;
+    }
+    int32_t fileId = fileAsset->GetId();
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Failed to get rdbStore when updating effect mode");
 
     MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE);
     updateCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
-    ValuesBucket updateValues;
+    ValuesBucket& updateValues = updateCmd.GetValueBucket();
     updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode);
     if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
+        updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     } else {
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
+    HandleSetLivePhoto4dStatusValuesBucket(updateCmd, fileAsset, effectMode);
     updateCmd.SetValueBucket(updateValues);
 
     int32_t updateRows = -1;
@@ -3982,6 +4043,8 @@ int32_t MediaLibraryPhotoOperations::UpdateMovingPhotoSubtype(int32_t fileId, in
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
     if (currentPhotoSubType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    } else {
+        updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     }
     updateCmd.SetValueBucket(updateValues);
     int32_t updateRows = -1;
@@ -4454,6 +4517,19 @@ int32_t MediaLibraryPhotoOperations::RevertLivePhotoAsset(const string &realPath
     return E_OK;
 }
 
+int32_t MediaLibraryPhotoOperations::HandleRevertLivePhotoAsset(const shared_ptr<FileAsset> &fileAsset,
+    const string &realPath, const string &imagePath,
+    const string &sourceImagePath, const string &sourceVideoPath)
+{
+    int32_t errCode = MediaLibraryPhotoOperations::RevertLivePhotoAsset(realPath, imagePath, sourceImagePath,
+        sourceVideoPath);
+    if (fileAsset->GetLivePhoto4dStatus() == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+        MediaLibraryPhotoOperations::SetExtraDataVersion(fileAsset->GetId(),
+            static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
+    }
+    return errCode;
+}
+
 int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     MediaLibraryCommand& cmd, const shared_ptr<FileAsset>& fileAsset, bool& isNeedScan)
 {
@@ -4491,7 +4567,7 @@ int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     string editDataCameraPath = MediaEditUtils::GetEditDataCameraPath(imagePath);
     int32_t errCode = E_OK;
     if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
-        return RevertLivePhotoAsset(realPath, imagePath, sourceImagePath, sourceVideoPath);
+        return HandleRevertLivePhotoAsset(fileAsset, realPath, imagePath, sourceImagePath, sourceVideoPath);
     } else {
         errCode = Move(sourceVideoPath, videoPath);
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_HAS_FS_ERROR,
@@ -4834,7 +4910,7 @@ bool MediaLibraryPhotoOperations::IsCameraEditData(MediaLibraryCommand &cmd)
     } else {
         MediaValuesBucketUtils::GetBool(values, CONST_IS_CAMERA_EDIT_DATA, isCameraEditDataMode);
     }
-    
+    MEDIA_INFO_LOG("IsCameraEditData: %{public}d", isCameraEditDataMode);
     return containsCompatibleFormat && containsFormatVersion && containsData && isCameraEditDataMode;
 }
 
@@ -5514,7 +5590,7 @@ int32_t MediaLibraryPhotoOperations::SubmitCacheExecute(MediaLibraryCommand& cmd
     // 检查source.jpg是否存在，存在就是编辑过，不存在没编辑过
     bool isSourceImageExist = MediaFileUtils::IsFileExists(editDataSourceImagePath);
     MEDIA_INFO_LOG("MediaLibraryPhotoOperations SubmitCacheExecute isSourceImageExist %{public}d, \
-        isOriginalImageResource %{public}d", isSourceImageExist, isOriginalImageResource);
+        isOriginalImageResource %{public}d, isEdit %{public}d", isSourceImageExist, isOriginalImageResource, isEdit);
  
     // addsource type=6 处理,直接move替换原图
     if (isOriginalImageResource) {
@@ -5524,13 +5600,15 @@ int32_t MediaLibraryPhotoOperations::SubmitCacheExecute(MediaLibraryCommand& cmd
         return errCode;
     }
     // 原始逻辑
-    if (isEdit) {
+    if (isEdit && !IsCameraEditData(cmd)) {
+        // 转正后的资产设置CameraEditData无效
         CHECK_AND_RETURN_RET(PhotoEditingRecord::GetInstance()->StartCommitEdit(id), E_IS_IN_REVERT);
         MoveCacheFileInfo moveCacheFileInfo(0, cachePath, "", isSourceImageExist, isOriginalImageResource,
             effectMode);
         CHECK_AND_RETURN_RET(fileAsset != nullptr, E_INVALID_VALUES);
         return HandleSubmitEditCache(cmd, fileAsset, isWriteGpsAdvanced, moveCacheFileInfo, id);
-    } else if (IsCameraEditData(cmd)) {
+    } else if (!isEdit && IsCameraEditData(cmd)) {
+        // 未转正资产才支持设置水印
         AddFiltersExecute(cmd, fileAsset, cachePath);
     } else {
         MoveCacheFileInfo moveCacheFileInfo(subtype, cachePath, assetPath, isSourceImageExist, isOriginalImageResource,
@@ -5615,6 +5693,7 @@ int32_t UpdateEffectModeWhenGraffiti(int32_t fileId)
     int32_t updatedRows = -1;
     updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
     updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
+    updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     updateValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
     updateCmd.SetValueBucket(updateValues);
@@ -5812,9 +5891,19 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to save source moving photo");
     }
 
-    errCode = ProcessLivePhotoConversion(assetPath, assetVideoPath, imageCachePath, videoCachePath, realPath);
-    CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to process live photo conversion");
-    CHECK_AND_RETURN_RET_LOG(UpdateEffectMode(id, effectMode) == E_OK, errCode, "Failed to update effect mode");
+    if (MovingPhotoFileUtils::IsLivePhotoAsset(realPath)) {
+        errCode = ProcessLivePhotoConversion(assetPath, assetVideoPath, imageCachePath, videoCachePath, realPath);
+        CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to processlive photo conversion");
+        ThumbnailService::GetInstance()->HasInvalidateThumbnail(to_string(id), PhotoColumn::PHOTOS_TABLE);
+        if (fileAsset->GetLivePhoto4dStatus() == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+            int32_t ret = MediaLibraryPhotoOperations::SetExtraDataVersion(id,
+                static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
+        }
+    } else {
+        CHECK_AND_RETURN_RET_LOG(Move(imageCachePath, assetPath) == E_OK, E_HAS_FS_ERROR, "Failed to move image");
+        CHECK_AND_RETURN_RET_LOG(Move(videoCachePath, assetVideoPath) == E_OK, E_HAS_FS_ERROR, "Failed to move video");
+    }
+    CHECK_AND_RETURN_RET_LOG(UpdateEffectMode(fileAsset, effectMode) == E_OK, errCode, "Failed to update effect mode");
     ScanFile(assetPath, true, true, true);
     MEDIA_INFO_LOG("SubmitEffectModeExecute success.");
     return E_OK;
@@ -6041,7 +6130,7 @@ int32_t MediaLibraryPhotoOperations::AddFiltersToPicture(std::shared_ptr<Media::
     size_t lastSlash = outputPath.rfind('/');
     CHECK_AND_RETURN_RET_LOG(lastSlash != string::npos && outputPath.size() > (lastSlash + 1), E_INVALID_VALUES,
         "Failed to check outputPath: %{public}s", outputPath.c_str());
-    int32_t ret = MediaChangeEffect::TakeEffectForPicture(inPicture, editdata);
+    int32_t ret = MediaChangeEffect::TakeEffectCloudEnhanceForPicture(inPicture, editdata);
     return E_OK;
 }
 
@@ -6143,6 +6232,32 @@ void MediaLibraryPhotoOperations::StoreThumbnailSize(const string& photoId, cons
         ") VALUES (" + photoId + ", " + to_string(photoThumbnailSize) + ")" +
         " ON CONFLICT(" + PhotoExtColumn::PHOTO_ID + ")" + " DO UPDATE SET " +
         PhotoExtColumn::THUMBNAIL_SIZE + " = " + to_string(photoThumbnailSize);
+    int32_t ret = rdbStore->ExecuteSql(sql);
+    CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
+        "Failed to execute sql, photoId is %{public}s, error code is %{public}d", photoId.c_str(), ret);
+}
+
+void MediaLibraryPhotoOperations::StorePhotoExtWithLcdStatus(const string& photoId,
+    const string& photoPath, int32_t lcdUsingStatus)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "Medialibrary rdbStore is nullptr!");
+
+    uint64_t editDataSize = 0;
+    uint64_t attachmentSize = 0;
+    uint64_t photoThumbnailSize = 0;
+    CHECK_AND_RETURN_LOG(GetThumbnailAndAttachmentSizes(photoPath, photoId,
+        photoThumbnailSize, editDataSize, attachmentSize), "Failed to calculate sizes");
+
+    string sql = "INSERT INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
+        PhotoExtColumn::PHOTO_ID + ", " + PhotoExtColumn::THUMBNAIL_SIZE + ", " +
+        PhotoExtColumn::EDITDATA_SIZE + ", " + PhotoExtColumn::LCD_USING_STATUS +
+        ") VALUES (" + photoId + ", " + to_string(photoThumbnailSize) + ", " +
+        to_string(editDataSize) + ", " + to_string(lcdUsingStatus) + ")" +
+        " ON CONFLICT(" + PhotoExtColumn::PHOTO_ID + ")" + " DO UPDATE SET " +
+        PhotoExtColumn::THUMBNAIL_SIZE + " = " + to_string(photoThumbnailSize) + ", " +
+        PhotoExtColumn::EDITDATA_SIZE + " = " + to_string(editDataSize) + ", " +
+        PhotoExtColumn::LCD_USING_STATUS + " = " + to_string(lcdUsingStatus);
     int32_t ret = rdbStore->ExecuteSql(sql);
     CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
         "Failed to execute sql, photoId is %{public}s, error code is %{public}d", photoId.c_str(), ret);

@@ -24,6 +24,7 @@ namespace OHOS {
 namespace Media {
 
 static MediaCallTranscode::CallbackType callback_;
+static std::mutex callbackMutex_;
 static std::mutex transCoderMapMutex_;
 static std::map<std::string, std::shared_ptr<TransCoder>> transCoderMap_;
 static const int32_t INFO_TYPE_ERROR = 2;
@@ -35,10 +36,6 @@ bool MediaCallTranscode::DoTranscode(UniqueFd &uniqueSrcFd, UniqueFd &uniqueDest
     if (transCoder == nullptr) {
         ANI_ERR_LOG("Failed to create TransCoder");
         return false;
-    }
-    {
-        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
-        transCoderMap_.insert(std::pair<std::string, std::shared_ptr<TransCoder>>(requestId, transCoder));
     }
     auto transCoderCb = std::make_shared<OHOS::Media::MediaAssetManagerCallback>();
     if (transCoderCb == nullptr) {
@@ -73,48 +70,70 @@ bool MediaCallTranscode::DoTranscode(UniqueFd &uniqueSrcFd, UniqueFd &uniqueDest
     }
     if (transCoder->Start() != E_OK) {
         ANI_ERR_LOG("Failed to TransCoder Start");
+        transCoder->Release();
         return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
+        transCoderMap_.insert(std::pair<std::string, std::shared_ptr<TransCoder>>(requestId, transCoder));
     }
     return true;
 }
 
 void MediaCallTranscode::CallTranscodeRelease(const std::string& requestId)
 {
-    std::lock_guard<std::mutex> lock(transCoderMapMutex_);
-    auto it = transCoderMap_.find(requestId);
-    if (it == transCoderMap_.end()) {
-        return;
+    std::shared_ptr<TransCoder> transCoder;
+    {
+        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
+        auto it = transCoderMap_.find(requestId);
+        if (it == transCoderMap_.end()) {
+            return;
+        }
+        transCoder = it->second;
+        transCoderMap_.erase(it);
     }
-    if (it->second != nullptr) {
-        it->second->Release();
+    if (transCoder != nullptr) {
+        transCoder->Release();
     }
-    transCoderMap_.erase(it);
 }
 
 void MediaCallTranscode::RegisterCallback(const CallbackType &cb)
 {
+    std::lock_guard<std::mutex> lock(callbackMutex_);
     callback_ = cb;
 }
 
 void MediaAssetManagerCallback::OnInfo(int32_t type, int32_t extra)
 {
     ANI_INFO_LOG("MediaAssetManagerCallback OnInfo type:%{public}d extra:%{public}d", type, extra);
-    if (callback_) {
-        callback_(type, extra, requestId_);
+    MediaCallTranscode::CallbackType cb;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        cb = callback_;
+    }
+    if (cb) {
+        cb(type, extra, requestId_);
     }
 }
 
 void MediaAssetManagerCallback::OnError(int32_t errCode, const std::string &errorMsg)
 {
-    std::lock_guard<std::mutex> lock(transCoderMapMutex_);
-    auto it = transCoderMap_.find(requestId_);
-    if (it != transCoderMap_.end()) {
-        transCoderMap_.erase(it);
+    {
+        std::lock_guard<std::mutex> lock(transCoderMapMutex_);
+        auto it = transCoderMap_.find(requestId_);
+        if (it != transCoderMap_.end()) {
+            transCoderMap_.erase(it);
+        }
     }
     ANI_ERR_LOG("MediaAssetManagerCallback OnError errorMsg:%{public}s", errorMsg.c_str());
     int32_t type = INFO_TYPE_ERROR;
-    if (callback_) {
-        callback_(type, 0, requestId_);
+    MediaCallTranscode::CallbackType cb;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex_);
+        cb = callback_;
+    }
+    if (cb) {
+        cb(type, 0, requestId_);
     }
 }
 

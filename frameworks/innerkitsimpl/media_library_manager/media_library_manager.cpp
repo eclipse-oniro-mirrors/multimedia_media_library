@@ -72,6 +72,7 @@
 #include "media_path_utils.h"
 #include "thumbnail_manager.h"
 #include "batch_update_metadata_modified_vo.h"
+#include "set_photo_critical_vo.h"
 #include "fetch_result.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
@@ -1783,6 +1784,27 @@ void MediaLibraryManager::BatchUpdateMetaDataModified(const std::vector<std::str
                 batchIndex, errCode);
         }
     }
+}
+
+int32_t MediaLibraryManager::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus)
+{
+    MEDIA_INFO_LOG("SetPhotoCritical fileId: %{public}d, photoRiskStatus: %{public}d", fileId, photoRiskStatus);
+    CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "invalid fileId");
+ 
+    shared_ptr<DataShare::DataShareHelper> dataShareHelper =
+        DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "dataShareHelper is nullptr");
+ 
+    SetPhotoCriticalReqBody reqBody;
+    reqBody.fileId = fileId;
+    reqBody.photoRiskStatus = photoRiskStatus;
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL);
+    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
+    if (errCode < 0) {
+        MEDIA_ERR_LOG("SetPhotoCritical failed, errCode: %{public}d", errCode);
+        return errCode;
+    }
+    return E_OK;
 }
 } // namespace Media
 } // namespace OHOS

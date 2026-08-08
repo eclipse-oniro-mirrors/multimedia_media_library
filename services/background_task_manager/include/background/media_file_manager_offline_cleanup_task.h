@@ -57,6 +57,7 @@ private:
         CleanupResult albumRelationsMigrated{"migrateAlbum"};
         CleanupResult legacyAlbumsDeleted{"deleteAlbum"};
         CleanupResult convertedAlbumsDeleted{"deleteConvertedAlbum"};
+        CleanupResult sandboxAnomalyCorrected{"correctAnomaly"};
     };
 
     void ResetRunState();
@@ -78,6 +79,8 @@ private:
     void LogBatchResult(const char *stage, int32_t startCursor, int32_t endCursor,
         size_t scannedCount, int64_t processedCount) const;
 
+    bool CorrectSandboxAnomaly(const OfflineCleanupPhotoRecord &photo);
+    bool MediaLibraryCopyExists(const std::string &data);
     bool ShouldMarkForDeletion(const OfflineCleanupPhotoRecord &photo);
     bool ShouldConvertToMediaBurstCover(const OfflineCleanupPhotoRecord &photo);
     bool ConvertBurstCoverPhoto(const OfflineCleanupPhotoRecord &photo);

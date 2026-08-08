@@ -476,6 +476,14 @@ public:
      */
     EXPORT void BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
 
+    /**
+     * @brief SetPhotoCritical
+     * @param fileId file id
+     * @param photoRiskStatus photo risk status
+     * @return Returns E_OK on success, error code on failure
+     */
+    EXPORT int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus);
+
 private:
     int32_t ReadMovingPhotoVideo(const string &uri, const string &option);
     static int OpenThumbnail(std::string &uriStr, const std::string &path, const Size &size, bool isAstc);

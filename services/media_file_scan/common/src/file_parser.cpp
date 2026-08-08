@@ -533,6 +533,7 @@ int32_t FileParser::SetAssetSubtypeValues(NativeRdb::ValuesBucket &values)
         if (fileInfo_.subtype == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) &&
             effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
             values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
+            values.Put(MediaColumn::MEDIA_DURATION, 0);
         } else {
             values.Put(PhotoColumn::PHOTO_SUBTYPE, fileInfo_.subtype);
         }
@@ -582,7 +583,8 @@ NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
     SetAssetAlbumValues(values);
     SetAssetLocationValues(values);
     SetAssetSubtypeValues(values);
-    SetAssetLivePhoto4dValues(values);
+    CHECK_AND_EXECUTE(fileInfo_.subtype != static_cast<int32_t>(PhotoSubType::MOVING_PHOTO),
+        SetAssetLivePhoto4dValues(values));
 
     return values;
 }

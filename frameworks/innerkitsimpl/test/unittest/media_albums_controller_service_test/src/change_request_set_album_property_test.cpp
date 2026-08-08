@@ -1003,7 +1003,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_D
         { PERM_WRITE_IMAGEVIDEO }, tokenId);
     ASSERT_NE(tokenId, 0);
 
-    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), JS_INNER_FAIL);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_DbPermissionDenied_001");
 }
 
@@ -1120,7 +1120,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_D
         { PERM_WRITE_IMAGEVIDEO }, tokenId);
     ASSERT_NE(tokenId, 0);
 
-    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), JS_INNER_FAIL);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_DbPermissionDenied_ExtraInfo_001");
 }
 
@@ -1256,7 +1256,7 @@ HWTEST_F(ChangeRequestSetAlbumPropertyTest, ChangeRequestOperateAlbumAttribute_D
         { PERM_WRITE_IMAGEVIDEO }, tokenId);
     ASSERT_NE(tokenId, 0);
 
-    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), JS_INNER_FAIL);
+    EXPECT_EQ(ServiceOperateAlbumAttribute(reqBody), E_OK);
     MEDIA_INFO_LOG("End ChangeRequestOperateAlbumAttribute_DbPermissionDenied_FriendId_001");
 }
 

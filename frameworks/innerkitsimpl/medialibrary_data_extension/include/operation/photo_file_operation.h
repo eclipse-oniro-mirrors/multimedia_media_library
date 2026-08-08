@@ -47,6 +47,7 @@ public:
     struct TranscodeFileInfo {
         std::string data{""};
         std::string filePath{""};
+        int32_t quality{-1};
     };
 public:
     int32_t CopyPhoto(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,

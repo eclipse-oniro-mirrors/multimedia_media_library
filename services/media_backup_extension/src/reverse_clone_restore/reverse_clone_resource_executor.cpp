@@ -1061,6 +1061,18 @@ void AppendThumbnailMetadataIfNeeded(const ResourceExecuteResult &result, std::v
         setClauses, args);
 }
 
+void AppendOriginMetadataIfNeeded(const ResourceExecuteResult &result, std::vector<std::string> &setClauses,
+    std::vector<NativeRdb::ValueObject> &args)
+{
+    if (!result.origin.HasSource()) {
+        return;
+    }
+    AppendSetValue(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS,
+        NativeRdb::ValueObject(result.origin.source.compositeDisplayStatus), setClauses, args);
+    AppendSetValue(PhotoColumn::PHOTO_CE_AVAILABLE,
+        NativeRdb::ValueObject(result.origin.source.ceAvailable), setClauses, args);
+}
+
 std::string GetFileInode(const std::string &path)
 {
     struct stat statInfo {};
@@ -1102,16 +1114,20 @@ void AppendOriginLocationFields(const ReverseCloneResourcePlan &plan, std::vecto
         plan.absorbed.fileId, plan.absorbed.fileSourceType, IsInactiveAsset(plan.absorbed));
 }
 
-void UpdatePhotoExtSizes(const ReverseCloneResourcePlan &plan, const ReverseCloneResourceLocator &paths,
-    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb)
+void UpdatePhotoExtMetadata(const ReverseCloneResourcePlan &plan, const ReverseCloneResourceLocator &paths,
+    const ResourceExecuteResult &result, const std::shared_ptr<NativeRdb::RdbStore> &targetRdb)
 {
-    CHECK_AND_RETURN_LOG(targetRdb != nullptr, "RevRes update photo ext sizes skipped, targetRdb is null");
+    CHECK_AND_RETURN_LOG(targetRdb != nullptr, "RevRes update photo ext metadata skipped, targetRdb is null");
     CHECK_AND_RETURN_LOG(plan.absorbed.fileId > 0,
-        "RevRes Reverse clone update photo ext sizes skipped, invalid absorbed fileId");
+        "RevRes Reverse clone update photo ext metadata skipped, invalid absorbed fileId");
 
     int64_t thumbnailSize = GetDirectorySize(paths.GetTargetThumbDir());
     int64_t editDataSize = GetDirectorySize(paths.GetTargetEditDataPath());
-    const std::string sql =
+    bool hasLcdSource = result.thumbnail.lcd.Exists();
+    std::string sql = hasLcdSource ?
+        "INSERT INTO tab_photos_ext (photo_id, thumbnail_size, editdata_size, lcd_using_status) VALUES (?, ?, ?, ?) "
+        "ON CONFLICT(photo_id) DO UPDATE SET thumbnail_size = excluded.thumbnail_size, "
+        "editdata_size = excluded.editdata_size, lcd_using_status = excluded.lcd_using_status" :
         "INSERT INTO tab_photos_ext (photo_id, thumbnail_size, editdata_size) VALUES (?, ?, ?) "
         "ON CONFLICT(photo_id) DO UPDATE SET thumbnail_size = excluded.thumbnail_size, "
         "editdata_size = excluded.editdata_size";
@@ -1120,14 +1136,18 @@ void UpdatePhotoExtSizes(const ReverseCloneResourcePlan &plan, const ReverseClon
         NativeRdb::ValueObject(thumbnailSize),
         NativeRdb::ValueObject(editDataSize),
     };
+    if (hasLcdSource) {
+        args.emplace_back(result.thumbnail.lcd.source.lcdUsingStatus);
+    }
 
     int32_t ret = targetRdb->ExecuteSql(sql, args);
     CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
-        "RevRes Reverse clone update photo ext sizes failed, fileId=%{public}d, ret=%{public}d",
+        "RevRes Reverse clone update photo ext metadata failed, fileId=%{public}d, ret=%{public}d",
         plan.absorbed.fileId, ret);
-    MEDIA_INFO_LOG("RevRes Reverse clone photo ext sizes updated, fileId=%{public}d, "
-        "thumbnailSize=%{public}lld, editDataSize=%{public}lld",
-        plan.absorbed.fileId, static_cast<long long>(thumbnailSize), static_cast<long long>(editDataSize));
+    MEDIA_INFO_LOG("RevRes Reverse clone photo ext metadata updated, fileId=%{public}d, "
+        "thumbnailSize=%{public}lld, editDataSize=%{public}lld, hasLcdSource=%{public}d, lcdUsingStatus=%{public}d",
+        plan.absorbed.fileId, static_cast<long long>(thumbnailSize), static_cast<long long>(editDataSize),
+        hasLcdSource, hasLcdSource ? result.thumbnail.lcd.source.lcdUsingStatus : 0);
 }
 
 void AppendOriginFieldsIfNeeded(const ReverseCloneResourcePlan &plan, const ReverseCloneResourceLocator &paths,
@@ -1185,6 +1205,7 @@ int32_t UpdateTargetRow(const ReverseCloneResourcePlan &plan, const ReverseClone
     std::vector<std::string> setClauses;
     std::vector<NativeRdb::ValueObject> args;
     AppendOriginFieldsIfNeeded(plan, paths, result, setClauses, args);
+    AppendOriginMetadataIfNeeded(result, setClauses, args);
     ThumbnailExistence existence = ResolveThumbnailExistence(paths.GetTargetThumbDir());
     AppendThumbnailFieldsIfNeeded(result, existence, plan.inheritLcdThumbnail || plan.inheritThumbnail, setClauses,
         args);
@@ -1210,10 +1231,8 @@ int32_t UpdateTargetRow(const ReverseCloneResourcePlan &plan, const ReverseClone
 } // namespace
 
 int32_t ReverseCloneResourceExecutor::Execute(const ReverseCloneResourcePlan &plan,
-    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-    ReverseRestoreReportInfo &reportInfo) const
+    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const
 {
-    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     if (plan.decision != ReverseCloneResourceDecision::INHERIT || !plan.HasResourceAction()) {
         return E_OK;
     }
@@ -1241,12 +1260,9 @@ int32_t ReverseCloneResourceExecutor::Execute(const ReverseCloneResourcePlan &pl
         CHECK_AND_RETURN_RET(TransferThumbnailFiles(executePlan, paths, session) == E_OK, E_FAIL);
     }
     CHECK_AND_RETURN_RET(UpdateTargetRow(executePlan, paths, session.Result(), targetRdb) == E_OK, E_FAIL);
-    UpdatePhotoExtSizes(executePlan, paths, targetRdb);
+    UpdatePhotoExtMetadata(executePlan, paths, session.Result(), targetRdb);
     DeleteAbsorbedCloudDentry(executePlan, session.Result());
     session.CleanTransferredSourcePaths();
-    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
-    reportInfo.afterTransformTimeCost.append(" absorb origin&thumbnail: ")
-        .append(std::to_string(endTime - startTime) + ";");
     return E_OK;
 }
 // LCOV_EXCL_STOP

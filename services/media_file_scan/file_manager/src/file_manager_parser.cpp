@@ -48,7 +48,7 @@ FileManagerParser::FileManagerParser(const MediaNotifyInfo &notifyInfo, ScanMode
 
 bool FileManagerParser::IsFileValidAsset()
 {
-    bool isTypeValid = CheckTypeValid();
+    bool isTypeValid = CheckTypeValidForFileManagerParser();
     bool isSizeValid = CheckSizeValid();
     bool ret = isTypeValid && isSizeValid&& fileInfo_.needInsert;
     CHECK_AND_EXECUTE(ret, MEDIA_INFO_LOG("FileParser: isTypeValid: %{public}d, "
@@ -270,6 +270,11 @@ std::vector<std::string> FileManagerParser::GenerateThumbnailWithPowerControl(Sc
         uris.push_back(uri);
     }
     return uris;
+}
+
+bool FileManagerParser::CheckTypeValidForFileManagerParser()
+{
+    return MediaFileUtils::IsSupportedMediaExtension(fileInfo_.displayName);
 }
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media

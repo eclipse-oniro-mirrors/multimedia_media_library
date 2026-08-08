@@ -118,6 +118,8 @@ ohos_shared_library("media_library_camera_helper") {
     "media_foundation:media_foundation",
     "player_framework:media_client",
     "relational_store:native_rdb",
+    "hilog:libhilog",
+    "hitrace:hitrace_meter",
   ]
 
   defines = []

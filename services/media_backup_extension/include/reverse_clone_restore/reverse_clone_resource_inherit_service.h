@@ -36,8 +36,7 @@ public:
     void MergeDuplicatePlansWithSourceFallback(const std::vector<ReverseCloneResourcePlan> &duplicatePlans,
         std::unordered_map<int32_t, ReverseCloneResourcePlan> &resourcePlans) const;
     int32_t ExecuteAfterInsert(const ReverseCloneResourcePlan &plan,
-        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-        ReverseRestoreReportInfo &reportInfo) const;
+        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
 
 private:
     std::string GetSourceResourceRoot() const;

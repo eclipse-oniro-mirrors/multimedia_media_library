@@ -170,7 +170,8 @@ public:
     EXPORT int32_t QueryDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetDeepOptimizeSpace(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t BatchUpdateMetaDataModified(MessageParcel &data, MessageParcel &reply);
-    
+    EXPORT int32_t SetPhotoCritical(MessageParcel &data, MessageParcel &reply);
+
 public:
     virtual ~MediaAssetsControllerService() = default;
     bool Accept(uint32_t code) override;

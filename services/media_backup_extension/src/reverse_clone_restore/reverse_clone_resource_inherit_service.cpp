@@ -85,7 +85,7 @@ void ReverseCloneResourceInheritService::MergeDuplicatePlansWithSourceFallback(
 }
 
 int32_t ReverseCloneResourceInheritService::ExecuteAfterInsert(const ReverseCloneResourcePlan &plan,
-    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, ReverseRestoreReportInfo &reportInfo) const
+    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const
 {
     if (plan.decision != ReverseCloneResourceDecision::INHERIT || !plan.HasResourceAction()) {
         MEDIA_INFO_LOG("RevRes ExecuteAfterInsert skipped, fileId=%{public}d, donorFileId=%{public}d, "
@@ -95,7 +95,7 @@ int32_t ReverseCloneResourceInheritService::ExecuteAfterInsert(const ReverseClon
         return E_OK;
     }
     ReverseCloneResourceExecutor executor;
-    return executor.Execute(plan, targetRdb, reportInfo);
+    return executor.Execute(plan, targetRdb);
 }
 
 std::string ReverseCloneResourceInheritService::GetSourceResourceRoot() const

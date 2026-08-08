@@ -373,6 +373,15 @@ int32_t DfxDatabaseUtils::QueryPhotoRecordInfo(PhotoRecordInfo &photoRecordInfo)
     const string duplicateLpathCountQuerySql = GetDuplicateLpathCountQuerrySql();
     const string abnormalLpathCountQuerySql = GetAbnormalLpathCountQuerySql();
 
+    // 需求三：date_taken 异常统计，含未来时间、秒级误写(946684800~1893456000)、零值、负值
+    const int64_t futureThreshold = MediaFileUtils::UTCTimeMilliSeconds() + static_cast<int64_t>(ONE_DAY) * 1000;
+    const string abnormalDateTakenQuerySql = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " +
+        PhotoColumn::PHOTOS_TABLE + " WHERE (" +
+        MediaColumn::MEDIA_DATE_TAKEN + " <= 0 OR " +
+        MediaColumn::MEDIA_DATE_TAKEN + " BETWEEN 946684800 AND 1893456000 OR " +
+        MediaColumn::MEDIA_DATE_TAKEN + " > " + to_string(futureThreshold) +
+        ") AND date_trashed = 0";
+
     bool ret = ParseResultSet(imageAndVideoCountQuerySql, MEDIA_TYPE_VIDEO, photoRecordInfo.videoCount);
     ret = ParseResultSet(imageAndVideoCountQuerySql, MEDIA_TYPE_IMAGE, photoRecordInfo.imageCount) && ret;
     ret = ParseResultSet(abnormalSizeCountQuerySql, 0, photoRecordInfo.abnormalSizeCount) && ret;
@@ -381,9 +390,10 @@ int32_t DfxDatabaseUtils::QueryPhotoRecordInfo(PhotoRecordInfo &photoRecordInfo)
     ret = ParseResultSet(totalAbnormalRecordSql, 0, photoRecordInfo.toBeUpdatedRecordCount) && ret;
     ret = ParseResultSet(duplicateLpathCountQuerySql, 0, photoRecordInfo.duplicateLpathCount) && ret;
     ret = ParseResultSet(abnormalLpathCountQuerySql, 0, photoRecordInfo.abnormalLpathCount) && ret;
+    ret = ParseResultSet(abnormalDateTakenQuerySql, 0, photoRecordInfo.abnormalDateTakenCount) && ret;
     FillWaitUploadCount(photoRecordInfo, ret);
     BuildDbInfo(photoRecordInfo);
-    return ret;
+    return ret ? E_OK : E_FAIL;
 }
 
 int32_t DfxDatabaseUtils::QueryOperationRecordInfo(OperationRecordInfo &operationRecordInfo)
@@ -1078,6 +1088,55 @@ int32_t DfxDatabaseUtils::DropDocsMediaScanTempTable()
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
     return rdbStore->ExecuteSql("DROP TABLE IF EXISTS docs_media_scan_temp");
+}
+
+// 需求二：连拍 burst_key 异常统计
+// 场景A（移动）：连拍照片适配前被移动到其他相册，burst_key 未重新生成，
+//   导致 subtype=4 且 burst_key 相同但 owner_album_id 不同的记录
+// 场景B（复制）：连拍照片适配前被文管复制，同一 burst_key 下产生多张封面，
+//   导致 subtype=4 且同一 burst_key 下 burst_cover_level=1 的记录 > 1
+int32_t DfxDatabaseUtils::QueryBurstKeyAnomalyInfo(int32_t &crossAlbumDupCount, int32_t &multiCoverGroupCount)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "rdbStore is nullptr");
+
+    crossAlbumDupCount = 0;
+    multiCoverGroupCount = 0;
+
+    // 场景A：跨 album 重复 burst_key 数（同一 burst_key 出现在不同 owner_album_id）
+    const std::string sqlCrossAlbumDup =
+        "SELECT COUNT(DISTINCT t.burst_key) AS " + RECORD_COUNT + " FROM ("
+        "  SELECT burst_key FROM Photos"
+        "  WHERE subtype = 4 AND COALESCE(burst_key, '') <> ''"
+        "    AND date_trashed = 0 AND is_temp = 0"
+        "  GROUP BY burst_key HAVING COUNT(DISTINCT owner_album_id) > 1"
+        ") t";
+    auto resultSet = rdbStore->QuerySql(sqlCrossAlbumDup);
+    if (resultSet != nullptr) {
+        if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            crossAlbumDupCount = GetInt32Val(RECORD_COUNT, resultSet);
+        }
+        resultSet->Close();
+    }
+
+    // 场景B：同 burst_key 多封面组数（正常应每组仅1张 cover，>1 即异常）
+    const std::string sqlMultiCover =
+        "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM ("
+        "  SELECT burst_key FROM Photos"
+        "  WHERE subtype = 4 AND burst_cover_level = 1"
+        "    AND COALESCE(burst_key, '') <> ''"
+        "    AND date_trashed = 0 AND is_temp = 0"
+        "  GROUP BY burst_key HAVING COUNT(*) > 1"
+        ")";
+    resultSet = rdbStore->QuerySql(sqlMultiCover);
+    if (resultSet != nullptr) {
+        if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+            multiCoverGroupCount = GetInt32Val(RECORD_COUNT, resultSet);
+        }
+        resultSet->Close();
+    }
+
+    return E_OK;
 }
 } // namespace Media
 } // namespace OHOS

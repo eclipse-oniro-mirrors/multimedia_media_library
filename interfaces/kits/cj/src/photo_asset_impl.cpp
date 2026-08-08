@@ -124,6 +124,11 @@ static PhotoAssetMember HandleDateTransitionKey(const string &key,
         .stringValue = nullptr,
         .boolValue = false
     };
+    if (fileAssetPtr == nullptr) {
+        LOGE("fileAssetPtr is nullptr");
+        errCode = JS_INNER_FAIL;
+        return assetMember;
+    }
     if (fileAssetPtr->GetMemberMap().count(key) == 0) {
         errCode = JS_E_FILE_KEY;
         return assetMember;

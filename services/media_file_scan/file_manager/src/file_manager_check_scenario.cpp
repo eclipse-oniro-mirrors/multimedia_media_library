@@ -20,6 +20,7 @@
 
 #include "album_scan_info_column.h"
 #include "check_status_helper.h"
+#include "dir_scan_anomaly_helper.h"
 #include "file_manager_scanner.h"
 #include "file_manager_scan_rule_config.h"
 #include "file_scan_utils.h"
@@ -79,6 +80,8 @@ void FileManagerCheckScenario::Execute(std::atomic<bool> &isInterrupted)
 {
     MEDIA_INFO_LOG("Start Execute");
     CHECK_AND_RETURN_LOG(!isInterrupted.load(), "Execute interrupted at entry");
+    // 正反向核查启动时，清理扫描异常残留
+    DirScanAnomalyHelper::ClearAll();
     CheckDfxCollector dfxCollector(CheckScene::FILE_MANAGER);
     dfxCollector.OnCheckStart();
     ConsistencyCheck::ScenarioProgress progress = LoadProgress();

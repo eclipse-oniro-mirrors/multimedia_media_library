@@ -70,6 +70,7 @@ public:
 
     static std::vector<std::string> GetFileIdsFromUris(const std::vector<std::string> &uris);
     static void UpdateAndNotifyAnalysisAlbum(const std::vector<std::string>& fileIds);
+    static bool IsPathUnderRoot(const std::string &path, const std::string &rootPath);
 
 private:
     static bool HasExtension(const std::string &file);

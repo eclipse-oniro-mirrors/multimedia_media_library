@@ -62,8 +62,7 @@ public:
     std::vector<ReverseCloneKvStoreTask> BuildRetainedOldPhotoKvStoreTasks(
         const std::shared_ptr<NativeRdb::RdbStore> &rdb) const;
     void FinalizeBatch(const ReverseClonePhotoBatchContext &batch,
-        std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-        ReverseRestoreReportInfo &reportInfo);
+        std::shared_ptr<NativeRdb::RdbStore> &targetRdb);
     bool CommitPhotosBatch(ReverseClonePhotoBatchContext &batch,
         const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows);
     void ForceAbsorbSourceResourcesOnCommitFailed(const ReverseClonePhotoBatchContext &batch) const;
@@ -164,8 +163,7 @@ private:
         const std::vector<ReverseCloneResourcePlan> &duplicatePlans) const;
     std::unordered_set<int32_t> ExecuteResourcePlans(
         const std::unordered_map<int32_t, ReverseCloneResourcePlan> &resourcePlans,
-        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-        ReverseRestoreReportInfo &reportInfo) const;
+        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
     std::unordered_set<int32_t> ExecuteStaleTargetFallback(
         const std::vector<ReverseStaleTargetResource> &staleTargetResources) const;
     void UpdateAbsorbedPhotosVisible(std::shared_ptr<NativeRdb::RdbStore> &targetRdb,

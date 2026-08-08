@@ -37,6 +37,7 @@ public:
     // FileManager新增多文件缩略图生成接口（支持功耗管控）
     static std::vector<std::string> GenerateThumbnailWithPowerControl(ScanMode scanMode,
         const std::vector<std::string> &inodes);
+    bool CheckTypeValidForFileManagerParser();
 
 private:
     void SetCloudPath() override;

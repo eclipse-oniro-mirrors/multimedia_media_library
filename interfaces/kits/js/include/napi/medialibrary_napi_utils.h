@@ -56,7 +56,7 @@
 #define CHECK_PARAMETER_WITH_MESSAGE(env, cond, msg)                 \
     do {                                                            \
         if (!(cond)) {                                    \
-            NapiError::ThrowError(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, __FUNCTION__, __LINE__, msg); \
+            NapiError::ThrowErrorWithIntCode(env, MEDIA_LIBRARY_INVALID_PARAMETER_ERROR, msg); \
             return nullptr;                                          \
         }                                                           \
     } while (0)
@@ -171,6 +171,14 @@
         }                                                           \
     } while (0)
 
+#define CHECK_ARGS_WITH_CODE(env, cond, err)                     \
+    do {                                                            \
+        if ((cond) != napi_ok) {                                    \
+            NapiError::ThrowErrorWithIntCode(env, err, __FUNCTION__, __LINE__); \
+            return nullptr;                                          \
+        }                                                           \
+    } while (0)
+
 #define CHECK_ARGS(env, cond, err) CHECK_ARGS_BASE(env, cond, err, nullptr)
 
 #define CHECK_ARGS_THROW_INVALID_PARAM(env, cond) CHECK_ARGS(env, cond, OHOS_INVALID_PARAM_CODE)
@@ -233,6 +241,13 @@
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
+
+struct AsyncErrorInfo {
+    int error;
+    int32_t realErr = 0;
+    std::string apiName;
+    std::string errorMsg;
+};
 
 /* Constants for array index */
 const int32_t PARAM0 = 0;
@@ -418,6 +433,8 @@ public:
     static napi_status GetParamStringWithLength(napi_env env, napi_value arg, int32_t maxLen,
         std::string &str);
     static napi_status GetParamStringPathMax(napi_env env, napi_value arg, std::string &str);
+    static napi_status GetParamStringStrict(napi_env env, napi_value arg, size_t maxLen,
+        std::string &str);
     static napi_status GetProperty(napi_env env, const napi_value arg, const std::string &propName,
         std::string &propValue);
     static napi_status GetArrayProperty(napi_env env, napi_value arg, const std::string &propName,
@@ -513,8 +530,11 @@ public:
         napi_env env, int error, napi_value &errorObj, const std::string &Name, int32_t realErr = 0,
         const std::string &errMsg = "");
 
+    static void HandleErrorWithIntCode(
+        napi_env env, napi_value &errorObj, const AsyncErrorInfo &errInfo);
+
     static void CreateNapiErrorObject(napi_env env, napi_value &errorObj, const int32_t errCode,
-        const std::string errMsg);
+        const std::string errMsg, bool isIntCode = false);
 
     static void InvokeJSAsyncMethodWithoutWork(napi_env env, napi_deferred deferred, napi_ref callbackRef,
         const JSAsyncContextOutput &asyncContext);

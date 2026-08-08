@@ -18,6 +18,7 @@
 
 #include <securec.h>
 
+#include "color_space.h"
 #include "image_format_convert.h"
 #include "v1_0/buffer_handle_meta_key_type.h"
 

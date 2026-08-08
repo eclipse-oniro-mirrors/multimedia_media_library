@@ -256,7 +256,8 @@ protected:
      * @param minDestDbFileId 目标数据库最小file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
      */
     void AbsorbNewPhotosBatch(int32_t offset, int32_t isRelatedToPhotoMap,
-        int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId);
+        int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId,
+        std::string &localErrorInfo);
 
     /**
      * @brief 处理吸收新照片失败的批次
@@ -276,7 +277,8 @@ protected:
      * @param minDestDbFileId 目标数据库最小file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
      */
     void AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t isRelatedToPhotoMap,
-        int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId);
+        int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId,
+        std::string &localErrorInfo);
 
     /**
      * @brief 处理吸收新云照片失败的批次
@@ -429,6 +431,7 @@ private:
         bool isCloud);
     void SubmitAbsorbNewPhotosForCloudTasks(int32_t totalNumber, int32_t maxSourceDbFileId,
         int32_t maxDestDbFileId);
+    void CollectLocalErrorInfos(const std::vector<std::string> &localErrorInfos);
 
     bool RecoverSourceDbFromSlave();
     bool CheckSourceRdbIntegrityAndFallback(const std::string &backupRestorePath,
@@ -498,6 +501,7 @@ private:
         const std::vector<int32_t> &failedFileIds, const std::string &stage);
     void HandleAbsorbPhotosFinalFailure(const std::string &stage, int32_t offset,
         const ReverseClonePhotoBatchContext *batch);
+    void MergeAbsorbNewPhotosReport(const AlbumAssetAbsorb::DuplicateCount &duplicateCount);
 
     // 更新插入的照片的 sync_status 为 -1
     void UpdateSyncStatusForInsertedPhotos(const ReverseClonePhotoBatchContext& batch,

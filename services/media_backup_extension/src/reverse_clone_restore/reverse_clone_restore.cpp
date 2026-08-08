@@ -259,10 +259,13 @@ static const std::string SQL_QUERY_CLASSIFY_ALBUM_EXIST_REVERSE = " \
 const std::string ReverseCloneRestore::SQL_PHOTOS_TABLE_QUERY_ALL = "\
     SELECT \
         PhotoAlbum.lpath, \
-        Photos.* \
+        Photos.*, \
+        COALESCE(PhotoExt.lcd_using_status, 0) AS lcd_using_status \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
         ON Photos.owner_album_id=PhotoAlbum.album_id \
+        LEFT JOIN tab_photos_ext AS PhotoExt \
+        ON PhotoExt.photo_id=Photos.file_id \
     WHERE position IN (1, 3) AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
         COALESCE(Photos.sync_status, 0) = 0 \
@@ -272,10 +275,13 @@ const std::string ReverseCloneRestore::SQL_PHOTOS_TABLE_QUERY_ALL = "\
 const std::string ReverseCloneRestore::SQL_CLOUD_PHOTOS_TABLE_QUERY_ALL = "\
     SELECT \
         PhotoAlbum.lpath, \
-        Photos.* \
+        Photos.*, \
+        COALESCE(PhotoExt.lcd_using_status, 0) AS lcd_using_status \
     FROM Photos \
         LEFT JOIN PhotoAlbum \
         ON Photos.owner_album_id=PhotoAlbum.album_id \
+        LEFT JOIN tab_photos_ext AS PhotoExt \
+        ON PhotoExt.photo_id=Photos.file_id \
     WHERE position = 2 AND \
         COALESCE(Photos.clean_flag, 0) = 0 AND \
         COALESCE(Photos.sync_status, 0) = 0 \
@@ -302,6 +308,9 @@ const std::string ReverseCloneRestore::SQL_CLOUD_PHOTOS_TABLE_COUNT_ALL = "\
 
 namespace {
 const std::string REVERSE_RESTORE_RESOURCE_ROOT = "/storage/media/local/files/reverse_restore";
+const std::string REVERSE_RESTORE_MERGE_ROOT = "/storage/cloud/files/reverse_restore";
+const std::string MEDIA_LOCAL_FILES_ROOT = "/storage/media/local/files";
+const std::string MEDIA_MERGE_FILES_ROOT = "/storage/cloud/files";
 const std::string LAKE_STORAGE_ROOT = "/storage/media/local/files/Docs/HO_DATA_EXT_MISC";
 constexpr int32_t DATA_CONFLICT_UNIQUE_ID_COUNT = 3;
 const std::string ACTIVE_DELETE_DISPLAY_NAME = "cloud_media_asset_deleted";
@@ -360,6 +369,26 @@ bool IsPathUnderDirectory(const std::string &path, const std::string &directory)
         return false;
     }
     return directory.back() == '/' || path[directory.length()] == '/';
+}
+
+bool IsPathExists(const std::string &path)
+{
+    struct stat st;
+    return (stat(path.c_str(), &st) == 0);
+}
+
+std::string GetAssetMoveBackingPath(const std::string &path)
+{
+    // A merge-view path may exist only because of a cloud dentry; asset swaps operate on local backing data.
+    if (path == MEDIA_MERGE_FILES_ROOT || IsPathUnderDirectory(path, MEDIA_MERGE_FILES_ROOT)) {
+        return MEDIA_LOCAL_FILES_ROOT + path.substr(MEDIA_MERGE_FILES_ROOT.length());
+    }
+    return path;
+}
+
+bool IsAssetMovePathExists(const std::string &path)
+{
+    return IsPathExists(GetAssetMoveBackingPath(path));
 }
 
 bool HasLakeStoragePath(const FileInfo &fileInfo)
@@ -1034,11 +1063,6 @@ bool ReverseCloneRestore::ShouldUseReverseCloneRestore()
     return context.NeedReverseRestore(reverseRestoreReportInfo_);
 }
 
-static bool IsPathExists(const std::string& path) {
-    struct stat st;
-    return (stat(path.c_str(), &st) == 0);
-}
-
 static bool AddFileSize(int64_t &totalSize, int64_t fileSize)
 {
     if (fileSize < 0 || totalSize > std::numeric_limits<int64_t>::max() - fileSize) {
@@ -1448,9 +1472,9 @@ void ReverseCloneRestore::CleanReverseRestoreTempFiles()
         DeleteDbFileGroup("/data/storage/el2/database/rdb/media_library_source.db");
     }
 
-    if (IsPathExists(REVERSE_RESTORE_RESOURCE_ROOT)) {
+    if (IsAssetMovePathExists(REVERSE_RESTORE_MERGE_ROOT)) {
         MEDIA_INFO_LOG("CleanReverseRestoreTempFiles: deleting reverse restore resource dir");
-        SafeDeleteDir(REVERSE_RESTORE_RESOURCE_ROOT);
+        SafeDeleteDir(REVERSE_RESTORE_MERGE_ROOT);
     }
 
     // 删除资产移动状态XML文件
@@ -1811,8 +1835,9 @@ bool ReverseCloneRestore::PrepareForResume()
 
 bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveState &move)
 {
-    move.hadSrc = IsPathExists(move.src);
-    move.hadDst = IsPathExists(move.dst);
+    const std::string dstBackingPath = GetAssetMoveBackingPath(move.dst);
+    move.hadSrc = IsAssetMovePathExists(move.src);
+    move.hadDst = IsAssetMovePathExists(dstBackingPath);
     if (!move.hadSrc && !move.hadDst) {
         MEDIA_INFO_LOG("ReplaceDirWithBackup: both not exist, skip");
         return true;
@@ -1824,12 +1849,12 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
         return false;
     }
     std::string parentDir = move.backup.substr(0, lastSlashPos);
-    if (!IsPathExists(parentDir) && mkdir(parentDir.c_str(), 0755) != 0 && errno != EEXIST) {
+    if (!IsAssetMovePathExists(parentDir) && mkdir(parentDir.c_str(), 0755) != 0 && errno != EEXIST) {
         MEDIA_ERR_LOG("ReplaceDirWithBackup: create backup parent failed, dir=%{public}s, errno=%{public}d",
             parentDir.c_str(), errno);
         return false;
     }
-    if (IsPathExists(move.backup)) {
+    if (IsAssetMovePathExists(move.backup)) {
         MEDIA_WARN_LOG("ReplaceDirWithBackup: backup dir already exists, deleting it: %{public}s",
             move.backup.c_str());
         if (!MediaFileUtils::DeleteFileOrFolder(move.backup, false)) {
@@ -1853,11 +1878,11 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
     }
 
     if (move.hadSrc) {
-        if (rename(move.src.c_str(), move.dst.c_str()) != 0) {
+        if (rename(move.src.c_str(), dstBackingPath.c_str()) != 0) {
             int savedErrno = errno;
             MEDIA_WARN_LOG("ReplaceDirWithBackup: rename src %{public}s to dst %{public}s failed, errno=%{public}d",
-                move.src.c_str(), move.dst.c_str(), savedErrno);
-            DiagnoseRenameFailure(move.src, move.dst, savedErrno);
+                move.src.c_str(), dstBackingPath.c_str(), savedErrno);
+            DiagnoseRenameFailure(move.src, dstBackingPath, savedErrno);
             if (move.hadDst && !RollbackAssetMove(move)) {
                 MEDIA_ERR_LOG("ReplaceDirWithBackup: rollback current asset dir failed, src=%{public}s",
                     move.src.c_str());
@@ -1866,7 +1891,7 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
             return false;
         }
         MEDIA_INFO_LOG("ReplaceDirWithBackup: moved src %{public}s -> %{public}s", move.src.c_str(),
-            move.dst.c_str());
+            dstBackingPath.c_str());
         move.movedSrc = true;
     }
     return true;
@@ -1874,41 +1899,42 @@ bool ReverseCloneRestore::ReplaceDirWithBackup(ReverseCloneRestore::AssetMoveSta
 
 bool ReverseCloneRestore::RollbackAssetMove(const AssetMoveState &move)
 {
+    const std::string dstBackingPath = GetAssetMoveBackingPath(move.dst);
     bool ret = true;
     if (move.movedSrc) {
-        if (IsPathExists(move.src)) {
+        if (IsAssetMovePathExists(move.src)) {
             MEDIA_INFO_LOG("RollbackAssetMove: source already restored, src=%{public}s", move.src.c_str());
-        } else if (IsPathExists(move.dst)) {
-            if (rename(move.dst.c_str(), move.src.c_str()) != 0) {
+        } else if (IsAssetMovePathExists(dstBackingPath)) {
+            if (rename(dstBackingPath.c_str(), move.src.c_str()) != 0) {
                 int savedErrno = errno;
                 MEDIA_ERR_LOG("RollbackAssetMove: restore source %{public}s from dst %{public}s failed, "
-                    "errno=%{public}d", move.src.c_str(), move.dst.c_str(), savedErrno);
-                DiagnoseRenameFailure(move.dst, move.src, savedErrno);
+                    "errno=%{public}d", move.src.c_str(), dstBackingPath.c_str(), savedErrno);
+                DiagnoseRenameFailure(dstBackingPath, move.src, savedErrno);
                 ret = false;
             } else {
                 MEDIA_INFO_LOG("RollbackAssetMove: restored source %{public}s from dst %{public}s",
-                    move.src.c_str(), move.dst.c_str());
+                    move.src.c_str(), dstBackingPath.c_str());
             }
         } else {
             MEDIA_ERR_LOG("RollbackAssetMove: source and dst are both missing, src=%{public}s, dst=%{public}s",
                 move.src.c_str(), move.dst.c_str());
             ret = false;
         }
-    } else if (move.hadSrc && !IsPathExists(move.src)) {
+    } else if (move.hadSrc && !IsAssetMovePathExists(move.src)) {
         MEDIA_ERR_LOG("RollbackAssetMove: source missing after failed move, src=%{public}s", move.src.c_str());
         ret = false;
     }
 
     CHECK_AND_RETURN_RET(move.backedUpDst, ret);
 
-    if (!IsPathExists(move.backup)) {
-        CHECK_AND_RETURN_RET_LOG(!IsPathExists(move.dst), ret,
+    if (!IsAssetMovePathExists(move.backup)) {
+        CHECK_AND_RETURN_RET_LOG(!IsAssetMovePathExists(move.dst), ret,
             "RollbackAssetMove: backup already restored, dst=%{public}s", move.dst.c_str());
         MEDIA_ERR_LOG("RollbackAssetMove: backup and dst are both missing, backup=%{public}s, dst=%{public}s",
             move.backup.c_str(), move.dst.c_str());
         return false;
     }
-    if (IsPathExists(move.dst)) {
+    if (IsAssetMovePathExists(move.dst)) {
         MEDIA_ERR_LOG("RollbackAssetMove: dst still exists before restoring backup, dst=%{public}s",
             move.dst.c_str());
         return false;
@@ -1968,23 +1994,23 @@ std::vector<ReverseCloneRestore::AssetMoveState> ReverseCloneRestore::GenerateAs
     const std::string& backupRoot, const std::string& reverseRestoreBase)
 {
     std::vector<AssetMoveState> moves = {
-        { backupRoot + "/storage/media/local/files/Photo",     "/storage/media/local/files/Photo",
+        { backupRoot + "/storage/media/local/files/Photo",     "/storage/cloud/files/Photo",
           reverseRestoreBase + "/Photo" },
-        { backupRoot + "/storage/media/local/files/Camera",    "/storage/media/local/files/Camera",
+        { backupRoot + "/storage/media/local/files/Camera",    "/storage/cloud/files/Camera",
           reverseRestoreBase + "/Camera" },
-        { backupRoot + "/storage/media/local/files/Pictures",  "/storage/media/local/files/Pictures",
+        { backupRoot + "/storage/media/local/files/Pictures",  "/storage/cloud/files/Pictures",
           reverseRestoreBase + "/Pictures" },
-        { backupRoot + "/storage/media/local/files/Videos",    "/storage/media/local/files/Videos",
+        { backupRoot + "/storage/media/local/files/Videos",    "/storage/cloud/files/Videos",
           reverseRestoreBase + "/Videos" },
-        { backupRoot + "/storage/media/local/files/.editData", "/storage/media/local/files/.editData",
+        { backupRoot + "/storage/media/local/files/.editData", "/storage/cloud/files/.editData",
           reverseRestoreBase + "/.editData" },
-        { backupRoot + "/storage/media/local/files/Audio",     "/storage/media/local/files/Audio",
+        { backupRoot + "/storage/media/local/files/Audio",     "/storage/cloud/files/Audio",
           reverseRestoreBase + "/Audio" },
-        { backupRoot + "/storage/media/local/files/Audios",    "/storage/media/local/files/Audios",
+        { backupRoot + "/storage/media/local/files/Audios",    "/storage/cloud/files/Audios",
           reverseRestoreBase + "/Audios" },
-        { backupRoot + "/storage/media/local/files/.thumbs",   "/storage/media/local/files/.thumbs",
+        { backupRoot + "/storage/media/local/files/.thumbs",   "/storage/cloud/files/.thumbs",
           reverseRestoreBase + "/.thumbs" },
-        { backupRoot + "/storage/media/local/files/highlight", "/storage/media/local/files/highlight",
+        { backupRoot + "/storage/media/local/files/highlight", "/storage/cloud/files/highlight",
           reverseRestoreBase + "/highlight" },
     };
     return moves;
@@ -1993,9 +2019,9 @@ std::vector<ReverseCloneRestore::AssetMoveState> ReverseCloneRestore::GenerateAs
 bool ReverseCloneRestore::MoveAssets(const std::string& backupRoot)
 {
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    const std::string reverseRestoreBase = REVERSE_RESTORE_RESOURCE_ROOT;
-    if (!IsPathExists(reverseRestoreBase)) {
-        if (mkdir(reverseRestoreBase.c_str(), 0755) != 0 && errno != EEXIST) {
+    const std::string reverseRestoreBase = REVERSE_RESTORE_MERGE_ROOT;
+    if (!IsAssetMovePathExists(REVERSE_RESTORE_MERGE_ROOT)) {
+        if (mkdir(REVERSE_RESTORE_MERGE_ROOT.c_str(), 0755) != 0 && errno != EEXIST) {
             MEDIA_ERR_LOG("MoveAssets: create reverse_restore dir failed");
             return false;
         }
@@ -2511,6 +2537,9 @@ void ReverseCloneRestore::ActiveFullDonation()
 
 void ReverseCloneRestore::AppendErrorInfo(const std::string &errorInfo)
 {
+    if (errorInfo.empty()) {
+        return;
+    }
     if (!reverseRestoreReportInfo_.absorbNewBasicDataErrorInfo.empty()) {
         reverseRestoreReportInfo_.absorbNewBasicDataErrorInfo += "; ";
     }
@@ -3177,13 +3206,17 @@ void ReverseCloneRestore::SetMigrateNumbers()
 {
     migrateLakePhotoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateLakeImageCount;
     migrateLakeVideoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateLakeVideoCount;
-    migrateLakePhotoNumber_ = reverseRestoreReportInfo_.migrateLakeImageCount - migrateLakePhotoDuplicateNumber_;
-    migrateLakeVideoNumber_ = reverseRestoreReportInfo_.migrateLakeVideoCount - migrateLakeVideoDuplicateNumber_;
+    migrateLakePhotoNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migrateLakeImageCount) -
+        migrateLakePhotoDuplicateNumber_;
+    migrateLakeVideoNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migrateLakeVideoCount) -
+        migrateLakeVideoDuplicateNumber_;
     migratePhotoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateImageCount;
     migrateVideoDuplicateNumber_ = reverseRestoreReportInfo_.duplicateVideoCount;
-    migrateFileNumber_ = reverseRestoreReportInfo_.migrateCount - reverseRestoreReportInfo_.duplicateCount -
+    migrateFileNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migrateCount) -
+        static_cast<uint64_t>(reverseRestoreReportInfo_.duplicateCount) -
         migrateLakePhotoNumber_ - migrateLakeVideoNumber_;
-    migrateVideoFileNumber_ = reverseRestoreReportInfo_.migratedNonHoLakeVideoCount - migrateVideoDuplicateNumber_;
+    migrateVideoFileNumber_ = static_cast<uint64_t>(reverseRestoreReportInfo_.migratedNonHoLakeVideoCount) -
+        migrateVideoDuplicateNumber_;
 
     MEDIA_INFO_LOG("SetMigrateNumbers: migrateLakePhotoDuplicateNumber_=%{public}lld, "
                    "migrateLakeVideoDuplicateNumber_=%{public}lld, "
@@ -3329,7 +3362,7 @@ void ReverseCloneRestore::UpdatePhotosSpecialFields()
                                         PhotoColumn::PHOTO_METADATA_FLAGS + " = 0";
     BackupDatabaseUtils::ExecuteSQL(destRdb_, updateMetadataFlagsSql, {});
 
-    // 5. 更新所有 Photos 表中的 change_time 为当前时间
+    // 4. 更新所有 Photos 表中的 change_time 为当前时间
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
     std::string updateChangeTimeSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
                                       " SET " + PhotoColumn::PHOTO_CHANGE_TIME + " = " +
@@ -3668,41 +3701,68 @@ void ReverseCloneRestore::InitializeDuplicateAssetMapForPhotos()
 void ReverseCloneRestore::SubmitAbsorbNewPhotosTasks(int32_t totalNumber, int32_t maxSourceDbFileId,
     int32_t maxDestDbFileId, bool isCloud)
 {
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
     int32_t batchCount = 0;
+    std::vector<std::string> localErrorInfos;
+    localErrorInfos.reverse(totalNumber / CLONE_QUERY_COUNT + 1);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
+        localErrorInfos.emplace_back();
+        size_t errorInfoIdx = localErrorInfos.size() - 1;
         MEDIA_INFO_LOG("AbsorbNewPhotos: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
-            [this, offset, maxSourceDbFileId, maxDestDbFileId]() {
-                AbsorbNewPhotosBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
+                AbsorbNewPhotosBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_,
+                    errorInfo);
             },
             {&offset},
             {},
             ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
     }
     ffrt::wait();
+    CollectLocalErrorInfos(localErrorInfos);
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    reverseRestoreReportInfo_.afterTransformTimeCost.append(" absorb origin&thumbnail: ")
+        .append(std::to_string(endTime - startTime) + ";");
 }
 
 void ReverseCloneRestore::SubmitAbsorbNewPhotosForCloudTasks(int32_t totalNumber, int32_t maxSourceDbFileId,
     int32_t maxDestDbFileId)
 {
+    int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     ffrt_set_cpu_worker_max_num(ffrt::qos_utility, MAX_THREAD_NUM);
     needReportFailed_ = false;
     int32_t batchCount = 0;
+    std::vector<std::string> localErrorInfos;
+    localErrorInfos.reverse(totalNumber / CLONE_QUERY_COUNT + 1);
     for (int32_t offset = 0; offset < totalNumber; offset += CLONE_QUERY_COUNT) {
         batchCount++;
+        localErrorInfos.emplace_back();
+        size_t errorInfoIdx = localErrorInfos.size() - 1;
         MEDIA_INFO_LOG("AbsorbNewPhotosForCloud: Submitting batch %{public}d, offset=%{public}d", batchCount, offset);
         ffrt::submit(
-            [this, offset, maxSourceDbFileId, maxDestDbFileId]() {
-                AbsorbNewPhotosForCloudBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            [this, offset, maxSourceDbFileId, maxDestDbFileId, &errorInfo = localErrorInfos[errorInfoIdx]]() {
+                AbsorbNewPhotosForCloudBatch(offset, 0, maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_,
+                    errorInfo);
             },
             {&offset},
             {},
             ffrt::task_attr().qos(static_cast<int32_t>(ffrt::qos_utility)));
     }
     ffrt::wait();
+    CollectLocalErrorInfos(localErrorInfos);
+    int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
+    reverseRestoreReportInfo_.afterTransformTimeCost.append(" absorb origin&thumbnail forCloud: ")
+        .append(std::to_string(endTime - startTime) + ";");
+}
+
+void ReverseCloneRestore::CollectLocalErrorInfos(const std::vector<std::string> &localErrorInfos)
+{
+    for (auto &errorInfo : localErrorInfos) {
+        AppendErrorInfo(errorInfo);
+    }
 }
 
 void ReverseCloneRestore::InitializeTableAlbumIdMapForReverse()
@@ -3842,7 +3902,7 @@ void ReverseCloneRestore::EnsureCommittedFailedAssetsOrigin(const ReverseClonePh
     MEDIA_WARN_LOG("Reverse absorb committed failed assets ensure origin, stage=%{public}s, "
         "failedFileIds=%{public}zu, resourcePlans=%{public}zu", stage.c_str(), failedFileIds.size(),
         failedBatch.resourcePlans.size());
-    resourceInheritHelper_.FinalizeBatch(failedBatch, destRdb_, reverseRestoreReportInfo_);
+    resourceInheritHelper_.FinalizeBatch(failedBatch, destRdb_);
 }
 
 void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stage, int32_t offset,
@@ -3874,7 +3934,8 @@ void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stag
 }
 
 void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelatedToPhotoMap,
-    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId)
+    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId,
+    std::string &localErrorInfo)
 {
     MEDIA_INFO_LOG(
         "AbsorbNewPhotosBatch: start, offset=%{public}d, isRelatedToPhotoMap=%{public}d, minDestDbFileId=%{public}d",
@@ -3894,13 +3955,15 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId, destRdb_, albumAssetAbsorb_,
         batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: PrepareBatch failed");
-        AppendErrorInfo("PrepareLocalBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "PrepareLocalBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("PrepareLocalBatch", offset, &batch);
         return;
     }
     if (!ResolveDataConflictsAfterDuplicate(batch, dataConflictFailedFileIds)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: ResolveDataConflictsAfterDuplicate failed");
-        AppendErrorInfo("ResolveLocalDataConflict failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "ResolveLocalDataConflict failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("ResolveLocalDataConflict", offset, &batch);
         return;
     }
@@ -3908,7 +3971,8 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     int64_t photoRowNum = 0;
     if (!resourceInheritHelper_.CommitPhotosBatch(batch, destRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: CommitPhotosBatch failed");
-        AppendErrorInfo("CommitLocalBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "CommitLocalBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("CommitLocalBatch", offset, &batch);
         return;
     }
@@ -3916,15 +3980,11 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     BuildReversePhotoInfoMap(batch.validFileInfos);
 
     migrateDatabaseNumber_ += photoRowNum;
-    reverseRestoreReportInfo_.duplicateCount += duplicateCount.total;
-    reverseRestoreReportInfo_.duplicateLakeVideoCount += duplicateCount.hoLakeVideo;
-    reverseRestoreReportInfo_.duplicateLakeImageCount += duplicateCount.hoLakeImage;
-    reverseRestoreReportInfo_.duplicateVideoCount += duplicateCount.nonHoLakeVideo;
-    reverseRestoreReportInfo_.duplicateImageCount += duplicateCount.nonHoLakeImage;
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: committed %{public}ld photos", photoRowNum);
 
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
-    resourceInheritHelper_.FinalizeBatch(batch, destRdb_, reverseRestoreReportInfo_);
+    resourceInheritHelper_.FinalizeBatch(batch, destRdb_);
+    MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveLocalDataConflict");
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
@@ -3942,8 +4002,10 @@ void ReverseCloneRestore::ProcessNewPhotosFailedOffsets(int32_t isRelatedToPhoto
     size_t vectorLen = photosFailedOffsets_.size();
     needReportFailed_ = true;
     for (size_t offset = 0; offset < vectorLen; offset++) {
+        std::string localErrorInfo;
         AbsorbNewPhotosBatch(photosFailedOffsets_[offset], isRelatedToPhotoMap,
-            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_, localErrorInfo);
+        AppendErrorInfo(localErrorInfo);
     }
     photosFailedOffsets_.clear();
     MEDIA_INFO_LOG("ProcessNewPhotosFailedOffsets: end, processed %{public}zu failed batches", vectorLen);
@@ -4469,7 +4531,8 @@ void ReverseCloneRestore::UpdateDatabase()
 }
 
 void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t isRelatedToPhotoMap,
-    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId)
+    int32_t maxSourceDbFileId, int32_t maxDestDbFileId, int32_t minDestDbFileId,
+    std::string &localErrorInfo)
 {
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: start, offset=%{public}d, isRelatedToPhotoMap=%{public}d, "
                    "minDestDbFileId=%{public}d", offset, isRelatedToPhotoMap, minDestDbFileId);
@@ -4488,13 +4551,15 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId, destRdb_, albumAssetAbsorb_,
         batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: PrepareBatch failed");
-        AppendErrorInfo("PrepareCloudBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "PrepareCloudBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("PrepareCloudBatch", offset, &batch);
         return;
     }
     if (!ResolveDataConflictsAfterDuplicate(batch, dataConflictFailedFileIds)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: ResolveDataConflictsAfterDuplicate failed");
-        AppendErrorInfo("ResolveCloudDataConflict failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "ResolveCloudDataConflict failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("ResolveCloudDataConflict", offset, &batch);
         return;
     }
@@ -4502,7 +4567,8 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     int64_t photoRowNum = 0;
     if (!resourceInheritHelper_.CommitPhotosBatch(batch, destRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: CommitPhotosBatch failed");
-        AppendErrorInfo("CommitCloudBatch failed: " + to_string(offset));
+        CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
+        localErrorInfo += "CommitCloudBatch failed: " + to_string(offset);
         HandleAbsorbPhotosFinalFailure("CommitCloudBatch", offset, &batch);
         return;
     }
@@ -4510,15 +4576,11 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     BuildReversePhotoInfoMap(batch.validFileInfos);
 
     migrateDatabaseNumber_ += photoRowNum;
-    reverseRestoreReportInfo_.duplicateCount += duplicateCount.total;
-    reverseRestoreReportInfo_.duplicateLakeVideoCount += duplicateCount.hoLakeVideo;
-    reverseRestoreReportInfo_.duplicateLakeImageCount += duplicateCount.hoLakeImage;
-    reverseRestoreReportInfo_.duplicateVideoCount += duplicateCount.nonHoLakeVideo;
-    reverseRestoreReportInfo_.duplicateImageCount += duplicateCount.nonHoLakeImage;
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: committed %{public}ld cloud photos", photoRowNum);
 
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
-    resourceInheritHelper_.FinalizeBatch(batch, destRdb_, reverseRestoreReportInfo_);
+    resourceInheritHelper_.FinalizeBatch(batch, destRdb_);
+    MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveCloudDataConflict");
 
     // 更新duplicateAssetMap_：记录判重删掉的file_id到新机数据库中的file_id的映射（加锁保护）
@@ -4536,8 +4598,10 @@ void ReverseCloneRestore::ProcessNewPhotosForCloudFailedOffsets(int32_t isRelate
     size_t vectorLen = photosFailedOffsets_.size();
     needReportFailed_ = true;
     for (size_t offset = 0; offset < vectorLen; offset++) {
+        std::string localErrorInfo;
         AbsorbNewPhotosForCloudBatch(photosFailedOffsets_[offset], isRelatedToPhotoMap,
-            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_);
+            maxSourceDbFileId, maxDestDbFileId, minDestDbFileId_, localErrorInfo);
+        AppendErrorInfo(localErrorInfo);
     }
     photosFailedOffsets_.clear();
     MEDIA_INFO_LOG("ProcessNewPhotosForCloudFailedOffsets: end, processed %{public}zu failed batches", vectorLen);
@@ -4611,7 +4675,10 @@ vector<FileInfo> ReverseCloneRestore::QueryFileInfos(int32_t offset, int32_t isR
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         FileInfo fileInfo;
         fileInfo.isRelatedToPhotoMap = isRelatedToPhotoMap;
-        CHECK_AND_EXECUTE(!ParseReverseResultSet(resultSet, fileInfo), result.emplace_back(fileInfo));
+        if (ParseReverseResultSet(resultSet, fileInfo)) {
+            fileInfo.lcdUsingStatus = GetInt32Val(PhotoExtColumn::LCD_USING_STATUS, resultSet);
+            result.emplace_back(fileInfo);
+        }
     }
     resultSet->Close();
 
@@ -4634,6 +4701,7 @@ vector<FileInfo> ReverseCloneRestore::QueryCloudFileInfos(int32_t offset, int32_
         FileInfo fileInfo;
         fileInfo.isRelatedToPhotoMap = isRelatedToPhotoMap;
         if (ParseReverseResultSet(resultSet, fileInfo)) {
+            fileInfo.lcdUsingStatus = GetInt32Val(PhotoExtColumn::LCD_USING_STATUS, resultSet);
             result.emplace_back(fileInfo);
             RemoveInvalidLocalFiles(fileInfo);
         }
@@ -4668,6 +4736,15 @@ int32_t ReverseCloneRestore::GetAllCloudPhotosRowCount()
     int32_t count = GetInt32Val("count", resultSet);
     resultSet->Close();
     return count;
+}
+
+void ReverseCloneRestore::MergeAbsorbNewPhotosReport(const AlbumAssetAbsorb::DuplicateCount &duplicateCount)
+{
+    reverseRestoreReportInfo_.duplicateCount.fetch_add(duplicateCount.total, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateLakeVideoCount.fetch_add(duplicateCount.hoLakeVideo, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateLakeImageCount.fetch_add(duplicateCount.hoLakeImage, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateVideoCount.fetch_add(duplicateCount.nonHoLakeVideo, std::memory_order_relaxed);
+    reverseRestoreReportInfo_.duplicateImageCount.fetch_add(duplicateCount.nonHoLakeImage, std::memory_order_relaxed);
 }
 
 ReverseCloneRestore::~ReverseCloneRestore()

@@ -16,6 +16,7 @@
 
 #include "ithumbnail_helper.h"
 
+#include "color_space.h"
 #include "cloud_sync_helper.h"
 #include "dfx_utils.h"
 #include "medialibrary_kvstore_manager.h"

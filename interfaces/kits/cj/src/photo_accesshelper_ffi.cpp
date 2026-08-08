@@ -925,6 +925,10 @@ int64_t CreatePhotoAssetImpl(const std::string &uri, int32_t cameraShotType, con
     }
     fileAsset->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);
     auto photoAssetImpl = FFIData::Create<PhotoAssetImpl>(fileAsset);
+    if (photoAssetImpl == nullptr) {
+        LOGE("FFIData::Create<PhotoAssetImpl> failed");
+        return 0;
+    }
     return photoAssetImpl->GetID();
 }
 }

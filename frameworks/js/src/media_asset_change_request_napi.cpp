@@ -1175,8 +1175,10 @@ napi_value MediaAssetChangeRequestNapi::JSSetEditData(napi_env env, napi_callbac
 
 napi_value MediaAssetChangeRequestNapi::JSSetCameraEditData(napi_env env, napi_callback_info info)
 {
+    NAPI_INFO_LOG("JSSetCameraEditData begin.");
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system apps");
         return nullptr;
     }
 
@@ -1189,9 +1191,9 @@ napi_value MediaAssetChangeRequestNapi::JSSetCameraEditData(napi_env env, napi_c
     napi_value arg = asyncContext->argv[PARAM0];
     napi_valuetype valueType;
     MediaAssetEditDataNapi* editDataNapi;
-    CHECK_ARGS(env, napi_typeof(env, arg, &valueType), MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR);
+    CHECK_ARGS_WITH_CODE(env, napi_typeof(env, arg, &valueType), MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR);
     CHECK_PARAMETER_WITH_MESSAGE(env, valueType == napi_object, "Invalid argument type");
-    CHECK_ARGS(env, napi_unwrap(env, arg, reinterpret_cast<void**>(&editDataNapi)),
+    CHECK_ARGS_WITH_CODE(env, napi_unwrap(env, arg, reinterpret_cast<void**>(&editDataNapi)),
         MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR);
     CHECK_PARAMETER_WITH_MESSAGE(env, editDataNapi != nullptr, "Failed to get MediaAssetEditDataNapi object");
 
@@ -1206,7 +1208,9 @@ napi_value MediaAssetChangeRequestNapi::JSSetCameraEditData(napi_env env, napi_c
         !changeRequest->Contains(AssetChangeOperation::ADD_FILTERS)) {
         changeRequest->RecordChangeOperation(AssetChangeOperation::ADD_FILTERS);
     }
-    RETURN_NAPI_UNDEFINED(env);
+    napi_value result = nullptr;
+    CHECK_ARGS_WITH_CODE(env, napi_get_undefined(env, &result), MEDIA_LIBRARY_INTERNAL_SYSTEM_ERROR);
+    return result;
 }
 
 napi_value MediaAssetChangeRequestNapi::JSSetFavorite(napi_env env, napi_callback_info info)
@@ -2299,21 +2303,38 @@ void HandleValueBucketForSetLocation(std::shared_ptr<FileAsset> fileAsset, DataS
     }
 }
 
-int32_t MediaAssetChangeRequestNapi::SubmitCache(
-    bool isCreation, bool isSetEffectMode, bool isWriteGpsAdvanced, const int32_t userId)
+DataShare::DataShareValuesBucket MediaAssetChangeRequestNapi::GetSubmitCacheValueBucket(
+    SubmitCacheConfig submitCacheConfig)
+{
+    DataShare::DataShareValuesBucket valuesBucket;
+    valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
+    valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
+    if (IsMovingPhoto()) {
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+    }
+    if (submitCacheConfig.isSetEffectMode) {
+        valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
+        valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
+    }
+    valuesBucket.Put(CONST_IS_CAMERA_EDIT_DATA, submitCacheConfig.isCameraEditData);
+    HandleValueBucketForSetLocation(fileAsset_, valuesBucket, submitCacheConfig.isWriteGpsAdvanced);
+    return valuesBucket;
+}
+
+int32_t MediaAssetChangeRequestNapi::SubmitCache(SubmitCacheConfig submitCacheConfig)
 {
     CHECK_COND_RET(fileAsset_ != nullptr, E_FAIL, "Failed to check fileAsset_");
     CHECK_COND_RET(
         !cacheFileName_.empty() || !cacheMovingPhotoVideoName_.empty(), E_FAIL, "Failed to check cache file");
 
-    NAPI_INFO_LOG("Check SubmitCache isWriteGpsAdvanced: %{public}d", isWriteGpsAdvanced);
+    NAPI_INFO_LOG("Check SubmitCache isWriteGpsAdvanced: %{public}d", submitCacheConfig.isWriteGpsAdvanced);
 
     int32_t ret{E_FAIL};
     SubmitCacheReqBody reqBody;
-    reqBody.isWriteGpsAdvanced = isWriteGpsAdvanced;
+    reqBody.isWriteGpsAdvanced = submitCacheConfig.isWriteGpsAdvanced;
     SubmitCacheRespBody respBody;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::ASSET_CHANGE_SUBMIT_CACHE);
-    if (isCreation) {
+    if (submitCacheConfig.isCreation) {
         bool isValid = false;
         string displayName = creationValuesBucket_.Get(CONST_MEDIA_DATA_DB_NAME, isValid);
         CHECK_COND_RET(
@@ -2322,29 +2343,20 @@ int32_t MediaAssetChangeRequestNapi::SubmitCache(
         if (IsMovingPhoto()) {
             creationValuesBucket_.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
         }
-        HandleValueBucketForSetLocation(fileAsset_, creationValuesBucket_, isWriteGpsAdvanced);
+        HandleValueBucketForSetLocation(fileAsset_, creationValuesBucket_, submitCacheConfig.isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(creationValuesBucket_);
-        ret = IPC::UserDefineIPCClient().SetUserId(userId).Call(businessCode, reqBody, respBody);
+        ret = IPC::UserDefineIPCClient().SetUserId(submitCacheConfig.userId).Call(businessCode, reqBody, respBody);
     } else {
-        DataShare::DataShareValuesBucket valuesBucket;
-        valuesBucket.Put(PhotoColumn::MEDIA_ID, fileAsset_->GetId());
-        valuesBucket.Put(CONST_CACHE_FILE_NAME, cacheFileName_);
+        DataShare::DataShareValuesBucket valuesBucket = GetSubmitCacheValueBucket(submitCacheConfig);
         ret = PutMediaAssetEditData(valuesBucket);
         CHECK_COND_RET(ret == E_OK, ret, "Failed to put editData");
-        if (IsMovingPhoto()) {
-            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
-        if (isSetEffectMode) {
-            valuesBucket.Put(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, fileAsset_->GetMovingPhotoEffectMode());
-            valuesBucket.Put(CONST_CACHE_MOVING_PHOTO_VIDEO_NAME, cacheMovingPhotoVideoName_);
-        }
-        HandleValueBucketForSetLocation(fileAsset_, valuesBucket, isWriteGpsAdvanced);
         reqBody.values = RdbDataShareAdapter::RdbUtils::ToValuesBucket(valuesBucket);
         std::unordered_map<std::string, std::string> headerMap{
             {MediaColumn::MEDIA_ID, to_string(fileAsset_->GetId())}, {URI_TYPE, TYPE_PHOTOS}};
-        ret = IPC::UserDefineIPCClient().SetUserId(userId).SetHeader(headerMap).Call(businessCode, reqBody, respBody);
+        ret = IPC::UserDefineIPCClient().SetUserId(submitCacheConfig.userId).SetHeader(headerMap).Call(businessCode,
+            reqBody, respBody);
     }
-    if (respBody.fileId > 0 && isCreation) {
+    if (respBody.fileId > 0 && submitCacheConfig.isCreation) {
         SetNewFileAsset(respBody.fileId, respBody.outUri);
     }
     cacheFileName_.clear();
@@ -2413,8 +2425,14 @@ static bool SubmitCacheExecute(MediaAssetChangeRequestAsyncContext& context)
             return false;
         }
     } else {
-        int32_t ret = changeRequest->SubmitCache(
-            isCreation, isSetEffectMode, isWriteGpsAdvanced, context.userId_);
+        SubmitCacheConfig submitCacheConfig;
+        submitCacheConfig.isCreation = isCreation;
+        submitCacheConfig.isSetEffectMode = isSetEffectMode;
+        submitCacheConfig.isWriteGpsAdvanced = isWriteGpsAdvanced;
+        submitCacheConfig.userId = context.userId_;
+        submitCacheConfig.isCameraEditData = context.isCameraEditData;
+
+        int32_t ret = changeRequest->SubmitCache(submitCacheConfig);
         if (ret < 0) {
             context.SaveError(ret);
             NAPI_ERR_LOG("Failed to write cache, ret: %{public}d", ret);

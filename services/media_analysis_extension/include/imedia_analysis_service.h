@@ -41,6 +41,7 @@ public:
         STOP_ACTIVE_ANALYSIS = 47,
         INVOKE_ANALYSIS_TOOL = 50,
         CANCEL_ANALYSIS_TOOL = 51,
+        ARKDATA_SEARCH_FULL = 52,
     };
 public:
     DECLARE_INTERFACE_DESCRIPTOR(u"Multimedia.MediaAnalyseService.API");

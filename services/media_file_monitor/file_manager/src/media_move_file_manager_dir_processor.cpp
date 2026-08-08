@@ -21,7 +21,10 @@
 #include "album_accurate_refresh.h"
 #include "asset_accurate_refresh.h"
 #include "dfx_utils.h"
+#include "dir_scan_anomaly_helper.h"
 #include "file_const.h"
+#include "media_fileinterwork_column.h"
+#include "media_fileinterwork_util.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "folder_scanner.h"
 #endif
@@ -43,6 +46,9 @@ using namespace OHOS::Media::AccurateRefresh;
 
 constexpr int32_t INVALID_ID = -1;
 constexpr int32_t INVALID_COUNT = 0;
+
+// 存量核查任务状态
+constexpr int32_t TASK_STATUS_COMPLETE = 3;
 
 inline void NotifyAssetChange(int32_t fileId, NotifyType notifyType)
 {
@@ -364,6 +370,37 @@ void NotifyMoveDirResult(const MoveDirData &moveDirData)
     }
 }
 
+// 增量入库过程中遇到重命名，检查是否曾记录过异常目录，决策补偿方式
+static void HandleRenameCompensation(const std::string &oldPath, const std::string &newPath,
+    const std::shared_ptr<MediaLibraryRdbStore> &rdbStore)
+{
+    // 检查是否存在异常数据目录（精确匹配 + 前缀匹配，一次解析）
+    CHECK_AND_RETURN(DirScanAnomalyHelper::MatchesAnomalyDir(oldPath));
+
+    int32_t taskStatus = MediaFileInterworkUtil::GetScannerTaskStatus();
+    if (taskStatus != TASK_STATUS_COMPLETE) {
+        // 存量核查执行中：将重命名信息写入存量表格 tab_file_opt
+        MEDIA_INFO_LOG("Stock check running, feed tab_file_opt: %{public}s", DfxUtils::GetSafePath(newPath).c_str());
+        if (rdbStore != nullptr) {
+            // 新路径写入待处理，Phase 2 读取入库
+            std::string insertSql = "INSERT INTO " + std::string(MediaFileInterworkColumn::OPT_TABLE_NAME) +
+                " (" + std::string(MediaFileInterworkColumn::AFTER_PATH_COLUMN) + ", " +
+                std::string(MediaFileInterworkColumn::OPT_COLUMN) + ", " +
+                std::string(MediaFileInterworkColumn::OPT_STATUS_COLUMN) + ") VALUES (?, 0, 0)";
+            rdbStore->ExecuteSql(insertSql, {newPath});
+        }
+    } else {
+        // 存量核查未执行：直接扫描目录导入
+        MEDIA_INFO_LOG("Stock check not running, compensate scan: %{public}s", DfxUtils::GetSafePath(newPath).c_str());
+        FolderScanner folderScanner(newPath);
+        int32_t ret = folderScanner.Run();
+        CHECK_AND_PRINT_LOG(ret == E_OK, "Compensate scan failed: %{public}s", DfxUtils::GetSafePath(newPath).c_str());
+        CHECK_AND_EXECUTE(MediaFileUtils::IsDirExists(newPath), DirScanAnomalyHelper::AddAnomalyDir(newPath));
+    }
+
+    DirScanAnomalyHelper::RemoveAnomalyDir(oldPath);
+}
+
 bool MoveFileManagerDir(const std::string &oldPath, const std::string &newPath,
     shared_ptr<MediaLibraryRdbStore> &rdbStore)
 {
@@ -396,6 +433,8 @@ bool MoveFileManagerDir(const std::string &oldPath, const std::string &newPath,
     
     // 智慧相册通知
     NotifyMoveDirResult(moveDirData);
+
+    HandleRenameCompensation(oldPath, newPath, rdbStore);
 
     return true;
 }

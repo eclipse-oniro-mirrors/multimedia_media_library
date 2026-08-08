@@ -131,6 +131,8 @@ public:
     EXPORT static void StoreThumbnailSizeAndTime(const std::string& photoId, const std::string& photoPath);
     EXPORT static void StoreThumbnailAndEditSize(const std::string& photoId, const std::string& photoPath,
         EditAndAttachmentUpdateType updateType = EditAndAttachmentUpdateType::EDIT_AND_ATTACHMENT_SIZE);
+    EXPORT static void StorePhotoExtWithLcdStatus(const std::string& photoId, const std::string& photoPath,
+        int32_t lcdUsingStatus);
     EXPORT static bool HasDroppedThumbnailSize(const std::string& photoId);
     EXPORT static bool BatchDropThumbnailSize(const std::vector<std::string>& photoIds);
     EXPORT static int32_t ScanFileWithoutAlbumUpdate(MediaLibraryCommand &cmd);
@@ -350,6 +352,9 @@ private:
     static int32_t RevertFiltersWithEditData(const std::shared_ptr<FileAsset> &fileAsset,
         const std::string &path, const std::string &sourcePath, const std::string &editDataCameraPath);
     static int32_t RevertLivePhotoAsset(const string &realPath, const string &imagePath,
+        const string &sourceImagePath, const string &sourceVideoPath);
+    static int32_t HandleRevertLivePhotoAsset(const shared_ptr<FileAsset>& fileAsset,
+        const string &realPath, const string &imagePath,
         const string &sourceImagePath, const string &sourceVideoPath);
     static bool AddFiltersForPipeline(MediaLibraryCommand& cmd);
     static bool SafeAccumulateSize(int64_t add, int64_t &acc);

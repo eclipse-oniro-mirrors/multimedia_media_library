@@ -91,6 +91,14 @@ private:
     int64_t readPos_;
 };
 
+struct SubmitCacheConfig {
+    bool isCreation;
+    bool isSetEffectMode;
+    bool isWriteGpsAdvanced;
+    int32_t userId {-1};
+    bool isCameraEditData {false};
+};
+
 class MediaAssetChangeRequestNapi : public MediaChangeRequestNapi {
 public:
     EXPORT MediaAssetChangeRequestNapi() = default;
@@ -118,7 +126,8 @@ public:
     uint32_t FetchAddCacheFileId();
     void SetCacheFileName(std::string& fileName);
     void SetCacheMovingPhotoVideoName(std::string& fileName);
-    int32_t SubmitCache(bool isCreation, bool isSetEffectMode, bool isWriteGpsAdvanced, const int32_t userId = -1);
+    DataShare::DataShareValuesBucket GetSubmitCacheValueBucket(SubmitCacheConfig submitCacheConfig);
+    int32_t SubmitCache(SubmitCacheConfig submitCacheConfig);
     int32_t SubmitCacheForPicker(bool isCreation, const int32_t userId = -1);
     int32_t CopyToMediaLibrary(bool isCreation, AddResourceMode mode);
     int32_t CreateAssetBySecurityComponent(std::string& assetUri);

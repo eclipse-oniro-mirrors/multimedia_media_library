@@ -67,6 +67,7 @@ ohos_unittest("media_lake_load_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/global_scanner.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/file_manager_scan_rule_config.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/lake_scan_rule_config.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_file_scan/common/src/dir_scan_anomaly_helper.cpp",
   ]
   media_file_monitor_source = [
     "${MEDIALIB_NEW_SERVICES_PATH}/media_file_monitor/common/src/file_monitor_wrapper.cpp",
@@ -87,6 +88,7 @@ ohos_unittest("media_lake_load_test") {
 
   sources = [
     "./src/consistency_check_manager_test.cpp",
+    "./src/dir_scan_anomaly_helper_test.cpp",
     "./src/folder_scanner_test.cpp",
     "./src/global_scanner_test.cpp",
     "./src/lake_file_operations_test.cpp",

@@ -25,6 +25,7 @@
 #include "medialibrary_db_const.h"
 #include "userfile_manager_types.h"
 #include "result_set_utils.h"
+#include "parameters.h"
 
 using namespace OHOS::FileManagement::CloudSync;
 
@@ -53,7 +54,7 @@ std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::sh
         ", highlightSize = %{public}" PRId64, totalEditdataSizeRusult.totalEditdataSize,
         totalEditdataSizeRusult.editdataCount, GetHighlightSizeFromPreferences());
     int64_t totalExtSize = GetCacheSize() + GetBackUpSize() + GetMetaSize() + GetAudioSize() + GetCameraSize() +
-        GetPictureSize() + GetMediaVideoSize() + GetCustomSize() + GetDataSize() + GetHighlightSizeFromPreferences()
+        GetPictureSize() + GetMediaVideoSize() + GetCustomSize() + GetHighlightSizeFromPreferences()
         + totalThumbnailSizeResult.totalThumbnailSize + totalEditdataSizeRusult.totalEditdataSize + dfsSize;
     int64_t totalImageSize = 0;
     int64_t totalVideoSize = 0;
@@ -75,16 +76,6 @@ std::shared_ptr<NativeRdb::ResultSet> PhotoStorageOperation::FindStorage(std::sh
     std::vector<NativeRdb::ValueObject> params = {totalExtSize, totalImageSize, totalVideoSize};
     std::string sqlInfo = this->SQL_DB_STORAGE_INFO_QUERY;
     return rdbStore->QuerySql(sqlInfo, params);
-}
-
-int64_t PhotoStorageOperation::GetDataSize()
-{
-    MediaLibraryTracer tracer;
-    tracer.Start("PhotoStorageOperation::GetDataSize");
-    size_t totalSize = 0;
-    MediaFileUtils::StatDirSize(MEDIA_DATA_DIR, totalSize);
-    MEDIA_INFO_LOG("Media_Storage: DataSize = %{public}" PRId64, static_cast<int64_t>(totalSize));
-    return static_cast<int64_t>(totalSize);
 }
 
 int64_t PhotoStorageOperation::GetCustomSize()

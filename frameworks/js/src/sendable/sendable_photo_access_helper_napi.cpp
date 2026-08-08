@@ -617,6 +617,7 @@ static void PhotoAccessGetAssetsExecute(napi_env env, void *data)
         return;
     }
     context->fetchFileResult = make_unique<FetchResult<FileAsset>>(move(resultSet));
+    context->fetchFileResult->uriMap = context->uriMap;
     context->fetchFileResult->SetResultNapiType(ResultNapiType::TYPE_PHOTOACCESS_HELPER);
     context->fetchFileResult->SetUserId(GetUserIdFromSendableContext(context));
 }

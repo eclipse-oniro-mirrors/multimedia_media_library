@@ -18,6 +18,7 @@
 
 #include "photo_accesshelper_impl.h"
 
+#include <cstdint>
 #include <fcntl.h>
 #include <functional>
 #include <sys/sendfile.h>
@@ -100,6 +101,8 @@ const std::string CONFIRM_BOX_BUNDLE_NAME = "bundleName";
 const std::string CONFIRM_BOX_APP_NAME = "appName";
 const std::string CONFIRM_BOX_APP_ID = "appId";
 
+static const uint32_t MAX_PARCEL_SIZE = 200 * 1024;
+
 void ChangeListener::OnChange(FfiMediaChangeListener &listener)
 {
     UvChangeMsg *msg = new (std::nothrow) UvChangeMsg(listener.callbackRef, listener.changeInfo, listener.strUri);
@@ -114,6 +117,16 @@ void ChangeListener::OnChange(FfiMediaChangeListener &listener)
             return;
         }
         if (msg->changeInfo_.size_ > 0) {
+            if (msg->changeInfo_.size_ > MAX_PARCEL_SIZE) {
+                LOGE("The size of the parcel exceeds the limit: %{public}u", msg->changeInfo_.size_);
+                delete msg;
+                return;
+            }
+            if (msg->changeInfo_.data_ == nullptr) {
+                LOGE("changeInfo.data_ is null while size_ > 0");
+                delete msg;
+                return;
+            }
             msg->data_ = static_cast<uint8_t *>(malloc(msg->changeInfo_.size_));
             if (msg->data_ == nullptr) {
                 LOGE("new msg->data failed");
@@ -123,6 +136,10 @@ void ChangeListener::OnChange(FfiMediaChangeListener &listener)
             int copyRet = memcpy_s(msg->data_, msg->changeInfo_.size_, msg->changeInfo_.data_, msg->changeInfo_.size_);
             if (copyRet != 0) {
                 LOGE("Parcel data copy failed, err = %{public}d", copyRet);
+                free(msg->data_);
+                msg->data_ = nullptr;
+                delete msg;
+                return;
             }
         }
     }
@@ -141,7 +158,17 @@ static void SetUrisArray(const std::list<Uri> listValue, ChangeData &changeData)
     }
     int i = 0;
     for (auto uri : listValue) {
-        uris.head[i++] = MallocCString(uri.ToString());
+        char *tmp = MallocCString(uri.ToString());
+        if (tmp == nullptr) {
+            LOGE("SetUrisArray MallocCString failed at index %{public}d", i);
+            for (int j = 0; j < i; j++) {
+                free(uris.head[j]);
+            }
+            free(uris.head);
+            uris.head = nullptr;
+            return;
+        }
+        uris.head[i++] = tmp;
     }
     uris.size = static_cast<int64_t>(listValue.size());
     changeData.uris = uris;
@@ -211,6 +238,18 @@ void ChangeListener::UvQueueWork(UvChangeMsg *msg)
         .extraUris = { .head = nullptr, .size = 0}
     };
     SolveOnChange(msg, changeData);
+    if (msg->callbackRef == nullptr) {
+        LOGE("callbackRef is null, skip callback invoke");
+        for (auto i = 0; i < changeData.uris.size; i++) {
+            free(changeData.uris.head[i]);
+        }
+        for (auto i = 0; i < changeData.extraUris.size; i++) {
+            free(changeData.extraUris.head[i]);
+        }
+        free(changeData.uris.head);
+        free(changeData.extraUris.head);
+        return;
+    }
     msg->callbackRef(changeData);
     for (auto i = 0; i< changeData.uris.size; i++) {
         free(changeData.uris.head[i]);
@@ -993,6 +1032,40 @@ static bool ParseArgsStartPhotoPicker(int64_t id, PhotoSelectOptions &option,
     return true;
 }
 
+static void FreeStringArray(char** head, size_t count)
+{
+    for (size_t j = 0; j < count; j++) {
+        free(head[j]);
+    }
+    free(head);
+}
+
+static void FillPhotoUris(PhotoSelectResult &result, shared_ptr<PickerCallBack> &pickerCallBack, int32_t &errCode)
+{
+    size_t uriSize = pickerCallBack->uris.size();
+    if (uriSize == 0 || uriSize > SIZE_MAX / sizeof(char*)) {
+        return;
+    }
+    char** head = static_cast<char**>(malloc(sizeof(char*) * uriSize));
+    if (head == nullptr) {
+        LOGE("malloc photoUris failed.");
+        errCode = ERR_MEM_ALLOCATION;
+        return;
+    }
+    size_t i = 0;
+    for (; i < uriSize; i++) {
+        head[i] = MallocCString(pickerCallBack->uris[i]);
+        if (head[i] == nullptr) {
+            LOGE("MallocCString failed at index %{public}zu", i);
+            FreeStringArray(head, i);
+            errCode = ERR_MEM_ALLOCATION;
+            return;
+        }
+    }
+    result.photoUris.head = head;
+    result.photoUris.size = static_cast<int64_t>(uriSize);
+}
+
 PhotoSelectResult PhotoAccessHelperImpl::StartPhotoPicker(int64_t id, PhotoSelectOptions &option, int32_t &errCode)
 {
     PhotoSelectResult photoSelectResult = {
@@ -1000,25 +1073,16 @@ PhotoSelectResult PhotoAccessHelperImpl::StartPhotoPicker(int64_t id, PhotoSelec
         .isOriginalPhoto = false
     };
     shared_ptr<PickerCallBack> pickerCallBack = make_shared<PickerCallBack>();
-    ParseArgsStartPhotoPicker(id, option, pickerCallBack);
+    if (!ParseArgsStartPhotoPicker(id, option, pickerCallBack)) {
+        LOGE("ParseArgsStartPhotoPicker failed");
+        errCode = JS_INNER_FAIL;
+        return photoSelectResult;
+    }
     while (!pickerCallBack->ready) {
         this_thread::sleep_for(chrono::milliseconds(SLEEP_TIME));
     }
     errCode = pickerCallBack->resultCode;
-    size_t uriSize = pickerCallBack->uris.size();
-    if (uriSize > 0) {
-        char** head = static_cast<char **>(malloc(sizeof(char *) * uriSize));
-        if (head == nullptr) {
-            LOGE("malloc photoUris failed.");
-            errCode = ERR_MEM_ALLOCATION;
-            return photoSelectResult;
-        }
-        for (size_t i = 0; i < uriSize; i++) {
-            head[i] = MallocCString(pickerCallBack->uris[i]);
-        }
-        photoSelectResult.photoUris.head = head;
-        photoSelectResult.photoUris.size = static_cast<int64_t>(uriSize);
-    }
+    FillPhotoUris(photoSelectResult, pickerCallBack, errCode);
     photoSelectResult.isOriginalPhoto = pickerCallBack->isOrigin;
     return photoSelectResult;
 }
@@ -1083,20 +1147,7 @@ PhotoSelectResult PhotoAccessHelperImpl::StartPhotoPickerV2(
         this_thread::sleep_for(chrono::milliseconds(SLEEP_TIME));
     }
     errCode = pickerCallBack->resultCode;
-    size_t uriSize = pickerCallBack->uris.size();
-    if (uriSize > 0) {
-        char** head = static_cast<char**>(malloc(sizeof(char*) * uriSize));
-        if (head == nullptr) {
-            LOGE("malloc photoUris failed.");
-            errCode = ERR_MEM_ALLOCATION;
-            return photoSelectResult;
-        }
-        for (size_t i = 0; i < uriSize; i++) {
-            head[i] = MallocCString(pickerCallBack->uris[i]);
-        }
-        photoSelectResult.photoUris.head = head;
-        photoSelectResult.photoUris.size = static_cast<int64_t>(uriSize);
-    }
+    FillPhotoUris(photoSelectResult, pickerCallBack, errCode);
     photoSelectResult.isOriginalPhoto = pickerCallBack->isOrigin;
     return photoSelectResult;
 }

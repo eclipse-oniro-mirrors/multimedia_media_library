@@ -53,7 +53,7 @@ interface MimeTypeFilter {
   filterType: number
 }
 
-interface BrowserProps {
+interface PhotoStateProps {
   isPhotoBrowserShow: boolean;
   isMovingPhotoBadgeShownValid: boolean;
 }
@@ -92,17 +92,20 @@ export struct PhotoPickerComponent {
   private proxy: UIExtensionProxy | undefined;
   private isPhotoBrowserShow: boolean = false;
   private isMovingPhotoBadgeShownValid: boolean = false;
-  private browserPropsInitialized: boolean = this.setBrowserProps();
 
-  private setBrowserProps(): boolean {
-    this.pickerController.browserPropsRegistry = (): BrowserProps => {
+  private setPhotoStateProps(): void {
+    this.pickerController.getMovingPhotoState = (): PhotoStateProps => {
       return {
         isPhotoBrowserShow: this.isPhotoBrowserShow,
         isMovingPhotoBadgeShownValid: this.isMovingPhotoBadgeShownValid
       };
     };
-    return true;
   }
+
+  aboutToAppear(): void {
+    this.setPhotoStateProps();
+  }
+
   pickerController.onEnterPhotoBrowser = () => {
     return false;
   }
@@ -919,7 +922,7 @@ export class PickerController {
   saveCallbackMap: Map<number, Object> = new Map<number, Object>();
   createCallbackMap: Map<number, Object> = new Map<number, Object>();
   saveCallbackPromises: Map<number, Object> = new Map<number, Object>();
-  browserPropsRegistry?: () => BrowserProps;
+  getMovingPhotoState?: () => PhotoStateProps;
   completedPromises: Map<number, Object> = new Map<number, Object>();
 
   setData(type: DataType, data: Object) {
@@ -993,15 +996,11 @@ export class PickerController {
           throw new BusinessError(PARAMETERS_VALIDATE_FAILED_MESSAGE, PARAMETERS_VALIDATE_FAILED_CODE);
       }
 
-      const browserProps: BrowserProps = this.browserPropsRegistry ? this.browserPropsRegistry() : {
-        isPhotoBrowserShow: false,
-        isMovingPhotoBadgeShownValid: false
-      };
-
-      console.info('SET_MOVINGPHOTO_STATE, browserProps.isPhotoBrowserShow : ' + JSON.stringify(browserProps.isPhotoBrowserShow) +
-        ', browserProps.isMovingPhotoBadgeShownValid=' + browserProps.isMovingPhotoBadgeShownValid);
-      if (!browserProps.isPhotoBrowserShow || browserProps.isMovingPhotoBadgeShownValid) {
-          throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
+      const props: PhotoStateProps = this.getMovingPhotoState();
+      console.info('SET_MOVINGPHOTO_STATE, props.isPhotoBrowserShow : ' + JSON.stringify(props.isPhotoBrowserShow) +
+        ', props.isMovingPhotoBadgeShownValid=' + props.isMovingPhotoBadgeShownValid);
+      if (!props.isPhotoBrowserShow || props.isMovingPhotoBadgeShownValid) {
+        throw new BusinessError(ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, ILLEGAL_SCENARIO_CALL_ERROR_CODE);
       }
       if (e !== undefined) {
           this.data = new Map([['SET_MOVINGPHOTO_STATE', e]]);

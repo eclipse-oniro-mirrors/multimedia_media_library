@@ -26,8 +26,7 @@ namespace OHOS::Media {
 class ReverseCloneResourceExecutor {
 public:
     int32_t Execute(const ReverseCloneResourcePlan &plan,
-        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-        ReverseRestoreReportInfo &reportInfo) const;
+        const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const;
 };
 } // namespace OHOS::Media
 

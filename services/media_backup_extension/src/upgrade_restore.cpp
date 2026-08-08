@@ -980,8 +980,8 @@ bool UpgradeRestore::ParseResultSetFromGallery(const std::shared_ptr<NativeRdb::
 {
     info.localMediaId = GetInt32Val(GALLERY_LOCAL_MEDIA_ID, resultSet);
     info.albumId = GetStringVal(GALLERY_ALBUM_ID, resultSet);
-    info.hidden = (info.localMediaId == GALLERY_HIDDEN_ID||
-        (info.localMediaId == -1 && info.albumId == DEFAULT_HIDE_ALBUM_CLOUDID)) ? 1 : 0;
+    info.hidden = (info.localMediaId == GALLERY_HIDDEN_ID ||
+        (info.localMediaId == -1 && info.albumId == CloudSync::DEFAULT_HIDE_ALBUM_CLOUDID)) ? 1 : 0;
     info.recycledTime = GetInt64Val(GALLERY_RECYCLED_TIME, resultSet);
     info.showDateToken = GetInt64Val(GALLERY_SHOW_DATE_TOKEN, resultSet);
     // fetch relative_bucket_id, recycleFlag, is_hw_burst, hash field to generate burst_key

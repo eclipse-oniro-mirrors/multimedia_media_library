@@ -593,8 +593,7 @@ void ReverseCloneResourceInheritHelper::ExecutePendingKvStoreTasks(const std::st
 
 std::unordered_set<int32_t> ReverseCloneResourceInheritHelper::ExecuteResourcePlans(
     const std::unordered_map<int32_t, ReverseCloneResourcePlan> &resourcePlans,
-    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-    ReverseRestoreReportInfo &reportInfo) const
+    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const
 {
     int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
     std::unordered_set<int32_t> failedResourceFileIds;
@@ -605,7 +604,7 @@ std::unordered_set<int32_t> ReverseCloneResourceInheritHelper::ExecuteResourcePl
     for (const auto &[fileId, plan] : resourcePlans) {
         bool isActionable = plan.decision == ReverseCloneResourceDecision::INHERIT && plan.HasResourceAction();
         actionableCount += isActionable ? 1 : 0;
-        int32_t ret = resourceInheritService.ExecuteAfterInsert(plan, targetRdb, reportInfo);
+        int32_t ret = resourceInheritService.ExecuteAfterInsert(plan, targetRdb);
         if (ret != E_OK) {
             failedCount++;
             if (fileId > 0) {
@@ -764,16 +763,14 @@ int32_t ReverseCloneResourceInheritHelper::RestoreProtectedAssetReferences(
 }
 
 void ReverseCloneResourceInheritHelper::FinalizeBatch(const ReverseClonePhotoBatchContext &batch,
-    std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
-    ReverseRestoreReportInfo &reportInfo)
+    std::shared_ptr<NativeRdb::RdbStore> &targetRdb)
 {
     MEDIA_INFO_LOG("RevRes Reverse absorb finalize batch: valid=%{public}zu, resourcePlans=%{public}zu, "
         "duplicatePlans=%{public}zu, kvTasks=%{public}zu, staleTargets=%{public}zu",
         batch.validFileInfos.size(), batch.resourcePlans.size(), batch.duplicatePlans.size(),
         batch.kvStoreTasks.size(), batch.staleTargetResources.size());
     std::unordered_set<int32_t> failedResourceFileIds = ExecuteStaleTargetFallback(batch.staleTargetResources);
-    std::unordered_set<int32_t> planFailedResourceFileIds = ExecuteResourcePlans(batch.resourcePlans,
-        targetRdb, reportInfo);
+    std::unordered_set<int32_t> planFailedResourceFileIds = ExecuteResourcePlans(batch.resourcePlans, targetRdb);
     failedResourceFileIds.insert(planFailedResourceFileIds.begin(), planFailedResourceFileIds.end());
     AppendKvStoreTasks(batch.kvStoreTasks);
     UpdateAbsorbedPhotosVisible(targetRdb, batch.validFileInfos, failedResourceFileIds);

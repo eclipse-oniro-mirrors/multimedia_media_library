@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <charconv>
 #include <cstdint>
 #define MLOG_TAG "FileUtils"
 
@@ -88,6 +89,16 @@ const std::string CLOUD_FILE_PATH = "/storage/cloud/files";
 const std::string TMP_SUFFIX = "tmp";
 const std::vector<std::string> SET_LISTEN_DIR = {
     PHOTO_DIR, AUDIO_DIR, THUMBS_DIR, EDIT_DATA_DIR, THUMBS_PHOTO_DIR, EDIT_DATA_PHOTO_DIR
+};
+
+// 受支持的图片和视频文件扩展名
+const std::vector<std::string> SUPPORTED_MEDIA_EXTENSIONS = {
+    // photo
+    ".arw", ".avif", ".bm", ".bmp", ".cr2", ".crw", ".cur", ".dng", ".gif", ".heic", ".heifs",
+    ".heif", ".hif", ".ico", ".jpe", ".jpeg", ".jpg", ".nef", ".nrw", ".pef", ".png", ".raf",
+    ".rw2", ".srw", ".svg", ".tif", ".tiff", ".wbmp", ".webp",
+    // video
+    ".3g2", ".3gp", ".avi", ".flv", ".m4v", ".mkv", ".mp4", ".rm", ".rmvb", ".wmv"
 };
 const std::string KVSTORE_FILE_ID_TEMPLATE = "0000000000";
 const std::string KVSTORE_DATE_KEY_TEMPLATE = "0000000000000";
@@ -878,7 +889,8 @@ static std::unique_ptr<Picture> DecodeAsset(int32_t fd, int32_t width, int32_t h
     return picturePtr;
 }
 
-static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType, int32_t dstFd)
+static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::string &mimeType,
+    int32_t dstFd, int32_t quality)
 {
     CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "picturePtr is nullptr");
     MediaLibraryTracer tracer;
@@ -889,6 +901,8 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
     packOption.format = mimeType;
     packOption.desiredDynamicRange = EncodeDynamicRange::AUTO;
     packOption.needsPackProperties = true;
+    packOption.quality = quality;
+    MEDIA_DEBUG_LOG("quality : %{public}d", quality);
 
     int32_t ret = imagePacker.StartPacking(dstFd, packOption);
     CHECK_AND_RETURN_RET_LOG(ret == E_SUCCESS, false, "StartPacking failed, ret: %{public}d", ret);
@@ -900,13 +914,13 @@ static bool EncodeSaveAsset(std::unique_ptr<Picture> picturePtr, const std::stri
 }
 
 static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::string &extension,
-    int32_t width, int32_t height)
+    TmpCompatibleDupInfo info)
 {
-    std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd, width, height);
+    std::unique_ptr<Picture> picturePtr = DecodeAsset(srcFd, info.width, info.height);
     CHECK_AND_RETURN_RET_LOG(picturePtr != nullptr, false, "DecodeAsset failed");
 
     std::string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extension, MediaMapConstUtils::GetMimeTypeMap());
-    if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd)) {
+    if (!EncodeSaveAsset(std::move(picturePtr), mimeType, dstFd, info.quality)) {
         MEDIA_ERR_LOG("EncodeAsset mimeType: %{public}s failed", mimeType.c_str());
         return false;
     }
@@ -915,7 +929,7 @@ static bool DecodeEncodeSaveAsset(int32_t srcFd, int32_t dstFd, const std::strin
 }
 
 bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::string &dstFile,
-    const std::string &extension, int32_t width, int32_t height)
+    const std::string &extension, TmpCompatibleDupInfo info)
 {
     MEDIA_DEBUG_LOG("ConvertFormatCopy srcFile: %{private}s, dstFile: %{private}s, extension: %{private}s",
         srcFile.c_str(), dstFile.c_str(), extension.c_str());
@@ -948,7 +962,7 @@ bool MediaFileUtils::ConvertFormatCopy(const std::string &srcFile, const std::st
         return false;
     }
 
-    if (!DecodeEncodeSaveAsset(srcFd.Get(), dstFd.Get(), extension, width, height)) {
+    if (!DecodeEncodeSaveAsset(srcFd.Get(), dstFd.Get(), extension, info)) {
         MEDIA_ERR_LOG("DecodeEncodeSaveAsset failed");
         DeleteFile(normalizedDstPath);
         return false;
@@ -1782,6 +1796,17 @@ MediaType MediaFileUtils::GetMediaTypeNotSupported(const string &filePath)
     string extention = GetExtensionFromPath(filePath);
     string mimeType = MimeTypeUtils::GetMimeTypeFromExtension(extention, MEDIA_EXTRA_MIME_TYPE_MAP);
     return MimeTypeUtils::GetMediaTypeFromMimeType(mimeType);
+}
+
+bool MediaFileUtils::IsSupportedMediaExtension(const std::string &displayName)
+{
+    size_t pos = displayName.find_last_of('.');
+    CHECK_AND_RETURN_RET_LOG(pos != std::string::npos, false, "Invalid file path: %{public}s",
+        displayName.c_str());
+    std::string extension = displayName.substr(pos);
+    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
+    return std::find(SUPPORTED_MEDIA_EXTENSIONS.begin(), SUPPORTED_MEDIA_EXTENSIONS.end(),
+        extension) != SUPPORTED_MEDIA_EXTENSIONS.end();
 }
 
 string MediaFileUtils::SplitByChar(const string &str, const char split)
@@ -2712,10 +2737,15 @@ bool MediaFileUtils::GenerateKvStoreKey(const std::string &fileId, const std::st
     return true;
 }
 
+// 需要兼容1.000, -2147483648等场景， 目前实现为ConvertToInt不完全消费场景.
 bool MediaFileUtils::IsValidInteger(const std::string &value)
 {
     int convetValue = 0;
-    return MediaStringUtils::ConvertToInt(value, convetValue);
+    if (value.empty()) {
+        return false;
+    }
+    auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), convetValue);
+    return ec == std::errc{};
 }
 
 static int64_t GetRoundSize(int64_t size)

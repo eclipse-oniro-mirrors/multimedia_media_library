@@ -291,9 +291,13 @@ static int32_t RequestContentToArrayBuffer(int32_t resourceType, string movingPh
         return E_HAS_FS_ERROR;
     }
     size_t fileSize = static_cast<size_t>(fileLen);
+    if (fileSize == 0) {
+        LOGE("File size is 0, moving photo uri is %{private}s", movingPhotoUri.c_str());
+        return E_HAS_FS_ERROR;
+    }
     void* arrayBufferData = malloc(fileSize);
     if (!arrayBufferData) {
-        LOGE("Failed to malloc array buffer data, moving photo uri is %{public}s, resource type is %{public}d",
+        LOGE("Failed to malloc array buffer data, moving photo uri is %{private}s, resource type is %{public}d",
             movingPhotoUri.c_str(), resourceType);
         return E_HAS_FS_ERROR;
     }

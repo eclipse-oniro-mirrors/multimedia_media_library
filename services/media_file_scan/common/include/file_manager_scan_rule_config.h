@@ -21,6 +21,7 @@
 
 namespace OHOS::Media {
 constexpr std::string_view FILE_MANAGER_ROOT_PATH = "/storage/media/local/files/Docs";
+constexpr std::string_view FILE_MANAGER_SCAN_PATH = "/storage/media/local/files/Docs/Download";
 const ScanRuleConfig &GetFileManagerScanRuleConfig();
 } // namespace OHOS::Media
 

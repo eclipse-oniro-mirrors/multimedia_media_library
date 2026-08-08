@@ -85,6 +85,14 @@ EXPORT const std::unordered_set<int32_t> PORTRAIT_PAGE_MODE = {
     PortraitPages::UNFAVORITE_PAGE
 };
 
+struct TmpCompatibleDupInfo {
+    int32_t width{0};
+    int32_t height{0};
+    int32_t quality{90};
+ 
+    TmpCompatibleDupInfo() = default;
+};
+
 /**
  * @brief Utility class for file operations
  *
@@ -150,6 +158,8 @@ public:
     EXPORT static std::string UpdatePath(const std::string &path, const std::string &uri);
     EXPORT static MediaType GetMediaType(const std::string &filePath);
     EXPORT static MediaType GetMediaTypeNotSupported(const std::string &filePath);
+    // 判断文件名后缀是否属于支持编解码的图片/视频扩展名集合
+    EXPORT static bool IsSupportedMediaExtension(const std::string &displayName);
     EXPORT static std::string SplitByChar(const std::string &str, const char split);
     EXPORT static std::string GetExtensionFromPath(const std::string &path);
     EXPORT static int32_t OpenFile(const std::string &path, const std::string &mode,
@@ -235,7 +245,7 @@ public:
     EXPORT static std::string GetReplacedPathByPrefix(const std::string srcPrefix, const std::string dstPrefix,
         const std::string &path);
     EXPORT static bool ConvertFormatCopy(const std::string &srcFile, const std::string &dstFile,
-        const std::string &extension, int32_t width = 0, int32_t height = 0);
+        const std::string &extension, TmpCompatibleDupInfo info = TmpCompatibleDupInfo());
     EXPORT static bool ConvertFormatExtraDataDirectory(const std::string &srcDir, const std::string &dstDir,
         const std::string &extension);
     EXPORT static int64_t GetFileModificationTime(const std::string &path);

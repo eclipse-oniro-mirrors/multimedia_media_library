@@ -60,18 +60,6 @@ constexpr int32_t MAX_TEMPERATURE = 37;
 constexpr int32_t OPT_INIT_STATUS = 0;
 constexpr int32_t OPT_FINISH_STATUS = 1;
 
-// 定义支持的图片和视频文件扩展名
-const std::vector<std::string> SUPPORTED_MEDIA_EXTENSIONS  = {
-    // photo
-    ".arw", ".avif", ".bm", ".bmp", ".cr2", ".cur", ".dng", ".gif", ".heic", ".heif", ".heics",
-    ".hif", ".ico", ".jpe", ".jpeg", ".jpg", ".mpo", ".nrw", ".pef", ".png", ".psd", ".raw", ".rw2",
-    ".srw", ".svg", ".tif", ".webp", ".raf", ".wbmp", ".m4u", ".m4v", ".mov", ".m", ".raf", ".wbmp",
-    // video
-    ".m4u", ".m4v", ".mov", ".mp4", ".mpe", ".mpeg", ".mpg4", ".mkv", ".webm", ".3gpp", ".asf",
-    ".asx", ".avi", ".flv", ".3g2", ".wmv", ".rm", ".3gp", ".mpg", ".rv", ".ts", ".divx", ".f4v",
-    ".3gpp2", "rmvb"
-};
-
 // 跳过的文件目录
 const std::vector<std::string> SKIP_SCAN_DIR = {
     MediaFileInterworkColumn::FILE_ROOT_DIR + MediaFileInterworkColumn::HO_DATA_DIR,
@@ -188,12 +176,7 @@ int32_t MediaFileInterworkScanner::ExecutePhaseTwo()
 
 bool MediaFileInterworkScanner::IsImageOrVideoFile(const std::string &filePath)
 {
-    size_t pos = filePath.find_last_of('.');
-    CHECK_AND_RETURN_RET_LOG(pos != std::string::npos, false, "Invalid file path: %{public}s", filePath.c_str());
-    std::string extension = filePath.substr(pos);
-    std::transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
-    return std::find(SUPPORTED_MEDIA_EXTENSIONS.begin(), SUPPORTED_MEDIA_EXTENSIONS.end(),
-        extension) != SUPPORTED_MEDIA_EXTENSIONS.end();
+    return MediaFileUtils::IsSupportedMediaExtension(filePath);
 }
 
 bool MediaFileInterworkScanner::IsValidFileName(const std::string& fileName)

@@ -17,6 +17,7 @@
 #include "nlohmann/json.hpp"
 
 #include "dfx_utils.h"
+#include "dir_scan_anomaly_helper.h"
 #include "file_const.h"
 #include "media_file_utils.h"
 #include "media_log.h"
@@ -623,6 +624,9 @@ bool MediaFileMonitorRdbUtils::DeleteFileManagerDirByFileManagerPath(const std::
 {
     MediaLibraryTracer tracer;
     tracer.Start("MediaFileMonitorRdbUtils::DeleteFileManagerDirByFileManagerPath");
+    // 清理可能残留的扫描异常记录
+    DirScanAnomalyHelper::RemoveAnomalyDir(path);
+
     // 文管回收站彻底删除文件夹不做处理
     if (path.find(FILE_MANAGER_TRASH_PATH) == 0) {
         MEDIA_DEBUG_LOG("Delete trashed file assets, path: %{public}s", DfxUtils::GetSafePath(path).c_str());
