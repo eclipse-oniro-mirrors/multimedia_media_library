@@ -4126,26 +4126,29 @@ void ReverseCloneRestore::UpdateSystemAlbumField(int32_t sourceAlbumId, int32_t 
     // 查询 sourceRdb 中的封面字段
     string querySql = "SELECT " + PhotoAlbumColumns::ALBUM_COVER_URI + ", " +
                       PhotoAlbumColumns::COVER_URI_SOURCE + ", " +
-                      PhotoAlbumColumns::COVER_CLOUD_ID +
+                      PhotoAlbumColumns::COVER_CLOUD_ID + ", " +
+                      PhotoAlbumColumns::COVER_DATE_TIME +
                       " FROM " + PhotoAlbumColumns::TABLE +
                       " WHERE " + PhotoAlbumColumns::ALBUM_ID + " = " + to_string(sourceAlbumId);
     auto sourceResultSet = BackupDatabaseUtils::QuerySql(sourceRdb_, querySql, {});
     CHECK_AND_RETURN_LOG(sourceResultSet != nullptr, "Failed to query cover fields from sourceRdb");
-    
+
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoAlbumColumns::ALBUM_ID, sourceAlbumId);
-    
+
     if (sourceResultSet->GoToFirstRow() == NativeRdb::E_OK) {
         string coverUri = GetStringVal(PhotoAlbumColumns::ALBUM_COVER_URI, sourceResultSet);
         int32_t coverUriSource = GetInt32Val(PhotoAlbumColumns::COVER_URI_SOURCE, sourceResultSet);
         string coverCloudId = GetStringVal(PhotoAlbumColumns::COVER_CLOUD_ID, sourceResultSet);
-        
+        int64_t coverDateTime = GetInt64Val(PhotoAlbumColumns::COVER_DATE_TIME, sourceResultSet);
+
         values.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, coverUri);
         values.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, coverUriSource);
         values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, coverCloudId);
+        values.PutLong(PhotoAlbumColumns::COVER_DATE_TIME, coverDateTime);
     }
     sourceResultSet->Close();
-    
+
     unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
         make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
     predicates->EqualTo(PhotoAlbumColumns::ALBUM_ID, destAlbumId);
@@ -4342,6 +4345,7 @@ std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDupli
         excludeColumns.insert(PhotoAlbumColumns::ALBUM_COVER_URI);
         excludeColumns.insert(PhotoAlbumColumns::COVER_URI_SOURCE);
         excludeColumns.insert(PhotoAlbumColumns::COVER_CLOUD_ID);
+        excludeColumns.insert(PhotoAlbumColumns::COVER_DATE_TIME);
         MEDIA_INFO_LOG("BuildExcludeColumnsForDuplicateAlbum: Preserving destRdb custom cover for albumId=%{public}d",
                        destAlbumId);
     }
