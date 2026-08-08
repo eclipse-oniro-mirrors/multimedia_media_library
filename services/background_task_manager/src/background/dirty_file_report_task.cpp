@@ -192,7 +192,7 @@ bool DirtyFileReportTask::QueryBucketPaths(int32_t bucketId,
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         std::string path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
         int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-        int32_t effectMode = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+        int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
         // 动图：photo_subtype = MOVING_PHOTO 的记录对应一个 .mp4 视频附属文件，
         // 将视频路径也加入 pathSet，使 origin 扫描时自动跳过
         if (subType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO) ||
