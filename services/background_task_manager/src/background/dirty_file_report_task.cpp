@@ -28,6 +28,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_subscriber.h"
 #include "medialibrary_unistore_manager.h"
+#include "moving_photo_file_utils.h"
 #include "preferences.h"
 #include "preferences_helper.h"
 #include "result_set_utils.h"
@@ -79,7 +80,7 @@ bool DirtyFileReportTask::Accept()
         return false;
     }
 
-    MEDIA_INFO_LOG("DirtyFileReportTask: Accept");
+    MEDIA_INFO_LOG("DirtyFileReportTask: Accept V2");
     return true;
 }
 
@@ -179,6 +180,8 @@ bool DirtyFileReportTask::QueryBucketPaths(int32_t bucketId,
     std::string cloudPrefix = ROOT_MEDIA_ORG_DIR + std::to_string(bucketId) + "/";
     std::string sql = "SELECT " + MediaColumn::MEDIA_FILE_PATH +
         ", " + PhotoColumn::PHOTO_SUBTYPE +
+        ", " + PhotoColumn::MOVING_PHOTO_EFFECT_MODE +
+        ", " + PhotoColumn::PHOTO_ORIGINAL_SUBTYPE +
         " FROM " + PhotoColumn::PHOTOS_TABLE +
         " WHERE " + MediaColumn::MEDIA_FILE_PATH + " LIKE ?";
 
@@ -192,9 +195,11 @@ bool DirtyFileReportTask::QueryBucketPaths(int32_t bucketId,
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         std::string path = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
         int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+        int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+        int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
         // 动图：photo_subtype = MOVING_PHOTO 的记录对应一个 .mp4 视频附属文件，
         // 将视频路径也加入 pathSet，使 origin 扫描时自动跳过
-        if (subType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
+        if (MovingPhotoFileUtils::IsMovingPhoto(subType, effectMode, originalSubtype)) {
             std::string videoPath = MediaFileUtils::GetMovingPhotoVideoPath(path);
             if (!videoPath.empty()) {
                 MEDIA_DEBUG_LOG("pathSet: videoPath %{public}s", videoPath.c_str());
@@ -309,9 +314,9 @@ int64_t DirtyFileReportTask::QueryPendingPhysicalSize()
         "QueryPendingPhysicalSize: RdbStore is null");
 
     int64_t thresholdMs = MediaFileUtils::UTCTimeMilliSeconds() - THREE_DAY_MS;
-    std::string sql = "SELECT " + MediaColumn::MEDIA_FILE_PATH + ", " +
-        PhotoColumn::PHOTO_SUBTYPE + " FROM " + PhotoColumn::PHOTOS_TABLE +
-        " WHERE " + MediaColumn::MEDIA_TIME_PENDING + " != 0 AND " +
+    std::string sql = "SELECT " + MediaColumn::MEDIA_FILE_PATH + ", " + PhotoColumn::PHOTO_SUBTYPE + ", " +
+        PhotoColumn::MOVING_PHOTO_EFFECT_MODE + ", " + PhotoColumn::PHOTO_ORIGINAL_SUBTYPE +
+        " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " + MediaColumn::MEDIA_TIME_PENDING + " != 0 AND " +
         MediaColumn::MEDIA_DATE_ADDED + " < ?";
     auto resultSet = rdbStore->QuerySql(sql, { thresholdMs });
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, 0,
@@ -340,9 +345,11 @@ int64_t DirtyFileReportTask::QueryPendingPhysicalSize()
             DIRTY_FOLDER_NAME_EDIT);
 
         int32_t subType = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-        if (subType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
-            std::string videoPath = MediaFileUtils::GetLocalPath(
-                MediaFileUtils::GetMovingPhotoVideoPath(cloudPath));
+        int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+        int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
+        if (MovingPhotoFileUtils::IsMovingPhoto(subType, effectMode, originalSubtype) &&
+            !MovingPhotoFileUtils::IsGraffiti(subType, originalSubtype)) {
+            std::string videoPath = MediaFileUtils::GetLocalPath(MediaFileUtils::GetMovingPhotoVideoPath(cloudPath));
             if (MediaFileUtils::GetFileSize(videoPath, fileSize)) {
                 physicalSize += static_cast<int64_t>(fileSize);
                 MEDIA_WARN_LOG("Dirty pending moving photo video: %{public}s",
