@@ -165,6 +165,7 @@ public:
     EXPORT int32_t CloneToDir(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CloneAssetByPath(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CloneToAlbumCancel(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t CloneWithShareAlbum(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t CancelTask(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t MoveAssetsToDir(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t MoveAssetsByPath(MessageParcel &data, MessageParcel &reply);

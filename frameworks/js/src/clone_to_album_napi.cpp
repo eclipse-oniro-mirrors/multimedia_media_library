@@ -347,6 +347,27 @@ static napi_value ParsePhotoAlbum(napi_env env, napi_value arg, shared_ptr<Photo
     RETURN_NAPI_TRUE(env);
 }
 
+static napi_value ParseShareAlbum(napi_env env, napi_value arg, shared_ptr<PhotoAlbum>& photoAlbum)
+{
+    napi_valuetype valueType;
+    PhotoAlbumNapi* photoAlbumNapi;
+    CHECK_ARGS(env, napi_typeof(env, arg, &valueType), JS_E_PARAM_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, valueType == napi_object, JS_E_PARAM_INVALID, "Invalid argument type");
+    CHECK_ARGS(env, napi_unwrap(env, arg, reinterpret_cast<void**>(&photoAlbumNapi)), JS_E_PARAM_INVALID);
+    CHECK_COND_WITH_ERR_MESSAGE(env, photoAlbumNapi != nullptr, JS_E_PARAM_INVALID,
+        "Failed to get PhotoAlbumNapi object");
+
+    auto photoAlbumPtr = photoAlbumNapi->GetPhotoAlbumInstance();
+    CHECK_COND_WITH_ERR_MESSAGE(env, photoAlbumPtr != nullptr, JS_E_PARAM_INVALID, "photoAlbum is null");
+    CHECK_COND_WITH_ERR_MESSAGE(env,
+        PhotoAlbum::IsShareAlbum(photoAlbumPtr->GetPhotoAlbumType(), photoAlbumPtr->GetPhotoAlbumSubType()) ||
+        PhotoAlbum::IsUserPhotoAlbum(photoAlbumPtr->GetPhotoAlbumType(), photoAlbumPtr->GetPhotoAlbumSubType()) ||
+        PhotoAlbum::IsSourceAlbum(photoAlbumPtr->GetPhotoAlbumType(), photoAlbumPtr->GetPhotoAlbumSubType()),
+        JS_E_PARAM_INVALID, "Unsupported type of photoAlbum");
+    photoAlbum = photoAlbumPtr;
+    RETURN_NAPI_TRUE(env);
+}
+
 napi_value MediaLibraryNapi::JSCloneToAlbum(napi_env env, napi_callback_info info)
 {
     NAPI_INFO_LOG("JSCloneToAlbum start");
@@ -638,6 +659,100 @@ napi_value MediaLibraryNapi::JSCloneAssetsByPath(napi_env env, napi_callback_inf
 
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, ctx, "JSCloneAssetsByPath",
         ExecuteCloneAssetsByPath, CompleteCloneAssetsByPath);
+}
+
+static void ExecuteCloneWithShareAlbum(napi_env env, void *data)
+{
+    NAPI_INFO_LOG("ExecuteCloneWithShareAlbum start");
+    MediaLibraryTracer tracer;
+    tracer.Start("ExecuteCloneWithShareAlbum");
+    auto *ctx = static_cast<MediaLibraryAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(ctx, "Context is null");
+
+    if (ctx->cloneCtx.fileUris.empty()) {
+        NAPI_ERR_LOG("assetUris is empty");
+        ctx->SaveSceneErr(E_SCENE_PARAM_INVALID);
+        return;
+    }
+
+    if (!ctx->cloneCtx.callback) {
+        ctx->cloneCtx.callback = new CloneToAlbumCallbackNapi(env,
+            ctx->cloneCtx.sizeProgressListener, ctx->cloneCtx.countProgressListener, ctx->cloneCtx.resultListener);
+    }
+    CHECK_NULL_PTR_RETURN_VOID(ctx->cloneCtx.callback, "callback is null");
+
+    CloneToAlbumReqBody reqBody;
+    reqBody.assetsArray = ctx->cloneCtx.fileUris;
+    reqBody.albumId = ctx->cloneCtx.albumId;
+    reqBody.mode = ctx->cloneCtx.mode;
+    reqBody.progressCallback = ctx->cloneCtx.callback->AsObject();
+    reqBody.requestId = ctx->cloneCtx.requestId;
+    reqBody.owner = ctx->cloneCtx.owner;
+    reqBody.shareGroup = ctx->cloneCtx.shareGroup;
+
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::CLONE_WITH_SHARE_ALBUM);
+    int32_t ret = IPC::UserDefineIPCClient().SetUserId(ctx->userId).Call(businessCode, reqBody);
+    if (ret != E_OK) {
+        NAPI_ERR_LOG("IPC call failed: %{public}d", ret);
+        ctx->SaveSceneErr(ret);
+        return;
+    }
+
+    ret = ctx->cloneCtx.callback->WaitForCloneResult();
+    if (ret != E_OK) {
+        NAPI_ERR_LOG("wait for failed: %{public}d", ret);
+        ctx->SaveSceneErr(ret);
+        return;
+    }
+    ctx->SaveSceneErr(ctx->cloneCtx.callback->GetErrorCode());
+    NAPI_INFO_LOG("ExecuteCloneWithShareAlbum end error:%{public}d", ctx->cloneCtx.callback->GetErrorCode());
+}
+
+napi_value MediaLibraryNapi::JSCloneWithShareAlbum(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("JSCloneWithShareAlbum start");
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+    MediaLibraryTracer tracer;
+    tracer.Start("JSCloneWithShareAlbum");
+
+    auto ctx = make_unique<MediaLibraryAsyncContext>();
+    napi_status status = MediaLibraryNapiUtils::AsyncContextSetObjectInfo(env, info, ctx, ARGS_FOUR, ARGS_FIVE);
+    CHECK_COND_RET(status == napi_ok, nullptr, "Failed to get object info");
+
+    napi_valuetype ownerType = napi_undefined;
+    if (napi_typeof(env, ctx->argv[PARAM0], &ownerType) == napi_ok && ownerType == napi_string) {
+        CHECK_ARGS(env, MediaLibraryNapiUtils::GetParamStringPathMax(env, ctx->argv[PARAM0], ctx->cloneCtx.owner),
+            JS_E_PARAM_INVALID);
+    }
+    CHECK_COND_WITH_ERR_MESSAGE(env, !ctx->cloneCtx.owner.empty(), JS_E_PARAM_INVALID,
+        "owner is required");
+
+    CHECK_COND_WITH_ERR_MESSAGE(env, ParseFileAssetArray(env, ctx->argv[PARAM1], ctx->cloneCtx.fileUris),
+        JS_E_PARAM_INVALID, "Failed to parse assets");
+
+    shared_ptr<PhotoAlbum> targetAlbum = nullptr;
+    CHECK_COND_WITH_ERR_MESSAGE(env, ParseShareAlbum(env, ctx->argv[PARAM2], targetAlbum),
+        JS_E_PARAM_INVALID, "The target album does not exist");
+    NAPI_ASSERT(env, targetAlbum != nullptr, "targetAlbum == nullptr");
+    ctx->cloneCtx.albumId = targetAlbum->GetAlbumId();
+
+    napi_valuetype shareGroupType = napi_undefined;
+    if (napi_typeof(env, ctx->argv[PARAM3], &shareGroupType) == napi_ok && shareGroupType == napi_number) {
+        int32_t shareGroupValue = 0;
+        CHECK_ARGS(env, MediaLibraryNapiUtils::GetInt32(env, ctx->argv[PARAM3], shareGroupValue),
+            JS_E_PARAM_INVALID);
+        ctx->cloneCtx.shareGroup = static_cast<int64_t>(shareGroupValue);
+    }
+
+    if (ctx->argc >= ARGS_FIVE) {
+        ParseOptions(env, ctx->argv[PARAM4], ctx.get());
+    }
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, ctx, "JSCloneWithShareAlbum",
+        ExecuteCloneWithShareAlbum, CompleteCloneToAlbum);
 }
 
 } // namespace Media

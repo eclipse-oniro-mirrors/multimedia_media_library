@@ -31,6 +31,9 @@ bool CloneToAlbumReqBody::Marshalling(MessageParcel &parcel) const
     parcel.WriteString(albumLpath);
     parcel.WriteString(targetDir);
     parcel.WriteRemoteObject(progressCallback);
+    parcel.WriteString(owner);
+    parcel.WriteInt64(shareGroup);
+    parcel.WriteString(shareAlbumOwner);
     return true;
 }
 
@@ -45,6 +48,9 @@ bool CloneToAlbumReqBody::Unmarshalling(MessageParcel &parcel)
     albumLpath = parcel.ReadString();
     targetDir = parcel.ReadString();
     progressCallback = parcel.ReadRemoteObject();
+    owner = parcel.ReadString();
+    shareGroup = parcel.ReadInt64();
+    shareAlbumOwner = parcel.ReadString();
     return true;
 }
 } // namespace OHOS::Media

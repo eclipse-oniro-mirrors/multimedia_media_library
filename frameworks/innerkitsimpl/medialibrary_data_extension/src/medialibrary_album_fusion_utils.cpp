@@ -429,13 +429,14 @@ static bool isLocalAsset(shared_ptr<NativeRdb::ResultSet> &resultSet)
 }
 
 void MediaLibraryAlbumFusionUtils::BuildTargetFilePath(
-    std::string &targetPath, std::string displayName, int32_t mediaType)
+    std::string &targetPath, std::string displayName, int32_t mediaType,
+    AssetBucketType bucketType)
 {
     std::shared_ptr<TransactionOperations> trans = make_shared<TransactionOperations>(__func__);
     std::function<int(void)> tryReuseDeleted = [&]()->int {
         int32_t uniqueId = MediaLibraryAssetOperations::CreateAssetUniqueId(mediaType, trans);
         return MediaLibraryAssetOperations::CreateAssetPathById(uniqueId, mediaType,
-            MediaFileUtils::GetExtensionFromPath(displayName), targetPath);
+            MediaFileUtils::GetExtensionFromPath(displayName), targetPath, bucketType);
     };
     int ret = trans->RetryTrans(tryReuseDeleted);
     if (ret != E_OK) {
@@ -661,14 +662,23 @@ struct MediaAssetCopyInfo {
     bool isCopyFileManger;
     std::string targetRealPath;
     bool supportRename;
+    bool isShareAlbum {false};
+    std::string shareOwnerInfo = "";
+    std::string shareAlbumOwner = "";
+    int64_t shareDateDay {0};
+    int64_t shareGroup {0};
     MediaAssetCopyInfo(const std::string& targetPath, bool isCopyThumbnail, int32_t ownerAlbumId,
         const std::string& displayName = "", bool isCopyDateAdded = true, bool isCopyCeAvailable = false,
         bool isCopyPackageName = true, bool isCopyOwnerPackage = true, bool isCopyFileManger = false,
-        const std::string& targetRealPath = "", bool supportRename = true)
+        const std::string& targetRealPath = "", bool supportRename = true, bool isShareAlbum = false,
+        const std::string& shareOwnerInfo = "", const std::string& shareAlbumOwner = "",
+        int64_t shareDateDay = 0, int64_t shareGroup = 0)
         : targetPath(targetPath), isCopyThumbnail(isCopyThumbnail), ownerAlbumId(ownerAlbumId),
         displayName(displayName), isCopyDateAdded(isCopyDateAdded), isCopyCeAvailable(isCopyCeAvailable),
         isCopyPackageName(isCopyPackageName), isCopyOwnerPackage(isCopyOwnerPackage),
-        isCopyFileManger(isCopyFileManger), targetRealPath(targetRealPath), supportRename(supportRename) {}
+        isCopyFileManger(isCopyFileManger), targetRealPath(targetRealPath), supportRename(supportRename),
+        isShareAlbum(isShareAlbum), shareOwnerInfo(shareOwnerInfo), shareAlbumOwner(shareAlbumOwner),
+        shareDateDay(shareDateDay), shareGroup(shareGroup) {}
 };
 
 static void HandleLowQualityAssetValuesBucket(shared_ptr<NativeRdb::ResultSet>& resultSet,
@@ -731,11 +741,12 @@ static string GetOwnerPackage()
     return clientBundle;
 }
 
-static void HandleBurstPhotoSubtype(shared_ptr<NativeRdb::ResultSet>& resultSet, NativeRdb::ValuesBucket& values)
+static void HandleBurstPhotoSubtype(shared_ptr<NativeRdb::ResultSet>& resultSet,
+    NativeRdb::ValuesBucket& values, bool isShareAlbum)
 {
     int32_t subType = -1;
     GetIntValueFromResultSet(resultSet, PhotoColumn::PHOTO_SUBTYPE, subType);
-    if (subType == static_cast<int32_t>(PhotoSubType::BURST)) {
+    if (subType == static_cast<int32_t>(PhotoSubType::BURST) && !isShareAlbum) {
         values.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     }
 }
@@ -808,37 +819,79 @@ static int32_t HandleAssteCopyOperation(const std::shared_ptr<MediaLibraryRdbSto
     return E_OK;
 }
 
-static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
-    NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
+static void HandleShareAlbumSubtype(NativeRdb::ValuesBucket &values,
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
 {
-    values.PutString(MediaColumn::MEDIA_FILE_PATH, copyInfo.targetPath);
-    int32_t ret = HandleAssteCopyOperation(rdbStore, values, resultSet, copyInfo);
-    CHECK_AND_RETURN_RET_LOG(ret != E_SCENE_HAS_RENAMED, ret, "not support rename, failed to copy asset");
-    for (auto it = commonColumnTypeMap.begin(); it != commonColumnTypeMap.end(); ++it) {
-        string columnName = it->first;
-        ResultSetDataType columnType = it->second;
-        ParsingAndFillValue(values, columnName, columnType, resultSet);
-        if (columnName == PhotoColumn::PHOTO_FILE_SOURCE_TYPE) {
-            values.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, static_cast<int32_t>(FileSourceTypes::MEDIA));
-        }
+    int32_t subtype = 0;
+    GetIntValueFromResultSet(resultSet, PhotoColumn::PHOTO_SUBTYPE, subtype);
+    if (subtype == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)) {
+        values.Delete(PhotoColumn::PHOTO_SUBTYPE);
+        values.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
     }
-    if (copyInfo.isCopyThumbnail) {
-        for (auto it = thumbnailColumnTypeMap.begin(); it != thumbnailColumnTypeMap.end(); ++it) {
-            string columnName = it->first;
-            ResultSetDataType columnType = it->second;
-            ParsingAndFillValue(values, columnName, columnType, resultSet);
-        }
-        // Indicate original file cloud_id for cloud copy
-        std::string cloudId = "";
-        GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_CLOUD_ID, cloudId);
-        if (cloudId.empty()) {
-            // copy from copyed asset, may not synced, need copy from original asset
-            GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, cloudId);
-        }
-        values.PutString(PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, cloudId);
-        values.PutInt(PhotoColumn::PHOTO_POSITION, POSITION_CLOUD_FLAG);
-        values.PutInt(PhotoColumn::PHOTO_DIRTY, CLOUD_COPY_DIRTY_FLAG);
+
+    int32_t effectMode = 0;
+    GetIntValueFromResultSet(resultSet, PhotoColumn::MOVING_PHOTO_EFFECT_MODE, effectMode);
+    if (subtype == static_cast<int32_t>(PhotoSubType::DEFAULT) &&
+        effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
+        values.Delete(PhotoColumn::PHOTO_SUBTYPE);
+        values.PutInt(PhotoColumn::PHOTO_SUBTYPE,
+            static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
+
+    values.Delete(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE);
+    values.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE,
+        static_cast<int32_t>(PhotoSubType::DEFAULT));
+    values.Delete(PhotoColumn::MOVING_PHOTO_EFFECT_MODE);
+    values.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE,
+        static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
+
+    values.Delete(PhotoColumn::PHOTO_EDIT_DATA_EXIST);
+    values.PutInt(PhotoColumn::PHOTO_EDIT_DATA_EXIST, 0);
+}
+
+static void HandleShareAlbumValuesBucket(NativeRdb::ValuesBucket &values,
+    shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
+{
+    values.Delete(PhotoColumn::PHOTO_EDIT_TIME);
+    values.PutInt(PhotoColumn::PHOTO_EDIT_TIME, 0);
+    values.Delete(PhotoColumn::PHOTO_CE_AVAILABLE);
+    values.PutInt(PhotoColumn::PHOTO_CE_AVAILABLE, 0);
+    values.Delete(PhotoColumn::PHOTO_CE_STATUS_CODE);
+    values.PutNull(PhotoColumn::PHOTO_CE_STATUS_CODE);
+    values.Delete(PhotoColumn::PHOTO_STRONG_ASSOCIATION);
+    values.PutInt(PhotoColumn::PHOTO_STRONG_ASSOCIATION, 0);
+    values.Delete(PhotoColumn::PHOTO_ASSOCIATE_FILE_ID);
+    values.PutInt(PhotoColumn::PHOTO_ASSOCIATE_FILE_ID, 0);
+    values.Delete(PhotoColumn::PHOTO_HAS_CLOUD_WATERMARK);
+    values.PutInt(PhotoColumn::PHOTO_HAS_CLOUD_WATERMARK, 0);
+
+    HandleShareAlbumSubtype(values, resultSet);
+
+    values.Delete(PhotoColumn::PHOTO_IS_SHARED);
+    values.PutInt(PhotoColumn::PHOTO_IS_SHARED, 1);
+    values.Delete(PhotoColumn::PHOTO_SHARE_OWNER_INFO);
+    values.PutString(PhotoColumn::PHOTO_SHARE_OWNER_INFO, copyInfo.shareOwnerInfo);
+    values.Delete(PhotoColumn::PHOTO_SHARE_ALBUM_OWNER);
+    values.PutString(PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, copyInfo.shareAlbumOwner);
+    values.Delete(PhotoColumn::PHOTO_SHARE_DATE_DAY);
+    values.PutString(PhotoColumn::PHOTO_SHARE_DATE_DAY, std::to_string(copyInfo.shareDateDay));
+    values.Delete(PhotoColumn::PHOTO_SHARE_GROUP);
+    values.PutLong(PhotoColumn::PHOTO_SHARE_GROUP, copyInfo.shareGroup);
+    values.Delete(PhotoColumn::PHOTO_FILE_SOURCE_TYPE);
+    values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+        static_cast<int32_t>(FileSourceType::MEDIA_SHARE_ALBUM));
+
+    values.Delete(PhotoColumn::PHOTO_TRANSCODE_TIME);
+    values.PutInt(PhotoColumn::PHOTO_TRANSCODE_TIME, 0);
+    values.Delete(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE);
+    values.PutInt(PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE, 0);
+    values.Delete(PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE);
+    values.PutInt(PhotoColumn::PHOTO_EXIST_COMPATIBLE_DUPLICATE, 0);
+}
+
+static void HandleCopyFieldOverrides(NativeRdb::ValuesBucket &values,
+    shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
+{
     if (!copyInfo.isCopyDateAdded) {
         values.Delete(MediaColumn::MEDIA_DATE_ADDED);
         values.PutLong(MediaColumn::MEDIA_DATE_ADDED, MediaFileUtils::UTCTimeMilliSeconds());
@@ -852,11 +905,60 @@ static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStor
         values.Put(MediaColumn::MEDIA_OWNER_PACKAGE, GetOwnerPackage());
     }
     values.PutString(PhotoColumn::UNIQUE_ID, MediaFileUtils::GenerateUUID());
-    HandleBurstPhotoSubtype(resultSet, values);
+}
+
+static void HandleCloudCopyFields(NativeRdb::ValuesBucket &values,
+    shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    // Indicate original file cloud_id for cloud copy
+    std::string cloudId = "";
+    GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_CLOUD_ID, cloudId);
+    if (cloudId.empty()) {
+        // copy from copyed asset, may not synced, need copy from original asset
+        GetStringValueFromResultSet(resultSet, PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, cloudId);
+    }
+    values.PutString(PhotoColumn::PHOTO_ORIGINAL_ASSET_CLOUD_ID, cloudId);
+    values.PutInt(PhotoColumn::PHOTO_POSITION, POSITION_CLOUD_FLAG);
+    values.PutInt(PhotoColumn::PHOTO_DIRTY, CLOUD_COPY_DIRTY_FLAG);
+}
+
+static int32_t BuildInsertValuesBucket(const std::shared_ptr<MediaLibraryRdbStore> rdbStore,
+    NativeRdb::ValuesBucket &values, shared_ptr<NativeRdb::ResultSet> &resultSet, const MediaAssetCopyInfo &copyInfo)
+{
+    values.PutString(MediaColumn::MEDIA_FILE_PATH, copyInfo.targetPath);
+    int32_t ret = HandleAssteCopyOperation(rdbStore, values, resultSet, copyInfo);
+    CHECK_AND_RETURN_RET_LOG(ret != E_SCENE_HAS_RENAMED, ret, "not support rename, failed to copy asset");
+    for (auto it = commonColumnTypeMap.begin(); it != commonColumnTypeMap.end(); ++it) {
+        string columnName = it->first;
+        ResultSetDataType columnType = it->second;
+        ParsingAndFillValue(values, columnName, columnType, resultSet);
+        if (columnName == PhotoColumn::PHOTO_FILE_SOURCE_TYPE) {
+            if (copyInfo.isShareAlbum) {
+                values.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+                    static_cast<int32_t>(FileSourceType::MEDIA_SHARE_ALBUM));
+            } else {
+                values.Put(PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+                    static_cast<int32_t>(FileSourceTypes::MEDIA));
+            }
+        }
+    }
+    if (copyInfo.isCopyThumbnail) {
+        for (auto it = thumbnailColumnTypeMap.begin(); it != thumbnailColumnTypeMap.end(); ++it) {
+            string columnName = it->first;
+            ResultSetDataType columnType = it->second;
+            ParsingAndFillValue(values, columnName, columnType, resultSet);
+        }
+        HandleCloudCopyFields(values, resultSet);
+    }
+    HandleCopyFieldOverrides(values, resultSet, copyInfo);
+    HandleBurstPhotoSubtype(resultSet, values, copyInfo.isShareAlbum);
     HandleLowQualityAssetValuesBucket(resultSet, values);
     HandleTempFileAssetValuesBucket(resultSet, values);
     HandleCeAvailableValuesBucket(copyInfo, resultSet, values);
     HandleManageFile(copyInfo, resultSet, values);
+    if (copyInfo.isShareAlbum) {
+        HandleShareAlbumValuesBucket(values, resultSet, copyInfo);
+    }
     return E_OK;
 }
 
@@ -887,6 +989,7 @@ struct MediaAssetInfo {
     int32_t newAssetId = -1;
     int32_t ownerAlbumId = -1;
     std::string targetPath = "";
+    bool isShareAlbum = false;
 };
 
 static int32_t UpdateRelationship(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const MediaAssetInfo &assetInfo,
@@ -1000,8 +1103,13 @@ static int32_t CopyLocalFile(shared_ptr<NativeRdb::ResultSet> &resultSet, const 
     MEDIA_INFO_LOG("begin copy local file, scrPath is %{public}s, and target path is %{public}s",
         MediaFileUtils::DesensitizePath(srcPath).c_str(),
         MediaFileUtils::DesensitizePath(targetPath).c_str());
-    // Copy photo files, supporting copy moving photo's video and extraData folder.
-    int32_t err = PhotoFileOperation().CopyPhoto(resultSet, targetPath, targetAssetInfo);
+    int32_t err;
+    if (targetAssetInfo.isShareAlbumTarget) {
+        err = PhotoFileOperation().CopyPhotoForShareAlbum(resultSet, targetPath, targetAssetInfo);
+    } else {
+        // Copy photo files, supporting copy moving photo's video and extraData folder.
+        err = PhotoFileOperation().CopyPhoto(resultSet, targetPath, targetAssetInfo);
+    }
     if (err != E_OK) {
         MEDIA_ERR_LOG("CopyPhoto failed, srcPath = %{public}s, targetPath = %{public}s, ret = %{public}d",
             srcPath.c_str(), targetPath.c_str(), err);
@@ -1077,7 +1185,7 @@ int32_t MediaLibraryAlbumFusionUtils::CopyLocalSingleFile(const std::shared_ptr<
 
 static int32_t UpdateCopyInfo(const std::shared_ptr<MediaLibraryRdbStore> rdbStore, const MediaAssetInfo &assetInfo,
     const int32_t &cloneCallbackType, shared_ptr<NativeRdb::ResultSet> &resultSet,
-    shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh = nullptr)
+    shared_ptr<AccurateRefresh::AssetAccurateRefresh> assetRefresh)
 {
     MediaLibraryTracer tracer;
     tracer.Start("UpdateCopyInfo");
@@ -1097,7 +1205,7 @@ static int32_t UpdateCopyInfo(const std::shared_ptr<MediaLibraryRdbStore> rdbSto
     int32_t subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
     bool isBurst = (subtype == static_cast<int32_t>(PhotoSubType::BURST));
     if ((cloneCallbackType == static_cast<int32_t>(CloneCallbackType::URI) ||
-        cloneCallbackType == static_cast<int32_t>(CloneCallbackType::FILEPATH)) && isBurst) {
+        cloneCallbackType == static_cast<int32_t>(CloneCallbackType::FILEPATH)) && isBurst && !assetInfo.isShareAlbum) {
         values.PutInt(PhotoColumn::PHOTO_SUBTYPE, 0);
         values.PutInt(PhotoColumn::PHOTO_BURST_COVER_LEVEL, 1);
         values.PutNull(PhotoColumn::PHOTO_BURST_KEY);
@@ -1178,12 +1286,16 @@ static int32_t PrepareCloneTargetAndPending(ClonePrepareContext &context, CloneP
     int32_t mediaType = -1;
     GetIntValueFromResultSet(context.resultSet, MediaColumn::MEDIA_ID, result.assetId);
     GetIntValueFromResultSet(context.resultSet, MediaColumn::MEDIA_TYPE, mediaType);
+    AssetBucketType bucketType = context.targetAssetInfo.isShareAlbumTarget
+        ? AssetBucketType::SHARE_ALBUM : AssetBucketType::NORMAL;
     MediaLibraryAlbumFusionUtils::BuildTargetFilePath(
-        result.targetPath, context.targetAssetInfo.displayName, mediaType);
+        result.targetPath, context.targetAssetInfo.displayName, mediaType, bucketType);
 
     MediaAssetCopyInfo copyInfo(result.targetPath, false, context.ownerAlbumId, context.targetAssetInfo.displayName,
         false, false, false, false, false, context.targetAssetInfo.targetRealPath,
-        context.targetAssetInfo.supportRename);
+        context.targetAssetInfo.supportRename, context.targetAssetInfo.isShareAlbumTarget,
+        context.targetAssetInfo.shareOwnerInfo, context.targetAssetInfo.shareAlbumOwner,
+        context.targetAssetInfo.shareDateDay, context.targetAssetInfo.shareGroup);
     SetCopyInfoForFileManage(copyInfo, context.targetAssetInfo.cloneCallbackType);
     int32_t err = InsertAssetCopy(context.assetRefresh, context.upgradeStore,
         copyInfo, context.resultSet, context.targetAssetInfo);
@@ -1210,7 +1322,7 @@ static void BindClonePendingTouchUpdater(MediaLibraryAlbumFusionUtils::TargetAss
 static int32_t CopyCloneThumbnail(shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &targetPath,
     int64_t &newAssetId, const std::shared_ptr<MediaLibraryRdbStore> &upgradeStore)
 {
-    int32_t err = PhotoFileOperation().CopyThumbnail(resultSet, targetPath, newAssetId);
+    int32_t err = PhotoFileOperation().CopyThumbnail(resultSet, targetPath, newAssetId, false);
     if (err != E_OK && GenerateThumbnail(newAssetId, targetPath, resultSet, true) != E_SUCCESS) {
         MediaLibraryRdbUtils::UpdateThumbnailRelatedDataToDefault(upgradeStore, newAssetId);
         MEDIA_ERR_LOG("Copy thumbnail failed, targetPath = %{public}s, ret = %{public}d, newAssetId = %{public}" PRId64,
@@ -1247,7 +1359,8 @@ static int32_t CopyLocalSingleFileSync(shared_ptr<AccurateRefresh::AssetAccurate
 
     //刷新状态
     err = UpdateCopyInfo(upgradeStore, {prepareResult.assetId, targetAssetInfo.newAssetId, ownerAlbumId,
-	    targetAssetInfo.targetRealPath}, targetAssetInfo.cloneCallbackType, resultSet, assetRefresh);
+	    targetAssetInfo.targetRealPath, targetAssetInfo.isShareAlbumTarget}, targetAssetInfo.cloneCallbackType,
+        resultSet, assetRefresh);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, FinishCloneWithCleanup(upgradeStore, prepareResult.pendingFileId, E_OK),
         "Failed to update copy info, assetId: %{public}d, targetAssetInfo.newAssetId: %{public}" PRId64
         "ownerAlbumId: %{public}d, ret = %{public}d", prepareResult.assetId, targetAssetInfo.newAssetId,
@@ -3032,6 +3145,11 @@ int32_t MediaLibraryAlbumFusionUtils::CloneProgressAsset(const CloneAssetInfo &c
     targetAssetInfo.requestId = to_string(cloneAssetInfo.requestId);
     targetAssetInfo.supportRename = cloneAssetInfo.mode != NOT_SUPPORT_RENAME;
     targetAssetInfo.cloneCallbackType = cloneCallbackType;
+    targetAssetInfo.isShareAlbumTarget = cloneAssetInfo.isShareAlbumTarget;
+    targetAssetInfo.shareOwnerInfo = cloneAssetInfo.shareOwnerInfo;
+    targetAssetInfo.shareAlbumOwner = cloneAssetInfo.shareAlbumOwner;
+    targetAssetInfo.shareDateDay = cloneAssetInfo.shareDateDay;
+    targetAssetInfo.shareGroup = cloneAssetInfo.shareGroup;
     err = CopyLocalSingleFileSync(assetRefresh, targetAlbumId, resultSet, targetAssetInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err,
         "Clone local asset failed, ret = %{public}d, assetId = %{public}" PRId64, err, cloneAssetInfo.fileId);

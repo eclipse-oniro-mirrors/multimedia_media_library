@@ -55,6 +55,7 @@ const string PhotoAlbumColumns::UNIQUE_ID = "unique_id";
 const string PhotoAlbumColumns::ALBUM_FILE_HIDDEN = "file_hidden";
 const string PhotoAlbumColumns::ALBUM_SCENE_ID = "scene_id";
 const string PhotoAlbumColumns::ALBUM_SHARE_TYPE = "share_type";
+const string PhotoAlbumColumns::ALBUM_SHARE_ALBUM_OWNER = "share_album_owner";
 const string PhotoAlbumColumns::COVER_ORDER_KEY = "cover_order_key";
 const string PhotoAlbumColumns::COVER_ORDER_SUBKEY = "cover_order_subkey";
 const string PhotoAlbumColumns::COVER_ORDER_TYPE = "cover_order_type";

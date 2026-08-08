@@ -53,6 +53,25 @@ std::string PhotoFileOperation::ToString(const PhotoAssetInfo &photoInfo)
     return ss.str();
 }
 
+void PhotoFileOperation::BuildSourcePhotoInfo(PhotoFileOperation::PhotoAssetInfo &sourcePhotoInfo,
+    const std::shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    sourcePhotoInfo.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
+    sourcePhotoInfo.filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+    sourcePhotoInfo.subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
+    int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
+    int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+    sourcePhotoInfo.isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(
+        sourcePhotoInfo.subtype, effectMode, originalSubtype);
+    sourcePhotoInfo.dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
+    int fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+    if (fileSourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
+        fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
+        sourcePhotoInfo.filePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+    }
+    sourcePhotoInfo.isLivePhoto = MovingPhotoFileUtils::IsLivePhotoAsset(sourcePhotoInfo.filePath);
+}
+
 /**
  * @brief Copy Photo File, include photo file, video file and edit data folder.
  */
@@ -63,25 +82,10 @@ int32_t PhotoFileOperation::CopyPhoto(const std::shared_ptr<NativeRdb::ResultSet
     CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL,
         "CopyPhoto failed, resultSet is null or targetPath is empty");
 
-    // Build the Original Photo Asset Info
     PhotoFileOperation::PhotoAssetInfo sourcePhotoInfo;
-    sourcePhotoInfo.displayName = GetStringVal(MediaColumn::MEDIA_NAME, resultSet);
-    sourcePhotoInfo.filePath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
-    sourcePhotoInfo.subtype = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet);
-    int32_t originalSubtype = GetInt32Val(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, resultSet);
-    int32_t effectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
-    sourcePhotoInfo.isMovingPhoto = MovingPhotoFileUtils::IsMovingPhoto(
-        sourcePhotoInfo.subtype, effectMode, originalSubtype);
-    sourcePhotoInfo.dateModified = GetInt64Val(MediaColumn::MEDIA_DATE_MODIFIED, resultSet);
+    BuildSourcePhotoInfo(sourcePhotoInfo, resultSet);
     sourcePhotoInfo.videoFilePath = this->FindVideoFilePath(sourcePhotoInfo);
     sourcePhotoInfo.editDataFolder = this->FindEditDataFolder(sourcePhotoInfo);
-    int fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
-    if (fileSourceType == static_cast<int32_t>(FileSourceType::FILE_MANAGER) ||
-        fileSourceType == static_cast<int32_t>(FileSourceType::MEDIA_HO_LAKE)) {
-        sourcePhotoInfo.filePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
-    }
-    sourcePhotoInfo.isLivePhoto = MovingPhotoFileUtils::IsLivePhotoAsset(sourcePhotoInfo.filePath);
-    // Build the Target Photo Asset Info
     PhotoFileOperation::PhotoAssetInfo targetPhotoInfo;
     targetPhotoInfo.displayName = sourcePhotoInfo.displayName;
     targetPhotoInfo.filePath = targetPath;
@@ -117,7 +121,8 @@ int32_t PhotoFileOperation::CopyPhoto(const std::shared_ptr<NativeRdb::ResultSet
  * @brief Copy thumbnail, include folder and astc data.
  */
 int32_t PhotoFileOperation::CopyThumbnail(
-    const std::shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &targetPath, int64_t &newAssetId)
+    const std::shared_ptr<NativeRdb::ResultSet> &resultSet, const std::string &targetPath, int64_t &newAssetId,
+    bool skipYearMonthAstc)
 {
     bool cond = (resultSet == nullptr || targetPath.empty());
     CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL,
@@ -140,6 +145,9 @@ int32_t PhotoFileOperation::CopyThumbnail(
     int32_t opRet = this->CopyPhotoRelatedThumbnail(sourcePhotoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET(opRet == E_OK, opRet);
 
+    if (skipYearMonthAstc) {
+        return E_OK;
+    }
     std::string dateTaken = to_string(GetInt64Val(MediaColumn::MEDIA_DATE_TAKEN, resultSet));
     std::string oldAssetId = to_string(GetInt64Val(MediaColumn::MEDIA_ID, resultSet));
     return HandleThumbnailAstcData(dateTaken, oldAssetId, to_string(newAssetId));
@@ -200,6 +208,65 @@ int32_t PhotoFileOperation::HandleThumbnailAstcData(const std::string &dateTaken
     return E_OK;
 }
 
+int32_t PhotoFileOperation::CopyPhotoForShareAlbum(const std::shared_ptr<NativeRdb::ResultSet> &resultSet,
+    const std::string &targetPath, MediaLibraryAlbumFusionUtils::TargetAssetInfo &targetAssetInfo)
+{
+    bool cond = (resultSet == nullptr || targetPath.empty());
+    CHECK_AND_RETURN_RET_LOG(!cond, E_FAIL,
+        "CopyPhotoForShareAlbum failed, resultSet is null or targetPath is empty");
+
+    PhotoFileOperation::PhotoAssetInfo sourcePhotoInfo;
+    BuildSourcePhotoInfo(sourcePhotoInfo, resultSet);
+    sourcePhotoInfo.videoFilePath = this->FindVideoFilePath(sourcePhotoInfo);
+    sourcePhotoInfo.editDataFolder = this->FindEditDataFolder(sourcePhotoInfo);
+    PhotoFileOperation::PhotoAssetInfo targetPhotoInfo;
+    targetPhotoInfo.displayName = sourcePhotoInfo.displayName;
+    targetPhotoInfo.filePath = targetPath;
+    targetPhotoInfo.subtype = sourcePhotoInfo.subtype;
+    targetPhotoInfo.dateModified = sourcePhotoInfo.dateModified;
+
+    if (!sourcePhotoInfo.videoFilePath.empty()) {
+        targetPhotoInfo.videoFilePath = this->GetVideoFilePath(targetPhotoInfo);
+    }
+
+    if (sourcePhotoInfo.isMovingPhoto && !sourcePhotoInfo.editDataFolder.empty()) {
+        targetPhotoInfo.editDataFolder = this->BuildEditDataFolder(targetPhotoInfo);
+        sourcePhotoInfo.isShareAlbum = true;
+        targetPhotoInfo.isShareAlbum = true;
+    }
+
+    if (!targetAssetInfo.targetRealPath.empty()) {
+        targetPhotoInfo.filePath = targetAssetInfo.targetRealPath;
+        if (sourcePhotoInfo.isMovingPhoto) {
+            targetPhotoInfo.isLivePhoto = true;
+        }
+    }
+    if (targetAssetInfo.progressCallback) {
+        targetPhotoInfo.progressCallback = targetAssetInfo.progressCallback;
+    }
+    if (!targetAssetInfo.requestId.empty()) {
+        targetPhotoInfo.requestId = targetAssetInfo.requestId;
+    }
+
+    int32_t opRet = this->CopyPhotoFile(sourcePhotoInfo, targetPhotoInfo);
+    CHECK_AND_RETURN_RET(opRet == E_OK, opRet);
+
+    if (sourcePhotoInfo.isMovingPhoto) {
+        opRet = this->CopyPhotoRelatedVideoFile(sourcePhotoInfo, targetPhotoInfo);
+        CHECK_AND_RETURN_RET(opRet == E_OK, opRet);
+        if (targetPhotoInfo.isShareAlbum) {
+            opRet = this->CopyPhotoRelatedExtraDataOnly(sourcePhotoInfo, targetPhotoInfo);
+            CHECK_AND_RETURN_RET(opRet == E_OK, opRet);
+        }
+    }
+
+    if (sourcePhotoInfo.isLivePhoto != targetPhotoInfo.isLivePhoto) {
+        opRet = this->ConvertAndCopyLivePhoto(sourcePhotoInfo, targetPhotoInfo);
+        CHECK_AND_RETURN_RET(opRet == E_OK, opRet);
+    }
+    return E_OK;
+}
+
 /**
  * @brief Copy Photo File, include photo file, video file and edit data folder.
  */
@@ -213,7 +280,11 @@ int32_t PhotoFileOperation::CopyPhoto(const PhotoFileOperation::PhotoAssetInfo &
     }
     opRet = this->CopyPhotoRelatedVideoFile(sourcePhotoInfo, targetPhotoInfo);
     CHECK_AND_RETURN_RET(opRet == E_OK, opRet);
-    opRet = this->CopyPhotoRelatedExtraData(sourcePhotoInfo, targetPhotoInfo);
+    if (targetPhotoInfo.isShareAlbum && sourcePhotoInfo.isMovingPhoto) {
+        opRet = this->CopyPhotoRelatedExtraDataOnly(sourcePhotoInfo, targetPhotoInfo);
+    } else {
+        opRet = this->CopyPhotoRelatedExtraData(sourcePhotoInfo, targetPhotoInfo);
+    }
     CHECK_AND_RETURN_RET(opRet == E_OK, opRet);
     if (sourcePhotoInfo.isLivePhoto != targetPhotoInfo.isLivePhoto) {
         opRet = this->ConvertAndCopyLivePhoto(sourcePhotoInfo, targetPhotoInfo);
@@ -579,6 +650,28 @@ int32_t PhotoFileOperation::CopyPhotoRelatedExtraData(const PhotoFileOperation::
     std::string srcEditDataFolder = sourcePhotoInfo.editDataFolder;
     std::string targetEditDataFolder = targetPhotoInfo.editDataFolder;
     return CopyPhotoRelatedData(sourcePhotoInfo, targetPhotoInfo, srcEditDataFolder, targetEditDataFolder);
+}
+
+int32_t PhotoFileOperation::CopyPhotoRelatedExtraDataOnly(const PhotoFileOperation::PhotoAssetInfo &sourcePhotoInfo,
+    const PhotoFileOperation::PhotoAssetInfo &targetPhotoInfo)
+{
+    std::string srcExtraData = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(sourcePhotoInfo.filePath);
+    std::string targetExtraData = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(targetPhotoInfo.filePath);
+    if (srcExtraData.empty() || targetExtraData.empty()) {
+        return E_OK;
+    }
+    if (!MediaFileUtils::IsFileExists(srcExtraData)) {
+        return E_OK;
+    }
+    std::string targetDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(targetPhotoInfo.filePath);
+    if (!targetDir.empty() && !MediaFileUtils::IsFileExists(targetDir)) {
+        MediaFileUtils::CreateDirectory(targetDir);
+    }
+    if (!MediaFileUtils::CopyFileSafe(srcExtraData, targetExtraData)) {
+        MEDIA_ERR_LOG("Copy extraData failed");
+        return E_HAS_FS_ERROR;
+    }
+    return E_OK;
 }
 
 /**

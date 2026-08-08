@@ -447,6 +447,16 @@ int32_t PhotoAlbum::GetShareType() const
     return shareType_;
 }
 
+void PhotoAlbum::SetShareAlbumOwner(const std::string &shareAlbumOwner)
+{
+    shareAlbumOwner_ = shareAlbumOwner;
+}
+
+const std::string& PhotoAlbum::GetShareAlbumOwner() const
+{
+    return shareAlbumOwner_;
+}
+
 void PhotoAlbum::SetFileHidden(bool fileHidden)
 {
     fileHidden_ = fileHidden;

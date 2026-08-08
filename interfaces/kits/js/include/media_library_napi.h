@@ -439,6 +439,7 @@ private:
     EXPORT static napi_value JSCloneToAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSCloneToDir(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSCloneAssetsByPath(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSCloneWithShareAlbum(napi_env env, napi_callback_info info);
     EXPORT static napi_value MoveAssetsToDir(napi_env env, napi_callback_info info);
     EXPORT static napi_value MoveAssetsByPath(napi_env env, napi_callback_info info);
 
