@@ -30,6 +30,7 @@ ohos_unittest("media_background_task_test") {
   cflags = [ "-fno-access-control" ]
 
   sources = [
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_cloud_dentry_batch_task.cpp",
     "./src/media_burst_key_duplicate_task_test.cpp",
     "./src/media_clear_invalid_user_comment_task_test.cpp",
     "./src/media_file_manager_offline_cleanup_task_test.cpp",
