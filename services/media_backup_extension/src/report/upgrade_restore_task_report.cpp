@@ -209,7 +209,7 @@ UpgradeRestoreTaskReport &UpgradeRestoreTaskReport::ReportReverse(const ReverseR
     resultInfo.cloneRestoreCount = reportInfo.cloneRestoreCount;
     resultInfo.databaseHandleErrorTime = reportInfo.databaseHandleErrorTime;
     PostInfoDfx(resultInfo);
-    PostInfoAuditLog(resultInfo);
+    PostInfoReverseAuditLog(resultInfo.ReverseRestoreToString());
     return *this;
 }
 
@@ -297,5 +297,10 @@ int32_t UpgradeRestoreTaskReport::PostProgressInfoAuditLog(const std::string &st
         .SetTaskId(this->taskId_)
         .WriteProgressAuditLog(status, progressInfo);
     return 0;
+}
+
+int32_t UpgradeRestoreTaskReport::PostInfoReverseAuditLog(const std::string &infoStr)
+{
+    BackupHiAuditHelper().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).WriteReportAuditLog(infoStr);
 }
 }  // namespace OHOS::Media
