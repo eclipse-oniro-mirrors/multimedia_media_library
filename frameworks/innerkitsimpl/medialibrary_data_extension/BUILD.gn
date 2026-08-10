@@ -470,6 +470,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_source_loading.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_uri_utils.cpp",
     "${MEDIALIB_THUMBNAIL_PATH}/src/thumbnail_utils.cpp",
+    "${MEDIALIB_THUMBNAIL_PATH}/src/cloud_dentry_helper.cpp",
   ]
 
   media_cloud_sync_source = [
@@ -879,6 +880,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/operation/shooting_mode_album_operation.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/operation/attachment_size_update_operation.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_critical_label_task.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_cloud_dentry_batch_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_live_photo_4d_status_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_share_dirty_data_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_fix_lcd_file_size_task.cpp",

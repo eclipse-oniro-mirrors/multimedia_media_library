@@ -63,6 +63,7 @@
 #include "accurate_common_data.h"
 #include "medialibrary_unistore_manager.h"
 #include "cloud_media_common.h"
+#include "cloud_dentry_helper.h"
 
 using namespace std;
 using namespace OHOS::DistributedKv;
@@ -585,6 +586,12 @@ int32_t ThumbnailGenerateHelper::GetAvailableFile(ThumbRdbOpt &opts, ThumbnailDa
             ThumbnailFileUtils::GetFileInfo(tempFileName).c_str());
         return E_OK;
     }
+    if (!data.isLocalFile) {
+        ThumbnailType thumbnailType = (thumbType != ThumbnailType::THUMB_ASTC) ? thumbType : ThumbnailType::THUMB;
+        int32_t ret = CloudDentryHelper::CreateDentryForThumbnail(data.id, data.path, thumbnailType);
+        MEDIA_INFO_LOG("CreateDentryForThumbnail result is %{public}d, fileId=%{public}s", ret, data.id.c_str());
+        return ret;
+    }
 
     MEDIA_INFO_LOG("No available file, create thumbnail, path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
     if (!GenerateLocalThumbnail(opts, data, thumbType) && access(fileName.c_str(), F_OK) != 0) {
@@ -823,6 +830,9 @@ int32_t ThumbnailGenerateHelper::GetThumbnailPixelMap(ThumbnailData& data, Thumb
 {
     HandleVisitLcd(thumbType);
     GetThumbnailPixelMapPreStep(data, opts, thumbType);
+    if (!data.isLocalFile) {
+        CloudDentryHelper::CreateDentryForThumbnail(data.id, data.path, thumbType);
+    }
     string fileName;
     int32_t err = GetAvailableFile(opts, data, thumbType, fileName);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "GetAvailableFile failed, path: %{public}s",

@@ -32,6 +32,7 @@
 #include "thumbnail_generate_worker_manager.h"
 #include "media_audio_column.h"
 #include "media_upgrade.h"
+#include "cloud_dentry_helper.h"
 
 using namespace std;
 using namespace OHOS;
@@ -1492,6 +1493,203 @@ HWTEST_F(MediaLibraryThumbnailServiceTest, thumbnail_generate_helper_CreateAstcB
     opts.store = ThumbnailService::GetInstance()->rdbStorePtr_;
     auto res = ThumbnailGenerateHelper::CreateAstcBackground(opts);
     EXPECT_EQ(res, E_ERR);
+}
+
+/**
+ * 用例说明：验证NeedCreateDentry方法处理空路径时返回false
+ * 覆盖场景：传入空字符串作为文件路径
+ * 覆盖分支点：filePath.empty() == true
+ * 触发条件：传入空字符串
+ * 业务验证：函数应返回false，不创建dentry
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, NeedCreateDentry_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin NeedCreateDentry_test_001");
+    std::string emptyPath = "";
+    bool result = CloudDentryHelper::NeedCreateDentry(emptyPath);
+    EXPECT_EQ(result, false);
+    MEDIA_INFO_LOG("End NeedCreateDentry_test_001");
+}
+
+/**
+ * 用例说明：验证NeedCreateDentry方法处理已存在路径时返回false
+ * 覆盖场景：传入系统中已存在的文件路径
+ * 覆盖分支点：access返回0（文件存在）
+ * 触发条件：传入存在的系统路径如"/etc/passwd"
+ * 业务验证：函数应返回false，无需创建dentry
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, NeedCreateDentry_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin NeedCreateDentry_test_002");
+    std::string existingPath = "/etc/passwd";
+    bool result = CloudDentryHelper::NeedCreateDentry(existingPath);
+    EXPECT_EQ(result, false);
+    MEDIA_INFO_LOG("End NeedCreateDentry_test_002");
+}
+
+/**
+ * 用例说明：验证NeedCreateDentry方法处理不存在路径时返回true
+ * 覆盖场景：传入系统中不存在的文件路径
+ * 覆盖分支点：access返回非0（文件不存在）
+ * 触发条件：传入不存在的路径
+ * 业务验证：函数应返回true，需要创建dentry
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, NeedCreateDentry_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin NeedCreateDentry_test_003");
+    std::string nonExistingPath = "/storage/cloud/files/test/nonexistent/file.jpg";
+    bool result = CloudDentryHelper::NeedCreateDentry(nonExistingPath);
+    EXPECT_EQ(result, true);
+    MEDIA_INFO_LOG("End NeedCreateDentry_test_003");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法处理无效路径格式
+ * 覆盖场景：传入不以CLOUD_FILES_PREFIX开头的路径
+ * 覆盖分支点：路径不以CLOUD_FILES_PREFIX开头
+ * 触发条件：传入错误格式的路径如"/local/path/file.jpg"
+ * 业务验证：函数应返回E_ERR错误码
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_001");
+    std::string fileId = "test_file_001";
+    std::string invalidPath = "/local/path/file.jpg";
+    ThumbnailType thumbType = ThumbnailType::THUMB;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, invalidPath, thumbType);
+    EXPECT_EQ(result, E_ERR);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_001");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法处理已存在的dentry
+ * 覆盖场景：传入已存在的dentry路径
+ * 覆盖分支点：NeedCreateDentry返回false
+ * 触发条件：传入系统中已存在的路径
+ * 业务验证：函数应返回E_OK，无需重复创建
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_002");
+    std::string fileId = "test_file_002";
+    std::string existingPath = "/storage/cloud/files/test/existing.jpg";
+    ThumbnailType thumbType = ThumbnailType::THUMB;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, existingPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_002");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法创建LCD类型缩略图
+ * 覆盖场景：传入ThumbnailType::LCD类型
+ * 覆盖分支点：thumbType == LCD
+ * 触发条件：传入ThumbnailType::LCD和有效路径
+ * 业务验证：函数应正确处理LCD类型，返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_003");
+    std::string fileId = "test_file_003";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+    ThumbnailType thumbType = ThumbnailType::LCD;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, validPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_003");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法创建THUMB_EX类型缩略图
+ * 覆盖场景：传入ThumbnailType::THUMB_EX类型
+ * 覆盖分支点：thumbType == THUMB_EX
+ * 触发条件：传入ThumbnailType::THUMB_EX和有效路径
+ * 业务验证：函数应正确处理THUMB_EX类型，返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_004, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_004");
+    std::string fileId = "test_file_004";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+    ThumbnailType thumbType = ThumbnailType::THUMB_EX;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, validPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_004");
+}
+
+/**
+ * 用例说明：验证CreateDentryForThumbnail方法创建LCD_EX类型缩略图
+ * 覆盖场景：传入ThumbnailType::LCD_EX类型
+ * 覆盖分支点：thumbType == LCD_EX
+ * 触发条件：传入ThumbnailType::LCD_EX和有效路径
+ * 业务验证：函数应正确处理LCD_EX类型，返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForThumbnail_test_005, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForThumbnail_test_005");
+    std::string fileId = "test_file_005";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+    ThumbnailType thumbType = ThumbnailType::LCD_EX;
+
+    int32_t result = CloudDentryHelper::CreateDentryForThumbnail(fileId, validPath, thumbType);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForThumbnail_test_005");
+}
+
+/**
+ * 用例说明：验证CreateDentryForOrigin方法处理无效路径格式
+ * 覆盖场景：传入不以CLOUD_FILES_PREFIX开头的路径
+ * 覆盖分支点：路径不以CLOUD_FILES_PREFIX开头
+ * 触发条件：传入错误格式的路径如"/local/path/file.jpg"
+ * 业务验证：函数应返回E_ERR错误码
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForOrigin_test_001, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForOrigin_test_001");
+    std::string fileId = "test_file_origin_001";
+    std::string invalidPath = "/local/path/file.jpg";
+
+    int32_t result = CloudDentryHelper::CreateDentryForOrigin(fileId, invalidPath);
+    EXPECT_EQ(result, E_ERR);
+    MEDIA_INFO_LOG("End CreateDentryForOrigin_test_001");
+}
+
+/**
+ * 用例说明：验证CreateDentryForOrigin方法处理已存在的dentry
+ * 覆盖场景：传入已存在的dentry路径
+ * 覆盖分支点：NeedCreateDentry返回false
+ * 触发条件：传入系统中已存在的路径
+ * 业务验证：函数应返回E_OK，无需重复创建
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForOrigin_test_002, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForOrigin_test_002");
+    std::string fileId = "test_file_origin_002";
+    std::string existingPath = "/storage/cloud/files/test/existing.jpg";
+
+    int32_t result = CloudDentryHelper::CreateDentryForOrigin(fileId, existingPath);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForOrigin_test_002");
+}
+
+/**
+ * 用例说明：验证CreateDentryForOrigin方法处理有效路径
+ * 覆盖场景：传入有效的云文件路径
+ * 覆盖分支点：NeedCreateDentry返回true（路径不存在）
+ * 触发条件：传入有效格式的路径但文件不存在
+ * 业务验证：函数应返回E_OK或E_ERR（取决于数据库状态）
+ */
+HWTEST_F(MediaLibraryThumbnailServiceTest, CreateDentryForOrigin_test_003, TestSize.Level1)
+{
+    MEDIA_INFO_LOG("Begin CreateDentryForOrigin_test_003");
+    std::string fileId = "test_file_origin_003";
+    std::string validPath = "/storage/cloud/files/album/photo.jpg";
+
+    int32_t result = CloudDentryHelper::CreateDentryForOrigin(fileId, validPath);
+    EXPECT_EQ(result, E_OK);
+    MEDIA_INFO_LOG("End CreateDentryForOrigin_test_003");
 }
 } // namespace Media
 } // namespace OHOS

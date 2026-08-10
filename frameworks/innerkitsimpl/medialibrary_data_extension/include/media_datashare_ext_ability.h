@@ -245,6 +245,7 @@ public:
     EXPORT Uri DenormalizeUri(const Uri &uri) override;
     EXPORT void InitPermissionHandler();
     EXPORT int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    EXPORT static bool InvokeReverseCloneRestoreResume();
 
 private:
     int CheckPermissionForOpenFile(const Uri &uri, Media::MediaLibraryCommand &command, std::string &unifyMode);

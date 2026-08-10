@@ -147,6 +147,9 @@ static const set<OperationObject> PHOTO_ACCESS_HELPER_OBJECTS = {
 };
 constexpr int64_t MAX_EXECUTE_TIME = 200;
 
+static const std::string MEDIA_BACKUP_LIB = "libmediabackup.z.so";
+static const std::string CHECK_AND_START_RESUME_FUNC_NAME = "CheckAndStartResume";
+
 MediaDataShareExtAbility* MediaDataShareExtAbility::Create(const unique_ptr<Runtime>& runtime)
 {
     return new MediaDataShareExtAbility(static_cast<Runtime&>(*runtime));
@@ -212,6 +215,46 @@ void MediaDataShareExtAbility::OnStartSub(const AAFwk::Want &want)
     EnhancementManager::GetInstance().InitAsync();
 #endif
     CloneStatusListener::GetInstance()->RegisterCloneStatusChangeListener();
+}
+
+bool MediaDataShareExtAbility::InvokeReverseCloneRestoreResume()
+{
+    const std::string markerXml = "/data/storage/el2/base/preferences/reverse_restore_marker.xml";
+    int errCode = 0;
+    auto preferences = OHOS::NativePreferences::PreferencesHelper::GetPreferences(markerXml, errCode);
+    if (preferences == nullptr || errCode != 0) {
+        MEDIA_INFO_LOG("Reverse clone restore marker file does not exist, skip resume");
+        return true;
+    }
+    const std::string KEY_STAGE = "stage";
+    int stage = preferences->GetInt(KEY_STAGE, -1);
+    if (stage == -1) {
+        MEDIA_INFO_LOG("Reverse clone restore marker stage does not exist, skip resume");
+        return true;
+    }
+    std::thread([&] {
+        MEDIA_INFO_LOG("enter InvokeReverseCloneRestoreResume async.");
+        void* handle = dlopen(MEDIA_BACKUP_LIB.c_str(), RTLD_NOW | RTLD_NODELETE);
+        if (!handle) {
+            MEDIA_ERR_LOG("Failed to open %{public}s", MEDIA_BACKUP_LIB.c_str());
+            return;
+        }
+
+        using CheckAndStartResumeFuncType = void (*)();
+        auto checkAndStartResumeFunc = reinterpret_cast<CheckAndStartResumeFuncType>(
+            dlsym(handle, CHECK_AND_START_RESUME_FUNC_NAME.c_str()));
+        if (!checkAndStartResumeFunc) {
+            MEDIA_ERR_LOG("Failed to find %{public}s, %{public}s", CHECK_AND_START_RESUME_FUNC_NAME.c_str(), dlerror());
+            dlclose(handle);
+            return;
+        }
+
+        MEDIA_INFO_LOG("Calling ReverseCloneRestoreResume::CheckAndStartResume via dlopen");
+        checkAndStartResumeFunc();
+        dlclose(handle);
+    }).detach();
+
+    return true;
 }
 
 static bool CheckUnlockScene(int64_t startTime)

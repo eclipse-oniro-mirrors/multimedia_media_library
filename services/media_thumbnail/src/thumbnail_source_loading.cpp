@@ -39,6 +39,7 @@
 #endif
 #include "thumbnail_generate_helper.h"
 #include "media_file_access_utils.h"
+#include "cloud_dentry_helper.h"
 
 using namespace std;
 
@@ -790,6 +791,9 @@ std::string CloudOriginSource::GetSourcePath(ThumbnailData &data, int32_t &error
         return data.path;
     }
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
+    if (!data.isLocalFile && !data.cloudId.empty()) {
+        CloudDentryHelper::CreateDentryForOrigin(data.id, data.path);
+    }
     if (!IsCloudSourceAvailable(data.path)) {
         return "";
     }
