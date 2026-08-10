@@ -46,6 +46,8 @@ const PARAMETERS_VALIDATE_FAILED_MESSAGE =
 '  2. The elements of the array can only be \'image/heic\' or \'image/jpeg\',' +
 '  and the array length cannot be greater than two for supportedMimeType;';
 const GET_BUNDLE_INFO_FAIL = 'Failed to get bundle info';
+const GET_APP_NAME_FAIL = 'Failed to get BundleInfo. The \'abilities\' configuration in module.json5' + 
+' is missing required field \'icon\' or \'label\'.';
 
 const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
 
@@ -320,20 +322,25 @@ function checkConfirmBoxParams(srcFileUris, photoCreationConfigs, isImageFullyDi
 }
 
 function getBundleInfo() {
-  let flags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_ABILITY | // for appName
-    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE | // for appName
-    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_SIGNATURE_INFO | // for appId
-    bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION; // for appInfo
-  let bundleInfo = bundleManager.getBundleInfoForSelfSync(flags);
-  if (((bundleInfo === undefined) || (bundleInfo.name === undefined)) ||
-      ((bundleInfo.hapModulesInfo === undefined) || (bundleInfo.hapModulesInfo.length === 0)) ||
-      ((bundleInfo.signatureInfo === undefined) || (bundleInfo.signatureInfo.appId === undefined)) ||
-    ((bundleInfo.appInfo === undefined) || (bundleInfo.appInfo.labelId === 0))) {
-    console.error('photoAccessHelper failed to get bundle info.');
+  try {
+      let flags = bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_ABILITY | // for appName
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_HAP_MODULE | // for appName
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_SIGNATURE_INFO | // for appId
+      bundleManager.BundleFlag.GET_BUNDLE_INFO_WITH_APPLICATION; // for appInfo
+    let bundleInfo = bundleManager.getBundleInfoForSelfSync(flags);
+    if (((bundleInfo === undefined) || (bundleInfo.name === undefined)) ||
+        ((bundleInfo.hapModulesInfo === undefined) || (bundleInfo.hapModulesInfo.length === 0)) ||
+        ((bundleInfo.signatureInfo === undefined) || (bundleInfo.signatureInfo.appId === undefined)) ||
+        ((bundleInfo.appInfo === undefined) || (bundleInfo.appInfo.labelId === 0))) {
+      console.error('photoAccessHelper failed to get bundle info.');
+      return undefined;
+    }
+
+    return bundleInfo;
+  } catch (error) {
+    console.info(`getBundleInfo failed, error code: ${error.code}, message: ${error.message}`);
     return undefined;
   }
-
-  return bundleInfo;
 }
 
 function showAssetsCreationDialogResult(result, reject, resolve) {
@@ -353,6 +360,16 @@ function showAssetsCreationDialogResult(result, reject, resolve) {
   resolve(result.data);
 }
 
+async function getAppNameFromModelName(modelName, labelId) {
+  try {
+    let appName = await gContext.createModuleContext(modelName).resourceManager.getStringValue(labelId);
+    return appName;
+  } catch (error) {
+    console.info(`getAppNameFromModelName fail, error code: ${error.code}, message: ${error.message}`);
+    return undefined;
+  }
+}
+
 async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfigs, isImageFullyDisplayed = false) {
   let bundleInfo = getBundleInfo();
   if (bundleInfo === undefined) {
@@ -368,7 +385,7 @@ async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfig
   console.info('photoAccessHelper appId is ' + appId + '.');
 
   let labelId = bundleInfo.appInfo.labelId;
-  console.info('photoAccessHelper labelId is ' + appId + '.');
+  console.info('photoAccessHelper labelId is ' + labelId + '.');
   let appName = '';
 
   try {
@@ -379,7 +396,12 @@ async function showAssetsCreationDialogParamsOk(srcFileUris, photoCreationConfig
       }
     }
     console.info('photoAccessHelper modeleName is ' + modeleName + '.');
-    appName = await gContext.createModuleContext(modeleName).resourceManager.getStringValue(labelId);
+    appName = await getAppNameFromModelName(modeleName, labelId);
+    if (appName === undefined) {
+      return new Promise((resolve, reject) => {
+        reject(new BusinessError(GET_APP_NAME_FAIL, ERR_CODE_OHOS_PARAMERTER_INVALID));
+      });
+    }
     console.info('photoAccessHelper appName is ' + appName + '.');
     // only promise type
     return new Promise((resolve, reject) => {
