@@ -23,12 +23,14 @@ namespace OHOS {
 namespace Media {
 class MediaLibraryManagerNotifyObserver : public DataShare::DataShareObserver {
 public:
-    explicit MediaLibraryManagerNotifyObserver(Notification::NotifyUriType uriType) : uriType_(uriType) {}
+    MediaLibraryManagerNotifyObserver(Notification::NotifyUriType uriType, int32_t userId)
+        : uriType_(uriType), userId_(userId) {}
     ~MediaLibraryManagerNotifyObserver() override = default;
     void OnChange(const ChangeInfo &changeInfo) override;
 
 private:
     Notification::NotifyUriType uriType_ = Notification::NotifyUriType::INVALID;
+    int32_t userId_ = -1;
 };
 } // namespace Media
 } // namespace OHOS
