@@ -97,6 +97,35 @@ public:
            << ", successCount: " << this->successCount << "]";
         return ss.str();
     }
+
+    std::string ReverseRestoreToString() const
+    {
+        std::stringstream ss;
+        ss << "MediaRestoreResultInfo["
+           << "sceneCode: " << this->sceneCode << ", taskId: " << this->taskId << ", errorCode: " << this->errorCode
+           << ", errorInfo: " << this->errorInfo << ", type: " << this->type << ", backupInfo: " << this->backupInfo
+           << ", duplicateCount: " << this->duplicateCount << ", failedCount: " << this->failedCount
+           << ", successCount: " << this->successCount
+           << ", restoreDirection: " << this->restoreDirection
+           << ", restoreCountInfo: " << this->restoreCountInfo
+           << ", restoreDatabaseVersion: " << this->restoreDatabaseVersion
+           << ", restoreDatabaseContains: " << this->restoreDatabaseContains
+           << ", databaseUpgradeResult: " << this->databaseUpgradeResult
+           << ", databaseUpgradeResultInfo: " << this->databaseUpgradeResultInfo
+           << ", dataReplaceResult: " << this->dataReplaceResult
+           << ", perfectRestoreTime: " << this->perfectRestoreTime
+           << ", quickCheckResult: " << this->quickCheckResult
+           << ", reverseChangeErrorInfo: " << this->reverseChangeErrorInfo
+           << ", reverseErrorInfo: " << this->reverseErrorInfo
+           << ", absorbNewBasicDataErrorInfo: " << this->absorbNewBasicDataErrorInfo
+           << ", absorbNewSmartDataErrorInfo: " << this->absorbNewSmartDataErrorInfo
+           << ", beforeTransformTimeCost: " << this->beforeTransformTimeCost
+           << ", afterTransformTimeCost: " << this->afterTransformTimeCost
+           << ", cloneRestoreInfo: " << this->cloneRestoreInfo
+           << ", cloneRestoreCount: " << this->cloneRestoreCount
+           << ", databaseHandleErrorTime: " << this->databaseHandleErrorTime << "]";
+        return ss.str();
+    }
 };
 
 class CallbackBackupInfo {
