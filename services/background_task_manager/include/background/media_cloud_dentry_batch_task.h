@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 
+#include "cloud_sync_helper.h"
 #include "photos_po.h"
 
 namespace OHOS::Media::Background {
@@ -32,15 +33,15 @@ public:
 private:
     static std::mutex batchDentryMutex_;
 
-    static std::vector<OHOS::FileManagement::CloudSync::DentryFileInfo> dentryOrigin_;
-    static std::vector<OHOS::FileManagement::CloudSync::DentryFileInfo> dentryLcd_;
-    static std::vector<OHOS::FileManagement::CloudSync::DentryFileInfo> dentryThm_;
+    static std::vector<FileManagement::CloudSync::DentryFileInfo> dentryOrigin_;
+    static std::vector<FileManagement::CloudSync::DentryFileInfo> dentryLcd_;
+    static std::vector<FileManagement::CloudSync::DentryFileInfo> dentryThm_;
 
     static void HandleBatchDentryCreation(const int32_t lastFileId);
 
     static bool NeedCreateDentryForPhoto(const PhotosPo &photosPo);
 
-    static void BatchInsertDentry(const std::vector<OHOS::FileManagement::CloudSync::DentryFileInfo> &dentryList,
+    static void BatchInsertDentry(const std::vector<FileManagement::CloudSync::DentryFileInfo> &dentryList,
                                   const std::string &type);
                                   
     static void DoDentryCreate(int32_t &currentLastFileId, bool &terminate, std::vector<PhotosPo> &photosPoVec);
