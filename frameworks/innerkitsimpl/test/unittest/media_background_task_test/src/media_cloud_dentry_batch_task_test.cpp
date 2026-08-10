@@ -197,7 +197,7 @@ HWTEST_F(MediaCloudDentryBatchTaskTest, BatchInsertDentry_test_001, TestSize.Lev
     auto task = std::make_shared<MediaCloudDentryBatchTask>();
     ASSERT_NE(task, nullptr);
 
-    std::vector<FileManagement::CloudSync::DentryFileInfo> emptyList;
+    std::vector<OHOS::FileManagement::CloudSync::DentryFileInfo> emptyList;
     MediaCloudDentryBatchTask::BatchInsertDentry(emptyList, "origin");
     MEDIA_INFO_LOG("End BatchInsertDentry_test_001");
     EXPECT_TRUE(emptyList.empty());
