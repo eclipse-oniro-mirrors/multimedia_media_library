@@ -815,11 +815,11 @@ int32_t ReverseCloneResourceInheritHelper::InsertAbsorbedPhotosInTransaction(Tra
     return ret;
 }
 
-int32_t ReverseCloneResourceInheritHelper::ApplyUniqueIdPriorityForDuplicates(TransactionOperations &trans,
+void ReverseCloneResourceInheritHelper::ApplyUniqueIdPriorityForDuplicates(TransactionOperations &trans,
     const ReverseClonePhotoBatchContext &batch) const
 {
     if (batch.duplicatePlans.empty()) {
-        return NativeRdb::E_OK;
+        return;
     }
     // Build donorFileId -> donorUniqueId map
     std::unordered_map<int32_t, std::string> donorUniqueIdMap;
@@ -829,7 +829,7 @@ int32_t ReverseCloneResourceInheritHelper::ApplyUniqueIdPriorityForDuplicates(Tr
         }
     }
     if (donorUniqueIdMap.empty()) {
-        return NativeRdb::E_OK;
+        return;
     }
 
     const std::string updateSql = "UPDATE " + std::string(PhotoColumn::PHOTOS_TABLE) + " SET " +
@@ -859,7 +859,6 @@ int32_t ReverseCloneResourceInheritHelper::ApplyUniqueIdPriorityForDuplicates(Tr
         updateCount++;
     }
     MEDIA_INFO_LOG("ApplyUniqueIdPriorityForDuplicates: updated %{public}d rows", updateCount);
-    return NativeRdb::E_OK;
 }
 
 bool ReverseCloneResourceInheritHelper::CommitPhotosInTransaction(ReverseClonePhotoBatchContext &batch,
@@ -883,8 +882,7 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosInTransaction(ReverseClonePh
         }
         ret = InsertAbsorbedPhotosInTransaction(trans, batch, targetRdb, insertedRows);
         CHECK_AND_RETURN_RET(ret == NativeRdb::E_OK, ret);
-        ret = ApplyUniqueIdPriorityForDuplicates(trans, batch);
-        CHECK_AND_RETURN_RET(ret == NativeRdb::E_OK, ret);
+        ApplyUniqueIdPriorityForDuplicates(trans, batch);
         return RestoreProtectedAssetReferences(trans, referenceUpdates);
     };
     int32_t transRet = trans.RetryTrans(commitPhotos, true);

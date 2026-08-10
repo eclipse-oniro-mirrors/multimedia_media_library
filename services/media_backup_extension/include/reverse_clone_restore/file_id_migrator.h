@@ -33,7 +33,6 @@ struct DirectUpdate {
     std::string table;
     std::string column;
     std::string condition;
-    bool needSequenceUpdate = false;
 };
 
 /**
@@ -150,7 +149,7 @@ private:
     bool UpdateSmartAlbumTables(std::shared_ptr<NativeRdb::RdbStore> db,
                                 int64_t newMaxExtended, int64_t oldMax);
     bool CreateAlbumIdUpdateTrigger(std::shared_ptr<NativeRdb::RdbStore> db);
-bool UpdateAllSmartAlbumTables(std::shared_ptr<NativeRdb::RdbStore> db,
+    bool UpdateAllSmartAlbumTables(std::shared_ptr<NativeRdb::RdbStore> db,
                                    int64_t newMaxExtended, int64_t oldMax);
     bool UpdateSmartAlbumTable(std::shared_ptr<NativeRdb::RdbStore> db,
                                 const DirectUpdate& upd,
@@ -161,10 +160,6 @@ bool UpdateAllSmartAlbumTables(std::shared_ptr<NativeRdb::RdbStore> db,
     bool TableExists(std::shared_ptr<NativeRdb::RdbStore> db, const std::string &tableName);
     bool ExecuteSql(std::shared_ptr<NativeRdb::RdbStore> db, const std::string &sql,
                     const std::vector<NativeRdb::ValueObject> &args);
-    bool InsertAndDeleteEmptyRecord(std::shared_ptr<NativeRdb::RdbStore> db,
-                                   const std::string &table,
-                                   const std::string &idColumn,
-                                   int64_t idValue);
 
     int64_t newMaxExtended_ = 0;  // 迁移时 file_id 偏移后的上限值（用于判重）
     std::regex regexPattern_;
