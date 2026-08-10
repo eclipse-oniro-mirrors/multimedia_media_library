@@ -679,14 +679,15 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
         EXCLUDED_IMAGE_FACE_COLUMNS);
 
     BackupDatabaseUtils::DeleteExistingImageFaceData(mediaLibraryRdb_, uniqueFileIdPairs);
-    int32_t offset = 0;
-    int32_t maxId = 0;
-    do {
-        std::vector<ImageFaceTbl> imageFaceTbls = QueryImageFaceTbl(offset, fileIdOldInClause, commonColumns, maxId);
+    size_t totalOld = oldFileIds.size();
+    const size_t queryBatch = static_cast<size_t>(QUERY_COUNT);
+    for (size_t chunkStart = 0; chunkStart < totalOld; chunkStart += queryBatch) {
+        size_t chunkEnd = (chunkStart + queryBatch > totalOld) ? totalOld : chunkStart + queryBatch;
+        std::vector<int32_t> fileIdChunk(oldFileIds.begin() + chunkStart, oldFileIds.begin() + chunkEnd);
+        std::vector<ImageFaceTbl> imageFaceTbls = QueryImageFaceTbl(fileIdChunk, commonColumns);
         auto imageFaces = ProcessImageFaceTbls(imageFaceTbls, photoInfoMap_);
         BatchInsertImageFaces(imageFaces);
-        offset = maxId;
-    } while (imageFaceTbls.size() == static_cast<size_t>(QUERY_COUNT));
+    }
 
     // 记录需要刷新的分数类型的 mask 值
     MEDIA_INFO_LOG("record bit2 of mask");
@@ -722,28 +723,26 @@ std::vector<ImageFaceTbl> CloneRestorePortrait::ProcessImageFaceTbls(const std::
     return imageFaceNewTbls;
 }
 
-std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(int32_t offset, std::string &fileIdClause,
-    const std::vector<std::string> &commonColumns, int32_t &maxId)
+std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(const std::vector<int32_t> &fileIdChunk,
+    const std::vector<std::string> &commonColumns)
 {
     std::vector<ImageFaceTbl> result;
-    result.reserve(QUERY_COUNT);
+    CHECK_AND_RETURN_RET(!fileIdChunk.empty(), result);
 
     std::string inClause = BackupDatabaseUtils::JoinValues<string>(commonColumns, ", ");
+    std::string fileIdInClause = "(" + BackupDatabaseUtils::JoinValues<int>(fileIdChunk, ", ") + ")";
     std::string querySql =
         "SELECT " + inClause +
         " FROM " + VISION_IMAGE_FACE_TABLE +
-        " WHERE id > ? AND " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdClause +
-        " ORDER BY id LIMIT ?";
-    const std::vector<std::string> args = { std::to_string(offset), std::to_string(QUERY_COUNT) };
+        " WHERE " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdInClause;
 
-    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql, args);
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, result, "Query resultSet is null.");
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         ImageFaceTbl imageFaceTbl;
         ParseImageFaceResultSet(resultSet, imageFaceTbl);
         result.emplace_back(imageFaceTbl);
-        maxId = imageFaceTbl.id.value_or(0);
     }
 
     resultSet->Close();
@@ -835,21 +834,29 @@ void  CloneRestorePortrait::ParseImageFaceResultSet1(const std::shared_ptr<Nativ
 
 void CloneRestorePortrait::BatchInsertImageFaces(const std::vector<ImageFaceTbl>& imageFaceTbls)
 {
-    CHECK_AND_RETURN(!imageFaceTbls.empty());
-
-    std::vector<NativeRdb::ValuesBucket> valuesBuckets;
     std::unordered_set<int32_t> fileIdSet;
-    for (const auto& imageFaceTbl : imageFaceTbls) {
-        valuesBuckets.push_back(CreateValuesBucketFromImageFaceTbl(imageFaceTbl));
-    }
-
     int64_t rowNum = 0;
-    int32_t ret = BatchInsertWithRetry(VISION_IMAGE_FACE_TABLE, valuesBuckets, rowNum);
-    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to batch insert image faces");
+    size_t total = imageFaceTbls.size();
+    const size_t insertBatch = static_cast<size_t>(IMAGE_FACE_INSERT_BATCH_SIZE);
+    for (size_t chunkStart = 0; chunkStart < total; chunkStart += insertBatch) {
+        size_t chunkEnd = (chunkStart + insertBatch > total) ? total : chunkStart + insertBatch;
+        std::vector<NativeRdb::ValuesBucket> valuesBuckets;
+        valuesBuckets.reserve(chunkEnd - chunkStart);
+        std::unordered_set<int32_t> subFileIdSet;
+        for (size_t rowIdx = chunkStart; rowIdx < chunkEnd; ++rowIdx) {
+            valuesBuckets.push_back(CreateValuesBucketFromImageFaceTbl(imageFaceTbls[rowIdx]));
+            if (imageFaceTbls[rowIdx].fileId.has_value()) {
+                subFileIdSet.insert(imageFaceTbls[rowIdx].fileId.value());
+            }
+        }
 
-    for (const auto& imageFaceTbl : imageFaceTbls) {
-        if (imageFaceTbl.fileId.has_value()) {
-            fileIdSet.insert(imageFaceTbl.fileId.value());
+        int64_t subRowNum = 0;
+        int32_t ret = BatchInsertWithRetry(VISION_IMAGE_FACE_TABLE, valuesBuckets, subRowNum);
+        if (ret == E_OK) {
+            rowNum += subRowNum;
+            fileIdSet.insert(subFileIdSet.begin(), subFileIdSet.end());
+        } else {
+            MEDIA_ERR_LOG("Failed to batch insert image faces, ret=%{public}d", ret);
         }
     }
 

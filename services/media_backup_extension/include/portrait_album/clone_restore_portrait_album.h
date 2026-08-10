@@ -26,6 +26,7 @@
 
 namespace OHOS::Media {
 constexpr int32_t BATCH_SIZE = 200;
+constexpr int32_t IMAGE_FACE_INSERT_BATCH_SIZE = 200;
 class CloneRestorePortrait : public CloneRestorePortraitBase {
 public:
     void Init(int32_t sceneCode, const std::string &taskId, std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
@@ -78,8 +79,8 @@ private:
         const std::optional<T>& optionalValue, const U& defaultValue);
     std::vector<ImageFaceTbl> ProcessImageFaceTbls(const std::vector<ImageFaceTbl>& imageFaceTbls,
         const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
-    std::vector<ImageFaceTbl> QueryImageFaceTbl(int32_t offset, std::string &fileIdClause,
-        const std::vector<std::string> &commonColumns, int32_t &maxId);
+    std::vector<ImageFaceTbl> QueryImageFaceTbl(const std::vector<int32_t> &fileIdChunk,
+        const std::vector<std::string> &commonColumns);
     void ParseImageFaceResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
         ImageFaceTbl& imageFaceTbl);
     void ParseImageFaceResultSet1(const std::shared_ptr<NativeRdb::ResultSet>& resultSet, ImageFaceTbl& imageFaceTbl);
