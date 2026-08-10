@@ -752,7 +752,6 @@ std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(const std::vec
 void CloneRestorePortrait::ParseImageFaceResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
     ImageFaceTbl& imageFaceTbl)
 {
-    imageFaceTbl.id = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, IMAGE_FACE_COL_ID);
     imageFaceTbl.fileId = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, IMAGE_FACE_COL_FILE_ID);
     imageFaceTbl.faceId = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, IMAGE_FACE_COL_FACE_ID);
     imageFaceTbl.tagId = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, IMAGE_FACE_COL_TAG_ID);
