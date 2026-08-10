@@ -458,7 +458,7 @@ MediaData PhotoOwnerAlbumIdOperation::BuildAlbumInfoByLPath(
     return albumInfo;
 }
 
-int32_t PhotoOwnerAlbumIdOperation::CreateAlbums(const std::unordered_set<std::string> &lPathSet)
+int32_t PhotoOwnerAlbumIdOperation::CreateAlbums(const std::unordered_set<std::string> &lPathSet, bool isHidden)
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoOwnerAlbumIdOperation::CreateAlbums");
@@ -468,6 +468,7 @@ int32_t PhotoOwnerAlbumIdOperation::CreateAlbums(const std::unordered_set<std::s
     // create album for each node.key (lPath)
     for (const auto &lPath : lPathSet) {
         albumInfo = this->BuildAlbumInfoByLPath(lPath);
+        albumInfo.hidden = isHidden ? 1 : 0;
         err = this->CreateAlbum(albumInfo);
         conn = err != E_OK;
         CHECK_AND_RETURN_RET_LOG(!conn,
@@ -491,7 +492,8 @@ int32_t PhotoOwnerAlbumIdOperation::CreateAlbum(const MediaData &albumInfo)
         albumInfo.albumName,
         albumInfo.bundleName,
         albumInfo.lPath,
-        albumInfo.priority};
+        albumInfo.priority,
+        albumInfo.hidden};
     int32_t err = albumRefresh.ExecuteSql(sql, params, AccurateRefresh::RdbOperation::RDB_OPERATION_ADD);
     bool conn = err != AccurateRefresh::ACCURATE_REFRESH_RET_OK;
     CHECK_AND_RETURN_RET_LOG(!conn,
@@ -617,7 +619,7 @@ int32_t PhotoOwnerAlbumIdOperation::GetPhotoAlbumId(const std::string &lPath)
     return GetInt32Val("album_id", resultSet);
 }
 
-int32_t PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath(const std::string &sourcePath)
+int32_t PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath(const std::string &sourcePath, bool isHidden)
 {
     MediaLibraryTracer tracer;
     tracer.Start("PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath");
@@ -625,7 +627,7 @@ int32_t PhotoOwnerAlbumIdOperation::BuildAlbumBySourcePath(const std::string &so
     std::string lPath = this->ParseSourcePathToLPath(sourcePath);
 
     std::unordered_set<std::string> lPathSet = { lPath };
-    int32_t err = this->CreateAlbums(lPathSet);
+    int32_t err = this->CreateAlbums(lPathSet, isHidden);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR, "Media_Operation: CreateAlbums failed, err: %{public}d.", err);
     int32_t albumId = this->GetPhotoAlbumId(lPath);
     CHECK_AND_RETURN_RET_LOG(albumId > 0, E_ERR, "Media_Operation: failed to get albumInfo.");

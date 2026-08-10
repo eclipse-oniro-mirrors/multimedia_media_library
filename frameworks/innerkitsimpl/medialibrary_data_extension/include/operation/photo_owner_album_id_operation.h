@@ -37,6 +37,7 @@ public:
         std::string lPath;
         std::string bundleName;
         int32_t priority = 1;
+        int32_t hidden = 0;
         // Photos fields
         std::string fileId;
     };
@@ -59,7 +60,7 @@ public:  // getter & setter
 
 public:
     int32_t FixPhotoRelation();
-    int32_t BuildAlbumBySourcePath(const std::string &sourcePath);
+    int32_t BuildAlbumBySourcePath(const std::string &sourcePath, bool isHidden = false);
     EXPORT std::string ToStringWithComma(const std::vector<std::string> &fileIds) const;
     EXPORT std::string ToStringWithCommaAndQuote(const std::vector<std::string> &fileIds) const;
     EXPORT std::string FillParams(const std::string &sql, const std::vector<std::string> &bindArgs);
@@ -82,7 +83,7 @@ private:
     std::unordered_map<std::string, MediaData> GetPhotoAlbums(const std::unordered_set<std::string> &lPathSet);
     MediaData BuildAlbumInfoByLPath(const std::string &lPath);
     MediaData BuildAlbumInfoByLPath(const std::string &lPath, const int32_t albumType, const int32_t albumSubType);
-    int32_t CreateAlbums(const std::unordered_set<std::string> &lPathSet);
+    int32_t CreateAlbums(const std::unordered_set<std::string> &lPathSet, bool isHidden = false);
     int32_t CreateAlbum(const MediaData &albumInfo);
     // std::unordered_map<std::string, std::vector<MediaData>> GetAssetExpectedAlbums(
     // const std::vector<std::string> &fileIds, const std::vector<std::string> lPaths);
@@ -158,7 +159,8 @@ private:  // sqls
             priority, \
             date_modified, \
             date_added, \
-            upload_status \
+            upload_status, \
+            hidden \
         ) \
         SELECT \
             INPUT.album_type, \
@@ -191,7 +193,8 @@ private:  // sqls
                 WHEN EXISTS \
                 (SELECT 1 FROM PhotoAlbum WHERE album_type IN (0, 2048) AND dirty <> 4 AND upload_status = 0) THEN 0 \
                 ELSE 1 \
-            END AS upload_status \
+            END AS upload_status, \
+            INPUT.hidden AS hidden \
         FROM \
         ( \
             SELECT \
@@ -200,7 +203,8 @@ private:  // sqls
                 ? AS album_name, \
                 ? AS bundle_name, \
                 ? AS lpath, \
-                ? AS priority \
+                ? AS priority, \
+                ? AS hidden \
         ) AS INPUT \
         LEFT JOIN album_plugin \
             ON LOWER(INPUT.lpath)=LOWER(album_plugin.lpath) \

@@ -667,6 +667,8 @@ int32_t CloudMediaPhotosDao::FixEmptyAlbumId(const CloudMediaPullDataDto &data, 
         albumId = ALBUM_ID_RECYCLE;
     } else if (this->IsHiddenAsset(data)) {
         albumId = ALBUM_ID_HIDDEN;
+        int32_t buildAlbumId = PhotoOwnerAlbumIdOperation().BuildAlbumBySourcePath(data.propertiesSourcePath, true);
+        CHECK_AND_EXECUTE(buildAlbumId <= 0, albumId = buildAlbumId);
     } else if (!data.propertiesSourcePath.empty()) {
         albumId = ALBUM_ID_NEED_REBUILD;
         int32_t buildAlbumId = PhotoOwnerAlbumIdOperation().BuildAlbumBySourcePath(data.propertiesSourcePath);
