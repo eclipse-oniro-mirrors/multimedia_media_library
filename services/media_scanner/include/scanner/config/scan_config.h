@@ -19,6 +19,8 @@
 #include <memory>
 #include <string>
 
+#include "custom_restore_info.h"
+#include "default_scan_info.h"
 #include "imedia_scanner_callback.h"
 #include "picture.h"
 #include "userfile_manager_types.h"
@@ -29,7 +31,8 @@ namespace Media {
 class ScanConfigBuilder;
 
 enum class ScanStrategyType {
-    DEFAULT_SCAN = 0
+    DEFAULT_SCAN = 0,
+    CUSTOM_RESTORE_SCAN = 1
 };
 
 enum class ScanQuality {
@@ -60,17 +63,15 @@ public:
     ScanConfig Merge(const ScanConfig& other, ScanExecutionMode executionMode) const;
     std::string ToString() const;
 
+    // 公共变量 - 执行模式
     MediaLibraryApi GetApiVersion() const;
     ScanExecutionMode GetExecutionMode() const;
-    const std::string& GetFilePath() const;
-    int32_t GetFileId() const;
 
-    // 业务相关
-    bool GetIsMovingPhoto() const;
+    // 公共变量 - 业务相关
     bool GetForceScan() const;
     bool GetSkipAlbumUpdate() const;
 
-    // 缩略图相关
+    // 公共变量 - 缩略图相关
     bool GetNeedGenerateThumbnail() const;
     const std::shared_ptr<IMediaScannerCallback>& GetCallback() const;
     bool GetCreateThumbSync() const;
@@ -78,64 +79,57 @@ public:
     const std::shared_ptr<Picture>& GetOriginalPicture() const;
     const std::shared_ptr<IMediaScannerCallback>& GetUpdateDirtyCallback() const;
 
-    // 扫描策略
+    // 公共变量 - 扫描策略
     ScanStrategyType GetStrategyType() const;
-
-    // 并发解决策略
     ConflictPolicy GetConflictPolicy() const;
     ScanQuality GetQuality() const;
+
+    // Info 访问器
+    DefaultScanInfo& GetDefaultScanInfo();
+    const DefaultScanInfo& GetDefaultScanInfo() const;
+    CustomRestoreInfo& GetCustomRestoreInfo();
+    const CustomRestoreInfo& GetCustomRestoreInfo() const;
 
 private:
     ScanConfig() = default;
 
+    // 公共 setter（friend builder 可访问）
     void SetExecutionMode(ScanExecutionMode executionMode);
-    void SetFilePath(const std::string& path);
-    void SetFileId(int32_t id);
-
-    // 业务相关
-    void SetIsMovingPhoto(bool isMoving);
     void SetForceScan(bool force);
     void SetSkipAlbumUpdate(bool skip);
-
-    // 缩略图相关
     void SetNeedGenerateThumbnail(bool need);
     void SetCallback(const std::shared_ptr<IMediaScannerCallback>& cb);
     void SetCreateThumbSync(bool sync);
     void SetInvalidateThumb(bool invalidate);
     void SetOriginalPicture(const std::shared_ptr<Picture>& picture);
     void SetUpdateDirtyCallback(const std::shared_ptr<IMediaScannerCallback>& cb);
-
-    // 扫描策略
     void SetStrategyType(ScanStrategyType type);
-
-    // 并发解决策略
     void SetConflictPolicy(ConflictPolicy policy);
     void SetQuality(ScanQuality q);
 
-private:
+    // 公共变量 - 执行模式
     ScanExecutionMode executionMode_ = ScanExecutionMode::ASYNC;
-    std::string filePath_;
-    int32_t fileId_ = 0;
 
-    // 业务相关
-    bool isMovingPhoto_ = false;            // 默认: 非动态照片
-    bool isForceScan_ = true;               // 默认: 强制扫描
-    bool isSkipAlbumUpdate_ = false;        // 默认: 需要刷新相册
+    // 公共变量 - 业务相关
+    bool isForceScan_ = true;
+    bool isSkipAlbumUpdate_ = false;
 
-    // 缩略图相关
-    bool needGenerateThumbnail_ = true;     // 默认: 需要生成缩略图
+    // 公共变量 - 缩略图相关
+    bool needGenerateThumbnail_ = true;
     std::shared_ptr<IMediaScannerCallback> callback_ = nullptr;
-    bool isCreateThumbSync_ = false;        // 默认: 异步生成缩略图
-    bool isInvalidateThumb_ = true;         // 默认: 需要删除旧缩略图
+    bool isCreateThumbSync_ = false;
+    bool isInvalidateThumb_ = true;
     std::shared_ptr<Picture> originalPicture_ = nullptr;
-    std::shared_ptr<IMediaScannerCallback> updateDirtyCallback_ = nullptr;        // 待日落
+    std::shared_ptr<IMediaScannerCallback> updateDirtyCallback_ = nullptr;
 
-    // 扫描策略
+    // 公共变量 - 扫描策略
     ScanStrategyType strategyType_ = ScanStrategyType::DEFAULT_SCAN;
-    
-    // 并发解决策略
     ConflictPolicy conflictPolicy_ = ConflictPolicy::DEFAULT;
     ScanQuality quality_ = ScanQuality::DEFAULT;
+
+    // Info 成员（值类型，通过 strategyType_ 区分哪个生效）
+    DefaultScanInfo defaultScanInfo_;
+    CustomRestoreInfo customRestoreInfo_;
 };
 
 } // namespace Media

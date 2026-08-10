@@ -42,6 +42,7 @@ ohos_unittest("medialibrary_scanner_test") {
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/converter",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/callback",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
   ]
 
   sources = [
@@ -53,6 +54,19 @@ ohos_unittest("medialibrary_scanner_test") {
     "./src/resolver_registry_test.cpp",
     "./src/enhanced_scan_executor_test.cpp",
     "./src/scan_config_test.cpp",
+    "./src/custom_restore_types_test.cpp",
+    "./src/metadata_get_value_test.cpp",
+    "./src/custom_restore_strategy_test.cpp",
+    "./src/custom_restore_scanner_obj_test.cpp",
+    "./src/media_scanner_manager_custom_restore_test.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/strategy/custom_restore_strategy.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/custom_restore_scanner_obj.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/custom_restore_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/metadata.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/scan_config.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/scan_config_builder.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/default_scan_info.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/config/custom_restore_info.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
@@ -90,6 +104,8 @@ ohos_unittest("medialibrary_scanner_test") {
     "player_framework:media_client",
     "relational_store:native_rdb",
   ]
+
+  cflags = [ "-fno-access-control" ]
 
   sanitize = {
     cfi = true

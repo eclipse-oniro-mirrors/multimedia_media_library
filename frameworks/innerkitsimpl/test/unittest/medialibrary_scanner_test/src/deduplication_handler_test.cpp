@@ -40,10 +40,10 @@ void DeduplicationHandlerTest::TearDown()
 std::shared_ptr<ScanTaskContext> DeduplicationHandlerTest::CreateTask(int32_t fileId, ScanExecutionMode executionMode)
 {
     auto config = ScanConfigBuilder()
-        .SetFileId(fileId)
-        .SetFilePath("/test/path/" + std::to_string(fileId))
         .SetExecutionMode(executionMode)
         .Build();
+    config.GetDefaultScanInfo().SetFileId(fileId);
+    config.GetDefaultScanInfo().SetFilePath("/test/path/" + std::to_string(fileId));
     return std::make_shared<ScanTaskContext>(config);
 }
 

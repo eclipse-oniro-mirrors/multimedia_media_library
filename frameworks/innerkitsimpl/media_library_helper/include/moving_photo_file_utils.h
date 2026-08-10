@@ -100,6 +100,7 @@ public:
     EXPORT static void GetLocalAssetSize(const int32_t movingPhotoEffectMode, const std::string& filePath,
         const int64_t size, int64_t& localAssetSize);
     EXPORT static bool CheckMovingPhotoDetailedSize(const int32_t fd);
+    EXPORT static bool DecomposeLivePhoto(const std::string &filePath);
 };
 } // namespace OHOS::Media
 

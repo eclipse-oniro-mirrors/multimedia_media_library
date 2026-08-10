@@ -59,7 +59,7 @@ ScanSubmitResult DeduplicationHandler::Handle(const std::shared_ptr<ScanTaskCont
         return ScanSubmitResult::REJECTED;
     }
 
-    int32_t fileId = context->config.GetFileId();
+    int32_t fileId = context->config.GetDefaultScanInfo().GetFileId();
     if (!IsValidFileId(fileId)) {
         MEDIA_DEBUG_LOG("fileId %{public}d invalid, skip", fileId);
         return ScanSubmitResult::EXECUTING;
@@ -144,12 +144,12 @@ void DeduplicationHandler::MergeWaitingTaskConfig(const std::shared_ptr<ScanTask
 
 void DeduplicationHandler::UnmarkAsScanning(const std::shared_ptr<ScanTaskContext>& context)
 {
-    if (context == nullptr || !IsValidFileId(context->config.GetFileId())) {
+    if (context == nullptr || !IsValidFileId(context->config.GetDefaultScanInfo().GetFileId())) {
         return;
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
-    int32_t fileId = context->config.GetFileId();
+    int32_t fileId = context->config.GetDefaultScanInfo().GetFileId();
     if (executingTasks_.find(fileId) == executingTasks_.end()) {
         return;
     }
@@ -222,11 +222,11 @@ void DeduplicationHandler::WaitForSyncScanCompletion(int32_t fileId)
 std::shared_ptr<ScanTaskContext> DeduplicationHandler::GetNextWaitingTask(
     const std::shared_ptr<ScanTaskContext>& context)
 {
-    if (context == nullptr || !IsValidFileId(context->config.GetFileId())) {
+    if (context == nullptr || !IsValidFileId(context->config.GetDefaultScanInfo().GetFileId())) {
         return nullptr;
     }
 
-    int32_t fileId = context->config.GetFileId();
+    int32_t fileId = context->config.GetDefaultScanInfo().GetFileId();
 
     std::lock_guard<std::mutex> lock(mutex_);
 
@@ -259,7 +259,7 @@ void DeduplicationHandler::ClearWaitingTasks(const std::shared_ptr<ScanTaskConte
         return;
     }
 
-    int32_t fileId = context->config.GetFileId();
+    int32_t fileId = context->config.GetDefaultScanInfo().GetFileId();
     if (!IsValidFileId(fileId)) {
         return;
     }

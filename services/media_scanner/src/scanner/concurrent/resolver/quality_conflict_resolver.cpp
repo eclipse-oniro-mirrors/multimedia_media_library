@@ -76,7 +76,7 @@ ScanSubmitResult QualityConflictResolver::Resolve(const std::shared_ptr<ScanTask
     ScanSubmitResult result = DECISION_TABLE[newRow][execRow];
 
     MEDIA_INFO_LOG("result %{public}d (new %{public}d vs executing %{public}d, fileId %{public}d)",
-        static_cast<int32_t>(result), newRow + 1, execRow + 1, newTask->config.GetFileId());
+        static_cast<int32_t>(result), newRow + 1, execRow + 1, newTask->config.GetDefaultScanInfo().GetFileId());
 
     return result;
 }

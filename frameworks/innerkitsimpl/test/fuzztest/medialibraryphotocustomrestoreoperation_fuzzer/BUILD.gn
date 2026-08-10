@@ -33,6 +33,10 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/operation",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/include",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/include",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/strategy",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/include/scanner/config",
   ]
 
   sources = [
@@ -45,6 +49,7 @@ ohos_fuzztest("MediaLibraryPhotoCustomRestoreOperationFuzzTest") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_reporter.cpp",
     "${MEDIALIB_TEST_PATH}/fuzztest/common/src/medialibrary_rdbstore_utils_fuzzer.cpp",
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/media_custom_restore/src/custom_restore_utils.cpp",
   ]
 
   if (media_library_feature_custom_restore) {

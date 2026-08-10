@@ -142,17 +142,13 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::OnProcessVideoDone(cons
     const std::vector<std::string> columns = GetColumns();
     auto fileAsset = MultiStagesCaptureDao().QueryDataByPhotoId(videoId, columns);
     if (fileAsset == nullptr) {
-        HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} result set is empty", MLOG_TAG, __FUNCTION__, __LINE__);
         MultiStagesCaptureDfxTotalTime::GetInstance().RemoveStartTime(videoId);
-        // When subType query failed, default dfxCaptureMediaType is Video
         MultiStagesCaptureDfxResult::Report(videoId, static_cast<int32_t>(MultiStagesCaptureResultErrCode::SQL_ERR),
             static_cast<int32_t>(MultiStagesCaptureMediaType::VIDEO));
         return;
     }
     bool isMovingPhoto = false;
     int32_t dfxCaptureMediaType = GetDfxCaptureMediaType(fileAsset, isMovingPhoto);    // 获取打点的media类型
-    MEDIA_ERR_LOG("dfxCaptureMediaType: %{public}d.", dfxCaptureMediaType);
-
     int ret = MediaLibraryPhotoOperations::ProcessMultistagesVideo(fileAsset);
     if (ret != E_OK) {
         HILOG_COMM_ERROR("%{public}s:{%{public}s:%{public}d} "
@@ -163,19 +159,26 @@ void MultiStagesCaptureDeferredVideoProcSessionCallback::OnProcessVideoDone(cons
     }
     int32_t fileId = fileAsset->GetId();
     UpdateVideoQuality(fileId, fileAsset, true);
-
-    ScanConfig config = ScanConfigBuilder().UseCameraShotPreset(isMovingPhoto, ScanQuality::DEFAULT)
-                                           .SetFilePath(fileAsset->GetFilePath())
-                                           .SetFileId(fileAsset->GetId())
-                                           .Build();
+    DefaultScanInfo scanInfo;
+    scanInfo.SetIsMovingPhoto(isMovingPhoto);
+    scanInfo.SetFilePath(fileAsset->GetFilePath());
+    scanInfo.SetFileId(fileAsset->GetId());
+    ScanConfig config = ScanConfigBuilder()
+        .UseCameraShotPreset(ScanQuality::DEFAULT)
+        .SetDefaultScanInfo(scanInfo)
+        .Build();
     MediaLibraryObjectUtils::ScanFileAsync(config);
-
     CheckEditSize(fileAsset);
     if (fileAsset->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) {
         MultistagesCaptureNotify::NotifyOnProcess(fileAsset, MultistagesCaptureNotifyType::ON_PROCESS_VIDEO_DONE);
         NotifyIfTempFile(fileAsset);
     }
+    ReportDoneAndCleanup(videoId, dfxCaptureMediaType);
+}
 
+void MultiStagesCaptureDeferredVideoProcSessionCallback::ReportDoneAndCleanup(
+    const std::string &videoId, int32_t dfxCaptureMediaType)
+{
     MultiStagesVideoCaptureManager::GetInstance().ClearCinematicProgressMap(videoId);
     MultiStagesCaptureDfxTotalTime::GetInstance().Report(videoId, dfxCaptureMediaType);
     MultiStagesCaptureDfxResult::Report(videoId,

@@ -134,6 +134,7 @@ public:
     static const std::string PHOTO_THUMBNAIL_READY EXPORT;
     static const std::string PHOTO_THUMBNAIL_VISIBLE EXPORT;
 
+    static const std::string IS_STYLE_PHOTO EXPORT;
     static const std::string PHOTO_SYNCING EXPORT;
     static const std::string PHOTO_DATE_YEAR EXPORT;
     static const std::string PHOTO_DATE_MONTH EXPORT;

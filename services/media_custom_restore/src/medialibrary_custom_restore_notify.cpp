@@ -23,7 +23,7 @@
 // LCOV_EXCL_START
 namespace OHOS::Media {
 const std::string CustomRestoreNotify::NOTIFY_URI_PREFIX = "file://media/custom_restore/";
-int32_t CustomRestoreNotify::Notify(std::string keyPath, const InnerRestoreResult &restoreResult)
+int32_t CustomRestoreNotify::Notify(const std::string &keyPath, const InnerRestoreResult &restoreResult)
 {
     auto obsMgrClient = AAFwk::DataObsMgrClient::GetInstance();
     if (obsMgrClient == nullptr) {

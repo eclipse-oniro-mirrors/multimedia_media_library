@@ -44,7 +44,8 @@ int32_t DefaultScanStrategy::Scan(const std::shared_ptr<ScanTaskContext>& contex
     }
 
     MEDIA_INFO_LOG("validated (fileId %{public}d, path %{private}s)",
-        context->config.GetFileId(), context->config.GetFilePath().c_str());
+        context->config.GetDefaultScanInfo().GetFileId(),
+        context->config.GetDefaultScanInfo().GetFilePath().c_str());
 
     auto scanner = CreateScanner(context);
     if (scanner == nullptr) {
@@ -54,7 +55,7 @@ int32_t DefaultScanStrategy::Scan(const std::shared_ptr<ScanTaskContext>& contex
 
     scanner->Scan();
 
-    MEDIA_INFO_LOG("completed (fileId %{public}d)", context->config.GetFileId());
+    MEDIA_INFO_LOG("completed (fileId %{public}d)", context->config.GetDefaultScanInfo().GetFileId());
     return E_OK;
 }
 
@@ -70,7 +71,7 @@ bool DefaultScanStrategy::ValidateContext(const std::shared_ptr<ScanTaskContext>
         return false;
     }
 
-    if (context->config.GetFilePath().empty()) {
+    if (context->config.GetDefaultScanInfo().GetFilePath().empty()) {
         MEDIA_ERR_LOG("ValidateContext: filePath is empty");
         return false;
     }

@@ -26,6 +26,7 @@
 #include "medialibrary_rdb_utils.h"
 #include "metadata.h"
 #include "tlv_util.h"
+#include "custom_restore_types.h"
 // LCOV_EXCL_START
 namespace OHOS::Media {
 struct RestoreTaskInfo {
@@ -52,57 +53,6 @@ struct RestoreTaskInfo {
     int32_t imageAlbumId;
     int32_t videoAlbumId;
     bool earlyNotifySent = false;
-};
-
-struct FileInfo {
-    std::string originFilePath;
-    std::string filePath;
-    std::string fileName;
-    std::string displayName;
-    std::string title;
-    std::string extension;
-    MediaType mediaType;
-    int32_t size;
-    int32_t orientation;
-    bool isLivePhoto;
-    int32_t fileId;
-    std::string mimeType;
-    int32_t subtype;
-    int32_t movingPhotoEffectMode;
-    std::string frontCamera;
-    std::string shootingMode;
-    int32_t albumId;
-};
-
-struct UniqueNumber {
-    int32_t imageTotalNumber = 0;
-    int32_t videoTotalNumber = 0;
-    int32_t imageCurrentNumber = 0;
-    int32_t videoCurrentNumber = 0;
-
-    UniqueNumber operator+(const UniqueNumber &other) const
-    {
-        UniqueNumber result;
-        result.imageTotalNumber = this->imageTotalNumber + other.imageTotalNumber;
-        result.videoTotalNumber = this->videoTotalNumber + other.videoTotalNumber;
-        result.imageCurrentNumber = this->imageCurrentNumber + other.imageCurrentNumber;
-        result.videoCurrentNumber = this->videoCurrentNumber + other.videoCurrentNumber;
-        return result;
-    }
-
-    void clear()
-    {
-        imageTotalNumber = 0;
-        videoTotalNumber = 0;
-        imageCurrentNumber = 0;
-        videoCurrentNumber = 0;
-    }
-};
-
-struct TimeInfo {
-    int64_t dateAdded{0};
-    int64_t dateTaken{0};
-    std::string detailTime;
 };
 
 class ShareRestoreRdbCallback : public NativeRdb::RdbOpenCallback {
@@ -163,22 +113,15 @@ private:
     int32_t HandleTlvRestore(const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo,
         const vector<string> &filePathVector, bool isFirst, UniqueNumber &uniqueNumber);
     void RestoreTlvRollback(const std::string &assetPath);
-    vector<FileInfo> GetFileInfos(const vector<string> &filePathVector, UniqueNumber &uniqueNumber);
+    vector<RestoreFileInfo> GetFileInfos(const vector<string> &filePathVector, UniqueNumber &uniqueNumber);
     int32_t UpdateUniqueNumber(UniqueNumber &uniqueNumber);
     int32_t CreateAssetUniqueNumber(int32_t type, UniqueNumber &uniqueNumber);
-    vector<FileInfo> SetDestinationPath(vector<FileInfo> &restoreFiles, UniqueNumber &uniqueNumber);
+    vector<RestoreFileInfo> SetDestinationPath(vector<RestoreFileInfo> &restoreFiles, UniqueNumber &uniqueNumber);
     void GetAssetRootDir(int32_t mediaType, string &rootDirPath);
-    vector<FileInfo> BatchInsert(const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo,
-        vector<FileInfo> &restoreFiles, int32_t &sameFileNum, bool isFirst);
-    NativeRdb::ValuesBucket GetInsertValue(
-        const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo, FileInfo &fileInfo);
-    int32_t FillMetadata(
-        const unordered_map<string, TimeInfo> &timeInfoMap, const FileInfo &fileInfo, std::unique_ptr<Metadata> &data);
-    int32_t GetFileMetadata(std::unique_ptr<Metadata> &data);
-    int32_t RenameFiles(const vector<FileInfo> &restoreFiles);
-    int32_t BatchUpdateTimePending(const vector<FileInfo> &restoreFiles,
+    int32_t RenameFiles(const vector<RestoreFileInfo> &restoreFiles);
+    int32_t BatchUpdateTimePending(const vector<RestoreFileInfo> &restoreFiles,
         AccurateRefresh::AssetAccurateRefresh &assetRefresh);
-    int32_t UpdatePhotoAlbum(RestoreTaskInfo &restoreTaskInfo, FileInfo fileInfo);
+    int32_t UpdatePhotoAlbum(RestoreTaskInfo &restoreTaskInfo, RestoreFileInfo fileInfo);
     void SendNotifyMessage(RestoreTaskInfo &restoreTaskInfo, int32_t notifyType, int32_t errCode, int32_t fileNum,
         const UniqueNumber &uniqueNumber);
     InnerRestoreResult GenerateCustomRestoreNotify(RestoreTaskInfo &restoreTaskInfo, int32_t notifyType);
@@ -186,7 +129,6 @@ private:
     bool IsCancelTask(RestoreTaskInfo &restoreTaskInfo);
     void CancelTaskFinish(RestoreTaskInfo &restoreTaskInfo);
     void ApplyEfficiencyQuota(int32_t fileNum);
-    bool IsDuplication(RestoreTaskInfo &restoreTaskInfo, FileInfo &fileInfo);
     int32_t InitPhotoCache(RestoreTaskInfo &restoreTaskInfo);
     void QueryAlbumId(RestoreTaskInfo &restoreTaskInfo);
     void ReportCustomRestoreTask(RestoreTaskInfo &restoreTaskInfo);
@@ -195,7 +137,6 @@ private:
     int32_t GetAlbumInfoBySubType(int32_t subType, string &albumUri, int32_t &albumId);
     unordered_map<string, TimeInfo> QueryMediaInfo(const std::shared_ptr<NativeRdb::RdbStore> &rdbStore);
     unordered_map<string, TimeInfo> GetTimeInfoMap(RestoreTaskInfo &restoreTaskInfo);
-    void SetTimeInfo(const std::unique_ptr<Metadata> &data, FileInfo &info, NativeRdb::ValuesBucket &value);
 
     int32_t HandleTlvSingleRestore(const std::unordered_map<TlvTag, std::string> &editFileMap,
         const unordered_map<string, TimeInfo> &timeInfoMap, RestoreTaskInfo &restoreTaskInfo, bool isFirst,
@@ -203,6 +144,10 @@ private:
     static int32_t UpdateTlvEditDataSize(const std::string &assetPath);
 
     static std::string GetUniqueTempDir(const std::string &tlvPath);
+
+    vector<RestoreFileInfo> scanfile(const unordered_map<string, TimeInfo> &timeInfoMap,
+        RestoreTaskInfo &restoreTaskInfo, const vector<string> &filePathVector,
+        vector<RestoreFileInfo> &restoreFiles, int32_t &sameFileNum, bool isFirst);
 
     int32_t HandlePhotoSourceRestore(const std::string &sourceBackSrcPath, const std::string &assetPath);
     int32_t HandleEditDataRestore(const std::string &sourceBackSrcPath, const std::string &assetPath);

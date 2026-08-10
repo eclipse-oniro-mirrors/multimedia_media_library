@@ -879,8 +879,7 @@ int32_t MetadataExtractor::CombineMovingPhotoMetadata(std::unique_ptr<Metadata> 
 
     data->SetCoverPosition(videoData->GetCoverPosition());
 
-    uint32_t frameIndex = MovingPhotoFileUtils::GetFrameIndex(videoData->GetCoverPosition(),
-        UniqueFd(open(videoPath.c_str(), O_RDONLY)));
+    uint32_t frameIndex = videoData->GetFrameIndex();
     off_t extraDataSize{0};
     if (MovingPhotoFileUtils::GetExtraDataLen(data->GetFilePath(), videoPath,
         frameIndex, videoData->GetCoverPosition(), extraDataSize, isCameraShotMovingPhoto) != E_OK) {
@@ -912,7 +911,7 @@ int32_t MetadataExtractor::CombineMovingPhotoMetadata(std::unique_ptr<Metadata> 
     return E_OK;
 }
 
-int32_t MetadataExtractor::Extract(std::unique_ptr<Metadata> &data, bool isCameraShotMovingPhoto)
+int32_t MetadataExtractor::Extract(std::unique_ptr<Metadata> &data, bool isCameraShotMovingPhoto, int32_t scene)
 {
     if (data->GetFileMediaType() == MEDIA_TYPE_IMAGE) {
         int32_t ret = ExtractImageMetadata(data);
@@ -922,7 +921,7 @@ int32_t MetadataExtractor::Extract(std::unique_ptr<Metadata> &data, bool isCamer
         }
         return ret;
     } else {
-        return ExtractAVMetadata(data);
+        return ExtractAVMetadata(data, scene);
     }
 }
 // LCOV_EXCL_STOP
