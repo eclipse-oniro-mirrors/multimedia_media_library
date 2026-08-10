@@ -25,12 +25,14 @@ ohos_unittest("media_background_task_test") {
     "./include",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/include/background",
     "../medialibrary_unittest_utils/include",
+    "${MEDIALIB_CLOUD_SYNC_PATH}/include",
   ]
 
   cflags = [ "-fno-access-control" ]
 
   sources = [
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_cloud_dentry_batch_task.cpp",
+    "${MEDIALIB_CLOUD_SYNC_PATH}/src/cloud_sync_helper.cpp",
     "./src/media_burst_key_duplicate_task_test.cpp",
     "./src/media_clear_invalid_user_comment_task_test.cpp",
     "./src/media_file_manager_offline_cleanup_task_test.cpp",
