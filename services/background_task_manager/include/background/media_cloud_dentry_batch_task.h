@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 
-#include "cloud_sync_helper.h"
 #include "photos_po.h"
 
 namespace OHOS::Media::Background {
