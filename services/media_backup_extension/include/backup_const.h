@@ -910,7 +910,7 @@ const std::vector<std::string> EXCLUDED_PORTRAIT_COLUMNS = {"count"};
 const std::vector<std::string> EXCLUDED_GROUP_PHOTO_COLUMNS = {"count", "rank"};
 const std::vector<std::string> EXCLUDED_FACE_TAG_COLUMNS = {"id", "user_operation", "rename_operation", "group_tag",
     "user_display_level", "tag_order", "is_me", "cover_uri", "count", "date_modify", "album_type", "is_removed"};
-const std::vector<std::string> EXCLUDED_IMAGE_FACE_COLUMNS = {"id"};
+const std::vector<std::string> EXCLUDED_IMAGE_FACE_COLUMNS = {};
 const std::vector<std::string> EXCLUDED_VIDEO_FACE_COLUMNS = {"id"};
 const std::vector<std::string> EXCLUDED_BEAUTY_SCORE_COLUMNS = {"id"};
 const std::string SQL_SELECT_ERROR_BURST_PHOTOS  = "COALESCE(burst_key, '') <> '' and NOT EXISTS ( \

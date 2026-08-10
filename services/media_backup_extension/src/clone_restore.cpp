@@ -2788,9 +2788,10 @@ void CloneRestore::BatchInsertMap(const vector<FileInfo> &fileInfos, int64_t &to
         "Get album id map of table %{public}s empty, skip", garbledTableName.c_str());
     string albumSelection = GetValueFromMap(tableQueryWhereClauseMap_, tableName);
     unordered_set<int32_t> currentTableAlbumSet;
-    string baseQuerySql = mapTableName + " INNER JOIN " + tableName + " ON " +
+    string baseQuerySql = mapTableName + " LEFT JOIN " + tableName + " ON " +
         mapTableName + "." + PhotoMap::ALBUM_ID + " = " + tableName + "." + PhotoAlbumColumns::ALBUM_ID +
-        " WHERE " + mapTableName + "." + PhotoMap::ASSET_ID + " IN (" + selection + ")";
+        " WHERE " + mapTableName + "." + PhotoMap::ASSET_ID + " IN (" + selection + ") AND " +
+        tableName + "." + PhotoAlbumColumns::ALBUM_ID + " IS NOT NULL ";
     baseQuerySql += albumSelection.empty() ? "" : " AND " + albumSelection;
     int32_t totalNumber = QueryMapTotalNumber(baseQuerySql);
     MEDIA_INFO_LOG("QueryMapTotalNumber of table %{public}s, totalNumber = %{public}d", garbledTableName.c_str(),
@@ -2870,7 +2871,8 @@ void CloneRestore::PrepareEditTimeVal(NativeRdb::ValuesBucket &values, int64_t e
 {
     string editDataPath = backupRestoreDir_ +
         BackupFileUtils::GetFullPathByPrefixType(PrefixType::LOCAL_EDIT_DATA, fileInfo.relativePath);
-    int64_t newEditTime = editTime > 0 && IsFilePathExist(editDataPath) ? editTime : 0;
+    int64_t newEditTime = (fileInfo.position == static_cast<int32_t>(PhotoPositionType::CLOUD) ||
+        (editTime > 0 && IsFilePathExist(editDataPath))) ? editTime : 0;
     PrepareCommonColumnVal(values, PhotoColumn::PHOTO_EDIT_TIME, newEditTime, commonColumnInfoMap);
 }
 

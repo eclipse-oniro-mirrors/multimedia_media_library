@@ -77,9 +77,9 @@ private:
     void PutWithDefault(NativeRdb::ValuesBucket& values, const std::string& columnName,
         const std::optional<T>& optionalValue, const U& defaultValue);
     std::vector<ImageFaceTbl> ProcessImageFaceTbls(const std::vector<ImageFaceTbl>& imageFaceTbls,
-        const std::vector<FileIdPair>& fileIdPairs);
+        const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
     std::vector<ImageFaceTbl> QueryImageFaceTbl(int32_t offset, std::string &fileIdClause,
-        const std::vector<std::string> &commonColumns);
+        const std::vector<std::string> &commonColumns, int32_t &maxId);
     void ParseImageFaceResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
         ImageFaceTbl& imageFaceTbl);
     void ParseImageFaceResultSet1(const std::shared_ptr<NativeRdb::ResultSet>& resultSet, ImageFaceTbl& imageFaceTbl);

@@ -250,9 +250,9 @@ void CloneRestorePortrait::Restore(bool isReverse)
     int32_t ret = RestoreMaps();
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to update analysis photo map status");
     RestoreAnalysisTotalFaceStatus();
-    ReportPortraitCloneStat(sceneCode_);
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     migratePortraitTotalTimeCost_ += end - start;
+    ReportPortraitCloneStat(sceneCode_);
 }
 
 void CloneRestorePortrait::RestoreAnalysisTotalFaceStatus()
@@ -679,11 +679,14 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
         EXCLUDED_IMAGE_FACE_COLUMNS);
 
     BackupDatabaseUtils::DeleteExistingImageFaceData(mediaLibraryRdb_, uniqueFileIdPairs);
-    for (int32_t offset = 0; offset < totalNumber; offset += QUERY_COUNT) {
-        std::vector<ImageFaceTbl> imageFaceTbls = QueryImageFaceTbl(offset, fileIdOldInClause, commonColumns);
-        auto imageFaces = ProcessImageFaceTbls(imageFaceTbls, uniqueFileIdPairs);
+    int32_t offset = 0;
+    int32_t maxId = 0;
+    do {
+        std::vector<ImageFaceTbl> imageFaceTbls = QueryImageFaceTbl(offset, fileIdOldInClause, commonColumns, maxId);
+        auto imageFaces = ProcessImageFaceTbls(imageFaceTbls, photoInfoMap_);
         BatchInsertImageFaces(imageFaces);
-    }
+        offset = maxId;
+    } while (imageFaceTbls.size() == static_cast<size_t>(QUERY_COUNT));
 
     // 记录需要刷新的分数类型的 mask 值
     MEDIA_INFO_LOG("record bit2 of mask");
@@ -698,7 +701,7 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
 }
 
 std::vector<ImageFaceTbl> CloneRestorePortrait::ProcessImageFaceTbls(const std::vector<ImageFaceTbl>& imageFaceTbls,
-    const std::vector<FileIdPair>& fileIdPairs)
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
 {
     CHECK_AND_RETURN_RET_LOG(!imageFaceTbls.empty(), {}, "image faces tbl empty");
 
@@ -708,13 +711,11 @@ std::vector<ImageFaceTbl> CloneRestorePortrait::ProcessImageFaceTbls(const std::
     for (const auto& imageFaceTbl : imageFaceTbls) {
         if (imageFaceTbl.fileId.has_value()) {
             int32_t oldFileId = imageFaceTbl.fileId.value();
-            auto it = std::find_if(fileIdPairs.begin(), fileIdPairs.end(),
-                [oldFileId](const FileIdPair& pair) { return pair.first == oldFileId; });
-            if (it != fileIdPairs.end()) {
-                ImageFaceTbl updatedFace = imageFaceTbl;
-                updatedFace.fileId = it->second;
-                imageFaceNewTbls.push_back(std::move(updatedFace));
-            }
+            auto it = photoInfoMap.find(oldFileId);
+            CHECK_AND_CONTINUE(it != photoInfoMap.end());
+            ImageFaceTbl updatedFace = imageFaceTbl;
+            updatedFace.fileId = it->second.fileIdNew;
+            imageFaceNewTbls.push_back(std::move(updatedFace));
         }
     }
 
@@ -722,7 +723,7 @@ std::vector<ImageFaceTbl> CloneRestorePortrait::ProcessImageFaceTbls(const std::
 }
 
 std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(int32_t offset, std::string &fileIdClause,
-    const std::vector<std::string> &commonColumns)
+    const std::vector<std::string> &commonColumns, int32_t &maxId)
 {
     std::vector<ImageFaceTbl> result;
     result.reserve(QUERY_COUNT);
@@ -730,17 +731,19 @@ std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(int32_t offset
     std::string inClause = BackupDatabaseUtils::JoinValues<string>(commonColumns, ", ");
     std::string querySql =
         "SELECT " + inClause +
-        " FROM " + VISION_IMAGE_FACE_TABLE;
-    querySql += " WHERE " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdClause;
-    querySql += " LIMIT " + std::to_string(offset) + ", " + std::to_string(QUERY_COUNT);
+        " FROM " + VISION_IMAGE_FACE_TABLE +
+        " WHERE id > ? AND " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdClause +
+        " ORDER BY id LIMIT ?";
+    const std::vector<std::string> args = { std::to_string(offset), std::to_string(QUERY_COUNT) };
 
-    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
+    auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql, args);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, result, "Query resultSet is null.");
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         ImageFaceTbl imageFaceTbl;
         ParseImageFaceResultSet(resultSet, imageFaceTbl);
         result.emplace_back(imageFaceTbl);
+        maxId = imageFaceTbl.id.value_or(0);
     }
 
     resultSet->Close();
@@ -750,6 +753,7 @@ std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(int32_t offset
 void CloneRestorePortrait::ParseImageFaceResultSet(const std::shared_ptr<NativeRdb::ResultSet>& resultSet,
     ImageFaceTbl& imageFaceTbl)
 {
+    imageFaceTbl.id = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, IMAGE_FACE_COL_ID);
     imageFaceTbl.fileId = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, IMAGE_FACE_COL_FILE_ID);
     imageFaceTbl.faceId = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, IMAGE_FACE_COL_FACE_ID);
     imageFaceTbl.tagId = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, IMAGE_FACE_COL_TAG_ID);
@@ -831,6 +835,8 @@ void  CloneRestorePortrait::ParseImageFaceResultSet1(const std::shared_ptr<Nativ
 
 void CloneRestorePortrait::BatchInsertImageFaces(const std::vector<ImageFaceTbl>& imageFaceTbls)
 {
+    CHECK_AND_RETURN(!imageFaceTbls.empty());
+
     std::vector<NativeRdb::ValuesBucket> valuesBuckets;
     std::unordered_set<int32_t> fileIdSet;
     for (const auto& imageFaceTbl : imageFaceTbls) {
