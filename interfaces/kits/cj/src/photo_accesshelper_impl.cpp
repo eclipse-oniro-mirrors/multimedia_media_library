@@ -689,17 +689,16 @@ void PhotoAccessHelperImpl::UnRegisterNotifyChange(const std::string &uri, int64
         CheckRef(listObj, true, uri, funcId);
         return;
     }
-    if (listObj.observers_.size() == 0) {
-        return;
-    }
     std::vector<std::shared_ptr<FfiMediaOnNotifyObserver>> offObservers;
     {
         lock_guard<mutex> lock(sOnOffMutex_);
+        if (listObj.observers_.size() == 0) {
+            return;
+        }
         for (auto iter = listObj.observers_.begin(); iter != listObj.observers_.end();) {
             if (uri.compare((*iter)->uri_) == 0) {
                 offObservers.push_back(*iter);
-                vector<shared_ptr<FfiMediaOnNotifyObserver>>::iterator tmp = iter;
-                iter = listObj.observers_.erase(tmp);
+                iter = listObj.observers_.erase(iter);
             } else {
                 iter++;
             }
