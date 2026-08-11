@@ -240,9 +240,9 @@ HWTEST_F(CloneStatusListenerTest, HandleDeathRecipient, TestSize.Level1)
     // 模拟 SA 死亡，调用 HandleDeathRecipient
     listener->HandleDeathRecipient();
  
-    // 验证 cloneFlag 被清理为"0"
+    // 验证 SA 死亡后， cloneFlag 不会被清理为"0"
     std::string cloneFlagAfter = system::GetParameter(CLONE_FLAG, "");
-    EXPECT_EQ(cloneFlagAfter, NOT_IN_CLONE);
+    EXPECT_NE(cloneFlagAfter, NOT_IN_CLONE);
  
     // 恢复状态
     system::SetParameter(CLONE_STATE, NOT_IN_CLONE);
