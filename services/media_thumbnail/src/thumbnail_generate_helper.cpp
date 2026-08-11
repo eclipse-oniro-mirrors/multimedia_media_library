@@ -835,7 +835,7 @@ int32_t ThumbnailGenerateHelper::GetThumbnailPixelMap(ThumbnailData& data, Thumb
     }
     string fileName;
     int32_t err = GetAvailableFile(opts, data, thumbType, fileName);
-    CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "GetAvailableFile failed, path: %{public}s",
+    CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR, "GetAvailableFile failed, path: %{public}s",
         DfxUtils::GetSafePath(data.path).c_str());
     bool isLocalThumbnailAvailable = IsLocalThumbnailAvailable(data, thumbType);
     DfxTimer dfxTimer(thumbType == ThumbnailType::LCD ? DfxType::CLOUD_LCD_OPEN : DfxType::CLOUD_DEFAULT_OPEN,
@@ -843,7 +843,7 @@ int32_t ThumbnailGenerateHelper::GetThumbnailPixelMap(ThumbnailData& data, Thumb
     string absFilePath;
     if (!PathToRealPath(fileName, absFilePath)) { // 为读删并发场景兜底重试一次
         err = GetAvailableFile(opts, data, thumbType, fileName);
-        CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "GetAvailableFile failed, path: %{public}s",
+        CHECK_AND_RETURN_RET_LOG(err == E_OK, E_ERR, "GetAvailableFile failed, path: %{public}s",
             DfxUtils::GetSafePath(data.path).c_str());
         CHECK_AND_RETURN_RET_LOG(PathToRealPath(fileName, absFilePath), E_ERR,
             "file is not real path, file path: %{public}s", DfxUtils::GetSafePath(fileName).c_str());
