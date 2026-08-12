@@ -62,6 +62,7 @@ ohos_fuzztest("MediaLibraryMediaAssetsControllerService3FuzzTest") {
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_IPC_COMMON}:media_ipc_common",
   ]
 

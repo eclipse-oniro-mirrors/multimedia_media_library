@@ -17,16 +17,14 @@
 #define FRAMEWORKS_INNERKITSIMPL_MEDIA_LIBRARY_INCLUDE_MEDIA_LIB_DATASHAREHELPER_CONTAINER_H_
 
 #include "datashare_helper.h"
+#include "safe_map.h"
+
+#include <mutex>
 
 namespace OHOS {
 namespace Media {
 #define EXPORT __attribute__ ((visibility ("default")))
-/**
- * @brief Utility class for file operations
- *
- * @since 1.0
- * @version 1.0
- */
+
 class MediaLibraryHelperContainer {
 public:
     EXPORT MediaLibraryHelperContainer() = default;
@@ -35,12 +33,22 @@ public:
     EXPORT static std::shared_ptr<MediaLibraryHelperContainer> GetInstance();
     EXPORT void CreateDataShareHelper(const sptr<IRemoteObject> &token, const std::string &uri);
     EXPORT void SetDataShareHelper(const std::shared_ptr<DataShare::DataShareHelper> &helper);
+    // Returns cached helper; if null, creates one with SA token + current user and caches it
     EXPORT std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelper();
+
+    // Multi-user support: store/retrieve helper by userId
+    EXPORT void SetDataShareHelperForUser(int32_t userId,
+        const std::shared_ptr<DataShare::DataShareHelper> &helper);
+    EXPORT std::shared_ptr<DataShare::DataShareHelper> GetDataShareHelperForUser(int32_t userId);
 
 private:
     static std::mutex mutex_;
     static std::shared_ptr<MediaLibraryHelperContainer> instance_;
     static std::shared_ptr<DataShare::DataShareHelper> dataShareHelper_;
+    SafeMap<int32_t, std::shared_ptr<DataShare::DataShareHelper>> userDataShareHelperMap_;
+
+    // Create DataShareHelper using SA token + current active user
+    static std::shared_ptr<DataShare::DataShareHelper> CreateHelperFromSa();
 };
 } // namespace Media
 } // namespace  OHOS

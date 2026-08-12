@@ -30,12 +30,14 @@
 #include "ipc_skeleton.h"
 #include "media_file_utils.h"
 #include "medialibrary_db_const.h"
+#include "media_uri_utils.h"
 #include "album_change_info.h"
 #include "media_change_info.h"
 #include "photo_album_column.h"
 #include "base_data_uri.h"
 #include "message_parcel.h"
 #include "securec.h"
+#include "os_account_manager.h"
 
 #undef MLOG_TAG
 #define MLOG_TAG "NotificationHelper"
@@ -55,6 +57,17 @@ static sptr<IRemoteObject> InitToken()
     auto remoteObj = saManager->GetSystemAbility(STORAGE_MANAGER_MANAGER_ID);
     CHECK_AND_RETURN_RET_LOG(remoteObj != nullptr, nullptr, "GetSystemAbility Service failed.");
     return remoteObj;
+}
+
+static int32_t GetCurrentAccountId()
+{
+    constexpr int32_t DEFAULT_USER_ID = 100;
+    int32_t activeUserId = DEFAULT_USER_ID;
+    ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
+    if (ret != ERR_OK) {
+        MEDIA_ERR_LOG("fail to get activeUser:%{public}d", ret);
+    }
+    return activeUserId;
 }
 }
 
@@ -266,27 +279,32 @@ bool NotificationHelper::StartObserverIfNeeded()
             getpid(), callbacks_.size());
     }
 
-    // Use the common Creator(token, uri) pattern used across MediaLibrary clients.
+    // Create helper with correct user context via GetMultiUri (managed by MediaDataShareHelper
+    // in the client layer; notification_helper creates its own instance for observer use).
+    int32_t activeUser = GetCurrentAccountId();
     auto token = InitToken();
     if (token == nullptr) {
         MEDIA_ERR_LOG("StartObserverIfNeeded: Failed to init token for DataShareHelper");
         return false;
     }
-    MEDIA_INFO_LOG("StartObserverIfNeeded: token obtained, proceeding with Creator()");
+    Uri baseUri = Uri(MEDIALIBRARY_DATA_URI);
+    std::string multiUri = MediaUriUtils::GetMultiUri(baseUri, activeUser).ToString();
+    MEDIA_INFO_LOG("StartObserverIfNeeded: creating helper for userId %{public}d, uri:%{public}s",
+        activeUser, multiUri.c_str());
 
     // Creating DataShareHelper may fail during early boot / ability not ready.
     // Add minimal retry to reduce flakiness and add high-signal logs for joint debugging.
     std::shared_ptr<DataShare::DataShareHelper> helper;
     constexpr int32_t maxCreateRetry = 3;
     for (int32_t i = 0; i < maxCreateRetry; ++i) {
-        helper = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI);
+        helper = DataShare::DataShareHelper::Creator(token, multiUri);
         if (helper != nullptr) {
             MEDIA_INFO_LOG("StartObserverIfNeeded: DataShareHelper created on attempt %{public}d/%{public}d",
                 i + 1, maxCreateRetry);
             break;
         }
         MEDIA_ERR_LOG("Failed to create DataShareHelper (attempt %{public}d/%{public}d), uri:%{public}s",
-            i + 1, maxCreateRetry, MEDIALIBRARY_DATA_URI.c_str());
+            i + 1, maxCreateRetry, multiUri.c_str());
         std::this_thread::sleep_for(std::chrono::milliseconds(200)); // 200 milliseconds
     }
     if (helper == nullptr) {

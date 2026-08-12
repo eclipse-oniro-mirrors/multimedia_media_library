@@ -18,13 +18,14 @@
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "media_file_uri.h"
-#include "medialibrary_helper_container.h"
 #include "medialibrary_type_const.h"
 #include "photo_album_column.h"
 #include "string_ex.h"
 #include "userfilemgr_uri.h"
 #include "media_audio_column.h"
 #include "media_string_utils.h"
+#include "medialibrary_helper_container.h"
+#include "media_account_utils.h"
 
 using namespace std;
 namespace OHOS {
@@ -272,15 +273,12 @@ std::string MediaFileUri::GetTableName()
 
 std::string MediaFileUri::GetFilePath()
 {
-    /* get helper */
-    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
-            MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
+    /* get helper from Container (auto-creates with SA token + current user if empty) */
+    auto dataShareHelper = MediaLibraryHelperContainer::GetInstance()->GetDataShareHelper();
     if (dataShareHelper == nullptr) {
-        MEDIA_ERR_LOG("get data share helper err");
+        MEDIA_ERR_LOG("GetFilePath: get data share helper err");
         return "";
     }
-
-    DataShare::DatashareBusinessError error;
     const std::string uriString = ToString();
     std::string queryUri(CONST_UFM_QUERY_PHOTO);
     DataShare::DataSharePredicates predicates;
@@ -296,6 +294,7 @@ std::string MediaFileUri::GetFilePath()
     }
     Uri uri(queryUri);
     /* query and check */
+    DataShare::DatashareBusinessError error;
     auto resultSet = dataShareHelper->Query(uri, predicates, columns, &error);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, "", "Query failed, resultSet is nullptr.");
     int32_t ret = error.GetCode();

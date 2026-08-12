@@ -33,16 +33,20 @@ public:
         const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns, int &errCode,
         const int32_t userId = -1);
     EXPORT bool IsNoIpc(Uri &uri, OperationObject &object, const DataShare::DataSharePredicates &predicates,
-        bool isIgnoreSELinux = false);
+        bool isIgnoreSELinux = false) override;
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryRdb(Uri &uri,
         const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns);
     EXPORT std::shared_ptr<NativeRdb::ResultSet> QueryByStep(const std::string &sql);
     EXPORT int OpenFileWithErrCode(
         Uri &uri, const std::string &mode, int32_t &realErr, const int32_t userId = -1);
+    // Public wrapper for the protected ForceReconnect in base class
+    EXPORT bool ForceReconnect(const int32_t userId = -1);
+    // Get cached or create+cache DataShareHelper for userId (managed by MediaDataShareHelper)
+    EXPORT std::shared_ptr<DataShare::DataShareHelper> GetOrCreateDataShareHelper(const int32_t userId = -1);    
 protected:
     EXPORT std::shared_ptr<DataShare::DataShareResultSet> QueryWithoutIpc(
         const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns, OperationObject &object,
-        int &errCode);
+        int &errCode) override;
 
     MediaCommonClient();
     ~MediaCommonClient();

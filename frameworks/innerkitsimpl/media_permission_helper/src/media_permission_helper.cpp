@@ -100,14 +100,15 @@ int32_t MediaPermissionHelper::InitMediaPermissionHelper()
     int32_t activeUser = GetCurrentAccountId();
     MEDIA_INFO_LOG("InitMediaPermissionHelper, activeUserId is %{public}d, userId_ is %{public}d", activeUser, userId_);
     if (dataShareHelper_ == nullptr || activeUser != userId_) {
-        auto token = InitToken();
+        sptr<IRemoteObject> token = InitToken();
         if (token == nullptr) {
             MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
             return E_ERR;
         }
-        Uri uri = Uri(MEDIALIBRARY_DATA_URI);
-        std::string multiUri = MediaUriUtils::GetMultiUri(uri, activeUser).ToString();
-        dataShareHelper_ = DataShare::DataShareHelper::Creator(token, multiUri);
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        client.SetUserId(activeUser);
+        client.Init(token, activeUser);
+        dataShareHelper_ = client.GetOrCreateDataShareHelper(activeUser);
         if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG(
                 "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);

@@ -51,6 +51,7 @@
 #include "update_data_vo.h"
 #include "clean_attachment_vo.h"
 #include "get_full_sync_download_info_vo.h"
+using namespace std;
 namespace OHOS::Media::CloudSync {
 // LCOV_EXCL_START
 void CloudMediaDataClientHandler::SetUserId(const int32_t &userId)
