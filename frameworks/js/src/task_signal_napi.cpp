@@ -21,6 +21,7 @@
 #include "medialibrary_business_code.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_client_errno.h"
+#include "napi_error.h"
 
 namespace OHOS::Media {
 thread_local napi_ref TaskSignalNapi::sTaskSignalConstructor_ = nullptr;

@@ -70,7 +70,14 @@ ohos_shared_library("mediabackup") {
 
   include_common_utils_dirs = [ "${MEDIALIB_COMMON_PATH}/utils/include" ]
 
+  include_media_ipc_common = [
+    "${MEDIALIB_IPC_COMMON}/include/config",
+    "${MEDIALIB_IPC_COMMON}/include/utils",
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+  ]
+
   include_dirs += include_common_utils_dirs
+  include_dirs += include_media_ipc_common
 
   reverse_restore_sources = [
     "./src/reverse_clone_restore/reverse_clone_restore.cpp",
@@ -183,9 +190,7 @@ ohos_shared_library("mediabackup") {
 
   sources += reverse_restore_sources
 
-  source_ipc_client = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp" ]
-
-  sources += source_ipc_client
+  sources += []
 
   ldflags = [ "-Wl" ]
 
@@ -194,6 +199,7 @@ ohos_shared_library("mediabackup") {
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [

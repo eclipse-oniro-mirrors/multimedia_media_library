@@ -39,11 +39,6 @@ namespace MediaTool {
 
 constexpr int32_t ROOT_UID = 0;
 
-static void Finish()
-{
-    UserFileClientEx::Clear();
-}
-
 static int32_t Init(ExecEnv &env, const std::vector<std::string> &args)
 {
     env.args.assign(args.begin(), args.end());
@@ -88,7 +83,6 @@ int32_t ControlMain::Main(const std::vector<std::string> &args)
             break;
         }
     } while (0);
-    Finish();
     return res;
 }
 } // namespace MediaTool

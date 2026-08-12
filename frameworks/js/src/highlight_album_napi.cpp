@@ -27,6 +27,7 @@
 #include "vision_photo_map_column.h"
 #include "highlight_column.h"
 #include "album_operation_uri.h"
+#include "userfile_client.h"
 #include "user_define_ipc_client.h"
 #include "medialibrary_business_code.h"
 #include "delete_highlight_albums_vo.h"

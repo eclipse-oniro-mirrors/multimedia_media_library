@@ -47,7 +47,7 @@ MEDIALIB_NOTIFICATION_MERGING_PATH = "${MEDIALIB_ROOT_PATH}/services/media_notif
 MEDIALIB_THUMBNAIL_PATH = "${MEDIALIB_ROOT_PATH}/services/media_thumbnail"
 MEDIALIB_FACARD_PATH = "${MEDIALIB_ROOT_PATH}/services/media_facard"
 MEDIALIB_CLOUD_SYNC_DATA = "${MEDIALIB_COMMON_PATH}/media_cloud_sync_data"
-MEDIALIB_IPC_COMMON = "${MEDIALIB_COMMON_PATH}/media_ipc_common"
+MEDIALIB_IPC_COMMON = "${MEDIALIB_CLIENT_PATH}/media_ipc_common"
 
 declare_args() {
   media_library_link_opt = false

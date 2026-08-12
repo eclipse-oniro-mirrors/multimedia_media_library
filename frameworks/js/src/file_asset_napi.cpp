@@ -50,6 +50,7 @@
 #include "vision_saliency_detect_column.h"
 #include "vision_segmentation_column.h"
 #include "vision_total_column.h"
+#include "userfile_client.h"
 #include "vision_video_label_column.h"
 #include "vision_multi_crop_column.h"
 #include "album_operation_uri.h"
