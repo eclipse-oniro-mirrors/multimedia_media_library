@@ -45,6 +45,7 @@
 #include "get_analysis_process_vo.h"
 #include "query_result_vo.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

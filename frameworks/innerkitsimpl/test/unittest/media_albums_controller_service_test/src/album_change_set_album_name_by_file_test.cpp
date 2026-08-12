@@ -32,6 +32,7 @@
 #include "test_data_builder.h"
 #include "rdb_predicates.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

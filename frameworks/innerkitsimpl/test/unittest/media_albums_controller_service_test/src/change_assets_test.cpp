@@ -41,6 +41,7 @@
 #include "medialibrary_rdbstore.h"
 #include "medialibrary_unittest_utils.h"
 #include "medialibrary_unistore_manager.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

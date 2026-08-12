@@ -101,7 +101,7 @@ ohos_unittest("media_cloud_sync_data_vo_test") {
 
   deps = [
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
   ]
 

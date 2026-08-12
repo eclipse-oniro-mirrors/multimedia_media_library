@@ -57,6 +57,7 @@
 #include "medialibrary_client_errno.h"
 #include "accesstoken_kit.h"
 #include "token_setproc.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;
