@@ -36,6 +36,7 @@
 #include <unordered_map>
 #include <memory>
 #include <functional>
+#include <mutex>
 #include "rdb_store.h"
 #include "backup_const.h"
 #include "reverse_clone_resource_plan.h"
@@ -69,7 +70,7 @@ public:
     void CheckAndRemoveDuplicatePhotos(const shared_ptr<NativeRdb::RdbStore> &destRdb,
         vector<FileInfo> &fileInfos, int32_t maxFileId, int32_t minDestDbFileId,
         vector<ReverseCloneResourcePlan> &resourcePlans, const unordered_set<int32_t> &originalPureCloudFileIds,
-        DuplicateCount &duplicateCount);
+        DuplicateCount &duplicateCount, unordered_map<int32_t, int32_t> &duplicateDonorMap);
 
     // 判重辅助方法（与原克隆逻辑保持一致）
 
@@ -83,9 +84,9 @@ public:
      * @param fileInfo 照片信息
      * @param maxFileId 最大file_id（用于限制查询范围）
      * @param minDestDbFileId 目标数据库最小file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
-     * @return 重复的file_id，未找到返回0
+     * @return 按优先级排序的重复file_id候选列表
      */
-    int32_t FindSameFile(const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
+    vector<int32_t> FindSameFile(const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
         int32_t maxFileId, int32_t minDestDbFileId);
 
     /**
@@ -95,9 +96,9 @@ public:
      * @param fileInfo 照片信息
      * @param maxFileId 最大file_id（用于限制查询范围）
      * @param minDestDbFileId 目标数据库最小file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
-     * @return 重复的file_id，未找到返回0
+     * @return 按优先级排序的重复file_id候选列表
      */
-    int32_t FindSameFileWithCloudId(
+    vector<int32_t> FindSameFileWithCloudId(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
         int32_t maxFileId, int32_t minDestDbFileId);
 
@@ -108,9 +109,9 @@ public:
      * @param fileInfo 照片信息
      * @param maxFileId 最大file_id（用于限制查询范围）
      * @param minDestDbFileId 目标数据库最小file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
-     * @return 重复的file_id，未找到返回0
+     * @return 按优先级排序的重复file_id候选列表
      */
-    int32_t FindSameFileInAlbum(
+    vector<int32_t> FindSameFileInAlbum(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
         int32_t maxFileId, int32_t minDestDbFileId);
 
@@ -121,9 +122,9 @@ public:
      * @param fileInfo 照片信息
      * @param maxFileId 最大file_id（用于限制查询范围）
      * @param minDestDbFileId 目标数据库最小file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
-     * @return 重复的file_id，未找到返回0
+     * @return 按优先级排序的重复file_id候选列表
      */
-    int32_t FindSameFileWithoutAlbum(
+    vector<int32_t> FindSameFileWithoutAlbum(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
         int32_t maxFileId, int32_t minDestDbFileId);
 
@@ -134,9 +135,9 @@ public:
      * @param fileInfo 照片信息
      * @param maxFileId 最大file_id（用于限制查询范围）
      * @param minDestDbFileId 目标数据库最小file_id（用于判重，判重范围：file_id >= minDestDbFileId AND file_id <= maxFileId）
-     * @return 重复的file_id，未找到返回0
+     * @return 按优先级排序的重复file_id候选列表
      */
-    int32_t FindSameFileBySourcePath(
+    vector<int32_t> FindSameFileBySourcePath(
         const shared_ptr<NativeRdb::RdbStore> &destRdb, const FileInfo &fileInfo,
         int32_t maxFileId, int32_t minDestDbFileId);
 
@@ -144,12 +145,13 @@ public:
      * 更新duplicateAssetMap_：记录判重照片的旧机file_id到新机file_id的映射
      * 注意：多线程环境下需要传入互斥锁保护
      *
-     * @param fileInfos 照片信息列表
+     * @param duplicateDonorMap 判重删除的旧机file_id到新机file_id的映射
      * @param duplicateAssetMap 映射表
      * @param mutex 互斥锁（多线程保护）
      */
     void UpdateDuplicateAssetMapForDuplicates(
-        vector<FileInfo> &fileInfos, unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex = nullptr);
+        const unordered_map<int32_t, int32_t> &duplicateDonorMap,
+        unordered_map<int32_t, int32_t> &duplicateAssetMap, std::mutex *mutex = nullptr);
 
     /**
      * 用reverseDupMap更新tab_cloned_old_photos表

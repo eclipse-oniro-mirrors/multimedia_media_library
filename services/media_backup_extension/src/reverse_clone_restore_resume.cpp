@@ -38,16 +38,39 @@ std::atomic<bool> ReverseCloneRestoreResume::isResuming_(false);
 static constexpr const char* ASSET_MOVES_XML = "/data/storage/el2/base/preferences/asset_moves.xml";
 static constexpr const char* ASSET_MOVE_KEY_PREFIX = "asset_move_";
 static constexpr const char* ASSET_MOVE_COUNT_KEY = "asset_move_count";
+static const std::string MEDIA_LOCAL_FILES_ROOT = "/storage/media/local/files";
+static const std::string MEDIA_MERGE_FILES_ROOT = "/storage/cloud/files";
 
 // AssetMoveState 字段索引常量
-static constexpr int ASSET_MOVE_PARTS_COUNT = 7;  // 期望的字段数量
-static constexpr int INDEX_SRC = 0;               // 源路径索引
-static constexpr int INDEX_DST = 1;               // 目标路径索引
-static constexpr int INDEX_BACKUP = 2;            // 备份路径索引
-static constexpr int INDEX_HAD_SRC = 3;           // hadSrc 字段索引
-static constexpr int INDEX_HAD_DST = 4;           // hadDst 字段索引
-static constexpr int INDEX_MOVED_SRC = 5;         // movedSrc 字段索引
-static constexpr int INDEX_BACKED_UP_DST = 6;     // backedUpDst 字段索引
+static constexpr int LEGACY_ASSET_MOVE_PARTS_COUNT = 7;
+static constexpr int ASSET_MOVE_PARTS_COUNT = 8;
+static constexpr int INDEX_SRC = 0;
+static constexpr int INDEX_DST_LOCAL = 1;
+static constexpr int INDEX_DST_MERGE = 2;
+static constexpr int INDEX_BACKUP = 3;
+static constexpr int INDEX_HAD_SRC = 4;
+static constexpr int INDEX_HAD_DST = 5;
+static constexpr int INDEX_MOVED_SRC = 6;
+static constexpr int INDEX_BACKED_UP_DST = 7;
+static constexpr int LEGACY_INDEX_BACKUP = 2;
+
+static bool IsPathAtOrUnderRoot(const std::string &path, const std::string &root)
+{
+    return path == root || (path.length() > root.length() && path.compare(0, root.length(), root) == 0 &&
+        path[root.length()] == '/');
+}
+
+static void ParseLegacyDst(const std::string &dst, ReverseCloneRestore::AssetMoveState &move)
+{
+    if (IsPathAtOrUnderRoot(dst, MEDIA_MERGE_FILES_ROOT)) {
+        move.dstMerge = dst;
+        move.dstLocal = MEDIA_LOCAL_FILES_ROOT + dst.substr(MEDIA_MERGE_FILES_ROOT.length());
+        return;
+    }
+    // Preserve the original rollback behavior for XML written before merge-view rename was introduced.
+    move.dstLocal = dst;
+    move.dstMerge = dst;
+}
 
 std::vector<ReverseCloneRestore::AssetMoveState> LoadCompletedAssetMovesFromXml()
 {
@@ -76,20 +99,26 @@ std::vector<ReverseCloneRestore::AssetMoveState> LoadCompletedAssetMovesFromXml(
         }
         parts.push_back(value.substr(start));
 
-        if (parts.size() == ASSET_MOVE_PARTS_COUNT) {
-            ReverseCloneRestore::AssetMoveState move;
-            move.src = parts[INDEX_SRC];
-            move.dst = parts[INDEX_DST];
-            move.backup = parts[INDEX_BACKUP];
-            move.hadSrc = parts[INDEX_HAD_SRC] == "1";
-            move.hadDst = parts[INDEX_HAD_DST] == "1";
-            move.movedSrc = parts[INDEX_MOVED_SRC] == "1";
-            move.backedUpDst = parts[INDEX_BACKED_UP_DST] == "1";
-            moves.push_back(move);
-        } else {
-            MEDIA_WARN_LOG("LoadCompletedAssetMovesFromXml: invalid parts size %{public}zu, expected %{public}d",
-                           parts.size(), ASSET_MOVE_PARTS_COUNT);
+        if (parts.size() != ASSET_MOVE_PARTS_COUNT && parts.size() != LEGACY_ASSET_MOVE_PARTS_COUNT) {
+            MEDIA_WARN_LOG("LoadCompletedAssetMovesFromXml: invalid parts size %{public}zu, expected %{public}d "
+                "or %{public}d", parts.size(), ASSET_MOVE_PARTS_COUNT, LEGACY_ASSET_MOVE_PARTS_COUNT);
+            continue;
         }
+        ReverseCloneRestore::AssetMoveState move;
+        move.src = parts[INDEX_SRC];
+        if (parts.size() == ASSET_MOVE_PARTS_COUNT) {
+            move.dstLocal = parts[INDEX_DST_LOCAL];
+            move.dstMerge = parts[INDEX_DST_MERGE];
+        } else {
+            ParseLegacyDst(parts[INDEX_DST_LOCAL], move);
+        }
+        size_t stateIndex = parts.size() == ASSET_MOVE_PARTS_COUNT ? INDEX_BACKUP : LEGACY_INDEX_BACKUP;
+        move.backup = parts[stateIndex++];
+        move.hadSrc = parts[stateIndex++] == "1";
+        move.hadDst = parts[stateIndex++] == "1";
+        move.movedSrc = parts[stateIndex++] == "1";
+        move.backedUpDst = parts[stateIndex] == "1";
+        moves.push_back(move);
     }
 
     MEDIA_INFO_LOG("LoadCompletedAssetMovesFromXml: loaded %{public}zu moves", moves.size());

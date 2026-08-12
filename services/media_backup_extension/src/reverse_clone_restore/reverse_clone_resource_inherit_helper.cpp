@@ -15,6 +15,8 @@
 
 #include "reverse_clone_resource_inherit_helper.h"
 
+#include <algorithm>
+#include <array>
 #include <cerrno>
 #include <cstdio>
 #include <functional>
@@ -270,6 +272,49 @@ bool DeletePathIfExists(const std::string &path)
         MediaFileUtils::DesensitizePath(path).c_str());
     return deleted;
 }
+
+bool CleanupDuplicateDonorResources(
+    const ReverseCloneAssetResource &absorbed, const ReverseCloneAssetResource &donor)
+{
+    std::string targetOrigin = GetLocalPathByCloudPath(absorbed.cloudPath);
+    std::vector<std::string> protectedPaths = {
+        targetOrigin, GetMovingPhotoVideoPathByCloudPath(absorbed.cloudPath),
+        GetEditDataPathByCloudPath(absorbed.cloudPath), GetLocalThumbPathByCloudPath(absorbed.cloudPath),
+        absorbed.storagePath,
+    };
+    if (!absorbed.storagePath.empty()) {
+        protectedPaths.emplace_back(MediaFileUtils::GetMovingPhotoVideoPath(absorbed.storagePath));
+    }
+
+    std::vector<std::string> donorPaths = {
+        GetLocalPathByCloudPath(donor.cloudPath), GetMovingPhotoVideoPathByCloudPath(donor.cloudPath),
+        GetEditDataPathByCloudPath(donor.cloudPath), GetLocalThumbPathByCloudPath(donor.cloudPath),
+    };
+    if (donor.IsLakeAsset() && IsPathUnderDirectory(donor.storagePath, LAKE_STORAGE_ROOT)) {
+        donorPaths.emplace_back(donor.storagePath);
+        donorPaths.emplace_back(MediaFileUtils::GetMovingPhotoVideoPath(donor.storagePath));
+    }
+
+    bool success = true;
+    int32_t protectedCount = 0;
+    for (const auto &path : donorPaths) {
+        if (path.empty() || std::find(protectedPaths.begin(), protectedPaths.end(), path) != protectedPaths.end()) {
+            protectedCount += path.empty() ? 0 : 1;
+            continue;
+        }
+        success = DeletePathIfExists(path) && success;
+    }
+    MEDIA_INFO_LOG("RevRes cleanup duplicate donor resources finished, donorFileId=%{public}d, "
+        "absorbedFileId=%{public}d, protected=%{public}d, success=%{public}d",
+        donor.fileId, absorbed.fileId, protectedCount, success);
+    return success;
+}
+
+bool IsDonorUsedForInheritance(const ReverseCloneResourcePlan &plan, int32_t donorFileId)
+{
+    return plan.decision == ReverseCloneResourceDecision::INHERIT &&
+        plan.matchType != ReverseCloneMatchType::SOURCE_ASSET && plan.donor.fileId == donorFileId;
+}
 } // namespace
 
 // LCOV_EXCL_START
@@ -319,6 +364,58 @@ void ReverseCloneResourceInheritHelper::Reset()
         std::lock_guard<std::mutex> lock(kvStoreMutex_);
         pendingKvStoreTasks_.clear();
     }
+}
+
+void ReverseCloneResourceInheritHelper::ReserveDuplicateDonors(ReverseClonePhotoBatchContext &batch)
+{
+    std::lock_guard<std::mutex> lock(duplicateMutex_);
+    std::unordered_set<int32_t> rejectedAbsorbedFileIds;
+    for (const auto &fileInfo : batch.validFileInfos) {
+        CHECK_AND_CONTINUE(fileInfo.deletedSrcdbFileId > 0);
+        auto donorIt = batch.duplicateDonorMap.find(fileInfo.deletedSrcdbFileId);
+        if (donorIt == batch.duplicateDonorMap.end() || donorIt->second != fileInfo.fileIdOld) {
+            rejectedAbsorbedFileIds.emplace(fileInfo.fileIdOld);
+        }
+    }
+    for (const auto &[donorFileId, absorbedFileId] : batch.duplicateDonorMap) {
+        if (reservedDuplicateDonorFileIds_.count(donorFileId) > 0) {
+            rejectedAbsorbedFileIds.emplace(absorbedFileId);
+        }
+    }
+    for (auto &fileInfo : batch.validFileInfos) {
+        if (rejectedAbsorbedFileIds.count(fileInfo.fileIdOld) > 0) {
+            fileInfo.deletedSrcdbFileId = 0;
+        }
+    }
+    for (auto it = batch.duplicateDonorMap.begin(); it != batch.duplicateDonorMap.end();) {
+        if (rejectedAbsorbedFileIds.count(it->second) > 0) {
+            it = batch.duplicateDonorMap.erase(it);
+        } else {
+            reservedDuplicateDonorFileIds_.emplace(it->first);
+            ++it;
+        }
+    }
+    batch.duplicatePlans.erase(std::remove_if(batch.duplicatePlans.begin(), batch.duplicatePlans.end(),
+        [&](const auto &plan) {
+            return rejectedAbsorbedFileIds.count(plan.absorbed.fileId) > 0;
+        }), batch.duplicatePlans.end());
+    MEDIA_INFO_LOG("ReserveDuplicateDonors: donors=%{public}zu, skippedAssets=%{public}zu, totalReserved=%{public}zu",
+        batch.duplicateDonorMap.size(), rejectedAbsorbedFileIds.size(), reservedDuplicateDonorFileIds_.size());
+}
+
+void ReverseCloneResourceInheritHelper::ReleaseDuplicateDonorReservations(
+    const ReverseClonePhotoBatchContext &batch)
+{
+    std::lock_guard<std::mutex> lock(duplicateMutex_);
+    size_t releasedCount = 0;
+    for (const auto &entry : batch.duplicateDonorMap) {
+        releasedCount += reservedDuplicateDonorFileIds_.erase(entry.first);
+    }
+    if (releasedCount == 0) {
+        return;
+    }
+    MEDIA_INFO_LOG("RevRes duplicate donor reservations released, released=%{public}zu, remaining=%{public}zu",
+        releasedCount, reservedDuplicateDonorFileIds_.size());
 }
 
 void ReverseCloneResourceInheritHelper::AddFileIdOffsetRule(int64_t oldMaxFileId, int64_t newMaxFileId)
@@ -404,46 +501,6 @@ void ReverseCloneResourceInheritHelper::LogDataConflictsBeforeInsert(
     }
 }
 
-void ReverseCloneResourceInheritHelper::ClearDuplicateDonor(std::vector<FileInfo> &fileInfos,
-    int32_t absorbedFileId, int32_t donorFileId) const
-{
-    for (auto &fileInfo : fileInfos) {
-        if (fileInfo.fileIdOld == absorbedFileId && fileInfo.deletedSrcdbFileId == donorFileId) {
-            fileInfo.deletedSrcdbFileId = 0;
-            return;
-        }
-    }
-}
-
-void ReverseCloneResourceInheritHelper::ReserveDuplicateDonors(ReverseClonePhotoBatchContext &batch)
-{
-    std::lock_guard<std::mutex> lock(duplicateMutex_);
-    std::vector<ReverseCloneResourcePlan> reservedPlans;
-    int32_t reservedCount = 0;
-    int32_t skippedCount = 0;
-    for (const auto &plan : batch.duplicatePlans) {
-        int32_t donorFileId = plan.donor.fileId;
-        int32_t absorbedFileId = plan.absorbed.fileId;
-        if (donorFileId <= 0 || absorbedFileId <= 0) {
-            skippedCount++;
-            continue;
-        }
-        if (reservedDuplicateDonorFileIds_.find(donorFileId) != reservedDuplicateDonorFileIds_.end()) {
-            ClearDuplicateDonor(batch.validFileInfos, absorbedFileId, donorFileId);
-            skippedCount++;
-            MEDIA_WARN_LOG("ReserveDuplicateDonors: donor already reserved, donorFileId=%{public}d, "
-                "absorbedFileId=%{public}d", donorFileId, absorbedFileId);
-            continue;
-        }
-        reservedDuplicateDonorFileIds_.emplace(donorFileId);
-        reservedPlans.emplace_back(plan);
-        reservedCount++;
-    }
-    batch.duplicatePlans.swap(reservedPlans);
-    MEDIA_INFO_LOG("ReserveDuplicateDonors: reserved=%{public}d, skipped=%{public}d, totalReserved=%{public}zu",
-        reservedCount, skippedCount, reservedDuplicateDonorFileIds_.size());
-}
-
 void ReverseCloneResourceInheritHelper::MarkCloudRestoreSatisfied(ReverseClonePhotoBatchContext &batch) const
 {
     for (auto &entry : batch.resourcePlans) {
@@ -452,21 +509,6 @@ void ReverseCloneResourceInheritHelper::MarkCloudRestoreSatisfied(ReverseClonePh
     for (auto &plan : batch.duplicatePlans) {
         plan.cloudRestoreSatisfied = batch.cloudRestoreSatisfied;
     }
-}
-
-void ReverseCloneResourceInheritHelper::ReleaseDuplicateDonorReservations(
-    const ReverseClonePhotoBatchContext &batch)
-{
-    std::lock_guard<std::mutex> lock(duplicateMutex_);
-    int32_t releasedCount = 0;
-    for (const auto &plan : batch.duplicatePlans) {
-        if (plan.donor.fileId <= 0) {
-            continue;
-        }
-        releasedCount += reservedDuplicateDonorFileIds_.erase(plan.donor.fileId) > 0 ? 1 : 0;
-    }
-    MEDIA_INFO_LOG("ReleaseDuplicateDonorReservations: released=%{public}d, remaining=%{public}zu",
-        releasedCount, reservedDuplicateDonorFileIds_.size());
 }
 
 ReverseCloneKvStoreTask ReverseCloneResourceInheritHelper::BuildKvStoreTask(int32_t oldFileId,
@@ -702,17 +744,19 @@ std::vector<ReverseCloneResourceInheritHelper::AssetReferenceUpdate>
 ReverseCloneResourceInheritHelper::BuildAssetReferenceUpdates(const ReverseClonePhotoBatchContext &batch) const
 {
     std::vector<AssetReferenceUpdate> updates;
-    for (const auto &fileInfo : batch.validFileInfos) {
-        int32_t donorFileId = fileInfo.deletedSrcdbFileId;
-        int32_t absorbedFileId = fileInfo.fileIdOld;
+    std::unordered_set<int32_t> protectedAbsorbedFileIds;
+    for (const auto &[donorFileId, absorbedFileId] : batch.duplicateDonorMap) {
+        CHECK_AND_CONTINUE(donorFileId > 0 && donorFileId == absorbedFileId);
+        protectedAbsorbedFileIds.emplace(absorbedFileId);
+    }
+    for (const auto &[donorFileId, absorbedFileId] : batch.duplicateDonorMap) {
         CHECK_AND_CONTINUE(donorFileId > 0 && absorbedFileId > 0);
 
-        // Self replace must move references temporarily, otherwise Photos delete trigger removes them.
+        bool needsProtection = protectedAbsorbedFileIds.find(absorbedFileId) != protectedAbsorbedFileIds.end();
         updates.emplace_back(AssetReferenceUpdate {
             .donorFileId = donorFileId,
             .absorbedFileId = absorbedFileId,
-            .protectedFileId = donorFileId == absorbedFileId ? GetProtectedReferenceFileId(donorFileId) :
-                absorbedFileId,
+            .protectedFileId = needsProtection ? GetProtectedReferenceFileId(absorbedFileId) : absorbedFileId,
         });
     }
     return updates;
@@ -748,8 +792,10 @@ int32_t ReverseCloneResourceInheritHelper::MoveAssetReferencesBeforePhotoDelete(
 int32_t ReverseCloneResourceInheritHelper::RestoreProtectedAssetReferences(
     TransactionOperations &trans, const std::vector<AssetReferenceUpdate> &updates) const
 {
+    std::unordered_set<int32_t> restoredProtectedFileIds;
     for (const auto &update : updates) {
         CHECK_AND_CONTINUE(update.NeedsRestore());
+        CHECK_AND_CONTINUE(restoredProtectedFileIds.emplace(update.protectedFileId).second);
         int32_t ret = UpdateAssetReferences(trans, update.protectedFileId, update.absorbedFileId);
         CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret,
             "CommitPhotosBatch: restore asset references failed, protectedFileId=%{public}d, "
@@ -777,27 +823,22 @@ void ReverseCloneResourceInheritHelper::FinalizeBatch(const ReverseClonePhotoBat
 }
 
 int32_t ReverseCloneResourceInheritHelper::DeleteDuplicateDonorsInTransaction(TransactionOperations &trans,
-    const std::vector<FileInfo> &fileInfos, std::vector<int32_t> &deletedDonorFileIds) const
+    const std::unordered_map<int32_t, int32_t> &duplicateDonorMap,
+    std::vector<int32_t> &deletedDonorFileIds) const
 {
     const std::string deletePhotoSql = "DELETE FROM Photos WHERE file_id = ?";
-    for (auto &fileInfo : fileInfos) {
-        int32_t donorFileId = fileInfo.deletedSrcdbFileId;
-        if (donorFileId <= 0) {
-            continue;
-        }
+    for (const auto &[donorFileId, absorbedFileId] : duplicateDonorMap) {
+        CHECK_AND_CONTINUE(donorFileId > 0);
         MEDIA_INFO_LOG("Reverse duplicate donor delete start, donorFileId=%{public}d, "
-            "originalDonorFileId=%{public}lld, absorbedFileId=%{public}d, displayName=%{public}s, "
-            "lPath=%{public}s, size=%{public}lld, orientation=%{public}d",
+            "originalDonorFileId=%{public}lld, absorbedFileId=%{public}d",
             donorFileId, static_cast<long long>(ToOriginalOldDeviceFileId(donorFileId)),
-            fileInfo.fileIdOld, fileInfo.displayName.c_str(),
-            MediaFileUtils::DesensitizePath(fileInfo.lPath).c_str(), static_cast<long long>(fileInfo.fileSize),
-            fileInfo.orientation);
+            absorbedFileId);
         int32_t ret = trans.ExecuteSql(deletePhotoSql, {std::to_string(donorFileId)});
         CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, ret,
             "CommitPhotosBatch: delete donor failed, donorFileId=%{public}d, absorbedFileId=%{public}d, ret=%{public}d",
-            donorFileId, fileInfo.fileIdOld, ret);
+            donorFileId, absorbedFileId, ret);
         MEDIA_INFO_LOG("Reverse duplicate donor delete success, donorFileId=%{public}d, absorbedFileId=%{public}d",
-            donorFileId, fileInfo.fileIdOld);
+            donorFileId, absorbedFileId);
         deletedDonorFileIds.emplace_back(donorFileId);
     }
     return NativeRdb::E_OK;
@@ -876,7 +917,7 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosInTransaction(ReverseClonePh
         if (ret != NativeRdb::E_OK) {
             return ret;
         }
-        ret = DeleteDuplicateDonorsInTransaction(trans, batch.validFileInfos, deletedDonorFileIds);
+        ret = DeleteDuplicateDonorsInTransaction(trans, batch.duplicateDonorMap, deletedDonorFileIds);
         if (ret != NativeRdb::E_OK) {
             return ret;
         }
@@ -887,20 +928,11 @@ bool ReverseCloneResourceInheritHelper::CommitPhotosInTransaction(ReverseClonePh
     };
     int32_t transRet = trans.RetryTrans(commitPhotos, true);
     if (transRet != NativeRdb::E_OK) {
-        ReleaseDuplicateDonorReservations(batch);
         insertedRows = 0;
         MEDIA_ERR_LOG("CommitPhotosBatch: transaction failed, ret=%{public}d", transRet);
         return false;
     }
     return true;
-}
-
-void ReverseCloneResourceInheritHelper::ReleaseDuplicateDonors(const std::vector<int32_t> &deletedDonorFileIds)
-{
-    std::lock_guard<std::mutex> lock(duplicateMutex_);
-    for (int32_t donorFileId : deletedDonorFileIds) {
-        reservedDuplicateDonorFileIds_.erase(donorFileId);
-    }
 }
 
 void ReverseCloneResourceInheritHelper::DeletePhotoExtRows(const std::shared_ptr<NativeRdb::RdbStore> &targetRdb,
@@ -918,20 +950,129 @@ void ReverseCloneResourceInheritHelper::DeletePhotoExtRows(const std::shared_ptr
     }
 }
 
+void ReverseCloneResourceInheritHelper::DeleteDuplicateDonorDerivedRows(
+    const ReverseClonePhotoBatchContext &batch, const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const
+{
+    CHECK_AND_RETURN(targetRdb != nullptr);
+    const std::array<const char *, 2> tables = {"tab_cloned_old_photos", "tab_analysis_watermark"};
+    std::unordered_set<int32_t> retainedHistoryDonorIds;
+    for (const auto &fileInfo : batch.validFileInfos) {
+        CHECK_AND_CONTINUE(fileInfo.deletedSrcdbFileId > 0);
+        retainedHistoryDonorIds.emplace(fileInfo.deletedSrcdbFileId);
+    }
+    for (const auto &[donorFileId, absorbedFileId] : batch.duplicateDonorMap) {
+        if (retainedHistoryDonorIds.count(donorFileId) > 0) {
+            continue;
+        }
+        for (const char *table : tables) {
+            std::string sql = "DELETE FROM " + std::string(table) + " WHERE file_id = ?";
+            int32_t ret = BackupDatabaseUtils::ExecuteSQL(targetRdb, sql, {std::to_string(donorFileId)});
+            if (ret != NativeRdb::E_OK) {
+                MEDIA_ERR_LOG("RevRes delete duplicate donor derived row failed, table=%{public}s, "
+                    "donorFileId=%{public}d, absorbedFileId=%{public}d, ret=%{public}d",
+                    table, donorFileId, absorbedFileId, ret);
+            }
+        }
+    }
+}
+
+std::vector<ReverseCloneAssetResource> ReverseCloneResourceInheritHelper::QueryDuplicateDonorResources(
+    const std::unordered_map<int32_t, int32_t> &duplicateDonorMap,
+    const std::shared_ptr<NativeRdb::RdbStore> &targetRdb) const
+{
+    std::vector<ReverseCloneAssetResource> resources;
+    if (targetRdb == nullptr || duplicateDonorMap.empty()) {
+        return resources;
+    }
+
+    std::vector<std::string> donorIds;
+    donorIds.reserve(duplicateDonorMap.size());
+    for (const auto &[donorFileId, absorbedFileId] : duplicateDonorMap) {
+        CHECK_AND_CONTINUE(donorFileId > 0 && absorbedFileId > 0);
+        donorIds.emplace_back(std::to_string(donorFileId));
+    }
+    if (donorIds.empty()) {
+        return resources;
+    }
+
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.In(MediaColumn::MEDIA_ID, donorIds);
+    const std::vector<std::string> columns = {
+        MediaColumn::MEDIA_ID,
+        MediaColumn::MEDIA_FILE_PATH,
+        PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
+        PhotoColumn::PHOTO_STORAGE_PATH,
+    };
+    auto resultSet = targetRdb->Query(predicates, columns);
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("RevRes query duplicate donor resources failed, donors=%{public}zu", donorIds.size());
+        return resources;
+    }
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        ReverseCloneAssetResource resource;
+        resource.fileId = GetInt32Val(MediaColumn::MEDIA_ID, resultSet);
+        resource.cloudPath = GetStringVal(MediaColumn::MEDIA_FILE_PATH, resultSet);
+        resource.fileSourceType = GetInt32Val(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, resultSet);
+        resource.storagePath = GetStringVal(PhotoColumn::PHOTO_STORAGE_PATH, resultSet);
+        resources.emplace_back(std::move(resource));
+    }
+    resultSet->Close();
+    MEDIA_INFO_LOG("RevRes queried duplicate donor resources, donors=%{public}zu, resources=%{public}zu",
+        donorIds.size(), resources.size());
+    return resources;
+}
+
+void ReverseCloneResourceInheritHelper::CleanupDuplicateDonorResourcesAfterAbsorb(
+    const ReverseClonePhotoBatchContext &batch,
+    const std::vector<ReverseCloneAssetResource> &donorResources) const
+{
+    int32_t cleanedCount = 0;
+    int32_t failedCount = 0;
+    int32_t skippedCount = 0;
+    for (const auto &donor : donorResources) {
+        auto donorIt = batch.duplicateDonorMap.find(donor.fileId);
+        if (donorIt == batch.duplicateDonorMap.end()) {
+            continue;
+        }
+        auto planIt = batch.resourcePlans.find(donorIt->second);
+        if (planIt == batch.resourcePlans.end()) {
+            MEDIA_ERR_LOG("RevRes duplicate donor resource has no plan, donorFileId=%{public}d, "
+                "absorbedFileId=%{public}d", donor.fileId, donorIt->second);
+            continue;
+        }
+        if (IsDonorUsedForInheritance(planIt->second, donor.fileId)) {
+            skippedCount++;
+            continue;
+        }
+        cleanedCount++;
+        failedCount += CleanupDuplicateDonorResources(planIt->second.absorbed, donor) ? 0 : 1;
+    }
+    MEDIA_INFO_LOG("RevRes cleanup duplicate donor resources after absorb, cleaned=%{public}d, "
+        "skipped=%{public}d, failed=%{public}d", cleanedCount, skippedCount, failedCount);
+}
+
 bool ReverseCloneResourceInheritHelper::CommitPhotosBatch(ReverseClonePhotoBatchContext &batch,
     const std::shared_ptr<NativeRdb::RdbStore> &targetRdb, int64_t &insertedRows)
 {
-    CHECK_AND_RETURN_RET_LOG(targetRdb != nullptr, false, "CommitPhotosBatch: targetRdb is null");
+    if (targetRdb == nullptr) {
+        ReleaseDuplicateDonorReservations(batch);
+        MEDIA_ERR_LOG("CommitPhotosBatch: targetRdb is null");
+        return false;
+    }
+    std::vector<ReverseCloneAssetResource> donorResources =
+        QueryDuplicateDonorResources(batch.duplicateDonorMap, targetRdb);
     std::vector<int32_t> deletedDonorFileIds;
     if (!CommitPhotosInTransaction(batch, targetRdb, insertedRows, deletedDonorFileIds)) {
+        ReleaseDuplicateDonorReservations(batch);
         return false;
     }
 
-    ReleaseDuplicateDonors(deletedDonorFileIds);
+    CleanupDuplicateDonorResourcesAfterAbsorb(batch, donorResources);
     DeletePhotoExtRows(targetRdb, deletedDonorFileIds);
-    MEDIA_INFO_LOG("CommitPhotosBatch: deletedDonors=%{public}zu, insertedRows=%{public}lld, "
-        "totalReserved=%{public}zu", deletedDonorFileIds.size(),
-        static_cast<long long>(insertedRows), reservedDuplicateDonorFileIds_.size());
+    DeleteDuplicateDonorDerivedRows(batch, targetRdb);
+    ReleaseDuplicateDonorReservations(batch);
+    MEDIA_INFO_LOG("CommitPhotosBatch: deletedDonors=%{public}zu, insertedRows=%{public}lld",
+        deletedDonorFileIds.size(), static_cast<long long>(insertedRows));
     return true;
 }
 
