@@ -16,12 +16,11 @@
 
 #include "unified_ipc_client.h"
 
-#include "iservice_registry.h"
-#include "userfile_client.h"
+#include "base_data_uri.h"
+#include "media_common_client.h"
 
 namespace OHOS::Media::IPC {
 static const std::u16string DESCRIPTOR = u"OHOS.DataShare.IDataShare";
-static const int STORAGE_MANAGER_MANAGER_ID = 5003;
 
 UnifiedIPCClient &UnifiedIPCClient::SetTraceId(const std::string &traceId)
 {
@@ -56,26 +55,11 @@ UnifiedIPCClient &UnifiedIPCClient::SetHeader(const std::unordered_map<std::stri
     return *this;
 }
 
-UnifiedIPCClient &UnifiedIPCClient::SetDataShareHelper(std::shared_ptr<DataShare::DataShareHelper> dataShareHelper)
+UnifiedIPCClient &UnifiedIPCClient::SetDataShareHelper(
+    std::shared_ptr<DataShare::DataShareHelper> dataShareHelper)
 {
     this->dataShareHelper_ = dataShareHelper;
     return *this;
-}
-
-int32_t UnifiedIPCClient::InitClient(const int32_t &userId)
-{
-    userId_ = userId;
-    bool errConn = UserFileClient::IsValid(userId);
-    CHECK_AND_RETURN_RET(!errConn, E_OK);
-    MEDIA_ERR_LOG("Call IPC UserFileClient::IsInValid");
-    auto saManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
-    errConn = saManager == nullptr;
-    CHECK_AND_RETURN_RET_LOG(!errConn, E_ERR, "Get system ability mgr failed.");
-    auto remoteObj = saManager->GetSystemAbility(STORAGE_MANAGER_MANAGER_ID);
-    errConn = remoteObj == nullptr;
-    CHECK_AND_RETURN_RET_LOG(!errConn, E_ERR, "GetSystemAbility Service Failed.");
-    UserFileClient::Init(remoteObj, true, userId);
-    return E_OK;
 }
 
 int32_t UnifiedIPCClient::HeaderMarshalling(MessageParcel &data)
@@ -85,9 +69,27 @@ int32_t UnifiedIPCClient::HeaderMarshalling(MessageParcel &data)
     return E_OK;
 }
 
+int32_t UnifiedIPCClient::InitClient(const int32_t &userId)
+{
+    // Injection mode: use helper provided by caller via SetDataShareHelper().
+    // If injected, do NOT fall back to global creation — caller takes priority.
+    if (dataShareHelper_ != nullptr) {
+        return E_OK;
+    }
+    // Global mode: get or create helper from MediaDataShareHelper (cached in SafeMap).
+    dataShareHelper_ = MediaCommonClient::GetInstance().GetOrCreateDataShareHelper(userId);
+    CHECK_AND_RETURN_RET_LOG(dataShareHelper_ != nullptr, E_ERR, "Failed to get/create DataShareHelper");
+    return E_OK;
+}
+
 int32_t UnifiedIPCClient::UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option)
 {
-    CHECK_AND_RETURN_RET_LOG(this->dataShareHelper_ != nullptr, E_ERR, "dataShareHelper_ is nullptr");
-    return this->dataShareHelper_->UserDefineFunc(data, reply, option);
+    // Injection mode: use injected helper directly
+    if (dataShareHelper_ != nullptr) {
+        return dataShareHelper_->UserDefineFunc(data, reply, option);
+    }
+    // Helper not injected and global creation failed
+    MEDIA_ERR_LOG("UserDefineFunc: dataShareHelper_ is nullptr, SetDataShareHelper() or InitClient() failed");
+    return E_ERR;
 }
 }  // namespace OHOS::Media::IPC

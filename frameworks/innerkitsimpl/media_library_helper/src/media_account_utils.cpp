@@ -27,13 +27,12 @@ static const int STORAGE_MANAGER_MANAGER_ID = 5003;
 
 int32_t MediaAccountUtils::GetCurrentAccountId()
 {
-    std::vector<int32_t> accountIds;
-    ErrCode errCode = AccountSA::OsAccountManager::QueryActiveOsAccountIds(accountIds);
-    if (errCode != ERR_OK || accountIds.empty()) {
-        MEDIA_ERR_LOG("QueryActiveOsAccountIds failed, errCode: %{public}d", errCode);
-        return -1;
+    int32_t activeUserId = DEFAULT_USER_ID;
+    ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
+    if (ret != ERR_OK) {
+        MEDIA_ERR_LOG("GetCurrentAccountId: fail to get activeUser:%{public}d", ret);
     }
-    return accountIds[0];
+    return activeUserId;
 }
 
 sptr<IRemoteObject> MediaAccountUtils::GetSaToken()
