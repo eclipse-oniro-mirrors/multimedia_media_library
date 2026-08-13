@@ -217,7 +217,6 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::HandleOnError(
     }
     bool isMovingPhoto = false;
     bool ret = pipeline->OnErrorImage(errorCode, isMovingPhoto);
-
     if (error != ERROR_SESSION_SYNC_NEEDED && ret) {
         int32_t mediaType = isMovingPhoto ? static_cast<int32_t>(MultiStagesCaptureMediaType::MOVING_PHOTO_IMAGE)
                                           : static_cast<int32_t>(MultiStagesCaptureMediaType::IMAGE);
