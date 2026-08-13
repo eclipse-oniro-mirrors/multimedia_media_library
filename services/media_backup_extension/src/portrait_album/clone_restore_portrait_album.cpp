@@ -250,9 +250,9 @@ void CloneRestorePortrait::Restore(bool isReverse)
     int32_t ret = RestoreMaps();
     CHECK_AND_RETURN_LOG(ret == E_OK, "fail to update analysis photo map status");
     RestoreAnalysisTotalFaceStatus();
-    ReportPortraitCloneStat(sceneCode_);
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     migratePortraitTotalTimeCost_ += end - start;
+    ReportPortraitCloneStat(sceneCode_);
 }
 
 void CloneRestorePortrait::RestoreAnalysisTotalFaceStatus()
@@ -679,9 +679,13 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
         EXCLUDED_IMAGE_FACE_COLUMNS);
 
     BackupDatabaseUtils::DeleteExistingImageFaceData(mediaLibraryRdb_, uniqueFileIdPairs);
-    for (int32_t offset = 0; offset < totalNumber; offset += QUERY_COUNT) {
-        std::vector<ImageFaceTbl> imageFaceTbls = QueryImageFaceTbl(offset, fileIdOldInClause, commonColumns);
-        auto imageFaces = ProcessImageFaceTbls(imageFaceTbls, uniqueFileIdPairs);
+    size_t totalOld = oldFileIds.size();
+    const size_t queryBatch = static_cast<size_t>(QUERY_COUNT);
+    for (size_t chunkStart = 0; chunkStart < totalOld; chunkStart += queryBatch) {
+        size_t chunkEnd = (chunkStart + queryBatch > totalOld) ? totalOld : chunkStart + queryBatch;
+        std::vector<int32_t> fileIdChunk(oldFileIds.begin() + chunkStart, oldFileIds.begin() + chunkEnd);
+        std::vector<ImageFaceTbl> imageFaceTbls = QueryImageFaceTbl(fileIdChunk, commonColumns);
+        auto imageFaces = ProcessImageFaceTbls(imageFaceTbls, photoInfoMap_);
         BatchInsertImageFaces(imageFaces);
     }
 
@@ -698,7 +702,7 @@ void CloneRestorePortrait::RestoreImageFaceInfo()
 }
 
 std::vector<ImageFaceTbl> CloneRestorePortrait::ProcessImageFaceTbls(const std::vector<ImageFaceTbl>& imageFaceTbls,
-    const std::vector<FileIdPair>& fileIdPairs)
+    const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap)
 {
     CHECK_AND_RETURN_RET_LOG(!imageFaceTbls.empty(), {}, "image faces tbl empty");
 
@@ -708,31 +712,29 @@ std::vector<ImageFaceTbl> CloneRestorePortrait::ProcessImageFaceTbls(const std::
     for (const auto& imageFaceTbl : imageFaceTbls) {
         if (imageFaceTbl.fileId.has_value()) {
             int32_t oldFileId = imageFaceTbl.fileId.value();
-            auto it = std::find_if(fileIdPairs.begin(), fileIdPairs.end(),
-                [oldFileId](const FileIdPair& pair) { return pair.first == oldFileId; });
-            if (it != fileIdPairs.end()) {
-                ImageFaceTbl updatedFace = imageFaceTbl;
-                updatedFace.fileId = it->second;
-                imageFaceNewTbls.push_back(std::move(updatedFace));
-            }
+            auto it = photoInfoMap.find(oldFileId);
+            CHECK_AND_CONTINUE(it != photoInfoMap.end());
+            ImageFaceTbl updatedFace = imageFaceTbl;
+            updatedFace.fileId = it->second.fileIdNew;
+            imageFaceNewTbls.push_back(std::move(updatedFace));
         }
     }
 
     return imageFaceNewTbls;
 }
 
-std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(int32_t offset, std::string &fileIdClause,
+std::vector<ImageFaceTbl> CloneRestorePortrait::QueryImageFaceTbl(const std::vector<int32_t> &fileIdChunk,
     const std::vector<std::string> &commonColumns)
 {
     std::vector<ImageFaceTbl> result;
-    result.reserve(QUERY_COUNT);
+    CHECK_AND_RETURN_RET(!fileIdChunk.empty(), result);
 
     std::string inClause = BackupDatabaseUtils::JoinValues<string>(commonColumns, ", ");
+    std::string fileIdInClause = "(" + BackupDatabaseUtils::JoinValues<int>(fileIdChunk, ", ") + ")";
     std::string querySql =
         "SELECT " + inClause +
-        " FROM " + VISION_IMAGE_FACE_TABLE;
-    querySql += " WHERE " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdClause;
-    querySql += " LIMIT " + std::to_string(offset) + ", " + std::to_string(QUERY_COUNT);
+        " FROM " + VISION_IMAGE_FACE_TABLE +
+        " WHERE " + IMAGE_FACE_COL_FILE_ID + " IN " + fileIdInClause;
 
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, result, "Query resultSet is null.");
@@ -831,19 +833,29 @@ void  CloneRestorePortrait::ParseImageFaceResultSet1(const std::shared_ptr<Nativ
 
 void CloneRestorePortrait::BatchInsertImageFaces(const std::vector<ImageFaceTbl>& imageFaceTbls)
 {
-    std::vector<NativeRdb::ValuesBucket> valuesBuckets;
     std::unordered_set<int32_t> fileIdSet;
-    for (const auto& imageFaceTbl : imageFaceTbls) {
-        valuesBuckets.push_back(CreateValuesBucketFromImageFaceTbl(imageFaceTbl));
-    }
-
     int64_t rowNum = 0;
-    int32_t ret = BatchInsertWithRetry(VISION_IMAGE_FACE_TABLE, valuesBuckets, rowNum);
-    CHECK_AND_RETURN_LOG(ret == E_OK, "Failed to batch insert image faces");
+    size_t total = imageFaceTbls.size();
+    const size_t insertBatch = static_cast<size_t>(IMAGE_FACE_INSERT_BATCH_SIZE);
+    for (size_t chunkStart = 0; chunkStart < total; chunkStart += insertBatch) {
+        size_t chunkEnd = (chunkStart + insertBatch > total) ? total : chunkStart + insertBatch;
+        std::vector<NativeRdb::ValuesBucket> valuesBuckets;
+        valuesBuckets.reserve(chunkEnd - chunkStart);
+        std::unordered_set<int32_t> subFileIdSet;
+        for (size_t rowIdx = chunkStart; rowIdx < chunkEnd; ++rowIdx) {
+            valuesBuckets.push_back(CreateValuesBucketFromImageFaceTbl(imageFaceTbls[rowIdx]));
+            if (imageFaceTbls[rowIdx].fileId.has_value()) {
+                subFileIdSet.insert(imageFaceTbls[rowIdx].fileId.value());
+            }
+        }
 
-    for (const auto& imageFaceTbl : imageFaceTbls) {
-        if (imageFaceTbl.fileId.has_value()) {
-            fileIdSet.insert(imageFaceTbl.fileId.value());
+        int64_t subRowNum = 0;
+        int32_t ret = BatchInsertWithRetry(VISION_IMAGE_FACE_TABLE, valuesBuckets, subRowNum);
+        if (ret == E_OK) {
+            rowNum += subRowNum;
+            fileIdSet.insert(subFileIdSet.begin(), subFileIdSet.end());
+        } else {
+            MEDIA_ERR_LOG("Failed to batch insert image faces, ret=%{public}d", ret);
         }
     }
 
