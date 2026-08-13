@@ -45,8 +45,6 @@ public:
     virtual ~YuvPipeline() = default;
 
 private:
-    void AddFiltersToPhoto(const std::string &inputPath, const std::string &outputPath,
-        const std::string &editdata, const std::string &photoStatus = "");
 
     // 一阶段上报
     virtual bool CloseCameraFileFdWithMutex(const std::string& realPath, const std::string& tempPath,
