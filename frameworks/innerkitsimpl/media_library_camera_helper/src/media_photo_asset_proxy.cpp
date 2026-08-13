@@ -70,17 +70,12 @@ PhotoAssetProxy::PhotoAssetProxy(const std::shared_ptr<DataShare::DataShareHelpe
     videoCount_ = videoCount;
     callingTokenId_ = callerInfo.callingTokenId;
     packageName_ = callerInfo.packageName;
-    auto itr = CAMERASHOT_TO_SUBTYPE_MAP.find(cameraShotType);
-    if (itr == CAMERASHOT_TO_SUBTYPE_MAP.end()) {
-        subType_ = PhotoSubType::CAMERA;
-    } else {
-        subType_ = itr->second;
-    }
+    subType_ = GetSubTypeFromShotType(cameraShotType);
     HILOG_COMM_INFO(
         "%{public}s:{%{public}s:%{public}d} "
-        "init success, callerInfo: %{public}s, shottype: %{public}d, videoCount: %{public}d",
-        MLOG_TAG, __FUNCTION__, __LINE__,
-        callerInfo.ToString().c_str(), static_cast<int32_t>(cameraShotType), videoCount);
+        "init success, callerInfo: %{public}s, shottype: %{public}d, videoCount: %{public}d, subType: %{public}d",
+        MLOG_TAG, __FUNCTION__, __LINE__, callerInfo.ToString().c_str(),
+        static_cast<int32_t>(cameraShotType), videoCount, static_cast<int32_t>(subType_));
 }
 
 PhotoAssetProxy::PhotoAssetProxy(const std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
@@ -96,17 +91,14 @@ PhotoAssetProxy::PhotoAssetProxy(const std::shared_ptr<DataShare::DataShareHelpe
     cameraShotType_ = presetPara.cameraShotType;
     saveImageType_ = presetPara.saveImageType;
     saveVideoType_ = presetPara.saveVideoType;
-    videoCount_ = static_cast<int32_t>(saveVideoType_);
+    videoCount_ = GetVideoCountFromSaveVideoType(saveVideoType_);
 
-    auto itr = CAMERASHOT_TO_SUBTYPE_MAP.find(cameraShotType_);
-    if (itr == CAMERASHOT_TO_SUBTYPE_MAP.end()) {
-        subType_ = PhotoSubType::CAMERA;
-    } else {
-        subType_ = itr->second;
-    }
+    subType_ = GetSubTypeFromShotType(cameraShotType_);
 
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} init success, callerInfo: %{public}s, presetPara: %{public}s.",
-        MLOG_TAG, __FUNCTION__, __LINE__, callerInfo.ToString().c_str(), presetPara.ToString().c_str());
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} init success, callerInfo: %{public}s, presetPara: %{public}s, "
+        "subType: %{public}d, videoCount: %{public}d.",
+        MLOG_TAG, __FUNCTION__, __LINE__, callerInfo.ToString().c_str(), presetPara.ToString().c_str(),
+        static_cast<int32_t>(subType_), videoCount_);
 }
 
 PhotoAssetProxy::~PhotoAssetProxy()
@@ -119,11 +111,18 @@ PhotoAssetProxy::~PhotoAssetProxy()
         DataShare::DataSharePredicates predicates;
         DataShare::DataShareValuesBucket valuesBucket;
         std::string fileId = std::to_string(MediaUriUtils::GetFileId(uri_));
+        if (fileId == "0" || fileId.empty()) {
+            HILOG_COMM_WARN("%{public}s:{%{public}s:%{public}d} "
+                "Skip degenerate, invalid fileId, uri: %{public}s, original subType: %{public}d",
+                MLOG_TAG, __FUNCTION__, __LINE__, uri_.c_str(), static_cast<int32_t>(subType_));
+            return;
+        }
         predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
         valuesBucket.Put(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
         int32_t changeRows = dataShareHelper_->Update(updateUri, predicates, valuesBucket);
-        HILOG_COMM_WARN("%{public}s:{%{public}s:%{public}d} Degenerate moving photo: %{public}s, ret: %{public}d",
-            MLOG_TAG, __FUNCTION__, __LINE__, fileId.c_str(), changeRows);
+        HILOG_COMM_WARN("%{public}s:{%{public}s:%{public}d} "
+            "Degenerate moving photo, fileId: %{public}s, original subType: %{public}d, ret: %{public}d",
+            MLOG_TAG, __FUNCTION__, __LINE__, fileId.c_str(), static_cast<int32_t>(subType_), changeRows);
     }
 }
 
@@ -234,7 +233,9 @@ void PhotoAssetProxy::CreatePhotoAsset(const sptr<PhotoProxy>& photoProxy, const
     tracer.Start("InsertExt");
     fileId_ = dataShareHelper_->InsertExt(createUri, values, uri_);
     tracer.Finish();
-    CHECK_AND_RETURN_LOG(fileId_ >= 0, "Failed to create Asset, insert database error!");
+    CHECK_AND_RETURN_LOG(fileId_ >= 0, "Failed to create Asset, insert database error! fileId: %{public}d, "
+        "photoId: %{public}s, title: %{public}s", fileId_, photoProxy->GetPhotoId().c_str(),
+        photoProxy->GetTitle().c_str());
 
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "MultistagesCapture Success, fileId: %{public}d, uri: %{public}s, photoProxy: %{public}s",
@@ -271,6 +272,21 @@ void PhotoAssetProxy::GetPhotoIdForAsset(
     }
 }
 
+PhotoSubType PhotoAssetProxy::GetSubTypeFromShotType(CameraShotType shotType)
+{
+    auto itr = CAMERASHOT_TO_SUBTYPE_MAP.find(shotType);
+    if (itr == CAMERASHOT_TO_SUBTYPE_MAP.end()) {
+        return PhotoSubType::CAMERA;
+    }
+    return itr->second;
+}
+
+int32_t PhotoAssetProxy::GetVideoCountFromSaveVideoType(SaveVideoType saveVideoType)
+{
+    return static_cast<int32_t>(saveVideoType);
+}
+
+// LCOV_EXCL_START
 void PhotoAssetProxy::ScanCameraFile(const int32_t pathType)
 {
     CHECK_AND_RETURN_LOG(dataShareHelper_ != nullptr, "dataShareHelper is nullptr!");
@@ -323,7 +339,8 @@ int PhotoAssetProxy::SaveImage(int fd, const string &uri, const string &photoId,
     }
 
     int ret = write(fd, output, writeSize);
-    CHECK_AND_RETURN_RET_LOG(ret >= 0, ret, "write err %{public}d", errno);
+    CHECK_AND_RETURN_RET_LOG(ret >= 0, ret, "write err, errno: %{public}d, fd: %{public}d, writeSize: %{public}zu, "
+        "photoId: %{public}s, uri: %{public}s", errno, fd, writeSize, photoId.c_str(), uri.c_str());
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
         "Save Low Quality file Success, photoId: %{public}s, size: %{public}zu, ret: %{public}d",
         MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str(), writeSize, ret);
@@ -369,13 +386,14 @@ int PhotoAssetProxy::PackAndSaveImage(int fd, const string &uri, const sptr<Phot
         delete[] buffer;
         return E_ERR;
     }
-    HILOG_COMM_INFO("pack pixelMap success, packedSize: %{public}" PRId64, packedSize);
+    MEDIA_INFO_LOG("pack pixelMap success, packedSize: %{public}" PRId64, packedSize);
 
     auto ret = SaveImage(fd, uri, photoProxy->GetPhotoId(), buffer, packedSize);
     SetShootingModeAndGpsInfo(buffer, packedSize, photoProxy, fd);
     delete[] buffer;
     return ret;
 }
+// LCOV_EXCL_STOP
 
 void PhotoAssetProxy::SetShootingModeAndGpsInfo(const uint8_t *data, uint32_t size,
     const sptr<PhotoProxy> &photoProxy, int fd)
@@ -436,10 +454,9 @@ std::string PhotoAssetProxy::LocationValueToString(double value)
 int32_t PhotoAssetProxy::AddProcessImage(shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
     const sptr<PhotoProxy> &photoProxy, int32_t fileId, int32_t subType, const std::string &packageName)
 {
-    if (dataShareHelper == nullptr || photoProxy == nullptr) {
-        MEDIA_ERR_LOG("photoProxy or dataShareHelper is nullptr.");
-        return E_ERR;
-    }
+    bool cond = (dataShareHelper == nullptr || photoProxy == nullptr);
+    CHECK_AND_RETURN_RET_LOG(!cond, E_ERR, "photoProxy or dataShareHelper is nullptr.");
+
     MediaLibraryTracer tracer;
     tracer.Start("PhotoAssetProxy::AddProcessImage");
     MEDIA_INFO_LOG("AddProcessImage begin.");
@@ -461,6 +478,7 @@ int32_t PhotoAssetProxy::AddProcessImage(shared_ptr<DataShare::DataShareHelper> 
     return ret;
 }
 
+// LCOV_EXCL_START
 void PhotoAssetProxy::DealWithLowQualityPhoto(int fd, const sptr<PhotoProxy> &photoProxy, const int32_t pathType)
 {
     CHECK_AND_RETURN_LOG(photoProxy != nullptr && dataShareHelper_ != nullptr, "proxy or dataShareHelper is nullptr");
@@ -479,7 +497,8 @@ void PhotoAssetProxy::DealWithLowQualityPhoto(int fd, const sptr<PhotoProxy> &ph
 
     CloseFd(fd, pathType);
 }
- 
+// LCOV_EXCL_STOP
+
 static int32_t GetCameraPipelineType(const sptr<PhotoProxy>& photoProxy, const CameraShotType& shotType,
     bool hasEditData)
 {
@@ -513,13 +532,13 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &photoProxy)
     tracer.Start("PhotoAssetProxy::AddPhotoProxy " + photoProxy->GetPhotoId());
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture, photoId: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, photoProxy->GetPhotoId().c_str());
-    tracer.Start("PhotoAssetProxy CreatePhotoAsset");
 
     CreatePhotoAsset(photoProxy, "", GetCameraPipelineType(photoProxy, cameraShotType_, false));
     if (cameraShotType_ == CameraShotType::VIDEO || cameraShotType_ == CameraShotType::CINEMATIC_VIDEO) {
         photoProxy->Release();
-        MEDIA_ERR_LOG("MultistagesCapture exit for VIDEO or CINEMATIC_VIDEO, type: %{public}d",
-            static_cast<int32_t>(cameraShotType_));
+        HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
+            "MultistagesCapture exit for VIDEO or CINEMATIC_VIDEO, type: %{public}d",
+            MLOG_TAG, __FUNCTION__, __LINE__, static_cast<int32_t>(cameraShotType_));
         return;
     }
 
@@ -539,6 +558,7 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &photoProxy)
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture exit", MLOG_TAG, __FUNCTION__, __LINE__);
 }
 
+// LCOV_EXCL_START
 void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &editPhotoProxy,
     const sptr<PhotoProxy> &srcPhotoProxy, const std::string &editData)
 {
@@ -548,8 +568,10 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &editPhotoProxy,
 
     MediaLibraryTracer tracer;
     tracer.Start("PhotoAssetProxy::AddPhotoProxy " + editPhotoProxy->GetPhotoId());
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} nMultistagesCapture, photoId: %{public}s, editData: %{public}d",
-        MLOG_TAG, __FUNCTION__, __LINE__, editPhotoProxy->GetPhotoId().c_str(), !editData.empty());
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} MultistagesCapture, "
+        "editPhotoId: %{public}s, srcPhotoId: %{public}s, hasEditData: %{public}d",
+        MLOG_TAG, __FUNCTION__, __LINE__, editPhotoProxy->GetPhotoId().c_str(),
+        srcPhotoProxy != nullptr ? srcPhotoProxy->GetPhotoId().c_str() : "null", !editData.empty());
 
     // 2.创建数据photoAsset
     bool hasEditData = !editData.empty();
@@ -580,7 +602,8 @@ void PhotoAssetProxy::AddPhotoProxy(const sptr<PhotoProxy> &editPhotoProxy,
 
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} nMultistagesCapture exit", MLOG_TAG, __FUNCTION__, __LINE__);
 }
- 
+// LCOV_EXCL_STOP
+
 void PhotoAssetProxy::SaveFileForImage(const sptr<PhotoProxy> &editPhotoProxy, const sptr<PhotoProxy> &srcPhotoProxy)
 {
     MediaLibraryTracer tracer;
@@ -619,14 +642,13 @@ int32_t PhotoAssetProxy::GetVideoFd(VideoType videoType)
     string videoUri = uri_;
     if (cameraShotType_ == CameraShotType::MOVING_PHOTO) {
         MediaUriUtils::AppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, CONST_CREATE_MOVING_PHOTO_VIDEO);
-        MediaUriUtils::AppendKeyValue(videoUri, CONST_VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
     } else {
         MediaUriUtils::AppendKeyValue(videoUri, CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CONST_CREATE_CINEMATIC_VIDEO);
         MediaUriUtils::AppendKeyValue(videoUri, CONST_VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
     }
     Uri openVideoUri(videoUri);
     int32_t fd = dataShareHelper_->OpenFile(openVideoUri, MEDIA_FILEMODE_READWRITE);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} GetVideoFd enter, video path: %{public}s, fd: %{public}d",
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} video path: %{public}s, fd: %{public}d",
         MLOG_TAG, __FUNCTION__, __LINE__, MediaUriUtils::GetSafeUri(videoUri).c_str(), fd);
     return fd;
 }
@@ -638,7 +660,8 @@ void PhotoAssetProxy::NotifyVideoSaveFinished(VideoType videoType)
     if (cameraShotType_ == CameraShotType::VIDEO || cameraShotType_ == CameraShotType::CINEMATIC_VIDEO) {
         HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
             "NotifyVideoSaveFinished exit, cameraShotType: %{public}d, videoType %{public}d.",
-            MLOG_TAG, __FUNCTION__, __LINE__, static_cast<int32_t>(cameraShotType_), videoType);
+            MLOG_TAG, __FUNCTION__, __LINE__,
+            static_cast<int32_t>(cameraShotType_), videoType);
         return;
     }
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} NotifyVideoSaveFinished videoType %{public}d",
@@ -650,7 +673,6 @@ void PhotoAssetProxy::NotifyVideoSaveFinished(VideoType videoType)
     DataShare::DataShareValuesBucket valuesBucket;
     valuesBucket.Put(PhotoColumn::MEDIA_ID, fileId_);
     valuesBucket.Put(CONST_NOTIFY_VIDEO_SAVE_FINISHED, uri_);
-    valuesBucket.Put(CONST_VIDEO_TYPE_KEYWORD, static_cast<int32_t>(videoType));
     dataShareHelper_->Insert(uri, valuesBucket);
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} video save finished %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, uri_.c_str());
@@ -659,10 +681,9 @@ void PhotoAssetProxy::NotifyVideoSaveFinished(VideoType videoType)
 int32_t PhotoAssetProxy::AddProcessVideo(std::shared_ptr<DataShare::DataShareHelper> &dataShareHelper,
     const sptr<PhotoProxy> &photoProxy, int32_t fileId, int32_t videoCount)
 {
-    if (photoProxy == nullptr || dataShareHelper == nullptr) {
-        MEDIA_ERR_LOG("photoProxy or dataShareHelper is nullptr");
-        return E_ERR;
-    }
+    bool cond = (photoProxy == nullptr || dataShareHelper == nullptr);
+    CHECK_AND_RETURN_RET_LOG(!cond, E_ERR, "photoProxy or dataShareHelper is nullptr");
+
     AddProcessVideoReqBody reqBody;
     reqBody.fileId = fileId;
     reqBody.photoId = photoProxy->GetPhotoId();
@@ -681,12 +702,12 @@ int32_t PhotoAssetProxy::AddProcessVideo(std::shared_ptr<DataShare::DataShareHel
 // 只有电影模式二阶段才调用
 void PhotoAssetProxy::UpdatePhotoProxy(const sptr<PhotoProxy> &photoProxy)
 {
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} UpdatePhotoProxy begin, photoId: %{public}s.",
-        MLOG_TAG, __FUNCTION__, __LINE__, photoProxy->GetPhotoId().c_str());
     bool cond = (photoProxy == nullptr || dataShareHelper_ == nullptr);
     CHECK_AND_RETURN_LOG(!cond, "input param invalid, photo proxy or dataShareHelper is nullptr");
     MediaLibraryTracer tracer;
     tracer.Start("PhotoAssetProxy::UpdatePhotoProxy " + photoProxy->GetPhotoId());
+    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} UpdatePhotoProxy begin, photoId: %{public}s.",
+        MLOG_TAG, __FUNCTION__, __LINE__, photoProxy->GetPhotoId().c_str());
     AddProcessVideo(dataShareHelper_, photoProxy, fileId_, videoCount_);
     photoProxy->Release();
     HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} UpdatePhotoProxy exit.",
