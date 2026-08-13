@@ -4818,10 +4818,13 @@ static bool GetThumbnailAndAttachmentSizes(const string &photoPath, const string
 static int32_t StoreThumbnailAndAttachmentSizes(const string &photoId, uint64_t photoThumbnailSize,
     uint64_t editDataSize, uint64_t attachmentSize, EditAndAttachmentUpdateType updateType)
 {
-    string updatePhotoExtSql = "INSERT OR REPLACE INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
+    string updatePhotoExtSql = "INSERT INTO " + PhotoExtColumn::PHOTOS_EXT_TABLE + " (" +
         PhotoExtColumn::PHOTO_ID + ", " +
         PhotoExtColumn::THUMBNAIL_SIZE + ", " +
-        PhotoExtColumn::EDITDATA_SIZE + ") VALUES (?, ?, ?)";
+        PhotoExtColumn::EDITDATA_SIZE + ") VALUES (?, ?, ?)" +
+        " ON CONFLICT(" + PhotoExtColumn::PHOTO_ID + ") DO UPDATE SET " +
+        PhotoExtColumn::THUMBNAIL_SIZE + " = excluded." + PhotoExtColumn::THUMBNAIL_SIZE + ", " +
+        PhotoExtColumn::EDITDATA_SIZE + " = excluded." + PhotoExtColumn::EDITDATA_SIZE;
     string updatePhotoSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
         " SET " + PhotoColumn::ATTACHMENT_SIZE + " = ?" +
         " WHERE " + MediaColumn::MEDIA_ID + " = ? ;";
