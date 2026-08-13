@@ -1076,6 +1076,42 @@ HWTEST_F(AnalysisAlbumStrategyPipelineTest, PortraitCoverStrategy_ShouldRefreshC
     EXPECT_TRUE(!s.ShouldRefreshCover(base, info));
 }
 
+HWTEST_F(AnalysisAlbumStrategyPipelineTest, PortraitCoverStrategy_ShouldRefreshCover_ForceRefresh_322,
+    TestSize.Level2)
+{
+    PortraitCoverStrategy s;
+    AnalysisAlbumRefreshInfo info;
+    info.isForceRefresh_ = true;
+
+    UpdateAlbumData base = MakeBaseAlbum(ALBUM_ID_PORTRAIT_1, static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT), 10,
+        PhotoColumn::PHOTO_URI_PREFIX + std::to_string(FILE_ID_A) + "/x");
+    EXPECT_TRUE(s.ShouldRefreshCover(base, info));
+}
+
+HWTEST_F(AnalysisAlbumStrategyPipelineTest, PortraitCoverStrategy_ShouldRefreshCover_EmptyCoverWithAssets_323,
+    TestSize.Level2)
+{
+    PortraitCoverStrategy s;
+    AnalysisAlbumRefreshInfo info;
+    info.deltaCount_ = 1;
+
+    UpdateAlbumData base = MakeBaseAlbum(ALBUM_ID_PORTRAIT_1, static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT), 1,
+        "");
+    EXPECT_TRUE(s.ShouldRefreshCover(base, info));
+}
+
+HWTEST_F(AnalysisAlbumStrategyPipelineTest, PortraitCoverStrategy_ShouldRefreshCover_RecoverEmptyAlbum_324,
+    TestSize.Level2)
+{
+    PortraitCoverStrategy s;
+    AnalysisAlbumRefreshInfo info;
+    info.deltaCount_ = 1;
+
+    UpdateAlbumData base = MakeBaseAlbum(ALBUM_ID_PORTRAIT_1, static_cast<int32_t>(PhotoAlbumSubType::PORTRAIT), 0,
+        PhotoColumn::PHOTO_URI_PREFIX + std::to_string(FILE_ID_A) + "/x");
+    EXPECT_TRUE(s.ShouldRefreshCover(base, info));
+}
+
 // CoverPickerStrategyBase: use FakeCoverPickerStrategy to avoid DB but exercise PickCover()
 
 HWTEST_F(AnalysisAlbumStrategyPipelineTest, CoverPickerStrategyBase_PickCover_OK_400, TestSize.Level2)
