@@ -176,6 +176,11 @@ protected:
     void UpdateChangeTime();
 
     /**
+     * @brief 旧机db转正后，更新AnalysisAlbum表的extra_info字段
+     */
+    void UpdateAnalysisAlbum();
+
+    /**
      * @brief 步骤12.1：反向吸收新机相册数据
      *        从mediaRdb_（dstdb）吸收到mediaLibraryRdb_（srcdb）
      */

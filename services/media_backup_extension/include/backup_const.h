@@ -742,7 +742,6 @@ struct AnalysisAlbumTbl {
     std::optional<int32_t> albumIdOld;
     std::optional<int32_t> albumIdNew;
     std::optional<int32_t> editOperation;
-    std::optional<std::string> extraInfo;
     std::optional<std::string> friendId;
 };
 
