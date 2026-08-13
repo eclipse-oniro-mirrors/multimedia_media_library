@@ -598,7 +598,6 @@ int32_t YuvPipeline::ProcessMultistagesPhotoInternal(const std::shared_ptr<FileA
         // 有editdata_camera, 添加水印落盘
         return SaveTwoPictureForOnProcess(assetInfo, picture);
     }
-
 }
 
 static void EnableYuvAndNotify(const CameraAssetInfo& assetInfo, std::shared_ptr<Media::Picture> &picture)
