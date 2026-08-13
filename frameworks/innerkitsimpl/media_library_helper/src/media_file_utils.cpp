@@ -847,6 +847,7 @@ bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath)
     UniqueFd srcFd(source);
     CHECK_AND_RETURN_RET_LOG(srcFd.Get() != -1, errCode, "Open failed for source file, errno: %{public}d", errno);
 
+    CHECK_AND_RETURN_RET_LOG(!newPath.empty(), errCode, "dest path is empty, safety check");
     int32_t dest = open(newPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, CHOWN_RO_USR_GRP);
     UniqueFd destFd(dest);
     CHECK_AND_RETURN_RET_LOG(destFd.Get() != -1, errCode, "Open failed for destination file %{public}d", errno);
