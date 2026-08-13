@@ -675,6 +675,40 @@ static void GetDismissAssetsPredicates(NativeRdb::RdbPredicates &rdbPredicate, v
     }
 }
 
+static int32_t GetVisibleDismissAssetCount(const NativeRdb::RdbPredicates &mapPredicate)
+{
+    auto mapResultSet = MediaLibraryRdbStore::QueryWithFilter(mapPredicate, { PhotoMap::ASSET_ID });
+    CHECK_AND_RETURN_RET_LOG(mapResultSet != nullptr, 0, "Query dismiss assets failed");
+
+    vector<string> assetIds;
+    while (mapResultSet->GoToNextRow() == NativeRdb::E_OK) {
+        assetIds.emplace_back(to_string(GetInt32Val(PhotoMap::ASSET_ID, mapResultSet)));
+    }
+    mapResultSet->Close();
+    CHECK_AND_RETURN_RET(!assetIds.empty(), 0);
+
+    NativeRdb::RdbPredicates photoPredicate(PhotoColumn::PHOTOS_TABLE);
+    photoPredicate.In(MediaColumn::MEDIA_ID, assetIds);
+    photoPredicate.EqualTo(PhotoColumn::PHOTO_SYNC_STATUS,
+        to_string(static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE)));
+    photoPredicate.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG,
+        to_string(static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN)));
+    photoPredicate.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
+    photoPredicate.EqualTo(MediaColumn::MEDIA_HIDDEN, to_string(0));
+    photoPredicate.EqualTo(MediaColumn::MEDIA_TIME_PENDING, to_string(0));
+    photoPredicate.EqualTo(PhotoColumn::PHOTO_IS_TEMP, to_string(0));
+    photoPredicate.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL,
+        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)));
+
+    auto photoResultSet = MediaLibraryRdbStore::QueryWithFilter(photoPredicate, { MediaColumn::MEDIA_ID });
+    CHECK_AND_RETURN_RET_LOG(photoResultSet != nullptr, 0, "Query visible dismiss assets failed");
+    int32_t visibleAssetCount = 0;
+    int32_t ret = photoResultSet->GetRowCount(visibleAssetCount);
+    photoResultSet->Close();
+    CHECK_AND_RETURN_RET(ret == NativeRdb::E_OK, 0);
+    return visibleAssetCount;
+}
+
 int32_t DoDismissAssets(int32_t subtype, const string &albumId, const vector<string> &assetIds)
 {
     int32_t deleteRow = 0;
@@ -687,10 +721,12 @@ int32_t DoDismissAssets(int32_t subtype, const string &albumId, const vector<str
         NativeRdb::RdbPredicates mapTablePredicate { ANALYSIS_PHOTO_MAP_TABLE };
         mapTablePredicate.EqualTo(MAP_ALBUM, albumId);
         mapTablePredicate.And()->In(MAP_ASSET, assetIds);
+        int32_t visibleDeleteCount = GetVisibleDismissAssetCount(mapTablePredicate);
         deleteRow = MediaLibraryRdbStore::Delete(mapTablePredicate);
-        if (deleteRow != 0 && MediaLibraryDataManagerUtils::IsNumber(albumId)) {
+        if (deleteRow != 0 && visibleDeleteCount > 0 && MediaLibraryDataManagerUtils::IsNumber(albumId)) {
             AccurateRefresh::AnalysisAlbumAccurateRefresh albumRefresh;
-            albumRefresh.CustomUpdateAlbumsWithDeltaCount(0 - deleteRow, std::vector<string>{albumId}, assetIds);
+            albumRefresh.CustomUpdateAlbumsWithDeltaCount(0 - visibleDeleteCount, std::vector<string>{albumId},
+                assetIds);
             albumRefresh.NotifyAnalysisAssetChange(assetIdIntegers, AccurateRefresh::RDB_OPERATION_REMOVE_ANALYSIS);
             albumRefresh.Notify();
         }
@@ -710,13 +746,15 @@ int32_t DoDismissAssets(int32_t subtype, const string &albumId, const vector<str
     NativeRdb::RdbPredicates rdbPredicate { ANALYSIS_PHOTO_MAP_TABLE };
     GetDismissAssetsPredicates(rdbPredicate, updateAlbumIds,
         static_cast<PhotoAlbumSubType>(subtype), albumId, assetIds);
+    int32_t visibleDeleteCount = GetVisibleDismissAssetCount(rdbPredicate);
     deleteRow = MediaLibraryRdbStore::Delete(rdbPredicate);
     if (deleteRow <= 0) {
         return deleteRow;
     }
 
+    CHECK_AND_RETURN_RET(visibleDeleteCount > 0, deleteRow);
     AccurateRefresh::AnalysisAlbumAccurateRefresh albumRefresh;
-    albumRefresh.CustomUpdateAlbumsWithDeltaCount(0 - deleteRow, std::vector<string>{albumId}, assetIds);
+    albumRefresh.CustomUpdateAlbumsWithDeltaCount(0 - visibleDeleteCount, std::vector<string>{albumId}, assetIds);
     albumRefresh.NotifyAnalysisAssetChange(assetIdIntegers, AccurateRefresh::RDB_OPERATION_REMOVE_ANALYSIS);
     albumRefresh.Notify();
     return deleteRow;

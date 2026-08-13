@@ -255,6 +255,16 @@ int GetGroupPhotoAssetsCount(int32_t albumId)
     return resultSetCount;
 }
 
+int GetAnalysisAlbumCount(int32_t albumId)
+{
+    string querySql = "SELECT count AS album_count FROM " + ANALYSIS_ALBUM_TABLE +
+        " WHERE album_id = " + std::to_string(albumId);
+    auto resultSet = g_rdbStore->QuerySql(querySql);
+    EXPECT_NE(resultSet, nullptr);
+    EXPECT_EQ(resultSet->GoToFirstRow(), NativeRdb::E_OK);
+    return GetInt32Val("album_count", resultSet);
+}
+
 HWTEST_F(AlbumDismissAssetsTest, DismissAsstes_Test_001, TestSize.Level0)
 {
     MEDIA_INFO_LOG("DismissAsstes_Test_001 Start");
@@ -318,6 +328,48 @@ HWTEST_F(AlbumDismissAssetsTest, DismissAsstes_Test_002, TestSize.Level0)
     count = GetGroupPhotoAssetsCount(albumId);
     EXPECT_EQ(count, 0);
     MEDIA_INFO_LOG("DismissAsstes_Test_002 End");
+}
+
+HWTEST_F(AlbumDismissAssetsTest, DismissHiddenAsset_CountUnchanged_001, TestSize.Level0)
+{
+    PortraitData portrait = InsertPortraitToPhotos(0);
+    int64_t albumId = CreateSmartAlbum("hidden_asset", PhotoAlbumSubType::GROUP_PHOTO);
+
+    NativeRdb::ValuesBucket hiddenValues;
+    hiddenValues.PutInt(MediaColumn::MEDIA_HIDDEN, 1);
+    NativeRdb::RdbPredicates photoPredicates(PhotoColumn::PHOTOS_TABLE);
+    photoPredicates.EqualTo(MediaColumn::MEDIA_ID, std::to_string(portrait.fileId));
+    int32_t changedRows = 0;
+    ASSERT_EQ(g_rdbStore->Update(changedRows, hiddenValues, photoPredicates), E_OK);
+
+    NativeRdb::ValuesBucket mapValues;
+    mapValues.PutInt(MAP_ALBUM, albumId);
+    mapValues.PutInt(MAP_ASSET, portrait.fileId);
+    int64_t rowId = -1;
+    ASSERT_EQ(g_rdbStore->Insert(rowId, ANALYSIS_PHOTO_MAP_TABLE, mapValues), E_OK);
+
+    NativeRdb::ValuesBucket albumValues;
+    albumValues.PutInt("count", 10);
+    NativeRdb::RdbPredicates albumPredicates(ANALYSIS_ALBUM_TABLE);
+    albumPredicates.EqualTo(ALBUM_ID, std::to_string(albumId));
+    ASSERT_EQ(g_rdbStore->Update(changedRows, albumValues, albumPredicates), E_OK);
+    ASSERT_EQ(GetAnalysisAlbumCount(albumId), 10);
+
+    MessageParcel data;
+    MessageParcel reply;
+    ChangeRequestDismissAssetsReqBody reqBody;
+    reqBody.albumId = albumId;
+    reqBody.photoAlbumSubType = PhotoAlbumSubType::GROUP_PHOTO;
+    reqBody.assets = {std::to_string(portrait.fileId)};
+    ASSERT_TRUE(reqBody.Marshalling(data));
+
+    auto service = make_shared<AnalysisData::MediaAnalysisDataControllerService>();
+    ASSERT_EQ(service->DismissAssets(data, reply), E_OK);
+
+    IPC::MediaRespVo<MediaEmptyObjVo> resp;
+    ASSERT_TRUE(resp.Unmarshalling(reply));
+    ASSERT_GT(resp.GetErrCode(), 0);
+    EXPECT_EQ(GetAnalysisAlbumCount(albumId), 10);
 }
 
 HWTEST_F(AlbumDismissAssetsTest, MoveAsstes_Test_003, TestSize.Level0)
