@@ -2899,6 +2899,7 @@ bool ReverseCloneRestore::PostProcessFinalReverseDb(vector<ReverseCloneKvStoreTa
     resourceInheritHelper_.SnapshotPureCloudFileIds(destRdb_);
     UpdatePhotosSpecialFields();
     UpdateChangeTime();
+    UpdateAnalysisAlbum();
 
     CheckTableColumnStatus(destRdb_, CLONE_TABLE_LISTS_PHOTO);
     retainedOldPhotoKvStoreTasks = resourceInheritHelper_.BuildRetainedOldPhotoKvStoreTasks(destRdb_);
@@ -3388,6 +3389,19 @@ void ReverseCloneRestore::UpdateChangeTime()
 
     MEDIA_INFO_LOG("UpdateChangeTime: completed");
 }
+
+void ReverseCloneRestore::UpdateAnalysisAlbum()
+{
+    MEDIA_INFO_LOG("ReverseCloneRestore: UpdateAnalysisAlbum called");
+    CHECK_AND_RETURN_LOG(destRdb_ != nullptr, "destRdb_ is null");
+
+    // 更新 AnalysisAlbum 表中人像相册 extra_info 字段为 NULL
+    std::string updateExtraInfoSql = "UPDATE AnalysisAlbum SET extra_info = NULL";
+    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateExtraInfoSql);
+
+    MEDIA_INFO_LOG("UpdateAnalysisAlbum: completed");
+}
+
 
 void ReverseCloneRestore::SetAggregateBitThird()
 {
