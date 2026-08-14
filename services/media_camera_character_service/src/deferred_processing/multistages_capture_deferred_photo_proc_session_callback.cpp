@@ -415,9 +415,6 @@ void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessImageDone(
 void MultiStagesCaptureDeferredPhotoProcSessionCallback::OnProcessInternal(const std::string &imageId,
     std::shared_ptr<CameraStandard::PictureIntf> pictureIntf, const DpsMetadata &metadata)
 {
-    CHECK_AND_RETURN_LOG(MultiStagesCaptureRequestTaskManager::IsPhotoInProcess(imageId),
-        "this photo was delete or err photoId: %{public}s", imageId.c_str());
-
     // 1.参数转化&校验
     OnProcessImageWrapper param;
     CHECK_AND_RETURN_LOG(ConvertOnProcessParam(pictureIntf, metadata, param), "invalid input.");
