@@ -78,7 +78,6 @@ public:
     EXPORT static std::vector<DocsScanFolderStats> QueryDocsScanFolderStats(int32_t lastId, int32_t limit);
     EXPORT static int32_t QueryDocsScanMaxId(int32_t &maxId);
     EXPORT static int32_t DropDocsMediaScanTempTable();
-    EXPORT static int32_t QueryBurstKeyAnomalyInfo(int32_t &crossAlbumDupCount, int32_t &multiCoverGroupCount);
 
 private:
     static int32_t QueryInt(const NativeRdb::AbsRdbPredicates &predicates, const std::vector<std::string> &columns,

@@ -99,7 +99,6 @@ enum DfxType {
     START_MOUNT_FUSE_FAIL,
     START_FUSE_DAEMON_FAIL,
     STOP_WITH_FUSE_TIMEOUT,
-    MEDIA_ON_STOP,
     FUSE_OPEN = 1500,
     FUSE_RELEASE,
     FUSE_WRITE,
@@ -109,7 +108,6 @@ enum DfxType {
     FUSE_OPENDIR,
     FUSE_READDIR,
     FUSE_RELEASEDIR,
-    FUSE_GETATTR,
     CLOUD_SYNC_CODE_START = 1600,
     CLOUD_SYNC_PHOTOS_CLOUD_ID_EMPTY,
     CLOUD_SYNC_CODE_END = 1700,
@@ -120,8 +118,6 @@ const std::string SPLIT_CHAR = "|";
 
 const std::string THUMBNAIL_ERROR_XML = "/data/storage/el2/base/preferences/thumbnail_error.xml";
 const std::string COMMON_BEHAVIOR_XML = "/data/storage/el2/base/preferences/common_behavior.xml";
-const std::string COMMON_BEHAVIOR_FOR_FUSE_GETATTR_XML =
-    "/data/storage/el2/base/preferences/common_behavior_for_fuse_getattr.xml";
 const std::string DELETE_BEHAVIOR_XML = "/data/storage/el2/base/preferences/delete_behavior.xml";
 const std::string ADAPTATION_TO_MOVING_PHOTO_XML = "/data/storage/el2/base/preferences/adaptation_to_moving_photo.xml";
 const std::string DFX_CINEMATIC_VIDEO_XML = "/data/storage/el2/base/preferences/dfx_cinematic_video.xml";
@@ -131,8 +127,6 @@ const std::string ALIB_HIGH_PIXEL_DUPLICATE_XML = "/data/storage/el2/base/prefer
 const std::string ALIB_HIGH_PIXEL_HEIF_DUPLICATE_XML =
     "/data/storage/el2/base/preferences/alib_high_pixel_heif_duplicate.xml";
 const std::string DFX_COMMON_XML = "/data/storage/el2/base/preferences/dfx_common.xml";
-const std::string DFX_MULTISHOT_INFO_XML = "/data/storage/el2/base/preferences/dfx_multishot_info.xml";
-const std::string SLOW_MOTION_ACCESS_XML = "/data/storage/el2/base/preferences/slow_motion_access.xml";
 const std::string AGING_LCD_INFO = "/data/storage/el2/base/preferences/aging_lcd_info.xml";
 const std::string READ_LCD_INFO = "/data/storage/el2/base/preferences/read_lcd_info.xml";
 const std::string THUMBNAIL_QUALITY_INFO = "/data/storage/el2/base/preferences/thumbnail_quality_info.xml";
@@ -141,7 +135,6 @@ const std::string LAST_MIDDLE_REPORT_TIME = "last_middle_report_time";
 const std::string LAST_HALF_DAY_REPORT_TIME = "last_half_day_report_time";
 const std::string LAST_TWO_DAY_REPORT_TIME = "last_two_day_report_time";
 const std::string LAST_WEEK_REPORT_TIME = "last_week_report_time";
-const std::string LAST_SIX_HOUR_REPORT_TIME = "last_six_hour_report_time";
 const std::string THUMBNAIL_ERROR_VERSION = "thumbnail_error_version";
 const std::string DELETE_STATISTIC_VERSION = "delete_statistic_version";
 const std::string MOVING_PHOTO_KEY_UNADAPTED_NUM = "unadapted_app_num";
@@ -161,10 +154,6 @@ const std::string CLOUD_SYNC_START_TIME = "cloud_sync_start_time";
 const std::string CLOUDSYNC_STATUS_KEY = "persist.kernel.cloudsync.status";
 const std::string IS_REPORTED = "is_reported";
 const std::string LAST_CLEAR_DISK_DIRTY_DATA_TIME = "last_clear_disk_dirty_data_time";
-const std::string MULTISHOT_INFO_KEY_DEF_EFF_STA_TIMES = "deferredEffectsStatusTimes";
-const std::string MULTISHOT_INFO_KEY_MULTISHOT_NUM = "multishotNum";
-const std::string MULTISHOT_INFO_KEY_SUP_DEF_EFF_TIMES = "supportedDeferredEffectsNum";
-const std::string MULTISHOT_INFO_KEY_UPD_ORI_RES_TIMES = "updateOriImageResourceTimes";
 
 const std::string CLOUD_PHOTO_PATH = "/storage/cloud/files/Photo/";
 const std::string CLOUD_FILE_PATH = "/storage/cloud/files/";
@@ -251,7 +240,6 @@ struct PhotoRecordInfo {
     int32_t abnormalLpathCount;
     int32_t photoWaitUploadCloudCount;
     int32_t photoWaitUploadHdcCount;
-    int32_t abnormalDateTakenCount; // date_taken异常总数（未来时间/秒级误写/零值/负值）
 };
 
 struct AdaptationToMovingPhotoInfo {
@@ -281,24 +269,11 @@ struct CinematicVideoInfo {
 
     CinematicVideoInfo()
         : accessTimesLow(0),
-        accessTimesHigh(0),
-        uriAccessTimesLow(0),
-        uriAccessTimesHigh(0),
-        multistageSuccessTimes(0),
-        multistageFailedTimes(0) {}
-};
-
-struct MultishotInfo {
-    int32_t deferredEffectsStatusTimes;
-    int32_t multishotNum;
-    int32_t supportedDeferredEffectsNum;
-    int32_t updateOriImageResourceTimes;
- 
-    MultishotInfo()
-        : deferredEffectsStatusTimes(0),
-        multishotNum(0),
-        supportedDeferredEffectsNum(0),
-        updateOriImageResourceTimes(0) {}
+          accessTimesHigh(0),
+          uriAccessTimesLow(0),
+          uriAccessTimesHigh(0),
+          multistageSuccessTimes(0),
+          multistageFailedTimes(0) {}
 };
 
 const std::unordered_map<int32_t, std::string> ALBUM_MAP = {
