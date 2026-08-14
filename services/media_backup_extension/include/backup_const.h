@@ -613,6 +613,10 @@ struct FileInfo {
     bool hasMergedThmThumbnail {false};
     bool needMergeThumbnail {false};
     int32_t lcdUsingStatusOld {0};
+    int32_t newEffectMode {0};
+    int64_t newMediaSize {0};
+    std::string newPackageName;
+    std::string newUniqueId;
 };
 
 struct AlbumInfo {

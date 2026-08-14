@@ -112,6 +112,8 @@ void PhotosDao::ParseResultSetOfSameFile(PhotosDao::PhotosRowData &rowData,
     rowData.fileSourceType = GetInt32Val("file_source_type", resultSet);
     rowData.storagePath = GetStringVal("storage_path", resultSet);
     rowData.lPath = GetStringVal("lpath", resultSet);
+    rowData.packageName = GetStringVal("package_name", resultSet);
+    rowData.uniqueId = GetStringVal("unique_id", resultSet);
 }
 
 /**
