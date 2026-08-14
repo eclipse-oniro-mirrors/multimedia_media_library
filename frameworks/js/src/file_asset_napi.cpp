@@ -2015,7 +2015,7 @@ napi_value GetJSArgsForGetThumbnail(napi_env env, size_t argc, const napi_value 
             argc -= 1;
         }
     }
-    
+
     for (size_t i = PARAM0; i < argc; i++) {
         napi_valuetype valueType = napi_undefined;
         napi_typeof(env, argv[i], &valueType);
@@ -3703,7 +3703,7 @@ static napi_value ParseArgsUserFileMgrWithCachedOpen(napi_env env, napi_callback
             JS_E_PARAM_INVALID);
         transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
         if (!MediaFileUtils::CheckMode(mode)) {
-            NapiError::ThrowError(env, JS_E_PARAM_INVALID);
+            NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID);
             return nullptr;
         }
         context->valuesBucket.Put(MEDIA_FILEMODE, mode);
@@ -3770,7 +3770,7 @@ static void UserFileMgrOpenCallbackWithCachedComplete(napi_env env, napi_status 
         CHECK_ARGS_RET_VOID(env, napi_create_int32(env, context->fd, &jsContext->data), JS_E_INNER_OPEN_FILE_FAIL);
         jsContext->status = true;
     } else {
-        context->HandleError(env, jsContext->error);
+        context->HandleError(env, jsContext->error, true);
     }
 
     tracer.Finish();
@@ -3784,19 +3784,19 @@ static void UserFileMgrOpenCallbackWithCachedComplete(napi_env env, napi_status 
 napi_value FileAssetNapi::JSGetReadOnlyFdWithCached(napi_env env, napi_callback_info info)
 {
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL,
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
             "This interface can be called only by system apps with read permission");
         return nullptr;
     }
     if (!HasReadPermission()) {
-        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE, "Have no read permission");
+        NapiError::ThrowErrorWithIntCode(env, OHOS_PERMISSION_DENIED_CODE, "Have no read permission");
         return nullptr;
     }
 
     unique_ptr<FileAssetAsyncContext> asyncContext = make_unique<FileAssetAsyncContext>();
     CHECK_NULLPTR_RET(ParseArgsUserFileMgrWithCachedOpen(env, info, asyncContext, true));
     if (asyncContext->objectInfo->fileAssetPtr == nullptr) {
-        NapiError::ThrowError(env, JS_E_PARAM_INVALID, "PhotoAsset asset does not exist");
+        NapiError::ThrowErrorWithIntCode(env, JS_E_PARAM_INVALID, "PhotoAsset asset does not exist");
         return nullptr;
     }
     asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
