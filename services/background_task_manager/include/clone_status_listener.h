@@ -19,30 +19,33 @@
 #include <atomic>
 #include <string>
 #include <mutex>
- 
+
 #include "singleton.h"
- 
+#include "iremote_object.h"
+
 namespace OHOS::Media {
+#define EXPORT __attribute__ ((visibility ("default")))
 class CloneStatusListener : public DelayedSingleton<CloneStatusListener> {
     DECLARE_DELAYED_SINGLETON(CloneStatusListener);
- 
+
 public:
     void RegisterCloneStatusChangeListener();
     void UnRegisterCloneStatusChangeListener();
     void HandleDeathRecipient();
- 
+    bool InitAsync();
+
 private:
     void HandleCloneStatusChanged();
     void SetDeathRecipient();
     static void OnParameterChange(const char *key, const char *value, void *context);
- 
+
 private:
     bool isCloneStatusChangedListenerRegistered_ = false;
     std::mutex registerMutex_;
     std::mutex deathRecipientMutex_;
     sptr<OHOS::IRemoteObject> backupSaRemoteObject_;
 };
- 
+
 class EXPORT CloneStatusListenerDeathRecipient : public IRemoteObject::DeathRecipient {
 public:
     CloneStatusListenerDeathRecipient() {}
