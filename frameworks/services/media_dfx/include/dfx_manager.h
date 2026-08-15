@@ -118,6 +118,9 @@ public:
     EXPORT void HandleReadLcd(bool isSuccess);
     EXPORT void HandleThumbnailQuality();
     EXPORT void HandleVisitLcd();
+    void HandleInvalidKey(std::string& bundleName, std::string& sql);
+    void HandleInvalidPrivateOpen(std::string& bundleName, std::string& operation);
+    void HandleSpecialOpen(std::string& bundleName, std::string& operation);
 
 private:
     void Init();

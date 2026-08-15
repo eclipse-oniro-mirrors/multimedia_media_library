@@ -915,6 +915,7 @@ int MediaDataShareExtAbility::OpenFile(const Uri &uri, const string &mode)
         MEDIA_ERR_LOG("permission deny: %{public}d", err);
         return err;
     }
+    MediaLibraryDataManager::GetInstance()->HandleSpecialOpen(command);
 
     int32_t object = static_cast<int32_t>(command.GetOprnObject());
     int32_t type = static_cast<int32_t>(command.GetOprnType());

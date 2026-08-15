@@ -90,23 +90,56 @@ void DfxCollector::CollectDeleteBehavior(std::string bundleName, int32_t type, i
     }
 }
 
-std::unordered_map<std::string, int32_t> DfxCollector::GetDeleteBehavior(int32_t type)
+void DfxCollector::CollectInvalidKey(std::string &bundleName, std::string &sql)
 {
-    std::unordered_map<std::string, int32_t> result;
+    lock_guard<mutex> lock(invalidKeyLock_);
+    if (invalidKeyMap_.count(bundleName) == 0) {
+        invalidKeyMap_[bundleName] = sql;
+    }
+}
+
+void DfxCollector::CollectInvalidPrivateOpen(std::string &bundleName, std::string &operation)
+{
+    lock_guard<mutex> lock(invalidPrivateOpenLock_);
+    if (invalidPrivateOpenMap_.count(bundleName) == 0) {
+        invalidPrivateOpenMap_[bundleName] = operation;
+    }
+}
+
+void DfxCollector::CollectSpecialOpen(std::string &bundleName, std::string &operation)
+{
+    lock_guard<mutex> lock(invalidSpecialOpenLock_);
+    if (invalidSpecialOpenMap_.count(bundleName) == 0) {
+        invalidSpecialOpenMap_[bundleName] = operation;
+    }
+}
+
+void DfxCollector::GetInvalidMap(std::unordered_map<std::string, std::string> &result, int32_t type)
+{
+    if (type == static_cast<int32_t>(DfxType::INVALID_KEY)) {
+        lock_guard<mutex> lock(invalidKeyLock_);
+        result.swap(invalidKeyMap_);
+    } else if (type == static_cast<int32_t>(DfxType::INVALID_PRIVATE_OPEN)) {
+        lock_guard<mutex> lock(invalidPrivateOpenLock_);
+        result.swap(invalidPrivateOpenMap_);
+    } else if (type == static_cast<int32_t>(DfxType::SPECIAL_OPEN)) {
+        lock_guard<mutex> lock(invalidSpecialOpenLock_);
+        result.swap(invalidSpecialOpenMap_);
+    }
+}
+
+void DfxCollector::GetDeleteBehavior(std::unordered_map<std::string, int32_t> &result, int32_t type)
+{
     if (type == DfxType::TRASH_PHOTO) {
         lock_guard<mutex> lock(deleteToTrashLock_);
-        result = deleteToTrashMap_;
-        deleteToTrashMap_.clear();
+        result.swap(deleteToTrashMap_);
     } else if (type == DfxType::ALBUM_DELETE_ASSETS) {
         lock_guard<mutex> lock(deleteFromDiskLock_);
-        result = deleteFromDiskMap_;
-        deleteFromDiskMap_.clear();
+        result.swap(deleteFromDiskMap_);
     } else if (type == DfxType::ALBUM_REMOVE_PHOTOS) {
         lock_guard<mutex> lock(removeLock_);
-        result = removeMap_;
-        removeMap_.clear();
+        result.swap(removeMap_);
     }
-    return result;
 }
 
 void DfxCollector::CollectAdaptationToMovingPhotoInfo(const string &appName, bool adapted)

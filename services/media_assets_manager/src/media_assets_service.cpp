@@ -66,14 +66,14 @@
 #include "photo_day_month_year_operation.h"
 #include "preferences_helper.h"
 #include "notify_register_permission.h"
+#include "medialibrary_uripermission_operations.h"
+#include "permission_utils.h"
+#include "transcode_compatible_info_operations.h"
 #include "accesstoken_kit.h"
 #include "ipc_skeleton.h"
 #include "media_uri_utils.h"
 #include "media_file_notify_info.h"
 #include "file_manager_scanner.h"
-#include "permission_utils.h"
-#include "transcode_compatible_info_operations.h"
-#include "medialibrary_uripermission_operations.h"
 #include "user_define_notify_info.h"
 #include "notification_distribution.h"
 #include "media_uri_utils.h"
@@ -853,6 +853,7 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(Get
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
     cmd.SetDataSharePred(dto.predicates);
+    MediaLibraryPhotoOperations::HandleIllegalKey(dto.predicates);
     // MEDIALIBRARY_TABLE just for RdbPredicates
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
     MediaLibraryRdbUtils::BuildDoubleCheckPredicates(rdbPredicate, static_cast<uint32_t>(dto.tokenId), passCode);
@@ -1186,7 +1187,7 @@ bool MediaAssetsService::CheckMimeType(const int32_t fileId)
     vector<string> columns {MediaColumn::MEDIA_ID, PhotoColumn::MEDIA_NAME, MediaColumn::MEDIA_MIME_TYPE};
     auto resultSet = DatabaseAdapter::Query(cmd, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
-        MEDIA_ERR_LOG("result set is empty");
+        MEDIA_ERR_LOG("CheckMimeType result set is empty");
         return false;
     }
     string mimeType = GetStringVal(MediaColumn::MEDIA_MIME_TYPE, resultSet);
@@ -2725,7 +2726,7 @@ vector<FileAssetsInfo> SortAssetsByOriginalPathOrder(const std::map<int32_t, Fil
         }
         pathInfos.insert(std::make_pair(info.second.storagePath, info.second));
     }
-    for (const auto &path : originalPaths) {
+    for (const auto& path : originalPaths) {
         if (pathInfos.find(path) != pathInfos.end()) {
             fileAssets.push_back(pathInfos.at(path));
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2026 Huawei Device Co., Ltd.
+ * Copyright (C) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -195,7 +195,6 @@ bool PhotoAssetProxy::InitAssetValues(const sptr<PhotoProxy> &photoProxy, DataSh
     // callingUid 特殊处理
     values.Put(CONST_MEDIA_DATA_CALLING_UID, static_cast<int32_t>(callingUid_));
     values.Put(PhotoColumn::PHOTO_DEFERRED_PROC_TYPE, static_cast<int32_t>(photoProxy->GetDeferredProcType()));
-
     std::string photoId;
     GetPhotoIdForAsset(photoProxy, subType_, photoId);
     values.Put(PhotoColumn::PHOTO_ID, photoId);
@@ -211,7 +210,6 @@ void PhotoAssetProxy::CreatePhotoAsset(const sptr<PhotoProxy>& photoProxy, const
     MediaLibraryTracer tracer;
     tracer.Start("PhotoAssetProxy::CreatePhotoAsset");
     MEDIA_INFO_LOG("CreatePhotoAsset enter, pipelineType: %{public}d.", pipelineType);
-
     DataShare::DataShareValuesBucket values;
     // 初始化asset相关入参
     if (!InitAssetValues(photoProxy, values)) {
@@ -332,7 +330,7 @@ int PhotoAssetProxy::SaveImage(int fd, const string &uri, const string &photoId,
     tracer.Start("SaveImage");
     CHECK_AND_RETURN_RET_LOG(fd > 0, E_ERR, "invalid fd");
     if (isHighQualityPhotoExist(uri)) {
-        HILOG_COMM_ERROR("%{public}s:{%{public}s:%{public}d} "
+        MEDIA_ERR_LOG("%{public}s:{%{public}s:%{public}d} "
             "high quality photo exists, discard low quality photo. photoId: %{public}s",
             MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str());
         return E_OK;
@@ -646,6 +644,7 @@ int32_t PhotoAssetProxy::GetVideoFd(VideoType videoType)
         MediaUriUtils::AppendKeyValue(videoUri, CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CONST_CREATE_CINEMATIC_VIDEO);
         MediaUriUtils::AppendKeyValue(videoUri, CONST_VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
     }
+    MediaUriUtils::AppendKeyValue(videoUri, CONST_CALLER, CONST_INNER_API);
     Uri openVideoUri(videoUri);
     int32_t fd = dataShareHelper_->OpenFile(openVideoUri, MEDIA_FILEMODE_READWRITE);
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} video path: %{public}s, fd: %{public}d",

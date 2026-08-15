@@ -125,7 +125,7 @@ void DfxReporter::ReportThumbnailError()
         int32_t method = MediaLibraryDataManagerUtils::IsNumber(thumbnailInfo[1]) ? stoi(thumbnailInfo[1]) : 0;
         // 2 means index of error code
         int32_t errorCode = MediaLibraryDataManagerUtils::IsNumber(thumbnailInfo[2]) ? stoi(thumbnailInfo[2]) : 0;
-        int64_t time = MediaLibraryDataManagerUtils::IsNumber(value) ? stoll(value) : 0;
+        int64_t time = MediaLibraryDataManagerUtils::IsNumber(value) ? stol(value) : 0;
         int ret = HiSysEventWrite(
             MEDIA_LIBRARY,
             "MEDIALIB_THUMBNAIL_ERROR",
@@ -205,12 +205,48 @@ void DfxReporter::ReportDeleteStatistic()
     prefs->FlushSync();
 }
 
+void DfxReporter::ReportInvalidBehavior()
+{
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(INVALID_BEHAVIOR_XML, errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
+    map<string, NativePreferences::PreferencesValue> deleteMap = prefs->GetAll();
+    for (auto &info : deleteMap) {
+        string key = info.first;
+        vector<string> invalidInfo = DfxUtils::Split(key, SPLIT_CHAR);
+        if (invalidInfo.empty() || invalidInfo.size() < 2) { // 2 means length of key
+            continue;
+        }
+        // 0 means index of bundleName
+        string bundleName = invalidInfo[0];
+        // 1 means index of type
+        int32_t type = MediaLibraryDataManagerUtils::IsNumber(invalidInfo[1]) ? stoi(invalidInfo[1]) : 0;
+        string operation = info.second;
+        int ret = HiSysEventWrite(
+            MEDIA_LIBRARY,
+            "MEDIALIB_DELETE_BEHAVIOR",
+            HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
+            "BUNDLE_NAME", bundleName,
+            "TYPE", type,
+            "PATH", operation);
+        if (ret != 0) {
+            MEDIA_ERR_LOG("ReportInvalidBehavior error:%{public}d", ret);
+        }
+    }
+    prefs->Clear();
+    prefs->FlushSync();
+}
+
 void DfxReporter::ReportDeleteBehavior(string bundleName, int32_t type, std::string path)
 {
     if (bundleName == "" || path == "") {
         return;
     }
-    MEDIA_WARN_LOG("%{public}s do %{public}d on %{public}s", bundleName.c_str(), type, path.c_str());
+    MEDIA_DEBUG_LOG("%{public}s do %{public}d on %{public}s", bundleName.c_str(), type, path.c_str());
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_DELETE_BEHAVIOR",
@@ -255,7 +291,11 @@ void DfxReporter::ReportPhotoInfo(const PhotoStatistics& stats)
         "CLOUD_VIDEO_COUNT", stats.cloudVideoCount,
         "SHARED_IMAGE_COUNT", stats.sharedImageCount,
         "SHARED_VIDEO_COUNT", stats.sharedVideoCount,
-        "SOUTH_DEVICE_TYPE", stats.southDeviceType,
+        "USER_ALBUM_COUNT", stats.userAlbumCount,
+        "SOURCE_ALBUM_COUNT", stats.sourceAlbumCount,
+        "UPLOAD_USER_ALBUM_COUNT", stats.uploadUserAlbumCount,
+        "UPLOAD_SOURCE_ALBUM_COUNT", stats.uploadSourceAlbumCount,
+        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount,
         "WAITING_COUNT", stats.tasksWaitingCount,
         "DOWNLOADING_COUNT", stats.tasksDownloadingCount,
         "PAUSE_COUNT", stats.tasksPauseCount,
@@ -264,11 +304,7 @@ void DfxReporter::ReportPhotoInfo(const PhotoStatistics& stats)
         "AUTO_PAUSE_COUNT", stats.tasksAutoPauseCount,
         "SUCC_TOTAL_SIZE", stats.tasksSuccessTotalSize,
         "SUCC_TOTAL_TIME", stats.tasksSuccessTotalTime,
-        "USER_ALBUM_COUNT", stats.userAlbumCount,
-        "SOURCE_ALBUM_COUNT", stats.sourceAlbumCount,
-        "UPLOAD_USER_ALBUM_COUNT", stats.uploadUserAlbumCount,
-        "UPLOAD_SOURCE_ALBUM_COUNT", stats.uploadSourceAlbumCount,
-        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount,
+        "SOUTH_DEVICE_TYPE", stats.southDeviceType,
         "FILEMANAGER_LOCAL_IMAGE_COUNT", stats.fileManagerLocalImageCount,
         "FILEMANAGER_LOCAL_VIDEO_COUNT", stats.fileManagerLocalVideoCount,
         "FILEMANAGER_CLOUD_IMAGE_COUNT", stats.fileManagerCloudImageCount,
@@ -388,9 +424,6 @@ void DfxReporter::ReportAdaptationToMovingPhoto()
     if (ret != 0) {
         MEDIA_ERR_LOG("Report adaptation to moving photo error:%{public}d", ret);
     }
-
-    prefs->Clear();
-    prefs->FlushSync();
 }
 
 void DfxReporter::ReportCinematicVideo()
@@ -820,16 +853,10 @@ void DfxReporter::ReportMediaLibCompatConfig()
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
         NativePreferences::PreferencesHelper::GetPreferences(COMPATIBLE_CONFIG_XML, errCode);
-    if (!prefs) {
-        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
-        return;
-    }
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
     std::map<std::string, DfxCompatibleInfo> infoMap;
     int32_t retDb = DfxDatabaseUtils::QueryAllCompatibleInfo(infoMap);
-    if (retDb != E_OK) {
-        MEDIA_ERR_LOG("QueryAllCompatibleInfo failed: %{public}d", retDb);
-        return;
-    }
+    CHECK_AND_RETURN_LOG(retDb == E_OK, "QueryAllCompatibleInfo failed: %{public}d", retDb);
     map<string, NativePreferences::PreferencesValue> xmlMap = prefs->GetAll();
     nlohmann::json jsonData;
     for (const auto& pair : infoMap) {
@@ -924,7 +951,7 @@ int32_t DfxReporter::ReportUpgradeFault(const UpgradeExceptionInfo& reportData)
         "MEDIALIB_UPGRADE_EXCEPTION",
         HiviewDFX::HiSysEvent::EventType::FAULT,
         "SRC_VERSION", reportData.srcVersion,
-        "DTS_VERSION", reportData.dstVersion,
+        "DST_VERSION", reportData.dstVersion,
         "IS_SYNC", reportData.isSync,
         "EXCEPTION_VERSIONS", reportData.exceptionVersions,
         "DURATION", reportData.duration);

@@ -24,6 +24,7 @@
 #include "medialibrary_helper_container.h"
 #include "media_file_utils.h"
 #include "safe_map.h"
+#include "media_uri_utils.h"
 
 // LCOV_EXCL_START
 using namespace std;
@@ -35,12 +36,12 @@ namespace Media {
 constexpr int32_t BUNDLE_MGR_SERVICE_SYS_ABILITY_ID = 401;
 int32_t UserFileClient::userId_ = -1;
 string UserFileClient::bundleName_ = "";
-std::string MULTI_USER_URI_FLAG = "user=";
-std::string USER_STR = "user";
-
-SafeMap<int32_t, std::shared_ptr<DataShare::DataShareHelper>> UserFileClient::dataShareHelperMap_ = {};
 sptr<AppExecFwk::IBundleMgr> UserFileClient::bundleMgr_ = nullptr;
 mutex UserFileClient::bundleMgrMutex_;
+std::string MULTI_USER_URI_FLAG = "user=";
+std::string USER_STR = "user";
+SafeMap<int32_t, std::shared_ptr<DataShare::DataShareHelper>> UserFileClient::dataShareHelperMap_ = {};
+
 static std::string GetMediaLibraryDataUri(const int32_t userId)
 {
     std::string mediaLibraryDataUri = MEDIALIBRARY_DATA_URI;
@@ -355,7 +356,11 @@ int UserFileClient::OpenFile(Uri &uri, const std::string &mode, const int32_t us
         return E_FAIL;
     }
     uri = MultiUserUriRecognition(uri, userId);
-    return GetDataShareHelperByUser(userId)->OpenFile(uri, mode);
+    std::string uriString = uri.ToString();
+    MediaUriUtils::AppendKeyValue(uriString, CONST_CALLER, CONST_NAPI);
+    Uri openUri(uriString);
+    NAPI_ERR_LOG("open uri: %{public}s", uriString.c_str());
+    return GetDataShareHelperByUser(userId)->OpenFile(openUri, mode);
 }
 
 int UserFileClient::OpenFileWithErrCode(Uri &uri, const std::string &mode, int32_t &realErr, const int32_t userId)
@@ -365,7 +370,11 @@ int UserFileClient::OpenFileWithErrCode(Uri &uri, const std::string &mode, int32
         return E_FAIL;
     }
     uri = MultiUserUriRecognition(uri, userId);
-    return GetDataShareHelperByUser(userId)->OpenFileWithErrCode(uri, mode, realErr);
+    std::string uriString = uri.ToString();
+    MediaUriUtils::AppendKeyValue(uriString, CONST_CALLER, CONST_NAPI);
+    Uri openUri(uriString);
+    NAPI_ERR_LOG("open uri: %{public}s", uriString.c_str());
+    return GetDataShareHelperByUser(userId)->OpenFileWithErrCode(openUri, mode, realErr);
 }
 
 int UserFileClient::Update(Uri &uri, const DataSharePredicates &predicates,
@@ -408,6 +417,7 @@ std::string UserFileClient::GetType(Uri &uri)
 
 int32_t UserFileClient::UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option)
 {
+    NAPI_INFO_LOG("media-ipc userId: %{public}d", GetUserId());
     if (!IsValid(GetUserId())) {
         NAPI_ERR_LOG("JS UserDefineFunc fail, helper null %{public}d", GetUserId());
         return E_FAIL;

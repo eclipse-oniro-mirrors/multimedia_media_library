@@ -77,7 +77,11 @@ struct PhotoStatistics {
     int32_t cloudVideoCount;   // 纯云端视频数量
     int32_t sharedImageCount;  // 端云共存照片数量
     int32_t sharedVideoCount;  // 端云共存视频数量
-    int32_t southDeviceType;
+    int32_t userAlbumCount;
+    int32_t sourceAlbumCount;
+    int32_t uploadUserAlbumCount;
+    int32_t uploadSourceAlbumCount;
+    int32_t notUploadAssetCount;
     int32_t tasksWaitingCount;
     int32_t tasksDownloadingCount;
     int32_t tasksPauseCount;
@@ -86,11 +90,7 @@ struct PhotoStatistics {
     int32_t tasksAutoPauseCount;
     int64_t tasksSuccessTotalSize;
     int64_t tasksSuccessTotalTime;
-    int32_t userAlbumCount;
-    int32_t sourceAlbumCount;
-    int32_t uploadUserAlbumCount;
-    int32_t uploadSourceAlbumCount;
-    int32_t notUploadAssetCount;
+    int32_t southDeviceType;
     int32_t fileManagerLocalImageCount;
     int32_t fileManagerLocalVideoCount;
     int32_t fileManagerCloudImageCount;
@@ -198,7 +198,8 @@ public:
     void ReportThumbnailError();
     void ReportCommonBehavior();
     void ReportDeleteStatistic();
-    void ReportDeleteBehavior(std::string bundleName, int32_t type, std::string path);
+    void ReportInvalidBehavior();
+    static void ReportDeleteBehavior(std::string bundleName, int32_t type, std::string path);
     void ReportThumbnailGeneration(const ThumbnailData::GenerateStats &stats);
     void ReportPhotoInfo(const PhotoStatistics& stats);
     void ReportAlbumInfo(const std::string &albumName, int32_t albumImageCount, int32_t albumVideoCount,
@@ -208,7 +209,6 @@ public:
     void ReportAnalysisVersion(const std::string &analysisName, int32_t version);
     void ReportAdaptationToMovingPhoto();
     void ReportCinematicVideo();
-    void ReportAlibHeifDuplicate();
     void ReportMediaLibCompatConfig();
     static int32_t ReportCloudSyncThumbGenerationStatus(const int32_t& downloadedThumb, const int32_t& generatedThumb,
         const int32_t& totalDownload, const int32_t& southDeviceType);
@@ -228,6 +228,7 @@ public:
     void ReportPhotoSizeAndResolutionInfo(const QuerySizeAndResolution& querySizeAndResolution,
         const std::string& photoMimeType);
     void ReportAccurateRefreshResult(const AccurateRefreshDfxDataPoint& reportData);
+    void ReportAlibHeifDuplicate();
     static int32_t reportHeifAgingStatistics(const HeifAgingStatistics& heifAgingStatistics);
     static int32_t ReportUpgradeFault(const UpgradeExceptionInfo& reportData);
     static int32_t ReportAncoCheckInfo(const AncoCheckInfo& reportData);

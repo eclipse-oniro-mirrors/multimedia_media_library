@@ -39,13 +39,12 @@
 #include "notify_asset_sended_vo.h"
 #include "open_asset_compress_vo.h"
 #include "get_compress_asset_size_vo.h"
-#include "media_audio_column.h"
-
+#include "userfilemgr_uri.h"
 using namespace std;
-// LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media {
-static constexpr int32_t DEFUALT_USER_ID = 100;
+static constexpr int32_t DEFAULT_USER_ID = 100;
 static constexpr int32_t DATASHARE_ERR = -1;
 static constexpr int64_t SHARE_UID = 5520;
 static constexpr int32_t COMPRESS_URI_MAX_SIZE = 500;
@@ -53,6 +52,7 @@ static constexpr int32_t COMPRESS_URI_MAX_SIZE = 500;
 static const std::string OPEN_PRIVATE_LIVE_PHOTO = "open_private_live_photo";
 static const std::string MEDIA_DATA_DB_URI = "uri";
 static const std::string MEDIA_MOVING_PHOTO_OPRN_KEYWORD = "moving_photo_operation";
+static const std::string SHARE_MOVING_PHOTO = "share_moving_photo";
 
 MediaLibraryExtendManager *MediaLibraryExtendManager::GetMediaLibraryExtendManager()
 {
@@ -72,7 +72,7 @@ static sptr<IRemoteObject> InitToken()
 
 static int32_t GetCurrentAccountId()
 {
-    int32_t activeUserId = DEFUALT_USER_ID;
+    int32_t activeUserId = DEFAULT_USER_ID;
     ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
     if (ret != ERR_OK) {
         MEDIA_ERR_LOG("fail to get activeUser:%{public}d", ret);
@@ -132,7 +132,9 @@ int32_t MediaLibraryExtendManager::OpenAsset(string &uri, const string openMode,
 
     string assetUri = uri;
     MediaUriUtils::AppendKeyValue(assetUri, "type", to_string(static_cast<int32_t>(type)));
+    MediaUriUtils::AppendKeyValue(assetUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, SHARE_MOVING_PHOTO);
     MEDIA_DEBUG_LOG("merged uri = %{public}s", assetUri.c_str());
+    MediaUriUtils::AppendKeyValue(assetUri, CONST_CALLER, CONST_INNER_API);
     Uri openUri(assetUri);
     int ret = dataShareHelper_->OpenFile(openUri, openMode);
     if (ret == DATASHARE_ERR && ForceReconnect()) {
@@ -151,6 +153,7 @@ int32_t MediaLibraryExtendManager::ReadPrivateMovingPhoto(string &uri, const Hid
     string movingPhotoUri = uri;
     MediaUriUtils::AppendKeyValue(movingPhotoUri, "type", to_string(static_cast<int32_t>(type)));
     MediaUriUtils::AppendKeyValue(movingPhotoUri, MEDIA_MOVING_PHOTO_OPRN_KEYWORD, OPEN_PRIVATE_LIVE_PHOTO);
+    MediaUriUtils::AppendKeyValue(movingPhotoUri, CONST_CALLER, CONST_INNER_API);
     Uri openMovingPhotoUri(movingPhotoUri);
     int ret = dataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
     if (ret == DATASHARE_ERR && ForceReconnect()) {
@@ -198,7 +201,7 @@ std::shared_ptr<DataShareResultSet> MediaLibraryExtendManager::GetResultSetFromP
     }
     return respBody.resultSet;
 }
-                                   
+
 // LCOV_EXCL_START
 int32_t MediaLibraryExtendManager::SendBrokerChangeOperation(string operation)
 {

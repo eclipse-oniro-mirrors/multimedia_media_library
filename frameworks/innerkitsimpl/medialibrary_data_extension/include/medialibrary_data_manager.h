@@ -153,6 +153,8 @@ public:
     GetInstanceNewFunc func_;
     void* handler_;
     EXPORT WatchSystemService::CloudAuditImpl* GetCloudAuditInstance();
+    EXPORT void HandleSpecialOpen(MediaLibraryCommand &cmd);
+
 private:
     WatchSystemService::CloudAuditImpl* cloudAuditInstance_;
 #endif

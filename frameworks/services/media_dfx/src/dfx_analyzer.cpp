@@ -46,10 +46,8 @@ void DfxAnalyzer::FlushThumbnail(std::unordered_map<std::string, ThumbnailErrorI
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
         NativePreferences::PreferencesHelper::GetPreferences(THUMBNAIL_ERROR_XML, errCode);
-    if (!prefs) {
-        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
-        return;
-    }
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+
     for (auto entry: thumbnailErrorMap) {
         string key = entry.first + SPLIT_CHAR + to_string(entry.second.method) + SPLIT_CHAR +
             to_string(entry.second.errCode);
@@ -88,7 +86,7 @@ void DfxAnalyzer::FlushCommonBehavior(std::unordered_map<string, CommonBehavior>
     }
     prefs->FlushSync();
     if (!behaviors.empty()) {
-        MEDIA_INFO_LOG("common behavior: %{public}s", behaviors.c_str());
+        MEDIA_INFO_LOG("common behavior for fuse getattr: %{public}s", behaviors.c_str());
     }
 }
 
@@ -113,6 +111,24 @@ void DfxAnalyzer::FlushDeleteBehavior(std::unordered_map<string, int32_t> &delet
     prefs->FlushSync();
 }
 
+void DfxAnalyzer::FlushInvalidMap(std::unordered_map<string, string> &invalidMap, int32_t type)
+{
+    if (invalidMap.empty()) {
+        return;
+    }
+    int32_t errCode;
+    shared_ptr<NativePreferences::Preferences> prefs =
+        NativePreferences::PreferencesHelper::GetPreferences(INVALID_BEHAVIOR_XML, errCode);
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    std::string typeStr = std::to_string(type);
+    for (const auto& entry : invalidMap) {
+        string bundleName = entry.first;
+        string operation = entry.second;
+        prefs->PutString(typeStr + SPLIT_CHAR + bundleName, operation);
+    }
+    prefs->FlushSync();
+}
+
 void DfxAnalyzer::FlushAdaptationToMovingPhoto(AdaptationToMovingPhotoInfo& newAdaptationInfo)
 {
     if (newAdaptationInfo.unadaptedAppPackages.empty() && newAdaptationInfo.adaptedAppPackages.empty()) {
@@ -121,10 +137,8 @@ void DfxAnalyzer::FlushAdaptationToMovingPhoto(AdaptationToMovingPhotoInfo& newA
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
         NativePreferences::PreferencesHelper::GetPreferences(ADAPTATION_TO_MOVING_PHOTO_XML, errCode);
-    if (!prefs) {
-        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
-        return;
-    }
+    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+
     string unadaptedAppsStr = prefs->GetString(MOVING_PHOTO_KEY_UNADAPTED_PACKAGE);
     string adaptedAppsStr = prefs->GetString(MOVING_PHOTO_KEY_ADAPTED_PACKAGE);
     unordered_set<string> allUnadaptedApps = DfxUtils::SplitString(unadaptedAppsStr, ';');
@@ -173,10 +187,7 @@ static bool CheckDfxFile(const string& dfxFileName, shared_ptr<NativePreferences
 {
     int32_t errCode;
     prefs = NativePreferences::PreferencesHelper::GetPreferences(dfxFileName, errCode);
-    if (!prefs) {
-        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
-        return false;
-    }
+    CHECK_AND_RETURN_RET_LOG(prefs, false, "get preferences error: %{public}d", errCode);
     return true;
 }
 
@@ -286,7 +297,7 @@ void DfxAnalyzer::FlushTranscodeCostTime(const int32_t costTime, TranscodeType t
 
 void DfxAnalyzer::FlushCinematicVideoInfo(CinematicVideoInfo& newCinematicVideoInfo)
 {
-    MEDIA_INFO_LOG("Refresh CinematicVideoInfo into file");
+    MEDIA_DEBUG_LOG("Refresh CinematicVideoInfo into file");
     shared_ptr<NativePreferences::Preferences> prefs = nullptr;
     CHECK_AND_RETURN(CheckDfxFile(DFX_CINEMATIC_VIDEO_XML, prefs));
 
@@ -467,6 +478,5 @@ void DfxAnalyzer::FlushVisitLcd()
     }
     prefs->FlushSync();
 }
-
 } // namespace Media
 } // namespace OHOS

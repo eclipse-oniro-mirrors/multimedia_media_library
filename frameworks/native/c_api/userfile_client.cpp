@@ -21,6 +21,7 @@
 #include "medialibrary_operation.h"
 #include "media_asset_rdbstore.h"
 #include "iservice_registry.h"
+#include "media_uri_utils.h"
 
 using namespace std;
 using namespace OHOS::DataShare;
@@ -123,7 +124,11 @@ int UserFileClient::OpenFile(Uri &uri, const std::string &mode)
         MEDIA_ERR_LOG("Open file fail, helper null");
         return E_FAIL;
     }
-    return sDataShareHelper_->OpenFile(uri, mode);
+    std::string uriString = uri.ToString();
+    MediaUriUtils::AppendKeyValue(uriString, CONST_CALLER, CONST_CAPI);
+    Uri newUri = Uri(uriString);
+    MEDIA_ERR_LOG("open uri: %{public}s", uriString.c_str());
+    return sDataShareHelper_->OpenFile(newUri, mode);
 }
 
 int UserFileClient::Update(Uri &uri, const DataSharePredicates &predicates,

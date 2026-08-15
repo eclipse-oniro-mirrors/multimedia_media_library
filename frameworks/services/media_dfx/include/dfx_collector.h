@@ -33,7 +33,7 @@ public:
     std::unordered_map<std::string, CommonBehavior> GetCommonBehavior();
     void AddCommonBahavior(std::string bundleName, int32_t type);
     void CollectDeleteBehavior(std::string bundleName, int32_t type, int32_t size);
-    std::unordered_map<std::string, int32_t> GetDeleteBehavior(int32_t type);
+    void GetDeleteBehavior(std::unordered_map<std::string, int32_t> &result, int32_t type);
     void CollectAdaptationToMovingPhotoInfo(const std::string &appName, bool adapted);
     AdaptationToMovingPhotoInfo GetAdaptationToMovingPhotoInfo();
     void CollectCinematicVideoAccessTimes(bool isByUri, bool isHighQualityRequest);
@@ -41,6 +41,10 @@ public:
     void CollectCinematicVideoAddEndTime(const CinematicWaitType waitType, const std::string videoId);
     void CollectCinematicVideoMultistageResult(bool multistageResult);
     CinematicVideoInfo GetCinematicVideoInfo();
+    void CollectInvalidKey(std::string &bundleName, std::string &sql);
+    void CollectInvalidPrivateOpen(std::string &bundleName, std::string &operation);
+    void CollectSpecialOpen(std::string &bundleName, std::string &operation);
+    void GetInvalidMap(std::unordered_map<std::string, std::string> &result, int32_t type);
 
 private:
     std::mutex thumbnailErrorLock_;
@@ -55,6 +59,12 @@ private:
     std::unordered_map<std::string, int32_t> deleteToTrashMap_;
     std::unordered_map<std::string, int32_t> deleteFromDiskMap_;
     std::unordered_map<std::string, int32_t> removeMap_;
+    std::unordered_map<std::string, std::string> invalidKeyMap_;
+    std::unordered_map<std::string, std::string> invalidPrivateOpenMap_;
+    std::unordered_map<std::string, std::string> invalidSpecialOpenMap_;
+    std::mutex invalidKeyLock_;
+    std::mutex invalidPrivateOpenLock_;
+    std::mutex invalidSpecialOpenLock_;
     AdaptationToMovingPhotoInfo adaptationToMovingPhotoInfo_;
     CinematicVideoInfo cinematicVideoInfo_;
 };

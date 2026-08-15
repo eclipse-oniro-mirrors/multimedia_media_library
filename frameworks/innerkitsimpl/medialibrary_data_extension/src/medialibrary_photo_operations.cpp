@@ -16,6 +16,7 @@
 #include "medialibrary_photo_operations.h"
 
 #include <grp.h>
+#include <regex>
 #include <unordered_set>
 #include "album_plugin_base.h"
 #include "directory_ex.h"
@@ -57,11 +58,12 @@
 #include "thumbnail_service.h"
 #include "medialibrary_formmap_operations.h"
 #include "dfx_manager.h"
+#include "dfx_reporter.h"
 #include "dfx_utils.h"
 #include "moving_photo_file_utils.h"
 #include "hi_audit.h"
 #include "video_composition_callback_imp.h"
-#include "medialibrary_data_manager.h"
+
 #include "shooting_mode_column.h"
 #include "refresh_business_name.h"
 #include "medialibrary_bundle_manager.h"
@@ -72,18 +74,19 @@
 #include "scanner_utils.h"
 #endif
 #include "burst_dao.h"
-
 #include "camera_character_types.h"
+#include "medialibrary_notify_new.h"
 #include "multistages_capture_notify_info.h"
 #include "operation/medialibrary_transcode_data_aging_operation.h"
-#include "medialibrary_notify_new.h"
 #include "multistages_capture_notify.h"
+#include "medialibrary_data_manager.h"
 #include "cloud_media_define.h"
 #include "cloud_media_common.h"
 #include "thumbnail_utils.h"
 #include "media_edit_utils.h"
 #include "media_string_utils.h"
 #include "media_path_utils.h"
+#include "scan_config_builder.h"
 #include "heif_transcoding_check_utils.h"
 #include "file_manager_asset_operations.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
@@ -93,10 +96,10 @@
 #include "media_duplicate_checker_utils.h"
 #include "photo_file_utils.h"
 #include "file_parser.h"
-#include "scan_config_builder.h"
 #include "media_values_bucket_utils.h"
 #include "medialibrary_rdb_helper.h"
 #include "medialibrary_rdb_operations.h"
+#include "medialibrary_unistore_manager.h"
 
 using namespace OHOS::DataShare;
 using namespace std;
@@ -4144,7 +4147,6 @@ int32_t MediaLibraryPhotoOperations::DoRevertEdit(const std::shared_ptr<FileAsse
 
     errCode = RevertMetadata(fileId, 0, fileAsset->GetMovingPhotoEffectMode(), fileAsset->GetPhotoSubType());
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, E_HAS_DB_ERROR, "Failed to update data, fileId=%{public}d", fileId);
-
     ResetOcrInfo(fileId);
     if (MediaFileUtils::IsFileExists(editDataPath)) {
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::DeleteFile(editDataPath), E_HAS_FS_ERROR,
@@ -4193,11 +4195,9 @@ int32_t MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(const std::sh
             MEDIA_WARN_LOG("Failed to get cover position, use default 0, ret:%{public}d", ret);
             coverPosition = 0;
         }
-        
         string livePhotoPath;
         ret = MovingPhotoFileUtils::ConvertToLivePhoto(sourcePath, sourceVideoPath, "", coverPosition, livePhotoPath);
         CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_HAS_FS_ERROR, "Failed to convert to livePhoto");
-        
         ret = MediaFileAccessUtils::MoveFileInEditScene(livePhotoPath, path);
         if (ret != E_OK) {
             MEDIA_ERR_LOG("failed to move live photo file, ret: %{public}d", ret);
@@ -4209,7 +4209,6 @@ int32_t MediaLibraryPhotoOperations::DoRevertAfterAddFiltersFailed(const std::sh
         CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CopyFileUtil(sourcePath, path), E_HAS_FS_ERROR,
             "Failed to copy source file.");
     }
-
     string editDataPath = MediaEditUtils::GetEditDataPath(path);
     CHECK_AND_RETURN_RET_LOG(!editDataPath.empty(), E_INVALID_VALUES, "EditData path is empty");
     CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CreateFile(editDataPath), E_HAS_FS_ERROR,
@@ -7787,6 +7786,23 @@ void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<stri
     int32_t ret = rdbStore->ExecuteSql(sql);
     CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
         "Failed to execute batch sql, total size: %{public}zu, error code: %{public}d", photoIdPathList.size(), ret);
+}
+
+void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicates &predicates)
+{
+    auto &items = predicates.GetOperationList();
+    static const std::regex KEY_PATTERN("^[a-z_0-9]+$");
+    for (auto &item : items) {
+        std::string key = static_cast<string>(item.GetSingle(0));
+        if (key.empty()) {
+            continue;
+        }
+        if (!std::regex_match(key, KEY_PATTERN)) {
+            string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+            MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
+            DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
+        }
+    }
 }
 } // namespace Media
 } // namespace OHOS

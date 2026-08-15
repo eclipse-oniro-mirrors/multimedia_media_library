@@ -77,16 +77,16 @@
 #include "medialibrary_kvstore_manager.h"
 #include "medialibrary_meta_recovery.h"
 #include "medialibrary_object_utils.h"
+#include "medialibrary_photo_operations.h"
 #include "medialibrary_ptp_operations.h"
 #include "medialibrary_restore.h"
 #include "medialibrary_subscriber.h"
-#include "medialibrary_tab_old_photos_operations.h"
-#include "medialibrary_tab_old_albums_operations.h"
 #include "medialibrary_tab_asset_and_album_operations.h"
+#include "medialibrary_tab_old_albums_operations.h"
+#include "medialibrary_tab_old_photos_operations.h"
 #include "medialibrary_tracer.h"
 #include "medialibrary_uripermission_operations.h"
 #include "medialibrary_urisensitive_operations.h"
-#include "medialibrary_tab_asset_and_album_operations.h"
 #include "mimetype_utils.h"
 #include "multistages_capture_manager.h"
 #ifdef MEDIALIBRARY_FEATURE_CLOUD_ENHANCEMENT
@@ -108,8 +108,8 @@
 #include "medialibrary_facard_operations.h"
 #endif
 #include "vision_db_sqls_more.h"
-#include "parameters.h"
 #include "uuid.h"
+#include "parameters.h"
 #ifdef DEVICE_STANDBY_ENABLE
 #include "medialibrary_standby_service_subscriber.h"
 #endif
@@ -125,10 +125,8 @@
 #ifdef MEDIALIBRARY_FEATURE_CUSTOM_RESTORE
 #include "custom_record_operations.h"
 #endif
-#include "medialibrary_photo_operations.h"
 #include "medialibrary_upgrade_utils.h"
 #include "media_library_upgrade_manager.h"
-#include "media_library_upgrade_macros.h"
 #include "settings_data_manager.h"
 #include "media_image_framework_utils.h"
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
@@ -139,10 +137,11 @@
 #include "media_upgrade.h"
 #include <functional>
 #include "lcd_aging_manager.h"
+#include "media_library_upgrade_macros.h"
+#include "lcd_aging_service.h"
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
-#include "lcd_aging_service.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -3999,11 +3998,29 @@ int32_t MediaLibraryDataManager::GetAssetCompressVersion()
     MEDIA_INFO_LOG("GetAssetCompressVersion is called, version: %{public}d", compressVersion);
     return compressVersion;
 }
+
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
 WatchSystemService::CloudAuditImpl* MediaLibraryDataManager::GetCloudAuditInstance()
 {
     return cloudAuditInstance_;
 }
 #endif
+
+void MediaLibraryDataManager::HandleSpecialOpen(MediaLibraryCommand &cmd)
+{
+    std::string caller = cmd.GetQuerySetParam(CONST_CALLER);
+    if (!caller.empty()) {
+        return;
+    }
+    std::string operation = cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD);
+    if (operation.empty()) {
+        return;
+    }
+    string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    MEDIA_INFO_LOG("Special Open, Bundlename: %{public}s, Operation: %{public}s",
+        bundleName.c_str(), operation.c_str());
+    DfxManager::GetInstance()->HandleSpecialOpen(bundleName, operation);
+}
+// LCOV_EXCL_STOP
 }  // namespace Media
 }  // namespace OHOS
