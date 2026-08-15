@@ -18,9 +18,7 @@
 #include "media_library_monitor.h"
 
 #include <cinttypes>
-#include <chrono>
 #include <fstream>
-#include <pthread.h>
 #include <sstream>
 #include <string>
 
@@ -38,54 +36,14 @@ MediaLibraryMonitor& MediaLibraryMonitor::GetInstance()
 
 MediaLibraryMonitor::MediaLibraryMonitor() {}
 
-MediaLibraryMonitor::~MediaLibraryMonitor()
-{
-    Stop();
-}
+MediaLibraryMonitor::~MediaLibraryMonitor() {}
 
-void MediaLibraryMonitor::Start()
+void MediaLibraryMonitor::Tick()
 {
-    {
-        lock_guard<mutex> lockGuard(mutex_);
-        if (isRunning_) {
-            return;
-        }
-        isRunning_ = true;
+    ProcessMemoryInfo info;
+    if (ReadSmapsRollup(info)) {
+        LogMemoryInfo(info);
     }
-    monitorThread_ = thread(&MediaLibraryMonitor::Run, this);
-    MEDIA_INFO_LOG("MediaLibraryMonitor started");
-}
-
-void MediaLibraryMonitor::Stop()
-{
-    {
-        lock_guard<mutex> lockGuard(mutex_);
-        if (!isRunning_) {
-            return;
-        }
-        isRunning_ = false;
-    }
-    cv_.notify_all();
-    if (monitorThread_.joinable()) {
-        monitorThread_.join();
-    }
-    MEDIA_INFO_LOG("MediaLibraryMonitor stopped");
-}
-
-void MediaLibraryMonitor::Run()
-{
-    pthread_setname_np(pthread_self(), "MedLibMonitor");
-    MEDIA_INFO_LOG("MediaLibraryMonitor thread enter");
-    unique_lock<mutex> lock(mutex_);
-    while (isRunning_) {
-        ProcessMemoryInfo info;
-        if (ReadSmapsRollup(info)) {
-            LogMemoryInfo(info);
-        }
-        cv_.wait_for(lock, chrono::milliseconds(MONITOR_INTERVAL_MS),
-            [this]() { return !isRunning_; });
-    }
-    MEDIA_INFO_LOG("MediaLibraryMonitor thread exit");
 }
 
 bool MediaLibraryMonitor::ReadSmapsRollup(ProcessMemoryInfo& info)
@@ -126,20 +84,11 @@ bool MediaLibraryMonitor::ReadSmapsRollup(ProcessMemoryInfo& info)
 
 void MediaLibraryMonitor::LogMemoryInfo(const ProcessMemoryInfo& info)
 {
-    if (hasLastPrinted_) {
-        uint64_t delta = info.pssKb > lastPrintedPssKb_ ? info.pssKb - lastPrintedPssKb_
-                                                        : lastPrintedPssKb_ - info.pssKb;
-        if (delta < PRINT_THRESHOLD_KB) {
-            return;
-        }
-    }
     MEDIA_INFO_LOG("smaps_rollup Rss:%{public}" PRIu64 " kB Pss:%{public}" PRIu64 " kB "
         "Shared_Clean:%{public}" PRIu64 " kB Shared_Dirty:%{public}" PRIu64 " kB "
         "Private_Clean:%{public}" PRIu64 " kB Private_Dirty:%{public}" PRIu64 " kB "
-        "Swap_Pss:%{public}" PRIu64 " kB",
+        "SwapPss:%{public}" PRIu64 " kB",
         info.rssKb, info.pssKb, info.sharedCleanKb, info.sharedDirtyKb,
         info.privateCleanKb, info.privateDirtyKb, info.swapPssKb);
-    lastPrintedPssKb_ = info.pssKb;
-    hasLastPrinted_ = true;
 }
 }  // namespace OHOS::Media::Monitor
