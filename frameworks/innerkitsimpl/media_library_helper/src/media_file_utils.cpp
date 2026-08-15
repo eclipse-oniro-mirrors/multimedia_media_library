@@ -1499,11 +1499,17 @@ string MediaFileUtils::GetHighlightPath(const string &uri)
         return "";
     }
 
+    string pathSuffix = uri.substr(prefixLen);
+    if (pathSuffix.find("..") != string::npos) {
+        MEDIA_ERR_LOG("Invalid uri with path traversal: %{private}s", uri.c_str());
+        return "";
+    }
+
     string path;
     if (IsFileExists(ROOT_MEDIA_DIR + HIGHLIGHT_INFO_OLD)) {
-        path = "/storage/cloud/files/.thumbs" + uri.substr(prefixLen);
+        path = "/storage/cloud/files/.thumbs" + pathSuffix;
     } else {
-        path = "/storage/cloud/files" + uri.substr(prefixLen);
+        path = "/storage/cloud/files" + pathSuffix;
     }
     
     return path;
@@ -1520,7 +1526,14 @@ string MediaFileUtils::GetHighlightVideoPath(const string &uri)
     } else {
         return "";
     }
-    string path = "/storage/cloud/files" + uri.substr(prefixLen);
+
+    string pathSuffix = uri.substr(prefixLen);
+    if (pathSuffix.find("..") != string::npos) {
+        MEDIA_ERR_LOG("Invalid uri with path traversal: %{private}s", uri.c_str());
+        return "";
+    }
+
+    string path = "/storage/cloud/files" + pathSuffix;
     return path;
 }
 

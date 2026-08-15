@@ -917,6 +917,48 @@ HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_Test_002, TestSize.Level1)
     EXPECT_EQ(res3, "");
 }
 
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetHighlightPath_PathTraversal_Test_001, TestSize.Level1)
+{
+    const string uri = "datashare:///media/highlight/cover/../../../etc/passwd";
+    auto res = MediaFileUtils::GetHighlightPath(uri);
+    EXPECT_EQ(res, "");
+
+    const string uri2 = "datashare:///media/../etc/passwd";
+    auto res2 = MediaFileUtils::GetHighlightPath(uri2);
+    EXPECT_EQ(res2, "");
+
+    const string uri3 = "file://media/../../../etc/passwd";
+    auto res3 = MediaFileUtils::GetHighlightPath(uri3);
+    EXPECT_EQ(res3, "");
+
+    const string uri4 = "datashare:///media/highlight/cover/..%2F..%2Fetc%2Fpasswd";
+    auto res4 = MediaFileUtils::GetHighlightPath(uri4);
+    EXPECT_EQ(res4, "");
+
+    const string uri5 = "datashare:///media/highlight/cover/valid/path";
+    auto res5 = MediaFileUtils::GetHighlightPath(uri5);
+    EXPECT_EQ(res5, "/storage/cloud/files/highlight/cover/valid/path");
+}
+
+HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_GetHighlightVideoPath_PathTraversal_Test_001, TestSize.Level1)
+{
+    const string uri = "datashare:///media/highlight/video/../../../etc/passwd";
+    auto res = MediaFileUtils::GetHighlightVideoPath(uri);
+    EXPECT_EQ(res, "");
+
+    const string uri2 = "datashare:///media/../etc/passwd";
+    auto res2 = MediaFileUtils::GetHighlightVideoPath(uri2);
+    EXPECT_EQ(res2, "");
+
+    const string uri3 = "file://media/../../../etc/passwd";
+    auto res3 = MediaFileUtils::GetHighlightVideoPath(uri3);
+    EXPECT_EQ(res3, "");
+
+    const string uri4 = "datashare:///media/highlight/video/valid/path";
+    auto res4 = MediaFileUtils::GetHighlightVideoPath(uri4);
+    EXPECT_EQ(res4, "/storage/cloud/files/highlight/video/valid/path");
+}
+
 HWTEST_F(MediaLibraryHelperUnitTest, MediaFileUtils_Test_003, TestSize.Level1)
 {
     const string filePath;
