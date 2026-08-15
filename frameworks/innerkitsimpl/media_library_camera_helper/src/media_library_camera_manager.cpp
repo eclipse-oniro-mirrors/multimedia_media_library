@@ -66,7 +66,7 @@ std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProx
     std::unique_lock<std::mutex> locker(mutex_);
     std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
         DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
         "callerInfo: %{public}s, shotType: %{public}d, videoCount: %{public}d.",
         MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr,
         callerInfo.ToString().c_str(), static_cast<int32_t>(cameraShotType), videoCount);
@@ -81,7 +81,7 @@ std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProx
     std::unique_lock<std::mutex> locker(mutex_);
     std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
         DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
         "callerInfo: %{public}s, presetPara: %{public}s.",
         MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr,
         callerInfo.ToString().c_str(), presetPara.ToString().c_str());
@@ -109,7 +109,7 @@ DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std:
 
     pictureInfo.editData = respBody.editData;
     pictureInfo.mimeType = respBody.mimeType;
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} GetEditData done, photoId: %{public}s, "
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} GetEditData done, photoId: %{public}s, "
         "hasEditData: %{public}d, mimeType: %{public}s.",
         MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str(), !pictureInfo.editData.empty(),
         pictureInfo.mimeType.c_str());
