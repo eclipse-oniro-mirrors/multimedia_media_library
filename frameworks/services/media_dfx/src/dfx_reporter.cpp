@@ -125,7 +125,7 @@ void DfxReporter::ReportThumbnailError()
         int32_t method = MediaLibraryDataManagerUtils::IsNumber(thumbnailInfo[1]) ? stoi(thumbnailInfo[1]) : 0;
         // 2 means index of error code
         int32_t errorCode = MediaLibraryDataManagerUtils::IsNumber(thumbnailInfo[2]) ? stoi(thumbnailInfo[2]) : 0;
-        int64_t time = MediaLibraryDataManagerUtils::IsNumber(value) ? stol(value) : 0;
+        int64_t time = MediaLibraryDataManagerUtils::IsNumber(value) ? stoll(value) : 0;
         int ret = HiSysEventWrite(
             MEDIA_LIBRARY,
             "MEDIALIB_THUMBNAIL_ERROR",
@@ -210,7 +210,7 @@ void DfxReporter::ReportDeleteBehavior(string bundleName, int32_t type, std::str
     if (bundleName == "" || path == "") {
         return;
     }
-    MEDIA_DEBUG_LOG("%{public}s do %{public}d on %{public}s", bundleName.c_str(), type, path.c_str());
+    MEDIA_WARN_LOG("%{public}s do %{public}d on %{public}s", bundleName.c_str(), type, path.c_str());
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_DELETE_BEHAVIOR",
@@ -255,11 +255,7 @@ void DfxReporter::ReportPhotoInfo(const PhotoStatistics& stats)
         "CLOUD_VIDEO_COUNT", stats.cloudVideoCount,
         "SHARED_IMAGE_COUNT", stats.sharedImageCount,
         "SHARED_VIDEO_COUNT", stats.sharedVideoCount,
-        "USER_ALBUM_COUNT", stats.userAlbumCount,
-        "SOURCE_ALBUM_COUNT", stats.sourceAlbumCount,
-        "UPLOAD_USER_ALBUM_COUNT", stats.uploadUserAlbumCount,
-        "UPLOAD_SOURCE_ALBUM_COUNT", stats.uploadSourceAlbumCount,
-        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount,
+        "SOUTH_DEVICE_TYPE", stats.southDeviceType,
         "WAITING_COUNT", stats.tasksWaitingCount,
         "DOWNLOADING_COUNT", stats.tasksDownloadingCount,
         "PAUSE_COUNT", stats.tasksPauseCount,
@@ -268,7 +264,11 @@ void DfxReporter::ReportPhotoInfo(const PhotoStatistics& stats)
         "AUTO_PAUSE_COUNT", stats.tasksAutoPauseCount,
         "SUCC_TOTAL_SIZE", stats.tasksSuccessTotalSize,
         "SUCC_TOTAL_TIME", stats.tasksSuccessTotalTime,
-        "SOUTH_DEVICE_TYPE", stats.southDeviceType,
+        "USER_ALBUM_COUNT", stats.userAlbumCount,
+        "SOURCE_ALBUM_COUNT", stats.sourceAlbumCount,
+        "UPLOAD_USER_ALBUM_COUNT", stats.uploadUserAlbumCount,
+        "UPLOAD_SOURCE_ALBUM_COUNT", stats.uploadSourceAlbumCount,
+        "NOT_UPLOAD_ASSET_COUNT", stats.notUploadAssetCount,
         "FILEMANAGER_LOCAL_IMAGE_COUNT", stats.fileManagerLocalImageCount,
         "FILEMANAGER_LOCAL_VIDEO_COUNT", stats.fileManagerLocalVideoCount,
         "FILEMANAGER_CLOUD_IMAGE_COUNT", stats.fileManagerCloudImageCount,
@@ -388,6 +388,9 @@ void DfxReporter::ReportAdaptationToMovingPhoto()
     if (ret != 0) {
         MEDIA_ERR_LOG("Report adaptation to moving photo error:%{public}d", ret);
     }
+
+    prefs->Clear();
+    prefs->FlushSync();
 }
 
 void DfxReporter::ReportCinematicVideo()
@@ -526,8 +529,6 @@ void DfxReporter::ReportPhotoRecordInfo()
     int32_t abnormalLpathCount = photoRecordInfo.abnormalLpathCount;
     int32_t photoWaitUploadCloudCount = photoRecordInfo.photoWaitUploadCloudCount;
     int32_t photoWaitUploadHdcCount = photoRecordInfo.photoWaitUploadHdcCount;
-    // 需求三：date_taken 异常总数（未来时间/秒级误写/零值/负值）
-    int32_t abnormalDateTakenCount = photoRecordInfo.abnormalDateTakenCount;
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_DATABASE_INFO",
@@ -544,8 +545,7 @@ void DfxReporter::ReportPhotoRecordInfo()
         "ABNORMAL_LPATH_COUNT", abnormalLpathCount,
         "PHOTO_WAIT_UPLOAD_CLOUD_COUNT", photoWaitUploadCloudCount,
         "PHOTO_WAIT_UPLOAD_HDC_COUNT", photoWaitUploadHdcCount,
-        "WATCH_LIST_INFO", GetWatchListInfo(),
-        "ABNORMAL_DATE_TAKEN_COUNT", abnormalDateTakenCount);
+        "WATCH_LIST_INFO", GetWatchListInfo());
     if (ret != 0) {
         MEDIA_ERR_LOG("ReportPhotoRecordInfo error:%{public}d", ret);
     }
@@ -754,6 +754,28 @@ void DfxReporter::ReportPhotoSizeAndResolutionInfo(const QuerySizeAndResolution&
     }
 }
 
+void DfxReporter::ReportAccurateRefreshResult(const AccurateRefreshDfxDataPoint& reportData)
+{
+    std::string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+    int ret = HiSysEventWrite(
+        MEDIA_LIBRARY,
+        "MEDIALIB_TIMEOUT_ERROR",
+        HiviewDFX::HiSysEvent::EventType::FAULT,
+        "BUNDLE_NAME", bundleName,
+        "SQL", reportData.sqlStr,
+        "TARGET_BUSINESS", reportData.targetBusiness,
+        "TOTAL_COST_TIME", reportData.totalCostTime,
+        "STANDARD_COST_TIME", reportData.standardCostTime,
+        "PHOTO_OPERATION_TOTAL_TIME", reportData.photoOperationTotalTime,
+        "ALBUM_OPERATION_TOTAL_TIME", reportData.albumOperationTotalTime,
+        "ALBUM_ID", reportData.albumId,
+        "ALBUM_OPERATION_TIME", reportData.albumOperationTime,
+        "ALBUM_HIDDEN_INFO_OPERATION_TIME", reportData.albumHiddenInfoOperationTime);
+    if (ret != 0) {
+        MEDIA_ERR_LOG("ReportAccurateRefreshService error:%{public}d", ret);
+    }
+}
+
 int32_t DfxReporter::reportHeifAgingStatistics(const HeifAgingStatistics& heifAgingStatistics)
 {
     string date = DfxUtils::GetCurrentDate();
@@ -798,44 +820,46 @@ void DfxReporter::ReportMediaLibCompatConfig()
     int32_t errCode;
     shared_ptr<NativePreferences::Preferences> prefs =
         NativePreferences::PreferencesHelper::GetPreferences(COMPATIBLE_CONFIG_XML, errCode);
-    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
+    if (!prefs) {
+        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
+        return;
+    }
     std::map<std::string, DfxCompatibleInfo> infoMap;
     int32_t retDb = DfxDatabaseUtils::QueryAllCompatibleInfo(infoMap);
-    CHECK_AND_RETURN_LOG(retDb == E_OK, "QueryAllCompatibleInfo failed: %{public}d", retDb);
+    if (retDb != E_OK) {
+        MEDIA_ERR_LOG("QueryAllCompatibleInfo failed: %{public}d", retDb);
+        return;
+    }
     map<string, NativePreferences::PreferencesValue> xmlMap = prefs->GetAll();
-    std::vector<std::pair<std::string, DfxCompatibleInfo>> changedInfos;
+    nlohmann::json jsonData;
     for (const auto& pair : infoMap) {
         string bundleName = pair.first;
         const DfxCompatibleInfo& dbInfo = pair.second;
-        string dbValueStr = to_string(dbInfo.futureField) + ":" + to_string(dbInfo.highResolution) + ":"
-            + dbInfo.encodings;
+        string dbValueStr = to_string(dbInfo.highResolution) + "," + dbInfo.encodings + "," +
+            to_string(dbInfo.futureField);
         string xmlValueStr = prefs->GetString(bundleName, "");
         if (dbValueStr != xmlValueStr) {
-            changedInfos.push_back(pair);
+            jsonData[bundleName] = dbValueStr;
         }
     }
-    bool hasChange = !changedInfos.empty();
-    for (const auto& infoPair : changedInfos) {
+    if (jsonData.empty() && xmlMap.size() == infoMap.size()) {
+        MEDIA_ERR_LOG("Compat config has no change, skip reporting.");
+        return;
+    } else {
         int ret = HiSysEventWrite(
             MEDIA_LIBRARY,
             "MEDIALIB_COMPATIBEL_CONFIG",
             HiviewDFX::HiSysEvent::EventType::STATISTIC,
-            "BUNDLE_NAME", infoPair.first,
-            "COMPAT_CONFIG", infoPair.second.futureField,
-            "HIGH_RESOLUTION_CONFIG", infoPair.second.highResolution,
-            "ENCODING_CONFIG", infoPair.second.encodings);
+            "APP_PACKAGE_CONFIG", jsonData.dump());
         if (ret != 0) {
             MEDIA_ERR_LOG("Report compat config error:%{public}d", ret);
+            return;
         }
-    }
-    if (!hasChange && xmlMap.size() == infoMap.size()) {
-        MEDIA_INFO_LOG("Compat config has no change, skip reporting.");
-        return;
     }
     prefs->Clear();
     for (const auto& pair : infoMap) {
-        string dbValueStr = to_string(pair.second.futureField) + ":" +
-            to_string(pair.second.highResolution) + ":" + pair.second.encodings;
+        string dbValueStr = to_string(pair.second.highResolution) + "," + pair.second.encodings + "," +
+            to_string(pair.second.futureField);
         prefs->PutString(pair.first, dbValueStr);
     }
     prefs->FlushSync();
@@ -880,74 +904,6 @@ static void ReportAlibDuplicate(TranscodeType transcodeType)
     if (ret != 0) {
         MEDIA_ERR_LOG("Report alib heif duplicate error:%{public}d", ret);
     }
- 
-    prefs->Clear();
-    prefs->FlushSync();
-}
-
-void DfxReporter::ReportAccurateRefreshResult(const AccurateRefreshDfxDataPoint& reportData)
-{
-    std::string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
-    int ret = HiSysEventWrite(
-        MEDIA_LIBRARY,
-        "MEDIALIB_TIMEOUT_ERROR",
-        HiviewDFX::HiSysEvent::EventType::FAULT,
-        "BUNDLE_NAME", bundleName,
-        "SQL", reportData.sqlStr,
-        "TARGET_BUSINESS", reportData.targetBusiness,
-        "TOTAL_COST_TIME", reportData.totalCostTime,
-        "STANDARD_COST_TIME", reportData.standardCostTime,
-        "PHOTO_OPERATION_TOTAL_TIME", reportData.photoOperationTotalTime,
-        "ALBUM_OPERATION_TOTAL_TIME", reportData.albumOperationTotalTime,
-        "ALBUM_ID", reportData.albumId,
-        "ALBUM_OPERATION_TIME", reportData.albumOperationTime,
-        "ALBUM_HIDDEN_INFO_OPERATION_TIME", reportData.albumHiddenInfoOperationTime);
-    if (ret != 0) {
-        MEDIA_ERR_LOG("ReportAccurateRefreshService error:%{public}d", ret);
-    }
-}
-
-void DfxReporter::ReportMultishotInfo()
-{
-    int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(DFX_MULTISHOT_INFO_XML, errCode);
-    if (!prefs) {
-        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
-        return;
-    }
-
-    string date = DfxUtils::GetCurrentDate();
-    int32_t deferredEffectsStatusTimes = prefs->GetInt(MULTISHOT_INFO_KEY_DEF_EFF_STA_TIMES);
-    int32_t multishotNum = prefs->GetInt(MULTISHOT_INFO_KEY_MULTISHOT_NUM);
-    int32_t supportedDeferredEffectsNum = prefs->GetInt(MULTISHOT_INFO_KEY_SUP_DEF_EFF_TIMES);
-    int32_t updateOriImageResourceTimes = prefs->GetInt(MULTISHOT_INFO_KEY_UPD_ORI_RES_TIMES);
-
-    // 需求二：连拍 burst_key 异常统计（DB 快照查询，非事件累加）
-    int32_t crossAlbumDupBurstKeyCount = 0;
-    int32_t multiCoverBurstGroupCount = 0;
-    DfxDatabaseUtils::QueryBurstKeyAnomalyInfo(crossAlbumDupBurstKeyCount, multiCoverBurstGroupCount);
-
-    int ret = HiSysEventWrite(MEDIA_LIBRARY,
-        "MULTISHOT_INFO",
-        HiviewDFX::HiSysEvent::EventType::STATISTIC,
-        "DATE",
-        date,
-        "DEF_EFF_STA_TIMES",
-        deferredEffectsStatusTimes,
-        "MULTISHOT_NUM",
-        multishotNum,
-        "SUP_DEF_EFF_TIMES",
-        supportedDeferredEffectsNum,
-        "UPD_ORI_RES_TIMES",
-        updateOriImageResourceTimes,
-        "CROSS_ALBUM_DUP_BURST_KEY_COUNT",
-        crossAlbumDupBurstKeyCount,
-        "MULTI_COVER_BURST_GROUP_COUNT",
-        multiCoverBurstGroupCount);
-    if (ret != 0) {
-        MEDIA_ERR_LOG("Report adaptation to multishot info error:%{public}d", ret);
-    }
 
     prefs->Clear();
     prefs->FlushSync();
@@ -968,7 +924,7 @@ int32_t DfxReporter::ReportUpgradeFault(const UpgradeExceptionInfo& reportData)
         "MEDIALIB_UPGRADE_EXCEPTION",
         HiviewDFX::HiSysEvent::EventType::FAULT,
         "SRC_VERSION", reportData.srcVersion,
-        "DST_VERSION", reportData.dstVersion,
+        "DTS_VERSION", reportData.dstVersion,
         "IS_SYNC", reportData.isSync,
         "EXCEPTION_VERSIONS", reportData.exceptionVersions,
         "DURATION", reportData.duration);

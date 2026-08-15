@@ -249,7 +249,7 @@ MEDIALIB_MTP_PTP_SYNC_RESULT:
   FILE_COUNT_INFO: { type: STRING, arrsize: 50, desc: Statistics on the number of files requested by the PC from the mobile phone }
 
 MEDIALIB_MTP_OPERATION_RESULT:
-  __BASE: { type: STATISTIC, level: CRITICAL, desc: File operation records in medialibrary MTP or PT, preserve: true }
+  __BASE: { type: STATISTIC, level: CRITICAL, desc: File operation records in medialibrary MTP or PTP, preserve: true }
   MTP_MODE: { type: INT32, desc: Transmission protocol }
   MTP_GET_OBJECT_HANDLES_INFO: { type: INT32, arrsize: 2, desc: Count of successful and failed file statistics information }
   MTP_GET_OBJECT_INFO: { type: INT32, arrsize: 2, desc: Get the count of successful and failed attempts for a single file }
@@ -267,33 +267,6 @@ MEDIALIB_MTP_PTP_SEND_RESPONSE:
   OPERATION_RESULT: { type: INT32, desc: Operation result }
   OPERATION_COST_TIME: { type: UINT64, desc: Operation time consumption }
   OPERATION_MODE : { type: INT32, desc: operating mode read or write }
-
-MULTISHOT_INFO:
-  __BASE: { type: STATISTIC, level: CRITICAL, desc: Statistics on data related to multishot, preserve: true }
-  DATE: { type: STRING, desc: Date }
-  DEF_EFF_STA_TIMES: { type: INT32, desc: Times of daily application invokes the status change interface }
-  MULTISHOT_NUM: { type: INT32, desc: Number of daily photo daily multishot can be taken }
-  SUP_DEF_EFF_TIMES: { type: INT32, desc: Times of daily application invokes the special effect change interface }
-  UPD_ORI_RES_TIMES: { type: INT32, desc: Times of daily application invokes the updating original images interface }
-  CROSS_ALBUM_DUP_BURST_KEY_COUNT: { type: INT32, desc: Count of burst keys that appear in more than one owner_album_id with subtype BURST }
-  MULTI_COVER_BURST_GROUP_COUNT: { type: INT32, desc: Count of burst groups that have more than one cover photo }
-
-MEDIALIB_DATABASE_INFO:
-  __BASE: { type: STATISTIC, level: CRITICAL, desc: Database record statistics, preserve: true }
-  DB_FILE_SIZE: { type: INT64, desc: Database file size }
-  REPLICA_DB_FILE_SIZE: { type: INT64, desc: Replica database file size }
-  IMAGE_COUNT: { type: INT32, desc: Visible image count }
-  VIDEO_COUNT: { type: INT32, desc: Visible video count }
-  ABNORMAL_SIZE_COUNT: { type: INT32, desc: Count of records with abnormal size }
-  ABNORMAL_WIDTH_OR_HEIGHT_COUNT: { type: INT32, desc: Count of records with abnormal width or height }
-  ABNORMAL_VIDEO_DURATION_COUNT: { type: INT32, desc: Count of records with abnormal video duration }
-  ABNORMAL_COUNT_TO_UPDATE: { type: INT32, desc: Count of records that need to be updated }
-  DUPLICATE_LPATH_COUNT: { type: INT32, desc: Count of duplicate local paths }
-  ABNORMAL_LPATH_COUNT: { type: INT32, desc: Count of abnormal local paths }
-  PHOTO_WAIT_UPLOAD_CLOUD_COUNT: { type: INT32, desc: Count of photos waiting to upload via cloud }
-  PHOTO_WAIT_UPLOAD_HDC_COUNT: { type: INT32, desc: Count of photos waiting to upload via HDC }
-  WATCH_LIST_INFO: { type: STRING, desc: Inotify watch list info }
-  ABNORMAL_DATE_TAKEN_COUNT: { type: INT32, desc: Count of records with abnormal date_taken including future time second-unit misuse zero and negative values }
 
 MEDIALIB_HEIF_AGING:
   __BASE: { type: STATISTIC, level: CRITICAL, desc: Charging and screen-off trigger aging business successfully, preserve: true }
@@ -341,7 +314,7 @@ MEDIALIB_PHOTO_INFO:
   FILEMANAGER_SHARED_IMAGE_COUNT: { type: INT32, desc: Count of shared images in file manager }
   FILEMANAGER_SHARED_VIDEO_COUNT: { type: INT32, desc: Count of shared videos in file manager }
   FILEMANAGER_ALBUM_COUNT: { type: INT32, desc: Count of albums in file manager }
-  UPLOAD_FILEMANAGER_ALBUM_COUNT: { type: INT32, desc: Count of albums uploaded to file manager }
+  UPLOAD_FILEMANAGER_ALBUM_COUNT: { type: INT32, desc: Count albums uploaded to file manager }
 
 MEDIALIB_AGING_LCD_INFO:
   __BASE: { type: STATISTIC, level: CRITICAL, desc: Aging the statistics of the LCD image once, preserve: true }
@@ -354,18 +327,18 @@ MEDIALIB_AGING_LCD_INFO:
   SMART_COUNT: { type: INT32, desc: Smart image }
   AGING_LCD_NUM: { type: INT64, desc: Number of aged LCD images }
   TIMES_PER_CYCLE: { type: INT32, desc: Number of aging times in a period }
-  FLASH_TOTAL_SIZE: { type: INT32, desc: Total flash memory space }
+  FLASH_TOTAL_SIZE: { type: INT64, desc: Total flash memory space }
   FLASH_BEFORE_SIZE: { type: INT64, desc: Remaining flash space before aging }
   FLASH_AFTER_SIZE: { type: INT64, desc: Remaining flash space after aging }
 
 MEDIALIB_READ_LCD_INFO:
-  __BASE: { type: STATISTIC, level: CRITICAL, desc: Statistics on dotting during LCD image reading in flow mode, preserve: true }
+  __BASE: { type: STATISTIC, level: CRITICAL, desc: Statistic on dotting during LCD image reading in flow mode, preserve: true }
   SUCCESS_NUM: { type: INT32, desc: Number of successful stream reads }
   FAIL_NUM: { type: INT32, desc: Number of failed stream read operations }
   MOBILE_RD_SUC_NUM: { type: INT32, desc: Number of successful mobile network read requests }
   MOBILE_RD_FAI_NUM: { type: INT32, desc: Number of failed mobile network read requests }
-  WIFI_RD_SUC_NUM: { type: INT32, desc: Number of times that the WiFi network is successfully read }
-  WIFI_RD_FAI_NUM: { type: INT32, desc: Number of failures to read the WiFi network }
+  WIFI_RD_SUC_NUM: { type: INT32, desc: Number of times that the Wifi network is successfully read }
+  WIFI_RD_FAI_NUM: { type: INT32, desc: Number of failures to read the Wifi network }
   ETHERNET_RD_SUC_NUM: { type: INT32, desc: Number of times that Ethernet data is successfully read }
   ETHERNET_RD_FAI_NUM: { type: INT32, desc: Number of Ethernet read failures }
   OTHER_RD_SUC_NUM: { type: INT32, desc: Number of successful read operations without network access }
