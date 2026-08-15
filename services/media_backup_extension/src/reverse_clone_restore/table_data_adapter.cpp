@@ -33,7 +33,7 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"FormMap", TableProcessType::DROP_AND_INSERT},
     {"LakeAlbum", TableProcessType::DROP_AND_INSERT},
     {"OrderBackAlbum", TableProcessType::DROP_AND_INSERT},
-    {"Persist_Permision", TableProcessType::DROP_AND_INSERT},
+    {"Persist_Permission", TableProcessType::DROP_AND_INSERT},
     {"RefreshAlbum", TableProcessType::DROP_AND_INSERT},
     {"selected_node_asset_map", TableProcessType::DROP_AND_INSERT},
     {"tab_analysis_highlight_events", TableProcessType::DROP_AND_INSERT},
@@ -43,7 +43,6 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"tab_analysis_similar_face", TableProcessType::DROP_AND_INSERT},
     {"tab_analysis_UG", TableProcessType::DROP_AND_INSERT},
     {"tab_analysis_video_aesthetics_score", TableProcessType::DROP_AND_INSERT},
-    {"tab_asset_and_album_operation", TableProcessType::DROP_AND_INSERT},
     {"tab_custom_records", TableProcessType::DROP_AND_INSERT},
     {"tab_facard_photos", TableProcessType::DROP_AND_INSERT},
     {"tab_medialibrary_business_record", TableProcessType::DROP_AND_INSERT},
@@ -57,11 +56,11 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"tab_compatible_info", TableProcessType::DROP_AND_INSERT},
     {"tab_file_opt", TableProcessType::DROP_AND_INSERT},
     {"tab_operation_log", TableProcessType::DROP_AND_INSERT},
+    {"tab_cover_record", TableProcessType::DROP_AND_INSERT},
 
     // DROP_AND_CREATE: 仅drop再create，不继承新机的数据（创建空表）
     {"tab_old_albums", TableProcessType::DROP_AND_CREATE},
     {"tab_cloned_old_photos", TableProcessType::DROP_AND_CREATE},
-    {"tab_cover_record", TableProcessType::DROP_AND_CREATE},
 
     // DROP_ONLY: 仅删除表，不重建
     {"ddms_data_search_aux_config", TableProcessType::DROP_ONLY},
@@ -85,6 +84,7 @@ static const std::unordered_map<std::string, TableProcessType> TABLE_PROCESS_CON
     {"ConfigInfo", TableProcessType::SKIP},
     {"PhotoAlbum", TableProcessType::SKIP},
     {"Photos", TableProcessType::SKIP},
+    {"tab_asset_and_album_operation", TableProcessType::SKIP},
     {"tab_analysis_aesthetics_score", TableProcessType::SKIP},
     {"tab_analysis_affective", TableProcessType::SKIP},
     {"tab_analysis_ai_retouch", TableProcessType::SKIP},

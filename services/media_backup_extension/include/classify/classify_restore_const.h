@@ -67,6 +67,8 @@ struct ClassifyAlbumInfo {
     std::optional<std::string> albumSubType;
     std::optional<int32_t> albumIdOld;
     std::optional<int32_t> albumIdNew;
+    std::optional<int64_t> dateModified;
+    std::optional<int32_t> isLocal;
 };
 
 struct ClassifyMapInfo {

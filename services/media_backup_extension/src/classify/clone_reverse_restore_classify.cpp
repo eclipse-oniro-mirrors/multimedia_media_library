@@ -86,6 +86,8 @@ void CloneReverseRestoreClassify::InsertClassifyAlbumData()
         BackupDatabaseUtils::PutIfPresent(value, "album_name", album.albumName);
         BackupDatabaseUtils::PutIfPresent(value, "album_type", album.albumType);
         BackupDatabaseUtils::PutIfPresent(value, "album_subtype", album.albumSubType);
+        BackupDatabaseUtils::PutIfPresent(value, "date_modified", album.dateModified);
+        BackupDatabaseUtils::PutIfPresent(value, "is_local", album.isLocal);
         valuesBuckets.emplace_back(value);
 
         if (album.albumId.has_value()) {
@@ -112,6 +114,8 @@ void CloneReverseRestoreClassify::RestoreAlbum()
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
         ClassifyAlbumInfo info;
         ParseClassifyAlbumResultSet(info, resultSet);
+        info.dateModified = BackupDatabaseUtils::GetOptionalValue<int64_t>(resultSet, "date_modified");
+        info.isLocal = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, "is_local");
         classifyAlbumInfos_.emplace_back(info);
     }
     resultSet->Close();
