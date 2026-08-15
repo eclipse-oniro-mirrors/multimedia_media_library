@@ -27,15 +27,17 @@
 #include "medialibrary_asset_operations.h"
 #include "medialibrary_command.h"
 #include "picture.h"
-#include "asset_accurate_refresh.h"
 #include "rdb_predicates.h"
+#include "asset_accurate_refresh.h"
 #include "medialibrary_rdbstore.h"
 #include "camera_character_types.h"
 #include "multistages_capture_dfx_capture_fault.h"
 #include "multistages_capture_dfx_capture_times.h"
 #include "multistages_capture_dfx_save_camera_photo.h"
 #include "medialibrary_async_worker.h"
-// LCOV_EXCL_START
+#include "datashare_predicates.h"
+//LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media {
 struct PhotoExtInfo {
@@ -210,6 +212,7 @@ public:
     EXPORT static int32_t NotifyAssetSended(const std::string &uri,
         ServiceShareType shareType = ServiceShareType::ASSET_LEVEL);
     EXPORT static void BatchStoreThumbnailSize(const std::vector<std::pair<std::string, std::string>>& photoIdPathList);
+    EXPORT static void HandleIllegalKey(DataShare::DataSharePredicates &predicates);
 private:
     static int32_t HandleAssetRenameAndMove(MediaLibraryCommand &cmd, std::shared_ptr<FileAsset> fileAsset,
         bool isNameChanged, AccurateRefresh::AccurateRefreshBase &baseRefresh);
@@ -353,7 +356,7 @@ private:
         const std::string &path, const std::string &sourcePath, const std::string &editDataCameraPath);
     static int32_t RevertLivePhotoAsset(const string &realPath, const string &imagePath,
         const string &sourceImagePath, const string &sourceVideoPath);
-    static int32_t HandleRevertLivePhotoAsset(const shared_ptr<FileAsset>& fileAsset,
+    static int32_t HandleRevertLivePhotoAsset(const std::shared_ptr<FileAsset> &fileAsset,
         const string &realPath, const string &imagePath,
         const string &sourceImagePath, const string &sourceVideoPath);
     static bool AddFiltersForPipeline(MediaLibraryCommand& cmd);

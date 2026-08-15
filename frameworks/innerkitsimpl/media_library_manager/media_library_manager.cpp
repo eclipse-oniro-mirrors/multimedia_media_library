@@ -37,7 +37,6 @@
 #include "media_app_uri_permission_column.h"
 #include "media_app_uri_sensitive_column.h"
 #include "media_library_tab_old_photos_client.h"
-#include "moving_photo_file_utils.h"
 #include "post_proc.h"
 #include "permission_utils.h"
 #include "result_set_utils.h"
@@ -67,13 +66,14 @@
 #include "album_get_assets_vo.h"
 #include "image_source.h"
 #include "js_interface_helper.h"
-#include "get_assets_vo.h"
-#include "moving_photo_file_utils.h"
 #include "media_path_utils.h"
 #include "thumbnail_manager.h"
+#include "moving_photo_file_utils.h"
+#include "get_assets_vo.h"
 #include "batch_update_metadata_modified_vo.h"
 #include "set_photo_critical_vo.h"
 #include "fetch_result.h"
+#include "userfilemgr_uri.h"
 
 #ifdef IMAGE_PURGEABLE_PIXELMAP
 #include "purgeable_pixelmap_builder.h"
@@ -82,7 +82,7 @@
 using namespace std;
 using namespace OHOS::NativeRdb;
 using namespace OHOS::Security::AccessToken;
-// LCOV_EXCL_START
+
 namespace OHOS {
 namespace Media {
 shared_ptr<DataShare::DataShareHelper> MediaLibraryManager::sDataShareHelper_ = nullptr;
@@ -118,7 +118,7 @@ void MediaLibraryManager::InitMediaLibraryManager(const sptr<IRemoteObject> &tok
 {
     token_ = token;
     CHECK_AND_EXECUTE(sDataShareHelper_ != nullptr,
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI));
+        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI));
 }
 
 sptr<IRemoteObject> MediaLibraryManager::InitToken()
@@ -340,13 +340,14 @@ int32_t MediaLibraryManager::OpenAsset(string &uri, const string openMode)
     if (!MEDIA_OPEN_MODES.count(originOpenMode)) {
         return E_ERR;
     }
-
-    if (sDataShareHelper_ == nullptr) {
+    auto currentDataShareHelper = GetDataShareHelper();
+    if (currentDataShareHelper == nullptr) {
         MEDIA_ERR_LOG("Failed to open Asset, datashareHelper is nullptr");
         return E_ERR;
     }
+    MediaUriUtils::AppendKeyValue(uri, CONST_CALLER, CONST_INNER_API);
     Uri openUri(uri);
-    return sDataShareHelper_->OpenFile(openUri, openMode);
+    return currentDataShareHelper->OpenFile(openUri, openMode);
 }
 
 int32_t MediaLibraryManager::CloseAsset(const string &uri, const int32_t fd)
@@ -713,11 +714,13 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
     CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "Failed to open thumbnail, dataShareHelper is nullptr");
     if (path.empty()) {
         MEDIA_ERR_LOG("OpenThumbnail path is empty");
+        MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_INNER_API);
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
     string sandboxPath = GetSandboxPath(path, size, isAstc);
     if ((sandboxPath.find("LCD.jpg") != std::string::npos) && MediaPathUtils::CheckIsCloudFile(sandboxPath)) {
+        MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_INNER_API);
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
@@ -729,6 +732,7 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
     MEDIA_INFO_LOG("OpenThumbnail from andboxPath failed, errno %{public}d path :%{public}s fd %{public}d",
         errno, MediaFileUtils::DesensitizePath(path).c_str(), fd);
     CHECK_AND_EXECUTE(!IsAsciiString(path), uriStr += "&" + THUMBNAIL_PATH + "=" + path);
+    MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_INNER_API);
     Uri openUri(uriStr);
     return dataShareHelper->OpenFile(openUri, "R");
 }
@@ -871,8 +875,8 @@ unique_ptr<PixelMap> MediaLibraryManager::QueryThumbnail(UriParams& params)
     tracer.Start("QueryThumbnail uri:" + params.fileUri);
 
     string oper = params.isAstc ? CONST_MEDIA_DATA_DB_THUMB_ASTC : CONST_MEDIA_DATA_DB_THUMBNAIL;
-    string openUriStr = params.fileUri + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + oper + "&" +
-        CONST_MEDIA_DATA_DB_WIDTH +
+    string openUriStr = params.fileUri + "?" + CONST_MEDIA_OPERN_KEYWORD + "=" + oper +
+        "&" + CONST_MEDIA_DATA_DB_WIDTH +
         "=" + to_string(params.size.width) + "&" + CONST_MEDIA_DATA_DB_HEIGHT + "=" + to_string(params.size.height);
     if (params.user != "") {
         openUriStr = openUriStr + "&" + THUMBNAIL_USER + "=" + params.user;
@@ -1113,6 +1117,7 @@ int32_t MediaLibraryManager::ReadMovingPhotoVideo(const string &uri, const strin
         "Failed to read video of moving photo, datashareHelper is nullptr");
     string videoUri = uri;
     MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, option);
+    MediaUriUtils::AppendKeyValue(videoUri, CONST_CALLER, CONST_INNER_API);
     Uri openVideoUri(videoUri);
     int32_t fd = dataShareHelper->OpenFile(openVideoUri, MEDIA_FILEMODE_READONLY);
 
@@ -1177,6 +1182,7 @@ int32_t MediaLibraryManager::ReadPrivateMovingPhoto(const string &uri)
     string movingPhotoUri = uri;
     MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
         CONST_OPEN_PRIVATE_LIVE_PHOTO);
+    MediaUriUtils::AppendKeyValue(movingPhotoUri, CONST_CALLER, CONST_INNER_API);
     Uri openMovingPhotoUri(movingPhotoUri);
     return sDataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
 }
@@ -1333,7 +1339,8 @@ FetchResult<PhotoAlbum> MediaLibraryManager::GetAlbums(const std::vector<std::st
     MEDIA_DEBUG_LOG("GetAlbums Start.");
     FetchResult<PhotoAlbum> emptyPhotoAlbum;
     CHECK_AND_RETURN_RET_LOG(predicate != nullptr, emptyPhotoAlbum, "predicate is nullptr");
-    CHECK_AND_RETURN_RET_LOG(sDataShareHelper_ != nullptr, emptyPhotoAlbum, "dataShareHelper is nullptr");
+    auto currentsDataShareHelper = GetDataShareHelper();
+    CHECK_AND_RETURN_RET_LOG(currentsDataShareHelper != nullptr, emptyPhotoAlbum, "dataShareHelper is nullptr");
 
     QueryAlbumsReqBody reqBody;
     QueryAlbumsRespBody respBody;
@@ -1342,7 +1349,7 @@ FetchResult<PhotoAlbum> MediaLibraryManager::GetAlbums(const std::vector<std::st
     reqBody.columns = fetchColumns;
     reqBody.predicates = *predicate;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::INNER_GET_ALBUMS);
-    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(sDataShareHelper_)
+    int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(currentsDataShareHelper)
         .Call(businessCode, reqBody, respBody);
     CHECK_AND_RETURN_RET_LOG(errCode == E_OK, emptyPhotoAlbum,
         "after IPC::UserInnerIPCClient().Call, errCode: %{public}d.",

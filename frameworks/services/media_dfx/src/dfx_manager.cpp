@@ -39,8 +39,8 @@
 #include "hi_audit.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_unistore_manager.h"
-#include "settings_data_manager.h"
 #include "result_set_utils.h"
+#include "settings_data_manager.h"
 #include "cloud_file_error.h"
 #include "media_column.h"
 #include "photo_album_column.h"
@@ -271,6 +271,30 @@ void DfxManager::HandleDeleteBehavior(int32_t type, int32_t size, std::vector<st
         return;
     }
     dfxWorker_->AddTask(deleteBehaviorTask);
+}
+
+void DfxManager::HandleInvalidKey(std::string& bundleName, std::string& sql)
+{
+    if (bundleName.empty() || sql.empty()) {
+        return;
+    }
+    dfxCollector_->CollectInvalidKey(bundleName, sql);
+}
+
+void DfxManager::HandleInvalidPrivateOpen(std::string& bundleName, std::string& operation)
+{
+    if (bundleName.empty() || operation.empty()) {
+        return;
+    }
+    dfxCollector_->CollectInvalidPrivateOpen(bundleName, operation);
+}
+
+void DfxManager::HandleSpecialOpen(std::string& bundleName, std::string& operation)
+{
+    if (bundleName.empty() || operation.empty()) {
+        return;
+    }
+    dfxCollector_->CollectSpecialOpen(bundleName, operation);
 }
 
 const std::string SQL_BATCH_DOWNLOAD_INFO_COUNT = "\
@@ -688,15 +712,25 @@ void DfxManager::HandleFiveMinuteTask()
 
 void DfxManager::HandleDeleteBehaviors()
 {
-    std::unordered_map<string, int32_t> deleteAssetToTrash =
-        dfxCollector_->GetDeleteBehavior(DfxType::TRASH_PHOTO);
+    std::unordered_map<string, int32_t> deleteAssetToTrash;
+    dfxCollector_->GetDeleteBehavior(deleteAssetToTrash, DfxType::TRASH_PHOTO);
     dfxAnalyzer_->FlushDeleteBehavior(deleteAssetToTrash, DfxType::TRASH_PHOTO);
-    std::unordered_map<string, int32_t> deleteAssetFromDisk =
-        dfxCollector_->GetDeleteBehavior(DfxType::ALBUM_DELETE_ASSETS);
-    dfxAnalyzer_->FlushDeleteBehavior(deleteAssetToTrash, DfxType::ALBUM_DELETE_ASSETS);
-    std::unordered_map<string, int32_t> removeAssets =
-        dfxCollector_->GetDeleteBehavior(DfxType::ALBUM_REMOVE_PHOTOS);
+    std::unordered_map<string, int32_t> deleteAssetFromDisk;
+    dfxCollector_->GetDeleteBehavior(deleteAssetFromDisk, DfxType::ALBUM_DELETE_ASSETS);
+    dfxAnalyzer_->FlushDeleteBehavior(deleteAssetFromDisk, DfxType::ALBUM_DELETE_ASSETS);
+    std::unordered_map<string, int32_t> removeAssets;
+    dfxCollector_->GetDeleteBehavior(removeAssets, DfxType::ALBUM_REMOVE_PHOTOS);
     dfxAnalyzer_->FlushDeleteBehavior(removeAssets, DfxType::ALBUM_REMOVE_PHOTOS);
+
+    std::unordered_map<string, string> invalidKeyMap;
+    dfxCollector_->GetInvalidMap(invalidKeyMap, DfxType::INVALID_KEY);
+    dfxAnalyzer_->FlushInvalidMap(invalidKeyMap, DfxType::INVALID_KEY);
+    std::unordered_map<string, string> invalidPrivateOpenMap;
+    dfxCollector_->GetInvalidMap(invalidPrivateOpenMap, DfxType::INVALID_PRIVATE_OPEN);
+    dfxAnalyzer_->FlushInvalidMap(invalidPrivateOpenMap, DfxType::INVALID_PRIVATE_OPEN);
+    std::unordered_map<string, string> specialOpenMap;
+    dfxCollector_->GetInvalidMap(specialOpenMap, DfxType::SPECIAL_OPEN);
+    dfxAnalyzer_->FlushInvalidMap(specialOpenMap, DfxType::SPECIAL_OPEN);
 }
 
 int64_t DfxManager::HandleMiddleReport()
@@ -707,6 +741,7 @@ int64_t DfxManager::HandleMiddleReport()
     }
     dfxReporter_->ReportCommonBehavior();
     dfxReporter_->ReportDeleteStatistic();
+    dfxReporter_->ReportInvalidBehavior();
     return MediaFileUtils::UTCTimeSeconds();
 }
 
@@ -1322,7 +1357,7 @@ void DfxManager::HandleAccurateRefreshTimeOut(const AccurateRefreshDfxDataPoint&
         MEDIA_WARN_LOG("DfxManager not init");
         return;
     }
-    MEDIA_INFO_LOG("enter HandleAccurateRefreshTimeOut");
+    MEDIA_DEBUG_LOG("enter HandleAccurateRefreshTimeOut");
     dfxReporter_->ReportAccurateRefreshResult(reportData);
 }
 

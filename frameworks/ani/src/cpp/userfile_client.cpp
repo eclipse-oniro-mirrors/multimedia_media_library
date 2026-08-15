@@ -25,6 +25,7 @@
 #include "media_file_utils.h"
 #include "userfilemgr_uri.h"
 #include "safe_map.h"
+#include "media_uri_utils.h"
 
 namespace OHOS {
 namespace Media {
@@ -354,7 +355,10 @@ int UserFileClient::OpenFile(Uri &uri, const std::string &mode, const int32_t us
         return E_FAIL;
     }
     uri = MultiUserUriRecognition(uri, userId);
-    return helper->OpenFile(uri, mode);
+    std::string uriString = uri.ToString();
+    MediaUriUtils::AppendKeyValue(uriString, CONST_CALLER, CONST_NAPI);
+    Uri openUri(uriString);
+    return helper->OpenFile(openUri, mode);
 }
 
 int UserFileClient::Update(Uri &uri, const DataSharePredicates &predicates,

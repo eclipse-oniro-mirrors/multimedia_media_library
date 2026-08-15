@@ -93,6 +93,12 @@ namespace Media {
 #define CONST_OPRN_ADD_LOWQUALITY_IMAGE "add_lowquality_image"
 #define CONST_OPRN_SET_VIDEO_ENHANCEMENT_ATTR "set_video_enhancement_attr"
 #define CONST_VIDEO_TYPE_KEYWORD "type_for_cinematic_video"  // 不建议使用 type 结尾
+#define CONST_OPRN_CANCEL_PROCESS_VIDEO "cancel_process_video"
+#define CONST_CALLER "caller"
+#define CONST_NAPI "napi"
+#define CONST_ANI "ani"
+#define CONST_CAPI "capi"
+#define CONST_INNER_API "inner_api"
 
 #define CONST_OPRN_FIND_ALL_DUPLICATE_ASSETS "all_duplicate_assets"
 #define CONST_URI_FIND_ALL_DUPLICATE_ASSETS "/all_duplicate_assets"
@@ -101,9 +107,9 @@ namespace Media {
 #define CONST_OPRN_UPDATE_SUPPORTED_WATERMARK_TYPE "update_supported_watermark_type"
 #define CONST_OPRN_UPDATE_HAS_APPLINK "update_supported_has_applink"
 #define CONST_OPRN_UPDATE_APPLINK "update_supported_applink"
+#define CONST_OPRN_QUERY_RAW_ANALYSIS_ALBUM "query_raw_analysis_album"
 #define CONST_OPRN_QUERY_RAW_VISION_TOTAL "query_raw_vision_total"
 #define CONST_OPRN_QUERY_RAW_VISION_VIDEO_TOTAL "query_raw_vision_video_total"
-#define CONST_OPRN_QUERY_RAW_ANALYSIS_ALBUM "query_raw_analysis_album"
 // Asset operations constants
 #define CONST_MEDIA_FILEOPRN "file_operation"
 #define CONST_MEDIA_PHOTOOPRN "photo_operation"
@@ -165,7 +171,7 @@ namespace Media {
 #define CONST_MEDIA_SMARTALBUMMAPOPRN_REMOVESMARTALBUM "remove_smartalbum_map"
 #define CONST_MEDIA_SMARTALBUMMAPOPRN_AGEINGSMARTALBUM "ageing_smartalbum_map"
 
-//UriPermission operations constants
+// UriPermission operations constants
 #define CONST_CHECK_URI_PERMISSION "phaccess_checkuripermission"
 #define CONST_GRANT_URI_PERMISSION "phaccess_granturipermission"
 
@@ -329,7 +335,7 @@ namespace Media {
 #define CONST_PAH_STOP_GENERATE_THUMBNAILS \
     "datashare:///media/phaccess_batch_thumbnail_operation/stop_generate_thumbnails"
 #define CONST_PAH_ADD_LOWQUALITY_IMAGE "datashare:///media/phaccess_multistages_capture_operation/add_lowquality_image"
-    
+
 // Generate thumbnails after clone or upgrade restore operation uri
 #define CONST_PAH_GENERATE_THUMBNAILS_RESTORE \
     "datashare:///media/phaccess_batch_thumbnail_operation/generate_thumbnails_restore"

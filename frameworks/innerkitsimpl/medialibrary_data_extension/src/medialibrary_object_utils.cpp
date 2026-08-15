@@ -48,6 +48,7 @@
 #if defined(MEDIALIBRARY_FILE_MGR_SUPPORT) || defined(MEDIALIBRARY_LAKE_SUPPORT)
 #include "media_file_access_utils.h"
 #endif
+#include "dfx_manager.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -880,6 +881,7 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
         MEDIA_ERR_LOG("Failed to open fileId:%{public}d, it is not owner", fileAsset->GetId());
         return E_IS_PENDING_ERROR;
     }
+    HandlePrivateAsset(fileAsset);
     bool isHeif = cmd.GetQuerySetParam(CONST_PHOTO_TRANSCODE_OPERATION) == CONST_OPRN_TRANSCODE_HEIF;
     int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(
         fileAsset, mode, isHeif, uriString);
@@ -900,8 +902,27 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
             watch->AddWatchList(path, fileAsset->GetUri());
         }
     }
-    MEDIA_DEBUG_LOG("MediaLibraryDataManager OpenFile: Success");
     return fd;
+}
+
+void MediaLibraryObjectUtils::HandlePrivateAsset(const shared_ptr<FileAsset>& fileAsset)
+{
+    bool isContains = false;
+    std::string operation = "unknow";
+    if (fileAsset->GetDateTrashed() > 0) {
+        isContains = true;
+        operation = "trash";
+    }
+    if (fileAsset->IsHidden() && fileAsset->GetDateTrashed() == 0) {
+        isContains = true;
+        operation = "hidden";
+    }
+    if (isContains) {
+        string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+        MEDIA_INFO_LOG("Invalid private open, bundlename: %{public}s, operation: %{public}s", bundleName.c_str(),
+            operation.c_str());
+        DfxManager::GetInstance()->HandleInvalidPrivateOpen(bundleName, operation);
+    }
 }
 
 void MediaLibraryObjectUtils::ScanFileAsync(const ScanConfig &config)

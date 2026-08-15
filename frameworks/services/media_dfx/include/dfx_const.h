@@ -71,6 +71,9 @@ enum DfxType {
     DELETE_LOCAL_ASSETS_PERMANENTLY = 18,
     ALBUM_DELETE_ASSETS = 19,
     TRASH_PHOTO = 20,
+    INVALID_KEY = 21,
+    INVALID_PRIVATE_OPEN = 22,
+    SPECIAL_OPEN = 23,
     CLOUD_DEFAULT_OPEN = 1000,
     CLOUD_LCD_OPEN,
     RDB_INSERT = 1100,
@@ -119,6 +122,7 @@ const std::string SPLIT_CHAR = "|";
 const std::string THUMBNAIL_ERROR_XML = "/data/storage/el2/base/preferences/thumbnail_error.xml";
 const std::string COMMON_BEHAVIOR_XML = "/data/storage/el2/base/preferences/common_behavior.xml";
 const std::string DELETE_BEHAVIOR_XML = "/data/storage/el2/base/preferences/delete_behavior.xml";
+const std::string INVALID_BEHAVIOR_XML = "/data/storage/el2/base/preferences/invalid_behavior.xml";
 const std::string ADAPTATION_TO_MOVING_PHOTO_XML = "/data/storage/el2/base/preferences/adaptation_to_moving_photo.xml";
 const std::string DFX_CINEMATIC_VIDEO_XML = "/data/storage/el2/base/preferences/dfx_cinematic_video.xml";
 const std::string ALIB_HEIF_DUPLICATE_XML = "/data/storage/el2/base/preferences/alib_heif_duplicate.xml";
