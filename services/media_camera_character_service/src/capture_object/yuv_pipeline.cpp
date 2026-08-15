@@ -112,7 +112,7 @@ void YuvPipeline::OnDelivery(std::shared_ptr<Media::Picture> picture)
 
     MultiStagesCaptureDfxSaveCameraPhoto::GetInstance().AddCaptureTime(photoId, AddCaptureTimeStat::END);
     MultiStagesPhotoCaptureManager::GetInstance().DealLowQualityPicture(photoId, fileId, std::move(picture), false);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} save low quality image end, photoId: %{public}s, "
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} save low quality image end, photoId: %{public}s, "
         "fileId: %{public}d", MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str(), fileId);
 }
 
@@ -126,7 +126,7 @@ static int32_t GetPicture(const std::string& photoId, std::shared_ptr<Media::Pic
     picture = pictureManagerThread->GetDataWithImageId(photoId, isHighQualityPicture, isTakeEffect, isCleanImmediately);
     CHECK_AND_RETURN_RET_LOG(picture != nullptr, E_FILE_EXIST, "picture is not exists!");
     
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} "
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} "
         "photoId: %{public}s, picture use: %{public}d, picture point to addr: %{public}s",
         MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str(), static_cast<int32_t>(picture.use_count()),
         std::to_string(reinterpret_cast<long long>(picture.get())).c_str());
@@ -543,7 +543,7 @@ bool YuvPipeline::CheckCanSaveDirectlyInternal(const std::shared_ptr<FileAsset> 
     MediaLibraryTracer tracer;
     tracer.Start("YuvPipeline::CheckCanSaveDirectlyInternal");
     auto assetInfo = GetAssetInfo();
-    HILOG_COMM_WARN("%{public}s:{%{public}s:%{public}d} MultistagesCapture, this picture is temp, "
+    MEDIA_WARN_LOG("%{public}s:{%{public}s:%{public}d} MultistagesCapture, this picture is temp, "
         "photoId: %{public}s, fileId: %{public}d.",
         MLOG_TAG, __FUNCTION__, __LINE__, assetInfo.GetPhotoId().c_str(), assetInfo.GetFileId());
 
