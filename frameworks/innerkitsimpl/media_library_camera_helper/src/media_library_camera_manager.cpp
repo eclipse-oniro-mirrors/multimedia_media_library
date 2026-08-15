@@ -66,8 +66,10 @@ std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProx
     std::unique_lock<std::mutex> locker(mutex_);
     std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
         DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d.",
-        MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr);
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
+        "callerInfo: %{public}s, shotType: %{public}d, videoCount: %{public}d.",
+        MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr,
+        callerInfo.ToString().c_str(), static_cast<int32_t>(cameraShotType), videoCount);
     std::shared_ptr<PhotoAssetProxy> photoAssetProxy = std::make_shared<PhotoAssetProxy>(
         dataShareHelper, callerInfo, cameraShotType, videoCount);
     return photoAssetProxy;
@@ -79,16 +81,18 @@ std::shared_ptr<PhotoAssetProxy> MediaLibraryCameraManager::CreatePhotoAssetProx
     std::unique_lock<std::mutex> locker(mutex_);
     std::shared_ptr<DataShare::DataShareHelper> dataShareHelper =
         DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
-    HILOG_COMM_INFO("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d.",
-        MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr);
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} dataShareHelper is ready, ret = %{public}d, "
+        "callerInfo: %{public}s, presetPara: %{public}s.",
+        MLOG_TAG, __FUNCTION__, __LINE__, dataShareHelper != nullptr,
+        callerInfo.ToString().c_str(), presetPara.ToString().c_str());
     std::shared_ptr<PhotoAssetProxy> photoAssetProxy = std::make_shared<PhotoAssetProxy>(
         dataShareHelper, callerInfo, presetPara);
     return photoAssetProxy;
 }
- 
+
 DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std::string& photoId)
 {
-    MEDIA_INFO_LOG("GetEditData begin.");
+    MEDIA_INFO_LOG("GetEditData begin, photoId: %{public}s.", photoId.c_str());
     DeferredPictureInfo pictureInfo;
 
     std::unique_lock<std::mutex> locker(mutex_);
@@ -105,6 +109,10 @@ DeferredPictureInfo MediaLibraryCameraManager::GetDeferredPictureInfo(const std:
 
     pictureInfo.editData = respBody.editData;
     pictureInfo.mimeType = respBody.mimeType;
+    MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} GetEditData done, photoId: %{public}s, "
+        "hasEditData: %{public}d, mimeType: %{public}s.",
+        MLOG_TAG, __FUNCTION__, __LINE__, photoId.c_str(), !pictureInfo.editData.empty(),
+        pictureInfo.mimeType.c_str());
     return pictureInfo;
 }
 
@@ -128,7 +136,6 @@ int32_t MediaLibraryCameraManager::OpenAsset(std::string &uri, const std::string
     return sDataShareHelper_->OpenFile(openUri, openMode);
 }
 
-// LCOV_EXCL_START
 int32_t MediaLibraryCameraManager::RegisterPhotoStateCallback(const LowQualityMemoryNumHandler &func)
 {
     MEDIA_INFO_LOG("RegisterPhotoStateCallback begin.");
@@ -139,9 +146,7 @@ int32_t MediaLibraryCameraManager::RegisterPhotoStateCallback(const LowQualityMe
     }
     return callback_->RegisterPhotoStateCallback(sDataShareHelper_, func);
 }
-// LCOV_EXCL_STOP
- 
-// LCOV_EXCL_START
+
 int32_t MediaLibraryCameraManager::UnregisterPhotoStateCallback()
 {
     MEDIA_INFO_LOG("UnregisterPhotoStateCallback begin.");
@@ -156,6 +161,5 @@ int32_t MediaLibraryCameraManager::UnregisterPhotoStateCallback()
     MEDIA_INFO_LOG("UnregisterPhotoStateCallback success.");
     return E_OK;
 }
-// LCOV_EXCL_STOP
 } // namespace Media
 } // namespace OHOS
