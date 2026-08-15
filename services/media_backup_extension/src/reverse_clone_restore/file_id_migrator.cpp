@@ -358,7 +358,8 @@ bool FileIdMigrator::UpdateDirectFileIdTables(std::shared_ptr<RdbStore> db,
         {"tab_analysis_caption", "file_id", "file_id > 0 AND file_id <= ?"},
         {"tab_photos_ext", "photo_id", "photo_id > 0 AND photo_id <= ?"},
         {"tab_analysis_watermark", "file_id", "file_id > 0 AND file_id <= ?"},
-        {"tab_map_photo_map", "file_id", "file_id > 0 AND file_id <= ?"}
+        {"tab_map_photo_map", "file_id", "file_id > 0 AND file_id <= ?"},
+        {"tab_analysis_composition", "file_id", "file_id > 0 AND file_id <= ?"}
     };
 
     for (const auto &upd : updates) {

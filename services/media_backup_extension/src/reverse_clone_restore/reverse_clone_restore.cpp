@@ -2893,8 +2893,6 @@ bool ReverseCloneRestore::PostProcessFinalReverseDb(vector<ReverseCloneKvStoreTa
 {
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
 
-    ProcessPostSecondarySpecialTables();
-
     MEDIA_INFO_LOG("Updating special fields in Photos table after db conversion");
     resourceInheritHelper_.SnapshotPureCloudFileIds(destRdb_);
     UpdatePhotosSpecialFields();
@@ -2947,6 +2945,7 @@ void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
         .append(std::to_string(endTime - startTime) + ";");
     ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::ANALYSIS_RESTORE);
     ReverseRestoreAnalysisData();
+    ProcessPostSecondarySpecialTables();
 }
 
 void ReverseCloneRestore::CalculateMigrateNumbers(std::shared_ptr<NativeRdb::RdbStore> &oldDbTempStore)
@@ -3398,6 +3397,10 @@ void ReverseCloneRestore::UpdateAnalysisAlbum()
     // 更新 AnalysisAlbum 表中人像相册 extra_info 字段为 NULL
     std::string updateExtraInfoSql = "UPDATE AnalysisAlbum SET extra_info = NULL";
     BackupDatabaseUtils::ExecuteSQL(destRdb_, updateExtraInfoSql);
+
+    // 更新 tab_highlight_album 表中 growing_time 字段为 NULL
+    std::string updateGrowingTimeSql = "UPDATE tab_highlight_album SET growing_time = NULL";
+    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateGrowingTimeSql);
 
     MEDIA_INFO_LOG("UpdateAnalysisAlbum: completed");
 }

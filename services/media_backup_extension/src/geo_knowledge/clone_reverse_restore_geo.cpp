@@ -308,6 +308,8 @@ void CloneReverseRestoreGeo::QueryNewCityAlbums(std::vector<AnalysisAlbumTbl> &a
         album.albumName = BackupDatabaseUtils::GetOptionalValue<std::string>(resultSet, ALBUM_NAME);
         album.albumType = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, ALBUM_TYPE);
         album.albumSubtype = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, ALBUM_SUBTYPE);
+        album.dateModified = BackupDatabaseUtils::GetOptionalValue<int64_t>(resultSet, ANALYSIS_COL_DATE_MODIFIED);
+        album.isLocal = BackupDatabaseUtils::GetOptionalValue<int32_t>(resultSet, ANALYSIS_COL_IS_LOCAL);
         albums.emplace_back(album);
     }
     resultSet->Close();
@@ -342,6 +344,8 @@ void CloneReverseRestoreGeo::InsertCityAlbumsToOld(std::vector<AnalysisAlbumTbl>
         PutIfPresent(value, ALBUM_NAME, album.albumName);
         PutIfPresent(value, ALBUM_TYPE, album.albumType);
         PutIfPresent(value, ALBUM_SUBTYPE, album.albumSubtype);
+        PutIfPresent(value, ANALYSIS_COL_DATE_MODIFIED, album.dateModified);
+        PutIfPresent(value, ANALYSIS_COL_IS_LOCAL, album.isLocal);
         values.emplace_back(value);
     }
 
