@@ -78,6 +78,18 @@ bool ThumbnailUriUtils::ParseThumbnailInfo(const string &uriString, string &outF
 
     if (queryKey.count(THUMBNAIL_PATH) != 0) {
         outPath = queryKey[THUMBNAIL_PATH];
+        if (!outPath.empty()) {
+            string pathWithBound = "/" + outPath + "/";
+            if (pathWithBound.find("/../") != string::npos) {
+                MEDIA_ERR_LOG("ParseThumbnailInfo: path contains traversal component");
+                return false;
+            }
+            if (outPath.length() <= ROOT_MEDIA_DIR.length() ||
+                outPath.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
+                MEDIA_ERR_LOG("ParseThumbnailInfo: path is not under ROOT_MEDIA_DIR");
+                return false;
+            }
+        }
     }
 
     if (!CheckSize(outSize, outPath)) {
