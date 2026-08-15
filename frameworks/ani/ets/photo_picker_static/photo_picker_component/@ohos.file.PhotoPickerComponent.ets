@@ -15,7 +15,7 @@
 
 import {
   Component, Row, Column, Margin, Curve, ICurve, Length, BorderRadiuses, LocalizedBorderRadiuses,
-  Builder, SecurityUIExtensionComponent, SecurityUIExtensionProxy
+  Builder, SecurityUIExtensionComponent, SecurityUIExtensionProxy, EdgeEffect
 } from '@ohos.arkui.component';
 import photoAccessHelper from '@ohos.file.photoAccessHelper';
 import { fileIo as fs } from '@kit.CoreFileKit';
@@ -35,6 +35,20 @@ const PHOTO_VIEW_MIME_TYPE_MAP = new Map<string, string>([
     ['video/*', 'FILTER_MEDIA_TYPE_VIDEO'],
     ['image/movingPhoto', 'FILTER_MEDIA_TYPE_IMAGE_MOVING_PHOTO']
 ])
+
+const PARAMETERS_VALIDATE_FAILED_MESSAGE =
+  'Scene parameters validate failed, possible causes:' +
+  '  1. An invalid enumeration value was passed. Only MOVING_PHOTO_ENABLE and' +
+  '  MOVING_PHOTO_DISABLE are supported for configuration;';
+const ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE =
+  'Invalid call context. Possible causes:' +
+  '  1. The API is called outside the photo browsing scenario.' +
+  '  2. The API is called when isMovingPhotoBadgeShown is already set to true.';
+const PARAMETERS_VALIDATE_FAILED_CODE = 23800151;
+const ILLEGAL_SCENARIO_CALL_ERROR_CODE = 23800202;
+const MAX_BADGE_CONFIG_SIZE = 200000;
+const BATCH_BADGE_CONFIG_SIZE = 1000;
+const BATCH_PRESELECTED_INFOS = 200;
 
 function checkValueRetUndefined<T>(value: Object | undefined | null): T | undefined {
   return (value !== undefined && value !== null) ? (value as T) : undefined;
@@ -97,6 +111,9 @@ export class PickerController {
   private replaceCallbackMap: Map<number, Object> = new Map<number, Object>();
   private saveCallbackMap: Map<number, Object> = new Map<number, Object>();
   private createCallbackMap: Map<number, Object> = new Map<number, Object>();
+  private saveCallbackPromises: Map<number, Object> = new Map<number, Object>();
+  private completedPromises: Map<number, Object> = new Map<number, Object>();
+  public browserPropsRegistry?: () => BrowserProps;
 
   setData(type: DataType, data: Object): void {
     if (data === undefined) {
@@ -116,8 +133,56 @@ export class PickerController {
         this.data = new Map<string, Object>([['SET_ALBUM_URI', albumUri]]);
         console.info('PhotoPickerComponent SET_ALBUM_URI' + this.encrypt(JSON.stringify(albumUri)));
       }
+    } else if (type === DataType.SET_SELECTED_INFO) {
+      if (Array.isArray(data)) {
+        let uriAndPickerIndexLists: PreselectedInfo[] = data as PreselectedInfo[];
+        this.data = new Map<string, Object>([['SET_SELECTED_INFO', uriAndPickerIndexLists]]);
+        console.info('PhotoPickerComponent SET_SELECTED_INFO' + this.encrypt(JSON.stringify(uriAndPickerIndexLists)));
+      }
+    } else if (type === DataType.SET_BADGE_CONFIGS) {
+      let badgeConfig: BadgeConfig = data as BadgeConfig;
+      this.data = new Map<string, Object>([
+        ['SET_BADGE_CONFIGS', badgeConfig], ['BADGE_CONFIGS_OPTION_TYPE', BadgeOptionType.SET_DATA]
+      ]);
+      console.info('PhotoPickerComponent SET_BADGE_CONFIGS');
     } else {
       console.info('PhotoPickerComponent setData: other case');
+    }
+  }
+
+  addData(type: DataType, data: Object): void {
+    if (data === undefined) {
+      return;
+    }
+    if (type === DataType.SET_BADGE_CONFIGS) {
+      let badgeConfig: BadgeConfig = data as BadgeConfig;
+      this.data = new Map<string, Object>([
+        ['SET_BADGE_CONFIGS', badgeConfig], ['BADGE_CONFIGS_OPTION_TYPE', BadgeOptionType.ADD_DATA]
+      ]);
+      console.info('PhotoPickerComponent addData SET_BADGE_CONFIGS');
+    } else if (type === DataType.SET_ITEM_CLICK_RESULT) {
+      if (Array.isArray(data)) {
+        let clickResults: ClickResult[] = data as ClickResult[];
+        this.data = new Map<string, Object>([['SET_ITEM_CLICK_RESULT', clickResults]]);
+        console.info('PhotoPickerComponent addData SET_ITEM_CLICK_RESULT');
+      }
+    } else {
+      console.info('PhotoPickerComponent addData: other case');
+    }
+  }
+
+  deleteData(type: DataType, data: Object): void {
+    if (data === undefined) {
+      return;
+    }
+    if (type === DataType.SET_BADGE_CONFIGS) {
+      let badgeConfig: BadgeConfig = data as BadgeConfig;
+      this.data = new Map<string, Object>([
+        ['SET_BADGE_CONFIGS', badgeConfig], ['BADGE_CONFIGS_OPTION_TYPE', BadgeOptionType.DELETE_DATA]
+      ]);
+      console.info('PhotoPickerComponent deleteData SET_BADGE_CONFIGS');
+    } else {
+      console.info('PhotoPickerComponent deleteData: other case');
     }
   }
 
@@ -229,6 +294,68 @@ export class PickerController {
     console.info('PhotoPickerComponent SAVE_TRUSTED_PHOTO_ASSETS ');
   }
 
+  saveTrustedPhotoAssetsEx(selectedMediaUris: string[], settings?: photoAccessHelper.CreationSetting[],
+    saveMode?: SaveMode): Promise<string[]> {
+    return new Promise<string[]>((resolve: (v: string[]) => void, reject: (e: BusinessError) => void) => {
+      if (!selectedMediaUris || selectedMediaUris.length === 0) {
+        reject({ 'code': 14000002, 'message': 'Invalid URI', 'name': '' } as BusinessError);
+        return;
+      }
+      this.getAppName().then((appName: string) => {
+        let date = Math.random();
+        this.data = new Map<string, Object>([
+          ['SAVE_TRUSTED_PHOTO_ASSETS', [selectedMediaUris, settings, saveMode, appName, date]]
+        ]);
+        this.saveCallbackPromises.set(date, [resolve, reject]);
+      });
+      console.info('PhotoPickerComponent SAVE_TRUSTED_PHOTO_ASSETS_EX');
+    });
+  }
+
+  updatePickerOptions(updateConfig: UpdatablePickerConfigs): Promise<void> {
+    return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError) => void) => {
+      if (updateConfig !== undefined) {
+        this.data = new Map<string, Object>([['UPDATE_CONFIG', updateConfig]]);
+        console.info('PhotoPickerComponent UPDATE_CONFIG');
+      }
+      resolve(undefined);
+    });
+  }
+
+  setMovingPhotoState(movingPhotoState: photoAccessHelper.MovingPhotoBadgeStateType): Promise<void> {
+    return new Promise<void>((resolve: (v: undefined) => void, reject: (e: BusinessError) => void) => {
+      if (movingPhotoState !== photoAccessHelper.MovingPhotoBadgeStateType.MOVING_PHOTO_ENABLED &&
+        movingPhotoState !== photoAccessHelper.MovingPhotoBadgeStateType.MOVING_PHOTO_DISABLED) {
+        reject({
+          'code': PARAMETERS_VALIDATE_FAILED_CODE, 'message': PARAMETERS_VALIDATE_FAILED_MESSAGE, 'name': ''
+        } as BusinessError);
+        return;
+      }
+      let browserProps: BrowserProps = this.browserPropsRegistry ? this.browserPropsRegistry!() : new BrowserProps();
+      console.info('SET_MOVINGPHOTO_STATE, isPhotoBrowserShow: ' + browserProps.isPhotoBrowserShow +
+        ', isMovingPhotoBadgeShownValid=' + browserProps.isMovingPhotoBadgeShownValid);
+      if (!browserProps.isPhotoBrowserShow || browserProps.isMovingPhotoBadgeShownValid) {
+        reject({
+          'code': ILLEGAL_SCENARIO_CALL_ERROR_CODE, 'message': ILLEGAL_SCENARIO_CALL_ERROR_MESSAGE, 'name': ''
+        } as BusinessError);
+        return;
+      }
+      this.data = new Map<string, Object>([['SET_MOVINGPHOTO_STATE', movingPhotoState]]);
+      console.info('PhotoPickerComponent SET_MOVINGPHOTO_STATE: ' + movingPhotoState);
+      resolve(undefined);
+    });
+  }
+
+  completed(): Promise<CompletedResult> {
+    return new Promise<CompletedResult>((resolve: (result: CompletedResult) => void,
+      reject: (reason: BusinessError) => void) => {
+      let date: number = Math.random();
+      this.data = new Map<string, Object>([['COMPLETED', new CompletedResult()], ['COMPLETE_DATE', date]]);
+      this.completedPromises.set(date, [resolve, reject]);
+      console.info('PhotoPickerComponent COMPLETED');
+    });
+  }
+
   actionCreateCallback(grantUri: string, date: number, code: int, message: string): void {
     if (this.createCallbackMap.has(date)) {
       let callback = this.createCallbackMap.get(date) as ((grantUri: string, code: int, message: string) => void);
@@ -255,6 +382,32 @@ export class PickerController {
       if (callback) {
         callback(err, data);
         this.saveCallbackMap.delete(date);
+      }
+    }
+    if (this.saveCallbackPromises.has(date)) {
+      let promiseFunc = this.saveCallbackPromises.get(date) as [((v: string[]) => void), ((e: BusinessError) => void)];
+      if (promiseFunc) {
+        if (err !== undefined && err.code !== 0) {
+          promiseFunc[1](err);
+        } else {
+          promiseFunc[0](data);
+        }
+        this.saveCallbackPromises.delete(date);
+      }
+    }
+  }
+
+  actionCompleteCallback(date: number, err: BusinessError, data?: CompletedResult): void {
+    if (this.completedPromises.has(date)) {
+      let promiseFunc = this.completedPromises.get(date) as [
+        ((v: CompletedResult) => void), ((e: BusinessError) => void)];
+      if (promiseFunc) {
+        if (data !== undefined && (err === undefined || err.code === 0)) {
+          promiseFunc[0](data!);
+        } else {
+          promiseFunc[1](err);
+        }
+        this.completedPromises.delete(date);
       }
     }
   }
@@ -289,6 +442,14 @@ export class PickerOptions extends photoAccessHelper.BaseSelectOptions {
   public singleSelectionMode?: photoAccessHelper.SingleSelectionMode = undefined;
   public gridStartOffset?: int;
   public gridEndOffset?: int;
+  public pickerIndex?: int;
+  public preselectedInfos?: PreselectedInfo[];
+  public badgeConfig?: BadgeConfig;
+  public isSlidingSupported?: boolean;
+  public edgeEffect?: EdgeEffect;
+  public appAlbumFilters?: string[];
+  public backgroundOpacity?: double;
+  public contextRecoveryInfo?: photoAccessHelper.ContextRecoveryInfo;
 }
 
 export class BaseItemInfo {
@@ -298,6 +459,11 @@ export class BaseItemInfo {
   public height?: int;
   public size?: int;
   public duration?: int;
+  public photoSubType?: photoAccessHelper.PhotoSubtype;
+  public dynamicRangeType?: photoAccessHelper.DynamicRangeType;
+  public orientation?: int;
+  public movingPhotoBadgeState?: photoAccessHelper.MovingPhotoBadgeStateType;
+  public videoMode?: photoAccessHelper.VideoMode;
 }
 
 export class ItemInfo extends BaseItemInfo {
@@ -339,9 +505,78 @@ class PhotoBrowserUIElementVisibility {
   public isVisible?: boolean;
 }
 
+export class BrowserProps {
+  public isPhotoBrowserShow: boolean = false;
+  public isMovingPhotoBadgeShownValid: boolean = false;
+}
+
+export class PreselectedInfo {
+  public uri: string = '';
+  public preselectablePickerIndex?: int;
+}
+
+export class BadgeConfig {
+  public badgeType?: BadgeType;
+  public uris?: string[];
+}
+
+export class ClickResult {
+  public uri: string = '';
+  public isSelected: boolean = false;
+}
+
+export class PickerError {
+  public functionName: string = '';
+  public errorCode: int = 0;
+  public message: string = '';
+}
+
+export class CompletedResult {
+  public photoUris: string[] = [];
+  public contextRecoveryInfo?: photoAccessHelper.ContextRecoveryInfo;
+  public movingPhotoBadgeStates: photoAccessHelper.MovingPhotoBadgeStateType[] = [];
+}
+
+export class UpdatablePickerConfigs {
+  public mimeType?: photoAccessHelper.PhotoViewMIMETypes;
+  public mimeTypeFilter?: photoAccessHelper.MimeTypeFilter;
+  public maxSelectNumber?: int;
+  public maxPhotoSelectNumber?: int;
+  public maxVideoSelectNumber?: int;
+  public selectMode?: SelectMode;
+  public singleSelectionMode?: photoAccessHelper.SingleSelectionMode;
+  public isRepeatSelectSupported?: boolean;
+  public preselectedUris?: string[];
+  public checkBoxColor?: string;
+  public checkboxTextColor?: string;
+  public backgroundColor?: string;
+  public photoBrowserBackgroundColorMode?: PickerColorMode;
+  public uiComponentColorMode?: PickerColorMode;
+  public isSlidingSupported?: boolean;
+  public edgeEffect?: EdgeEffect;
+  public autoPlayScenes?: photoAccessHelper.AutoPlayScene[];
+  public appAlbumFilters?: string[];
+  public backgroundOpacity?: double;
+  public photoBrowserMargin?: Margin;
+  public gridMargin?: Margin;
+}
+
 export enum DataType {
   SET_SELECTED_URIS = 1,
-  SET_ALBUM_URI = 2
+  SET_ALBUM_URI = 2,
+  SET_SELECTED_INFO = 3,
+  SET_BADGE_CONFIGS = 4,
+  SET_ITEM_CLICK_RESULT = 5
+}
+
+export enum BadgeType {
+  BADGE_UPLOADED = 0
+}
+
+enum BadgeOptionType {
+  SET_DATA = 1,
+  ADD_DATA = 2,
+  DELETE_DATA = 3
 }
 
 export enum ItemType {
@@ -417,6 +652,15 @@ export type EnterPhotoBrowserCallback = (photoBrowserInfo: PhotoBrowserInfo) => 
 export type ExitPhotoBrowserCallback = (photoBrowserInfo: PhotoBrowserInfo) => boolean;
 export type PickerControllerReadyCallback = () => void;
 export type PhotoBrowserChangedCallback = (browserItemInfo: BaseItemInfo) => boolean;
+export type MovingPhotoBadgeStateChangedCallback =
+  (uri: string, state: photoAccessHelper.MovingPhotoBadgeStateType) => void;
+export type ScrollStopAtStartCallback = () => void;
+export type ScrollStopAtEndCallback = () => void;
+export type ItemClickedNotifyCallback = (itemInfo: ItemInfo, clickType: ClickType) => void;
+export type PinchGridSwitchedCallback = (gridLevel: photoAccessHelper.GridLevel) => void;
+export type PhotoBrowserChangeStartCallback = (targetPhotoInfo: BaseItemInfo) => void;
+export type ErrorCallback = (pickerError: PickerError) => void;
+export type PhotoBrowserZoomCallback = (scale: double) => void;
 
 @Component
 export struct PhotoPickerComponent {
@@ -432,9 +676,33 @@ export struct PhotoPickerComponent {
   onExceedMaxSelected?: ExceedMaxSelectedCallback;
   onCurrentAlbumDeleted?: CurrentAlbumDeletedCallback;
   onVideoPlayStateChanged?: videoPlayStateChangedCallback;
+  onMovingPhotoBadgeStateChanged?: MovingPhotoBadgeStateChangedCallback;
+  onPhotoBrowserChangeStart?: PhotoBrowserChangeStartCallback;
+  onItemClickedNotify?: ItemClickedNotifyCallback;
+  onScrollStopAtStart?: ScrollStopAtStartCallback;
+  onScrollStopAtEnd?: ScrollStopAtEndCallback;
+  onPinchGridSwitched?: PinchGridSwitchedCallback;
+  onError?: ErrorCallback;
+  onPhotoBrowserZoom?: PhotoBrowserZoomCallback;
   @ObjectLink @Watch('onChanged') pickerController: PickerController = new PickerController();
   private proxy: SecurityUIExtensionProxy | undefined;
   @State revokeIndex: int = 0;
+  private badgeConfigIsSending: boolean = false;
+  private isPhotoBrowserShow: boolean = false;
+  private isMovingPhotoBadgeShownValid: boolean = false;
+  private badgeConfig?: BadgeConfig;
+  private preselectedInfos?: PreselectedInfo[];
+
+  aboutToAppear(): void {
+    this.pickerController.browserPropsRegistry = (): BrowserProps => {
+      let props: BrowserProps = new BrowserProps();
+      props.isPhotoBrowserShow = this.isPhotoBrowserShow;
+      props.isMovingPhotoBadgeShownValid = this.isMovingPhotoBadgeShownValid;
+      return props;
+    };
+    this.badgeConfig = this.pickerOptions?.badgeConfig;
+    this.preselectedInfos = this.pickerOptions?.preselectedInfos;
+  }
 
   onChanged(propName: string): void {
     if (!this.proxy) {
@@ -447,6 +715,11 @@ export struct PhotoPickerComponent {
     } else if (data?.has('SET_ALBUM_URI')) {
       this.proxy?.send({ 'albumUri': data?.get('SET_ALBUM_URI') as string } as Record<string, RecordData>);
       console.info('PhotoPickerComponent onChanged: SET_ALBUM_URI');
+    } else if (data?.has('SET_SELECTED_INFO')) {
+      this.onChangeSelectedInfo(data);
+    } else if (data?.has('SET_MOVINGPHOTO_STATE')) {
+      this.proxy?.send({ 'movingPhotoState': data?.get('SET_MOVINGPHOTO_STATE') } as Record<string, RecordData>);
+      console.info('PhotoPickerComponent onChanged: SET_MOVINGPHOTO_STATE');
     } else if (data?.has('SET_MAX_SELECT_COUNT')) {
       this.onSetMaxSelectCount(data);
     } else if (data?.has('SET_PHOTO_BROWSER_ITEM')) {
@@ -470,9 +743,68 @@ export struct PhotoPickerComponent {
     } else if (data?.has('SAVE_TRUSTED_PHOTO_ASSETS')) {
       this.onSaveTrustedPhotoAssets(data);
       console.info('PhotoPickerComponent onChanged: SAVE_REPLACE_PHOTO_ASSETS');
+    } else if (data?.has('SET_BADGE_CONFIGS')) {
+      this.onChangedBadgeConfigs(data);
+    } else if (data?.has('UPDATE_CONFIG')) {
+      this.onUpdateConfig(data);
+    } else if (data?.has('SET_ITEM_CLICK_RESULT')) {
+      this.onChangeItemClickResult(data);
+    } else if (data?.has('COMPLETED')) {
+      this.onComplete(data);
     } else {
       console.info('PhotoPickerComponent onChanged: other case');
     }
+  }
+
+  private onChangeSelectedInfo(data?: Map<string, Object>): void {
+    let preselectedInfos: PreselectedInfo[] = data?.get('SET_SELECTED_INFO') as PreselectedInfo[];
+    if (!preselectedInfos) {
+      return;
+    }
+    this.preselectedInfos = preselectedInfos;
+    let firstBatch: PreselectedInfo[] = preselectedInfos.slice(0, BATCH_PRESELECTED_INFOS);
+    this.proxy?.send({
+      'uriAndPickerIndexLists': firstBatch,
+      'index': 0,
+      'preselectedInfosIsOver': preselectedInfos.length <= BATCH_PRESELECTED_INFOS
+    } as Record<string, RecordData>);
+    console.info('PhotoPickerComponent onChanged: SET_SELECTED_INFO ' + firstBatch.length);
+  }
+
+  private onChangedBadgeConfigs(data?: Map<string, Object>): void {
+    if (this.badgeConfigIsSending) {
+      return;
+    }
+    let badgeConfig: BadgeConfig = data?.get('SET_BADGE_CONFIGS') as BadgeConfig;
+    let optionType: BadgeOptionType = data?.get('BADGE_CONFIGS_OPTION_TYPE') as BadgeOptionType;
+    if (badgeConfig?.uris && badgeConfig.uris!.length > MAX_BADGE_CONFIG_SIZE) {
+      badgeConfig.uris = badgeConfig.uris!.slice(0, MAX_BADGE_CONFIG_SIZE);
+    }
+    this.badgeConfig = badgeConfig;
+    this.badgeConfigIsSending = true;
+    this.proxy?.send({ 'needSendBadgeConfigs': true, 'BadgeOptionType': optionType } as Record<string, RecordData>);
+    console.info('PhotoPickerComponent onChanged: SET_BADGE_CONFIGS');
+  }
+
+  private onUpdateConfig(data?: Map<string, Object>): void {
+    this.proxy?.send({ 'updateConfig': data?.get('UPDATE_CONFIG') as UpdatablePickerConfigs } as Record<string, RecordData>);
+    console.info('PhotoPickerComponent onChanged: UPDATE_CONFIG');
+  }
+
+  private onChangeItemClickResult(data?: Map<string, Object>): void {
+    let itemClickResult: ClickResult[] = data?.get('SET_ITEM_CLICK_RESULT') as ClickResult[];
+    if (itemClickResult && Array.isArray(itemClickResult) && itemClickResult.length > 0) {
+      this.proxy?.send({ 'itemClickResult': itemClickResult } as Record<string, RecordData>);
+      console.info('PhotoPickerComponent onChanged: SET_ITEM_CLICK_RESULT ' + itemClickResult.length);
+    }
+  }
+
+  private onComplete(data?: Map<string, Object>): void {
+    this.proxy?.send({
+      'completed': data?.get('COMPLETED'),
+      'date': data?.get('COMPLETE_DATE')
+    } as Record<string, RecordData>);
+    console.info('PhotoPickerComponent onChanged: COMPLETED');
   }
 
   private onSetMaxSelectCount(data?: Map<string, Object>): void {
@@ -557,32 +889,49 @@ export struct PhotoPickerComponent {
     }
   }
 
+  private getClickType(wantParam: Record<string, RecordData>): ClickType {
+    let clickType: ClickType = ClickType.SELECTED;
+    let type: string = wantParam['clickType'] as string;
+    if (type === 'select') {
+      clickType = ClickType.SELECTED;
+    } else if (type === 'deselect') {
+      clickType = ClickType.DESELECTED;
+    } else {
+      console.info('PhotoPickerComponent onReceive: other clickType');
+    }
+    return clickType;
+  }
+
+  private getItemInfo(wantParam: Record<string, RecordData>): ItemInfo {
+    let itemInfo: ItemInfo = new ItemInfo();
+    let itemType: string = wantParam['itemType'] as string;
+    if (itemType === 'thumbnail') {
+      itemInfo.itemType = ItemType.THUMBNAIL;
+    } else if (itemType === 'camera') {
+      itemInfo.itemType = ItemType.CAMERA;
+    } else {
+      console.info('PhotoPickerComponent onReceive: other itemType');
+    }
+    itemInfo.uri = checkValueRetUndefined<string>(wantParam['uri']);
+    itemInfo.mimeType = checkValueRetUndefined<string>(wantParam['mimeType']);
+    itemInfo.width = checkValueRetUndefined<int>(wantParam['width']);
+    itemInfo.height = checkValueRetUndefined<int>(wantParam['height']);
+    itemInfo.size = checkValueRetUndefined<int>(wantParam['size']);
+    itemInfo.duration = checkValueRetUndefined<int>(wantParam['duration']);
+    itemInfo.photoSubType = checkValueRetUndefined<photoAccessHelper.PhotoSubtype>(wantParam['subtype']);
+    itemInfo.dynamicRangeType = checkValueRetUndefined<photoAccessHelper.DynamicRangeType>(wantParam['dynamicRangeType']);
+    itemInfo.orientation = checkValueRetUndefined<int>(wantParam['imageOrientation']);
+    itemInfo.movingPhotoBadgeState =
+      checkValueRetUndefined<photoAccessHelper.MovingPhotoBadgeStateType>(wantParam['movingPhotoBadgeState']);
+    itemInfo.videoMode = checkValueRetUndefined<photoAccessHelper.VideoMode>(wantParam['videoMode']);
+    return itemInfo;
+  }
+
   private handleItemClick(wantParam: Record<string, RecordData>): void {
     if (this.onItemClicked) {
-      let clickType: ClickType = ClickType.SELECTED;
-      let type: string = wantParam['clickType'] as string;
-      if (type === 'select') {
-        clickType = ClickType.SELECTED;
-      } else if (type === 'deselect') {
-        clickType = ClickType.DESELECTED;
-      } else {
-        console.info('PhotoPickerComponent onReceive: other clickType');
-      }
-      let itemInfo: ItemInfo = new ItemInfo();
+      let clickType: ClickType = this.getClickType(wantParam);
+      let itemInfo: ItemInfo = this.getItemInfo(wantParam);
       let itemType: string = wantParam['itemType'] as string;
-      if (itemType === 'thumbnail') {
-        itemInfo.itemType = ItemType.THUMBNAIL;
-      } else if (itemType === 'camera') {
-        itemInfo.itemType = ItemType.CAMERA;
-      } else {
-        console.info('PhotoPickerComponent onReceive: other itemType');
-      }
-      itemInfo.uri = checkValueRetUndefined<string>(wantParam['uri']);
-      itemInfo.mimeType = checkValueRetUndefined<string>(wantParam['mimeType']);
-      itemInfo.width = checkValueRetUndefined<int>(wantParam['width']);
-      itemInfo.height = checkValueRetUndefined<int>(wantParam['height']);
-      itemInfo.size = checkValueRetUndefined<int>(wantParam['size']);
-      itemInfo.duration = checkValueRetUndefined<int>(wantParam['duration']);
       let result: boolean = this.onItemClicked!(itemInfo, clickType);
       console.info('PhotoPickerComponent onReceive: onItemClicked = ' + clickType);
       if (this.proxy) {
@@ -596,6 +945,15 @@ export struct PhotoPickerComponent {
           console.info('PhotoPickerComponent onReceive: enter camera ' + result);
         }
       }
+    }
+  }
+
+  private handleItemClickedNotify(wantParam: Record<string, RecordData>): void {
+    if (this.onItemClickedNotify) {
+      let clickType: ClickType = this.getClickType(wantParam);
+      let itemInfo: ItemInfo = this.getItemInfo(wantParam);
+      this.onItemClickedNotify!(itemInfo, clickType);
+      console.info('PhotoPickerComponent onReceive: onItemClickedNotify = ' + clickType);
     }
   }
 
@@ -614,6 +972,7 @@ export struct PhotoPickerComponent {
         this.onExitPhotoBrowser!(photoBrowserInfo);
       }
     }
+    this.isPhotoBrowserShow = isEnter;
     console.info('PhotoPickerComponent onReceive: onPhotoBrowserStateChanged = ' + isEnter);
   }
 
@@ -631,6 +990,16 @@ export struct PhotoPickerComponent {
       if (this.onCurrentAlbumDeleted) {
         this.onCurrentAlbumDeleted!();
       }
+    } else if (dataType === 'onScrollStopAtStart') {
+      if (this.onScrollStopAtStart) {
+        this.onScrollStopAtStart!();
+      }
+    } else if (dataType === 'onScrollStopAtEnd') {
+      if (this.onScrollStopAtEnd) {
+        this.onScrollStopAtEnd!();
+      }
+    } else if (dataType === 'onPreselectedInfo') {
+      this.handlePreselectedInfoSend(wantParam);
     } else {
       console.info('PhotoPickerComponent onReceive: other case');
     }
@@ -639,6 +1008,8 @@ export struct PhotoPickerComponent {
   private handlePhotoBrowserChange(wantParam: Record<string, RecordData>): void {
     let browserItemInfo: BaseItemInfo = new BaseItemInfo();
     browserItemInfo.uri = wantParam['uri'] as string;
+    browserItemInfo.photoSubType = checkValueRetUndefined<photoAccessHelper.PhotoSubtype>(wantParam['photoSubType']);
+    browserItemInfo.mimeType = checkValueRetUndefined<string>(wantParam['mimeType']);
     if (this.onPhotoBrowserChanged) {
       this.onPhotoBrowserChanged!(browserItemInfo);
     }
@@ -672,6 +1043,119 @@ export struct PhotoPickerComponent {
     console.info('PhotoPickerComponent onReceive: handleSaveCallback');
   }
 
+  private handleCompletedCallback(wantParam: Record<string, RecordData>): void {
+    let completedResult: CompletedResult | undefined = checkValueRetUndefined<CompletedResult>(wantParam['data']);
+    this.pickerController.actionCompleteCallback(wantParam['date'] as number,
+      { 'name': '', 'code': wantParam['code'] as int, 'message': wantParam['message'] as string }, completedResult);
+    console.info('PhotoPickerComponent onReceive: handleCompletedCallback');
+  }
+
+  private sendInitialBadgeConfigs(): void {
+    if (this.badgeConfig && this.badgeConfig!.uris && this.badgeConfig!.uris!.length > 0) {
+      this.badgeConfigIsSending = true;
+      this.proxy?.send({
+        'needSendBadgeConfigs': true, 'BadgeOptionType': BadgeOptionType.SET_DATA
+      } as Record<string, RecordData>);
+      console.info('PhotoPickerComponent remoteReady: send badgeConfigs signal');
+    }
+  }
+
+  private handleBadgeConfigSend(wantParam: Record<string, RecordData>): void {
+    let index: int = wantParam['nextIndex'] as int;
+    if (!this.badgeConfig || !this.badgeConfig!.uris || this.badgeConfig!.uris!.length === 0) {
+      return;
+    }
+    let uris: string[] = this.badgeConfig!.uris!;
+    let total: number = Math.ceil(uris.length / BATCH_BADGE_CONFIG_SIZE);
+    let unit: string[] = uris.slice(BATCH_BADGE_CONFIG_SIZE * index, BATCH_BADGE_CONFIG_SIZE * (index + 1));
+    this.proxy?.send({
+      'badgeConfig': unit,
+      'index': index,
+      'isOver': index >= total,
+      'badgeConfigType': this.badgeConfig!.badgeType
+    } as Record<string, RecordData>);
+    if (index >= total) {
+      this.badgeConfigIsSending = false;
+    }
+    console.info('PhotoPickerComponent onReceive: onBadgeConfigSend index=' + index);
+  }
+
+  private sendInitialPreselectedInfos(): void {
+    if (this.preselectedInfos && this.preselectedInfos!.length > 0) {
+      let firstBatch: PreselectedInfo[] = this.preselectedInfos!.slice(0, BATCH_PRESELECTED_INFOS);
+      this.proxy?.send({
+        'uriAndPickerIndexLists': firstBatch,
+        'index': 0,
+        'preselectedInfosIsOver': this.preselectedInfos!.length <= BATCH_PRESELECTED_INFOS
+      } as Record<string, RecordData>);
+      console.info('PhotoPickerComponent remoteReady: send preselectedInfos ' + firstBatch.length);
+    }
+  }
+
+  private handlePreselectedInfoSend(wantParam: Record<string, RecordData>): void {
+    if (!this.preselectedInfos || this.preselectedInfos!.length === 0) {
+      return;
+    }
+    let nextIndex: int = wantParam['nextIndex'] as int;
+    let batch: PreselectedInfo[] =
+      this.preselectedInfos!.slice(nextIndex * BATCH_PRESELECTED_INFOS, (nextIndex + 1) * BATCH_PRESELECTED_INFOS);
+    let total: number = Math.ceil(this.preselectedInfos!.length / BATCH_PRESELECTED_INFOS);
+    this.proxy?.send({
+      'uriAndPickerIndexLists': batch,
+      'index': nextIndex,
+      'preselectedInfosIsOver': nextIndex >= total
+    } as Record<string, RecordData>);
+    console.info('PhotoPickerComponent onReceive: onPreselectedInfo index=' + nextIndex);
+  }
+
+  private onMovingPhotoBadgeStateChangeSend(wantParam: Record<string, RecordData>): void {
+    let uri: string = wantParam['uri'] as string;
+    let state: photoAccessHelper.MovingPhotoBadgeStateType =
+      wantParam['enabledMovingPhotoBadge'] as photoAccessHelper.MovingPhotoBadgeStateType;
+    if (uri && this.onMovingPhotoBadgeStateChanged) {
+      this.onMovingPhotoBadgeStateChanged!(uri, state);
+    }
+    console.info('PhotoPickerComponent onReceive: onMovingPhotoBadgeStateChange');
+  }
+
+  private handleGridLevelChanged(wantParam: Record<string, RecordData>): void {
+    if (this.onPinchGridSwitched) {
+      this.onPinchGridSwitched!(wantParam['gridLevel'] as photoAccessHelper.GridLevel);
+    }
+    console.info('PhotoPickerComponent onReceive: onGridLevelChanged');
+  }
+
+  private handlePhotoBrowserZoom(wantParam: Record<string, RecordData>): void {
+    if (this.onPhotoBrowserZoom) {
+      this.onPhotoBrowserZoom!(wantParam['scale'] as double);
+    }
+    console.info('PhotoPickerComponent onReceive: onPhotoBrowserZoom');
+  }
+
+  private handleOnPhotoBrowserChangeStart(wantParam: Record<string, RecordData>): void {
+    let targetPhotoInfo: BaseItemInfo = new BaseItemInfo();
+    targetPhotoInfo.uri = checkValueRetUndefined<string>(wantParam['uri']);
+    targetPhotoInfo.photoSubType = checkValueRetUndefined<photoAccessHelper.PhotoSubtype>(wantParam['photoSubType']);
+    targetPhotoInfo.movingPhotoBadgeState =
+      checkValueRetUndefined<photoAccessHelper.MovingPhotoBadgeStateType>(wantParam['movingPhotoBadgeState']);
+    if (this.onPhotoBrowserChangeStart) {
+      this.onPhotoBrowserChangeStart!(targetPhotoInfo);
+    }
+    console.info('PhotoPickerComponent onReceive: onPhotoBrowserChangeStart = ' +
+      this.pickerController.encrypt(targetPhotoInfo.uri));
+  }
+
+  private handleOnError(wantParam: Record<string, RecordData>): void {
+    let pickerError: PickerError = new PickerError();
+    pickerError.functionName = checkValueRetUndefined<string>(wantParam['functionName']) ?? '';
+    pickerError.errorCode = checkValueRetUndefined<int>(wantParam['errorCode']) ?? 0;
+    pickerError.message = checkValueRetUndefined<string>(wantParam['errorMessage']) ?? '';
+    if (this.onError) {
+      this.onError!(pickerError);
+    }
+    console.info('PhotoPickerComponent onReceive: onError = ' + pickerError.errorCode);
+  }
+
   private handleOnReceive(wantParam: Record<string, RecordData>): void {
     let dataType: string = wantParam['dataType'] as string;
     console.info('PhotoPickerComponent onReceive: dataType = ' + dataType);
@@ -679,6 +1163,8 @@ export struct PhotoPickerComponent {
       this.handleSelectOrDeselect(wantParam);
     } else if (dataType === 'itemClick') {
       this.handleItemClick(wantParam);
+    } else if (dataType === 'itemClickedNotify') {
+      this.handleItemClickedNotify(wantParam);
     } else if (dataType === 'onPhotoBrowserStateChanged') {
       this.handleEnterOrExitPhotoBrowser(wantParam);
     } else if (dataType === 'remoteReady') {
@@ -686,8 +1172,12 @@ export struct PhotoPickerComponent {
         this.onPickerControllerReady!();
         console.info('PhotoPickerComponent onReceive: onPickerControllerReady');
       }
+      this.sendInitialBadgeConfigs();
+      this.sendInitialPreselectedInfos();
     } else if (dataType === 'onPhotoBrowserChanged') {
       this.handlePhotoBrowserChange(wantParam);
+    } else if (dataType === 'onPhotoBrowserChangeStart') {
+      this.handleOnPhotoBrowserChangeStart(wantParam);
     } else if (dataType === 'onVideoPlayStateChanged') {
       this.handleVideoPlayStateChange(wantParam)
     } else if (dataType === 'replaceCallback') {
@@ -696,6 +1186,18 @@ export struct PhotoPickerComponent {
       this.handleCreateCallback(wantParam);
     } else if (dataType === 'saveCallback') {
       this.handleSaveCallback(wantParam);
+    } else if (dataType === 'completed') {
+      this.handleCompletedCallback(wantParam);
+    } else if (dataType === 'onBadgeConfigSend') {
+      this.handleBadgeConfigSend(wantParam);
+    } else if (dataType === 'onMovingPhotoBadgeStateChange') {
+      this.onMovingPhotoBadgeStateChangeSend(wantParam);
+    } else if (dataType === 'onGridLevelChanged') {
+      this.handleGridLevelChanged(wantParam);
+    } else if (dataType === 'onPhotoBrowserZoom') {
+      this.handlePhotoBrowserZoom(wantParam);
+    } else if (dataType === 'onError') {
+      this.handleOnError(wantParam);
     } else if (dataType === 'onBackground') {
       console.info('PhotoPickerComponent onReceive: onBackground');
       this.revokeIndex = 0;
@@ -822,6 +1324,16 @@ export struct PhotoPickerComponent {
     return false;
   }
 
+  private parseAppAlbumFilters(appAlbumFilters?: string[]): string[] | undefined {
+    if (!appAlbumFilters) {
+      return undefined;
+    }
+    if (appAlbumFilters.length > 3) {
+      return appAlbumFilters.slice(0, 3);
+    }
+    return appAlbumFilters;
+  }
+
   @Builder
   build(): void {
     Row() {
@@ -866,6 +1378,15 @@ export struct PhotoPickerComponent {
             'gridEndOffset': this.pickerOptions?.gridEndOffset,
             'singleLineConfig': this.getSingleLineConfig(this.pickerOptions?.singleLineConfig),
             'uiComponentColorMode': this.pickerOptions?.uiComponentColorMode,
+            'pickerIndex': this.pickerOptions?.pickerIndex,
+            'isSlidingSupported': this.pickerOptions?.isSlidingSupported,
+            'edgeEffect': this.pickerOptions?.edgeEffect,
+            'appAlbumFilters': this.parseAppAlbumFilters(this.pickerOptions?.appAlbumFilters),
+            'backgroundOpacity': this.pickerOptions?.backgroundOpacity,
+            'contextRecoveryInfo': this.pickerOptions?.contextRecoveryInfo,
+            'isOnItemClickedNotifySet': this.onItemClickedNotify ? true : false,
+            'isOnScrollStopAtStartSet': this.onScrollStopAtStart ? true : false,
+            'isOnScrollStopAtEndSet': this.onScrollStopAtEnd ? true : false,
           } as Record<string, RecordData>
         })
           .height('100%')

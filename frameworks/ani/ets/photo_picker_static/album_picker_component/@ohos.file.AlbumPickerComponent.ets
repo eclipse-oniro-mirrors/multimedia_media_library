@@ -61,7 +61,7 @@ export struct AlbumPickerComponent {
     }
     let data: Map<string, Object> | undefined = this.albumPickerController?.data;
     if (data?.has('SET_FONT_SIZE')) {
-      this.proxy?.send({ 'fontSize': data?.get('SET_FONT_SIZE') as number | string });
+      this.proxy?.send({ 'fontSize': data?.get('SET_FONT_SIZE') as number | string } as Record<string, RecordData>);
       console.info('AlbumPickerComponent onChanged: SET_FONT_SIZE');
     }
   }
@@ -102,6 +102,7 @@ export struct AlbumPickerComponent {
         .height('100%')
         .width('100%')
         .onRemoteReady((proxy: SecurityUIExtensionProxy) => {
+          this.proxy = proxy;
           console.info('AlbumPickerComponent onRemoteReady');
         })
         .onReceive((data: Record<string, RecordData>) => {

@@ -204,7 +204,7 @@ const std::string CONFIRM_BOX_BUNDLE_NAME = "bundleName";
 const std::string CONFIRM_BOX_APP_NAME = "appName";
 const std::string CONFIRM_BOX_APP_ID = "appId";
 const std::string TOKEN_ID = "tokenId";
-
+const std::string CONFIRM_BOX_IMAGE_FULLY_DISPLAYED = "isImageFullyDisplayed";
 const std::string ALBUM_ID_FOR_GET = "albumId";
 const std::string ALBUM_ORDER_FOR_GET = "albumOrder";
 const std::string ORDER_SECTION_FOR_GET = "orderSection";
@@ -8643,7 +8643,7 @@ static bool InitConfirmRequest(OHOS::AAFwk::Want &want, shared_ptr<ConfirmCallba
     want.SetParam(CONFIRM_BOX_BUNDLE_NAME, bundleInfo.bundleName);
     want.SetParam(CONFIRM_BOX_APP_NAME, bundleInfo.packageName);
     want.SetParam(CONFIRM_BOX_APP_ID, bundleInfo.appId);
-
+    want.SetParam(CONFIRM_BOX_IMAGE_FULLY_DISPLAYED, params.isImageFullyDisplayed);
     callback->SetFunc(params.resultcb);
 
     return true;
@@ -8651,7 +8651,7 @@ static bool InitConfirmRequest(OHOS::AAFwk::Want &want, shared_ptr<ConfirmCallba
 
 ani_object MediaLibraryAni::ShowAssetsCreationDialog(ani_env *env, ani_object object,
     ani_object context, ani_object srcFileUris, ani_object photoCreationConfigs,
-    ani_object appInfo, ani_fn_object resultcb)
+    ani_object appInfo, ani_boolean isImageFullyDisplayed, ani_fn_object resultcb)
 {
     CHECK_COND_RET(env != nullptr, nullptr, "env is nullptr");
 
@@ -8665,7 +8665,8 @@ ani_object MediaLibraryAni::ShowAssetsCreationDialog(ani_env *env, ani_object ob
 
     OHOS::AAFwk::Want want;
     auto callback = std::make_shared<ConfirmCallback>(env, uiContent);
-    InitConfirmRequestParams confirmParams { env, srcFileUris, photoCreationConfigs, appInfo, resultcb };
+    InitConfirmRequestParams confirmParams { env, srcFileUris, photoCreationConfigs, appInfo,
+        (isImageFullyDisplayed == ANI_TRUE), resultcb };
     CHECK_COND_WITH_MESSAGE(env, InitConfirmRequest(want, callback, confirmParams), "Parse input fail.");
     // regist callback and config
     OHOS::Ace::ModalUIExtensionCallbacks extensionCallback = {
