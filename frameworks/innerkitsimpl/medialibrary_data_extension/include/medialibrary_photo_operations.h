@@ -67,7 +67,7 @@ struct MoveCacheFileInfo {
     {}
     MoveCacheFileInfo(int32_t subtype, std::string cachePath, std::string destPath)
         : subtype(subtype), cachePath(cachePath), destPath(destPath), isEdited(false), isOriginalImageResource(false),
-        effectMode(0)
+            effectMode(0)
     {}
 };
 

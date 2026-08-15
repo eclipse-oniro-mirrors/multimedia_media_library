@@ -2545,13 +2545,13 @@ static unordered_map<MoveStrategy, vector<string>> BuildMoveStrategyPatitions(co
     PhotoAlbumSubType targetSubtype =
         static_cast<PhotoAlbumSubType>(GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet));
 
-    string ArgsStr = ToArgsStringWithComma(fileIds);
+    string argsStr = ToArgsStringWithComma(fileIds);
     string QueryOwnerTypeSql =
         "SELECT file_id, storage_path, pa.album_subtype AS OwnerAlbumSubtype "
         "FROM Photos p "
         "LEFT JOIN PhotoAlbum pa "
         "   ON pa.album_id = p.owner_album_id "
-        "WHERE p.file_id IN  (" + ArgsStr + ")";
+        "WHERE p.file_id IN  (" + argsStr + ")";
     resultSet = uniStore->QuerySql(QueryOwnerTypeSql, fileIds);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, {}, "Failed to query system albums");
     unordered_map<MoveStrategy, vector<string>> partition;
@@ -2583,10 +2583,10 @@ static void UpdateMetadataFileManagerToMedia(std::shared_ptr<AccurateRefresh::As
     if (fileIds.empty()) {
         return;
     }
-    string ArgsStr = ToArgsStringWithComma(fileIds);
+    string argsStr = ToArgsStringWithComma(fileIds);
     string updateSql = "UPDATE Photos SET file_source_type = 0, "
         "storage_path = (CASE WHEN burst_cover_level = 1 THEN '' ELSE storage_path END) "
-        "where file_id IN (" + ArgsStr + ")";
+        "where file_id IN (" + argsStr + ")";
     std::vector<ValueObject> fileIdArgs;
     fileIdArgs.reserve(fileIds.size());
 
@@ -2606,11 +2606,11 @@ static void UpdateMetadataFileManagerToFileManager(std::shared_ptr<AccurateRefre
     if (fileIds.empty()) {
         return;
     }
-    string ArgsStr = ToArgsStringWithComma(fileIds);
+    string argsStr = ToArgsStringWithComma(fileIds);
     string updateSql = "UPDATE Photos SET file_source_type = 1, "
         "storage_path = (CASE WHEN burst_cover_level = 1 THEN CONCAT('" + targetPath + "', '', display_name) "
         "ELSE storage_path END) "
-        "where file_id IN (" + ArgsStr + ")";
+        "where file_id IN (" + argsStr + ")";
     std::vector<ValueObject> fileIdArgs;
     fileIdArgs.reserve(fileIds.size());
 
@@ -2630,11 +2630,11 @@ static void UpdateMetadataMediaToFileManager(std::shared_ptr<AccurateRefresh::As
     if (fileIds.empty()) {
         return;
     }
-    string ArgsStr = ToArgsStringWithComma(fileIds);
+    string argsStr = ToArgsStringWithComma(fileIds);
     string updateSql = "UPDATE Photos SET file_source_type = 1, "
         "storage_path = (CASE WHEN burst_cover_level = 1 THEN CONCAT('" + targetPath + "', '', display_name) "
         "ELSE storage_path END) "
-        "where file_id IN (" + ArgsStr + ")";
+        "where file_id IN (" + argsStr + ")";
     std::vector<ValueObject> fileIdArgs;
     fileIdArgs.reserve(fileIds.size());
     for (const auto& fileIdStr : fileIds) {
@@ -2653,12 +2653,12 @@ static void UpdateMetadataLakeToFileManager(std::shared_ptr<AccurateRefresh::Ass
     if (fileIds.empty()) {
         return;
     }
-    string ArgsStr = ToArgsStringWithComma(fileIds);
+    string argsStr = ToArgsStringWithComma(fileIds);
     string updateSql = "UPDATE Photos SET "
         "file_source_type = 1, "
         "storage_path = (CASE WHEN burst_cover_level = 1 THEN CONCAT('" + targetPath + "', '', display_name) "
         "ELSE storage_path END) "
-        "where file_id IN (" + ArgsStr + ")";
+        "where file_id IN (" + argsStr + ")";
     std::vector<ValueObject> fileIdArgs;
     fileIdArgs.reserve(fileIds.size());
 
@@ -2758,8 +2758,8 @@ static void DivideLakeAsset(const vector<string> &totalIds, vector<string> &medi
 {
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN(uniStore != nullptr);
-    string ArgsStr = ToArgsStringWithComma(totalIds);
-    string QueryOwnerTypeSql = "SELECT file_id, storage_path FROM Photos WHERE file_id IN  (" + ArgsStr + ")";
+    string argsStr = ToArgsStringWithComma(totalIds);
+    string QueryOwnerTypeSql = "SELECT file_id, storage_path FROM Photos WHERE file_id IN  (" + argsStr + ")";
     auto resultSet = uniStore->QuerySql(QueryOwnerTypeSql, totalIds);
     CHECK_AND_RETURN(resultSet != nullptr);
     while (resultSet->GoToNextRow() == E_OK) {
