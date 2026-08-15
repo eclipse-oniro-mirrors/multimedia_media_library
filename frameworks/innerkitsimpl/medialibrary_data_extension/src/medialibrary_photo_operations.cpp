@@ -2546,13 +2546,13 @@ static unordered_map<MoveStrategy, vector<string>> BuildMoveStrategyPatitions(co
         static_cast<PhotoAlbumSubType>(GetInt32Val(PhotoAlbumColumns::ALBUM_SUBTYPE, resultSet));
 
     string argsStr = ToArgsStringWithComma(fileIds);
-    string QueryOwnerTypeSql =
+    string queryOwnerTypeSql =
         "SELECT file_id, storage_path, pa.album_subtype AS OwnerAlbumSubtype "
         "FROM Photos p "
         "LEFT JOIN PhotoAlbum pa "
         "   ON pa.album_id = p.owner_album_id "
         "WHERE p.file_id IN  (" + argsStr + ")";
-    resultSet = uniStore->QuerySql(QueryOwnerTypeSql, fileIds);
+    resultSet = uniStore->QuerySql(queryOwnerTypeSql, fileIds);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, {}, "Failed to query system albums");
     unordered_map<MoveStrategy, vector<string>> partition;
     while (resultSet->GoToNextRow() == E_OK) {
@@ -2759,8 +2759,8 @@ static void DivideLakeAsset(const vector<string> &totalIds, vector<string> &medi
     auto uniStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN(uniStore != nullptr);
     string argsStr = ToArgsStringWithComma(totalIds);
-    string QueryOwnerTypeSql = "SELECT file_id, storage_path FROM Photos WHERE file_id IN  (" + argsStr + ")";
-    auto resultSet = uniStore->QuerySql(QueryOwnerTypeSql, totalIds);
+    string queryOwnerTypeSql = "SELECT file_id, storage_path FROM Photos WHERE file_id IN  (" + argsStr + ")";
+    auto resultSet = uniStore->QuerySql(queryOwnerTypeSql, totalIds);
     CHECK_AND_RETURN(resultSet != nullptr);
     while (resultSet->GoToNextRow() == E_OK) {
         int32_t fileId = GetInt32Val("file_id", resultSet);

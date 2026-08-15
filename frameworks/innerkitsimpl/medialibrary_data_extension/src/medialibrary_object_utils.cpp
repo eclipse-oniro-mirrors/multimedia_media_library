@@ -860,13 +860,6 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
     string uriString = cmd.GetUri().ToString();
     int32_t type = -1;
     GetType(uriString, type);
-    shared_ptr<FileAsset> fileAsset = GetFileAssetFromUri(uriString);
-    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_URI, "Failed to obtain path from Database");
-    if (fileAsset->GetTimePending() != 0 && !CheckIsOwner(fileAsset->GetOwnerPackage().c_str())) {
-        MEDIA_ERR_LOG("Failed to open fileId:%{public}d, it is not owner", fileAsset->GetId());
-        return E_IS_PENDING_ERROR;
-    }
-    HandlePrivateAsset(fileAsset);
     if (cmd.GetOprnObject() == OperationObject::THUMBNAIL) {
         return ThumbnailService::GetInstance()->GetThumbnailFd(uriString);
     } else if (cmd.GetOprnObject() == OperationObject::THUMBNAIL_ASTC) {
@@ -882,6 +875,13 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
     } else if (cmd.GetOprnObject() == OperationObject::FILESYSTEM_DEBUG_DB) {
         return OpenDebugDatabase(uriString, mode);
     }
+    shared_ptr<FileAsset> fileAsset = GetFileAssetFromUri(uriString);
+    CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, E_INVALID_URI, "Failed to obtain path from Database");
+    if (fileAsset->GetTimePending() != 0 && !CheckIsOwner(fileAsset->GetOwnerPackage().c_str())) {
+        MEDIA_ERR_LOG("Failed to open fileId:%{public}d, it is not owner", fileAsset->GetId());
+        return E_IS_PENDING_ERROR;
+    }
+    HandlePrivateAsset(fileAsset);
     bool isHeif = cmd.GetQuerySetParam(CONST_PHOTO_TRANSCODE_OPERATION) == CONST_OPRN_TRANSCODE_HEIF;
     int32_t err = MediaLibraryTranscodeDataAgingOperation::SetTranscodeUriToFileAsset(
         fileAsset, mode, isHeif, uriString);
@@ -902,7 +902,6 @@ int32_t MediaLibraryObjectUtils::OpenFile(MediaLibraryCommand &cmd, const string
             watch->AddWatchList(path, fileAsset->GetUri());
         }
     }
-    MEDIA_DEBUG_LOG("MediaLibraryDataManager OpenFile: Success");
     return fd;
 }
 
