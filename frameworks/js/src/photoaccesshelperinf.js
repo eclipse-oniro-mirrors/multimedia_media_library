@@ -1608,5 +1608,6 @@ export default {
   AvailabilityStatus: photoAccessHelper.AvailabilityStatus,
   MediaAssetPermissionState: photoAccessHelper.MediaAssetPermissionState,
   TaskSignal: photoAccessHelper.TaskSignal,
-  DeepOptimizeState: photoAccessHelper.DeepOptimizeState
+  DeepOptimizeState: photoAccessHelper.DeepOptimizeState,
+  PickerColorMode: photoAccessHelper.PickerColorMode
 };
