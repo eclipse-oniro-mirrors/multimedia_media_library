@@ -263,6 +263,28 @@ void NotificationHelper::NotifyAllCallbacks(const AlbumChangeInfos& changeInfos)
         dispatched, expired, callbacks_.size());
 }
 
+std::shared_ptr<DataShare::DataShareHelper> NotificationHelper::CreateDataShareHelper(
+    const sptr<IRemoteObject> &token, const std::string &uri)
+{
+    std::shared_ptr<DataShare::DataShareHelper> helper;
+    constexpr int32_t maxCreateRetry = 3;
+    for (int32_t i = 0; i < maxCreateRetry; ++i) {
+        helper = DataShare::DataShareHelper::Creator(token, uri);
+        if (helper != nullptr) {
+            MEDIA_INFO_LOG("CreateDataShareHelper: created on attempt %{public}d/%{public}d",
+                i + 1, maxCreateRetry);
+            break;
+        }
+        MEDIA_ERR_LOG("Failed to create DataShareHelper (attempt %{public}d/%{public}d), uri:%{public}s",
+            i + 1, maxCreateRetry, uri.c_str());
+        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // 200 milliseconds
+    }
+    if (helper == nullptr) {
+        MEDIA_ERR_LOG("CreateDataShareHelper: still NULL after %{public}d attempts", maxCreateRetry);
+    }
+    return helper;
+}
+
 bool NotificationHelper::StartObserverIfNeeded()
 {
     {
@@ -288,23 +310,8 @@ bool NotificationHelper::StartObserverIfNeeded()
     std::string multiUri = MediaUriUtils::GetMultiUri(baseUri, activeUser).ToString();
     MEDIA_INFO_LOG("StartObserverIfNeeded: creating helper for userId %{public}d, uri:%{public}s",
         activeUser, multiUri.c_str());
-    std::shared_ptr<DataShare::DataShareHelper> helper;
-    constexpr int32_t maxCreateRetry = 3;
-    for (int32_t i = 0; i < maxCreateRetry; ++i) {
-        helper = DataShare::DataShareHelper::Creator(token, multiUri);
-        if (helper != nullptr) {
-            MEDIA_INFO_LOG("StartObserverIfNeeded: DataShareHelper created on attempt %{public}d/%{public}d",
-                i + 1, maxCreateRetry);
-            break;
-        }
-        MEDIA_ERR_LOG("Failed to create DataShareHelper (attempt %{public}d/%{public}d), uri:%{public}s",
-            i + 1, maxCreateRetry, multiUri.c_str());
-        std::this_thread::sleep_for(std::chrono::milliseconds(200)); // 200 milliseconds
-    }
+    auto helper = CreateDataShareHelper(token, multiUri);
     if (helper == nullptr) {
-        MEDIA_ERR_LOG("StartObserverIfNeeded: DataShareHelper still NULL after %{public}d attempts; "
-            "observer will NOT be registered. Future notifications will not be delivered to this client!",
-            maxCreateRetry);
         return false;
     }
 

@@ -42,7 +42,7 @@ public:
     // Public wrapper for the protected ForceReconnect in base class
     EXPORT bool ForceReconnect(const int32_t userId = -1);
     // Get cached or create+cache DataShareHelper for userId (managed by MediaDataShareHelper)
-    EXPORT std::shared_ptr<DataShare::DataShareHelper> GetOrCreateDataShareHelper(const int32_t userId = -1);  
+    EXPORT std::shared_ptr<DataShare::DataShareHelper> GetOrCreateDataShareHelper(const int32_t userId = -1);
 protected:
     EXPORT std::shared_ptr<DataShare::DataShareResultSet> QueryWithoutIpc(
         const DataShare::DataSharePredicates &predicates, std::vector<std::string> &columns, OperationObject &object,

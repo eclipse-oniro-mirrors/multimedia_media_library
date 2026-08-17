@@ -100,6 +100,8 @@ private:
     static void NotifyAllCallbacks(const AlbumChangeInfos& changeInfos);
     static bool StartObserverIfNeeded();
     static void StopObserverIfNeeded();
+    static std::shared_ptr<DataShare::DataShareHelper> CreateDataShareHelper(
+        const sptr<IRemoteObject> &token, const std::string &uri);
     static bool AddCallbackIfNew(std::shared_ptr<PhotoAlbumChangeCallback> callback);
     static void RemoveCallbackFromList(std::shared_ptr<PhotoAlbumChangeCallback> callback);
     static void GetObserverState(bool &observerSet, bool &helperSet);
