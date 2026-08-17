@@ -17786,48 +17786,48 @@ static napi_value ParseArgsInvokeAnalysisTool(
     constexpr size_t maxArgs = ARGS_TWO;
     napi_value thisVar = nullptr;
     context->argc = maxArgs;
-    CHECK_COND_WITH_ERR_MESSAGE(env, napi_get_cb_info(env, info, &context->argc, &(context->argv[ARGS_ZERO]),
+    CHECK_WITH_INT_ERR_MESSAGE(env, napi_get_cb_info(env, info, &context->argc, &(context->argv[ARGS_ZERO]),
         &thisVar, nullptr) == napi_ok, JS_E_PARAM_INVALID, "Failed to get cb info");
-    CHECK_COND_WITH_ERR_MESSAGE(env, context->argc >= minArgs && context->argc <= maxArgs, JS_E_PARAM_INVALID,
+    CHECK_WITH_INT_ERR_MESSAGE(env, context->argc >= minArgs && context->argc <= maxArgs, JS_E_PARAM_INVALID,
         "Number of args is invalid");
-    CHECK_COND_WITH_ERR_MESSAGE(env,
+    CHECK_WITH_INT_ERR_MESSAGE(env,
         napi_unwrap(env, thisVar, reinterpret_cast<void **>(&context->objectInfo)) == napi_ok
         && context->objectInfo != nullptr, JS_E_PARAM_INVALID, "Failed to get object info");
     if (!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL,"This interface can be called only by system apps");
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
         return nullptr;
     }
     // Parse config (argv[0]): { type: AnalysisToolType, param?: string }
     napi_value configArg = context->argv[ARGS_ZERO];
     napi_valuetype configType = napi_undefined;
-    CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, configArg, &configType) == napi_ok,
+    CHECK_WITH_INT_ERR_MESSAGE(env, napi_typeof(env, configArg, &configType) == napi_ok,
         JS_E_PARAM_INVALID, "config type check failed");
-    CHECK_COND_WITH_ERR_MESSAGE(env, configType == napi_object, JS_E_PARAM_INVALID, "config must be object");
+    CHECK_WITH_INT_ERR_MESSAGE(env, configType == napi_object, JS_E_PARAM_INVALID, "config must be object");
         napi_value typeValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg, ANALYSIS_TOOL_CONFIG_TYPE.c_str());
-    CHECK_COND_WITH_ERR_MESSAGE(env, typeValue != nullptr, JS_E_PARAM_INVALID, "type is required");
-    CHECK_COND_WITH_ERR_MESSAGE(env,
+    CHECK_WITH_INT_ERR_MESSAGE(env, typeValue != nullptr, JS_E_PARAM_INVALID, "type is required");
+    CHECK_WITH_INT_ERR_MESSAGE(env,
         MediaLibraryNapiUtils::GetInt32(env, typeValue, context->analysisToolType) == napi_ok,
     JS_E_PARAM_INVALID, "type invalid");
-    CHECK_COND_WITH_ERR_MESSAGE(env,
+    CHECK_WITH_INT_ERR_MESSAGE(env,
         context->analysisToolType >= ANALYSIS_TOOL_TYPE_BEGIN && context->analysisToolType <= ANALYSIS_TOOL_TYPE_END,
         JS_E_PARAM_INVALID, "type out of range");
     if (MediaLibraryNapiUtils::IsExistsByPropertyName(env, configArg, ANALYSIS_TOOL_CONFIG_PARAM.c_str())) {
         napi_value paramValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg,
             ANALYSIS_TOOL_CONFIG_PARAM.c_str());
-        CHECK_COND_WITH_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
-        CHECK_COND_WITH_ERR_MESSAGE(env,
+        CHECK_WITH_INT_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
+        CHECK_WITH_INT_ERR_MESSAGE(env,
             MediaLibraryNapiUtils::GetParamStringStrict(env, paramValue,
             MAX_ANALYSIS_TOOL_PARAM_LENGTH, context->analysisToolParam) == napi_ok,
         	JS_E_PARAM_INVALID, "param invalid or too long");
     }
     //Parse callback (argv[1]): Callback<AnalysisToolResult
-    CHECK_COND_WITH_ERR_MESSAGE(env, MediaLibraryNapiUtils::CheckJSArgsTypeAsFunc(env, context->argv[ARGS_ONE]),
+    CHECK_WITH_INT_ERR_MESSAGE(env, MediaLibraryNapiUtils::CheckJSArgsTypeAsFunc(env, context->argv[ARGS_ONE]),
         JS_E_PARAM_INVALID, "callback invalid");
-    CHECK_COND_WITH_ERR_MESSAGE(env,
+    CHECK_WITH_INT_ERR_MESSAGE(env,
         ActiveAnalysisJsCallbackHolder::Create(env, context->argv[ARGS_ONE], context->activeAnalysisCallbackHolder)
             == napi_ok, JS_E_INNER_FAIL, "Failed to create analysiis tool callback");
     napi_value result = nullptr;
-    CHECK_ARGS(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
+    CHECK_ARGS_WITH_CODE(env, napi_get_boolean(env, true, &result), JS_INNER_FAIL);
     return result;
 }
 
@@ -17838,47 +17838,46 @@ napi_env env, napi_callback_info info, unique_ptr<MediaLibraryAsyncContext> &con
     constexpr size_t maxArgs = ARGS_ONE;
     napi_value thisVar = nullptr;
     context->argc = maxArgs;
-    CHECK_COND_WITH_ERR_MESSAGE(env, napi_get_cb_info(env, info, &context->argc,&(context->argv[ARGS_ZERO]),
+    CHECK_WITH_INT_ERR_MESSAGE(env, napi_get_cb_info(env, info, &context->argc,&(context->argv[ARGS_ZERO]),
         &thisVar, nullptr) == napi_ok, JS_E_PARAM_INVALID, "Failed to get cb info");
-    CHECK_COND_WITH_ERR_MESSAGE(env, context->argc >= minArgs && context->argc <= maxArgs, JS_E_PARAM_INVALID,
+    CHECK_WITH_INT_ERR_MESSAGE(env, context->argc >= minArgs && context->argc <= maxArgs, JS_E_PARAM_INVALID,
         "Number of args is invalid");
-    CHECK_COND_WITH_ERR_MESSAGE(env,
+    CHECK_WITH_INT_ERR_MESSAGE(env,
         napi_unwrap(env, thisVar, reinterpret_cast<void **>(&context->objectInfo)) == napi_ok,
         JS_E_PARAM_INVALID, "Failed to unwrap thisVar");
-    CHECK_COND_WITH_ERR_MESSAGE(env, context->objectInfo != nullptr, JS_E_PARAM_INVALID,
+    CHECK_WITH_INT_ERR_MESSAGE(env, context->objectInfo != nullptr, JS_E_PARAM_INVALID,
         "Failed to get object info");
     if(!MediaLibraryNapiUtils::IsSystemApp()) {
-        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        NapiError::ThrowErrorWithIntCode(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system apps");
         return nullptr;
     }
-    CHECK_COND_WITH_ERR_MESSAGE(env, CheckNapiCallerPermission(PERM_WRITE_IMAGEVIDEO),
-        OHOS_PERMISSION_DENIED_CODE, "Have no write imagevideo permission");
     // Parse config (argv[0]): { taskId: string, param?:string
     napi_value configArg = context->argv[ARGS_ZERO];
     napi_valuetype configType = napi_undefined;
-    CHECK_COND_WITH_ERR_MESSAGE(env, napi_typeof(env, configArg, &configType) == napi_ok,
+    CHECK_WITH_INT_ERR_MESSAGE(env, napi_typeof(env, configArg, &configType) == napi_ok,
         JS_E_PARAM_INVALID, "config type check failed");
-    CHECK_COND_WITH_ERR_MESSAGE(env, configType == napi_object, JS_E_PARAM_INVALID, "config must be object");
+    CHECK_WITH_INT_ERR_MESSAGE(env, configType == napi_object, JS_E_PARAM_INVALID, "config must be object");
 
     napi_value taskIdValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg,
         ANALYSIS_TOOL_STOP_TASK_ID.c_str());
-    CHECK_COND_WITH_ERR_MESSAGE(env, taskIdValue != nullptr,JS_E_PARAM_INVALID, "taskid is required");
-    CHECK_COND_WITH_ERR_MESSAGE(env,
+    CHECK_WITH_INT_ERR_MESSAGE(env, taskIdValue != nullptr,JS_E_PARAM_INVALID, "taskid is required");
+    CHECK_WITH_INT_ERR_MESSAGE(env,
         MediaLibraryNapiUtils::GetParamStringPathMax(env, taskIdValue, context->analysisToolTaskId) == napi_ok,
         OHOS_INVALID_PARAM_CODE, "taskId invalid");
-    CHECK_COND_WITH_ERR_MESSAGE(env, !context->analysisToolTaskId.empty(), JS_E_PARAM_INVALID, "taskid is empty");
+    CHECK_WITH_INT_ERR_MESSAGE(env, !context->analysisToolTaskId.empty(), JS_E_PARAM_INVALID, "taskid is empty");
 
     if (MediaLibraryNapiUtils::IsExistsByPropertyName(env, configArg, ANALYSIS_TOOL_CONFIG_PARAM.c_str())) {
         napi_value paramValue = MediaLibraryNapiUtils::GetPropertyValueByName(env, configArg,
             ANALYSIS_TOOL_CONFIG_PARAM.c_str());
-        CHECK_COND_WITH_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
-        CHECK_COND_WITH_ERR_MESSAGE(env,
+        CHECK_WITH_INT_ERR_MESSAGE(env, paramValue != nullptr, JS_E_PARAM_INVALID, "param invalid");
+        CHECK_WITH_INT_ERR_MESSAGE(env,
             MediaLibraryNapiUtils::GetParamStringStrict(env, paramValue,
             MAX_ANALYSIS_TOOL_PARAM_LENGTH, context->analysisToolParam) == napi_ok,
             JS_E_PARAM_INVALID, "param invalid or too long");
     }
     napi_value result = nullptr;
-    CHECK_ARGS(env, napi_get_boolean(env, true, &result),JS_INNER_FAIL);
+    CHECK_ARGS_WITH_CODE(env, napi_get_boolean(env, true, &result),JS_INNER_FAIL);
     return result;
 }
 
@@ -18014,7 +18013,7 @@ static int32_t NormalizeAnalysisToolErrorCode(int32_t code)
 
 static void ThrowAnalysisToolError(napi_env env, int32_t normalizedCode)
 {
-    NapiError::ThrowError(env, normalizedCode, GetActiveAnalysisPromiseErrorMessage(normalizedCode));
+    NapiError::ThrowErrorWithIntCode(env, normalizedCode, GetActiveAnalysisPromiseErrorMessage(normalizedCode));
 }
 
 static void JSInvokeAnalysisToolExecute(napi_env env,void *data)
@@ -18065,7 +18064,7 @@ static void JSInvokeAnalysisToolCompleteCallback(napi_env env, napi_status statu
         int32_t rawErrorCode = context->error != ERR_DEFAULT ? context->error : MediaLibraryNapiUtils::TransErrorCode("PhotoAccessInvokeAnalysisTool",context->retVal);
         int32_t jsErrorCode = NormalizeActiveAnalysisPromiseErrorCode(rawErrorCode);
         std::string errorMessage = GetActiveAnalysisPromiseErrorMessage(jsErrorCode);
-        MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, jsErrorCode, errorMessage);
+        MediaLibraryNapiUtils::CreateNapiErrorObject(env, jsContext->error, jsErrorCode, errorMessage, true);
     }
     NAPI_INFO_LOG("JSInvokeAnalysisToolCompleteCallback finish,status: %{public}d, error: %{public}d, "
         "retVal: %{public}d, taskId: %{public}s", static_cast<int32_t>(status), context->error,
@@ -18084,7 +18083,7 @@ napi_value MediaLibraryNapi::PhotoAccessInvokeAnalysisTool(napi_env env, napi_ca
     tracer.Start("PhotoAccessInvokeAnalysisTool");
     NAPI_INFO_LOG("PhotoAccessInvokeAnalysisTool start");
     if (!CheckNapiCallerPermission(CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION)) {
-        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+        NapiError::ThrowErrorWithIntCode(env, OHOS_PERMISSION_DENIED_CODE,
             "Permission denied: " + CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION + " required.");
         return nullptr;
     }
@@ -18107,7 +18106,7 @@ napi_value MediaLibraryNapi::PhotoAccessCancelAnalysisTool(napi_env env, napi_ca
     unique_ptr<MediaLibraryAsyncContext> asyncContext = make_unique<MediaLibraryAsyncContext>();
     asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
     if (!CheckNapiCallerPermission(CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION)) {
-        NapiError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+        NapiError::ThrowErrorWithIntCode(env, OHOS_PERMISSION_DENIED_CODE,
             "Permission denied: " + CONTROL_IMAGEVIDEO_ANALYSIS_PERMISSION + " required.");
         return nullptr;
     }
