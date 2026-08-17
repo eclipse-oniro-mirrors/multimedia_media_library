@@ -2476,7 +2476,7 @@ bool MediaLibraryAniUtils::IsFeaturedSinglePortraitAlbum(
     for (auto& operationItem : operationList) {
         switch (operationItem.operation) {
             case OHOS::DataShare::OperationType::LIKE : {
-                if (operationItem.singleParams.size() < 2) {
+                if (operationItem.singleParams.size() < 2) { // 2 min size
                     break;
                 }
                 std::string field = std::get<string>(operationItem.singleParams[0]);
@@ -2496,7 +2496,7 @@ bool MediaLibraryAniUtils::IsFeaturedSinglePortraitAlbum(
                 break;
             }
             case OHOS::DataShare::OperationType::LIMIT : {
-                if (operationItem.singleParams.size() < 2) {
+                if (operationItem.singleParams.size() < 2) { // 2 min size
                     break;
                 }
                 featuredSinglePortraitPredicates.Limit(operationItem.GetSingle(0), operationItem.GetSingle(1));
