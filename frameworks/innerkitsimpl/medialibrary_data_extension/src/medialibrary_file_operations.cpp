@@ -165,20 +165,6 @@ int32_t MediaLibraryFileOperations::ModifyFileOperation(MediaLibraryCommand &cmd
     if (values.GetObject(CONST_MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
         valueObject.GetString(dstReFilePath);
     }
-    if (!dstReFilePath.empty()) {
-        string pathWithBound = "/" + dstReFilePath + "/";
-        if (pathWithBound.find("/../") != string::npos) {
-            MEDIA_ERR_LOG("ModifyFileOperation: relative_path contains path traversal component");
-            return E_INVALID_FILEID;
-        }
-    }
-    if (!dstFileName.empty()) {
-        string pathWithBound = "/" + dstFileName + "/";
-        if (pathWithBound.find("/../") != string::npos) {
-            MEDIA_ERR_LOG("ModifyFileOperation: dstFileName contains path traversal component");
-            return E_INVALID_FILEID;
-        }
-    }
     string dstFilePath = ROOT_MEDIA_DIR + dstReFilePath + dstFileName;
 
     if (srcPath.compare(dstFilePath) == 0) {

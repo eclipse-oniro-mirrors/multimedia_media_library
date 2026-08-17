@@ -238,7 +238,7 @@ static inline std::string GetThumbnailPath(const std::string &path, const std::s
 {
     if (path.length() <= ROOT_MEDIA_DIR.length() ||
         path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR ||
-        ("/" + path + "/").find("/../") != std::string::npos) {
+        path.find("../") != std::string::npos) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";
@@ -249,8 +249,7 @@ static inline std::string GetThumbnailPathHighlight(const std::string &path, con
     const std::string &timeStamp)
 {
     if (path.length() <= ROOT_MEDIA_DIR.length() ||
-        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR ||
-        ("/" + path + "/").find("/../") != std::string::npos) {
+        path.substr(0, ROOT_MEDIA_DIR.length()) != ROOT_MEDIA_DIR) {
         return "";
     }
     std::string suffix = (key == "THM_ASTC") ? ".astc" : ".jpg";
