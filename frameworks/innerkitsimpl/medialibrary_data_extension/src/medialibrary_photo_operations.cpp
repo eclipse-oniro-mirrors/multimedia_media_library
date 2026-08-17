@@ -344,6 +344,9 @@ static bool GetValidOrderClause(const DataSharePredicates &predicate, string &cl
     int32_t count = 0;
     clause = "ROW_NUMBER() OVER (ORDER BY ";
     for (const auto &item : items) {
+        if (item.singleParams.empty()) {
+            continue;
+        }
         if (item.operation == ORDER_BY_ASC) {
             count++;
             clause += static_cast<string>(item.GetSingle(FIELD_IDX)) + " ASC) as " + CONST_PHOTO_INDEX;
