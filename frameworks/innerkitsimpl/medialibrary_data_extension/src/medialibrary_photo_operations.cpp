@@ -7790,7 +7790,6 @@ void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<stri
 
 void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicates &predicates)
 {
-    CHECK_AND_RETURN_LOG(predicates != NULL, "predicate is nullptr");
     auto &items = predicates.GetOperationList();
     string bundleName;
     for (auto &item : items) {
