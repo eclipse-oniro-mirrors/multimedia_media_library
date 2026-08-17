@@ -7801,9 +7801,7 @@ void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicate
     string bundleName;
     for (auto &item : items) {
         CHECK_AND_CONTINUE_ERR_LOG(!item.singleParams.empty(), "SingleParams is empty");
-        SingleValue singleKey = item.GetSingle(0);
-        CHECK_AND_CONTINUE_ERR_LOG(singleKey != NULL, "singleKey is nullptr");
-        std::string key = static_cast<string>(singleKey);
+        std::string key = static_cast<string>(item.GetSingle(0));
         if (key.empty() || IsLegalKey(key)) {
             continue;
         }
