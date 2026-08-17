@@ -7788,6 +7788,13 @@ void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<stri
         "Failed to execute batch sql, total size: %{public}zu, error code: %{public}d", photoIdPathList.size(), ret);
 }
 
+static bool IsLegalKey(const std::string &key)
+{
+    return std::all_of(key.begin(), key.end(), [](unsigned char c) {
+        return std::islower(c) || c == '_' || std::isdigit(c);
+    });
+}
+
 void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicates &predicates)
 {
     auto &items = predicates.GetOperationList();
@@ -7797,18 +7804,14 @@ void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicate
         SingleValue singleKey = item.GetSingle(0);
         CHECK_AND_CONTINUE_ERR_LOG(singleKey != NULL, "singleKey is nullptr");
         std::string key = static_cast<string>(singleKey);
-        if (key.empty()) {
+        if (key.empty() || IsLegalKey(key)) {
             continue;
         }
-        if (!std::all_of(key.begin(), key.end(), [](unsigned char c) {
-            return std::islower(c) || c == '_' || std::isdigit(c);
-        })) {
-            if (bundleName.empty()) {
-                bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
-            }
-            MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
-            DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
+        if (bundleName.empty()) {
+            bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
         }
+        MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
+        DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
     }
 }
 } // namespace Media
