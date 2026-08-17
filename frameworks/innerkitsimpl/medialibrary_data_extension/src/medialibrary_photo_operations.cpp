@@ -7790,15 +7790,23 @@ void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<stri
 
 void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicates &predicates)
 {
+    CHECK_AND_RETURN_LOG(predicates != NULL, "predicate is nullptr");
     auto &items = predicates.GetOperationList();
-    static const std::regex KEY_PATTERN("^[a-z_0-9]+$");
+    string bundleName;
     for (auto &item : items) {
-        std::string key = static_cast<string>(item.GetSingle(0));
+        CHECK_AND_CONTINUE_ERR_LOG(!item.singleParams.empty(), "SingleParams is empty");
+        SingleValue singleKey = item.GetSingle(0);
+        CHECK_AND_CONTINUE_ERR_LOG(singleKey != NULL, "singleKey is nullptr");
+        std::string key = static_cast<string>(singleKey);
         if (key.empty()) {
             continue;
         }
-        if (!std::regex_match(key, KEY_PATTERN)) {
-            string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+        if (!std::all_of(key.begin(), key.end(), [](unsigned char c) {
+            return std::islower(c) || c == '_' || std::isdigit(c);
+        })) {
+            if (bundleName.empty()) {
+                bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
+            }
             MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
             DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
         }
