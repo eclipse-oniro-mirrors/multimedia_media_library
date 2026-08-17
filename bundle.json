@@ -47,6 +47,7 @@
           "battery_manager",
           "bundle_framework",
           "c_utils",
+          "cJSON",
           "cellular_data",
           "camera_framework",
           "core_service",
