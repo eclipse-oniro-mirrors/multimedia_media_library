@@ -776,7 +776,8 @@ static int32_t OpenDocument(const string &uri, const string &mode)
 
 static bool CheckBetaIssueId(const string &betaIssueId)
 {
-    CHECK_AND_RETURN_RET_LOG(!betaIssueId.empty() && betaIssueId.length() == 10, false, "betaIssueId is invalid");
+    CHECK_AND_RETURN_RET_LOG(!betaIssueId.empty() && betaIssueId.length() == 10, false,
+        "betaIssueId is invalid"); // 10 history restriction
     for (const char &c : betaIssueId) {
         CHECK_AND_RETURN_RET_LOG(isdigit(c) != 0, false, "betaIssueId not number");
     }
