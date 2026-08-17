@@ -61,8 +61,7 @@ static sptr<IRemoteObject> InitToken()
 
 static int32_t GetCurrentAccountId()
 {
-    constexpr int32_t DEFAULT_USER_ID = 100;
-    int32_t activeUserId = DEFAULT_USER_ID;
+    int32_t activeUserId = 100;
     ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
     if (ret != ERR_OK) {
         MEDIA_ERR_LOG("fail to get activeUser:%{public}d", ret);
@@ -279,8 +278,6 @@ bool NotificationHelper::StartObserverIfNeeded()
             getpid(), callbacks_.size());
     }
 
-    // Create helper with correct user context via GetMultiUri (managed by MediaDataShareHelper
-    // in the client layer; notification_helper creates its own instance for observer use).
     int32_t activeUser = GetCurrentAccountId();
     auto token = InitToken();
     if (token == nullptr) {
@@ -291,9 +288,6 @@ bool NotificationHelper::StartObserverIfNeeded()
     std::string multiUri = MediaUriUtils::GetMultiUri(baseUri, activeUser).ToString();
     MEDIA_INFO_LOG("StartObserverIfNeeded: creating helper for userId %{public}d, uri:%{public}s",
         activeUser, multiUri.c_str());
-
-    // Creating DataShareHelper may fail during early boot / ability not ready.
-    // Add minimal retry to reduce flakiness and add high-signal logs for joint debugging.
     std::shared_ptr<DataShare::DataShareHelper> helper;
     constexpr int32_t maxCreateRetry = 3;
     for (int32_t i = 0; i < maxCreateRetry; ++i) {

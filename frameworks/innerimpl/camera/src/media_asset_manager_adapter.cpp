@@ -60,7 +60,8 @@ static MultiStagesCapturePhotoStatus QueryViaSandBoxWithoutDfx(const QueryPhotoS
         return MultiStagesCapturePhotoStatus::QUERY_INNER_FAIL;
     }
 
-    std::shared_ptr<DataShare::DataShareResultSet> resultSet = rdbStore->Query(predicates, fetchColumn, object, errCode);
+    std::shared_ptr<DataShare::DataShareResultSet> resultSet =
+        rdbStore->Query(predicates, fetchColumn, object, errCode);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
         MEDIA_ERR_LOG("query resultSet is nullptr");
         return MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
