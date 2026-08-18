@@ -3241,7 +3241,7 @@ void MediaLibraryRdbUtils::BuildDoubleCheckPredicates(NativeRdb::RdbPredicates &
         return;
     }
     // rebuild rdbpredicates
-    condition = condition.empty() ? clause : condition + " AND " + clause;
+    condition = condition.empty() ? clause : " (" + condition + ") AND " + clause;
     rdbPredicate.SetWhereClause(condition);
 }
 
