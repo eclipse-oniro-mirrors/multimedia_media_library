@@ -51,6 +51,10 @@ std::string MediaPathUtils::GetFileName(const std::string &filePath)
                 fileName = filePath.substr(lastSlash + 1);
             }
         }
+        size_t queryPos = fileName.find('?');
+        if (queryPos != std::string::npos) {
+            fileName = fileName.substr(0, queryPos);
+        }
     }
 
     return fileName;
@@ -58,11 +62,16 @@ std::string MediaPathUtils::GetFileName(const std::string &filePath)
 
 std::string MediaPathUtils::GetExtension(const std::string &path)
 {
-    size_t splitIndex = path.find_last_of(DOT);
+    std::string pathWithoutQuery = path;
+    size_t queryPos = pathWithoutQuery.find('?');
+    if (queryPos != std::string::npos) {
+        pathWithoutQuery = pathWithoutQuery.substr(0, queryPos);
+    }
+    size_t splitIndex = pathWithoutQuery.find_last_of(DOT);
     if (splitIndex == std::string::npos || splitIndex == 0) {
         return EMPTY_STRING;
     }
-    std::string extension = path.substr(splitIndex + 1);
+    std::string extension = pathWithoutQuery.substr(splitIndex + 1);
     if (!extension.empty()) {
         transform(extension.begin(), extension.end(), extension.begin(), ::tolower);
     }
@@ -77,7 +86,7 @@ bool MediaPathUtils::CheckIsCloudFile(const std::string &sandboxPath)
     auto valueLen = getxattr(sandboxPath.c_str(), CLOUD_LOCATION_ATTR, cloudvalue, MAX_ATTR_NAME);
     CHECK_AND_RETURN_RET_LOG(valueLen > 0, false, "failed to getxattr, sandboxPath: %{public}s", sandboxPath.c_str());
     constexpr const char FILE_POSITION_CLOUD = '2';
-    return cloudvalue[0] = FILE_POSITION_CLOUD;
+    return cloudvalue[0] == FILE_POSITION_CLOUD;
 }
 
 std::string MediaPathUtils::ConvertCloudPathToLocalPath(const std::string &cloudPath)

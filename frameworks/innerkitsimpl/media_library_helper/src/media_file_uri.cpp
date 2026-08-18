@@ -528,6 +528,9 @@ void MediaFileUri::GetTimeIdFromUri(const std::vector<std::string> &uriBatch, st
             timeIdBatch.emplace_back(uri.substr(indexStart + string(CONST_ML_URI_TIME_ID).length(), timeIdLen));
         }
         if (indexEnd + string(CONST_ML_URI_OFFSET).length() <= uri.size()) {
+            if (!MediaFileUtils::IsValidInteger(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length()))) {
+                return;
+            }
             offset.emplace_back(stoi(uri.substr(indexEnd + string(CONST_ML_URI_OFFSET).length())));
         }
     }
@@ -563,39 +566,44 @@ int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum)
 
 string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
 {
-    size_t index = uri.rfind('/');
+    string uriWithoutQuery = uri;
+    size_t queryPos = uriWithoutQuery.find('?');
+    if (queryPos != string::npos) {
+        uriWithoutQuery = uriWithoutQuery.substr(0, queryPos);
+    }
+    size_t index = uriWithoutQuery.rfind('/');
     if (index == string::npos) {
-        MEDIA_ERR_LOG("index invalid %{private}s", uri.c_str());
+        MEDIA_ERR_LOG("index invalid %{private}s", uriWithoutQuery.c_str());
         return "";
     }
-    string realTitle = uri.substr(0, index);
+    string realTitle = uriWithoutQuery.substr(0, index);
     index = realTitle.rfind('/');
     if (index == string::npos) {
-        MEDIA_ERR_LOG("invalid realTitle %{private}s", uri.c_str());
+        MEDIA_ERR_LOG("invalid realTitle %{private}s", uriWithoutQuery.c_str());
         return "";
     }
     realTitle = realTitle.substr(index + 1);
     index = realTitle.rfind('_');
     if (index == string::npos) {
-        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", uri.c_str());
+        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", uriWithoutQuery.c_str());
         return "";
     }
     string fileId = realTitle.substr(index + 1);
     if (!all_of(fileId.begin(), fileId.end(), ::isdigit)) {
-        MEDIA_ERR_LOG("fileId invalid %{private}s", uri.c_str());
+        MEDIA_ERR_LOG("fileId invalid %{private}s", uriWithoutQuery.c_str());
         return "";
     }
     int32_t fileUniqueId = 0;
     if (!StrToInt(fileId, fileUniqueId)) {
-        MEDIA_ERR_LOG("invalid fileuri %{private}s", uri.c_str());
+        MEDIA_ERR_LOG("invalid fileuri %{private}s", uriWithoutQuery.c_str());
         return "";
     }
     int32_t bucketNum = 0;
     CreateAssetBucket(fileUniqueId, bucketNum);
 
-    string ext = MediaFileUtils::GetExtensionFromPath(uri);
+    string ext = MediaFileUtils::GetExtensionFromPath(uriWithoutQuery);
     if (ext.empty()) {
-        MEDIA_ERR_LOG("invalid ext %{private}s", uri.c_str());
+        MEDIA_ERR_LOG("invalid ext %{private}s", uriWithoutQuery.c_str());
         return "";
     }
 

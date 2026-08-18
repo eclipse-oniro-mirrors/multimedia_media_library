@@ -49,6 +49,10 @@ string MediaLibraryDataManagerUtils::GetOperationType(const string &uri)
     if (found != string::npos) {
         oprn = uri.substr(found + 1);
     }
+    size_t queryPos = oprn.find('?');
+    if (queryPos != string::npos) {
+        oprn = oprn.substr(0, queryPos);
+    }
 
     return oprn;
 }
@@ -59,6 +63,10 @@ string MediaLibraryDataManagerUtils::GetDisPlayNameFromPath(const std::string &p
     size_t lastSlashPosition = path.rfind("/");
     if (lastSlashPosition != string::npos) {
         displayName = path.substr(lastSlashPosition + 1);
+    }
+    size_t queryPos = displayName.find('?');
+    if (queryPos != string::npos) {
+        displayName = displayName.substr(0, queryPos);
     }
     return displayName;
 }

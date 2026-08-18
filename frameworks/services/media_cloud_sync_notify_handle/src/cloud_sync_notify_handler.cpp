@@ -18,6 +18,7 @@
 #include <sys/stat.h>
 
 #include "cloud_media_asset_types.h"
+#include "media_file_utils.h"
 #include "cloud_sync_utils.h"
 #include "medialibrary_album_fusion_utils.h"
 #include "medialibrary_album_operations.h"
@@ -33,7 +34,7 @@
 #include "dfx_const.h"
 
 using namespace std;
-
+// LCOV_EXCL_START
 namespace OHOS {
 namespace Media {
 using ChangeType = DataShare::DataShareObserver::ChangeType;
@@ -74,7 +75,8 @@ void CloudSyncNotifyHandler::HandleInsertEvent(const std::list<Uri> &uris)
         }
         string idString = uriString.substr(pos + 1);
         if (idString.compare(INVALID_ZERO_ID) == 0 || !IsCloudNotifyInfoValid(idString)) {
-            MEDIA_WARN_LOG("cloud observer get no valid fileId and uri : %{public}s", uriString.c_str());
+            MEDIA_DEBUG_LOG("cloud observer get no valid fileId and uri : %{public}s",
+                MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
         if (uriString.find(PhotoColumn::PHOTO_THM_DOWNLOAD_URI_PREFIX) != string::npos) {
@@ -89,6 +91,10 @@ void CloudSyncNotifyHandler::HandleDeleteEvent(const std::list<Uri> &uris)
 {
     for (auto &uri : uris) {
         string uriString = uri.ToString();
+        size_t queryPos = uriString.find('?');
+        if (queryPos != string::npos) {
+            uriString = uriString.substr(0, queryPos);
+        }
         auto dateTakenPos = uriString.rfind('/');
         if (dateTakenPos == string::npos) {
             continue;
@@ -101,7 +107,8 @@ void CloudSyncNotifyHandler::HandleDeleteEvent(const std::list<Uri> &uris)
         string dateTaken = uriString.substr(dateTakenPos + 1);
         string fileId = uriString.substr(fileIdPos + 1, dateTakenPos - fileIdPos - 1);
         if (!IsCloudNotifyInfoValid(dateTaken) || !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
 
@@ -114,6 +121,10 @@ void CloudSyncNotifyHandler::HandleTimeUpdateEvent(const std::list<Uri> &uris)
 {
     for (auto &uri : uris) {
         string uriString = uri.ToString();
+        size_t queryPos = uriString.find('?');
+        if (queryPos != string::npos) {
+            uriString = uriString.substr(0, queryPos);
+        }
         auto newDateTakenPos = uriString.rfind('/');
         if (newDateTakenPos == string::npos) {
             continue;
@@ -132,7 +143,8 @@ void CloudSyncNotifyHandler::HandleTimeUpdateEvent(const std::list<Uri> &uris)
         string fileId = uriString.substr(fileIdPos + 1, formerDateTakenPos - fileIdPos - 1);
         if (!IsCloudNotifyInfoValid(newDateTaken) || !IsCloudNotifyInfoValid(formerDateTaken) ||
             !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
 
@@ -199,6 +211,10 @@ void CloudSyncNotifyHandler::HandleDirtyDataFix(const std::list<Uri> &uris, cons
 
 std::string CloudSyncNotifyHandler::GetfileIdFromPastDirtyDataFixUri(std::string uriString)
 {
+    size_t queryPos = uriString.find('?');
+    if (queryPos != string::npos) {
+        uriString = uriString.substr(0, queryPos);
+    }
     auto fileIdPos = uriString.rfind('/');
     if (fileIdPos == string::npos) {
         return "";
@@ -216,11 +232,12 @@ void CloudSyncNotifyHandler::HandleContentNotFound(const std::list<Uri> &uris)
             continue;
         }
         if (fileId.compare(INVALID_ZERO_ID) == 0 || !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
         MEDIA_INFO_LOG(
-            "ContentNotFound, uri : %{public}s", uriString.c_str());
+            "ContentNotFound, uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
     }
 }
 
@@ -233,7 +250,8 @@ void CloudSyncNotifyHandler::HandleThumbnailNotFound(const std::list<Uri> &uris)
             continue;
         }
         if (fileId.compare(INVALID_ZERO_ID) == 0 || !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
 
@@ -242,7 +260,7 @@ void CloudSyncNotifyHandler::HandleThumbnailNotFound(const std::list<Uri> &uris)
             MEDIA_ERR_LOG("ThumbnailService CreateThumbnailPastDirtyDataFix failed : %{public}d", err);
             continue;
         }
-        MEDIA_INFO_LOG("Generate thumbnail %{public}s, success ", uriString.c_str());
+        MEDIA_INFO_LOG("Generate thumbnail %{public}s, success ", MediaFileUtils::DesensitizeUri(uriString).c_str());
     }
 }
 
@@ -255,7 +273,8 @@ void CloudSyncNotifyHandler::HandleLCDNotFound(const std::list<Uri> &uris)
             continue;
         }
         if (fileId.compare(INVALID_ZERO_ID) == 0 || !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
 
@@ -264,7 +283,7 @@ void CloudSyncNotifyHandler::HandleLCDNotFound(const std::list<Uri> &uris)
             MEDIA_ERR_LOG("ThumbnailService CreateLCDPastDirtyDataFix failed : %{public}d", err);
             continue;
         }
-        MEDIA_INFO_LOG("Generate Lcd %{public}s, success ", uriString.c_str());
+        MEDIA_INFO_LOG("Generate Lcd %{public}s, success ", MediaFileUtils::DesensitizeUri(uriString).c_str());
     }
     return;
 }
@@ -278,7 +297,8 @@ void CloudSyncNotifyHandler::HandleLCDSizeTooLarge(const std::list<Uri> &uris)
             continue;
         }
         if (fileId.compare(INVALID_ZERO_ID) == 0 || !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
 
@@ -287,7 +307,7 @@ void CloudSyncNotifyHandler::HandleLCDSizeTooLarge(const std::list<Uri> &uris)
             MEDIA_ERR_LOG("ThumbnailService CreateLcdPastDirtyDataFix failed : %{public}d", err);
             continue;
         }
-        MEDIA_INFO_LOG("Regenerate Lcd %{public}s success ", uriString.c_str());
+        MEDIA_INFO_LOG("Regenerate Lcd %{public}s success ", MediaFileUtils::DesensitizeUri(uriString).c_str());
     }
     return;
 }
@@ -301,7 +321,8 @@ void CloudSyncNotifyHandler::HandleContentSizeIsZero(const std::list<Uri> &uris)
             continue;
         }
         if (fileId.compare(INVALID_ZERO_ID) == 0 || !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
 
@@ -379,7 +400,8 @@ void CloudSyncNotifyHandler::HandleAlbumNotFound(const std::list<Uri> &uris)
             continue;
         }
         if (fileId.compare(INVALID_ZERO_ID) == 0 || !IsCloudNotifyInfoValid(fileId)) {
-            MEDIA_WARN_LOG("cloud observer get no valid uri : %{public}s", uriString.c_str());
+            MEDIA_WARN_LOG(
+                "cloud observer get no valid uri : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
             continue;
         }
 
@@ -431,14 +453,15 @@ void CloudSyncNotifyHandler::HandleThumbnailGenerateFailed(const std::list<Uri> 
             MEDIA_ERR_LOG("RegenerateThumbnailFromCloud failed : %{public}d", err);
             continue;
         }
-        MEDIA_INFO_LOG("RegenerateThumbnailFromCloud %{public}s success, uri: ", uriString.c_str());
+        MEDIA_INFO_LOG(
+            "RegenerateThumbnailFromCloud success, uri: %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
     }
 }
 
 void CloudSyncNotifyHandler::MakeResponsibilityChain()
 {
     string uriString = notifyInfo_.uris.front().ToString();
-    MEDIA_DEBUG_LOG("observer get first uri is : %{public}s", uriString.c_str());
+    MEDIA_DEBUG_LOG("observer get first uri is : %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
 
     if (uriString.find("file://cloudsync/Photo/HeightError/") != string::npos) {
         return;
@@ -459,7 +482,6 @@ void CloudSyncNotifyHandler::MakeResponsibilityChain()
     }
 
     shared_ptr<BaseHandler> chain = nullptr;
-
     if (uriString.find(PhotoAlbumColumns::ALBUM_CLOUD_URI_PREFIX) != string::npos) {
         if (notifyInfo_.type == ChangeType::DELETE) {
             chain = NotifyResponsibilityChainFactory::CreateChain(ALBUM_DELETE);
@@ -489,3 +511,4 @@ void CloudSyncNotifyHandler::MakeResponsibilityChain()
 }
 } //namespace Media
 } //namespace OHOS
+// LCOV_EXCL_STOP
