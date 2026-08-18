@@ -1172,33 +1172,67 @@ bool CloneRestore::CheckSrcDbHasRiskStatusColumn()
     return HasColumn(srcColumnInfoMap, PhotoColumn::PHOTO_RISK_STATUS);
 }
 
-void CloneRestore::UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos)
+bool CloneRestore::FillRiskStatusValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
 {
+    if (fileInfo.photoRiskStatus == static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED)) {
+        return false;
+    }
+    values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, fileInfo.photoRiskStatus);
+    int32_t isCritical = (fileInfo.photoRiskStatus == static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS)
+                          || fileInfo.photoRiskStatus == static_cast<int32_t>(PhotoRiskStatus::REJECTED))
+                             ? 1
+                             : 0;
+    values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, isCritical);
+    return true;
+}
+
+bool CloneRestore::FillPackageNameValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
+{
+    if (fileInfo.originalPackageName.empty() || !fileInfo.newPackageName.empty()) {
+        return false;
+    }
+    values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, fileInfo.originalPackageName);
+    return true;
+}
+
+bool CloneRestore::FillUniqueIdValues(FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
+{
+    bool isImageOrVideo = fileInfo.fileType == MediaType::MEDIA_TYPE_IMAGE
+                          || fileInfo.fileType == MediaType::MEDIA_TYPE_VIDEO;
+    if (!isImageOrVideo || (!fileInfo.newUniqueId.empty() && fileInfo.newUniqueId != "-1")) {
+        return false;
+    }
+    if (fileInfo.uuid.empty()) {
+        fileInfo.uuid = MediaFileUtils::GenerateUUID();
+    }
+    values.PutString(PhotoColumn::UNIQUE_ID, fileInfo.uuid);
+    return true;
+}
+
+void CloneRestore::UpdatePreStatusForSamePhotos(vector<FileInfo> &fileInfos)
+{
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "mediaLibraryRdb_ is null");
+    bool canUpdateRisk = CheckSrcDbHasRiskStatusColumn() && CheckDestDbHasRiskStatusColumn();
     for (FileInfo &fileInfo : fileInfos) {
         if (fileInfo.fileIdNew <= 0 || fileInfo.isNew) {
             continue;
         }
-
-        if (CheckSrcDbHasRiskStatusColumn() &&
-            fileInfo.photoRiskStatus != static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED)) {
-            NativeRdb::ValuesBucket values;
-            values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, fileInfo.photoRiskStatus);
-            int32_t isCritical = (fileInfo.photoRiskStatus == static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS)
-                                  || fileInfo.photoRiskStatus == static_cast<int32_t>(PhotoRiskStatus::REJECTED))
-                                     ? 1
-                                     : 0;
-            values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, isCritical);
-
-            std::string whereClause = PhotoColumn::MEDIA_ID + " = ?";
-            std::vector<std::string> whereArgs = {std::to_string(fileInfo.fileIdNew)};
-
-            int32_t changedRows = 0;
-            auto ret = mediaLibraryRdb_->Update(changedRows, PhotoColumn::PHOTOS_TABLE, values, whereClause, whereArgs);
-            if (ret != NativeRdb::E_OK) {
-                MEDIA_ERR_LOG("Update failed for file_id: %{public}d with critical_type: %{public}d, error: %{public}d",
-                              fileInfo.fileIdNew, fileInfo.photoRiskStatus, ret);
-                continue;
-            }
+        NativeRdb::ValuesBucket values;
+        bool hasUpdate = false;
+        if (canUpdateRisk) {
+            hasUpdate = FillRiskStatusValues(fileInfo, values) || hasUpdate;
+        }
+        hasUpdate = FillPackageNameValues(fileInfo, values) || hasUpdate;
+        hasUpdate = FillUniqueIdValues(fileInfo, values) || hasUpdate;
+        if (!hasUpdate) {
+            continue;
+        }
+        std::string whereClause = PhotoColumn::MEDIA_ID + " = ?";
+        std::vector<std::string> whereArgs = {std::to_string(fileInfo.fileIdNew)};
+        int32_t changedRows = 0;
+        int32_t ret = mediaLibraryRdb_->Update(changedRows, PhotoColumn::PHOTOS_TABLE, values, whereClause, whereArgs);
+        if (ret != NativeRdb::E_OK) {
+            MEDIA_ERR_LOG("Update meta failed for file_id: %{public}d, ret: %{public}d", fileInfo.fileIdNew, ret);
         }
     }
 }
@@ -1211,49 +1245,6 @@ static int64_t StatLocalImageSize(const std::string &filePath)
         return 0;
     }
     return static_cast<int64_t>(statInfo.st_size);
-}
-
-void CloneRestore::UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &fileInfos)
-{
-    for (FileInfo &fileInfo : fileInfos) {
-        if (fileInfo.fileIdNew <= 0 || fileInfo.isNew || !fileInfo.needVisible ||
-            !fileInfo.needUpdatePositionToLocalAndCloud) {
-            continue;
-        }
-
-        NativeRdb::ValuesBucket values;
-        values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
-        if (FileAdapter::IsLakeFile(fileInfo)) {
-            values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, FileSourceType::MEDIA_HO_LAKE);
-        }
-        SetAttachmentSizeForCloudDuplicate(fileInfo, values);
-        values.PutInt(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, fileInfo.compositeDisplayStatus);
-        std::string whereClause = PhotoColumn::MEDIA_ID + " = ?";
-        std::vector<std::string> whereArgs = {std::to_string(fileInfo.fileIdNew)};
-        int32_t changedRows = 0;
-        int32_t ret = mediaLibraryRdb_->Update(changedRows, PhotoColumn::PHOTOS_TABLE, values, whereClause, whereArgs);
-        if (ret != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Update position to local_and_cloud failed for file_id: %{public}d, ret: %{public}d",
-                fileInfo.fileIdNew, ret);
-        }
-        int64_t localAssetSize = StatLocalImageSize(FileAdapter::GetOriginalFilePath(fileInfo));
-        const std::string updateSizeSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
-            " SET " + PhotoColumn::LOCAL_ASSET_SIZE + " = CASE WHEN " +
-            PhotoColumn::MOVING_PHOTO_EFFECT_MODE + " = ? THEN ? ELSE " + MediaColumn::MEDIA_SIZE +
-            " END WHERE " + MediaColumn::MEDIA_ID + " = ? AND " +
-            PhotoColumn::PHOTO_POSITION + " <> ?";
-        const std::vector<NativeRdb::ValueObject> sizeArgs = {
-            static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY),
-            localAssetSize,
-            fileInfo.fileIdNew,
-            static_cast<int32_t>(PhotoPositionType::CLOUD),
-        };
-        int32_t sizeRet = mediaLibraryRdb_->ExecuteSql(updateSizeSql, sizeArgs);
-        if (sizeRet != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Update local_asset_size failed for file_id: %{public}d, ret: %{public}d",
-                fileInfo.fileIdNew, sizeRet);
-        }
-    }
 }
 
 static bool IsOriginAssetExistsForDentry(const FileInfo &fileInfo)
@@ -1351,21 +1342,49 @@ bool CloneRestore::FillMergedThmLcdValues(const FileInfo &fileInfo, NativeRdb::V
     return true;
 }
 
-void CloneRestore::UpdateMergedThumbnailStatusForSamePhotos(vector<FileInfo> &fileInfos)
+bool CloneRestore::FillMergedThumbnailValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
 {
-    for (FileInfo &fileInfo : fileInfos) {
-        if (NeedSkipMergedThumbnailUpdate(fileInfo)) {
-            continue;
-        }
+    if (NeedSkipMergedThumbnailUpdate(fileInfo)) {
+        return false;
+    }
+    bool hasUpdate = FillMergedThmLcdValues(fileInfo, values);
+    if (fileInfo.hasMergedLcdThumbnail || fileInfo.hasMergedThmThumbnail) {
+        bool isLcdExist = false;
+        bool isThmExist = false;
+        ResolveMergedThumbExistence(fileInfo, isLcdExist, isThmExist);
+        values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, GetThumbStatusByExistFlag(isLcdExist, isThmExist));
+        hasUpdate = true;
+    }
+    return hasUpdate;
+}
 
+bool CloneRestore::FillMergedPhotoValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
+{
+    if (fileInfo.fileIdNew <= 0 || fileInfo.isNew || !fileInfo.needVisible ||
+        !fileInfo.needUpdatePositionToLocalAndCloud) {
+        return false;
+    }
+    values.PutInt(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    if (FileAdapter::IsLakeFile(fileInfo)) {
+        values.PutInt(PhotoColumn::PHOTO_FILE_SOURCE_TYPE, FileSourceType::MEDIA_HO_LAKE);
+    }
+    SetAttachmentSizeForCloudDuplicate(fileInfo, values);
+    values.PutInt(PhotoColumn::PHOTO_COMPOSITE_DISPLAY_STATUS, fileInfo.compositeDisplayStatus);
+    int64_t localAssetSize = (fileInfo.newEffectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY))
+        ? StatLocalImageSize(FileAdapter::GetOriginalFilePath(fileInfo))
+        : fileInfo.newMediaSize;
+    values.PutLong(PhotoColumn::LOCAL_ASSET_SIZE, localAssetSize);
+    return true;
+}
+
+void CloneRestore::UpdateMergedStatusForSamePhotos(vector<FileInfo> &fileInfos, bool updatePosition)
+{
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "mediaLibraryRdb_ is null");
+    for (FileInfo &fileInfo : fileInfos) {
         NativeRdb::ValuesBucket values;
-        bool hasUpdate = FillMergedThmLcdValues(fileInfo, values);
-        if (fileInfo.hasMergedLcdThumbnail || fileInfo.hasMergedThmThumbnail) {
-            bool isLcdExist = false;
-            bool isThmExist = false;
-            ResolveMergedThumbExistence(fileInfo, isLcdExist, isThmExist);
-            values.PutInt(PhotoColumn::PHOTO_THUMB_STATUS, GetThumbStatusByExistFlag(isLcdExist, isThmExist));
-            hasUpdate = true;
+        bool hasUpdate = FillMergedThumbnailValues(fileInfo, values);
+        if (updatePosition) {
+            hasUpdate = FillMergedPhotoValues(fileInfo, values) || hasUpdate;
         }
         if (!hasUpdate) {
             continue;
@@ -1376,57 +1395,8 @@ void CloneRestore::UpdateMergedThumbnailStatusForSamePhotos(vector<FileInfo> &fi
         int32_t changedRows = 0;
         int32_t ret = mediaLibraryRdb_->Update(changedRows, PhotoColumn::PHOTOS_TABLE, values, whereClause, whereArgs);
         if (ret != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Update merged thumbnail status failed for file_id: %{public}d, ret: %{public}d",
+            MEDIA_ERR_LOG("Update merged status failed for file_id: %{public}d, ret: %{public}d",
                 fileInfo.fileIdNew, ret);
-        }
-    }
-}
-
-void CloneRestore::UpdatePackageNameForSamePhotos(vector<FileInfo> &fileInfos)
-{
-    for (FileInfo &fileInfo : fileInfos) {
-        if (fileInfo.fileIdNew <= 0 || fileInfo.isNew) {
-            continue;
-        }
-
-        if (fileInfo.originalPackageName.empty()) {
-            continue;
-        }
-
-        // Should not update if the package_name is already filled.
-        std::string querySql = "UPDATE Photos SET package_name = ? WHERE file_id = ? "
-            "AND (package_name IS NULL OR package_name = '')";
-        std::vector<NativeRdb::ValueObject> params = {fileInfo.originalPackageName, fileInfo.fileIdNew};
-        auto ret = mediaLibraryRdb_->ExecuteSql(querySql, params);
-        if (ret != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Update failed for file_id: %{public}d with package_name: %{public}s, error: %{public}d",
-                fileInfo.fileIdNew, fileInfo.originalPackageName.c_str(), ret);
-            continue;
-        }
-    }
-}
-
-void CloneRestore::PrevailUUIDForSamePhotos(vector<FileInfo> &fileInfos)
-{
-    for (FileInfo &fileInfo : fileInfos) {
-        if (fileInfo.fileIdNew <= 0 || fileInfo.isNew) {
-            continue;
-        }
-
-        if (fileInfo.uuid.empty()) {
-            fileInfo.uuid = MediaFileUtils::GenerateUUID();
-        }
-
-        std::string querySql = "UPDATE Photos SET unique_id = ? WHERE file_id = ? \
-            AND (unique_id IS NULL OR unique_id = '' OR unique_id = '-1') \
-            AND (media_type = ? OR media_type = ?)";
-        std::vector<NativeRdb::ValueObject> params = {fileInfo.uuid, fileInfo.fileIdNew,
-            MediaType::MEDIA_TYPE_IMAGE, MediaType::MEDIA_TYPE_VIDEO};
-        auto ret = mediaLibraryRdb_->ExecuteSql(querySql, params);
-        if (ret != NativeRdb::E_OK) {
-            MEDIA_ERR_LOG("Update failed for file_id: %{public}d, error: %{public}d",
-                fileInfo.fileIdNew, ret);
-            continue;
         }
     }
 }
@@ -1437,9 +1407,7 @@ int CloneRestore::InsertPhoto(vector<FileInfo> &fileInfos)
     CHECK_AND_RETURN_RET_LOG(!fileInfos.empty(), E_OK, "fileInfos are empty");
     int64_t startGenerate = MediaFileUtils::UTCTimeMilliSeconds();
     vector<NativeRdb::ValuesBucket> values = GetInsertValues(CLONE_RESTORE_ID, fileInfos, SourceType::PHOTOS);
-    UpdateRiskStatusForSamePhotos(fileInfos);
-    UpdatePackageNameForSamePhotos(fileInfos);
-    PrevailUUIDForSamePhotos(fileInfos);
+    UpdatePreStatusForSamePhotos(fileInfos);
     int64_t startInsertPhoto = MediaFileUtils::UTCTimeMilliSeconds();
     int64_t photoRowNum = 0;
     int32_t errCode = BatchInsertWithRetry(PhotoColumn::PHOTOS_TABLE, values, photoRowNum);
@@ -1462,8 +1430,7 @@ int CloneRestore::InsertPhoto(vector<FileInfo> &fileInfos)
     int64_t videoFileMoveCount = 0;
     MoveMigrateFile(fileInfos, fileMoveCount, videoFileMoveCount);
     int64_t startUpdate = MediaFileUtils::UTCTimeMilliSeconds();
-    UpdateMergedThumbnailStatusForSamePhotos(fileInfos);
-    UpdatePositionForMergedCloudDuplicates(fileInfos);
+    UpdateMergedStatusForSamePhotos(fileInfos, true);
     UpdatePhotosByFileInfoMap(mediaLibraryRdb_, fileInfos);
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("generate cost %{public}ld, insert %{public}ld assets cost %{public}ld, insert photo related cost "
@@ -2472,7 +2439,8 @@ void CloneRestore::BatchQueryPhoto(vector<FileInfo> &fileInfos)
         fileIndexMap[fileInfos[index].cloudPath] = index;
     }
     string querySql = "SELECT " + MediaColumn::MEDIA_ID + ", " + MediaColumn::MEDIA_FILE_PATH + ", " +
-        MediaColumn::MEDIA_DATE_TAKEN + " FROM " + PhotoColumn::PHOTOS_TABLE +
+        MediaColumn::MEDIA_DATE_TAKEN + ", " + PhotoColumn::MOVING_PHOTO_EFFECT_MODE + ", " +
+        MediaColumn::MEDIA_SIZE + " FROM " + PhotoColumn::PHOTOS_TABLE +
         " WHERE " + MediaColumn::MEDIA_FILE_PATH + " IN (" + selection + ")";
     querySql += " LIMIT " + to_string(fileIndexMap.size());
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(mediaLibraryRdb_, querySql);
@@ -2486,6 +2454,8 @@ void CloneRestore::BatchQueryPhoto(vector<FileInfo> &fileInfos)
         size_t index = fileIndexMap.at(cloudPath);
         fileInfos[index].fileIdNew = fileId;
         fileInfos[index].newAstcDateKey = dateTaken;
+        fileInfos[index].newEffectMode = GetInt32Val(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, resultSet);
+        fileInfos[index].newMediaSize = GetInt64Val(MediaColumn::MEDIA_SIZE, resultSet);
     }
     resultSet->Close();
     BackupDatabaseUtils::UpdateAssociateFileId(mediaLibraryRdb_, fileInfos);
@@ -3475,7 +3445,7 @@ int CloneRestore::InsertCloudPhoto(int32_t sceneCode, std::vector<FileInfo> &fil
     int32_t fileMoveCount = 0;
     int32_t videoFileMoveCount = 0;
     MoveMigrateCloudFile(fileInfos, fileMoveCount, videoFileMoveCount, sceneCode);
-    UpdateMergedThumbnailStatusForSamePhotos(fileInfos);
+    UpdateMergedStatusForSamePhotos(fileInfos, false);
     int64_t end = MediaFileUtils::UTCTimeMilliSeconds();
     MEDIA_INFO_LOG("singleCloud generate values cost %{public}ld, insert %{public}ld assets cost %{public}ld, insert"
         " photo related cost %{public}ld, and move %{public}ld files (%{public}ld + %{public}ld) cost %{public}ld.",
@@ -3644,6 +3614,8 @@ bool CloneRestore::IsSameFileForClone(const string &tableName, FileInfo &fileInf
     PhotosDao::PhotosRowData rowData = this->photosClone_.FindSameFile(fileInfo);
     bool cond = rowData.IsValid();
     CHECK_AND_RETURN_RET(cond, false);
+    fileInfo.newPackageName = rowData.packageName;
+    fileInfo.newUniqueId = rowData.uniqueId;
     bool shouldDropDuplicate = ExtraCheckForCloneSameFile(fileInfo, rowData);
     if (!shouldDropDuplicate) {
         return false;

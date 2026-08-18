@@ -38,6 +38,8 @@ public:
         int32_t fileSourceType {0};
         std::string lPath;        // From PhotoAlbum.lpath via JOIN; empty when asset has no album.
         std::string storagePath;  // From Photos.storage_path; used to detect FileManager/Lake assets.
+        std::string packageName;  // From Photos.package_name; used to skip overwriting an existing value.
+        std::string uniqueId;     // From Photos.unique_id; used to skip overwriting an existing value.
         bool IsValid()
         {
             return !cleanFlag && !data.empty() && fileId != 0;
@@ -113,6 +115,8 @@ private:
             p.position, \
             p.file_source_type, \
             p.storage_path, \
+            p.package_name, \
+            p.unique_id, \
             a.lpath \
         FROM \
         ( \
@@ -133,7 +137,9 @@ private:
                 size, \
                 orientation, \
                 owner_album_id, \
-                storage_path \
+                storage_path, \
+                package_name, \
+                unique_id \
             FROM Photos \
             WHERE file_id <= ? AND \
                 display_name = ? AND \
@@ -155,6 +161,8 @@ private:
             P.position, \
             P.file_source_type, \
             P.storage_path, \
+            P.package_name, \
+            P.unique_id, \
             '' AS lpath \
         FROM Photos AS P \
         WHERE file_id <= ? AND \
@@ -175,6 +183,8 @@ private:
             P.position, \
             P.file_source_type, \
             P.storage_path, \
+            P.package_name, \
+            P.unique_id, \
             COALESCE(A.lpath, '') AS lpath \
         FROM Photos AS P \
             LEFT JOIN PhotoAlbum AS A ON P.owner_album_id = A.album_id \
@@ -192,6 +202,8 @@ private:
             MISS.position, \
             MISS.file_source_type, \
             MISS.storage_path, \
+            MISS.package_name, \
+            MISS.unique_id, \
             '' AS lpath \
         FROM \
         ( \
@@ -205,7 +217,9 @@ private:
                 orientation, \
                 date_trashed, \
                 source_path, \
-                storage_path \
+                storage_path, \
+                Photos.package_name, \
+                Photos.unique_id \
             FROM Photos \
                 LEFT JOIN PhotoAlbum \
                 ON Photos.owner_album_id = PhotoAlbum.album_id \

@@ -231,7 +231,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdateRiskStatusForSamePhotos_SkipIn
     b.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::REJECTED);
     infos.push_back(b);
 
-    restore.UpdateRiskStatusForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
     EXPECT_EQ(QueryInt(g_dstDb, "SELECT photo_risk_status FROM Photos WHERE file_id = 1", "photo_risk_status"), 0);
     EXPECT_EQ(QueryInt(g_dstDb, "SELECT is_critical FROM Photos WHERE file_id = 1", "is_critical"), 0);
 }
@@ -251,7 +251,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdateRiskStatusForSamePhotos_SrcNoR
     info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS);
     std::vector<FileInfo> infos = {info};
 
-    restore.UpdateRiskStatusForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
     EXPECT_EQ(QueryInt(g_dstDb, "SELECT photo_risk_status FROM Photos WHERE file_id = 2", "photo_risk_status"), 0);
 }
 
@@ -269,7 +269,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdateRiskStatusForSamePhotos_Uniden
     info.isNew = false;
     info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED);
     std::vector<FileInfo> infos = {info};
-    restore.UpdateRiskStatusForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
     EXPECT_EQ(QueryInt(g_dstDb, "SELECT photo_risk_status FROM Photos WHERE file_id = 3", "photo_risk_status"), 0);
 }
 
@@ -287,7 +287,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdateRiskStatusForSamePhotos_Suspic
     info.isNew = false;
     info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS);
     std::vector<FileInfo> infos = {info};
-    restore.UpdateRiskStatusForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
 
     EXPECT_EQ(QueryInt(g_dstDb, "SELECT photo_risk_status FROM Photos WHERE file_id = 4", "photo_risk_status"),
         static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS));
@@ -308,7 +308,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdateRiskStatusForSamePhotos_Reject
     info.isNew = false;
     info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::REJECTED);
     std::vector<FileInfo> infos = {info};
-    restore.UpdateRiskStatusForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
 
     EXPECT_EQ(QueryInt(g_dstDb, "SELECT photo_risk_status FROM Photos WHERE file_id = 5", "photo_risk_status"),
         static_cast<int32_t>(PhotoRiskStatus::REJECTED));
@@ -329,7 +329,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdateRiskStatusForSamePhotos_NonCri
     info.isNew = false;
     info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED) + 1;
     std::vector<FileInfo> infos = {info};
-    restore.UpdateRiskStatusForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
 
     EXPECT_EQ(QueryInt(g_dstDb, "SELECT photo_risk_status FROM Photos WHERE file_id = 6", "photo_risk_status"),
         static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED) + 1);
@@ -358,7 +358,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdatePackageNameForSamePhotos_SkipI
     c.isNew = false;
     c.originalPackageName = "";
     infos.push_back(c);
-    restore.UpdatePackageNameForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
     EXPECT_EQ(QueryString(g_dstDb, "SELECT package_name FROM Photos WHERE file_id = 11", "package_name"), "");
 }
 
@@ -378,8 +378,9 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdatePackageNameForSamePhotos_Updat
     infoB.fileIdNew = 13;
     infoB.isNew = false;
     infoB.originalPackageName = "pkg.override";
+    infoB.newPackageName = "keep.me";
     std::vector<FileInfo> infos = {infoA, infoB};
-    restore.UpdatePackageNameForSamePhotos(infos);
+    restore.UpdatePreStatusForSamePhotos(infos);
 
     EXPECT_EQ(QueryString(g_dstDb, "SELECT package_name FROM Photos WHERE file_id = 12", "package_name"), "pkg.new");
     EXPECT_EQ(QueryString(g_dstDb, "SELECT package_name FROM Photos WHERE file_id = 13", "package_name"), "keep.me");

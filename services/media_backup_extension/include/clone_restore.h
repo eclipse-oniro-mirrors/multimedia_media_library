@@ -210,7 +210,7 @@ protected:
     int32_t MergeDuplicateAsset(FileInfo &fileInfo);
     int32_t MergeDuplicateThumbnail(FileInfo &fileInfo);
     void RemoveMergedDentryForSamePhoto(const FileInfo &fileInfo);
-    void UpdateMergedThumbnailStatusForSamePhotos(vector<FileInfo> &fileInfos);
+    void UpdateMergedStatusForSamePhotos(vector<FileInfo> &fileInfos, bool updatePosition);
     void InitThumbnailStatus();
     bool InitAllKvStore();
     void CloseAllKvStore();
@@ -246,14 +246,11 @@ protected:
     void GetInsertValueFromValMap(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     void SetAggregateBitThird();
     bool ShouldRestoreFromCloud();
-    void UpdateRiskStatusForSamePhotos(vector<FileInfo> &fileInfos);
-    void PrevailUUIDForSamePhotos(vector<FileInfo> &fileInfos);
-    void UpdatePositionForMergedCloudDuplicates(vector<FileInfo> &fileInfos);
+    void UpdatePreStatusForSamePhotos(vector<FileInfo> &fileInfos);
     void SetAttachmentSizeForCloudDuplicate(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     bool CheckDestDbHasRiskStatusColumn();
     bool CheckSrcDbHasRiskStatusColumn();
     int64_t CorrectTimestamp(int64_t originalTime);
-    void UpdatePackageNameForSamePhotos(vector<FileInfo> &fileInfos);
     void RestoreAnalysisSelection();
     void UpdatePhotoMapAssetDateTaken();
     void RestoreAnalysisDupSim();
@@ -271,6 +268,11 @@ protected:
     bool NeedSkipMergedThumbnailUpdate(const FileInfo &fileInfo);
     void ResolveMergedThumbExistence(const FileInfo &fileInfo, bool &isLcdExist, bool &isThmExist);
     bool FillMergedThmLcdValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillMergedThumbnailValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillMergedPhotoValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillRiskStatusValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillPackageNameValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
+    bool FillUniqueIdValues(FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     std::string GetThumbnailLocalPath(const string path);
     void BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,
         unordered_map<string, CloudPhotoFileExistFlag> &resultExistMap);

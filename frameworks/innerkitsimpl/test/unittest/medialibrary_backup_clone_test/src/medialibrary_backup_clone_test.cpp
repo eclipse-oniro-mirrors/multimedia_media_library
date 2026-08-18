@@ -2345,6 +2345,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_prevail_photo_un
     fileInfo.isNew = false;
     fileInfo.fileIdNew = 1343;
     fileInfo.uuid = "old_test_uuid_1343";
+    fileInfo.fileType = MediaType::MEDIA_TYPE_IMAGE;
+    fileInfo.newUniqueId = "new_test_uuid_1343";
     std::vector<FileInfo> fileInfos = {fileInfo};
     restoreService->InsertPhoto(fileInfos);
     std::string querySql = "SELECT unique_id FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE file_id = 1343";
@@ -2376,6 +2378,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_prevail_photo_un
     fileInfo.isNew = false;
     fileInfo.fileIdNew = 1343;
     fileInfo.uuid = "old_test_uuid_1343";
+    fileInfo.fileType = MediaType::MEDIA_TYPE_IMAGE;
     std::vector<FileInfo> fileInfos = {fileInfo};
     restoreService->InsertPhoto(fileInfos);
     std::string querySql = "SELECT unique_id FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE file_id = 1343";
@@ -2407,8 +2410,10 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_prevail_photo_un
     fileInfo.isNew = false;
     fileInfo.fileIdNew = 1343;
     fileInfo.uuid = "old_test_uuid_1343";
+    fileInfo.fileType = MediaType::MEDIA_TYPE_IMAGE;
+    fileInfo.newUniqueId = "new_test_uuid_1343";
     std::vector<FileInfo> fileInfos = {fileInfo};
-    restoreService->PrevailUUIDForSamePhotos(fileInfos);
+    restoreService->UpdatePreStatusForSamePhotos(fileInfos);
     std::string querySql = "SELECT unique_id FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE file_id = 1343";
     auto resultSet = BackupDatabaseUtils::GetQueryResultSet(restoreService->mediaLibraryRdb_, querySql);
     ASSERT_NE(resultSet, nullptr) << "Failed to query DB for verification";
@@ -5533,7 +5538,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_others_clone_BuildDbPa
 }
 
 /*
- * Test interface: CloneRestore::UpdatePackageNameForSamePhotos
+ * Test interface: CloneRestore::UpdatePreStatusForSamePhotos
  * Test content: Test updating package names for photos that are the same across restore
  * Covered branches: isNew flag, fileIdNew, originalPackageName updates
  */
@@ -5559,12 +5564,13 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_update_package_n
         { .isNew = true, .fileIdNew = 1337, .originalPackageName = "new_package_name_1" }, // Negative Case
         { .isNew = false, .fileIdNew = -1, .originalPackageName = "new_package_name_2" }, // Negative Case
         { .isNew = false, .fileIdNew = 1339, .originalPackageName = "" }, // Negative Case
-        { .isNew = false, .fileIdNew = 1340, .originalPackageName = "new_package_name_4" }, // Negative Case
+        { .isNew = false, .fileIdNew = 1340, .originalPackageName = "new_package_name_4",
+          .newPackageName = "package_name_4" }, // Negative Case
         { .isNew = false, .fileIdNew = 1341, .originalPackageName = "new_package_name_5" }, // Positive Case
         { .isNew = false, .fileIdNew = 1342, .originalPackageName = "new_package_name_6" }, // Positive Case
     };
 
-    cloneRestore.UpdatePackageNameForSamePhotos(oldFiles);
+    cloneRestore.UpdatePreStatusForSamePhotos(oldFiles);
 
     auto verifyPackageName = [&](int32_t fileId, const FileInfo& fileInfo, bool expect) {
         auto resultSet = newRdbStore->QuerySql("SELECT package_name FROM Photos WHERE file_id = ?", {fileId});
@@ -5584,6 +5590,510 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_update_package_n
     verifyPackageName(1341, oldFiles[4], true);
     verifyPackageName(1342, oldFiles[5], true);
 
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Helpers below verify the two refactored consolidating methods:
+ *   UpdatePreStatusForSamePhotos      (merged from UpdateRiskStatusForSamePhotos +
+ *                                      UpdatePackageNameForSamePhotos + PrevailUUIDForSamePhotos)
+ *   UpdateMergedStatusForSamePhotos   (merged from UpdateMergedThumbnailStatusForSamePhotos +
+ *                                      UpdatePositionForMergedCloudDuplicates)
+ * Each case maps to a branch of the corresponding pre-refactor method.
+ */
+static int32_t QueryIntVal(const shared_ptr<NativeRdb::RdbStore> &rdb, const string &sql)
+{
+    auto rs = rdb->QuerySql(sql);
+    if (rs == nullptr || rs->GoToFirstRow() != NativeRdb::E_OK) {
+        return 0;
+    }
+    int32_t v = 0;
+    rs->GetInt(0, v);
+    rs->Close();
+    return v;
+}
+
+static int64_t QueryLongVal(const shared_ptr<NativeRdb::RdbStore> &rdb, const string &sql)
+{
+    auto rs = rdb->QuerySql(sql);
+    if (rs == nullptr || rs->GoToFirstRow() != NativeRdb::E_OK) {
+        return -1;
+    }
+    int64_t v = 0;
+    rs->GetLong(0, v);
+    rs->Close();
+    return v;
+}
+
+static string QueryStrVal(const shared_ptr<NativeRdb::RdbStore> &rdb, const string &sql)
+{
+    auto rs = rdb->QuerySql(sql);
+    if (rs == nullptr || rs->GoToFirstRow() != NativeRdb::E_OK) {
+        return "";
+    }
+    string v;
+    rs->GetString(0, v);
+    rs->Close();
+    return v;
+}
+
+/*
+ * Pre-refactor: UpdateRiskStatusForSamePhotos
+ * Branch: invalid rows (fileIdNew <= 0 / isNew) are skipped, risk status untouched.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_skip_invalid_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_skip_invalid_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, photo_risk_status, is_critical) VALUES (2001, 0, 0);"),
+        E_OK);
+
+    FileInfo a; a.fileIdNew = -1; a.isNew = false;
+    a.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS);
+    FileInfo b; b.fileIdNew = 2001; b.isNew = true;
+    b.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::REJECTED);
+    std::vector<FileInfo> infos = {a, b};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2001"), 0);
+    EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2001"), 0);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdateRiskStatusForSamePhotos
+ * Branch: source db has no risk column (canUpdateRisk == false) -> risk fields skipped, but the
+ * consolidated UPDATE still applies package_name / unique_id for the same row.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_src_no_risk_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_src_no_risk_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = nullptr; // no source risk column available
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql(
+        "INSERT INTO Photos (file_id, photo_risk_status, is_critical, package_name, unique_id, media_type) "
+        "VALUES (2002, 0, 0, '', '', " +
+        std::to_string(MediaType::MEDIA_TYPE_IMAGE) + ");"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2002;
+    info.isNew = false;
+    info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS);
+    info.originalPackageName = "pkg.no.risk";
+    info.uuid = "uuid.no.risk";
+    info.fileType = MediaType::MEDIA_TYPE_IMAGE;
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2002"), 0);
+    EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2002"), 0);
+    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2002"), "pkg.no.risk");
+    EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2002"), "uuid.no.risk");
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdateRiskStatusForSamePhotos
+ * Branch: photoRiskStatus == UNIDENTIFIED -> FillRiskStatusValues returns false and, with no other
+ * fields to fill, the row is skipped entirely (no UPDATE issued).
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_risk_unidentified_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_risk_unidentified_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, photo_risk_status, is_critical) VALUES (2003, 0, 0);"),
+        E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2003;
+    info.isNew = false;
+    info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED);
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2003"), 0);
+    EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2003"), 0);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdateRiskStatusForSamePhotos
+ * Branch: photoRiskStatus == SUSPICIOUS -> risk updated, is_critical = 1.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_risk_suspicious_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_risk_suspicious_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, photo_risk_status, is_critical) VALUES (2004, 0, 0);"),
+        E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2004;
+    info.isNew = false;
+    info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS);
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2004"),
+        static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS));
+    EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2004"), 1);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdateRiskStatusForSamePhotos
+ * Branch: photoRiskStatus == REJECTED -> risk updated, is_critical = 1.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_risk_rejected_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_risk_rejected_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, photo_risk_status, is_critical) VALUES (2005, 0, 0);"),
+        E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2005;
+    info.isNew = false;
+    info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::REJECTED);
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2005"),
+        static_cast<int32_t>(PhotoRiskStatus::REJECTED));
+    EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2005"), 1);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdateRiskStatusForSamePhotos
+ * Branch: non-critical risk status (e.g. APPROVED) -> risk updated, is_critical = 0.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_risk_non_critical_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_risk_non_critical_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, photo_risk_status, is_critical) VALUES (2006, 0, 1);"),
+        E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2006;
+    info.isNew = false;
+    info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::APPROVED);
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2006"),
+        static_cast<int32_t>(PhotoRiskStatus::APPROVED));
+    EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2006"), 0);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: PrevailUUIDForSamePhotos
+ * Branch: media_type is neither IMAGE nor VIDEO -> unique_id not written. package_name still applies
+ * (proves the consolidated UPDATE runs but skips the unique_id column).
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_uuid_skip_audio_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_uuid_skip_audio_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = nullptr;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql(
+        "INSERT INTO Photos (file_id, package_name, unique_id, media_type) VALUES (2007, '', NULL, " +
+        std::to_string(MediaType::MEDIA_TYPE_AUDIO) + ");"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2007;
+    info.isNew = false;
+    info.fileType = MediaType::MEDIA_TYPE_AUDIO;
+    info.originalPackageName = "pkg.audio";
+    info.uuid = "uuid.audio";
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2007"), "pkg.audio");
+    EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2007"), "");
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: PrevailUUIDForSamePhotos
+ * Branch: dest already has a valid unique_id -> not overwritten (guard moved from SQL WHERE to memory).
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_uuid_no_overwrite_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_uuid_no_overwrite_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = nullptr;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql(
+        "INSERT INTO Photos (file_id, unique_id, media_type) VALUES (2008, 'existing.uuid', " +
+        std::to_string(MediaType::MEDIA_TYPE_IMAGE) + ");"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2008;
+    info.isNew = false;
+    info.fileType = MediaType::MEDIA_TYPE_IMAGE;
+    info.uuid = "incoming.uuid";
+    info.newUniqueId = "existing.uuid"; // mirrors value queried from dest db
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2008"), "existing.uuid");
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: PrevailUUIDForSamePhotos
+ * Branch: dest unique_id == "-1" (sentinel for invalid) -> overwritten with incoming uuid.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_uuid_minus1_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_uuid_minus1_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = nullptr;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql(
+        "INSERT INTO Photos (file_id, unique_id, media_type) VALUES (2009, '-1', " +
+        std::to_string(MediaType::MEDIA_TYPE_IMAGE) + ");"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2009;
+    info.isNew = false;
+    info.fileType = MediaType::MEDIA_TYPE_IMAGE;
+    info.uuid = "fresh.uuid";
+    info.newUniqueId = "-1"; // mirrors value queried from dest db
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2009"), "fresh.uuid");
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdateRiskStatusForSamePhotos + UpdatePackageNameForSamePhotos + PrevailUUIDForSamePhotos
+ * Branch: all three fillers return true -> they are accumulated into a single ValuesBucket and applied
+ * by one UPDATE statement (the core benefit of the refactor).
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_pre_status_combined_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_pre_status_combined_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    cloneRestore.mediaRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql(
+        "INSERT INTO Photos (file_id, photo_risk_status, is_critical, package_name, unique_id, media_type) "
+        "VALUES (2011, 0, 0, '', '', " + std::to_string(MediaType::MEDIA_TYPE_IMAGE) + ");"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2011;
+    info.isNew = false;
+    info.photoRiskStatus = static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS);
+    info.originalPackageName = "pkg.combined";
+    info.uuid = "uuid.combined";
+    info.fileType = MediaType::MEDIA_TYPE_IMAGE;
+    info.newUniqueId = ""; // dest empty -> unique_id writable
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdatePreStatusForSamePhotos(infos);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT photo_risk_status FROM Photos WHERE file_id = 2011"),
+        static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS));
+    EXPECT_EQ(QueryIntVal(db, "SELECT is_critical FROM Photos WHERE file_id = 2011"), 1);
+    EXPECT_EQ(QueryStrVal(db, "SELECT package_name FROM Photos WHERE file_id = 2011"), "pkg.combined");
+    EXPECT_EQ(QueryStrVal(db, "SELECT unique_id FROM Photos WHERE file_id = 2011"), "uuid.combined");
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdatePositionForMergedCloudDuplicates
+ * Branch: invalid rows (fileIdNew <= 0 / isNew) and no merged thumbnail -> hasUpdate == false,
+ * no UPDATE issued, position untouched.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_merged_status_skip_invalid_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_merged_status_skip_invalid_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, position) VALUES (2051, 2);"), E_OK);
+
+    FileInfo a; a.fileIdNew = -1; a.isNew = false; a.needVisible = true;
+    a.needUpdatePositionToLocalAndCloud = true;
+    FileInfo b; b.fileIdNew = 2051; b.isNew = true; b.needVisible = true;
+    b.needUpdatePositionToLocalAndCloud = true;
+    std::vector<FileInfo> infos = {a, b};
+    cloneRestore.UpdateMergedStatusForSamePhotos(infos, true);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT position FROM Photos WHERE file_id = 2051"), 2);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdatePositionForMergedCloudDuplicates
+ * Branch: !needVisible (or !needUpdatePositionToLocalAndCloud) -> FillMergedPhotoValues returns false.
+ * With no merged thumbnail either, hasUpdate == false and position is not touched.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_merged_status_pos_skip_flags_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_merged_status_pos_skip_flags_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, position) VALUES (2052, 2);"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2052;
+    info.isNew = false;
+    info.needVisible = false; // blocks FillMergedPhotoValues and FillMergedThumbnailValues
+    info.needUpdatePositionToLocalAndCloud = true;
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdateMergedStatusForSamePhotos(infos, true);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT position FROM Photos WHERE file_id = 2052"), 2);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdatePositionForMergedCloudDuplicates (cloud path via UpdateMergedStatus(false))
+ * Branch: updatePosition == false -> FillMergedPhotoValues is never called; with no merged thumbnail
+ * the row is skipped and position stays as-is.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_merged_status_cloud_no_pos_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_merged_status_cloud_no_pos_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, position) VALUES (2053, 2);"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2053;
+    info.isNew = false;
+    info.needVisible = true;
+    info.needUpdatePositionToLocalAndCloud = true;
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdateMergedStatusForSamePhotos(infos, false);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT position FROM Photos WHERE file_id = 2053"), 2);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdatePositionForMergedCloudDuplicates
+ * Branch: needVisible && needUpdatePositionToLocalAndCloud -> position set to LOCAL_AND_CLOUD,
+ * composite_display_status written, and local_asset_size taken from newMediaSize when the pre-queried
+ * effect mode is not IMAGE_ONLY (avoids the stat() syscall of the old CASE-WHEN SQL).
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_merged_status_pos_updated_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_merged_status_pos_updated_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    // dest `size` mirrors what BatchQueryPhoto would pre-query into newMediaSize, so the
+    // pre-refactor `ELSE media_size` branch and the refactored `newMediaSize` branch agree.
+    ASSERT_EQ(db->ExecuteSql(
+        "INSERT INTO Photos (file_id, position, local_asset_size, composite_display_status, size) "
+        "VALUES (2054, 2, 0, 0, 12345);"), E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2054;
+    info.isNew = false;
+    info.needVisible = true;
+    info.needUpdatePositionToLocalAndCloud = true;
+    info.compositeDisplayStatus = 7;
+    info.newEffectMode = static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT); // not IMAGE_ONLY
+    info.newMediaSize = 12345;
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdateMergedStatusForSamePhotos(infos, true);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT position FROM Photos WHERE file_id = 2054"),
+        static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    EXPECT_EQ(QueryIntVal(db, "SELECT composite_display_status FROM Photos WHERE file_id = 2054"), 7);
+    EXPECT_EQ(QueryLongVal(db, "SELECT local_asset_size FROM Photos WHERE file_id = 2054"), 12345);
+    ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
+}
+
+/*
+ * Pre-refactor: UpdateMergedThumbnailStatusForSamePhotos
+ * Branch: hasMergedLcdThumbnail == true -> FillMergedThumbnailValues returns true, lcd_visit_time is
+ * stamped and thumb_status resolved from (non-existent) thumbnail files -> NOT_ALL.
+ */
+HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_merged_status_thumb_updated_test_001, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("Start medialibrary_backup_clone_merged_status_thumb_updated_test_001");
+    CloneSource cloneSource;
+    Init(cloneSource, TEST_BACKUP_DB_PATH, {PhotoColumn::PHOTOS_TABLE});
+    CloneRestore cloneRestore;
+    cloneRestore.mediaLibraryRdb_ = cloneSource.cloneStorePtr_;
+    auto db = cloneSource.cloneStorePtr_;
+    ASSERT_EQ(db->ExecuteSql("INSERT INTO Photos (file_id, thumb_status, lcd_visit_time) VALUES (2055, 0, 0);"),
+        E_OK);
+
+    FileInfo info;
+    info.fileIdNew = 2055;
+    info.isNew = false;
+    info.needVisible = true;
+    info.needUpdatePositionToLocalAndCloud = false; // isolate the thumbnail branch
+    info.hasMergedLcdThumbnail = true;
+    info.cloudPath = "/cloud/path/2055.jpg";
+    std::vector<FileInfo> infos = {info};
+    cloneRestore.UpdateMergedStatusForSamePhotos(infos, true);
+
+    EXPECT_EQ(QueryIntVal(db, "SELECT thumb_status FROM Photos WHERE file_id = 2055"),
+        RESTORE_THUMBNAIL_STATUS_NOT_ALL);
+    EXPECT_EQ(QueryIntVal(db, "SELECT lcd_visit_time FROM Photos WHERE file_id = 2055"),
+        RESTORE_LCD_VISIT_TIME_SUCCESS);
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
 }
 
