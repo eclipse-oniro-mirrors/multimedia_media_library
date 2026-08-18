@@ -16,6 +16,8 @@
 
 #include "medialibrary_file_operations.h"
 
+#include <filesystem>
+
 #include "datashare_predicates.h"
 #include "datashare_values_bucket.h"
 #include "file_asset.h"
@@ -25,6 +27,7 @@
 #endif
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "media_path_utils.h"
 #include "medialibrary_db_const.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_notify.h"
@@ -165,21 +168,18 @@ int32_t MediaLibraryFileOperations::ModifyFileOperation(MediaLibraryCommand &cmd
     if (values.GetObject(CONST_MEDIA_DATA_DB_RELATIVE_PATH, valueObject)) {
         valueObject.GetString(dstReFilePath);
     }
-    if (!dstReFilePath.empty()) {
-        string pathWithBound = "/" + dstReFilePath + "/";
-        if (pathWithBound.find("/../") != string::npos) {
-            MEDIA_ERR_LOG("ModifyFileOperation: relative_path contains path traversal component");
-            return E_INVALID_FILEID;
-        }
+
+    if (!dstReFilePath.empty() && MediaFileUtils::CheckRelativePath(dstReFilePath) != E_OK) {
+        MEDIA_ERR_LOG("ModifyFileOperation: invalid relative path");
+        return E_INVALID_PATH;
     }
-    if (!dstFileName.empty()) {
-        string pathWithBound = "/" + dstFileName + "/";
-        if (pathWithBound.find("/../") != string::npos) {
-            MEDIA_ERR_LOG("ModifyFileOperation: dstFileName contains path traversal component");
-            return E_INVALID_FILEID;
-        }
-    }
+
     string dstFilePath = ROOT_MEDIA_DIR + dstReFilePath + dstFileName;
+    auto normalizedDst = std::filesystem::path(dstFilePath).lexically_normal();
+    if (!MediaPathUtils::CheckPhotoPath(normalizedDst.string())) {
+        MEDIA_ERR_LOG("ModifyFileOperation: dstFilePath escapes ROOT_MEDIA_DIR");
+        return E_INVALID_PATH;
+    }
 
     if (srcPath.compare(dstFilePath) == 0) {
         return E_SAME_PATH;

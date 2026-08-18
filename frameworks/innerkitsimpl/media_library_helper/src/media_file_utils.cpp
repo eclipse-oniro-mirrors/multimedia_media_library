@@ -880,7 +880,6 @@ static std::unique_ptr<Picture> DecodeAsset(int32_t fd, int32_t width, int32_t h
     uint32_t err = E_OK;
     unique_ptr<ImageSource> imageSource = ImageSource::CreateImageSource(fd, opts, err);
     CHECK_AND_RETURN_RET_LOG(imageSource != nullptr, nullptr, "CreateImageSource failed, err: %{public}u", err);
-
     DecodingOptionsForPicture decodeOptions;
     if (width > 0 && height > 0) {
     }
@@ -1644,6 +1643,11 @@ int32_t MediaFileUtils::CheckDentryName(const string &dentryName)
     int err = CheckStringSize(dentryName, DISPLAYNAME_MAX);
     if (err < 0) {
         return err;
+    }
+
+    if (dentryName == "." || dentryName == "..") {
+        MEDIA_ERR_LOG("Invalid dentry name: path traversal component %{private}s", dentryName.c_str());
+        return -EINVAL;
     }
 
     static const string DENTRY_REGEX_CHECK = R"([\\/:*?"'`<>|{}\[\]])";
