@@ -268,11 +268,6 @@ public:
     {
         MediaLibraryUnitTestUtils::Init();
     }
-    
-    static void SetUpTestCase()
-    {
-        MediaLibraryUnitTestUtils::Init();
-    }
  
     void SetUp() override
     {
