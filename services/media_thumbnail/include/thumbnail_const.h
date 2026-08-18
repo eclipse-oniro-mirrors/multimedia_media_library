@@ -180,6 +180,7 @@ constexpr int32_t CLOUD_THUMBNAIL_DOWNLOAD_FINISH_NUMBER = 1000;
 constexpr int32_t THUMBNAIL_READY_FAILED = 2;
 
 constexpr int32_t THUMBNAIL_FREE_SIZE_LIMIT_1 = 1;
+constexpr int32_t THUMBNAIL_FREE_SIZE_LIMIT_5 = 5;
 constexpr int32_t THUMBNAIL_FREE_SIZE_LIMIT_10 = 10;
 
 // LCD that is over 2MB would not be uploaded

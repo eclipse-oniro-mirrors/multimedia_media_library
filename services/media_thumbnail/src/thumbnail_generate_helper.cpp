@@ -64,6 +64,7 @@
 #include "medialibrary_unistore_manager.h"
 #include "cloud_media_common.h"
 #include "cloud_dentry_helper.h"
+#include "cloud_sync_utils.h"
 
 using namespace std;
 using namespace OHOS::DistributedKv;
@@ -137,8 +138,10 @@ int32_t ThumbnailGenerateHelper::CreateThumbnailBackground(ThumbRdbOpt &opts)
         MEDIA_ERR_LOG("rdbStore is not init");
         return E_ERR;
     }
-    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(THUMBNAIL_FREE_SIZE_LIMIT_10),
-        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough");
+    int32_t freeSpacePercentLimit = !CloudSyncUtils::IsCloudSyncSwitchOn() ?
+        THUMBNAIL_FREE_SIZE_LIMIT_10 : THUMBNAIL_FREE_SIZE_LIMIT_5;
+    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
+        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough, limit %{public}d", freeSpacePercentLimit);
 
     vector<ThumbnailData> infos;
     int32_t err = GetNoThumbnailData(opts, infos);
@@ -151,10 +154,10 @@ int32_t ThumbnailGenerateHelper::CreateThumbnailBackground(ThumbRdbOpt &opts)
         MEDIA_DEBUG_LOG("No need generate thumbnail.");
         return E_OK;
     }
-    auto createThumbnailBackgroundTask = [](std::shared_ptr<ThumbnailTaskData> &data) {
+    auto createThumbnailBackgroundTask = [freeSpacePercentLimit](std::shared_ptr<ThumbnailTaskData> &data) {
         CHECK_AND_RETURN_LOG(data != nullptr, "Data is null");
         auto &thumbnailData = data->thumbnailData_;
-        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(THUMBNAIL_FREE_SIZE_LIMIT_10),
+        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
             "CreateThumbnailBackgroundTask free size is not enough, id:%{public}s, path:%{public}s",
             thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str());
         IThumbnailHelper::CreateThumbnail(data);
@@ -196,9 +199,6 @@ void CreateAstcBackgroundTask(std::shared_ptr<ThumbnailTaskData> &data)
 {
     CHECK_AND_RETURN_LOG(data != nullptr, "Data is null");
     auto &thumbnailData = data->thumbnailData_;
-    CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(THUMBNAIL_FREE_SIZE_LIMIT_10),
-        "CreateAstcBackgroundTask free size is not enough, id:%{public}s, path:%{public}s",
-        thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str());
     if (thumbnailData.isLocalFile) {
         thumbnailData.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
         IThumbnailHelper::CreateThumbnail(data);
@@ -232,8 +232,10 @@ int32_t ThumbnailGenerateHelper::CreateAstcBackground(ThumbRdbOpt &opts)
     }
 
     CheckMonthAndYearKvStoreValid(opts);
-    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(THUMBNAIL_FREE_SIZE_LIMIT_10),
-        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough");
+    int32_t freeSpacePercentLimit = !CloudSyncUtils::IsCloudSyncSwitchOn() ?
+        THUMBNAIL_FREE_SIZE_LIMIT_10 : THUMBNAIL_FREE_SIZE_LIMIT_5;
+    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
+        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough, size limit %{public}d", freeSpacePercentLimit);
     vector<ThumbnailData> infos;
     int32_t err = GetNoAstcData(opts, infos);
     if (err != E_OK) {
@@ -248,14 +250,20 @@ int32_t ThumbnailGenerateHelper::CreateAstcBackground(ThumbRdbOpt &opts)
         return E_OK;
     }
 
+    auto task = [freeSpacePercentLimit](std::shared_ptr<ThumbnailTaskData> &data) {
+        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
+            "Free size is not enough, limit %{public}d", freeSpacePercentLimit);
+        CreateAstcBackgroundTask(data);
+    };
+
     MEDIA_INFO_LOG("no astc data size: %{public}d", static_cast<int>(infos.size()));
     for (uint32_t i = 0; i < infos.size(); i++) {
         infos[i].genThumbScene = GenThumbScene::NO_THUMB_AND_GEN_IT_BACKGROUND;
         opts.row = infos[i].id;
         ThumbnailUtils::RecordStartGenerateStats(infos[i].stats, GenerateScene::BACKGROUND,
             LoadSourceType::LOCAL_PHOTO);
-        IThumbnailHelper::AddThumbnailGenerateTask(CreateAstcBackgroundTask,
-            opts, infos[i], ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::LOW);
+        IThumbnailHelper::AddThumbnailGenerateTask(task, opts, infos[i],
+            ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::LOW);
     }
     return E_OK;
 }
@@ -406,8 +414,10 @@ int32_t ThumbnailGenerateHelper::CreateLcdBackground(ThumbRdbOpt &opts)
     if (opts.store == nullptr) {
         return E_ERR;
     }
-    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(THUMBNAIL_FREE_SIZE_LIMIT_10),
-        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough");
+    int32_t freeSpacePercentLimit = !CloudSyncUtils::IsCloudSyncSwitchOn() ?
+        THUMBNAIL_FREE_SIZE_LIMIT_10 : THUMBNAIL_FREE_SIZE_LIMIT_5;
+    CHECK_AND_RETURN_RET_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
+        E_FREE_SIZE_NOT_ENOUGH, "Free size is not enough, limit %{public}d", freeSpacePercentLimit);
 
     vector<ThumbnailData> infos;
     int32_t err = GetNoLcdData(opts, infos);
@@ -419,12 +429,12 @@ int32_t ThumbnailGenerateHelper::CreateLcdBackground(ThumbRdbOpt &opts)
         MEDIA_DEBUG_LOG("No need create Lcd.");
         return E_THUMBNAIL_LCD_ALL_EXIST;
     }
-    auto createLcdBackgroundTask = [](std::shared_ptr<ThumbnailTaskData> &data) {
+    auto createLcdBackgroundTask = [freeSpacePercentLimit](std::shared_ptr<ThumbnailTaskData> &data) {
         CHECK_AND_RETURN_LOG(data != nullptr, "CreateLcd failed, data is null");
         auto &thumbnailData = data->thumbnailData_;
-        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(THUMBNAIL_FREE_SIZE_LIMIT_10),
-            "CreateLcdBackgroundTask free size is not enough, id:%{public}s, path:%{public}s",
-            thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str());
+        CHECK_AND_RETURN_LOG(ThumbnailFileUtils::CheckRemainSpaceMeetCondition(freeSpacePercentLimit),
+            "CreateLcdBackgroundTask free size is not enough, id:%{public}s, path:%{public}s size: %{public}d",
+            thumbnailData.id.c_str(), DfxUtils::GetSafePath(thumbnailData.path).c_str(), freeSpacePercentLimit);
         thumbnailData.loaderOpts.loadingStates = SourceLoader::LOCAL_SOURCE_LOADING_STATES;
         IThumbnailHelper::CreateLcd(data);
     };
