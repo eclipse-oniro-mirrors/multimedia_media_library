@@ -35,7 +35,6 @@
 #include "medialibrary_tracer.h"
 #include "medialibrary_unistore_manager.h"
 #include "native_album_asset.h"
-#include "permission_common.h"
 #include "rdb_utils.h"
 #include "userfilemgr_uri.h"
 #include "media_audio_column.h"
@@ -157,14 +156,6 @@ int32_t MediaLibraryFileOperations::ModifyFileOperation(MediaLibraryCommand &cmd
         MEDIA_ERR_LOG("MediaLibraryFileOperations::ModifyFileOperation Get path of id %{private}s from database file!",
             strFileId.c_str());
         return E_INVALID_FILEID;
-    }
-
-    string fileOwnerAppId = MediaLibraryObjectUtils::GetStringColumnByIdFromDb(strFileId,
-        CONST_MEDIA_DATA_DB_OWNER_APPID);
-    string clientAppId = GetClientAppId();
-    if (!clientAppId.empty() && !fileOwnerAppId.empty() && clientAppId != fileOwnerAppId) {
-        MEDIA_ERR_LOG("ModifyFileOperation: owner check failed, caller is not the file owner");
-        return E_PERMISSION_DENIED;
     }
 
     string dstFileName;
