@@ -27,7 +27,7 @@ static const int STORAGE_MANAGER_MANAGER_ID = 5003;
 
 int32_t MediaAccountUtils::GetCurrentAccountId()
 {
-    int32_t activeUserId = DEFAULT_USER_ID;
+    int32_t activeUserId = 100;
     ErrCode ret = OHOS::AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(activeUserId);
     if (ret != ERR_OK) {
         MEDIA_ERR_LOG("GetCurrentAccountId: fail to get activeUser:%{public}d", ret);
