@@ -168,7 +168,7 @@ std::shared_ptr<NativeRdb::ResultSet> PhotosClone::GetCloudPhotosNotInPhotoMap(i
 }
 
 /**
- * @note If the lPath is empty, return '/Pictures/其它' string
+ * @note If the lPath is empty, return '/Pictures/其它' string.
  *      If the lPath is '/Pictures/ScreenShots', return '/Pictures/ScreenShots' string.
  *      Otherwise, return the lPath of the FileInfo.
  */
