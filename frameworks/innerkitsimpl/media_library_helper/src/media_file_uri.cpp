@@ -564,7 +564,7 @@ int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum)
     return E_OK;
 }
 
-string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
+static string ExtractRealTitleFromUri(const string &uri)
 {
     string uriWithoutQuery = uri;
     size_t queryPos = uriWithoutQuery.find('?');
@@ -582,28 +582,44 @@ string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
         MEDIA_ERR_LOG("invalid realTitle %{private}s", uriWithoutQuery.c_str());
         return "";
     }
-    realTitle = realTitle.substr(index + 1);
-    index = realTitle.rfind('_');
+    return realTitle.substr(index + 1);
+}
+
+static bool ParseFileIdFromRealTitle(const string &realTitle, int32_t &fileUniqueId)
+{
+    size_t index = realTitle.rfind('_');
     if (index == string::npos) {
-        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", uriWithoutQuery.c_str());
-        return "";
+        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", realTitle.c_str());
+        return false;
     }
     string fileId = realTitle.substr(index + 1);
     if (!all_of(fileId.begin(), fileId.end(), ::isdigit)) {
-        MEDIA_ERR_LOG("fileId invalid %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("fileId invalid %{private}s", realTitle.c_str());
+        return false;
+    }
+    if (!StrToInt(fileId, fileUniqueId)) {
+        MEDIA_ERR_LOG("invalid fileuri %{private}s", realTitle.c_str());
+        return false;
+    }
+    return true;
+}
+
+string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
+{
+    string realTitle = ExtractRealTitleFromUri(uri);
+    if (realTitle.empty()) {
         return "";
     }
     int32_t fileUniqueId = 0;
-    if (!StrToInt(fileId, fileUniqueId)) {
-        MEDIA_ERR_LOG("invalid fileuri %{private}s", uriWithoutQuery.c_str());
+    if (!ParseFileIdFromRealTitle(realTitle, fileUniqueId)) {
         return "";
     }
     int32_t bucketNum = 0;
     CreateAssetBucket(fileUniqueId, bucketNum);
 
-    string ext = MediaFileUtils::GetExtensionFromPath(uriWithoutQuery);
+    string ext = MediaFileUtils::GetExtensionFromPath(uri);
     if (ext.empty()) {
-        MEDIA_ERR_LOG("invalid ext %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("invalid ext %{private}s", uri.c_str());
         return "";
     }
 
