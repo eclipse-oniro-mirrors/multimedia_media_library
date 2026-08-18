@@ -25,6 +25,7 @@
 #include "iservice_registry.h"
 #include "os_account_manager.h"
 #include "media_asset_rdbstore.h"
+#include "media_common_client.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_string_utils.h"
