@@ -1627,5 +1627,5 @@ export default {
   MediaAssetPermissionState: photoAccessHelper.MediaAssetPermissionState,
   TaskSignal: photoAccessHelper.TaskSignal,
   DeepOptimizeState: photoAccessHelper.DeepOptimizeState,
-  PickerColorMode: photoAccessHelper.PickerColorMode
+  PickerColorMode: PickerColorMode
 };
