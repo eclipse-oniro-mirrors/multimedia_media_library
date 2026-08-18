@@ -22,6 +22,7 @@
 #include "os_account_manager.h"
 #include "system_ability_definition.h"
 
+#include "media_common_client.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
