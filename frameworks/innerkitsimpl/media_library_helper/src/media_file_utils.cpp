@@ -387,6 +387,10 @@ string MediaFileUtils::GetFileName(const string &filePath)
                 fileName = filePath.substr(lastSlash + 1);
             }
         }
+        size_t queryPos = fileName.find('?');
+        if (queryPos != string::npos) {
+            fileName = fileName.substr(0, queryPos);
+        }
     }
 
     return fileName;
