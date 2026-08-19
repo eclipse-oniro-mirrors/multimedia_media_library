@@ -884,7 +884,6 @@ bool ThumbnailUtils::QueryNoAstcInfos(ThumbRdbOpt &opts, vector<ThumbnailData> &
     rdbPredicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);
     rdbPredicates.BeginWrap()
         ->EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "0")
-        ->Or()->EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "2")
         ->Or()->EqualTo(PhotoColumn::PHOTO_THUMBNAIL_READY, "7")
         ->EndWrap();
     rdbPredicates.BeginWrap()
@@ -969,12 +968,6 @@ bool ThumbnailUtils::CacheLcdInfo(ThumbRdbOpt &opts, ThumbnailData &data)
         }
     }
     return true;
-}
-
-void ThumbnailUtils::CacheInvalidLcdInfo(ThumbnailData &data)
-{
-    ValuesBucket &values = data.rdbUpdateCache;
-    values.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME, static_cast<int64_t>(LcdReady::GENERATE_LCD_LATER));
 }
 
 bool ThumbnailUtils::UpdateHighlightInfo(ThumbRdbOpt &opts, ThumbnailData &data, int &err)

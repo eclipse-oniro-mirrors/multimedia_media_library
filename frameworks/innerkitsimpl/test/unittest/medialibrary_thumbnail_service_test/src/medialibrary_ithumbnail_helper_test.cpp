@@ -32,6 +32,7 @@
 #include "medialibrary_unittest_utils.h"
 #include "thumbnail_file_utils.h"
 #include "thumbnail_source_loading.h"
+#include "thumbnail_utils.h"
 #include "vision_db_sqls.h"
 #include "media_upgrade.h"
 
@@ -398,6 +399,133 @@ HWTEST_F(MediaLibraryIthumbnailHelperTest, CreateLowQulityLcd_test_004, TestSize
     EXPECT_EQ(ret, true);
     EXPECT_EQ(size < LCD_UPLOAD_LIMIT_SIZE, true);
     MEDIA_INFO_LOG("CreateLowQulityLcd_test_004 end");
+}
+
+HWTEST_F(MediaLibraryIthumbnailHelperTest, DoCreateLcd_test_001, TestSize.Level0)
+{
+    ThumbRdbOpt opts;
+    opts.store = g_rdbStore;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    opts.row = "lcd_fail_mark";
+
+    ThumbnailData data;
+    data.id = "lcd_fail_mark";
+    data.path = "/nonexistent/fail.jpg";
+
+    bool ret = IThumbnailHelper::DoCreateLcd(opts, data);
+    EXPECT_EQ(ret, false);
+
+    ValueObject vo;
+    bool has = data.rdbUpdateCache.GetObject(PhotoColumn::PHOTO_LCD_VISIT_TIME, vo);
+    EXPECT_EQ(has, true);
+    int64_t val;
+    vo.GetLong(val);
+    EXPECT_EQ(val, static_cast<int64_t>(LcdReady::GENERATE_LCD_FAILED));
+}
+
+HWTEST_F(MediaLibraryIthumbnailHelperTest, CacheLcdInfo_test_001, TestSize.Level0)
+{
+    ThumbRdbOpt opts;
+    opts.store = g_rdbStore;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+
+    ThumbnailData data;
+    auto res = ThumbnailUtils::CacheLcdInfo(opts, data);
+    EXPECT_EQ(res, true);
+
+    ValueObject vo;
+    bool has = data.rdbUpdateCache.GetObject(PhotoColumn::PHOTO_LCD_VISIT_TIME, vo);
+    EXPECT_EQ(has, true);
+    int64_t val;
+    vo.GetLong(val);
+    EXPECT_EQ(val, static_cast<int64_t>(LcdReady::GENERATE_LCD_COMPLETED));
+    EXPECT_NE(val, static_cast<int64_t>(LcdReady::GENERATE_LCD_FAILED));
+}
+
+HWTEST_F(MediaLibraryIthumbnailHelperTest, QueryNoAstcInfos_test_001, TestSize.Level0)
+{
+    // 插入应该被挑出的记录（thumb_ready=0）
+    ValuesBucket v0;
+    v0.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, "/test/pick_thumb_0.jpg");
+    v0.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, 0);
+    v0.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
+    v0.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    v0.PutInt(MediaColumn::MEDIA_TIME_PENDING, 0);
+    v0.PutInt(PhotoColumn::PHOTO_IS_TEMP, 0);
+    v0.PutInt(PhotoColumn::PHOTO_POSITION, 1);
+    int64_t pickRow = 0;
+    g_rdbStore->Insert(pickRow, PhotoColumn::PHOTOS_TABLE, v0);
+
+    // 插入不应该被挑出的记录（thumb_ready=2）
+    ValuesBucket v;
+    v.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, "/test/skip_thumb_retry.jpg");
+    v.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY,
+        static_cast<int64_t>(ThumbnailReady::GENERATE_THUMB_RETRY));
+    v.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
+    v.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    v.PutInt(MediaColumn::MEDIA_TIME_PENDING, 0);
+    v.PutInt(PhotoColumn::PHOTO_IS_TEMP, 0);
+    v.PutInt(PhotoColumn::PHOTO_POSITION, 1);
+    int64_t skipRow = 0;
+    g_rdbStore->Insert(skipRow, PhotoColumn::PHOTOS_TABLE, v);
+
+    ThumbRdbOpt opts;
+    opts.store = g_rdbStore;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    ThumbnailUtils::QueryNoAstcInfos(opts, infos, err);
+
+    set<string> foundIds;
+    for (auto &item : infos) foundIds.insert(item.id);
+    EXPECT_EQ(foundIds.count(to_string(pickRow)), 1);
+    EXPECT_EQ(foundIds.count(to_string(skipRow)), 0);
+
+    g_rdbStore->ExecuteSql("DELETE FROM " + PhotoColumn::PHOTOS_TABLE +
+        " WHERE file_id IN (" + to_string(pickRow) + "," + to_string(skipRow) + ");");
+}
+
+HWTEST_F(MediaLibraryIthumbnailHelperTest, QueryNoLcdInfos_test_001, TestSize.Level0)
+{
+    // 插入应该被挑出的记录（lcd_visit_time=0）
+    ValuesBucket v0;
+    v0.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, "/test/pick_lcd_0.jpg");
+    v0.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME, 0);
+    v0.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
+    v0.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    v0.PutInt(MediaColumn::MEDIA_TIME_PENDING, 0);
+    v0.PutInt(PhotoColumn::PHOTO_IS_TEMP, 0);
+    v0.PutInt(PhotoColumn::PHOTO_POSITION, 1);
+    int64_t pickRow = 0;
+    g_rdbStore->Insert(pickRow, PhotoColumn::PHOTOS_TABLE, v0);
+
+    // 插入不应该被挑出的记录（lcd_visit_time=1）
+    ValuesBucket v;
+    v.PutString(CONST_MEDIA_DATA_DB_FILE_PATH, "/test/skip_lcd_failed.jpg");
+    v.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME,
+        static_cast<int64_t>(LcdReady::GENERATE_LCD_FAILED));
+    v.PutInt(PhotoColumn::PHOTO_SYNC_STATUS, static_cast<int32_t>(SyncStatusType::TYPE_VISIBLE));
+    v.PutInt(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    v.PutInt(MediaColumn::MEDIA_TIME_PENDING, 0);
+    v.PutInt(PhotoColumn::PHOTO_IS_TEMP, 0);
+    v.PutInt(PhotoColumn::PHOTO_POSITION, 1);
+    int64_t skipRow = 0;
+    g_rdbStore->Insert(skipRow, PhotoColumn::PHOTOS_TABLE, v);
+
+    ThumbRdbOpt opts;
+    opts.store = g_rdbStore;
+    opts.table = PhotoColumn::PHOTOS_TABLE;
+    vector<ThumbnailData> infos;
+    int err = 0;
+    ThumbnailUtils::QueryNoLcdInfos(opts, infos, err);
+
+    set<string> foundIds;
+    for (auto &item : infos) foundIds.insert(item.id);
+    EXPECT_EQ(foundIds.count(to_string(pickRow)), 1);
+    EXPECT_EQ(foundIds.count(to_string(skipRow)), 0);
+
+    g_rdbStore->ExecuteSql("DELETE FROM " + PhotoColumn::PHOTOS_TABLE +
+        " WHERE file_id IN (" + to_string(pickRow) + "," + to_string(skipRow) + ");");
 }
 
 } // namespace Media

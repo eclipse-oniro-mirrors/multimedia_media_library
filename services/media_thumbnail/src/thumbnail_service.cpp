@@ -781,7 +781,8 @@ static void UpdateThumbnailReadyToFailed(ThumbRdbOpt &opts, std::string id)
 
     ValuesBucket values;
     int changedRows;
-    values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY, THUMBNAIL_READY_FAILED);
+    values.PutLong(PhotoColumn::PHOTO_THUMBNAIL_READY,
+        static_cast<int64_t>(ThumbnailReady::GENERATE_THUMB_RETRY));
     int32_t err = opts.store->Update(changedRows, opts.table, values, string(CONST_MEDIA_DATA_DB_ID) + " = ?",
         vector<string> { id });
     CHECK_AND_PRINT_LOG(err == NativeRdb::E_OK, "RdbStore Update failed! %{public}d", err);
