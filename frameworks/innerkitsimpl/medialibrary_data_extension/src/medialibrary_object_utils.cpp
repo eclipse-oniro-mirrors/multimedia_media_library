@@ -774,23 +774,37 @@ static int32_t OpenDocument(const string &uri, const string &mode)
     return MediaFileUtils::OpenFile(realPath, mode);
 }
 
-static bool IsNumber(const string &betaIssueId)
+static bool CheckBetaIssueId(const string &betaIssueId)
 {
-    CHECK_AND_RETURN_RET_LOG(!betaIssueId.empty(), false, "betaIssueId is empty");
+    CHECK_AND_RETURN_RET_LOG(!betaIssueId.empty() && betaIssueId.length() == 10, false, // 10 history restriction
+        "betaIssueId is invalid");
     for (const char &c : betaIssueId) {
-        CHECK_AND_RETURN_RET(isdigit(c) != 0, false);
+        CHECK_AND_RETURN_RET_LOG(isdigit(c) != 0, false, "betaIssueId not number");
     }
     return true;
+}
+
+static string ExtractBetaIssueId(const string &uri)
+{
+    size_t pos = uri.find_last_of("/");
+    if (pos == string::npos) {
+        return "";
+    }
+    string segment = uri.substr(pos + 1);
+    size_t len = 0;
+    while (len < segment.length() && isdigit(segment[len])) {
+        len++;
+    }
+    return segment.substr(0, len);
 }
 
 static int32_t OpenDebugDatabase(const string &uri, const string &mode)
 {
     CHECK_AND_RETURN_RET_LOG(PermissionUtils::IsSystemApp(), E_CHECK_SYSTEMAPP_FAIL, "Caller not systemapp");
     CHECK_AND_RETURN_RET_LOG(PermissionUtils::IsBetaVersion(), E_BETA_VERSION_FAIL, "Caller not beta version");
-    size_t pos = uri.find_last_of("/");
-    CHECK_AND_RETURN_RET_LOG(pos != string::npos, E_OPR_DEBUG_DB_FAIL, "uri not contain '/' ");
-    string betaIssueId = uri.substr(pos + 1);
-    CHECK_AND_RETURN_RET_LOG(IsNumber(betaIssueId), E_ACQ_BETA_TASK_FAIL, "betaIssueId is invalid");
+    string betaIssueId = ExtractBetaIssueId(uri);
+    CHECK_AND_RETURN_RET_LOG(!betaIssueId.empty(), E_OPR_DEBUG_DB_FAIL, "Failed to extract betaIssueId from uri");
+    CHECK_AND_RETURN_RET(CheckBetaIssueId(betaIssueId), E_ACQ_BETA_TASK_FAIL);
     string realPath = "/data/storage/el2/log/logpack/media_library_" + betaIssueId + ".db.zip";
     int32_t fileFd = MediaFileUtils::OpenFile(realPath, mode);
     CHECK_AND_RETURN_RET_LOG(fileFd >= 0, E_OPR_DEBUG_DB_FAIL, "Failed to open debug db, errno %{public}d", errno);

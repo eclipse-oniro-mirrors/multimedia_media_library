@@ -17,6 +17,7 @@
 
 #include "analysis_handler.h"
 
+#include "media_file_utils.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_period_worker.h"
 #include "medialibrary_unistore_manager.h"
@@ -48,9 +49,15 @@ static vector<string> GetFileIds(const CloudSyncHandleData &handleData)
     vector<string> fileIds;
     for (auto &uri : handleData.orgInfo.uris) {
         string uriString = uri.ToString();
-        MEDIA_DEBUG_LOG("cloud_lake debug uri: %{public}s", uriString.c_str());
+        MEDIA_DEBUG_LOG("cloud_lake debug uri: %{public}s", MediaFileUtils::DesensitizeUri(uriString).c_str());
+        size_t queryPos = uriString.find('?');
+        if (queryPos != string::npos) {
+            uriString = uriString.substr(0, queryPos);
+        }
         if (MediaStringUtils::EndsWith(uriString, "/meta") || MediaStringUtils::EndsWith(uriString, "/asset")) {
             size_t lastSlashPos = uriString.find_last_of('/');
+            CHECK_AND_RETURN_RET_LOG(lastSlashPos != std::string::npos, std::vector<std::string>{},
+                "Not found '/' in uri");
             uriString = uriString.substr(0, lastSlashPos);
         }
         auto index = uriString.rfind('/');

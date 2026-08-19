@@ -344,6 +344,9 @@ static bool GetValidOrderClause(const DataSharePredicates &predicate, string &cl
     int32_t count = 0;
     clause = "ROW_NUMBER() OVER (ORDER BY ";
     for (const auto &item : items) {
+        if (item.singleParams.empty()) {
+            continue;
+        }
         if (item.operation == ORDER_BY_ASC) {
             count++;
             clause += static_cast<string>(item.GetSingle(FIELD_IDX)) + " ASC) as " + CONST_PHOTO_INDEX;
@@ -7788,20 +7791,28 @@ void MediaLibraryPhotoOperations::BatchStoreThumbnailSize(const vector<pair<stri
         "Failed to execute batch sql, total size: %{public}zu, error code: %{public}d", photoIdPathList.size(), ret);
 }
 
+static bool IsLegalKey(const std::string &key)
+{
+    return std::all_of(key.begin(), key.end(), [](unsigned char c) {
+        return std::islower(c) || c == '_' || std::isdigit(c);
+    });
+}
+
 void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicates &predicates)
 {
     auto &items = predicates.GetOperationList();
-    static const std::regex KEY_PATTERN("^[a-z_0-9]+$");
+    string bundleName;
     for (auto &item : items) {
+        CHECK_AND_CONTINUE_ERR_LOG(!item.singleParams.empty(), "SingleParams is empty");
         std::string key = static_cast<string>(item.GetSingle(0));
-        if (key.empty()) {
+        if (key.empty() || IsLegalKey(key)) {
             continue;
         }
-        if (!std::regex_match(key, KEY_PATTERN)) {
-            string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
-            MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
-            DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
+        if (bundleName.empty()) {
+            bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
         }
+        MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
+        DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
     }
 }
 } // namespace Media
