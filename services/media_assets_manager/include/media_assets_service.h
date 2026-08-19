@@ -241,7 +241,7 @@ int32_t ScanMoveAssets(const std::vector<std::string> &allAssetPath,
         std::map<int32_t, FileAssetsInfo> &recordedInfos, ChangeRequestMoveAssetsByPathDto &dto);
     int32_t CreateFileManagerAsset(CreateAssetDto& dto);
     int32_t BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
-    int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus);
+    int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);
 
  private:
     int32_t SubmitMetadataChanged(const int32_t fileId);

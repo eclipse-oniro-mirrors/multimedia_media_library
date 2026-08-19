@@ -482,7 +482,7 @@ public:
      * @param photoRiskStatus photo risk status
      * @return Returns E_OK on success, error code on failure
      */
-    EXPORT int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus);
+    EXPORT int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);
 
 private:
     int32_t ReadMovingPhotoVideo(const string &uri, const string &option);

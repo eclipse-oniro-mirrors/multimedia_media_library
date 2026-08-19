@@ -24,6 +24,7 @@ bool SetPhotoCriticalReqBody::Unmarshalling(MessageParcel &parcel)
 {
     fileId = parcel.ReadInt32();
     photoRiskStatus = parcel.ReadInt32();
+    isCritical = parcel.ReadInt32();
     return true;
 }
  
@@ -31,6 +32,7 @@ bool SetPhotoCriticalReqBody::Marshalling(MessageParcel &parcel) const
 {
     parcel.WriteInt32(fileId);
     parcel.WriteInt32(photoRiskStatus);
+    parcel.WriteInt32(isCritical);
     return true;
 }
 } // namespace OHOS::Media

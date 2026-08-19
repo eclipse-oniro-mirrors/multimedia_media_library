@@ -2809,10 +2809,10 @@ int32_t MediaAssetsService::BatchUpdateMetaDataModified(const std::vector<std::s
     return rdbOperation_.BatchUpdateMetaDataModified(fileIds);
 }
 
-int32_t MediaAssetsService::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus)
+nt32_t MediaAssetsService::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical)
 {
-    MEDIA_INFO_LOG("SetPhotoCritical enter, fileId: %{public}d, photoRiskStatus: %{public}d",
-        fileId, photoRiskStatus);
-    return rdbOperation_.SetPhotoCritical(fileId, photoRiskStatus);
+    MEDIA_INFO_LOG("SetPhotoCritical enter, fileId: %{public}d, photoRiskStatus: %{public}d, isCritical: %{public}d",
+        fileId, photoRiskStatus, isCritical);
+    return rdbOperation_.SetPhotoCritical(fileId, photoRiskStatus, isCritical);
 }
 } // namespace OHOS::Media

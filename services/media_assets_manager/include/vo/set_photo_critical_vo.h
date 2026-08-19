@@ -26,6 +26,7 @@ class SetPhotoCriticalReqBody : public IPC::IMediaParcelable {
 public:
     int32_t fileId = 0;
     int32_t photoRiskStatus = 0;
+    int32_t isCritical = 0;
 public:
     bool Unmarshalling(MessageParcel &parcel) override;
     bool Marshalling(MessageParcel &parcel) const override;

@@ -3718,7 +3718,8 @@ int32_t MediaAssetsControllerService::SetPhotoCritical(MessageParcel &data, Mess
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
  
-    ret = MediaAssetsService::GetInstance().SetPhotoCritical(reqBody.fileId, reqBody.photoRiskStatus);
+    ret = MediaAssetsService::GetInstance().SetPhotoCritical(reqBody.fileId, reqBody.photoRiskStatus,
+        reqBody.isCritical);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media
