@@ -87,6 +87,7 @@
 #include "medialibrary_db_const.h"
 #include "media_file_uri.h"
 #include "medialibrary_rdb_operations.h"
+#include "media_values_bucket_utils.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -401,6 +402,13 @@ int32_t MediaAssetsService::AssetChangeSubmitCache(SubmitCacheDto &dto)
 
 int32_t MediaAssetsService::AssetChangeCreateAsset(AssetChangeCreateAssetDto &dto)
 {
+    int32_t mediaType = 0;
+    CHECK_AND_RETURN_RET_LOG(MediaValuesBucketUtils::GetInt(dto.values, MediaColumn::MEDIA_TYPE, mediaType),
+        E_HAS_DB_ERROR, "Failed to get mediaType from values");
+    bool isMediaTypeAllow = mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE) ||
+        mediaType == static_cast<int32_t>(MediaType::MEDIA_TYPE_VIDEO);
+    CHECK_AND_RETURN_RET_LOG(isMediaTypeAllow, E_MEDIATYPE_NOT_ALLOW, "Invalid mediaType: %{public}d", mediaType);
+
     MediaLibraryCommand cmd(
         OperationObject::FILESYSTEM_PHOTO, OperationType::CREATE, dto.values, MediaLibraryApi::API_10);
 
