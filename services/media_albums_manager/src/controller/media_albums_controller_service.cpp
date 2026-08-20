@@ -891,6 +891,12 @@ int32_t MediaAlbumsControllerService::GetPhotoAlbumObject(MessageParcel &data, M
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
 
+    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CheckWhereClause fialed");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
     GetPhotoAlbumObjectDto dto;
     dto.FromVo(reqBody);
     ret = MediaAlbumsService::GetInstance().GetPhotoAlbumObject(dto, respBody);
@@ -1077,6 +1083,11 @@ int32_t MediaAlbumsControllerService::GetAlbumIdByLpathOrBundleName(MessageParce
     int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("GetAlbumIdByLpathOrBundleName Read Request Error: %{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = ParameterUtils::CheckWhereClause(reqBody.predicates.GetWhereClause());
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("CheckWhereClause fialed");
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
     }
     GetAlbumIdByLpathDto dto;
