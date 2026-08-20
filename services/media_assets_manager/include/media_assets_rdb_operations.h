@@ -77,7 +77,7 @@ public:
         const DataShare::DataSharePredicates &predicates, const std::vector<std::string> &columns);
 std::shared_ptr<DataShare::DataShareResultSet> QueryAssetByStoragePath(const std::string &path);
     int32_t BatchUpdateMetaDataModified(const std::vector<std::string> &fileIds);
-    int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus);
+    int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);
 
  private:
     static std::shared_ptr<FileAsset> GetFileAssetFromDb(const std::string &column, const std::string &value,

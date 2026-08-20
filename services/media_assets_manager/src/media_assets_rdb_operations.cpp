@@ -638,26 +638,32 @@ int32_t MediaAssetsRdbOperations::BatchUpdateMetaDataModified(const std::vector<
     return E_OK;
 }
 
-int32_t MediaAssetsRdbOperations::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus)
+int32_t MediaAssetsRdbOperations::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical)
 {
-    MEDIA_INFO_LOG("SetPhotoCritical enter, fileId: %{public}d, photoRiskStatus: %{public}d",
-        fileId, photoRiskStatus);
+    MEDIA_INFO_LOG("SetPhotoCritical enter, fileId: %{public}d, photoRiskStatus: %{public}d, isCritical: %{public}d",
+        fileId, photoRiskStatus, isCritical);
     CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "invalid fileId");
- 
+    CHECK_AND_RETURN_RET_LOG(photoRiskStatus >= static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED) &&
+        photoRiskStatus <= static_cast<int32_t>(PhotoRiskStatus::REJECTED), E_INVALID_VALUES,
+        "invalid photoRiskStatus: %{public}d", photoRiskStatus);
+    CHECK_AND_RETURN_RET_LOG(isCritical == 0 || isCritical == 1, E_INVALID_VALUES,
+        "invalid isCritical: %{public}d", isCritical);
+
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "Failed to get rdbStore.");
  
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoColumn::PHOTO_RISK_STATUS, photoRiskStatus);
- 
+    values.PutInt(PhotoColumn::PHOTO_IS_CRITICAL, isCritical);
+
     NativeRdb::RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, fileId);
  
     int32_t updatedRows = 0;
     int32_t ret = rdbStore->Update(updatedRows, values, predicates);
-    if (ret != NativeRdb::E_OK) {
-        MEDIA_ERR_LOG("SetPhotoCritical failed, ret: %{public}d", ret);
-        return E_DB_FAIL;
+    if (ret != NativeRdb::E_OK || updatedRows <= 0) {
+        MEDIA_ERR_LOG("SetPhotoCritical failed, ret: %{public}d, updatedRows: %{public}d", ret, updatedRows);
+        return E_HAS_DB_ERROR;
     }
  
     MEDIA_INFO_LOG("SetPhotoCritical completed, updatedRows: %{public}d", updatedRows);

@@ -1793,18 +1793,25 @@ void MediaLibraryManager::BatchUpdateMetaDataModified(const std::vector<std::str
     }
 }
 
-int32_t MediaLibraryManager::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus)
+int32_t MediaLibraryManager::SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical)
 {
-    MEDIA_INFO_LOG("SetPhotoCritical fileId: %{public}d, photoRiskStatus: %{public}d", fileId, photoRiskStatus);
+    MEDIA_INFO_LOG("SetPhotoCritical fileId: %{public}d, photoRiskStatus: %{public}d, isCritical: %{public}d",
+        fileId, photoRiskStatus, isCritical);
     CHECK_AND_RETURN_RET_LOG(fileId > 0, E_INVALID_VALUES, "invalid fileId");
- 
+    CHECK_AND_RETURN_RET_LOG(photoRiskStatus >= static_cast<int32_t>(PhotoRiskStatus::UNIDENTIFIED) &&
+        photoRiskStatus <= static_cast<int32_t>(PhotoRiskStatus::REJECTED), E_INVALID_VALUES,
+        "invalid photoRiskStatus: %{public}d", photoRiskStatus);
+    CHECK_AND_RETURN_RET_LOG(isCritical == 0 || isCritical == 1, E_INVALID_VALUES,
+        "invalid isCritical: %{public}d", isCritical);
+
     shared_ptr<DataShare::DataShareHelper> dataShareHelper =
         DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
     CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "dataShareHelper is nullptr");
- 
+
     SetPhotoCriticalReqBody reqBody;
     reqBody.fileId = fileId;
     reqBody.photoRiskStatus = photoRiskStatus;
+    reqBody.isCritical = isCritical;
     uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL);
     int32_t errCode = IPC::UserInnerIPCClient().SetDataShareHelper(dataShareHelper).Call(businessCode, reqBody);
     if (errCode < 0) {
