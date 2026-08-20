@@ -666,7 +666,8 @@ void ReverseCloneResourceInheritHelper::UpdateAbsorbedPhotosVisible(
     std::vector<std::string> visibleIds;
     for (const auto &fileInfo : fileInfos) {
         CHECK_AND_CONTINUE(fileInfo.fileIdOld > 0);
-        CHECK_AND_CONTINUE(failedResourceFileIds.find(fileInfo.fileIdOld) == failedResourceFileIds.end());
+        CHECK_AND_CONTINUE(failedResourceFileIds.find(fileInfo.fileIdOld) == failedResourceFileIds.end() ||
+            MediaFileUtils::IsFileExists(GetLocalPathByCloudPath(fileInfo.cloudPath)));
         visibleIds.emplace_back(std::to_string(fileInfo.fileIdOld));
     }
     CHECK_AND_RETURN_LOG(!visibleIds.empty(), "UpdateAbsorbedPhotosVisible: visibleIds is empty");
@@ -680,7 +681,7 @@ void ReverseCloneResourceInheritHelper::UpdateAbsorbedPhotosVisible(
     int32_t changeRows = 0;
     int32_t ret = BackupDatabaseUtils::Update(targetRdb, changeRows, updateBucket, predicates);
     CHECK_AND_RETURN_LOG(ret == E_OK, "UpdateAbsorbedPhotosVisible: update failed, ret=%{public}d", ret);
-    MEDIA_INFO_LOG("UpdateAbsorbedPhotosVisible: valid=%{public}zu, skippedByResourceFailure=%{public}zu, "
+    MEDIA_INFO_LOG("UpdateAbsorbedPhotosVisible: valid=%{public}zu, resourceFailures=%{public}zu, "
         "visibleIds=%{public}zu, changeRows=%{public}d",
         fileInfos.size(), failedResourceFileIds.size(), visibleIds.size(), changeRows);
 }
