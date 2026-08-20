@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <vector>
 
+#include "backup_database_utils.h"
 #include "backup_file_utils.h"
 #include "media_column.h"
 #include "media_file_utils.h"
@@ -1138,7 +1139,7 @@ void UpdatePhotoExtMetadata(const ReverseCloneResourcePlan &plan, const ReverseC
         args.emplace_back(result.thumbnail.lcd.source.lcdUsingStatus);
     }
 
-    int32_t ret = targetRdb->ExecuteSql(sql, args);
+    int32_t ret = BackupDatabaseUtils::ExecuteSQL(targetRdb, sql, args);
     CHECK_AND_RETURN_LOG(ret == NativeRdb::E_OK,
         "RevRes Reverse clone update photo ext metadata failed, fileId=%{public}d, ret=%{public}d",
         plan.absorbed.fileId, ret);
@@ -1216,7 +1217,8 @@ int32_t UpdateTargetRow(const ReverseCloneResourcePlan &plan, const ReverseClone
         return E_OK;
     }
     args.emplace_back(plan.absorbed.fileId);
-    CHECK_AND_RETURN_RET(targetRdb->ExecuteSql(BuildUpdatePhotosSql(setClauses), args) == NativeRdb::E_OK, E_FAIL);
+    CHECK_AND_RETURN_RET(BackupDatabaseUtils::ExecuteSQL(targetRdb, BuildUpdatePhotosSql(setClauses), args) ==
+        NativeRdb::E_OK, E_FAIL);
     MEDIA_INFO_LOG("RevRes Reverse clone target row updated, fileId=%{public}d, hasOrigin=%{public}d, "
         "hasLcd=%{public}d, hasThumb=%{public}d, lcdChanged=%{public}d, thumbChanged=%{public}d, "
         "readyForDisplay=%{public}d, cloudRestoreSatisfied=%{public}d",
