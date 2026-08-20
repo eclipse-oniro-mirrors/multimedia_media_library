@@ -19,6 +19,7 @@
 #include "height_width_correct_operation.h"
 #include "userfile_manager_types.h"
 #include "medialibrary_errno.h"
+#include "medialibrary_unittest_utils.h"
 
 using namespace testing::ext;
 
@@ -36,6 +37,7 @@ const int32_t ROTATE_ANGLE_270 = 270;
 void HeightWidthCorrectOperationTest::SetUpTestCase(void)
 {
     MEDIA_INFO_LOG("SetUpTestCase");
+    MediaLibraryUnitTestUtils::Init();
 }
 
 void HeightWidthCorrectOperationTest::TearDownTestCase(void)

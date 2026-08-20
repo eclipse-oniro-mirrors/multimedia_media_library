@@ -38,6 +38,7 @@
 #include "media_upgrade.h"
 #include "media_cloud_permission_check.h"
 #include "userfile_manager_types.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

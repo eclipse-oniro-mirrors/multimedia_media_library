@@ -19,6 +19,7 @@ config("media_capi_config") {
     "${MEDIALIB_INTERFACES_PATH}/inner_api/media_library_helper/include",
     "${MEDIALIB_INTERFACES_PATH}/kits/c",
     "${MEDIALIB_ROOT_PATH}/frameworks/native/c_api/common",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
   ]
 
   cflags = [
@@ -39,7 +40,8 @@ config("media_capi_config") {
 config("media_capi_public_config") {
   include_dirs = [
     "${MEDIALIB_INTERFACES_PATH}/kits/c",
-    "${MEDIALIB_ROOT_PATH}/frameworks/native/capi/common",
+    "${MEDIALIB_ROOT_PATH}/frameworks/native/c_api/common",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
   ]
 }
 

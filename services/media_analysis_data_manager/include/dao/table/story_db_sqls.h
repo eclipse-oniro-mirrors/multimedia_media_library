@@ -21,6 +21,8 @@
 #include "story_play_info_column.h"
 #include "user_photography_info_column.h"
 #include "vision_album_column.h"
+#include "vision_column_comm.h"
+#include "vision_column.h"
 
 namespace OHOS {
 namespace Media {

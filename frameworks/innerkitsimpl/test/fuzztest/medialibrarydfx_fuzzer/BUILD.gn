@@ -46,6 +46,7 @@ ohos_fuzztest("MediaLibraryDfxFuzzTest") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_UTILS_PATH}:medialibrary_common_utils",
     "${MEDIALIB_UTILS_PATH}:permission_utils",
     "${MEDIALIB_UTILS_PATH}:post_event_utils",

@@ -70,6 +70,7 @@ config("napi_config") {
     "${MEDIALIB_INTERFACES_PATH}/innerkits/native/include",
     "${MEDIALIB_UTILS_PATH}/include",
     "${MEDIALIB_SERVICES_PATH}/media_library/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
     "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/include/media_cloud_asset_download",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
@@ -193,7 +194,6 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_INNERIMPL_PATH}/camera/src/media_asset_manager_adapter.cpp",
     "${MEDIALIB_INNERIMPL_PATH}/camera/src/picture_handle_client.cpp",
     "${MEDIALIB_INNERIMPL_PATH}/notification/src/medialibrary_notify_user_define_observer.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/ipc/util/user_define_ipc_client.cpp",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/src/preferred_compatible_mode_check_utils.cpp",
     "${MEDIALIB_JS_PATH}/src/active_analysis_error_utils.cpp",
     "${MEDIALIB_JS_PATH}/src/active_analysis_napi_callback.cpp",
@@ -245,7 +245,6 @@ ohos_shared_library("medialibrary_nutils") {
     "${MEDIALIB_JS_PATH}/src/task_signal_napi.cpp",
     "${MEDIALIB_JS_PATH}/src/thumbnail_manager.cpp",
     "${MEDIALIB_JS_PATH}/src/transfer_utils.cpp",
-    "${MEDIALIB_JS_PATH}/src/userfile_client.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src//utils/media_notification_utils.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/data/user_define_notify_info.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_notification/src/progress_callback_notify/progress_observer_manager.cpp",
@@ -392,10 +391,10 @@ ohos_shared_library("medialibrary_nutils") {
   sources += media_analysis_data_vo_source
 
   deps = [
-    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
   ]
 
@@ -964,6 +963,7 @@ ohos_shared_library("sendablephotoaccesshelper") {
     ":medialibrary_nutils",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [

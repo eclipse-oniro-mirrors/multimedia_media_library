@@ -25,6 +25,7 @@
 #include "iservice_registry.h"
 #include "os_account_manager.h"
 #include "media_asset_rdbstore.h"
+#include "media_common_client.h"
 #include "media_file_uri.h"
 #include "media_file_utils.h"
 #include "media_string_utils.h"
@@ -117,8 +118,9 @@ MediaLibraryManager *MediaLibraryManager::GetMediaLibraryManager()
 void MediaLibraryManager::InitMediaLibraryManager(const sptr<IRemoteObject> &token)
 {
     token_ = token;
-    CHECK_AND_EXECUTE(sDataShareHelper_ != nullptr,
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token, MEDIALIBRARY_DATA_URI));
+    auto &client = IPC::MediaCommonClient::GetInstance();
+    client.Init(token);
+    sDataShareHelper_ = client.GetOrCreateDataShareHelper(-1);
 }
 
 sptr<IRemoteObject> MediaLibraryManager::InitToken()
@@ -133,8 +135,10 @@ sptr<IRemoteObject> MediaLibraryManager::InitToken()
 void MediaLibraryManager::InitMediaLibraryManager()
 {
     token_ = InitToken();
-    if (sDataShareHelper_ == nullptr && token_ != nullptr) {
-        sDataShareHelper_ = DataShare::DataShareHelper::Creator(token_, MEDIALIBRARY_DATA_URI);
+    if (token_ != nullptr) {
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        client.Init(token_);
+        sDataShareHelper_ = client.GetOrCreateDataShareHelper(-1);
     }
 }
 

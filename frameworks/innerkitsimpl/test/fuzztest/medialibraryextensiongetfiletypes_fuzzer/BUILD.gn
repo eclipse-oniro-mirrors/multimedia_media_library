@@ -26,7 +26,8 @@ ohos_fuzztest("MediaLibraryExtensionGetFileTypesFuzzTest") {
 
   sources = [ "src/medialibrary_extension_get_file_types_fuzzer.cpp" ]
 
-  deps = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension" ]
+  deps = [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+           "${MEDIALIB_CLIENT_PATH}:media_library_client", ]
 
   external_deps = [
     "ability_base:want",

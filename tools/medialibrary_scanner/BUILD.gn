@@ -32,7 +32,10 @@ ohos_executable("scanner") {
     ]
 
     sources += [ "${MEDIALIB_TEST_PATH}/unittest/get_self_permissions/src/get_self_permissions.cpp" ]
-    deps += [ "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension" ]
+    deps += [
+      "${MEDIALIB_CLIENT_PATH}:media_library_client",
+      "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    ]
     defines += [ "MEDIALIBRARY_SCANNER_START=1" ]
 
     external_deps = [

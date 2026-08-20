@@ -33,6 +33,7 @@
 #include "medialibrary_tracer.h"
 #include "media_file_utils.h"
 #include "photo_album_column.h"
+#include "medialibrary_unittest_utils.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -114,6 +115,11 @@ void AttachAlbumInfos(PhotoAssetChangeData &data, const std::vector<int32_t> &be
 
 class AnalysisAlbumRefreshTest : public testing::Test {
 public:
+    static void SetUpTestCase()
+    {
+        MediaLibraryUnitTestUtils::Init();
+    }
+ 
     void SetUp() override
     {
         // 无数据库依赖：只构造 in-memory maps

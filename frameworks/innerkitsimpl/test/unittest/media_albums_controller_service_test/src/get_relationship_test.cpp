@@ -37,6 +37,7 @@
 #include "result_set_utils.h"
 #include "medialibrary_business_code.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

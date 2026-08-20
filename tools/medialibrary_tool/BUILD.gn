@@ -30,6 +30,7 @@ ohos_executable("mediatool") {
     "${MEDIALIB_ROOT_PATH}/interfaces/innerkits/native/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/inner_api/media_library_helper/include",
     "${MEDIALIB_ROOT_PATH}/interfaces/kits/js/include",
+    "${MEDIALIB_ROOT_PATH}/frameworks/client/include",
     "${MEDIALIB_THUMBNAIL_PATH}/include",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_data_manager/include/dao/table",
   ]
@@ -57,6 +58,7 @@ ohos_executable("mediatool") {
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INTERFACES_PATH}/kits/js:medialibrary_nutils",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps += [

@@ -32,6 +32,8 @@
 #include "medialibrary_unistore_manager.h"
 #include "result_set_utils.h"
 #include "media_file_uri.h"
+#include "photo_album_column.h"
+#include "rdb_predicates.h"
 
 namespace OHOS::Media {
 using namespace std;

@@ -32,6 +32,7 @@
 #include "medialibrary_data_manager.h"
 #include "vision_column.h"
 #include "media_upgrade.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

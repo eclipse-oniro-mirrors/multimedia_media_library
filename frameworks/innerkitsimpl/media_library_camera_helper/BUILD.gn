@@ -82,7 +82,7 @@ ohos_shared_library("media_library_camera_helper") {
 
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
-    "${MEDIALIB_IPC_COMMON}:media_ipc_common",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   public_configs = [ ":media_library_camera_config" ]

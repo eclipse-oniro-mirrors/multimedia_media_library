@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_MEDIA_IPC_USER_INNER_IPC_CLIENT_H
-#define OHOS_MEDIA_IPC_USER_INNER_IPC_CLIENT_H
+#ifndef OHOS_MEDIA_IPC_UNIFIED_IPC_CLIENT_H
+#define OHOS_MEDIA_IPC_UNIFIED_IPC_CLIENT_H
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -28,9 +29,10 @@
 #include "media_req_vo.h"
 #include "media_resp_vo.h"
 #include "media_empty_obj_vo.h"
+#include "media_uri_utils.h"
 
 namespace OHOS::Media::IPC {
-class UserInnerIPCClient {
+class UnifiedIPCClient {
 private:
     std::string traceId_;
     int32_t userId_ = -1;
@@ -39,23 +41,23 @@ private:
 
 private:
     int32_t HeaderMarshalling(MessageParcel &data);
-    virtual int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
+    int32_t InitClient(const int32_t &userId);
+    int32_t UserDefineFunc(MessageParcel &data, MessageParcel &reply, MessageOption &option);
 
-public:  // getters & setters
-    UserInnerIPCClient &SetTraceId(const std::string &traceId);
+public:
+    UnifiedIPCClient &SetTraceId(const std::string &traceId);
     std::string GetTraceId() const;
-    UserInnerIPCClient &SetUserId(const int32_t &userId);
+    UnifiedIPCClient &SetUserId(const int32_t &userId);
     int32_t GetUserId() const;
     std::unordered_map<std::string, std::string> GetHeader() const;
-    UserInnerIPCClient &SetHeader(const std::unordered_map<std::string, std::string> &header);
-    UserInnerIPCClient &SetDataShareHelper(std::shared_ptr<DataShare::DataShareHelper> dataShareHelper);
+    UnifiedIPCClient &SetHeader(const std::unordered_map<std::string, std::string> &header);
+    UnifiedIPCClient &SetDataShareHelper(std::shared_ptr<DataShare::DataShareHelper> dataShareHelper);
 
 private:
     template <class REQ>
     int32_t BodyMarshalling(MessageParcel &data, const uint32_t code, const REQ &reqBody)
     {
         MediaReqVo<REQ> reqVo;
-        // user define command code.
         reqVo.SetUserId(userId_);
         reqVo.SetCode(code);
         reqVo.SetBody(reqBody);
@@ -86,11 +88,12 @@ public:
         int32_t ret = this->HeaderMarshalling(data);
         bool errConn = ret != E_OK;
         CHECK_AND_RETURN_RET(!errConn, ret);
-        // user define request data.
         ret = this->BodyMarshalling<REQ>(data, code, reqBody);
         errConn = ret != E_OK;
         CHECK_AND_RETURN_RET(!errConn, ret);
-        // post user define request to service.
+        ret = this->InitClient(userId_);
+        errConn = ret != E_OK;
+        CHECK_AND_RETURN_RET(!errConn, ret);
         ret = this->UserDefineFunc(data, reply, option);
         errConn = ret != E_OK;
         CHECK_AND_RETURN_RET_LOG(!errConn,
@@ -99,7 +102,6 @@ public:
             ret,
             code,
             this->GetTraceId().c_str());
-        // user define response data.
         int32_t errCode = E_OK;
         ret = this->BodyUnmarshalling<RSP>(reply, respBody, errCode);
         errConn = ret != E_OK;
@@ -148,4 +150,4 @@ public:
     }
 };
 }  // namespace OHOS::Media::IPC
-#endif  // OHOS_MEDIA_IPC_USER_INNER_IPC_CLIENT_H
+#endif  // OHOS_MEDIA_IPC_UNIFIED_IPC_CLIENT_H

@@ -42,6 +42,7 @@
 #include "vision_image_face_column.h"
 #include "vision_photo_map_column.h"
 #include "vision_db_sqls_more.h"
+#include "photo_album_column.h"
 
 namespace OHOS::Media {
 using namespace std;

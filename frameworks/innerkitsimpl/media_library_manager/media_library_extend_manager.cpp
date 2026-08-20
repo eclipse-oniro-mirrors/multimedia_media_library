@@ -31,6 +31,7 @@
 #include "medialibrary_errno.h"
 #include "medialibrary_tracer.h"
 #include "user_inner_ipc_client.h"
+#include "media_common_client.h"
 #include "medialibrary_business_code.h"
 #include "get_result_set_from_db_vo.h"
 #include "get_result_set_from_photos_extend_vo.h"
@@ -86,14 +87,15 @@ void MediaLibraryExtendManager::InitMediaLibraryExtendManager()
     int32_t activeUser = GetCurrentAccountId();
     MEDIA_INFO_LOG("userId_: %{public}d -> activeUser: %{public}d", userId_, activeUser);
     if (dataShareHelper_ == nullptr || activeUser != userId_) {
-        auto token = InitToken();
+        auto &client = IPC::MediaCommonClient::GetInstance();
+        client.SetUserId(activeUser);
+        sptr<IRemoteObject> token = InitToken();
         if (token == nullptr) {
             MEDIA_ERR_LOG("fail to get token, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);
             return;
         }
-        Uri uri = Uri(MEDIALIBRARY_DATA_URI);
-        std::string multiUri = MediaUriUtils::GetMultiUri(uri, activeUser).ToString();
-        dataShareHelper_ = DataShare::DataShareHelper::Creator(token, multiUri);
+        client.Init(token, activeUser);
+        dataShareHelper_ = client.GetOrCreateDataShareHelper(activeUser);
         if (dataShareHelper_ == nullptr) {
             MEDIA_ERR_LOG(
                 "dataShareHelper Creator failed, activeUser: %{public}d, userId_: %{public}d", activeUser, userId_);

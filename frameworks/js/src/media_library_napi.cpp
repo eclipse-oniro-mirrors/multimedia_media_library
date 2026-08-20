@@ -50,6 +50,7 @@
 #include "media_smart_map_column.h"
 #include "medialibrary_data_manager.h"
 #include "medialibrary_napi_enum_comm.h"
+#include "userfile_client.h"
 #include "medialibrary_peer_info.h"
 #include "medialibrary_tracer.h"
 #include "modal_ui_callback.h"

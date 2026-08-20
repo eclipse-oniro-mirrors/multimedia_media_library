@@ -12,19 +12,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#ifndef OHOS_MEDIA_IPC_I_MEDIA_PARCELABLE_H
-#define OHOS_MEDIA_IPC_I_MEDIA_PARCELABLE_H
-
-#include <string>
-
-#include "message_parcel.h"
-
+ 
+#ifndef OHOS_MEDIA_IPC_USER_DEFINE_IPC_CLIENT_H
+#define OHOS_MEDIA_IPC_USER_DEFINE_IPC_CLIENT_H
+ 
+#include "unified_ipc_client.h"
+ 
 namespace OHOS::Media::IPC {
-class IMediaParcelable {
-public:  // functions of Parcelable.
-    virtual bool Unmarshalling(MessageParcel &parcel) = 0;
-    virtual bool Marshalling(MessageParcel &parcel) const = 0;
-};
+// UserDefineIPCClient is now a typedef of UnifiedIPCClient.
+// Supports injection mode (SetDataShareHelper) and global mode (SA token by userId).
+// If a helper is injected, it takes priority over global creation.
+// Existing code using IPC::UserDefineIPCClient().Call(...) continues to work unchanged.
+using UserDefineIPCClient = UnifiedIPCClient;
 }  // namespace OHOS::Media::IPC
-#endif  // OHOS_MEDIA_IPC_I_MEDIA_PARCELABLE_H
+#endif  // OHOS_MEDIA_IPC_USER_DEFINE_IPC_CLIENT_H

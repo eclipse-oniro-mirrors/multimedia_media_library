@@ -30,6 +30,7 @@
 #include "medialibrary_tracer.h"
 #include "permission_utils.h"
 #include "photo_proxy_napi.h"
+#include "userfile_client.h"
 #ifdef HAS_ACE_ENGINE_PART
 #endif
 #include "user_define_ipc_client.h"

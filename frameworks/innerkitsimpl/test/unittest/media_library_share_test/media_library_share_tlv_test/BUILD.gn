@@ -47,6 +47,7 @@ ohos_unittest("media_library_share_tlv_test") {
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_INNERKITS_PATH}/media_library_manager:media_library_manager",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension:medialibrary_data_extension",
+    "${MEDIALIB_CLIENT_PATH}:media_library_client",
   ]
 
   external_deps = [
@@ -65,6 +66,7 @@ ohos_unittest("media_library_share_tlv_test") {
     "access_token:libprivacy_sdk",
     "access_token:libtoken_setproc",
     "app_file_service:fileuri_native",
+    "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "common_event_service:cesfwk_innerkits",
     "data_share:datashare_common",

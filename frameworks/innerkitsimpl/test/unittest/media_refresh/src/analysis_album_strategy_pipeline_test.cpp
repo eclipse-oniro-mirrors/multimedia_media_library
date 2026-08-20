@@ -49,6 +49,7 @@
 #include "album_asset_helper.h"
 #include "media_file_utils.h"
 #include "photo_album_column.h"
+#include "medialibrary_unittest_utils.h"
 
 using namespace std;
 using namespace testing::ext;
@@ -263,6 +264,11 @@ static inline void ConsumeInt(int32_t) {}
 
 class AnalysisAlbumStrategyPipelineTest : public testing::Test {
 public:
+    static void SetUpTestCase()
+    {
+        MediaLibraryUnitTestUtils::Init();
+    }
+ 
     void SetUp() override
     {
         exe_.ResetExecutionStatus();

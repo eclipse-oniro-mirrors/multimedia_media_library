@@ -27,6 +27,7 @@
 #include "query_photo_vo.h"
 #include "user_define_ipc_client.h"
 #include "user_inner_ipc_client.h"
+#include "userfilemgr_uri.h"
 
 namespace OHOS {
 namespace Media {
@@ -59,9 +60,10 @@ static MultiStagesCapturePhotoStatus QueryViaSandBoxWithoutDfx(const QueryPhotoS
         return MultiStagesCapturePhotoStatus::QUERY_INNER_FAIL;
     }
 
-    shared_ptr<DataShare::DataShareResultSet> resultSet = rdbStore->Query(predicates, fetchColumn, object, errCode);
+    std::shared_ptr<DataShare::DataShareResultSet> resultSet =
+        rdbStore->Query(predicates, fetchColumn, object, errCode);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
-        NAPI_ERR_LOG("query resultSet is nullptr");
+        MEDIA_ERR_LOG("query resultSet is nullptr");
         return MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
     }
     int32_t indexOfPhotoId = -1;
@@ -102,7 +104,7 @@ static MultiStagesCapturePhotoStatus QueryViaIPCWithDfx(const QueryPhotoStatusIn
                                        .SetHeader(headerMap).Call(businessCode, reqBody, respBody);
     }
     if (ret < 0) {
-        NAPI_ERR_LOG("ret = %{public}d", ret);
+        MEDIA_ERR_LOG("ret = %{public}d", ret);
         return MultiStagesCapturePhotoStatus::HIGH_QUALITY_STATUS;
     }
 
