@@ -4005,22 +4005,6 @@ WatchSystemService::CloudAuditImpl* MediaLibraryDataManager::GetCloudAuditInstan
     return cloudAuditInstance_;
 }
 #endif
-
-void MediaLibraryDataManager::HandleSpecialOpen(MediaLibraryCommand &cmd)
-{
-    std::string caller = cmd.GetQuerySetParam(CONST_CALLER);
-    if (!caller.empty()) {
-        return;
-    }
-    std::string operation = cmd.GetQuerySetParam(CONST_MEDIA_OPERN_KEYWORD);
-    if (operation.empty()) {
-        return;
-    }
-    string bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
-    MEDIA_INFO_LOG("Special Open, Bundlename: %{public}s, Operation: %{public}s",
-        bundleName.c_str(), operation.c_str());
-    DfxManager::GetInstance()->HandleSpecialOpen(bundleName, operation);
-}
 // LCOV_EXCL_STOP
 }  // namespace Media
 }  // namespace OHOS

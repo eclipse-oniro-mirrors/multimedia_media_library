@@ -42,10 +42,6 @@ static vector<string> GetIds(const CloudSyncHandleData &handleData)
     vector<string> fileIds;
     for (auto &uri : handleData.orgInfo.uris) {
         string uriString = uri.ToString();
-        size_t queryPos = uriString.find('?');
-        if (queryPos != string::npos) {
-            uriString = uriString.substr(0, queryPos);
-        }
         auto index = uriString.rfind('/');
         if (index == string::npos) {
             continue;

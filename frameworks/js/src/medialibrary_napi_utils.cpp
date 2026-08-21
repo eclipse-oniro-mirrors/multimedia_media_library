@@ -310,10 +310,6 @@ string MediaLibraryNapiUtils::GetFileIdFromUri(const string &uri)
 
     string temp = uri;
     MediaFileUri::RemoveAllFragment(temp);
-    size_t queryPos = temp.find('?');
-    if (queryPos != string::npos) {
-        temp = temp.substr(0, queryPos);
-    }
     size_t pos = temp.rfind('/');
     if (pos != string::npos) {
         id = temp.substr(pos + 1);

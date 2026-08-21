@@ -349,7 +349,6 @@ int32_t MediaLibraryManager::OpenAsset(string &uri, const string openMode)
         MEDIA_ERR_LOG("Failed to open Asset, datashareHelper is nullptr");
         return E_ERR;
     }
-    MediaUriUtils::AppendKeyValue(uri, CONST_CALLER, CONST_INNER_API);
     Uri openUri(uri);
     return currentDataShareHelper->OpenFile(openUri, openMode);
 }
@@ -718,13 +717,11 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
     CHECK_AND_RETURN_RET_LOG(dataShareHelper != nullptr, E_ERR, "Failed to open thumbnail, dataShareHelper is nullptr");
     if (path.empty()) {
         MEDIA_ERR_LOG("OpenThumbnail path is empty");
-        MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_INNER_API);
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
     string sandboxPath = GetSandboxPath(path, size, isAstc);
     if ((sandboxPath.find("LCD.jpg") != std::string::npos) && MediaPathUtils::CheckIsCloudFile(sandboxPath)) {
-        MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_INNER_API);
         Uri openUri(uriStr);
         return dataShareHelper->OpenFile(openUri, "R");
     }
@@ -736,7 +733,6 @@ int MediaLibraryManager::OpenThumbnail(string &uriStr, const string &path, const
     MEDIA_INFO_LOG("OpenThumbnail from andboxPath failed, errno %{public}d path :%{public}s fd %{public}d",
         errno, MediaFileUtils::DesensitizePath(path).c_str(), fd);
     CHECK_AND_EXECUTE(!IsAsciiString(path), uriStr += "&" + THUMBNAIL_PATH + "=" + path);
-    MediaUriUtils::AppendKeyValue(uriStr, CONST_CALLER, CONST_INNER_API);
     Uri openUri(uriStr);
     return dataShareHelper->OpenFile(openUri, "R");
 }
@@ -1121,7 +1117,6 @@ int32_t MediaLibraryManager::ReadMovingPhotoVideo(const string &uri, const strin
         "Failed to read video of moving photo, datashareHelper is nullptr");
     string videoUri = uri;
     MediaFileUtils::UriAppendKeyValue(videoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD, option);
-    MediaUriUtils::AppendKeyValue(videoUri, CONST_CALLER, CONST_INNER_API);
     Uri openVideoUri(videoUri);
     int32_t fd = dataShareHelper->OpenFile(openVideoUri, MEDIA_FILEMODE_READONLY);
 
@@ -1186,7 +1181,6 @@ int32_t MediaLibraryManager::ReadPrivateMovingPhoto(const string &uri)
     string movingPhotoUri = uri;
     MediaFileUtils::UriAppendKeyValue(movingPhotoUri, CONST_MEDIA_MOVING_PHOTO_OPRN_KEYWORD,
         CONST_OPEN_PRIVATE_LIVE_PHOTO);
-    MediaUriUtils::AppendKeyValue(movingPhotoUri, CONST_CALLER, CONST_INNER_API);
     Uri openMovingPhotoUri(movingPhotoUri);
     return sDataShareHelper_->OpenFile(openMovingPhotoUri, MEDIA_FILEMODE_READONLY);
 }

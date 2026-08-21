@@ -644,7 +644,6 @@ int32_t PhotoAssetProxy::GetVideoFd(VideoType videoType)
         MediaUriUtils::AppendKeyValue(videoUri, CONST_MEDIA_CINEMATIC_VIDEO_OPRN_KEYWORD, CONST_CREATE_CINEMATIC_VIDEO);
         MediaUriUtils::AppendKeyValue(videoUri, CONST_VIDEO_TYPE_KEYWORD, to_string(static_cast<int32_t>(videoType)));
     }
-    MediaUriUtils::AppendKeyValue(videoUri, CONST_CALLER, CONST_INNER_API);
     Uri openVideoUri(videoUri);
     int32_t fd = dataShareHelper_->OpenFile(openVideoUri, MEDIA_FILEMODE_READWRITE);
     MEDIA_INFO_LOG("%{public}s:{%{public}s:%{public}d} video path: %{public}s, fd: %{public}d",

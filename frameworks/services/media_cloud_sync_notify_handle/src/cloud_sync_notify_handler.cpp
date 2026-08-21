@@ -91,10 +91,6 @@ void CloudSyncNotifyHandler::HandleDeleteEvent(const std::list<Uri> &uris)
 {
     for (auto &uri : uris) {
         string uriString = uri.ToString();
-        size_t queryPos = uriString.find('?');
-        if (queryPos != string::npos) {
-            uriString = uriString.substr(0, queryPos);
-        }
         auto dateTakenPos = uriString.rfind('/');
         if (dateTakenPos == string::npos) {
             continue;
@@ -121,10 +117,6 @@ void CloudSyncNotifyHandler::HandleTimeUpdateEvent(const std::list<Uri> &uris)
 {
     for (auto &uri : uris) {
         string uriString = uri.ToString();
-        size_t queryPos = uriString.find('?');
-        if (queryPos != string::npos) {
-            uriString = uriString.substr(0, queryPos);
-        }
         auto newDateTakenPos = uriString.rfind('/');
         if (newDateTakenPos == string::npos) {
             continue;
@@ -211,10 +203,6 @@ void CloudSyncNotifyHandler::HandleDirtyDataFix(const std::list<Uri> &uris, cons
 
 std::string CloudSyncNotifyHandler::GetfileIdFromPastDirtyDataFixUri(std::string uriString)
 {
-    size_t queryPos = uriString.find('?');
-    if (queryPos != string::npos) {
-        uriString = uriString.substr(0, queryPos);
-    }
     auto fileIdPos = uriString.rfind('/');
     if (fileIdPos == string::npos) {
         return "";

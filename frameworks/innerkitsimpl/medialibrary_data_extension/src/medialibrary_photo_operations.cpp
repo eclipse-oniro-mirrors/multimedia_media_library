@@ -7797,24 +7797,6 @@ static bool IsLegalKey(const std::string &key)
         return std::islower(c) || c == '_' || std::isdigit(c);
     });
 }
-
-void MediaLibraryPhotoOperations::HandleIllegalKey(DataShare::DataSharePredicates &predicates)
-{
-    auto &items = predicates.GetOperationList();
-    string bundleName;
-    for (auto &item : items) {
-        CHECK_AND_CONTINUE_ERR_LOG(!item.singleParams.empty(), "SingleParams is empty");
-        std::string key = static_cast<string>(item.GetSingle(0));
-        if (key.empty() || IsLegalKey(key)) {
-            continue;
-        }
-        if (bundleName.empty()) {
-            bundleName = MediaLibraryBundleManager::GetInstance()->GetClientBundleName();
-        }
-        MEDIA_INFO_LOG("Invalid key, bundlename: %{public}s, key: %{public}s", bundleName.c_str(), key.c_str());
-        DfxManager::GetInstance()->HandleInvalidKey(bundleName, key);
-    }
-}
 } // namespace Media
 } // namespace OHOS
 //LCOV_EXCL_STOP

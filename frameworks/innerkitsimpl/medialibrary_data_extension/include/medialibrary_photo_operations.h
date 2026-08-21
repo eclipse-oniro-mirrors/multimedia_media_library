@@ -35,7 +35,6 @@
 #include "multistages_capture_dfx_capture_times.h"
 #include "multistages_capture_dfx_save_camera_photo.h"
 #include "medialibrary_async_worker.h"
-#include "datashare_predicates.h"
 //LCOV_EXCL_START
 
 namespace OHOS {
@@ -212,7 +211,6 @@ public:
     EXPORT static int32_t NotifyAssetSended(const std::string &uri,
         ServiceShareType shareType = ServiceShareType::ASSET_LEVEL);
     EXPORT static void BatchStoreThumbnailSize(const std::vector<std::pair<std::string, std::string>>& photoIdPathList);
-    EXPORT static void HandleIllegalKey(DataShare::DataSharePredicates &predicates);
 private:
     static int32_t HandleAssetRenameAndMove(MediaLibraryCommand &cmd, std::shared_ptr<FileAsset> fileAsset,
         bool isNameChanged, AccurateRefresh::AccurateRefreshBase &baseRefresh);
