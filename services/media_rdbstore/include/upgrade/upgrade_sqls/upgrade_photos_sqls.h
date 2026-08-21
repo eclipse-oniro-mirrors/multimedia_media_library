@@ -23,6 +23,15 @@
 #define COLUMN_PHOTO_NEED_THUMBNAIL "need_thumbnail"
 #define COLUMN_ATTACHMENT_SIZE "attachment_size"
 #define COLUMN_COMPRESSION_QUALITY "compression_quality"
+// share photo columns
+#define COLUMN_PHOTO_IS_SHARED "is_shared"
+#define COLUMN_PHOTO_SHARE_OWNER_INFO "share_owner_info"
+#define COLUMN_PHOTO_SHARE_ALBUM_OWNER "share_album_owner"
+#define COLUMN_PHOTO_VISIBILITY "photo_visibility"
+#define COLUMN_PHOTO_SHARE_RISK_STATUS "share_risk_status"
+#define COLUMN_PHOTO_SHARE_RISK_TYPE "share_risk_type"
+#define COLUMN_PHOTO_SHARE_DATE_DAY "share_date_day"
+#define COLUMN_PHOTO_SHARE_GROUP "share_group"
 // index name shoule be added here
 #define INDEX_PHOTO_SORT_IN_ALBUM_DATE_ADDED_INDEX "idx_photo_sort_in_album_date_added"
 #define INDEX_PHOTO_SORT_IN_ALBUM_DATE_TAKEN_INDEX "idx_photo_sort_in_album_date_taken"

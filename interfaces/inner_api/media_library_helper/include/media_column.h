@@ -314,6 +314,16 @@ public:
     // clone file info db
     static const std::string CLONE_FILE_INFO_PATH EXPORT;
     static const std::string CLONE_FILE_INFO_NEW_PATH EXPORT;
+
+    // for share
+    static const std::string PHOTO_IS_SHARED EXPORT;
+    static const std::string PHOTO_SHARE_OWNER_INFO EXPORT;
+    static const std::string PHOTO_SHARE_ALBUM_OWNER EXPORT;
+    static const std::string PHOTO_VISIBILITY EXPORT;
+    static const std::string PHOTO_SHARE_RISK_STATUS EXPORT;
+    static const std::string PHOTO_SHARE_RISK_TYPE EXPORT;
+    static const std::string PHOTO_SHARE_DATE_DAY EXPORT;
+    static const std::string PHOTO_SHARE_GROUP EXPORT;
 };
 
 class PhotoExtColumn {

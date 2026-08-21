@@ -83,6 +83,7 @@
 #include "cover_record_columns.h"
 #include "medialibrary_rdb_helper.h"
 #include "rdb_table_strategy_manager.h"
+#include "share_member_column.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -2095,6 +2096,8 @@ static const vector<string> onCreateSqlStrs = {
     DownloadResourcesColumn::INDEX_DRTR_ID_STATUS,
 
     TabCompatibleInfoColumn::CREATE_TABLE,
+    SQL_CREATE_TAB_SHARE_ALBUM_MEMBER,
+    SQL_CREATE_TAB_SHARE_ALBUM_MEMBER_INDEX,
 };
 
 static int32_t ExecuteSql(RdbStore &store)

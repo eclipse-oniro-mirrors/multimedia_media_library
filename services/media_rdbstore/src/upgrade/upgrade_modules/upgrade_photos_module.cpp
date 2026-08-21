@@ -105,5 +105,21 @@ static vector<pair<int32_t, int32_t>> AddPhotoCompressionQualityColumn(NativeRdb
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_PHOTO_COMPRESSION_QUALITY, PHOTOS_MODULE_NAME,
     AddPhotoCompressionQualityColumn);
 
+static vector<pair<int32_t, int32_t>> AddPhotosShareColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_IS_SHARED, "INT DEFAULT 0 NOT NULL")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_SHARE_OWNER_INFO, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_SHARE_ALBUM_OWNER, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_VISIBILITY, "INT DEFAULT 0 NOT NULL")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_SHARE_RISK_STATUS, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_SHARE_RISK_TYPE, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_SHARE_DATE_DAY, "BIGINT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_PHOTOS, COLUMN_PHOTO_SHARE_GROUP, "BIGINT NOT NULL DEFAULT 0")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_TAB_PHOTOS_SHARE, PHOTOS_MODULE_NAME, AddPhotosShareColumn);
+
 } // namespace Media
 } // namespace OHOS

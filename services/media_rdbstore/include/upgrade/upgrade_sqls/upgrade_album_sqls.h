@@ -28,6 +28,11 @@
 #define COLUMN_HIDDEN_COVER_ORDER_SUBKEY "hidden_cover_order_subkey"
 #define COLUMN_HIDDEN_COVER_ORDER_TYPE "hidden_cover_order_type"
 
+// share album columns
+#define COLUMN_SHARE_RISK_STATUS "share_risk_status"
+#define COLUMN_SHARE_RISK_TYPE "share_risk_type"
+#define COLUMN_SHARE_ALBUM_OWNER "share_album_owner"
+
 // sqls only execute in upgrade progress should be added here
 #define SQL_UPGRADE_CREATE_TAB_COVER_RECORD \
     "CREATE TABLE IF NOT EXISTS tab_cover_record (" \

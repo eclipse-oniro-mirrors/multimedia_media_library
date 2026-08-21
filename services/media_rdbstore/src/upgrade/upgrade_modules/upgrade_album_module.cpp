@@ -68,6 +68,17 @@ static vector<pair<int32_t, int32_t>> AddCoverOrderColumns(NativeRdb::RdbStore &
                            .Build();
     return UpgradeHelper::ExecuteCommands(commands, store);
 }
-REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_TAB_COVER_RECORD_AND_INDEX, ALBUM_MODULE_NAME, AddCoverOrderColumns)
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_TAB_COVER_RECORD_AND_INDEX, ALBUM_MODULE_NAME, AddCoverOrderColumns);
+
+static vector<pair<int32_t, int32_t>> AddAlbumShareColumns(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_PHOTO_ALBUM, COLUMN_SHARE_RISK_STATUS, "INT NOT NULL DEFAULT 0")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_SHARE_RISK_TYPE, "TEXT DEFAULT NULL")
+                           .AddColumn(TABLE_PHOTO_ALBUM, COLUMN_SHARE_ALBUM_OWNER, "TEXT DEFAULT NULL")
+                           .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_TAB_ALBUM_SHARE, ALBUM_MODULE_NAME, AddAlbumShareColumns);
 }
 }

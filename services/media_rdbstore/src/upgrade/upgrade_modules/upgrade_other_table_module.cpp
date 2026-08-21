@@ -18,6 +18,7 @@
 #include "media_library_upgrade_macros.h"
 #include "media_library_upgrade_helper.h"
 #include "upgrade_other_table_sqls.h"
+#include "share_member_column.h"
 #include "media_log.h"
 #include "rdb_store.h"
 #include "medialibrary_db_const.h"
@@ -47,5 +48,16 @@ static vector<pair<int32_t, int32_t>> AddFriendIdColumn(NativeRdb::RdbStore &sto
 }
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_FRIEND_ID,
     OTHER_TABLE_MODULE_NAME, AddFriendIdColumn);
+
+static vector<pair<int32_t, int32_t>> AddShareMemberTable(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddRawSql(SQL_CREATE_TAB_SHARE_ALBUM_MEMBER)
+                           .AddRawSql(SQL_CREATE_TAB_SHARE_ALBUM_MEMBER_INDEX)
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_UPDATE_TAB_MEMBER_SHARE,
+    OTHER_TABLE_MODULE_NAME, AddShareMemberTable);
 }
 }
