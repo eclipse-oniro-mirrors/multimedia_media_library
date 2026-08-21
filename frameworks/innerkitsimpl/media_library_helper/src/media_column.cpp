@@ -242,6 +242,15 @@ const std::string PhotoColumn::COMPRESSION_QUALITY = "compression_quality";
 const std::string PhotoColumn::LCD_ASPECT_RATIO = "lcd_aspect_ratio";
 const std::string PhotoColumn::PHOTO_LCD_FILE_SIZE = "lcd_file_size";
 
+const std::string PhotoColumn::PHOTO_IS_SHARED = "is_shared";
+const std::string PhotoColumn::PHOTO_SHARE_OWNER_INFO = "share_owner_info";
+const std::string PhotoColumn::PHOTO_SHARE_ALBUM_OWNER = "share_album_owner";
+const std::string PhotoColumn::PHOTO_VISIBILITY = "photo_visibility";
+const std::string PhotoColumn::PHOTO_SHARE_RISK_STATUS = "share_risk_status";
+const std::string PhotoColumn::PHOTO_SHARE_RISK_TYPE = "share_risk_type";
+const std::string PhotoColumn::PHOTO_SHARE_DATE_DAY = "share_date_day";
+const std::string PhotoColumn::PHOTO_SHARE_GROUP = "share_group";
+
 
 const std::set<std::string> PhotoColumn::DEFAULT_FETCH_COLUMNS = {
     PHOTO_SUBTYPE, PHOTO_BURST_KEY, PHOTO_TRANS_CODE_FILE_SIZE,
@@ -274,7 +283,9 @@ const std::set<std::string> PhotoColumn::PHOTO_COLUMNS = {
     PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, PhotoColumn::PHOTO_HIDDEN_TIME, PhotoColumn::LOCAL_ASSET_SIZE,
     PhotoColumn::PHOTO_FILE_HIDDEN, PhotoColumn::PHOTO_NEED_THUMBNAIL, PhotoColumn::ATTACHMENT_SIZE,
     PhotoColumn::PHOTO_LCD_FILE_SIZE, PhotoColumn::COMPRESSION_QUALITY, PhotoColumn::PHOTO_TRANS_CODE_FILE_SIZE,
-    PhotoColumn::PHOTO_TRANSCODE_TIME,
+    PhotoColumn::PHOTO_TRANSCODE_TIME, PhotoColumn::PHOTO_IS_SHARED, PhotoColumn::PHOTO_SHARE_OWNER_INFO,
+    PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, PhotoColumn::PHOTO_VISIBILITY, PhotoColumn::PHOTO_SHARE_RISK_STATUS,
+    PhotoColumn::PHOTO_SHARE_RISK_TYPE, PhotoColumn::PHOTO_SHARE_DATE_DAY, PhotoColumn::PHOTO_SHARE_GROUP,
 };
 
 bool PhotoColumn::IsPhotoColumn(const std::string &columnName)

@@ -124,6 +124,14 @@ static const std::map<std::string, DataType> PHOTOS_COLUMNS = {
     {PhotoColumn::ATTACHMENT_SIZE, DataType::LONG},
     {PhotoColumn::PHOTO_LCD_FILE_SIZE, DataType::INT},
     {PhotoColumn::COMPRESSION_QUALITY, DataType::INT},
+    {PhotoColumn::PHOTO_IS_SHARED, DataType::INT},
+    {PhotoColumn::PHOTO_SHARE_OWNER_INFO, DataType::STRING},
+    {PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, DataType::STRING},
+    {PhotoColumn::PHOTO_SHARE_DATE_DAY, DataType::LONG},
+    {PhotoColumn::PHOTO_SHARE_GROUP, DataType::LONG},
+    {PhotoColumn::PHOTO_VISIBILITY, DataType::INT},
+    {PhotoColumn::PHOTO_SHARE_RISK_STATUS, DataType::INT},
+    {PhotoColumn::PHOTO_SHARE_RISK_TYPE, DataType::STRING},
 };
 
 static const std::map<std::string, DataType> PHOTO_ALBUM_COLUMNS = {
@@ -154,6 +162,9 @@ static const std::map<std::string, DataType> PHOTO_ALBUM_COLUMNS = {
     {PhotoAlbumColumns::COVER_CLOUD_ID, DataType::STRING},
     {PhotoAlbumColumns::UPLOAD_STATUS, DataType::INT},
     {PhotoAlbumColumns::UNIQUE_ID, DataType::STRING},
+    {PhotoAlbumColumns::SHARE_RISK_STATUS, DataType::INT},
+    {PhotoAlbumColumns::SHARE_RISK_TYPE, DataType::STRING},
+    {PhotoAlbumColumns::SHARE_ALBUM_OWNER, DataType::STRING},
 };
 }  // namespace MediaColumnType
 }  // namespace OHOS::Media::ORM

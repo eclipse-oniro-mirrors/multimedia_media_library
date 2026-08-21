@@ -65,6 +65,11 @@ public:
     static const std::string HIDDEN_COVER_ORDER_SUBKEY EXPORT;
     static const std::string HIDDEN_COVER_ORDER_TYPE EXPORT;
 
+    // share album columns
+    static const std::string SHARE_RISK_STATUS EXPORT;
+    static const std::string SHARE_RISK_TYPE EXPORT;
+    static const std::string SHARE_ALBUM_OWNER EXPORT;
+
     // For api9 compatibility
     static const std::string ALBUM_RELATIVE_PATH EXPORT;
 

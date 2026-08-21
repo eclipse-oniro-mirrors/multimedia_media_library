@@ -61,6 +61,10 @@ const string PhotoAlbumColumns::COVER_ORDER_TYPE = "cover_order_type";
 const string PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY = "hidden_cover_order_key";
 const string PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY = "hidden_cover_order_subkey";
 const string PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE = "hidden_cover_order_type";
+// share album columns
+const string PhotoAlbumColumns::SHARE_RISK_STATUS = "share_risk_status";
+const string PhotoAlbumColumns::SHARE_RISK_TYPE = "share_risk_type";
+const string PhotoAlbumColumns::SHARE_ALBUM_OWNER = "share_album_owner";
 
 // For api9 compatibility
 const string PhotoAlbumColumns::ALBUM_RELATIVE_PATH = "relative_path";
@@ -221,7 +225,10 @@ const string PhotoAlbumColumns::CREATE_TABLE = CreateTable() +
     COVER_ORDER_TYPE + " INT NOT NULL DEFAULT 0, " +
     HIDDEN_COVER_ORDER_KEY + " TEXT DEFAULT NULL, " +
     HIDDEN_COVER_ORDER_SUBKEY + " TEXT DEFAULT NULL, " +
-    HIDDEN_COVER_ORDER_TYPE + " INT NOT NULL DEFAULT 0 " +
+    HIDDEN_COVER_ORDER_TYPE + " INT NOT NULL DEFAULT 0, " +
+    SHARE_RISK_STATUS + " INT NOT NULL DEFAULT 0, " +
+    SHARE_RISK_TYPE + " TEXT DEFAULT NULL, " +
+    SHARE_ALBUM_OWNER + " TEXT DEFAULT NULL " +
     ")";
 
 // Create indexes

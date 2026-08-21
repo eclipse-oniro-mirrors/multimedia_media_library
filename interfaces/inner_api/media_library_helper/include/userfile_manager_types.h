@@ -119,7 +119,8 @@ enum PhotoAlbumType : int32_t {
     USER = 0,
     SYSTEM = 1024,
     SOURCE = 2048,
-    SMART = 4096
+    SMART = 4096,
+    SHARE = 8192
 };
 
 enum PhotoAlbumSubType : int32_t {
@@ -150,6 +151,7 @@ enum PhotoAlbumSubType : int32_t {
     HIGHLIGHT_SUGGESTIONS,
     PET = 4106,
     ANALYSIS_END = PET,
+    SHARE_GENERIC = 8193,
     ANY = std::numeric_limits<int32_t>::max()
 };
 
