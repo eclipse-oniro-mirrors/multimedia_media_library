@@ -688,14 +688,14 @@ void DfxManager::HandleFiveMinuteTask()
 
 void DfxManager::HandleDeleteBehaviors()
 {
-    std::unordered_map<string, int32_t> deleteAssetToTrash;
-    dfxCollector_->GetDeleteBehavior(deleteAssetToTrash, DfxType::TRASH_PHOTO);
+    std::unordered_map<string, int32_t> deleteAssetToTrash =
+        dfxCollector_->GetDeleteBehavior(DfxType::TRASH_PHOTO);
     dfxAnalyzer_->FlushDeleteBehavior(deleteAssetToTrash, DfxType::TRASH_PHOTO);
-    std::unordered_map<string, int32_t> deleteAssetFromDisk;
-    dfxCollector_->GetDeleteBehavior(deleteAssetFromDisk, DfxType::ALBUM_DELETE_ASSETS);
-    dfxAnalyzer_->FlushDeleteBehavior(deleteAssetFromDisk, DfxType::ALBUM_DELETE_ASSETS);
-    std::unordered_map<string, int32_t> removeAssets;
-    dfxCollector_->GetDeleteBehavior(removeAssets, DfxType::ALBUM_REMOVE_PHOTOS);
+    std::unordered_map<string, int32_t> deleteAssetFromDisk =
+        dfxCollector_->GetDeleteBehavior(DfxType::ALBUM_DELETE_ASSETS);
+    dfxAnalyzer_->FlushDeleteBehavior(deleteAssetToTrash, DfxType::ALBUM_DELETE_ASSETS);
+    std::unordered_map<string, int32_t> removeAssets =
+        dfxCollector_->GetDeleteBehavior(DfxType::ALBUM_REMOVE_PHOTOS);
     dfxAnalyzer_->FlushDeleteBehavior(removeAssets, DfxType::ALBUM_REMOVE_PHOTOS);
 }
 
