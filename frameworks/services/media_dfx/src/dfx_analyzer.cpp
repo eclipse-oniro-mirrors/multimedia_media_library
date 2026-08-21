@@ -111,24 +111,6 @@ void DfxAnalyzer::FlushDeleteBehavior(std::unordered_map<string, int32_t> &delet
     prefs->FlushSync();
 }
 
-void DfxAnalyzer::FlushInvalidMap(std::unordered_map<string, string> &invalidMap, int32_t type)
-{
-    if (invalidMap.empty()) {
-        return;
-    }
-    int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(INVALID_BEHAVIOR_XML, errCode);
-    CHECK_AND_RETURN_LOG(prefs, "get preferences error: %{public}d", errCode);
-    std::string typeStr = std::to_string(type);
-    for (const auto& entry : invalidMap) {
-        string bundleName = entry.first;
-        string operation = entry.second;
-        prefs->PutString(typeStr + SPLIT_CHAR + bundleName, operation);
-    }
-    prefs->FlushSync();
-}
-
 void DfxAnalyzer::FlushAdaptationToMovingPhoto(AdaptationToMovingPhotoInfo& newAdaptationInfo)
 {
     if (newAdaptationInfo.unadaptedAppPackages.empty() && newAdaptationInfo.adaptedAppPackages.empty()) {
