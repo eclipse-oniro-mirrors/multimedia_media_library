@@ -90,7 +90,7 @@ void DfxCollector::CollectDeleteBehavior(std::string bundleName, int32_t type, i
     }
 }
 
-void DfxCollector::GetDeleteBehavior(std::unordered_map<std::string, int32_t> &result, int32_t type)
+std::unordered_map<std::string, int32_t> DfxCollector::GetDeleteBehavior(int32_t type)
 {
     std::unordered_map<std::string, int32_t> result;
     if (type == DfxType::TRASH_PHOTO) {
