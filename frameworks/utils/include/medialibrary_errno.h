@@ -112,6 +112,7 @@ constexpr int32_t E_ALBUM_OPER_ERR =                        MEDIA_LIBRARY_ERR(E_
 constexpr int32_t E_DIR_OPER_ERR =                          MEDIA_LIBRARY_ERR(E_DIR_CTRL_OFFSET, 7);
 constexpr int32_t E_SAME_PATH =                             MEDIA_LIBRARY_ERR(E_DIR_CTRL_OFFSET, 8);
 constexpr int32_t E_DIR_CHECK_DIR_FAIL =                    MEDIA_LIBRARY_ERR(E_DIR_CTRL_OFFSET, 9);
+constexpr int32_t E_MEDIATYPE_NOT_ALLOW =                   MEDIA_LIBRARY_ERR(E_DIR_CTRL_OFFSET, 10);
 
 // medialibary recycle, trash { 2100, 2199 }
 constexpr int32_t E_TRASH_OFFSET = 2100;
