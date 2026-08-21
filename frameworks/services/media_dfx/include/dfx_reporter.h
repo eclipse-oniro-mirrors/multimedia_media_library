@@ -198,7 +198,6 @@ public:
     void ReportThumbnailError();
     void ReportCommonBehavior();
     void ReportDeleteStatistic();
-    void ReportInvalidBehavior();
     static void ReportDeleteBehavior(std::string bundleName, int32_t type, std::string path);
     void ReportThumbnailGeneration(const ThumbnailData::GenerateStats &stats);
     void ReportPhotoInfo(const PhotoStatistics& stats);
