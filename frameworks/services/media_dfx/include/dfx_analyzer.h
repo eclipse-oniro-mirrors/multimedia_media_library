@@ -46,7 +46,6 @@ public:
     void FlushReadLcdTimes(bool isSuccess, NetConnStatusType netStatus);
     void FlushThumbnailQuality(const int32_t southDeviceType);
     void FlushVisitLcd();
-    void FlushInvalidMap(std::unordered_map<std::string, std::string> &invalidMap, int32_t type);
 
 private:
     int32_t CalculateAvgWaitTime(CinematicWaitType waitType, const CinematicVideoInfo& cinematicVideoInfo,
