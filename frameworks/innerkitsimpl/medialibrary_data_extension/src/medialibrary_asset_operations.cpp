@@ -862,6 +862,13 @@ int32_t MediaLibraryAssetOperations::GetFileAssetVectorFromDb(AbsPredicates &pre
     return GetAssetVectorFromResultSet(resultSet, columns, fileAssetVector);
 }
 
+static void handleFilePath(const shared_ptr<FileAsset> &fileAsset, std::string &path)
+{
+    if (PermissionUtils::IsSystemApp()) {
+        fileAsset->SetPath(path);
+    }
+}
+
 shared_ptr<FileAsset> MediaLibraryAssetOperations::GetFileAssetByUri(const string &uri, bool isPhoto,
     const std::vector<std::string> &columns, const string &pendingStatus)
 {
@@ -896,7 +903,7 @@ shared_ptr<FileAsset> MediaLibraryAssetOperations::GetFileAssetByUri(const strin
                 PHOTO_COLUMN_VECTOR);
             }
             CHECK_AND_RETURN_RET(fileAsset != nullptr, nullptr);
-            fileAsset->SetPath(path);
+            handleFilePath(fileAsset, path);
             fileAsset->SetMediaType(MediaFileUtils::GetMediaType(path));
             if (MediaFileUtils::IsValidInteger(pendingStatus)) {
                 int32_t timePending = stoi(pendingStatus);
