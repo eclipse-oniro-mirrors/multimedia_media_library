@@ -1521,8 +1521,8 @@ export var MovingPhotoBadgeStateType;
     e[e.DELETE_DATA = 2] = 'MOVING_PHOTO_DISABLED';
 }(MovingPhotoBadgeStateType || (MovingPhotoBadgeStateType = {}));
 
-export default { PhotoPickerComponent, PickerController, PickerOptions, DataType, BaseItemInfo, ItemInfo, UnSelectableItemInfo, PhotoBrowserInfo, AnimatorParams,
-    MaxSelected, ItemType, ClickType, PickerOrientation, SelectMode, PickerColorMode, ReminderMode, MaxCountType, PhotoBrowserRange, PhotoBrowserUIElement,
-    VideoPlayerState, SaveMode, SingleLineConfig, ItemDisplayRatio, BadgeOptionType, BadgeType, BadgeConfig, UpdatablePickerConfigs, MovingPhotoBadgeStateType, 
-    PickerError, CompletedResult };
+export default { PhotoPickerComponent, PickerController, PickerOptions, DataType, BaseItemInfo, ItemInfo, UnSelectableItemInfo, PhotoBrowserInfo, 
+    AnimatorParams, MaxSelected, ItemType, ClickType, PickerOrientation, SelectMode, PickerColorMode, ReminderMode, MaxCountType, PhotoBrowserRange, 
+    PhotoBrowserUIElement, VideoPlayerState, SaveMode, SingleLineConfig, ItemDisplayRatio, BadgeOptionType, BadgeType, BadgeConfig, UpdatablePickerConfigs, 
+    MovingPhotoBadgeStateType, PickerError, CompletedResult };
 
