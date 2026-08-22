@@ -189,6 +189,7 @@ static std::tuple<int64_t, std::string> TryGetFromGPSTime(const unique_ptr<Image
     }
 
     SetSubSecondTime(imageSource, PHOTO_DATA_IMAGE_SUBSEC_TIME_ORIGINAL, dateTaken);
+    detailTime = MediaFileUtils::StrCreateTimeByMilliseconds(PhotoColumn::PHOTO_DETAIL_TIME_FORMAT, dateTaken);
     MEDIA_DEBUG_LOG("get dateTaken:%{public}lld, detailTime:%{public}s from GPS time",
         static_cast<long long>(dateTaken),
         detailTime.c_str());

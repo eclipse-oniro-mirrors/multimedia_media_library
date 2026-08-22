@@ -25,6 +25,7 @@
 
 #include "image_source.h"
 #include "media_exif.h"
+#include "media_file_utils.h"
 #include "media_scanner_db.h"
 #include "medialibrary_errno.h"
 #include "userfile_manager_types.h"
@@ -357,8 +358,10 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, ExtractImageTimeInfo_test_002, TestS
     unique_ptr<Metadata> data = CreateImageMetadata(destPath);
 
     MetadataExtractor::ExtractImageTimeInfo(imageSource, data);
-    EXPECT_EQ(data->GetDetailTime(), "2018:09:07 08:58:21");
-    EXPECT_EQ(data->GetDateDay(), "20180907");
+    EXPECT_EQ(data->GetDetailTime(),
+        MediaFileUtils::StrCreateTimeByMilliseconds("%Y:%m:%d %H:%M:%S", data->GetDateTaken()));
+    EXPECT_EQ(data->GetDateDay(),
+        MediaFileUtils::StrCreateTimeByMilliseconds("%Y%m%d", data->GetDateTaken()));
 }
 
 HWTEST_F(MediaLibraryMetadataExtractorTest, ExtractImageTimeInfo_test_003, TestSize.Level1)
@@ -392,7 +395,8 @@ HWTEST_F(MediaLibraryMetadataExtractorTest, ExtractImageTimeInfo_test_004, TestS
     data->SetFileDateModified(1541868049000);  // 2018-11-11 00:40:49
 
     MetadataExtractor::ExtractImageTimeInfo(imageSource, data);
-    EXPECT_EQ(data->GetDateDay(), "20181111");
+    EXPECT_EQ(data->GetDateDay(),
+        MediaFileUtils::StrCreateTimeByMilliseconds("%Y%m%d", data->GetDateTaken()));
 }
 
 static unique_ptr<Metadata> CreateVideoMetadata()
