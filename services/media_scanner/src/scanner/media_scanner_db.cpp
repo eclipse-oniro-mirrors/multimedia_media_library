@@ -203,16 +203,9 @@ static void HandleSetLivePhoto4dStatus(const Metadata &metadata, ValuesBucket &o
         return;
     }
 
-    string uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
     MEDIA_INFO_LOG("livephoto4d:reset status to 0, fileId:%{public}d", fileId);
     outValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
-    if (!uniqueId.empty()) {
-        string updateSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
-            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '' WHERE " +
-            PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '" + uniqueId + "'";
-        rdbStore->ExecuteSql(updateSql);
-    }
 }
 
 static void SetValuesFromMetaDataApi9(const Metadata &metadata, ValuesBucket &values, bool isInsert,

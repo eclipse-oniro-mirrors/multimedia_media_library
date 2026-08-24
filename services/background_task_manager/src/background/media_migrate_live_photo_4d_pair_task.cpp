@@ -19,6 +19,7 @@
 
 #include "abs_rdb_predicates.h"
 #include "media_column.h"
+#include "media_file_utils.h"
 #include "media_log.h"
 #include "medialibrary_errno.h"
 #include "medialibrary_rdbstore.h"
@@ -128,9 +129,21 @@ bool MediaMigrateLivePhoto4dPairTask::ParseParentData(std::shared_ptr<NativeRdb:
         data.uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
         data.latestPair = GetStringVal(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, resultSet);
 
-        if (data.uniqueId.empty() || data.latestPair.empty()) {
-            MEDIA_WARN_LOG("MigrateLivePhoto4dPair skip invalid data, fileId: %{public}d", data.fileId);
+        if (data.latestPair.empty()) {
+            MEDIA_WARN_LOG("MigrateLivePhoto4dPair skip invalid data, latestPair empty, fileId: %{public}d",
+                data.fileId);
             continue;
+        }
+
+        if (data.uniqueId.empty() || data.uniqueId == "-1") {
+            std::string newUniqueId = GenerateUniqueIdForAsset(data.fileId);
+            if (newUniqueId.empty()) {
+                MEDIA_WARN_LOG("MigrateLivePhoto4dPair generate uniqueId failed, skip fileId: %{public}d",
+                    data.fileId);
+                continue;
+            }
+            data.uniqueId = newUniqueId;
+            MEDIA_INFO_LOG("MigrateLivePhoto4dPair generated uniqueId for fileId: %{public}d", data.fileId);
         }
 
         dataList.push_back(data);
@@ -216,6 +229,55 @@ int32_t MediaMigrateLivePhoto4dPairTask::BatchClearParentPair(const std::vector<
 
     MEDIA_INFO_LOG("MigrateLivePhoto4dPair BatchClearParentPair success, changedRows: %{public}d", changedRows);
     return E_OK;
+}
+
+std::string MediaMigrateLivePhoto4dPairTask::GenerateUniqueIdForAsset(int32_t fileId)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (rdbStore == nullptr) {
+        MEDIA_ERR_LOG("MigrateLivePhoto4dPair GenerateUniqueId rdbStore is null");
+        return "";
+    }
+
+    std::string newUniqueId = MediaFileUtils::GenerateUUID();
+
+    ValuesBucket values;
+    values.PutString(PhotoColumn::UNIQUE_ID, newUniqueId);
+
+    AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileId));
+    predicates.And()->IsNull(PhotoColumn::UNIQUE_ID)
+        ->Or()->EqualTo(PhotoColumn::UNIQUE_ID, "")
+        ->Or()->EqualTo(PhotoColumn::UNIQUE_ID, "-1");
+
+    int32_t changedRows = 0;
+    int32_t ret = rdbStore->Update(changedRows, values, predicates);
+    CHECK_AND_RETURN_RET_LOG(ret == NativeRdb::E_OK, "",
+        "MigrateLivePhoto4dPair GenerateUniqueId Update failed, fileId: %{public}d, ret: %{public}d",
+        fileId, ret);
+
+    if (changedRows > 0) {
+        MEDIA_INFO_LOG("MigrateLivePhoto4dPair GenerateUniqueId success, fileId: %{public}d", fileId);
+        return newUniqueId;
+    }
+
+    // changedRows == 0: uniqueId may have been set by another process, re-query actual value
+    MEDIA_INFO_LOG("MigrateLivePhoto4dPair GenerateUniqueId changedRows=0, re-query fileId: %{public}d", fileId);
+    RdbPredicates queryPredicates(PhotoColumn::PHOTOS_TABLE);
+    queryPredicates.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileId));
+    auto resultSet = MediaLibraryRdbStore::QueryWithFilter(queryPredicates, {PhotoColumn::UNIQUE_ID});
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
+        MEDIA_ERR_LOG("MigrateLivePhoto4dPair GenerateUniqueId re-query failed, fileId: %{public}d", fileId);
+        return "";
+    }
+    std::string actualUniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
+    resultSet = nullptr;
+    if (MediaFileUtils::IsValidUuid(actualUniqueId)) {
+        MEDIA_INFO_LOG("MigrateLivePhoto4dPair GenerateUniqueId use existing uniqueId, fileId: %{public}d", fileId);
+        return actualUniqueId;
+    }
+    MEDIA_ERR_LOG("MigrateLivePhoto4dPair GenerateUniqueId re-query still invalid, fileId: %{public}d", fileId);
+    return "";
 }
 
 }  // namespace OHOS::Media::Background

@@ -26,7 +26,7 @@
 namespace OHOS::Media::Background {
 
 constexpr int32_t MIGRATE_PAIR_BATCH_NUM = 100;
-constexpr int32_t MIGRATE_PAIR_MAX_ITERATION = 500;
+constexpr int32_t MIGRATE_PAIR_MAX_ITERATION = 100;
 
 struct ParentPairData {
     int32_t fileId = -1;
@@ -49,6 +49,7 @@ private:
         std::vector<ParentPairData> &dataList);
     int32_t BatchUpdateChildPair(const std::map<std::string, std::string> &pairMap);
     int32_t BatchClearParentPair(const std::vector<int32_t> &parentFileIds);
+    std::string GenerateUniqueIdForAsset(int32_t fileId);
 };
 
 }  // namespace OHOS::Media::Background
