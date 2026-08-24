@@ -258,6 +258,7 @@ public:
     EXPORT static double CalculateAspectRatio(int32_t height, int32_t width);
     EXPORT static std::string GetLocalPath(const std::string &path);
     EXPORT static bool CheckLivePhoto4dStatus(int32_t livePhoto4dStatus);
+    EXPORT static bool IsLivePhoto4dEffect(int32_t livePhoto4dStatus);
     EXPORT static bool IsValidUuid(const std::string& uuidStr);
     static int32_t FindNormalPhotoAttachments(const std::string &localPath, std::vector<std::string> &localPathList);
     EXPORT static void GetFolderListUnderPath(const std::filesystem::path &path, std::vector<std::string> &folders);

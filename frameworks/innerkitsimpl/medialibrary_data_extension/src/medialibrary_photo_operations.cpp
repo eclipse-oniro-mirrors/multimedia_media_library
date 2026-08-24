@@ -196,7 +196,6 @@ struct DeleteBehaviorParams {
 
 struct TrashSceneInfo {
     bool hasBurstCover = false;
-    bool hasLivePhoto4d = false;
 };
 
 static void DetectTrashScene(shared_ptr<NativeRdb::ResultSet> &resultSet, TrashSceneInfo &sceneInfo)
@@ -208,12 +207,6 @@ static void DetectTrashScene(shared_ptr<NativeRdb::ResultSet> &resultSet, TrashS
         if (burstCoverLevel == static_cast<int32_t>(BurstCoverLevelType::COVER)
             && subtype == static_cast<int32_t>(PhotoSubType::BURST) && !burstKey.empty()) {
             sceneInfo.hasBurstCover = true;
-        }
-    }
-    if (!sceneInfo.hasLivePhoto4d) {
-        int32_t livePhoto4dStatus = GetInt32Val(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, resultSet);
-        if (livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
-            sceneInfo.hasLivePhoto4d = true;
         }
     }
 }
@@ -1372,7 +1365,7 @@ static void HandleQualityAndHiddenSingle(NativeRdb::AbsRdbPredicates predicates,
     vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
         CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN, PhotoColumn::PHOTO_BURST_COVER_LEVEL,
-        PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS };
+        PhotoColumn::PHOTO_BURST_KEY };
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Result set is empty");
@@ -1405,14 +1398,12 @@ static void HandleQualityAndHiddenBatch(NativeRdb::AbsRdbPredicates predicates, 
         PhotoColumn::STAGE_VIDEO_TASK_STATUS + " = " +
         to_string(static_cast<int32_t>(StageVideoTaskStatus::STAGE_TASK_DELIVERED)) + " OR " +
         PhotoColumn::PHOTO_BURST_COVER_LEVEL + " = " +
-        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) + " OR " +
-        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS + " = " +
-        to_string(static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) + ")";
+        to_string(static_cast<int32_t>(BurstCoverLevelType::COVER)) + ")";
     predicates.SetWhereClause(where);
     vector<string> columns { MediaColumn::MEDIA_ID, CONST_MEDIA_DATA_DB_PHOTO_ID, CONST_MEDIA_DATA_DB_PHOTO_QUALITY,
         CONST_MEDIA_DATA_DB_MEDIA_TYPE, CONST_MEDIA_DATA_DB_STAGE_VIDEO_TASK_STATUS, MediaColumn::MEDIA_FILE_PATH,
         PhotoColumn::PHOTO_SUBTYPE, MediaColumn::MEDIA_HIDDEN, PhotoColumn::PHOTO_BURST_COVER_LEVEL,
-        PhotoColumn::PHOTO_BURST_KEY, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS };
+        PhotoColumn::PHOTO_BURST_KEY};
     auto resultSet = MediaLibraryRdbStore::QueryWithFilter(predicates, columns);
     if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("Result set is empty");
@@ -1500,9 +1491,6 @@ static int32_t TrashPhotosDbUpdateAndRefreshAlbum(AccurateRefresh::AssetAccurate
     rdbPredicate.EqualTo(MediaColumn::MEDIA_DATE_TRASHED, to_string(0));
     int32_t updatedRows = assetRefresh.UpdateWithDateTime(values, rdbPredicate);
     MEDIA_DEBUG_LOG("TrashPhotos updatedRows: %{public}d.", updatedRows);
-    if (sceneInfo.hasLivePhoto4d) {
-        HandleLivePhoto4dStatus(fileIds, assetRefresh);
-    }
     // 3、AssetRefresh -> RefreshAlbums()
     assetRefresh.RefreshAlbum(NotifyAlbumType::SYS_ALBUM);
     return updatedRows;
@@ -2163,7 +2151,6 @@ static int32_t HidePhotos(MediaLibraryCommand &cmd)
     MediaLibraryRdbHelper::ReplacePredicatesUriToId(predicates);
     if (hiddenState != 0) {
         MediaLibraryPhotoOperations::UpdateSourcePath(predicates.GetWhereArgs());
-        HandleLivePhoto4dStatus(predicates.GetWhereArgs(), assetRefresh);
     } else {
         MediaLibraryAlbumOperations::DealwithNoAlbumAssets(predicates.GetWhereArgs());
     }
@@ -3756,12 +3743,20 @@ static void HandleSetLivePhoto4dStatusValuesBucket(MediaLibraryCommand &cmd, con
         MEDIA_INFO_LOG("livePhoto4d:get extraData version failed");
         return;
     }
-    if (livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D) ||
-        version == LIVE_PHOTO_4D_VERSION) {
-        MEDIA_INFO_LOG("livePhoto4d:no need to update live photo 4d status.");
+    if (MediaFileUtils::IsLivePhoto4dEffect(livePhoto4dStatus) || version == LIVE_PHOTO_4D_VERSION) {
+        MEDIA_INFO_LOG("livePhoto4d:skip update, status=%{public}d, version=%{public}u", livePhoto4dStatus, version);
         return;
     }
-    updateValues.PutString(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, "");
+    string uniqueId = fileAsset->GetUniqueId();
+    if (!uniqueId.empty()) {
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        if (rdbStore != nullptr) {
+            string sql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
+                PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '' WHERE " +
+                PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '" + uniqueId + "'";
+            rdbStore->ExecuteSql(sql);
+        }
+    }
     if (effectMode == static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY)) {
         updateValues.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
             static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
@@ -4013,6 +4008,54 @@ int32_t MediaLibraryPhotoOperations::CommitEditInsertExecute(const shared_ptr<Fi
     return E_OK;
 }
 
+int32_t MediaLibraryPhotoOperations::RevertLivePhoto4dStatus(const std::shared_ptr<FileAsset> &fileAsset)
+{
+    int32_t fileId = fileAsset->GetId();
+    MEDIA_INFO_LOG("livephoto4d: begin to do live photo 4d status, fileId:%{public}d", fileId);
+    std::string filePath = fileAsset->GetFilePath();
+    CHECK_AND_RETURN_RET_LOG(!filePath.empty(), E_ERR, "livephoto4d: get filePath failed");
+
+    std::string extraDataPath = MovingPhotoFileUtils::GetMovingPhotoExtraDataPath(filePath);
+    CHECK_AND_RETURN_RET_LOG(!extraDataPath.empty(), E_ERR, "livePhoto4d: get extraDataPath failed");
+
+    uint32_t version = 0;
+    int32_t ret = MovingPhotoFileUtils::GetExtraDataVersion(extraDataPath, version);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, E_ERR, "livephoto4d: get extraDataPath version failed");
+
+    int32_t livePhoto4dStatus = fileAsset->GetLivePhoto4dStatus();
+    if (MediaFileUtils::IsLivePhoto4dEffect(livePhoto4dStatus) || version == LIVE_PHOTO_4D_VERSION) {
+        MEDIA_INFO_LOG("livePhoto4d: skip revert, status=%{public}d, version=%{public}u",
+            livePhoto4dStatus, version);
+        return E_OK;
+    }
+
+    string uniqueId = fileAsset->GetUniqueId();
+    if (!uniqueId.empty()) {
+        auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+        if (rdbStore != nullptr) {
+            string sql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
+                PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '' WHERE " +
+                PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR + " = '" + uniqueId + "'";
+            rdbStore->ExecuteSql(sql);
+        }
+    }
+
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.And()->EqualTo(MediaColumn::MEDIA_ID, fileId);
+    AccurateRefresh::AssetAccurateRefresh assetRefresh;
+    NativeRdb::ValuesBucket updateValues;
+    updateValues.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+
+    int32_t updateRows = -1;
+    int32_t updateRet = assetRefresh.Update(updateRows, updateValues, predicates);
+    CHECK_AND_RETURN_RET_LOG(updateRet == NativeRdb::E_OK && updateRows > 0, E_ERR,
+        "livephoto4d: update live photo 4d status failed, ret:%{public}d, updateRows:%{public}d",
+        updateRet, updateRows);
+    assetRefresh.Notify();
+    return E_OK;
+}
+
 int32_t MediaLibraryPhotoOperations::RevertToOrigin(MediaLibraryCommand &cmd)
 {
     const ValuesBucket &values = cmd.GetValueBucket();
@@ -4045,8 +4088,6 @@ int32_t MediaLibraryPhotoOperations::UpdateMovingPhotoSubtype(int32_t fileId, in
     updateCmd.GetAbsRdbPredicates()->EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
     ValuesBucket updateValues;
     updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, updatePhotoSubType);
-    updateValues.PutInt(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
-        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
     if (currentPhotoSubType == static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
         updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     } else {
@@ -4173,6 +4214,7 @@ int32_t MediaLibraryPhotoOperations::DoRevertEdit(const std::shared_ptr<FileAsse
 #endif
     ThumbnailService::GetInstance()->HasInvalidateThumbnail(fileIdStr, PhotoColumn::PHOTOS_TABLE);
     ScanFile(path, true, true, true);
+    RevertLivePhoto4dStatus(fileAsset);
     if (revertMovingPhotoGraffiti) {
         UpdateAndNotifyMovingPhotoAlbum();
     }
@@ -4525,7 +4567,7 @@ int32_t MediaLibraryPhotoOperations::HandleRevertLivePhotoAsset(const shared_ptr
 {
     int32_t errCode = MediaLibraryPhotoOperations::RevertLivePhotoAsset(realPath, imagePath, sourceImagePath,
         sourceVideoPath);
-    if (fileAsset->GetLivePhoto4dStatus() == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+    if (MediaFileUtils::IsLivePhoto4dEffect(static_cast<int32_t>(fileAsset->GetLivePhoto4dStatus()))) {
         MediaLibraryPhotoOperations::SetExtraDataVersion(fileAsset->GetId(),
             static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
     }
@@ -4548,6 +4590,7 @@ int32_t MediaLibraryPhotoOperations::RevertToOriginalEffectMode(
     } else {
         updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     }
+    HandleSetLivePhoto4dStatusValuesBucket(cmd, fileAsset, effectMode);
     string imagePath = fileAsset->GetFilePath();
     string sourceImagePath = MediaEditUtils::GetEditDataSourcePath(imagePath);
     CHECK_AND_RETURN_RET_LOG(!sourceImagePath.empty(), E_INVALID_PATH, "Cannot get source image path");
@@ -5702,8 +5745,6 @@ int32_t UpdateEffectModeWhenGraffiti(int32_t fileId)
     updateValues.PutInt(PhotoColumn::MOVING_PHOTO_EFFECT_MODE, static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT));
     updateValues.PutInt(PhotoColumn::PHOTO_ORIGINAL_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
     updateValues.PutInt(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::DEFAULT));
-    updateValues.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
-        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
     updateCmd.SetValueBucket(updateValues);
     AccurateRefresh::AssetAccurateRefresh assetRefresh;
     int32_t errCode = assetRefresh.Update(updateCmd, updatedRows);
@@ -5903,7 +5944,7 @@ int32_t MediaLibraryPhotoOperations::SubmitEffectModeExecute(MediaLibraryCommand
         errCode = ProcessLivePhotoConversion(assetPath, assetVideoPath, imageCachePath, videoCachePath, realPath);
         CHECK_AND_RETURN_RET_LOG(errCode == E_OK, errCode, "Failed to processlive photo conversion");
         ThumbnailService::GetInstance()->HasInvalidateThumbnail(to_string(id), PhotoColumn::PHOTOS_TABLE);
-        if (fileAsset->GetLivePhoto4dStatus() == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+        if (MediaFileUtils::IsLivePhoto4dEffect(static_cast<int32_t>(fileAsset->GetLivePhoto4dStatus()))) {
             int32_t ret = MediaLibraryPhotoOperations::SetExtraDataVersion(id,
                 static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
         }
@@ -7377,44 +7418,17 @@ int32_t MediaLibraryPhotoOperations::SetExtraDataVersion(const int32_t fileId, c
 int32_t MediaLibraryPhotoOperations::SetLivePhoto4dStatus(const int32_t fileId, const int32_t livePhoto4dStatus,
     const std::string &livePhoto4dLatestPair)
 {
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::CheckLivePhoto4dStatus(livePhoto4dStatus),
-        E_ERR, "livePhoto4d:Failed to check live photo 4d status");
-    CHECK_AND_RETURN_RET_LOG(MediaFileUtils::IsValidUuid(livePhoto4dLatestPair),
-        E_ERR, "livePhoto4d:Failed to check live photo 4d latest pair");
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "RdbStore is null");
-    bool haveLivePhoto4d = false;
-    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
-    if (livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_USED)) {
-        // 当设置的status为USED时，若livephoto_4d_latest_pair为null/undefined时
-        CHECK_AND_RETURN_RET_LOG(!livePhoto4dLatestPair.empty(), E_ERR,
-            "livePhoto4d:set live photo 4d status to used, live photo 4d latest paid cannot be empty");
-        predicates.EqualTo(PhotoColumn::UNIQUE_ID, livePhoto4dLatestPair);
-        auto resultSet = rdbStore->Query(predicates, {PhotoColumn::PHOTO_ID});
-        CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "livePhoto4d:failed to query photo.");
-        int32_t count = 0;
-        auto errCode = resultSet->GetRowCount(count);
-        CHECK_AND_RETURN_RET_LOG(errCode == NativeRdb::E_OK, E_HAS_DB_ERROR, "get row count failed");
-        // 设置的status为USED时，若livephoto_4d_latest_pair传入的livephoto_4d_latest_pair无对应的asset
-        CHECK_AND_RETURN_RET_LOG(count != 0, E_ERR, "livePhoto4d:set status to used, must have live photo 4d");
-        haveLivePhoto4d = true;
-    }
 
-    predicates.Clear();
+    NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::MEDIA_ID, fileId);
-    predicates.EqualTo(PhotoColumn::PHOTO_SUBTYPE, static_cast<int32_t>(PhotoSubType::MOVING_PHOTO));
-    // 非动态照片
+    predicates.EqualTo(PhotoColumn::MEDIA_TYPE, static_cast<int32_t>(MediaType::MEDIA_TYPE_IMAGE));
     auto resultSet = rdbStore->Query(predicates,
-        {PhotoColumn::PHOTO_SUBTYPE, PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS});
+        {PhotoColumn::MEDIA_TYPE});
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR, "livePhoto4d:failed to query photo.");
     CHECK_AND_RETURN_RET_LOG(resultSet->GoToNextRow() == NativeRdb::E_OK, E_ERR,
-        "livePhoto4d:the photo must moving photo");
-    bool isMovingPhoto = false;
-    // 设置的livephoto_4d_latest_pair有对应的asset时，原数据库的状态不是SUPPORTED，则忽略本次处理
-    int32_t originLivePhoto4dStatus = GetInt32Val(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, resultSet);
-    CHECK_AND_RETURN_RET_LOG(!(originLivePhoto4dStatus !=
-        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_SUPPORTED) && haveLivePhoto4d), E_OK,
-        "livePhoto4d:the asset status is not supported, livePhoto4dStatus:%{public}d", originLivePhoto4dStatus);
+        "livePhoto4d:the asset must be image type");
 
     NativeRdb::ValuesBucket values;
     values.Put(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS, livePhoto4dStatus);
@@ -7426,7 +7440,7 @@ int32_t MediaLibraryPhotoOperations::SetLivePhoto4dStatus(const int32_t fileId, 
     cmd.GetAbsRdbPredicates()->EqualTo(Media::MediaColumn::MEDIA_ID, to_string(fileId));
     auto ret = MediaLibraryPhotoOperations::Update(cmd);
     CHECK_AND_RETURN_RET_LOG(ret >= 0, ret, "livePhoto4d:update live photo 4d status failed, ret:%{public}d", ret);
-    if ((livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) && isMovingPhoto) {
+    if (MediaFileUtils::IsLivePhoto4dEffect(livePhoto4dStatus)) {
         ret = SetExtraDataVersion(fileId, static_cast<uint32_t>(MOVING_PHOTO_VERSION::MOVING_PHOTO_VERSION_8));
     }
     return ret;

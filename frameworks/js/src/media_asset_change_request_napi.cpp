@@ -46,6 +46,9 @@
 #include "qos.h"
 #include "media_change_request_utils.h"
 #include "moving_photo_file_utils.h"
+#include "media_asset_rdbstore.h"
+#include "userfilemgr_uri.h"
+#include "validate_latest_pair_vo.h"
 
 using namespace std;
 using namespace OHOS::Security::AccessToken;
@@ -426,6 +429,46 @@ bool MediaAssetChangeRequestNapi::CheckMovingPhotoWriteOperation()
         (addResourceForPickerTimes == movingPhotoAddResourceTimes && isImageExist && isVideoExist);
 }
 
+static int32_t ValidateLatestPairAssetExistsIPC(const string &uniqueId, int32_t userId, bool &assetExists)
+{
+    ValidateLatestPairReqBody reqBody;
+    ValidateLatestPairRespBody respBody;
+    reqBody.uniqueId = uniqueId;
+    uint32_t businessCode = static_cast<uint32_t>(
+        MediaLibraryBusinessCode::PAH_VALIDATE_LIVEPHOTO_4D_LATEST_PAIR);
+    std::unordered_map<std::string, std::string> headerMap{
+        {PhotoColumn::UNIQUE_ID, uniqueId}, {URI_TYPE, TYPE_PHOTOS}};
+    int32_t err = IPC::UserDefineIPCClient().SetUserId(userId).SetHeader(headerMap).Call(businessCode,
+        reqBody, respBody);
+    if (err != E_OK) {
+        NAPI_ERR_LOG("ValidateLatestPair IPC failed, err:%{public}d", err);
+        return E_ERR;
+    }
+    assetExists = respBody.assetExists;
+    return E_OK;
+}
+
+static bool ValidateLatestPairAssetExists(const string &latestPair, int32_t userId = -1)
+{
+    DataShare::DataSharePredicates predicates;
+    predicates.EqualTo(PhotoColumn::UNIQUE_ID, latestPair);
+    std::vector<std::string> columns { MediaColumn::MEDIA_ID };
+    Uri uri(CONST_PAH_QUERY_PHOTO);
+    OperationObject object = OperationObject::UNKNOWN_OBJECT;
+    if (!MediaAssetRdbStore::GetInstance()->IsQueryAccessibleViaSandBox(uri, object, predicates) || userId != -1) {
+        bool assetExists = false;
+        int32_t ret = ValidateLatestPairAssetExistsIPC(latestPair, userId, assetExists);
+        return ret == E_OK && assetExists;
+    }
+    int errCode = 0;
+    auto resultSet = UserFileClient::Query(uri, predicates, columns, errCode, userId);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != E_OK) {
+        NAPI_ERR_LOG("ValidateLatestPair: asset not found for uniqueId");
+        return false;
+    }
+    return true;
+}
+
 bool MediaAssetChangeRequestNapi::CheckSetLivePhoto4dStatus(
     napi_env env, unique_ptr<MediaAssetChangeRequestAsyncContext>& context)
 {
@@ -435,13 +478,49 @@ bool MediaAssetChangeRequestNapi::CheckSetLivePhoto4dStatus(
 
         int32_t livePhoto4dStatus = fileAsset_->GetLivePhoto4dStatus();
         NAPI_INFO_LOG("livePhoto4d:livePhoto4dStatus is:%{public}d", livePhoto4dStatus);
-        if (livePhoto4dStatus == static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D)) {
+        // 校验livePhoto4dStatus是否在枚举范围
+        if (!MediaFileUtils::CheckLivePhoto4dStatus(livePhoto4dStatus)) {
+            NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                "livePhoto4d:invalid live photo 4d status");
+            return false;
+        }
+        if (MediaFileUtils::IsLivePhoto4dEffect(livePhoto4dStatus)) {
+            // 子弹时刻效果设置
             bool isValid = false;
             int32_t subtype = creationValuesBucket_.Get(PhotoColumn::PHOTO_SUBTYPE, isValid);
             bool containsAddResource = Contains(AssetChangeOperation::ADD_RESOURCE);
+            // 子弹时刻效果设置，必须和创建动态照片一起调用
             if (!containsAddResource || subtype != static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)) {
                 NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
                     "livePhoto4d:set asset to live photo 4d, must be combined with the add moving photo");
+                return false;
+            }
+            // 子弹时刻效果设置，livephoto_4d_latest_pair必须非空
+            string latestPair = fileAsset_->GetLivePhoto4dLatestPair();
+            if (latestPair.empty()) {
+                NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                    "livePhoto4d:livephoto_4d_latest_pair cannot be empty when setting effect type");
+                return false;
+            }
+            // 子弹时刻效果设置，livephoto_4d_latest_pair必须为有效的unique_id
+            if (!MediaFileUtils::IsValidUuid(latestPair)) {
+                NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                    "livePhoto4d:livephoto_4d_latest_pair is not a valid uuid");
+                return false;
+            }
+            int32_t userId = fileAsset_ != nullptr ? fileAsset_->GetUserId() : -1;
+            // 子弹时刻效果设置，livephoto_4d_latest_pair必须存在对应的资产
+            if (!ValidateLatestPairAssetExists(latestPair, userId)) {
+                NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                    "livePhoto4d:livephoto_4d_latest_pair must have corresponding asset");
+                return false;
+            }
+        } else {
+            // 非子弹时刻效果设置，livephoto_4d_latest_pair必须为空
+            string latestPair = fileAsset_->GetLivePhoto4dLatestPair();
+            if (!latestPair.empty()) {
+                NapiError::ThrowError(env, OHOS_INVALID_PARAM_CODE,
+                    "livePhoto4d:livephoto_4d_latest_pair must be empty when setting non-effect type");
                 return false;
             }
         }

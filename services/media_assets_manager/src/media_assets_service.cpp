@@ -2823,4 +2823,69 @@ int32_t MediaAssetsService::SetPhotoCritical(int32_t fileId, int32_t photoRiskSt
         fileId, photoRiskStatus, isCritical);
     return rdbOperation_.SetPhotoCritical(fileId, photoRiskStatus, isCritical);
 }
+
+int32_t MediaAssetsService::GenerateUniqueId(int32_t fileId, GenerateUniqueIdRespBody &respBody)
+{
+    MEDIA_INFO_LOG("GenerateUniqueId enter, fileId: %{public}d", fileId);
+
+    DataShare::DataSharePredicates predicates;
+    vector<string> columns = { PhotoColumn::UNIQUE_ID };
+    predicates.EqualTo(MediaColumn::MEDIA_ID, to_string(fileId));
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
+    cmd.SetDataSharePred(predicates);
+    auto resultSet = MediaLibraryPhotoOperations::Query(cmd, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("Asset not exist, fileId: %{public}d", fileId);
+        return E_GET_ASSET_FAIL;
+    }
+
+    std::string uniqueId = GetStringVal(PhotoColumn::UNIQUE_ID, resultSet);
+    resultSet = nullptr;
+
+    if (MediaFileUtils::IsValidUuid(uniqueId)) {
+        respBody.uniqueId = uniqueId;
+        MEDIA_INFO_LOG("GenerateUniqueId return existing uniqueId");
+        return E_OK;
+    }
+
+    uniqueId = MediaFileUtils::GenerateUUID();
+    NativeRdb::ValuesBucket assetInfo;
+    assetInfo.PutString(PhotoColumn::UNIQUE_ID, uniqueId);
+
+    DataShare::DataSharePredicates predicate;
+    predicate.EqualTo(PhotoColumn::MEDIA_ID, std::to_string(fileId));
+    MediaLibraryCommand updateCmd(OperationObject::FILESYSTEM_PHOTO, OperationType::UPDATE, MediaLibraryApi::API_10);
+    updateCmd.SetValueBucket(assetInfo);
+    updateCmd.SetDataSharePred(predicate);
+    NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(predicate, updateCmd.GetTableName());
+    updateCmd.GetAbsRdbPredicates()->SetWhereClause(rdbPredicate.GetWhereClause());
+    updateCmd.GetAbsRdbPredicates()->SetWhereArgs(rdbPredicate.GetWhereArgs());
+    int32_t rowId = MediaLibraryPhotoOperations::Update(updateCmd);
+    CHECK_AND_RETURN_RET_LOG(rowId > 0, rowId, "GenerateUniqueId update failed");
+
+    respBody.uniqueId = uniqueId;
+    MEDIA_INFO_LOG("GenerateUniqueId success, generated new uniqueId");
+    return E_OK;
+}
+
+int32_t MediaAssetsService::ValidateLatestPair(const std::string &uniqueId, bool &assetExists)
+{
+    MEDIA_INFO_LOG("ValidateLatestPair enter, uniqueId: %{public}s", uniqueId.c_str());
+
+    DataShare::DataSharePredicates predicates;
+    vector<string> columns = { MediaColumn::MEDIA_ID };
+    predicates.EqualTo(PhotoColumn::UNIQUE_ID, uniqueId);
+    MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
+    cmd.SetDataSharePred(predicates);
+    auto resultSet = MediaLibraryPhotoOperations::Query(cmd, columns);
+    if (resultSet == nullptr || resultSet->GoToFirstRow() != NativeRdb::E_OK) {
+        assetExists = false;
+        MEDIA_INFO_LOG("ValidateLatestPair asset not found for uniqueId");
+        return E_OK;
+    }
+
+    assetExists = true;
+    MEDIA_INFO_LOG("ValidateLatestPair asset found for uniqueId");
+    return E_OK;
+}
 } // namespace OHOS::Media

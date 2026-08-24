@@ -174,6 +174,8 @@ ohos_shared_library("medialibrary_ani_utils") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/check_single_photo_permission_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_deep_optimize_space_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_deep_optimizable_space_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/generate_unique_id_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/validate_latest_pair_vo.cpp",
   ]
 
   media_album_service_vo_source = [

@@ -934,6 +934,8 @@ static int32_t CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_DATE_ADDED_MONTH,
         PhotoColumn::PHOTO_DATE_ADDED_DAY,
         PhotoColumn::PHOTO_HIDDEN_TIME,
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
         PhotoColumn::PHOTO_LCD_FILE_SIZE,
         PhotoColumn::PHOTO_THUMB_STATUS,
         PhotoColumn::PHOTO_RISK_STATUS,

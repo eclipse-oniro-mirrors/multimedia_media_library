@@ -66,6 +66,7 @@
 #include "is_edited_vo.h"
 #include "get_edit_data_vo.h"
 #include "convert_format_vo.h"
+#include "generate_unique_id_vo.h"
 #include "preferred_compatible_mode_check_utils.h"
 #include "qos.h"
 
@@ -276,6 +277,7 @@ napi_value FileAssetNapi::PhotoAccessHelperInit(napi_env env, napi_value exports
             DECLARE_NAPI_FUNCTION("getAnalysisData", PhotoAccessHelperGetAnalysisData),
             DECLARE_NAPI_FUNCTION("getEditData", PhotoAccessHelperGetEditData),
             DECLARE_NAPI_FUNCTION("createTemporaryCompatibleDuplicate", PhotoAccessHelperCreateTmpCompatibleDup),
+            DECLARE_NAPI_FUNCTION("generateUniqueId", PhotoAccessHelperGenerateUniqueId),
         }
     };
     MediaLibraryNapiUtils::NapiDefineClass(env, exports, info);
@@ -3077,6 +3079,83 @@ napi_value FileAssetNapi::PhotoAccessHelperCreateTmpCompatibleDup(napi_env env, 
         PhotoAccessHelperCreateTmpCompatibleDupExecute, PhotoAccessHelperCreateTmpCompatibleDupComplete);
 }
 
+static void PhotoAccessHelperGenerateUniqueIdExecute(napi_env env, void *data)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessHelperGenerateUniqueIdExecute");
+
+    auto *context = static_cast<FileAssetAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    CHECK_NULL_PTR_RETURN_VOID(context->objectPtr, "objectPtr is null");
+
+    GenerateUniqueIdReqBody reqBody;
+    GenerateUniqueIdRespBody respBody;
+    reqBody.fileId = context->objectPtr->GetId();
+    uint32_t businessCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID);
+    int32_t errCode = IPC::UserDefineIPCClient().Call(businessCode, reqBody, respBody);
+    if (errCode == E_GET_ASSET_FAIL) {
+        context->error = JS_E_ASSET_NOT_EXIST;
+        NAPI_ERR_LOG("Asset not exist, fileId: %{public}d", reqBody.fileId);
+        return;
+    }
+    if (errCode != E_OK) {
+        context->SaveError(errCode);
+        NAPI_ERR_LOG("Failed to generateUniqueId, errCode: %{public}d", errCode);
+        return;
+    }
+    context->objectPtr->SetUniqueId(respBody.uniqueId);
+    context->uniqueId = respBody.uniqueId;
+    NAPI_INFO_LOG("generateUniqueId success");
+}
+
+static void PhotoAccessHelperGenerateUniqueIdComplete(napi_env env, napi_status status, void *data)
+{
+    auto *context = static_cast<FileAssetAsyncContext *>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->data), JS_INNER_FAIL);
+    CHECK_ARGS_RET_VOID(env, napi_get_undefined(env, &jsContext->error), JS_INNER_FAIL);
+
+    if (context->error == ERR_DEFAULT) {
+        napi_create_string_utf8(env, context->uniqueId.c_str(), NAPI_AUTO_LENGTH, &jsContext->data);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error);
+    }
+
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+                                                   context->work, *jsContext);
+    }
+    delete context;
+}
+
+napi_value FileAssetNapi::PhotoAccessHelperGenerateUniqueId(napi_env env, napi_callback_info info)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessHelperGenerateUniqueId");
+    NAPI_INFO_LOG("enter PhotoAccessHelperGenerateUniqueId");
+
+    if (!MediaLibraryNapiUtils::IsSystemApp()) {
+        NapiError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL, "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    auto asyncContext = make_unique<FileAssetAsyncContext>();
+    CHECK_COND(env, asyncContext != nullptr, JS_E_PARAM_INVALID);
+    asyncContext->resultNapiType = ResultNapiType::TYPE_PHOTOACCESS_HELPER;
+    CHECK_COND_WITH_MESSAGE(env, MediaLibraryNapiUtils::ParseArgsOnlyCallBack(env, info, asyncContext) == napi_ok,
+        "Failed to parse js args");
+    asyncContext->objectPtr = asyncContext->objectInfo->fileAssetPtr;
+    napi_value ret = nullptr;
+    CHECK_NULL_PTR_RETURN_UNDEFINED(env, asyncContext->objectPtr, ret, "PhotoAsset is nullptr");
+
+    return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "PhotoAccessHelperGenerateUniqueId",
+        PhotoAccessHelperGenerateUniqueIdExecute, PhotoAccessHelperGenerateUniqueIdComplete);
+}
+
 void FileAssetNapi::UpdateFileAssetInfo()
 {
     fileAssetPtr = sFileAsset_;
@@ -3115,6 +3194,7 @@ int32_t FileAssetNapi::CheckSystemApiKeys(napi_env env, const string &key)
         PhotoColumn::PHOTO_DATE_ADDED_DAY,
         PhotoColumn::UNIQUE_ID,
         PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_STATUS,
+        PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR,
         PhotoColumn::PHOTO_HIDDEN_TIME,
         PhotoColumn::PHOTO_RISK_STATUS,
         PhotoColumn::ATTACHMENT_SIZE,
