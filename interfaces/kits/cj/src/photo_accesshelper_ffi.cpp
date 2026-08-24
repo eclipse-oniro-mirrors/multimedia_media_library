@@ -699,11 +699,8 @@ extern "C" {
         if (ParseAssetArray(assets, uris) != 0) {
             return OHOS_INVALID_PARAM_CODE;
         }
-        auto changeRequest = FFIData::GetData<MediaAssetChangeRequestImpl>(id);
-        if (!changeRequest) {
-            return OHOS_INVALID_PARAM_CODE;
-        }
-        return changeRequest->CJDeleteAssets(id, uris);
+        auto changeRequest = MediaAssetChangeRequestImpl();
+        return changeRequest.CJDeleteAssets(id, uris);
     }
 
     int32_t FfiMediaAssetChangeRequestImplDeleteAssetsByString(int64_t id, CArrString assets)
@@ -716,11 +713,8 @@ extern "C" {
         for (int64_t i = 0; i < assets.size; i++) {
             uris.push_back(assets.head[i]);
         }
-        auto changeRequest = FFIData::GetData<MediaAssetChangeRequestImpl>(id);
-        if (!changeRequest) {
-            return OHOS_INVALID_PARAM_CODE;
-        }
-        return changeRequest->CJDeleteAssets(id, uris);
+        auto changeRequest = MediaAssetChangeRequestImpl();
+        return changeRequest.CJDeleteAssets(id, uris);
     }
 
     int64_t FfiMediaAssetChangeRequestImplGetAsset(int64_t id, int32_t* errCode)
