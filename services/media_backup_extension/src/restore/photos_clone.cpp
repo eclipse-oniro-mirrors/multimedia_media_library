@@ -241,7 +241,6 @@ int32_t PhotosClone::FindAlbumId(const FileInfo &fileInfo)
  */
 std::string PhotosClone::FindPackageName(const FileInfo &fileInfo)
 {
-    CHECK_AND_RETURN_RET(!fileInfo.originalPackageName.empty(), "");
     PhotoAlbumDao::PhotoAlbumRowData albumInfo = this->FindAlbumInfo(fileInfo);
     // Only provide the package name of the existing SOURCE album.
     CHECK_AND_RETURN_RET(albumInfo.IsValidSourceAlbum(), "");

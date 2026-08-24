@@ -1186,15 +1186,6 @@ bool CloneRestore::FillRiskStatusValues(const FileInfo &fileInfo, NativeRdb::Val
     return true;
 }
 
-bool CloneRestore::FillPackageNameValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
-{
-    if (fileInfo.originalPackageName.empty() || !fileInfo.newPackageName.empty()) {
-        return false;
-    }
-    values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, fileInfo.originalPackageName);
-    return true;
-}
-
 bool CloneRestore::FillUniqueIdValues(FileInfo &fileInfo, NativeRdb::ValuesBucket &values)
 {
     bool isImageOrVideo = fileInfo.fileType == MediaType::MEDIA_TYPE_IMAGE
@@ -1222,7 +1213,6 @@ void CloneRestore::UpdatePreStatusForSamePhotos(vector<FileInfo> &fileInfos)
         if (canUpdateRisk) {
             hasUpdate = FillRiskStatusValues(fileInfo, values) || hasUpdate;
         }
-        hasUpdate = FillPackageNameValues(fileInfo, values) || hasUpdate;
         hasUpdate = FillUniqueIdValues(fileInfo, values) || hasUpdate;
         if (!hasUpdate) {
             continue;
@@ -2197,11 +2187,10 @@ NativeRdb::ValuesBucket CloneRestore::GetInsertValue(const FileInfo &fileInfo, c
     // Only SOURCE album has package_name and owner_package.
     if (!fileInfo.packageName.empty()) {
         values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, fileInfo.packageName);
+        values.PutString(MediaColumn::MEDIA_OWNER_PACKAGE, fileInfo.bundleName);
     }
-    values.PutString(MediaColumn::MEDIA_OWNER_PACKAGE, fileInfo.bundleName);
-    if (fileInfo.packageName.empty() && fileInfo.bundleName.empty()) {
-        // package_name and owner_package are empty, clear owner_appid
-        values.PutString(MediaColumn::MEDIA_OWNER_APPID, "");
+    if (!fileInfo.originalOwnerAppId.empty()) {
+        values.PutString(MediaColumn::MEDIA_OWNER_APPID, fileInfo.originalOwnerAppId);
     }
     values.PutInt(PhotoColumn::PHOTO_QUALITY, fileInfo.photoQuality);
     values.PutInt(PhotoColumn::STAGE_VIDEO_TASK_STATUS, static_cast<int32_t>(StageVideoTaskStatus::NO_NEED_TO_STAGE));
@@ -2237,12 +2226,11 @@ NativeRdb::ValuesBucket CloneRestore::GetCloudInsertValue(const FileInfo &fileIn
     // Only SOURCE album has package_name and owner_package.
     if (!fileInfo.packageName.empty()) {
         values.PutString(MediaColumn::MEDIA_PACKAGE_NAME, fileInfo.packageName);
+        values.PutString(MediaColumn::MEDIA_OWNER_PACKAGE, fileInfo.bundleName);
     }
-    values.PutString(MediaColumn::MEDIA_OWNER_PACKAGE, fileInfo.bundleName);
-
-    bool cond = (fileInfo.packageName.empty() && fileInfo.bundleName.empty());
-    // package_name and owner_package are empty, clear owner_appid
-    CHECK_AND_EXECUTE(!cond, values.PutString(MediaColumn::MEDIA_OWNER_APPID, ""));
+    if (!fileInfo.originalOwnerAppId.empty()) {
+        values.PutString(MediaColumn::MEDIA_OWNER_APPID, fileInfo.originalOwnerAppId);
+    }
     values.PutInt(PhotoColumn::PHOTO_QUALITY, fileInfo.photoQuality);
     values.PutLong(MediaColumn::MEDIA_DATE_TRASHED, fileInfo.recycledTime);
     values.PutInt(MediaColumn::MEDIA_HIDDEN, fileInfo.hidden);
@@ -3595,8 +3583,13 @@ void CloneRestore::SetSpecialAttributes(const string &tableName, const shared_pt
     fileInfo.lPath = this->photosClone_.FindlPath(fileInfo);
     fileInfo.ownerAlbumId = this->photosClone_.FindAlbumId(fileInfo);
     fileInfo.originalPackageName = GetStringVal(MediaColumn::MEDIA_PACKAGE_NAME, resultSet);
-    fileInfo.packageName = this->photosClone_.FindPackageName(fileInfo);
-    fileInfo.bundleName = this->photosClone_.FindBundleName(fileInfo);
+    fileInfo.originalOwnerPackage = GetStringVal(MediaColumn::MEDIA_OWNER_PACKAGE, resultSet);
+    fileInfo.originalOwnerAppId = GetStringVal(MediaColumn::MEDIA_OWNER_APPID, resultSet);
+    fileInfo.packageName = !fileInfo.originalPackageName.empty()
+        ? fileInfo.originalPackageName : this->photosClone_.FindPackageName(fileInfo);
+    // owner_package的判断逻辑以package_name为准
+    fileInfo.bundleName = !fileInfo.originalPackageName.empty()
+        ? fileInfo.originalOwnerPackage : this->photosClone_.FindBundleName(fileInfo);
     fileInfo.photoQuality = this->photosClone_.FindPhotoQuality(fileInfo);
     fileInfo.sourcePath = this->photosClone_.FindSourcePath(fileInfo);
     fileInfo.latitude = GetDoubleVal("latitude", resultSet);

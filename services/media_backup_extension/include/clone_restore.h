@@ -271,7 +271,6 @@ protected:
     bool FillMergedThumbnailValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     bool FillMergedPhotoValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     bool FillRiskStatusValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
-    bool FillPackageNameValues(const FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     bool FillUniqueIdValues(FileInfo &fileInfo, NativeRdb::ValuesBucket &values);
     std::string GetThumbnailLocalPath(const string path);
     void BatchUpdateFileInfoData(std::vector<FileInfo> &fileInfos,

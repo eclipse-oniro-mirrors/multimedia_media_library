@@ -362,7 +362,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdatePackageNameForSamePhotos_SkipI
     EXPECT_EQ(QueryString(g_dstDb, "SELECT package_name FROM Photos WHERE file_id = 11", "package_name"), "");
 }
 
-// 场景：更新同照片包名，仅更新空包名。结果应与该场景的分支设计保持一致。
+// 场景：同照片包名不再被 UpdatePreStatusForSamePhotos 更新，空与非空包名均保持原值不变。
 HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdatePackageNameForSamePhotos_UpdateOnlyEmpty_001, TestSize.Level1)
 {
     CloneRestore restore;
@@ -382,7 +382,7 @@ HWTEST_F(CloneRestoreDbMigrationBranchTest, UpdatePackageNameForSamePhotos_Updat
     std::vector<FileInfo> infos = {infoA, infoB};
     restore.UpdatePreStatusForSamePhotos(infos);
 
-    EXPECT_EQ(QueryString(g_dstDb, "SELECT package_name FROM Photos WHERE file_id = 12", "package_name"), "pkg.new");
+    EXPECT_EQ(QueryString(g_dstDb, "SELECT package_name FROM Photos WHERE file_id = 12", "package_name"), "");
     EXPECT_EQ(QueryString(g_dstDb, "SELECT package_name FROM Photos WHERE file_id = 13", "package_name"), "keep.me");
 }
 
