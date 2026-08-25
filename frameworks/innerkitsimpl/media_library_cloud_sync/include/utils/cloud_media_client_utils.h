@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "cloud_mdkrecord_photos_vo.h"
+#include "cloud_share_album_define.h"
 
 namespace OHOS::Media::CloudSync {
 class CloudMediaClientUtils {

@@ -28,13 +28,15 @@
 #include "medialibrary_errno.h"
 #include "cloud_media_data_handler_factory.h"
 #include "cloud_media_thread_limiter.h"
+#include "cloud_share_album_define.h"
 
 namespace OHOS::Media::CloudSync {
-CloudMediaDataHandler::CloudMediaDataHandler(const std::string &tableName, int32_t cloudType, int32_t userId)
-    : cloudType_(cloudType), userId_(userId), tableName_(tableName)
+CloudMediaDataHandler::CloudMediaDataHandler(const std::string &tableName, int32_t cloudType, int32_t userId,
+    int32_t sceneType)
+    : cloudType_(cloudType), userId_(userId), tableName_(tableName), sceneType_(sceneType)
 {
-    this->dataHandler_ = CloudMediaDataHandlerFactory().GetDataHandler(tableName, cloudType, userId);
-    MEDIA_INFO_LOG("media-ipc userId: %{public}d", userId);
+    this->dataHandler_ = CloudMediaDataHandlerFactory().GetDataHandler(tableName, cloudType, userId, sceneType);
+    MEDIA_INFO_LOG("media-ipc userId: %{public}d, sceneType: %{public}d", userId, sceneType);
 }
 
 int32_t CloudMediaDataHandler::GetCloudType() const
@@ -60,6 +62,17 @@ void CloudMediaDataHandler::SetCloudType(const int32_t cloudType)
         return;
     }
     this->dataHandler_->SetCloudType(cloudType);
+}
+
+void CloudMediaDataHandler::SetSceneType(int32_t sceneType)
+{
+    CHECK_AND_RETURN_LOG(this->dataHandler_ != nullptr, "No data handler found! sceneType: %{public}d", sceneType);
+    this->dataHandler_->SetSceneType(sceneType);
+}
+
+int32_t CloudMediaDataHandler::GetSceneType() const
+{
+    return this->sceneType_;
 }
 
 std::string CloudMediaDataHandler::GetTableName() const
@@ -105,6 +118,9 @@ int32_t CloudMediaDataHandler::GetCreatedRecords(std::vector<MDKRecord> &records
         MEDIA_ERR_LOG("No data handler found! tableName: %{public}s", this->tableName_.c_str());
         return E_IPC_INVAL_ARG;
     }
+    bool isDeprecated = CloudMediaDataHandlerFactory::IsPhotoAlbum(this->GetTableName())
+        && this->GetSceneType() == static_cast<int32_t>(SceneType::SHARE);
+    CHECK_AND_RETURN_RET_WARN_LOG(!isDeprecated, E_OK, "API deprecated.");
     return this->dataHandler_->GetCreatedRecords(records, size);
 }
 
@@ -141,6 +157,9 @@ int32_t CloudMediaDataHandler::GetCopyRecords(std::vector<MDKRecord> &records, i
         MEDIA_ERR_LOG("No data handler found! tableName: %{public}s", this->tableName_.c_str());
         return E_IPC_INVAL_ARG;
     }
+    bool isDeprecated = CloudMediaDataHandlerFactory::IsPhoto(this->GetTableName())
+        && this->GetSceneType() == static_cast<int32_t>(SceneType::SHARE);
+    CHECK_AND_RETURN_RET_WARN_LOG(!isDeprecated, E_OK, "API deprecated.");
     return this->dataHandler_->GetCopyRecords(records, size);
 }
 

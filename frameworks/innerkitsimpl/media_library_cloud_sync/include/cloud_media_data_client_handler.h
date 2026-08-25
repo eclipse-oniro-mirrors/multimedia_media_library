@@ -17,9 +17,11 @@
 #define OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_DATA_CLIENT_HANDLER_H
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "i_cloud_media_data_client.h"
+#include "cloud_share_album_define.h"
 #include "get_aging_file_vo.h"
 #include "cloud_media_define.h"
 #include "on_download_thms_vo.h"
@@ -38,6 +40,8 @@ public:  // getter & setter
     std::string GetTraceId() const override;
     void SetUserId(const int32_t &userId) override;
     void SetCloudType(const int32_t cloudType) override;
+    void SetSceneType(int32_t sceneType) override;
+    std::unordered_map<std::string, std::string> &GetHeader();
 
 public:
     // 核查
@@ -111,7 +115,9 @@ private:
     std::string traceId_;
     int32_t userId_;
     int32_t cloudType_;
+    SceneType sceneType_ = SceneType::NORMAL;
     CloudMediaDataClientHandlerProcessor processor_;
+    std::unordered_map<std::string, std::string> header_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_DATA_CLIENT_HANDLER_H

@@ -342,6 +342,14 @@ enum ThumbnailVisibility: int32_t {
     VISIBLE = 1
 };
 
+// 共享相册类型，对应 PhotoAlbum 表 share_type 字段
+// 0: 普通相册，1: 双-共享相册/儿童手表共享相册，2: 单-共享相册
+enum PhotoAlbumShareType : int32_t {
+    SHARE_TYPE_NONEALBUM = 0,
+    SHARE_TYPE_CHILDWATCH = 1,
+    SHARE_TYPE_SHAREALBUM = 2,
+};
+
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H

@@ -40,6 +40,8 @@
 #include "media_album_order_back.h"
 #include "hi_audit.h"
 #include "media_string_utils.h"
+#include "cloud_media_context.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS::Media::CloudSync {
 using ChangeType = AAFwk::ChangeInfo::ChangeType;
@@ -835,7 +837,10 @@ int32_t CloudMediaAlbumDao::QueryDeleteAlbums(int32_t size, std::vector<PhotoAlb
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SHARE_GENERIC))
         ->EndWrap();
+    AddShareTypeCondition(predicates);
 
     if (!albumModifyFailSet_.empty()) {
         predicates.NotIn(PhotoAlbumColumns::ALBUM_CLOUD_ID, albumModifyFailSet_);
@@ -893,7 +898,10 @@ int32_t CloudMediaAlbumDao::GetMetaModifiedAlbum(int32_t size, std::vector<Photo
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SHARE_GENERIC))
         ->EndWrap();
+    AddShareTypeCondition(predicates);
 
     if (!albumModifyFailSet_.empty()) {
         predicates.NotIn(PhotoAlbumColumns::ALBUM_CLOUD_ID, albumModifyFailSet_);
@@ -1362,6 +1370,16 @@ void CloudMediaAlbumDao::FillAlbumCoverValues(int32_t coverUriSource, const std:
         values.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, coverCloudId);
     } else {
         values.PutNull(PhotoAlbumColumns::COVER_CLOUD_ID);
+    }
+}
+
+void CloudMediaAlbumDao::AddShareTypeCondition(NativeRdb::AbsRdbPredicates &predicates)
+{
+    if (CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE)) {
+        predicates.EqualTo(PhotoAlbumColumns::ALBUM_SHARE_TYPE, to_string(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
+    } else {
+        predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_SHARE_TYPE,
+            to_string(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
     }
 }
 // LCOV_EXCL_STOP

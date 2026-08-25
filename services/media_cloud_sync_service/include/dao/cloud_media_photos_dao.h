@@ -224,6 +224,7 @@ private:
                 (1 = {1} OR hidden = 0) AND \
                 time_pending = 0 AND \
                 COALESCE(is_temp, 0) = 0 AND \
+                is_shared = {2} AND \
                 file_id NOT IN ({0}) \
             ORDER BY size ASC \
         ) \
@@ -254,6 +255,7 @@ private:
                 (1 = {1} OR hidden = 0) AND \
                 time_pending = 0 AND \
                 COALESCE(is_temp, 0) = 0 AND \
+                is_shared = {2} AND \
                 file_id NOT IN ({0}) \
             ORDER BY size ASC \
         ) \
@@ -295,6 +297,7 @@ private:
             WHERE dirty IN (2, 6) AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \
@@ -315,6 +318,7 @@ private:
                 photo_risk_status = 1 AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \
@@ -338,6 +342,7 @@ private:
                 lcd_visit_time >= 2 AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \
@@ -362,6 +367,7 @@ private:
                 lcd_visit_time >= 2 AND \
                 cloud_id <> '' AND \
                 cloud_id IS NOT NULL AND \
+                is_shared = {1} AND \
                 cloud_id NOT IN ({0}) \
             ORDER BY size ASC \
             LIMIT ? \
