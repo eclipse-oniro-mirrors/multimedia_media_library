@@ -526,6 +526,8 @@ void DfxReporter::ReportPhotoRecordInfo()
     int32_t abnormalLpathCount = photoRecordInfo.abnormalLpathCount;
     int32_t photoWaitUploadCloudCount = photoRecordInfo.photoWaitUploadCloudCount;
     int32_t photoWaitUploadHdcCount = photoRecordInfo.photoWaitUploadHdcCount;
+    int32_t lcdFailedCount = photoRecordInfo.lcdFailedCount;
+    int32_t thumbRetryCount = photoRecordInfo.thumbRetryCount;
     int ret = HiSysEventWrite(
         MEDIA_LIBRARY,
         "MEDIALIB_DATABASE_INFO",
@@ -542,7 +544,9 @@ void DfxReporter::ReportPhotoRecordInfo()
         "ABNORMAL_LPATH_COUNT", abnormalLpathCount,
         "PHOTO_WAIT_UPLOAD_CLOUD_COUNT", photoWaitUploadCloudCount,
         "PHOTO_WAIT_UPLOAD_HDC_COUNT", photoWaitUploadHdcCount,
-        "WATCH_LIST_INFO", GetWatchListInfo());
+        "WATCH_LIST_INFO", GetWatchListInfo(),
+        "LCD_FAILED_COUNT", lcdFailedCount,
+        "THUMB_RETRY_COUNT", thumbRetryCount);
     if (ret != 0) {
         MEDIA_ERR_LOG("ReportPhotoRecordInfo error:%{public}d", ret);
     }

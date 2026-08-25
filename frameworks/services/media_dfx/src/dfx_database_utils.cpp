@@ -338,6 +338,16 @@ static void FillWaitUploadCount(PhotoRecordInfo &photoRecordInfo, bool &ret)
     }
 }
 
+static void FillThumbnailStatusCount(PhotoRecordInfo &photoRecordInfo, const string &filterCondition, bool &ret)
+{
+    const string lcdFailedCountQuerySql = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " +
+        PhotoColumn::PHOTOS_TABLE + " WHERE " + PhotoColumn::PHOTO_LCD_VISIT_TIME + " = 1 AND " + filterCondition;
+    const string thumbRetryCountQuerySql = "SELECT COUNT(*) AS " + RECORD_COUNT + " FROM " +
+        PhotoColumn::PHOTOS_TABLE + " WHERE " + PhotoColumn::PHOTO_THUMBNAIL_READY + " = 2 AND " + filterCondition;
+    ret = ParseResultSet(lcdFailedCountQuerySql, 0, photoRecordInfo.lcdFailedCount) && ret;
+    ret = ParseResultSet(thumbRetryCountQuerySql, 0, photoRecordInfo.thumbRetryCount) && ret;
+}
+
 int32_t DfxDatabaseUtils::QueryPhotoRecordInfo(PhotoRecordInfo &photoRecordInfo)
 {
     const string filterCondition = MediaColumn::MEDIA_TIME_PENDING + " = 0 AND " +
@@ -381,6 +391,7 @@ int32_t DfxDatabaseUtils::QueryPhotoRecordInfo(PhotoRecordInfo &photoRecordInfo)
     ret = ParseResultSet(totalAbnormalRecordSql, 0, photoRecordInfo.toBeUpdatedRecordCount) && ret;
     ret = ParseResultSet(duplicateLpathCountQuerySql, 0, photoRecordInfo.duplicateLpathCount) && ret;
     ret = ParseResultSet(abnormalLpathCountQuerySql, 0, photoRecordInfo.abnormalLpathCount) && ret;
+    FillThumbnailStatusCount(photoRecordInfo, filterCondition, ret);
     FillWaitUploadCount(photoRecordInfo, ret);
     BuildDbInfo(photoRecordInfo);
     return ret;

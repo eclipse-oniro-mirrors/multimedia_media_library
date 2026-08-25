@@ -245,8 +245,13 @@ int32_t ThumbnailGenerateHelper::CreateAstcBackground(ThumbRdbOpt &opts)
 
     auto kvStore = MediaLibraryKvStoreManager::GetInstance()
         .GetKvStore(KvStoreRoleType::OWNER, KvStoreValueType::MONTH_ASTC);
-    if (infos.empty() || kvStore == nullptr) {
-        MEDIA_DEBUG_LOG("No need create Astc.");
+    if (kvStore == nullptr) {
+        MEDIA_ERR_LOG("KvStore is nullptr");
+        return E_ERR;
+    }
+
+    if (infos.empty()) {
+        MEDIA_INFO_LOG("No need create Astc.");
         return E_OK;
     }
 

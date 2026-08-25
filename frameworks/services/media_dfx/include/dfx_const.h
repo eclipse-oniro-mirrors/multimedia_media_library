@@ -240,6 +240,8 @@ struct PhotoRecordInfo {
     int32_t abnormalLpathCount;
     int32_t photoWaitUploadCloudCount;
     int32_t photoWaitUploadHdcCount;
+    int32_t lcdFailedCount;
+    int32_t thumbRetryCount;
 };
 
 struct AdaptationToMovingPhotoInfo {

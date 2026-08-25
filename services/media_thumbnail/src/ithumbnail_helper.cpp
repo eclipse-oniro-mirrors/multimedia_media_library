@@ -569,8 +569,12 @@ bool IThumbnailHelper::DoCreateLcd(ThumbRdbOpt &opts, ThumbnailData &data)
         data.needUpdateDb = false;
         return ret == WaitStatus::WAIT_SUCCESS;
     }
-    CHECK_AND_RETURN_RET_LOG(IsCreateLcdSuccess(opts, data), false,
-        "Fail to create lcd, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
+    if (!IsCreateLcdSuccess(opts, data)) {
+        MEDIA_ERR_LOG("Fail to create lcd, path: %{public}s", DfxUtils::GetSafePath(data.path).c_str());
+        data.rdbUpdateCache.PutLong(PhotoColumn::PHOTO_LCD_VISIT_TIME,
+            static_cast<int64_t>(LcdReady::GENERATE_LCD_FAILED));
+        return false;
+    }
     if (ThumbnailUtils::NeedRotateThumbnail(data) && data.needGenerateExThumbnail) {
         CHECK_AND_PRINT_LOG(IsCreateLcdExSuccess(opts, data), "Fail to create lcdEx, path: %{public}s",
             DfxUtils::GetSafePath(opts.path).c_str());
@@ -636,9 +640,6 @@ bool IThumbnailHelper::StorePictureLowQuality(ThumbnailData &data,
     }
     MEDIA_ERR_LOG("Can not generate demand lcd. sizeLimit: %{public}zu, lastGeneratedSize: %{public}zu",
         sizeLimit, lastGeneratedSize);
-    if (!isSourceEx) {
-        ThumbnailUtils::CacheInvalidLcdInfo(data);
-    }
     return false;
 }
 
@@ -713,9 +714,6 @@ bool IThumbnailHelper::StoreLcdPixelMapLowQuality(ThumbnailData& data, const std
     }
     MEDIA_ERR_LOG("Can not generate demand lcd. sizeLimit: %{public}zu, lastGeneratedSize: %{public}zu",
         sizeLimit, lastGeneratedSize);
-    if (!isSourceEx) {
-        ThumbnailUtils::CacheInvalidLcdInfo(data);
-    }
     return false;
 }
 
