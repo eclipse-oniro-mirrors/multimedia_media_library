@@ -44,15 +44,10 @@ bool ScannerUtils::IsExists(const string &path)
 string ScannerUtils::GetFileNameFromUri(const string &path)
 {
     if (!path.empty()) {
-        string pathWithoutQuery = path;
-        size_t queryPos = pathWithoutQuery.find('?');
-        if (queryPos != string::npos) {
-            pathWithoutQuery = pathWithoutQuery.substr(0, queryPos);
-        }
-        size_t lastSlashPosition = pathWithoutQuery.rfind("/");
+        size_t lastSlashPosition = path.rfind("/");
         if (lastSlashPosition != string::npos) {
-            if (pathWithoutQuery.size() > lastSlashPosition) {
-                return pathWithoutQuery.substr(lastSlashPosition + 1);
+            if (path.size() > lastSlashPosition) {
+                return path.substr(lastSlashPosition + 1);
             }
         }
     }

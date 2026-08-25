@@ -861,7 +861,6 @@ std::shared_ptr<DataShare::DataShareResultSet> MediaAssetsService::GetAssets(Get
     MediaLibraryRdbUtils::AddVirtualColumnsOfDateType(dto.columns);
     MediaLibraryCommand cmd(OperationObject::FILESYSTEM_PHOTO, OperationType::QUERY, MediaLibraryApi::API_10);
     cmd.SetDataSharePred(dto.predicates);
-    MediaLibraryPhotoOperations::HandleIllegalKey(dto.predicates);
     // MEDIALIBRARY_TABLE just for RdbPredicates
     NativeRdb::RdbPredicates rdbPredicate = RdbUtils::ToPredicates(dto.predicates, PhotoColumn::PHOTOS_TABLE);
     MediaLibraryRdbUtils::BuildDoubleCheckPredicates(rdbPredicate, static_cast<uint32_t>(dto.tokenId), passCode);

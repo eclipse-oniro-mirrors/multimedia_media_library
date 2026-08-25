@@ -89,41 +89,36 @@ std::string MediaUriUtils::GetUriByExtrConditions(const std::string &prefix, con
 
 std::string MediaUriUtils::GetPathFromUri(const std::string &uri)
 {
-    std::string uriWithoutQuery = uri;
-    size_t queryPos = uriWithoutQuery.find('?');
-    if (queryPos != std::string::npos) {
-        uriWithoutQuery = uriWithoutQuery.substr(0, queryPos);
-    }
-    size_t index = uriWithoutQuery.rfind('/');
+    size_t index = uri.rfind('/');
     if (index == std::string::npos) {
-        MEDIA_ERR_LOG("index invalid %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("index invalid %{private}s", uri.c_str());
         return "";
     }
-    std::string realTitle = uriWithoutQuery.substr(0, index);
+    std::string realTitle = uri.substr(0, index);
     index = realTitle.rfind('/');
     if (index == std::string::npos) {
-        MEDIA_ERR_LOG("invalid realTitle %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("invalid realTitle %{private}s", uri.c_str());
         return "";
     }
     realTitle = realTitle.substr(index + 1);
     index = realTitle.rfind('_');
     if (index == std::string::npos) {
-        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", uri.c_str());
         return "";
     }
     std::string fileId = realTitle.substr(index + 1);
     int32_t fileUniqueId = 0;
     bool result = MediaStringUtils::ConvertToInt(fileId, fileUniqueId);
     if (!result) {
-        MEDIA_ERR_LOG("invalid fileuri %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("invalid fileuri %{private}s", uri.c_str());
         return "";
     }
     int32_t bucketNum = 0;
     CreateAssetBucket(fileUniqueId, bucketNum);
 
-    std::string ext = MediaPathUtils::GetExtension(uriWithoutQuery);
+    std::string ext = MediaPathUtils::GetExtension(uri);
     if (ext.empty()) {
-        MEDIA_ERR_LOG("invalid ext %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("invalid ext %{private}s", uri.c_str());
         return "";
     }
 
@@ -158,6 +153,11 @@ int32_t MediaUriUtils::GetFileId(const std::string &uri)
     return value;
 }
 
+std::string MediaUriUtils::GetFileIdStr(const std::string &uri)
+{
+    return std::to_string(GetFileId(uri));
+}
+
 Uri MediaUriUtils::GetMultiUri(Uri &uri, int32_t userId)
 {
     if (userId == DEFAULT_USER_ID_INNER) {
@@ -175,11 +175,6 @@ bool MediaUriUtils::CheckUri(const std::string &uri)
     }
     std::string uriprex = "file://media";
     return uri.substr(0, uriprex.size()) == uriprex;
-}
-
-std::string MediaUriUtils::GetFileIdStr(const std::string &uri)
-{
-    return std::to_string(GetFileId(uri));
 }
 
 static std::string GetTitleFromDisplayName(const std::string &displayName)
@@ -228,10 +223,6 @@ std::string MediaUriUtils::GetSafeUri(const std::string &uri)
     std::string safeUri = uri;
     if (uri == "") {
         return safeUri;
-    }
-    size_t queryPos = safeUri.find('?');
-    if (queryPos != std::string::npos) {
-        safeUri = safeUri.substr(0, queryPos);
     }
     size_t splitIndex = safeUri.find_last_of(SPLIT_PATH);
     std::string displayName;

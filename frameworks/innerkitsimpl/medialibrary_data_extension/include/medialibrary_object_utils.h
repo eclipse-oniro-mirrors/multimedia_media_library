@@ -119,7 +119,6 @@ private:
         int count, const string &relativePath, const string &displayName);
     static std::shared_ptr<NativeRdb::ResultSet> QuerySmartAlbum(MediaLibraryCommand &cmd);
     static int32_t DeleteInfoRecursively(const shared_ptr<FileAsset> &fileAsset);
-    static void HandlePrivateAsset(const shared_ptr<FileAsset>& fileAsset);
 };
 } // namespace Media
 } // namespace OHOS

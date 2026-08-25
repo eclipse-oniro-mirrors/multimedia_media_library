@@ -205,42 +205,6 @@ void DfxReporter::ReportDeleteStatistic()
     prefs->FlushSync();
 }
 
-void DfxReporter::ReportInvalidBehavior()
-{
-    int32_t errCode;
-    shared_ptr<NativePreferences::Preferences> prefs =
-        NativePreferences::PreferencesHelper::GetPreferences(INVALID_BEHAVIOR_XML, errCode);
-    if (!prefs) {
-        MEDIA_ERR_LOG("get preferences error: %{public}d", errCode);
-        return;
-    }
-    map<string, NativePreferences::PreferencesValue> deleteMap = prefs->GetAll();
-    for (auto &info : deleteMap) {
-        string key = info.first;
-        vector<string> invalidInfo = DfxUtils::Split(key, SPLIT_CHAR);
-        if (invalidInfo.empty() || invalidInfo.size() < 2) { // 2 means length of key
-            continue;
-        }
-        // 0 means index of bundleName
-        string bundleName = invalidInfo[0];
-        // 1 means index of type
-        int32_t type = MediaLibraryDataManagerUtils::IsNumber(invalidInfo[1]) ? stoi(invalidInfo[1]) : 0;
-        string operation = info.second;
-        int ret = HiSysEventWrite(
-            MEDIA_LIBRARY,
-            "MEDIALIB_DELETE_BEHAVIOR",
-            HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
-            "BUNDLE_NAME", bundleName,
-            "TYPE", type,
-            "PATH", operation);
-        if (ret != 0) {
-            MEDIA_ERR_LOG("ReportInvalidBehavior error:%{public}d", ret);
-        }
-    }
-    prefs->Clear();
-    prefs->FlushSync();
-}
-
 void DfxReporter::ReportDeleteBehavior(string bundleName, int32_t type, std::string path)
 {
     if (bundleName == "" || path == "") {

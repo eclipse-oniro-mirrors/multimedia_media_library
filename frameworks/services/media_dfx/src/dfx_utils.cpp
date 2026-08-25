@@ -82,10 +82,6 @@ string DfxUtils::GetSafeUri(const string &uri)
     if (uri == "") {
         return safeUri;
     }
-    size_t queryPos = safeUri.find('?');
-    if (queryPos != string::npos) {
-        safeUri = safeUri.substr(0, queryPos);
-    }
     size_t splitIndex = safeUri.find_last_of(SPLIT_PATH);
     string displayName;
     if (splitIndex == string::npos) {

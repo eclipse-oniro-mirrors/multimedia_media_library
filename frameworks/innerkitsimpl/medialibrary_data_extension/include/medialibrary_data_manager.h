@@ -146,7 +146,6 @@ public:
     EXPORT static int32_t GetAssetCompressVersion();
     EXPORT int32_t UpdateTabPhotosExt(MediaLibraryCommand &cmd, NativeRdb::ValuesBucket &value,
                 const DataShare::DataSharePredicates &predicates);
-    EXPORT void HandleSpecialOpen(MediaLibraryCommand &cmd);
 
 #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
     using GetInstanceNewFunc = WatchSystemService::CloudAuditImpl *(*)(void);

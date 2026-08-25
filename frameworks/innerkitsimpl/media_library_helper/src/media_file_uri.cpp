@@ -563,54 +563,33 @@ int32_t MediaFileUri::CreateAssetBucket(int32_t fileId, int32_t &bucketNum)
     return E_OK;
 }
 
-static string ExtractRealTitleFromUri(const string &uri)
+string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
 {
-    string uriWithoutQuery = uri;
-    size_t queryPos = uriWithoutQuery.find('?');
-    if (queryPos != string::npos) {
-        uriWithoutQuery = uriWithoutQuery.substr(0, queryPos);
-    }
-    size_t index = uriWithoutQuery.rfind('/');
+    size_t index = uri.rfind('/');
     if (index == string::npos) {
-        MEDIA_ERR_LOG("index invalid %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("index invalid %{private}s", uri.c_str());
         return "";
     }
-    string realTitle = uriWithoutQuery.substr(0, index);
+    string realTitle = uri.substr(0, index);
     index = realTitle.rfind('/');
     if (index == string::npos) {
-        MEDIA_ERR_LOG("invalid realTitle %{private}s", uriWithoutQuery.c_str());
+        MEDIA_ERR_LOG("invalid realTitle %{private}s", uri.c_str());
         return "";
     }
-    return realTitle.substr(index + 1);
-}
-
-static bool ParseFileIdFromRealTitle(const string &realTitle, int32_t &fileUniqueId)
-{
-    size_t index = realTitle.rfind('_');
+    realTitle = realTitle.substr(index + 1);
+    index = realTitle.rfind('_');
     if (index == string::npos) {
-        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", realTitle.c_str());
-        return false;
+        MEDIA_ERR_LOG("realTitle can not find _ %{private}s", uri.c_str());
+        return "";
     }
     string fileId = realTitle.substr(index + 1);
     if (!all_of(fileId.begin(), fileId.end(), ::isdigit)) {
-        MEDIA_ERR_LOG("fileId invalid %{private}s", realTitle.c_str());
-        return false;
-    }
-    if (!StrToInt(fileId, fileUniqueId)) {
-        MEDIA_ERR_LOG("invalid fileuri %{private}s", realTitle.c_str());
-        return false;
-    }
-    return true;
-}
-
-string MediaFileUri::GetPathFromUri(const string &uri, bool isPhoto)
-{
-    string realTitle = ExtractRealTitleFromUri(uri);
-    if (realTitle.empty()) {
+        MEDIA_ERR_LOG("fileId invalid %{private}s", uri.c_str());
         return "";
     }
     int32_t fileUniqueId = 0;
-    if (!ParseFileIdFromRealTitle(realTitle, fileUniqueId)) {
+    if (!StrToInt(fileId, fileUniqueId)) {
+        MEDIA_ERR_LOG("invalid fileuri %{private}s", uri.c_str());
         return "";
     }
     int32_t bucketNum = 0;
