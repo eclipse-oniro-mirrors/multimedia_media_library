@@ -100,6 +100,8 @@ public:
     void WriteForCloudDownload(const std::string& bundleName, const int32_t& downloadType, const std::string& status);
     void WriteForCloudSyncAlbum(const std::string& albumName, const std::string& cloudId, const int32_t albumType,
         const int32_t albumSubType, const std::string& bundleName);
+    void WriteForCloudExit(const std::string& bundleName,
+        const int32_t retainType, const std::string& operationStatus);
 
 private:
     HiAudit();

@@ -19,6 +19,7 @@
 
 #include "media_assets_controller_service.h"
 #include "media_assets_service.h"
+#include "media_share_assets_service.h"
 #include "media_log.h"
 #include "create_asset_vo.h"
 #include "create_asset_dto.h"
@@ -2262,7 +2263,9 @@ int32_t MediaAssetsControllerService::RetainCloudMediaAsset(MessageParcel &data,
     if (cloudMediaRetainType == CloudMediaRetainType::RETAIN_FORCE ||
         cloudMediaRetainType == CloudMediaRetainType::HDC_RETAIN_FORCE) {
         ret = MediaAssetsService::GetInstance().RetainCloudMediaAsset(cloudMediaRetainType);
-    } else {
+    } else if (cloudMediaRetainType == CloudMediaRetainType::SHARE_RETAIN_FORCE) {
+        ret = this->mediaShareAssetsService_.RemoveShareAlbumAndAsset();
+    }  else {
         ret = E_INVALID_VALUES;
         MEDIA_ERR_LOG("RetainCloudMediaAsset error, err type: %{public}d", reqBody.cloudMediaRetainType);
     }

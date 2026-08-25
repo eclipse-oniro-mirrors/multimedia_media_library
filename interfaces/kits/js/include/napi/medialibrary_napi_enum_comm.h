@@ -188,7 +188,8 @@ const std::vector<std::string> cloudMediaDownloadTypeEnum {
 
 const std::vector<std::string> cloudMediaRetainTypeEnum {
     "RETAIN_FORCE", // RETAIN_FORCE is an external interface and cannot be modified, corresponds to RETAIN_FORCE
-    "HDC_RETAIN_FORCE"
+    "HDC_RETAIN_FORCE",
+    "SHARE_RETAIN_FORCE"
 };
 
 const std::vector<std::string> cloudMediaAssetTaskStatusEnum {

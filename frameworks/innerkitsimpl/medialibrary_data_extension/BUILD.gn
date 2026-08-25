@@ -140,6 +140,7 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/controller",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dao",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/dto",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/notify",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/vo",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/service",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/include/utils",
@@ -629,11 +630,15 @@ ohos_shared_library("medialibrary_data_extension") {
   ]
 
   media_assets_manager_source = [
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/cloud_share_sync_foundation_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/media_assets_rdb_operations.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/media_assets_service.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/media_share_assets_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/controller/media_assets_controller_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/controller/media_assets_permission_policy.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dao/media_assets_dao.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/dao/media_share_assets_dao.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/notify/asset_batch_notify.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/media_assets_delete_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/media_assets_recover_service.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/service/clone_to_album_service.cpp",
