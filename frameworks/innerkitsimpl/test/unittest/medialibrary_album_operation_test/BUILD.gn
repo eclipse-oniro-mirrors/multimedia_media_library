@@ -48,7 +48,9 @@ ohos_unittest("medialibrary_album_operation_test") {
     "${MEDIALIB_SERVICES_PATH}/media_dfx/src/dfx_utils.cpp",
     "../get_self_permissions/src/get_self_permissions.cpp",
     "../medialibrary_unittest_utils/src/medialibrary_unittest_utils.cpp",
+    "../medialibrary_unittest_utils/src/test_data_builder.cpp",
     "./src/medialibrary_album_operation_test.cpp",
+    "./src/medialibrary_album_set_hidden_test.cpp",
   ]
   deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
