@@ -97,6 +97,7 @@ public:
     EXPORT int32_t GetCloudMediaBatchDownloadResourcesCount(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetEditData(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t RequestEditData(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t QueryCompositeAuxiliaryImage(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t IsEdited(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GetAlbumsByAlbumIds(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t GrantPhotoUriPermission(MessageParcel &data, MessageParcel &reply);

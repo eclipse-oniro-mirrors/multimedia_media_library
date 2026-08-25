@@ -65,6 +65,7 @@ ohos_shared_library("media_library_asset_manager") {
   media_assets_manager_vo_source = [
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_photo_vo.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/save_camera_photo_vo.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_assets_manager/src/vo/query_composite_auxiliary_image_vo.cpp",
   ]
 
   include_dirs += user_ipc_client_include_dirs

@@ -40,6 +40,7 @@
 #include "permission_utils.h"
 #include "picture_handle_client.h"
 #include "query_photo_vo.h"
+#include "query_composite_auxiliary_image_vo.h"
 #include "userfile_client.h"
 #include "image_source_taihe_ani.h"
 #include "picture_taihe_ani.h"
@@ -84,6 +85,8 @@ ani_status MediaAssetManagerAni::Init(ani_env *env)
     std::array staticMethods = {
         ani_native_function {"requestImageInner", nullptr, reinterpret_cast<void *>(RequestImage)},
         ani_native_function {"requestImageDataInner", nullptr, reinterpret_cast<void *>(RequestImageData)},
+        ani_native_function {"requestCompositeAuxiliaryImageDataInner", nullptr,
+            reinterpret_cast<void *>(RequestCompositeAuxiliaryImageData)},
         ani_native_function {"requestMovingPhotoInner", nullptr, reinterpret_cast<void *>(RequestMovingPhoto)},
         ani_native_function {"cancelRequestInner", nullptr, reinterpret_cast<void *>(CancelRequest)},
         ani_native_function {"quickRequestImageInner", nullptr, reinterpret_cast<void *>(RequestEfficientImage)},
@@ -240,6 +243,8 @@ static AssetHandler* InsertDataHandler(NotifyMode notifyMode, ani_env *env,
     CHECK_COND_RET(mediaAssetDataHandler != nullptr, nullptr, "mediaAssetDataHandler is null");
     mediaAssetDataHandler->SetCompatibleMode(context->compatibleMode);
     mediaAssetDataHandler->SetNotifyMode(notifyMode);
+    mediaAssetDataHandler->SetCompositeAuxiliary(context->isCompositeAuxiliary);
+    mediaAssetDataHandler->SetCompositeFd(context->compositeFd);
     mediaAssetDataHandler->SetRequestId(context->requestId);
     mediaAssetDataHandler->SetProgressHandlerRef(context->progressHandlerRef);
     mediaAssetDataHandler->SetThreadsafeFunction(context->onProgressPtr);
@@ -743,19 +748,24 @@ void MediaAssetManagerAni::GetPictureAniObject(const std::string &fileUri, ani_o
 }
 
 void MediaAssetManagerAni::GetByteArrayAniObject(const std::string &requestUri, ani_object &arrayBuffer,
-    bool isSource, ani_env *env)
+    bool isSource, bool isCompositeAuxiliary, int compositeFd, ani_env *env)
 {
     if (env == nullptr) {
         ANI_ERR_LOG("create byte array object failed, need to initialize env");
         return;
     }
 
-    std::string tmpUri = requestUri;
-    if (isSource) {
-        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
+    int imageFd = -1;
+    if (isCompositeAuxiliary && compositeFd >= 0) {
+        imageFd = compositeFd;
+    } else {
+        std::string tmpUri = requestUri;
+        if (isSource) {
+            MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
+        }
+        Uri uri(tmpUri);
+        imageFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
     }
-    Uri uri(tmpUri);
-    int imageFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
     if (imageFd < 0) {
         ANI_ERR_LOG("get image fd failed, %{public}d", errno);
         return;
@@ -864,7 +874,9 @@ static ani_object GetAniValueOfMedia(ani_env *env, const std::shared_ptr<AniMedi
     ani_object aniValueOfMedia {};
     if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_ARRAY_BUFFER) {
         MediaAssetManagerAni::GetByteArrayAniObject(dataHandler->GetRequestUri(), aniValueOfMedia,
-            dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env);
+            dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, dataHandler->IsCompositeAuxiliary(),
+            dataHandler->GetCompositeFd(), env);
+        dataHandler->SetCompositeFd(-1);
     } else if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_IMAGE_SOURCE) {
         MediaAssetManagerAni::GetImageSourceAniObject(dataHandler->GetRequestUri(), aniValueOfMedia,
             dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env);
@@ -1588,6 +1600,96 @@ ani_string MediaAssetManagerAni::RequestImageData(ani_env *env, [[maybe_unused]]
     aniContext->subType = static_cast<PhotoSubType>(GetPhotoSubtype(env, asset));
 
     RequestExecute(env, aniContext);
+    return RequestComplete(env, aniContext);
+}
+
+bool MediaAssetManagerAni::ParseAndValidateCompositeAuxiliaryArgs(ani_env *env, ani_object context,
+    ani_object asset, ani_object dataHandler, unique_ptr<MediaAssetManagerAniContext> &aniContext)
+{
+    if (ParseArgGetPhotoAsset(env, asset, aniContext) != ANI_OK) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData ParseArgGetPhotoAsset error");
+        AniError::ThrowError(env, JS_E_INNER_FAIL,
+            "requestCompositeAuxiliaryImageData ParseArgGetPhotoAsset error");
+        return false;
+    }
+    if (MediaFileUtils::GetMediaType(aniContext->displayName) == MEDIA_TYPE_VIDEO) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData video not supported");
+        AniError::ThrowError(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE,
+            "The asset has no composite auxiliary image");
+        return false;
+    }
+    if (ParseArgGetDataHandler(env, dataHandler, aniContext) != ANI_OK) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData ParseArgGetDataHandler error");
+        AniError::ThrowError(env, JS_E_INNER_FAIL,
+            "requestCompositeAuxiliaryImageData ParseArgGetDataHandler error");
+        return false;
+    }
+    if (!HasReadPermission()) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData no read permission");
+        AniError::ThrowError(env, OHOS_PERMISSION_DENIED_CODE,
+            "The application does not have the READ_IMAGEVIDEO permission");
+        return false;
+    }
+    aniContext->hasReadPermission = true;
+    if (!InitUserFileClient(env, context, aniContext->userId)) {
+        ANI_ERR_LOG("requestCompositeAuxiliaryImageData InitUserFileClient failed");
+        AniError::ThrowError(env, JS_E_INNER_FAIL, "InitUserFileClient failed");
+        return false;
+    }
+    if (CreateDataHandlerRef(env, aniContext, aniContext->dataHandlerRef) != ANI_OK ||
+        CreateOnDataPreparedThreadSafeFunc(aniContext->onDataPreparedPtr) != ANI_OK) {
+        ANI_ERR_LOG("CreateDataHandlerRef or CreateOnDataPreparedThreadSafeFunc failed");
+        AniError::ThrowError(env, JS_E_INNER_FAIL, "Failed to create data handler");
+        return false;
+    }
+    return true;
+}
+
+ani_string MediaAssetManagerAni::RequestCompositeAuxiliaryImageData(ani_env *env, [[maybe_unused]] ani_class clazz,
+    ani_object context, ani_object asset, ani_object dataHandler)
+{
+    MediaLibraryTracer tracer;
+    tracer.Start("RequestCompositeAuxiliaryImageData");
+
+    unique_ptr<MediaAssetManagerAniContext> aniContext = make_unique<MediaAssetManagerAniContext>();
+    CHECK_COND_RET(aniContext != nullptr, nullptr, "aniContext is null");
+    aniContext->returnDataType = ReturnDataType::TYPE_ARRAY_BUFFER;
+    aniContext->isCompositeAuxiliary = true;
+    aniContext->sourceMode = SourceMode::EDITED_MODE;
+    aniContext->compatibleMode = CompatibleMode::ORIGINAL_FORMAT_MODE;
+
+    if (!MediaLibraryAniUtils::IsSystemApp()) {
+        AniError::ThrowError(env, E_CHECK_SYSTEMAPP_FAIL,
+            "This interface can be called only by system apps");
+        return nullptr;
+    }
+
+    if (!ParseAndValidateCompositeAuxiliaryArgs(env, context, asset, dataHandler, aniContext)) {
+        return nullptr;
+    }
+
+    aniContext->requestId = GenerateRequestId();
+
+    // Query composite auxiliary image via IPC control-plane, get fd directly.
+    QueryCompositeAuxiliaryImageReqBody req;
+    req.fileId = aniContext->fileId;
+    QueryCompositeAuxiliaryImageRespBody resp;
+    std::unordered_map<std::string, std::string> headerMap = {
+        {MediaColumn::MEDIA_ID, std::to_string(aniContext->fileId)},
+        {URI_TYPE, TYPE_PHOTOS},
+    };
+    int ret = IPC::UserDefineIPCClient().SetUserId(aniContext->userId).SetHeader(headerMap)
+        .Call(static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_COMPOSITE_AUXILIARY_IMAGE_DATA), req, resp);
+    if (ret != E_OK || resp.fd < 0) {
+        ANI_ERR_LOG("No composite auxiliary image, fileId: %{public}d, ret: %{public}d",
+            aniContext->fileId, ret);
+        AniError::ThrowError(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE,
+            "The asset has no composite auxiliary image");
+        return nullptr;
+    }
+    aniContext->compositeFd = resp.fd;
+
+    NotifyDataPreparedWithoutRegister(env, aniContext);
     return RequestComplete(env, aniContext);
 }
 

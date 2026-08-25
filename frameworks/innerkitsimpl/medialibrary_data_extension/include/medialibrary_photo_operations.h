@@ -117,6 +117,7 @@ public:
     EXPORT static int32_t Open(MediaLibraryCommand &cmd, const std::string &mode);
     EXPORT static int32_t OpenAssetCompress(MediaLibraryCommand &cmd, std::string &tlvPath, const int32_t &version,
         int32_t &fd);
+    EXPORT static bool CheckPermissionToOpenHiddenFileAsset(const std::shared_ptr<FileAsset> &fileAsset);
     EXPORT static int32_t Close(MediaLibraryCommand &cmd);
     EXPORT static int32_t SubmitCache(MediaLibraryCommand &cmd);
     EXPORT static int32_t SubmitExistFileDBRecord(MediaLibraryCommand& cmd);

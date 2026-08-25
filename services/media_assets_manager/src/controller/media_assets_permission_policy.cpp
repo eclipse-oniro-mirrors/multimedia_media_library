@@ -234,6 +234,8 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
     {static_cast<uint32_t>(MediaLibraryBusinessCode::GET_DEEP_OPTIMIZE_SPACE), {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::BATCH_UPDATE_METADATA_MODIFIED),
         {{SYSTEMINNERAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_COMPOSITE_AUXILIARY_IMAGE_DATA),
+        {{SYSTEMAPI_PERM, READ_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::SET_PHOTO_CRITICAL),
         {{SYSTEMINNERAPI_PERM, WRITE_PERM}}},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SYSTEM_GENERATE_UNIQUE_ID),

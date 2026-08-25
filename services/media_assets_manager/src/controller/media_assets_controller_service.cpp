@@ -93,6 +93,8 @@
 #include "get_edit_data_dto.h"
 #include "get_cloud_enhancement_pair_dto.h"
 #include "permission_utils.h"
+#include "query_composite_auxiliary_image_vo.h"
+#include "query_composite_auxiliary_image_dto.h"
 #include "media_app_uri_permission_column.h"
 #include "cancel_request_vo.h"
 #include "start_batch_download_cloud_resources_vo.h"
@@ -463,6 +465,10 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_REQUEST_EDIT_DATA),
         &MediaAssetsControllerService::RequestEditData
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_COMPOSITE_AUXILIARY_IMAGE_DATA),
+        &MediaAssetsControllerService::QueryCompositeAuxiliaryImage
     },
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_GET_EDIT_DATA),
@@ -2505,6 +2511,26 @@ int32_t MediaAssetsControllerService::RequestEditData(MessageParcel &data, Messa
     RequestEditDataDto dto;
     dto.predicates = reqBody.predicates;
     ret = MediaAssetsService::GetInstance().RequestEditData(dto, respBody);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
+}
+
+int32_t MediaAssetsControllerService::QueryCompositeAuxiliaryImage(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter QueryCompositeAuxiliaryImage");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_COMPOSITE_AUXILIARY_IMAGE_DATA);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    QueryCompositeAuxiliaryImageReqBody reqBody;
+    QueryCompositeAuxiliaryImageRespBody respBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("QueryCompositeAuxiliaryImage Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
+    QueryCompositeAuxiliaryImageDto dto;
+    dto.fileId = reqBody.fileId;
+    ret = MediaAssetsService::GetInstance().QueryCompositeAuxiliaryImage(dto, respBody);
     return IPC::UserDefineIPC().WriteResponseBody(reply, respBody, ret);
 }
 

@@ -16,6 +16,7 @@
 #include "media_asset_data_handler_ani.h"
 #include "ani_class_name.h"
 #include "medialibrary_ani_utils.h"
+#include <unistd.h>
 
 namespace OHOS {
 namespace Media {
@@ -31,6 +32,14 @@ AniMediaAssetDataHandler::AniMediaAssetDataHandler(ani_env *env, ani_ref dataHan
     sourceMode_ = sourceMode;
     dataHandlerRef_ = dataHandler;
     compatibleMode_ = CompatibleMode::ORIGINAL_FORMAT_MODE;
+}
+
+AniMediaAssetDataHandler::~AniMediaAssetDataHandler()
+{
+    if (compositeFd_ >= 0) {
+        close(compositeFd_);
+        compositeFd_ = -1;
+    }
 }
 
 void AniMediaAssetDataHandler::DeleteAniReference(ani_env *env)
@@ -65,6 +74,26 @@ std::string AniMediaAssetDataHandler::GetDestUri()
 SourceMode AniMediaAssetDataHandler::GetSourceMode()
 {
     return sourceMode_;
+}
+
+bool AniMediaAssetDataHandler::IsCompositeAuxiliary()
+{
+    return isCompositeAuxiliary_;
+}
+
+void AniMediaAssetDataHandler::SetCompositeAuxiliary(bool isCompositeAuxiliary)
+{
+    isCompositeAuxiliary_ = isCompositeAuxiliary;
+}
+
+int AniMediaAssetDataHandler::GetCompositeFd()
+{
+    return compositeFd_;
+}
+
+void AniMediaAssetDataHandler::SetCompositeFd(int compositeFd)
+{
+    compositeFd_ = compositeFd;
 }
 
 void AniMediaAssetDataHandler::SetNotifyMode(NotifyMode notifyMode)
