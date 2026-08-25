@@ -17,9 +17,11 @@
 #define OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_ALBUM_HANDLER_H
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 
 #include "i_cloud_media_data_handler.h"
+#include "cloud_share_album_define.h"
 #include "cloud_check_data.h"
 #include "cloud_meta_data.h"
 #include "mdk_record.h"
@@ -41,6 +43,8 @@ public:  // getter & setter
     void SetCloudType(const int32_t cloudType) override;
     void SetCloudSpaceFull(bool isCloudSpaceFull) override;
     bool IsCloudSpaceFull() override;
+    void SetSceneType(int32_t sceneType) override;
+    std::unordered_map<std::string, std::string> &GetHeader();
 
 public:
     int32_t GetCheckRecords(const std::vector<std::string> &cloudIds,
@@ -71,6 +75,8 @@ private:
     int32_t userId_;
     int32_t cloudType_;
     bool isCloudSpaceFull_;
+    SceneType sceneType_ = SceneType::NORMAL;
+    std::unordered_map<std::string, std::string> header_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_ALBUM_HANDLER_H

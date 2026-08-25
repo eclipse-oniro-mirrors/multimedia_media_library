@@ -16,6 +16,7 @@
 #define MLOG_TAG "Media_Cloud_Dao"
 
 #include "cloud_media_download_dao.h"
+#include "cloud_media_context.h"
 
 #include <string>
 #include <utime.h>
@@ -96,6 +97,7 @@ int32_t CloudMediaDownloadDao::GetDownloadThms(const DownloadThumbnailQueryDto &
         predicates.EqualTo(PhotoColumn::PHOTO_IS_TEMP, 0);            // NOT_TEMP_FILE
         predicates.EqualTo(PhotoColumn::PHOTO_BURST_COVER_LEVEL, 1);  // IS_BURST_COVER
     }
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.Limit(queryDto.offset, queryDto.size);
     predicates.OrderByDesc(PhotoColumn::MEDIA_DATE_TAKEN);
 

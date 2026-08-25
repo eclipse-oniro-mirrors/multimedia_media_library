@@ -1058,6 +1058,7 @@ int32_t CloudMediaPhotosDao::GetRetryRecords(std::vector<std::string> &cloudIds)
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::PHOTO_DIRTY, static_cast<int32_t>(DirtyType::TYPE_RETRY));
     predicates.EqualTo(PhotoColumn::PHOTO_CLEAN_FLAG, static_cast<int32_t>(CleanType::TYPE_NOT_CLEAN));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.Limit(LIMIT_SIZE);
 
     const std::vector<std::string> columns = {PhotoColumn::PHOTO_CLOUD_ID};
@@ -1111,7 +1112,8 @@ int32_t CloudMediaPhotosDao::GetCreatedRecords(int32_t size, std::vector<PhotosP
     bool notSupport = !PhotoAlbumUploadStatusOperation::IsSupportUploadStatus();
     std::vector<std::string> params = {
         fileIdNotIn,
-        std::to_string(notSupport)
+        std::to_string(notSupport),
+        std::to_string(CloudMediaContext::GetInstance().GetSceneType())
     };
     std::vector<NativeRdb::ValueObject> bindArgs = {size};
     std::string execSql;
@@ -1151,9 +1153,11 @@ int32_t CloudMediaPhotosDao::GetMetaModifiedRecords(int32_t size, std::vector<Ph
     std::vector<NativeRdb::ValueObject> bindArgs = {size};
     std::string execSql;
     #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
-        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_META_MODIFIED_RECORDS_SECURE, {cloudIdNotIn});
+        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_META_MODIFIED_RECORDS_SECURE,
+            {cloudIdNotIn, std::to_string(CloudMediaContext::GetInstance().GetSceneType())});
     #else
-        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_META_MODIFIED_RECORDS, {cloudIdNotIn});
+        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_META_MODIFIED_RECORDS,
+            {cloudIdNotIn, std::to_string(CloudMediaContext::GetInstance().GetSceneType())});
     #endif
     /* query */
     auto resultSet = rdbStore->QuerySql(execSql, bindArgs);
@@ -1198,9 +1202,11 @@ int32_t CloudMediaPhotosDao::GetFileModifiedRecords(int32_t size, std::vector<Ph
     std::vector<NativeRdb::ValueObject> bindArgs = {size};
     std::string execSql;
     #ifdef MEDIALIBRARY_SECURE_ALBUM_ENABLE
-        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_FILE_MODIFIED_RECORDS_SECURE, {cloudIdNotIn});
+        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_FILE_MODIFIED_RECORDS_SECURE,
+            {cloudIdNotIn, std::to_string(CloudMediaContext::GetInstance().GetSceneType())});
     #else
-        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_FILE_MODIFIED_RECORDS, {cloudIdNotIn});
+        execSql = MediaStringUtils::FillParams(this->SQL_PHOTOS_GET_FILE_MODIFIED_RECORDS,
+            {cloudIdNotIn, std::to_string(CloudMediaContext::GetInstance().GetSceneType())});
     #endif
     /* query */
     auto resultSet = rdbStore->QuerySql(execSql, bindArgs);
@@ -1241,6 +1247,7 @@ int32_t CloudMediaPhotosDao::GetDeletedRecordsAsset(int32_t size, std::vector<Ph
     if (!photoModifyFailSet_.Empty()) {
         queryPredicates.And()->NotIn(PhotoColumn::PHOTO_CLOUD_ID, photoModifyFailSet_.ToVector());
     }
+    queryPredicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     queryPredicates.Limit(size);
     std::string cloudIdNotIn = CloudMediaDaoUtils::ToStringWithCommaAndQuote(this->photoModifyFailSet_.ToVector());
     MEDIA_INFO_LOG("GetDeletedRecordsAsset cloudIdNotIn:%{public}s", cloudIdNotIn.c_str());

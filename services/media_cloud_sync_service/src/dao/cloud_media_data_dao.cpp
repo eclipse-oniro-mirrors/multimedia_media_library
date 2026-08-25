@@ -309,6 +309,7 @@ int32_t CloudMediaDataDao::GetAgingFile(const AgingFileQueryDto &queryDto, std::
     predicates.LessThanOrEqualTo(PhotoColumn::PHOTO_LAST_VISIT_TIME, timeRangeCon);
     predicates.And()->LessThanOrEqualTo(MediaColumn::MEDIA_DATE_TAKEN, timeRangeCon);
     predicates.And()->EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.OrderByAsc(PhotoColumn::PHOTO_LAST_VISIT_TIME);
     predicates.Limit(sizeLimit);
     const std::vector<std::string> columns = {};
@@ -336,6 +337,7 @@ int32_t CloudMediaDataDao::GetActiveAgingFile(const AgingFileQueryDto &queryDto,
     predicates.LessThanOrEqualTo(PhotoColumn::PHOTO_LAST_VISIT_TIME, timeRangeCon);
     predicates.And()->LessThanOrEqualTo(MediaColumn::MEDIA_DATE_TAKEN, timeRangeCon);
     predicates.And()->EqualTo(PhotoColumn::PHOTO_POSITION, static_cast<int32_t>(PhotoPositionType::LOCAL_AND_CLOUD));
+    predicates.And()->EqualTo(PhotoColumn::PHOTO_IS_SHARED, CloudMediaContext::GetInstance().GetSceneType());
     predicates.And()->EqualTo(PhotoColumn::MEDIA_HIDDEN, 0);  // 非隐藏文件
     predicates.OrderByAsc(PhotoColumn::PHOTO_LAST_VISIT_TIME);
     predicates.Limit(sizeLimit);

@@ -90,6 +90,7 @@ public:
         uint32_t code, MessageParcel &data, MessageParcel &reply, OHOS::Media::IPC::IPCContext &context) override
     {
         CloudMediaContext::GetInstance().SetCloudType(context);
+        CloudMediaContext::GetInstance().SetSceneType(context);
         auto it = this->HANDLERS.find(code);
         CHECK_AND_RETURN_RET(
             it != this->HANDLERS.end(), IPC::UserDefineIPC().WriteResponseBody(reply, E_IPC_SEVICE_NOT_FOUND));

@@ -21,16 +21,19 @@
 
 #include "medialibrary_errno.h"
 #include "media_log.h"
+#include "cloud_media_client_utils.h"
 #include "cloud_media_data_client_handler.h"
 #include "cloud_media_thread_limiter.h"
+#include "cloud_share_album_define.h"
 
 namespace OHOS::Media::CloudSync {
-CloudMediaDataClient::CloudMediaDataClient(const int32_t cloudType, const int32_t userId)
-    : cloudType_(cloudType), userId_(userId)
+CloudMediaDataClient::CloudMediaDataClient(const int32_t cloudType, const int32_t userId, int32_t sceneType)
+    : cloudType_(cloudType), userId_(userId), sceneType_(sceneType)
 {
     this->dataHandler_ = std::make_shared<CloudMediaDataClientHandler>();
     this->dataHandler_->SetCloudType(cloudType);
     this->dataHandler_->SetUserId(userId);
+    this->dataHandler_->SetSceneType(sceneType);
 }
 
 void CloudMediaDataClient::SetUserId(const int32_t &userId)
@@ -64,6 +67,16 @@ void CloudMediaDataClient::SetCloudType(const int32_t cloudType)
         return;
     }
     this->dataHandler_->SetCloudType(cloudType);
+}
+
+void CloudMediaDataClient::SetSceneType(int32_t sceneType)
+{
+    this->sceneType_ = sceneType;
+    if (this->dataHandler_ == nullptr) {
+        MEDIA_ERR_LOG("No data handler found!");
+        return;
+    }
+    this->dataHandler_->SetSceneType(sceneType);
 }
 
 int32_t CloudMediaDataClient::UpdateDirty(const std::string &cloudId, DirtyTypes dirtyType)
