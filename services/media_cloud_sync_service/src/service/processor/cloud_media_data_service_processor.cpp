@@ -51,6 +51,7 @@ void CloudMediaDataServiceProcessor::GetPhotosDto(
         photosDto.originalCloudId = photo.originalAssetCloudId.value_or("");
         photosDto.storagePath = photo.storagePath.value_or("");
         photosDto.fileSourceType = photo.fileSourceType.value_or(0);
+        photosDto.shareAlbumOwner = photo.shareAlbumOwner.value_or("");
         photosDtos.push_back(photosDto);
     }
     return;
@@ -77,6 +78,7 @@ void CloudMediaDataServiceProcessor::GetPhotosDtoOfVideoCache(
         photosDto.modifiedTime = photoPos.editTime.value_or(0);
         photosDto.fileName = fileName;
         photosDto.originalCloudId = photoPos.originalAssetCloudId.value_or("");
+        photosDto.shareAlbumOwner = photoPos.shareAlbumOwner.value_or("");
         photosDtos.push_back(photosDto);
     }
     return;

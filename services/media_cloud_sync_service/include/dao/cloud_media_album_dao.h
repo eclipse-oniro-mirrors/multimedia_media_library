@@ -163,7 +163,8 @@ private:
             local_language, \
             cover_uri_source, \
             cover_cloud_id, \
-            unique_id \
+            unique_id, \
+            share_album_owner \
         FROM PhotoAlbum \
         WHERE \
             dirty = 1 AND \

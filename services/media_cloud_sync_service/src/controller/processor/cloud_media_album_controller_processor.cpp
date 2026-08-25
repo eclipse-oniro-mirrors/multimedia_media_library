@@ -40,6 +40,7 @@ CloudMdkRecordPhotoAlbumVo CloudMediaAlbumControllerProcessor::ConvertRecordPoTo
     recordVo.coverUriSource = record.coverUriSource.value_or(0);
     recordVo.coverCloudId = record.coverCloudId.value_or("");
     recordVo.uniqueId = record.uniqueId.value_or("");
+    recordVo.shareAlbumOwner = record.shareAlbumOwner.value_or("");
     /* album_plugin columns */
     recordVo.albumPluginCloudId = record.albumPluginCloudId.value_or("");
     recordVo.albumNameEn = record.albumNameEn.value_or("");

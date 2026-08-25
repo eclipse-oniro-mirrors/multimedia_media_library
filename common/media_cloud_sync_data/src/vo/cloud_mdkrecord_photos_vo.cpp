@@ -93,6 +93,11 @@ bool CloudMdkRecordPhotosVo::MarshallingAttributesInfo(MessageParcel &parcel) co
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(packageName), false, "packageName");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(photoRiskStatus), false, "photoRiskStatus");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(shareAlbumOwner), false, "shareAlbumOwner");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Marshalling(int64fields, parcel), false, "int64fields");
     return true;
@@ -165,6 +170,11 @@ bool CloudMdkRecordPhotosVo::ReadAttributesInfo(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(packageName), false, "packageName");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(photoRiskStatus), false, "photoRiskStatus");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(shareAlbumOwner), false, "shareAlbumOwner");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(stringfields, parcel), false, "stringfields");
     CHECK_AND_RETURN_RET_LOG(ITypesUtil::Unmarshalling(int64fields, parcel), false, "int64fields");
     return true;
@@ -262,7 +272,12 @@ void CloudMdkRecordPhotosVo::GetAttributesInfo(std::stringstream &ss) const
        << "\"uniqueId\": " << uniqueId << ","
        << "\"packageName\": " << packageName << ","
        << "\"photoRiskStatus\": " << photoRiskStatus << ","
-       << "\"compressionQuality\": " << compressionQuality;
+       << "\"compressionQuality\": " << compressionQuality << ","
+       << "\"isShared\": " << isShared << ","
+       << "\"shareOwnerInfo\": \"" << shareOwnerInfo << "\","
+       << "\"shareDateDay\": " << shareDateDay << ","
+       << "\"shareGroup\": " << shareGroup << ","
+       << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\",";
 }
 
 void CloudMdkRecordPhotosVo::GetRemoveAlbumInfo(std::stringstream &ss) const

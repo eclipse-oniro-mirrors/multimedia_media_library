@@ -255,6 +255,7 @@ std::shared_ptr<MDKRecord> CloudAlbumDataConvert::ConvertToMdkRecord(const Cloud
     /* set data */
     ConvertToDoubleScreenshot(record, data);
     record->SetRecordData(data);
+    record->SetOwnerId(upLoadRecord.shareAlbumOwner);
 
     return record;
 }

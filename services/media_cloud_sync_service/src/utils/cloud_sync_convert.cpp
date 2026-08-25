@@ -666,6 +666,11 @@ int32_t CloudSyncConvert::ExtractAttributeValue(const CloudMediaPullDataDto &dat
     CompensateAttRiskStatus(data, values);
     CompensateAttIsCritical(data, values);
     CompensateCompressionQuality(data, values);
+    CompensateAttIsShared(data, values);
+    CompensateAttShareOwnerInfo(data, values);
+    CompensateAttShareAlbumOwner(data, values);
+    CompensateAttShareDateDay(data, values);
+    CompensateAttShareGroup(data, values);
     return E_OK;
 }
 
@@ -782,6 +787,53 @@ int32_t CloudSyncConvert::CompensatePhotoLcdSize(const CloudMediaPullDataDto &da
     }
     CHECK_AND_RETURN_RET(!lcdSize.empty(), E_CLOUDSYNC_INVAL_ARG);
     values.Put(PhotoColumn::PHOTO_LCD_SIZE, lcdSize);
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttIsShared(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int32_t isShared = data.attributesIsShared;
+    if (isShared != -1) {
+        values.PutInt(PhotoColumn::PHOTO_IS_SHARED, isShared);
+    }
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareOwnerInfo(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    std::string shareOwnerInfo = data.attributesShareOwnerInfo;
+    if (!shareOwnerInfo.empty()) {
+        values.PutString(PhotoColumn::PHOTO_SHARE_OWNER_INFO, shareOwnerInfo);
+    }
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareAlbumOwner(
+    const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    std::string shareAlbumOwner = data.attributesShareAlbumOwner;
+    if (!shareAlbumOwner.empty()) {
+        values.PutString(PhotoColumn::PHOTO_SHARE_ALBUM_OWNER, shareAlbumOwner);
+    }
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareDateDay(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int64_t shareDateDay = data.attributesShareDateDay;
+    if (shareDateDay != -1) {
+        values.PutLong(PhotoColumn::PHOTO_SHARE_DATE_DAY, shareDateDay);
+    }
+    return E_OK;
+}
+
+int32_t CloudSyncConvert::CompensateAttShareGroup(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values)
+{
+    int64_t shareGroup = data.attributesShareGroup;
+    if (shareGroup != -1) {
+        values.PutLong(PhotoColumn::PHOTO_SHARE_GROUP, shareGroup);
+    }
     return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

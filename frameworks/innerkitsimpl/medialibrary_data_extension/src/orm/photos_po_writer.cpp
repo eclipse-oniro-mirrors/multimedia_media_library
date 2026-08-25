@@ -870,4 +870,74 @@ bool PhotosPoWriter::GetCompressionQuality(std::string &val)
     val = std::to_string(this->photosPo_.compressionQuality.value());
     return true;
 }
+
+bool PhotosPoWriter::GetPhotoIsShared(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.isShared.has_value(), false);
+    val = std::to_string(this->photosPo_.isShared.value());
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoIsShared(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int32_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.isShared = std::get<int32_t>(val);
+}
+
+bool PhotosPoWriter::GetPhotoShareOwnerInfo(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareOwnerInfo.has_value(), false);
+    val = this->photosPo_.shareOwnerInfo.value();
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoShareOwnerInfo(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareOwnerInfo = std::get<std::string>(val);
+}
+
+bool PhotosPoWriter::GetPhotoShareDateDay(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareDateDay.has_value(), false);
+    val = std::to_string(this->photosPo_.shareDateDay.value());
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoShareDateDay(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int64_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareDateDay = std::get<int64_t>(val);
+}
+
+bool PhotosPoWriter::GetPhotoShareGroup(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareGroup.has_value(), false);
+    val = std::to_string(this->photosPo_.shareGroup.value());
+    return true;
+}
+
+void PhotosPoWriter::SetPhotoShareGroup(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<int64_t>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareGroup = std::get<int64_t>(val);
+}
+
+void PhotosPoWriter::SetShareAlbumOwner(std::variant<int32_t, int64_t, double, std::string> &val)
+{
+    bool errConn = !std::holds_alternative<std::string>(val);
+    CHECK_AND_RETURN(!errConn);
+    this->photosPo_.shareAlbumOwner = std::get<std::string>(val);
+}
+
+bool PhotosPoWriter::GetShareAlbumOwner(std::string &val)
+{
+    CHECK_AND_RETURN_RET(photosPo_.shareAlbumOwner.has_value(), false);
+    val = this->photosPo_.shareAlbumOwner.value();
+    return true;
+}
 }  // namespace OHOS::Media::ORM

@@ -80,6 +80,15 @@ static void InitSceneAndShareData(MDKRecordAlbumData &albumData, OnFetchRecordsA
     }
 }
 
+static void InitShareAlbumOwnerAndType(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
+{
+    data.shareAlbumOwner = albumData.GetOwnerId();
+    std::optional<int32_t> albumTypeOp = albumData.GetType();
+    bool isShareType = albumTypeOp.value_or(0) == static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM);
+    CHECK_AND_RETURN(isShareType);
+    data.shareType = static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM);
+}
+
 static void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumReqBody::AlbumReqData &data)
 {
     auto lpathOpt = albumData.GetlPath();
@@ -129,6 +138,7 @@ static void InitAlbumReqData(MDKRecordAlbumData &albumData, OnFetchRecordsAlbumR
         data.uniqueId = albumsUniqueId.value();
     }
     InitSceneAndShareData(albumData, data);
+    InitShareAlbumOwnerAndType(albumData, data);
 }
 
 /**

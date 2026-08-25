@@ -44,6 +44,7 @@ public:
     std::string dualAlbumName;
     int32_t priority;
     bool isInWhiteList;
+    std::string shareAlbumOwner;
 
 public:
     virtual ~CloudMdkRecordPhotoAlbumVo() = default;

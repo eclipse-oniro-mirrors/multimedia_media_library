@@ -122,7 +122,7 @@ int32_t CloudMediaSyncUtils::FillPhotosDto(
         MEDIA_WARN_LOG("Failed to get PHOTO_IS_CRITICAL from values");
         photosDto.isCritical = 0; // Set default value
     }
-
+    FillPhotosDtoOfShareAlbum(photosDto, data);
     return E_OK;
 }
 
@@ -563,5 +563,15 @@ bool CloudMediaSyncUtils::IsFileManagerAlbumPath(const std::string &lpath)
 bool CloudMediaSyncUtils::IsMediaFile(const std::string &filePath)
 {
     return MediaStringUtils::StartsWith(filePath, CLOUD_STORAGE_PATH_PREFIX);
+}
+
+int32_t CloudMediaSyncUtils::FillPhotosDtoOfShareAlbum(PhotosDto &photosDto, const CloudMediaPullDataDto &pullData)
+{
+    photosDto.isShared = pullData.attributesIsShared;
+    photosDto.shareOwnerInfo = pullData.attributesShareOwnerInfo;
+    photosDto.shareAlbumOwner = pullData.attributesShareAlbumOwner;
+    photosDto.shareDateDay = pullData.attributesShareDateDay;
+    photosDto.shareGroup = pullData.attributesShareGroup;
+    return E_OK;
 }
 }  // namespace OHOS::Media::CloudSync

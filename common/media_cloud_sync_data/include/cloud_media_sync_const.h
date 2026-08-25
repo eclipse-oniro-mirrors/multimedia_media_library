@@ -172,6 +172,7 @@ const std::vector<std::string> QUERY_ALBUM_COLUMNS = {
     PhotoAlbumColumns::COVER_URI_SOURCE,
     PhotoAlbumColumns::COVER_CLOUD_ID,
     PhotoAlbumColumns::UNIQUE_ID,
+    PhotoAlbumColumns::SHARE_ALBUM_OWNER,
 };
 
 const std::vector<std::string> MEDIA_CLOUD_SYNC_COLUMNS = {

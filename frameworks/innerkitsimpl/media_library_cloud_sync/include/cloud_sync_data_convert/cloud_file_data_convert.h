@@ -105,6 +105,7 @@ private:
     void HandleRotation(int32_t &rotation, MDKRecordPhotosData &data);
     void HandlePropertyExifRotate(MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo);
     std::string GetContentRelatedLog(const CloudMdkRecordPhotosVo &upLoadRecord) const;
+    void ConvertShareAlbumInfoToVo(const MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo);
 
 private:
     /* identifier */

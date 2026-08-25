@@ -73,9 +73,8 @@ public:  // getter & setter
     void SetLogicType(const int32_t &logicType);
     std::optional<bool> IsLogic() const;
     void SetIsLogic(const bool isLogic);
-    std::optional<std::string> GetType() const;
-    // type, "directory" or "file"
-    void SetType(const std::string &type);
+    // type, 0 - nomal album, 1 - kid's watch share album, 2 - share album
+    std::optional<int32_t> GetType() const;
     std::optional<std::string> GetLocalLanguage() const;
     void SetLocalLanguage(const std::string &localLanguage);
     void SetNewCreate(const bool isNewCreate);
@@ -99,6 +98,7 @@ public:  // getter & setter
     void SetSceneId(const int32_t &sceneId);
     std::optional<int32_t> GetShareType() const;
     void SetShareType(const int32_t &shareType);
+    std::string GetOwnerId() const;
 
 private:
     const std::string VALUE_RECORD_TYPE = "album";

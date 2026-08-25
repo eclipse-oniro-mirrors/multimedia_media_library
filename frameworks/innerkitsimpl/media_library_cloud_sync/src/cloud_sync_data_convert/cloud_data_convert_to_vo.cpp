@@ -39,6 +39,8 @@ CloudMetaData CloudDataConvertToVo::ConvertPhotosVoToCloudMetaData(const PhotosV
     cloudMetaData.storagePath = photosVo.storagePath;
     cloudMetaData.hidden = photosVo.hidden;
     cloudMetaData.dateTrashed = photosVo.dateTrashed;
+    cloudMetaData.isShared = photosVo.isShared;
+    cloudMetaData.shareAlbumOwner = photosVo.shareAlbumOwner;
     for (const auto &nodePair : photosVo.attachment) {
         CloudFileData fileData;
         fileData.filePath = nodePair.second.filePath;
@@ -65,6 +67,8 @@ CloudDlFileMeta CloudDataConvertToVo::ConvertPhotosVoToLakeCloudMetaData(const P
     cloudMetaData.storagePath = photosVo.storagePath;
     cloudMetaData.hidden = photosVo.hidden;
     cloudMetaData.dateTrashed = photosVo.dateTrashed;
+    cloudMetaData.isShared = photosVo.isShared;
+    cloudMetaData.shareAlbumOwner = photosVo.shareAlbumOwner;
     for (const auto &nodePair : photosVo.attachment) {
         CloudFileData fileData;
         fileData.filePath = nodePair.second.filePath;

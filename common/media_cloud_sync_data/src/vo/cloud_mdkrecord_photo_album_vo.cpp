@@ -42,6 +42,7 @@ bool CloudMdkRecordPhotoAlbumVo::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(coverUriSource), false, "coverUriSource");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(coverCloudId), false, "coverCloudId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(uniqueId), false, "uniqueId");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(shareAlbumOwner), false, "shareAlbumOwner");
     return true;
 }
 
@@ -65,6 +66,7 @@ bool CloudMdkRecordPhotoAlbumVo::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(coverUriSource), false, "coverUriSource");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(coverCloudId), false, "coverCloudId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(uniqueId), false, "uniqueId");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(shareAlbumOwner), false, "shareAlbumOwner");
     return true;
 }
 

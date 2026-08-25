@@ -43,6 +43,8 @@ bool PhotosVo::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->hidden), false, "hidden");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->dateTrashed), false, "dateTrashed");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->attributesMediaType), false, "attributesMediaType");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
     CHECK_AND_RETURN_RET_LOG(CloudFileDataVo::Unmarshalling(this->attachment, parcel), false, "attachment");
     return true;
 }
@@ -67,6 +69,8 @@ bool PhotosVo::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->hidden), false, "hidden");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->dateTrashed), false, "dateTrashed");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->attributesMediaType), false, "attributesMediaType");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
     CHECK_AND_RETURN_RET_LOG(CloudFileDataVo::Marshalling(this->attachment, parcel), false, "attachment");
     return true;
 }
@@ -129,7 +133,9 @@ std::string PhotosVo::ToString() const
        << "\"photoRiskStatus\": " << this->photoRiskStatus << ", "
        << "\"hidden\": " << this->hidden << ", "
        << "\"dateTrashed\": " << this->dateTrashed << ", "
-       << "\"attachment\": {" << this->ToString(this->attachment) << "}"
+       << "\"isShared\": " << this->isShared << ", "
+       << "\"shareAlbumOwner\": \"" << this->shareAlbumOwner << "\", "
+       << "\"attachment\": {" << this->ToString(this->attachment) << "}, "
        << "}";
     return ss.str();
 }

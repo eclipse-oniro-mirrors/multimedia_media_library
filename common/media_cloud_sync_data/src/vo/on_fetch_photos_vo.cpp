@@ -92,6 +92,8 @@ bool OnFetchPhotosVo::MarshallingAttributesInfo(Parcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->photoRiskStatus), false, "photoRiskStatus");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->isCritical), false, "isCritical");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->compressionQuality), false, "compressionQuality");
+
+    CHECK_AND_RETURN_RET_LOG(WriteShareAlbumInfo(parcel), false, "WriteShareAlbumInfo");
     return true;
 }
 
@@ -163,6 +165,8 @@ bool OnFetchPhotosVo::ReadAttributesInfo(Parcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->photoRiskStatus), false, "photoRiskStatus");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->isCritical), false, "isCritical");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->compressionQuality), false, "compressionQuality");
+
+    CHECK_AND_RETURN_RET_LOG(ReadShareAlbumInfo(parcel), false, "ReadShareAlbuminfo");
     return true;
 }
 
@@ -295,5 +299,25 @@ void OnFetchPhotosVo::GetAttributesHashMap(std::stringstream &ss) const
     }
     ss << "}";
     return;
+}
+
+bool OnFetchPhotosVo::WriteShareAlbumInfo(OHOS::Parcel &parcel) const
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteInt64(this->shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    return true;
+}
+
+bool OnFetchPhotosVo::ReadShareAlbumInfo(OHOS::Parcel &parcel)
+{
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->isShared), false, "isShared");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareOwnerInfo), false, "shareOwnerInfo");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->shareDateDay), false, "shareDateDay");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadInt64(this->shareGroup), false, "shareGroup");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
+    return true;
 }
 }  // namespace OHOS::Media::CloudSync

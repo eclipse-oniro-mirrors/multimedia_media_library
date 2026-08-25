@@ -82,6 +82,11 @@ int32_t CloudMediaAlbumDao::HandleLPathAndAlbumType(PhotoAlbumDto &record)
         record.albumDateAdded = record.albumDateCreated;
         record.albumDateModified = 0;
     }
+    if (record.shareType == static_cast<int32_t>(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM)) {
+        MEDIA_INFO_LOG("HandleLPathAndAlbumType record shareType is share album");
+        albumType = PhotoAlbumType::SHARE;
+        subType = PhotoAlbumSubType::SHARE_GENERIC;
+    }
     record.albumType = albumType;
     record.albumSubType = subType;
     return E_OK;
@@ -325,6 +330,7 @@ void CloudMediaAlbumDao::FillAlbumBaseValues(const PhotoAlbumDto &record, Native
     values.PutString(PhotoAlbumColumns::ALBUM_CLOUD_ID, record.cloudId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
+    values.PutString(PhotoAlbumColumns::SHARE_ALBUM_OWNER, record.shareAlbumOwner);
 }
 
 int32_t CloudMediaAlbumDao::UpdateCloudAlbumInner(const PhotoAlbumDto &record, const std::string &field,
@@ -709,6 +715,7 @@ void CloudMediaAlbumDao::SetAlbumBasicInfo(const PhotoAlbumDto &record, NativeRd
     values.PutInt(PhotoAlbumColumns::ALBUM_IS_LOCAL, ALBUM_FROM_CLOUD);
     values.PutInt(PhotoAlbumColumns::ALBUM_SCENE_ID, record.sceneId);
     values.PutInt(PhotoAlbumColumns::ALBUM_SHARE_TYPE, record.shareType);
+    values.PutString(PhotoAlbumColumns::SHARE_ALBUM_OWNER, record.shareAlbumOwner);
 }
 
 int32_t CloudMediaAlbumDao::InsertAlbums(const PhotoAlbumDto &record,

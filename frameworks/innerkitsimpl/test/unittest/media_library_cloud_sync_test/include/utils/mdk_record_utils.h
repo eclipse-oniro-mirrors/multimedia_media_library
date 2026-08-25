@@ -412,6 +412,7 @@ private:
         {"album_type", &MDKRecordAlbumData::GetAlbumType},
         {"album_subtype", &MDKRecordAlbumData::GetAlbumSubType},
         {"logicType", &MDKRecordAlbumData::GetLogicType},
+        {"type", &MDKRecordAlbumData::GetType},
     };
 
     std::map<std::string, GetInt64AlbumFunc> INT64_ALBUM_FUNCS = {
@@ -424,7 +425,6 @@ private:
         {"albumName", &MDKRecordAlbumData::GetAlbumName},
         {"localPath", &MDKRecordAlbumData::GetlPath},
         {"albumId", &MDKRecordAlbumData::GetCloudId},
-        {"type", &MDKRecordAlbumData::GetType},
         {"local_language", &MDKRecordAlbumData::GetLocalLanguage},
         {"emptyShow", &MDKRecordAlbumData::GetEmptyShow},
     };
