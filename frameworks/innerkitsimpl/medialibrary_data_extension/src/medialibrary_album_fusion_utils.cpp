@@ -1077,6 +1077,7 @@ static int32_t UpdateCopyInfo(const std::shared_ptr<MediaLibraryRdbStore> rdbSto
 
     NativeRdb::ValuesBucket values;
     values.PutInt(MediaColumn::MEDIA_TIME_PENDING, 0);
+    values.Put(PhotoColumn::PHOTO_OWNER_ALBUM_ID, assetInfo.ownerAlbumId);
     struct stat statInfo;
     if (stat(assetInfo.targetPath.c_str(), &statInfo) == E_OK) {
         values.PutLong(MediaColumn::MEDIA_SIZE, static_cast<int64_t>(statInfo.st_size));
@@ -1151,6 +1152,18 @@ struct ClonePrepareResult {
     int32_t pendingFileId = -1;
 };
 
+static void SetCopyInfoForFileManage(MediaAssetCopyInfo &copyInfo, const int32_t &cloneCallbackType)
+{
+    if (cloneCallbackType >= static_cast<int32_t>(CloneCallbackType::URI) &&
+        cloneCallbackType <= static_cast<int32_t>(CloneCallbackType::PHOTOASSET)) {
+        copyInfo.isCopyFileManger = true;
+        copyInfo.isCopyPackageName = true;
+        copyInfo.isCopyOwnerPackage = true;
+    }
+    MEDIA_DEBUG_LOG("Clone callback type is %{public}d, isCopyFileManger is %{public}d",
+        cloneCallbackType, copyInfo.isCopyFileManger);
+}
+
 static int32_t PrepareCloneTargetAndPending(ClonePrepareContext &context, ClonePrepareResult &result)
 {
     int32_t mediaType = -1;
@@ -1160,13 +1173,9 @@ static int32_t PrepareCloneTargetAndPending(ClonePrepareContext &context, CloneP
         result.targetPath, context.targetAssetInfo.displayName, mediaType);
 
     MediaAssetCopyInfo copyInfo(result.targetPath, false, context.ownerAlbumId, context.targetAssetInfo.displayName,
-        false, false, true, true, false, context.targetAssetInfo.targetRealPath, context.targetAssetInfo.supportRename);
-    if (context.targetAssetInfo.cloneCallbackType >= static_cast<int32_t>(CloneCallbackType::URI) &&
-        context.targetAssetInfo.cloneCallbackType <= static_cast<int32_t>(CloneCallbackType::PHOTOASSET)) {
-        copyInfo.isCopyFileManger = true;
-    }
-    MEDIA_DEBUG_LOG("Clone callback type is %{public}d, isCopyFileManger is %{public}d",
-        context.targetAssetInfo.cloneCallbackType, copyInfo.isCopyFileManger);
+        false, false, false, false, false, context.targetAssetInfo.targetRealPath,
+        context.targetAssetInfo.supportRename);
+    SetCopyInfoForFileManage(copyInfo, context.targetAssetInfo.cloneCallbackType);
     int32_t err = InsertAssetCopy(context.assetRefresh, context.upgradeStore,
         copyInfo, context.resultSet, context.targetAssetInfo);
     CHECK_AND_RETURN_RET_LOG(err == E_OK, err, "Failed to copy asset db.");
