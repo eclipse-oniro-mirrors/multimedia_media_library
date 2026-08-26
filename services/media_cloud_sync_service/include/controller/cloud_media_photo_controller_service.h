@@ -30,10 +30,12 @@
 #include "media_empty_obj_vo.h"
 #include "user_define_ipc.h"
 #include "cloud_media_photos_service.h"
+#include "cloud_media_share_photos_service.h"
 #include "cloud_media_photo_controller_processor.h"
 #include "cloud_media_define.h"
 #include "media_column.h"
 #include "cloud_media_context.h"
+#include "on_fetch_photos_vo.h"
 
 namespace OHOS::Media::CloudSync {
 class EXPORT CloudMediaPhotoControllerService : public IPC::IMediaControllerService {
@@ -58,6 +60,12 @@ private:
     int32_t OnCompletePush(MessageParcel &data, MessageParcel &reply);
     int32_t OnCompleteCheck(MessageParcel &data, MessageParcel &reply);
     int32_t ReportFailure(MessageParcel &data, MessageParcel &reply);
+    int32_t OnFetchRecordsNormal(const std::vector<OnFetchPhotosVo> &onFetchPhotoDatas,
+        std::vector<PhotosDto> &newData, std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats,
+        std::vector<std::string> &failedRecords);
+    int32_t OnFetchRecordsShare(const std::vector<OnFetchPhotosVo> &onFetchPhotoDatas,
+        std::vector<PhotosDto> &newData, std::vector<PhotosDto> &fdirtyData, std::vector<int32_t> &stats,
+        std::vector<std::string> &failedRecords);
 
 private:
     using RequestHandle = int32_t (CloudMediaPhotoControllerService::*)(MessageParcel &, MessageParcel &);
@@ -131,6 +139,7 @@ public:
 private:
     CloudMediaPhotoControllerProcessor processor_;
     CloudMediaPhotosService photosService_;
+    CloudMediaSharePhotosService sharePhotosService_;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_PHOTO_CONTROLLER_SERVICE_H

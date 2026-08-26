@@ -496,6 +496,20 @@ int32_t CloudMediaPhotosService::UpdateMetaStat(const std::vector<NativeRdb::Val
     return E_OK;
 }
 
+int32_t CloudMediaPhotosService::MergeOrCreateEntry(const std::vector<CloudMediaPullDataDto> &pullDatas,
+    std::set<std::string> &refreshAlbums, std::vector<PhotosDto> &newData, std::vector<int32_t> &stats,
+    std::vector<std::string> &failedRecords, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
+{
+    CHECK_AND_RETURN_RET_INFO_LOG(!pullDatas.empty(), E_OK, "MergeOrCreateEntry No need to pull insert.");
+
+    int32_t ret;
+    std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
+    PullRecordsConflictProc(allPullDatas, refreshAlbums, stats, failedRecords, photoRefresh);
+
+    ret = CreateEntry(allPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
+    return ret;
+}
+
 int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDataDto> &pullDatas,
     std::set<std::string> &refreshAlbums, std::vector<PhotosDto> &newData, std::vector<int32_t> &stats,
     std::vector<std::string> &failedRecords, std::shared_ptr<AccurateRefresh::AssetAccurateRefresh> &photoRefresh)
@@ -509,13 +523,12 @@ int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDat
     uint64_t dataFail = 0;
     int32_t uniqueId = 0;
     int32_t ret;
-    std::vector<CloudMediaPullDataDto> allPullDatas = pullDatas;
-    PullRecordsConflictProc(allPullDatas, refreshAlbums, stats, failedRecords, photoRefresh);
-    ret = MediaLibraryAssetOperations::CreateAssetUniqueIds(MediaType::MEDIA_TYPE_IMAGE, allPullDatas.size(), uniqueId);
+
+    ret = MediaLibraryAssetOperations::CreateAssetUniqueIds(MediaType::MEDIA_TYPE_IMAGE, pullDatas.size(), uniqueId);
     if (ret != E_OK) {
         uniqueId = 0;
     }
-    for (auto insertData : allPullDatas) {
+    for (auto insertData : pullDatas) {
         MEDIA_DEBUG_LOG("CreateEntry insert of record %{public}s", insertData.cloudId.c_str());
         int32_t mediaType =
             (insertData.basicFileType == FILE_TYPE_VIDEO) ? MediaType::MEDIA_TYPE_VIDEO : MediaType::MEDIA_TYPE_IMAGE;
@@ -548,7 +561,7 @@ int32_t CloudMediaPhotosService::CreateEntry(const std::vector<CloudMediaPullDat
         MEDIA_DEBUG_LOG("CreateEntry NewData: %{public}s", dto.ToString().c_str());
         newData.emplace_back(dto);
     }
-    this->UpdateMetaStat(insertFiles, allPullDatas, dataFail);
+    this->UpdateMetaStat(insertFiles, pullDatas, dataFail);
     return E_OK;
 }
 
@@ -569,7 +582,8 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
     for (auto &cloudId : cloudIds) {
         CloudMediaPullDataDto pullData = cloudIdRelativeMap.at(cloudId);
         std::string dateAdded = pullData.localDateAdded;
-        MEDIA_INFO_LOG("pullData: %{public}s", pullData.ToString().c_str());
+        MEDIA_INFO_LOG("pullData: %{public}s, sceneType(normal): %{public}d", pullData.ToString().c_str(),
+            CloudMediaContext::GetInstance().GetSceneType());
         // 下行机已经有数据并且不是被删除
         if (pullData.localPath.empty() && !pullData.basicIsDelete) {
             insertPullDatas.emplace_back(pullData);
@@ -604,7 +618,7 @@ int32_t CloudMediaPhotosService::HandleRecord(const std::vector<std::string> &cl
         }
     }
     CloudMediaDfxService::UpdateMetaStat(INDEX_DL_META_ERROR_RDB, rdbFail);
-    ret = CreateEntry(insertPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
+    ret = MergeOrCreateEntry(insertPullDatas, refreshAlbums, newData, stats, failedRecords, photoRefresh);
     photoRefresh->RefreshAlbumNoDateModified();
     photoRefresh->Notify();
     this->photosDao_.UpdateAnalysisAlbumsCountForCloud();
@@ -1580,7 +1594,7 @@ int32_t CloudMediaPhotosService::HandleInvalidCloudResource(
 }
 
 int32_t CloudMediaPhotosService::PullUpdateEndWithNoFdirty(
-    CloudMediaPullDataDto &pullData, std::vector<PhotosDto> &fdirtyData)
+    const CloudMediaPullDataDto &pullData, std::vector<PhotosDto> &fdirtyData)
 {
     // 处理元数据变更
 #ifdef MEDIALIBRARY_LAKE_SUPPORT
