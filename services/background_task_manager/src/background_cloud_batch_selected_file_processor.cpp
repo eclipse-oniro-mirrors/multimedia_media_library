@@ -497,17 +497,12 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::AddSelectedBatchDownloadTask(
 {
     MEDIA_INFO_LOG("BatchSelectFileDownload AddTask In fileId: %{public}s",
         MediaFileUri::GetPhotoId(downloadFilesUri).c_str());
-    auto asyncWorker = MediaLibraryAsyncWorker::GetInstance();
-    CHECK_AND_RETURN_RET_LOG(asyncWorker != nullptr, E_FAIL, "Failed to get async worker instance!");
     SingleDownloadFiles downloadFile;
     downloadFile.uri = downloadFilesUri; // 单个下载
     // 双框架图片1、视频3 单框架是图片1、视频2
     downloadFile.mediaType = MEDIA_TYPE_IMAGE;
-    auto *taskData = new (std::nothrow) BatchDownloadCloudFilesData(downloadFile);
-    CHECK_AND_RETURN_RET_LOG(taskData != nullptr, E_NO_MEMORY,
-        "Failed to alloc async data for downloading cloud files!");
-    auto asyncTask = std::make_shared<MediaLibraryAsyncTask>(DownloadSelectedBatchFilesExecutor, taskData);
-    asyncWorker->AddTask(asyncTask, false);
+    BatchDownloadCloudFilesData taskData(downloadFile);
+    DownloadSelectedBatchFilesExecutor(&taskData); // 同步调用，for循环天然串行
     MEDIA_INFO_LOG("BatchSelectFileDownload AddTask End fileId: %{public}s",
         MediaFileUri::GetPhotoId(downloadFilesUri).c_str());
     return E_OK;
