@@ -919,6 +919,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/dirty_file_report_task.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/dirty_file_stat_collector.cpp",
     "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_migrate_live_photo_4d_pair_task.cpp",
+    "${MEDIALIB_NEW_SERVICES_PATH}/background_task_manager/src/background/media_fix_duplicate_unique_id_task.cpp",
   ]
 
   media_analysis_extension_source = [

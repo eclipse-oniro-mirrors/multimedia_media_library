@@ -86,6 +86,8 @@ group("test") {
     "unittest/media_file_management_test:unittest",
     "unittest/notification_helper_test:unittest",
     "unittest/medialibrary_album_cover_order_test:unittest",
+    "unittest/medialibrary_migrate_live_photo_4d_pair_test:unittest",
+    "unittest/medialibrary_fix_duplicate_unique_id_test:unittest",
   ]
 
   deps_cloud_sync_unittest = [

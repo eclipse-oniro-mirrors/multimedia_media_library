@@ -80,6 +80,7 @@ static MediaLibraryMockHapToken* mockToken = nullptr;
 
 const string COMMON_PREFIX = "datashare:///media/";
 const string ROOT_URI = "root";
+const string VERSION_TAG = "v8_f0";
 static constexpr int32_t SLEEP_FIVE_SECONDS = 5;
 static constexpr int32_t PICTURE_TIMEOUT_SEC = 1;
 static constexpr int32_t ILLEGAL_PHOTO_QUALITU = 3;
@@ -404,6 +405,45 @@ int32_t MakePhotoUnpending(int fileId, bool isMovingPhoto = false)
         return errCode;
     }
 
+    return E_OK;
+}
+
+int32_t CreateMovingPhotoExtraDataFile(int32_t fileId)
+{
+    string path = GetFilePath(fileId);
+    if (path.empty()) {
+        MEDIA_ERR_LOG("Get path failed for fileId: %{private}d", fileId);
+        return E_INVALID_VALUES;
+    }
+    string extraDataDir = MovingPhotoFileUtils::GetMovingPhotoExtraDataDir(path);
+    if (extraDataDir.empty()) {
+        MEDIA_ERR_LOG("GetMovingPhotoExtraDataDir returned empty for path: %{private}s", path.c_str());
+        return E_INVALID_PATH;
+    }
+    if (!MediaFileUtils::CreateDirectory(extraDataDir)) {
+        MEDIA_ERR_LOG("Failed to create extraData directory: %{private}s", extraDataDir.c_str());
+        return E_HAS_FS_ERROR;
+    }
+    string extraDataPath = extraDataDir + "/extraData";
+    // Write valid extraData content: VERSION_TAG(20) + PLAY_INFO(20) + LIVE_TAG(20) = 60 bytes (MIN_STANDARD_SIZE)
+    // GetVersionAndFrameNum seeks to -MIN_STANDARD_SIZE from end, reads first VERSION_TAG_LEN bytes as version tag
+    string versionTag = VERSION_TAG;
+    size_t left = VERSION_TAG_LEN - versionTag.length();
+    for (size_t i = 0; i < left; ++i) {
+        versionTag += ' ';
+    }
+    string playInfo(PLAY_INFO_LEN, '0');
+    string liveTag(LIVE_TAG_LEN, '0');
+    string extraDataContent = versionTag + playInfo + liveTag;
+    ofstream ofs(extraDataPath, ios::binary | ios::trunc);
+    if (!ofs.is_open()) {
+        MEDIA_ERR_LOG("Failed to open extraData file: %{private}s", extraDataPath.c_str());
+        return E_HAS_FS_ERROR;
+    }
+    ofs.write(extraDataContent.c_str(), extraDataContent.length());
+    ofs.close();
+    MEDIA_INFO_LOG("Created extraData file: %{private}s, size: %{public}zu", extraDataPath.c_str(),
+        extraDataContent.length());
     return E_OK;
 }
 
@@ -5294,10 +5334,28 @@ static int32_t GetLivePhoto4dStatusByFileId(int32_t fileId)
     return -1;
 }
 
+static string GetLatestPairByFileId(int32_t fileId)
+{
+    string querySql = "SELECT " + PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR +
+        " FROM " + PhotoColumn::PHOTOS_TABLE + " WHERE " + PhotoColumn::MEDIA_ID + " = " + to_string(fileId);
+    auto resultSet = g_rdbStore->QuerySql(querySql);
+    if (resultSet != nullptr && resultSet->GoToFirstRow() == NativeRdb::E_OK) {
+        return GetStringVal(PhotoColumn::MOVING_PHOTO_LIVEPHOTO_4D_LATEST_PAIR, resultSet);
+    }
+    return "";
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_001
+ * @tc.desc: 验证IMAGE资产设置UNIDENTIFIED状态成功
+ *           [覆盖分支] MEDIA_TYPE=IMAGE，非效果模式status写入DB
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(UNIDENTIFIED, "")
+ *           [业务验证] 返回E_OK，DB中status=UNIDENTIFIED
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_001, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_001");
-    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_001.jpg", true);
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_001.jpg", true);
     ASSERT_GE(photoId, 0);
 
     int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
@@ -5310,10 +5368,17 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_001, TestSiz
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_001 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_002
+ * @tc.desc: 验证IMAGE资产设置SUPPORTED状态成功
+ *           [覆盖分支] MEDIA_TYPE=IMAGE，非效果模式status写入DB
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(SUPPORTED, "")
+ *           [业务验证] 返回E_OK，DB中status=SUPPORTED
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_002, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_002");
-    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_002.jpg", true);
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_002.jpg", true);
     ASSERT_GE(photoId, 0);
 
     int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
@@ -5326,15 +5391,22 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_002, TestSiz
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_002 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_003
+ * @tc.desc: 验证IMAGE资产设置USED状态并传入latestPair成功
+ *           [覆盖分支] MEDIA_TYPE=IMAGE，非效果模式status+latestPair写入DB
+ *           [触发条件] 创建2个IMAGE资产，调用SetLivePhoto4dStatus(USED, uniqueIdA)
+ *           [业务验证] 返回E_OK，DB中status=USED
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_003, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_003");
-    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_pairA_003.jpg", true);
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_003.jpg", true);
     ASSERT_GE(photoIdA, 0);
     string uniqueIdA = GetUniqueIdByFileId(photoIdA);
     ASSERT_FALSE(uniqueIdA.empty());
 
-    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_pairB_003.jpg", true);
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_003.jpg", true);
     ASSERT_GE(photoIdB, 0);
 
     int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
@@ -5347,11 +5419,19 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_003, TestSiz
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_003 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_004
+ * @tc.desc: 验证IMAGE资产设置LIVEPHOTO_4D状态并传入空pair成功（2.0服务端不再校验pair非空）
+ *           [覆盖分支] MEDIA_TYPE=IMAGE，效果模式status+空pair写入DB
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(LIVEPHOTO_4D, "")
+ *           [业务验证] 返回E_OK，DB中status=LIVEPHOTO_4D
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_004, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_004");
-    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_004.jpg", true);
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_004.jpg", true);
     ASSERT_GE(photoId, 0);
+    ASSERT_EQ(CreateMovingPhotoExtraDataFile(photoId), E_OK);
 
     int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D), "");
@@ -5363,10 +5443,17 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_004, TestSiz
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_004 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_005
+ * @tc.desc: 验证IMAGE资产设置UNSUPPORTED状态成功
+ *           [覆盖分支] MEDIA_TYPE=IMAGE，非效果模式status写入DB
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(UNSUPPORTED, "")
+ *           [业务验证] 返回E_OK，DB中status=UNSUPPORTED
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_005, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_005");
-    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_005.jpg", true);
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_005.jpg", true);
     ASSERT_GE(photoId, 0);
 
     int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
@@ -5379,6 +5466,13 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_005, TestSiz
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_005 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_006
+ * @tc.desc: 验证IMAGE资产设置USED状态成功（2.0允许IMAGE类型）
+ *           [覆盖分支] MEDIA_TYPE=IMAGE，2.0不再仅限MOVING_PHOTO
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(USED, "")
+ *           [业务验证] 返回E_OK
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_006, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_006");
@@ -5387,32 +5481,47 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_006, TestSiz
 
     int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
         static_cast<int32_t>(LivePhoto4dStatusType::TYPE_USED), "");
-    EXPECT_NE(ret, E_OK);
+    EXPECT_EQ(ret, E_OK);
 
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_006 end, ret: %{public}d", ret);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_007
+ * @tc.desc: 验证VIDEO资产设置状态失败（2.0要求MEDIA_TYPE=IMAGE）
+ *           [覆盖分支] MEDIA_TYPE=VIDEO，DB查询无IMAGE匹配结果
+ *           [触发条件] 创建VIDEO资产，调用SetLivePhoto4dStatus(UNIDENTIFIED, "")
+ *           [业务验证] 返回非E_OK
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_007, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_007");
-    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_007.jpg", true);
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_007.mp4");
     ASSERT_GE(photoId, 0);
 
-    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId, 100, "");
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED), "");
     EXPECT_NE(ret, E_OK);
 
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_007 end, ret: %{public}d", ret);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_008
+ * @tc.desc: 验证IMAGE资产先设SUPPORTED再设USED成功（2.0无originStatus门控）
+ *           [覆盖分支] 连续两次设置，第二次覆盖第一次
+ *           [触发条件] 创建2个IMAGE资产，先SUPPORTED再USED+pair
+ *           [业务验证] 两次均返回E_OK，最终DB中status=USED
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_008, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_008");
-    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_pairA_008.jpg", true);
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_008.jpg", true);
     ASSERT_GE(photoIdA, 0);
     string uniqueIdA = GetUniqueIdByFileId(photoIdA);
     ASSERT_FALSE(uniqueIdA.empty());
 
-    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_pairB_008.jpg", true);
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_008.jpg", true);
     ASSERT_GE(photoIdB, 0);
 
     int32_t ret1 = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
@@ -5432,15 +5541,22 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_008, TestSiz
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_008 end, ret1: %{public}d, ret2: %{public}d", ret1, ret2);
 }
 
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_009
+ * @tc.desc: 验证IMAGE资产先设UNSUPPORTED再设USED成功（2.0移除originStatus门控）
+ *           [覆盖分支] 连续两次设置，USED覆盖UNSUPPORTED
+ *           [触发条件] 创建2个IMAGE资产，先UNSUPPORTED再USED+pair
+ *           [业务验证] 两次均返回E_OK，最终DB中status=USED
+ */
 HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_009, TestSize.Level2)
 {
     MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_009");
-    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_pairA_009.jpg", true);
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_009.jpg", true);
     ASSERT_GE(photoIdA, 0);
     string uniqueIdA = GetUniqueIdByFileId(photoIdA);
     ASSERT_FALSE(uniqueIdA.empty());
 
-    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_VIDEO, "test_4d_live_pairB_009.jpg", true);
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_009.jpg", true);
     ASSERT_GE(photoIdB, 0);
 
     int32_t ret1 = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
@@ -5455,10 +5571,252 @@ HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_009, TestSiz
     EXPECT_EQ(ret2, E_OK);
 
     int32_t dbStatus2 = GetLivePhoto4dStatusByFileId(photoIdB);
-    EXPECT_EQ(dbStatus2, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNSUPPORTED));
+    EXPECT_EQ(dbStatus2, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_USED));
 
     MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_009 end, ret1: %{public}d, ret2: %{public}d, dbStatus: %{public}d",
         ret1, ret2, dbStatus2);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_010
+ * @tc.desc: 验证设置LIVEPHOTO_4D状态并传入latestPair时DB正确写入pair
+ *           [覆盖分支] livePhoto4dLatestPair非空时写入DB
+ *           [触发条件] 创建2个IMAGE资产，调用SetLivePhoto4dStatus(LIVEPHOTO_4D, validPair)
+ *           [业务验证] DB中livephoto_4d_latest_pair字段值为传入的pair
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_010, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_010");
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_010.jpg", true);
+    ASSERT_GE(photoIdA, 0);
+    string uniqueIdA = GetUniqueIdByFileId(photoIdA);
+    ASSERT_FALSE(uniqueIdA.empty());
+
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_010.jpg", true);
+    ASSERT_GE(photoIdB, 0);
+    ASSERT_EQ(CreateMovingPhotoExtraDataFile(photoIdB), E_OK);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D), uniqueIdA);
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoIdB);
+    EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LIVEPHOTO_4D));
+
+    string dbLatestPair = GetLatestPairByFileId(photoIdB);
+    EXPECT_EQ(dbLatestPair, uniqueIdA);
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_010 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_011
+ * @tc.desc: 验证设置GRAMMY(9)效果模式成功
+ *           [覆盖分支] 效果模式上界status=9写入DB
+ *           [触发条件] 创建2个IMAGE资产，调用SetLivePhoto4dStatus(GRAMMY, pair)
+ *           [业务验证] 返回E_OK，DB中status=GRAMMY
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_011, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_011");
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_011.jpg", true);
+    ASSERT_GE(photoIdA, 0);
+    string uniqueIdA = GetUniqueIdByFileId(photoIdA);
+    ASSERT_FALSE(uniqueIdA.empty());
+
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_011.jpg", true);
+    ASSERT_GE(photoIdB, 0);
+    ASSERT_EQ(CreateMovingPhotoExtraDataFile(photoIdB), E_OK);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY), uniqueIdA);
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoIdB);
+    EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_GRAMMY));
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_011 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_012
+ * @tc.desc: 验证不存在的fileId设置状态失败
+ *           [覆盖分支] DB查询无MEDIA_TYPE=IMAGE匹配结果
+ *           [触发条件] 传入不存在的fileId(999999)，调用SetLivePhoto4dStatus
+ *           [业务验证] 返回E_ERR
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_012, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_012");
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(999999,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED), "");
+    EXPECT_NE(ret, E_OK);
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_012 end, ret: %{public}d", ret);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_013
+ * @tc.desc: 验证IMAGE资产设置UNIDENTIFIED(0)+空pair成功
+ *           [覆盖分支] 非效果模式+空pair，latest_pair不写入DB
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(UNIDENTIFIED, "")
+ *           [业务验证] 返回E_OK，DB中status=0
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_013, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_013");
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_013.jpg", false);
+    ASSERT_GE(photoId, 0);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED), "");
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoId);
+    EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_UNIDENTIFIED));
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_013 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_014
+ * @tc.desc: 验证IMAGE资产设置SUPPORTED(2)成功
+ *           [覆盖分支] 非效果模式status=2
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(SUPPORTED, "")
+ *           [业务验证] 返回E_OK，DB中status=2
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_014, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_014");
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_014.jpg", false);
+    ASSERT_GE(photoId, 0);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_SUPPORTED), "");
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoId);
+    EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_SUPPORTED));
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_014 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_015
+ * @tc.desc: 验证IMAGE资产设置LEFT_ROTATE(5)+pair成功
+ *           [覆盖分支] 效果模式status=5，latest_pair写入DB
+ *           [触发条件] 创建2个IMAGE资产，调用SetLivePhoto4dStatus(LEFT_ROTATE, pair)
+ *           [业务验证] 返回E_OK，DB中status=5，latest_pair=pair
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_015, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_015");
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_015.jpg", true);
+    ASSERT_GE(photoIdA, 0);
+    string uniqueIdA = GetUniqueIdByFileId(photoIdA);
+    ASSERT_FALSE(uniqueIdA.empty());
+
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_015.jpg", true);
+    ASSERT_GE(photoIdB, 0);
+    ASSERT_EQ(CreateMovingPhotoExtraDataFile(photoIdB), E_OK);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE), uniqueIdA);
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoIdB);
+    EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_LEFT_ROTATE));
+
+    string dbLatestPair = GetLatestPairByFileId(photoIdB);
+    EXPECT_EQ(dbLatestPair, uniqueIdA);
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_015 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_016
+ * @tc.desc: 验证IMAGE资产设置ZOOM_OUT(7)+pair成功
+ *           [覆盖分支] 效果模式status=7，latest_pair写入DB
+ *           [触发条件] 创建2个IMAGE资产，调用SetLivePhoto4dStatus(ZOOM_OUT, pair)
+ *           [业务验证] 返回E_OK，DB中status=7，latest_pair=pair
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_016, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_016");
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_016.jpg", true);
+    ASSERT_GE(photoIdA, 0);
+    string uniqueIdA = GetUniqueIdByFileId(photoIdA);
+    ASSERT_FALSE(uniqueIdA.empty());
+
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_016.jpg", true);
+    ASSERT_GE(photoIdB, 0);
+    ASSERT_EQ(CreateMovingPhotoExtraDataFile(photoIdB), E_OK);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_ZOOM_OUT), uniqueIdA);
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoIdB);
+    EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_ZOOM_OUT));
+
+    string dbLatestPair = GetLatestPairByFileId(photoIdB);
+    EXPECT_EQ(dbLatestPair, uniqueIdA);
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_016 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_017
+ * @tc.desc: 验证IMAGE资产设置HITCHCOCK(8)+pair成功
+ *           [覆盖分支] 效果模式status=8，latest_pair写入DB
+ *           [触发条件] 创建2个IMAGE资产，调用SetLivePhoto4dStatus(HITCHCOCK, pair)
+ *           [业务验证] 返回E_OK，DB中status=8，latest_pair=pair
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_017, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_017");
+    int32_t photoIdA = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairA_017.jpg", true);
+    ASSERT_GE(photoIdA, 0);
+    string uniqueIdA = GetUniqueIdByFileId(photoIdA);
+    ASSERT_FALSE(uniqueIdA.empty());
+
+    int32_t photoIdB = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_pairB_017.jpg", true);
+    ASSERT_GE(photoIdB, 0);
+    ASSERT_EQ(CreateMovingPhotoExtraDataFile(photoIdB), E_OK);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoIdB,
+        static_cast<int32_t>(LivePhoto4dStatusType::TYPE_HITCHCOCK), uniqueIdA);
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoIdB);
+    EXPECT_EQ(dbStatus, static_cast<int32_t>(LivePhoto4dStatusType::TYPE_HITCHCOCK));
+
+    string dbLatestPair = GetLatestPairByFileId(photoIdB);
+    EXPECT_EQ(dbLatestPair, uniqueIdA);
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_017 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
+}
+
+/**
+ * @tc.name: SetLivePhoto4dStatus_test_018
+ * @tc.desc: 验证IMAGE资产设置无效status(100)+空pair成功（2.0服务端不再校验范围）
+ *           [覆盖分支] 服务端移除CheckLivePhoto4dStatus校验，任意status值直接写入DB
+ *           [触发条件] 创建IMAGE资产，调用SetLivePhoto4dStatus(100, "")
+ *           [业务验证] 返回E_OK，DB中status=100
+ */
+HWTEST_F(MediaLibraryPhotoOperationsTest, SetLivePhoto4dStatus_test_018, TestSize.Level2)
+{
+    MEDIA_INFO_LOG("start SetLivePhoto4dStatus_test_018");
+    int32_t photoId = CreatePhotoApi10(MediaType::MEDIA_TYPE_IMAGE, "test_4d_live_018.jpg", false);
+    ASSERT_GE(photoId, 0);
+
+    int32_t ret = MediaLibraryPhotoOperations::SetLivePhoto4dStatus(photoId, 100, "");
+    EXPECT_EQ(ret, E_OK);
+
+    int32_t dbStatus = GetLivePhoto4dStatusByFileId(photoId);
+    EXPECT_EQ(dbStatus, 100);
+
+    MEDIA_INFO_LOG("SetLivePhoto4dStatus_test_018 end, ret: %{public}d, dbStatus: %{public}d", ret, dbStatus);
 }
 
 HWTEST_F(MediaLibraryPhotoOperationsTest, asset_oprn_create_api10_file_manager_album_test_001, TestSize.Level2)

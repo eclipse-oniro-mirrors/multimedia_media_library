@@ -42,6 +42,7 @@
 #include "media_file_manager_offline_cleanup_task.h"
 #include "media_migrate_live_photo_4d_pair_task.h"
 #include "media_reverse_clone_marker_aging_task.h"
+#include "media_fix_duplicate_unique_id_task.h"
 
 namespace OHOS::Media::Background {
 MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
@@ -71,6 +72,7 @@ MediaBackgroundTaskFactory::MediaBackgroundTaskFactory()
         std::make_shared<DirtyFileReportTask>(),
         std::make_shared<MediaFileManagerOfflineCleanupTask>(),
         std::make_shared<MediaMigrateLivePhoto4dPairTask>(),
+        std::make_shared<MediaFixDuplicateUniqueIdTask>(),
     };
 }
 
