@@ -865,6 +865,7 @@ void CloudMediaDownloadService::HandleDownloadThms(const std::unordered_map<std:
         PhotoColumn::PHOTO_CLOUD_ID };
     std::vector<PhotosPo> photoInfoList;
     int32_t ret = this->commonDao_.QueryLocalByCloudId(cloudIds, queryColums, photoInfoList);
+    CHECK_AND_RETURN_LOG(ret == E_OK, "QueryLocalByCloudId failed, ret: %{public}d", ret);
     std::vector<DownloadThumbInfo> downloadThumbInfos;
     std::vector<std::string> fileIds;
     for (const auto &photoInfo : photoInfoList) {
