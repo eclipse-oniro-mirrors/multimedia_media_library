@@ -72,6 +72,7 @@
 #include "media_audio_column.h"
 #include "qos.h"
 #include "concurrent_task_client.h"
+#include "media_string_utils.h"
 
 using namespace std;
 using namespace OHOS::AppExecFwk;
@@ -148,6 +149,8 @@ constexpr int64_t MAX_EXECUTE_TIME = 200;
 
 static const std::string MEDIA_BACKUP_LIB = "libmediabackup.z.so";
 static const std::string CHECK_AND_START_RESUME_FUNC_NAME = "CheckAndStartResume";
+static const std::string HIGHLIGHT_VIDEO_URI_PREFIX = "file://media/highlight/video/";
+static const std::string HIGHLIGHT_COVER_URI_PREFIX = "file://media/highlight/cover";
 
 MediaDataShareExtAbility* MediaDataShareExtAbility::Create(const unique_ptr<Runtime>& runtime)
 {
@@ -841,6 +844,9 @@ static void SetOprnObjectWithOperationValue(MediaLibraryCommand &cmd,
 static void SetOprnObjectWithUriQueryKeys(MediaLibraryCommand &cmd)
 {
     std::string uriString = cmd.GetUri().ToString();
+    if (!MediaStringUtils::StartsWith(uriString, PhotoColumn::PHOTO_URI_PREFIX)) {
+        return;
+    }
     string::size_type pos = uriString.find_last_of('?');
     CHECK_AND_RETURN(pos != string::npos);
 
@@ -864,19 +870,20 @@ void MediaDataShareExtAbility::SetOperationObjectFromUri(Media::MediaLibraryComm
 {
     SetOprnObjectWithUriQueryKeys(command);
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_CACHE_URI_PREFIX) == string::npos,
+    CHECK_AND_EXECUTE(!MediaStringUtils::StartsWith(command.GetUri().ToString(), PhotoColumn::PHOTO_CACHE_URI_PREFIX),
         command.SetOprnObject(OperationObject::FILESYSTEM_PHOTO));
 
-    if (command.GetUri().ToString().find(PhotoColumn::HIGHTLIGHT_URI) != string::npos) {
+    if (MediaStringUtils::StartsWith(command.GetUri().ToString(), HIGHLIGHT_VIDEO_URI_PREFIX)) {
         command.SetOprnObject(OperationObject::HIGHLIGHT_URI);
-    } else if (command.GetUri().ToString().find(MEDIA_DATA_DB_HIGHLIGHT) != string::npos) {
+    } else if (MediaStringUtils::StartsWith(command.GetUri().ToString(), HIGHLIGHT_COVER_URI_PREFIX)) {
         command.SetOprnObject(OperationObject::HIGHLIGHT_COVER);
     }
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_REQUEST_PICTURE) == string::npos,
+    CHECK_AND_EXECUTE(!MediaStringUtils::StartsWith(command.GetUri().ToString(), PhotoColumn::PHOTO_REQUEST_PICTURE),
         command.SetOprnObject(OperationObject::REQUEST_PICTURE));
 
-    CHECK_AND_EXECUTE(command.GetUri().ToString().find(PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER) == string::npos,
+    CHECK_AND_EXECUTE(
+        !MediaStringUtils::StartsWith(command.GetUri().ToString(), PhotoColumn::PHOTO_REQUEST_PICTURE_BUFFER),
         command.SetOprnObject(OperationObject::PHOTO_REQUEST_PICTURE_BUFFER));
 
     MEDIA_DEBUG_LOG("OpenFile before process, oprnObject: %{public}d",
