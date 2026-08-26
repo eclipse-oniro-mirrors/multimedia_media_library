@@ -22,6 +22,7 @@
 #include "medialibrary_tracer.h"
 #include "userfile_client.h"
 #include "result_set_utils.h"
+#include "media_string_utils.h"
 #include "cloud_enhancement_task_state_napi.h"
 #ifdef ABILITY_CLOUD_ENHANCEMENT_SUPPORT
 #include "media_enhance_constants_c_api.h"
