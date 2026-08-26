@@ -402,6 +402,7 @@ const std::vector<std::pair<std::string, std::string>> ALBUM_ATTRIBUTE_ENUM_PROP
     std::make_pair("IS_REMOVED_ATTR", "is_removed"),
     std::make_pair("EXTRA_INFO_ATTR", "extra_info"),
     std::make_pair("FRIEND_ID_ATTR", "friend_id"),
+    std::make_pair("CONTACT_INFO_ATTR", "contact_info"),
 };
 
 const std::vector<std::pair<std::string, std::string>> ALBUM_OPERATION_TYPE_ENUM_PROPERTIES = {

@@ -66,6 +66,7 @@
 #include "media_string_utils.h"
 #include "portrait_extra_info_service.h"
 #include "portrait_friend_id_service.h"
+#include "portrait_contact_info_service.h"
 #include "vision_album_column.h"
 #include "file_manager_asset_operations.h"
 #include "file_manager_album_operations.h"
@@ -2894,7 +2895,7 @@ int32_t UpdateForMergeAlbums(const MergeAlbumInfo &updateAlbumInfo, const int32_
         COUNT + " = ?," + IS_ME + " = ?," + COVER_URI + " = ?," +
         USER_DISPLAY_LEVEL + " = ?," + RANK + " = ?," + USER_OPERATION + " = ?," +
         RENAME_OPERATION + " = ?," + ALBUM_NAME + " = ?," + IS_COVER_SATISFIED + " = ?," +
-        ALBUM_RELATIONSHIP + " = ?," + EXTRA_INFO + " = ?," + FRIEND_ID + " = ?" +
+        ALBUM_RELATIONSHIP + " = ?," + EXTRA_INFO + " = ?," + FRIEND_ID + " = ?," + CONTACT_INFO + " = ?" +
         " WHERE " + GROUP_TAG + " IN(SELECT " + GROUP_TAG + " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " + ALBUM_ID +
         " = ? OR " + ALBUM_ID + " = ?)";
     updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.groupTag));
@@ -2911,6 +2912,7 @@ int32_t UpdateForMergeAlbums(const MergeAlbumInfo &updateAlbumInfo, const int32_
     updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.relationship));
     updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.extraInfo));
     updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.friendId));
+    updateBindArgs.push_back(NativeRdb::ValueObject(updateAlbumInfo.contactInfo));
     updateBindArgs.push_back(NativeRdb::ValueObject(currentAlbumId));
     updateBindArgs.push_back(NativeRdb::ValueObject(targetAlbumId));
 
@@ -2942,8 +2944,8 @@ int32_t GetMergeAlbumsInfo(vector<MergeAlbumInfo> &mergeAlbumInfo, const int32_t
     const std::string queryAlbumInfo = "SELECT " + ALBUM_ID + "," + GROUP_TAG + "," + COUNT + "," + IS_ME + "," +
         COVER_URI + "," + USER_DISPLAY_LEVEL + "," + RANK + "," + USER_OPERATION + "," + RENAME_OPERATION + "," +
         ALBUM_NAME + "," + IS_COVER_SATISFIED + "," + ALBUM_TYPE + "," + ALBUM_SUBTYPE + "," +
-        ALBUM_RELATIONSHIP + "," + EXTRA_INFO + "," + FRIEND_ID + " FROM " + ANALYSIS_ALBUM_TABLE +
-        " WHERE " + ALBUM_ID + " = " +
+        ALBUM_RELATIONSHIP + "," + EXTRA_INFO + "," + FRIEND_ID + "," + CONTACT_INFO +
+        " FROM " + ANALYSIS_ALBUM_TABLE + " WHERE " + ALBUM_ID + " = " +
         to_string(currentAlbumId) + " OR " + ALBUM_ID + " = " + to_string(targetAlbumId);
 
     auto resultSet = uniStore->QuerySql(queryAlbumInfo);
@@ -2969,7 +2971,8 @@ int32_t GetMergeAlbumsInfo(vector<MergeAlbumInfo> &mergeAlbumInfo, const int32_t
             GetIntValueFromResultSet(resultSet, ALBUM_SUBTYPE, albumInfo.albumSubtype) != E_OK ||
             GetStringValueFromResultSet(resultSet, ALBUM_RELATIONSHIP, albumInfo.relationship) != E_OK ||
             GetStringValueFromResultSet(resultSet, EXTRA_INFO, albumInfo.extraInfo) != E_OK ||
-            GetStringValueFromResultSet(resultSet, FRIEND_ID, albumInfo.friendId) != E_OK) {
+            GetStringValueFromResultSet(resultSet, FRIEND_ID, albumInfo.friendId) != E_OK ||
+            GetStringValueFromResultSet(resultSet, CONTACT_INFO, albumInfo.contactInfo) != E_OK) {
                 MEDIA_ERR_LOG("Failed to get values from result set");
                 return E_HAS_DB_ERROR;
             }
@@ -3089,7 +3092,8 @@ static string MergeAlbumInfoToString(const MergeAlbumInfo& mergeAlbumInfo)
         to_string(mergeAlbumInfo.rank) + ", userOperation " + to_string(mergeAlbumInfo.userOperation) +
         ", renameOperation " + to_string(mergeAlbumInfo.renameOperation) + ", albumName " +
         DfxUtils::GetSafeAlbumName(mergeAlbumInfo.albumName) +
-        ", isCoverSatisfied " + to_string(mergeAlbumInfo.isCoverSatisfied);
+        ", isCoverSatisfied " + to_string(mergeAlbumInfo.isCoverSatisfied) +
+        ", contactInfo " + mergeAlbumInfo.contactInfo;
     return info;
 }
 
@@ -3124,23 +3128,15 @@ static int32_t GetMergedAlbumInfo(const vector<MergeAlbumInfo> &mergeAlbumInfo,
     // mergeAlbumInfo count check in MergeAlbums, size is 2, so we can use index 0 and 1 directly
     const auto& currentAlbumInfo = mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[0] : mergeAlbumInfo[1];
     const auto& targetAlbumInfo = mergeAlbumInfo[0].albumId == albumId ? mergeAlbumInfo[1] : mergeAlbumInfo[0];
-    updateAlbumInfo.albumName = currentAlbumInfo.albumName;
-    updateAlbumInfo.relationship = currentAlbumInfo.relationship;
+    auto mergeField = [](const std::string &current, const std::string &target) -> std::string {
+        return current.empty() ? target : current;
+    };
+    updateAlbumInfo.albumName = mergeField(currentAlbumInfo.albumName, targetAlbumInfo.albumName);
+    updateAlbumInfo.relationship = mergeField(currentAlbumInfo.relationship, targetAlbumInfo.relationship);
     updateAlbumInfo.userDisplayLevel = currentAlbumInfo.userDisplayLevel;
-    if (updateAlbumInfo.albumName == "") {
-        updateAlbumInfo.albumName = targetAlbumInfo.albumName;
-    }
-    if (updateAlbumInfo.relationship == "") {
-        updateAlbumInfo.relationship = targetAlbumInfo.relationship;
-    }
-    updateAlbumInfo.extraInfo = currentAlbumInfo.extraInfo;
-    if (updateAlbumInfo.extraInfo == "") {
-        updateAlbumInfo.extraInfo = targetAlbumInfo.extraInfo;
-    }
-    updateAlbumInfo.friendId = currentAlbumInfo.friendId;
-    if (updateAlbumInfo.friendId == "") {
-        updateAlbumInfo.friendId = targetAlbumInfo.friendId;
-    }
+    updateAlbumInfo.extraInfo = mergeField(currentAlbumInfo.extraInfo, targetAlbumInfo.extraInfo);
+    updateAlbumInfo.friendId = mergeField(currentAlbumInfo.friendId, targetAlbumInfo.friendId);
+    updateAlbumInfo.contactInfo = mergeField(currentAlbumInfo.contactInfo, targetAlbumInfo.contactInfo);
     return E_OK;
 }
 
@@ -3984,6 +3980,14 @@ int32_t MediaLibraryAlbumOperations::GetPortraitAlbumFriendId(
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_INNER_FAIL, "Failed to get rdbStore.");
     return PortraitFriendIdService::GetOperate(albumId, friendId, rdbStore);
+}
+
+int32_t MediaLibraryAlbumOperations::OperatePortraitAlbumContactInfo(
+    const string &albumId, const vector<string> &contactInfos)
+{
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_HAS_DB_ERROR, "Failed to get rdbStore.");
+    return PortraitContactInfoService::SetOperate(albumId, contactInfos, rdbStore);
 }
 
 static bool GetArgsSetUserAlbumName(const ValuesBucket& values,

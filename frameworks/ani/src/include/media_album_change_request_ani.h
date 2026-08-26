@@ -63,6 +63,7 @@ enum class AlbumChangeOperation {
     UPDATE_IS_REMOVED,
     UPDATE_EXTRA_INFO,
     UPDATE_FRIEND_ID,
+    UPDATE_CONTACT_INFO,
     SET_HIDDEN_ATTRIBUTE,
     SET_ALBUM_NAME_BY_FILE,
 };
@@ -114,6 +115,7 @@ public:
     void SetIsRemovedOperationData(AnalysisAlbumOperation &operation);
     void SetExtraInfoOperationData(AnalysisAlbumOperation &operation);
     void SetFriendIdOperationData(AnalysisAlbumOperation &operation);
+    void SetContactInfoOperationData(AnalysisAlbumOperation &operation);
     static ani_object GetAlbum(ani_env *env, ani_object object);
     static ani_object CreateAlbumRequest(ani_env *env, ani_object object, ani_object aniContext,
         ani_string aniName);

@@ -13,15 +13,27 @@
  * limitations under the License.
  */
 
-#ifndef UPGRADE_OTHER_TABLE_SQLS_H
-#define UPGRADE_OTHER_TABLE_SQLS_H
-// table name need to be added here
-#define TABLE_ANALYSIS_ALBUM "AnalysisAlbum"
-// column name should be added here
-#define COLUMN_EXTRA_INFO "extra_info"
-#define COLUMN_FRIEND_ID "friend_id"
-#define COLUMN_CONTACT_INFO "contact_info"
+#ifndef CLONE_RESTORE_TAB_COVER_RECORD_TEST_H
+#define CLONE_RESTORE_TAB_COVER_RECORD_TEST_H
 
-// sqls only execute in upgrade progress should be added here
+#include <gtest/gtest.h>
+#include <gtest/hwext/gtest-ext.h>
 
-#endif // UPGRADE_OTHER_TABLE_SQLS_H
+#include <memory>
+#include <string>
+
+#include "rdb_store.h"
+
+namespace OHOS {
+namespace Media {
+class CloneRestoreTabCoverRecordTest : public testing::Test {
+public:
+    static void SetUpTestCase(void);
+    static void TearDownTestCase(void);
+    void SetUp() override;
+    void TearDown() override;
+};
+} // namespace Media
+} // namespace OHOS
+
+#endif // CLONE_RESTORE_TAB_COVER_RECORD_TEST_H

@@ -747,6 +747,7 @@ struct AnalysisAlbumTbl {
     std::optional<int32_t> albumIdNew;
     std::optional<int32_t> editOperation;
     std::optional<std::string> friendId;
+    std::optional<std::string> contactInfo;
 };
 
 struct PortraitAlbumDfx {

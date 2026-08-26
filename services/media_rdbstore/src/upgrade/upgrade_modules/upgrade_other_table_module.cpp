@@ -49,6 +49,16 @@ static vector<pair<int32_t, int32_t>> AddFriendIdColumn(NativeRdb::RdbStore &sto
 REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_FRIEND_ID,
     OTHER_TABLE_MODULE_NAME, AddFriendIdColumn);
 
+static vector<pair<int32_t, int32_t>> AddContactInfoColumn(NativeRdb::RdbStore &store)
+{
+    SqlBuilder builder;
+    auto commands = builder.AddColumn(TABLE_ANALYSIS_ALBUM, COLUMN_CONTACT_INFO, "TEXT")
+                        .Build();
+    return UpgradeHelper::ExecuteCommands(commands, store, true);
+}
+REGISTER_SYNC_UPGRADE_MODULE_TASK(VERSION_ADD_ANALYSIS_ALBUM_CONTACT_INFO,
+    OTHER_TABLE_MODULE_NAME, AddContactInfoColumn);
+
 static vector<pair<int32_t, int32_t>> AddShareMemberTable(NativeRdb::RdbStore &store)
 {
     SqlBuilder builder;
