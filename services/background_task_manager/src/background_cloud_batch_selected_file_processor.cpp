@@ -502,7 +502,7 @@ int32_t BackgroundCloudBatchSelectedFileProcessor::AddSelectedBatchDownloadTask(
     // 双框架图片1、视频3 单框架是图片1、视频2
     downloadFile.mediaType = MEDIA_TYPE_IMAGE;
     BatchDownloadCloudFilesData taskData(downloadFile);
-    DownloadSelectedBatchFilesExecutor(&taskData); // 同步调用，for循环天然串行
+    DownloadSelectedBatchFilesExecutor(&taskData); // 同步调用 串行
     MEDIA_INFO_LOG("BatchSelectFileDownload AddTask End fileId: %{public}s",
         MediaFileUri::GetPhotoId(downloadFilesUri).c_str());
     return E_OK;
