@@ -275,6 +275,5 @@ void PhotoStorageOperation::GetLocalPhotoSize(std::shared_ptr<MediaLibraryRdbSto
             statsResult->GetLong(1, localPhotoSizeResult.localVideoSize);
         }
     }
-    statsResult->Close();
 }
 }  // namespace OHOS::Media
