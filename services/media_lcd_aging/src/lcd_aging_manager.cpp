@@ -400,6 +400,7 @@ int32_t LcdAgingManager::GenerateLcdWithLocal(const LcdAgingFileInfo &agingFileI
     ThumbRdbOpt opts;
     opts.table = PhotoColumn::PHOTOS_TABLE;
     opts.store = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(opts.store != nullptr, E_ERR, "Failed to get rdbStore");
     opts.row = thumbnailData.id;
     IThumbnailHelper::AddThumbnailGenerateTask(createLcdBackgroundTask,
         opts, thumbnailData, ThumbnailTaskType::BACKGROUND, ThumbnailTaskPriority::LOW);
