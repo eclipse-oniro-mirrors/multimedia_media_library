@@ -293,6 +293,14 @@ protected:
     bool UpdateConfigInfo();
     void CheckSrcDstSwitchStatusMatch();
     bool BackupPreprocess();
+    bool OriginalBackupPreprocess(); // 既有兼容临时数据库备份流程
+    bool CreateTempDbBackup(); // 创建增强临时数据库备份，任一步失败回退到兼容流程
+    bool BackupToTempDb(bool shouldInvalidateHdcData); // 公共临时数据库备份流程
+    bool RegisterTempDbBackup(int64_t dbSize, int64_t elapsedMs,
+        bool shouldInvalidateHdcData); // 打开临时库、按需失效 HDC 数据并注册路径映射
+    static bool IsEnoughFreeSpaceForBackup(int64_t freeSize, int64_t dbSize, int64_t walSize); // 空间是否 > 5GB
+    void CleanupTempBackupDir(); // 幂等清理临时备份目录
+    void ReportBackupDbPerf(int64_t dbSize, int64_t elapsedMs, bool success); // 仅通过日志记录备份性能
     void ParseDstDeviceBackupInfo();
     void ParseSrcDevFileListCloneConfig();
     void ParseDstDevFileTransferConfig();
