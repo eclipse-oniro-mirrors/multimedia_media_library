@@ -123,7 +123,8 @@ public:
     static void OnProgress(ani_env *env, ProgressHandler *progressHandler);
     static void RegisterTaskObserver(ani_env *env, unique_ptr<MediaAssetManagerAniContext> &context);
     static void GetByteArrayAniObject(const std::string &requestUri, ani_object &arrayBuffer, bool isSource,
-        bool isCompositeAuxiliary, int compositeFd, ani_env *env);
+        ani_env *env);
+    static void GetByteArrayAniObjectByFd(ani_object &arrayBuffer, int imageFd, ani_env *env);
     static void GetImageSourceAniObject(const std::string &fileUri, ani_object &imageSourceAniObj, bool isSource,
         ani_env *env);
     static void GetPictureAniObject(const std::string &fileUri, ani_object &imageSourceAniObj, bool isSource,

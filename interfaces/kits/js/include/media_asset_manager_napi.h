@@ -206,6 +206,7 @@ private:
     static void JSRequestExecute(napi_env env, void *data);
     static void JSRequestVideoFileExecute(napi_env env, void *data);
     static void JSRequestComplete(napi_env env, napi_status, void *data);
+    static void JSRequestCompositeAuxiliaryComplete(napi_env env, napi_status, void *data);
     static void JSCancelRequestExecute(napi_env env, void *data);
     static void JSCancelRequestComplete(napi_env env, napi_status, void *data);
 

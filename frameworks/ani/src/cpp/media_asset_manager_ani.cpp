@@ -747,24 +747,11 @@ void MediaAssetManagerAni::GetPictureAniObject(const std::string &fileUri, ani_o
     pictureAniObj = OHOS::Media::PictureTaiheAni::CreateEtsPicture(env, pic);
 }
 
-void MediaAssetManagerAni::GetByteArrayAniObject(const std::string &requestUri, ani_object &arrayBuffer,
-    bool isSource, bool isCompositeAuxiliary, int compositeFd, ani_env *env)
+void MediaAssetManagerAni::GetByteArrayAniObjectByFd(ani_object &arrayBuffer, int imageFd, ani_env *env)
 {
     if (env == nullptr) {
         ANI_ERR_LOG("create byte array object failed, need to initialize env");
         return;
-    }
-
-    int imageFd = -1;
-    if (isCompositeAuxiliary && compositeFd >= 0) {
-        imageFd = compositeFd;
-    } else {
-        std::string tmpUri = requestUri;
-        if (isSource) {
-            MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
-        }
-        Uri uri(tmpUri);
-        imageFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
     }
     if (imageFd < 0) {
         ANI_ERR_LOG("get image fd failed, %{public}d", errno);
@@ -773,7 +760,11 @@ void MediaAssetManagerAni::GetByteArrayAniObject(const std::string &requestUri, 
     ssize_t imgLen = lseek(imageFd, 0, SEEK_END);
     void* buffer = nullptr;
     ani_arraybuffer aniArrayBuffer {};
-    env->CreateArrayBuffer(static_cast<size_t>(imgLen), &buffer, &aniArrayBuffer);
+    if (env->CreateArrayBuffer(static_cast<size_t>(imgLen), &buffer, &aniArrayBuffer) != ANI_OK) {
+        ANI_ERR_LOG("create arraybuffer failed");
+        close(imageFd);
+        return;
+    }
     lseek(imageFd, 0, SEEK_SET);
     ssize_t readRet = read(imageFd, buffer, imgLen);
     close(imageFd);
@@ -782,6 +773,18 @@ void MediaAssetManagerAni::GetByteArrayAniObject(const std::string &requestUri, 
         return;
     }
     arrayBuffer = static_cast<ani_object>(aniArrayBuffer);
+}
+
+void MediaAssetManagerAni::GetByteArrayAniObject(const std::string &requestUri, ani_object &arrayBuffer,
+    bool isSource, ani_env *env)
+{
+    std::string tmpUri = requestUri;
+    if (isSource) {
+        MediaFileUtils::UriAppendKeyValue(tmpUri, CONST_MEDIA_OPERN_KEYWORD, CONST_SOURCE_REQUEST);
+    }
+    Uri uri(tmpUri);
+    int imageFd = UserFileClient::OpenFile(uri, MEDIA_FILEMODE_READONLY);
+    GetByteArrayAniObjectByFd(arrayBuffer, imageFd, env);
 }
 
 void MediaAssetManagerAni::WriteDataToDestPath(WriteData &writeData, ani_object &resultAniValue,
@@ -866,6 +869,13 @@ int32_t MediaAssetManagerAni::GetFdFromSandBoxUri(const std::string &sandBoxUri)
     return MediaFileUtils::OpenFile(absDestPath, MEDIA_FILEMODE_WRITETRUNCATE);
 }
 
+static void GetCompositeAuxiliaryByteArrayAniObject(ani_env *env,
+    const std::shared_ptr<AniMediaAssetDataHandler> &dataHandler, ani_object &aniValueOfMedia)
+{
+    MediaAssetManagerAni::GetByteArrayAniObjectByFd(aniValueOfMedia, dataHandler->GetCompositeFd(), env);
+    dataHandler->SetCompositeFd(-1);
+}
+
 static ani_object GetAniValueOfMedia(ani_env *env, const std::shared_ptr<AniMediaAssetDataHandler>& dataHandler,
     bool& isPicture, MultiStagesCapturePhotoStatus &photoQuality)
 {
@@ -873,10 +883,12 @@ static ani_object GetAniValueOfMedia(ani_env *env, const std::shared_ptr<AniMedi
     ANI_DEBUG_LOG("GetAniValueOfMedia");
     ani_object aniValueOfMedia {};
     if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_ARRAY_BUFFER) {
-        MediaAssetManagerAni::GetByteArrayAniObject(dataHandler->GetRequestUri(), aniValueOfMedia,
-            dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, dataHandler->IsCompositeAuxiliary(),
-            dataHandler->GetCompositeFd(), env);
-        dataHandler->SetCompositeFd(-1);
+        if (dataHandler->IsCompositeAuxiliary()) {
+            GetCompositeAuxiliaryByteArrayAniObject(env, dataHandler, aniValueOfMedia);
+        } else {
+            MediaAssetManagerAni::GetByteArrayAniObject(dataHandler->GetRequestUri(), aniValueOfMedia,
+                dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env);
+        }
     } else if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_IMAGE_SOURCE) {
         MediaAssetManagerAni::GetImageSourceAniObject(dataHandler->GetRequestUri(), aniValueOfMedia,
             dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env);
@@ -1645,6 +1657,54 @@ bool MediaAssetManagerAni::ParseAndValidateCompositeAuxiliaryArgs(ani_env *env, 
     return true;
 }
 
+static ani_string RequestCompositeAuxiliaryImageDataByIpc(ani_env *env,
+    unique_ptr<MediaAssetManagerAniContext> &aniContext)
+{
+    // Query composite auxiliary image via IPC control-plane, get fd directly.
+    QueryCompositeAuxiliaryImageReqBody req;
+    req.fileId = aniContext->fileId;
+    QueryCompositeAuxiliaryImageRespBody resp;
+    std::unordered_map<std::string, std::string> headerMap = {
+        {MediaColumn::MEDIA_ID, std::to_string(aniContext->fileId)},
+        {URI_TYPE, TYPE_PHOTOS},
+    };
+    int ret = IPC::UserDefineIPCClient().SetUserId(aniContext->userId).SetHeader(headerMap)
+        .Call(static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_COMPOSITE_AUXILIARY_IMAGE_DATA), req, resp);
+    if (ret != E_OK || resp.fd < 0) {
+        ANI_ERR_LOG("No composite auxiliary image, fileId: %{public}d, ret: %{public}d",
+            aniContext->fileId, ret);
+        if (aniContext->dataHandlerRef != nullptr) {
+            env->GlobalReference_Delete(aniContext->dataHandlerRef);
+            aniContext->dataHandlerRef = nullptr;
+        }
+        AniError::ThrowError(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE,
+            "The asset has no composite auxiliary image");
+        return nullptr;
+    }
+    aniContext->compositeFd = resp.fd;
+
+    MediaAssetManagerAni::NotifyDataPreparedWithoutRegister(env, aniContext);
+    AssetHandler *assetHandler = aniContext->assetHandler;
+    aniContext->assetHandler = nullptr;
+    if (assetHandler == nullptr) {
+        ANI_ERR_LOG("create asset handler failed, fileId: %{public}d", aniContext->fileId);
+        AniError::ThrowError(env, JS_E_INNER_FAIL, "Failed to create asset handler");
+        return nullptr;
+    }
+    if (aniContext->dataHandlerRef != nullptr) {
+        env->GlobalReference_Delete(aniContext->dataHandlerRef);
+        aniContext->dataHandlerRef = nullptr;
+    }
+    // 先返回 requestId，数据交付异步化，保证 cancelRequest 可在交付前命中。
+    std::thread(assetHandler->threadSafeFunc, assetHandler).detach();
+    ani_string result {};
+    if (MediaLibraryAniUtils::ToAniString(env, aniContext->requestId, result) != ANI_OK) {
+        ANI_ERR_LOG("ToAniString requestId fail");
+        return nullptr;
+    }
+    return result;
+}
+
 ani_string MediaAssetManagerAni::RequestCompositeAuxiliaryImageData(ani_env *env, [[maybe_unused]] ani_class clazz,
     ani_object context, ani_object asset, ani_object dataHandler)
 {
@@ -1669,28 +1729,7 @@ ani_string MediaAssetManagerAni::RequestCompositeAuxiliaryImageData(ani_env *env
     }
 
     aniContext->requestId = GenerateRequestId();
-
-    // Query composite auxiliary image via IPC control-plane, get fd directly.
-    QueryCompositeAuxiliaryImageReqBody req;
-    req.fileId = aniContext->fileId;
-    QueryCompositeAuxiliaryImageRespBody resp;
-    std::unordered_map<std::string, std::string> headerMap = {
-        {MediaColumn::MEDIA_ID, std::to_string(aniContext->fileId)},
-        {URI_TYPE, TYPE_PHOTOS},
-    };
-    int ret = IPC::UserDefineIPCClient().SetUserId(aniContext->userId).SetHeader(headerMap)
-        .Call(static_cast<uint32_t>(MediaLibraryBusinessCode::QUERY_COMPOSITE_AUXILIARY_IMAGE_DATA), req, resp);
-    if (ret != E_OK || resp.fd < 0) {
-        ANI_ERR_LOG("No composite auxiliary image, fileId: %{public}d, ret: %{public}d",
-            aniContext->fileId, ret);
-        AniError::ThrowError(env, JS_E_NO_COMPOSITE_AUXILIARY_IMAGE,
-            "The asset has no composite auxiliary image");
-        return nullptr;
-    }
-    aniContext->compositeFd = resp.fd;
-
-    NotifyDataPreparedWithoutRegister(env, aniContext);
-    return RequestComplete(env, aniContext);
+    return RequestCompositeAuxiliaryImageDataByIpc(env, aniContext);
 }
 
 ani_string MediaAssetManagerAni::RequestImage(ani_env *env, [[maybe_unused]] ani_class clazz,

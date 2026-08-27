@@ -750,6 +750,28 @@ static bool CheckPermissionToOpenFileAsset(const shared_ptr<FileAsset>& fileAsse
     return true;
 }
 
+static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeType &transcodeType)
+{
+    int32_t width = fileAsset->GetWidth();
+    int32_t height = fileAsset->GetHeight();
+    string mimeType = fileAsset->GetMimeType();
+    bool isHeif = (mimeType == "image/heic" || mimeType == "image/heif");
+    bool isHighPixel = IsHighPixel(width, height);
+    if (isHeif) {
+        if (isHighPixel) {
+            transcodeType = TranscodeType::HIGH_PIXEL_HEIF;
+            return;
+        }
+        transcodeType = TranscodeType::HEIF;
+    } else {
+        if (isHighPixel) {
+            transcodeType = TranscodeType::HIGH_PIXEL;
+            return;
+        }
+        transcodeType = TranscodeType::DEFAULT;
+    }
+}
+
 bool MediaLibraryPhotoOperations::CheckPermissionToOpenHiddenFileAsset(const shared_ptr<FileAsset>& fileAsset)
 {
     CHECK_AND_RETURN_RET_LOG(fileAsset != nullptr, false, "File asset is nullptr");
@@ -773,28 +795,6 @@ bool MediaLibraryPhotoOperations::CheckPermissionToOpenHiddenFileAsset(const sha
     CHECK_AND_RETURN_RET_LOG(!(bundleName == FILE_MANAGER_BUNDLE_NAME), false,
         "The filemanager application is not allowed to open hidden photo");
     return true;
-}
-
-static void SetTranscodeType(std::shared_ptr<FileAsset> &fileAsset, TranscodeType &transcodeType)
-{
-    int32_t width = fileAsset->GetWidth();
-    int32_t height = fileAsset->GetHeight();
-    string mimeType = fileAsset->GetMimeType();
-    bool isHeif = (mimeType == "image/heic" || mimeType == "image/heif");
-    bool isHighPixel = IsHighPixel(width, height);
-    if (isHeif) {
-        if (isHighPixel) {
-            transcodeType = TranscodeType::HIGH_PIXEL_HEIF;
-            return;
-        }
-        transcodeType = TranscodeType::HEIF;
-    } else {
-        if (isHighPixel) {
-            transcodeType = TranscodeType::HIGH_PIXEL;
-            return;
-        }
-        transcodeType = TranscodeType::DEFAULT;
-    }
 }
 
 int32_t MediaLibraryPhotoOperations::Open(MediaLibraryCommand &cmd, const string &mode)

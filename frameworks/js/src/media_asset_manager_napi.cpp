@@ -972,7 +972,7 @@ napi_value MediaAssetManagerNapi::JSRequestCompositeAuxiliaryImageData(napi_env 
 
     asyncContext->requestId = GenerateRequestId();
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "JSRequestCompositeAuxiliaryImageData",
-        JSRequestExecute, JSRequestComplete);
+        JSRequestExecute, JSRequestCompositeAuxiliaryComplete);
 }
 
 void MediaAssetManagerNapi::OnHandleRequestCompositeAuxiliaryImage(napi_env env,
@@ -995,6 +995,14 @@ void MediaAssetManagerNapi::OnHandleRequestCompositeAuxiliaryImage(napi_env env,
     }
     context->compositeFd = resp.fd;
     NotifyDataPreparedWithoutRegister(env, context);
+    if (context->assetHandler == nullptr) {
+        NAPI_ERR_LOG("create asset handler failed, fileId: %{public}d", context->fileId);
+        if (context->compositeFd >= 0) {
+            close(context->compositeFd);
+            context->compositeFd = -1;
+        }
+        context->error = JS_E_INNER_FAIL;
+    }
 }
 
 napi_value MediaAssetManagerNapi::JSRequestImage(napi_env env, napi_callback_info info)
@@ -1476,6 +1484,13 @@ void MediaAssetManagerNapi::OnHandleProgress(napi_env env, MediaAssetManagerAsyn
     asyncContext->progressHandler = progressHandler;
 }
 
+static void GetCompositeAuxiliaryByteArrayNapiObject(napi_env env,
+    const std::shared_ptr<NapiMediaAssetDataHandler> &dataHandler, napi_value &napiValueOfMedia)
+{
+    MediaAssetManagerNapi::GetByteArrayNapiObjectByFd(napiValueOfMedia, dataHandler->GetCompositeFd(), env);
+    dataHandler->SetCompositeFd(-1);
+}
+
 static string PhotoQualityToString(MultiStagesCapturePhotoStatus photoQuality)
 {
     static const string HIGH_QUALITY_STRING = "high";
@@ -1519,10 +1534,7 @@ static napi_value GetNapiValueOfMedia(napi_env env, AssetHandler *assetHandler)
 {
     NAPI_DEBUG_LOG("GetNapiValueOfMedia");
 
-    if (assetHandler == nullptr) {
-        NAPI_ERR_LOG("assetHandler is nullptr");
-        return nullptr;
-    }
+    CHECK_COND_RET(assetHandler != nullptr, nullptr, "assetHandler is nullptr");
     auto dataHandler = assetHandler->dataHandler;
     if (dataHandler == nullptr) {
         NAPI_ERR_LOG("dataHandler is nullptr");
@@ -1532,8 +1544,7 @@ static napi_value GetNapiValueOfMedia(napi_env env, AssetHandler *assetHandler)
     napi_value napiValueOfMedia = nullptr;
     if (dataHandler->GetReturnDataType() == ReturnDataType::TYPE_ARRAY_BUFFER) {
         if (dataHandler->IsCompositeAuxiliary()) {
-            MediaAssetManagerNapi::GetByteArrayNapiObjectByFd(napiValueOfMedia, dataHandler->GetCompositeFd(), env);
-            dataHandler->SetCompositeFd(-1);
+            GetCompositeAuxiliaryByteArrayNapiObject(env, dataHandler, napiValueOfMedia);
         } else {
             MediaAssetManagerNapi::GetByteArrayNapiObject(dataHandler->GetRequestUri(), napiValueOfMedia,
                 dataHandler->GetSourceMode() == SourceMode::ORIGINAL_MODE, env);
@@ -2647,6 +2658,59 @@ void MediaAssetManagerNapi::JSRequestComplete(napi_env env, napi_status, void *d
     if (context->work != nullptr) {
         MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
             context->work, *jsContext);
+    }
+    delete context;
+}
+
+void MediaAssetManagerNapi::JSRequestCompositeAuxiliaryComplete(napi_env env, napi_status, void *data)
+{
+    MediaAssetManagerAsyncContext *context = static_cast<MediaAssetManagerAsyncContext*>(data);
+    CHECK_NULL_PTR_RETURN_VOID(context, "Async context is null");
+    if (context->dataHandlerRef != nullptr) {
+        napi_delete_reference(env, context->dataHandlerRef);
+        context->dataHandlerRef = nullptr;
+    }
+    if (context->dataHandlerRef2 != nullptr) {
+        napi_delete_reference(env, context->dataHandlerRef2);
+        context->dataHandlerRef2 = nullptr;
+    }
+
+    MediaLibraryTracer tracer;
+    tracer.Start("JSRequestCompositeAuxiliaryComplete");
+
+    unique_ptr<JSAsyncContextOutput> jsContext = make_unique<JSAsyncContextOutput>();
+    jsContext->status = false;
+    if (context->error == ERR_DEFAULT) {
+        napi_value requestId;
+        napi_create_string_utf8(env, context->requestId.c_str(), NAPI_AUTO_LENGTH, &requestId);
+        jsContext->data = requestId;
+        napi_get_undefined(env, &jsContext->error);
+        jsContext->status = true;
+    } else {
+        context->HandleError(env, jsContext->error, context->useIntCodeError);
+        napi_get_undefined(env, &jsContext->data);
+    }
+
+    // resolve/reject 先行，调用方拿到 requestId 后可立即 cancelRequest；
+    // 数据交付改为非阻塞异步，OnDataPrepared 内检查到已取消则不再交付。
+    if (context->work != nullptr) {
+        MediaLibraryNapiUtils::InvokeJSAsyncMethod(env, context->deferred, context->callbackRef,
+            context->work, *jsContext);
+    }
+
+    if (context->assetHandler != nullptr) {
+        // 线程安全函数所有权已移交 AssetHandler，context 不再持有，防止误释放。
+        context->onDataPreparedPtr = nullptr;
+        napi_status status = napi_call_threadsafe_function(context->assetHandler->threadSafeFunc,
+            static_cast<void *>(context->assetHandler), napi_tsfn_nonblocking);
+        if (status != napi_ok) {
+            NAPI_ERR_LOG("napi_call_threadsafe_function fail, %{public}d", static_cast<int32_t>(status));
+            DeleteAssetHandlerSafe(context->assetHandler, env);
+        }
+    } else if (context->onDataPreparedPtr != nullptr) {
+        // 请求失败且未创建 AssetHandler，释放无人接管的线程安全函数，避免泄漏。
+        napi_release_threadsafe_function(context->onDataPreparedPtr, napi_tsfn_release);
+        context->onDataPreparedPtr = nullptr;
     }
     delete context;
 }
