@@ -5933,6 +5933,7 @@ export class ContextRecoveryInfo {
     IS_REMOVED_ATTR = "is_removed",
     EXTRA_INFO_ATTR = "extra_info",
     FRIEND_ID_ATTR = "friend_id",
+    CONTACT_INFO_ATTR = "contact_info",
   }
 
   export interface AlbumAttributeInfo {

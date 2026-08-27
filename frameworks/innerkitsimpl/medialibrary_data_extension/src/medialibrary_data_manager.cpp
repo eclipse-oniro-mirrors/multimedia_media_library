@@ -3000,6 +3000,11 @@ void MediaLibraryDataManager::UploadDBFileInner(int64_t totalFileSize)
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_LOG(rdbStore != nullptr, "rdbStore is nullptr!");
+    std::string clearContactInfoSql = "UPDATE AnalysisAlbum SET contact_info = NULL";
+    int32_t clearResult = rdbStore->ExecuteSql(clearContactInfoSql);
+    if (clearResult != 0) {
+        MEDIA_ERR_LOG("Failed to clear contact_info in AnalysisAlbum, err: %{public}d", clearResult);
+    }
     std::string tmpPath = std::string(CONST_MEDIA_DB_DIR) + "/rdb/media_library_tmp.db";
     int32_t errCode = rdbStore->Backup(tmpPath);
     CHECK_AND_RETURN_LOG(errCode == 0, "rdb backup fail: %{public}d", errCode);
@@ -3683,6 +3688,11 @@ static int32_t BackupDebugDatabase(const std::string &path)
     tracer.Start("BackupDebugDatabase");
     auto rdbStore = MediaLibraryDataManager::GetInstance()->rdbStore_;
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_OPR_DEBUG_DB_FAIL, "RdbStore is nullptr");
+    std::string clearContactInfoSql = "UPDATE AnalysisAlbum SET contact_info = NULL";
+    int32_t clearResult = rdbStore->ExecuteSql(clearContactInfoSql);
+    if (clearResult != 0) {
+        MEDIA_ERR_LOG("Failed to clear contact_info in AnalysisAlbum, err: %{public}d", clearResult);
+    }
     int32_t errCode = rdbStore->Backup(path);
     CHECK_AND_RETURN_RET(errCode == 0, E_BACK_UP_DB_FAIL);
     return E_SUCCESS;

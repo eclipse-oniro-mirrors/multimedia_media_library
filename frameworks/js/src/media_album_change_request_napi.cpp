@@ -1392,6 +1392,14 @@ void MediaAlbumChangeRequestNapi::SetFriendIdOperationData(AnalysisAlbumOperatio
     albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_FRIEND_ID);
 }
 
+void MediaAlbumChangeRequestNapi::SetContactInfoOperationData(AnalysisAlbumOperation &operation)
+{
+    analysisAlbumOperationData_.attr = operation.attr;
+    analysisAlbumOperationData_.type = operation.type;
+    analysisAlbumOperationData_.values = operation.values;
+    albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_CONTACT_INFO);
+}
+
 static bool ParseAnalysisAlbumOperation(napi_env env, napi_value arg, AnalysisAlbumOperation &operation)
 {
     napi_valuetype valueType = napi_undefined;
@@ -1454,6 +1462,8 @@ napi_value MediaAlbumChangeRequestNapi::JSOperateAttribute(napi_env env, napi_ca
         asyncContext->objectInfo->SetExtraInfoOperationData(operation);
     } else if (operation.attr == ANALYSIS_ALBUM_ATTR_FRIEND_ID) {
         asyncContext->objectInfo->SetFriendIdOperationData(operation);
+    } else if (operation.attr == ANALYSIS_ALBUM_ATTR_CONTACT_INFO) {
+        asyncContext->objectInfo->SetContactInfoOperationData(operation);
     } else {
         NAPI_WARN_LOG("Unknown operation attr.");
     }
@@ -2334,6 +2344,14 @@ static bool UpdateFriendIdExecute(MediaAlbumChangeRequestAsyncContext& context)
         changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
 }
 
+static bool UpdateContactInfoExecute(MediaAlbumChangeRequestAsyncContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    return ExecuteOperateAttributeOperation(context, changeRequest->GetOperationDataAttr(),
+        changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
+}
+
 static bool SetCoverUriExecute(MediaAlbumChangeRequestAsyncContext& context)
 {
     MediaLibraryTracer tracer;
@@ -2532,6 +2550,7 @@ static const unordered_map<AlbumChangeOperation,
     { AlbumChangeOperation::UPDATE_IS_REMOVED, UpdateIsRemovedExecute },
     { AlbumChangeOperation::UPDATE_EXTRA_INFO, UpdateExtraInfoExecute },
     { AlbumChangeOperation::UPDATE_FRIEND_ID, UpdateFriendIdExecute },
+    { AlbumChangeOperation::UPDATE_CONTACT_INFO, UpdateContactInfoExecute },
 };
 
 static bool SetAlbumPropertyExecute(
@@ -2737,7 +2756,8 @@ static void ApplyAlbumChangeRequestExecute(napi_env env, void* data)
                    changeOperation == AlbumChangeOperation::DISMISS ||
                    changeOperation == AlbumChangeOperation::RESET_COVER_URI ||
                    changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO ||
-                   changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID) {
+                   changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID ||
+                   changeOperation == AlbumChangeOperation::UPDATE_CONTACT_INFO) {
             valid = SetAlbumPropertyExecute(*context, changeOperation);
         } else {
             NAPI_ERR_LOG("Invalid album change operation: %{public}d", changeOperation);

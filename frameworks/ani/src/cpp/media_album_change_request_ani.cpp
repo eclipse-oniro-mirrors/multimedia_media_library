@@ -444,6 +444,14 @@ void MediaAlbumChangeRequestAni::SetFriendIdOperationData(AnalysisAlbumOperation
     albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_FRIEND_ID);
 }
 
+void MediaAlbumChangeRequestAni::SetContactInfoOperationData(AnalysisAlbumOperation &operation)
+{
+    analysisAlbumOperationData_.attr = operation.attr;
+    analysisAlbumOperationData_.type = operation.type;
+    analysisAlbumOperationData_.values = operation.values;
+    albumChangeOperations_.push_back(AlbumChangeOperation::UPDATE_CONTACT_INFO);
+}
+
 static ani_status ApplyOperateAttribute(ani_env *env,
     const std::unique_ptr<MediaAlbumChangeRequestContext>& aniContext,
     AnalysisAlbumOperation& analysisOperation)
@@ -458,6 +466,8 @@ static ani_status ApplyOperateAttribute(ani_env *env,
         aniContext->objectInfo->SetExtraInfoOperationData(analysisOperation);
     } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_FRIEND_ID) {
         aniContext->objectInfo->SetFriendIdOperationData(analysisOperation);
+    } else if (analysisOperation.attr == ANALYSIS_ALBUM_ATTR_CONTACT_INFO) {
+        aniContext->objectInfo->SetContactInfoOperationData(analysisOperation);
     } else {
         ANI_ERR_LOG("Unsupported operateAttribute attr: %{public}s", analysisOperation.attr.c_str());
     }
@@ -1837,6 +1847,14 @@ static bool UpdateFriendIdExecute(MediaAlbumChangeRequestContext& context)
         changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
 }
 
+static bool UpdateContactInfoExecute(MediaAlbumChangeRequestContext& context)
+{
+    auto changeRequest = context.objectInfo;
+    CHECK_COND_RET(changeRequest != nullptr, false, "changeRequest is nullptr");
+    return ExecuteOperateAttributeOperation(context, changeRequest->GetOperationDataAttr(),
+        changeRequest->GetOperationDataType(), changeRequest->GetOperationDataValues());
+}
+
 static bool SetCoverUriExecute(MediaAlbumChangeRequestContext& context)
 {
     auto changeRequest = context.objectInfo;
@@ -1956,6 +1974,7 @@ static const unordered_map<AlbumChangeOperation,
     { AlbumChangeOperation::RESET_COVER_URI, ResetCoverUriExecute },
     { AlbumChangeOperation::UPDATE_EXTRA_INFO, UpdateExtraInfoExecute },
     { AlbumChangeOperation::UPDATE_FRIEND_ID, UpdateFriendIdExecute },
+    { AlbumChangeOperation::UPDATE_CONTACT_INFO, UpdateContactInfoExecute },
 };
 
 static bool SetAlbumPropertyExecute(
@@ -2064,7 +2083,8 @@ static void ApplyAlbumChangeRequestExecute(std::unique_ptr<MediaAlbumChangeReque
                    changeOperation == AlbumChangeOperation::DISMISS ||
                    changeOperation == AlbumChangeOperation::RESET_COVER_URI ||
                    changeOperation == AlbumChangeOperation::UPDATE_EXTRA_INFO ||
-                   changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID) {
+                   changeOperation == AlbumChangeOperation::UPDATE_FRIEND_ID ||
+                   changeOperation == AlbumChangeOperation::UPDATE_CONTACT_INFO) {
             valid = SetAlbumPropertyExecute(aniContext, changeOperation);
         } else {
             ANI_ERR_LOG("Invalid album change operation: %{public}d", changeOperation);

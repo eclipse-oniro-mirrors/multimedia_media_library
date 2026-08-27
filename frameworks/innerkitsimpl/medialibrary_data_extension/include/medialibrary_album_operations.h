@@ -56,6 +56,7 @@ struct MergeAlbumInfo {
     std::string relationship;
     std::string extraInfo;
     std::string friendId;
+    std::string contactInfo;
 };
 
 struct SetCoverUriAlbumInfo {
@@ -119,6 +120,8 @@ public:
         const std::string &albumId, const std::vector<std::string> &extraInfos);
     static int32_t OperatePortraitAlbumFriendId(
         const std::string &albumId, const std::vector<std::string> &friendIds);
+    static int32_t OperatePortraitAlbumContactInfo(
+        const std::string &albumId, const std::vector<std::string> &contactInfos);
     static int32_t OperatePortraitAlbumIsRemoved(const string &albumId, const string &value);
     static int32_t SetHighlightAlbumName(const NativeRdb::ValuesBucket &values,
         const DataShare::DataSharePredicates &predicates);
