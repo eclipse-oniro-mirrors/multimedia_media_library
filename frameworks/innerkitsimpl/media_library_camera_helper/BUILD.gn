@@ -59,9 +59,6 @@ ohos_shared_library("media_library_camera_helper") {
     "./src/media_library_camera_manager.cpp",
     "./src/media_low_quality_memory_callback.cpp",
     "./src/media_photo_asset_proxy.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/base_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/media_column.cpp",
-    "${MEDIALIB_INNERKITS_PATH}/media_library_helper/src/mimetype_utils.cpp",
   ]
 
   inner_ipc_sources = [
@@ -83,6 +80,7 @@ ohos_shared_library("media_library_camera_helper") {
   deps = [
     "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_CLIENT_PATH}:media_library_client",
+    "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
   ]
 
   public_configs = [ ":media_library_camera_config" ]

@@ -46,13 +46,6 @@ ohos_shared_library("media_library_client") {
   ]
 
   sources = [
-    "${MEDIALIB_COMMON_PATH}/utils/src/media_map_const_utils.cpp",
-    "${MEDIALIB_COMMON_PATH}/utils/src/media_string_utils.cpp",
-    "${MEDIALIB_COMMON_PATH}/utils/src/media_uri_utils.cpp",
-    "${MEDIALIB_COMMON_PATH}/utils/src/media_pure_file_utils.cpp",
-    "${MEDIALIB_COMMON_PATH}/utils/src/media_time_utils.cpp",
-    "${MEDIALIB_COMMON_PATH}/utils/src/media_path_utils.cpp",
-    "${MEDIALIB_COMMON_PATH}/utils/src/madvise_utils.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_datashare_helper.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_datashare_client.cpp",
     "${MEDIALIB_CLIENT_PATH}/src/media_common_client.cpp",
@@ -62,7 +55,7 @@ ohos_shared_library("media_library_client") {
     "${MEDIALIB_IPC_COMMON}/src/utils/media_itypes_utils.cpp",
   ]
 
-  deps = [ 
+  deps = [
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
     "${MEDIALIB_COMMON_PATH}:media_library_common",
   ]

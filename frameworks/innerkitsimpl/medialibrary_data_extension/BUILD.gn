@@ -1385,6 +1385,7 @@ ohos_shared_library("medialibrary_data_extension") {
   public_configs = [ ":media_data_extension_public_config" ]
 
   deps = [
+    "${MEDIALIB_COMMON_PATH}:media_library_common",
     "${MEDIALIB_CLOUD_SYNC_DATA}:media_cloud_sync_data",
     "${MEDIALIB_CLIENT_PATH}:media_library_client",
     "${MEDIALIB_INNERKITS_PATH}/media_library_helper:media_library",
