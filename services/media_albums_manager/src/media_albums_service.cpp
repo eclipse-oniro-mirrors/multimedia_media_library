@@ -61,6 +61,7 @@
 #include "medialibrary_notify_new.h"
 #include "medialibrary_restore.h"
 #include "parameters.h"
+#include "cloud_media_retain_smart_data.h"
 
 using namespace std;
 using namespace OHOS::RdbDataShareAdapter;
@@ -1050,14 +1051,28 @@ void MediaAlbumsService::ReportFirstDbStatus()
     }
 }
 
-void MediaAlbumsService::ReportCloneDbStatus()
+void MediaAlbumsService::ReportCloneDbStatus(bool isReverseClone)
 {
     std::string cloneFlagStr = OHOS::system::GetParameter("multimedia.medialibrary.cloneFlag", "0");
     if (cloneFlagStr != "0") {
         Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("unavailable",
             "Database occupied by Clone application");
-    } else {
-        Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("available", "");
+        return;
+    }
+    Notification::MediaLibraryNotifyNew::AddDbAvailabilityItem("available", "");
+    if (isReverseClone) {
+        MEDIA_INFO_LOG("Media_Reverse_Restore: Reverse clone finished, re-opening database");
+        MediaLibraryDataManager::GetInstance()->ReOpenRdbStore();
+
+        // 清理云切家XML
+        const std::string smartdataRetainPath = "/data/storage/el2/base/preferences/smartdata_retain.xml";
+        if (MediaFileUtils::IsFileExists(smartdataRetainPath)) {
+            if (MediaFileUtils::DeleteFile(smartdataRetainPath)) {
+                MEDIA_INFO_LOG("Media_Reverse_Restore: Successfully deleted smartdata_retain.xml");
+            } else {
+                MEDIA_WARN_LOG("Media_Reverse_Restore: Failed to delete smartdata_retain.xml");
+            }
+        }
     }
 }
 

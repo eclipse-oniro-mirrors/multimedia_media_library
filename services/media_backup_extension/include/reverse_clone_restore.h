@@ -187,6 +187,12 @@ protected:
     void AbsorbNewAlbums();
 
     /**
+     * @brief 清理 bundle_name 为空的相册中照片的 package_name、owner_appid、owner_package
+     *        与正向克隆保持一致：如果相册的 bundle_name 为空，则照片的这三个字段不恢复
+     */
+    void CleanPackageNameForEmptyBundleNameAlbums();
+
+    /**
      * @brief 步骤12.1：反向吸收新机照片数据
      *        从mediaRdb_（dstdb）吸收到mediaLibraryRdb_（srcdb）
      */
@@ -305,6 +311,7 @@ protected:
     void InsertTempCloudDentryData(const std::vector<FileInfo> &fileInfos);
 
     void UpdateDatabase();
+    void InheritManualCover();
 
     void ReverseRestoreAnalysisData();
     // 分类

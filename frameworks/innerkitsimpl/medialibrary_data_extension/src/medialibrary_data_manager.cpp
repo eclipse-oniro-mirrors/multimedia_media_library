@@ -1090,6 +1090,33 @@ __attribute__((no_sanitize("cfi"))) void MediaLibraryDataManager::ClearMediaLibr
 #endif
 }
 
+void MediaLibraryDataManager::ReOpenRdbStore()
+{
+    // 释放现有 UnistoreManager 缓存的旧主库句柄
+    MediaLibraryUnistoreManager::GetInstance().Stop();
+    rdbStore_ = nullptr;
+
+    // 重新初始化 UnistoreManager，打开新的主库文件
+    int32_t ret = MediaLibraryUnistoreManager::GetInstance().Init(context_);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("ReOpenRdbStore: Init failed, ret=%{public}d", ret);
+        return;
+    }
+    rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    if (rdbStore_ == nullptr) {
+        MEDIA_ERR_LOG("ReOpenRdbStore: GetRdbStore failed");
+        return;
+    }
+
+    // 重置缩略图服务，使其使用新的 rdbStore
+    if (thumbnailService_ != nullptr) {
+        thumbnailService_->ReleaseService();
+        thumbnailService_ = nullptr;
+    }
+    // 重新初始化缩略图服务（使用当前应用上下文）
+    InitialiseThumbnailService(context_);
+}
+
 int32_t MediaLibraryDataManager::InitMediaLibraryRdbStore()
 {
     if (rdbStore_) {
@@ -1102,6 +1129,22 @@ int32_t MediaLibraryDataManager::InitMediaLibraryRdbStore()
     rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, E_ERR, "rdbStore is nullptr");
 
+    return E_OK;
+}
+
+int32_t MediaLibraryDataManager::InitReverseMediaLibraryRdbStore()
+{
+    MediaLibraryUnistoreManager::GetInstance().Stop();
+    rdbStore_ = nullptr;
+    if (rdbStore_) {
+        return E_OK;
+    }
+
+    int32_t ret = MediaLibraryUnistoreManager::GetInstance().Init(context_);
+    CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "init MediaLibraryUnistoreManager failed");
+
+    rdbStore_ = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore_ != nullptr, E_ERR, "rdbStore is nullptr");
     return E_OK;
 }
 

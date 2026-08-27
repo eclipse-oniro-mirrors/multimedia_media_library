@@ -99,13 +99,13 @@ public:
     int32_t GetAnalysisAlbumAttribute(const AnalysisAlbumGetAttributeDto &dto,
         std::vector<std::unordered_map<std::string, std::string>> &queryResults);
     void ReportFirstDbStatus();
-    void ReportCloneDbStatus();
     int32_t AlbumChangeSetHiddenAttribute(const AlbumChangeSetHiddenAttributeDto &dto);
     int32_t AlbumChangeSetAlbumNameByFile(const AlbumChangeSetAlbumNameByFileDto &dto);
     int32_t ModifyAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
         bool disable, bool isAsyncRefreshAlbum);
     int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
         bool disable, bool isAsyncRefreshAlbum);
+    void ReportCloneDbStatus(bool isReverseClone = false);
 
 private:
     int32_t SetPortraitAlbumName(const ChangeRequestSetAlbumNameDto& dto);

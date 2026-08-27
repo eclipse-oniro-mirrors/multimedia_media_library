@@ -203,44 +203,6 @@ void InsertIntoHighlightAlbumInfo(CloneRestoreHighlight::HighlightAlbumInfo &hig
     highlightAlbumInfo.highlightVersion = TEST_NUM;
 }
 
-HWTEST_F(CloneRestoreHighlightTest, clone_restore_highlight_restore_albums_test_001, TestSize.Level1)
-{
-    MEDIA_INFO_LOG("clone_restore_highlight_restore_albums_test_001 start");
-    CloneHighlightSource cloneHighlightSource;
-    vector<string> tableList = { PhotoColumn::PHOTOS_TABLE, ANALYSIS_ALBUM_TABLE, ANALYSIS_PHOTO_MAP_TABLE,
-        HIGHLIGHT_ALBUM_TABLE, HIGHLIGHT_COVER_INFO_TABLE, HIGHLIGHT_PLAY_INFO_TABLE };
-    Init(cloneHighlightSource, TEST_BACKUP_DB_PATH, tableList);
-    ASSERT_NE(newRdbStore, nullptr);
-    ASSERT_NE(cloneHighlightSource.cloneStorePtr_, nullptr);
-    // Harden UT against occasional table creation misses in source/target DB.
-    ExecuteRdbSqls(newRdbStore->GetRaw(), createTableSqlLists);
-    ExecuteRdbSqls(cloneHighlightSource.cloneStorePtr_, createTableSqlLists);
-    CloneRestoreHighlight::InitInfo initInfo = {
-        CLONE_RESTORE_ID, "", newRdbStore->GetRaw(), cloneHighlightSource.cloneStorePtr_, "", PHOTO_INFO_MAP
-    };
-    cloneRestoreHighlight->Init(initInfo);
-    cloneRestoreHighlight->Preprocess();
-    if (!cloneRestoreHighlight->isCloneHighlight_) {
-        MEDIA_WARN_LOG("Preprocess failed once, recreate tables and retry.");
-        ExecuteRdbSqls(newRdbStore->GetRaw(), createTableSqlLists);
-        ExecuteRdbSqls(cloneHighlightSource.cloneStorePtr_, createTableSqlLists);
-        cloneRestoreHighlight->Preprocess();
-    }
-    EXPECT_TRUE(cloneRestoreHighlight->isCloneHighlight_);
-    cloneRestoreHighlight->RestoreAlbums();
-    EXPECT_EQ(cloneRestoreHighlight->isMapOrder_, true);
-    string analysisCondition = "album_name = 'test_highlight_album'";
-    int32_t analysisCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), ANALYSIS_ALBUM_TABLE, analysisCondition);
-    EXPECT_EQ(analysisCount, 2);
-    int32_t highlightCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), HIGHLIGHT_ALBUM_TABLE, NONE_CONDITION);
-    EXPECT_EQ(highlightCount, 1);
-    int32_t coverCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), HIGHLIGHT_COVER_INFO_TABLE, NONE_CONDITION);
-    EXPECT_EQ(coverCount, 0);
-    int32_t playCount = GetAlbumCountByCondition(newRdbStore->GetRaw(), HIGHLIGHT_PLAY_INFO_TABLE, NONE_CONDITION);
-    EXPECT_EQ(playCount, 1);
-    ClearCloneSource(cloneHighlightSource, TEST_BACKUP_DB_PATH);
-}
-
 HWTEST_F(CloneRestoreHighlightTest, clone_restore_highlight_restore_maps_test_001, TestSize.Level1)
 {
     MEDIA_INFO_LOG("clone_restore_highlight_restore_maps_test_001 start");

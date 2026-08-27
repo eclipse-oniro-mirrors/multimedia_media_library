@@ -119,8 +119,10 @@ public:
     EXPORT static int32_t OpenFileWithExtRetry(const std::string &filePath, std::string &absFilePath);
     EXPORT static bool CopyDirAndDelSrc(const std::string &srcPath, const std::string &destPath,
         unsigned short curRecursionDepth = 0);
-    EXPORT static bool CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile);
-    EXPORT static bool CopyFileUtil(const std::string &filePath, const std::string &newPath);
+    EXPORT static bool CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile,
+        bool skipCheckPermit = false);
+    EXPORT static bool CopyFileUtil(const std::string &filePath, const std::string &newPath,
+        bool skipCheckPermit = false);
     EXPORT static int32_t SegmentedCopyFileUtile(const std::string &filePath, const std::string &newPath,
         std::function<void(uint64_t)> progressCallback, const std::string &requestId);
     EXPORT static bool CopyFileSafe(const std::string &filePath, const std::string &newPath);

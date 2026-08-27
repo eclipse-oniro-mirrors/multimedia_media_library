@@ -77,6 +77,7 @@
 #include "album_change_set_hidden_attribute_vo.h"
 #include "album_change_set_album_name_by_file_vo.h"
 
+#include "clone_status_notify_vo.h"
 namespace OHOS::Media {
 using namespace std;
 using SpecialRequestHandle = int32_t (MediaAlbumsControllerService::*)(
@@ -1120,13 +1121,21 @@ int32_t MediaAlbumsControllerService::CheckDbAvailability(MessageParcel &data, M
     return IPC::UserDefineIPC().WriteResponseBody(reply, reqBody, ret);
 }
 
+// 这里是接受端, 在媒体库主进程
 int32_t MediaAlbumsControllerService::NotifyDbAvailability(MessageParcel &data, MessageParcel &reply)
 {
     MEDIA_INFO_LOG("NotifyDbAvailability start");
+    CloneStatusNotifyVo reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("NotifyDbAvailability: Read Request Error, ret=%{public}d", ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+
     uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::NOTIFY_CLONE_STATUS);
     int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
     DfxTimer dfxTimer(operationCode, timeout, true);
-    MediaAlbumsService::GetInstance().ReportCloneDbStatus();
+    MediaAlbumsService::GetInstance().ReportCloneDbStatus(reqBody.reverseCloneStatus);
     return IPC::UserDefineIPC().WriteResponseBody(reply);
 }
 
