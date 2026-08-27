@@ -96,6 +96,11 @@ public:
     int32_t photoRiskStatus{0};
     int32_t isCritical{0};
     int32_t compressionQuality{-1};
+    int32_t isShared{0};
+    std::string shareOwnerInfo;
+    int64_t shareDateDay{0};
+    int64_t shareGroup{0};
+    std::string shareAlbumOwner;
 
 public:  // functions of Parcelable.
     virtual ~OnFetchPhotosVo() = default;
@@ -113,6 +118,8 @@ private:
     void GetBasicInfo(std::stringstream &ss) const;
     void GetAttributesInfo(std::stringstream &ss) const;
     void GetAttributesHashMap(std::stringstream &ss) const;
+    bool WriteShareAlbumInfo(Parcel &parcel) const;
+    bool ReadShareAlbumInfo(Parcel &parcel);
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_ON_FETCH_PHOTOS_VO_H

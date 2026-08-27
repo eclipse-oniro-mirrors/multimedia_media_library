@@ -99,6 +99,11 @@ public:
     // Safe Album: critical type for children's watch
     int32_t attributesRiskStatus{0};              /* photo_risk_status */
     int32_t attributesIsCritical{0};              /* is_critical */
+    int32_t attributesIsShared{0};                /* is_shared */
+    std::string attributesShareOwnerInfo;         /* share_owner_info */
+    std::string attributesShareAlbumOwner;        /* share_album_owner */
+    int64_t attributesShareDateDay{0};            /* share_date_day */
+    int64_t attributesShareGroup{0};              /* share_group */
 
     // "properties"
     bool hasProperties{false};

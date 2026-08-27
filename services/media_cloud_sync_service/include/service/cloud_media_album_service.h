@@ -74,6 +74,7 @@ private:
     int32_t PullInsert(const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp);
     int32_t PullUpdate(const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp);
     int32_t PullDelete(const PhotoAlbumDto &record, ChangeType &changeType, OnFetchRecordsAlbumRespBody &resp);
+    void BuildAlbumManualCoverPredicate(NativeRdb::AbsRdbPredicates &predicates);
 
 private:
     CloudMediaAlbumDao albumDao_;

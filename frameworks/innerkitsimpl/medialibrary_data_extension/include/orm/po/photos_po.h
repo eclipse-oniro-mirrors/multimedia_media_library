@@ -97,6 +97,12 @@ public:
     std::optional<int32_t> lcdFileSize;
     std::optional<int64_t> localAssetSize;            // PhotoColumn::LOCAL_ASSET_SIZE;
     std::optional<int32_t> compressionQuality;        // PhotoColumn::COMPRESSION_QUALITY;
+    std::optional<int32_t> isShared;             // PhotoColumn::PHOTO_IS_SHARED
+    std::optional<std::string> shareOwnerInfo;   // PhotoColumn::PHOTO_SHARE_OWNER_INFO
+    std::optional<std::string> shareAlbumOwner;        // PhotoColumn::PHOTO_SHARE_ALBUM_OWNER;
+    std::optional<int64_t> shareDateDay;         // PhotoColumn::PHOTO_SHARE_DATE_DAY
+    std::optional<int64_t> shareGroup;           // PhotoColumn::PHOTO_SHARE_GROUP
+
     /* keep cloud_id at the last; so RecordToValueBucket can skip it*/
     std::optional<int32_t> fileId;       //  MediaColumn::MEDIA_ID;
     std::optional<std::string> cloudId;  // PhotoColumn::PHOTO_CLOUD_ID

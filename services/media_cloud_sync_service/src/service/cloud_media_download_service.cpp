@@ -110,6 +110,7 @@ std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadThmsByUri(
         photosDto.modifiedTime = downloadAssetData.editTime;
         photosDto.fileName = fileName;
         photosDto.originalCloudId = downloadAssetData.originalCloudId;
+        photosDto.shareAlbumOwner = downloadAssetData.shareAlbumOwner;
         int32_t retThm = E_OK;
         int32_t retLcd = E_OK;
         if (static_cast<uint32_t>(type) & TYPE_THM_MASK) {
@@ -288,6 +289,7 @@ std::vector<PhotosDto> CloudMediaDownloadService::GetDownloadAsset(const std::ve
         photosDto.dateTrashed = downloadAssetData.dateTrashed;
         photosDto.fileSourceType = downloadAssetData.fileSourceType;
         photosDto.storagePath = downloadAssetData.storagePath;
+        photosDto.shareAlbumOwner = downloadAssetData.shareAlbumOwner;
 
         CHECK_AND_RETURN_RET_LOG(
             CloudMediaAttachmentUtils::GetAttachment("content", downloadAssetData, photosDto) == E_OK,

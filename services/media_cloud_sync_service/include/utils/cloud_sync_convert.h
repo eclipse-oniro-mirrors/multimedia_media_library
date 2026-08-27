@@ -104,6 +104,11 @@ public:
 private:
     static int32_t CompensateAttributesHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
     static int32_t CompensateInt64FieldsHashMap(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttIsShared(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareOwnerInfo(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareAlbumOwner(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareDateDay(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
+    static int32_t CompensateAttShareGroup(const CloudMediaPullDataDto &data, NativeRdb::ValuesBucket &values);
 };
 
 }  // namespace OHOS::Media::CloudSync

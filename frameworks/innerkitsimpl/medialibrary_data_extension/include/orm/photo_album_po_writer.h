@@ -157,6 +157,12 @@ private:
         CHECK_AND_RETURN(conn);
         this->objPo_.uniqueId = std::get<std::string>(val);
     }
+    void SetShareAlbumOwner(std::variant<int32_t, int64_t, double, std::string> &val)
+    {
+        bool conn = std::holds_alternative<std::string>(val);
+        CHECK_AND_RETURN(conn);
+        this->objPo_.shareAlbumOwner = std::get<std::string>(val);
+    }
 
     using Handle = void (PhotoAlbumPoWriter::*)(std::variant<int32_t, int64_t, double, std::string> &);
     const std::map<std::string, Handle> HANDLERS = {
@@ -177,6 +183,7 @@ private:
         {PhotoAlbumColumns::COVER_CLOUD_ID, &PhotoAlbumPoWriter::SetCoverCloudId},
         {PhotoAlbumColumns::UPLOAD_STATUS, &PhotoAlbumPoWriter::SetUploadStatus},
         {PhotoAlbumColumns::UNIQUE_ID, &PhotoAlbumPoWriter::SetUniqueId},
+        {PhotoAlbumColumns::SHARE_ALBUM_OWNER, &PhotoAlbumPoWriter::SetShareAlbumOwner},
     };
 };
 }  // namespace OHOS::Media::ORM

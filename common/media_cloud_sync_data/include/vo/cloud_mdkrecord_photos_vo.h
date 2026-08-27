@@ -86,6 +86,11 @@ public:
     std::string packageName;
     int32_t photoRiskStatus;
     int32_t compressionQuality;
+    int32_t isShared;
+    std::string shareOwnerInfo;
+    int64_t shareDateDay;
+    int64_t shareGroup;
+    std::string shareAlbumOwner;
 
     // Photo Album
     std::string albumCloudId;

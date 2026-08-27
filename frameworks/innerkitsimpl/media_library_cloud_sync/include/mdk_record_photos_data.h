@@ -181,6 +181,16 @@ public:  // attributes getter & setter
     MDKRecordPhotosData &SetPackageName(const std::string &packageName);
     std::optional<int32_t> GetPhotoRiskStatus() const;
     MDKRecordPhotosData &SetPhotoRiskStatus(const int32_t photoRiskStatus);
+    std::optional<int32_t> GetPhotoIsShared() const;
+    MDKRecordPhotosData &SetPhotoIsShared(const int32_t isShared);
+    std::optional<std::string> GetPhotoShareOwnerInfo() const;
+    MDKRecordPhotosData &SetPhotoShareOwnerInfo(const std::string &shareOwnerInfo);
+    std::optional<std::string> GetShareAlbumOwner() const;
+    MDKRecordPhotosData &SetShareAlbumOwner(const std::string &shareAlbumOwner);
+    std::optional<int64_t> GetPhotoShareDateDay() const;
+    MDKRecordPhotosData &SetPhotoShareDateDay(const int64_t shareDateDay);
+    std::optional<int64_t> GetPhotoShareGroup() const;
+    MDKRecordPhotosData &SetPhotoShareGroup(const int64_t shareGroup);
     std::optional<std::string> GetAttributeFieldValue(const std::string &fieldName) const;
     std::optional<int64_t> GetAttributeFieldLongValue(const std::string &fieldName) const;
 

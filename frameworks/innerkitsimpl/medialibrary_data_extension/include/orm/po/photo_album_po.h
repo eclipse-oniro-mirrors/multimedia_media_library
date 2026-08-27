@@ -40,6 +40,7 @@ public:
     std::optional<std::string> coverCloudId;
     std::optional<int32_t> uploadStatus;
     std::optional<std::string> uniqueId;
+    std::optional<std::string> shareAlbumOwner;
 
     /* album_plugin columns */
     std::optional<std::string> albumPluginCloudId;

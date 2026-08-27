@@ -46,6 +46,7 @@ public:
         std::string uniqueId;
         int32_t sceneId;
         int32_t shareType;
+        std::string shareAlbumOwner;
 
     public:  // functions of Parcelable.
         virtual ~AlbumReqData() = default;

@@ -48,6 +48,7 @@ public:
     std::string uniqueId;
     int32_t sceneId;
     int32_t shareType;
+    std::string shareAlbumOwner;
     int32_t serverErrorCode;
     ErrorType errorType;
     std::vector<CloudErrorDetail> errorDetails;

@@ -130,6 +130,14 @@ private:
         {PhotoColumn::LOCAL_ASSET_SIZE, {&PhotosPoWriter::GetLocalAssetSize, &PhotosPoWriter::SetLocalAssetSize}},
         {PhotoColumn::COMPRESSION_QUALITY,
             {&PhotosPoWriter::GetCompressionQuality, &PhotosPoWriter::SetCompressionQuality}},
+        {PhotoColumn::PHOTO_IS_SHARED, {&PhotosPoWriter::GetPhotoIsShared, &PhotosPoWriter::SetPhotoIsShared}},
+        {PhotoColumn::PHOTO_SHARE_OWNER_INFO,
+            {&PhotosPoWriter::GetPhotoShareOwnerInfo, &PhotosPoWriter::SetPhotoShareOwnerInfo}},
+        {PhotoColumn::PHOTO_SHARE_ALBUM_OWNER,
+            {&PhotosPoWriter::GetShareAlbumOwner, &PhotosPoWriter::SetShareAlbumOwner}},
+        {PhotoColumn::PHOTO_SHARE_DATE_DAY,
+            {&PhotosPoWriter::GetPhotoShareDateDay, &PhotosPoWriter::SetPhotoShareDateDay}},
+        {PhotoColumn::PHOTO_SHARE_GROUP, {&PhotosPoWriter::GetPhotoShareGroup, &PhotosPoWriter::SetPhotoShareGroup}},
     };
     const std::map<std::string, GetSetNode> EXTRA_HANDLERS = {
         {"album_cloud_id", {&PhotosPoWriter::GetAlbumCloudId, &PhotosPoWriter::SetAlbumCloudId}},
@@ -267,6 +275,16 @@ private:
     bool GetLocalAssetSize(std::string &val);
     void SetCompressionQuality(std::variant<int32_t, int64_t, double, std::string> &val);
     bool GetCompressionQuality(std::string &val);
+    void SetShareAlbumOwner(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetShareAlbumOwner(std::string &val);
+    bool GetPhotoIsShared(std::string &val);
+    void SetPhotoIsShared(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetPhotoShareOwnerInfo(std::string &val);
+    void SetPhotoShareOwnerInfo(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetPhotoShareDateDay(std::string &val);
+    void SetPhotoShareDateDay(std::variant<int32_t, int64_t, double, std::string> &val);
+    bool GetPhotoShareGroup(std::string &val);
+    void SetPhotoShareGroup(std::variant<int32_t, int64_t, double, std::string> &val);
 };
 }  // namespace OHOS::Media::ORM
 #endif  // OHOS_MEDIA_ORM_PHOTOS_PO_WRITER_H

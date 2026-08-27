@@ -176,14 +176,9 @@ void MDKRecordAlbumData::SetIsLogic(const bool isLogic)
 {
     this->fields_[this->ALBUM_IS_LOGIC] = MDKRecordField(isLogic);
 }
-std::optional<std::string> MDKRecordAlbumData::GetType() const
+std::optional<int32_t> MDKRecordAlbumData::GetType() const
 {
-    return this->recordReader_.GetStringValue(this->fields_, this->KEY_TYPE);
-}
-// type, "directory" or "file"
-void MDKRecordAlbumData::SetType(const std::string &type)
-{
-    this->fields_[this->KEY_TYPE] = MDKRecordField(type);
+    return this->recordReader_.GetIntValue(this->fields_, this->KEY_TYPE);
 }
 std::optional<std::string> MDKRecordAlbumData::GetLocalLanguage() const
 {
@@ -276,5 +271,9 @@ std::optional<std::string> MDKRecordAlbumData::GetUniqueId() const
 void MDKRecordAlbumData::SetUniqueId(const std::string &uniqueId)
 {
     this->attributes_[PhotoAlbumColumns::UNIQUE_ID] = MDKRecordField(uniqueId);
+}
+std::string MDKRecordAlbumData::GetOwnerId() const
+{
+    return this->record_.GetOwnerId();
 }
 }  // namespace OHOS::Media::CloudSync

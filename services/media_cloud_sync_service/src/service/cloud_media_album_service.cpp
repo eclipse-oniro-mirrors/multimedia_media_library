@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "cloud_media_sync_utils.h"
+#include "cloud_media_context.h"
 #include "dataobs_mgr_changeinfo.h"
 #include "media_column.h"
 #include "media_log.h"
@@ -34,6 +35,7 @@
 #include "medialibrary_data_manager_utils.h"
 #include "media_file_utils.h"
 #include "cloud_file_error.h"
+#include "userfile_manager_types.h"
 
 namespace OHOS::Media::CloudSync {
 const std::unordered_map<std::string, std::vector<std::string>> screensMap = {
@@ -554,12 +556,8 @@ void CloudMediaAlbumService::HandleWaitPullCover(shared_ptr<NativeRdb::ResultSet
     }
 }
 
-void CloudMediaAlbumService::CheckAlbumManualCover()
+void CloudMediaAlbumService::BuildAlbumManualCoverPredicate(NativeRdb::AbsRdbPredicates &predicates)
 {
-    MEDIA_DEBUG_LOG("CheckAlbumManualCover enter");
-    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
-    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "CheckAlbumManualCover Failed to get rdbStore.");
-    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
     predicates.EqualTo(PhotoAlbumColumns::COVER_URI_SOURCE,
         to_string(static_cast<int32_t>(CoverUriSource::MANUAL_LOCAL_COVER)))
         ->Or()
@@ -571,7 +569,25 @@ void CloudMediaAlbumService::CheckAlbumManualCover()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC))
         ->Or()
         ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SOURCE_GENERIC_FROM_FILE_MANAGER))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_SUBTYPE, to_string(PhotoAlbumSubType::SHARE_GENERIC))
         ->EndWrap();
+    if (CloudMediaContext::GetInstance().GetSceneType() == static_cast<int32_t>(SceneType::SHARE)) {
+        predicates.EqualTo(PhotoAlbumColumns::ALBUM_SHARE_TYPE,
+            to_string(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
+    } else {
+        predicates.NotEqualTo(PhotoAlbumColumns::ALBUM_SHARE_TYPE,
+            to_string(PhotoAlbumShareType::SHARE_TYPE_SHAREALBUM));
+    }
+}
+
+void CloudMediaAlbumService::CheckAlbumManualCover()
+{
+    MEDIA_DEBUG_LOG("CheckAlbumManualCover enter");
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_LOG(rdbStore != nullptr, "CheckAlbumManualCover Failed to get rdbStore.");
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
+    this->BuildAlbumManualCoverPredicate(predicates);
     vector<string> queryColumns = { PhotoAlbumColumns::ALBUM_ID, PhotoAlbumColumns::ALBUM_COVER_URI,
         PhotoAlbumColumns::COVER_URI_SOURCE, PhotoAlbumColumns::COVER_CLOUD_ID, PhotoAlbumColumns::ALBUM_LPATH };
     auto resultSet = rdbStore->Query(predicates, queryColumns);

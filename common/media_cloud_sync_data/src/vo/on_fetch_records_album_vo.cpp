@@ -43,6 +43,7 @@ bool OnFetchRecordsAlbumReqBody::AlbumReqData::Unmarshalling(MessageParcel &parc
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->sceneId), false, "sceneId");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->shareType), false, "shareType");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
     return true;
 }
 bool OnFetchRecordsAlbumReqBody::AlbumReqData::Marshalling(MessageParcel &parcel) const
@@ -65,6 +66,7 @@ bool OnFetchRecordsAlbumReqBody::AlbumReqData::Marshalling(MessageParcel &parcel
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->uniqueId), false, "uniqueId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->sceneId), false, "sceneId");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->shareType), false, "shareType");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
     return true;
 }
 
@@ -86,6 +88,8 @@ std::string OnFetchRecordsAlbumReqBody::AlbumReqData::ToString() const
        << "\"coverUriSource\": \"" << coverUriSource << "\","
        << "\"uniqueId\": \"" << uniqueId << "\","
        << "\"coverCloudId\": \"" << coverCloudId << "\","
+       << "\"shareType\": \"" << shareType << "\","
+       << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\","
        << "}";
     return ss.str();
 }

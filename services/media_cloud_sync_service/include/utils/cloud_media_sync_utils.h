@@ -79,6 +79,8 @@ public:
         CHECK_AND_RETURN_RET_LOG(iter != map.end(), T(), "GetMapValue failed, key: %{public}s not found", key.c_str());
         return iter->second;
     }
+private:
+    static int32_t FillPhotosDtoOfShareAlbum(PhotosDto &photosDto, const CloudMediaPullDataDto &pullData);
 };
 } // namespace OHOS::Media::CloudSync
 #endif // OHOS_CLOUD_MEDIA_SYNC_UTILS_H

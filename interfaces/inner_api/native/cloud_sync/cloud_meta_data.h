@@ -42,6 +42,8 @@ public:
     int32_t fileSourceType{0};  // 默认值为0表示湖外文件，3表示湖内文件
     int32_t hidden {0};         // 判断湖内外（0=湖外，非0=湖内）
     int64_t dateTrashed {0};    // 删除时间戳，用于判断湖内外
+    int32_t isShared;           // 0 - 普通资产， 1 - 共享资产
+    std::string shareAlbumOwner = "";  // 分享相册所有者(资产owner)
 
 public:  // constructor & destructor
     virtual ~CloudMetaData() = default;
@@ -62,6 +64,8 @@ public:  // basic function
            << "\"fileSourceType\": \"" << fileSourceType << "\","
            << "\"hidden\": " << hidden << ","
            << "\"dateTrashed\": " << dateTrashed << ","
+           << "\"isShared\": " << isShared << ","
+           << "\"shareAlbumOwner\": \"" << shareAlbumOwner << "\","
            << "\"attachment\": [";
         bool first = true;
         for (const auto &item : attachment) {

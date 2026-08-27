@@ -240,6 +240,11 @@ int32_t CloudFileDataConvert::HandleUniqueFileds(
     map[MediaColumn::MEDIA_PACKAGE_NAME] = MDKRecordField(upLoadRecord.packageName);
     map[PhotoColumn::PHOTO_RISK_STATUS] = MDKRecordField(upLoadRecord.photoRiskStatus);
     map[PhotoColumn::COMPRESSION_QUALITY] = MDKRecordField(upLoadRecord.compressionQuality);
+    map[PhotoColumn::PHOTO_IS_SHARED] = MDKRecordField(upLoadRecord.isShared);
+    map[PhotoColumn::PHOTO_SHARE_OWNER_INFO] = MDKRecordField(upLoadRecord.shareOwnerInfo);
+    map[PhotoColumn::PHOTO_SHARE_ALBUM_OWNER] = MDKRecordField(upLoadRecord.shareAlbumOwner);
+    map[PhotoColumn::PHOTO_SHARE_DATE_DAY] = MDKRecordField(upLoadRecord.shareDateDay);
+    map[PhotoColumn::PHOTO_SHARE_GROUP] = MDKRecordField(upLoadRecord.shareGroup);
     HandleAttributesHashMap(map, upLoadRecord);
     int32_t ret = HandleThumbSize(map, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleThumbSize err: %{public}d", ret);
@@ -795,6 +800,7 @@ int32_t CloudFileDataConvert::ConvertToMdkRecord(const CloudMdkRecordPhotosVo &u
     ret = HandleCompatibleFileds(data, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "HandleCompatibleFileds failed, ret: %{public}d", ret);
     record.SetRecordData(data);
+    record.SetOwnerId(upLoadRecord.shareAlbumOwner);
     ret = SetSourceAlbum(record, upLoadRecord);
     CHECK_AND_RETURN_RET_LOG(ret == E_OK, ret, "SetSourceAlbum failed, ret: %{public}d", ret);
     return E_OK;
@@ -1001,6 +1007,7 @@ void CloudFileDataConvert::ConvertAttributes(MDKRecordPhotosData &data, OnFetchP
     onFetchPhotoVo.packageName = data.GetPackageName().value_or("");
     onFetchPhotoVo.photoRiskStatus = data.GetPhotoRiskStatus().value_or(0);
     onFetchPhotoVo.compressionQuality = data.GetCompressionQuality().value_or(-1);
+    ConvertShareAlbumInfoToVo(data, onFetchPhotoVo);
 }
 
 void CloudFileDataConvert::ConvertSourceAlbumIds(const MDKRecord &mdkRecord, OnFetchPhotosVo &onFetchPhotoVo)
@@ -1136,5 +1143,14 @@ std::string CloudFileDataConvert::GetContentRelatedLog(const CloudMdkRecordPhoto
     log << "isGraffiti: " << isGraffiti << ", ";
     log << "data: " << MediaFileUtils::DesensitizePath(upLoadRecord.data.c_str());
     return log.str();
+}
+
+void CloudFileDataConvert::ConvertShareAlbumInfoToVo(const MDKRecordPhotosData &data, OnFetchPhotosVo &onFetchPhotoVo)
+{
+    onFetchPhotoVo.isShared = data.GetPhotoIsShared().value_or(0);
+    onFetchPhotoVo.shareOwnerInfo = data.GetPhotoShareOwnerInfo().value_or("");
+    onFetchPhotoVo.shareAlbumOwner = data.GetShareAlbumOwner().value_or("");
+    onFetchPhotoVo.shareDateDay = data.GetPhotoShareDateDay().value_or(0L);
+    onFetchPhotoVo.shareGroup = data.GetPhotoShareGroup().value_or(0L);
 }
 } // namespace OHOS::Media::CloudSync

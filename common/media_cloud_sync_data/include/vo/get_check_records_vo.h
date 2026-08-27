@@ -61,6 +61,7 @@ public:
     std::map<std::string, CloudFileDataVo> attachment;
     int32_t fileSourceType;
     std::string storagePath;
+    std::string shareAlbumOwner;
 
 public:  // functions of Parcelable.
     bool Unmarshalling(MessageParcel &parcel) override;

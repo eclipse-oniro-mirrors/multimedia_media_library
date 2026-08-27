@@ -228,6 +228,7 @@ int32_t CloudMediaPhotoHandler::GetCheckRecords(
         cloudCheckData.thmStatus = info.thmStatus;
         cloudCheckData.fileSourceType = info.fileSourceType;
         cloudCheckData.storagePath = info.storagePath;
+        cloudCheckData.shareAlbumOwner = info.shareAlbumOwner;
         for (const auto &[key, value] : info.attachment) {
             CloudFileData fileData;
             fileData.fileName = value.fileName;

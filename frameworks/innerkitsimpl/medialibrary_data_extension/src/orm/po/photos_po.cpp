@@ -90,7 +90,12 @@ void PhotosPo::GetAttributesInfo(std::stringstream &ss) const
        << "\"uniqueId\": " << uniqueId.value_or("") << ", "
        << "\"packageName\": " << packageName.value_or("") << ", "
        << "\"photoRiskStatus\": " << photoRiskStatus.value_or(0) << ", "
-       << "\"southDeviceType\": " << southDeviceType.value_or(0) << ", ";
+       << "\"southDeviceType\": " << southDeviceType.value_or(0) << ", "
+       << "\"isShared\": " << isShared.value_or(0) << ", "
+       << "\"shareOwnerInfo\": " << shareOwnerInfo.value_or("") << ", "
+       << "\"shareAlbumOwner\": " << shareAlbumOwner.value_or("") << ", "
+       << "\"shareDateDay\": " << shareDateDay.value_or(0) << ", "
+       << "\"shareGroup\": " << shareGroup.value_or(0) << ", ";
 }
 
 void PhotosPo::GetCloudInfo(std::stringstream &ss) const

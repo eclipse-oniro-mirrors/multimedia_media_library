@@ -70,6 +70,7 @@ bool GetCheckRecordsRespBodyCheckData::Unmarshalling(MessageParcel &parcel)
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(attachmentSize), false, "attachmentSize");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadInt32(this->fileSourceType), false, "fileSourceType");
     CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->storagePath), false, "storagePath");
+    CHECK_AND_RETURN_RET_LOG(parcel.ReadString(this->shareAlbumOwner), false, "shareAlbumOwner");
     for (int32_t i = 0; i < attachmentSize; ++i) {
         CloudFileDataVo vo;
         std::string key;
@@ -97,6 +98,7 @@ bool GetCheckRecordsRespBodyCheckData::Marshalling(MessageParcel &parcel) const
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->attachment.size()), false, "attachmentSize");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteInt32(this->fileSourceType), false, "fileSourceType");
     CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->storagePath), false, "storagePath");
+    CHECK_AND_RETURN_RET_LOG(parcel.WriteString(this->shareAlbumOwner), false, "shareAlbumOwner");
     for (auto &[key, value] : attachment) {
         CHECK_AND_RETURN_RET_LOG(parcel.WriteString(key), false, "CloudFileDataVo key");
         CHECK_AND_RETURN_RET_LOG(value.Marshalling(parcel), false, "CloudFileDataVo value");
@@ -118,7 +120,8 @@ std::string GetCheckRecordsRespBodyCheckData::ToString() const
        << "\"thmStatus\": " << this->thmStatus << ","
        << "\"syncStatus\": " << this->syncStatus << ","
        << "\"fileSourceType\": " << this->fileSourceType << ","
-       << "\"storagePath\": " << MediaFileUtils::DesensitizePath(this->storagePath) << "\"";
+       << "\"storagePath\": " << MediaFileUtils::DesensitizePath(this->storagePath) << "\","
+       << "\"shareAlbumOwner\":" << this->shareAlbumOwner << "\", ";
     ss << ",[";
     uint32_t index = 0;
     for (const auto &[key, value] : attachment) {

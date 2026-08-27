@@ -49,6 +49,8 @@ std::vector<PhotosVo> CloudMediaPhotoControllerProcessor::SetFdirtyDataVoFromDto
         fdirtyDataVo.uniqueId = fdirtyDataDto.uniqueId;
         fdirtyDataVo.packageName = fdirtyDataDto.packageName;
         fdirtyDataVo.photoRiskStatus = fdirtyDataDto.photoRiskStatus;
+        fdirtyDataVo.isShared = fdirtyDataDto.isShared;
+        fdirtyDataVo.shareAlbumOwner = fdirtyDataDto.shareAlbumOwner;
         fdirtyDataVo.localPath = fdirtyDataDto.localPath;
         fdirtyDataVo.attributesMediaType = fdirtyDataDto.attributesMediaType;
         for (auto &nodePair : fdirtyDataDto.attachment) {
@@ -82,6 +84,8 @@ std::vector<PhotosVo> CloudMediaPhotoControllerProcessor::SetNewDataVoFromDto(st
         newDataVo.uniqueId = newDataDto.uniqueId;
         newDataVo.packageName = newDataDto.packageName;
         newDataVo.photoRiskStatus = newDataDto.photoRiskStatus;
+        newDataVo.isShared = newDataDto.isShared;
+        newDataVo.shareAlbumOwner = newDataDto.shareAlbumOwner;
         for (auto &nodePair : newDataDto.attachment) {
             CloudFileDataVo fileData;
             fileData.fileName = nodePair.second.fileName;
@@ -114,6 +118,7 @@ std::unordered_map<std::string, CheckData> CloudMediaPhotoControllerProcessor::G
         checkData.thmStatus = photosDto.thumbStatus;
         checkData.fileSourceType = photosDto.fileSourceType;
         checkData.storagePath = photosDto.storagePath;
+        checkData.shareAlbumOwner = photosDto.shareAlbumOwner;
         for (auto &[key, value] : photosDto.attachment) {
             CloudFileDataVo vo;
             vo.fileName = value.fileName;
@@ -178,6 +183,11 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const PhotosPo &recor
     photosVo.packageName = record.packageName.value_or("");
     photosVo.photoRiskStatus = record.photoRiskStatus.value_or(0);
     photosVo.compressionQuality = record.compressionQuality.value_or(-1);
+    photosVo.isShared = record.isShared.value_or(0);
+    photosVo.shareOwnerInfo = record.shareOwnerInfo.value_or("");
+    photosVo.shareAlbumOwner = record.shareAlbumOwner.value_or("");
+    photosVo.shareDateDay = record.shareDateDay.value_or(0);
+    photosVo.shareGroup = record.shareGroup.value_or(0);
     return true;
 }
 
@@ -280,6 +290,11 @@ bool CloudMediaPhotoControllerProcessor::GetAttributesInfo(const OnFetchPhotosVo
     data.attributesPackageName = photosVo.packageName;
     // Safe Album: risk status for children's watch
     data.attributesRiskStatus = photosVo.photoRiskStatus;
+    data.attributesIsShared = photosVo.isShared;
+    data.attributesShareOwnerInfo = photosVo.shareOwnerInfo;
+    data.attributesShareAlbumOwner = photosVo.shareAlbumOwner;
+    data.attributesShareDateDay = photosVo.shareDateDay;
+    data.attributesShareGroup = photosVo.shareGroup;
     data.attributesIsCritical = photosVo.isCritical;
     data.compressionQuality = photosVo.compressionQuality;
     return true;

@@ -45,6 +45,7 @@ std::string PhotoAlbumDto::ToString() const
        << "\"uniqueId\": " << this->uniqueId << ","
        << "\"shareType\": \"" << this->shareType << "\", "
        << "\"sceneId\": \"" << this->sceneId << "\", "
+       << "\"shareAlbumOwner\": \"" << this->shareAlbumOwner << "\", "
        << "\"serverErrorCode\": " << serverErrorCode << ","
        << "\"errorType\": \"" << static_cast<int32_t>(errorType) << "\","
        << "\"errorDetails\": [";
