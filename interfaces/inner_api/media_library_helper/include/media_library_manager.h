@@ -479,7 +479,8 @@ public:
     /**
      * @brief SetPhotoCritical
      * @param fileId file id
-     * @param photoRiskStatus photo risk status
+     * @param photoRiskStatus photo risk status, 0:unidentified, 1:approved, 2:suspicious, 3:rejected
+     * @param isCritical whether the photo is critical, 0:not critical, 1:critical.
      * @return Returns E_OK on success, error code on failure
      */
     EXPORT int32_t SetPhotoCritical(int32_t fileId, int32_t photoRiskStatus, int32_t isCritical);

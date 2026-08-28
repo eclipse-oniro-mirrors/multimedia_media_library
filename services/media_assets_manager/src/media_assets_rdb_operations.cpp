@@ -648,6 +648,10 @@ int32_t MediaAssetsRdbOperations::SetPhotoCritical(int32_t fileId, int32_t photo
         "invalid photoRiskStatus: %{public}d", photoRiskStatus);
     CHECK_AND_RETURN_RET_LOG(isCritical == 0 || isCritical == 1, E_INVALID_VALUES,
         "invalid isCritical: %{public}d", isCritical);
+    int32_t expectedCritical = (photoRiskStatus >= static_cast<int32_t>(PhotoRiskStatus::SUSPICIOUS)) ? 1 : 0;
+    CHECK_AND_RETURN_RET_LOG(isCritical == expectedCritical, E_INVALID_VALUES,
+        "isCritical does not match photoRiskStatus %{public}d, expected isCritical: %{public}d",
+        photoRiskStatus, expectedCritical);
 
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_DB_FAIL, "Failed to get rdbStore.");
