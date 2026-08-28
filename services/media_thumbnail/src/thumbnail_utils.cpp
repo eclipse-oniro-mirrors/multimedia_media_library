@@ -1643,9 +1643,16 @@ void ThumbnailUtils::QueryThumbnailDataFromFileId(ThumbRdbOpt &opts, const std::
         CONST_MEDIA_DATA_DB_THUMBNAIL_READY,
     };
 
-    CHECK_AND_RETURN_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfo(opts.store, predicates, columns, data, err),
-        "QueryThumbnailDataInfo failed, err:%{public}d", err);
-    
+    {
+        MediaLibraryTracer tracer;
+        std::string label = "QueryThumbnailDataFromFileId.QueryThumbnailDataInfo table:" + opts.table +
+            " id:" + id + " columns:" + std::to_string(columns.size());
+        tracer.Start(label);
+        CHECK_AND_RETURN_LOG(ThumbnailRdbUtils::QueryThumbnailDataInfo(opts.store, predicates, columns, data, err),
+            "QueryThumbnailDataInfo failed, err:%{public}d", err);
+        tracer.Finish();
+    }
+
     CHECK_AND_RETURN_LOG(err == NativeRdb::E_OK && !data.path.empty(),
         "Fail to query thumbnail data using id: %{public}s, err: %{public}d", id.c_str(), err);
     data.stats.uri = data.path;
