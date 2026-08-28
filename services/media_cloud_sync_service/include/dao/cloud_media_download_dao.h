@@ -36,6 +36,7 @@ class CloudMediaDownloadDao {
 public:
     int32_t GetDownloadThmNum(const int32_t type, int32_t &totalNum);
     int32_t GetDownloadThms(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosPo> &photos);
+    int32_t GetDownloadThmsShare(const DownloadThumbnailQueryDto &queryDto, std::vector<PhotosPo> &photos);
     int32_t GetDownloadAsset(const std::vector<int32_t> &fileIds, std::vector<PhotosPo> &photos);
     int32_t UpdateDownloadThm(const std::vector<std::string> &cloudIds);
     int32_t UpdateDownloadLcd(const std::vector<std::string> &cloudIds);
@@ -53,7 +54,7 @@ public:
     int32_t UpdateLcdFileSizeAndLcdSize(const std::vector<std::string> &cloudIds);
 
 private:
-    NativeRdb::AbsRdbPredicates GetDownloadThmsConditions(const int32_t type);
+    NativeRdb::RdbPredicates GetDownloadThmsConditions(const int32_t type);
     int32_t GetFileIdFromUri(const std::string &uri, int32_t &fileUniqueId);
     void FillHdrModeInfo(NativeRdb::ValuesBucket &values, const CloudMediaScanService::ScanResult &scanResult,
         const std::optional<PhotosPo> &localPhotosPoOp);
@@ -69,13 +70,14 @@ private:
         MediaColumn::MEDIA_FILE_PATH,
         MediaColumn::MEDIA_SIZE,
         MediaColumn::MEDIA_TYPE,
-        PhotoColumn::PHOTO_CLOUD_ID,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_CLOUD_ID,
         PhotoColumn::PHOTO_THUMB_STATUS,
         PhotoColumn::PHOTO_ORIENTATION,
         PhotoColumn::PHOTO_FILE_SOURCE_TYPE,
         PhotoColumn::PHOTO_STORAGE_PATH,
-        MediaColumn::MEDIA_HIDDEN,
+        PhotoColumn::PHOTOS_TABLE + "." + MediaColumn::MEDIA_HIDDEN,
         MediaColumn::MEDIA_DATE_TRASHED,
+        PhotoColumn::PHOTOS_TABLE + "." + PhotoColumn::PHOTO_SHARE_ALBUM_OWNER,
     };
     const std::vector<std::string> COLUMNS_DOWNLOAD_ASSET_QUERY_BY_FILE_ID = {
         PhotoColumn::MEDIA_ID,

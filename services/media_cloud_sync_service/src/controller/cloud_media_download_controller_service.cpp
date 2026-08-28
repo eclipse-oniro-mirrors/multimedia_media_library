@@ -33,6 +33,7 @@
 #include "on_download_asset_vo.h"
 #include "clean_attachment_vo.h"
 #include "get_full_sync_download_info_vo.h"
+#include "cloud_media_context.h"
 
 namespace OHOS::Media::CloudSync {
 int32_t CloudMediaDownloadControllerService::GetDownloadThms(MessageParcel &data, MessageParcel &reply)
@@ -48,7 +49,11 @@ int32_t CloudMediaDownloadControllerService::GetDownloadThms(MessageParcel &data
     }
     DownloadThumbnailQueryDto queryDto = this->processor_.GetDownloadThumbnailQueryDto(reqBody);
     std::vector<PhotosDto> photosDtoVec;
-    ret = this->service_.GetDownloadThms(queryDto, photosDtoVec);
+    if (CloudMediaContext::GetInstance().GetSceneType() != static_cast<int32_t>(SceneType::SHARE)) {
+        ret = this->service_.GetDownloadThms(queryDto, photosDtoVec);
+    } else {
+        ret = this->service_.GetDownloadThmsShare(queryDto, photosDtoVec);
+    }
     if (ret != E_OK) {
         MEDIA_ERR_LOG("GetDownloadThms ret error, ret: %{public}d", ret);
         return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
