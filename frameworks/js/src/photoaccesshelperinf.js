@@ -1583,6 +1583,7 @@ export default {
   MediaAlbumChangeRequest: photoAccessHelper.MediaAlbumChangeRequest,
   MediaAnalysisAlbumChangeRequest: photoAccessHelper.MediaAnalysisAlbumChangeRequest,
   MediaHighlightAlbumChangeRequest: photoAccessHelper.MediaHighlightAlbumChangeRequest,
+  MediaShareAlbumChangeRequest: photoAccessHelper.MediaShareAlbumChangeRequest,
   MediaAssetManager: photoAccessHelper.MediaAssetManager,
   MovingPhoto: photoAccessHelper.MovingPhoto,
   MovingPhotoEffectMode: photoAccessHelper.MovingPhotoEffectMode,
@@ -1627,5 +1628,6 @@ export default {
   MediaAssetPermissionState: photoAccessHelper.MediaAssetPermissionState,
   TaskSignal: photoAccessHelper.TaskSignal,
   DeepOptimizeState: photoAccessHelper.DeepOptimizeState,
-  PickerColorMode: PickerColorMode
+  PickerColorMode: PickerColorMode,
+  ShareMemberStatus: photoAccessHelper.ShareMemberStatus,
 };

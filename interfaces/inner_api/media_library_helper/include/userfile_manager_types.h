@@ -350,6 +350,12 @@ enum PhotoAlbumShareType : int32_t {
     SHARE_TYPE_SHAREALBUM = 2,
 };
 
+enum ShareMemberStatus : int32_t {
+    INVITING = 0,
+    ACCEPTED = 1,
+    DECLINED = 2,
+    REQUESTIING = 3
+};
 } // namespace Media
 } // namespace OHOS
 #endif // OHOS_FILEMANAGEMENT_USERFILEMGR_TYPES_H
