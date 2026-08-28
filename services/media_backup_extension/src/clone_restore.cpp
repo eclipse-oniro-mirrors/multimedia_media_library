@@ -50,6 +50,7 @@
 #include "photos_dao.h"
 #include "rdb_store.h"
 #include "result_set_utils.h"
+#include "rom_low_space_guard.h"
 #include "upgrade_restore_task_report.h"
 #include "userfile_manager_types.h"
 #include "media_config_info_column.h"
@@ -664,6 +665,9 @@ int32_t CloneRestore::PreprocessBeforeClone(const string &backupRestoreDir, cons
 
 void CloneRestore::StartRestore(const string &backupRestoreDir, const string &upgradePath)
 {
+    RomLowSpaceGuard::Reset();
+    AnalysisDataDropper::ResetBuffers();
+    RomLowSpaceGuard::EvaluateCheckpoint(ROM_CHECK_RDB_DIR);
     if (preprocessErrorCode_ == E_OK) {
         RestoreGallery();
         RestoreMusic();
@@ -2906,6 +2910,8 @@ void CloneRestore::RestoreGallery()
         (long long)migrateLakePhotoDuplicateNumber_, (long long)migrateLakeVideoDuplicateNumber_,
         (long long)migrateDatabaseAlbumNumber_, (long long)migrateDatabaseMapNumber_);
     MEDIA_INFO_LOG("singlCloud Start update group tags");
+    // 评估融合模式
+    RomLowSpaceGuard::EvaluateCheckpoint(ROM_CHECK_RDB_DIR);
     RestoreAnalysisClassify();
     RestoreAnalysisGeo();
     RestoreAnalysisPortrait();

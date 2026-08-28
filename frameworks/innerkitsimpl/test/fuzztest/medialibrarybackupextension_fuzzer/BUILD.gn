@@ -78,6 +78,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/backup_database_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/backup_database_utils.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/upgrade_restore_gallery_media_task.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/rom_low_space_guard.cpp",
 
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/log/backup_log_utils.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/log/backup_zip_util.cpp",

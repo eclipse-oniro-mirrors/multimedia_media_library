@@ -28,6 +28,7 @@ class CloneRestoreAnalysisData {
 public:
     struct AnalysisDataInfo {
         int32_t fileId;
+        int32_t fileIdOld = 0; // source file id, kept after fileId is rewritten to new id
         std::unordered_map<std::string, std::variant<int32_t, int64_t, double,
             std::string, std::vector<uint8_t>>> columnValMap;
     };
@@ -62,6 +63,8 @@ public:
         bool enableTimeout = false);
 
 private:
+    void DropFusedBatchSourceRows(const std::vector<NativeRdb::ValuesBucket> &values,
+        int32_t errCode, int64_t rowNum, size_t offset);
     int64_t GetShouldEndTime(const std::unordered_map<int32_t, PhotoInfo> &photoInfoMap);
     std::string ToUpper(const std::string &str)
     {

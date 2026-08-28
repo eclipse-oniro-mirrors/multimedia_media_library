@@ -165,6 +165,7 @@ ohos_shared_library("mediabackup") {
     "./src/restore/photos_data_handler.cpp",
     "./src/restore/photos_restore.cpp",
     "./src/restore/restore_photos_album_hidden.cpp",
+    "./src/rom_low_space_guard.cpp",
     "./src/reverse_clone_restore/anco_reverse_clone_adapter.cpp",
     "./src/reverse_clone_restore/reverse_clone_candidate_resolver.cpp",
     "./src/reverse_clone_restore/reverse_clone_kvstore_executor.cpp",

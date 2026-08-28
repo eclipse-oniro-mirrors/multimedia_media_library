@@ -74,6 +74,7 @@ private:
         const std::unordered_set<int32_t> &existingFileIds);
     void InsertClassifyAlbums(std::vector<ClassifyCloneInfo> &classifyInfos);
     void InsertClassifyVideoAlbums(std::vector<ClassifyVideoCloneInfo> &classifyVideoInfos);
+    std::vector<int32_t> CollectBatchFileIds(const std::vector<ClassifyCloneInfo> &classifyInfos, size_t offset);
 
     void GetClassifyInfo(ClassifyCloneInfo &info, std::shared_ptr<NativeRdb::ResultSet> resultSet);
     void GetMapInsertValue(NativeRdb::ValuesBucket &value, ClassifyCloneInfo info,
