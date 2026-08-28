@@ -114,9 +114,11 @@ bool UpgradeManager::IsSchemaSubsetByAttach(NativeRdb::RdbStore& mainStore,
         return false;
     }
 
+    const std::string DDMS_DATA = "ddms_data_search_aux_config";
+    const std::string NATURALBASE = "naturalbase_rdb_aux_metadata";
     // 检查子数据库的表是否都在主数据库中
-    for (const auto& tableName : subsetTables) {
-        if (mainTables.find(tableName) == mainTables.end()) {
+    for (const auto &tableName : subsetTables) {
+        if (mainTables.find(tableName) == mainTables.end() && tableName != DDMS_DATA && tableName != NATURALBASE) {
             MEDIA_INFO_LOG("Table %{private}s not found in main store", tableName.c_str());
             return false;
         }
@@ -124,6 +126,9 @@ bool UpgradeManager::IsSchemaSubsetByAttach(NativeRdb::RdbStore& mainStore,
 
     // 检查每个表的列是否都在主数据库中
     for (const auto& tableName : subsetTables) {
+        if (tableName == DDMS_DATA || tableName == NATURALBASE) {
+            continue;
+        }
         std::set<std::string> mainColumns = GetColumnsFromStore(mainStore, tableName);
         std::set<std::string> subsetColumns = GetColumnsFromStore(subsetStore, tableName);
 

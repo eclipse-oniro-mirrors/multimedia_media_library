@@ -161,6 +161,7 @@ ohos_shared_library("media_library") {
     "media_foundation:media_foundation",
     "os_account:os_account_innerkits",
     "player_framework:media_client",
+    "preferences:native_preferences",
     "relational_store:native_rdb",
     "relational_store:rdb_data_share_adapter",
     "samgr:samgr_proxy",

@@ -72,6 +72,7 @@ declare_args() {
   media_library_feature_secure_album = false
   media_library_lake_enable = true
   media_library_file_manager_enable = true
+  media_library_reverse_clone_restore_enable = false
 }
 
 if (defined(global_parts_info) &&

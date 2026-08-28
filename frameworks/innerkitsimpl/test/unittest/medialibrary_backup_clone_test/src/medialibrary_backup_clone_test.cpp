@@ -1786,7 +1786,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_geo_dict
     cloneRestoreGeoDictionary->Init(CLONE_RESTORE_ID, TASK_ID, g_rdbStore->GetRaw(), cloneSource.cloneStorePtr_);
     cloneRestoreGeoDictionary->GetGeoDictionaryInfos();
     EXPECT_EQ(cloneRestoreGeoDictionary->geoDictionaryInfos_.size(), 1);
-    cloneRestoreGeoDictionary->InsertIntoGeoDictionaryAlbums();
+    cloneRestoreGeoDictionary->InsertIntoGeoDictionaryAlbums(true);
     EXPECT_EQ(cloneRestoreGeoDictionary->successInsertCnt_.load(), 1);
 
     cloneRestoreGeoDictionary->successInsertCnt_ = 0;
@@ -1794,7 +1794,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_geo_dict
     cloneSource.Insert(tableList);
     cloneRestoreGeoDictionary->GetGeoDictionaryInfos();
     EXPECT_EQ(cloneRestoreGeoDictionary->geoDictionaryInfos_.size(), 2);
-    cloneRestoreGeoDictionary->InsertIntoGeoDictionaryAlbums();
+    cloneRestoreGeoDictionary->InsertIntoGeoDictionaryAlbums(true);
     EXPECT_EQ(cloneRestoreGeoDictionary->successInsertCnt_.load(), 0);
 
     ClearCloneSource(cloneSource, TEST_BACKUP_DB_PATH);
@@ -1973,8 +1973,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_classify
 
     shared_ptr<CloneRestoreClassify> cloneRestoreClassify = make_shared<CloneRestoreClassify>();
     cloneRestoreClassify->Init(CLONE_RESTORE_ID, TASK_ID, g_rdbStore->GetRaw(), cloneSource.cloneStorePtr_);
-    std::vector<CloneRestoreClassify::ClassifyCloneInfo> classifyInfo;
-    std::vector<CloneRestoreClassify::ClassifyVideoCloneInfo> classifyVideoInfo;
+    std::vector<ClassifyCloneInfo> classifyInfo;
+    std::vector<ClassifyVideoCloneInfo> classifyVideoInfo;
     cloneRestoreClassify->GetClassifyInfos(classifyInfo);
     cloneRestoreClassify->GetClassifyVideoInfos(classifyVideoInfo);
     EXPECT_EQ(classifyInfo.size(), 0);
@@ -1999,8 +1999,8 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_restore_classify
 
     shared_ptr<CloneRestoreClassify> cloneRestoreClassify = make_shared<CloneRestoreClassify>();
     cloneRestoreClassify->Init(CLONE_RESTORE_ID, TASK_ID, g_rdbStore->GetRaw(), cloneSource.cloneStorePtr_);
-    std::vector<CloneRestoreClassify::ClassifyCloneInfo> classifyInfo;
-    std::vector<CloneRestoreClassify::ClassifyVideoCloneInfo> classifyVideoInfo;
+    std::vector<ClassifyCloneInfo> classifyInfo;
+    std::vector<ClassifyVideoCloneInfo> classifyVideoInfo;
     InitCloneRestoreAnalysisTotal(cloneRestoreClassify, FILE_INFO_NEW_ID);
     cloneRestoreClassify->GetClassifyInfos(classifyInfo);
     cloneRestoreClassify->InsertClassifyAlbums(classifyInfo);
@@ -3464,7 +3464,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_te
     cloneAnalysisData->cloneRestoreAnalysisTotal_.mediaRdb_ = cloneSource.cloneStorePtr_;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.type_ = SEGMENTATION_TYPE;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.lastId_ = 0;
-    cloneAnalysisData->cloneRestoreAnalysisTotal_.pageSize_ = PAGE_SIZE;
+    cloneAnalysisData->cloneRestoreAnalysisTotal_.pageSize_ = 200;
 
     cloneAnalysisData->cloneRestoreAnalysisTotal_.GetInfos(photoInfoMap);
     cloneAnalysisData->GetAnalysisDataInfo();
@@ -3489,7 +3489,7 @@ HWTEST_F(MediaLibraryBackupCloneTest, medialibrary_backup_clone_analysis_data_te
     cloneAnalysisData->cloneRestoreAnalysisTotal_.mediaRdb_ = cloneSource.cloneStorePtr_;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.type_ = SEGMENTATION_TYPE;
     cloneAnalysisData->cloneRestoreAnalysisTotal_.lastId_ = 0;
-    cloneAnalysisData->cloneRestoreAnalysisTotal_.pageSize_ = PAGE_SIZE;
+    cloneAnalysisData->cloneRestoreAnalysisTotal_.pageSize_ = 200;
 
     cloneAnalysisData->cloneRestoreAnalysisTotal_.GetInfos(photoInfoMap);
     cloneAnalysisData->GetAnalysisDataInfo();

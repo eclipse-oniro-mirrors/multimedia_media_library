@@ -119,6 +119,22 @@ bool SearchIndexClone::ReverseClone()
     return true;
 }
 
+bool SearchIndexClone::ReverseClone()
+{
+    int64_t start = MediaFileUtils::UTCTimeMilliSeconds();
+
+    if (!QueryAndInsertSourceRecords()) {
+        MEDIA_ERR_LOG("ReverseClone: Failed to query and insert source records");
+        totalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
+        return false;
+    }
+
+    totalTimeCost_ = MediaFileUtils::UTCTimeMilliSeconds() - start;
+    MEDIA_INFO_LOG("SearchIndexClone::ReverseClone completed. Migrated %{public}lld records. "
+        "Total time: %{public}lld ms", (long long)migratedCount_, (long long)totalTimeCost_);
+    return true;
+}
+
 std::vector<AnalysisSearchIndexTbl> SearchIndexClone::ProcessSearchIndexTbls(
     const std::vector<AnalysisSearchIndexTbl>& searchIndexTbls)
 {

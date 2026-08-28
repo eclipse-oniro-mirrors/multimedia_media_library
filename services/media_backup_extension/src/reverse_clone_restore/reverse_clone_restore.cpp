@@ -4642,6 +4642,111 @@ void ReverseCloneRestore::ProcessNewPhotosForCloudFailedOffsets(int32_t isRelate
     MEDIA_INFO_LOG("ProcessNewPhotosForCloudFailedOffsets: end, processed %{public}zu failed batches", vectorLen);
 }
 
+void ReverseCloneRestore::InheritManualCover()
+{
+    MEDIA_INFO_LOG("ReverseCloneRestore: InheritManualCover called");
+    CHECK_AND_RETURN_LOG(sourceRdb_ != nullptr, "sourceRdb_ is nullptr");
+    CHECK_AND_RETURN_LOG(destRdb_ != nullptr, "destRdb_ is nullptr");
+
+    // 从 sourceRdb_（新机数据库）查询所有手动设置封面的相册
+    std::string querySql = "SELECT album_id, cover_uri, cover_uri_source, cover_cloud_id"
+                           " FROM PhotoAlbum WHERE cover_uri_source > 0";
+    auto resultSet = BackupDatabaseUtils::QuerySql(sourceRdb_, querySql, {});
+    CHECK_AND_RETURN_LOG(resultSet != nullptr, "Query resultSql is null.");
+
+    vector<AlbumCoverInfo> albumCoverInfos;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        AlbumCoverInfo albumCoverInfo;
+        int32_t albumId = GetInt32Val(PhotoAlbumColumns::ALBUM_ID, resultSet);
+        string coverUri = GetStringVal(PhotoAlbumColumns::ALBUM_COVER_URI, resultSet);
+        int32_t coverUriSource = GetInt32Val(PhotoAlbumColumns::COVER_URI_SOURCE, resultSet);
+        string coverCloudId = GetStringVal(PhotoAlbumColumns::COVER_CLOUD_ID, resultSet);
+
+        albumCoverInfo.albumId = albumId;
+        albumCoverInfo.coverUri = coverUri;
+        albumCoverInfo.coverUriSource = coverUriSource;
+        albumCoverInfo.coverCloudId = coverCloudId;
+        albumCoverInfos.emplace_back(albumCoverInfo);
+    }
+    resultSet->Close();
+
+    MEDIA_INFO_LOG("InheritManualCover: Found %{public}zu albums with manual cover", albumCoverInfos.size());
+
+    // 更新 destRdb_（旧机数据库）中对应相册的封面信息
+    for (auto &albumCoverInfo : albumCoverInfos) {
+        int32_t changeRows = 0;
+        std::unique_ptr<NativeRdb::AbsRdbPredicates> predicates =
+            make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
+        predicates->EqualTo(PhotoAlbumColumns::ALBUM_ID, albumCoverInfo.albumId);
+        NativeRdb::ValuesBucket updateBucket;
+        updateBucket.PutInt(PhotoAlbumColumns::COVER_URI_SOURCE, albumCoverInfo.coverUriSource);
+        updateBucket.PutString(PhotoAlbumColumns::ALBUM_COVER_URI, albumCoverInfo.coverUri);
+        updateBucket.PutString(PhotoAlbumColumns::COVER_CLOUD_ID, albumCoverInfo.coverCloudId);
+        BackupDatabaseUtils::Update(destRdb_, changeRows, updateBucket, predicates);
+        if (changeRows != 1) {
+            MEDIA_ERR_LOG(
+                "InheritManualCover: update failed for albumId=%{public}d, expected count 1, but got %{public}d",
+                albumCoverInfo.albumId, changeRows);
+            AppendErrorInfo("InheritManualCover failed: " + to_string(albumCoverInfo.albumId));
+        }
+    }
+
+    MEDIA_INFO_LOG("InheritManualCover: Completed");
+}
+
+void ReverseCloneRestore::CleanPackageNameForEmptyBundleNameAlbums()
+{
+    MEDIA_INFO_LOG("CleanPackageNameForEmptyBundleNameAlbums: Starting");
+    
+    // 查询 type=2048 (SOURCE) 和 type=0 (USER) 且 bundle_name 为空的相册
+    string querySql = "SELECT album_id FROM " + PhotoAlbumColumns::TABLE +
+                      " WHERE (album_type = 2048 OR album_type = 0) " +
+                      " AND (bundle_name IS NULL OR bundle_name = '')";
+    auto resultSet = BackupDatabaseUtils::QuerySql(destRdb_, querySql, {});
+    if (resultSet == nullptr) {
+        MEDIA_ERR_LOG("CleanPackageNameForEmptyBundleNameAlbums: Query failed");
+        return;
+    }
+
+    vector<int32_t> emptyBundleNameAlbumIds;
+    while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        int32_t albumId = 0;
+        resultSet->GetInt(0, albumId);
+        if (albumId > 0) {
+            emptyBundleNameAlbumIds.push_back(albumId);
+        }
+    }
+    resultSet->Close();
+
+    if (emptyBundleNameAlbumIds.empty()) {
+        MEDIA_INFO_LOG("CleanPackageNameForEmptyBundleNameAlbums: No albums with empty bundle_name found");
+        return;
+    }
+
+    MEDIA_INFO_LOG("CleanPackageNameForEmptyBundleNameAlbums: Found %{public}zu albums with empty bundle_name",
+                   emptyBundleNameAlbumIds.size());
+
+    // 更新这些相册中的照片，清空 package_name、owner_appid、owner_package
+    string updateSql = "UPDATE Photos SET package_name = '', owner_appid = '', owner_package = '' "
+                      "WHERE owner_album_id IN (";
+    for (size_t i = 0; i < emptyBundleNameAlbumIds.size(); i++) {
+        if (i > 0) {
+            updateSql += ",";
+        }
+        updateSql += to_string(emptyBundleNameAlbumIds[i]);
+    }
+    updateSql += ");";
+
+    auto ret = destRdb_->ExecuteSql(updateSql);
+    if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("CleanPackageNameForEmptyBundleNameAlbums: Update failed, ret=%{public}d", ret);
+        return;
+    }
+
+    MEDIA_INFO_LOG("CleanPackageNameForEmptyBundleNameAlbums: Updated photos for %{public}zu albums",
+                   emptyBundleNameAlbumIds.size());
+}
+
 void ReverseCloneRestore::UpdateSourceOrUserAlbumUploadStatus(const int32_t destAlbumId, const AlbumInfo &albumInfo)
 {
     if (IsCloudRestoreSatisfied()) {

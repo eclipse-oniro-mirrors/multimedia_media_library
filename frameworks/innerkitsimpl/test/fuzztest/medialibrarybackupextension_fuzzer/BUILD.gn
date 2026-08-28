@@ -40,6 +40,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/dup_sim",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/group_photo_album",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/video_ringtone_processor",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/reverse_clone_restore",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/include/utils",
 
   ]
@@ -110,11 +111,19 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/gallery_media_count_statistic.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/external_files_count_statistic.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/report/photos_count_statistic.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_candidate_resolver.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_executor.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_service.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_plan_builder.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_kvstore_executor.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_helper.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_backup_extension/src/geo_knowledge/clone_restore_geo_base.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_status_notify_vo.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/anco_reverse_clone_adapter.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_album.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_base.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/pet_album_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
-
   ]
 
   source_ipc_client = []

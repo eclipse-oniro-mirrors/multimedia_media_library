@@ -508,7 +508,7 @@ bool MediaFileUtils::DeleteDir(const string &dirName)
     return errRet;
 }
 
-bool MediaFileUtils::CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile)
+bool MediaFileUtils::CopyFileAndDelSrc(const std::string &srcFile, const std::string &destFile, bool skipCheckPermit)
 {
     bool fileExist = IsFileExists(destFile);
     if (fileExist) {
@@ -518,7 +518,7 @@ bool MediaFileUtils::CopyFileAndDelSrc(const std::string &srcFile, const std::st
         CHECK_AND_RETURN_RET_LOG(DeleteFile(destFile), false, "delete destFile:%{private}s error", destFile.c_str());
     }
 
-    if (CopyFileUtil(srcFile, destFile)) {
+    if (CopyFileUtil(srcFile, destFile, skipCheckPermit)) {
         CHECK_AND_PRINT_LOG(DeleteFile(srcFile), "delete srcFile:%{private}s failed", srcFile.c_str());
         CHECK_AND_PRINT_LOG(DeleteFile(destFile + TMP_SUFFIX), "delete tmpFile:%{private}s failed", srcFile.c_str());
         return true;
@@ -822,7 +822,7 @@ static bool SendFileWithRetry(int32_t dest, int32_t source, off_t totalSize, off
     return true;
 }
 
-bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath)
+bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath, bool skipCheckPermit)
 {
     struct stat fst{};
     bool errCode = false;
@@ -862,6 +862,10 @@ bool MediaFileUtils::CopyFileUtil(const string &filePath, const string &newPath)
 
     if (copied == total_size) {
         errCode = true;
+        if (skipCheckPermit) {
+            MEDIA_ERR_LOG("Open failed for destination file %{public}d", errno);
+            errCode = true;
+        }
     }
 
     return errCode;

@@ -48,6 +48,8 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/ocr",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/report",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/restore",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/reverse_clone_restore",
+    "${MEDIALIB_SERVICES_PATH}/media_kv_db/include",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/include/utils",
     "${MEDIALIB_NEW_SERVICES_PATH}/media_scanner/src/scanner/include",
     "${MEDIALIB_UTILS_PATH}/include",
@@ -66,6 +68,7 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_callback_stub.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_helper.cpp",
     "${MEDIALIB_BUSINESS_PATH}/media_analysis_extension/src/media_analysis_proxy.cpp",
+    "${MEDIALIB_BUSINESS_PATH}/media_albums_manager/src/vo/clone_status_notify_vo.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/beauty_score_clone.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/portrait_nickname_clone.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_album.cpp",
@@ -145,6 +148,8 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "./src/medialibrary_backup_clone_test3.cpp",
     "./src/group_photo/clone_group_photo_source.cpp",
     "./src/group_photo/clone_restore_group_photo_test.cpp",
+    "./src/anco_reverse_clone_adapter_test.cpp",
+    "./src/reverse_clone_resource_plan_test.cpp",
     "./src/clone_restore_cloud_asset_coverage_test.cpp",
     "./src/clone_restore_additional_coverage_test.cpp",
     "./src/clone_restore_table_status_branch_test.cpp",
@@ -161,6 +166,28 @@ ohos_unittest("medialibrary_backup_clone_test") {
     "./src/analysis_album/video_face_clone_test.cpp",
     "./src/analysis_album/search_index_clone_test.cpp",
   ]
+
+  reverse_restore_sources = [
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_restore.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/cloud_data_cleaner.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/file_id_migrator.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/album_asset_absorb.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/table_data_adapter.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/classify/clone_restore_classify_base.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/classify/clone_reverse_restore_classify.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/clone_restore_geo_base.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/geo_knowledge/clone_reverse_restore_geo.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/analysis_album/beauty_score_clone_base.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_candidate_resolver.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_executor.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_service.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_plan_builder.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_kvstore_executor.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/reverse_clone_resource_inherit_helper.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/reverse_clone_restore/anco_reverse_clone_adapter.cpp",
+  ]
+
+  sources += reverse_restore_sources
 
   source_ipc_client = []
 

@@ -103,6 +103,7 @@
 #include "critical_label_task_queue.h"
 #endif
 #include "medialibrary_rdb_operations.h"
+#include "media_cloud_dentry_batch_task.h"
 
 using namespace OHOS::AAFwk;
 using namespace OHOS::NetManagerStandard;
@@ -1182,6 +1183,7 @@ void MedialibrarySubscriber::DoBackgroundOperation()
     std::shared_lock<std::shared_mutex> sharedLock(MedialibrarySubscriber::backgroundTaskMutex_);
     bool cond = (!backgroundDelayTask_.IsDelayTaskTimeOut() || !currentStatus_);
     CHECK_AND_RETURN_LOG(!cond, "The conditions for DoBackgroundOperation are not met, will return.");
+    Background::MediaCloudDentryBatchTask::CheckDentryCreation();
     PeriodicAnalyzePhotosData();
     Background::LcdDownloadTask::HandleLcdDownload();
 #ifdef META_RECOVERY_SUPPORT
