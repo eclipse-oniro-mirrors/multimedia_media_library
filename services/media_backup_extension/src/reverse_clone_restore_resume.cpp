@@ -275,7 +275,7 @@ bool ReverseCloneRestoreResume::ResumeFinish()
         MEDIA_ERR_LOG("Failed to init ReverseCloneRestore");
         return false;
     }
-    // 初始化 sourceRdb_ 和 destRdb_
+    // 初始化 mediaRdb_ 和 mediaLibraryRdb_
     if (!reverseRestore->InitDatabasesForResume()) {
         MEDIA_ERR_LOG("Failed to init databases for resume");
         return false;

@@ -59,6 +59,8 @@ public:
     static int32_t UpdateOrInsertAllPhotosAlbumUpload();
     EXPORT static int32_t UpdateOrInsertCloneSearchStatus();
     EXPORT static void ComfirmUploadStatus();
+    EXPORT static int32_t SetCloseDatabaseStatus(const std::string& value);
+    EXPORT static int32_t GetCloseDatabaseStatus(std::string& value);
 
 private:
     static int32_t QueryParamInSettingData(const std::string &key, std::string &value);

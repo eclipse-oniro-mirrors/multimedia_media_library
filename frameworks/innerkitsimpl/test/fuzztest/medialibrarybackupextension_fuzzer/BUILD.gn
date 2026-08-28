@@ -124,6 +124,7 @@ ohos_fuzztest("MediaLibraryBackupExtensionFuzzTest") {
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/clone_restore_pet_base.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/pet_album/pet_album_utils.cpp",
     "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/utils/backup_audit_utils.cpp",
+    "${MEDIALIB_ROOT_SERVICES_PATH}/media_backup_extension/src/highlight/play_info_mapper.cpp",
   ]
 
   source_ipc_client = []

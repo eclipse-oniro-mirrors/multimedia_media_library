@@ -27,6 +27,7 @@
 #include "backup_const.h"
 #include "clone_restore_cv_analysis.h"
 #include "clone_restore_highlight.h"
+#include "play_info_mapper.h"
 #include "clone_restore.h"
 #include "media_column.h"
 #include "media_log.h"
@@ -669,10 +670,12 @@ HWTEST_F(CloneRestoreHighlightTest, clone_restore_cv_analysis_test_006, TestSize
     std::string oldEffectVideoUri1 = newPlayInfo1["effectline"]["effectline"][1]["effectVideoUri"];
     EXPECT_TRUE(MediaStringUtils::StartsWith(oldEffectVideoUri0, PHOTO_URI_PREFIX));
     EXPECT_TRUE(MediaStringUtils::StartsWith(oldEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX));
-    cloneRestoreCVAnalysis->ParseEffectline(newPlayInfo1, restoreHighlight);
+    std::string playInfoStr1 = newPlayInfo1.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    std::string mapped1 = cloneRestoreCVAnalysis->ParsePlayInfo(playInfoStr1, restoreHighlight);
+    nlohmann::json newPlayInfo1Mapped = nlohmann::json::parse(mapped1, nullptr, false);
     MEDIA_INFO_LOG("newPlayInfo1: %{public}s",
-        newPlayInfo1.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace).c_str());
-    std::string newEffectVideoUri1 = newPlayInfo1["effectline"]["effectline"][1]["effectVideoUri"];
+        newPlayInfo1Mapped.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace).c_str());
+    std::string newEffectVideoUri1 = newPlayInfo1Mapped["effectline"]["effectline"][1]["effectVideoUri"];
     // invalid effectVideoUri
     EXPECT_FALSE(MediaStringUtils::StartsWith(newEffectVideoUri1, HIGHLIGHT_ASSET_URI_PREFIX));
 
@@ -687,8 +690,9 @@ HWTEST_F(CloneRestoreHighlightTest, clone_restore_cv_analysis_test_006, TestSize
         ]
     })";
     nlohmann::json newPlayInfo2 = nlohmann::json::parse(oldPlayInfo2, nullptr, false);
-    cloneRestoreCVAnalysis->ParseTimeline(newPlayInfo2, restoreHighlight);
-    cloneRestoreCVAnalysis->ParseEffectline(newPlayInfo2, restoreHighlight);
+    std::string playInfoStr2 = newPlayInfo2.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
+    std::string mapped2 = cloneRestoreCVAnalysis->ParsePlayInfo(playInfoStr2, restoreHighlight);
+    newPlayInfo2 = nlohmann::json::parse(mapped2, nullptr, false);
     EXPECT_TRUE(newPlayInfo2["effectline"]["effectline"][0].contains("fileId"));
     EXPECT_TRUE(newPlayInfo2["effectline"]["effectline"][0].contains("fileUri"));
 

@@ -105,7 +105,7 @@ public:
         bool disable, bool isAsyncRefreshAlbum);
     int32_t ModifyHiddenAlbumDefaultCoverOrder(const std::vector<DefaultCoverOrderInfo> &coverOrderInfos,
         bool disable, bool isAsyncRefreshAlbum);
-    void ReportCloneDbStatus(bool isReverseClone = false);
+    void ReportCloneDbStatus(int32_t reverseCloneStatus);
 
 private:
     int32_t SetPortraitAlbumName(const ChangeRequestSetAlbumNameDto& dto);

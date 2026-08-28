@@ -220,7 +220,7 @@ protected:
     void SetRestoreFailedAndErrorCount(uint64_t &failed, uint64_t &error) override;
     int32_t GetNoNeedMigrateCount() override;
     void GetAccountValid() override;
-    int32_t GetHighlightCloudMediaCnt();
+    int32_t GetHighlightCloudMediaCnt(std::shared_ptr<NativeRdb::RdbStore> rdbStore);
     void RestoreHighlightAlbums();
     void AddToPhotosFailedOffsets(int32_t offset);
     void ProcessPhotosBatchFailedOffsets(int32_t isRelatedToPhotoMap = 0);
@@ -315,6 +315,7 @@ protected:
     std::atomic<uint64_t> migrateDatabaseAlbumNumber_{0};
     std::atomic<uint64_t> migrateDatabaseMapNumber_{0};
     std::shared_ptr<NativeRdb::RdbStore> mediaRdb_;
+    std::unique_ptr<NativeRdb::RdbStoreConfig> mediaRdbConfig_;
     std::string filePath_;
     std::string dbPath_;
     std::string tmpDbPath_;

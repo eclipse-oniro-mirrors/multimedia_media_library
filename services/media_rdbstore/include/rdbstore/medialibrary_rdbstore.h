@@ -16,6 +16,7 @@
 #ifndef OHOS_MEDIALIBRARY_RDBSTORE_H
 #define OHOS_MEDIALIBRARY_RDBSTORE_H
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 
@@ -44,8 +45,11 @@ public:
     EXPORT virtual int32_t Init() override;
     EXPORT int32_t Init(const NativeRdb::RdbStoreConfig &config, int version, NativeRdb::RdbOpenCallback &openCallback);
     EXPORT virtual void Stop() override;
+    EXPORT int32_t Close(int32_t timeoutMs);
     EXPORT static bool CheckRdbStore();
     EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRaw();
+    EXPORT static std::shared_ptr<NativeRdb::RdbStore> GetRawChecked();
+    EXPORT const NativeRdb::RdbStoreConfig &GetConfig() const;
 
     // Insert
     EXPORT virtual int32_t Insert(MediaLibraryCommand &cmd, int64_t &rowId) override;
@@ -99,7 +103,16 @@ public:
         const std::vector<NativeRdb::ValueObject> &args = {});
 
     // ExecuteSql
-    EXPORT int32_t ExecuteSql(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args = {}) override;
+    EXPORT int32_t ExecuteSql(const string &sql) override;
+    EXPORT int32_t ExecuteSql(std::string &sql, const std::vector<NativeRdb::ValueObject> &args)
+    {
+        const int32_t E_HAS_DB_ERROR = -222;
+        auto store = MediaLibraryRdbStore::GetRawChecked();
+        if (store == nullptr) {
+            return E_HAS_DB_ERROR;
+        }
+        return store->ExecuteSql(sql, args);
+    }
     EXPORT std::pair<int32_t, NativeRdb::Results> ExecuteSqlWithReturn(const std::string &sql,
         const std::vector<NativeRdb::ValueObject> &args, const std::string &returningField);
 

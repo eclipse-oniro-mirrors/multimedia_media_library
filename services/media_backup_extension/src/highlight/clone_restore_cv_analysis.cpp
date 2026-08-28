@@ -21,43 +21,28 @@
 #include "backup_file_utils.h"
 #include "media_file_utils.h"
 #include "media_log.h"
+#include "play_info_mapper.h"
 #include "upgrade_restore_task_report.h"
 #include "media_string_utils.h"
 
 namespace OHOS::Media {
 const int32_t PAGE_SIZE = 200;
-const std::vector<std::string> EFFECTLINE_ID = { "fileId", "prefileId" };
-const std::vector<std::string> EFFECTLINE_URI = { "fileUri", "prefileUri" };
-const std::string EFFECTLINE_TYPE_HITCHCOCK = "TYPE_HITCHCOCK";
-const std::string EFFECTLINE_TYPE_UAV = "TYPE_UAV";
-const std::string EFFECTLINE_TYPE_HILIGHT_SLOW = "TYPE_HILIGHT_SLOW";
-const std::string EFFECTLINE_TYPE_HILIGHT_CLIP = "TYPE_HILIGHT_CLIP";
-const std::string EFFECTLINE_TYPE_MASK1 = "TYPE_MASK1";
-const std::string EFFECTLINE_TYPE_MASK2 = "TYPE_MASK2";
 const std::string HIGHLIGHT_ASSET_URI_PREFIX = "file://media/highlight/video/";
 const std::string HIGHLIGHT_ASSET_URI_SUFFIX = "?oper=highlight";
 const std::string PHOTO_URI_PREFIX = "file://media/Photo/";
 const std::string GARBLE_DST_PATH = "/storage/media/local/files";
 const std::string RESTORE_STATUS_SUCCESS = "1";
 
-template<typename Key, typename Value>
-Value GetValueFromMap(const std::unordered_map<Key, Value> &map, const Key &key, const Value &defaultValue = Value())
-{
-    auto it = map.find(key);
-    CHECK_AND_RETURN_RET(it != map.end(), defaultValue);
-    return it->second;
-}
-
 void CloneRestoreCVAnalysis::Init(int32_t sceneCode, const std::string &taskId,
     std::shared_ptr<NativeRdb::RdbStore> mediaLibraryRdb,
-    std::shared_ptr<NativeRdb::RdbStore> mediaRdb, const std::string &backupRestoreDir)
+    std::shared_ptr<NativeRdb::RdbStore> mediaRdb, const std::string &videoPath)
 {
     sceneCode_ = sceneCode;
     taskId_ = taskId;
     mediaLibraryRdb_ = mediaLibraryRdb;
     mediaRdb_ = mediaRdb;
 
-    assetPath_ = backupRestoreDir + "video/";
+    assetPath_ = videoPath;
     isHighlightVideoDirExist_ = MediaFileUtils::IsDirectory(assetPath_);
     MEDIA_INFO_LOG("/highlight/video/ source dir %{public}s.", isHighlightVideoDirExist_ ? "exist" : "don't exist");
     garblePath_ = GARBLE_DST_PATH;
@@ -212,132 +197,26 @@ int32_t CloneRestoreCVAnalysis::BatchInsertWithRetry(const std::string &tableNam
 
 std::string CloneRestoreCVAnalysis::ParsePlayInfo(const std::string &oldPlayInfo, CloneRestoreHighlight &cloneHighlight)
 {
-    nlohmann::json newPlayInfo = nlohmann::json::parse(oldPlayInfo, nullptr, false);
-    CHECK_AND_RETURN_RET_LOG(!newPlayInfo.is_discarded(), cloneHighlight.GetDefaultPlayInfo(),
-        "parse json string failed.");
-    ParseEffectline(newPlayInfo, cloneHighlight);
-    ParseTimeline(newPlayInfo, cloneHighlight);
-    return newPlayInfo.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
-}
-
-void CloneRestoreCVAnalysis::ParseEffectline(nlohmann::json &newPlayInfo, CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(newPlayInfo.contains("effectline") && newPlayInfo["effectline"].is_object() &&
-        newPlayInfo["effectline"].contains("effectline") && newPlayInfo["effectline"]["effectline"].is_array());
-    nlohmann::json &effectlineInfoArray = newPlayInfo["effectline"]["effectline"];
-    for (size_t effectlineIndex = 0; effectlineIndex < effectlineInfoArray.size(); effectlineIndex++) {
-        ProcessEffectVideoUri(effectlineInfoArray, effectlineIndex, cloneHighlight);
-        ProcessTransitionVideoUri(effectlineInfoArray, effectlineIndex, cloneHighlight);
-        ParseEffectlineFileData(effectlineInfoArray, effectlineIndex, cloneHighlight);
-    }
-}
-
-void CloneRestoreCVAnalysis::ProcessEffectVideoUri(nlohmann::json &effectlineInfoArray, size_t effectlineIndex,
-    CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(effectlineInfoArray.is_array() && effectlineIndex < effectlineInfoArray.size());
-
-    nlohmann::json &effectlineInfo = effectlineInfoArray[effectlineIndex];
-    CHECK_AND_RETURN(effectlineInfo.is_object());
-    CHECK_AND_RETURN(effectlineInfo.contains("effectVideoUri") && effectlineInfo["effectVideoUri"].is_string());
-    std::string oldEffectVideoUri = effectlineInfo["effectVideoUri"];
-    if (MediaStringUtils::StartsWith(oldEffectVideoUri, PHOTO_URI_PREFIX)) {
-        effectlineInfo["effectVideoUri"] = GetNewPhotoUriByUri(oldEffectVideoUri, cloneHighlight);
-    } else if (MediaStringUtils::StartsWith(oldEffectVideoUri, HIGHLIGHT_ASSET_URI_PREFIX)) {
-        effectlineInfo["effectVideoUri"] = GetNewEffectVideoUri(oldEffectVideoUri, cloneHighlight);
-    }
-}
-
-void CloneRestoreCVAnalysis::ProcessTransitionVideoUri(nlohmann::json &effectlineInfoArray, size_t effectlineIndex,
-    CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(effectlineInfoArray.is_array() && effectlineIndex < effectlineInfoArray.size());
-
-    nlohmann::json &effectlineInfo = effectlineInfoArray[effectlineIndex];
-    CHECK_AND_RETURN(effectlineInfo.is_object());
-    CHECK_AND_RETURN(effectlineInfo.contains("effect") && effectlineInfo["effect"].is_string() &&
-        effectlineInfo["effect"] == EFFECTLINE_TYPE_MASK2 &&
-        effectlineInfo.contains("transitionVideoUri") && effectlineInfo["transitionVideoUri"].is_string());
-    std::string transVideoUri = GetNewTransitionVideoUri(effectlineInfo["transitionVideoUri"], cloneHighlight);
-    effectlineInfo["transitionVideoUri"] = transVideoUri;
-
-    CHECK_AND_RETURN(effectlineIndex > 0);
-    nlohmann::json &prevEffectlineInfo = effectlineInfoArray[effectlineIndex - 1];
-    CHECK_AND_RETURN(prevEffectlineInfo.is_object());
-    CHECK_AND_RETURN(prevEffectlineInfo.contains("effect") && prevEffectlineInfo["effect"].is_string() &&
-        prevEffectlineInfo["effect"] == EFFECTLINE_TYPE_MASK1 &&
-        prevEffectlineInfo.contains("transitionVideoUri") && prevEffectlineInfo["transitionVideoUri"].is_string());
-    prevEffectlineInfo["transitionVideoUri"] = transVideoUri;
-}
-
-void CloneRestoreCVAnalysis::ParseEffectlineFileData(nlohmann::json &effectlineInfoArray, size_t effectlineIndex,
-    CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(effectlineInfoArray.is_array() && effectlineIndex < effectlineInfoArray.size());
-
-    nlohmann::json &effectlineInfo = effectlineInfoArray[effectlineIndex];
-    ProcessIds(effectlineInfo, cloneHighlight);
-    ProcessUris(effectlineInfo, cloneHighlight);
-}
-
-void CloneRestoreCVAnalysis::ProcessIds(nlohmann::json &effectlineInfo, CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(effectlineInfo.is_object());
-    for (const auto &effectlineId : EFFECTLINE_ID) {
-        CHECK_AND_CONTINUE(effectlineInfo.contains(effectlineId) && effectlineInfo[effectlineId].is_array());
-        for (auto &fileId : effectlineInfo[effectlineId]) {
-            CHECK_AND_CONTINUE(fileId.is_number());
-            fileId = cloneHighlight.GetNewHighlightPhotoId(fileId.get<int32_t>());
+    PlayInfoMapperCallbacks callbacks;
+    callbacks.idMapper = [&cloneHighlight](int32_t oldId) -> int32_t {
+        return cloneHighlight.GetNewHighlightPhotoId(oldId);
+    };
+    callbacks.photoUriMapper = [this, &cloneHighlight](const std::string &uri) -> std::string {
+        return GetNewPhotoUriByUri(uri, cloneHighlight);
+    };
+    callbacks.effectVideoUriMapper = [this, &cloneHighlight](const std::string &uri) -> std::string {
+        if (MediaStringUtils::StartsWith(uri, PHOTO_URI_PREFIX)) {
+            return GetNewPhotoUriByUri(uri, cloneHighlight);
         }
-    }
-}
-
-void CloneRestoreCVAnalysis::ProcessUris(nlohmann::json &effectlineInfo, CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(effectlineInfo.is_object());
-    for (const auto &effectlineUri : EFFECTLINE_URI) {
-        CHECK_AND_CONTINUE(effectlineInfo.contains(effectlineUri) && effectlineInfo[effectlineUri].is_array());
-        for (auto &fileUri : effectlineInfo[effectlineUri]) {
-            CHECK_AND_CONTINUE(fileUri.is_string());
-            fileUri = GetNewPhotoUriByUri(fileUri.get<std::string>(), cloneHighlight);
+        if (MediaStringUtils::StartsWith(uri, HIGHLIGHT_ASSET_URI_PREFIX)) {
+            return GetNewEffectVideoUri(uri, cloneHighlight);
         }
-    }
-}
-
-void CloneRestoreCVAnalysis::ParseTimeline(nlohmann::json &newPlayInfo, CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(newPlayInfo.contains("timeline") && newPlayInfo["timeline"].is_array());
-    for (nlohmann::json &timelineInfo : newPlayInfo["timeline"]) {
-        ProcessTimelineInfo(timelineInfo, cloneHighlight);
-    }
-}
-
-void CloneRestoreCVAnalysis::ProcessTimelineInfo(nlohmann::json &timelineInfo, CloneRestoreHighlight &cloneHighlight)
-{
-    CHECK_AND_RETURN(timelineInfo.is_object());
-    if (timelineInfo.contains("effectVideoUri") && timelineInfo["effectVideoUri"].is_string()) {
-        std::string oldEffectVideoUri = timelineInfo["effectVideoUri"];
-        timelineInfo["effectVideoUri"] = GetValueFromMap(assetUriMap_, oldEffectVideoUri);
-    }
-
-    if (timelineInfo.contains("transitionVideoUri") && timelineInfo["transitionVideoUri"].is_string()) {
-        std::string oldTransVideoUri = timelineInfo["transitionVideoUri"];
-        timelineInfo["transitionVideoUri"] = GetValueFromMap(assetUriMap_, oldTransVideoUri);
-    }
-
-    if (timelineInfo.contains("fileId") && timelineInfo["fileId"].is_array()) {
-        for (auto &fileId : timelineInfo["fileId"]) {
-            CHECK_AND_CONTINUE(fileId.is_number());
-            fileId = cloneHighlight.GetNewHighlightPhotoId(fileId.get<int32_t>());
-        }
-    }
-
-    if (timelineInfo.contains("fileUri") && timelineInfo["fileUri"].is_array()) {
-        for (auto &fileUri : timelineInfo["fileUri"]) {
-            CHECK_AND_CONTINUE(fileUri.is_string());
-            fileUri = GetNewPhotoUriByUri(fileUri.get<std::string>(), cloneHighlight);
-        }
-    }
+        return uri;
+    };
+    callbacks.transitionVideoUriMapper = [this, &cloneHighlight](const std::string &uri) -> std::string {
+        return GetNewTransitionVideoUri(uri, cloneHighlight);
+    };
+    return MapPlayInfo(oldPlayInfo, callbacks, cloneHighlight.GetDefaultPlayInfo());
 }
 
 std::string CloneRestoreCVAnalysis::GetNewEffectVideoUri(const std::string &oldVideoUri,

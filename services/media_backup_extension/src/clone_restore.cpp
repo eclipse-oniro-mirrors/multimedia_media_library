@@ -713,7 +713,7 @@ int32_t CloneRestore::Init(const string &backupRestoreDir, const string &upgrade
     auto context = AbilityRuntime::Context::GetApplicationContext();
     CHECK_AND_RETURN_RET_LOG(context != nullptr, E_FAIL, "Failed to get context");
     int32_t err = BackupDatabaseUtils::InitDbForOldVersion(mediaRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-        dbPath_, CONST_BUNDLE_NAME, true, oldDbVersion_, context->GetArea());
+        dbPath_, CONST_BUNDLE_NAME, true, oldDbVersion_, context->GetArea(), &mediaRdbConfig_);
     CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, E_FAIL, "Init remote medialibrary rdb fail, err = %{public}d", err);
 
     std::string dbSize = "";
@@ -935,13 +935,13 @@ void CloneRestore::RestoreAlbum()
     cloneRestoreGeoDictionary_.RestoreAlbums();
 }
 
-int32_t CloneRestore::GetHighlightCloudMediaCnt()
+int32_t CloneRestore::GetHighlightCloudMediaCnt(std::shared_ptr<NativeRdb::RdbStore> rdbStore)
 {
     const std::string QUERY_SQL = "SELECT COUNT(1) AS count FROM AnalysisAlbum AS a "
         "INNER JOIN AnalysisPhotoMap AS m ON a.album_id = m.map_album "
         "INNER JOIN Photos AS p ON p.file_id = m.map_asset "
         "WHERE a.album_subtype IN (4104, 4105) AND p.position = 2";
-    std::shared_ptr<NativeRdb::ResultSet> resultSet = BackupDatabaseUtils::QuerySql(this->mediaRdb_, QUERY_SQL, {});
+    std::shared_ptr<NativeRdb::ResultSet> resultSet = BackupDatabaseUtils::QuerySql(rdbStore, QUERY_SQL, {});
     bool cond = (resultSet == nullptr);
     CHECK_AND_RETURN_RET_LOG(!cond, -1, "query count of highlight cloud media failed.");
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
@@ -956,7 +956,7 @@ int32_t CloneRestore::GetHighlightCloudMediaCnt()
 
 void CloneRestore::RestoreHighlightAlbums()
 {
-    int32_t highlightCloudMediaCnt = GetHighlightCloudMediaCnt();
+    int32_t highlightCloudMediaCnt = GetHighlightCloudMediaCnt(this->mediaRdb_);
     UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_)
         .Report("CLONE_RESTORE_HIGHLIGHT_CHECK", "",
             "highlightCloudMediaCnt: " + std::to_string(highlightCloudMediaCnt) +
@@ -970,7 +970,8 @@ void CloneRestore::RestoreHighlightAlbums()
     cloneRestoreHighlight.Restore();
 
     CloneRestoreCVAnalysis cloneRestoreCVAnalysis;
-    cloneRestoreCVAnalysis.Init(sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, backupRestoreDir_);
+    std::string videoPath = backupRestoreDir_ + "/storage/media/local/files/highlight/video/";
+    cloneRestoreCVAnalysis.Init(sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, videoPath);
     cloneRestoreCVAnalysis.RestoreAlbums(cloneRestoreHighlight);
     StoreHighlightAlbumMappings(cloneRestoreHighlight);
 

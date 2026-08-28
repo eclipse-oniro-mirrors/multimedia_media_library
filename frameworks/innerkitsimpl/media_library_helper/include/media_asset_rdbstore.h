@@ -64,6 +64,7 @@ private:
     std::shared_ptr<NativeRdb::RdbStore> rdbStore_ {nullptr};
     int64_t openedRdbTimeMs_ {0};
     std::mutex mutex_;
+    NativeRdb::RdbStoreConfig config_ {""};
 };
 
 class COMPILE_HIDDEN MediaLibraryAssetCallBack : public NativeRdb::RdbOpenCallback {

@@ -53,10 +53,12 @@ public:
 public:
     static int32_t InitDb(std::shared_ptr<NativeRdb::RdbStore> &rdbStore, const std::string &dbName,
         const std::string &dbPath, const std::string &bundleName, bool isMediaLibary,
-            int32_t area = DEFAULT_AREA_VERSION, bool needSetSearchable = true);
+            int32_t area = DEFAULT_AREA_VERSION, bool needSetSearchable = true,
+            std::unique_ptr<NativeRdb::RdbStoreConfig> *outConfig = nullptr);
     static int32_t InitDbForOldVersion(std::shared_ptr<NativeRdb::RdbStore> &rdbStore,
         const std::string &dbName, const std::string &dbPath, const std::string &bundleName,
-        bool isMediaLibrary, int32_t& oldVersion, int32_t area = DEFAULT_AREA_VERSION);
+        bool isMediaLibrary, int32_t& oldVersion, int32_t area = DEFAULT_AREA_VERSION,
+            std::unique_ptr<NativeRdb::RdbStoreConfig> *outConfig = nullptr);
     static int32_t InitReadOnlyRdb(std::shared_ptr<NativeRdb::RdbStore> &rdbStore, const std::string &dbName,
         const std::string &dbPath, const std::string &bundleName);
     static int32_t QueryInt(std::shared_ptr<NativeRdb::RdbStore> rdbStore, const std::string &sql,

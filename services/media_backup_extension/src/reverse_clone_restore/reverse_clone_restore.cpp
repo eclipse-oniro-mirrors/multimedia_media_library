@@ -123,6 +123,27 @@ struct PathStat {
     }
 };
 
+static void CloseRdbStore(std::shared_ptr<NativeRdb::RdbStore> &store, int32_t timeOut = MILLIS_PER_SEC,
+    const NativeRdb::RdbStoreConfig *config = nullptr)
+{
+    if (store == nullptr) {
+        MEDIA_ERR_LOG("store is nullptr");
+        return;
+    }
+    NativeRdb::RdbStore::ReleaseOption option;
+    option.waitTime = std::max(MILLIS_PER_SEC, timeOut);
+    option.clearMetadata = true;
+    int32_t ret = store->Release(option);
+    std::atomic_store(&store, std::shared_ptr<NativeRdb::RdbStore>());
+    if (ret == NativeRdb::E_OK && config != nullptr) {
+        MEDIA_INFO_LOG("CloseRdbStore: Release succeeded");
+        NativeRdb::RdbHelper::ClearStoreCache(*config);
+    } else if (ret != NativeRdb::E_OK) {
+        MEDIA_ERR_LOG("CloseRdbStore: Release failed, ret=%{public}d", ret);
+    }
+    std::atomic_store(&store, std::shared_ptr<NativeRdb::RdbStore>());
+}
+
 static void LogPathStat(const char *label, const PathStat &ps)
 {
     if (!ps.ok) {
@@ -217,8 +238,15 @@ static void DiagnoseRenameFailure(const std::string &src, const std::string &dst
     LogPathStat("dst", dstPs);
     CheckTypeConflict(srcPs, dstPs);
     CheckNonEmptyDir(dstPs, dst);
-    auto dstParent = dst.substr(0, dst.find_last_of('/'));
-    auto srcParent = src.substr(0, src.find_last_of('/'));
+    size_t dstSlashPos = dst.find_last_of('/');
+    size_t srcSlashPos = src.find_last_of('/');
+    if (dstSlashPos == std::string::npos || srcSlashPos == std::string::npos) {
+        MEDIA_ERR_LOG("DiagnoseRename: invalid path, no slash found, src=%{public}s, dst=%{public}s",
+            src.c_str(), dst.c_str());
+        return;
+    }
+    auto dstParent = dst.substr(0, dstSlashPos);
+    auto srcParent = src.substr(0, srcSlashPos);
     PathStat dstParentPs(dstParent);
     PathStat srcParentPs(srcParent);
     LogPathStat("dstParent", dstParentPs);
@@ -1257,8 +1285,7 @@ bool ReverseCloneRestore::PrepareOldDb(const std::string &backupRestorePath,
     const std::string backupOldDbTemp = "/data/storage/el2/database/rdb/old_media_library_temp.db";
 
     MEDIA_INFO_LOG("PrepareOldDb: close all db handles");
-    mediaRdb_.reset();
-    mediaRdb_ = nullptr;
+    CloseRdbStore(mediaRdb_, MILLIS_PER_SEC, mediaRdbConfig_.get());
 
     // 1. 创建旧 db 临时副本（用于升级和后续处理）
     if (!EnsureDbDirSpace(STAGE_PREPARE_OLD_DB)) {
@@ -1283,7 +1310,8 @@ bool ReverseCloneRestore::PrepareOldDb(const std::string &backupRestorePath,
     CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "PrepareOldDb: get context failed");
 
     int32_t err = BackupDatabaseUtils::InitDb(oldDbStore, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-                                              backupOldDbTemp, CONST_BUNDLE_NAME, true, context->GetArea(), false);
+                                              backupOldDbTemp, CONST_BUNDLE_NAME, true, context->GetArea(), false,
+                                              &oldDbTempConfig_);
     if (oldDbStore == nullptr) {
         MEDIA_ERR_LOG("PrepareOldDb: init old db temp store failed, err=%{public}d", err);
         reverseRestoreReportInfo_.reverseChangeErrorInfo = "temp old database init failed";
@@ -1324,32 +1352,46 @@ bool ReverseCloneRestore::WaitForMainCloseDataBase()
     return true;
 }
 
+bool ReverseCloneRestore::WaitForMainCloseDataBase()
+{
+    int32_t REVERSE_CLOSE_DATABASE = 1;
+    NotifyDbStatusForClone(REVERSE_CLOSE_DATABASE);
+    // 等待媒体库主进程关库完成（SettingsData key=media_reverse_backup_close_database value=1）
+    constexpr int32_t POLL_INTERVAL_MS = 100;
+    constexpr int32_t POLL_TIMEOUT_MS = 150000; // 2.5 minutes
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(POLL_TIMEOUT_MS);
+    bool dbReOpen = false;
+    while (std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(POLL_INTERVAL_MS));
+        std::string value;
+        int32_t ret = SettingsDataManager::GetCloseDatabaseStatus(value);
+        const std::string CLOSE_READY = "0";
+        if (ret == E_OK && value == CLOSE_READY) {
+            dbReOpen = true;
+            MEDIA_INFO_LOG("FinalizeDatabaseSwap: database close confirmed");
+            break;
+        }
+        MEDIA_INFO_LOG("FinalizeDatabaseSwap: database close not confirmed");
+    }
+    if (!dbReOpen) {
+        MEDIA_ERR_LOG("FinalizeDatabaseSwap: wait for database close timeout");
+        return false;
+    }
+    return true;
+}
+
 bool ReverseCloneRestore::BackupAndRenameNewDb()
 {
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
     const std::string newDbPath = "/data/storage/el2/database/rdb/media_library.db";
     const std::string newDbSourcePath = "/data/storage/el2/database/rdb/media_library_source.db";
 
-    auto context = AbilityRuntime::Context::GetApplicationContext();
-    CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "BackupAndRenameNewDb: get context failed");
-
-    // 1. 打开新 db（当前正使用的主库）
-    std::shared_ptr<NativeRdb::RdbStore> newDbStore;
-    int32_t err = BackupDatabaseUtils::InitDb(newDbStore, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-                                              newDbPath, CONST_BUNDLE_NAME, true, context->GetArea(), false);
-    if (newDbStore == nullptr) {
-        MEDIA_ERR_LOG("BackupAndRenameNewDb: open new db failed, err=%{public}d", err);
-        return false;
-    }
-
-    // 2. 执行 Backup（不指定特殊名称，使用默认方式生成 slave 双写文件）
+    // 1. 执行 Backup（不指定特殊名称，使用默认方式生成 slave 双写文件）
     if (!EnsureDbDirSpace(STAGE_BACKUP_NEW_DB)) {
         return false;
     }
     MEDIA_INFO_LOG("BackupAndRenameNewDb: start backup new db");
-    err = newDbStore->Backup("", {}, false);
-    newDbStore.reset(); // 关闭句柄，后续通过文件操作完成
-    newDbStore = nullptr;
+    int32_t err = mediaLibraryRdb_->Backup("", {}, false);
     if (err != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("BackupAndRenameNewDb: backup failed, err=%{public}d", err);
         return false;
@@ -1362,6 +1404,10 @@ bool ReverseCloneRestore::BackupAndRenameNewDb()
         reverseRestoreReportInfo_.reverseChangeErrorInfo = "currentMaxFileId exceeds reserved range";
         return false;
     }
+
+    // 数据库转正前，关闭备份进程全部连接
+    CloseRdbStore(mediaLibraryRdb_, MILLIS_PER_SEC, mediaLibraryRdbConfig_.get());
+    CloseRdbStore(mediaRdb_, MILLIS_PER_SEC, mediaRdbConfig_.get());
     CHECK_AND_RETURN_RET_LOG(WaitForMainCloseDataBase(), false, "BackupAndRenameNewDb main process close db failed");
 
     // 3. 重命名新 db 主文件到 source
@@ -1525,10 +1571,8 @@ bool ReverseCloneRestore::RollbackReverseRestore(bool isEarlyStage)
     // Stop the background thread
     StopReverseRestoreStatusUpdateThread();
     // 关闭可能已打开的句柄
-    destRdb_.reset();
-    sourceRdb_.reset();
-    mediaLibraryRdb_.reset();
-    mediaRdb_.reset();
+    CloseRdbStore(mediaLibraryRdb_, MILLIS_PER_SEC, mediaLibraryRdbConfig_.get());
+    CloseRdbStore(mediaRdb_, MILLIS_PER_SEC, mediaRdbConfig_.get());
 
     const std::string newDbPath = "/data/storage/el2/database/rdb/media_library.db";
     const std::string newDbSourcePath = "/data/storage/el2/database/rdb/media_library_source.db";
@@ -1591,53 +1635,20 @@ bool ReverseCloneRestore::RollbackReverseRestore(bool isEarlyStage)
     return true;
 }
 
-bool ReverseCloneRestore::RecoverSourceDbFromSlave()
-{
-    const std::string slaveBase = "/data/storage/el2/database/rdb/media_library_source_slave.db";
-    const std::string sourcePath = "/data/storage/el2/database/rdb/media_library_source.db";
-
-    if (!IsPathExists(slaveBase)) {
-        MEDIA_ERR_LOG("RecoverSourceDbFromSlave: slave db does not exist");
-        return false;
-    }
-
-    // 复制 slave 文件覆盖 source
-    for (const auto& suffix : {"", "-dwr", "-shm", "-wal", "-compare"}) {
-        std::string src = slaveBase + suffix;
-        std::string dst = sourcePath + suffix;
-        if (!IsPathExists(src)) continue;
-        if (!MediaFileUtils::CopyFileUtil(src, dst, true)) {
-            MEDIA_ERR_LOG("RecoverSourceDbFromSlave: copy %{public}s -> %{public}s failed", src.c_str(), dst.c_str());
-            return false;
-        }
-    }
-
-    // 复制 binlog 目录
-    std::string srcBinlog = slaveBase + "_binlog";
-    std::string dstBinlog = sourcePath + "_binlog";
-    if (IsPathExists(srcBinlog) &&
-        MediaFileUtils::CopyDirectory(srcBinlog, dstBinlog) != E_OK) {
-        MEDIA_ERR_LOG("RecoverSourceDbFromSlave: copy binlog dir failed");
-        return false;
-    }
-    MEDIA_INFO_LOG("RecoverSourceDbFromSlave: slave copied to source");
-    return true;
-}
-
 bool ReverseCloneRestore::CheckSourceRdbIntegrityAndFallback(const std::string &backupRestorePath,
                                                              const std::string &upgradePath)
 {
     MEDIA_INFO_LOG("CheckSourceRdbIntegrityAndFallback: start checking sourceRdb integrity");
 
-    // 检查 sourceRdb 完整性
+    // 检查 源数据库 完整性
     std::string integrityResult =
-        BackupDatabaseUtils::CheckDbIntegrity(sourceRdb_, sceneCode_, "sourceRdb", &reverseRestoreReportInfo_);
+        BackupDatabaseUtils::CheckDbIntegrity(mediaRdb_, sceneCode_, "sourceRdb", &reverseRestoreReportInfo_);
     if (integrityResult == "ok") {
         MEDIA_INFO_LOG("CheckSourceRdbIntegrityAndFallback: sourceRdb integrity check passed");
         return true;
     }
 
-    // sourceRdb 损坏，尝试使用备份数据库恢复
+    // 源数据库 损坏，尝试使用备份数据库恢复
     MEDIA_ERR_LOG("CheckSourceRdbIntegrityAndFallback: sourceRdb integrity check failed, result=%{public}s",
                   integrityResult.c_str());
     if (TryRecoverFromBackupDb()) {
@@ -1660,7 +1671,7 @@ bool ReverseCloneRestore::TryRecoverFromBackupDb()
 {
     MEDIA_INFO_LOG("TryRecoverFromBackupDb: checking backup database integrity");
 
-    std::shared_ptr<NativeRdb::RdbStore> slaveRdb;
+    std::unique_ptr<NativeRdb::RdbStoreConfig> slaveRdbConfig;
     const std::string slaveDbPath = "/data/storage/el2/database/rdb/media_library_source_slave.db";
     auto context = AbilityRuntime::Context::GetApplicationContext();
     if (context == nullptr) {
@@ -1668,18 +1679,17 @@ bool ReverseCloneRestore::TryRecoverFromBackupDb()
         return false;
     }
 
-    int32_t err = BackupDatabaseUtils::InitDb(slaveRdb, CONST_MEDIA_DATA_ABILITY_DB_NAME, slaveDbPath,
-                                              CONST_BUNDLE_NAME, true, context->GetArea());
-    if (slaveRdb == nullptr) {
+    CloseRdbStore(mediaRdb_, MILLIS_PER_SEC, mediaRdbConfig_.get());
+    int32_t err = BackupDatabaseUtils::InitDb(mediaRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME, slaveDbPath,
+                                              CONST_BUNDLE_NAME, true, context->GetArea(), false, &mediaRdbConfig_);
+    if (mediaRdb_ == nullptr) {
         MEDIA_ERR_LOG("TryRecoverFromBackupDb: failed to open slave db, err=%{public}d", err);
         return false;
     }
 
     MEDIA_INFO_LOG("TryRecoverFromBackupDb: opened slave db for integrity check");
     std::string slaveIntegrityResult =
-        BackupDatabaseUtils::CheckDbIntegrity(slaveRdb, sceneCode_, "source_slave", &reverseRestoreReportInfo_);
-    slaveRdb.reset();
-
+        BackupDatabaseUtils::CheckDbIntegrity(mediaRdb_, sceneCode_, "source_slave", &reverseRestoreReportInfo_);
     if (slaveIntegrityResult != "ok") {
         MEDIA_ERR_LOG("TryRecoverFromBackupDb: backup database also corrupted, result=%{public}s",
                       slaveIntegrityResult.c_str());
@@ -1687,12 +1697,6 @@ bool ReverseCloneRestore::TryRecoverFromBackupDb()
     }
 
     MEDIA_INFO_LOG("TryRecoverFromBackupDb: backup database is intact, recovering");
-    if (!RecoverSourceDbFromSlave()) {
-        MEDIA_ERR_LOG("TryRecoverFromBackupDb: RecoverSourceDbFromSlave failed");
-        SetErrorCode(RestoreError::INIT_FAILED);
-        return false;
-    }
-
     return true;
 }
 
@@ -1702,10 +1706,6 @@ bool ReverseCloneRestore::FinalizeDatabaseSwap(const std::string &backupRestoreP
     const std::string newDbPath = "/data/storage/el2/database/rdb/media_library.db";
     const std::string newDbSourcePath = "/data/storage/el2/database/rdb/media_library_source.db";
     const std::string backupOldDbTemp = "/data/storage/el2/database/rdb/old_media_library_temp.db";
-
-    // 不删除备份目录中的原始旧 db，以便失败重入
-    mediaLibraryRdb_.reset();
-    mediaLibraryRdb_ = nullptr;
 
     // 1. 将处理后的旧 db 临时副本 rename 到主库位置（转正）
     MEDIA_INFO_LOG("FinalizeDatabaseSwap: move upgraded old db to new db path");
@@ -1724,11 +1724,8 @@ bool ReverseCloneRestore::FinalizeDatabaseSwap(const std::string &backupRestoreP
     MediaLibraryDataManager::GetInstance()->InitDatabaseACLPermission();
     InsertForAncoProcess();
 
-    // 3. 初始化 destRdb_ 和 sourceRdb_
+    // 3. 初始化 mediaRdb_ 和 mediaLibraryRdb_
     MEDIA_INFO_LOG("FinalizeDatabaseSwap: init dest and source rdb stores");
-    mediaRdb_.reset();
-    mediaLibraryRdb_.reset();
-
     if (!InitSourceAndDestRdb(newDbPath, newDbSourcePath, "FinalizeDatabaseSwap")) {
         MEDIA_ERR_LOG("FinalizeDatabaseSwap: init source and dest rdb failed");
         return false;
@@ -1759,33 +1756,35 @@ bool ReverseCloneRestore::InitDatabasesForResume()
 bool ReverseCloneRestore::InitSourceAndDestRdb(const std::string &newDbPath, const std::string &newDbSourcePath,
                                                const std::string &logTag)
 {
+    // 初始化目标数据库
     auto context = AbilityRuntime::Context::GetApplicationContext();
     CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "%{public}s: get context failed", logTag.c_str());
 
-    int32_t err = BackupDatabaseUtils::InitDb(destRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-                                              newDbPath, CONST_BUNDLE_NAME, true, context->GetArea(), false);
-    CHECK_AND_RETURN_RET_LOG(destRdb_ != nullptr, false,
-        "%{public}s: init destRdb_ failed, err=%{public}d", logTag.c_str(), err);
+    int32_t err = BackupDatabaseUtils::InitDb(mediaLibraryRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
+                                              newDbPath, CONST_BUNDLE_NAME, true, context->GetArea(), false,
+                                              &mediaLibraryRdbConfig_);
+    CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, false,
+        "%{public}s: init mediaLibraryRdb_ failed, err=%{public}d", logTag.c_str(), err);
 
-    // 使用同目录下的 source 文件初始化 sourceRdb_
-    err = BackupDatabaseUtils::InitDb(sourceRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-                                      newDbSourcePath, CONST_BUNDLE_NAME, true, context->GetArea(), false);
-    if (sourceRdb_ == nullptr) {
-        MEDIA_ERR_LOG("%{public}s: init sourceRdb_ failed, err=%{public}d, try recover", logTag.c_str(), err);
-        if (!RecoverSourceDbFromSlave()) {
-            MEDIA_ERR_LOG("%{public}s: recover source db from slave failed", logTag.c_str());
-            return false;
-        }
-        err = BackupDatabaseUtils::InitDb(sourceRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-                                          newDbSourcePath, CONST_BUNDLE_NAME, true, context->GetArea(), false);
-        CHECK_AND_RETURN_RET_LOG(sourceRdb_ != nullptr, false,
-            "%{public}s: init recovered sourceRdb_ failed, err=%{public}d", logTag.c_str(), err);
+    // 初始化源数据库
+    err = BackupDatabaseUtils::InitDb(mediaRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
+                                      newDbSourcePath, CONST_BUNDLE_NAME, true, context->GetArea(), false,
+                                      &mediaRdbConfig_);
+    if (mediaRdb_ == nullptr) {
+        MEDIA_ERR_LOG("%{public}s: init mediaRdb_ failed, err=%{public}d, try recover", logTag.c_str(), err);
+        // 主库无法恢复，走备库恢复
+        const std::string slaveDbPath = "/data/storage/el2/database/rdb/media_library_source_slave.db";
+        err = BackupDatabaseUtils::InitDb(mediaRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
+                                          slaveDbPath, CONST_BUNDLE_NAME, true, context->GetArea(), false,
+                                          &mediaRdbConfig_);
+        CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, false,
+            "%{public}s: init recovered mediaRdb_ failed, err=%{public}d", logTag.c_str(), err);
     }
 
     // 打印两个数据库的照片数量
-    int32_t destCount = BackupDatabaseUtils::GetDbPhotoCount(destRdb_, false);
-    int32_t sourceCount = BackupDatabaseUtils::GetDbPhotoCount(sourceRdb_, false);
-    MEDIA_INFO_LOG("%{public}s: destRdb_ photo count=%{public}d, sourceRdb_ photo count=%{public}d",
+    int32_t destCount = BackupDatabaseUtils::GetDbPhotoCount(mediaLibraryRdb_, false);
+    int32_t sourceCount = BackupDatabaseUtils::GetDbPhotoCount(mediaRdb_, false);
+    MEDIA_INFO_LOG("%{public}s: mediaLibraryRdb_ photo count=%{public}d, mediaRdb_ photo count=%{public}d",
         logTag.c_str(), destCount, sourceCount);
 
     return true;
@@ -1815,8 +1814,8 @@ bool ReverseCloneRestore::PrepareForResume()
 
     // 4. 初始化 resourceInheritHelper_ 中的 fileIdOffsetRules_
     // todo 持久化
-    int64_t oldMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(sourceRdb_);
-    int64_t newMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(destRdb_);
+    int64_t oldMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(mediaRdb_);
+    int64_t newMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(mediaLibraryRdb_);
     if (oldMaxFileId > 0 && newMaxFileId > 0) {
         resourceInheritHelper_.AddFileIdOffsetRule(oldMaxFileId, newMaxFileId);
         MEDIA_INFO_LOG("PrepareForResume: added FileIdOffsetRule, oldMaxFileId=%{public}lld, newMaxFileId=%{public}lld",
@@ -1824,10 +1823,10 @@ bool ReverseCloneRestore::PrepareForResume()
     }
 
     // 5. 初始化 resourceInheritHelper_ 中的 originalPureCloudFileIds_
-    resourceInheritHelper_.SnapshotPureCloudFileIds(destRdb_);
+    resourceInheritHelper_.SnapshotPureCloudFileIds(mediaLibraryRdb_);
 
     // 6. 初始化 tableColumnStatusMap_ （新增）
-    CheckTableColumnStatus(destRdb_, CLONE_TABLE_LISTS_PHOTO);
+    CheckTableColumnStatus(mediaLibraryRdb_, CLONE_TABLE_LISTS_PHOTO);
 
     MEDIA_INFO_LOG("PrepareForResume: completed successfully");
     return true;
@@ -2118,9 +2117,9 @@ void ReverseCloneRestore::ReverseRestoreClassifyData()
     ClassifyCloneRestoreConfig config;
     config.sceneCode = sceneCode_;
     config.taskId = taskId_;
-    // destRdb_ 最终db
-    config.mediaLibraryRdb = sourceRdb_;
-    config.mediaRdb = destRdb_;
+    // mediaLibraryRdb_ 用户最终使用的db
+    config.mediaLibraryRdb = mediaRdb_;
+    config.mediaRdb = mediaLibraryRdb_;
     config.scoreMaskMap = &scoreMaskMap_;
     config.duplicateMap = &duplicateAssetMap_;
     reverseRestoreClassify.Init(config);
@@ -2130,7 +2129,7 @@ void ReverseCloneRestore::ReverseRestoreClassifyData()
 void ReverseCloneRestore::RestoreReverseAnalysisGeo()
 {
     CloneReverseRestoreGeo reverseRestoreGeo;
-    reverseRestoreGeo.Init(sceneCode_, taskId_, sourceRdb_, destRdb_);
+    reverseRestoreGeo.Init(sceneCode_, taskId_, mediaRdb_, mediaLibraryRdb_);
     reverseRestoreGeo.Restore();
 }
 
@@ -2138,19 +2137,19 @@ void ReverseCloneRestore::RestoreReverseAnalysisPortrait()
 {
     CloneRestorePortrait portraitAlbumClone;
     bool isCloudRestoreSatisfied = IsCloudRestoreSatisfied();
-    // sourceRdb_ 新机db
-    // destRdb_ 转正后的旧db
+    // mediaRdb_ 新机db
+    // mediaLibraryRdb_ 转正后的旧db
     portraitAlbumClone.Init(
-        sceneCode_, taskId_, sourceRdb_, destRdb_, reversePhotoInfoMap_,
+        sceneCode_, taskId_, mediaRdb_, mediaLibraryRdb_, reversePhotoInfoMap_,
         isCloudRestoreSatisfied, &scoreMaskMap_);
     if (!duplicateAssetMap_.empty()) {
-        BackupDatabaseUtils::UpdateDuplicateCoverUris(destRdb_, duplicateAssetMap_,
+        BackupDatabaseUtils::UpdateDuplicateCoverUris(mediaLibraryRdb_, duplicateAssetMap_,
             reversePhotoInfoMap_, {PORTRAIT, GROUP_PHOTO});
     }
     // 判断旧机是否有数据，没有数据则需从新机吸收
     if (!portraitAlbumClone.RefreshTotalAlbumNumber()) {
         portraitAlbumClone.Init(
-            sceneCode_, taskId_, destRdb_, sourceRdb_, reversePhotoInfoMap_,
+            sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, reversePhotoInfoMap_,
             isCloudRestoreSatisfied, &scoreMaskMap_);
         portraitAlbumClone.RefreshTotalAlbumNumber();
         portraitAlbumClone.Restore(true);
@@ -2158,8 +2157,8 @@ void ReverseCloneRestore::RestoreReverseAnalysisPortrait()
         RestoreReverseGroupPhoto();
     } else {
         // 旧机有人像数据，则处理新机tab_analysis_profile表
-        portraitAlbumClone.ClearProfileFaceScore(sourceRdb_);
-        portraitAlbumClone.ClearTotalScoreBit2(sourceRdb_);
+        portraitAlbumClone.ClearProfileFaceScore(mediaRdb_);
+        portraitAlbumClone.ClearTotalScoreBit2(mediaRdb_);
         portraitAlbumClone.DeleteExistingGdbPortraitData();
     }
 }
@@ -2171,7 +2170,7 @@ void ReverseCloneRestore::RestoreReverseGroupPhoto()
     // 旧机有数据，则不吸收新机数据；旧机无数据，就插入新机数据，跳过删除流程
     CloneRestoreGroupPhoto cloneRestoreGroupPhoto;
     cloneRestoreGroupPhoto.Init(
-        sceneCode_, taskId_, restoreInfo_, destRdb_, sourceRdb_, isCloudRestoreSatisfied);
+        sceneCode_, taskId_, restoreInfo_, mediaLibraryRdb_, mediaRdb_, isCloudRestoreSatisfied);
     cloneRestoreGroupPhoto.Restore(reversePhotoInfoMap_, true);
     MEDIA_INFO_LOG("end RestoreReverseGroupPhoto");
 }
@@ -2180,18 +2179,18 @@ void ReverseCloneRestore::ReverseRestoreSearchIndexData()
 {
     // 正向：重复以新机为准，非重复删除新机并插入旧机（以旧机为准）
     // 反向：直接插入旧机
-    maxSearchId_ = BackupDatabaseUtils::QueryMaxId(sourceRdb_,
+    maxSearchId_ = BackupDatabaseUtils::QueryMaxId(mediaRdb_,
         ANALYSIS_SEARCH_INDEX_TABLE, SEARCH_IDX_COL_ID);
-    SearchIndexClone searchIndexClone(sourceRdb_, destRdb_, reversePhotoInfoMap_, maxSearchId_);
+    SearchIndexClone searchIndexClone(mediaRdb_, mediaLibraryRdb_, reversePhotoInfoMap_, maxSearchId_);
     searchIndexClone.ReverseClone();
 }
 
 void ReverseCloneRestore::ReverseRestoreBeautyScoreData()
 {
     MEDIA_INFO_LOG("Start reverse clone restore: beauty score data");
-    maxBeautyFileId_ = BackupDatabaseUtils::QueryMaxId(sourceRdb_,
+    maxBeautyFileId_ = BackupDatabaseUtils::QueryMaxId(mediaRdb_,
         ANALYSIS_BEAUTY_SCORE_TABLE, BEAUTY_SCORE_COL_FILE_ID);
-    BeautyScoreClone beautyScoreClone(sourceRdb_, destRdb_, reversePhotoInfoMap_,
+    BeautyScoreClone beautyScoreClone(mediaRdb_, mediaLibraryRdb_, reversePhotoInfoMap_,
         maxBeautyFileId_, &scoreMaskMap_);
     beautyScoreClone.ReverseCloneBeautyScoreInfo();
 }
@@ -2199,7 +2198,7 @@ void ReverseCloneRestore::ReverseRestoreBeautyScoreData()
 void ReverseCloneRestore::ReverseRestoreVideoFaceData()
 {
     MEDIA_INFO_LOG("Start reverse clone restore: video face data");
-    VideoFaceClone videoFaceClone(sourceRdb_, destRdb_, reversePhotoInfoMap_, true);
+    VideoFaceClone videoFaceClone(mediaRdb_, mediaLibraryRdb_, reversePhotoInfoMap_, true);
     videoFaceClone.CloneVideoFaceInfo();
 }
 
@@ -2208,7 +2207,7 @@ void ReverseCloneRestore::ReverseRestoreAiRetouchData()
     MEDIA_INFO_LOG("Start reverse clone restore: ai retouch data");
     maxTotalFileId_ = BackupDatabaseUtils::QueryMaxId(mediaRdb_,
         VISION_TOTAL_TABLE, TOTAL_COL_FILE_ID);
-    AiRetouchClone aiRetouchClone(sourceRdb_, destRdb_, reversePhotoInfoMap_,
+    AiRetouchClone aiRetouchClone(mediaRdb_, mediaLibraryRdb_, reversePhotoInfoMap_,
         maxTotalFileId_, taskId_, true);
     aiRetouchClone.ReverseCloneAiRetouchInfo();
 }
@@ -2219,7 +2218,7 @@ void ReverseCloneRestore::ReverseRestoreDupSimData()
     CloneRestoreDupSim dupSimRestore;
     bool isCloudRestoreSatisfied = IsCloudRestoreSatisfied();
     dupSimRestore.Init(
-        sceneCode_, taskId_, destRdb_, sourceRdb_, reversePhotoInfoMap_,
+        sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, reversePhotoInfoMap_,
         isCloudRestoreSatisfied, &scoreMaskMap_);
     dupSimRestore.Restore();
 }
@@ -2227,7 +2226,7 @@ void ReverseCloneRestore::ReverseRestoreDupSimData()
 void ReverseCloneRestore::ReverseRestoreWatermarkData()
 {
     MEDIA_INFO_LOG("Start reverse clone restore: watermark data");
-    WaterMarkClone waterMarkClone(sourceRdb_, destRdb_, reversePhotoInfoMap_);
+    WaterMarkClone waterMarkClone(mediaRdb_, mediaLibraryRdb_, reversePhotoInfoMap_);
     waterMarkClone.ReverseClone();
 }
 
@@ -2236,12 +2235,12 @@ void ReverseCloneRestore::ReverseRestoreSelectionData()
     MEDIA_INFO_LOG("Start reverse clone restore: selection data");
     CloneRestoreSelection selectionRestore;
     bool isCloudRestoreSatisfied = IsCloudRestoreSatisfied();
-    selectionRestore.Init(sceneCode_, taskId_, sourceRdb_, destRdb_,
+    selectionRestore.Init(sceneCode_, taskId_, mediaRdb_, mediaLibraryRdb_,
         reversePhotoInfoMap_, isCloudRestoreSatisfied);
     // 正向：旧机有数据则删除新机
     // 反向：旧机有数据则不吸收新机
     if (selectionRestore.RefreshTotalNumber()) {
-        selectionRestore.Init(sceneCode_, taskId_, destRdb_, sourceRdb_,
+        selectionRestore.Init(sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_,
             reversePhotoInfoMap_, isCloudRestoreSatisfied);
         selectionRestore.RefreshTotalNumber();
         selectionRestore.Restore();
@@ -2252,7 +2251,7 @@ void ReverseCloneRestore::ReverseRestoreAnalysisTablesData()
 {
     MEDIA_INFO_LOG("Start reverse clone restore: analysis tables data");
 
-    cloneRestoreAnalysisData_.Init(this->sceneCode_, this->taskId_, sourceRdb_, destRdb_);
+    cloneRestoreAnalysisData_.Init(this->sceneCode_, this->taskId_, mediaRdb_, mediaLibraryRdb_);
     std::unordered_set<std::string> excludedColumns = {"id", "file_id"};
     vector<std::string> analysisTables = {
         "tab_analysis_head",
@@ -2295,20 +2294,25 @@ void ReverseCloneRestore::ReverseRestorePortraitNickNameData()
     auto albumIdMapIt = tableAlbumIdMap_.find(ANALYSIS_ALBUM_TABLE);
     CHECK_AND_RETURN_LOG(albumIdMapIt != tableAlbumIdMap_.end(),
         "analysis album map not found, skip portrait nickname clone");
-    PortraitNickNameClone portraitNickNameClone(sourceRdb_, destRdb_, albumIdMapIt->second,
+    PortraitNickNameClone portraitNickNameClone(mediaRdb_, mediaLibraryRdb_, albumIdMapIt->second,
         IsCloudRestoreSatisfied());
     portraitNickNameClone.Clone();
 }
 
 void ReverseCloneRestore::RestoreReverseHighlightAlbums()
 {
+    // 偏移 highlight play_info 中的 file_id，并移动 highlight 文件
+    std::string highlightBackupDir = "/storage/media/local/files/highlight/";
+    FileIdMigrator migrator;
+    if (!migrator.MigrateHighlightPlayInfo(mediaLibraryRdb_, highlightBackupDir)) {
+        MEDIA_ERR_LOG("PerformInitialMigration: highlight play_info migration failed");
+    }
     // 正向：不满足云图迁移且旧机有时刻数据，则不迁移
     // 反向：不满足云图迁移且旧机有时刻数据，删除旧机，插入新机；其他场景，插入新机
-    mediaRdb_ = destRdb_;
-    int32_t highlightCloudMediaCnt = GetHighlightCloudMediaCnt();
+    int32_t highlightCloudMediaCnt = GetHighlightCloudMediaCnt(mediaLibraryRdb_);
     CloneRestoreHighlight cloneRestoreHighlight;
     string reverseHighlightPath = "/storage/media/local/files/reverse_restore/highlight/";
-    CloneRestoreHighlight::InitInfo initInfo = { sceneCode_, taskId_, destRdb_, sourceRdb_, reverseHighlightPath,
+    CloneRestoreHighlight::InitInfo initInfo = { sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, reverseHighlightPath,
         reversePhotoInfoMap_, duplicateAssetMap_ };
     UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_)
         .Report("CLONE_RESTORE_HIGHLIGHT_CHECK", "",
@@ -2322,7 +2326,8 @@ void ReverseCloneRestore::RestoreReverseHighlightAlbums()
     cloneRestoreHighlight.ReverseRestore();
 
     CloneRestoreCVAnalysis cloneRestoreCVAnalysis;
-    cloneRestoreCVAnalysis.Init(sceneCode_, taskId_, destRdb_, sourceRdb_, reverseHighlightPath);
+    std::string videoPath = "/storage/media/local/files/reverse_restore/highlight/video/";
+    cloneRestoreCVAnalysis.Init(sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_, videoPath);
     cloneRestoreCVAnalysis.RestoreAlbums(cloneRestoreHighlight);
     // 反向存储智慧相册映射
     StoreHighlightAlbumMappings(cloneRestoreHighlight);
@@ -2330,7 +2335,6 @@ void ReverseCloneRestore::RestoreReverseHighlightAlbums()
     cloneRestoreHighlight.ReportCloneRestoreHighlightTask();
     // 刷新时刻相册is_viewed
     cloneRestoreHighlight.UpdateHighlightAlbumsViewed();
-    mediaRdb_ = sourceRdb_;
 }
 
 void ReverseCloneRestore::ReverseRestoreTabOldAlbumsData(std::shared_ptr<NativeRdb::RdbStore> oldDbTempStore)
@@ -2395,15 +2399,13 @@ void ReverseCloneRestore::PopulateAnalysisAlbumIdMap(const std::vector<int32_t>&
 
 void ReverseCloneRestore::ReverseRestoreAnalysisData()
 {
-    // sourceRdb_ 新机db
-    // destRdb_ 转正后的旧db
+    // mediaRdb_ 新机db
+    // mediaLibraryRdb_ 转正后的旧db
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    mediaRdb_ = sourceRdb_;
-    mediaLibraryRdb_ = destRdb_;
     // 拍摄模式
     MergeShootingModeAlbums();
     // 地理
-    cloneRestoreGeoDictionary_.Init(sceneCode_, taskId_, destRdb_, sourceRdb_);
+    cloneRestoreGeoDictionary_.Init(sceneCode_, taskId_, mediaLibraryRdb_, mediaRdb_);
     cloneRestoreGeoDictionary_.ReverseRestoreAlbums();
     // 分类
     ReverseRestoreClassifyData();
@@ -2439,9 +2441,9 @@ void ReverseCloneRestore::ReverseRestoreAnalysisData()
     ReverseRestorePortraitNickNameData();
     // 重复资产特殊处理
     FileIdMigrator migrator;
-    migrator.UpdateFaceTableFileIds(destRdb_, duplicateAssetMap_);
-    migrator.UpdateAnalysisTotalFields(destRdb_, duplicateAssetMap_);
-    migrator.MigrateAnalysisTotalScore(destRdb_, sourceRdb_, duplicateAssetMap_);
+    migrator.UpdateFaceTableFileIds(mediaLibraryRdb_, duplicateAssetMap_);
+    migrator.UpdateAnalysisTotalFields(mediaLibraryRdb_, duplicateAssetMap_);
+    migrator.MigrateAnalysisTotalScore(mediaLibraryRdb_, mediaRdb_, duplicateAssetMap_);
     // 更新AnalysisPhotoMap的map_asset_date_taken列，智慧相册更新完后刷新
     CloneRestore::UpdatePhotoMapAssetDateTaken();
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
@@ -2452,7 +2454,7 @@ void ReverseCloneRestore::ReverseRestoreAnalysisData()
 void ReverseCloneRestore::DealDuplicatePhotoAlbum()
 {
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    TabOldAlbumsClone tabOldAlbumsClone(destRdb_, destRdb_, tableAlbumIdMap_);
+    TabOldAlbumsClone tabOldAlbumsClone(mediaLibraryRdb_, mediaLibraryRdb_, tableAlbumIdMap_);
     tabOldAlbumsClone.UpdateAlbumIdsByMappingWithSubtype();
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" Tab_old_album Process: ")
@@ -2464,9 +2466,9 @@ bool ReverseCloneRestore::ReInitForForwardRestore(const std::string &backupResto
 {
     MEDIA_INFO_LOG("ReInitForForwardRestore: re-initializing for forward clone");
 
-    // 关闭可能残留的句柄
-    mediaRdb_.reset();
-    mediaLibraryRdb_.reset();
+    // 关闭可能残留的句柄（mediaRdb_/mediaLibraryRdb_ may be aliases, use atomic_store to avoid double Release）
+    std::atomic_store(&mediaRdb_, std::shared_ptr<NativeRdb::RdbStore>());
+    std::atomic_store(&mediaLibraryRdb_, std::shared_ptr<NativeRdb::RdbStore>());
 
     // 重新设置系统参数（可重复执行）
     SetParameterForClone();
@@ -2512,7 +2514,7 @@ void ReverseCloneRestore::FallbackToForwardRestore(const std::string &backupRest
 void ReverseCloneRestore::HandleRestData()
 {
     MEDIA_INFO_LOG("ReverseCloneRestore::HandleRestData start");
-    this->restorePhotosAlbumHidden_.UpdateEmptyAlbumHidden(destRdb_);
+    this->restorePhotosAlbumHidden_.UpdateEmptyAlbumHidden(mediaLibraryRdb_);
     MEDIA_INFO_LOG("ReverseCloneRestore::HandleRestData end");
 }
 
@@ -2530,7 +2532,7 @@ void ReverseCloneRestore::ActiveFullDonation()
     CHECK_AND_RETURN_INFO_LOG(!enableOldPath, "search_oldpath_enable is true, skip");
     std::vector<std::string> tables;
     tables.push_back("Photos");
-    destRdb_->SetDistributedTables(tables, DistributedRdb::DISTRIBUTED_SEARCH, {.isRebuild = true});
+    mediaLibraryRdb_->SetDistributedTables(tables, DistributedRdb::DISTRIBUTED_SEARCH, {.isRebuild = true});
 }
 
 void ReverseCloneRestore::AppendErrorInfo(const std::string &errorInfo)
@@ -2547,7 +2549,7 @@ void ReverseCloneRestore::AppendErrorInfo(const std::string &errorInfo)
 void ReverseCloneRestore::MergeShootingModeAlbums()
 {
     MEDIA_INFO_LOG("MergeShootingModeAlbums start");
-    ShootingModeAlbumClone clone(sourceRdb_, destRdb_);
+    ShootingModeAlbumClone clone(mediaRdb_, mediaLibraryRdb_);
     clone.Execute();
     MEDIA_INFO_LOG("MergeShootingModeAlbums completed");
 }
@@ -2744,7 +2746,7 @@ bool ReverseCloneRestore::PrepareReverseOldDb(const string &backupRestorePath, c
 void ReverseCloneRestore::HandlePrepareFailure(const string &backupRestorePath, const string &upgradePath,
     std::shared_ptr<NativeRdb::RdbStore> &oldDbTempStore)
 {
-    oldDbTempStore.reset();
+    CloseRdbStore(oldDbTempStore, MILLIS_PER_SEC, oldDbTempConfig_.get());
     FallbackToForwardRestore(backupRestorePath, upgradePath, true);
 }
 
@@ -2794,6 +2796,10 @@ bool ReverseCloneRestore::CleanOldDbData(std::shared_ptr<NativeRdb::RdbStore> &o
             "ClearRedundantData failed, table: " + failedTable;
         return false;
     }
+    // 清理旧机智慧分析状态
+    FileIdMigrator migrator;
+    migrator.SetSearchIndex(oldDbTempStore);
+    migrator.SetColumnForTabAnalysisTotal(oldDbTempStore);
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.beforeTransformTimeCost.append(" CleanRedundantData: ")
         .append(std::to_string(endTime - startTime) + ";");
@@ -2872,7 +2878,7 @@ int32_t ReverseCloneRestore::RepairFinalAncoAssetsAfterSecondaryMigration()
     ancoContext.dstConfig = dstDevFileTransferConfig_;
 
     AncoReverseCloneAdapter ancoAdapter;
-    int32_t ancoRet = ancoAdapter.RepairFinalDb(destRdb_, ancoContext);
+    int32_t ancoRet = ancoAdapter.RepairFinalDb(mediaLibraryRdb_, ancoContext);
     CHECK_AND_RETURN_RET_LOG(ancoRet == E_OK, ancoRet,
         "ReverseCloneRestore: Repair final anco assets failed, ret=%{public}d", ancoRet);
     MEDIA_INFO_LOG("ReverseCloneRestore: Repair final anco assets success");
@@ -2883,7 +2889,7 @@ void ReverseCloneRestore::ProcessPostSecondarySpecialTables()
 {
     MEDIA_INFO_LOG("Processing tab_asset_and_album_operation after secondary migration");
     int32_t ret = tableDataAdapter_.ProcessSingleTableByRecreate("tab_asset_and_album_operation",
-                                                                   destRdb_, sourceRdb_);
+        mediaLibraryRdb_, mediaRdb_);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("Failed to process tab_asset_and_album_operation after secondary migration");
     }
@@ -2894,13 +2900,13 @@ bool ReverseCloneRestore::PostProcessFinalReverseDb(vector<ReverseCloneKvStoreTa
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
 
     MEDIA_INFO_LOG("Updating special fields in Photos table after db conversion");
-    resourceInheritHelper_.SnapshotPureCloudFileIds(destRdb_);
+    resourceInheritHelper_.SnapshotPureCloudFileIds(mediaLibraryRdb_);
     UpdatePhotosSpecialFields();
     UpdateChangeTime();
     UpdateAnalysisAlbum();
 
-    CheckTableColumnStatus(destRdb_, CLONE_TABLE_LISTS_PHOTO);
-    retainedOldPhotoKvStoreTasks = resourceInheritHelper_.BuildRetainedOldPhotoKvStoreTasks(destRdb_);
+    CheckTableColumnStatus(mediaLibraryRdb_, CLONE_TABLE_LISTS_PHOTO);
+    retainedOldPhotoKvStoreTasks = resourceInheritHelper_.BuildRetainedOldPhotoKvStoreTasks(mediaLibraryRdb_);
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" Absorb Anticipation: ")
         .append(std::to_string(endTime - startTime) + ";");
@@ -2910,8 +2916,9 @@ bool ReverseCloneRestore::PostProcessFinalReverseDb(vector<ReverseCloneKvStoreTa
 void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
     const vector<ReverseCloneKvStoreTask> &retainedOldPhotoKvStoreTasks)
 {
-    mediaRdb_ = sourceRdb_;
-    mediaLibraryRdb_ = destRdb_;
+    // 初始化photoAlbumClone_与photosClone_
+    this->photoAlbumClone_.OnStart(this->mediaLibraryRdb_, this->mediaRdb_, IsCloudRestoreSatisfied());
+    this->photosClone_.OnStart(this->mediaRdb_, this->mediaLibraryRdb_);
     DatabaseReport()
         .SetSceneCode(this->sceneCode_)
         .SetTaskId(this->taskId_)
@@ -2927,13 +2934,11 @@ void ReverseCloneRestore::AbsorbNewDeviceData(const string &backupRestorePath,
     if (ShouldAbsorbCloudFromSourceRdb()) {
         AbsorbNewPhotosForCloud();
     }
-    mediaRdb_ = nullptr;
-    mediaLibraryRdb_ = nullptr;
 
     MEDIA_INFO_LOG("StartRestore: reverseDupMap_ size=%{public}zu (includes local+cloud photos)",
         reverseDupMap_.size());
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
-    albumAssetAbsorb_.UpdateTabClonedOldPhotos(destRdb_, reverseDupMap_);
+    albumAssetAbsorb_.UpdateTabClonedOldPhotos(mediaLibraryRdb_, reverseDupMap_);
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" UpdateTabClonedOldPhotos: ")
         .append(std::to_string(endTime - startTime) + ";");
@@ -2992,8 +2997,8 @@ int32_t ReverseCloneRestore::QueryActiveDeleteDataFromSourceRdb(int32_t lastFile
     data.Clear();
     data.Reserve(CLOUD_MEDIA_DELETE_BATCH_LIMIT);
     nextFileId = lastFileId;
-    CHECK_AND_RETURN_RET_LOG(sourceRdb_ != nullptr, E_ERR,
-        "QueryActiveDeleteDataFromSourceRdb failed, sourceRdb_ is null");
+    CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, E_ERR,
+        "QueryActiveDeleteDataFromSourceRdb failed, mediaRdb_ is null");
 
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.GreaterThan(MediaColumn::MEDIA_ID, lastFileId);
@@ -3014,7 +3019,7 @@ int32_t ReverseCloneRestore::QueryActiveDeleteDataFromSourceRdb(int32_t lastFile
     std::vector<std::string> columns = {MediaColumn::MEDIA_ID, MediaColumn::MEDIA_FILE_PATH,
         MediaColumn::MEDIA_DATE_TAKEN, PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, PhotoColumn::PHOTO_SUBTYPE,
         PhotoColumn::PHOTO_SOUTH_DEVICE_TYPE, PhotoColumn::MOVING_PHOTO_EFFECT_MODE};
-    auto resultSet = sourceRdb_->Query(predicates, columns);
+    auto resultSet = mediaRdb_->Query(predicates, columns);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_ERR,
         "QueryActiveDeleteDataFromSourceRdb failed, resultSet is null");
 
@@ -3042,13 +3047,13 @@ int32_t ReverseCloneRestore::QueryActiveDeleteDataFromSourceRdb(int32_t lastFile
 
 int32_t ReverseCloneRestore::ApplyActiveDeleteDbActionToSourceRdb(const CloudMediaAssetDeleteDbAction &action)
 {
-    CHECK_AND_RETURN_RET_LOG(sourceRdb_ != nullptr, E_ERR,
-        "ApplyActiveDeleteDbActionToSourceRdb failed, sourceRdb_ is null");
+    CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, E_ERR,
+        "ApplyActiveDeleteDbActionToSourceRdb failed, mediaRdb_ is null");
     if (action.deleteFileIds.empty() && action.updateFileIds.empty()) {
         return E_OK;
     }
 
-    auto [errCode, transaction] = sourceRdb_->CreateTransaction(OHOS::NativeRdb::Transaction::DEFERRED);
+    auto [errCode, transaction] = mediaRdb_->CreateTransaction(OHOS::NativeRdb::Transaction::DEFERRED);
     CHECK_AND_RETURN_RET_LOG(errCode == NativeRdb::E_OK && transaction != nullptr, E_ERR,
         "ApplyActiveDeleteDbActionToSourceRdb create transaction failed, err=%{public}d", errCode);
     if (!action.deleteFileIds.empty()) {
@@ -3124,7 +3129,6 @@ int32_t ReverseCloneRestore::CompensateActiveDeleteCloudMediaAssetsLocked()
 
 void ReverseCloneRestore::FinishReverseRestore()
 {
-    StopReverseRestoreStatusUpdateThread();
     // 13 tab_old_album 基础相册处理
     DealDuplicatePhotoAlbum();
     int64_t startTime = MediaFileUtils::UTCTimeMilliSeconds();
@@ -3134,8 +3138,8 @@ void ReverseCloneRestore::FinishReverseRestore()
         .append(std::to_string(endTime - startTime) + ";");
     startTime = MediaFileUtils::UTCTimeMilliSeconds();
     HandleRestData();
-    FileIdMigrator::UpdateSqliteSequenceForPhotos(destRdb_);
-    FileIdMigrator::UpdateSqliteSequenceForAlbums(destRdb_);
+    FileIdMigrator::UpdateSqliteSequenceForPhotos(mediaLibraryRdb_);
+    FileIdMigrator::UpdateSqliteSequenceForAlbums(mediaLibraryRdb_);
     SetMediaAnalysisClearDirtyDataParameter();
     CloneActiveLcdAgingFromOldDevice();
     CloseAllKvStore();
@@ -3146,7 +3150,7 @@ void ReverseCloneRestore::FinishReverseRestore()
             "ReverseCloneRestore: compensate cloud media delete failed");
     }
     CleanReverseRestoreTempFiles();
-    LcdAgingService::GetInstance().MarkRecentLcdPhotos(destRdb_);
+    LcdAgingService::GetInstance().MarkRecentLcdPhotos(mediaLibraryRdb_);
     endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.afterTransformTimeCost.append(" PostProcess: ")
         .append(std::to_string(endTime - startTime) + ";");
@@ -3156,6 +3160,8 @@ void ReverseCloneRestore::FinishReverseRestore()
     CHECK_AND_PRINT_LOG(ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::COMPLETED),
         "set reverse clone reliability marker completed failed");
     CHECK_AND_PRINT_LOG(ReverseCloneReliabilityMarker::Delete(), "delete reverse clone reliability marker failed");
+    // 必须放到最后
+    StopReverseRestoreStatusUpdateThread();
     MEDIA_INFO_LOG("ReverseCloneRestore: End clone restore (reverse path)");
 }
 
@@ -3173,8 +3179,7 @@ bool ReverseCloneRestore::PrepareReverseDbBeforeAbsorb(const std::string &backup
         return false;
     }
     CalculateMigrateNumbers(oldDbTempStore);
-    oldDbTempStore.reset();
-    oldDbTempStore = nullptr;
+    CloseRdbStore(oldDbTempStore, MILLIS_PER_SEC, oldDbTempConfig_.get());
 
     // 更新标记位为数据库已切换
     ReverseCloneReliabilityMarker::SetStage(ReverseCloneRestoreStage::DB_SWITCHED);
@@ -3189,7 +3194,7 @@ bool ReverseCloneRestore::PrepareReverseDbBeforeAbsorb(const std::string &backup
         return false;
     }
 
-    // 在吸收新机数据之前检查 sourceRdb 完整性
+    // 在吸收新机数据之前检查 mediaRdb_ 完整性
     if (!CheckSourceRdbIntegrityAndFallback(backupRestorePath, upgradePath)) {
         MEDIA_ERR_LOG("StartRestore: CheckSourceRdbIntegrityAndFallback failed");
         return false;
@@ -3286,33 +3291,28 @@ bool ReverseCloneRestore::PerformInitialMigration(std::shared_ptr<NativeRdb::Rdb
     auto context = AbilityRuntime::Context::GetApplicationContext();
     CHECK_AND_RETURN_RET_LOG(context != nullptr, false, "PerformInitialMigration: get context failed");
 
-    // 打开当前新设备数据库，用于查询最大 ID
-    const std::string newDbPath = "/data/storage/el2/database/rdb/media_library.db";
-    std::shared_ptr<NativeRdb::RdbStore> newDbStore;
-    int32_t err = BackupDatabaseUtils::InitDb(newDbStore, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-                                              newDbPath, CONST_BUNDLE_NAME, true, context->GetArea(), false);
-    if (newDbStore == nullptr) {
-        MEDIA_ERR_LOG("PerformInitialMigration: open new db failed, err=%{public}d", err);
+    // 打开当前新设备数据库mediaLibraryRdb_，用于查询最大 ID
+    if (mediaLibraryRdb_ == nullptr) {
+        MEDIA_ERR_LOG("PerformInitialMigration: database is nullptr");
         return false;
     }
 
     // 执行第一次完整迁移（file_id + album_id）
     int64_t oldMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(oldDbTempStore);
-    int64_t newMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(newDbStore);
+    int64_t newMaxFileId = FileIdMigrator::GetMaxFileIdFromAllTables(mediaLibraryRdb_);
     if (oldMaxFileId > 0 && newMaxFileId > 0) {
         resourceInheritHelper_.AddFileIdOffsetRule(oldMaxFileId, newMaxFileId);
     }
     FileIdMigrator migrator;
-    if (!migrator.Migrate(oldDbTempStore, newDbStore)) {
+    if (!migrator.Migrate(oldDbTempStore, mediaLibraryRdb_)) {
         MEDIA_ERR_LOG("PerformInitialMigration: initial migration failed");
-        newDbStore.reset();
         return false;
     }
     FileIdMigrator::UpdateSqliteSequenceForPhotos(destRdb_);
     FileIdMigrator::UpdateSqliteSequenceForAlbums(destRdb_);
     // 记录第一次迁移后新 db 的最大 ID
-    initialNewMaxFileId_ = FileIdMigrator::GetMaxFileIdFromAllTables(newDbStore);
-    initialNewMaxAlbumId_ = FileIdMigrator::GetMaxAlbumIdFromAllTables(newDbStore);
+    initialNewMaxFileId_ = FileIdMigrator::GetMaxFileIdFromAllTables(mediaLibraryRdb_);
+    initialNewMaxAlbumId_ = FileIdMigrator::GetMaxAlbumIdFromAllTables(mediaLibraryRdb_);
     newMaxExtended_ = migrator.GetNewMaxExtended();
 
     MEDIA_INFO_LOG("PerformInitialMigration: initialNewMaxFileId=%{public}lld, "
@@ -3321,40 +3321,33 @@ bool ReverseCloneRestore::PerformInitialMigration(std::shared_ptr<NativeRdb::Rdb
                    static_cast<long long>(initialNewMaxAlbumId_),
                    static_cast<long long>(newMaxExtended_));
 
-    newDbStore.reset();
     int64_t endTime = MediaFileUtils::UTCTimeMilliSeconds();
     reverseRestoreReportInfo_.beforeTransformTimeCost.append(" FirstMigration: ")
         .append(std::to_string(endTime - startTime) + ";");
     return true;
 }
 
-int32_t ReverseCloneRestore::ClearRedundantData()
-{
-    MEDIA_INFO_LOG("ReverseCloneRestore: ClearRedundantData called");
-    return tableDataAdapter_.ClearRedundantData(destRdb_, sourceRdb_);
-}
-
 void ReverseCloneRestore::UpdatePhotosSpecialFields()
 {
     MEDIA_INFO_LOG("ReverseCloneRestore: UpdatePhotosSpecialFields called");
-    CHECK_AND_RETURN_LOG(destRdb_ != nullptr, "destRdb_ is null");
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "mediaLibraryRdb_ is null");
 
     // 1. 更新 PHOTO_QUALITY：判断是否为 1，是就不变，否则改为 0
     std::string updatePhotoQualitySql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " + PhotoColumn::PHOTO_QUALITY +
                                         " = CASE WHEN " + PhotoColumn::PHOTO_QUALITY + " = 1 THEN 0 ELSE " +
                                         PhotoColumn::PHOTO_QUALITY + " END";
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updatePhotoQualitySql, {});
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updatePhotoQualitySql, {});
 
     // 2. 更新 STAGE_VIDEO_TASK_STATUS
     std::string updateStageVideoTaskStatusSql =
         "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " + PhotoColumn::STAGE_VIDEO_TASK_STATUS + " = " +
         std::to_string(static_cast<int32_t>(StageVideoTaskStatus::NO_NEED_TO_STAGE));
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateStageVideoTaskStatusSql, {});
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateStageVideoTaskStatusSql, {});
 
     // 3. 更新 PHOTO_METADATA_FLAGS：统一设置为默认值 0
     std::string updateMetadataFlagsSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
                                         PhotoColumn::PHOTO_METADATA_FLAGS + " = 0";
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateMetadataFlagsSql, {});
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateMetadataFlagsSql, {});
 
     // 4. 旧机保留的 Photos 行不继承 ce_available；新机 absorbed 行插入时保留自身值。
     std::string updateCeAvailableSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE + " SET " +
@@ -3366,7 +3359,7 @@ void ReverseCloneRestore::UpdatePhotosSpecialFields()
     std::string updateChangeTimeSql = "UPDATE " + PhotoColumn::PHOTOS_TABLE +
                                       " SET " + PhotoColumn::PHOTO_CHANGE_TIME + " = " +
                                       std::to_string(currentTime);
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateChangeTimeSql);
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateChangeTimeSql);
 
     MEDIA_INFO_LOG("UpdatePhotosSpecialFields: completed");
 }
@@ -3374,7 +3367,7 @@ void ReverseCloneRestore::UpdatePhotosSpecialFields()
 void ReverseCloneRestore::UpdateChangeTime()
 {
     MEDIA_INFO_LOG("ReverseCloneRestore: UpdateChangeTime called");
-    CHECK_AND_RETURN_LOG(destRdb_ != nullptr, "destRdb_ is null");
+    CHECK_AND_RETURN_LOG(mediaLibraryRdb_ != nullptr, "mediaLibraryRdb_ is null");
 
     // 更新所有 PhotoAlbum 表中的 change_time 和 date_modified 为当前时间
     int64_t currentTime = MediaFileUtils::UTCTimeMilliSeconds();
@@ -3384,7 +3377,7 @@ void ReverseCloneRestore::UpdateChangeTime()
                                       ", " + PhotoAlbumColumns::ALBUM_DATE_MODIFIED + " = " +
                                       std::to_string(currentTime) +
                                       " WHERE " + PhotoAlbumColumns::ALBUM_TYPE + " <> 1024";
-    BackupDatabaseUtils::ExecuteSQL(destRdb_, updateChangeTimeSql);
+    BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateChangeTimeSql);
 
     MEDIA_INFO_LOG("UpdateChangeTime: completed");
 }
@@ -3408,12 +3401,12 @@ void ReverseCloneRestore::UpdateAnalysisAlbum()
 
 void ReverseCloneRestore::SetAggregateBitThird()
 {
-    CHECK_AND_RETURN_LOG(sourceRdb_ != nullptr, "SetAggregateBitThird failed, sourceRdb_ is nullptr");
+    CHECK_AND_RETURN_LOG(mediaRdb_ != nullptr, "SetAggregateBitThird failed, mediaRdb_ is nullptr");
     DataTransfer::MediaLibraryDbUpgrade medialibraryDbUpgrade;
     std::vector<NativeRdb::ValueObject> params = {};
     params.push_back(NativeRdb::ValueObject(std::to_string(PhotoAlbumType::SMART)));
     params.push_back(NativeRdb::ValueObject(std::to_string(PhotoAlbumSubType::CLASSIFY)));
-    auto resultSet = sourceRdb_->QuerySql(SQL_QUERY_CLASSIFY_ALBUM_EXIST_REVERSE, params);
+    auto resultSet = mediaRdb_->QuerySql(SQL_QUERY_CLASSIFY_ALBUM_EXIST_REVERSE, params);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "resultSet is nullptr");
     if (resultSet->GoToNextRow() == NativeRdb::E_OK && GetInt32Val("count", resultSet) > 0) {
         resultSet->Close();
@@ -3444,10 +3437,11 @@ void ReverseCloneRestore::AbsorbNewAlbums()
         }
         MEDIA_INFO_LOG("AbsorbNewAlbums: Table %{public}s is ready for restore", tableName.c_str());
 
-        unordered_map<string, string> srcColumnInfoMap = BackupDatabaseUtils::GetColumnInfoMap(sourceRdb_, tableName);
+        unordered_map<string, string> srcColumnInfoMap = BackupDatabaseUtils::GetColumnInfoMap(mediaRdb_, tableName);
         MEDIA_INFO_LOG("AbsorbNewAlbums: Got %{public}zu columns from sourceRdb for %{public}s",
                        srcColumnInfoMap.size(), tableName.c_str());
-        unordered_map<string, string> dstColumnInfoMap = BackupDatabaseUtils::GetColumnInfoMap(destRdb_, tableName);
+        unordered_map<string, string> dstColumnInfoMap =
+            BackupDatabaseUtils::GetColumnInfoMap(mediaLibraryRdb_, tableName);
         MEDIA_INFO_LOG("AbsorbNewAlbums: Got %{public}zu columns from destRdb for %{public}s", dstColumnInfoMap.size(),
                        tableName.c_str());
 
@@ -3480,9 +3474,9 @@ void ReverseCloneRestore::AbsorbNewPhotos()
     CHECK_AND_RETURN_LOG(
         IsReadyForRestore(PhotoColumn::PHOTOS_TABLE), "Column status is not ready for absorb photo, quit");
     unordered_map<string, string> srcColumnInfoMap =
-        BackupDatabaseUtils::GetColumnInfoMap(sourceRdb_, PhotoColumn::PHOTOS_TABLE);
+        BackupDatabaseUtils::GetColumnInfoMap(mediaRdb_, PhotoColumn::PHOTOS_TABLE);
     unordered_map<string, string> dstColumnInfoMap =
-        BackupDatabaseUtils::GetColumnInfoMap(destRdb_, PhotoColumn::PHOTOS_TABLE);
+        BackupDatabaseUtils::GetColumnInfoMap(mediaLibraryRdb_, PhotoColumn::PHOTOS_TABLE);
     if (!PrepareCommonColumnInfoMapForAbsorb(PhotoColumn::PHOTOS_TABLE, srcColumnInfoMap, dstColumnInfoMap)) {
         MEDIA_ERR_LOG("Prepare common column info failed");
         return;
@@ -3503,7 +3497,7 @@ void ReverseCloneRestore::AbsorbNewPhotos()
 
     ProcessNewPhotosFailedOffsets(0, maxSourceDbFileId, maxDestDbFileId);
 
-    if (RestoreMapCodeUtils::GetNotReadyPhotoCount(destRdb_) == 0) {
+    if (RestoreMapCodeUtils::GetNotReadyPhotoCount(mediaLibraryRdb_) == 0) {
         PhotoMapCodeOperation::SetMapCodeReadyStatus(MAP_CODE_IS_READY);
     }
     MEDIA_INFO_LOG("ReverseCloneRestore: AbsorbNewPhotos completed");
@@ -3532,9 +3526,9 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloud()
     CHECK_AND_RETURN_LOG(
         IsReadyForRestore(PhotoColumn::PHOTOS_TABLE), "Column status is not ready for absorb cloud photos, quit");
     unordered_map<string, string> srcColumnInfoMap =
-        BackupDatabaseUtils::GetColumnInfoMap(sourceRdb_, PhotoColumn::PHOTOS_TABLE);
+        BackupDatabaseUtils::GetColumnInfoMap(mediaRdb_, PhotoColumn::PHOTOS_TABLE);
     unordered_map<string, string> dstColumnInfoMap =
-        BackupDatabaseUtils::GetColumnInfoMap(destRdb_, PhotoColumn::PHOTOS_TABLE);
+        BackupDatabaseUtils::GetColumnInfoMap(mediaLibraryRdb_, PhotoColumn::PHOTOS_TABLE);
     CHECK_AND_RETURN_LOG(
         PrepareCommonColumnInfoMapForAbsorb(PhotoColumn::PHOTOS_TABLE, srcColumnInfoMap, dstColumnInfoMap),
         "Prepare common column info failed");
@@ -3553,7 +3547,7 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloud()
 
     ProcessNewPhotosForCloudFailedOffsets(0, maxSourceDbFileId, maxDestDbFileId);
 
-    if (RestoreMapCodeUtils::GetNotReadyPhotoCount(destRdb_) == 0) {
+    if (RestoreMapCodeUtils::GetNotReadyPhotoCount(mediaLibraryRdb_) == 0) {
         PhotoMapCodeOperation::SetMapCodeReadyStatus(MAP_CODE_IS_READY);
     }
     MEDIA_INFO_LOG("ReverseCloneRestore: AbsorbNewPhotosForCloud completed");
@@ -3669,8 +3663,8 @@ vector<NativeRdb::ValuesBucket> ReverseCloneRestore::GetInsertValuesForAbsorb(ve
 
 bool ReverseCloneRestore::PrepareAbsorbPhotosCommonInfo(int32_t &maxSourceDbFileId, int32_t &maxDestDbFileId)
 {
-    maxSourceDbFileId = AlbumAssetAbsorb::QueryMaxFileId(sourceRdb_);
-    maxDestDbFileId = AlbumAssetAbsorb::QueryMaxFileId(destRdb_);
+    maxSourceDbFileId = AlbumAssetAbsorb::QueryMaxFileId(mediaRdb_);
+    maxDestDbFileId = AlbumAssetAbsorb::QueryMaxFileId(mediaLibraryRdb_);
     MEDIA_INFO_LOG("AbsorbNewPhotos: maxSourceDbFileId=%{public}d, maxDestDbFileId=%{public}d",
         maxSourceDbFileId,
         maxDestDbFileId);
@@ -3683,7 +3677,7 @@ void ReverseCloneRestore::InitializeDuplicateAssetMapForPhotos()
     reverseDupMap_.clear();
     minDestDbFileId_ = INT32_MAX;
     std::string queryAllFileIdsSql = "SELECT file_id FROM " + std::string(PhotoColumn::PHOTOS_TABLE);
-    auto fileIdResultSet = BackupDatabaseUtils::QuerySql(destRdb_, queryAllFileIdsSql, {});
+    auto fileIdResultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, queryAllFileIdsSql, {});
 
     if (fileIdResultSet == nullptr) {
         MEDIA_WARN_LOG("InitializeDuplicateAssetMapForPhotos: query failed, resultSet is null");
@@ -3786,11 +3780,11 @@ void ReverseCloneRestore::InitializeTableAlbumIdMapForReverse()
 {
     MEDIA_INFO_LOG("ReverseCloneRestore: InitializeTableAlbumIdMapForReverse start");
 
-    CHECK_AND_RETURN_LOG(this->destRdb_ != nullptr, "destination rdbStore is null");
+    CHECK_AND_RETURN_LOG(this->mediaLibraryRdb_ != nullptr, "destination rdbStore is null");
 
     // 从 destRdb 读取所有 PhotoAlbum 的相册
     std::string sql = "SELECT album_id FROM " + PhotoAlbumColumns::TABLE + " ORDER BY album_id";
-    auto resultSet = destRdb_->QuerySql(sql);
+    auto resultSet = mediaLibraryRdb_->QuerySql(sql);
     CHECK_AND_RETURN_LOG(resultSet != nullptr, "Failed to query PhotoAlbum from destRdb");
 
     // 建立 identity mapping: albumId -> albumId
@@ -3856,7 +3850,7 @@ bool ReverseCloneRestore::ResolveDataConflictsAfterDuplicate(ReverseClonePhotoBa
     for (auto &fileInfo : batch.validFileInfos) {
         ReverseStaleTargetResource staleResource;
         ReverseDataConflictResult result =
-            ResolveDataConflictForFile(destRdb_, fileInfo, getUniqueId, staleResource);
+            ResolveDataConflictForFile(mediaLibraryRdb_, fileInfo, getUniqueId, staleResource);
         if (result.status == ReverseDataConflictStatus::FAILED && result.fileId > 0) {
             failedFileIds.emplace_back(result.fileId);
         }
@@ -3899,7 +3893,7 @@ void ReverseCloneRestore::UpdateSyncStatusForInsertedPhotos(
     updateSql += ")";
 
     if (!first) {
-        BackupDatabaseUtils::ExecuteSQL(destRdb_, updateSql, {});
+        BackupDatabaseUtils::ExecuteSQL(mediaLibraryRdb_, updateSql, {});
         MEDIA_INFO_LOG("UpdateSyncStatusForInsertedPhotos: updated sync_status to -1 for inserted photos");
     }
 }
@@ -3928,7 +3922,7 @@ void ReverseCloneRestore::EnsureCommittedFailedAssetsOrigin(const ReverseClonePh
     MEDIA_WARN_LOG("Reverse absorb committed failed assets ensure origin, stage=%{public}s, "
         "failedFileIds=%{public}zu, resourcePlans=%{public}zu", stage.c_str(), failedFileIds.size(),
         failedBatch.resourcePlans.size());
-    resourceInheritHelper_.FinalizeBatch(failedBatch, destRdb_);
+    resourceInheritHelper_.FinalizeBatch(failedBatch, mediaLibraryRdb_);
 }
 
 void ReverseCloneRestore::HandleAbsorbPhotosFinalFailure(const std::string &stage, int32_t offset,
@@ -3981,7 +3975,8 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     batch.values = GetInsertValuesForAbsorb(fileInfos, batch.resourcePlans);
     std::vector<int32_t> dataConflictFailedFileIds;
     AlbumAssetAbsorb::DuplicateCount duplicateCount;
-    if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId, destRdb_, albumAssetAbsorb_,
+    if (!resourceInheritHelper_.PrepareBatch(fileInfos,
+        maxDestDbFileId, minDestDbFileId, mediaLibraryRdb_, albumAssetAbsorb_,
         batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: PrepareBatch failed");
         CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
@@ -3998,7 +3993,7 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     }
 
     int64_t photoRowNum = 0;
-    if (!resourceInheritHelper_.CommitPhotosBatch(batch, destRdb_, photoRowNum)) {
+    if (!resourceInheritHelper_.CommitPhotosBatch(batch, mediaLibraryRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosBatch: CommitPhotosBatch failed");
         CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
         localErrorInfo += "CommitLocalBatch failed: " + to_string(offset);
@@ -4012,7 +4007,7 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: committed %{public}ld photos", photoRowNum);
 
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
-    resourceInheritHelper_.FinalizeBatch(batch, destRdb_);
+    resourceInheritHelper_.FinalizeBatch(batch, mediaLibraryRdb_);
     MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveLocalDataConflict");
 
@@ -4021,7 +4016,7 @@ void ReverseCloneRestore::AbsorbNewPhotosBatch(int32_t offset, int32_t isRelated
         &duplicateAssetMapMutex_);
     UpdateReverseDupMap(batch.validFileInfos);
 
-    InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
+    InsertMapCodes(photoRowNum, batch.validFileInfos, mediaLibraryRdb_);
     MEDIA_INFO_LOG("AbsorbNewPhotosBatch: end, offset=%{public}d", offset);
 }
 
@@ -4088,10 +4083,10 @@ void ReverseCloneRestore::UpdateSystemAlbumFields()
 {
     MEDIA_INFO_LOG("UpdateSystemAlbumFields: Starting to update system album IDs");
 
-    // 从 sourceRdb 查询所有 type=1024 的系统相册
+    // 从 源数据库 查询所有 type=1024 的系统相册
     string querySql = "SELECT * FROM " + PhotoAlbumColumns::TABLE + " WHERE " +
                       PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::SYSTEM);
-    auto sourceResultSet = BackupDatabaseUtils::GetQueryResultSet(sourceRdb_, querySql);
+    auto sourceResultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
     CHECK_AND_RETURN_LOG(sourceResultSet != nullptr, "Failed to query system albums from sourceRdb");
 
     int32_t updatedCount = 0;
@@ -4110,7 +4105,7 @@ void ReverseCloneRestore::UpdateSystemAlbumFields()
         string destQuerySql = "SELECT " + PhotoAlbumColumns::ALBUM_ID + " FROM " + PhotoAlbumColumns::TABLE +
                               " WHERE " + PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::SYSTEM) +
                               " AND " + PhotoAlbumColumns::ALBUM_SUBTYPE + " = " + to_string(albumSubtype);
-        auto destResultSet = BackupDatabaseUtils::GetQueryResultSet(destRdb_, destQuerySql);
+        auto destResultSet = BackupDatabaseUtils::GetQueryResultSet(mediaLibraryRdb_, destQuerySql);
         CHECK_AND_CONTINUE(destResultSet != nullptr);
 
         if (destResultSet->GoToFirstRow() == NativeRdb::E_OK) {
@@ -4146,22 +4141,23 @@ void ReverseCloneRestore::UpdateSystemAlbumFields()
 void ReverseCloneRestore::UpdateSystemAlbumOwnerAlbumId(int32_t sourceAlbumId, int32_t destAlbumId)
 {
     string updatePhotosSql = "UPDATE Photos SET owner_album_id = ? WHERE owner_album_id = ?";
-    int32_t ret = destRdb_->ExecuteSql(updatePhotosSql, vector<NativeRdb::ValueObject>{sourceAlbumId, destAlbumId});
+    int32_t ret = mediaLibraryRdb_->ExecuteSql(updatePhotosSql,
+        vector<NativeRdb::ValueObject>{sourceAlbumId, destAlbumId});
     MEDIA_INFO_LOG("UpdateSystemAlbumFields: updated owner_album_id from %{public}d to %{public}d, ret=%{public}d",
                    destAlbumId, sourceAlbumId, ret);
 }
 
 void ReverseCloneRestore::UpdateSystemAlbumField(int32_t sourceAlbumId, int32_t destAlbumId)
 {
-    // 查询 sourceRdb 中的封面字段
+    // 查询 源数据库 中的封面字段
     string querySql = "SELECT " + PhotoAlbumColumns::ALBUM_COVER_URI + ", " +
                       PhotoAlbumColumns::COVER_URI_SOURCE + ", " +
                       PhotoAlbumColumns::COVER_CLOUD_ID + ", " +
                       PhotoAlbumColumns::COVER_DATE_TIME +
                       " FROM " + PhotoAlbumColumns::TABLE +
                       " WHERE " + PhotoAlbumColumns::ALBUM_ID + " = " + to_string(sourceAlbumId);
-    auto sourceResultSet = BackupDatabaseUtils::QuerySql(sourceRdb_, querySql, {});
-    CHECK_AND_RETURN_LOG(sourceResultSet != nullptr, "Failed to query cover fields from sourceRdb");
+    auto sourceResultSet = BackupDatabaseUtils::QuerySql(mediaRdb_, querySql, {});
+    CHECK_AND_RETURN_LOG(sourceResultSet != nullptr, "Failed to query cover fields from mediaRdb_");
 
     NativeRdb::ValuesBucket values;
     values.PutInt(PhotoAlbumColumns::ALBUM_ID, sourceAlbumId);
@@ -4183,7 +4179,7 @@ void ReverseCloneRestore::UpdateSystemAlbumField(int32_t sourceAlbumId, int32_t 
         make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
     predicates->EqualTo(PhotoAlbumColumns::ALBUM_ID, destAlbumId);
     int32_t updatedRows = 0;
-    int32_t ret = BackupDatabaseUtils::Update(destRdb_, updatedRows, values, predicates);
+    int32_t ret = BackupDatabaseUtils::Update(mediaLibraryRdb_, updatedRows, values, predicates);
     MEDIA_INFO_LOG("UpdateSystemAlbumFields: updated album_id from %{public}d to %{public}d, ret=%{public}d, "
                    "rows=%{public}d",
                    destAlbumId, sourceAlbumId, ret, updatedRows);
@@ -4244,7 +4240,7 @@ bool ReverseCloneRestore::InsertNewAlbum(const std::string& logTag, int32_t sour
     NativeRdb::ValuesBucket values = BuildAlbumValuesBucket(albumInfo, {}, -1);
 
     int64_t insertRowId = -1;
-    int32_t ret = destRdb_->Insert(insertRowId, PhotoAlbumColumns::TABLE, values);
+    int32_t ret = mediaLibraryRdb_->Insert(insertRowId, PhotoAlbumColumns::TABLE, values);
     if (ret != NativeRdb::E_OK) {
         MEDIA_ERR_LOG("%{public}s: Failed to insert album, sourceAlbumId=%{public}d, ret=%{public}d",
                       logTag.c_str(), sourceAlbumId, ret);
@@ -4311,7 +4307,8 @@ void ReverseCloneRestore::UpdateDuplicateSourceOrUserAlbum(int32_t sourceAlbumId
 
     // 更新照片的 owner_album_id
     string updatePhotosSql = "UPDATE Photos SET owner_album_id = ? WHERE owner_album_id = ?";
-    int32_t ret = destRdb_->ExecuteSql(updatePhotosSql, vector<NativeRdb::ValueObject>{sourceAlbumId, destAlbumId});
+    int32_t ret = mediaLibraryRdb_->ExecuteSql(updatePhotosSql,
+        vector<NativeRdb::ValueObject>{sourceAlbumId, destAlbumId});
     MEDIA_INFO_LOG("InsertSourceAndUserAlbumsWithDuplicateCheck: updated owner_album_id from %{public}d to "
                    "%{public}d, ret=%{public}d",
                    destAlbumId, sourceAlbumId, ret);
@@ -4325,7 +4322,7 @@ void ReverseCloneRestore::UpdateDuplicateSourceOrUserAlbum(int32_t sourceAlbumId
         make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
     predicates->EqualTo(PhotoAlbumColumns::ALBUM_ID, destAlbumId);
     int32_t updatedRows = 0;
-    ret = BackupDatabaseUtils::Update(destRdb_, updatedRows, values, predicates);
+    ret = BackupDatabaseUtils::Update(mediaLibraryRdb_, updatedRows, values, predicates);
     if (ret != E_OK) {
         MEDIA_ERR_LOG("UpdateDuplicateSourceOrUserAlbum: failed to update album, ret=%{public}d", ret);
         AppendErrorInfo("dup Souce/UserAlbum failed: " +
@@ -4349,7 +4346,7 @@ std::unordered_set<std::string> ReverseCloneRestore::BuildExcludeColumnsForDupli
     string queryCoverSql = "SELECT " + PhotoAlbumColumns::COVER_URI_SOURCE +
                            " FROM " + PhotoAlbumColumns::TABLE +
                            " WHERE " + PhotoAlbumColumns::ALBUM_ID + " = ?";
-    auto coverResultSet = BackupDatabaseUtils::QuerySql(destRdb_, queryCoverSql, {destAlbumId});
+    auto coverResultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, queryCoverSql, {destAlbumId});
     int32_t destCoverUriSource = 0;
     if (coverResultSet != nullptr && coverResultSet->GoToNextRow() == NativeRdb::E_OK) {
         destCoverUriSource = GetInt32Val(PhotoAlbumColumns::COVER_URI_SOURCE, coverResultSet);
@@ -4389,7 +4386,7 @@ int32_t ReverseCloneRestore::CheckDuplicateAlbumInDest(const std::string &lPath)
                           PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::SOURCE) + " OR " +
                           PhotoAlbumColumns::ALBUM_TYPE + " = " + to_string(PhotoAlbumType::USER) + ") AND " +
                           "LOWER(" + PhotoAlbumColumns::ALBUM_LPATH + ") = LOWER(?)";
-    auto destResultSet = BackupDatabaseUtils::QuerySql(destRdb_, destQuerySql, {lPath});
+    auto destResultSet = BackupDatabaseUtils::QuerySql(mediaLibraryRdb_, destQuerySql, {lPath});
     if (destResultSet == nullptr) {
         MEDIA_ERR_LOG("Failed to query destRdb for duplicate album");
         return -1;
@@ -4518,7 +4515,7 @@ void ReverseCloneRestore::InsertSourceAndUserAlbumsWithDuplicateCheck()
     string querySql = "SELECT * FROM " + PhotoAlbumColumns::TABLE + " WHERE " + PhotoAlbumColumns::ALBUM_TYPE + " = " +
                       to_string(PhotoAlbumType::SOURCE) + " OR " + PhotoAlbumColumns::ALBUM_TYPE + " = " +
                       to_string(PhotoAlbumType::USER);
-    auto sourceResultSet = BackupDatabaseUtils::GetQueryResultSet(sourceRdb_, querySql);
+    auto sourceResultSet = BackupDatabaseUtils::GetQueryResultSet(mediaRdb_, querySql);
     if (sourceResultSet == nullptr) {
         MEDIA_ERR_LOG("Failed to query SOURCE and USER albums from sourceRdb");
         AppendErrorInfo("no SOURCE/USER album");
@@ -4582,8 +4579,8 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     batch.values = GetInsertValuesForAbsorb(fileInfos, batch.resourcePlans);
     std::vector<int32_t> dataConflictFailedFileIds;
     AlbumAssetAbsorb::DuplicateCount duplicateCount;
-    if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId, destRdb_, albumAssetAbsorb_,
-        batch, duplicateCount)) {
+    if (!resourceInheritHelper_.PrepareBatch(fileInfos, maxDestDbFileId, minDestDbFileId,
+        mediaLibraryRdb_, albumAssetAbsorb_, batch, duplicateCount)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: PrepareBatch failed");
         CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
         localErrorInfo += "PrepareCloudBatch failed: " + to_string(offset);
@@ -4599,7 +4596,7 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     }
 
     int64_t photoRowNum = 0;
-    if (!resourceInheritHelper_.CommitPhotosBatch(batch, destRdb_, photoRowNum)) {
+    if (!resourceInheritHelper_.CommitPhotosBatch(batch, mediaLibraryRdb_, photoRowNum)) {
         MEDIA_ERR_LOG("AbsorbNewPhotosForCloudBatch: CommitPhotosBatch failed");
         CHECK_AND_EXECUTE(localErrorInfo.empty(), localErrorInfo += "; ");
         localErrorInfo += "CommitCloudBatch failed: " + to_string(offset);
@@ -4613,7 +4610,7 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: committed %{public}ld cloud photos", photoRowNum);
 
     UpdateSyncStatusForInsertedPhotos(batch, photoRowNum);
-    resourceInheritHelper_.FinalizeBatch(batch, destRdb_);
+    resourceInheritHelper_.FinalizeBatch(batch, mediaLibraryRdb_);
     MergeAbsorbNewPhotosReport(duplicateCount);
     EnsureCommittedFailedAssetsOrigin(batch, dataConflictFailedFileIds, "ResolveCloudDataConflict");
 
@@ -4622,7 +4619,7 @@ void ReverseCloneRestore::AbsorbNewPhotosForCloudBatch(int32_t offset, int32_t i
         &duplicateAssetMapMutex_);
     UpdateReverseDupMap(batch.validFileInfos);
 
-    InsertMapCodes(photoRowNum, batch.validFileInfos, destRdb_);
+    InsertMapCodes(photoRowNum, batch.validFileInfos, mediaLibraryRdb_);
     MEDIA_INFO_LOG("AbsorbNewPhotosForCloudBatch: end, offset=%{public}d", offset);
 }
 
@@ -4759,7 +4756,7 @@ void ReverseCloneRestore::UpdateSourceOrUserAlbumUploadStatus(const int32_t dest
         make_unique<NativeRdb::AbsRdbPredicates>(PhotoAlbumColumns::TABLE);
     predicates->EqualTo(PhotoAlbumColumns::ALBUM_ID, destAlbumId);
     int32_t updatedRows = 0;
-    int32_t ret = BackupDatabaseUtils::Update(destRdb_, updatedRows, values, predicates);
+    int32_t ret = BackupDatabaseUtils::Update(mediaLibraryRdb_, updatedRows, values, predicates);
     MEDIA_INFO_LOG("Update uploadStatus: album_id %{public}d, upload_status: %{public}d, "
         "ret=%{public}d, rows=%{public}d", destAlbumId, albumInfo.uploadStatus, ret, updatedRows);
 }
@@ -4798,7 +4795,7 @@ void ReverseCloneRestore::UpdateDestOnlyAlbumsUploadStatus()
         THEN 1 ELSE ? END ) \
         WHERE album_type IN (0, 2048) AND album_id IN " + inClause + ";";
     int32_t uploadStatus = PhotoAlbumUploadStatusOperation::GetAlbumUploadStatus();
-    int32_t ret = destRdb_->ExecuteSql(updateSql, vector<NativeRdb::ValueObject>{ uploadStatus });
+    int32_t ret = mediaLibraryRdb_->ExecuteSql(updateSql, vector<NativeRdb::ValueObject>{ uploadStatus });
     MEDIA_INFO_LOG("update uploadStatus: %{public}d, ret: %{public}d", uploadStatus, ret);
 }
 
@@ -4808,8 +4805,8 @@ vector<FileInfo> ReverseCloneRestore::QueryFileInfos(int32_t offset, int32_t isR
     result.reserve(CLONE_QUERY_COUNT);
     std::vector<NativeRdb::ValueObject> bindArgs = {offset, CLONE_QUERY_COUNT};
 
-    CHECK_AND_RETURN_RET_LOG(sourceRdb_ != nullptr, result, "sourceRdb_ is null.");
-    auto resultSet = sourceRdb_->QuerySql(SQL_PHOTOS_TABLE_QUERY_ALL, bindArgs);
+    CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, result, "mediaRdb_ is null.");
+    auto resultSet = mediaRdb_->QuerySql(SQL_PHOTOS_TABLE_QUERY_ALL, bindArgs);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, result, "Query resultSql is null.");
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -4833,8 +4830,8 @@ vector<FileInfo> ReverseCloneRestore::QueryCloudFileInfos(int32_t offset, int32_
     result.reserve(CLONE_QUERY_COUNT);
     std::vector<NativeRdb::ValueObject> bindArgs = {offset, CLONE_QUERY_COUNT};
 
-    CHECK_AND_RETURN_RET_LOG(sourceRdb_ != nullptr, result, "sourceRdb_ is null.");
-    auto resultSet = sourceRdb_->QuerySql(SQL_CLOUD_PHOTOS_TABLE_QUERY_ALL, bindArgs);
+    CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, result, "mediaRdb_ is null.");
+    auto resultSet = mediaRdb_->QuerySql(SQL_CLOUD_PHOTOS_TABLE_QUERY_ALL, bindArgs);
     CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, result, "QueryCloudFileInfos resultSql is null.");
 
     while (resultSet->GoToNextRow() == NativeRdb::E_OK) {
@@ -4852,8 +4849,8 @@ vector<FileInfo> ReverseCloneRestore::QueryCloudFileInfos(int32_t offset, int32_
 
 int32_t ReverseCloneRestore::GetAllPhotosRowCount()
 {
-    CHECK_AND_RETURN_RET_LOG(sourceRdb_ != nullptr, 0, "sourceRdb_ is null.");
-    auto resultSet = sourceRdb_->QuerySql(SQL_PHOTOS_TABLE_COUNT_ALL);
+    CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, 0, "mediaRdb_ is null.");
+    auto resultSet = mediaRdb_->QuerySql(SQL_PHOTOS_TABLE_COUNT_ALL);
     CHECK_AND_RETURN_RET(resultSet != nullptr, 0);
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         resultSet->Close();
@@ -4866,8 +4863,8 @@ int32_t ReverseCloneRestore::GetAllPhotosRowCount()
 
 int32_t ReverseCloneRestore::GetAllCloudPhotosRowCount()
 {
-    CHECK_AND_RETURN_RET_LOG(sourceRdb_ != nullptr, 0, "sourceRdb_ is null.");
-    auto resultSet = sourceRdb_->QuerySql(SQL_CLOUD_PHOTOS_TABLE_COUNT_ALL);
+    CHECK_AND_RETURN_RET_LOG(mediaRdb_ != nullptr, 0, "mediaRdb_ is null.");
+    auto resultSet = mediaRdb_->QuerySql(SQL_CLOUD_PHOTOS_TABLE_COUNT_ALL);
     CHECK_AND_RETURN_RET(resultSet != nullptr, 0);
     if (resultSet->GoToFirstRow() != NativeRdb::E_OK) {
         resultSet->Close();

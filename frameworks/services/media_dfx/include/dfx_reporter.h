@@ -136,15 +136,6 @@ struct HeifAgingStatistics {
     uint32_t agingFileNum = 0;
     uint64_t agingTotalSize = 0;
 };
-
-struct UpgradeExceptionInfo {
-    int32_t srcVersion = 0;
-    int32_t dstVersion = 0;
-    bool isSync;
-    std::string exceptionVersions;
-    int64_t duration = 0;
-};
-
 struct AncoCheckInfo {
     uint64_t checkStartTime;
     uint64_t checkEndTime;
@@ -180,6 +171,14 @@ struct AncoCountFormatInfo {
     std::string assetFormatDistribution = "{}";
 };
 
+struct UpgradeExceptionInfo {
+    int32_t srcVersion = 0;
+    int32_t dstVersion = 0;
+    bool isSync;
+    std::string exceptionVersions;
+    int64_t duration = 0;
+};
+
 struct ThmInodeCleanInfo {
     int32_t result = 0;
     int32_t isConfigXattr = 0;
@@ -208,6 +207,7 @@ public:
     void ReportAnalysisVersion(const std::string &analysisName, int32_t version);
     void ReportAdaptationToMovingPhoto();
     void ReportCinematicVideo();
+    void ReportMultishotInfo();
     void ReportMediaLibCompatConfig();
     static int32_t ReportCloudSyncThumbGenerationStatus(const int32_t& downloadedThumb, const int32_t& generatedThumb,
         const int32_t& totalDownload, const int32_t& southDeviceType);

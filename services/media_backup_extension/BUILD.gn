@@ -94,6 +94,7 @@ ohos_shared_library("mediabackup") {
     "./src/geo_knowledge/clone_reverse_restore_geo.cpp",
     "./src/analysis_album/beauty_score_clone_base.cpp",
     "./src/reverse_clone_restore/shooting_mode_album_clone.cpp",
+    "./src/highlight/play_info_mapper.cpp",
   ]
 
   sources = [

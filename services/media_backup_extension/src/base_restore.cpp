@@ -278,7 +278,7 @@ int32_t BaseRestore::Init(void)
     }
 
     int32_t err = BackupDatabaseUtils::InitDb(mediaLibraryRdb_, CONST_MEDIA_DATA_ABILITY_DB_NAME,
-        DATABASE_PATH, CONST_BUNDLE_NAME, true, context->GetArea());
+        DATABASE_PATH, CONST_BUNDLE_NAME, true, context->GetArea(), true, &mediaLibraryRdbConfig_);
     if (err != E_OK) {
         ErrorInfo errorInfo(RestoreError::INIT_FAILED, 0, "", "medialibrary rdb fail, err = " + std::to_string(err));
         UpgradeRestoreTaskReport().SetSceneCode(this->sceneCode_).SetTaskId(this->taskId_).ReportError(errorInfo);
@@ -1912,6 +1912,7 @@ void BaseRestore::StopParameterForClone()
     MEDIA_INFO_LOG("StopParameterForClone set 0");
     bool retFlag = system::SetParameter(CLONE_FLAG, "0");
     CHECK_AND_PRINT_LOG(retFlag, "Failed to set stop parameter cloneFlag, retFlag:%{public}d", retFlag);
+    NotifyDbStatusForClone();
     SetMediaLibraryRecoveryDone(true);
     MEDIA_INFO_LOG("SetMediaLibraryRecoveryDone set true");
 }

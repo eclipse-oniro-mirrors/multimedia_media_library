@@ -59,7 +59,7 @@ public:
         return false;
     }
 
-    EXPORT virtual int32_t ExecuteSql(const std::string &sql, const std::vector<NativeRdb::ValueObject> &args = {})
+    EXPORT virtual int32_t ExecuteSql(const std::string &sql)
     {
         return NativeRdb::E_NOT_SUPPORT;
     }
