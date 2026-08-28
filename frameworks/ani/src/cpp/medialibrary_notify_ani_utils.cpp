@@ -23,6 +23,7 @@
 #include "medialibrary_ani_utils.h"
 #include "medialibrary_tracer.h"
 #include "photo_album_column.h"
+#include "photo_album.h"
 #include "media_library_enum_ani.h"
 #include "ani_class_name.h"
 
@@ -36,6 +37,8 @@ const std::string RegisterNotifyType::TRASH_PHOTO_CHANGE = "trashedPhotoChange";
 const std::string RegisterNotifyType::PHOTO_ALBUM_CHANGE = "photoAlbumChange";
 const std::string RegisterNotifyType::HIDDEN_ALBUM_CHANGE = "hiddenAlbumChange";
 const std::string RegisterNotifyType::TRASHED_ALBUM_CHANGE = "trashedAlbumChange";
+const std::string RegisterNotifyType::SHARE_PHOTO_CHANGE = "sharePhotoChange";
+const std::string RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE = "sharePhotoAlbumChange";
 const std::string RegisterNotifyType::BATCH_DOWNLOAD_PROGRESS_CHANGE = "downloadProgressChange";
 const std::string RegisterNotifyType::USER_CLIENT_CHANGE = "userDefineChange";
 const std::string RegisterNotifyType::SINGLE_PHOTO_CHANGE = "singlePhotoChange";
@@ -68,6 +71,8 @@ const std::map<std::string, Notification::NotifyUriType> MediaLibraryNotifyAniUt
     { RegisterNotifyType::PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::PHOTO_ALBUM_URI },
     { RegisterNotifyType::HIDDEN_ALBUM_CHANGE, Notification::NotifyUriType::HIDDEN_ALBUM_URI },
     { RegisterNotifyType::TRASHED_ALBUM_CHANGE, Notification::NotifyUriType::TRASH_ALBUM_URI },
+    { RegisterNotifyType::SHARE_PHOTO_CHANGE, Notification::NotifyUriType::SHARE_PHOTO_URI },
+    { RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI },
 };
 
 const std::map<std::string, Notification::NotifyUriType> MediaLibraryNotifyAniUtils::REGISTER_SINGLE_NOTIFY_TYPE_MAP = {
@@ -94,6 +99,8 @@ const std::map<Notification::NotifyUriType, Notification::NotifyUriType>
     { Notification::NotifyUriType::PHOTO_ALBUM_URI, Notification::NotifyUriType::PHOTO_ALBUM_URI },
     { Notification::NotifyUriType::HIDDEN_ALBUM_URI, Notification::NotifyUriType::HIDDEN_ALBUM_URI },
     { Notification::NotifyUriType::TRASH_ALBUM_URI, Notification::NotifyUriType::TRASH_ALBUM_URI },
+    { Notification::NotifyUriType::SHARE_PHOTO_URI, Notification::NotifyUriType::SHARE_PHOTO_URI },
+    { Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI },
 };
 
 const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyAniUtils::REGISTER_URI_MAP = {
@@ -103,6 +110,8 @@ const std::map<Notification::NotifyUriType, std::string> MediaLibraryNotifyAniUt
     { Notification::NotifyUriType::PHOTO_ALBUM_URI, RegisterNotifyType::PHOTO_ALBUM_CHANGE },
     { Notification::NotifyUriType::HIDDEN_ALBUM_URI, RegisterNotifyType::HIDDEN_ALBUM_CHANGE },
     { Notification::NotifyUriType::TRASH_ALBUM_URI, RegisterNotifyType::TRASHED_ALBUM_CHANGE },
+    { Notification::NotifyUriType::SHARE_PHOTO_URI, RegisterNotifyType::SHARE_PHOTO_CHANGE },
+    { Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI, RegisterNotifyType::SHARE_PHOTO_ALBUM_CHANGE },
 };
 
 const std::map<Notification::AccurateNotifyType, NotifyChangeType>
@@ -409,6 +418,13 @@ ani_object MediaLibraryNotifyAniUtils::BuildPhotoAssetChangeInfo(ani_env *env,
     if (uriType == Notification::NotifyUriType::HIDDEN_PHOTO_URI) {
         SetValueInt64(env, "hiddenTime", photoAssetChangeInfo.hiddenTime_, retObj);
     }
+
+    if (uriType == Notification::NotifyUriType::SHARE_PHOTO_URI) {
+        SetValueInt64(env, "shareDateDay", photoAssetChangeInfo.shareDateDay_, retObj);
+        SetValueInt64(env, "shareGroup", photoAssetChangeInfo.shareGroup_, retObj);
+        SetValueInt32(env, "shareRiskStatus", photoAssetChangeInfo.shareRiskStatus_, retObj);
+        SetValueInt32(env, "photoVisibility", photoAssetChangeInfo.photoVisibility_, retObj);
+    }
     
     return retObj;
 }
@@ -533,6 +549,10 @@ ani_object MediaLibraryNotifyAniUtils::BuildAlbumChangeInfo(ani_env* env,
     SetValueBool(env, "isCoverChanged", albumChangeInfo.isCoverChange_, retObj);
     SetValueBool(env, "isHiddenCoverChanged", albumChangeInfo.isHiddenCoverChange_, retObj);
     SetValueString(env, "lpath", albumChangeInfo.lpath_, retObj);
+    if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumChangeInfo.albumType_),
+        static_cast<PhotoAlbumSubType>(albumChangeInfo.albumSubType_))) {
+        SetValueInt32(env, "shareRiskStatus", albumChangeInfo.shareRiskStatus_, retObj);
+    }
 
     ani_status status = ANI_OK;
     ani_object coverInfoValue = BuildPhotoAssetChangeInfo(env, albumChangeInfo.coverInfo_);

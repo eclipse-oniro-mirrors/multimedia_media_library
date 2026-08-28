@@ -99,6 +99,13 @@ public:
     int32_t livephoto4dStatus_ = INVALID_INT32_VALUE;
     int64_t dateModifiedMs_ = INVALID_INT64_VALUE;
     int64_t localAssetSize_ = INVALID_INT64_VALUE;
+    // 共享相册字段
+    int32_t isShared_ = 0;
+    int64_t shareGroup_ = INVALID_INT64_VALUE;
+    int32_t photoVisibility_ = 0;
+    int64_t shareDateDay_ = INVALID_INT64_VALUE;
+    int32_t shareRiskStatus_ = INVALID_INT32_VALUE;
+    std::string shareRiskType_ = EMPTY_STR;
 
     std::string ToString(bool isDetail = false) const;
     bool Marshalling(Parcel &parcel) const override;

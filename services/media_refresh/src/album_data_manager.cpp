@@ -220,6 +220,39 @@ vector<AlbumChangeData> AlbumDataManager::GetAlbumDatasFromAddAlbum(const vector
     return albumChangeDatas;
 }
 
+vector<AlbumChangeData> AlbumDataManager::GetAlbumDatasForUpdateNoChange(const vector<int32_t> &albumIds)
+{
+    vector<string> albumIdStrs;
+    for (auto const &albumId : albumIds) {
+        albumIdStrs.push_back(to_string(static_cast<int>(albumId)));
+    }
+    RdbPredicates predicates(PhotoAlbumColumns::TABLE);
+    predicates.In(PhotoAlbumColumns::ALBUM_ID, albumIdStrs);
+    if (!albumIds.empty()) {
+        ACCURATE_DEBUG("albumId: %{public}d", albumIds[0]);
+    } else {
+        ACCURATE_DEBUG("albumId empty");
+    }
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    vector<AlbumChangeData> albumChangeDatas;
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, albumChangeDatas, "rdbStore null");
+    auto resultSet = rdbStore->QueryByStep(predicates, AlbumChangeInfo::GetAlbumInfoColumns());
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, albumChangeDatas, "resultSet null");
+    auto albumIdInfos = AlbumChangeInfo::GetInfoFromResult(resultSet);
+    resultSet->Close();
+    for (auto &albumInfo : albumIdInfos) {
+        AlbumChangeData changeData;
+        changeData.operation_ = RDB_OPERATION_UPDATE;
+        changeData.version_ = MediaFileUtils::UTCTimeMilliSeconds();
+        changeData.infoBeforeChange_ = albumInfo;
+        changeData.infoAfterChange_ = albumInfo;
+        albumChangeDatas.push_back(changeData);
+        ACCURATE_DEBUG("albumInfo: %{public}s", albumInfo.ToString().c_str());
+    }
+    return albumChangeDatas;
+}
+
 int32_t AlbumDataManager::SetAlbumIdsByPredicates(const AbsRdbPredicates &predicates)
 {
     // 直接更新操作相册的，不用存相册id

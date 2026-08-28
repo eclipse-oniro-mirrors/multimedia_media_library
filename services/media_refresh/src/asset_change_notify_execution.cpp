@@ -18,6 +18,7 @@
 
 #include "trash_asset_helper.h"
 #include "hidden_asset_helper.h"
+#include "share_asset_helper.h"
 #include "accurate_debug_log.h"
 #include "medialibrary_notify_new.h"
 
@@ -127,9 +128,14 @@ void AssetChangeNotifyExecution::Notify(const vector<PhotoAssetChangeData> &chan
                 MEDIA_WARN_LOG("invalid before asset info:%{public}s", infoBefore.ToString().c_str());
             }
         } else if (rdbOperation == RDB_OPERATION_UPDATE) {
-            InsertNormalAssetOperation(changeData);
-            InsertTrashAssetOperation(changeData);
-            InsertHiddenlAssetOperation(changeData);
+            bool isShare = infoBefore.isShared_ != 0 || infoAfter.isShared_ != 0;
+            if (isShare) {
+                InsertShareAssetOperation(changeData);
+            } else {
+                InsertNormalAssetOperation(changeData);
+                InsertTrashAssetOperation(changeData);
+                InsertHiddenlAssetOperation(changeData);
+            }
         }
     }
 
@@ -190,6 +196,9 @@ void AssetChangeNotifyExecution::InsertNotifyInfo(AssetRefreshOperation operatio
 
 AssetRefreshOperation AssetChangeNotifyExecution::GetAddOperation(const PhotoAssetChangeInfo &changeInfo)
 {
+    if (ShareAssetHelper::IsAsset(changeInfo)) {
+        return ASSET_OPERATION_ADD_SHARE;
+    }
     if (AlbumAssetHelper::IsCommonSystemAsset(changeInfo)) {
         return ASSET_OPERATION_ADD;
     }
@@ -204,6 +213,9 @@ AssetRefreshOperation AssetChangeNotifyExecution::GetAddOperation(const PhotoAss
 
 AssetRefreshOperation AssetChangeNotifyExecution::GetRemoveOperation(const PhotoAssetChangeInfo &changeInfo)
 {
+    if (ShareAssetHelper::IsAsset(changeInfo)) {
+        return ASSET_OPERATION_REMOVE_SHARE;
+    }
     if (AlbumAssetHelper::IsCommonSystemAsset(changeInfo)) {
         return ASSET_OPERATION_REMOVE;
     }
@@ -261,6 +273,11 @@ void AssetChangeNotifyExecution::InsertHiddenlAssetOperation(const PhotoAssetCha
             break;
         }
     }
+}
+
+void AssetChangeNotifyExecution::InsertShareAssetOperation(const PhotoAssetChangeData &changeData)
+{
+    InsertNotifyInfo(ASSET_OPERATION_UPDATE_SHARE, changeData);
 }
 
 } // namespace Media

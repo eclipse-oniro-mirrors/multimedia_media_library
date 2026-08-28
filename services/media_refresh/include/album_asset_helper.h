@@ -29,7 +29,8 @@ namespace Media::AccurateRefresh {
 class AlbumAssetHelper {
 public:
     // 有效资产
-    static bool IsCommonSystemAsset(const PhotoAssetChangeInfo &assetInfo, bool isHiddenAsset = false);
+    static bool IsCommonSystemAsset(const PhotoAssetChangeInfo &assetInfo, bool isHiddenAsset = false,
+        int32_t isShared = 0);
     
     // 视频资产
     static bool IsVideoAsset(const PhotoAssetChangeInfo &assetInfo);

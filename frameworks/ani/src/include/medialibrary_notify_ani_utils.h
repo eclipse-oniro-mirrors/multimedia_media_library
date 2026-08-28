@@ -37,6 +37,8 @@ public:
     static const std::string PHOTO_ALBUM_CHANGE EXPORT;
     static const std::string HIDDEN_ALBUM_CHANGE EXPORT;
     static const std::string TRASHED_ALBUM_CHANGE EXPORT;
+    static const std::string SHARE_PHOTO_CHANGE EXPORT;
+    static const std::string SHARE_PHOTO_ALBUM_CHANGE EXPORT;
     static const std::string BATCH_DOWNLOAD_PROGRESS_CHANGE EXPORT;
     static const std::string SINGLE_PHOTO_CHANGE EXPORT;
     static const std::string SINGLE_PHOTO_ALBUM_CHANGE EXPORT;

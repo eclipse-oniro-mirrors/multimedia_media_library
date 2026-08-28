@@ -1068,6 +1068,7 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/image_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/owner_album_info_calculation.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/album_asset_helper.cpp",
+    "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/share_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/trash_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/video_asset_helper.cpp",
     "${MEDIALIB_ACCURATE_REFRESH_PATH}/src/asset_change_notify_execution.cpp",

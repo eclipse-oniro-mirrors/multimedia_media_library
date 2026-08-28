@@ -43,6 +43,8 @@ public:
     std::unordered_map<int32_t, AlbumChangeInfo> GetInitAlbumInfos();
     std::vector<int32_t> GetInitKeys() override;
     static std::vector<AlbumChangeData> GetAlbumDatasFromAddAlbum(const std::vector<std::string> &albumIdsStr);
+    // 共享相册成员表变更场景：按 albumId 查当前状态构造 UPDATE 变更数据（before==after==当前值）
+    static std::vector<AlbumChangeData> GetAlbumDatasForUpdateNoChange(const std::vector<int32_t> &albumIds);
     void ClearChangeInfos();
     bool CheckIsForRecheck() override;
     bool CheckIsExceedInMultiThread(const vector<int32_t>& keys) override {return false;};
