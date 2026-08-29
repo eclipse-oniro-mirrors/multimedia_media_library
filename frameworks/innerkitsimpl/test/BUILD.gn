@@ -33,6 +33,7 @@ group("test") {
     "unittest/media_permission_check_test:unittest",
     "unittest/media_permission_test:unittest",
     "unittest/media_refresh:unittest",
+    "unittest/media_share_album_lite_test:unittest",
     "unittest/medialibrary_album_operation_test:unittest",
     "unittest/medialibrary_album_source_test:unittest",
     "unittest/medialibrary_analysis_album_operation_test:unittest",

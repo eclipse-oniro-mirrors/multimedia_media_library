@@ -112,6 +112,14 @@ config("media_data_extension_public_config") {
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/include/background",
   ]
 
+  include_share_album_server = [
+    "${MEDIALIB_IPC_COMMON}/include/vo",
+    "${MEDIALIB_SHARE_ALBUM_DATA}/include",
+    "${MEDIALIB_SHARE_ALBUM_SERVICE_PATH}/include/dao",
+    "${MEDIALIB_SHARE_ALBUM_SERVICE_PATH}/include/controller",
+    "${MEDIALIB_SHARE_ALBUM_SERVICE_PATH}/include/service",
+  ]
+
   include_media_ipc = [
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/util",
     "${MEDIALIB_INNERKITS_PATH}/medialibrary_data_extension/include/ipc/controller",
@@ -338,8 +346,10 @@ config("media_data_extension_public_config") {
 
   if (media_library_cloud_sync_enable) {
     include_dirs += include_cloud_sync_server
+    include_dirs += include_share_album_server
   } else {
     include_cloud_sync_server = []
+    include_share_album_server = []
   }
 
   if (media_library_feature_cloud_enhancement) {
@@ -603,6 +613,13 @@ ohos_shared_library("medialibrary_data_extension") {
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/background/media_hidden_and_recycle_task.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/background/repair_video_dirty_and_quality_task.cpp",
     "${MEDIALIB_CLOUD_SYNC_SERVICE_PATH}/src/background/lcd_download_task.cpp",
+  ]
+
+  media_share_album_server_source = [
+    "${MEDIALIB_SHARE_ALBUM_SERVICE_PATH}/src/controller/media_share_photo_data_controller_service.cpp",
+    "${MEDIALIB_SHARE_ALBUM_SERVICE_PATH}/src/service/media_share_photo_data_service.cpp",
+    "${MEDIALIB_SHARE_ALBUM_SERVICE_PATH}/src/dao/media_share_photo_data_dao.cpp",
+    "${MEDIALIB_SHARE_ALBUM_DATA}/src/get_share_album_owner_vo.cpp",
   ]
 
   media_cloud_dirty_handle_source = [ "${MEDIALIB_SERVICES_PATH}/media_cloud_sync/src/cloud_dirty_handle/cloud_upload_checker.cpp" ]
@@ -1186,6 +1203,7 @@ ohos_shared_library("medialibrary_data_extension") {
   sources += media_cloud_sync_source
   sources += media_cloud_sync_server_source_dto
   sources += media_cloud_sync_server_source
+  sources += media_share_album_server_source
   sources += media_rdb_utils_source
   sources += media_dfx_source
   sources += media_cloud_sync_notify_handle_source
