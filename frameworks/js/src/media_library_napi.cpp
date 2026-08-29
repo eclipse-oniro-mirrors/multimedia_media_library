@@ -612,6 +612,10 @@ napi_value MediaLibraryNapi::PhotoAccessHelperInit(napi_env env, napi_value expo
             DECLARE_NAPI_FUNCTION("offAnalysisPhotoChange", AnalysisPhotoAccessUnregisterCallback),
             DECLARE_NAPI_FUNCTION("onAnalysisAlbumChange", AnalysisAlbumAccessRegisterCallback),
             DECLARE_NAPI_FUNCTION("offAnalysisAlbumChange", AnalysisAlbumAccessUnregisterCallback),
+            DECLARE_NAPI_FUNCTION("onSharePhotoChange", PhotoAccessSharePhotoRegisterCallback),
+            DECLARE_NAPI_FUNCTION("offSharePhotoChange", PhotoAccessSharePhotoUnregisterCallback),
+            DECLARE_NAPI_FUNCTION("onSharePhotoAlbumChange", PhotoAccessShareAlbumRegisterCallback),
+            DECLARE_NAPI_FUNCTION("offSharePhotoAlbumChange", PhotoAccessShareAlbumUnregisterCallback),
             DECLARE_NAPI_FUNCTION("isMediaDataReady", QueryMediaDataReady),
 			DECLARE_NAPI_FUNCTION("convertToAsset", JSConvertToAsset),
             DECLARE_NAPI_FUNCTION("cloneToAlbum", JSCloneToAlbum),
@@ -18427,6 +18431,52 @@ napi_value MediaLibraryNapi::PhotoAccessTransAssetToCompatibleAsset(napi_env env
     SetUserIdFromObjectInfo(asyncContext);
     return MediaLibraryNapiUtils::NapiCreateAsyncWork(env, asyncContext, "TransAssetToCompatibleAsset",
         JSTransAssetToCompatibleAssetExecute, JSTransAssetToCompatibleAssetCompleteCallback);
+}
+
+napi_value MediaLibraryNapi::PhotoAccessSharePhotoRegisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessSharePhotoRegisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessSharePhotoRegisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    CHECK_AND_RETURN_RET(RegisterAnalysisAccessCallbackInternal(env, info,
+        Notification::NotifyUriType::SHARE_PHOTO_URI), undefinedResult);
+    return undefinedResult;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessSharePhotoUnregisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessSharePhotoUnregisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessSharePhotoUnregisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    UnregisterAnalysisAccessCallbackInternal(env, info, Notification::NotifyUriType::SHARE_PHOTO_URI);
+    return undefinedResult;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessShareAlbumRegisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessShareAlbumRegisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessShareAlbumRegisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    CHECK_AND_RETURN_RET(RegisterAnalysisAccessCallbackInternal(env, info,
+        Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI), undefinedResult);
+    return undefinedResult;
+}
+
+napi_value MediaLibraryNapi::PhotoAccessShareAlbumUnregisterCallback(napi_env env, napi_callback_info info)
+{
+    NAPI_INFO_LOG("enter PhotoAccessShareAlbumUnregisterCallback");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessShareAlbumUnregisterCallback");
+    napi_value undefinedResult = nullptr;
+    napi_get_undefined(env, &undefinedResult);
+    UnregisterAnalysisAccessCallbackInternal(env, info, Notification::NotifyUriType::SHARE_PHOTO_ALBUM_URI);
+    return undefinedResult;
 }
 } // namespace Media
 } // namespace OHOS

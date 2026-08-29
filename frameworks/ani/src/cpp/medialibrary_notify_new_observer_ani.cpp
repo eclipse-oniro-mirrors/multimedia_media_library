@@ -472,9 +472,16 @@ static ani_object HandleObserverUriType(ani_env *env, NewJsOnChangeCallbackWrapp
                 MediaLibraryNotifyAniUtils::BuildPhotoAssetChangeInfos(env, mediaChangeInfo,
                     Notification::NotifyUriType::HIDDEN_PHOTO_URI);
             break;
+        case Notification::SHARE_PHOTO_URI:
+            buildResult = mediaChangeInfo == nullptr ?
+                MediaLibraryNotifyAniUtils::BuildPhotoAssetRecheckChangeInfos(env) :
+                MediaLibraryNotifyAniUtils::BuildPhotoAssetChangeInfos(env, mediaChangeInfo,
+                    Notification::NotifyUriType::SHARE_PHOTO_URI);
+            break;
         case Notification::PHOTO_ALBUM_URI:
         case Notification::HIDDEN_ALBUM_URI:
         case Notification::TRASH_ALBUM_URI:
+        case Notification::SHARE_PHOTO_ALBUM_URI:
             buildResult = mediaChangeInfo == nullptr ?
                 MediaLibraryNotifyAniUtils::BuildAlbumRecheckChangeInfos(env) :
                 MediaLibraryNotifyAniUtils::BuildAlbumChangeInfos(env, mediaChangeInfo);

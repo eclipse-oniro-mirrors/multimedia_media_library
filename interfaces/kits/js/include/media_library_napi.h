@@ -426,6 +426,10 @@ private:
     EXPORT static napi_value SinglePhotoAlbumUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AnalysisPhotoAccessUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AnalysisAlbumAccessUnregisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessSharePhotoRegisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessSharePhotoUnregisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessShareAlbumRegisterCallback(napi_env env, napi_callback_info info);
+    EXPORT static napi_value PhotoAccessShareAlbumUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AvailabilityRegisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value AvailabilityUnregisterCallback(napi_env env, napi_callback_info info);
     EXPORT static napi_value QueryMediaDataReady(napi_env env, napi_callback_info info);

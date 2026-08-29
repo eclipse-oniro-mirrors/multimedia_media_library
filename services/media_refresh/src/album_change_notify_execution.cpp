@@ -18,6 +18,7 @@
 #include "album_change_notify_execution.h"
 #include "accurate_debug_log.h"
 #include "medialibrary_notify_new.h"
+#include "photo_album.h"
 
 using namespace std;
 using namespace OHOS::Media::Notification;
@@ -62,6 +63,10 @@ void AlbumChangeNotifyExecution::InsertNotifyInfoForAdd(const AlbumChangeData& c
 void AlbumChangeNotifyExecution::Notify(vector<AlbumChangeData> changeDatas)
 {
     for (auto &changeData : changeDatas) {
+        if (IsShareAlbumChangeInfo(changeData)) {
+            HandleInsertShareNotifyInfo(changeData);
+            continue;
+        }
         if (changeData.operation_ == RDB_OPERATION_ADD) {
             InsertNotifyInfoForAdd(changeData);
         } else if (changeData.operation_ == RDB_OPERATION_REMOVE) {
@@ -139,5 +144,46 @@ void AlbumChangeNotifyExecution::InsertNotifyInfo(AlbumRefreshOperation operatio
     }
 }
 
+bool AlbumChangeNotifyExecution::IsShareAlbumChangeInfo(const AlbumChangeData& changeData)
+{
+    auto afterAlbumType = changeData.infoAfterChange_.albumType_;
+    auto afterSubType = changeData.infoAfterChange_.albumSubType_;
+    auto beforeAlbumType = changeData.infoBeforeChange_.albumType_;
+    auto beforeSubType = changeData.infoBeforeChange_.albumSubType_;
+    return PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(beforeAlbumType),
+        static_cast<PhotoAlbumSubType>(beforeSubType)) ||
+        PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(afterAlbumType),
+        static_cast<PhotoAlbumSubType>(afterSubType));
+}
+
+void AlbumChangeNotifyExecution::HandleInsertShareNotifyInfo(AlbumChangeData& changeData)
+{
+    if (changeData.operation_ == RDB_OPERATION_ADD) {
+        changeData.infoBeforeChange_.albumId_ = INVALID_INT32_VALUE;
+        InsertNotifyInfo(ALBUM_OPERATION_ADD_SHARE, changeData);
+    } else if (changeData.operation_ == RDB_OPERATION_REMOVE) {
+        changeData.infoAfterChange_.albumId_ = INVALID_INT32_VALUE;
+        changeData.isDelete_ = true;
+        InsertNotifyInfo(ALBUM_OPERATION_REMOVE_SHARE, changeData);
+    } else if (changeData.operation_ == RDB_OPERATION_UPDATE) {
+        // 相册删除
+        bool isDelete = changeData.infoAfterChange_.dirty_ == static_cast<int32_t>(DirtyType::TYPE_DELETED) &&
+                    changeData.infoBeforeChange_.dirty_ != static_cast<int32_t>(DirtyType::TYPE_DELETED);
+        if (isDelete) {
+            changeData.isDelete_ = true;
+            InsertNotifyInfo(ALBUM_OPERATION_REMOVE_SHARE, changeData);
+            return;
+        }
+
+        // 相册新增
+        bool isCreate = changeData.infoBeforeChange_.dirty_ == static_cast<int32_t>(DirtyType::TYPE_DELETED) &&
+            changeData.infoAfterChange_.dirty_ != static_cast<int32_t>(DirtyType::TYPE_DELETED);
+        if (isCreate) {
+            InsertNotifyInfo(ALBUM_OPERATION_ADD_SHARE, changeData);
+            return;
+        }
+        InsertNotifyInfo(ALBUM_OPERATION_UPDATE_SHARE, changeData);
+    }
+}
 } // namespace Media
 } // namespace OHOS

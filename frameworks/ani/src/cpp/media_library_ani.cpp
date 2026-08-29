@@ -349,6 +349,14 @@ const std::array photoAccessHelperMethos = {
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnTrashedAlbumChange)},
     ani_native_function {"offTrashedAlbumChange", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffTrashedAlbumChange)},
+    ani_native_function {"onSharePhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnSharePhotoChange)},
+    ani_native_function {"offSharePhotoChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffSharePhotoChange)},
+    ani_native_function {"onSharePhotoAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOnSharePhotoAlbumChange)},
+    ani_native_function {"offSharePhotoAlbumChange", nullptr,
+        reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessOffSharePhotoAlbumChange)},
     ani_native_function {"getPhotoAlbumsInner", nullptr,
         reinterpret_cast<void *>(MediaLibraryAni::PhotoAccessGetPhotoAlbumsWithoutSubtype)},
     ani_native_function {"getPhotoAlbumsOrderInner", nullptr,
@@ -6891,6 +6899,28 @@ void MediaLibraryAni::PhotoAccessOnTrashedAlbumChange(ani_env *env, ani_object o
     return;
 }
 
+void MediaLibraryAni::PhotoAccessOnSharePhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnSharePhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnSharePhotoChange");
+
+    registerAssetExecute(env, object, callbackOn, "sharePhotoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOnSharePhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOn)
+{
+    ANI_INFO_LOG("enter PhotoAccessOnSharePhotoAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOnSharePhotoAlbumChange");
+
+    registerAssetExecute(env, object, callbackOn, "sharePhotoAlbumChange");
+    tracer.Finish();
+    return;
+}
+
 int32_t MediaLibraryAni::CreateAndRegisterNewAvailabilityObserverAni(ani_env *env, ani_ref ref,
     Notification::NotifyUriType registerUriType, std::string& registerUri, ChangeListenerAni& listObj)
 {
@@ -7375,6 +7405,28 @@ void MediaLibraryAni::PhotoAccessOffTrashedAlbumChange(ani_env *env, ani_object 
     tracer.Start("PhotoAccessOffTrashedAlbumChange");
 
     unregisterAssetExecute(env, object, callbackOff, "trashedAlbumChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOffSharePhotoChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffSharePhotoChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffSharePhotoChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "sharePhotoChange");
+    tracer.Finish();
+    return;
+}
+
+void MediaLibraryAni::PhotoAccessOffSharePhotoAlbumChange(ani_env *env, ani_object object, ani_fn_object callbackOff)
+{
+    ANI_INFO_LOG("enter PhotoAccessOffSharePhotoAlbumChange");
+    MediaLibraryTracer tracer;
+    tracer.Start("PhotoAccessOffSharePhotoAlbumChange");
+
+    unregisterAssetExecute(env, object, callbackOff, "sharePhotoAlbumChange");
     tracer.Finish();
     return;
 }

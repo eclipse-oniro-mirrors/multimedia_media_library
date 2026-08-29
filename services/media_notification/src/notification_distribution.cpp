@@ -53,7 +53,9 @@ MediaChangeInfo NotificationDistribution::FilterNotifyInfoByPermission(
          notifyUriType == NotifyUriType::SINGLE_PHOTO_URI ||
          notifyUriType == NotifyUriType::SINGLE_PHOTO_ALBUM_URI ||
          notifyUriType == NotifyUriType::ANALYSIS_PHOTO_URI ||
-         notifyUriType == NotifyUriType::ANALYSIS_ALBUM_URI) &&
+         notifyUriType == NotifyUriType::ANALYSIS_ALBUM_URI ||
+         notifyUriType == NotifyUriType::SHARE_PHOTO_URI ||
+         notifyUriType == NotifyUriType::SHARE_PHOTO_ALBUM_URI) &&
          changeUri == notifyUriType) {
         return changeInfo;
     }

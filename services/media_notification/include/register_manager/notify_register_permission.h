@@ -39,6 +39,7 @@ private:
     int32_t BasicPermissionCheck();
     int32_t TranshPermissionCheck();
     int32_t HiddenPermissionCheck();
+    int32_t SharePermissionCheck();
 };
 
 }

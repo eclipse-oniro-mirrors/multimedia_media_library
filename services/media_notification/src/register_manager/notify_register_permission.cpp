@@ -68,6 +68,22 @@ int32_t NotifyRegisterPermission::HiddenPermissionCheck()
     return E_OK;
 }
 
+int32_t NotifyRegisterPermission::SharePermissionCheck()
+{
+    if (!PermissionUtils::IsSystemApp()) {
+        MEDIA_ERR_LOG("the caller is not system app");
+        return -E_CHECK_SYSTEMAPP_FAIL;
+    }
+    std::vector<std::string> perms;
+    perms.push_back(PERM_READ_IMAGEVIDEO);
+    int32_t err = PermissionUtils::CheckCallerPermission(perms) ? E_SUCCESS : E_PERMISSION_DENIED;
+    if (err < 0) {
+        MEDIA_ERR_LOG("the caller does not have read permission or share permission");
+        return err;
+    }
+    return E_OK;
+}
+
 int32_t NotifyRegisterPermission::SinglePermissionCheck(const NotifyUriType &registerUriType,
     const std::string& singleId)
 {
@@ -108,6 +124,9 @@ int32_t NotifyRegisterPermission::ExecuteCheckPermission(const NotifyUriType &re
     } else if (registerUriType == NotifyUriType::USER_DEFINE_NOTIFY_URI) {
         MEDIA_INFO_LOG("Permission validation is not applicable to USER_DEFINE_NOTIFY_URI.");
         return E_OK;
+    } else if (registerUriType == NotifyUriType::SHARE_PHOTO_URI ||
+               registerUriType == NotifyUriType::SHARE_PHOTO_ALBUM_URI) {
+        ret = SharePermissionCheck();
     } else if (registerUriType == NotifyUriType::SINGLE_PHOTO_URI || registerUriType == SINGLE_PHOTO_ALBUM_URI) {
         MEDIA_INFO_LOG("Single permission check in full check.");
         return E_OK;

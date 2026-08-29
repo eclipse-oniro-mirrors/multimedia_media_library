@@ -21,6 +21,7 @@
 #include "result_set_utils.h"
 #include "media_file_utils.h"
 #include "accurate_debug_log.h"
+#include "photo_album.h"
 
 using namespace std;
 using namespace OHOS::NativeRdb;
@@ -57,7 +58,9 @@ const map<std::string, ResultSetDataType> AlbumChangeInfo::albumInfoColumnTypes_
     { PhotoAlbumColumns::COVER_ORDER_TYPE, TYPE_INT32 },
     { PhotoAlbumColumns::HIDDEN_COVER_ORDER_KEY, TYPE_STRING },
     { PhotoAlbumColumns::HIDDEN_COVER_ORDER_SUBKEY, TYPE_STRING },
-    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE, TYPE_INT32 }
+    { PhotoAlbumColumns::HIDDEN_COVER_ORDER_TYPE, TYPE_INT32 },
+    { PhotoAlbumColumns::SHARE_RISK_STATUS, TYPE_INT32 },
+    { PhotoAlbumColumns::SHARE_RISK_TYPE, TYPE_STRING },
 };
 
 const map<std::string, ResultSetDataType> AlbumChangeInfo::analysisAlbumInfoColumnTypes_ = {
@@ -102,6 +105,7 @@ void AlbumChangeInfo::SetPhotoAlbumExecute(AlbumChangeInfo &albumChangeInfo,
 {
     SetPhotoAlbumHidden(albumChangeInfo, resultSet);
     SetPhotoAlbumForCoverOrder(albumChangeInfo, resultSet);
+    SetPhotoAlbumForShareAlbum(albumChangeInfo, resultSet);
 }
 
 vector<AlbumChangeInfo> AlbumChangeInfo::GetInfoFromResult(const shared_ptr<NativeRdb::ResultSet> &resultSet)
@@ -366,6 +370,10 @@ bool AlbumChangeInfo::Marshalling(Parcel &parcel, bool isSystem) const
         ret = ret && parcel.WriteInt32(orderSection_);
         ret = ret && parcel.WriteInt32(albumsOrder_);
         ret = ret && parcel.WriteString(lpath_);
+        if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumType_),
+            static_cast<PhotoAlbumSubType>(albumSubType_))) {
+            ret = ret && parcel.WriteInt32(shareRiskStatus_);
+        }
     }
     ret = ret && parcel.WriteInt32(albumId_);
     return ret;
@@ -412,6 +420,10 @@ bool AlbumChangeInfo::ReadFromParcel(Parcel &parcel)
         ret = ret && parcel.ReadInt32(orderSection_);
         ret = ret && parcel.ReadInt32(albumsOrder_);
         ret = ret && parcel.ReadString(lpath_);
+        if (PhotoAlbum::IsShareAlbum(static_cast<PhotoAlbumType>(albumType_),
+            static_cast<PhotoAlbumSubType>(albumSubType_))) {
+            ret = ret && parcel.ReadInt32(shareRiskStatus_);
+        }
     }
     ret = ret && parcel.ReadInt32(albumId_);
     return ret;
@@ -460,6 +472,8 @@ string AlbumChangeInfo::GetAlbumDiff(const AlbumChangeInfo &album, const AlbumCh
     GET_ALBUM_DIFF(albumsOrder_);
     GET_ALBUM_DIFF(orderSection_);
     GET_ALBUM_DIFF(hidden_);
+    GET_ALBUM_DIFF(shareRiskStatus_);
+    GET_ALBUM_DIFF(shareRiskType_);
 
     if (album.coverUri_ != compare.coverUri_) {
         ss << "coverUri_: " << MediaFileUtils::DesensitizeUri(album.coverUri_) << " -> ";
@@ -582,6 +596,14 @@ string AnalysisAlbumRefreshInfo::ToString() const
         << MediaFileUtils::DesensitizeUri(refreshCover_) << ", album timestamp: "
         << albumRefreshTimestamp_.ToString();
     return ss.str();
+}
+void AlbumChangeInfo::SetPhotoAlbumForShareAlbum(AlbumChangeInfo &albumChangeInfo,
+    const shared_ptr<NativeRdb::ResultSet> &resultSet)
+{
+    albumChangeInfo.shareRiskStatus_ = get<int32_t>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_RISK_STATUS, resultSet, GetDataType(PhotoAlbumColumns::SHARE_RISK_STATUS)));
+    albumChangeInfo.shareRiskType_ = get<string>(ResultSetUtils::GetValFromColumn(
+        PhotoAlbumColumns::SHARE_RISK_TYPE, resultSet, GetDataType(PhotoAlbumColumns::SHARE_RISK_TYPE)));
 }
 
 } // namespace Media
