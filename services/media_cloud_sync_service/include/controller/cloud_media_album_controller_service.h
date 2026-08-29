@@ -31,6 +31,7 @@
 #include "media_empty_obj_vo.h"
 #include "user_define_ipc.h"
 #include "cloud_media_album_service.h"
+#include "cloud_media_share_album_service.h"
 #include "cloud_media_album_controller_processor.h"
 #include "cloud_media_define.h"
 #include "cloud_media_context.h"
@@ -106,6 +107,7 @@ public:
 
 private:
     CloudMediaAlbumService albumService_;
+    CloudMediaShareAlbumService shareAlbumService_;
     CloudMediaAlbumControllerProcessor processor_;
 };
 }  // namespace OHOS::Media::CloudSync

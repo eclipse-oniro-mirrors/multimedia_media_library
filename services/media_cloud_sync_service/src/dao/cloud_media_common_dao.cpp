@@ -130,5 +130,28 @@ int32_t CloudMediaCommonDao::QueryPhotoAlbumByAlbumId(const int32_t albumId,
     }
     return E_OK;
 }
+
+int32_t CloudMediaCommonDao::QueryPhotoAlbumByCloudId(const std::string cloudId,
+    std::optional<PhotoAlbumPo> &photoAlbumInfoOp) const
+{
+    CHECK_AND_RETURN_RET_LOG(!cloudId.empty(), E_ERR, "cloudId is invalid");
+
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_RDB_STORE_NULL, "Failed to get rdbStore.");
+
+    NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
+    predicates.EqualTo(PhotoAlbumColumns::ALBUM_CLOUD_ID, cloudId);
+
+    auto resultSet = rdbStore->Query(predicates, {});  // 查询所有字段
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, E_RESULT_SET_NULL, "Failed to query.");
+    std::vector<PhotoAlbumPo> photoAlbumPoList;
+    int32_t ret = ResultSetReader<PhotoAlbumPoWriter, PhotoAlbumPo>(resultSet).ReadRecords(photoAlbumPoList);
+    CHECK_AND_RETURN_RET_LOG(
+        ret == E_OK, ret, "Failed to read records. cloudId: %{public}s, ret: %{public}d", cloudId.c_str(), ret);
+    if (!photoAlbumPoList.empty()) {
+        photoAlbumInfoOp = photoAlbumPoList[0];
+    }
+    return E_OK;
+}
 // LCOV_EXCL_STOP
 }  // namespace OHOS::Media::CloudSync
