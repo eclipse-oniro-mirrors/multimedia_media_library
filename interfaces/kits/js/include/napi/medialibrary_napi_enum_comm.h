@@ -112,7 +112,8 @@ const std::vector<std::string> positionTypeEnum {
 };
 
 const std::vector<std::string> photoSubTypeEnum {
-    "DEFAULT", "SCREENSHOT", "CAMERA", "MOVING_PHOTO", "BURST", "CINEMATIC_VIDEO", "SPATIAL_3DGS"
+    "DEFAULT", "SCREENSHOT", "CAMERA", "MOVING_PHOTO", "BURST", "CINEMATIC_VIDEO",
+    "SLOW_MOTION_VIDEO", "SPATIAL_3DGS", "CINEMATIC_VIDEO_V2"
 };
 
 const std::vector<std::string> photoPermissionTypeEnum {
@@ -245,8 +246,10 @@ const std::vector<std::pair<std::string, int32_t>> PHOTO_SUB_TYPE_ENUM_PROPERTIE
     std::make_pair("CAMERA",            static_cast<int32_t>(PhotoSubType::CAMERA)),
     std::make_pair("MOVING_PHOTO",      static_cast<int32_t>(PhotoSubType::MOVING_PHOTO)),
     std::make_pair("BURST",             static_cast<int32_t>(PhotoSubType::BURST)),
+    std::make_pair("CINEMATIC_VIDEO",   static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)),
     std::make_pair("SLOW_MOTION_VIDEO", static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO)),
-    std::make_pair("SPATIAL_3DGS",      static_cast<int32_t>(PhotoSubType::SPATIAL_3DGS))
+    std::make_pair("SPATIAL_3DGS",      static_cast<int32_t>(PhotoSubType::SPATIAL_3DGS)),
+    std::make_pair("CINEMATIC_VIDEO_V2", static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2))
 };
 
 const std::vector<std::pair<std::string, std::string>> FILE_KEY_ENUM_PROPERTIES = {

@@ -32,6 +32,8 @@ static const std::map<PhotoSubType, int32_t> ANI_PHOTOSUBTYPE_INDEX_MAP = {
     {PhotoSubType::SCREENSHOT, 1},
     {PhotoSubType::MOVING_PHOTO, 2},
     {PhotoSubType::BURST, 3},
+    {PhotoSubType::CINEMATIC_VIDEO, 5},
+    {PhotoSubType::CINEMATIC_VIDEO_V2, 8},
 };
 
 static const std::map<DynamicRangeType, int32_t> ANI_DYNAMICRANGETYPE_INDEX_MAP = {

@@ -170,6 +170,7 @@ enum class PhotoSubType : int32_t {
     CINEMATIC_VIDEO,
     SLOW_MOTION_VIDEO,
     SPATIAL_3DGS = 7,
+    CINEMATIC_VIDEO_V2 = 8, // V2电影模式（包含希区柯克等特性）
     SUBTYPE_END
 };
 

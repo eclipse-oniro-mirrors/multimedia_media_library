@@ -54,6 +54,7 @@ bool PhotoFileUtils::HasSource(bool hasEditDataCamera,
 {
     return hasEditDataCamera || editTime > 0 ||
             (subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO)) ||
+            (subtype == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2)) ||
             (subtype == static_cast<int32_t>(PhotoSubType::SLOW_MOTION_VIDEO) && editDataExist == EDIT_DATA_EXIST) ||
             (effectMode > static_cast<int32_t>(MovingPhotoEffectMode::DEFAULT) &&
              effectMode != static_cast<int32_t>(MovingPhotoEffectMode::IMAGE_ONLY));

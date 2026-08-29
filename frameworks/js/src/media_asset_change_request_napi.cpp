@@ -334,7 +334,8 @@ bool MediaAssetChangeRequestNapi::IsMovingPhoto() const
 bool MediaAssetChangeRequestNapi::IsCinematicVideo() const
 {
     return fileAsset_ != nullptr &&
-        fileAsset_->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO);
+        (fileAsset_->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO) ||
+         fileAsset_->GetPhotoSubType() == static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2));
 }
 
 bool MediaAssetChangeRequestNapi::CheckMovingPhotoResource(ResourceType resourceType) const

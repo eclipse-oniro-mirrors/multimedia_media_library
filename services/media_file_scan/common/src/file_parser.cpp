@@ -542,6 +542,31 @@ int32_t FileParser::SetAssetSubtypeValues(NativeRdb::ValuesBucket &values)
     return E_OK;
 }
 
+// 电影模式V2资产的shooting_mode相关字段由相机侧写入（AddPhotoProxy/UpdatePhotoProxy），
+// 扫描器解析视频元数据为空时会覆盖，因此对V2资产跳过这两个字段的更新
+// 注意：values.Delete仅从本次UPDATE的SET子句移除该列，不修改数据库已有值
+bool FileParser::IsCinematicVideoV2Asset()
+{
+    if (fileInfo_.fileType != MediaType::MEDIA_TYPE_VIDEO) {
+        return false;
+    }
+    auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
+    CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "Failed to get rdbStore when query subtype");
+    RdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
+    predicates.EqualTo(MediaColumn::MEDIA_ID, fileInfo_.fileId);
+    std::vector<std::string> columns = { PhotoColumn::PHOTO_SUBTYPE };
+    auto resultSet = rdbStore->Query(predicates, columns);
+    CHECK_AND_RETURN_RET_LOG(resultSet != nullptr, false, "Failed to query subtype of file: %{public}d",
+        fileInfo_.fileId);
+    bool isCinematicVideoV2 = false;
+    if (resultSet->GoToNextRow() == NativeRdb::E_OK) {
+        isCinematicVideoV2 = GetInt32Val(PhotoColumn::PHOTO_SUBTYPE, resultSet) ==
+            static_cast<int32_t>(PhotoSubType::CINEMATIC_VIDEO_V2);
+    }
+    resultSet->Close();
+    return isCinematicVideoV2;
+}
+
 NativeRdb::ValuesBucket FileParser::GetAssetCommonValues()
 {
     NativeRdb::ValuesBucket values;
@@ -798,6 +823,12 @@ int32_t FileParser::UpdateAssetInDatabase()
 {
     CHECK_AND_RETURN_RET_LOG(mediaLibraryRdb_ != nullptr, E_HAS_DB_ERROR, "mediaLibraryRdb_ is null.");
     NativeRdb::ValuesBucket values = GetAssetUpdateValues();
+    if (IsCinematicVideoV2Asset()) {
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE);
+        values.Delete(PhotoColumn::PHOTO_SHOOTING_MODE_TAG);
+        MEDIA_INFO_LOG("skip update shooting mode fields for cinematic video v2, fileId: %{public}d",
+            fileInfo_.fileId);
+    }
     NativeRdb::AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(MediaColumn::MEDIA_ID, fileInfo_.fileId);
     int32_t changedRows = 0;
