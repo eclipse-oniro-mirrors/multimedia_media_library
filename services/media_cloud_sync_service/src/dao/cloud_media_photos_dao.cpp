@@ -1825,7 +1825,9 @@ void CloudMediaPhotosDao::PrepareAlbumMap(SafeMap<int32_t, std::pair<std::string
     NativeRdb::AbsRdbPredicates predicates = NativeRdb::AbsRdbPredicates(PhotoAlbumColumns::TABLE);
     predicates.EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(Media::PhotoAlbumType::USER))
         ->Or()
-        ->EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(Media::PhotoAlbumType::SOURCE));
+        ->EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(Media::PhotoAlbumType::SOURCE))
+        ->Or()
+        ->EqualTo(PhotoAlbumColumns::ALBUM_TYPE, std::to_string(Media::PhotoAlbumType::SHARE));
     auto results = rdbStore->Query(predicates, {});
     std::vector<PhotoAlbumPo> albumInfoList;
     int32_t ret = ResultSetReader<PhotoAlbumPoWriter, PhotoAlbumPo>(results).ReadRecords(albumInfoList);

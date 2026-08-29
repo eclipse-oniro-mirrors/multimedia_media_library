@@ -37,6 +37,7 @@ public:
     int32_t QueryPhotoByCloudId(const std::string &cloudId, std::optional<PhotosPo> &photoInfoOp) const;
     int32_t QueryPhotoByFilePath(const std::string &filePath, std::optional<PhotosPo> &photoInfoOp) const;
     int32_t QueryPhotoAlbumByAlbumId(const int32_t albumId, std::optional<PhotoAlbumPo> &photoAlbumInfoOp) const;
+    int32_t QueryPhotoAlbumByCloudId(const std::string cloudId, std::optional<PhotoAlbumPo> &photoAlbumInfoOp) const;
 };
 }  // namespace OHOS::Media::CloudSync
 #endif  // OHOS_MEDIA_CLOUD_SYNC_CLOUD_MEDIA_COMMON_DAO_H

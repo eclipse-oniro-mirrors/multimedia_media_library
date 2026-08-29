@@ -1332,6 +1332,7 @@ int32_t CloudMediaAlbumDao::GetPhotoAlbum(const std::string &lPath, std::optiona
 {
     auto rdbStore = MediaLibraryUnistoreManager::GetInstance().GetRdbStore();
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, E_ERR, "GetPhotoAlbum Failed to get rdbStore.");
+    CHECK_AND_RETURN_RET_LOG(!lPath.empty(), E_ERR, "GetPhotoAlbum lPath is empty.");
     const std::string execSql = "SELECT * FROM PhotoAlbum WHERE LOWER(lpath) = LOWER(?)";
     std::vector<NativeRdb::ValueObject> bindArgs = {lPath};
     auto resultSet = rdbStore->QuerySql(execSql, bindArgs);
