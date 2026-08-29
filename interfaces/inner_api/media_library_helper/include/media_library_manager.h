@@ -41,6 +41,7 @@ class FetchResult;
 enum class CloudMediaRetainType : int32_t {
     RETAIN_FORCE = 0,
     HDC_RETAIN_FORCE,
+    SHARE_RETAIN_FORCE,
 };
 // LCOV_EXCL_START
 class MediaLibraryManager {
