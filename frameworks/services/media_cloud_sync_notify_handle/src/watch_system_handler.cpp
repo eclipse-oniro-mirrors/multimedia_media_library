@@ -73,6 +73,8 @@ void WatchSystemHandler::OnReceiveData(const std::string &msg, int32_t type)
     int32_t criticalType = 0;
     
     ParsePushInfo(msg, displayName, isCritical, criticalType);
+    CHECK_AND_RETURN_LOG(!displayName.empty(),
+        "OnReceiveData displayName is empty, skip update");
     std::string updateCriticalValuesSql =
             "UPDATE " + PhotoColumn::PHOTOS_TABLE +
             " SET " +  PhotoColumn::PHOTO_IS_CRITICAL + " = " + std::to_string(isCritical) + ", " +
@@ -148,6 +150,8 @@ void WatchSystemHandler::ParseAssetName(const std::string &fileAssetData, std::s
     size_t pos = fileAssetData.rfind('/');
     if (pos != std::string::npos) {
         displayName = fileAssetData.substr(pos + 1);
+    } else {
+        displayName = fileAssetData;
     }
 }
 }
