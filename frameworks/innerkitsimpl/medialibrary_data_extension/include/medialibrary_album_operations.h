@@ -97,6 +97,8 @@ public:
     static std::shared_ptr<NativeRdb::ResultSet> QueryPhotoAlbum(MediaLibraryCommand &cmd,
         const std::vector<std::string> &columns);
     static int32_t DeletePhotoAlbum(NativeRdb::RdbPredicates &predicates);
+    static int32_t SetShareAlbumName(const int32_t &albumId, const std::string &owner, const std::string &albumName);
+    static int32_t DeleteSharePhotoAlbum(const std::string &owner, const std::vector<int32_t> &albumIds);
     static int32_t DeletePhotoAssetsCompleted(const DataShare::DataSharePredicates &predicates, const bool isAging);
     static int32_t DeletePhotoAssetsPermanentlyWithUri(const DataShare::DataSharePredicates &predicates);
     static int32_t DeleteHighlightAlbums(NativeRdb::RdbPredicates &predicates);

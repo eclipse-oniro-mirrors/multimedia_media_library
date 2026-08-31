@@ -453,6 +453,7 @@ private:
     EXPORT static napi_value CreateAuthorizationModeEnum(napi_env env);
     EXPORT static napi_value CreateHighlightAlbumInfoTypeEnum(napi_env env);
     EXPORT static napi_value CreateHighlightUserActionTypeEnum(napi_env env);
+    EXPORT static napi_value CreateShareMemberStatusEnum(napi_env env);
     EXPORT static napi_value CreateHighlightAlbumChangeAttributeEnum(napi_env env);
     EXPORT static napi_value CreateMovingPhotoEffectModeEnum(napi_env env);
     EXPORT static napi_value CreateImageFileTypeEnum(napi_env env);
@@ -569,6 +570,7 @@ private:
     static thread_local napi_ref sPreferredCompatibleModeEnumRef_;
     static thread_local napi_ref sHighlightAlbumInfoType_;
     static thread_local napi_ref sHighlightUserActionType_;
+    static thread_local napi_ref sShareMemberStatusEnumRef_;
     static thread_local napi_ref sHighlightAlbumChangeAttributeEnumRef_;
     static thread_local napi_ref sMovingPhotoEffectModeEnumRef_;
     static thread_local napi_ref sImageFileTypeEnumEnumRef_;

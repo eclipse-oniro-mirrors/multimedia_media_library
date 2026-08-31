@@ -20,6 +20,7 @@
 #include "cloud_media_asset_status_napi.h"
 #include "highlight_album_napi.h"
 #include "media_album_change_request_napi.h"
+#include "media_share_album_change_request_napi.h"
 #include "media_asset_change_request_napi.h"
 #include "media_asset_edit_data_napi.h"
 #include "media_asset_manager_napi.h"
@@ -54,6 +55,7 @@ static napi_value PhotoAccessHelperExport(napi_env env, napi_value exports)
     MediaAlbumChangeRequestNapi::Init(env, exports);
     MediaAlbumChangeRequestNapi::MediaAnalysisAlbumChangeRequestInit(env, exports);
     MediaAlbumChangeRequestNapi::MediaHighlightAlbumChangeRequestInit(env, exports);
+    MediaShareAlbumChangeRequestNapi::Init(env, exports);
     MediaAssetManagerNapi::Init(env, exports);
     MovingPhotoNapi::Init(env, exports);
     PhotoProxyNapi::Init(env, exports);

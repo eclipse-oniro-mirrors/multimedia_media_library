@@ -273,6 +273,14 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER),
         &MediaAlbumsControllerService::ModifyHiddenAlbumDefaultCoverOrder
     },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME),
+        &MediaAlbumsControllerService::SetShareAlbumName
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS),
+        &MediaAlbumsControllerService::DeleteSharePhotoAlbums
+    },
 };
 
 bool MediaAlbumsControllerService::Accept(uint32_t code)
@@ -1218,6 +1226,47 @@ int32_t MediaAlbumsControllerService::ModifyHiddenAlbumDefaultCoverOrder(Message
     }
     ret = MediaAlbumsService::GetInstance().ModifyHiddenAlbumDefaultCoverOrder(reqBody.coverOrderInfos,
         reqBody.disable, reqBody.isAsyncRefreshAlbum);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::SetShareAlbumName(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("MediaAlbumsControllerService::SetShareAlbumName start");
+    uint32_t operationCode = static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME);
+    int64_t timeout = DfxTimer::GetOperationCodeTimeout(operationCode);
+    DfxTimer dfxTimer(operationCode, timeout, true);
+    SetShareAlbumNameReqBody reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("SetShareAlbumName Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    if (reqBody.albumId <= 0 || reqBody.owner.empty() || reqBody.albumName.empty()) {
+        MEDIA_ERR_LOG("SetShareAlbumName params invalid, albumId=%{public}d", reqBody.albumId);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, E_INVALID_VALUES);
+    }
+    MEDIA_INFO_LOG("SetShareAlbumName albumId=%{public}d, owner=%{public}s, albumName=%{public}s",
+        reqBody.albumId, reqBody.owner.c_str(), reqBody.albumName.c_str());
+    ret = MediaAlbumsService::GetInstance().SetShareAlbumName(reqBody);
+    MEDIA_INFO_LOG("SetShareAlbumName result=%{public}d", ret);
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::DeleteSharePhotoAlbums(MessageParcel &data, MessageParcel &reply)
+{
+    MEDIA_INFO_LOG("enter DeleteSharePhotoAlbums");
+    DeleteShareAlbumReqBody reqBody;
+
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("DeleteSharePhotoAlbums Read Request Error");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    if (reqBody.owner.empty() || reqBody.albumIds.empty()) {
+        MEDIA_ERR_LOG("DeleteSharePhotoAlbums owner or albumIds is empty");
+        return IPC::UserDefineIPC().WriteResponseBody(reply, -EINVAL);
+    }
+    ret = MediaAlbumsService::GetInstance().DeleteSharePhotoAlbums(reqBody.owner, reqBody.albumIds);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
 }
 } // namespace OHOS::Media

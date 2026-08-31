@@ -97,6 +97,10 @@ static std::unordered_map<uint32_t, std::vector<std::vector<PermissionType>>> me
         { {SYSTEMAPI_PERM, WRITE_PERM} }},
     {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_MODIFY_HIDDEN_ALBUM_DEFAULT_COVER_ORDER),
         { {SYSTEMAPI_PERM, WRITE_PERM, PRIVATE_PERM} }},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_SET_SHARE_ALBUM_NAME),
+        {{SYSTEMAPI_PERM, WRITE_PERM}}},
+    {static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS),
+        {{SYSTEMAPI_PERM, WRITE_PERM}}},
 };
 
 static std::unordered_set<uint32_t> mediaAlbumsPermissionDbBypass = {
