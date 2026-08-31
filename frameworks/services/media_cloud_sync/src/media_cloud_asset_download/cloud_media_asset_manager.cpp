@@ -73,6 +73,7 @@ static const int32_t ALBUM_FROM_CLOUD = 2;
 static const int32_t ZERO_ASSET_OF_ALBUM = 0;
 static const int32_t MAX_BATCH_DOWNLOAD_TASK_SIZE = 500;
 const std::string START_QUERY_ZERO = "0";
+constexpr int32_t SHARED_ALBUM_SHARE_TYPE = 2;
 
 const std::string SQL_CONDITION_EMPTY_CLOUD_ALBUMS = "FROM " + PhotoAlbumColumns::TABLE + " WHERE " +
     "( " + PhotoAlbumColumns::ALBUM_IS_LOCAL + " = " + to_string(ALBUM_FROM_CLOUD) + " AND " +
@@ -350,6 +351,8 @@ int32_t CloudMediaAssetManager::ReadyDataForDelete(std::vector<std::string> &fil
     MEDIA_INFO_LOG("enter ReadyDataForDelete");
     AbsRdbPredicates queryPredicates(PhotoColumn::PHOTOS_TABLE);
     // don't care about smart data processing mode
+    queryPredicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, 0);
+    queryPredicates.BeginWrap();
     queryPredicates.EqualTo(MediaColumn::MEDIA_NAME, DELETE_DISPLAY_NAME);
     queryPredicates.Or();
     queryPredicates.BeginWrap();
@@ -357,6 +360,7 @@ int32_t CloudMediaAssetManager::ReadyDataForDelete(std::vector<std::string> &fil
         queryPredicates.EqualTo(PhotoColumn::PHOTO_REAL_LCD_VISIT_TIME, REAL_LCD_VISIT_TIME_INVALID);
         queryPredicates.EqualTo(PhotoColumn::PHOTO_POSITION,
         to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)));
+    queryPredicates.EndWrap();
     queryPredicates.EndWrap();
 
     queryPredicates.Limit(BATCH_DELETE_LIMIT_COUNT);
@@ -497,6 +501,7 @@ bool CloudMediaAssetManager::HasDataForUpdate(CloudMediaRetainType retainType,
     CHECK_AND_RETURN_RET_LOG(rdbStore != nullptr, false, "HasDataForUpdate failed. rdbStore is null.");
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.GreaterThan(MediaColumn::MEDIA_ID, lastFileId);
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, 0);
     predicates.EqualTo(PhotoColumn::PHOTO_POSITION, to_string(static_cast<int32_t>(PhotoPositionType::CLOUD)));
     predicates.NotEqualTo(MediaColumn::MEDIA_NAME, DELETE_DISPLAY_NAME);
     if (mode == SmartDataProcessingMode::RECOVER || mode == SmartDataProcessingMode::RETAIN) {
@@ -701,8 +706,11 @@ int32_t CloudMediaAssetManager::DeleteEmptyCloudAlbums()
     }
 
     std::string emptyAlbumsWhereClause = BuildEmptyAlbumsWhereClause(albumIds);
-    std::string querySql = "SELECT * FROM " + PhotoAlbumColumns::TABLE + " WHERE " + emptyAlbumsWhereClause;
-    std::string deleteSql = "DELETE FROM " + PhotoAlbumColumns::TABLE + " WHERE " + emptyAlbumsWhereClause;
+    std::string albumCond = PhotoAlbumColumns::ALBUM_SHARE_TYPE + " != " + std::to_string(SHARED_ALBUM_SHARE_TYPE);
+    std::string querySql = "SELECT * FROM " + PhotoAlbumColumns::TABLE + " WHERE " +
+        albumCond + " AND " + emptyAlbumsWhereClause;
+    std::string deleteSql = "DELETE FROM " + PhotoAlbumColumns::TABLE + " WHERE " +
+        albumCond + " AND " + emptyAlbumsWhereClause;
 
     std::shared_ptr<AccurateRefresh::AlbumAccurateRefresh> albumRefresh =
         std::make_shared<AccurateRefresh::AlbumAccurateRefresh>();
@@ -747,6 +755,7 @@ bool CloudMediaAssetManager::HasLocalAndCloudAssets(CloudMediaRetainType retainT
     predicates.EndWrap();
     predicates.EndWrap();
     predicates.EndWrap();
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, 0);
     predicates.OrderByAsc(MediaColumn::MEDIA_ID);
     predicates.Limit(BATCH_UPDATE_LIMIT_COUNT);
 
@@ -801,6 +810,7 @@ int32_t CloudMediaAssetManager::ClearDeletedDbData()
 
     AbsRdbPredicates predicates(PhotoColumn::PHOTOS_TABLE);
     predicates.EqualTo(PhotoColumn::PHOTO_DIRTY, to_string(static_cast<int32_t>(DirtyType::TYPE_DELETED)));
+    predicates.EqualTo(PhotoColumn::PHOTO_IS_SHARED, 0);
 
     int32_t deletedRows = -1;
     auto ret = rdbStore->Delete(deletedRows, predicates);
