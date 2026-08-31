@@ -32,7 +32,9 @@ namespace Media {
 
 enum class ShareAlbumChangeOperation {
     SET_SHARE_ALBUM_NAME,
-    DELETE_SHARE_ALBUM,
+    ADD_SHARE_MEMBER,
+    UPDATE_SHARE_MEMBER_STATUS,
+    DELETE_SHARE_MEMBER,
 };
 
 class MediaShareAlbumChangeRequestNapi : public MediaChangeRequestNapi {
@@ -51,6 +53,10 @@ private:
     EXPORT static void Destructor(napi_env env, void* nativeObject, void* finalizeHint);
     EXPORT static napi_value JSSetShareAlbumName(napi_env env, napi_callback_info info);
     EXPORT static napi_value JSDeleteShareAlbums(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSAddShareMember(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSUpdateShareMemberStatus(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSDeleteShareMember(napi_env env, napi_callback_info info);
+    EXPORT static napi_value JSDeleteMemberShareAlbum(napi_env env, napi_callback_info info);
 
     static thread_local napi_ref constructor_;
     std::shared_ptr<PhotoAlbum> photoAlbum_ = nullptr;
@@ -67,9 +73,25 @@ struct SetShareAlbumNameParam {
     std::string albumName;
 };
 
+struct ShareMemberParam {
+    std::string owner;
+    std::string member;
+    int32_t status = 0;
+};
+
+struct ShareMemberTargetParam {
+    std::string owner;
+    std::string member;
+};
+
 struct DeleteShareAlbumParam {
     std::string owner;
     std::vector<int32_t> deleteIds;
+};
+
+struct DeleteMemberShareAlbumParam {
+    std::string owner;
+    std::vector<int32_t> albumIdsToDelete;
 };
 
 struct MediaShareAlbumChangeRequestAsyncContext : public NapiError {
@@ -84,6 +106,13 @@ struct MediaShareAlbumChangeRequestAsyncContext : public NapiError {
     int32_t userId = -1;
     MediaShareAlbumChangeRequestNapi* shareAlbumObjectInfo = nullptr;
     std::vector<ShareAlbumChangeOperation> albumChangeOperations;
+    int32_t albumId = 0;
+    bool hasValidAlbum = false;
+    std::string shareOwnerInfo;
+    std::string albumName;
+    std::string memberOwner;
+    std::string member;
+    int32_t memberStatus = 0;
     std::string owner;
     std::vector<int32_t> deleteIds;
     std::vector<int32_t> albumIdsToDelete;

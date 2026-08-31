@@ -22,6 +22,9 @@
 #include "create_album_vo.h"
 #include "modify_assets_vo.h"
 #include "delete_highlight_albums_vo.h"
+#include "add_share_member_vo.h"
+#include "delete_share_member_vo.h"
+#include "delete_member_share_album_vo.h"
 #include "asset_change_vo.h"
 #include "restore_vo.h"
 #include "cancel_request_vo.h"
@@ -70,6 +73,10 @@ public:
     static int32_t CheckRestore(const RestoreReqBody &reqBody);
     static int32_t CheckCancelRequest(const CancelRequestReqBody &reqBody);
     static int32_t CheckCreateFileMgrAsset(const CreateFileMgrAssetReqBody &reqBody);
+    static int32_t CheckAddShareMember(const AddShareMemberReqBody &reqBody);
+    static int32_t CheckUpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody);
+    static int32_t CheckDeleteShareMember(const DeleteShareMemberReqBody &reqBody);
+    static int32_t CheckDeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody);
 };
 }  // namespace Media
 }  // namespace OHOS

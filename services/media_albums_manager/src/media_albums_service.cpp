@@ -1132,4 +1132,25 @@ int32_t MediaAlbumsService::ModifyHiddenAlbumDefaultCoverOrder(
     return MediaLibraryAlbumOperations::ModifyHiddenAlbumDefaultCoverOrder(coverOrderInfos,
         disable, isAsyncRefreshAlbum);
 }
+
+int32_t MediaAlbumsService::AddShareMember(const AddShareMemberReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::AddShareMember(reqBody.albumId, reqBody.owner, reqBody.member, reqBody.status);
+}
+
+int32_t MediaAlbumsService::UpdateShareMemberStatus(const UpdateShareMemberStatusReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::UpdateShareMemberStatus(reqBody.albumId, reqBody.owner,
+        reqBody.member, reqBody.status);
+}
+
+int32_t MediaAlbumsService::DeleteShareMember(const DeleteShareMemberReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::DeleteShareMember(reqBody.albumId, reqBody.owner, reqBody.member);
+}
+
+int32_t MediaAlbumsService::DeleteMemberShareAlbum(const DeleteMemberShareAlbumReqBody &reqBody)
+{
+    return MediaLibraryAlbumOperations::DeleteMemberShareAlbum(reqBody.owner, reqBody.albumIds);
+}
 } // namespace OHOS::Media

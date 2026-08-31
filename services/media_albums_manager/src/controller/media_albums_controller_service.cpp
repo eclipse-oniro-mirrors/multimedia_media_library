@@ -76,6 +76,9 @@
 #include "analysis_album_get_attribute_dto.h"
 #include "album_change_set_hidden_attribute_vo.h"
 #include "album_change_set_album_name_by_file_vo.h"
+#include "add_share_member_vo.h"
+#include "delete_member_share_album_vo.h"
+#include "delete_share_member_vo.h"
 
 #include "clone_status_notify_vo.h"
 namespace OHOS::Media {
@@ -280,6 +283,22 @@ const std::map<uint32_t, RequestHandle> HANDLERS = {
     {
         static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_PHOTO_ALBUMS),
         &MediaAlbumsControllerService::DeleteSharePhotoAlbums
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_ADD_SHARE_MEMBER),
+        &MediaAlbumsControllerService::AddShareMember
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_UPDATE_SHARE_MEMBER_STATUS),
+        &MediaAlbumsControllerService::UpdateShareMemberStatus
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_SHARE_MEMBER),
+        &MediaAlbumsControllerService::DeleteShareMember
+    },
+    {
+        static_cast<uint32_t>(MediaLibraryBusinessCode::PAH_DELETE_MEMBER_SHARE_ALBUM),
+        &MediaAlbumsControllerService::DeleteMemberShareAlbum
     },
 };
 
@@ -1268,5 +1287,59 @@ int32_t MediaAlbumsControllerService::DeleteSharePhotoAlbums(MessageParcel &data
     }
     ret = MediaAlbumsService::GetInstance().DeleteSharePhotoAlbums(reqBody.owner, reqBody.albumIds);
     return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+template<typename Body, typename Validator, typename Handler>
+static int32_t HandleShareMemberRequest(MessageParcel &data, MessageParcel &reply, const std::string &name,
+    Validator validator, Handler handler)
+{
+    Body reqBody;
+    int32_t ret = IPC::UserDefineIPC().ReadRequestBody(data, reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("%{public}s Read Request Error, ret:%{public}d", name.c_str(), ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = validator(reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("Check%{public}s ret:%{public}d", name.c_str(), ret);
+        return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+    }
+    ret = handler(reqBody);
+    if (ret != E_OK) {
+        MEDIA_ERR_LOG("%{public}s failed, ret:%{public}d", name.c_str(), ret);
+    }
+    return IPC::UserDefineIPC().WriteResponseBody(reply, ret);
+}
+
+int32_t MediaAlbumsControllerService::AddShareMember(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleShareMemberRequest<AddShareMemberReqBody>(data, reply, "AddShareMember",
+        ParameterUtils::CheckAddShareMember, [](const AddShareMemberReqBody &body) {
+            return MediaAlbumsService::GetInstance().AddShareMember(body);
+        });
+}
+
+int32_t MediaAlbumsControllerService::UpdateShareMemberStatus(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleShareMemberRequest<UpdateShareMemberStatusReqBody>(data, reply, "UpdateShareMemberStatus",
+        ParameterUtils::CheckUpdateShareMemberStatus, [](const UpdateShareMemberStatusReqBody &body) {
+            return MediaAlbumsService::GetInstance().UpdateShareMemberStatus(body);
+        });
+}
+
+int32_t MediaAlbumsControllerService::DeleteShareMember(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleShareMemberRequest<DeleteShareMemberReqBody>(data, reply, "DeleteShareMember",
+        ParameterUtils::CheckDeleteShareMember, [](const DeleteShareMemberReqBody &body) {
+            return MediaAlbumsService::GetInstance().DeleteShareMember(body);
+        });
+}
+
+int32_t MediaAlbumsControllerService::DeleteMemberShareAlbum(MessageParcel &data, MessageParcel &reply)
+{
+    return HandleShareMemberRequest<DeleteMemberShareAlbumReqBody>(data, reply, "DeleteMemberShareAlbum",
+        ParameterUtils::CheckDeleteMemberShareAlbum, [](const DeleteMemberShareAlbumReqBody &body) {
+            return MediaAlbumsService::GetInstance().DeleteMemberShareAlbum(body);
+        });
 }
 } // namespace OHOS::Media

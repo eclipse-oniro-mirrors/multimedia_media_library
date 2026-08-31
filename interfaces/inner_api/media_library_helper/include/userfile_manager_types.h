@@ -355,7 +355,7 @@ enum ShareMemberStatus : int32_t {
     INVITING = 0,
     ACCEPTED = 1,
     DECLINED = 2,
-    REQUESTIING = 3
+    REQUESTING = 3
 };
 } // namespace Media
 } // namespace OHOS

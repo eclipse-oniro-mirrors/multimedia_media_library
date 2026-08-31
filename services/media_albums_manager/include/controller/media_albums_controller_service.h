@@ -65,6 +65,10 @@ public:
     EXPORT int32_t ModifyHiddenAlbumDefaultCoverOrder(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t SetShareAlbumName(MessageParcel &data, MessageParcel &reply);
     EXPORT int32_t DeleteSharePhotoAlbums(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t AddShareMember(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t UpdateShareMemberStatus(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteShareMember(MessageParcel &data, MessageParcel &reply);
+    EXPORT int32_t DeleteMemberShareAlbum(MessageParcel &data, MessageParcel &reply);
 
 public:
     virtual ~MediaAlbumsControllerService() = default;
