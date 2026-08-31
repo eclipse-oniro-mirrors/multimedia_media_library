@@ -128,7 +128,8 @@ private:
     BatchDownloadResourcesTaskDao batchDownloadResourcesTaskDao_;
 
 private:
-    const std::string SQL_CLEAE_CLOUD_INFO_OF_ALBUM = "UPDATE PhotoAlbum SET dirty = 1, cloud_id = NULL;";
+    const std::string SQL_CLEAE_CLOUD_INFO_OF_ALBUM =
+        "UPDATE PhotoAlbum SET dirty = 1, cloud_id = NULL WHERE share_type != 2;";
     const std::string SQL_RESET_UPLOAD_STATUS = "\
         UPDATE PhotoAlbum \
         SET upload_status = ( \
